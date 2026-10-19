@@ -1,3 +1,5 @@
+답변과 설명은 항상 한국어로 한다. 개발 용어는 쉽게 풀어서 설명한다.
+
 @.claude/rules/aidlc.md
 
 <!--
@@ -130,3 +132,9 @@ Commit the `aidlc/` workspace tree — the record (state, the per-clone audit sh
 - `aidlc/spaces/*/intents/*/runtime-graph.json` (also covers per-Bolt worktree fragments by relative-path glob)
 - `aidlc/spaces/*/intents/*/.aidlc-*` (the record's `.aidlc-engine/` framework state)
 - harness-local files your harness's shipped `.gitignore` block adds
+
+## 폴더 규칙
+- docs/input/: 사용자가 넣은 원본 재료(기획서, 데이터 설계, 자료 상태 메모). 사용자 허락 없이 수정, 삭제 금지
+- as-is/: 기존 팀 레포 코드. 참고용으로만 읽고 수정 금지
+- aidlc/: AI-DLC가 만드는 산출물
+- 그 외 코드 폴더 구조는 AI-DLC 구현(Construction) 단계에서 제안받아 결정
