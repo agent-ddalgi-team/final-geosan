@@ -1,8 +1,6 @@
-# 발견된 규칙 초안 (Discovered Rules) — 거산케미칼 AI 영업지원 에이전트 2차
+# 발견된 규칙 (Discovered Rules) — 거산케미칼 AI 영업지원 에이전트 2차
 
-이 문서는 사람이 이미 기록에 확정해 둔 **딱딱한 제약**만 "항상 한다 / 절대 하지 않는다" 형태로 옮긴 것입니다. 새 규칙을 만들지 않았고, 각 줄 끝 괄호는 출처 제약 ID(제약 목록 `../../ideation/feasibility/constraint-register.md`) 또는 사용자 지시입니다. 승인되면 `aidlc/spaces/default/memory/project.md`의 `## Mandated` / `## Forbidden`에 날짜와 함께 추가됩니다.
-
-제안 상태: 인터뷰에서 확정 전
+이 문서는 사람이 이미 기록에 확정해 둔 **딱딱한 제약**만 "항상 한다 / 절대 하지 않는다" 형태로 옮긴 **확정본**입니다. 새 규칙을 만들지 않았고, 각 줄 끝 괄호는 출처 제약 ID(제약 목록 `../../ideation/feasibility/constraint-register.md`) 또는 사용자 지시입니다. 인터뷰(Q1~Q5)에서는 새로운 딱딱한 제약이 나오지 않았습니다. 배포 시점·테스트 방식 같은 답은 "관행"이라 `team-practices.md`에만 적었습니다. 승인되면 `aidlc/spaces/default/memory/project.md`의 `## Mandated` / `## Forbidden`에 날짜와 함께 추가됩니다.
 
 ## Mandated
 

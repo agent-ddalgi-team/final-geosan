@@ -3973,3 +3973,614 @@
 **Session**: b9871f17-f0ab-494b-bc0f-e497b0851130
 
 ---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:19:38Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a2a325dab1aae6b09
+**Message**: 계속해
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:20:19Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a6c368bb3795e2057
+**Message**: 거산케미칼 잠재고객 추천 에이전트를 AI-DLC mvp 계획으로 만드는 중이며, 구상 단계 4개를 마치고 커밋·푸시까지 끝났습니다. 다음은 개발 관행 인터뷰 질문 Q1~Q4에 답해 주시는 것입니다.
+
+---
+
+## Session Start
+**Timestamp**: 2026-10-19T13:20:47Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T13:22:12Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+
+---
+
+## Session End
+**Timestamp**: 2026-10-19T13:23:03Z
+**Event**: SESSION_ENDED
+**Reason**: other
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T13:34:25Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Picked**: ["A. 짧은 가지 + 스쿼시 합치기 (초안 제안)","A. 예, 뼈대 먼저 (초안 제안)","C. BDD (시나리오 먼저)","A. 본줄기에 합쳐지면 시연 환경에 자동으로 올라가고, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올린다. 직전 버전으로 되돌리는 절차를 둔다. 단, 비전공 팀이므로 자동 배포 설정은 GitHub 연결만으로 되는 쉬운 방식을 고르고, 설정이 막히면 처음엔 수동으로 올리다가 나중에 자동으로 바꾼다. 거산이 11/15부터 써야 하므로 시연 환경은 늦어도 11/6까지 한 번 올려 본다."]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T13:34:26Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: Q1. 코드는 어떻게 나눠서 작업하고 합칩니까? "가지(브랜치)"는 각자 작업을 따로 하는 공간이고, "합치기(머지)"는 그 작업을 본줄기(main)에 넣는 것입니다.
+**Reply**: A. 짧은 가지 + 스쿼시 합치기 (초안 제안)
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T13:34:26Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: Q2. 얇은 끝단 조각을 먼저 만들까요? 워킹 스켈레톤은 전체 흐름이 끝까지 한 번 통과하는 최소 버전을 먼저 만들어, 조각들이 서로 연결되는지를 실제 기능을 넣기 전에 확인하는 방식입니다. 범위 정의에서 이미 "가상 사례 1건(A정밀)이 입력부터 화면·의견 저장까지 끝까지 통과하는 뼈대 먼저"로 고르셨고, 그 선택을 팀 방식으로 확정할지 묻습니다.
+**Reply**: A. 예, 뼈대 먼저 (초안 제안)
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T13:34:26Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: Q3. 테스트는 언제, 얼마나 씁니까? 조직 기본값은 "먼저 동작하게 만들고, 바로 그 층의 테스트를 쓴다(test-after)"이며, mvp 계획은 줄 커버리지(테스트가 실행한 코드 줄의 비율) 80%가 하한입니다. 하한은 낮출 수 없고 높이기만 할 수 있습니다. (D. 다른 방식을 원하시면 "Type something"에 직접 적어 주세요)
+**Reply**: C. BDD (시나리오 먼저)
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T13:34:26Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: Q4. 만든 것을 어디에, 어떤 절차로 올립니까? 구체 서비스 선택은 G0(기업 업무 합의)와 인프라 설계에서 합니다. 여기서는 "절차"만 정합니다.
+**Reply**: A. 본줄기에 합쳐지면 시연 환경에 자동으로 올라가고, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올린다. 직전 버전으로 되돌리는 절차를 둔다. 단, 비전공 팀이므로 자동 배포 설정은 GitHub 연결만으로 되는 쉬운 방식을 고르고, 설정이 막히면 처음엔 수동으로 올리다가 나중에 자동으로 바꾼다. 거산이 11/15부터 써야 하므로 시연 환경은 늦어도 11/6까지 한 번 올려 본다.
+
+---
+
+## Question Answered
+**Timestamp**: 2026-10-19T13:34:39Z
+**Event**: QUESTION_ANSWERED
+**Stage**: practices-discovery
+**Details**: Q1: A; Q2: A; Q3: C; Q4: X (Other): 본줄기에 합쳐지면 시연 환경에 자동으로 올라가고, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올린다. 직전 버전으로 되돌리는 절차를 둔다. 단, 비전공 팀이므로 자동 배포 설정은 GitHub 연결만으로 되는 쉬운 방식을 고르고, 설정이 막히면 처음엔 수동으로 올리다가 나중에 자동으로 바꾼다. 거산이 11/15부터 써야 하므로 시연 환경은 늦어도 11/6까지 한 번 올려 본다.
+**Picker Note**: Not what the person picked in the picker ("A. 짧은 가지 + 스쿼시 합치기 (초안 제안)", "A. 예, 뼈대 먼저 (초안 제안)", "C. BDD (시나리오 먼저)", "A. 본줄기에 합쳐지면 시연 환경에 자동으로 올라가고, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올린다. 직전 버전으로 되돌리는 절차를 둔다. 단, 비전공 팀이므로 자동 배포 설정은 GitHub 연결만으로 되는 쉬운 방식을 고르고, 설정이 막히면 처음엔 수동으로 올리다가 나중에 자동으로 바꾼다. 거산이 11/15부터 써야 하므로 시연 환경은 늦어도 11/6까지 한 번 올려 본다.").
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-10-19T13:34:46Z
+**Event**: DECISION_RECORDED
+**Stage**: practices-discovery
+**Decision**: Q5 presented (practices interview batch 2 of 2)
+**Options**: Q5: A,B,C,D,X
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T13:36:15Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Picked**: ["A. Ruff 하나 + Prettier/ESLint (초안 제안)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T13:36:15Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: Q5. 코드 모양(들여쓰기·이름 규칙 등)은 어떻게 맞춥니까? "포매터"는 코드 모양을 자동으로 고쳐 주는 도구, "린터"는 흔한 실수를 찾아 주는 도구입니다. 비전공 팀이라 "저장하면 도구가 고쳐 준다"가 기본 방향입니다.
+**Reply**: A. Ruff 하나 + Prettier/ESLint (초안 제안)
+
+---
+
+## Question Answered
+**Timestamp**: 2026-10-19T13:36:36Z
+**Event**: QUESTION_ANSWERED
+**Stage**: practices-discovery
+**Details**: Q5: A
+**Picker Note**: Not what the person picked in the picker ("A. Ruff 하나 + Prettier/ESLint (초안 제안)").
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-10-19T13:36:37Z
+**Event**: DECISION_RECORDED
+**Stage**: practices-discovery
+**Decision**: Does this all look correct before I generate the artifact?
+**Options**: Looks correct,Request changes
+**Checkpoint**: Consolidated Summary Confirmation
+**Questions File**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-questions.md
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T13:37:15Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Picked**: ["Looks correct"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T13:37:15Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: - Q1 가지·합치기: 본줄기 하나, 작업마다 짧은 가지를 따서 1~2일 안에 스쿼시로 합친다\n- Q2 뼈대 먼저: A정밀 1건이 끝까지 통과하는 뼈대를 첫 작업 단위로 먼저 만들고, 사람이 승인한 검증 명령으로 확인한 뒤 나머지를 붙인다\n- Q3 테스트: 기획서 시나리오 S01~S14를 "주어진 상황 / 할 때 / 결과" 시나리오 테스트로 먼저 쓰고, 세부 단위 테스트는 구현 뒤에 쓴다 (혼합이라 custom으로 기록, 줄 커버리지 80% 하한 유지, 외부 AI·외부 API는 가짜 응답)\n- Q4 배포 절차: 본줄기에 합쳐지면 시연 환경에 자동 배포, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올림, 되돌리기 절차 둔다. 자동 배포는 GitHub 연결만으로 되는 쉬운 방식을 고르고, 막히면 처음엔 수동 → 나중에 자동. 시연 환경은 늦어도 11/6까지 한 번 올려 본다\n- Q5 코드 모양: Python은 Ruff 하나, React는 Prettier+ESLint. 저장 시 자동 수정, 합치기 전 자동 검사 실패 시 합치지 않는다\n\n이 내용이 모두 맞습니까? 맞으면 이 답변으로 팀 실천 방식 문서를 만듭니다.
+**Reply**: Looks correct
+
+---
+
+## Summary Confirmation Recorded
+**Timestamp**: 2026-10-19T13:37:25Z
+**Event**: SUMMARY_CONFIRMATION_RECORDED
+**Stage**: practices-discovery
+**Details**: Looks correct
+**Checkpoint**: Consolidated Summary Confirmation
+**Questions File**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-questions.md
+**Questions SHA-256**: 7d18bf96b5738202d7ca583e306a57f3d8678c67321bd3ce942c71e72c83fe25
+**Hash Scope**: confirmed-content-v2
+**Summary Authorization Id**: 4adaa05e1f411e6477c4b6d74b7794c2be33a1c94151e073207ef40cc2716217
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:38:41Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a3712bd3abb31664c
+**Message**: 계속해
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:39:03Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a19e07dfad6de367d
+**Message**: Reading evidence.md draft
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-19T13:39:44Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/team-practices.md
+**Context**: inception > practices-discovery > team-practices.md
+**Summary Authorization Id**: 4adaa05e1f411e6477c4b6d74b7794c2be33a1c94151e073207ef40cc2716217
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-19T13:39:53Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/discovered-rules.md
+**Context**: inception > practices-discovery > discovered-rules.md
+**Summary Authorization Id**: 4adaa05e1f411e6477c4b6d74b7794c2be33a1c94151e073207ef40cc2716217
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:40:04Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: adeaa13cec9af5806
+**Message**: Writing team-practices.md final version
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-19T13:40:25Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/evidence.md
+**Context**: inception > practices-discovery > evidence.md
+**Summary Authorization Id**: 4adaa05e1f411e6477c4b6d74b7794c2be33a1c94151e073207ef40cc2716217
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-19T13:40:26Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-timestamp.md
+**Context**: inception > practices-discovery > practices-discovery-timestamp.md
+**Summary Authorization Id**: 4adaa05e1f411e6477c4b6d74b7794c2be33a1c94151e073207ef40cc2716217
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:40:36Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a4c7b3d31a31bebd5
+**Message**: Finalizing evidence.md and timestamp
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-19T13:40:43Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: aidlc-pipeline-deploy-agent
+**Agent ID**: a4be8adc9aaeae691
+**Message**: ## Subagent Summary: Practices Discovery\n\n### Produced\n- `<project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/team-practices.md`: 다섯 절
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T13:40:44Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+
+---
+
+## Practices Discovered
+**Timestamp**: 2026-10-19T13:40:52Z
+**Event**: PRACTICES_DISCOVERED
+**Sources Scanned**: aidlc-state.md, constraint-register.md, scope-document.md, org.md, team.md, project.md, practices-discovery-questions.md
+**Drafts**: team-practices.md, discovered-rules.md
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-10-19T13:40:57Z
+**Event**: DECISION_RECORDED
+**Stage**: practices-discovery
+**Decision**: Anything to add for next time?
+**Options**: Nothing to add,Add a note
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T22:51:19Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Picked**: ["그린필드라 org.md 기본값을 제안 답으로 쓰고 팀 조건을 보기에 반영, \"배포 절차는 쉬운 자동 배포, 막히면 수동→자동, 11/6 시연 1회\", 테스트는 test-after 대신 BDD 혼합(custom)으로 기록","Nothing to add"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T22:51:19Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: 이번 단계에서 남긴 메모 중 프로젝트 규칙으로 남겨 둘 것을 고르세요. 팀 전체 규칙(team.md)으로 올리고 싶은 게 있으면 "Type something"에 적어 주세요.
+**Reply**: 그린필드라 org.md 기본값을 제안 답으로 쓰고 팀 조건을 보기에 반영, "배포 절차는 쉬운 자동 배포, 막히면 수동→자동, 11/6 시연 1회", 테스트는 test-after 대신 BDD 혼합(custom)으로 기록
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T22:51:19Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: 다음에 기억해 둘 것이 더 있나요?
+**Reply**: Nothing to add
+
+---
+
+## Question Answered
+**Timestamp**: 2026-10-19T22:51:38Z
+**Event**: QUESTION_ANSWERED
+**Stage**: practices-discovery
+**Details**: Kept: c1, c2, c3; Nothing to add
+
+---
+
+## Rule Learned
+**Timestamp**: 2026-10-19T22:51:38Z
+**Event**: RULE_LEARNED
+**Stage**: practices-discovery
+**Candidate-ID**: c1
+**Content-Hash**: f429b975e66405607225d6cd6fe8b202f04bab2b36f2eb17e8a28bfd018a208d
+**Destination**: <project-dir>/aidlc/spaces/default/memory/project.md
+**Heading**: ## Corrections
+**Source**: orchestrator
+
+---
+
+## Rule Learned
+**Timestamp**: 2026-10-19T22:51:38Z
+**Event**: RULE_LEARNED
+**Stage**: practices-discovery
+**Candidate-ID**: c2
+**Content-Hash**: 2ca151f406a71b9fe50cd658edab5e0559ec77dac75d3c606895b1870d4f2324
+**Destination**: <project-dir>/aidlc/spaces/default/memory/project.md
+**Heading**: ## Deployment
+**Source**: orchestrator
+
+---
+
+## Rule Learned
+**Timestamp**: 2026-10-19T22:51:38Z
+**Event**: RULE_LEARNED
+**Stage**: practices-discovery
+**Candidate-ID**: c3
+**Content-Hash**: 4193cf62a2053a9b923a5e7481e80ebdbd6deab0262bc72aab54de00028d34ec
+**Destination**: <project-dir>/aidlc/spaces/default/memory/project.md
+**Heading**: ## Testing Posture
+**Source**: orchestrator
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:40Z
+**Event**: SENSOR_FIRED
+**Fire id**: 6e075ef1
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/team-practices.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:41Z
+**Event**: SENSOR_PASSED
+**Fire id**: 6e075ef1
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/team-practices.md
+**Duration ms**: 366
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:41Z
+**Event**: SENSOR_FIRED
+**Fire id**: 83b21f9c
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/discovered-rules.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:42Z
+**Event**: SENSOR_PASSED
+**Fire id**: 83b21f9c
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/discovered-rules.md
+**Duration ms**: 302
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:42Z
+**Event**: SENSOR_FIRED
+**Fire id**: ad8121dc
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/evidence.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:42Z
+**Event**: SENSOR_PASSED
+**Fire id**: ad8121dc
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/evidence.md
+**Duration ms**: 273
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:43Z
+**Event**: SENSOR_FIRED
+**Fire id**: ddf724f9
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-timestamp.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:43Z
+**Event**: SENSOR_PASSED
+**Fire id**: ddf724f9
+**Sensor ID**: required-sections
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-timestamp.md
+**Duration ms**: 264
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:44Z
+**Event**: SENSOR_FIRED
+**Fire id**: 302de75f
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/team-practices.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:44Z
+**Event**: SENSOR_PASSED
+**Fire id**: 302de75f
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/team-practices.md
+**Duration ms**: 242
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:45Z
+**Event**: SENSOR_FIRED
+**Fire id**: 30d0a9d2
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/discovered-rules.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:45Z
+**Event**: SENSOR_PASSED
+**Fire id**: 30d0a9d2
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/discovered-rules.md
+**Duration ms**: 551
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:46Z
+**Event**: SENSOR_FIRED
+**Fire id**: 48e2d908
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/evidence.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:46Z
+**Event**: SENSOR_PASSED
+**Fire id**: 48e2d908
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/evidence.md
+**Duration ms**: 347
+
+---
+
+## Sensor Fired
+**Timestamp**: 2026-10-19T22:51:47Z
+**Event**: SENSOR_FIRED
+**Fire id**: 84d29047
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-timestamp.md
+
+---
+
+## Sensor Passed
+**Timestamp**: 2026-10-19T22:51:48Z
+**Event**: SENSOR_PASSED
+**Fire id**: 84d29047
+**Sensor ID**: upstream-coverage
+**Stage slug**: practices-discovery
+**Output path**: aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/practices-discovery/practices-discovery-timestamp.md
+**Duration ms**: 505
+
+---
+
+## Stage Awaiting Approval
+**Timestamp**: 2026-10-19T22:51:48Z
+**Event**: STAGE_AWAITING_APPROVAL
+**Stage**: practices-discovery
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T22:53:06Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Picked**: ["Approve"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-10-19T22:53:07Z
+**Event**: QUESTION_REPLIED
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+**Question**: 개발 관행 확인(Practices Discovery)이 끝났습니다. 어떻게 진행할까요?
+**Reply**: Approve
+
+---
+
+## Practices Affirmed
+**Timestamp**: 2026-10-19T22:53:11Z
+**Event**: PRACTICES_AFFIRMED
+**Affirming User**: jiye
+**Sections Written**: Way of Working, Walking Skeleton, Testing Posture, Deployment, Code Style
+**Mandated Rules Appended**: 5
+**Forbidden Rules Appended**: 6
+
+---
+
+## Gate Approved
+**Timestamp**: 2026-10-19T22:53:17Z
+**Event**: GATE_APPROVED
+**Stage**: practices-discovery
+**User Input**: Approve
+**Person Reply**: Approve
+
+---
+
+## Stage Completion
+**Timestamp**: 2026-10-19T22:53:17Z
+**Event**: STAGE_COMPLETED
+**Stage**: practices-discovery
+**Validation Basis**: {"graphContract":"sha256:886af627a0fea6d271a662e4a54b4c5993ecee715d6144d46d4a58c2bc3d19bb","inputs":[],"outputs":[{"artifact":"discovered-rules","contentHash":"sha256:aecb0d81b7db55a76b92b5f27ecb01e744829a86126ceb82bb13bf807b6ed65c","instanceCount":1,"presentCount":1,"producer":"practices-discovery","required":true,"structureHash":"sha256:eaeeae53dd0fcf78d03c8d8ac01143f39c7f2adbd8974d1c357555af3fd146c5"},{"artifact":"evidence","contentHash":"sha256:96841df24aae1469d5665c49a15299db57cfbfd6851cf19f1cf458317e295ce9","instanceCount":1,"presentCount":1,"producer":"practices-discovery","required":true,"structureHash":"sha256:dc97e7ca673209f299d6c0ab61dacc68c982104eb99e3ad92a6e125685468f61"},{"artifact":"practices-discovery-timestamp","contentHash":"sha256:840a992c3f550dfa8613ea35c33850db17053c3933b2298a7467b2b1c6787b29","instanceCount":1,"presentCount":1,"producer":"practices-discovery","required":true,"structureHash":"sha256:88c0edda3cf710378af5cb5861ad10249603609f2189aceeb3e74a27e1228171"},{"artifact":"team-practices","contentHash":"sha256:7888aa0ed3c087159e13f381b30555f4fa01aa6ee16e9d00c93e58c4daf32ea7","instanceCount":1,"presentCount":1,"producer":"practices-discovery","required":true,"structureHash":"sha256:52fc6c0e1d0663fa85cb082525af30d0b076449f7b9f63a71d0546f2c43d9df6"}],"projectType":"greenfield","schema":3}
+**Details**: Stage Practices Discovery approved by gate
+**Tokens In**: 1230
+**Tokens Out**: 59651
+**Cache Read**: 12755725
+**Cache Write**: 678186
+**Cost USD**: 17.69
+**By Model**: fable-5-1=17.69
+**By Agent**: main=13.38; aidlc-pipeline-deploy-agent=4.31
+**Tokens By Model**: fable-5-1=1.2k/59.7k/12.8M/678.2k
+**Tokens By Agent**: main=970/45.5k/12M/404.1k; aidlc-pipeline-deploy-agent=260/14.2k/709.1k/274.1k
+
+---
+
+## Stage Start
+**Timestamp**: 2026-10-19T22:53:17Z
+**Event**: STAGE_STARTED
+**Stage**: requirements-analysis
+**Agent**: aidlc-product-agent
+**Answer Mode**: guide (reused from intent-capture)
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-19T22:56:52Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/requirements-analysis/requirements-analysis-questions.md
+**Context**: inception > requirements-analysis > requirements-analysis-questions.md
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-10-19T22:57:00Z
+**Event**: DECISION_RECORDED
+**Stage**: requirements-analysis
+**Decision**: Q1-Q4 presented (requirements batch 1 of 2)
+**Options**: Q1: A,B,C,D,X; Q2: A,B,C,D,X; Q3: A,B,C,D,X; Q4: A,B,C,D,X
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-19T23:01:54Z
+**Event**: HUMAN_TURN
+**Session**: f7816530-7107-4ead-ad16-b50b8c2e95ce
+
+---

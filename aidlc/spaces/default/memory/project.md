@@ -25,6 +25,8 @@
 
 <!-- Project-specific specialisation. -->
 
+- 테스트 방법은 test-after 대신 BDD 혼합(custom)이다. 기획서 시나리오 S01~S14를 Given/When/Then 시나리오 테스트로 먼저 쓰고, 세부 단위 테스트는 각 층 구현 뒤에 쓴다. 줄 커버리지 80% 하한은 유지한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:practices-discovery:4193cf62a2053a9b923a5e7481e80ebdbd6deab0262bc72aab54de00028d34ec -->
+
 ## Guard Policy
 
 <!-- Project-specific. Mode: strict, relaxed, or off. Strict here holds for every intent, whatever one person asks in chat; relaxed or off here applies to every intent whose policy came from its scope, unless the person sets another; changing this line changes it. A section under the retired Change Control heading, written by an earlier release, is still read. -->
@@ -32,6 +34,8 @@
 ## Deployment
 
 <!-- Project-specific specialisation. -->
+
+- 배포 절차는 본줄기 합치기 시 시연 환경 자동 배포, 거산 환경은 PM이 거산 담당자와 확인한 뒤 수동 배포. 자동 배포는 GitHub 연결만으로 되는 쉬운 방식을 고르고, 막히면 처음엔 수동으로 올리다가 나중에 자동으로 바꾼다. 시연 환경은 늦어도 11/6까지 한 번 올려 본다. 구체 서비스명은 G0·인프라 설계에서 정한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:practices-discovery:2ca151f406a71b9fe50cd658edab5e0559ec77dac75d3c606895b1870d4f2324 -->
 
 ## Code Style
 
@@ -56,11 +60,33 @@
 <!-- Format: NEVER [behavior] (affirmed [date]) -->
 <!-- Example: NEVER throw exceptions across service layer boundaries (affirmed 2026-05-17) -->
 
+- NEVER 거산 내부 이력·재접촉 입력 필드를 외부 LLM이나 외부 서비스로 전송하지 않는다. 재접촉 흐름은 규칙 계산만 한다. (CON-09; 범위 문서 P1-1) (affirmed 2026-10-19)
+
+- NEVER 개인정보(담당자 이름·이메일·전화 등 연락처)를 저장하지 않는다. 데이터 모델에 연락처 열을 두지 않는다. (CON-11) (affirmed 2026-10-19)
+
+- NEVER 기업 홈페이지·보도자료에서 이메일·전화 등 연락처를 자동 수집하지 않는다. (CON-07) (affirmed 2026-10-19)
+
+- NEVER 채용 공고 사이트와 유료 기업 DB를 수집 소스로 연결하지 않는다. (CON-08) (affirmed 2026-10-19)
+
+- NEVER 단가·견적금액 산정, 납기 확정, 고객 자동 발송, 가격·사업모델·경쟁사 비교 기능을 만들지 않는다. (CON-23) (affirmed 2026-10-19)
+
+- NEVER 자격증명·API 키를 코드에 직접 적지 않는다. 환경 변수나 비밀 관리 수단으로 넘긴다. (구현 단계 지침 `phases/construction.md` Security; 조직 공통) (affirmed 2026-10-19)
+
 ## Mandated
 
 <!-- Populated by practices-discovery affirmation gate. -->
 <!-- Format: ALWAYS [behavior] (affirmed [date]) -->
 <!-- Example: ALWAYS use Result<T,E> for fallible operations in service layer (affirmed 2026-05-17) -->
+
+- ALWAYS 기획서 5장과 부록 F의 점수·분류 규칙 수치를 그대로 쓰고, 필수 판정(필터)을 생략하거나 점수로 우회하지 않는다. (사용자 지시; 범위 문서 P0-3, 6절) (affirmed 2026-10-19)
+
+- ALWAYS 가상 데이터(가상 검수 데이터, A정밀·아연도금 가상 사례)는 화면과 모든 출력물에 "가상·거산 실제 사양 아님"으로 표시한다. (CON-10, CON-20; 범위 문서 P1-4) (affirmed 2026-10-19)
+
+- ALWAYS 외부 LLM으로 본문을 보내기 전에 그 내용이 공개 자료(공고·홈페이지 본문)인지 확인하는 검사를 거친다. (CON-09) (affirmed 2026-10-19)
+
+- ALWAYS 홈페이지 본문을 자동 수집할 때 robots.txt와 이용약관을 지킨다. (범위 문서 P0-4; CON-07) (affirmed 2026-10-19)
+
+- ALWAYS 자동 수집 외부 소스는 3개(산단공 공장현황 CSV + 공장등록생산정보 API, 특정수질유해물질 업체정보 CSV, 나라장터 입찰공고 API) 안에서만 설계한다. (CON-04) (affirmed 2026-10-19)
 
 ## Corrections
 
@@ -80,3 +106,4 @@
 - 확정된 범위에 없던 새 화면(예: 대시보드) 요청이 오면 후속 질문으로 우선순위(P0~P3)를 받고, 범위를 조용히 넓히지 않는다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:rough-mockups:d49798cf40312fa0ab6e930eb008675b2f79ee89a13af191719e1b013043d55d -->
 - 의견/결과 화면은 별도 페이지가 아니라 추천 목록·근거 상세에 붙는 영역으로 둔다. 클릭 최소 원칙과 세 가지 기록(시스템 분류·담당자 의견·영업 결과) 분리를 함께 지킨다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:rough-mockups:d89734915ff7b5c4d8808547d32dd7e23f73bf834d69a10171aaf68b237c0e2c -->
 - 구상 단계에서 화면 부품 라이브러리 같은 기술 추천 요청이 오면 선택 기준(비전공 팀이 쓰기 쉬울 것)만 기록하고 추천 자체는 상세 화면 설계 단계에서 한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:rough-mockups:416f5ee1d2067a5acefc77d21fede53db03cd084a74fc54dd7cc7f6212edba33 -->
+- 그린필드 개발 관행 확인에서는 org.md 기본값을 제안 답(보기 A)으로 쓰고, 팀 조건(4인 비전공·AI 도구 의존·SQLite·단순 구조·800만 원 예산)을 질문 보기에 반영한다. 협업자가 꺼져 있으면 릴리스 엔지니어 단독으로 초안·통합한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:practices-discovery:f429b975e66405607225d6cd6fe8b202f04bab2b36f2eb17e8a28bfd018a208d -->

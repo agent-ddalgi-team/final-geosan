@@ -12,7 +12,7 @@ C. 가지 없이 모두 본줄기에 바로 올린다 (4명이 자주 부딪힐 
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
 
 ## Q2. 얇은 끝단 조각을 먼저 만들까요? 워킹 스켈레톤은 전체 흐름이 끝까지 한 번 통과하는 최소 버전을 먼저 만들어, 조각들이 서로 연결되는지를 실제 기능을 넣기 전에 확인하는 방식입니다.
 
@@ -23,7 +23,7 @@ B. 아니오. 기능 영역별로 하나씩 완성해 가며 마지막에 연결
 C. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
 
 ## Q3. 테스트는 언제, 얼마나 씁니까?
 
@@ -36,7 +36,7 @@ D. 다른 방식 (X에 적어 주세요)
 E. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: C
 
 ## Q4. 만든 것을 어디에, 어떤 절차로 올립니까?
 
@@ -48,7 +48,7 @@ C. 11/15 전까지는 팀 노트북에서만 실행하고, 그 뒤 방식은 G0�
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: X. Other — 본줄기에 합쳐지면 시연 환경에 자동으로 올라가고, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올린다. 직전 버전으로 되돌리는 절차를 둔다. 단, 비전공 팀이므로 자동 배포 설정은 GitHub 연결만으로 되는 쉬운 방식을 고르고, 설정이 막히면 처음엔 수동으로 올리다가 나중에 자동으로 바꾼다. 거산이 11/15부터 써야 하므로 시연 환경은 늦어도 11/6까지 한 번 올려 본다.
 
 ## Q5. 코드 모양(들여쓰기·이름 규칙 등)은 어떻게 맞춥니까?
 
@@ -60,4 +60,19 @@ C. 도구 없이 각자 알아서 쓴다
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
+
+## Consolidated Summary Confirmation
+
+- Q1 가지·합치기: A — 본줄기 하나, 작업마다 짧은 가지를 따서 1~2일 안에 스쿼시로 합친다
+- Q2 뼈대 먼저: A — A정밀 1건이 끝까지 통과하는 뼈대를 첫 작업 단위로 먼저 만들고, 사람이 승인한 검증 명령으로 확인한 뒤 나머지를 붙인다
+- Q3 테스트: C — 기획서 시나리오 S01~S14를 "주어진 상황 / 할 때 / 결과" 시나리오 테스트로 먼저 쓰고, 세부 단위 테스트는 구현 뒤에 쓴다 (방법은 custom으로 기록, 줄 커버리지 80% 하한 유지, 외부 AI·외부 API는 가짜 응답)
+- Q4 배포 절차: X — 본줄기에 합쳐지면 시연 환경에 자동 배포, 거산 환경은 PM이 거산 담당자와 확인한 뒤 사람이 올림, 되돌리기 절차 둠. 자동 배포는 GitHub 연결만으로 되는 쉬운 방식을 고르고, 막히면 처음엔 수동 → 나중에 자동. 시연 환경은 늦어도 11/6까지 한 번 올려 본다
+- Q5 코드 모양: A — Python은 Ruff 하나, React는 Prettier+ESLint. 저장 시 자동 수정, 합치기 전 자동 검사 실패 시 합치지 않음
+
+Does this all look correct before I generate the artifact?
+
+- Looks correct
+- Request changes
+
+[Answer]: Looks correct
