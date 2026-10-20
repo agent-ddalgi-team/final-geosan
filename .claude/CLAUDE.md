@@ -1,5 +1,3 @@
-답변과 설명은 항상 한국어로 한다. 개발 용어는 쉽게 풀어서 설명한다.
-
 @.claude/rules/aidlc.md
 
 <!--
@@ -132,16 +130,3 @@ Commit the `aidlc/` workspace tree — the record (state, the per-clone audit sh
 - `aidlc/spaces/*/intents/*/runtime-graph.json` (also covers per-Bolt worktree fragments by relative-path glob)
 - `aidlc/spaces/*/intents/*/.aidlc-*` (the record's `.aidlc-engine/` framework state)
 - harness-local files your harness's shipped `.gitignore` block adds
-
-## 폴더 규칙
-- docs/input/: 사용자가 넣은 원본 재료(기획서, 데이터 설계, 자료 상태 메모). 사용자 허락 없이 수정, 삭제 금지
-- as-is/: 기존 팀 레포 코드. 참고용으로만 읽고 수정 금지
-- aidlc/: AI-DLC가 만드는 산출물
-- 그 외 코드 폴더 구조는 AI-DLC 구현(Construction) 단계에서 제안받아 결정
-
-## 약속(계약) 파일 규칙
-- 약속 파일은 `contracts/` 폴더(`openapi.json`, `*.schema.json`; 구현 첫 단위에서 생성)와 `aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-design/contract-summary.md`다.
-- 약속에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 먼저 사용자(PM)에게 물어본다.
-- 순서는 "약속 파일에 먼저 적고 → PR 체크리스트에 표시하고 → 코드를 만든다"이다. 더하는 것도 이 순서를 따른다.
-- 약속 파일은 PM 확인 없이 고치지 않는다. 지우거나 뜻·형식을 바꾸는 것(깨는 변경)은 PM 확인 뒤 버전을 올려 한 번에 한다.
-- 약속 파일을 바꿨으면 PR의 "약속 파일을 바꿨나요?" 항목에 표시하고 PM 확인 후 합친다. `contracts/openapi.json`은 `geosan export-contracts`를 사람이 실행할 때만 갱신한다.
