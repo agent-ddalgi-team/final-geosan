@@ -19,7 +19,8 @@
 
 ## 도구 사용 규칙 (Claude Code · Codex 병행, 2026-10-21 결정)
 - 공통 규칙은 이 파일 한 곳에만 둔다. `.claude/CLAUDE.md`, `.codex/`, `.agents/` 안의 파일은 프레임워크가 관리하므로 손으로 고치지 않는다. 규칙을 바꾸려면 이 파일을 고치고 PR로 올린다.
-- **뼈대(U1, Bolt B1) 기간**: AI-DLC 진행·승인(`/aidlc`, `$aidlc`)은 PM만 한다. 팀원은 Claude Code나 Codex로 자기가 맡은 파일의 코드 작성·테스트·PR만 한다.
+- **뼈대(U1, Bolt B1) 기간**: AI-DLC 진행·승인(`/aidlc`, `$aidlc`)은 PM만 한다. 뼈대의 얇은 끝단 조각은 PM 세션의 에이전트가 먼저 만들고, 팀원은 Claude Code나 Codex로 자기가 맡은 폴더(규칙 엔진 / DB·API·명령 / 화면)를 넓히는 코드 작성·시나리오 테스트·PR만 한다. 역할표는 `aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/team-allocation.md` 1장.
+- **AI 도구에 넣어도 되는 것**: 공개 홈페이지 본문·공고처럼 공개 자료는 넣어도 된다. 거산 역량 파일, 회사소개서 값, 거산 내부 이력·재접촉 입력값은 어떤 AI 도구에도 넣지 않는다. 실제 기업 사례 파일에는 연락처(이메일·전화)를 적지 않는다.
 - **뼈대 뒤 팀별 단위 소유로 바뀌면**: 각자 자기 단위만 진행·승인한다. 다른 사람의 단위는 진행·승인하지 않는다.
 - 같은 AI-DLC 작업(단위)을 두 사람이 같은 시각에 진행하지 않는다. 진행 위치 기록은 하나뿐이라 서로 덮어쓴다.
 - 어떤 도구로 만들든 같은 PR 검사(테스트, 코드 모양 검사, 약속 파일 비교)를 통과해야 `main`에 합친다. PR을 올릴 때 `.github/pull_request_template.md`의 항목을 모두 채운다. 자동 검사는 구현 단계의 ci-pipeline 단계에서 만든다.

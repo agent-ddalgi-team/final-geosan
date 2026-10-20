@@ -50,6 +50,14 @@
 
 
 
+- **Skeleton Stance**: on
+
+- **Active Unit**: u1-skeleton
+
+- **Unit Stage**: functional-design
+
+- **Unit State**: in-progress
+
 ## Phase Progress
 <!-- Status values: Pending, Active, Verified, Skipped -->
 
@@ -111,7 +119,7 @@ Per unit: [TBD]
 - **Current Stage**: functional-design
 - **Next Stage**: nfr-requirements
 - **Status**: Running
-- **Last Updated**: 2026-10-20T17:45:49Z
+- **Last Updated**: 2026-10-20T17:50:37Z
 
 ## Session Resume Point
 - **Last Completed Stage**: delivery-planning

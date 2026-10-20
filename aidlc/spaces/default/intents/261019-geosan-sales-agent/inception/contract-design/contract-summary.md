@@ -448,6 +448,7 @@ rank:                                   # 순위도 RuleEngine 책임(도메인 
     - PLANNED 안: E → F → directConfirmedWeight → P → oppId
     - REVIEW 안: E → F → directConfirmedWeight → P → validUntil → oppId
     - OTHER 안: R 내림 → E → oppId (화면 정렬용, 접촉 후보 아님)
+    - (갱신 제안 2026-10-21, 기능 설계 Q6 답 확정 후 적용 · 가설·설정값 `otherGroupSort`) 거산 값 묶음이 BROCHURE(소개서)일 때 OTHER 안은 E 내림 → R 내림 → oppId(참고 점수 순). 부록 F.10은 접촉 분류 3가지의 순서만 정하므로 기획서 규칙·A정밀 기대값은 바뀌지 않는다
 expectedValues:
   apjeongCase: { E: 77, P: 95, S: 81.1, R: 82, filterState: PASS, coreEvidenceMet: MET, classificationCode: CONTACT_URGENT }
   readingExample2: { E: 25, P: 25, S: 100, C: 12.5, contactCandidate: false }
@@ -538,6 +539,7 @@ rules:
 CaseFile:
   _설명: string                         # 어느 객체에든 허용
   caseId: string                        # 예: apjeong-valve-anodizing (재투입 식별 키)
+  baseDate: date | null                 # (갱신 제안 2026-10-21, 기능 설계 Q4 답 확정 후 적용) 평가 기준일. verify-case가 이 날짜로 평가, 없으면 오늘
   description: string
   isVirtual: true
   datasetKind: datasetKind
@@ -585,7 +587,7 @@ AppSettings:
   ingestion: { regions: [...], productKeywords: [...], maxCandidates: 50 }
   llm: { mode: enum[EXTERNAL, NONE], model: string, monthlyCallLimit: int, costPerThousandTokens: number }
   homepageDiscovery: { enabled: false, termsConfirmed: false }
-  brand: { logoUrl, brandName, colorPrimary }
+  brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"
   accessProtection: { enabled: boolean }      # 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD
 ```
 
@@ -598,7 +600,8 @@ commands:
   geosan serve [--port N]                        # U1. 서버 실행(API + 화면)
   geosan check-config [rule-config.yaml] [app-settings.yaml]   # U1. 설정 파일 형식 검사(오류는 C7 형식: 줄·항목·이유)
   geosan import-capability <file.json>           # U1. 형식·연락처 검사 → 저장(재투입 규칙 적용)
-  geosan import-case <file.json>                 # U1. 가상 사례 묶음 투입(투입 순서 자동)
+  geosan import-case <file.json>                 # U1. 가상 사례 묶음 투입(투입 순서 자동). 실제 기업도 같은 형식(isVirtual: false)
+  geosan check-case <file.json>                  # U1. (갱신 제안 2026-10-21, 기능 설계 Q8 답 확정 후 적용) 저장 없이 형식·허용 값·연락처 패턴만 검사. DB 없이 팀원 컴퓨터에서 실행
   geosan evaluate [--opp <id>...] [--base-date YYYY-MM-DD]   # U1. 흐름 ⓪. 출력: 묶음 ID, 기회 수, 분류 요약
   geosan verify-case <file.json>                 # U1. 평가 뒤 expected와 비교. 출력: 항목별 일치/불일치 표
   geosan export-contracts                        # U1. contracts/openapi.json·*.schema.json 생성(사람이 명시적으로만 실행)
@@ -657,6 +660,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
 | C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 | U9 (P1-5 구현 전) |
+| C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
 

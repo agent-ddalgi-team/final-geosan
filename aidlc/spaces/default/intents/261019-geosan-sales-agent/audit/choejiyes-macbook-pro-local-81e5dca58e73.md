@@ -14271,3 +14271,375 @@
 **Answer Mode**: guide (reused from intent-capture)
 
 ---
+
+## Unit Started
+**Timestamp**: 2026-10-20T17:50:37Z
+**Event**: UNIT_STARTED
+**Stage**: functional-design
+**Unit**: u1-skeleton
+**Run floor**: WORKFLOW_STARTED:2026-10-19T04:21:05Z#1
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-20T17:51:41Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/functional-design-questions.md
+**Context**: construction > u1-skeleton > functional-design > functional-design-questions.md
+
+---
+
+## Decision Recorded
+**Timestamp**: 2026-10-20T17:51:42Z
+**Event**: DECISION_RECORDED
+**Stage**: functional-design
+**Decision**: Q1-Q4 (기한 체크 평가 ID, 시연 확인 질문, 규칙 설계 범위, 기준일 키)
+**Options**: Q1: A,B,C,X; Q2: A,B,C,X; Q3: A,B,C,X; Q4: A,B,C,X
+**Unit**: u1-skeleton
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-20T17:56:13Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+
+---
+
+## Session Compacted
+**Timestamp**: 2026-10-20T17:59:01Z
+**Event**: SESSION_COMPACTED
+**Current Stage**: functional-design
+**State Validity**: valid
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-20T18:00:09Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ae9378a7d27181dc9
+**Message**: <summary>\n## Session context\n- Project `/Users/jiyechoi/dev/final-geosan`, AI-DLC workflow scope `mvp`, active intent `261019-geosan-sales-agent` (거산케미칼 AI 영업지원 에이전트 2차 — 잠재고객 추천 웹 도구). Record dir `ai
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T18:00:52Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/b1-change-proposal-20261021.md
+**Context**: inception > delivery-planning > b1-change-proposal-20261021.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Change Request: 10월 말 부분 시연 목표 정정과 B1 진행 방식 변경(2026-10-21)
+**Timestamp**: 2026-10-20T18:00:56Z
+PM 요청: 10월 말 목표를 완성품이 아닌 부분 시연(공정 1~2개, 실제 신규 기업 10~20곳 참고 순위·근거, 뼈대 화면, 부분 시연·거산 확인 전 표시)으로 정정. U2·U3 자동화는 11월 유지, 뼈대 파일 투입 경로 사용. 4명 역할 재배정, 3.1~3.4 질문 최소화, 3.5는 틀 먼저. 승인 계획과 다른 점은 갱신 필요로 표시하고 10/21 오전 팀 확인 뒤 문서 갱신·커밋. 구현은 아직 시작하지 않음. 원문과 제안 초안: inception/delivery-planning/b1-change-proposal-20261021.md
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-20T18:06:19Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ad1aa2408434d6e54
+**Message**: 거산 영업지원 에이전트 AI-DLC: 전달 계획 승인 후 뼈대(U1) 기능 설계 진입 중이며, 10월 말 부분 시연 변경 제안을 초안으로 정리했습니다. 다음은 아침 팀 확인 뒤 문서 갱신과 Q1~Q8 답 기록입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-20T22:52:22Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-20T22:59:57Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:07Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/requirements-analysis/requirements.md
+**Context**: inception > requirements-analysis > requirements.md
+**Summary Authorization Id**: 35ec9de3b86ae0d3d1f04b12b5aee46d81cf8c10db15e6532e35e391b1c73858
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:12Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/requirements-analysis/requirements.md
+**Context**: inception > requirements-analysis > requirements.md
+**Summary Authorization Id**: 35ec9de3b86ae0d3d1f04b12b5aee46d81cf8c10db15e6532e35e391b1c73858
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:16Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-design/contract-summary.md
+**Context**: inception > contract-design > contract-summary.md
+**Summary Authorization Id**: 7e53ad3528d5dc36d440706452b21fa25bb84e3ad829ea15df62080e8dd25a9b
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:19Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-design/contract-summary.md
+**Context**: inception > contract-design > contract-summary.md
+**Summary Authorization Id**: 7e53ad3528d5dc36d440706452b21fa25bb84e3ad829ea15df62080e8dd25a9b
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:23Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-design/contract-summary.md
+**Context**: inception > contract-design > contract-summary.md
+**Summary Authorization Id**: 7e53ad3528d5dc36d440706452b21fa25bb84e3ad829ea15df62080e8dd25a9b
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:27Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-design/contract-summary.md
+**Context**: inception > contract-design > contract-summary.md
+**Summary Authorization Id**: 7e53ad3528d5dc36d440706452b21fa25bb84e3ad829ea15df62080e8dd25a9b
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:32Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-design/contract-summary.md
+**Context**: inception > contract-design > contract-summary.md
+**Summary Authorization Id**: 7e53ad3528d5dc36d440706452b21fa25bb84e3ad829ea15df62080e8dd25a9b
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:38Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/refined-mockups/mockups.md
+**Context**: inception > refined-mockups > mockups.md
+**Summary Authorization Id**: 4e244775f1f6264df172678977fae43388a38240057a790de9ae579bd57ec348
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:43Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/refined-mockups/mockups.md
+**Context**: inception > refined-mockups > mockups.md
+**Summary Authorization Id**: 4e244775f1f6264df172678977fae43388a38240057a790de9ae579bd57ec348
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:49Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/refined-mockups/interaction-spec.md
+**Context**: inception > refined-mockups > interaction-spec.md
+**Summary Authorization Id**: 4e244775f1f6264df172678977fae43388a38240057a790de9ae579bd57ec348
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:01:53Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:05Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:14Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:29Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:35Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:42Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:47Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:02:54Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/bolt-plan.md
+**Context**: inception > delivery-planning > bolt-plan.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:03:00Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/external-dependency-map.md
+**Context**: inception > delivery-planning > external-dependency-map.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:03:04Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/external-dependency-map.md
+**Context**: inception > delivery-planning > external-dependency-map.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-20T23:03:54Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/team-allocation.md
+**Context**: inception > delivery-planning > team-allocation.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:04:35Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/functional-design-questions.md
+**Context**: construction > u1-skeleton > functional-design > functional-design-questions.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:04:57Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/functional-design-questions.md
+**Context**: construction > u1-skeleton > functional-design > functional-design-questions.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:05:05Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/functional-design-questions.md
+**Context**: construction > u1-skeleton > functional-design > functional-design-questions.md
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-20T23:06:34Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/b1-change-proposal-20261021.md
+**Context**: inception > delivery-planning > b1-change-proposal-20261021.md
+**Summary Authorization Id**: 1baead3937d7da88934b1966ea1b48889f194897c31e428572a1c139bcafa601
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:06:43Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/ideation/scope-definition/scope-document.md
+**Context**: ideation > scope-definition > scope-document.md
+**Summary Authorization Id**: 5776354782e81293647d5470e43e10ab75ecfc2a35f26e85850cdbdfb284be2f
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:06:48Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/functional-design/memory.md
+**Context**: construction > functional-design > memory.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-20T23:06:53Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/functional-design/memory.md
+**Context**: construction > functional-design > memory.md
+
+---
+
+## Change Applied: 10월 말 부분 시연·B1 진행 방식 변경 문서 반영(2026-10-21)
+**Timestamp**: 2026-10-20T23:06:58Z
+PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, scope-document 4절, bolt-plan(1장·B1·7장), team-allocation 전면, external-dependency-map E-1·E-16, contract-summary C3·C7·C8·5장(제안, Q 확정 후 적용), mockups·interaction-spec(제안), AGENTS.md, docs/team-start-guide.md. OTHER 정렬 변경은 부록 F 규칙·A정밀 기대값에 영향 없음 확인, 가설·설정값 표시. 시나리오 테스트를 모듈 담당에게 분담, PM은 A정밀 끝단·최종 합격만. 기능 설계 Q1~Q8은 오전 팀 회의 답 대기. 상세: inception/delivery-planning/b1-change-proposal-20261021.md
+
+---
