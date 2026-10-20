@@ -1,0 +1,1 @@
+python -m pytest -q && python -m geosan verify-case examples/case-apjeong.json

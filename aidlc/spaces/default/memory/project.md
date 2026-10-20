@@ -130,3 +130,6 @@
 - 우선순위 이견이 나오면 승인 문서(범위·백로그·요구사항·스토리) 출처를 보여 주고, 사용자 지시로 바꾸면 '사용자 지시'로 표시해 요구사항 갱신 필요 목록에 올린다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:units-generation:b9c97d5eeed8ef418718319e18e371f62e27eb73641ef736c065645c2c1d0b69 -->
 - 뼈대 단위는 뒤 단위 없이 돌아가야 하므로 평가가 읽는 데이터(근거·조사 요건·기한 체크)는 파일 투입 최소형으로 뼈대에 넣고, 외부 호출·추출만 뼈대 밖으로 둔다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:units-generation:b83e1ff3918ed619091f8261d557df559372c098858efe183cdd8b399d1cd94f -->
 - 작업 단위 의존 그래프는 부품 호출 의존을 단위로 올려 빠짐없이 적고, 같은 파일을 고치는 단위 쌍과 확장 지점 분할 규칙을 뼈대 단위에 기록한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:units-generation:75e4f55c2f36b57e6f3cb9cda8f88e55db603c84ffc6688ef92d912e78a7295b -->
+- 열거값·상태 코드는 공통 코드표 한 곳에 영문으로 두고 DB·API·화면·파일이 같은 값을 쓰며, 쉬운 말은 코드표로 변환한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:contract-design:719a502aaab564e6d280bf7ce09f0487e9102cfa8a8fc4b5390ca2b9c578a5fa -->
+- 밖으로 나가는 검사는 용도(외부 AI / 내부 출력)별로 규칙을 나누고 기본 거부로 두며, LLM 어댑터는 허용 항목 ID만 받아 본문을 직접 조회한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:contract-design:45a1f45e793cb545966901bd893968305189052e70a9ef90738c74b2804d0003 -->
+- 사람이 고치는 파일은 예시 파일·_설명 키·줄/항목/이유 오류·모르는 키 거부·연락처 검사·재투입 규칙을 계약에 함께 적는다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:contract-design:25d40ec8dee2509a8371cd43f9aa23ddb425247a2d635ce6f405b14d3b8a6aef -->
