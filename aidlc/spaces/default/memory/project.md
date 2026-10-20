@@ -27,6 +27,8 @@
 
 - 테스트 방법은 test-after 대신 BDD 혼합(custom)이다. 기획서 시나리오 S01~S14를 Given/When/Then 시나리오 테스트로 먼저 쓰고, 세부 단위 테스트는 각 층 구현 뒤에 쓴다. 줄 커버리지 80% 하한은 유지한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:practices-discovery:4193cf62a2053a9b923a5e7481e80ebdbd6deab0262bc72aab54de00028d34ec -->
 
+- A정밀 가상 사례 기대값(E 77 / P 95 / S 81.1 / R 82)은 v0.15 F.1·F.7 규칙(고정 일치도 단계, 확실도, 0.5 올림 반올림)으로 역산 가능하며 추정 등급 항목이 없어야 R=82가 된다. 규칙 엔진 테스트 기대값으로 쓰되 '역산한 가정값, 규칙서 확인 전'으로 표시한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:requirements-analysis:5bcfcb180fa3e4ec8915b44331ce1cc9edd03a0a651885a61e3d29897b18c024 -->
+
 ## Guard Policy
 
 <!-- Project-specific. Mode: strict, relaxed, or off. Strict here holds for every intent, whatever one person asks in chat; relaxed or off here applies to every intent whose policy came from its scope, unless the person sets another; changing this line changes it. A section under the retired Change Control heading, written by an earlier release, is still read. -->
@@ -107,3 +109,14 @@
 - 의견/결과 화면은 별도 페이지가 아니라 추천 목록·근거 상세에 붙는 영역으로 둔다. 클릭 최소 원칙과 세 가지 기록(시스템 분류·담당자 의견·영업 결과) 분리를 함께 지킨다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:rough-mockups:d89734915ff7b5c4d8808547d32dd7e23f73bf834d69a10171aaf68b237c0e2c -->
 - 구상 단계에서 화면 부품 라이브러리 같은 기술 추천 요청이 오면 선택 기준(비전공 팀이 쓰기 쉬울 것)만 기록하고 추천 자체는 상세 화면 설계 단계에서 한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:rough-mockups:416f5ee1d2067a5acefc77d21fede53db03cd084a74fc54dd7cc7f6212edba33 -->
 - 그린필드 개발 관행 확인에서는 org.md 기본값을 제안 답(보기 A)으로 쓰고, 팀 조건(4인 비전공·AI 도구 의존·SQLite·단순 구조·800만 원 예산)을 질문 보기에 반영한다. 협업자가 꺼져 있으면 릴리스 엔지니어 단독으로 초안·통합한다. (learned 2026-10-19) <!-- cid:261019-geosan-sales-agent:practices-discovery:f429b975e66405607225d6cd6fe8b202f04bab2b36f2eb17e8a28bfd018a208d -->
+- 요구사항 분석 질문지는 앞 단계가 넘긴 미결 사항만 묻고 확정된 범위·화면·소스는 다시 묻지 않는다. 평가 규칙서처럼 없는 문서의 세부 규칙은 '첫 버전 기본값 + 규칙 설정 파일 설정값 + 기업 승인 전 가설 표시'로 처리한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:requirements-analysis:915dbdac962dee0d9e50509d714a7346f0c8d2464af822d1340ab4dc257ba992 -->
+- 사용자가 참고용으로 넣은 이전 판 문서(예: 기획서 v0.15)는 기준판(v0.17)과 모순되지 않는 보강만 그대로 반영하고, 기준판 요약과 다른 세부 규칙은 후속 질문으로 정리해 사용자가 채택 여부를 정하게 한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:requirements-analysis:6593e9a1ce3b7f0b22c3128182986592583835c5f68f88295841873eb6694442 -->
+- 거산이 만든 자료(회사소개서 등)도 신뢰할 수 없는 입력으로 읽고, 그 값은 모두 '검수 대기'로 시작하며 사용자 답변이 지정한 항목만 산출물에 반영한다. 검수 전에는 가점·통과 근거로 쓰지 않는다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:requirements-analysis:40e803672d56173ecfab219a365531ed14ff28bab77c4cf6d2d74542e1403aee -->
+- 확정 범위에 없던 새 항목(메일 질문 목록 내보내기, 시점 우선 담당자 체크 등)은 사용자 답변의 우선순위(P0~P3)를 그대로 따라 요구사항에 넣고, 범위 문서·백로그 갱신은 작업 단위 나누기 단계에서 반영한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:requirements-analysis:1a3ddb63b0b07c743ed933c3fe2c8d4699a9c66fa1f8ec1f58310f5ebfeca1fb -->
+- 요구사항 ID는 FR n.m / NFR n으로 두고 모든 요구에 출처 태그([scope]/[B-nn]/[CON-nn]/[Qn]/[S nn])를 붙여 구상 단계 산출물로 역추적되게 한다. DB 테이블 이름은 설계 단계 몫이라 요구사항에 쓰지 않는다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:requirements-analysis:0d7533704bcc560626cdd256486061e23f73bc7fe50f389a24509b080c3a9dab -->
+- 사용자 스토리 질문은 페르소나 수·묶음 단위·이야기 크기·시나리오(S01~S14) 연결·운영자 스토리 포함 여부만 묻고, 우선순위(P0~P3→MoSCoW)와 수용 기준 형식(Given/When/Then)은 백로그·인셉션 규칙에서 정해졌으므로 다시 묻지 않는다. 협업자가 꺼져 있으면 제품 관리자 단독으로 진행한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:user-stories:d5103d654808fcd2124b2411956e170553cc793112d1f387ddcdeb16854138d9 -->
+- 사용자가 답변에서 추가한 새 항목(예: 활동 요약, 운영 안내서 명령 3개 기준)은 스토리·수용 기준에 넣고 출처를 [Qn]으로 달며, '범위 문서·백로그·요구사항 갱신 필요' 목록에 추가한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:user-stories:ea34ea51e0e980630487393dbfd0363b2c216c6e23a9022894d719ffb66c2337 -->
+- 사용자가 참고용으로 넣은 팀 문서(예: 페르소나 v2.0)는 사용자가 '가져올 것/따르지 않을 것'으로 지정한 항목만 반영하고, 문서와 확정 답변이 다른 점은 후속 질문으로 확인한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:user-stories:afc7192a5db1e35363be0827e02b817ad17141182be8688428c477929f3de045 -->
+- 승인된 상류 문서(예: 요구사항 FR6.4)와 달라지는 결정은 상류 문서를 직접 고치지 않고 현재 산출물에 '요구사항 갱신 필요'로 표시해 작업 단위 나누기 단계에서 갱신한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:user-stories:ee16dc592400adaba6acf145263a7f16f565923da6ff78b3a35ef37dd0fc6985 -->
+- Guard Policy가 off일 때 검토 뒤 사용자가 추가한 결정은 변경 알림으로 반영하되, 검토 High 소견과 추적 오류는 같은 수정에서 함께 닫고 나머지 소견은 게이트에서 사람이 판단한다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:user-stories:6d408297d4f2a70e98c82ef8592cc935424ed290f3ba73f930a5bd213e90cee6 -->
+- 화면 없는 규칙(필터·11분기·정렬)은 '평가를 실행하면 A정밀이 기대값으로 나온다'처럼 결과가 보이는 이야기로 묶고 세부 규칙은 수용 기준에 둔다. (learned 2026-10-20) <!-- cid:261019-geosan-sales-agent:user-stories:ed1f1852b344f653b9097d9a3b0bf88f16ead474bd1c87ba896e3b9def65525c -->
