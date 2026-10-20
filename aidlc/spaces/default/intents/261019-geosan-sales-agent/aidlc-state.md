@@ -46,6 +46,8 @@
 
 - **Construction Verification Command**: python -m pytest -q && python -m geosan verify-case examples/case-apjeong.json
 
+- **Unit Ownership**: solo
+
 ## Phase Progress
 <!-- Status values: Pending, Active, Verified, Skipped -->
 
