@@ -12,7 +12,7 @@ C. shadcn/ui + Tailwind — 가볍고 세련되지만 부품을 직접 조립해
 D. Chakra UI — 접근성 기본값이 좋고 단순하지만 표·복합 폼 부품이 적음
 X. Other (please specify)
 
-[Answer]:
+[Answer]: X. Other — A를 기본으로 한다: Ant Design 5. 일정이 빠듯하므로 기본 부품을 그대로 쓰되, 처음부터 테마 설정으로 세련된 업무용 느낌을 낸다: 강조색 1개 + 회색 계열, 읽기 좋은 한글 글꼴, 넉넉한 여백, 살짝 둥근 모서리. 빽빽한 ERP 느낌은 피한다(거산이 이전 시안을 ERP 같다고 했다). 세부 디자인 다듬기는 P3. 진행 단계 표시는 Ant Design의 Steps 부품을 쓴다.
 
 ## Q2. 한글 글꼴은 무엇을 씁니까?
 
@@ -22,7 +22,7 @@ C. 시스템 기본 글꼴(맑은 고딕/애플 고딕) — 설치 없이 동작
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
 
 ## Q3. 접촉 승인·결과 기록·"거산 확인 요청" 같은 짧은 입력은 어떤 방식으로 받습니까?
 
@@ -34,7 +34,7 @@ C. 오른쪽 서랍(drawer): 승인·결과·확인 요청을 오른쪽에서 �
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
 
 ## Q4. 재접촉 정보 입력(S5, 7칸)은 별도 페이지로 둡니까, 서랍으로 둡니까?
 
@@ -43,7 +43,7 @@ B. 오른쪽 서랍: 목록 위에 겹쳐 열리고 저장하면 닫힘. 목록 
 C. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
 
 ## Q5. 화면 폭이 1280px보다 좁을 때(노트북 축소, 태블릿)는 어떻게 합니까?
 
@@ -55,7 +55,7 @@ C. 1024~1279px도 1280과 같은 배치가 깨지지 않게 처음부터 유동 
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: A
 
 ## Q6. 근거 상세 위쪽의 '진행 단계'(6단계)는 어떤 모양으로 보입니까?
 
@@ -65,4 +65,21 @@ C. 세로 체크리스트: 지난 단계에 체크, 현재 단계 강조
 D. Not yet defined (아직 정하지 않음)
 X. Other (please specify)
 
-[Answer]:
+[Answer]: X. Other — A를 기본으로 한다: 가로 단계 바(Steps 가로). 현재 칸은 강조색, 보류/실주/대상 아님은 옆에 배지. 화면 폭이 1280 미만이면 단계 이름을 줄이거나 작은 크기로 표시한다.
+
+## Consolidated Summary Confirmation
+
+- Q1 부품 라이브러리: Ant Design 5. 기본 부품 그대로 쓰되 테마 설정으로 세련된 업무용 느낌(강조색 1개 + 회색 계열, 읽기 좋은 한글 글꼴, 넉넉한 여백, 살짝 둥근 모서리). 빽빽한 ERP 느낌은 피함. 세부 다듬기는 P3. 진행 단계는 Steps 부품
+- Q2 글꼴: Pretendard(웹폰트)
+- Q3 짧은 입력(승인·결과·거산 확인 요청): 그 자리에서 펼쳐지는 인라인 입력, 모달 없음
+- Q4 재접촉 정보 입력(7칸): 별도 페이지, 저장 후 재접촉 탭으로
+- Q5 좁은 화면: 1024~1279px는 카드 요약 두 줄 접기·표 가로 스크롤(기능 모두 동작), 1024 미만은 "넓은 화면에서 써 주세요" 안내 띠만
+- Q6 진행 단계: Steps 가로 단계 바, 현재 칸 강조색, 보류/실주/대상 아님 배지, 1280 미만에서는 단계 이름 축약·작은 크기
+- 답변 분석: 모순 없음. 러프 화면·스토리의 확정 사항(화면 5개, 쉬운 말 대응표, 대시보드 건수 4개(변경본), 검색 칸, 활동 이력, 확인 요청 버튼, 내부용 표시, 확인 질문 3개 상한)은 그대로 반영
+
+Does this all look correct before I generate the artifact?
+
+- Looks correct
+- Request changes
+
+[Answer]: Looks correct
