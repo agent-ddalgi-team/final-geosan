@@ -55,13 +55,15 @@ quote-style = "double"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 bdd_features_base_dir = "tests/features"
-# 커버리지 하한 80%는 mvp 범위의 조직 기본값(org.md Testing Posture). 낮추지 않는다.
-addopts = "--cov=geosan --cov-report=term-missing --cov-fail-under=80"
+addopts = "-p no:cacheprovider"
 
 [tool.coverage.run]
 source = ["geosan"]
 branch = false
 
 [tool.coverage.report]
+# 커버리지 하한 80%는 mvp 범위의 조직 기본값(org.md Testing Posture). 낮추지 않는다.
+# CI와 scripts/check.sh는 `--cov=geosan --cov-fail-under=80`을 명시해 돌린다(단위 테스트 지침 2장).
+fail_under = 80
 show_missing = true
 skip_empty = true
