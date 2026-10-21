@@ -26,3 +26,31 @@ aidlc/diagnostics/
 
 # macOS
 .DS_Store
+
+# 거산 영업지원 — 로컬 실행 산출물(인프라 명세 1장). 절대 커밋하지 않는다.
+data/
+logs/
+backups/
+*.db
+*.db-wal
+*.db-shm
+.env
+
+# 파이썬
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# 화면(web)
+web/node_modules/
+web/dist/
+web/coverage/
+
