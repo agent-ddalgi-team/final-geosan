@@ -37,6 +37,7 @@ export default function AppFrame({ title, children }: AppFrameProps) {
   const [configMeta, setConfigMeta] = useState<Meta | null>(null);
   const [configFailed, setConfigFailed] = useState(false);
   const [pageMeta, setPageMeta] = useState<Meta | null>(null);
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [rawStaffKey, setRawStaffKey] = useState<string | null>(() => readStoredStaffKey());
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function AppFrame({ title, children }: AppFrameProps) {
       setStaffKey,
       canRecord: staffKey !== null && staffKey !== VIEWER_KEY,
       setBannerMeta: setPageMeta,
+      setPageTitle,
     }),
     [config, staffKey, setStaffKey],
   );
@@ -159,7 +161,7 @@ export default function AppFrame({ title, children }: AppFrameProps) {
         style={{ maxWidth: spacing.contentMaxWidth, margin: '0 auto', padding: '24px' }}
       >
         <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
-          {title}
+          {pageTitle ?? title}
         </Typography.Title>
         {children}
       </main>

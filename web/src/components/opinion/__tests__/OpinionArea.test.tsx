@@ -25,6 +25,7 @@ function frameValue(overrides: Partial<FrameValue> = {}): FrameValue {
     setStaffKey: () => {},
     canRecord: true,
     setBannerMeta: () => {},
+    setPageTitle: () => {},
     ...overrides,
   };
 }

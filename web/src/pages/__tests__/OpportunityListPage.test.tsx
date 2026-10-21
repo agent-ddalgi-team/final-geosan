@@ -32,6 +32,7 @@ function renderPage() {
           setStaffKey: () => {},
           canRecord: true,
           setBannerMeta: () => {},
+          setPageTitle: () => {},
         }}
       >
         <OpportunityListPage />

@@ -3,7 +3,15 @@
 // 분류 11개의 쉬운 말은 서버 규칙 설정(classificationLabels)이 원본이며, 아래 값은 서버 응답이 없을 때의
 // 기본값이다(같은 값, 규칙 설정 BR6.3). 코드표 밖 코드는 `labelFor`가 코드 그대로를 돌려주고 콘솔에 경고한다.
 import type { StatusTone } from '../theme/tokens';
-import type { CheckDisplay, ClassificationCode, Opinion, ReviewStatus } from '../api/types';
+import type {
+  CheckDisplay,
+  ClassificationCode,
+  DatasetKind,
+  FilterState,
+  Opinion,
+  QuestionStatus,
+  ReviewStatus,
+} from '../api/types';
 
 export const classificationLabels: Record<ClassificationCode, string> = {
   FILTER_EXCLUDED: '대상 아님(제외)',
@@ -129,6 +137,7 @@ export const states = {
   noEvidence: '아직 근거 자료가 없습니다.',
   notEvaluatedYet: '아직 평가가 없습니다. 운영자가 평가를 실행하면 여기에 나타납니다.',
   notEvaluatedCount: (n: number) => `평가 전 ${n}건`,
+  noProcessLinks: '연결된 공정이 없습니다.',
 } as const;
 
 /** 의견 영역 문구(BR10.6, BR9.1). */
@@ -159,6 +168,7 @@ export const frame = {
   backToList: '목록으로',
   viewDetail: '자세히 보기',
   pageTitleList: '추천 목록',
+  pageTitleDetail: '근거 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
 } as const;
@@ -226,3 +236,118 @@ export function labelFor<K extends string>(
   console.warn(`쉬운 말 대응표에 없는 코드: ${code}`);
   return code;
 }
+
+// ---------- 상세 화면(S2) 문구 — 추가만 ----------
+
+export const detailHeader = {
+  relation: '고객 관계',
+  purpose: '대응',
+  owner: '담당',
+} as const;
+
+/** 확인 질문 상태(QuestionStatus). */
+export const questionStatusLabels: Record<QuestionStatus, string> = {
+  WAITING: '대기',
+  REQUESTED: '요청됨',
+  REPLIED: '회신됨',
+  APPLIED: '반영됨',
+};
+
+export const questionStatusTone: Record<QuestionStatus, StatusTone> = {
+  WAITING: 'wait',
+  REQUESTED: 'ask',
+  REPLIED: 'ok',
+  APPLIED: 'ok',
+};
+
+export const questionRows = {
+  effectPrefix: '답을 받으면',
+} as const;
+
+export const requirementCells = {
+  notApplicable: '해당 없음',
+} as const;
+
+/** 요구 판정 앞 아이콘 글자(색에만 기대지 않기, 접근성 A3). */
+export const checkDisplayIcons: Record<CheckDisplay, string> = {
+  PASS: '✔',
+  PENDING_BLOCKS: '⏳',
+  QUESTION_NEEDED: '?',
+  LATER_STAGE: '→',
+  EXCLUDED: '✕',
+};
+
+export const approvalLine = {
+  recheck: '조건이 바뀌어 다시 확인해 주세요',
+  eligible: '✔',
+  notEligible: '⚠',
+} as const;
+
+/** 공정 연결 판정(FilterState)과 적용 소재 쉬운 말. 소재 코드표 밖 코드는 labelFor가 코드 그대로 보인다. */
+export const filterStateLabels: Record<FilterState, string> = {
+  PASS: '통과',
+  PENDING: '확인 대기',
+  EXCLUDED: '제외',
+};
+
+export const filterStateTone: Record<FilterState, StatusTone> = {
+  PASS: 'ok',
+  PENDING: 'wait',
+  EXCLUDED: 'no',
+};
+
+export const materialLabels: Record<string, string> = {
+  AL: '알루미늄',
+  AL_CASTING: '알루미늄 주물',
+  FE: '철',
+  CU: '구리',
+  SUS: '스테인리스',
+};
+
+export const processRows = {
+  material: '적용 소재',
+} as const;
+
+export const evidenceRows = {
+  gradePrefix: '출처 등급',
+  llmProposed: 'LLM 제안',
+  homepageNeedsConfirm: '홈페이지 주소 확인이 필요합니다.',
+} as const;
+
+/** 거산 값 묶음 이름. */
+export const datasetKindLabels: Record<DatasetKind, string> = {
+  VIRTUAL_REVIEWED: '가상 검수',
+  BROCHURE: '소개서',
+  COMPANY_CONFIRMED: '거산 확인 완료',
+};
+
+/** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
+export const scoreDetails = {
+  E: '확보 점수 E',
+  P: '판정 배점 P',
+  S: '표시 점수 S',
+  R: '조사 시 상한 R',
+  C: '자료 확보율 C',
+  expand: '펼치기',
+  collapse: '접기',
+  itemColumns: {
+    label: '항목',
+    weight: '배점',
+    matchRate: '일치도',
+    certainty: '확실도',
+    decay: '감쇠',
+    score: '점수',
+    state: '상태',
+  },
+  unavailable: '미확보',
+  ruleVersionPrefix: '규칙 설정',
+  datasetPrefix: '거산 값 묶음',
+  evaluatedPrefix: '평가',
+} as const;
+
+/** 점수 항목 상태. 표 밖 상태는 labelFor가 코드 그대로 보이고 콘솔에 경고한다. */
+export const scoreStateLabels: Record<string, string> = {
+  CONFIRMED: '확인',
+  NO_SIGNAL: '신호 없음',
+  UNAVAILABLE: '미확보',
+};

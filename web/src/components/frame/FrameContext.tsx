@@ -15,6 +15,8 @@ export interface FrameValue {
   canRecord: boolean;
   /** 페이지가 받은 응답 meta를 띠에 알린다(hasVirtualData·datasetKind·updatedAt·reevaluated). */
   setBannerMeta: (meta: Meta | null) => void;
+  /** 페이지가 h1을 자기 내용으로 바꾼다(상세: 기업·기회 이름). null이면 기본 제목으로 돌아간다. */
+  setPageTitle: (title: string | null) => void;
 }
 
 export const FrameContext = createContext<FrameValue>({
@@ -23,6 +25,7 @@ export const FrameContext = createContext<FrameValue>({
   setStaffKey: () => {},
   canRecord: false,
   setBannerMeta: () => {},
+  setPageTitle: () => {},
 });
 
 export function useFrame(): FrameValue {
