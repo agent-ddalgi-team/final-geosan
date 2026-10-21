@@ -1,6 +1,6 @@
 # 실제 기업 사례 파일 작성 안내서 (초안, Step 7 — Step 30에서 완성)
 
-10월 말 부분 시연에 쓸 **실제 기업 1곳 = 사례 파일 1개**를 만드는 방법입니다. 팀원 각자 약 5곳을 씁니다(`docs/team-start-guide.md` 4-1장, 이슈 #18~#21). 파일 형식은 계약 C7(CaseFile)이고 틀은 `examples/case-template.json`, 완성 예시는 `examples/case-apjeong.json`(가상)입니다. 형식 설명서는 `contracts/case-file.schema.json`입니다.
+10월 말 부분 시연에 쓸 **실제 기업 1곳 = 사례 파일 1개**를 만드는 방법입니다. 팀원 각자 약 5곳을 씁니다(`docs/team-start-guide.md` 4-1장, 이슈 #19~#22, 이 안내서는 #18). 파일 형식은 계약 C7(CaseFile)이고 틀은 `examples/case-template.json`, 완성 예시는 `examples/case-apjeong.json`(가상)입니다. 형식 설명서는 `contracts/case-file.schema.json`입니다.
 
 ## 1. 원칙 세 가지
 
