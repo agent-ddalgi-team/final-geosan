@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geosan.local/contracts/app-settings.schema.json",
+  "title": "AppSettings — 앱 설정 파일 (계약 C7, YAML)",
+  "description": "담당자 목록·활성 거산 값 묶음·수집 범위·LLM 모드·브랜드·접속 보호. 비밀번호·API 키는 적지 않는다(password·apiKey·token 키는 check-config가 거부). `_설명` 키는 어느 객체에든 허용된다. 더하는 변경(2026-10-21 PM 확인): brand.demoLabel.",
+  "type": "object",
+  "required": ["staff", "activeDatasetKind", "ingestion", "llm", "homepageDiscovery", "brand", "accessProtection"],
+  "additionalProperties": false,
+  "properties": {
+    "_설명": { "type": "string" },
+    "staff": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["key", "displayName"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "key": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$", "description": "C0 staffKey. 예약 키 viewer는 보기 전용" },
+          "displayName": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "activeDatasetKind": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
+    "ingestion": {
+      "type": "object",
+      "required": ["regions", "productKeywords", "maxCandidates"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "regions": { "type": "array", "items": { "type": "string" } },
+        "productKeywords": { "type": "array", "items": { "type": "string" } },
+        "maxCandidates": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "llm": {
+      "type": "object",
+      "required": ["mode", "model", "monthlyCallLimit", "costPerThousandTokens"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "mode": { "type": "string", "enum": ["EXTERNAL", "NONE"] },
+        "model": { "type": ["string", "null"] },
+        "monthlyCallLimit": { "type": "integer", "minimum": 0 },
+        "costPerThousandTokens": { "type": "number", "minimum": 0 }
+      }
+    },
+    "homepageDiscovery": {
+      "type": "object",
+      "required": ["enabled", "termsConfirmed"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "termsConfirmed": { "type": "boolean" }
+      }
+    },
+    "brand": {
+      "type": "object",
+      "required": ["logoUrl", "brandName", "colorPrimary", "demoLabel"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "logoUrl": { "type": ["string", "null"] },
+        "brandName": { "type": "string", "minLength": 1 },
+        "colorPrimary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "demoLabel": { "type": ["string", "null"], "description": "띠에 함께 보이는 문구. 예: 부분 시연·거산 확인 전" }
+      }
+    },
+    "accessProtection": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "enabled": { "type": "boolean" }
+      }
+    }
+  }
+}

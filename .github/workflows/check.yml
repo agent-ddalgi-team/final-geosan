@@ -1,0 +1,92 @@
+# 뼈대 기간 최소 CI (인프라 설계 cicd-pipeline.md 2장). PR마다 파이썬·화면 두 작업을 병렬로 돌린다.
+# 약속 파일 자동 비교·취약점 검사·main 보호 규칙·배포는 3.7 CI 파이프라인 단계에서 더한다.
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: 검사 — 파이썬 (Ruff · pytest · 뼈대 검증)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 비밀·DB 파일 커밋 검사
+        run: bash scripts/check-secrets.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: 의존성 설치(잠금 파일)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock -e .
+
+      - name: 코드 모양 (ruff format --check, ruff check)
+        run: |
+          ruff format --check .
+          ruff check .
+
+      - name: 단위 테스트 + 커버리지 80% 하한
+        run: python -m pytest tests/unit -q --cov=geosan --cov-report=term-missing --cov-fail-under=80
+
+      # 한시적: 세 트랙(규칙·투입/API·화면)이 다 합쳐지기 전에는 시나리오가 실패하는 것이 정상이다.
+      # Step 28에서 continue-on-error를 제거한다.
+      - name: 시나리오 테스트 (tests/features)
+        continue-on-error: true
+        run: python -m pytest tests/features -q --no-cov
+
+      # 한시적: verify-case는 Step 19·27에서 완성된다. Step 28에서 continue-on-error를 제거한다.
+      - name: 뼈대 검증 (init-db → import-capability → import-case → verify-case, 임시 DB)
+        continue-on-error: true
+        env:
+          GEOSAN_DB_PATH: ${{ runner.temp }}/geosan-ci.db
+        run: |
+          python -m geosan init-db
+          python -m geosan import-capability examples/capability-geosan.json
+          python -m geosan import-case examples/case-apjeong.json
+          python -m geosan verify-case examples/case-apjeong.json
+
+  web:
+    name: 검사 — 화면 (ESLint · Prettier · Vitest · Vite build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 비밀·DB 파일 커밋 검사
+        working-directory: .
+        run: bash scripts/check-secrets.sh
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: 의존성 설치(잠금 파일)
+        run: npm ci --no-audit --no-fund
+
+      - name: 코드 모양 (ESLint, Prettier)
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: 화면 테스트 (Vitest)
+        run: npm test
+
+      - name: 빌드 (Vite)
+        run: npm run build

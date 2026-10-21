@@ -1,0 +1,296 @@
+{
+  "_설명": "A정밀 가상 사례(CaseFile, 계약 C7) — 계산 검증용. 요구사항 FR10.1의 역산 입력을 그대로 옮겼다. 모든 값은 가상이며 '가상·거산 실제 사양 아님'이다. 기대값 E 77 / P 95 / S 81.1 / R 82 / C 87.5는 역산한 가정값이고 규칙서 F.7 확인 전이며, 증설 신호는 역산을 위해 가상으로 추가했다. 형식 설명서: contracts/case-file.schema.json. `_설명` 키는 어디에나 쓸 수 있고 검사기가 무시한다.",
+  "caseId": "apjeong-valve-anodizing",
+  "baseDate": "2026-10-20",
+  "description": "A정밀 밸브 바디 아노다이징 — 알루미늄 주물 밸브 바디 아노다이징 외주 협력사 모집 공고(가상)",
+  "isVirtual": true,
+  "datasetKind": "VIRTUAL_REVIEWED",
+  "notes": [
+    "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가",
+    "가상·거산 실제 사양 아님"
+  ],
+  "customer": {
+    "_설명": "연락처(담당자 이름·이메일·전화)는 적지 않는다(BR2.1). bizNumber가 없으면 정규화한 상호명+주소가 식별 키다.",
+    "name": "A정밀",
+    "bizNumber": null,
+    "address": "충남 천안시 (가상)",
+    "identityBasis": "가상 사례 — 기획서 A정밀",
+    "relationStatus": "EXISTING_CONFIRMED",
+    "relationConfirmedAt": "2026-10-15",
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [
+    {
+      "_설명": "2024년 아연도금 견적 이력. 이 기회(아노다이징)에 연결되지 않은 같은 고객의 다른 이력이라 점수에 들어가지 않는다(BR2.7). 관계 표시 '기존 (2024년 아연도금 견적)'에만 쓴다.",
+      "kind": "QUOTE",
+      "occurredAt": "2024-06-10",
+      "allowedSummary": "2024년 아연도금 견적 (가상)",
+      "linkedToOpportunity": false,
+      "certainty": "CONFIRMED"
+    }
+  ],
+  "opportunity": {
+    "item": "밸브 바디 아노다이징",
+    "project": "알루미늄 주물 밸브 바디 아노다이징 외주 협력사 모집",
+    "purpose": "NEW_PROPOSAL",
+    "owner": "park-lee"
+  },
+  "discoveryPaths": [
+    { "pathKind": "PROCESS_DEMAND", "sourceId": "manual-case", "originKey": "apjeong-bid-2026-10", "discoveredAt": "2026-10-18" }
+  ],
+  "processLinks": [
+    { "_설명": "processCode는 역량 파일의 공정 code. 평가 때 활성 묶음의 Process로 해석한다.", "processCode": "ANODIZING", "appliedMaterial": "AL_CASTING" }
+  ],
+  "requirements": [
+    {
+      "_설명": "ISO 9001: 필수·지금 단계·거산 검수 완료 → 통과(응모 가능). linkProcessCode는 scopeKind가 PROCESS_LINK일 때 대조할 공정.",
+      "reqKind": "CERTIFICATION",
+      "name": "ISO 9001",
+      "content": "공고 조건: ISO 9001 보유 업체",
+      "reqLevel": "REQUIRED",
+      "scopeKind": "PROCESS_LINK",
+      "linkProcessCode": "ANODIZING",
+      "neededStage": "NOW",
+      "dueAt": "2026-11-10",
+      "certainty": "CONFIRMED",
+      "basis": "공고 본문 (가상)",
+      "question": null,
+      "requiredValue": null,
+      "unit": null,
+      "edition": "2015"
+    },
+    {
+      "_설명": "품질팀 샘플 승인: 필수·나중 단계(양산) → 후속 단계 미완료(LATER_STAGE), 필터에 영향 없음(BR3.5).",
+      "reqKind": "APPROVAL",
+      "name": "품질팀 샘플 승인",
+      "content": "샘플 승인 후 양산",
+      "reqLevel": "REQUIRED",
+      "scopeKind": "OPPORTUNITY",
+      "linkProcessCode": null,
+      "neededStage": "LATER",
+      "dueAt": null,
+      "certainty": "CONFIRMED",
+      "basis": "공고 본문 (가상)",
+      "question": null,
+      "requiredValue": null,
+      "unit": null,
+      "edition": null
+    },
+    {
+      "_설명": "Nadcap: 수준 미확인 → 질문만 생기고 필터에 영향 없음(BR3.4, BR8.1). 수준을 짐작해 REQUIRED로 채우지 않는다(BR2.6).",
+      "reqKind": "CERTIFICATION",
+      "name": "Nadcap",
+      "content": "Nadcap 인정 요구 여부 미확인",
+      "reqLevel": "UNKNOWN",
+      "scopeKind": "OPPORTUNITY",
+      "linkProcessCode": null,
+      "neededStage": "UNKNOWN",
+      "dueAt": null,
+      "certainty": "WEAK",
+      "basis": "업종 특성 추정 (가상)",
+      "question": "Nadcap 인정이 필요합니까?",
+      "requiredValue": null,
+      "unit": null,
+      "edition": null
+    }
+  ],
+  "signals": [
+    {
+      "_설명": "공고(BID): 직접 관련·확인·마감 3주 뒤(2026-11-10). 시점 우선 요건 ①을 만든다. agreedWindow는 가상 합의값(G0 전 실제 후보는 비어 있어야 함, BR5.3).",
+      "signalKind": "BID",
+      "occurredAt": "2026-10-18",
+      "announcedAt": "2026-10-18",
+      "scheduledAt": null,
+      "deadlineAt": "2026-11-10",
+      "progressStatus": "OPEN",
+      "agreedWindow": { "days": 21, "basis": "가상 합의값 — 마감 3주" },
+      "certainty": "CONFIRMED",
+      "relation": "DIRECT"
+    },
+    {
+      "_설명": "증설(EXPANSION): 역산을 위해 가상으로 추가한 신호(기획서 사례 본문에 없음). 기준일 15일 전 발생 → 감쇠 1.0.",
+      "signalKind": "EXPANSION",
+      "occurredAt": "2026-10-05",
+      "announcedAt": "2026-10-05",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "DIRECT"
+    }
+  ],
+  "evidence": [
+    {
+      "_설명": "evidence 배열의 순서(0부터)가 itemInputs[].evidenceRefs의 인덱스다. quote에 연락처 패턴이 있으면 거부된다.",
+      "sourceGrade": "A",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "알루미늄 주물 밸브 바디 아노다이징 외주 협력사 모집 — ISO 9001 보유 업체, 샘플 승인 후 양산 (가상 공고)",
+      "sourceRef": "나라장터 공고 (가상)",
+      "occurredAt": "2026-10-18",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "밸브 바디·하우징 등 유체기기 부품 생산 (가상 홈페이지)",
+      "sourceRef": "A정밀 홈페이지 제품 소개 (가상)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "알루미늄 주물 소재 (가상 홈페이지)",
+      "sourceRef": "A정밀 홈페이지 제품 소개 (가상)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2공장 생산라인 증설 (가상 추가 신호)",
+      "sourceRef": "A정밀 보도자료 (가상)",
+      "occurredAt": "2026-10-05",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "내식성·내마모성 요구 (가상 홈페이지)",
+      "sourceRef": "A정밀 홈페이지 제품 소개 (가상)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "_설명": "8항목 판정 입력(역산 입력). matchRate는 항목별 고정 단계값만(숫자 또는 단계 이름, BR4.2). state는 CONFIRMED/STRONG/WEAK/MISMATCH/NO_BONUS/NO_SIGNAL/UNAVAILABLE 7가지이고 certainty는 state와 일치해야 한다. evidenceRefs·signalRefs는 이 파일 안 인덱스. usedCapabilityRefs는 대조한 거산 값 참조.",
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": 1.0,
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "표면처리가 필요한 밸브 바디 생산 (해당 1.0, 확인) → 25",
+      "evidenceRefs": [1],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "알루미늄 주물 — 아노다이징 처리 소재와 정확히 일치 (1.0, 확인) → 20",
+      "evidenceRefs": [2],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ANODIZING" },
+        { "kind": "CAPABILITY", "processCode": "ANODIZING", "name": "처리 소재" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": "동일 산업",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "밸브·유체기기 산업 납품 실적 (동일 산업 0.67, 확인) → 15 × 0.67 = 10.05 → 10",
+      "evidenceRefs": [1],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "DELIVERY_RECORD", "processCode": "ANODIZING", "industry": "밸브·유체기기" }
+      ]
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "요구 태그 내식·내마모 중 아노다이징 태그(내식) 1개 일치 (0.5, 확인) → 5",
+      "evidenceRefs": [4],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ANODIZING" }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "직접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "증설 신호 직접 관련·확인·발생 15일 전 (1.0 × 1.0 × 감쇠 1.0) → 10 (가상 추가)",
+      "evidenceRefs": [3],
+      "signalRefs": [1],
+      "usedCapabilityRefs": []
+    },
+    {
+      "_설명": "신호 없음(NO_SIGNAL)은 판정 완료이며 0점이다. 배점 8은 P 분모에 들어간다.",
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "신규 수주 신호 없음 → 0 (판정 완료)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": "직접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공고 직접 관련·확인·마감 전 (1.0 × 1.0 × 1.0) → 7",
+      "evidenceRefs": [0],
+      "signalRefs": [0],
+      "usedCapabilityRefs": []
+    },
+    {
+      "_설명": "미확보(UNAVAILABLE)는 점수 NULL이고 P 분모에서 빠진다(배점 5 → P 95). R에는 미확보 배점이 더해진다(R 82).",
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "채용 신호 미확보",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": {
+    "_설명": "시점 우선 요건 ③ 담당자 체크(가상). evalIdAtCheck는 투입 시 비어 있고 첫 평가가 채운다(BR7.4).",
+    "checked": true,
+    "staffKey": "park-lee",
+    "checkedAt": "2026-10-19T09:00:00+09:00"
+  },
+  "researchReadiness": null,
+  "expected": {
+    "_설명": "verify-case가 비교하는 기대값. E·P·R 정수, S·C 소수 첫째 자리. requirementResults는 요구 name → 화면 표시값(checkDisplay).",
+    "E": 77,
+    "P": 95,
+    "S": 81.1,
+    "R": 82,
+    "C": 87.5,
+    "filterState": "PASS",
+    "coreEvidenceMet": "MET",
+    "classificationCode": "CONTACT_URGENT",
+    "requirementResults": {
+      "ISO 9001": "PASS",
+      "품질팀 샘플 승인": "LATER_STAGE",
+      "Nadcap": "QUESTION_NEEDED"
+    }
+  }
+}

@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geosan.local/contracts/case-file.schema.json",
+  "title": "CaseFile — 사례 파일 (가상 사례·실제 기업, 계약 C7)",
+  "description": "JSON 1개 = 사례 1건. `_설명` 키는 어느 객체에든 허용되고 검사기가 무시한다. 그 밖의 모르는 키는 오류다(BR2.2). 자유 문장에 이메일·전화 패턴이 있으면 거부한다(BR2.1). 더하는 변경(2026-10-21 PM 확인): baseDate, signals[].relation·scheduledAt·announcedAt, itemInputs[].usedCapabilityRefs·signalRefs.",
+  "type": "object",
+  "required": ["caseId", "description", "isVirtual", "datasetKind", "customer", "opportunity", "processLinks", "requirements", "signals", "evidence", "itemInputs"],
+  "additionalProperties": false,
+  "properties": {
+    "_설명": { "type": "string" },
+    "caseId": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "재투입 식별 키. 예: apjeong-valve-anodizing" },
+    "baseDate": { "type": ["string", "null"], "format": "date", "description": "평가 기준일. verify-case와 단일 기회 평가가 이 날짜를 쓴다. 없으면 오늘(BR2.8)" },
+    "description": { "type": "string" },
+    "isVirtual": { "type": "boolean" },
+    "datasetKind": { "$ref": "#/$defs/datasetKind" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "customer": {
+      "type": "object",
+      "required": ["name", "relationStatus", "securityGrade"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "name": { "type": "string", "minLength": 1 },
+        "bizNumber": { "type": ["string", "null"], "pattern": "^[0-9]{10}$" },
+        "address": { "type": ["string", "null"] },
+        "identityBasis": { "type": ["string", "null"] },
+        "relationStatus": { "$ref": "#/$defs/relationStatus" },
+        "relationConfirmedAt": { "type": ["string", "null"], "format": "date" },
+        "securityGrade": { "$ref": "#/$defs/securityGrade" }
+      }
+    },
+    "interactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "linkedToOpportunity", "certainty"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "kind": { "$ref": "#/$defs/interactionKind" },
+          "occurredAt": { "type": ["string", "null"], "format": "date" },
+          "allowedSummary": { "type": ["string", "null"] },
+          "linkedToOpportunity": { "type": "boolean" },
+          "certainty": { "$ref": "#/$defs/certainty" }
+        }
+      }
+    },
+    "opportunity": {
+      "type": "object",
+      "required": ["item", "purpose"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "item": { "type": "string", "minLength": 1 },
+        "project": { "type": ["string", "null"] },
+        "purpose": { "$ref": "#/$defs/purpose" },
+        "owner": { "type": ["string", "null"], "pattern": "^[a-z0-9-]{1,32}$" }
+      }
+    },
+    "discoveryPaths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pathKind"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "pathKind": { "$ref": "#/$defs/pathKind" },
+          "sourceId": { "type": ["string", "null"] },
+          "originKey": { "type": ["string", "null"] },
+          "discoveredAt": { "type": ["string", "null"], "format": "date" }
+        }
+      }
+    },
+    "processLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["processCode"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "processCode": { "$ref": "#/$defs/processCode" },
+          "appliedMaterial": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reqKind", "name", "reqLevel", "scopeKind", "neededStage", "certainty"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "reqKind": { "$ref": "#/$defs/reqKind" },
+          "name": { "type": "string", "minLength": 1 },
+          "content": { "type": ["string", "null"] },
+          "reqLevel": { "$ref": "#/$defs/reqLevel" },
+          "scopeKind": { "$ref": "#/$defs/scopeKind" },
+          "linkProcessCode": { "oneOf": [{ "$ref": "#/$defs/processCode" }, { "type": "null" }] },
+          "neededStage": { "$ref": "#/$defs/neededStage" },
+          "dueAt": { "type": ["string", "null"], "format": "date" },
+          "certainty": { "$ref": "#/$defs/certainty" },
+          "basis": { "type": ["string", "null"] },
+          "question": { "type": ["string", "null"] },
+          "requiredValue": { "type": ["number", "null"] },
+          "unit": { "type": ["string", "null"] },
+          "edition": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["signalKind", "certainty", "relation"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "signalKind": { "$ref": "#/$defs/signalKind" },
+          "occurredAt": { "type": ["string", "null"], "format": "date" },
+          "announcedAt": { "type": ["string", "null"], "format": "date" },
+          "scheduledAt": { "type": ["string", "null"], "format": "date" },
+          "deadlineAt": { "type": ["string", "null"], "format": "date" },
+          "progressStatus": { "oneOf": [{ "$ref": "#/$defs/progressStatus" }, { "type": "null" }] },
+          "agreedWindow": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["days"],
+                "additionalProperties": false,
+                "properties": {
+                  "_설명": { "type": "string" },
+                  "days": { "type": "integer", "minimum": 0 },
+                  "basis": { "type": ["string", "null"] }
+                }
+              }
+            ]
+          },
+          "certainty": { "$ref": "#/$defs/certainty" },
+          "relation": { "type": "string", "enum": ["DIRECT", "INDIRECT"] }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sourceGrade", "certainty", "isLlmProposed", "subject", "quote", "sourceRef", "securityGrade", "externalAiAllowed"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "sourceGrade": { "type": "string", "enum": ["A", "B", "C", "D"] },
+          "certainty": { "$ref": "#/$defs/certainty" },
+          "isLlmProposed": { "type": "boolean" },
+          "subject": { "type": "string", "enum": ["PRODUCT", "MATERIAL", "PURPOSE", "SIGNAL", "REQUIREMENT", "OTHER"] },
+          "quote": { "type": "string", "minLength": 1 },
+          "sourceRef": { "type": "string", "minLength": 1 },
+          "occurredAt": { "type": ["string", "null"], "format": "date" },
+          "securityGrade": { "$ref": "#/$defs/securityGrade" },
+          "externalAiAllowed": { "type": "boolean" }
+        }
+      }
+    },
+    "itemInputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["itemCode", "state", "evidenceRefs", "signalRefs", "usedCapabilityRefs"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "itemCode": { "$ref": "#/$defs/itemCode" },
+          "matchRate": { "type": ["number", "string", "null"], "description": "항목별 고정 단계값(숫자) 또는 단계 이름. 단계 밖 값은 오류(BR4.2)" },
+          "certainty": { "oneOf": [{ "type": "string", "enum": ["CONFIRMED", "STRONG", "WEAK"] }, { "type": "null" }] },
+          "state": { "$ref": "#/$defs/itemState" },
+          "factJudged": { "type": ["string", "null"] },
+          "evidenceRefs": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+          "signalRefs": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+          "usedCapabilityRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "processCode"],
+              "additionalProperties": false,
+              "properties": {
+                "_설명": { "type": "string" },
+                "kind": { "type": "string", "enum": ["PROCESS", "CAPABILITY", "DELIVERY_RECORD"] },
+                "processCode": { "$ref": "#/$defs/processCode" },
+                "name": { "type": ["string", "null"] },
+                "industry": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "readinessCheck": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["checked", "staffKey", "checkedAt"],
+          "additionalProperties": false,
+          "properties": {
+            "_설명": { "type": "string" },
+            "checked": { "type": "boolean" },
+            "staffKey": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" },
+            "checkedAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    },
+    "researchReadiness": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "_설명": { "type": "string" },
+            "questionSet": { "type": "array", "items": { "type": "string" } },
+            "allowedChannel": { "type": ["string", "null"] },
+            "owner": { "type": ["string", "null"] },
+            "canChangeClass": { "type": ["boolean", "null"] },
+            "estimatedHours": { "type": ["number", "null"], "minimum": 0 },
+            "maxHours": { "type": ["number", "null"], "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "expected": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["E", "P", "R", "filterState", "coreEvidenceMet", "classificationCode"],
+          "additionalProperties": false,
+          "properties": {
+            "_설명": { "type": "string" },
+            "E": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "P": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "S": { "type": ["number", "null"] },
+            "R": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "C": { "type": ["number", "null"] },
+            "filterState": { "type": "string", "enum": ["PASS", "PENDING", "EXCLUDED"] },
+            "coreEvidenceMet": { "type": "string", "enum": ["MET", "RECHECK"] },
+            "classificationCode": { "$ref": "#/$defs/classificationCode" },
+            "requirementResults": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "enum": ["PASS", "LATER_STAGE", "QUESTION_NEEDED", "PENDING_BLOCKS", "EXCLUDED"] }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "datasetKind": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
+    "relationStatus": { "type": "string", "enum": ["NEW_CONFIRMED", "EXISTING_CONFIRMED", "UNCONFIRMED"] },
+    "purpose": { "type": "string", "enum": ["NEW_PROPOSAL", "FOLLOW_UP_PROPOSAL", "REORDER_CHECK"] },
+    "interactionKind": { "type": "string", "enum": ["TRADE", "QUOTE", "CONSULT", "PROPOSAL", "MEMO"] },
+    "pathKind": { "type": "string", "enum": ["PROCESS_DEMAND", "CERTIFICATION", "HISTORY"] },
+    "reqKind": { "type": "string", "enum": ["CERTIFICATION", "APPROVAL", "TECHNICAL", "QUANTITY_DELIVERY"] },
+    "reqLevel": { "type": "string", "enum": ["REQUIRED", "PREFERRED", "NOT_REQUIRED", "UNKNOWN"] },
+    "neededStage": { "type": "string", "enum": ["NOW", "LATER", "UNKNOWN"] },
+    "scopeKind": { "type": "string", "enum": ["OPPORTUNITY", "PROCESS_LINK"] },
+    "signalKind": { "type": "string", "enum": ["EXPANSION", "NEW_ORDER", "BID", "HIRING", "REORDER_CYCLE", "NEXT_CONTACT"] },
+    "progressStatus": { "type": "string", "enum": ["OPEN", "CLOSED", "CANCELLED", "DONE"] },
+    "certainty": { "type": "string", "enum": ["CONFIRMED", "STRONG", "WEAK", "UNKNOWN"] },
+    "securityGrade": { "type": "string", "enum": ["PUBLIC", "EXTERNAL_AI_OK", "INTERNAL_ONLY", "FORBIDDEN", "UNKNOWN"] },
+    "itemCode": { "type": "string", "enum": ["NEW_PRODUCT", "NEW_MATERIAL", "NEW_RECORD", "NEW_PERF", "SIG_EXPAND", "SIG_ORDER", "SIG_BID", "SIG_HIRE"] },
+    "itemState": { "type": "string", "enum": ["CONFIRMED", "STRONG", "WEAK", "MISMATCH", "NO_BONUS", "NO_SIGNAL", "UNAVAILABLE"] },
+    "classificationCode": { "type": "string", "enum": ["FILTER_EXCLUDED", "FILTER_PENDING", "OPS_PENDING", "NOT_EVALUATED", "CONTACT_URGENT", "CONTACT_PLANNED", "CONTACT_REVIEW", "RESEARCH", "CONDITIONAL_WAIT", "WATCH", "LOW"] },
+    "processCode": { "type": "string", "enum": ["ZINC_PLATING", "ANODIZING", "BLACK_OXIDE", "CHROMATE", "ELECTROPOLISHING", "CHROME_PLATING", "ELECTROLESS_NICKEL", "PHOSPHATE_COATING", "PASSIVATION"] }
+  }
+}

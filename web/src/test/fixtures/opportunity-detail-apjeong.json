@@ -1,0 +1,226 @@
+{
+  "data": {
+    "header": {
+      "title": "A정밀 · 밸브 바디 아노다이징",
+      "customerName": "A정밀",
+      "opportunityItem": "밸브 바디 아노다이징",
+      "relationStatus": "EXISTING_CONFIRMED",
+      "relationNote": "기존 (2024년 아연도금 견적)",
+      "purpose": "NEW_PROPOSAL",
+      "owner": "park-lee",
+      "classificationCode": "CONTACT_URGENT",
+      "coreEvidenceRecheck": false,
+      "scoreDisplay": "81",
+      "isVirtual": true,
+      "datasetKind": "VIRTUAL_REVIEWED",
+      "isRecontact": false
+    },
+    "stage": null,
+    "reasons": {
+      "reason": "알루미늄 주물 아노다이징 외주 협력사 모집 공고, 마감 3주 뒤 (11/10)",
+      "nextAction": "응모 전 피막 두께 요구 확인",
+      "questions": [
+        {
+          "questionId": "q-01HAPJEONG0000000000000001",
+          "text": "Nadcap 인정이 필요합니까?",
+          "targetKind": "REQUIREMENT",
+          "targetId": "req-01HAPJEONG0000000000000003",
+          "currentValue": "수준 미확인",
+          "effectIfAnswered": "필수로 확인되면 재평가 (필터에 반영)",
+          "status": "WAITING",
+          "requestedBy": null,
+          "requestedAt": null,
+          "dueAt": null,
+          "overdue": false,
+          "replyText": null,
+          "repliedAt": null,
+          "linkedOppIds": ["opp-01HAPJEONG0000000000000001"],
+          "isUserAdded": false
+        }
+      ]
+    },
+    "requirements": [
+      {
+        "reqId": "req-01HAPJEONG0000000000000001",
+        "name": "ISO 9001",
+        "reqLevel": "REQUIRED",
+        "neededStage": "NOW",
+        "dueAt": "2026-11-10",
+        "capabilityStatus": "REVIEWED",
+        "result": "PASS",
+        "reason": "검수 완료된 ISO 9001(2015) — 아노다이징 범위 적용, 유효기간 안, 상태 정상"
+      },
+      {
+        "reqId": "req-01HAPJEONG0000000000000002",
+        "name": "품질팀 샘플 승인",
+        "reqLevel": "REQUIRED",
+        "neededStage": "LATER",
+        "dueAt": null,
+        "capabilityStatus": null,
+        "result": "LATER_STAGE",
+        "reason": "후속 단계 미완료(양산)"
+      },
+      {
+        "reqId": "req-01HAPJEONG0000000000000003",
+        "name": "Nadcap",
+        "reqLevel": "UNKNOWN",
+        "neededStage": "UNKNOWN",
+        "dueAt": null,
+        "capabilityStatus": "UNAVAILABLE",
+        "result": "QUESTION_NEEDED",
+        "reason": "요구 수준 미확인 — 질문 필요 (승인은 막지 않음)"
+      }
+    ],
+    "approvalEligibility": {
+      "eligible": true,
+      "reason": "가능 — 지금 단계에 꼭 필요한 요구가 모두 통과",
+      "readinessChecked": true,
+      "readinessNeedsRecheck": false,
+      "allowedPurposes": []
+    },
+    "processLinks": [
+      {
+        "linkId": "link-01HAPJEONG0000000000000001",
+        "processCode": "ANODIZING",
+        "processName": "아노다이징 — 가상",
+        "appliedMaterial": "AL_CASTING",
+        "result": "PASS",
+        "reason": "지금 단계 필수 요구 통과"
+      }
+    ],
+    "evidence": [
+      {
+        "evidenceId": "ev-01HAPJEONG0000000000000001",
+        "sourceGrade": "A",
+        "certainty": "CONFIRMED",
+        "isLlmProposed": false,
+        "quote": "알루미늄 주물 밸브 바디 아노다이징 외주 협력사 모집 — ISO 9001 보유 업체, 샘플 승인 후 양산 (가상 공고)",
+        "sourceRef": "나라장터 공고 (가상)",
+        "occurredAt": "2026-10-18",
+        "subject": "SIGNAL"
+      },
+      {
+        "evidenceId": "ev-01HAPJEONG0000000000000002",
+        "sourceGrade": "B",
+        "certainty": "CONFIRMED",
+        "isLlmProposed": false,
+        "quote": "밸브 바디·하우징 등 유체기기 부품 생산 (가상 홈페이지)",
+        "sourceRef": "A정밀 홈페이지 제품 소개 (가상)",
+        "occurredAt": null,
+        "subject": "PRODUCT"
+      }
+    ],
+    "homepageNeedsConfirm": false,
+    "scores": {
+      "E": 77,
+      "P": 95,
+      "S": 81.1,
+      "R": 82,
+      "C": 87.5,
+      "items": [
+        {
+          "itemCode": "NEW_PRODUCT",
+          "label": "표면처리가 필요한 제품·부품 생산 근거",
+          "state": "CONFIRMED",
+          "weight": 25,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 25,
+          "factJudged": "밸브 바디 생산"
+        },
+        {
+          "itemCode": "NEW_MATERIAL",
+          "label": "소재와 보유 공정 일치",
+          "state": "CONFIRMED",
+          "weight": 20,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 20,
+          "factJudged": "알루미늄 주물"
+        },
+        {
+          "itemCode": "NEW_RECORD",
+          "label": "유사 산업·부품 납품실적",
+          "state": "CONFIRMED",
+          "weight": 15,
+          "matchRate": 0.67,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 10,
+          "factJudged": "동일 산업"
+        },
+        {
+          "itemCode": "NEW_PERF",
+          "label": "처리 목적·성능 태그 일치",
+          "state": "CONFIRMED",
+          "weight": 10,
+          "matchRate": 0.5,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 5,
+          "factJudged": "1개 일치"
+        },
+        {
+          "itemCode": "SIG_EXPAND",
+          "label": "공장 증설·신규 생산라인",
+          "state": "CONFIRMED",
+          "weight": 10,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 10,
+          "factJudged": "증설 (가상 추가)"
+        },
+        {
+          "itemCode": "SIG_ORDER",
+          "label": "신규 수주·제품 출시·사업 확대",
+          "state": "NO_SIGNAL",
+          "weight": 8,
+          "matchRate": null,
+          "certainty": null,
+          "decay": null,
+          "score": 0,
+          "factJudged": "신호 없음"
+        },
+        {
+          "itemCode": "SIG_BID",
+          "label": "입찰·협력사 모집·구매 공고",
+          "state": "CONFIRMED",
+          "weight": 7,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 7,
+          "factJudged": "마감 전"
+        },
+        {
+          "itemCode": "SIG_HIRE",
+          "label": "관련 직무 채용",
+          "state": "UNAVAILABLE",
+          "weight": 5,
+          "matchRate": null,
+          "certainty": null,
+          "decay": null,
+          "score": null,
+          "factJudged": "미확보"
+        }
+      ],
+      "ruleVersion": "v0.17-a",
+      "datasetKind": "VIRTUAL_REVIEWED",
+      "batchId": "batch-01HAPJEONG0000000000000001",
+      "evaluatedAt": "2026-10-20T09:00:00+09:00"
+    },
+    "records": { "opinion": null, "bookmark": null, "approval": null, "outcome": null },
+    "recontact": null,
+    "evalId": "eval-01HAPJEONG0000000000000001",
+    "previousEvalId": null,
+    "reevaluated": false
+  },
+  "meta": {
+    "updatedAt": "2026-10-20T09:00:00+09:00",
+    "hasVirtualData": true,
+    "datasetKind": "VIRTUAL_REVIEWED"
+  }
+}

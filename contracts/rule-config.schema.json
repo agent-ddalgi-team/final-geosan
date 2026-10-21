@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geosan.local/contracts/rule-config.schema.json",
+  "title": "RuleConfig — 규칙 설정 파일 (계약 C7, YAML)",
+  "description": "모든 수치는 기업 승인 전 가설이며 코드가 아니라 이 파일에 둔다(BR7.6). 값을 바꾸면 version을 올린다. `_설명` 키는 어느 객체에든 허용된다. 더하는 변경(2026-10-21 PM 확인): otherGroupSort.",
+  "type": "object",
+  "required": ["version", "hypothesisNote", "newProfileItems", "recontactProfileItems", "certainty", "generalDecay", "recontactDates", "thresholds", "rounding", "coreEvidence", "timingRequirements", "researchRequirements", "classificationLabels", "otherGroupSort", "datasetKinds"],
+  "additionalProperties": false,
+  "properties": {
+    "_설명": { "type": "string" },
+    "version": { "type": "string", "minLength": 1, "description": "예: v0.17-a" },
+    "hypothesisNote": { "type": "string", "const": "기업 승인 전 가설" },
+    "newProfileItems": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/profileItem" }
+    },
+    "recontactProfileItems": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/profileItem" }
+    },
+    "certainty": {
+      "type": "object",
+      "required": ["CONFIRMED", "STRONG", "WEAK"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "CONFIRMED": { "type": "number", "minimum": 0, "maximum": 1 },
+        "STRONG": { "type": "number", "minimum": 0, "maximum": 1 },
+        "WEAK": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "generalDecay": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["maxDays", "factor"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "maxDays": { "type": ["integer", "null"], "minimum": 0, "description": "null이면 그 이상 전부" },
+          "factor": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "recontactDates": {
+      "type": "object",
+      "required": ["reorderCycle", "nextContact"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "reorderCycle": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["maxAbsDays", "factor"],
+            "additionalProperties": false,
+            "properties": {
+              "_설명": { "type": "string" },
+              "maxAbsDays": { "type": ["integer", "null"], "minimum": 0 },
+              "factor": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "nextContact": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["scheduledWithinDays", "pastWithinDays", "factor"],
+            "additionalProperties": false,
+            "properties": {
+              "_설명": { "type": "string" },
+              "scheduledWithinDays": { "type": ["integer", "null"], "minimum": 0 },
+              "pastWithinDays": { "type": ["integer", "null"], "minimum": 0 },
+              "factor": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": ["urgentE", "plannedE", "reviewE", "reviewP", "researchR", "watchRMin"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "urgentE": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "plannedE": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "reviewE": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "reviewP": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "researchR": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "watchRMin": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "rounding": {
+      "type": "object",
+      "required": ["itemScore", "display"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "itemScore": { "type": "string", "enum": ["HALF_UP_INT"] },
+        "display": { "type": "string", "enum": ["ONE_DECIMAL"] }
+      }
+    },
+    "coreEvidence": {
+      "type": "object",
+      "required": ["new", "recontact"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "new": { "$ref": "#/$defs/coreEvidenceRule" },
+        "recontact": { "$ref": "#/$defs/coreEvidenceRule" }
+      }
+    },
+    "timingRequirements": {
+      "type": "object",
+      "required": ["agreedWindowRequired"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "agreedWindowRequired": { "type": "boolean" }
+      }
+    },
+    "researchRequirements": {
+      "type": "object",
+      "required": ["maxHoursDefault"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "maxHoursDefault": { "type": "number", "minimum": 0 }
+      }
+    },
+    "classificationLabels": {
+      "type": "object",
+      "required": ["FILTER_EXCLUDED", "FILTER_PENDING", "OPS_PENDING", "NOT_EVALUATED", "CONTACT_URGENT", "CONTACT_PLANNED", "CONTACT_REVIEW", "RESEARCH", "CONDITIONAL_WAIT", "WATCH", "LOW"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "FILTER_EXCLUDED": { "type": "string", "minLength": 1 },
+        "FILTER_PENDING": { "type": "string", "minLength": 1 },
+        "OPS_PENDING": { "type": "string", "minLength": 1 },
+        "NOT_EVALUATED": { "type": "string", "minLength": 1 },
+        "CONTACT_URGENT": { "type": "string", "minLength": 1 },
+        "CONTACT_PLANNED": { "type": "string", "minLength": 1 },
+        "CONTACT_REVIEW": { "type": "string", "minLength": 1 },
+        "RESEARCH": { "type": "string", "minLength": 1 },
+        "CONDITIONAL_WAIT": { "type": "string", "minLength": 1 },
+        "WATCH": { "type": "string", "minLength": 1 },
+        "LOW": { "type": "string", "minLength": 1 }
+      }
+    },
+    "otherGroupSort": {
+      "type": "object",
+      "required": ["default", "brochure"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "default": { "$ref": "#/$defs/sortKeys" },
+        "brochure": { "$ref": "#/$defs/sortKeys" }
+      }
+    },
+    "datasetKinds": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "profileItem": {
+      "type": "object",
+      "required": ["itemCode", "weight", "matchRateSteps", "decay"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "itemCode": { "type": "string", "pattern": "^[A-Z][A-Z_]+$" },
+        "label": { "type": "string" },
+        "weight": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "matchRateSteps": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "decay": { "type": "string", "enum": ["NONE", "GENERAL", "BID_EXCEPTION", "HIRE"] }
+      }
+    },
+    "coreEvidenceRule": {
+      "type": "object",
+      "required": ["items", "allowedStates", "requireReviewedCapability"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "items": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "allowedStates": { "type": "array", "minItems": 1, "items": { "type": "string", "enum": ["CONFIRMED", "STRONG", "WEAK"] } },
+        "requireReviewedCapability": { "type": "boolean" }
+      }
+    },
+    "sortKeys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["key", "order"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "key": { "type": "string", "enum": ["R", "E", "F", "P", "oppId"] },
+          "order": { "type": "string", "enum": ["asc", "desc"] }
+        }
+      }
+    }
+  }
+}

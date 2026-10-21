@@ -1,0 +1,30 @@
+/* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다. */
+html,
+body {
+  margin: 0;
+  font-family:
+    'Pretendard Variable',
+    Pretendard,
+    -apple-system,
+    'Malgun Gothic',
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  background: #f5f6f8;
+  color: #1f2329;
+}
+
+/* 초점선: 강조색 2px 실선, 바깥 2px 간격. outline: none 금지. */
+:focus-visible {
+  outline: 2px solid #1f5fbf;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
