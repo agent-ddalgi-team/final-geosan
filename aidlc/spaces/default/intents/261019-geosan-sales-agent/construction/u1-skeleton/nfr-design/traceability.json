@@ -1,0 +1,590 @@
+{
+ "stage": "nfr-design",
+ "unit": "u1-skeleton",
+ "upstream_ids": [
+  "NFR1.1",
+  "NFR1.2",
+  "NFR1.3",
+  "NFR1.4",
+  "NFR1.5",
+  "NFR2.1",
+  "NFR2.2",
+  "NFR2.3",
+  "NFR2.4",
+  "NFR2.5",
+  "NFR2.6",
+  "NFR2.7",
+  "NFR2.8",
+  "NFR2.9",
+  "NFR2.10",
+  "NFR2.11",
+  "NFR2.12",
+  "NFR2.13",
+  "NFR2.14",
+  "NFR2.15",
+  "NFR3.1",
+  "NFR3.2",
+  "NFR3.3",
+  "NFR3.4",
+  "NFR3.5",
+  "NFR3.6",
+  "NFR3.7",
+  "NFR3.8",
+  "NFR3.9",
+  "NFR3.10",
+  "NFR3.11",
+  "NFR3.12",
+  "NFR3.13",
+  "NFR3.14",
+  "NFR4.1",
+  "NFR4.2",
+  "NFR4.3",
+  "NFR4.4",
+  "NFR4.5",
+  "NFR4.6",
+  "NFR4.7",
+  "NFR4.8",
+  "NFR4.9",
+  "NFR4.10",
+  "NFR4.11",
+  "NFR4.12",
+  "NFR4.13",
+  "NFR4.14",
+  "NFR4.15",
+  "NFR4.16",
+  "NFR4.17",
+  "NFR5.1",
+  "NFR5.2",
+  "NFR5.3",
+  "NFR5.4",
+  "NFR5.5",
+  "NFR7.1",
+  "NFR7.2",
+  "NFR7.3",
+  "NFR7.4",
+  "NFR7.5",
+  "NFR7.6",
+  "NFR7.7",
+  "NFR8.1",
+  "NFR8.2",
+  "NFR8.3",
+  "NFR8.4",
+  "NFR8.5",
+  "NFR9.1",
+  "NFR9.2",
+  "NFR9.3",
+  "NFR9.4",
+  "NFR9.5",
+  "NFR9.6",
+  "NFR9.7",
+  "NFR10.1",
+  "NFR10.2",
+  "NFR10.3",
+  "NFR10.4",
+  "NFR10.5",
+  "NFR10.6",
+  "NFR10.7",
+  "NFR10.8",
+  "NFR10.9",
+  "NFR10.10",
+  "NFR10.11",
+  "NFR10.12",
+  "NFR10.13",
+  "NFR11.1",
+  "NFR11.2",
+  "NFR11.3",
+  "NFR11.4",
+  "NFR11.5",
+  "NFR12.1",
+  "NFR12.2",
+  "NFR12.3",
+  "NFR12.4"
+ ],
+ "coverage": [
+  {
+   "id": "NFR1.1",
+   "status": "OK",
+   "target": "결정적 규칙 엔진·HALF_UP·규칙 해시 대조 (reliability-design 2장)"
+  },
+  {
+   "id": "NFR1.2",
+   "status": "OK",
+   "target": "결정적 규칙 엔진·HALF_UP·규칙 해시 대조 (reliability-design 2장)"
+  },
+  {
+   "id": "NFR1.3",
+   "status": "OK",
+   "target": "결정적 규칙 엔진·HALF_UP·규칙 해시 대조 (reliability-design 2장)"
+  },
+  {
+   "id": "NFR1.4",
+   "status": "OK",
+   "target": "결정적 규칙 엔진·HALF_UP·규칙 해시 대조 (reliability-design 2장)"
+  },
+  {
+   "id": "NFR1.5",
+   "status": "OK",
+   "target": "결정적 규칙 엔진·HALF_UP·규칙 해시 대조 (reliability-design 2장)"
+  },
+  {
+   "id": "NFR2.1",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.2",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.3",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.4",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.5",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.6",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.7",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.8",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.9",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.10",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.11",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.12",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.13",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.14",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR2.15",
+   "status": "OK",
+   "target": "평가 시점 계산 저장·쪽 단위 읽기·캐시 없음·중단 한도 (performance-design 1~5장)"
+  },
+  {
+   "id": "NFR3.1",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.2",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.3",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.4",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.5",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.6",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.7",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.8",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.9",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.10",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.11",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.12",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.13",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR3.14",
+   "status": "OK",
+   "target": "단일 프로세스·색인·묶음당 1회 스냅샷·상한 감시 (scalability-design 1~3장)"
+  },
+  {
+   "id": "NFR4.1",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.2",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.3",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.4",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.5",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.6",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.7",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.8",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.9",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.10",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.11",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.12",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.13",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.14",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.15",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.16",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR4.17",
+   "status": "OK",
+   "target": "경계 5겹·담당자 키 의존성·환경 변수·외부 호출 없음·묶음 분리 (security-design 1~7장)"
+  },
+  {
+   "id": "NFR5.1",
+   "status": "OK",
+   "target": "공통 열 자동 채움·새 행 원칙·기록 테이블 조회 예시 (security-design 6장, observability-design 3장)"
+  },
+  {
+   "id": "NFR5.2",
+   "status": "OK",
+   "target": "공통 열 자동 채움·새 행 원칙·기록 테이블 조회 예시 (security-design 6장, observability-design 3장)"
+  },
+  {
+   "id": "NFR5.3",
+   "status": "OK",
+   "target": "공통 열 자동 채움·새 행 원칙·기록 테이블 조회 예시 (security-design 6장, observability-design 3장)"
+  },
+  {
+   "id": "NFR5.4",
+   "status": "OK",
+   "target": "공통 열 자동 채움·새 행 원칙·기록 테이블 조회 예시 (security-design 6장, observability-design 3장)"
+  },
+  {
+   "id": "NFR5.5",
+   "status": "OK",
+   "target": "공통 열 자동 채움·새 행 원칙·기록 테이블 조회 예시 (security-design 6장, observability-design 3장)"
+  },
+  {
+   "id": "NFR7.1",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR7.2",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR7.3",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR7.4",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR7.5",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR7.6",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR7.7",
+   "status": "OK",
+   "target": "흐름 = 트랜잭션·WAL·백업 복사·재투입 멱등·Alembic downgrade·AppError (reliability-design 3~7장)"
+  },
+  {
+   "id": "NFR8.1",
+   "status": "OK",
+   "target": "화면 반응 규칙·접근성 점검표·대응표 (performance-design 4장, logical-components 3장)"
+  },
+  {
+   "id": "NFR8.2",
+   "status": "OK",
+   "target": "화면 반응 규칙·접근성 점검표·대응표 (performance-design 4장, logical-components 3장)"
+  },
+  {
+   "id": "NFR8.3",
+   "status": "OK",
+   "target": "화면 반응 규칙·접근성 점검표·대응표 (performance-design 4장, logical-components 3장)"
+  },
+  {
+   "id": "NFR8.4",
+   "status": "OK",
+   "target": "화면 반응 규칙·접근성 점검표·대응표 (performance-design 4장, logical-components 3장)"
+  },
+  {
+   "id": "NFR8.5",
+   "status": "OK",
+   "target": "화면 반응 규칙·접근성 점검표·대응표 (performance-design 4장, logical-components 3장)"
+  },
+  {
+   "id": "NFR9.1",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR9.2",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR9.3",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR9.4",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR9.5",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR9.6",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR9.7",
+   "status": "OK",
+   "target": "pytest-bdd·커버리지 80%·임시 DB·네트워크 차단·검증 명령 (reliability-design 9장)"
+  },
+  {
+   "id": "NFR10.1",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.2",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.3",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.4",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.5",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.6",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.7",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.8",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.9",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.10",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.11",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.12",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR10.13",
+   "status": "OK",
+   "target": "JSON 로그·금지 필드 차단·ref 상관 ID·로그 집계 지표·화면 meta (observability-design 1~6장)"
+  },
+  {
+   "id": "NFR11.1",
+   "status": "OK",
+   "target": "설정 파일 분리·환경 변수·시작 거부·테마 파일·버전 고정 (security-design 3장, logical-components 4장)"
+  },
+  {
+   "id": "NFR11.2",
+   "status": "OK",
+   "target": "설정 파일 분리·환경 변수·시작 거부·테마 파일·버전 고정 (security-design 3장, logical-components 4장)"
+  },
+  {
+   "id": "NFR11.3",
+   "status": "OK",
+   "target": "설정 파일 분리·환경 변수·시작 거부·테마 파일·버전 고정 (security-design 3장, logical-components 4장)"
+  },
+  {
+   "id": "NFR11.4",
+   "status": "OK",
+   "target": "설정 파일 분리·환경 변수·시작 거부·테마 파일·버전 고정 (security-design 3장, logical-components 4장)"
+  },
+  {
+   "id": "NFR11.5",
+   "status": "OK",
+   "target": "설정 파일 분리·환경 변수·시작 거부·테마 파일·버전 고정 (security-design 3장, logical-components 4장)"
+  },
+  {
+   "id": "NFR12.1",
+   "status": "OK",
+   "target": "UTC 저장·Asia/Seoul 표시·기준일 BR2.8·고정 기준일 테스트 (reliability-design 8장)"
+  },
+  {
+   "id": "NFR12.2",
+   "status": "OK",
+   "target": "UTC 저장·Asia/Seoul 표시·기준일 BR2.8·고정 기준일 테스트 (reliability-design 8장)"
+  },
+  {
+   "id": "NFR12.3",
+   "status": "OK",
+   "target": "UTC 저장·Asia/Seoul 표시·기준일 BR2.8·고정 기준일 테스트 (reliability-design 8장)"
+  },
+  {
+   "id": "NFR12.4",
+   "status": "OK",
+   "target": "UTC 저장·Asia/Seoul 표시·기준일 BR2.8·고정 기준일 테스트 (reliability-design 8장)"
+  }
+ ]
+}

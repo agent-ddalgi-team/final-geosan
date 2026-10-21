@@ -10,6 +10,9 @@
 
 ## Tradeoffs
 <!-- example: 2026-05-29T10:14:32Z — picked TDD over BDD this run; the team is unit-first and the domain is well-understood -->
+- 2026-10-20T23:40:00Z [unit u1-skeleton] — 검토 2회 뒤 남은 지적 5건(거산 값 묶음을 (묶음, 코드)로 분리 저장·활성 묶음만 평가, 평가 묶음 FULL/PARTIAL로 목록 순위 보호, 신호↔항목 연결과 대표 신호 규칙, 재투입 시 자식 행 supersededAt 교체, 우대 요구 EXCLUDED는 필터 영향 없음)을 PM 지시로 설계에 바로 반영했다(가드 정책 off, 계약은 더하는 변경만). 공정 연결은 processId 대신 processCode 참조로 바꿨다.
+- 2026-10-21T00:50:00Z [unit u1-skeleton] — PM 지시로 이 작업(U1)의 자동 검토와 요약 확인을 껐다(개발 착수 시급). 3.2~3.4는 질문 최소화·추천안 기록으로 진행하고, 코드 검토는 3.5 전에 다시 켜는 것을 권했다.
+- 2026-10-20T23:40:00Z [unit u1-skeleton] — 규칙 수치는 하나도 새로 정하지 않고 요구사항·부록 A·계약을 번호(BR)로 옮겼다. 새로 정한 것은 OTHER 정렬(가설·설정값)과 표시 규칙(참고 점수·demoLabel)뿐이며 모두 설정값이다.
 
 ## Open questions
 <!-- example: 2026-05-29T10:14:32Z — confirm the retention window with compliance before the next stage hardens the schema -->

@@ -19,11 +19,11 @@
 - **Stages to Skip**: 1.2 (market-research), 1.5 (team-formation), 1.7 (approval-handoff), 4.1 (deployment-pipeline), 4.2 (environment-provisioning), 4.3 (deployment-execution), 4.4 (observability-setup), 4.5 (incident-response), 4.6 (performance-validation), 4.7 (feedback-optimization), 2.1 (reverse-engineering — greenfield)
 - **Depth**: Standard
 - **Test Strategy**: Standard
-- **Review Override**: 
+- **Review Override**: none
 - **Guard Policy**: off (from scope mvp)
 - **Sensors**: on (from scope mvp)
 - **Learnings**: on (from scope mvp)
-- **Summary Confirmation**: on (from scope mvp)
+- **Summary Confirmation**: off (set by you)
 - **Plan Approval**: on (from scope mvp)
 - **Collaborators**: off (from scope mvp)
 
@@ -52,11 +52,17 @@
 
 - **Skeleton Stance**: on
 
-- **Active Unit**: u1-skeleton
 
-- **Unit Stage**: functional-design
 
-- **Unit State**: in-progress
+
+
+
+
+
+
+
+
+
 
 ## Phase Progress
 <!-- Status values: Pending, Active, Verified, Skipped -->
@@ -119,7 +125,7 @@ Per unit: [TBD]
 - **Current Stage**: functional-design
 - **Next Stage**: nfr-requirements
 - **Status**: Running
-- **Last Updated**: 2026-10-20T17:50:37Z
+- **Last Updated**: 2026-10-21T01:28:11Z
 
 ## Session Resume Point
 - **Last Completed Stage**: delivery-planning

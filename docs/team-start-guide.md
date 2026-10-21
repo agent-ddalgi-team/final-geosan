@@ -38,7 +38,7 @@
 
 1. `main`을 최신으로 받는다: `git switch main && git pull`
 2. 가지를 딴다: `git switch -c <이름>/<단위-또는-일>` (예: `minsu/u1-filter-tests`). 가지는 1~2일 안에 합친다.
-3. 맡은 파일만 고친다. 약속 파일(`contracts/`, `contract-summary.md`)에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 PM에게 먼저 묻는다.
+3. 맡은 파일만 고친다. 약속 파일(`contracts/`, `contract-summary.md`)에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 PM에게 먼저 묻는다. 개발을 시작하기 전에 자기 모듈의 기능 설계 문서(`aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/`의 `entities.md`·`rules.md`·`functional-spec.md`)를 읽는다. 규칙 엔진 담당은 `rules.md`가 기준이며 A정밀 손 계산은 이미 확인된 내용이라 다시 하지 않는다.
 4. 테스트와 코드 모양 검사를 돌린다. (명령은 뼈대 구현 뒤 `README.md`에 적힌다. Python은 `pytest`·Ruff, 화면은 Vitest·Prettier·ESLint.)
 5. PR을 올린다. `.github/pull_request_template.md`의 항목을 모두 채운다. 약속 파일을 바꿨으면 "예"에 표시하고 PM 확인 뒤에 합친다.
 6. 검사가 통과하고 확인이 끝나면 **스쿼시 머지**로 `main`에 합친다.

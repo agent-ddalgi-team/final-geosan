@@ -1,0 +1,38 @@
+{
+  "stage": "infrastructure-design",
+  "unit": "u1-skeleton",
+  "upstream_ids": [
+    "NFR2.9", "NFR2.14", "NFR2.15", "NFR3.8", "NFR3.9",
+    "NFR4.3", "NFR4.4", "NFR4.7", "NFR4.10", "NFR4.16", "NFR4.17",
+    "NFR7.2", "NFR7.3", "NFR7.4", "NFR7.6",
+    "NFR9.6", "NFR9.7",
+    "NFR10.6", "NFR10.7", "NFR10.8", "NFR10.9", "NFR10.10",
+    "NFR11.2", "NFR11.5"
+  ],
+  "coverage": [
+    { "id": "NFR2.9", "status": "OK", "target": "단일 프로세스 serve, 시작 5초 (infrastructure-specification 1장 시작·중지)" },
+    { "id": "NFR2.14", "status": "OK", "target": "메모리 512MB·디스크 1GB 자원 크기 (infrastructure-specification 1장)" },
+    { "id": "NFR2.15", "status": "OK", "target": "SQLite WAL 모드 (infrastructure-specification 2장)" },
+    { "id": "NFR3.8", "status": "OK", "target": "DB 500MB 상한·디스크 1GB (infrastructure-specification 1장)" },
+    { "id": "NFR3.9", "status": "OK", "target": "단일 프로세스·단일 파일, 캐시·큐 없음 (infrastructure-specification 1·2장)" },
+    { "id": "NFR4.3", "status": "OK", "target": "127.0.0.1만 듣고 외부 주소 없음, 외부 호출 없음 (infrastructure-specification 1장, monitoring 전송 수 0)" },
+    { "id": "NFR4.4", "status": "OK", "target": "환경 변수 GEOSAN_DB_PATH만, .env.example (infrastructure-specification 1장; cicd 4장 비밀)" },
+    { "id": "NFR4.7", "status": "OK", "target": "data/·backups/·logs/ .gitignore, CI 8단계 DB·비밀 파일 검사 (cicd 2장)" },
+    { "id": "NFR4.10", "status": "OK", "target": "접속 보호 없는 기간 외부 노출 금지, 터널 없음 (infrastructure-specification 1장 네트워크)" },
+    { "id": "NFR4.16", "status": "OK", "target": "잠금 파일 고정, 취약점 검사는 3.7 추가 (cicd 3장)" },
+    { "id": "NFR4.17", "status": "OK", "target": "새 의존성은 PR에 이유, PR 템플릿·1명 읽기 (cicd 2장)" },
+    { "id": "NFR7.2", "status": "OK", "target": "busy_timeout 5000 (infrastructure-specification 2장)" },
+    { "id": "NFR7.3", "status": "OK", "target": "WAL 일관성·재시작 1분 (infrastructure-specification 1장)" },
+    { "id": "NFR7.4", "status": "OK", "target": "backups/ 파일 복사, 명령은 U8 (infrastructure-specification 2·4장; cicd 4장 되돌리기)" },
+    { "id": "NFR7.6", "status": "OK", "target": "마이그레이션 체계 공유 자원, downgrade로 되돌리기 (infrastructure-specification 3장; cicd 4장)" },
+    { "id": "NFR9.6", "status": "OK", "target": "최소 CI 8단계·main 보호(3.7) (cicd 2·3장)" },
+    { "id": "NFR9.7", "status": "OK", "target": "CI 3·4단계 = 구현 검증 명령 (cicd 5장)" },
+    { "id": "NFR10.6", "status": "OK", "target": "logs/ 일 1회 회전·14일 (infrastructure-specification 2장; monitoring 4장)" },
+    { "id": "NFR10.7", "status": "OK", "target": "요청 소요 지표를 로그로 (monitoring 1장)" },
+    { "id": "NFR10.8", "status": "OK", "target": "평가 소요 지표를 로그로 (monitoring 1장)" },
+    { "id": "NFR10.9", "status": "OK", "target": "오류 수 지표를 로그로 (monitoring 1장)" },
+    { "id": "NFR10.10", "status": "OK", "target": "외부 전송 수 = 전송 로그 0행 (monitoring 1장)" },
+    { "id": "NFR11.2", "status": "OK", "target": "환경 변수 분리·.env 미커밋, Actions secrets (infrastructure-specification 1장; cicd 4장)" },
+    { "id": "NFR11.5", "status": "OK", "target": ".python-version·.nvmrc·잠금 파일로 환경 동일성 (infrastructure-specification 1장)" }
+  ]
+}
