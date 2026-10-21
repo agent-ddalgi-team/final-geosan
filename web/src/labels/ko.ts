@@ -118,6 +118,7 @@ export const banner = {
 
 /** 다섯 상태·공통 문구(BR10.7, 상세 화면 설계 3-3·4-3). */
 export const states = {
+  loading: '불러오는 중',
   listEmpty: '아직 추천할 기회가 없습니다. 운영자가 후보를 넣으면 여기에 나타납니다.',
   listError: '목록을 불러오지 못했습니다.',
   detailError: '상세 내용을 불러오지 못했습니다.',
@@ -154,6 +155,8 @@ export const frame = {
   backToList: '목록으로',
   viewDetail: '자세히 보기',
   pageTitleList: '추천 목록',
+  navLabel: '주 메뉴',
+  staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
 } as const;
 
 /** 카드·상세 줄 머리말. */
