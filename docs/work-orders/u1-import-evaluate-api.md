@@ -20,6 +20,8 @@
 | `geosan/opportunity/queries.py`, `geosan/evidence/queries.py`(FORBIDDEN 기본 제외), `geosan/questions/store.py`(질문 upsert·연결·ResearchTask), `geosan/evaluation/inputs.py`(ItemJudgmentInput·ReadinessCheck 저장·현재 행 조회) | 조회·저장 함수 | BR7.3, BR8.2 |
 | `tests/unit/u1/test_capability_import.py`(7), `tests/unit/u1/test_case_import.py`(8) | 단위 테스트 | — |
 
+- (PM 세션 추가 2026-10-21, Step 11 선행 연결) 파일 검사기는 이미 있다: `check_case`는 `geosan.config.file_checks.check_case_file(path, capability_path)`를, 역량 파일 검사는 `check_capability_file(path)`를 그대로 부르면 된다(둘 다 `CheckReport`를 돌려주고 통과하면 `.case`/`.capability`에 pydantic 모델, `.match_rates`에 숫자 일치도가 있다). `geosan check-case`·`check-config`·`init-db`·`db merge-heads` 명령은 PM 세션이 `app.py`에 먼저 연결했으므로 PR 3에서는 `commands/check_case.py`·`check_config.py`·`init_db.py`·`db_merge_heads.py`를 새로 만들지 않는다. 규칙 설정·앱 설정(활성 묶음·담당자 목록·brand)은 파일을 직접 읽지 말고 `geosan.config.registry.load_runtime_config(session)`로 읽는다(규칙 버전 등록·해시 검사·앱 설정 사본을 그 함수가 처리한다; `tests/steps/u1/_support.py` 머리에 기대 경로가 적혀 있다).
+
 **PR 2 `kangwook/9-evaluate` (Step 18)**
 
 | 파일 | 하는 일 | 규칙 |
@@ -31,11 +33,13 @@
 | `tests/fakes/fake_engine.py` | 규칙 엔진(Part C)이 아직 없을 때 A정밀 고정 출력(`EvaluationOutput`)을 돌려주는 개발용 가짜. **Part C가 합쳐지면 걷어낸다**(AGENTS.md ③ 예외) | — |
 | `tests/unit/u1/test_snapshot_ledger.py`(8), `tests/unit/u1/test_flow_evaluate.py`(6) | 단위 테스트 | — |
 
-**PR 3 `kangwook/10-api-commands` (Step 19·20)**
+**PR 3 `kangwook/10-api-commands` (Step 19·20) — (분담 조정 2026-10-21) 범위를 줄였고 10/29 시연 필수가 아니다. 마감 10/28(수), 시연 뒤로 밀려도 된다.**
+
+이강욱 몫은 `import-capability`·`import-case` 두 명령과 웹 API 3개뿐이다. `evaluate`·`verify-case`·`serve`·`export-contracts`는 PM 세션이 예비 경로(이슈 #25)·통합에서 연결하고, `init-db`·`check-case`·`check-config`·`db merge-heads`는 이미 연결되어 있다.
 
 | 파일 | 하는 일 | 규칙 |
 |---|---|---|
-| `geosan/commands/init_db.py`, `serve.py`, `check_config.py`, `import_capability.py`, `import_case.py`, `check_case.py`, `evaluate.py`, `verify_case.py`, `export_contracts.py`, `db_merge_heads.py` | 명령별 본문. `geosan/commands/app.py`의 각 명령은 `not_implemented_yet(...)` 대신 이 파일의 함수를 부르게 **그 줄만** 바꾼다. 종료 코드 0/1/2, 마지막 줄 쉬운 한국어 요약, 경로 인자는 절대 경로 정규화·`..`·심볼릭 링크 거부 | BR11.1~BR11.3, C8 |
+| `geosan/commands/import_capability.py`, `import_case.py` (나머지 명령은 PM 세션 몫, 위 설명) | 명령별 본문. `geosan/commands/app.py`의 각 명령은 `not_implemented_yet(...)` 대신 이 파일의 함수를 부르게 **그 줄만** 바꾼다. 종료 코드 0/1/2, 마지막 줄 쉬운 한국어 요약, 경로 인자는 절대 경로 정규화·`..`·심볼릭 링크 거부 | BR11.1~BR11.3, C8 |
 | `geosan/api/app.py` | FastAPI `/api/v1`, 정적 파일(`web/dist`) 마운트, JSON 로그 포매터(금지 필드 차단·ref)·요청 로그, 오류 변환(AppError → 계약 3장 형식, 500은 ref만), 본문 64KB 상한 | NFR10, 보안 설계 2·4겹 |
 | `geosan/api/deps.py` | 담당자 키 의존성: 없음/목록 밖/viewer → 403 | BR9.3 |
 | `geosan/api/routes/config.py`, `routes/opportunities.py`(`list_filters`·`detail_sections` 등록 방식), `routes/records.py`(W7 의견 저장) | 경로 묶음 3개 | BR10.1~BR10.5, BR9.1~BR9.5 |
@@ -51,7 +55,7 @@
 1. 읽기(5장). 특히 `functional-spec.md` W1~W7·W9와 `entities.md`, 계약 C1·C2·C6·C7·C8, 3장 오류 규칙.
 2. PR 1: `capability/importer.py`·`queries.py` → `opportunity/importer.py`·`queries.py` → `evidence/queries.py` → `questions/store.py` → `evaluation/inputs.py` 순으로 구현 → 단위 테스트 15개 → 검사 → PR.
 3. PR 2: `evaluation/snapshot.py` → `ledger.py` → `workflows/flow_evaluate.py`·`registry.py` 구현. 규칙 엔진이 아직 `main`에 없으면 `tests/fakes/fake_engine.py`로 돌리고, 합쳐지면 `from geosan.rules.engine import evaluate, rank`로 바꾼다(`geosan/rules/models.py`의 같은 이름 함수는 서명만 보여 주는 자리라 부르지 않는다) → 단위 테스트 14개 → PR.
-4. PR 3: 명령 10개 파일 → `api/app.py`·`deps.py`·`routes/*` 구현 → 단위 테스트 15개 → `verify-case`가 임시 DB에서 "검증 통과"를 내는지 확인(3장) → PR.
+4. PR 3: 명령 2개 파일(`import_capability.py`·`import_case.py`) → `api/app.py`·`deps.py`·`routes/*` 구현 → 단위 테스트(API 8개 + 명령 2~3개) → PR. `verify-case` 끝단 확인은 PM 세션이 `evaluate`·`verify-case`를 연결한 뒤 통합(Step 27)에서 한다.
 5. 각 PR 전에 `ruff format .`·`ruff check .`·단위 테스트 통과.
 
 ## 3. 완료 기준 (돌려야 할 명령과 기대 출력)

@@ -1,0 +1,106 @@
+{
+  "_설명": "소개서 묶음(datasetKind BROCHURE) 시나리오용 거산 역량 파일 — 테스트용 가상 사본이다. 실제 회사소개서 값이 아니며(거산 자료는 AI 도구에 넣지 않음), examples/capability-geosan.json과 같은 9종 공정·자격 구조에 검수 상태만 모두 PENDING(검수 대기)으로 두었다. 모든 값은 '가상·거산 실제 사양 아님'.",
+  "datasetKind": "BROCHURE",
+  "sourceNote": "소개서 묶음 테스트용 가상 사본 — 가상·거산 실제 사양 아님",
+  "processes": [
+    {
+      "code": "ZINC_PLATING",
+      "name": "아연도금(전기아연도금) — 가상 소개서 표기",
+      "category": "도금",
+      "materialCodes": ["FE", "AL", "CU"],
+      "performanceTags": ["CORROSION", "APPEARANCE"],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        { "capKind": "SPEC", "name": "도금 두께", "displayValue": "5~25 μm (가상)", "numericMin": 5, "numericMax": 25, "unit": "μm", "standardRef": null, "isDescriptiveOnly": false, "reviewStatus": "PENDING" }
+      ],
+      "deliveryRecords": []
+    },
+    {
+      "code": "ANODIZING",
+      "name": "아노다이징 — 가상 소개서 표기",
+      "category": "피막",
+      "materialCodes": ["AL", "AL_CASTING"],
+      "performanceTags": ["CORROSION", "APPEARANCE"],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        { "capKind": "SPEC", "name": "피막 두께", "displayValue": "5~25 μm (가상)", "numericMin": 5, "numericMax": 25, "unit": "μm", "standardRef": null, "isDescriptiveOnly": false, "reviewStatus": "PENDING" },
+        { "capKind": "SPEC", "name": "처리 소재", "displayValue": "알루미늄 압출재·주물 (가상)", "numericMin": null, "numericMax": null, "unit": null, "standardRef": null, "isDescriptiveOnly": false, "reviewStatus": "PENDING" },
+        { "capKind": "EQUIPMENT", "name": "아노다이징 라인", "displayValue": "자동 라인 1기 (가상)", "numericMin": null, "numericMax": null, "unit": null, "standardRef": null, "isDescriptiveOnly": true, "reviewStatus": "PENDING" }
+      ],
+      "deliveryRecords": [
+        { "industry": "밸브·유체기기", "partType": "밸브 하우징", "period": "2024~2025 (가상)", "allowedBasis": "가상 실적 — 공개 가능 근거 없음", "reviewStatus": "PENDING" }
+      ]
+    },
+    { "code": "BLACK_OXIDE", "name": "흑착색(알카리흑착) — 가상 소개서 표기", "category": "피막", "materialCodes": ["FE"], "performanceTags": ["APPEARANCE", "CORROSION"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] },
+    { "code": "CHROMATE", "name": "크로메이트 — 가상 소개서 표기", "category": "화성 피막", "materialCodes": ["AL", "ZN"], "performanceTags": ["CORROSION"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] },
+    { "code": "ELECTROPOLISHING", "name": "전해연마 — 가상 소개서 표기", "category": "연마", "materialCodes": ["SUS"], "performanceTags": ["APPEARANCE"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] },
+    { "code": "CHROME_PLATING", "name": "크롬도금 — 가상 소개서 표기", "category": "도금", "materialCodes": ["FE"], "performanceTags": ["WEAR", "APPEARANCE"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] },
+    { "code": "ELECTROLESS_NICKEL", "name": "무전해니켈 — 가상 소개서 표기", "category": "도금", "materialCodes": ["FE", "AL", "CU"], "performanceTags": ["CORROSION", "WEAR", "CONDUCTIVITY"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] },
+    { "code": "PHOSPHATE_COATING", "name": "인산염피막 — 가상 소개서 표기", "category": "화성 피막", "materialCodes": ["FE"], "performanceTags": ["CORROSION"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] },
+    { "code": "PASSIVATION", "name": "부동태 — 가상 소개서 표기", "category": "화성 피막", "materialCodes": ["SUS"], "performanceTags": ["CORROSION"], "registryStatus": "BROCHURE_NAME", "reviewStatus": "PENDING", "capabilities": [], "deliveryRecords": [] }
+  ],
+  "qualifications": [
+    {
+      "kind": "CERTIFICATION",
+      "officialName": "ISO 9001",
+      "number": "VIRTUAL-BROCHURE-ISO9001-0001",
+      "edition": "2015",
+      "holder": "거산케미칼",
+      "site": "본사 공장",
+      "validFrom": "2024-03-01",
+      "validTo": "2027-02-28",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        { "scopeKind": "PROCESS", "processCode": "ANODIZING", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" },
+        { "scopeKind": "PROCESS", "processCode": "CHROMATE", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" },
+        { "scopeKind": "PROCESS", "processCode": "ZINC_PLATING", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" },
+        { "scopeKind": "PROCESS", "processCode": "PASSIVATION", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" }
+      ],
+      "statuses": [
+        { "status": "ACTIVE", "occurredAt": "2024-03-01", "confirmedAt": null, "confirmedBy": null, "reason": "가상 소개서 표기 — 거산 확인 전" }
+      ]
+    },
+    {
+      "kind": "CERTIFICATION",
+      "officialName": "AS9100D",
+      "number": "VIRTUAL-BROCHURE-AS9100D-0001",
+      "edition": "D",
+      "holder": "거산케미칼",
+      "site": "본사 공장",
+      "validFrom": "2024-03-01",
+      "validTo": "2027-02-28",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        { "scopeKind": "PROCESS", "processCode": "ANODIZING", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" },
+        { "scopeKind": "PROCESS", "processCode": "CHROMATE", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" },
+        { "scopeKind": "PROCESS", "processCode": "ZINC_PLATING", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" },
+        { "scopeKind": "PROCESS", "processCode": "PASSIVATION", "customerRef": null, "applicability": "APPLIES", "basis": "가상 소개서 표기 — 검수 대기", "reviewStatus": "PENDING" }
+      ],
+      "statuses": [
+        { "status": "ACTIVE", "occurredAt": "2024-03-01", "confirmedAt": null, "confirmedBy": null, "reason": "가상 소개서 표기 — 거산 확인 전" }
+      ]
+    },
+    {
+      "kind": "APPROVAL",
+      "officialName": "한화시스템 특수공정 승인서",
+      "number": null,
+      "edition": null,
+      "holder": "거산케미칼",
+      "site": "본사 공장",
+      "validFrom": null,
+      "validTo": null,
+      "reviewStatus": "PENDING",
+      "scopes": [],
+      "statuses": [
+        { "status": "UNCONFIRMED", "occurredAt": null, "confirmedAt": null, "confirmedBy": null, "reason": "갱신본 미확인 (거산 확인 전)" }
+      ]
+    }
+  ],
+  "reviewDefaults": {
+    "reviewer": "PM(소개서 입력)",
+    "reviewedAt": "2026-10-21",
+    "basis": "가상 소개서 사본 — 검수 대기, 거산 실제 사양 아님"
+  }
+}

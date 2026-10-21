@@ -67,7 +67,9 @@ def _root(
 @app.command("init-db")
 def init_db() -> None:
     """데이터베이스 파일을 만들고 마이그레이션을 적용합니다(처음·갱신 모두, 다시 실행해도 안전)."""
-    not_implemented_yet("init-db")
+    from geosan.commands.init_db import run_init_db
+
+    raise typer.Exit(code=run_init_db())
 
 
 @app.command("serve")
@@ -86,7 +88,9 @@ def check_config(
     app_settings: Path | None = typer.Argument(None, help="앱 설정 파일(app-settings.yaml)"),
 ) -> None:
     """규칙 설정·앱 설정 파일의 형식을 검사합니다. 오류는 '몇 번째 줄 어느 항목이 왜'로 보입니다."""
-    not_implemented_yet("check-config")
+    from geosan.commands.check_config import run_check_config
+
+    raise typer.Exit(code=run_check_config(rule_config, app_settings))
 
 
 @app.command("import-capability")
@@ -118,7 +122,9 @@ def check_case(
 
     DB 없이 팀원 컴퓨터에서 실행할 수 있습니다.
     """
-    not_implemented_yet("check-case")
+    from geosan.commands.check_case import run_check_case
+
+    raise typer.Exit(code=run_check_case(file, capability))
 
 
 @app.command("evaluate")
@@ -153,7 +159,9 @@ def export_contracts(
 @db_app.command("merge-heads")
 def db_merge_heads() -> None:
     """마이그레이션 머리가 둘일 때 하나로 합칩니다."""
-    not_implemented_yet("db merge-heads", owner="PM 세션", step="Step 10")
+    from geosan.commands.db_merge_heads import run_db_merge_heads
+
+    raise typer.Exit(code=run_db_merge_heads())
 
 
 def main() -> None:
