@@ -128,6 +128,7 @@ export const states = {
   noRequirements: '확인된 요구가 없습니다. 질문 목록을 보세요',
   noEvidence: '아직 근거 자료가 없습니다.',
   notEvaluatedYet: '아직 평가가 없습니다. 운영자가 평가를 실행하면 여기에 나타납니다.',
+  notEvaluatedCount: (n: number) => `평가 전 ${n}건`,
 } as const;
 
 /** 의견 영역 문구(BR10.6, BR9.1). */
@@ -174,6 +175,7 @@ export const cardRows = {
   virtualTag: '가상 사례',
   referenceScorePrefix: '참고',
   reevaluated: '재평가됨',
+  brochureTag: '거산 확인 전',
 } as const;
 
 /** 상세 영역 제목(BR10.5 순서). */
