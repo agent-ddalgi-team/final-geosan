@@ -144,6 +144,9 @@ export const opinionArea = {
   changedByOther: '다른 담당자가 방금 바꿨습니다',
   save: '저장',
   cancel: '취소',
+  saving: '저장 중',
+  contactHint: '전화번호·이메일 같은 연락처는 적지 마세요.',
+  previousPrefix: '이전:',
 } as const;
 
 /** 공통 틀 문구. */
