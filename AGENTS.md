@@ -19,7 +19,7 @@
 
 ## 도구 사용 규칙 (Claude Code · Codex 병행, 2026-10-21 결정)
 - 공통 규칙은 이 파일 한 곳에만 둔다. `.claude/CLAUDE.md`, `.codex/`, `.agents/` 안의 파일은 프레임워크가 관리하므로 손으로 고치지 않는다. 규칙을 바꾸려면 이 파일을 고치고 PR로 올린다.
-- **뼈대(U1, Bolt B1) 기간**: AI-DLC 진행·승인(`/aidlc`, `$aidlc`)은 PM만 한다. 뼈대의 얇은 끝단 조각은 PM 세션의 에이전트가 먼저 만들고, 팀원은 Claude Code나 Codex로 자기가 맡은 폴더(규칙 엔진 / DB·API·명령 / 화면)를 넓히는 코드 작성·시나리오 테스트·PR만 한다. 역할표는 `aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/team-allocation.md` 1장.
+- **뼈대(U1, Bolt B1) 기간**: AI-DLC 진행·승인(`/aidlc`, `$aidlc`)은 PM만 한다. **(2026-10-21 PM 지시로 분담 변경)** PM 세션이 기본 틀(폴더 골격·예시 파일·경계 코드·테스트 러너·CI, PR #1)과 시나리오 테스트·저장소 모델·검사기(PR #2)를 먼저 `main`에 올리면, 팀원은 각자 Claude Code나 Codex로 **자기 작업 지시서(`docs/work-orders/`)대로 자기 Part를 만들어 PR을 올린다**: 유동렬 = 규칙 엔진(`geosan/rules/`, Part C), 이강욱 = 투입·평가·명령·API(`geosan/capability·opportunity·evidence·questions·evaluation·workflows·commands·api/`, Part D), 고선주 = 최소 화면(가짜 응답으로 먼저, `web/src/`, Part E). PM 세션은 PR 검토·합치기와 통합·끝단 확인·문서(Part F)를 맡는다. 경계 파일(머리에 "경계 파일" 표시)과 약속 파일은 고치지 않는다. 역할표는 `aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/team-allocation.md` 1장과 `docs/team-start-guide.md` 1장.
 - **AI 도구에 넣어도 되는 것**: 공개 홈페이지 본문·공고처럼 공개 자료는 넣어도 된다. 거산 역량 파일, 회사소개서 값, 거산 내부 이력·재접촉 입력값은 어떤 AI 도구에도 넣지 않는다. 실제 기업 사례 파일에는 연락처(이메일·전화)를 적지 않는다.
 - **뼈대 뒤 팀별 단위 소유로 바뀌면**: 각자 자기 단위만 진행·승인한다. 다른 사람의 단위는 진행·승인하지 않는다.
 - 같은 AI-DLC 작업(단위)을 두 사람이 같은 시각에 진행하지 않는다. 진행 위치 기록은 하나뿐이라 서로 덮어쓴다.
