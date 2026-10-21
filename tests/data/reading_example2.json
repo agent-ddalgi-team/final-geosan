@@ -1,0 +1,143 @@
+{
+  "_설명": "읽기 예시 2(기획서 v0.17 부록 H, v0.15 F.7)의 규칙 엔진 단독 입력: 25점 항목(NEW_PRODUCT) 하나만 '확인'(일치도 1.0)이고 나머지 7항목은 미확보(UNAVAILABLE). 기대값 E 25 / P 25 / S 100 / C 12.5, 접촉 후보 아님. 가상 데이터이며 거산 값·규칙 설정은 tests/data/apjeong-input.json과 같다.",
+  "baseDate": "2026-10-20",
+  "profile": "NEW",
+  "ruleConfig": {
+    "version": "v0.17-a",
+    "hypothesisNote": "기업 승인 전 가설",
+    "newProfileItems": [
+      { "itemCode": "NEW_PRODUCT", "label": "표면처리가 필요한 제품·부품 생산 근거", "weight": 25, "matchRateSteps": { "해당": 1.0 }, "decay": "NONE" },
+      { "itemCode": "NEW_MATERIAL", "label": "소재와 보유 공정 일치", "weight": 20, "matchRateSteps": { "정확히 일치": 1.0, "일부 가능": 0.5 }, "decay": "NONE" },
+      { "itemCode": "NEW_RECORD", "label": "유사 산업·부품 납품실적", "weight": 15, "matchRateSteps": { "동일 부품": 1.0, "동일 산업": 0.67, "인접 산업": 0.33 }, "decay": "NONE" },
+      { "itemCode": "NEW_PERF", "label": "처리 목적·성능 태그 일치(내식·내마모·외관·전도 등)", "weight": 10, "matchRateSteps": { "2개 이상 일치": 1.0, "1개 일치": 0.5 }, "decay": "NONE" },
+      { "itemCode": "SIG_EXPAND", "label": "공장 증설·신규 생산라인", "weight": 10, "matchRateSteps": { "직접 관련": 1.0, "간접 관련": 0.5 }, "decay": "GENERAL" },
+      { "itemCode": "SIG_ORDER", "label": "신규 수주·제품 출시·사업 확대", "weight": 8, "matchRateSteps": { "직접 관련": 1.0, "간접 관련": 0.5 }, "decay": "GENERAL" },
+      { "itemCode": "SIG_BID", "label": "입찰·협력사 모집·구매 공고", "weight": 7, "matchRateSteps": { "직접 관련": 1.0, "간접 관련": 0.5 }, "decay": "BID_EXCEPTION" },
+      { "itemCode": "SIG_HIRE", "label": "관련 직무 채용(구매·품질·생산기술·표면처리)", "weight": 5, "matchRateSteps": { "직접 관련": 1.0, "간접 관련": 0.5 }, "decay": "HIRE" }
+    ],
+    "recontactProfileItems": [
+      { "itemCode": "RE_PROCESS", "label": "과거 거래 공정·품목과 현재 역량의 일치", "weight": 25, "matchRateSteps": { "동일 공정·동일 품목": 1.0, "동일 공정·유사 품목": 0.6, "일부 공정": 0.3 }, "decay": "NONE" },
+      { "itemCode": "RE_ORDER", "label": "과거 수주·샘플 승인 이력", "weight": 20, "matchRateSteps": { "반복 수주": 1.0, "1회 수주": 0.7, "샘플 승인만": 0.4, "견적·상담만": 0.0 }, "decay": "NONE" },
+      { "itemCode": "RE_REQ", "label": "과거 요구조건(품질·납기·인증) 충족", "weight": 15, "matchRateSteps": { "모두 충족": 1.0, "일부 충족": 0.5 }, "decay": "NONE" },
+      { "itemCode": "RE_LOSS", "label": "실주·거래중단 사유의 해소", "weight": 10, "matchRateSteps": { "사유 없음 또는 해소 확인": 1.0, "미해소": 0.0 }, "decay": "NONE" },
+      { "itemCode": "RE_CYCLE", "label": "예상 재발주 시점 도래 (일치도는 recontactDates.reorderCycle의 날짜 경계로 정함)", "weight": 10, "matchRateSteps": { "해당": 1.0 }, "decay": "NONE" },
+      { "itemCode": "RE_SIGNAL", "label": "신규 수주·증설·관련 채용 신호", "weight": 10, "matchRateSteps": { "직접 관련": 1.0, "간접 관련": 0.5 }, "decay": "GENERAL" },
+      { "itemCode": "RE_NEXT", "label": "후속 연락 약속·샘플 일정·보류 해제 (일치도는 recontactDates.nextContact의 날짜 경계로 정함)", "weight": 10, "matchRateSteps": { "해당": 1.0 }, "decay": "NONE" }
+    ],
+    "certainty": { "CONFIRMED": 1.0, "STRONG": 0.65, "WEAK": 0.25 },
+    "generalDecay": [
+      { "maxDays": 30, "factor": 1.0 },
+      { "maxDays": 90, "factor": 0.5 },
+      { "maxDays": null, "factor": 0.0 }
+    ],
+    "recontactDates": {
+      "reorderCycle": [
+        { "maxAbsDays": 60, "factor": 1.0 },
+        { "maxAbsDays": 120, "factor": 0.5 },
+        { "maxAbsDays": null, "factor": 0.0 }
+      ],
+      "nextContact": [
+        { "scheduledWithinDays": 30, "pastWithinDays": 30, "factor": 1.0 },
+        { "scheduledWithinDays": 90, "pastWithinDays": null, "factor": 0.5 },
+        { "scheduledWithinDays": null, "pastWithinDays": null, "factor": 0.0 }
+      ]
+    },
+    "thresholds": { "urgentE": 75, "plannedE": 75, "reviewE": 60, "reviewP": 70, "researchR": 60, "watchRMin": 40 },
+    "rounding": { "itemScore": "HALF_UP_INT", "display": "ONE_DECIMAL" },
+    "coreEvidence": {
+      "new": { "items": ["NEW_PRODUCT", "NEW_MATERIAL"], "allowedStates": ["CONFIRMED", "STRONG"], "requireReviewedCapability": true },
+      "recontact": { "items": ["RE_PROCESS", "RE_ORDER"], "allowedStates": ["CONFIRMED", "STRONG"], "requireReviewedCapability": true }
+    },
+    "timingRequirements": { "agreedWindowRequired": true },
+    "researchRequirements": { "maxHoursDefault": 2.0 },
+    "classificationLabels": {
+      "FILTER_EXCLUDED": "대상 아님(제외)",
+      "FILTER_PENDING": "기다리는 중 (확인 필요)",
+      "OPS_PENDING": "준비 중",
+      "NOT_EVALUATED": "평가 전",
+      "CONTACT_URGENT": "지금 바로 연락 검토",
+      "CONTACT_PLANNED": "계획해서 연락 검토",
+      "CONTACT_REVIEW": "확인 후 연락 검토",
+      "RESEARCH": "더 알아봐야 함",
+      "CONDITIONAL_WAIT": "조건 갖춰지면 다시 봄",
+      "WATCH": "지켜보는 중",
+      "LOW": "나중에"
+    },
+    "otherGroupSort": {
+      "default": [ { "key": "R", "order": "desc" }, { "key": "E", "order": "desc" }, { "key": "oppId", "order": "asc" } ],
+      "brochure": [ { "key": "E", "order": "desc" }, { "key": "R", "order": "desc" }, { "key": "oppId", "order": "asc" } ]
+    },
+    "datasetKinds": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"],
+    "ruleHash": "d8049c11201510407d02ba7f0b7875ad539ac37858e363061b5698bcfa3a68e2"
+  },
+  "datasetKind": "VIRTUAL_REVIEWED",
+  "opportunity": {
+    "oppId": "opp-reading-ex2",
+    "customerId": "cust-reading-ex2",
+    "relationStatus": "NEW_CONFIRMED",
+    "purpose": "NEW_PROPOSAL",
+    "companyFilterStatus": "PASS",
+    "hasLinkedInteraction": false,
+    "linkedInteractionKinds": []
+  },
+  "processLinks": [
+    { "linkId": "link-reading-ex2-0001", "processId": "proc-anodizing", "processCode": "ANODIZING", "appliedMaterial": null }
+  ],
+  "requirements": [],
+  "signals": [],
+  "interactions": [],
+  "evidence": [
+    { "evidenceId": "ev-apjeong-0002", "sourceGrade": "B", "certainty": "CONFIRMED", "isLlmProposed": false, "subject": "PRODUCT", "occurredAt": null, "securityGrade": "PUBLIC", "blocked": false, "blockedReason": null }
+  ],
+  "capability": {
+    "processes": [
+      { "processId": "proc-zinc-plating", "code": "ZINC_PLATING", "materialCodes": ["FE", "AL", "CU"], "performanceTags": ["CORROSION", "APPEARANCE"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-anodizing", "code": "ANODIZING", "materialCodes": ["AL", "AL_CASTING"], "performanceTags": ["CORROSION", "APPEARANCE"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-black-oxide", "code": "BLACK_OXIDE", "materialCodes": ["FE"], "performanceTags": ["APPEARANCE", "CORROSION"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-chromate", "code": "CHROMATE", "materialCodes": ["AL", "ZN"], "performanceTags": ["CORROSION"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-electropolishing", "code": "ELECTROPOLISHING", "materialCodes": ["SUS"], "performanceTags": ["APPEARANCE"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-chrome-plating", "code": "CHROME_PLATING", "materialCodes": ["FE"], "performanceTags": ["WEAR", "APPEARANCE"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-electroless-nickel", "code": "ELECTROLESS_NICKEL", "materialCodes": ["FE", "AL", "CU"], "performanceTags": ["CORROSION", "WEAR", "CONDUCTIVITY"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-phosphate-coating", "code": "PHOSPHATE_COATING", "materialCodes": ["FE"], "performanceTags": ["CORROSION"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" },
+      { "processId": "proc-passivation", "code": "PASSIVATION", "materialCodes": ["SUS"], "performanceTags": ["CORROSION"], "reviewStatus": "REVIEWED", "datasetKind": "VIRTUAL_REVIEWED" }
+    ],
+    "capabilities": [
+      { "capabilityId": "cap-zinc-plating-01", "processId": "proc-zinc-plating", "capKind": "SPEC", "name": "도금 두께", "numericMin": 5, "numericMax": 25, "unit": "μm", "isDescriptiveOnly": false, "reviewStatus": "REVIEWED" },
+      { "capabilityId": "cap-anodizing-01", "processId": "proc-anodizing", "capKind": "SPEC", "name": "피막 두께", "numericMin": 5, "numericMax": 25, "unit": "μm", "isDescriptiveOnly": false, "reviewStatus": "REVIEWED" },
+      { "capabilityId": "cap-anodizing-02", "processId": "proc-anodizing", "capKind": "SPEC", "name": "처리 소재", "numericMin": null, "numericMax": null, "unit": null, "isDescriptiveOnly": false, "reviewStatus": "REVIEWED" },
+      { "capabilityId": "cap-anodizing-03", "processId": "proc-anodizing", "capKind": "TEST", "name": "염수분무 시험", "numericMin": null, "numericMax": null, "unit": null, "isDescriptiveOnly": false, "reviewStatus": "REVIEWED" },
+      { "capabilityId": "cap-anodizing-04", "processId": "proc-anodizing", "capKind": "EQUIPMENT", "name": "아노다이징 라인", "numericMin": null, "numericMax": null, "unit": null, "isDescriptiveOnly": true, "reviewStatus": "REVIEWED" }
+    ],
+    "deliveryRecords": [
+      { "recordId": "rec-anodizing-01", "processId": "proc-anodizing", "industry": "밸브·유체기기", "partType": "밸브 하우징", "reviewStatus": "REVIEWED" }
+    ],
+    "qualifications": [
+      { "qualId": "qual-01", "kind": "CERTIFICATION", "officialName": "ISO 9001", "number": "VIRTUAL-ISO9001-0001", "edition": "2015", "holder": "거산케미칼", "site": "본사 공장", "validFrom": "2024-03-01", "validTo": "2027-02-28", "reviewStatus": "REVIEWED", "currentStatus": "ACTIVE" },
+      { "qualId": "qual-02", "kind": "CERTIFICATION", "officialName": "AS9100D", "number": "VIRTUAL-AS9100D-0001", "edition": "D", "holder": "거산케미칼", "site": "본사 공장", "validFrom": "2024-03-01", "validTo": "2027-02-28", "reviewStatus": "REVIEWED", "currentStatus": "ACTIVE" },
+      { "qualId": "qual-03", "kind": "APPROVAL", "officialName": "한화시스템 특수공정 승인서", "number": null, "edition": null, "holder": "거산케미칼", "site": "본사 공장", "validFrom": null, "validTo": null, "reviewStatus": "REVIEWED", "currentStatus": "UNCONFIRMED" }
+    ],
+    "qualificationScopes": [
+      { "scopeId": "scope-01-01", "qualId": "qual-01", "scopeKind": "PROCESS", "processId": "proc-anodizing", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-01-02", "qualId": "qual-01", "scopeKind": "PROCESS", "processId": "proc-chromate", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-01-03", "qualId": "qual-01", "scopeKind": "PROCESS", "processId": "proc-zinc-plating", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-01-04", "qualId": "qual-01", "scopeKind": "PROCESS", "processId": "proc-passivation", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-02-01", "qualId": "qual-02", "scopeKind": "PROCESS", "processId": "proc-anodizing", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-02-02", "qualId": "qual-02", "scopeKind": "PROCESS", "processId": "proc-chromate", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-02-03", "qualId": "qual-02", "scopeKind": "PROCESS", "processId": "proc-zinc-plating", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" },
+      { "scopeId": "scope-02-04", "qualId": "qual-02", "scopeKind": "PROCESS", "processId": "proc-passivation", "customerId": null, "oppId": null, "applicability": "APPLIES", "reviewStatus": "REVIEWED" }
+    ]
+  },
+  "readinessCheck": null,
+  "researchReadiness": null,
+  "operationalReady": true,
+  "itemInputs": [
+    { "itemCode": "NEW_PRODUCT", "state": "CONFIRMED", "matchRate": 1.0, "matchRateStep": null, "factJudged": "표면처리가 필요한 제품 생산 근거 (해당 1.0, 확인) → 25", "evidenceIds": ["ev-apjeong-0002"], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "NEW_MATERIAL", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "NEW_RECORD", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "NEW_PERF", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "SIG_EXPAND", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "SIG_ORDER", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "SIG_BID", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] },
+    { "itemCode": "SIG_HIRE", "state": "UNAVAILABLE", "matchRate": null, "matchRateStep": null, "factJudged": "미확보", "evidenceIds": [], "signalIds": [], "usedCapabilityRefs": [], "usedCapabilityIds": [] }
+  ]
+}
