@@ -13,6 +13,7 @@
 3. **뼈대 분담 변경(PM 지시 2026-10-21)**: 팀 실천 방식·`AGENTS.md`의 "얇은 끝단 조각은 PM 세션 에이전트가 먼저 만든다"를 다음으로 바꾼다. 기본 틀(Part A·A-2)이 `main`에 합쳐지면 **유동렬 = 규칙 엔진(Part C)**, **이강욱 = 투입·평가·명령·API(Part D)**, **고선주 = 최소 화면, 가짜 응답으로 먼저(Part E)** 를 각자 AI 도구로 작업 지시서대로 만들어 PR을 올리고, **PM 세션 = 기본 틀·경계 코드·시나리오 테스트 틀·저장소 모델·검사기·끝단 확인·문서·PR 검토와 합치기(Part A·A-2·F)**. 이 변경은 Step 8에서 `AGENTS.md`·`docs/team-start-guide.md`·전달 계획 `team-allocation.md` 1장에 적는다.
 4. **PR·커밋 규칙 추가(PM 지시)**: 테스트 통과 뒤에만 PR, PR 본문은 비전공자도 읽을 수 있게, 기능마다 쉬운 말 커밋. `AGENTS.md`에 이미 적었다(이 계획을 고치는 시점에 반영).
 5. **기본 틀 먼저 올리기**: Part A가 끝나면 PM이 확인하고 PR로 `main`에 올린다(팀원 1명 빠른 확인 → 스쿼시). 커밋·푸시는 PM이 요청할 때만 한다.
+6. **예비 경로와 check-case 조기 연결(PM 지시 2026-10-21, 10/29 목 거산 방문 대비)**: 10/28(수) 오전까지 "추천 기업 순위·근거·기업별 맞춤 메모"가 자료로 나와야 한다. 화면·API 통합이 늦어도 되게 **Part A-3 예비 경로**(Step 32~34: 사례 파일 → 평가 입력 변환기, `geosan demo-report` 명령, 메모 프롬프트 틀·점검표)를 더한다. `check-case` 명령은 Step 19가 아니라 Step 11(A-2)에서 먼저 연결해 팀원이 10/22(목)부터 쓴다. 계약 요약 C8에 같은 날 기록했다(더하는 변경). 메모는 10/29용은 사람이 AI 채팅으로 쓰는 방식(P1), 제품 기능은 P2(11/15 전달 이후)다. 마감 변경: 규칙 엔진 목표 10/23(금) 저녁(예비 10/24 토, 주말 4시간), 사례 파일 PR 10/26(월) 저녁, 예비 조치 판단 10/25(일) 저녁과 2차 10/27(화) 저녁. 요일은 2026-10-21이 수요일인 기준으로 고쳤다.
 
 ## Testing Contract
 
@@ -87,6 +88,7 @@
 |---|---|---|---|---|
 | A 기본 틀·경계 코드 | PM 세션 | 전체 폴더 골격, `contracts/`, `examples/`, `docs/` | PR #1 (가지 `jiye/u1-base`) | 팀원 1명 빠른 확인(30분) → 스쿼시 |
 | A-2 시나리오 테스트·저장소 모델·검사기 | PM 세션 | `tests/features/u1`, `tests/steps/u1`, `geosan/storage`, 각 부품 `models.py`, `migrations/`, `geosan/config` | PR #2 (`jiye/u1-foundation`) | 이강욱 확인 → 스쿼시 |
+| A-3 예비 경로(시연 자료 출력, 갱신 2026-10-21) | PM 세션 | `geosan/evaluation/file_input.py`, `geosan/commands/demo_report.py`, `tests/unit/u1/test_demo_report.py`, `docs/demo-memo-guide.md` | PR #2-1 (`jiye/25-demo-report`) | 팀원 1명 확인 → 스쿼시 |
 | C 규칙 엔진 | 유동렬 | `geosan/rules/` 안의 새 파일, `tests/unit/u1/test_rules_*.py` | 1~2개 (`dongryeol/u1-rules-*`) | PM 세션이 계약 C3·계획·A정밀 기대값 대조 → 스쿼시 |
 | D 투입·평가·명령·API | 이강욱 | `geosan/capability·opportunity·evidence·questions·evaluation·workflows·commands·api/`의 새 파일, `tests/unit/u1/` 해당 파일 | 2~3개 (`kangwook/u1-import`, `u1-evaluate`, `u1-api-commands`) | PM 세션이 계약 C1·C2·C6·C7·C8 대조 → 스쿼시 |
 | E 최소 화면 | 고선주 | `web/src/` 안의 새 파일, `web/src/**/__tests__` | 2개 (`seonju/u1-web-mock`, `u1-web-connect`) | PM 세션이 계약 C1·화면 설계 대조 → 스쿼시 |
@@ -96,7 +98,7 @@
 - 팀원은 자기 작업 지시서(`docs/work-orders/`)의 "만들 파일" 목록 밖의 파일을 만들거나 고치지 않는다. 공통 파일(`labels/ko.ts`, 설정 키)은 추가만 한다.
 - 각 PR은 `AGENTS.md`의 PR·커밋 규칙(테스트 통과 뒤에만 PR, 쉬운 말 본문·커밋)을 지킨다. PR 검사(CI)는 Part A에서 올라간다.
 - AI-DLC 코드 생성 단계는 세 트랙의 PR이 모두 합쳐지고 Part F가 끝날 때까지 "진행 중"으로 남는다. 세션을 넘겨도 이어진다. 계획의 체크 표시는 PM 세션이 PR을 합칠 때 한다.
-- **예비 조치**: 10/26(일) 저녁까지 합쳐지지 않은 트랙은 PM 세션이 남은 단계를 이어 만든다(그 팀원은 검토·테스트 보강으로 역할을 바꿈). 체크포인트 일정은 아래 "일정" 참조.
+- **예비 조치**: 10/25(일) 저녁(갱신 2026-10-21; 2차 판단은 10/27(화) 저녁, 그때까지 화면·API 통합이 안 됐으면 10/28은 자료·리허설에만 쓴다)까지 합쳐지지 않은 트랙은 PM 세션이 남은 단계를 이어 만든다(그 팀원은 검토·테스트 보강으로 역할을 바꿈). 체크포인트 일정은 아래 "일정" 참조.
 
 ## 단계 (Steps)
 
@@ -125,8 +127,16 @@
 
 - [ ] **Step 9. 시나리오 10개 파일 작성(한국어 Given/When/Then, 이 시점에는 실패가 정상)**: `tests/features/u1/` 아래 `apjeong_skeleton.feature`(A정밀 끝단: 역량·사례 투입 → evaluate → verify-case 일치 → 목록 1건 순위 1·분류 CONTACT_URGENT·점수 81 → 상세 요구 표 ISO 9001 PASS·샘플 승인 LATER_STAGE·Nadcap QUESTION_NEEDED·질문 1개(Nadcap) → 의견 저장 → 목록에 의견 반영), `s01_capability.feature`(9종 등록·검수 상태 4값·소개서 묶음 PENDING·EQUIPMENT 판정 제외·범위 행·재투입 REVIEWED 유지 경고), `s02_opportunity_identity.feature`(같은 caseId 두 번·발견 경로 둘 → 기회 하나·자식 행 supersededAt·평가 이력 보존), `s04_interaction_isolation.feature`(같은 고객 다른 기회 이력 → 점수 변화 없음·hasLinkedInteraction false), `s06_relation_unconfirmed.feature`(UNCONFIRMED → 점수 계산·FILTER_PENDING·blocksApproval), `s07_requirement_level.feature`(reqLevel 비움 → UNKNOWN 저장·필터 영향 없음·질문 생성, PENDING 자격으로 PASS 없음), `s08_requirement_check.feature`(통과 7조건, 범위 안 맞음 EXCLUDED, 만료·정지 자격, LATER 단계, REQUIRED·UNKNOWN 단계 → PENDING_BLOCKS, 소재 불일치는 연결만 제외(S09 일부)), `s10_opinion.feature`(의견 3값·NOT_TARGET 사유 400·연락처 400·viewer 403·낡은 evalId 저장·버전 증가·previousValue·분류 불변), `reading_example2.feature`(E25/P25/S100/C12.5, 접촉 후보 아님), `brochure_dataset.feature`(BROCHURE 활성 묶음: 필수 요구 있으면 FILTER_PENDING·"참고 N"·띠·질문, 없으면 OPS_PENDING, 접촉 후보 없음, OTHER 정렬 E순; 가상 검수 묶음 값과 섞이지 않음). 단계 함수는 `tests/steps/u1/`에 파일별로 두고 실제 호출 코드(명령 함수·TestClient·임시 DB)로 작성해 구현 뒤 그대로 통과하게 한다. 규칙 엔진 단독 시나리오(`reading_example2`·점수 계산 부분)는 Step 3의 입력 모델로 직접 호출한다. → US1.1, US1.2, US3.2, US5.1, US5.2, US5.3, US6.1, US6.2, US7.1, US10.1
 - [ ] **Step 10. 저장소와 모델·마이그레이션(`geosan/storage/`, 각 부품 `models.py`, `migrations/`)**: SQLAlchemy 2 엔진(WAL·busy_timeout 5000·외래 키 켬·`GEOSAN_DB_PATH`), 세션·트랜잭션 도우미(한 흐름 = 한 트랜잭션), 공통 열 기본 모델(created_at UTC·created_by·session_ref·dataset_kind·is_virtual, 자식 행 superseded_at), ID 생성(접두사+ULID), `entities.md`의 28개 엔티티를 접두사별 모델로(cfg_·cap_·opp_·ev_·eval_·q_·rec_), Alembic 설정과 첫 마이그레이션 파일 접두사별 7개(`cfg_001_init.py` … `rec_001_init.py`), `geosan db merge-heads` 도우미, `init-db` 명령의 바탕 함수. 세 트랙은 모델 열을 바꾸지 않는다(필요하면 PM에게). → US1.1, US3.2, US5.1, US7.1, C6
-- [ ] **Step 11. 설정·검사기·로더(`geosan/config/`)**: `loader.py`(ruamel.yaml로 JSON·YAML 읽기, 경로→줄 번호, `_설명` 무시, UTF-8 BOM 허용, 그 밖 인코딩 오류), `validators.py`(연락처 패턴 검사기 한 곳: 이메일·국내 전화·+82; 모르는 키 오류; 허용 값 오류 문구 `<줄>번째 줄 <경로>: … 중 하나여야 하는데 '<값>'이 적혀 있습니다`), `rule_config.py`(pydantic 모델·버전·SHA-256 해시·`cfg_rule_config_version` 등록·FIXED 덮어쓰기 금지·단계 이름→숫자 변환표), `app_settings.py`(담당자 목록·activeDatasetKind·brand·비밀 키(`password`·`apiKey`·`token`) 있으면 오류), `schemas.py`(CaseFile·CapabilityFile pydantic 모델 → `contracts/*.schema.json` 생성 원본). → C7, BR2.1·BR2.2·BR7.6·BR11.3
+- [ ] **Step 11. 설정·검사기·로더(`geosan/config/`)**: `loader.py`(ruamel.yaml로 JSON·YAML 읽기, 경로→줄 번호, `_설명` 무시, UTF-8 BOM 허용, 그 밖 인코딩 오류), `validators.py`(연락처 패턴 검사기 한 곳: 이메일·국내 전화·+82; 모르는 키 오류; 허용 값 오류 문구 `<줄>번째 줄 <경로>: … 중 하나여야 하는데 '<값>'이 적혀 있습니다`), `rule_config.py`(pydantic 모델·버전·SHA-256 해시·`cfg_rule_config_version` 등록·FIXED 덮어쓰기 금지·단계 이름→숫자 변환표), `app_settings.py`(담당자 목록·activeDatasetKind·brand·비밀 키(`password`·`apiKey`·`token`) 있으면 오류), `schemas.py`(CaseFile·CapabilityFile pydantic 모델 → `contracts/*.schema.json` 생성 원본). → C7, BR2.1·BR2.2·BR7.6·BR11.3 **(갱신 2026-10-21)** `geosan check-case <file.json>` 명령을 이 단계에서 검사기에 연결한다(DB 없이 형식·허용 값·연락처 패턴 검사, 줄·항목·이유 출력, 종료 코드 0/1). 팀원이 10/22(목)부터 사례 파일을 검사할 수 있게 하기 위해서이며, Step 19에서는 이 명령을 "이미 연결됨"으로 본다.
 - [ ] **Step 12. 저장소·검사기 단위 테스트(`tests/unit/u1/test_storage.py`, `test_config_loader_validators.py`)**: 저장소 6개(WAL·busy_timeout 설정 확인, 공통 열 자동 채움, 마이그레이션 적용·재실행, downgrade 1단계, 접두사별 테이블 존재, ID 접두사), 로더·검사기 8개(줄 번호 문구·모르는 키·`_설명`·연락처 3패턴·BOM·단계 이름 변환·비밀 키 오류·min>max). → NFR7, C7
+
+### Part A-3. 예비 경로 — 시연 자료 출력 (Step 32~34, 담당 PM 세션, 갱신 2026-10-21) — 끝나면 PR #2-1
+
+10/29(목) 거산 방문에서 "추천 기업 순위·근거·기업별 맞춤 메모"를 자료로 가져가기 위한 경로다. DB·API·화면 없이 **규칙 엔진 + 역량 파일 + 사례 파일**만으로 돈다. 번호는 기존 Step 번호(이슈·지시서가 참조)를 유지하기 위해 32부터 붙였고, 실행 순서는 Step 12 다음이다. 규칙 엔진(Part C)이 합쳐지기 전에는 `tests/fakes/fake_engine.py`로 먼저 돌리고, 합쳐지면 진짜 엔진으로 A정밀 기대값을 확인한다. 계약 C8에 `demo-report`를 더했다(PM 승인 2026-10-21).
+
+- [ ] **Step 32. 사례 파일 → 평가 입력 변환기(`geosan/evaluation/file_input.py`)**: 역량 파일(활성 묶음: VIRTUAL_REVIEWED 또는 BROCHURE)과 사례 파일 폴더(`*.json`, `_설명` 무시, `check-case`와 같은 검사)를 읽어 C3 `EvaluationInput` 목록으로 만든다. Step 18의 스냅샷과 같은 뜻의 입력이되 DB를 거치지 않는다(기회 ID는 `caseId` 기반 임시값, 8항목 없는 항목은 UNAVAILABLE 행). 기준일은 `--base-date` > 사례 파일 `baseDate` > 오류. 연락처 패턴이 있으면 그 파일을 건너뛰지 않고 전체를 실패시킨다(종료 코드 1). → US5.1, US5.2, C3, C7
+- [ ] **Step 33. `geosan demo-report` 명령(`geosan/commands/demo_report.py`)과 단위 테스트 5개**: `--capability <file> --cases <dir> --out <dir> [--base-date]`. 흐름: 변환기 → `evaluate` → `rank` → 출력. 출력 파일: `ranking.csv`(순위·회사명·분류 쉬운 말·점수 표시(소개서 묶음이면 "참고 N")·이유·막는 조건·다음 할 일·근거 수), `ranking.html`(같은 표, 인쇄용, 띠 "시연용 초안·거산 확인 전"), `companies/<순위>-<회사명>.md`(근거: 분류·점수 E/P/S/R/C·필수 요구 판정 표·질문 목록·근거 3종과 출처 주소·시점 신호), `facts/<순위>-<회사명>.md`(메모 재료 사실표: 상대 회사 요약, 필요한 처리, 맞는 거산 공정·소재·인증 **종류**(소개서 묶음이면 "소개서 기준·거산 확인 전", 인증 번호·유효기간은 적지 않음), 질문, 다음 할 일). 모든 파일 머리에 "시연용 초안·거산 확인 전". 단가·견적·납기·경쟁사 항목은 틀에 없다(CON-23). 저장하지 않는다. 단위 테스트(`tests/unit/u1/test_demo_report.py`) 5개: A정밀 1건으로 순위 1·CONTACT_URGENT·E77/P95/S81.1/R82, 소개서 묶음이면 참고 점수·접촉 후보 없음, 연락처 있으면 종료 코드 1·출력 없음, 두 번 실행 같은 결과, 출력 파일 머리 표시. → US5.1, US5.3, US6.2, C8
+- [ ] **Step 34. 메모 프롬프트 틀·점검표(`docs/demo-memo-guide.md`)**: 팀원이 사실표 + 상대 회사 공개 자료 + 거산 공개 홈페이지 + 회사소개서(허용 범위)를 AI 채팅에 넣어 1쪽 메모를 쓰는 방법. ① 넣어도 되는 것(공개 자료, 사실표, 소개서의 공정·소재·인증 범위·주요 거래처명·인증서/승인서 종류) / 넣지 않는 것(인증서·승인서 번호·유효기간, 연락처, 거산 내부 이력·거래 이력; 근거: PM 판단 2026-10-21, 거산 확인 메일 11번 질문 대기) ② 프롬프트 틀(5개 영역: 상대 회사 요약 / 왜 추천 / 거산이 제공할 수 있는 것 / 확인할 질문 / 다음 할 일) ③ 금지 항목 점검표(단가·견적·납기 약속·경쟁사 비교·자동 발송 문구, CON-23) ④ 머리 표시 "시연용 초안·거산 확인 전" ⑤ 검토·제출 방법(상위 5곳, 1인 1~2곳, PR 또는 공유 폴더). → US9.4, US10.4
 
 ### Part C. 규칙 계산 층 (Step 13~15, 담당 유동렬 — 지시서 `u1-rules-engine.md`)
 
@@ -163,13 +173,19 @@
 
 | 구간 | 담당 | 날짜 | 비고 |
 |---|---|---|---|
-| Part A 기본 틀 → PR #1 합침 | PM 세션 + 팀원 1명 확인 | 10/21(화) | 에이전트 1~1.5시간 + 확인·PR 1시간 |
-| Part A-2 시나리오·모델·검사기 → PR #2 합침 | PM 세션 + 이강욱 확인 | 10/22(수) 오전 | 에이전트 2~3시간. 팀원은 PR #1만 합쳐져도 지시서 읽기·환경 설치·사례 파일 시작 가능 |
-| Part C·D·E 병렬 | 유동렬 / 이강욱 / 고선주 | 10/22(수) 오후 ~ 10/26(일) | C 약 6~8시간, D 약 12~16시간(PR 3개), E 약 8~10시간(PR 2개). 비전공자 + AI 도구 기준 |
+| Part A 기본 틀 → PR #1 합침 | PM 세션 + 팀원 1명 확인 | 10/21(수) | 에이전트 1~1.5시간 + 확인·PR 1시간. PR #24 |
+| Part A-2 시나리오·모델·검사기(check-case 포함) → PR #2 합침 | PM 세션 + 이강욱 확인 | 10/21(수) 저녁 에이전트, 10/22(목) 아침 확인·합침 | 에이전트 2~3시간. 팀원은 10/22(목) 저녁부터 `check-case` 사용 |
+| Part A-3 예비 경로 → PR #2-1 합침 | PM 세션 + 팀원 1명 확인 | 10/22(목) 오후 ~ 10/23(금) | 가짜 엔진으로 먼저. 규칙 엔진 합쳐지면 진짜 결과 확인 |
+| Part C 규칙 엔진 | 유동렬 | 목표 10/23(금) 저녁, 예비 10/24(토, 4시간) | 모든 경로가 여기 걸림. 10/25(일) 저녁까지 안 되면 PM 세션이 이어 만듦 |
+| Part D 투입·평가·명령·API | 이강욱 | PR1 10/23(금), PR2 10/25(일), PR3 10/26(월) 저녁 | 주말 4시간 기준. PR3는 화면 연결용이라 시연 필수 아님 |
+| Part E 화면 | 고선주 | PR1(가짜 응답) 10/23(금) 저녁, 예비 10/24(토); PR2(실제 연결) 10/27(화) 오전, 되면 | 시연은 가짜 응답 모드도 허용 |
+| 실제 기업 사례 파일 10~20곳 | 전원 | PR 마감 10/26(월) 저녁 | 10/22(목) 후보 선정 → 10/23~26 작성·check-case |
 | PR 검토·합치기 | PM 세션 | 들어오는 대로, 하루 1~2회 | PR당 30분~1시간 |
-| 예비 조치 판단 | PM | 10/26(일) 저녁 | 안 합쳐진 트랙은 PM 세션이 이어 만듦 |
-| Part F 통합·끝단 확인·문서 → PR #3 | PM 세션 | 10/27(월) ~ 10/28(화) | 에이전트 3~5시간 |
-| 3.6 빌드와 테스트, 뼈대 체크포인트 | PM | 10/28(화) ~ 10/29(수) | 전달 계획 기한 10/28, 시연 10/30 |
+| 예비 조치 판단 | PM | 1차 10/25(일) 저녁, 2차 10/27(화) 저녁 | 1차: 규칙 엔진·예비 경로·사례 파일 수·D PR2/E PR1. 2차: 화면·API 통합 여부(안 됐으면 10/28은 자료·리허설만) |
+| 1차 결과 출력 → 메모 초안 | PM(demo-report) → 전원(메모 5곳) | 10/27(화) 정오 → 오후 | 사실표 + 공개 자료 + 소개서(허용 범위)로 AI 채팅 메모 |
+| Part F 통합·끝단 확인 → PR #3 | PM 세션 | Step 27은 10/27(화)(되면), Step 28~31은 10/30(금)~10/31(토) | 에이전트 3~5시간 |
+| 최종 확인·리허설·출력 | PM + 전원 | 10/28(수) 오전 확인, 오후 리허설·출력 | |
+| 3.6 빌드와 테스트, 뼈대 체크포인트 | PM | 10/29(목) 시연 당일 또는 직후 | 전달 계획 기한 10/28, 거산 방문 10/29(목) |
 
 ## 단계 ↔ 이야기 대응표 (Story Traceability)
 

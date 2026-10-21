@@ -601,10 +601,11 @@ commands:
   geosan check-config [rule-config.yaml] [app-settings.yaml]   # U1. 설정 파일 형식 검사(오류는 C7 형식: 줄·항목·이유)
   geosan import-capability <file.json>           # U1. 형식·연락처 검사 → 저장(재투입 규칙 적용)
   geosan import-case <file.json>                 # U1. 가상 사례 묶음 투입(투입 순서 자동). 실제 기업도 같은 형식(isVirtual: false)
-  geosan check-case <file.json>                  # U1. (갱신 제안 2026-10-21, 기능 설계 Q8 답 확정 후 적용) 저장 없이 형식·허용 값·연락처 패턴만 검사. DB 없이 팀원 컴퓨터에서 실행
+  geosan check-case <file.json>                  # U1. (갱신 제안 2026-10-21, 기능 설계 Q8 답 확정 후 적용) 저장 없이 형식·허용 값·연락처 패턴만 검사. DB 없이 팀원 컴퓨터에서 실행. (PM 지시 2026-10-21) 코드 생성 Part A-2(Step 11)에서 먼저 연결해 팀원이 10/22부터 쓴다
   geosan evaluate [--opp <id>...] [--base-date YYYY-MM-DD]   # U1. 흐름 ⓪. 출력: 묶음 ID, 기회 수, 분류 요약
   geosan verify-case <file.json>                 # U1. 평가 뒤 expected와 비교. 출력: 항목별 일치/불일치 표
   geosan export-contracts                        # U1. contracts/openapi.json·*.schema.json 생성(사람이 명시적으로만 실행)
+  geosan demo-report --capability <file.json> --cases <dir> --out <dir> [--base-date YYYY-MM-DD]   # U1 예비 경로(PM 승인 2026-10-21, 10/29 부분 시연 대비). DB·API·화면 없이 역량 파일 + 사례 파일 폴더를 읽어 규칙 엔진으로 평가하고 순위표(CSV + 인쇄용 HTML), 기업별 근거(md), 기업별 사실표(md, 메모 재료)를 <out>에 쓴다. 저장하지 않는다. 모든 출력 머리에 "시연용 초안·거산 확인 전". 소개서 묶음이면 참고 점수·접촉 후보 없음(BR5.6). 연락처 패턴이 있으면 쓰지 않고 실패(종료 코드 1)
   geosan ingest <sourceId> [--max N]             # U3·U9. 흐름 ⑥
   geosan merge-list                              # U3. 확인 필요 후보 목록
   geosan merge-confirm <candidateId> --keep <customerId>   # U3. 흐름 ⑤
@@ -623,6 +624,7 @@ guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   거산 값 묶음 전환: [dataset-set, evaluate]                          # 2
   백업·복원: [backup] / [restore, serve]                              # 1 / 2
   비용 확인: [cost]                                                   # 1
+  시연 자료 출력(예비 경로): [demo-report]                            # 1 (PM 승인 2026-10-21)
 rules:
   - 비밀번호·API 키는 인자로 받지 않고 환경 변수에서만
 ```
