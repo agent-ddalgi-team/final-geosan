@@ -118,14 +118,94 @@
       "R": 82,
       "C": 87.5,
       "items": [
-        { "itemCode": "NEW_PRODUCT", "label": "표면처리가 필요한 제품·부품 생산 근거", "state": "CONFIRMED", "weight": 25, "matchRate": 1.0, "certainty": 1.0, "decay": 1.0, "score": 25, "factJudged": "밸브 바디 생산" },
-        { "itemCode": "NEW_MATERIAL", "label": "소재와 보유 공정 일치", "state": "CONFIRMED", "weight": 20, "matchRate": 1.0, "certainty": 1.0, "decay": 1.0, "score": 20, "factJudged": "알루미늄 주물" },
-        { "itemCode": "NEW_RECORD", "label": "유사 산업·부품 납품실적", "state": "CONFIRMED", "weight": 15, "matchRate": 0.67, "certainty": 1.0, "decay": 1.0, "score": 10, "factJudged": "동일 산업" },
-        { "itemCode": "NEW_PERF", "label": "처리 목적·성능 태그 일치", "state": "CONFIRMED", "weight": 10, "matchRate": 0.5, "certainty": 1.0, "decay": 1.0, "score": 5, "factJudged": "1개 일치" },
-        { "itemCode": "SIG_EXPAND", "label": "공장 증설·신규 생산라인", "state": "CONFIRMED", "weight": 10, "matchRate": 1.0, "certainty": 1.0, "decay": 1.0, "score": 10, "factJudged": "증설 (가상 추가)" },
-        { "itemCode": "SIG_ORDER", "label": "신규 수주·제품 출시·사업 확대", "state": "NO_SIGNAL", "weight": 8, "matchRate": null, "certainty": null, "decay": null, "score": 0, "factJudged": "신호 없음" },
-        { "itemCode": "SIG_BID", "label": "입찰·협력사 모집·구매 공고", "state": "CONFIRMED", "weight": 7, "matchRate": 1.0, "certainty": 1.0, "decay": 1.0, "score": 7, "factJudged": "마감 전" },
-        { "itemCode": "SIG_HIRE", "label": "관련 직무 채용", "state": "UNAVAILABLE", "weight": 5, "matchRate": null, "certainty": null, "decay": null, "score": null, "factJudged": "미확보" }
+        {
+          "itemCode": "NEW_PRODUCT",
+          "label": "표면처리가 필요한 제품·부품 생산 근거",
+          "state": "CONFIRMED",
+          "weight": 25,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 25,
+          "factJudged": "밸브 바디 생산"
+        },
+        {
+          "itemCode": "NEW_MATERIAL",
+          "label": "소재와 보유 공정 일치",
+          "state": "CONFIRMED",
+          "weight": 20,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 20,
+          "factJudged": "알루미늄 주물"
+        },
+        {
+          "itemCode": "NEW_RECORD",
+          "label": "유사 산업·부품 납품실적",
+          "state": "CONFIRMED",
+          "weight": 15,
+          "matchRate": 0.67,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 10,
+          "factJudged": "동일 산업"
+        },
+        {
+          "itemCode": "NEW_PERF",
+          "label": "처리 목적·성능 태그 일치",
+          "state": "CONFIRMED",
+          "weight": 10,
+          "matchRate": 0.5,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 5,
+          "factJudged": "1개 일치"
+        },
+        {
+          "itemCode": "SIG_EXPAND",
+          "label": "공장 증설·신규 생산라인",
+          "state": "CONFIRMED",
+          "weight": 10,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 10,
+          "factJudged": "증설 (가상 추가)"
+        },
+        {
+          "itemCode": "SIG_ORDER",
+          "label": "신규 수주·제품 출시·사업 확대",
+          "state": "NO_SIGNAL",
+          "weight": 8,
+          "matchRate": null,
+          "certainty": null,
+          "decay": null,
+          "score": 0,
+          "factJudged": "신호 없음"
+        },
+        {
+          "itemCode": "SIG_BID",
+          "label": "입찰·협력사 모집·구매 공고",
+          "state": "CONFIRMED",
+          "weight": 7,
+          "matchRate": 1.0,
+          "certainty": 1.0,
+          "decay": 1.0,
+          "score": 7,
+          "factJudged": "마감 전"
+        },
+        {
+          "itemCode": "SIG_HIRE",
+          "label": "관련 직무 채용",
+          "state": "UNAVAILABLE",
+          "weight": 5,
+          "matchRate": null,
+          "certainty": null,
+          "decay": null,
+          "score": null,
+          "factJudged": "미확보"
+        }
       ],
       "ruleVersion": "v0.17-a",
       "datasetKind": "VIRTUAL_REVIEWED",

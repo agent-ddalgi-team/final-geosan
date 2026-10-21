@@ -22,19 +22,15 @@ export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRM
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
 export type NeededStage = 'NOW' | 'LATER' | 'UNKNOWN';
-export type CheckDisplay = 'PASS' | 'LATER_STAGE' | 'QUESTION_NEEDED' | 'PENDING_BLOCKS' | 'EXCLUDED';
+export type CheckDisplay =
+  'PASS' | 'LATER_STAGE' | 'QUESTION_NEEDED' | 'PENDING_BLOCKS' | 'EXCLUDED';
 export type FilterState = 'PASS' | 'PENDING' | 'EXCLUDED';
 export type Certainty = 'CONFIRMED' | 'STRONG' | 'WEAK' | 'UNKNOWN';
 export type SourceGrade = 'A' | 'B' | 'C' | 'D';
 export type Opinion = 'WORTH_REVIEW' | 'NEED_CHECK' | 'NOT_TARGET';
 export type QuestionStatus = 'WAITING' | 'REQUESTED' | 'REPLIED' | 'APPLIED';
 export type QuestionTargetKind =
-  | 'QUALIFICATION'
-  | 'PROCESS'
-  | 'CAPABILITY'
-  | 'FIELD'
-  | 'REQUIREMENT'
-  | 'OPPORTUNITY';
+  'QUALIFICATION' | 'PROCESS' | 'CAPABILITY' | 'FIELD' | 'REQUIREMENT' | 'OPPORTUNITY';
 
 /** 성공 응답 meta (C1 공통). */
 export interface Meta {
