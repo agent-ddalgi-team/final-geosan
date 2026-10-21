@@ -20,7 +20,7 @@
 | `geosan/opportunity/queries.py`, `geosan/evidence/queries.py`(FORBIDDEN 기본 제외), `geosan/questions/store.py`(질문 upsert·연결·ResearchTask), `geosan/evaluation/inputs.py`(ItemJudgmentInput·ReadinessCheck 저장·현재 행 조회) | 조회·저장 함수 | BR7.3, BR8.2 |
 | `tests/unit/u1/test_capability_import.py`(7), `tests/unit/u1/test_case_import.py`(8) | 단위 테스트 | — |
 
-- (PM 세션 추가 2026-10-21, Step 11 선행 연결) 파일 검사기는 이미 있다: `check_case`는 `geosan.config.file_checks.check_case_file(path, capability_path)`를, 역량 파일 검사는 `check_capability_file(path)`를 그대로 부르면 된다(둘 다 `CheckReport`를 돌려주고 통과하면 `.case`/`.capability`에 pydantic 모델, `.match_rates`에 숫자 일치도가 있다). `geosan check-case`·`check-config`·`init-db`·`db merge-heads` 명령은 PM 세션이 `app.py`에 먼저 연결했으므로 PR 3에서는 `commands/check_case.py`·`check_config.py`·`init_db.py`·`db_merge_heads.py`를 새로 만들지 않는다.
+- (PM 세션 추가 2026-10-21, Step 11 선행 연결) 파일 검사기는 이미 있다: `check_case`는 `geosan.config.file_checks.check_case_file(path, capability_path)`를, 역량 파일 검사는 `check_capability_file(path)`를 그대로 부르면 된다(둘 다 `CheckReport`를 돌려주고 통과하면 `.case`/`.capability`에 pydantic 모델, `.match_rates`에 숫자 일치도가 있다). `geosan check-case`·`check-config`·`init-db`·`db merge-heads` 명령은 PM 세션이 `app.py`에 먼저 연결했으므로 PR 3에서는 `commands/check_case.py`·`check_config.py`·`init_db.py`·`db_merge_heads.py`를 새로 만들지 않는다. 규칙 설정·앱 설정(활성 묶음·담당자 목록·brand)은 파일을 직접 읽지 말고 `geosan.config.registry.load_runtime_config(session)`로 읽는다(규칙 버전 등록·해시 검사·앱 설정 사본을 그 함수가 처리한다; `tests/steps/u1/_support.py` 머리에 기대 경로가 적혀 있다).
 
 **PR 2 `kangwook/9-evaluate` (Step 18)**
 

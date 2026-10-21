@@ -88,7 +88,9 @@ def check_config(
     app_settings: Path | None = typer.Argument(None, help="앱 설정 파일(app-settings.yaml)"),
 ) -> None:
     """규칙 설정·앱 설정 파일의 형식을 검사합니다. 오류는 '몇 번째 줄 어느 항목이 왜'로 보입니다."""
-    not_implemented_yet("check-config")
+    from geosan.commands.check_config import run_check_config
+
+    raise typer.Exit(code=run_check_config(rule_config, app_settings))
 
 
 @app.command("import-capability")
