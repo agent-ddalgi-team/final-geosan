@@ -4,8 +4,7 @@
 - `base_date`: 고정 기준일 2026-10-20(A정밀 파일 baseDate). 현재 시각에 의존하는 테스트를
   두지 않는다(NFR12).
 - `examples_dir`와 예시 파일 경로 픽스처: `examples/`를 그대로 쓴다.
-- `tmp_db`: 임시 폴더의 SQLite 파일 경로를 GEOSAN_DB_PATH로 넣는다. init-db 적용은 Step 10에서
-  저장소 모듈이 생기면 이 픽스처 안에서 호출한다(지금은 경로만).
+- `tmp_db`: 임시 폴더의 SQLite 파일에 init-db(마이그레이션)를 적용하고 GEOSAN_DB_PATH로 넣는다.
 - `client`: FastAPI TestClient. Step 20에서 `geosan.api.app`이 생기면 켠다(지금은 건너뜀).
 """
 
@@ -66,10 +65,21 @@ def apjeong_case_path(examples_dir: Path) -> Path:
 
 @pytest.fixture
 def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """테스트마다 새 SQLite 파일 경로. 메모리 DB를 쓰지 않는다(WAL·파일 동작을 그대로 검사)."""
+    """테스트마다 새 SQLite 파일에 init-db(마이그레이션)를 적용하고 GEOSAN_DB_PATH로 넣는다.
+
+    메모리 DB를 쓰지 않는다(WAL·파일 동작을 그대로 검사). 끝나면 엔진 캐시를 비운다.
+    """
+    from geosan.storage.engine import dispose_engines
+    from geosan.storage.init_db import init_db
+
     db_path = tmp_path / "geosan-test.db"
     monkeypatch.setenv("GEOSAN_DB_PATH", str(db_path))
-    yield db_path
+    dispose_engines()
+    init_db(db_path)
+    try:
+        yield db_path
+    finally:
+        dispose_engines()
 
 
 def staff_headers(staff_key: str = "park-lee") -> dict[str, str]:
