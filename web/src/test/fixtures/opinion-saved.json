@@ -1,0 +1,16 @@
+{
+  "data": {
+    "version": 1,
+    "updatedBy": "park-lee",
+    "updatedAt": "2026-10-20T10:12:00+09:00",
+    "opinion": "WORTH_REVIEW",
+    "reason": null,
+    "memo": null
+  },
+  "meta": {
+    "updatedAt": "2026-10-20T10:12:00+09:00",
+    "hasVirtualData": true,
+    "datasetKind": "VIRTUAL_REVIEWED",
+    "previousValue": null
+  }
+}

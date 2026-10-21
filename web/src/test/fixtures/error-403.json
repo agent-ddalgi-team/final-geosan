@@ -1,0 +1,9 @@
+{
+  "error": {
+    "message": "담당자를 확인해 주세요",
+    "nextAction": "상단에서 담당자를 고르세요",
+    "ref": "a1b2c3d4",
+    "kind": null,
+    "fields": null
+  }
+}

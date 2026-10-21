@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "oppId": "opp-01HAPJEONG0000000000000001",
+      "rank": 1,
+      "title": "A정밀 · 밸브 바디 아노다이징",
+      "classificationCode": "CONTACT_URGENT",
+      "coreEvidenceRecheck": false,
+      "scoreS": 81.1,
+      "scoreDisplay": "81",
+      "reason": "알루미늄 주물 아노다이징 외주 협력사 모집 공고, 마감 3주 뒤 (11/10)",
+      "blocker": {
+        "text": "없음 — 지금 단계 꼭 필요한 요구(ISO 9001) 통과",
+        "blocksApproval": false
+      },
+      "nextAction": "응모 전 피막 두께 요구 확인",
+      "records": { "opinion": null, "bookmark": null },
+      "stage": null,
+      "isVirtual": true,
+      "isRecontact": false,
+      "recontact": null,
+      "evalId": "eval-01HAPJEONG0000000000000001",
+      "reevaluated": false,
+      "datasetKind": "VIRTUAL_REVIEWED"
+    }
+  ],
+  "meta": {
+    "updatedAt": "2026-10-20T09:00:00+09:00",
+    "hasVirtualData": true,
+    "datasetKind": "VIRTUAL_REVIEWED",
+    "total": 1,
+    "notEvaluatedCount": 0
+  }
+}
