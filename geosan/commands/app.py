@@ -98,7 +98,9 @@ def import_capability(
     file: Path = typer.Argument(..., help="거산 역량 파일(JSON)"),
 ) -> None:
     """거산 역량 파일을 검사한 뒤 저장합니다(재투입 규칙 적용). 평가는 자동으로 돌지 않습니다."""
-    not_implemented_yet("import-capability")
+    from geosan.commands.import_capability import run_import_capability
+
+    raise typer.Exit(code=run_import_capability(file))
 
 
 @app.command("import-case")
@@ -106,7 +108,9 @@ def import_case(
     file: Path = typer.Argument(..., help="사례 파일(JSON). 가상 사례·실제 기업 모두 같은 형식"),
 ) -> None:
     """사례 파일(가상·실제 기업)을 검사한 뒤 한 트랜잭션으로 저장합니다."""
-    not_implemented_yet("import-case")
+    from geosan.commands.import_case import run_import_case
+
+    raise typer.Exit(code=run_import_case(file))
 
 
 @app.command("check-case")
