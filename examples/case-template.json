@@ -1,0 +1,113 @@
+{
+  "_설명": "실제 기업 사례 파일 틀(CaseFile, 계약 C7). 이 파일을 복사해 한 기업 = 파일 하나로 채운다. 칸마다 `_설명`에 뜻과 허용 값이 있다. 허용 값은 영문 코드 그대로 적는다. 공개 홈페이지·공고 같은 공개 자료만 근거로 쓰고, 담당자 이름·이메일·전화 같은 연락처는 어디에도 적지 않는다(적으면 거부된다). 채운 뒤 `geosan check-case <파일>`로 검사한다(저장 없음, DB 불필요). 자세한 작성법: docs/case-file-guide.md",
+  "caseId": "",
+  "baseDate": null,
+  "description": "",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [],
+  "customer": {
+    "_설명": "name: 상호(㈜·(주) 포함 가능). bizNumber: 사업자번호 10자리(모르면 null). address: 주소(모르면 null). identityBasis: 어디서 확인했는지. relationStatus: NEW_CONFIRMED(신규 확인) / EXISTING_CONFIRMED(기존 거래처 확인) / UNCONFIRMED(미확인 — 거산 확인 전 실제 기업은 이 값). relationConfirmedAt: YYYY-MM-DD 또는 null. securityGrade: PUBLIC / EXTERNAL_AI_OK / INTERNAL_ONLY / FORBIDDEN / UNKNOWN (공개 자료만 썼으면 PUBLIC).",
+    "name": "",
+    "bizNumber": null,
+    "address": null,
+    "identityBasis": "",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "_설명": "item: 품목(예: 브라켓 아연도금). project: 프로젝트·공고 이름(없으면 null). purpose: NEW_PROPOSAL(처음 제안) / FOLLOW_UP_PROPOSAL(기존 제안 후속) / REORDER_CHECK(재발주 확인). owner: 담당 staffKey(app-settings.yaml의 key, 모르면 null).",
+    "item": "",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "_설명": "어떻게 찾았는지. pathKind: PROCESS_DEMAND(공정 수요) / CERTIFICATION(인증 경로) / HISTORY(이력). sourceId: manual-case 또는 kicox-factory-csv 등. originKey: 같은 경로 중복 판정 키(공고 번호 등). discoveredAt: YYYY-MM-DD.",
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "manual-case",
+      "originKey": "",
+      "discoveredAt": null
+    }
+  ],
+  "processLinks": [
+    {
+      "_설명": "이 기회가 필요로 하는 거산 공정. processCode: ZINC_PLATING / ANODIZING / BLACK_OXIDE / CHROMATE / ELECTROPOLISHING / CHROME_PLATING / ELECTROLESS_NICKEL / PHOSPHATE_COATING / PASSIVATION. appliedMaterial: 적용 소재 코드(예: AL, AL_CASTING, FE, CU, SUS; 모르면 null). (기회, 공정) 쌍당 하나.",
+      "processCode": "",
+      "appliedMaterial": null
+    }
+  ],
+  "requirements": [
+    {
+      "_설명": "고객 요구 하나. 아는 것만 적고 짐작하지 않는다. reqKind: CERTIFICATION(인증) / APPROVAL(승인) / TECHNICAL(기술 조건) / QUANTITY_DELIVERY(수량·납기). name: 요구 이름(예: ISO 9001, 피막 두께). content: 원문 요약. reqLevel: REQUIRED(필수) / PREFERRED(우대) / NOT_REQUIRED(비요구) / UNKNOWN(모름 — 모르면 반드시 이 값). scopeKind: OPPORTUNITY(기회 전체) / PROCESS_LINK(특정 공정, 그때 linkProcessCode 필수). neededStage: NOW(지금, 응모 단계) / LATER(나중, 샘플·양산) / UNKNOWN(모름). dueAt: 기한 YYYY-MM-DD 또는 null. certainty: CONFIRMED / STRONG / WEAK / UNKNOWN. basis: 근거 출처. question: 거산에 물어볼 질문 문장(없으면 null). requiredValue·unit: TECHNICAL일 때 기준값과 단위(예: 15, μm). edition: 요구 판본(예: 2015).",
+      "reqKind": "CERTIFICATION",
+      "name": "",
+      "content": "",
+      "reqLevel": "UNKNOWN",
+      "scopeKind": "OPPORTUNITY",
+      "linkProcessCode": null,
+      "neededStage": "UNKNOWN",
+      "dueAt": null,
+      "certainty": "UNKNOWN",
+      "basis": "",
+      "question": null,
+      "requiredValue": null,
+      "unit": null,
+      "edition": null
+    }
+  ],
+  "signals": [
+    {
+      "_설명": "시점 신호 하나(없으면 배열을 비운다). signalKind: EXPANSION(증설) / NEW_ORDER(신규 수주) / BID(공고) / HIRING(채용) / REORDER_CYCLE / NEXT_CONTACT. occurredAt: 실제 발생일(모르면 null → 미확보). announcedAt: 발표일. scheduledAt: 예정일(미래 사건). deadlineAt: 공고 마감일(BID는 꼭 적는다). progressStatus: OPEN / CLOSED / CANCELLED / DONE 또는 null. agreedWindow: G0 합의 전 실제 기업은 null. certainty: CONFIRMED / STRONG / WEAK / UNKNOWN. relation: DIRECT(직접 관련) / INDIRECT(간접 관련).",
+      "signalKind": "BID",
+      "occurredAt": null,
+      "announcedAt": null,
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "UNKNOWN",
+      "relation": "INDIRECT"
+    }
+  ],
+  "evidence": [
+    {
+      "_설명": "근거 자료 하나. 배열 순서(0부터)가 itemInputs[].evidenceRefs의 번호다. sourceGrade: A(공시·입찰·기업 내부자료) / B(기업 홈페이지·보도자료·채용) / C(출처 있는 DB·언론) / D(블로그·출처 불명, 단독이면 확인 대기). certainty: CONFIRMED / STRONG / WEAK / UNKNOWN. isLlmProposed: 사람이 적었으면 false. subject: PRODUCT(제품·부품) / MATERIAL(소재) / PURPOSE(처리 목적) / SIGNAL(시점 신호) / REQUIREMENT(요구) / OTHER. quote: 원문 인용(연락처 금지). sourceRef: 출처 주소·문서명. occurredAt: 자료 날짜 또는 null. securityGrade: 공개 자료면 PUBLIC. externalAiAllowed: 공개 자료면 true.",
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "",
+      "sourceRef": "",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "_설명": "8항목 판정 입력. 항목마다 한 줄, 빠진 항목은 투입 때 UNAVAILABLE로 채워진다. itemCode: NEW_PRODUCT / NEW_MATERIAL / NEW_RECORD / NEW_PERF / SIG_EXPAND / SIG_ORDER / SIG_BID / SIG_HIRE. matchRate: 항목별 단계 이름 또는 숫자(docs/case-file-guide.md 판정표; 예: NEW_MATERIAL은 '정확히 일치' 1.0 / '일부 가능' 0.5). state: CONFIRMED(확인) / STRONG(강한 추정) / WEAK(약한 추정) / MISMATCH(불일치, 0점) / NO_BONUS(가점 없음, 0점) / NO_SIGNAL(신호 없음, 0점) / UNAVAILABLE(미확보, 점수 없음). certainty는 state와 같은 값(CONFIRMED/STRONG/WEAK), 그 밖의 state면 null. factJudged: 무엇을 보고 판정했는지 한 줄. evidenceRefs: evidence 배열 번호 목록. signalRefs: SIG_* 항목이 쓰는 signals 배열 번호(상태가 NO_SIGNAL·UNAVAILABLE이 아니면 1개 이상). usedCapabilityRefs: NEW_MATERIAL·NEW_RECORD·NEW_PERF가 대조한 거산 값 참조 [{kind: PROCESS, processCode}, {kind: CAPABILITY, processCode, name}, {kind: DELIVERY_RECORD, processCode, industry}].",
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    { "itemCode": "NEW_MATERIAL", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "NEW_RECORD", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": null,
+  "expected": null
+}

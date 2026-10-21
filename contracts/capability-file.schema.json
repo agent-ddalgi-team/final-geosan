@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geosan.local/contracts/capability-file.schema.json",
+  "title": "CapabilityFile — 거산 역량 파일 (계약 C7)",
+  "description": "JSON 1개 = 거산 값 묶음(datasetKind) 하나. `_설명` 키는 어느 객체에든 허용되고 검사기가 무시한다. 그 밖의 모르는 키는 오류다. 재투입 식별 키는 (datasetKind, 공정 code), (datasetKind, officialName, number), (processId, capKind, name)이며 datasetKind 포함은 2026-10-21 더하는 변경(PM 확인)이다.",
+  "type": "object",
+  "required": ["datasetKind", "sourceNote", "processes", "qualifications", "reviewDefaults"],
+  "additionalProperties": false,
+  "properties": {
+    "_설명": { "type": "string" },
+    "datasetKind": { "$ref": "#/$defs/datasetKind" },
+    "sourceNote": { "type": "string", "description": "예: 회사소개서 2026-09-21판" },
+    "processes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "materialCodes", "performanceTags", "registryStatus", "reviewStatus", "capabilities", "deliveryRecords"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "code": { "$ref": "#/$defs/processCode" },
+          "name": { "type": "string", "minLength": 1 },
+          "category": { "type": ["string", "null"] },
+          "materialCodes": { "type": "array", "items": { "type": "string" } },
+          "performanceTags": { "type": "array", "items": { "type": "string" } },
+          "registryStatus": { "type": "string", "enum": ["BROCHURE_NAME", "OFFICIAL_NAME"] },
+          "reviewStatus": { "$ref": "#/$defs/reviewStatus" },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["capKind", "name", "isDescriptiveOnly", "reviewStatus"],
+              "additionalProperties": false,
+              "properties": {
+                "_설명": { "type": "string" },
+                "capKind": { "type": "string", "enum": ["SPEC", "TEST", "EQUIPMENT"] },
+                "name": { "type": "string", "minLength": 1 },
+                "displayValue": { "type": ["string", "null"] },
+                "numericMin": { "type": ["number", "null"] },
+                "numericMax": { "type": ["number", "null"], "description": "numericMin 이상이어야 한다(BR1.2)" },
+                "unit": { "type": ["string", "null"], "description": "숫자가 있으면 필수(BR1.2)" },
+                "standardRef": { "type": ["string", "null"] },
+                "isDescriptiveOnly": { "type": "boolean", "description": "EQUIPMENT는 true. 생산능력 판정에 쓰지 않음" },
+                "reviewStatus": { "$ref": "#/$defs/reviewStatus" }
+              }
+            }
+          },
+          "deliveryRecords": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["industry", "reviewStatus"],
+              "additionalProperties": false,
+              "properties": {
+                "_설명": { "type": "string" },
+                "industry": { "type": "string", "minLength": 1 },
+                "partType": { "type": ["string", "null"] },
+                "period": { "type": ["string", "null"] },
+                "allowedBasis": { "type": ["string", "null"] },
+                "reviewStatus": { "$ref": "#/$defs/reviewStatus" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "qualifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "officialName", "holder", "reviewStatus", "scopes", "statuses"],
+        "additionalProperties": false,
+        "properties": {
+          "_설명": { "type": "string" },
+          "kind": { "type": "string", "enum": ["CERTIFICATION", "APPROVAL"] },
+          "officialName": { "type": "string", "minLength": 1 },
+          "number": { "type": ["string", "null"] },
+          "edition": { "type": ["string", "null"] },
+          "holder": { "type": "string", "minLength": 1, "description": "보유 주체(법인명), 개인 아님" },
+          "site": { "type": ["string", "null"] },
+          "validFrom": { "type": ["string", "null"], "format": "date" },
+          "validTo": { "type": ["string", "null"], "format": "date" },
+          "reviewStatus": { "$ref": "#/$defs/reviewStatus" },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["scopeKind", "applicability", "reviewStatus"],
+              "additionalProperties": false,
+              "properties": {
+                "_설명": { "type": "string" },
+                "scopeKind": { "type": "string", "enum": ["PROCESS", "CUSTOMER", "OPPORTUNITY"] },
+                "processCode": { "oneOf": [{ "$ref": "#/$defs/processCode" }, { "type": "null" }], "description": "scopeKind=PROCESS면 필수(BR1.4)" },
+                "customerRef": { "type": ["string", "null"] },
+                "applicability": { "type": "string", "enum": ["APPLIES", "NOT_APPLIES", "UNKNOWN"] },
+                "basis": { "type": ["string", "null"] },
+                "reviewStatus": { "$ref": "#/$defs/reviewStatus" }
+              }
+            }
+          },
+          "statuses": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["status"],
+              "additionalProperties": false,
+              "properties": {
+                "_설명": { "type": "string" },
+                "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED", "UNCONFIRMED"] },
+                "occurredAt": { "type": ["string", "null"], "format": "date" },
+                "confirmedAt": { "type": ["string", "null"], "format": "date" },
+                "confirmedBy": { "type": ["string", "null"] },
+                "reason": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reviewDefaults": {
+      "type": "object",
+      "required": ["reviewer", "reviewedAt", "basis"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "reviewer": { "type": "string", "minLength": 1 },
+        "reviewedAt": { "type": "string", "format": "date" },
+        "basis": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "datasetKind": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
+    "reviewStatus": { "type": "string", "enum": ["UNAVAILABLE", "PENDING", "REVIEWED", "RECHECK"] },
+    "processCode": { "type": "string", "enum": ["ZINC_PLATING", "ANODIZING", "BLACK_OXIDE", "CHROMATE", "ELECTROPOLISHING", "CHROME_PLATING", "ELECTROLESS_NICKEL", "PHOSPHATE_COATING", "PASSIVATION"] }
+  }
+}
