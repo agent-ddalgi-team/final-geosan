@@ -16677,3 +16677,264 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Message**: 이 내용을 팀원들한테 공유할 수 있게 docs에 정리해 줘
 
 ---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T01:33:50Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: aaf4d5b00e0e9f85f
+**Message**: 거산 AI 영업지원 에이전트 구현 중이고, 엔진이 U1 뼈대의 인프라 설계를 돌리는 동안 팀이 할 준비를 정리해 드렸습니다. 다음 할 일은 10/21 팀 회의에서 시간 합의와 시연 공정을 확정하고 게이트 승인을 제때 하는 것입니다.
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-21T01:35:00Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/code-generation-plan.md
+**Context**: construction > u1-skeleton > code-generation > code-generation-plan.md
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-21T01:35:45Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/unit-test-instructions.md
+**Context**: construction > u1-skeleton > code-generation > unit-test-instructions.md
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T01:48:49Z
+**Event**: HUMAN_TURN
+**Session**: 6bd9efc5-2728-4773-9381-b9c8a82e0258
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T01:50:24Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T01:52:32Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a65c26cfa938f8498
+**Message**: 거산 영업지원 에이전트 구현 전 팀 코드 세팅 중이며, AGENTS.md에 테스트·PR 본문·커밋 메시지 규칙 세 가지를 추가했습니다. 다음은 이 변경을 확인하고 커밋·푸시하는 것입니다.
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T01:54:42Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: af93a7e8be4d5d8a8
+**Message**: 거산 영업지원 뼈대(U1) 코드 생성 계획을 쓰고 PM 승인을 기다리는 중이며, 확인 질문 4개에는 답해 드렸습니다. 다음은 PM이 "Approve Plan"(역할표 단계 추가 여부 포함)을 답하면 코드 생성을 시작하는 것입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T02:08:26Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+
+---
+
+## Question Answered
+**Timestamp**: 2026-10-21T02:09:55Z
+**Event**: QUESTION_ANSWERED
+**Stage**: code-generation
+**Details**: Request Changes
+**Checkpoint**: plan-approval
+**Plan Target**: unit:u1-skeleton
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+**Asked By**: engine
+**User Input**: 그럼 팀원들이 진행하기 전에 코드셋팅을 해놓으려해. 다음 요구사항들을 @AGENTS.md 에 추가해줘. \ 1. 기능을 구현하고 pr요청전에 반드시 test code를 작성하고 검증에 통과했을 시에만 pr을 올려야 한다.\2. pr을 열 때 본문에 어떤 기능을 구현했는지, 어떤 작업을 완료했는지 간략하게 정리하여 작성해라. pr만 열어봐도 알 수 있도록 작성하고 비전공자도 내용을 쉽게 파악할 수 있도록 작성하라.\\n3.한 기능을 구현했을 시 반드시 커밋을 남기고 그 내용도 비전공자가 이해할 수 있게 커밋 메시지에 쉽게 적어야 한다.\\n<pasted_content id="582c">\n승인하기 전에 쉬운 말로 확인해 줘. 아직 시작하지 마.\n1. 기본 틀(폴더 구조·모듈 경계·빈 파일·사례 파일 템플릿·작성 안내서·테스트 틀)을 가장 먼저 만들어 main에 올리고, 그다음 A정밀 계산·API·최소 화면을 이어서 만드는 순서가 계획에 들어 있는지. 기본 틀이 올라간 뒤 네가 이어서 만드는 파일과 겹치지 않아 팀원이 바로 시작할 수 있는 작업을 역할별로 알려 주는 단계도 있는지.\n2. 보류된 선택 3가지가 무엇이고 각각 추천안과 이유, 고르면 달라지는 것을 표로.\n3. main 반영 절차가 어떻게 되는지. 우리 규칙은 짧은 가지 + PR + 스쿼시 합치기이고 공통 기반 변경은 한 명 이상 확인이야. 기본 틀 PR은 팀원 1명이 빠르게 확인하고 합치는 방식이 맞는지.\n4. 코드 생성 전체가 대략 몇 시간 걸리는지, 기본 틀만 올라가는 데는 몇 시간인지.\n</pasted_content id="582c">\n<pasted_content id="582c">\n아래를 반영해서 계획을 고쳐 줘.\n1. Step 6-1 역할표 단계를 넣는다.\n2. 팀원이 뼈대 기간에 직접 개발해야 하므로 Part B~F를 나눠 맡는다. 기본 틀이 main에 합쳐지면 유동렬은 규칙 엔진(A정밀 계산), 이강욱은 저장소·API·명령, 고선주는 최소 화면(가짜 응답으로 먼저)을 자기 도구로 계획 단계대로 만들어 PR을 올린다. PM 세션(너)은 시나리오 테스트 틀, 끝단 확인, 문서, 그리고 팀원 PR이 계약·계획과 맞는지 검토하고 합치는 일을 맡는다.\n3. 팀원이 자기 AI 도구로 따라 할 수 있게 Part별 작업 지시서(만들 파일, 단계, 완료 기준, A정밀 기대값, 하지 말 것)를 docs에 만든다.\n4. 보류된 선택 3가지는 추천안(Typer, ruamel.yaml, fetch+작은 클라이언트)으로.\n5. 이렇게 나누면 뼈대 체크포인트 일정이 어떻게 바뀌는지, 위험이 뭔지 알려 줘. 큰 문제가 있으면 말해 줘.\n</pasted_content id="582c">
+**Unit**: u1-skeleton
+
+---
+
+## Artifact Created
+**Timestamp**: 2026-10-21T02:14:07Z
+**Event**: ARTIFACT_CREATED
+**Tool**: Write
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/code-generation-plan.md
+**Context**: construction > u1-skeleton > code-generation > code-generation-plan.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-21T02:14:13Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/unit-test-instructions.md
+**Context**: construction > u1-skeleton > code-generation > unit-test-instructions.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-21T02:14:20Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/unit-test-instructions.md
+**Context**: construction > u1-skeleton > code-generation > unit-test-instructions.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-21T02:14:47Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/unit-test-instructions.md
+**Context**: construction > u1-skeleton > code-generation > unit-test-instructions.md
+
+---
+
+## Artifact Updated
+**Timestamp**: 2026-10-21T02:14:55Z
+**Event**: ARTIFACT_UPDATED
+**Tool**: Edit
+**File**: <project-dir>/aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/unit-test-instructions.md
+**Context**: construction > u1-skeleton > code-generation > unit-test-instructions.md
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T02:42:56Z
+**Event**: HUMAN_TURN
+**Session**: 6bd9efc5-2728-4773-9381-b9c8a82e0258
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T03:02:17Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a12e30e95139f6ade
+**Message**: GitHub 이슈·보드 체계 설정 중이며 라벨 9개와 마일스톤 3개까지 만들었습니다. 다른 세션의 코드 생성 계획 승인이 파일 수정을 막고 있으니, 그 세션에서 계획을 승인한 뒤 여기서 "계속"이라고 해 주세요.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T04:02:29Z
+**Event**: HUMAN_TURN
+**Session**: 6bd9efc5-2728-4773-9381-b9c8a82e0258
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:03:34Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a84bf9959d28e8acf
+**Message**: 1번 A안, 2번 예, 라벨 지워
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:11:22Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a0a5aeab78a60a6db
+**Message**: GitHub 이슈·보드 체계와 AI 작업 규칙을 AGENTS.md에 넣는 중이고, 라벨 9개와 마일스톤 3개는 만들었습니다. 다음은 main 직접 커밋 예외(A/B), 재시도 문구 보충, 기본 라벨 7개 삭제 여부를 답해 주시고 다른 세션에서 코드 생성 계획을 승인해 주시는 것입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T04:15:56Z
+**Event**: HUMAN_TURN
+**Session**: 6bd9efc5-2728-4773-9381-b9c8a82e0258
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:16:56Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ab4a560ec3a64b4d1
+**Message**: 계속
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T04:19:13Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+**Picked**: ["Approve Plan"]
+
+---
+
+## Plan Approval Recorded
+**Timestamp**: 2026-10-21T04:19:14Z
+**Event**: PLAN_APPROVAL_RECORDED
+**Stage**: code-generation
+**Details**: Approve Plan
+**Checkpoint**: plan-approval
+**Plan Target**: unit:u1-skeleton
+**Intent**: 01a15264-44b0-7d63-bbd3-4d4986458ca4
+**Directive Epoch**: sha256:398d4dad5dd368d594f3c34d00f35ea5060b491844aec904d000128fb0cf797f
+**Run floor**: WORKFLOW_STARTED:2026-10-19T04:21:05Z#1
+**Approval Fingerprint**: sha256:v3:f02d3e32a161fc9c81fb022bb5e083a8a36edf9fb5cfc306f70dd4a3f804dc94
+**Questions File**: aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/code-generation-questions.md
+**Questions SHA-256**: 1238903c892a1ada7e88fd4284cac192be22a0af9c47438ad33fe18f3dd33e53
+**Prompt SHA-256**: 97d15a3a09f16aac232d61af5ed3940d148b223f597699ce901c8fa28e6bac9f
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+**Asked By**: engine
+**Person Reply**: <pasted_content id="7ea3">\nGitHub 이슈와 보드를 작업 기록용으로 항상 쓰도록 정해 줘. 규칙은 기존 AGENTS.md에 절을 추가해서 Claude Code와 Codex가 모두 따르게 해 줘. AGENT.md 같은 새 파일은 만들지 마. 코드 생성은 이 작업이 끝난 뒤에 시작해.\n\n1. 진행 상황의 기준은 이슈 하나로 한다. team-allocation.md는 역할·담당 폴더 지도, aidlc/ 기록은 설계·승인 기록으로만 쓰고 진행 상태를 여러 곳에 따로 적지 않는다.\n\n2. 라벨은 9개만 쓴다: 작업, 버그, 질문, 막힘, 백엔드, 화면, 규칙엔진, 자료, PM. "자료"는 실제 기업 사례 파일·근거 정리 작업에 붙인다. GitHub 기본 라벨 중 겹치는 것은 새로 만들지 말고 이름을 바꿔: enhancement→작업, bug→버그, question→질문. 나머지 기본 라벨(accessibility, documentation, duplicate, good first issue, help wanted, invalid, wontfix)은 지운다. 지우기 전에 지울 목록을 보여 주고 내 확인을 받아 줘.\n\n3. 마일스톤 3개: 뼈대(10/28), 10월 말 부분 시연, 11/15 거산 전달. 이슈마다 마일스톤을 붙인다.\n\n4. 승인된 코드 계획을 기준으로 뼈대 기간 작업을 1~2일 크기 이슈로 만들고 담당자·라벨·마일스톤을 붙인다. 초대 전인 팀원은 본문에 이름만 적고, 초대 후 담당자로 바꾼다.\n\n5. 이슈 양식 3개(작업, 버그, 질문·막힘). 작업 양식에는 할 일, 완료 기준, 담당 폴더, 관련 계획 문서 칸을 둔다.\n\n6. GitHub 프로젝트 보드 하나를 만들고 칸은 할 일 / 진행 중 / 리뷰 중 / 완료로 한다. 권한 설정이 필요하면 쉬운 말로 방법을 알려 줘.\n\n7. AGENTS.md에 AI 작업 규칙을 넣는다.\n - 작업 시작 전 이슈 번호를 확인하고, 없으면 만들고 시작한다.\n - 가지 이름은 "이름/이슈번호-짧은설명"으로 한다.\n - PR은 이슈 하나에 "Closes #번호"로 연결한다.\n - 막히면 '막힘' 라벨을 붙이고 이슈 댓글에 상황을 쉬운 말로 남긴다.\n - PR을 올릴 때 이슈에 무엇을 했는지 쉬운 말 요약 댓글을 남긴다.\n - 이슈·PR은 한국어로 쓰고, 연락처·비밀번호·거산 내부 자료는 쓰지 않는다.\n\n8. PR 템플릿과 팀원 시작 안내서에도 같은 규칙을 짧게 넣는다.\n\n9. 안내서에 PM 절을 만들어, PM이 "오늘 이슈 현황 요약해 줘"라고 하면 마일스톤별로 완료·진행 중·막힘을 쉬운 말 표로 보여 주는 방법을 적어 줘.\n\n10. 끝나면 커밋·푸시하고, 그다음 승인된 코드 계획의 첫 단계(기본 틀 만들기)를 시작해 줘.\n</pasted_content id="7ea3">\n<pasted_content id="7ea3">\nAGENTS.md에 아래 "AI 작업 추가 규칙" 절을 추가해 줘. 기존 내용과 겹치거나 계약·계획과 충돌하는 게 있으면 추가하기 전에 먼저 알려 줘. 끝나면 커밋·푸시해 줘.\n\n① 구현 전에 기존 코드를 검색한다\n- 같은 기능·함수·타입이 이미 있는지 확인하고 재사용한다.\n- 파일 경로, 함수명, API, 실행 명령을 추측하지 말고 실제 존재 여부를 확인한다.\n- 문서와 코드가 다르면 차이를 알리고 임의로 한쪽에 맞추지 않는다.\n\n② 요청과 무관한 변경을 하지 않는다\n- 관련 없는 리팩터링, 파일 이동·이름 변경, 전체 포맷 변경을 하지 않는다.\n- 작업 시작 전 기존 변경을 확인하고 다른 사람의 변경을 덮어쓰거나 되돌리지 않는다.\n- 수정 범위를 넓혀야 하면 이유와 영향을 먼저 설명한다.\n\n③ 오류를 성공처럼 처리하지 않는다\n- 예외를 무시하거나 빈 결과·기본값으로 성공을 반환하지 않는다. 계약에 정한 대체 동작만 허용한다.\n- 실제 처리 실패를 mock 데이터로 대체하지 않는다.\n- 재시도는 계약의 오류 규칙대로 한다(외부 읽기만 1회, 저장은 재시도하지 않음). 저장·외부 요청이 중복 실행되지 않도록 한다.\n\n④ 테스트를 약화해 통과시키지 않는다\n- 현재 구현에 맞추기 위해 테스트의 기대 결과를 바꾸지 않는다.\n- 실패한 테스트를 삭제·건너뛰거나 검사 설정을 약화하지 않는다.\n- 테스트 자체가 잘못됐다면 요구사항에 근거해 이유를 설명한다. 시나리오 테스트와 A정밀 기대값(E 77 / P 95 / S 81.1 / R 82)은 PM 확인 후에만 수정한다.\n- 오류 수정 시 수정 전 문제를 재현하고 수정 후 해결되는 검사를 포함한다.\n\n⑤ mock과 실제 연결 검증을 구분한다\n- mock 테스트 통과를 실제 API·DB·화면 연결 성공으로 보고하지 않는다.\n- 실제 연결을 확인하지 못했다면 미확인 범위와 이유를 명시한다.\n- 실행 환경이나 설정이 없어 검사를 못 했다면 결과를 추정하지 않는다.\n\n⑥ 의존성과 실행 환경 변경을 최소화한다\n- 새 패키지를 추가하기 전에 기존 라이브러리로 해결할 수 있는지 확인한다.\n- 패키지 변경 시 해당 프로젝트의 의존성 파일과 잠금 파일을 함께 맞춘다.\n- 설치·실행 방법이나 환경변수가 바뀌면 기존 안내도 갱신한다.\n- 개인 PC 절대경로나 비밀값을 코드·테스트·로그에 넣지 않는다.\n\n⑦ 최종 변경을 확인한 뒤 완료를 보고한다\n- 최종 diff에서 요청 밖 수정, 임시 디버그 코드, 오류를 숨기는 우회 처리, 비밀값을 점검한다.\n- 검사 후 코드를 다시 수정했다면 영향받는 검사를 재실행한다.\n- 수정 전 통과 결과를 최종 코드의 검증 결과로 보고하지 않는다.\n\n⑧ 내 담당 폴더 밖은 고치지 않는다\n- team-allocation.md의 내 담당 폴더 밖 파일은 수정하지 않는다. 필요하면 이슈로 담당자에게 요청한다.\n- 공통 파일(약속 파일, 설정, AGENTS.md, CI)은 PM 확인 후에만 수정한다.\n\n⑨ git 안전 규칙\n- main에 직접 커밋·푸시하지 않는다. 항상 가지를 만들고 PR로 합친다.\n- 강제 푸시(force push), 기록 되돌리기(reset --hard), 다른 사람 가지 삭제를 하지 않는다.\n- 커밋은 작게 나누고, 메시지는 한국어로 무엇을 왜 바꿨는지 쓴다.\n\n⑩ 규칙 숫자를 코드에 직접 쓰지 않는다\n- 점수 배점·기준점·단계값 같은 규칙 숫자는 설정 파일에서 읽고, 코드에 직접 쓰거나 새로 지어내지 않는다.\n- 설정 파일에 없는 값이 필요하면 멈추고 묻는다.\n\n⑪ 완료 보고는 쉬운 말로 한다\n- 끝나면 PM이 이해할 수 있게 쉬운 말로 다음을 보고한다: 무엇을 바꿨는지, 어떤 검사를 실제로 돌렸고 결과가 어땠는지, mock으로만 확인한 것, 확인하지 못한 것과 이유.\n</pasted_content id="7ea3">\n<pasted_content id="7ea3">\n1번은 A안으로 해 줘. 단, PM이 main에 직접 올리려는 docs/ 파일을 팀원이 PR에서 고치고 있으면 그 파일은 PR로 올려 줘.\n2번은 예. "외부 읽기·LLM 호출만 1회(계약 3장)"로 고쳐 줘.\n겹치는 것 정리(두 절 합치기, 대응표·설정 키 추가 허용, 개발용 가짜 엔진 예외)는 제안대로 해 줘.\n기본 라벨 7개는 삭제해도 돼.\n보드 권한은 방금 설정했어. 확인해 보고 안 되면 알려 줘.\n</pasted_content id="7ea3">\nApprove Plan
+**Unit**: u1-skeleton
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T04:19:27Z
+**Event**: HUMAN_TURN
+**Session**: a200bad2-e087-4fdf-b124-8833869f9cb7
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:20:16Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: af67e3e8b4d23b573
+**Message**: GitHub 이슈·보드 체계와 AGENTS.md 규칙을 세팅하는 중이며, 라벨 9개와 마일스톤 3개는 끝났습니다. 다음은 다른 세션에서 코드 생성 계획을 승인하고 보드 권한 명령을 실행한 뒤 "계속"이라고 알려 주시는 것입니다.
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:22:53Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: af103ccfee7e1898b
+**Message**: 거산 영업지원 뼈대(U1)의 코드 생성 계획을 분담안(팀원 셋 + PM 세션)으로 고쳐 승인 대기 중이며, AGENTS.md와 가지는 건드리지 않고 멈춰 있습니다. "시작해"라고 하시면 승인을 기록하고 기본 틀(Part A)부터 만듭니다.
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:23:18Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a7a11593f11e74bf1
+**Message**: 계속
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-21T04:26:27Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ad8c9814008b31f8f
+**Message**: GitHub 이슈·보드 작업 기록 체계를 세우는 중이며, 라벨 9개와 마일스톤 3개는 끝났고 AGENTS.md·이슈·보드 작업은 코드 생성 계획 승인 대기 때문에 막혀 있습니다. 다음 할 일은 다른 세션에서 계획을 승인하고 터미널에서 gh auth refresh로 보드 권한을 추가한 뒤 "계속"이라고 알려 주시는 것입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-21T04:28:29Z
+**Event**: HUMAN_TURN
+**Session**: 6bd9efc5-2728-4773-9381-b9c8a82e0258
+
+---

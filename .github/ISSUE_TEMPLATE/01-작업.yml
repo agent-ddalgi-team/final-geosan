@@ -1,0 +1,50 @@
+name: 작업
+description: 구현·문서·설정·자료 정리처럼 해야 할 일 하나 (1~2일 크기)
+title: "[이름] 무엇을 한다"
+labels: ["작업"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        쉬운 말로 적어 주세요. 영역 라벨(백엔드 / 화면 / 규칙엔진 / 자료 / PM)과 마일스톤을 오른쪽에서 꼭 골라 주세요.
+        연락처·비밀번호·거산 내부 자료는 적지 않습니다.
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일
+      description: 무엇을 만들거나 정리하는지. 순서가 있으면 번호를 붙여 주세요.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: done-when
+    attributes:
+      label: 완료 기준
+      description: 무엇이 되면 끝났다고 볼지. 돌려야 할 명령과 기대 결과, 시나리오 번호(S01~S14)가 있으면 적어 주세요.
+      placeholder: |
+        - `pytest tests/unit/u1/test_rules_items.py` 통과
+        - A정밀 입력으로 E 77 / P 95 / S 81.1 / R 82
+    validations:
+      required: true
+  - type: input
+    id: folder
+    attributes:
+      label: 담당 폴더
+      description: 이 일로 고치는 폴더. 담당 폴더 밖은 고치지 않습니다.
+      placeholder: "geosan/rules/, tests/unit/u1/"
+    validations:
+      required: true
+  - type: input
+    id: plan
+    attributes:
+      label: 관련 계획 문서
+      description: 코드 생성 계획의 Step 번호, 작업 지시서, 기능 설계 문서 등
+      placeholder: "코드 생성 계획 Step 13, docs/work-orders/u1-rules-engine.md"
+  - type: input
+    id: owner
+    attributes:
+      label: 담당(이름)
+      description: GitHub 초대 전이면 이름만 적고, 초대 후 오른쪽 담당자(Assignees)로 바꿉니다.
+      placeholder: "유동렬"

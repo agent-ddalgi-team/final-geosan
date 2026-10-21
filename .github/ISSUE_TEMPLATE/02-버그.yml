@@ -1,0 +1,48 @@
+name: 버그
+description: 동작이 기대와 다를 때
+title: "[버그] 어디서 무엇이 잘못된다"
+labels: ["버그"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        쉬운 말로 적어 주세요. 영역 라벨(백엔드 / 화면 / 규칙엔진 / 자료 / PM)과 마일스톤을 오른쪽에서 골라 주세요.
+        화면 캡처는 연락처·거산 내부 자료가 보이지 않게 가려 주세요.
+  - type: input
+    id: where
+    attributes:
+      label: 어디서
+      description: 화면 이름, 명령 이름, API 경로 중 하나
+      placeholder: "추천 목록 화면 / geosan import-case / GET /api/v1/opportunities"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 어떻게 했더니
+      description: 다시 일어나게 하는 순서. 쓴 파일이 있으면 파일 이름도.
+      placeholder: |
+        1. examples/case-apjeong.json을 투입했다
+        2. 평가를 돌렸다
+        3. 목록을 열었다
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 결과
+      placeholder: "순위 1, 분류 '지금 연락', 점수 81"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 결과
+      description: 오류 문구가 있으면 그대로 붙여 주세요.
+    validations:
+      required: true
+  - type: input
+    id: folder
+    attributes:
+      label: 담당 폴더(짐작)
+      placeholder: "geosan/rules/"

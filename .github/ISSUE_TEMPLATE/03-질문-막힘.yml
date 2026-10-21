@@ -1,0 +1,42 @@
+name: 질문·막힘
+description: 결정이 필요하거나 진행이 막혔을 때
+title: "[질문] 무엇을 정해야 한다"
+labels: ["질문"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        진행이 막힌 것이면 오른쪽 라벨에 `막힘`을 추가해 주세요. 쉬운 말로 적어 주세요.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 종류
+      options:
+        - 질문 (답이 있어야 다음을 정할 수 있음)
+        - 막힘 (답이 없으면 진행이 멈춤)
+    validations:
+      required: true
+  - type: textarea
+    id: situation
+    attributes:
+      label: 상황
+      description: 무엇을 하다가 무엇이 막혔거나 궁금한지
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: 해 본 것
+      description: 이미 시도한 것과 결과. 오류 문구가 있으면 그대로.
+  - type: input
+    id: who
+    attributes:
+      label: 누구의 답이 필요한가
+      placeholder: "PM / 규칙 엔진 담당 / 거산"
+    validations:
+      required: true
+  - type: input
+    id: related
+    attributes:
+      label: 관련 이슈·PR
+      placeholder: "#12, #15"
