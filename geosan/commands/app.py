@@ -118,7 +118,9 @@ def check_case(
 
     DB 없이 팀원 컴퓨터에서 실행할 수 있습니다.
     """
-    not_implemented_yet("check-case")
+    from geosan.commands.check_case import run_check_case
+
+    raise typer.Exit(code=run_check_case(file, capability))
 
 
 @app.command("evaluate")
