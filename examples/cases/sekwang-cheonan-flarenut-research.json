@@ -11,7 +11,7 @@
     "ZINC_PLATING은 PM의 너트 키워드로 잡은 조사 공정이며 확인된 수요가 아니다. 소재·전기아연도금 사양·처리 목적 3종을 보완하기 전까지 최종 후보 수에 포함하지 않는다.",
     "공식 생산설비는 CNC 선반·전조설비 등을 소개하지만 자체 도금 여부를 확인할 수 없었다. 홈페이지에 도금설비가 안 보인다는 이유로 외주라고 단정하지 않는다.",
     "공개 자료 열람일은 2026-10-22이다. 게시일·제품 사양 발생일을 확인하지 못한 근거의 occurredAt은 null이다. 파일명에 적힌 연도를 발생일로 만들지 않았다.",
-    "#17 실제 역량 묶음이 이 가지에 반영되지 않아 거산의 소재·납품실적·성능과 대조하지 않았다. 가상 역량으로 실제 기업의 일치 점수를 채우지 않았다.",
+    "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)의 ZINC_PLATING 소재·성능·실적을 2026-10-22 확인했다. 소개서 기준·거산 확인 전(PENDING)이다. 대상 너트의 소재·처리 목적·도금 방식이 없어 일치 판정은 미확보로 유지한다. 가상 역량은 사용하지 않았다.",
     "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 신호 없음(NO_SIGNAL)으로 단정하지 않았다.",
     "공개 제품 사양은 거산에 대한 구매 요청서가 아니다. 요구 조건·필수 여부·필요 단계를 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
   ],
@@ -89,7 +89,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "제품의 소재부터 미확인이다. 사진의 색상으로 소재를 추정하거나 거산 역량과 비교하지 않았다.",
+      "factJudged": "소개서 ZINC_PLATING의 FE·AL·CU 소재 범위를 확인했다. 대상 너트의 소재가 미확인이어서 일치를 판정하지 않았으며 사진의 색상으로 소재를 추정하지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -99,7 +99,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "실제 거산 납품실적 자료와 비교하지 않았다.",
+      "factJudged": "공개 제품은 자동차용이지만 소개서 ZINC_PLATING의 자동차 부품 실적은 어느 공정 실적인지 미확인으로 적혀 있다. 해당 너트의 도금 방식과 동일·유사 부품 실적도 확인되지 않아 미확보로 둔다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -109,7 +109,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "처리 목적 근거를 확보하지 못했고 실제 거산 성능 자료와 비교하지 않았다.",
+      "factJudged": "소개서 ZINC_PLATING의 CORROSION·APPEARANCE를 확인했지만 대상 너트의 처리 목적이 없다. 브레이크·연료 계통이라는 사용처를 내식 목적 근거로 바꾸지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
