@@ -1,0 +1,172 @@
+{
+  "caseId": "sekwang-cheonan-flarenut-research",
+  "baseDate": "2026-10-22",
+  "description": "#19 추가 조사 초안 — 세광정공. 회사·지역·자동차용 너트 제품만 확인했으며 소재·처리 목적 미확보로 최종 선정 및 시연 투입 대상에서 보류.",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "후보 원본: 한국산업단지공단 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본, 순번 158032. https://www.data.go.kr/data/15105482/fileData.do",
+    "공식 제품 이미지에는 Nut Flare, Brake System, Fueling System 등이 표시된다. 제품 사용처는 확인했지만 사용처를 표면처리 목적으로 바꾸지 않았다.",
+    "제품 사진의 노란색·은색 외관만으로 소재가 철인지 황동인지, 표면처리가 아연인지 다른 도금인지 판정하지 않았다. appliedMaterial은 null이다.",
+    "ZINC_PLATING은 PM의 너트 키워드로 잡은 조사 공정이며 확인된 수요가 아니다. 소재·전기아연도금 사양·처리 목적 3종을 보완하기 전까지 최종 후보 수에 포함하지 않는다.",
+    "공식 생산설비는 CNC 선반·전조설비 등을 소개하지만 자체 도금 여부를 확인할 수 없었다. 홈페이지에 도금설비가 안 보인다는 이유로 외주라고 단정하지 않는다.",
+    "공개 자료 열람일은 2026-10-22이다. 게시일·제품 사양 발생일을 확인하지 못한 근거의 occurredAt은 null이다. 파일명에 적힌 연도를 발생일로 만들지 않았다.",
+    "#17 실제 역량 묶음이 이 가지에 반영되지 않아 거산의 소재·납품실적·성능과 대조하지 않았다. 가상 역량으로 실제 기업의 일치 점수를 채우지 않았다.",
+    "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 신호 없음(NO_SIGNAL)으로 단정하지 않았다.",
+    "공개 제품 사양은 거산에 대한 구매 요청서가 아니다. 요구 조건·필수 여부·필요 단계를 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
+  ],
+  "customer": {
+    "name": "(주)세광정공",
+    "bizNumber": null,
+    "address": "충청남도 천안시 동남구 성남면 용원4길 87-17",
+    "identityBasis": "산단공 CSV 순번 158032의 회사명·공장주소·볼트/너트 생산을 공식 홈페이지 http://hu3112.s31.hdweb.co.kr/ 의 천안공장(본사) 주소와 제품 소개로 대조했다(2026-10-22 열람). 공식 사이트 하단에는 www.se-kwang.net으로 표기되어 있다.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "자동차용 플레어 너트의 소재·표면처리 조사",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "15105482-20251231-158032",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": null
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "Nut Flare",
+      "sourceRef": "http://hu3112.s31.hdweb.co.kr/bbs/board.php?bo_table=table35&wr_id=10 (공식 제품 소개, 게시 이미지, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "Brake System Fueling System",
+      "sourceRef": "http://hu3112.s31.hdweb.co.kr/bbs/board.php?bo_table=table35&wr_id=10 (공식 제품 소개, 게시 이미지, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "자동차용 플레어 너트 소개는 확인했지만 표면처리가 필요한 소재·사양은 확인하지 못했다.",
+      "evidenceRefs": [
+        0
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "제품의 소재부터 미확인이다. 사진의 색상으로 소재를 추정하거나 거산 역량과 비교하지 않았다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "실제 거산 납품실적 자료와 비교하지 않았다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "처리 목적 근거를 확보하지 못했고 실제 거산 성능 자료와 비교하지 않았다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "플레어 너트의 소재를 명시한 공식 사양서가 있는가?",
+      "플레어 너트에 전기아연도금이 적용되는가?",
+      "내식 등 처리 목적과 자체 도금/외주 여부를 명시한 자료가 있는가?"
+    ],
+    "allowedChannel": null,
+    "owner": null,
+    "canChangeClass": null,
+    "estimatedHours": null,
+    "maxHours": null
+  },
+  "expected": null
+}
