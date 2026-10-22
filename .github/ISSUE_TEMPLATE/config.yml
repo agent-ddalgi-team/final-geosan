@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: 팀원 시작 안내서
-    url: https://github.com/agent-ddalgi-team/final-geosan/blob/main/docs/team-start-guide.md
+    url: https://github.com/agent-ddalgi-team/final-geosan/blob/develop/docs/team-start-guide.md
     about: 이슈를 만들기 전에 역할·순서·규칙을 확인합니다.
