@@ -44,6 +44,8 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 
 **한글 깨짐(CP949) 오류가 나면**: 윈도우는 파일을 기본으로 CP949로 읽어 `UnicodeDecodeError … cp949`가 날 수 있다. `.venv\Scripts\python scripts\check.py`는 하위 명령을 자동으로 UTF-8 모드로 돌리므로 그 명령으로 검사한다. `pytest`나 `python -m geosan …`을 직접 부를 때는 PowerShell에서 한 번 `$env:PYTHONUTF8 = "1"`을 하고 부른다(2026-10-22, 이슈 #33).
 
+**심볼릭 링크 권한 오류(`WinError 1314`)가 나면**: 테스트 하나가 심볼릭 링크를 만들어 거부되는지 검사한다. 윈도우 설정 → 개발자용 → **개발자 모드**를 켜면 일반 계정도 링크를 만들 수 있다(이강욱 PC에서 확인, 2026-10-22). 잠금 파일(`requirements.lock`)은 2026-10-22부터 운영체제 조건이 붙어 있어 윈도우에서도 `pip install -r requirements.lock -e .`가 그대로 된다(리눅스·맥 전용 `uvloop`는 자동으로 건너뜀).
+
 **가상환경 켜기**: `.venv\Scripts\Activate.ps1`. "이 시스템에서 스크립트를 실행할 수 없으므로…" 오류가 나면 한 번만 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`를 하고 다시 한다. 켜지 않고 쓰려면 매번 `.venv\Scripts\python …`으로 부른다.
 
 **검사 명령**: 맥의 `bash scripts/check.sh`와 같은 단계·같은 순서를 파이썬판으로 돌린다.

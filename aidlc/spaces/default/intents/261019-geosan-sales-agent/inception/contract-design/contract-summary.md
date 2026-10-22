@@ -563,7 +563,7 @@ CapabilityFile:
   datasetKind: datasetKind
   sourceNote: string                    # 예: "회사소개서 2026-09-21판"
   processes: [{ code, name, category, materialCodes, performanceTags, registryStatus, reviewStatus, capabilities: [{ capKind, name, displayValue, numericMin, numericMax, unit, standardRef, isDescriptiveOnly, reviewStatus }], deliveryRecords: [{ industry, partType, period, allowedBasis, reviewStatus }] }]
-  qualifications: [{ kind, officialName, number, edition, holder, site, validFrom, validTo, reviewStatus, scopes: [{ scopeKind, processCode|null, customerRef|null, applicability, basis, reviewStatus }], statuses: [{ status, occurredAt, confirmedAt, confirmedBy, reason }] }]
+  qualifications: [{ kind, officialName, number, edition, holder, site, validFrom, validTo, reviewStatus, scopes: [{ scopeKind, processCode|null, customerRef|null, applicability, basis, reviewStatus }]   # scopeKind는 PROCESS 또는 CUSTOMER만 받는다. OPPORTUNITY(특정 기회에만 쓰는 자격)는 파일 투입에서 거부하고 U4 검수 명령으로 DB에 등록한다(기회 ID 항목을 파일에 두지 않음, PM 결정 2026-10-22, 이슈 #38). CUSTOMER면 customerRef = 고객 상호명(사례 파일 customer.name과 같은 정규화 규칙), statuses: [{ status, occurredAt, confirmedAt, confirmedBy, reason }] }]
   reviewDefaults: { reviewer, reviewedAt, basis }
 # shared-schema: 규칙 설정 파일 (YAML 1개, 버전·해시 기록)
 RuleConfig:
