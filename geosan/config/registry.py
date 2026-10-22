@@ -22,6 +22,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from geosan.config.app_settings import DEFAULT_APP_SETTINGS_PATH as _DEFAULT_APP_SETTINGS_PATH
 from geosan.config.app_settings import (
     AppSettings,
     load_app_settings,
@@ -41,7 +42,7 @@ from geosan.rules.models import RuleConfig
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RULE_CONFIG_PATH = REPO_ROOT / "examples" / "rule-config.yaml"
-DEFAULT_APP_SETTINGS_PATH = REPO_ROOT / "examples" / "app-settings.yaml"
+DEFAULT_APP_SETTINGS_PATH = _DEFAULT_APP_SETTINGS_PATH  # app_settings.py와 같은 값(한 곳에서 정의)
 
 __all__ = [
     "DEFAULT_APP_SETTINGS_PATH",
