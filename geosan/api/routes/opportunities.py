@@ -41,7 +41,7 @@ from geosan.evaluation.models import (
 )
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
-from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
+from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 
 router = APIRouter()
@@ -57,6 +57,34 @@ class DetailContext:
     batch: EvaluationBatch | None
 
 
+def _relation_note(context: DetailContext) -> str | None:
+    """고객의 현재 허용 요약을 표시한다. 기회 평가용 이력 조회와는 분리한다(BR2.7)."""
+    summaries = context.session.scalars(
+        select(Interaction.allowed_summary)
+        .where(
+            Interaction.customer_id == context.customer.customer_id,
+            Interaction.dataset_kind == context.opportunity.dataset_kind,
+            Interaction.superseded_at.is_(None),
+            Interaction.security_grade != "FORBIDDEN",
+        )
+        .order_by(
+            Interaction.occurred_at.desc().nulls_last(),
+            Interaction.created_at.desc(),
+            Interaction.interaction_id.desc(),
+        )
+    )
+    for summary in summaries:
+        if summary and summary.strip():
+            # 화면의 기존 관계 상태 쉬운 말과 같은 표현을 쓴다.
+            label = {
+                "NEW_CONFIRMED": "신규",
+                "EXISTING_CONFIRMED": "기존",
+                "UNCONFIRMED": "확인 전",
+            }[context.customer.relation_status]
+            return f"{label} ({summary.strip()})"
+    return None
+
+
 def _header(context: DetailContext) -> dict:
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
     return {
@@ -65,6 +93,7 @@ def _header(context: DetailContext) -> dict:
             customer_name=customer.name,
             opportunity_item=opportunity.item,
             relation_status=customer.relation_status,
+            relation_note=_relation_note(context),
             purpose=opportunity.purpose,
             owner=opportunity.owner,
             classification_code=run.classification_code if run else "NOT_EVALUATED",

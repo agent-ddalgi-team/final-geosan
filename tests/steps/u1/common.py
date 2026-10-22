@@ -520,3 +520,59 @@ def _batch_recorded(profile: str, base: str, version: str, kind: str) -> None:
         assert batch.rule_hash and len(batch.rule_hash) == 64
         assert batch.dataset_kind == kind
         assert batch.status == "CONFIRMED"
+
+
+# ---------------------------------------------------------------------------
+# verify-case (W4, BR11.2) — Step 19 나머지(PM 세션) 연결 뒤 추가
+# ---------------------------------------------------------------------------
+
+
+@when("A정밀 사례 파일로 verify-case를 실행하면")
+def _verify_apjeong(ctx: ScenarioContext) -> None:
+    ctx.last_cli = run_cli("verify-case", str(EXAMPLES_DIR / "case-apjeong.json"))
+
+
+@then(P('명령 출력에 "{text}"가 있고 종료 코드는 {code:d}이다'))
+def _output_and_exit_code(ctx: ScenarioContext, text: str, code: int) -> None:
+    assert ctx.last_cli is not None, "먼저 명령을 실행해야 합니다"
+    assert text in ctx.last_cli.output, ctx.last_cli.output
+    assert ctx.last_cli.exit_code == code, (
+        f"종료 코드 {ctx.last_cli.exit_code} (기대 {code}):\n{ctx.last_cli.output}"
+    )
+
+
+@then("두 평가의 점수·분류·순위가 완전히 같다")
+def _two_runs_identical(ctx: ScenarioContext) -> None:
+    """같은 입력을 두 번 평가하면 점수·분류·순위가 같다(AC5.1.2, NFR1).
+
+    pair는 '평가를 두 번 실행하면'이 둔다."""
+    pair = ctx.extra.get("pair")
+    assert pair is not None, "먼저 '평가를 두 번 실행하면'이 있어야 합니다"
+    first, second = pair
+    assert first.eval_id != second.eval_id, "두 번째 평가가 새 평가 행이어야 합니다"
+    key = lambda r: (  # noqa: E731
+        r.score_e,
+        r.score_p,
+        r.score_s,
+        r.score_r,
+        r.completion_c,
+        r.classification_code,
+        r.original_rank,
+    )
+    assert key(first) == key(second), (key(first), key(second))
+
+
+@then("A정밀의 이전 평가는 SUPERSEDED로 남고 새 평가가 이전 평가를 가리킨다")
+def _previous_superseded(ctx: ScenarioContext) -> None:
+    """재평가하면 이전 평가는 SUPERSEDED, 새 평가가 이전 평가를 가리킨다(BR7.1·BR7.2)."""
+    pair = ctx.extra.get("pair")
+    assert pair is not None, "먼저 '평가를 두 번 실행하면'이 있어야 합니다"
+    first_id, second_id = pair[0].eval_id, pair[1].eval_id
+    run = model("evaluation", "EvaluationRun")
+    with session_scope() as session:
+        first = session.get(run, first_id)
+        second = session.get(run, second_id)
+        assert first is not None and second is not None
+        assert first.run_status == "SUPERSEDED", first.run_status
+        assert second.run_status == "CONFIRMED", second.run_status
+        assert second.previous_eval_id == first_id, second.previous_eval_id

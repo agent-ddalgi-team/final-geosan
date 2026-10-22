@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,9 +18,10 @@ from geosan.capability.importer import import_capability
 from geosan.evaluation.models import EvaluationRun
 from geosan.evidence.models import Evidence
 from geosan.opportunity.importer import import_case
-from geosan.opportunity.models import OppProcessLink
+from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion
 from geosan.records.models import ReviewOpinion
+from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from tests import factories
@@ -102,6 +104,127 @@ def test_first_detail_contains_checks_questions_scores_and_hides_forbidden(api_e
     assert data["evalId"] == eval_id and not data["reevaluated"]
     assert "상세에 나오면 안 되는" not in response.text
     assert client.get("/api/v1/opportunities/missing").status_code == 404
+
+
+def test_detail_relation_note_shows_unlinked_history_without_changing_scores(api_env):
+    """Given 연결 안 된 견적 이력 / When 상세 조회 / Then 관계 메모만 보이고 점수는 그대로다."""
+    client, opp_id, eval_id = api_env
+    response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["header"]["relationNote"] == "기존 (2024년 아연도금 견적 (가상))"
+    assert data["header"]["relationStatus"] == "EXISTING_CONFIRMED"
+    assert data["header"]["purpose"] == "NEW_PROPOSAL"
+    assert data["header"]["isRecontact"] is False
+    assert {key: data["scores"][key] for key in ("E", "P", "S", "R", "C")} == {
+        "E": 77,
+        "P": 95,
+        "S": 81.1,
+        "R": 82,
+        "C": 87.5,
+    }
+    with session_scope() as session:
+        run = session.get(EvaluationRun, eval_id)
+        assert run.profile == "NEW"
+        assert run.input_snapshot["opportunity"]["hasLinkedInteraction"] is False
+
+
+@pytest.mark.parametrize("target", ["customer", "current", "other"])
+def test_detail_relation_note_uses_latest_history_from_same_customer(api_env, tmp_path, target):
+    """Given 고객·기회별 이력 / When 상세 조회 / Then 같은 고객의 최신 허용 요약을 준다."""
+    client, opp_id, _ = api_env
+    other_opp = import_case(
+        _write(tmp_path, "same-customer.json", factories.apjeong_renamed_customer("same-customer"))
+    )
+    foreign_opp = import_case(
+        _write(
+            tmp_path, "foreign.json", factories.apjeong_renamed_customer("foreign", "다른가상회사")
+        )
+    )
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, opp_id)
+        foreign_customer = session.get(Opportunity, foreign_opp.opp_id).customer_id
+
+        def add_history(summary, **changes):
+            values = dict(
+                interaction_id=new_id("int"),
+                customer_id=opportunity.customer_id,
+                opp_id=None,
+                kind="QUOTE",
+                occurred_at=date(2026, 10, 20),
+                allowed_summary=summary,
+                certainty="CONFIRMED",
+                entered_by="test",
+                security_grade="PUBLIC",
+                dataset_kind=opportunity.dataset_kind,
+                is_virtual=True,
+            )
+            session.add(Interaction(**{**values, **changes}))
+
+        add_history("날짜가 오래된 가상 견적", occurred_at=date(2025, 1, 1))
+        add_history("같은 날 먼저 입력한 가상 견적", created_at=datetime(2026, 10, 20, tzinfo=UTC))
+        linked_opp = {"customer": None, "current": opp_id, "other": other_opp.opp_id}[target]
+        add_history(
+            "가장 최근 가상 견적", opp_id=linked_opp, created_at=datetime(2026, 10, 21, tzinfo=UTC)
+        )
+        # 최신 날짜여도 다른 고객·묶음·옛 행·금지 자료·빈 요약은 표시하면 안 된다.
+        add_history(
+            "다른 고객의 가상 이력", customer_id=foreign_customer, occurred_at=date(2026, 10, 22)
+        )
+        add_history(
+            "다른 묶음의 가상 이력", dataset_kind="BROCHURE", occurred_at=date(2026, 10, 22)
+        )
+        add_history("교체된 가상 이력", superseded_at=utcnow(), occurred_at=date(2026, 10, 22))
+        add_history("금지된 가상 이력", security_grade="FORBIDDEN", occurred_at=date(2026, 10, 22))
+        add_history(" \t\n ", occurred_at=date(2026, 10, 22))
+        add_history("날짜 미확인 가상 이력", occurred_at=None)
+
+    response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["header"]["relationNote"] == "기존 (가장 최근 가상 견적)"
+
+
+@pytest.mark.parametrize(
+    "missing", ["row", "summary", "blank", "superseded", "forbidden", "dataset"]
+)
+def test_detail_relation_note_is_null_without_visible_summary(api_env, missing):
+    """Given 표시 가능한 이력 없음 / When 상세 조회 / Then relationNote 키에 null을 준다."""
+    client, opp_id, _ = api_env
+    with session_scope() as session:
+        row = session.scalar(select(Interaction))
+        if missing == "row":
+            session.delete(row)
+        elif missing == "summary":
+            row.allowed_summary = None
+        elif missing == "blank":
+            row.allowed_summary = " \t\n "
+        elif missing == "superseded":
+            row.superseded_at = utcnow()
+        elif missing == "forbidden":
+            row.security_grade = "FORBIDDEN"
+        else:
+            row.dataset_kind = "BROCHURE"
+    response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["header"]["relationNote"] is None
+
+
+@pytest.mark.parametrize(
+    ("status", "label"),
+    [("NEW_CONFIRMED", "신규"), ("EXISTING_CONFIRMED", "기존"), ("UNCONFIRMED", "확인 전")],
+)
+def test_detail_relation_note_uses_existing_korean_status_labels(api_env, status, label):
+    """Given 세 관계 상태 / When 상세 조회 / Then 화면의 기존 쉬운 말에 허용 요약을 붙인다."""
+    client, opp_id, _ = api_env
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, opp_id)
+        session.get(Customer, opportunity.customer_id).relation_status = status
+    response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    assert (
+        response.json()["data"]["header"]["relationNote"]
+        == f"{label} (2024년 아연도금 견적 (가상))"
+    )
 
 
 def test_opinion_history_last_save_wins_without_changing_evaluation(api_env):

@@ -1,0 +1,149 @@
+{
+  "caseId": "kofas-bolt-zinc",
+  "baseDate": null,
+  "description": "코파스 볼트·너트 아연도금 — 산단공 전국등록공장현황 후보 + 공개 홈페이지 근거 (거산 확인 전 실제 기업)",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
+    "홈페이지 제품 목록에 재질 선택과 도금 선택(아연 백색·천연색, 흑착 방청처리, 무전해니켈, 아노다이징 등) 항목이 있어 도금 수요가 직접 확인된다. 도금을 외주하는지 자체 처리하는지는 확인되지 않았다. 거산 확인 질문 후보.",
+    "알루미늄(AL7076) 볼트와 아노다이징 선택 항목도 있어 아노다이징 후보로도 볼 수 있다. 이 파일은 아연도금 기회만 다룬다.",
+    "연혁·사업장안내·주요거래처 페이지는 이미지로만 되어 있어 본문을 읽지 못했다. 그래서 증설·수주 신호는 미확보로 둔다.",
+    "홈페이지의 뉴스/공지 최신 글이 2021-03-02(사이트 개편 안내)로 오래되었다(확인일 2026-10-22).",
+    "홈페이지 주소 http://kofas.com/ 는 볼트 제조사다. kofas.co.kr 은 물류 자동화 회사로 다른 곳이다."
+  ],
+  "customer": {
+    "name": "코파스 주식회사",
+    "bizNumber": "1238636654",
+    "address": "충청남도 아산시 음봉면 월산로 274-1",
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 등록 공장 + 공개 홈페이지 http://kofas.com/ 하단 사업자 정보와 천안공장 표기(충남 아산시 음봉면) 확인",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "볼트·너트 아연도금",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-kofas-bolt", "discoveredAt": "2026-10-22" }
+  ],
+  "processLinks": [
+    { "processCode": "ZINC_PLATING", "appliedMaterial": "FE" }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "코파스 제작 볼트류 와샤, 링, 특수와샤 류 너트, 육각볼트 프로파일 부품류, PIN, ENSART, 기타류",
+      "sourceRef": "코파스 홈페이지 http://kofas.com/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "SCM 435(크롬-몰리브덴 강)",
+      "sourceRef": "코파스 홈페이지 제품 재질 선택 http://kofas.com/productK/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "S 45C SUJ2(핀류 사용) SS400",
+      "sourceRef": "코파스 홈페이지 제품 재질 선택 http://kofas.com/productK/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "ZN-백색 KBN-무전해니켈(NI) ZN-천연색 흑착(방청처리)",
+      "sourceRef": "코파스 홈페이지 제품 도금 선택 http://kofas.com/productK/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "OTHER",
+      "quote": "SEMES 품질보증서 SSQ",
+      "sourceRef": "코파스 홈페이지 인증현황 http://kofas.com/board/?boardid=auth",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": 1.0,
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "볼트·너트·와셔를 만들고 제품마다 도금 종류를 고르게 되어 있음 — 표면처리가 필요한 부품 (해당 1.0, 확인)",
+      "evidenceRefs": [0, 3],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "SCM435·S45C·SS400 등 철계 소재 — 아연도금 처리 소재(Fe)와 정확히 일치 (1.0, 확인)",
+      "evidenceRefs": [1, 2],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_BONUS",
+      "factJudged": "반도체 장비 부품 위주로 보이며(SEMES 품질보증서) 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
+      "evidenceRefs": [4],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "흑착(방청처리)·아연 도금 선택 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 확인)",
+      "evidenceRefs": [3],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "연혁·사업장안내 페이지가 이미지라 증설 여부를 읽지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "주요거래처 페이지가 이미지라 신규 수주를 읽지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "뉴스/공지 게시판에 입찰·협력사 모집 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 안내·공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": null,
+  "expected": null
+}
