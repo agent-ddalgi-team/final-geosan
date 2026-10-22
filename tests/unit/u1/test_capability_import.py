@@ -87,6 +87,46 @@ def test_process_scope_requires_process_code_and_validation_saves_nothing(tmp_db
         assert session.scalar(select(func.count()).select_from(Process)) == 0
 
 
+@pytest.mark.parametrize(
+    ("scope_kind", "error_field", "line_marker"),
+    [
+        ("CUSTOMER", "customerRef", '"customerRef": "missing-customer"'),
+        ("OPPORTUNITY", "scopeKind", '"scopeKind": "OPPORTUNITY"'),
+    ],
+)
+def test_invalid_scope_reports_exact_location_and_rolls_back(
+    tmp_db, tmp_path, scope_kind, error_field, line_marker
+):
+    """Given 연결 불가 자격 / When 투입 / Then 정확한 위치를 알리고 전부 되돌린다."""
+    data = factories.capability_file()
+    scopes = data["qualifications"][1]["scopes"]
+    scopes[:] = [scopes[0], dict(scopes[0])]
+    scopes[1].update(scopeKind=scope_kind, processCode=None, customerRef="missing-customer")
+    path = tmp_path / "capability.json"
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    path.write_text(text, encoding="utf-8")
+    expected_line = next(
+        number for number, line in enumerate(text.splitlines(), 1) if line_marker in line
+    )
+
+    with pytest.raises(InputError) as error:
+        import_capability(path)
+
+    assert len(error.value.fields) == 1
+    field = error.value.fields[0]
+    assert field.path == f"qualifications[1].scopes[1].{error_field}"
+    assert field.line == expected_line
+    with session_scope() as session:
+        for model in (
+            Process,
+            ProcessCapability,
+            Qualification,
+            QualificationStatus,
+            FieldEvidence,
+        ):
+            assert session.scalar(select(func.count()).select_from(model)) == 0
+
+
 def test_latest_status_is_new_row_and_old_status_is_preserved(tmp_db, tmp_path):
     data = factories.capability_file()
     import_capability(_write(tmp_path, data))
