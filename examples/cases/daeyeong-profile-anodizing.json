@@ -1,7 +1,7 @@
 {
   "caseId": "daeyeong-profile-anodizing",
   "baseDate": null,
-  "description": "[조사 초안·후보 미확정] (주)대영프로파일 DF 3090 알루미늄 프로파일 아노다이징 적합성 확인",
+  "description": "[거산 확인 전·외관 목적 간접 근거] (주)대영프로파일 DF 3090 알루미늄 프로파일 아노다이징 적합성 확인",
   "isVirtual": false,
   "datasetKind": "BROCHURE",
   "notes": [
@@ -9,14 +9,14 @@
     "공개 자료 열람일: 2026-10-22. 원문 게시일은 확인되지 않아 evidence.occurredAt을 비웠다. 열람일을 발생일로 사용하지 않았다.",
     "공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 에서 산업용 알루미늄 압출 형재를 안내하며, 공식 홈페이지 주소도 CSV와 일치한다.",
     "공식 DF 3090 상세의 기술자료 이미지를 눈으로 확인했다. A6N01S-T5, Anodized, Color (색상) Silver, Black이 같은 표에 있다. 색상 선택을 근거로 외관 목적만 STRONG으로 추정했다. 내식·내마모 목적이나 처리 성능 수치는 추가하지 않았다.",
-    "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 완성 후보로 선정하지 않았다.",
+    "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 홈페이지의 현재 제품 사양 갱신일과 실제 생산·판매 지속 여부도 별도 확인 사항이다.",
     "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 성능 태그 APPEARANCE를 대조했다. 소개서 검수 상태는 PENDING이며 합금·치수·요구 사양의 수탁 승인이 아니다."
   ],
   "customer": {
     "name": "(주)대영프로파일",
     "bizNumber": null,
     "address": "세종특별자치시 부강면 구들기길 18",
-    "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 67247; https://www.data.go.kr/data/15105482/fileData.do; 공식 자료 열람 2026-10-22. 추가 식별 확인 사항은 notes 참고.",
+    "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 67247의 상호·세종특별자치시 부강면 구들기길 18 주소를 공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 하단의 상호·주소와 대조했다. CSV: https://www.data.go.kr/data/15105482/fileData.do; 확인일 2026-10-22. 현재 운영 여부와 자체 처리·외주 발주는 별도 확인 전이다.",
     "relationStatus": "UNCONFIRMED",
     "relationConfirmedAt": null,
     "securityGrade": "PUBLIC"
@@ -96,7 +96,7 @@
       "matchRate": "해당",
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
-      "factJudged": "공식 DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 명시되어 있다. 처리 목적·자체 처리·외주 발주는 미확인이다.",
+      "factJudged": "공식 DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 명시되어 있다. 외관 목적은 별도 NEW_PERF에서 간접 근거 STRONG으로 판단하며, 자체 처리·외주 발주는 미확인이다.",
       "evidenceRefs": [
         0,
         2
