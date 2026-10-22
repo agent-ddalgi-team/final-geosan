@@ -19,6 +19,7 @@ from geosan.evaluation.models import EvaluationBatch
 from geosan.evaluation.snapshot import Snapshot, build_snapshot, canonical_hash
 from geosan.opportunity.models import Opportunity
 from geosan.questions.store import upsert_question
+from geosan.rules.engine import evaluate, rank
 from geosan.rules.models import EvaluationOutput, RankInput
 from geosan.storage.session import session_scope
 from geosan.workflows.models import FlowResult
@@ -50,19 +51,6 @@ def code_version() -> str:
         timeout=5,
     )
     return f"{__version__}+{result.stdout.strip()}"
-
-
-def engine_functions():
-    """개발용 엔진은 명시적으로만 선택한다. 실제 엔진의 실행 실패를 가짜로 대체하지 않는다."""
-    from importlib.util import find_spec
-
-    if find_spec("geosan.rules.engine") is not None:
-        from geosan.rules.engine import evaluate, rank
-
-        return evaluate, rank, False
-    from tests.fakes.fake_engine import evaluate, rank
-
-    return evaluate, rank, True
 
 
 def validate_output(snapshot: Snapshot, output: EvaluationOutput) -> None:
@@ -116,7 +104,6 @@ def run_evaluation(
 ) -> FlowResult:
     failed_batch = None
     try:
-        evaluate, rank, using_fake = engine_functions()
         skipped = []
         runs = []
         with session_scope() as session:
@@ -206,8 +193,6 @@ def run_evaluation(
                 summary += f", {classifications}"
             if skipped:
                 summary += "; 건너뜀: " + ", ".join(skipped)
-            if using_fake:
-                summary += "; 개발용 가짜 엔진 결과(실제 규칙 계산 미검증)"
         return FlowResult(
             ok=True,
             affected_opp_ids=[run.opp_id for run in runs],

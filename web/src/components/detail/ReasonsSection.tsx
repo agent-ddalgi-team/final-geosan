@@ -1,0 +1,78 @@
+// 1. 추천 이유와 다음 할 일 + 확인 질문(3개까지 보이고 나머지는 펼치기). interaction-spec 2.7.
+// [거산 확인 요청]·질문 직접 추가는 뒤 단위(P1)라 만들지 않는다.
+import { useState } from 'react';
+import { Button } from 'antd';
+import type { Reasons } from '../../api/types';
+import StatusTag from '../common/StatusTag';
+import DetailSection from './DetailSection';
+import {
+  cardRows,
+  detailSections,
+  labelFor,
+  questionRows,
+  questionStatusLabels,
+  questionStatusTone,
+} from '../../labels/ko';
+import { colors, typography } from '../../theme/tokens';
+
+/** 처음부터 보이는 질문 수. */
+export const VISIBLE_QUESTIONS = 3;
+
+export default function ReasonsSection({ reasons }: { reasons: Reasons }) {
+  const [expanded, setExpanded] = useState(false);
+  const { questions } = reasons;
+  const hidden = Math.max(0, questions.length - VISIBLE_QUESTIONS);
+  const shown = expanded ? questions : questions.slice(0, VISIBLE_QUESTIONS);
+
+  return (
+    <DetailSection id="detail-reasons" title={detailSections.reasons}>
+      <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+        <li data-testid="detail-reason">
+          {cardRows.reason}: {reasons.reason}
+        </li>
+        <li data-testid="detail-next-action">
+          {cardRows.nextAction}: {reasons.nextAction}
+        </li>
+      </ul>
+      {questions.length > 0 ? (
+        <div data-testid="detail-questions">
+          <h3 style={{ margin: '0 0 8px', fontSize: typography.fontSize, fontWeight: 600 }}>
+            {detailSections.questionsHeading}
+          </h3>
+          <ul
+            id="detail-questions-list"
+            style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}
+          >
+            {shown.map((question) => (
+              <li key={question.questionId} data-testid="detail-question">
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                  <span>{question.text}</span>
+                  <StatusTag tone={questionStatusTone[question.status] ?? 'neutral'}>
+                    {labelFor(questionStatusLabels, question.status)}
+                  </StatusTag>
+                </div>
+                <div
+                  style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+                >
+                  {questionRows.effectPrefix}: {question.effectIfAnswered}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {hidden > 0 ? (
+            <Button
+              type="link"
+              aria-expanded={expanded}
+              aria-controls="detail-questions-list"
+              onClick={() => setExpanded((open) => !open)}
+              style={{ paddingLeft: 0 }}
+              data-testid="detail-questions-toggle"
+            >
+              {expanded ? detailSections.collapseQuestions : detailSections.expandQuestions(hidden)}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </DetailSection>
+  );
+}

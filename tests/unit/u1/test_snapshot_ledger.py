@@ -1,4 +1,4 @@
-"""S04·평가 기록 보존: 실제 저장소를 쓰며 규칙 계산은 명시된 가짜 엔진으로 구분한다."""
+"""S04·평가 기록 보존: 실제 저장소와 규칙 엔진의 연결을 검사한다."""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from geosan.evidence.models import Evidence
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import OppProcessLink, Signal
 from geosan.rules.codes import CheckResult
+from geosan.rules.engine import evaluate
 from geosan.rules.models import EvaluationInput
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from tests import factories
-from tests.fakes import fake_engine
 
 
 def _write(directory, name, data):
@@ -87,6 +87,53 @@ def test_snapshot_uses_only_active_dataset(imported, tmp_path):
         assert snapshot.snapshot_hash == _snapshot(session, imported).snapshot_hash
 
 
+def test_database_snapshot_matches_apjeong_scores_with_real_engine(imported):
+    """Given 실제 DB의 A정밀 / When 스냅샷을 엔진에 전달 / Then 약속한 점수가 계산된다."""
+    with session_scope() as session:
+        output = evaluate(_snapshot(session, imported).evaluation_input)
+    assert (
+        output.totals.E,
+        output.totals.P,
+        output.totals.S,
+        output.totals.R,
+        output.totals.C,
+    ) == (
+        77,
+        95,
+        81.1,
+        82,
+        87.5,
+    )
+    assert output.classification_code == "CONTACT_URGENT"
+
+
+@pytest.mark.parametrize(
+    ("required_now", "expected_class"),
+    [(True, "FILTER_PENDING"), (False, "OPS_PENDING")],
+)
+def test_brochure_evaluation_keeps_approval_blocked(tmp_db, tmp_path, required_now, expected_class):
+    """Given 소개서 묶음 / When 실제 평가·저장 / Then 필수 요구에 맞는 보류와 승인 차단이다."""
+    import_capability(_write(tmp_path, "brochure.json", factories.brochure_capability_file()))
+    with session_scope() as session:
+        load_runtime_config(session)
+        set_active_dataset_kind(session, "BROCHURE")
+    imported = import_case(
+        _write(
+            tmp_path,
+            "brochure-case.json",
+            factories.brochure_case("brochure-review", with_required_now=required_now),
+        )
+    )
+    result = run_evaluation([imported.opp_id])
+    assert result.ok
+    with session_scope() as session:
+        run = session.get(EvaluationRun, result.new_eval_ids[0])
+        assert run.classification_code == expected_class
+        assert run.blocks_approval
+        assert not run.operational_ready
+        assert run.score_display.startswith("참고 ")
+
+
 def test_forbidden_source_is_redacted_before_engine_and_record(imported):
     """Given 사용이 금지된 자료 / When 스냅샷 생성 / Then 엔진에서 빼고 ID·사유만 보관한다."""
     with session_scope() as session:
@@ -149,7 +196,7 @@ def test_first_evaluation_fills_readiness_reference(imported, monkeypatch):
     from geosan.workflows import flow_evaluate
 
     def changed_required_result(source):
-        output = fake_engine.evaluate(source)
+        output = evaluate(source)
         iso_id = next(row.req_id for row in source.requirements if row.name == "ISO 9001")
         for result in output.requirement_checks:
             if result.req_id == iso_id:
@@ -158,8 +205,8 @@ def test_first_evaluation_fills_readiness_reference(imported, monkeypatch):
 
     monkeypatch.setattr(
         flow_evaluate,
-        "engine_functions",
-        lambda: (changed_required_result, fake_engine.rank, True),
+        "evaluate",
+        changed_required_result,
     )
     changed = run_evaluation([imported])
     assert changed.ok

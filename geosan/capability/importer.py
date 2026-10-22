@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from sqlalchemy import select
@@ -21,6 +21,7 @@ from geosan.capability.models import (
 from geosan.capability.queries import latest_review
 from geosan.config.errors import FieldError, InputError, RunFailedError
 from geosan.config.file_checks import check_capability_file
+from geosan.config.loader import load_document
 from geosan.config.paths import normalize_input_path
 from geosan.config.schemas import CapabilityFile
 from geosan.rules.codes import DatasetKind, ProcessCode
@@ -52,9 +53,15 @@ def import_capability(
         raise InputError("역량 파일에 오류가 있습니다.", fields=report.errors)
     if report.capability is None:
         raise RunFailedError("역량 파일 검사 결과가 없습니다.")
+    document = load_document(report.path)
     try:
         with session_scope(db_path) as session:
             return _store(session, report.capability, requested_by)
+    except InputError as exc:
+        exc.fields = [
+            replace(item, line=item.line or document.line_of(item.path)) for item in exc.fields
+        ]
+        raise
     except SQLAlchemyError as exc:
         raise RunFailedError("역량 파일을 저장하지 못했습니다.") from exc
 
@@ -106,7 +113,7 @@ def _store(session: Session, model: CapabilityFile, requested_by: str) -> Capabi
                 model,
                 result,
             )
-    for item in model.qualifications:
+    for qualification_index, item in enumerate(model.qualifications):
         values = item.model_dump(exclude={"scopes", "statuses"}, mode="json")
         values.update(
             valid_from=item.valid_from, valid_to=item.valid_to, source_version=model.source_note
@@ -121,7 +128,8 @@ def _store(session: Session, model: CapabilityFile, requested_by: str) -> Capabi
             result,
         )
         result.qualification_count += 1
-        for scope in item.scopes:
+        for scope_index, scope in enumerate(item.scopes):
+            scope_path = f"qualifications[{qualification_index}].scopes[{scope_index}]"
             process_id = (
                 processes[scope.process_code.value].process_id if scope.process_code else None
             )
@@ -140,7 +148,7 @@ def _store(session: Session, model: CapabilityFile, requested_by: str) -> Capabi
                         "기회 범위의 파일 참조 항목은 PM 확인이 필요합니다.",
                         fields=[
                             FieldError(
-                                path="qualifications.scopes.scopeKind",
+                                path=f"{scope_path}.scopeKind",
                                 message=(
                                     "customerRef를 기회 ID로 해석하지 않습니다. "
                                     "약속 확인이 필요합니다."
@@ -153,8 +161,8 @@ def _store(session: Session, model: CapabilityFile, requested_by: str) -> Capabi
                         "자격 범위의 참조 대상을 찾을 수 없습니다.",
                         fields=[
                             FieldError(
-                                path="qualifications.scopes.customerRef",
-                                message="저장된 고객 또는 기회 ID를 적어 주세요.",
+                                path=f"{scope_path}.customerRef",
+                                message="저장된 고객 ID를 적어 주세요.",
                             )
                         ],
                     )

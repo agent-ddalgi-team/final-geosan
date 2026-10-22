@@ -265,3 +265,16 @@ def brochure_case_with_lower_material(case_id: str) -> dict[str, Any]:
         if item["itemCode"] == "NEW_MATERIAL":
             item["matchRate"] = "일부 가능"
     return data
+
+
+def rule_engine_input(filename: str = "apjeong-input.json"):
+    """기존 가상 사례를 경계 모델로 검사한 새 엔진 입력을 만든다."""
+    from geosan.config.loader import load_document
+    from geosan.rules.models import EvaluationInput
+
+    return EvaluationInput.model_validate(load_document(DATA_DIR / filename).data)
+
+
+def replace_contract(model: Any, **changes: Any) -> Any:
+    """테스트 변형도 원래 경계 모델로 다시 검사한다(문자열 enum 포함)."""
+    return type(model).model_validate(model.model_dump() | changes)
