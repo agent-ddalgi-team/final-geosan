@@ -21,7 +21,13 @@ from geosan.storage.base import new_id, new_ulid
 from geosan.storage.engine import BUSY_TIMEOUT_MS, get_engine
 from geosan.storage.init_db import init_db
 from geosan.storage.metadata import TABLE_PREFIXES, table_names
-from geosan.storage.migrate import current_revisions, downgrade, script_heads, upgrade_to_head
+from geosan.storage.migrate import (
+    ALEMBIC_INI,
+    current_revisions,
+    downgrade,
+    script_heads,
+    upgrade_to_head,
+)
 from geosan.storage.session import session_scope
 
 ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
@@ -156,3 +162,12 @@ def test_datetime_keeps_timezone_and_rejects_naive(tmp_db: Path) -> None:
                     created_at=datetime(2026, 10, 19, 9, 0),
                 )
             )
+
+
+def test_alembic_ini_is_ascii_only() -> None:
+    """`alembic.ini`에 한글이 없다. Alembic이 운영체제 기본 인코딩으로 읽어 윈도우(CP949)에서
+    한글 주석이 있으면 init-db가 깨진다(이슈 #33). 설명은 migrate.py 머리글에 둔다."""
+    text = ALEMBIC_INI.read_bytes()
+    bad = [i + 1 for i, line in enumerate(text.splitlines()) if not line.isascii()]
+    assert bad == [], f"alembic.ini {bad}번째 줄에 영문이 아닌 글자가 있습니다"
+    text.decode("cp949")  # 윈도우 기본 인코딩으로도 읽힌다

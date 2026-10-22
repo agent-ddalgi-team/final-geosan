@@ -70,7 +70,7 @@
 ### W6. 근거 상세 조회 — `GET /api/v1/opportunities/{oppId}`
 
 1. 기회 존재 확인(없으면 404). 최신 확정 평가를 찾는다. 공정 연결의 sourceEvalId가 다르면 재계산해 돌려주고 로그(BR2.5).
-2. 영역별 구성 함수를 순서대로 호출해 조립한다(BR10.5): header(기업·기회·관계 상태·대응 목적·담당·가상·묶음) → reasons(추천 이유·다음 할 일·질문 3개+나머지, BR8.3) → requirements(RequirementCheckView: 요구·꼭 필요한가·언제·거산 상태·판정 표시) → approvalEligibility(eligible·reason·readinessChecked·readinessNeedsRecheck; 승인 버튼은 U5) → processLinks → evidence(EvidenceView, FORBIDDEN 제외, 확인/추정 글자) → scores(E/P/S/R/C·항목표·규칙 버전·묶음·평가 시각) → records.opinion → evalId·previousEvalId·reevaluated(이전 평가가 있고 묶음 생성 시각이 마지막 조회보다 새로우면 true).
+2. 영역별 구성 함수를 순서대로 호출해 조립한다(BR10.5): header(기업·기회·관계 상태·대응 목적·담당·가상·묶음) → reasons(추천 이유·다음 할 일·질문 3개+나머지, BR8.3) → requirements(RequirementCheckView: 요구·꼭 필요한가·언제·거산 상태·판정 표시) → approvalEligibility(eligible·reason·readinessChecked·readinessNeedsRecheck; 승인 버튼은 U5) → processLinks → evidence(EvidenceView, FORBIDDEN 제외, 확인/추정 글자) → scores(E/P/S/R/C·항목표·규칙 버전·묶음·평가 시각) → records.opinion → evalId·previousEvalId·reevaluated. **reevaluated 판정(갱신 2026-10-22 PM 결정, 이슈 #33)**: previousEvalId가 있고, 이 기회에 마지막으로 저장된 담당자 의견이 적은 evalId(의견 요청 본문의 evalId)가 현재 evalId와 다르면 true. 의견이 하나도 없으면 previousEvalId가 있는 것만으로 true. 원래 적었던 "마지막 조회 시각"은 약속(C1)에 받거나 저장하는 항목이 없어 쓰지 않는다. scores의 E/P/S/R/C 키는 대문자 그대로다.
 3. meta에 hasVirtualData·datasetKind·updatedAt.
 
 ### W7. 의견 저장 — `POST /api/v1/opportunities/{oppId}/opinions`
