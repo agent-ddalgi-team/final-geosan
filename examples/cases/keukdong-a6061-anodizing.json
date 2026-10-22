@@ -8,9 +8,9 @@
     "삼진정공은 아연도금 사양·소재·목적이 부족해 보류하고, 공개 제품·소재·용도 자료를 확보한 극동금속공업을 교체 조사 대상으로 추가했다. 최종 후보 확정이나 #20 완료가 아니다.",
     "공개 자료 열람일: 2026-10-22. 원문 게시일은 확인되지 않아 occurredAt을 비웠다.",
     "공식 압출 제품 표는 A6061과 O·T4·T451·T6·T651 질별을 명시한다. 대표 품목은 CSV의 알루미늄 봉 및 형재이며, 개별 완성 부품 발주를 확인한 것은 아니다.",
-    "공식 합금 특성표의 6061 적용란은 내식성이 필요한 부품 용도를 설명한다. 이는 소재 적용 목적이며 아노다이징 처리 목적·발주 수요를 직접 명시한 근거가 아니다. NEW_PRODUCT와 NEW_PERF 판정은 보류했다.",
+    "공식 합금 특성표의 6061 적용란은 내식성이 필요한 부품 용도를 설명한다. 이는 소재 적용 목적이며 아노다이징 처리 목적·발주 수요를 직접 명시한 근거가 아니다. 처리 목적을 확보한 것처럼 계산되지 않도록 해당 근거 subject는 OTHER로 구분하고 NEW_PRODUCT와 NEW_PERF 판정은 보류했다.",
     "공식 설비현황 http://www.ekdmc.com/company/equipment.asp 에 압출기·인발 등 설비가 나오나, 그 목록만으로 자체 아노다이징이 없다고 단정하지 않았다.",
-    "PM PR #43의 636ae552eca97a0f705e03ca575cebcd0159c920 커밋 examples/capability-geosan-brochure.json의 ANODIZING 소재 AL과 A6061 알루미늄을 대조했다. 구체적인 합금·질별·치수 수탁 가능 여부는 거산 확인 전이며 소개서 상태는 PENDING이다."
+    "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 A6061 알루미늄을 대조했다. 구체적인 합금·질별·치수 수탁 가능 여부는 거산 확인 전이며 소개서 검수 상태는 PENDING이다."
   ],
   "customer": {
     "name": "극동금속공업 주식회사",
@@ -71,7 +71,7 @@
       "sourceGrade": "B",
       "certainty": "CONFIRMED",
       "isLlmProposed": true,
-      "subject": "PURPOSE",
+      "subject": "OTHER",
       "quote": "내식성이 요구되는 부품, 자동차,컴퓨터,반도체,리벳등 여러가지 분야에 쓰임",
       "sourceRef": "http://www.ekdmc.com/technology/special.asp",
       "occurredAt": null,
