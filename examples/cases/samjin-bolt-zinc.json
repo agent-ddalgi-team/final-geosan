@@ -1,0 +1,157 @@
+{
+  "caseId": "samjin-bolt-zinc",
+  "baseDate": null,
+  "description": "삼진볼트 볼트·너트 아연도금 — 산단공 전국등록공장현황 후보 + 공개 홈페이지 근거 (거산 확인 전 실제 기업)",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
+    "홈페이지 머리말이 '볼트판매와 납품전문'이라 직접 생산하는지 판매 업체인지 확인되지 않았다. 거산 확인 질문 후보.",
+    "납품 산업이 태양광·건축용으로 보이며 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않아 NEW_RECORD는 가점 없음으로 둔다.",
+    "홈페이지 공지사항 최신 글이 2021-05-10이다(확인일 2026-10-22). 시점 신호는 2020-09-01 확장 이전 하나뿐이라 오래되어 거의 반영되지 않는다."
+  ],
+  "customer": {
+    "name": "(주)삼진볼트",
+    "bizNumber": "3058146967",
+    "address": "대전광역시 대덕구 신일동로33번길 17",
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 등록 공장 + 공개 홈페이지 http://www.samjinbolt.com/ 하단 사업자 정보 확인",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "볼트·너트 아연도금",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-samjin-bolt", "discoveredAt": "2026-10-22" }
+  ],
+  "processLinks": [
+    { "processCode": "ZINC_PLATING", "appliedMaterial": null }
+  ],
+  "requirements": [],
+  "signals": [
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2020-09-01",
+      "announcedAt": "2020-09-01",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    }
+  ],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "볼트류 [육각볼트,앙카볼트,렌치볼트,기타볼트류..] 너트류 [육각너트,CAP너트,POP너트,기타너트류..]",
+      "sourceRef": "삼진볼트 홈페이지 http://www.samjinbolt.com/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "BOLT(일반) C/R BOLT(고장력) SUS BOLT",
+      "sourceRef": "삼진볼트 홈페이지 제품소개 http://www.samjinbolt.com/shop/search.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "친환경 소재로 환경 오염 부담은 줄이고, 녹방지에 탁월한 포스맥코팅을 한 제품입니다.",
+      "sourceRef": "삼진볼트 홈페이지 제품소개 http://www.samjinbolt.com/shop/search.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2020년 9월1일 회사 확장 이전 (신일동로 33번길17)",
+      "sourceRef": "삼진볼트 홈페이지 회사소개 http://www.samjinbolt.com/bbs/content.php?co_id=company&mcode=40",
+      "occurredAt": "2020-09-01",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": 1.0,
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "볼트·너트·와셔를 다루고 녹방지 코팅 제품도 판매 — 표면처리가 필요한 부품이지만 직접 생산 여부가 불확실해 강한 추정 (해당 1.0, 강한 추정)",
+      "evidenceRefs": [0, 2],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "일부 가능",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "일반·고장력(철계) 볼트와 SUS(스테인리스) 볼트를 함께 취급 — 철계 소재는 아연도금 가능, 스테인리스는 해당 없음 (일부 가능 0.5, 강한 추정: 소재를 제품명으로만 확인)",
+      "evidenceRefs": [1],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_BONUS",
+      "factJudged": "태양광·건축용 볼트 위주로 보이며 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
+      "evidenceRefs": [0],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "녹방지 코팅 제품을 명시 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 확인)",
+      "evidenceRefs": [2],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2020-09-01 회사 확장 이전 — 간접 관련 (0.5, 확인, 발생일이 오래되어 감쇠 큼)",
+      "evidenceRefs": [3],
+      "signalRefs": [0],
+      "usedCapabilityRefs": []
+    },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 신규 수주·출시 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 게시판 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": null,
+  "expected": null
+}

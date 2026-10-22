@@ -1,0 +1,126 @@
+{
+  "caseId": "samjin-nut-zinc",
+  "baseDate": null,
+  "description": "삼진정공 너트 아연도금 — 산단공 전국등록공장현황 후보 + 공개 홈페이지 근거 (거산 확인 전 실제 기업)",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
+    "홈페이지에 소재(철·스테인리스 등) 표기가 없어 NEW_MATERIAL은 미확보로 둔다. 거산 확인 질문 후보.",
+    "공지사항의 합병공고(2026-06-26, 2026-08-01)는 점수 항목에 해당하는 시점 신호가 아니라 넣지 않았다.",
+    "홈페이지 공지사항·채용공고 게시판에서 증설·수주·공고·채용 글을 찾지 못했다(확인일 2026-10-22).",
+    "홈페이지 하단 저작권 표기가 2020년이지만 공지사항에는 2026년 글(합병공고, 결산공고)이 있어 관리되고 있는 사이트로 보인다."
+  ],
+  "customer": {
+    "name": "삼진정공(주)",
+    "bizNumber": null,
+    "address": "충청남도 천안시 동남구 성남면 대흥1길 68",
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 등록 공장 + 공개 홈페이지 http://samjinnut.co.kr/ 확인",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "너트 아연도금",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-samjin-nut", "discoveredAt": "2026-10-22" }
+  ],
+  "processLinks": [
+    { "processCode": "ZINC_PLATING", "appliedMaterial": null }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "한국 최대의 Nut 및 Female Parts 전문업체인 삼진정공",
+      "sourceRef": "삼진정공 홈페이지 http://samjinnut.co.kr/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "WHEEL NUT 휠너트는 자동차의 바퀴 고정 기능을 하는 사양입니다.",
+      "sourceRef": "삼진정공 홈페이지 제품소개 http://samjinnut.co.kr/product_intro",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "SQUARE NUT 사각너트는 분해가 용이하게 위한 너트로서 녹발생이 심한 장소에서 사용할 수 있다.",
+      "sourceRef": "삼진정공 홈페이지 제품소개 http://samjinnut.co.kr/product_intro",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": 1.0,
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "자동차용 너트(휠너트 등)를 만드는 업체 — 표면처리가 필요한 부품이지만 홈페이지가 도금 필요를 직접 적지는 않아 강한 추정 (해당 1.0, 강한 추정)",
+      "evidenceRefs": [0, 1],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "홈페이지에 너트 소재 표기 없음 — 미확보 (거산 확인 질문 후보)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": "동일 산업",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "자동차용 너트 공급 — 거산 소개서의 납품 산업 '자동차 부품'과 동일 산업 (0.67, 강한 추정: 고객사·부품명은 확인되지 않음)",
+      "evidenceRefs": [1],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "DELIVERY_RECORD", "processCode": "ZINC_PLATING", "industry": "자동차 부품" }
+      ]
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "녹발생이 심한 장소에서 쓰는 너트 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 강한 추정: 도금 요구를 직접 적지는 않음)",
+      "evidenceRefs": [2],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 증설·신규 생산라인 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 신규 수주·출시 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용공고 게시판에 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": null,
+  "expected": null
+}
