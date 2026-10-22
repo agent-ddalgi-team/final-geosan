@@ -1,0 +1,183 @@
+{
+  "caseId": "daeyeong-profile-anodizing",
+  "baseDate": null,
+  "description": "[조사 초안·후보 미확정] (주)대영프로파일 DF 3090 알루미늄 프로파일 아노다이징 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "검토용 조사 초안이다. 제품·소재·처리 목적 근거 3종을 모두 확보한 최종 사례가 아니며, 파일 형식 검사 통과와 후보 선정 완료를 구분한다.",
+    "공개 자료 열람일: 2026-10-22. 원문 게시일은 확인되지 않아 evidence.occurredAt을 비웠다. 열람일을 발생일로 사용하지 않았다.",
+    "공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 에서 산업용 알루미늄 압출 형재를 안내하며, 공식 홈페이지 주소도 CSV와 일치한다.",
+    "제품에 아노다이징 사양이 있다는 사실과 내식·내마모 등 처리 목적은 다르다. 처리 목적을 직접 명시한 근거는 아직 확보하지 못했다.",
+    "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 완성 후보로 선정하지 않았다.",
+    "PM PR #43의 636ae552eca97a0f705e03ca575cebcd0159c920 커밋 examples/capability-geosan-brochure.json의 ANODIZING 공정 materialCodes AL과 공식 제품의 알루미늄 합금 소재를 대조했다. 소개서 검수 상태는 PENDING이며 수탁 승인이 아니다."
+  ],
+  "customer": {
+    "name": "(주)대영프로파일",
+    "bizNumber": null,
+    "address": "세종특별자치시 부강면 구들기길 18",
+    "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 67247; https://www.data.go.kr/data/15105482/fileData.do; 공식 자료 열람 2026-10-22. 추가 식별 확인 사항은 notes 참고.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "DF 3090 알루미늄 프로파일 아노다이징 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:67247",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": "AL"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "상품명 DF 3090 제조사 대영프로파일",
+      "sourceRef": "https://alusys0342.cafe24.com/product/detail.html?cate_no=1&display_group=2&product_no=34",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "Material (재질) A6N01S-T5",
+      "sourceRef": "https://alusys0342.cafe24.com/product/detail.html?cate_no=1&display_group=2&product_no=34",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "Surface Processing (표면처리) Anodized",
+      "sourceRef": "https://alusys0342.cafe24.com/product/detail.html?cate_no=1&display_group=2&product_no=34",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 명시되어 있다. 처리 목적·자체 처리·외주 발주는 미확인이다.",
+      "evidenceRefs": [
+        0,
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 DF 3090 소재는 A6N01S-T5 알루미늄 합금이다. 실제 소개서 묶음 ANODIZING 소재 AL과 코드 범위를 대조했다. 구체적인 합금·질별·치수의 수탁 가능 여부는 거산 확인 전이다.",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "실제 거산 납품실적과의 대조 미완료.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "해당 제품의 처리 목적 직접 근거 및 실제 거산 성능 대조 미확보.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "DF 3090의 아노다이징 목적을 직접 명시한 공개 자료가 있는가?",
+      "아노다이징을 자체 설비에서 하는가, 외주로 처리하는가?",
+      "거산이 해당 합금·질별·치수와 요구 표면 사양을 처리할 수 있는가?"
+    ]
+  },
+  "expected": null
+}
