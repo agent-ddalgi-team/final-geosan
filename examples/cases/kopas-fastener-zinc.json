@@ -1,0 +1,207 @@
+{
+  "caseId": "kopas-fastener-zinc",
+  "baseDate": null,
+  "description": "[조사 초안·처리 목적 미확보] 코파스 KN-219-1-2 볼트 백색 아연도금",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "검토용 조사 초안이다. 해당 아연도금 제품의 처리 목적 근거가 부족하며 최종 후보 선정과 #20 완료를 뜻하지 않는다.",
+    "공개 자료 열람일: 2026-10-22. 원문 게시일 미확인으로 occurredAt은 비웠다.",
+    "공식 제품 상세에서 제품 코드 KN-219-1-2, 재질 SWCH 10A, 코팅 ZN-백색을 같은 제품의 사양으로 확인했다. 앞선 검색 선택 항목만 확인한 초안보다 구체화했다.",
+    "SWCH 10A를 철계 소재 FE로 연결한 해석은 강한 추정으로 표시했다. 실제 성분·고강도 부품의 수소취성 조건 등은 거산과 고객의 확인 전이며 수탁 가능을 승인하지 않는다.",
+    "공식 코파스볼트 특징 페이지는 니켈도금의 방청·외관 장점을 설명한다. 이를 백색 아연도금의 직접 목적 근거로 바꾸지 않았다. NEW_PERF는 미확보다.",
+    "PM PR #43의 636ae552eca97a0f705e03ca575cebcd0159c920 커밋 examples/capability-geosan-brochure.json의 ZINC_PLATING 공정과 FE 소재를 대조했다. 해당 파일은 아직 검토 중이고 전부 PENDING이다. 가상 역량을 사용하지 않았다.",
+    "자체 도금 설비 보유 여부와 외주 발주 여부는 미확인이다. 외주 수요가 확정된 영업 대상으로 표시하지 않는다.",
+    "공식 KIMEX 참가업체 정보에서 코파스 주식회사·충남 아산시 음봉면 월산로 274-1·주생산품 볼트를 확인해 CSV와 대조했다. 홈페이지의 천안공장 지번 표기와의 연결은 별도 확인 사항으로 남긴다. 사업자번호는 비웠다."
+  ],
+  "customer": {
+    "name": "코파스 주식회사",
+    "bizNumber": null,
+    "address": "충청남도 아산시 음봉면 월산로 274-1",
+    "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 163283 및 공식 KIMEX 참가업체 정보의 상호·아산 도로명주소 일치. CSV: https://www.data.go.kr/data/15105482/fileData.do; 참가업체 정보: https://imkm.kimex.org/matching/detail.do?ci=a5957372710b2ac1e053c0ca2a0af97e; 확인일 2026-10-22.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "KN-219-1-2 SWCH 10A 볼트 백색 아연도금 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:163283",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": "FE"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "고장력 십자 시계피스-냄비머리형",
+      "sourceRef": "http://www.kofas.com/productK/?seq=95&gubun=kofas&flag=view",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "SWCH 10A",
+      "sourceRef": "http://www.kofas.com/productK/?seq=95&gubun=kofas&flag=view",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "ZN-백색",
+      "sourceRef": "http://www.kofas.com/productK/?seq=95&gubun=kofas&flag=view",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "고장력 렌치볼트의 경우 NI도금을 한다.",
+      "sourceRef": "http://www.kofas.com/contents/sub03/01.html?st=sub03&sMenu=01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "코파스 주식회사 / 충남 아산시 음봉면 월산로 274-1 / 볼트",
+      "sourceRef": "https://imkm.kimex.org/matching/detail.do?ci=a5957372710b2ac1e053c0ca2a0af97e",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 개별 제품 상세가 코파스 제작 볼트 KN-219-1-2와 백색 아연도금 사양을 직접 명시한다. 외주 발주 여부는 별도 미확인이다.",
+      "evidenceRefs": [
+        0,
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "공식 재질 SWCH 10A를 철계 FE로 해석하여 PM 소개서 묶음의 ZINC_PLATING 소재 FE와 대조했다. 재질 코드 해석은 STRONG, 실제 공정 수탁은 거산 확인 전이다.",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ZINC_PLATING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "실제 거산 납품실적과의 대조 미완료.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "해당 제품의 처리 목적 직접 근거 및 실제 거산 성능 대조 미확보.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "공식 KIMEX 정보와 일치하는 아산 사업장과 홈페이지에 기재된 천안공장이 동일 사업장인가?",
+      "KN-219-1-2의 아연도금 목적을 직접 명시한 공개 자료가 있는가?",
+      "해당 공장은 아연도금을 직접 수행하는가, 외주로 처리하는가?"
+    ]
+  },
+  "expected": null
+}
