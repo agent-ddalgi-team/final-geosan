@@ -347,5 +347,18 @@ def test_brochure_capability_example_is_pending_and_contact_free() -> None:
     assert any(q.official_name == "AS9100D" and q.number for q in cap.qualifications)
     raw = (EXAMPLES / "capability-geosan-brochure.json").read_text(encoding="utf-8")
     assert "소개서 기준·거산 확인 전" in raw
+    # UNKNOWN·UNCONFIRMED로 둔 항목마다 왜 그런지(이유)와 다음 할 일을 적어 둔다(PM 지시 2026-10-22)
+    for qual in cap.qualifications:
+        for scope in qual.scopes:
+            if scope.applicability == "UNKNOWN":
+                assert scope.basis and "이유:" in scope.basis and "다음 할 일:" in scope.basis, (
+                    qual.official_name,
+                    scope.process_code,
+                )
+        for entry in qual.statuses:
+            if entry.status == "UNCONFIRMED":
+                assert entry.reason and "이유:" in entry.reason and "다음 할 일:" in entry.reason, (
+                    qual.official_name
+                )
     # 소개서의 전화·이메일은 옮기지 않는다(CON-11)
     assert "@" not in raw and "041-" not in raw

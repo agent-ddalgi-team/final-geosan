@@ -644,7 +644,7 @@
           "processCode": "BLACK_OXIDE",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님). 범위를 넓힐 계획이 있으면 거산이 알려 줄 때 바꿈",
           "reviewStatus": "PENDING"
         },
         {
@@ -652,7 +652,7 @@
           "processCode": "ELECTROLESS_NICKEL",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님). 범위를 넓힐 계획이 있으면 거산이 알려 줄 때 바꿈",
           "reviewStatus": "PENDING"
         },
         {
@@ -660,7 +660,7 @@
           "processCode": "CHROME_PLATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님). 범위를 넓힐 계획이 있으면 거산이 알려 줄 때 바꿈",
           "reviewStatus": "PENDING"
         },
         {
@@ -668,7 +668,7 @@
           "processCode": "ELECTROPOLISHING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님). 범위를 넓힐 계획이 있으면 거산이 알려 줄 때 바꿈",
           "reviewStatus": "PENDING"
         },
         {
@@ -676,7 +676,7 @@
           "processCode": "PHOSPHATE_COATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님). 범위를 넓힐 계획이 있으면 거산이 알려 줄 때 바꿈",
           "reviewStatus": "PENDING"
         }
       ],
@@ -739,7 +739,7 @@
           "processCode": "BLACK_OXIDE",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님)",
           "reviewStatus": "PENDING"
         },
         {
@@ -747,7 +747,7 @@
           "processCode": "ELECTROLESS_NICKEL",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님)",
           "reviewStatus": "PENDING"
         },
         {
@@ -755,7 +755,7 @@
           "processCode": "CHROME_PLATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님)",
           "reviewStatus": "PENDING"
         },
         {
@@ -763,7 +763,7 @@
           "processCode": "ELECTROPOLISHING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님)",
           "reviewStatus": "PENDING"
         },
         {
@@ -771,7 +771,7 @@
           "processCode": "PHOSPHATE_COATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "basis": "이유: 인증서 적용 범위에 이 공정이 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 AS9100D/ISO 9001 행 범위와 'LRQA 인증 범위(원문)'에 anodizing·chromate·electroplated zinc coating·passivation만 적혀 있음. 다음 할 일: 없음(범위 밖이라 확인 질문 대상 아님)",
           "reviewStatus": "PENDING"
         }
       ],
@@ -904,7 +904,7 @@
           "processCode": "ZINC_PLATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 8장 범위 '도금' — 어느 도금 공정인지 소개서에 없음, 거산 확인 전",
+          "basis": "이유: 인증서 범위가 '도금'으로만 적혀 있어 이 공정이 해당되는지 알 수 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 'SSQ (SEMES 공급자 품질 인증)' 행(범위 '도금'). 다음 할 일: 10/29 거산 방문 때 어느 도금 공정(아연·무전해니켈·크롬)이 인증 대상인지 확인 → 맞는 공정은 APPLIES, 아니면 NOT_APPLIES로 고침",
           "reviewStatus": "PENDING"
         },
         {
@@ -912,7 +912,7 @@
           "processCode": "ELECTROLESS_NICKEL",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 8장 범위 '도금' — 어느 도금 공정인지 소개서에 없음, 거산 확인 전",
+          "basis": "이유: 인증서 범위가 '도금'으로만 적혀 있어 이 공정이 해당되는지 알 수 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 'SSQ (SEMES 공급자 품질 인증)' 행(범위 '도금'). 다음 할 일: 10/29 거산 방문 때 어느 도금 공정(아연·무전해니켈·크롬)이 인증 대상인지 확인 → 맞는 공정은 APPLIES, 아니면 NOT_APPLIES로 고침",
           "reviewStatus": "PENDING"
         },
         {
@@ -920,7 +920,7 @@
           "processCode": "CHROME_PLATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 8장 범위 '도금' — 어느 도금 공정인지 소개서에 없음, 거산 확인 전",
+          "basis": "이유: 인증서 범위가 '도금'으로만 적혀 있어 이 공정이 해당되는지 알 수 없음. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 'SSQ (SEMES 공급자 품질 인증)' 행(범위 '도금'). 다음 할 일: 10/29 거산 방문 때 어느 도금 공정(아연·무전해니켈·크롬)이 인증 대상인지 확인 → 맞는 공정은 APPLIES, 아니면 NOT_APPLIES로 고침",
           "reviewStatus": "PENDING"
         }
       ],
@@ -951,7 +951,7 @@
           "processCode": "ZINC_PLATING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "basis": "이유: 승인서 본문의 승인 공정은 '도금'뿐이고, 공정별 승인은 docs/input/04_거산회사소개서.md 4장 연혁(2019 아연·아노다이징·무전해니켈, 2020 크로메이트·부동태)에만 있어 현재 승인서가 이 공정을 포함하는지 확인하지 못함. 다음 할 일: 10/29 거산 방문 때 원본(선명한 스캔본)으로 승인 공정 목록 확인",
           "reviewStatus": "PENDING"
         },
         {
@@ -959,7 +959,7 @@
           "processCode": "ANODIZING",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "basis": "이유: 승인서 본문의 승인 공정은 '도금'뿐이고, 공정별 승인은 docs/input/04_거산회사소개서.md 4장 연혁(2019 아연·아노다이징·무전해니켈, 2020 크로메이트·부동태)에만 있어 현재 승인서가 이 공정을 포함하는지 확인하지 못함. 다음 할 일: 10/29 거산 방문 때 원본(선명한 스캔본)으로 승인 공정 목록 확인",
           "reviewStatus": "PENDING"
         },
         {
@@ -967,7 +967,7 @@
           "processCode": "ELECTROLESS_NICKEL",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "basis": "이유: 승인서 본문의 승인 공정은 '도금'뿐이고, 공정별 승인은 docs/input/04_거산회사소개서.md 4장 연혁(2019 아연·아노다이징·무전해니켈, 2020 크로메이트·부동태)에만 있어 현재 승인서가 이 공정을 포함하는지 확인하지 못함. 다음 할 일: 10/29 거산 방문 때 원본(선명한 스캔본)으로 승인 공정 목록 확인",
           "reviewStatus": "PENDING"
         },
         {
@@ -975,7 +975,7 @@
           "processCode": "CHROMATE",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "basis": "이유: 승인서 본문의 승인 공정은 '도금'뿐이고, 공정별 승인은 docs/input/04_거산회사소개서.md 4장 연혁(2019 아연·아노다이징·무전해니켈, 2020 크로메이트·부동태)에만 있어 현재 승인서가 이 공정을 포함하는지 확인하지 못함. 다음 할 일: 10/29 거산 방문 때 원본(선명한 스캔본)으로 승인 공정 목록 확인",
           "reviewStatus": "PENDING"
         },
         {
@@ -983,7 +983,7 @@
           "processCode": "PASSIVATION",
           "customerRef": null,
           "applicability": "UNKNOWN",
-          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "basis": "이유: 승인서 본문의 승인 공정은 '도금'뿐이고, 공정별 승인은 docs/input/04_거산회사소개서.md 4장 연혁(2019 아연·아노다이징·무전해니켈, 2020 크로메이트·부동태)에만 있어 현재 승인서가 이 공정을 포함하는지 확인하지 못함. 다음 할 일: 10/29 거산 방문 때 원본(선명한 스캔본)으로 승인 공정 목록 확인",
           "reviewStatus": "PENDING"
         }
       ],
@@ -993,7 +993,7 @@
           "occurredAt": null,
           "confirmedAt": null,
           "confirmedBy": null,
-          "reason": "회사소개서 2026-09-21판 8장: 승인번호 판독 불가, 유효기간은 이미지상 2020.02~2021.02 추정 — 현재 유효한 갱신본 확인 필요(거산 확인 전)"
+          "reason": "이유: 승인서 이미지가 흐려 승인번호·규격번호·유효기간을 읽을 수 없고, 보이는 유효기간은 2020.02~2021.02 무렵으로 이미 지났을 가능성이 큼. docs/input/04_거산회사소개서.md 8장 '인증 내역' 표의 '한화시스템 특수공정 승인서' 행과 '한화시스템 특수공정 승인서 상세' 표. 다음 할 일: 10/29 거산 방문 때 원본과 현재 유효한 갱신본 요청 → 번호·유효기간을 채우고 상태를 ACTIVE 또는 EXPIRED로 고침"
         }
       ]
     },
@@ -1205,7 +1205,7 @@
           "occurredAt": null,
           "confirmedAt": null,
           "confirmedBy": null,
-          "reason": "회사소개서 2026-09-21판 8장: 2019년 지정(중소벤처기업부장관). 번호·일자는 원본 해상도가 낮아 판독 불가 — 거산 확인 전"
+          "reason": "회사소개서 2026-09-21판 8장 '인증 내역' 표 '뿌리기술 전문기업 지정증' 행: 2019년 지정(중소벤처기업부장관). 번호·일자를 비운 이유: 원본 이미지 해상도가 낮아 판독 불가(소개서 '정리 시 참고사항'). 다음 할 일: 10/29 거산 방문 때 지정번호·지정일 확인"
         }
       ]
     },
@@ -1227,7 +1227,7 @@
           "occurredAt": null,
           "confirmedAt": null,
           "confirmedBy": null,
-          "reason": "회사소개서 2026-09-21판 4장 연혁: 2023 한국산업기술평가관리원장. 번호·유효기간은 소개서에 없음 — 거산 확인 전"
+          "reason": "회사소개서 2026-09-21판 4장 연혁 2023 행: 한국산업기술평가관리원장 확인서. 번호·유효기간을 비운 이유: 소개서에 적혀 있지 않음(연혁 한 줄뿐). 다음 할 일: 10/29 거산 방문 때 확인서 번호·유효기간 확인"
         }
       ]
     },
@@ -1249,7 +1249,7 @@
           "occurredAt": null,
           "confirmedAt": null,
           "confirmedBy": null,
-          "reason": "회사소개서 2026-09-21판 4장 연혁: 2017 인증. 현재 유효 여부·공정 범위는 소개서에 없음 — 거산 확인 전"
+          "reason": "이유: docs/input/04_거산회사소개서.md 4장 연혁(2017 '휴니드테크놀러지스 특수공정 인증')과 12장 '기타 승인/인증 이력 기준 거래 관계'에만 적혀 있고 인증서 자체(번호·유효기간·공정)가 소개서에 없음. 다음 할 일: 10/29 거산 방문 때 현재 유효한지와 어느 공정인지 확인 → 유효하면 ACTIVE로 고치고 공정 범위를 적음"
         }
       ]
     },
@@ -1271,7 +1271,7 @@
           "occurredAt": null,
           "confirmedAt": null,
           "confirmedBy": null,
-          "reason": "회사소개서 2026-09-21판 4장 연혁: 2020 세트렉아이(우주항공 위성사업체) 승인. 현재 유효 여부·공정 범위는 소개서에 없음 — 거산 확인 전"
+          "reason": "이유: docs/input/04_거산회사소개서.md 4장 연혁(2020 '세트렉아이(우주항공 위성사업체) 승인')과 12장에만 적혀 있고 승인서 자체(번호·유효기간·공정)가 소개서에 없음. 다음 할 일: 10/29 거산 방문 때 현재 유효한지와 어느 공정인지 확인 → 유효하면 ACTIVE로 고치고 공정 범위를 적음"
         }
       ]
     }
