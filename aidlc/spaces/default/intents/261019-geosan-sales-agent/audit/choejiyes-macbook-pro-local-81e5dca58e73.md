@@ -25599,3 +25599,326 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Details**: git stash push -q -- aidlc/ && git pull -q --rebase origin develop && git stash pop -q && git add aidlc/spaces/default/intents/261019-geosan-sales-agent/audit/ 
 
 ---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:31:11Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: T=$(mktemp -d) && export GEOSAN_DB_PATH=$T/geosan.db && .venv/bin/python -m geosan init-db | tail -1 && echo "--- 소개서 묶음 투입" && .venv/bin/python -m geosan impor
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:31:22Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: PYTHONUTF8=1 .venv/bin/python -m pytest tests/features -q --no-cov -p no:cacheprovider --tb=line 2>&1 | grep -E "passed|failed" | tail -1; PYTHONUTF8=1 .venv/bi
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:32:32Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: T=$(mktemp -d) && git show origin/jiye/17-capability-brochure:examples/capability-geosan-brochure.json > $T/capability-geosan-brochure.json && export GEOSAN_DB_
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:32:43Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: PYTHONUTF8=1 .venv/bin/python -m pytest tests/features -q --no-cov -p no:cacheprovider --tb=short -k "not evaluate and not verify" 2>&1 | grep -B2 -A14 "import-
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:33:31Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: sed -n 1,30p tests/features/u1/brochure_dataset.feature; echo "=== 공통 Given (역량 파일 투입) ==="; grep -n -B2 -A14 "역량 파일.*투입했다\|def import_case_file\|def _import_ca
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:33:43Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: T=$(mktemp -d) && export GEOSAN_DB_PATH=$T/geosan.db && .venv/bin/python - <<'EOF' 2>&1 | tail -25\nimport json, os, traceback\nfrom pathlib import Path\nfrom geos
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:33:48Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: P=aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/code-generation-plan.md && grep -n "^- \[ \] \*\*Step 1[6-9]\.
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:34:02Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: grep -n "^def \|^class " geosan/config/registry.py; echo "=== set_active_dataset_kind / load_runtime_config / sync_app_settings ==="; awk '/^def set_active_data
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:34:07Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: T=$(mktemp -d) && export GEOSAN_DB_PATH=$T/geosan.db && .venv/bin/python - <<'EOF' 2>&1 | grep -n "File \"<project-dir>/geosan" | head -12\nim
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:34:16Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python - <<'EOF'\nfrom pathlib import Path\np = Path("aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/co
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:34:29Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: grep -n "^def \|^class " geosan/config/app_settings.py; echo "=== 저장·읽기·활성 묶음 변경 ==="; awk '/^def sync_app_settings/,/^def zzz/{print NR": "$0}' geosan/config/a
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:34:51Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: sed -n 1,56p geosan/config/registry.py | grep -n "import\|REPO_ROOT\|DEFAULT_\|__all__" ; echo "=== app_settings imports ==="; sed -n 1,30p geosan/config/app_se
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:35:01Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue create --title "[PM] 버그: 앱 설정 사본이 없을 때 활성 묶음(BROCHURE)을 바꾸면 그 뒤 투입·평가가 '저장하지 못했습니다'로 실패한다" --label "버그" --label "PM" --label "백엔드" --milestone "뼈대(10/2
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:35:38Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git switch -q -c jiye/44-active-dataset-fix && .venv/bin/python - <<'PYEOF'\nfrom pathlib import Path\ndef rep(path, old, new):\n    p = Path(path); s = p.read_tex
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:36:54Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: bash scripts/check.sh python 2>&1 | grep -E "^[0-9]+ passed|[0-9]+ failed|Total coverage|검사 끝|검사 실패|All checks|already formatted"
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:41:25Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git add geosan/config/app_settings.py geosan/config/registry.py tests/unit/u1/test_config_commands.py && git commit -q -m "활성 묶음을 바꾸기 전에 앱 설정 사본을 채운다: 사본 없는 DB에
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:41:33Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh pr checks 43 2>&1 | tail -2; echo "=== evaluate 연결에 필요한 것 ==="; grep -n "^def " geosan/workflows/flow_evaluate.py geosan/workflows/registry.py; grep -n -A8 "
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-22T05:41:56Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a42194d32f2c1515d
+**Message**: 둘 다 합치고 evaluate·verify-case 연결 시작해
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-22T05:45:04Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: afcd91279dcc8b4bc
+**Message**: 오늘 뼈대 작업을 정리하며 이강욱 막힘 해결, demo-report 명령, 소개서 역량 파일(PR #43), 설정 버그 수정(PR #45)까지 마쳤습니다. 다음은 PM이 두 PR 합치기 여부와 evaluate·verify-case 명령 연결 시작 여부를 정해 주는 것입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-22T05:52:44Z
+**Event**: HUMAN_TURN
+**Session**: a083afe1-0b75-47d5-a1ce-8e151374a464
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:53:07Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: echo "=== FileModel 설정(모르는 키 처리) ==="; sed -n 55,71p geosan/config/schemas.py; echo "=== 로더의 _설명 처리 ==="; grep -n "DESCRIPTION_KEY" geosan/config/loader.py | he
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:53:11Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: echo "=== codes.py 정의 ==="; grep -n -B2 -A8 "^class Applicability\|^class QualificationStatusCode\|^class ReviewStatus" geosan/rules/codes.py | grep -v "^--$"; 
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:53:22Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: R=aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/rules.md; sed -n 40,50p $R | cut -c1-700; echo "=== BR3.2 ==
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:54:33Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git switch -q jiye/17-capability-brochure && git pull -q --ff-only origin jiye/17-capability-brochure 2>/dev/null; git branch --show-current && .venv/bin/python
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:54:55Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: <project-dir>/examples/capability-geosan-brochure.json
+
+---
+**Timestamp**: 2026-10-22T05:55:22Z
+**Details**: .venv/bin/python - <<'PYEOF'\nfrom pathlib import Path\np = Path("docs/case-file-guide.md"); s = p.read_text(encoding="utf-8")\nold = "## 6. check-case 오류 읽는 법"\nne
+**Timestamp**: 2026-10-22T05:55:51Z
+**Details**: <project-dir>/docs/visit-questions-20261029.md
+**Timestamp**: 2026-10-22T05:56:00Z
+**Details**: .venv/bin/ruff format tests >/dev/null; .venv/bin/ruff check geosan tests 2>&1 | tail -1; PYTHONUTF8=1 .venv/bin/python -m pytest tests/unit/u1/test_config_comm
+**Timestamp**: 2026-10-22T05:56:18Z
+**Details**: git add examples/capability-geosan-brochure.json tests/unit/u1/test_config_commands.py && git commit -q -m "소개서 묶음 역량 파일의 미확인 항목마다 이유·다음 할 일·소개서 위치를 적는다\n\nUNKNOW
+**Timestamp**: 2026-10-22T05:56:23Z
+**Details**: gh pr comment 43 --body "**추가 커밋(2026-10-22 저녁, PM 지시)** — UNKNOWN·UNCONFIRMED로 둔 항목마다 \`basis\`(범위)·\`reason\`(상태) 칸에 \"이유: … 다음 할 일: …\"와 소개서 위치(\`docs/input/
+**Timestamp**: 2026-10-22T05:59:41Z
+**Details**: A=aidlc/spaces/default/intents/261019-geosan-sales-agent/audit/choejiyes-macbook-pro-local-81e5dca58e73.md && S=/private/tmp/claude-501/-Users-jiyechoi-dev-fina
