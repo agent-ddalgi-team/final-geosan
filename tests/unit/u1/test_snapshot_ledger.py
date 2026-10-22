@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
 
 from geosan.capability.importer import import_capability
+from geosan.capability.models import Qualification, QualificationStatus
 from geosan.config.registry import load_runtime_config, set_active_dataset_kind
+from geosan.config.schemas import CapabilityFile
+from geosan.evaluation.file_input import capability_snapshot
 from geosan.evaluation.inputs import current_readiness_check
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
-from geosan.evaluation.models import EvaluationRun, ItemJudgment, JudgmentEvidence
+from geosan.evaluation.models import EvaluationRun, ItemJudgment, JudgmentEvidence, RequirementCheck
 from geosan.evaluation.snapshot import build_snapshot, canonical_hash, freeze_snapshot
 from geosan.evidence.models import Evidence
 from geosan.opportunity.importer import import_case
@@ -105,6 +108,66 @@ def test_database_snapshot_matches_apjeong_scores_with_real_engine(imported):
         87.5,
     )
     assert output.classification_code == "CONTACT_URGENT"
+
+
+@pytest.mark.parametrize("latest_status", ["SUSPENDED", "CANCELLED"])
+@pytest.mark.parametrize("reverse_input", [False, True])
+def test_tied_status_history_matches_file_snapshot_and_never_passes(
+    imported, tmp_path, latest_status, reverse_input
+):
+    """Given 동일 시각 상태 이력 / When DB 평가 / Then 파일과 같고 정지·취소는 통과 불가."""
+    data = factories.capability_with_status("ISO 9001", latest_status, "2026-10-19")
+    if reverse_input:
+        factories.find_qualification(data, "ISO 9001")["statuses"].reverse()
+    import_capability(_write(tmp_path, "capability-status.json", data))
+    file_snapshot = capability_snapshot(CapabilityFile.model_validate(_clean(data)))
+    file_qualification = next(
+        row for row in file_snapshot.qualifications if row.official_name == "ISO 9001"
+    )
+    with session_scope() as session:
+        qualification = session.scalar(
+            select(Qualification).where(Qualification.official_name == "ISO 9001")
+        )
+        statuses = list(
+            session.scalars(
+                select(QualificationStatus).where(
+                    QualificationStatus.qual_id == qualification.qual_id
+                )
+            )
+        )
+        for index, row in enumerate(statuses):
+            row.created_at = datetime(2026, 10, 22, tzinfo=UTC)
+            row.status_id = (
+                f"qs-01M5H8VF1SZZZZZZZZZZZZZZZ{index}"
+                if row.status == "ACTIVE"
+                else "qs-01M5H8VF1S6B9AG53TNSE0R9M4"
+            )
+        session.flush()
+        snapshot = _snapshot(session, imported)
+        db_qualification = next(
+            row
+            for row in snapshot.evaluation_input.capability.qualifications
+            if row.official_name == "ISO 9001"
+        )
+        assert db_qualification.current_status == file_qualification.current_status == latest_status
+        output = evaluate(snapshot.evaluation_input)
+        req_id = next(
+            row.req_id for row in snapshot.evaluation_input.requirements if row.name == "ISO 9001"
+        )
+        assert (
+            next(row for row in output.requirement_checks if row.req_id == req_id).result != "PASS"
+        )
+
+    result = run_evaluation([imported])
+    assert result.ok
+    with session_scope() as session:
+        iso_check = session.scalar(
+            select(RequirementCheck).where(
+                RequirementCheck.eval_id == result.new_eval_ids[0],
+                RequirementCheck.req_id == req_id,
+            )
+        )
+        assert iso_check is not None and iso_check.result != "PASS"
 
 
 @pytest.mark.parametrize(
