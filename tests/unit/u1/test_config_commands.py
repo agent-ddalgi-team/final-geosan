@@ -339,3 +339,37 @@ def test_set_active_dataset_kind_on_empty_db_keeps_settings_readable(tmp_db: Pat
         assert runtime.app_settings.active_dataset_kind == "BROCHURE"
         assert runtime.app_settings.is_recording_staff("park-lee")  # 나머지는 예시 파일 값
         assert not any("앱 설정 사본이 없어" in n for n in runtime.notices)
+
+
+def test_brochure_capability_example_is_pending_and_contact_free() -> None:
+    """회사소개서 묶음 예시(BROCHURE, #17): 검사 통과, 전부 검수 대기, 연락처 없음."""
+    report = check_capability_file(EXAMPLES / "capability-geosan-brochure.json")
+    assert report.ok, report.error_lines()
+    cap = report.capability
+    assert cap is not None and cap.dataset_kind == "BROCHURE"
+    assert {p.code for p in cap.processes} == {
+        p.code
+        for p in check_capability_file(EXAMPLES / "capability-geosan.json").capability.processes
+    }  # 가상 묶음과 같은 공정 코드 9개
+    assert all(p.review_status == "PENDING" for p in cap.processes)
+    assert all(c.review_status == "PENDING" for p in cap.processes for c in p.capabilities)
+    assert all(q.review_status == "PENDING" for q in cap.qualifications)
+    assert all(s.review_status == "PENDING" for q in cap.qualifications for s in q.scopes)
+    assert any(q.official_name == "AS9100D" and q.number for q in cap.qualifications)
+    raw = (EXAMPLES / "capability-geosan-brochure.json").read_text(encoding="utf-8")
+    assert "소개서 기준·거산 확인 전" in raw
+    # UNKNOWN·UNCONFIRMED로 둔 항목마다 왜 그런지(이유)와 다음 할 일을 적어 둔다(PM 지시 2026-10-22)
+    for qual in cap.qualifications:
+        for scope in qual.scopes:
+            if scope.applicability == "UNKNOWN":
+                assert scope.basis and "이유:" in scope.basis and "다음 할 일:" in scope.basis, (
+                    qual.official_name,
+                    scope.process_code,
+                )
+        for entry in qual.statuses:
+            if entry.status == "UNCONFIRMED":
+                assert entry.reason and "이유:" in entry.reason and "다음 할 일:" in entry.reason, (
+                    qual.official_name
+                )
+    # 소개서의 전화·이메일은 옮기지 않는다(CON-11)
+    assert "@" not in raw and "041-" not in raw

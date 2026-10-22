@@ -20,7 +20,7 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
    - 있으면 시점 신호(`subject: SIGNAL`) — 증설·신규 수주·공고·채용
 3. `examples/case-template.json`을 복사해 `examples/cases/<회사-품목>.json`처럼 저장하고 칸을 채웁니다(칸마다 `_설명`에 뜻과 허용 값이 있습니다). `caseId`는 영문 소문자·숫자·하이픈(예: `b-precision-bracket-zinc`).
 4. 8항목 판정(`itemInputs`)을 아래 3장 판정표대로 적습니다.
-5. `geosan check-case <파일>`로 검사합니다. 저장 없이 형식·허용 값·연락처만 봅니다(DB 불필요). 오류는 "몇 번째 줄 어느 항목이 왜"로 나옵니다. 역량 파일을 함께 주면(`--capability examples/capability-geosan.json`) 공정 코드 존재도 검사합니다.
+5. `geosan check-case <파일>`로 검사합니다. 저장 없이 형식·허용 값·연락처만 봅니다(DB 불필요). 오류는 "몇 번째 줄 어느 항목이 왜"로 나옵니다. 역량 파일을 함께 주면(`--capability examples/capability-geosan-brochure.json`, 실제 기업은 소개서 묶음 파일) 공정 코드·역량 이름·실적 산업이 그 파일에 있는지도 검사합니다. 내 파일이 어떻게 평가되는지 미리 보려면 `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <내 사례 폴더> --out <아무 폴더>`를 돌립니다(사례 폴더에는 사례 파일만 넣고 `case-template.json`은 넣지 않음).
 6. PR로 올립니다(이슈 번호 연결, `자료` 라벨). 투입·평가는 PM이 합니다.
 
 ## 3. 8항목 판정표 (일치도 단계 · 확실도 등급, 규칙 BR4.2·BR4.3)
@@ -42,7 +42,7 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
 
 - 시점 항목(`SIG_*`)은 신호가 없으면 `state: NO_SIGNAL`(0점, 판정 완료)로 적고 `signalRefs`를 비웁니다. 신호가 있으면 `signals` 배열에 신호를 적고 `signalRefs`에 그 번호를 넣습니다. `matchRate`는 그 신호의 `relation`(DIRECT 1.0 / INDIRECT 0.5)과 같아야 합니다.
 - 감쇠(발생일이 오래됐는지)는 시스템이 신호 날짜와 기준일로 계산하므로 적지 않습니다. 발생일(`occurredAt`)을 모르면 비워 둡니다(미확보 처리).
-- `NEW_MATERIAL`·`NEW_RECORD`·`NEW_PERF`는 어떤 거산 값과 대조했는지 `usedCapabilityRefs`에 적습니다(공정 코드·역량 이름·실적 산업). 거산 값은 `examples/capability-geosan.json`(가상) 또는 PM이 만든 소개서 묶음 파일의 공정 코드를 씁니다.
+- `NEW_MATERIAL`·`NEW_RECORD`·`NEW_PERF`는 어떤 거산 값과 대조했는지 `usedCapabilityRefs`에 적습니다(공정 코드·역량 이름·실적 산업). 거산 값은 실제 기업이면 **소개서 묶음 파일 `examples/capability-geosan-brochure.json`**(회사소개서를 옮겨 적음, 검수 대기)의 공정 코드·역량 이름·실적 산업을 쓰고, 가상 사례(A정밀)만 `examples/capability-geosan.json`(가상)을 씁니다. 소개서 묶음의 알루미늄 소재 코드는 `AL`(주물 `AL_CASTING` 가능 여부는 거산 확인 전)입니다.
 
 ### 3-2. 확실도(`state` / `certainty`) — 근거 등급으로 정합니다
 
@@ -85,6 +85,18 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
 | `expected` | `null` | 기대값은 가상 사례에만 |
 
 소개서 묶음으로 평가한 실제 기업은 규칙상 "기다리는 중(확인 필요)" 또는 "준비 중"으로 분류되고 카드에 "참고 N" 점수가 보입니다. 접촉 승인은 열리지 않습니다(BR5.6). 이것이 정상입니다.
+
+## 5-1. 상태값 뜻 — "모름"을 적는 두 가지 방법 (규칙 BR1.5·BR3.2)
+
+역량 파일(거산 값)과 사례 파일에는 "확실하지 않음"을 뜻하는 값이 둘 있습니다. 둘 다 통과(PASS) 근거로는 쓰이지 않고, 확인 질문 후보가 됩니다. 값만 적지 말고 **`basis`(범위) 또는 `reason`(상태) 칸에 "이유: … 다음 할 일: …"을 같이 적습니다**(소개서 묶음 파일 `examples/capability-geosan-brochure.json`이 예시).
+
+| 값 | 어디에 쓰나 | 뜻 | 예 |
+|---|---|---|---|
+| `UNKNOWN` | 자격 범위 `scopes[].applicability`, 요구 `reqLevel`·`neededStage`, 사례 `certainty` | **자료에 언급이 없거나 범위가 애매해서 판단할 수 없음.** 자료 자체가 없는 경우도 포함 | SEMES 인증서 범위가 "도금"으로만 적혀 어느 도금 공정인지 모름 → 세 공정에 `UNKNOWN` |
+| `UNCONFIRMED` | 자격 현재 상태 `statuses[].status`, 고객 `relationStatus` | **자료(또는 언급)는 있지만 내용을 확인하지 못함.** 번호·유효기간을 못 읽었거나 지금 유효한지 모를 때 | 한화시스템 승인서 이미지가 흐려 번호·유효기간 판독 불가 → `UNCONFIRMED` |
+
+- 비슷하지만 다른 값: 검수 상태 `reviewStatus`의 `PENDING`은 "값은 적혀 있고 거산 검수만 안 됨"(소개서 묶음은 전부 이 상태), `UNAVAILABLE`은 "값이 아예 없음", `RECHECK`는 "검수했는데 다시 봐야 함"입니다. 자격 범위에서 "해당 안 됨"이 확인되면 `UNKNOWN`이 아니라 `NOT_APPLIES`입니다.
+- 거산에 물어볼 것이 생기면 `docs/visit-questions-20261029.md`(10/29 방문 질문 목록)에 더합니다.
 
 ## 6. check-case 오류 읽는 법 (Step 30에서 예시 보강)
 
