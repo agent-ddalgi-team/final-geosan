@@ -26136,3 +26136,156 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Details**: .venv/bin/python - <<'EOF'\nfrom pathlib import Path\np = Path("aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/code-generation/co
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-10-22T06:38:25Z
+**Event**: HUMAN_TURN
+**Session**: a083afe1-0b75-47d5-a1ce-8e151374a464
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:38:43Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: sed -n 1,30p docs/case-file-guide.md; echo "..."; sed -n 89,110p docs/case-file-guide.md
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:38:48Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python -I - <<'EOF'\nimport json\nd = json.load(open("<project-dir>/examples/capability-geosan-brochure.json", encoding="utf-8"))\npri
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:38:56Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: S=/private/tmp/claude-501/-Users-jiyechoi-dev-final-geosan/a083afe1-0b75-47d5-a1ce-8e151374a464/scratchpad/badcases && mkdir -p $S && .venv/bin/python - <<EOF\ni
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:39:31Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python -I -c "\nimport json; d=json.load(open('<project-dir>/examples/case-template.json', encoding='utf-8'))\nfor k in ('discoveryPa
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:40:44Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git switch -q -c jiye/18-case-file-guide && .venv/bin/python - <<'PYEOF'\nfrom pathlib import Path\np = Path("docs/case-file-guide.md"); s = p.read_text(encoding=
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-22T06:40:54Z
+**Event**: HUMAN_TURN
+**Session**: 9b97a752-5d32-460e-ba90-09d5022451b6
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:41:12Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: echo "== PR (전체)"; gh pr list --state all --limit 50 --json number,title,state,author,mergedAt,createdAt,headRefName --jq '.[] | "\(.number)\t\(.state)\t\(.auth
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:41:34Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python - <<'PYEOF'\nfrom pathlib import Path\np = Path("docs/case-file-guide.md"); s = p.read_text(encoding="utf-8")\ns = s.replace("(오타인지 확인해 주세요. 설명은 \
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:41:52Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue comment 18 --body "**PM 세션 요약(2026-10-22 밤)** — PR #49로 안내서를 완성했습니다. 2장에 #16 확정 기준(공정 2개·지역·키워드·뺄 것·배분), 새 2-1장에 소개서 묶음 파일의 공정 코드·소재·실적 산업 참조표와 \`usedC
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-22T06:41:55Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a6e95b9af1d577be8
+**Message**: #12 막힘 떼고 #18 닫아줘
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:42:01Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh pr checks 49 --watch --fail-fast 2>&1 | tail -2; git switch -q develop 2>&1 | tail -1; git branch --show-current; git status --short
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T06:45:11Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git add aidlc/spaces/default/intents/261019-geosan-sales-agent/audit/ && git commit -q -m "AI-DLC 감사 기록 갱신 (10/22 밤, 안내서 완성 작업분)\n\nCo-Authored-By: Claude Fable 5
+
+---
