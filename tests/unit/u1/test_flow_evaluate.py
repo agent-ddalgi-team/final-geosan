@@ -1,4 +1,4 @@
-"""평가 흐름 실패 취소·입력 부족·기준일·질문 중복 방지를 검사한다. 엔진은 가짜다."""
+"""실제 엔진을 연결해 평가 흐름 실패 취소·입력 부족·기준일·질문 중복 방지를 검사한다."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from geosan.evaluation.models import EvaluationBatch, EvaluationRun, ItemJudgmen
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
+from geosan.rules.engine import evaluate
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_evaluate as flow
 from tests import factories
-from tests.fakes import fake_engine
 from tests.unit.u1.test_snapshot_ledger import _write
 
 
@@ -24,13 +24,6 @@ from tests.unit.u1.test_snapshot_ledger import _write
 def imported(tmp_db, tmp_path):
     import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
     return import_case(_write(tmp_path, "case.json", factories.apjeong_case())).opp_id
-
-
-@pytest.fixture(autouse=True)
-def explicit_fake_engine(monkeypatch):
-    monkeypatch.setattr(
-        flow, "engine_functions", lambda: (fake_engine.evaluate, fake_engine.rank, True)
-    )
 
 
 def _assert_failed_without_rows():
@@ -60,11 +53,11 @@ def test_invalid_totals_fail_whole_batch(imported, monkeypatch):
     """Given E보다 작은 R / When 엔진 반환값 검사 / Then 저장하지 않고 전체 실패한다."""
 
     def invalid(source):
-        output = fake_engine.evaluate(source)
+        output = evaluate(source)
         output.totals.R = output.totals.E - 1
         return output
 
-    monkeypatch.setattr(flow, "engine_functions", lambda: (invalid, fake_engine.rank, True))
+    monkeypatch.setattr(flow, "evaluate", invalid)
     result = flow.run_evaluation([imported])
     assert not result.ok and result.error.kind == "RULE_CONFIG"
     assert imported in result.error.message
@@ -104,7 +97,7 @@ def test_question_is_upserted_and_source_evaluation_advances(imported):
     """Given 같은 요구의 질문 / When 재평가 / Then 질문은 한 건이고 최신 평가를 가리킨다."""
     assert flow.run_evaluation([imported]).ok
     latest = flow.run_evaluation([imported])
-    assert latest.ok and "가짜 엔진" in latest.summary
+    assert latest.ok and "가짜 엔진" not in latest.summary
     with session_scope() as session:
         questions = list(session.scalars(select(ConfirmationQuestion)))
         assert len(questions) == 1 and questions[0].source_eval_id == latest.new_eval_ids[0]
@@ -117,7 +110,7 @@ def test_engine_execution_error_is_not_replaced_with_fake_success(imported, monk
     def failing_engine(source):
         raise RuntimeError("가상 엔진 실행 실패")
 
-    monkeypatch.setattr(flow, "engine_functions", lambda: (failing_engine, fake_engine.rank, False))
+    monkeypatch.setattr(flow, "evaluate", failing_engine)
     result = flow.run_evaluation([imported])
     assert not result.ok and result.new_eval_ids == []
     _assert_failed_without_rows()
