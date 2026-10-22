@@ -199,6 +199,7 @@ export const detailSections = {
   expandQuestions: (n: number) => `나머지 ${n}개 펼치기`,
   collapseQuestions: '접기',
   approvalEligible: '승인 가능 여부',
+  requirementsTableLabel: '요구 판정 표',
   requirementColumns: {
     name: '요구',
     level: '꼭 필요한가',

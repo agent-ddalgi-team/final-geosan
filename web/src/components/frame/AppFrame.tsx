@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Select, Typography } from 'antd';
+import { ConfigProvider, Select, Typography } from 'antd';
 import { getConfigUi } from '../../api/client';
 import type { ConfigUi, Meta } from '../../api/types';
 import { brand as defaultBrand } from '../../config/brand';
@@ -80,91 +80,98 @@ export default function AppFrame({ title, children }: AppFrameProps) {
 
   return (
     <FrameContext.Provider value={value}>
-      <a href="#main" className="skip-link" data-testid="skip-link">
-        {frame.skipToContent}
-      </a>
-      <header
-        data-testid="app-header"
-        style={{
-          background: colors.bgContainer,
-          borderBottom: `1px solid ${colors.borderSecondary}`,
-          minHeight: spacing.headerHeight,
-          padding: '0 24px',
+      {/* Ant Design 기본 링크색·보조 글자색은 대비 4.5:1에 못 미쳐(axe), 토큰 값으로 맞춘다. */}
+      <ConfigProvider
+        theme={{
+          token: { colorLink: brand.colorPrimary, colorTextDescription: colors.textSecondary },
         }}
       >
-        <div
+        <a href="#main" className="skip-link" data-testid="skip-link">
+          {frame.skipToContent}
+        </a>
+        <header
+          data-testid="app-header"
           style={{
-            maxWidth: spacing.contentMaxWidth,
-            margin: '0 auto',
+            background: colors.bgContainer,
+            borderBottom: `1px solid ${colors.borderSecondary}`,
             minHeight: spacing.headerHeight,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 24,
+            padding: '0 24px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {brand.logoUrl ? (
-              <img src={brand.logoUrl} alt="" height={32} data-testid="brand-logo" />
-            ) : null}
-            <span
-              data-testid="brand-name"
-              style={{ fontWeight: 600, fontSize: typography.fontSize }}
-            >
-              {brand.brandName}
-            </span>
+          <div
+            style={{
+              maxWidth: spacing.contentMaxWidth,
+              margin: '0 auto',
+              minHeight: spacing.headerHeight,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 24,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {brand.logoUrl ? (
+                <img src={brand.logoUrl} alt="" height={32} data-testid="brand-logo" />
+              ) : null}
+              <span
+                data-testid="brand-name"
+                style={{ fontWeight: 600, fontSize: typography.fontSize }}
+              >
+                {brand.brandName}
+              </span>
+            </div>
+            <nav aria-label={frame.navLabel} style={{ flex: 1 }}>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', gap: 16 }}>
+                <li>
+                  <Link
+                    to="/"
+                    aria-current="page"
+                    data-testid="nav-opportunities-link"
+                    style={{ fontWeight: 600 }}
+                  >
+                    {frame.menuOpportunities}
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label htmlFor="staff-select">{frame.staffSelectLabel}</label>
+              <Select
+                id="staff-select"
+                data-testid="staff-select"
+                style={{ minWidth: 160 }}
+                placeholder={frame.staffPlaceholder}
+                value={staffKey ?? undefined}
+                onChange={(key: string) => setStaffKey(key)}
+                options={staff.map((entry) => ({ value: entry.key, label: entry.displayName }))}
+                disabled={staff.length === 0}
+              />
+            </div>
           </div>
-          <nav aria-label={frame.navLabel} style={{ flex: 1 }}>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', gap: 16 }}>
-              <li>
-                <Link
-                  to="/"
-                  aria-current="page"
-                  data-testid="nav-opportunities-link"
-                  style={{ fontWeight: 600 }}
-                >
-                  {frame.menuOpportunities}
-                </Link>
-              </li>
-            </ul>
-          </nav>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label htmlFor="staff-select">{frame.staffSelectLabel}</label>
-            <Select
-              id="staff-select"
-              data-testid="staff-select"
-              style={{ minWidth: 160 }}
-              placeholder={frame.staffPlaceholder}
-              value={staffKey ?? undefined}
-              onChange={(key: string) => setStaffKey(key)}
-              options={staff.map((entry) => ({ value: entry.key, label: entry.displayName }))}
-              disabled={staff.length === 0}
-            />
-          </div>
-        </div>
-        {configFailed ? (
-          <Typography.Text type="danger" data-testid="staff-load-failed">
-            {frame.staffLoadFailed}
-          </Typography.Text>
-        ) : null}
-      </header>
-      <StatusBanner
-        hasVirtualData={bannerMeta?.hasVirtualData}
-        datasetKind={bannerMeta?.datasetKind ?? config?.activeDatasetKind}
-        demoLabel={brand.demoLabel}
-        updatedAt={bannerMeta?.updatedAt}
-        reevaluated={pageMeta?.reevaluated}
-        narrowScreen={isNarrowDevice()}
-      />
-      <main
-        id="main"
-        tabIndex={-1}
-        style={{ maxWidth: spacing.contentMaxWidth, margin: '0 auto', padding: '24px' }}
-      >
-        <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
-          {pageTitle ?? title}
-        </Typography.Title>
-        {children}
-      </main>
+          {configFailed ? (
+            <Typography.Text type="danger" data-testid="staff-load-failed">
+              {frame.staffLoadFailed}
+            </Typography.Text>
+          ) : null}
+        </header>
+        <StatusBanner
+          hasVirtualData={bannerMeta?.hasVirtualData}
+          datasetKind={bannerMeta?.datasetKind ?? config?.activeDatasetKind}
+          demoLabel={brand.demoLabel}
+          updatedAt={bannerMeta?.updatedAt}
+          reevaluated={pageMeta?.reevaluated}
+          narrowScreen={isNarrowDevice()}
+        />
+        <main
+          id="main"
+          tabIndex={-1}
+          style={{ maxWidth: spacing.contentMaxWidth, margin: '0 auto', padding: '24px' }}
+        >
+          <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
+            {pageTitle ?? title}
+          </Typography.Title>
+          {children}
+        </main>
+      </ConfigProvider>
     </FrameContext.Provider>
   );
 }
