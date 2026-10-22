@@ -1,0 +1,184 @@
+{
+  "caseId": "keukdong-a6061-anodizing",
+  "baseDate": null,
+  "description": "[교체 조사 초안·공정 수요 미확정] 극동금속공업 A6061 압출재 아노다이징 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "삼진정공은 아연도금 사양·소재·목적이 부족해 보류하고, 공개 제품·소재·용도 자료를 확보한 극동금속공업을 교체 조사 대상으로 추가했다. 최종 후보 확정이나 #20 완료가 아니다.",
+    "공개 자료 열람일: 2026-10-22. 원문 게시일은 확인되지 않아 occurredAt을 비웠다.",
+    "공식 압출 제품 표는 A6061과 O·T4·T451·T6·T651 질별을 명시한다. 대표 품목은 CSV의 알루미늄 봉 및 형재이며, 개별 완성 부품 발주를 확인한 것은 아니다.",
+    "공식 합금 특성표의 6061 적용란은 내식성이 필요한 부품 용도를 설명한다. 이는 소재 적용 목적이며 아노다이징 처리 목적·발주 수요를 직접 명시한 근거가 아니다. NEW_PRODUCT와 NEW_PERF 판정은 보류했다.",
+    "공식 설비현황 http://www.ekdmc.com/company/equipment.asp 에 압출기·인발 등 설비가 나오나, 그 목록만으로 자체 아노다이징이 없다고 단정하지 않았다.",
+    "PM PR #43의 636ae552eca97a0f705e03ca575cebcd0159c920 커밋 examples/capability-geosan-brochure.json의 ANODIZING 소재 AL과 A6061 알루미늄을 대조했다. 구체적인 합금·질별·치수 수탁 가능 여부는 거산 확인 전이며 소개서 상태는 PENDING이다."
+  ],
+  "customer": {
+    "name": "극동금속공업 주식회사",
+    "bizNumber": null,
+    "address": "충청남도 천안시 동남구 성남면 용원4길 87-54",
+    "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 158047; https://www.data.go.kr/data/15105482/fileData.do; 생산품 알루미늄 봉 및 형재. 공식 자료 열람 2026-10-22.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "A6061 알루미늄 압출재 아노다이징 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:158047",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": "AL"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "A6061 O,T4,T451,T6,T651",
+      "sourceRef": "http://www.ekdmc.com/product/pressing.asp",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "A6061",
+      "sourceRef": "http://www.ekdmc.com/product/pressing.asp",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "내식성이 요구되는 부품, 자동차,컴퓨터,반도체,리벳등 여러가지 분야에 쓰임",
+      "sourceRef": "http://www.ekdmc.com/technology/special.asp",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공식 압출 제품 표와 CSV의 알루미늄 봉·형재 생산은 확인했으나 해당 제품의 아노다이징 수요 근거는 미확보다.",
+      "evidenceRefs": [
+        0
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 압출 제품 표의 A6061 알루미늄을 실제 소개서 묶음 ANODIZING의 AL 소재와 대조했다. 소재 코드 범위의 일치이며 구체적인 합금·질별·치수 수탁은 거산 확인 전이다.",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "개별 부품·최종 산업과 실제 거산의 해당 공정 납품실적 연결은 미확인이다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공식 6061 적용표는 내식성이 필요한 부품 용도를 설명한다. 합금 자체의 적용 특성을 아노다이징 목적이라고 바꾸어 적지 않아 판정을 보류했다.",
+      "evidenceRefs": [
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성이 확인되는 시점 신호를 이번 공식 자료 조사에서 확보하지 못했다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성이 확인되는 시점 신호를 이번 공식 자료 조사에서 확보하지 못했다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성이 확인되는 시점 신호를 이번 공식 자료 조사에서 확보하지 못했다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "발생일과 관련성이 확인되는 시점 신호를 이번 공식 자료 조사에서 확보하지 못했다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "생산하는 A6061 봉·형재 중 아노다이징이 필요한 구체적인 제품은 무엇인가?",
+      "내식 요구가 아노다이징 처리로 달성되는 사양인지 공개 자료에서 확인되는가?",
+      "아노다이징 자체 처리 설비를 운영하는가?"
+    ]
+  },
+  "expected": null
+}
