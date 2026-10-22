@@ -219,10 +219,40 @@ def read_app_settings(session: Session) -> AppSettings | None:
     return AppSettings.model_validate(data)
 
 
+DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"
+"""앱 설정 사본이 아직 없을 때 읽는 예시 파일(registry.py와 같은 값)."""
+
+
+def ensure_app_settings_copy(session: Session, *, updated_by: str = "system") -> bool:
+    """앱 설정 사본(cfg_app_setting)이 없거나 위쪽 키가 빠져 있으면 예시 파일로 채운다.
+
+    `set_active_dataset_kind`처럼 키 하나만 바꾸는 함수가 먼저 불리면 사본이 한 줄뿐이라
+    `read_app_settings`가 AppSettings를 만들지 못하던 문제를 막는다(이슈 #44). 채웠으면 True.
+    """
+    from geosan.config.models import AppSetting
+
+    present = set(session.scalars(select(AppSetting.setting_key)).all())
+    required = {f.alias or name for name, f in AppSettings.model_fields.items()}
+    if required <= present:
+        return False
+    settings = load_app_settings(DEFAULT_APP_SETTINGS_PATH)
+    data = settings.model_dump(by_alias=True, mode="json")
+    for key, value in data.items():
+        if key not in present:  # 이미 바꿔 둔 값(예: activeDatasetKind)은 덮어쓰지 않는다
+            _upsert(session, key, value, updated_by)
+    if SOURCE_FILE_KEY not in present:
+        _upsert(session, SOURCE_FILE_KEY, str(DEFAULT_APP_SETTINGS_PATH.resolve()), updated_by)
+    session.flush()
+    return True
+
+
 def set_active_dataset_kind(
     session: Session, kind: DatasetKind | str, *, updated_by: str = "system"
 ) -> DatasetKind:
-    """활성 거산 값 묶음만 바꾼다(U4 dataset-set 명령과 테스트가 쓴다). 허용 값 밖은 오류."""
+    """활성 거산 값 묶음만 바꾼다(U4 dataset-set 명령과 테스트가 쓴다). 허용 값 밖은 오류.
+
+    사본이 아직 없으면 예시 앱 설정으로 먼저 채운 뒤 바꾼다(이슈 #44).
+    """
     try:
         value = DatasetKind(kind)
     except ValueError:
@@ -231,6 +261,7 @@ def set_active_dataset_kind(
             message=f"거산 값 묶음은 {allowed} 중 하나여야 하는데 '{kind}'이 적혀 있습니다",
             next_action="허용 값 중 하나로 적어 주세요.",
         ) from None
+    ensure_app_settings_copy(session, updated_by=updated_by)
     _upsert(session, "activeDatasetKind", value.value, updated_by)
     session.flush()
     return value
