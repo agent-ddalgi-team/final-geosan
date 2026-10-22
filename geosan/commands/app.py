@@ -1,8 +1,8 @@
 """`geosan` 명령줄 앱 (Typer). 계약 C8의 명령 9개 + `db merge-heads`.
 
-Part A(기본 틀)에서는 명령 이름과 인자만 등록한다. 본문은 Step 19(담당: 이강욱)에서
-명령별 파일(`init_db.py`, `serve.py`, …)로 채운다. 아직 구현되지 않은 명령은 오류를
-숨기지 않고 "아직 구현되지 않았습니다" 한 줄을 내고 종료 코드 2로 끝난다.
+명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, …)에 있다. 아직
+구현되지 않은 명령(`serve`·`export-contracts`, Part F)은 오류를 숨기지 않고
+"아직 구현되지 않았습니다" 한 줄을 내고 종료 코드 2로 끝난다.
 
 종료 코드 규칙(C8): 0 성공, 1 입력 오류, 2 실행 실패.
 """
@@ -39,7 +39,7 @@ db_app = typer.Typer(
 app.add_typer(db_app, name="db")
 
 
-def not_implemented_yet(command: str, owner: str = "이강욱", step: str = "Step 19") -> None:
+def not_implemented_yet(command: str, owner: str = "PM 세션", step: str = "Part F") -> None:
     """미구현 명령의 공통 종료. 성공처럼 보이지 않게 종료 코드 2로 끝낸다."""
     typer.echo(f"'{command}' 명령은 아직 구현되지 않았습니다(담당: {owner}, {step}).")
     raise typer.Exit(code=EXIT_RUN_FAILED)
@@ -139,7 +139,9 @@ def evaluate(
     base_date: str | None = typer.Option(None, "--base-date", help="평가 기준일 YYYY-MM-DD"),
 ) -> None:
     """평가 흐름 ⓪을 실행합니다. 출력: 묶음 ID, 기회 수, 분류별 건수."""
-    not_implemented_yet("evaluate")
+    from geosan.commands.evaluate import run_evaluate
+
+    raise typer.Exit(code=run_evaluate(opp, base_date))
 
 
 @app.command("verify-case")
@@ -147,7 +149,9 @@ def verify_case(
     file: Path = typer.Argument(..., help="expected 블록이 있는 사례 파일(JSON)"),
 ) -> None:
     """사례 파일의 기준일로 평가한 뒤 expected와 비교해 항목별 일치/불일치 표를 냅니다."""
-    not_implemented_yet("verify-case")
+    from geosan.commands.verify_case import run_verify_case
+
+    raise typer.Exit(code=run_verify_case(file))
 
 
 @app.command("export-contracts")
