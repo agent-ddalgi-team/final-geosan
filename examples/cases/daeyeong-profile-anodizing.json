@@ -10,7 +10,8 @@
     "공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 에서 산업용 알루미늄 압출 형재를 안내하며, 공식 홈페이지 주소도 CSV와 일치한다.",
     "공식 DF 3090 상세의 기술자료 이미지를 눈으로 확인했다. A6N01S-T5, Anodized, Color (색상) Silver, Black이 같은 표에 있다. 색상 선택을 근거로 외관 목적만 STRONG으로 추정했다. 내식·내마모 목적이나 처리 성능 수치는 추가하지 않았다.",
     "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 홈페이지의 현재 제품 사양 갱신일과 실제 생산·판매 지속 여부도 별도 확인 사항이다.",
-    "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 성능 태그 APPEARANCE를 대조했다. 소개서 검수 상태는 PENDING이며 합금·치수·요구 사양의 수탁 승인이 아니다."
+    "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 성능 태그 APPEARANCE를 대조했다. 소개서 검수 상태는 PENDING이며 합금·치수·요구 사양의 수탁 승인이 아니다.",
+    "최종 조사 묶음은 명화금속·스틸앙카 아연도금 2곳과 대영프로파일 아노다이징 1곳이다. 스틸앙카의 회사 제품군 근거와 당진 생산 사업장 미확인 사항은 별도로 검토한다."
   ],
   "customer": {
     "name": "(주)대영프로파일",
