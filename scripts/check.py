@@ -205,6 +205,9 @@ def run_web() -> None:
 
 def main(argv: list[str]) -> int:
     target = argv[1] if len(argv) > 1 else "all"
+    # 윈도우(CP949)에서도 모든 하위 명령이 파일·출력을 UTF-8로 다루게 한다(2026-10-22, 이슈 #33).
+    os.environ.setdefault("PYTHONUTF8", "1")
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
     try:
         if target == "python":
             run_python()

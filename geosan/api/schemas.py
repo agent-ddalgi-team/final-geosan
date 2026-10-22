@@ -6,6 +6,8 @@
 
 더하는 변경(2026-10-21 PM 확인): OpportunityCard.scoreDisplay, meta.notEvaluatedCount,
 brand.demoLabel.
+고친 것(2026-10-22 PM 확인, 이슈 #33): Scores의 `E/P/S/R/C` 키를 대문자 별칭으로 고정
+(약속 C1과 같음).
 """
 
 from __future__ import annotations
@@ -269,11 +271,17 @@ class ScoreItemView(_ApiModel):
 
 
 class Scores(_ApiModel):
-    E: int
-    P: int
-    S: float | None
-    R: int
-    C: float
+    """점수 영역. 다섯 점수 키는 약속 C1·화면 예시대로 대문자 `E/P/S/R/C`다.
+
+    공통 camelCase 변환(to_camel)이 한 글자 키를 소문자로 바꾸므로 별칭을 직접 고정한다
+    (2026-10-22 PM 확인, 이슈 #33).
+    """
+
+    E: int = Field(alias="E")
+    P: int = Field(alias="P")
+    S: float | None = Field(alias="S")
+    R: int = Field(alias="R")
+    C: float = Field(alias="C")
     items: list[ScoreItemView]
     rule_version: str
     dataset_kind: DatasetKind

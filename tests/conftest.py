@@ -22,15 +22,40 @@ EXAMPLES_DIR = ROOT_DIR / "examples"
 BASE_DATE = date(2026, 10, 20)
 
 
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+
+def is_loopback_address(address: object) -> bool:
+    """내 컴퓨터 안(loopback) 주소인가. 윈도우의 asyncio·TestClient가 준비에 127.0.0.1을 쓴다."""
+    if isinstance(address, tuple) and address:
+        host = address[0]
+        return isinstance(host, str) and host.strip("[]") in LOOPBACK_HOSTS
+    return False
+
+
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    """테스트 중 바깥으로 나가는 소켓 연결을 막는다. 생기면 실패(가짜로 대체하지 않고 제거한다)."""
+    """테스트 중 바깥으로 나가는 소켓 연결을 막는다. 생기면 실패(가짜로 대체하지 않고 제거한다).
 
-    def _blocked_connect(self: socket.socket, address: object) -> None:  # noqa: ARG001
+    내 컴퓨터 안(127.0.0.1·::1·localhost) 연결만 허용한다. 윈도우에서는 asyncio가 내부 준비에
+    127.0.0.1 소켓 쌍을 쓰므로 이것까지 막으면 API 테스트(TestClient)가 시작되지 않는다
+    (2026-10-22, 이슈 #33). 바깥 주소는 전과 같이 막는다.
+    """
+    real_connect = socket.socket.connect
+    real_connect_ex = socket.socket.connect_ex
+
+    def _guarded_connect(self: socket.socket, address: object) -> None:
+        if is_loopback_address(address):
+            return real_connect(self, address)
         raise RuntimeError(f"테스트에서 네트워크 연결을 시도했습니다: {address!r} (NFR4.3)")
 
-    monkeypatch.setattr(socket.socket, "connect", _blocked_connect)
-    monkeypatch.setattr(socket.socket, "connect_ex", _blocked_connect)
+    def _guarded_connect_ex(self: socket.socket, address: object) -> int:
+        if is_loopback_address(address):
+            return real_connect_ex(self, address)
+        raise RuntimeError(f"테스트에서 네트워크 연결을 시도했습니다: {address!r} (NFR4.3)")
+
+    monkeypatch.setattr(socket.socket, "connect", _guarded_connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", _guarded_connect_ex)
 
 
 @pytest.fixture
