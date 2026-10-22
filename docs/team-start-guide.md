@@ -42,6 +42,8 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 - 편집기는 `.editorconfig`를 읽어 새 파일도 LF로 저장한다(VS Code는 "EditorConfig for VS Code" 확장을 설치한다).
 - Prettier 검사에서 `Delete ␍`가 나오면 그 파일이 CRLF라는 뜻이다. 위 절차를 다시 하거나 편집기 오른쪽 아래 `CRLF`를 눌러 `LF`로 바꾼다.
 
+**한글 깨짐(CP949) 오류가 나면**: 윈도우는 파일을 기본으로 CP949로 읽어 `UnicodeDecodeError … cp949`가 날 수 있다. `.venv\Scripts\python scripts\check.py`는 하위 명령을 자동으로 UTF-8 모드로 돌리므로 그 명령으로 검사한다. `pytest`나 `python -m geosan …`을 직접 부를 때는 PowerShell에서 한 번 `$env:PYTHONUTF8 = "1"`을 하고 부른다(2026-10-22, 이슈 #33).
+
 **가상환경 켜기**: `.venv\Scripts\Activate.ps1`. "이 시스템에서 스크립트를 실행할 수 없으므로…" 오류가 나면 한 번만 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`를 하고 다시 한다. 켜지 않고 쓰려면 매번 `.venv\Scripts\python …`으로 부른다.
 
 **검사 명령**: 맥의 `bash scripts/check.sh`와 같은 단계·같은 순서를 파이썬판으로 돌린다.
