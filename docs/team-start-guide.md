@@ -81,7 +81,14 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 ## 4. 일하는 순서 (팀원)
 
 1. **이슈 번호부터 확인한다.** 내가 할 일의 이슈가 GitHub에 있는지 본다. 없으면 '작업' 양식으로 이슈를 만들고 보드 칸을 '진행 중'으로 옮긴 뒤 시작한다. (4-2장)
-2. `develop`을 최신으로 받는다: `git switch develop && git pull`. (가지 역할: `develop` = 기본·통합 가지, 모든 PR의 대상. `main` = 시연·전달용, PM만 `develop` → `main` PR로 옮긴다. 2026-10-22 PM 결정)
+2. **GitHub의 최신 상태를 먼저 받는다.** 새 작업을 시작할 때뿐 아니라 PR을 올린 뒤 다음 일을 시작할 때, 하루를 시작할 때, 남의 PR이 합쳐졌다고 들었을 때도 같다. AI 도구에 "이슈 #12 이어서 해 줘"라고 하면 도구가 이 순서를 먼저 한다(`AGENTS.md` 가지 규칙).
+   ```
+   git status                      # 저장 안 한 변경이 있으면 커밋하거나 git stash
+   git switch develop && git pull  # develop을 최신으로
+   git switch 내가지 && git merge develop   # 이어서 하는 작업이면 내 가지에 최신 develop을 합친다 (새 작업이면 이 줄 대신 3번으로)
+   gh pr list                      # 열린 PR 확인: 내가 고칠 파일을 남이 고치고 있으면 먼저 말한다
+   ```
+   충돌(conflict)이 나면 억지로 풀지 말고 이슈에 `막힘` 라벨을 붙이고 PM에게 알린다. (가지 역할: `develop` = 기본·통합 가지, 모든 PR의 대상. `main` = 시연·전달용, PM만 `develop` → `main` PR로 옮긴다. 2026-10-22 PM 결정)
 3. 가지를 딴다: `git switch -c <이름>/<이슈번호>-<짧은설명>` (예: `dongryeol/12-rules-engine`). 가지는 1~2일 안에 합친다.
 4. 맡은 파일만 고친다. 약속 파일(`contracts/`, `contract-summary.md`)에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 PM에게 먼저 묻는다. 개발을 시작하기 전에 자기 모듈의 기능 설계 문서(`aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/`의 `entities.md`·`rules.md`·`functional-spec.md`)를 읽는다. 규칙 엔진 담당은 `rules.md`가 기준이며 A정밀 손 계산은 이미 확인된 내용이라 다시 하지 않는다.
 5. 기능 하나를 끝낼 때마다 커밋한다. 메시지는 쉬운 한국어 한 문장(예: `A정밀 항목 점수 계산 추가: 0.5는 올림`). `fix`, `wip` 같은 한 단어는 쓰지 않는다.
