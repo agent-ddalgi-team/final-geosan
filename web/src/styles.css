@@ -20,6 +20,12 @@ body {
   outline-offset: 2px;
 }
 
+/* Ant Design Select는 안쪽 입력칸이 보이지 않아 위 초점선이 안 보이므로 겉틀에 같은 선을 준다. */
+.ant-select:has(:focus-visible) > .ant-select-selector {
+  outline: 2px solid #1f5fbf !important;
+  outline-offset: 2px;
+}
+
 /* 건너뛰기 링크: 평소엔 화면 밖, 첫 Tab에서 보인다 (접근성 A6·A7). */
 .skip-link {
   position: absolute;

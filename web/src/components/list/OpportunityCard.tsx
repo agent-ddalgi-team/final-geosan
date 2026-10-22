@@ -78,6 +78,7 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <span
             data-testid="card-rank"
+            role="img"
             aria-label={`${cardRows.rankPrefix} ${card.rank}`}
             style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
           >
@@ -90,7 +91,11 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
           >
             {card.title}
           </Typography.Title>
-          <span aria-label={`분류: ${classification}`} data-testid="card-classification">
+          <span
+            role="group"
+            aria-label={`분류: ${classification}`}
+            data-testid="card-classification"
+          >
             <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
               {classification}
             </StatusTag>

@@ -43,7 +43,7 @@ export default function RequirementsTable({
       // 스크롤 영역은 키보드로 움직일 수 있어야 한다(S2-3). 가로는 좁은 화면에서 항상 허용.
       tabIndex={0}
       role="region"
-      aria-label={detailSections.requirements}
+      aria-label={detailSections.requirementsTableLabel}
       style={{ overflowX: 'auto', ...(scroll ? { maxHeight: 320, overflowY: 'auto' } : {}) }}
     >
       <table data-testid="requirements-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
