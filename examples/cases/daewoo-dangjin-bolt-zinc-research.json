@@ -11,7 +11,7 @@
     "철탑 볼트 소개의 용융아연도금을 전기아연도금으로 바꾸어 적지 않았다. 특정 강종·제품의 처리 방법과 자체 도금 여부를 확인하기 전까지 최종 후보로 확정하지 않는다.",
     "생산공정도의 존재만으로 외주 발주를 단정하지 않았다. 자체 표면처리가 확인되면 PM의 경쟁·내재화 제외 기준에 따라 후보에서 제외해야 한다.",
     "공개 자료 열람일은 2026-10-22이다. 게시일·제품 사양 발생일을 확인하지 못한 근거의 occurredAt은 null이다. 파일명에 적힌 연도를 발생일로 만들지 않았다.",
-    "#17 실제 역량 묶음이 이 가지에 반영되지 않아 거산의 소재·납품실적·성능과 대조하지 않았다. 가상 역량으로 실제 기업의 일치 점수를 채우지 않았다.",
+    "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 2026-10-22 대조했다. ZINC_PLATING의 FE 소재·CORROSION 성능 태그를 참조한다. 소개서 기준·거산 확인 전이며 해당 공정의 검수 상태는 PENDING이다. 개별 제품에 전기아연도금이 적용되는지는 별도 확인이 필요하며 가상 역량은 사용하지 않았다.",
     "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 신호 없음(NO_SIGNAL)으로 단정하지 않았다.",
     "공개 제품 사양은 거산에 대한 구매 요청서가 아니다. 요구 조건·필수 여부·필요 단계를 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
   ],
@@ -109,37 +109,37 @@
     },
     {
       "itemCode": "NEW_MATERIAL",
-      "matchRate": null,
-      "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "ASTM A307 제품군의 탄소강 소재는 확인했지만 실제 거산 소재 역량과 비교하지 않았다.",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 카탈로그의 ASTM A307 탄소강 제품군을 소개서 ZINC_PLATING의 materialCodes FE와 대조했다. 소재 분류 일치이며 개별 제품의 전기아연도금 적용이나 기술 사양 충족을 확인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
       "evidenceRefs": [
         1
       ],
       "signalRefs": [],
-      "usedCapabilityRefs": []
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ZINC_PLATING"}]
     },
     {
       "itemCode": "NEW_RECORD",
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "실제 거산 납품실적 자료와 비교하지 않았다.",
+      "factJudged": "소개서 ZINC_PLATING의 방위산업·자동차 부품 실적 항목을 확인했다. 이 탄소강 볼트 제품군의 납품 산업·유사 부품과 연결할 근거가 없고 부품 종류·기간도 비어 있어 미확보로 둔다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
     {
       "itemCode": "NEW_PERF",
-      "matchRate": null,
-      "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "볼트류 일반 공정도의 방청처리를 간접 근거로 확보했다. 개별 제품의 전기아연도금 목적과 실제 거산 성능 태그 일치는 미확인이다.",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "볼트류 일반 공정도의 방청 목적을 소개서 ZINC_PLATING의 CORROSION 1개와 대조했다. 개별 제품·전기아연도금만의 직접 설명이 아니므로 STRONG이며 특정 품목의 처리 방법과 요구 성능은 확인 필요다. 소개서 기준·거산 확인 전(PENDING).",
       "evidenceRefs": [
         3
       ],
       "signalRefs": [],
-      "usedCapabilityRefs": []
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ZINC_PLATING"}]
     },
     {
       "itemCode": "SIG_EXPAND",
