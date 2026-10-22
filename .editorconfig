@@ -1,0 +1,15 @@
+# 편집기 공통 설정(VS Code는 EditorConfig 확장, PyCharm·대부분의 편집기는 기본 지원).
+# 새 파일도 LF 줄바꿈·UTF-8로 저장되게 해서 .gitattributes와 같은 방향을 유지한다.
+root = true
+
+[*]
+end_of_line = lf
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{bat,cmd}]
+end_of_line = crlf

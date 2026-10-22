@@ -168,6 +168,7 @@ components:
         isRecontact: { type: boolean }
         recontact: { type: object, nullable: true, description: '재접촉 카드 전용(U6): pastTrade, reasonToRecontact, hasEstimated' }
         evalId: { type: string, description: 카드가 보여 주는 최신 확정 평가 ID }
+        reevaluated: { type: boolean, description: '카드의 evalId(최신 확정 평가)가 순위를 정한 FULL 묶음의 평가와 다르면 true (기능 명세 W5; 2026-10-22 PM 확인, 이슈 #33)' }
     OpportunityDetail:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
@@ -180,12 +181,12 @@ components:
         processLinks: { type: array, items: { type: object, properties: { linkId: {}, processCode: {}, processName: {}, appliedMaterial: {}, result: {}, reason: {} } } }
         evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceView' } }
         homepageNeedsConfirm: { type: boolean }
-        scores: { type: object, properties: { E: { type: integer }, P: { type: integer }, S: { type: number, nullable: true }, R: { type: integer }, C: { type: number }, items: { type: array, items: { type: object } }, ruleVersion: { type: string }, datasetKind: { type: string }, evaluatedAt: { type: string } } }
+        scores: { type: object, description: '점수 키 E/P/S/R/C는 대문자 그대로(camelCase 변환 대상 아님; 2026-10-22 PM 확인, 이슈 #33)', properties: { E: { type: integer }, P: { type: integer }, S: { type: number, nullable: true }, R: { type: integer }, C: { type: number }, items: { type: array, items: { type: object } }, ruleVersion: { type: string }, datasetKind: { type: string }, evaluatedAt: { type: string } } }
         records: { type: object, properties: { opinion: { $ref: '#/components/schemas/RecordMeta' }, bookmark: { $ref: '#/components/schemas/RecordMeta' }, approval: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string }, purpose: { type: string, nullable: true }, evalId: { type: string }, basedOnPreviousEval: { type: boolean } } } ] }, outcome: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string, nullable: true }, nextScheduleAt: { type: string, nullable: true } } } ] } } }
         recontact: { type: object, nullable: true, description: '재접촉 상세 영역(U6): 7칸 값·확인/추정·다시 연락할 이유·후속 일정' }
         evalId: { type: string }
         previousEvalId: { type: string, nullable: true }
-        reevaluated: { type: boolean }
+        reevaluated: { type: boolean, description: 'previousEvalId가 있고, 이 기회에 마지막으로 저장된 담당자 의견이 적은 evalId(의견 요청 본문의 evalId)가 현재 evalId와 다르면 true. 의견이 하나도 없으면 previousEvalId가 있는 것만으로 true. 마지막 조회 시각은 저장 항목이 없어 쓰지 않는다 (2026-10-22 PM 결정, 이슈 #33; 기능 명세 W6과 같음)' }
     RequirementCheckView:
       type: object
       properties:

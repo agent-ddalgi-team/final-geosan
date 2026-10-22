@@ -10,7 +10,7 @@
 | 뼈대 뒤 팀별 단위 소유로 바뀐 뒤 | 전체 순서 조정 | **자기 단위만** 진행·승인한다. 다른 사람의 단위는 진행·승인하지 않는다 |
 
 - 같은 단위를 두 사람이 같은 시각에 진행하지 않는다. 진행 위치 기록은 하나뿐이라 서로 덮어쓴다.
-- 어떤 도구로 만들든 같은 PR 검사(테스트, 코드 모양 검사, 약속 파일 비교)를 통과해야 `main`에 합친다.
+- 어떤 도구로 만들든 같은 PR 검사(테스트, 코드 모양 검사, 약속 파일 비교)를 통과해야 `develop`에 합친다. 합치는 사람은 PM과 이강욱뿐이고, 팀원은 PR을 여는 데까지 한다.
 
 ## 2. 준비물 설치 (한 번만)
 
@@ -19,8 +19,40 @@
    - macOS / Linux / WSL: `curl -fsSL https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.sh | sh`
    - Windows PowerShell: `irm https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.ps1 | iex`
    - 설치 뒤 `aidlc`를 못 찾으면 설치 프로그램이 알려 준 PATH 안내를 따른다. `aidlc version`으로 확인한다.
-3. 저장소를 받는다: `git clone <저장소 주소>` 후 그 폴더로 들어간다.
+3. 저장소를 받는다: `git clone https://github.com/agent-ddalgi-team/final-geosan.git` 후 그 폴더로 들어간다. (저장소는 2026-10-22에 조직 `agent-ddalgi-team`으로 옮겼다. 그 전에 받은 클론은 `git remote -v`로 주소를 보고, 옛 주소(`jiyechoi27-star/…`)면 `git remote set-url origin https://github.com/agent-ddalgi-team/final-geosan.git`으로 바꾼다.)
 4. `aidlc doctor`를 돌려 "problems 0"인지 본다. 첫 대화 전에는 "hooks have not run yet" 경고가 나오는 게 정상이다.
+
+## 2-1. 윈도우(PowerShell) 사용자 — 줄바꿈 정리와 검사 명령 (2026-10-22 추가)
+
+맥과 윈도우는 줄바꿈 문자가 달라(LF / CRLF) 같은 파일도 "전체가 바뀐 것"처럼 보일 수 있다. 저장소 루트의 `.gitattributes`가 모든 텍스트 파일을 **항상 LF**로 저장·받도록 정했으므로, 새로 받는 클론은 손댈 것이 없다. **이미 클론을 받아 둔 사람**은 아래를 한 번만 한다(커밋 기록이나 내 작업은 지워지지 않는다. `reset --hard`는 쓰지 않는다).
+
+```powershell
+git status                 # 1) 바꾸던 파일이 있으면 먼저 치워 둔다 (없으면 2)로)
+git stash                  #    (바꾸던 파일이 있을 때만) 잠시 보관
+git switch develop
+git pull                   # 2) .gitattributes를 받는다
+git read-tree HEAD         # 3) 파일 목록을 다시 읽고
+git checkout-index -af     # 4) 내 컴퓨터의 파일을 LF로 다시 써 낸다 (내용은 그대로)
+git status                 # 5) 아무것도 안 나오면 정상
+git stash pop              #    (1에서 stash 했을 때만) 보관한 변경을 되돌려 놓는다
+```
+
+- 3)·4)는 "저장소에 적힌 그대로 파일을 다시 써 내는" 명령이라 커밋된 내용이 바뀌지 않는다. 다만 **바꾸던 파일을 덮어쓰므로 1)의 `git stash`를 먼저 한다.**
+- 작업 중인 가지가 있으면 그 가지로 돌아가 `git merge develop`으로 `.gitattributes`를 가져온다.
+- 편집기는 `.editorconfig`를 읽어 새 파일도 LF로 저장한다(VS Code는 "EditorConfig for VS Code" 확장을 설치한다).
+- Prettier 검사에서 `Delete ␍`가 나오면 그 파일이 CRLF라는 뜻이다. 위 절차를 다시 하거나 편집기 오른쪽 아래 `CRLF`를 눌러 `LF`로 바꾼다.
+
+**한글 깨짐(CP949) 오류가 나면**: 윈도우는 파일을 기본으로 CP949로 읽어 `UnicodeDecodeError … cp949`가 날 수 있다. `.venv\Scripts\python scripts\check.py`는 하위 명령을 자동으로 UTF-8 모드로 돌리므로 그 명령으로 검사한다. `pytest`나 `python -m geosan …`을 직접 부를 때는 PowerShell에서 한 번 `$env:PYTHONUTF8 = "1"`을 하고 부른다(2026-10-22, 이슈 #33).
+
+**가상환경 켜기**: `.venv\Scripts\Activate.ps1`. "이 시스템에서 스크립트를 실행할 수 없으므로…" 오류가 나면 한 번만 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`를 하고 다시 한다. 켜지 않고 쓰려면 매번 `.venv\Scripts\python …`으로 부른다.
+
+**검사 명령**: 맥의 `bash scripts/check.sh`와 같은 단계·같은 순서를 파이썬판으로 돌린다.
+
+```powershell
+.venv\Scripts\python scripts\check.py            # 파이썬 + 화면 전부
+.venv\Scripts\python scripts\check.py python     # 파이썬만
+.venv\Scripts\python scripts\check.py web        # 화면만
+```
 
 ## 3. 도구별 첫 실행
 
@@ -51,13 +83,13 @@
 ## 4. 일하는 순서 (팀원)
 
 1. **이슈 번호부터 확인한다.** 내가 할 일의 이슈가 GitHub에 있는지 본다. 없으면 '작업' 양식으로 이슈를 만들고 보드 칸을 '진행 중'으로 옮긴 뒤 시작한다. (4-2장)
-2. `main`을 최신으로 받는다: `git switch main && git pull`
+2. `develop`을 최신으로 받는다: `git switch develop && git pull`. **내 PR이 합쳐진 뒤 다음 일을 시작할 때는 꼭 이걸 먼저 한다.** 작업 중에 받을지는 상황 봐서 정한다. (가지 역할: `develop` = 기본·통합 가지, 모든 PR의 대상. `main` = 시연·전달용, PM만 `develop` → `main` PR로 옮긴다. 2026-10-22 PM 결정)
 3. 가지를 딴다: `git switch -c <이름>/<이슈번호>-<짧은설명>` (예: `dongryeol/12-rules-engine`). 가지는 1~2일 안에 합친다.
 4. 맡은 파일만 고친다. 약속 파일(`contracts/`, `contract-summary.md`)에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 PM에게 먼저 묻는다. 개발을 시작하기 전에 자기 모듈의 기능 설계 문서(`aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/`의 `entities.md`·`rules.md`·`functional-spec.md`)를 읽는다. 규칙 엔진 담당은 `rules.md`가 기준이며 A정밀 손 계산은 이미 확인된 내용이라 다시 하지 않는다.
 5. 기능 하나를 끝낼 때마다 커밋한다. 메시지는 쉬운 한국어 한 문장(예: `A정밀 항목 점수 계산 추가: 0.5는 올림`). `fix`, `wip` 같은 한 단어는 쓰지 않는다.
-6. **PR을 올리기 전에 테스트 코드를 먼저 쓰고** 테스트와 코드 모양 검사를 돌린다. 통과했을 때만 PR을 연다. 명령은 `README.md` 3장과 `bash scripts/check.sh [python|web]`. Python은 `pytest`·Ruff, 화면은 Vitest·Prettier·ESLint. 세 트랙이 다 합쳐지기 전에는 시나리오 테스트와 `verify-case`가 실패하는 것이 정상이고, 자기 PR에서는 자기 단위 테스트만 초록이면 된다.
+6. **PR을 올리기 전에 테스트 코드를 먼저 쓰고** 테스트와 코드 모양 검사를 돌린다. 통과했을 때만 PR을 연다. 명령은 `README.md` 3장과 `bash scripts/check.sh [python|web]`(윈도우는 `.venv\Scripts\python scripts\check.py [python|web]`, 2-1장). Python은 `pytest`·Ruff, 화면은 Vitest·Prettier·ESLint. 세 트랙이 다 합쳐지기 전에는 시나리오 테스트와 `verify-case`가 실패하는 것이 정상이고, 자기 PR에서는 자기 단위 테스트만 초록이면 된다.
 7. PR을 올린다. `.github/pull_request_template.md`의 항목을 모두 채우고 본문에 `Closes #이슈번호`를 적는다. 본문은 비전공자가 읽어도 무엇이 되는지 알 수 있게 쓴다. 약속 파일을 바꿨으면 "예"에 표시하고 PM 확인 뒤에 합친다. 이슈에 무엇을 했는지 쉬운 말 요약 댓글을 남기고 보드 칸을 '리뷰 중'으로 옮긴다.
-8. 검사가 통과하고 확인이 끝나면 **스쿼시 머지**로 `main`에 합친다. 이슈는 PR이 합쳐지면 자동으로 닫히고 보드 칸은 '완료'가 된다.
+8. **여기까지가 팀원의 일이다. 합치기(초록색 Merge pull request 버튼)는 PM과 이강욱만 누른다.** 팀원은 자기 PR이든 남의 PR이든 합치지 않고, 검사가 초록이면 PM에게 "PR #번호 확인 부탁"이라고 알린다. PM(또는 이강욱)이 확인한 뒤 **merge commit**으로 `develop`에 합치며(GitHub 설정에서 squash·rebase는 꺼져 있다), 이슈는 PR이 합쳐지면 자동으로 닫히고 보드 칸은 '완료'가 된다.
 
 ## 4-1. 실제 기업 사례 파일 만들기 (10월 말 부분 시연)
 
@@ -75,7 +107,7 @@
 - **라벨 9개만**: 종류 `작업`·`버그`·`질문`·`막힘` 중 하나 + 영역 `백엔드`·`화면`·`규칙엔진`·`자료`·`PM` 중 하나. `자료`는 실제 기업 사례 파일·근거 정리에 붙인다. 새 라벨은 만들지 않는다.
 - **마일스톤**: `뼈대(10/28)`, `10월 말 부분 시연`, `11/15 거산 전달` 중 하나를 꼭 붙인다.
 - **보드 "거산 작업 보드"**: 칸은 할 일 → 진행 중 → 리뷰 중 → 완료. 이슈를 만들면 보드에 올리고(Projects 칸에서 선택), 시작하면 진행 중, PR을 올리면 리뷰 중, 합쳐지면 완료.
-- **막히면**: 이슈에 `막힘` 라벨을 붙이고 댓글에 "무엇이 막혔는지 / 무엇을 해 봤는지 / 누구의 답이 필요한지"를 쉬운 말로 적는다. 질문·막힘 양식으로 새 이슈를 만들어도 된다.
+- **막히면**: 이슈에 `막힘` 라벨을 붙이고 댓글에 "무엇이 막혔는지 / 무엇을 해 봤는지 / 누구의 답이 필요한지"를 쉬운 말로 적는다. 질문·막힘 양식으로 새 이슈를 만들어도 된다. **충돌(conflict)이 났을 때도 같다.** 억지로 풀지 말고 `막힘` 라벨을 붙이고 어느 파일에서 났는지 적어 PM에게 알린다.
 - **AI 도구에 시킬 때**: Claude Code·Codex는 `AGENTS.md`의 이슈·보드 규칙을 읽으므로 "이슈 #12 작업 시작해 줘"처럼 이슈 번호를 알려 주면 가지 이름·PR 연결·댓글을 규칙대로 한다.
 - **쓰지 말 것**: 이슈·PR에 연락처(이메일·전화), 비밀번호·API 키, 거산 내부 자료.
 
@@ -112,4 +144,4 @@ PM이 Claude Code나 Codex에 **"오늘 이슈 현황 요약해 줘"** 라고 �
 
 4. 막힘 건은 이슈 댓글의 마지막 상황을 한 줄로 붙인다. 마감이 지난 마일스톤이 있으면 표 아래에 한 줄로 알린다.
 
-직접 보려면 저장소의 **Projects → 거산 작업 보드**를 열면 칸별로 같은 내용이 보인다. 권한은 저장소 collaborator(쓰기 권한)면 충분하고, 보드는 저장소에 연결되어 있어 따로 초대할 필요가 없다. 팀원을 저장소에 초대하는 방법: 저장소 Settings → Collaborators → Add people → GitHub 아이디 입력 → Write 권한. 초대를 받은 팀원이 수락하면 이슈의 담당자(Assignees)로 지정할 수 있다.
+직접 보려면 저장소의 **Projects → 거산 작업 보드**를 열면 칸별로 같은 내용이 보인다. 보드는 조직 `agent-ddalgi-team`에 있고(`https://github.com/orgs/agent-ddalgi-team/projects/3`) 저장소에 연결되어 있어 따로 초대할 필요가 없다. 권한은 저장소 **Write** 이상이어야 가지를 올리고 이슈를 옮길 수 있다. 권한을 주는 방법(저장소 admin만 가능): 저장소 Settings → Collaborators and teams → 사람을 고르고 Role을 Write로. 팀원이 Write 권한을 받으면 이슈의 담당자(Assignees)로 지정할 수 있다.
