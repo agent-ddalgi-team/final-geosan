@@ -93,9 +93,9 @@ A정밀(`tests/data/apjeong-input.json`, baseDate 2026-10-20)로 `engine.evaluat
 
 ## 6. PR 올리는 법
 
-1. `git switch main && git pull` → `git switch -c dongryeol/6-rules-engine`
+1. `git switch develop && git pull` → `git switch -c dongryeol/6-rules-engine`
 2. 기능 하나(파일 하나)를 끝낼 때마다 쉬운 한국어 한 문장으로 커밋(예: `항목 점수 계산 추가: 15×0.67은 10.05라 10으로 반올림`).
 3. 3장 명령이 모두 통과한 뒤에만 PR을 연다. 제목 예: `규칙 엔진: 요구 판정·8항목 점수·11분기 분류 (A정밀 E77/P95/S81.1/R82 통과)`.
 4. PR 본문은 `.github/pull_request_template.md`를 모두 채운다. "무엇이 되는지"는 사용자 입장(예: "A정밀 사례를 평가하면 지금 바로 연락 검토로 분류된다"). `Closes #6` (테스트 PR이면 `Closes #7`). 약속 파일을 바꿨나요? → "아니오".
-5. 이슈 #6에 무엇을 했는지 쉬운 말 요약 댓글을 남기고 보드를 '리뷰 중'으로 옮긴다. PM 세션이 계약 C3·A정밀 기대값·경계 파일 미수정을 대조한 뒤 스쿼시 머지한다(Step 15).
+5. 이슈 #6에 무엇을 했는지 쉬운 말 요약 댓글을 남기고 보드를 '리뷰 중'으로 옮긴다. PM 세션이 계약 C3·A정밀 기대값·경계 파일 미수정을 대조한 뒤 merge commit으로 `develop`에 합친다(Step 15).
 6. 1~2개 PR로 나눠도 된다(예: 판정·점수·합계 / 분류·정렬·질문).

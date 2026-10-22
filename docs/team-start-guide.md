@@ -10,7 +10,7 @@
 | 뼈대 뒤 팀별 단위 소유로 바뀐 뒤 | 전체 순서 조정 | **자기 단위만** 진행·승인한다. 다른 사람의 단위는 진행·승인하지 않는다 |
 
 - 같은 단위를 두 사람이 같은 시각에 진행하지 않는다. 진행 위치 기록은 하나뿐이라 서로 덮어쓴다.
-- 어떤 도구로 만들든 같은 PR 검사(테스트, 코드 모양 검사, 약속 파일 비교)를 통과해야 `main`에 합친다.
+- 어떤 도구로 만들든 같은 PR 검사(테스트, 코드 모양 검사, 약속 파일 비교)를 통과해야 `develop`에 합친다.
 
 ## 2. 준비물 설치 (한 번만)
 
@@ -29,7 +29,7 @@
 ```powershell
 git status                 # 1) 바꾸던 파일이 있으면 먼저 치워 둔다 (없으면 2)로)
 git stash                  #    (바꾸던 파일이 있을 때만) 잠시 보관
-git switch main
+git switch develop
 git pull                   # 2) .gitattributes를 받는다
 git read-tree HEAD         # 3) 파일 목록을 다시 읽고
 git checkout-index -af     # 4) 내 컴퓨터의 파일을 LF로 다시 써 낸다 (내용은 그대로)
@@ -38,7 +38,7 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 ```
 
 - 3)·4)는 "저장소에 적힌 그대로 파일을 다시 써 내는" 명령이라 커밋된 내용이 바뀌지 않는다. 다만 **바꾸던 파일을 덮어쓰므로 1)의 `git stash`를 먼저 한다.**
-- 작업 중인 가지가 있으면 그 가지로 돌아가 `git merge main`으로 `.gitattributes`를 가져온다.
+- 작업 중인 가지가 있으면 그 가지로 돌아가 `git merge develop`으로 `.gitattributes`를 가져온다.
 - 편집기는 `.editorconfig`를 읽어 새 파일도 LF로 저장한다(VS Code는 "EditorConfig for VS Code" 확장을 설치한다).
 - Prettier 검사에서 `Delete ␍`가 나오면 그 파일이 CRLF라는 뜻이다. 위 절차를 다시 하거나 편집기 오른쪽 아래 `CRLF`를 눌러 `LF`로 바꾼다.
 
@@ -81,13 +81,13 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 ## 4. 일하는 순서 (팀원)
 
 1. **이슈 번호부터 확인한다.** 내가 할 일의 이슈가 GitHub에 있는지 본다. 없으면 '작업' 양식으로 이슈를 만들고 보드 칸을 '진행 중'으로 옮긴 뒤 시작한다. (4-2장)
-2. `main`을 최신으로 받는다: `git switch main && git pull`
+2. `develop`을 최신으로 받는다: `git switch develop && git pull`. (가지 역할: `develop` = 기본·통합 가지, 모든 PR의 대상. `main` = 시연·전달용, PM만 `develop` → `main` PR로 옮긴다. 2026-10-22 PM 결정)
 3. 가지를 딴다: `git switch -c <이름>/<이슈번호>-<짧은설명>` (예: `dongryeol/12-rules-engine`). 가지는 1~2일 안에 합친다.
 4. 맡은 파일만 고친다. 약속 파일(`contracts/`, `contract-summary.md`)에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 PM에게 먼저 묻는다. 개발을 시작하기 전에 자기 모듈의 기능 설계 문서(`aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/`의 `entities.md`·`rules.md`·`functional-spec.md`)를 읽는다. 규칙 엔진 담당은 `rules.md`가 기준이며 A정밀 손 계산은 이미 확인된 내용이라 다시 하지 않는다.
 5. 기능 하나를 끝낼 때마다 커밋한다. 메시지는 쉬운 한국어 한 문장(예: `A정밀 항목 점수 계산 추가: 0.5는 올림`). `fix`, `wip` 같은 한 단어는 쓰지 않는다.
 6. **PR을 올리기 전에 테스트 코드를 먼저 쓰고** 테스트와 코드 모양 검사를 돌린다. 통과했을 때만 PR을 연다. 명령은 `README.md` 3장과 `bash scripts/check.sh [python|web]`(윈도우는 `.venv\Scripts\python scripts\check.py [python|web]`, 2-1장). Python은 `pytest`·Ruff, 화면은 Vitest·Prettier·ESLint. 세 트랙이 다 합쳐지기 전에는 시나리오 테스트와 `verify-case`가 실패하는 것이 정상이고, 자기 PR에서는 자기 단위 테스트만 초록이면 된다.
 7. PR을 올린다. `.github/pull_request_template.md`의 항목을 모두 채우고 본문에 `Closes #이슈번호`를 적는다. 본문은 비전공자가 읽어도 무엇이 되는지 알 수 있게 쓴다. 약속 파일을 바꿨으면 "예"에 표시하고 PM 확인 뒤에 합친다. 이슈에 무엇을 했는지 쉬운 말 요약 댓글을 남기고 보드 칸을 '리뷰 중'으로 옮긴다.
-8. 검사가 통과하고 확인이 끝나면 **스쿼시 머지**로 `main`에 합친다. 이슈는 PR이 합쳐지면 자동으로 닫히고 보드 칸은 '완료'가 된다.
+8. 검사가 통과하고 확인이 끝나면 **merge commit**으로 `develop`에 합친다(GitHub 설정에서 squash·rebase는 꺼져 있다). 이슈는 PR이 합쳐지면 자동으로 닫히고 보드 칸은 '완료'가 된다.
 
 ## 4-1. 실제 기업 사례 파일 만들기 (10월 말 부분 시연)
 
