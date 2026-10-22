@@ -330,6 +330,17 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
             load_runtime_config(session)
 
 
+def test_set_active_dataset_kind_on_empty_db_keeps_settings_readable(tmp_db: Path) -> None:
+    """앱 설정 사본이 없는 DB에서 활성 묶음부터 바꿔도 실행 설정을 읽을 수 있다(이슈 #44 재현)."""
+    with session_scope(tmp_db) as session:
+        assert set_active_dataset_kind(session, "BROCHURE", updated_by="test") == "BROCHURE"
+    with session_scope(tmp_db) as session:
+        runtime = load_runtime_config(session)
+        assert runtime.app_settings.active_dataset_kind == "BROCHURE"
+        assert runtime.app_settings.is_recording_staff("park-lee")  # 나머지는 예시 파일 값
+        assert not any("앱 설정 사본이 없어" in n for n in runtime.notices)
+
+
 def test_brochure_capability_example_is_pending_and_contact_free() -> None:
     """회사소개서 묶음 예시(BROCHURE, #17): 검사 통과, 전부 검수 대기, 연락처 없음."""
     report = check_capability_file(EXAMPLES / "capability-geosan-brochure.json")
