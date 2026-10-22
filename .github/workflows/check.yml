@@ -1,11 +1,11 @@
 # 뼈대 기간 최소 CI (인프라 설계 cicd-pipeline.md 2장). PR마다 파이썬·화면 두 작업을 병렬로 돌린다.
-# 약속 파일 자동 비교·취약점 검사·main 보호 규칙·배포는 3.7 CI 파이프라인 단계에서 더한다.
+# 약속 파일 자동 비교·취약점 검사·develop·main 보호 규칙·배포는 3.7 CI 파이프라인 단계에서 더한다.
 name: check
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [develop, main]
 
 permissions:
   contents: read
