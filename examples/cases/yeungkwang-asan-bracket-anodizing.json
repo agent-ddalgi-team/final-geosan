@@ -1,13 +1,14 @@
 {
   "caseId": "yeungkwang-asan-bracket-anodizing",
   "baseDate": "2026-10-22",
-  "description": "#19 공개 근거 조사 초안 — 주식회사 영광테크. 처리 목적 근거 미확보로 최종 선정·시연 투입 전 보완 필요.",
+  "description": "#19 공개 근거 조사 초안 — 주식회사 영광테크. 제품·소재와 외관 목적의 간접 근거를 확보했으며 아산 생산·외주 여부·거산 역량 비교는 미확인.",
   "isVirtual": false,
   "datasetKind": "BROCHURE",
   "notes": [
-    "검토용 초안이다. 제품·소재 근거만 확보했으며, #19의 제품·소재·처리 목적 3종 완료 기준을 아직 만족하지 않는다.",
+    "검토용 초안이다. 제품·소재는 직접 근거, 외관 목적은 공식 카탈로그의 은색 후처리 설명을 통한 STRONG 간접 근거다. 3종 근거가 모두 직접 확인된 최종 후보라는 뜻은 아니다.",
     "후보 원본: 한국산업단지공단 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본, 순번 163882. https://www.data.go.kr/data/15105482/fileData.do",
-    "공식 제품표에 아노다이징 사양은 있지만 내식·내마모·외관 등 처리 목적은 명시되지 않았다. PURPOSE 근거를 아직 확보하지 못했으며, 공정 이름을 처리 목적의 인용으로 바꾸지 않았다.",
+    "공식 2024 브라켓 카탈로그의 인쇄면 95쪽은 GS75x32 주문 예시에 은색 표면처리를, 121쪽은 같은 코드 YKBK-AGS7532에 A6061·ANODIZING을 표시한다. 색상 사양을 외관 목적의 간접 근거로만 해석했다. 내식·내마모 목적이나 고객의 필수 요구를 확인한 것은 아니다.",
+    "카탈로그 출처는 https://www.yktec.co.kr/bbs/board.php?bo_table=skill&wr_id=7805 (게시일 2023-12-07)의 브라켓 PDF다. 제품 사양 발생일은 알 수 없어 occurredAt을 null로 유지한다. 인용의 Sliver는 원문 표기 그대로다.",
     "홈페이지 생산라인에는 가공·조립·검수가 소개되지만 자체 표면처리가 없다는 증명은 아니다. 자체 처리/외주 여부와 해당 모델의 아산 생산 여부를 추가 확인해야 한다.",
     "같은 업체의 다른 모델은 아연·니켈·도장·쇼트처리 사양이다. 이 파일은 위 모델의 A6061·ANODIZING 사양만 사용한다.",
     "공개 홈페이지 열람일은 2026-10-22이다. 게시일이 없는 근거의 occurredAt은 null로 두었고 열람일을 발생일로 쓰지 않았다.",
@@ -80,6 +81,17 @@
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "영광테크 알루미늄 브라켓 75x32 규격 표면처리 Sliver",
+      "sourceRef": "http://yktec.co.kr/ebook/data/2024_catalog/04_2024_bracket.pdf (공식 2024 카탈로그, 인쇄면 95쪽·121쪽 대조, 게시글 2023-12-07, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
     }
   ],
   "itemInputs": [
@@ -123,8 +135,8 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "고객의 처리 목적 근거와 실제 거산 성능 자료가 없어 비교하지 않았다.",
-      "evidenceRefs": [],
+      "factJudged": "은색 후처리 사양에서 외관 목적을 간접 추정했지만 실제 거산 성능 자료와 비교하지 않아 미확보다.",
+      "evidenceRefs": [3],
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
@@ -173,7 +185,7 @@
   "researchReadiness": {
     "questionSet": [
       "해당 브라켓이 아산사업소에서 생산되는가?",
-      "아노다이징의 처리 목적을 명시한 공개 사양서가 있는가?",
+      "은색 후처리에서 추정한 외관 목적을 직접 명시한 사양서가 있는가?",
       "아노다이징을 자체 처리하는지 외주로 발주하는지 확인할 수 있는가?"
     ],
     "allowedChannel": null,
