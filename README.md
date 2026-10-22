@@ -13,7 +13,7 @@ AI-DLC로 만드는 거산케미칼 영업지원 도구입니다. 한 덩어리(
 ```bash
 # 파이썬: 가상환경을 만들고 잠금 파일대로 설치한다 (uv가 있으면 uv venv / uv pip install 로 해도 같다)
 python3.12 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1 (막히면 docs/team-start-guide.md 2-1장)
 pip install -r requirements.lock -e .
 
 # 화면
@@ -43,6 +43,14 @@ cd web && npm ci && cd ..
 bash scripts/check.sh            # 파이썬 + 화면 전부 (CI와 같은 순서)
 bash scripts/check.sh python     # Ruff → 단위 테스트(커버리지 80% 하한) → 시나리오 → 뼈대 검증
 bash scripts/check.sh web        # ESLint·Prettier → Vitest → tsc·Vite 빌드
+```
+
+윈도우(PowerShell)는 같은 검사를 파이썬판으로 돌립니다(단계·순서 동일):
+
+```powershell
+.venv\Scripts\python scripts\check.py            # 전부
+.venv\Scripts\python scripts\check.py python     # 파이썬만
+.venv\Scripts\python scripts\check.py web        # 화면만
 ```
 
 낱개 명령(단위 테스트 지침 2장):
@@ -79,7 +87,7 @@ examples/               예시 파일 5개 (사례·역량·규칙 설정·앱 �
 tests/                  features/(시나리오 .feature) · steps/ · unit/ · conftest.py · factories.py
 web/                    Vite + React + TS + Ant Design       ← 고선주   ※ src/api/types.ts·client.ts·labels/ko.ts·theme·config는 경계(대응표는 추가만)
 docs/                   team-start-guide.md · case-file-guide.md · work-orders/(작업 지시서 3개)
-scripts/                check.sh · check-secrets.sh
+scripts/                check.sh · check-secrets.sh (맥·리눅스) · check.py (맥·윈도우 공통, 같은 단계)
 ```
 
 - **경계 파일**(머리에 "경계 파일: 고치려면 PM에게 먼저 말한다")은 세 트랙이 고치지 않고 씁니다.
