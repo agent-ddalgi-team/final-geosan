@@ -166,8 +166,8 @@ def _requirements(context: DetailContext) -> dict:
 
 def _process_links(context: DetailContext) -> dict:
     from geosan.api.app import logger
+    from geosan.rules.engine import evaluate
     from geosan.rules.models import EvaluationInput
-    from geosan.workflows.flow_evaluate import engine_functions
 
     session, run = context.session, context.evaluation
     if run is None:
@@ -186,7 +186,6 @@ def _process_links(context: DetailContext) -> dict:
             **run.input_snapshot,
             "evidence": [row for row in run.input_snapshot["evidence"] if not row.get("blocked")],
         }
-        evaluate, _, _ = engine_functions()
         recalculated = evaluate(EvaluationInput.model_validate(document))
         results = {
             row.link_id: (row.result, row.reason) for row in recalculated.process_link_results
@@ -317,12 +316,7 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
     run = latest_confirmed_evaluation(session, opp_id)
     if customer is None:
         raise RunFailedError("기회의 고객 연결을 확인해 주세요.")
-    # 마지막 조회 시각을 받거나 보관할 계약이 없어 PM 확인 전에는 참/거짓을 추정하지 않는다.
-    if run and run.previous_eval_id is not None:
-        raise RunFailedError(
-            "재평가된 상세의 표시 기준을 확인 중입니다.",
-            next_action="목록에서 최신 평가 내용을 확인해 주세요.",
-        )
+    opinion = latest_opinion(session, opp_id)
     batch = session.get(EvaluationBatch, run.batch_id) if run else None
     context = DetailContext(session, opportunity, customer, run, batch)
     data = dict(
@@ -331,7 +325,11 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
         recontact=None,
         eval_id=run.eval_id if run else None,
         previous_eval_id=run.previous_eval_id if run else None,
-        reevaluated=False,
+        reevaluated=bool(
+            run
+            and run.previous_eval_id is not None
+            and (opinion is None or opinion.eval_id != run.eval_id)
+        ),
     )
     for section in detail_sections:
         data.update(section(context))

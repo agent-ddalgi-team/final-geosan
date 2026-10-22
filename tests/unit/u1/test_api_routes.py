@@ -1,13 +1,14 @@
-"""S10 의견과 목록·상세 API. DB는 실제 임시 SQLite, 규칙 계산은 개발용 가짜 엔진이다."""
+"""S10 의견과 목록·상세 API를 실제 임시 SQLite와 규칙 엔진으로 검사한다."""
 
 from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 
 from geosan.api.app import JsonFormatter, create_app
 from geosan.api.deps import get_session
@@ -16,6 +17,7 @@ from geosan.capability.importer import import_capability
 from geosan.evaluation.models import EvaluationRun
 from geosan.evidence.models import Evidence
 from geosan.opportunity.importer import import_case
+from geosan.opportunity.models import OppProcessLink
 from geosan.questions.models import ConfirmationQuestion
 from geosan.records.models import ReviewOpinion
 from geosan.storage.session import session_scope
@@ -122,6 +124,63 @@ def test_opinion_history_last_save_wins_without_changing_evaluation(api_env):
         assert session.scalar(select(func.count()).select_from(ConfirmationQuestion)) == 1
 
 
+@pytest.mark.parametrize(
+    ("opinion_targets", "expected_reevaluated"),
+    [
+        ([], True),
+        (["previous"], True),
+        (["current"], False),
+        (["current", "previous"], True),
+        (["previous", "current"], False),
+    ],
+)
+def test_detail_reevaluated_follows_last_saved_opinion(
+    api_env, opinion_targets, expected_reevaluated
+):
+    """Given 재평가와 의견 이력 / When 상세 조회 / Then 마지막 의견의 평가 ID로 판정한다."""
+    client, opp_id, previous_id = api_env
+    current = run_evaluation([opp_id])
+    assert current.ok
+    current_id = current.new_eval_ids[0]
+    eval_ids = {"previous": previous_id, "current": current_id}
+    for target in opinion_targets:
+        assert _save(client, opp_id, eval_ids[target]).status_code == 200
+
+    response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["evalId"] == current_id and data["previousEvalId"] == previous_id
+    assert data["reevaluated"] is expected_reevaluated
+    assert data["scores"]["E"] == 77
+    # 목록은 마지막 의견과 관계없이 전체 평가 묶음과 비교한다(W5).
+    card = client.get("/api/v1/opportunities").json()["data"][0]
+    assert card["reevaluated"] is True
+
+
+def test_detail_recalculates_stale_process_result_with_real_engine(api_env, monkeypatch):
+    """Given 공정 결과의 평가 연결 불일치 / When 상세 조회 / Then 실제 엔진으로 다시 계산한다."""
+    import geosan.rules.engine as engine
+
+    client, opp_id, eval_id = api_env
+    with session_scope() as session:
+        link = session.scalar(select(OppProcessLink).where(OppProcessLink.opp_id == opp_id))
+        link.source_eval_id = None
+        link.current_result = "UNKNOWN"
+    evaluate = engine.evaluate
+    calls = []
+
+    def record_evaluation(source):
+        calls.append(source.opportunity.opp_id)
+        return evaluate(source)
+
+    monkeypatch.setattr(engine, "evaluate", record_evaluation)
+    response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    assert calls == [opp_id]
+    assert response.json()["data"]["evalId"] == eval_id
+    assert response.json()["data"]["processLinks"][0]["result"] == "PASS"
+
+
 def test_staff_missing_unknown_and_viewer_are_forbidden(api_env):
     """Given 담당자 키 없음·목록 밖·보기 전용 / When 의견 저장 / Then 세 경우 모두 403이다."""
     client, opp_id, eval_id = api_env
@@ -159,6 +218,53 @@ def test_invalid_opinions_never_store_rows(api_env, tmp_path):
     assert client.get("/api/v1/opportunities?pageSize=51").status_code == 400
     with session_scope() as session:
         assert session.scalar(select(func.count()).select_from(ReviewOpinion)) == 0
+
+
+def test_concurrent_opinions_preserve_both_histories(api_env):
+    """Given 같은 버전의 두 담당자 / When 동시 저장 / Then 두 이력과 이전 값을 보존한다."""
+    client, opp_id, eval_id = api_env
+    assert _save(client, opp_id, eval_id).status_code == 200
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(_save, client, opp_id, eval_id, opinion=opinion, expectedVersion=1)
+            for opinion in ("NEED_CHECK", "WORTH_REVIEW")
+        ]
+        responses = [future.result(timeout=15) for future in futures]
+    assert all(response.status_code == 200 for response in responses)
+    bodies = sorted(
+        (response.json() for response in responses), key=lambda body: body["data"]["version"]
+    )
+    assert [body["data"]["version"] for body in bodies] == [2, 3]
+    assert bodies[1]["meta"]["previousValue"]["opinion"] == bodies[0]["data"]["opinion"]
+    with session_scope() as session:
+        rows = list(session.scalars(select(ReviewOpinion).order_by(ReviewOpinion.version)))
+        assert len(rows) == 3
+        assert rows[2].previous_opinion_id == rows[1].opinion_id
+        assert rows[1].previous_opinion_id == rows[0].opinion_id
+
+
+def test_opinion_commit_failure_returns_500_and_rolls_back(api_env):
+    """Given DB 커밋 실패 / When 의견 저장 / Then 성공 응답 없이 500이며 의견 행도 남지 않는다."""
+    client, opp_id, eval_id = api_env
+
+    def fail_commit(session):
+        raise RuntimeError("응답하면 안 되는 가상 커밋 오류")
+
+    def failing_session():
+        with session_scope() as session:
+            event.listen(session, "before_commit", fail_commit)
+            yield session
+
+    client.app.dependency_overrides[get_session] = failing_session
+    try:
+        response = _save(client, opp_id, eval_id)
+    finally:
+        client.app.dependency_overrides.pop(get_session)
+    assert response.status_code == 500
+    assert "가상 커밋 오류" not in response.text
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(ReviewOpinion)) == 0
+        assert session.get(EvaluationRun, eval_id).score_e == 77
 
 
 def test_body_limit_and_log_formatter_do_not_disclose_text():
