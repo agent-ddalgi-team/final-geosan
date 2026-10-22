@@ -78,8 +78,10 @@ def store_inputs(
                 opp_id=opp_id,
                 item_code=code,
                 state=item.state.value if item else "UNAVAILABLE",
-                match_rate_step=str(item.match_rate)
-                if item and item.match_rate is not None
+                match_rate_step=item.match_rate.strip()
+                if item
+                and isinstance(item.match_rate, str)
+                and item.match_rate.strip() in config_item.match_rate_steps
                 else None,
                 match_rate=match_rates.get(code),
                 fact_judged=item.fact_judged if item else None,

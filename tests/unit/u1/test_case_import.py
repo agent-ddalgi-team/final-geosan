@@ -60,6 +60,25 @@ def test_check_case_uses_no_database_and_reports_lines(tmp_path, monkeypatch):
     assert not (tmp_path / "must-not-exist.db").exists()
 
 
+@pytest.mark.parametrize(
+    ("match_rate", "expected_step"),
+    [(1.0, None), (1, None), ("1.0", None), ("해당", "해당"), (" 해당 ", "해당")],
+)
+def test_match_rate_number_is_distinct_from_step_name(case_env, match_rate, expected_step):
+    """Given 숫자 또는 단계명 / When 입력 저장 / Then 숫자를 단계 이름으로 만들지 않는다."""
+    data = factories.apjeong_case()
+    data["itemInputs"][0]["matchRate"] = match_rate
+    result = import_case(_write(case_env, data))
+    with session_scope() as session:
+        product = next(
+            row
+            for row in current_item_inputs(session, result.opp_id)
+            if row.item_code == "NEW_PRODUCT"
+        )
+        assert product.match_rate == 1.0
+        assert product.match_rate_step == expected_step
+
+
 def test_customer_identity_case_identity_and_unlinked_history(case_env):
     first = import_case(_write(case_env, factories.apjeong_case()))
     again = import_case(_write(case_env, factories.apjeong_with_extra_discovery_path()))
