@@ -5,12 +5,12 @@
   "isVirtual": false,
   "datasetKind": "BROCHURE",
   "notes": [
-    "검토용 조사 초안이다. 제품·소재·처리 목적 근거 3종을 모두 확보한 최종 사례가 아니며, 파일 형식 검사 통과와 후보 선정 완료를 구분한다.",
+    "검토용 조사 초안이다. 제품·소재 직접 근거와 색상 사양에 따른 외관 목적 간접 근거를 확보했다. 처리 목적을 직접 확인한 최종 사례는 아니며, 파일 형식 검사 통과와 후보 선정 완료를 구분한다.",
     "공개 자료 열람일: 2026-10-22. 원문 게시일은 확인되지 않아 evidence.occurredAt을 비웠다. 열람일을 발생일로 사용하지 않았다.",
     "공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 에서 산업용 알루미늄 압출 형재를 안내하며, 공식 홈페이지 주소도 CSV와 일치한다.",
-    "제품에 아노다이징 사양이 있다는 사실과 내식·내마모 등 처리 목적은 다르다. 처리 목적을 직접 명시한 근거는 아직 확보하지 못했다.",
+    "공식 DF 3090 상세의 기술자료 이미지를 눈으로 확인했다. A6N01S-T5, Anodized, Color (색상) Silver, Black이 같은 표에 있다. 색상 선택을 근거로 외관 목적만 STRONG으로 추정했다. 내식·내마모 목적이나 처리 성능 수치는 추가하지 않았다.",
     "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 완성 후보로 선정하지 않았다.",
-    "PM PR #43의 636ae552eca97a0f705e03ca575cebcd0159c920 커밋 examples/capability-geosan-brochure.json의 ANODIZING 공정 materialCodes AL과 공식 제품의 알루미늄 합금 소재를 대조했다. 소개서 검수 상태는 PENDING이며 수탁 승인이 아니다."
+    "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 성능 태그 APPEARANCE를 대조했다. 소개서 검수 상태는 PENDING이며 합금·치수·요구 사양의 수탁 승인이 아니다."
   ],
   "customer": {
     "name": "(주)대영프로파일",
@@ -77,6 +77,17 @@
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "Color (색상) Silver, Black",
+      "sourceRef": "https://alusys.ivyro.net/data/editor/2112/6323ca20ebcca6e37700f794b1d8cc8d_1640055262_4827.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
     }
   ],
   "itemInputs": [
@@ -122,13 +133,21 @@
     },
     {
       "itemCode": "NEW_PERF",
-      "matchRate": null,
-      "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "해당 제품의 처리 목적 직접 근거 및 실제 거산 성능 대조 미확보.",
-      "evidenceRefs": [],
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "공식 DF 3090 기술자료 이미지에 Anodized와 Silver, Black 색상이 함께 명시된다. 외관 목적을 간접 근거 STRONG으로 추정하고 실제 소개서 ANODIZING의 APPEARANCE 한 태그와 대조했다. 직접 목적 설명·내식·내마모·외주 수요 확인은 아니다.",
+      "evidenceRefs": [
+        2,
+        3
+      ],
       "signalRefs": [],
-      "usedCapabilityRefs": []
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
     },
     {
       "itemCode": "SIG_EXPAND",
@@ -174,7 +193,7 @@
   "readinessCheck": null,
   "researchReadiness": {
     "questionSet": [
-      "DF 3090의 아노다이징 목적을 직접 명시한 공개 자료가 있는가?",
+      "DF 3090의 Silver, Black 색상 선택은 아노다이징 외관 사양을 뜻하는가?",
       "아노다이징을 자체 설비에서 하는가, 외주로 처리하는가?",
       "거산이 해당 합금·질별·치수와 요구 표면 사양을 처리할 수 있는가?"
     ]
