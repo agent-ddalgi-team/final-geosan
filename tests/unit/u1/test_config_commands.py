@@ -176,6 +176,26 @@ def test_capability_file_semantic_errors(tmp_path: Path) -> None:
             "reviewStatus": "REVIEWED",
         }
     )
+    iso["scopes"].append(
+        {
+            "scopeKind": "OPPORTUNITY",
+            "processCode": None,
+            "customerRef": None,
+            "applicability": "APPLIES",
+            "basis": None,
+            "reviewStatus": "REVIEWED",
+        }
+    )
+    iso["scopes"].append(
+        {
+            "scopeKind": "CUSTOMER",
+            "processCode": None,
+            "customerRef": None,
+            "applicability": "APPLIES",
+            "basis": None,
+            "reviewStatus": "REVIEWED",
+        }
+    )
     iso["validTo"] = "2020-01-01"
     data["qualifications"].append(dict(data["qualifications"][1]))
     report = check_capability_file(_write(tmp_path, "cap.json", data))
@@ -183,6 +203,8 @@ def test_capability_file_semantic_errors(tmp_path: Path) -> None:
     assert "공정 코드 'ZINC_PLATING'가 1번째 공정에도" in messages
     assert "processCode를 꼭 적어야" in messages
     assert "scopeKind가 CUSTOMER면 processCode는 null" in messages
+    assert "기회 범위(OPPORTUNITY) 자격을 받지 않습니다" in messages  # PM 결정 2026-10-22, #38
+    assert "customerRef(고객 상호명)를 꼭 적어야" in messages
     assert "validTo" in messages and "앞입니다" in messages
     assert "같은 자격" in messages
 
