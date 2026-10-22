@@ -209,7 +209,11 @@ def test_demo_report_runs_twice_with_identical_output(tmp_path: Path) -> None:
         out = tmp_path / name
         assert run_demo_report(CAPABILITY, cases, out, "2026-10-27", echo=lambda _: None) == 0
         outputs.append(
-            {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
+            {
+                p.relative_to(out).as_posix(): p.read_bytes()
+                for p in sorted(out.rglob("*"))
+                if p.is_file()
+            }
         )
     assert outputs[0] == outputs[1]
     assert set(outputs[0]) == {
