@@ -1,0 +1,1285 @@
+{
+  "_설명": "거산 역량 파일(CapabilityFile, 계약 C7) — 회사소개서 묶음(datasetKind BROCHURE). 회사소개서 2026-09-21판(docs/input/04_거산회사소개서.md)의 공정 9종·인증·승인·주요 거래처를 그대로 옮겨 적었다(PM, 2026-10-22, 이슈 #17). 모든 값은 검수 대기(PENDING)이며 '소개서 기준·거산 확인 전'이다. 소개서의 연락처(전화·팩스·담당자 이름)와 사업자번호는 옮기지 않았다(CON-11). 거산 확인 2026-10-21에 따라 인증서·승인서 번호·유효기간과 거래처명(방산 관련·현대로템 포함)은 적었다. 소개서에 없는 값(부품 종류, 실적 기간, 시험 규격, 알루미늄 주물 가능 여부 등)은 비우고 `_설명`에 '거산 확인 전'으로 표시했다. `_설명` 키는 어디에나 쓸 수 있고 검사기가 무시한다. 그 밖의 모르는 키는 오류다.",
+  "datasetKind": "BROCHURE",
+  "sourceNote": "회사소개서 2026-09-21판 옮겨 적음 — 소개서 기준·거산 확인 전 (거산 확인 2026-10-21: 공정·인증 번호·유효기간·거래처명 사용 가능, 연락처 제외)",
+  "processes": [
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 01 아연도금. 소재 Al·Fe·Cu. '철/아연 제품의 산화 방지를 위해 표면에 아연을 얇게 입힘'. 연혁: 2006 아연도금 사업 진출.",
+      "code": "ZINC_PLATING",
+      "name": "아연도금(전기아연도금)",
+      "category": "도금",
+      "materialCodes": [
+        "FE",
+        "AL",
+        "CU"
+      ],
+      "performanceTags": [
+        "CORROSION",
+        "APPEARANCE"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 01. 세 단계 두께 — 그 사이 값 가능 여부는 거산 확인 전.",
+          "capKind": "SPEC",
+          "name": "도금 두께",
+          "displayValue": "5 / 13 / 25 μm",
+          "numericMin": 5,
+          "numericMax": 25,
+          "unit": "μm",
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 01.",
+          "capKind": "SPEC",
+          "name": "도금 종류",
+          "displayValue": "백색·천연색·흑색·국방색 아연도금",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 01.",
+          "capKind": "EQUIPMENT",
+          "name": "국방색 아연도금 전용 라인",
+          "displayValue": "전용 라인 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비. 시험 규격은 소개서에 없음 — 거산 확인 전.",
+          "capKind": "TEST",
+          "name": "염수분무 시험",
+          "displayValue": "자체 실험실 염수분무 시험기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비.",
+          "capKind": "TEST",
+          "name": "도금 두께 측정",
+          "displayValue": "X-ray 두께측정기·도막두께 측정기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "방위산업",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 12장 주요 거래처(방위산업체: 한화시스템, 한화에어로스페이스, ㈜한화, 현대로템, LIG넥스원, 한국항공우주산업) + 8장 특수공정 승인 공정. 거산 확인 2026-10-21: 거래처명 사용 가능. 부품 종류·기간은 소개서에 없음 — 거산 확인 전. 연혁: 2019 한화시스템 방산특수공정 승인(아연), 2025 한화에어로스페이스 SPA(전기아연도금).",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "industry": "자동차 부품",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 12장 주요 거래처(반도체/자동차 산업: 두원정공 등). 어느 공정 실적인지 소개서에 없음 — 거산 확인 전.",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 02 아노다이징. 황산 용액 전기분해로 산화막 형성. 연혁: 2016 본사 준공과 함께 사업 진출, 2017 특허 등록.",
+      "code": "ANODIZING",
+      "name": "아노다이징(양극산화피막)",
+      "category": "피막",
+      "materialCodes": [
+        "AL",
+        "MG",
+        "ZN",
+        "TI",
+        "HF",
+        "NB"
+      ],
+      "performanceTags": [
+        "CORROSION",
+        "APPEARANCE",
+        "HARDNESS"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 02.",
+          "capKind": "SPEC",
+          "name": "피막 종류",
+          "displayValue": "경질·백색·무광·유광·흑색, 유색(금색·청색·천연색)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 02. 알루미늄 주물(AL_CASTING) 가능 여부는 소개서에 없음 — 거산 확인 전. 실제 사례 파일의 appliedMaterial은 AL로 적는다.",
+          "capKind": "SPEC",
+          "name": "처리 소재",
+          "displayValue": "Al, Mg, Zn, Ti, Hf, Nb",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 4장·8장.",
+          "capKind": "SPEC",
+          "name": "특허 피막",
+          "displayValue": "아노다이징 피막 관련 특허 제10-1726260호 (2017 등록)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 02 설명.",
+          "capKind": "SPEC",
+          "name": "실링(봉공처리)",
+          "displayValue": "산화막 미세 구멍을 메우는 실링 공정 포함",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비. 시험 규격은 소개서에 없음 — 거산 확인 전.",
+          "capKind": "TEST",
+          "name": "염수분무 시험",
+          "displayValue": "자체 실험실 염수분무 시험기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장.",
+          "capKind": "TEST",
+          "name": "내마모·광택 시험",
+          "displayValue": "내마모 시험기·광택계 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "방위산업",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 12장 주요 거래처(방위산업체: 한화시스템, 한화에어로스페이스, ㈜한화, 현대로템, LIG넥스원, 한국항공우주산업) + 8장 특수공정 승인 공정. 거산 확인 2026-10-21: 거래처명 사용 가능. 부품 종류·기간은 소개서에 없음 — 거산 확인 전. 연혁: 2019 한화시스템 승인(아노다이징), 2020 KSPC(아노다이징), 2025 한화에어로스페이스 SPA(양극산화피막).",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "industry": "항공우주",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 4장 연혁 2020 세트렉아이(우주항공 위성사업체) 승인, 12장 거래처 한국항공우주산업(KAI). 어느 공정 실적인지 소개서에 없음 — 거산 확인 전.",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 03. 연혁: 2000 회사 설립과 함께 알카리흑착 사업 구축(가장 오래된 공정).",
+      "code": "BLACK_OXIDE",
+      "name": "알카리 흑착(흑색산화피막)",
+      "category": "피막",
+      "materialCodes": [
+        "FE"
+      ],
+      "performanceTags": [
+        "APPEARANCE",
+        "CORROSION",
+        "DIMENSIONAL"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 03.",
+          "capKind": "SPEC",
+          "name": "피막 두께",
+          "displayValue": "2~3 μm (얇은 피막)",
+          "numericMin": 2,
+          "numericMax": 3,
+          "unit": "μm",
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 03.",
+          "capKind": "SPEC",
+          "name": "용도",
+          "displayValue": "반도체 부품 흑색, 치수 변화가 허용되지 않는 활동 부품(sliding part), 광선 반사 감소",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "반도체",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 10장 03 '반도체 부품 흑색'. 거래처·기간은 소개서에 없음 — 거산 확인 전.",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 04. 연혁: 2008 무전해니켈 사업 진출.",
+      "code": "ELECTROLESS_NICKEL",
+      "name": "무전해 니켈",
+      "category": "도금",
+      "materialCodes": [
+        "AL",
+        "FE",
+        "CU"
+      ],
+      "performanceTags": [
+        "CORROSION",
+        "WEAR",
+        "CONDUCTIVITY"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 04.",
+          "capKind": "SPEC",
+          "name": "도금 종류",
+          "displayValue": "AL 무전해 Ni, STEEL 무전해 Ni, 정밀부품 무전해 Ni, 두께도금 무전해 Ni, 샌딩 무전해 Ni(세라믹·글라스)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 04.",
+          "capKind": "SPEC",
+          "name": "특징",
+          "displayValue": "두께 균일, 복잡한 형상 도금 가능(전기 없이 환원제 화학작용)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비.",
+          "capKind": "TEST",
+          "name": "도금 두께 측정",
+          "displayValue": "X-ray 두께측정기·도막두께 측정기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비. 시험 규격은 소개서에 없음 — 거산 확인 전.",
+          "capKind": "TEST",
+          "name": "염수분무 시험",
+          "displayValue": "자체 실험실 염수분무 시험기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "방위산업",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 12장 주요 거래처(방위산업체: 한화시스템, 한화에어로스페이스, ㈜한화, 현대로템, LIG넥스원, 한국항공우주산업) + 8장 특수공정 승인 공정. 거산 확인 2026-10-21: 거래처명 사용 가능. 부품 종류·기간은 소개서에 없음 — 거산 확인 전. 연혁: 2019 한화시스템 승인(무전해니켈).",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "industry": "반도체 장비",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 8장 SEMES 공급자 품질 인증(범위 '도금') + 12장 거래처 세메스·삼성전자. 어느 도금 공정인지 소개서에 없음 — 거산 확인 전.",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 05. 목적: 녹 방지·광택, 내마모성·경도 향상. 연혁: 2016 크롬 사업 진출. 생산라인 '전해/크롬도금'.",
+      "code": "CHROME_PLATING",
+      "name": "크롬 도금",
+      "category": "도금",
+      "materialCodes": [
+        "AL",
+        "FE",
+        "CU"
+      ],
+      "performanceTags": [
+        "WEAR",
+        "HARDNESS",
+        "APPEARANCE",
+        "CORROSION"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 05.",
+          "capKind": "SPEC",
+          "name": "도금 종류",
+          "displayValue": "경질크롬, 폴리싱(광택크롬), 보조양극 크롬(코너·부위 도금)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장.",
+          "capKind": "TEST",
+          "name": "내마모·광택 시험",
+          "displayValue": "내마모 시험기·광택계 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비.",
+          "capKind": "TEST",
+          "name": "도금 두께 측정",
+          "displayValue": "X-ray 두께측정기·도막두께 측정기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": []
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 06. 기계연마보다 평탄도 우수. 연혁: 2016 전해연마 사업 진출.",
+      "code": "ELECTROPOLISHING",
+      "name": "전해연마",
+      "category": "연마",
+      "materialCodes": [
+        "SUS"
+      ],
+      "performanceTags": [
+        "APPEARANCE",
+        "CORROSION"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 06.",
+          "capKind": "SPEC",
+          "name": "용도",
+          "displayValue": "SUS 장식용, 외관 광택용, 용접부 클리닝, 부동태화, 내식성 향상",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 06.",
+          "capKind": "SPEC",
+          "name": "처리 소재",
+          "displayValue": "오스테나이트계 스테인리스강",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": []
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 07. 파커라이징법·본더라이트법 등. 연혁: 2003 인산염피막 사업 진출.",
+      "code": "PHOSPHATE_COATING",
+      "name": "인산염 피막",
+      "category": "화성 피막",
+      "materialCodes": [
+        "FE"
+      ],
+      "performanceTags": [
+        "CORROSION",
+        "PAINT_ADHESION"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 07.",
+          "capKind": "SPEC",
+          "name": "용도",
+          "displayValue": "반도체 부품, 도장 하지용, 엷은 회색 내식형",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": true,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "반도체",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 10장 07 '반도체 부품 사용'. 거래처·기간은 소개서에 없음 — 거산 확인 전.",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 08. 알루미늄 단독 후처리, 엷은 금색~올리브색 반광택. 연혁: 2019 크로메이트/부동태 사업 시작. 소개서에는 '아연도금 후 크로메이트'도 언급되나 별도 공정으로 적지 않음.",
+      "code": "CHROMATE",
+      "name": "크로메이트(화성피막)",
+      "category": "화성 피막",
+      "materialCodes": [
+        "AL"
+      ],
+      "performanceTags": [
+        "CORROSION",
+        "CONDUCTIVITY"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 08.",
+          "capKind": "SPEC",
+          "name": "피막 종류",
+          "displayValue": "1A종(도색 없이 최대 부식 보호) / 3종(낮은 전기저항이 필요한 부식 방지)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 08 '내식성(168hr) 우수'. 시험 조건은 소개서에 없음 — 거산 확인 전.",
+          "capKind": "TEST",
+          "name": "염수분무 내식성",
+          "displayValue": "168시간 내식성(소개서 표기)",
+          "numericMin": 168,
+          "numericMax": null,
+          "unit": "h",
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장.",
+          "capKind": "TEST",
+          "name": "전기접촉 저항 시험",
+          "displayValue": "전기접촉 저항시험기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "방위산업",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 12장 주요 거래처(방위산업체: 한화시스템, 한화에어로스페이스, ㈜한화, 현대로템, LIG넥스원, 한국항공우주산업) + 8장 특수공정 승인 공정. 거산 확인 2026-10-21: 거래처명 사용 가능. 부품 종류·기간은 소개서에 없음 — 거산 확인 전. 연혁: 2020 한화시스템 승인(크로메이트), 2020 KSPC(크로메이트), 2025 한화에어로스페이스 SPA(화성피막).",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 10장 09. 연혁: 2019 크로메이트/부동태 사업 시작.",
+      "code": "PASSIVATION",
+      "name": "부동태(부동태 처리)",
+      "category": "화성 피막",
+      "materialCodes": [
+        "SUS"
+      ],
+      "performanceTags": [
+        "CORROSION"
+      ],
+      "registryStatus": "BROCHURE_NAME",
+      "reviewStatus": "PENDING",
+      "capabilities": [
+        {
+          "_설명": "회사소개서 2026-09-21판 10장 09.",
+          "capKind": "SPEC",
+          "name": "처리 소재",
+          "displayValue": "SUS(스테인리스)",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        },
+        {
+          "_설명": "회사소개서 2026-09-21판 11장 신뢰성 장비. 시험 규격은 소개서에 없음 — 거산 확인 전.",
+          "capKind": "TEST",
+          "name": "염수분무 시험",
+          "displayValue": "자체 실험실 염수분무 시험기 보유",
+          "numericMin": null,
+          "numericMax": null,
+          "unit": null,
+          "standardRef": null,
+          "isDescriptiveOnly": false,
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "deliveryRecords": [
+        {
+          "industry": "방위산업",
+          "partType": null,
+          "period": null,
+          "allowedBasis": "회사소개서 2026-09-21판 12장 주요 거래처(방위산업체: 한화시스템, 한화에어로스페이스, ㈜한화, 현대로템, LIG넥스원, 한국항공우주산업) + 8장 특수공정 승인 공정. 거산 확인 2026-10-21: 거래처명 사용 가능. 부품 종류·기간은 소개서에 없음 — 거산 확인 전. 연혁: 2020 한화시스템 승인(부동태), 2020 KSPC(부동태), 2025 한화에어로스페이스 SPA(부동태처리).",
+          "reviewStatus": "PENDING"
+        }
+      ]
+    }
+  ],
+  "qualifications": [
+    {
+      "_설명": "회사소개서 2026-09-21판 8장 AS9100D / ISO 9001:2015 (LRQA Korea 10710875). ISO 9001 승인번호 ISO 9001-00022123-1. 연혁: 2006 ISO 9001 최초 인증.",
+      "kind": "CERTIFICATION",
+      "officialName": "ISO 9001",
+      "number": "ISO 9001-00022123-1",
+      "edition": "2015",
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2025-09-25",
+      "validTo": "2028-09-24",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "BLACK_OXIDE",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROLESS_NICKEL",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROME_PLATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROPOLISHING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PHOSPHATE_COATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2025-09-25",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 최초 2019-09-25, 발행 2025-09-25, 만료 2028-09-24. 인증기관 LRQA Korea, 인증서 번호 10710875"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장 AS9100D (LRQA Korea 10710875, 승인번호 AS9100-00022123). 연혁: 2019 AS9100D 인증, 2020 KS Q 9100 전환.",
+      "kind": "CERTIFICATION",
+      "officialName": "AS9100D",
+      "number": "AS9100-00022123",
+      "edition": "D",
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2025-09-25",
+      "validTo": "2028-09-24",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 LRQA 인증 범위: anodizing, chromate, electroplated zinc coating, passivation",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "BLACK_OXIDE",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROLESS_NICKEL",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROME_PLATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROPOLISHING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PHOSPHATE_COATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "LRQA 범위 원문에 없는 공정 — 거산 확인 전",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2025-09-25",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 최초 2019-09-25, 발행 2025-09-25, 만료 2028-09-24. KS Q 9100·EN 9100·JISQ 9100과 기술적 동등"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장 KSPC 인증심의회(KAQG), 한국항공우주산업진흥협회. 범위 KSPC510 화학처리-CP.",
+      "kind": "CERTIFICATION",
+      "officialName": "KSPC 한국특수공정인증서",
+      "number": "KSPC-2026-0012",
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2026-01-17",
+      "validTo": "2027-02-15",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2020: 한국특수공정승인(KSPC) 크로메이트·아노다이징·부동태. 8장 범위 'KSPC510 화학처리-CP'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2020: 한국특수공정승인(KSPC) 크로메이트·아노다이징·부동태. 8장 범위 'KSPC510 화학처리-CP'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2020: 한국특수공정승인(KSPC) 크로메이트·아노다이징·부동태. 8장 범위 'KSPC510 화학처리-CP'",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2026-01-17",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 최초 2020-12-28, 재발행 2026-01-17, 만료 2027-02-15"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장. 적용 규격: KS-W-1115, KDS-0115-0013, KDS-0115-0018(5.4·1.9·7.2·7.3), AMS-2700, AMS-QQ-P-35, KS-D-8304, KDS-0115-0016, KS-W-1131, KS-W-1138, KDS-0215-0004(II형·III형), KS-W-1120, KS-W-1140, KDS-0210-0032, MIL-DTL-5541.",
+      "kind": "APPROVAL",
+      "officialName": "한화에어로스페이스 특수공정인증서(SPA)",
+      "number": "HAS-Q-25-032",
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2025-03-14",
+      "validTo": "2027-03-13",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '도금/피막: 부동태처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '전기아연도금'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '양극산화피막'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '화성피막'",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2025-03-14",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 2025-03-14 ~ 2027-03-13"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장 SEMES 주식회사. 연혁: 2018 SEMES 공정 인증.",
+      "kind": "APPROVAL",
+      "officialName": "SEMES 공급자 품질 인증(SSQ)",
+      "number": "A260831-008R1",
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2026-08-01",
+      "validTo": "2027-07-31",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '도금' — 어느 도금 공정인지 소개서에 없음, 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROLESS_NICKEL",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '도금' — 어느 도금 공정인지 소개서에 없음, 거산 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROME_PLATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '도금' — 어느 도금 공정인지 소개서에 없음, 거산 확인 전",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2026-08-01",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 2026-08-01 ~ 2027-07-31"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장. 승인 공정 '도금'(한화시스템 특수공정관리지침 근거). 개별 부품 최종 적합성은 보증하지 않음(단서 조항).",
+      "kind": "APPROVAL",
+      "officialName": "한화시스템 특수공정 승인서",
+      "number": null,
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": null,
+      "validTo": null,
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROLESS_NICKEL",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "UNKNOWN",
+          "basis": "회사소개서 2026-09-21판 4장 연혁 2019(아연·아노다이징·무전해니켈)·2020(크로메이트·부동태) 승인. 갱신본 확인 전",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "UNCONFIRMED",
+          "occurredAt": null,
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 승인번호 판독 불가, 유효기간은 이미지상 2020.02~2021.02 추정 — 현재 유효한 갱신본 확인 필요(거산 확인 전)"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장 환경경영시스템. 연혁: 2006 ISO 14000 인증.",
+      "kind": "CERTIFICATION",
+      "officialName": "ISO 14001",
+      "number": "KU0018-EC-SC",
+      "edition": "2015",
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2024-08-19",
+      "validTo": "2027-08-26",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "BLACK_OXIDE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROLESS_NICKEL",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROME_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROPOLISHING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PHOSPHATE_COATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2024-08-19",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 최초 2016-09-27, 재발행 2024-08-19, 만료 2027-08-26. UNI-CERT"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 8장 안전보건경영시스템.",
+      "kind": "CERTIFICATION",
+      "officialName": "ISO 45001",
+      "number": "KU0018-EC-SC",
+      "edition": "2018",
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": "2024-08-19",
+      "validTo": "2027-08-26",
+      "reviewStatus": "PENDING",
+      "scopes": [
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ZINC_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ANODIZING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "BLACK_OXIDE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROLESS_NICKEL",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROME_PLATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "ELECTROPOLISHING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PHOSPHATE_COATING",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "CHROMATE",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        },
+        {
+          "scopeKind": "PROCESS",
+          "processCode": "PASSIVATION",
+          "customerRef": null,
+          "applicability": "APPLIES",
+          "basis": "회사소개서 2026-09-21판 8장 범위 '금속제품의 표면처리'",
+          "reviewStatus": "PENDING"
+        }
+      ],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": "2024-08-19",
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 최초 2016-09-27, 재발행 2024-08-19, 만료 2027-08-26. UNI-CERT"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 4장·8장. 회사 단위 지정이라 공정 범위는 두지 않음.",
+      "kind": "CERTIFICATION",
+      "officialName": "뿌리기술 전문기업 지정증",
+      "number": null,
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": null,
+      "validTo": null,
+      "reviewStatus": "PENDING",
+      "scopes": [],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": null,
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 8장: 2019년 지정(중소벤처기업부장관). 번호·일자는 원본 해상도가 낮아 판독 불가 — 거산 확인 전"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 4장. 회사 단위 확인서라 공정 범위는 두지 않음.",
+      "kind": "CERTIFICATION",
+      "officialName": "소재·부품·장비 전문기업 확인서",
+      "number": null,
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": null,
+      "validTo": null,
+      "reviewStatus": "PENDING",
+      "scopes": [],
+      "statuses": [
+        {
+          "status": "ACTIVE",
+          "occurredAt": null,
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 4장 연혁: 2023 한국산업기술평가관리원장. 번호·유효기간은 소개서에 없음 — 거산 확인 전"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 4장·12장(기타 승인 이력 기준 거래 관계).",
+      "kind": "APPROVAL",
+      "officialName": "휴니드테크놀러지스 특수공정 인증",
+      "number": null,
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": null,
+      "validTo": null,
+      "reviewStatus": "PENDING",
+      "scopes": [],
+      "statuses": [
+        {
+          "status": "UNCONFIRMED",
+          "occurredAt": null,
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 4장 연혁: 2017 인증. 현재 유효 여부·공정 범위는 소개서에 없음 — 거산 확인 전"
+        }
+      ]
+    },
+    {
+      "_설명": "회사소개서 2026-09-21판 4장·12장(기타 승인 이력 기준 거래 관계).",
+      "kind": "APPROVAL",
+      "officialName": "세트렉아이 승인",
+      "number": null,
+      "edition": null,
+      "holder": "㈜거산케미칼",
+      "site": "본사(천안 성거읍)",
+      "validFrom": null,
+      "validTo": null,
+      "reviewStatus": "PENDING",
+      "scopes": [],
+      "statuses": [
+        {
+          "status": "UNCONFIRMED",
+          "occurredAt": null,
+          "confirmedAt": null,
+          "confirmedBy": null,
+          "reason": "회사소개서 2026-09-21판 4장 연혁: 2020 세트렉아이(우주항공 위성사업체) 승인. 현재 유효 여부·공정 범위는 소개서에 없음 — 거산 확인 전"
+        }
+      ]
+    }
+  ],
+  "reviewDefaults": {
+    "_설명": "파일의 모든 값에 붙는 검수 기록 기본값. 소개서를 옮겨 적은 것이라 검수자는 PM이고 상태는 검수 대기다.",
+    "reviewer": "PM(소개서 입력)",
+    "reviewedAt": "2026-10-22",
+    "basis": "회사소개서 2026-09-21판 옮겨 적음 — 검수 대기, 거산 확인 전"
+  }
+}

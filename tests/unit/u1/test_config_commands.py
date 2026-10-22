@@ -328,3 +328,24 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
     with session_scope(tmp_db) as session:
         with pytest.raises(InputError, match="없습니다"):
             load_runtime_config(session)
+
+
+def test_brochure_capability_example_is_pending_and_contact_free() -> None:
+    """회사소개서 묶음 예시(BROCHURE, #17): 검사 통과, 전부 검수 대기, 연락처 없음."""
+    report = check_capability_file(EXAMPLES / "capability-geosan-brochure.json")
+    assert report.ok, report.error_lines()
+    cap = report.capability
+    assert cap is not None and cap.dataset_kind == "BROCHURE"
+    assert {p.code for p in cap.processes} == {
+        p.code
+        for p in check_capability_file(EXAMPLES / "capability-geosan.json").capability.processes
+    }  # 가상 묶음과 같은 공정 코드 9개
+    assert all(p.review_status == "PENDING" for p in cap.processes)
+    assert all(c.review_status == "PENDING" for p in cap.processes for c in p.capabilities)
+    assert all(q.review_status == "PENDING" for q in cap.qualifications)
+    assert all(s.review_status == "PENDING" for q in cap.qualifications for s in q.scopes)
+    assert any(q.official_name == "AS9100D" and q.number for q in cap.qualifications)
+    raw = (EXAMPLES / "capability-geosan-brochure.json").read_text(encoding="utf-8")
+    assert "소개서 기준·거산 확인 전" in raw
+    # 소개서의 전화·이메일은 옮기지 않는다(CON-11)
+    assert "@" not in raw and "041-" not in raw
