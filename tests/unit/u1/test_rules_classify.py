@@ -64,6 +64,7 @@ def test_classification_first_matching_branch(
         ("weak", "RECHECK"),
         ("pending", "RECHECK"),
         ("no_ids", "RECHECK"),
+        ("other_ids_only", "RECHECK"),
         ("missing_id", "RECHECK"),
         ("config_states", "MET"),
         ("config_review", "MET"),
@@ -86,8 +87,10 @@ def test_core_evidence_requires_review(change, expected):
         used_process.review_status = ReviewStatus.PENDING
     if change == "config_review":
         data.rule_config.core_evidence.new.require_reviewed_capability = False
-    if change == "no_ids":
+    if change in {"no_ids", "other_ids_only"}:
         data.item_inputs[1].used_capability_ids = []
+    if change == "other_ids_only":
+        data.item_inputs[0].used_capability_ids = ["proc-anodizing"]
     if change == "missing_id":
         data.item_inputs[1].used_capability_ids = ["missing"]
     if change == "config_item":

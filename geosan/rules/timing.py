@@ -24,6 +24,12 @@ def core_evidence(data: EvaluationInput, items: list[ItemJudgmentOutput]) -> Cor
     ):
         return CoreEvidenceMet.RECHECK
     if rule.require_reviewed_capability:
+        # BR5.1: 제품 항목의 다른 근거가 있어도 소재 대조 근거의 누락을 대신할 수 없다.
+        if (
+            ItemCode.NEW_MATERIAL in rule.items
+            and not by_code[ItemCode.NEW_MATERIAL].used_capability_ids
+        ):
+            return CoreEvidenceMet.RECHECK
         statuses = {p.process_id: p.review_status for p in data.capability.processes}
         statuses.update({c.capability_id: c.review_status for c in data.capability.capabilities})
         used = {key for code in rule.items for key in by_code[code].used_capability_ids}
