@@ -88,6 +88,17 @@
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "세종특별자치시 부강면 구들기길 18",
+      "sourceRef": "https://www.alusys.com/bbs/page.php?hid=p202",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
     }
   ],
   "itemInputs": [
@@ -126,7 +137,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "실제 거산 납품실적과의 대조 미완료.",
+      "factJudged": "이유: 산업용 프로파일 제품은 확인했으나 거산 소개서 ANODIZING의 방위산업·항공우주 실적과 대상 DF 3090의 동일 부품·동일 산업을 연결할 근거가 없다. 다음 할 일: DF 3090의 실제 적용 산업·부품 용도를 확인한 뒤 소개서 실적과 대조한다. 미확인을 불일치로 확정하지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
