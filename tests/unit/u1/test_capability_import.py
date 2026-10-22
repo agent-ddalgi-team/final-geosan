@@ -13,6 +13,7 @@ from geosan.capability.models import (
     Process,
     ProcessCapability,
     Qualification,
+    QualificationScope,
     QualificationStatus,
 )
 from geosan.capability.queries import (
@@ -21,6 +22,7 @@ from geosan.capability.queries import (
     list_processes,
 )
 from geosan.config.errors import InputError, RunFailedError
+from geosan.opportunity.importer import import_case
 from geosan.storage.session import session_scope
 from tests import factories
 
@@ -125,6 +127,72 @@ def test_invalid_scope_reports_exact_location_and_rolls_back(
             FieldEvidence,
         ):
             assert session.scalar(select(func.count()).select_from(model)) == 0
+
+
+@pytest.fixture
+def imported_customer(tmp_db, tmp_path):
+    import_capability(_write(tmp_path, factories.capability_file()))
+    path = tmp_path / "customer-case.json"
+    path.write_text(json.dumps(factories.apjeong_case(), ensure_ascii=False), encoding="utf-8")
+    return import_case(path)
+
+
+def _customer_capability(reference):
+    data = factories.capability_file()
+    data["qualifications"][0]["scopes"][0].update(
+        scopeKind="CUSTOMER", processCode=None, customerRef=reference
+    )
+    return data
+
+
+@pytest.mark.parametrize("reference", ["A정밀", " (주) A 정밀 ", "Ａ정밀"])
+def test_customer_scope_uses_normalized_company_name(imported_customer, tmp_path, reference):
+    """Given 상호명 표기 차이 / When 자격 투입 / Then 사례와 같은 정규화로 고객에 연결한다."""
+    import_capability(_write(tmp_path, _customer_capability(reference)))
+    with session_scope() as session:
+        scope = session.scalar(
+            select(QualificationScope).where(QualificationScope.scope_kind == "CUSTOMER")
+        )
+        assert scope.customer_id == imported_customer.customer_id
+        assert scope.opp_id is None and scope.process_id is None
+
+
+def test_customer_scope_does_not_interpret_database_id_as_company_name(imported_customer, tmp_path):
+    """Given 상호명 대신 DB ID / When 자격 투입 / Then 연결을 거부하고 이전 기록을 보존한다."""
+    with session_scope() as session:
+        before = session.scalar(select(func.count()).select_from(FieldEvidence))
+    with pytest.raises(InputError) as error:
+        import_capability(_write(tmp_path, _customer_capability(imported_customer.customer_id)))
+    assert error.value.fields[0].path == "qualifications[0].scopes[0].customerRef"
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(FieldEvidence)) == before
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(QualificationScope)
+                .where(QualificationScope.scope_kind == "CUSTOMER")
+            )
+            == 0
+        )
+
+
+def test_ambiguous_customer_name_never_selects_an_arbitrary_customer(imported_customer, tmp_path):
+    """Given 상호가 같은 서로 다른 고객 / When 자격 투입 / Then 임의 연결 없이 거부한다."""
+    data = factories.apjeong_case()
+    data["caseId"] = "same-name-other-address"
+    data["customer"]["address"] = "충남 아산시 (가상)"
+    path = tmp_path / "other-customer.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    other = import_case(path)
+    assert other.customer_id != imported_customer.customer_id
+    with session_scope() as session:
+        before = session.scalar(select(func.count()).select_from(FieldEvidence))
+    with pytest.raises(InputError) as error:
+        import_capability(_write(tmp_path, _customer_capability("A정밀")))
+    assert error.value.fields[0].path == "qualifications[0].scopes[0].customerRef"
+    assert "여러" in error.value.fields[0].message
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(FieldEvidence)) == before
 
 
 def test_latest_status_is_new_row_and_old_status_is_preserved(tmp_db, tmp_path):

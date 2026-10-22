@@ -32,6 +32,7 @@ cd web && npm ci && cd ..
 | 가상 사례 투입·평가·확인 | `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
+| 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 
 뼈대 기본 틀(Part A) 시점에는 명령 이름만 등록되어 있고 본문은 "아직 구현되지 않았습니다(담당, Step)"를 내고 종료 코드 2로 끝납니다.

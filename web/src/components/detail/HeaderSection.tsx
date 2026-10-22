@@ -58,7 +58,11 @@ export default function HeaderSection({
         </Button>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-        <span aria-label={`분류: ${classification}`} data-testid="detail-classification">
+        <span
+          role="group"
+          aria-label={`분류: ${classification}`}
+          data-testid="detail-classification"
+        >
           <StatusTag tone={tone} bold={header.classificationCode === 'CONTACT_URGENT'}>
             {classification}
           </StatusTag>
