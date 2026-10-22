@@ -11,7 +11,7 @@
     "공정 연결 ANODIZING은 PM의 알루미늄 가공 후보 분류에 따른 조사 대상이다. 실제 적용 공정·처리 목적·외주 여부는 미확인이고 PURPOSE 근거가 없으므로 최종 후보로 확정하지 않았다.",
     "A5052-H112는 공급 제품 FUS PLATE의 사양이다. 모든 진공 챔버의 소재나 거산에 요구하는 소재 규격이라고 해석하지 않는다.",
     "공개 홈페이지 열람일은 2026-10-22이다. 게시일이 없는 근거의 occurredAt은 null로 두었고 열람일을 발생일로 쓰지 않았다.",
-    "#17 실제 소개서 묶음이 없어 거산의 소재·납품실적·성능과 대조하지 않았다. 가상 역량 파일을 실제 기업 점수 산정에 사용하지 않았다.",
+    "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)의 ANODIZING 소재·성능·실적을 2026-10-22 확인했다. 소개서 기준·거산 확인 전(PENDING)이다. 공급 소재 FUS PLATE의 사양을 대상 가공·용접품에 연결할 근거와 처리 목적이 부족해 판정은 미확보로 유지한다. 가상 역량은 사용하지 않았다.",
     "시점 신호 조사는 완료되지 않아 SIG_*를 UNAVAILABLE로 두었다. 근거 미확보를 신호 없음으로 단정하지 않았다.",
     "공개 제품표의 판매 사양은 거산에 대한 고객 요청서가 아니다. 요구 조건·필수 여부·필요 단계는 새로 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
   ],
@@ -89,7 +89,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "고객 제품의 소재 설명은 확보했으나 실제 거산 역량 파일과의 일치는 미확인이다.",
+      "factJudged": "소개서 ANODIZING에 AL 소재가 있다. 그러나 인용한 A5052-H112는 공급 소재 FUS PLATE 사양이며 대상 가공·용접품의 소재·후처리 사양으로 연결되지 않아 미확보로 둔다. 소개서 기준·거산 확인 전(PENDING).",
       "evidenceRefs": [
         1
       ],
@@ -101,7 +101,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "실제 거산 납품실적 자료가 없어 비교하지 않았다.",
+      "factJudged": "소개서 ANODIZING의 방위산업·항공우주 실적 항목을 확인했으나 이 가공·용접품의 납품 산업·부품과 연결되지 않는다. 다른 공정의 반도체 실적을 ANODIZING 실적으로 옮기지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -111,7 +111,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "고객의 처리 목적 근거와 실제 거산 성능 자료가 없어 비교하지 않았다.",
+      "factJudged": "소개서 ANODIZING의 CORROSION·APPEARANCE·HARDNESS를 확인했지만 대상 가공·용접품의 처리 목적 근거가 없어 성능 일치를 판정하지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
