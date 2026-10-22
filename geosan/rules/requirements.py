@@ -15,6 +15,7 @@ from geosan.rules.codes import (
     CapKind,
     CheckDisplay,
     CheckResult,
+    DatasetKind,
     ExclusionScope,
     FilterState,
     NeededStage,
@@ -201,7 +202,15 @@ def _check_process_link(
         )
     if (
         process is None
-        or process.review_status != ReviewStatus.REVIEWED
+        # BR5.6: 소개서의 검수 대기 자체는 운영 준비(③)다.
+        # 지금 필수 요구가 미확인이면 아래 checks가 별도로 필터 대기(②)를 만든다.
+        or (
+            process.review_status != ReviewStatus.REVIEWED
+            and not (
+                evaluation_input.dataset_kind == DatasetKind.BROCHURE
+                and process.review_status == ReviewStatus.PENDING
+            )
+        )
         or not process.material_codes
         or not link.applied_material
         or any(_check_is_pending(check) for check in checks)
@@ -214,7 +223,9 @@ def _check_process_link(
     return ProcessLinkResult(
         link_id=link.link_id,
         result=FilterState.PASS,
-        reason="공정·소재와 지금 단계 필수 요구가 일치합니다",
+        reason="소개서 공정·소재의 검수는 운영 준비 단계에서 확인합니다"
+        if evaluation_input.dataset_kind == DatasetKind.BROCHURE
+        else "공정·소재와 지금 단계 필수 요구가 일치합니다",
     )
 
 
