@@ -6,8 +6,9 @@ import pytest
 
 from geosan.rules.classify import classify, display_texts
 from geosan.rules.codes import QualificationStatusCode, ReviewStatus
+from geosan.rules.engine import evaluate, rank
 from geosan.rules.items import calculate_items
-from geosan.rules.models import ResearchReadinessInput, TimingRequirements, Totals
+from geosan.rules.models import RankInput, ResearchReadinessInput, TimingRequirements, Totals
 from geosan.rules.requirements import assess_requirements
 from geosan.rules.timing import (
     core_evidence,
@@ -308,6 +309,17 @@ def test_display_score_and_approval(change, code, score, blocked):
 def test_acceptance_decision(filename, code):
     """Given 완료 기준 사례, When 실제 계산, Then A정밀만 연락 후보가 된다."""
     data = rule_engine_input(filename)
+    before = data.model_dump()
+    output = evaluate(data)
+    assert evaluate(data) == output
+    assert data.model_dump() == before
+    assert output.classification_code == code
+    result = rank(
+        [RankInput(opp_id=data.opportunity.opp_id, profile=data.profile, sort_key=output.sort_key)],
+        data.dataset_kind,
+        data.rule_config,
+    )
+    assert result[0].original_rank == 1
     rows = calculate_items(data)
     totals = calculate_totals(rows, data.rule_config)
     assessment = assess_requirements(data)
@@ -324,3 +336,10 @@ def test_acceptance_decision(filename, code):
     )
     if filename == "apjeong-input.json":
         assert str(valid_contact_until(data)) == "2026-11-10"
+        assert output.sort_key.direct_confirmed_weight == 87
+        assert output.sort_key.group == "URGENT"
+        assert output.display.blocks_approval is False
+        assert output.display.score_display == "81"
+        assert "없음" in output.display.blocker_text
+        assert len(output.question_candidates) == 1
+        assert "Nadcap" in output.question_candidates[0].text
