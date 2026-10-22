@@ -86,6 +86,18 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
 
 소개서 묶음으로 평가한 실제 기업은 규칙상 "기다리는 중(확인 필요)" 또는 "준비 중"으로 분류되고 카드에 "참고 N" 점수가 보입니다. 접촉 승인은 열리지 않습니다(BR5.6). 이것이 정상입니다.
 
+## 5-1. 상태값 뜻 — "모름"을 적는 두 가지 방법 (규칙 BR1.5·BR3.2)
+
+역량 파일(거산 값)과 사례 파일에는 "확실하지 않음"을 뜻하는 값이 둘 있습니다. 둘 다 통과(PASS) 근거로는 쓰이지 않고, 확인 질문 후보가 됩니다. 값만 적지 말고 **`basis`(범위) 또는 `reason`(상태) 칸에 "이유: … 다음 할 일: …"을 같이 적습니다**(소개서 묶음 파일 `examples/capability-geosan-brochure.json`이 예시).
+
+| 값 | 어디에 쓰나 | 뜻 | 예 |
+|---|---|---|---|
+| `UNKNOWN` | 자격 범위 `scopes[].applicability`, 요구 `reqLevel`·`neededStage`, 사례 `certainty` | **자료에 언급이 없거나 범위가 애매해서 판단할 수 없음.** 자료 자체가 없는 경우도 포함 | SEMES 인증서 범위가 "도금"으로만 적혀 어느 도금 공정인지 모름 → 세 공정에 `UNKNOWN` |
+| `UNCONFIRMED` | 자격 현재 상태 `statuses[].status`, 고객 `relationStatus` | **자료(또는 언급)는 있지만 내용을 확인하지 못함.** 번호·유효기간을 못 읽었거나 지금 유효한지 모를 때 | 한화시스템 승인서 이미지가 흐려 번호·유효기간 판독 불가 → `UNCONFIRMED` |
+
+- 비슷하지만 다른 값: 검수 상태 `reviewStatus`의 `PENDING`은 "값은 적혀 있고 거산 검수만 안 됨"(소개서 묶음은 전부 이 상태), `UNAVAILABLE`은 "값이 아예 없음", `RECHECK`는 "검수했는데 다시 봐야 함"입니다. 자격 범위에서 "해당 안 됨"이 확인되면 `UNKNOWN`이 아니라 `NOT_APPLIES`입니다.
+- 거산에 물어볼 것이 생기면 `docs/visit-questions-20261029.md`(10/29 방문 질문 목록)에 더합니다.
+
 ## 6. check-case 오류 읽는 법 (Step 30에서 예시 보강)
 
 - `12번째 줄 requirements[1].reqLevel: 'REQUIRED', 'PREFERRED', 'NOT_REQUIRED', 'UNKNOWN' 중 하나여야 하는데 '필수요'가 적혀 있습니다` → 허용 값 밖. 영문 코드로 고칩니다.
