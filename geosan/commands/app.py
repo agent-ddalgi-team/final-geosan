@@ -160,6 +160,27 @@ def export_contracts(
     not_implemented_yet("export-contracts")
 
 
+@app.command("demo-report")
+def demo_report(
+    capability: Path = typer.Option(
+        ..., "--capability", help="거산 역량 파일(JSON). 묶음(datasetKind)은 이 파일을 따릅니다."
+    ),
+    cases: Path = typer.Option(..., "--cases", help="사례 파일(*.json)이 든 폴더"),
+    out: Path = typer.Option(..., "--out", help="결과를 쓸 폴더(없으면 만듭니다)"),
+    base_date: str | None = typer.Option(
+        None, "--base-date", help="평가 기준일 YYYY-MM-DD. 없으면 사례 파일의 baseDate"
+    ),
+) -> None:
+    """DB·화면 없이 역량 파일 + 사례 파일만으로 시연 자료(순위표·기업별 근거·사실표)를 뽑습니다.
+
+    10/29 부분 시연용 예비 경로(계약 C8). 저장하지 않으며 모든 출력 머리에
+    '시연용 초안·거산 확인 전'이 붙습니다. 연락처 패턴이 있으면 쓰지 않고 종료 코드 1.
+    """
+    from geosan.commands.demo_report import run_demo_report
+
+    raise typer.Exit(code=run_demo_report(capability, cases, out, base_date))
+
+
 @db_app.command("merge-heads")
 def db_merge_heads() -> None:
     """마이그레이션 머리가 둘일 때 하나로 합칩니다."""
