@@ -25183,3 +25183,367 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Details**: git pull -q --ff-only origin develop && git log --oneline -1 && git add aidlc/spaces/default/intents/261019-geosan-sales-agent/audit/ && git commit -q -m "AI-DL
 
 ---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:06:24Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh pr view 36 --json closingIssuesReferences,body --jq '"closes: \([.closingIssuesReferences[].number])", (.body | split("\n")[0:8] | join("\n"))'; echo "=== #3
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:06:31Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue comment 8 --body "PR #39가 \`develop\`에 합쳐졌습니다(2026-10-22 저녁). 이제 \`git fetch origin && git merge origin/develop\` → 윈도우에서 \`pip install -r requirements
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:06:40Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: for it in PVTI_lADOE67Ars4BoCM4zhCmflE PVTI_lADOE67Ars4BoCM4zhCmi6k; do gh project item-edit --project-id PVT_kwDOE67Ars4BoCM4 --id $it --field-id PVTSSF_lADOE6
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-22T05:06:52Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a2b33a2189fb2363e
+**Message**: #17 역량 파일 만들어 줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-22T05:09:41Z
+**Event**: HUMAN_TURN
+**Session**: a083afe1-0b75-47d5-a1ce-8e151374a464
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:09:49Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue list --label "막힘" --state open --json number,title,assignees,updatedAt --jq '.[] | "#\(.number) \([.assignees[].login]|join(",")) \(.updatedAt) \(.titl
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:10:11Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: for n in 8 9 10; do gh issue edit $n --remove-label "막힘" >/dev/null && echo "#$n 막힘 해제"; done; gh issue comment 9 --body "PM(2026-10-22 저녁): 막혔던 원인(윈도우 인코딩·심볼릭 
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-22T05:13:40Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: aaed8e51cfc3eaa3a
+**Message**: 거산 영업지원 뼈대(U1) PM 세션으로 오늘 막힘 해결, 시연 자료 명령, 이슈 정리를 끝냈고 열린 PR은 없습니다. 다음은 10/23 마감인 #17 거산 역량 파일(소개서 묶음) 작성이며 "시작해"라고 하시면 바로 만듭니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-22T05:19:00Z
+**Event**: HUMAN_TURN
+**Session**: a083afe1-0b75-47d5-a1ce-8e151374a464
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:19:14Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue view 17 --json body --jq .body; echo "=== 계획·안내서에서 소개서 묶음 파일 이름 ==="; grep -rn -i "capability-.*brochure\|소개서 묶음 파일\|BROCHURE 묶음" aidlc/spaces/default/
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:19:19Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: cat tests/data/capability-brochure.json | head -150; echo "..."; .venv/bin/python -I -c "\nimport json;d=json.load(open('<project-dir>/tests/d
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:19:22Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: sed -n 236,330p geosan/config/schemas.py; echo "=== 계약 C7 역량 파일 ==="; sed -n 560,593p aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/contract-
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:20:11Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python -I -c "\nimport json;d=json.load(open('<project-dir>/examples/capability-geosan.json'))\nprint('sourceNote:', d['sourceNote'])
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:20:15Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: cat examples/app-settings.yaml | grep -v "^ *#" | head -40; git switch -q -c jiye/17-capability-brochure && git branch --show-current
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:22:43Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Write
+**Details**: /private/tmp/claude-501/-Users-jiyechoi-dev-final-geosan/a083afe1-0b75-47d5-a1ce-8e151374a464/scratchpad/build_brochure.py
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:23:01Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python -I /private/tmp/claude-501/-Users-jiyechoi-dev-final-geosan/a083afe1-0b75-47d5-a1ce-8e151374a464/scratchpad/build_brochure.py && .venv/bin/pyth
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:23:26Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: <project-dir>/tests/unit/u1/test_config_commands.py
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:23:41Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/ruff check tests --output-format concise 2>&1 | head -3
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:23:50Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python - <<'EOF'\nfrom pathlib import Path\ndef rep(path, old, new):\n    p = Path(path); s = p.read_text(encoding="utf-8"); assert old in s, (path, old[
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:23:59Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: sed -n 334p tests/unit/u1/test_config_commands.py && .venv/bin/python - <<'EOF'\nfrom pathlib import Path\np = Path("tests/unit/u1/test_config_commands.py"); s = 
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:24:02Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: bash scripts/check.sh python 2>&1 | grep -E "^[0-9]+ passed|[0-9]+ failed|Total coverage|검사 끝|검사 실패|All checks|already formatted"
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:24:15Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: .venv/bin/python - <<'EOF'\nfrom pathlib import Path\np = Path("tests/unit/u1/test_config_commands.py"); s = p.read_text(encoding="utf-8")\nold = '    """회사소개서 묶음 
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-22T05:24:16Z
+**Event**: HUMAN_TURN
+**Session**: a083afe1-0b75-47d5-a1ce-8e151374a464
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:24:29Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: bash scripts/check.sh python 2>&1 | grep -E "^[0-9]+ passed|[0-9]+ failed|Total coverage|검사 끝|검사 실패|All checks|already formatted"
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:27:32Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git add examples/capability-geosan-brochure.json tests/unit/u1/test_config_commands.py && git commit -q -m "거산 역량 파일 소개서 묶음(BROCHURE) 추가: 회사소개서의 공정 9종·인증 12건·거래
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:27:52Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue comment 17 --body "**PM 세션 요약(2026-10-22 저녁)** — PR #43에 소개서 묶음 역량 파일 \`examples/capability-geosan-brochure.json\`을 올렸습니다. 회사소개서(2026-09-21판)의 공정 9종, 인
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:28:00Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git switch -q develop && git status --short; echo "=== 열린 PR ==="; gh pr list --state open --json number,title,author,headRefName --jq '.[] | "#\(.number) \(.au
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:28:04Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh pr checks 43 --watch --fail-fast 2>&1 | tail -2
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:29:51Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: gh issue list --state all --limit 10 --json number,title,author,state,createdAt --jq '.[] | select(.number >= 39) | "#\(.number) \(.state) \(.author.login) \(.t
+
+---
+
+## Guard Stood Aside
+**Timestamp**: 2026-10-22T05:29:56Z
+**Event**: GUARD_STOOD_ASIDE
+**Guard**: plan-approval
+**Authority**: grant
+**Grant**: turn-marker
+**Actor**: main
+**Stage**: code-generation
+**Tool**: Bash
+**Details**: git add aidlc/spaces/default/intents/261019-geosan-sales-agent/audit/ && git commit -q -m "AI-DLC 감사 기록 갱신 (10/22 저녁, 역량 파일 작업분)\n\nCo-Authored-By: Claude Fable 5
+
+---
