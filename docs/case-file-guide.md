@@ -20,7 +20,7 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
    - 있으면 시점 신호(`subject: SIGNAL`) — 증설·신규 수주·공고·채용
 3. `examples/case-template.json`을 복사해 `examples/cases/<회사-품목>.json`처럼 저장하고 칸을 채웁니다(칸마다 `_설명`에 뜻과 허용 값이 있습니다). `caseId`는 영문 소문자·숫자·하이픈(예: `b-precision-bracket-zinc`).
 4. 8항목 판정(`itemInputs`)을 아래 3장 판정표대로 적습니다.
-5. `geosan check-case <파일>`로 검사합니다. 저장 없이 형식·허용 값·연락처만 봅니다(DB 불필요). 오류는 "몇 번째 줄 어느 항목이 왜"로 나옵니다. 역량 파일을 함께 주면(`--capability examples/capability-geosan.json`) 공정 코드 존재도 검사합니다.
+5. `geosan check-case <파일>`로 검사합니다. 저장 없이 형식·허용 값·연락처만 봅니다(DB 불필요). 오류는 "몇 번째 줄 어느 항목이 왜"로 나옵니다. 역량 파일을 함께 주면(`--capability examples/capability-geosan-brochure.json`, 실제 기업은 소개서 묶음 파일) 공정 코드·역량 이름·실적 산업이 그 파일에 있는지도 검사합니다. 내 파일이 어떻게 평가되는지 미리 보려면 `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <내 사례 폴더> --out <아무 폴더>`를 돌립니다(사례 폴더에는 사례 파일만 넣고 `case-template.json`은 넣지 않음).
 6. PR로 올립니다(이슈 번호 연결, `자료` 라벨). 투입·평가는 PM이 합니다.
 
 ## 3. 8항목 판정표 (일치도 단계 · 확실도 등급, 규칙 BR4.2·BR4.3)
@@ -42,7 +42,7 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
 
 - 시점 항목(`SIG_*`)은 신호가 없으면 `state: NO_SIGNAL`(0점, 판정 완료)로 적고 `signalRefs`를 비웁니다. 신호가 있으면 `signals` 배열에 신호를 적고 `signalRefs`에 그 번호를 넣습니다. `matchRate`는 그 신호의 `relation`(DIRECT 1.0 / INDIRECT 0.5)과 같아야 합니다.
 - 감쇠(발생일이 오래됐는지)는 시스템이 신호 날짜와 기준일로 계산하므로 적지 않습니다. 발생일(`occurredAt`)을 모르면 비워 둡니다(미확보 처리).
-- `NEW_MATERIAL`·`NEW_RECORD`·`NEW_PERF`는 어떤 거산 값과 대조했는지 `usedCapabilityRefs`에 적습니다(공정 코드·역량 이름·실적 산업). 거산 값은 `examples/capability-geosan.json`(가상) 또는 PM이 만든 소개서 묶음 파일의 공정 코드를 씁니다.
+- `NEW_MATERIAL`·`NEW_RECORD`·`NEW_PERF`는 어떤 거산 값과 대조했는지 `usedCapabilityRefs`에 적습니다(공정 코드·역량 이름·실적 산업). 거산 값은 실제 기업이면 **소개서 묶음 파일 `examples/capability-geosan-brochure.json`**(회사소개서를 옮겨 적음, 검수 대기)의 공정 코드·역량 이름·실적 산업을 쓰고, 가상 사례(A정밀)만 `examples/capability-geosan.json`(가상)을 씁니다. 소개서 묶음의 알루미늄 소재 코드는 `AL`(주물 `AL_CASTING` 가능 여부는 거산 확인 전)입니다.
 
 ### 3-2. 확실도(`state` / `certainty`) — 근거 등급으로 정합니다
 
