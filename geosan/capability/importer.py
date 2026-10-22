@@ -136,23 +136,42 @@ def _store(session: Session, model: CapabilityFile, requested_by: str) -> Capabi
             customer_id = None
             opp_id = None
             if scope.scope_kind != "PROCESS":
-                # customerRef는 다른 부품의 ID다. 존재를 확인한 뒤에만 연결한다(C6).
+                # 파일은 고객 상호명을 받고, 존재를 확인한 뒤 고객 ID로 연결한다(C7·C6).
                 from geosan.opportunity.models import Customer
+                from geosan.opportunity.queries import normalize_name
 
                 if scope.scope_kind == "CUSTOMER":
-                    customer = session.get(Customer, scope.customer_ref)
-                    if customer is not None:
-                        customer_id = customer.customer_id
+                    reference = normalize_name(scope.customer_ref or "")
+                    customers = (
+                        list(
+                            session.scalars(
+                                select(Customer)
+                                .where(Customer.normalized_name == reference)
+                                .limit(2)
+                            )
+                        )
+                        if reference
+                        else []
+                    )
+                    if len(customers) > 1:
+                        raise InputError(
+                            "자격을 연결할 고객을 하나로 정할 수 없습니다.",
+                            fields=[
+                                FieldError(
+                                    path=f"{scope_path}.customerRef",
+                                    message="같은 상호의 고객이 여러 건입니다. 확인해 주세요.",
+                                )
+                            ],
+                        )
+                    if customers:
+                        customer_id = customers[0].customer_id
                 elif scope.scope_kind == "OPPORTUNITY":
                     raise InputError(
-                        "기회 범위의 파일 참조 항목은 PM 확인이 필요합니다.",
+                        "역량 파일에서는 기회 범위 자격을 받지 않습니다.",
                         fields=[
                             FieldError(
                                 path=f"{scope_path}.scopeKind",
-                                message=(
-                                    "customerRef를 기회 ID로 해석하지 않습니다. "
-                                    "약속 확인이 필요합니다."
-                                ),
+                                message=("특정 기회에만 쓰는 자격은 U4 검수 명령에서 등록합니다."),
                             )
                         ],
                     )
@@ -162,7 +181,7 @@ def _store(session: Session, model: CapabilityFile, requested_by: str) -> Capabi
                         fields=[
                             FieldError(
                                 path=f"{scope_path}.customerRef",
-                                message="저장된 고객 ID를 적어 주세요.",
+                                message="사례 파일로 먼저 등록한 고객의 상호명을 적어 주세요.",
                             )
                         ],
                     )

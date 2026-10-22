@@ -202,6 +202,18 @@ def _capability_semantics(model: CapabilityFile, c: _Collector) -> None:
                     f"{scope_path}.processCode",
                     f"scopeKind가 {scope.scope_kind}면 processCode는 null이어야 합니다",
                 )
+            if scope.scope_kind == "OPPORTUNITY":
+                c.error(
+                    f"{scope_path}.scopeKind",
+                    "역량 파일에서는 기회 범위(OPPORTUNITY) 자격을 받지 않습니다. 특정 기회에만 "
+                    "쓰는 자격은 뒤 단계(U4 검수 명령)에서 등록합니다 "
+                    "(PM 결정 2026-10-22, 이슈 #38). PROCESS 또는 CUSTOMER로 적어 주세요",
+                )
+            elif scope.scope_kind == "CUSTOMER" and not scope.customer_ref:
+                c.error(
+                    f"{scope_path}.customerRef",
+                    "scopeKind가 CUSTOMER면 customerRef(고객 상호명)를 꼭 적어야 합니다",
+                )
 
 
 # ---------------------------------------------------------------------------

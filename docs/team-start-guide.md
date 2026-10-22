@@ -6,7 +6,7 @@
 
 | 시기 | PM | 팀원 |
 |---|---|---|
-| 뼈대(U1, Bolt B1) 기간 (10/21~10/28) — **분담 변경 2026-10-21** | AI-DLC 진행·승인(`/aidlc`, `$aidlc`)을 혼자 맡고, 기본 틀(폴더 골격·예시 파일·경계 코드·테스트 러너·CI, PR #1)과 시나리오 테스트·저장소 모델·검사기(PR #2)를 세션에서 먼저 만들어 `main`에 올린다. 그 뒤 PR 검토·합치기와 통합·끝단 확인·문서를 맡는다 | 기본 틀이 올라가면 Claude Code나 Codex로 **자기 작업 지시서(`docs/work-orders/`)대로 자기 Part를 만들어 PR을 올린다**(유동렬 규칙 엔진 `geosan/rules/` = `u1-rules-engine.md`, 이강욱 투입·평가·명령·API = `u1-import-evaluate-api.md`, 고선주 최소 화면 `web/src/` = `u1-web.md`). 아래 "기본 틀 올라간 뒤 할 일" 표 참고. `/aidlc`, `$aidlc`는 실행하지 않는다. 실제 기업 후보 선정·근거 정리·사례 파일 작성은 4명이 나눠 한다 |
+| 뼈대(U1, Bolt B1) 기간 (10/21~10/28) — **분담 변경 2026-10-21** | AI-DLC 진행·승인(`/aidlc`, `$aidlc`)을 혼자 맡고, 기본 틀(폴더 골격·예시 파일·경계 코드·테스트 러너·CI, PR #1)과 시나리오 테스트·저장소 모델·검사기(PR #2)를 세션에서 먼저 만들어 `develop`에 올린다(2026-10-22부터 기본 가지는 `develop`). 그 뒤 PR 검토·합치기와 통합·끝단 확인·문서를 맡는다 | 기본 틀이 올라가면 Claude Code나 Codex로 **자기 작업 지시서(`docs/work-orders/`)대로 자기 Part를 만들어 PR을 올린다**(유동렬 규칙 엔진 `geosan/rules/` = `u1-rules-engine.md`, 이강욱 투입·평가·명령·API = `u1-import-evaluate-api.md`, 고선주 최소 화면 `web/src/` = `u1-web.md`). 아래 "기본 틀 올라간 뒤 할 일" 표 참고. `/aidlc`, `$aidlc`는 실행하지 않는다. 실제 기업 후보 선정·근거 정리·사례 파일 작성은 4명이 나눠 한다 |
 | 뼈대 뒤 팀별 단위 소유로 바뀐 뒤 | 전체 순서 조정 | **자기 단위만** 진행·승인한다. 다른 사람의 단위는 진행·승인하지 않는다 |
 
 - 같은 단위를 두 사람이 같은 시각에 진행하지 않는다. 진행 위치 기록은 하나뿐이라 서로 덮어쓴다.
@@ -43,6 +43,8 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 - Prettier 검사에서 `Delete ␍`가 나오면 그 파일이 CRLF라는 뜻이다. 위 절차를 다시 하거나 편집기 오른쪽 아래 `CRLF`를 눌러 `LF`로 바꾼다.
 
 **한글 깨짐(CP949) 오류가 나면**: 윈도우는 파일을 기본으로 CP949로 읽어 `UnicodeDecodeError … cp949`가 날 수 있다. `.venv\Scripts\python scripts\check.py`는 하위 명령을 자동으로 UTF-8 모드로 돌리므로 그 명령으로 검사한다. `pytest`나 `python -m geosan …`을 직접 부를 때는 PowerShell에서 한 번 `$env:PYTHONUTF8 = "1"`을 하고 부른다(2026-10-22, 이슈 #33).
+
+**심볼릭 링크 권한 오류(`WinError 1314`)가 나면**: 테스트 하나가 심볼릭 링크를 만들어 거부되는지 검사한다. 윈도우 설정 → 개발자용 → **개발자 모드**를 켜면 일반 계정도 링크를 만들 수 있다(이강욱 PC에서 확인, 2026-10-22). 잠금 파일(`requirements.lock`)은 2026-10-22부터 운영체제 조건이 붙어 있어 윈도우에서도 `pip install -r requirements.lock -e .`가 그대로 된다(리눅스·맥 전용 `uvloop`는 자동으로 건너뜀).
 
 **가상환경 켜기**: `.venv\Scripts\Activate.ps1`. "이 시스템에서 스크립트를 실행할 수 없으므로…" 오류가 나면 한 번만 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`를 하고 다시 한다. 켜지 않고 쓰려면 매번 `.venv\Scripts\python …`으로 부른다.
 
