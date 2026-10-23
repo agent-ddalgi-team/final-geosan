@@ -89,11 +89,17 @@ def _reviewed_rows(session: Session, model, dataset_kind: str) -> list:
 def latest_qualification_status(
     session: Session, qual_id: str, *, dataset_kind: str
 ) -> QualificationStatus | None:
+    """파일 평가와 같이 발생일·확인일을 우선하며, 날짜 동률에서만 저장 순서를 쓴다."""
     return session.scalar(
         select(QualificationStatus)
         .where(
             QualificationStatus.dataset_kind == dataset_kind,
             QualificationStatus.qual_id == qual_id,
         )
-        .order_by(QualificationStatus.created_at.desc(), QualificationStatus.status_id.desc())
+        .order_by(
+            QualificationStatus.occurred_at.desc().nulls_last(),
+            QualificationStatus.confirmed_at.desc().nulls_last(),
+            QualificationStatus.created_at.desc(),
+            QualificationStatus.status_id.desc(),
+        )
     )
