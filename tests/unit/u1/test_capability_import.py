@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -221,6 +222,106 @@ def test_latest_status_is_new_row_and_old_status_is_preserved(tmp_db, tmp_path):
                 .where(QualificationStatus.qual_id == qualification.qual_id)
             )
             == 2
+        )
+
+
+@pytest.mark.parametrize("latest_status", ["SUSPENDED", "CANCELLED", "ACTIVE"])
+@pytest.mark.parametrize("reverse_input", [False, True])
+@pytest.mark.parametrize("older_id_is_larger", [False, True])
+def test_latest_status_uses_event_dates_when_storage_times_tie(
+    tmp_db, tmp_path, latest_status, reverse_input, older_id_is_larger
+):
+    """Given 같은 저장 시각·임의 ID / When 역순 이력도 조회 / Then 최근 상태를 고른다."""
+    data = factories.capability_with_status("ISO 9001", latest_status, "2026-10-19")
+    if latest_status == "ACTIVE":
+        factories.find_qualification(data, "ISO 9001")["statuses"][0]["status"] = "SUSPENDED"
+    if reverse_input:
+        factories.find_qualification(data, "ISO 9001")["statuses"].reverse()
+    import_capability(_write(tmp_path, data))
+    same_time = datetime(2026, 10, 22, 7, 40, 18, 361265, tzinfo=UTC)
+    smaller_id = "qs-01M5H8VF1S6B9AG53TNSE0R9M4"
+    larger_id = "qs-01M5H8VF1SQNTXJVKW2D4JSMV5"
+    with session_scope() as session:
+        qualification = session.scalar(
+            select(Qualification).where(Qualification.official_name == "ISO 9001")
+        )
+        rows = list(
+            session.scalars(
+                select(QualificationStatus).where(
+                    QualificationStatus.qual_id == qualification.qual_id
+                )
+            )
+        )
+        assert len(rows) == 2
+        for row in rows:
+            row.created_at = same_time
+            row.status_id = (
+                larger_id
+                if (row.occurred_at == date(2024, 3, 1)) == older_id_is_larger
+                else smaller_id
+            )
+        session.flush()
+
+        current = latest_qualification_status(
+            session, qualification.qual_id, dataset_kind="VIRTUAL_REVIEWED"
+        )
+
+        assert current.status == latest_status
+        assert current.occurred_at.isoformat() == "2026-10-19"
+        assert (
+            latest_qualification_status(session, qualification.qual_id, dataset_kind="BROCHURE")
+            is None
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(QualificationStatus)
+                .where(QualificationStatus.qual_id == qualification.qual_id)
+            )
+            == 2
+        )
+
+
+@pytest.mark.parametrize(
+    ("older_event", "older_confirmation", "newer_event", "newer_confirmation"),
+    [
+        ("2024-03-01", "2026-10-20", "2026-10-19", "2026-10-19"),
+        ("2026-10-19", None, "2026-10-19", "2026-10-20"),
+        (None, "2026-10-20", "2026-10-19", None),
+        (None, None, None, "2026-10-20"),
+    ],
+)
+def test_latest_status_date_priority_and_missing_dates(
+    tmp_db, tmp_path, older_event, older_confirmation, newer_event, newer_confirmation
+):
+    """Given 날짜 일부 누락·과거 이력 재저장 / When 조회 / Then 발생일과 확인일 순으로 고른다."""
+    data = factories.capability_with_status("ISO 9001", "SUSPENDED", "2026-10-19")
+    statuses = factories.find_qualification(data, "ISO 9001")["statuses"]
+    statuses[0].update(occurredAt=older_event, confirmedAt=older_confirmation)
+    statuses[1].update(occurredAt=newer_event, confirmedAt=newer_confirmation)
+    import_capability(_write(tmp_path, data))
+    with session_scope() as session:
+        qualification = session.scalar(
+            select(Qualification).where(Qualification.official_name == "ISO 9001")
+        )
+        rows = list(
+            session.scalars(
+                select(QualificationStatus).where(
+                    QualificationStatus.qual_id == qualification.qual_id
+                )
+            )
+        )
+        stored_at = datetime(2026, 10, 22, tzinfo=UTC)
+        for row in rows:
+            # 과거 ACTIVE를 나중에 저장해도 실제 이력 날짜가 더 최근인 정지가 현재 상태다.
+            row.created_at = stored_at + timedelta(days=row.status == "ACTIVE")
+        session.flush()
+
+        assert (
+            latest_qualification_status(
+                session, qualification.qual_id, dataset_kind="VIRTUAL_REVIEWED"
+            ).status
+            == "SUSPENDED"
         )
 
 

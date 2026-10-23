@@ -1,14 +1,15 @@
 {
   "caseId": "kofas-bolt-zinc",
   "baseDate": null,
-  "description": "코파스 볼트·너트 아연도금 — 산단공 전국등록공장현황 후보 + 공개 홈페이지 근거 (거산 확인 전 실제 기업)",
+  "description": "볼트·너트·와셔·핀 등 특수 볼트를 만드는 제조업체. 반도체 장비·자동화장비 부품에 쓰임 (거산 확인 전 실제 기업)",
   "isVirtual": false,
   "datasetKind": "BROCHURE",
   "notes": [
     "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
     "홈페이지 제품 목록에 재질 선택과 도금 선택(아연 백색·천연색, 흑착 방청처리, 무전해니켈, 아노다이징 등) 항목이 있어 도금 수요가 직접 확인된다. 도금을 외주하는지 자체 처리하는지는 확인되지 않았다. 거산 확인 질문 후보.",
+    "다만 '코파스볼트 특징' 글은 고장력 렌치볼트에 니켈(NI) 도금과 흑착색을 쓴다고 설명하고, 아연도금은 제품 선택 항목에만 나온다. 실제 수요가 아연도금보다 니켈도금·흑착색 쪽일 수 있다. 거산 확인 질문 후보이며, 필요하면 무전해니켈·흑착 공정 기회로 따로 만들 수 있다.",
     "알루미늄(AL7076) 볼트와 아노다이징 선택 항목도 있어 아노다이징 후보로도 볼 수 있다. 이 파일은 아연도금 기회만 다룬다.",
-    "연혁·사업장안내·주요거래처 페이지는 이미지로만 되어 있어 본문을 읽지 못했다. 그래서 증설·수주 신호는 미확보로 둔다.",
+    "연혁에서 읽은 증설 기록은 2017-12-12 '공장 확장 및 이전'뿐이라 오래되어 거의 반영되지 않는다. 주요거래처 페이지는 로고 이미지와 '약 500개 국내외 업체' 문구뿐이라 수주 신호로 보지 않았다.",
     "홈페이지의 뉴스/공지 최신 글이 2021-03-02(사이트 개편 안내)로 오래되었다(확인일 2026-10-22).",
     "홈페이지 주소 http://kofas.com/ 는 볼트 제조사다. kofas.co.kr 은 물류 자동화 회사로 다른 곳이다."
   ],
@@ -35,7 +36,19 @@
     { "processCode": "ZINC_PLATING", "appliedMaterial": "FE" }
   ],
   "requirements": [],
-  "signals": [],
+  "signals": [
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2017-12-12",
+      "announcedAt": "2017-12-12",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    }
+  ],
   "evidence": [
     {
       "sourceGrade": "B",
@@ -91,6 +104,50 @@
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "용도 및 특성 반도체 장비, 자동화장비 부품 주요 원재료 SCM435, SUS304, 플라스틱 및 특수 금속부품",
+      "sourceRef": "코파스 홈페이지 기업개요 http://kofas.com/sub01/01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "고장력 렌치볼트의 경우 NI도금을 한다.",
+      "sourceRef": "코파스 홈페이지 코파스볼트 특징 http://kofas.com/sub03/01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "흑착색의 경우보다 녹이 덜 슨다",
+      "sourceRef": "코파스 홈페이지 코파스볼트 특징 http://kofas.com/sub03/01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2017 12.12 코파스㈜ 공장 확장 및 이전",
+      "sourceRef": "코파스 홈페이지 연혁 http://kofas.com/sub01/03",
+      "occurredAt": "2017-12-12",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
     }
   ],
   "itemInputs": [
@@ -99,8 +156,8 @@
       "matchRate": 1.0,
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
-      "factJudged": "볼트·너트·와셔를 만들고 제품마다 도금 종류를 고르게 되어 있음 — 표면처리가 필요한 부품 (해당 1.0, 확인)",
-      "evidenceRefs": [0, 3],
+      "factJudged": "볼트·너트·와셔를 만들고 제품마다 도금 종류를 고르게 되어 있으며 도금과 방청 처리를 직접 설명함 — 표면처리가 필요한 부품 (해당 1.0, 확인)",
+      "evidenceRefs": [0, 3, 6],
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
@@ -109,8 +166,8 @@
       "matchRate": "정확히 일치",
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
-      "factJudged": "SCM435·S45C·SS400 등 철계 소재 — 아연도금 처리 소재(Fe)와 정확히 일치 (1.0, 확인)",
-      "evidenceRefs": [1, 2],
+      "factJudged": "주요 원재료 SCM435·S45C·SS400 등 철계 소재 — 아연도금 처리 소재(Fe)와 정확히 일치 (1.0, 확인). 스테인리스(SUS304)도 함께 쓰나 주 소재에 철계가 있음",
+      "evidenceRefs": [1, 2, 5],
       "signalRefs": [],
       "usedCapabilityRefs": [
         { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
@@ -121,8 +178,8 @@
       "matchRate": null,
       "certainty": null,
       "state": "NO_BONUS",
-      "factJudged": "반도체 장비 부품 위주로 보이며(SEMES 품질보증서) 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
-      "evidenceRefs": [4],
+      "factJudged": "용도가 반도체 장비·자동화장비 부품이고(SEMES 품질보증서) 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
+      "evidenceRefs": [4, 5],
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
@@ -131,15 +188,24 @@
       "matchRate": "1개 일치",
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
-      "factJudged": "흑착(방청처리)·아연 도금 선택 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 확인)",
-      "evidenceRefs": [3],
+      "factJudged": "방청처리·도금으로 녹을 줄이는 것을 직접 설명 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 확인)",
+      "evidenceRefs": [3, 7],
       "signalRefs": [],
       "usedCapabilityRefs": [
         { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
       ]
     },
-    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "연혁·사업장안내 페이지가 이미지라 증설 여부를 읽지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "주요거래처 페이지가 이미지라 신규 수주를 읽지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2017-12-12 공장 확장 및 이전 — 간접 관련 (0.5, 확인, 발생일이 오래되어 감쇠 큼)",
+      "evidenceRefs": [8],
+      "signalRefs": [0],
+      "usedCapabilityRefs": []
+    },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "주요거래처는 '약 500개 국내외 업체' 문구와 로고뿐이고 날짜가 있는 신규 수주 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
     { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "뉴스/공지 게시판에 입찰·협력사 모집 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 안내·공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
