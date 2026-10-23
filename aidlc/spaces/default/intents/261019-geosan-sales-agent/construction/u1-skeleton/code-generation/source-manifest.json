@@ -1,0 +1,100 @@
+{
+ "stage": "code-generation",
+ "unit": "u1-skeleton",
+ "version": 1,
+ "writes": [
+  {
+   "path": "geosan/"
+  },
+  {
+   "path": "tests/"
+  },
+  {
+   "path": "web/src/"
+  },
+  {
+   "path": "web/index.html"
+  },
+  {
+   "path": "web/package.json"
+  },
+  {
+   "path": "web/package-lock.json"
+  },
+  {
+   "path": "web/vite.config.ts"
+  },
+  {
+   "path": "web/vitest.config.ts"
+  },
+  {
+   "path": "web/tsconfig.json"
+  },
+  {
+   "path": "web/tsconfig.app.json"
+  },
+  {
+   "path": "web/tsconfig.node.json"
+  },
+  {
+   "path": "web/eslint.config.js"
+  },
+  {
+   "path": "web/.prettierrc"
+  },
+  {
+   "path": "web/.prettierignore"
+  },
+  {
+   "path": "web/.nvmrc"
+  },
+  {
+   "path": "examples/"
+  },
+  {
+   "path": "contracts/"
+  },
+  {
+   "path": "scripts/"
+  },
+  {
+   "path": "docs/case-file-guide.md"
+  },
+  {
+   "path": "docs/demo-memo-guide.md"
+  },
+  {
+   "path": "docs/team-start-guide.md"
+  },
+  {
+   "path": "docs/work-orders/"
+  },
+  {
+   "path": ".github/workflows/check.yml"
+  },
+  {
+   "path": ".github/pull_request_template.md"
+  },
+  {
+   "path": ".github/ISSUE_TEMPLATE/"
+  },
+  {
+   "path": "README.md"
+  },
+  {
+   "path": "pyproject.toml"
+  },
+  {
+   "path": "requirements.lock"
+  },
+  {
+   "path": ".env.example"
+  },
+  {
+   "path": ".python-version"
+  },
+  {
+   "path": ".gitignore"
+  }
+ ]
+}
