@@ -28,6 +28,66 @@ from tests import factories
 from tests.unit.u1.test_snapshot_ledger import _write
 
 
+@pytest.fixture
+def built_web(tmp_path, monkeypatch):
+    """실제 빌드 폴더를 건드리지 않고 서버의 정적 파일 처리를 검사한다."""
+    import importlib
+
+    api_app = importlib.import_module("geosan.api.app")
+    monkeypatch.setattr(api_app, "__file__", str(tmp_path / "geosan/api/app.py"))
+    dist = tmp_path / "web/dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>screen-shell</html>", encoding="utf-8")
+    (dist / "assets/app.js").write_text("console.log('asset');", encoding="utf-8")
+    with TestClient(create_app()) as client:
+        yield client
+
+
+def test_detail_direct_access_and_refresh_return_screen(built_web):
+    """Given 빌드된 화면 / When 상세 직접 접속 후 새로고침 / Then 같은 HTML을 준다."""
+    direct = built_web.get("/opportunities/opp-x")
+    refresh = built_web.get("/opportunities/opp-x", headers={"Cache-Control": "no-cache"})
+    root = built_web.get("/")
+    assert direct.status_code == refresh.status_code == root.status_code == 200
+    assert direct.text == refresh.text == root.text == "<html>screen-shell</html>"
+    assert direct.headers["content-type"].startswith("text/html")
+
+
+@pytest.mark.parametrize("path", ["/api", "/api/v1", "/api/v1/missing", "/api/missing"])
+def test_unknown_api_keeps_json_404_with_built_screen(built_web, path):
+    """Given 빌드된 화면 / When 없는 API 조회 / Then 화면 대신 계약 오류를 준다."""
+    response = built_web.get(path)
+    assert response.status_code == 404
+    assert response.headers["content-type"].startswith("application/json")
+    assert "error" in response.json()
+
+
+@pytest.mark.parametrize("path", ["/assets/missing.js", "/assets/missing", "/missing.ico"])
+def test_missing_files_keep_404_with_built_screen(built_web, path):
+    """Given 빌드된 화면 / When 없는 파일 조회 / Then HTML 성공으로 숨기지 않는다."""
+    assert built_web.get(path).status_code == 404
+
+
+def test_existing_asset_and_head_and_post(built_web):
+    """Given 화면·파일 / When 파일 GET·화면 HEAD·POST / Then 파일·HEAD와 405를 보존한다."""
+    asset = built_web.get("/assets/app.js")
+    assert asset.status_code == 200 and asset.text == "console.log('asset');"
+    head = built_web.head("/opportunities/opp-x")
+    assert head.status_code == 200 and head.content == b""
+    assert built_web.post("/opportunities/opp-x").status_code == 405
+
+
+def test_server_without_web_build_still_starts(tmp_path, monkeypatch):
+    """Given 화면 빌드 없음 / When 서버 생성·화면 조회 / Then 서버는 뜨고 JSON 404를 준다."""
+    import importlib
+
+    api_app = importlib.import_module("geosan.api.app")
+    monkeypatch.setattr(api_app, "__file__", str(tmp_path / "geosan/api/app.py"))
+    with TestClient(create_app()) as client:
+        response = client.get("/opportunities/opp-x")
+        assert response.status_code == 404 and "error" in response.json()
+
+
 def test_score_keys_match_uppercase_contract():
     """Given 화면 약속의 대문자 점수 / When 응답 모델 직렬화 / Then E·P·S·R·C를 보존한다."""
     fixture = json.loads(
