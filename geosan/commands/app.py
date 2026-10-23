@@ -1,7 +1,7 @@
 """`geosan` 명령줄 앱 (Typer). 계약 C8의 명령 9개 + `db merge-heads`.
 
 명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, …)에 있다. 아직
-구현되지 않은 명령(`serve`·`export-contracts`, Part F)은 오류를 숨기지 않고
+구현되지 않은 명령(`export-contracts`, Part F)은 오류를 숨기지 않고
 "아직 구현되지 않았습니다" 한 줄을 내고 종료 코드 2로 끝난다.
 
 종료 코드 규칙(C8): 0 성공, 1 입력 오류, 2 실행 실패.
@@ -79,7 +79,9 @@ def serve(
     ),
 ) -> None:
     """설정을 검사한 뒤 서버(API + 화면)를 한 덩어리로 띄웁니다."""
-    not_implemented_yet("serve")
+    from geosan.commands.serve import run_serve
+
+    raise typer.Exit(code=run_serve(port))
 
 
 @app.command("check-config")

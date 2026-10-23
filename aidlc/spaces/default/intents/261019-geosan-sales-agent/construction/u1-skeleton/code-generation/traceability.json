@@ -1,0 +1,1436 @@
+{
+ "stage": "code-generation",
+ "unit": "u1-skeleton",
+ "upstream_ids": [
+  "AC1.1.1",
+  "AC1.1.2",
+  "AC1.1.3",
+  "AC1.1.4",
+  "AC1.1.5",
+  "AC1.2.1",
+  "AC1.2.2",
+  "AC1.2.3",
+  "AC1.2.4",
+  "AC3.2.1",
+  "AC3.2.2",
+  "AC3.2.3",
+  "AC3.2.4",
+  "AC5.1.1",
+  "AC5.1.2",
+  "AC5.1.3",
+  "AC5.1.4",
+  "AC5.1.5",
+  "AC5.1.6",
+  "AC5.2.1",
+  "AC5.2.2",
+  "AC5.2.3",
+  "AC5.2.4",
+  "AC5.2.5",
+  "AC5.2.6",
+  "AC5.2.7",
+  "AC5.3.1",
+  "AC5.3.2",
+  "AC5.3.3",
+  "AC5.3.4",
+  "AC5.3.5",
+  "AC5.3.6",
+  "AC5.3.7",
+  "AC6.1.1",
+  "AC6.1.2",
+  "AC6.1.3",
+  "AC6.1.4",
+  "AC6.1.5",
+  "AC6.2.1",
+  "AC6.2.2",
+  "AC6.2.3",
+  "AC6.2.4",
+  "AC6.2.5",
+  "AC6.2.6",
+  "AC6.2.7",
+  "AC7.1.1",
+  "AC7.1.2",
+  "AC7.1.3",
+  "AC7.1.4",
+  "AC7.1.5",
+  "AC10.1.1",
+  "AC10.1.2",
+  "AC10.1.3",
+  "AC10.4.1",
+  "AC10.4.2",
+  "AC10.4.3",
+  "AC10.4.4",
+  "AC10.4.5",
+  "BR1.1",
+  "BR1.2",
+  "BR1.3",
+  "BR1.4",
+  "BR1.5",
+  "BR1.6",
+  "BR1.7",
+  "BR2.1",
+  "BR2.2",
+  "BR2.3",
+  "BR2.4",
+  "BR2.5",
+  "BR2.6",
+  "BR2.7",
+  "BR2.8",
+  "BR2.9",
+  "BR3.1",
+  "BR3.2",
+  "BR3.3",
+  "BR3.4",
+  "BR3.5",
+  "BR3.6",
+  "BR3.7",
+  "BR3.8",
+  "BR3.9",
+  "BR3.10",
+  "BR4.1",
+  "BR4.2",
+  "BR4.3",
+  "BR4.4",
+  "BR4.5",
+  "BR4.6",
+  "BR4.7",
+  "BR4.8",
+  "BR5.1",
+  "BR5.2",
+  "BR5.3",
+  "BR5.4",
+  "BR5.5",
+  "BR5.6",
+  "BR5.7",
+  "BR6.1",
+  "BR6.2",
+  "BR6.3",
+  "BR6.4",
+  "BR6.5",
+  "BR7.1",
+  "BR7.2",
+  "BR7.3",
+  "BR7.4",
+  "BR7.5",
+  "BR7.6",
+  "BR8.1",
+  "BR8.2",
+  "BR8.3",
+  "BR9.1",
+  "BR9.2",
+  "BR9.3",
+  "BR9.4",
+  "BR9.5",
+  "BR10.1",
+  "BR10.2",
+  "BR10.3",
+  "BR10.4",
+  "BR10.5",
+  "BR10.6",
+  "BR10.7",
+  "BR10.8",
+  "BR10.9",
+  "BR11.1",
+  "BR11.2",
+  "BR11.3",
+  "NFR1.1",
+  "NFR1.2",
+  "NFR1.3",
+  "NFR1.4",
+  "NFR1.5",
+  "NFR2.1",
+  "NFR2.2",
+  "NFR2.3",
+  "NFR2.4",
+  "NFR2.5",
+  "NFR2.6",
+  "NFR2.7",
+  "NFR2.8",
+  "NFR2.9",
+  "NFR2.10",
+  "NFR2.11",
+  "NFR2.12",
+  "NFR2.13",
+  "NFR2.14",
+  "NFR2.15",
+  "NFR3.1",
+  "NFR3.2",
+  "NFR3.3",
+  "NFR3.4",
+  "NFR3.5",
+  "NFR3.6",
+  "NFR3.7",
+  "NFR3.8",
+  "NFR3.9",
+  "NFR3.10",
+  "NFR3.11",
+  "NFR3.12",
+  "NFR3.13",
+  "NFR3.14",
+  "NFR4.1",
+  "NFR4.2",
+  "NFR4.3",
+  "NFR4.4",
+  "NFR4.5",
+  "NFR4.6",
+  "NFR4.7",
+  "NFR4.8",
+  "NFR4.9",
+  "NFR4.10",
+  "NFR4.11",
+  "NFR4.12",
+  "NFR4.13",
+  "NFR4.14",
+  "NFR4.15",
+  "NFR4.16",
+  "NFR4.17",
+  "NFR5.1",
+  "NFR5.2",
+  "NFR5.3",
+  "NFR5.4",
+  "NFR5.5",
+  "NFR7.1",
+  "NFR7.2",
+  "NFR7.3",
+  "NFR7.4",
+  "NFR7.5",
+  "NFR7.6",
+  "NFR7.7",
+  "NFR8.1",
+  "NFR8.2",
+  "NFR8.3",
+  "NFR8.4",
+  "NFR8.5",
+  "NFR9.1",
+  "NFR9.2",
+  "NFR9.3",
+  "NFR9.4",
+  "NFR9.5",
+  "NFR9.6",
+  "NFR9.7",
+  "NFR10.1",
+  "NFR10.2",
+  "NFR10.3",
+  "NFR10.4",
+  "NFR10.5",
+  "NFR10.6",
+  "NFR10.7",
+  "NFR10.8",
+  "NFR10.9",
+  "NFR10.10",
+  "NFR10.11",
+  "NFR10.12",
+  "NFR10.13",
+  "NFR11.1",
+  "NFR11.2",
+  "NFR11.3",
+  "NFR11.4",
+  "NFR11.5",
+  "NFR12.1",
+  "NFR12.2",
+  "NFR12.3",
+  "NFR12.4",
+  "AC8.1.1",
+  "AC8.1.2",
+  "AC8.1.3",
+  "AC8.1.4",
+  "AC9.4.1",
+  "AC9.4.2",
+  "AC9.4.3",
+  "AC10.2.1",
+  "AC10.2.2",
+  "AC10.2.3",
+  "AC10.2.4"
+ ],
+ "coverage": [
+  {
+   "id": "AC1.1.1",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC1.1.2",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC1.1.3",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC1.1.4",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC1.1.5",
+   "status": "OK",
+   "target": "geosan/commands/app.py"
+  },
+  {
+   "id": "AC1.2.1",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC1.2.2",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC1.2.3",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "AC1.2.4",
+   "status": "OK",
+   "target": "tests/features/u1/s01_capability.feature"
+  },
+  {
+   "id": "AC3.2.1",
+   "status": "OK",
+   "target": "tests/features/u1/s04_interaction_isolation.feature"
+  },
+  {
+   "id": "AC3.2.2",
+   "status": "OK",
+   "target": "tests/features/u1/s06_relation_unconfirmed.feature"
+  },
+  {
+   "id": "AC3.2.3",
+   "status": "Deferred",
+   "target": "u5-sales-records (접촉 승인 목적 선택은 U5 SalesRecords, U1은 연결 이력 종류만 저장)"
+  },
+  {
+   "id": "AC3.2.4",
+   "status": "Deferred",
+   "target": "u6-recontact (재접촉/신규 판단 안내는 U6, U1은 신규 프로필만 계산)"
+  },
+  {
+   "id": "AC5.1.1",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "AC5.1.2",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "AC5.1.3",
+   "status": "OK",
+   "target": "tests/features/u1/reading_example2.feature"
+  },
+  {
+   "id": "AC5.1.4",
+   "status": "OK",
+   "target": "tests/features/u1/reading_example2.feature"
+  },
+  {
+   "id": "AC5.1.5",
+   "status": "OK",
+   "target": "geosan/evaluation/ledger.py"
+  },
+  {
+   "id": "AC5.1.6",
+   "status": "OK",
+   "target": "geosan/commands/import_case.py"
+  },
+  {
+   "id": "AC5.2.1",
+   "status": "OK",
+   "target": "tests/features/u1/s07_requirement_level.feature"
+  },
+  {
+   "id": "AC5.2.2",
+   "status": "OK",
+   "target": "tests/features/u1/brochure_dataset.feature"
+  },
+  {
+   "id": "AC5.2.3",
+   "status": "OK",
+   "target": "tests/features/u1/s08_requirement_check.feature"
+  },
+  {
+   "id": "AC5.2.4",
+   "status": "OK",
+   "target": "tests/features/u1/s08_requirement_check.feature"
+  },
+  {
+   "id": "AC5.2.5",
+   "status": "OK",
+   "target": "tests/features/u1/s08_requirement_check.feature"
+  },
+  {
+   "id": "AC5.2.6",
+   "status": "OK",
+   "target": "tests/features/u1/s08_requirement_check.feature"
+  },
+  {
+   "id": "AC5.2.7",
+   "status": "OK",
+   "target": "geosan/evaluation/ledger.py"
+  },
+  {
+   "id": "AC5.3.1",
+   "status": "OK",
+   "target": "tests/features/u1/reading_example2.feature"
+  },
+  {
+   "id": "AC5.3.2",
+   "status": "OK",
+   "target": "geosan/rules/timing.py"
+  },
+  {
+   "id": "AC5.3.3",
+   "status": "OK",
+   "target": "geosan/rules/timing.py"
+  },
+  {
+   "id": "AC5.3.4",
+   "status": "OK",
+   "target": "geosan/rules/classify.py"
+  },
+  {
+   "id": "AC5.3.5",
+   "status": "OK",
+   "target": "geosan/rules/rank.py"
+  },
+  {
+   "id": "AC5.3.6",
+   "status": "OK",
+   "target": "tests/features/u1/brochure_dataset.feature"
+  },
+  {
+   "id": "AC5.3.7",
+   "status": "OK",
+   "target": "geosan/rules/classify.py"
+  },
+  {
+   "id": "AC6.1.1",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "AC6.1.2",
+   "status": "OK",
+   "target": "web/src/components/list/OpportunityCard.tsx"
+  },
+  {
+   "id": "AC6.1.3",
+   "status": "OK",
+   "target": "web/src/components/common/FiveStates.tsx"
+  },
+  {
+   "id": "AC6.1.4",
+   "status": "OK",
+   "target": "web/src/components/frame/StatusBanner.tsx"
+  },
+  {
+   "id": "AC6.1.5",
+   "status": "OK",
+   "target": "web/src/components/frame/AppFrame.tsx"
+  },
+  {
+   "id": "AC6.2.1",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "AC6.2.2",
+   "status": "OK",
+   "target": "web/src/pages/OpportunityDetailPage.tsx"
+  },
+  {
+   "id": "AC6.2.3",
+   "status": "Deferred",
+   "target": "u2-evidence-extraction (홈페이지 주소 입력란·확정은 U2, U1 상세에는 입력란이 없음)"
+  },
+  {
+   "id": "AC6.2.4",
+   "status": "OK",
+   "target": "web/src/components/detail/RequirementsTable.tsx"
+  },
+  {
+   "id": "AC6.2.5",
+   "status": "OK",
+   "target": "web/src/labels/ko.ts"
+  },
+  {
+   "id": "AC6.2.6",
+   "status": "OK",
+   "target": "geosan/rules/questions.py"
+  },
+  {
+   "id": "AC6.2.7",
+   "status": "OK",
+   "target": "web/src/components/frame/StatusBanner.tsx"
+  },
+  {
+   "id": "AC7.1.1",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "AC7.1.2",
+   "status": "OK",
+   "target": "tests/features/u1/s10_opinion.feature"
+  },
+  {
+   "id": "AC7.1.3",
+   "status": "OK",
+   "target": "web/src/components/opinion/OpinionArea.tsx"
+  },
+  {
+   "id": "AC7.1.4",
+   "status": "OK",
+   "target": "tests/features/u1/s10_opinion.feature"
+  },
+  {
+   "id": "AC7.1.5",
+   "status": "OK",
+   "target": "tests/features/u1/s10_opinion.feature"
+  },
+  {
+   "id": "AC10.1.1",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "AC10.1.2",
+   "status": "OK",
+   "target": "web/src/components/frame/StatusBanner.tsx"
+  },
+  {
+   "id": "AC10.1.3",
+   "status": "OK",
+   "target": "web/src/components/detail/EvidenceSection.tsx"
+  },
+  {
+   "id": "AC10.4.1",
+   "status": "OK",
+   "target": "web/src/router.tsx"
+  },
+  {
+   "id": "AC10.4.2",
+   "status": "OK",
+   "target": "web/src/components/frame/AppFrame.tsx"
+  },
+  {
+   "id": "AC10.4.3",
+   "status": "OK",
+   "target": "web/src/components/common/FiveStates.tsx"
+  },
+  {
+   "id": "AC10.4.4",
+   "status": "OK",
+   "target": "web/src/theme/tokens.ts"
+  },
+  {
+   "id": "AC10.4.5",
+   "status": "OK",
+   "target": "web/src/labels/ko.ts"
+  },
+  {
+   "id": "BR1.1",
+   "status": "OK",
+   "target": "examples/capability-geosan.json"
+  },
+  {
+   "id": "BR1.2",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR1.3",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR1.4",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR1.5",
+   "status": "OK",
+   "target": "tests/features/u1/s08_requirement_check.feature"
+  },
+  {
+   "id": "BR1.6",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "BR1.7",
+   "status": "OK",
+   "target": "geosan/opportunity/models.py"
+  },
+  {
+   "id": "BR2.1",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR2.2",
+   "status": "OK",
+   "target": "geosan/commands/check_config.py"
+  },
+  {
+   "id": "BR2.3",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR2.4",
+   "status": "OK",
+   "target": "geosan/storage/base.py"
+  },
+  {
+   "id": "BR2.5",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR2.6",
+   "status": "OK",
+   "target": "tests/features/u1/s07_requirement_level.feature"
+  },
+  {
+   "id": "BR2.7",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "BR2.8",
+   "status": "OK",
+   "target": "contracts/case-file.schema.json"
+  },
+  {
+   "id": "BR2.9",
+   "status": "OK",
+   "target": "geosan/commands/check_case.py"
+  },
+  {
+   "id": "BR3.1",
+   "status": "OK",
+   "target": "geosan/rules/codes.py"
+  },
+  {
+   "id": "BR3.2",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR3.3",
+   "status": "OK",
+   "target": "geosan/rules/codes.py"
+  },
+  {
+   "id": "BR3.4",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR3.5",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR3.6",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR3.7",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR3.8",
+   "status": "OK",
+   "target": "geosan/evaluation/ledger.py"
+  },
+  {
+   "id": "BR3.9",
+   "status": "OK",
+   "target": "geosan/evaluation/ledger.py"
+  },
+  {
+   "id": "BR3.10",
+   "status": "OK",
+   "target": "geosan/rules/requirements.py"
+  },
+  {
+   "id": "BR4.1",
+   "status": "OK",
+   "target": "geosan/evaluation/models.py"
+  },
+  {
+   "id": "BR4.2",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR4.3",
+   "status": "OK",
+   "target": "examples/rule-config.yaml"
+  },
+  {
+   "id": "BR4.4",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "BR4.5",
+   "status": "OK",
+   "target": "geosan/rules/codes.py"
+  },
+  {
+   "id": "BR4.6",
+   "status": "OK",
+   "target": "geosan/rules/models.py"
+  },
+  {
+   "id": "BR4.7",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "BR4.8",
+   "status": "OK",
+   "target": "geosan/rules/__init__.py"
+  },
+  {
+   "id": "BR5.1",
+   "status": "OK",
+   "target": "geosan/rules/timing.py"
+  },
+  {
+   "id": "BR5.2",
+   "status": "OK",
+   "target": "geosan/rules/timing.py"
+  },
+  {
+   "id": "BR5.3",
+   "status": "OK",
+   "target": "examples/case-apjeong.json"
+  },
+  {
+   "id": "BR5.4",
+   "status": "OK",
+   "target": "geosan/evaluation/snapshot.py"
+  },
+  {
+   "id": "BR5.5",
+   "status": "OK",
+   "target": "geosan/evaluation/file_input.py"
+  },
+  {
+   "id": "BR5.6",
+   "status": "OK",
+   "target": "geosan/rules/classify.py"
+  },
+  {
+   "id": "BR5.7",
+   "status": "OK",
+   "target": "geosan/rules/timing.py"
+  },
+  {
+   "id": "BR6.1",
+   "status": "OK",
+   "target": "geosan/rules/classify.py"
+  },
+  {
+   "id": "BR6.2",
+   "status": "OK",
+   "target": "geosan/rules/classify.py"
+  },
+  {
+   "id": "BR6.3",
+   "status": "OK",
+   "target": "geosan/rules/codes.py"
+  },
+  {
+   "id": "BR6.4",
+   "status": "OK",
+   "target": "geosan/rules/engine.py"
+  },
+  {
+   "id": "BR6.5",
+   "status": "OK",
+   "target": "geosan/rules/models.py"
+  },
+  {
+   "id": "BR7.1",
+   "status": "OK",
+   "target": "tests/steps/u1/common.py"
+  },
+  {
+   "id": "BR7.2",
+   "status": "OK",
+   "target": "geosan/evaluation/models.py"
+  },
+  {
+   "id": "BR7.3",
+   "status": "OK",
+   "target": "geosan/evaluation/file_input.py"
+  },
+  {
+   "id": "BR7.4",
+   "status": "OK",
+   "target": "geosan/rules/timing.py"
+  },
+  {
+   "id": "BR7.5",
+   "status": "OK",
+   "target": "geosan/storage/session.py"
+  },
+  {
+   "id": "BR7.6",
+   "status": "OK",
+   "target": "geosan/commands/check_config.py"
+  },
+  {
+   "id": "BR8.1",
+   "status": "OK",
+   "target": "geosan/rules/questions.py"
+  },
+  {
+   "id": "BR8.2",
+   "status": "OK",
+   "target": "geosan/questions/models.py"
+  },
+  {
+   "id": "BR8.3",
+   "status": "OK",
+   "target": "geosan/rules/questions.py"
+  },
+  {
+   "id": "BR9.1",
+   "status": "OK",
+   "target": "geosan/api/schemas.py"
+  },
+  {
+   "id": "BR9.2",
+   "status": "OK",
+   "target": "tests/features/u1/s10_opinion.feature"
+  },
+  {
+   "id": "BR9.3",
+   "status": "OK",
+   "target": "geosan/config/app_settings.py"
+  },
+  {
+   "id": "BR9.4",
+   "status": "OK",
+   "target": "web/src/components/opinion/OpinionArea.tsx"
+  },
+  {
+   "id": "BR9.5",
+   "status": "OK",
+   "target": "web/src/components/opinion/OpinionArea.tsx"
+  },
+  {
+   "id": "BR10.1",
+   "status": "OK",
+   "target": "geosan/commands/verify_case.py"
+  },
+  {
+   "id": "BR10.2",
+   "status": "OK",
+   "target": "geosan/api/schemas.py"
+  },
+  {
+   "id": "BR10.3",
+   "status": "OK",
+   "target": "geosan/rules/codes.py"
+  },
+  {
+   "id": "BR10.4",
+   "status": "OK",
+   "target": "web/src/components/frame/StatusBanner.tsx"
+  },
+  {
+   "id": "BR10.5",
+   "status": "OK",
+   "target": "geosan/api/schemas.py"
+  },
+  {
+   "id": "BR10.6",
+   "status": "OK",
+   "target": "web/src/components/opinion/OpinionArea.tsx"
+  },
+  {
+   "id": "BR10.7",
+   "status": "OK",
+   "target": "web/src/components/common/FiveStates.tsx"
+  },
+  {
+   "id": "BR10.8",
+   "status": "OK",
+   "target": "web/src/components/frame/AppFrame.tsx"
+  },
+  {
+   "id": "BR10.9",
+   "status": "OK",
+   "target": "web/src/components/detail/ScoresCollapse.tsx"
+  },
+  {
+   "id": "BR11.1",
+   "status": "OK",
+   "target": "geosan/commands/app.py"
+  },
+  {
+   "id": "BR11.2",
+   "status": "OK",
+   "target": "geosan/commands/verify_case.py"
+  },
+  {
+   "id": "BR11.3",
+   "status": "OK",
+   "target": "geosan/commands/check_config.py"
+  },
+  {
+   "id": "NFR1.1",
+   "status": "OK",
+   "target": "geosan/rules/engine.py"
+  },
+  {
+   "id": "NFR1.2",
+   "status": "OK",
+   "target": "geosan/rules/engine.py"
+  },
+  {
+   "id": "NFR1.3",
+   "status": "OK",
+   "target": "geosan/config/registry.py"
+  },
+  {
+   "id": "NFR1.4",
+   "status": "OK",
+   "target": "tests/features/u1/apjeong_skeleton.feature"
+  },
+  {
+   "id": "NFR1.5",
+   "status": "OK",
+   "target": "geosan/rules/items.py"
+  },
+  {
+   "id": "NFR2.1",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "NFR2.2",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "NFR2.3",
+   "status": "OK",
+   "target": "geosan/workflows/flow_evaluate.py"
+  },
+  {
+   "id": "NFR2.4",
+   "status": "OK",
+   "target": "geosan/commands/evaluate.py"
+  },
+  {
+   "id": "NFR2.5",
+   "status": "OK",
+   "target": "geosan/commands/evaluate.py"
+  },
+  {
+   "id": "NFR2.6",
+   "status": "OK",
+   "target": "geosan/api/routes/records.py"
+  },
+  {
+   "id": "NFR2.7",
+   "status": "OK",
+   "target": "geosan/commands/import_case.py"
+  },
+  {
+   "id": "NFR2.8",
+   "status": "OK",
+   "target": "geosan/commands/verify_case.py"
+  },
+  {
+   "id": "NFR2.9",
+   "status": "OK",
+   "target": "geosan/commands/serve.py"
+  },
+  {
+   "id": "NFR2.10",
+   "status": "OK",
+   "target": "web/vite.config.ts"
+  },
+  {
+   "id": "NFR2.11",
+   "status": "OK",
+   "target": "web/src/components/common/FiveStates.tsx"
+  },
+  {
+   "id": "NFR2.12",
+   "status": "OK",
+   "target": "web/src/api/client.ts"
+  },
+  {
+   "id": "NFR2.13",
+   "status": "OK",
+   "target": "web/src/components/opinion/OpinionArea.tsx"
+  },
+  {
+   "id": "NFR2.14",
+   "status": "OK",
+   "target": "geosan/storage/engine.py"
+  },
+  {
+   "id": "NFR2.15",
+   "status": "OK",
+   "target": "geosan/storage/engine.py"
+  },
+  {
+   "id": "NFR3.1",
+   "status": "OK",
+   "target": "geosan/api/app.py"
+  },
+  {
+   "id": "NFR3.2",
+   "status": "OK",
+   "target": "geosan/opportunity/models.py"
+  },
+  {
+   "id": "NFR3.3",
+   "status": "OK",
+   "target": "geosan/opportunity/models.py"
+  },
+  {
+   "id": "NFR3.4",
+   "status": "OK",
+   "target": "geosan/evaluation/models.py"
+  },
+  {
+   "id": "NFR3.5",
+   "status": "OK",
+   "target": "geosan/evaluation/models.py"
+  },
+  {
+   "id": "NFR3.6",
+   "status": "OK",
+   "target": "geosan/evidence/models.py"
+  },
+  {
+   "id": "NFR3.7",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "NFR3.8",
+   "status": "OK",
+   "target": "geosan/storage/engine.py"
+  },
+  {
+   "id": "NFR3.9",
+   "status": "OK",
+   "target": "geosan/storage/engine.py"
+  },
+  {
+   "id": "NFR3.10",
+   "status": "OK",
+   "target": "geosan/api/routes/opportunities.py"
+  },
+  {
+   "id": "NFR3.11",
+   "status": "OK",
+   "target": "geosan/workflows/flow_evaluate.py"
+  },
+  {
+   "id": "NFR3.12",
+   "status": "OK",
+   "target": "geosan/evaluation/snapshot.py"
+  },
+  {
+   "id": "NFR3.13",
+   "status": "OK",
+   "target": "geosan/evaluation/models.py"
+  },
+  {
+   "id": "NFR3.14",
+   "status": "OK",
+   "target": "geosan/storage/session.py"
+  },
+  {
+   "id": "NFR4.1",
+   "status": "OK",
+   "target": "geosan/config/validators.py"
+  },
+  {
+   "id": "NFR4.2",
+   "status": "OK",
+   "target": "geosan/evaluation/snapshot.py"
+  },
+  {
+   "id": "NFR4.3",
+   "status": "OK",
+   "target": "tests/conftest.py"
+  },
+  {
+   "id": "NFR4.4",
+   "status": "OK",
+   "target": "scripts/check-secrets.sh"
+  },
+  {
+   "id": "NFR4.5",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "NFR4.6",
+   "status": "OK",
+   "target": "geosan/capability/queries.py"
+  },
+  {
+   "id": "NFR4.7",
+   "status": "OK",
+   "target": ".gitignore"
+  },
+  {
+   "id": "NFR4.8",
+   "status": "OK",
+   "target": "geosan/api/deps.py"
+  },
+  {
+   "id": "NFR4.9",
+   "status": "OK",
+   "target": "docs/team-start-guide.md"
+  },
+  {
+   "id": "NFR4.10",
+   "status": "N/A",
+   "target": "팀 규칙(외부 주소에 올리지 않음, 외부 의존 지도 E-4). 시연 환경 배포는 U8 접속 보호 뒤"
+  },
+  {
+   "id": "NFR4.11",
+   "status": "OK",
+   "target": "geosan/config/file_checks.py"
+  },
+  {
+   "id": "NFR4.12",
+   "status": "OK",
+   "target": "geosan/api/app.py"
+  },
+  {
+   "id": "NFR4.13",
+   "status": "OK",
+   "target": "geosan/config/rule_config.py"
+  },
+  {
+   "id": "NFR4.14",
+   "status": "OK",
+   "target": "web/src/components/detail/EvidenceSection.tsx"
+  },
+  {
+   "id": "NFR4.15",
+   "status": "OK",
+   "target": "geosan/config/paths.py"
+  },
+  {
+   "id": "NFR4.16",
+   "status": "OK",
+   "target": "requirements.lock"
+  },
+  {
+   "id": "NFR4.17",
+   "status": "OK",
+   "target": ".github/pull_request_template.md"
+  },
+  {
+   "id": "NFR5.1",
+   "status": "OK",
+   "target": "geosan/evaluation/ledger.py"
+  },
+  {
+   "id": "NFR5.2",
+   "status": "OK",
+   "target": "geosan/records/models.py"
+  },
+  {
+   "id": "NFR5.3",
+   "status": "OK",
+   "target": "geosan/storage/base.py"
+  },
+  {
+   "id": "NFR5.4",
+   "status": "N/A",
+   "target": "전송 로그는 U2부터 쓴다. 뼈대는 외부 호출 코드가 없음(NFR4.3 네트워크 차단 테스트)"
+  },
+  {
+   "id": "NFR5.5",
+   "status": "Deferred",
+   "target": "Step 30 문서 완성(docs/queries.md 조회 예시 3개), 10/29 거산 방문 뒤 진행(PM 결정 2026-10-23)"
+  },
+  {
+   "id": "NFR7.1",
+   "status": "OK",
+   "target": "geosan/storage/session.py"
+  },
+  {
+   "id": "NFR7.2",
+   "status": "OK",
+   "target": "geosan/storage/engine.py"
+  },
+  {
+   "id": "NFR7.3",
+   "status": "OK",
+   "target": "geosan/storage/engine.py"
+  },
+  {
+   "id": "NFR7.4",
+   "status": "Deferred",
+   "target": "Step 30 문서 완성(팀원 시작 안내서에 DB 파일 복사 백업 한 줄), 10/29 뒤 진행"
+  },
+  {
+   "id": "NFR7.5",
+   "status": "OK",
+   "target": "geosan/capability/importer.py"
+  },
+  {
+   "id": "NFR7.6",
+   "status": "OK",
+   "target": "geosan/storage/migrate.py"
+  },
+  {
+   "id": "NFR7.7",
+   "status": "OK",
+   "target": "geosan/config/errors.py"
+  },
+  {
+   "id": "NFR8.1",
+   "status": "OK",
+   "target": "web/src/router.tsx"
+  },
+  {
+   "id": "NFR8.2",
+   "status": "OK",
+   "target": "web/src/theme/tokens.ts"
+  },
+  {
+   "id": "NFR8.3",
+   "status": "OK",
+   "target": "web/src/components/frame/AppFrame.tsx"
+  },
+  {
+   "id": "NFR8.4",
+   "status": "OK",
+   "target": "web/src/labels/ko.ts"
+  },
+  {
+   "id": "NFR8.5",
+   "status": "Deferred",
+   "target": "11/13 전 팀 밖 검증자 1명 사전 검증(운영 단계, 뼈대 뒤)"
+  },
+  {
+   "id": "NFR9.1",
+   "status": "OK",
+   "target": ".github/workflows/check.yml"
+  },
+  {
+   "id": "NFR9.2",
+   "status": "OK",
+   "target": "tests/features/u1/test_scenarios.py"
+  },
+  {
+   "id": "NFR9.3",
+   "status": "OK",
+   "target": "tests/data/apjeong-input.json"
+  },
+  {
+   "id": "NFR9.4",
+   "status": "OK",
+   "target": "tests/conftest.py"
+  },
+  {
+   "id": "NFR9.5",
+   "status": "OK",
+   "target": "tests/conftest.py"
+  },
+  {
+   "id": "NFR9.6",
+   "status": "OK",
+   "target": ".github/workflows/check.yml"
+  },
+  {
+   "id": "NFR9.7",
+   "status": "OK",
+   "target": "scripts/check.sh"
+  },
+  {
+   "id": "NFR10.1",
+   "status": "OK",
+   "target": "geosan/api/app.py"
+  },
+  {
+   "id": "NFR10.2",
+   "status": "OK",
+   "target": "geosan/config/errors.py"
+  },
+  {
+   "id": "NFR10.3",
+   "status": "OK",
+   "target": "geosan/api/app.py"
+  },
+  {
+   "id": "NFR10.4",
+   "status": "OK",
+   "target": "geosan/evaluation/snapshot.py"
+  },
+  {
+   "id": "NFR10.5",
+   "status": "OK",
+   "target": "geosan/commands/evaluate.py"
+  },
+  {
+   "id": "NFR10.6",
+   "status": "Deferred",
+   "target": "Step 28 환경·빌드 마무리(하루 회전 14일 보관은 geosan/api/app.py configure_logging에 있음, 설정 키·안내는 10/29 뒤)"
+  },
+  {
+   "id": "NFR10.7",
+   "status": "OK",
+   "target": "geosan/api/app.py"
+  },
+  {
+   "id": "NFR10.8",
+   "status": "OK",
+   "target": "geosan/commands/evaluate.py"
+  },
+  {
+   "id": "NFR10.9",
+   "status": "OK",
+   "target": "geosan/api/app.py"
+  },
+  {
+   "id": "NFR10.10",
+   "status": "N/A",
+   "target": "외부 전송 건수는 U2 전송 로그 테이블. 뼈대는 외부 호출 없음(NFR4.3)"
+  },
+  {
+   "id": "NFR10.11",
+   "status": "OK",
+   "target": "web/src/components/frame/StatusBanner.tsx"
+  },
+  {
+   "id": "NFR10.12",
+   "status": "OK",
+   "target": "web/src/components/detail/ScoresCollapse.tsx"
+  },
+  {
+   "id": "NFR10.13",
+   "status": "OK",
+   "target": "web/src/components/common/FiveStates.tsx"
+  },
+  {
+   "id": "NFR11.1",
+   "status": "OK",
+   "target": "examples/rule-config.yaml"
+  },
+  {
+   "id": "NFR11.2",
+   "status": "OK",
+   "target": ".env.example"
+  },
+  {
+   "id": "NFR11.3",
+   "status": "OK",
+   "target": "geosan/commands/check_config.py"
+  },
+  {
+   "id": "NFR11.4",
+   "status": "OK",
+   "target": "web/src/theme/tokens.ts"
+  },
+  {
+   "id": "NFR11.5",
+   "status": "OK",
+   "target": ".python-version"
+  },
+  {
+   "id": "NFR12.1",
+   "status": "OK",
+   "target": "geosan/storage/base.py"
+  },
+  {
+   "id": "NFR12.2",
+   "status": "OK",
+   "target": "geosan/rules/items.py"
+  },
+  {
+   "id": "NFR12.3",
+   "status": "OK",
+   "target": "geosan/rules/items.py"
+  },
+  {
+   "id": "NFR12.4",
+   "status": "OK",
+   "target": "tests/conftest.py"
+  },
+  {
+   "id": "AC8.1.1",
+   "status": "OK",
+   "target": "geosan/evaluation/ledger.py"
+  },
+  {
+   "id": "AC8.1.2",
+   "status": "Deferred",
+   "target": "u2-evidence-extraction (S11 재평가 보존 시나리오는 U2에서 홈페이지 근거 추가와 함께; U1은 previousEvalId 사슬만 저장)"
+  },
+  {
+   "id": "AC8.1.3",
+   "status": "OK",
+   "target": "geosan/storage/base.py"
+  },
+  {
+   "id": "AC8.1.4",
+   "status": "Deferred",
+   "target": "u7-dashboard-search (담당자 순서 변경 기록 FR4.12은 뼈대 밖; 상세 화면 설계에서 사용자 정렬 조작은 두지 않기로 함)"
+  },
+  {
+   "id": "AC9.4.1",
+   "status": "Deferred",
+   "target": "u10-operations-handover (팀 밖 검증자 1명이 운영 안내서로 명령 3개 이내 수행; README 설치·투입·평가 3명령은 U1에 있음)"
+  },
+  {
+   "id": "AC9.4.2",
+   "status": "Deferred",
+   "target": "u10-operations-handover (backup/restore 명령과 안내서 절차; 뼈대는 DB 파일 복사)"
+  },
+  {
+   "id": "AC9.4.3",
+   "status": "OK",
+   "target": "geosan/config/registry.py"
+  },
+  {
+   "id": "AC10.2.1",
+   "status": "OK",
+   "target": "geosan/api/deps.py"
+  },
+  {
+   "id": "AC10.2.2",
+   "status": "Deferred",
+   "target": "u8-access-protection (비밀번호·세션은 U8; 뼈대는 접속 보호 꺼짐, 127.0.0.1만)"
+  },
+  {
+   "id": "AC10.2.3",
+   "status": "Deferred",
+   "target": "u8-access-protection (HTTPS는 시연 환경 배포와 함께, 11/6 전)"
+  },
+  {
+   "id": "AC10.2.4",
+   "status": "Deferred",
+   "target": "G0 이후 담당자별 계정(FR14.3), 범위 문서 P2"
+  }
+ ]
+}
