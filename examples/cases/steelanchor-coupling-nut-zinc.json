@@ -1,0 +1,232 @@
+{
+  "caseId": "steelanchor-coupling-nut-zinc",
+  "baseDate": null,
+  "description": "[거산 확인 전·외관 목적 간접 근거] 스틸앙카 SS275 연결너트 백색 전기아연도금 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "공개 자료로 작성한 검토용 사례다. 제품·소재·전기아연도금 사양 직접 근거와 백색 사양에 따른 외관 목적 간접 근거를 구분했다. 실제 외주 발주·접촉 승인을 확인한 사례가 아니다.",
+    "공개 자료 열람일: 2026-10-22. 제품 이미지의 게시일·갱신일은 미확인으로 evidence.occurredAt은 비웠다. 회사소개 이미지에는 과거 연혁이 포함되어 있으며 현재 생산·판매 사양은 확인 전이다.",
+    "공식 제품 페이지 http://www.steelanchor.com/sub2_7.html 이 연결하는 /img/sub2_7.jpg 하단 연결너트 표에서 용도, SS275 소재, 전기아연도금 (백색)을 함께 확인했다. 같은 이미지 위쪽 스트롱 앙카의 SS400·STS304 소재를 연결너트 소재로 옮기지 않았다.",
+    "백색은 회사가 제시한 표면처리 색상 사양이므로 외관 목적을 STRONG으로 추정했다. 부식 방지·내식성이나 수치 성능은 이 자료에 직접 적혀 있지 않아 추가하지 않았다.",
+    "산단공 2025-12-31 기준 순번 166239는 당진 합덕읍 상덕로 856, 생산품 기초볼트다. 당진시 2026-07-10 기준 순번 706도 같은 상호를 당진 합덕읍 대합덕리 33-5의 볼트 및 너트류 제조업·기초볼트로 등록한다. 두 주소의 동일 필지 여부는 확인 전이다.",
+    "현재 공식 홈페이지는 시흥 주소를 안내한다. 산단공에는 같은 상호의 시흥 공장도 있으며 해당 시흥매화 공장 주소가 홈페이지와 일치한다. 당진시 공개 등록자료의 회사 식별정보도 공식 홈페이지와 대조했다. 연락처 값은 사례에 옮기지 않았다. 사업자번호로 연결한 것은 아니며 동일 법인·당진 공장 현재 가동은 최종 확인 전이다.",
+    "당진 공장 등록 생산품은 기초볼트이며 연결너트가 당진에서 생산된다는 자료는 없다. 회사 제품군 수준의 예비 후보이며 대상 생산 사업장, 연결너트 제조원, 자체 도금·외주 여부, 실제 발주는 확인 전이다.",
+    "실제 소개서 묶음 examples/capability-geosan-brochure.json의 ZINC_PLATING 소재 FE와 성능 태그 APPEARANCE를 대조했다. 소개서 기준·거산 확인 전이며 검수 PENDING을 처리 승인으로 해석하지 않는다.",
+    "이강욱 조사 묶음은 명화금속·스틸앙카의 아연도금 2곳과 대영프로파일의 아노다이징 1곳이다. 외관 목적 간접 추정과 생산 사업장 미확인 사항은 공정 비율 충족 여부와 별개로 검토해야 한다."
+  ],
+  "customer": {
+    "name": "(주)스틸앙카",
+    "bizNumber": null,
+    "address": "충청남도 당진시 합덕읍 상덕로 856",
+    "identityBasis": "산단공 2025-12-31 기준·2026-09-23 갱신본 순번 166239의 당진 공장 상호·주소·기초볼트 생산품으로 발굴했다. 원본 https://www.data.go.kr/data/15105482/fileData.do . 당진시 2026-07-10 등록자료 순번 706의 상호·공장대표주소(지번) 대합덕리 33-5·기초볼트를 추가 대조했다. 원본 https://www.data.go.kr/data/15052053/fileData.do . 당진 등록자료의 공개 식별정보는 공식 홈페이지와 일치하지만 연락처 값은 저장하지 않았다. 산단공 순번 94072의 시흥 공장 주소도 공식 홈페이지 시흥매화 공장 주소와 일치한다. 사업자번호에 의한 법인 연결·당진 현재 가동·연결너트의 당진 생산 여부는 확인 전이다. 확인일 2026-10-22.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "SS275 연결너트 백색 전기아연도금 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:166239",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": "FE"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "연결너트",
+      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "용도 : 전산볼트 등 볼트류의 연결용으로서 길이 조절을 위하여 사용함.",
+      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "재질 : SS275",
+      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "표면처리 : 전기아연도금 (백색)",
+      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "전기아연도금 (백색)",
+      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "저희가 생산하는 L형앙카, 케미칼앙카, 셋트앙카, 웰딩스터드",
+      "sourceRef": "http://www.steelanchor.com/img/sub1_1.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "회사소개는 앙카 생산을 안내하고 공식 제품 자료는 연결너트의 볼트 연결·길이 조절 용도와 백색 전기아연도금 사양을 명시한다. 회사 제품군과 처리 사양은 확인했으나 연결너트 제조원·생산 사업장·자체 도금·외주 발주를 확인한 것은 아니다.",
+      "evidenceRefs": [
+        0,
+        1,
+        3,
+        5
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "같은 공식 연결너트 사양의 소재는 SS275 강재다. 실제 소개서 묶음 ZINC_PLATING 소재 FE와 코드 범위를 대조했다. 구체적인 강종·치수·형상·요구 도금 두께의 수탁 가능 여부는 거산 확인 전이다.",
+      "evidenceRefs": [
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ZINC_PLATING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 확인한 연결너트 용도는 볼트 연결과 길이 조절이며 거산 소개서 ZINC_PLATING의 방위산업·자동차 부품 납품실적과 동일 부품·동일 산업으로 연결할 근거가 없다. 다음 할 일: 대상 연결너트의 납품 산업·부품 용도를 확인한 뒤 소개서 실적과 대조한다. 미확인을 불일치로 확정하지 않았다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "공식 연결너트 사양의 전기아연도금 (백색)에서 외관 목적을 간접 근거 STRONG으로 추정했다. 실제 소개서 ZINC_PLATING의 APPEARANCE 한 태그와 대조했다. 직접적인 목적 설명·내식 성능·외주 수요 확인은 아니다.",
+      "evidenceRefs": [
+        3,
+        4
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ZINC_PLATING"
+        }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 발생일과 대상 전기아연도금 제품과의 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 다음 할 일: 공식 공고·소식에서 발생일·관련성을 확인한다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 발생일과 대상 전기아연도금 제품과의 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 다음 할 일: 공식 공고·소식에서 발생일·관련성을 확인한다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 발생일과 대상 전기아연도금 제품과의 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 다음 할 일: 공식 공고·소식에서 발생일·관련성을 확인한다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 발생일과 대상 전기아연도금 제품과의 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 다음 할 일: 공식 공고·소식에서 발생일·관련성을 확인한다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "공식 연결너트 자료의 SS275·백색 전기아연도금이 현재 생산·판매 사양인가?",
+      "당진 공장은 현재 가동하며 해당 연결너트를 직접 생산하는가?",
+      "당진시 지번 주소와 산단공 도로명 주소는 같은 사업장이며 시흥 공장과 같은 법인인가?",
+      "전기아연도금을 자체 설비에서 하는가, 외주로 처리하는가?",
+      "백색 사양은 고객의 외관 요구이며 별도의 내식 요구도 있는가?",
+      "거산이 대상 강종·치수·도금 두께 등 실제 요구를 처리할 수 있는가?"
+    ]
+  },
+  "expected": null
+}
