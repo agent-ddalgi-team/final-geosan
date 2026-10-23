@@ -450,6 +450,97 @@ def test_opinion_commit_failure_returns_500_and_rolls_back(api_env):
         assert session.get(EvaluationRun, eval_id).score_e == 77
 
 
+@pytest.mark.parametrize(
+    ("rejection", "expected_status"),
+    [
+        ("missing_staff", 403),
+        ("unknown_staff", 403),
+        ("viewer", 403),
+        ("missing_reason", 400),
+        ("contact_in_memo", 400),
+        ("foreign_evaluation", 400),
+    ],
+)
+def test_rejected_opinion_update_preserves_saved_history(
+    api_env, tmp_path, rejection, expected_status
+):
+    """Given 저장된 의견 / When 권한·입력이 잘못된 수정 요청 / Then 기존 의견·버전을 보존한다."""
+    client, opp_id, eval_id = api_env
+    first = _save(client, opp_id, eval_id, memo="보존할 가상 검토 메모")
+    assert first.status_code == 200
+    original = first.json()["data"]
+    headers = {"X-Staff-Key": "park-lee"}
+    body = {"opinion": "NEED_CHECK", "evalId": eval_id, "expectedVersion": 1}
+    if rejection == "missing_staff":
+        headers = {}
+    elif rejection in {"unknown_staff", "viewer"}:
+        headers["X-Staff-Key"] = "unknown-staff" if rejection == "unknown_staff" else "viewer"
+    elif rejection == "missing_reason":
+        body.update(opinion="NOT_TARGET", reason=" \t ")
+    elif rejection == "contact_in_memo":
+        body["memo"] = "가상 연락처: sales@example.invalid"
+    else:
+        other = import_case(
+            _write(tmp_path, "other.json", factories.apjeong_renamed_customer("other"))
+        )
+        other_evaluation = run_evaluation([other.opp_id])
+        assert other_evaluation.ok
+        body["evalId"] = other_evaluation.new_eval_ids[0]
+
+    response = client.post(f"/api/v1/opportunities/{opp_id}/opinions", headers=headers, json=body)
+    assert response.status_code == expected_status, response.text
+    assert {"message", "nextAction", "ref"} <= response.json()["error"].keys()
+    detail = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert detail.status_code == 200
+    assert detail.json()["data"]["records"]["opinion"] == original
+    with session_scope() as session:
+        rows = list(session.scalars(select(ReviewOpinion)))
+        assert len(rows) == 1 and rows[0].version == 1
+        assert rows[0].opinion == "WORTH_REVIEW" and rows[0].previous_opinion_id is None
+        assert session.get(EvaluationRun, eval_id).run_status == "CONFIRMED"
+
+
+def test_failed_opinion_update_preserves_history_and_next_version(api_env):
+    """Given 기존 의견 / When 수정 실패 후 다시 저장 / Then 기존 이력 뒤 버전 2로 잇는다."""
+    client, opp_id, eval_id = api_env
+    assert _save(client, opp_id, eval_id, memo="보존할 가상 메모").status_code == 200
+    with session_scope() as session:
+        original_id = session.scalar(select(ReviewOpinion.opinion_id))
+        evaluation_before = session.execute(select(EvaluationRun.__table__)).all()
+    attempts = []
+
+    def fail_commit(session):
+        # 라우트가 새 의견을 실제 DB에 보낸 뒤 최종 확정에서 실패하게 한다.
+        assert session.scalar(select(func.count()).select_from(ReviewOpinion)) == 2
+        attempts.append("commit")
+        raise RuntimeError("노출되면 안 되는 가상 수정 오류")
+
+    def failing_session():
+        with session_scope() as session:
+            event.listen(session, "before_commit", fail_commit)
+            yield session
+
+    client.app.dependency_overrides[get_session] = failing_session
+    try:
+        response = _save(client, opp_id, eval_id, opinion="NEED_CHECK", expectedVersion=1)
+    finally:
+        client.app.dependency_overrides.pop(get_session)
+    assert response.status_code == 500
+    assert "가상 수정 오류" not in response.text
+    assert {"message", "nextAction", "ref"} <= response.json()["error"].keys()
+    assert attempts == ["commit"]
+    with session_scope() as session:
+        rows = list(session.scalars(select(ReviewOpinion)))
+        assert len(rows) == 1 and rows[0].opinion_id == original_id
+        assert rows[0].version == 1 and rows[0].memo == "보존할 가상 메모"
+        assert session.execute(select(EvaluationRun.__table__)).all() == evaluation_before
+    recovered = _save(client, opp_id, eval_id, opinion="NEED_CHECK", expectedVersion=1)
+    assert recovered.status_code == 200 and recovered.json()["data"]["version"] == 2
+    with session_scope() as session:
+        rows = list(session.scalars(select(ReviewOpinion).order_by(ReviewOpinion.version)))
+        assert len(rows) == 2 and rows[1].previous_opinion_id == original_id
+
+
 def test_body_limit_and_log_formatter_do_not_disclose_text():
     """Given 큰 본문·민감 로그 / When 경계 검사 / Then DB 전에 거부하고 로그에서 가린다."""
     with TestClient(create_app()) as client:
