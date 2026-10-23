@@ -1,0 +1,202 @@
+{
+  "caseId": "shindongah-dangjin-screw-zinc-research",
+  "baseDate": "2026-10-22",
+  "description": "#19 공개 근거 조사 초안 — 신동아정공. 제품·소재·내식성 표를 확보했으나 당진 공장 생산 및 자체 도금 여부 확인 전 최종 선정 보류.",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "후보 원본: 한국산업단지공단 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본, 순번 166315. https://www.data.go.kr/data/15105482/fileData.do",
+    "직결 스크류의 스틸 소재·전기아연도금·내식성 비교표는 공식 카탈로그에 직접 표시되어 있다. 카탈로그의 재질·표면처리 조합을 다른 제품이나 다른 소재에 확대하지 않았다.",
+    "인쇄면 17쪽의 스틸 SWCH 18A/22A 행은 전기아연도금 백색·황색을 표시하고 내식성은 약, 적용지역은 실내로 설명한다. 내식 목적 근거가 있다는 뜻이며 고내식 성능이나 해안 사용 적합성이 확인된 것은 아니다.",
+    "같은 표의 전기아연도금+매그니코팅 행은 별도 복합 처리다. 그 행의 강한 내식성·실외 적용을 단독 전기아연도금의 성능으로 옮기지 않았다.",
+    "당진 주소는 CSV 등록 주소이며 공식 홈페이지의 시흥 주소로 덮어쓰지 않았다. 공식 연혁에 2009년 3월 당진시 송악읍 반촌리 732-4 임대계약 공장등록이 있어 이 회사의 당진 사업장 이력을 확인했다. 다만 지번과 CSV 도로명 주소의 동일성, 현재 운영, 해당 스크류 생산 범위까지 확인한 것은 아니다.",
+    "https://www.shindongah.com/sub/facilities.html 의 설비·현황은 시흥 공장 2곳을 안내한다(2026-10-22 열람). 과거 당진 등록 이력을 현재 당진 생산의 직접 근거로 사용하지 않았다.",
+    "제품표에 도금 사양이 있다는 사실과 해당 공장이 자체 도금하는지는 별개다. 자체 도금이 확인되면 PM의 경쟁·내재화 제외 기준에 따라 최종 후보에서 제외해야 한다.",
+    "공개 자료 열람일은 2026-10-22이다. 게시일·제품 사양 발생일을 확인하지 못한 근거의 occurredAt은 null이다. 파일명에 적힌 연도를 발생일로 만들지 않았다.",
+    "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 2026-10-22 대조했다. ZINC_PLATING의 FE 소재·CORROSION 성능 태그를 참조한다. 소개서 기준·거산 확인 전이며 해당 공정의 검수 상태는 PENDING이다. 가상 역량은 사용하지 않았다.",
+    "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 신호 없음(NO_SIGNAL)으로 단정하지 않았다.",
+    "공개 제품 사양은 거산에 대한 구매 요청서가 아니다. 요구 조건·필수 여부·필요 단계를 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
+  ],
+  "customer": {
+    "name": "(주)신동아정공",
+    "bizNumber": null,
+    "address": "충청남도 당진시 송악읍 부동길 73",
+    "identityBasis": "산단공 CSV 순번 166315의 회사명·당진 공장주소·볼트 생산을 공식 홈페이지와 대조했다. https://www.shindongah.com/sub/history.html 은 2009년 3월 당진시 송악읍 반촌리 732-4 임대계약 공장등록을 명시한다. https://www.shindongah.com/sub/facilities.html 은 시흥 공장 2곳을 안내한다. 과거 당진 사업장 이력은 확인했지만 CSV 도로명과 지번의 동일성·현재 당진 운영·해당 스크류 생산 여부는 미확인이다(2026-10-22 열람).",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "스틸 직결 스크류의 전기아연도금 검토",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "15105482-20251231-166315",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": "FE"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "직결 스크류 SDS: Self Drilling Screw",
+      "sourceRef": "https://www.shindongah.com/img/data/catalog_pdf.pdf (공식 카탈로그, 인쇄면 17쪽, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "스틸 SWCH 18A SWCH 22A",
+      "sourceRef": "https://www.shindongah.com/img/data/catalog_pdf.pdf (공식 카탈로그, 인쇄면 17쪽, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "전기아연도금(백색) 전기아연도금(황색)",
+      "sourceRef": "https://www.shindongah.com/img/data/catalog_pdf.pdf (공식 카탈로그, 인쇄면 17쪽, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "내식성과 표면처리",
+      "sourceRef": "https://www.shindongah.com/img/data/catalog_pdf.pdf (공식 카탈로그, 인쇄면 17쪽, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공식 제품표에 직결 스크류와 전기아연도금 사양이 있다. 다만 CSV 당진 공장의 생산 품목인지 확인하지 못해 생산 근거 판정은 보류했다.",
+      "evidenceRefs": [
+        0,
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 카탈로그의 스틸 SWCH 18A/22A를 소개서 ZINC_PLATING의 materialCodes FE와 대조했다. 소재 분류 일치이며 당진 생산 여부나 개별 스크류의 사양 충족을 확인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ZINC_PLATING"}]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "소개서 ZINC_PLATING의 방위산업·자동차 부품 실적 항목을 확인했다. 해당 직결 스크류의 납품 산업·유사 부품과 연결할 근거가 없고 소개서의 부품 종류·기간도 비어 있어 미확보로 둔다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 카탈로그가 직접 설명하는 내식 목적을 소개서 ZINC_PLATING의 CORROSION 1개와 대조했다. 표의 단독 전기아연도금은 내식성이 약한 실내 사용용이며, 복합 처리 성능이나 거산의 동일 성능 충족을 뜻하지 않는다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        2,
+        3
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ZINC_PLATING"}]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "당진 공장이 현재 운영 중이며 위 스틸 직결 스크류를 생산하는가?",
+      "전기아연도금을 자체 처리하는지 외주로 발주하는지 확인할 수 있는가?",
+      "실내 사용용 단독 전기아연도금 품목의 구체 사양과 요구 성능을 확인할 수 있는가?"
+    ],
+    "allowedChannel": null,
+    "owner": null,
+    "canChangeClass": null,
+    "estimatedHours": null,
+    "maxHours": null
+  },
+  "expected": null
+}

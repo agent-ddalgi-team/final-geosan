@@ -1,0 +1,198 @@
+{
+  "caseId": "yeungkwang-asan-bracket-anodizing",
+  "baseDate": "2026-10-22",
+  "description": "#19 공개 근거 조사 초안 — 주식회사 영광테크. 소개서 기준 소재·외관 목적을 대조했으며 아산 생산·외주 여부와 거산 검수는 확인 필요.",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "검토용 초안이다. 제품·소재는 직접 근거, 외관 목적은 공식 카탈로그의 은색 후처리 설명을 통한 STRONG 간접 근거다. 3종 근거가 모두 직접 확인된 최종 후보라는 뜻은 아니다.",
+    "후보 원본: 한국산업단지공단 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본, 순번 163882. https://www.data.go.kr/data/15105482/fileData.do",
+    "공식 2024 브라켓 카탈로그의 인쇄면 95쪽은 GS75x32 주문 예시에 은색 표면처리를, 121쪽은 같은 코드 YKBK-AGS7532에 A6061·ANODIZING을 표시한다. 색상 사양을 외관 목적의 간접 근거로만 해석했다. 내식·내마모 목적이나 고객의 필수 요구를 확인한 것은 아니다.",
+    "카탈로그 출처는 https://www.yktec.co.kr/bbs/board.php?bo_table=skill&wr_id=7805 (게시일 2023-12-07)의 브라켓 PDF다. 제품 사양 발생일은 알 수 없어 occurredAt을 null로 유지한다. 인용의 Sliver는 원문 표기 그대로다.",
+    "홈페이지 생산라인에는 가공·조립·검수가 소개되지만 자체 표면처리가 없다는 증명은 아니다. 자체 처리/외주 여부와 해당 모델의 아산 생산 여부를 추가 확인해야 한다.",
+    "같은 업체의 다른 모델은 아연·니켈·도장·쇼트처리 사양이다. 이 파일은 위 모델의 A6061·ANODIZING 사양만 사용한다.",
+    "공개 홈페이지 열람일은 2026-10-22이다. 게시일이 없는 근거의 occurredAt은 null로 두었고 열람일을 발생일로 쓰지 않았다.",
+    "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 2026-10-22 대조했다. ANODIZING의 AL 소재·APPEARANCE 성능 태그를 참조한다. 소개서 기준·거산 확인 전이며 해당 공정의 검수 상태는 PENDING이다. 가상 역량은 사용하지 않았다.",
+    "시점 신호 조사는 완료되지 않아 SIG_*를 UNAVAILABLE로 두었다. 근거 미확보를 신호 없음으로 단정하지 않았다.",
+    "공개 제품표의 판매 사양은 거산에 대한 고객 요청서가 아니다. 요구 조건·필수 여부·필요 단계는 새로 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
+  ],
+  "customer": {
+    "name": "주식회사 영광테크",
+    "bizNumber": null,
+    "address": "충청남도 아산시 둔포면 석곡리 1552-1",
+    "identityBasis": "산단공 CSV 순번 163882의 회사명·아산테크노밸리·알루미늄 브라켓을 대조했다. 원본 공장주소는 공백이다. 공식 공장소개 https://www.yktec.co.kr/business/03.php 에서 아산사업소 주소를 보완했다(2026-10-22 열람). 본사 소재지와 아산사업소를 구분하며 해당 모델의 생산 사업소는 미확인이다.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "YKBK-AL GS75x32-12T 브라켓",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "15105482-20251231-163882",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": "AL"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "YKBK-AL GS75x32-12T",
+      "sourceRef": "https://www.yktec.co.kr/shop/item.php?it_id=2016169 (공식 홈페이지, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "Material : A6061",
+      "sourceRef": "https://www.yktec.co.kr/shop/item.php?it_id=2016169 (공식 홈페이지, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "Surface Processing : ANODIZING",
+      "sourceRef": "https://www.yktec.co.kr/shop/item.php?it_id=2016169 (공식 홈페이지, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "영광테크 알루미늄 브라켓 75x32 규격 표면처리 Sliver",
+      "sourceRef": "http://yktec.co.kr/ebook/data/2024_catalog/04_2024_bracket.pdf (공식 2024 카탈로그, 인쇄면 95쪽·121쪽 대조, 게시글 2023-12-07, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 제품표에 A6061 브라켓과 ANODIZING 후처리가 직접 명시되어 제품의 표면처리 사양은 확인했다. 아산 생산 및 신규 외주 수요는 미확인이다.",
+      "evidenceRefs": [
+        0,
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 제품표의 A6061 알루미늄을 소개서 ANODIZING의 materialCodes AL과 대조했다. 소재 분류가 일치한다는 판정이며 특정 합금·형상·색상 사양 충족을 승인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ANODIZING"}]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "소개서 ANODIZING의 방위산업·항공우주 실적 항목을 확인했으나 이 브라켓의 납품 산업과 동일·유사 부품 실적을 연결할 근거가 없다. 부품 종류·기간도 소개서에서 비어 있어 미확보로 둔다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "은색 후처리 사양에서 간접 추정한 외관 목적이 소개서 ANODIZING의 APPEARANCE 1개와 일치한다. 간접 근거이므로 STRONG이며 내식·경도를 추가로 일치 처리하지 않았다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [3],
+      "signalRefs": [],
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ANODIZING"}]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "해당 브라켓이 아산사업소에서 생산되는가?",
+      "은색 후처리에서 추정한 외관 목적을 직접 명시한 사양서가 있는가?",
+      "아노다이징을 자체 처리하는지 외주로 발주하는지 확인할 수 있는가?"
+    ],
+    "allowedChannel": null,
+    "owner": null,
+    "canChangeClass": null,
+    "estimatedHours": null,
+    "maxHours": null
+  },
+  "expected": null
+}

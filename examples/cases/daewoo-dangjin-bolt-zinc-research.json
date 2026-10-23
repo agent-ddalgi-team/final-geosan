@@ -1,0 +1,199 @@
+{
+  "caseId": "daewoo-dangjin-bolt-zinc-research",
+  "baseDate": "2026-10-22",
+  "description": "#19 공개 근거 조사 초안 — 대우볼트. 탄소강 볼트와 일반 공정도를 확보했으나 개별 제품의 도금 방식·자체 처리 여부 확인 전 최종 선정 보류.",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "후보 원본: 한국산업단지공단 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본, 순번 166987. https://www.data.go.kr/data/15105482/fileData.do",
+    "공식 카탈로그 인쇄면 23쪽의 ASTM A307 제품군은 탄소강 볼트·스터드·나사봉이다. 14쪽의 볼트류 공정도에는 전기아연도금·용융아연도금·방청처리가 선택 가능한 처리로 함께 나온다.",
+    "볼트 제품군에 방청처리 목적이 있음을 간접 근거 STRONG으로 기록했다. 전기아연도금만의 처리 목적을 직접 적은 문장이 아니며 모든 ASTM A307 제품에 전기아연도금이 적용된다는 뜻도 아니다.",
+    "철탑 볼트 소개의 용융아연도금을 전기아연도금으로 바꾸어 적지 않았다. 특정 강종·제품의 처리 방법과 자체 도금 여부를 확인하기 전까지 최종 후보로 확정하지 않는다.",
+    "생산공정도의 존재만으로 외주 발주를 단정하지 않았다. 자체 표면처리가 확인되면 PM의 경쟁·내재화 제외 기준에 따라 후보에서 제외해야 한다.",
+    "공개 자료 열람일은 2026-10-22이다. 게시일·제품 사양 발생일을 확인하지 못한 근거의 occurredAt은 null이다. 파일명에 적힌 연도를 발생일로 만들지 않았다.",
+    "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 2026-10-22 대조했다. ZINC_PLATING의 FE 소재·CORROSION 성능 태그를 참조한다. 소개서 기준·거산 확인 전이며 해당 공정의 검수 상태는 PENDING이다. 개별 제품에 전기아연도금이 적용되는지는 별도 확인이 필요하며 가상 역량은 사용하지 않았다.",
+    "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 신호 없음(NO_SIGNAL)으로 단정하지 않았다.",
+    "공개 제품 사양은 거산에 대한 구매 요청서가 아니다. 요구 조건·필수 여부·필요 단계를 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
+  ],
+  "customer": {
+    "name": "(주)대우볼트",
+    "bizNumber": null,
+    "address": "충청남도 당진시 신평면 조비실길 16-8",
+    "identityBasis": "산단공 CSV 순번 166987의 회사명·공장주소·볼트 생산품을 공식 위치 안내 http://dwbolt.com/sub01/map.php 의 본사/공장 주소 및 공식 카탈로그의 당진공장 안내와 대조했다(2026-10-22 열람).",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "탄소강 볼트류의 전기아연도금 적용 조사",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "15105482-20251231-166987",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": "FE"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "Carbon Steel Bolts, Studs and Threaded Rod",
+      "sourceRef": "http://dwbolt.com/catalog/2022DWBcatalog.pdf (공식 카탈로그, 인쇄면 23쪽 ASTM A307 행, 게시일 미확인, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "Carbon Steel",
+      "sourceRef": "http://dwbolt.com/catalog/2022DWBcatalog.pdf (공식 카탈로그, 인쇄면 23쪽 ASTM A307 행, 게시일 미확인, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "전기아연도금",
+      "sourceRef": "http://dwbolt.com/catalog/2022DWBcatalog.pdf (공식 카탈로그, 인쇄면 14쪽 볼트류 일반 공정도, 게시일 미확인, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "방청처리 Anti-corrosion Treatment",
+      "sourceRef": "http://dwbolt.com/catalog/2022DWBcatalog.pdf (공식 카탈로그, 인쇄면 14쪽 볼트류 일반 공정도, 게시일 미확인, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "탄소강 볼트 생산품과 볼트류의 일반 도금 공정은 확인했다. 이 제품군의 전기아연도금 적용을 직접 연결하는 사양이 없어 판정은 보류했다.",
+      "evidenceRefs": [
+        0,
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 카탈로그의 ASTM A307 탄소강 제품군을 소개서 ZINC_PLATING의 materialCodes FE와 대조했다. 소재 분류 일치이며 개별 제품의 전기아연도금 적용이나 기술 사양 충족을 확인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ZINC_PLATING"}]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "소개서 ZINC_PLATING의 방위산업·자동차 부품 실적 항목을 확인했다. 이 탄소강 볼트 제품군의 납품 산업·유사 부품과 연결할 근거가 없고 부품 종류·기간도 비어 있어 미확보로 둔다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "볼트류 일반 공정도의 방청 목적을 소개서 ZINC_PLATING의 CORROSION 1개와 대조했다. 개별 제품·전기아연도금만의 직접 설명이 아니므로 STRONG이며 특정 품목의 처리 방법과 요구 성능은 확인 필요다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        3
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ZINC_PLATING"}]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "ASTM A307 탄소강 볼트 중 전기아연도금을 적용하는 제품이 있는가?",
+      "전기아연도금을 자체 처리하는지 외주로 발주하는지 확인할 수 있는가?",
+      "해당 제품의 도금 목적과 내식 성능을 명시한 개별 사양서가 있는가?"
+    ],
+    "allowedChannel": null,
+    "owner": null,
+    "canChangeClass": null,
+    "estimatedHours": null,
+    "maxHours": null
+  },
+  "expected": null
+}

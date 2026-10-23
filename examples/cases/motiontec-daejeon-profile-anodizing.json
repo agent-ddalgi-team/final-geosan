@@ -1,0 +1,224 @@
+{
+  "caseId": "motiontec-daejeon-profile-anodizing",
+  "baseDate": "2026-10-22",
+  "description": "#19 공개 자료 후보 — 모션텍. 알루미늄 프로파일 설계·제작과 회사가 연결한 취급 제품군 자료를 대조한 아노다이징 검토 후보다.",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "후보 원본: 한국산업단지공단 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본, 순번 61638. 생산품은 프로파일 장비제작·부스제작이다. 공식 취급 품목의 알루미늄을 확인해 산업용 알루미늄 프로파일 범위로 선정했다. https://www.data.go.kr/data/15105482/fileData.do",
+    "http://www.motiontec.co.kr/ 의 공개 프레임이 http://blog.yeogie.com/motiontec 를 회사 홈페이지 본문으로 연결한다. 회사가 사용하는 공식 홍보관이므로 B등급으로 분류했으며 일반 개인 블로그 설명을 근거로 쓰지 않았다.",
+    "회사 홍보관은 AL PROFILE 설계 제작과 알루미늄프로파일을 명시한다. 2014-10-16 취급 안내가 대영금속 제품 페이지를 직접 연결한다. 그 주소 http://www.dymetal.com/index.php?status=menu2&code=menu2_1&cate_num=9 는 열람 시 알트리온 사이트로 연결되며 공식 연혁 http://al-trion.com/bbs/board.php?bo_table=History 에 대영금속설립이 명시된다.",
+    "PURPOSE는 회사가 연결한 공급사의 산업재 PROFILE 제품군 설명에 있는 외관 근거다. 모션텍 개별 모델에 직접 적힌 목적이 아니므로 STRONG으로 한정했다. 공급사 홈페이지의 일반 피막 설명과 연결한 아노다이징도 제품군 수준의 검토 가설이며 현재 취급 모델의 적용 공정 확인이 아니다.",
+    "2014년 취급 안내와 현재 공급사 설명 사이의 기간 차이가 있다. 현재 공급 관계·모델별 소재·피막 사양은 재확인이 필요하다. 공급사의 피막 설비를 모션텍의 자체 설비라고 해석하지 않았고, 모션텍의 자체 표면처리·외주 수요·완제품 구매 여부는 미확인이다.",
+    "세광정공 플레어 너트 초안은 소재·처리 목적 근거가 부족해 이 후보로 교체했다. 과거 초안은 Git 이력에 남아 있다. 최종 6곳은 아연도금 2곳·아노다이징 4곳으로 권장 비율과 다르며 공개 근거를 우선했다.",
+    "2026-10-22 열람했다. 게시일을 모르는 회사·공급사 페이지는 occurredAt을 null로 두었고, 2014년 안내를 신규 시점 신호로 사용하지 않았다.",
+    "#17의 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 대조했다. ANODIZING의 AL 소재·APPEARANCE 1개만 참조한다. 소개서 검수 상태는 PENDING이고 개별 품목의 수탁 승인이나 실제 거래 관계 확인이 아니다.",
+    "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 납품실적·발주·필수 요구를 만들지 않았고 실제 기업 접촉이나 운영 DB 투입은 하지 않았다."
+  ],
+  "customer": {
+    "name": "(주)모션텍",
+    "bizNumber": null,
+    "address": "대전광역시 유성구 테크노1로 11-10 (관평동)",
+    "identityBasis": "산단공 CSV 순번 61638의 회사명·프로파일 장비제작을 공식 홈페이지 http://www.motiontec.co.kr/ 가 연결한 http://blog.yeogie.com/motiontec/intro 의 회사명·AL PROFILE 설계 제작과 대조했다(2026-10-22 열람). 주소는 CSV 공장주소다. 홍보관에는 대덕구 대화로 160의 매장 주소가 있어 두 주소를 동일 주소로 간주하지 않았으며 공장의 현재 운영 여부는 미확인이다.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "설계·제작용 알루미늄 프로파일(취급 제품군 기준)",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "15105482-20251231-61638",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": "AL"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "AL PROFILE 설계 제작",
+      "sourceRef": "http://blog.yeogie.com/motiontec/intro (공식 홈페이지가 연결한 회사 홍보관, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "알루미늄프로파일",
+      "sourceRef": "http://blog.yeogie.com/motiontec/intro (공식 홈페이지가 연결한 회사 홍보관, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "알루미늄프로파일 (주)대영금속 제품종류 바로가기",
+      "sourceRef": "http://blog.yeogie.com/motiontec/post/205?page=1&cate=004& (회사 취급 안내, 게시 2014-10-16, 2026-10-22 열람)",
+      "occurredAt": "2014-10-16",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "깨끗하고 미려한 외관",
+      "sourceRef": "http://al-trion.com/product/industry.php (회사 취급 안내가 연결한 공급사의 산업재 PROFILE 제품군 설명, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "일반 피막은 알루미늄 표면에 얇은 산화 알루미늄층을 형성하여 내식성과 장식성을 향상시키는 전해 처리 공정입니다.",
+      "sourceRef": "http://al-trion.com/ (연결된 공급사의 COATING 일반 피막 설명, 모션텍 개별 모델 사양 아님, 게시일 미표시, 2026-10-22 열람)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "공식 회사 홍보관의 AL PROFILE 설계 제작과 직접 연결한 공급사의 PROFILE·일반 피막 설명을 묶어 표면처리 검토 대상 제품군으로 간접 추정했다(STRONG). 개별 모델의 아노다이징 적용·현재 생산·외주 발주는 확인하지 않았다.",
+      "evidenceRefs": [
+        0,
+        2,
+        3,
+        4
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "모션텍 공식 취급 품목에 적힌 알루미늄프로파일을 소개서 ANODIZING의 AL 분류와 대조했다. 소재 분류 일치이며 합금·치수·피막 사양의 처리 가능 승인이 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "소개서 ANODIZING의 방위산업·항공우주 실적과 이 산업용 프로파일 제품군을 연결할 근거가 없어 미확보로 두었다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "회사 취급 안내가 연결한 공급사의 PROFILE 제품군 설명에서 외관 목적을 간접 추정해 APPEARANCE 1개와 대조했다(STRONG). 모션텍 개별 제품의 직접 목적은 미확인이고 내식·경도는 추가하지 않았다. 소개서 기준·거산 확인 전(PENDING).",
+      "evidenceRefs": [
+        2,
+        3,
+        4
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "산단공에 등록된 유성구 공장에서 현재도 알루미늄 프로파일 장비·부스를 제작하는가?",
+      "2014년 안내에 연결된 대영금속(현재 알트리온) 제품을 지금도 취급하며 대상 모델·합금·피막 사양을 확인할 수 있는가?",
+      "프로파일을 가공한 뒤 외관 목적의 아노다이징을 별도로 외주 발주하는가, 완성 프로파일을 구매·조립하는가?"
+    ],
+    "allowedChannel": null,
+    "owner": null,
+    "canChangeClass": null,
+    "estimatedHours": null,
+    "maxHours": null
+  },
+  "expected": null
+}
