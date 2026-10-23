@@ -144,6 +144,26 @@ class RequestBoundary:
             request_ref.reset(token)
 
 
+class ScreenFiles(StaticFiles):
+    """화면 주소는 React Router에 넘기고 API·파일의 404는 유지한다."""
+
+    async def get_response(self, path, scope):
+        parts = Path(path).parts
+        first = parts[0] if parts else ""
+        if first == "api":
+            raise HTTPException(status_code=404)
+        screen = first != "assets" and not Path(path).suffix
+        try:
+            response = await super().get_response(path, scope)
+        except HTTPException as error:
+            if error.status_code != 404 or not screen:
+                raise
+        else:
+            if response.status_code != 404 or not screen:
+                return response
+        return await super().get_response("index.html", scope)
+
+
 def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(title="거산 영업지원 API", docs_url=None, redoc_url=None, openapi_url=None)
@@ -181,5 +201,5 @@ def create_app() -> FastAPI:
         app.include_router(router, prefix="/api/v1")
     dist = Path(__file__).resolve().parents[2] / "web" / "dist"
     if dist.is_dir():
-        app.mount("/", StaticFiles(directory=dist, html=True), name="web")
+        app.mount("/", ScreenFiles(directory=dist, html=True), name="web")
     return app
