@@ -9,7 +9,16 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from geosan.capability.importer import import_capability
-from geosan.evaluation.models import EvaluationBatch, EvaluationRun, ItemJudgmentInput
+from geosan.evaluation.ledger import latest_full_batch
+from geosan.evaluation.models import (
+    EvaluationBatch,
+    EvaluationRun,
+    ItemJudgment,
+    ItemJudgmentInput,
+    JudgmentEvidence,
+    ReadinessCheck,
+    RequirementCheck,
+)
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
@@ -114,3 +123,64 @@ def test_engine_execution_error_is_not_replaced_with_fake_success(imported, monk
     result = flow.run_evaluation([imported])
     assert not result.ok and result.new_eval_ids == []
     _assert_failed_without_rows()
+
+
+@pytest.mark.parametrize("failed_step", ["save_evaluation", "upsert_question"])
+def test_second_opportunity_failure_preserves_previous_full_batch(
+    imported, tmp_path, monkeypatch, failed_step
+):
+    """Given 두 기회의 확정 평가 / When 두 번째 저장 실패 / Then 기존 결과·연결을 보존한다."""
+    second = import_case(
+        _write(tmp_path, "second.json", factories.apjeong_renamed_customer("second"))
+    )
+    baseline = flow.run_evaluation(base_date=date(2026, 10, 20))
+    assert baseline.ok and set(baseline.affected_opp_ids) == {imported, second.opp_id}
+    models = (
+        EvaluationRun,
+        ItemJudgment,
+        JudgmentEvidence,
+        RequirementCheck,
+        OppProcessLink,
+        ReadinessCheck,
+        ConfirmationQuestion,
+        QuestionOpportunityLink,
+    )
+
+    def stored_rows():
+        with session_scope() as session:
+            return {
+                model: session.execute(
+                    select(model.__table__).order_by(*model.__table__.primary_key)
+                ).all()
+                for model in models
+            }
+
+    before = stored_rows()
+    with session_scope() as session:
+        original_batch_id = latest_full_batch(session, dataset_kind="VIRTUAL_REVIEWED").batch_id
+    real_store = getattr(flow, failed_step)
+    calls = []
+
+    def fail_after_second_store(*args, **kwargs):
+        row = real_store(*args, **kwargs)
+        calls.append(row)
+        if len(calls) == 2:
+            raise RuntimeError("두 번째 기회의 가상 저장 실패")
+        return row
+
+    monkeypatch.setattr(flow, failed_step, fail_after_second_store)
+    result = flow.run_evaluation(base_date=date(2026, 10, 20))
+    assert not result.ok and result.error.status == 500
+    assert result.new_eval_ids == [] and result.affected_opp_ids == []
+    assert len(calls) == 2  # 앞선 저장도 실제로 수행하고, 실패한 저장을 재시도하지 않는다.
+    assert stored_rows() == before
+    with session_scope() as session:
+        batches = list(session.scalars(select(EvaluationBatch)))
+        assert len(batches) == 2
+        assert session.get(EvaluationBatch, original_batch_id).status == "CONFIRMED"
+        failed = next(row for row in batches if row.batch_id != original_batch_id)
+        assert failed.status == "FAILED" and failed.scope == "FULL"
+        assert (
+            latest_full_batch(session, dataset_kind="VIRTUAL_REVIEWED").batch_id
+            == original_batch_id
+        )

@@ -13,11 +13,19 @@ from geosan.capability.models import Process
 from geosan.config.errors import InputError, RunFailedError
 from geosan.config.registry import load_runtime_config, set_active_dataset_kind
 from geosan.evaluation.inputs import current_item_inputs, current_readiness_check
-from geosan.evaluation.models import ItemJudgmentInput
+from geosan.evaluation.models import ItemJudgmentInput, ReadinessCheck
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.importer import check_case, import_case
-from geosan.opportunity.models import Customer, Interaction, Opportunity, Requirement
+from geosan.opportunity.models import (
+    Customer,
+    DiscoveryPath,
+    Interaction,
+    Opportunity,
+    OppProcessLink,
+    Requirement,
+    Signal,
+)
 from geosan.opportunity.queries import (
     list_discovery_paths,
     list_linked_interactions,
@@ -227,3 +235,69 @@ def test_late_storage_failure_rolls_back_all_case_parts(case_env, monkeypatch):
         for model in (Customer, Opportunity, Requirement, Evidence, ItemJudgmentInput):
             assert session.scalar(select(func.count()).select_from(model)) == 0
         assert session.scalar(select(func.count()).select_from(Process)) == 9
+
+
+@pytest.mark.parametrize("failed_step", ["store_inputs", "store_research"])
+def test_failed_reimport_preserves_existing_values_and_history(case_env, monkeypatch, failed_step):
+    """Given 재투입 이력이 있는 사례 / When 재투입 중 저장 실패 / Then 기존 값·이력을 보존한다."""
+    import geosan.opportunity.importer as importer
+
+    data = factories.apjeong_case()
+    data["researchReadiness"] = dict(
+        questionSet=["가상 공정 범위 확인"],
+        allowedChannel="공개 자료",
+        owner="park-lee",
+        canChangeClass=True,
+        estimatedHours=1.0,
+    )
+    original = import_case(_write(case_env, data))
+    import_case(_write(case_env, data))
+    models = (
+        Customer,
+        Opportunity,
+        DiscoveryPath,
+        OppProcessLink,
+        Requirement,
+        Signal,
+        Interaction,
+        Evidence,
+        ItemJudgmentInput,
+        ReadinessCheck,
+        ResearchTask,
+    )
+
+    def stored_rows():
+        with session_scope() as session:
+            return {
+                model: session.execute(
+                    select(model.__table__).order_by(*model.__table__.primary_key)
+                ).all()
+                for model in models
+            }
+
+    before = stored_rows()
+    data["customer"]["relationStatus"] = "UNCONFIRMED"
+    data["customer"]["relationConfirmedAt"] = None
+    data["opportunity"]["project"] = "실패하면 남으면 안 되는 가상 프로젝트"
+    data["evidence"][0]["quote"] = "실패하면 남으면 안 되는 가상 근거"
+    data["researchReadiness"]["questionSet"] = ["실패하면 남으면 안 되는 가상 질문"]
+    real_store = getattr(importer, failed_step)
+    calls = []
+
+    def fail_after_store(session, *args, **kwargs):
+        real_store(session, *args, **kwargs)
+        session.flush()
+        calls.append(failed_step)
+        raise IntegrityError("test", {}, Exception("가상 재투입 저장 실패"))
+
+    with monkeypatch.context() as patch:
+        patch.setattr(importer, failed_step, fail_after_store)
+        with pytest.raises(RunFailedError):
+            import_case(_write(case_env, data))
+
+    assert calls == [failed_step]  # 저장 실패를 자동 재시도하지 않는다(ADR-009).
+    assert stored_rows() == before
+    recovered = import_case(_write(case_env, data))
+    assert recovered.opp_id == original.opp_id
+    with session_scope() as session:
+        assert {row.version for row in current_item_inputs(session, original.opp_id)} == {3}
