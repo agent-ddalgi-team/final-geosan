@@ -1,0 +1,317 @@
+{
+  "caseId": "smtech-asan-aero-parts-anodizing",
+  "baseDate": null,
+  "description": "[거산 확인 전·소재는 티타늄만 확인] 에스엠테크(아산 둔포) 항공우주·방산 정밀가공 부품(유공압·밸브류) 아노다이징 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보(PM 몫, 이슈 #22). 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다. 공개 홈페이지 http://www.sm-tech2003.com 본문(회사소개·장비현황·연혁·공지사항)만 근거로 썼고 연락처·담당자 이름은 옮기지 않았다. 공개 자료 열람일 2026-10-23. AI 도구가 초안을 적고 PM이 검토했으므로 evidence.isLlmProposed는 true다.",
+    "산단공 전국등록공장현황(2025-12-31 기준) 순번 163626은 아산시 둔포면 봉신로 278-23, 생산품 '항공기용유공압관련부품및LCD장비부품'이고, 순번 159261은 같은 상호의 천안시 서북구 성환읍 율금1길 98, 생산품 'GAV 플레이트'다. 홈페이지 회사개요의 1공장(아산 둔포면 봉신로 278-23)·2공장(천안 성환읍 율금1길 98) 주소와 모두 일치한다. 사업자등록번호는 홈페이지 하단에 공개돼 있어 적었다.",
+    "왜 아노다이징 후보인가: 항공우주·방산·유공압 부품을 5축 MCT로 정밀가공하는 회사이고, 홈페이지 장비현황(머시닝센터·선반·호리젠탈·5축가공기·계측장비)에 표면처리 설비가 없다. 항공·방산 가공 부품은 보통 표면처리를 거치므로 외주 가능성이 있으나, 홈페이지가 표면처리를 직접 언급하지 않아 NEW_PRODUCT는 강한 추정(STRONG)으로 두었다.",
+    "소재: 회사소개에 '티타늄, 인코넬 등 난삭재 가공 기술'만 적혀 있다. 티타늄(TI)은 소개서 아노다이징 처리 소재 목록에 있지만, 알루미늄 부품 비중은 공개 자료에 없어 NEW_MATERIAL은 '일부 가능'(0.5)·강한 추정으로 두었고 processLinks.appliedMaterial은 비웠다. 제품소개 게시판은 사진만 있고 글이 없어 품목별 소재를 읽을 수 없었다. 거산 확인 질문으로 남겼다.",
+    "납품 실적 대조: 항공우주·방산 부품 전문(KUH 수리온·KF-21·LAH·KSLV 핵심 부품, KAI 협력업체 2025-06 등록, ㈜한화 천안공장 협력업체 2003-07 등록)이라 거산 소개서 ANODIZING 실적 산업 '방위산업'·'항공우주' 둘과 같은 산업이다. 동일 부품인지는 확인 전이라 '동일 산업'(0.67)으로 두었다.",
+    "시점 신호는 공지사항 게시일 기준이다. 증설: 2023-09-06 제2공장(천안 성환, GAV 전용 스마트 공장) 준공 공지, 2026-03-13 '26년 12월 천안 성환읍으로 사옥 이전 계획' 공지(회사개요에는 '2026년 12월 1,2공장 통합 이전 예정'). 사업 확대: 2026-03-13 전략기획본부 신설(드론·무인체계 전략 사업), 2026-05-20 ㈜포스와 단파장 적외선 렌즈 개발 MOU. 아노다이징 수요와 직접 연결된 문구는 없어 모두 간접 관련(INDIRECT)으로 두었다. 2026-12 이전 예정일은 월만 있어 scheduledAt을 2026-12-01로 적었다.",
+    "인증·지정(연혁·인증현황): AS9100 Rev.D·ISO 9001:2015(2024-11 LRQA 전환), 뿌리기술 전문기업(2025-04-28), 충남국방벤처센터 협약기업(2025-05-21), 기술혁신형 기업(Inno-Biz), 한국우주항공산업협회 정회원(2026-02-27). 거산에 요구하는 인증은 공개 자료에 없어 requirements는 비웠다. 항공 부품 표면처리는 고객(KAI·한화 등) 승인 공정이 필요할 수 있어 질문으로 남겼다.",
+    "홈페이지에 입찰·협력사 모집 글이 없고 채용 메뉴도 없어 SIG_BID·SIG_HIRE는 신호 없음이다. 채용 공고 사이트는 근거로 쓰지 않는다(CON-08). 처리 목적(내식·외관·경도)은 공개 자료에 없어 NEW_PERF는 미확보다.",
+    "실제 소개서 묶음 examples/capability-geosan-brochure.json의 ANODIZING 공정·실적 산업(방위산업, 항공우주)과 대조했다. 소개서 기준·거산 확인 전이며 검수 PENDING을 처리 승인으로 해석하지 않는다."
+  ],
+  "customer": {
+    "name": "(주)에스엠테크",
+    "bizNumber": "3128186012",
+    "address": "충청남도 아산시 둔포면 봉신로 278-23",
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 순번 163626(아산 둔포면 봉신로 278-23, 항공기용유공압관련부품및LCD장비부품)과 순번 159261(천안 성환읍 율금1길 98, GAV 플레이트)로 발굴했다. 원본 https://www.data.go.kr/data/15105482/fileData.do . 공식 홈페이지 http://www.sm-tech2003.com 회사개요의 1공장·2공장 주소, 사업자등록번호와 일치한다. 같은 이름의 다른 지역 회사(인천·대전·구미 등)와는 주소로 구분했다. 확인일 2026-10-23.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "항공우주·방산 정밀가공 부품(유공압·밸브류) 아노다이징 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:163626",
+      "discoveredAt": "2026-10-23"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": null
+    }
+  ],
+  "requirements": [],
+  "signals": [
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2023-09-06",
+      "announcedAt": "2023-09-06",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": "DONE",
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    },
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2026-03-13",
+      "announcedAt": "2026-03-13",
+      "scheduledAt": "2026-12-01",
+      "deadlineAt": null,
+      "progressStatus": "OPEN",
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    },
+    {
+      "signalKind": "NEW_ORDER",
+      "occurredAt": "2026-05-20",
+      "announcedAt": "2026-05-20",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": "OPEN",
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    },
+    {
+      "signalKind": "NEW_ORDER",
+      "occurredAt": "2026-03-13",
+      "announcedAt": "2026-03-13",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": "OPEN",
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    }
+  ],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "㈜에스엠테크는 항공우주 부품, 방산 부품, 유·공압 부품 및 선박용 정밀밸브 등을 가공 제조하는 정밀부품 가공 전문 기업입니다. 2003년 2월 설립 이후 품질과 기술 경쟁력을 바탕으로 지속적인 기술 개발과 생산 혁신을 통해 성장해 왔습니다.",
+      "sourceRef": "에스엠테크 홈페이지 회사소개 http://www.sm-tech2003.com/bbs/content.php?co_id=ceo",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "고정밀 항공우주 부품, 방산부품, 유공압 부품 등 가공 제조 전문 (주)에스엠테크 ... 사업분야 항공우주, 방산, 유공압, 선박 사업 등",
+      "sourceRef": "에스엠테크 홈페이지 경영전략·회사개요 http://www.sm-tech2003.com/bbs/content.php?co_id=company",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "5축 MCT 기반의 초정밀 가공기술과 티타늄, 인코넬 등 난삭재 가공 기술을 보유하고 있으며, AS9100·ISO9001 품질경영시스템과 첨단 검사 장비를 기반으로",
+      "sourceRef": "에스엠테크 홈페이지 회사소개 http://www.sm-tech2003.com/bbs/content.php?co_id=ceo",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "장비현황 머시닝센터 선반 호리젠탈 5측가공기 계측장비 ... Vertical MCT 13대, CNC 선반 11대, Horizontal MCT 3대, 5축 설비 7대, 3차원 측정기 4대 (표면처리 설비는 목록에 없음)",
+      "sourceRef": "에스엠테크 홈페이지 장비현황 http://www.sm-tech2003.com/bbs/content.php?co_id=equ01 ~ eq05",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "항공기 및 방산 핵심 부품의 정밀 가공 기술 개발과 양산 안정화에 기여하며 KUH 수리온, KF-21 한국형 전투기, LAH 소형무장헬기, 한국형발사체(KSLV) 등 다양한 국가 전략 산업 분야의 핵심 부품 생산 안정화에 중요한 역할을 수행해 왔습니다.",
+      "sourceRef": "에스엠테크 홈페이지 공지사항 2025-12-17 http://www.sm-tech2003.com/bbs/board.php?bo_table=notice&wr_id=12",
+      "occurredAt": "2025-12-17",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "2025 6 KAI(한국항공우주산업) 협력업체 등록 5 충남국방벤처센터 협약기업 지정 4 뿌리기술전문기업 지정 2024 11 AS9100 Rev.D, ISO9001:2015 LRQA 인증 전환 ... 2003 07 ㈜한화 천안공장 협력업체 등록 02 에스엠테크 설립",
+      "sourceRef": "에스엠테크 홈페이지 연혁 http://www.sm-tech2003.com/bbs/board.php?bo_table=history",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "당 사는 23년 9월 천안시 서북구 성환읍 율금1길 98번지에 제 2공장을 준공 하였습니다. 주요 생산 품목은 ① 항공/우주사업 조립체 제조 / ② 선박 발전/추진용 엔진 Gas Valve 제조 ☞ GAV(Gas admission Valve) 제조 전용공정은 로봇을 이용한 자동화 시스템을 구축한 스마트 공장입니다.",
+      "sourceRef": "에스엠테크 홈페이지 공지사항 2023-09-06 http://www.sm-tech2003.com/bbs/board.php?bo_table=notice&wr_id=11",
+      "occurredAt": "2023-09-06",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "당사는 사업 확장과 지속적인 성장 기반 마련을 위해 26년도 12월 천안시 서북구 성환읍 율금리 일대로 사옥 이전을 계획하고 있습니다. (회사개요: 2026년 12월 1,2공장 통합 이전 예정)",
+      "sourceRef": "에스엠테크 홈페이지 공지사항 2026-03-13 http://www.sm-tech2003.com/bbs/board.php?bo_table=notice&wr_id=6",
+      "occurredAt": "2026-03-13",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "(주)에스엠테크는 5월 20일 (주)포스와 단파장 적외선(SWIR, Short Wave Infrared) 단초점 렌즈 개발을 위한 양해각서(MOU)를 체결하였습니다. ... 차세대 광학 시스템 개발 경쟁력을 강화하고, 관련 기술의 사업화 및 신규 시장 확대를 위해 적극 협력",
+      "sourceRef": "에스엠테크 홈페이지 공지사항 2026-05-20 http://www.sm-tech2003.com/bbs/board.php?bo_table=notice&wr_id=16",
+      "occurredAt": "2026-05-20",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "미래 성장동력 확보를 위해 드론 및 무인체계 분야를 전략 사업으로 선정하여 관련 기술 개발과 사업화를 적극 추진하고 있습니다. 드론 발사 시스템, 운용 장비 등 국방 및 산업 분야에서 활용 가능한 다양한 무인체계 기술을 개발",
+      "sourceRef": "에스엠테크 홈페이지 공지사항 2026-03-13 전략기획본부 신설 http://www.sm-tech2003.com/bbs/board.php?bo_table=notice&wr_id=5",
+      "occurredAt": "2026-03-13",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "당 사는 지난 26년 2월 27일 한국우주항공산업협회 정기총회에서 정회원 가입 승인을 받았습니다.",
+      "sourceRef": "에스엠테크 홈페이지 공지사항 2026-02-27 http://www.sm-tech2003.com/bbs/board.php?bo_table=notice&wr_id=14",
+      "occurredAt": "2026-02-27",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "항공우주·방산·유공압 부품과 선박용 정밀밸브를 5축 MCT로 가공하는 정밀부품 회사이고, 장비현황에 가공·계측 설비만 있고 표면처리 설비가 없다. 항공·방산 가공 부품은 보통 표면처리를 거치므로 외주 가능성이 있으나 홈페이지가 표면처리를 직접 언급하지 않아 강한 추정(해당 1.0, STRONG)으로 둠.",
+      "evidenceRefs": [0, 1, 3, 4],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "일부 가능",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "회사소개에 '티타늄, 인코넬 등 난삭재 가공'만 명시. 티타늄은 소개서 ANODIZING 처리 소재(AL, MG, ZN, TI, HF, NB)에 있으나 알루미늄 부품 비중은 공개 자료에 없고 인코넬은 대상이 아님 — 일부 가능(0.5), 간접 근거라 강한 추정. 품목별 소재는 거산 확인 질문.",
+      "evidenceRefs": [2],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ANODIZING" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": "동일 산업",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "항공우주·방산 부품 전문(KUH 수리온·KF-21·LAH·KSLV 핵심 부품, KAI 협력업체, ㈜한화 천안공장 협력업체)으로 거산 소개서 ANODIZING 실적 산업 '방위산업'·'항공우주'와 같은 산업 — 동일 산업(0.67, 확인). 동일 부품 여부는 확인 전.",
+      "evidenceRefs": [0, 1, 4, 5],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "DELIVERY_RECORD", "processCode": "ANODIZING", "industry": "방위산업" },
+        { "kind": "DELIVERY_RECORD", "processCode": "ANODIZING", "industry": "항공우주" }
+      ]
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 표면처리 목적(내식·외관·경도)이나 피막 사양이 공개 자료에 없다. 다음 할 일: 항공·방산 부품의 아노다이징 요구 사양(피막 종류·두께·봉공·고객 승인 공정 여부)을 확인한다. 불일치로 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2023-09-06 제2공장(천안 성환, 항공·우주 조립체 및 GAV 전용 스마트 공장) 준공 공지, 2026-03-13 '26년 12월 천안 성환으로 사옥 이전·1,2공장 통합 이전 예정' 공지 — 공장 증설·통합이 확인되나 아노다이징 수요와 직접 연결된 문구는 없어 간접 관련(0.5, 확인).",
+      "evidenceRefs": [6, 7],
+      "signalRefs": [0, 1],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2026-05-20 ㈜포스와 단파장 적외선 렌즈 개발 MOU(신규 시장 확대), 2026-03-13 전략기획본부 신설과 드론·무인체계 전략 사업 선정 — 사업 확대 신호이나 표면처리 물량과 직접 연결되지 않아 간접 관련(0.5, 확인). 2026-02-27 한국우주항공산업협회 정회원 가입은 보조 근거.",
+      "evidenceRefs": [8, 9, 10],
+      "signalRefs": [2, 3],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "홈페이지 공지사항에 입찰·협력사 모집·구매 공고 없음 (확인일 2026-10-23)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "홈페이지에 채용 안내·공고 메뉴 없음 (확인일 2026-10-23). 채용 공고 사이트는 근거로 쓰지 않는다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "가공 부품의 표면처리(아노다이징·크로메이트·도금 등)는 어디에 맡기는가? 장비현황에 표면처리 설비가 없는데 외주라면 현재 거래 중인 업체와 사양은 무엇인가?",
+      "항공우주·방산·유공압 부품 중 알루미늄 소재 비중은 얼마이며, 티타늄 부품에도 아노다이징을 적용하는가?",
+      "항공·방산 부품 표면처리는 KAI·한화 등 고객의 특수공정 승인(예: Nadcap, 고객 공정 승인)이 필요한가? 거산이 그 승인을 받을 수 있는가?",
+      "요구 피막 사양(종류·두께·봉공·색상·염수분무 시간)은 무엇인가?",
+      "2026년 12월 천안 성환으로 1,2공장 통합 이전 뒤 생산량·외주 물량 변화 계획이 있는가?",
+      "단파장 적외선 렌즈 개발(2026-05 MOU)과 드론·무인체계 사업에서 알루미늄 경통·하우징 아노다이징 수요가 생기는가?"
+    ]
+  },
+  "expected": null
+}

@@ -1,0 +1,250 @@
+{
+  "caseId": "jungjin-cheonan-aero-parts-anodizing",
+  "baseDate": null,
+  "description": "[거산 확인 전·표면처리 외주 여부 미확인] 정진에어로스페이스(천안 직산) 항공우주·방산·반도체 장비 알루미늄 가공 부품 아노다이징 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보(PM 몫, 이슈 #22). 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다. 공개 홈페이지 https://jungjinaerospace.com 본문만 근거로 썼고 연락처·대표자 이름은 옮기지 않았다. 공개 자료 열람일 2026-10-23.",
+    "홈페이지는 스크립트로 본문을 그리는 방식이라 AI 도구가 읽은 것은 제품소개·설비현황·사업소개 머리글·주소뿐이다. '가공소재' 페이지의 알루미늄 표기와 '회사연혁' 페이지(1991~2024)는 PM(최지예)이 2026-10-23 브라우저로 직접 확인해 옮긴 문구라 그 근거는 isLlmProposed=false다. 주요 고객사·인증서·업무흐름도 페이지는 읽지 못했다.",
+    "연혁(PM 확인): 1991 군포에서 산업용 기계 부품 가공으로 설립, 2011 5축 가공기 도입·KT-1 부품 개발·한화에어로스페이스 협력업체 등록, 2013 T/FA-50·A350 부품 개발, 2014 수리온 주요 부품 생산, 2016 천안 제4산업단지로 확장 이전·한국형 발사체 부품 개발 참여·반도체 설비 부품 제조·영광YKMC(램리서치) 협력업체 등록, 2017 A320 엔진 부품(GE), 2018 CH-53K 부품·지씨엠(어플라이드 머티리얼즈) 협력업체 등록, 2019 KF-21 부품 개발(150여 종), 2022 ㈜정진에어로스페이스 법인 설립, 2023 KSLV 배관조합체 생산, 2024 무인기(MUAV) 부품 개발 참여(40여 종). 모두 연도만 있고 월·일이 없어 signals에는 넣지 않았고 SIG_EXPAND·SIG_ORDER는 미확보로 두었다. 2001년 인증은 연혁 이미지에 'ISO 9001/9002/14001/2004'로 적혀 규격·연도 구분이 불명확해 인용만 하고 요구·인증 판정에는 쓰지 않았다.",
+    "산단공 전국등록공장현황(2025-12-31 기준) 순번 160602는 상호 '정진', 천안제4일반산업단지, 생산품 '항공기 부품 등', 주소 천안시 서북구 직산읍 4산단5길 25-1 C동 101호 외 1이다. 홈페이지 하단 주소 '충남 천안시 서북구 직산읍 4산단5길 25-1'과 일치하고, 연혁의 2016 천안 제4산업단지 확장 이전·2022 법인 설립으로 보아 등록 상호 '정진'은 법인 전환 전 이름으로 판단했다. 법인명 일치는 거산 확인 전이다. 사업자번호는 홈페이지에 없어 비웠다.",
+    "왜 아노다이징 후보인가: 가공소재가 알루미늄이고, 제품이 KF-21·수리온·A350·KSLV-Ⅱ 구성품(BEARING HOUSING·SLEEVE BEARING·LOCK NUT·STOP PIN 등), 유도무기 구성품, 어플라이드 머티리얼즈·램 리서치 반도체 장비 부품이다. 이런 알루미늄 가공 부품은 보통 아노다이징 등 표면처리를 거친다. 설비현황에는 5축·3축 MCT, CNC 선반, 품질 측정 기계만 있고 표면처리 설비가 없어 외주 가능성이 있으나, '외주한다'는 문장은 없어 NEW_PRODUCT는 강한 추정(STRONG)으로 두었다.",
+    "납품 실적 대조: 항공우주·방위산업 부품이 주력이라 거산 소개서 ANODIZING 실적 산업 '방위산업'·'항공우주' 둘과 같은 산업이다. 동일 부품인지는 확인 전이라 '동일 산업'(0.67)으로 두었다. 반도체 장비 부품은 소개서 아노다이징 실적 산업에 없어 대조하지 않았다.",
+    "시점 신호: 연혁에 2016 천안 확장 이전(증설), 2023 KSLV 배관조합체 생산·2024 MUAV 부품 개발 참여(사업 확대)가 있으나 연도만 있어 발생일을 확보하지 못했다. 홈페이지에 공지·입찰 게시판이 없고 채용안내 페이지는 안내 문구만 있어 SIG_BID·SIG_HIRE는 신호 없음, SIG_EXPAND·SIG_ORDER는 미확보다. 2016 증설은 날짜가 확인돼도 오래되어 거의 반영되지 않는다. 채용 공고 사이트는 근거로 쓰지 않는다(CON-08).",
+    "처리 목적(내식·외관·경도)과 피막 사양은 공개 자료에 없어 NEW_PERF는 미확보다. 항공 부품 표면처리는 고객(KAI·한화 등) 특수공정 승인이 필요할 수 있어 질문으로 남겼다.",
+    "실제 소개서 묶음 examples/capability-geosan-brochure.json의 ANODIZING 공정·소재 AL·실적 산업(방위산업, 항공우주)과 대조했다. 소개서 기준·거산 확인 전이며 검수 PENDING을 처리 승인으로 해석하지 않는다."
+  ],
+  "customer": {
+    "name": "(주)정진에어로스페이스",
+    "bizNumber": null,
+    "address": "충청남도 천안시 서북구 직산읍 4산단5길 25-1",
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 순번 160602(상호 '정진', 천안제4일반산업단지, 항공기 부품 등, 직산읍 4산단5길 25-1 C동 101호 외 1)로 발굴했다. 원본 https://www.data.go.kr/data/15105482/fileData.do . 공식 홈페이지 https://jungjinaerospace.com 하단 주소 '충남 천안시 서북구 직산읍 4산단5길 25-1'과 일치한다. 등록 상호와 법인명의 일치는 거산 확인 전이다. 확인일 2026-10-23.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "항공우주·방산·반도체 장비용 알루미늄 가공 부품 아노다이징 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:160602",
+      "discoveredAt": "2026-10-23"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": "AL"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "항공우주산업 부품 Products for Aerospace 방산비행모듈 KT-1, T/FA-50, F-15K, KF-21 등의 전투기 구성품 개발 (270여종) ... 헬기 KUH-1(수리온)과 LAH, CH-53K의 구성품 개발 (110여종) ... 여객기 AIRBUS사의 A350/A320, BOEING사의 B747 등의 항공기 구성품 개발 (100여종) 개발부품 BEARING HOUSING / SLEEVE BEARING / LOCK NUT / STOP PIN 등 한국형발사체(KSLV-Ⅱ) 한국형 우주발사체 구성품 개발 (480여종)",
+      "sourceRef": "정진에어로스페이스 홈페이지 제품소개 https://jungjinaerospace.com/products",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "방위산업 부품 Products for Defense 유도무기 자주포 / 지대공미사일 / 순항미사일 / 함대함 등의 유도무기 구성품 개발",
+      "sourceRef": "정진에어로스페이스 홈페이지 제품소개 https://jungjinaerospace.com/products",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "반도체장비 부품 Products for Semiconductor Equipment 반도체 장비 어플라이드 머티리얼즈사(Applied Materials Corp.) 및 램 리서치사(Lam Research Corp.)의 반도체 장비 부품",
+      "sourceRef": "정진에어로스페이스 홈페이지 제품소개 https://jungjinaerospace.com/products",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "가공소재: 알루미늄 (Aluminum)",
+      "sourceRef": "정진에어로스페이스 홈페이지 사업소개 > 가공소재 https://jungjinaerospace.com/business (본문이 스크립트로 열려 PM이 2026-10-23 브라우저로 직접 확인한 표기)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "설비현황 FACILITIES 정기적인 정비, 보수 작업과 지속적인 최신기계 도입을 통해 보다 더 향상된 품질을 추구합니다 5축 3축 MCT / CNC 선반 품질 측정 기계",
+      "sourceRef": "정진에어로스페이스 홈페이지 설비현황 https://jungjinaerospace.com/38 (표면처리 설비는 목록에 없음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "정진에어로스페이스는 좋은 설비로 30년 이상 기술에 대한 이해도를 향상시켜왔습니다",
+      "sourceRef": "정진에어로스페이스 홈페이지 사업소개 https://jungjinaerospace.com/business",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "오랜시간 축적된 기술과 노하우로 다품종소량생산 시대에 맞추어 고객의 니즈를 만족시켜드리겠습니다",
+      "sourceRef": "정진에어로스페이스 홈페이지 제품소개 https://jungjinaerospace.com/products",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2016 충청남도 천안시 제4산업단지로 확장 이전. 한국형 발사체 부품 개발 참여 및 반도체 설비 주요 부품 제조. 영광YKMC(램리서치) 협력업체 등록 ... 2022 ㈜정진에어로스페이스 법인 설립 2023 한국형 발사체(KSLV) 배관조합체 생산 2024 무인기(MUAV) 부품 개발 참여(40여 종)",
+      "sourceRef": "정진에어로스페이스 홈페이지 회사소개 > 회사연혁 https://jungjinaerospace.com/introduction (본문이 스크립트로 열려 PM이 2026-10-23 브라우저로 직접 확인, 연도만 있음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "OTHER",
+      "quote": "2011 국내 공장에 5축 가공기 도입. KT-1 일부 부품 개발. 한화에어로스페이스·한국로스트왁스 협력업체 등록 2013 T/FA-50 훈련기 주요 부품 및 A350 부품 개발 2014 수리온 주요 부품 생산 ... 2018 CH-53K 주요 부품 개발 참여. 지씨엠(어플라이드 머티리얼즈) 협력업체 등록 2019 KF-21 부품 개발 참여(150여 종)",
+      "sourceRef": "정진에어로스페이스 홈페이지 회사소개 > 회사연혁 https://jungjinaerospace.com/introduction (PM 직접 확인, 연도만 있음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "항공우주(베어링 하우징·슬리브 베어링·록 너트 등)·방산·반도체 장비용 알루미늄 가공 부품을 5축·3축 MCT로 만들고, 설비현황에 가공·측정 설비만 있고 표면처리 설비가 없다. 이런 부품은 보통 아노다이징 등 표면처리를 거치므로 외주 가능성이 있으나 홈페이지가 표면처리를 직접 언급하지 않아 강한 추정(해당 1.0, STRONG)으로 둠.",
+      "evidenceRefs": [0, 1, 2, 3, 4],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "가공소재 페이지에 '알루미늄 (Aluminum)' 명시(PM 직접 확인) — 소개서 ANODIZING 처리 소재 AL과 정확히 일치 (1.0, 확인). 합금 종류(6061·7075 등)는 적혀 있지 않아 거산 확인 질문.",
+      "evidenceRefs": [3],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ANODIZING" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": "동일 산업",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "항공우주(KF-21·수리온·A350·KSLV-Ⅱ 구성품)·방위산업(유도무기 구성품) 부품이 주력이고 연혁에 한화에어로스페이스 협력업체 등록(2011)·수리온 주요 부품 생산(2014)이 있음 — 거산 소개서 ANODIZING 실적 산업 '방위산업'·'항공우주'와 같은 산업 (동일 산업 0.67, 확인). 동일 부품 여부는 확인 전.",
+      "evidenceRefs": [0, 1, 8],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "DELIVERY_RECORD", "processCode": "ANODIZING", "industry": "방위산업" },
+        { "kind": "DELIVERY_RECORD", "processCode": "ANODIZING", "industry": "항공우주" }
+      ]
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 표면처리 목적(내식·외관·경도)과 피막 사양이 공개 자료에 없다. 다음 할 일: 항공·방산 부품의 아노다이징 요구 사양(피막 종류·두께·봉공·고객 승인 공정)을 확인한다. 불일치로 확정한 것은 아니다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 연혁에 2016 천안 제4산업단지 확장 이전이 있으나 연도만 있고 월·일이 없어 발생일을 확보하지 못했다. 날짜가 확인돼도 오래되어 거의 반영되지 않는다. 다음 할 일: 최근 설비 도입·증설 계획을 묻는다.",
+      "evidenceRefs": [7],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 연혁에 2023 KSLV 배관조합체 생산, 2024 무인기(MUAV) 부품 개발 참여(40여 종) 같은 사업 확대가 있으나 연도만 있어 발생일을 확보하지 못했다. 다음 할 일: 2024 MUAV 부품 개발의 시작 시점과 양산 전환 여부를 확인한다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [0, 7],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "홈페이지에 공지·입찰·협력사 모집 게시판 없음 (확인일 2026-10-23)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "채용안내 페이지는 '언제나 좋은 인재를 기다리고 있습니다' 안내 문구만 있고 직무 공고 없음 (확인일 2026-10-23). 채용 공고 사이트는 근거로 쓰지 않는다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "알루미늄 가공 부품의 아노다이징·크로메이트 등 표면처리는 어디에 맡기는가? 설비현황에 표면처리 설비가 없는데 외주라면 현재 거래 업체와 사양은 무엇인가?",
+      "주로 쓰는 알루미늄 합금(6061·7075 등)과 월 물량은 어느 정도인가?",
+      "항공·방산 부품 표면처리는 KAI·한화 등 고객의 특수공정 승인(Nadcap 등)이 필요한가? 거산이 그 승인을 받을 수 있는가?",
+      "반도체 장비 부품(어플라이드 머티리얼즈·램 리서치)에도 아노다이징이 들어가는가? 들어가면 요구 피막 사양은 무엇인가?",
+      "2024년 무인기(MUAV) 부품 개발(40여 종)은 언제 시작했고 양산으로 넘어가는가? 그 부품에 아노다이징이 들어가는가?",
+      "산단공 등록 상호 '정진'은 2022년 법인 설립 전 이름인가(같은 회사인가)?"
+    ]
+  },
+  "expected": null
+}
