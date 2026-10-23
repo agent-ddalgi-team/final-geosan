@@ -1,0 +1,280 @@
+{
+  "caseId": "shinjin-cheonan-bolt-zinc",
+  "baseDate": null,
+  "description": "[거산 확인 전·도금 외주 여부 미확인] 신진화스너공업 천안공장의 철계 육각볼트·스터드(ISO898 8.8/10.9/12.9) 전기아연도금 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보(PM 몫, 이슈 #22). 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다. 공개 홈페이지 https://www.shinjinfasteners.co.kr 본문만 근거로 썼고 연락처는 옮기지 않았다. 공개 자료 열람일 2026-10-23. AI 도구가 초안을 적고 PM이 검토했으므로 evidence.isLlmProposed는 true다.",
+    "산단공 전국등록공장현황(2025-12-31 기준) 순번 158061은 천안시 동남구 성남면 용원4길 87-2, 생산품 '볼트, 너트, 냉간단조'다. 홈페이지 하단 '본사 충남 천안시 동남구 용원4길 87-2'와 일치한다. 같은 상호의 순번 93900(시흥매화일반산업단지, 볼트·너트)은 홈페이지 '지점 경기도 시흥시 매화산단로' 안내와 맞으며, 연혁 2023 '국내영업 및 물류센터 확장 이전_시흥시 매화동'으로 보아 시흥은 영업·물류 거점이다. 생산은 천안공장으로 판단했다.",
+    "도금 수요 근거: 사업 소개 페이지에 '열처리, 표면처리(도금), 포장 등 고객 맞춤형 서비스', 생산공정 페이지에 Step 05 표면처리, 기술서비스 페이지에 '표면 처리 옵션 용도별 코팅 및 마감'이 있다. 다만 어떤 도금(전기아연·용융아연·다크로 등)인지, 자체 설비인지 외주인지는 적혀 있지 않다.",
+    "외주 가능성 판단: '검사 및 실험 장비' 페이지에는 인장·축력·충격·경도 시험기와 X-RAY 코팅두께 측정기(ISO 4042 등)만 있고 도금 라인이 없다. 생산설비 소개(핵심역량)도 냉간·열간 단조 설비만 적었다. 도금을 외주하고 두께만 검사할 가능성이 있으나, 설비를 모두 공개하지 않았을 수도 있어 확인 질문으로 남겼다.",
+    "소재: 육각볼트·스터드 제품 페이지에 ISO898 8.8/10.9/12.9, SAE J429 Gr.5/Gr.8, ASTM A193 B7(철계 탄소강·합금강)과 ISO3506 A2/A4, ASTM A193 B8/B8M(스테인리스)이 함께 있다. 회사개요는 '스테인리스 스틸 화스너 전문'과 A286·17-4PH·Inconel718 특수강을 앞세운다. 이 파일은 철계 제품의 아연도금 기회만 다루며, 스테인리스·특수강 물량은 아연도금 대상이 아닐 수 있어 거산 확인 질문으로 남겼다.",
+    "납품 산업은 건설·중장비·조선해양·석유화학·재생에너지·농기계·반도체로 거산 소개서 아연도금 실적 산업(방위산업, 자동차 부품)과 다르다. 중장비·농기계는 자동차 부품과 가깝지만 같은 산업으로 보지 않아 가점 없음으로 두었다.",
+    "시점 신호: 연혁에 2010 '천안공장 시설 확장 이전'과 2026 'API-20E, API-20F 인증 획득', 사업 소개에 '고강도 맞춤형 화스너가 OIL & GAS 산업으로 영역을 확장합니다'가 있다. 모두 연도만 있고 월·일이 없어 signals에 넣지 않고 SIG_EXPAND·SIG_ORDER는 미확보(UNAVAILABLE)로 두었다. 2010 증설은 날짜가 확인돼도 오래되어 거의 반영되지 않는다. 홈페이지에 공지·입찰·채용 메뉴가 없어 SIG_BID·SIG_HIRE는 신호 없음이다. 채용 공고 사이트는 근거로 쓰지 않는다(CON-08).",
+    "인증(인증현황 페이지): API-20E·API-20F, KS B 1002·1003, PED 2014/68/EU, LR(Lloyd's Register), 뿌리기술 전문기업, 명문장수기업. 연혁에는 ISO 9001(2004)·ISO 14001(2009)·IATF 16949(2016)·ISO/IEC 17025(2020)도 있다. 거산에 요구하는 인증은 공개 자료에 없어 requirements는 비웠다.",
+    "실제 소개서 묶음 examples/capability-geosan-brochure.json의 ZINC_PLATING 소재 FE와 대조했다. 소개서 기준·거산 확인 전이며 검수 PENDING을 처리 승인으로 해석하지 않는다. 처리 목적(내식·외관)은 공개 자료에 직접 적혀 있지 않아 NEW_PERF는 미확보다."
+  ],
+  "customer": {
+    "name": "신진화스너공업(주)",
+    "bizNumber": null,
+    "address": "충청남도 천안시 동남구 성남면 용원4길 87-2",
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 순번 158061의 상호·주소·생산품(볼트, 너트, 냉간단조)으로 발굴했다. 원본 https://www.data.go.kr/data/15105482/fileData.do . 공식 홈페이지 https://www.shinjinfasteners.co.kr 하단 '본사 충남 천안시 동남구 용원4길 87-2'와 주소가 일치한다. 같은 상호의 순번 93900(시흥매화일반산업단지)은 홈페이지 '지점' 주소와 맞는다. 사업자번호는 홈페이지에 없어 비웠다. 확인일 2026-10-23.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "탄소강·합금강 육각볼트·스터드 전기아연도금 적합성 확인",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:158061",
+      "discoveredAt": "2026-10-23"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": "FE"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "PRODUCT 육각볼트 렌지볼트 스터드 육각헤비볼트 건축용 볼트 후렌지볼트 Custom Parts",
+      "sourceRef": "신진화스너공업 홈페이지 화스너 제품 https://www.shinjinfasteners.co.kr/kr/product/product_list.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "신진화스너공업㈜는 냉간단조 및 열간단조 공정을 통해 다양한 규격의 고품질 제품을 안정적으로 생산하며, 열처리, 표면처리(도금), 포장 등 고객 맞춤형 서비스 제공에 최선을 다하고 있습니다.",
+      "sourceRef": "신진화스너공업 홈페이지 산업별 화스너 제품 https://www.shinjinfasteners.co.kr/kr/business/product.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "Step. 01 원자재 인발/신선 Step. 02 단조 Step. 03 전조 Step. 04 열처리 Heat Treatment Step. 05 표면처리 Surface Treatment Step. 06 검사 Test Step. 07 포장 및 출하",
+      "sourceRef": "신진화스너공업 홈페이지 생산공정 https://www.shinjinfasteners.co.kr/kr/management/process.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "표면 처리 옵션 용도별 코팅 및 마감",
+      "sourceRef": "신진화스너공업 홈페이지 기술서비스 https://www.shinjinfasteners.co.kr/kr/product/service.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "Hex Cap Screws 육각볼트 ISO4014 ISO4017 ASME B18.2.1 KS B 1002 Dia M6 - M42 (1/4\" - 1-1/2\") Length Up to 400mm ISO898 8.8 10.9 12.9 ISO3506 A2-70 A4-70 A4-80 SAE J429 Gr.5 Gr.8 ASTM F 593 Alloy group 1 & 2",
+      "sourceRef": "신진화스너공업 홈페이지 육각볼트 https://www.shinjinfasteners.co.kr/kr/product/product_view.php?idx=13",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "Studs 스터드 CONTINUOUS THREAD STUD TAP-END STUD DOUBLE END STUD Dia M12 - M24 Length Up to 330mm ISO898 8.8 10.9 12.9 ISO3506 A2-70 A4-70 A4-80 ASTM A 193 B7 B8 B8M ASTM A 320 L7",
+      "sourceRef": "신진화스너공업 홈페이지 스터드 https://www.shinjinfasteners.co.kr/kr/product/product_view.php?idx=15",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "X-RAY 코팅두께 측정기 Model name XRF-20000 Capacity Spectro Max Applicable standard ISO16084, ISO4042, ISO4518, A 90 / A 90M",
+      "sourceRef": "신진화스너공업 홈페이지 검사 및 실험 장비 https://www.shinjinfasteners.co.kr/kr/management/equipment.php (도금 라인은 목록에 없음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "건설산업 중장비산업 조선해양산업 석유화학산업 재생에너지산업 농기계산업 반도체산업",
+      "sourceRef": "신진화스너공업 홈페이지 산업별 화스너 제품 https://www.shinjinfasteners.co.kr/kr/business/product.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "신진화스너공업(주)는 대한민국을 대표하는 스테인리스 스틸 화스너 전문 제조업체로 ... A286, 17-4PH, Inconel718, ASTM A193 B16 등 고품질 특수강을 사용하여 최고 품질의 산업용 화스너 제품을 생산합니다.",
+      "sourceRef": "신진화스너공업 홈페이지 회사개요 https://www.shinjinfasteners.co.kr/kr/company/greeting.php",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "2010 천안 산업 단지 내 천안공장 시설 확장 이전 신진화스너공업㈜ 로 사명 변경",
+      "sourceRef": "신진화스너공업 홈페이지 연혁 https://www.shinjinfasteners.co.kr/kr/company/history.php (연도만 있음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "2026 미국석유협회 API-20E, API-20F 인증 획득",
+      "sourceRef": "신진화스너공업 홈페이지 연혁 https://www.shinjinfasteners.co.kr/kr/company/history.php (연도만 있음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "SIGNAL",
+      "quote": "석유화학산업 Oil & Gas 신진화스너공업(주)의 고강도 맞춤형 화스너가 OIL & GAS 산업으로 영역을 확장합니다.",
+      "sourceRef": "신진화스너공업 홈페이지 산업별 화스너 제품 https://www.shinjinfasteners.co.kr/kr/business/product.php (날짜 없음)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "육각볼트·스터드·건축용 볼트 등 체결 부품을 냉간·열간 단조로 만들고, 사업 소개에 '표면처리(도금)' 서비스, 생산공정에 Step 05 표면처리, 기술서비스에 '표면 처리 옵션'이 있음 — 표면처리가 필요한 부품 (해당 1.0, 확인). 도금을 자체 설비로 하는지 외주인지는 확인 전.",
+      "evidenceRefs": [0, 1, 2, 3],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "육각볼트·스터드 제품 사양에 ISO898 8.8/10.9/12.9, SAE J429 Gr.5/Gr.8, ASTM A193 B7 등 철계 탄소강·합금강이 있음 — 소개서 ZINC_PLATING 처리 소재 FE와 정확히 일치 (1.0, 확인). 스테인리스(ISO3506 A2/A4)·특수강(A286 등) 제품도 함께 만드나 이 기회는 철계 제품만 다룬다.",
+      "evidenceRefs": [4, 5, 8],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_BONUS",
+      "factJudged": "납품 산업이 건설·중장비·조선해양·석유화학·재생에너지·농기계·반도체로 거산 소개서 아연도금 실적 산업(방위산업, 자동차 부품)과 같지 않음 — 가점 없음. 중장비·농기계는 자동차 부품과 가깝지만 동일 산업으로 보지 않았다.",
+      "evidenceRefs": [7],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: '용도별 코팅 및 마감'과 코팅두께 측정기(ISO 4042) 보유는 확인했으나 도금 목적(내식·외관)이 공개 자료에 직접 적혀 있지 않다. 다음 할 일: 전기아연도금 사양의 요구 목적(염수분무 시간·색상)을 확인한다. 불일치로 확정한 것은 아니다.",
+      "evidenceRefs": [3, 6],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 연혁에 2010 '천안공장 시설 확장 이전'이 있으나 연도만 있고 월·일이 없어 발생일을 확보하지 못했다. 날짜가 확인돼도 오래되어 거의 반영되지 않는다. 다음 할 일: 최근 생산라인 증설 계획을 묻는다.",
+      "evidenceRefs": [9],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 2026 API-20E·API-20F 인증 획득과 '석유화학 산업으로 영역 확장' 문구는 사업 확대 신호로 볼 수 있으나 연도만 있고 발생일이 없다. 다음 할 일: 인증 취득일과 석유화학용 물량 증가 여부를 확인한다. 신호가 없다고 확정한 것은 아니다.",
+      "evidenceRefs": [10, 11],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "홈페이지에 공지·입찰·협력사 모집 게시판이 없음 (확인일 2026-10-23)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "홈페이지에 채용 안내·공고 메뉴가 없음 (확인일 2026-10-23). 채용 공고 사이트는 근거로 쓰지 않는다.",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "생산공정 Step 05 표면처리(도금)는 천안공장 자체 설비로 하는가, 외주로 처리하는가? 공개 설비 목록에는 도금 라인이 없고 X-RAY 코팅두께 측정기만 있다.",
+      "철계 제품(ISO898 8.8/10.9/12.9, ASTM A193 B7) 중 전기아연도금 사양 물량은 어느 정도이며, 용융아연·다크로 등 다른 코팅 비중은 어떤가?",
+      "전기아연도금의 요구 목적은 내식(염수분무 시간)인가 외관(색상)인가, 요구 두께 규격(ISO 4042)은 무엇인가?",
+      "2026년 API-20E·API-20F 인증 취득일은 언제이며, 그 뒤 석유화학용 물량이 늘었는가?",
+      "천안공장 생산라인 증설 계획이 있는가?",
+      "거산이 M42×400 같은 대형 육각볼트·스터드의 전기아연도금을 처리할 수 있는가(치수·수량 범위)?"
+    ]
+  },
+  "expected": null
+}
