@@ -41,12 +41,13 @@ homepageDiscovery:
   termsConfirmed: false
 
 # 브랜드. 로고·강조색은 자료가 오면 여기만 바꾼다(FR6.8). 초기값은 상세 화면 설계의 팀 제안.
-# demoLabel: 띠에 함께 보이는 문구. 부분 시연에서는 "부분 시연·거산 확인 전"으로 둔다(BR10.4). 없으면 null.
+# demoLabel: 띠에 함께 보이는 문구. 10/29 부분 시연 동안 "부분 시연·거산 확인 전"으로 둔다(BR10.4, PM 결정 2026-10-24).
+# 시연이 끝나고 거산 확인 값이 들어오면 null로 되돌린다.
 brand:
   logoUrl: null
   brandName: "거산 영업지원"
   colorPrimary: "#1F5FBF"
-  demoLabel: null
+  demoLabel: "부분 시연·거산 확인 전"
 
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:
