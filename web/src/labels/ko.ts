@@ -350,5 +350,9 @@ export const scoreDetails = {
 export const scoreStateLabels: Record<string, string> = {
   CONFIRMED: '확인',
   NO_SIGNAL: '신호 없음',
+  STRONG: '강한 추정',
+  WEAK: '약한 추정',
+  MISMATCH: '불일치',
+  NO_BONUS: '가점 없음',
   UNAVAILABLE: '미확보',
 };
