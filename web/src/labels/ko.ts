@@ -213,6 +213,7 @@ export const detailSections = {
 export const pagination = {
   total: (from: number, to: number, total: number) => `${from}~${to} / ${total}건`,
   perPage: '20건씩',
+  totalLine: (total: number) => `전체 ${total}곳`,
 } as const;
 
 /** 오류 응답에 쓰는 보조 문구(ref는 작게). */

@@ -69,6 +69,16 @@ export default function OpportunityListPage() {
       error={current?.error}
       onRetry={retry}
     >
+      <p
+        data-testid="list-total"
+        style={{
+          color: colors.textSecondary,
+          marginTop: 0,
+          fontSize: typography.fontSizeSecondary,
+        }}
+      >
+        {pagination.totalLine(total)}
+      </p>
       <ol
         data-testid="opportunity-list"
         style={{
