@@ -37,6 +37,7 @@ run_python() {
   (
     export GEOSAN_DB_PATH="$tmpdb"
     "$PY" -m geosan init-db \
+      && "$PY" -m geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml \
       && "$PY" -m geosan import-capability examples/capability-geosan.json \
       && "$PY" -m geosan import-case examples/case-apjeong.json \
       && "$PY" -m geosan verify-case examples/case-apjeong.json

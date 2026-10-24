@@ -1,0 +1,53 @@
+# 앱 설정 파일 (AppSettings, 계약 C7) — A정밀 가상 사례 확인용 사본
+#
+# `examples/app-settings.yaml`과 같고 activeDatasetKind만 VIRTUAL_REVIEWED다. 뼈대 검증(scripts/check.*, CI)과
+# 테스트 픽스처(tests/conftest.py tmp_db)가 쓴다. 시연·실제 실행은 `examples/app-settings.yaml`(BROCHURE)을 쓴다.
+#
+# 담당자 목록·활성 거산 값 묶음·수집 범위·LLM 모드·브랜드·접속 보호 켜기를 둔다(NFR11.1).
+# 비밀번호·API 키는 여기 적지 않는다. 환경 변수(GEOSAN_DB_PATH, U8부터 GEOSAN_PASSWORD)로만 읽는다(BR11.3).
+# `password`·`apiKey`·`token` 같은 키가 있으면 check-config가 오류로 막는다.
+# 형식 설명서: contracts/app-settings.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
+
+# 담당자 목록. key는 영문·숫자·하이픈(C0 staffKey), displayName은 화면에 보이는 이름.
+# 표시 이름은 `examples/app-settings.yaml`과 같은 역할 이름이다(PM 결정 2026-10-24, 이슈 #104). 두 파일을 같이 고친다.
+# 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
+staff:
+  - { key: park-lee, displayName: "영업 담당" }
+  - { key: kim-gwajang, displayName: "검수 담당(품질·기술)" }
+  - { key: choi-pm, displayName: "운영 담당" }
+  - { key: viewer, displayName: "보기 전용(대표·상무)" }
+
+# 평가·조회가 읽는 거산 값 묶음 (FR4.14): VIRTUAL_REVIEWED(가상 검수) / BROCHURE(소개서, 검수 대기) / COMPANY_CONFIRMED(거산 확인 완료)
+# 이 파일은 가상 검수 묶음(A정밀)용이다. `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`로 등록한다.
+activeDatasetKind: VIRTUAL_REVIEWED
+
+# 수집 범위 (U3에서 쓴다, FR9.1 기본값). U1은 읽기만 한다.
+ingestion:
+  regions: ["충남", "대전", "세종"]
+  productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
+  maxCandidates: 50
+
+# 외부 LLM (U2에서 쓴다). U1은 NONE이며 외부 호출 코드가 없다.
+llm:
+  mode: NONE
+  model: null
+  _설명: "monthlyCallLimit·costPerThousandTokens 값은 설계에 없음 — PM 확인 필요(U2 진입 전). 0은 '아직 정하지 않음'."
+  monthlyCallLimit: 0
+  costPerThousandTokens: 0
+
+# 홈페이지 자동 탐색 (U9). 약관 확인 전에는 켜지 않는다.
+homepageDiscovery:
+  enabled: false
+  termsConfirmed: false
+
+# 브랜드. 로고·강조색은 자료가 오면 여기만 바꾼다(FR6.8). 초기값은 상세 화면 설계의 팀 제안.
+# demoLabel: 띠에 함께 보이는 문구. 부분 시연에서는 "부분 시연·거산 확인 전"으로 둔다(BR10.4). 없으면 null.
+brand:
+  logoUrl: null
+  brandName: "거산 영업지원"
+  colorPrimary: "#1F5FBF"
+  demoLabel: null
+
+# 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
+accessProtection:
+  enabled: false

@@ -174,6 +174,14 @@ def run_python() -> None:
     run_allowed_to_fail(
         [
             [py, "-m", "geosan", "init-db"],
+            [
+                py,
+                "-m",
+                "geosan",
+                "check-config",
+                "examples/rule-config.yaml",
+                "examples/app-settings-virtual.yaml",
+            ],
             [py, "-m", "geosan", "import-capability", "examples/capability-geosan.json"],
             [py, "-m", "geosan", "import-case", "examples/case-apjeong.json"],
             [py, "-m", "geosan", "verify-case", "examples/case-apjeong.json"],
