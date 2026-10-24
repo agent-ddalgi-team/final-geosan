@@ -11,7 +11,10 @@
     "공식 DF 3090 상세의 기술자료 이미지를 눈으로 확인했다. A6N01S-T5, Anodized, Color (색상) Silver, Black이 같은 표에 있다. 색상 선택을 근거로 외관 목적만 STRONG으로 추정했다. 내식·내마모 목적이나 처리 성능 수치는 추가하지 않았다.",
     "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 홈페이지의 현재 제품 사양 갱신일과 실제 생산·판매 지속 여부도 별도 확인 사항이다.",
     "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 성능 태그 APPEARANCE를 대조했다. 소개서 검수 상태는 PENDING이며 합금·치수·요구 사양의 수탁 승인이 아니다.",
-    "최종 조사 묶음은 명화금속·스틸앙카 아연도금 2곳과 대영프로파일 아노다이징 1곳이다. 스틸앙카의 회사 제품군 근거와 당진 생산 사업장 미확인 사항은 별도로 검토한다."
+    "최종 조사 묶음은 명화금속·스틸앙카 아연도금 2곳과 대영프로파일 아노다이징 1곳이다. 스틸앙카의 회사 제품군 근거와 당진 생산 사업장 미확인 사항은 별도로 검토한다.",
+    "미확보 항목 재확인일: 2026-10-24. 공식 연혁 https://www.alusys.com/bbs/board.php?bo_table=b103 과 사업분야 https://www.alusys.com/bbs/page.php?hid=p202, 작업사례 첫 목록 https://www.alusys.com/bbs/board.php?bo_table=b501 을 확인했다. 연혁의 조립동 신축공장 준공은 제목이 10. 11로 표시되어 있으며 게시물 등록일을 발생일로 쓰지 않았다. 작업사례는 전체 41건으로 표시되지만 개별 사례 전수조사는 하지 않았고 DF 3090의 납품 산업·신규 수주·발생일을 특정하지 못했다. NEW_RECORD·SIG_EXPAND·SIG_ORDER는 UNAVAILABLE을 유지한다.",
+    "2026-10-24 공식 공지사항 https://www.alusys.com/bbs/board.php?bo_table=b601 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b601&wr_id=1 의 본문을 직접 확인했다. 공지사항입니다.라는 안내 문구만 있고 입찰·협력사 모집·구매 내용은 없어 SIG_BID를 NO_SIGNAL로 판정했다. 공식 게시판에서 확인한 범위의 판정이며 외부 공고까지 없다는 뜻은 아니다.",
+    "2026-10-24 공식 채용정보 https://www.alusys.com/bbs/board.php?bo_table=b701 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b701&wr_id=1 의 본문을 직접 확인했다. 채용정보 게시판입니다.라는 안내 문구만 있고 실제 모집 직무·기간이 없어 SIG_HIRE를 NO_SIGNAL로 판정했다. 열람일이나 안내 글의 등록일을 채용 발생일로 쓰지 않았다."
   ],
   "customer": {
     "name": "(주)대영프로파일",
@@ -138,7 +141,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "이유: 산업용 프로파일 제품은 확인했으나 거산 소개서 ANODIZING의 방위산업·항공우주 실적과 대상 DF 3090의 동일 부품·동일 산업을 연결할 근거가 없다. 다음 할 일: DF 3090의 실제 적용 산업·부품 용도를 확인한 뒤 소개서 실적과 대조한다. 미확인을 불일치로 확정하지 않았다.",
+      "factJudged": "이유: 산업용 프로파일 제품은 확인했으나 거산 소개서 ANODIZING의 방위산업·항공우주 실적과 대상 DF 3090의 동일 부품·동일 산업을 연결할 근거가 없다. 다음 할 일: DF 3090의 실제 적용 산업·부품 용도를 확인한 뒤 소개서 실적과 대조한다. 미확인을 불일치로 확정하지 않았다. 2026-10-24 공식 사업분야와 작업사례 첫 목록을 추가 확인했으나 대상 DF 3090의 납품 산업·적용 부품과 거산 실적의 일치 여부를 확정하지 못해 UNAVAILABLE을 유지한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -166,7 +169,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "factJudged": "이유: 2026-10-24 공식 연혁의 조립동 신축공장 준공 글(https://www.alusys.com/bbs/board.php?bo_table=b103&wr_id=17)을 확인했으나 제목은 10. 11이며 정확한 발생일과 DF 3090의 관련성이 미확인이다. 다음 할 일: 실제 발생일과 대상 제품 생산라인 관련성을 확인한다. 게시물 등록일을 발생일로 대신 쓰거나 신호가 없다고 단정하지 않고 UNAVAILABLE을 유지한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -176,7 +179,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "factJudged": "이유: 2026-10-24 공식 사업분야·연혁·작업사례 첫 목록(전체 41건 표시)을 확인했으나 DF 3090에 연결되는 신규 수주·제품 출시·사업 확대의 실제 발생일을 특정하지 못했다. 다음 할 일: 대상 품목과 연결된 사례 본문·발생일을 추가 확인한다. 전체 사례를 조사해 신호가 없음을 확인한 것은 아니므로 UNAVAILABLE을 유지한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -185,8 +188,8 @@
       "itemCode": "SIG_BID",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-24 공식 게시판 https://www.alusys.com/bbs/board.php?bo_table=b601 의 전체 목록 한 페이지와 유일한 안내 글 본문을 확인했다. 공지사항입니다.라는 안내만 있고 실제 입찰·협력사 모집·구매 공고 내용은 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 자료 전반에 신호가 없다는 뜻은 아니다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -195,8 +198,8 @@
       "itemCode": "SIG_HIRE",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "발생일과 관련성을 확인할 수 있는 시점 신호를 이번 조사에서 확보하지 못했다. 신호가 없다고 확정한 것은 아니다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-24 공식 게시판 https://www.alusys.com/bbs/board.php?bo_table=b701 의 전체 목록 한 페이지와 유일한 안내 글 본문을 확인했다. 채용정보 게시판입니다.라는 안내만 있고 실제 구매·품질·생산기술·표면처리 직무 채용 내용은 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 자료 전반에 신호가 없다는 뜻은 아니다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
