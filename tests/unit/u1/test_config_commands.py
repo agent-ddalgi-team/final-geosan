@@ -209,6 +209,39 @@ def test_capability_file_semantic_errors(tmp_path: Path) -> None:
     assert "같은 자격" in messages
 
 
+def test_capability_file_rejects_same_date_status_history(tmp_path: Path) -> None:
+    """Given 한 자격에 날짜가 같은 이력 둘 / When 검사 / Then 줄·항목·이유로 거부한다(#57)."""
+    data = factories.capability_with_status("ISO 9001", "SUSPENDED", "2026-10-19")
+    for history in factories.find_qualification(data, "ISO 9001")["statuses"]:
+        history.update(occurredAt="2026-10-19", confirmedAt="2026-10-19")
+    report = check_capability_file(_write(tmp_path, "cap.json", data))
+    assert not report.ok and report.capability is None
+    [error] = report.errors
+    assert error.path == "qualifications[0].statuses[1].occurredAt"
+    assert error.line is not None and error.line > 0
+    assert "1번째 상태 이력과 같습니다" in error.message and "#57" in error.message
+
+
+def test_capability_file_rejects_same_blank_date_status_history(tmp_path: Path) -> None:
+    """Given 날짜가 둘 다 비어 있는 이력 둘 / When 검사 / Then 같은 쌍이므로 거부한다(PM 결정)."""
+    data = factories.capability_with_status("ISO 9001", "SUSPENDED", "2026-10-19")
+    for history in factories.find_qualification(data, "ISO 9001")["statuses"]:
+        history.update(occurredAt=None, confirmedAt=None)
+    report = check_capability_file(_write(tmp_path, "cap.json", data))
+    assert not report.ok
+    assert any("비어 있음" in e.message for e in report.errors)
+
+
+def test_capability_file_allows_same_dates_in_different_qualifications(tmp_path: Path) -> None:
+    """Given 자격마다 이력 하나, 날짜만 같음 / When 검사 / Then 자격 간 중복은 허용한다(#57)."""
+    data = factories.capability_file()
+    for qual in data["qualifications"]:
+        for history in qual["statuses"]:
+            history.update(occurredAt="2026-10-19", confirmedAt="2026-10-19")
+    report = check_capability_file(_write(tmp_path, "cap.json", data))
+    assert report.ok, report.error_lines()
+
+
 # ---------------------------------------------------------------------------
 # check-config · init-db · db merge-heads
 # ---------------------------------------------------------------------------
