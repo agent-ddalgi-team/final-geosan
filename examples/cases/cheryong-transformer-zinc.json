@@ -8,7 +8,8 @@
     "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
     "산단공 CSV 생산품에는 '금구류'가 있으나 홈페이지에는 금구류 언급이 없다. 홈페이지에서 확인한 것은 변압기와 철제·스테인리스 탱크뿐이다.",
     "변압기 탱크는 도장이나 용융아연도금을 쓰는 경우가 많아 전기아연도금 수요가 있는지는 거산 확인 질문 후보.",
-    "제품 항목은 철제 탱크라는 특성에서 추정(약한 추정)했다. 처리 목적은 홈페이지에서 확인하지 못했다.",
+    "제품 항목은 철제 탱크라는 특성에서 추정(약한 추정)했다. 처리 목적은 홈페이지에서 확인하지 못했다. 영문 제품 페이지에 'Non-corrosive'(지하 매설형 SIDT 제품 특징)가 있으나 제품 성질일 뿐 표면처리 목적이 아니라 근거로 쓰지 않았고, 도금·도장·방청 언급은 제품·연혁 페이지 어디에도 없었다(확인일 2026-10-24). 거산 확인 질문 후보: 탱크·금구류 표면처리를 외주하시나요? 외주하신다면 내식과 외관 중 무엇이 목적입니까?",
+    "홈페이지 메뉴(ABOUT US·PRODUCTS·SUPPORT)에 채용 항목이 없고 공지는 전시회 참가 글뿐이라 채용 신호는 없음으로 두었다(확인일 2026-10-24). 채용 사이트는 근거로 쓰지 않는다(CON-08).",
     "홈페이지 영문판 연혁의 '2026. 03 Acquisition of Daejeon Factory 2'를 증설 신호로 적었다. 월 단위로만 표기되어 3월 1일로 적었다."
   ],
   "customer": {
@@ -128,7 +129,7 @@
     },
     { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "소식 게시판은 전시회 참가 글뿐이고 신규 수주 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
     { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지 메뉴에 채용 안내가 없어 확인하지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 채용 안내가 없고 공지는 전시회 글뿐 (확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
   "researchReadiness": null,
