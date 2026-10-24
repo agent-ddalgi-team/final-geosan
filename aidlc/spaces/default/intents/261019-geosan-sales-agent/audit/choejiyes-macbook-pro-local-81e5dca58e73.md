@@ -31345,3 +31345,92 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 79a0837f-1aad-443e-a335-44e76b45d210
 
 ---
+
+## Subagent Completed
+**Timestamp**: 2026-10-24T09:20:30Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a684726e2c6308845
+**Message**: #100 합쳤어, #26 공지 올려줘
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-24T09:23:35Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: aa4ffaa9b789e93b0
+**Message**: #91 후속으로 기본 묶음을 BROCHURE로 바꾼 PR #100을 올렸고 CI 통과, 이강욱 님 검토 요청 댓글까지 남겼습니다. 이강욱 님이 괜찮다고 하면 PM이 합치고, 합쳐지면 제가 #26에 공지를 올립니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-24T09:34:44Z
+**Event**: HUMAN_TURN
+**Session**: 79a0837f-1aad-443e-a335-44e76b45d210
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-24T09:38:16Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a251e1245b1d2e176
+**Message**: #91 후속으로 기본 묶음을 BROCHURE로 바꾸는 PR #100을 올려 CI를 통과했고, 이강욱 님 검토를 기다리는 중입니다. 검토 뒤 합치시면 알려 주세요. 그때 #26 공지를 올리겠습니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-24T09:45:35Z
+**Event**: HUMAN_TURN
+**Session**: 79a0837f-1aad-443e-a335-44e76b45d210
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-24T09:52:11Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a4b960a1ff51b8bb0
+**Message**: 고선주 화면 점검 두 건을 분석해 드렸습니다. 공정 코드 한글화는 유동렬 담당 vs PM 직접 중 결정, 카드 제목은 "품목 공정(규격)" 형식 제안을 검토하신 뒤 알려 주시면 이슈 생성이나 수정을 바로 이어가겠습니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-24T09:56:06Z
+**Event**: HUMAN_TURN
+**Session**: 79a0837f-1aad-443e-a335-44e76b45d210
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-24T10:00:01Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a1822c22884542581
+**Message**: 검사 끝나면 PR 올리고 메모 안내서까지 커밋해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-24T10:02:47Z
+**Event**: HUMAN_TURN
+**Session**: ea680b00-3cdc-4a41-9589-4e05a4b1de82
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-10-24T10:03:10Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a17d3dc3678c2bae0
+**Message**: 고선주 화면 점검 두 건 처리 중입니다. 질문의 영문 공정 코드를 한글로 바꾸는 수정은 끝났고 전체 검사가 돌고 있으며, 통과하면 PR #101을 올리고 유동렬을 검토자로 지정한 뒤 메모 안내서에 제목 형식 한 줄을 커밋합니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-10-24T10:05:05Z
+**Event**: HUMAN_TURN
+**Session**: 79a0837f-1aad-443e-a335-44e76b45d210
+
+---
