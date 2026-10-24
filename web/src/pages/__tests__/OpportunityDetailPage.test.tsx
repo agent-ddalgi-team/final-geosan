@@ -162,7 +162,7 @@ describe('OpportunityDetailPage', () => {
     expect(toggle).toHaveTextContent('펼치기');
     expect(screen.queryByTestId('score-e')).not.toBeInTheDocument();
     // 전문 용어는 접힌 동안 화면 어디에도 없다(BR10.9).
-    expect(screen.getByTestId('opportunity-detail')).not.toHaveTextContent(/확보 점수 E/);
+    expect(screen.getByTestId('opportunity-detail')).not.toHaveTextContent(/확인된 점수 E/);
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
