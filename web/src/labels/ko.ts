@@ -324,9 +324,9 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
 
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
 export const scoreDetails = {
-  E: '확보 점수 E',
-  P: '판정 배점 P',
-  S: '표시 점수 S',
+  E: '확인된 점수 E',
+  P: '판정한 배점 P',
+  S: '참고 점수 S',
   R: '조사 시 상한 R',
   C: '자료 확보율 C',
   expand: '펼치기',
