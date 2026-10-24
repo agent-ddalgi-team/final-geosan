@@ -54,7 +54,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "일반 직결나사 / General S.D.S",
-      "sourceRef": "http://www.mhs.co.kr/product/self-drilling-screw",
+      "sourceRef": "명화금속 홈페이지 일반 직결나사 http://www.mhs.co.kr/product/self-drilling-screw",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -65,7 +65,7 @@
       "isLlmProposed": true,
       "subject": "MATERIAL",
       "quote": "철 / SWCH 18A, 22A",
-      "sourceRef": "http://www.mhs.co.kr/cs/using-screw",
+      "sourceRef": "명화금속 홈페이지 재질·표면처리 안내 http://www.mhs.co.kr/cs/using-screw",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -76,7 +76,7 @@
       "isLlmProposed": true,
       "subject": "PURPOSE",
       "quote": "04 내식성과 표면처리 / Steel + 전기아연도금(백색) / 옥내",
-      "sourceRef": "http://www.mhs.co.kr/cs/using-screw",
+      "sourceRef": "명화금속 홈페이지 재질·표면처리 안내 http://www.mhs.co.kr/cs/using-screw",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -87,7 +87,7 @@
       "isLlmProposed": true,
       "subject": "OTHER",
       "quote": "당진사업장[본사] / 충남 당진시 신평면 신평길 225-136",
-      "sourceRef": "http://www.mhs.co.kr/company/network",
+      "sourceRef": "명화금속 홈페이지 사업장 안내 http://www.mhs.co.kr/company/network",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -98,7 +98,7 @@
       "isLlmProposed": true,
       "subject": "OTHER",
       "quote": "금속파스너 및 나사제품 제조업",
-      "sourceRef": "http://www.mhs.co.kr/company/condition",
+      "sourceRef": "명화금속 홈페이지 기업 현황 http://www.mhs.co.kr/company/condition",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
