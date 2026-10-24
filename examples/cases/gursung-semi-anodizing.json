@@ -7,8 +7,9 @@
   "notes": [
     "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
     "소재는 텅스텐·몰리브덴 등 고융점 금속이 중심이고 알루미늄(AL)은 일부 부품에만 쓰인다. 아노다이징 대상 부품 비중은 거산 확인 질문 후보.",
-    "홈페이지에 표면처리·도금 언급이 없어 처리 목적은 미확보이고, 제품 항목은 장비 부품이라는 특성에서 추정했다.",
-    "회사연혁 페이지에는 날짜가 있는 연혁 없이 소개 문구만 있었고, 주요 고객사 페이지는 로고 이미지(삼성 등)뿐이었다. 증설·수주·공고 신호는 미확보로 두었다.",
+    "처리 목적(내식·외관 등)은 홈페이지에 적혀 있지 않아 미확보로 두었다. 디스플레이 제품소개의 CVD 공정 부품에 'Aluminium-Coating 등 표면 처리 재질'이라는 말이 한 번 나오지만 어떤 처리인지·목적은 없다(확인일 2026-10-24). 가공설비 표에는 샌드블라스터·배럴기가 있어 일부 후처리는 직접 할 수 있다. 거산 확인 질문 후보: 알루미늄 부품의 아노다이징을 외주하시나요?",
+    "회사연혁 페이지는 이미지가 아니라 페이지 안 스크립트에 날짜별 연혁이 들어 있어 읽을 수 있다(확인일 2026-10-24). 증설은 2006-03 '아산 사업장 확장 이전'뿐이라 오래되어 거의 반영되지 않는다. 신규 거래처 등록은 2024-06 '삼성전자 무선사업부 협력업체 등록'이 가장 최근이다. 연혁은 월 단위로만 적혀 있어 발생일은 해당 월 1일로 적었다.",
+    "주요 고객사 페이지는 로고 이미지뿐이라 날짜가 있는 수주 글은 연혁의 협력업체 등록 기록만 썼다. 홈페이지 메뉴(기업소개·사업소개·제품소개·품질경영·게시판)에 공지·입찰 게시판이 없어 입찰·협력사 모집 신호는 없음으로 두었다(외부 공고 전체에 신호가 없다는 뜻은 아니다).",
     "채용안내 페이지는 상시 안내문이고 구체적인 직무 공고가 없어 채용 신호는 없음으로 두었다."
   ],
   "customer": {
@@ -34,7 +35,30 @@
     { "processCode": "ANODIZING", "appliedMaterial": "AL" }
   ],
   "requirements": [],
-  "signals": [],
+  "signals": [
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2006-03-01",
+      "announcedAt": "2006-03-01",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    },
+    {
+      "signalKind": "NEW_ORDER",
+      "occurredAt": "2024-06-01",
+      "announcedAt": "2024-06-01",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    }
+  ],
   "evidence": [
     {
       "sourceGrade": "B",
@@ -55,6 +79,28 @@
       "quote": "소재 W , MO 등 고융점 특수금속과 STS , AL, 그라파이트 소재",
       "sourceRef": "거성 홈페이지 제품소개 https://gursung.com/semi",
       "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2024. 06 삼성전자 무선사업부 협력업체 등록",
+      "sourceRef": "거성 홈페이지 회사연혁 https://gursung.com/history",
+      "occurredAt": "2024-06-01",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2006. 03 아산 사업장 확장 이전",
+      "sourceRef": "거성 홈페이지 회사연혁 https://gursung.com/history",
+      "occurredAt": "2006-03-01",
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
     }
@@ -93,10 +139,28 @@
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지에 처리 목적(내식·외관 등) 언급 없음 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "회사연혁 페이지가 이미지라 증설 여부를 읽지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "주요 고객사 페이지가 이미지라 신규 수주를 읽지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "공고 게시판을 확인하지 못함 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지에 처리 목적(내식·외관 등) 언급 없음 — 미확보 (CVD 공정 부품에 'Aluminium-Coating 등 표면 처리 재질' 한 줄만 있고 목적은 없음, 확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2006-03 아산 사업장 확장 이전 — 간접 관련 (0.5, 확인, 발생일이 오래되어 감쇠 큼). 그 뒤 증설 기록 없음 (확인일 2026-10-24)",
+      "evidenceRefs": [3],
+      "signalRefs": [0],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2024-06 삼성전자 무선사업부 협력업체 등록 — 신규 거래처 등록, 아노다이징 수요와는 간접 관련 (0.5, 확인)",
+      "evidenceRefs": [2],
+      "signalRefs": [1],
+      "usedCapabilityRefs": []
+    },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 공지·입찰 게시판이 없고 협력사 모집 글 없음 (확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용안내가 상시 안내문이고 관련 직무 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
