@@ -107,5 +107,5 @@ def test_process_question_uses_korean_name_not_code():
 
 def test_process_display_name_keeps_unknown_code():
     """표에 없는 코드는 그대로 둔다(오류를 숨기지 않음)."""
-    assert process_display_name("ZINC_PLATING") == "아연도금"
+    assert process_display_name("ZINC_PLATING") == "전기아연도금"
     assert process_display_name("NOT_A_CODE") == "NOT_A_CODE"

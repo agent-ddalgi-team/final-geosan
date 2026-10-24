@@ -10,7 +10,7 @@ from geosan.rules.models import (
 )
 
 PROCESS_NAMES: dict[str, str] = {
-    ProcessCode.ZINC_PLATING: "아연도금",
+    ProcessCode.ZINC_PLATING: "전기아연도금",  # 카드 제목과 같은 말(#26, PM 2026-10-24)
     ProcessCode.ANODIZING: "아노다이징",
     ProcessCode.BLACK_OXIDE: "흑착색",
     ProcessCode.CHROMATE: "크로메이트",
