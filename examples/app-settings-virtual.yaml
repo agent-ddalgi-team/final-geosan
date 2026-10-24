@@ -12,8 +12,7 @@
 # 표시 이름은 `examples/app-settings.yaml`과 같은 역할 이름이다(PM 결정 2026-10-24, 이슈 #104). 두 파일을 같이 고친다.
 # 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
 staff:
-  - { key: park-lee, displayName: "영업 담당 1" }
-  - { key: lee-daeri, displayName: "영업 담당 2" }
+  - { key: park-lee, displayName: "영업 담당" }
   - { key: kim-gwajang, displayName: "검수 담당(품질·기술)" }
   - { key: choi-pm, displayName: "운영 담당" }
   - { key: viewer, displayName: "보기 전용(대표·상무)" }
