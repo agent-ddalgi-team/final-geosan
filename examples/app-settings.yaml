@@ -6,13 +6,16 @@
 # 형식 설명서: contracts/app-settings.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
 
 # 담당자 목록. key는 영문·숫자·하이픈(C0 staffKey), displayName은 화면에 보이는 이름.
-# 아래 이름은 가상 예시다(실제 담당자는 PM이 바꾼다). 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
+# 표시 이름은 페르소나의 역할 이름이다(영업 담당·검수 담당·운영 담당·대표/상무 보기 전용; PM 결정 2026-10-24, 이슈 #104).
+# 거산 담당자 실제 이름은 적지 않는다(CON-11). 역할별 권한 구분은 계정이 생기는 G0 이후(FR14.3)에 정하며,
+# 지금은 "누가 기록했는지"만 구분한다. key는 테스트·예시 사례(case-apjeong.json)가 쓰므로 그대로 둔다.
+# 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
 staff:
-  - { key: park-lee, displayName: "박 이사" }
-  - { key: kim-gwajang, displayName: "김 과장" }
-  - { key: lee-daeri, displayName: "이 대리" }
-  - { key: choi-pm, displayName: "최 PM" }
-  - { key: viewer, displayName: "보기 전용" }
+  - { key: park-lee, displayName: "영업 담당 1" }
+  - { key: lee-daeri, displayName: "영업 담당 2" }
+  - { key: kim-gwajang, displayName: "검수 담당(품질·기술)" }
+  - { key: choi-pm, displayName: "운영 담당" }
+  - { key: viewer, displayName: "보기 전용(대표·상무)" }
 
 # 평가·조회가 읽는 거산 값 묶음 (FR4.14): VIRTUAL_REVIEWED(가상 검수) / BROCHURE(소개서, 검수 대기) / COMPANY_CONFIRMED(거산 확인 완료)
 # 10월 말 부분 시연에서는 BROCHURE로 바꾼다(기능 명세 W8).
