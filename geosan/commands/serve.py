@@ -2,7 +2,7 @@
 
 설정 파일을 먼저 검사하고(오류면 시작 거부, 어느 키인지 표시), 데이터베이스가 준비됐는지 보고,
 API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정 검사는 파일 모양만 보고 DB의
-앱 설정 사본(활성 묶음 등)은 바꾸지 않는다. 등록은 `check-config`·`dataset-set`의 몫이다(이슈 #91).
+앱 설정 사본(활성 묶음 등)은 바꾸지 않는다. 등록은 `check-config`의 몫이다(이슈 #91).
 `127.0.0.1`에서만 듣는다(NFR4.10).
 포트가 사용 중이면 "포트 N이 사용 중입니다. --port로 바꾸세요"를 내고 종료 코드 2로 끝낸다(NFR7.3).
 """
@@ -55,7 +55,10 @@ def _active_bundle_line(db_path: Path) -> str:
         settings = read_app_settings(session)
     if settings is None:
         return "앱 설정 사본이 아직 없습니다. 첫 요청 때 examples/app-settings.yaml로 만듭니다."
-    return f"활성 묶음 {settings.active_dataset_kind} (DB 사본 기준, 바꾸려면 geosan dataset-set)"
+    return (
+        f"활성 묶음 {settings.active_dataset_kind} (DB 사본 기준, 바꾸려면 activeDatasetKind를 "
+        "고친 앱 설정 파일로 geosan check-config)"
+    )
 
 
 def run_serve(port: int) -> int:

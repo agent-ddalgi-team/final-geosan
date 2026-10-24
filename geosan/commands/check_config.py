@@ -32,8 +32,8 @@ def run_check_config(
 ) -> int:
     """두 설정 파일을 검사한다. `register=False`면 DB가 있어도 등록·사본 갱신을 하지 않는다.
 
-    `serve`가 이 경로를 쓴다: 서버 시작은 파일 모양만 확인하고, 담당자가 `check-config`나
-    `dataset-set`으로 골라 둔 활성 묶음 같은 DB 사본 값은 그대로 둔다(이슈 #91).
+    `serve`가 이 경로를 쓴다: 서버 시작은 파일 모양만 확인하고, 담당자가 `check-config`로
+    골라 둔 활성 묶음 같은 DB 사본 값은 그대로 둔다(이슈 #91).
     """
     try:
         rule_path = normalize_input_path(rule_config or DEFAULT_RULE_CONFIG_PATH)
