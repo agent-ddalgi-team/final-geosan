@@ -6,17 +6,20 @@
 # 형식 설명서: contracts/app-settings.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
 
 # 담당자 목록. key는 영문·숫자·하이픈(C0 staffKey), displayName은 화면에 보이는 이름.
-# 아래 이름은 가상 예시다(실제 담당자는 PM이 바꾼다). 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
+# 표시 이름은 페르소나의 역할 이름 4개다(영업 담당·검수 담당·운영 담당·대표/상무 보기 전용; PM 결정 2026-10-24, 이슈 #104).
+# 거산 담당자 실제 이름은 적지 않는다(CON-11). 역할별 권한 구분은 계정이 생기는 G0 이후(FR14.3)에 정하며,
+# 지금은 "누가 기록했는지"만 구분한다. key는 테스트·예시 사례(case-apjeong.json)가 쓰므로 그대로 둔다.
+# 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
 staff:
-  - { key: park-lee, displayName: "박 이사" }
-  - { key: kim-gwajang, displayName: "김 과장" }
-  - { key: lee-daeri, displayName: "이 대리" }
-  - { key: choi-pm, displayName: "최 PM" }
-  - { key: viewer, displayName: "보기 전용" }
+  - { key: park-lee, displayName: "영업 담당" }
+  - { key: kim-gwajang, displayName: "검수 담당(품질·기술)" }
+  - { key: choi-pm, displayName: "운영 담당" }
+  - { key: viewer, displayName: "보기 전용(대표·상무)" }
 
 # 평가·조회가 읽는 거산 값 묶음 (FR4.14): VIRTUAL_REVIEWED(가상 검수) / BROCHURE(소개서, 검수 대기) / COMPANY_CONFIRMED(거산 확인 완료)
-# 10월 말 부분 시연에서는 BROCHURE로 바꾼다(기능 명세 W8).
-activeDatasetKind: VIRTUAL_REVIEWED
+# 10월 말 부분 시연은 소개서 묶음으로 하므로 기본값을 BROCHURE로 둔다(기능 명세 W8, 이슈 #91).
+# A정밀 가상 사례로 확인할 때는 이 값을 VIRTUAL_REVIEWED로 고친 뒤 `geosan check-config`를 다시 실행한다.
+activeDatasetKind: BROCHURE
 
 # 수집 범위 (U3에서 쓴다, FR9.1 기본값). U1은 읽기만 한다.
 ingestion:
@@ -38,12 +41,13 @@ homepageDiscovery:
   termsConfirmed: false
 
 # 브랜드. 로고·강조색은 자료가 오면 여기만 바꾼다(FR6.8). 초기값은 상세 화면 설계의 팀 제안.
-# demoLabel: 띠에 함께 보이는 문구. 부분 시연에서는 "부분 시연·거산 확인 전"으로 둔다(BR10.4). 없으면 null.
+# demoLabel: 띠에 함께 보이는 문구. 10/29 부분 시연 동안 "부분 시연·거산 확인 전"으로 둔다(BR10.4, PM 결정 2026-10-24).
+# 시연이 끝나고 거산 확인 값이 들어오면 null로 되돌린다.
 brand:
   logoUrl: null
   brandName: "거산 영업지원"
   colorPrimary: "#1F5FBF"
-  demoLabel: null
+  demoLabel: "부분 시연·거산 확인 전"
 
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:

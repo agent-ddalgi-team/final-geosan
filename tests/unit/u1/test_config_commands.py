@@ -265,7 +265,7 @@ def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> No
     with session_scope(tmp_db) as session:
         runtime = load_runtime_config(session)
         assert runtime.rule_version.rule_version == "v0.17-a"
-        assert runtime.app_settings.active_dataset_kind == "VIRTUAL_REVIEWED"
+        assert runtime.app_settings.active_dataset_kind == "BROCHURE"  # 예시 기본값(시연용, #91)
         assert runtime.notices == []
     code, output = _run("check-config")
     assert code == 0 and "등록" in output
@@ -310,8 +310,8 @@ def test_init_db_and_merge_heads_commands(tmp_path: Path, monkeypatch: pytest.Mo
 # ---------------------------------------------------------------------------
 
 
-def test_registry_first_run_registers_defaults_and_dataset_switch(tmp_db: Path) -> None:
-    with session_scope(tmp_db) as session:
+def test_registry_first_run_registers_defaults_and_dataset_switch(bare_db: Path) -> None:
+    with session_scope(bare_db) as session:
         runtime = load_runtime_config(session)
         assert runtime.rule_version.status == "DRAFT"
         assert len(runtime.notices) == 2
@@ -319,7 +319,7 @@ def test_registry_first_run_registers_defaults_and_dataset_switch(tmp_db: Path) 
         assert not runtime.app_settings.is_recording_staff("viewer")
         assert not runtime.app_settings.is_recording_staff("nobody")
         set_active_dataset_kind(session, "BROCHURE", updated_by="test")
-    with session_scope(tmp_db) as session:
+    with session_scope(bare_db) as session:
         assert load_runtime_config(session).app_settings.active_dataset_kind == "BROCHURE"
         with pytest.raises(InputError):
             set_active_dataset_kind(session, "NOPE")
@@ -363,11 +363,11 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
             load_runtime_config(session)
 
 
-def test_set_active_dataset_kind_on_empty_db_keeps_settings_readable(tmp_db: Path) -> None:
+def test_set_active_dataset_kind_on_empty_db_keeps_settings_readable(bare_db: Path) -> None:
     """앱 설정 사본이 없는 DB에서 활성 묶음부터 바꿔도 실행 설정을 읽을 수 있다(이슈 #44 재현)."""
-    with session_scope(tmp_db) as session:
+    with session_scope(bare_db) as session:
         assert set_active_dataset_kind(session, "BROCHURE", updated_by="test") == "BROCHURE"
-    with session_scope(tmp_db) as session:
+    with session_scope(bare_db) as session:
         runtime = load_runtime_config(session)
         assert runtime.app_settings.active_dataset_kind == "BROCHURE"
         assert runtime.app_settings.is_recording_staff("park-lee")  # 나머지는 예시 파일 값
