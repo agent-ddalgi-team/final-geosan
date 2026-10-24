@@ -55,3 +55,6 @@ web/node_modules/
 web/dist/
 web/coverage/
 
+
+# 시연 자료 출력 폴더(demo-report 결과). 저장소에 올리지 않는다(이슈 #22, PM 결정 2026-10-24).
+out/
