@@ -9,13 +9,14 @@
 # 형식 설명서: contracts/app-settings.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
 
 # 담당자 목록. key는 영문·숫자·하이픈(C0 staffKey), displayName은 화면에 보이는 이름.
-# 아래 이름은 가상 예시다(실제 담당자는 PM이 바꾼다). 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
+# 표시 이름은 `examples/app-settings.yaml`과 같은 역할 이름이다(PM 결정 2026-10-24, 이슈 #104). 두 파일을 같이 고친다.
+# 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
 staff:
-  - { key: park-lee, displayName: "박 이사" }
-  - { key: kim-gwajang, displayName: "김 과장" }
-  - { key: lee-daeri, displayName: "이 대리" }
-  - { key: choi-pm, displayName: "최 PM" }
-  - { key: viewer, displayName: "보기 전용" }
+  - { key: park-lee, displayName: "영업 담당 1" }
+  - { key: lee-daeri, displayName: "영업 담당 2" }
+  - { key: kim-gwajang, displayName: "검수 담당(품질·기술)" }
+  - { key: choi-pm, displayName: "운영 담당" }
+  - { key: viewer, displayName: "보기 전용(대표·상무)" }
 
 # 평가·조회가 읽는 거산 값 묶음 (FR4.14): VIRTUAL_REVIEWED(가상 검수) / BROCHURE(소개서, 검수 대기) / COMPANY_CONFIRMED(거산 확인 완료)
 # 이 파일은 가상 검수 묶음(A정밀)용이다. `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`로 등록한다.
