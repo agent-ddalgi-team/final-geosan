@@ -4,7 +4,7 @@ import pytest
 
 from geosan.rules.codes import ReviewStatus
 from geosan.rules.items import calculate_items
-from geosan.rules.questions import question_candidates
+from geosan.rules.questions import process_display_name, question_candidates
 from geosan.rules.requirements import assess_requirements
 from tests.factories import replace_contract, rule_engine_input
 
@@ -92,3 +92,20 @@ def test_deduplication_and_determinism():
     data.item_inputs[0].used_capability_ids = ["missing"]
     with pytest.raises(ValueError, match="거산 값 참조"):
         questions(data)
+
+
+def test_process_question_uses_korean_name_not_code():
+    """Given 검수 대기 공정, When 질문 생성, Then 영문 코드 대신 한글 공정 이름이 보인다 (#101)."""
+    data = rule_engine_input()
+    process = next(p for p in data.capability.processes if p.process_id == "proc-anodizing")
+    process.review_status = ReviewStatus.PENDING
+    data.item_inputs[0].used_capability_ids = [process.process_id]
+    (candidate,) = [q for q in questions(data) if q.target_id == process.process_id]
+    assert candidate.text.startswith("아노다이징의 ")
+    assert "ANODIZING" not in candidate.text
+
+
+def test_process_display_name_keeps_unknown_code():
+    """표에 없는 코드는 그대로 둔다(오류를 숨기지 않음)."""
+    assert process_display_name("ZINC_PLATING") == "전기아연도금"
+    assert process_display_name("NOT_A_CODE") == "NOT_A_CODE"
