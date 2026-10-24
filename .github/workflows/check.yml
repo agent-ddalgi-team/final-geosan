@@ -47,12 +47,13 @@ jobs:
         run: python -m pytest tests/features -q --no-cov
 
       # 한시적: verify-case는 Step 19·27에서 완성된다. Step 28에서 continue-on-error를 제거한다.
-      - name: 뼈대 검증 (init-db → import-capability → import-case → verify-case, 임시 DB)
+      - name: 뼈대 검증 (init-db → check-config(가상 묶음) → import-capability → import-case → verify-case, 임시 DB)
         continue-on-error: true
         env:
           GEOSAN_DB_PATH: ${{ runner.temp }}/geosan-ci.db
         run: |
           python -m geosan init-db
+          python -m geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml
           python -m geosan import-capability examples/capability-geosan.json
           python -m geosan import-case examples/case-apjeong.json
           python -m geosan verify-case examples/case-apjeong.json
