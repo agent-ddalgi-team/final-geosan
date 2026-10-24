@@ -13,6 +13,9 @@ from typer.testing import CliRunner
 
 from geosan.commands import serve as serve_module
 from geosan.commands.app import app
+from geosan.config.app_settings import read_app_settings
+from geosan.config.registry import set_active_dataset_kind
+from geosan.storage.session import session_scope
 
 
 def _run(*args: str) -> tuple[int, str]:
@@ -34,7 +37,7 @@ def test_serve_refuses_when_config_check_fails(tmp_db: Path, monkeypatch) -> Non
     """Given 설정 검사 실패 / When serve / Then 서버를 띄우지 않고 종료 코드 1로 끝난다."""
     started: list[int] = []
     monkeypatch.setattr(serve_module, "_run_server", lambda port: started.append(port))
-    monkeypatch.setattr(serve_module, "run_check_config", lambda rule, settings: 1)
+    monkeypatch.setattr(serve_module, "run_check_config", lambda rule, settings, **_kw: 1)
     code, out = _run("serve")
     assert code == 1 and "서버를 시작하지 않았습니다" in out
     assert started == []
@@ -78,3 +81,37 @@ def test_serve_hides_exception_body_when_server_dies(tmp_db: Path, monkeypatch) 
     monkeypatch.setattr(serve_module, "_run_server", boom)
     code, out = _run("serve", "--port", "18766")
     assert code == 2 and "RuntimeError" in out and "secret detail" not in out
+
+
+def _choose_brochure(tmp_db: Path) -> None:
+    with session_scope(tmp_db) as session:
+        set_active_dataset_kind(session, "BROCHURE")
+
+
+def _active_kind(tmp_db: Path) -> str:
+    with session_scope(tmp_db) as session:
+        settings = read_app_settings(session)
+    assert settings is not None
+    return settings.active_dataset_kind
+
+
+def test_serve_keeps_chosen_dataset_kind_on_start(tmp_db: Path, monkeypatch) -> None:
+    """Given 소개서 묶음을 골라 둠 / When serve / Then 예시 설정으로 되돌리지 않는다(#91)."""
+    _choose_brochure(tmp_db)
+    monkeypatch.setattr(serve_module, "_run_server", lambda port: None)
+    code, out = _run("serve", "--port", "18767")
+    assert code == 0, out
+    assert _active_kind(tmp_db) == "BROCHURE"
+    assert "활성 묶음 BROCHURE" in out and "바꾸지 않았습니다" in out
+
+
+def test_serve_port_conflict_does_not_touch_settings(tmp_db: Path, monkeypatch) -> None:
+    """Given 소개서 묶음 선택·포트 사용 중 / When serve 그 포트 / Then 실패해도 설정 그대로(#91)."""
+    _choose_brochure(tmp_db)
+    monkeypatch.setattr(serve_module, "_run_server", lambda port: None)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
+        holder.bind(("127.0.0.1", 0))
+        holder.listen(1)
+        code, _out = _run("serve", "--port", str(holder.getsockname()[1]))
+    assert code == 2
+    assert _active_kind(tmp_db) == "BROCHURE"
