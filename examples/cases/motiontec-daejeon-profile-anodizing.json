@@ -13,7 +13,7 @@
     "세광정공 플레어 너트 초안은 소재·처리 목적 근거가 부족해 이 후보로 교체했다. 과거 초안은 Git 이력에 남아 있다. 최종 6곳은 아연도금 2곳·아노다이징 4곳으로 권장 비율과 다르며 공개 근거를 우선했다.",
     "2026-10-22 열람했다. 게시일을 모르는 회사·공급사 페이지는 occurredAt을 null로 두었고, 2014년 안내를 신규 시점 신호로 사용하지 않았다.",
     "#17의 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 대조했다. ANODIZING의 AL 소재·APPEARANCE 1개만 참조한다. 소개서 검수 상태는 PENDING이고 개별 품목의 수탁 승인이나 실제 거래 관계 확인이 아니다.",
-    "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 납품실적·발주·필수 요구를 만들지 않았고 실제 기업 접촉이나 운영 DB 투입은 하지 않았다."
+    "#108: 2026-10-25 공식 회사 홍보관의 인사말·빈 공지사항·포스팅 목록 2쪽 전체를 확인했다. 포스팅은 2014년 공급사 취급 제품 안내이며 모션텍 자체 증설·신규 수주나 출시·입찰·관련 직무 채용 글은 없어 SIG_*를 NO_SIGNAL로 정리했다. 별도 연혁·채용 메뉴는 확인되지 않았다. 대상품과 거산 납품실적의 연결은 미확보다. 외부 자료 전체에 신호가 없다는 뜻은 아니며 실제 기업 접촉이나 운영 DB 투입은 하지 않았다."
   ],
   "customer": {
     "name": "(주)모션텍",
@@ -26,7 +26,7 @@
   },
   "interactions": [],
   "opportunity": {
-    "item": "설계·제작용 알루미늄 프로파일(취급 제품군 기준)",
+    "item": "알루미늄 프로파일 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
     "owner": null
@@ -142,7 +142,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "소개서 ANODIZING의 방위산업·항공우주 실적과 이 산업용 프로파일 제품군을 연결할 근거가 없어 미확보로 두었다.",
+      "factJudged": "이유: 2026-10-25 공식 회사 홍보관 https://blog.yeogie.com/motiontec/intro 및 포스팅 목록 2쪽을 확인했다. 자동화부품·AL PROFILE 설계 제작과 취급 공급사는 확인했으나 대상 프로파일의 납품 산업·부품과 거산 소개서 ANODIZING의 방위산업·항공우주 실적 연결은 미확인이다. 다음 할 일: 현재 취급 모델·실제 적용 산업·부품 용도와 거산의 유사 실적을 확인한다. 산업용이라는 넓은 제품군 이름만으로 MISMATCH를 확정하지 않고 UNAVAILABLE을 유지한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -170,8 +170,8 @@
       "itemCode": "SIG_EXPAND",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 회사 홍보관 https://blog.yeogie.com/motiontec/intro 및 공지사항 https://blog.yeogie.com/motiontec/notice, 포스팅 목록 2쪽 전체를 확인했다. 공지는 등록된 글이 없고 인사말·포스팅은 기존 취급 품목 안내로, 모션텍 자체 공장 증설·신규 생산라인 글은 없다. 별도 연혁 메뉴는 확인되지 않았다. 연결된 공급사의 설비를 모션텍의 증설로 보지 않고 조사한 홍보관 범위에서 NO_SIGNAL로 판정한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -180,8 +180,8 @@
       "itemCode": "SIG_ORDER",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 회사 공지사항 https://blog.yeogie.com/motiontec/notice 및 포스팅 https://blog.yeogie.com/motiontec/post 의 2쪽 전체 목록과 제품 안내 202·204·205번 본문을 확인했다. 공지는 비어 있고 포스팅은 2014-10-16~17 공급사 제품 정보·취급 안내다. 202번의 AZ 시리즈 탄생 문구도 공급사 모터 소개이며 대상 알루미늄 프로파일의 수주·출시·사업 확대 근거가 아니다. 읽은 홍보관 범위에서 대상품 관련 신호는 없어 NO_SIGNAL로 판정하며 공급사 제품 출시를 모션텍의 신규 발주로 해석하지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -190,8 +190,8 @@
       "itemCode": "SIG_BID",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 회사 공지사항 https://blog.yeogie.com/motiontec/notice 의 빈 목록과 포스팅 https://blog.yeogie.com/motiontec/post 의 2쪽 전체 목록을 확인했다. 공급사 취급 제품 안내 외 입찰·협력사 모집·구매 공고는 없어 해당 홍보관 범위에서 NO_SIGNAL로 판정한다. 외부 공고 전체에 신호가 없다는 뜻은 아니다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -200,8 +200,8 @@
       "itemCode": "SIG_HIRE",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 회사 홍보관의 인사말·메뉴·공지사항 https://blog.yeogie.com/motiontec/notice 및 포스팅 2쪽 전체 목록을 확인했다. 별도 채용 메뉴가 없고 구매·품질·생산기술·표면처리 직무의 채용 글도 없어 확인한 홍보관 범위에서 NO_SIGNAL로 판정한다. 외부 채용공고 전체를 조사한 결과는 아니다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
