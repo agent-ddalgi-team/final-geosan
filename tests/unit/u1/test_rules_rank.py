@@ -61,10 +61,10 @@ def test_contact_score_tie_breaks(group, field):
 
 @pytest.mark.parametrize(
     "dataset,expected",
-    [("VIRTUAL_REVIEWED", ["potential", "score"]), ("BROCHURE", ["score", "potential"])],
+    [("VIRTUAL_REVIEWED", ["score", "potential"]), ("BROCHURE", ["score", "potential"])],
 )
 def test_other_order_comes_from_configuration(dataset, expected):
-    """Given 일반·소개서 후보, When 정렬, Then 설정된 R·E 순서를 따른다."""
+    """Given 일반·소개서 후보, When 정렬, Then 두 묶음 모두 설정된 E → P 순서를 따른다 (v0.17-c)."""
     rows = [row("score", E=70, R=80), row("potential", E=60, R=90)]
     config = rule_engine_input().rule_config
     assert ordered(rows, dataset, config) == expected
@@ -115,8 +115,9 @@ def test_brochure_tie_prefers_more_judged_not_remaining_potential():
     thorough = row("thorough", E=48, P=85, R=65)  # 빈칸을 끝까지 "없음"으로 판정한 회사
     sparse = row("sparse", E=48, P=55, R=95)  # 다섯 항목을 비워 둔 회사(가능 점수만 높음)
     assert ordered([sparse, thorough], "BROCHURE") == ["thorough", "sparse"]
-    # 가상 검수 묶음(default)은 R 순 그대로다.
-    assert ordered([thorough, sparse], "VIRTUAL_REVIEWED") == ["sparse", "thorough"]
+    # 가상 검수·거산 확인 완료 묶음(default)도 같다(v0.17-c, 2026-10-25).
+    assert ordered([sparse, thorough], "VIRTUAL_REVIEWED") == ["thorough", "sparse"]
+    assert ordered([sparse, thorough], "COMPANY_CONFIRMED") == ["thorough", "sparse"]
 
 
 @pytest.mark.parametrize("weight", [5, 7, 10, 15])
