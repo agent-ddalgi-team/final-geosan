@@ -1,7 +1,7 @@
 {
   "caseId": "dsi-daejeon-baseplate-anodizing",
   "baseDate": "2026-10-22",
-  "description": "#19 공개 자료 후보 — 대덕과학기기. 레이저 실험장치 베이스판의 AL6061·검정색 아노다이징 사양을 실제 거산 소개서와 대조했다.",
+  "description": "#19 공개 자료 후보 — 대덕과학기기. DSI-HNDEK-1 레이저 실험장치의 베이스판 DSI-BP160×760-08을 대상으로 AL6061·검정색 아노다이징 사양을 실제 거산 소개서와 대조했다. 공식 2023년도 실험장치 카탈로그 PDF 27쪽·인쇄 26쪽에 근거하며 다른 모델로 확대하지 않았다.",
   "isVirtual": false,
   "datasetKind": "BROCHURE",
   "notes": [
@@ -12,7 +12,8 @@
     "대원총업 디스크스프링 초안은 해당 제품의 처리 목적 근거가 부족해 이 후보로 교체했다. 과거 초안은 Git 이력에 남아 있다. 교체 후 전체 6곳은 아연도금 2곳·아노다이징 4곳으로 권장 비율과 다르며 공개 근거를 우선했다.",
     "카탈로그 게시일은 2023-06-15이고 2026-10-22 열람했다. 게시일을 현재 생산·발주 발생일로 쓰지 않았다. 오래된 사양의 현재 적용 여부는 추가 확인 대상이다.",
     "#17의 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 대조했다. ANODIZING의 AL 소재·APPEARANCE를 참조한다. 소개서 검수 상태는 PENDING이며 특정 합금·형상·색상에 대한 수탁 승인이 아니다.",
-    "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 공개 자료에서 거산의 해당 산업 납품실적·거래 관계를 확인하지 못해 임의로 만들지 않았다.",
+    "#108: 2026-10-25 공식 인사말·공지사항 전체 1건과 본문·자료실 전체 1건과 본문을 확인했다. 공지는 홈페이지 리뉴얼, 자료실은 2023년도 실험장치 카탈로그 안내이며 증설·신규 수주나 출시·입찰·관련 직무 채용 글은 없어 SIG_*를 NO_SIGNAL로 정리했다. 별도 연혁·채용 메뉴는 확인되지 않았다. 대상품과 거산 실적의 연결은 미확보이며 외부 자료 전체에 신호가 없다고 단정하지 않았다.",
+    "#108: 제목에서 뺀 모델명 DSI-HNDEK-1과 AL6061은 사실표의 회사 요약에도 보이도록 기존 description에 설명했다. 카탈로그 출처와 적용 부품 범위를 함께 남겼으며 quote에는 설명을 덧붙이지 않았다.",
     "공개 제품 사양은 구매 요청·필수 요구가 아니다. 요구 조건·접촉 승인은 비워 두었고 실제 기업 접촉이나 거래 확인은 하지 않았다."
   ],
   "customer": {
@@ -26,7 +27,7 @@
   },
   "interactions": [],
   "opportunity": {
-    "item": "DSI-HNDEK-1 레이저 실험장치의 AL6061 베이스판",
+    "item": "레이저 실험장치 베이스판 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
     "owner": null
@@ -142,7 +143,7 @@
       "matchRate": null,
       "certainty": null,
       "state": "UNAVAILABLE",
-      "factJudged": "소개서 ANODIZING의 방위산업·항공우주 실적과 이 교육·광학 실험장치 부품을 연결할 근거가 없어 미확보로 두었다.",
+      "factJudged": "이유: 2026-10-25 공식 인사말 https://dsi.kr/회사소개/인사말/ 과 자료실 https://dsi.kr/고객센터/자료실download/ 를 확인했다. 실험장치·광학부품 제작은 확인했으나 대상 DSI-HNDEK-1 베이스판의 실제 납품 산업과 거산 소개서 ANODIZING의 방위산업·항공우주 실적을 연결할 근거는 미확보다. 교육용 제품 분류만으로 전체 납품 산업이 다르다고 확정하지 않았다. 다음 할 일: 대상 베이스판의 적용 산업·부품 용도와 거산의 유사 실적을 확인한 뒤 대조한다. UNAVAILABLE을 유지한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -168,8 +169,8 @@
       "itemCode": "SIG_EXPAND",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 인사말 https://dsi.kr/회사소개/인사말/ 및 공지사항 https://dsi.kr/고객센터/공지사항/ 의 전체 1건과 본문을 확인했다. 인사말은 기존 개발·설계·제작 경험, 공지는 2018-06-05 홈페이지 리뉴얼 안내이며 공장 증설·신규 생산라인 글은 없다. 별도 연혁 메뉴도 확인되지 않아 읽은 공식 페이지 범위에서 NO_SIGNAL로 판정한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -178,8 +179,8 @@
       "itemCode": "SIG_ORDER",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 공지사항 https://dsi.kr/고객센터/공지사항/ 및 자료실 https://dsi.kr/고객센터/자료실download/ 의 각 전체 1건과 본문을 확인했다. 홈페이지 리뉴얼과 2023-06-15 카탈로그 다운로드 안내뿐이며 신규 수주·제품 출시·사업 확대 글은 없어 해당 범위에서 NO_SIGNAL로 판정한다. 카탈로그 게시일을 제품 출시일로 바꾸지 않았다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -188,8 +189,8 @@
       "itemCode": "SIG_BID",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 공지사항 https://dsi.kr/고객센터/공지사항/ 의 전체 1건과 본문, 자료실 전체 1건을 확인했다. 홈페이지 리뉴얼·카탈로그 안내 외 입찰·협력사 모집·구매 공고는 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 공고 전체에 신호가 없다는 뜻은 아니다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -198,8 +199,8 @@
       "itemCode": "SIG_HIRE",
       "matchRate": null,
       "certainty": null,
-      "state": "UNAVAILABLE",
-      "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-25 공식 홈페이지 메뉴·인사말 https://dsi.kr/회사소개/인사말/ 및 공지사항 https://dsi.kr/고객센터/공지사항/ 을 확인했다. 별도 채용 메뉴가 없고 구매·품질·생산기술·표면처리 직무의 실제 채용 글도 없다. 인사말의 인재중심 경영 문구를 채용 공고로 보지 않고 확인한 홈페이지 범위에서 NO_SIGNAL로 판정한다.",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
