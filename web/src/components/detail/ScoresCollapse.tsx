@@ -23,6 +23,9 @@ const cell = {
   borderBottom: `1px solid ${colors.borderSecondary}`,
 } as const;
 
+// 숫자·상태 칸은 짧아서 칸이 좁아지면 "미확보"가 세로로 꺾인다. 한 줄로 둔다.
+const shortCell = { ...cell, whiteSpace: 'nowrap' } as const;
+
 function Details({ scores }: { scores: Scores }) {
   const columns = scoreDetails.itemColumns;
   const evaluated = formatMonthDayTime(scores.evaluatedAt);
@@ -71,12 +74,12 @@ function Details({ scores }: { scores: Scores }) {
                     <div style={{ color: colors.textSecondary }}>{item.factJudged}</div>
                   ) : null}
                 </th>
-                <td style={cell}>{item.weight}</td>
-                <td style={cell}>{percent(item.matchRate)}</td>
-                <td style={cell}>{percent(item.certainty)}</td>
-                <td style={cell}>{percent(item.decay)}</td>
-                <td style={cell}>{item.score ?? '--'}</td>
-                <td style={cell}>{labelFor(scoreStateLabels, item.state)}</td>
+                <td style={shortCell}>{item.weight}</td>
+                <td style={shortCell}>{percent(item.matchRate)}</td>
+                <td style={shortCell}>{percent(item.certainty)}</td>
+                <td style={shortCell}>{percent(item.decay)}</td>
+                <td style={shortCell}>{item.score ?? '--'}</td>
+                <td style={shortCell}>{labelFor(scoreStateLabels, item.state)}</td>
               </tr>
             ))}
           </tbody>
