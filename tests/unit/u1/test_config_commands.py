@@ -329,7 +329,8 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
     tmp_db: Path, tmp_path: Path
 ) -> None:
     rule_copy = tmp_path / "rule-config.yaml"
-    rule_copy.write_text(DEFAULT_RULE_CONFIG_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    # Windows의 줄바꿈 변환으로 같은 내용의 파일 해시가 달라지지 않게 복사한다(#118).
+    rule_copy.write_bytes(DEFAULT_RULE_CONFIG_PATH.read_bytes())
     with session_scope(tmp_db) as session:
         runtime = register_config_files(session, rule_copy, DEFAULT_APP_SETTINGS_PATH)
         assert runtime.rule_config_path == rule_copy.resolve()
