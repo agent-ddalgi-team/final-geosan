@@ -448,8 +448,8 @@ rank:                                   # 순위도 RuleEngine 책임(도메인 
     - URGENT 안: validUntil 오름차순 → E 내림 → F 내림 → directConfirmedWeight 내림 → P 내림 → oppId
     - PLANNED 안: E → F → directConfirmedWeight → P → oppId
     - REVIEW 안: E → F → directConfirmedWeight → P → validUntil → oppId
-    - OTHER 안: R 내림 → E → oppId (화면 정렬용, 접촉 후보 아님)
-    - (갱신 제안 2026-10-21, 기능 설계 Q6 답 확정 후 적용 · 가설·설정값 `otherGroupSort`) 거산 값 묶음이 BROCHURE(소개서)일 때 OTHER 안은 E 내림 → R 내림 → oppId(참고 점수 순). 부록 F.10은 접촉 분류 3가지의 순서만 정하므로 기획서 규칙·A정밀 기대값은 바뀌지 않는다
+    - OTHER 안(접촉 후보가 아닌 분류, 화면 정렬용): **모든 거산 값 묶음에서 E 내림 → P(판정한 배점) 내림 → oppId** (설정 `otherGroupSort` v0.17-c, 가설·설정값, PM 결정 2026-10-25 #63 원칙 2 "동점이면 더 많이 확인한 회사를 앞에"). 가능 점수 R은 정렬에 쓰지 않는다
+    - 이력: 처음에는 default R 내림 → E → oppId, 2026-10-21 갱신(기능 설계 Q6)으로 소개서 묶음만 E → R → oppId, 2026-10-25 v0.17-b로 소개서 E → P, v0.17-c로 default도 E → P. 부록 F.10은 접촉 분류 3가지의 순서만 정하므로 기획서 규칙·A정밀 기대값은 바뀌지 않는다(뜻·형식이 바뀌는 변경 아님, 버전 유지)
 expectedValues:
   apjeongCase: { E: 77, P: 95, S: 81.1, R: 82, filterState: PASS, coreEvidenceMet: MET, classificationCode: CONTACT_URGENT }
   readingExample2: { E: 25, P: 25, S: 100, C: 12.5, contactCandidate: false }
