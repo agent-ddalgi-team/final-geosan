@@ -177,6 +177,20 @@ describe('OpportunityDetailPage', () => {
     expect(screen.getByTestId('score-footer')).toHaveTextContent('평가 10/20 09:00');
   });
 
+  it('점수 표의 숫자·상태 칸은 "미확보"처럼 짧은 글이 세로로 꺾이지 않게 한 줄로 둔다', async () => {
+    const user = userEvent.setup();
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await user.click(await screen.findByTestId('detail-scores-toggle'));
+    const rows = screen.getAllByTestId('score-item-row');
+    for (const row of rows) {
+      // 첫 칸(항목 설명)은 길어서 줄바꿈을 허용하고, 나머지 여섯 칸은 한 줄로 둔다.
+      const cells = within(row).getAllByRole('cell');
+      expect(cells).toHaveLength(6);
+      for (const cell of cells) expect(cell).toHaveStyle({ whiteSpace: 'nowrap' });
+    }
+  });
+
   it('없는 기회(404)이면 "이 기회를 찾을 수 없습니다"와 [목록으로]를 보이고 누르면 목록으로 간다', async () => {
     const user = userEvent.setup();
     mockedGet.mockRejectedValueOnce(
