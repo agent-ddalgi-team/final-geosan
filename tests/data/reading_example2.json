@@ -3,7 +3,7 @@
   "baseDate": "2026-10-20",
   "profile": "NEW",
   "ruleConfig": {
-    "version": "v0.17-b",
+    "version": "v0.17-c",
     "hypothesisNote": "기업 승인 전 가설",
     "newProfileItems": [
       { "itemCode": "NEW_PRODUCT", "label": "표면처리가 필요한 제품·부품 생산 근거", "weight": 25, "matchRateSteps": { "해당": 1.0 }, "decay": "NONE" },
@@ -64,11 +64,11 @@
       "LOW": "나중에"
     },
     "otherGroupSort": {
-      "default": [ { "key": "R", "order": "desc" }, { "key": "E", "order": "desc" }, { "key": "oppId", "order": "asc" } ],
+      "default": [ { "key": "E", "order": "desc" }, { "key": "P", "order": "desc" }, { "key": "oppId", "order": "asc" } ],
       "brochure": [ { "key": "E", "order": "desc" }, { "key": "P", "order": "desc" }, { "key": "oppId", "order": "asc" } ]
     },
     "datasetKinds": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"],
-    "ruleHash": "42d6408fb0d8a223aa60e5b891c315c49ecab098cdad5d244b280eea8b5cd74b"
+    "ruleHash": "c3349fbc4dc942ee2a45d20c686628ff70883b5731c75f8e3580c5d0961a4162"
   },
   "datasetKind": "VIRTUAL_REVIEWED",
   "opportunity": {

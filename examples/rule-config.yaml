@@ -5,7 +5,7 @@
 # 출처: 요구사항 부록 A(기획서 v0.15 부록 F.1·F.2·F.4·F.6·F.7·F.9·F.10), 기능 설계 rules.md BR4~BR6.
 # 형식 설명서: contracts/rule-config.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
 
-version: v0.17-b
+version: v0.17-c
 hypothesisNote: "기업 승인 전 가설"
 
 # ---------- A.1 신규 기회 프로필 (8항목, 적합도 70 + 시점 30) ----------
@@ -166,14 +166,14 @@ classificationLabels:
   LOW: "나중에"
 
 # 접촉 후보가 아닌 분류(OTHER 그룹)의 정렬 (BR6.5, 가설·설정값, 기능 설계 Q6).
-# default(가상 검수 묶음): R 내림 → E 내림 → 기회 ID.
-# brochure(거산 값 묶음이 소개서일 때): E 내림 → P(판정한 배점) 내림 → 기회 ID.
+# default(가상 검수·거산 확인 완료 묶음)와 brochure(소개서 묶음) 모두: E 내림 → P(판정한 배점) 내림 → 기회 ID.
 #   2026-10-25 PM 결정(#63 원칙 2): 동점이면 더 많이 확인한 회사를 앞에 둔다. 가능 점수 R은 정렬에 쓰지 않는다
-#   (R을 쓰면 빈칸을 끝까지 "없음"으로 판정한 회사가 R이 낮아져 뒤로 밀린다).
+#   (R을 쓰면 빈칸을 끝까지 "없음"으로 판정한 회사가 R이 낮아져 뒤로 밀린다). default의 옛 R 먼저 정렬은
+#   "조사 우선순위" 용도였고, 그 역할은 11월 세 묶음 안의 ②가 맡는다.
 otherGroupSort:
   default:
-    - { key: R, order: desc }
     - { key: E, order: desc }
+    - { key: P, order: desc }
     - { key: oppId, order: asc }
   brochure:
     - { key: E, order: desc }
