@@ -97,3 +97,18 @@ def test_confirmed_factor_is_configured():
     data.item_inputs[2] = replace_contract(data.item_inputs[2], state="STRONG")
     totals = calculate_totals(calculate_items(data), data.rule_config)
     assert (totals.E, totals.R) == (61, 67)
+
+
+def test_judging_unavailable_as_no_signal_keeps_e_and_moves_only_p_and_r():
+    """Given A정밀 미확보 항목(채용 5점) / When "없음" 판정 / Then E 그대로, P +5, R -5 (#63)."""
+    data = rule_engine_input()
+    before = calculate_totals(calculate_items(data), data.rule_config)
+    target = next(item for item in data.item_inputs if item.state == "UNAVAILABLE")
+    weight = next(
+        c.weight for c in data.rule_config.new_profile_items if c.item_code == target.item_code
+    )
+    target.state = "NO_SIGNAL"
+    after = calculate_totals(calculate_items(data), data.rule_config)
+    assert (before.E, before.P, before.R) == (77, 95, 82)
+    assert after.E == before.E
+    assert after.P == before.P + weight and after.R == before.R - weight
