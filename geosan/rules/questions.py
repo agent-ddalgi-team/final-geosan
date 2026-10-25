@@ -1,13 +1,36 @@
 """사용한 거산 값과 요구의 미확인 사항에 대한 질문 후보 (BR8.1~8.2)."""
 
+from geosan.rules.codes import ProcessCode, ReviewStatus
 from geosan.rules.codes import QuestionTargetKind as Kind
-from geosan.rules.codes import ReviewStatus
 from geosan.rules.models import (
     EvaluationInput,
     ItemJudgmentOutput,
     QuestionCandidate,
     RequirementCheckOutput,
 )
+
+PROCESS_NAMES: dict[str, str] = {
+    ProcessCode.ZINC_PLATING: "전기아연도금",  # 카드 제목과 같은 말(#26, PM 2026-10-24)
+    ProcessCode.ANODIZING: "아노다이징",
+    ProcessCode.BLACK_OXIDE: "흑착색",
+    ProcessCode.CHROMATE: "크로메이트",
+    ProcessCode.ELECTROPOLISHING: "전해연마",
+    ProcessCode.CHROME_PLATING: "크롬도금",
+    ProcessCode.ELECTROLESS_NICKEL: "무전해니켈",
+    ProcessCode.PHOSPHATE_COATING: "인산염피막",
+    ProcessCode.PASSIVATION: "부동태",
+}
+"""질문 문장에 넣는 공정 9종의 쉬운 이름 (이슈 #101).
+
+규칙 엔진 입력(`ProcessInput`)에는 공정 이름 칸이 없어 코드만 들어오므로, 사람이 읽는 질문에는
+이 표의 이름을 쓴다. 역량 파일 `processes[].name`과 같은 말이다. 표에 없는 코드는 코드 그대로 둔다.
+입력 모델에 이름 칸을 더해 역량 파일 이름을 그대로 쓰는 것은 방문 뒤(#88).
+"""
+
+
+def process_display_name(code: str) -> str:
+    """질문에 보일 공정 이름. 표에 없으면 코드를 그대로 돌려준다."""
+    return PROCESS_NAMES.get(code, code)
 
 
 def question_candidates(
@@ -16,7 +39,11 @@ def question_candidates(
     """대상별 질문 하나만 만들고 검수 완료한 미사용 값에는 질문을 만들지 않는다 (BR8.1~8.2)."""
     values = {}
     for process in data.capability.processes:
-        values[process.process_id] = (Kind.PROCESS, process.code, process.review_status)
+        values[process.process_id] = (
+            Kind.PROCESS,
+            process_display_name(process.code),
+            process.review_status,
+        )
     for cap in data.capability.capabilities:
         values[cap.capability_id] = (Kind.CAPABILITY, cap.name, cap.review_status)
     for record in data.capability.delivery_records:

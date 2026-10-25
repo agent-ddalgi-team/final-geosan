@@ -376,11 +376,11 @@ rules:
     violation: S로 정렬하거나 두 프로필이 섞이면 결함(AC5.3.5).
     source: FR4.11, C3 rank, AC5.3.5
   - id: BR6.5
-    statement: 접촉 후보가 아닌 분류(OTHER 그룹)의 정렬은 기본 R 내림 → E 내림 → 기회 ID이고, 거산 값 묶음이 '소개서'일 때는 E 내림 → R 내림 → 기회 ID(참고 점수 순)다. 이것은 기획서 부록 F에 없는 화면용 규칙이라 '가설·설정값'(`otherGroupSort`)으로 둔다.
+    statement: 접촉 후보가 아닌 분류(OTHER 그룹)의 정렬은 기본 R 내림 → E 내림 → 기회 ID이고, 거산 값 묶음이 '소개서'일 때는 E 내림 → P(판정한 배점) 내림 → 기회 ID다(2026-10-25 PM 결정, #63 원칙 2: 동점이면 더 많이 확인한 회사를 앞에 두고, 가능 점수 R은 정렬에 쓰지 않는다. 그 전에는 E → R 순이었다). 이것은 기획서 부록 F에 없는 화면용 규칙이라 '가설·설정값'(`otherGroupSort`)으로 둔다.
     category: calculation
     applies_to: sortKey (group OTHER)
     trigger: run_evaluation(rank)
-    logic: 설정 otherGroupSort {default: [R desc, E desc, oppId], brochure: [E desc, R desc, oppId]}. 묶음 sortRule에 적용한 이름을 기록한다. 접촉 후보 여부·11분기·A정밀 기대값에는 영향 없음.
+    logic: 설정 otherGroupSort {default: [R desc, E desc, oppId], brochure: [E desc, P desc, oppId]} (v0.17-b). 묶음 sortRule에 적용한 이름을 기록한다. 접촉 후보 여부·11분기·A정밀 기대값에는 영향 없음.
     violation: 설정 없이 코드에 고정하면 결함.
     source: Q6 A, C3 갱신 제안, FR4.11
 

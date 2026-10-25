@@ -5,6 +5,10 @@
   두지 않는다(NFR12).
 - `examples_dir`와 예시 파일 경로 픽스처: `examples/`를 그대로 쓴다.
 - `tmp_db`: 임시 폴더의 SQLite 파일에 init-db(마이그레이션)를 적용하고 GEOSAN_DB_PATH로 넣는다.
+  앱 설정 사본은 가상 묶음(`examples/app-settings-virtual.yaml`, VIRTUAL_REVIEWED)으로 미리 만든다.
+  예시 기본 파일(`examples/app-settings.yaml`)은 시연용 BROCHURE라서(이슈 #91) 가상 사례 흐름이
+  그 값에 기대면 안 된다.
+- `bare_db`: 앱 설정 사본 없이 init-db만 적용한 DB. 사본이 없을 때의 대체 동작을 검사할 때만 쓴다.
 - `client`: FastAPI TestClient. Step 20에서 `geosan.api.app`이 생기면 켠다(지금은 건너뜀).
 """
 
@@ -19,6 +23,7 @@ import pytest
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXAMPLES_DIR = ROOT_DIR / "examples"
+VIRTUAL_APP_SETTINGS_PATH = EXAMPLES_DIR / "app-settings-virtual.yaml"
 BASE_DATE = date(2026, 10, 20)
 
 
@@ -89,10 +94,12 @@ def apjeong_case_path(examples_dir: Path) -> Path:
 
 
 @pytest.fixture
-def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """테스트마다 새 SQLite 파일에 init-db(마이그레이션)를 적용하고 GEOSAN_DB_PATH로 넣는다.
+def bare_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    """테스트마다 새 SQLite 파일에 init-db(마이그레이션)만 적용하고 GEOSAN_DB_PATH로 넣는다.
 
-    메모리 DB를 쓰지 않는다(WAL·파일 동작을 그대로 검사). 끝나면 엔진 캐시를 비운다.
+    앱 설정 사본은 만들지 않는다. 사본이 없을 때의 대체 동작(예시 파일을 읽어 사본을 만듦)을
+    검사하는 테스트만 쓴다. 메모리 DB를 쓰지 않는다(WAL·파일 동작을 그대로 검사). 끝나면 엔진
+    캐시를 비운다.
     """
     from geosan.storage.engine import dispose_engines
     from geosan.storage.init_db import init_db
@@ -105,6 +112,25 @@ def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
         yield db_path
     finally:
         dispose_engines()
+
+
+@pytest.fixture
+def tmp_db(bare_db: Path) -> Path:
+    """`bare_db`에 가상 묶음 앱 설정 사본(`examples/app-settings-virtual.yaml`)을 미리 만든 DB.
+
+    실제 실행 순서(init-db → check-config → import …)와 같다. 예시 기본 파일은 시연용
+    BROCHURE이므로(이슈 #91) A정밀 가상 사례 테스트가 기본값에 기대지 않게 한다.
+    """
+    from geosan.config.app_settings import load_app_settings, sync_app_settings
+    from geosan.storage.session import session_scope
+
+    with session_scope(bare_db) as session:
+        sync_app_settings(
+            session,
+            load_app_settings(VIRTUAL_APP_SETTINGS_PATH),
+            source_path=VIRTUAL_APP_SETTINGS_PATH,
+        )
+    return bare_db
 
 
 def staff_headers(staff_key: str = "park-lee") -> dict[str, str]:

@@ -27,7 +27,14 @@ EXIT_INPUT_ERROR = 1
 EXIT_RUN_FAILED = 2
 
 
-def run_check_config(rule_config: Path | None, app_settings: Path | None) -> int:
+def run_check_config(
+    rule_config: Path | None, app_settings: Path | None, *, register: bool = True
+) -> int:
+    """두 설정 파일을 검사한다. `register=False`면 DB가 있어도 등록·사본 갱신을 하지 않는다.
+
+    `serve`가 이 경로를 쓴다: 서버 시작은 파일 모양만 확인하고, 담당자가 `check-config`로
+    골라 둔 활성 묶음 같은 DB 사본 값은 그대로 둔다(이슈 #91).
+    """
     try:
         rule_path = normalize_input_path(rule_config or DEFAULT_RULE_CONFIG_PATH)
         app_path = normalize_input_path(app_settings or DEFAULT_APP_SETTINGS_PATH)
@@ -72,6 +79,9 @@ def run_check_config(rule_config: Path | None, app_settings: Path | None) -> int
     db_path = database_path()
     if not db_path.exists():
         typer.echo(f"검사 통과 (DB 없음: {db_path} — 버전 등록은 init-db 뒤 다시 실행하면 됩니다)")
+        return EXIT_OK
+    if not register:
+        typer.echo("검사 통과 (파일 모양만 확인. DB의 규칙 버전·앱 설정 사본은 바꾸지 않았습니다)")
         return EXIT_OK
     try:
         from geosan.storage.session import session_scope

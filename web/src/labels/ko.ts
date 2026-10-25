@@ -213,6 +213,7 @@ export const detailSections = {
 export const pagination = {
   total: (from: number, to: number, total: number) => `${from}~${to} / ${total}건`,
   perPage: '20건씩',
+  totalLine: (total: number) => `전체 ${total}곳`,
 } as const;
 
 /** 오류 응답에 쓰는 보조 문구(ref는 작게). */
@@ -324,9 +325,9 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
 
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
 export const scoreDetails = {
-  E: '확보 점수 E',
-  P: '판정 배점 P',
-  S: '표시 점수 S',
+  E: '확인된 점수 E',
+  P: '판정한 배점 P',
+  S: '참고 점수 S',
   R: '조사 시 상한 R',
   C: '자료 확보율 C',
   expand: '펼치기',
@@ -350,5 +351,9 @@ export const scoreDetails = {
 export const scoreStateLabels: Record<string, string> = {
   CONFIRMED: '확인',
   NO_SIGNAL: '신호 없음',
+  STRONG: '강한 추정',
+  WEAK: '약한 추정',
+  MISMATCH: '불일치',
+  NO_BONUS: '가점 없음',
   UNAVAILABLE: '미확보',
 };

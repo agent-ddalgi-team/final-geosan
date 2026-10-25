@@ -27,7 +27,7 @@
   },
   "interactions": [],
   "opportunity": {
-    "item": "SS275 연결너트 백색 전기아연도금 적합성 확인",
+    "item": "연결너트 전기아연도금",
     "project": null,
     "purpose": "NEW_PROPOSAL",
     "owner": null
@@ -55,7 +55,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "연결너트",
-      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "sourceRef": "스틸앙카 홈페이지 제품 안내 이미지 http://www.steelanchor.com/img/sub2_7.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -66,7 +66,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "용도 : 전산볼트 등 볼트류의 연결용으로서 길이 조절을 위하여 사용함.",
-      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "sourceRef": "스틸앙카 홈페이지 제품 안내 이미지 http://www.steelanchor.com/img/sub2_7.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -77,7 +77,7 @@
       "isLlmProposed": true,
       "subject": "MATERIAL",
       "quote": "재질 : SS275",
-      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "sourceRef": "스틸앙카 홈페이지 제품 안내 이미지 http://www.steelanchor.com/img/sub2_7.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -88,7 +88,7 @@
       "isLlmProposed": true,
       "subject": "OTHER",
       "quote": "표면처리 : 전기아연도금 (백색)",
-      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "sourceRef": "스틸앙카 홈페이지 제품 안내 이미지 http://www.steelanchor.com/img/sub2_7.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -99,7 +99,7 @@
       "isLlmProposed": true,
       "subject": "PURPOSE",
       "quote": "전기아연도금 (백색)",
-      "sourceRef": "http://www.steelanchor.com/img/sub2_7.jpg",
+      "sourceRef": "스틸앙카 홈페이지 제품 안내 이미지 http://www.steelanchor.com/img/sub2_7.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -110,7 +110,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "저희가 생산하는 L형앙카, 케미칼앙카, 셋트앙카, 웰딩스터드",
-      "sourceRef": "http://www.steelanchor.com/img/sub1_1.jpg",
+      "sourceRef": "스틸앙카 홈페이지 회사 소개 이미지 http://www.steelanchor.com/img/sub1_1.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true

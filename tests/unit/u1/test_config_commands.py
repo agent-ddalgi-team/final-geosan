@@ -209,6 +209,39 @@ def test_capability_file_semantic_errors(tmp_path: Path) -> None:
     assert "같은 자격" in messages
 
 
+def test_capability_file_rejects_same_date_status_history(tmp_path: Path) -> None:
+    """Given 한 자격에 날짜가 같은 이력 둘 / When 검사 / Then 줄·항목·이유로 거부한다(#57)."""
+    data = factories.capability_with_status("ISO 9001", "SUSPENDED", "2026-10-19")
+    for history in factories.find_qualification(data, "ISO 9001")["statuses"]:
+        history.update(occurredAt="2026-10-19", confirmedAt="2026-10-19")
+    report = check_capability_file(_write(tmp_path, "cap.json", data))
+    assert not report.ok and report.capability is None
+    [error] = report.errors
+    assert error.path == "qualifications[0].statuses[1].occurredAt"
+    assert error.line is not None and error.line > 0
+    assert "1번째 상태 이력과 같습니다" in error.message and "#57" in error.message
+
+
+def test_capability_file_rejects_same_blank_date_status_history(tmp_path: Path) -> None:
+    """Given 날짜가 둘 다 비어 있는 이력 둘 / When 검사 / Then 같은 쌍이므로 거부한다(PM 결정)."""
+    data = factories.capability_with_status("ISO 9001", "SUSPENDED", "2026-10-19")
+    for history in factories.find_qualification(data, "ISO 9001")["statuses"]:
+        history.update(occurredAt=None, confirmedAt=None)
+    report = check_capability_file(_write(tmp_path, "cap.json", data))
+    assert not report.ok
+    assert any("비어 있음" in e.message for e in report.errors)
+
+
+def test_capability_file_allows_same_dates_in_different_qualifications(tmp_path: Path) -> None:
+    """Given 자격마다 이력 하나, 날짜만 같음 / When 검사 / Then 자격 간 중복은 허용한다(#57)."""
+    data = factories.capability_file()
+    for qual in data["qualifications"]:
+        for history in qual["statuses"]:
+            history.update(occurredAt="2026-10-19", confirmedAt="2026-10-19")
+    report = check_capability_file(_write(tmp_path, "cap.json", data))
+    assert report.ok, report.error_lines()
+
+
 # ---------------------------------------------------------------------------
 # check-config · init-db · db merge-heads
 # ---------------------------------------------------------------------------
@@ -220,7 +253,7 @@ def test_check_config_without_db_only_checks(
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "none.db"))
     code, output = _run("check-config")
     assert code == 0, output
-    assert "version v0.17-a" in output and "DB 없음" in output
+    assert "version v0.17-b" in output and "DB 없음" in output
 
 
 def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> None:
@@ -228,11 +261,11 @@ def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> No
         "check-config", str(DEFAULT_RULE_CONFIG_PATH), str(DEFAULT_APP_SETTINGS_PATH)
     )
     assert code == 0, output
-    assert "규칙 버전 v0.17-a (DRAFT) 등록" in output
+    assert "규칙 버전 v0.17-b (DRAFT) 등록" in output
     with session_scope(tmp_db) as session:
         runtime = load_runtime_config(session)
-        assert runtime.rule_version.rule_version == "v0.17-a"
-        assert runtime.app_settings.active_dataset_kind == "VIRTUAL_REVIEWED"
+        assert runtime.rule_version.rule_version == "v0.17-b"
+        assert runtime.app_settings.active_dataset_kind == "BROCHURE"  # 예시 기본값(시연용, #91)
         assert runtime.notices == []
     code, output = _run("check-config")
     assert code == 0 and "등록" in output
@@ -277,8 +310,8 @@ def test_init_db_and_merge_heads_commands(tmp_path: Path, monkeypatch: pytest.Mo
 # ---------------------------------------------------------------------------
 
 
-def test_registry_first_run_registers_defaults_and_dataset_switch(tmp_db: Path) -> None:
-    with session_scope(tmp_db) as session:
+def test_registry_first_run_registers_defaults_and_dataset_switch(bare_db: Path) -> None:
+    with session_scope(bare_db) as session:
         runtime = load_runtime_config(session)
         assert runtime.rule_version.status == "DRAFT"
         assert len(runtime.notices) == 2
@@ -286,7 +319,7 @@ def test_registry_first_run_registers_defaults_and_dataset_switch(tmp_db: Path) 
         assert not runtime.app_settings.is_recording_staff("viewer")
         assert not runtime.app_settings.is_recording_staff("nobody")
         set_active_dataset_kind(session, "BROCHURE", updated_by="test")
-    with session_scope(tmp_db) as session:
+    with session_scope(bare_db) as session:
         assert load_runtime_config(session).app_settings.active_dataset_kind == "BROCHURE"
         with pytest.raises(InputError):
             set_active_dataset_kind(session, "NOPE")
@@ -303,7 +336,7 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
     # 같은 내용(해시)을 다른 version으로 등록하려 하면 거부한다
     with session_scope(tmp_db) as session:
         config = load_rule_config(DEFAULT_RULE_CONFIG_PATH)
-        config.version = "v0.17-b"
+        config.version = "v0.17-c"  # 파일 버전(v0.17-b)과 다른 값
         with pytest.raises(InputError, match="같은 내용"):
             register_rule_config_version(session, config, DEFAULT_RULE_CONFIG_PATH)
     # DRAFT 상태에서 내용이 바뀌면 해시를 갱신한다
@@ -330,11 +363,11 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
             load_runtime_config(session)
 
 
-def test_set_active_dataset_kind_on_empty_db_keeps_settings_readable(tmp_db: Path) -> None:
+def test_set_active_dataset_kind_on_empty_db_keeps_settings_readable(bare_db: Path) -> None:
     """앱 설정 사본이 없는 DB에서 활성 묶음부터 바꿔도 실행 설정을 읽을 수 있다(이슈 #44 재현)."""
-    with session_scope(tmp_db) as session:
+    with session_scope(bare_db) as session:
         assert set_active_dataset_kind(session, "BROCHURE", updated_by="test") == "BROCHURE"
-    with session_scope(tmp_db) as session:
+    with session_scope(bare_db) as session:
         runtime = load_runtime_config(session)
         assert runtime.app_settings.active_dataset_kind == "BROCHURE"
         assert runtime.app_settings.is_recording_staff("park-lee")  # 나머지는 예시 파일 값
