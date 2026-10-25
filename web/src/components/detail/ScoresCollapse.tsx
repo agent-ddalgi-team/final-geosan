@@ -52,7 +52,11 @@ function Details({ scores }: { scores: Scores }) {
           <thead>
             <tr>
               {Object.values(columns).map((name) => (
-                <th key={name} scope="col" style={{ ...cell, background: colors.bgLayout }}>
+                <th
+                  key={name}
+                  scope="col"
+                  style={{ ...cell, background: colors.bgLayout, whiteSpace: 'nowrap' }}
+                >
                   {name}
                 </th>
               ))}

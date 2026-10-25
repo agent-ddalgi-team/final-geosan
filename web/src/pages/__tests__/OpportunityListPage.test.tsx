@@ -52,6 +52,7 @@ describe('OpportunityListPage', () => {
     expect(await screen.findByText(states.listEmpty)).toBeInTheDocument();
     expect(screen.queryByTestId('opportunity-card')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-pagination')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('list-total')).not.toBeInTheDocument();
   });
 
   it('불러오는 동안 자리표시(Skeleton)를 보이고 끝나면 카드로 바뀐다', async () => {
@@ -111,6 +112,12 @@ describe('OpportunityListPage', () => {
     // 전문 용어는 카드에 쓰지 않는다(BR10.9).
     expect(card).not.toHaveTextContent(/E 77|P 95|R 82/);
     expect(view.getByTestId('opinion-area')).toBeInTheDocument();
+  });
+
+  it('목록 맨 위에 전체 곳 수를 보이고, 비어 있으면 보이지 않는다', async () => {
+    mockedGet.mockResolvedValueOnce(reply([apjeong], { total: 18 }));
+    renderPage();
+    expect(await screen.findByTestId('list-total')).toHaveTextContent(pagination.totalLine(18));
   });
 
   it('거산 확인 전 묶음은 "참고 N"과 승인 막힘 글자를 보이고, 점수가 없으면 "--"를 보인다', async () => {
