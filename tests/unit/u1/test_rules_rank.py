@@ -108,3 +108,23 @@ def test_invalid_batch_rejected(problem):
         return
     with pytest.raises(ValueError):
         rank_outputs(rows, dataset, config)
+
+
+def test_brochure_tie_prefers_more_judged_not_remaining_potential():
+    """Given E가 같은 둘 / When 소개서 정렬 / Then P 큰 쪽이 앞이고 R은 무관 (#63 원칙 2)."""
+    thorough = row("thorough", E=48, P=85, R=65)  # 빈칸을 끝까지 "없음"으로 판정한 회사
+    sparse = row("sparse", E=48, P=55, R=95)  # 다섯 항목을 비워 둔 회사(가능 점수만 높음)
+    assert ordered([sparse, thorough], "BROCHURE") == ["thorough", "sparse"]
+    # 가상 검수 묶음(default)은 R 순 그대로다.
+    assert ordered([thorough, sparse], "VIRTUAL_REVIEWED") == ["sparse", "thorough"]
+
+
+@pytest.mark.parametrize("weight", [5, 7, 10, 15])
+def test_marking_unavailable_as_no_signal_never_lowers_brochure_rank(weight):
+    """Given 미확보 하나를 "없음"으로 판정(E 같음, P+w, R-w) / When 정렬 / Then 순위 유지·상승."""
+    others = [row("a", E=50, P=100, R=50), row("b", E=48, P=67, R=83), row("c", E=48, P=55, R=95)]
+    before = row("target", E=48, P=55, R=95)
+    after = row("target", E=48, P=55 + weight, R=95 - weight)
+    rank_before = ordered([*others, before], "BROCHURE").index("target")
+    rank_after = ordered([*others, after], "BROCHURE").index("target")
+    assert rank_after <= rank_before
