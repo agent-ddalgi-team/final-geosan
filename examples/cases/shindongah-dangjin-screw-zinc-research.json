@@ -34,7 +34,8 @@
     "item": "스틸 직결 스크류 전기아연도금",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "카탈로그의 스틸 SWCH 18A/22A가 철이라 아연도금과 맞고 내식 목적을 직접 설명함. 단독 전기아연도금은 실내용이라 적혀 있음 (카탈로그)"
   },
   "discoveryPaths": [
     {
@@ -105,6 +106,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "공식 제품표에 직결 스크류와 전기아연도금 사양이 있다. 다만 CSV 당진 공장의 생산 품목인지 확인하지 못해 생산 근거 판정은 보류했다.",
+      "summary": "카탈로그에 직결 스크류와 전기아연도금 사양이 있습니다. 다만 당진 공장의 생산 품목인지 확인하지 못해 판정을 보류했습니다. (카탈로그 17쪽)",
       "evidenceRefs": [
         0,
         2
@@ -118,6 +120,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 카탈로그의 스틸 SWCH 18A/22A를 소개서 ZINC_PLATING의 materialCodes FE와 대조했다. 소재 분류 일치이며 당진 생산 여부나 개별 스크류의 사양 충족을 확인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "카탈로그의 스틸 SWCH 18A/22A가 아연도금 소재인 철과 분류가 맞습니다. 당진 생산 여부나 개별 스크류의 사양 충족을 확인한 것은 아닙니다. (카탈로그 17쪽 · 거산 소개서 아연도금 소재)",
       "evidenceRefs": [
         1
       ],
@@ -130,6 +133,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "소개서 ZINC_PLATING의 방위산업·자동차 부품 실적 항목을 확인했다. 해당 직결 스크류의 납품 산업·유사 부품과 연결할 근거가 없고 소개서의 부품 종류·기간도 비어 있어 미확보로 둔다.",
+      "summary": "직결 스크류의 납품 산업·유사 부품을 거산 소개서의 납품 산업(방산·자동차 부품)과 연결할 근거가 없어 미확보입니다. (거산 소개서 납품 산업)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -140,6 +144,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 카탈로그가 직접 설명하는 내식 목적을 소개서 ZINC_PLATING의 CORROSION 1개와 대조했다. 표의 단독 전기아연도금은 내식성이 약한 실내 사용용이며, 복합 처리 성능이나 거산의 동일 성능 충족을 뜻하지 않는다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "카탈로그가 내식 목적을 직접 설명해 내식 목적 하나가 맞습니다. 표의 단독 전기아연도금은 내식성이 약한 실내용이며 복합 처리 성능을 뜻하지 않습니다. (카탈로그 17쪽 · 거산 소개서 아연도금 목적)",
       "evidenceRefs": [
         2,
         3
@@ -153,6 +158,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "summary": "공개 시점 신호 조사를 끝내지 못해 미확보입니다. (조사 미완료)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -163,6 +169,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "summary": "공개 시점 신호 조사를 끝내지 못해 미확보입니다. (조사 미완료)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -173,6 +180,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "summary": "공개 시점 신호 조사를 끝내지 못해 미확보입니다. (조사 미완료)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -183,6 +191,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "공개 시점 신호 조사를 완료하지 않아 미확보로 남겼다.",
+      "summary": "공개 시점 신호 조사를 끝내지 못해 미확보입니다. (조사 미완료)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []

@@ -24,7 +24,8 @@
     "item": "알루미늄 압출품 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "표면 처리가 필요한 알루미늄 압출품을 직접 만든다고 밝혔고 소재가 알루미늄이라 아노다이징과 맞음. 2025-05 코팅 생산라인 설치 (홈페이지)"
   },
   "discoveryPaths": [
     { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-donghwa-extrusion", "discoveredAt": "2026-10-22" }
@@ -121,6 +122,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "표면 처리가 필요한 알루미늄 압출품을 생산한다고 직접 밝힘 (해당 1.0, 확인)",
+      "summary": "표면 처리가 필요한 알루미늄 압출품을 만든다고 홈페이지에 직접 밝혔습니다. (홈페이지 ABOUT·PRODUCT)",
       "evidenceRefs": [0, 2],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -131,6 +133,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "알루미늄 압출재 — 아노다이징 처리 소재(Al)와 정확히 일치 (1.0, 확인)",
+      "summary": "알루미늄 압출재라 아노다이징 소재와 정확히 맞습니다. (홈페이지 PRODUCT · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [1],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -144,6 +147,7 @@
       "certainty": null,
       "state": "NO_BONUS",
       "factJudged": "가전·전자·배터리·자동차 부품 위주로 보이며 거산 소개서의 납품 산업(방위산업, 항공우주)과 맞지 않음 — 가점 없음",
+      "summary": "가전·전자·배터리·자동차 부품 위주라 거산 소개서의 납품 산업(방산·항공우주)과 같지 않아 가점이 없습니다. (홈페이지 ABOUT · 거산 소개서 납품 산업)",
       "evidenceRefs": [0],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -154,6 +158,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "색상 구현을 위한 표면 처리를 명시 — 아노다이징 태그 중 외관(APPEARANCE) 1개 일치 (0.5, 확인)",
+      "summary": "색상을 내기 위한 표면 처리를 명시해 외관 목적 하나가 맞습니다. (홈페이지 PRODUCT · 거산 소개서 아노다이징 목적)",
       "evidenceRefs": [2],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -166,6 +171,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "2025-05 TAC 프로토타입 생산라인 설치 — 표면 코팅 라인이라 아노다이징 수요와는 간접 관련 (0.5, 확인)",
+      "summary": "2025년 5월 TAC 프로토타입 생산라인을 설치했습니다. 표면 코팅 라인이라 아노다이징 수요와는 간접 관련이고, 자체 처리 가능성도 있습니다. (홈페이지 HISTORY)",
       "evidenceRefs": [3],
       "signalRefs": [0],
       "usedCapabilityRefs": []
@@ -176,12 +182,13 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "2024-06 한화에어로스페이스 협력 업체(ESS부품) 등록 — 신규 거래처 등록, 아노다이징 수요와는 간접 관련 (0.5, 확인)",
+      "summary": "2024년 6월 한화에어로스페이스 협력업체(ESS 부품)로 등록했습니다. 새 거래처이지만 아노다이징 수요와 직접 연결된 글은 아닙니다. (홈페이지 HISTORY)",
       "evidenceRefs": [4],
       "signalRefs": [1],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "summary": "홈페이지에 입찰·협력사 모집 공고가 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 글 없음 (확인일 2026-10-22)", "summary": "홈페이지에 채용 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
   "researchReadiness": null,

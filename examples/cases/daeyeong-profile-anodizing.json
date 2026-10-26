@@ -30,7 +30,8 @@
     "item": "알루미늄 프로파일 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "프로파일 DF 3090 제품 상세에 아노다이징 사양이 적혀 있고 소재 A6N01S-T5가 알루미늄이라 맞음. 자체 처리·외주는 확인 전 (홈페이지)"
   },
   "discoveryPaths": [
     {
@@ -112,6 +113,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 명시되어 있다. 외관 목적은 별도 NEW_PERF에서 간접 근거 STRONG으로 판단하며, 자체 처리·외주 발주는 미확인이다.",
+      "summary": "DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 적혀 있습니다. 자체 처리인지 외주 발주인지는 확인 전입니다. (홈페이지 DF 3090 제품 안내)",
       "evidenceRefs": [
         0,
         2
@@ -125,6 +127,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 DF 3090 소재는 A6N01S-T5 알루미늄 합금이다. 실제 소개서 묶음 ANODIZING 소재 AL과 코드 범위를 대조했다. 구체적인 합금·질별·치수의 수탁 가능 여부는 거산 확인 전이다.",
+      "summary": "DF 3090 소재 A6N01S-T5 알루미늄 합금이 아노다이징 소재와 범위가 맞습니다. 구체적인 합금·질별·치수의 수탁 가능 여부는 확인 전입니다. (홈페이지 DF 3090 제품 안내 · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [
         1
       ],
@@ -142,6 +145,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 산업용 프로파일 제품은 확인했으나 거산 소개서 ANODIZING의 방위산업·항공우주 실적과 대상 DF 3090의 동일 부품·동일 산업을 연결할 근거가 없다. 다음 할 일: DF 3090의 실제 적용 산업·부품 용도를 확인한 뒤 소개서 실적과 대조한다. 미확인을 불일치로 확정하지 않았다. 2026-10-24 공식 사업분야와 작업사례 첫 목록을 추가 확인했으나 대상 DF 3090의 납품 산업·적용 부품과 거산 실적의 일치 여부를 확정하지 못해 UNAVAILABLE을 유지한다.",
+      "summary": "산업용 프로파일 제품은 확인했으나 DF 3090의 적용 산업·부품과 거산 소개서의 납품 산업(방산·항공우주)을 연결할 근거가 없어 미확보입니다. (홈페이지 사업분야·작업사례, 확인일 2026-10-24)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -152,6 +156,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "공식 DF 3090 기술자료 이미지에 Anodized와 Silver, Black 색상이 함께 명시된다. 외관 목적을 간접 근거 STRONG으로 추정하고 실제 소개서 ANODIZING의 APPEARANCE 한 태그와 대조했다. 직접 목적 설명·내식·내마모·외주 수요 확인은 아니다.",
+      "summary": "DF 3090 기술자료에 Anodized와 은색·검정 색상이 함께 적혀 있어 외관 목적을 간접 추정했습니다. 직접 목적 설명·내식·내마모·외주 수요 확인은 아닙니다. (홈페이지 DF 3090 기술자료 · 거산 소개서 아노다이징 목적, 추정)",
       "evidenceRefs": [
         2,
         3
@@ -170,6 +175,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-24 공식 연혁의 조립동 신축공장 준공 글(https://www.alusys.com/bbs/board.php?bo_table=b103&wr_id=17)을 확인했으나 제목은 10. 11이며 정확한 발생일과 DF 3090의 관련성이 미확인이다. 다음 할 일: 실제 발생일과 대상 제품 생산라인 관련성을 확인한다. 게시물 등록일을 발생일로 대신 쓰거나 신호가 없다고 단정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "연혁에 조립동 신축공장 준공 글이 있으나 정확한 발생일과 DF 3090과의 관련성을 확인하지 못해 미확보입니다. (홈페이지 연혁, 확인일 2026-10-24)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -180,6 +186,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-24 공식 사업분야·연혁·작업사례 첫 목록(전체 41건 표시)을 확인했으나 DF 3090에 연결되는 신규 수주·제품 출시·사업 확대의 실제 발생일을 특정하지 못했다. 다음 할 일: 대상 품목과 연결된 사례 본문·발생일을 추가 확인한다. 전체 사례를 조사해 신호가 없음을 확인한 것은 아니므로 UNAVAILABLE을 유지한다.",
+      "summary": "사업분야·연혁·작업사례(41건) 첫 목록을 봤으나 DF 3090에 연결되는 신규 수주·출시 발생일을 특정하지 못해 미확보입니다. (홈페이지 작업사례, 확인일 2026-10-24)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -190,6 +197,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-24 공식 게시판 https://www.alusys.com/bbs/board.php?bo_table=b601 의 전체 목록 한 페이지와 유일한 안내 글 본문을 확인했다. 공지사항입니다.라는 안내만 있고 실제 입찰·협력사 모집·구매 공고 내용은 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 자료 전반에 신호가 없다는 뜻은 아니다.",
+      "summary": "공지 게시판에 안내 글 하나뿐이고 입찰·협력사 모집·구매 공고가 없어 신호 없음입니다. (홈페이지 공지 게시판, 확인일 2026-10-24)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -200,6 +208,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-24 공식 게시판 https://www.alusys.com/bbs/board.php?bo_table=b701 의 전체 목록 한 페이지와 유일한 안내 글 본문을 확인했다. 채용정보 게시판입니다.라는 안내만 있고 실제 구매·품질·생산기술·표면처리 직무 채용 내용은 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 자료 전반에 신호가 없다는 뜻은 아니다.",
+      "summary": "채용 게시판에 안내 글 하나뿐이고 관련 직무 채용 글이 없어 신호 없음입니다. (홈페이지 채용 게시판, 확인일 2026-10-24)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []

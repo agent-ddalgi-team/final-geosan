@@ -24,7 +24,8 @@
     "item": "볼트·너트 전기아연도금",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "볼트·너트·와셔를 다루며 녹방지 코팅 제품도 팔고 일반·고장력 철계 볼트가 있어 아연도금과 맞음(추정). 직접 생산 여부는 확인 전 (홈페이지)"
   },
   "discoveryPaths": [
     { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-samjin-bolt", "discoveredAt": "2026-10-22" }
@@ -99,6 +100,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "볼트·너트·와셔를 다루고 녹방지 코팅 제품도 판매 — 표면처리가 필요한 부품이지만 직접 생산 여부가 불확실해 강한 추정 (해당 1.0, 강한 추정)",
+      "summary": "볼트·너트·와셔를 다루고 녹방지 코팅 제품도 팔아 표면처리가 필요한 부품입니다. 직접 생산하는지가 불확실해 추정으로 두었습니다. (홈페이지 제품소개, 추정)",
       "evidenceRefs": [0, 2],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -109,6 +111,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "일반·고장력(철계) 볼트와 SUS(스테인리스) 볼트를 함께 취급 — 철계 소재는 아연도금 가능, 스테인리스는 해당 없음 (일부 가능 0.5, 강한 추정: 소재를 제품명으로만 확인)",
+      "summary": "일반·고장력 철계 볼트와 스테인리스 볼트를 함께 취급합니다. 철계는 아연도금 소재와 맞지만 소재를 제품명으로만 확인해 일부만 맞는 것으로 추정했습니다. (홈페이지 제품소개 · 거산 소개서 아연도금 소재, 추정)",
       "evidenceRefs": [1],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -121,6 +124,7 @@
       "certainty": null,
       "state": "NO_BONUS",
       "factJudged": "태양광·건축용 볼트 위주로 보이며 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
+      "summary": "태양광·건축용 볼트 위주라 거산 소개서의 납품 산업(방산·자동차 부품)과 같지 않아 가점이 없습니다. (홈페이지 · 거산 소개서 납품 산업)",
       "evidenceRefs": [0],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -131,6 +135,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "녹방지 코팅 제품을 명시 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 확인)",
+      "summary": "녹방지 코팅 제품을 명시해 내식 목적 하나가 맞습니다. (홈페이지 제품소개 · 거산 소개서 아연도금 목적)",
       "evidenceRefs": [2],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -143,13 +148,14 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "2020-09-01 회사 확장 이전 — 간접 관련 (0.5, 확인, 발생일이 오래되어 감쇠 큼)",
+      "summary": "2020년 9월 회사 확장 이전이 있으나 도금 수요와는 간접 관련이고 오래되어 점수에 거의 반영되지 않습니다. (홈페이지 회사소개)",
       "evidenceRefs": [3],
       "signalRefs": [0],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 신규 수주·출시 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 게시판 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 신규 수주·출시 글 없음 (확인일 2026-10-22)", "summary": "홈페이지에 신규 수주·출시 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "summary": "홈페이지에 입찰·협력사 모집 공고가 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 게시판 없음 (확인일 2026-10-22)", "summary": "홈페이지에 채용 게시판이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
   "researchReadiness": null,

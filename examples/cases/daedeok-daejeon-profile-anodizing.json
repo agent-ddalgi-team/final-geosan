@@ -30,7 +30,8 @@
     "item": "알루미늄 프로파일 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "알루미늄 프로파일을 설계·제작하고 MP 1530 사양표에 아노다이징이 있으며 소재 A6063S가 알루미늄이라 맞음. 외주 수요는 확인 전 (홈페이지 제품표·회사 소개)"
   },
   "discoveryPaths": [
     {
@@ -112,6 +113,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 회사 소개에 알루미늄 프로파일 설계 및 제작이 있고 MP 1530 사양표에 Anodized가 명시되어 있다. 제품의 표면처리 사양은 확인했으나 자체 압출·처리 여부와 신규 외주 수요는 미확인이다.",
+      "summary": "회사 소개에 알루미늄 프로파일 설계·제작이 있고 MP 1530 사양표에 아노다이징이 적혀 있습니다. 자체 압출·처리 여부와 신규 외주 수요는 확인 전입니다. (홈페이지 회사 소개·MP 1530 제품표)",
       "evidenceRefs": [
         0,
         2,
@@ -126,6 +128,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 제품표의 A6063S-T5, A6NO1S-T5를 소개서 ANODIZING의 AL 소재 분류와 대조했다. 분류 일치이며 개별 합금·형상·색상의 처리 가능 여부를 승인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "제품표의 A6063S-T5·A6N01S-T5가 아노다이징 소재인 알루미늄과 분류가 맞습니다. 개별 합금·형상·색상의 처리 가능 여부를 승인한 것은 아닙니다. (홈페이지 MP 1530 제품표 · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [
         1
       ],
@@ -143,6 +146,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 회사 소개 http://www.ds-profile.co.kr/intro/greeting 와 MP 1530 제품표, 적용사례 http://www.ds-profile.co.kr/gallery 의 첫 목록·최신 2건 본문을 확인했다. 산업용 구조물·클린부스 제작은 확인했으나 대상 MP 1530의 납품 산업·부품과 거산 소개서 ANODIZING의 방위산업·항공우주 실적 연결은 미확인이다. 다음 할 일: 대상품의 실제 납품 산업·부품 용도와 거산의 유사 실적을 확인한다. 근거 부족만으로 다른 산업이라고 확정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "산업용 구조물·클린부스 제작은 확인했으나 MP 1530의 납품 산업·부품과 거산 소개서의 납품 산업(방산·항공우주)을 연결할 근거가 없어 미확보입니다. (홈페이지 회사 소개·적용사례, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -153,6 +157,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "동일 제품표의 Anodized와 Silver 사양에서 외관 목적을 간접 추정해 APPEARANCE 1개와 대조했다(STRONG). 내식·경도는 일치로 추가하지 않았다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "같은 제품표의 Anodized·Silver 사양에서 외관 목적을 간접 추정했습니다. 내식·경도는 넣지 않았습니다. (홈페이지 MP 1530 제품표 · 거산 소개서 아노다이징 목적, 추정)",
       "evidenceRefs": [
         3
       ],
@@ -170,6 +175,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 소개 http://www.ds-profile.co.kr/intro/greeting 와 공지사항 http://www.ds-profile.co.kr/customer/notice 를 확인했다. 공지는 2019-04-01 홈페이지 개편 안내 1건이고 회사 소개는 기존 사업 설명이며 자체 공장 증설·신규 생산라인 글은 없다. 별도 연혁 메뉴는 확인되지 않았다. 고객사의 클린부스 제작 사례를 이 회사의 증설로 보지 않고, 확인한 공식 페이지 범위에서 NO_SIGNAL로 판정한다.",
+      "summary": "회사 소개와 공지사항(2019년 홈페이지 개편 1건)에 자체 공장 증설·신규 생산라인 글이 없어 신호 없음입니다. 고객사 클린부스 제작 사례를 증설로 보지 않았습니다. (홈페이지 회사 소개·공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -180,6 +186,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 적용사례 첫 목록 http://www.ds-profile.co.kr/gallery 및 최신 2건 http://www.ds-profile.co.kr/gallery/detail/94 (알루미늄계단 작업발판, 게시 2024-03-05), http://www.ds-profile.co.kr/gallery/detail/93 (크린부스 설계 제작 설치, 게시 2023-11-08)를 확인했다. 제작 사례는 있으나 실제 수주·출시 발생일과 MP 1530의 관련성이 미확인이다. 다음 할 일: 대상품과 연결된 수주·출시 기록과 실제 발생일을 확인한다. 게시일을 수주일로 대신 쓰거나 9쪽 전체 사례에 신호가 없다고 단정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "적용사례에 제작 사례(2024-03 계단 발판, 2023-11 클린부스)는 있으나 실제 수주 발생일과 MP 1530과의 관련성을 확인하지 못해 미확보입니다. (홈페이지 적용사례, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -190,6 +197,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 공지사항 http://www.ds-profile.co.kr/customer/notice 의 전체 1건 목록과 고객게시판 http://www.ds-profile.co.kr/customer 의 빈 목록을 확인했다. 홈페이지 개편 안내만 있고 입찰·협력사 모집·구매 공고는 없어 이 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 온라인 견적문의 메뉴를 회사의 구매 공고로 해석하지 않았다.",
+      "summary": "공지사항·고객게시판에 입찰·협력사 모집·구매 공고가 없어 신호 없음입니다. 온라인 견적문의 메뉴는 구매 공고로 보지 않았습니다. (홈페이지 공지사항·고객게시판, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -200,6 +208,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 소개·전체 메뉴와 공지사항 http://www.ds-profile.co.kr/customer/notice 를 확인했다. 별도 채용 메뉴가 없고 유일한 공지는 홈페이지 개편 안내로, 구매·품질·생산기술·표면처리 직무 채용 글은 없다. 확인한 홈페이지 범위에서 NO_SIGNAL로 판정하며 외부 채용공고 전체에 대한 판정은 아니다.",
+      "summary": "별도 채용 메뉴가 없고 공지도 홈페이지 개편 안내뿐이라 신호 없음입니다. (홈페이지 메뉴·공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []

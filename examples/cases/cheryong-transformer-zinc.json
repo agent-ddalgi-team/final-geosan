@@ -26,7 +26,8 @@
     "item": "변압기 철제 부품 전기아연도금",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "변압기 탱크 소재가 연강이라 아연도금 가능(스테인리스는 해당 없음)하고 철제 탱크 변압기를 만듦(추정). 2026-03 대전 제2공장 인수 (홈페이지)"
   },
   "discoveryPaths": [
     { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-cheryong-transformer", "discoveredAt": "2026-10-22" }
@@ -90,6 +91,7 @@
       "certainty": "WEAK",
       "state": "WEAK",
       "factJudged": "철제 탱크를 쓰는 변압기를 만듦 — 표면처리가 필요한 부품이 있을 수 있으나 홈페이지에 직접 언급이 없어 제품 특성에서 추정 (해당 1.0, 약한 추정)",
+      "summary": "철제 탱크를 쓰는 변압기를 만듭니다. 표면처리가 필요한 부품이 있을 수 있으나 홈페이지에 직접 언급이 없어 제품 특성에서 약하게 추정했습니다. (홈페이지 제품, 추정)",
       "evidenceRefs": [0, 1],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -100,6 +102,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "탱크 소재가 연강(Mild Steel) 또는 스테인리스 — 연강은 아연도금 가능, 스테인리스는 해당 없음 (일부 가능 0.5, 확인)",
+      "summary": "탱크 소재가 연강 또는 스테인리스입니다. 연강은 아연도금 소재와 맞고 스테인리스는 해당 없어 일부만 맞습니다. (홈페이지 제품 · 거산 소개서 아연도금 소재)",
       "evidenceRefs": [1],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -112,24 +115,26 @@
       "certainty": null,
       "state": "NO_BONUS",
       "factJudged": "전력기기(변압기) 산업으로 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
+      "summary": "전력기기(변압기) 산업이라 거산 소개서의 납품 산업(방산·자동차 부품)과 같지 않아 가점이 없습니다. (홈페이지 제품 · 거산 소개서 납품 산업)",
       "evidenceRefs": [0],
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지에 처리 목적(내식·외관 등) 언급 없음 — 미확보", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지에 처리 목적(내식·외관 등) 언급 없음 — 미확보", "summary": "홈페이지에 처리 목적(내식·외관 등) 언급이 없어 미확보입니다. (홈페이지)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
     {
       "itemCode": "SIG_EXPAND",
       "matchRate": "간접 관련",
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "2026-03 대전 제2공장 인수 — 생산 확대와 관련되지만 도금 수요와는 간접 관련 (0.5, 확인)",
+      "summary": "2026년 3월 대전 제2공장을 인수했습니다. 생산 확대와 관련되지만 도금 수요와는 간접 관련입니다. (홈페이지 연혁)",
       "evidenceRefs": [2],
       "signalRefs": [0],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "소식 게시판은 전시회 참가 글뿐이고 신규 수주 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 채용 안내가 없고 공지는 전시회 글뿐 (확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "소식 게시판은 전시회 참가 글뿐이고 신규 수주 글 없음 (확인일 2026-10-22)", "summary": "소식 게시판은 전시회 참가 글뿐이고 신규 수주 글이 없어 신호 없음입니다. (홈페이지 소식, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "summary": "홈페이지에 입찰·협력사 모집 공고가 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 채용 안내가 없고 공지는 전시회 글뿐 (확인일 2026-10-24)", "summary": "홈페이지 메뉴에 채용 안내가 없고 공지는 전시회 글뿐이라 신호 없음입니다. (홈페이지, 확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
   "researchReadiness": null,
