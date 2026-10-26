@@ -39,6 +39,11 @@ def _table_names(db_path: Path) -> list[str]:
         return [r[0] for r in rows]
 
 
+def _column_names(db_path: Path, table: str) -> list[str]:
+    with sqlite3.connect(db_path) as con:
+        return [r[1] for r in con.execute(f"PRAGMA table_info({table})")]
+
+
 def test_connection_uses_wal_busy_timeout_and_foreign_keys(tmp_db: Path) -> None:
     """연결마다 WAL·busy_timeout 5000·외래 키 검사가 켜진다(계약 C6, 안정성 설계 3장)."""
     with get_engine(tmp_db).connect() as connection:
@@ -76,7 +81,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["rec_001"]
+    assert first == script_heads() == ["rec_002"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -84,13 +89,18 @@ def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
 
 
 def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path) -> None:
-    """downgrade 한 단계는 마지막 접두사(rec_) 테이블만 지우고, upgrade가 되돌린다."""
+    """downgrade 한 단계: rec_002는 새 열만, rec_001은 rec_ 표를 지운다. upgrade가 되돌린다."""
+    assert downgrade(tmp_db, "-1") == ["rec_001"]
+    assert "card_reason" not in _column_names(tmp_db, "opp_opportunity")
+    assert "rec_review_opinion" in _table_names(tmp_db)
     assert downgrade(tmp_db, "-1") == ["q_001"]
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["rec_001"]
+    assert upgrade_to_head(tmp_db) == ["rec_002"]
     assert "rec_review_opinion" in _table_names(tmp_db)
+    assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
+    assert "summary" in _column_names(tmp_db, "eval_item_judgment")
 
 
 def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:

@@ -181,6 +181,11 @@ class OpportunityInput(_ContractModel):
     company_filter_status: FilterState
     has_linked_interaction: bool
     linked_interaction_kinds: list[InteractionKind] = Field(default_factory=list)
+    card_reason: str | None = Field(
+        default=None,
+        description="사례 파일 opportunity.cardReason. 있으면 카드 추천 이유로 그대로 쓴다 "
+        "(더하는 변경 2026-10-26, #139)",
+    )
 
 
 class ProcessLinkInput(_ContractModel):
@@ -360,6 +365,10 @@ class ItemInput(_ContractModel):
     )
     match_rate_step: str | None = None
     fact_judged: str | None = None
+    summary: str | None = Field(
+        default=None,
+        description="사례 파일 itemInputs[].summary 그대로 (더하는 변경 2026-10-26, #139)",
+    )
     evidence_ids: list[str] = Field(default_factory=list)
     signal_ids: list[str] = Field(default_factory=list)
     used_capability_refs: list[UsedCapabilityRef] = Field(default_factory=list)
@@ -421,6 +430,7 @@ class ItemJudgmentOutput(_ContractModel):
     decay: float | None = None
     score: int | None = Field(default=None, description="UNAVAILABLE만 null (BR4.5)")
     fact_judged: str | None = None
+    summary: str | None = None
     reasoning: str | None = None
     evidence_ids: list[str] = Field(default_factory=list)
     used_capability_ids: list[str] = Field(default_factory=list)

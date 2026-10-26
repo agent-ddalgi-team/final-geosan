@@ -54,7 +54,8 @@
         "item": { "type": "string", "minLength": 1 },
         "project": { "type": ["string", "null"] },
         "purpose": { "$ref": "#/$defs/purpose" },
-        "owner": { "type": ["string", "null"], "pattern": "^[a-z0-9-]{1,32}$" }
+        "owner": { "type": ["string", "null"], "pattern": "^[a-z0-9-]{1,32}$" },
+        "cardReason": { "type": ["string", "null"], "description": "추천 목록 카드의 추천 이유 한 문장. 출처 제외 80자 안 권장(넘으면 경고). 더하는 변경 2026-10-26" }
       }
     },
     "discoveryPaths": {
@@ -177,6 +178,7 @@
           "certainty": { "oneOf": [{ "type": "string", "enum": ["CONFIRMED", "STRONG", "WEAK"] }, { "type": "null" }] },
           "state": { "$ref": "#/$defs/itemState" },
           "factJudged": { "type": ["string", "null"] },
+          "summary": { "type": ["string", "null"], "description": "상세 화면용 쉬운 요약 1~2문장(factJudged 원문은 그대로). 더하는 변경 2026-10-26" },
           "evidenceRefs": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
           "signalRefs": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
           "usedCapabilityRefs": {

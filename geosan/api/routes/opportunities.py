@@ -299,6 +299,7 @@ def _scores(context: DetailContext) -> dict:
                     decay=items[code].decay,
                     score=items[code].score,
                     fact_judged=items[code].fact_judged,
+                    summary=items[code].summary,
                 )
                 for code, definition in definitions.items()
             ],

@@ -55,6 +55,7 @@ class Opportunity(CommonColumns, Base):
     review_owner: Mapped[str | None] = mapped_column(String(32))
     review_due_at: Mapped[date | None] = mapped_column(Date)
     merge_history: Mapped[Any | None] = mapped_column(JSON)
+    card_reason: Mapped[str | None] = mapped_column(Text)  # 카드 추천 이유 한 문장 (#139, rec_002)
 
 
 class Interaction(Supersedable, CommonColumns, Base):

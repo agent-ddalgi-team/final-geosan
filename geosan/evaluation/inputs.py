@@ -85,6 +85,7 @@ def store_inputs(
                 else None,
                 match_rate=match_rates.get(code),
                 fact_judged=item.fact_judged if item else None,
+                summary=item.summary if item else None,
                 evidence_ids=[evidence_ids[ref] for ref in item.evidence_refs] if item else [],
                 signal_ids=[signal_ids[ref] for ref in item.signal_refs] if item else [],
                 used_capability_refs=[

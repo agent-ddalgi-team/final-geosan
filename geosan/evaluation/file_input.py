@@ -388,6 +388,7 @@ def case_to_evaluation_input(
                 match_rate=rate,
                 match_rate_step=step,
                 fact_judged=item.fact_judged,
+                summary=item.summary,
                 evidence_ids=sorted(
                     {evidence_ids[e] for e in item.evidence_refs if evidence_ids[e] in permitted}
                 ),
@@ -422,6 +423,7 @@ def case_to_evaluation_input(
             company_filter_status=FilterState.PASS,
             has_linked_interaction=bool(linked),
             linked_interaction_kinds=sorted({inter.kind for inter in linked}),
+            card_reason=case.opportunity.card_reason,
         ),
         process_links=links,
         requirements=requirements,
