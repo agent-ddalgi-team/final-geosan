@@ -257,6 +257,7 @@ def build_snapshot(
             question_can_change_class=bool(research.can_change_class),
             estimated_hours=research.estimated_hours,
             max_hours=research.max_hours,
+            question_set=[str(q) for q in (research.question_set or [])],
         )
         if research
         else None,

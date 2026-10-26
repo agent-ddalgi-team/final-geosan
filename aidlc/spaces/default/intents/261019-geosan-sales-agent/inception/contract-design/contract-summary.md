@@ -423,7 +423,7 @@ EvaluationInput:
     qualifications: [{ qualId, kind, officialName, number, edition, holder, site, validFrom, validTo, reviewStatus, currentStatus }]
     qualificationScopes: [{ scopeId, qualId, scopeKind, processId, customerId, oppId, applicability, reviewStatus }]
   readinessCheck: { checked: boolean, checkedAt, evalIdAtCheck|null } | null
-  researchReadiness: { hasGradedEvidence, hasQuestionSet, hasChannelAndOwner, questionCanChangeClass, estimatedHours, maxHours } | null
+  researchReadiness: { hasGradedEvidence, hasQuestionSet, hasChannelAndOwner, questionCanChangeClass, estimatedHours, maxHours, questionSet } | null   # questionSet: 사례 파일 문장 그대로(더하는 변경 2026-10-26 PM, #139 카드 '다음 할 일')
   operationalReady: boolean            # 모든 거산 값 검수 완료 + 근거 사용 허용 (Ledger가 계산해 넘김)
 EvaluationOutput:
   requirementChecks: [{ reqId, result: checkResult, displayResult: checkDisplay, stageJudged, scopeJudged, reason, comparedValue, qualId|null, linkId|null, followUpCondition }]

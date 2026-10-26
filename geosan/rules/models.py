@@ -334,6 +334,13 @@ class ResearchReadinessInput(_ContractModel):
     question_can_change_class: bool
     estimated_hours: float | None = None
     max_hours: float | None = None
+    question_set: list[str] = Field(
+        default_factory=list,
+        description=(
+            "사례 파일 researchReadiness.questionSet 문장 그대로. "
+            "첫 항목이 카드 '다음 할 일'이 된다 (더하는 변경 2026-10-26, #139)"
+        ),
+    )
 
 
 class UsedCapabilityRef(_ContractModel):
