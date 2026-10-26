@@ -92,6 +92,11 @@ class CaseOpportunity(FileModel):
     project: str | None = None
     purpose: Purpose
     owner: str | None = Field(default=None, pattern=STAFF_KEY_PATTERN)
+    card_reason: str | None = Field(
+        default=None,
+        description="추천 목록 카드의 추천 이유 한 문장(출처 제외 80자 안 권장, 넘으면 경고). "
+        "작성자가 확인한 문장. 더하는 변경 2026-10-26 PM, #139",
+    )
 
 
 class CaseDiscoveryPath(FileModel):
@@ -168,6 +173,11 @@ class CaseItemInput(FileModel):
     certainty: Literal["CONFIRMED", "STRONG", "WEAK"] | None = None
     state: ItemState
     fact_judged: str | None = None
+    summary: str | None = Field(
+        default=None,
+        description="상세 화면용 쉬운 요약 1~2문장(원문 factJudged는 그대로 둠). "
+        "더하는 변경 2026-10-26 PM, #139",
+    )
     evidence_refs: list[int] = Field(default_factory=list)
     signal_refs: list[int] = Field(default_factory=list)
     used_capability_refs: list[CaseUsedCapabilityRef] = Field(default_factory=list)

@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -347,6 +348,7 @@ def _case_semantics(
     _check_requirements(model, link_codes, c)
     _check_signals(model, c)
     _check_item_inputs(model, rule_config, capability, c)
+    _check_card_reason(model, c)
     _check_expected(model, c)
 
 
@@ -433,6 +435,25 @@ def _check_signals(model: CaseFile, c: _Collector) -> None:
                 f"발생일이 기준일({model.base_date})보다 뒤라 예정 사건(미확보)으로 "
                 "처리됩니다 (BR4.4)",
             )
+
+
+CARD_REASON_MAX = 80
+
+
+def _check_card_reason(model: CaseFile, c: _Collector) -> None:
+    """카드 추천 이유는 출처 제외 80자 안(PM 결정 2026-10-26).
+
+    넘으면 경고만 하고 투입은 막지 않는다. 끝의 괄호(출처)는 글자 수에서 뺀다."""
+    text = model.opportunity.card_reason
+    if text is None:
+        return
+    body = re.sub(r"\s*\([^()]*\)\s*$", "", text.strip())
+    if len(body) > CARD_REASON_MAX:
+        c.warn(
+            "opportunity.cardReason",
+            f"카드 문장이 출처를 빼고 {len(body)}자입니다 "
+            f"({CARD_REASON_MAX}자 안이면 카드에서 두 줄 안에 들어갑니다)",
+        )
 
 
 def _check_item_inputs(

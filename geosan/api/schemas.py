@@ -268,6 +268,9 @@ class ScoreItemView(_ApiModel):
     decay: float | None = None
     score: int | None = None
     fact_judged: str | None = None
+    summary: str | None = Field(
+        default=None, description="상세용 쉬운 요약(더하는 변경 2026-10-26, #139). 없으면 null"
+    )
 
 
 class Scores(_ApiModel):

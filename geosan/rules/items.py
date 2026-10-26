@@ -182,6 +182,7 @@ def _calculate_item(
         decay=decay,
         score=score,
         fact_judged=item.fact_judged,
+        summary=item.summary,
         reasoning=reason,
         evidence_ids=sorted(evidence_ids),
         used_capability_ids=sorted(set(item.used_capability_ids)),

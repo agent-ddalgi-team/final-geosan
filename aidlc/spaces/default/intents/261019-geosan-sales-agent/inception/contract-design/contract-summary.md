@@ -410,7 +410,7 @@ EvaluationInput:
   profile: enum[NEW, RECONTACT]
   ruleConfig: RuleConfig               # C7 규칙 설정 + version + hash
   datasetKind: datasetKind
-  opportunity: { oppId, customerId, relationStatus, purpose, companyFilterStatus, hasLinkedInteraction: boolean, linkedInteractionKinds: [interactionKind] }
+  opportunity: { oppId, customerId, relationStatus, purpose, companyFilterStatus, hasLinkedInteraction: boolean, linkedInteractionKinds: [interactionKind], cardReason: string|null }   # cardReason: 사례 파일 문장 그대로, 있으면 카드 추천 이유(더하는 변경 2026-10-26 PM, #139)
   processLinks: [{ linkId, processId, appliedMaterial }]
   requirements: [{ reqId, linkId|null, reqKind, name, content, reqLevel, scopeKind, neededStage, dueAt, certainty, requiredValue, unit, edition, holder|null, site|null }]
   signals: [{ signalId, signalKind, occurredAt, announcedAt, scheduledAt, deadlineAt, progressStatus, agreedWindow, certainty, evidenceIds }]
@@ -430,7 +430,7 @@ EvaluationOutput:
   filterState: filterState
   exclusionScope: enum[COMPANY, OPPORTUNITY, LINK] | null
   processLinkResults: [{ linkId, result: filterState, reason }]
-  items: [{ itemCode, state: itemState, weight, matchRate, certainty, decay, score: int|null, factJudged, reasoning, evidenceIds, usedCapabilityIds }]
+  items: [{ itemCode, state: itemState, weight, matchRate, certainty, decay, score: int|null, factJudged, summary: string|null, reasoning, evidenceIds, usedCapabilityIds }]   # summary: 상세용 쉬운 요약, 입력에서 그대로 복사(더하는 변경 2026-10-26 PM, #139)
   totals: { E: int, F: int, T: int, P: int, R: int, S: number|null, C: number }
   coreEvidenceMet: enum[MET, RECHECK]
   timing: { directSignal: boolean, agreedWindow: boolean, readiness: boolean }
@@ -547,13 +547,13 @@ CaseFile:
   notes: [string]                       # 예: "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가"
   customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade }
   interactions: [{ kind: interactionKind, occurredAt, allowedSummary, linkedToOpportunity: boolean, certainty }]
-  opportunity: { item, project, purpose, owner }
+  opportunity: { item, project, purpose, owner, cardReason: string|null }   # cardReason: 카드 추천 이유 한 문장, 출처 제외 80자 안 권장(넘으면 경고만; 더하는 변경 2026-10-26 PM, #139)
   discoveryPaths: [{ pathKind, sourceId, originKey, discoveredAt }]
   processLinks: [{ processCode, appliedMaterial }]
   requirements: [{ reqKind, name, content, reqLevel, scopeKind, linkProcessCode|null, neededStage, dueAt, certainty, basis, question, requiredValue, unit, edition }]
   signals: [{ signalKind, occurredAt, deadlineAt, progressStatus, agreedWindow, certainty }]
   evidence: [{ sourceGrade, certainty, isLlmProposed, subject, quote, sourceRef, occurredAt, securityGrade, externalAiAllowed }]
-  itemInputs: [{ itemCode, matchRate, certainty, state, factJudged, evidenceRefs: [int] }]   # 역산 입력
+  itemInputs: [{ itemCode, matchRate, certainty, state, factJudged, summary: string|null, evidenceRefs: [int] }]   # 역산 입력. summary: 상세 화면용 쉬운 요약(원문 factJudged는 그대로; 더하는 변경 2026-10-26 PM, #139)
   readinessCheck: { checked: boolean, staffKey, checkedAt } | null     # evalIdAtCheck는 투입 시 비어 있고 첫 평가가 채움(기능 설계 확인)
   researchReadiness: { ... } | null
   expected: { E, P, S, R, C, filterState, coreEvidenceMet, classificationCode, requirementResults: { <name>: checkDisplay } }
