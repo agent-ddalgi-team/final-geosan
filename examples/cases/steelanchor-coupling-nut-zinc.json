@@ -55,7 +55,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "연결너트",
-      "sourceRef": "스틸앙카 홈페이지 제품 안내 이미지 http://www.steelanchor.com/img/sub2_7.jpg",
+      "sourceRef": "스틸앙카 홈페이지 연결너트 제품 안내 http://www.steelanchor.com/img/sub2_7.jpg",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -221,6 +221,7 @@
   "readinessCheck": null,
   "researchReadiness": {
     "questionSet": [
+      "연결너트를 어느 사업장에서 직접 생산하는지, 전기아연도금을 외주하는지 확인",
       "공식 연결너트 자료의 SS275·백색 전기아연도금이 현재 생산·판매 사양인가?",
       "당진 공장은 현재 가동하며 해당 연결너트를 직접 생산하는가?",
       "당진시 지번 주소와 산단공 도로명 주소는 같은 사업장이며 시흥 공장과 같은 법인인가?",
