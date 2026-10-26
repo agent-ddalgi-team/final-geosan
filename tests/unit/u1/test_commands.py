@@ -1,15 +1,21 @@
-"""투입 명령 2개의 실제 저장과 입력·실행 오류 경계를 검사한다."""
+"""투입 명령의 저장·오류 경계와 서버 시작 시 기존 앱 설정 보존을 검사한다."""
 
 from __future__ import annotations
 
+import socket
+from copy import deepcopy
 from types import SimpleNamespace
 
 from sqlalchemy import func, select
 from typer.testing import CliRunner
 
 from geosan.capability.models import Process
+from geosan.commands import serve as serve_module
 from geosan.commands.app import app
+from geosan.config.app_settings import SOURCE_FILE_KEY, load_app_settings
 from geosan.config.errors import InputError
+from geosan.config.models import AppSetting
+from geosan.config.registry import DEFAULT_APP_SETTINGS_PATH, DEFAULT_RULE_CONFIG_PATH
 from geosan.opportunity.models import Opportunity
 from geosan.storage.session import session_scope
 from tests import factories
@@ -97,3 +103,65 @@ def test_case_validation_error_does_not_become_success(tmp_path, monkeypatch):
     path = _write(tmp_path, "case.json", factories.apjeong_case())
     result = CliRunner().invoke(app, ["import-case", str(path)])
     assert result.exit_code == 1 and "가상 입력 오류" in result.output
+
+
+def _app_setting_values():
+    with session_scope() as session:
+        return {row.setting_key: deepcopy(row.value) for row in session.scalars(select(AppSetting))}
+
+
+def _register_brochure_app_settings(tmp_path):
+    """정식 check-config 명령으로 사용자 지정 파일과 소개서 묶음을 등록한다."""
+    folder = tmp_path / "한글 경로 확인"
+    folder.mkdir()
+    settings = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
+    settings["activeDatasetKind"] = "BROCHURE"
+    settings["brand"]["demoLabel"] = "서버 설정 보존 검사 (가상)"
+    path = _write(folder, "소개서 앱 설정.json", settings)
+    result = CliRunner().invoke(
+        app, ["check-config", str(DEFAULT_RULE_CONFIG_PATH), str(path)], catch_exceptions=False
+    )
+    assert result.exit_code == 0, result.output
+    before = _app_setting_values()
+    assert before["activeDatasetKind"] == "BROCHURE"
+    assert before[SOURCE_FILE_KEY] == str(path.resolve())
+    return before
+
+
+def test_serve_start_preserves_registered_app_settings(tmp_db, tmp_path, monkeypatch):
+    """Given 소개서 묶음·지정 설정 / When 서버 시작 / Then 시작 시점과 종료 뒤 설정이 같다."""
+    before = _register_brochure_app_settings(tmp_path)
+    started = []
+
+    def record_start(port):
+        # 서버 실행만 대체하며 설정 검사·등록과 DB 읽기는 실제 코드를 사용한다.
+        started.append((port, _app_setting_values()))
+
+    monkeypatch.setattr(serve_module, "_run_server", record_start)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+
+    result = CliRunner().invoke(app, ["serve", "--port", str(port)], catch_exceptions=False)
+
+    assert result.exit_code == 0, result.output
+    assert [item[0] for item in started] == [port]
+    assert started[0][1] == before
+    assert _app_setting_values() == before
+
+
+def test_serve_port_conflict_preserves_registered_app_settings(tmp_db, tmp_path, monkeypatch):
+    """Given 지정 설정·점유된 포트 / When 서버 시작 실패 / Then 설정 보존·종료 코드 2다."""
+    before = _register_brochure_app_settings(tmp_path)
+    started = []
+    monkeypatch.setattr(serve_module, "_run_server", lambda port: started.append(port))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
+        holder.bind(("127.0.0.1", 0))
+        holder.listen(1)
+        port = holder.getsockname()[1]
+        result = CliRunner().invoke(app, ["serve", "--port", str(port)], catch_exceptions=False)
+
+    assert result.exit_code == 2, result.output
+    assert f"포트 {port}이 사용 중입니다" in result.output
+    assert started == []
+    assert _app_setting_values() == before
