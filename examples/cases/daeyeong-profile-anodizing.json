@@ -55,7 +55,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "상품명 DF 3090 제조사 대영프로파일",
-      "sourceRef": "https://alusys0342.cafe24.com/product/detail.html?cate_no=1&display_group=2&product_no=34",
+      "sourceRef": "대영프로파일 홈페이지 DF 3090 제품 안내 https://alusys0342.cafe24.com/product/detail.html?cate_no=1&display_group=2&product_no=34",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -208,6 +208,7 @@
   "readinessCheck": null,
   "researchReadiness": {
     "questionSet": [
+      "DF 3090의 현재 생산·판매 사양이 무엇인지, 아노다이징을 외주하는지 확인",
       "DF 3090의 Silver, Black 색상 선택은 아노다이징 외관 사양을 뜻하는가?",
       "아노다이징을 자체 설비에서 하는가, 외주로 처리하는가?",
       "거산이 해당 합금·질별·치수와 요구 표면 사양을 처리할 수 있는가?"
