@@ -25,7 +25,8 @@
     "item": "너트 전기아연도금",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "자동차용 휠너트를 만들고 자동차 부품 산업에 납품해 거산 실적 산업과 같음(추정). 도금 필요는 홈페이지에 직접 적혀 있지 않음 (홈페이지)"
   },
   "discoveryPaths": [
     { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-samjin-nut", "discoveredAt": "2026-10-22" }
@@ -77,6 +78,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "자동차용 너트(휠너트 등)를 만드는 업체 — 표면처리가 필요한 부품이지만 홈페이지가 도금 필요를 직접 적지는 않아 강한 추정 (해당 1.0, 강한 추정)",
+      "summary": "자동차용 너트(휠너트 등)를 만드는 회사라 표면처리가 필요한 부품입니다. 홈페이지가 도금 필요를 직접 적지는 않아 추정으로 두었습니다. (홈페이지 제품소개, 추정)",
       "evidenceRefs": [0, 1],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -87,6 +89,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "홈페이지에 너트 소재 표기 없음 — 미확보 (거산 확인 질문 후보)",
+      "summary": "홈페이지에 너트 소재가 적혀 있지 않아 미확보입니다. 거산에 확인할 질문입니다. (홈페이지, 확인일 2026-10-22)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -97,6 +100,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "자동차용 너트 공급 — 거산 소개서의 납품 산업 '자동차 부품'과 동일 산업 (0.67, 강한 추정: 고객사·부품명은 확인되지 않음)",
+      "summary": "자동차용 너트를 공급해 거산 소개서의 납품 산업 '자동차 부품'과 같은 산업으로 추정했습니다. 고객사·부품명은 확인되지 않았습니다. (홈페이지 제품소개 · 거산 소개서 납품 산업, 추정)",
       "evidenceRefs": [1],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -109,16 +113,17 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "녹발생이 심한 장소에서 쓰는 너트 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 강한 추정: 도금 요구를 직접 적지는 않음)",
+      "summary": "녹이 잘 스는 곳에 쓰는 너트라고 설명해 내식 목적 하나가 맞는 것으로 추정했습니다. 도금 요구를 직접 적지는 않았습니다. (홈페이지 제품소개 · 거산 소개서 아연도금 목적, 추정)",
       "evidenceRefs": [2],
       "signalRefs": [],
       "usedCapabilityRefs": [
         { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
       ]
     },
-    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 증설·신규 생산라인 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 신규 수주·출시 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용공고 게시판에 글 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+    { "itemCode": "SIG_EXPAND", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 증설·신규 생산라인 글 없음 (확인일 2026-10-22)", "summary": "홈페이지에 증설·신규 생산라인 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 신규 수주·출시 글 없음 (확인일 2026-10-22)", "summary": "홈페이지에 신규 수주·출시 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에서 입찰·협력사 모집 공고 없음 (확인일 2026-10-22)", "summary": "홈페이지에 입찰·협력사 모집 공고가 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용공고 게시판에 글 없음 (확인일 2026-10-22)", "summary": "채용공고 게시판에 글이 없어 신호 없음입니다. (홈페이지 채용공고, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
   "researchReadiness": null,

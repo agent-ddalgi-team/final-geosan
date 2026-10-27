@@ -33,7 +33,8 @@
     "item": "알루미늄 프로파일 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "취급 품목의 알루미늄 프로파일이 아노다이징 소재와 맞고, 홍보관의 프로파일 설계·제작으로 표면처리 대상 제품군으로 봄(추정) (홍보관)"
   },
   "discoveryPaths": [
     {
@@ -115,6 +116,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "공식 회사 홍보관의 AL PROFILE 설계 제작과 직접 연결한 공급사의 PROFILE·일반 피막 설명을 묶어 표면처리 검토 대상 제품군으로 간접 추정했다(STRONG). 개별 모델의 아노다이징 적용·현재 생산·외주 발주는 확인하지 않았다.",
+      "summary": "회사 홍보관의 알루미늄 프로파일 설계·제작과 공급사의 프로파일·피막 설명을 묶어 표면처리 대상 제품군으로 간접 추정했습니다. 개별 모델의 아노다이징 적용·현재 생산·외주 발주는 확인하지 않았습니다. (회사 홍보관·취급 안내·공급사 제품 설명, 추정)",
       "evidenceRefs": [
         0,
         2,
@@ -130,6 +132,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "모션텍 공식 취급 품목에 적힌 알루미늄프로파일을 소개서 ANODIZING의 AL 분류와 대조했다. 소재 분류 일치이며 합금·치수·피막 사양의 처리 가능 승인이 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "취급 품목에 적힌 알루미늄 프로파일이 아노다이징 소재와 분류가 맞습니다. 합금·치수·피막 사양의 처리 가능 승인은 아닙니다. (회사 홍보관 · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [
         1
       ],
@@ -147,6 +150,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 회사 홍보관 https://blog.yeogie.com/motiontec/intro 및 포스팅 목록 2쪽을 확인했다. 자동화부품·AL PROFILE 설계 제작과 취급 공급사는 확인했으나 대상 프로파일의 납품 산업·부품과 거산 소개서 ANODIZING의 방위산업·항공우주 실적 연결은 미확인이다. 다음 할 일: 현재 취급 모델·실제 적용 산업·부품 용도와 거산의 유사 실적을 확인한다. 산업용이라는 넓은 제품군 이름만으로 MISMATCH를 확정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "자동화부품·프로파일 설계 제작은 확인했으나 대상 프로파일의 납품 산업·부품과 거산 소개서의 납품 산업(방산·항공우주)을 연결할 근거가 없어 미확보입니다. (회사 홍보관·포스팅, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -157,6 +161,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "회사 취급 안내가 연결한 공급사의 PROFILE 제품군 설명에서 외관 목적을 간접 추정해 APPEARANCE 1개와 대조했다(STRONG). 모션텍 개별 제품의 직접 목적은 미확인이고 내식·경도는 추가하지 않았다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "공급사의 프로파일 제품군 설명에서 외관 목적을 간접 추정했습니다. 모션텍 개별 제품의 직접 목적은 미확인이고 내식·경도는 넣지 않았습니다. (취급 안내·공급사 제품 설명 · 거산 소개서 아노다이징 목적, 추정)",
       "evidenceRefs": [
         2,
         3,
@@ -176,6 +181,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 홍보관 https://blog.yeogie.com/motiontec/intro 및 공지사항 https://blog.yeogie.com/motiontec/notice, 포스팅 목록 2쪽 전체를 확인했다. 공지는 등록된 글이 없고 인사말·포스팅은 기존 취급 품목 안내로, 모션텍 자체 공장 증설·신규 생산라인 글은 없다. 별도 연혁 메뉴는 확인되지 않았다. 연결된 공급사의 설비를 모션텍의 증설로 보지 않고 조사한 홍보관 범위에서 NO_SIGNAL로 판정한다.",
+      "summary": "홍보관 공지는 비어 있고 인사말·포스팅은 취급 품목 안내뿐이라 자체 공장 증설·신규 생산라인 글이 없어 신호 없음입니다. 공급사 설비를 모션텍의 증설로 보지 않았습니다. (회사 홍보관·공지사항·포스팅, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -186,6 +192,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 공지사항 https://blog.yeogie.com/motiontec/notice 및 포스팅 https://blog.yeogie.com/motiontec/post 의 2쪽 전체 목록과 제품 안내 202·204·205번 본문을 확인했다. 공지는 비어 있고 포스팅은 2014-10-16~17 공급사 제품 정보·취급 안내다. 202번의 AZ 시리즈 탄생 문구도 공급사 모터 소개이며 대상 알루미늄 프로파일의 수주·출시·사업 확대 근거가 아니다. 읽은 홍보관 범위에서 대상품 관련 신호는 없어 NO_SIGNAL로 판정하며 공급사 제품 출시를 모션텍의 신규 발주로 해석하지 않았다.",
+      "summary": "공지는 비어 있고 포스팅은 2014년 공급사 제품 정보뿐이라 대상 프로파일의 수주·출시·사업 확대 근거가 없어 신호 없음입니다. 공급사 제품 출시를 모션텍의 신규 발주로 보지 않았습니다. (회사 홍보관 공지사항·포스팅, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -196,6 +203,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 공지사항 https://blog.yeogie.com/motiontec/notice 의 빈 목록과 포스팅 https://blog.yeogie.com/motiontec/post 의 2쪽 전체 목록을 확인했다. 공급사 취급 제품 안내 외 입찰·협력사 모집·구매 공고는 없어 해당 홍보관 범위에서 NO_SIGNAL로 판정한다. 외부 공고 전체에 신호가 없다는 뜻은 아니다.",
+      "summary": "공지사항이 비어 있고 포스팅에도 입찰·협력사 모집·구매 공고가 없어 신호 없음입니다. (회사 홍보관 공지사항·포스팅, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -206,6 +214,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 홍보관의 인사말·메뉴·공지사항 https://blog.yeogie.com/motiontec/notice 및 포스팅 2쪽 전체 목록을 확인했다. 별도 채용 메뉴가 없고 구매·품질·생산기술·표면처리 직무의 채용 글도 없어 확인한 홍보관 범위에서 NO_SIGNAL로 판정한다. 외부 채용공고 전체를 조사한 결과는 아니다.",
+      "summary": "별도 채용 메뉴가 없고 관련 직무 채용 글도 없어 신호 없음입니다. (회사 홍보관 메뉴·공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []

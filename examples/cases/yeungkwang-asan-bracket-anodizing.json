@@ -32,7 +32,8 @@
     "item": "브라켓 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "제품표에 A6061 브라켓과 아노다이징 후처리가 적혀 있고 소재가 알루미늄이라 아노다이징과 맞음. 외주 수요는 확인 전 (홈페이지 제품표)"
   },
   "discoveryPaths": [
     {
@@ -103,6 +104,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 제품표에 A6061 브라켓과 ANODIZING 후처리가 직접 명시되어 제품의 표면처리 사양은 확인했다. 아산 생산 및 신규 외주 수요는 미확인이다.",
+      "summary": "제품표에 A6061 브라켓과 아노다이징 후처리가 직접 적혀 있습니다. 아산 생산 여부와 신규 외주 수요는 확인 전입니다. (홈페이지 제품표)",
       "evidenceRefs": [
         0,
         2
@@ -116,6 +118,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 제품표의 A6061 알루미늄을 소개서 ANODIZING의 materialCodes AL과 대조했다. 소재 분류가 일치한다는 판정이며 특정 합금·형상·색상 사양 충족을 승인한 것은 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "제품표의 A6061 알루미늄이 아노다이징 소재와 분류가 맞습니다. 특정 합금·형상·색상 사양 충족을 승인한 것은 아닙니다. (홈페이지 제품표 · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [
         1
       ],
@@ -128,6 +131,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 회사 소개·연혁 https://www.yktec.co.kr/theme/enmtheme/html/company/01.php 와 공장소개 https://www.yktec.co.kr/business/03.php 를 확인했다. 자동화·반도체·2차전지 등 사업은 확인했으나 대상 YKBK-AL GS75x32-12T의 납품 산업과 거산 소개서 ANODIZING의 방위산업·항공우주 실적을 연결할 근거가 없다. 소개서의 부품 종류·기간도 비어 있다. 다음 할 일: 해당 모델의 실제 적용 산업·부품 용도와 거산의 유사 실적을 확인한다. 회사 전체 사업만으로 대상품의 산업 불일치를 확정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "자동화·반도체·2차전지 사업은 확인했으나 대상 브라켓의 납품 산업과 거산 소개서의 납품 산업(방산·항공우주)을 연결할 근거가 없어 미확보입니다. (홈페이지 회사 소개·공장소개, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -138,6 +142,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "은색 후처리 사양에서 간접 추정한 외관 목적이 소개서 ANODIZING의 APPEARANCE 1개와 일치한다. 간접 근거이므로 STRONG이며 내식·경도를 추가로 일치 처리하지 않았다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "은색 후처리 사양에서 외관 목적을 간접 추정했습니다. 내식·경도는 넣지 않았습니다. (2024 카탈로그 95·121쪽 · 거산 소개서 아노다이징 목적, 추정)",
       "evidenceRefs": [3],
       "signalRefs": [],
       "usedCapabilityRefs": [{"kind": "PROCESS", "processCode": "ANODIZING"}]
@@ -148,6 +153,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 연혁 https://www.yktec.co.kr/theme/enmtheme/html/company/01.php 에서 2022년 아산 지사 신축 설립과 생산 능력 확충 기록을 확인했다. 연도만 있어 정확한 발생일과 대상 브라켓 생산라인의 관련성은 미확인이다. 다음 할 일: 신축 준공의 실제 발생일과 해당 모델 생산 여부를 확인한다. 임의로 월·일을 채우거나 증설 신호가 없다고 판단하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "연혁에 2022년 아산 지사 신축과 생산 능력 확충이 있으나 연도만 있어 발생일과 대상 브라켓 생산라인과의 관련성을 확인하지 못해 미확보입니다. (홈페이지 연혁, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -158,6 +164,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 연혁 https://www.yktec.co.kr/theme/enmtheme/html/company/01.php 에 2024년 자동화 설비 공급 확대가 있고 홈페이지 https://www.yktec.co.kr/ 에 신제품 소개가 있으나 정확한 수주·출시 발생일과 대상 브라켓의 관련성은 미확인이다. 공지사항 2건은 홈페이지 안내로 이를 보완하지 못한다. 다음 할 일: 대상 품목과 연결된 공급 확대·신제품의 실제 발생일을 확인한다. 연도·열람일을 발생일로 대신 쓰거나 신호가 없다고 단정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "연혁에 2024년 자동화 설비 공급 확대와 신제품 소개가 있으나 정확한 발생일과 대상 브라켓과의 관련성을 확인하지 못해 미확보입니다. (홈페이지 연혁·신제품 소개, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -168,6 +175,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 공지사항 https://www.yktec.co.kr/news 의 전체 2건과 본문을 확인했다. 2024-08-26 사이트 개편·견적요청 매뉴얼 및 2026-10-23 보안 점검 안내뿐이며 입찰·협력사 모집·구매 공고는 없어 해당 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 고객의 견적 문의나 문의 메뉴를 영광테크의 구매 공고로 보지 않았다.",
+      "summary": "공지사항 2건(사이트 개편 안내, 보안 점검 안내)뿐이고 입찰·협력사 모집·구매 공고가 없어 신호 없음입니다. (홈페이지 공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -178,6 +186,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 회사 소개·전체 메뉴·공지사항 https://www.yktec.co.kr/news 의 전체 2건과 본문을 확인했다. 별도 채용 메뉴가 없고 구매·품질·생산기술·표면처리 직무의 실제 채용 글도 없어 확인한 홈페이지 범위에서 NO_SIGNAL로 판정한다. 전문 인력을 보유했다는 회사 소개를 채용 공고로 해석하지 않았으며 외부 채용공고 전체에 대한 판정은 아니다.",
+      "summary": "별도 채용 메뉴가 없고 관련 직무 채용 글도 없어 신호 없음입니다. (홈페이지 메뉴·공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
