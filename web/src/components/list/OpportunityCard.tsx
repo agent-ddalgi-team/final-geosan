@@ -1,6 +1,6 @@
 // 추천 카드(S1, BR10.1~BR10.3, interaction-spec 2.1): 순위·기업/기회·분류(쉬운 말)·점수·추천 이유·막는 조건·
 // 다음 할 일 + 의견 영역 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Card, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { OpportunityCard as CardData } from '../../api/types';
@@ -22,19 +22,11 @@ export interface OpportunityCardProps {
   classificationOverrides?: Record<string, string>;
 }
 
-/** 넓은 화면은 1줄, 좁으면 2줄까지 보이고 넘치면 "…"(전체는 상세에서). */
-const clamp: CSSProperties = {
-  display: '-webkit-box',
-  WebkitBoxOrient: 'vertical',
-  WebkitLineClamp: 2,
-  overflow: 'hidden',
-};
-
 function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
   return (
     <div style={{ display: 'flex', gap: 12 }}>
       <span style={{ flex: '0 0 88px', color: colors.textSecondary }}>{label}</span>
-      <span style={{ flex: 1, minWidth: 0, ...clamp }} title={title}>
+      <span style={{ flex: 1, minWidth: 0 }} title={title}>
         {children}
       </span>
     </div>

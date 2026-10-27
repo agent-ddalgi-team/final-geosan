@@ -195,6 +195,7 @@ export const detailSections = {
   processLinks: '3. 공정 연결',
   evidence: '4. 근거 자료',
   scores: '5. 점수 자세히 보기',
+  estimateMark: '(추정)',
   questionsHeading: '확인 질문',
   expandQuestions: (n: number) => `나머지 ${n}개 펼치기`,
   collapseQuestions: '접기',

@@ -153,6 +153,38 @@ describe('OpportunityDetailPage', () => {
     expect(within(items[1]).getByTestId('evidence-llm-tag')).toBeInTheDocument();
   });
 
+  it('항목별 요약이 있으면 추천 이유가 요약 한 줄씩으로 보이고 추정 항목에만 "(추정)"이 붙는다', async () => {
+    const items = base.scores!.items.slice(0, 4).map((item, index) => ({
+      ...item,
+      itemCode: `ITEM_${index}`,
+      label: ['제품', '소재', '처리 목적', '증설'][index],
+      state: ['CONFIRMED', 'CONFIRMED', 'STRONG', 'NO_SIGNAL'][index],
+      summary: index === 3 ? null : `요약 문장 ${index} (출처 ${index})`,
+    }));
+    mockedGet.mockResolvedValueOnce(reply({ ...base, scores: { ...base.scores!, items } }));
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const lines = screen.getAllByTestId('detail-reason-line');
+    expect(lines.map((line) => line.textContent)).toEqual([
+      '제품: 요약 문장 0 (출처 0)',
+      '소재: 요약 문장 1 (출처 1)',
+      '처리 목적(추정): 요약 문장 2 (출처 2)',
+    ]);
+    expect(screen.getByTestId('detail-reason')).not.toHaveTextContent(base.reasons.reason);
+    expect(screen.getByTestId('detail-next-action')).toHaveTextContent(base.reasons.nextAction);
+  });
+
+  it('요약이 하나도 없으면 지금 화면 그대로 엔진이 만든 추천 이유 문장을 보인다', async () => {
+    const items = base.scores!.items.map((item) => ({ ...item, summary: null }));
+    mockedGet.mockResolvedValueOnce(reply({ ...base, scores: { ...base.scores!, items } }));
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(screen.queryByTestId('detail-reason-lines')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-reason')).toHaveTextContent(
+      `추천 이유: ${base.reasons.reason}`,
+    );
+  });
+
   it('점수 자세히 보기는 기본으로 접혀 있고 펼치면 E/P/S/R과 항목표·규칙 정보가 보인다', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(reply(base));
