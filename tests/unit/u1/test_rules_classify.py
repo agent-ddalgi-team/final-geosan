@@ -346,3 +346,76 @@ def test_acceptance_decision(filename, code):
         assert "없음" in output.display.blocker_text
         assert len(output.question_candidates) == 1
         assert "Nadcap" in output.question_candidates[0].text
+
+
+def test_card_reason_keeps_author_text_without_trimming_or_cutting():
+    """Given 작성자 카드 문장, When 평가, Then 긴 문장·공백·추정 표시도 그대로 보존한다 (#139)."""
+    data = rule_engine_input()
+    original = evaluate(data)
+    data.opportunity.card_reason = (
+        "  알루미늄 부품을 만듭니다. " * 12 + "외주 수요는 확인 전(추정).  "
+    )
+    result = evaluate(data)
+    assert result.display.reason == data.opportunity.card_reason
+    assert result.totals == original.totals
+    assert result.classification_code == original.classification_code
+    assert result.sort_key == original.sort_key
+    assert result.display.blocks_approval == original.display.blocks_approval
+
+
+@pytest.mark.parametrize("with_question", [True, False])
+def test_next_action_lists_unavailable_items_by_configured_weight(with_question):
+    """Given 질문·미확보 항목, When 평가, Then 첫 질문과 미확보를 배점순으로 보인다 (#139)."""
+    data = rule_engine_input()
+    data.item_inputs = [
+        replace_contract(item, state="UNAVAILABLE")
+        if item.item_code in {"NEW_RECORD", "SIG_ORDER", "SIG_HIRE"}
+        else item
+        for item in reversed(data.item_inputs)
+    ]
+    data.research_readiness = ResearchReadinessInput(
+        has_graded_evidence=False,
+        has_question_set=with_question,
+        has_channel_and_owner=False,
+        question_can_change_class=False,
+        question_set=["도금을 외주하는지 확인", "두 번째 질문은 카드에 넣지 않음"]
+        if with_question
+        else [],
+    )
+    prefix = "도금을 외주하는지 확인 · " if with_question else ""
+    assert evaluate(data).display.next_action == prefix + "미확보: 납품실적·수주·채용"
+    data.rule_config.new_profile_items[2].weight, data.rule_config.new_profile_items[5].weight = (
+        data.rule_config.new_profile_items[5].weight,
+        data.rule_config.new_profile_items[2].weight,
+    )
+    assert evaluate(data).display.next_action == prefix + "미확보: 수주·납품실적·채용"
+
+
+@pytest.mark.parametrize("with_question", [True, False])
+def test_next_action_without_unavailable_items_uses_question_or_class_action(with_question):
+    """Given 미확보 없음, When 평가, Then 첫 질문만 쓰거나 기존 분류 문장을 유지한다 (#139)."""
+    data = rule_engine_input()
+    data.item_inputs[-1] = replace_contract(data.item_inputs[-1], state="NO_SIGNAL")
+    if with_question:
+        data.research_readiness = ResearchReadinessInput(
+            has_graded_evidence=False,
+            has_question_set=True,
+            has_channel_and_owner=False,
+            question_can_change_class=False,
+            question_set=["합의한 기한 안에 대응할 수 있는지 확인"],
+        )
+    assert evaluate(data).display.next_action == (
+        "합의한 기한 안에 대응할 수 있는지 확인"
+        if with_question
+        else "유효 기한 안에 연락 준비와 담당자 검토를 진행하세요"
+    )
+
+
+def test_next_action_includes_missing_and_effectively_unavailable_inputs():
+    """Given 입력 누락·날짜 미상 신호, When 평가, Then 실제 미확보를 빠뜨리지 않는다 (#139)."""
+    data = rule_engine_input()
+    data.item_inputs = [item for item in data.item_inputs if item.item_code != "NEW_PERF"]
+    for signal in data.signals:
+        if signal.signal_kind == "EXPANSION":
+            signal.occurred_at = None
+    assert evaluate(data).display.next_action == "미확보: 목적·증설·채용"
