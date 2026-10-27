@@ -159,6 +159,7 @@ components:
         classificationCode: { type: string }
         coreEvidenceRecheck: { type: boolean }
         scoreS: { type: number, nullable: true }
+        scoreDisplay: { type: string, description: "카드 점수 문자열(BR10.2). '<E>점 · <n>/<전체>'(E 확인된 점수, n 미확보가 아닌 항목 수, 전체 신규 8·재접촉 7; 예 '77점 · 7/8'), 판정 0개면 '--', 소개서 묶음이고 분류가 기다리는 중·준비 중이면 '참고 ' 접두(예 '참고 50점 · 3/8'), 소개서 묶음이 아닌데 그 분류면 '--'. 더하는 변경(값 형식만): 2026-10-21 PM '정수 / -- / 참고 N' → 2026-10-28 PM #180" }
         reason: { type: string }
         blocker: { type: object, properties: { text: { type: string }, blocksApproval: { type: boolean } } }
         nextAction: { type: string }
@@ -173,7 +174,7 @@ components:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
       properties:
-        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' } } }
+        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
         stage: { type: object, properties: { current: { type: integer }, badge: { type: string, nullable: true } } }
         reasons: { type: object, properties: { reason: { type: string }, nextAction: { type: string }, questions: { type: array, items: { $ref: '#/components/schemas/Question' } } } }
         requirements: { type: array, items: { $ref: '#/components/schemas/RequirementCheckView' } }
