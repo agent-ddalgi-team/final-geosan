@@ -231,6 +231,8 @@ export interface ScoreItemView {
   decay?: number | null;
   score?: number | null;
   factJudged?: string | null;
+  /** 상세용 쉬운 요약 한 줄(더하는 변경 #139). 없으면 null/없음. */
+  summary?: string | null;
 }
 
 export interface Scores {
