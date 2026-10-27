@@ -188,6 +188,13 @@ export const cardRows = {
   brochureTag: '거산 확인 전',
 } as const;
 
+/** 점수 글자를 화면 낭독용으로 읽는 문구(#183). '판정'이 아니라 '조사'로 쓴다. */
+export const scoreAria = {
+  label: (score: string, done: string, total: string, reference: boolean) =>
+    `${reference ? '참고 ' : ''}점수 ${score}점, ${total}개 항목 중 ${done}개 조사`,
+  unavailable: '점수 산정 전',
+};
+
 /** 상세 영역 제목(BR10.5 순서). */
 export const detailSections = {
   reasons: '1. 추천 이유와 다음 할 일',

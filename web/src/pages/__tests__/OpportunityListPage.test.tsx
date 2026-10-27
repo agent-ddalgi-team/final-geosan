@@ -98,7 +98,12 @@ describe('OpportunityListPage', () => {
     );
     expect(view.getByTestId('card-classification')).toHaveTextContent('지금 바로 연락 검토');
     expect(view.getByLabelText('분류: 지금 바로 연락 검토')).toBeInTheDocument();
-    expect(view.getByTestId('card-score')).toHaveTextContent('점수 81');
+    // 서버 문자열 그대로: "점수 "를 앞에 붙이지 않아 "점수"가 두 번 보이지 않는다(#183).
+    expect(view.getByTestId('card-score')).toHaveTextContent(/^77점 · 7\/8$/);
+    expect(view.getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '점수 77점, 8개 항목 중 7개 조사',
+    );
     expect(view.getByTestId('card-reason')).toHaveTextContent('아노다이징 외주 협력사 모집 공고');
     expect(view.getByTestId('card-blocker')).toHaveTextContent(
       /^없음 — 지금 단계 꼭 필요한 요구\(ISO 9001\) 통과$/,
@@ -126,7 +131,7 @@ describe('OpportunityListPage', () => {
       oppId: 'opp-2',
       rank: 2,
       classificationCode: 'FILTER_PENDING',
-      scoreDisplay: '참고 81',
+      scoreDisplay: '참고 50점 · 3/8',
       datasetKind: 'BROCHURE',
       blocker: { text: '거래 관계 확인 전', blocksApproval: true },
     };
@@ -134,7 +139,11 @@ describe('OpportunityListPage', () => {
     mockedGet.mockResolvedValueOnce(reply([brochure, noScore]));
     renderPage();
     const cards = await screen.findAllByTestId('opportunity-card');
-    expect(within(cards[0]).getByTestId('card-score')).toHaveTextContent(/^참고 81$/);
+    expect(within(cards[0]).getByTestId('card-score')).toHaveTextContent(/^참고 50점 · 3\/8$/);
+    expect(within(cards[0]).getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '참고 점수 50점, 8개 항목 중 3개 조사',
+    );
     expect(within(cards[0]).getByTestId('card-brochure-tag')).toHaveTextContent(
       cardRows.brochureTag,
     );
@@ -142,7 +151,11 @@ describe('OpportunityListPage', () => {
     expect(within(cards[0]).getByTestId('card-classification')).toHaveTextContent(
       '기다리는 중 (확인 필요)',
     );
-    expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent('점수 --');
+    expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^점수 --$/);
+    expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '점수 산정 전',
+    );
   });
 
   it.each([true, false])(

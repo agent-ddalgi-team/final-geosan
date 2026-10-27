@@ -5,6 +5,7 @@ import { Button, Card, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { OpportunityCard as CardData } from '../../api/types';
 import StatusTag from '../common/StatusTag';
+import { scoreAriaLabel, scoreText } from '../common/scoreDisplay';
 import OpinionArea from '../opinion/OpinionArea';
 import {
   cardRows,
@@ -31,13 +32,6 @@ function Row({ label, children, title }: { label: string; children: ReactNode; t
       </span>
     </div>
   );
-}
-
-function scoreText(scoreDisplay: string): string {
-  // "참고 81"(거산 확인 전 묶음)은 그대로, 나머지는 "점수 81" / "점수 --".
-  return scoreDisplay.startsWith(cardRows.referenceScorePrefix)
-    ? scoreDisplay
-    : `${cardRows.scorePrefix} ${scoreDisplay}`;
 }
 
 export default function OpportunityCard({ card, classificationOverrides }: OpportunityCardProps) {
@@ -106,6 +100,8 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
             </StatusTag>
           ) : null}
           <span
+            role="group"
+            aria-label={scoreAriaLabel(card.scoreDisplay)}
             data-testid="card-score"
             style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
           >

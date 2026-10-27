@@ -3,6 +3,7 @@ import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { DetailHeader } from '../../api/types';
 import StatusTag from '../common/StatusTag';
+import { scoreAriaLabel, scoreText } from '../common/scoreDisplay';
 import {
   cardRows,
   classificationLabels,
@@ -71,12 +72,12 @@ export default function HeaderSection({
           <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
         ) : null}
         <span
+          role="group"
+          aria-label={scoreAriaLabel(header.scoreDisplay)}
           data-testid="detail-score"
           style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
         >
-          {header.scoreDisplay.startsWith(cardRows.referenceScorePrefix)
-            ? header.scoreDisplay
-            : `${cardRows.scorePrefix} ${header.scoreDisplay}`}
+          {scoreText(header.scoreDisplay)}
         </span>
         {header.isVirtual ? (
           <StatusTag tone="wait" data-testid="detail-virtual-tag">
