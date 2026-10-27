@@ -196,7 +196,9 @@ export const detailSections = {
   evidence: '4. 근거 자료',
   scores: '5. 점수 자세히 보기',
   estimateMark: '(추정)',
-  questionsHeading: '확인 질문',
+  questionsHeading: '거산에 확인할 것 (소개서 값, 검수 전)',
+  questionsHint:
+    "점수 계산에 쓴 거산 소개서 값입니다. 거산이 '맞다'고 확인하면 검수 완료로 바뀌고 이 기회를 다시 평가합니다. 상대 회사에 물을 것은 위의 '다음 할 일'에 있고, 답 기록 기능은 11월에 들어갑니다.",
   expandQuestions: (n: number) => `나머지 ${n}개 펼치기`,
   collapseQuestions: '접기',
   approvalEligible: '승인 가능 여부',
