@@ -7,6 +7,9 @@ body:
     attributes:
       value: |
         쉬운 말로 적어 주세요. 영역 라벨(백엔드 / 화면 / 규칙엔진 / 자료 / PM)과 마일스톤을 오른쪽에서 꼭 골라 주세요.
+        마일스톤이 없으면 자동 댓글이 달리고, 이 이슈에 연결한 PR은 검사에서 빨간 X가 납니다.
+        **만들기 전에 같은 일의 이슈가 이미 있는지 검색**합니다. 있으면 새로 만들지 말고 그 이슈에 댓글로 이어 갑니다.
+        여러 사람이 나눠 하는 일은 상위 이슈 하나를 두고, 사람마다 하위 이슈(sub-issue)를 만듭니다. PR은 하위 이슈에 연결합니다.
         연락처·비밀번호·거산 내부 자료는 적지 않습니다.
   - type: textarea
     id: todo
@@ -36,6 +39,12 @@ body:
       placeholder: "geosan/rules/, tests/unit/u1/"
     validations:
       required: true
+  - type: input
+    id: parent
+    attributes:
+      label: 상위 이슈
+      description: 이 일이 더 큰 일의 한 조각이면 그 이슈 번호. 만든 뒤 상위 이슈의 "Sub-issues"에서 이 이슈를 연결합니다(또는 AI 도구에 "하위 이슈로 연결해 줘").
+      placeholder: "#136"
   - type: input
     id: plan
     attributes:
