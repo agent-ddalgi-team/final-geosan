@@ -85,6 +85,9 @@ describe('OpportunityDetailPage', () => {
     );
     renderPage();
     await screen.findByTestId('detail-questions');
+    expect(
+      screen.getByRole('heading', { name: detailSections.questionsHeading }),
+    ).toHaveTextContent('거산에 확인할 것 (소개서 값, 검수 전)');
     expect(screen.getAllByTestId('detail-question')).toHaveLength(3);
     expect(screen.getAllByTestId('detail-question')[0]).toHaveTextContent('대기');
     const toggle = screen.getByTestId('detail-questions-toggle');
@@ -95,6 +98,17 @@ describe('OpportunityDetailPage', () => {
     expect(screen.getAllByTestId('detail-question')).toHaveLength(4);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(toggle).toHaveTextContent(detailSections.collapseQuestions);
+  });
+
+  it('확인 질문 제목 아래에 거산 소개서 값 확인이라는 설명 한 줄이 보인다', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, reasons: { ...base.reasons, questions: [1].map(question) } }),
+    );
+    renderPage();
+    const hint = await screen.findByTestId('detail-questions-hint');
+    expect(hint).toHaveTextContent('점수 계산에 쓴 거산 소개서 값입니다.');
+    expect(hint).toHaveTextContent("상대 회사에 물을 것은 위의 '다음 할 일'에 있고");
+    expect(hint).toHaveTextContent('답 기록 기능은 11월에 들어갑니다.');
   });
 
   it('확인된 요구가 없으면 표 대신 안내 문구를 보인다', async () => {

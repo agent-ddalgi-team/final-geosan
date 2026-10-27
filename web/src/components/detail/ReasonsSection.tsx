@@ -73,9 +73,19 @@ export default function ReasonsSection({
       </ul>
       {questions.length > 0 ? (
         <div data-testid="detail-questions">
-          <h3 style={{ margin: '0 0 8px', fontSize: typography.fontSize, fontWeight: 600 }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: typography.fontSize, fontWeight: 600 }}>
             {detailSections.questionsHeading}
           </h3>
+          <p
+            data-testid="detail-questions-hint"
+            style={{
+              margin: '0 0 8px',
+              color: colors.textSecondary,
+              fontSize: typography.fontSizeSecondary,
+            }}
+          >
+            {detailSections.questionsHint}
+          </p>
           <ul
             id="detail-questions-list"
             style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}

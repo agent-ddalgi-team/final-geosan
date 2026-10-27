@@ -101,7 +101,7 @@ describe('OpportunityListPage', () => {
     expect(view.getByTestId('card-score')).toHaveTextContent('점수 81');
     expect(view.getByTestId('card-reason')).toHaveTextContent('아노다이징 외주 협력사 모집 공고');
     expect(view.getByTestId('card-blocker')).toHaveTextContent(
-      `없음 — 지금 단계 꼭 필요한 요구(ISO 9001) 통과 ${cardRows.notBlocksApproval}`,
+      /^없음 — 지금 단계 꼭 필요한 요구\(ISO 9001\) 통과$/,
     );
     expect(view.getByTestId('card-next-action')).toHaveTextContent('응모 전 피막 두께 요구 확인');
     expect(view.getByTestId('card-virtual-tag')).toHaveTextContent(cardRows.virtualTag);
@@ -120,7 +120,7 @@ describe('OpportunityListPage', () => {
     expect(await screen.findByTestId('list-total')).toHaveTextContent(pagination.totalLine(18));
   });
 
-  it('거산 확인 전 묶음은 "참고 N"과 승인 막힘 글자를 보이고, 점수가 없으면 "--"를 보인다', async () => {
+  it('거산 확인 전 묶음은 "참고 N"을 보이고 막는 조건에 승인 꼬리표를 덧붙이지 않으며, 점수가 없으면 "--"를 보인다', async () => {
     const brochure: OpportunityCard = {
       ...apjeong,
       oppId: 'opp-2',
@@ -138,14 +138,24 @@ describe('OpportunityListPage', () => {
     expect(within(cards[0]).getByTestId('card-brochure-tag')).toHaveTextContent(
       cardRows.brochureTag,
     );
-    expect(within(cards[0]).getByTestId('card-blocker')).toHaveTextContent(
-      `거래 관계 확인 전 ${cardRows.blocksApproval}`,
-    );
+    expect(within(cards[0]).getByTestId('card-blocker')).toHaveTextContent(/^거래 관계 확인 전$/);
     expect(within(cards[0]).getByTestId('card-classification')).toHaveTextContent(
       '기다리는 중 (확인 필요)',
     );
     expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent('점수 --');
   });
+
+  it.each([true, false])(
+    '막는 조건은 승인 판정(blocksApproval=%s)과 관계없이 서버 문구 그대로 보인다',
+    async (blocksApproval) => {
+      const text = '거래 여부와 거산의 아연도금(전기아연도금) 공정이 아직 확인 전';
+      mockedGet.mockResolvedValueOnce(reply([{ ...apjeong, blocker: { text, blocksApproval } }]));
+      renderPage();
+      const blocker = await screen.findByTestId('card-blocker');
+      expect(blocker).toHaveTextContent(new RegExp(`^${text.replace(/[()]/g, '\\$&')}$`));
+      expect(blocker).not.toHaveTextContent('(승인');
+    },
+  );
 
   it('20건을 넘으면 "1~20 / N건"과 쪽 번호가 보이고 다음 쪽을 누르면 그 쪽을 불러온다', async () => {
     const page1 = Array.from({ length: PAGE_SIZE }, (_, i) => ({
