@@ -5,7 +5,13 @@ from datetime import timedelta
 import pytest
 
 from geosan.rules.classify import classify, display_texts
-from geosan.rules.codes import QualificationStatusCode, ReviewStatus
+from geosan.rules.codes import (
+    DatasetKind,
+    NeededStage,
+    QualificationStatusCode,
+    RelationStatus,
+    ReviewStatus,
+)
 from geosan.rules.engine import evaluate, rank
 from geosan.rules.items import calculate_items
 from geosan.rules.models import RankInput, ResearchReadinessInput, TimingRequirements, Totals
@@ -300,7 +306,12 @@ def test_display_score_and_approval(change, code, score, blocked):
     display = display_texts(data, code, assessment, totals, "RECHECK", research_missing(data))
     assert (display.score_display, display.blocks_approval) == (score, blocked)
     assert "설정에서 바꾼 문구" in display.reason
-    assert ("승인 막힘" if blocked else "없음") in display.blocker_text
+    assert "(승인 막힘)" not in display.blocker_text
+    assert "(승인은 막지 않음)" not in display.blocker_text
+    assert display.blocker_text == {
+        "unknown_stage": "ISO 9001이 아직 확인 전",
+        "relation": "거래 여부가 아직 확인 전",
+    }.get(change, "없음 — 지금 단계 필수 요구 통과")
     if code == "CONDITIONAL_WAIT":
         assert "조사 재개 조건" in display.reason
 
@@ -419,3 +430,115 @@ def test_next_action_includes_missing_and_effectively_unavailable_inputs():
         if signal.signal_kind == "EXPANSION":
             signal.occurred_at = None
     assert evaluate(data).display.next_action == "미확보: 목적·증설·채용"
+
+
+def test_blocker_names_relation_linked_processes_and_pending_requirements_in_order():
+    """Given 소개서·거래 미확인·필수 요구, When 평가, Then 실제 이름을 순서대로 보인다 (#160)."""
+    data = rule_engine_input()
+    data.dataset_kind = DatasetKind.BROCHURE
+    data.opportunity.relation_status = RelationStatus.UNCONFIRMED
+    for process in data.capability.processes:
+        process.dataset_kind = DatasetKind.BROCHURE
+        process.name = "관련 없는 공정"
+    process = next(p for p in data.capability.processes if p.code == "ANODIZING")
+    process.name = "아노다이징(양극산화피막)"
+    data.process_links.append(data.process_links[0].model_copy(update={"link_id": "duplicate"}))
+    data.requirements[0].needed_stage = NeededStage.UNKNOWN
+    before = data.model_dump()
+    result = evaluate(data)
+    assert result.display.blocker_text == (
+        "거래 여부와 거산의 아노다이징(양극산화피막) 공정과 ISO 9001이 아직 확인 전"
+    )
+    assert result.display.blocks_approval is True
+    assert data.model_dump() == before
+    assert evaluate(data) == result
+
+
+@pytest.mark.parametrize("kind", ["process", "capability", "record", "unused"])
+def test_blocker_only_names_the_process_of_pending_values_actually_used(kind):
+    """Given 검수 대기 값, When 평가, Then 사용한 공정·세부역량·실적만 공정 이름으로 알린다."""
+    data = rule_engine_input()
+    process = next(p for p in data.capability.processes if p.code == "ANODIZING")
+    process.name = "파일의 공정 이름 — 가상"
+    target = {
+        "process": process,
+        "capability": next(c for c in data.capability.capabilities if c.name == "처리 소재"),
+        "record": data.capability.delivery_records[0],
+        "unused": data.capability.capabilities[0],
+    }[kind]
+    target.review_status = ReviewStatus.PENDING
+    data.operational_ready = kind == "unused"
+    result = evaluate(data)
+    assert result.display.blocker_text == (
+        "없음 — 지금 단계 필수 요구 통과"
+        if kind == "unused"
+        else "거산의 파일의 공정 이름 — 가상 공정이 아직 확인 전"
+    )
+    assert result.display.blocks_approval is (kind != "unused")
+
+
+def test_blocker_lists_multiple_used_processes_once_and_in_link_order():
+    """Given 공정 연결 둘과 중복 사용 근거, When 평가, Then 관련 공정만 한 번씩 보인다."""
+    data = rule_engine_input()
+    data.dataset_kind = "BROCHURE"
+    data.requirements = []
+    for process in data.capability.processes:
+        process.dataset_kind = "BROCHURE"
+        process.name = f"가상 {process.code}"
+    zinc = data.capability.processes[0]
+    zinc.name = "아연도금(전기아연도금)"
+    anodizing = data.capability.processes[1]
+    anodizing.name = "아노다이징(양극산화피막)"
+    data.process_links.append(
+        replace_contract(
+            data.process_links[0],
+            link_id="zinc",
+            process_id=zinc.process_id,
+            process_code=zinc.code,
+            applied_material="FE",
+        )
+    )
+    result = evaluate(data)
+    assert result.display.blocker_text == (
+        "거산의 아노다이징(양극산화피막) 공정과 거산의 아연도금(전기아연도금) 공정이 아직 확인 전"
+    )
+
+
+@pytest.mark.parametrize("name", [None, "", "   "])
+def test_blocker_keeps_existing_explanation_when_legacy_process_name_is_missing(name):
+    """Given 이름 없는 기존 입력, When 평가, Then 이름을 지어내지 않고 기존 안내를 보존한다."""
+    data = rule_engine_input()
+    data.dataset_kind = "BROCHURE"
+    data.requirements = []
+    for process in data.capability.processes:
+        process.dataset_kind = "BROCHURE"
+        process.name = name
+    result = evaluate(data)
+    assert result.display.blocker_text == "준비 중; 거산 확인 전"
+    assert result.display.blocks_approval is True
+
+
+@pytest.mark.parametrize("excluded_by", ["company", "requirement", "material"])
+def test_blocker_preserves_excluded_explanation_without_approval_suffix(excluded_by):
+    """Given 제외된 기회, When 평가, Then 기존 제외 안내를 유지하고 통과라고 하지 않는다."""
+    data = rule_engine_input()
+    if excluded_by == "company":
+        data.opportunity.company_filter_status = "EXCLUDED"
+    elif excluded_by == "requirement":
+        data.capability.qualifications[0].current_status = QualificationStatusCode.CANCELLED
+    else:
+        data.process_links[0].applied_material = "SUS"
+    result = evaluate(data)
+    assert result.classification_code == "FILTER_EXCLUDED"
+    assert result.display.blocker_text == "대상 아님(제외)"
+    assert result.display.blocks_approval is True
+
+
+def test_blocker_ignores_preferred_and_later_requirements():
+    """Given 우대 미확인·나중 단계 요구, When 평가, Then 필수 미확인으로 표시하지 않는다."""
+    data = rule_engine_input()
+    data.requirements[0].name = "등록되지 않은 우대 인증"
+    data.requirements[0].req_level = "PREFERRED"
+    result = evaluate(data)
+    assert result.display.blocker_text == "없음 — 지금 단계 필수 요구 통과"
+    assert result.display.blocks_approval is False
