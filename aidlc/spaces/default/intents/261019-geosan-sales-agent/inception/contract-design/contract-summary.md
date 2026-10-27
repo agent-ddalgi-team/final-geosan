@@ -173,7 +173,7 @@ components:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
       properties:
-        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {} } }
+        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' } } }
         stage: { type: object, properties: { current: { type: integer }, badge: { type: string, nullable: true } } }
         reasons: { type: object, properties: { reason: { type: string }, nextAction: { type: string }, questions: { type: array, items: { $ref: '#/components/schemas/Question' } } } }
         requirements: { type: array, items: { $ref: '#/components/schemas/RequirementCheckView' } }
@@ -181,7 +181,7 @@ components:
         processLinks: { type: array, items: { type: object, properties: { linkId: {}, processCode: {}, processName: {}, appliedMaterial: {}, result: {}, reason: {} } } }
         evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceView' } }
         homepageNeedsConfirm: { type: boolean }
-        scores: { type: object, description: '점수 키 E/P/S/R/C는 대문자 그대로(camelCase 변환 대상 아님; 2026-10-22 PM 확인, 이슈 #33)', properties: { E: { type: integer }, P: { type: integer }, S: { type: number, nullable: true }, R: { type: integer }, C: { type: number }, items: { type: array, items: { type: object } }, ruleVersion: { type: string }, datasetKind: { type: string }, evaluatedAt: { type: string } } }
+        scores: { type: object, description: '점수 키 E/P/S/R/C는 대문자 그대로(camelCase 변환 대상 아님; 2026-10-22 PM 확인, 이슈 #33)', properties: { E: { type: integer }, P: { type: integer }, S: { type: number, nullable: true }, R: { type: integer }, C: { type: number }, items: { type: array, items: { type: object, description: 'itemCode, label, state, weight, matchRate, certainty, decay, score, factJudged, summary(#139), evidenceIds: [string] (이 항목 판정에 쓴 evidence[].evidenceId, 정렬; 더하는 변경 2026-10-27 PM, #176)' } }, ruleVersion: { type: string }, datasetKind: { type: string }, evaluatedAt: { type: string } } }
         records: { type: object, properties: { opinion: { $ref: '#/components/schemas/RecordMeta' }, bookmark: { $ref: '#/components/schemas/RecordMeta' }, approval: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string }, purpose: { type: string, nullable: true }, evalId: { type: string }, basedOnPreviousEval: { type: boolean } } } ] }, outcome: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string, nullable: true }, nextScheduleAt: { type: string, nullable: true } } } ] } } }
         recontact: { type: object, nullable: true, description: '재접촉 상세 영역(U6): 7칸 값·확인/추정·다시 연락할 이유·후속 일정' }
         evalId: { type: string }

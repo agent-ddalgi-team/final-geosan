@@ -191,6 +191,13 @@ class DetailHeader(_ApiModel):
     is_virtual: bool
     dataset_kind: DatasetKind
     is_recontact: bool = False
+    homepage_url: str | None = Field(
+        default=None,
+        description=(
+            "상대 회사 공개 홈페이지 뿌리 주소. 근거 출처(sourceRef)의 주소에서 가장 많이 나온 "
+            "뿌리(scheme+host)를 쓴다. 주소 있는 근거가 없으면 null(더하는 변경 2026-10-27, #176)"
+        ),
+    )
 
 
 class Question(_ApiModel):
@@ -270,6 +277,13 @@ class ScoreItemView(_ApiModel):
     fact_judged: str | None = None
     summary: str | None = Field(
         default=None, description="상세용 쉬운 요약(더하는 변경 2026-10-26, #139). 없으면 null"
+    )
+    evidence_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "이 항목 판정에 쓴 근거 ID 목록(evidence[].evidenceId와 같은 값, 정렬). "
+            "요약 줄 끝 출처를 원문 링크로 잇는 데 쓴다(더하는 변경 2026-10-27, #176)"
+        ),
     )
 
 

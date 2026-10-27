@@ -1,8 +1,10 @@
 """목록 구성과 상세 영역의 등록 지점. 원래 순위와 최신 평가 내용을 따로 읽는다."""
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Path, Query, Request
 from sqlalchemy import func, select
@@ -36,6 +38,7 @@ from geosan.evaluation.models import (
     EvaluationBatch,
     EvaluationRun,
     ItemJudgment,
+    JudgmentEvidence,
     ReadinessCheck,
     RequirementCheck,
 )
@@ -85,6 +88,33 @@ def _relation_note(context: DetailContext) -> str | None:
     return None
 
 
+_URL = re.compile(r"https?://[^\s)\]>\"']+")
+
+
+def _homepage_url(context: DetailContext) -> str | None:
+    """근거 출처 글에 든 주소들의 가장 흔한 뿌리(scheme+host)를 홈페이지로 본다 (#176).
+
+    사례 파일·DB에 홈페이지 칸이 없어 근거 출처에서 뽑는다. 처리 금지 자료는 빼고,
+    주소 있는 근거가 하나도 없으면 None. 주소를 새로 수집하지는 않는다(CON-07).
+    """
+    rows = context.session.scalars(
+        select(Evidence.source_ref).where(
+            Evidence.opp_id == context.opportunity.opp_id,
+            Evidence.security_grade != "FORBIDDEN",
+        )
+    )
+    roots: dict[str, int] = {}
+    for source_ref in rows:
+        for url in _URL.findall(source_ref or ""):
+            parts = urlsplit(url)
+            if parts.scheme and parts.netloc:
+                root = f"{parts.scheme}://{parts.netloc}/"
+                roots[root] = roots.get(root, 0) + 1
+    if not roots:
+        return None
+    return max(sorted(roots), key=roots.get)
+
+
 def _header(context: DetailContext) -> dict:
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
     return {
@@ -102,6 +132,7 @@ def _header(context: DetailContext) -> dict:
             is_virtual=run.is_virtual if run else opportunity.is_virtual,
             dataset_kind=run.dataset_kind if run else opportunity.dataset_kind,
             is_recontact=False,
+            homepage_url=_homepage_url(context),
         )
     }
 
@@ -281,6 +312,14 @@ def _scores(context: DetailContext) -> dict:
         row.item_code: row
         for row in session.scalars(select(ItemJudgment).where(ItemJudgment.eval_id == run.eval_id))
     }
+    # 항목별 근거 ID(#176): 평가 때 저장한 판정 ↔ 근거 연결을 그대로 돌려준다.
+    evidence_ids: dict[str, list[str]] = {}
+    for judgment_id, evidence_id in session.execute(
+        select(JudgmentEvidence.judgment_id, JudgmentEvidence.evidence_id)
+        .where(JudgmentEvidence.judgment_id.in_([row.judgment_id for row in items.values()]))
+        .order_by(JudgmentEvidence.evidence_id)
+    ):
+        evidence_ids.setdefault(judgment_id, []).append(evidence_id)
     return {
         "scores": Scores(
             E=run.score_e,
@@ -300,6 +339,7 @@ def _scores(context: DetailContext) -> dict:
                     score=items[code].score,
                     fact_judged=items[code].fact_judged,
                     summary=items[code].summary,
+                    evidence_ids=evidence_ids.get(items[code].judgment_id, []),
                 )
                 for code, definition in definitions.items()
             ],
