@@ -579,3 +579,30 @@ def test_unexpected_database_failure_returns_safe_error():
         assert "응답하면 안 되는" not in response.text
         error = response.json()["error"]
         assert {"message", "nextAction", "ref"} <= error.keys() and len(error["ref"]) == 8
+
+
+def test_detail_header_homepage_and_item_evidence_ids(api_env):
+    """Given 근거 출처에 주소 / When 상세 조회 / Then 홈페이지 뿌리와 항목별 근거 ID (#176)."""
+    client, opp_id, _ = api_env
+    data = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    # 가상 사례 출처에는 주소가 없으므로 홈페이지는 null
+    assert data["header"]["homepageUrl"] is None
+    by_code = {item["itemCode"]: item for item in data["scores"]["items"]}
+    evidence_ids = {row["evidenceId"] for row in data["evidence"]}
+    assert len(by_code["NEW_PRODUCT"]["evidenceIds"]) == 1
+    assert set(by_code["NEW_PRODUCT"]["evidenceIds"]) <= evidence_ids
+    assert by_code["SIG_ORDER"]["evidenceIds"] == []
+
+    with session_scope() as session:
+        rows = list(
+            session.scalars(
+                select(Evidence).where(Evidence.opp_id == opp_id).order_by(Evidence.evidence_id)
+            )
+        )
+        rows[0].source_ref = "가상 홈페이지 제품 http://www.example-virtual.co.kr/products"
+        rows[1].source_ref = "가상 홈페이지 회사 소개 (http://www.example-virtual.co.kr/about)"
+        rows[2].source_ref = "가상 보도자료 https://news.example.com/article/1"
+        rows[3].source_ref = "처리 금지 자료 https://forbidden.example.org/x"
+        rows[3].security_grade = "FORBIDDEN"
+    data = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    assert data["header"]["homepageUrl"] == "http://www.example-virtual.co.kr/"
