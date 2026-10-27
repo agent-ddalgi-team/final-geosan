@@ -126,6 +126,10 @@
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용공고 게시판에 글 없음 (확인일 2026-10-22)", "summary": "채용공고 게시판에 글이 없어 신호 없음입니다. (홈페이지 채용공고, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
-  "researchReadiness": null,
+  "researchReadiness": {
+    "questionSet": [
+      "너트 소재가 탄소강인지 스테인리스인지, 지금 도금을 어디에 맡기는지 확인"
+    ]
+  },
   "expected": null
 }

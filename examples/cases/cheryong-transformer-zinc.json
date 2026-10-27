@@ -137,6 +137,10 @@
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 채용 안내가 없고 공지는 전시회 글뿐 (확인일 2026-10-24)", "summary": "홈페이지 메뉴에 채용 안내가 없고 공지는 전시회 글뿐이라 신호 없음입니다. (홈페이지, 확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
-  "researchReadiness": null,
+  "researchReadiness": {
+    "questionSet": [
+      "탱크·금구류의 표면처리를 외주하는지, 처리 목적이 내식인지 외관인지 확인"
+    ]
+  },
   "expected": null
 }
