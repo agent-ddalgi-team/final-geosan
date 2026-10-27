@@ -191,6 +191,10 @@
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 글 없음 (확인일 2026-10-22)", "summary": "홈페이지에 채용 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
-  "researchReadiness": null,
+  "researchReadiness": {
+    "questionSet": [
+      "새 코팅 라인(TAC)으로 아연도금·아노다이징도 직접 하는지, 외주 수요가 있는지 확인"
+    ]
+  },
   "expected": null
 }
