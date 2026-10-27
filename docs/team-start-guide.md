@@ -114,6 +114,7 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
   - PM 설정 두 가지(한 번만): ① 보드 오른쪽 위 ⋯ → Workflows에서 Item closed, Pull request merged, Auto-close issue 켜기. ② 가지·PR 자동 이동용 토큰: GitHub 오른쪽 위 프로필 → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate. Resource owner를 조직 `agent-ddalgi-team`으로, Repository access는 `final-geosan`, 권한은 **Organization permissions → Projects: Read and write**, Repository permissions → Issues: Read and write. 만든 값을 저장소 Settings → Secrets and variables → Actions → New repository secret 에 이름 `PROJECT_TOKEN`으로 넣는다. 토큰 값은 어디에도 적지 않는다.
 - **막히면**: 이슈에 `막힘` 라벨을 붙이고 댓글에 "무엇이 막혔는지 / 무엇을 해 봤는지 / 누구의 답이 필요한지"를 쉬운 말로 적는다. 질문·막힘 양식으로 새 이슈를 만들어도 된다. **충돌(conflict)이 났을 때도 같다.** 억지로 풀지 말고 `막힘` 라벨을 붙이고 어느 파일에서 났는지 적어 PM에게 알린다.
 - **AI 도구에 시킬 때**: Claude Code·Codex는 `AGENTS.md`의 이슈·보드 규칙을 읽으므로 "이슈 #12 작업 시작해 줘"처럼 이슈 번호를 알려 주면 가지 이름·PR 연결·댓글을 규칙대로 한다.
+- **글은 짧게, 어디인지 먼저**: 첫 줄은 결론 한 문장(됐다 / 안 됐다 / 결정 필요), 항목마다 `[어느 화면 › 어느 줄]` + 실제 예문 하나, 댓글 5줄·이슈 10줄 안, 기술 세부는 맨 아래 접는 칸 "기술 메모". 상태 말머리는 ✅ 됨 / ⏳ 진행 중 / ❌ 막힘 / ❓ 결정 필요 네 가지만. 자세한 것과 예시는 `AGENTS.md` "글쓰기 규칙". AI 도구에 시킬 때도 "글쓰기 규칙대로"라고 한 줄 붙인다.
 - **쓰지 말 것**: 이슈·PR에 연락처(이메일·전화), 비밀번호·API 키, 거산 내부 자료.
 
 ## 5. 하지 말 것
