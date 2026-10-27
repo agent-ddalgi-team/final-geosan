@@ -1,0 +1,95 @@
+# PR·이슈 연결 검사 (AGENTS.md "GitHub 이슈·보드 규칙", 2026-10-27 PM 결정, #154).
+# PR을 열거나 본문·제목·마일스톤을 고칠 때마다 scripts/check-pr-link.sh 를 돌려
+# "Closes #번호가 있는가 / 그 이슈가 열려 있고 마일스톤이 있는가 / 제목에 #번호가 있는가"를 보고,
+# 이슈의 마일스톤을 PR에 복사한 뒤 결과를 PR 댓글 한 개로 알린다(같은 댓글을 고쳐 씀).
+# 이슈에 마일스톤이 없으면 이슈 댓글로 알린다. 보드 칸 이동은 보드 자동화(Projects → Workflows)가 맡는다.
+name: pr-link
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, milestoned, demilestoned]
+  issues:
+    types: [opened, edited, reopened, milestoned, demilestoned]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-link-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr:
+    name: 검사 — PR·이슈 연결 (Closes · 마일스톤 · 제목)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 연결 검사 + 마일스톤 복사
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          bash scripts/check-pr-link.sh "${{ github.event.pull_request.number }}" --fix | tee report.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          { echo '### PR·이슈 연결 검사'; echo; cat report.txt; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 결과를 PR 댓글로 (같은 댓글을 고쳐 씀)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          marker='<!-- pr-link-check -->'
+          {
+            echo "$marker"
+            echo "**PR·이슈 연결 검사** (자동, 본문·제목을 고치면 다시 돕니다)"
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+          } > comment.md
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+                --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)"
+          if [[ -n "$id" ]]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md >/dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md >/dev/null
+          fi
+
+      - name: 규칙을 못 지켰으면 빨간 X
+        if: steps.check.outputs.code != '0'
+        run: exit 1
+
+  issue:
+    name: 검사 — 이슈 마일스톤
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: 마일스톤이 없으면 댓글로 알림 (있으면 알림 댓글을 지움)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          HAS_MILESTONE: ${{ github.event.issue.milestone != null }}
+        run: |
+          marker='<!-- issue-milestone-check -->'
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" --paginate \
+                --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)"
+          if [[ "$HAS_MILESTONE" == "true" ]]; then
+            if [[ -n "$id" ]]; then
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id" >/dev/null
+            fi
+            echo "마일스톤 있음."
+            exit 0
+          fi
+          body="$marker
+          **마일스톤을 골라 주세요** (자동 알림). 오른쪽 Milestone에서 \`뼈대(10/28)\` / \`10월 말 부분 시연\` / \`11/15 거산 전달\` 중 하나를 고르면 이 댓글은 사라집니다. 마일스톤이 없는 이슈에 연결한 PR은 검사에서 빨간 X가 납니다."
+          if [[ -z "$id" ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -f body="$body" >/dev/null
+          fi
+          echo "마일스톤 없음: 댓글로 알렸습니다."
