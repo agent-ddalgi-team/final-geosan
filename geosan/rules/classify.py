@@ -6,6 +6,7 @@ from geosan.rules.codes import (
     DatasetKind,
     FilterState,
     ItemState,
+    ReviewStatus,
     classification_entry,
 )
 from geosan.rules.codes import (
@@ -40,6 +41,76 @@ def _next_action(data: EvaluationInput, fallback: str) -> str:
     if missing:
         parts.append("미확보: " + "·".join(missing))
     return " · ".join(parts) if parts else fallback
+
+
+def _pending_process_names(data: EvaluationInput) -> list[str] | None:
+    """연결·사용한 값의 검수 상태로 실제 공정 이름을 찾는다 (BR5.6, #160)."""
+    processes = {
+        p.process_id: p for p in data.capability.processes if p.dataset_kind == data.dataset_kind
+    }
+    values = {
+        **{p.process_id: (p.process_id, p.review_status) for p in processes.values()},
+        **{c.capability_id: (c.process_id, c.review_status) for c in data.capability.capabilities},
+        **{r.record_id: (r.process_id, r.review_status) for r in data.capability.delivery_records},
+    }
+    linked_ids = [link.process_id for link in data.process_links]
+    used_values = [
+        values[key]
+        for item in data.item_inputs
+        for key in item.used_capability_ids
+        if key in values
+    ]
+    pending_ids = {pid for pid, status in used_values if status == ReviewStatus.PENDING}
+    pending_ids.update(
+        pid
+        for pid in linked_ids
+        if pid in processes and processes[pid].review_status == ReviewStatus.PENDING
+    )
+    candidates = list(dict.fromkeys([*linked_ids, *(pid for pid, _ in used_values)]))
+    names = []
+    for pid in candidates:
+        if data.dataset_kind != DatasetKind.BROCHURE and pid not in pending_ids:
+            continue
+        process = processes.get(pid)
+        if process is None or not process.name or not process.name.strip():
+            # #161은 이름 없는 기존 입력도 허용한다. 이름을 추측하지 않고 기존 안내를 쓴다.
+            return None
+        names.append(process.name)
+    if data.dataset_kind == DatasetKind.BROCHURE and not candidates:
+        return None
+    return list(dict.fromkeys(names))
+
+
+def _has_final_consonant(text: str) -> bool:
+    """한글 받침에 맞춰 조사(과·와, 이·가)를 붙인다. 비한글 이름은 '이'로 잇는다."""
+    last = text.rstrip()[-1]
+    return (ord(last) - ord("가")) % 28 != 0 if "가" <= last <= "힣" else True
+
+
+def _blocker_text(
+    data: EvaluationInput, code: Code, assessment: RequirementAssessment, fallback: str
+) -> str:
+    """표시만 바꾸고 제외 사유·승인 판정은 보존한다 (BR10.3, #160 PM 결정)."""
+    if code == Code.FILTER_EXCLUDED:
+        return fallback
+    names = _pending_process_names(data)
+    if names is None:
+        return fallback
+    parts = ["거래 여부"] if data.opportunity.relation_status == "UNCONFIRMED" else []
+    parts.extend(f"거산의 {name} 공정" for name in names)
+    requirements = {req.req_id: req for req in data.requirements}
+    parts.extend(
+        requirements[check.req_id].name
+        for check in assessment.requirement_checks
+        if check.display_result == CheckDisplay.PENDING_BLOCKS
+    )
+    parts = list(dict.fromkeys(parts))
+    if not parts:
+        return "없음 — 지금 단계 필수 요구 통과"
+    text = parts[0]
+    for previous, current in zip(parts[:-1], parts[1:], strict=True):
+        text += ("과 " if _has_final_consonant(previous) else "와 ") + current
+    return text + ("이" if _has_final_consonant(parts[-1]) else "가") + " 아직 확인 전"
 
 
 def classify(
@@ -107,7 +178,7 @@ def display_texts(
         blockers.append("거래 관계 확인 전")
     blocked = bool(blockers)
     blocker = "; ".join(dict.fromkeys(blockers)) if blocked else "없음 — 지금 단계 필수 요구 통과"
-    blocker += " (승인 막힘)" if blocked else " (승인은 막지 않음)"
+    blocker = _blocker_text(data, code, assessment, blocker)
     score = "--" if totals.S is None else str(round_half_up(totals.S))
     if code in {Code.FILTER_PENDING, Code.OPS_PENDING} and totals.S is not None:
         score = f"참고 {score}" if data.dataset_kind == DatasetKind.BROCHURE else "--"
