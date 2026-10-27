@@ -84,7 +84,7 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 
 ## 4. 일하는 순서 (팀원)
 
-1. **이슈 번호부터 확인한다.** 내가 할 일의 이슈가 GitHub에 있는지 본다. 없으면 '작업' 양식으로 이슈를 만들고 보드 칸을 '진행 중'으로 옮긴 뒤 시작한다. (4-2장)
+1. **이슈 번호부터 확인한다.** 내가 할 일의 이슈가 GitHub에 있는지 본다. 없으면 '작업' 양식으로 이슈를 만든다(같은 일의 이슈가 이미 있으면 그것을 쓴다). 가지 이름을 `이름/이슈번호-짧은설명`으로 만들어 처음 push 하면 자동 검사가 이슈 번호를 확인하고 보드 칸을 '진행 중'으로 옮긴다. 번호가 없거나 닫힌 이슈면 Actions에 빨간 X가 나니 가지를 다시 만든다. (4-2장)
 2. `develop`을 최신으로 받는다: `git switch develop && git pull`. **내 PR이 합쳐진 뒤 다음 일을 시작할 때는 꼭 이걸 먼저 한다.** 작업 중에 받을지는 상황 봐서 정한다. (가지 역할: `develop` = 기본·통합 가지, 모든 PR의 대상. `main` = 시연·전달용, PM만 `develop` → `main` PR로 옮긴다. 2026-10-22 PM 결정)
 3. 가지를 딴다: `git switch -c <이름>/<이슈번호>-<짧은설명>` (예: `dongryeol/12-rules-engine`). 가지는 1~2일 안에 합친다.
 4. 맡은 파일만 고친다. 약속 파일(`contracts/`, `contract-summary.md`)에 없는 API 경로·응답 필드·운영 명령·테이블·파일 항목은 만들지 말고 PM에게 먼저 묻는다. 개발을 시작하기 전에 자기 모듈의 기능 설계 문서(`aidlc/spaces/default/intents/261019-geosan-sales-agent/construction/u1-skeleton/functional-design/`의 `entities.md`·`rules.md`·`functional-spec.md`)를 읽는다. 규칙 엔진 담당은 `rules.md`가 기준이며 A정밀 손 계산은 이미 확인된 내용이라 다시 하지 않는다.
@@ -110,7 +110,8 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 - **마일스톤**: `뼈대(10/28)`, `10월 말 부분 시연`, `11/15 거산 전달` 중 하나를 꼭 붙인다. 없으면 자동 댓글이 달리고, 그 이슈에 연결한 PR은 빨간 X가 난다. PR에는 연결 이슈의 마일스톤이 자동으로 붙으므로 PR에서는 고르지 않는다.
 - **같은 일의 이슈를 두 번 만들지 않는다**: 만들기 전에 Issues에서 검색하고, 있으면 그 이슈에 댓글로 이어 간다. 남은 일이 바뀌었으면 본문을 고친다.
 - **여러 사람이 나눠 하는 일은 상위 이슈 + 하위 이슈**: 상위 이슈(예: "10/29 방문 준비") 하나에 사람마다 하위 이슈를 만들어 연결한다(이슈 오른쪽 아래 "Sub-issues → Create sub-issue", 또는 AI 도구에 "#136의 하위 이슈로 연결해 줘"). PR은 **내 하위 이슈**를 `Closes` 하고 상위 이슈는 `관련 #`로 적는다. 상위 이슈 본문의 체크 목록이 다 채워지면 준비가 끝난 것이고, 그때 PM이 상위 이슈를 닫는다.
-- **보드 "거산 작업 보드"**: 칸은 할 일 → 진행 중 → 리뷰 중 → 완료. 이슈를 만들면 보드에 자동으로 올라가고, 닫히거나 PR이 합쳐지면 자동으로 완료로 간다. **시작하면 진행 중, PR을 올리면 리뷰 중으로 옮기는 것만 사람이 한다.** (자동화는 보드 오른쪽 위 ⋯ → Workflows에서 PM이 켠다: Auto-add to project, Item closed, Pull request merged, Auto-close issue.)
+- **보드 "거산 작업 보드"**: 칸은 할 일 → 진행 중 → 리뷰 중 → 완료. 칸 이동은 자동이 기본이다. 이슈를 만들면 보드에 올라가고, **가지를 처음 push 하면 '진행 중'**, **PR을 열면 `Closes #번호` 이슈가 '리뷰 중'**, 합쳐지거나 닫히면 '완료'. 자동으로 안 옮겨졌으면(이슈 댓글에 "직접 옮겨 주세요"가 달림) 손으로 옮기면 된다.
+  - PM 설정 두 가지(한 번만): ① 보드 오른쪽 위 ⋯ → Workflows에서 Item closed, Pull request merged, Auto-close issue 켜기. ② 가지·PR 자동 이동용 토큰: GitHub 오른쪽 위 프로필 → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate. Resource owner를 조직 `agent-ddalgi-team`으로, Repository access는 `final-geosan`, 권한은 **Organization permissions → Projects: Read and write**, Repository permissions → Issues: Read and write. 만든 값을 저장소 Settings → Secrets and variables → Actions → New repository secret 에 이름 `PROJECT_TOKEN`으로 넣는다. 토큰 값은 어디에도 적지 않는다.
 - **막히면**: 이슈에 `막힘` 라벨을 붙이고 댓글에 "무엇이 막혔는지 / 무엇을 해 봤는지 / 누구의 답이 필요한지"를 쉬운 말로 적는다. 질문·막힘 양식으로 새 이슈를 만들어도 된다. **충돌(conflict)이 났을 때도 같다.** 억지로 풀지 말고 `막힘` 라벨을 붙이고 어느 파일에서 났는지 적어 PM에게 알린다.
 - **AI 도구에 시킬 때**: Claude Code·Codex는 `AGENTS.md`의 이슈·보드 규칙을 읽으므로 "이슈 #12 작업 시작해 줘"처럼 이슈 번호를 알려 주면 가지 이름·PR 연결·댓글을 규칙대로 한다.
 - **쓰지 말 것**: 이슈·PR에 연락처(이메일·전화), 비밀번호·API 키, 거산 내부 자료.
