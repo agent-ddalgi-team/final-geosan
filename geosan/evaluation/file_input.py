@@ -116,6 +116,7 @@ def capability_snapshot(capability: CapabilityFile) -> CapabilitySnapshot:
             ProcessInput(
                 process_id=pid,
                 code=process.code,
+                name=process.name,
                 material_codes=list(process.material_codes),
                 performance_tags=list(process.performance_tags),
                 review_status=process.review_status,

@@ -267,6 +267,9 @@ class EvidenceInput(_ContractModel):
 class ProcessInput(_ContractModel):
     process_id: str
     code: str
+    # 역량 파일의 공정 이름 그대로(예: "아연도금(전기아연도금)"). 카드 막는 조건 문장에 쓴다.
+    # 더하는 변경(2026-10-27 PM, #161): 없으면 None, 기존 입력은 그대로 통과한다.
+    name: str | None = None
     material_codes: list[str]
     performance_tags: list[str]
     review_status: ReviewStatus

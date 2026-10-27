@@ -417,7 +417,7 @@ EvaluationInput:
   interactions: [{ interactionId, kind, occurredAt, linkedToOpportunity, pastProcessItem, orderCount, sampleApproved, requirementMet, lossReason, lossResolved, lastDeliveryAt, orderCycle, certainty }]
   evidence: [{ evidenceId, sourceGrade, certainty, isLlmProposed, subject, occurredAt, securityGrade }]   # 처리 금지·철회 자료는 Ledger가 미리 제외
   capability:
-    processes: [{ processId, code, materialCodes, performanceTags, reviewStatus, datasetKind }]
+    processes: [{ processId, code, name: string|null, materialCodes, performanceTags, reviewStatus, datasetKind }]   # name: 역량 파일 공정 이름 그대로, 카드 막는 조건 문장용(더하는 변경 2026-10-27 PM, #161)
     capabilities: [{ capabilityId, processId, capKind, numericMin, numericMax, unit, isDescriptiveOnly, reviewStatus }]
     deliveryRecords: [{ recordId, processId, industry, partType, reviewStatus }]
     qualifications: [{ qualId, kind, officialName, number, edition, holder, site, validFrom, validTo, reviewStatus, currentStatus }]
