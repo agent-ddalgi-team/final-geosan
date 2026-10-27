@@ -14,7 +14,9 @@
     "공개 홈페이지 열람일은 2026-10-22이다. 게시일이 없는 근거의 occurredAt은 null로 두었고 열람일을 발생일로 쓰지 않았다.",
     "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 2026-10-22 대조했다. ANODIZING의 AL 소재·APPEARANCE 성능 태그를 참조한다. 소개서 기준·거산 확인 전이며 해당 공정의 검수 상태는 PENDING이다. 가상 역량은 사용하지 않았다.",
     "#108: 2026-10-25 공식 회사 소개·연혁·홈페이지 신제품 소개·공지사항 전체 2건과 본문·공장소개를 확인했다. 2022년 아산 지사 신축, 2024년 자동화 설비 공급 확대와 신제품 소개는 있으나 실제 발생일이 불명확하여 SIG_EXPAND·SIG_ORDER는 UNAVAILABLE을 유지한다. 입찰·관련 직무 채용 글은 없어 SIG_BID·SIG_HIRE는 확인한 홈페이지 범위에서 NO_SIGNAL이다. 대상 브라켓과 거산의 유사 납품실적 연결은 미확보이며 외부 자료 전체에 신호가 없다고 단정하지 않았다.",
-    "공개 제품표의 판매 사양은 거산에 대한 고객 요청서가 아니다. 요구 조건·필수 여부·필요 단계는 새로 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다."
+    "공개 제품표의 판매 사양은 거산에 대한 고객 요청서가 아니다. 요구 조건·필수 여부·필요 단계는 새로 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다.",
+    "#140 출처 설명 보존: 영광테크 홈페이지 브라켓 제품표 — 공식 홈페이지, 게시일 미표시, 2026-10-22 열람. 출처: https://www.yktec.co.kr/shop/item.php?it_id=2016169",
+    "#140 출처 설명 보존: 영광테크 홈페이지 2024년 브라켓 카탈로그 — 공식 2024 카탈로그, 인쇄면 95쪽·121쪽 대조, 게시글 2023-12-07, 2026-10-22 열람. 출처: http://yktec.co.kr/ebook/data/2024_catalog/04_2024_bracket.pdf"
   ],
   "customer": {
     "name": "주식회사 영광테크",
@@ -55,7 +57,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "YKBK-AL GS75x32-12T",
-      "sourceRef": "https://www.yktec.co.kr/shop/item.php?it_id=2016169 (공식 홈페이지, 게시일 미표시, 2026-10-22 열람)",
+      "sourceRef": "영광테크 홈페이지 브라켓 제품표 https://www.yktec.co.kr/shop/item.php?it_id=2016169",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -66,7 +68,7 @@
       "isLlmProposed": true,
       "subject": "MATERIAL",
       "quote": "Material : A6061",
-      "sourceRef": "https://www.yktec.co.kr/shop/item.php?it_id=2016169 (공식 홈페이지, 게시일 미표시, 2026-10-22 열람)",
+      "sourceRef": "영광테크 홈페이지 브라켓 제품표 https://www.yktec.co.kr/shop/item.php?it_id=2016169",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -77,7 +79,7 @@
       "isLlmProposed": true,
       "subject": "OTHER",
       "quote": "Surface Processing : ANODIZING",
-      "sourceRef": "https://www.yktec.co.kr/shop/item.php?it_id=2016169 (공식 홈페이지, 게시일 미표시, 2026-10-22 열람)",
+      "sourceRef": "영광테크 홈페이지 브라켓 제품표 https://www.yktec.co.kr/shop/item.php?it_id=2016169",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -88,7 +90,7 @@
       "isLlmProposed": true,
       "subject": "PURPOSE",
       "quote": "영광테크 알루미늄 브라켓 75x32 규격 표면처리 Sliver",
-      "sourceRef": "http://yktec.co.kr/ebook/data/2024_catalog/04_2024_bracket.pdf (공식 2024 카탈로그, 인쇄면 95쪽·121쪽 대조, 게시글 2023-12-07, 2026-10-22 열람)",
+      "sourceRef": "영광테크 홈페이지 2024년 브라켓 카탈로그 http://yktec.co.kr/ebook/data/2024_catalog/04_2024_bracket.pdf",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -184,6 +186,7 @@
   "readinessCheck": null,
   "researchReadiness": {
     "questionSet": [
+      "브라켓을 아산에서 생산하는지, 아노다이징을 외주하는지 확인",
       "해당 브라켓이 아산사업소에서 생산되는가?",
       "은색 후처리에서 추정한 외관 목적을 직접 명시한 사양서가 있는가?",
       "아노다이징을 자체 처리하는지 외주로 발주하는지 확인할 수 있는가?"
