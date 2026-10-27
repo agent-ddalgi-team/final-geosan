@@ -324,6 +324,18 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
   COMPANY_CONFIRMED: '거산 확인 완료',
 };
 
+/** 상세 "추천 이유"의 요약 줄 앞에 쓰는 짧은 항목 이름(PM 결정 2026-10-27, #145). 표에 없는 코드는 긴 이름을 그대로 쓴다. */
+export const itemShortLabels: Record<string, string> = {
+  NEW_PRODUCT: '제품',
+  NEW_MATERIAL: '소재',
+  NEW_RECORD: '납품실적',
+  NEW_PERF: '처리 목적',
+  SIG_EXPAND: '증설',
+  SIG_ORDER: '수주',
+  SIG_BID: '공고',
+  SIG_HIRE: '채용',
+};
+
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
 export const scoreDetails = {
   E: '확인된 점수 E',

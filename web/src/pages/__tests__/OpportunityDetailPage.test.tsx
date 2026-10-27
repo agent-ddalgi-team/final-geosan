@@ -154,11 +154,11 @@ describe('OpportunityDetailPage', () => {
   });
 
   it('항목별 요약이 있으면 추천 이유가 요약 한 줄씩으로 보이고 추정 항목에만 "(추정)"이 붙는다', async () => {
-    const items = base.scores!.items.slice(0, 4).map((item, index) => ({
+    const items = base.scores!.items.slice(0, 5).map((item, index) => ({
       ...item,
-      itemCode: `ITEM_${index}`,
-      label: ['제품', '소재', '처리 목적', '증설'][index],
-      state: ['CONFIRMED', 'CONFIRMED', 'STRONG', 'NO_SIGNAL'][index],
+      itemCode: ['NEW_PRODUCT', 'NEW_MATERIAL', 'NEW_PERF', 'SIG_EXPAND', 'NOT_IN_TABLE'][index],
+      label: index === 4 ? '표에 없는 긴 항목 이름' : '점수 표의 긴 이름',
+      state: ['CONFIRMED', 'CONFIRMED', 'STRONG', 'NO_SIGNAL', 'CONFIRMED'][index],
       summary: index === 3 ? null : `요약 문장 ${index} (출처 ${index})`,
     }));
     mockedGet.mockResolvedValueOnce(reply({ ...base, scores: { ...base.scores!, items } }));
@@ -169,6 +169,7 @@ describe('OpportunityDetailPage', () => {
       '제품: 요약 문장 0 (출처 0)',
       '소재: 요약 문장 1 (출처 1)',
       '처리 목적(추정): 요약 문장 2 (출처 2)',
+      '표에 없는 긴 항목 이름: 요약 문장 4 (출처 4)',
     ]);
     expect(screen.getByTestId('detail-reason')).not.toHaveTextContent(base.reasons.reason);
     expect(screen.getByTestId('detail-next-action')).toHaveTextContent(base.reasons.nextAction);

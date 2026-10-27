@@ -8,6 +8,7 @@ import DetailSection from './DetailSection';
 import {
   cardRows,
   detailSections,
+  itemShortLabels,
   labelFor,
   questionRows,
   questionStatusLabels,
@@ -26,7 +27,7 @@ function summaryLines(items: ScoreItemView[] | undefined): { key: string; text: 
       const estimate = item.state === 'STRONG' || item.state === 'WEAK';
       return {
         key: item.itemCode,
-        text: `${item.label}${estimate ? detailSections.estimateMark : ''}: ${item.summary}`,
+        text: `${itemShortLabels[item.itemCode] ?? item.label}${estimate ? detailSections.estimateMark : ''}: ${item.summary}`,
       };
     });
 }
