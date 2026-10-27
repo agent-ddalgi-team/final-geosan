@@ -28,7 +28,7 @@
     "project": null,
     "purpose": "NEW_PROPOSAL",
     "owner": null,
-    "cardReason": "볼트·너트마다 도금 종류를 고를 수 있고 원재료가 철계(SCM435·S45C)라 아연도금과 맞음. 단 주력 도금은 니켈·흑착 (홈페이지)"
+    "cardReason": "볼트·너트마다 도금 종류를 고를 수 있고 원재료가 철계(SCM435·S45C)라 아연도금과 맞음. 단 특징 글은 니켈·흑착 중심 (홈페이지)"
   },
   "discoveryPaths": [
     { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-kofas-bolt", "discoveredAt": "2026-10-22" }
