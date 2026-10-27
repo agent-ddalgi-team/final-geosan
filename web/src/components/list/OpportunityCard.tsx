@@ -33,12 +33,6 @@ function Row({ label, children, title }: { label: string; children: ReactNode; t
   );
 }
 
-/** 서버 문구에 이미 "(승인 …)"이 붙어 있으면 한 번 더 붙이지 않는다. */
-export function blockerText(text: string, blocksApproval: boolean): string {
-  const suffix = blocksApproval ? cardRows.blocksApproval : cardRows.notBlocksApproval;
-  return text.includes(suffix) ? text : `${text} ${suffix}`;
-}
-
 function scoreText(scoreDisplay: string): string {
   // "참고 81"(거산 확인 전 묶음)은 그대로, 나머지는 "점수 81" / "점수 --".
   return scoreDisplay.startsWith(cardRows.referenceScorePrefix)
@@ -58,7 +52,8 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
     card.classificationCode in classificationTone
       ? classificationTone[card.classificationCode]
       : 'neutral';
-  const blocker = blockerText(card.blocker.text, card.blocker.blocksApproval);
+  // 막는 조건은 서버 문구 그대로 보인다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
+  const blocker = card.blocker.text;
 
   return (
     <Card
