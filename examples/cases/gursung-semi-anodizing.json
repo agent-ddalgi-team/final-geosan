@@ -170,6 +170,10 @@
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용안내가 상시 안내문이고 관련 직무 공고 없음 (확인일 2026-10-22)", "summary": "채용안내가 상시 안내문이고 관련 직무 공고가 없어 신호 없음입니다. (홈페이지 채용안내, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
-  "researchReadiness": null,
+  "researchReadiness": {
+    "questionSet": [
+      "알루미늄 부품의 아노다이징을 외주하는지, 대상 부품 비중이 얼마인지 확인"
+    ]
+  },
   "expected": null
 }

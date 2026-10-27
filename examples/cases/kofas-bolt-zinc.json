@@ -216,6 +216,10 @@
     { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 안내·공고 없음 (확인일 2026-10-22)", "summary": "홈페이지에 채용 안내·공고가 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
-  "researchReadiness": null,
+  "researchReadiness": {
+    "questionSet": [
+      "아연도금 물량이 실제로 있는지, 도금을 외주하는지 확인"
+    ]
+  },
   "expected": null
 }
