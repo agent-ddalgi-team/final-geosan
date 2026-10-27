@@ -182,6 +182,37 @@ describe('OpportunityDetailPage', () => {
     expect(within(items[1]).getByTestId('evidence-llm-tag')).toBeInTheDocument();
   });
 
+  it('근거 출처에 주소가 있으면 그 주소만 새 창 링크가 되고, 주소가 없는 출처는 글자만 보인다 (#174)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        evidence: [
+          {
+            ...base.evidence[0],
+            evidenceId: 'ev-url',
+            sourceRef: '코파스 홈페이지 제품 재질 선택 http://kofas.com/productK/',
+          },
+          { ...base.evidence[1], evidenceId: 'ev-text', sourceRef: '카탈로그 3쪽 (인쇄면)' },
+        ],
+      }),
+    );
+    renderPage();
+    const items = await screen.findAllByTestId('evidence-item');
+
+    const link = within(items[0]).getByRole('link', { name: 'http://kofas.com/productK/' });
+    expect(link).toHaveAttribute('href', 'http://kofas.com/productK/');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(within(items[0]).getByTestId('evidence-source')).toHaveTextContent(
+      '코파스 홈페이지 제품 재질 선택 http://kofas.com/productK/',
+    );
+
+    expect(within(items[1]).queryByRole('link')).not.toBeInTheDocument();
+    expect(within(items[1]).getByTestId('evidence-source')).toHaveTextContent(
+      '카탈로그 3쪽 (인쇄면)',
+    );
+  });
+
   it('항목별 요약이 있으면 추천 이유가 요약 한 줄씩으로 보이고 추정 항목에만 "(추정)"이 붙는다', async () => {
     const items = base.scores!.items.slice(0, 5).map((item, index) => ({
       ...item,
