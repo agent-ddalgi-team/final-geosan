@@ -14,7 +14,9 @@
     "#17의 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 대조했다. ANODIZING의 AL 소재·APPEARANCE를 참조한다. 소개서 검수 상태는 PENDING이며 특정 합금·형상·색상에 대한 수탁 승인이 아니다.",
     "#108: 2026-10-25 공식 인사말·공지사항 전체 1건과 본문·자료실 전체 1건과 본문을 확인했다. 공지는 홈페이지 리뉴얼, 자료실은 2023년도 실험장치 카탈로그 안내이며 증설·신규 수주나 출시·입찰·관련 직무 채용 글은 없어 SIG_*를 NO_SIGNAL로 정리했다. 별도 연혁·채용 메뉴는 확인되지 않았다. 대상품과 거산 실적의 연결은 미확보이며 외부 자료 전체에 신호가 없다고 단정하지 않았다.",
     "#108: 제목에서 뺀 모델명 DSI-HNDEK-1과 AL6061은 사실표의 회사 요약에도 보이도록 기존 description에 설명했다. 카탈로그 출처와 적용 부품 범위를 함께 남겼으며 quote에는 설명을 덧붙이지 않았다.",
-    "공개 제품 사양은 구매 요청·필수 요구가 아니다. 요구 조건·접촉 승인은 비워 두었고 실제 기업 접촉이나 거래 확인은 하지 않았다."
+    "공개 제품 사양은 구매 요청·필수 요구가 아니다. 요구 조건·접촉 승인은 비워 두었고 실제 기업 접촉이나 거래 확인은 하지 않았다.",
+    "#140 출처 설명 보존: 대덕과학기기 홈페이지 2023년 실험장치 카탈로그 — 공식 2023년도 실험장치 카탈로그 첨부, PDF 27쪽·인쇄 26쪽, 게시 2023-06-15, 2026-10-22 열람. 출처: https://dsi.kr/고객센터/자료실download/?mod=document&uid=57",
+    "#140 출처 설명 보존: 대덕과학기기 홈페이지 회사 소개 — 공식 회사 소개, 게시일 미표시, 2026-10-22 열람. 출처: https://dsi.kr/회사소개/인사말/"
   ],
   "customer": {
     "name": "대덕과학기기",
@@ -30,7 +32,8 @@
     "item": "레이저 실험장치 베이스판 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "레이저 실험장치 베이스판에 아노다이징 사양이 있고 소재 AL6061이 알루미늄이라 아노다이징과 맞음. 외주 처리 여부는 확인 전 (카탈로그)"
   },
   "discoveryPaths": [
     {
@@ -55,7 +58,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "레이저 발진원리 실험장치",
-      "sourceRef": "https://dsi.kr/고객센터/자료실download/?mod=document&uid=57 (공식 2023년도 실험장치 카탈로그 첨부, PDF 27쪽·인쇄 26쪽, 게시 2023-06-15, 2026-10-22 열람)",
+      "sourceRef": "대덕과학기기 홈페이지 2023년 실험장치 카탈로그 https://dsi.kr/고객센터/자료실download/?mod=document&uid=57",
       "occurredAt": "2023-06-15",
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -66,7 +69,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "베이스판",
-      "sourceRef": "https://dsi.kr/고객센터/자료실download/?mod=document&uid=57 (공식 2023년도 실험장치 카탈로그 첨부, PDF 27쪽·인쇄 26쪽, 게시 2023-06-15, 2026-10-22 열람)",
+      "sourceRef": "대덕과학기기 홈페이지 2023년 실험장치 카탈로그 https://dsi.kr/고객센터/자료실download/?mod=document&uid=57",
       "occurredAt": "2023-06-15",
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -77,7 +80,7 @@
       "isLlmProposed": true,
       "subject": "MATERIAL",
       "quote": "AL6061",
-      "sourceRef": "https://dsi.kr/고객센터/자료실download/?mod=document&uid=57 (공식 2023년도 실험장치 카탈로그 첨부, PDF 27쪽·인쇄 26쪽, 게시 2023-06-15, 2026-10-22 열람)",
+      "sourceRef": "대덕과학기기 홈페이지 2023년 실험장치 카탈로그 https://dsi.kr/고객센터/자료실download/?mod=document&uid=57",
       "occurredAt": "2023-06-15",
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -88,7 +91,7 @@
       "isLlmProposed": true,
       "subject": "PURPOSE",
       "quote": "AL6061 with black anodized",
-      "sourceRef": "https://dsi.kr/고객센터/자료실download/?mod=document&uid=57 (공식 2023년도 실험장치 카탈로그 첨부, PDF 27쪽·인쇄 26쪽, 게시 2023-06-15, 2026-10-22 열람)",
+      "sourceRef": "대덕과학기기 홈페이지 2023년 실험장치 카탈로그 https://dsi.kr/고객센터/자료실download/?mod=document&uid=57",
       "occurredAt": "2023-06-15",
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -99,7 +102,7 @@
       "isLlmProposed": true,
       "subject": "PRODUCT",
       "quote": "실험장치및 광학부품을 개발 및 설계 제작해온 경험",
-      "sourceRef": "https://dsi.kr/회사소개/인사말/ (공식 회사 소개, 게시일 미표시, 2026-10-22 열람)",
+      "sourceRef": "대덕과학기기 홈페이지 회사 소개 https://dsi.kr/회사소개/인사말/",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
       "externalAiAllowed": true
@@ -112,6 +115,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 제작 사업과 DSI-HNDEK-1의 베이스판·아노다이징 사양을 확인했다. 부품 자체 가공·외주 처리·신규 발주 여부는 확인하지 않았다.",
+      "summary": "실험장치 제작 사업이 있고 DSI-HNDEK-1 베이스판에 아노다이징 사양이 적혀 있습니다. 부품을 직접 가공하는지, 표면처리를 외주하는지, 새 발주가 있는지는 확인하지 않았습니다. (2023년 실험장치 카탈로그 26쪽 · 홈페이지 회사 소개)",
       "evidenceRefs": [
         0,
         1,
@@ -127,6 +131,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "공식 베이스판 사양의 AL6061을 소개서 ANODIZING의 AL 분류와 대조했다. 합금 분류 일치이며 개별 치수·색상·피막 조건의 수탁 승인이 아니다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "베이스판 소재 AL6061이 아노다이징 소재인 알루미늄과 분류가 맞습니다. 개별 치수·색상·피막 조건의 처리 가능 여부를 승인한 것은 아닙니다. (2023년 실험장치 카탈로그 26쪽 · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [
         2
       ],
@@ -144,6 +149,7 @@
       "certainty": null,
       "state": "UNAVAILABLE",
       "factJudged": "이유: 2026-10-25 공식 인사말 https://dsi.kr/회사소개/인사말/ 과 자료실 https://dsi.kr/고객센터/자료실download/ 를 확인했다. 실험장치·광학부품 제작은 확인했으나 대상 DSI-HNDEK-1 베이스판의 실제 납품 산업과 거산 소개서 ANODIZING의 방위산업·항공우주 실적을 연결할 근거는 미확보다. 교육용 제품 분류만으로 전체 납품 산업이 다르다고 확정하지 않았다. 다음 할 일: 대상 베이스판의 적용 산업·부품 용도와 거산의 유사 실적을 확인한 뒤 대조한다. UNAVAILABLE을 유지한다.",
+      "summary": "실험장치·광학부품 제작은 확인했으나 베이스판의 납품 산업과 거산 소개서의 납품 산업(방산·항공우주)을 연결할 근거가 없어 미확보입니다. (홈페이지 인사말·자료실, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -154,6 +160,7 @@
       "certainty": "STRONG",
       "state": "STRONG",
       "factJudged": "공식 베이스판의 black anodized 사양에서 외관 목적을 간접 추정해 APPEARANCE 1개와 대조했다(STRONG). 반사 억제·내식·경도 성능은 추가하지 않았다. 소개서 기준·거산 확인 전(PENDING).",
+      "summary": "베이스판의 검정 아노다이징 사양에서 외관 목적을 간접 추정했습니다. 반사 억제·내식·경도 성능은 넣지 않았습니다. (2023년 실험장치 카탈로그 26쪽 · 거산 소개서 아노다이징 목적, 추정)",
       "evidenceRefs": [
         3
       ],
@@ -171,6 +178,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 인사말 https://dsi.kr/회사소개/인사말/ 및 공지사항 https://dsi.kr/고객센터/공지사항/ 의 전체 1건과 본문을 확인했다. 인사말은 기존 개발·설계·제작 경험, 공지는 2018-06-05 홈페이지 리뉴얼 안내이며 공장 증설·신규 생산라인 글은 없다. 별도 연혁 메뉴도 확인되지 않아 읽은 공식 페이지 범위에서 NO_SIGNAL로 판정한다.",
+      "summary": "회사 인사말과 공지사항(2018년 홈페이지 리뉴얼 1건)에 공장 증설·신규 생산라인 글이 없어 신호 없음입니다. (홈페이지 인사말·공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -181,6 +189,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 공지사항 https://dsi.kr/고객센터/공지사항/ 및 자료실 https://dsi.kr/고객센터/자료실download/ 의 각 전체 1건과 본문을 확인했다. 홈페이지 리뉴얼과 2023-06-15 카탈로그 다운로드 안내뿐이며 신규 수주·제품 출시·사업 확대 글은 없어 해당 범위에서 NO_SIGNAL로 판정한다. 카탈로그 게시일을 제품 출시일로 바꾸지 않았다.",
+      "summary": "공지사항·자료실에 홈페이지 리뉴얼과 2023년 카탈로그 안내뿐이고 신규 수주·제품 출시 글이 없어 신호 없음입니다. (홈페이지 공지사항·자료실, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -191,6 +200,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 공지사항 https://dsi.kr/고객센터/공지사항/ 의 전체 1건과 본문, 자료실 전체 1건을 확인했다. 홈페이지 리뉴얼·카탈로그 안내 외 입찰·협력사 모집·구매 공고는 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 공고 전체에 신호가 없다는 뜻은 아니다.",
+      "summary": "공지사항·자료실에 입찰·협력사 모집·구매 공고가 없어 신호 없음입니다. (홈페이지 공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -201,6 +211,7 @@
       "certainty": null,
       "state": "NO_SIGNAL",
       "factJudged": "2026-10-25 공식 홈페이지 메뉴·인사말 https://dsi.kr/회사소개/인사말/ 및 공지사항 https://dsi.kr/고객센터/공지사항/ 을 확인했다. 별도 채용 메뉴가 없고 구매·품질·생산기술·표면처리 직무의 실제 채용 글도 없다. 인사말의 인재중심 경영 문구를 채용 공고로 보지 않고 확인한 홈페이지 범위에서 NO_SIGNAL로 판정한다.",
+      "summary": "별도 채용 메뉴가 없고 관련 직무 채용 글도 없어 신호 없음입니다. (홈페이지 메뉴·공지사항, 확인일 2026-10-25)",
       "evidenceRefs": [],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -209,6 +220,7 @@
   "readinessCheck": null,
   "researchReadiness": {
     "questionSet": [
+      "베이스판을 현재도 같은 사양으로 생산하는지, 검정색 아노다이징을 외주하는지 확인",
       "2023년 카탈로그의 DSI-HNDEK-1 베이스판을 현재도 같은 AL6061·검정색 아노다이징 사양으로 생산하는가?",
       "베이스판을 직접 가공하며 아노다이징을 별도로 외주 발주하는가?",
       "검정색 마감의 목적과 요구 피막·색상·치수를 확인할 수 있는가?"

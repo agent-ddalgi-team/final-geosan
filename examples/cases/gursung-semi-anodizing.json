@@ -26,7 +26,8 @@
     "item": "반도체·디스플레이 장비 부품 아노다이징",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": null
+    "owner": null,
+    "cardReason": "일부 부품 소재가 알루미늄이라 아노다이징과 일부 맞고 반도체·디스플레이 장비 부품을 만듦(추정). 2024-06 삼성전자 협력업체 등록 (홈페이지)"
   },
   "discoveryPaths": [
     { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-gursung-semi", "discoveredAt": "2026-10-22" }
@@ -112,6 +113,7 @@
       "certainty": "WEAK",
       "state": "WEAK",
       "factJudged": "반도체·디스플레이 장비 부품 제조 — 표면처리가 필요한 부품일 수 있으나 홈페이지에 직접 언급이 없어 업종 특성에서 추정 (해당 1.0, 약한 추정)",
+      "summary": "반도체·디스플레이 장비 부품을 만듭니다. 표면처리가 필요한 부품일 수 있으나 홈페이지에 직접 언급이 없어 업종 특성에서 약하게 추정했습니다. (홈페이지 회사개요, 추정)",
       "evidenceRefs": [0],
       "signalRefs": [],
       "usedCapabilityRefs": []
@@ -122,6 +124,7 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "소재 중 알루미늄(AL)이 일부 부품에 쓰임 — 아노다이징 처리 소재(Al)와 일부 일치 (0.5, 확인). 나머지는 고융점 금속·스테인리스·그라파이트",
+      "summary": "일부 부품 소재가 알루미늄이라 아노다이징 소재와 일부 맞습니다. 나머지는 고융점 금속·스테인리스·그라파이트입니다. (홈페이지 제품소개 · 거산 소개서 아노다이징 소재)",
       "evidenceRefs": [1],
       "signalRefs": [],
       "usedCapabilityRefs": [
@@ -135,17 +138,19 @@
       "certainty": null,
       "state": "NO_BONUS",
       "factJudged": "반도체·디스플레이 장비 산업으로 거산 소개서의 납품 산업(방위산업, 항공우주)과 맞지 않음 — 가점 없음",
+      "summary": "반도체·디스플레이 장비 산업이라 거산 소개서의 납품 산업(방산·항공우주)과 같지 않아 가점이 없습니다. (홈페이지 회사개요 · 거산 소개서 납품 산업)",
       "evidenceRefs": [0],
       "signalRefs": [],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지에 처리 목적(내식·외관 등) 언급 없음 — 미확보 (CVD 공정 부품에 'Aluminium-Coating 등 표면 처리 재질' 한 줄만 있고 목적은 없음, 확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "NEW_PERF", "matchRate": null, "certainty": null, "state": "UNAVAILABLE", "factJudged": "홈페이지에 처리 목적(내식·외관 등) 언급 없음 — 미확보 (CVD 공정 부품에 'Aluminium-Coating 등 표면 처리 재질' 한 줄만 있고 목적은 없음, 확인일 2026-10-24)", "summary": "홈페이지에 처리 목적(내식·외관 등) 언급이 없어 미확보입니다. CVD 공정 부품에 표면 처리 재질 한 줄만 있고 목적은 없습니다. (홈페이지 제품소개, 확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
     {
       "itemCode": "SIG_EXPAND",
       "matchRate": "간접 관련",
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "2006-03 아산 사업장 확장 이전 — 간접 관련 (0.5, 확인, 발생일이 오래되어 감쇠 큼). 그 뒤 증설 기록 없음 (확인일 2026-10-24)",
+      "summary": "2006년 3월 아산 사업장 확장 이전이 있으나 오래되어 점수에 거의 반영되지 않습니다. 그 뒤 증설 기록은 없습니다. (홈페이지 회사연혁, 확인일 2026-10-24)",
       "evidenceRefs": [3],
       "signalRefs": [0],
       "usedCapabilityRefs": []
@@ -156,12 +161,13 @@
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
       "factJudged": "2024-06 삼성전자 무선사업부 협력업체 등록 — 신규 거래처 등록, 아노다이징 수요와는 간접 관련 (0.5, 확인)",
+      "summary": "2024년 6월 삼성전자 무선사업부 협력업체로 등록했습니다. 새 거래처이지만 아노다이징 수요와 직접 연결된 글은 아닙니다. (홈페이지 회사연혁)",
       "evidenceRefs": [2],
       "signalRefs": [1],
       "usedCapabilityRefs": []
     },
-    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 공지·입찰 게시판이 없고 협력사 모집 글 없음 (확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
-    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용안내가 상시 안내문이고 관련 직무 공고 없음 (확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지 메뉴에 공지·입찰 게시판이 없고 협력사 모집 글 없음 (확인일 2026-10-24)", "summary": "홈페이지에 공지·입찰 게시판이 없고 협력사 모집 글도 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-24)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "채용안내가 상시 안내문이고 관련 직무 공고 없음 (확인일 2026-10-22)", "summary": "채용안내가 상시 안내문이고 관련 직무 공고가 없어 신호 없음입니다. (홈페이지 채용안내, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
   ],
   "readinessCheck": null,
   "researchReadiness": null,
