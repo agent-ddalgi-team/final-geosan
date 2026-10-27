@@ -5,14 +5,41 @@ from geosan.rules.codes import (
     CoreEvidenceMet,
     DatasetKind,
     FilterState,
+    ItemState,
     classification_entry,
 )
 from geosan.rules.codes import (
     ClassificationCode as Code,
 )
-from geosan.rules.items import round_half_up
+from geosan.rules.items import calculate_items, round_half_up
 from geosan.rules.models import DisplayTexts, EvaluationInput, TimingRequirements, Totals
 from geosan.rules.requirements import RequirementAssessment
+
+ITEM_SHORT_NAMES = {
+    "NEW_PRODUCT": "제품",
+    "NEW_MATERIAL": "소재",
+    "NEW_RECORD": "납품실적",
+    "NEW_PERF": "목적",
+    "SIG_EXPAND": "증설",
+    "SIG_ORDER": "수주",
+    "SIG_BID": "공고",
+    "SIG_HIRE": "채용",
+}
+
+
+def _next_action(data: EvaluationInput, fallback: str) -> str:
+    """첫 질문과 실제 미확보 항목을 배점순으로 안내한다 (BR10.3, #139 PM 결정)."""
+    parts = []
+    if data.research_readiness and data.research_readiness.question_set:
+        parts.append(data.research_readiness.question_set[0])
+    missing = [
+        ITEM_SHORT_NAMES[item.item_code]
+        for item in sorted(calculate_items(data), key=lambda item: item.weight, reverse=True)
+        if item.state == ItemState.UNAVAILABLE
+    ]
+    if missing:
+        parts.append("미확보: " + "·".join(missing))
+    return " · ".join(parts) if parts else fallback
 
 
 def classify(
@@ -103,9 +130,9 @@ def display_texts(
         Code.LOW: "새 근거를 확보하면 우선순위를 다시 검토하세요",
     }
     return DisplayTexts(
-        reason=reason,
+        reason=data.opportunity.card_reason or reason,
         blocker_text=blocker,
         blocks_approval=blocked,
         score_display=score,
-        next_action=actions[code],
+        next_action=_next_action(data, actions[code]),
     )
