@@ -234,7 +234,7 @@ def step_name_for(config: RuleConfig, item_code: str, rate: float) -> str | None
 def register_rule_config_version(session: Session, config: RuleConfig, file_path: Path | str):
     """규칙 설정 버전을 등록하거나 기존 행을 돌려준다.
 
-    - 같은 version·같은 hash → 기존 행.
+    - 같은 version·같은 hash → 현재 파일 경로로 갱신한 기존 행.
     - 같은 version·다른 hash: DRAFT면 해시를 갱신, FIXED면 거부(새 version으로만).
     - 다른 version·같은 hash → 거부(같은 내용으로 두 버전을 만들지 않는다).
     """
@@ -250,6 +250,8 @@ def register_rule_config_version(session: Session, config: RuleConfig, file_path
     )
     if same_hash is not None:
         if same_hash.rule_version == config.version:
+            same_hash.file_path = str(Path(file_path).resolve())
+            session.flush()
             return same_hash
         raise InputError(
             message=(
