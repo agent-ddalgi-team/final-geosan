@@ -145,7 +145,7 @@ def test_demo_report_apjeong_is_rank_one_contact_urgent_with_expected_scores(
     assert code == 0, output
     assert "접촉 후보 1곳" in output
     csv_text = (out / "ranking.csv").read_text(encoding="utf-8-sig")
-    assert "A정밀" in csv_text and "지금 바로 연락 검토" in csv_text and ",81," in csv_text
+    assert "A정밀" in csv_text and "지금 바로 연락 검토" in csv_text and ",77점 · 7/8," in csv_text
     assert (out / "companies" / "01-A정밀.md").exists()
     assert (out / "facts" / "01-A정밀.md").exists()
 
