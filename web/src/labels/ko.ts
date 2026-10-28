@@ -15,16 +15,16 @@ import type {
 
 export const classificationLabels: Record<ClassificationCode, string> = {
   FILTER_EXCLUDED: '대상 아님(제외)',
-  FILTER_PENDING: '기다리는 중 (확인 필요)',
-  OPS_PENDING: '준비 중',
+  FILTER_PENDING: '필수조건 확인 필요',
+  OPS_PENDING: '거산 역량 확인 필요',
   NOT_EVALUATED: '평가 전',
   CONTACT_URGENT: '지금 바로 연락 검토',
   CONTACT_PLANNED: '계획해서 연락 검토',
   CONTACT_REVIEW: '확인 후 연락 검토',
-  RESEARCH: '더 알아봐야 함',
-  CONDITIONAL_WAIT: '조건 갖춰지면 다시 봄',
-  WATCH: '지켜보는 중',
-  LOW: '나중에',
+  RESEARCH: '추가 조사 필요',
+  CONDITIONAL_WAIT: '조건 충족 후 재검토',
+  WATCH: '동향 모니터링',
+  LOW: '검토 우선순위 낮음',
 };
 
 export const classificationTone: Record<ClassificationCode, StatusTone> = {
@@ -41,7 +41,7 @@ export const classificationTone: Record<ClassificationCode, StatusTone> = {
   LOW: 'neutral',
 };
 
-export const coreEvidenceRecheckLabel = '근거 다시 확인';
+export const coreEvidenceRecheckLabel = '핵심 근거 재확인 필요';
 
 /** 거산 값 검수 상태(reviewStatus). */
 export const reviewStatusLabels: Record<ReviewStatus, string> = {
@@ -77,9 +77,9 @@ export const checkDisplayTone: Record<CheckDisplay, StatusTone> = {
 
 /** 의견 3값과 버튼 문구. */
 export const opinionLabels: Record<Opinion, string> = {
-  WORTH_REVIEW: '검토할 만함',
-  NEED_CHECK: '추가 확인',
-  NOT_TARGET: '대상 아님',
+  WORTH_REVIEW: '검토 권고',
+  NEED_CHECK: '추가 확인 필요',
+  NOT_TARGET: '검토 대상 제외',
 };
 
 export const reqLevelLabels = {
@@ -102,7 +102,7 @@ export const relationStatusLabels = {
 } as const;
 
 export const purposeLabels = {
-  NEW_PROPOSAL: '처음 제안',
+  NEW_PROPOSAL: '신규 제안',
   FOLLOW_UP_PROPOSAL: '기존 제안 후속',
   REORDER_CHECK: '재발주 확인',
 } as const;
@@ -142,12 +142,12 @@ export const states = {
 
 /** 의견 영역 문구(BR10.6, BR9.1). */
 export const opinionArea = {
-  groupLabel: '내 의견',
+  groupLabel: '담당자 검토 의견',
   savedPrefix: '저장됨',
   savedSummaryPrefix: '의견:',
   edit: '수정',
   saveFailed: '저장하지 못했습니다. 다시 시도',
-  reasonLabel: '대상 아님 사유',
+  reasonLabel: '검토 대상 제외 사유',
   reasonRequired: '사유를 적어 주세요',
   memoLabel: '메모(선택, 200자)',
   pickStaffFirst: '먼저 담당자를 고르세요',
@@ -162,22 +162,22 @@ export const opinionArea = {
 /** 공통 틀 문구. */
 export const frame = {
   skipToContent: '본문으로 건너뛰기',
-  menuOpportunities: '추천 목록',
+  menuOpportunities: '영업 후보 목록',
   staffSelectLabel: '담당자',
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
-  pageTitleList: '추천 목록',
-  pageTitleDetail: '근거 상세',
+  pageTitleList: '영업 후보 목록',
+  pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
 } as const;
 
 /** 카드·상세 줄 머리말. */
 export const cardRows = {
-  reason: '추천 이유',
-  blocker: '막는 조건',
-  nextAction: '다음 할 일',
+  reason: '추천 근거',
+  blocker: '접촉 전 검토사항',
+  nextAction: '후속 조치',
   rankPrefix: '순위',
   scorePrefix: '점수',
   blocksApproval: '(승인 막힘)',
@@ -188,8 +188,8 @@ export const cardRows = {
   brochureTag: '거산 확인 전',
 } as const;
 
-/** 상세 제목 아래 회사 홈페이지 링크 글(#175). 홍보관(블로그) 주소도 있어 "회사 페이지"로 쓴다. */
-export const homepageLinkLabel = '회사 페이지';
+/** 상세 제목 아래 회사 홈페이지 링크 글(#175, 용어 #202). 홍보관(블로그) 주소도 있어 "기업 소개 페이지"로 쓴다. */
+export const homepageLinkLabel = '기업 소개 페이지';
 
 /** 점수 글자를 화면 낭독용으로 읽는 문구(#183). '판정'이 아니라 '조사'로 쓴다. */
 export const scoreAria = {
@@ -200,15 +200,15 @@ export const scoreAria = {
 
 /** 상세 영역 제목(BR10.5 순서). */
 export const detailSections = {
-  reasons: '1. 추천 이유와 다음 할 일',
+  reasons: '1. 추천 근거와 후속 조치',
   requirements: '2. 고객이 요구하는 것과 거산의 준비 상태',
-  processLinks: '3. 공정 연결',
+  processLinks: '3. 공정 적합성 검토',
   evidence: '4. 근거 자료',
   scores: '5. 점수 자세히 보기',
   estimateMark: '(추정)',
-  questionsHeading: '거산에 확인할 것 (소개서 값, 검수 전)',
+  questionsHeading: '거산 역량 확인사항',
   questionsHint:
-    "점수 계산에 쓴 거산 소개서 값입니다. 거산이 '맞다'고 확인하면 검수 완료로 바뀌고 이 기회를 다시 평가합니다. 상대 회사에 물을 것은 위의 '다음 할 일'에 있고, 답 기록 기능은 11월에 들어갑니다.",
+    "점수 계산에 쓴 거산 소개서 값입니다. 거산이 '맞다'고 확인하면 검수 완료로 바뀌고 이 기회를 다시 평가합니다. 상대 회사에 물을 것은 위의 '후속 조치'에 있고, 답 기록 기능은 11월에 들어갑니다.",
   expandQuestions: (n: number) => `나머지 ${n}개 펼치기`,
   collapseQuestions: '접기',
   approvalEligible: '승인 가능 여부',
@@ -350,25 +350,25 @@ export const itemShortLabels: Record<string, string> = {
 
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
 export const scoreDetails = {
-  E: '확인된 점수 E',
-  P: '판정한 배점 P',
+  E: '현재 평가점수 E',
+  P: '조사 항목 배점 합계 P',
   S: '확인 비율 S (E÷P×100)',
   R: '조사 시 상한 R',
-  C: '자료 확보율 C',
+  C: '평가 항목 조사율 C',
   expand: '펼치기',
   collapse: '접기',
   itemColumns: {
     label: '항목',
     weight: '배점',
-    matchRate: '일치도',
-    certainty: '확실도',
-    decay: '감쇠',
+    matchRate: '평가 기준 적합도',
+    certainty: '근거 확인 수준',
+    decay: '최신성 반영계수',
     score: '점수',
     state: '상태',
   },
-  unavailable: '미확보',
+  unavailable: '자료 미확보',
   ruleVersionPrefix: '규칙 설정',
-  datasetPrefix: '거산 값 묶음',
+  datasetPrefix: '거산 역량 자료 구분',
   evaluatedPrefix: '평가',
 } as const;
 
@@ -380,5 +380,5 @@ export const scoreStateLabels: Record<string, string> = {
   WEAK: '약한 추정',
   MISMATCH: '불일치',
   NO_BONUS: '가점 없음',
-  UNAVAILABLE: '미확보',
+  UNAVAILABLE: '자료 미확보',
 };

@@ -437,12 +437,12 @@ def test_next_action_lists_unavailable_items_by_configured_weight(with_question)
         else [],
     )
     prefix = "도금을 외주하는지 확인 · " if with_question else ""
-    assert evaluate(data).display.next_action == prefix + "미확보: 납품실적·수주·채용"
+    assert evaluate(data).display.next_action == prefix + "자료 미확보: 납품실적·수주·채용"
     data.rule_config.new_profile_items[2].weight, data.rule_config.new_profile_items[5].weight = (
         data.rule_config.new_profile_items[5].weight,
         data.rule_config.new_profile_items[2].weight,
     )
-    assert evaluate(data).display.next_action == prefix + "미확보: 수주·납품실적·채용"
+    assert evaluate(data).display.next_action == prefix + "자료 미확보: 수주·납품실적·채용"
 
 
 @pytest.mark.parametrize("with_question", [True, False])
@@ -472,7 +472,7 @@ def test_next_action_includes_missing_and_effectively_unavailable_inputs():
     for signal in data.signals:
         if signal.signal_kind == "EXPANSION":
             signal.occurred_at = None
-    assert evaluate(data).display.next_action == "미확보: 목적·증설·채용"
+    assert evaluate(data).display.next_action == "자료 미확보: 목적·증설·채용"
 
 
 def test_blocker_names_relation_linked_processes_and_pending_requirements_in_order():
@@ -557,7 +557,7 @@ def test_blocker_keeps_existing_explanation_when_legacy_process_name_is_missing(
         process.dataset_kind = "BROCHURE"
         process.name = name
     result = evaluate(data)
-    assert result.display.blocker_text == "준비 중; 거산 확인 전"
+    assert result.display.blocker_text == "거산 역량 확인 필요; 거산 확인 전"
     assert result.display.blocks_approval is True
 
 

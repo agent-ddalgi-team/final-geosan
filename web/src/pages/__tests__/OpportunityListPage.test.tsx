@@ -149,7 +149,7 @@ describe('OpportunityListPage', () => {
     );
     expect(within(cards[0]).getByTestId('card-blocker')).toHaveTextContent(/^거래 관계 확인 전$/);
     expect(within(cards[0]).getByTestId('card-classification')).toHaveTextContent(
-      '기다리는 중 (확인 필요)',
+      '필수조건 확인 필요',
     );
     expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^점수 --$/);
     expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(

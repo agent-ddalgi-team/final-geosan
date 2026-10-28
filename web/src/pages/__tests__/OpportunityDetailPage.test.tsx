@@ -102,7 +102,7 @@ describe('OpportunityDetailPage', () => {
     await screen.findByTestId('detail-questions');
     expect(
       screen.getByRole('heading', { name: detailSections.questionsHeading }),
-    ).toHaveTextContent('거산에 확인할 것 (소개서 값, 검수 전)');
+    ).toHaveTextContent('거산 역량 확인사항');
     expect(screen.getAllByTestId('detail-question')).toHaveLength(3);
     expect(screen.getAllByTestId('detail-question')[0]).toHaveTextContent('대기');
     const toggle = screen.getByTestId('detail-questions-toggle');
@@ -122,7 +122,7 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     const hint = await screen.findByTestId('detail-questions-hint');
     expect(hint).toHaveTextContent('점수 계산에 쓴 거산 소개서 값입니다.');
-    expect(hint).toHaveTextContent("상대 회사에 물을 것은 위의 '다음 할 일'에 있고");
+    expect(hint).toHaveTextContent("상대 회사에 물을 것은 위의 '후속 조치'에 있고");
     expect(hint).toHaveTextContent('답 기록 기능은 11월에 들어갑니다.');
   });
 
@@ -293,8 +293,8 @@ describe('OpportunityDetailPage', () => {
       reply({ ...base, header: { ...base.header, homepageUrl: 'http://kofas.com/' } }),
     );
     renderPage();
-    const link = await screen.findByRole('link', { name: /회사 페이지/ });
-    expect(link).toHaveTextContent('회사 페이지 ↗ http://kofas.com/');
+    const link = await screen.findByRole('link', { name: /기업 소개 페이지/ });
+    expect(link).toHaveTextContent('기업 소개 페이지 ↗ http://kofas.com/');
     expect(link).toHaveAttribute('href', 'http://kofas.com/');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
@@ -317,7 +317,7 @@ describe('OpportunityDetailPage', () => {
     await screen.findByTestId('opportunity-detail');
     expect(screen.queryByTestId('detail-reason-lines')).not.toBeInTheDocument();
     expect(screen.getByTestId('detail-reason')).toHaveTextContent(
-      `추천 이유: ${base.reasons.reason}`,
+      `추천 근거: ${base.reasons.reason}`,
     );
   });
 
@@ -330,7 +330,7 @@ describe('OpportunityDetailPage', () => {
     expect(toggle).toHaveTextContent('펼치기');
     expect(screen.queryByTestId('score-e')).not.toBeInTheDocument();
     // 전문 용어는 접힌 동안 화면 어디에도 없다(BR10.9).
-    expect(screen.getByTestId('opportunity-detail')).not.toHaveTextContent(/확인된 점수 E/);
+    expect(screen.getByTestId('opportunity-detail')).not.toHaveTextContent(/현재 평가점수 E/);
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');

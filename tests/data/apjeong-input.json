@@ -52,16 +52,16 @@
     "researchRequirements": { "maxHoursDefault": 2.0 },
     "classificationLabels": {
       "FILTER_EXCLUDED": "대상 아님(제외)",
-      "FILTER_PENDING": "기다리는 중 (확인 필요)",
-      "OPS_PENDING": "준비 중",
+      "FILTER_PENDING": "필수조건 확인 필요",
+      "OPS_PENDING": "거산 역량 확인 필요",
       "NOT_EVALUATED": "평가 전",
       "CONTACT_URGENT": "지금 바로 연락 검토",
       "CONTACT_PLANNED": "계획해서 연락 검토",
       "CONTACT_REVIEW": "확인 후 연락 검토",
-      "RESEARCH": "더 알아봐야 함",
-      "CONDITIONAL_WAIT": "조건 갖춰지면 다시 봄",
-      "WATCH": "지켜보는 중",
-      "LOW": "나중에"
+      "RESEARCH": "추가 조사 필요",
+      "CONDITIONAL_WAIT": "조건 충족 후 재검토",
+      "WATCH": "동향 모니터링",
+      "LOW": "검토 우선순위 낮음"
     },
     "otherGroupSort": {
       "default": [ { "key": "E", "order": "desc" }, { "key": "P", "order": "desc" }, { "key": "oppId", "order": "asc" } ],

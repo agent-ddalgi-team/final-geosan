@@ -39,7 +39,7 @@ def _next_action(data: EvaluationInput, fallback: str) -> str:
         if item.state == ItemState.UNAVAILABLE
     ]
     if missing:
-        parts.append("미확보: " + "·".join(missing))
+        parts.append("자료 미확보: " + "·".join(missing))
     return " · ".join(parts) if parts else fallback
 
 
@@ -186,7 +186,7 @@ def display_texts(
         score = f"{totals.E}점 · {judged}/{len(items)}"
     if code in {Code.FILTER_PENDING, Code.OPS_PENDING} and totals.S is not None:
         score = f"참고 {score}" if data.dataset_kind == DatasetKind.BROCHURE else "--"
-    reason = f"{label}: 확인된 점수 {totals.E}, 판정한 배점 {totals.P}"
+    reason = f"{label}: 현재 평가점수 {totals.E}, 조사 항목 배점 합계 {totals.P}"
     if core == CoreEvidenceMet.RECHECK:
         reason += "; 핵심 근거 재확인 필요"
     if code == Code.CONDITIONAL_WAIT:

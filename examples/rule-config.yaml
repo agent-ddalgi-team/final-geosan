@@ -154,16 +154,16 @@ researchRequirements:
 # 11분기 코드 ↔ 쉬운 말 (BR6.3). 팀 제안 초기값이며 여기서만 바꾼다. 화면은 /config/ui로 이 표를 받는다.
 classificationLabels:
   FILTER_EXCLUDED: "대상 아님(제외)"
-  FILTER_PENDING: "기다리는 중 (확인 필요)"
-  OPS_PENDING: "준비 중"
+  FILTER_PENDING: "필수조건 확인 필요"
+  OPS_PENDING: "거산 역량 확인 필요"
   NOT_EVALUATED: "평가 전"
   CONTACT_URGENT: "지금 바로 연락 검토"
   CONTACT_PLANNED: "계획해서 연락 검토"
   CONTACT_REVIEW: "확인 후 연락 검토"
-  RESEARCH: "더 알아봐야 함"
-  CONDITIONAL_WAIT: "조건 갖춰지면 다시 봄"
-  WATCH: "지켜보는 중"
-  LOW: "나중에"
+  RESEARCH: "추가 조사 필요"
+  CONDITIONAL_WAIT: "조건 충족 후 재검토"
+  WATCH: "동향 모니터링"
+  LOW: "검토 우선순위 낮음"
 
 # 접촉 후보가 아닌 분류(OTHER 그룹)의 정렬 (BR6.5, 가설·설정값, 기능 설계 Q6).
 # default(가상 검수·거산 확인 완료 묶음)와 brochure(소개서 묶음) 모두: E 내림 → P(판정한 배점) 내림 → 기회 ID.

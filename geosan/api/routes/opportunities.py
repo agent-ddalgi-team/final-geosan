@@ -171,7 +171,7 @@ def _reasons(context: DetailContext) -> dict:
     return {
         "reasons": Reasons(
             reason=run.reason if run else "아직 평가하지 않았습니다.",
-            next_action=run.next_action if run else "평가 후 추천 이유를 확인해 주세요.",
+            next_action=run.next_action if run else "평가 후 추천 근거를 확인해 주세요.",
             questions=questions,
         )
     }
