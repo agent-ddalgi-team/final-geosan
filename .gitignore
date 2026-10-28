@@ -39,6 +39,7 @@ aidlc/diagnostics/
 
 # 파이썬
 .venv/
+uv.lock
 __pycache__/
 *.pyc
 .pytest_cache/
