@@ -158,7 +158,13 @@ class OpportunityCard(_ApiModel):
     classification_code: ClassificationCode
     core_evidence_recheck: bool = False
     score_s: float | None = None
-    score_display: str = Field(description="정수, '--', '참고 N' (BR10.2)")
+    score_display: str = Field(
+        description=(
+            "'<E>점 · <n>/<전체>'(예: '77점 · 7/8'), 판정 0개면 '--', "
+            "소개서 묶음이면 '참고 ' 접두(예: '참고 50점 · 3/8') "
+            "(BR10.2, PM 결정 2026-10-28 #180)"
+        )
+    )
     reason: str
     blocker: Blocker
     next_action: str
@@ -187,7 +193,13 @@ class DetailHeader(_ApiModel):
     owner: str | None = None
     classification_code: ClassificationCode
     core_evidence_recheck: bool = False
-    score_display: str
+    score_display: str = Field(
+        description=(
+            "'<E>점 · <n>/<전체>'(예: '77점 · 7/8'), 판정 0개면 '--', "
+            "소개서 묶음이면 '참고 ' 접두(예: '참고 50점 · 3/8') "
+            "(BR10.2, PM 결정 2026-10-28 #180)"
+        )
+    )
     is_virtual: bool
     dataset_kind: DatasetKind
     is_recontact: bool = False
