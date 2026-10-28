@@ -145,7 +145,7 @@ def test_list_keeps_full_rank_and_uses_latest_partial_content(api_env, tmp_path)
     assert body["meta"]["total"] == 1 and body["meta"]["notEvaluatedCount"] == 1
     card = body["data"][0]
     assert card["rank"] == 1 and card["evalId"] == latest.new_eval_ids[0] != original_eval_id
-    assert card["reevaluated"] and card["scoreDisplay"] == "81"
+    assert card["reevaluated"] and card["scoreDisplay"] == "77점 · 7/8"
     assert client.get("/api/v1/opportunities?page=2&pageSize=1").json()["data"] == []
 
 
