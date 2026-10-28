@@ -243,7 +243,7 @@ def csv_rows(report: DemoReport) -> list[list[str]]:
         "점수 표시",
         "접촉 후보",
         "추천 근거",
-        "접촉 전 검토사항",
+        "검토사항",
         "후속 조치",
         "근거 수",
         "질문 수",
@@ -351,7 +351,7 @@ def render_company(report: DemoReport, row: ReportRow) -> str:
         f"- 분류: **{row.classification_label}** (`{out.classification_code}`)"
         + (" · 접촉 후보" if row.is_contact_candidate else " · 접촉 후보 아님"),
         f"- 추천 근거: {out.display.reason}",
-        f"- 접촉 전 검토사항: {out.display.blocker_text}",
+        f"- 검토사항: {out.display.blocker_text}",
         f"- 후속 조치: {out.display.next_action}",
         f"- 점수 표시: {out.display.score_display}",
         "",

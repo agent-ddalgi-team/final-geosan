@@ -176,7 +176,7 @@ export const frame = {
 /** 카드·상세 줄 머리말. */
 export const cardRows = {
   reason: '추천 근거',
-  blocker: '접촉 전 검토사항',
+  blocker: '검토사항',
   nextAction: '후속 조치',
   rankPrefix: '순위',
   scorePrefix: '점수',
