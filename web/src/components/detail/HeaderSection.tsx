@@ -11,6 +11,7 @@ import {
   coreEvidenceRecheckLabel,
   detailHeader,
   frame,
+  homepageLinkLabel,
   labelFor,
   purposeLabels,
   relationStatusLabels,
@@ -41,6 +42,9 @@ export default function HeaderSection({
       : 'neutral';
   // 서버가 "기존 (2024년 아연도금 견적)"처럼 쉬운 설명을 주면 그것을 쓰고, 없으면 코드표 문구를 쓴다.
   const relation = header.relationNote || labelFor(relationStatusLabels, header.relationStatus);
+  // http(s) 주소일 때만 링크로 보인다. 그 밖의 값(javascript: 등)은 보이지 않는다.
+  const homepage =
+    header.homepageUrl && /^https?:\/\/\S+$/.test(header.homepageUrl) ? header.homepageUrl : null;
 
   return (
     <div data-testid="detail-header" style={{ display: 'grid', gap: 12 }}>
@@ -58,6 +62,18 @@ export default function HeaderSection({
           <span aria-hidden="true">‹</span> {frame.backToList}
         </Button>
       </div>
+      {homepage ? (
+        <div data-testid="detail-homepage">
+          <a
+            href={homepage}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'underline' }}
+          >
+            {homepageLinkLabel} ↗ {homepage}
+          </a>
+        </div>
+      ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
         <span
           role="group"

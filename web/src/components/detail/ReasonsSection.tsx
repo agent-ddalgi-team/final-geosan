@@ -2,8 +2,9 @@
 // [거산 확인 요청]·질문 직접 추가는 뒤 단위(P1)라 만들지 않는다.
 import { useState } from 'react';
 import { Button } from 'antd';
-import type { Reasons, ScoreItemView } from '../../api/types';
+import type { EvidenceView, Reasons, ScoreItemView } from '../../api/types';
 import StatusTag from '../common/StatusTag';
+import { splitSourceRef } from '../common/sourceUrl';
 import DetailSection from './DetailSection';
 import {
   cardRows,
@@ -19,15 +20,40 @@ import { colors, typography } from '../../theme/tokens';
 /** 처음부터 보이는 질문 수. */
 export const VISIBLE_QUESTIONS = 3;
 
+interface SummaryLine {
+  key: string;
+  text: string;
+  /** 줄 끝 괄호 안 글자를 누르면 열 원문 주소. 괄호가 없거나 주소 있는 근거가 없으면 없다. */
+  link?: { before: string; label: string; after: string; href: string };
+}
+
+// 줄 끝의 "(홈페이지 ABOUT·PRODUCT)"에서 괄호 앞 / 괄호 안 / 괄호 뒤를 나눈다.
+const TRAILING_PAREN = /^([\s\S]*\()([^()]*)(\)\s*)$/;
+
+/** 그 항목의 evidenceIds 순서대로 근거를 찾아 주소가 있는 첫 번째 근거의 첫 주소. */
+function firstSourceUrl(item: ScoreItemView, evidence: EvidenceView[]): string | undefined {
+  for (const id of item.evidenceIds ?? []) {
+    const found = evidence.find((entry) => entry.evidenceId === id);
+    const href = found && splitSourceRef(found.sourceRef).find((part) => part.href)?.href;
+    if (href) return href;
+  }
+  return undefined;
+}
+
 /** 요약이 있는 항목만, 점수 표와 같은 순서로. 추정 항목(강한·약한)은 이름 뒤에 "(추정)"을 붙인다. */
-function summaryLines(items: ScoreItemView[] | undefined): { key: string; text: string }[] {
+function summaryLines(items: ScoreItemView[] | undefined, evidence: EvidenceView[]): SummaryLine[] {
   return (items ?? [])
     .filter((item) => item.summary)
     .map((item) => {
       const estimate = item.state === 'STRONG' || item.state === 'WEAK';
+      const text = `${itemShortLabels[item.itemCode] ?? item.label}${estimate ? detailSections.estimateMark : ''}: ${item.summary}`;
+      const href = firstSourceUrl(item, evidence);
+      const paren = href ? TRAILING_PAREN.exec(text) : null;
       return {
         key: item.itemCode,
-        text: `${itemShortLabels[item.itemCode] ?? item.label}${estimate ? detailSections.estimateMark : ''}: ${item.summary}`,
+        text,
+        link:
+          href && paren ? { before: paren[1], label: paren[2], after: paren[3], href } : undefined,
       };
     });
 }
@@ -35,15 +61,17 @@ function summaryLines(items: ScoreItemView[] | undefined): { key: string; text: 
 export default function ReasonsSection({
   reasons,
   scoreItems,
+  evidence = [],
 }: {
   reasons: Reasons;
   scoreItems?: ScoreItemView[];
+  evidence?: EvidenceView[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const { questions } = reasons;
   const hidden = Math.max(0, questions.length - VISIBLE_QUESTIONS);
   const shown = expanded ? questions : questions.slice(0, VISIBLE_QUESTIONS);
-  const lines = summaryLines(scoreItems);
+  const lines = summaryLines(scoreItems, evidence);
 
   return (
     <DetailSection id="detail-reasons" title={detailSections.reasons}>
@@ -57,7 +85,22 @@ export default function ReasonsSection({
             >
               {lines.map((line) => (
                 <li key={line.key} data-testid="detail-reason-line">
-                  {line.text}
+                  {line.link ? (
+                    <>
+                      {line.link.before}
+                      <a
+                        href={line.link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'underline' }}
+                      >
+                        {line.link.label}
+                      </a>
+                      {line.link.after}
+                    </>
+                  ) : (
+                    line.text
+                  )}
                 </li>
               ))}
             </ul>
