@@ -7,7 +7,9 @@ import pytest
 from geosan.rules.classify import classify, display_texts
 from geosan.rules.codes import (
     DatasetKind,
+    ItemState,
     NeededStage,
+    Profile,
     QualificationStatusCode,
     RelationStatus,
     ReviewStatus,
@@ -273,20 +275,61 @@ def test_brochure_reference_scores_never_allow_contact(required, expected):
     )
     assert code == expected
     display = display_texts(data, code, assessment, totals, "RECHECK", research_missing(data))
-    assert display.blocks_approval and display.score_display == "참고 81"
+    assert display.blocks_approval and display.score_display == "참고 77점 · 7/8"
+
+
+def test_brochure_score_counts_judged_items_instead_of_weight():
+    """Given 미확보 5항목, When 소개서 평가, Then 배점 비율 대신 실제 3/8을 표시한다."""
+    data = rule_engine_input()
+    data.dataset_kind = DatasetKind.BROCHURE
+    for process in data.capability.processes:
+        process.dataset_kind = DatasetKind.BROCHURE
+        process.review_status = ReviewStatus.PENDING
+    data.item_inputs = data.item_inputs[:3]
+
+    result = evaluate(data)
+
+    assert sum(item.state == ItemState.UNAVAILABLE for item in result.items) == 5
+    assert result.totals.E == 55
+    assert result.totals.P == 60
+    assert result.display.score_display == "참고 55점 · 3/8"
+    assert result.display.blocks_approval
+
+
+def test_recontact_score_uses_seven_item_display_boundary(monkeypatch):
+    """Given 재접촉용 7행 대역, When 표시만 생성, Then 0점도 세고 6/7을 표시한다.
+
+    재접촉 계산(U6)은 아직 미구현이므로 계산 경계만 대역으로 두고 표시 함수를 검사한다.
+    """
+    data = rule_engine_input()
+    assessment = assess_requirements(data)
+    rows = calculate_items(data)[: len(data.rule_config.recontact_profile_items)]
+    rows[-1] = replace_contract(rows[-1], state=ItemState.UNAVAILABLE, score=None)
+    totals = Totals(E=70, F=60, T=10, P=85, R=80, S=82.4, C=85.7)
+    data.profile = Profile.RECONTACT
+
+    def calculated_recontact_items(received):
+        assert received.profile == Profile.RECONTACT
+        return rows
+
+    monkeypatch.setattr("geosan.rules.classify.calculate_items", calculated_recontact_items)
+    display = display_texts(data, "CONTACT_URGENT", assessment, totals, "RECHECK", [])
+
+    assert rows[-2].state == ItemState.NO_SIGNAL and rows[-2].score == 0
+    assert display.score_display == "70점 · 6/7"
 
 
 @pytest.mark.parametrize(
     "change,code,score,blocked",
     [
-        ("none", "CONTACT_URGENT", "81", False),
+        ("none", "CONTACT_URGENT", "77점 · 7/8", False),
         ("none", "FILTER_PENDING", "--", True),
         ("none", "OPS_PENDING", "--", True),
         ("null", "NOT_EVALUATED", "--", True),
-        ("half", "CONTACT_URGENT", "82", False),
-        ("unknown_stage", "CONTACT_URGENT", "81", True),
-        ("relation", "CONTACT_URGENT", "81", True),
-        ("none", "CONDITIONAL_WAIT", "81", True),
+        ("half", "CONTACT_URGENT", "77점 · 7/8", False),
+        ("unknown_stage", "CONTACT_URGENT", "77점 · 7/8", True),
+        ("relation", "CONTACT_URGENT", "77점 · 7/8", True),
+        ("none", "CONDITIONAL_WAIT", "77점 · 7/8", True),
     ],
 )
 def test_display_score_and_approval(change, code, score, blocked):
@@ -353,7 +396,7 @@ def test_acceptance_decision(filename, code):
         assert output.sort_key.direct_confirmed_weight == 87
         assert output.sort_key.group == "URGENT"
         assert output.display.blocks_approval is False
-        assert output.display.score_display == "81"
+        assert output.display.score_display == "77점 · 7/8"
         assert "없음" in output.display.blocker_text
         assert len(output.question_candidates) == 1
         assert "Nadcap" in output.question_candidates[0].text
