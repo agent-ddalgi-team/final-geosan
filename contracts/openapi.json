@@ -1,0 +1,1772 @@
+{
+  "components": {
+    "schemas": {
+      "ApprovalEligibility": {
+        "properties": {
+          "allowedPurposes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowedpurposes",
+            "type": "array"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "readinessChecked": {
+            "title": "Readinesschecked",
+            "type": "boolean"
+          },
+          "readinessNeedsRecheck": {
+            "title": "Readinessneedsrecheck",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eligible",
+          "reason",
+          "readinessChecked",
+          "readinessNeedsRecheck"
+        ],
+        "title": "ApprovalEligibility",
+        "type": "object"
+      },
+      "Blocker": {
+        "properties": {
+          "blocksApproval": {
+            "title": "Blocksapproval",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "blocksApproval"
+        ],
+        "title": "Blocker",
+        "type": "object"
+      },
+      "Brand": {
+        "properties": {
+          "brandName": {
+            "title": "Brandname",
+            "type": "string"
+          },
+          "colorPrimary": {
+            "title": "Colorprimary",
+            "type": "string"
+          },
+          "demoLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demolabel"
+          },
+          "logoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logourl"
+          }
+        },
+        "required": [
+          "brandName",
+          "colorPrimary"
+        ],
+        "title": "Brand",
+        "type": "object"
+      },
+      "CardRecords": {
+        "properties": {
+          "bookmark": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "U5",
+            "title": "Bookmark"
+          },
+          "opinion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpinionRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "CardRecords",
+        "type": "object"
+      },
+      "Certainty": {
+        "description": "확인 / 강한 추정 / 약한 추정 / 미확인.",
+        "enum": [
+          "CONFIRMED",
+          "STRONG",
+          "WEAK",
+          "UNKNOWN"
+        ],
+        "title": "Certainty",
+        "type": "string"
+      },
+      "CheckDisplay": {
+        "description": "화면 표시값 (BR3.3 변환 규칙).",
+        "enum": [
+          "PASS",
+          "LATER_STAGE",
+          "QUESTION_NEEDED",
+          "PENDING_BLOCKS",
+          "EXCLUDED"
+        ],
+        "title": "CheckDisplay",
+        "type": "string"
+      },
+      "ClassificationCode": {
+        "description": "11분기 분류 코드 (BR6.1 순서).",
+        "enum": [
+          "FILTER_EXCLUDED",
+          "FILTER_PENDING",
+          "OPS_PENDING",
+          "NOT_EVALUATED",
+          "CONTACT_URGENT",
+          "CONTACT_PLANNED",
+          "CONTACT_REVIEW",
+          "RESEARCH",
+          "CONDITIONAL_WAIT",
+          "WATCH",
+          "LOW"
+        ],
+        "title": "ClassificationCode",
+        "type": "string"
+      },
+      "ConfigUi": {
+        "properties": {
+          "accessProtectionEnabled": {
+            "title": "Accessprotectionenabled",
+            "type": "boolean"
+          },
+          "activeDatasetKind": {
+            "$ref": "#/components/schemas/DatasetKind"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/Brand"
+          },
+          "classificationLabels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "11분기 코드 → 쉬운 말(규칙 설정)",
+            "title": "Classificationlabels",
+            "type": "object"
+          },
+          "ruleVersion": {
+            "title": "Ruleversion",
+            "type": "string"
+          },
+          "staff": {
+            "items": {
+              "$ref": "#/components/schemas/StaffEntry"
+            },
+            "title": "Staff",
+            "type": "array"
+          }
+        },
+        "required": [
+          "staff",
+          "brand",
+          "classificationLabels",
+          "activeDatasetKind",
+          "accessProtectionEnabled",
+          "ruleVersion"
+        ],
+        "title": "ConfigUi",
+        "type": "object"
+      },
+      "DatasetKind": {
+        "enum": [
+          "VIRTUAL_REVIEWED",
+          "BROCHURE",
+          "COMPANY_CONFIRMED"
+        ],
+        "title": "DatasetKind",
+        "type": "string"
+      },
+      "DetailHeader": {
+        "properties": {
+          "classificationCode": {
+            "$ref": "#/components/schemas/ClassificationCode"
+          },
+          "coreEvidenceRecheck": {
+            "default": false,
+            "title": "Coreevidencerecheck",
+            "type": "boolean"
+          },
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "datasetKind": {
+            "$ref": "#/components/schemas/DatasetKind"
+          },
+          "homepageUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "상대 회사 공개 홈페이지 뿌리 주소. 근거 출처(sourceRef)의 주소에서 가장 많이 나온 뿌리(scheme+host)를 쓴다. 주소 있는 근거가 없으면 null(더하는 변경 2026-10-27, #176)",
+            "title": "Homepageurl"
+          },
+          "isRecontact": {
+            "default": false,
+            "title": "Isrecontact",
+            "type": "boolean"
+          },
+          "isVirtual": {
+            "title": "Isvirtual",
+            "type": "boolean"
+          },
+          "opportunityItem": {
+            "title": "Opportunityitem",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/Purpose"
+          },
+          "relationNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "예: 기존 (2024년 아연도금 견적)",
+            "title": "Relationnote"
+          },
+          "relationStatus": {
+            "$ref": "#/components/schemas/RelationStatus"
+          },
+          "scoreDisplay": {
+            "title": "Scoredisplay",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "customerName",
+          "opportunityItem",
+          "relationStatus",
+          "purpose",
+          "classificationCode",
+          "scoreDisplay",
+          "isVirtual",
+          "datasetKind"
+        ],
+        "title": "DetailHeader",
+        "type": "object"
+      },
+      "DetailRecords": {
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval"
+          },
+          "bookmark": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bookmark"
+          },
+          "opinion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpinionRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          }
+        },
+        "title": "DetailRecords",
+        "type": "object"
+      },
+      "Envelope_ConfigUi_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConfigUi"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_OpinionResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OpinionResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[OpinionResponse]",
+        "type": "object"
+      },
+      "Envelope_OpportunityDetail_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OpportunityDetail"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[OpportunityDetail]",
+        "type": "object"
+      },
+      "Envelope_list_OpportunityCard__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/OpportunityCard"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[list[OpportunityCard]]",
+        "type": "object"
+      },
+      "EvidenceView": {
+        "properties": {
+          "certainty": {
+            "$ref": "#/components/schemas/Certainty"
+          },
+          "evidenceId": {
+            "title": "Evidenceid",
+            "type": "string"
+          },
+          "isLlmProposed": {
+            "title": "Isllmproposed",
+            "type": "boolean"
+          },
+          "occurredAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurredat"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "sourceGrade": {
+            "$ref": "#/components/schemas/SourceGrade"
+          },
+          "sourceRef": {
+            "title": "Sourceref",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidenceId",
+          "sourceGrade",
+          "certainty",
+          "isLlmProposed",
+          "quote",
+          "sourceRef",
+          "subject"
+        ],
+        "title": "EvidenceView",
+        "type": "object"
+      },
+      "FilterState": {
+        "enum": [
+          "PASS",
+          "PENDING",
+          "EXCLUDED"
+        ],
+        "title": "FilterState",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Meta": {
+        "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
+        "properties": {
+          "datasetKind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluatedAsNew": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluatedasnew"
+          },
+          "hasVirtualData": {
+            "default": false,
+            "title": "Hasvirtualdata",
+            "type": "boolean"
+          },
+          "notEvaluatedCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "최신 FULL 묶음 뒤에 투입되어 아직 목록에 없는 기회 수",
+            "title": "Notevaluatedcount"
+          },
+          "previousValue": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "동시 수정 때 이전 값(기록 종류별 객체)",
+            "title": "Previousvalue"
+          },
+          "reevaluated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reevaluated"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "title": "Meta",
+        "type": "object"
+      },
+      "NeededStage": {
+        "enum": [
+          "NOW",
+          "LATER",
+          "UNKNOWN"
+        ],
+        "title": "NeededStage",
+        "type": "string"
+      },
+      "Opinion": {
+        "enum": [
+          "WORTH_REVIEW",
+          "NEED_CHECK",
+          "NOT_TARGET"
+        ],
+        "title": "Opinion",
+        "type": "string"
+      },
+      "OpinionRecord": {
+        "properties": {
+          "memo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "opinion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Opinion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt"
+        ],
+        "title": "OpinionRecord",
+        "type": "object"
+      },
+      "OpinionRequest": {
+        "additionalProperties": false,
+        "description": "W7 의견 저장 요청. NOT_TARGET이면 reason 1~200자 필수(BR9.1). memo·reason에 연락처 금지.",
+        "properties": {
+          "evalId": {
+            "minLength": 1,
+            "title": "Evalid",
+            "type": "string"
+          },
+          "expectedVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedversion"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "opinion": {
+            "$ref": "#/components/schemas/Opinion"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "opinion",
+          "evalId"
+        ],
+        "title": "OpinionRequest",
+        "type": "object"
+      },
+      "OpinionResponse": {
+        "description": "응답 data: RecordMeta + opinion·reason·memo. 이전 값은 meta.previousValue.",
+        "properties": {
+          "memo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "opinion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Opinion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt"
+        ],
+        "title": "OpinionResponse",
+        "type": "object"
+      },
+      "OpportunityCard": {
+        "properties": {
+          "blocker": {
+            "$ref": "#/components/schemas/Blocker"
+          },
+          "classificationCode": {
+            "$ref": "#/components/schemas/ClassificationCode"
+          },
+          "coreEvidenceRecheck": {
+            "default": false,
+            "title": "Coreevidencerecheck",
+            "type": "boolean"
+          },
+          "datasetKind": {
+            "$ref": "#/components/schemas/DatasetKind"
+          },
+          "evalId": {
+            "title": "Evalid",
+            "type": "string"
+          },
+          "isRecontact": {
+            "default": false,
+            "title": "Isrecontact",
+            "type": "boolean"
+          },
+          "isVirtual": {
+            "title": "Isvirtual",
+            "type": "boolean"
+          },
+          "nextAction": {
+            "title": "Nextaction",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recontact": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recontact"
+          },
+          "records": {
+            "$ref": "#/components/schemas/CardRecords"
+          },
+          "reevaluated": {
+            "default": false,
+            "title": "Reevaluated",
+            "type": "boolean"
+          },
+          "scoreDisplay": {
+            "description": "정수, '--', '참고 N' (BR10.2)",
+            "title": "Scoredisplay",
+            "type": "string"
+          },
+          "scoreS": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scores"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "title": {
+            "description": "기업 · 기회 이름",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "rank",
+          "title",
+          "classificationCode",
+          "scoreDisplay",
+          "reason",
+          "blocker",
+          "nextAction",
+          "isVirtual",
+          "evalId",
+          "datasetKind"
+        ],
+        "title": "OpportunityCard",
+        "type": "object"
+      },
+      "OpportunityDetail": {
+        "description": "근거 상세 S2. 영역별 구성 함수(detail_sections)가 순서대로 조립한다 (BR10.5).",
+        "properties": {
+          "approvalEligibility": {
+            "$ref": "#/components/schemas/ApprovalEligibility"
+          },
+          "evalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalid"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceView"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "header": {
+            "$ref": "#/components/schemas/DetailHeader"
+          },
+          "homepageNeedsConfirm": {
+            "default": false,
+            "title": "Homepageneedsconfirm",
+            "type": "boolean"
+          },
+          "previousEvalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previousevalid"
+          },
+          "processLinks": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessLinkView"
+            },
+            "title": "Processlinks",
+            "type": "array"
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/Reasons"
+          },
+          "recontact": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recontact"
+          },
+          "records": {
+            "$ref": "#/components/schemas/DetailRecords"
+          },
+          "reevaluated": {
+            "default": false,
+            "title": "Reevaluated",
+            "type": "boolean"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementCheckView"
+            },
+            "title": "Requirements",
+            "type": "array"
+          },
+          "scores": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Scores"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "평가가 아직 없으면 null"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          }
+        },
+        "required": [
+          "header",
+          "reasons",
+          "requirements",
+          "approvalEligibility",
+          "processLinks",
+          "evidence"
+        ],
+        "title": "OpportunityDetail",
+        "type": "object"
+      },
+      "ProcessLinkView": {
+        "properties": {
+          "appliedMaterial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appliedmaterial"
+          },
+          "linkId": {
+            "title": "Linkid",
+            "type": "string"
+          },
+          "processCode": {
+            "title": "Processcode",
+            "type": "string"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FilterState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "linkId",
+          "processCode"
+        ],
+        "title": "ProcessLinkView",
+        "type": "object"
+      },
+      "Purpose": {
+        "enum": [
+          "NEW_PROPOSAL",
+          "FOLLOW_UP_PROPOSAL",
+          "REORDER_CHECK"
+        ],
+        "title": "Purpose",
+        "type": "string"
+      },
+      "Question": {
+        "properties": {
+          "currentValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentvalue"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "effectIfAnswered": {
+            "title": "Effectifanswered",
+            "type": "string"
+          },
+          "isUserAdded": {
+            "default": false,
+            "title": "Isuseradded",
+            "type": "boolean"
+          },
+          "linkedOppIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Linkedoppids",
+            "type": "array"
+          },
+          "overdue": {
+            "default": false,
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "repliedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repliedat"
+          },
+          "replyText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replytext"
+          },
+          "requestedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestedat"
+          },
+          "requestedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestedby"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QuestionStatus"
+          },
+          "targetId": {
+            "title": "Targetid",
+            "type": "string"
+          },
+          "targetKind": {
+            "$ref": "#/components/schemas/QuestionTargetKind"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "text",
+          "targetKind",
+          "targetId",
+          "effectIfAnswered",
+          "status"
+        ],
+        "title": "Question",
+        "type": "object"
+      },
+      "QuestionStatus": {
+        "enum": [
+          "WAITING",
+          "REQUESTED",
+          "REPLIED",
+          "APPLIED"
+        ],
+        "title": "QuestionStatus",
+        "type": "string"
+      },
+      "QuestionTargetKind": {
+        "enum": [
+          "QUALIFICATION",
+          "PROCESS",
+          "CAPABILITY",
+          "FIELD",
+          "REQUIREMENT",
+          "OPPORTUNITY"
+        ],
+        "title": "QuestionTargetKind",
+        "type": "string"
+      },
+      "Reasons": {
+        "properties": {
+          "nextAction": {
+            "title": "Nextaction",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "nextAction"
+        ],
+        "title": "Reasons",
+        "type": "object"
+      },
+      "RelationStatus": {
+        "enum": [
+          "NEW_CONFIRMED",
+          "EXISTING_CONFIRMED",
+          "UNCONFIRMED"
+        ],
+        "title": "RelationStatus",
+        "type": "string"
+      },
+      "ReqLevel": {
+        "enum": [
+          "REQUIRED",
+          "PREFERRED",
+          "NOT_REQUIRED",
+          "UNKNOWN"
+        ],
+        "title": "ReqLevel",
+        "type": "string"
+      },
+      "RequirementCheckView": {
+        "properties": {
+          "capabilityStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "대조한 거산 값의 검수 상태. 대조 대상 없으면 null"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "neededStage": {
+            "$ref": "#/components/schemas/NeededStage"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reqId": {
+            "title": "Reqid",
+            "type": "string"
+          },
+          "reqLevel": {
+            "$ref": "#/components/schemas/ReqLevel"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CheckDisplay"
+          }
+        },
+        "required": [
+          "reqId",
+          "name",
+          "reqLevel",
+          "neededStage",
+          "result",
+          "reason"
+        ],
+        "title": "RequirementCheckView",
+        "type": "object"
+      },
+      "ReviewStatus": {
+        "description": "미확보 / 검수 대기 / 검수 완료 / 재확인.",
+        "enum": [
+          "UNAVAILABLE",
+          "PENDING",
+          "REVIEWED",
+          "RECHECK"
+        ],
+        "title": "ReviewStatus",
+        "type": "string"
+      },
+      "ScoreItemView": {
+        "properties": {
+          "certainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certainty"
+          },
+          "decay": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decay"
+          },
+          "evidenceIds": {
+            "description": "이 항목 판정에 쓴 근거 ID 목록(evidence[].evidenceId와 같은 값, 정렬). 요약 줄 끝 출처를 원문 링크로 잇는 데 쓴다(더하는 변경 2026-10-27, #176)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidenceids",
+            "type": "array"
+          },
+          "factJudged": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factjudged"
+          },
+          "itemCode": {
+            "title": "Itemcode",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "matchRate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchrate"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "상세용 쉬운 요약(더하는 변경 2026-10-26, #139). 없으면 null",
+            "title": "Summary"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itemCode",
+          "label",
+          "state",
+          "weight"
+        ],
+        "title": "ScoreItemView",
+        "type": "object"
+      },
+      "Scores": {
+        "description": "점수 영역. 다섯 점수 키는 약속 C1·화면 예시대로 대문자 `E/P/S/R/C`다.\n\n공통 camelCase 변환(to_camel)이 한 글자 키를 소문자로 바꾸므로 별칭을 직접 고정한다\n(2026-10-22 PM 확인, 이슈 #33).",
+        "properties": {
+          "C": {
+            "title": "C",
+            "type": "number"
+          },
+          "E": {
+            "title": "E",
+            "type": "integer"
+          },
+          "P": {
+            "title": "P",
+            "type": "integer"
+          },
+          "R": {
+            "title": "R",
+            "type": "integer"
+          },
+          "S": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "S"
+          },
+          "batchId": {
+            "title": "Batchid",
+            "type": "string"
+          },
+          "datasetKind": {
+            "$ref": "#/components/schemas/DatasetKind"
+          },
+          "evaluatedAt": {
+            "format": "date-time",
+            "title": "Evaluatedat",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreItemView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ruleVersion": {
+            "title": "Ruleversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "E",
+          "P",
+          "S",
+          "R",
+          "C",
+          "items",
+          "ruleVersion",
+          "datasetKind",
+          "batchId",
+          "evaluatedAt"
+        ],
+        "title": "Scores",
+        "type": "object"
+      },
+      "SourceGrade": {
+        "enum": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "title": "SourceGrade",
+        "type": "string"
+      },
+      "StaffEntry": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "displayName"
+        ],
+        "title": "StaffEntry",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "거산 영업지원 API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/config/ui": {
+      "get": {
+        "operationId": "config_ui_api_v1_config_ui_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ConfigUi_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Config Ui"
+      }
+    },
+    "/api/v1/opportunities": {
+      "get": {
+        "operationId": "list_opportunities_api_v1_opportunities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "default": "new",
+              "title": "Tab",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Pagesize",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_OpportunityCard__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Opportunities"
+      }
+    },
+    "/api/v1/opportunities/{oppId}": {
+      "get": {
+        "operationId": "opportunity_detail_api_v1_opportunities__oppId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OpportunityDetail_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Opportunity Detail"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/opinions": {
+      "post": {
+        "operationId": "save_opinion_api_v1_opportunities__oppId__opinions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpinionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OpinionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Opinion"
+      }
+    }
+  }
+}

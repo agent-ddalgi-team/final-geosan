@@ -12,7 +12,7 @@ from geosan.rules.codes import (
 from geosan.rules.codes import (
     ClassificationCode as Code,
 )
-from geosan.rules.items import calculate_items, round_half_up
+from geosan.rules.items import calculate_items
 from geosan.rules.models import DisplayTexts, EvaluationInput, TimingRequirements, Totals
 from geosan.rules.requirements import RequirementAssessment
 
@@ -179,7 +179,11 @@ def display_texts(
     blocked = bool(blockers)
     blocker = "; ".join(dict.fromkeys(blockers)) if blocked else "없음 — 지금 단계 필수 요구 통과"
     blocker = _blocker_text(data, code, assessment, blocker)
-    score = "--" if totals.S is None else str(round_half_up(totals.S))
+    score = "--"
+    if totals.S is not None:
+        items = calculate_items(data)
+        judged = sum(item.state != ItemState.UNAVAILABLE for item in items)
+        score = f"{totals.E}점 · {judged}/{len(items)}"
     if code in {Code.FILTER_PENDING, Code.OPS_PENDING} and totals.S is not None:
         score = f"참고 {score}" if data.dataset_kind == DatasetKind.BROCHURE else "--"
     reason = f"{label}: 확인된 점수 {totals.E}, 판정한 배점 {totals.P}"

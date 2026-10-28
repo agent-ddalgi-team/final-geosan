@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import socket
 from copy import deepcopy
 from types import SimpleNamespace
@@ -165,3 +166,63 @@ def test_serve_port_conflict_preserves_registered_app_settings(tmp_db, tmp_path,
     assert f"포트 {port}이 사용 중입니다" in result.output
     assert started == []
     assert _app_setting_values() == before
+
+
+# --- export-contracts (Step 29, 약속 파일) ---
+
+
+def test_export_contracts_writes_openapi_from_code(tmp_path, monkeypatch):
+    """Given 빈 contracts 폴더 / When export-contracts / Then 코드 경로·필드가 든 파일이 생긴다."""
+    from geosan.commands import export_contracts as module
+
+    monkeypatch.setattr(module, "CONTRACTS_DIR", tmp_path)
+    result = CliRunner().invoke(app, ["export-contracts"])
+    assert result.exit_code == 0, result.output
+    assert "openapi.json 갱신" in result.output and "손으로 관리" in result.output
+    document = json.loads((tmp_path / "openapi.json").read_text(encoding="utf-8"))
+    assert "/api/v1/opportunities/{oppId}" in document["paths"]
+    assert "scoreDisplay" in document["components"]["schemas"]["OpportunityCard"]["properties"]
+    # 두 번 실행해도 같은 글자(결정성). 두 번째는 "변경 없음".
+    again = CliRunner().invoke(app, ["export-contracts"])
+    assert again.exit_code == 0 and "변경 없음" in again.output
+
+
+def test_export_contracts_check_passes_only_when_committed_file_matches(tmp_path, monkeypatch):
+    """Given 생성 직후 / When --check / Then 0. 손으로 바꾸면 1이고 덮어쓰지 않는다."""
+    from geosan.commands import export_contracts as module
+
+    monkeypatch.setattr(module, "CONTRACTS_DIR", tmp_path)
+    runner = CliRunner()
+    assert runner.invoke(app, ["export-contracts"]).exit_code == 0
+    same = runner.invoke(app, ["export-contracts", "--check"])
+    assert same.exit_code == 0 and "같음" in same.output
+    target = tmp_path / "openapi.json"
+    target.write_text(target.read_text(encoding="utf-8") + "\n// 손으로 고침", encoding="utf-8")
+    differ = runner.invoke(app, ["export-contracts", "--check"])
+    assert differ.exit_code == 1 and "다름" in differ.output
+    assert "손으로 고침" in target.read_text(encoding="utf-8")
+
+
+def test_export_contracts_check_reports_missing_file_without_writing(tmp_path, monkeypatch):
+    """Given openapi.json 없음 / When --check / Then 1로 끝나고 파일을 만들지 않는다."""
+    from geosan.commands import export_contracts as module
+
+    monkeypatch.setattr(module, "CONTRACTS_DIR", tmp_path)
+    result = CliRunner().invoke(app, ["export-contracts", "--check"])
+    assert result.exit_code == 1 and "파일이 없습니다" in result.output
+    assert not (tmp_path / "openapi.json").exists()
+
+
+def test_export_contracts_fails_loudly_when_app_cannot_be_built(tmp_path, monkeypatch):
+    """Given 앱 생성 실패 / When export-contracts / Then 성공처럼 보이지 않고 2로 끝난다."""
+    from geosan.commands import export_contracts as module
+
+    monkeypatch.setattr(module, "CONTRACTS_DIR", tmp_path)
+
+    def broken() -> dict:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(module, "build_openapi", broken)
+    result = CliRunner().invoke(app, ["export-contracts"])
+    assert result.exit_code == 2 and "만들지 못했습니다" in result.output
+    assert not (tmp_path / "openapi.json").exists()
