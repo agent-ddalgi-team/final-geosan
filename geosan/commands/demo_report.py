@@ -63,7 +63,7 @@ ITEM_STATE_LABELS = {
     "MISMATCH": "불일치",
     "NO_BONUS": "가점 없음",
     "NO_SIGNAL": "신호 없음",
-    "UNAVAILABLE": "미확보",
+    "UNAVAILABLE": "자료 미확보",
 }
 RELATION_STATUS_LABELS = {
     "NEW_CONFIRMED": "신규",
@@ -216,9 +216,9 @@ def _num(value: float | None) -> str:
 def _head_lines(report: DemoReport, title: str) -> list[str]:
     lines = [f"# {title}", "", f"> **{HEADER_MARK}**"]
     if report.dataset_kind == DatasetKind.BROCHURE:
-        lines.append(f"> 거산 값 묶음: 회사소개서(BROCHURE) — {BROCHURE_MARK}")
+        lines.append(f"> 거산 역량 자료 구분: 회사소개서(BROCHURE) — {BROCHURE_MARK}")
     else:
-        lines.append(f"> 거산 값 묶음: {report.dataset_kind}")
+        lines.append(f"> 거산 역량 자료 구분: {report.dataset_kind}")
     base = report.base_date_arg.isoformat() if report.base_date_arg else "사례 파일의 baseDate"
     lines.append(
         f"> 기준일: {base} · 규칙 설정 {report.inputs.rule_config.version} "
@@ -242,9 +242,9 @@ def csv_rows(report: DemoReport) -> list[list[str]]:
         "분류",
         "점수 표시",
         "접촉 후보",
-        "추천 이유",
-        "막는 조건",
-        "다음 할 일",
+        "추천 근거",
+        "접촉 전 검토사항",
+        "후속 조치",
         "근거 수",
         "질문 수",
         "가상 여부",
@@ -306,7 +306,7 @@ def render_html(report: DemoReport) -> str:
         "</style></head><body>",
         f'<div class="band">{html.escape(HEADER_MARK)}</div>',
         "<h1>추천 기업 순위표</h1>",
-        f"<p>거산 값 묶음: {html.escape(bundle)} · 기준일: {html.escape(base)} · "
+        f"<p>거산 역량 자료 구분: {html.escape(bundle)} · 기준일: {html.escape(base)} · "
         f"규칙 설정 {html.escape(report.inputs.rule_config.version)} "
         f"({html.escape(report.inputs.rule_config.hypothesis_note)})</p>",
         "<table><thead><tr>"
@@ -350,9 +350,9 @@ def render_company(report: DemoReport, row: ReportRow) -> str:
         "",
         f"- 분류: **{row.classification_label}** (`{out.classification_code}`)"
         + (" · 접촉 후보" if row.is_contact_candidate else " · 접촉 후보 아님"),
-        f"- 추천 이유: {out.display.reason}",
-        f"- 막는 조건: {out.display.blocker_text}",
-        f"- 다음 할 일: {out.display.next_action}",
+        f"- 추천 근거: {out.display.reason}",
+        f"- 접촉 전 검토사항: {out.display.blocker_text}",
+        f"- 후속 조치: {out.display.next_action}",
         f"- 점수 표시: {out.display.score_display}",
         "",
         "| E | P | S | R | C | F | T |",
@@ -360,7 +360,8 @@ def render_company(report: DemoReport, row: ReportRow) -> str:
         f"| {totals.E} | {totals.P} | {_num(totals.S)} | {totals.R} | {_num(totals.C)} | "
         f"{totals.F} | {totals.T} |",
         "",
-        "E 확인된 점수 · P 판정한 배점 · S 표시 점수(E/P×100) · R 가능 점수 · C 확인 비율",
+        "E 현재 평가점수 · P 조사 항목 배점 합계 · S 확인 비율(E÷P×100) · "
+        "R 조사 시 상한 · C 평가 항목 조사율",
         "",
         "## 필수 요구 판정",
         "",
@@ -384,7 +385,10 @@ def render_company(report: DemoReport, row: ReportRow) -> str:
     lines += [f"- {q}" for q in questions] or ["- (없음)"]
     lines += ["", "## 근거 (공개 자료)", ""]
     if case.evidence:
-        lines += ["| 종류 | 인용 | 출처 | 날짜 | 등급 | 확실도 |", "|---|---|---|---|---|---|"]
+        lines += [
+            "| 종류 | 인용 | 출처 | 날짜 | 등급 | 근거 확인 수준 |",
+            "|---|---|---|---|---|---|",
+        ]
         blocked_ids = {ev_id for ev_id, _ in row.file_case.blocked_evidence}
         for index, ev in enumerate(case.evidence, start=1):
             ev_id = f"ev-{case.case_id}-{index:04d}"
@@ -403,7 +407,10 @@ def render_company(report: DemoReport, row: ReportRow) -> str:
         lines.append("근거가 적혀 있지 않습니다.")
     lines += ["", "## 시점 신호", ""]
     if case.signals:
-        lines += ["| 종류 | 관련 | 발생일 | 마감일 | 진행 | 확실도 |", "|---|---|---|---|---|---|"]
+        lines += [
+            "| 종류 | 관련 | 발생일 | 마감일 | 진행 | 근거 확인 수준 |",
+            "|---|---|---|---|---|---|",
+        ]
         for sig in case.signals:
             lines.append(
                 f"| {SIGNAL_KIND_LABELS.get(sig.signal_kind, sig.signal_kind)} | "
@@ -417,7 +424,7 @@ def render_company(report: DemoReport, row: ReportRow) -> str:
         "",
         "## 8항목 판정",
         "",
-        "| 항목 | 상태 | 일치도 | 배점 | 점수 | 판정한 사실 |",
+        "| 항목 | 상태 | 평가 기준 적합도 | 배점 | 점수 | 판정한 사실 |",
         "|---|---|---:|---:|---:|---|",
     ]
     for item in out.items:
@@ -557,7 +564,7 @@ def render_facts(report: DemoReport, row: ReportRow) -> str:
         r.question for r in case.requirements if r.question
     ]
     lines += [f"- {q}" for q in dict.fromkeys(questions)] or ["- (없음)"]
-    lines += ["", "## 5. 다음 할 일", "", f"- {out.display.next_action}"]
+    lines += ["", "## 5. 후속 조치", "", f"- {out.display.next_action}"]
     if out.display.blocks_approval:
         lines.append(f"- 승인 전 확인: {out.display.blocker_text}")
     lines.append("")

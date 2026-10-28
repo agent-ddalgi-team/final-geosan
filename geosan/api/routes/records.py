@@ -52,7 +52,9 @@ def save_opinion(
 ):
     fields = scan_contacts({"reason": body.reason, "memo": body.memo})
     if body.opinion == "NOT_TARGET" and (body.reason is None or not body.reason.strip()):
-        fields.append(FieldError(path="reason", message="대상 아님을 고르면 사유가 필요합니다."))
+        fields.append(
+            FieldError(path="reason", message="검토 대상 제외를 고르면 사유가 필요합니다.")
+        )
     if body.expected_version is not None and body.expected_version < 0:
         fields.append(
             FieldError(path="expectedVersion", message="버전은 0 이상의 정수여야 합니다.")
