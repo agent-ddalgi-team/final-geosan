@@ -338,6 +338,9 @@ describe('OpportunityDetailPage', () => {
     expect(screen.getByTestId('score-e')).toHaveTextContent('77');
     expect(screen.getByTestId('score-p')).toHaveTextContent('95');
     expect(screen.getByTestId('score-s')).toHaveTextContent('81.1');
+    // 머리의 "참고"(거산 확인 전)와 헷갈리지 않게 S 이름표는 "확인 비율"로 쓴다(#200).
+    expect(screen.getByTestId('score-s')).toHaveTextContent('확인 비율 S (E÷P×100)');
+    expect(screen.getByTestId('score-s')).not.toHaveTextContent('참고');
     expect(screen.getByTestId('score-r')).toHaveTextContent('82');
     expect(screen.getAllByTestId('score-item-row')).toHaveLength(8);
     expect(screen.getByTestId('score-footer')).toHaveTextContent('v0.17-a');

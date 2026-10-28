@@ -352,7 +352,7 @@ export const itemShortLabels: Record<string, string> = {
 export const scoreDetails = {
   E: '확인된 점수 E',
   P: '판정한 배점 P',
-  S: '참고 점수 S',
+  S: '확인 비율 S (E÷P×100)',
   R: '조사 시 상한 R',
   C: '자료 확보율 C',
   expand: '펼치기',
