@@ -153,6 +153,8 @@ export interface DetailHeader {
   classificationCode: ClassificationCode;
   coreEvidenceRecheck: boolean;
   scoreDisplay: string;
+  /** 회사 페이지 뿌리 주소(더하는 변경 #176). 없으면 null/없음. 화면은 http(s)일 때만 링크로 보인다. */
+  homepageUrl?: string | null;
   isVirtual: boolean;
   datasetKind: DatasetKind;
   isRecontact: boolean;
@@ -233,6 +235,8 @@ export interface ScoreItemView {
   factJudged?: string | null;
   /** 상세용 쉬운 요약 한 줄(더하는 변경 #139). 없으면 null/없음. */
   summary?: string | null;
+  /** 이 항목에 쓴 근거 ID 목록(더하는 변경 #176). evidence[]에서 같은 evidenceId를 찾는다. */
+  evidenceIds?: string[];
 }
 
 export interface Scores {

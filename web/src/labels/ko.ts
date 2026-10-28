@@ -188,6 +188,9 @@ export const cardRows = {
   brochureTag: '거산 확인 전',
 } as const;
 
+/** 상세 제목 아래 회사 홈페이지 링크 글(#175). 홍보관(블로그) 주소도 있어 "회사 페이지"로 쓴다. */
+export const homepageLinkLabel = '회사 페이지';
+
 /** 점수 글자를 화면 낭독용으로 읽는 문구(#183). '판정'이 아니라 '조사'로 쓴다. */
 export const scoreAria = {
   label: (score: string, done: string, total: string, reference: boolean) =>

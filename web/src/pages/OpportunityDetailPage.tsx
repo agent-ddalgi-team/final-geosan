@@ -113,7 +113,11 @@ export default function OpportunityDetailPage() {
             ownerName={ownerName}
             classificationOverrides={config?.classificationLabels}
           />
-          <ReasonsSection reasons={data.reasons} scoreItems={data.scores?.items} />
+          <ReasonsSection
+            reasons={data.reasons}
+            scoreItems={data.scores?.items}
+            evidence={data.evidence}
+          />
           <DetailSection id="detail-requirements" title={detailSections.requirements}>
             <RequirementsTable requirements={data.requirements} />
             <ApprovalEligibilityLine eligibility={data.approvalEligibility} />

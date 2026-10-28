@@ -235,6 +235,81 @@ describe('OpportunityDetailPage', () => {
     expect(screen.getByTestId('detail-next-action')).toHaveTextContent(base.reasons.nextAction);
   });
 
+  it('요약 줄 끝 괄호 글자는 그 항목 근거의 첫 주소로 가는 새 창 링크가 되고, 주소가 없으면 글자만 보인다 (#175)', async () => {
+    const [first, second, third] = base.scores!.items;
+    const evidence = [
+      { ...base.evidence[0], evidenceId: 'ev-a', sourceRef: '카탈로그 인쇄면' },
+      {
+        ...base.evidence[1],
+        evidenceId: 'ev-b',
+        sourceRef: '홈페이지 http://kofas.com/productK/ 와 http://kofas.com/other/',
+      },
+    ];
+    const items = [
+      {
+        ...first,
+        itemCode: 'NEW_PRODUCT',
+        state: 'CONFIRMED',
+        summary: '볼트를 만든다고 밝혔습니다. (홈페이지 제품 목록)',
+        evidenceIds: ['ev-a', 'ev-b'],
+      },
+      {
+        ...second,
+        itemCode: 'NEW_MATERIAL',
+        state: 'CONFIRMED',
+        summary: '재질을 고를 수 있습니다. (카탈로그)',
+        evidenceIds: ['ev-a'],
+      },
+      {
+        ...third,
+        itemCode: 'NEW_PERF',
+        state: 'CONFIRMED',
+        summary: '괄호가 없는 요약입니다',
+        evidenceIds: ['ev-b'],
+      },
+    ];
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, evidence, scores: { ...base.scores!, items } }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const lines = screen.getAllByTestId('detail-reason-line');
+
+    // 글은 그대로이고 괄호 안 글자만 링크다. 주소 있는 첫 근거(ev-b)의 첫 주소를 쓴다.
+    expect(lines[0]).toHaveTextContent('제품: 볼트를 만든다고 밝혔습니다. (홈페이지 제품 목록)');
+    const link = within(lines[0]).getByRole('link', { name: '홈페이지 제품 목록' });
+    expect(link).toHaveAttribute('href', 'http://kofas.com/productK/');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+
+    // 주소 있는 근거가 없거나 괄호가 없으면 지금처럼 글자만.
+    expect(within(lines[1]).queryByRole('link')).not.toBeInTheDocument();
+    expect(lines[1]).toHaveTextContent('소재: 재질을 고를 수 있습니다. (카탈로그)');
+    expect(within(lines[2]).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('회사 홈페이지 주소가 있으면 제목 아래에 새 창 링크가 보이고, 없거나 http가 아니면 보이지 않는다 (#175)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, homepageUrl: 'http://kofas.com/' } }),
+    );
+    renderPage();
+    const link = await screen.findByRole('link', { name: /회사 페이지/ });
+    expect(link).toHaveTextContent('회사 페이지 ↗ http://kofas.com/');
+    expect(link).toHaveAttribute('href', 'http://kofas.com/');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  it.each([[null], ['javascript:alert(1)']])(
+    '홈페이지 주소가 %s 이면 회사 페이지 링크를 보이지 않는다 (#175)',
+    async (homepageUrl) => {
+      mockedGet.mockResolvedValueOnce(reply({ ...base, header: { ...base.header, homepageUrl } }));
+      renderPage();
+      await screen.findByTestId('opportunity-detail');
+      expect(screen.queryByTestId('detail-homepage')).not.toBeInTheDocument();
+    },
+  );
+
   it('요약이 하나도 없으면 지금 화면 그대로 엔진이 만든 추천 이유 문장을 보인다', async () => {
     const items = base.scores!.items.map((item) => ({ ...item, summary: null }));
     mockedGet.mockResolvedValueOnce(reply({ ...base, scores: { ...base.scores!, items } }));
