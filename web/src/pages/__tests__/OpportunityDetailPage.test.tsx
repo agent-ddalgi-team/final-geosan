@@ -75,7 +75,22 @@ describe('OpportunityDetailPage', () => {
     expect(within(last).getByTestId('opinion-area')).toBeInTheDocument();
     expect(setPageTitle).toHaveBeenCalledWith('A정밀 · 밸브 바디 아노다이징');
     expect(screen.getByTestId('detail-classification')).toHaveTextContent('지금 바로 연락 검토');
-    expect(screen.getByTestId('detail-score')).toHaveTextContent('점수 81');
+    // 서버 문자열 그대로 보이고 앞에 "점수 "를 붙이지 않는다. 낭독은 '조사'로 읽는다(#183).
+    const score = screen.getByTestId('detail-score');
+    expect(score).toHaveTextContent(/^77점 · 7\/8$/);
+    expect(score).toHaveAttribute('aria-label', '점수 77점, 8개 항목 중 7개 조사');
+  });
+
+  it.each([
+    ['참고 50점 · 3/8', /^참고 50점 · 3\/8$/, '참고 점수 50점, 8개 항목 중 3개 조사'],
+    ['--', /^점수 --$/, '점수 산정 전'],
+  ])('상세 머리 점수 "%s"는 글자와 낭독 문구가 각각 맞다', async (scoreDisplay, text, aria) => {
+    mockedGet.mockResolvedValueOnce(reply({ ...base, header: { ...base.header, scoreDisplay } }));
+    renderPage();
+    const score = await screen.findByTestId('detail-score');
+    expect(score).toHaveTextContent(text);
+    expect(score).toHaveAttribute('aria-label', aria);
+    expect(score.getAttribute('aria-label')).not.toContain('판정');
   });
 
   it('확인 질문은 3개까지 보이고 나머지는 펼치기로 보이며 상태가 글자로 보인다', async () => {

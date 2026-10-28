@@ -125,7 +125,7 @@ export interface OpportunityCard {
   classificationCode: ClassificationCode;
   coreEvidenceRecheck: boolean;
   scoreS: number | null;
-  /** 정수, '--', '참고 N' (BR10.2) */
+  /** 서버가 만든 점수 글자 그대로 보인다: '77점 · 7/8', '참고 50점 · 3/8'(점수 · 조사한 항목 수/전체), 점수 전에는 '--' (BR10.2, #180) */
   scoreDisplay: string;
   reason: string;
   blocker: Blocker;

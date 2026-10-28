@@ -14,11 +14,11 @@ describe('러너 확인', () => {
     warn.mockRestore();
   });
 
-  it('A정밀 가짜 응답은 순위 1·CONTACT_URGENT·점수 81이다', () => {
+  it('A정밀 가짜 응답은 순위 1·CONTACT_URGENT·점수 "77점 · 7/8"이다', () => {
     const [card] = listFixture.data;
     expect(card.rank).toBe(1);
     expect(card.classificationCode).toBe('CONTACT_URGENT');
-    expect(card.scoreDisplay).toBe('81');
+    expect(card.scoreDisplay).toBe('77점 · 7/8');
   });
 
   it('최소 화면이 내부용 띠를 보인다', () => {
