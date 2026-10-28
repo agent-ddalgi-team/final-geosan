@@ -1,8 +1,8 @@
 """`geosan` 명령줄 앱 (Typer). 계약 C8의 명령 9개 + `db merge-heads`.
 
-명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, …)에 있다. 아직
-구현되지 않은 명령(`export-contracts`, Part F)은 오류를 숨기지 않고
-"아직 구현되지 않았습니다" 한 줄을 내고 종료 코드 2로 끝난다.
+명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, `export_contracts.py`, …)에
+있다. 앞으로 새 명령을 먼저 등록만 할 때는 `not_implemented_yet`으로 오류를 숨기지 않고
+"아직 구현되지 않았습니다" 한 줄을 내고 종료 코드 2로 끝낸다.
 
 종료 코드 규칙(C8): 0 성공, 1 입력 오류, 2 실행 실패.
 """
@@ -159,11 +159,18 @@ def verify_case(
 @app.command("export-contracts")
 def export_contracts(
     check: bool = typer.Option(
-        False, "--check", help="생성본과 contracts/ 커밋본이 같은지만 검사합니다(3.7)."
+        False,
+        "--check",
+        help="파일을 쓰지 않고 생성본과 contracts/openapi.json 커밋본이 같은지만 검사합니다.",
     ),
 ) -> None:
-    """OpenAPI와 스키마 4개를 contracts/ 폴더에 씁니다. 사람이 명시적으로만 실행합니다."""
-    not_implemented_yet("export-contracts")
+    """코드가 만든 OpenAPI를 contracts/openapi.json에 씁니다. 사람이 명시적으로만 실행합니다.
+
+    스키마 파일 4개(*.schema.json)는 이번 판에서는 손으로 관리하며 이 명령이 건드리지 않습니다.
+    """
+    from geosan.commands.export_contracts import run_export_contracts
+
+    raise typer.Exit(code=run_export_contracts(check=check))
 
 
 @app.command("demo-report")
