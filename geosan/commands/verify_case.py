@@ -3,6 +3,7 @@
 파일의 caseId로 기회를 찾아 파일의 baseDate로 **그 기회 하나만** 평가(PARTIAL 묶음)한 뒤,
 파일의 `expected`와 항목별로 비교해 일치/불일치 표를 낸다. 목록 순위는 최신 FULL 묶음 기준이라
 이 명령이 목록 구성원을 바꾸지 않는다(BR10.1).
+같은 기준일·규칙 버전·입력으로 저장한 부분 평가가 있으면 새로 저장하지 않고 재사용한다.
 
 비교 항목: E·P·R(정수), S·C(소수 첫째 자리), filterState, coreEvidenceMet, classificationCode,
 requirementResults(요구 이름 → 판정 표시). 모두 일치면 "검증 통과" 종료 코드 0, 하나라도 다르면 2.
@@ -23,9 +24,11 @@ from geosan.commands.evaluate import print_error
 from geosan.config.errors import AppError, InputError, RunFailedError, exit_code_for, new_ref
 from geosan.config.file_checks import check_case_file
 from geosan.config.paths import normalize_input_path
+from geosan.config.registry import load_runtime_config
 from geosan.config.schemas import CaseFile
-from geosan.evaluation.ledger import latest_confirmed_evaluation
+from geosan.evaluation.ledger import reusable_partial_evaluation
 from geosan.evaluation.models import EvaluationRun, RequirementCheck
+from geosan.evaluation.snapshot import build_snapshot
 from geosan.opportunity.models import Requirement
 from geosan.opportunity.queries import find_case
 from geosan.storage.session import session_scope
@@ -91,6 +94,37 @@ def _requirement_results(session, run: EvaluationRun) -> dict[str, str]:
     return results
 
 
+def _verification_rows(opp_id: str, case: CaseFile) -> tuple[str, list[CompareRow], bool]:
+    with session_scope() as session:
+        runtime = load_runtime_config(session)
+        snapshot = build_snapshot(
+            session,
+            opp_id,
+            base_date=case.base_date,
+            dataset_kind=runtime.app_settings.active_dataset_kind.value,
+            rule_config=runtime.rule_config,
+        )
+        if snapshot is None:
+            raise InputError(
+                "검증할 항목 입력이 없습니다.",
+                next_action="geosan import-case로 사례 파일을 다시 투입해 주세요.",
+            )
+        run = reusable_partial_evaluation(session, snapshot, runtime)
+        if run is not None:
+            return run.eval_id, compare_rows(case, run, _requirement_results(session, run)), True
+
+    result = run_evaluation(opp_ids=[opp_id], base_date=case.base_date, requested_by="cli")
+    if not result.ok:
+        raise result.error or RunFailedError("평가하지 못했습니다.")
+    if len(result.new_eval_ids) != 1 or result.affected_opp_ids != [opp_id]:
+        raise RunFailedError("검증할 새 평가를 찾지 못했습니다.")
+    with session_scope() as session:
+        run = session.get(EvaluationRun, result.new_eval_ids[0])
+        if run is None or run.opp_id != opp_id or run.run_status != "CONFIRMED":
+            raise RunFailedError("평가는 끝났는데 확정 평가를 찾지 못했습니다.")
+        return run.eval_id, compare_rows(case, run, _requirement_results(session, run)), False
+
+
 def run_verify_case(file: Path, echo: Callable[[str], None] = typer.echo) -> int:
     """명령 본문. 출력하고 종료 코드를 돌려준다(typer.Exit은 app.py가 던진다)."""
     ref = new_ref()
@@ -123,29 +157,21 @@ def run_verify_case(file: Path, echo: Callable[[str], None] = typer.echo) -> int
                     message=f"caseId '{case.case_id}'의 기회가 데이터베이스에 없습니다",
                     next_action=f"먼저 geosan import-case {path.name}으로 투입해 주세요.",
                 )
+            eval_id, rows, reused = _verification_rows(opp_id, case)
         except AppError as exc:
             logger.error("cmd.verify_case.failed", extra={"ref": ref})
             print_error(exc, ref, echo)
             return exit_code_for(exc)
-
-        result = run_evaluation(opp_ids=[opp_id], base_date=case.base_date, requested_by="cli")
-        if not result.ok:
-            error = result.error or RunFailedError("평가하지 못했습니다.")
-            logger.error("cmd.verify_case.failed", extra={"ref": ref})
+        except Exception as exc:
+            logger.error(
+                "cmd.verify_case.failed", extra={"ref": ref, "error_type": type(exc).__name__}
+            )
+            error = RunFailedError("검증할 평가를 조회하거나 저장하지 못했습니다.")
             print_error(error, ref, echo)
             return exit_code_for(error)
 
-        with session_scope() as session:
-            run = latest_confirmed_evaluation(session, opp_id)
-            if run is None:
-                error = RunFailedError("평가는 끝났는데 확정 평가를 찾지 못했습니다.")
-                logger.error("cmd.verify_case.failed", extra={"ref": ref})
-                print_error(error, ref, echo)
-                return exit_code_for(error)
-            rows = compare_rows(case, run, _requirement_results(session, run))
-            eval_id = run.eval_id
-
-        echo(f"기준일 {case.base_date} · 평가 {eval_id}")
+        status = "재사용" if reused else "새로 생성"
+        echo(f"기준일 {case.base_date} · 평가 {eval_id} ({status})")
         echo("| 항목 | 기대값 | 실제값 | 결과 |")
         echo("|---|---|---|---|")
         for row in rows:
