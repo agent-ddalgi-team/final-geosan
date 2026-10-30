@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.config.errors import InputError
@@ -17,7 +17,7 @@ from geosan.evaluation.models import (
     JudgmentEvidence,
     RequirementCheck,
 )
-from geosan.evaluation.snapshot import Snapshot
+from geosan.evaluation.snapshot import Snapshot, canonical_hash
 from geosan.opportunity.models import OppProcessLink
 from geosan.rules.models import EvaluationOutput
 from geosan.storage.base import new_id, utcnow
@@ -75,6 +75,44 @@ def latest_confirmed_evaluation(session: Session, opp_id: str) -> EvaluationRun 
             EvaluationRun.opp_id == opp_id,
             EvaluationRun.run_status == "CONFIRMED",
             EvaluationBatch.status == "CONFIRMED",
+        )
+        .order_by(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc())
+    )
+
+
+def reusable_partial_evaluation(
+    session: Session, snapshot: Snapshot, runtime: RuntimeConfig
+) -> EvaluationRun | None:
+    """동일 입력으로 확정한 부분 평가를 비교용으로 찾는다. 최신 상태는 바꾸지 않는다."""
+    same_input = EvaluationRun.snapshot_hash == snapshot.snapshot_hash
+    readiness = snapshot.document.get("readinessCheck")
+    if readiness and readiness.get("evalIdAtCheck"):
+        # BR7.4: 최초 저장 후 자동 연결된 자기 평가 ID만 이전 입력과 동일하게 취급한다.
+        # 다른 입력과 실제 체크 변경은 그대로 해시에 남고, 저장된 원본 해시는 수정하지 않는다.
+        before_anchor = snapshot.document | {"readinessCheck": readiness | {"evalIdAtCheck": None}}
+        same_input = or_(
+            same_input,
+            and_(
+                EvaluationRun.eval_id == readiness["evalIdAtCheck"],
+                EvaluationRun.snapshot_hash == canonical_hash(before_anchor),
+            ),
+        )
+    return session.scalar(
+        select(EvaluationRun)
+        .join(EvaluationBatch, EvaluationRun.batch_id == EvaluationBatch.batch_id)
+        .where(
+            EvaluationRun.opp_id == snapshot.evaluation_input.opportunity.opp_id,
+            EvaluationRun.profile == "NEW",
+            EvaluationRun.run_status.in_(("CONFIRMED", "SUPERSEDED")),
+            EvaluationRun.capability_version == snapshot.capability_version,
+            same_input,
+            EvaluationBatch.scope == "PARTIAL",
+            EvaluationBatch.profile == "NEW",
+            EvaluationBatch.status == "CONFIRMED",
+            EvaluationBatch.base_date == snapshot.evaluation_input.base_date,
+            EvaluationBatch.rule_version == runtime.rule_version.rule_version,
+            EvaluationBatch.rule_hash == runtime.rule_version.rule_hash,
+            EvaluationBatch.dataset_kind == runtime.app_settings.active_dataset_kind.value,
         )
         .order_by(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc())
     )
