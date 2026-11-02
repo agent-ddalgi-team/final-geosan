@@ -43,7 +43,7 @@ def test_blocker_matches_in_export_and_real_database_api(tmp_db, tmp_path):
         blocker_lines = (
             [text]
             if name.startswith("ranking.")
-            else [line for line in text.splitlines() if line.startswith("- 접촉 전 검토사항:")]
+            else [line for line in text.splitlines() if line.startswith("- 검토사항:")]
         )
         assert all("(승인 막힘)" not in line for line in blocker_lines)
         assert all("(승인은 막지 않음)" not in line for line in blocker_lines)
