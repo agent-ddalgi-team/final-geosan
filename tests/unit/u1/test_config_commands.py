@@ -268,7 +268,7 @@ def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> No
         assert runtime.app_settings.active_dataset_kind == "BROCHURE"  # 예시 기본값(시연용, #91)
         assert runtime.notices == []
     code, output = _run("check-config")
-    assert code == 0 and "등록" in output
+    assert code == 0 and "바꾸지 않았습니다" in output
 
 
 def test_check_config_rejects_secret_key_and_bad_rule_config(tmp_path: Path) -> None:
