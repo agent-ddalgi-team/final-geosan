@@ -45,6 +45,19 @@ describe('AppFrame', () => {
     await screen.findByText('거산 영업지원');
   });
 
+  it('메뉴에 [대시보드]와 [영업 후보 목록]이 있고, 지금 보는 쪽에 aria-current가 붙는다', async () => {
+    renderFrame();
+    const dashboard = screen.getByTestId('nav-dashboard-link');
+    const list = screen.getByTestId('nav-opportunities-link');
+    expect(dashboard).toHaveTextContent(frame.menuDashboard);
+    expect(dashboard).toHaveAttribute('href', '/');
+    expect(dashboard).toHaveAttribute('aria-current', 'page');
+    expect(list).toHaveTextContent(frame.menuOpportunities);
+    expect(list).toHaveAttribute('href', '/opportunities');
+    expect(list).not.toHaveAttribute('aria-current');
+    await screen.findByText('거산 영업지원');
+  });
+
   it('설정을 읽으면 브랜드명이 보이고 띠에 가상 데이터가 함께 보인다', async () => {
     renderFrame();
     expect(await screen.findByTestId('brand-name')).toHaveTextContent('거산 영업지원');

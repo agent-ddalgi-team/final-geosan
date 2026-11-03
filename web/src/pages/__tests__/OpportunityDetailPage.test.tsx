@@ -45,7 +45,7 @@ function renderPage(setPageTitle = vi.fn()) {
       >
         <Routes>
           <Route path="/opportunities/:oppId" element={<OpportunityDetailPage />} />
-          <Route path="/" element={<p>목록 화면</p>} />
+          <Route path="/opportunities" element={<p>목록 화면</p>} />
         </Routes>
       </FrameContext.Provider>
     </MemoryRouter>,
