@@ -1,6 +1,6 @@
 # 앱 설정 파일 (AppSettings, 계약 C7) — A정밀 가상 사례 확인용 사본
 #
-# `examples/app-settings.yaml`과 같고 activeDatasetKind만 VIRTUAL_REVIEWED다. 뼈대 검증(scripts/check.*, CI)과
+# 가상 묶음과 외부 검색을 끈 설정이다. 뼈대 검증(scripts/check.*, CI)과
 # 테스트 픽스처(tests/conftest.py tmp_db)가 쓴다. 시연·실제 실행은 `examples/app-settings.yaml`(BROCHURE)을 쓴다.
 #
 # 담당자 목록·활성 거산 값 묶음·수집 범위·LLM 모드·브랜드·접속 보호 켜기를 둔다(NFR11.1).
@@ -35,7 +35,7 @@ llm:
   monthlyCallLimit: 0
   costPerThousandTokens: 0
 
-# 홈페이지 자동 탐색 (U9). 약관 확인 전에는 켜지 않는다.
+# 가상 사례는 홈페이지 검색을 끈다. 기존 두 칸만 있는 설정도 그대로 읽을 수 있다.
 homepageDiscovery:
   enabled: false
   termsConfirmed: false

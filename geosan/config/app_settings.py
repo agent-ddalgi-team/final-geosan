@@ -49,6 +49,9 @@ class LlmSettings(FileModel):
 class HomepageDiscoverySettings(FileModel):
     enabled: bool
     terms_confirmed: bool
+    min_confidence: float = Field(default=0.7, ge=0, le=1, strict=True, allow_inf_nan=False)
+    auto_research: bool = Field(default=False, strict=True)
+    daily_call_limit: int = Field(default=200, ge=0, strict=True)
 
 
 class BrandSettings(FileModel):

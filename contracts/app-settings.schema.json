@@ -91,7 +91,10 @@
       "properties": {
         "_설명": { "type": "string" },
         "enabled": { "type": "boolean" },
-        "termsConfirmed": { "type": "boolean" }
+        "termsConfirmed": { "type": "boolean" },
+        "minConfidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.7 },
+        "autoResearch": { "type": "boolean", "default": false, "description": "새 사례를 투입하면 자동으로 조사할지 선택한다. 기존 설정에서 생략하면 자동 조사를 시작하지 않는다." },
+        "dailyCallLimit": { "type": "integer", "minimum": 0, "default": 200 }
       }
     },
     "brand": {
