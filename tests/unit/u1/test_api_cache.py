@@ -44,3 +44,12 @@ def test_oversize_request_also_disables_cache():
     assert response.status_code == 400
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-vercel-enable-rewrite-caching"] == "0"
+
+
+def test_api_root_error_also_disables_cache():
+    """Given API 루트 / When 없는 경로 조회 / Then 404 응답도 캐시하지 않는다."""
+    with TestClient(create_app()) as client:
+        response = client.get("/api")
+    assert response.status_code == 404
+    assert response.headers.get("cache-control") == "no-store"
+    assert response.headers.get("x-vercel-enable-rewrite-caching") == "0"

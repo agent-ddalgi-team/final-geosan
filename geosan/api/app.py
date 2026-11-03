@@ -90,7 +90,7 @@ class RequestBoundary:
             if message["type"] == "http.response.start":
                 status = message["status"]
                 response_started = True
-                if scope["path"].startswith("/api/"):
+                if scope["path"] == "/api" or scope["path"].startswith("/api/"):
                     headers = MutableHeaders(scope=message)
                     headers["Cache-Control"] = "no-store"
                     headers["x-vercel-enable-rewrite-caching"] = "0"
