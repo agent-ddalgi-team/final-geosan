@@ -29,6 +29,7 @@ cd web && npm ci && cd ..
 | 할 일 | 명령 |
 |---|---|
 | 처음 설치·실행 | `geosan init-db` → `geosan check-config examples/rule-config.yaml examples/app-settings.yaml` → `geosan serve` |
+| 활성 거산 값 묶음 변경 | `geosan dataset-set COMPANY_CONFIRMED` → `geosan evaluate`. 선택 가능한 묶음은 `VIRTUAL_REVIEWED`, `BROCHURE`, `COMPANY_CONFIRMED`입니다. 인자 없이 `geosan check-config`를 실행하면 현재 묶음을 확인할 수 있습니다. |
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |

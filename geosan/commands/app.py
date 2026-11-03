@@ -92,7 +92,18 @@ def check_config(
     """규칙 설정·앱 설정 파일의 형식을 검사합니다. 오류는 '몇 번째 줄 어느 항목이 왜'로 보입니다."""
     from geosan.commands.check_config import run_check_config
 
-    raise typer.Exit(code=run_check_config(rule_config, app_settings))
+    register = rule_config is not None or app_settings is not None
+    raise typer.Exit(code=run_check_config(rule_config, app_settings, register=register))
+
+
+@app.command("dataset-set")
+def dataset_set(
+    kind: str = typer.Argument(..., metavar="DATASET_KIND", help="활성화할 거산 값 묶음"),
+) -> None:
+    """DB의 활성 묶음을 바꾸고 재평가 방법을 안내합니다."""
+    from geosan.commands.dataset_set import run_dataset_set
+
+    raise typer.Exit(code=run_dataset_set(kind))
 
 
 @app.command("import-capability")
