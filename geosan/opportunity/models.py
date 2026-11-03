@@ -27,6 +27,7 @@ class Customer(CommonColumns, Base):
     normalized_name: Mapped[str] = mapped_column(String(200), nullable=False)
     biz_number: Mapped[str | None] = mapped_column(String(10), unique=True)
     normalized_address: Mapped[str | None] = mapped_column(String(300))
+    address: Mapped[str | None] = mapped_column(String(300))
     identity_basis: Mapped[str | None] = mapped_column(Text)
     relation_status: Mapped[str] = mapped_column(String(24), nullable=False)
     relation_confirmed_at: Mapped[date | None] = mapped_column(Date)

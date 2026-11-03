@@ -53,6 +53,12 @@ brand:
 accessProtection:
   enabled: false
 
+# 지역 묶음은 계약 C7의 PM 승인 초안. 주소에서 뽑은 시·군 선택지도 함께 보인다.
+listFilters:
+  regionPresets:
+    - label: "천안 인근"
+      cities: ["천안시", "아산시"]
+
 # 산업군 초안: 거산 확인 뒤 설정에서 조정 (2026-11-03 PM 승인)
 industries:
   - 방위산업

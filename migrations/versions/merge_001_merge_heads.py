@@ -10,7 +10,6 @@ Create Date: 2026-11-03 21:26:29.257902
 
 from __future__ import annotations
 
-
 revision = "merge_001"
 down_revision = ("opp_004", "web_001")
 branch_labels = None

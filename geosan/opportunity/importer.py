@@ -151,7 +151,7 @@ def _store(
     if customer is None:
         customer = Customer(customer_id=new_id("cust"), **common)
         session.add(customer)
-    values = model.customer.model_dump(exclude={"address"}, mode="json")
+    values = model.customer.model_dump(mode="json")
     values.update(
         normalized_name=normalize_name(model.customer.name),
         normalized_address=normalize_address(model.customer.address),

@@ -3,6 +3,7 @@
 from pytest_bdd import given, then, when
 
 from tests.unit.u1.test_industry_filter import industry_env  # noqa: F401
+from tests.unit.u1.test_region_filter import region_env  # noqa: F401
 from tests.unit.u1.test_sales_records import post, set_test_phone
 from tests.unit.u1.test_sales_records import records_env as sales_env  # noqa: F401
 
@@ -98,3 +99,32 @@ def verify_process_industry(filter_context):
     )
     assert card["scoreDisplay"] == original["scoreDisplay"]
     assert card["classificationCode"] == original["classificationCode"]
+
+
+@given("여러 지역의 가상 회사 기회를 평가했다", target_fixture="region_context")
+def evaluated_regions(region_env):  # noqa: F811
+    client, ids, _ = region_env
+    return {"client": client, "ids": ids, "original": client.get("/api/v1/opportunities").json()}
+
+
+@when("천안 인근과 아노다이징 및 반도체를 함께 선택하면")
+def select_region_filters(region_context):
+    response = region_context["client"].get(
+        "/api/v1/opportunities",
+        params={"region": "천안 인근", "process": "ANODIZING", "industry": "반도체"},
+    )
+    assert response.status_code == 200
+    region_context["response"] = response.json()
+
+
+@then("천안의 가상 회사만 보이고 기존 점수는 그대로다")
+def verify_region_filters(region_context):
+    data = region_context["response"]["data"]
+    assert len(data) == 1
+    assert data[0]["oppId"] == region_context["ids"][0]
+    assert data[0]["region"] == "천안시" and data[0]["rank"] == 1
+    original = next(
+        row for row in region_context["original"]["data"] if row["oppId"] == data[0]["oppId"]
+    )
+    assert data[0]["scoreDisplay"] == original["scoreDisplay"]
+    assert data[0]["classificationCode"] == original["classificationCode"]

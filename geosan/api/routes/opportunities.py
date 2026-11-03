@@ -1,6 +1,7 @@
 """목록 구성과 상세 영역의 등록 지점. 원래 순위와 최신 평가 내용을 따로 읽는다."""
 
 import re
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
@@ -37,6 +38,7 @@ from geosan.api.schemas import (
     ProcessLinkView,
     Question,
     Reasons,
+    RegionCount,
     RequirementCheckView,
     ScoreItemView,
     Scores,
@@ -136,7 +138,7 @@ def _header(context: DetailContext) -> dict:
         "header": DetailHeader(
             industries=customer.industries or [],
             industries_source=customer.industries_source,
-            address=customer.normalized_address or "",
+            address=customer.address or "",
             distance_km=None,
             main_phone=customer.main_phone,
             main_phone_source=customer.main_phone_source,
@@ -456,6 +458,16 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
     )
 
 
+def _address_region(address: str | None) -> str | None:
+    """계약 C1: 원본 주소의 시·군. 공백이 사라진 비교용 주소는 사용하지 않는다."""
+    parts = address.split() if address else []
+    if not parts:
+        return None
+    if parts[0].endswith(("광역시", "특별시")) or parts[0].startswith("세종"):
+        return parts[0]
+    return parts[1] if len(parts) > 1 else None
+
+
 @router.get(
     "/opportunities", response_model=OpportunityListEnvelope, response_model_exclude_unset=True
 )
@@ -468,6 +480,7 @@ def list_opportunities(
     stage: OutcomeStatus | None = None,
     process: ProcessCode | None = None,
     industry: str | None = None,
+    region: str | None = None,
     q: str | None = None,
 ):
     runtime = runtime_for(session)
@@ -489,6 +502,7 @@ def list_opportunities(
                 total=0,
                 process_counts=[],
                 industry_counts=[],
+                region_counts=[],
                 not_evaluated_count=session.scalar(select(func.count()).select_from(Opportunity)),
             ),
         )
@@ -547,12 +561,30 @@ def list_opportunities(
         for name in runtime.app_settings.industries
         if any(name in (customer.industries or []) for _, customer in tab_companies)
     ]
+    city_counts = Counter(
+        city
+        for _, customer in tab_companies
+        if (city := _address_region(customer.address)) is not None
+    )
+    presets = runtime.app_settings.list_filters.region_presets
+    region_counts = [
+        RegionCount(region=preset.label, count=count)
+        for preset in presets
+        if (count := sum(city_counts[city] for city in set(preset.cities))) > 0
+    ] + [
+        RegionCount(region=city, count=count)
+        for city, count in sorted(city_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    selected_cities = next(
+        (set(preset.cities) for preset in presets if preset.label == region), {region}
+    )
     search = q.strip().casefold() if q else ""
-    if industry is not None or search:
+    if industry is not None or region is not None or search:
         matching_ids = [
             opportunity.opp_id
             for opportunity, customer in tab_companies
             if (industry is None or industry in (customer.industries or []))
+            and (region is None or _address_region(customer.address) in selected_cities)
             and (
                 not search
                 or any(
@@ -595,6 +627,7 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         cards.append(
             OpportunityCard(
+                region=_address_region(customer.address),
                 industries=customer.industries or [],
                 contact_count=contact_counts(session, opportunity.opp_id).total,
                 process_codes=[
@@ -604,7 +637,7 @@ def list_opportunities(
                 ],
                 opp_id=opportunity.opp_id,
                 rank=position
-                if process is not None or industry is not None
+                if process is not None or industry is not None or region is not None
                 else original.original_rank,
                 title=f"{customer.name} · {opportunity.item}",
                 classification_code=current.classification_code,
@@ -640,6 +673,7 @@ def list_opportunities(
             total=total,
             process_counts=process_counts,
             industry_counts=industry_counts,
+            region_counts=region_counts,
             not_evaluated_count=not_evaluated,
         ),
     )

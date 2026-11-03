@@ -297,11 +297,11 @@ def test_check_config_rejects_secret_key_and_bad_rule_config(tmp_path: Path) -> 
 def test_init_db_and_merge_heads_commands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "cli.db"))
     code, output = _run("init-db")
-    assert code == 0 and "준비 완료" in output and "merge_001" in output
+    assert code == 0 and "준비 완료" in output and "opp_005" in output
     code, output = _run("init-db")
     assert code == 0 and "이미 최신" in output
     code, output = _run("db", "merge-heads")
-    assert code == 0 and "하나(merge_001)" in output
+    assert code == 0 and "하나(opp_005)" in output
     assert os.path.exists(tmp_path / "cli.db")
 
 

@@ -62,6 +62,11 @@ class IndustryCount(_ApiModel):
     count: int
 
 
+class RegionCount(_ApiModel):
+    region: str
+    count: int
+
+
 class Meta(_ApiModel):
     """성공 응답 meta. 목록·상세·기록이 공통으로 쓴다."""
 
@@ -76,6 +81,7 @@ class Meta(_ApiModel):
     total: int | None = None
     process_counts: list[ProcessCount] | None = None
     industry_counts: list[IndustryCount] | None = None
+    region_counts: list[RegionCount] | None = None
     not_evaluated_count: int | None = Field(
         default=None, description="최신 FULL 묶음 뒤에 투입되어 아직 목록에 없는 기회 수"
     )
@@ -165,6 +171,7 @@ class CardRecords(_ApiModel):
 
 
 class OpportunityCard(_ApiModel):
+    region: str | None = None
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
     contact_count: int = 0
