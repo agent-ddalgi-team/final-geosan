@@ -51,10 +51,10 @@ export default function HeaderSection({
       <div>
         <Button
           type="link"
-          href="/"
+          href="/opportunities"
           onClick={(event) => {
             event.preventDefault();
-            navigate('/');
+            navigate('/opportunities');
           }}
           style={{ paddingLeft: 0 }}
           data-testid="back-to-list-link"

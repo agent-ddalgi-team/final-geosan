@@ -2,7 +2,7 @@
 // 설정(/config/ui)을 한 번 읽어 담당자 목록·brand로 화면 기본값을 덮어쓰고, 띠에 보일 값은 페이지가 setBannerMeta로 알린다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { ConfigProvider, Select, Typography } from 'antd';
 import { getConfigUi } from '../../api/client';
 import type { ConfigUi, Meta } from '../../api/types';
@@ -122,14 +122,23 @@ export default function AppFrame({ title, children }: AppFrameProps) {
             <nav aria-label={frame.navLabel} style={{ flex: 1 }}>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', gap: 16 }}>
                 <li>
-                  <Link
+                  <NavLink
                     to="/"
-                    aria-current="page"
+                    end
+                    data-testid="nav-dashboard-link"
+                    style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
+                  >
+                    {frame.menuDashboard}
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    to="/opportunities"
                     data-testid="nav-opportunities-link"
-                    style={{ fontWeight: 600 }}
+                    style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
                   >
                     {frame.menuOpportunities}
-                  </Link>
+                  </NavLink>
                 </li>
               </ul>
             </nav>
