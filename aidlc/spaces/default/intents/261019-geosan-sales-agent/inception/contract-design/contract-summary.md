@@ -345,9 +345,13 @@ paths:
     get:
       summary: 대시보드 건수 4개·일정·업무 흐름·최근 활동 (U7)
       responses: { '200': { description: 'Envelope(counts{TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY}, schedule[], pipeline, recentActivity[])' } }
+  /opportunities/{oppId}/homepage-candidates:
+    get:
+      summary: (추가 2026-11-03 정정, PM 결정 2) ② 네이버 검색 API로 회사명+주소 검색 결과를 **가공 없이 그대로** 돌려줌 (U2, C9 HomepageFinder.search_candidates). 화면은 "네이버 검색결과" 표시·원문 링크와 함께 보이고, 담당자가 고른 주소는 기존 POST /homepage(url)로 확정. 결과는 서버에 저장·캐시하지 않음
+      responses: { '200': { description: 'Envelope(provider: NAVER, items[{ title, link, description }], total, fetchedAt)' }, '429': { description: '오늘 검색 한도 초과 (kind SEARCH_LIMIT)' }, '503': { description: '네이버 API 실패·10초 초과' } }
   /llm-usage:
     get:
-      summary: (추가 2026-11-03, PM 결정 3) 이번 달 외부 AI 사용량·비용·상한 대비 비율 (U2). 공통 틀 상단 띠가 alertReached이면 "이번 달 AI 비용 절반 사용" 표시
+      summary: (추가 2026-11-03, PM 결정 3) 이번 달 외부 AI 사용량·비용·상한 대비 비율 (U2). 공통 틀 상단 띠가 alertReached이면 "이번 달 AI 비용 절반 사용" 표시. webSearchCalls는 네이버 검색 호출 수(비용 없음)
       parameters: [ { name: month, in: query, schema: { type: string, pattern: '^\d{4}-\d{2}$' } } ]
       responses: { '200': { description: 'Envelope(C4 usage 출력: callCount, inputTokens, outputTokens, webSearchCalls, rejectedCount, costUsd, costLimitUsd, callLimit, alertReached)' } }
   /dashboard/activity-summary:
@@ -476,7 +480,12 @@ check_transfer:
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
       - securityGrade ∈ {PUBLIC, EXTERNAL_AI_OK}만 허용
       - 월 호출 상한 초과 → 거부 (kind LLM_LIMIT)
-      - (추가 2026-11-03, PM 결정 3) 월 비용 상한(`llm.monthlyCostLimitUsd`) 초과 → 거부 (kind LLM_LIMIT). 비용 = TransferLog의 입력·출력 토큰 × 단가(`llm.inputCostPerMillionTokens`·`outputCostPerMillionTokens`) + 웹 검색 호출 수 × `llm.webSearch.costPerCallUsd`, 월별 합산. 웹 검색 호출(② 홈페이지 찾기)도 TransferLog 1행(kind WEB_SEARCH, 질의는 회사명·주소뿐)
+      - (추가 2026-11-03, PM 결정 3) 월 비용 상한(`llm.monthlyCostLimitUsd`) 초과 → 거부 (kind LLM_LIMIT). 비용 = TransferLog의 입력·출력 토큰 × 단가(`llm.inputCostPerMillionTokens`·`outputCostPerMillionTokens`), 월별 합산. **OpenAI 호출에만** 적용
+    EXTERNAL_SEARCH:   # (추가 2026-11-03 정정, PM 결정 2) ② 홈페이지 찾기 — 네이버 검색 API로 나가는 검색어
+      - 허용 kind: CUSTOMER_NAME, CUSTOMER_ADDRESS (둘 다 산단공 공개 CSV 출처, securityGrade PUBLIC)만. 그 밖의 kind(NOTE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION, CAPABILITY_VALUE, 연락처)가 하나라도 → 전체 거부
+      - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
+      - 하루 호출 상한(`naverSearch.dailyCallLimit`) 초과 → 거부 (kind SEARCH_LIMIT, 쉬운 말 "오늘 검색 한도 초과"). 네이버 자체 한도는 하루 25,000회
+      - sideEffect: TransferLog 1행(kind WEB_SEARCH, 시각·기회 ID·호출 수만, 검색어 본문 없음). 검색 결과는 저장·캐시하지 않는다(네이버 검색 API 특약 2.3)
     OUTPUT_EXPORT:   # 질문 목록(거산에 보내는 것)·엑셀(내부용)
       - securityGrade = FORBIDDEN 또는 UNKNOWN → 전체 거부
       - kind 없음 → 전체 거부
@@ -594,13 +603,14 @@ AppSettings:
   activeDatasetKind: datasetKind
   ingestion: { regions: [...], productKeywords: [...], maxCandidates: 50 }
   llm: { mode: enum[EXTERNAL, NONE], model: string, monthlyCallLimit: int, costPerThousandTokens: number }
-  # (추가 2026-11-03, PM 결정 3 — 결정값: provider OPENAI, model gpt-6.1-sol, allowedModels [gpt-6.1-sol, gpt-6-luna], monthlyCallLimit 1000, 입력 $2 / 출력 $10 per 1M, monthlyCostLimitUsd 20, costAlertRatio 0.5, webSearch $0.01/회)
+  # (추가 2026-11-03, PM 결정 3 — 결정값: provider OPENAI, model gpt-6.1-sol, allowedModels [gpt-6.1-sol, gpt-6-luna], monthlyCallLimit 1000, 입력 $2 / 출력 $10 per 1M, monthlyCostLimitUsd 20, costAlertRatio 0.5. OpenAI는 근거 추출(③④)에만)
   #   llm에 더하는 키: provider: enum[OPENAI], allowedModels: [string] (model은 이 안이어야 check-config 통과), inputCostPerMillionTokens: number, outputCostPerMillionTokens: number,
-  #   monthlyCostLimitUsd: number, costAlertRatio: number(0~1), webSearch: { enabled: boolean, costPerCallUsd: number }. costPerThousandTokens는 안 씀(deprecated), 다음 깨는 변경 때 제거.
+  #   monthlyCostLimitUsd: number, costAlertRatio: number(0~1). costPerThousandTokens는 안 씀(deprecated), 다음 깨는 변경 때 제거.
   #   예시 파일(examples/app-settings.yaml)의 새 키는 모르는 키 거부 규칙 때문에 U2 코드 PR(LlmSettings)과 같이 넣는다. 키는 환경 변수 OPENAI_API_KEY로만.
+  naverSearch: { enabled: boolean, dailyCallLimit: int, display: int }   # (추가 2026-11-03 정정, PM 결정 2) ② 홈페이지 찾기용 네이버 검색 API(웹 문서). 키는 환경 변수 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET로만. dailyCallLimit 기본 500(네이버 한도 25,000), display 기본 5(한 번에 보여 줄 결과 수)
   homepageDiscovery: { enabled: false, termsConfirmed: false }
-  # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기는 AI가 먼저 한다. 검색 수단은 C9 HomepageFinder(OpenAI 웹 검색 도구). minConfidence: number(0~1, 기본 0.8) 추가 — 이 아래면 저장하지 않고 "확인 필요".
-  #   U2 PR에서 enabled: true로, termsConfirmed는 PM이 OpenAI 이용약관 확인 뒤 true. 네이버 검색 API는 2026-09-07 특약(저장·AI 입력 금지)으로 쓰지 않는다.
+  # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기는 네이버 검색 API가 먼저 찾아 **결과를 네이버가 준 모양 그대로 "네이버 검색결과"로 보여 주고**, 담당자가 눌러 확정한 주소 하나만 저장한다(C9 HomepageFinder). 검색 결과 목록은 저장·캐시하지 않는다(네이버 검색 API 특약 2026-09-07: 결과 저장·가공·AI 입력 금지).
+  #   U2 PR에서 enabled: true로, termsConfirmed는 PM이 네이버 API 허브 신청 때 이 쓰임새(결과 표시 + 담당자 확정)로 확인한 뒤 true.
   brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"
   accessProtection: { enabled: boolean }      # 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD
 ```
@@ -628,7 +638,7 @@ commands:
   geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함)
   geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
-  geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: 호출 수·입력/출력 토큰·웹 검색 수·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 5곳 시험의 1곳당 비용 측정에 쓴다
+  geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 네이버 검색 호출 수는 건수만(비용 없음). 5곳 시험의 1곳당 비용 측정에 쓴다
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   처음 설치·실행: [init-db, check-config, serve]                     # 3
   가상 사례 투입·평가·확인: [import-case, evaluate, verify-case]     # 3
@@ -658,12 +668,14 @@ LlmAdapter:
   provider: enum[OPENAI]                  # (추가 2026-11-03, PM 결정 3) 설정 llm.provider. 모델은 llm.model(gpt-6.1-sol, 비교용 gpt-6-luna)
   retention:                              # (추가 2026-11-03) 보관 규칙. 한 번 보내고 끝나는 호출만 쓴다. 대화·파일이 제공사 서버에 남는 기능(파일 업로드·대화 보관형 엔드포인트)은 쓰지 않는다. 데이터 공유(학습 제공) 동의는 켜지 않는다. 로그에는 시각·모드·모델·등급·입력/출력 토큰 수·비용만(본문 없음)
   usageGuard: 호출 전 C4 월 호출 상한·월 비용 상한을 함께 검사. 초과면 호출하지 않고 503 LLM_LIMIT
-HomepageFinder:                           # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기. C9 열린 질문 "검색 방식·비용·약관"의 답
-  find_homepage(companyName, address) -> { url: string | null, confidence: number(0~1), basis: string, candidates: [{ url, title }] }
-  search: OpenAI 웹 검색 도구 1회(설정 llm.webSearch). 질의는 회사명·주소만(TransferGuard EXTERNAL_AI 통과 항목, 연락처·내부 값 없음)
-  rule: confidence < homepageDiscovery.minConfidence 이면 url을 저장하지 않고 "확인 필요"로 표시, 담당자가 입력·확정(P1-5 규칙 유지). 저장하는 것은 url과 basis 한 줄뿐(검색 결과 본문은 저장하지 않음)
-  timeout: 30s, retry: 1 (TransferLog·집계는 호출마다 1행, kind WEB_SEARCH)
-  cost: 1,000회당 $10 + 검색 본문 토큰은 모델 입력 단가 (OpenAI 가격표 2026-11-03)
+HomepageFinder:                           # (추가 2026-11-03, PM 결정 2 정정 2차) ② 홈페이지 찾기 = 네이버 검색 API(웹 문서)가 찾고 담당자가 확정. C9 열린 질문 "검색 방식·비용·약관"의 답
+  search_candidates(companyName, address) -> { provider: NAVER, items: [{ title, link, description }], total, fetchedAt }   # 네이버 응답 항목을 가공·재정렬 없이 그대로. 화면은 "네이버 검색결과" 표시와 원문 링크를 함께 보인다(특약 2.1·2.2)
+  confirm(oppId, url, confirmedBy) -> 저장되는 것은 담당자가 확정한 url 하나와 확정자·시각뿐. 검색 결과 목록(items)은 저장·캐시하지 않는다(특약 2.3). 확정 뒤 기존 흐름 ①(C1 POST /homepage) 호출
+  query: 회사명 + 주소(둘 다 공개 CSV 출처). TransferGuard EXTERNAL_SEARCH 통과 뒤에만 호출(C4). 검색어에 메모·내부 값·연락처가 섞이면 호출 안 함
+  keys: 환경 변수 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET (설정 파일·코드·로그에 적지 않음)
+  limits: 네이버 하루 25,000회 안에서 naverSearch.dailyCallLimit(기본 500). timeout 10s, retry 1 (TransferLog 호출마다 1행, kind WEB_SEARCH, 검색어 본문 없음)
+  cost: 무료. 월 $20 비용 상한은 OpenAI(근거 추출)에만 적용
+  terms: 네이버 검색 API 특약(2026-09-07 시행) — 결과는 네이버 검색결과로만 제공·가공 금지·저장/캐시 금지·AI 입력 금지. 이 설계는 "결과 그대로 표시 + 사람이 확정한 주소만 저장"으로 그 안에 둔다. API 허브 신청 때 PM이 이 쓰임새를 적어 확인(homepageDiscovery.termsConfirmed)
 HomepageReader:
   fetch(url) -> { allowed: boolean, reason: enum[OK, ROBOTS_DISALLOW, TERMS_DISALLOW, UNREACHABLE], text|null }
   timeout: 20s, retry: 1 (전체 60초 한도 안)
@@ -684,8 +696,8 @@ ExternalSourceApi (공장등록·나라장터):
 | C7 | 위치 정보를 주는 JSON/YAML 로더 선택과 `_설명` 키 처리 | U1 (코드 생성) |
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
-| C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03, PM 결정 2 정정)**: OpenAI 웹 검색 도구($10/1,000회 + 검색 본문 토큰). 네이버 검색 API는 2026-09-07 특약(결과 저장·AI 입력 금지)으로 불가, 구글 Custom Search는 신규 중단. U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder). OpenAI 이용약관 최종 확인은 PM이 키 발급 때 | ~~U9~~ → U2 |
-| C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI, 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림), 월 호출 상한 1,000회. 설정 키 추가·C4 비용 상한 거부·C1 `/llm-usage`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
+| C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03, PM 결정 2 정정 2차)**: 네이버 검색 API(웹 문서)가 찾고 **결과는 네이버 검색결과로 그대로 보여 주며, 담당자가 확정한 주소 하나만 저장**(결과 목록 저장·가공·AI 입력 없음 — 2026-09-07 특약 2.1~2.3 안). 무료, 하루 25,000회 한도 안에서 호출 상한만 둠. 구글 Custom Search는 신규 중단. U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder). 네이버 API 허브 신청 때 PM이 쓰임새를 적어 확인 | ~~U9~~ → U2 |
+| C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회. 네이버 검색 API(② 홈페이지 찾기)는 하루 호출 상한만. 키 2개(NAVER_CLIENT_ID·NAVER_CLIENT_SECRET, OPENAI_API_KEY)는 환경 변수. 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·`/homepage-candidates`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
