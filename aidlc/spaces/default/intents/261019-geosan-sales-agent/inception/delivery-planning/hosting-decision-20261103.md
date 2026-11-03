@@ -35,7 +35,7 @@ PM이 Vercel·Railway를 고른 이유: 비전공 팀이 가장 많이 쓰는 �
 
 1. **`web/vercel.json` 추가** (화면 담당 폴더 `web/` 안): `/api/:path*` → `https://<railway 주소>/api/:path*` rewrite 한 줄 + 상세 주소(`/opportunities/…`)를 직접 열어도 `index.html`을 주는 fallback 한 줄. Railway 주소는 비밀이 아니므로 파일에 적어도 된다.
 2. **rewrite 캐시 끄기(중요)**: Vercel은 2026-04-06부터 외부 rewrite 응답을 기본으로 캐시한다. API 응답이 캐시되면 메모를 저장했는데 옛 목록이 보이는 문제가 난다. FastAPI 응답에 `Cache-Control: no-store`를 붙이고, Vercel 쪽 끄기 헤더(`x-vercel-enable-rewrite-caching: 0`)도 함께 붙인다. 완료 기준에 "메모 저장 직후 목록 새로고침에 반영" 확인을 넣는다.
-3. **Railway 서비스 1개**: 시작 명령 `geosan serve --host 0.0.0.0 --port $PORT`(serve가 PORT 환경 변수를 못 읽으면 옵션 추가), 볼륨 마운트 `/data`, 환경 변수 `GEOSAN_DB_PATH`·`GEOSAN_PASSWORD`·`OPENAI_API_KEY`·`NAVER_CLIENT_ID`·`NAVER_CLIENT_SECRET`(키 값은 PM이 1:1로 전달, 이슈·파일에 안 적음). 처음 올릴 때 `geosan init-db`·마이그레이션을 한 번 돌리는 절차를 README에 적는다.
+3. **Railway 서비스 1개**: 시작 명령 `geosan serve --host 0.0.0.0 --port $PORT`(serve가 PORT 환경 변수를 못 읽으면 옵션 추가), 볼륨 마운트 `/data`, 환경 변수 `GEOSAN_DB_PATH`·`GEOSAN_PASSWORD`·`OPENAI_API_KEY`(결정 B로 네이버 키 없음. 키 값은 PM이 1:1로 전달, 이슈·파일에 안 적음). 처음 올릴 때 `geosan init-db`·마이그레이션을 한 번 돌리는 절차를 README에 적는다.
 4. **설정 파일**: Railway는 Python 프로젝트를 자동 감지하지만, 시작 명령을 저장소에 두려면 `railway.json` 또는 `Procfile` 한 줄. 어느 쪽이든 저장소 루트 파일 하나.
 5. **접속 보호 흐름은 그대로**: rewrite 덕분에 쿠키가 같은 주소에서 오가므로 세션 쿠키 설정(SameSite 등)을 바꾸지 않는다. 다만 접속 보호는 **서버(API) 쪽에서 막아야** 한다. Vercel에 올라간 화면 파일 자체는 누구나 받을 수 있고, 데이터는 API를 통해서만 나오므로 그것으로 충분하다.
 6. **한 덩어리 빌드(`scripts/build.py`)는 유지**: 로컬 실행·시연 예비 경로. 시연 환경 배포 단계에서는 쓰지 않는다.
