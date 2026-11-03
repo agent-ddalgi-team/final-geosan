@@ -1,12 +1,16 @@
 """#209: 가상 입력을 실제 SQLite와 API로 저장·조회한다."""
 
+import json
+import logging
 from concurrent.futures import ThreadPoolExecutor
+from io import StringIO
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 
-from geosan.api.app import create_app
+from geosan.api.app import JsonFormatter, create_app
+from geosan.api.deps import get_session
 from geosan.capability.importer import import_capability
 from geosan.config.models import AppSetting
 from geosan.opportunity.importer import import_case
@@ -30,6 +34,106 @@ def post(client, opp_id, kind, body, staff="park-lee"):
     return client.post(
         f"/api/v1/opportunities/{opp_id}/{kind}", json=body, headers={"X-Staff-Key": staff}
     )
+
+
+@pytest.fixture
+def request_logs(records_env):
+    """실제 요청 로그를 운영용 JSON 형식으로 수집한다."""
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(JsonFormatter())
+    logger = logging.getLogger("geosan")
+    logger.addHandler(handler)
+    try:
+        yield stream
+    finally:
+        logger.removeHandler(handler)
+        handler.close()
+
+
+@pytest.mark.parametrize("mode", ["success", "length_error", "type_error"])
+def test_note_request_logs_and_errors_hide_contact(records_env, request_logs, mode):
+    """Given 가상 연락처 / When 저장·길이·형식 검사 / Then 로그·응답에 원문이 없다."""
+    client, opp_id = records_env
+    contact = "private-note@example.invalid"
+    text = f"가상 연락처 {contact}"
+    body = {"text": text}
+    if mode == "length_error":
+        with session_scope() as session:
+            session.get(AppSetting, "records").value = {
+                "approvalEnabled": False,
+                "noteMaxLength": 5,
+            }
+    elif mode == "type_error":
+        body = {"text": {"private": text}}
+    response = post(client, opp_id, "notes", body)
+    expected_status = 200 if mode == "success" else 400
+    assert response.status_code == expected_status
+    logs = [json.loads(line) for line in request_logs.getvalue().splitlines()]
+    assert any(row["event"] == "http.request" and row["status"] == expected_status for row in logs)
+    assert contact not in request_logs.getvalue()
+    assert contact not in response.text
+    if mode != "success":
+        assert response.json()["error"]["fields"][0]["path"] == "text"
+    with session_scope() as session:
+        rows = list(session.scalars(select(Note)))
+        assert len(rows) == (1 if mode == "success" else 0)
+        if rows:
+            assert rows[0].text == text
+
+
+@pytest.mark.parametrize(
+    "kind,model,initial,update",
+    [
+        ("notes", Note, {"text": "보존할 가상 메모"}, {"text": "private-note@example.invalid"}),
+        ("outcomes", Outcome, {"status": "INTERESTED"}, {"status": "IN_PROGRESS"}),
+    ],
+)
+def test_record_commit_failure_rolls_back_without_retry(
+    records_env, request_logs, kind, model, initial, update
+):
+    """Given 기존 기록 / When 최종 DB 저장 실패 / Then 이력 보존·재시도 없음·안전한 오류."""
+    client, opp_id = records_env
+    assert post(client, opp_id, kind, initial).status_code == 200
+    with session_scope() as session:
+        original = session.execute(select(model.__table__)).all()
+    attempts = []
+    private_error = "가상 DB 오류 private-note@example.invalid"
+
+    def fail_commit(session):
+        # INSERT가 실제 SQLite에 반영된 뒤 COMMIT 직전에 실패시킨다.
+        assert session.scalar(select(func.count()).select_from(model)) == 2
+        attempts.append("commit")
+        raise RuntimeError(private_error)
+
+    def failing_session():
+        with session_scope() as session:
+            event.listen(session, "before_commit", fail_commit)
+            yield session
+
+    client.app.dependency_overrides[get_session] = failing_session
+    try:
+        response = post(client, opp_id, kind, update)
+    finally:
+        client.app.dependency_overrides.pop(get_session)
+    assert response.status_code == 500
+    error = response.json()["error"]
+    assert {"message", "nextAction", "ref"} <= error.keys()
+    assert error["ref"]
+    assert attempts == ["commit"]
+    logs = [json.loads(line) for line in request_logs.getvalue().splitlines()]
+    assert any(row["event"] == "http.failed" and row["ref"] == error["ref"] for row in logs)
+    assert any(row["event"] == "http.request" and row["status"] == 500 for row in logs)
+    for private in (private_error, "private-note@example.invalid"):
+        assert private not in response.text
+        assert private not in request_logs.getvalue()
+    with session_scope() as session:
+        assert session.execute(select(model.__table__)).all() == original
+    recovered = post(client, opp_id, kind, update)
+    assert recovered.status_code == 200
+    assert recovered.json()["data"]["version"] == 2
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(model)) == 2
 
 
 def test_notes_append_and_contacts_stay_in_activity(records_env):
