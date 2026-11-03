@@ -179,7 +179,7 @@ components:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
       properties:
-        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, homepageStatus: { type: string, nullable: true, enum: [AI_FOUND, NEEDS_CONFIRMATION, CONFIRMED, NOT_FOUND], description: '(추가 2026-11-03 PM 결정 B) AI_FOUND = OpenAI 웹 검색이 찾음(확신도 기준 이상) / NEEDS_CONFIRMATION = 찾았지만 확신도 낮음(상세 맨 위 "홈페이지 확인 필요" 띠) / CONFIRMED = 담당자가 [맞음] 또는 주소 고침 / NOT_FOUND = 못 찾음("직접 입력" 띠, 근거 추출 건너뜀). 사례 파일로 들어온 주소는 CONFIRMED·source CASE_FILE' }, homepageConfidence: { type: number, nullable: true, description: '0~1. AI가 찾았을 때만' }, homepageSource: { type: string, nullable: true, enum: [AI, STAFF, CASE_FILE] }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, address: { type: string }, distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 지시) 거산 기준 주소(설정 geosan.address, PM이 정함)에서의 직선거리 km. 거리 기능(#222) 전까지 null' }, summaryLine: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 한 줄 소개. AI 조사(U2)가 공개 본문에서 생성. 조사 전에는 사례 파일 cardReason' }, highlights: { type: array, maxItems: 3, items: { type: string }, description: '주요 특징 최대 3개(품목·공정·규모·주요 고객 같은 공개 사실만). AI 조사 전에는 빈 배열' }, researchedAt: { type: string, format: date-time, nullable: true, description: '마지막 조사 시각(AI 조사 완료 시각, 사례 파일 투입분은 투입 시각)' }, researchSource: { type: string, nullable: true, enum: [AI, CASE_FILE] }, researchStale: { type: boolean, description: '설정 research.staleAfterDays(기본 90일)보다 오래됐으면 true → 화면 "오래됨" 표시' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
+        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, homepageStatus: { type: string, nullable: true, enum: [AI_FOUND, NEEDS_CONFIRMATION, CONFIRMED, NOT_FOUND], description: '(추가 2026-11-03 PM 결정 B) AI_FOUND = OpenAI 웹 검색이 찾음(확신도 기준 이상) / NEEDS_CONFIRMATION = 찾았지만 확신도 낮음(상세 맨 위 "홈페이지 확인 필요" 띠) / CONFIRMED = 담당자가 [맞음] 또는 주소 고침 / NOT_FOUND = 못 찾음("직접 입력" 띠, 근거 추출 건너뜀). 사례 파일로 들어온 주소는 CONFIRMED·source CASE_FILE' }, homepageConfidence: { type: number, nullable: true, description: '0~1. AI가 찾았을 때만' }, homepageSource: { type: string, nullable: true, enum: [AI, STAFF, CASE_FILE] }, industries: { type: array, items: { type: string }, description: '(추가 2026-11-03 PM 결정, 대시보드 산업군) 설정 industries 목록 안 값만, 최대 3개. AI 조사(U2)가 제안하고 담당자가 상세 머리 칩 [확정][고치기]로 정함' }, industriesSource: { type: string, nullable: true, enum: [AI, STAFF] }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, address: { type: string }, distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 지시) 거산 기준 주소(설정 geosan.address, PM이 정함)에서의 직선거리 km. 거리 기능(#222) 전까지 null' }, summaryLine: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 한 줄 소개. AI 조사(U2)가 공개 본문에서 생성. 조사 전에는 사례 파일 cardReason' }, highlights: { type: array, maxItems: 3, items: { type: string }, description: '주요 특징 최대 3개(품목·공정·규모·주요 고객 같은 공개 사실만). AI 조사 전에는 빈 배열' }, researchedAt: { type: string, format: date-time, nullable: true, description: '마지막 조사 시각(AI 조사 완료 시각, 사례 파일 투입분은 투입 시각)' }, researchSource: { type: string, nullable: true, enum: [AI, CASE_FILE] }, researchStale: { type: boolean, description: '설정 research.staleAfterDays(기본 90일)보다 오래됐으면 true → 화면 "오래됨" 표시' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
         stage: { type: object, properties: { current: { type: integer }, badge: { type: string, nullable: true } } }
         reasons: { type: object, properties: { reason: { type: string }, nextAction: { type: string }, questions: { type: array, items: { $ref: '#/components/schemas/Question' } } } }
         requirements: { type: array, items: { $ref: '#/components/schemas/RequirementCheckView' } }
@@ -311,6 +311,11 @@ paths:
       summary: 홈페이지 주소 확정 또는 본문 붙여넣기 → 근거 추출 → 재평가 (U2, 흐름 ①). 전체 60초 한도. (추가 2026-11-03 PM 지시) 상세 머리 [다시 조사] 단추도 이 경로(확정된 url 그대로)를 부른다 — 주기 자동 조사는 두지 않고 담당자가 누를 때만. 성공 시 header.summaryLine·highlights·mainPhone·researchedAt 갱신
       requestBody: { content: { application/json: { schema: { type: object, properties: { url: { type: string, format: uri }, pastedText: { type: string }, confirmOnly: { type: boolean, default: false, description: '(추가 2026-11-03 PM 결정 B) true면 담당자 [맞음]: homepageStatus를 CONFIRMED로만 바꾸고 근거 추출·재평가는 하지 않음. url을 고쳐 보내면(false) 그 주소로 다시 추출·재평가' } } } } } }
       responses: { '200': { description: '근거 수·질문 수·새 평가 ID (meta.reevaluated). confirmOnly면 상태만' }, '422': { description: 'kind ROBOTS_DISALLOW / TERMS_DISALLOW (붙여넣기 요청) 또는 UNREACHABLE (주소를 열 수 없음)' }, '503': { description: 'LLM 실패·상한 초과 (kind LLM_LIMIT) · 60초 초과' } }
+  /opportunities/{oppId}/industries:
+    post:
+      summary: (추가 2026-11-03 PM 결정, 대시보드 산업군) 담당자가 산업군을 확정·수정 (U7). 설정 industries 목록 안 값만, 최대 3개, 출처 STAFF로 저장. 빈 배열이면 "미확정"
+      requestBody: { content: { application/json: { schema: { type: object, properties: { industries: { type: array, maxItems: 3, items: { type: string } } } } } } }
+      responses: { '200': { description: '저장됨 (industries, industriesSource STAFF, industriesConfirmedAt)' }, '400': { description: '목록에 없는 값 (fields)' } }
   /opportunities/{oppId}/evaluations:
     get:
       summary: 현재·이전 평가 쌍 (U2 "이전 평가 보기")
@@ -365,8 +370,17 @@ paths:
               counts{ NOT_CONTACTED: int, INTERESTED: int, IN_CONTACT: int, QUOTE_SAMPLE: int, SCHEDULE_DUE: int },   # 미접촉 / 관심 / 접촉 중 / 견적·샘플 / 이번 주 일정(오늘 이전~7일). 누르면 /opportunities?stage=… (SCHEDULE_DUE는 ?filter=SCHEDULE_DUE)
               schedule[ { oppId, customerName, oppTitle, dueAt: date, note: string, overdue: boolean, staffKey } ],   # 기한 지남(overdue) 맨 위, 그다음 날짜순. 출처: /outcomes의 nextScheduleAt·nextScheduleNote
               recentActivity[ { at: datetime, oppId, customerName, kind: enum[NOTE, STAGE, CONTACT_ATTEMPT, SCHEDULE, OPINION], summary: string } ],   # 최근 내가 한 기록 10건(요청의 담당자 키로 거름, Q4)
-              asOf: datetime
+              asOf: datetime,
+              breakdown?: {   # (추가 2026-11-03 PM 결정, 대시보드 집계) 없으면 화면은 공정·산업군 막대 줄을 숨긴다 — 실제 집계(#216)가 붙기 전 거산 전달본에 가짜 숫자가 보이면 안 되므로. 가짜 숫자 모드(VITE_USE_FIXTURES)에서만 고정값으로 채움
+                basis: { statuses: [INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, WON_THIS_YEAR], total: int },   # "대시보드 대상": 관심 / 진행 중 / 올해 성공(WON이고 outcomeAt이 올해). 미접촉·보류·거절·작년 이전 성공·가상 사례 제외
+                byProcess: [{ processCode, processName, count: int, ratio: number }],   # 9종 전부(0 포함), 역량 파일 순서. 한 회사가 여러 공정이면 각각 셈. ratio = count ÷ total 소수 2자리(합이 1을 넘을 수 있음)
+                byIndustry: [{ industry: string, count: int, ratio: number, includesProposed: boolean }]   # 설정 industries 순서 + 맨 끝 "미확정". AI 제안 포함(PM 결정, 막대 옆 "AI 제안 포함" 표시). dashboard.countProposedIndustries false면 확정(STAFF)만
+              }
             )
+  /dashboard/map:
+    get:
+      summary: (추가 2026-11-03 PM 결정, 2차 #222 지도 하위) 대시보드 지도용 점 목록. 접속 보호 뒤에만. 응답에 메모·연락처·대표번호 없음. 좌표는 도로명주소 API로 구해 저장한 값(네이버 지도에서 받은 값 아님)
+      responses: { '200': { description: 'Envelope(center{ lat, lng }(설정 geosan), ringsKm: [30, 50, 100](설정 distanceFilterPresetsKm), points[{ oppId, customerName, lat, lng, group: enum[INTERESTED, IN_PROGRESS, WON_THIS_YEAR], distanceKm }], missingCoordinates: int, asOf)' } }
   /opportunities/{oppId}/homepage-candidates:
     get:
       summary: (안 씀 — 2026-11-03 저녁 PM 결정 B) 네이버 결과 목록을 보여 주던 경로. ② 홈페이지 찾기는 OpenAI 웹 검색이 자동으로 하고 결과는 상세 머리(homepageStatus·homepageUrl)로 보이므로 이 경로는 만들지 않는다. 경로 호환을 위해 이름만 남김
@@ -520,6 +534,11 @@ check_transfer:
       - 허용 kind: PUBLIC_TEXT, EVIDENCE, OPPORTUNITY_INFO, QUESTION, CAPABILITY_VALUE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION (내부용 출력이므로 허용하되 파일에 "내부용·고객 제출용 아님"과 가상 표시를 넣는다)
       - (추가 2026-11-03 PM 지시) kind NOTE(영업 메모)와 회사 대표번호(mainPhone)는 엑셀·질문 목록에 넣지 않는다. 남은 자유 문장에는 scrub_contacts를 적용한다(연락처는 파일로 나가지 않음)
       - 예외: 출력물이 외부 제출용으로 표시된 경우(이번 범위 없음)는 INTERNAL_ONLY 이상을 거부
+  screenMapRule:   # (추가 2026-11-03 PM 결정, 대시보드 지도 — TransferGuard 용도가 아니라 화면 규칙) 네이버클라우드 Maps 웹 지도(Dynamic Map)에 거산 내부 정보가 나가지 않게
+    - 지도 SDK에 넘기는 값은 마커 위치 좌표와 원의 중심·반지름뿐. 회사 이름·영업 단계·거리·메모는 SDK 함수 인자로 넘기지 않고 우리 쪽 HTML 요소(말풍선)로 그린다
+    - 네이버 서버로 가는 것은 지도 조각(타일) 요청(화면 중심·확대 단계)과 클라이언트 ID·페이지 주소뿐. 마커는 브라우저 안에서 그려지며 서버로 전송되지 않는다
+    - naver.maps.Service(검색·지오코딩·길찾기)는 호출하지 않는다. 검사: 화면 테스트에서 SDK 가짜 객체를 두고 Service.* 호출이 0건인지 확인(Vitest)
+    - 지도용 데이터(GET /dashboard/map)는 접속 보호 뒤에만, 응답에 메모·연락처·대표번호 없음. 클라이언트 ID는 콘솔에서 허용 서비스 URL을 등록
   output: { allowed: boolean, rejectedItems: [{ refId, reason }], logId: string }
   noPartialSend: allowed=false면 호출자는 아무것도 보내지 않는다(걸러서 다시 보내지 않음)
   sideEffect: TransferLog 1행 (본문 없음, 트랜잭션 밖). LLM 재시도는 호출마다 1행
@@ -590,7 +609,7 @@ CaseFile:
   isVirtual: true
   datasetKind: datasetKind
   notes: [string]                       # 예: "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가"
-  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null }   # lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션)
+  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null, industries: json|null, industriesSource: enum[AI, STAFF]|null, industriesConfirmedAt|null }   # industries 3열은 추가 2026-11-03(PM 결정, 대시보드 산업군 — 설정 목록 안 값 ≤3, AI 제안 뒤 담당자 확정). lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션)
   interactions: [{ kind: interactionKind, occurredAt, allowedSummary, linkedToOpportunity: boolean, certainty }]
   opportunity: { item, project, purpose, owner, cardReason: string|null }   # cardReason: 카드 추천 이유 한 문장, 출처 제외 80자 안 권장(넘으면 경고만; 더하는 변경 2026-10-26 PM, #139)
   discoveryPaths: [{ pathKind, sourceId, originKey, discoveredAt }]
@@ -645,7 +664,10 @@ AppSettings:
   research: { staleAfterDays: 90 }
   geosan: { address: string, lat: number, lng: number }   # (추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소와 좌표. PM이 한 번 적음(좌표는 지도에서 읽어 넣음). 거리는 모두 이 점에서 잰다
   geocoding: { provider: JUSO, enabled: boolean, dailyCallLimit: int }   # (추가 2026-11-03 PM 결정) 행정안전부 도로명주소 API. 키는 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY. 기본 enabled false(키 받기 전)
-  distanceFilterPresetsKm: [30, 50, 100]   # (추가 2026-11-03 PM 결정) 목록 거리 필터 선택지   # (추가 2026-11-03 PM 지시) 마지막 조사가 이 일수보다 오래되면 상세 머리에 "오래됨" 표시
+  distanceFilterPresetsKm: [30, 50, 100]   # (추가 2026-11-03 PM 결정) 목록 거리 필터 선택지. 대시보드 지도 원 반지름에도 씀
+  industries: [string]   # (추가 2026-11-03 PM 결정, 대시보드 산업군) 초안 10개: 방위산업, 반도체, 반도체 장비, 자동차 부품, 항공우주, 밸브·유체기기, 조선·해양, 전기·전자, 기계·설비, 기타 — 거산 확인 뒤 확정(#208 질문). 코드에 적지 않고 여기서만
+  dashboard: { countProposedIndustries: true }   # (추가 2026-11-03 PM 결정) 산업군 집계에 AI 제안 포함(true, 막대 옆 "AI 제안 포함" 표시)
+  map: { provider: NAVER_CLOUD, enabled: boolean }   # (추가 2026-11-03 PM 결정, 2차) 대시보드 지도. 클라이언트 ID는 화면 빌드 환경 변수 VITE_NCP_MAPS_CLIENT_ID(비밀 아님, 콘솔 허용 URL로 보호). 지오코딩에는 쓰지 않음(거리 제안서 8장)   # (추가 2026-11-03 PM 지시) 마지막 조사가 이 일수보다 오래되면 상세 머리에 "오래됨" 표시
   brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"
   accessProtection: { enabled: boolean }      # 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD
 ```
@@ -707,7 +729,7 @@ LlmAdapter:
   usageGuard: 호출 전 C4 월 호출 상한·월 비용 상한을 함께 검사. 초과면 호출하지 않고 503 LLM_LIMIT
 HomepageFinder:                           # (2026-11-03 저녁, PM 결정 B로 갱신) ② 홈페이지 찾기 = OpenAI 웹 검색 도구가 찾고 바로 저장, 담당자는 상세에서 확인·수정. C9 열린 질문 "검색 방식·비용·약관"의 답. (낮의 네이버 안은 특약 때문에 담당자 확정이 먼저 필요해 버림)
   find(companyName, address) -> { provider: OPENAI_WEB_SEARCH, url: string|null, confidence: 0~1, reason: string, fetchedAt }   # 모델에 "이 회사의 공식 홈페이지 주소 하나와 확신도·이유"를 구조화 출력으로 요구. 공식 홈페이지가 아닌 디렉터리·블로그·채용 사이트는 제외하라고 지시. 못 찾으면 url null
-  # (추가 2026-11-03 PM 지시) LlmAdapter 근거 추출 결과에 companySummary: { line: string, highlights: [string ≤3] }, companyMainPhone: string|null 을 더한다. 공개 본문의 사실만, 담당자 개인 연락처는 뽑지 않는다
+  # (추가 2026-11-03 PM 지시) LlmAdapter 근거 추출 결과에 companySummary: { line: string, highlights: [string ≤3] }, companyMainPhone: string|null 을 더한다. 공개 본문의 사실만, 담당자 개인 연락처는 뽑지 않는다. (추가 2026-11-03 PM 결정, 대시보드 산업군) companySummary.industries: [string ≤3] — 설정 industries 목록 안 값만(목록을 프롬프트에 넣어 고르게), 없으면 빈 배열, 출처 AI
   save(oppId, result) -> homepageUrl·homepageConfidence·homepageSource AI·homepageStatus(AI_FOUND | NEEDS_CONFIRMATION(confidence < homepageDiscovery.minConfidence) | NOT_FOUND). 저장 뒤 autoResearch면 흐름 ①(C1 POST /homepage 와 같은 내부 호출: 본문 읽기 → 근거 추출 → 재평가). NOT_FOUND면 건너뜀
   confirm(oppId, url|null, confirmedBy, confirmOnly) -> [맞음]은 상태만 CONFIRMED(source STAFF). 주소를 고치면 새 url로 흐름 ① 다시(이전 AI 근거는 이력으로 남김)
   query: 회사명 + 주소(둘 다 공개 CSV·사례 파일 출처). TransferGuard EXTERNAL_SEARCH 통과 뒤에만 호출(C4). 검색어에 메모·내부 값·연락처가 섞이면 호출 안 함
@@ -746,7 +768,8 @@ ExternalSourceApi (공장등록·나라장터):
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
 | C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03 저녁, PM 결정 B 확정)**: **OpenAI 웹 검색 도구**가 찾아 주소·확신도를 바로 저장하고, 회사가 들어올 때 근거 추출·재평가까지 자동으로 잇는다. 담당자는 상세 화면에서 [맞음]/주소 고치기. 확신도 낮으면 "홈페이지 확인 필요" 띠. 비용은 월 $20 상한 안(1곳 약 4~6센트). (낮에 정한 네이버 검색 API 안은 특약상 담당자 확정이 먼저 필요해 같은 날 버림. 구글 Custom Search는 신규 중단) U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder) | ~~U9~~ → U2 |
 | C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회(웹 검색 호출 포함). 키는 OPENAI_API_KEY 하나(결정 B로 네이버 키 불필요). 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. **(2026-11-03 저녁 결정 B)** 상세 머리 homepageStatus·homepageConfidence·homepageSource, `POST /homepage` confirmOnly, `homepageDiscovery` 칸 3개, `geosan research` 명령, HomepageFinder find/save/confirm — 더하는 변경. `naverSearch`·`/homepage-candidates`는 "안 씀". 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
-| C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소는 제2공장 봉주로 303-1(PM 확정 2026-11-03), 설정 `geosan.address` | #222 (11/17 주, 코드 PR과 같이) |
+| C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소는 봉주로 303-1 본사(PM 최종 확정 2026-11-03 밤. 소개서 기업개요는 본사, '오시는 길' 슬라이드는 제2공장으로 적는 같은 주소), 설정 `geosan.address` | #222 (11/17 주, 코드 PR과 같이) |
+| C1·C4·C6·C7·C9 | (2026-11-03 밤, PM 결정 대시보드 집계·지도) `/dashboard` 응답 `breakdown`(공정 9종·산업군, "대시보드 대상" 기준, 없으면 화면이 막대 줄을 숨김), `GET /dashboard/map`, 상세 머리 `industries`·`industriesSource`, `POST /industries`, C4 화면 지도 규칙, `opp_customer` 산업군 3열, 설정 `industries`·`dashboard`·`map`, LlmAdapter `companySummary.industries`. 모두 더하는 변경. 제안서 `../delivery-planning/dashboard-breakdown-map-20261103.md` | 막대(가짜) #215 → 집계 #216(11/10 결정), 산업군 AI #219, 칩 #209·#210, 지도 #226(2차) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
