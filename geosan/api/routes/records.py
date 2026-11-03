@@ -2,20 +2,272 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path
-from sqlalchemy import select
+from fastapi import APIRouter, Path, Query
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from geosan.api.deps import SessionDep, StaffDep
-from geosan.api.schemas import Meta, OpinionEnvelope, OpinionRecord, OpinionRequest, OpinionResponse
+from geosan.api.deps import SessionDep, StaffDep, runtime_for
+from geosan.api.schemas import (
+    ActivityEnvelope,
+    ActivityItem,
+    ContactCount,
+    MainPhoneConfirmEnvelope,
+    MainPhoneConfirmRequest,
+    MainPhoneConfirmResponse,
+    Meta,
+    NoteEnvelope,
+    NoteRequest,
+    NoteResponse,
+    OpinionEnvelope,
+    OpinionRecord,
+    OpinionRequest,
+    OpinionResponse,
+    OutcomeEnvelope,
+    OutcomeRequest,
+    OutcomeResponse,
+)
 from geosan.config.errors import FieldError, InputError, NotFoundError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Opportunity
-from geosan.records.models import ReviewOpinion
+from geosan.opportunity.queries import confirm_main_phone
+from geosan.records.models import Note, Outcome, ReviewOpinion
 from geosan.storage.base import new_id, utcnow
 
 router = APIRouter()
+
+
+def contact_counts(session: Session, opp_id: str) -> ContactCount:
+    counts = dict(
+        session.execute(
+            select(Outcome.method, func.count())
+            .where(Outcome.opp_id == opp_id, Outcome.method.in_(["CALL", "EMAIL", "VISIT"]))
+            .group_by(Outcome.method)
+        ).all()
+    )
+    return ContactCount(
+        total=sum(counts.values()),
+        call=counts.get("CALL", 0),
+        email=counts.get("EMAIL", 0),
+        visit=counts.get("VISIT", 0),
+    )
+
+
+@router.post("/opportunities/{oppId}/main-phone/confirm", response_model=MainPhoneConfirmEnvelope)
+def save_main_phone_confirmation(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: MainPhoneConfirmRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    customer = confirm_main_phone(session, opp_id, body.expected_phone, staff)
+    return MainPhoneConfirmEnvelope(
+        data=MainPhoneConfirmResponse(
+            main_phone=customer.main_phone,
+            main_phone_confirmed_at=customer.main_phone_confirmed_at,
+            main_phone_confirmed_by=customer.main_phone_confirmed_by,
+        ),
+        meta=Meta(
+            updated_at=customer.main_phone_confirmed_at,
+            dataset_kind=customer.dataset_kind,
+            has_virtual_data=customer.is_virtual,
+        ),
+    )
+
+
+def latest_outcome(session: Session, opp_id: str) -> Outcome | None:
+    return session.scalar(
+        select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version.desc())
+    )
+
+
+def outcome_view(row: Outcome | None) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "version": row.version,
+        "updatedBy": row.created_by,
+        "updatedAt": row.created_at.isoformat(),
+        "status": row.status,
+        "nextScheduleAt": row.next_schedule_at.isoformat() if row.next_schedule_at else None,
+        "nextScheduleNote": row.next_schedule_note,
+    }
+
+
+@router.post("/opportunities/{oppId}/outcomes", response_model=OutcomeEnvelope)
+def save_outcome(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: OutcomeRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    fields = scan_contacts(
+        {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
+    )
+    if body.status == "LOST" and not (body.reason and body.reason.strip()):
+        fields.append(FieldError(path="reason", message="거절 사유를 적어 주세요."))
+    if fields:
+        raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("기록을 남길 기회가 없습니다.")
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    previous = latest_outcome(session, opp_id)
+    values = body.model_dump(exclude={"eval_id", "expected_version"})
+    # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
+    for name in ("next_schedule_at", "next_schedule_note"):
+        if previous and name not in body.model_fields_set:
+            values[name] = getattr(previous, name)
+    row = Outcome(
+        outcome_id=new_id("outcome"),
+        opp_id=opp_id,
+        **values,
+        version=previous.version + 1 if previous else 1,
+        created_by=staff,
+        dataset_kind=opportunity.dataset_kind,
+        is_virtual=opportunity.is_virtual,
+    )
+    session.add(row)
+    session.flush()
+    previous_value = None
+    if previous and previous.version > (body.expected_version or 0):
+        previous_value = outcome_view(previous)
+    return OutcomeEnvelope(
+        data=OutcomeResponse(
+            status=row.status, version=row.version, updated_by=staff, updated_at=row.created_at
+        ),
+        meta=Meta(
+            updated_at=row.created_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
+            previous_value=previous_value,
+        ),
+    )
+
+
+@router.get("/opportunities/{oppId}/activity", response_model=ActivityEnvelope)
+def activity(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    session: SessionDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("활동을 조회할 기회가 없습니다.")
+    items = []
+    for row in session.scalars(
+        select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc()).limit(limit)
+    ):
+        items.append(
+            ActivityItem(
+                at=row.created_at,
+                actor=row.staff_key,
+                kind="NOTE",
+                summary=f"자료 조사 · {row.text}" if row.kind == "RESEARCH" else row.text,
+            )
+        )
+    for row in session.scalars(
+        select(Outcome)
+        .where(Outcome.opp_id == opp_id)
+        .order_by(Outcome.version.desc())
+        .limit(limit)
+    ):
+        status_label = {
+            "NOT_EXECUTED": "미접촉",
+            "INTERESTED": "관심",
+            "IN_PROGRESS": "접촉",
+            "SAMPLE_OR_REGISTRATION_APPROVED": "견적·샘플",
+            "ON_HOLD": "보류",
+            "WON": "성사",
+            "LOST": "거절",
+        }[row.status]
+        summary = status_label
+        if row.method:
+            method = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}[row.method]
+            result = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}.get(row.result, "")
+            summary += f" · {row.attempted_at or ''} {method} {result}"
+        if row.next_schedule_at:
+            summary += f" · 다음 일정 {row.next_schedule_at} {row.next_schedule_note or ''}"
+        if row.reason:
+            summary += f" · {row.reason}"
+        items.append(
+            ActivityItem(
+                at=row.created_at,
+                actor=row.created_by,
+                kind="CONTACT_ATTEMPT" if row.method else "OUTCOME",
+                summary=summary,
+            )
+        )
+    for row in session.scalars(
+        select(ReviewOpinion)
+        .where(ReviewOpinion.opp_id == opp_id)
+        .order_by(ReviewOpinion.version.desc())
+        .limit(limit)
+    ):
+        items.append(
+            ActivityItem(
+                at=row.recorded_at,
+                actor=row.staff_name,
+                kind="OPINION",
+                summary=row.opinion,
+                eval_id=row.eval_id,
+            )
+        )
+    items.sort(key=lambda item: item.at, reverse=True)
+    return ActivityEnvelope(
+        data=items[:limit],
+        meta=Meta(
+            dataset_kind=opportunity.dataset_kind,
+            has_virtual_data=opportunity.is_virtual,
+        ),
+    )
+
+
+@router.post("/opportunities/{oppId}/notes", response_model=NoteEnvelope)
+def save_note(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: NoteRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    limit = runtime_for(session).app_settings.records.note_max_length
+    if len(body.text) > limit:
+        raise InputError(
+            "영업 메모의 글자 수를 확인해 주세요.",
+            fields=[FieldError(path="text", message=f"{limit}자 이내로 적어 주세요.")],
+        )
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("메모를 남길 기회가 없습니다.")
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    previous = session.scalar(
+        select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc())
+    )
+    now = utcnow()
+    row = Note(
+        note_id=new_id("note"),
+        opp_id=opp_id,
+        staff_key=staff,
+        text=body.text,
+        kind=body.kind,
+        version=previous.version + 1 if previous else 1,
+        created_at=now,
+        created_by=staff,
+        dataset_kind=opportunity.dataset_kind,
+        is_virtual=opportunity.is_virtual,
+    )
+    session.add(row)
+    session.flush()
+    return NoteEnvelope(
+        data=NoteResponse(
+            note_id=row.note_id, version=row.version, updated_by=staff, updated_at=now
+        ),
+        meta=Meta(updated_at=now, has_virtual_data=row.is_virtual, dataset_kind=row.dataset_kind),
+    )
 
 
 def latest_opinion(session: Session, opp_id: str) -> ReviewOpinion | None:

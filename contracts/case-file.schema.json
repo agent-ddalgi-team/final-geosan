@@ -23,6 +23,7 @@
         "name": { "type": "string", "minLength": 1 },
         "bizNumber": { "type": ["string", "null"], "pattern": "^[0-9]{10}$" },
         "address": { "type": ["string", "null"] },
+        "industries": { "type": "array", "maxItems": 3, "items": { "type": "string" }, "description": "설정 industries 목록 안 값. 사례 파일 출처 CASE_FILE (2026-11-03 PM 승인)" },
         "identityBasis": { "type": ["string", "null"] },
         "relationStatus": { "$ref": "#/$defs/relationStatus" },
         "relationConfirmedAt": { "type": ["string", "null"], "format": "date" },

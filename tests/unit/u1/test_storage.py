@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from alembic import command
 from sqlalchemy import select, text
 from sqlalchemy.exc import StatementError
 
@@ -23,6 +24,7 @@ from geosan.storage.init_db import init_db
 from geosan.storage.metadata import TABLE_PREFIXES, table_names
 from geosan.storage.migrate import (
     ALEMBIC_INI,
+    alembic_config,
     current_revisions,
     downgrade,
     script_heads,
@@ -31,6 +33,51 @@ from geosan.storage.migrate import (
 from geosan.storage.session import session_scope
 
 ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+@pytest.mark.parametrize("previous", ["rec_002", "web_001", "opp_004"])
+def test_upgrade_both_branches_preserves_existing_data(tmp_path: Path, previous: str) -> None:
+    """Given 뼈대·로그인·기록 DB / When 최신화 두 번 / Then 기존 행·로그인 실패 횟수를 보존한다."""
+    db = tmp_path / "previous.db"
+    command.upgrade(alembic_config(db), previous)
+    with sqlite3.connect(db) as connection:
+        connection.execute(
+            "INSERT INTO opp_customer (customer_id, name, normalized_name, normalized_address, "
+            "relation_status, company_filter_status, security_grade, created_at, created_by, "
+            "dataset_kind, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "cust-test",
+                "가상기업",
+                "가상기업",
+                "충남천안시가상로",
+                "UNCONFIRMED",
+                "PASS",
+                "PUBLIC",
+                "2026-11-03T00:00:00+00:00",
+                "test",
+                "VIRTUAL_REVIEWED",
+                1,
+            ),
+        )
+        if previous == "web_001":
+            connection.execute(
+                "INSERT INTO web_access_session (session_id, expires_at, last_seen_at, "
+                "failure_count, created_at, created_by, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("test-failure", "2026-11-04", "2026-11-03", 3, "2026-11-03", "test", 1),
+            )
+    assert upgrade_to_head(db) == ["opp_005"]
+    assert upgrade_to_head(db) == ["opp_005"]
+    with sqlite3.connect(db) as connection:
+        assert connection.execute(
+            "SELECT name, normalized_address, address FROM opp_customer WHERE customer_id=?",
+            ("cust-test",),
+        ).fetchone() == ("가상기업", "충남천안시가상로", None)
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        if previous == "web_001":
+            assert connection.execute(
+                "SELECT failure_count FROM web_access_session WHERE session_id=?", ("test-failure",)
+            ).fetchone() == (3,)
+    assert {"web_access_session", "rec_note", "rec_outcome"} <= set(_table_names(db))
 
 
 def _table_names(db_path: Path) -> list[str]:
@@ -81,7 +128,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["web_001"]
+    assert first == script_heads() == ["opp_005"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -89,8 +136,24 @@ def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
 
 
 def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path) -> None:
-    """승인된 세션 표부터 되돌리고 기존 기록·요약 열 복원 검사도 유지한다(#213)."""
-    assert downgrade(tmp_db, "-1") == ["rec_002"]
+    """병합 단계는 양쪽 표를 보존하고, 명시한 버전까지 되돌린 후 모두 복원한다."""
+    assert downgrade(tmp_db, "merge_001") == ["merge_001"]
+    assert "address" not in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "opp_004") == ["opp_004", "web_001"]
+    assert {"web_access_session", "rec_note", "rec_outcome"} <= set(_table_names(tmp_db))
+    assert downgrade(tmp_db, "rec_005") == ["rec_005", "web_001"]
+    assert "industries" not in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "opp_003") == ["opp_003", "web_001"]
+    assert "kind" not in _column_names(tmp_db, "rec_note")
+    assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
+    assert "main_phone_confirmed_at" not in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "rec_003") == ["rec_003", "web_001"]
+    assert "rec_outcome" not in _table_names(tmp_db)
+    assert "rec_note" in _table_names(tmp_db)
+    assert downgrade(tmp_db, "opp_002") == ["opp_002", "web_001"]
+    assert "rec_note" not in _table_names(tmp_db)
+    assert downgrade(tmp_db, "rec_002") == ["rec_002"]
+    assert "summary_line" not in _column_names(tmp_db, "opp_customer")
     assert "web_access_session" not in _table_names(tmp_db)
     assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
     assert downgrade(tmp_db, "-1") == ["rec_001"]
@@ -100,7 +163,10 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["web_001"]
+    assert upgrade_to_head(tmp_db) == ["opp_005"]
+    assert "address" in _column_names(tmp_db, "opp_customer")
+    assert {"rec_note", "rec_outcome"} <= set(_table_names(tmp_db))
+    assert "summary_line" in _column_names(tmp_db, "opp_customer")
     assert "web_access_session" in _table_names(tmp_db)
     assert "rec_review_opinion" in _table_names(tmp_db)
     assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
@@ -108,7 +174,7 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
 
 
 def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
-    """U1 28개와 PM 승인된 U8 세션 표가 DB·metadata에 일치한다(계약 C6)."""
+    """U1 28개·기록 2개·로그인 1개 표가 DB·metadata에 일치한다(계약 C6)."""
     expected_counts = {
         "cfg_": 2,
         "cap_": 7,
@@ -116,12 +182,12 @@ def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
         "ev_": 1,
         "eval_": 7,
         "q_": 3,
-        "rec_": 1,
+        "rec_": 3,
         "web_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    assert len(db_tables) == 29
+    assert len(db_tables) == 31
     prefixes = (*TABLE_PREFIXES, "web_")
     for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix

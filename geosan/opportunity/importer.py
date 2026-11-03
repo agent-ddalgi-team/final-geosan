@@ -36,7 +36,7 @@ from geosan.opportunity.queries import (
 )
 from geosan.questions.store import store_research, supersede_research
 from geosan.rules.models import RuleConfig
-from geosan.storage.base import new_id
+from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 
 
@@ -72,7 +72,11 @@ def import_case(
     try:
         with session_scope(db_path) as session:
             runtime = load_runtime_config(session)
-            report = check_case_file(file_path, rule_config_path=runtime.rule_config_path)
+            report = check_case_file(
+                file_path,
+                rule_config_path=runtime.rule_config_path,
+                industries=runtime.app_settings.industries,
+            )
             if not report.ok:
                 raise InputError("사례 파일에 오류가 있습니다.", fields=report.errors)
             if report.case is None:
@@ -147,7 +151,7 @@ def _store(
     if customer is None:
         customer = Customer(customer_id=new_id("cust"), **common)
         session.add(customer)
-    values = model.customer.model_dump(exclude={"address"}, mode="json")
+    values = model.customer.model_dump(mode="json")
     values.update(
         normalized_name=normalize_name(model.customer.name),
         normalized_address=normalize_address(model.customer.address),
@@ -155,6 +159,13 @@ def _store(
     )
     for key, value in values.items():
         setattr(customer, key, value)
+    customer.summary_line = model.opportunity.card_reason
+    customer.highlights = []
+    customer.researched_at = utcnow()
+    customer.research_source = "CASE_FILE"
+    customer.industries = list(dict.fromkeys(model.customer.industries))
+    customer.industries_source = "CASE_FILE" if customer.industries else None
+    customer.industries_confirmed_at = None
     session.flush()
     opportunity = find_case(session, model.case_id)
     if opportunity is None:

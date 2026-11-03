@@ -1,6 +1,57 @@
 {
   "components": {
     "schemas": {
+      "ActivityItem": {
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "evalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalid"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "previousValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previousvalue"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "actor",
+          "kind",
+          "summary"
+        ],
+        "title": "ActivityItem",
+        "type": "object"
+      },
       "ApprovalEligibility": {
         "properties": {
           "allowedPurposes": {
@@ -184,6 +235,9 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "records": {
+            "$ref": "#/components/schemas/RecordsUi"
+          },
           "ruleVersion": {
             "title": "Ruleversion",
             "type": "string"
@@ -202,9 +256,36 @@
           "classificationLabels",
           "activeDatasetKind",
           "accessProtectionEnabled",
-          "ruleVersion"
+          "ruleVersion",
+          "records"
         ],
         "title": "ConfigUi",
+        "type": "object"
+      },
+      "ContactCount": {
+        "properties": {
+          "call": {
+            "default": 0,
+            "title": "Call",
+            "type": "integer"
+          },
+          "email": {
+            "default": 0,
+            "title": "Email",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "visit": {
+            "default": 0,
+            "title": "Visit",
+            "type": "integer"
+          }
+        },
+        "title": "ContactCount",
         "type": "object"
       },
       "DatasetKind": {
@@ -218,6 +299,10 @@
       },
       "DetailHeader": {
         "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
           "classificationCode": {
             "$ref": "#/components/schemas/ClassificationCode"
           },
@@ -233,6 +318,25 @@
           "datasetKind": {
             "$ref": "#/components/schemas/DatasetKind"
           },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "highlights": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Highlights",
+            "type": "array"
+          },
           "homepageUrl": {
             "anyOf": [
               {
@@ -245,6 +349,24 @@
             "description": "상대 회사 공개 홈페이지 뿌리 주소. 근거 출처(sourceRef)의 주소에서 가장 많이 나온 뿌리(scheme+host)를 쓴다. 주소 있는 근거가 없으면 null(더하는 변경 2026-10-27, #176)",
             "title": "Homepageurl"
           },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "industriesSource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industriessource"
+          },
           "isRecontact": {
             "default": false,
             "title": "Isrecontact",
@@ -253,6 +375,66 @@
           "isVirtual": {
             "title": "Isvirtual",
             "type": "boolean"
+          },
+          "mainPhone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphone"
+          },
+          "mainPhoneConfirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphoneconfirmedat"
+          },
+          "mainPhoneConfirmedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphoneconfirmedby"
+          },
+          "mainPhoneSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "HOMEPAGE",
+                  "CSV"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphonesource"
+          },
+          "mainPhoneSourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphonesourceurl"
           },
           "opportunityItem": {
             "title": "Opportunityitem",
@@ -287,10 +469,53 @@
           "relationStatus": {
             "$ref": "#/components/schemas/RelationStatus"
           },
+          "researchSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "CASE_FILE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Researchsource"
+          },
+          "researchStale": {
+            "default": false,
+            "title": "Researchstale",
+            "type": "boolean"
+          },
+          "researchedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Researchedat"
+          },
           "scoreDisplay": {
             "description": "'<E>점 · <n>/<전체>'(예: '77점 · 7/8'), 판정 0개면 '--', 소개서 묶음이면 '참고 ' 접두(예: '참고 50점 · 3/8') (BR10.2, PM 결정 2026-10-28 #180)",
             "title": "Scoredisplay",
             "type": "string"
+          },
+          "summaryLine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summaryline"
           },
           "title": {
             "title": "Title",
@@ -298,6 +523,7 @@
           }
         },
         "required": [
+          "address",
           "title",
           "customerName",
           "opportunityItem",
@@ -336,6 +562,9 @@
               }
             ],
             "title": "Bookmark"
+          },
+          "contactCount": {
+            "$ref": "#/components/schemas/ContactCount"
           },
           "opinion": {
             "anyOf": [
@@ -378,6 +607,36 @@
         "title": "Envelope[ConfigUi]",
         "type": "object"
       },
+      "Envelope_MainPhoneConfirmResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MainPhoneConfirmResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[MainPhoneConfirmResponse]",
+        "type": "object"
+      },
+      "Envelope_NoteResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NoteResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[NoteResponse]",
+        "type": "object"
+      },
       "Envelope_OpinionResponse_": {
         "properties": {
           "data": {
@@ -406,6 +665,40 @@
           "data"
         ],
         "title": "Envelope[OpportunityDetail]",
+        "type": "object"
+      },
+      "Envelope_OutcomeResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OutcomeResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[OutcomeResponse]",
+        "type": "object"
+      },
+      "Envelope_list_ActivityItem__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[list[ActivityItem]]",
         "type": "object"
       },
       "Envelope_list_OpportunityCard__": {
@@ -501,6 +794,62 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IndustryCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          }
+        },
+        "required": [
+          "industry",
+          "count"
+        ],
+        "title": "IndustryCount",
+        "type": "object"
+      },
+      "MainPhoneConfirmRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedPhone": {
+            "title": "Expectedphone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedPhone"
+        ],
+        "title": "MainPhoneConfirmRequest",
+        "type": "object"
+      },
+      "MainPhoneConfirmResponse": {
+        "properties": {
+          "mainPhone": {
+            "title": "Mainphone",
+            "type": "string"
+          },
+          "mainPhoneConfirmedAt": {
+            "format": "date-time",
+            "title": "Mainphoneconfirmedat",
+            "type": "string"
+          },
+          "mainPhoneConfirmedBy": {
+            "title": "Mainphoneconfirmedby",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mainPhone",
+          "mainPhoneConfirmedAt",
+          "mainPhoneConfirmedBy"
+        ],
+        "title": "MainPhoneConfirmResponse",
+        "type": "object"
+      },
       "Meta": {
         "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
         "properties": {
@@ -530,6 +879,20 @@
             "title": "Hasvirtualdata",
             "type": "boolean"
           },
+          "industryCounts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/IndustryCount"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industrycounts"
+          },
           "notEvaluatedCount": {
             "anyOf": [
               {
@@ -555,6 +918,20 @@
             "description": "동시 수정 때 이전 값(기록 종류별 객체)",
             "title": "Previousvalue"
           },
+          "processCounts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProcessCount"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcounts"
+          },
           "reevaluated": {
             "anyOf": [
               {
@@ -565,6 +942,20 @@
               }
             ],
             "title": "Reevaluated"
+          },
+          "regionCounts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RegionCount"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regioncounts"
           },
           "total": {
             "anyOf": [
@@ -601,6 +992,94 @@
         ],
         "title": "NeededStage",
         "type": "string"
+      },
+      "NoteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalid"
+          },
+          "expectedVersion": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedversion"
+          },
+          "kind": {
+            "default": "MEMO",
+            "enum": [
+              "MEMO",
+              "RESEARCH"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NoteRequest",
+        "type": "object"
+      },
+      "NoteResponse": {
+        "properties": {
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt",
+          "noteId"
+        ],
+        "title": "NoteResponse",
+        "type": "object"
       },
       "Opinion": {
         "enum": [
@@ -789,6 +1268,11 @@
           "classificationCode": {
             "$ref": "#/components/schemas/ClassificationCode"
           },
+          "contactCount": {
+            "default": 0,
+            "title": "Contactcount",
+            "type": "integer"
+          },
           "coreEvidenceRecheck": {
             "default": false,
             "title": "Coreevidencerecheck",
@@ -800,6 +1284,13 @@
           "evalId": {
             "title": "Evalid",
             "type": "string"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
           },
           "isRecontact": {
             "default": false,
@@ -817,6 +1308,13 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "processCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
           },
           "rank": {
             "title": "Rank",
@@ -845,6 +1343,17 @@
             "default": false,
             "title": "Reevaluated",
             "type": "boolean"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
           },
           "scoreDisplay": {
             "description": "'<E>점 · <n>/<전체>'(예: '77점 · 7/8'), 판정 0개면 '--', 소개서 묶음이면 '참고 ' 접두(예: '참고 50점 · 3/8') (BR10.2, PM 결정 2026-10-28 #180)",
@@ -1010,6 +1519,237 @@
           "evidence"
         ],
         "title": "OpportunityDetail",
+        "type": "object"
+      },
+      "OutcomeRequest": {
+        "additionalProperties": false,
+        "description": "계약 C1의 코드 값. #211 공통 코드표와 같은 계약으로 연결한다.",
+        "properties": {
+          "actionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actionid"
+          },
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attemptedat"
+          },
+          "evalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalid"
+          },
+          "expectedVersion": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedversion"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "CALL",
+                  "EMAIL",
+                  "VISIT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          },
+          "nextScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextschedulenote"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "replyReceived": {
+            "default": false,
+            "title": "Replyreceived",
+            "type": "boolean"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REACHED",
+                  "ABSENT",
+                  "DECLINED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "enum": [
+              "NOT_EXECUTED",
+              "INTERESTED",
+              "IN_PROGRESS",
+              "SAMPLE_OR_REGISTRATION_APPROVED",
+              "ON_HOLD",
+              "WON",
+              "LOST"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "OutcomeRequest",
+        "type": "object"
+      },
+      "OutcomeResponse": {
+        "properties": {
+          "status": {
+            "enum": [
+              "NOT_EXECUTED",
+              "INTERESTED",
+              "IN_PROGRESS",
+              "SAMPLE_OR_REGISTRATION_APPROVED",
+              "ON_HOLD",
+              "WON",
+              "LOST"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt",
+          "status"
+        ],
+        "title": "OutcomeResponse",
+        "type": "object"
+      },
+      "ProcessCode": {
+        "description": "거산 공정 9종 (FR1.1). 영문 코드는 팀 제안이며 이름은 역량 파일의 name에서 온다.",
+        "enum": [
+          "ZINC_PLATING",
+          "ANODIZING",
+          "BLACK_OXIDE",
+          "CHROMATE",
+          "ELECTROPOLISHING",
+          "CHROME_PLATING",
+          "ELECTROLESS_NICKEL",
+          "PHOSPHATE_COATING",
+          "PASSIVATION"
+        ],
+        "title": "ProcessCode",
+        "type": "string"
+      },
+      "ProcessCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "processCode": {
+            "title": "Processcode",
+            "type": "string"
+          },
+          "processName": {
+            "title": "Processname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processCode",
+          "processName",
+          "count"
+        ],
+        "title": "ProcessCount",
         "type": "object"
       },
       "ProcessLinkView": {
@@ -1247,6 +1987,42 @@
           "nextAction"
         ],
         "title": "Reasons",
+        "type": "object"
+      },
+      "RecordsUi": {
+        "properties": {
+          "approvalEnabled": {
+            "title": "Approvalenabled",
+            "type": "boolean"
+          },
+          "noteMaxLength": {
+            "title": "Notemaxlength",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "approvalEnabled",
+          "noteMaxLength"
+        ],
+        "title": "RecordsUi",
+        "type": "object"
+      },
+      "RegionCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region",
+          "count"
+        ],
+        "title": "RegionCount",
         "type": "object"
       },
       "RelationStatus": {
@@ -1652,6 +2428,95 @@
               "title": "Pagesize",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "NOT_EXECUTED",
+                    "INTERESTED",
+                    "IN_PROGRESS",
+                    "SAMPLE_OR_REGISTRATION_APPROVED",
+                    "ON_HOLD",
+                    "WON",
+                    "LOST"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "process",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProcessCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Process"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Industry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
           }
         ],
         "responses": {
@@ -1718,6 +2583,187 @@
         "summary": "Opportunity Detail"
       }
     },
+    "/api/v1/opportunities/{oppId}/activity": {
+      "get": {
+        "operationId": "activity_api_v1_opportunities__oppId__activity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ActivityItem__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/main-phone/confirm": {
+      "post": {
+        "operationId": "save_main_phone_confirmation_api_v1_opportunities__oppId__main_phone_confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MainPhoneConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MainPhoneConfirmResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Main Phone Confirmation"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/notes": {
+      "post": {
+        "operationId": "save_note_api_v1_opportunities__oppId__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NoteResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Note"
+      }
+    },
     "/api/v1/opportunities/{oppId}/opinions": {
       "post": {
         "operationId": "save_opinion_api_v1_opportunities__oppId__opinions_post",
@@ -1781,6 +2827,71 @@
           }
         },
         "summary": "Save Opinion"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/outcomes": {
+      "post": {
+        "operationId": "save_outcome_api_v1_opportunities__oppId__outcomes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Outcome"
       }
     },
     "/api/v1/session": {

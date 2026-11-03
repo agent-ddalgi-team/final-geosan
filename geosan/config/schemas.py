@@ -70,6 +70,7 @@ def _require_timezone(value: datetime) -> datetime:
 
 
 class CaseCustomer(FileModel):
+    industries: list[str] = Field(default_factory=list, max_length=3)
     name: str = Field(min_length=1)
     biz_number: str | None = Field(default=None, pattern=BIZ_NUMBER_PATTERN)
     address: str | None = None

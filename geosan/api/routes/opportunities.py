@@ -1,8 +1,10 @@
 """목록 구성과 상세 영역의 등록 지점. 원래 순위와 최신 평가 내용을 따로 읽는다."""
 
 import re
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Annotated
 from urllib.parse import urlsplit
 
@@ -11,7 +13,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
-from geosan.api.routes.records import latest_opinion, opinion_view
+from geosan.api.routes.records import (
+    contact_counts,
+    latest_opinion,
+    latest_outcome,
+    opinion_view,
+    outcome_view,
+)
 from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
@@ -19,18 +27,23 @@ from geosan.api.schemas import (
     DetailHeader,
     DetailRecords,
     EvidenceView,
+    IndustryCount,
     Meta,
     OpportunityCard,
     OpportunityDetail,
     OpportunityDetailEnvelope,
     OpportunityListEnvelope,
+    OutcomeStatus,
+    ProcessCount,
     ProcessLinkView,
     Question,
     Reasons,
+    RegionCount,
     RequirementCheckView,
     ScoreItemView,
     Scores,
 )
+from geosan.capability.models import FieldEvidence, Process
 from geosan.capability.queries import get_process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
@@ -46,6 +59,9 @@ from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
+from geosan.records.models import Outcome
+from geosan.rules.codes import ProcessCode
+from geosan.storage.base import utcnow
 
 router = APIRouter()
 list_filters: list[Callable] = []
@@ -117,8 +133,26 @@ def _homepage_url(context: DetailContext) -> str | None:
 
 def _header(context: DetailContext) -> dict:
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
+    research = runtime_for(context.session).app_settings.research
     return {
         "header": DetailHeader(
+            industries=customer.industries or [],
+            industries_source=customer.industries_source,
+            address=customer.address or "",
+            distance_km=None,
+            main_phone=customer.main_phone,
+            main_phone_source=customer.main_phone_source,
+            main_phone_source_url=customer.main_phone_source_url,
+            main_phone_confirmed_at=customer.main_phone_confirmed_at,
+            main_phone_confirmed_by=customer.main_phone_confirmed_by,
+            summary_line=customer.summary_line,
+            highlights=customer.highlights or [],
+            researched_at=customer.researched_at,
+            research_source=customer.research_source,
+            research_stale=(
+                customer.researched_at is not None
+                and utcnow() - customer.researched_at > timedelta(days=research.stale_after_days)
+            ),
             title=f"{customer.name} · {opportunity.item}",
             customer_name=customer.name,
             opportunity_item=opportunity.item,
@@ -354,10 +388,11 @@ def _scores(context: DetailContext) -> dict:
 def _records(context: DetailContext) -> dict:
     return {
         "records": DetailRecords(
+            contact_count=contact_counts(context.session, context.opportunity.opp_id),
             opinion=opinion_view(latest_opinion(context.session, context.opportunity.opp_id)),
             bookmark=None,
             approval=None,
-            outcome=None,
+            outcome=outcome_view(latest_outcome(context.session, context.opportunity.opp_id)),
         )
     }
 
@@ -423,6 +458,16 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
     )
 
 
+def _address_region(address: str | None) -> str | None:
+    """계약 C1: 원본 주소의 시·군. 공백이 사라진 비교용 주소는 사용하지 않는다."""
+    parts = address.split() if address else []
+    if not parts:
+        return None
+    if parts[0].endswith(("광역시", "특별시")) or parts[0].startswith("세종"):
+        return parts[0]
+    return parts[1] if len(parts) > 1 else None
+
+
 @router.get(
     "/opportunities", response_model=OpportunityListEnvelope, response_model_exclude_unset=True
 )
@@ -432,11 +477,18 @@ def list_opportunities(
     tab: str = "new",
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
+    stage: OutcomeStatus | None = None,
+    process: ProcessCode | None = None,
+    industry: str | None = None,
+    region: str | None = None,
+    q: str | None = None,
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
+    if industry is not None and industry not in runtime.app_settings.industries:
+        raise InputError("설정 목록에 있는 산업군을 선택해 주세요.")
     if not list_filters and (
-        tab != "new" or any(key in request.query_params for key in ("q", "filter", "bookmarked"))
+        tab != "new" or any(key in request.query_params for key in ("filter", "bookmarked"))
     ):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
@@ -448,11 +500,118 @@ def list_opportunities(
                 has_virtual_data=False,
                 dataset_kind=dataset_kind,
                 total=0,
+                process_counts=[],
+                industry_counts=[],
+                region_counts=[],
                 not_evaluated_count=session.scalar(select(func.count()).select_from(Opportunity)),
             ),
         )
     population = select(EvaluationRun.opp_id).where(EvaluationRun.batch_id == batch.batch_id)
     query = select(EvaluationRun).where(EvaluationRun.batch_id == batch.batch_id)
+    # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
+    links = session.execute(
+        select(OppProcessLink.opp_id, OppProcessLink.process_code)
+        .where(OppProcessLink.opp_id.in_(population), OppProcessLink.superseded_at.is_(None))
+        .distinct()
+    ).all()
+    codes_by_opportunity: dict[str, set[str]] = {}
+    for opp_id, code in links:
+        codes_by_opportunity.setdefault(opp_id, set()).add(code)
+    # 투입기는 파일 순서대로 공정별 검수 이력을 남긴다. 재투입한 파일의 순서도 반영한다.
+    imported_at = (
+        select(func.max(FieldEvidence.created_at))
+        .where(
+            FieldEvidence.target_table == Process.__tablename__,
+            FieldEvidence.target_id == Process.process_id,
+            FieldEvidence.target_field == "reviewStatus",
+            FieldEvidence.dataset_kind == dataset_kind.value,
+        )
+        .correlate(Process)
+        .scalar_subquery()
+    )
+    processes = session.scalars(
+        select(Process)
+        .where(Process.dataset_kind == dataset_kind.value)
+        .order_by(func.coalesce(imported_at, Process.created_at), Process.process_id)
+    ).all()
+    process_counts = [
+        ProcessCount(
+            process_code=row.code,
+            process_name=re.sub(r"\s*—\s*가상\s*$", "", row.name),
+            count=sum(row.code in codes for codes in codes_by_opportunity.values()),
+        )
+        for row in processes
+        if any(row.code in codes for codes in codes_by_opportunity.values())
+    ]
+    companies = session.execute(
+        select(Opportunity, Customer)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(Opportunity.opp_id.in_(population))
+    ).all()
+    tab_companies = [
+        (opportunity, customer)
+        for opportunity, customer in companies
+        if process is None or process in codes_by_opportunity.get(opportunity.opp_id, set())
+    ]
+    industry_counts = [
+        IndustryCount(
+            industry=name,
+            count=sum(name in (customer.industries or []) for _, customer in tab_companies),
+        )
+        for name in runtime.app_settings.industries
+        if any(name in (customer.industries or []) for _, customer in tab_companies)
+    ]
+    city_counts = Counter(
+        city
+        for _, customer in tab_companies
+        if (city := _address_region(customer.address)) is not None
+    )
+    presets = runtime.app_settings.list_filters.region_presets
+    region_counts = [
+        RegionCount(region=preset.label, count=count)
+        for preset in presets
+        if (count := sum(city_counts[city] for city in set(preset.cities))) > 0
+    ] + [
+        RegionCount(region=city, count=count)
+        for city, count in sorted(city_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    selected_cities = next(
+        (set(preset.cities) for preset in presets if preset.label == region), {region}
+    )
+    search = q.strip().casefold() if q else ""
+    if industry is not None or region is not None or search:
+        matching_ids = [
+            opportunity.opp_id
+            for opportunity, customer in tab_companies
+            if (industry is None or industry in (customer.industries or []))
+            and (region is None or _address_region(customer.address) in selected_cities)
+            and (
+                not search
+                or any(
+                    search in value.casefold()
+                    for value in [customer.name, opportunity.item, *(customer.industries or [])]
+                )
+            )
+        ]
+        query = query.where(EvaluationRun.opp_id.in_(matching_ids))
+    if process is not None:
+        query = query.where(
+            EvaluationRun.opp_id.in_(
+                select(OppProcessLink.opp_id).where(
+                    OppProcessLink.process_code == process,
+                    OppProcessLink.superseded_at.is_(None),
+                )
+            )
+        )
+    if stage is not None:
+        current_stage = (
+            select(Outcome.status)
+            .where(Outcome.opp_id == EvaluationRun.opp_id)
+            .order_by(Outcome.version.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
     for filter_function in list_filters:
         query = filter_function(session, query, request)
     total = session.scalar(select(func.count()).select_from(query.subquery()))
@@ -460,7 +619,7 @@ def list_opportunities(
         query.order_by(EvaluationRun.original_rank).offset((page - 1) * page_size).limit(page_size)
     )
     cards = []
-    for original in originals:
+    for position, original in enumerate(originals, start=(page - 1) * page_size + 1):
         current = latest_confirmed_evaluation(session, original.opp_id)
         opportunity = session.get(Opportunity, original.opp_id)
         customer = session.get(Customer, opportunity.customer_id) if opportunity else None
@@ -468,8 +627,18 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         cards.append(
             OpportunityCard(
+                region=_address_region(customer.address),
+                industries=customer.industries or [],
+                contact_count=contact_counts(session, opportunity.opp_id).total,
+                process_codes=[
+                    row.code
+                    for row in processes
+                    if row.code in codes_by_opportunity.get(opportunity.opp_id, set())
+                ],
                 opp_id=opportunity.opp_id,
-                rank=original.original_rank,
+                rank=position
+                if process is not None or industry is not None or region is not None
+                else original.original_rank,
                 title=f"{customer.name} · {opportunity.item}",
                 classification_code=current.classification_code,
                 core_evidence_recheck=current.core_evidence_recheck_flag,
@@ -502,6 +671,9 @@ def list_opportunities(
             has_virtual_data=any(card.is_virtual for card in cards),
             dataset_kind=dataset_kind,
             total=total,
+            process_counts=process_counts,
+            industry_counts=industry_counts,
+            region_counts=region_counts,
             not_evaluated_count=not_evaluated,
         ),
     )

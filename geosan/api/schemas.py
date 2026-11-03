@@ -12,8 +12,8 @@ brand.demoLabel.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from datetime import date, datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -51,6 +51,22 @@ class _RequestModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
 
 
+class ProcessCount(_ApiModel):
+    process_code: str
+    process_name: str
+    count: int
+
+
+class IndustryCount(_ApiModel):
+    industry: str
+    count: int
+
+
+class RegionCount(_ApiModel):
+    region: str
+    count: int
+
+
 class Meta(_ApiModel):
     """성공 응답 meta. 목록·상세·기록이 공통으로 쓴다."""
 
@@ -63,6 +79,9 @@ class Meta(_ApiModel):
     reevaluated: bool | None = None
     evaluated_as_new: bool | None = None
     total: int | None = None
+    process_counts: list[ProcessCount] | None = None
+    industry_counts: list[IndustryCount] | None = None
+    region_counts: list[RegionCount] | None = None
     not_evaluated_count: int | None = Field(
         default=None, description="최신 FULL 묶음 뒤에 투입되어 아직 목록에 없는 기회 수"
     )
@@ -121,6 +140,11 @@ class Brand(_ApiModel):
     demo_label: str | None = None
 
 
+class RecordsUi(_ApiModel):
+    approval_enabled: bool
+    note_max_length: int
+
+
 class ConfigUi(_ApiModel):
     staff: list[StaffEntry]
     brand: Brand
@@ -128,6 +152,7 @@ class ConfigUi(_ApiModel):
     active_dataset_kind: DatasetKind
     access_protection_enabled: bool
     rule_version: str
+    records: RecordsUi
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +177,10 @@ class CardRecords(_ApiModel):
 
 
 class OpportunityCard(_ApiModel):
+    region: str | None = None
+    industries: list[str] = Field(default_factory=list)
+    process_codes: list[str] = Field(default_factory=list)
+    contact_count: int = 0
     opp_id: str
     rank: int
     title: str = Field(description="기업 · 기회 이름")
@@ -184,6 +213,20 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    industries: list[str] = Field(default_factory=list)
+    industries_source: str | None = None
+    address: str
+    distance_km: float | None = None
+    main_phone: str | None = None
+    main_phone_source: Literal["HOMEPAGE", "CSV"] | None = None
+    main_phone_source_url: str | None = None
+    main_phone_confirmed_at: datetime | None = None
+    main_phone_confirmed_by: str | None = None
+    summary_line: str | None = None
+    highlights: list[str] = Field(default_factory=list, max_length=3)
+    researched_at: datetime | None = None
+    research_source: Literal["AI", "CASE_FILE"] | None = None
+    research_stale: bool = False
     title: str
     customer_name: str
     opportunity_item: str
@@ -318,7 +361,15 @@ class Scores(_ApiModel):
     evaluated_at: datetime
 
 
+class ContactCount(_ApiModel):
+    total: int = 0
+    call: int = 0
+    email: int = 0
+    visit: int = 0
+
+
 class DetailRecords(_ApiModel):
+    contact_count: ContactCount = Field(default_factory=ContactCount)
     opinion: OpinionRecord | None = None
     bookmark: dict[str, Any] | None = None
     approval: dict[str, Any] | None = None
@@ -364,6 +415,73 @@ class OpinionResponse(OpinionRecord):
 
 
 # 화면·테스트가 참고할 수 있는 응답 유형 별칭
+class NoteRequest(_RequestModel):
+    kind: Literal["MEMO", "RESEARCH"] = "MEMO"
+    text: str
+    eval_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=0)
+    memo: str | None = Field(default=None, max_length=200)
+
+
+class NoteResponse(RecordMeta):
+    note_id: str
+
+
+class MainPhoneConfirmRequest(_RequestModel):
+    expected_phone: str
+
+
+class MainPhoneConfirmResponse(_ApiModel):
+    main_phone: str
+    main_phone_confirmed_at: datetime
+    main_phone_confirmed_by: str
+
+
+OutcomeStatus = Literal[
+    "NOT_EXECUTED",
+    "INTERESTED",
+    "IN_PROGRESS",
+    "SAMPLE_OR_REGISTRATION_APPROVED",
+    "ON_HOLD",
+    "WON",
+    "LOST",
+]
+
+
+class OutcomeRequest(_RequestModel):
+    """계약 C1의 코드 값. #211 공통 코드표와 같은 계약으로 연결한다."""
+
+    status: OutcomeStatus
+    reply_received: bool = False
+    next_schedule_at: date | None = None
+    next_schedule_note: str | None = None
+    reason: str | None = None
+    action_id: str | None = None
+    method: Literal["CALL", "EMAIL", "VISIT"] | None = None
+    result: Literal["REACHED", "ABSENT", "DECLINED"] | None = None
+    attempted_at: date | None = None
+    eval_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=0)
+    memo: str | None = Field(default=None, max_length=200)
+
+
+class OutcomeResponse(RecordMeta):
+    status: OutcomeStatus
+
+
+class ActivityItem(_ApiModel):
+    at: datetime
+    actor: str
+    kind: str
+    summary: str
+    previous_value: str | None = None
+    eval_id: str | None = None
+
+
+OutcomeEnvelope = Envelope[OutcomeResponse]
+MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
+ActivityEnvelope = Envelope[list[ActivityItem]]
+NoteEnvelope = Envelope[NoteResponse]
 ConfigUiEnvelope = Envelope[ConfigUi]
 OpportunityListEnvelope = Envelope[list[OpportunityCard]]
 OpportunityDetailEnvelope = Envelope[OpportunityDetail]

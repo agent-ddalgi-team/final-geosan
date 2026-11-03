@@ -62,6 +62,26 @@ class AccessProtectionSettings(FileModel):
     enabled: bool
 
 
+class RecordsSettings(FileModel):
+    """계약 C7, 2026-11-03 PM 기본값. 기존 설정 파일도 읽을 수 있다."""
+
+    approval_enabled: bool = False
+    note_max_length: int = Field(default=200, ge=1)
+
+
+class ResearchSettings(FileModel):
+    stale_after_days: int = Field(default=90, ge=1)
+
+
+class RegionPreset(FileModel):
+    label: str
+    cities: list[str]
+
+
+class ListFilterSettings(FileModel):
+    region_presets: list[RegionPreset] = Field(default_factory=list)
+
+
 class AppSettings(FileModel):
     """앱 설정 한 벌(C7 AppSettings). 더하는 변경(2026-10-21 PM 확인): brand.demoLabel."""
 
@@ -72,6 +92,10 @@ class AppSettings(FileModel):
     homepage_discovery: HomepageDiscoverySettings
     brand: BrandSettings
     access_protection: AccessProtectionSettings
+    records: RecordsSettings = Field(default_factory=RecordsSettings)
+    research: ResearchSettings = Field(default_factory=ResearchSettings)
+    industries: list[str] = Field(default_factory=list)
+    list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]

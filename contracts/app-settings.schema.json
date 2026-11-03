@@ -7,6 +7,44 @@
   "required": ["staff", "activeDatasetKind", "ingestion", "llm", "homepageDiscovery", "brand", "accessProtection"],
   "additionalProperties": false,
   "properties": {
+    "records": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "approvalEnabled": { "type": "boolean", "default": false },
+        "noteMaxLength": { "type": "integer", "minimum": 1, "default": 200 }
+      }
+    },
+    "research": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 }
+      }
+    },
+    "listFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "regionPresets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "cities"],
+            "additionalProperties": false,
+            "properties": {
+              "_설명": { "type": "string" },
+              "label": { "type": "string" },
+              "cities": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "industries": { "type": "array", "items": { "type": "string" }, "description": "산업군 선택지. 순서는 목록의 산업군 건수 표시 순서 (2026-11-03 PM 승인)" },
     "_설명": { "type": "string" },
     "staff": {
       "type": "array",
