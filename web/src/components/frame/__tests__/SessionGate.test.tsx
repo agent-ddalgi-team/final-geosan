@@ -121,7 +121,8 @@ it('Given 로그인 요청 통신 오류 When 실패 후 다시 입력 Then 원�
   const input = screen.getByLabelText('비밀번호');
   expect(input).toHaveValue('');
   expect(input).not.toBeDisabled();
-  expect(screen.getByRole('button', { name: '접속' })).toBeDisabled();
+  // 오류 안내 뒤 버튼의 비동기 로딩 표시까지 끝나야 다시 입력할 수 있다.
+  expect(await screen.findByRole('button', { name: '접속' })).toBeDisabled();
   expect(screen.queryByText('보호된 업무 화면')).not.toBeInTheDocument();
   expect(login).toHaveBeenCalledTimes(1);
   expect(config).toHaveBeenCalledTimes(1);
