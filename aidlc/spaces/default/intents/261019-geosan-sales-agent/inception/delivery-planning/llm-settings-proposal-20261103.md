@@ -1,6 +1,6 @@
 # 외부 AI(LLM)·홈페이지 찾기 설정·약속 파일 추가 제안 — 결정 2(B)·3 (2026-11-03)
 
-> 상태: **PM "반영" 승인 2026-11-03, 같은 날 저녁 결정 B 확정으로 다시 반영 완료.** 약속 파일(C1·C4·C7·C8·C9·5장)·범위 문서 P1-5·발표 메모·#23·#72·#218·#219 댓글에 반영했다. 설정 예시 파일·`.env.example`의 새 키는 모르는 키를 거부하는 검사(C7) 때문에 **U2 코드 PR에서 LlmSettings와 같이** 넣는다(1장이 그 PR의 사양). 순서는 팀 규칙대로 **약속 파일에 먼저 적고 → PR 체크리스트에 표시하고 → 코드(U2)를 만든다.** 아래는 모두 "더하는 변경"이고 깨는 변경은 없다(3장). `contracts/app-settings.schema.json`은 U2 코드에서 설정 모델을 고친 뒤 사람이 `geosan export-contracts`를 돌릴 때 갱신한다.
+> 상태: **PM "반영" 승인 2026-11-03, 같은 날 저녁 결정 B 확정으로 다시 반영 완료.** 약속 파일(C1·C4·C7·C8·C9·5장)·범위 문서 P1-5·발표 메모·#23·#72·#218·#219 댓글에 반영했다. 설정 예시 파일·`.env.example`의 새 키는 모르는 키를 거부하는 검사(C7) 때문에 **U2 코드 PR에서 LlmSettings와 같이** 넣는다(1장이 그 PR의 사양). 순서는 팀 규칙대로 **약속 파일에 먼저 적고 → PR 체크리스트에 표시하고 → 코드(U2)를 만든다.** 아래는 모두 "더하는 변경"이고 깨는 변경은 없다(3장). `contracts/app-settings.schema.json`은 `geosan export-contracts`가 만들지 않는다(그 명령은 `openapi.json`만 만든다). U2 코드 PR에서 설정 모델과 함께 사람이 직접 세 칸(minConfidence·autoResearch·dailyCallLimit)을 더해 올린다(2026-11-03 #218 유동렬 질문으로 바로잡음).
 >
 > **결정 경과(같은 날 세 번)**: 오전 초안은 ② 홈페이지 찾기를 OpenAI 웹 검색으로 적었다 → 낮에 네이버 검색 API로 정정했으나, 네이버 검색 API 특약(2026-09-07, 결과 저장·가공·AI 입력 금지)을 지키려면 "결과만 보여 주고 담당자가 먼저 확정"하는 단계가 필요했다 → **저녁에 PM이 결정 B로 확정**: OpenAI 웹 검색이 찾아 바로 저장하고 근거 추출까지 자동으로 잇는다. 사람은 상세 화면에서 확인·수정만 한다. 네이버 검색 API는 쓰지 않는다.
 
@@ -81,7 +81,8 @@ OPENAI_API_KEY=
 | `costPerThousandTokens`, `naverSearch`, `termsConfirmed`, `/homepage-candidates` | 지우지 않고 "안 씀" 표시 → 깨지 않음 |
 | `homepageDiscovery.enabled` false → true | 값 변경. 코드 영향 없음(U1은 읽기만). U2 PR에서 |
 | C4 규칙, usage 칸, C9 항목, C1 머리 3칸·confirmOnly, C8 명령 | 모두 추가 |
-| `contracts/app-settings.schema.json`·`contracts/openapi.json` | 코드 뒤 `geosan export-contracts`로 갱신(사람이 실행) |
+| `contracts/openapi.json` | 코드 뒤 `geosan export-contracts`로 갱신(사람이 실행) |
+| `contracts/app-settings.schema.json` | 명령이 만들지 않는다. U2 코드 PR에서 사람이 직접 세 칸을 더한다(더하는 변경, PR 체크리스트에 표시) |
 
 ## 4. 코드에 미치는 것 (U2 구현 때, 유동렬)
 
