@@ -98,10 +98,24 @@ def _component_of(path: Path) -> str:
     return rel.parts[0] if len(rel.parts) > 1 else ROOT
 
 
+def _approved_access_model_registration(path: Path, node: ast.AST) -> bool:
+    """#213 PM 승인(2026-11-03): metadata의 api.models 등록 한 줄만 예외다."""
+    return (
+        path == PACKAGE / "storage" / "metadata.py"
+        and isinstance(node, ast.ImportFrom)
+        and node.module == "geosan.api"
+        and node.level == 0
+        and len(node.names) == 1
+        and node.names[0].name == "models"
+    )
+
+
 def _imported_components(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: set[str] = set()
     for node in ast.walk(tree):
+        if _approved_access_model_registration(path, node):
+            continue
         if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("geosan."):
             found.add(node.module.split(".")[1])
         elif isinstance(node, ast.Import):
@@ -109,6 +123,22 @@ def _imported_components(path: Path) -> set[str]:
                 if alias.name.startswith("geosan."):
                     found.add(alias.name.split(".")[1])
     return found
+
+
+def test_access_model_registration_exception_is_narrow():
+    """Given 모델 등록 승인 / When API 실행 코드·다른 파일 참조 / Then 예외가 아니다."""
+    approved_path = PACKAGE / "storage" / "metadata.py"
+    model_import = ast.parse("from geosan.api import models as access_models").body[0]
+    assert _approved_access_model_registration(approved_path, model_import)
+    assert not _approved_access_model_registration(PACKAGE / "storage" / "session.py", model_import)
+    for code in (
+        "from geosan.api import app",
+        "from geosan.api import models, app",
+        "from geosan.api import *",
+        "from geosan.api.app import create_app",
+        "import geosan.api",
+    ):
+        assert not _approved_access_model_registration(approved_path, ast.parse(code).body[0])
 
 
 def _dependency_edges() -> dict[tuple[str, str], list[str]]:
