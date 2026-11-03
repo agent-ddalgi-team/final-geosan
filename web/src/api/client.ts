@@ -17,6 +17,7 @@ export const API_BASE = '/api/v1';
 /** 요청 중단 한도(목록·상세·기록 10초, 계약 3장). */
 export const REQUEST_TIMEOUT_MS = 10_000;
 export const STAFF_KEY_HEADER = 'X-Staff-Key';
+export const SESSION_REQUIRED_EVENT = 'geosan:session-required';
 
 /** 서버 오류 응답(계약 3장)을 그대로 담는 예외. 화면은 message·nextAction만 보이고 ref는 작게. */
 export class ApiError extends Error {
@@ -88,6 +89,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
   }
   if (!response.ok) {
+    if (response.status === 401 && path !== '/session') {
+      window.dispatchEvent(new Event(SESSION_REQUIRED_EVENT));
+    }
     const body = isErrorResponse(json)
       ? json.error
       : localErrorBody(errorTexts.network, `HTTP_${response.status}`);

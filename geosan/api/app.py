@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import MutableHeaders
 from starlette.exceptions import HTTPException
 
 from geosan.config.errors import AppError, FieldError, InputError, RunFailedError, new_ref
@@ -89,6 +90,8 @@ class RequestBoundary:
             if message["type"] == "http.response.start":
                 status = message["status"]
                 response_started = True
+                if scope["path"].startswith("/api/"):
+                    MutableHeaders(scope=message)["Cache-Control"] = "no-store"
             await send(message)
 
         try:
@@ -195,9 +198,9 @@ def create_app() -> FastAPI:
             )
         )
 
-    from geosan.api.routes import config, opportunities, records
+    from geosan.api.routes import config, opportunities, records, session
 
-    for router in (config.router, opportunities.router, records.router):
+    for router in (config.router, opportunities.router, records.router, session.router):
         app.include_router(router, prefix="/api/v1")
     dist = Path(__file__).resolve().parents[2] / "web" / "dist"
     if dist.is_dir():

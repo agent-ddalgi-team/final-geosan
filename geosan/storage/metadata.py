@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy import MetaData
 
+from geosan.api import models as access_models  # noqa: F401 — web_ 모델 등록(#213 PM 승인)
 from geosan.capability import models as capability_models
 from geosan.config import models as config_models
 from geosan.evaluation import models as evaluation_models

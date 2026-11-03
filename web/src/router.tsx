@@ -1,7 +1,8 @@
-// 경로: `/` 추천 목록, `/opportunities/:oppId` 근거 상세.
+// 경로: `/` 대시보드(첫 화면), `/opportunities` 추천 목록, `/opportunities/:oppId` 근거 상세.
 import { Route, Routes } from 'react-router-dom';
 import AppFrame from './components/frame/AppFrame';
 import { frame } from './labels/ko';
+import DashboardPage from './pages/DashboardPage';
 import OpportunityDetailPage from './pages/OpportunityDetailPage';
 import OpportunityListPage from './pages/OpportunityListPage';
 
@@ -10,6 +11,14 @@ export default function AppRoutes() {
     <Routes>
       <Route
         path="/"
+        element={
+          <AppFrame title={frame.pageTitleDashboard}>
+            <DashboardPage />
+          </AppFrame>
+        }
+      />
+      <Route
+        path="/opportunities"
         element={
           <AppFrame title={frame.pageTitleList}>
             <OpportunityListPage />
