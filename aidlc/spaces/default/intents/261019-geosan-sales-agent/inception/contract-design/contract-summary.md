@@ -4,6 +4,8 @@
 
 필드 이름·경로·명령 이름은 **제안**이며 기능 설계와 코드 생성에서 그대로 쓰거나 같은 뜻으로 고칩니다. 깨는 변경은 2장 규칙을 따릅니다. 검토(review-01)의 소견 18건을 반영한 판입니다.
 
+**계약 요약 버전: v2 (2026-11-03, PM 결정)** — 깨는 변경 1건: C1 `GET /dashboard` 건수 이름·응답 모양 재정의(아직 코드 없음, 영향 0). 같은 날 더한 것: C0 `INTERESTED`·`contactMethod`·`contactResult`, C1 `stage` 조건·`/notes`·`/outcomes` 칸, C6 `rec_note`, C7 `records`, 재접촉(U6) 항목 "보류" 표시. 근거: `../delivery-planning/scope-change-proposal-20261102.md` 4장 답.
+
 ## 1. 계약 목록
 
 | # | Provider Unit | Consumer | Mechanism | Owner |
@@ -55,7 +57,7 @@ datasetKind: [VIRTUAL_REVIEWED, BROCHURE, COMPANY_CONFIRMED]
 reviewStatus: [UNAVAILABLE, PENDING, REVIEWED, RECHECK]            # 미확보 / 검수 대기 / 검수 완료 / 재확인
 relationStatus: [NEW_CONFIRMED, EXISTING_CONFIRMED, UNCONFIRMED]
 purpose: [NEW_PROPOSAL, FOLLOW_UP_PROPOSAL, REORDER_CHECK]         # 대응 목적
-interactionKind: [TRADE, QUOTE, CONSULT, PROPOSAL, MEMO]            # 재접촉 입력(C1 /recontact)은 MEMO 제외
+interactionKind: [TRADE, QUOTE, CONSULT, PROPOSAL, MEMO]            # 재접촉 입력(C1 /recontact)은 MEMO 제외 — 재접촉 용도는 보류(2026-11-03, U6 보류). 고객 관계 표시(FR2.7·S04)용으로는 그대로 씀
 pathKind: [PROCESS_DEMAND, CERTIFICATION, HISTORY]
 reqKind: [CERTIFICATION, APPROVAL, TECHNICAL, QUANTITY_DELIVERY]
 reqLevel: [REQUIRED, PREFERRED, NOT_REQUIRED, UNKNOWN]
@@ -72,7 +74,9 @@ filterState: [PASS, PENDING, EXCLUDED]
 opinion: [WORTH_REVIEW, NEED_CHECK, NOT_TARGET]
 approvalStatus: [UNDECIDED, APPROVED, REJECTED, CANCELLED]
 approvalPurpose: [CONFIRM_REQUIREMENT, INTRODUCE_REVIEWED_CAPABILITY, FOLLOW_UP_PREVIOUS_PROPOSAL, SCHEDULE_RESPONSE]
-outcomeStatus: [NOT_EXECUTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, ON_HOLD, WON, LOST]
+outcomeStatus: [NOT_EXECUTED, INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, ON_HOLD, WON, LOST]   # (갱신 2026-11-03, PM 결정 Q2) INTERESTED "관심" 추가(미접촉 다음). 쉬운 말: 미접촉 / 관심 / 접촉 / 견적·샘플 / 보류 / 성사 / 거절. 담기 대신 씀
+contactMethod: [CALL, EMAIL, VISIT]                                 # (추가 2026-11-03, U5 메모 4장) 접촉 방법: 전화 / 메일 / 방문
+contactResult: [REACHED, ABSENT, DECLINED]                          # (추가 2026-11-03, U5 메모 4장) 접촉 결과: 연결됨 / 부재 / 거절
 questionStatus: [WAITING, REQUESTED, REPLIED, APPLIED]
 questionTargetKind: [QUALIFICATION, PROCESS, CAPABILITY, FIELD, REQUIREMENT, OPPORTUNITY]
 transferPurpose: [EXTERNAL_AI, OUTPUT_EXPORT]
@@ -232,7 +236,7 @@ components:
       properties:
         at: { type: string, format: date-time }
         actor: { type: string, description: staffKey 또는 system }
-        kind: { type: string, enum: [CLASSIFICATION, OPINION, BOOKMARK, APPROVAL, CONTACT_ATTEMPT, REPLY, OUTCOME, EVIDENCE_GRADE_CONFIRMED] }
+        kind: { type: string, enum: [CLASSIFICATION, OPINION, BOOKMARK, APPROVAL, CONTACT_ATTEMPT, REPLY, OUTCOME, EVIDENCE_GRADE_CONFIRMED, NOTE] }   # (갱신 2026-11-03) NOTE 영업 메모 추가. BOOKMARK는 담기 제거로 안 씀(값은 남김)
         summary: { type: string }
         previousValue: { type: string, nullable: true }
         evalId: { type: string, nullable: true }
@@ -259,8 +263,9 @@ paths:
       parameters:
         - { name: tab, in: query, schema: { type: string, enum: [new, recontact], default: new } }
         - { name: q, in: query, schema: { type: string }, description: 고객명·기회명 부분 일치 (U7) }
-        - { name: bookmarked, in: query, schema: { type: boolean } }
-        - { name: filter, in: query, schema: { type: string, enum: [TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY] }, description: 대시보드 건수 조건 (U7) }
+        - { name: bookmarked, in: query, schema: { type: boolean } }   # (갱신 2026-11-03, PM 결정 Q2) 안 씀(담기 제거). 경로 호환을 위해 남김
+        - { name: stage, in: query, schema: { type: string, enum: [NOT_EXECUTED, INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, ON_HOLD, WON, LOST] }, description: (추가 2026-11-03, Q2) 영업 단계(outcomeStatus 최신 값)로 거르기. 대시보드 건수를 누르면 이 조건으로 열림 (U5·U7) }
+        - { name: filter, in: query, schema: { type: string, enum: [TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY] }, description: 대시보드 건수 조건 (U7) — (갱신 2026-11-03) 건수 재정의로 SCHEDULE_DUE만 씀, 나머지 값은 남기되 안 씀 }
         - { $ref: '#/components/parameters/page' }
         - { $ref: '#/components/parameters/pageSize' }
       responses: { '200': { description: 'Envelope(data: OpportunityCard[], meta.total)' } }
@@ -273,20 +278,25 @@ paths:
       summary: 내 의견 저장 (U1). NOT_TARGET은 reason 필수. 낡은 evalId여도 저장
       requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [opinion, evalId], properties: { opinion: { type: string }, reason: { type: string } } } ] } } } }
       responses: { '200': { description: '저장됨 (data: RecordMeta + opinion, meta.previousValue 가능)' }, '400': { description: 사유 필요(fields) }, '403': { description: 담당자 키 없음·목록에 없음·보기 전용 } }
+  /opportunities/{oppId}/notes:
+    post:
+      summary: (추가 2026-11-03, PM 결정 U5 메모 4장) 영업 메모 저장 (U5). 덧붙이기만, 수정·삭제 없음(Q5). 담당자명·시각 자동. 저장 뒤 ActivityItem NOTE
+      requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [text], properties: { text: { type: string, description: '상한은 설정 records.noteMaxLength(기본 200자)' } } } ] } } } }
+      responses: { '200': { description: '저장됨 (RecordMeta + noteId)' }, '400': { description: '이메일·전화 패턴이 있음(연락처 저장 금지, find_contact 재사용) 또는 글자 수 초과 (fields)' }, '403': { description: 담당자 키 없음·보기 전용 } }
   /opportunities/{oppId}/bookmark:
     put:
-      summary: 담기 켜고 끄기 (U5)
+      summary: 담기 켜고 끄기 (U5) — (갱신 2026-11-03, PM 결정 Q2) **안 씀.** 담기 대신 영업 단계 INTERESTED(관심)를 /outcomes로 기록. 경로는 지우지 않고 남김(깨는 변경 아님)
       requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [active], properties: { active: { type: boolean } } } ] } } } }
       responses: { '200': { description: '저장됨 (RecordMeta + active)' } }
   /opportunities/{oppId}/approvals:
     post:
-      summary: 접촉 승인·거절·취소 (U5). 승인 가능 검사는 항상 최신 평가 기준
+      summary: 접촉 승인·거절·취소 (U5). 승인 가능 검사는 항상 최신 평가 기준 — (갱신 2026-11-03, PM 결정 Q1 B) 설정 `records.approvalEnabled: false`(기본)면 화면에서 숨김. 경로·테이블은 유지(거산이 원하면 설정만 켬)
       requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [decision, evalId], properties: { decision: { type: string, enum: [APPROVE, REJECT, CANCEL] }, purpose: { type: string }, reason: { type: string } } } ] } } } }
       responses: { '200': { description: '저장됨 (RecordMeta + status·purpose)' }, '409': { description: 'evalId가 최신 확정 평가가 아님 (kind STALE_EVALUATION)' }, '422': { description: '승인할 수 없는 이유(message): 필수 요구 미통과, 관계·중복 미확인, 소개서 묶음, 목적 불가' } }
   /opportunities/{oppId}/outcomes:
     post:
-      summary: 영업 결과·접촉 시도·회신·다음 일정 (U5). LOST는 reason 필수
-      requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [status], properties: { status: { type: string }, replyReceived: { type: boolean }, nextScheduleAt: { type: string, format: date }, reason: { type: string }, actionId: { type: string, nullable: true } } } ] } } } }
+      summary: 영업 결과(영업 단계)·접촉 시도·회신·다음 일정 (U5). LOST는 reason 필수. (갱신 2026-11-03, Q5) 단계·일정 변경은 새 행으로 남기고 이전 행은 이력(수정·삭제 경로 없음)
+      requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [status], properties: { status: { type: string }, replyReceived: { type: boolean }, nextScheduleAt: { type: string, format: date }, nextScheduleNote: { type: string, description: '(추가 2026-11-03) 다음 일정 할 일 한 줄' }, reason: { type: string }, actionId: { type: string, nullable: true }, method: { type: string, enum: [CALL, EMAIL, VISIT], description: '(추가 2026-11-03) 접촉 방법, 접촉 시도 행에만' }, result: { type: string, enum: [REACHED, ABSENT, DECLINED], description: '(추가 2026-11-03) 접촉 결과' }, attemptedAt: { type: string, format: date, description: '(추가 2026-11-03) 접촉 시도 날짜' } } } ] } } } }
       responses: { '200': { description: '저장됨 (RecordMeta + status)' }, '400': { description: 사유 필요 } }
   /opportunities/{oppId}/readiness-check:
     post:
@@ -314,7 +324,7 @@ paths:
       responses: { '200': { description: 요청됨 }, '422': { description: 이미 요청된 질문 } }
   /recontact:
     post:
-      summary: 재접촉 7칸 저장 → 평가 (U6, 흐름 ④). 이력 없음이면 meta.evaluatedAsNew=true
+      summary: 재접촉 7칸 저장 → 평가 (U6, 흐름 ④). 이력 없음이면 meta.evaluatedAsNew=true — **보류(2026-11-03, PM 결정: U6 재접촉 보류, 거산 요청. 경로는 지우지 않음)**
       requestBody: { content: { application/json: { schema: { type: object, required: [customerId, oppTitle, fields], properties: { customerId: { type: string }, oppId: { type: string, nullable: true }, oppTitle: { type: string }, fields: { type: array, minItems: 7, maxItems: 7, items: { type: object, required: [key, value, certainty, confirmedAt], properties: { key: { type: string, enum: [PAST_PROCESS_ITEM, ORDER_HISTORY, REQUIREMENT_MET, LOSS_REASON, LAST_DELIVERY_CYCLE, RECENT_SIGNAL, NEXT_APPOINTMENT] }, value: {}, certainty: { type: string, enum: [CONFIRMED, STRONG] }, confirmedAt: { type: string, format: date }, interactionKind: { type: string, enum: [TRADE, QUOTE, CONSULT, PROPOSAL], nullable: true } } } } } } } } }
       responses: { '200': { description: '새 기회·평가 ID' }, '400': { description: '칸별 오류 fields[]' } }
   /questions:
@@ -343,8 +353,17 @@ paths:
       responses: { '200': { description: 표시됨 } }
   /dashboard:
     get:
-      summary: 대시보드 건수 4개·일정·업무 흐름·최근 활동 (U7)
-      responses: { '200': { description: 'Envelope(counts{TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY}, schedule[], pipeline, recentActivity[])' } }
+      summary: 대시보드 건수 5개·일정·최근 내 기록 (U7, 기록에만 기대는 최소형). **깨는 변경(2026-11-03, PM 확인): 계약 버전 v2로 올림.** 화면은 이 모양의 가짜 숫자(고정값 파일)로 먼저 만들고 집계 API 완성 뒤 갈아 끼움
+      # ~~옛 모양(v1): Envelope(counts{TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY}, schedule[], pipeline, recentActivity[])~~ → 바뀐 뒤(v2) 아래. pipeline(업무 흐름 줄)은 뺌(메모 5장). 검색은 /opportunities?q= 그대로
+      responses:
+        '200':
+          description: >-
+            Envelope(
+              counts{ NOT_CONTACTED: int, INTERESTED: int, IN_CONTACT: int, QUOTE_SAMPLE: int, SCHEDULE_DUE: int },   # 미접촉 / 관심 / 접촉 중 / 견적·샘플 / 이번 주 일정(오늘 이전~7일). 누르면 /opportunities?stage=… (SCHEDULE_DUE는 ?filter=SCHEDULE_DUE)
+              schedule[ { oppId, customerName, oppTitle, dueAt: date, note: string, overdue: boolean, staffKey } ],   # 기한 지남(overdue) 맨 위, 그다음 날짜순. 출처: /outcomes의 nextScheduleAt·nextScheduleNote
+              recentActivity[ { at: datetime, oppId, customerName, kind: enum[NOTE, STAGE, CONTACT_ATTEMPT, SCHEDULE, OPINION], summary: string } ],   # 최근 내가 한 기록 10건(요청의 담당자 키로 거름, Q4)
+              asOf: datetime
+            )
   /opportunities/{oppId}/homepage-candidates:
     get:
       summary: (추가 2026-11-03 정정, PM 결정 2) ② 네이버 검색 API로 회사명+주소 검색 결과를 **가공 없이 그대로** 돌려줌 (U2, C9 HomepageFinder.search_candidates). 화면은 "네이버 검색결과" 표시·원문 링크와 함께 보이고, 담당자가 고른 주소는 기존 POST /homepage(url)로 확정. 결과는 서버에 저장·캐시하지 않음
@@ -398,7 +417,7 @@ flows:
   run_readiness_check:       # ③ 기한 체크 (U5)
     input: { oppId: string, checked: boolean, staffKey: string, evalId: string }
     then: [staleEvaluationCheck, EvaluationLedger ReadinessCheck 저장, run_evaluation([oppId])]
-  run_recontact_save:        # ④ 재접촉 저장 (U6)
+  run_recontact_save:        # ④ 재접촉 저장 (U6) — 보류(2026-11-03, PM 결정: U6 재접촉 보류)
     input: RecontactPayload (C1 /recontact 본문과 같음) + { enteredBy: staffKey }
     then: [존재 확인, 연락처 패턴 검사(있으면 fields 오류), OpportunityRegistry 저장(Interaction ①~⑤, Signal ⑥⑦), 이력 없음 판단, run_evaluation([oppId])]
     returnsExtra: { evaluatedAsNew: boolean }
@@ -534,7 +553,7 @@ ownership:
   ev_*:    EvidenceExtraction    # ev_evidence, ev_homepage_candidate
   eval_*:  EvaluationLedger      # eval_batch, eval_run, eval_item_judgment, eval_requirement_check, eval_judgment_evidence, eval_readiness_check, eval_rank_adjustment
   q_*:     ConfirmationDesk      # q_question, q_question_opportunity_link, q_research_task
-  rec_*:   SalesRecords          # rec_review_opinion, rec_bookmark, rec_action, rec_outcome
+  rec_*:   SalesRecords          # rec_review_opinion, rec_bookmark, rec_action, rec_outcome, rec_note(추가 2026-11-03: oppId, staffKey, text, createdAt — 덮어쓰기 없음, 메모마다 새 행). rec_bookmark는 담기 제거로 안 만듦(Q2). 단계·일정(rec_outcome)도 새 행 원칙(Q5): 이전 행은 이력
   web_*:   WebApi                # web_access_session
 rules:
   - 다른 접두사의 테이블은 읽기만. 쓰기는 소유 부품의 함수로만.
@@ -611,6 +630,7 @@ AppSettings:
   homepageDiscovery: { enabled: false, termsConfirmed: false }
   # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기는 네이버 검색 API가 먼저 찾아 **결과를 네이버가 준 모양 그대로 "네이버 검색결과"로 보여 주고**, 담당자가 눌러 확정한 주소 하나만 저장한다(C9 HomepageFinder). 검색 결과 목록은 저장·캐시하지 않는다(네이버 검색 API 특약 2026-09-07: 결과 저장·가공·AI 입력 금지).
   #   U2 PR에서 enabled: true로, termsConfirmed는 PM이 네이버 API 허브 신청 때 이 쓰임새(결과 표시 + 담당자 확정)로 확인한 뒤 true.
+  records: { approvalEnabled: boolean, noteMaxLength: int }   # (추가 2026-11-03, PM 결정 Q1·U5) approvalEnabled 기본 false = 접촉 승인을 화면에서 숨김(경로·테이블은 유지). noteMaxLength 기본 200 = 영업 메모 글자 상한. 첫 화면은 대시보드로 고정(Q3 A)이라 ui.homeScreen 키는 두지 않음
   brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"
   accessProtection: { enabled: boolean }      # 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD
 ```
@@ -633,10 +653,10 @@ commands:
   geosan ingest <sourceId> [--max N]             # U3·U9. 흐름 ⑥
   geosan merge-list                              # U3. 확인 필요 후보 목록
   geosan merge-confirm <candidateId> --keep <customerId>   # U3. 흐름 ⑤
-  geosan review-set <targetKind> <targetId> <REVIEWED|RECHECK> --by <name> --basis <text>   # U4. 흐름 ②
+  geosan review-set <targetKind> <targetId> <REVIEWED|RECHECK> --by <name> --basis <text>   # U4. 흐름 ② — (갱신 2026-11-03, PM 결정 Q8·Q9·Q10) U4 중 이 명령만 먼저, U2 줄 첫 작업(유동렬, 12h). 방문 확인된 공정만 REVIEWED로 바꾸고 18곳 재평가(방문 확인 기록은 PM이 채우면 실행)
   geosan dataset-set <datasetKind>               # U4. 거산 값 묶음 전환(설정 변경 + 재평가 안내)
-  geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함)
-  geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회
+  geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함). (갱신 2026-11-03, Q10) 담당 PM(최지예), U8에 묶음, 10h
+  geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회. (갱신 2026-11-03, Q10) 담당 PM, U8에 묶음
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
   geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 네이버 검색 호출 수는 건수만(비용 없음). 5곳 시험의 1곳당 비용 측정에 쓴다
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
@@ -688,10 +708,11 @@ ExternalSourceApi (공장등록·나라장터):
 
 | Contract | Question | Blocks |
 |---|---|---|
-| C1 | 재접촉 카드·상세 영역(`recontact` 객체)의 세부 필드 | U6 (기능 설계) |
+| C1 | 재접촉 카드·상세 영역(`recontact` 객체)의 세부 필드 | ~~U6 (기능 설계)~~ 보류(2026-11-03, U6 재접촉 보류) |
+| C0·C1·C6·C7 | (2026-11-03, PM 결정 Q1~Q10 반영) `INTERESTED`·`contactMethod`·`contactResult`·ActivityItem NOTE 추가, `/opportunities?stage=`, `POST /notes`, `/outcomes` 칸 4개, `/bookmark` 안 씀, `/approvals` 설정으로 숨김, `/dashboard` 새 모양(깨는 변경, v2), `rec_note`, `records` 설정. 코드는 U5(이강욱 서버·고선주 화면)·U7(고선주)에서 | U5·U7 (코드 PR과 같이) |
 | C1 | 추가조사 기록(ResearchTask, P2)의 경로와 본문 | U4 (기능 설계, P2) |
 | C3 | ReadinessCheck의 `evalIdAtCheck`가 파일 투입 시 비어 있을 때 첫 평가가 채우는지 | U1 (기능 설계) |
-| C3 | 재접촉 프로필 입력 ①~⑦ 값과 일치도 단계 값 매핑 | U6 (기능 설계) |
+| C3 | 재접촉 프로필 입력 ①~⑦ 값과 일치도 단계 값 매핑 | ~~U6 (기능 설계)~~ 보류(2026-11-03, U6 재접촉 보류) |
 | C6 | 마이그레이션 도구(Alembic 후보)와 첫 마이그레이션 묶음, `db merge-heads` 구현 | U1 (코드 생성) |
 | C7 | 위치 정보를 주는 JSON/YAML 로더 선택과 `_설명` 키 처리 | U1 (코드 생성) |
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
