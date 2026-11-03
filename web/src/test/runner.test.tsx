@@ -21,8 +21,10 @@ describe('러너 확인', () => {
     expect(card.scoreDisplay).toBe('77점 · 7/8');
   });
 
-  it('최소 화면이 내부용 띠를 보인다', () => {
+  it('접속 확인 뒤 최소 화면이 내부용 띠를 보인다', async () => {
+    vi.stubEnv('VITE_USE_FIXTURES', '1');
     render(<App />);
-    expect(screen.getByRole('status')).toHaveTextContent('내부용');
+    expect(await screen.findByText(/내부용/)).toBeInTheDocument();
+    vi.unstubAllEnvs();
   });
 });
