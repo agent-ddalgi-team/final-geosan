@@ -35,7 +35,7 @@
 
 ## 3. 전송 보호 (지오코딩 API로 나가는 것은 주소뿐)
 
-C4 `check_transfer`에 용도를 하나 더 둔다. 네이버 검색용 `EXTERNAL_SEARCH`와 같은 꼴이다.
+C4 `check_transfer`에 용도를 하나 더 둔다. 홈페이지 검색용 `EXTERNAL_SEARCH`와 같은 꼴이다.
 
 ```yaml
 EXTERNAL_GEOCODE:   # (제안 2026-11-03) 도로명주소 검색·좌표제공 API로 나가는 주소

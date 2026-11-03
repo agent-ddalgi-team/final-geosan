@@ -179,7 +179,7 @@ components:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
       properties:
-        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, address: { type: string }, distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 지시) 거산 기준 주소(설정 geosan.address, PM이 정함)에서의 직선거리 km. 거리 기능(#222) 전까지 null' }, summaryLine: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 한 줄 소개. AI 조사(U2)가 공개 본문에서 생성. 조사 전에는 사례 파일 cardReason' }, highlights: { type: array, maxItems: 3, items: { type: string }, description: '주요 특징 최대 3개(품목·공정·규모·주요 고객 같은 공개 사실만). AI 조사 전에는 빈 배열' }, researchedAt: { type: string, format: date-time, nullable: true, description: '마지막 조사 시각(AI 조사 완료 시각, 사례 파일 투입분은 투입 시각)' }, researchSource: { type: string, nullable: true, enum: [AI, CASE_FILE] }, researchStale: { type: boolean, description: '설정 research.staleAfterDays(기본 90일)보다 오래됐으면 true → 화면 "오래됨" 표시' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
+        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, homepageStatus: { type: string, nullable: true, enum: [AI_FOUND, NEEDS_CONFIRMATION, CONFIRMED, NOT_FOUND], description: '(추가 2026-11-03 PM 결정 B) AI_FOUND = OpenAI 웹 검색이 찾음(확신도 기준 이상) / NEEDS_CONFIRMATION = 찾았지만 확신도 낮음(상세 맨 위 "홈페이지 확인 필요" 띠) / CONFIRMED = 담당자가 [맞음] 또는 주소 고침 / NOT_FOUND = 못 찾음("직접 입력" 띠, 근거 추출 건너뜀). 사례 파일로 들어온 주소는 CONFIRMED·source CASE_FILE' }, homepageConfidence: { type: number, nullable: true, description: '0~1. AI가 찾았을 때만' }, homepageSource: { type: string, nullable: true, enum: [AI, STAFF, CASE_FILE] }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, address: { type: string }, distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 지시) 거산 기준 주소(설정 geosan.address, PM이 정함)에서의 직선거리 km. 거리 기능(#222) 전까지 null' }, summaryLine: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 한 줄 소개. AI 조사(U2)가 공개 본문에서 생성. 조사 전에는 사례 파일 cardReason' }, highlights: { type: array, maxItems: 3, items: { type: string }, description: '주요 특징 최대 3개(품목·공정·규모·주요 고객 같은 공개 사실만). AI 조사 전에는 빈 배열' }, researchedAt: { type: string, format: date-time, nullable: true, description: '마지막 조사 시각(AI 조사 완료 시각, 사례 파일 투입분은 투입 시각)' }, researchSource: { type: string, nullable: true, enum: [AI, CASE_FILE] }, researchStale: { type: boolean, description: '설정 research.staleAfterDays(기본 90일)보다 오래됐으면 true → 화면 "오래됨" 표시' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
         stage: { type: object, properties: { current: { type: integer }, badge: { type: string, nullable: true } } }
         reasons: { type: object, properties: { reason: { type: string }, nextAction: { type: string }, questions: { type: array, items: { $ref: '#/components/schemas/Question' } } } }
         requirements: { type: array, items: { $ref: '#/components/schemas/RequirementCheckView' } }
@@ -309,8 +309,8 @@ paths:
   /opportunities/{oppId}/homepage:
     post:
       summary: 홈페이지 주소 확정 또는 본문 붙여넣기 → 근거 추출 → 재평가 (U2, 흐름 ①). 전체 60초 한도. (추가 2026-11-03 PM 지시) 상세 머리 [다시 조사] 단추도 이 경로(확정된 url 그대로)를 부른다 — 주기 자동 조사는 두지 않고 담당자가 누를 때만. 성공 시 header.summaryLine·highlights·mainPhone·researchedAt 갱신
-      requestBody: { content: { application/json: { schema: { type: object, properties: { url: { type: string, format: uri }, pastedText: { type: string } } } } } }
-      responses: { '200': { description: '근거 수·질문 수·새 평가 ID (meta.reevaluated)' }, '422': { description: 'kind ROBOTS_DISALLOW / TERMS_DISALLOW (붙여넣기 요청) 또는 UNREACHABLE (주소를 열 수 없음)' }, '503': { description: 'LLM 실패·상한 초과 (kind LLM_LIMIT) · 60초 초과' } }
+      requestBody: { content: { application/json: { schema: { type: object, properties: { url: { type: string, format: uri }, pastedText: { type: string }, confirmOnly: { type: boolean, default: false, description: '(추가 2026-11-03 PM 결정 B) true면 담당자 [맞음]: homepageStatus를 CONFIRMED로만 바꾸고 근거 추출·재평가는 하지 않음. url을 고쳐 보내면(false) 그 주소로 다시 추출·재평가' } } } } } }
+      responses: { '200': { description: '근거 수·질문 수·새 평가 ID (meta.reevaluated). confirmOnly면 상태만' }, '422': { description: 'kind ROBOTS_DISALLOW / TERMS_DISALLOW (붙여넣기 요청) 또는 UNREACHABLE (주소를 열 수 없음)' }, '503': { description: 'LLM 실패·상한 초과 (kind LLM_LIMIT) · 60초 초과' } }
   /opportunities/{oppId}/evaluations:
     get:
       summary: 현재·이전 평가 쌍 (U2 "이전 평가 보기")
@@ -369,11 +369,11 @@ paths:
             )
   /opportunities/{oppId}/homepage-candidates:
     get:
-      summary: (추가 2026-11-03 정정, PM 결정 2) ② 네이버 검색 API로 회사명+주소 검색 결과를 **가공 없이 그대로** 돌려줌 (U2, C9 HomepageFinder.search_candidates). 화면은 "네이버 검색결과" 표시·원문 링크와 함께 보이고, 담당자가 고른 주소는 기존 POST /homepage(url)로 확정. 결과는 서버에 저장·캐시하지 않음
-      responses: { '200': { description: 'Envelope(provider: NAVER, items[{ title, link, description }], total, fetchedAt)' }, '429': { description: '오늘 검색 한도 초과 (kind SEARCH_LIMIT)' }, '503': { description: '네이버 API 실패·10초 초과' } }
+      summary: (안 씀 — 2026-11-03 저녁 PM 결정 B) 네이버 결과 목록을 보여 주던 경로. ② 홈페이지 찾기는 OpenAI 웹 검색이 자동으로 하고 결과는 상세 머리(homepageStatus·homepageUrl)로 보이므로 이 경로는 만들지 않는다. 경로 호환을 위해 이름만 남김
+      responses: { '200': { description: '(안 씀)' } }
   /llm-usage:
     get:
-      summary: (추가 2026-11-03, PM 결정 3) 이번 달 외부 AI 사용량·비용·상한 대비 비율 (U2). 공통 틀 상단 띠가 alertReached이면 "이번 달 AI 비용 절반 사용" 표시. webSearchCalls는 네이버 검색 호출 수(비용 없음)
+      summary: (추가 2026-11-03, PM 결정 3) 이번 달 외부 AI 사용량·비용·상한 대비 비율 (U2). 공통 틀 상단 띠가 alertReached이면 "이번 달 AI 비용 절반 사용" 표시. webSearchCalls는 OpenAI 웹 검색 호출 수(비용에 포함: 1,000회당 $10 + 검색 본문 토큰, 2026-11-03 결정 B)
       parameters: [ { name: month, in: query, schema: { type: string, pattern: '^\d{4}-\d{2}$' } } ]
       responses: { '200': { description: 'Envelope(C4 usage 출력: callCount, inputTokens, outputTokens, webSearchCalls, rejectedCount, costUsd, costLimitUsd, callLimit, alertReached)' } }
   /dashboard/activity-summary:
@@ -503,11 +503,12 @@ check_transfer:
       - securityGrade ∈ {PUBLIC, EXTERNAL_AI_OK}만 허용
       - 월 호출 상한 초과 → 거부 (kind LLM_LIMIT)
       - (추가 2026-11-03, PM 결정 3) 월 비용 상한(`llm.monthlyCostLimitUsd`) 초과 → 거부 (kind LLM_LIMIT). 비용 = TransferLog의 입력·출력 토큰 × 단가(`llm.inputCostPerMillionTokens`·`outputCostPerMillionTokens`), 월별 합산. **OpenAI 호출에만** 적용
-    EXTERNAL_SEARCH:   # (추가 2026-11-03 정정, PM 결정 2) ② 홈페이지 찾기 — 네이버 검색 API로 나가는 검색어
-      - 허용 kind: CUSTOMER_NAME, CUSTOMER_ADDRESS (둘 다 산단공 공개 CSV 출처, securityGrade PUBLIC)만. 그 밖의 kind(NOTE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION, CAPABILITY_VALUE, 연락처)가 하나라도 → 전체 거부
+    EXTERNAL_SEARCH:   # (2026-11-03 저녁 PM 결정 B로 갱신) ② 홈페이지 찾기 — OpenAI 웹 검색 도구로 나가는 검색어. (처음 네이버 검색 API로 적었다가 B로 바꿈: 네이버 특약은 결과 저장·AI 입력 금지라 담당자 확정 단계가 필요했음)
+      - 허용 kind: CUSTOMER_NAME, CUSTOMER_ADDRESS (둘 다 산단공 공개 CSV·사례 파일 출처, securityGrade PUBLIC)만. 그 밖의 kind(NOTE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION, CAPABILITY_VALUE, 연락처)가 하나라도 → 전체 거부
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
-      - 하루 호출 상한(`naverSearch.dailyCallLimit`) 초과 → 거부 (kind SEARCH_LIMIT, 쉬운 말 "오늘 검색 한도 초과"). 네이버 자체 한도는 하루 25,000회
-      - sideEffect: TransferLog 1행(kind WEB_SEARCH, 시각·기회 ID·호출 수만, 검색어 본문 없음). 검색 결과는 저장·캐시하지 않는다(네이버 검색 API 특약 2.3)
+      - 하루 호출 상한(`homepageDiscovery.dailyCallLimit`) 초과 → 거부 (kind SEARCH_LIMIT, 쉬운 말 "오늘 검색 한도 초과")
+      - 월 비용 상한(`llm.monthlyCostLimitUsd`)·월 호출 상한 초과 → 거부 (kind LLM_LIMIT). 웹 검색 비용(1,000회당 $10 + 토큰)도 OpenAI 비용이므로 같은 $20 안에서 센다
+      - sideEffect: TransferLog 1행(kind WEB_SEARCH, 시각·기회 ID·호출 수·토큰만, 검색어 본문 없음). AI가 고른 주소 하나와 확신도·이유는 opp_customer/기회에 저장한다(OpenAI 약관상 결과 저장 가능)
     EXTERNAL_GEOCODE:   # (추가 2026-11-03 PM 결정, 거리 #222) 회사 주소 → 좌표 변환. 행정안전부 도로명주소 API(검색 → 좌표제공, 승인키 2개)
       - 허용 kind: CUSTOMER_ADDRESS(산단공 공개 CSV 출처, securityGrade PUBLIC)만. 회사명·메모·내부 값·연락처가 섞이면 전체 거부
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
@@ -635,10 +636,11 @@ AppSettings:
   #   llm에 더하는 키: provider: enum[OPENAI], allowedModels: [string] (model은 이 안이어야 check-config 통과), inputCostPerMillionTokens: number, outputCostPerMillionTokens: number,
   #   monthlyCostLimitUsd: number, costAlertRatio: number(0~1). costPerThousandTokens는 안 씀(deprecated), 다음 깨는 변경 때 제거.
   #   예시 파일(examples/app-settings.yaml)의 새 키는 모르는 키 거부 규칙 때문에 U2 코드 PR(LlmSettings)과 같이 넣는다. 키는 환경 변수 OPENAI_API_KEY로만.
-  naverSearch: { enabled: boolean, dailyCallLimit: int, display: int }   # (추가 2026-11-03 정정, PM 결정 2) ② 홈페이지 찾기용 네이버 검색 API(웹 문서). 키는 환경 변수 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET로만. dailyCallLimit 기본 500(네이버 한도 25,000), display 기본 5(한 번에 보여 줄 결과 수)
-  homepageDiscovery: { enabled: false, termsConfirmed: false }
-  # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기는 네이버 검색 API가 먼저 찾아 **결과를 네이버가 준 모양 그대로 "네이버 검색결과"로 보여 주고**, 담당자가 눌러 확정한 주소 하나만 저장한다(C9 HomepageFinder). 검색 결과 목록은 저장·캐시하지 않는다(네이버 검색 API 특약 2026-09-07: 결과 저장·가공·AI 입력 금지).
-  #   U2 PR에서 enabled: true로, termsConfirmed는 PM이 네이버 API 허브 신청 때 이 쓰임새(결과 표시 + 담당자 확정)로 확인한 뒤 true.
+  naverSearch: { enabled: boolean, dailyCallLimit: int, display: int }   # (안 씀 — 2026-11-03 저녁 PM 결정 B) 네이버 검색 API는 쓰지 않는다. 키 이름만 호환용으로 남김. 코드는 읽지 않는다
+  homepageDiscovery: { enabled: boolean, termsConfirmed: boolean, minConfidence: number, autoResearch: boolean, dailyCallLimit: int }
+  # (2026-11-03 저녁, PM 결정 B) ② 홈페이지 찾기는 **OpenAI 웹 검색 도구**가 회사명+주소로 찾아 주소 하나·확신도(0~1)·이유를 돌려주고 바로 저장한다(C9 HomepageFinder.find). 회사가 목록에 들어올 때(사례 파일 투입·U3 수집·[다시 조사]·`geosan research`) autoResearch가 true면 ②→③ 본문 읽기→④ 근거 추출→재평가까지 사람 손 없이 이어진다.
+  #   확신도가 minConfidence(기본 0.7) 아래면 homepageStatus NEEDS_CONFIRMATION(상세 맨 위 "홈페이지 확인 필요" 띠)로 두되 근거 추출은 진행한다. 못 찾으면 NOT_FOUND("직접 입력" 띠), 추출 건너뜀. 담당자가 상세에서 [맞음](confirmOnly) 또는 주소를 고치면(다시 추출·재평가) CONFIRMED.
+  #   키는 OPENAI_API_KEY 하나. termsConfirmed는 안 씀(OpenAI 웹 검색 결과는 저장 가능). dailyCallLimit 기본 200. enabled 기본 false(키 받기 전), U2 PR에서 true.
   records: { approvalEnabled: boolean, noteMaxLength: int }   # (추가 2026-11-03, PM 결정 Q1·U5) approvalEnabled 기본 false = 접촉 승인을 화면에서 숨김(경로·테이블은 유지). noteMaxLength 기본 200 = 영업 메모 글자 상한. 첫 화면은 대시보드로 고정(Q3 A)이라 ui.homeScreen 키는 두지 않음
   research: { staleAfterDays: 90 }
   geosan: { address: string, lat: number, lng: number }   # (추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소와 좌표. PM이 한 번 적음(좌표는 지도에서 읽어 넣음). 거리는 모두 이 점에서 잰다
@@ -672,7 +674,8 @@ commands:
   geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회. (갱신 2026-11-03, Q10) 담당 PM, U8에 묶음
   geosan geocode [--missing-only]                # (추가 2026-11-03 PM 결정, 거리 #222) 좌표 없는 회사 주소를 도로명주소 API로 좌표로 바꿔 저장. 건수·실패 사유(주소 못 찾음·한도·통신)를 출력. 가상 사례는 건너뜀
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
-  geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 네이버 검색 호출 수는 건수만(비용 없음). 5곳 시험의 1곳당 비용 측정에 쓴다
+  geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·웹 검색 횟수·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 5곳 시험의 1곳당 비용 측정에 쓴다
+  geosan research [--missing-homepage | --all] [--limit N]   # (추가 2026-11-03 저녁, PM 결정 B) 이미 들어와 있는 회사(18곳)에 ②→③→④→재평가를 일괄로 돌린다. 기본은 홈페이지 없는 회사만. 1곳마다 결과 줄(찾음/확인 필요/못 찾음, 근거 수, 비용) 출력. 상한에 걸리면 멈추고 남은 건수 안내
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   처음 설치·실행: [init-db, check-config, serve]                     # 3
   가상 사례 투입·평가·확인: [import-case, evaluate, verify-case]     # 3
@@ -702,15 +705,16 @@ LlmAdapter:
   provider: enum[OPENAI]                  # (추가 2026-11-03, PM 결정 3) 설정 llm.provider. 모델은 llm.model(gpt-6.1-sol, 비교용 gpt-6-luna)
   retention:                              # (추가 2026-11-03) 보관 규칙. 한 번 보내고 끝나는 호출만 쓴다. 대화·파일이 제공사 서버에 남는 기능(파일 업로드·대화 보관형 엔드포인트)은 쓰지 않는다. 데이터 공유(학습 제공) 동의는 켜지 않는다. 로그에는 시각·모드·모델·등급·입력/출력 토큰 수·비용만(본문 없음)
   usageGuard: 호출 전 C4 월 호출 상한·월 비용 상한을 함께 검사. 초과면 호출하지 않고 503 LLM_LIMIT
-HomepageFinder:                           # (추가 2026-11-03, PM 결정 2 정정 2차) ② 홈페이지 찾기 = 네이버 검색 API(웹 문서)가 찾고 담당자가 확정. C9 열린 질문 "검색 방식·비용·약관"의 답
-  search_candidates(companyName, address) -> { provider: NAVER, items: [{ title, link, description }], total, fetchedAt }   # 네이버 응답 항목을 가공·재정렬 없이 그대로. 화면은 "네이버 검색결과" 표시와 원문 링크를 함께 보인다(특약 2.1·2.2)
+HomepageFinder:                           # (2026-11-03 저녁, PM 결정 B로 갱신) ② 홈페이지 찾기 = OpenAI 웹 검색 도구가 찾고 바로 저장, 담당자는 상세에서 확인·수정. C9 열린 질문 "검색 방식·비용·약관"의 답. (낮의 네이버 안은 특약 때문에 담당자 확정이 먼저 필요해 버림)
+  find(companyName, address) -> { provider: OPENAI_WEB_SEARCH, url: string|null, confidence: 0~1, reason: string, fetchedAt }   # 모델에 "이 회사의 공식 홈페이지 주소 하나와 확신도·이유"를 구조화 출력으로 요구. 공식 홈페이지가 아닌 디렉터리·블로그·채용 사이트는 제외하라고 지시. 못 찾으면 url null
   # (추가 2026-11-03 PM 지시) LlmAdapter 근거 추출 결과에 companySummary: { line: string, highlights: [string ≤3] }, companyMainPhone: string|null 을 더한다. 공개 본문의 사실만, 담당자 개인 연락처는 뽑지 않는다
-  confirm(oppId, url, confirmedBy) -> 저장되는 것은 담당자가 확정한 url 하나와 확정자·시각뿐. 검색 결과 목록(items)은 저장·캐시하지 않는다(특약 2.3). 확정 뒤 기존 흐름 ①(C1 POST /homepage) 호출
-  query: 회사명 + 주소(둘 다 공개 CSV 출처). TransferGuard EXTERNAL_SEARCH 통과 뒤에만 호출(C4). 검색어에 메모·내부 값·연락처가 섞이면 호출 안 함
-  keys: 환경 변수 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET (설정 파일·코드·로그에 적지 않음)
-  limits: 네이버 하루 25,000회 안에서 naverSearch.dailyCallLimit(기본 500). timeout 10s, retry 1 (TransferLog 호출마다 1행, kind WEB_SEARCH, 검색어 본문 없음)
-  cost: 무료. 월 $20 비용 상한은 OpenAI(근거 추출)에만 적용
-  terms: 네이버 검색 API 특약(2026-09-07 시행) — 결과는 네이버 검색결과로만 제공·가공 금지·저장/캐시 금지·AI 입력 금지. 이 설계는 "결과 그대로 표시 + 사람이 확정한 주소만 저장"으로 그 안에 둔다. API 허브 신청 때 PM이 이 쓰임새를 적어 확인(homepageDiscovery.termsConfirmed)
+  save(oppId, result) -> homepageUrl·homepageConfidence·homepageSource AI·homepageStatus(AI_FOUND | NEEDS_CONFIRMATION(confidence < homepageDiscovery.minConfidence) | NOT_FOUND). 저장 뒤 autoResearch면 흐름 ①(C1 POST /homepage 와 같은 내부 호출: 본문 읽기 → 근거 추출 → 재평가). NOT_FOUND면 건너뜀
+  confirm(oppId, url|null, confirmedBy, confirmOnly) -> [맞음]은 상태만 CONFIRMED(source STAFF). 주소를 고치면 새 url로 흐름 ① 다시(이전 AI 근거는 이력으로 남김)
+  query: 회사명 + 주소(둘 다 공개 CSV·사례 파일 출처). TransferGuard EXTERNAL_SEARCH 통과 뒤에만 호출(C4). 검색어에 메모·내부 값·연락처가 섞이면 호출 안 함
+  keys: 환경 변수 OPENAI_API_KEY 하나(근거 추출과 같은 키). 설정 파일·코드·로그에 적지 않음
+  limits: homepageDiscovery.dailyCallLimit(기본 200). timeout 20s, retry 1 (TransferLog 호출마다 1행, kind WEB_SEARCH, 검색어 본문 없음). 월 $20·1,000회 상한에 포함
+  cost: 웹 검색 도구 1,000회당 $10 + 검색 본문 토큰(1곳 약 1~3센트). 1곳 끝까지(②~④) 약 4~6센트. 5곳 시험에서 실측
+  terms: OpenAI API 출력은 저장·가공 가능(사용 약관), 입력은 기본적으로 학습에 안 씀. 따라서 담당자 확정을 먼저 받을 이유가 없어 자동 저장한다
 GeocodeAdapter:                           # (추가 2026-11-03 PM 결정, 거리 #222) 주소 → 좌표. 도로명주소 API 2단계: 검색(주소 글자 → 행정구역·도로명·건물번호 코드) → 좌표제공(코드 → entX/entY)
   geocode(address) -> { lat, lng, source: JUSO, matchedAddress } | null   # 못 찾으면 null(오류 아님). TransferGuard EXTERNAL_GEOCODE 통과 뒤에만 호출
   keys: 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY (승인키가 서로 달라 바꿔 쓰면 거부됨). 설정 파일·코드·로그에 적지 않음
@@ -737,8 +741,8 @@ ExternalSourceApi (공장등록·나라장터):
 | C7 | 위치 정보를 주는 JSON/YAML 로더 선택과 `_설명` 키 처리 | U1 (코드 생성) |
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
-| C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03, PM 결정 2 정정 2차)**: 네이버 검색 API(웹 문서)가 찾고 **결과는 네이버 검색결과로 그대로 보여 주며, 담당자가 확정한 주소 하나만 저장**(결과 목록 저장·가공·AI 입력 없음 — 2026-09-07 특약 2.1~2.3 안). 무료, 하루 25,000회 한도 안에서 호출 상한만 둠. 구글 Custom Search는 신규 중단. U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder). 네이버 API 허브 신청 때 PM이 쓰임새를 적어 확인 | ~~U9~~ → U2 |
-| C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회. 네이버 검색 API(② 홈페이지 찾기)는 하루 호출 상한만. 키 2개(NAVER_CLIENT_ID·NAVER_CLIENT_SECRET, OPENAI_API_KEY)는 환경 변수. 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·`/homepage-candidates`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
+| C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03 저녁, PM 결정 B 확정)**: **OpenAI 웹 검색 도구**가 찾아 주소·확신도를 바로 저장하고, 회사가 들어올 때 근거 추출·재평가까지 자동으로 잇는다. 담당자는 상세 화면에서 [맞음]/주소 고치기. 확신도 낮으면 "홈페이지 확인 필요" 띠. 비용은 월 $20 상한 안(1곳 약 4~6센트). (낮에 정한 네이버 검색 API 안은 특약상 담당자 확정이 먼저 필요해 같은 날 버림. 구글 Custom Search는 신규 중단) U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder) | ~~U9~~ → U2 |
+| C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회(웹 검색 호출 포함). 키는 OPENAI_API_KEY 하나(결정 B로 네이버 키 불필요). 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. **(2026-11-03 저녁 결정 B)** 상세 머리 homepageStatus·homepageConfidence·homepageSource, `POST /homepage` confirmOnly, `homepageDiscovery` 칸 3개, `geosan research` 명령, HomepageFinder find/save/confirm — 더하는 변경. `naverSearch`·`/homepage-candidates`는 "안 씀". 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
 | C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소는 본사 봉주로 303-1(PM 확정 2026-11-03), 설정 `geosan.address` | #222 (11/17 주, 코드 PR과 같이) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 

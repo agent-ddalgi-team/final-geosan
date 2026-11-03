@@ -19,7 +19,7 @@
 
 | 사람 | 주로 맡는 것 (바뀐 뒤) | 폴더 |
 |---|---|---|
-| 유동렬 | **U2·U3 줄**: 검수 전환 명령(`review-set`, U4에서 이동, 첫 작업 12h) → U2 근거 추출·전송 보호·네이버 홈페이지 찾기(40h 어림) → U3 CSV 수집(11/17~, 30h). U5 코드표·쉬운 말(6h) | `geosan/rules/`, `geosan/evidence/`, `geosan/commands/review_set.py`, U2 설계가 정한 폴더 |
+| 유동렬 | **U2·U3 줄**: 검수 전환 명령(`review-set`, U4에서 이동, 첫 작업 12h) → U2 근거 추출·전송 보호·홈페이지 찾기(OpenAI 웹 검색, 40h 어림) → U3 CSV 수집(11/17~, 30h). U5 코드표·쉬운 말(6h) | `geosan/rules/`, `geosan/evidence/`, `geosan/commands/review_set.py`, U2 설계가 정한 폴더 |
 | 이강욱 | U5 서버(28h, 11/7) + 관심 단계 서버(2h), 엑셀 출력 최소형(8h), U8 배포(20h, 11/10 첫 배포), U7 집계 API 검토(2h) | `geosan/records/`, `geosan/api/routes/records.py`, U8 배포 설정 |
 | 고선주 | U5 화면(20h) + 관심 단계 화면(3h), U7 화면(20h, 가짜 숫자로 먼저), U7 집계 API(14h, 이강욱 검토) | `web/src/`, `geosan/api/routes/dashboard.py`, `geosan/dashboard/` |
 | PM 최지예 | 호스팅 결정 #23(6h, 11/4), 백업·복원·되돌리기 절차(10h, U8에 묶음), PR 합치기·통합(12h), 승인 문서·이슈·발표 메모(6h), 거산 전달 준비(8h → 11/17 주로 옮김) | `aidlc/`, `docs/`, 백업 명령 |
