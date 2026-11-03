@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from geosan.api.app import create_app
 from geosan.api.deps import get_session
 from geosan.config.errors import AppError
+from geosan.config.models import AppSetting
+from geosan.storage.session import session_scope
 
 
 @pytest.mark.parametrize("status", [200, 400, 401, 403, 404, 500])
@@ -53,3 +55,21 @@ def test_api_root_error_also_disables_cache():
     assert response.status_code == 404
     assert response.headers.get("cache-control") == "no-store"
     assert response.headers.get("x-vercel-enable-rewrite-caching") == "0"
+
+
+def test_login_cookie_and_protected_responses_disable_proxy_caching(tmp_db, monkeypatch):
+    """Given 접속 보호 / When 거부·로그인·인증 조회 / Then 쿠키와 응답 모두 캐시하지 않는다."""
+    monkeypatch.setenv("GEOSAN_PASSWORD", "cache-test-only-passphrase")
+    with session_scope() as session:
+        session.get(AppSetting, "accessProtection").value = {"enabled": True}
+    with TestClient(create_app(), base_url="https://testserver") as client:
+        unauthorized = client.get("/api/v1/config/ui")
+        login = client.post("/api/v1/session", json={"password": "cache-test-only-passphrase"})
+        authorized = client.get("/api/v1/config/ui")
+    assert unauthorized.status_code == 401
+    assert login.status_code == authorized.status_code == 200
+    assert "HttpOnly" in login.headers["set-cookie"]
+    assert "Secure" in login.headers["set-cookie"]
+    for response in (unauthorized, login, authorized):
+        assert response.headers["cache-control"] == "no-store"
+        assert response.headers["x-vercel-enable-rewrite-caching"] == "0"

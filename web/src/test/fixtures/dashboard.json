@@ -1,0 +1,157 @@
+{
+  "data": {
+    "counts": {
+      "NOT_CONTACTED": 12,
+      "INTERESTED": 4,
+      "IN_CONTACT": 3,
+      "QUOTE_SAMPLE": 1,
+      "SCHEDULE_DUE": 3
+    },
+    "schedule": [
+      {
+        "oppId": "opp-3",
+        "customerName": "C산업(가상)",
+        "oppTitle": "크롬 도금 외주",
+        "dueAt": "2026-11-06",
+        "note": "샘플 결과 확인 전화",
+        "overdue": false,
+        "staffKey": "kim-gwajang"
+      },
+      {
+        "oppId": "opp-1",
+        "customerName": "A정밀",
+        "oppTitle": "밸브 바디 아노다이징",
+        "dueAt": "2026-11-01",
+        "note": "견적 보내기",
+        "overdue": true,
+        "staffKey": "park-lee"
+      },
+      {
+        "oppId": "opp-2",
+        "customerName": "B금속(가상)",
+        "oppTitle": "볼트 전기아연도금",
+        "dueAt": "2026-11-04",
+        "note": "공정 확인 질문 보내기",
+        "overdue": false,
+        "staffKey": "park-lee"
+      },
+      {
+        "oppId": "opp-4",
+        "customerName": "D테크(가상)",
+        "oppTitle": "부동태 처리",
+        "dueAt": "2026-10-30",
+        "note": "방문 일정 다시 잡기",
+        "overdue": true,
+        "staffKey": "lee-daeri"
+      }
+    ],
+    "recentActivity": [
+      {
+        "at": "2026-11-03T08:40:00+09:00",
+        "oppId": "opp-2",
+        "customerName": "B금속(가상)",
+        "kind": "NOTE",
+        "summary": "담당자가 도금 두께 요구를 알려 줌"
+      },
+      {
+        "at": "2026-11-02T16:10:00+09:00",
+        "oppId": "opp-1",
+        "customerName": "A정밀",
+        "kind": "STAGE",
+        "summary": "관심 → 접촉 중"
+      },
+      {
+        "at": "2026-11-02T11:25:00+09:00",
+        "oppId": "opp-3",
+        "customerName": "C산업(가상)",
+        "kind": "CONTACT_ATTEMPT",
+        "summary": "전화 시도, 부재중"
+      },
+      {
+        "at": "2026-11-01T15:00:00+09:00",
+        "oppId": "opp-4",
+        "customerName": "D테크(가상)",
+        "kind": "SCHEDULE",
+        "summary": "다음 일정: 11/6 방문"
+      },
+      {
+        "at": "2026-10-31T10:05:00+09:00",
+        "oppId": "opp-1",
+        "customerName": "A정밀",
+        "kind": "OPINION",
+        "summary": "검토 의견: 검토할 만함"
+      }
+    ],
+    "asOf": "2026-11-03T09:00:00+09:00",
+    "breakdown": {
+      "basis": {
+        "statuses": [
+          "INTERESTED",
+          "IN_PROGRESS",
+          "SAMPLE_OR_REGISTRATION_APPROVED",
+          "WON_THIS_YEAR"
+        ],
+        "total": 8
+      },
+      "byProcess": [
+        {
+          "processCode": "ZINC_PLATING",
+          "processName": "아연도금(전기아연도금)",
+          "count": 3,
+          "ratio": 0.38
+        },
+        {
+          "processCode": "ANODIZING",
+          "processName": "아노다이징(양극산화피막)",
+          "count": 3,
+          "ratio": 0.38
+        },
+        {
+          "processCode": "BLACK_OXIDE",
+          "processName": "알카리 흑착(흑색산화피막)",
+          "count": 0,
+          "ratio": 0
+        },
+        {
+          "processCode": "ELECTROLESS_NICKEL",
+          "processName": "무전해 니켈",
+          "count": 1,
+          "ratio": 0.13
+        },
+        { "processCode": "CHROME_PLATING", "processName": "크롬 도금", "count": 1, "ratio": 0.13 },
+        { "processCode": "ELECTROPOLISHING", "processName": "전해연마", "count": 0, "ratio": 0 },
+        {
+          "processCode": "PHOSPHATE_COATING",
+          "processName": "인산염 피막",
+          "count": 0,
+          "ratio": 0
+        },
+        {
+          "processCode": "CHROMATE",
+          "processName": "크로메이트(화성피막)",
+          "count": 0,
+          "ratio": 0
+        },
+        {
+          "processCode": "PASSIVATION",
+          "processName": "부동태(부동태 처리)",
+          "count": 1,
+          "ratio": 0.13
+        }
+      ],
+      "byIndustry": [
+        { "industry": "방위산업", "count": 2, "ratio": 0.25, "includesProposed": true },
+        { "industry": "반도체", "count": 0, "ratio": 0, "includesProposed": false },
+        { "industry": "반도체 장비", "count": 1, "ratio": 0.13, "includesProposed": true },
+        { "industry": "자동차 부품", "count": 1, "ratio": 0.13, "includesProposed": false },
+        { "industry": "항공우주", "count": 0, "ratio": 0, "includesProposed": false },
+        { "industry": "미확정", "count": 4, "ratio": 0.5, "includesProposed": false }
+      ]
+    }
+  },
+  "meta": {
+    "updatedAt": "2026-11-03T09:00:00+09:00",
+    "hasVirtualData": true,
+    "datasetKind": "VIRTUAL_REVIEWED"
+  }
+}

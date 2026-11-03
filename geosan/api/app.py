@@ -200,9 +200,9 @@ def create_app() -> FastAPI:
             )
         )
 
-    from geosan.api.routes import config, opportunities, records
+    from geosan.api.routes import config, opportunities, records, session
 
-    for router in (config.router, opportunities.router, records.router):
+    for router in (config.router, opportunities.router, records.router, session.router):
         app.include_router(router, prefix="/api/v1")
     dist = Path(__file__).resolve().parents[2] / "web" / "dist"
     if dist.is_dir():

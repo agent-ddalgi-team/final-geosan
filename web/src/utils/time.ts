@@ -25,6 +25,18 @@ export function formatMonthDayTime(iso: string | null | undefined): string | nul
   return p ? `${p.month}/${p.day} ${p.hour}:${p.minute}` : null;
 }
 
+/**
+ * "11/4" — 대시보드 일정·기록의 날짜. 날짜만 있는 값(YYYY-MM-DD)은 시간대 계산 없이 그대로 읽고,
+ * 시각이 붙은 값은 한국 시각 날짜로 읽는다. 읽을 수 없는 값이면 null.
+ */
+export function formatMonthDay(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnly) return `${Number(dateOnly[2])}/${Number(dateOnly[3])}`;
+  const p = kstParts(value, { month: '2-digit', day: '2-digit' });
+  return p ? `${Number(p.month)}/${Number(p.day)}` : null;
+}
+
 /** "09:05" — "저장됨 HH:MM"에 쓴다. */
 export function formatHourMinute(iso: string | Date | null | undefined): string | null {
   if (!iso) return null;

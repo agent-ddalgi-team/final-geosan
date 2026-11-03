@@ -75,7 +75,7 @@ export default function OpportunityDetailPage() {
   }, [data, meta, setBannerMeta]);
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
-  const goList = () => navigate('/');
+  const goList = () => navigate('/opportunities');
 
   const notFound = current?.error instanceof ApiError && current.error.status === 404;
   let state: 'loading' | 'error' | 'empty' | 'ready' = 'ready';
@@ -92,7 +92,7 @@ export default function OpportunityDetailPage() {
       emptyAction={
         <Button
           type="primary"
-          href="/"
+          href="/opportunities"
           onClick={(event) => {
             event.preventDefault();
             goList();

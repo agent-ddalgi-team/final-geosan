@@ -27,7 +27,7 @@
 - **추가 변경(새 필드·경로·명령·테이블·열 추가)**: 주인 단위가 하되, **코드보다 먼저 약속 파일에 적고 PR 체크리스트에 표시한다**. 받는 쪽은 모르는 필드를 무시한다(React 화면·명령 출력). 단, 사람이 넣는 파일(C7)에서는 모르는 키를 오류로 본다(오타가 조용히 사라지지 않게).
 - **깨는 변경(기존 필드·열 삭제, 의미·형식 변경, 경로·명령 삭제)**: `/api/v2`처럼 버전을 올리거나(HTTP), 규칙 설정 버전을 올리거나(규칙 설정 파일), 깨는 마이그레이션으로 표시하고(공유 데이터) PM 확인 뒤 한 번에 바꾼다. 이전 버전은 다음 합치기까지만 유지한다. 새 테이블·새 열을 더하는 마이그레이션은 추가 변경이다.
 - **약속 파일(사용자가 더한 보호 장치 ①②④, 가장 단순한 방법)**:
-  1. 약속 파일 = 저장소 `contracts/` 폴더(`openapi.json`, `case-file.schema.json`, `capability-file.schema.json`, `rule-config.schema.json`, `app-settings.schema.json`)와 이 문서. `contracts/`는 U1에서 처음 만든다. 약속 파일은 **사람이 `geosan export-contracts`를 명시적으로 실행할 때만** 갱신하며 서버 시작 시 자동 생성은 하지 않는다(코드가 기준이 되어 버리는 것을 막음).
+  1. 약속 파일 = 저장소 `contracts/` 폴더(`openapi.json`, `case-file.schema.json`, `capability-file.schema.json`, `rule-config.schema.json`, `app-settings.schema.json`)와 이 문서. `contracts/`는 U1에서 처음 만든다. `openapi.json`은 **사람이 `geosan export-contracts`를 명시적으로 실행할 때만** 갱신하며 서버 시작 시 자동 생성은 하지 않는다(코드가 기준이 되어 버리는 것을 막음). `*.schema.json` 4개는 이 명령이 만들지 않고 사람이 손으로 고친다(2026-11-03 바로잡음, #218).
   2. `.claude/CLAUDE.md`에 "약속에 없는 항목은 만들지 말고 물어볼 것, 약속 파일은 PM 확인 없이 고치지 말 것, 더하는 것도 약속 파일에 먼저 적을 것"을 적었다(아래 8장).
   3. 코드와 약속 파일이 같은지 확인하는 검사(서버가 만든 OpenAPI ↔ `contracts/openapi.json`, 검사기 스키마 ↔ `contracts/*.schema.json` 네 개)는 기존 자동 검사(CI)에 한 단계로 붙이되, 만드는 시점은 전달 계획에서 정한다. C6 테이블·C8 명령은 자동 비교 없이 PR 체크리스트로만 보호한다(한계 명시).
   4. PR 체크리스트에 "약속 파일을 바꿨나요?" 한 줄을 넣고, 바꿨으면 PM 확인 후 합친다. 새 도구·새 서비스는 쓰지 않는다.
@@ -196,7 +196,7 @@ components:
         evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceView' } }
         homepageNeedsConfirm: { type: boolean }
         scores: { type: object, description: '점수 키 E/P/S/R/C는 대문자 그대로(camelCase 변환 대상 아님; 2026-10-22 PM 확인, 이슈 #33)', properties: { E: { type: integer }, P: { type: integer }, S: { type: number, nullable: true }, R: { type: integer }, C: { type: number }, items: { type: array, items: { type: object, description: 'itemCode, label, state, weight, matchRate, certainty, decay, score, factJudged, summary(#139), evidenceIds: [string] (이 항목 판정에 쓴 evidence[].evidenceId, 정렬; 더하는 변경 2026-10-27 PM, #176)' } }, ruleVersion: { type: string }, datasetKind: { type: string }, evaluatedAt: { type: string } } }
-        records: { type: object, properties: { contactCount: { type: object, description: '(추가 2026-11-03 밤 PM 반영, 상세 화면 (5)) 접촉 시도 행(ActivityItem CONTACT_ATTEMPT) 수. 저장 없이 셈. 메모·자료 조사는 안 셈', properties: { total: { type: integer }, call: { type: integer }, email: { type: integer }, visit: { type: integer } } }, opinion: { $ref: '#/components/schemas/RecordMeta' }, bookmark: { $ref: '#/components/schemas/RecordMeta' }, approval: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string }, purpose: { type: string, nullable: true }, evalId: { type: string }, basedOnPreviousEval: { type: boolean } } } ] }, outcome: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string, nullable: true }, nextScheduleAt: { type: string, nullable: true } } } ] } } }
+        records: { type: object, properties: { contactCount: { type: object, description: '(추가 2026-11-03 밤 PM 반영, 상세 화면 (5)) 접촉 시도 행(ActivityItem CONTACT_ATTEMPT) 수. 저장 없이 셈. 메모·자료 조사는 안 셈', properties: { total: { type: integer }, call: { type: integer }, email: { type: integer }, visit: { type: integer } } }, opinion: { $ref: '#/components/schemas/RecordMeta' }, bookmark: { $ref: '#/components/schemas/RecordMeta' }, approval: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string }, purpose: { type: string, nullable: true }, evalId: { type: string }, basedOnPreviousEval: { type: boolean } } } ] }, outcome: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { status: { type: string, nullable: true }, nextScheduleAt: { type: string, nullable: true }, nextScheduleNote: { type: string, nullable: true, description: '(추가 2026-11-03 밤, PM 결정 #209) 다음 일정의 할 일 한 줄. /outcomes 저장 칸·대시보드 schedule.note와 같은 값' } } } ] } } }
         recontact: { type: object, nullable: true, description: '재접촉 상세 영역(U6): 7칸 값·확인/추정·다시 연락할 이유·후속 일정' }
         evalId: { type: string }
         previousEvalId: { type: string, nullable: true }
@@ -264,7 +264,7 @@ paths:
       responses: { '200': { description: 세션 쿠키 발급(HttpOnly·Secure·SameSite=Lax, 12시간) }, '401': { description: 비밀번호가 맞지 않습니다 }, '429': { description: '5회 연속 실패, retryAfterSeconds 30' } }
   /config/ui:
     get:
-      summary: 담당자 목록(키·표시 이름)·브랜드·쉬운 말 코드표·접속 보호 여부 (U1)
+      summary: 담당자 목록(키·표시 이름)·브랜드·쉬운 말 코드표·접속 보호 여부 (U1). (추가 2026-11-03 밤, PM 결정 #209) 응답 `records: { approvalEnabled: boolean, noteMaxLength: integer }` — 설정 C7 `records` 값을 그대로. 화면은 approvalEnabled false면 승인 버튼·칸을 숨기고, noteMaxLength로 메모 글자 상한을 보여 준다
       responses: { '200': { description: Envelope } }
   /opportunities:
     get:
@@ -634,7 +634,7 @@ CaseFile:
   isVirtual: true
   datasetKind: datasetKind
   notes: [string]                       # 예: "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가"
-  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, mainPhoneSourceUrl|null, mainPhoneConfirmedAt|null, mainPhoneConfirmedBy|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null, industries: json|null, industriesSource: enum[AI, STAFF]|null, industriesConfirmedAt|null }   # industries 3열은 추가 2026-11-03(PM 결정, 대시보드 산업군 — 설정 목록 안 값 ≤3, AI 제안 뒤 담당자 확정). lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션)
+  customer: { name, bizNumber|null, address, normalizedAddress, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, mainPhoneSourceUrl|null, mainPhoneConfirmedAt|null, mainPhoneConfirmedBy|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null, industries: json|null, industriesSource: enum[AI, STAFF]|null, industriesConfirmedAt|null }   # industries 3열은 추가 2026-11-03(PM 결정, 대시보드 산업군 — 설정 목록 안 값 ≤3, AI 제안 뒤 담당자 확정). lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션). address = 사례 파일·CSV의 원본 주소 글자 그대로(지역 시·군 추출·2차 좌표 변환에 씀), normalizedAddress = 공백 제거·소문자 비교용. (2026-11-03 밤 확인, #209) 코드는 그동안 normalizedAddress만 저장했으므로 원본 address 열을 더하는 마이그레이션으로 맞춘다. 약속 변경 아님
   interactions: [{ kind: interactionKind, occurredAt, allowedSummary, linkedToOpportunity: boolean, certainty }]
   opportunity: { item, project, purpose, owner, cardReason: string|null }   # cardReason: 카드 추천 이유 한 문장, 출처 제외 80자 안 권장(넘으면 경고만; 더하는 변경 2026-10-26 PM, #139)
   discoveryPaths: [{ pathKind, sourceId, originKey, discoveredAt }]
@@ -712,7 +712,7 @@ commands:
   geosan check-case <file.json>                  # U1. (갱신 제안 2026-10-21, 기능 설계 Q8 답 확정 후 적용) 저장 없이 형식·허용 값·연락처 패턴만 검사. DB 없이 팀원 컴퓨터에서 실행. (PM 지시 2026-10-21) 코드 생성 Part A-2(Step 11)에서 먼저 연결해 팀원이 10/22부터 쓴다
   geosan evaluate [--opp <id>...] [--base-date YYYY-MM-DD]   # U1. 흐름 ⓪. 출력: 묶음 ID, 기회 수, 분류 요약
   geosan verify-case <file.json>                 # U1. 평가 뒤 expected와 비교. 출력: 항목별 일치/불일치 표
-  geosan export-contracts                        # U1. contracts/openapi.json·*.schema.json 생성(사람이 명시적으로만 실행)
+  geosan export-contracts                        # U1. contracts/openapi.json 생성(사람이 명시적으로만 실행). *.schema.json 4개는 이 명령이 만들지 않고 손으로 고친다(2026-11-03 바로잡음, #218)
   geosan demo-report --capability <file.json> --cases <dir> --out <dir> [--base-date YYYY-MM-DD]   # U1 예비 경로(PM 승인 2026-10-21, 10/29 부분 시연 대비). DB·API·화면 없이 역량 파일 + 사례 파일 폴더를 읽어 규칙 엔진으로 평가하고 순위표(CSV + 인쇄용 HTML), 기업별 근거(md), 기업별 사실표(md, 메모 재료)를 <out>에 쓴다. 저장하지 않는다. 모든 출력 머리에 "시연용 초안·거산 확인 전". 소개서 묶음이면 참고 점수·접촉 후보 없음(BR5.6). 연락처 패턴이 있으면 쓰지 않고 실패(종료 코드 1)
   geosan ingest <sourceId> [--max N]             # U3·U9. 흐름 ⑥
   geosan merge-list                              # U3. 확인 필요 후보 목록
@@ -800,6 +800,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C0·C1·C4·C6·C7·C9 | (2026-11-03 밤, PM "반영" — 상세 화면 5영역) 코드표 `noteKind`·`reviewItemKind`·`reviewItemSource`, 상세 머리 대표번호 출처·확인 3칸, `POST /main-phone/confirm`, `/notes kind`, `records.contactCount`·카드 `contactCount`, `reviewItems`·`POST /review-items/{itemId}/check`, C4 추출 단계·`extract_main_phone`, `opp_customer` 3열·`rec_note.kind`·`rec_review_check`, 설정 `mainPhone.allowedPrefixes`, LlmAdapter `companyMainPhone` 안 씀. 모두 더하는 변경. (4) 영업 전략 초안(`draft_strategy`·`opp_strategy_draft`·`/strategy`)은 2차라 아직 안 적음. 메모→OpenAI는 거산 답 대기(#208). 제안서 `../delivery-planning/detail-screen-layout-20261103.md` 4장 | #209·#227(서버)·#210·#228(화면)·#211(코드표)·#219(추출) |
 | C1·C7 | (2026-11-03 밤, PM 결정 지역·산업 선택) 목록 `region=`(시·군 또는 설정 묶음 "천안 인근" = 천안시·아산시, 주소 글자로)·`industry=`(설정 industries, 1차는 사례 파일에 사람이 적은 값 industriesSource CASE_FILE)·`meta.regionCounts`·`meta.industryCounts`·카드 `region`·`industries`, 설정 `listFilters.regionPresets`, `q`에 산업군 이름. 더하는 변경. km 거리(#222)·AI 산업군 제안(#229)은 2차 그대로. 제안 `../delivery-planning/list-filters-region-industry-20261103.md` | #209(API)·#210(선택 UI)·사례 파일 산업군 손 입력(새 이슈) 1차 |
 | C1 | (2026-11-03 밤, PM 결정 공정별 구분) 추천 목록 `process=` 거르기(공정 안 순위)·`meta.processCounts`·카드 `processCodes`. 더하는 변경. 이전 시연은 전기아연도금·아노다이징을 한 줄로 섞었으나 거산 영업이 공정별이라 탭으로 나눔. 제안 `../delivery-planning/process-tabs-20261103.md` | #209(API)·#210(탭) 1차 |
+| C1·C6 | (2026-11-03 밤, PM 결정 #209·#213 확인 요청) `/config/ui` 응답 `records`(approvalEnabled·noteMaxLength), 상세 응답 `records.outcome.nextScheduleNote`. 더하는 변경. C6 고객 `address`(원본)·`normalizedAddress`(비교용) 구분을 적음 — 코드가 원본 열을 빠뜨린 것이라 약속 변경 아님. DB 이력 두 갈래(web_001 ∥ opp_002~opp_004)는 C6 규칙대로 `db merge-heads`로 합침 | #209(기록 서버 PR)·#213(배포 준비 PR) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것

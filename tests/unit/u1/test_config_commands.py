@@ -268,7 +268,7 @@ def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> No
         assert runtime.app_settings.active_dataset_kind == "BROCHURE"  # 예시 기본값(시연용, #91)
         assert runtime.notices == []
     code, output = _run("check-config")
-    assert code == 0 and "등록" in output
+    assert code == 0 and "바꾸지 않았습니다" in output
 
 
 def test_check_config_rejects_secret_key_and_bad_rule_config(tmp_path: Path) -> None:
@@ -297,11 +297,11 @@ def test_check_config_rejects_secret_key_and_bad_rule_config(tmp_path: Path) -> 
 def test_init_db_and_merge_heads_commands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "cli.db"))
     code, output = _run("init-db")
-    assert code == 0 and "준비 완료" in output and "rec_002" in output
+    assert code == 0 and "준비 완료" in output and "web_001" in output
     code, output = _run("init-db")
     assert code == 0 and "이미 최신" in output
     code, output = _run("db", "merge-heads")
-    assert code == 0 and "하나(rec_002)" in output
+    assert code == 0 and "하나(web_001)" in output
     assert os.path.exists(tmp_path / "cli.db")
 
 

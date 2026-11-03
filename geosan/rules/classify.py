@@ -7,7 +7,6 @@ from geosan.rules.codes import (
     FilterState,
     ItemState,
     ReviewStatus,
-    classification_entry,
 )
 from geosan.rules.codes import (
     ClassificationCode as Code,
@@ -87,11 +86,9 @@ def _has_final_consonant(text: str) -> bool:
     return (ord(last) - ord("가")) % 28 != 0 if "가" <= last <= "힣" else True
 
 
-def _blocker_text(
-    data: EvaluationInput, code: Code, assessment: RequirementAssessment, fallback: str
-) -> str:
+def _blocker_text(data: EvaluationInput, assessment: RequirementAssessment, fallback: str) -> str:
     """표시만 바꾸고 제외 사유·승인 판정은 보존한다 (BR10.3, #160 PM 결정)."""
-    if code == Code.FILTER_EXCLUDED:
+    if assessment.filter_state == FilterState.EXCLUDED:
         return fallback
     names = _pending_process_names(data)
     if names is None:
@@ -106,7 +103,7 @@ def _blocker_text(
     )
     parts = list(dict.fromkeys(parts))
     if not parts:
-        return "없음 — 지금 단계 필수 요구 통과"
+        return fallback
     text = parts[0]
     for previous, current in zip(parts[:-1], parts[1:], strict=True):
         text += ("과 " if _has_final_consonant(previous) else "와 ") + current
@@ -167,8 +164,12 @@ def display_texts(
     """분류·요구·관계 확인 상태를 설명하고 승인 가능 여부를 한 번만 계산한다 (BR10.2~10.3)."""
     label = data.rule_config.classification_labels[code]
     blockers = []
-    if classification_entry(code).blocks_approval:
-        blockers.append(label)
+    if assessment.filter_state == FilterState.EXCLUDED:
+        blockers.append(data.rule_config.classification_labels[Code.FILTER_EXCLUDED])
+    elif assessment.filter_state == FilterState.PENDING:
+        blockers.append(data.rule_config.classification_labels[Code.FILTER_PENDING])
+    if not data.operational_ready or data.dataset_kind == DatasetKind.BROCHURE:
+        blockers.append(data.rule_config.classification_labels[Code.OPS_PENDING])
     for check in assessment.requirement_checks:
         if check.display_result == CheckDisplay.PENDING_BLOCKS:
             blockers.append(check.reason)
@@ -178,7 +179,7 @@ def display_texts(
         blockers.append("거래 관계 확인 전")
     blocked = bool(blockers)
     blocker = "; ".join(dict.fromkeys(blockers)) if blocked else "없음 — 지금 단계 필수 요구 통과"
-    blocker = _blocker_text(data, code, assessment, blocker)
+    blocker = _blocker_text(data, assessment, blocker)
     score = "--"
     if totals.S is not None:
         items = calculate_items(data)

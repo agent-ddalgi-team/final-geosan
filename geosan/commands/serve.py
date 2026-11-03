@@ -15,7 +15,6 @@ from pathlib import Path
 import typer
 
 from geosan.commands.check_config import run_check_config
-from geosan.config.app_settings import read_app_settings
 from geosan.storage.engine import database_path
 
 EXIT_OK = 0
@@ -47,20 +46,6 @@ def _run_server(port: int, host: str = HOST) -> None:
     uvicorn.run(create_app(), host=host, port=port, log_config=None, access_log=False)
 
 
-def _active_bundle_line(db_path: Path) -> str:
-    """DB에 저장된 앱 설정 사본의 활성 묶음을 한 줄로 알린다. 사본이 없으면 그 사실을 알린다."""
-    from geosan.storage.session import session_scope
-
-    with session_scope(db_path) as session:
-        settings = read_app_settings(session)
-    if settings is None:
-        return "앱 설정 사본이 아직 없습니다. 첫 요청 때 examples/app-settings.yaml로 만듭니다."
-    return (
-        f"활성 묶음 {settings.active_dataset_kind} (DB 사본 기준, 바꾸려면 activeDatasetKind를 "
-        "고친 앱 설정 파일로 geosan check-config)"
-    )
-
-
 def run_serve(port: int, host: str = HOST) -> int:
     if host not in (HOST, "0.0.0.0"):
         typer.echo("오류: 듣는 주소는 127.0.0.1 또는 0.0.0.0으로 지정해 주세요.")
@@ -82,7 +67,6 @@ def run_serve(port: int, host: str = HOST) -> int:
         typer.echo(f"오류: 데이터베이스 파일이 없습니다 ({db_path}).")
         typer.echo("먼저 `geosan init-db`를 실행해 주세요.")
         return EXIT_INPUT_ERROR
-    typer.echo(_active_bundle_line(db_path))
 
     # 3) 화면 빌드 결과가 없으면 API만 띄운다는 것을 알린다(실패는 아니다).
     screen = "API + 화면" if (WEB_DIST / "index.html").exists() else "API만"
