@@ -19,9 +19,15 @@ from pydantic import (
 )
 from sqlalchemy import select
 
+from geosan.config.app_settings import (
+    DEFAULT_APP_SETTINGS_PATH,
+    load_app_settings,
+    read_app_settings,
+)
 from geosan.config.errors import AppError, InputError
 from geosan.config.validators import find_contact
 from geosan.opportunity.models import Customer, Opportunity
+from geosan.opportunity.queries import store_case_homepage
 from geosan.rules.codes import SecurityGrade
 from geosan.storage.session import session_scope
 
@@ -81,18 +87,26 @@ def find_case_homepage(
     search: Callable[[str, str], object],
     db_path: Path | str | None = None,
 ) -> HomepageSearchResult:
-    """투입된 사례의 공개 식별값만 검색 어댑터에 전달한다 (C4·C9).
+    """공개 사례를 검색하고 검증된 결과를 상세 조회에 쓸 수 있도록 저장한다 (C4·C9).
 
     검색 어댑터가 전송 기록·호출 한도를 맡는다. DB 읽기는 어댑터를 부르기 전에 끝낸다.
     """
     with session_scope(db_path) as session:
         customer = session.execute(
-            select(Customer.name, Customer.normalized_address, Customer.security_grade)
+            select(
+                Customer.customer_id,
+                Customer.name,
+                Customer.normalized_address,
+                Customer.security_grade,
+                Customer.homepage_status,
+            )
             .join(Opportunity, Opportunity.customer_id == Customer.customer_id)
             .where(Opportunity.opp_id == opp_id, Opportunity.case_id.is_not(None))
         ).one_or_none()
     if customer is None or customer.security_grade != SecurityGrade.PUBLIC:
         raise InputError("공개 사례로 확인된 회사만 홈페이지를 검색할 수 있습니다.")
+    if customer.homepage_status == "CONFIRMED":
+        raise InputError("이미 확인한 홈페이지가 있습니다.")
     name, address = customer.name.strip(), (customer.normalized_address or "").strip()
     if not name or not address:
         raise InputError("홈페이지를 검색하려면 회사명과 주소가 모두 필요합니다.")
@@ -100,10 +114,22 @@ def find_case_homepage(
         raise InputError("회사명 또는 주소에 연락처가 있어 검색할 수 없습니다.")
     response = search(name, address)
     try:
-        return HomepageSearchResult.model_validate(response)
+        result = HomepageSearchResult.model_validate(response)
     except ValidationError:
         raise AppError(
             message="홈페이지 검색 응답의 형식이 올바르지 않습니다.",
             next_action="다시 조사해 주세요.",
             status=503,
         ) from None
+    with session_scope(db_path) as session:
+        settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
+        store_case_homepage(
+            session,
+            opp_id,
+            customer.customer_id,
+            customer.name,
+            customer.normalized_address,
+            result,
+            settings.homepage_discovery.min_confidence,
+        )
+    return result
