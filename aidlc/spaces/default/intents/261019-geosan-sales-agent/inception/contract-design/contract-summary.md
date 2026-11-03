@@ -79,7 +79,7 @@ contactMethod: [CALL, EMAIL, VISIT]                                 # (추가 20
 contactResult: [REACHED, ABSENT, DECLINED]                          # (추가 2026-11-03, U5 메모 4장) 접촉 결과: 연결됨 / 부재 / 거절
 questionStatus: [WAITING, REQUESTED, REPLIED, APPLIED]
 questionTargetKind: [QUALIFICATION, PROCESS, CAPABILITY, FIELD, REQUIREMENT, OPPORTUNITY]
-transferPurpose: [EXTERNAL_AI, OUTPUT_EXPORT]
+transferPurpose: [EXTERNAL_AI, OUTPUT_EXPORT, EXTERNAL_SEARCH, EXTERNAL_GEOCODE]   # EXTERNAL_GEOCODE 추가 2026-11-03(PM 결정, 거리 기능 #222): 주소→좌표 변환 호출
 transferItemKind: [PUBLIC_TEXT, EVIDENCE, OPPORTUNITY_INFO, QUESTION, CAPABILITY_VALUE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION]
 staffKey: 영문·숫자·하이픈(예: park-lee), 예약 키 viewer(보기 전용)
 ```
@@ -160,6 +160,7 @@ components:
         oppId: { type: string }
         rank: { type: integer }
         title: { type: string, description: 기업 · 기회 이름 }
+        distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소(설정 geosan.address)에서의 직선거리 km. 좌표 없으면 null(화면 "거리 미확인"), 가상 사례는 null("가상·거리 없음")' }
         classificationCode: { type: string }
         coreEvidenceRecheck: { type: boolean }
         scoreS: { type: number, nullable: true }
@@ -178,7 +179,7 @@ components:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
       properties:
-        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, address: { type: string }, distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 지시) 거산 본사에서의 직선거리. 거리 기능(#222) 전까지 null' }, summaryLine: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 한 줄 소개. AI 조사(U2)가 공개 본문에서 생성. 조사 전에는 사례 파일 cardReason' }, highlights: { type: array, maxItems: 3, items: { type: string }, description: '주요 특징 최대 3개(품목·공정·규모·주요 고객 같은 공개 사실만). AI 조사 전에는 빈 배열' }, researchedAt: { type: string, format: date-time, nullable: true, description: '마지막 조사 시각(AI 조사 완료 시각, 사례 파일 투입분은 투입 시각)' }, researchSource: { type: string, nullable: true, enum: [AI, CASE_FILE] }, researchStale: { type: boolean, description: '설정 research.staleAfterDays(기본 90일)보다 오래됐으면 true → 화면 "오래됨" 표시' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
+        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, address: { type: string }, distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 지시) 거산 기준 주소(설정 geosan.address, PM이 정함)에서의 직선거리 km. 거리 기능(#222) 전까지 null' }, summaryLine: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 한 줄 소개. AI 조사(U2)가 공개 본문에서 생성. 조사 전에는 사례 파일 cardReason' }, highlights: { type: array, maxItems: 3, items: { type: string }, description: '주요 특징 최대 3개(품목·공정·규모·주요 고객 같은 공개 사실만). AI 조사 전에는 빈 배열' }, researchedAt: { type: string, format: date-time, nullable: true, description: '마지막 조사 시각(AI 조사 완료 시각, 사례 파일 투입분은 투입 시각)' }, researchSource: { type: string, nullable: true, enum: [AI, CASE_FILE] }, researchStale: { type: boolean, description: '설정 research.staleAfterDays(기본 90일)보다 오래됐으면 true → 화면 "오래됨" 표시' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
         stage: { type: object, properties: { current: { type: integer }, badge: { type: string, nullable: true } } }
         reasons: { type: object, properties: { reason: { type: string }, nextAction: { type: string }, questions: { type: array, items: { $ref: '#/components/schemas/Question' } } } }
         requirements: { type: array, items: { $ref: '#/components/schemas/RequirementCheckView' } }
@@ -266,6 +267,8 @@ paths:
         - { name: bookmarked, in: query, schema: { type: boolean } }   # (갱신 2026-11-03, PM 결정 Q2) 안 씀(담기 제거). 경로 호환을 위해 남김
         - { name: stage, in: query, schema: { type: string, enum: [NOT_EXECUTED, INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, ON_HOLD, WON, LOST] }, description: (추가 2026-11-03, Q2) 영업 단계(outcomeStatus 최신 값)로 거르기. 대시보드 건수를 누르면 이 조건으로 열림 (U5·U7) }
         - { name: filter, in: query, schema: { type: string, enum: [TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY] }, description: 대시보드 건수 조건 (U7) — (갱신 2026-11-03) 건수 재정의로 SCHEDULE_DUE만 씀, 나머지 값은 남기되 안 씀 }
+        - { name: sort, in: query, schema: { type: string, enum: [rank, distance], default: rank }, description: (추가 2026-11-03 PM 결정, 거리 #222) distance = 거산 기준 주소에서 가까운 순. 점수·순위 계산은 바뀌지 않음 }
+        - { name: maxDistanceKm, in: query, schema: { type: number }, description: (추가 2026-11-03 PM 결정, 거리 #222) 이 거리 안의 회사만. 선택지는 설정 distanceFilterPresetsKm(기본 30/50/100) }
         - { $ref: '#/components/parameters/page' }
         - { $ref: '#/components/parameters/pageSize' }
       responses: { '200': { description: 'Envelope(data: OpportunityCard[], meta.total)' } }
@@ -505,6 +508,11 @@ check_transfer:
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
       - 하루 호출 상한(`naverSearch.dailyCallLimit`) 초과 → 거부 (kind SEARCH_LIMIT, 쉬운 말 "오늘 검색 한도 초과"). 네이버 자체 한도는 하루 25,000회
       - sideEffect: TransferLog 1행(kind WEB_SEARCH, 시각·기회 ID·호출 수만, 검색어 본문 없음). 검색 결과는 저장·캐시하지 않는다(네이버 검색 API 특약 2.3)
+    EXTERNAL_GEOCODE:   # (추가 2026-11-03 PM 결정, 거리 #222) 회사 주소 → 좌표 변환. 행정안전부 도로명주소 API(검색 → 좌표제공, 승인키 2개)
+      - 허용 kind: CUSTOMER_ADDRESS(산단공 공개 CSV 출처, securityGrade PUBLIC)만. 회사명·메모·내부 값·연락처가 섞이면 전체 거부
+      - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
+      - 하루 호출 상한(`geocoding.dailyCallLimit`) 초과 → 거부 (kind GEOCODE_LIMIT, 쉬운 말 "오늘 좌표 변환 한도 초과")
+      - sideEffect: TransferLog 1행(kind GEOCODE, 시각·고객 ID·호출 수·성공 여부만, 주소 본문 없음). 받은 좌표는 opp_customer에 저장(약관상 저장 금지 문구 없음, 신청서 용도란에 저장 용도 명시)
     OUTPUT_EXPORT:   # 질문 목록(거산에 보내는 것)·엑셀(내부용)
       - securityGrade = FORBIDDEN 또는 UNKNOWN → 전체 거부
       - kind 없음 → 전체 거부
@@ -581,7 +589,7 @@ CaseFile:
   isVirtual: true
   datasetKind: datasetKind
   notes: [string]                       # 예: "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가"
-  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null }   # mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션)
+  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null }   # lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션)
   interactions: [{ kind: interactionKind, occurredAt, allowedSummary, linkedToOpportunity: boolean, certainty }]
   opportunity: { item, project, purpose, owner, cardReason: string|null }   # cardReason: 카드 추천 이유 한 문장, 출처 제외 80자 안 권장(넘으면 경고만; 더하는 변경 2026-10-26 PM, #139)
   discoveryPaths: [{ pathKind, sourceId, originKey, discoveredAt }]
@@ -632,7 +640,10 @@ AppSettings:
   # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기는 네이버 검색 API가 먼저 찾아 **결과를 네이버가 준 모양 그대로 "네이버 검색결과"로 보여 주고**, 담당자가 눌러 확정한 주소 하나만 저장한다(C9 HomepageFinder). 검색 결과 목록은 저장·캐시하지 않는다(네이버 검색 API 특약 2026-09-07: 결과 저장·가공·AI 입력 금지).
   #   U2 PR에서 enabled: true로, termsConfirmed는 PM이 네이버 API 허브 신청 때 이 쓰임새(결과 표시 + 담당자 확정)로 확인한 뒤 true.
   records: { approvalEnabled: boolean, noteMaxLength: int }   # (추가 2026-11-03, PM 결정 Q1·U5) approvalEnabled 기본 false = 접촉 승인을 화면에서 숨김(경로·테이블은 유지). noteMaxLength 기본 200 = 영업 메모 글자 상한. 첫 화면은 대시보드로 고정(Q3 A)이라 ui.homeScreen 키는 두지 않음
-  research: { staleAfterDays: 90 }   # (추가 2026-11-03 PM 지시) 마지막 조사가 이 일수보다 오래되면 상세 머리에 "오래됨" 표시
+  research: { staleAfterDays: 90 }
+  geosan: { address: string, lat: number, lng: number }   # (추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소와 좌표. PM이 한 번 적음(좌표는 지도에서 읽어 넣음). 거리는 모두 이 점에서 잰다
+  geocoding: { provider: JUSO, enabled: boolean, dailyCallLimit: int }   # (추가 2026-11-03 PM 결정) 행정안전부 도로명주소 API. 키는 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY. 기본 enabled false(키 받기 전)
+  distanceFilterPresetsKm: [30, 50, 100]   # (추가 2026-11-03 PM 결정) 목록 거리 필터 선택지   # (추가 2026-11-03 PM 지시) 마지막 조사가 이 일수보다 오래되면 상세 머리에 "오래됨" 표시
   brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"
   accessProtection: { enabled: boolean }      # 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD
 ```
@@ -659,6 +670,7 @@ commands:
   geosan dataset-set <datasetKind>               # U4. 거산 값 묶음 전환(설정 변경 + 재평가 안내)
   geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함). (갱신 2026-11-03, Q10) 담당 PM(최지예), U8에 묶음, 10h
   geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회. (갱신 2026-11-03, Q10) 담당 PM, U8에 묶음
+  geosan geocode [--missing-only]                # (추가 2026-11-03 PM 결정, 거리 #222) 좌표 없는 회사 주소를 도로명주소 API로 좌표로 바꿔 저장. 건수·실패 사유(주소 못 찾음·한도·통신)를 출력. 가상 사례는 건너뜀
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
   geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 네이버 검색 호출 수는 건수만(비용 없음). 5곳 시험의 1곳당 비용 측정에 쓴다
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
@@ -699,6 +711,11 @@ HomepageFinder:                           # (추가 2026-11-03, PM 결정 2 정�
   limits: 네이버 하루 25,000회 안에서 naverSearch.dailyCallLimit(기본 500). timeout 10s, retry 1 (TransferLog 호출마다 1행, kind WEB_SEARCH, 검색어 본문 없음)
   cost: 무료. 월 $20 비용 상한은 OpenAI(근거 추출)에만 적용
   terms: 네이버 검색 API 특약(2026-09-07 시행) — 결과는 네이버 검색결과로만 제공·가공 금지·저장/캐시 금지·AI 입력 금지. 이 설계는 "결과 그대로 표시 + 사람이 확정한 주소만 저장"으로 그 안에 둔다. API 허브 신청 때 PM이 이 쓰임새를 적어 확인(homepageDiscovery.termsConfirmed)
+GeocodeAdapter:                           # (추가 2026-11-03 PM 결정, 거리 #222) 주소 → 좌표. 도로명주소 API 2단계: 검색(주소 글자 → 행정구역·도로명·건물번호 코드) → 좌표제공(코드 → entX/entY)
+  geocode(address) -> { lat, lng, source: JUSO, matchedAddress } | null   # 못 찾으면 null(오류 아님). TransferGuard EXTERNAL_GEOCODE 통과 뒤에만 호출
+  keys: 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY (승인키가 서로 달라 바꿔 쓰면 거부됨). 설정 파일·코드·로그에 적지 않음
+  limits: geocoding.dailyCallLimit. timeout 10s, retry 1. 좌표계 변환(entX/entY → 위경도)은 공식을 코드로 둠(패키지 추가 없음, 직선거리 용도라 수십 m 오차 허용)
+  distance: 두 위경도 사이 직선거리(구면 공식) km 소수 1자리. 점수·순위에는 쓰지 않는다
 HomepageReader:
   fetch(url) -> { allowed: boolean, reason: enum[OK, ROBOTS_DISALLOW, TERMS_DISALLOW, UNREACHABLE], text|null }
   timeout: 20s, retry: 1 (전체 60초 한도 안)
@@ -722,6 +739,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
 | C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03, PM 결정 2 정정 2차)**: 네이버 검색 API(웹 문서)가 찾고 **결과는 네이버 검색결과로 그대로 보여 주며, 담당자가 확정한 주소 하나만 저장**(결과 목록 저장·가공·AI 입력 없음 — 2026-09-07 특약 2.1~2.3 안). 무료, 하루 25,000회 한도 안에서 호출 상한만 둠. 구글 Custom Search는 신규 중단. U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder). 네이버 API 허브 신청 때 PM이 쓰임새를 적어 확인 | ~~U9~~ → U2 |
 | C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회. 네이버 검색 API(② 홈페이지 찾기)는 하루 호출 상한만. 키 2개(NAVER_CLIENT_ID·NAVER_CLIENT_SECRET, OPENAI_API_KEY)는 환경 변수. 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·`/homepage-candidates`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
+| C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소(본사/제1공장)는 PM이 설정값으로 정함 | #222 (11/17 주, 코드 PR과 같이) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
