@@ -37,8 +37,40 @@ cd web && npm ci && cd ..
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 
 뼈대 기본 틀(Part A) 시점에는 명령 이름만 등록되어 있고 본문은 "아직 구현되지 않았습니다(담당, Step)"를 내고 종료 코드 2로 끝납니다.
-서버는 `127.0.0.1:8000`만 듣습니다. 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
+서버는 기본 `127.0.0.1:8000`에서 듣습니다. 배포할 때만 `--host 0.0.0.0 --port <포트>`를 지정합니다. 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
 
+로컬 예비 통합 빌드는 `python scripts/build.py`로 실행합니다. 잠금 파일대로 화면 의존성을 설치하고 `VITE_USE_FIXTURES=0`으로 빌드하며, 실패하면 중단합니다. 성공하면 기존 `geosan serve`가 화면과 API를 함께 제공합니다.
+
+### Vercel + Railway 배포 준비 (#213, PM 2026-11-03 결정)
+
+현재는 배포 준비 단계이며 로그인 서버 PR #225는 반영됐습니다. PM 계정 연결·Railway 주소 발급 뒤 실제 배포를 검증합니다. `GEOSAN_PASSWORD`만 설정하지 말고 아래 접속 보호 설정도 등록해야 합니다. 기존 `scripts/build.py`는 로컬 통합 실행·예비용으로 유지합니다.
+
+- Railway: 저장소 루트, 배포 가지 `main`, 서비스 1개와 영구 볼륨 `/data`. 환경 변수 `GEOSAN_DB_PATH=/data/geosan.db`, `GEOSAN_PASSWORD`, `OPENAI_API_KEY`는 서비스 설정에만 넣습니다. `PORT`는 Railway가 제공하며 `railway.json`의 시작 명령이 `--port`로 전달합니다. 로컬 `geosan serve`는 `PORT`를 자동으로 읽지 않습니다.
+- Python 의존성 설치는 저장소 루트에서 `pip install -r requirements.lock -e .`를 사용합니다. 화면 빌드는 Railway에서 필요하지 않습니다.
+- 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전 백업·복원은 PM의 #214 절차를 따릅니다.
+- 이후 `geosan check-config examples/rule-config.yaml examples/app-settings.yaml`로 설정을 등록합니다. 공개 배포 전 운영용 앱 설정의 `accessProtection.enabled`를 켜고 검증해야 합니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
+- Vercel: Root Directory `web`, 배포 가지 `main`, 설치 `npm ci`, 빌드 `npm run build`, 출력 `dist`, 환경 변수 `VITE_USE_FIXTURES=0`. 서버 비밀번호·API 키를 Vercel의 `VITE_` 변수에 넣지 않습니다.
+
+Railway 공개 HTTPS 주소는 아직 없습니다. 사용자 확인대로 실제 `web/vercel.json`은 주소가 나온 뒤 다음 예시의 `RAILWAY_HOST`를 바꾸어 추가합니다. 이 예시를 그대로 배포하지 않습니다. API 규칙을 먼저 두고, 화면 경로 fallback에서 API를 제외해 API 오류가 HTML 성공 응답으로 바뀌지 않도록 합니다.
+
+```json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://RAILWAY_HOST/api/:path*" },
+    { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "0" }]
+    }
+  ]
+}
+```
+
+API 서버도 성공·오류 응답 모두에 `Cache-Control: no-store`와 `x-vercel-enable-rewrite-caching: 0`을 보냅니다. 실제 연결 후 로그인 쿠키·상세 주소 직접 열기·메모 저장 직후 새로고침 반영·재배포 후 DB 보존을 확인합니다. PR 미리보기가 운영 DB에 기록을 쓰지 않도록 연결 대상을 PM과 확인합니다.
+
+공식 안내: [Vercel 외부 응답 캐시](https://vercel.com/changelog/vercels-cdn-now-respects-cache-control-headers-from-external-origins-by-default), [Railway 시작 명령](https://docs.railway.com/deployments/start-command).
 접속 보호(#213): `geosan init-db`로 세션 테이블을 준비한 뒤, 사용하는 앱 설정의 `accessProtection.enabled`를 `true`로 바꾸고 기존 `geosan check-config` 명령으로 등록합니다. 비밀번호는 서버 환경 변수 `GEOSAN_PASSWORD`에만 넣습니다. 환경 변수가 없거나 비어 있으면 로그인이 실패하며 API는 열리지 않습니다. `.env`는 자동으로 읽지 않습니다.
 
 화면에서 공용 비밀번호를 입력하면 12시간짜리 `HttpOnly; Secure; SameSite=Lax` 쿠키가 발급됩니다. 보호가 켜진 환경은 HTTPS가 필요합니다. 로컬 HTTP 시연은 기존 끄기 설정을 사용합니다. API를 사용해도 세션 만료 시각은 연장되지 않습니다. 로그인 실패 횟수는 공용 비밀번호 전체에 대해 DB에서 세며 5회 실패하면 모두 30초 동안 기다립니다. 새로고침·서버 재시작으로 이 횟수를 초기화하지 않습니다. 실제 Vercel·Railway 연결은 별도 PR에서 진행합니다.

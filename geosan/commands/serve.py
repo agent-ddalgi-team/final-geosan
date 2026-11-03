@@ -1,9 +1,9 @@
-"""`geosan serve [--port N]` 본문 (기능 명세 W9, 계약 C8, 인프라 명세 1장).
+"""`geosan serve [--port N] [--host 주소]` 본문 (기능 명세 W9, 계약 C8).
 
 설정 파일을 먼저 검사하고(오류면 시작 거부, 어느 키인지 표시), 데이터베이스가 준비됐는지 보고,
 API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정 검사는 파일 모양만 보고 DB의
 앱 설정 사본(활성 묶음 등)은 바꾸지 않는다. 등록은 `check-config`의 몫이다(이슈 #91).
-`127.0.0.1`에서만 듣는다(NFR4.10).
+기본은 `127.0.0.1`, PM의 Railway 배포 지시에 따라 명시적으로 `0.0.0.0`도 받는다.
 포트가 사용 중이면 "포트 N이 사용 중입니다. --port로 바꾸세요"를 내고 종료 코드 2로 끝낸다(NFR7.3).
 """
 
@@ -35,7 +35,7 @@ def port_in_use(port: int, host: str = HOST) -> bool:
     return False
 
 
-def _run_server(port: int) -> None:
+def _run_server(port: int, host: str = HOST) -> None:
     """uvicorn을 실제로 띄운다. 테스트에서는 이 함수를 가짜로 바꾼다."""
     import uvicorn
 
@@ -43,10 +43,13 @@ def _run_server(port: int) -> None:
 
     configure_logging()
     # geosan 로거가 JSON 한 줄 로그를 맡으므로 uvicorn의 기본 로그 설정은 끈다(NFR10.1).
-    uvicorn.run(create_app(), host=HOST, port=port, log_config=None, access_log=False)
+    uvicorn.run(create_app(), host=host, port=port, log_config=None, access_log=False)
 
 
-def run_serve(port: int) -> int:
+def run_serve(port: int, host: str = HOST) -> int:
+    if host not in (HOST, "0.0.0.0"):
+        typer.echo("오류: 듣는 주소는 127.0.0.1 또는 0.0.0.0으로 지정해 주세요.")
+        return EXIT_INPUT_ERROR
     if not 1 <= port <= 65535:
         typer.echo(f"오류: 포트는 1~65535 사이여야 합니다 (입력값 {port}).")
         return EXIT_INPUT_ERROR
@@ -74,13 +77,13 @@ def run_serve(port: int) -> int:
         )
 
     # 4) 포트 확인.
-    if port_in_use(port):
+    if port_in_use(port, host):
         typer.echo(f"포트 {port}이 사용 중입니다. --port로 바꾸세요.")
         return EXIT_RUN_FAILED
 
-    typer.echo(f"서버 시작: http://{HOST}:{port} ({screen}, {db_path.name}). 중지는 Ctrl+C.")
+    typer.echo(f"서버 시작: http://{host}:{port} ({screen}, {db_path.name}). 중지는 Ctrl+C.")
     try:
-        _run_server(port)
+        _run_server(port, host)
     except KeyboardInterrupt:
         pass
     except Exception as exc:  # 어떤 실패든 숨기지 않고 종류만 보인다(본문·스택은 로그에만)

@@ -705,7 +705,7 @@ AppSettings:
 # shared-schema: OperatorCommands 명령 계약. 이름은 제안. 모든 명령은 끝에 쉬운 한국어 요약 한 줄과 종료 코드(0 성공, 1 입력 오류, 2 실행 실패)를 낸다. --help는 한국어.
 commands:
   geosan init-db                                 # U1. 데이터베이스 만들기·마이그레이션 적용(처음·갱신 모두)
-  geosan serve [--port N]                        # U1. 서버 실행(API + 화면)
+  geosan serve [--port N] [--host 127.0.0.1|0.0.0.0] # U1. 서버 실행, 기본은 내 PC 전용. 배포 주소 선택은 #213 PM 지시(2026-11-03).
   geosan check-config [rule-config.yaml] [app-settings.yaml]   # U1. 설정 파일 형식 검사(오류는 C7 형식: 줄·항목·이유)
   geosan import-capability <file.json>           # U1. 형식·연락처 검사 → 저장(재투입 규칙 적용)
   geosan import-case <file.json>                 # U1. 가상 사례 묶음 투입(투입 순서 자동). 실제 기업도 같은 형식(isVirtual: false)
