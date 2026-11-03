@@ -81,7 +81,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["opp_004"]
+    assert first == script_heads() == ["merge_001"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -89,20 +89,24 @@ def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
 
 
 def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path) -> None:
-    """#209 새 기록과 고객 열을 역순으로 되돌린 뒤 U1 복원까지 검증한다."""
-    assert downgrade(tmp_db, "-1") == ["rec_005"]
+    """병합 단계는 양쪽 표를 보존하고, 명시한 버전까지 되돌린 후 모두 복원한다."""
+    assert downgrade(tmp_db, "opp_004") == ["opp_004", "web_001"]
+    assert {"web_access_session", "rec_note", "rec_outcome"} <= set(_table_names(tmp_db))
+    assert downgrade(tmp_db, "rec_005") == ["rec_005", "web_001"]
     assert "industries" not in _column_names(tmp_db, "opp_customer")
-    assert downgrade(tmp_db, "-1") == ["opp_003"]
+    assert downgrade(tmp_db, "opp_003") == ["opp_003", "web_001"]
     assert "kind" not in _column_names(tmp_db, "rec_note")
-    assert downgrade(tmp_db, "-1") == ["rec_004"]
+    assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
     assert "main_phone_confirmed_at" not in _column_names(tmp_db, "opp_customer")
-    assert downgrade(tmp_db, "-1") == ["rec_003"]
+    assert downgrade(tmp_db, "rec_003") == ["rec_003", "web_001"]
     assert "rec_outcome" not in _table_names(tmp_db)
     assert "rec_note" in _table_names(tmp_db)
-    assert downgrade(tmp_db, "-1") == ["opp_002"]
+    assert downgrade(tmp_db, "opp_002") == ["opp_002", "web_001"]
     assert "rec_note" not in _table_names(tmp_db)
-    assert downgrade(tmp_db, "-1") == ["rec_002"]
+    assert downgrade(tmp_db, "rec_002") == ["rec_002"]
     assert "summary_line" not in _column_names(tmp_db, "opp_customer")
+    assert "web_access_session" not in _table_names(tmp_db)
+    assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
     assert downgrade(tmp_db, "-1") == ["rec_001"]
     assert "card_reason" not in _column_names(tmp_db, "opp_opportunity")
     assert "rec_review_opinion" in _table_names(tmp_db)
@@ -110,16 +114,17 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["opp_004"]
+    assert upgrade_to_head(tmp_db) == ["merge_001"]
     assert {"rec_note", "rec_outcome"} <= set(_table_names(tmp_db))
     assert "summary_line" in _column_names(tmp_db, "opp_customer")
+    assert "web_access_session" in _table_names(tmp_db)
     assert "rec_review_opinion" in _table_names(tmp_db)
     assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
     assert "summary" in _column_names(tmp_db, "eval_item_judgment")
 
 
 def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
-    """계약 C6의 U1 28개와 #209 기록 2개가 모델과 일치한다."""
+    """U1 28개·기록 2개·로그인 1개 표가 DB·metadata에 일치한다(계약 C6)."""
     expected_counts = {
         "cfg_": 2,
         "cap_": 7,
@@ -128,13 +133,15 @@ def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
         "eval_": 7,
         "q_": 3,
         "rec_": 3,
+        "web_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    assert len(db_tables) == 30
-    for prefix in TABLE_PREFIXES:
+    assert len(db_tables) == 31
+    prefixes = (*TABLE_PREFIXES, "web_")
+    for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix
-    assert all(any(name.startswith(p) for p in TABLE_PREFIXES) for name in db_tables)
+    assert all(any(name.startswith(p) for p in prefixes) for name in db_tables)
 
 
 def test_id_has_prefix_and_ulid_shape() -> None:

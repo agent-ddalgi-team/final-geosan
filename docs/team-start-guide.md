@@ -14,6 +14,8 @@
 
 ## 2. 준비물 설치 (한 번만)
 
+접속 보호(#213)는 `GEOSAN_PASSWORD` 환경 변수와 앱 설정 `accessProtection.enabled`로 켭니다. 세션 쿠키가 HTTPS 전용이므로 로컬 HTTP 시연에서는 기존 끄기 설정을 사용합니다. DB 준비·설정 등록 순서는 루트 `README.md`의 접속 보호 안내를 따릅니다.
+
 1. Git, 그리고 쓰려는 도구(Claude Code 또는 Codex CLI 0.145.0 이상)를 설치한다. Codex는 `codex --version`으로 확인한다.
 2. AI-DLC 실행 파일 `aidlc`를 설치한다. Bun·Node.js는 필요 없다.
    - macOS / Linux / WSL: `curl -fsSL https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.sh | sh`

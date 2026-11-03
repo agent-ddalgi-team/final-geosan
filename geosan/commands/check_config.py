@@ -9,8 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from sqlalchemy.exc import SQLAlchemyError
 
-from geosan.config.app_settings import check_app_settings_file
+from geosan.config.app_settings import check_app_settings_file, read_app_settings
 from geosan.config.errors import AppError
 from geosan.config.paths import normalize_input_path
 from geosan.config.registry import (
@@ -21,6 +22,7 @@ from geosan.config.registry import (
 from geosan.config.rule_config import check_rule_config_file
 from geosan.config.validators import format_field_error
 from geosan.storage.engine import database_path
+from geosan.storage.session import session_scope
 
 EXIT_OK = 0
 EXIT_INPUT_ERROR = 1
@@ -72,7 +74,7 @@ def run_check_config(
     )
     typer.echo(
         f"앱 설정 {app_path.name}: 담당자 {len(app_result.settings.staff)}명, "
-        f"활성 묶음 {app_result.settings.active_dataset_kind}, "
+        f"파일의 묶음 {app_result.settings.active_dataset_kind}, "
         f"LLM {app_result.settings.llm.mode}"
     )
 
@@ -81,11 +83,23 @@ def run_check_config(
         typer.echo(f"검사 통과 (DB 없음: {db_path} — 버전 등록은 init-db 뒤 다시 실행하면 됩니다)")
         return EXIT_OK
     if not register:
+        try:
+            with session_scope(db_path) as session:
+                settings = read_app_settings(session)
+        except (SQLAlchemyError, ValueError):
+            typer.echo("DB의 앱 설정 사본을 읽지 못했습니다. 데이터베이스 상태를 확인해 주세요.")
+            return EXIT_RUN_FAILED
+        if settings is None:
+            typer.echo(
+                "앱 설정 사본이 아직 없습니다. 첫 요청 때 examples/app-settings.yaml로 만듭니다."
+            )
+        else:
+            typer.echo(
+                f"활성 묶음 {settings.active_dataset_kind} (DB 사본 기준, 변경: geosan dataset-set)"
+            )
         typer.echo("검사 통과 (파일 모양만 확인. DB의 규칙 버전·앱 설정 사본은 바꾸지 않았습니다)")
         return EXIT_OK
     try:
-        from geosan.storage.session import session_scope
-
         with session_scope(db_path) as session:
             runtime = register_config_files(session, rule_path, app_path)
             registered = f"{runtime.rule_version.rule_version} ({runtime.rule_version.status})"

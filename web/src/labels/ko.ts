@@ -171,6 +171,50 @@ export const frame = {
   pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
+  menuDashboard: '대시보드',
+  pageTitleDashboard: '대시보드',
+} as const;
+
+/** 대시보드(S4) 문구. 건수 5개·일정·최근 기록·검색·공정/산업군 막대. */
+export const dashboardTexts = {
+  searchLabel: '회사 이름 검색',
+  searchPlaceholder: '회사 이름을 입력하세요',
+  searchButton: '검색',
+  countsLabel: '영업 단계별 건수',
+  countUnits: {
+    NOT_CONTACTED: '곳',
+    INTERESTED: '곳',
+    IN_CONTACT: '곳',
+    QUOTE_SAMPLE: '곳',
+    SCHEDULE_DUE: '건',
+  },
+  countNames: {
+    NOT_CONTACTED: '미접촉',
+    INTERESTED: '관심',
+    IN_CONTACT: '접촉 중',
+    QUOTE_SAMPLE: '견적·샘플',
+    SCHEDULE_DUE: '이번 주 일정',
+  },
+  scheduleTitle: '일정',
+  scheduleEmpty: '예정된 일정이 없습니다.',
+  scheduleOverdue: '지남',
+  recentTitle: '최근 내 기록',
+  recentEmpty: '아직 남긴 기록이 없습니다.',
+  activityKinds: {
+    NOTE: '메모',
+    STAGE: '단계',
+    CONTACT_ATTEMPT: '접촉 시도',
+    SCHEDULE: '일정',
+    OPINION: '의견',
+  },
+  breakdownProcessTitle: '공정별',
+  breakdownIndustryTitle: '산업군별',
+  breakdownBasis: (total: number) => `대시보드 대상 ${total}곳`,
+  breakdownProposed: 'AI 제안 포함',
+  breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
+  breakdownEmptyAction: '추천 목록 가기',
+  loadError: '대시보드를 불러오지 못했습니다.',
+  goToList: '영업 후보 목록으로 이동',
 } as const;
 
 /** 카드·상세 줄 머리말. */
@@ -335,6 +379,31 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
   BROCHURE: '소개서',
   COMPANY_CONFIRMED: '거산 확인 완료',
 };
+
+/** 영업 기록·검토사항의 쉬운 말 (약속 C0, C1). */
+export const outcomeStatusLabels = {
+  NOT_EXECUTED: '미접촉',
+  INTERESTED: '관심',
+  IN_PROGRESS: '접촉',
+  SAMPLE_OR_REGISTRATION_APPROVED: '견적·샘플',
+  ON_HOLD: '보류',
+  WON: '성사',
+  LOST: '거절',
+} as const;
+
+export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
+export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
+export const noteKindLabels = { MEMO: '메모', RESEARCH: '자료 조사' } as const;
+export const reviewItemKindLabels = {
+  QUESTION: 'AI 확인 질문',
+  DATA_NOT_FOUND: '자료 못 찾음',
+  DATA_INSUFFICIENT: '자료 부족',
+} as const;
+export const reviewItemSourceLabels = {
+  AI: 'AI 조사',
+  CASE_FILE: '사례 파일',
+  RULE: '평가 규칙',
+} as const;
 
 /** 상세 "추천 이유"의 요약 줄 앞에 쓰는 짧은 항목 이름(PM 결정 2026-10-27, #145). 표에 없는 코드는 긴 이름을 그대로 쓴다. */
 export const itemShortLabels: Record<string, string> = {

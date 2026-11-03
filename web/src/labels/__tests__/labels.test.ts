@@ -1,7 +1,39 @@
 // 쉬운 말 대응표: 코드표 밖 코드 방어, 분류 11개 모두 문구 있음.
-import { classificationLabels, classificationTone, labelFor, scoreStateLabels } from '../ko';
+import {
+  classificationLabels,
+  classificationTone,
+  contactMethodLabels,
+  contactResultLabels,
+  labelFor,
+  noteKindLabels,
+  outcomeStatusLabels,
+  reviewItemKindLabels,
+  reviewItemSourceLabels,
+  scoreStateLabels,
+} from '../ko';
 
 describe('labels', () => {
+  it('영업 단계·접촉 방법과 결과·검토사항을 약속한 순서의 쉬운 말로 읽는다', () => {
+    expect(Object.values(outcomeStatusLabels)).toEqual([
+      '미접촉',
+      '관심',
+      '접촉',
+      '견적·샘플',
+      '보류',
+      '성사',
+      '거절',
+    ]);
+    expect(Object.values(contactMethodLabels)).toEqual(['전화', '메일', '방문']);
+    expect(Object.values(contactResultLabels)).toEqual(['연결됨', '부재', '거절']);
+    expect(Object.values(noteKindLabels)).toEqual(['메모', '자료 조사']);
+    expect(Object.values(reviewItemKindLabels)).toEqual([
+      'AI 확인 질문',
+      '자료 못 찾음',
+      '자료 부족',
+    ]);
+    expect(Object.values(reviewItemSourceLabels)).toEqual(['AI 조사', '사례 파일', '평가 규칙']);
+  });
+
   it('코드표 밖 코드는 코드 그대로 돌려주고 콘솔에 경고를 남긴다(빈 글자를 보이지 않는다)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(labelFor(classificationLabels, 'SOMETHING_NEW')).toBe('SOMETHING_NEW');
