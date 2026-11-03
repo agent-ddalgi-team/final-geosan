@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from geosan.capability.models import (
     DeliveryRecord,
-    FieldEvidence,
     Process,
     ProcessCapability,
     Qualification,
@@ -19,6 +18,7 @@ from geosan.capability.models import (
     QualificationStatus,
 )
 from geosan.capability.queries import latest_review
+from geosan.capability.review import append_review
 from geosan.config.errors import FieldError, InputError, RunFailedError
 from geosan.config.file_checks import check_capability_file
 from geosan.config.loader import load_document
@@ -233,44 +233,29 @@ def _upsert(session, cls, keys, values, common, model, result):
     else:
         previous = latest_review(session, row, dataset_kind=common["dataset_kind"])
     requested_status = values["review_status"]
+    review = model.review_defaults
     if (
         previous is not None
         and previous.review_status == "REVIEWED"
         and requested_status == "PENDING"
     ):
         requested_status = "REVIEWED"
+        review = previous
         result.warnings.append(f"{cls.__tablename__}: 기존 검수 완료 상태를 유지했습니다.")
     for key, value in values.items():
         setattr(row, key, value)
     row.review_status = requested_status
     row.is_virtual = common["is_virtual"]
     session.flush()
-    pk = next(iter(cls.__table__.primary_key.columns)).name
-    snapshot = {
-        column.name: getattr(row, column.name)
-        for column in cls.__table__.columns
-        if column.name not in {"created_at", "created_by", "session_ref"}
-    }
-    # 날짜도 JSON 스냅샷으로 보존한다. ORM 열·계약을 바꾸지 않는다.
-    snapshot = {
-        key: value.isoformat() if hasattr(value, "isoformat") else value
-        for key, value in snapshot.items()
-    }
-    session.add(
-        FieldEvidence(
-            field_evidence_id=new_id("fe"),
-            target_table=cls.__tablename__,
-            target_id=getattr(row, pk),
-            target_field="reviewStatus",
-            value_snapshot=snapshot,
-            data_version=previous.data_version + 1 if previous else 1,
-            review_status=requested_status,
-            reviewer=model.review_defaults.reviewer,
-            reviewed_at=model.review_defaults.reviewed_at,
-            basis=model.review_defaults.basis,
-            **common,
-        )
+    append_review(
+        session,
+        row,
+        previous,
+        requested_status,
+        reviewer=review.reviewer,
+        reviewed_at=review.reviewed_at,
+        basis=review.basis,
+        requested_by=common["created_by"],
     )
-    session.flush()
     result.pending_count += requested_status == "PENDING"
     return row
