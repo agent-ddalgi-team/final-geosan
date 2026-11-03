@@ -134,8 +134,9 @@ def test_serve_start_preserves_registered_app_settings(tmp_db, tmp_path, monkeyp
     before = _register_brochure_app_settings(tmp_path)
     started = []
 
-    def record_start(port):
+    def record_start(port, host):
         # 서버 실행만 대체하며 설정 검사·등록과 DB 읽기는 실제 코드를 사용한다.
+        assert host == "127.0.0.1"
         started.append((port, _app_setting_values()))
 
     monkeypatch.setattr(serve_module, "_run_server", record_start)
@@ -155,7 +156,7 @@ def test_serve_port_conflict_preserves_registered_app_settings(tmp_db, tmp_path,
     """Given 지정 설정·점유된 포트 / When 서버 시작 실패 / Then 설정 보존·종료 코드 2다."""
     before = _register_brochure_app_settings(tmp_path)
     started = []
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: started.append(port))
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: started.append(port))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
         holder.bind(("127.0.0.1", 0))
         holder.listen(1)

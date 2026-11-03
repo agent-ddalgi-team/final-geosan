@@ -9,6 +9,7 @@ from __future__ import annotations
 import socket
 from pathlib import Path
 
+import uvicorn
 from typer.testing import CliRunner
 
 from geosan.commands import serve as serve_module
@@ -26,17 +27,49 @@ def _run(*args: str) -> tuple[int, str]:
 def test_serve_starts_on_loopback_with_given_port(tmp_db: Path, monkeypatch) -> None:
     """Given 설정·DB 준비 / When serve --port / Then 127.0.0.1과 그 포트로 서버를 한 번 띄운다."""
     calls: list[int] = []
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: calls.append(port))
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: calls.append(port))
     code, out = _run("serve", "--port", "18765")
     assert code == 0, out
     assert calls == [18765]
     assert "http://127.0.0.1:18765" in out and "서버를 종료했습니다" in out
 
 
+def test_serve_deployment_host_reaches_probe_and_server(tmp_db, monkeypatch):
+    """Given 배포 주소·포트 / When serve 실행 / Then 검사와 실행에 같은 주소를 쓴다."""
+    calls = []
+    monkeypatch.setattr(
+        serve_module, "port_in_use", lambda port, host: calls.append(("probe", host, port)) or False
+    )
+    monkeypatch.setattr(
+        serve_module, "_run_server", lambda port, host: calls.append(("server", host, port))
+    )
+    code, out = _run("serve", "--host", "0.0.0.0", "--port", "18765")
+    assert code == 0, out
+    assert calls == [("probe", "0.0.0.0", 18765), ("server", "0.0.0.0", 18765)]
+    assert "http://0.0.0.0:18765" in out
+
+
+def test_serve_rejects_unsupported_host_before_start(monkeypatch):
+    """Given 허용되지 않은 주소 / When serve 실행 / Then 입력 오류로 시작을 거부한다."""
+    calls = []
+    monkeypatch.setattr(serve_module, "_run_server", lambda *args: calls.append(args))
+    code, out = _run("serve", "--host", "example.invalid")
+    assert code == 1 and "듣는 주소" in out
+    assert calls == []
+
+
+def test_uvicorn_receives_selected_host_and_port(monkeypatch):
+    """Given 배포 주소 / When 서버 어댑터 실행 / Then uvicorn에 주소·포트를 전달한다."""
+    calls = []
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: calls.append(kwargs))
+    serve_module._run_server(18765, "0.0.0.0")
+    assert calls == [{"host": "0.0.0.0", "port": 18765, "log_config": None, "access_log": False}]
+
+
 def test_serve_refuses_when_config_check_fails(tmp_db: Path, monkeypatch) -> None:
     """Given 설정 검사 실패 / When serve / Then 서버를 띄우지 않고 종료 코드 1로 끝난다."""
     started: list[int] = []
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: started.append(port))
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: started.append(port))
     monkeypatch.setattr(serve_module, "run_check_config", lambda rule, settings, **_kw: 1)
     code, out = _run("serve")
     assert code == 1 and "서버를 시작하지 않았습니다" in out
@@ -46,7 +79,7 @@ def test_serve_refuses_when_config_check_fails(tmp_db: Path, monkeypatch) -> Non
 def test_serve_refuses_without_database(tmp_path: Path, monkeypatch) -> None:
     """Given DB 파일 없음 / When serve / Then init-db를 안내하고 종료 코드 1로 끝난다."""
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "missing" / "geosan.db"))
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: None)
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: None)
     code, out = _run("serve")
     assert code == 1 and "init-db" in out
 
@@ -54,7 +87,7 @@ def test_serve_refuses_without_database(tmp_path: Path, monkeypatch) -> None:
 def test_serve_reports_port_in_use(tmp_db: Path, monkeypatch) -> None:
     """Given 이미 열린 포트 / When serve --port 그 포트 / Then 쉬운 말 안내와 종료 코드 2."""
     started: list[int] = []
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: started.append(port))
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: started.append(port))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
         holder.bind(("127.0.0.1", 0))
         holder.listen(1)
@@ -67,7 +100,7 @@ def test_serve_reports_port_in_use(tmp_db: Path, monkeypatch) -> None:
 
 def test_serve_rejects_out_of_range_port(tmp_db: Path, monkeypatch) -> None:
     """Given 포트 70000 / When serve / Then 입력 오류 1로 끝난다."""
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: None)
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: None)
     code, out = _run("serve", "--port", "70000")
     assert code == 1 and "1~65535" in out
 
@@ -75,7 +108,7 @@ def test_serve_rejects_out_of_range_port(tmp_db: Path, monkeypatch) -> None:
 def test_serve_hides_exception_body_when_server_dies(tmp_db: Path, monkeypatch) -> None:
     """Given 서버 함수가 예외 / When serve / Then 예외 본문 없이 종류만 보이고 종료 코드 2."""
 
-    def boom(port: int) -> None:
+    def boom(port: int, host: str) -> None:
         raise RuntimeError("secret detail must not leak")
 
     monkeypatch.setattr(serve_module, "_run_server", boom)
@@ -98,7 +131,7 @@ def _active_kind(tmp_db: Path) -> str:
 def test_serve_keeps_chosen_dataset_kind_on_start(tmp_db: Path, monkeypatch) -> None:
     """Given 소개서 묶음을 골라 둠 / When serve / Then 예시 설정으로 되돌리지 않는다(#91)."""
     _choose_brochure(tmp_db)
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: None)
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: None)
     code, out = _run("serve", "--port", "18767")
     assert code == 0, out
     assert _active_kind(tmp_db) == "BROCHURE"
@@ -108,7 +141,7 @@ def test_serve_keeps_chosen_dataset_kind_on_start(tmp_db: Path, monkeypatch) -> 
 def test_serve_port_conflict_does_not_touch_settings(tmp_db: Path, monkeypatch) -> None:
     """Given 소개서 묶음 선택·포트 사용 중 / When serve 그 포트 / Then 실패해도 설정 그대로(#91)."""
     _choose_brochure(tmp_db)
-    monkeypatch.setattr(serve_module, "_run_server", lambda port: None)
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: None)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as holder:
         holder.bind(("127.0.0.1", 0))
         holder.listen(1)

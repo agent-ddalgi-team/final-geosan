@@ -74,14 +74,15 @@ def init_db() -> None:
 
 @app.command("serve")
 def serve(
-    port: int = typer.Option(
-        8000, "--port", help="듣는 포트. 기본 8000, 127.0.0.1에서만 듣습니다."
+    port: int = typer.Option(8000, "--port", help="듣는 포트. 기본 8000."),
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="듣는 주소. 기본 127.0.0.1, 배포 시 0.0.0.0."
     ),
 ) -> None:
     """설정을 검사한 뒤 서버(API + 화면)를 한 덩어리로 띄웁니다."""
     from geosan.commands.serve import run_serve
 
-    raise typer.Exit(code=run_serve(port))
+    raise typer.Exit(code=run_serve(port, host))
 
 
 @app.command("check-config")
