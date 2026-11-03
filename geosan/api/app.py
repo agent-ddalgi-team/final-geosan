@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import MutableHeaders
 from starlette.exceptions import HTTPException
 
 from geosan.config.errors import AppError, FieldError, InputError, RunFailedError, new_ref
@@ -89,6 +90,10 @@ class RequestBoundary:
             if message["type"] == "http.response.start":
                 status = message["status"]
                 response_started = True
+                if scope["path"].startswith("/api/"):
+                    headers = MutableHeaders(scope=message)
+                    headers["Cache-Control"] = "no-store"
+                    headers["x-vercel-enable-rewrite-caching"] = "0"
             await send(message)
 
         try:
