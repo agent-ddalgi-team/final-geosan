@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Annotated
 from urllib.parse import urlsplit
 
@@ -11,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
-from geosan.api.routes.records import latest_opinion, opinion_view
+from geosan.api.routes.records import latest_opinion, latest_outcome, opinion_view, outcome_view
 from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
@@ -24,6 +25,7 @@ from geosan.api.schemas import (
     OpportunityDetail,
     OpportunityDetailEnvelope,
     OpportunityListEnvelope,
+    OutcomeStatus,
     ProcessLinkView,
     Question,
     Reasons,
@@ -46,6 +48,8 @@ from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
+from geosan.records.models import Outcome
+from geosan.storage.base import utcnow
 
 router = APIRouter()
 list_filters: list[Callable] = []
@@ -117,8 +121,21 @@ def _homepage_url(context: DetailContext) -> str | None:
 
 def _header(context: DetailContext) -> dict:
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
+    research = runtime_for(context.session).app_settings.research
     return {
         "header": DetailHeader(
+            address=customer.normalized_address or "",
+            distance_km=None,
+            main_phone=customer.main_phone,
+            main_phone_source=customer.main_phone_source,
+            summary_line=customer.summary_line,
+            highlights=customer.highlights or [],
+            researched_at=customer.researched_at,
+            research_source=customer.research_source,
+            research_stale=(
+                customer.researched_at is not None
+                and utcnow() - customer.researched_at > timedelta(days=research.stale_after_days)
+            ),
             title=f"{customer.name} · {opportunity.item}",
             customer_name=customer.name,
             opportunity_item=opportunity.item,
@@ -357,7 +374,7 @@ def _records(context: DetailContext) -> dict:
             opinion=opinion_view(latest_opinion(context.session, context.opportunity.opp_id)),
             bookmark=None,
             approval=None,
-            outcome=None,
+            outcome=outcome_view(latest_outcome(context.session, context.opportunity.opp_id)),
         )
     }
 
@@ -432,6 +449,7 @@ def list_opportunities(
     tab: str = "new",
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
+    stage: OutcomeStatus | None = None,
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -453,6 +471,15 @@ def list_opportunities(
         )
     population = select(EvaluationRun.opp_id).where(EvaluationRun.batch_id == batch.batch_id)
     query = select(EvaluationRun).where(EvaluationRun.batch_id == batch.batch_id)
+    if stage is not None:
+        current_stage = (
+            select(Outcome.status)
+            .where(Outcome.opp_id == EvaluationRun.opp_id)
+            .order_by(Outcome.version.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
     for filter_function in list_filters:
         query = filter_function(session, query, request)
     total = session.scalar(select(func.count()).select_from(query.subquery()))

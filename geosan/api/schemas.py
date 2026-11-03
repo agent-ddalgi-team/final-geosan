@@ -12,8 +12,8 @@ brand.demoLabel.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from datetime import date, datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -184,6 +184,15 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    address: str
+    distance_km: float | None = None
+    main_phone: str | None = None
+    main_phone_source: Literal["HOMEPAGE", "CSV"] | None = None
+    summary_line: str | None = None
+    highlights: list[str] = Field(default_factory=list, max_length=3)
+    researched_at: datetime | None = None
+    research_source: Literal["AI", "CASE_FILE"] | None = None
+    research_stale: bool = False
     title: str
     customer_name: str
     opportunity_item: str
@@ -364,6 +373,61 @@ class OpinionResponse(OpinionRecord):
 
 
 # 화면·테스트가 참고할 수 있는 응답 유형 별칭
+class NoteRequest(_RequestModel):
+    text: str
+    eval_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=0)
+    memo: str | None = Field(default=None, max_length=200)
+
+
+class NoteResponse(RecordMeta):
+    note_id: str
+
+
+OutcomeStatus = Literal[
+    "NOT_EXECUTED",
+    "INTERESTED",
+    "IN_PROGRESS",
+    "SAMPLE_OR_REGISTRATION_APPROVED",
+    "ON_HOLD",
+    "WON",
+    "LOST",
+]
+
+
+class OutcomeRequest(_RequestModel):
+    """계약 C1의 코드 값. #211 공통 코드표와 같은 계약으로 연결한다."""
+
+    status: OutcomeStatus
+    reply_received: bool = False
+    next_schedule_at: date | None = None
+    next_schedule_note: str | None = None
+    reason: str | None = None
+    action_id: str | None = None
+    method: Literal["CALL", "EMAIL", "VISIT"] | None = None
+    result: Literal["REACHED", "ABSENT", "DECLINED"] | None = None
+    attempted_at: date | None = None
+    eval_id: str | None = None
+    expected_version: int | None = Field(default=None, ge=0)
+    memo: str | None = Field(default=None, max_length=200)
+
+
+class OutcomeResponse(RecordMeta):
+    status: OutcomeStatus
+
+
+class ActivityItem(_ApiModel):
+    at: datetime
+    actor: str
+    kind: str
+    summary: str
+    previous_value: str | None = None
+    eval_id: str | None = None
+
+
+OutcomeEnvelope = Envelope[OutcomeResponse]
+ActivityEnvelope = Envelope[list[ActivityItem]]
+NoteEnvelope = Envelope[NoteResponse]
 ConfigUiEnvelope = Envelope[ConfigUi]
 OpportunityListEnvelope = Envelope[list[OpportunityCard]]
 OpportunityDetailEnvelope = Envelope[OpportunityDetail]

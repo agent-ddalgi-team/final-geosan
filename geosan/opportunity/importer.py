@@ -36,7 +36,7 @@ from geosan.opportunity.queries import (
 )
 from geosan.questions.store import store_research, supersede_research
 from geosan.rules.models import RuleConfig
-from geosan.storage.base import new_id
+from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 
 
@@ -155,6 +155,10 @@ def _store(
     )
     for key, value in values.items():
         setattr(customer, key, value)
+    customer.summary_line = model.opportunity.card_reason
+    customer.highlights = []
+    customer.researched_at = utcnow()
+    customer.research_source = "CASE_FILE"
     session.flush()
     opportunity = find_case(session, model.case_id)
     if opportunity is None:

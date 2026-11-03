@@ -5,12 +5,48 @@ U1은 담당자 의견(ReviewOpinion)만 둔다. 담기·승인·결과(U5)는 �
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from geosan.storage.base import Base, CommonColumns, UtcDateTime
+
+
+class Note(CommonColumns, Base):
+    """영업 메모는 새 행으로만 남긴다. 외부 전송·내보내기에 쓰지 않는다(C4)."""
+
+    __tablename__ = "rec_note"
+
+    note_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
+    )
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class Outcome(CommonColumns, Base):
+    """단계·접촉 시도·다음 일정의 저장본. 변경할 때마다 새 행을 남긴다."""
+
+    __tablename__ = "rec_outcome"
+
+    outcome_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    reply_received: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    next_schedule_at: Mapped[date | None] = mapped_column(Date)
+    next_schedule_note: Mapped[str | None] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    memo: Mapped[str | None] = mapped_column(Text)
+    action_id: Mapped[str | None] = mapped_column(String(40))
+    method: Mapped[str | None] = mapped_column(String(16))
+    result: Mapped[str | None] = mapped_column(String(16))
+    attempted_at: Mapped[date | None] = mapped_column(Date)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class ReviewOpinion(CommonColumns, Base):
