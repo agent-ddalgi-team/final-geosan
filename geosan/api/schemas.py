@@ -51,6 +51,17 @@ class _RequestModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
 
 
+class ProcessCount(_ApiModel):
+    process_code: str
+    process_name: str
+    count: int
+
+
+class IndustryCount(_ApiModel):
+    industry: str
+    count: int
+
+
 class Meta(_ApiModel):
     """성공 응답 meta. 목록·상세·기록이 공통으로 쓴다."""
 
@@ -63,6 +74,8 @@ class Meta(_ApiModel):
     reevaluated: bool | None = None
     evaluated_as_new: bool | None = None
     total: int | None = None
+    process_counts: list[ProcessCount] | None = None
+    industry_counts: list[IndustryCount] | None = None
     not_evaluated_count: int | None = Field(
         default=None, description="최신 FULL 묶음 뒤에 투입되어 아직 목록에 없는 기회 수"
     )
@@ -152,6 +165,8 @@ class CardRecords(_ApiModel):
 
 
 class OpportunityCard(_ApiModel):
+    industries: list[str] = Field(default_factory=list)
+    process_codes: list[str] = Field(default_factory=list)
     contact_count: int = 0
     opp_id: str
     rank: int
@@ -185,6 +200,8 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    industries: list[str] = Field(default_factory=list)
+    industries_source: str | None = None
     address: str
     distance_km: float | None = None
     main_phone: str | None = None

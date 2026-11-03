@@ -7,6 +7,7 @@
   "required": ["staff", "activeDatasetKind", "ingestion", "llm", "homepageDiscovery", "brand", "accessProtection"],
   "additionalProperties": false,
   "properties": {
+    "industries": { "type": "array", "items": { "type": "string" }, "description": "산업군 선택지. 순서는 목록의 산업군 건수 표시 순서 (2026-11-03 PM 승인)" },
     "_설명": { "type": "string" },
     "staff": {
       "type": "array",

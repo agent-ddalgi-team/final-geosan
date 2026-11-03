@@ -42,6 +42,9 @@ class Customer(CommonColumns, Base):
     highlights: Mapped[list[str] | None] = mapped_column(JSON)
     researched_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
     research_source: Mapped[str | None] = mapped_column(String(16))
+    industries: Mapped[list[str] | None] = mapped_column(JSON)
+    industries_source: Mapped[str | None] = mapped_column(String(16))
+    industries_confirmed_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
 
 
 class Opportunity(CommonColumns, Base):

@@ -72,7 +72,11 @@ def import_case(
     try:
         with session_scope(db_path) as session:
             runtime = load_runtime_config(session)
-            report = check_case_file(file_path, rule_config_path=runtime.rule_config_path)
+            report = check_case_file(
+                file_path,
+                rule_config_path=runtime.rule_config_path,
+                industries=runtime.app_settings.industries,
+            )
             if not report.ok:
                 raise InputError("사례 파일에 오류가 있습니다.", fields=report.errors)
             if report.case is None:
@@ -159,6 +163,9 @@ def _store(
     customer.highlights = []
     customer.researched_at = utcnow()
     customer.research_source = "CASE_FILE"
+    customer.industries = list(dict.fromkeys(model.customer.industries))
+    customer.industries_source = "CASE_FILE" if customer.industries else None
+    customer.industries_confirmed_at = None
     session.flush()
     opportunity = find_case(session, model.case_id)
     if opportunity is None:

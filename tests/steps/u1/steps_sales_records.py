@@ -2,6 +2,7 @@
 
 from pytest_bdd import given, then, when
 
+from tests.unit.u1.test_industry_filter import industry_env  # noqa: F401
 from tests.unit.u1.test_sales_records import post, set_test_phone
 from tests.unit.u1.test_sales_records import records_env as sales_env  # noqa: F401
 
@@ -67,3 +68,33 @@ def verify_phone_and_counts(record_context):
     assert detail["header"]["mainPhoneConfirmedBy"] == "park-lee"
     assert detail["records"]["contactCount"] == {"total": 1, "call": 1, "email": 0, "visit": 0}
     assert detail["scores"] == scores
+
+
+@given("여러 산업군의 가상 회사 기회를 평가했다", target_fixture="filter_context")
+def evaluated_industries(industry_env):  # noqa: F811
+    client, ids = industry_env
+    original = client.get("/api/v1/opportunities").json()
+    return {"client": client, "ids": ids, "original": original}
+
+
+@when("아노다이징과 반도체를 함께 선택하면")
+def select_process_industry(filter_context):
+    response = filter_context["client"].get(
+        "/api/v1/opportunities", params={"process": "ANODIZING", "industry": "반도체"}
+    )
+    assert response.status_code == 200
+    filter_context["response"] = response.json()
+
+
+@then("해당 회사만 공정 안 첫 순위로 보이고 점수는 그대로다")
+def verify_process_industry(filter_context):
+    result = filter_context["response"]
+    assert len(result["data"]) == result["meta"]["total"] == 1
+    card = result["data"][0]
+    assert card["oppId"] == filter_context["ids"][0]
+    assert card["rank"] == 1
+    original = next(
+        row for row in filter_context["original"]["data"] if row["oppId"] == card["oppId"]
+    )
+    assert card["scoreDisplay"] == original["scoreDisplay"]
+    assert card["classificationCode"] == original["classificationCode"]

@@ -17,6 +17,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from geosan.config.app_settings import DEFAULT_APP_SETTINGS_PATH, load_app_settings
 from geosan.config.errors import FieldError, InputError
 from geosan.config.loader import LoadedDocument, load_document
 from geosan.config.rule_config import (
@@ -258,6 +259,8 @@ def check_case_file(
     path: Path | str,
     capability_path: Path | str | None = None,
     rule_config_path: Path | str | None = None,
+    *,
+    industries: list[str] | None = None,
 ) -> CheckReport:
     """사례 파일 검사(W2 1~2단계, BR2.9). 저장하지 않고 DB를 쓰지 않는다.
 
@@ -279,6 +282,26 @@ def check_case_file(
         return report
     report.errors.extend(scan_contacts(document.data, "", document))
     collector = _Collector(document, report)
+
+    if model.customer.industries:
+        try:
+            allowed = (
+                industries
+                if industries is not None
+                else load_app_settings(DEFAULT_APP_SETTINGS_PATH).industries
+            )
+        except InputError as exc:
+            report.errors.extend(exc.fields or [FieldError(path="", message=exc.message)])
+        else:
+            for index, industry in enumerate(model.customer.industries):
+                if industry not in allowed:
+                    report.errors.append(
+                        FieldError(
+                            path=f"customer.industries[{index}]",
+                            message="앱 설정 industries 목록 안의 산업군을 적어 주세요.",
+                            line=document.line_of(f"customer.industries[{index}]"),
+                        )
+                    )
 
     rule_config = _load_rule_config_for_check(rule_config_path, report)
     capability = _load_capability_for_check(capability_path, report)

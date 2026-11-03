@@ -40,6 +40,13 @@ cd web && npm ci && cd ..
 
 ## 3. 검사 (PR 전에 꼭)
 
+목록의 산업군 선택지는 앱 설정의 `industries` 순서로 표시합니다. 사례 파일의
+`customer.industries`에는 이 목록 안의 값을 최대 3개 적습니다. 생략하면 미확정입니다.
+기존 DB는 `geosan init-db`로 산업군 보관 열을 추가한 뒤, 사용하는 앱 설정 파일에
+`industries`를 넣고 위의 `geosan check-config` 명령으로 반영합니다. `check-case`는
+DB 없이 기본 `examples/app-settings.yaml`의 선택지로 검사하며, 실제 투입은 DB에 반영한
+앱 설정으로 다시 검사합니다.
+
 ```bash
 bash scripts/check.sh            # 파이썬 + 화면 전부 (CI와 같은 순서)
 bash scripts/check.sh python     # Ruff → 단위 테스트(커버리지 80% 하한) → 시나리오 → 뼈대 검증

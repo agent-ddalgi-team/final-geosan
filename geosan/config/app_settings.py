@@ -85,6 +85,7 @@ class AppSettings(FileModel):
     access_protection: AccessProtectionSettings
     records: RecordsSettings = Field(default_factory=RecordsSettings)
     research: ResearchSettings = Field(default_factory=ResearchSettings)
+    industries: list[str] = Field(default_factory=list)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
