@@ -720,6 +720,9 @@ GeocodeAdapter:                           # (추가 2026-11-03 PM 결정, 거리
   keys: 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY (승인키가 서로 달라 바꿔 쓰면 거부됨). 설정 파일·코드·로그에 적지 않음
   limits: geocoding.dailyCallLimit. timeout 10s, retry 1. 좌표계 변환(entX/entY → 위경도)은 공식을 코드로 둠(패키지 추가 없음, 직선거리 용도라 수십 m 오차 허용)
   distance: 두 위경도 사이 직선거리(구면 공식) km 소수 1자리. 점수·순위에는 쓰지 않는다
+  # (2026-11-03 저녁 PM 요청으로 검토) 네이버클라우드 Maps Geocoding은 약관 제7조 ⑪(결과 좌표 저장·DB화·재사용 금지) 때문에 쓰지 않는다. 지오코딩 공급자는 도로명주소 API 하나
+RouteAdapter:                             # (2차 후보, 2026-11-03 저녁 PM 결정 — 자리만) 좌표 2점 → 차로 가는 거리·시간. 공급자 네이버클라우드 Maps Directions 5(월 60,000건 무료). 결과는 저장하지 않고 화면에 1회 표시만(약관 제7조 ⑪). 지금은 만들지 않는다
+  route(fromLatLng, toLatLng) -> { distanceKm, durationMin, fetchedAt } | null   # 저장 금지. 키 NCP_MAPS_KEY_ID·NCP_MAPS_KEY(2차에서)
 HomepageReader:
   fetch(url) -> { allowed: boolean, reason: enum[OK, ROBOTS_DISALLOW, TERMS_DISALLOW, UNREACHABLE], text|null }
   timeout: 20s, retry: 1 (전체 60초 한도 안)
