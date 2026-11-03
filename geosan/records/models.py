@@ -52,6 +52,21 @@ class Outcome(CommonColumns, Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class ReviewCheck(CommonColumns, Base):
+    """검토사항 체크·해제는 모두 새 행이며 마지막으로 저장한 행이 현재 값이다(C6, #227)."""
+
+    __tablename__ = "rec_review_check"
+
+    review_check_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
+    )
+    item_id: Mapped[str] = mapped_column(Text, nullable=False)
+    checked: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    eval_id: Mapped[str] = mapped_column(String(40), ForeignKey("eval_run.eval_id"), nullable=False)
+
+
 class ReviewOpinion(CommonColumns, Base):
     """담당자 의견(검토할 만함 / 추가 확인 / 대상 아님). 본 평가 ID 필수, 수정은 새 행 (FR7)."""
 
