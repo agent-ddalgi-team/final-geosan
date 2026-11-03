@@ -36727,3 +36727,175 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
 
 ---
+
+## Subagent Completed
+**Timestamp**: 2026-11-03T07:47:33Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ac4c57695e0e80a07
+**Message**: 이슈 라벨 정리 다시 해 줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T07:49:18Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-03T07:49:37Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ac5b29dfe0a3bb3c9
+**Message**: 이슈 라벨 전체 점검해 줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T07:51:41Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T07:53:30Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Picked**: ["추천 목록을 공정 탭으로 (추천)","1차에 넣는다 (추천)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-03T07:53:30Z
+**Event**: QUESTION_REPLIED
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Question**: "각 공정별로 구분"을 어디까지 적용할까요? 지금은 추천 목록이 전기아연도금·아노다이징 섞인 한 줄 순위이고, 사례 파일에는 공정이 하나씩 붙어 있습니다. 해당하는 것을 모두 골라 주세요.
+**Reply**: 추천 목록을 공정 탭으로 (추천)
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-03T07:53:30Z
+**Event**: QUESTION_REPLIED
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Question**: 이것은 1차(11/24 전후 전달)에 넣을까요, 2차로 둘까요? 1차에 넣으면 고선주(목록 탭)·이강욱(목록 API)에 각각 4h 안팎이 더해져 완료일이 하루씩 늦어집니다.
+**Reply**: 1차에 넣는다 (추천)
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T07:54:03Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T07:57:06Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Picked**: ["주소 시·군 필터 (추천)","사례 파일에 손으로 적고 필터 (추천)","천안·아산 (8곳)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-03T07:57:07Z
+**Event**: QUESTION_REPLIED
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Question**: 지역 선택을 1차에 어떻게 넣을까요? 지금 설계는 km 거리(#222)가 2차이고 좌표 API 승인키를 기다리는 중입니다.
+**Reply**: 주소 시·군 필터 (추천)
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-03T07:57:07Z
+**Event**: QUESTION_REPLIED
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Question**: 산업 선택은 1차에 어떻게 넣을까요? 지금 데이터에는 산업군 칸이 없고, AI가 제안하는 기능(#229)은 오늘 2차로 옮겼습니다.
+**Reply**: 사례 파일에 손으로 적고 필터 (추천)
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-03T07:57:07Z
+**Event**: QUESTION_REPLIED
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Question**: "천안 인근" 묶음에 들어갈 시·군은? (설정값이라 나중에 바꿀 수 있음. 지금 18곳: 천안 3 · 아산 5 · 당진 4 · 대전 5 · 세종 1)
+**Reply**: 천안·아산 (8곳)
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-03T07:59:38Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a1458295146fbaf07
+**Message**: #230 사례 파일 산업군 초안도 채워 줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T08:00:50Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T08:02:21Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Picked**: ["위 + 지역·산업 선택 + 대표번호 줄"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-03T08:02:21Z
+**Event**: QUESTION_REPLIED
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+**Question**: 11/10 목표 묶음을 어떤 범위로 잡을까요? (목표이지 마감은 아니고, 나머지는 11/11부터 순서대로 이어 갑니다)
+**Reply**: 위 + 지역·산업 선택 + 대표번호 줄
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-03T08:03:22Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a728967cc61807f99
+**Message**: 팀원들한테 보낼 11/10 목표·주말 안내 메시지 만들어 줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T08:03:40Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-03T08:03:56Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ab05ffa186539b9c9
+**Message**: 이슈 라벨 정리 다시 해 줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T08:04:30Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-03T08:08:48Z
+**Event**: HUMAN_TURN
+**Session**: 806daa0e-87f7-463b-a4dc-3e23f18f214f
+
+---
