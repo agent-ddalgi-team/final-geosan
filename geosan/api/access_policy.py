@@ -1,6 +1,6 @@
 """#213 접속 판단만 담당한다(계약 C1: 5회 실패·30초 대기·12시간 만료).
 
-DB·쿠키·HTTP 경로에는 연결하지 않는다. 호출자는 서버에서 읽은 실패 상태를 넘기고,
+이 파일은 DB·쿠키를 직접 다루지 않는다. 호출자는 서버에서 읽은 실패 상태를 넘기고,
 반환된 상태의 읽기·저장을 한 번에 처리해야 한다. 브라우저가 보낸 횟수를 믿지 않는다.
 """
 
@@ -56,7 +56,7 @@ def password_matches(submitted: str) -> bool:
 def decide_access(
     submitted: str, state: FailureState, *, now: datetime, protection_enabled: bool
 ) -> AccessDecision:
-    """상태를 바꾸지 않고 다음 상태를 반환한다. 저장·실제 차단은 아직 연결하지 않았다."""
+    """상태를 바꾸지 않고 다음 상태를 반환한다. 저장·차단은 호출자가 맡는다."""
     now = _utc(now)
     if not protection_enabled:
         return AccessDecision(allowed=True, state=state)
