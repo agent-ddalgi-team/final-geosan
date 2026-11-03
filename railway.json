@@ -1,0 +1,6 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "deploy": {
+    "startCommand": "/bin/sh -c 'exec geosan serve --host 0.0.0.0 --port \"${PORT:?Railway PORT is required}\"'"
+  }
+}
