@@ -227,6 +227,57 @@ class Opinion(StrEnum):
     NOT_TARGET = "NOT_TARGET"
 
 
+class OutcomeStatus(StrEnum):
+    NOT_EXECUTED = "NOT_EXECUTED"
+    INTERESTED = "INTERESTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    SAMPLE_OR_REGISTRATION_APPROVED = "SAMPLE_OR_REGISTRATION_APPROVED"
+    ON_HOLD = "ON_HOLD"
+    WON = "WON"
+    LOST = "LOST"
+
+
+class ContactMethod(StrEnum):
+    CALL = "CALL"
+    EMAIL = "EMAIL"
+    VISIT = "VISIT"
+
+
+class ContactResult(StrEnum):
+    REACHED = "REACHED"
+    ABSENT = "ABSENT"
+    DECLINED = "DECLINED"
+
+
+class ActivityKind(StrEnum):
+    CLASSIFICATION = "CLASSIFICATION"
+    OPINION = "OPINION"
+    BOOKMARK = "BOOKMARK"
+    APPROVAL = "APPROVAL"
+    CONTACT_ATTEMPT = "CONTACT_ATTEMPT"
+    REPLY = "REPLY"
+    OUTCOME = "OUTCOME"
+    EVIDENCE_GRADE_CONFIRMED = "EVIDENCE_GRADE_CONFIRMED"
+    NOTE = "NOTE"
+
+
+class NoteKind(StrEnum):
+    MEMO = "MEMO"
+    RESEARCH = "RESEARCH"
+
+
+class ReviewItemKind(StrEnum):
+    QUESTION = "QUESTION"
+    DATA_NOT_FOUND = "DATA_NOT_FOUND"
+    DATA_INSUFFICIENT = "DATA_INSUFFICIENT"
+
+
+class ReviewItemSource(StrEnum):
+    AI = "AI"
+    CASE_FILE = "CASE_FILE"
+    RULE = "RULE"
+
+
 class QuestionStatus(StrEnum):
     WAITING = "WAITING"
     REQUESTED = "REQUESTED"
@@ -301,21 +352,21 @@ class ClassificationEntry:
 
 
 CLASSIFICATION_TABLE: tuple[ClassificationEntry, ...] = (
-    ClassificationEntry(ClassificationCode.FILTER_EXCLUDED, 1, "필터 제외", True, False),
+    ClassificationEntry(ClassificationCode.FILTER_EXCLUDED, 1, "필터 제외", False, False),
     ClassificationEntry(
-        ClassificationCode.FILTER_PENDING, 2, "필터 미확인(확인 대기)", True, False
+        ClassificationCode.FILTER_PENDING, 2, "필터 미확인(확인 대기)", False, False
     ),
-    ClassificationEntry(ClassificationCode.OPS_PENDING, 3, "운영 전제 미확정", True, False),
-    ClassificationEntry(ClassificationCode.NOT_EVALUATED, 4, "초기 평가 대기", True, False),
+    ClassificationEntry(ClassificationCode.OPS_PENDING, 3, "운영 전제 미확정", False, False),
+    ClassificationEntry(ClassificationCode.NOT_EVALUATED, 4, "초기 평가 대기", False, False),
     ClassificationEntry(ClassificationCode.CONTACT_URGENT, 5, "시점 우선 접촉", False, True),
     ClassificationEntry(ClassificationCode.CONTACT_PLANNED, 6, "계획형 접촉", False, True),
     ClassificationEntry(ClassificationCode.CONTACT_REVIEW, 7, "검토 후 접촉", False, True),
-    ClassificationEntry(ClassificationCode.RESEARCH, 8, "추가조사", True, False),
-    ClassificationEntry(ClassificationCode.CONDITIONAL_WAIT, 9, "조건부 대기", True, False),
-    ClassificationEntry(ClassificationCode.WATCH, 10, "관찰", True, False),
-    ClassificationEntry(ClassificationCode.LOW, 11, "후순위", True, False),
+    ClassificationEntry(ClassificationCode.RESEARCH, 8, "추가조사", False, False),
+    ClassificationEntry(ClassificationCode.CONDITIONAL_WAIT, 9, "조건부 대기", False, False),
+    ClassificationEntry(ClassificationCode.WATCH, 10, "관찰", False, False),
+    ClassificationEntry(ClassificationCode.LOW, 11, "후순위", False, False),
 )
-"""BR6.1 순서대로. blocksApproval: 접촉 후보 3가지만 승인을 막지 않는다(BR10.3)."""
+"""BR6.1 순서대로. 분류는 추천 강도 표시용이며 승인 가능 여부는 사실 조건으로 정한다(#211)."""
 
 CLASSIFICATION_BY_CODE: dict[ClassificationCode, ClassificationEntry] = {
     entry.code: entry for entry in CLASSIFICATION_TABLE

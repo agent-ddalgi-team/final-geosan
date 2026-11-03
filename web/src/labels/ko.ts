@@ -380,6 +380,31 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
   COMPANY_CONFIRMED: '거산 확인 완료',
 };
 
+/** 영업 기록·검토사항의 쉬운 말 (약속 C0, C1). */
+export const outcomeStatusLabels = {
+  NOT_EXECUTED: '미접촉',
+  INTERESTED: '관심',
+  IN_PROGRESS: '접촉',
+  SAMPLE_OR_REGISTRATION_APPROVED: '견적·샘플',
+  ON_HOLD: '보류',
+  WON: '성사',
+  LOST: '거절',
+} as const;
+
+export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
+export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
+export const noteKindLabels = { MEMO: '메모', RESEARCH: '자료 조사' } as const;
+export const reviewItemKindLabels = {
+  QUESTION: 'AI 확인 질문',
+  DATA_NOT_FOUND: '자료 못 찾음',
+  DATA_INSUFFICIENT: '자료 부족',
+} as const;
+export const reviewItemSourceLabels = {
+  AI: 'AI 조사',
+  CASE_FILE: '사례 파일',
+  RULE: '평가 규칙',
+} as const;
+
 /** 상세 "추천 이유"의 요약 줄 앞에 쓰는 짧은 항목 이름(PM 결정 2026-10-27, #145). 표에 없는 코드는 긴 이름을 그대로 쓴다. */
 export const itemShortLabels: Record<string, string> = {
   NEW_PRODUCT: '제품',
