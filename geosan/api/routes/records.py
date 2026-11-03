@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
@@ -22,19 +22,171 @@ from geosan.api.schemas import (
     OpinionRecord,
     OpinionRequest,
     OpinionResponse,
+    OpportunityDetail,
     OutcomeEnvelope,
     OutcomeRequest,
     OutcomeResponse,
+    ReviewCheckEnvelope,
+    ReviewCheckRequest,
+    ReviewCheckResponse,
+    ReviewItem,
 )
 from geosan.config.errors import FieldError, InputError, NotFoundError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Opportunity
 from geosan.opportunity.queries import confirm_main_phone
-from geosan.records.models import Note, Outcome, ReviewOpinion
+from geosan.records.models import Note, Outcome, ReviewCheck, ReviewOpinion
+from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 
 router = APIRouter()
+
+
+def derive_review_items(data: OpportunityDetail) -> list[ReviewItem]:
+    """계약 C1의 다섯 입력에서 파생한다. 미조사를 홈페이지 검색 실패로 추정하지 않는다."""
+    items: dict[str, ReviewItem] = {}
+
+    def add(item_id, kind, source, text, target_label=None):
+        items[item_id] = ReviewItem(
+            item_id=item_id,
+            kind=kind,
+            source=source,
+            text=text,
+            target_label=target_label,
+            checked=False,
+            checked_by=None,
+            checked_at=None,
+        )
+
+    for question in data.reasons.questions:
+        # 현재 reasons.questions는 평가가 저장한 질문 후보다. AI 질문이라고 출처를 바꾸지 않는다.
+        add(
+            f"Q:{question.question_id}",
+            ReviewItemKind.QUESTION,
+            ReviewItemSource.RULE,
+            question.text,
+            "상대 회사" if question.target_kind in {"OPPORTUNITY", "REQUIREMENT"} else "거산",
+        )
+    if data.header.homepage_status == "NOT_FOUND":
+        add(
+            "GAP:HOMEPAGE",
+            ReviewItemKind.DATA_NOT_FOUND,
+            ReviewItemSource.AI,
+            "홈페이지를 찾지 못함",
+        )
+    if not data.evidence:
+        add(
+            "GAP:EVIDENCE",
+            ReviewItemKind.DATA_NOT_FOUND,
+            ReviewItemSource.RULE,
+            "확인할 근거 자료가 없음",
+        )
+    if data.scores is not None:
+        for item in data.scores.items:
+            if item.state in {"NO_SIGNAL", "UNAVAILABLE"}:
+                add(
+                    f"GAP:ITEM:{item.item_code}",
+                    ReviewItemKind.DATA_INSUFFICIENT,
+                    ReviewItemSource.RULE,
+                    f"{item.label} 근거 없음",
+                )
+    for requirement in data.requirements:
+        if requirement.result == "QUESTION_NEEDED":
+            add(
+                f"GAP:REQ:{requirement.req_id}",
+                ReviewItemKind.DATA_INSUFFICIENT,
+                ReviewItemSource.RULE,
+                f"{requirement.name}: {requirement.reason}",
+            )
+    return list(items.values())
+
+
+def review_items_for_detail(
+    session: Session, opp_id: str, data: OpportunityDetail
+) -> list[ReviewItem]:
+    items = derive_review_items(data)
+    # SQLite의 저장 순서로 고른다. 시계가 같거나 되돌아가도 마지막 추가 행이 현재 값이다.
+    latest_rowids = (
+        select(func.max(literal_column("rowid")))
+        .select_from(ReviewCheck)
+        .where(ReviewCheck.opp_id == opp_id)
+        .group_by(ReviewCheck.item_id)
+        .correlate(None)
+    )
+    latest = {
+        row.item_id: row
+        for row in session.scalars(
+            select(ReviewCheck).where(
+                ReviewCheck.opp_id == opp_id,
+                literal_column("rec_review_check.rowid").in_(latest_rowids),
+            )
+        )
+    }
+    for item in items:
+        if row := latest.get(item.item_id):
+            item.checked = row.checked
+            item.checked_by = row.staff_key
+            item.checked_at = row.created_at
+    return items
+
+
+@router.post(
+    "/opportunities/{oppId}/review-items/{itemId}/check", response_model=ReviewCheckEnvelope
+)
+def save_review_check(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    item_id: Annotated[str, Path(alias="itemId")],
+    body: ReviewCheckRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 기존 상세 조립을 재사용해 표시된 항목과 체크 가능한 항목이 어긋나지 않게 한다.
+    from geosan.api.routes.opportunities import opportunity_detail
+
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("체크를 남길 기회가 없습니다.")
+    evaluation = session.get(EvaluationRun, body.eval_id)
+    batch = session.get(EvaluationBatch, evaluation.batch_id) if evaluation else None
+    if (
+        evaluation is None
+        or evaluation.opp_id != opp_id
+        or evaluation.run_status not in {"CONFIRMED", "SUPERSEDED"}
+        or batch is None
+        or batch.status != "CONFIRMED"
+    ):
+        raise InputError(
+            "이 기회에서 본 평가 ID를 넣어 주세요.",
+            fields=[FieldError(path="evalId", message="기회와 평가 연결을 확인해 주세요.")],
+        )
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    current = opportunity_detail(opp_id, session).data
+    if not any(item.item_id == item_id for item in current.review_items):
+        raise NotFoundError("현재 검토사항에 없는 항목입니다.")
+    now = utcnow()
+    row = ReviewCheck(
+        review_check_id=new_id("rcheck"),
+        opp_id=opp_id,
+        item_id=item_id,
+        checked=body.checked,
+        staff_key=staff,
+        eval_id=body.eval_id,
+        created_at=now,
+        created_by=staff,
+        dataset_kind=opportunity.dataset_kind,
+        is_virtual=opportunity.is_virtual,
+    )
+    session.add(row)
+    session.flush()
+    return ReviewCheckEnvelope(
+        data=ReviewCheckResponse(
+            item_id=item_id, checked=row.checked, checked_by=staff, checked_at=now
+        ),
+        meta=Meta(updated_at=now, dataset_kind=row.dataset_kind, has_virtual_data=row.is_virtual),
+    )
 
 
 def contact_counts(session: Session, opp_id: str) -> ContactCount:

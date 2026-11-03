@@ -31,6 +31,8 @@ from geosan.rules.codes import (
     QuestionTargetKind,
     RelationStatus,
     ReqLevel,
+    ReviewItemKind,
+    ReviewItemSource,
     ReviewStatus,
     SourceGrade,
 )
@@ -213,6 +215,9 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    homepage_status: Literal["AI_FOUND", "NEEDS_CONFIRMATION", "CONFIRMED", "NOT_FOUND"] | None = (
+        None
+    )
     industries: list[str] = Field(default_factory=list)
     industries_source: str | None = None
     address: str
@@ -376,10 +381,34 @@ class DetailRecords(_ApiModel):
     outcome: dict[str, Any] | None = None
 
 
+class ReviewItem(_ApiModel):
+    item_id: str
+    kind: ReviewItemKind
+    source: ReviewItemSource
+    text: str
+    target_label: Literal["상대 회사", "거산"] | None = None
+    checked: bool = False
+    checked_by: str | None = None
+    checked_at: datetime | None = None
+
+
+class ReviewCheckRequest(_RequestModel):
+    checked: bool = Field(strict=True)
+    eval_id: str = Field(min_length=1)
+
+
+class ReviewCheckResponse(_ApiModel):
+    item_id: str
+    checked: bool
+    checked_by: str
+    checked_at: datetime
+
+
 class OpportunityDetail(_ApiModel):
     """근거 상세 S2. 영역별 구성 함수(detail_sections)가 순서대로 조립한다 (BR10.5)."""
 
     header: DetailHeader
+    review_items: list[ReviewItem] = Field(default_factory=list)
     stage: dict[str, Any] | None = None
     reasons: Reasons
     requirements: list[RequirementCheckView]
@@ -479,6 +508,7 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+ReviewCheckEnvelope = Envelope[ReviewCheckResponse]
 MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
 ActivityEnvelope = Envelope[list[ActivityItem]]
 NoteEnvelope = Envelope[NoteResponse]

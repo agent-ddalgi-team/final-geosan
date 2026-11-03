@@ -19,6 +19,7 @@ from geosan.api.routes.records import (
     latest_outcome,
     opinion_view,
     outcome_view,
+    review_items_for_detail,
 )
 from geosan.api.schemas import (
     ApprovalEligibility,
@@ -439,6 +440,7 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
     for section in detail_sections:
         data.update(section(context))
     detail = OpportunityDetail(**data)
+    detail.review_items = review_items_for_detail(session, opp_id, detail)
     # 경계 모델의 별칭이 계약과 달라진 상태에서는 약속에 없는 점수 키를 내보내지 않는다.
     if (
         detail.scores is not None

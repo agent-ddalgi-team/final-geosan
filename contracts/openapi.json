@@ -337,6 +337,23 @@
             "title": "Highlights",
             "type": "array"
           },
+          "homepageStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI_FOUND",
+                  "NEEDS_CONFIRMATION",
+                  "CONFIRMED",
+                  "NOT_FOUND"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepagestatus"
+          },
           "homepageUrl": {
             "anyOf": [
               {
@@ -680,6 +697,21 @@
           "data"
         ],
         "title": "Envelope[OutcomeResponse]",
+        "type": "object"
+      },
+      "Envelope_ReviewCheckResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReviewCheckResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ReviewCheckResponse]",
         "type": "object"
       },
       "Envelope_list_ActivityItem__": {
@@ -1486,6 +1518,13 @@
             "title": "Requirements",
             "type": "array"
           },
+          "reviewItems": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItem"
+            },
+            "title": "Reviewitems",
+            "type": "array"
+          },
           "scores": {
             "anyOf": [
               {
@@ -2100,6 +2139,142 @@
         ],
         "title": "RequirementCheckView",
         "type": "object"
+      },
+      "ReviewCheckRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "evalId": {
+            "minLength": 1,
+            "title": "Evalid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checked",
+          "evalId"
+        ],
+        "title": "ReviewCheckRequest",
+        "type": "object"
+      },
+      "ReviewCheckResponse": {
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "format": "date-time",
+            "title": "Checkedat",
+            "type": "string"
+          },
+          "checkedBy": {
+            "title": "Checkedby",
+            "type": "string"
+          },
+          "itemId": {
+            "title": "Itemid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "checked",
+          "checkedBy",
+          "checkedAt"
+        ],
+        "title": "ReviewCheckResponse",
+        "type": "object"
+      },
+      "ReviewItem": {
+        "properties": {
+          "checked": {
+            "default": false,
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkedat"
+          },
+          "checkedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkedby"
+          },
+          "itemId": {
+            "title": "Itemid",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReviewItemKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ReviewItemSource"
+          },
+          "targetLabel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "상대 회사",
+                  "거산"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetlabel"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "kind",
+          "source",
+          "text"
+        ],
+        "title": "ReviewItem",
+        "type": "object"
+      },
+      "ReviewItemKind": {
+        "enum": [
+          "QUESTION",
+          "DATA_NOT_FOUND",
+          "DATA_INSUFFICIENT"
+        ],
+        "title": "ReviewItemKind",
+        "type": "string"
+      },
+      "ReviewItemSource": {
+        "enum": [
+          "AI",
+          "CASE_FILE",
+          "RULE"
+        ],
+        "title": "ReviewItemSource",
+        "type": "string"
       },
       "ReviewStatus": {
         "description": "미확보 / 검수 대기 / 검수 완료 / 재확인.",
@@ -2892,6 +3067,80 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/review-items/{itemId}/check": {
+      "post": {
+        "operationId": "save_review_check_api_v1_opportunities__oppId__review_items__itemId__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "title": "Itemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ReviewCheckResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Review Check"
       }
     },
     "/api/v1/session": {
