@@ -4,7 +4,7 @@
 
 필드 이름·경로·명령 이름은 **제안**이며 기능 설계와 코드 생성에서 그대로 쓰거나 같은 뜻으로 고칩니다. 깨는 변경은 2장 규칙을 따릅니다. 검토(review-01)의 소견 18건을 반영한 판입니다.
 
-**계약 요약 버전: v2 (2026-11-03, PM 결정)** — 깨는 변경 1건: C1 `GET /dashboard` 건수 이름·응답 모양 재정의(아직 코드 없음, 영향 0). 같은 날 더한 것: C0 `INTERESTED`·`contactMethod`·`contactResult`, C1 `stage` 조건·`/notes`·`/outcomes` 칸, C6 `rec_note`, C7 `records`, 재접촉(U6) 항목 "보류" 표시. 근거: `../delivery-planning/scope-change-proposal-20261102.md` 4장 답.
+**계약 요약 버전: v2 (2026-11-03, PM 결정)** — (같은 날 PM 지시 추가: 영업 메모에 연락처 허용, 회사 대표번호 자동 표시. 근거 `../delivery-planning/contact-policy-change-20261103.md`) 깨는 변경 1건: C1 `GET /dashboard` 건수 이름·응답 모양 재정의(아직 코드 없음, 영향 0). 같은 날 더한 것: C0 `INTERESTED`·`contactMethod`·`contactResult`, C1 `stage` 조건·`/notes`·`/outcomes` 칸, C6 `rec_note`, C7 `records`, 재접촉(U6) 항목 "보류" 표시. 근거: `../delivery-planning/scope-change-proposal-20261102.md` 4장 답.
 
 ## 1. 계약 목록
 
@@ -178,7 +178,7 @@ components:
       type: object
       description: 근거 상세 S2. 영역별 구성 함수가 조립
       properties:
-        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
+        header: { type: object, properties: { title: {}, relationStatus: {}, purpose: {}, owner: {}, isVirtual: {}, datasetKind: {}, isRecontact: {}, homepageUrl: { type: string, nullable: true, description: '근거 출처 주소의 공통 뿌리(scheme+host). 주소 있는 근거가 없으면 null. 더하는 변경 2026-10-27 PM, #176' }, mainPhone: { type: string, nullable: true, description: '(추가 2026-11-03 PM 지시) 회사 대표번호. 공개 홈페이지 본문(U2 근거 추출)이나 산단공 CSV(U3)에서 자동으로 채움, 사람 입력 칸 없음. 사람 이름이 붙은 번호(담당자 휴대폰)는 채우지 않음' }, mainPhoneSource: { type: string, nullable: true, enum: [HOMEPAGE, CSV] }, scoreDisplay: { type: string, description: '카드와 같은 문자열(OpportunityCard.scoreDisplay 참고), 2026-10-28 PM #180' } } }
         stage: { type: object, properties: { current: { type: integer }, badge: { type: string, nullable: true } } }
         reasons: { type: object, properties: { reason: { type: string }, nextAction: { type: string }, questions: { type: array, items: { $ref: '#/components/schemas/Question' } } } }
         requirements: { type: array, items: { $ref: '#/components/schemas/RequirementCheckView' } }
@@ -282,7 +282,7 @@ paths:
     post:
       summary: (추가 2026-11-03, PM 결정 U5 메모 4장) 영업 메모 저장 (U5). 덧붙이기만, 수정·삭제 없음(Q5). 담당자명·시각 자동. 저장 뒤 ActivityItem NOTE
       requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [text], properties: { text: { type: string, description: '상한은 설정 records.noteMaxLength(기본 200자)' } } } ] } } } }
-      responses: { '200': { description: '저장됨 (RecordMeta + noteId)' }, '400': { description: '이메일·전화 패턴이 있음(연락처 저장 금지, find_contact 재사용) 또는 글자 수 초과 (fields)' }, '403': { description: 담당자 키 없음·보기 전용 } }
+      responses: { '200': { description: '저장됨 (RecordMeta + noteId)' }, '400': { description: '글자 수 초과 (fields). (변경 2026-11-03 PM 지시) 연락처 패턴은 거부하지 않는다 — 메모는 거산 담당자의 내부 메모장이라 상대 회사 담당자 전화·이메일을 적어도 된다. 대신 메모(NOTE)는 외부 AI·검색·엑셀·질문 목록 어디에도 나가지 않는다(C4)' }, '403': { description: 담당자 키 없음·보기 전용 } }
   /opportunities/{oppId}/bookmark:
     put:
       summary: 담기 켜고 끄기 (U5) — (갱신 2026-11-03, PM 결정 Q2) **안 씀.** 담기 대신 영업 단계 INTERESTED(관심)를 /outcomes로 기록. 경로는 지우지 않고 남김(깨는 변경 아님)
@@ -495,7 +495,7 @@ check_transfer:
     requestedBy: staffKey | system
   rules:
     EXTERNAL_AI:
-      - kind ∈ {RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION, CAPABILITY_VALUE} 하나라도 → 전체 거부
+      - kind ∈ {NOTE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION, CAPABILITY_VALUE} 하나라도 → 전체 거부   # NOTE 명시: 2026-11-03 PM 지시로 메모에 연락처가 들어갈 수 있으므로 메모는 어떤 외부 호출에도 못 나감
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
       - securityGrade ∈ {PUBLIC, EXTERNAL_AI_OK}만 허용
       - 월 호출 상한 초과 → 거부 (kind LLM_LIMIT)
@@ -509,6 +509,7 @@ check_transfer:
       - securityGrade = FORBIDDEN 또는 UNKNOWN → 전체 거부
       - kind 없음 → 전체 거부
       - 허용 kind: PUBLIC_TEXT, EVIDENCE, OPPORTUNITY_INFO, QUESTION, CAPABILITY_VALUE, RECONTACT_INPUT, INTERNAL_HISTORY, CUSTOMER_RELATION (내부용 출력이므로 허용하되 파일에 "내부용·고객 제출용 아님"과 가상 표시를 넣는다)
+      - (추가 2026-11-03 PM 지시) kind NOTE(영업 메모)와 회사 대표번호(mainPhone)는 엑셀·질문 목록에 넣지 않는다. 남은 자유 문장에는 scrub_contacts를 적용한다(연락처는 파일로 나가지 않음)
       - 예외: 출력물이 외부 제출용으로 표시된 경우(이번 범위 없음)는 INTERNAL_ONLY 이상을 거부
   output: { allowed: boolean, rejectedItems: [{ refId, reason }], logId: string }
   noPartialSend: allowed=false면 호출자는 아무것도 보내지 않는다(걸러서 다시 보내지 않음)
@@ -566,7 +567,7 @@ rules:
 
 ### C7. 사람이 넣는 파일 (JSON 묶음·YAML, 예시 파일 동봉)
 
-공통 규칙(Q4): 파일마다 설명이 달린 예시 파일을 `examples/` 폴더에 둔다(`case-apjeong.json`, `capability-geosan.json`, `rule-config.yaml`, `app-settings.yaml`). **설명은 `_설명` 키**에 적는다(JSON에는 주석이 없으므로 어느 객체에든 `_설명` 키를 허용하고 검사기는 이 키를 무시한다; YAML은 `#` 주석도 가능). 예시 파일은 들여쓴(한 항목 한 줄) 형태로 두고 투입 명령은 **위치 정보를 주는 로더**(줄·열을 돌려주는 JSON/YAML 파서)로 읽어 오류를 "**몇 번째 줄 어느 항목이 왜 틀렸는지**"로 보인다(예: `12번째 줄 requirements[1].reqLevel: 'REQUIRED', 'PREFERRED', 'NOT_REQUIRED', 'UNKNOWN' 중 하나여야 하는데 '필수요'가 적혀 있습니다`). `_설명` 외의 **모르는 키는 오류**다(오타가 조용히 사라지지 않게). 자유 문장 칸(quote, notes, allowedSummary, basis 등)에 이메일·전화 패턴이 있으면 **오류로 거부**한다(연락처는 저장하지 않음). 한 항목이라도 틀리면 아무것도 저장하지 않는다. 형식 설명서는 `contracts/*.schema.json` 네 개(약속 파일). 12/11 인계 뒤 거산 운영 담당자가 고치는 것을 전제로 한다.
+공통 규칙(Q4): 파일마다 설명이 달린 예시 파일을 `examples/` 폴더에 둔다(`case-apjeong.json`, `capability-geosan.json`, `rule-config.yaml`, `app-settings.yaml`). **설명은 `_설명` 키**에 적는다(JSON에는 주석이 없으므로 어느 객체에든 `_설명` 키를 허용하고 검사기는 이 키를 무시한다; YAML은 `#` 주석도 가능). 예시 파일은 들여쓴(한 항목 한 줄) 형태로 두고 투입 명령은 **위치 정보를 주는 로더**(줄·열을 돌려주는 JSON/YAML 파서)로 읽어 오류를 "**몇 번째 줄 어느 항목이 왜 틀렸는지**"로 보인다(예: `12번째 줄 requirements[1].reqLevel: 'REQUIRED', 'PREFERRED', 'NOT_REQUIRED', 'UNKNOWN' 중 하나여야 하는데 '필수요'가 적혀 있습니다`). `_설명` 외의 **모르는 키는 오류**다(오타가 조용히 사라지지 않게). 자유 문장 칸(quote, notes, allowedSummary, basis 등)에 이메일·전화 패턴이 있으면 **오류로 거부**한다(파일은 저장소(git)에 올라가므로 연락처를 적지 않음. 2026-11-03 PM 지시 뒤에도 유지 — 연락처는 프로그램 안 영업 메모에만, 파일에는 안 됨). 한 항목이라도 틀리면 아무것도 저장하지 않는다. 형식 설명서는 `contracts/*.schema.json` 네 개(약속 파일). 12/11 인계 뒤 거산 운영 담당자가 고치는 것을 전제로 한다.
 
 **재투입 규칙**: 식별 키는 CaseFile `caseId`, Process `code`, Qualification `officialName + number`, Customer `bizNumber`(없으면 정규화 상호명+주소). 같은 키를 다시 넣으면 **값은 덮어쓰되 이력(FieldEvidence·QualificationStatus·평가)은 보존**하고, **이미 `REVIEWED`(검수 완료)인 값은 파일의 `PENDING`으로 되돌리지 않는다**(파일 값이 다르면 경고 줄을 내고 기존 검수 상태 유지; 되돌리려면 `geosan review-set … RECHECK`). 투입 뒤 평가는 자동으로 돌지 않고 `geosan evaluate`로 한다(안내서에 명시).
 
@@ -580,7 +581,7 @@ CaseFile:
   isVirtual: true
   datasetKind: datasetKind
   notes: [string]                       # 예: "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가"
-  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade }
+  customer: { name, bizNumber|null, address, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null }   # mainPhone·mainPhoneSource는 추가 2026-11-03(PM 지시): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션)
   interactions: [{ kind: interactionKind, occurredAt, allowedSummary, linkedToOpportunity: boolean, certainty }]
   opportunity: { item, project, purpose, owner, cardReason: string|null }   # cardReason: 카드 추천 이유 한 문장, 출처 제외 80자 안 권장(넘으면 경고만; 더하는 변경 2026-10-26 PM, #139)
   discoveryPaths: [{ pathKind, sourceId, originKey, discoveredAt }]
