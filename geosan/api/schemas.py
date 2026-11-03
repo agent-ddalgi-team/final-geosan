@@ -152,6 +152,7 @@ class CardRecords(_ApiModel):
 
 
 class OpportunityCard(_ApiModel):
+    contact_count: int = 0
     opp_id: str
     rank: int
     title: str = Field(description="기업 · 기회 이름")
@@ -188,6 +189,9 @@ class DetailHeader(_ApiModel):
     distance_km: float | None = None
     main_phone: str | None = None
     main_phone_source: Literal["HOMEPAGE", "CSV"] | None = None
+    main_phone_source_url: str | None = None
+    main_phone_confirmed_at: datetime | None = None
+    main_phone_confirmed_by: str | None = None
     summary_line: str | None = None
     highlights: list[str] = Field(default_factory=list, max_length=3)
     researched_at: datetime | None = None
@@ -327,7 +331,15 @@ class Scores(_ApiModel):
     evaluated_at: datetime
 
 
+class ContactCount(_ApiModel):
+    total: int = 0
+    call: int = 0
+    email: int = 0
+    visit: int = 0
+
+
 class DetailRecords(_ApiModel):
+    contact_count: ContactCount = Field(default_factory=ContactCount)
     opinion: OpinionRecord | None = None
     bookmark: dict[str, Any] | None = None
     approval: dict[str, Any] | None = None
@@ -374,6 +386,7 @@ class OpinionResponse(OpinionRecord):
 
 # 화면·테스트가 참고할 수 있는 응답 유형 별칭
 class NoteRequest(_RequestModel):
+    kind: Literal["MEMO", "RESEARCH"] = "MEMO"
     text: str
     eval_id: str | None = None
     expected_version: int | None = Field(default=None, ge=0)
@@ -382,6 +395,16 @@ class NoteRequest(_RequestModel):
 
 class NoteResponse(RecordMeta):
     note_id: str
+
+
+class MainPhoneConfirmRequest(_RequestModel):
+    expected_phone: str
+
+
+class MainPhoneConfirmResponse(_ApiModel):
+    main_phone: str
+    main_phone_confirmed_at: datetime
+    main_phone_confirmed_by: str
 
 
 OutcomeStatus = Literal[
@@ -426,6 +449,7 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
 ActivityEnvelope = Envelope[list[ActivityItem]]
 NoteEnvelope = Envelope[NoteResponse]
 ConfigUiEnvelope = Envelope[ConfigUi]

@@ -8,6 +8,7 @@ import unicodedata
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from geosan.config.errors import AppError, NotFoundError
 from geosan.opportunity.models import (
     Customer,
     DiscoveryPath,
@@ -18,6 +19,28 @@ from geosan.opportunity.models import (
     Signal,
 )
 from geosan.storage.base import utcnow
+
+
+def confirm_main_phone(session: Session, opp_id: str, expected_phone: str, staff: str) -> Customer:
+    """현재 번호를 잠금 안에서 비교하고 확인 정보만 저장한다. 번호 자체는 바꾸지 않는다."""
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    opportunity = session.get(Opportunity, opp_id)
+    customer = session.get(Customer, opportunity.customer_id) if opportunity else None
+    if customer is None or not customer.main_phone:
+        raise NotFoundError("확인할 대표번호가 없습니다.")
+    if customer.main_phone != expected_phone:
+        raise AppError(
+            "대표번호가 그 사이 바뀌었습니다.",
+            "상세 화면을 새로 불러온 뒤 확인해 주세요.",
+            status=409,
+            kind="STALE_VALUE",
+        )
+    customer.main_phone_confirmed_at = utcnow()
+    customer.main_phone_confirmed_by = staff
+    session.flush()
+    return customer
 
 
 def normalize_name(value: str) -> str:

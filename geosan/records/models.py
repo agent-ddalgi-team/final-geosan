@@ -24,6 +24,9 @@ class Note(CommonColumns, Base):
     )
     staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="MEMO", server_default="MEMO"
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 

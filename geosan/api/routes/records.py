@@ -3,13 +3,17 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.schemas import (
     ActivityEnvelope,
     ActivityItem,
+    ContactCount,
+    MainPhoneConfirmEnvelope,
+    MainPhoneConfirmRequest,
+    MainPhoneConfirmResponse,
     Meta,
     NoteEnvelope,
     NoteRequest,
@@ -26,10 +30,49 @@ from geosan.config.errors import FieldError, InputError, NotFoundError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Opportunity
+from geosan.opportunity.queries import confirm_main_phone
 from geosan.records.models import Note, Outcome, ReviewOpinion
 from geosan.storage.base import new_id, utcnow
 
 router = APIRouter()
+
+
+def contact_counts(session: Session, opp_id: str) -> ContactCount:
+    counts = dict(
+        session.execute(
+            select(Outcome.method, func.count())
+            .where(Outcome.opp_id == opp_id, Outcome.method.in_(["CALL", "EMAIL", "VISIT"]))
+            .group_by(Outcome.method)
+        ).all()
+    )
+    return ContactCount(
+        total=sum(counts.values()),
+        call=counts.get("CALL", 0),
+        email=counts.get("EMAIL", 0),
+        visit=counts.get("VISIT", 0),
+    )
+
+
+@router.post("/opportunities/{oppId}/main-phone/confirm", response_model=MainPhoneConfirmEnvelope)
+def save_main_phone_confirmation(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: MainPhoneConfirmRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    customer = confirm_main_phone(session, opp_id, body.expected_phone, staff)
+    return MainPhoneConfirmEnvelope(
+        data=MainPhoneConfirmResponse(
+            main_phone=customer.main_phone,
+            main_phone_confirmed_at=customer.main_phone_confirmed_at,
+            main_phone_confirmed_by=customer.main_phone_confirmed_by,
+        ),
+        meta=Meta(
+            updated_at=customer.main_phone_confirmed_at,
+            dataset_kind=customer.dataset_kind,
+            has_virtual_data=customer.is_virtual,
+        ),
+    )
 
 
 def latest_outcome(session: Session, opp_id: str) -> Outcome | None:
@@ -117,7 +160,12 @@ def activity(
         select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc()).limit(limit)
     ):
         items.append(
-            ActivityItem(at=row.created_at, actor=row.staff_key, kind="NOTE", summary=row.text)
+            ActivityItem(
+                at=row.created_at,
+                actor=row.staff_key,
+                kind="NOTE",
+                summary=f"자료 조사 · {row.text}" if row.kind == "RESEARCH" else row.text,
+            )
         )
     for row in session.scalars(
         select(Outcome)
@@ -204,6 +252,7 @@ def save_note(
         opp_id=opp_id,
         staff_key=staff,
         text=body.text,
+        kind=body.kind,
         version=previous.version + 1 if previous else 1,
         created_at=now,
         created_by=staff,

@@ -12,7 +12,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
-from geosan.api.routes.records import latest_opinion, latest_outcome, opinion_view, outcome_view
+from geosan.api.routes.records import (
+    contact_counts,
+    latest_opinion,
+    latest_outcome,
+    opinion_view,
+    outcome_view,
+)
 from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
@@ -128,6 +134,9 @@ def _header(context: DetailContext) -> dict:
             distance_km=None,
             main_phone=customer.main_phone,
             main_phone_source=customer.main_phone_source,
+            main_phone_source_url=customer.main_phone_source_url,
+            main_phone_confirmed_at=customer.main_phone_confirmed_at,
+            main_phone_confirmed_by=customer.main_phone_confirmed_by,
             summary_line=customer.summary_line,
             highlights=customer.highlights or [],
             researched_at=customer.researched_at,
@@ -371,6 +380,7 @@ def _scores(context: DetailContext) -> dict:
 def _records(context: DetailContext) -> dict:
     return {
         "records": DetailRecords(
+            contact_count=contact_counts(context.session, context.opportunity.opp_id),
             opinion=opinion_view(latest_opinion(context.session, context.opportunity.opp_id)),
             bookmark=None,
             approval=None,
@@ -495,6 +505,7 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         cards.append(
             OpportunityCard(
+                contact_count=contact_counts(session, opportunity.opp_id).total,
                 opp_id=opportunity.opp_id,
                 rank=original.original_rank,
                 title=f"{customer.name} · {opportunity.item}",

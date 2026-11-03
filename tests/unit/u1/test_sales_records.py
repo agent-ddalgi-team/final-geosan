@@ -14,6 +14,7 @@ from geosan.api.deps import get_session
 from geosan.capability.importer import import_capability
 from geosan.config.models import AppSetting
 from geosan.opportunity.importer import import_case
+from geosan.opportunity.models import Customer, Opportunity
 from geosan.records.models import Note, Outcome
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
@@ -34,6 +35,162 @@ def post(client, opp_id, kind, body, staff="park-lee"):
     return client.post(
         f"/api/v1/opportunities/{opp_id}/{kind}", json=body, headers={"X-Staff-Key": staff}
     )
+
+
+def set_test_phone(opp_id, phone="041-000-0000"):
+    """가상 대표번호만 넣는다. 실제 연락처는 사용하지 않는다."""
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, opp_id)
+        customer = session.get(Customer, opportunity.customer_id)
+        customer.main_phone = phone
+        customer.main_phone_source = "HOMEPAGE"
+        customer.main_phone_source_url = "https://example.invalid/company"
+
+
+def test_phone_confirmation_and_source_are_visible_without_activity(records_env):
+    """Given 공개 대표번호 / When 담당자 확인 / Then 번호는 그대로·확인 정보만 저장된다."""
+    client, opp_id = records_env
+    set_test_phone(opp_id)
+    url = f"/api/v1/opportunities/{opp_id}"
+    before = client.get(url).json()["data"]["header"]
+    assert before["mainPhoneSourceUrl"] == "https://example.invalid/company"
+    assert before["mainPhoneConfirmedAt"] is None
+    response = post(client, opp_id, "main-phone/confirm", {"expectedPhone": "041-000-0000"})
+    assert response.status_code == 200
+    confirmed = response.json()["data"]
+    after = client.get(url).json()["data"]["header"]
+    assert after["mainPhone"] == before["mainPhone"] == confirmed["mainPhone"]
+    assert after["mainPhoneConfirmedBy"] == confirmed["mainPhoneConfirmedBy"] == "park-lee"
+    assert after["mainPhoneConfirmedAt"] == confirmed["mainPhoneConfirmedAt"]
+    assert after["mainPhoneConfirmedAt"] is not None
+    assert client.get(url + "/activity").json()["data"] == []
+
+
+def test_phone_missing_changed_and_forbidden_do_not_confirm(records_env):
+    """Given 번호 없음·바뀜·담당자 아님 / When 확인 / Then 오류이며 확인 정보는 안 남는다."""
+    client, opp_id = records_env
+    body = {"expectedPhone": "041-000-0000"}
+    assert post(client, opp_id, "main-phone/confirm", body).status_code == 404
+    assert post(client, "missing", "main-phone/confirm", body).status_code == 404
+    set_test_phone(opp_id, "041-000-0001")
+    stale = post(client, opp_id, "main-phone/confirm", body)
+    assert stale.status_code == 409 and stale.json()["error"]["kind"] == "STALE_VALUE"
+    assert body["expectedPhone"] not in stale.text and "041-000-0001" not in stale.text
+    body = {"expectedPhone": "041-000-0001"}
+    assert post(client, opp_id, "main-phone/confirm", body, staff="unknown").status_code == 403
+    assert post(client, opp_id, "main-phone/confirm", {}).status_code == 400
+    assert (
+        post(
+            client, opp_id, "main-phone/confirm", {**body, "mainPhone": "041-000-0002"}
+        ).status_code
+        == 400
+    )
+    header = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["header"]
+    assert header["mainPhone"] == "041-000-0001"
+    assert header["mainPhoneConfirmedAt"] is None
+
+
+def test_phone_commit_failure_preserves_confirmation_and_hides_input(records_env, request_logs):
+    """Given 대표번호 / When 저장 실패 / Then 확인을 남기거나 재시도하지 않고 번호를 숨긴다."""
+    client, opp_id = records_env
+    set_test_phone(opp_id)
+    attempts = []
+
+    def fail_commit(session):
+        attempts.append("commit")
+        raise RuntimeError("가상 DB 오류 041-000-0000")
+
+    def failing_session():
+        with session_scope() as session:
+            event.listen(session, "before_commit", fail_commit)
+            yield session
+
+    client.app.dependency_overrides[get_session] = failing_session
+    try:
+        response = post(client, opp_id, "main-phone/confirm", {"expectedPhone": "041-000-0000"})
+    finally:
+        client.app.dependency_overrides.pop(get_session)
+    assert response.status_code == 500 and attempts == ["commit"]
+    assert "041-000-0000" not in response.text
+    assert "041-000-0000" not in request_logs.getvalue()
+    header = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["header"]
+    assert header["mainPhoneConfirmedAt"] is None
+    assert header["mainPhoneConfirmedBy"] is None
+
+
+def test_note_kind_defaults_and_research_are_persisted(records_env):
+    """Given 메모·자료 조사 / When 저장 / Then 종류와 이력을 보존하고 잘못된 종류는 거부한다."""
+    client, opp_id = records_env
+    assert post(client, opp_id, "notes", {"text": "가상 메모"}).status_code == 200
+    assert (
+        post(
+            client, opp_id, "notes", {"text": "가상 공개 자료 확인", "kind": "RESEARCH"}
+        ).status_code
+        == 200
+    )
+    assert post(client, opp_id, "notes", {"text": "잘못된 종류", "kind": "CALL"}).status_code == 400
+    with session_scope() as session:
+        notes = session.scalars(
+            select(Note).where(Note.opp_id == opp_id).order_by(Note.version)
+        ).all()
+        assert [(row.kind, row.text, row.version) for row in notes] == [
+            ("MEMO", "가상 메모", 1),
+            ("RESEARCH", "가상 공개 자료 확인", 2),
+        ]
+    activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
+    assert any(row["summary"] == "자료 조사 · 가상 공개 자료 확인" for row in activity)
+    assert all(row["kind"] == "NOTE" for row in activity)
+
+
+def test_contact_counts_include_attempt_history_only(records_env):
+    """Given 접촉·단계·메모·조사 / When 상세·목록 조회 / Then 접촉 시도만 전부 센다."""
+    client, opp_id = records_env
+    url = f"/api/v1/opportunities/{opp_id}"
+    assert client.get(url).json()["data"]["records"]["contactCount"] == {
+        "total": 0,
+        "call": 0,
+        "email": 0,
+        "visit": 0,
+    }
+    for method in ("CALL", "CALL", "EMAIL", "VISIT"):
+        assert (
+            post(
+                client,
+                opp_id,
+                "outcomes",
+                {
+                    "status": "IN_PROGRESS",
+                    "method": method,
+                    "result": "ABSENT",
+                    "attemptedAt": "2026-11-03",
+                },
+            ).status_code
+            == 200
+        )
+    assert post(client, opp_id, "outcomes", {"status": "ON_HOLD"}).status_code == 200
+    for kind in ("MEMO", "RESEARCH"):
+        assert post(client, opp_id, "notes", {"kind": kind, "text": "가상 기록"}).status_code == 200
+    assert client.get(url).json()["data"]["records"]["contactCount"] == {
+        "total": 4,
+        "call": 2,
+        "email": 1,
+        "visit": 1,
+    }
+    cards = client.get("/api/v1/opportunities").json()["data"]
+    assert next(row for row in cards if row["oppId"] == opp_id)["contactCount"] == 4
+
+
+def test_existing_notes_survive_kind_migration(records_env, tmp_db):
+    """Given 이전 메모 / When 새 열 마이그레이션 / Then 기존 메모는 MEMO이고 내용은 그대로다."""
+    from geosan.storage.migrate import downgrade, upgrade_to_head
+
+    client, opp_id = records_env
+    assert post(client, opp_id, "notes", {"text": "이전 가상 메모"}).status_code == 200
+    assert downgrade(tmp_db, "rec_004") == ["rec_004"]
+    assert upgrade_to_head(tmp_db) == ["rec_005"]
+    with session_scope() as session:
+        note = session.scalar(select(Note).where(Note.opp_id == opp_id))
+        assert (note.kind, note.text, note.version) == ("MEMO", "이전 가상 메모", 1)
 
 
 @pytest.fixture

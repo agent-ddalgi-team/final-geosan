@@ -2,7 +2,7 @@
 
 from pytest_bdd import given, then, when
 
-from tests.unit.u1.test_sales_records import post
+from tests.unit.u1.test_sales_records import post, set_test_phone
 from tests.unit.u1.test_sales_records import records_env as sales_env  # noqa: F401
 
 
@@ -30,3 +30,40 @@ def verify_saved_records(record_context):
     activities = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
     assert {item["kind"] for item in activities} >= {"NOTE", "OUTCOME"}
     assert client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"] == scores
+
+
+@when("가상 대표번호를 확인하고 자료 조사와 전화 시도를 저장하면")
+def save_phone_and_research(record_context):
+    client, opp_id, _ = record_context
+    set_test_phone(opp_id)
+    assert (
+        post(client, opp_id, "main-phone/confirm", {"expectedPhone": "041-000-0000"}).status_code
+        == 200
+    )
+    assert (
+        post(client, opp_id, "notes", {"kind": "RESEARCH", "text": "가상 자료 조사"}).status_code
+        == 200
+    )
+    assert (
+        post(
+            client,
+            opp_id,
+            "outcomes",
+            {
+                "status": "IN_PROGRESS",
+                "method": "CALL",
+                "result": "ABSENT",
+                "attemptedAt": "2026-11-03",
+            },
+        ).status_code
+        == 200
+    )
+
+
+@then("확인 정보와 전화 한 건이 보이고 자료 조사는 횟수에 포함되지 않는다")
+def verify_phone_and_counts(record_context):
+    client, opp_id, scores = record_context
+    detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    assert detail["header"]["mainPhoneConfirmedBy"] == "park-lee"
+    assert detail["records"]["contactCount"] == {"total": 1, "call": 1, "email": 0, "visit": 0}
+    assert detail["scores"] == scores
