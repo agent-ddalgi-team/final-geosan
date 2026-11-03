@@ -140,6 +140,11 @@ class Brand(_ApiModel):
     demo_label: str | None = None
 
 
+class RecordsUi(_ApiModel):
+    approval_enabled: bool
+    note_max_length: int
+
+
 class ConfigUi(_ApiModel):
     staff: list[StaffEntry]
     brand: Brand
@@ -147,6 +152,7 @@ class ConfigUi(_ApiModel):
     active_dataset_kind: DatasetKind
     access_protection_enabled: bool
     rule_version: str
+    records: RecordsUi
 
 
 # ---------------------------------------------------------------------------

@@ -90,6 +90,7 @@ def outcome_view(row: Outcome | None) -> dict | None:
         "updatedAt": row.created_at.isoformat(),
         "status": row.status,
         "nextScheduleAt": row.next_schedule_at.isoformat() if row.next_schedule_at else None,
+        "nextScheduleNote": row.next_schedule_note,
     }
 
 

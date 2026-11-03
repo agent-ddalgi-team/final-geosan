@@ -18,7 +18,19 @@ def evaluated_opportunity(sales_env):  # noqa: F811
 @when("관심 단계와 가상 영업 메모를 저장하면")
 def save_interest_and_note(record_context):
     client, opp_id, _ = record_context
-    assert post(client, opp_id, "outcomes", {"status": "INTERESTED"}).status_code == 200
+    assert (
+        post(
+            client,
+            opp_id,
+            "outcomes",
+            {
+                "status": "INTERESTED",
+                "nextScheduleAt": "2026-11-12",
+                "nextScheduleNote": "견적 준비",
+            },
+        ).status_code
+        == 200
+    )
     assert (
         post(client, opp_id, "notes", {"text": "가상 상담 sales@example.invalid"}).status_code
         == 200
@@ -32,6 +44,12 @@ def verify_saved_records(record_context):
     activities = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
     assert {item["kind"] for item in activities} >= {"NOTE", "OUTCOME"}
     assert client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"] == scores
+    detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    assert detail["records"]["outcome"]["nextScheduleNote"] == "견적 준비"
+    assert client.get("/api/v1/config/ui").json()["data"]["records"] == {
+        "approvalEnabled": False,
+        "noteMaxLength": 200,
+    }
 
 
 @when("가상 대표번호를 확인하고 자료 조사와 전화 시도를 저장하면")

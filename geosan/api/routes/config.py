@@ -23,6 +23,7 @@ def config_ui(session: SessionDep):
             active_dataset_kind=settings.active_dataset_kind,
             access_protection_enabled=settings.access_protection.enabled,
             rule_version=runtime.rule_config.version,
+            records=settings.records.model_dump(),
         ),
         meta=Meta(
             updated_at=session.scalar(select(func.max(AppSetting.updated_at))),

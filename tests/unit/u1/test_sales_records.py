@@ -37,6 +37,23 @@ def post(client, opp_id, kind, body, staff="park-lee"):
     )
 
 
+@pytest.mark.parametrize("enabled,limit", [(False, 200), (True, 80)])
+def test_config_ui_returns_current_record_settings(records_env, enabled, limit):
+    """Given 승인 표시·메모 상한 설정 / When 화면 설정 조회 / Then 현재 설정만 돌려준다."""
+    client, _ = records_env
+    with session_scope() as session:
+        session.get(AppSetting, "records").value = {
+            "approvalEnabled": enabled,
+            "noteMaxLength": limit,
+        }
+    response = client.get("/api/v1/config/ui")
+    assert response.status_code == 200
+    assert response.json()["data"]["records"] == {
+        "approvalEnabled": enabled,
+        "noteMaxLength": limit,
+    }
+
+
 def set_test_phone(opp_id, phone="041-000-0000"):
     """가상 대표번호만 넣는다. 실제 연락처는 사용하지 않는다."""
     with session_scope() as session:
@@ -374,6 +391,7 @@ def test_outcomes_keep_history_and_filter_latest_stage_without_changing_score(re
     after = client.get(detail_url).json()["data"]
     assert after["scores"] == before
     assert after["records"]["outcome"]["nextScheduleAt"] == "2026-11-12"
+    assert after["records"]["outcome"]["nextScheduleNote"] == "견적 준비"
     with session_scope() as session:
         rows = session.scalars(select(Outcome).order_by(Outcome.version)).all()
         assert [r.status for r in rows] == ["INTERESTED", "IN_PROGRESS"]
