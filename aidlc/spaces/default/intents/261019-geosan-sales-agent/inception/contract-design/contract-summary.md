@@ -345,6 +345,11 @@ paths:
     get:
       summary: 대시보드 건수 4개·일정·업무 흐름·최근 활동 (U7)
       responses: { '200': { description: 'Envelope(counts{TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY}, schedule[], pipeline, recentActivity[])' } }
+  /llm-usage:
+    get:
+      summary: (추가 2026-11-03, PM 결정 3) 이번 달 외부 AI 사용량·비용·상한 대비 비율 (U2). 공통 틀 상단 띠가 alertReached이면 "이번 달 AI 비용 절반 사용" 표시
+      parameters: [ { name: month, in: query, schema: { type: string, pattern: '^\d{4}-\d{2}$' } } ]
+      responses: { '200': { description: 'Envelope(C4 usage 출력: callCount, inputTokens, outputTokens, webSearchCalls, rejectedCount, costUsd, costLimitUsd, callLimit, alertReached)' } }
   /dashboard/activity-summary:
     get:
       summary: 활동 요약 (U7, P2)
@@ -471,6 +476,7 @@ check_transfer:
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
       - securityGrade ∈ {PUBLIC, EXTERNAL_AI_OK}만 허용
       - 월 호출 상한 초과 → 거부 (kind LLM_LIMIT)
+      - (추가 2026-11-03, PM 결정 3) 월 비용 상한(`llm.monthlyCostLimitUsd`) 초과 → 거부 (kind LLM_LIMIT). 비용 = TransferLog의 입력·출력 토큰 × 단가(`llm.inputCostPerMillionTokens`·`outputCostPerMillionTokens`) + 웹 검색 호출 수 × `llm.webSearch.costPerCallUsd`, 월별 합산. 웹 검색 호출(② 홈페이지 찾기)도 TransferLog 1행(kind WEB_SEARCH, 질의는 회사명·주소뿐)
     OUTPUT_EXPORT:   # 질문 목록(거산에 보내는 것)·엑셀(내부용)
       - securityGrade = FORBIDDEN 또는 UNKNOWN → 전체 거부
       - kind 없음 → 전체 거부
@@ -487,7 +493,7 @@ scrub_contacts:
   output: { text: string, removedCount: int }     # 이메일·전화번호 패턴 제거. 홈페이지 본문·파일 투입 자유 문장 모두에 적용
 usage:
   input: { period: enum[MONTH, WEEK], from?: date }
-  output: { callCount: int, tokenCount: int, rejectedCount: int }
+  output: { callCount: int, tokenCount: int, rejectedCount: int, inputTokens: int, outputTokens: int, webSearchCalls: int, costUsd: number, costLimitUsd: number, callLimit: int, alertReached: boolean }   # (추가 2026-11-03) inputTokens 이후 칸. alertReached = costUsd ≥ costLimitUsd × llm.costAlertRatio
 ```
 
 ### C5. 외부 소스 어댑터 (내부 함수 + 소스 계약표)
@@ -588,7 +594,13 @@ AppSettings:
   activeDatasetKind: datasetKind
   ingestion: { regions: [...], productKeywords: [...], maxCandidates: 50 }
   llm: { mode: enum[EXTERNAL, NONE], model: string, monthlyCallLimit: int, costPerThousandTokens: number }
+  # (추가 2026-11-03, PM 결정 3 — 결정값: provider OPENAI, model gpt-6.1-sol, allowedModels [gpt-6.1-sol, gpt-6-luna], monthlyCallLimit 1000, 입력 $2 / 출력 $10 per 1M, monthlyCostLimitUsd 20, costAlertRatio 0.5, webSearch $0.01/회)
+  #   llm에 더하는 키: provider: enum[OPENAI], allowedModels: [string] (model은 이 안이어야 check-config 통과), inputCostPerMillionTokens: number, outputCostPerMillionTokens: number,
+  #   monthlyCostLimitUsd: number, costAlertRatio: number(0~1), webSearch: { enabled: boolean, costPerCallUsd: number }. costPerThousandTokens는 안 씀(deprecated), 다음 깨는 변경 때 제거.
+  #   예시 파일(examples/app-settings.yaml)의 새 키는 모르는 키 거부 규칙 때문에 U2 코드 PR(LlmSettings)과 같이 넣는다. 키는 환경 변수 OPENAI_API_KEY로만.
   homepageDiscovery: { enabled: false, termsConfirmed: false }
+  # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기는 AI가 먼저 한다. 검색 수단은 C9 HomepageFinder(OpenAI 웹 검색 도구). minConfidence: number(0~1, 기본 0.8) 추가 — 이 아래면 저장하지 않고 "확인 필요".
+  #   U2 PR에서 enabled: true로, termsConfirmed는 PM이 OpenAI 이용약관 확인 뒤 true. 네이버 검색 API는 2026-09-07 특약(저장·AI 입력 금지)으로 쓰지 않는다.
   brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"
   accessProtection: { enabled: boolean }      # 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD
 ```
@@ -616,7 +628,7 @@ commands:
   geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함)
   geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
-  geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가
+  geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: 호출 수·입력/출력 토큰·웹 검색 수·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 5곳 시험의 1곳당 비용 측정에 쓴다
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   처음 설치·실행: [init-db, check-config, serve]                     # 3
   가상 사례 투입·평가·확인: [import-case, evaluate, verify-case]     # 3
@@ -643,6 +655,15 @@ LlmAdapter:
   bodyBinding: 어댑터는 TransferGuard가 허용한 항목 ID(approvedItemIds)만 받아 본문을 직접 조회해 보낸다. 호출자가 본문 문자열을 넘기는 경로는 없다(CON-09 구조적 보장)
   timeout: 60s 전체(run_extract 한도 안), retry: 1 (남은 시간이 있을 때만, 집계·TransferLog는 호출마다 1행)
   log: TransferLog (시각·모드·모델·등급·토큰 수, 본문 없음)
+  provider: enum[OPENAI]                  # (추가 2026-11-03, PM 결정 3) 설정 llm.provider. 모델은 llm.model(gpt-6.1-sol, 비교용 gpt-6-luna)
+  retention:                              # (추가 2026-11-03) 보관 규칙. 한 번 보내고 끝나는 호출만 쓴다. 대화·파일이 제공사 서버에 남는 기능(파일 업로드·대화 보관형 엔드포인트)은 쓰지 않는다. 데이터 공유(학습 제공) 동의는 켜지 않는다. 로그에는 시각·모드·모델·등급·입력/출력 토큰 수·비용만(본문 없음)
+  usageGuard: 호출 전 C4 월 호출 상한·월 비용 상한을 함께 검사. 초과면 호출하지 않고 503 LLM_LIMIT
+HomepageFinder:                           # (추가 2026-11-03, PM 결정 2 정정) ② 홈페이지 찾기. C9 열린 질문 "검색 방식·비용·약관"의 답
+  find_homepage(companyName, address) -> { url: string | null, confidence: number(0~1), basis: string, candidates: [{ url, title }] }
+  search: OpenAI 웹 검색 도구 1회(설정 llm.webSearch). 질의는 회사명·주소만(TransferGuard EXTERNAL_AI 통과 항목, 연락처·내부 값 없음)
+  rule: confidence < homepageDiscovery.minConfidence 이면 url을 저장하지 않고 "확인 필요"로 표시, 담당자가 입력·확정(P1-5 규칙 유지). 저장하는 것은 url과 basis 한 줄뿐(검색 결과 본문은 저장하지 않음)
+  timeout: 30s, retry: 1 (TransferLog·집계는 호출마다 1행, kind WEB_SEARCH)
+  cost: 1,000회당 $10 + 검색 본문 토큰은 모델 입력 단가 (OpenAI 가격표 2026-11-03)
 HomepageReader:
   fetch(url) -> { allowed: boolean, reason: enum[OK, ROBOTS_DISALLOW, TERMS_DISALLOW, UNREACHABLE], text|null }
   timeout: 20s, retry: 1 (전체 60초 한도 안)
@@ -663,7 +684,8 @@ ExternalSourceApi (공장등록·나라장터):
 | C7 | 위치 정보를 주는 JSON/YAML 로더 선택과 `_설명` 키 처리 | U1 (코드 생성) |
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
-| C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 | U9 (P1-5 구현 전) |
+| C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03, PM 결정 2 정정)**: OpenAI 웹 검색 도구($10/1,000회 + 검색 본문 토큰). 네이버 검색 API는 2026-09-07 특약(결과 저장·AI 입력 금지)으로 불가, 구글 Custom Search는 신규 중단. U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder). OpenAI 이용약관 최종 확인은 PM이 키 발급 때 | ~~U9~~ → U2 |
+| C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI, 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림), 월 호출 상한 1,000회. 설정 키 추가·C4 비용 상한 거부·C1 `/llm-usage`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
