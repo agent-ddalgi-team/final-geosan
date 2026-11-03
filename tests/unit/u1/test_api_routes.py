@@ -364,6 +364,22 @@ def test_detail_recalculates_stale_process_result_with_real_engine(api_env, monk
     assert response.json()["data"]["processLinks"][0]["result"] == "PASS"
 
 
+def test_saved_opinion_is_fresh_on_next_detail_read(api_env):
+    """Given 이전 의견 조회 / When 새 의견 저장 후 재조회 / Then 새 값·캐시 금지 응답."""
+    client, opp_id, eval_id = api_env
+    url = f"/api/v1/opportunities/{opp_id}"
+    assert _save(client, opp_id, eval_id, memo="첫 가상 의견").status_code == 200
+    before = client.get(url)
+    assert before.json()["data"]["records"]["opinion"]["memo"] == "첫 가상 의견"
+    saved = _save(client, opp_id, eval_id, memo="새 가상 의견")
+    assert saved.status_code == 200
+    after = client.get(url)
+    assert after.json()["data"]["records"]["opinion"]["memo"] == "새 가상 의견"
+    for response in (before, saved, after):
+        assert response.headers["cache-control"] == "no-store"
+        assert response.headers["x-vercel-enable-rewrite-caching"] == "0"
+
+
 def test_staff_missing_unknown_and_viewer_are_forbidden(api_env):
     """Given 담당자 키 없음·목록 밖·보기 전용 / When 의견 저장 / Then 세 경우 모두 403이다."""
     client, opp_id, eval_id = api_env

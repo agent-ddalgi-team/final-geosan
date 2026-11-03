@@ -25,10 +25,12 @@ def test_change_bundle_survives_check_and_serve(tmp_db, monkeypatch):
     assert "COMPANY_CONFIRMED" in result.output and "geosan evaluate" in result.output
     checked = runner.invoke(app, ["check-config"])
     assert checked.exit_code == 0 and "활성 묶음 COMPANY_CONFIRMED" in checked.output
-    monkeypatch.setattr(serve, "_run_server", lambda port: None)
+    started_with = []
+    monkeypatch.setattr(serve, "_run_server", lambda port, host: started_with.append((port, host)))
     started = runner.invoke(app, ["serve"])
     assert started.exit_code == 0 and "geosan dataset-set" in started.output
     assert "활성 묶음 COMPANY_CONFIRMED" in started.output
+    assert started_with == [(8000, serve.HOST)]
     assert settings_copy() == {**before, "activeDatasetKind": "COMPANY_CONFIRMED"}
 
 
