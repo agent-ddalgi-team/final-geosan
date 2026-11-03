@@ -4,7 +4,7 @@
 
 필드 이름·경로·명령 이름은 **제안**이며 기능 설계와 코드 생성에서 그대로 쓰거나 같은 뜻으로 고칩니다. 깨는 변경은 2장 규칙을 따릅니다. 검토(review-01)의 소견 18건을 반영한 판입니다.
 
-**계약 요약 버전: v2 (2026-11-03, PM 결정)** — (같은 날 PM 지시 추가: 영업 메모에 연락처 허용, 회사 대표번호 자동 표시. 근거 `../delivery-planning/contact-policy-change-20261103.md`) 깨는 변경 1건: C1 `GET /dashboard` 건수 이름·응답 모양 재정의(아직 코드 없음, 영향 0). 같은 날 더한 것: C0 `INTERESTED`·`contactMethod`·`contactResult`, C1 `stage` 조건·`/notes`·`/outcomes` 칸, C6 `rec_note`, C7 `records`, 재접촉(U6) 항목 "보류" 표시. **(2026-11-03 밤 PM "반영", 상세 화면 5영역)** C0 `noteKind`·`reviewItemKind`·`reviewItemSource`, C1 머리 대표번호 출처·확인 3칸·`POST /main-phone/confirm`·`/notes kind`·`records.contactCount`·카드 `contactCount`·`reviewItems`·`POST /review-items/{itemId}/check`, C4 EXTERNAL_AI 추출 단계·`extract_main_phone`, C6 `opp_customer` 3열·`rec_note.kind`·`rec_review_check`, C7 `mainPhone`, C9 `companyMainPhone` 안 씀 — 모두 더하는 변경. 근거 `../delivery-planning/detail-screen-layout-20261103.md` 4·7장. 근거: `../delivery-planning/scope-change-proposal-20261102.md` 4장 답.
+**계약 요약 버전: v2 (2026-11-03, PM 결정)** — (같은 날 PM 지시 추가: 영업 메모에 연락처 허용, 회사 대표번호 자동 표시. 근거 `../delivery-planning/contact-policy-change-20261103.md`) 깨는 변경 1건: C1 `GET /dashboard` 건수 이름·응답 모양 재정의(아직 코드 없음, 영향 0). 같은 날 더한 것: C0 `INTERESTED`·`contactMethod`·`contactResult`, C1 `stage` 조건·`/notes`·`/outcomes` 칸, C6 `rec_note`, C7 `records`, 재접촉(U6) 항목 "보류" 표시. **(2026-11-03 밤 PM "반영", 상세 화면 5영역)** C0 `noteKind`·`reviewItemKind`·`reviewItemSource`, C1 머리 대표번호 출처·확인 3칸·`POST /main-phone/confirm`·`/notes kind`·`records.contactCount`·카드 `contactCount`·`reviewItems`·`POST /review-items/{itemId}/check`, C4 EXTERNAL_AI 추출 단계·`extract_main_phone`, C6 `opp_customer` 3열·`rec_note.kind`·`rec_review_check`, C7 `mainPhone`, C9 `companyMainPhone` 안 씀 — 모두 더하는 변경. 근거 `../delivery-planning/detail-screen-layout-20261103.md` 4·7장. **(같은 날 밤, 공정별 구분)** C1 `process=`·`meta.processCounts`·카드 `processCodes` 더함(`../delivery-planning/process-tabs-20261103.md`). 근거: `../delivery-planning/scope-change-proposal-20261102.md` 4장 답.
 
 ## 1. 계약 목록
 
@@ -161,7 +161,8 @@ components:
       required: [oppId, rank, title, classificationCode, blocker, reason, nextAction, isVirtual, isRecontact, evalId, records]
       properties:
         oppId: { type: string }
-        rank: { type: integer }
+        rank: { type: integer, description: '(갱신 2026-11-03 밤) process 조건이 있으면 그 공정 안 순위, 없으면 전체 순위' }
+        processCodes: { type: array, items: { type: string }, description: '(추가 2026-11-03 밤 PM 결정, 공정별 구분) 이 기회에 연결된 거산 공정 코드(processLinks). 카드 꼬리표 "전기아연도금"은 역량 파일 이름으로' }
         title: { type: string, description: 기업 · 기회 이름 }
         distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소(설정 geosan.address)에서의 직선거리 km. 좌표 없으면 null(화면 "거리 미확인"), 가상 사례는 null("가상·거리 없음")' }
         classificationCode: { type: string }
@@ -267,7 +268,8 @@ paths:
     get:
       summary: 추천 목록 (U1 신규 탭; U6 재접촉 탭, U5 담기 토글, U7 검색·대시보드 필터는 필터 함수 등록으로 추가)
       parameters:
-        - { name: tab, in: query, schema: { type: string, enum: [new, recontact], default: new } }
+        - { name: tab, in: query, schema: { type: string, enum: [new, recontact], default: new } }   # recontact는 보류(U6)
+        - { name: process, in: query, schema: { type: string, enum: [ZINC_PLATING, ANODIZING, BLACK_OXIDE, CHROMATE, ELECTROPOLISHING, CHROME_PLATING, ELECTROLESS_NICKEL, PHOSPHATE_COATING, PASSIVATION] }, description: '(추가 2026-11-03 밤 PM 결정, 공정별 구분) 거산 공정 코드(역량 파일 processes[].code 9종)로 거르기. 그 공정에 연결(processLinks)된 기회만. 주면 카드 rank는 **그 공정 안 순위**(1, 2, 3…), 안 주면 전체 순위. 점수·분류 계산은 바뀌지 않음(정렬 뒤 번호만). 화면 추천 목록은 공정 탭으로 보여 준다 — 재접촉 탭 자리' }
         - { name: q, in: query, schema: { type: string }, description: 고객명·기회명 부분 일치 (U7) }
         - { name: bookmarked, in: query, schema: { type: boolean } }   # (갱신 2026-11-03, PM 결정 Q2) 안 씀(담기 제거). 경로 호환을 위해 남김
         - { name: stage, in: query, schema: { type: string, enum: [NOT_EXECUTED, INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, ON_HOLD, WON, LOST] }, description: (추가 2026-11-03, Q2) 영업 단계(outcomeStatus 최신 값)로 거르기. 대시보드 건수를 누르면 이 조건으로 열림 (U5·U7) }
@@ -276,7 +278,7 @@ paths:
         - { name: maxDistanceKm, in: query, schema: { type: number }, description: (추가 2026-11-03 PM 결정, 거리 #222) 이 거리 안의 회사만. 선택지는 설정 distanceFilterPresetsKm(기본 30/50/100) }
         - { $ref: '#/components/parameters/page' }
         - { $ref: '#/components/parameters/pageSize' }
-      responses: { '200': { description: 'Envelope(data: OpportunityCard[], meta.total)' } }
+      responses: { '200': { description: 'Envelope(data: OpportunityCard[], meta.total, meta.processCounts: [{ processCode, processName, count }] — (추가 2026-11-03 밤) 탭 머리 "전기아연도금 (9)"용. 역량 파일 순서, 기회 0건인 공정은 빼고 보냄, 현재 process 조건과 무관하게 전체 건수)' } }
   /opportunities/{oppId}:
     get:
       summary: 근거 상세 (U1; U2·U4·U5·U6이 영역 구성 함수 등록)
@@ -791,6 +793,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소는 봉주로 303-1 본사(PM 최종 확정 2026-11-03 밤. 소개서 기업개요는 본사, '오시는 길' 슬라이드는 제2공장으로 적는 같은 주소), 설정 `geosan.address` | #222 (11/17 주, 코드 PR과 같이) |
 | C1·C4·C6·C7·C9 | (2026-11-03 밤, PM 결정 대시보드 집계·지도) `/dashboard` 응답 `breakdown`(공정 9종·산업군, "대시보드 대상" 기준, 없으면 화면이 막대 줄을 숨김), `GET /dashboard/map`, 상세 머리 `industries`·`industriesSource`, `POST /industries`, C4 화면 지도 규칙, `opp_customer` 산업군 3열, 설정 `industries`·`dashboard`·`map`, LlmAdapter `companySummary.industries`. 모두 더하는 변경. 제안서 `../delivery-planning/dashboard-breakdown-map-20261103.md` | 막대(가짜) #215 → 집계 #216(11/10 결정), 산업군 AI #219, 칩 #209·#210, 지도 #226(2차) |
 | C0·C1·C4·C6·C7·C9 | (2026-11-03 밤, PM "반영" — 상세 화면 5영역) 코드표 `noteKind`·`reviewItemKind`·`reviewItemSource`, 상세 머리 대표번호 출처·확인 3칸, `POST /main-phone/confirm`, `/notes kind`, `records.contactCount`·카드 `contactCount`, `reviewItems`·`POST /review-items/{itemId}/check`, C4 추출 단계·`extract_main_phone`, `opp_customer` 3열·`rec_note.kind`·`rec_review_check`, 설정 `mainPhone.allowedPrefixes`, LlmAdapter `companyMainPhone` 안 씀. 모두 더하는 변경. (4) 영업 전략 초안(`draft_strategy`·`opp_strategy_draft`·`/strategy`)은 2차라 아직 안 적음. 메모→OpenAI는 거산 답 대기(#208). 제안서 `../delivery-planning/detail-screen-layout-20261103.md` 4장 | #209·#227(서버)·#210·#228(화면)·#211(코드표)·#219(추출) |
+| C1 | (2026-11-03 밤, PM 결정 공정별 구분) 추천 목록 `process=` 거르기(공정 안 순위)·`meta.processCounts`·카드 `processCodes`. 더하는 변경. 이전 시연은 전기아연도금·아노다이징을 한 줄로 섞었으나 거산 영업이 공정별이라 탭으로 나눔. 제안 `../delivery-planning/process-tabs-20261103.md` | #209(API)·#210(탭) 1차 |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
