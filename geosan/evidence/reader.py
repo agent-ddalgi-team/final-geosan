@@ -10,6 +10,7 @@ import ssl
 import time
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from threading import Timer
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.robotparser import RobotFileParser
 
@@ -29,6 +30,22 @@ def remaining(deadline: float) -> float:
     if seconds <= 0:
         raise AppError("조사 시간이 60초를 넘었습니다.", "잠시 뒤 다시 조사해 주세요.", status=503)
     return seconds
+
+
+def interrupt_at(sock: socket.socket, deadline: float) -> Timer:
+    """본문이 조금씩 오더라도 전체 제한 시각에는 연결을 끊는다."""
+
+    def interrupt():
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            # 정상 종료와 제한 시각이 겹쳐 이미 닫힌 소켓만 무시한다.
+            pass
+
+    timer = Timer(remaining(deadline), interrupt)
+    timer.daemon = True
+    timer.start()
+    return timer
 
 
 def validate_url(url: str) -> str:
@@ -69,14 +86,17 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
     port = parts.port or (443 if parts.scheme == "https" else 80)
     address = _public_address(host, port)
     timeout = min(20, remaining(deadline))
+    request_deadline = time.monotonic() + timeout
     connection = http.client.HTTPConnection(host, port, timeout=timeout)
     raw = socket.create_connection((address, port), timeout=timeout)
+    timer = None
     try:
         connection.sock = (
             ssl.create_default_context().wrap_socket(raw, server_hostname=host)
             if parts.scheme == "https"
             else raw
         )
+        timer = interrupt_at(connection.sock, request_deadline)
         path = urlunsplit(("", "", parts.path, parts.query, ""))
         connection.request(
             "GET", path, headers={"User-Agent": AGENT, "Accept-Encoding": "identity"}
@@ -93,6 +113,8 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
                 connection.sock.settimeout(min(20, remaining(deadline)))
             chunk = response.read1(65536)
             remaining(deadline)
+            if time.monotonic() >= request_deadline:
+                raise TimeoutError("홈페이지 읽기 제한 시간")
             if not chunk:
                 break
             chunks.append(chunk)
@@ -100,12 +122,16 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
             if size > MAX_BYTES:
                 raise ValueError("본문이 너무 큼")
         body = b"".join(chunks)
+        if response.length:
+            raise http.client.IncompleteRead(body)
         charset = response.headers.get_content_charset()
         if not charset:
             match = re.search(rb"charset\s*=\s*[\"']?([\w-]+)", body[:4096], re.I)
             charset = match[1].decode("ascii") if match else "utf-8"
         return response.status, headers, body.decode(charset, errors="strict")
     finally:
+        if timer:
+            timer.cancel()
         connection.close()
         raw.close()
 

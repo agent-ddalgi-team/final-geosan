@@ -105,6 +105,51 @@ def confirm_main_phone(session: Session, opp_id: str, expected_phone: str, staff
     return customer
 
 
+def store_company_research(
+    session: Session,
+    customer_id: str,
+    *,
+    expected: tuple,
+    line: str,
+    highlights: list[str],
+    phone: str | None,
+    phone_source_url: str | None,
+) -> None:
+    """#219 PM 지시: 공개 조사 결과 저장. 조사 중 바뀐 담당자 값은 덮어쓰지 않는다."""
+    customer = session.get(Customer, customer_id)
+    current = (
+        (
+            customer.name,
+            customer.homepage_url,
+            customer.homepage_status,
+            customer.homepage_fetched_at,
+            customer.researched_at,
+            customer.main_phone,
+            customer.main_phone_confirmed_at,
+        )
+        if customer
+        else None
+    )
+    if current != expected or customer.security_grade != "PUBLIC":
+        raise AppError(
+            "조사하는 동안 회사 정보가 바뀌었습니다.",
+            "현재 정보를 확인하고 다시 조사해 주세요.",
+            status=409,
+            kind="STALE_VALUE",
+        )
+    customer.summary_line = line
+    customer.highlights = highlights
+    customer.researched_at = utcnow()
+    customer.research_source = "AI"
+    if phone and phone != customer.main_phone:
+        customer.main_phone = phone
+        customer.main_phone_source = "HOMEPAGE"
+        customer.main_phone_source_url = phone_source_url
+        customer.main_phone_confirmed_at = None
+        customer.main_phone_confirmed_by = None
+    session.flush()
+
+
 def normalize_name(value: str) -> str:
     value = unicodedata.normalize("NFKC", value).casefold()
     return re.sub(r"\s+", "", value.replace("(주)", ""))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import subprocess
 from collections import Counter
+from contextlib import nullcontext
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -102,11 +103,29 @@ def run_evaluation(
     base_date: date | None = None,
     requested_by: str = "system",
 ) -> FlowResult:
+    return _run_evaluation(opp_ids, base_date, requested_by)
+
+
+def evaluate_in_session(session: Session, opp_ids: list[str], requested_by: str) -> FlowResult:
+    """흐름 ①의 근거 저장과 평가가 같은 트랜잭션에서 확정되도록 재사용한다."""
+    return _run_evaluation(opp_ids, None, requested_by, session)
+
+
+def _run_evaluation(
+    opp_ids: list[str] | None,
+    base_date: date | None,
+    requested_by: str,
+    shared_session: Session | None = None,
+) -> FlowResult:
     failed_batch = None
     try:
         skipped = []
         runs = []
-        with session_scope() as session:
+        with (
+            nullcontext(shared_session)
+            if shared_session is not None
+            else session_scope() as session
+        ):
             runtime = load_runtime_config(session)
             targets = _targets(session, opp_ids)
             batch = create_batch(
@@ -202,6 +221,8 @@ def run_evaluation(
     except Exception as exc:
         error = exc if isinstance(exc, AppError) else RunFailedError("평가를 저장하지 못했습니다.")
         logger.error("평가 실패: ref=%s type=%s", error.ref, type(exc).__name__)
+        if shared_session is not None:
+            raise error from None
         if failed_batch is not None:
             try:
                 with session_scope() as session:
