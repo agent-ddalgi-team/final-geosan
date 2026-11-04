@@ -4,18 +4,27 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
-import { ApiError, getOpportunityDetail } from '../../api/client';
+import { ApiError, getActivity, getOpportunityDetail } from '../../api/client';
 import type { Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { detailSections, frame, opinionArea, recordsArea, states } from '../../labels/ko';
+import {
+  detailSections,
+  frame,
+  opinionArea,
+  recordsArea,
+  reviewArea,
+  states,
+} from '../../labels/ko';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
   getOpportunityDetail: vi.fn(),
+  getActivity: vi.fn(),
 }));
 
 const mockedGet = vi.mocked(getOpportunityDetail);
+const mockedActivity = vi.mocked(getActivity);
 const base = detailFixture.data as unknown as OpportunityDetail;
 
 function reply(data: OpportunityDetail): Envelope<OpportunityDetail> {
@@ -56,6 +65,85 @@ function renderPage(setPageTitle = vi.fn()) {
 describe('OpportunityDetailPage', () => {
   beforeEach(() => {
     mockedGet.mockReset();
+    mockedActivity.mockReset();
+    mockedActivity.mockResolvedValue({
+      data: [],
+      meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
+    });
+  });
+
+  it('서버가 검토사항을 주면 추천 이유 바로 아래에 영역이 생기고 확인 질문은 1번 영역에서 빠진다', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        reasons: { ...base.reasons, questions: [1, 2].map(question) },
+        reviewItems: [
+          {
+            itemId: 'Q:q-1',
+            kind: 'QUESTION',
+            source: 'AI',
+            text: '확인 질문 1',
+            targetLabel: '거산',
+            checked: false,
+          },
+          {
+            itemId: 'GAP:EVIDENCE',
+            kind: 'DATA_NOT_FOUND',
+            source: 'RULE',
+            text: '근거를 찾지 못함',
+            targetLabel: null,
+            checked: true,
+            checkedBy: 'park-lee',
+            checkedAt: '2026-11-06T14:20:00+09:00',
+          },
+        ],
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings.slice(0, 3)).toEqual([
+      detailSections.reasons,
+      reviewArea.title,
+      detailSections.requirements,
+    ]);
+    expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
+    const review = screen.getByTestId('detail-review');
+    expect(within(review).getByTestId('review-progress')).toHaveTextContent('확인 1 / 2');
+    expect(within(review).getAllByTestId('review-item')).toHaveLength(2);
+  });
+
+  it('서버가 검토사항을 아직 안 주면 영역을 만들지 않고 확인 질문은 예전처럼 1번 영역에 남는다', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, reasons: { ...base.reasons, questions: [1].map(question) } }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(screen.queryByTestId('detail-review')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-questions')).toBeInTheDocument();
+  });
+
+  it('기록 영역 아래에 활동 타임라인이 붙고 최근 순으로 보인다', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    mockedActivity.mockResolvedValue({
+      data: [
+        {
+          at: '2026-11-05T09:00:00+09:00',
+          actor: 'system',
+          kind: 'CLASSIFICATION',
+          summary: '분류 변경',
+        },
+        { at: '2026-11-06T14:20:00+09:00', actor: 'park-lee', kind: 'NOTE', summary: '메모 남김' },
+      ],
+      meta: { updatedAt: '2026-11-06T14:30:00+09:00' },
+    });
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const records = screen.getByTestId('detail-records');
+    const rows = await within(records).findAllByTestId('timeline-item');
+    expect(rows[0]).toHaveTextContent('메모 남김');
+    expect(rows[1]).toHaveTextContent('분류 변경');
+    expect(mockedActivity).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
   });
 
   it('영역이 1~5번 순서로 나오고 맨 아래에 의견 영역이 있으며 이름이 제목으로 올라간다', async () => {

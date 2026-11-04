@@ -1,5 +1,6 @@
 // 근거 상세(S2, BR10.5·BR10.7): 위에서부터 ① 추천 이유 ② 요구 판정 ③ 공정 연결 ④ 근거 자료 ⑤ 점수(접힘) + 맨 아래 의견.
-// 맨 아래에 기록 영역(접촉 시도·영업 메모·영업 단계·다음 일정, U5)이 붙는다. 승인·활동 이력·거산 확인 요청은 뒤 단위라 만들지 않는다.
+// 서버가 reviewItems를 주면 추천 이유 바로 아래에 "검토사항" 영역이 붙고 확인 질문은 거기로 옮겨 간다(U5).
+// 맨 아래에 기록 영역(접촉 시도·영업 메모·영업 단계·다음 일정)과 그 아래 활동 타임라인이 붙는다. 승인·거산 확인 요청은 뒤 단위라 만들지 않는다.
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,8 +17,10 @@ import RequirementsTable from '../components/detail/RequirementsTable';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import { useFrame } from '../components/frame/FrameContext';
 import OpinionArea from '../components/opinion/OpinionArea';
+import ActivityTimeline from '../components/records/ActivityTimeline';
 import RecordsArea from '../components/records/RecordsArea';
-import { detailSections, frame, opinionArea, recordsArea, states } from '../labels/ko';
+import ReviewArea from '../components/review/ReviewArea';
+import { detailSections, frame, opinionArea, recordsArea, reviewArea, states } from '../labels/ko';
 import { spacing } from '../theme/tokens';
 
 /** "재평가됨" 띠가 보이는 시간(ms, interaction-spec 2.16). */
@@ -35,6 +38,8 @@ export default function OpportunityDetailPage() {
   const navigate = useNavigate();
   const { config, setBannerMeta, setPageTitle } = useFrame();
   const [reload, setReload] = useState(0);
+  // 기록을 저장할 때마다 올라가서 타임라인이 새로 불러온다.
+  const [timelineVersion, setTimelineVersion] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const requestKey = `${oppId}:${reload}`;
 
@@ -118,7 +123,18 @@ export default function OpportunityDetailPage() {
             reasons={data.reasons}
             scoreItems={data.scores?.items}
             evidence={data.evidence}
+            hideQuestions={data.reviewItems !== undefined}
           />
+          {data.reviewItems !== undefined ? (
+            <DetailSection id="detail-review" title={reviewArea.title}>
+              <ReviewArea
+                key={`${oppId}:${data.evalId}:review`}
+                oppId={oppId}
+                evalId={data.evalId}
+                items={data.reviewItems}
+              />
+            </DetailSection>
+          ) : null}
           <DetailSection id="detail-requirements" title={detailSections.requirements}>
             <RequirementsTable requirements={data.requirements} />
             <ApprovalEligibilityLine eligibility={data.approvalEligibility} />
@@ -148,6 +164,12 @@ export default function OpportunityDetailPage() {
               evalId={data.evalId}
               outcome={data.records.outcome ?? null}
               contactCount={data.records.contactCount ?? null}
+              onRecorded={() => setTimelineVersion((n) => n + 1)}
+            />
+            <ActivityTimeline
+              key={`${oppId}:timeline`}
+              oppId={oppId}
+              refreshKey={timelineVersion}
             />
           </DetailSection>
         </div>

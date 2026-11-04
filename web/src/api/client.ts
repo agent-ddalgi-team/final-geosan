@@ -3,6 +3,7 @@
 // VITE_USE_FIXTURES=1 이면 서버 없이 src/test/fixtures의 가짜 응답을 돌려준다(Part E 초기 개발용).
 // 화면 부품은 이 모듈의 함수만 쓰고 fetch를 직접 부르지 않는다.
 import type {
+  ActivityItem,
   ConfigUi,
   Envelope,
   ErrorBody,
@@ -14,6 +15,8 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  ReviewCheckRequest,
+  ReviewCheckResponse,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -161,6 +164,27 @@ export function postOutcome(oppId: string, body: OutcomeRequest, staffKey: strin
   });
 }
 
+/** 검토사항 체크·해제(U5). 해제도 새 행이 쌓인다. */
+export function postReviewCheck(
+  oppId: string,
+  itemId: string,
+  body: ReviewCheckRequest,
+  staffKey: string,
+) {
+  return request<ReviewCheckResponse>(
+    `/opportunities/${encodeURIComponent(oppId)}/review-items/${encodeURIComponent(itemId)}/check`,
+    { method: 'POST', body, staffKey },
+  );
+}
+
+/** 활동 이력(U5). 서버가 시각 순으로 준다. 한도 기본 20, 최대 100. */
+export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
+  return request<ActivityItem[]>(
+    `/opportunities/${encodeURIComponent(oppId)}/activity?limit=${limit}`,
+    { signal },
+  );
+}
+
 // ---------- 가짜 응답 전환 지점 (Step 3 fixtures) ----------
 
 async function fixtureResponse<T>(path: string, options: RequestOptions): Promise<Envelope<T>> {
@@ -203,6 +227,31 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       ? { ...base, noteId: `note-fixture-${Date.now()}` }
       : { ...base, status: body.status, nextScheduleAt: body.nextScheduleAt ?? null };
     return { data, meta: { updatedAt: now } } as unknown as Envelope<T>;
+  }
+  if (
+    /^\/opportunities\/[^/]+\/review-items\/[^/]+\/check$/.test(route) &&
+    options.method === 'POST'
+  ) {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const body = (options.body ?? {}) as Partial<ReviewCheckRequest>;
+    const itemId = decodeURIComponent(route.split('/')[4] ?? '');
+    const checked = body.checked === true;
+    return {
+      data: {
+        itemId,
+        checked,
+        checkedBy: checked ? options.staffKey : null,
+        checkedAt: checked ? now : null,
+      },
+      meta: { updatedAt: now },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/activity$/.test(route)) {
+    return { data: [], meta: { updatedAt: new Date().toISOString() } } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+$/.test(route)) {
     return (await import('../test/fixtures/opportunity-detail-apjeong.json'))

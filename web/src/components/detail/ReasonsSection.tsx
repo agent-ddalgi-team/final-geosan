@@ -62,10 +62,13 @@ export default function ReasonsSection({
   reasons,
   scoreItems,
   evidence = [],
+  hideQuestions = false,
 }: {
   reasons: Reasons;
   scoreItems?: ScoreItemView[];
   evidence?: EvidenceView[];
+  /** 확인 질문이 "검토사항" 영역으로 옮겨 갔으면 true(서버가 reviewItems를 줄 때). */
+  hideQuestions?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { questions } = reasons;
@@ -114,7 +117,7 @@ export default function ReasonsSection({
           {cardRows.nextAction}: {reasons.nextAction}
         </li>
       </ul>
-      {questions.length > 0 ? (
+      {!hideQuestions && questions.length > 0 ? (
         <div data-testid="detail-questions">
           <h3 style={{ margin: '0 0 4px', fontSize: typography.fontSize, fontWeight: 600 }}>
             {detailSections.questionsHeading}
