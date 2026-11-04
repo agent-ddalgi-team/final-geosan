@@ -532,8 +532,9 @@ EvaluationOutput:
   timing: { directSignal: boolean, agreedWindow: boolean, readiness: boolean }
   researchReady: boolean
   classificationCode: classificationCode
+  scoreState: enum[CONFIRMED, PENDING, NONE]  # (추가 2026-11-04 PM 승인, #262) totals.S가 null이면 NONE, 점수가 있고 FILTER_PENDING·OPS_PENDING이면 PENDING, 나머지는 CONFIRMED. 0점도 점수 있음
   displayFlags: { coreEvidenceRecheck: boolean, brochureDataset: boolean }
-  sortKey: { group: enum[URGENT, PLANNED, REVIEW, OTHER], validUntil, E, F, directConfirmedWeight, P, oppId }
+  sortKey: { group: enum[URGENT, PLANNED, REVIEW, OTHER], validUntil, E, F, directConfirmedWeight, P, oppId, relationStatus: relationStatus }  # #262: 평가 입력의 거래 관계를 정렬까지 전달. 예전 정렬 키에 없으면 UNCONFIRMED
   questionCandidates: [{ targetKind, targetId, text, currentValue, effectIfAnswered }]
 rank:                                   # 순위도 RuleEngine 책임(도메인 설계 "정렬 키를 적용해 원래 순위를 매김")
   input: [{ oppId, profile, sortKey }]  # 같은 묶음(같은 프로필)의 출력들
