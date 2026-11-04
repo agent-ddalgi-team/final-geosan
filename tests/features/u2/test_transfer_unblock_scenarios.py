@@ -15,8 +15,10 @@ scenarios("u2/transfer_unblock.feature")
 @given("20분 전 사용량 미확정 검색 기록 때문에 새 검색이 막혀 있다", target_fixture="before")
 def pending(search_env, fixed_clock, tmp_db):
     support.make_log(opp_id=search_env[0].opp_id)
-    with pytest.raises(AppError):
+    with pytest.raises(AppError) as blocked:
         find_case_homepage(search_env[0].opp_id)
+    assert blocked.value.kind == "USAGE_UNCONFIRMED"
+    assert blocked.value.next_action == "문의 번호와 함께 운영자에게 알려 주세요"
     search_env[1].assert_not_called()
     return support.database_rows(tmp_db)
 

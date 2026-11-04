@@ -288,23 +288,64 @@ def test_manual_cost_keeps_original_month_and_does_not_refund_call_limits(search
     transport.assert_not_called()
 
 
+@pytest.mark.parametrize("failed_purpose", ["search", "extract"])
 def test_confirmed_usage_unblocks_search_and_extraction_without_resending_old_call(
-    extract_env, search_env, fixed_clock
+    extract_env, search_env, fixed_clock, monkeypatch, failed_purpose
 ):
     case, extraction_transport = extract_env
-    make_log(opp_id=case.opp_id)
-    with pytest.raises(AppError):
+    failed_transport = search_env[1] if failed_purpose == "search" else extraction_transport
+    failed_transport.side_effect = TimeoutError("가상 제공사 응답 없음")
+    if failed_purpose == "search":
+        with pytest.raises(AppError) as first:
+            find_case_homepage(case.opp_id)
+        first_error = first.value
+    else:
+        first_result = run_extract(case.opp_id, extraction_support.URL)
+        assert not first_result.ok
+        first_error = first_result.error
+    assert first_error.kind == "LLM_FAILED"
+    (pending,) = search_support.logs()
+    assert pending.cost_usd is None and pending.call_count == 1
+    failed_transport.assert_called_once()
+
+    with pytest.raises(AppError) as blocked_search:
         find_case_homepage(case.opp_id)
-    assert not run_extract(case.opp_id, extraction_support.URL).ok
-    search_env[1].assert_not_called()
-    extraction_transport.assert_not_called()
-    assert settle().exit_code == 0
-    search_env[1].assert_not_called()
-    extraction_transport.assert_not_called()
+    blocked_extract = run_extract(case.opp_id, extraction_support.URL)
+    assert not blocked_extract.ok
+    for error in (blocked_search.value, blocked_extract.error):
+        assert error.kind == "USAGE_UNCONFIRMED"
+        assert error.message == "AI 사용 기록에 문제가 있어 조사를 멈췄습니다"
+        assert error.next_action == "문의 번호와 함께 운영자에게 알려 주세요"
+        assert error.ref
+    sent_before = (search_env[1].call_count, extraction_transport.call_count)
+    assert sum(sent_before) == 1
+
+    for module in (transfer, reconciliation, transfer_unblock):
+        monkeypatch.setattr(module, "utcnow", lambda: NOW + timedelta(minutes=20))
+    preview = CliRunner().invoke(app, ["transfer-unblock"])
+    assert preview.exit_code == 0 and pending.transfer_log_id in preview.output
+    assert (
+        settle(
+            pending.transfer_log_id,
+            **{"--web-search-calls": "1" if failed_purpose == "search" else "0"},
+        ).exit_code
+        == 0
+    )
+    assert (search_env[1].call_count, extraction_transport.call_count) == sent_before
+    settled = read(pending.transfer_log_id)
+    assert settled["call_count"] == 1 and settled["reconciled_by"] == "choi-pm"
+
+    failed_transport.side_effect = lambda *_: (
+        search_support.provider_reply()
+        if failed_purpose == "search"
+        else extraction_support.reply()
+    )
     assert find_case_homepage(case.opp_id).url == "https://example.org/"
     assert run_extract(case.opp_id, extraction_support.URL).ok
-    assert search_env[1].call_count == extraction_transport.call_count == 1
-    assert read()["call_count"] == 1
+    assert (search_env[1].call_count, extraction_transport.call_count) == tuple(
+        count + 1 for count in sent_before
+    )
+    assert read(pending.transfer_log_id) == settled
 
 
 def test_old_database_upgrade_preserves_transfer_values(tmp_path):
