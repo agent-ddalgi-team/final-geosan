@@ -33,6 +33,7 @@ cd web && npm ci && cd ..
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
 | 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·입력/출력 토큰·비용을 합산합니다. 미확정 비용이 있으면 종료 코드 2입니다. |
+| 미확정 AI 사용 기록 정리 | `geosan transfer-unblock`은 조회만 합니다. 제공사에서 기록별 사용량을 확인한 뒤 모든 정산 인자를 넣습니다. 필요한 계정·서버 권한과 실행 순서는 [막힌 기록 푸는 법](docs/transfer-unblock-guide.md)을 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
