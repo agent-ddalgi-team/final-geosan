@@ -1,6 +1,6 @@
 """#263: 가상 회사·실제 임시 DB·API의 표시 정보 시나리오."""
 
-from pytest_bdd import given, parsers, scenarios, then, when
+from pytest_bdd import given, parsers, then, when
 from sqlalchemy import func, select
 
 from geosan.evaluation.models import EvaluationRun
@@ -11,7 +11,6 @@ from tests.unit.u1.test_sales_records import records_env as shared_records_env
 from tests.unit.u1.test_score_state import read_display
 
 records_env = shared_records_env
-scenarios("u1/score_state.feature")
 
 
 @given(
