@@ -132,6 +132,7 @@ export default function OpportunityDetailPage() {
                 oppId={oppId}
                 evalId={data.evalId}
                 items={data.reviewItems}
+                onReplied={() => setTimelineVersion((n) => n + 1)}
               />
             </DetailSection>
           ) : null}

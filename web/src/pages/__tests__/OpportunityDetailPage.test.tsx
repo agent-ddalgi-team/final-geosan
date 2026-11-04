@@ -1,10 +1,10 @@
 // 근거 상세(S2): 영역 순서 / 질문 3개+펼치기 / 요구 0개 문구 / 확인·추정 글자 / 점수 접힘 / 404 (+ 요구 표, 오류).
 // 서버 호출(getOpportunityDetail)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
-import { ApiError, getActivity, getOpportunityDetail } from '../../api/client';
+import { ApiError, getActivity, getOpportunityDetail, postQuestionReply } from '../../api/client';
 import type { Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
@@ -21,11 +21,15 @@ vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
   getOpportunityDetail: vi.fn(),
   getActivity: vi.fn(),
+  postQuestionReply: vi.fn(),
 }));
 
 const mockedGet = vi.mocked(getOpportunityDetail);
+const mockedReply = vi.mocked(postQuestionReply);
 const mockedActivity = vi.mocked(getActivity);
-const base = detailFixture.data as unknown as OpportunityDetail;
+const fixtureData = detailFixture.data as unknown as OpportunityDetail;
+// 가짜 응답 파일에는 검토사항이 들어 있다. 아래 시험은 "서버가 아직 검토사항을 안 주는" 모양에서 시작한다.
+const base: OpportunityDetail = { ...fixtureData, reviewItems: undefined };
 
 function reply(data: OpportunityDetail): Envelope<OpportunityDetail> {
   return { data, meta: { updatedAt: '2026-10-20T09:00:00+09:00' } };
@@ -66,6 +70,7 @@ describe('OpportunityDetailPage', () => {
   beforeEach(() => {
     mockedGet.mockReset();
     mockedActivity.mockReset();
+    mockedReply.mockReset();
     mockedActivity.mockResolvedValue({
       data: [],
       meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
@@ -121,6 +126,49 @@ describe('OpportunityDetailPage', () => {
     await screen.findByTestId('opportunity-detail');
     expect(screen.queryByTestId('detail-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('detail-questions')).toBeInTheDocument();
+  });
+
+  it('가짜 응답 파일의 검토사항에는 질문 줄 답 1건이 있고 "답: …"과 [답 고치기]가 보인다', async () => {
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const rows = within(screen.getByTestId('detail-review')).getAllByTestId('review-item');
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]).getByTestId('review-reply')).toHaveTextContent(
+      '답: 2024년에 KS 인증 받았다고 함',
+    );
+    expect(within(rows[0]).getByTestId('review-reply-button')).toHaveTextContent(
+      reviewArea.replyEdit,
+    );
+    expect(within(rows[1]).getByTestId('review-reply-button')).toHaveTextContent(
+      reviewArea.replyAdd,
+    );
+    // 자료 줄에는 [답 적기]가 없다.
+    expect(within(rows[2]).queryByTestId('review-reply-button')).not.toBeInTheDocument();
+  });
+
+  it('검토사항에서 답을 저장하면 활동 이력을 새로 불러온다', async () => {
+    const user = userEvent.setup();
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    mockedReply.mockResolvedValueOnce({
+      data: {
+        questionId: 'q-fixture-unanswered',
+        replyText: '직접 생산한다고 함',
+        repliedAt: '2026-11-06',
+        repliedBy: 'park-lee',
+      },
+      meta: {},
+    });
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(1));
+    const rows = within(screen.getByTestId('detail-review')).getAllByTestId('review-item');
+    await user.click(within(rows[1]).getByTestId('review-reply-button'));
+    fireEvent.change(screen.getByTestId('review-reply-input'), {
+      target: { value: '직접 생산한다고 함' },
+    });
+    await user.click(screen.getByTestId('review-reply-save'));
+    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
   });
 
   it('기록 영역 아래에 활동 타임라인이 붙고 최근 순으로 보인다', async () => {

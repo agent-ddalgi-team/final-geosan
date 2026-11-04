@@ -474,6 +474,24 @@ export const reviewArea = {
   checkLabel: (text: string) => `확인함: ${text}`,
   saveFailed: '저장하지 못했습니다. 다시 시도',
   pickStaffFirst: '먼저 담당자를 고르세요',
+  /** 질문 줄의 [답 적기] / [답 고치기] (2026-11-04). 답은 영업 메모처럼 내부 전용이다. */
+  replyAdd: '답 적기',
+  replyEdit: '답 고치기',
+  replyButtonLabel: (text: string) => `답 적기: ${text}`,
+  replyInputLabel: '질문에 대한 답',
+  replyPlaceholder: '들은 답을 한두 문장으로 적으세요',
+  replyHint:
+    '답은 내부에서만 보이고 밖으로 나가지 않습니다. 저장하면 이전 답은 활동 이력에 남습니다.',
+  replyMaxLength: 500,
+  replyCounter: (count: number, max: number) => `${count} / ${max}자`,
+  replySave: '답 저장',
+  replyCancel: '취소',
+  replyRequired: '답을 적어 주세요',
+  /** "답: 2024년에 KS 인증 받았다고 함" */
+  replyPrefix: '답:',
+  /** "박 이사 · 11/6" */
+  repliedBy: (name: string, date: string) => `${name} · ${date}`,
+  replySaveFailed: '답을 저장하지 못했습니다. 다시 시도',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
@@ -494,7 +512,7 @@ export const activityKindLabels: Record<ActivityKind, string> = {
   BOOKMARK: '담기',
   APPROVAL: '승인',
   CONTACT_ATTEMPT: '접촉 시도',
-  REPLY: '회신',
+  REPLY: '답 기록',
   OUTCOME: '영업 단계',
   EVIDENCE_GRADE_CONFIRMED: '근거 등급 확인',
   NOTE: '메모',

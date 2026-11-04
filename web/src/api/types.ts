@@ -203,6 +203,8 @@ export interface Question {
   overdue: boolean;
   replyText?: string | null;
   repliedAt?: string | null;
+  /** 답을 적은 담당자 키(더하는 변경 2026-11-04, 검토사항 [답 적기]). */
+  repliedBy?: string | null;
   linkedOppIds: string[];
   isUserAdded: boolean;
 }
@@ -310,6 +312,10 @@ export interface ReviewItem {
   checked: boolean;
   checkedBy?: string | null;
   checkedAt?: string | null;
+  /** 질문 줄(QUESTION)의 최신 답. 질문 표의 회신 칸 그대로(더하는 변경 2026-11-04). */
+  replyText?: string | null;
+  repliedAt?: string | null;
+  repliedBy?: string | null;
 }
 
 export interface OpportunityDetail {
@@ -385,6 +391,22 @@ export interface ReviewCheckResponse {
   checked: boolean;
   checkedBy?: string | null;
   checkedAt?: string | null;
+}
+
+// ---------- POST /questions/{questionId}/reply (검토사항 [답 적기], 2026-11-04) ----------
+
+export interface ReplyRequest {
+  /** 500자까지. */
+  replyText: string;
+  /** 날짜(YYYY-MM-DD). */
+  repliedAt: string;
+}
+
+export interface ReplyResponse {
+  questionId: string;
+  replyText: string;
+  repliedAt: string;
+  repliedBy: string | null;
 }
 
 export type ActivityKind =
