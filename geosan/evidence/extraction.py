@@ -16,7 +16,7 @@ from geosan.evidence.contacts import scrub_contacts
 from geosan.evidence.openai_search import _HttpError, _Usage
 from geosan.evidence.public_items import approved_items
 from geosan.evidence.reader import interrupt_at, remaining
-from geosan.evidence.transfer import finish_search, reserve_extraction
+from geosan.evidence.transfer import configuration_error, finish_search, reserve_extraction
 from geosan.rules.codes import Certainty, EvidenceSubject, SourceGrade
 
 
@@ -133,18 +133,30 @@ def extract_evidence(
                 finish_search(ticket, 0, 0, 0, None)
             if exc.status == 429 and attempt == 0:
                 continue
+            if exc.status in (401, 403, 404):
+                raise configuration_error() from None
             raise AppError(
-                "AI 근거 추출 요청이 실패했습니다.", "키·모델과 사용량을 확인해 주세요.", status=503
+                "AI 근거 추출 요청이 실패했습니다.",
+                "잠시 뒤 다시 조사해 주세요.",
+                status=503,
+                kind="LLM_FAILED",
             ) from None
         except (OSError, http.client.HTTPException, ValueError):
+            remaining(deadline)
             raise AppError(
-                "AI 응답을 받지 못했습니다.", "제공사 사용량을 확인해 주세요.", status=503
+                "AI 응답을 받지 못했습니다.",
+                "잠시 뒤 다시 조사해 주세요.",
+                status=503,
+                kind="LLM_FAILED",
             ) from None
         try:
             usage = _Usage.model_validate(response["usage"])
         except (KeyError, TypeError, ValueError):
             raise AppError(
-                "AI 사용량을 확인하지 못했습니다.", "제공사 사용량을 확인해 주세요.", status=503
+                "AI 사용 기록을 확인하지 못했습니다.",
+                "잠시 뒤 다시 조사해 주세요.",
+                status=503,
+                kind="LLM_FAILED",
             ) from None
         finish_search(ticket, usage.input_tokens, usage.output_tokens, 0, None)
         remaining(deadline)
@@ -171,5 +183,6 @@ def extract_evidence(
                 "AI 근거가 본문과 맞지 않거나 형식이 잘못됐습니다.",
                 "공개 본문을 확인하고 다시 조사해 주세요.",
                 status=503,
+                kind="LLM_FAILED",
             ) from None
     raise AssertionError("추출 재시도 횟수")
