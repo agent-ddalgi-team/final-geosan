@@ -120,6 +120,8 @@ def store_company_research(
     current = (
         (
             customer.name,
+            customer.address,
+            customer.normalized_address,
             customer.homepage_url,
             customer.homepage_status,
             customer.homepage_fetched_at,
@@ -141,12 +143,13 @@ def store_company_research(
     customer.highlights = highlights
     customer.researched_at = utcnow()
     customer.research_source = "AI"
-    if phone and phone != customer.main_phone:
+    if phone:
+        if phone != customer.main_phone:
+            customer.main_phone_confirmed_at = None
+            customer.main_phone_confirmed_by = None
         customer.main_phone = phone
         customer.main_phone_source = "HOMEPAGE"
         customer.main_phone_source_url = phone_source_url
-        customer.main_phone_confirmed_at = None
-        customer.main_phone_confirmed_by = None
     session.flush()
 
 

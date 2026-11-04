@@ -28,6 +28,7 @@ ALLOWED: dict[str, set[str]] = {
         "capability",
         "config",
         "evaluation",
+        "evidence",  # #219 PM 2026-11-03, 계약 C8 cost → C4 전송 사용량
         "opportunity",
         "rules",
         "storage",
@@ -44,7 +45,15 @@ ALLOWED: dict[str, set[str]] = {
         "rules",
         "storage",
     },
-    "workflows": {"config", "evaluation", "opportunity", "questions", "rules", "storage"},
+    "workflows": {
+        "config",
+        "evaluation",
+        "opportunity",
+        "questions",
+        "rules",
+        "storage",
+        "evidence",  # #219 PM 2026-11-03, 계약 C2 run_extract → 근거 추출·저장
+    },
     "config": {"rules", "storage"},
     "records": {"storage"},
     "rules": set(),

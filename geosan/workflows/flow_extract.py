@@ -45,6 +45,8 @@ def run_extract(
             settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
             expected = (
                 customer.name,
+                customer.address,
+                customer.normalized_address,
                 customer.homepage_url,
                 customer.homepage_status,
                 customer.homepage_fetched_at,

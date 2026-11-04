@@ -236,12 +236,15 @@ def test_invalid_ai_response_does_not_save(extract_env, fault):
     assert support.logs()[0].call_count == 1
 
 
-def test_changed_customer_is_not_overwritten(extract_env):
+@pytest.mark.parametrize(
+    "field,value", [("homepage_status", "CONFIRMED"), ("address", "바뀐 공개 주소")]
+)
+def test_changed_customer_is_not_overwritten(extract_env, field, value):
     case, transport = extract_env
 
     def change(*_):
         with session_scope() as session:
-            session.get(Customer, case.customer_id).homepage_status = "CONFIRMED"
+            setattr(session.get(Customer, case.customer_id), field, value)
         return reply()
 
     transport.side_effect = change
@@ -249,6 +252,26 @@ def test_changed_customer_is_not_overwritten(extract_env):
     result = flow_extract.run_extract(case.opp_id, URL)
     assert not result.ok and result.error.kind == "STALE_VALUE" and counts() == before
     assert support.logs()[0].cost_usd > 0
+
+
+def test_same_phone_updates_source_without_losing_confirmation(extract_env):
+    from geosan.storage.base import utcnow
+
+    case, _ = extract_env
+    phone = "031" + "-123-4567"
+    confirmed_at = utcnow()
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        customer.main_phone = phone
+        customer.main_phone_source = "CSV"
+        customer.main_phone_confirmed_at = confirmed_at
+        customer.main_phone_confirmed_by = "staff-test"
+    result = flow_extract.run_extract(case.opp_id, URL, BODY + "\n대표전화 " + phone)
+    assert result.ok, result.error
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        assert customer.main_phone_source == "HOMEPAGE" and customer.main_phone_source_url == URL
+        assert customer.main_phone_confirmed_at == confirmed_at
 
 
 def test_search_and_extraction_share_monthly_limit(extract_env):
