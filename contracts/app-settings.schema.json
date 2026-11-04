@@ -80,6 +80,13 @@
         "_설명": { "type": "string" },
         "mode": { "type": "string", "enum": ["EXTERNAL", "NONE"] },
         "model": { "type": ["string", "null"] },
+        "provider": { "type": "string", "enum": ["OPENAI"], "default": "OPENAI" },
+        "allowedModels": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "inputCostPerMillionTokens": { "type": "number", "minimum": 0, "default": 0 },
+        "outputCostPerMillionTokens": { "type": "number", "minimum": 0, "default": 0 },
+        "webSearchCostPerThousandCalls": { "type": "number", "minimum": 0, "default": 0 },
+        "monthlyCostLimitUsd": { "type": "number", "minimum": 0, "default": 0 },
+        "costAlertRatio": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
         "monthlyCallLimit": { "type": "integer", "minimum": 0 },
         "costPerThousandTokens": { "type": "number", "minimum": 0 }
       }

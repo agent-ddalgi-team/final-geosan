@@ -36,6 +36,16 @@ cd web && npm ci && cd ..
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 
+홈페이지 검색 개발 경로는 `geosan.evidence.homepage.find_case_homepage(opp_id)`입니다.
+`geosan init-db`로 DB를 갱신하고, 환경 변수 `OPENAI_API_KEY`를 설정한 뒤
+앱 설정의 `llm.mode`를 `EXTERNAL`로 바꿔 `geosan check-config`로 등록하면 호출합니다.
+예시 파일에는 허용 모델·단가·월 상한이 들어 있으며 기본 모드는 `NONE`입니다.
+검색은 한국 시각 기준 하루 200회·월 1,000회와 월 비용 20달러를 호출 전에 검사합니다.
+실제 비용은 응답의 사용량과 등록한 단가로 계산하므로 마지막 요청의 비용이 상한을 넘길 수 있습니다.
+사용량을 받지 못한 호출이 있으면 후속 전송을 차단하며 제공사 사용량과 전송 기록을 확인해야 합니다.
+HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
+`research` 일괄 명령과 본문 추출·재평가 연결은 후속 작업입니다.
+
 뼈대 기본 틀(Part A) 시점에는 명령 이름만 등록되어 있고 본문은 "아직 구현되지 않았습니다(담당, Step)"를 내고 종료 코드 2로 끝납니다.
 서버는 기본 `127.0.0.1:8000`에서 듣습니다. 배포할 때만 `--host 0.0.0.0 --port <포트>`를 지정합니다. 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
 
