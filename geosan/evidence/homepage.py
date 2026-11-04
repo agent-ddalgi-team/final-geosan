@@ -84,7 +84,7 @@ class HomepageSearchResult(BaseModel):
 def find_case_homepage(
     opp_id: str,
     *,
-    search: Callable[[str, str], object],
+    search: Callable[[str, str], object] | None = None,
     db_path: Path | str | None = None,
 ) -> HomepageSearchResult:
     """공개 사례를 검색하고 검증된 결과를 상세 조회에 쓸 수 있도록 저장한다 (C4·C9).
@@ -104,15 +104,32 @@ def find_case_homepage(
             .where(Opportunity.opp_id == opp_id, Opportunity.case_id.is_not(None))
         ).one_or_none()
     if customer is None or customer.security_grade != SecurityGrade.PUBLIC:
+        if search is None:
+            from geosan.evidence.transfer import record_search_rejection
+
+            record_search_rejection(opp_id, "공개 사례 출처 미확인", db_path)
         raise InputError("공개 사례로 확인된 회사만 홈페이지를 검색할 수 있습니다.")
     if customer.homepage_status == "CONFIRMED":
         raise InputError("이미 확인한 홈페이지가 있습니다.")
     name, address = customer.name.strip(), (customer.normalized_address or "").strip()
     if not name or not address:
+        if search is None:
+            from geosan.evidence.transfer import record_search_rejection
+
+            record_search_rejection(opp_id, "회사명 또는 주소 누락", db_path)
         raise InputError("홈페이지를 검색하려면 회사명과 주소가 모두 필요합니다.")
     if _contains_contact(name) or _contains_contact(address):
+        if search is None:
+            from geosan.evidence.transfer import record_search_rejection
+
+            record_search_rejection(opp_id, "검색 식별값에 연락처 포함", db_path)
         raise InputError("회사명 또는 주소에 연락처가 있어 검색할 수 없습니다.")
-    response = search(name, address)
+    if search is None:
+        from geosan.evidence.openai_search import search_openai
+
+        response = search_openai(opp_id, name, address, db_path)
+    else:
+        response = search(name, address)
     try:
         result = HomepageSearchResult.model_validate(response)
     except ValidationError:

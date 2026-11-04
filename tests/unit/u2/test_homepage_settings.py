@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from geosan.config.app_settings import HomepageDiscoverySettings, read_app_settings
+from geosan.config.app_settings import HomepageDiscoverySettings, LlmSettings, read_app_settings
 from geosan.config.models import AppSetting
 from geosan.storage.session import session_scope
 
@@ -50,3 +50,25 @@ def test_old_database_copy_keeps_automatic_research_off(tmp_db):
         assert settings.auto_research is False
         assert settings.min_confidence == 0.7
         assert settings.daily_call_limit == 200
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"monthlyCostLimitUsd": float("nan")},
+        {"inputCostPerMillionTokens": -1},
+        {"costAlertRatio": 1.01},
+        {"model": "typo", "allowedModels": ["gpt-6.1-sol"]},
+    ],
+)
+def test_invalid_openai_prices_and_model_are_rejected(values):
+    with pytest.raises(ValidationError):
+        LlmSettings.model_validate(
+            {
+                "mode": "NONE",
+                "model": None,
+                "monthlyCallLimit": 0,
+                "costPerThousandTokens": 0,
+                **values,
+            }
+        )

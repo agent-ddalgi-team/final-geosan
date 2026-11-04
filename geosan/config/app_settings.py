@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -42,8 +42,23 @@ class IngestionSettings(FileModel):
 class LlmSettings(FileModel):
     mode: Literal["EXTERNAL", "NONE"]
     model: str | None = None
-    monthly_call_limit: int = Field(ge=0)
+    monthly_call_limit: int = Field(ge=0, strict=True)
     cost_per_thousand_tokens: float = Field(ge=0)
+    provider: Literal["OPENAI"] = "OPENAI"
+    allowed_models: list[str] = Field(default_factory=list)
+    input_cost_per_million_tokens: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
+    output_cost_per_million_tokens: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
+    web_search_cost_per_thousand_calls: float = Field(
+        default=0, ge=0, strict=True, allow_inf_nan=False
+    )
+    monthly_cost_limit_usd: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
+    cost_alert_ratio: float = Field(default=0.5, ge=0, le=1, strict=True, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def check_allowed_model(self) -> LlmSettings:
+        if self.model is not None and self.allowed_models and self.model not in self.allowed_models:
+            raise ValueError("model은 allowedModels 목록에 있는 이름이어야 합니다.")
+        return self
 
 
 class HomepageDiscoverySettings(FileModel):
