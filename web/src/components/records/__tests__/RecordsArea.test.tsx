@@ -110,6 +110,27 @@ describe('RecordsArea', () => {
     expect(screen.getByTestId('records-note-input')).toHaveValue('');
   });
 
+  it('저장이 끝나면 타임라인을 새로 불러오라고 알리고, 실패하면 알리지 않는다', async () => {
+    const user = userEvent.setup();
+    const onRecorded = vi.fn();
+    mockedNote.mockResolvedValueOnce({
+      data: { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-04T01:12:00Z', noteId: 'n-1' },
+      meta: {},
+    });
+    mockedNote.mockRejectedValueOnce(
+      new ApiError(400, { message: '실패', nextAction: '', ref: 'r1' }),
+    );
+    renderArea(frameValue(), { onRecorded });
+    fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '첫 메모' } });
+    await user.click(screen.getByTestId('records-note-save-button'));
+    await waitFor(() => expect(onRecorded).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '둘째 메모' } });
+    await user.click(screen.getByTestId('records-note-save-button'));
+    await screen.findByTestId('records-note-error');
+    expect(onRecorded).toHaveBeenCalledTimes(1);
+  });
+
   it('메모 저장이 실패하면 서버의 쉬운 말과 함께 입력을 그대로 둔다', async () => {
     const user = userEvent.setup();
     mockedNote.mockRejectedValueOnce(

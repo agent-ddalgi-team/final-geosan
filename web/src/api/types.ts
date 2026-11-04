@@ -296,6 +296,22 @@ export interface DetailRecords {
   contactCount?: ContactCount | null;
 }
 
+/** 검토사항 한 줄(C1 reviewItems, 더하는 변경 2026-11-03 밤). 목록은 평가 결과에서 파생되고 체크 상태만 저장된다. */
+export type ReviewItemKind = 'QUESTION' | 'DATA_NOT_FOUND' | 'DATA_INSUFFICIENT';
+export type ReviewItemSource = 'AI' | 'CASE_FILE' | 'RULE';
+export type ReviewTargetLabel = '상대 회사' | '거산';
+
+export interface ReviewItem {
+  itemId: string;
+  kind: ReviewItemKind;
+  source: ReviewItemSource;
+  text: string;
+  targetLabel?: ReviewTargetLabel | null;
+  checked: boolean;
+  checkedBy?: string | null;
+  checkedAt?: string | null;
+}
+
 export interface OpportunityDetail {
   header: DetailHeader;
   stage?: Record<string, unknown> | null;
@@ -307,6 +323,8 @@ export interface OpportunityDetail {
   homepageNeedsConfirm: boolean;
   scores: Scores | null;
   records: DetailRecords;
+  /** 서버가 아직 안 주면 없음 → 화면은 예전처럼 1번 영역 안의 확인 질문을 보인다. */
+  reviewItems?: ReviewItem[];
   recontact?: Record<string, unknown> | null;
   evalId: string | null;
   previousEvalId: string | null;
@@ -353,6 +371,41 @@ export interface OutcomeResponse extends RecordMeta {
   status: OutcomeStatus;
   nextScheduleAt?: string | null;
   nextScheduleNote?: string | null;
+}
+
+// ---------- POST /review-items/{itemId}/check, GET /activity (검토사항·타임라인) ----------
+
+export interface ReviewCheckRequest {
+  checked: boolean;
+  evalId: string;
+}
+
+export interface ReviewCheckResponse {
+  itemId: string;
+  checked: boolean;
+  checkedBy?: string | null;
+  checkedAt?: string | null;
+}
+
+export type ActivityKind =
+  | 'CLASSIFICATION'
+  | 'OPINION'
+  | 'BOOKMARK'
+  | 'APPROVAL'
+  | 'CONTACT_ATTEMPT'
+  | 'REPLY'
+  | 'OUTCOME'
+  | 'EVIDENCE_GRADE_CONFIRMED'
+  | 'NOTE';
+
+/** 활동 이력 한 줄(C1 ActivityItem). actor는 담당자 키 또는 system. */
+export interface ActivityItem {
+  at: string;
+  actor: string;
+  kind: ActivityKind;
+  summary: string;
+  previousValue?: string | null;
+  evalId?: string | null;
 }
 
 export type ConfigUiEnvelope = Envelope<ConfigUi>;

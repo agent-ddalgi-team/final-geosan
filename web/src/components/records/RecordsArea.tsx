@@ -37,6 +37,8 @@ export interface RecordsAreaProps {
   contactCount?: ContactCount | null;
   /** 단계가 바뀌면 알린다(카드 꼬리표 갱신용). */
   onOutcomeSaved?: (outcome: OutcomeRecord) => void;
+  /** 접촉·메모·단계·일정 중 무엇이든 저장이 끝나면 알린다(타임라인 새로 불러오기용). */
+  onRecorded?: () => void;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
@@ -109,6 +111,7 @@ export default function RecordsArea({
   outcome: initialOutcome,
   contactCount,
   onOutcomeSaved,
+  onRecorded,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -167,6 +170,7 @@ export default function RecordsArea({
       };
       setOutcome(saved);
       onOutcomeSaved?.(saved);
+      onRecorded?.();
       succeed(block, saved.updatedAt);
       return true;
     } catch (caught) {
@@ -222,6 +226,7 @@ export default function RecordsArea({
         staffKey,
       );
       setNoteText('');
+      onRecorded?.();
       succeed('note', envelope.data.updatedAt);
     } catch (caught) {
       // 입력한 글은 그대로 둔다.

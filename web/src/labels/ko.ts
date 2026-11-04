@@ -4,12 +4,14 @@
 // 기본값이다(같은 값, 규칙 설정 BR6.3). 코드표 밖 코드는 `labelFor`가 코드 그대로를 돌려주고 콘솔에 경고한다.
 import type { StatusTone } from '../theme/tokens';
 import type {
+  ActivityKind,
   CheckDisplay,
   ClassificationCode,
   DatasetKind,
   FilterState,
   Opinion,
   QuestionStatus,
+  ReviewItemKind,
   ReviewStatus,
 } from '../api/types';
 
@@ -399,6 +401,12 @@ export const reviewItemKindLabels = {
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
 } as const;
+/** 꼬리표 글자. 질문은 뒤에 "·상대 회사" / "·거산"이 붙는다. */
+export const reviewItemKindTagLabels = {
+  QUESTION: 'AI 질문',
+  DATA_NOT_FOUND: '자료 못 찾음',
+  DATA_INSUFFICIENT: '자료 부족',
+} as const;
 export const reviewItemSourceLabels = {
   AI: 'AI 조사',
   CASE_FILE: '사례 파일',
@@ -447,6 +455,50 @@ export const recordsArea = {
   required: '필수',
   selectPlaceholder: '고르세요',
 } as const;
+
+/** 상세 "검토사항" 영역(U5): 담당자가 확인하면 체크. 목록은 평가 결과에서 나오고 체크 상태만 저장된다. */
+export const reviewArea = {
+  title: '검토사항',
+  /** "확인 2 / 5" */
+  progress: (done: number, total: number) => `확인 ${done} / ${total}`,
+  hint: '담당자가 확인한 항목에 체크하세요. 체크와 체크 해제는 모두 기록으로 남고 지워지지 않습니다.',
+  empty: '검토할 항목이 없습니다.',
+  listLabel: '검토사항 목록',
+  /** 꼬리표: [AI 질문·상대 회사] [AI 질문·거산] [자료 못 찾음] [자료 부족] */
+  tag: (kind: string, targetLabel?: string | null) => {
+    const base =
+      kind in reviewItemKindTagLabels ? reviewItemKindTagLabels[kind as ReviewItemKind] : kind;
+    return kind === 'QUESTION' && targetLabel ? `${base}·${targetLabel}` : base;
+  },
+  checkedBy: (name: string, date: string) => `${name} · ${date} 확인`,
+  checkLabel: (text: string) => `확인함: ${text}`,
+  saveFailed: '저장하지 못했습니다. 다시 시도',
+  pickStaffFirst: '먼저 담당자를 고르세요',
+} as const;
+
+/** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
+export const timelineArea = {
+  title: '활동 이력',
+  empty: '아직 기록이 없습니다.',
+  loadFailed: '활동 이력을 불러오지 못했습니다.',
+  retry: '다시 불러오기',
+  loading: '불러오는 중',
+  system: '시스템',
+  listLabel: '활동 이력 목록',
+} as const;
+
+/** 활동 이력 종류(ActivityKind) 쉬운 말. */
+export const activityKindLabels: Record<ActivityKind, string> = {
+  CLASSIFICATION: '분류',
+  OPINION: '의견',
+  BOOKMARK: '담기',
+  APPROVAL: '승인',
+  CONTACT_ATTEMPT: '접촉 시도',
+  REPLY: '회신',
+  OUTCOME: '영업 단계',
+  EVIDENCE_GRADE_CONFIRMED: '근거 등급 확인',
+  NOTE: '메모',
+};
 
 /** 상세 머리 지도 링크 글자. */
 export const mapLinkLabels = {
