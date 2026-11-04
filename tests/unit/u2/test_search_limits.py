@@ -180,7 +180,7 @@ def test_unknown_usage_blocks_later_attempts(search_env):
     assert "test-only-placeholder" not in str(exc.value)
     with pytest.raises(AppError) as exc:
         find_case_homepage(case.opp_id)
-    assert exc.value.kind == "LLM_LIMIT"
+    assert exc.value.kind == "USAGE_UNCONFIRMED"
     transport.assert_called_once()
     assert logs()[0].cost_usd is None
 
@@ -215,7 +215,7 @@ def test_unreadable_usage_remains_pending(search_env, change):
     assert logs()[0].cost_usd is None
     with pytest.raises(AppError) as exc:
         find_case_homepage(case.opp_id)
-    assert exc.value.kind == "LLM_LIMIT"
+    assert exc.value.kind == "USAGE_UNCONFIRMED"
     transport.assert_called_once()
 
 

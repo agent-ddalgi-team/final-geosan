@@ -296,7 +296,7 @@ def test_timeout_blocks_further_calls(extract_env):
     transport.side_effect = TimeoutError()
     assert not flow_extract.run_extract(case.opp_id, URL).ok
     result = flow_extract.run_extract(case.opp_id, URL)
-    assert not result.ok and result.error.kind == "LLM_LIMIT" and transport.call_count == 1
+    assert not result.ok and result.error.kind == "USAGE_UNCONFIRMED" and transport.call_count == 1
 
 
 def test_none_mode_and_missing_key_never_send(extract_env, monkeypatch):
