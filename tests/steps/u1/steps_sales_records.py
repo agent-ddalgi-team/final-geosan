@@ -15,6 +15,38 @@ def evaluated_opportunity(sales_env):  # noqa: F811
     return client, opp_id, scores
 
 
+@when("추천 목록 카드를 조회하면")
+def read_record_card(record_context):
+    client, _, _ = record_context
+    assert client.get("/api/v1/opportunities").status_code == 200
+
+
+@then("카드의 영업 단계는 null이다")
+def verify_card_without_outcome(record_context):
+    client, opp_id, _ = record_context
+    card = client.get("/api/v1/opportunities").json()["data"][0]
+    assert card["oppId"] == opp_id
+    assert card["records"]["outcome"] is None
+
+
+@when("관심 다음에 접촉 단계를 저장하면")
+def save_two_stages(record_context):
+    client, opp_id, _ = record_context
+    for status in ("INTERESTED", "IN_PROGRESS"):
+        assert post(client, opp_id, "outcomes", {"status": status}).status_code == 200
+
+
+@then("카드와 상세에 접촉 단계가 보이고 점수는 그대로다")
+def verify_card_latest_outcome(record_context):
+    client, opp_id, scores = record_context
+    card = client.get("/api/v1/opportunities").json()["data"][0]
+    assert card["oppId"] == opp_id
+    assert card["records"]["outcome"] == {"status": "IN_PROGRESS"}
+    detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    assert detail["records"]["outcome"]["status"] == "IN_PROGRESS"
+    assert detail["scores"] == scores
+
+
 @when("관심 단계와 가상 영업 메모를 저장하면")
 def save_interest_and_note(record_context):
     client, opp_id, _ = record_context
