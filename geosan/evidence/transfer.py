@@ -21,6 +21,16 @@ from geosan.storage.session import session_scope
 KST = timezone(timedelta(hours=9))
 
 
+def configuration_error() -> AppError:
+    """C4: 담당자가 재시도로 해결할 수 없는 조사 설정 오류."""
+    return AppError(
+        "AI 조사 설정이 아직 되어 있지 않습니다",
+        "문의 번호와 함께 운영자에게 알려 주세요",
+        status=503,
+        kind="LLM_NOT_CONFIGURED",
+    )
+
+
 class TransferLog(CommonColumns, Base):
     __tablename__ = "tg_transfer_log"
 
@@ -111,15 +121,9 @@ def _reserve(
             Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000 if is_search else Decimal(0)
         )
         if (is_search and not settings.homepage_discovery.enabled) or llm.mode != "EXTERNAL":
-            error = AppError(
-                "홈페이지 외부 검색이 꺼져 있습니다.", "앱 설정을 확인해 주세요.", status=503
-            )
+            error = configuration_error()
         elif not key_present:
-            error = AppError(
-                "OPENAI_API_KEY가 설정되지 않았습니다.",
-                "실행 환경에 키를 설정해 주세요.",
-                status=503,
-            )
+            error = configuration_error()
         elif (
             not llm.model
             or llm.model not in llm.allowed_models
@@ -130,11 +134,7 @@ def _reserve(
             )
             <= 0
         ):
-            error = AppError(
-                "허용 모델과 입력·출력·검색 단가를 설정해 주세요.",
-                "앱 설정을 확인해 주세요.",
-                status=503,
-            )
+            error = configuration_error()
         elif is_search and daily_calls >= settings.homepage_discovery.daily_call_limit:
             error = AppError(
                 "오늘 검색 한도 초과",
@@ -151,10 +151,10 @@ def _reserve(
             )
         elif any(row.cost_usd is None for row in rows):
             error = AppError(
-                "앞선 호출의 사용량이 확인되지 않아 검색을 멈췄습니다.",
-                "제공사 사용량과 전송 기록을 확인해 주세요.",
+                "AI 사용 기록에 문제가 있어 조사를 멈췄습니다",
+                "문의 번호와 함께 운영자에게 알려 주세요",
                 status=503,
-                kind="LLM_LIMIT",
+                kind="USAGE_UNCONFIRMED",
             )
         elif cost + minimum_search_cost >= Decimal(str(llm.monthly_cost_limit_usd)):
             error = AppError(

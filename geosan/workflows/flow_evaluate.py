@@ -106,8 +106,10 @@ def run_evaluation(
     return _run_evaluation(opp_ids, base_date, requested_by)
 
 
-def evaluate_in_session(session: Session, opp_ids: list[str], requested_by: str) -> FlowResult:
-    """흐름 ①의 근거 저장과 평가가 같은 트랜잭션에서 확정되도록 재사용한다."""
+def evaluate_in_session(
+    session: Session, opp_ids: list[str] | None, requested_by: str
+) -> FlowResult:
+    """흐름 ①·②의 저장과 평가를 함께 확정한다. None이면 목록용 전체 평가를 만든다."""
     return _run_evaluation(opp_ids, None, requested_by, session)
 
 

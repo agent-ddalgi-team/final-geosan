@@ -9,6 +9,7 @@ import type {
   ContactCount,
   ContactMethod,
   ContactResult,
+  LostReasonCode,
   NoteKind,
   OutcomeRecord,
   OutcomeRequest,
@@ -18,6 +19,7 @@ import {
   contactMethodLabels,
   contactResultLabels,
   errorTexts,
+  lostReasonLabels,
   noteKindLabels,
   outcomeStatusLabels,
   recordsArea,
@@ -132,6 +134,9 @@ export default function RecordsArea({
 
   const [stage, setStage] = useState<OutcomeStatus | null>(null);
   const [lostReason, setLostReason] = useState('');
+  const [lostCode, setLostCode] = useState<LostReasonCode | null>(null);
+  // 방금 저장한 거절 사유 글. 거절 상태에서 일정·접촉만 저장할 때 같은 이유를 다시 실어 보내는 데 쓴다.
+  const [savedLostReason, setSavedLostReason] = useState('');
 
   const [scheduleAt, setScheduleAt] = useState(initialOutcome?.nextScheduleAt ?? '');
   const [scheduleNote, setScheduleNote] = useState(initialOutcome?.nextScheduleNote ?? '');
@@ -165,6 +170,10 @@ export default function RecordsArea({
         updatedBy: envelope.data.updatedBy,
         updatedAt: envelope.data.updatedAt,
         status: envelope.data.status ?? body.status,
+        lostReasonCode:
+          (envelope.data.status ?? body.status) === 'LOST'
+            ? (envelope.data.lostReasonCode ?? body.lostReasonCode ?? null)
+            : null,
         nextScheduleAt: envelope.data.nextScheduleAt ?? body.nextScheduleAt ?? null,
         nextScheduleNote: envelope.data.nextScheduleNote ?? body.nextScheduleNote ?? null,
       };
@@ -188,6 +197,15 @@ export default function RecordsArea({
     };
   }
 
+  /** 이미 거절인 채로 일정·접촉만 저장해도 서버가 거절 이유를 요구하므로 현재 이유를 같이 보낸다. */
+  function keepLostReason(): Pick<OutcomeRequest, 'lostReasonCode' | 'reason'> {
+    if (currentStatus !== 'LOST' || !outcome?.lostReasonCode) return {};
+    return {
+      lostReasonCode: outcome.lostReasonCode,
+      ...(savedLostReason ? { reason: savedLostReason } : {}),
+    };
+  }
+
   async function onSaveContact() {
     if (!method || !result) return;
     // 접촉했으니 아직 미접촉·관심이면 "접촉"으로 넘어가고, 그 뒤 단계는 그대로 둔다.
@@ -201,6 +219,7 @@ export default function RecordsArea({
       result,
       attemptedAt,
       ...keepSchedule(),
+      ...(status === 'LOST' ? keepLostReason() : {}),
     });
     if (ok) {
       setCount((prev) => ({
@@ -239,17 +258,24 @@ export default function RecordsArea({
   async function onSaveStage() {
     if (!stage) return;
     const reason = lostReason.trim();
-    if (stage === 'LOST' && reason === '') return;
+    // 거절은 이유 코드가 필수이고, 기타일 때만 자유 글이 필수다.
+    if (stage === 'LOST' && (!lostCode || (lostCode === 'OTHER' && reason === ''))) return;
     const ok = await saveOutcome('stage', {
       status: stage,
-      ...(stage === 'LOST' ? { reason } : {}),
+      ...(stage === 'LOST' && lostCode ? { lostReasonCode: lostCode } : {}),
+      ...(stage === 'LOST' && reason !== '' ? { reason } : {}),
       ...keepSchedule(),
     });
     if (ok) {
+      setSavedLostReason(stage === 'LOST' ? reason : '');
       setStage(null);
       setLostReason('');
+      setLostCode(null);
     }
   }
+
+  const lostReasonMissing = stage === 'LOST' && lostReason.trim() === '' && lostCode === 'OTHER';
+  const stageSaveBlocked = stage === 'LOST' && (!lostCode || lostReasonMissing);
 
   async function onSaveSchedule() {
     if (scheduleAt === '') return;
@@ -258,6 +284,7 @@ export default function RecordsArea({
       status: currentStatus ?? 'NOT_EXECUTED',
       nextScheduleAt: scheduleAt,
       ...(note ? { nextScheduleNote: note } : {}),
+      ...keepLostReason(),
     });
   }
 
@@ -387,7 +414,11 @@ export default function RecordsArea({
         </Typography.Title>
         <span data-testid="records-stage-current" style={hintStyle}>
           {recordsArea.stageCurrent}:{' '}
-          {currentStatus ? outcomeStatusLabels[currentStatus] : recordsArea.stageNone}
+          {currentStatus === 'LOST' && outcome?.lostReasonCode
+            ? recordsArea.stageCurrentLost(lostReasonLabels[outcome.lostReasonCode])
+            : currentStatus
+              ? outcomeStatusLabels[currentStatus]
+              : recordsArea.stageNone}
         </span>
         <div style={rowStyle}>
           <NativeSelect
@@ -395,13 +426,31 @@ export default function RecordsArea({
             placeholder={recordsArea.selectPlaceholder}
             value={stage}
             options={options(outcomeStatusLabels)}
-            onChange={(value) => setStage(value as OutcomeStatus | null)}
+            onChange={(value) => {
+              setStage(value as OutcomeStatus | null);
+              // 거절이 아닌 단계로 바꾸면 거절 입력은 비운다(다른 단계에는 이유 코드를 보내지 않는다).
+              if (value !== 'LOST') {
+                setLostCode(null);
+                setLostReason('');
+              }
+            }}
             disabled={disabled}
             testId="records-stage-select"
           />
+          {stage === 'LOST' ? (
+            <NativeSelect
+              label={recordsArea.stageLostCodeLabel}
+              placeholder={`${recordsArea.stageLostCodeLabel} ${recordsArea.selectPlaceholder}`}
+              value={lostCode}
+              options={options(lostReasonLabels)}
+              onChange={(value) => setLostCode(value as LostReasonCode | null)}
+              disabled={disabled}
+              testId="records-stage-lost-code"
+            />
+          ) : null}
           <Button
             type="primary"
-            disabled={disabled || !stage || (stage === 'LOST' && lostReason.trim() === '')}
+            disabled={disabled || !stage || stageSaveBlocked}
             loading={busy === 'stage'}
             onClick={() => void onSaveStage()}
             data-testid="records-stage-save-button"
@@ -411,9 +460,18 @@ export default function RecordsArea({
         </div>
         {stage === 'LOST' ? (
           <>
+            {lostCode === null ? (
+              <span data-testid="records-stage-lost-code-error" style={{ color: colors.error }}>
+                {recordsArea.stageLostCodeRequired}
+              </span>
+            ) : null}
             <Input.TextArea
-              aria-label={recordsArea.stageReasonLabel}
-              aria-required="true"
+              aria-label={
+                lostCode === 'OTHER'
+                  ? recordsArea.stageReasonLabel
+                  : recordsArea.stageReasonOptionalLabel
+              }
+              aria-required={lostCode === 'OTHER' ? 'true' : 'false'}
               value={lostReason}
               autoSize={{ minRows: 1, maxRows: 4 }}
               maxLength={noteMax}
@@ -421,9 +479,9 @@ export default function RecordsArea({
               disabled={disabled}
               data-testid="records-stage-reason-input"
             />
-            {lostReason.trim() === '' ? (
+            {lostReasonMissing ? (
               <span data-testid="records-stage-reason-error" style={{ color: colors.error }}>
-                {recordsArea.stageReasonRequired}
+                {recordsArea.stageOtherReasonRequired}
               </span>
             ) : null}
           </>

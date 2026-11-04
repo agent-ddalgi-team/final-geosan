@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from geosan.config.errors import AppError
 from geosan.evidence.homepage import HomepageSearchResult
-from geosan.evidence.transfer import finish_search, reserve_search
+from geosan.evidence.transfer import configuration_error, finish_search, reserve_search
 from geosan.storage.base import utcnow
 
 # C9의 요청 시간 제한. SDK의 숨은 재시도 없이 직접 한 번씩 기록한다.
@@ -145,30 +145,40 @@ def search_openai(
                 finish_search(ticket, 0, 0, 0, db_path)
             if exc.status == 429 and attempt == 0:
                 continue
+            if exc.status in (401, 403, 404):
+                raise configuration_error() from None
             raise AppError(
                 "홈페이지 검색 요청이 거부되거나 실패했습니다.",
-                "키·모델 설정과 제공사 사용량을 확인해 주세요.",
+                "잠시 뒤 다시 조사해 주세요.",
                 status=503,
+                kind="LLM_FAILED",
             ) from None
         except (OSError, http.client.HTTPException, ValueError):
             # 과금 여부를 알 수 없으므로 호출 기록을 미확정으로 보존하고 추가 전송을 차단한다.
             raise AppError(
                 "홈페이지 검색 응답을 받지 못했습니다.",
-                "제공사 사용량과 전송 기록을 확인해 주세요.",
+                "잠시 뒤 다시 조사해 주세요.",
                 status=503,
+                kind="LLM_FAILED",
             ) from None
         try:
             usage = _Usage.model_validate(response["usage"])
             search_count = _search_count(response)
         except (KeyError, TypeError, ValueError, AttributeError):
             raise AppError(
-                "검색 사용량을 확인하지 못했습니다.", "제공사 사용량을 확인해 주세요.", status=503
+                "AI 사용 기록을 확인하지 못했습니다.",
+                "잠시 뒤 다시 조사해 주세요.",
+                status=503,
+                kind="LLM_FAILED",
             ) from None
         finish_search(ticket, usage.input_tokens, usage.output_tokens, search_count, db_path)
         try:
             return _result(response)
         except (KeyError, TypeError, ValueError, ValidationError):
             raise AppError(
-                "홈페이지 검색 응답의 형식이 올바르지 않습니다.", "다시 조사해 주세요.", status=503
+                "홈페이지 검색 응답의 형식이 올바르지 않습니다.",
+                "다시 조사해 주세요.",
+                status=503,
+                kind="LLM_FAILED",
             ) from None
     raise AssertionError("검색 재시도 횟수")

@@ -236,7 +236,12 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
     const body = (options.body ?? {}) as Partial<OutcomeRequest>;
     const data = route.endsWith('/notes')
       ? { ...base, noteId: `note-fixture-${Date.now()}` }
-      : { ...base, status: body.status, nextScheduleAt: body.nextScheduleAt ?? null };
+      : {
+          ...base,
+          status: body.status,
+          lostReasonCode: body.status === 'LOST' ? (body.lostReasonCode ?? null) : null,
+          nextScheduleAt: body.nextScheduleAt ?? null,
+        };
     return { data, meta: { updatedAt: now } } as unknown as Envelope<T>;
   }
   if (

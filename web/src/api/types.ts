@@ -129,12 +129,17 @@ export type OutcomeStatus =
   | 'ON_HOLD'
   | 'WON'
   | 'LOST';
+/** 거절 이유 코드(C0 lostReasonCode, 더하는 변경 2026-11-04). 영업 단계 LOST 저장 때 필수. */
+export type LostReasonCode =
+  'PRICE' | 'LEAD_TIME' | 'INCUMBENT_SUPPLIER' | 'NO_DEMAND' | 'QUALITY_CERT' | 'OTHER';
 export type ContactMethod = 'CALL' | 'EMAIL' | 'VISIT';
 export type ContactResult = 'REACHED' | 'ABSENT' | 'DECLINED';
 export type NoteKind = 'MEMO' | 'RESEARCH';
 
 export interface OutcomeRecord extends RecordMeta {
   status?: OutcomeStatus | null;
+  /** 최신 단계가 LOST일 때의 거절 이유 코드, 아니면 null. */
+  lostReasonCode?: LostReasonCode | null;
   nextScheduleAt?: string | null;
   nextScheduleNote?: string | null;
 }
@@ -366,6 +371,8 @@ export interface OutcomeRequest {
   evalId?: string | null;
   expectedVersion?: number | null;
   reason?: string;
+  /** status가 LOST일 때만 보낸다(필수). 다른 단계에서 보내면 서버가 400. OTHER면 reason도 필수. */
+  lostReasonCode?: LostReasonCode;
   nextScheduleAt?: string;
   nextScheduleNote?: string;
   method?: ContactMethod;
@@ -375,6 +382,7 @@ export interface OutcomeRequest {
 
 export interface OutcomeResponse extends RecordMeta {
   status: OutcomeStatus;
+  lostReasonCode?: LostReasonCode | null;
   nextScheduleAt?: string | null;
   nextScheduleNote?: string | null;
 }

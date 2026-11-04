@@ -28,7 +28,12 @@ _DENIAL = re.compile(
 def remaining(deadline: float) -> float:
     seconds = deadline - time.monotonic()
     if seconds <= 0:
-        raise AppError("조사 시간이 60초를 넘었습니다.", "잠시 뒤 다시 조사해 주세요.", status=503)
+        raise AppError(
+            "조사 시간이 60초를 넘었습니다.",
+            "잠시 뒤 다시 조사해 주세요.",
+            status=503,
+            kind="TIMEOUT",
+        )
     return seconds
 
 
@@ -146,6 +151,7 @@ def _read(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
             if attempt:
                 break
         remaining(deadline)
+    remaining(deadline)
     raise AppError(
         "홈페이지를 읽을 수 없습니다.",
         "공개 본문을 직접 붙여넣어 주세요.",
