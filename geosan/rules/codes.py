@@ -264,6 +264,7 @@ class ActivityKind(StrEnum):
 class NoteKind(StrEnum):
     MEMO = "MEMO"
     RESEARCH = "RESEARCH"
+    REPLY = "REPLY"  # #248 PM 승인: 답 저장 이력 전용, 메모 요청에서는 받지 않는다.
 
 
 class ReviewItemKind(StrEnum):

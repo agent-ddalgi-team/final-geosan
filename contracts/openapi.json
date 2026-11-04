@@ -723,6 +723,21 @@
         "title": "Envelope[OutcomeResponse]",
         "type": "object"
       },
+      "Envelope_QuestionReplyResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/QuestionReplyResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[QuestionReplyResponse]",
+        "type": "object"
+      },
       "Envelope_ReviewCheckResponse_": {
         "properties": {
           "data": {
@@ -1958,6 +1973,17 @@
             ],
             "title": "Repliedat"
           },
+          "repliedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repliedby"
+          },
           "replyText": {
             "anyOf": [
               {
@@ -2016,6 +2042,57 @@
           "status"
         ],
         "title": "Question",
+        "type": "object"
+      },
+      "QuestionReplyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "repliedAt": {
+            "format": "date",
+            "title": "Repliedat",
+            "type": "string"
+          },
+          "replyText": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Replytext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "replyText",
+          "repliedAt"
+        ],
+        "title": "QuestionReplyRequest",
+        "type": "object"
+      },
+      "QuestionReplyResponse": {
+        "properties": {
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "repliedAt": {
+            "format": "date",
+            "title": "Repliedat",
+            "type": "string"
+          },
+          "repliedBy": {
+            "title": "Repliedby",
+            "type": "string"
+          },
+          "replyText": {
+            "title": "Replytext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "replyText",
+          "repliedAt",
+          "repliedBy"
+        ],
+        "title": "QuestionReplyResponse",
         "type": "object"
       },
       "QuestionStatus": {
@@ -2262,6 +2339,39 @@
           },
           "kind": {
             "$ref": "#/components/schemas/ReviewItemKind"
+          },
+          "repliedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repliedat"
+          },
+          "repliedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repliedby"
+          },
+          "replyText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replytext"
           },
           "source": {
             "$ref": "#/components/schemas/ReviewItemSource"
@@ -3178,6 +3288,71 @@
           }
         },
         "summary": "Save Review Check"
+      }
+    },
+    "/api/v1/questions/{questionId}/reply": {
+      "post": {
+        "operationId": "save_question_reply_api_v1_questions__questionId__reply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "questionId",
+            "required": true,
+            "schema": {
+              "title": "Questionid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionReplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_QuestionReplyResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Question Reply"
       }
     },
     "/api/v1/session": {
