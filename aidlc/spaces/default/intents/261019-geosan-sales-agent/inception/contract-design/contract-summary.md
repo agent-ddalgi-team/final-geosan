@@ -166,6 +166,9 @@ components:
         region: { type: string, nullable: true, description: '(추가 2026-11-03 밤 PM 결정, 지역 선택) 회사 주소에서 뽑은 시·군 이름. 규칙: 첫 어절이 "○○광역시"·"○○특별시"·"세종특별자치시"면 그 이름(대전, 세종), 아니면 둘째 어절(천안시, 아산시, 당진시). 주소 없으면 null("지역 미확인")' }
         industries: { type: array, items: { type: string }, description: '(추가 2026-11-03 밤 PM 결정, 산업 선택) 회사 산업군(설정 industries 안 값, ≤3). 카드 꼬리표. 상세 머리 industries와 같은 값' }
         title: { type: string, description: 기업 · 기회 이름 }
+        ingestBatchId: { type: string, nullable: true, description: '(추가 2026-11-04 PM 결정 ①, #221) 이 회사가 들어온 수집 회차. 사례 파일 투입은 null' }
+        ingestedAt: { type: string, nullable: true, description: '(추가 2026-11-04 PM 결정 ①) 들어온 시각. 카드 꼬리표 "11/20 들어옴"' }
+        isNewInLatestBatch: { type: boolean, description: '(추가 2026-11-04 PM 결정 ①) 마지막 수집 회차에 들어온 회사면 true → 카드 꼬리표 "이번에 들어옴"' }
         distanceKm: { type: number, nullable: true, description: '(추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소(설정 geosan.address)에서의 직선거리 km. 좌표 없으면 null(화면 "거리 미확인"), 가상 사례는 null("가상·거리 없음")' }
         classificationCode: { type: string }
         coreEvidenceRecheck: { type: boolean }
@@ -280,9 +283,10 @@ paths:
         - { name: filter, in: query, schema: { type: string, enum: [TO_REVIEW, APPROVAL_PENDING, SCHEDULE_DUE, WAITING_COMPANY] }, description: 대시보드 건수 조건 (U7) — (갱신 2026-11-03) 건수 재정의로 SCHEDULE_DUE만 씀, 나머지 값은 남기되 안 씀 }
         - { name: sort, in: query, schema: { type: string, enum: [rank, distance], default: rank }, description: (추가 2026-11-03 PM 결정, 거리 #222) distance = 거산 기준 주소에서 가까운 순. 점수·순위 계산은 바뀌지 않음 }
         - { name: maxDistanceKm, in: query, schema: { type: number }, description: (추가 2026-11-03 PM 결정, 거리 #222) 이 거리 안의 회사만. 선택지는 설정 distanceFilterPresetsKm(기본 30/50/100) }
+        - { name: batch, in: query, schema: { type: string }, description: '(추가 2026-11-04 PM 결정 ①, 새 후보 가져오기 #221) 수집 회차 ID 또는 latest. 그 회차에 들어온 회사만(화면 "이번 수집만 / 전체" 전환). 없으면 전체 — 기존 회사는 수집해도 사라지지 않고 늘어나기만 한다' }
         - { $ref: '#/components/parameters/page' }
         - { $ref: '#/components/parameters/pageSize' }
-      responses: { '200': { description: 'Envelope(data: OpportunityCard[], meta.total, meta.processCounts: [{ processCode, processName, count }] — (추가 2026-11-03 밤) 탭 머리 "전기아연도금 (9)"용. 역량 파일 순서, 기회 0건인 공정은 빼고 보냄, 현재 process 조건과 무관하게 전체 건수; meta.regionCounts: [{ region, count }] 묶음 먼저(설정 순서) 그다음 시·군(건수 순); meta.industryCounts: [{ industry, count }] 설정 industries 순서, 0건 제외 — 둘 다 지역·산업 선택지 "(n)"용, 현재 process 탭 안 건수)' } }
+      responses: { '200': { description: 'Envelope(data: OpportunityCard[], meta.total, meta.latestIngest: { batchId, sourceId, startedAt, finishedAt|null, newCount, mergeCandidateCount, researchDoneCount, status: enum[RUNNING, DONE, FAILED] } | null — (추가 2026-11-04 PM 결정 ①) 마지막 수집 회차 요약, 목록 머리 "새 후보 7곳 들어옴 · 조사 3/7 · 확인 필요 2곳"용; meta.processCounts: [{ processCode, processName, count }] — (추가 2026-11-03 밤) 탭 머리 "전기아연도금 (9)"용. 역량 파일 순서, 기회 0건인 공정은 빼고 보냄, 현재 process 조건과 무관하게 전체 건수; meta.regionCounts: [{ region, count }] 묶음 먼저(설정 순서) 그다음 시·군(건수 순); meta.industryCounts: [{ industry, count }] 설정 industries 순서, 0건 제외 — 둘 다 지역·산업 선택지 "(n)"용, 현재 process 탭 안 건수)' } }
   /opportunities/{oppId}:
     get:
       summary: 근거 상세 (U1; U2·U4·U5·U6이 영역 구성 함수 등록)
@@ -380,6 +384,11 @@ paths:
       summary: 내보낸 '대기' 질문 N건을 요청 상태로 표시 (U4)
       requestBody: { content: { application/json: { schema: { type: object, required: [questionIds, dueAt], properties: { questionIds: { type: array, items: { type: string } }, dueAt: { type: string, format: date } } } } } }
       responses: { '200': { description: 표시됨 } }
+  /ingest:   # (추가 2026-11-04 PM 결정 ①, 새 후보 가져오기 #221 — U3) 추천 목록 머리 [새 후보 가져오기] 단추. 명령 `geosan ingest`와 같은 함수(C8)
+    post:
+      summary: 설정 범위(ingestion.regions·productKeywords)로 공개 소스에서 후보를 모아 목록에 더한다. X-Staff-Key 필수(viewer 403). 이미 RUNNING인 회차가 있으면 409 INGEST_RUNNING("지금 가져오는 중입니다"). 한 번에 최대 ingestion.maxCandidates(50)
+      requestBody: { content: { application/json: { schema: { type: object, properties: { sourceId: { type: string, description: '자동 수집 소스 3개 안(CON-04). 기본 산단공 공장현황 CSV' }, max: { type: integer } } } } } }
+      responses: { '200': { description: 'Envelope(data: { batchId, newCount, mergeCandidateCount, skippedCount }). 응답 시점까지 하는 것: 읽기 → 정규화·병합(같은 회사면 건너뜀, 이름이 비슷하면 opp_merge_candidate "확인 필요") → 새 회사 삽입(ingestBatchId·ingestedAt) → 규칙 평가(외부 호출 없음). 그 뒤 새 회사만 자동 조사(②→③→④→재평가, C7 autoResearch)를 서버 백그라운드로 1곳씩(1곳 60초, 실패는 그 회사만 "확인 필요"로 남기고 다음). 진행은 GET /opportunities meta.latestIngest.researchDoneCount. 외부 전송은 TransferGuard EXTERNAL_SEARCH·EXTERNAL_AI 규칙과 월 상한 그대로' }, '409': { description: INGEST_RUNNING }, '503': { description: 소스 읽기 실패(사유 한 줄) } }
   /dashboard:
     get:
       summary: 대시보드 건수 5개·일정·최근 내 기록 (U7, 기록에만 기대는 최소형). **깨는 변경(2026-11-03, PM 확인): 계약 버전 v2로 올림.** 화면은 이 모양의 가짜 숫자(고정값 파일)로 먼저 만들고 집계 API 완성 뒤 갈아 끼움
@@ -601,7 +610,7 @@ scope:
 ownership:
   cfg_*:   ConfigRegistry        # cfg_rule_config_version, cfg_app_setting
   cap_*:   CapabilityCatalog     # cap_process, cap_process_capability, cap_delivery_record, cap_qualification, cap_qualification_scope, cap_qualification_status, cap_field_evidence
-  opp_*:   OpportunityRegistry   # opp_customer, opp_merge_candidate, opp_interaction, opp_opportunity, opp_discovery_path, opp_process_link, opp_requirement, opp_signal
+  opp_*:   OpportunityRegistry   # opp_customer, opp_merge_candidate, opp_interaction, opp_opportunity, opp_discovery_path, opp_process_link, opp_requirement, opp_signal, opp_ingest_batch(batchId, sourceId, requestedBy: staffKey|SYSTEM, startedAt, finishedAt|null, newCount, mergeCandidateCount, researchDoneCount, status: RUNNING|DONE|FAILED — 추가 2026-11-04 PM 결정 ①, #221. 회차는 지우지 않음)
   src_*:   SourceIngestion       # src_ingestion_run, src_source_contract
   tg_*:    TransferGuard         # tg_transfer_log
   ev_*:    EvidenceExtraction    # ev_evidence, ev_homepage_candidate
@@ -634,7 +643,7 @@ CaseFile:
   isVirtual: true
   datasetKind: datasetKind
   notes: [string]                       # 예: "역산한 가정값, 규칙서 F.7 확인 전, 증설 신호는 가상 추가"
-  customer: { name, bizNumber|null, address, normalizedAddress, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, mainPhoneSourceUrl|null, mainPhoneConfirmedAt|null, mainPhoneConfirmedBy|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null, industries: json|null, industriesSource: enum[AI, STAFF]|null, industriesConfirmedAt|null }   # industries 3열은 추가 2026-11-03(PM 결정, 대시보드 산업군 — 설정 목록 안 값 ≤3, AI 제안 뒤 담당자 확정). lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션). address = 사례 파일·CSV의 원본 주소 글자 그대로(지역 시·군 추출·2차 좌표 변환에 씀), normalizedAddress = 공백 제거·소문자 비교용. (2026-11-03 밤 확인, #209) 코드는 그동안 normalizedAddress만 저장했으므로 원본 address 열을 더하는 마이그레이션으로 맞춘다. 약속 변경 아님
+  customer: { name, bizNumber|null, address, normalizedAddress, identityBasis, relationStatus, relationConfirmedAt, securityGrade, mainPhone|null, mainPhoneSource: enum[HOMEPAGE, CSV]|null, mainPhoneSourceUrl|null, mainPhoneConfirmedAt|null, mainPhoneConfirmedBy|null, summaryLine|null, highlights: json|null, researchedAt|null, researchSource: enum[AI, CASE_FILE]|null, lat|null, lng|null, geocodedAt|null, geocodeSource: enum[JUSO, CSV, MANUAL]|null, industries: json|null, industriesSource: enum[AI, STAFF]|null, industriesConfirmedAt|null, ingestBatchId|null, ingestedAt|null }   # ingestBatchId·ingestedAt는 추가 2026-11-04(PM 결정 ①, #221): 들어온 수집 회차·시각, 사례 파일 투입은 null(더하는 마이그레이션). industries 3열은 추가 2026-11-03(PM 결정, 대시보드 산업군 — 설정 목록 안 값 ≤3, AI 제안 뒤 담당자 확정). lat·lng·geocodedAt·geocodeSource는 추가 2026-11-03(PM 결정, 거리 #222, 더하는 마이그레이션). mainPhone·mainPhoneSource·summaryLine·highlights·researchedAt·researchSource는 추가 2026-11-03(PM 지시, 상세 머리 기업 요약·다시 조사): 회사 대표번호만, 개인 연락처 열은 여전히 없음(opp_customer 더하는 마이그레이션). address = 사례 파일·CSV의 원본 주소 글자 그대로(지역 시·군 추출·2차 좌표 변환에 씀), normalizedAddress = 공백 제거·소문자 비교용. (2026-11-03 밤 확인, #209) 코드는 그동안 normalizedAddress만 저장했으므로 원본 address 열을 더하는 마이그레이션으로 맞춘다. 약속 변경 아님
   interactions: [{ kind: interactionKind, occurredAt, allowedSummary, linkedToOpportunity: boolean, certainty }]
   opportunity: { item, project, purpose, owner, cardReason: string|null }   # cardReason: 카드 추천 이유 한 문장, 출처 제외 80자 안 권장(넘으면 경고만; 더하는 변경 2026-10-26 PM, #139)
   discoveryPaths: [{ pathKind, sourceId, originKey, discoveredAt }]
@@ -714,7 +723,7 @@ commands:
   geosan verify-case <file.json>                 # U1. 평가 뒤 expected와 비교. 출력: 항목별 일치/불일치 표
   geosan export-contracts                        # U1. contracts/openapi.json 생성(사람이 명시적으로만 실행). *.schema.json 4개는 이 명령이 만들지 않고 손으로 고친다(2026-11-03 바로잡음, #218)
   geosan demo-report --capability <file.json> --cases <dir> --out <dir> [--base-date YYYY-MM-DD]   # U1 예비 경로(PM 승인 2026-10-21, 10/29 부분 시연 대비). DB·API·화면 없이 역량 파일 + 사례 파일 폴더를 읽어 규칙 엔진으로 평가하고 순위표(CSV + 인쇄용 HTML), 기업별 근거(md), 기업별 사실표(md, 메모 재료)를 <out>에 쓴다. 저장하지 않는다. 모든 출력 머리에 "시연용 초안·거산 확인 전". 소개서 묶음이면 참고 점수·접촉 후보 없음(BR5.6). 연락처 패턴이 있으면 쓰지 않고 실패(종료 코드 1)
-  geosan ingest <sourceId> [--max N]             # U3·U9. 흐름 ⑥
+  geosan ingest <sourceId> [--max N]             # U3·U9. 흐름 ⑥ — (갱신 2026-11-04 PM 결정 ①) 화면 [새 후보 가져오기](C1 POST /ingest)와 같은 함수. 회차(opp_ingest_batch) 기록, requestedBy SYSTEM. 명령은 자동 조사를 백그라운드가 아니라 바로 이어서 1곳씩 돌리고 결과 줄 출력
   geosan merge-list                              # U3. 확인 필요 후보 목록
   geosan merge-confirm <candidateId> --keep <customerId>   # U3. 흐름 ⑤
   geosan review-set <targetKind> <targetId> <REVIEWED|RECHECK> --by <name> --basis <text>   # U4. 흐름 ② — (갱신 2026-11-03, PM 결정 Q8·Q9·Q10) U4 중 이 명령만 먼저, U2 줄 첫 작업(유동렬, 12h). 방문 확인된 공정만 REVIEWED로 바꾸고 18곳 재평가(방문 확인 기록은 PM이 채우면 실행)
@@ -802,6 +811,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C1·C7 | (2026-11-03 밤, PM 결정 지역·산업 선택) 목록 `region=`(시·군 또는 설정 묶음 "천안 인근" = 천안시·아산시, 주소 글자로)·`industry=`(설정 industries, 1차는 사례 파일에 사람이 적은 값 industriesSource CASE_FILE)·`meta.regionCounts`·`meta.industryCounts`·카드 `region`·`industries`, 설정 `listFilters.regionPresets`, `q`에 산업군 이름. 더하는 변경. km 거리(#222)·AI 산업군 제안(#229)은 2차 그대로. 제안 `../delivery-planning/list-filters-region-industry-20261103.md` | #209(API)·#210(선택 UI)·사례 파일 산업군 손 입력(새 이슈) 1차 |
 | C1 | (2026-11-03 밤, PM 결정 공정별 구분) 추천 목록 `process=` 거르기(공정 안 순위)·`meta.processCounts`·카드 `processCodes`. 더하는 변경. 이전 시연은 전기아연도금·아노다이징을 한 줄로 섞었으나 거산 영업이 공정별이라 탭으로 나눔. 제안 `../delivery-planning/process-tabs-20261103.md` | #209(API)·#210(탭) 1차 |
 | C1·C6 | (2026-11-03 밤, PM 결정 #209·#213 확인 요청) `/config/ui` 응답 `records`(approvalEnabled·noteMaxLength), 상세 응답 `records.outcome.nextScheduleNote`. 더하는 변경. C6 고객 `address`(원본)·`normalizedAddress`(비교용) 구분을 적음 — 코드가 원본 열을 빠뜨린 것이라 약속 변경 아님. DB 이력 두 갈래(web_001 ∥ opp_002~opp_004)는 C6 규칙대로 `db merge-heads`로 합침 | #209(기록 서버 PR)·#213(배포 준비 PR) |
+| C1·C6·C8 | (2026-11-04, PM 결정 ① — 새 후보 가져오기) `POST /ingest`(단추, 명령과 같은 함수, 409 INGEST_RUNNING, 새 회사만 백그라운드 자동 조사), 목록 `batch=`·`meta.latestIngest`, 카드 `ingestBatchId`·`ingestedAt`·`isNewInLatestBatch`, `opp_customer` 2열, `opp_ingest_batch`. 기존 회사는 사라지지 않고 "이번 수집만 / 전체" 전환으로 예전 회사를 다시 봄(①). 순위표 통째 저장(②)은 안 함. 더하는 변경 | #221(U3, 11/17 이후, 유동렬 +6~8h; 단추 화면은 고선주) |
 | C8 | (2026-11-04, PM 결정 A — #212) `review-set --all`: BROCHURE 값 전부를 COMPANY_CONFIRMED 묶음으로 복사(REVIEWED + 이력) → 활성 묶음 전환 → 재평가를 한 트랜잭션으로. 띠·참고 점수는 묶음 종류(BROCHURE)로 판단하므로 상태만 바꿔서는 안 내려감(규칙·화면 그대로). 더하는 변경 | #212(유동렬, 평가 진입점 포함) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
