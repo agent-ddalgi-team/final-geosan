@@ -718,6 +718,7 @@ commands:
   geosan merge-list                              # U3. 확인 필요 후보 목록
   geosan merge-confirm <candidateId> --keep <customerId>   # U3. 흐름 ⑤
   geosan review-set <targetKind> <targetId> <REVIEWED|RECHECK> --by <name> --basis <text>   # U4. 흐름 ② — (갱신 2026-11-03, PM 결정 Q8·Q9·Q10) U4 중 이 명령만 먼저, U2 줄 첫 작업(유동렬, 12h). 방문 확인된 공정만 REVIEWED로 바꾸고 18곳 재평가(방문 확인 기록은 PM이 채우면 실행)
+  geosan review-set --all REVIEWED --by <name> --basis <text> [--no-evaluate]   # (추가 2026-11-04, PM 결정 A — #212 유동렬 질문 답) 전체 전환. 범위: 활성 묶음(BROCHURE)의 거산 값 전부(공정·세부 역량·실적·자격·범위, 상태 PENDING인 것만. UNAVAILABLE·이미 REVIEWED는 건드리지 않음). 방식: 소개서 값은 그대로 두고 **COMPANY_CONFIRMED 묶음으로 복사**하며 복사본마다 reviewStatus REVIEWED + FieldEvidence 1행(reviewer·reviewedAt·basis·dataset_kind COMPANY_CONFIRMED). 복사 뒤 activeDatasetKind를 COMPANY_CONFIRMED로 바꾸고(dataset-set과 같은 저장) 18곳 재평가(evaluate)까지 **한 트랜잭션**: 재평가가 실패하면 복사·묶음 전환도 함께 취소. 두 번 실행하면 "이미 COMPANY_CONFIRMED 묶음이 있습니다"로 거부(덮어쓰지 않음). 출력: 복사 건수(종류별)·묶음 전환·재평가 결과 줄, 공정 탭별(ZINC_PLATING / ANODIZING) 순위 비교는 #212 댓글로. 평가 진입점(검수+평가 같은 트랜잭션)은 #212 안에서 유동렬이 `geosan/evaluation/`에 더하고 이강욱이 PR에서 검토
   geosan dataset-set <datasetKind>               # U4. 거산 값 묶음 전환(설정 변경 + 재평가 안내)
   geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함). (갱신 2026-11-03, Q10) 담당 PM(최지예), U8에 묶음, 10h
   geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회. (갱신 2026-11-03, Q10) 담당 PM, U8에 묶음
@@ -801,6 +802,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C1·C7 | (2026-11-03 밤, PM 결정 지역·산업 선택) 목록 `region=`(시·군 또는 설정 묶음 "천안 인근" = 천안시·아산시, 주소 글자로)·`industry=`(설정 industries, 1차는 사례 파일에 사람이 적은 값 industriesSource CASE_FILE)·`meta.regionCounts`·`meta.industryCounts`·카드 `region`·`industries`, 설정 `listFilters.regionPresets`, `q`에 산업군 이름. 더하는 변경. km 거리(#222)·AI 산업군 제안(#229)은 2차 그대로. 제안 `../delivery-planning/list-filters-region-industry-20261103.md` | #209(API)·#210(선택 UI)·사례 파일 산업군 손 입력(새 이슈) 1차 |
 | C1 | (2026-11-03 밤, PM 결정 공정별 구분) 추천 목록 `process=` 거르기(공정 안 순위)·`meta.processCounts`·카드 `processCodes`. 더하는 변경. 이전 시연은 전기아연도금·아노다이징을 한 줄로 섞었으나 거산 영업이 공정별이라 탭으로 나눔. 제안 `../delivery-planning/process-tabs-20261103.md` | #209(API)·#210(탭) 1차 |
 | C1·C6 | (2026-11-03 밤, PM 결정 #209·#213 확인 요청) `/config/ui` 응답 `records`(approvalEnabled·noteMaxLength), 상세 응답 `records.outcome.nextScheduleNote`. 더하는 변경. C6 고객 `address`(원본)·`normalizedAddress`(비교용) 구분을 적음 — 코드가 원본 열을 빠뜨린 것이라 약속 변경 아님. DB 이력 두 갈래(web_001 ∥ opp_002~opp_004)는 C6 규칙대로 `db merge-heads`로 합침 | #209(기록 서버 PR)·#213(배포 준비 PR) |
+| C8 | (2026-11-04, PM 결정 A — #212) `review-set --all`: BROCHURE 값 전부를 COMPANY_CONFIRMED 묶음으로 복사(REVIEWED + 이력) → 활성 묶음 전환 → 재평가를 한 트랜잭션으로. 띠·참고 점수는 묶음 종류(BROCHURE)로 판단하므로 상태만 바꿔서는 안 내려감(규칙·화면 그대로). 더하는 변경 | #212(유동렬, 평가 진입점 포함) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
