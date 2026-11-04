@@ -253,7 +253,7 @@ def test_check_config_without_db_only_checks(
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "none.db"))
     code, output = _run("check-config")
     assert code == 0, output
-    assert "version v0.17-c" in output and "DB 없음" in output
+    assert "version v0.17-d" in output and "DB 없음" in output
 
 
 def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> None:
@@ -261,10 +261,10 @@ def test_check_config_registers_version_and_settings_with_db(tmp_db: Path) -> No
         "check-config", str(DEFAULT_RULE_CONFIG_PATH), str(DEFAULT_APP_SETTINGS_PATH)
     )
     assert code == 0, output
-    assert "규칙 버전 v0.17-c (DRAFT) 등록" in output
+    assert "규칙 버전 v0.17-d (DRAFT) 등록" in output
     with session_scope(tmp_db) as session:
         runtime = load_runtime_config(session)
-        assert runtime.rule_version.rule_version == "v0.17-c"
+        assert runtime.rule_version.rule_version == "v0.17-d"
         assert runtime.app_settings.active_dataset_kind == "BROCHURE"  # 예시 기본값(시연용, #91)
         assert runtime.notices == []
     code, output = _run("check-config")
@@ -337,7 +337,7 @@ def test_registry_refuses_changed_fixed_version_and_updates_draft_hash(
     # 같은 내용(해시)을 다른 version으로 등록하려 하면 거부한다
     with session_scope(tmp_db) as session:
         config = load_rule_config(DEFAULT_RULE_CONFIG_PATH)
-        config.version = "v0.17-d"  # 파일 버전(v0.17-c)과 다른 값
+        config.version = "v0.17-e"  # 파일 버전(v0.17-d)과 다른 값
         with pytest.raises(InputError, match="같은 내용"):
             register_rule_config_version(session, config, DEFAULT_RULE_CONFIG_PATH)
     # DRAFT 상태에서 내용이 바뀌면 해시를 갱신한다
