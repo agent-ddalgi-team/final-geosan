@@ -237,6 +237,17 @@ class OutcomeStatus(StrEnum):
     LOST = "LOST"
 
 
+class LostReasonCode(StrEnum):
+    """#250 PM 승인: 계약 C0의 거절 이유 코드 6종."""
+
+    PRICE = "PRICE"
+    LEAD_TIME = "LEAD_TIME"
+    INCUMBENT_SUPPLIER = "INCUMBENT_SUPPLIER"
+    NO_DEMAND = "NO_DEMAND"
+    QUALITY_CERT = "QUALITY_CERT"
+    OTHER = "OTHER"
+
+
 class ContactMethod(StrEnum):
     CALL = "CALL"
     EMAIL = "EMAIL"

@@ -4,6 +4,7 @@ from geosan.rules.codes import (
     ActivityKind,
     ContactMethod,
     ContactResult,
+    LostReasonCode,
     NoteKind,
     OutcomeStatus,
     ReviewItemKind,
@@ -23,6 +24,14 @@ def test_record_codes_match_the_published_contract():
     ]
     assert list(ContactMethod) == ["CALL", "EMAIL", "VISIT"]
     assert list(ContactResult) == ["REACHED", "ABSENT", "DECLINED"]
+    assert list(LostReasonCode) == [
+        "PRICE",
+        "LEAD_TIME",
+        "INCUMBENT_SUPPLIER",
+        "NO_DEMAND",
+        "QUALITY_CERT",
+        "OTHER",
+    ]
     assert list(ActivityKind) == [
         "CLASSIFICATION",
         "OPINION",

@@ -42,6 +42,15 @@ from geosan.storage.base import new_id, utcnow
 
 router = APIRouter()
 
+LOST_REASON_LABELS = {
+    "PRICE": "가격",
+    "LEAD_TIME": "납기",
+    "INCUMBENT_SUPPLIER": "기존 거래처 유지",
+    "NO_DEMAND": "수요 없음",
+    "QUALITY_CERT": "품질·인증 요건",
+    "OTHER": "기타",
+}
+
 
 def derive_review_items(data: OpportunityDetail) -> list[ReviewItem]:
     """계약 C1의 다섯 입력에서 파생한다. 미조사를 홈페이지 검색 실패로 추정하지 않는다."""
@@ -241,6 +250,7 @@ def outcome_view(row: Outcome | None) -> dict | None:
         "updatedBy": row.created_by,
         "updatedAt": row.created_at.isoformat(),
         "status": row.status,
+        "lostReasonCode": row.lost_reason_code if row.status == "LOST" else None,
         "nextScheduleAt": row.next_schedule_at.isoformat() if row.next_schedule_at else None,
         "nextScheduleNote": row.next_schedule_note,
     }
@@ -256,8 +266,15 @@ def save_outcome(
     fields = scan_contacts(
         {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
     )
-    if body.status == "LOST" and not (body.reason and body.reason.strip()):
-        fields.append(FieldError(path="reason", message="거절 사유를 적어 주세요."))
+    if body.status == "LOST":
+        if body.lost_reason_code is None:
+            fields.append(FieldError(path="lostReasonCode", message="거절 이유를 골라 주세요."))
+        elif body.lost_reason_code == "OTHER" and not (body.reason and body.reason.strip()):
+            fields.append(FieldError(path="reason", message="기타를 고르면 이유를 적어 주세요."))
+    elif "lost_reason_code" in body.model_fields_set:
+        fields.append(
+            FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
+        )
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)
@@ -336,6 +353,8 @@ def activity(
             "LOST": "거절",
         }[row.status]
         summary = status_label
+        if row.status == "LOST" and row.lost_reason_code:
+            summary += f" · {LOST_REASON_LABELS[row.lost_reason_code]}"
         if row.method:
             method = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}[row.method]
             result = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}.get(row.result, "")

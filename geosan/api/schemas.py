@@ -24,6 +24,7 @@ from geosan.rules.codes import (
     ClassificationCode,
     DatasetKind,
     FilterState,
+    LostReasonCode,
     NeededStage,
     Opinion,
     Purpose,
@@ -497,6 +498,7 @@ class OutcomeRequest(_RequestModel):
     next_schedule_at: date | None = None
     next_schedule_note: str | None = None
     reason: str | None = None
+    lost_reason_code: LostReasonCode | None = None
     action_id: str | None = None
     method: Literal["CALL", "EMAIL", "VISIT"] | None = None
     result: Literal["REACHED", "ABSENT", "DECLINED"] | None = None
