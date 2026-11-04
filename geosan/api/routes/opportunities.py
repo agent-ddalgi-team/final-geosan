@@ -157,6 +157,8 @@ def _header(context: DetailContext) -> dict:
             customer_name=customer.name,
             opportunity_item=opportunity.item,
             relation_status=customer.relation_status,
+            relation_confirmed_at=customer.relation_confirmed_at,
+            relation_confirmed_by=customer.relation_confirmed_by,
             relation_note=_relation_note(context),
             purpose=opportunity.purpose,
             owner=opportunity.owner,

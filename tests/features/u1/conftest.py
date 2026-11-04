@@ -7,6 +7,7 @@ pytest-bdd는 `@given/@when/@then`으로 만든 단계 함수를 그 모듈의 �
 from tests.steps.u1.common import *  # noqa: F403
 from tests.steps.u1.steps_brochure import *  # noqa: F403
 from tests.steps.u1.steps_capability import *  # noqa: F403
+from tests.steps.u1.steps_customer_relation import *  # noqa: F403
 from tests.steps.u1.steps_engine import *  # noqa: F403
 from tests.steps.u1.steps_opinion import *  # noqa: F403
 from tests.steps.u1.steps_opportunity import *  # noqa: F403

@@ -157,6 +157,13 @@ def _store(
         normalized_address=normalize_address(model.customer.address),
         relation_confirmed_at=model.customer.relation_confirmed_at,
     )
+    if customer.relation_confirmed_by is not None:
+        if customer.relation_status != model.customer.relation_status.value:
+            warnings.append(
+                "거래 관계는 담당자가 입력한 값을 유지합니다. 사례 파일 값은 반영하지 않았습니다."
+            )
+        values.pop("relation_status")
+        values.pop("relation_confirmed_at")
     for key, value in values.items():
         setattr(customer, key, value)
     customer.summary_line = model.opportunity.card_reason

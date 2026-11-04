@@ -495,6 +495,29 @@
           "purpose": {
             "$ref": "#/components/schemas/Purpose"
           },
+          "relationConfirmedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationconfirmedat"
+          },
+          "relationConfirmedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationconfirmedby"
+          },
           "relationNote": {
             "anyOf": [
               {
@@ -564,6 +587,8 @@
           }
         },
         "required": [
+          "relationConfirmedAt",
+          "relationConfirmedBy",
           "address",
           "title",
           "customerName",
@@ -721,6 +746,21 @@
           "data"
         ],
         "title": "Envelope[OutcomeResponse]",
+        "type": "object"
+      },
+      "Envelope_RelationResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RelationResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[RelationResponse]",
         "type": "object"
       },
       "Envelope_ReviewCheckResponse_": {
@@ -2101,6 +2141,53 @@
         "title": "RegionCount",
         "type": "object"
       },
+      "RelationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evalId": {
+            "minLength": 1,
+            "title": "Evalid",
+            "type": "string"
+          },
+          "relationStatus": {
+            "$ref": "#/components/schemas/RelationStatus"
+          }
+        },
+        "required": [
+          "relationStatus",
+          "evalId"
+        ],
+        "title": "RelationRequest",
+        "type": "object"
+      },
+      "RelationResponse": {
+        "properties": {
+          "evalId": {
+            "title": "Evalid",
+            "type": "string"
+          },
+          "relationConfirmedAt": {
+            "format": "date",
+            "title": "Relationconfirmedat",
+            "type": "string"
+          },
+          "relationConfirmedBy": {
+            "title": "Relationconfirmedby",
+            "type": "string"
+          },
+          "relationStatus": {
+            "$ref": "#/components/schemas/RelationStatus"
+          }
+        },
+        "required": [
+          "relationStatus",
+          "relationConfirmedAt",
+          "relationConfirmedBy",
+          "evalId"
+        ],
+        "title": "RelationResponse",
+        "type": "object"
+      },
       "RelationStatus": {
         "enum": [
           "NEW_CONFIRMED",
@@ -3104,6 +3191,71 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/relation": {
+      "post": {
+        "operationId": "save_relation_api_v1_opportunities__oppId__relation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RelationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Relation"
       }
     },
     "/api/v1/opportunities/{oppId}/review-items/{itemId}/check": {

@@ -316,7 +316,7 @@ def test_review_table_rollback_and_upgrade_preserve_existing_notes(records_env, 
         == 200
     )
     assert downgrade(tmp_db, "opp_005") == ["opp_005"]
-    assert upgrade_to_head(tmp_db) == ["tg_001"]
+    assert upgrade_to_head(tmp_db) == ["opp_007"]
     with session_scope() as session:
         assert session.scalar(select(Note)).text == "보존할 가상 메모"
         assert session.scalar(select(ReviewCheck)) is None

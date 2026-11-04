@@ -227,6 +227,8 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    relation_confirmed_at: date | None
+    relation_confirmed_by: str | None
     homepage_status: Literal["AI_FOUND", "NEEDS_CONFIRMATION", "CONFIRMED", "NOT_FOUND"] | None = (
         None
     )
@@ -510,6 +512,18 @@ class OutcomeResponse(RecordMeta):
     status: OutcomeStatus
 
 
+class RelationRequest(_RequestModel):
+    relation_status: RelationStatus
+    eval_id: str = Field(min_length=1, strict=True)
+
+
+class RelationResponse(_ApiModel):
+    relation_status: RelationStatus
+    relation_confirmed_at: date
+    relation_confirmed_by: str
+    eval_id: str
+
+
 class ActivityItem(_ApiModel):
     at: datetime
     actor: str
@@ -520,6 +534,7 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+RelationEnvelope = Envelope[RelationResponse]
 ReviewCheckEnvelope = Envelope[ReviewCheckResponse]
 MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
 ActivityEnvelope = Envelope[list[ActivityItem]]
