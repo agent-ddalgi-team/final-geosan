@@ -14,12 +14,14 @@
     "최종 조사 묶음은 명화금속·스틸앙카 아연도금 2곳과 대영프로파일 아노다이징 1곳이다. 스틸앙카의 회사 제품군 근거와 당진 생산 사업장 미확인 사항은 별도로 검토한다.",
     "미확보 항목 재확인일: 2026-10-24. 공식 연혁 https://www.alusys.com/bbs/board.php?bo_table=b103 과 사업분야 https://www.alusys.com/bbs/page.php?hid=p202, 작업사례 첫 목록 https://www.alusys.com/bbs/board.php?bo_table=b501 을 확인했다. 연혁의 조립동 신축공장 준공은 제목이 10. 11로 표시되어 있으며 게시물 등록일을 발생일로 쓰지 않았다. 작업사례는 전체 41건으로 표시되지만 개별 사례 전수조사는 하지 않았고 DF 3090의 납품 산업·신규 수주·발생일을 특정하지 못했다. NEW_RECORD·SIG_EXPAND·SIG_ORDER는 UNAVAILABLE을 유지한다.",
     "2026-10-24 공식 공지사항 https://www.alusys.com/bbs/board.php?bo_table=b601 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b601&wr_id=1 의 본문을 직접 확인했다. 공지사항입니다.라는 안내 문구만 있고 입찰·협력사 모집·구매 내용은 없어 SIG_BID를 NO_SIGNAL로 판정했다. 공식 게시판에서 확인한 범위의 판정이며 외부 공고까지 없다는 뜻은 아니다.",
-    "2026-10-24 공식 채용정보 https://www.alusys.com/bbs/board.php?bo_table=b701 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b701&wr_id=1 의 본문을 직접 확인했다. 채용정보 게시판입니다.라는 안내 문구만 있고 실제 모집 직무·기간이 없어 SIG_HIRE를 NO_SIGNAL로 판정했다. 열람일이나 안내 글의 등록일을 채용 발생일로 쓰지 않았다."
+    "2026-10-24 공식 채용정보 https://www.alusys.com/bbs/board.php?bo_table=b701 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b701&wr_id=1 의 본문을 직접 확인했다. 채용정보 게시판입니다.라는 안내 문구만 있고 실제 모집 직무·기간이 없어 SIG_HIRE를 NO_SIGNAL로 판정했다. 열람일이나 안내 글의 등록일을 채용 발생일로 쓰지 않았다.",
+    "산업군은 '주로 납품하는 산업' 기준으로 PM이 적음(2026-11-04, #230). 근거: 홈페이지·카탈로그의 제품 용도·납품 산업."
   ],
   "customer": {
     "name": "(주)대영프로파일",
     "bizNumber": null,
     "address": "세종특별자치시 부강면 구들기길 18",
+    "industries": ["기계·설비"],
     "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 67247의 상호·세종특별자치시 부강면 구들기길 18 주소를 공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 하단의 상호·주소와 대조했다. CSV: https://www.data.go.kr/data/15105482/fileData.do; 확인일 2026-10-22. 현재 운영 여부와 자체 처리·외주 발주는 별도 확인 전이다.",
     "relationStatus": "UNCONFIRMED",
     "relationConfirmedAt": null,

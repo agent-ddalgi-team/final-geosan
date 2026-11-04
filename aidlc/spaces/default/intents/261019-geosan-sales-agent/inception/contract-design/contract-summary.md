@@ -701,7 +701,7 @@ AppSettings:
   geosan: { address: string, lat: number, lng: number }   # (추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소와 좌표. PM이 한 번 적음(좌표는 지도에서 읽어 넣음). 거리는 모두 이 점에서 잰다
   geocoding: { provider: JUSO, enabled: boolean, dailyCallLimit: int }   # (추가 2026-11-03 PM 결정) 행정안전부 도로명주소 API. 키는 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY. 기본 enabled false(키 받기 전)
   distanceFilterPresetsKm: [30, 50, 100]   # (추가 2026-11-03 PM 결정) 목록 거리 필터 선택지. 대시보드 지도 원 반지름에도 씀
-  industries: [string]   # (추가 2026-11-03 PM 결정, 대시보드 산업군) 초안 10개: 방위산업, 반도체, 반도체 장비, 자동차 부품, 항공우주, 밸브·유체기기, 조선·해양, 전기·전자, 기계·설비, 기타 — 거산 확인 뒤 확정(#208 질문). 코드에 적지 않고 여기서만
+  industries: [string]   # (추가 2026-11-03 PM 결정, 대시보드 산업군) 초안 11개(2026-11-04 PM, #230에서 "건설·건축자재" 더함): 방위산업, 반도체, 반도체 장비, 자동차 부품, 항공우주, 밸브·유체기기, 조선·해양, 전기·전자, 기계·설비, 건설·건축자재, 기타 — 거산 확인 뒤 확정(#208 질문, "자동화 설비" 칸 필요 여부도 질문). 뜻은 "그 회사가 주로 납품하는 산업"(2026-11-04 PM). 코드에 적지 않고 여기서만
   dashboard: { countProposedIndustries: true }   # (추가 2026-11-03 PM 결정) 산업군 집계에 AI 제안 포함(true, 막대 옆 "AI 제안 포함" 표시)
   map: { provider: NAVER_CLOUD, enabled: boolean }   # (추가 2026-11-03 PM 결정, 2차) 대시보드 지도. 클라이언트 ID는 화면 빌드 환경 변수 VITE_NCP_MAPS_CLIENT_ID(비밀 아님, 콘솔 허용 URL로 보호). 지오코딩에는 쓰지 않음(거리 제안서 8장)   # (추가 2026-11-03 PM 지시) 마지막 조사가 이 일수보다 오래되면 상세 머리에 "오래됨" 표시
   brand: { logoUrl, brandName, colorPrimary, demoLabel: string | null }   # demoLabel: (갱신 제안 2026-10-21, 기능 설계 Q7 답 확정 후 적용) 띠에 함께 보이는 문구, 예: "부분 시연·거산 확인 전"

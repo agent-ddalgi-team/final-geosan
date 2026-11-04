@@ -19,12 +19,14 @@
     "#17로 합쳐진 examples/capability-geosan-brochure.json(회사소개서 2026-09-21판)과 2026-10-22 대조했다. ZINC_PLATING의 FE 소재·CORROSION 성능 태그를 참조한다. 소개서 기준·거산 확인 전이며 해당 공정의 검수 상태는 PENDING이다. 가상 역량은 사용하지 않았다.",
     "시점 신호 조사는 완료되지 않아 SIG_*는 UNAVAILABLE다. 신호 없음(NO_SIGNAL)으로 단정하지 않았다.",
     "공개 제품 사양은 거산에 대한 구매 요청서가 아니다. 요구 조건·필수 여부·필요 단계를 지어내지 않았다. 외부 접촉이나 거래 확인은 하지 않았다.",
-    "#140 출처 설명 보존: 신동아정공 홈페이지 직결 스크류 카탈로그 — 공식 카탈로그, 인쇄면 17쪽, 게시일 미표시, 2026-10-22 열람. 출처: https://www.shindongah.com/img/data/catalog_pdf.pdf"
+    "#140 출처 설명 보존: 신동아정공 홈페이지 직결 스크류 카탈로그 — 공식 카탈로그, 인쇄면 17쪽, 게시일 미표시, 2026-10-22 열람. 출처: https://www.shindongah.com/img/data/catalog_pdf.pdf",
+    "산업군은 '주로 납품하는 산업' 기준으로 PM이 적음(2026-11-04, #230). 근거: 홈페이지·카탈로그의 제품 용도·납품 산업."
   ],
   "customer": {
     "name": "(주)신동아정공",
     "bizNumber": null,
     "address": "충청남도 당진시 송악읍 부동길 73",
+    "industries": ["건설·건축자재"],
     "identityBasis": "산단공 CSV 순번 166315의 회사명·당진 공장주소·볼트 생산을 공식 홈페이지와 대조했다. https://www.shindongah.com/sub/history.html 은 2009년 3월 당진시 송악읍 반촌리 732-4 임대계약 공장등록을 명시한다. https://www.shindongah.com/sub/facilities.html 은 시흥 공장 2곳을 안내한다. 과거 당진 사업장 이력은 확인했지만 CSV 도로명과 지번의 동일성·현재 당진 운영·해당 스크류 생산 여부는 미확인이다(2026-10-22 열람).",
     "relationStatus": "UNCONFIRMED",
     "relationConfirmedAt": null,
