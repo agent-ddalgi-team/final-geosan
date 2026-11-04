@@ -44,6 +44,7 @@ from geosan.api.schemas import (
     RequirementCheckView,
     ScoreItemView,
     Scores,
+    ScoreState,
 )
 from geosan.capability.models import FieldEvidence, Process
 from geosan.capability.queries import get_process
@@ -131,11 +132,24 @@ def _homepage_url(context: DetailContext) -> str | None:
     return max(sorted(roots), key=roots.get)
 
 
+def _score_state(run: EvaluationRun | None) -> ScoreState:
+    """#262 저장 연결 전, #263에서 허용한 기존 분류·점수 기반 표시 상태(C1)."""
+    if run is None or run.score_s is None:
+        return "NONE"
+    if run.classification_code in {"FILTER_PENDING", "OPS_PENDING"}:
+        return "PENDING"
+    return "CONFIRMED"
+
+
 def _header(context: DetailContext) -> dict:
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
     research = runtime_for(context.session).app_settings.research
     return {
         "header": DetailHeader(
+            score_state=_score_state(run),
+            relation_confirmed_at=customer.relation_confirmed_at,
+            # #265의 승인된 C6 열이 생기기 전 사례 파일 자료에는 담당자가 없다.
+            relation_confirmed_by=getattr(customer, "relation_confirmed_by", None),
             industries=customer.industries or [],
             industries_source=customer.industries_source,
             address=customer.address or "",
@@ -193,6 +207,9 @@ def _reasons(context: DetailContext) -> dict:
                 current_value=row.current_value,
                 effect_if_answered=link.effect_if_answered,
                 status=row.status,
+                reply_text=row.reply_text,
+                replied_at=row.replied_at.isoformat() if row.replied_at else None,
+                replied_by=row.replied_by,
                 linked_opp_ids=list(
                     session.scalars(
                         select(QuestionOpportunityLink.opp_id)
@@ -630,6 +647,8 @@ def list_opportunities(
         outcome = latest_outcome(session, opportunity.opp_id)
         cards.append(
             OpportunityCard(
+                score_state=_score_state(current),
+                relation_status=customer.relation_status,
                 region=_address_region(customer.address),
                 industries=customer.industries or [],
                 contact_count=contact_counts(session, opportunity.opp_id).total,

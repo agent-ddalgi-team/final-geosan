@@ -348,9 +348,10 @@ def test_confirmed_usage_unblocks_search_and_extraction_without_resending_old_ca
     assert read(pending.transfer_log_id) == settled
 
 
-def test_old_database_upgrade_preserves_transfer_values(tmp_path):
+@pytest.mark.parametrize("previous_revision", ["tg_001", "q_002"])
+def test_old_database_upgrade_preserves_transfer_values(tmp_path, previous_revision):
     path = tmp_path / "old.db"
-    command.upgrade(alembic_config(path), "tg_001")
+    command.upgrade(alembic_config(path), previous_revision)
     with sqlite3.connect(path) as connection:
         connection.execute(
             "INSERT INTO tg_transfer_log (transfer_log_id, occurred_at, opp_id, purpose, kind, "
@@ -379,6 +380,40 @@ def test_old_database_upgrade_preserves_transfer_values(tmp_path):
     with sqlite3.connect(path) as connection:
         after = connection.execute("SELECT * FROM tg_transfer_log").fetchone()
     assert after == (*before, None, None)
+
+
+def test_reconciliation_migration_preserves_question_reply_in_both_directions(tmp_path):
+    path = tmp_path / "question-reply.db"
+    command.upgrade(alembic_config(path), "q_002")
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "INSERT INTO q_question (question_id, target_kind, target_id, question_text, "
+            "answer_format, status, is_user_added, created_at, created_by, is_virtual, "
+            "reply_text, replied_at, replied_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "question-old",
+                "OPPORTUNITY",
+                "opp-old",
+                "가상 질문",
+                "TEXT",
+                "ANSWERED",
+                1,
+                NOW.isoformat(),
+                "system",
+                1,
+                "보존할 가상 답변",
+                "2026-11-04",
+                "choi-pm",
+            ),
+        )
+        before = connection.execute("SELECT * FROM q_question").fetchone()
+    for target in ("head", "q_002", "head"):
+        if target == "q_002":
+            command.downgrade(alembic_config(path), target)
+        else:
+            assert upgrade_to_head(path) == ["tg_002"]
+        with sqlite3.connect(path) as connection:
+            assert connection.execute("SELECT * FROM q_question").fetchone() == before
 
 
 def test_missing_database_is_not_created(tmp_path, monkeypatch):
