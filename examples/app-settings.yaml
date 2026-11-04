@@ -41,6 +41,10 @@ llm:
   costAlertRatio: 0.5
   costPerThousandTokens: 0
 
+# 대표번호 후보는 PM이 승인한 지역번호만 쓴다(#219, 2026-11-03).
+mainPhone:
+  allowedPrefixes: ["02", "031", "032", "033", "041", "042", "043", "044", "051", "052", "053", "054", "055", "061", "062", "063", "064"]
+
 # 홈페이지 찾기(U2). 외부 호출을 쓰려면 위의 LLM 모드도 EXTERNAL이어야 한다.
 homepageDiscovery:
   enabled: true

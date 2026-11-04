@@ -91,6 +91,19 @@ class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
 
 
+class MainPhoneSettings(FileModel):
+    allowed_prefixes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_prefixes(self) -> MainPhoneSettings:
+        if any(
+            not item.isascii() or not item.isdigit() or not 2 <= len(item) <= 4
+            for item in self.allowed_prefixes
+        ):
+            raise ValueError("대표번호 앞자리는 숫자 2~4자리여야 합니다.")
+        return self
+
+
 class RegionPreset(FileModel):
     label: str
     cities: list[str]
@@ -112,6 +125,7 @@ class AppSettings(FileModel):
     access_protection: AccessProtectionSettings
     records: RecordsSettings = Field(default_factory=RecordsSettings)
     research: ResearchSettings = Field(default_factory=ResearchSettings)
+    main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
 
