@@ -107,6 +107,32 @@ def dataset_set(
     raise typer.Exit(code=run_dataset_set(kind))
 
 
+@app.command("review-set")
+def review_set(
+    target: list[str] = typer.Argument(
+        None, help="대상 종류 ID REVIEWED|RECHECK 또는 --all REVIEWED"
+    ),
+    all_values: bool = typer.Option(
+        False, "--all", help="소개서 값을 거산 확인 완료 묶음으로 복사"
+    ),
+    reviewer: str | None = typer.Option(None, "--by", help="검수자 이름"),
+    basis: str | None = typer.Option(None, "--basis", help="확인 근거(연락처 제외)"),
+    no_evaluate: bool = typer.Option(False, "--no-evaluate", help="전체 전환 뒤 재평가를 생략"),
+) -> None:
+    """검수 이력을 남기고 재평가합니다. --all은 소개서 원본을 보존해 확인 묶음을 만듭니다."""
+    from geosan.commands.review_set import run_review_set
+
+    raise typer.Exit(
+        code=run_review_set(
+            target or [],
+            all_values=all_values,
+            reviewer=reviewer,
+            basis=basis,
+            no_evaluate=no_evaluate,
+        )
+    )
+
+
 @app.command("import-capability")
 def import_capability(
     file: Path = typer.Argument(..., help="거산 역량 파일(JSON)"),

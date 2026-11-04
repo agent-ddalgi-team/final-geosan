@@ -30,12 +30,19 @@ cd web && npm ci && cd ..
 |---|---|
 | 처음 설치·실행 | `geosan init-db` → `geosan check-config examples/rule-config.yaml examples/app-settings.yaml` → `geosan serve` |
 | 활성 거산 값 묶음 변경 | `geosan dataset-set COMPANY_CONFIRMED` → `geosan evaluate`. 선택 가능한 묶음은 `VIRTUAL_REVIEWED`, `BROCHURE`, `COMPANY_CONFIRMED`입니다. 인자 없이 `geosan check-config`를 실행하면 현재 묶음을 확인할 수 있습니다. |
+| 소개서 전체 확인·재평가 | 활성 묶음이 `BROCHURE`일 때 `geosan review-set --all REVIEWED --by 거산 --basis "10/29 방문, 영업 담당자 전체 확인"`. 원본을 남기고 `COMPANY_CONFIRMED` 묶음을 만들어 검수 대기 값만 확인 완료로 바꾼 뒤, 활성 묶음 전환과 전체 재평가를 함께 저장합니다. 재평가 실패 시 모두 취소하며, 확인 묶음이 이미 있으면 덮어쓰지 않습니다. `--no-evaluate`를 붙이면 재평가는 생략하므로 이어서 `geosan evaluate`를 실행해야 목록이 채워집니다. |
+| 개별 값 확인·재확인 | `geosan review-set <대상 종류> <ID> REVIEWED --by <검수자> --basis <확인 근거>`. 대상 종류는 `PROCESS`(공정), `CAPABILITY`(세부 역량), `QUALIFICATION`(자격), `FIELD`(실적·범위)이며 현재 활성 묶음의 값만 받습니다. 검수 완료 값을 다시 확인해야 하면 상태에 `RECHECK`를 넣습니다. 이력 저장과 전체 재평가를 함께 실행하며 검수자·근거에 연락처는 넣지 않습니다. |
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
 | 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·입력/출력 토큰·비용을 합산합니다. 미확정 비용이 있으면 종료 코드 2입니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
+
+검수 전환은 거래 관계나 필수 요구의 확인 상태를 바꾸지 않습니다. 기존 점수 표시 약속에 따라
+확인 묶음에서도 필수조건 확인 필요·운영 준비 중인 카드는 `--`로 보입니다.
+묶음에 따른 ‘거산 확인 전’ 표시는 없어지지만 앱 설정의 고정 문구 `brand.demoLabel`은 그대로입니다.
+기본 문구 ‘부분 시연·거산 확인 전’을 바꾸는 일은 PM이 운영 설정에서 따로 결정합니다.
 
 홈페이지 검색 개발 경로는 `geosan.evidence.homepage.find_case_homepage(opp_id)`입니다.
 `geosan init-db`로 DB를 갱신하고, 환경 변수 `OPENAI_API_KEY`를 설정한 뒤
