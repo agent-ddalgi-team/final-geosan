@@ -193,6 +193,9 @@ def _reasons(context: DetailContext) -> dict:
                 current_value=row.current_value,
                 effect_if_answered=link.effect_if_answered,
                 status=row.status,
+                reply_text=row.reply_text,
+                replied_at=row.replied_at.isoformat() if row.replied_at else None,
+                replied_by=row.replied_by,
                 linked_opp_ids=list(
                     session.scalars(
                         select(QuestionOpportunityLink.opp_id)

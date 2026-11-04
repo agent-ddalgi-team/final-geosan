@@ -26,16 +26,20 @@ from geosan.api.schemas import (
     OutcomeEnvelope,
     OutcomeRequest,
     OutcomeResponse,
+    QuestionReplyEnvelope,
+    QuestionReplyRequest,
+    QuestionReplyResponse,
     ReviewCheckEnvelope,
     ReviewCheckRequest,
     ReviewCheckResponse,
     ReviewItem,
 )
-from geosan.config.errors import FieldError, InputError, NotFoundError
+from geosan.config.errors import FieldError, InputError, NotFoundError, RunFailedError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Opportunity
 from geosan.opportunity.queries import confirm_main_phone
+from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Note, Outcome, ReviewCheck, ReviewOpinion
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
@@ -77,6 +81,10 @@ def derive_review_items(data: OpportunityDetail) -> list[ReviewItem]:
             question.text,
             "상대 회사" if question.target_kind in {"OPPORTUNITY", "REQUIREMENT"} else "거산",
         )
+        item = items[f"Q:{question.question_id}"]
+        item.reply_text = question.reply_text
+        item.replied_at = question.replied_at
+        item.replied_by = question.replied_by
     if data.header.homepage_status == "NOT_FOUND":
         add(
             "GAP:HOMEPAGE",
@@ -138,6 +146,65 @@ def review_items_for_detail(
             item.checked_by = row.staff_key
             item.checked_at = row.created_at
     return items
+
+
+@router.post("/questions/{questionId}/reply", response_model=QuestionReplyEnvelope)
+def save_question_reply(
+    question_id: Annotated[str, Path(alias="questionId")],
+    body: QuestionReplyRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 최신 답과 연결 기회별 이력·버전을 같은 쓰기 잠금 안에서 한 번에 저장한다.
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    question = session.get(ConfirmationQuestion, question_id)
+    if question is None:
+        raise NotFoundError("답을 남길 질문이 없습니다.")
+    if question.status not in {"WAITING", "REQUESTED", "REPLIED"}:
+        raise InputError("이미 반영된 질문에는 답을 덮어쓸 수 없습니다.")
+    now = utcnow()
+    question.reply_text = body.reply_text
+    question.replied_at = body.replied_at
+    question.replied_by = staff
+    question.status = "REPLIED"
+    linked = session.scalars(
+        select(QuestionOpportunityLink.opp_id)
+        .where(QuestionOpportunityLink.question_id == question_id)
+        .order_by(QuestionOpportunityLink.opp_id)
+    ).all()
+    for opp_id in linked:
+        opportunity = session.get(Opportunity, opp_id)
+        if opportunity is None:
+            raise RunFailedError("질문에 연결된 기회를 확인해 주세요.")
+        previous = session.scalar(
+            select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc())
+        )
+        session.add(
+            Note(
+                note_id=new_id("note"),
+                opp_id=opp_id,
+                staff_key=staff,
+                kind="REPLY",
+                text=f"Q:{question_id} 답: {body.reply_text}",
+                version=previous.version + 1 if previous else 1,
+                created_at=now,
+                created_by=staff,
+                dataset_kind=opportunity.dataset_kind,
+                is_virtual=opportunity.is_virtual,
+            )
+        )
+    session.flush()
+    return QuestionReplyEnvelope(
+        data=QuestionReplyResponse(
+            question_id=question_id,
+            reply_text=body.reply_text,
+            replied_at=body.replied_at,
+            replied_by=staff,
+        ),
+        meta=Meta(updated_at=now),
+    )
 
 
 @router.post(
@@ -333,8 +400,14 @@ def activity(
             ActivityItem(
                 at=row.created_at,
                 actor=row.staff_key,
-                kind="NOTE",
-                summary=f"자료 조사 · {row.text}" if row.kind == "RESEARCH" else row.text,
+                kind="REPLY" if row.kind == "REPLY" else "NOTE",
+                summary=(
+                    f"답 기록 · {row.text.split(' 답: ', 1)[-1]}"
+                    if row.kind == "REPLY"
+                    else f"자료 조사 · {row.text}"
+                    if row.kind == "RESEARCH"
+                    else row.text
+                ),
             )
         )
     for row in session.scalars(
