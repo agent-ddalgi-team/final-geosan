@@ -15,6 +15,8 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  ReplyRequest,
+  ReplyResponse,
   ReviewCheckRequest,
   ReviewCheckResponse,
 } from './types';
@@ -177,6 +179,15 @@ export function postReviewCheck(
   );
 }
 
+/** 질문 답 저장(검토사항 [답 적기]). 이미 답이 있으면 최신으로 덮어쓰고 이전 답은 활동 이력에 남는다. */
+export function postQuestionReply(questionId: string, body: ReplyRequest, staffKey: string) {
+  return request<ReplyResponse>(`/questions/${encodeURIComponent(questionId)}/reply`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
 /** 활동 이력(U5). 서버가 시각 순으로 준다. 한도 기본 20, 최대 100. */
 export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   return request<ActivityItem[]>(
@@ -246,6 +257,23 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         checked,
         checkedBy: checked ? options.staffKey : null,
         checkedAt: checked ? now : null,
+      },
+      meta: { updatedAt: now },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/questions\/[^/]+\/reply$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const body = (options.body ?? {}) as Partial<ReplyRequest>;
+    return {
+      data: {
+        questionId: decodeURIComponent(route.split('/')[2] ?? ''),
+        replyText: body.replyText ?? '',
+        repliedAt: body.repliedAt ?? now.slice(0, 10),
+        repliedBy: options.staffKey,
       },
       meta: { updatedAt: now },
     } as unknown as Envelope<T>;

@@ -213,6 +213,44 @@
       "evaluatedAt": "2026-10-20T09:00:00+09:00"
     },
     "records": { "opinion": null, "bookmark": null, "approval": null, "outcome": null },
+    "reviewItems": [
+      {
+        "itemId": "Q:q-01HAPJEONG0000000000000001",
+        "kind": "QUESTION",
+        "source": "AI",
+        "text": "Nadcap 인정이 필요합니까?",
+        "targetLabel": "상대 회사",
+        "checked": false,
+        "checkedBy": null,
+        "checkedAt": null,
+        "replyText": "2024년에 KS 인증 받았다고 함",
+        "repliedAt": "2026-11-06",
+        "repliedBy": "park-lee"
+      },
+      {
+        "itemId": "Q:q-fixture-unanswered",
+        "kind": "QUESTION",
+        "source": "CASE_FILE",
+        "text": "당진 공장에서 직접 생산합니까?",
+        "targetLabel": "거산",
+        "checked": false,
+        "checkedBy": null,
+        "checkedAt": null,
+        "replyText": null,
+        "repliedAt": null,
+        "repliedBy": null
+      },
+      {
+        "itemId": "GAP:HOMEPAGE",
+        "kind": "DATA_NOT_FOUND",
+        "source": "RULE",
+        "text": "홈페이지를 찾지 못함",
+        "targetLabel": null,
+        "checked": false,
+        "checkedBy": null,
+        "checkedAt": null
+      }
+    ],
     "recontact": null,
     "evalId": "eval-01HAPJEONG0000000000000001",
     "previousEvalId": null,
