@@ -168,6 +168,16 @@ def verify_case(
     raise typer.Exit(code=run_verify_case(file))
 
 
+@app.command("cost")
+def cost(
+    month: str | None = typer.Option(None, "--month", help="비용을 볼 월 YYYY-MM. 기본 이번 달"),
+) -> None:
+    """이번 달 검색·근거 추출의 호출 수·토큰·확인된 비용과 한도를 보여 줍니다."""
+    from geosan.commands.cost import run_cost
+
+    raise typer.Exit(code=run_cost(month))
+
+
 @app.command("export-contracts")
 def export_contracts(
     check: bool = typer.Option(

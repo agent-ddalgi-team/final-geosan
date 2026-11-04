@@ -4,6 +4,9 @@
 
 ## 1. 역할부터 확인하기
 
+U2 본문 조사 내부 흐름과 `geosan cost [--month YYYY-MM]` 사용법은 [README 2장](../README.md)을 따른다.
+추출 결과·평가는 같은 저장 묶음이고 호출 비용은 별도다. 화면 API 연결과 요구 후보의 정식 등록 기준은 #219에서 담당자·PM에게 요청한다.
+
 U2 홈페이지 검색을 실행할 때는 먼저 `geosan init-db`와 `geosan check-config`로
 DB와 설정을 갱신한다. `OPENAI_API_KEY`는 실행 환경에만 넣고 외부 호출 모드는
 기본 `NONE`에서 `EXTERNAL`로 직접 선택한다. 검색 실행 경로와 한도 계산 방법은

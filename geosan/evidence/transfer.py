@@ -48,15 +48,17 @@ class SearchTicket:
     llm: LlmSettings
 
 
-def record_search_rejection(opp_id: str, reason: str, db_path: Path | str | None) -> None:
+def record_search_rejection(
+    opp_id: str, reason: str, db_path: Path | str | None, *, purpose: str = "EXTERNAL_SEARCH"
+) -> None:
     with session_scope(db_path) as session:
         session.add(
             TransferLog(
                 transfer_log_id=new_id("transfer"),
                 occurred_at=utcnow(),
                 opp_id=opp_id,
-                purpose="EXTERNAL_SEARCH",
-                kind="WEB_SEARCH",
+                purpose=purpose,
+                kind="WEB_SEARCH" if purpose == "EXTERNAL_SEARCH" else "PUBLIC_TEXT",
                 mode="NONE",
                 security_grade="UNKNOWN",
                 decision="REJECTED",
@@ -67,6 +69,18 @@ def record_search_rejection(opp_id: str, reason: str, db_path: Path | str | None
 
 
 def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -> SearchTicket:
+    return _reserve(opp_id, key_present, db_path, "EXTERNAL_SEARCH", "system")
+
+
+def reserve_extraction(
+    opp_id: str, key_present: bool, db_path: Path | str | None, requested_by: str
+) -> SearchTicket:
+    return _reserve(opp_id, key_present, db_path, "EXTERNAL_AI", requested_by)
+
+
+def _reserve(
+    opp_id: str, key_present: bool, db_path: Path | str | None, purpose: str, requested_by: str
+) -> SearchTicket:
     """검사와 호출 수 증가를 같은 쓰기 잠금에서 처리한다. HTTP 중에는 잠금을 잡지 않는다."""
     now = utcnow()
     local = now.astimezone(KST)
@@ -90,8 +104,11 @@ def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -
             if row.kind == "WEB_SEARCH" and row.occurred_at >= day_start
         )
         cost = sum((row.cost_usd or Decimal(0) for row in rows), Decimal(0))
-        minimum_search_cost = Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000
-        if not settings.homepage_discovery.enabled or llm.mode != "EXTERNAL":
+        is_search = purpose == "EXTERNAL_SEARCH"
+        minimum_search_cost = (
+            Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000 if is_search else Decimal(0)
+        )
+        if (is_search and not settings.homepage_discovery.enabled) or llm.mode != "EXTERNAL":
             error = AppError(
                 "홈페이지 외부 검색이 꺼져 있습니다.", "앱 설정을 확인해 주세요.", status=503
             )
@@ -107,7 +124,7 @@ def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -
             or min(
                 llm.input_cost_per_million_tokens,
                 llm.output_cost_per_million_tokens,
-                llm.web_search_cost_per_thousand_calls,
+                llm.web_search_cost_per_thousand_calls if is_search else 1,
             )
             <= 0
         ):
@@ -116,7 +133,7 @@ def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -
                 "앱 설정을 확인해 주세요.",
                 status=503,
             )
-        elif daily_calls >= settings.homepage_discovery.daily_call_limit:
+        elif is_search and daily_calls >= settings.homepage_discovery.daily_call_limit:
             error = AppError(
                 "오늘 검색 한도 초과",
                 "다음 날 다시 조사해 주세요.",
@@ -150,14 +167,15 @@ def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -
                 transfer_log_id=log_id,
                 occurred_at=now,
                 opp_id=opp_id,
-                purpose="EXTERNAL_SEARCH",
-                kind="WEB_SEARCH",
+                purpose=purpose,
+                kind="WEB_SEARCH" if is_search else "PUBLIC_TEXT",
                 mode=llm.mode,
                 model=llm.model,
                 security_grade="PUBLIC",
                 decision="REJECTED" if error else "ALLOWED",
                 reject_reason=error.message if error else None,
                 call_count=0 if error else 1,
+                requested_by=requested_by,
             )
         )
     if error:

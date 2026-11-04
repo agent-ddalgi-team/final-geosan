@@ -32,6 +32,7 @@ cd web && npm ci && cd ..
 | 활성 거산 값 묶음 변경 | `geosan dataset-set COMPANY_CONFIRMED` → `geosan evaluate`. 선택 가능한 묶음은 `VIRTUAL_REVIEWED`, `BROCHURE`, `COMPANY_CONFIRMED`입니다. 인자 없이 `geosan check-config`를 실행하면 현재 묶음을 확인할 수 있습니다. |
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
+| 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·입력/출력 토큰·비용을 합산합니다. 미확정 비용이 있으면 종료 코드 2입니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
@@ -44,7 +45,15 @@ cd web && npm ci && cd ..
 실제 비용은 응답의 사용량과 등록한 단가로 계산하므로 마지막 요청의 비용이 상한을 넘길 수 있습니다.
 사용량을 받지 못한 호출이 있으면 후속 전송을 차단하며 제공사 사용량과 전송 기록을 확인해야 합니다.
 HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
-`research` 일괄 명령과 본문 추출·재평가 연결은 후속 작업입니다.
+본문 조사 내부 경로는 `geosan.workflows.flow_extract.run_extract(opp_id, url=None, pasted_text=None, requested_by="system")`입니다.
+주소를 생략하면 고객의 저장된 홈페이지를 읽습니다. 본문을 붙여넣을 때도 공개 출처 주소가 필요합니다.
+공개 신규 기회만 받고, 대표번호를 `mainPhone.allowedPrefixes`로 먼저 찾은 뒤 모든 연락처 패턴을 제거합니다.
+홈페이지는 공개 IP만 접속하며 robots 제한·자동 수집 금지 표시·읽기 실패가 있으면 붙여넣기를 안내합니다.
+페이지의 제한 표시를 검사하지만 별도 이용약관 문서의 법적 허용 여부를 자동 판정하지는 않습니다. 운영자는 해당 사이트의 이용 조건을 확인해야 합니다.
+근거·질문·회사 요약과 재평가는 한 번에 저장하며, 실패하면 전부 되돌립니다. 실제 호출 비용은 별도로 남습니다.
+재조사 전 근거는 이력으로 남기고, AI의 요구 후보는 ‘미확인 근거’로만 저장합니다(정식 요구사항 등록 기준은 PM 결정 대기).
+`POST /homepage` 화면 연결·자동 검색 뒤 추출 호출·`research` 일괄 명령은 아직 연결하지 않았습니다.
+화면 API 담당자는 이 내부 흐름의 `FlowResult.ok`를 확인한 뒤 재평가 성공을 표시해야 합니다.
 
 뼈대 기본 틀(Part A) 시점에는 명령 이름만 등록되어 있고 본문은 "아직 구현되지 않았습니다(담당, Step)"를 내고 종료 코드 2로 끝납니다.
 서버는 기본 `127.0.0.1:8000`에서 듣습니다. 배포할 때만 `--host 0.0.0.0 --port <포트>`를 지정합니다. 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
