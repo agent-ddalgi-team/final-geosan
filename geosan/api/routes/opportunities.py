@@ -24,6 +24,7 @@ from geosan.api.routes.records import (
 from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
+    CardOutcome,
     CardRecords,
     DetailHeader,
     DetailRecords,
@@ -626,6 +627,7 @@ def list_opportunities(
         customer = session.get(Customer, opportunity.customer_id) if opportunity else None
         if current is None or opportunity is None or customer is None:
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
+        outcome = latest_outcome(session, opportunity.opp_id)
         cards.append(
             OpportunityCard(
                 region=_address_region(customer.address),
@@ -649,7 +651,9 @@ def list_opportunities(
                 blocker=Blocker(text=current.blocker_text, blocks_approval=current.blocks_approval),
                 next_action=current.next_action,
                 records=CardRecords(
-                    opinion=opinion_view(latest_opinion(session, opportunity.opp_id)), bookmark=None
+                    opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),
+                    bookmark=None,
+                    outcome=CardOutcome(status=outcome.status) if outcome is not None else None,
                 ),
                 stage=None,
                 is_virtual=current.is_virtual,

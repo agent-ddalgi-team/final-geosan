@@ -178,7 +178,7 @@ components:
         blocker: { type: object, properties: { text: { type: string }, blocksApproval: { type: boolean } } }
         contactCount: { type: integer, description: '(추가 2026-11-03 밤 PM 반영, 상세 화면 (5)) 전화·메일·방문 접촉 시도 수. 상세 records.contactCount.total과 같음' }
         nextAction: { type: string }
-        records: { type: object, properties: { opinion: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { opinion: { type: string, nullable: true } } } ] }, bookmark: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { active: { type: boolean } } } ] } } }
+        records: { type: object, properties: { opinion: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { opinion: { type: string, nullable: true } } } ] }, bookmark: { allOf: [ { $ref: '#/components/schemas/RecordMeta' }, { type: object, properties: { active: { type: boolean } } } ] }, outcome: { type: object, nullable: true, description: '(추가 2026-11-04 PM 결정 #242) 이 기회의 최신 영업 단계. 상세 records.outcome.status와 같은 값. 기록이 없으면 null. 기존 stage(숫자)는 바꾸지 않음', required: [status], properties: { status: { type: string, enum: [NOT_EXECUTED, INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, ON_HOLD, WON, LOST] } } } } }
         stage: { type: integer, minimum: 1, maximum: 6, nullable: true }
         isVirtual: { type: boolean }
         isRecontact: { type: boolean }

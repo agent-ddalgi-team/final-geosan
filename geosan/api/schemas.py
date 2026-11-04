@@ -36,6 +36,9 @@ from geosan.rules.codes import (
     ReviewStatus,
     SourceGrade,
 )
+from geosan.rules.codes import (
+    OutcomeStatus as SalesOutcomeStatus,
+)
 
 
 class _ApiModel(BaseModel):
@@ -173,9 +176,18 @@ class OpinionRecord(RecordMeta):
     memo: str | None = None
 
 
+class CardOutcome(_ApiModel):
+    """카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242)."""
+
+    status: SalesOutcomeStatus
+
+
 class CardRecords(_ApiModel):
     opinion: OpinionRecord | None = None
     bookmark: dict[str, Any] | None = Field(default=None, description="U5")
+    outcome: CardOutcome | None = Field(
+        default=None, description="최신 영업 단계. 기록 없으면 null"
+    )
 
 
 class OpportunityCard(_ApiModel):

@@ -145,6 +145,19 @@
         "title": "Brand",
         "type": "object"
       },
+      "CardOutcome": {
+        "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/OutcomeStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "CardOutcome",
+        "type": "object"
+      },
       "CardRecords": {
         "properties": {
           "bookmark": {
@@ -169,6 +182,17 @@
                 "type": "null"
               }
             ]
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "최신 영업 단계. 기록 없으면 null"
           }
         },
         "title": "CardRecords",
@@ -1751,6 +1775,19 @@
         ],
         "title": "OutcomeResponse",
         "type": "object"
+      },
+      "OutcomeStatus": {
+        "enum": [
+          "NOT_EXECUTED",
+          "INTERESTED",
+          "IN_PROGRESS",
+          "SAMPLE_OR_REGISTRATION_APPROVED",
+          "ON_HOLD",
+          "WON",
+          "LOST"
+        ],
+        "title": "OutcomeStatus",
+        "type": "string"
       },
       "ProcessCode": {
         "description": "거산 공정 9종 (FR1.1). 영문 코드는 팀 제안이며 이름은 역량 파일의 name에서 온다.",
