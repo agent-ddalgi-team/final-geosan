@@ -65,8 +65,8 @@ def test_upgrade_both_branches_preserves_existing_data(tmp_path: Path, previous:
                 "failure_count, created_at, created_by, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 ("test-failure", "2026-11-04", "2026-11-03", 3, "2026-11-03", "test", 1),
             )
-    assert upgrade_to_head(db) == ["rec_006"]
-    assert upgrade_to_head(db) == ["rec_006"]
+    assert upgrade_to_head(db) == ["opp_006"]
+    assert upgrade_to_head(db) == ["opp_006"]
     with sqlite3.connect(db) as connection:
         assert connection.execute(
             "SELECT name, normalized_address, address FROM opp_customer WHERE customer_id=?",
@@ -128,7 +128,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["rec_006"]
+    assert first == script_heads() == ["opp_006"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -137,6 +137,9 @@ def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
 
 def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path) -> None:
     """병합 단계는 양쪽 표를 보존하고, 명시한 버전까지 되돌린 후 모두 복원한다."""
+    assert downgrade(tmp_db, "rec_006") == ["rec_006"]
+    assert "homepage_status" not in _column_names(tmp_db, "opp_customer")
+    assert "rec_review_check" in _table_names(tmp_db)
     assert downgrade(tmp_db, "opp_005") == ["opp_005"]
     assert "rec_review_check" not in _table_names(tmp_db)
     assert downgrade(tmp_db, "merge_001") == ["merge_001"]
@@ -165,7 +168,8 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["rec_006"]
+    assert upgrade_to_head(tmp_db) == ["opp_006"]
+    assert "homepage_status" in _column_names(tmp_db, "opp_customer")
     assert "rec_review_check" in _table_names(tmp_db)
     assert "address" in _column_names(tmp_db, "opp_customer")
     assert {"rec_note", "rec_outcome"} <= set(_table_names(tmp_db))

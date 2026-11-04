@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from geosan.capability.importer import import_capability
 from geosan.config.errors import AppError, InputError
+from geosan.config.models import AppSetting
 from geosan.evidence.homepage import HomepageSearchResult, find_case_homepage
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import Customer, Opportunity
@@ -94,10 +95,84 @@ def test_result_uses_supplied_threshold():
 
 
 def test_missing_result_fields_do_not_become_not_found(imported):
+    find_case_homepage(imported.opp_id, search=Mock(return_value=REPLY))
     with pytest.raises(AppError) as exc:
         find_case_homepage(imported.opp_id, search=Mock(return_value={"reason": "시험용 원문"}))
     assert exc.value.status == 503
     assert "시험용 원문" not in exc.value.message
+    with session_scope() as session:
+        assert session.get(Customer, imported.customer_id).homepage_url == REPLY["url"]
+
+
+def test_store_uses_registered_threshold_and_preserves_reply(imported):
+    with session_scope() as session:
+        row = session.get(AppSetting, "homepageDiscovery")
+        row.value = {**row.value, "minConfidence": 0.85}
+    for _ in range(2):
+        result = find_case_homepage(imported.opp_id, search=Mock(return_value=REPLY))
+    with session_scope() as session:
+        customer = session.get(Customer, imported.customer_id)
+        assert customer.homepage_status == "NEEDS_CONFIRMATION"
+        assert customer.homepage_source == "AI"
+        assert customer.homepage_url == result.url
+        assert customer.homepage_confidence == result.confidence
+        assert customer.homepage_reason == result.reason
+        assert customer.homepage_fetched_at == result.fetched_at
+
+
+def test_older_search_cannot_replace_newer_result(imported):
+    find_case_homepage(imported.opp_id, search=Mock(return_value=REPLY))
+    older = {**REPLY, "url": None, "fetchedAt": "2026-11-02T09:00:00+09:00"}
+    with pytest.raises(AppError) as exc:
+        find_case_homepage(imported.opp_id, search=Mock(return_value=older))
+    assert exc.value.status == 409
+    with session_scope() as session:
+        assert session.get(Customer, imported.customer_id).homepage_url == REPLY["url"]
+
+
+def test_newer_not_found_clears_previous_ai_url(imported):
+    find_case_homepage(imported.opp_id, search=Mock(return_value=REPLY))
+    missing = {**REPLY, "url": None, "fetchedAt": "2026-11-04T09:00:00+09:00"}
+    find_case_homepage(imported.opp_id, search=Mock(return_value=missing))
+    with session_scope() as session:
+        customer = session.get(Customer, imported.customer_id)
+        assert customer.homepage_status == "NOT_FOUND"
+        assert customer.homepage_url is None
+
+
+def test_reply_not_stored_if_case_is_no_longer_public(imported):
+    def change_grade(name, address):
+        with session_scope() as session:
+            session.get(Customer, imported.customer_id).security_grade = "INTERNAL_ONLY"
+        return REPLY
+
+    with pytest.raises(AppError) as exc:
+        find_case_homepage(imported.opp_id, search=change_grade)
+    assert exc.value.status == 409
+    with session_scope() as session:
+        assert session.get(Customer, imported.customer_id).homepage_status is None
+
+
+def test_staff_confirmation_during_search_is_preserved(imported):
+    def confirm_during_search(name, address):
+        with session_scope() as session:
+            customer = session.get(Customer, imported.customer_id)
+            customer.homepage_status = "CONFIRMED"
+            customer.homepage_source = "STAFF"
+            customer.homepage_url = "https://confirmed.example.org/"
+        return REPLY
+
+    with pytest.raises(AppError) as exc:
+        find_case_homepage(imported.opp_id, search=confirm_during_search)
+    assert exc.value.kind == "STALE_VALUE"
+    search = Mock()
+    with pytest.raises(InputError):
+        find_case_homepage(imported.opp_id, search=search)
+    search.assert_not_called()
+    with session_scope() as session:
+        customer = session.get(Customer, imported.customer_id)
+        assert customer.homepage_source == "STAFF"
+        assert customer.homepage_url == "https://confirmed.example.org/"
 
 
 def test_adapter_failure_does_not_become_not_found(imported):

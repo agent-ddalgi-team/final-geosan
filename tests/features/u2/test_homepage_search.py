@@ -2,8 +2,10 @@
 
 from unittest.mock import Mock
 
+from fastapi.testclient import TestClient
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from geosan.api.app import create_app
 from geosan.capability.importer import import_capability
 from geosan.evidence.homepage import find_case_homepage
 from geosan.opportunity.importer import import_case
@@ -40,3 +42,16 @@ def only_public_identity(lookup):
 def status_matches(lookup, expected):
     _, result = lookup
     assert result.status(0.7) == expected
+
+
+@then(parsers.parse("상세에서 저장한 홈페이지 주소와 {expected} 상태를 다시 읽을 수 있다"))
+def saved_homepage(opp_id, lookup, expected):
+    _, result = lookup
+    with TestClient(create_app()) as client:
+        response = client.get(f"/api/v1/opportunities/{opp_id}")
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["header"]["homepageStatus"] == expected
+    assert data["header"].get("homepageUrl") == result.url
+    gaps = {item["itemId"] for item in data["reviewItems"]}
+    assert ("GAP:HOMEPAGE" in gaps) == (expected == "NOT_FOUND")

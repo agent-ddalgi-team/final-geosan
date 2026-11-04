@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session
 
 from geosan.config.errors import AppError, NotFoundError
@@ -19,6 +20,67 @@ from geosan.opportunity.models import (
     Signal,
 )
 from geosan.storage.base import utcnow
+
+if TYPE_CHECKING:
+    from geosan.evidence.homepage import HomepageSearchResult
+
+
+def store_case_homepage(
+    session: Session,
+    opp_id: str,
+    customer_id: str,
+    name: str,
+    address: str,
+    result: HomepageSearchResult,
+    min_confidence: float,
+) -> None:
+    """검색 중 바뀐 고객·확정 주소·더 최근 결과를 덮어쓰지 않고 한 번에 저장한다."""
+    case_exists = (
+        select(Opportunity.opp_id)
+        .where(
+            Opportunity.opp_id == opp_id,
+            Opportunity.customer_id == customer_id,
+            Opportunity.case_id.is_not(None),
+        )
+        .exists()
+    )
+    same_result = and_(
+        Customer.homepage_fetched_at == result.fetched_at,
+        Customer.homepage_url.is_not_distinct_from(result.url),
+        Customer.homepage_confidence == result.confidence,
+        Customer.homepage_reason == result.reason,
+    )
+    write = (
+        update(Customer)
+        .where(
+            Customer.customer_id == customer_id,
+            case_exists,
+            Customer.security_grade == "PUBLIC",
+            Customer.name == name,
+            Customer.normalized_address == address,
+            Customer.homepage_status.is_distinct_from("CONFIRMED"),
+            or_(
+                Customer.homepage_fetched_at.is_(None),
+                Customer.homepage_fetched_at < result.fetched_at,
+                same_result,
+            ),
+        )
+        .values(
+            homepage_url=result.url,
+            homepage_status=result.status(min_confidence),
+            homepage_source="AI",
+            homepage_confidence=result.confidence,
+            homepage_reason=result.reason,
+            homepage_fetched_at=result.fetched_at,
+        )
+    )
+    if session.execute(write.execution_options(synchronize_session=False)).rowcount != 1:
+        raise AppError(
+            "검색하는 동안 회사 정보나 홈페이지 결과가 바뀌었습니다.",
+            "상세 화면에서 현재 값을 확인해 주세요.",
+            status=409,
+            kind="STALE_VALUE",
+        )
 
 
 def confirm_main_phone(session: Session, opp_id: str, expected_phone: str, staff: str) -> Customer:

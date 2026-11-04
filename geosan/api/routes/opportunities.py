@@ -109,11 +109,9 @@ _URL = re.compile(r"https?://[^\s)\]>\"']+")
 
 
 def _homepage_url(context: DetailContext) -> str | None:
-    """근거 출처 글에 든 주소들의 가장 흔한 뿌리(scheme+host)를 홈페이지로 본다 (#176).
-
-    사례 파일·DB에 홈페이지 칸이 없어 근거 출처에서 뽑는다. 처리 금지 자료는 빼고,
-    주소 있는 근거가 하나도 없으면 None. 주소를 새로 수집하지는 않는다(CON-07).
-    """
+    """조사한 회사는 저장 결과를 쓰고, 조사 전 회사만 근거 출처에서 주소를 찾는다."""
+    if context.customer.homepage_status is not None:
+        return context.customer.homepage_url
     rows = context.session.scalars(
         select(Evidence.source_ref).where(
             Evidence.opp_id == context.opportunity.opp_id,
@@ -168,6 +166,7 @@ def _header(context: DetailContext) -> dict:
             dataset_kind=run.dataset_kind if run else opportunity.dataset_kind,
             is_recontact=False,
             homepage_url=_homepage_url(context),
+            homepage_status=customer.homepage_status,
         )
     }
 
