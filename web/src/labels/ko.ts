@@ -395,6 +395,15 @@ export const outcomeStatusLabels = {
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
+/** 거절 이유 코드(LostReasonCode) 쉬운 말. 영업 단계가 거절일 때 고른다. */
+export const lostReasonLabels = {
+  PRICE: '가격',
+  LEAD_TIME: '납기',
+  INCUMBENT_SUPPLIER: '기존 거래처 유지',
+  NO_DEMAND: '수요 없음',
+  QUALITY_CERT: '품질·인증 요건',
+  OTHER: '기타',
+} as const;
 export const noteKindLabels = { MEMO: '메모', RESEARCH: '자료 조사' } as const;
 export const reviewItemKindLabels = {
   QUESTION: 'AI 확인 질문',
@@ -444,6 +453,13 @@ export const recordsArea = {
   stageNone: '아직 기록 없음',
   stageReasonLabel: '거절 사유',
   stageReasonRequired: '거절 사유를 적어 주세요',
+  /** 거절 이유 선택 상자(2026-11-04). 코드를 고르고, 기타일 때만 자유 글이 필수다. */
+  stageLostCodeLabel: '거절 이유',
+  stageLostCodeRequired: '거절 이유를 고르세요',
+  stageOtherReasonRequired: '기타를 고르면 이유를 적어 주세요',
+  stageReasonOptionalLabel: '거절 사유 (선택)',
+  /** "거절 · 가격" */
+  stageCurrentLost: (label: string) => `거절 · ${label}`,
   stageSave: '단계 저장',
   scheduleTitle: '다음 일정',
   scheduleDate: '날짜',
