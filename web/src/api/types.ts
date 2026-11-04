@@ -91,7 +91,14 @@ export interface Brand {
   demoLabel: string | null;
 }
 
+/** 기록 설정(C7 records, 더하는 변경 #209). 서버가 아직 안 주면 없음. */
+export interface RecordsConfig {
+  approvalEnabled: boolean;
+  noteMaxLength: number;
+}
+
 export interface ConfigUi {
+  records?: RecordsConfig;
   staff: StaffEntry[];
   brand: Brand;
   classificationLabels: Record<string, string>;
@@ -113,9 +120,29 @@ export interface OpinionRecord extends RecordMeta {
   memo?: string | null;
 }
 
+/** 영업 단계 기록(C1 records.outcome). 카드에는 단계 꼬리표용으로 status만 쓴다. */
+export type OutcomeStatus =
+  | 'NOT_EXECUTED'
+  | 'INTERESTED'
+  | 'IN_PROGRESS'
+  | 'SAMPLE_OR_REGISTRATION_APPROVED'
+  | 'ON_HOLD'
+  | 'WON'
+  | 'LOST';
+export type ContactMethod = 'CALL' | 'EMAIL' | 'VISIT';
+export type ContactResult = 'REACHED' | 'ABSENT' | 'DECLINED';
+export type NoteKind = 'MEMO' | 'RESEARCH';
+
+export interface OutcomeRecord extends RecordMeta {
+  status?: OutcomeStatus | null;
+  nextScheduleAt?: string | null;
+  nextScheduleNote?: string | null;
+}
+
 export interface CardRecords {
   opinion?: OpinionRecord | null;
   bookmark?: Record<string, unknown> | null;
+  outcome?: OutcomeRecord | null;
 }
 
 export interface OpportunityCard {
@@ -155,6 +182,8 @@ export interface DetailHeader {
   scoreDisplay: string;
   /** 회사 페이지 뿌리 주소(더하는 변경 #176). 없으면 null/없음. 화면은 http(s)일 때만 링크로 보인다. */
   homepageUrl?: string | null;
+  /** 회사 주소(C1 header.address). 지도 링크를 만드는 데만 쓴다. */
+  address?: string | null;
   isVirtual: boolean;
   datasetKind: DatasetKind;
   isRecontact: boolean;
@@ -252,11 +281,19 @@ export interface Scores {
   evaluatedAt: string;
 }
 
+export interface ContactCount {
+  total: number;
+  call: number;
+  email: number;
+  visit: number;
+}
+
 export interface DetailRecords {
   opinion?: OpinionRecord | null;
   bookmark?: Record<string, unknown> | null;
   approval?: Record<string, unknown> | null;
-  outcome?: Record<string, unknown> | null;
+  outcome?: OutcomeRecord | null;
+  contactCount?: ContactCount | null;
 }
 
 export interface OpportunityDetail {
@@ -287,6 +324,36 @@ export interface OpinionRequest {
 }
 
 export type OpinionResponse = OpinionRecord;
+
+// ---------- POST /notes, POST /outcomes (U5 기록) ----------
+
+export interface NoteRequest {
+  text: string;
+  kind?: NoteKind;
+  evalId?: string | null;
+}
+
+export interface NoteResponse extends RecordMeta {
+  noteId: string;
+}
+
+export interface OutcomeRequest {
+  status: OutcomeStatus;
+  evalId?: string | null;
+  expectedVersion?: number | null;
+  reason?: string;
+  nextScheduleAt?: string;
+  nextScheduleNote?: string;
+  method?: ContactMethod;
+  result?: ContactResult;
+  attemptedAt?: string;
+}
+
+export interface OutcomeResponse extends RecordMeta {
+  status: OutcomeStatus;
+  nextScheduleAt?: string | null;
+  nextScheduleNote?: string | null;
+}
 
 export type ConfigUiEnvelope = Envelope<ConfigUi>;
 export type OpportunityListEnvelope = Envelope<OpportunityCard[]>;

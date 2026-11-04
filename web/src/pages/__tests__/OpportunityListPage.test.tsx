@@ -119,6 +119,33 @@ describe('OpportunityListPage', () => {
     expect(view.getByTestId('opinion-area')).toBeInTheDocument();
   });
 
+  it('카드에 영업 단계 꼬리표가 보이고, 미접촉이거나 기록이 없으면 꼬리표가 없다', async () => {
+    const withStage = (status: string | null): OpportunityCard =>
+      ({
+        ...apjeong,
+        records: {
+          ...apjeong.records,
+          outcome: status
+            ? { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-04T00:00:00Z', status }
+            : null,
+        },
+      }) as unknown as OpportunityCard;
+    mockedGet.mockResolvedValueOnce(
+      reply([
+        { ...withStage('INTERESTED'), oppId: 'a' },
+        { ...withStage('IN_PROGRESS'), oppId: 'b' },
+        { ...withStage('NOT_EXECUTED'), oppId: 'c' },
+        { ...withStage(null), oppId: 'd' },
+      ]),
+    );
+    renderPage();
+    const cards = await screen.findAllByTestId('opportunity-card');
+    expect(within(cards[0]).getByTestId('card-stage-tag')).toHaveTextContent('관심');
+    expect(within(cards[1]).getByTestId('card-stage-tag')).toHaveTextContent('접촉');
+    expect(within(cards[2]).queryByTestId('card-stage-tag')).not.toBeInTheDocument();
+    expect(within(cards[3]).queryByTestId('card-stage-tag')).not.toBeInTheDocument();
+  });
+
   it('목록 맨 위에 전체 곳 수를 보이고, 비어 있으면 보이지 않는다', async () => {
     mockedGet.mockResolvedValueOnce(reply([apjeong], { total: 18 }));
     renderPage();

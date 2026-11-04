@@ -14,6 +14,8 @@ import {
   coreEvidenceRecheckLabel,
   frame,
   labelFor,
+  outcomeStatusLabels,
+  outcomeStatusTone,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 
@@ -48,6 +50,8 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
       : 'neutral';
   // 막는 조건은 서버 문구 그대로 보인다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
   const blocker = card.blocker.text;
+  // 영업 단계 꼬리표(U5): 서버가 카드 records.outcome.status를 주면 보인다. 미접촉은 꼬리표를 달지 않는다.
+  const stageStatus = card.records.outcome?.status ?? null;
 
   return (
     <Card
@@ -92,6 +96,11 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
           {card.datasetKind === 'BROCHURE' ? (
             <StatusTag tone="ask" data-testid="card-brochure-tag">
               {cardRows.brochureTag}
+            </StatusTag>
+          ) : null}
+          {stageStatus && stageStatus !== 'NOT_EXECUTED' ? (
+            <StatusTag tone={outcomeStatusTone[stageStatus] ?? 'neutral'}>
+              <span data-testid="card-stage-tag">{outcomeStatusLabels[stageStatus]}</span>
             </StatusTag>
           ) : null}
           {card.reevaluated ? (

@@ -7,7 +7,7 @@ import OpportunityDetailPage from '../OpportunityDetailPage';
 import { ApiError, getOpportunityDetail } from '../../api/client';
 import type { Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { detailSections, frame, opinionArea, states } from '../../labels/ko';
+import { detailSections, frame, opinionArea, recordsArea, states } from '../../labels/ko';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -70,15 +70,49 @@ describe('OpportunityDetailPage', () => {
       detailSections.evidence,
       expect.stringContaining(detailSections.scores),
       opinionArea.groupLabel,
+      recordsArea.title,
     ]);
-    const last = screen.getByTestId('detail-opinion');
-    expect(within(last).getByTestId('opinion-area')).toBeInTheDocument();
+    const opinion = screen.getByTestId('detail-opinion');
+    expect(within(opinion).getByTestId('opinion-area')).toBeInTheDocument();
+    // 맨 아래 기록 영역에 네 칸이 있다.
+    const records = screen.getByTestId('detail-records');
+    expect(within(records).getByTestId('records-area')).toBeInTheDocument();
     expect(setPageTitle).toHaveBeenCalledWith('A정밀 · 밸브 바디 아노다이징');
     expect(screen.getByTestId('detail-classification')).toHaveTextContent('지금 바로 연락 검토');
     // 서버 문자열 그대로 보이고 앞에 "점수 "를 붙이지 않는다. 낭독은 '조사'로 읽는다(#183).
     const score = screen.getByTestId('detail-score');
     expect(score).toHaveTextContent(/^77점 · 7\/8$/);
     expect(score).toHaveAttribute('aria-label', '점수 77점, 8개 항목 중 7개 조사');
+  });
+
+  it('주소 옆에 네이버 지도·카카오맵 링크 2개가 새 창으로 열리고 카카오는 도 이름을 줄인다', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        header: { ...base.header, address: '충청남도 천안시 서북구 성거읍 봉주로 303-1' },
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const naver = screen.getByTestId('detail-map-naver');
+    const kakao = screen.getByTestId('detail-map-kakao');
+    expect(naver).toHaveAttribute(
+      'href',
+      `https://map.naver.com/p/search/${encodeURIComponent('충청남도 천안시 서북구 성거읍 봉주로 303-1')}`,
+    );
+    expect(kakao).toHaveAttribute(
+      'href',
+      `https://map.kakao.com/link/search/${encodeURIComponent('충남 천안시 서북구 성거읍 봉주로 303-1')}`,
+    );
+    expect(naver).toHaveAttribute('target', '_blank');
+    expect(kakao).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  it('주소가 없으면 지도 링크를 보이지 않는다', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(screen.queryByTestId('detail-map-links')).not.toBeInTheDocument();
   });
 
   it.each([

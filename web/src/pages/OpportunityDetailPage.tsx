@@ -1,5 +1,5 @@
 // 근거 상세(S2, BR10.5·BR10.7): 위에서부터 ① 추천 이유 ② 요구 판정 ③ 공정 연결 ④ 근거 자료 ⑤ 점수(접힘) + 맨 아래 의견.
-// 진행 단계·승인·결과·활동 이력·거산 확인 요청은 뒤 단위(P1)라 만들지 않는다.
+// 맨 아래에 기록 영역(접촉 시도·영업 메모·영업 단계·다음 일정, U5)이 붙는다. 승인·활동 이력·거산 확인 요청은 뒤 단위라 만들지 않는다.
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,7 +16,8 @@ import RequirementsTable from '../components/detail/RequirementsTable';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import { useFrame } from '../components/frame/FrameContext';
 import OpinionArea from '../components/opinion/OpinionArea';
-import { detailSections, frame, opinionArea, states } from '../labels/ko';
+import RecordsArea from '../components/records/RecordsArea';
+import { detailSections, frame, opinionArea, recordsArea, states } from '../labels/ko';
 import { spacing } from '../theme/tokens';
 
 /** "재평가됨" 띠가 보이는 시간(ms, interaction-spec 2.16). */
@@ -139,6 +140,15 @@ export default function OpportunityDetailPage() {
             ) : (
               <p style={{ margin: 0 }}>{states.notEvaluatedYet}</p>
             )}
+          </DetailSection>
+          <DetailSection id="detail-records" title={recordsArea.title}>
+            <RecordsArea
+              key={`${oppId}:records`}
+              oppId={oppId}
+              evalId={data.evalId}
+              outcome={data.records.outcome ?? null}
+              contactCount={data.records.contactCount ?? null}
+            />
           </DetailSection>
         </div>
       ) : null}
