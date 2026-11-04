@@ -6,10 +6,14 @@ import type {
   ConfigUi,
   Envelope,
   ErrorBody,
+  NoteRequest,
+  NoteResponse,
   OpinionRequest,
   OpinionResponse,
   OpportunityCard,
   OpportunityDetail,
+  OutcomeRequest,
+  OutcomeResponse,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -139,6 +143,24 @@ export function postOpinion(oppId: string, body: OpinionRequest, staffKey: strin
   });
 }
 
+/** 영업 메모 저장(U5). 덧붙이기만 한다. */
+export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
+  return request<NoteResponse>(`/opportunities/${encodeURIComponent(oppId)}/notes`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+/** 영업 단계·접촉 시도·다음 일정 저장(U5). 저장할 때마다 새 행이 쌓인다. */
+export function postOutcome(oppId: string, body: OutcomeRequest, staffKey: string) {
+  return request<OutcomeResponse>(`/opportunities/${encodeURIComponent(oppId)}/outcomes`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
 // ---------- 가짜 응답 전환 지점 (Step 3 fixtures) ----------
 
 async function fixtureResponse<T>(path: string, options: RequestOptions): Promise<Envelope<T>> {
@@ -168,6 +190,19 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         updatedBy: options.staffKey,
       },
     } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/(notes|outcomes)$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const base = { version: 1, updatedBy: options.staffKey, updatedAt: now };
+    const body = (options.body ?? {}) as Partial<OutcomeRequest>;
+    const data = route.endsWith('/notes')
+      ? { ...base, noteId: `note-fixture-${Date.now()}` }
+      : { ...base, status: body.status, nextScheduleAt: body.nextScheduleAt ?? null };
+    return { data, meta: { updatedAt: now } } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+$/.test(route)) {
     return (await import('../test/fixtures/opportunity-detail-apjeong.json'))

@@ -405,6 +405,55 @@ export const reviewItemSourceLabels = {
   RULE: '평가 규칙',
 } as const;
 
+/** 카드 영업 단계 꼬리표 색. 미접촉은 꼬리표를 보이지 않는다. */
+export const outcomeStatusTone: Record<string, StatusTone> = {
+  INTERESTED: 'ask',
+  IN_PROGRESS: 'wait',
+  SAMPLE_OR_REGISTRATION_APPROVED: 'ok',
+  ON_HOLD: 'neutral',
+  WON: 'ok',
+  LOST: 'no',
+};
+
+/** 상세 하단 "기록" 영역(U5): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정. */
+export const recordsArea = {
+  title: '기록',
+  contactTitle: '접촉 시도',
+  contactMethod: '방법',
+  contactResult: '결과',
+  contactDate: '날짜',
+  contactSave: '접촉 기록 저장',
+  contactCount: (total: number, call: number, email: number, visit: number) =>
+    `접촉 ${total}회 (전화 ${call} · 메일 ${email} · 방문 ${visit})`,
+  noteTitle: '영업 메모',
+  noteKind: '종류',
+  noteLabel: '메모 내용',
+  noteCounter: (used: number, max: number) => `${used} / ${max}자`,
+  noteHint: '메모는 덧붙이기만 되고 고치거나 지울 수 없습니다. 이 메모는 외부로 나가지 않습니다.',
+  noteSave: '메모 남기기',
+  stageTitle: '영업 단계',
+  stageCurrent: '현재 단계',
+  stageNone: '아직 기록 없음',
+  stageReasonLabel: '거절 사유',
+  stageReasonRequired: '거절 사유를 적어 주세요',
+  stageSave: '단계 저장',
+  scheduleTitle: '다음 일정',
+  scheduleDate: '날짜',
+  scheduleNote: '할 일 한 줄',
+  scheduleSave: '일정 저장',
+  savedPrefix: '저장됨',
+  saveFailed: '저장하지 못했습니다. 다시 시도',
+  pickStaffFirst: '먼저 담당자를 고르세요',
+  required: '필수',
+  selectPlaceholder: '고르세요',
+} as const;
+
+/** 상세 머리 지도 링크 글자. */
+export const mapLinkLabels = {
+  naver: '네이버 지도에서 보기',
+  kakao: '카카오맵에서 보기',
+} as const;
+
 /** 상세 "추천 이유"의 요약 줄 앞에 쓰는 짧은 항목 이름(PM 결정 2026-10-27, #145). 표에 없는 코드는 긴 이름을 그대로 쓴다. */
 export const itemShortLabels: Record<string, string> = {
   NEW_PRODUCT: '제품',

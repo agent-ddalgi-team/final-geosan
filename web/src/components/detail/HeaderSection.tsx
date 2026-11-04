@@ -3,6 +3,7 @@ import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { DetailHeader } from '../../api/types';
 import StatusTag from '../common/StatusTag';
+import { buildMapLinks } from '../common/mapLinks';
 import { scoreAriaLabel, scoreText } from '../common/scoreDisplay';
 import {
   cardRows,
@@ -13,6 +14,7 @@ import {
   frame,
   homepageLinkLabel,
   labelFor,
+  mapLinkLabels,
   purposeLabels,
   relationStatusLabels,
 } from '../../labels/ko';
@@ -45,6 +47,7 @@ export default function HeaderSection({
   // http(s) 주소일 때만 링크로 보인다. 그 밖의 값(javascript: 등)은 보이지 않는다.
   const homepage =
     header.homepageUrl && /^https?:\/\/\S+$/.test(header.homepageUrl) ? header.homepageUrl : null;
+  const mapLinks = buildMapLinks(header.address);
 
   return (
     <div data-testid="detail-header" style={{ display: 'grid', gap: 12 }}>
@@ -62,6 +65,32 @@ export default function HeaderSection({
           <span aria-hidden="true">‹</span> {frame.backToList}
         </Button>
       </div>
+      {mapLinks ? (
+        <div
+          data-testid="detail-map-links"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}
+        >
+          <span style={{ color: colors.textSecondary }}>{header.address}</span>
+          <a
+            href={mapLinks.naver}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'underline' }}
+            data-testid="detail-map-naver"
+          >
+            {mapLinkLabels.naver} ↗
+          </a>
+          <a
+            href={mapLinks.kakao}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'underline' }}
+            data-testid="detail-map-kakao"
+          >
+            {mapLinkLabels.kakao} ↗
+          </a>
+        </div>
+      ) : null}
       {homepage ? (
         <div data-testid="detail-homepage">
           <a
