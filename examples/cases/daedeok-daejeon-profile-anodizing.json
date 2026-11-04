@@ -16,12 +16,14 @@
     "#108: 제목에서 뺀 MP 1530·센서 브라켓 등 산업용 범위는 사실표의 회사 요약에도 보이도록 기존 description에 설명했다. 적용 예 출처는 http://www.ds-profile.co.kr/products/detail/D93RP00243 (2026-10-25 재열람)이며 quote에는 설명을 덧붙이지 않았다.",
     "공개 제품 사양을 거산에 대한 구매 요청·필수 요구로 바꾸지 않았다. 요구 조건과 접촉 승인은 비워 두었으며 기업 접촉·거래 확인은 하지 않았다.",
     "#140 출처 설명 보존: 대덕공조플랜트 홈페이지 MP 1530 제품표 — 공식 MP 1530 사양표, 게시일 미표시, 2026-10-22 열람. 출처: http://www.ds-profile.co.kr/products/detail/D93RP00243",
-    "#140 출처 설명 보존: 대덕공조플랜트 홈페이지 회사 소개 — 공식 회사 소개, 게시일 미표시, 2026-10-22 열람. 출처: http://www.ds-profile.co.kr/intro/greeting"
+    "#140 출처 설명 보존: 대덕공조플랜트 홈페이지 회사 소개 — 공식 회사 소개, 게시일 미표시, 2026-10-22 열람. 출처: http://www.ds-profile.co.kr/intro/greeting",
+    "산업군은 '주로 납품하는 산업' 기준으로 PM이 적음(2026-11-04, #230). 초안: 근거 약함 — 공조 설비·프로파일 제품만 확인됨. 납품 산업은 홈페이지에 없음. AI 제안·담당자 확인으로 고칠 것."
   ],
   "customer": {
     "name": "(주)대덕공조플랜트",
     "bizNumber": null,
     "address": "대전광역시 대덕구 대화로139번길 25",
+    "industries": ["기계·설비"],
     "identityBasis": "산단공 CSV 순번 62367의 회사명·생산품 AL프로파일외·대화로139번길 25를 공식 홈페이지 http://www.ds-profile.co.kr/intro/greeting 의 회사명·알루미늄 프로파일 설계 및 제작·주소와 대조했다(2026-10-22 열람). CSV의 외 1필지 범위는 홈페이지에 없어 대표 주소만 적었다.",
     "relationStatus": "UNCONFIRMED",
     "relationConfirmedAt": null,
