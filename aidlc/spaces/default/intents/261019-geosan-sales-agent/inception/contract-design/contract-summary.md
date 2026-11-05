@@ -418,6 +418,7 @@ paths:
       #   카드·상세에 더하는 칸: discoverySource, discoverySourceUrl|null, registryStatus: enum[FOUND, NOT_FOUND]|null, fitLevel|null, pickReason|null(AI가 고른 이유 한 줄). registryStatus NOT_FOUND인 회사는 꼬리표 "등록 자료에서 못 찾음 · 확인 필요"가 붙고 검토사항에 REGISTRY_NOT_FOUND 줄이 생기며, 담당자가 그 줄을 확인(기존 POST /review-items/{itemId}/check)하기 전까지 점수는 흐리게(scoreState PENDING) 보인다
       #   점수 전 목록 순서: 점수 입력 제안(#286)이 아직 없는 찾은 회사는 scoreState NONE("점수 전")으로 보이고, 점수가 있는 회사 뒤에 공정 탭 안에서 fitLevel 높은 순(같으면 들어온 순)으로 선다. 사례 파일 18곳과 점수가 있는 회사의 순서 규칙은 그대로다
       #   meta.latestIngest에 더하는 칸: webSearchUsed: boolean, webCandidateCount, webDroppedCount(채용·유료 사이트 결과, 출처 없음, 홈페이지 미확인으로 버린 수), webFromCache: boolean. 하루 한도에 걸리면 웹 갈래만 건너뛰고 공공자료 갈래 결과는 그대로 더한다
+      #   (추가 2026-11-06 PM 결정, #313) 하루 한도에 걸려 웹 갈래를 건너뛰면 meta.latestIngest.webSkippedReason: enum[DAILY_LIMIT, DISABLED]|null을 돌려주고, 화면은 목록 머리의 수집 요약 줄 옆에 작게 "오늘 웹 검색 한도 도달"을 보인다(DAILY_LIMIT일 때만). 공공자료 갈래 결과는 그대로 보인다
   /dashboard:
     get:
       summary: 대시보드 건수 5개·일정·최근 내 기록 (U7, 기록에만 기대는 최소형). **깨는 변경(2026-11-03, PM 확인): 계약 버전 v2로 올림.** 화면은 이 모양의 가짜 숫자(고정값 파일)로 먼저 만들고 집계 API 완성 뒤 갈아 끼움
