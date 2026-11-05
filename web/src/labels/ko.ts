@@ -455,19 +455,27 @@ export const outcomeStatusTone: Record<string, StatusTone> = {
 /** 상세 하단 "기록" 영역(U5): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정. */
 export const recordsArea = {
   title: '기록',
-  contactTitle: '접촉 시도',
+  /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
+  entryTitle: '기록 남기기',
+  entryKind: '종류',
   contactMethod: '방법',
   contactResult: '결과',
   contactDate: '날짜',
   contactSave: '접촉 기록 저장',
-  contactCount: (total: number, call: number, email: number, visit: number) =>
-    `접촉 ${total}회 (전화 ${call} · 메일 ${email} · 방문 ${visit})`,
-  noteTitle: '영업 메모',
-  noteKind: '종류',
+  /** 상세 머리 "접촉 3회 (전화 2 · 방문 1)". 0회인 방법은 빼고, 접촉이 없으면 "접촉 없음". */
+  contactCount: (total: number, call: number, email: number, visit: number) => {
+    const parts = [
+      call > 0 ? `전화 ${call}` : '',
+      visit > 0 ? `방문 ${visit}` : '',
+      email > 0 ? `메일 ${email}` : '',
+    ].filter(Boolean);
+    return total === 0 ? '접촉 없음' : `접촉 ${total}회 (${parts.join(' · ')})`;
+  },
   noteLabel: '메모 내용',
   noteCounter: (used: number, max: number) => `${used} / ${max}자`,
   noteHint: '메모는 덧붙이기만 되고 고치거나 지울 수 없습니다. 이 메모는 외부로 나가지 않습니다.',
   noteSave: '메모 남기기',
+  researchSave: '자료 조사 남기기',
   stageTitle: '영업 단계',
   stageCurrent: '현재 단계',
   stageNone: '아직 기록 없음',

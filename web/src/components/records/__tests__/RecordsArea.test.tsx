@@ -1,4 +1,4 @@
-﻿// 기록 영역(U5): 네 칸 표시 / 저장 호출 모양 / 거절 사유 필수 / 실패 시 입력 유지 / 담당자 미선택 비활성 /
+﻿// 기록 영역(U5): 종류 한 칸 표시 / 저장 호출 모양 / 거절 사유 필수 / 실패 시 입력 유지 / 담당자 미선택 비활성 /
 // 전화번호가 들어 있는 메모도 막지 않음(PM 결정 2026-11-03). 서버 호출(postNote·postOutcome)은 가짜로 바꾼 확인이다.
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -66,7 +66,7 @@ describe('RecordsArea', () => {
     mockedOutcome.mockReset();
   });
 
-  it('접촉 시도·영업 메모·영업 단계·다음 일정 네 칸이 보인다', () => {
+  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 메모다', () => {
     renderArea(frameValue(), {
       outcome: {
         version: 1,
@@ -74,16 +74,128 @@ describe('RecordsArea', () => {
         updatedAt: '2026-11-03T00:00:00Z',
         status: 'IN_PROGRESS',
       },
-      contactCount: { total: 3, call: 2, email: 1, visit: 0 },
     });
-    expect(screen.getByRole('heading', { name: recordsArea.contactTitle })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: recordsArea.noteTitle })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: recordsArea.entryTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.stageTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
-    expect(screen.getByTestId('records-contact-count')).toHaveTextContent(
-      '접촉 3회 (전화 2 · 메일 1 · 방문 0)',
-    );
+    // 접촉 시도·영업 메모 구역은 따로 없고, 접촉 횟수는 이 영역이 아니라 상세 머리가 보인다.
+    expect(screen.queryByTestId('records-contact-count')).not.toBeInTheDocument();
+    const kind = screen.getByTestId('records-kind') as HTMLSelectElement;
+    expect(kind.value).toBe('MEMO');
+    expect(
+      within(kind)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['메모', '전화', '방문', '메일', '자료 조사']);
+    expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
+  });
+
+  it('종류를 전화·방문·메일로 바꾸면 결과·날짜 입력이 나오고, 메모·자료 조사로 돌아오면 글 입력이 나온다', async () => {
+    const user = userEvent.setup();
+    renderArea();
+    for (const label of ['전화', '방문', '메일']) {
+      await pick(user, 'records-kind', label);
+      expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
+      expect(screen.getByTestId('records-contact-date')).toBeInTheDocument();
+      expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
+    }
+    await pick(user, 'records-kind', '자료 조사');
+    expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
+    expect(screen.getByTestId('records-note-save-button')).toHaveTextContent(
+      recordsArea.researchSave,
+    );
+  });
+
+  it('자료 조사를 고르면 종류 RESEARCH로 메모를 저장하고 영업 결과는 저장하지 않는다', async () => {
+    const user = userEvent.setup();
+    mockedNote.mockResolvedValueOnce({
+      data: { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-04T01:12:00Z', noteId: 'n-2' },
+      meta: {},
+    });
+    renderArea();
+    await pick(user, 'records-kind', '자료 조사');
+    fireEvent.change(screen.getByTestId('records-note-input'), {
+      target: { value: '홈페이지에서 도금 설비 확인' },
+    });
+    await user.click(screen.getByTestId('records-note-save-button'));
+    await waitFor(() =>
+      expect(mockedNote).toHaveBeenCalledWith(
+        OPP,
+        { text: '홈페이지에서 도금 설비 확인', kind: 'RESEARCH', evalId: EVAL },
+        'park-lee',
+      ),
+    );
+    expect(mockedOutcome).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['전화', 'CALL'],
+    ['방문', 'VISIT'],
+    ['메일', 'EMAIL'],
+  ])('%s를 저장하면 방법 %s로 영업 결과가 가고, 접촉 저장을 알린다', async (label, code) => {
+    const user = userEvent.setup();
+    const onContactRecorded = vi.fn();
+    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
+    renderArea(frameValue(), { onContactRecorded });
+    await pick(user, 'records-kind', label);
+    await pick(user, 'records-contact-result', '연결됨');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
+    expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ method: code, result: 'REACHED' });
+    expect(mockedNote).not.toHaveBeenCalled();
+    await waitFor(() => expect(onContactRecorded).toHaveBeenCalledWith(code));
+  });
+
+  it.each([
+    ['IN_PROGRESS', 'IN_PROGRESS'],
+    ['SAMPLE_OR_REGISTRATION_APPROVED', 'SAMPLE_OR_REGISTRATION_APPROVED'],
+    ['ON_HOLD', 'ON_HOLD'],
+  ] as const)(
+    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (접촉 중 자동 전환은 미접촉·관심일 때만)',
+    async (from, expected) => {
+      const user = userEvent.setup();
+      mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: expected }));
+      renderArea(frameValue(), {
+        outcome: {
+          version: 1,
+          updatedBy: 'park-lee',
+          updatedAt: '2026-11-03T00:00:00Z',
+          status: from,
+        },
+      });
+      await pick(user, 'records-kind', '전화');
+      await pick(user, 'records-contact-result', '부재');
+      await user.click(screen.getByTestId('records-contact-save-button'));
+      await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
+      expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ status: expected });
+    },
+  );
+
+  it('메모는 단계를 바꾸지 않는다: 메모 저장은 영업 결과를 부르지 않고 접촉 저장도 알리지 않는다', async () => {
+    const user = userEvent.setup();
+    const onContactRecorded = vi.fn();
+    mockedNote.mockResolvedValueOnce({
+      data: { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-04T01:12:00Z', noteId: 'n-3' },
+      meta: {},
+    });
+    renderArea(frameValue(), {
+      outcome: {
+        version: 1,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-03T00:00:00Z',
+        status: 'INTERESTED',
+      },
+      onContactRecorded,
+    });
+    fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '그냥 메모' } });
+    await user.click(screen.getByTestId('records-note-save-button'));
+    await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));
+    expect(mockedOutcome).not.toHaveBeenCalled();
+    expect(onContactRecorded).not.toHaveBeenCalled();
+    expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 관심');
   });
 
   it('영업 메모를 남기면 글을 서버로 보내고 입력칸이 비워진다 (연락처가 있어도 막지 않음)', async () => {
@@ -319,7 +431,7 @@ describe('RecordsArea', () => {
     );
   });
 
-  it('접촉 시도를 저장하면 방법·결과·날짜가 가고 접촉 횟수가 늘며, 관심 단계는 접촉으로 넘어간다', async () => {
+  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 관심 단계는 접촉으로 넘어간다', async () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
     renderArea(frameValue(), {
@@ -329,10 +441,9 @@ describe('RecordsArea', () => {
         updatedAt: '2026-11-03T00:00:00Z',
         status: 'INTERESTED',
       },
-      contactCount: { total: 0, call: 0, email: 0, visit: 0 },
     });
+    await pick(user, 'records-kind', '전화');
     expect(screen.getByTestId('records-contact-save-button')).toBeDisabled();
-    await pick(user, 'records-contact-method', '전화');
     await pick(user, 'records-contact-result', '부재');
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
@@ -344,9 +455,6 @@ describe('RecordsArea', () => {
       result: 'ABSENT',
     });
     expect(body.attemptedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(await screen.findByTestId('records-contact-count')).toHaveTextContent(
-      '접촉 1회 (전화 1 · 메일 0 · 방문 0)',
-    );
   });
 
   it('다음 일정을 저장하면 날짜·할 일과 현재 단계가 함께 간다', async () => {
