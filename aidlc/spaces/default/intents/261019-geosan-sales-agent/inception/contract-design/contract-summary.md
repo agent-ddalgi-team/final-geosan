@@ -81,6 +81,7 @@ noteKind: [MEMO, RESEARCH, REPLY]                                   # (추가 20
 lostReasonCode: [PRICE, LEAD_TIME, INCUMBENT_SUPPLIER, NO_DEMAND, QUALITY_CERT, OTHER]   # (추가 2026-11-04 PM 결정, 분석용 코드값 칸 1개) 거절 이유: 가격 / 납기 / 기존 거래처 유지 / 수요 없음 / 품질·인증 요건 / 기타. 영업 단계 LOST 저장 때 필수, OTHER면 기존 자유 글 reason 필수. 쉬운 말은 web/src/labels/ko.ts
 reviewItemKind: [QUESTION, DATA_NOT_FOUND, DATA_INSUFFICIENT]       # (추가 2026-11-03 밤, 상세 화면 (3) 검토사항) AI 확인 질문 / 자료 못 찾음 / 자료 부족
 #   (추가 2026-11-05 저녁 PM 반영, AI 점수 제안 1차 최소 범위 #286) reviewItemKind에 ITEM_INPUT_PROPOSAL(AI가 제안한 점수 입력 항목)·PROCESS_LINK_PROPOSAL(AI가 제안한 공정 연결)을 더한다. 출처는 reviewItemSource AI
+#   (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) 코드표에 더하는 것: discoverySource: [CASE_FILE, FACTORY_FILE, WEB_SEARCH](회사가 목록에 들어온 길), fitLevel: [HIGH, MEDIUM, LOW](AI가 본 공정 적합도 — 점수 전 회사를 줄 세우는 데만 쓴다), reviewItemKind에 REGISTRY_NOT_FOUND(웹에서 찾았지만 공공 등록 자료에서 못 찾은 회사, 출처 RULE)
 reviewItemSource: [AI, CASE_FILE, RULE]                             # 검토사항 항목 출처: AI 조사 / 사례 파일 / 평가 규칙에서 파생
 questionStatus: [WAITING, REQUESTED, REPLIED, APPLIED]
 questionTargetKind: [QUALIFICATION, PROCESS, CAPABILITY, FIELD, REQUIREMENT, OPPORTUNITY]
@@ -413,6 +414,10 @@ paths:
       #   조건 찾기는 AI 판단 때문에 시간이 걸리므로 회차를 만든 직후 바로 응답한다(data.batchId, 건수는 그 시점 값). 진행과 결과는 GET /opportunities meta.latestIngest로 본다 — 더하는 칸: criteria, scannedCount(파일에서 지역으로 추린 회사 수), judgedCount(AI가 판단을 끝낸 수), pickedCount(고른 수), judgePendingCount(AI 한도에 걸려 남은 수). 409 INGEST_RUNNING 그대로
       #   흐름: 파일 행에서 주소로 지역 추림 → 저장된 판단이 없거나 낡은 행만 AI 고르기(제조업이 아닌 회사는 뺌) → 고른 회사만 공장등록 조회로 정보 채움 → 병합(같은 회사면 건너뜀) → 새 회사 삽입 → 규칙 평가 → 새 회사만 자동 조사(기존). AI 한도에 걸리면 그때까지 고른 회사만 더하고 judgePendingCount를 남긴다(부분 결과를 완전한 것처럼 보이지 않음, NFR10)
       #   (추가 2026-11-05 저녁 PM 반영, AI 점수 제안 1차 최소 범위 #286) 카드·상세 점수는 AI 제안으로 계산됐으면 scoreState PENDING(흐리게 + 꼬리표 "AI 제안 · 확인 전", 2026-11-04 #212 ① 표시 재사용). 상세 검토사항에 제안 줄을 보인다 — 코드표 reviewItemKind에 ITEM_INPUT_PROPOSAL·PROCESS_LINK_PROPOSAL을 더하고, 기존 POST /review-items/{itemId}/check로 [확정]·[고치기]하면 출처 STAFF·상태 CONFIRMED로 바뀌고 재평가
+      #   (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) 웹 검색 갈래: 설정 candidateWebSearch.enabled가 true면 같은 조건으로 AI 웹 검색도 돌려 같은 회차에 합친다. 웹에서 나온 회사는 공장등록 조회로 등록 여부를 확인한다. 확인되면 공공자료 갈래와 똑같이 넣는다. 확인이 안 되면 ① 공식 홈페이지가 확인되고 ② 실제 검색 결과나 페이지에 적힌 회사이며(출처 주소 없는 이름은 버림) ③ 출처 주소를 저장한 경우에만 넣는다
+      #   카드·상세에 더하는 칸: discoverySource, discoverySourceUrl|null, registryStatus: enum[FOUND, NOT_FOUND]|null, fitLevel|null, pickReason|null(AI가 고른 이유 한 줄). registryStatus NOT_FOUND인 회사는 꼬리표 "등록 자료에서 못 찾음 · 확인 필요"가 붙고 검토사항에 REGISTRY_NOT_FOUND 줄이 생기며, 담당자가 그 줄을 확인(기존 POST /review-items/{itemId}/check)하기 전까지 점수는 흐리게(scoreState PENDING) 보인다
+      #   점수 전 목록 순서: 점수 입력 제안(#286)이 아직 없는 찾은 회사는 scoreState NONE("점수 전")으로 보이고, 점수가 있는 회사 뒤에 공정 탭 안에서 fitLevel 높은 순(같으면 들어온 순)으로 선다. 사례 파일 18곳과 점수가 있는 회사의 순서 규칙은 그대로다
+      #   meta.latestIngest에 더하는 칸: webSearchUsed: boolean, webCandidateCount, webDroppedCount(채용·유료 사이트 결과, 출처 없음, 홈페이지 미확인으로 버린 수), webFromCache: boolean. 하루 한도에 걸리면 웹 갈래만 건너뛰고 공공자료 갈래 결과는 그대로 더한다
   /dashboard:
     get:
       summary: 대시보드 건수 5개·일정·최근 내 기록 (U7, 기록에만 기대는 최소형). **깨는 변경(2026-11-03, PM 확인): 계약 버전 v2로 올림.** 화면은 이 모양의 가짜 숫자(고정값 파일)로 먼저 만들고 집계 API 완성 뒤 갈아 끼움
@@ -583,6 +588,8 @@ check_transfer:
       - 하루 호출 상한(`homepageDiscovery.dailyCallLimit`) 초과 → 거부 (kind SEARCH_LIMIT, 쉬운 말 "오늘 검색 한도 초과")
       - 월 비용 상한(`llm.monthlyCostLimitUsd`)·월 호출 상한 초과 → 거부 (kind LLM_LIMIT). 웹 검색 비용(1,000회당 $10 + 토큰)도 OpenAI 비용이므로 같은 $20 안에서 센다
       - sideEffect: TransferLog 1행(kind WEB_SEARCH, 시각·기회 ID·호출 수·토큰만, 검색어 본문 없음). AI가 고른 주소 하나와 확신도·이유는 opp_customer/기회에 저장한다(OpenAI 약관상 결과 저장 가능)
+      - (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) 후보 찾기 웹 검색의 검색어에는 담당자가 고른 조건의 이름(코드표의 공정 이름·지역 이름·산업 이름)만 넣는다. 거산 역량 값(CAPABILITY_VALUE)·내부 이력·거래 관계·메모·이미 목록에 있는 회사의 기록이 하나라도 있으면 전체 거부. 결과 가운데 채용 사이트·유료 기업 정보 사이트(candidateWebSearch.blockedDomains)에서 나온 것은 버리고, 사람 이름·전화·이메일은 저장하지 않는다. 하루 검색 횟수 한도와 월 호출·비용 상한, USAGE_UNCONFIRMED 규칙을 모두 적용
+      - (추가 2026-11-05 밤 PM 결정, 채용 공고 근거 #313·#315 — 만들기는 후보 찾기 다음) 찾은 회사의 채용 공고를 찾는 검색어는 기존 허용 kind(CUSTOMER_NAME, CUSTOMER_ADDRESS)만 쓴다. 채용 사이트 페이지를 우리가 직접 읽어 오지 않고 AI 웹 검색이 돌려준 요지와 출처 주소만 받는다. 인사 담당자 이름·연락처는 저장하지 않는다
     EXTERNAL_GEOCODE:   # (추가 2026-11-03 PM 결정, 거리 #222) 회사 주소 → 좌표 변환. 행정안전부 도로명주소 API(검색 → 좌표제공, 승인키 2개)
       - 허용 kind: CUSTOMER_ADDRESS(산단공 공개 CSV 출처, securityGrade PUBLIC)만. 회사명·메모·내부 값·연락처가 섞이면 전체 거부
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
@@ -652,6 +659,7 @@ ownership:
   src_*:   SourceIngestion       # src_ingestion_run, src_source_contract
   #   (추가 2026-11-05 저녁 PM 반영, 후보 찾기 1차 #221) src_factory_row(rowId, sourceId, fileDate, companyName, complexName|null, product, address, region, productHash, loadedAt, missingSince|null — 공장현황 파일을 읽어 둔 행. 새 파일에서 사라진 행은 지우지 않고 missingSince만 채운다. 대표자·전화 열 없음), src_candidate_judgment(rowId, criteriaVersion, productHash, isManufacturer, processCodes: json, industries: json, reason, judgedAt, model — "언제, 어떤 생산품 글과 기준을 보고 내린 판단" 메모. productHash(생산품 글)나 criteriaVersion(거산 공정·산업 목록·지시문)이 달라지면 낡은 판단으로 보고 다시 판단한다. 영구 정답 아님). opp_ingest_batch에 더하는 열: criteria: json(processCodes·regions·industries), scannedCount, judgedCount, pickedCount, judgePendingCount
   #   (추가 2026-11-05 저녁 PM 반영, AI 점수 제안 1차 최소 범위 #286) eval_item_input·opp_process_link에 더하는 열: source: enum[CASE_FILE, AI, STAFF], state: enum[PENDING, CONFIRMED], confirmedAt|null, confirmedBy|null, evidenceRef|null (더하는 마이그레이션, 기존 행은 CASE_FILE·CONFIRMED). 평가는 AI 제안(PENDING)을 입력으로 쓰되 사례 파일·담당자 값이 있으면 그 값을 쓴다
+  #   (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) src_web_search_run(runId, criteria: json, criteriaHash, searchedAt, expiresAt, resultCount, droppedCount, requestedBy — 같은 조건의 검색 결과를 expiresAt까지 다시 씀), src_web_candidate(candidateId, runId, companyName, address|null, sourceUrl, sourceDomain, registryStatus, homepageUrl|null, droppedReason|null — 사람 이름·연락처 열 없음). opp_customer에 더하는 열: discoverySource, discoverySourceUrl|null, registryStatus|null. src_candidate_judgment에 더하는 열: fitLevel
   tg_*:    TransferGuard         # tg_transfer_log. (추가 2026-11-04 PM 승인, #218) nullable reconciled_at(UTC 시각)·reconciled_by(설정 staffKey, viewer 제외): 수동 사용량 정산 시각·처리자. 기존 요청자·허용/거부 이력 보존
   ev_*:    EvidenceExtraction    # ev_evidence, ev_homepage_candidate
   eval_*:  EvaluationLedger      # eval_batch, eval_run, eval_item_judgment, eval_requirement_check, eval_judgment_evidence, eval_readiness_check, eval_rank_adjustment
@@ -725,6 +733,8 @@ AppSettings:
   activeDatasetKind: datasetKind
   ingestion: { regions: [...], productKeywords: [...], maxCandidates: 50 }
   #   (추가 2026-11-05 저녁 PM 반영, 후보 찾기 1차 #221) ingestion에 더하는 키: factoryCsvPath: string(공장현황 파일 자리. 예: ./data/sources/kicox-factory-csv/20251231/ 아래 파일. 전국분을 통째로 두고 Git에는 올리지 않음), aiPick: { enabled: boolean(기본 false), rowsPerCall: int }. 여는 지역은 regions 그대로(지역을 늘리려면 운영자가 regions에 한 줄 더함). productKeywords는 조건 있는 찾기에서는 쓰지 않는다(AI 고르기가 대신함). 공장등록 조회 인증키는 환경 변수 DATA_GO_KR_SERVICE_KEY. 예시 설정·.env.example의 새 키는 모르는 키 거부 규칙 때문에 코드 PR과 같이 넣는다
+  #   (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) candidateWebSearch: { enabled: boolean(기본 false — 설정으로 켜고 끔), dailySearchLimit: int(하루 검색 횟수 한도), cacheDays: int(같은 조건 결과를 다시 쓰는 날 수), blockedDomains: [string](채용 사이트·유료 기업 정보 사이트) }. 숫자는 설정값이며 첫 실행 비용을 보고 PM이 정한다. 예시 설정의 새 키는 코드 PR과 같이 넣는다
+  #   (추가 2026-11-05 밤 PM 결정, 채용 공고 근거 #313·#315 — 만들기는 후보 찾기 다음) research.hiringSignal: { enabled: boolean(기본 false) } — 찾은 회사를 조사할 때 최근 채용 공고를 찾아 시점 신호로 붙일지
   llm: { mode: enum[EXTERNAL, NONE], model: string, monthlyCallLimit: int, costPerThousandTokens: number }
   # (추가 2026-11-03, PM 결정 3 — 결정값: provider OPENAI, model gpt-6.1-sol, allowedModels [gpt-6.1-sol, gpt-6-luna], monthlyCallLimit 1000, 입력 $2 / 출력 $10 per 1M, monthlyCostLimitUsd 20, costAlertRatio 0.5. OpenAI는 근거 추출(③④)에만)
   #   llm에 더하는 키: provider: enum[OPENAI], allowedModels: [string] (model은 이 안이어야 check-config 통과), inputCostPerMillionTokens: number, outputCostPerMillionTokens: number,
@@ -806,6 +816,7 @@ LlmAdapter:
   bodyBinding: 어댑터는 TransferGuard가 허용한 항목 ID(approvedItemIds)만 받아 본문을 직접 조회해 보낸다. 호출자가 본문 문자열을 넘기는 경로는 없다(CON-09 구조적 보장)
   timeout: 60s 전체(run_extract 한도 안), retry: 1 (남은 시간이 있을 때만, 집계·TransferLog는 호출마다 1행)
   pick_candidates(approvedRowIds, criteria: { processCodes, industries }) -> [{ rowId, isManufacturer: boolean, processCodes: [processCode], industries: [string], reason: string }]   # (추가 2026-11-05 저녁 PM 반영, 후보 찾기 1차 #221) 공개 소스 행의 회사명·단지명·생산품·공장주소를 읽고 "제조업인지, 거산의 어느 공정이 필요할 만한지"를 판단. processCodes는 역량 파일 공정 안, industries는 설정 industries 안 값만. bodyBinding 그대로(허용된 행 ID만 받고 본문은 어댑터가 조회). 결과는 src_candidate_judgment에 저장하고, 같은 행·같은 생산품 글·같은 기준이면 다시 부르지 않는다. 판단한 공정은 새 회사의 공정 연결(출처 AI·확인 전)로 그대로 저장한다
+  #   (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) pick_candidates 결과에 fitLevel: enum[HIGH, MEDIUM, LOW]을 더한다(AI가 본 공정 적합도). reason과 함께 저장해 카드의 "고른 이유"와 점수 전 목록 순서에 쓴다. 점수 계산에는 넣지 않는다
   #   (추가 2026-11-05 저녁 PM 반영, AI 점수 제안 1차 최소 범위 #286) extract_evidence 출력에 더하는 칸: itemInputProposals: [{ itemCode, matchRateProposed, certaintyProposed, factJudged, quote, evidenceRef }](점수 8항목 중 근거가 있는 항목만), processLinkProposals: [{ processCode, basis, quote, evidenceRef }](≤3, 역량 파일 공정 안). 저장은 출처 AI·상태 PENDING. 사례 파일·담당자 값이 있는 항목에는 제안을 저장하지 않는다(사람 값 우선). 거래 관계·내부 이력은 제안 대상이 아니다
   log: TransferLog (시각·모드·모델·등급·토큰 수, 본문 없음)
   provider: enum[OPENAI]                  # (추가 2026-11-03, PM 결정 3) 설정 llm.provider. 모델은 llm.model(gpt-6.1-sol, 비교용 gpt-6-luna)
@@ -836,6 +847,11 @@ ExternalSourceApi (공장등록·나라장터):
   timeout: 30s, retry: 1, dailyLimitGuard: 1000 (공장등록)
   contractRow: SourceContract 필수
   # (추가 2026-11-05 저녁 PM 반영, 후보 찾기 1차 #221) 공장등록 조회 3종 중 **회사명 조회만** 쓴다(AI가 고른 회사의 업종명·주생산품·홈페이지·회사 전화번호 채우기). 산업단지명 조회는 목록에 쓰지 않는다 — 산업단지 밖 공장을 못 잡음(2026-11-05 확인: 사례 파일 18곳 중 5곳만 나옴). 응답은 항상 XML, 한 번에 1000건까지 읽힘. 인증키는 환경 변수 DATA_GO_KR_SERVICE_KEY로만. 대표자 이름·팩스번호 열은 읽는 단계에서 버린다(저장·로그·전송 없음, CON-11). 조회에 안 나오는 회사는 지우지 않고 "등록 자료에서 안 보임"으로만 표시
+CandidateSearcher:                        # (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) 후보 찾기 웹 검색 = OpenAI 웹 검색 도구(홈페이지 찾기와 같은 제공사·키)
+  search(criteria: { processCodes, regions, industries }) -> [{ companyName, address|null, sourceUrl, snippet }]   # 검색어는 조건의 이름만(C4). 실제 검색 결과나 페이지에 적힌 회사만 돌려준다 — sourceUrl이 없는 항목은 어댑터가 버린다(AI가 만든 이름만으로는 넣지 않음). candidateWebSearch.blockedDomains(채용 사이트·유료 기업 정보)에서 나온 결과는 버린다. 사람 이름·전화·이메일은 출력하지 않게 지시하고, 와도 저장 전에 지운다
+  cache: 같은 criteria는 candidateWebSearch.cacheDays 동안 저장된 결과(src_web_search_run)를 다시 쓴다. timeout·retry·사용량 기록은 HomepageFinder와 같음. 하루 검색 횟수는 candidateWebSearch.dailySearchLimit까지
+HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, 채용 공고 근거 #313·#315 — 만들기는 후보 찾기 다음)
+  find(companyName, address) -> [{ postedAt: date|null, roleSummary: string, sourceUrl }]   # 찾은 회사를 조사할 때(② 홈페이지 찾기 옆) 최근 채용 공고를 찾는다. 결과는 시점 신호 HIRING 제안(출처 AI·상태 PENDING, 출처 등급 B)으로 저장. postedAt이 없으면 미확보로 두어 점수에 넣지 않는다(FR4.3 감쇠 그대로). 채용 사이트 페이지를 우리가 직접 읽어 오지 않고, 인사 담당자 이름·연락처는 출력·저장하지 않는다. 사례 파일·담당자가 적은 채용 신호는 덮지 않는다
 ```
 
 ## 5. 열린 질문
@@ -871,6 +887,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C1 | (2026-11-05, PM 결정 #279 — 대시보드 일정) `/dashboard` schedule·counts.SCHEDULE_DUE에서 최신 단계가 성사·거절로 끝난 영업의 남은 다음 일정 제외. 더하는 변경(규칙 명시) | #216·PR #279(고선주) |
 | C1·C2·C5·C6·C7·C8·C9 | (2026-11-05, PM 결정 — 자동 갱신 2차 첫 묶음) 후보 수집을 CSV 수동에서 **산단공 공장등록 API 산업단지명 조회를 매달 서버가 자동으로 부르는 것**으로 바꿈(CSV는 예비; 시도·시군구 조회 API는 없음, 회사명 조회는 회사명 필수라 목록에 못 씀 — 2026-11-05 확인). 근거 추출 출력에 `itemInputProposals`·`processLinkProposals`(출처 AI·PENDING, 점수에 바로 쓰되 흐리게), `eval_item_input`·`opp_process_link` 출처·상태 열, 근거 갱신 규칙 ① 상세 열 때 N일 넘으면 자동 재조사(`research.refreshOnOpen`, 상세 `research` 객체, `POST /homepage` `trigger`) ② [다시 조사](있음) ③ 정기는 상위 `topN`+새 후보만(`research.periodic`), `opp_ingest_batch.requestedBy SCHEDULER`, 설정 `ingestion.schedule`·`ingestion.complexes`, 명령 `ingest kicox-production-api`·`research --periodic`. N일·주기는 5곳 시험(#219) 비용으로 PM이 정함. #224는 MCP 연결 비교표를 2차 설계 때. 모두 더하는 변경. 제안서 `../delivery-planning/auto-refresh-candidates-proposal-20261105.md` | #221(유동렬, 11/17 주)·#286(AI 점수 입력)·#224 |
 | C0·C1·C4·C5·C6·C7·C8·C9 | (2026-11-05 저녁, PM "반영" — 후보 찾기 1차 편입) 바로 위 줄의 2차 묶음 가운데 **후보 찾기(#221)와 AI 점수 입력·공정 연결 제안의 최소 범위(#286)를 1차로 당김**. 담당자가 공정·지역·산업을 고르면 AI가 공공자료에서 맞는 회사를 골라 목록에 더한다. 목록은 산단공 공장현황 **파일**에서 얻고(산업단지 밖 공장 포함 — 사례 파일 18곳 중 파일 17곳, 산업단지 이름 조회 5곳), 공장등록 조회는 고른 회사의 정보 채우기에만 쓴다. `POST /ingest` 조건 칸·진행 칸, C4 공개 소스 행 전송 규칙, `src_factory_row`·`src_candidate_judgment`, `opp_ingest_batch` 조건·건수 열, 설정 `ingestion.factoryCsvPath`·`aiPick`, 환경 변수 `DATA_GO_KR_SERVICE_KEY`, `geosan ingest` 조건 인자·`--rejudge`, `pick_candidates`, `reviewItemKind` 2종. 대표자 이름·팩스번호는 저장하지 않는다(거산 확인 #275). 위 줄의 매달 자동 수집(`ingestion.schedule`·`complexes`)·정기 재조사·상세 열 때 자동 재조사는 2차 그대로이고, 산업단지명 조회를 목록에 쓰는 설계는 2차 때 다시 정한다. 모두 더하는 변경 | #221·#286 (1차, 유동렬·이강욱·고선주) |
+| C0·C1·C4·C6·C7·C9 | (2026-11-05 밤, PM 결정 — 후보 찾기 웹 검색·채용 공고 근거) **소스 제한을 넓혀 후보 찾기에 웹 검색 허용(PM 결정 2026-11-05)**: 처음의 "자동 수집 소스는 3개 안에서만"(CON-04)을 넓힌다. 채용 사이트·유료 기업 정보 결과 버리기, 사람 이름·연락처 미수집, 검색어에 거산 내부 정보 미포함은 그대로. 등록 자료에서 못 찾은 회사는 ① 공식 홈페이지 확인 ② 실제 검색 결과·페이지에 적힌 회사 ③ 출처 주소 저장일 때만 넣고 꼬리표 "등록 자료에서 못 찾음 · 확인 필요", 담당자 확인 전까지 점수 흐리게. 설정 `candidateWebSearch`(켜고 끄기·하루 한도·결과 저장 일수·막는 사이트), `CandidateSearcher`, `src_web_search_run`·`src_web_candidate`, 카드 `discoverySource`·`registryStatus`·`fitLevel`·`pickReason`, 점수 전 목록은 공정 적합도 순. **채용 공고는 근거로 쓴다**(CON-08 풀이: 채용 사이트를 직접 긁지 않고, AI 웹 검색이 찾은 공고의 날짜·직무 요지·출처 주소만 시점 신호로. 유료 기업 정보는 계속 금지) — `HiringSignalFinder`·`research.hiringSignal`. 만드는 순서: ① 공공자료 찾기+고른 이유+공정 연결(11/15 필수) → ② 웹 검색 갈래(11/15 목표) → ③ 점수 8항목 제안(넘치면 11/17 주). 사례 파일 18곳은 그대로 두고 견주는 기준으로 쓴다. 모두 더하는 변경. 규칙 문서 `AGENTS.md` "바깥 자료 규칙" | #313 · #314(웹 갈래)·#315(채용 공고, 2차)·#221·#286 |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
