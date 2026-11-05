@@ -82,12 +82,12 @@ flowchart TB
 | 묶음 | 쉬운 말 | 지금 위치 | 볼 이슈 |
 |---|---|---|---|
 | U1 뼈대 | 가상 사례 1건이 넣기 → 평가 → 화면 → 의견 저장까지 이어진다 | ✅ 끝남 | — |
-| U2 AI 조사 | 홈페이지를 찾아 읽고 근거와 질문을 뽑는다. 밖으로 나가는 것을 검사한다 | ⏳ 1차 진행 중 | [#218] [#292] |
+| U2 AI 조사 | 홈페이지를 찾아 읽고 근거와 질문을 뽑는다. 밖으로 나가는 것을 검사한다 | ⏳ 1차 진행 중 | [#218] [#297] |
 | U3 후보 수집 | 공공 자료에서 새 후보 회사를 모은다 | 📅 2차 | [#221] |
 | U4 거산 확인 창구 | 거산 값을 "확인 완료"로 바꾸는 것만 1차, 질문 목록 화면은 2차 | ⏳ 일부 1차 | [#212] [#223] |
-| U5 담당자 기록 | 접촉·메모·영업 단계·일정을 남긴다. 서버는 끝났고 화면을 마무리하는 중 | ⏳ 1차 진행 중 | [#210] [#266] |
+| U5 담당자 기록 | 접촉·메모·영업 단계·일정을 남긴다. 서버는 끝났고 화면을 마무리하는 중 | ⏳ 1차 진행 중 | [#210] [#296] |
 | U6 재접촉 | 예전 거래처를 다시 영업한다 | ⏸ 보류 | 11/3 PM 결정 |
-| U7 대시보드 | 첫 화면의 건수·일정·최근 기록. 엑셀·지도·막대는 2차 | ⏳ 1차 진행 중 | [#216] |
+| U7 대시보드 | 첫 화면의 건수·일정·최근 기록은 됐고, 눌러서 목록을 걸러 보는 것이 남음. 엑셀·지도·막대는 2차 | ⏳ 1차 진행 중 | [#210] |
 | U8 접속·배포 | 비밀번호 화면, 거산이 접속할 곳에 올리기, 백업 | ⏳ 1차 진행 중 | [#213] [#214] |
 | U9 자료 출처 늘리기 | 일부는 U2·U3으로 옮겨 감. 나머지는 이슈가 없음 | ❓ 확인 필요 | — |
 | U10 운영 인계 | 안내서·접속 안내·전달 메일 | ⏳ 일부 1차 | [#220] |
@@ -99,7 +99,7 @@ flowchart TB
 |---|---|---|
 | 뼈대 (10/28) | 24 | 0 |
 | 10월 말 부분 시연 | 63 | 0 |
-| 1차 — 11/15 거산 전달 | 28 | 17 |
+| 1차 — 11/15 거산 전달 | 31 | 16 |
 | 2차 보강 — 11/17 이후 | 0 | 22 |
 
 기능별 상태는 [기능 지도](feature-map.md)에 있습니다. 기능 64줄 가운데 됨 35, 진행 중 13, 2차 예정 15, 보류 1입니다.
@@ -189,10 +189,9 @@ flowchart TB
 [#212]: https://github.com/agent-ddalgi-team/final-geosan/issues/212
 [#213]: https://github.com/agent-ddalgi-team/final-geosan/issues/213
 [#214]: https://github.com/agent-ddalgi-team/final-geosan/issues/214
-[#216]: https://github.com/agent-ddalgi-team/final-geosan/issues/216
 [#218]: https://github.com/agent-ddalgi-team/final-geosan/issues/218
 [#220]: https://github.com/agent-ddalgi-team/final-geosan/issues/220
 [#221]: https://github.com/agent-ddalgi-team/final-geosan/issues/221
 [#223]: https://github.com/agent-ddalgi-team/final-geosan/issues/223
-[#266]: https://github.com/agent-ddalgi-team/final-geosan/issues/266
-[#292]: https://github.com/agent-ddalgi-team/final-geosan/issues/292
+[#296]: https://github.com/agent-ddalgi-team/final-geosan/issues/296
+[#297]: https://github.com/agent-ddalgi-team/final-geosan/issues/297

@@ -84,7 +84,7 @@ flowchart TB
 
 **꼭 알아 둘 두 가지**
 
-- **담당자 기록 가운데 순위를 바꾸는 것은 거래 관계 하나뿐입니다.** 의견·메모·단계·일정·체크·답은 저장만 되고 순위는 그대로입니다.
+- **담당자 기록 가운데 순위를 바꾸는 것은 거래 관계 하나뿐입니다.** 의견·메모·단계·일정·체크·답은 저장만 되고 순위는 그대로입니다. 지금은 거래 관계를 바꾼 그 한 곳만 다시 평가해서 순서가 어긋나는 오류가 있고, 고치는 중입니다 ([#296]).
 - **한 번의 일은 통째로 저장되거나 통째로 취소됩니다.** 중간에 실패하면 반만 저장되지 않습니다.
 
 ---
@@ -246,7 +246,6 @@ flowchart LR
 | 어디 | 무엇이 다른가 |
 |---|---|
 | [#249] 답 적기 화면, [#251] 거절 이유 화면 | 화면은 이미 합쳐졌는데 이슈가 열려 있다. 합친 PR 본문에 이슈를 닫는 문구가 없었다 |
-| [#216] 대시보드 집계 | 서버는 합쳐졌는데 이슈가 열려 있다. 남은 일이 있는지 확인 필요 |
 | [#228] 검토사항·활동 이력 화면 | 합쳐진 뒤 다시 열려 있다. 다시 연 이유를 찾지 못했다 |
 | 대시보드 → 영업 후보 목록 | 대시보드에서 검색하거나 건수 카드를 눌러도 목록이 걸러지지 않는다. 이 일만 다루는 이슈를 찾지 못했다 |
 
@@ -266,7 +265,6 @@ flowchart LR
 | `AGENTS.md` 담당 폴더 목록 | `records/`, `dashboard/`, `storage/`, `config/`가 없음. 11/3에 다시 나눈 담당은 역할표에만 있음 |
 | 약속 요약: 시연용 저장소로는 올려 둔 곳에서 서버가 시작되지 않게 한다 | 코드에서 찾지 못함. 아직 안 만든 것으로 보임 |
 | 약속 파일의 목록 조건 | 서버는 "이번 주 일정" 조건을 받는데 약속 파일의 조건 목록에는 없음 |
-| 화면 코드 안의 설명 글 | 대시보드 설명이 "지금은 가짜 숫자"로 남아 있음. 실제로는 서버를 부름 |
 | 화면 안내문: "답 기록 기능은 11월에 들어갑니다" | 답 적기가 이미 들어감 |
 
 ### 다. 문서끼리 다른 곳
@@ -288,7 +286,7 @@ flowchart LR
 
 <details><summary>기술 메모 (확인한 방법과 근거 파일)</summary>
 
-- 기준: `develop` 줄기의 2026-11-05 상태(커밋 `300c45f`).
+- 기준: `develop` 줄기의 2026-11-05 상태(커밋 `74e6e7c`).
 - 명령 16개: `geosan/commands/app.py`에 등록된 명령 15개와 `db merge-heads`.
 - 표 34개: `migrations/versions/`의 표 만들기 34건.
 - 창구 13개: `contracts/openapi.json`의 경로.
@@ -303,10 +301,10 @@ flowchart LR
 
 [#213]: https://github.com/agent-ddalgi-team/final-geosan/issues/213
 [#214]: https://github.com/agent-ddalgi-team/final-geosan/issues/214
-[#216]: https://github.com/agent-ddalgi-team/final-geosan/issues/216
 [#217]: https://github.com/agent-ddalgi-team/final-geosan/issues/217
 [#221]: https://github.com/agent-ddalgi-team/final-geosan/issues/221
 [#222]: https://github.com/agent-ddalgi-team/final-geosan/issues/222
 [#228]: https://github.com/agent-ddalgi-team/final-geosan/issues/228
 [#249]: https://github.com/agent-ddalgi-team/final-geosan/issues/249
 [#251]: https://github.com/agent-ddalgi-team/final-geosan/issues/251
+[#296]: https://github.com/agent-ddalgi-team/final-geosan/issues/296
