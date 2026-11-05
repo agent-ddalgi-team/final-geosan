@@ -191,7 +191,12 @@ class CardRecords(_ApiModel):
     )
 
 
+ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
+
+
 class OpportunityCard(_ApiModel):
+    score_state: ScoreState
+    relation_status: RelationStatus
     region: str | None = None
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
@@ -228,6 +233,9 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    score_state: ScoreState
+    relation_confirmed_at: date | None
+    relation_confirmed_by: str | None
     homepage_status: Literal["AI_FOUND", "NEEDS_CONFIRMATION", "CONFIRMED", "NOT_FOUND"] | None = (
         None
     )
