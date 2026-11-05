@@ -234,6 +234,12 @@ export const cardRows = {
   brochureTag: '거산 확인 전',
 } as const;
 
+/** 점수 옆 꼬리표(#264). 거래 확인 전 점수는 흐리게 보이고, 거래 중으로 확인된 회사는 "기존 거래처"가 붙는다. */
+export const scoreTags = {
+  pending: '거래 확인 전',
+  existing: '기존 거래처',
+} as const;
+
 /** 상세 제목 아래 회사 홈페이지 링크 글(#175, 용어 #202). 홍보관(블로그) 주소도 있어 "기업 소개 페이지"로 쓴다. */
 export const homepageLinkLabel = '기업 소개 페이지';
 
