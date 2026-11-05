@@ -14,14 +14,20 @@ from sqlalchemy.orm import Session
 
 from geosan import __version__
 from geosan.config.errors import AppError, InputError, RunFailedError
-from geosan.config.registry import load_runtime_config
-from geosan.evaluation.ledger import create_batch, readiness_reset_reason, save_evaluation
-from geosan.evaluation.models import EvaluationBatch
+from geosan.config.registry import RuntimeConfig, load_runtime_config
+from geosan.evaluation.ledger import (
+    create_batch,
+    latest_full_batch,
+    readiness_reset_reason,
+    save_evaluation,
+)
+from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.evaluation.snapshot import Snapshot, build_snapshot, canonical_hash
 from geosan.opportunity.models import Opportunity
 from geosan.questions.store import upsert_question
+from geosan.rules.codes import ClassificationCode, SortGroup
 from geosan.rules.engine import evaluate, rank
-from geosan.rules.models import EvaluationOutput, RankInput
+from geosan.rules.models import EvaluationOutput, RankInput, SortKey
 from geosan.storage.session import session_scope
 from geosan.workflows.models import FlowResult
 
@@ -98,6 +104,97 @@ def _targets(session: Session, opp_ids: list[str] | None) -> list[Opportunity]:
     return rows
 
 
+def _stored_rank_input(run: EvaluationRun) -> RankInput:
+    """다른 회사는 점수를 다시 계산하지 않고 마지막 평가의 정렬값만 읽는다."""
+    code = ClassificationCode(run.classification_code)
+    group = {
+        ClassificationCode.CONTACT_URGENT: SortGroup.URGENT,
+        ClassificationCode.CONTACT_PLANNED: SortGroup.PLANNED,
+        ClassificationCode.CONTACT_REVIEW: SortGroup.REVIEW,
+    }.get(code, SortGroup.OTHER)
+    return RankInput(
+        opp_id=run.opp_id,
+        profile=run.profile,
+        sort_key=SortKey(
+            group=group,
+            relation_status=run.input_snapshot["opportunity"]["relationStatus"],
+            valid_until=run.valid_until,
+            E=run.score_e,
+            F=run.score_f,
+            direct_confirmed_weight=run.direct_confirmed_weight,
+            P=run.score_p,
+            R=run.score_r,
+            opp_id=run.opp_id,
+        ),
+    )
+
+
+def _rank_inputs(inputs: list[RankInput], runtime: RuntimeConfig) -> dict[str, int]:
+    ranked = rank(inputs, runtime.app_settings.active_dataset_kind, runtime.rule_config)
+    ranks = {row.opp_id: row.original_rank for row in ranked}
+    if (
+        len(ranked) != len(inputs)
+        or set(ranks) != {row.opp_id for row in inputs}
+        or sorted(ranks.values()) != list(range(1, len(inputs) + 1))
+    ):
+        raise RunFailedError("규칙 엔진의 순위 결과를 확인해 주세요.", kind="RULE_CONFIG")
+    return ranks
+
+
+def _population_ranks(
+    session: Session,
+    batch: EvaluationBatch,
+    inputs: list[RankInput],
+    runtime: RuntimeConfig,
+) -> dict[str, int]:
+    """부분 평가도 현재 전체 목록과 최신 평가 양쪽의 순위를 같은 저장 안에서 맞춘다."""
+    full = latest_full_batch(session, dataset_kind=batch.dataset_kind)
+    if batch.scope == "FULL" or full is None or not inputs:
+        return _rank_inputs(inputs, runtime)
+
+    anchors = list(
+        session.scalars(select(EvaluationRun).where(EvaluationRun.batch_id == full.batch_id))
+    )
+    population = {row.opp_id for row in anchors}
+    replacements = {row.opp_id: row for row in inputs if row.opp_id in population}
+    if not replacements:
+        return _rank_inputs(inputs, runtime)
+
+    latest: dict[str, EvaluationRun] = {}
+    for row in session.scalars(
+        select(EvaluationRun)
+        .join(EvaluationBatch, EvaluationRun.batch_id == EvaluationBatch.batch_id)
+        .where(
+            EvaluationRun.opp_id.in_(population),
+            EvaluationRun.profile == "NEW",
+            EvaluationRun.run_status == "CONFIRMED",
+            EvaluationBatch.status == "CONFIRMED",
+            EvaluationBatch.dataset_kind == batch.dataset_kind,
+            EvaluationBatch.profile == "NEW",
+        )
+        .order_by(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc())
+    ):
+        latest.setdefault(row.opp_id, row)
+    if population - replacements.keys() - latest.keys():
+        raise RunFailedError("목록의 최신 평가를 확인할 수 없습니다.")
+    ranks = _rank_inputs(
+        [
+            replacements[opp_id] if opp_id in replacements else _stored_rank_input(latest[opp_id])
+            for opp_id in sorted(population)
+        ],
+        runtime,
+    )
+    # 목록 API가 사용하는 현재 전체 평가의 순위도 맞춘다. 이전 전체 이력은 보존한다.
+    for row in anchors:
+        row.original_rank = ranks[row.opp_id]
+    for row in latest.values():
+        row.original_rank = ranks[row.opp_id]
+
+    # 전체 평가 뒤 추가된 회사는 다음 전체 평가 전까지 기존 목록에 섞지 않는다.
+    outside = [row for row in inputs if row.opp_id not in population]
+    return ranks | _rank_inputs(outside, runtime)
+
+
 def run_evaluation(
     opp_ids: list[str] | None = None,
     base_date: date | None = None,
@@ -165,23 +262,17 @@ def _run_evaluation(
                     output = EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
                     validate_output(snapshot, output)
                 computed.append((snapshot, output, reset_reason))
-            ranked = rank(
+            ranks = _population_ranks(
+                session,
+                batch,
                 [
                     RankInput(
                         opp_id=output.sort_key.opp_id, profile="NEW", sort_key=output.sort_key
                     )
                     for _, output, _ in computed
                 ],
-                runtime.app_settings.active_dataset_kind,
-                runtime.rule_config,
+                runtime,
             )
-            ranks = {row.opp_id: row.original_rank for row in ranked}
-            if (
-                len(ranked) != len(computed)
-                or set(ranks) != {output.sort_key.opp_id for _, output, _ in computed}
-                or sorted(ranks.values()) != list(range(1, len(computed) + 1))
-            ):
-                raise RunFailedError("규칙 엔진의 순위 결과를 확인해 주세요.", kind="RULE_CONFIG")
             for snapshot, output, reset_reason in computed:
                 run = save_evaluation(
                     session,
