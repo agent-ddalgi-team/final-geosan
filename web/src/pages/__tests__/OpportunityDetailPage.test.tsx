@@ -13,6 +13,7 @@ import {
   opinionArea,
   recordsArea,
   reviewArea,
+  scoreTags,
   states,
 } from '../../labels/ko';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
@@ -261,6 +262,34 @@ describe('OpportunityDetailPage', () => {
     expect(score).toHaveTextContent(text);
     expect(score).toHaveAttribute('aria-label', aria);
     expect(score.getAttribute('aria-label')).not.toContain('판정');
+  });
+
+  it('상세 머리: 거래 확인 전 점수는 흐리게 "거래 확인 전" 꼬리표가 붙고, 확정이면 꼬리표가 없다 (#264)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        header: {
+          ...base.header,
+          scoreState: 'PENDING',
+          relationStatus: 'UNCONFIRMED',
+          scoreDisplay: '50점 · 3/8',
+        },
+      }),
+    );
+    renderPage();
+    const score = await screen.findByTestId('detail-score');
+    expect(score).toHaveTextContent(/^50점 · 3\/8$/);
+    expect(score).toHaveAttribute('data-score-state', 'PENDING');
+    expect(screen.getByTestId('detail-score-pending-tag')).toHaveTextContent(scoreTags.pending);
+    expect(screen.queryByTestId('detail-score-existing-tag')).not.toBeInTheDocument();
+  });
+
+  it('상세 머리: 거래 중으로 확인된 회사는 점수가 확정이어도 "기존 거래처" 꼬리표가 붙는다 (#264)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await screen.findByTestId('detail-score');
+    expect(screen.getByTestId('detail-score-existing-tag')).toHaveTextContent(scoreTags.existing);
+    expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
   });
 
   it('확인 질문은 3개까지 보이고 나머지는 펼치기로 보이며 상태가 글자로 보인다', async () => {

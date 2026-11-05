@@ -185,8 +185,12 @@ def display_texts(
         items = calculate_items(data)
         judged = sum(item.state != ItemState.UNAVAILABLE for item in items)
         score = f"{totals.E}점 · {judged}/{len(items)}"
-    if code in {Code.FILTER_PENDING, Code.OPS_PENDING} and totals.S is not None:
-        score = f"참고 {score}" if data.dataset_kind == DatasetKind.BROCHURE else "--"
+    if (
+        code in {Code.FILTER_PENDING, Code.OPS_PENDING}
+        and totals.S is not None
+        and data.dataset_kind == DatasetKind.BROCHURE
+    ):
+        score = f"참고 {score}"
     reason = f"{label}: 현재 평가점수 {totals.E}, 조사 항목 배점 합계 {totals.P}"
     if core == CoreEvidenceMet.RECHECK:
         reason += "; 핵심 근거 재확인 필요"

@@ -323,8 +323,8 @@ def test_recontact_score_uses_seven_item_display_boundary(monkeypatch):
     "change,code,score,blocked",
     [
         ("none", "CONTACT_URGENT", "77점 · 7/8", False),
-        ("none", "FILTER_PENDING", "--", False),
-        ("none", "OPS_PENDING", "--", False),
+        ("none", "FILTER_PENDING", "77점 · 7/8", False),
+        ("none", "OPS_PENDING", "77점 · 7/8", False),
         ("null", "NOT_EVALUATED", "--", False),
         ("half", "CONTACT_URGENT", "77점 · 7/8", False),
         ("unknown_stage", "CONTACT_URGENT", "77점 · 7/8", True),

@@ -19,6 +19,8 @@ export type ClassificationCode =
 
 export type ReviewStatus = 'UNAVAILABLE' | 'PENDING' | 'REVIEWED' | 'RECHECK';
 export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRMED';
+/** 점수 확인 상태(#263): CONFIRMED 확정, PENDING 거래 확인 전(값은 있으나 확정 전), NONE 점수 없음 */
+export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
 export type NeededStage = 'NOW' | 'LATER' | 'UNKNOWN';
@@ -151,6 +153,10 @@ export interface CardRecords {
 }
 
 export interface OpportunityCard {
+  /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
+  scoreState?: ScoreState;
+  /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
+  relationStatus?: RelationStatus;
   oppId: string;
   rank: number;
   title: string;
@@ -175,6 +181,8 @@ export interface OpportunityCard {
 // ---------- GET /opportunities/{oppId} (S2 상세) ----------
 
 export interface DetailHeader {
+  /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
+  scoreState?: ScoreState;
   title: string;
   customerName: string;
   opportunityItem: string;
