@@ -7,9 +7,8 @@ from fastapi import APIRouter, Header, Request
 from pydantic import Field
 
 from geosan.api.deps import SessionDep, runtime_for
-from geosan.api.routes.opportunities import list_filters
+from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
-from geosan.config.errors import InputError
 from geosan.dashboard.queries import build_dashboard, schedule_due_opp_ids
 from geosan.evaluation.models import EvaluationRun
 from geosan.evidence.transfer import KST
@@ -66,23 +65,16 @@ DashboardEnvelope = Envelope[Dashboard]
 def schedule_due_list_filter(session, query, request: Request):
     """추천 목록 `?filter=SCHEDULE_DUE`: 대시보드 '이번 주 일정' 건수와 같은 기준으로 거른다.
 
-    `opportunities.py`의 거르기 자리(`list_filters`)에 등록만 한다. 거르기 함수가 하나라도 있으면
-    목록의 입력 검사가 느슨해지므로, 아직 연결되지 않은 값(다른 filter 값·탭·북마크)은
-    이전처럼 입력 오류로 막고 조용히 무시하지 않는다.
+    `opportunities.py`의 지원 값(`supported_filters`)과 거르기 자리(`list_filters`)에 등록만 한다.
+    연결되지 않은 값(다른 filter 값·탭·북마크)을 막는 입력 검사는 목록 쪽 첫 검사가 맡는다.
     """
-    params = request.query_params
-    if (
-        params.get("tab", "new") != "new"
-        or "bookmarked" in params
-        or params.get("filter", SCHEDULE_DUE_FILTER) != SCHEDULE_DUE_FILTER
-    ):
-        raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
-    if "filter" not in params:
+    if request.query_params.get("filter") != SCHEDULE_DUE_FILTER:
         return query
     today = utcnow().astimezone(KST).date()
     return query.where(EvaluationRun.opp_id.in_(schedule_due_opp_ids(today)))
 
 
+supported_filters.add(SCHEDULE_DUE_FILTER)
 if schedule_due_list_filter not in list_filters:
     list_filters.append(schedule_due_list_filter)
 

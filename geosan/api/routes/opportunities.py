@@ -68,6 +68,9 @@ from geosan.storage.base import utcnow
 
 router = APIRouter()
 list_filters: list[Callable] = []
+# 목록이 받는 `filter` 값. 값을 더하는 부품이 여기에 등록하고 처리 함수는 list_filters에 더한다.
+# 여기에 없는 값은 입력 오류다(거르기 함수가 있어도, 평가 자료가 없을 때도 같다).
+supported_filters: set[str] = set()
 
 
 @dataclass
@@ -506,8 +509,11 @@ def list_opportunities(
     dataset_kind = runtime.app_settings.active_dataset_kind
     if industry is not None and industry not in runtime.app_settings.industries:
         raise InputError("설정 목록에 있는 산업군을 선택해 주세요.")
-    if not list_filters and (
-        tab != "new" or any(key in request.query_params for key in ("filter", "bookmarked"))
+    params = request.query_params
+    if (
+        tab != "new"
+        or "bookmarked" in params
+        or ("filter" in params and params["filter"] not in supported_filters)
     ):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)

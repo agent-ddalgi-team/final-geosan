@@ -91,6 +91,22 @@ def test_empty_database_shows_zero_counts_and_hides_breakdown(tmp_db):
     assert data["breakdown"] is None
 
 
+@pytest.mark.parametrize(
+    "params",
+    [{"filter": "OTHER"}, {"filter": ""}, {"tab": "recontact"}, {"bookmarked": "true"}],
+)
+def test_empty_database_list_still_rejects_unconnected_input(tmp_db, params):
+    """Given 평가한 회사 없음 / When 연결 안 된 조건 / Then 빈 목록(200)이 아니라 입력 오류(400)."""
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/opportunities", params=params)
+        assert response.status_code == 400, params
+        assert "아직 연결되지 않았습니다" in response.text
+        # 연결된 조건과 조건 없는 목록은 빈 DB에서도 정상으로 빈 목록이다.
+        for ok_params in ({}, {"filter": "SCHEDULE_DUE"}):
+            ok = client.get("/api/v1/opportunities", params=ok_params)
+            assert ok.status_code == 200 and ok.json()["data"] == [], ok_params
+
+
 def test_counts_follow_latest_stage_and_match_list_filter(dashboard_env):
     """Given 회사 4곳의 단계가 다름 / When 조회 / Then 최신 단계로 세고 목록 ?stage= 건수와 같다."""
     client, (a, b, c, _d) = dashboard_env
