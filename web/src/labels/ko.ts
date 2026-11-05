@@ -312,6 +312,24 @@ export const detailHeader = {
   owner: '담당',
 } as const;
 
+/** 추천 목록 머리의 공정 탭·지역·산업 선택과 카드 꼬리표(#210, 결정 2026-11-03 밤). */
+export const listFilters = {
+  tabsLabel: '공정',
+  regionLabel: '지역',
+  industryLabel: '산업',
+  all: '전체',
+  /** "천안 인근 8" */
+  option: (name: string, count: number) => `${name} ${count}`,
+  /** "전기아연도금 (9)" */
+  tab: (name: string, count: number) => `${name} (${count})`,
+  /** 조건을 걸었는데 0건일 때. */
+  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
+  /** 대시보드 건수·검색으로 넘어와 걸러진 목록이 비었을 때. */
+  noMatch: '이 조건에 맞는 후보가 없습니다.',
+  regionUnknown: '지역 미확인',
+  industryUnknown: '산업 미확정',
+} as const;
+
 /** 상세 머리 거래 관계 줄(#266): 지금 상태 글자, 바꾸는 단추, 안내·오류 문구. */
 export const relationControl = {
   title: '거래 관계',
