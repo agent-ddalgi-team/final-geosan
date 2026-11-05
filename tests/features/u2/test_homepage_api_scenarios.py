@@ -2,6 +2,8 @@
 
 from pytest_bdd import given, scenarios, then, when
 
+from geosan.config.errors import AppError
+from geosan.workflows import flow_extract
 from tests.unit.u1 import test_homepage_api as support
 
 search_env = support.search_env
@@ -52,3 +54,30 @@ def viewer(homepage_env):
 def rejected(homepage_env, response, before):
     assert response.status_code == 403
     assert support.support.counts() == before and homepage_env[2].call_count == 0
+
+
+@given("기존 주소의 조사가 완료되어 있다", target_fixture="saved")
+def researched(homepage_env):
+    assert support.post(homepage_env, {}).status_code == 200
+    return support.saved_research(homepage_env)
+
+
+@when("담당자가 주소를 고친 뒤 본문 읽기에 실패한다", target_fixture="response")
+def failed_correction(homepage_env, monkeypatch):
+    def fail_read(url, deadline):
+        raise AppError("본문을 읽을 수 없습니다.", "다시 조사해 주세요.", 422, "UNREACHABLE")
+
+    monkeypatch.setattr(flow_extract, "fetch", fail_read)
+    return support.post(homepage_env, {"url": "https://example.org/corrected-company"})
+
+
+@then("고친 주소는 유지되고 이전 근거와 질문과 평가는 그대로다")
+def correction_preserved(homepage_env, response, saved):
+    assert response.status_code == 422
+    assert response.json()["error"]["kind"] == "UNREACHABLE"
+    assert support.saved_research(homepage_env) == saved
+    client, case, transport = homepage_env
+    header = client.get(f"/api/v1/opportunities/{case.opp_id}").json()["data"]["header"]
+    assert header["homepageUrl"] == "https://example.org/corrected-company"
+    assert header["homepageStatus"] == "CONFIRMED"
+    assert transport.call_count == 1

@@ -8,8 +8,10 @@ from sqlalchemy import select
 
 from geosan.api.app import create_app
 from geosan.config.errors import AppError
+from geosan.evaluation.models import EvaluationRun
 from geosan.evidence.models import Evidence
-from geosan.opportunity.models import Customer
+from geosan.opportunity.models import Customer, Requirement
+from geosan.questions.models import ConfirmationQuestion
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_extract
 from tests.unit.u2 import test_extraction as support
@@ -102,6 +104,92 @@ def test_corrected_address_is_used_for_research_and_detail(homepage_env, monkeyp
             "CONFIRMED",
             "STAFF",
         )
+
+
+def saved_research(homepage_env):
+    """실패 전에 저장된 조사 내용과 평가 원장을 열 값까지 비교한다."""
+    with session_scope() as session:
+        customer = session.get(Customer, homepage_env[1].customer_id)
+        summary = (
+            customer.summary_line,
+            customer.highlights,
+            customer.researched_at,
+            customer.research_source,
+            customer.main_phone,
+            customer.main_phone_source,
+            customer.main_phone_source_url,
+            customer.main_phone_confirmed_at,
+            customer.main_phone_confirmed_by,
+        )
+        rows = tuple(
+            session.execute(select(model.__table__).order_by(*model.__table__.primary_key.columns))
+            .mappings()
+            .all()
+            for model in (Evidence, EvaluationRun, ConfirmationQuestion, Requirement)
+        )
+        return summary, rows
+
+
+@pytest.mark.parametrize("fault", ["reader", "ai_response", "evaluation"])
+def test_corrected_address_survives_failure_without_changing_saved_research(
+    homepage_env, monkeypatch, fault
+):
+    """Given A 조사 완료 / When B로 고친 뒤 실패 / Then B 유지, A의 조사·점수 보존."""
+    assert post(homepage_env, {"url": URL}).status_code == 200
+    before = saved_research(homepage_env)
+    changed = "https://example.org/corrected-company"
+    if fault == "reader":
+        monkeypatch.setattr(
+            flow_extract,
+            "fetch",
+            Mock(
+                side_effect=AppError(
+                    "본문을 읽을 수 없습니다.", "주소를 확인해 주세요.", 422, "UNREACHABLE"
+                )
+            ),
+        )
+    elif fault == "ai_response":
+        answer = support.answer()
+        answer["evidence"][0]["quote"] = "본문에 없는 문장입니다."
+        homepage_env[2].side_effect = lambda *_: support.reply(answer)
+    else:
+        monkeypatch.setattr(
+            flow_extract, "evaluate_in_session", Mock(side_effect=RuntimeError("test failure"))
+        )
+    response = post(homepage_env, {"url": changed})
+    assert response.status_code == {"reader": 422, "ai_response": 503, "evaluation": 500}[fault]
+    assert "error" in response.json() and "data" not in response.json()
+    assert saved_research(homepage_env) == before
+    with session_scope() as session:
+        customer = session.get(Customer, homepage_env[1].customer_id)
+        assert (customer.homepage_url, customer.homepage_status, customer.homepage_source) == (
+            changed,
+            "CONFIRMED",
+            "STAFF",
+        )
+    detail = homepage_env[0].get(f"/api/v1/opportunities/{homepage_env[1].opp_id}").json()["data"]
+    assert detail["header"]["homepageUrl"] == changed
+    assert detail["header"]["homepageStatus"] == "CONFIRMED"
+    assert detail["header"]["homepageSource"] == "STAFF"
+    assert homepage_env[2].call_count == (1 if fault == "reader" else 2)
+
+
+def test_retry_after_corrected_address_failure_uses_saved_address(homepage_env, monkeypatch):
+    """Given B 주소 조사 실패 / When 주소 없이 다시 조사 / Then 저장된 B로 한 번 조사."""
+    changed = "https://example.org/corrected-company"
+    fetch = Mock(
+        side_effect=[
+            AppError("읽지 못했습니다.", "다시 조사해 주세요.", 422, "UNREACHABLE"),
+            flow_extract.Page(changed, support.BODY),
+        ]
+    )
+    monkeypatch.setattr(flow_extract, "fetch", fetch)
+    assert post(homepage_env, {"url": changed}).status_code == 422
+    response = post(homepage_env, {})
+    assert response.status_code == 200, response.text
+    assert [call.args[0] for call in fetch.call_args_list] == [changed, changed]
+    assert homepage_env[2].call_count == 1
+    assert response.json()["data"]["evalId"]
 
 
 def test_pasted_text_skips_fetch_and_external_payload_excludes_contacts(homepage_env, monkeypatch):
