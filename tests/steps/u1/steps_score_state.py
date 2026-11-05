@@ -68,7 +68,7 @@ def numeric_score(state_context, text):
     "거래 중인 연락 후보와 새 연락 후보와 거래 확인 전 후보를 함께 평가했다",
     target_fixture="placement_context",
 )
-def mixed_relations(industry_env):
+def mixed_relations(industry_env, base_date):
     client, ids = industry_env
     with session_scope() as session:
         for opp_id, relation in zip(
@@ -78,7 +78,7 @@ def mixed_relations(industry_env):
             customer.relation_status = relation
             if relation == "UNCONFIRMED":
                 customer.relation_confirmed_at = None
-    assert run_evaluation().ok
+    assert run_evaluation(base_date=base_date).ok
     return {"client": client, "ids": ids}
 
 

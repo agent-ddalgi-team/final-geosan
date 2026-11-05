@@ -194,6 +194,30 @@ def verify_case(
     raise typer.Exit(code=run_verify_case(file))
 
 
+@app.command("transfer-unblock")
+def transfer_unblock(
+    older_than: str = typer.Option("10m", "--older-than", help="미확정 호출 경과 시간, 최소 10m"),
+    log_id: str | None = typer.Option(None, "--log-id", help="정리할 전송 기록 번호 하나"),
+    input_tokens: str | None = typer.Option(None, "--input-tokens", help="확인한 입력 토큰"),
+    output_tokens: str | None = typer.Option(None, "--output-tokens", help="확인한 출력 토큰"),
+    web_search_calls: str | None = typer.Option(
+        None, "--web-search-calls", help="확인한 웹 검색 횟수"
+    ),
+    cost_usd: str | None = typer.Option(None, "--cost-usd", help="제공사에서 확인한 실제 USD 비용"),
+    staff_key: str | None = typer.Option(
+        None, "--by", help="설정에 등록된 처리자 키, 보기 전용 제외"
+    ),
+) -> None:
+    """기본은 미확정 호출 조회만 합니다. 제공사 사용량을 확인한 뒤 기록별로 정리합니다."""
+    from geosan.commands.transfer_unblock import run_transfer_unblock
+
+    raise typer.Exit(
+        code=run_transfer_unblock(
+            older_than, log_id, input_tokens, output_tokens, web_search_calls, cost_usd, staff_key
+        )
+    )
+
+
 @app.command("cost")
 def cost(
     month: str | None = typer.Option(None, "--month", help="비용을 볼 월 YYYY-MM. 기본 이번 달"),

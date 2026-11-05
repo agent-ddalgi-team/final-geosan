@@ -333,7 +333,7 @@ paths:
   /opportunities/{oppId}/outcomes:
     post:
       summary: 영업 결과(영업 단계)·접촉 시도·회신·다음 일정 (U5). LOST는 reason 필수. (갱신 2026-11-03, Q5) 단계·일정 변경은 새 행으로 남기고 이전 행은 이력(수정·삭제 경로 없음)
-      requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [status], properties: { status: { type: string }, replyReceived: { type: boolean }, nextScheduleAt: { type: string, format: date }, nextScheduleNote: { type: string, description: '(추가 2026-11-03) 다음 일정 할 일 한 줄' }, reason: { type: string }, lostReasonCode: { type: string, enum: [PRICE, LEAD_TIME, INCUMBENT_SUPPLIER, NO_DEMAND, QUALITY_CERT, OTHER], description: '(추가 2026-11-04 PM 결정, 분석용 코드값 칸) status LOST면 필수, 다른 status면 넣지 않음(넣으면 400). OTHER면 reason(자유 글) 필수, 그 외는 reason 선택' }, actionId: { type: string, nullable: true }, method: { type: string, enum: [CALL, EMAIL, VISIT], description: '(추가 2026-11-03) 접촉 방법, 접촉 시도 행에만' }, result: { type: string, enum: [REACHED, ABSENT, DECLINED], description: '(추가 2026-11-03) 접촉 결과' }, attemptedAt: { type: string, format: date, description: '(추가 2026-11-03) 접촉 시도 날짜' } } } ] } } } }
+      requestBody: { content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/RecordRequest' }, { type: object, required: [status], properties: { status: { type: string }, replyReceived: { type: boolean }, nextScheduleAt: { type: string, format: date }, nextScheduleNote: { type: string, description: '(추가 2026-11-03) 다음 일정 할 일 한 줄' }, reason: { type: string }, lostReasonCode: { type: string, enum: [PRICE, LEAD_TIME, INCUMBENT_SUPPLIER, NO_DEMAND, QUALITY_CERT, OTHER], description: '(추가 2026-11-04 PM 결정, 분석용 코드값 칸) status LOST면 필수, 다른 status면 넣지 않음(넣으면 400). OTHER면 reason(자유 글) 필수, 그 외는 reason 선택. (추가 2026-11-04 PM 결정 #250, 고선주 #257 질문 답) status LOST이고 최신 거절 행과 lostReasonCode가 같으면 reason이 비어 있어도 이전 거절 행의 reason을 이어받아 저장한다(거절 상태에서 일정·접촉만 저장할 때 이유를 다시 요구하지 않음). 코드가 바뀌거나 처음 거절일 때만 OTHER+reason 필수' }, actionId: { type: string, nullable: true }, method: { type: string, enum: [CALL, EMAIL, VISIT], description: '(추가 2026-11-03) 접촉 방법, 접촉 시도 행에만' }, result: { type: string, enum: [REACHED, ABSENT, DECLINED], description: '(추가 2026-11-03) 접촉 결과' }, attemptedAt: { type: string, format: date, description: '(추가 2026-11-03) 접촉 시도 날짜' } } } ] } } } }
       responses: { '200': { description: '저장됨 (RecordMeta + status)' }, '400': { description: 사유 필요 } }
   /opportunities/{oppId}/readiness-check:
     post:
@@ -416,12 +416,12 @@ paths:
         '200':
           description: >-
             Envelope(
-              counts{ NOT_CONTACTED: int, INTERESTED: int, IN_CONTACT: int, QUOTE_SAMPLE: int, SCHEDULE_DUE: int },   # 미접촉 / 관심 / 접촉 중 / 견적·샘플 / 이번 주 일정(오늘 이전~7일). 누르면 /opportunities?stage=… (SCHEDULE_DUE는 ?filter=SCHEDULE_DUE)
+              counts{ NOT_CONTACTED: int, INTERESTED: int, IN_CONTACT: int, QUOTE_SAMPLE: int, SCHEDULE_DUE: int, WON_LAST_12M: int, LOST_LAST_12M: int },   # 미접촉 / 관심 / 접촉 중 / 견적·샘플 / 이번 주 일정(오늘 이전~7일). 누르면 /opportunities?stage=… (SCHEDULE_DUE는 ?filter=SCHEDULE_DUE). (추가 2026-11-04 PM 결정 #229, 2차) 성사·거절 = 최신 단계가 WON·LOST이고 그 기록 시각이 오늘부터 365일 안. 누르면 ?stage=WON·LOST 목록(목록은 전체, 분석 줄에 "최근 12개월 n건"). 분석 줄 meta.analysis{ sampleCount, avgContacts, contactReach{CALL,EMAIL,VISIT:{reached,tried}}, avgDaysToOutcome, topIndustries[], topProcesses[], lostReasons[](LOST만) } — 표본 10건 미만이면 화면은 비율 없이 건수만
               schedule[ { oppId, customerName, oppTitle, dueAt: date, note: string, overdue: boolean, staffKey } ],   # 기한 지남(overdue) 맨 위, 그다음 날짜순. 출처: /outcomes의 nextScheduleAt·nextScheduleNote
               recentActivity[ { at: datetime, oppId, customerName, kind: enum[NOTE, STAGE, CONTACT_ATTEMPT, SCHEDULE, OPINION], summary: string } ],   # 최근 내가 한 기록 10건(요청의 담당자 키로 거름, Q4)
               asOf: datetime,
               breakdown?: {   # (추가 2026-11-03 PM 결정, 대시보드 집계) 없으면 화면은 공정·산업군 막대 줄을 숨긴다 — 실제 집계(#216)가 붙기 전 거산 전달본에 가짜 숫자가 보이면 안 되므로. 가짜 숫자 모드(VITE_USE_FIXTURES)에서만 고정값으로 채움
-                basis: { statuses: [INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, WON_THIS_YEAR], total: int },   # "대시보드 대상": 관심 / 진행 중 / 올해 성공(WON이고 outcomeAt이 올해). 미접촉·보류·거절·작년 이전 성공·가상 사례 제외
+                basis: { statuses: [INTERESTED, IN_PROGRESS, SAMPLE_OR_REGISTRATION_APPROVED, WON_LAST_12M], total: int },   # "대시보드 대상": 관심 / 진행 중 / 최근 12개월 성공(WON이고 outcomeAt이 오늘부터 365일 안. 2026-11-04 PM 결정: ~~WON_THIS_YEAR 올해 성공~~ → 연도 기준은 1월에 0이 되므로 최근 12개월로. 코드 없음·화면 가짜 숫자 파일 이름 1곳만). 미접촉·보류·거절·12개월 이전 성공·가상 사례 제외
                 byProcess: [{ processCode, processName, count: int, ratio: number }],   # 9종 전부(0 포함), 역량 파일 순서. 한 회사가 여러 공정이면 각각 셈. ratio = count ÷ total 소수 2자리(합이 1을 넘을 수 있음)
                 byIndustry: [{ industry: string, count: int, ratio: number, includesProposed: boolean }]   # 설정 industries 순서 + 맨 끝 "미확정". AI 제안 포함(PM 결정, 막대 옆 "AI 제안 포함" 표시). dashboard.countProposedIndustries false면 확정(STAFF)만
               }
@@ -610,6 +610,8 @@ usage:
   output: { callCount: int, tokenCount: int, rejectedCount: int, inputTokens: int, outputTokens: int, webSearchCalls: int, costUsd: number, costLimitUsd: number, callLimit: int, alertReached: boolean }   # (추가 2026-11-03) inputTokens 이후 칸. alertReached = costUsd ≥ costLimitUsd × llm.costAlertRatio
 ```
 
+**수동 사용량 정산 (추가 2026-11-04 PM 승인, #218)**: 응답 사용량이 없는 EXTERNAL_SEARCH / EXTERNAL_AI의 실제 호출은 운영자가 제공사에서 확인한 입력·출력 토큰·웹 검색 횟수·실제 USD 비용을 기록 번호별로 입력해 정산한다. 정상 응답의 자동 정산·단가 계산은 그대로다. 원래 호출 시각·회사 연결·허용 판정·요청자·call_count는 유지하고 월 귀속과 하루·월 호출 횟수를 돌려주지 않는다. 수동 정산 시각(UTC)·처리자만 추가 기록한다. 정상 응답과 수동 정산이 겹치면 쓰기 잠금 안에서 미확정 상태를 다시 확인해 먼저 확정된 값을 보존하며, 실패하면 전부 되돌린다. 오래됐다는 이유로 사용량을 0으로 만드는 자동 처리는 없다. 본문·검색어·연락처·키·자유 메모는 받지 않고 외부 요청을 보내지 않는다.
+
 ### C5. 외부 소스 어댑터 (내부 함수 + 소스 계약표)
 
 ```yaml
@@ -635,7 +637,7 @@ ownership:
   cap_*:   CapabilityCatalog     # cap_process, cap_process_capability, cap_delivery_record, cap_qualification, cap_qualification_scope, cap_qualification_status, cap_field_evidence
   opp_*:   OpportunityRegistry   # opp_customer, opp_relation_history(추가 2026-11-04 PM 결정: customerId, oppId, fromStatus, toStatus, staffKey, changedAt — 거래 관계 변경 이력, 덧붙이기만. 활동 이력 RELATION_CONFIRMED의 원천), opp_merge_candidate, opp_interaction, opp_opportunity, opp_discovery_path, opp_process_link, opp_requirement, opp_signal, opp_ingest_batch(batchId, sourceId, requestedBy: staffKey|SYSTEM, startedAt, finishedAt|null, newCount, mergeCandidateCount, researchDoneCount, status: RUNNING|DONE|FAILED — 추가 2026-11-04 PM 결정 ①, #221. 회차는 지우지 않음)
   src_*:   SourceIngestion       # src_ingestion_run, src_source_contract
-  tg_*:    TransferGuard         # tg_transfer_log
+  tg_*:    TransferGuard         # tg_transfer_log. (추가 2026-11-04 PM 승인, #218) nullable reconciled_at(UTC 시각)·reconciled_by(설정 staffKey, viewer 제외): 수동 사용량 정산 시각·처리자. 기존 요청자·허용/거부 이력 보존
   ev_*:    EvidenceExtraction    # ev_evidence, ev_homepage_candidate
   eval_*:  EvaluationLedger      # eval_batch, eval_run, eval_item_judgment, eval_requirement_check, eval_judgment_evidence, eval_readiness_check, eval_rank_adjustment
   q_*:     ConfirmationDesk      # q_question, q_question_opportunity_link, q_research_task. (추가 2026-11-04 PM 결정) q_question에 reply_text(Text)·replied_at(date)·replied_by(String 32) 열 — 최신 답 하나, 덮어쓰기. 이력은 rec_note kind REPLY 행. 모델 파일은 PM 세션 표시: 이강욱 PR에서 더하고 PM이 확인
@@ -737,7 +739,7 @@ AppSettings:
 # shared-schema: OperatorCommands 명령 계약. 이름은 제안. 모든 명령은 끝에 쉬운 한국어 요약 한 줄과 종료 코드(0 성공, 1 입력 오류, 2 실행 실패)를 낸다. --help는 한국어.
 commands:
   geosan init-db                                 # U1. 데이터베이스 만들기·마이그레이션 적용(처음·갱신 모두)
-  geosan serve [--port N] [--host 127.0.0.1|0.0.0.0] # U1. 서버 실행, 기본은 내 PC 전용. 배포 주소 선택은 #213 PM 지시(2026-11-03).
+  geosan serve [--port N] [--host 127.0.0.1|0.0.0.0] # U1. 서버 실행, 기본은 내 PC 전용. 배포 주소 선택은 #213 PM 지시(2026-11-03). (추가 2026-11-04 PM 결정, 사고 방지 #274) 배포 설정(--host 0.0.0.0 또는 GEOSAN_PASSWORD 설정)에서 DB 파일 이름이 geosan-demo.db이거나 DB 안에 시연 표시(앱 설정 사본 demo 플래그)가 있으면 "시연용 DB는 배포 환경에서 쓸 수 없습니다"를 내고 종료 코드 2로 시작하지 않는다. 로컬(127.0.0.1, 비밀번호 없음)에서는 시연 DB 허용. 2차 #274에서 구현
   geosan check-config [rule-config.yaml] [app-settings.yaml]   # U1. 설정 파일 형식 검사(오류는 C7 형식: 줄·항목·이유)
   geosan import-capability <file.json>           # U1. 형식·연락처 검사 → 저장(재투입 규칙 적용)
   geosan import-case <file.json>                 # U1. 가상 사례 묶음 투입(투입 순서 자동). 실제 기업도 같은 형식(isVirtual: false)
@@ -757,6 +759,8 @@ commands:
   geosan geocode [--missing-only]                # (추가 2026-11-03 PM 결정, 거리 #222) 좌표 없는 회사 주소를 도로명주소 API로 좌표로 바꿔 저장. 건수·실패 사유(주소 못 찾음·한도·통신)를 출력. 가상 사례는 건너뜀
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
   geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·웹 검색 횟수·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 5곳 시험의 1곳당 비용 측정에 쓴다
+  geosan transfer-unblock [--older-than 10m]     # (추가 2026-11-04 PM 승인, #218) 기본은 조회만. 10분 이상 지난 EXTERNAL_SEARCH / EXTERNAL_AI 미확정 실제 호출의 기록 번호·용도·경과 시간·호출 시각·모델 표시. 본문·검색어 없음, DB 변경·외부 요청 없음. older-than은 분 단위이며 최소 10m
+  geosan transfer-unblock --log-id <ID> --input-tokens <N> --output-tokens <N> --web-search-calls <N> --cost-usd <USD> --by <staffKey> [--older-than 10m]   # 확인한 사용량을 기록 1건에 정산. 모든 항목 필수, 토큰·검색 횟수는 0 이상 정수, 비용은 유한한 0 이상 숫자. EXTERNAL_AI 웹 검색 횟수는 0. 보기 전용·설정에 없는 처리자, 아직 기준 시간이 안 지난 건, 실제 호출이 아닌 거부 행, 이미 확정된 행은 변경 없이 오류. 실제 사용량 0으로 확인한 건만 명시적으로 0 입력. 쓰기 잠금 안에서 재검사·저장, 중복 정산 거부, 실패 시 전체 취소. 출력 "막힌 기록 1건을 정리했습니다". 종료 0 조회/정리 성공(0건 포함), 1 입력·대상·확인자 오류, 2 DB 처리 실패. 자세한 순서·필요 권한은 docs/transfer-unblock-guide.md
   geosan research [--missing-homepage | --all] [--limit N]   # (추가 2026-11-03 저녁, PM 결정 B) 이미 들어와 있는 회사(18곳)에 ②→③→④→재평가를 일괄로 돌린다. 기본은 홈페이지 없는 회사만. 1곳마다 결과 줄(찾음/확인 필요/못 찾음, 근거 수, 비용) 출력. 상한에 걸리면 멈추고 남은 건수 안내
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   처음 설치·실행: [init-db, check-config, serve]                     # 3
@@ -767,6 +771,7 @@ guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   거산 값 묶음 전환: [dataset-set, evaluate]                          # 2
   백업·복원: [backup] / [restore, serve]                              # 1 / 2
   비용 확인: [cost]                                                   # 1
+  사용량 미확정 기록 정리: [transfer-unblock(조회), 제공사 확인, transfer-unblock(정산), cost]   # #218, PM 2026-11-04
   시연 자료 출력(예비 경로): [demo-report]                            # 1 (PM 승인 2026-10-21)
 rules:
   - 비밀번호·API 키는 인자로 받지 않고 환경 변수에서만
@@ -836,11 +841,13 @@ ExternalSourceApi (공장등록·나라장터):
 | C1·C6 | (2026-11-03 밤, PM 결정 #209·#213 확인 요청) `/config/ui` 응답 `records`(approvalEnabled·noteMaxLength), 상세 응답 `records.outcome.nextScheduleNote`. 더하는 변경. C6 고객 `address`(원본)·`normalizedAddress`(비교용) 구분을 적음 — 코드가 원본 열을 빠뜨린 것이라 약속 변경 아님. DB 이력 두 갈래(web_001 ∥ opp_002~opp_004)는 C6 규칙대로 `db merge-heads`로 합침 | #209(기록 서버 PR)·#213(배포 준비 PR) |
 | C1·C6·C8 | (2026-11-04, PM 결정 ① — 새 후보 가져오기) `POST /ingest`(단추, 명령과 같은 함수, 409 INGEST_RUNNING, 새 회사만 백그라운드 자동 조사), 목록 `batch=`·`meta.latestIngest`, 카드 `ingestBatchId`·`ingestedAt`·`isNewInLatestBatch`, `opp_customer` 2열, `opp_ingest_batch`. 기존 회사는 사라지지 않고 "이번 수집만 / 전체" 전환으로 예전 회사를 다시 봄(①). 순위표 통째 저장(②)은 안 함. 더하는 변경 | #221(U3, 11/17 이후, 유동렬 +6~8h; 단추 화면은 고선주) |
 | C8 | (2026-11-04, PM 결정 A — #212) `review-set --all`: BROCHURE 값 전부를 COMPANY_CONFIRMED 묶음으로 복사(REVIEWED + 이력) → 활성 묶음 전환 → 재평가를 한 트랜잭션으로. 띠·참고 점수는 묶음 종류(BROCHURE)로 판단하므로 상태만 바꿔서는 안 내려감(규칙·화면 그대로). 더하는 변경 | #212(유동렬, 평가 진입점 포함) |
+| C4·C6·C8 | (2026-11-04 PM 승인, #218) `transfer-unblock` 조회·확인 사용량 수동 정산, `tg_transfer_log.reconciled_at`·`reconciled_by` 추가. 원래 호출 수·월 귀속 보존, 자동 0 처리 없음, 한 트랜잭션·중복 정산 거부. 운영 안내서 포함. 더하는 변경 | #218 유동렬, kind·문구 선행 #252 합친 뒤 올림 |
 | C0·C1·C4·C6 | (2026-11-04, PM 결정 — 검토사항 [답 적기] 1차) 코드표 `noteKind REPLY`, 상세 `reviewItems` 질문 줄에 `replyText`·`repliedAt`·`repliedBy`, `Question.repliedBy`, `POST /questions/{questionId}/reply` 대기 → 회신 허용·담당자 키·덮어쓰기, 답 이력은 새 표 없이 `rec_note` kind REPLY 행으로 활동 이력에 보존, `q_question` 회신 3열. 답·활동 이력은 영업 메모와 같은 취급(내부 전용). 담당자 항목 추가·질문 글 고치기는 2차. 더하는 변경. 제안 `../delivery-planning/review-answer-inline-20261104.md` | #248(서버 이강욱)·#249(화면 고선주) |
-| C0·C1·C4·C6 | (2026-11-04, PM 결정 — 분석용 코드값 칸 1개) 코드표 `lostReasonCode` 6종(가격·납기·기존 거래처 유지·수요 없음·품질·인증 요건·기타), `/outcomes` LOST 저장 때 필수·OTHER면 자유 글 reason 필수, 상세 `records.outcome.lostReasonCode`, `rec_outcome.lost_reason_code`. 코드값이라 엑셀·대시보드 집계에 쓸 수 있음. 더하는 변경 | #250(서버 이강욱)·#251(화면 고선주) |
+| C0·C1·C4·C6 | (2026-11-04, PM 결정 — 분석용 코드값 칸 1개) 코드표 `lostReasonCode` 6종(가격·납기·기존 거래처 유지·수요 없음·품질·인증 요건·기타), `/outcomes` LOST 저장 때 필수·OTHER면 자유 글 reason 필수, 상세 `records.outcome.lostReasonCode`, `rec_outcome.lost_reason_code`. 코드값이라 엑셀·대시보드 집계에 쓸 수 있음. (같은 날 추가, #257 질문 답) 거절 상태에서 같은 코드로 다시 저장하면 reason이 비어도 이전 거절 행의 reason을 이어받음. 더하는 변경 | #250(서버 이강욱)·#251(화면 고선주) |
 | C1·C2·C4 | (2026-11-04, PM 확정 — [AI로 조사] 응답 모양, 이강욱 제안 #219) `POST /homepage` 성공 응답 2종(조사 실행: 근거 수 전체·그중 요구 후보 수·새 질문 수·새 평가 ID, meta.reevaluated / 주소 확인만: 주소·CONFIRMED·STAFF), 400(confirmOnly+pastedText), 409 STALE_VALUE, 503 실패 종류 kind 6개(LLM_LIMIT·SEARCH_LIMIT·USAGE_UNCONFIRMED·LLM_NOT_CONFIGURED·TIMEOUT·LLM_FAILED; 같은 날 PM 확인으로 키·설정 오류를 LLM_NOT_CONFIGURED로 분리, 잠금 그룹)와 kind별 화면 동작·담당자용 문구, C2 FlowResult `counts`, C4 사용량 빈 행 거부 kind USAGE_UNCONFIRMED. 모두 더하는 변경 | API 연결(이강욱 또는 유동렬, #219 하위 이슈)·kind 정리는 #218 풀기 명령 PR |
 | C1·C3 | (2026-11-04, PM 결정 #212 ① — 거래 확인 전 점수 표시) 카드 `scoreDisplay` 규칙 한 줄(소개서 묶음이 아니어도 점수가 있으면 숫자 그대로, 값 형식 변경), 카드·상세 머리 `scoreState`(CONFIRMED/PENDING/NONE → 화면 흐리게), 카드 `relationStatus`(꼬리표 "거래 확인 전"·"기존 거래처"). 정렬은 계산 점수 기준 그대로. 고정 문구 demoLabel 유지(②). 제안 `../delivery-planning/score-display-pending-20261104.md` | 규칙 표시 함수(유동렬)·카드 응답(이강욱)·화면(고선주), 이슈 번호는 제안서 상태 줄 |
 | C0·C1·C3·C6 | (2026-11-04, PM 결정 — 거래 관계 화면 입력, 1차) `POST /opportunities/{oppId}/relation`(거래 없음/거래 중/확인 전 되돌리기, 재평가 한 트랜잭션, 같은 값 400, STALE_EVALUATION 409), 상세 머리 `relationConfirmedAt`·`relationConfirmedBy`, ActivityItem `RELATION_CONFIRMED`, `opp_customer.relation_confirmed_by`, `opp_relation_history`(변경 이력), C3 거래 중 기회 맨 아래 정렬 설정 `existingCustomerPlacement`(기본 BOTTOM). 모두 더하는 변경 | 서버 이강욱·화면 고선주, 이슈 번호는 제안서 상태 줄 |
+| C1 | (2026-11-04, PM 결정 #229 — 대시보드 성사·거절) `/dashboard` counts에 `WON_LAST_12M`·`LOST_LAST_12M`(최근 12개월), 성사·거절 목록 `meta.analysis`(규칙 집계, 표본 10건 미만은 건수만), 대시보드 대상 규칙 `WON_THIS_YEAR` → `WON_LAST_12M`(연도 기준은 1월에 0 — 코드 없음, 화면 가짜 숫자 파일 이름 1곳). 더하는 변경. 시연용 자료는 DB 파일 분리(#274) | #229(2차)·#216(가짜 숫자 파일 이름) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
