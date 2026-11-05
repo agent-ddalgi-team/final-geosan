@@ -1,7 +1,7 @@
 // 상세 머리(S2): 목록으로 / 분류·점수·가상 표시 / 고객 관계·대응·담당. 이름(h1)은 공통 틀이 보인다.
 import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import type { DetailHeader } from '../../api/types';
+import type { ContactCount, DetailHeader } from '../../api/types';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
@@ -17,6 +17,7 @@ import {
   labelFor,
   mapLinkLabels,
   purposeLabels,
+  recordsArea,
 } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 
@@ -27,6 +28,8 @@ export interface HeaderSectionProps {
   /** 거래 관계를 바꿨거나 새로 불러오기를 눌렀을 때. 상세 화면이 서버에서 다시 읽는다. */
   onRelationChanged: () => void;
   header: DetailHeader;
+  /** 접촉 횟수(전화·방문·메일). 서버가 주지 않으면 줄을 보이지 않는다. 기록을 저장하면 상세 화면이 바꿔 준다. */
+  contactCount?: ContactCount | null;
   /** 담당자 키를 이름으로 바꾼 값. 모르면 담당 줄을 보이지 않는다. */
   ownerName?: string | null;
   classificationOverrides?: Record<string, string>;
@@ -37,6 +40,7 @@ export default function HeaderSection({
   evalId,
   onRelationChanged,
   header,
+  contactCount,
   ownerName,
   classificationOverrides,
 }: HeaderSectionProps) {
@@ -156,6 +160,16 @@ export default function HeaderSection({
         {ownerName ? (
           <span>
             {detailHeader.owner}: {ownerName}
+          </span>
+        ) : null}
+        {contactCount ? (
+          <span data-testid="detail-contact-count">
+            {recordsArea.contactCount(
+              contactCount.total,
+              contactCount.call,
+              contactCount.email,
+              contactCount.visit,
+            )}
           </span>
         ) : null}
       </div>
