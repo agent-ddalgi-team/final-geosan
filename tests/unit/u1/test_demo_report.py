@@ -216,13 +216,14 @@ def test_demo_report_runs_twice_with_identical_output(tmp_path: Path) -> None:
             }
         )
     assert outputs[0] == outputs[1]
+    # #262 PM 승인: 거래 중인 A정밀은 미확인 후보 뒤이며 파일의 순위 접두도 따라간다.
     assert set(outputs[0]) == {
         "ranking.csv",
         "ranking.html",
-        "companies/01-A정밀.md",
-        "companies/02-b-company-zinc-가상회사.md",
-        "facts/01-A정밀.md",
-        "facts/02-b-company-zinc-가상회사.md",
+        "companies/02-A정밀.md",
+        "companies/01-b-company-zinc-가상회사.md",
+        "facts/02-A정밀.md",
+        "facts/01-b-company-zinc-가상회사.md",
     }
 
 

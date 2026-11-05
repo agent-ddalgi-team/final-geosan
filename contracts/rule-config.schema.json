@@ -163,6 +163,12 @@
         "brochure": { "$ref": "#/$defs/sortKeys" }
       }
     },
+    "existingCustomerPlacement": {
+      "type": "string",
+      "enum": ["BOTTOM", "INLINE"],
+      "default": "BOTTOM",
+      "description": "PM 승인 2026-11-04, #262: BOTTOM은 기존 그룹 정렬 뒤 거래 중 기회만 맨 아래로 옮긴다. 각 묶음 안 순서는 유지한다. INLINE은 기존 그룹 정렬 그대로. 이전 설정 파일에서 생략해도 기본 BOTTOM."
+    },
     "datasetKinds": {
       "type": "array",
       "items": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
