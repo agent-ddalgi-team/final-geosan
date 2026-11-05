@@ -181,4 +181,6 @@ scripts/                check.sh · check-secrets.sh (맥·리눅스) · check.p
 
 ## 5. 설계 문서
 
+**먼저 볼 곳: [`docs/map/`](docs/map/README.md)** — 지금 기준의 전체 기획과 현황을 그림과 쉬운 말로 정리한 지도입니다(기능 지도 · 구조 지도 · 기획 변경 기록). 아래 설계 문서는 그 지도의 근거 자료입니다.
+
 `aidlc/spaces/default/intents/261019-geosan-sales-agent/` 아래에 있습니다. 구현 전에 자기 모듈의 기능 설계(`construction/u1-skeleton/functional-design/`의 `rules.md`·`entities.md`·`functional-spec.md`)와 계약(`inception/contract-design/contract-summary.md`)을 읽습니다. 코드 생성 계획과 단위 테스트 지침은 `construction/u1-skeleton/code-generation/`에 있습니다.
