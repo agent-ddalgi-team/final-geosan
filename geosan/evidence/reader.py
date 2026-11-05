@@ -168,7 +168,8 @@ class _Text(HTMLParser):
         self.denied = False
 
     def handle_starttag(self, tag, attrs):
-        if tag in ("script", "style", "noscript", "template"):
+        # 제목·프레임 대체 안내는 회사 본문이 아니다. 본문이 비면 읽기 실패로 안내한다.
+        if tag in ("head", "title", "script", "style", "noscript", "template", "noframes"):
             self.skip += 1
         if tag in ("p", "div", "br", "li", "footer", "header"):
             self.parts.append("\n")
@@ -177,7 +178,10 @@ class _Text(HTMLParser):
             self.denied |= bool(_DENIAL.search(attrs.get("content", "")))
 
     def handle_endtag(self, tag):
-        if tag in ("script", "style", "noscript", "template") and self.skip:
+        if (
+            tag in ("head", "title", "script", "style", "noscript", "template", "noframes")
+            and self.skip
+        ):
             self.skip -= 1
         if tag in ("p", "div", "li", "footer", "header"):
             self.parts.append("\n")
