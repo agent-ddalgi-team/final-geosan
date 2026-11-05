@@ -4,11 +4,17 @@ from unittest.mock import Mock
 
 from fastapi.testclient import TestClient
 from pytest_bdd import given, parsers, scenarios, then, when
+from sqlalchemy import select
 
 from geosan.api.app import create_app
 from geosan.capability.importer import import_capability
+from geosan.config.app_settings import load_app_settings, sync_app_settings
+from geosan.evidence import openai_search
 from geosan.evidence.homepage import find_case_homepage
+from geosan.evidence.transfer import TransferLog
 from geosan.opportunity.importer import import_case
+from geosan.storage.session import session_scope
+from tests.unit.u2.test_search_limits import provider_reply
 
 scenarios("u2/homepage_search.feature")
 
@@ -30,6 +36,34 @@ def search(opp_id, answer):
     }
     adapter = Mock(return_value=response)
     return adapter, find_case_homepage(opp_id, search=adapter)
+
+
+@when("검색 한 번이 완료되고 상한 밖의 추가 검색이 응답에 남는다", target_fixture="lookup")
+def search_with_ignored_extra_call(opp_id, app_settings_path, monkeypatch):
+    settings = load_app_settings(app_settings_path)
+    settings.llm.mode = "EXTERNAL"
+    with session_scope() as session:
+        sync_app_settings(session, settings)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only-placeholder")
+    response = provider_reply()
+    response["max_tool_calls"] = 1
+    response["output"].insert(
+        1, {"type": "web_search_call", "status": "searching", "action": {"type": "open_page"}}
+    )
+    transport = Mock(return_value=response)
+    monkeypatch.setattr(openai_search, "_post_response", transport)
+    return transport, find_case_homepage(opp_id)
+
+
+@then("외부 호출과 검색 사용량은 각각 한 번만 기록된다")
+def single_paid_search(lookup):
+    transport, _ = lookup
+    transport.assert_called_once()
+    with session_scope() as session:
+        (row,) = session.scalars(select(TransferLog)).all()
+        assert row.call_count == row.web_search_calls == 1
+        assert row.input_tokens == 1000
+        assert row.output_tokens == 200
 
 
 @then("회사명과 주소만 한 번 전달된다")
