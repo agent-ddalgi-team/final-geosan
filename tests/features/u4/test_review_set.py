@@ -1,3 +1,5 @@
+import re
+
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from sqlalchemy import select
@@ -59,7 +61,7 @@ def proof():
                 )
 
 
-@then("추천 목록 두 공정 탭에 각각 9곳의 확인 묶음이 보이고 거래 관계 미확인 점수는 숨긴다")
+@then("추천 목록 두 공정 탭에 각각 9곳의 확인 묶음이 보이고 거래 확인 전 점수와 상태가 보인다")
 def cards():
     with TestClient(create_app()) as client:
         for process in ("ZINC_PLATING", "ANODIZING"):
@@ -71,9 +73,12 @@ def cards():
             assert len(payload["data"]) == payload["meta"]["total"] == 9
             assert [row["rank"] for row in payload["data"]] == list(range(1, 10))
             assert all(row["datasetKind"] == "COMPANY_CONFIRMED" for row in payload["data"])
-            # C1·BR10.2: 실제 사례는 거래 관계 미확인(FILTER_PENDING)이라 숫자를 숨긴다.
+            # #262 PM 승인: 미확인 분류는 유지하고 숫자·PENDING을 함께 보인다.
             assert all(row["classificationCode"] == "FILTER_PENDING" for row in payload["data"])
-            assert all(row["scoreDisplay"] == "--" for row in payload["data"])
+            assert all(row["scoreState"] == "PENDING" for row in payload["data"])
+            assert all(
+                re.fullmatch(r"\d+점 · [1-8]/8", row["scoreDisplay"]) for row in payload["data"]
+            )
 
 
 @given("소개서와 두 기회의 평가가 저장되어 있다", target_fixture="original")

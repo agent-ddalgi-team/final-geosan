@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { DetailHeader } from '../../api/types';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
-import { scoreAriaLabel, scoreText } from '../common/scoreDisplay';
+import ScoreLine from '../common/ScoreLine';
 import {
   cardRows,
   classificationLabels,
@@ -18,7 +18,7 @@ import {
   purposeLabels,
   relationStatusLabels,
 } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors } from '../../theme/tokens';
 
 export interface HeaderSectionProps {
   header: DetailHeader;
@@ -116,14 +116,12 @@ export default function HeaderSection({
         {header.coreEvidenceRecheck ? (
           <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
         ) : null}
-        <span
-          role="group"
-          aria-label={scoreAriaLabel(header.scoreDisplay)}
-          data-testid="detail-score"
-          style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
-        >
-          {scoreText(header.scoreDisplay)}
-        </span>
+        <ScoreLine
+          scoreDisplay={header.scoreDisplay}
+          scoreState={header.scoreState}
+          relationStatus={header.relationStatus}
+          testId="detail-score"
+        />
         {header.isVirtual ? (
           <StatusTag tone="wait" data-testid="detail-virtual-tag">
             {cardRows.virtualTag}

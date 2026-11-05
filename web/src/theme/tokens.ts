@@ -6,6 +6,8 @@ import { brand } from '../config/brand';
 export const colors = {
   text: '#1F2329',
   textSecondary: '#5B6470',
+  /** 거래 확인 전 점수(#264): 보조 글자보다 연하지만 흰 배경에서 대비 4.5:1을 지킨다. */
+  textDimmed: '#767676',
   bgLayout: '#F5F6F8',
   bgContainer: '#FFFFFF',
   borderSecondary: '#E3E6EA',

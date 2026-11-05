@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from geosan.rules.codes import ClassificationCode, DatasetKind, ItemState, SortGroup
+from geosan.rules.codes import ClassificationCode, DatasetKind, ItemState, RelationStatus, SortGroup
 from geosan.rules.models import (
     EvaluationInput,
     ItemJudgmentOutput,
@@ -26,6 +26,7 @@ def build_sort_key(
     }.get(code, SortGroup.OTHER)
     return SortKey(
         group=group,
+        relation_status=data.opportunity.relation_status,
         valid_until=valid_contact_until(data),
         E=totals.E,
         F=totals.F,
@@ -66,6 +67,11 @@ def rank_outputs(
         else:
             rows.sort(key=lambda row: _contact_key(row.sort_key))
         ordered.extend(rows)
+    if rule_config.existing_customer_placement == "BOTTOM":
+        # 안정 정렬로 거래 중만 뒤로 옮기며 두 묶음 안의 기존 그룹·점수 순서를 보존한다.
+        ordered.sort(
+            key=lambda row: row.sort_key.relation_status == RelationStatus.EXISTING_CONFIRMED
+        )
     return [
         RankOutput(opp_id=row.opp_id, original_rank=index)
         for index, row in enumerate(ordered, start=1)
