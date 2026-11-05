@@ -141,7 +141,9 @@ def test_schedule_window_orders_overdue_first_and_skips_closed(dashboard_env):
     )
     record(client, c, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-13"})  # 8일 뒤
     record(client, d, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-06"})
-    record(client, d, {"status": "LOST", "reason": "가상 거절 사유"})  # 끝난 영업의 남은 일정
+    record(
+        client, d, {"status": "LOST", "lostReasonCode": "PRICE", "reason": "가상 거절 사유"}
+    )  # 끝난 영업의 남은 일정
     data = build()
     assert [(row.due_at, row.overdue) for row in data.schedule] == [
         (date(2026, 11, 1), True),
@@ -162,7 +164,7 @@ def test_schedule_list_filter_matches_dashboard_count(dashboard_env, monkeypatch
     record(client, b, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-01"})
     record(client, c, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-13"})
     record(client, d, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-06"})
-    record(client, d, {"status": "LOST", "reason": "가상 거절 사유"})
+    record(client, d, {"status": "LOST", "lostReasonCode": "PRICE", "reason": "가상 거절 사유"})
     dashboard = client.get("/api/v1/dashboard").json()["data"]
     listed = client.get("/api/v1/opportunities", params={"filter": "SCHEDULE_DUE"})
     assert listed.status_code == 200
