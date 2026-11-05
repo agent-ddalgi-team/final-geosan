@@ -14,7 +14,7 @@ from geosan.config.errors import AppError, InputError, exit_code_for
 from geosan.evidence.contacts import scrub_contacts
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.session import session_scope
-from geosan.workflows.research import research_one
+from geosan.workflows.research import ResearchResult, research_one
 
 logger = logging.getLogger(__name__)
 STOP_KINDS = {"LLM_LIMIT", "SEARCH_LIMIT", "USAGE_UNCONFIRMED", "LLM_NOT_CONFIGURED"}
@@ -24,6 +24,18 @@ STATUS_LABELS = {
     "NEEDS_CONFIRMATION": "확인 필요",
     "NOT_FOUND": "못 찾음",
 }
+
+
+def print_research_result(name: str, result: ResearchResult, echo=typer.echo) -> None:
+    """일괄 조사와 투입 후 조사에서 같은 상태·근거 수·비용을 보여 준다."""
+    label = "확인 필요" if result.error else STATUS_LABELS[result.status]
+    safe_name = " ".join(scrub_contacts(name)[0].split())
+    cost = f"확인된 비용 ${result.cost:.6f}"
+    if result.usage_unconfirmed:
+        cost += " · 총비용 미확정"
+    echo(f"{safe_name}: {label} · 근거 {result.evidence_count}건 · {cost}")
+    if result.error:
+        echo(f"  {result.error.message} {result.error.next_action}")
 
 
 def run_research(
@@ -69,21 +81,13 @@ def run_research(
         for opp_id, name in selected:
             result = research_one(opp_id)
             processed += 1
-            label = STATUS_LABELS[result.status]
             if result.error:
                 failed += 1
-                label = "확인 필요"
             elif result.status == "NOT_FOUND":
                 missing += 1
             else:
                 completed += 1
-            safe_name = " ".join(scrub_contacts(name)[0].split())
-            cost = f"확인된 비용 ${result.cost:.6f}"
-            if result.usage_unconfirmed:
-                cost += " · 총비용 미확정"
-            echo(f"{safe_name}: {label} · 근거 {result.evidence_count}건 · {cost}")
-            if result.error:
-                echo(f"  {result.error.message} {result.error.next_action}")
+            print_research_result(name, result, echo)
             if result.usage_unconfirmed or (result.error and result.error.kind in STOP_KINDS):
                 echo(f"조사를 멈췄습니다. 남은 대상 {len(rows) - processed}건.")
                 break
