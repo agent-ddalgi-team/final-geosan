@@ -1,4 +1,4 @@
-"""사용한 거산 값과 요구의 미확인 사항에 대한 질문 후보 (BR8.1~8.2)."""
+"""사용한 거산 값과 요구의 미확인 사항에 대한 질문 후보 (BR8.1, BR8.2)."""
 
 from geosan.rules.codes import ProcessCode, ReviewStatus
 from geosan.rules.codes import QuestionTargetKind as Kind
@@ -29,14 +29,18 @@ PROCESS_NAMES: dict[str, str] = {
 
 
 def process_display_name(code: str) -> str:
-    """질문에 보일 공정 이름. 표에 없으면 코드를 그대로 돌려준다."""
+    """확인 질문에 보일 공정 이름을 찾는다. 표에 없으면 코드를 그대로 돌려준다 (BR8.1)."""
     return PROCESS_NAMES.get(code, code)
 
 
 def question_candidates(
     data: EvaluationInput, items: list[ItemJudgmentOutput], checks: list[RequirementCheckOutput]
 ) -> list[QuestionCandidate]:
-    """대상별 질문 하나만 만들고 검수 완료한 미사용 값에는 질문을 만들지 않는다 (BR8.1~8.2)."""
+    """대상별 질문 하나만 만들고 검수 완료한 미사용 값에는 질문을 만들지 않는다 (BR8.1, BR8.2).
+
+    BR8.2의 중복 방지는 이번 평가의 후보 안에서 적용한다. 기존 질문 재사용과 최초 평가 ID
+    보존은 질문 저장소가 맡는다.
+    """
     values = {}
     for process in data.capability.processes:
         values[process.process_id] = (

@@ -375,5 +375,5 @@ CLASSIFICATION_BY_CODE: dict[ClassificationCode, ClassificationEntry] = {
 
 
 def classification_entry(code: ClassificationCode | str) -> ClassificationEntry:
-    """코드표 한 줄을 돌려준다. 코드표 밖 값은 KeyError(조용히 넘기지 않는다)."""
+    """공통 코드표 한 줄을 돌려준다. 코드표 밖 값은 KeyError(조용히 넘기지 않는다) (BR6.3)."""
     return CLASSIFICATION_BY_CODE[ClassificationCode(code)]

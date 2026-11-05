@@ -1,4 +1,4 @@
-"""접촉 분류별 순서와 설정에 따른 나머지 후보 정렬 (BR6.4~6.5)."""
+"""접촉 분류별 순서와 설정에 따른 나머지 후보 정렬 (BR6.4, BR6.5)."""
 
 from datetime import date
 
@@ -39,7 +39,7 @@ def build_sort_key(
 def rank_outputs(
     outputs: list[RankInput], dataset_kind: DatasetKind, rule_config: RuleConfig
 ) -> list[RankOutput]:
-    """같은 프로필의 목록을 안정적으로 정렬하고 순위를 1부터 매긴다 (BR6.4~6.5)."""
+    """같은 프로필의 목록을 안정적으로 정렬하고 순위를 1부터 매긴다 (BR6.4, BR6.5)."""
     if len({row.profile for row in outputs}) > 1:
         raise ValueError("신규 기회와 재접촉 프로필은 함께 정렬할 수 없습니다")
     if len({row.opp_id for row in outputs}) != len(outputs):
