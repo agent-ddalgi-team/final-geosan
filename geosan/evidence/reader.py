@@ -163,13 +163,17 @@ def _read(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
 class _Text(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
+        self.in_head = False
         self.skip = 0
         self.parts: list[str] = []
         self.denied = False
 
     def handle_starttag(self, tag, attrs):
+        # </head>가 생략돼도 실제 본문은 읽되, 숨김 영역 안의 <body>는 제외한다.
+        if not self.skip and tag in ("head", "body"):
+            self.in_head = tag == "head"
         # 제목·프레임 대체 안내는 회사 본문이 아니다. 본문이 비면 읽기 실패로 안내한다.
-        if tag in ("head", "title", "script", "style", "noscript", "template", "noframes"):
+        if tag in ("title", "script", "style", "noscript", "template", "noframes"):
             self.skip += 1
         if tag in ("p", "div", "br", "li", "footer", "header"):
             self.parts.append("\n")
@@ -178,16 +182,15 @@ class _Text(HTMLParser):
             self.denied |= bool(_DENIAL.search(attrs.get("content", "")))
 
     def handle_endtag(self, tag):
-        if (
-            tag in ("head", "title", "script", "style", "noscript", "template", "noframes")
-            and self.skip
-        ):
+        if tag == "head" and not self.skip:
+            self.in_head = False
+        if tag in ("title", "script", "style", "noscript", "template", "noframes") and self.skip:
             self.skip -= 1
         if tag in ("p", "div", "li", "footer", "header"):
             self.parts.append("\n")
 
     def handle_data(self, data):
-        if not self.skip:
+        if not self.in_head and not self.skip:
             self.parts.append(data)
 
 
