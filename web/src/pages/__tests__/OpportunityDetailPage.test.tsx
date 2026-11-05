@@ -4,7 +4,13 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
-import { ApiError, getActivity, getOpportunityDetail, postQuestionReply } from '../../api/client';
+import {
+  ApiError,
+  getActivity,
+  getOpportunityDetail,
+  postQuestionReply,
+  postRelation,
+} from '../../api/client';
 import type { Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
@@ -23,8 +29,10 @@ vi.mock('../../api/client', async (importOriginal) => ({
   getOpportunityDetail: vi.fn(),
   getActivity: vi.fn(),
   postQuestionReply: vi.fn(),
+  postRelation: vi.fn(),
 }));
 
+const mockedRelation = vi.mocked(postRelation);
 const mockedGet = vi.mocked(getOpportunityDetail);
 const mockedReply = vi.mocked(postQuestionReply);
 const mockedActivity = vi.mocked(getActivity);
@@ -72,6 +80,7 @@ describe('OpportunityDetailPage', () => {
     mockedGet.mockReset();
     mockedActivity.mockReset();
     mockedReply.mockReset();
+    mockedRelation.mockReset();
     mockedActivity.mockResolvedValue({
       data: [],
       meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
@@ -282,6 +291,44 @@ describe('OpportunityDetailPage', () => {
     expect(score).toHaveAttribute('data-score-state', 'PENDING');
     expect(screen.getByTestId('detail-score-pending-tag')).toHaveTextContent(scoreTags.pending);
     expect(screen.queryByTestId('detail-score-existing-tag')).not.toBeInTheDocument();
+  });
+
+  it('거래 관계를 바꾸면 서버에 저장한 뒤 상세와 활동 이력을 새로 불러온다 (#266)', async () => {
+    const user = userEvent.setup();
+    mockedGet.mockResolvedValueOnce(reply(base));
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        evalId: 'eval-reevaluated',
+        reevaluated: true,
+        header: { ...base.header, relationStatus: 'NEW_CONFIRMED', relationNote: null },
+      }),
+    );
+    mockedRelation.mockResolvedValueOnce({
+      data: {
+        relationStatus: 'NEW_CONFIRMED',
+        relationConfirmedAt: '2026-11-05',
+        relationConfirmedBy: 'park-lee',
+        evalId: 'eval-reevaluated',
+      },
+      meta: { reevaluated: true },
+    });
+    renderPage();
+    expect(await screen.findByTestId('detail-relation-text')).toHaveTextContent(
+      '거래 관계: 거래 중',
+    );
+    const activityCallsBefore = mockedActivity.mock.calls.length;
+    await user.click(screen.getByTestId('relation-button-NEW_CONFIRMED'));
+    expect(mockedRelation).toHaveBeenCalledWith(
+      'opp-1',
+      { relationStatus: 'NEW_CONFIRMED', evalId: base.evalId },
+      'park-lee',
+    );
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByTestId('detail-relation-text')).toHaveTextContent('거래 관계: 거래 없음'),
+    );
+    expect(mockedActivity.mock.calls.length).toBeGreaterThan(activityCallsBefore);
   });
 
   it('상세 머리: 거래 중으로 확인된 회사는 점수가 확정이어도 "기존 거래처" 꼬리표가 붙는다 (#264)', async () => {

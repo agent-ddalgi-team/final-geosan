@@ -188,6 +188,9 @@ export interface DetailHeader {
   opportunityItem: string;
   relationStatus: RelationStatus;
   relationNote?: string | null;
+  /** 거래 관계를 담당자가 마지막으로 바꾼 날(YYYY-MM-DD)과 담당자 키. 한 번도 안 바꿨으면 없음(#266). */
+  relationConfirmedAt?: string | null;
+  relationConfirmedBy?: string | null;
   purpose: Purpose;
   owner?: string | null;
   classificationCode: ClassificationCode;
@@ -409,6 +412,22 @@ export interface ReviewCheckResponse {
   checkedAt?: string | null;
 }
 
+// ---------- POST /opportunities/{oppId}/relation (거래 관계 입력, #265·#266) ----------
+
+export interface RelationRequest {
+  relationStatus: RelationStatus;
+  /** 지금 보고 있는 평가 ID. 그 사이 다시 평가됐으면 서버가 409(STALE_EVALUATION)로 막는다. */
+  evalId: string;
+}
+
+export interface RelationResponse {
+  relationStatus: RelationStatus;
+  relationConfirmedAt: string;
+  relationConfirmedBy: string;
+  /** 저장 뒤 다시 평가한 새 평가 ID. */
+  evalId: string;
+}
+
 // ---------- POST /questions/{questionId}/reply (검토사항 [답 적기], 2026-11-04) ----------
 
 export interface ReplyRequest {
@@ -434,6 +453,7 @@ export type ActivityKind =
   | 'REPLY'
   | 'OUTCOME'
   | 'EVIDENCE_GRADE_CONFIRMED'
+  | 'RELATION_CONFIRMED'
   | 'NOTE';
 
 /** 활동 이력 한 줄(C1 ActivityItem). actor는 담당자 키 또는 system. */

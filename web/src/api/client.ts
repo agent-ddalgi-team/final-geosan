@@ -15,6 +15,8 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  RelationRequest,
+  RelationResponse,
   ReplyRequest,
   ReplyResponse,
   ReviewCheckRequest,
@@ -188,6 +190,15 @@ export function postQuestionReply(questionId: string, body: ReplyRequest, staffK
   });
 }
 
+/** 거래 관계 저장(#265). 저장하면 서버가 이력을 남기고 이 회사를 다시 평가한다. */
+export function postRelation(oppId: string, body: RelationRequest, staffKey: string) {
+  return request<RelationResponse>(`/opportunities/${encodeURIComponent(oppId)}/relation`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
 /** 활동 이력(U5). 서버가 시각 순으로 준다. 한도 기본 20, 최대 100. */
 export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   return request<ActivityItem[]>(
@@ -281,6 +292,23 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         repliedBy: options.staffKey,
       },
       meta: { updatedAt: now },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/relation$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const body = (options.body ?? {}) as Partial<RelationRequest>;
+    return {
+      data: {
+        relationStatus: body.relationStatus,
+        relationConfirmedAt: now.slice(0, 10),
+        relationConfirmedBy: options.staffKey,
+        evalId: `${body.evalId ?? 'eval'}-reevaluated`,
+      },
+      meta: { updatedAt: now, reevaluated: true },
     } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/activity$/.test(route)) {
