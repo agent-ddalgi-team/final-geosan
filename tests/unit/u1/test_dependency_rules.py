@@ -37,6 +37,7 @@ ALLOWED: dict[str, set[str]] = {
     "api": {
         "capability",
         "config",
+        "dashboard",  # #216 대시보드 집계 경로 (PM 확인 필요)
         "evaluation",
         "evidence",
         "opportunity",
@@ -57,6 +58,8 @@ ALLOWED: dict[str, set[str]] = {
     },
     "config": {"rules", "storage"},
     "records": {"storage"},
+    # #216 대시보드는 기록·평가 결과를 읽기만 한다(PM 확인 필요). 이 부품을 가져오는 곳은 api뿐이다.
+    "dashboard": {"evaluation", "opportunity", "records"},
     "rules": set(),
     # ── 아래 넷은 서로 물려 있다(capability ↔ opportunity ↔ evaluation ↔ questions).
     #    11월 정리 대상. 정리되면 주석의 부품을 집합에서 지운다.
