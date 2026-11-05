@@ -1,4 +1,5 @@
-// getDashboard: 가짜 모드(VITE_USE_FIXTURES=1)는 고정값 파일을, 아니면 /api/v1/dashboard 를 부른다.
+// getDashboard는 늘 client의 request로 /dashboard 를 읽는다(#216). 가짜 모드(VITE_USE_FIXTURES=1)일 때만
+// client.ts의 가짜 응답 자리가 고정값을 돌려주고, 아니면 /api/v1/dashboard 로 실제 요청을 보낸다.
 // fetch는 가짜로 바꾼 확인이며 실제 서버(집계 API) 연결 확인이 아니다.
 import { getDashboard } from '../dashboard';
 import dashboardFixture from '../../test/fixtures/dashboard.json';

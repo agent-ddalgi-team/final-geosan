@@ -218,6 +218,9 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
     return (await import('../test/fixtures/opportunities-apjeong.json'))
       .default as unknown as Envelope<T>;
   }
+  if (route === '/dashboard') {
+    return (await import('../test/fixtures/dashboard.json')).default as unknown as Envelope<T>;
+  }
   if (/^\/opportunities\/[^/]+\/opinions$/.test(route) && options.method === 'POST') {
     if (!options.staffKey || options.staffKey === 'viewer') {
       const err = (await import('../test/fixtures/error-403.json')).default;

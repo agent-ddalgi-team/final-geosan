@@ -1,5 +1,5 @@
 // 대시보드(S4, 첫 화면): 회사 이름 검색 · 건수 5개 · (공정·산업군 막대) · 일정 · 최근 내 기록.
-// 지금은 약속 파일 C1 `/dashboard` v2 모양의 가짜 숫자로 먼저 만든다(#215). 집계 API(#216)가 붙으면 숫자만 바뀐다.
+// 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v2, #216)에서 온다. 공정·산업군 막대는 서버가 주지 않으면(2차 #229 전) 숨긴다.
 // 검색은 /opportunities?q=이름 으로 이동한다(계약: 검색은 목록의 q 조건). 목록이 q를 읽는 것은 서버 연결 뒤다.
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
