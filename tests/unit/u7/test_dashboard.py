@@ -14,6 +14,8 @@ from geosan.capability.importer import import_capability
 from geosan.dashboard.queries import RECENT_ACTIVITY_LIMIT, build_dashboard
 from geosan.evidence.transfer import KST
 from geosan.opportunity.importer import import_case
+from geosan.records.models import Note
+from geosan.storage.base import new_id
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from tests import factories
@@ -207,7 +209,7 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
         ("CONTACT_ATTEMPT", "전화 시도, 부재"),
         ("STAGE", "관심 → 접촉"),
         ("STAGE", "관심"),
-        ("NOTE", "도금 두께 문의"),
+        ("NOTE", "메모를 남김"),
     ]
     assert all(row.opp_id == a and row.customer_name for row in rows)
     assert [row.at for row in rows] == sorted((row.at for row in rows), reverse=True)
@@ -224,8 +226,39 @@ def test_recent_activity_is_capped_and_empty_without_staff(dashboard_env):
         )
     rows = build().recent_activity
     assert len(rows) == RECENT_ACTIVITY_LIMIT
-    assert rows[0].summary == "가상 메모 11"
+    assert rows[0].summary == "메모를 남김"
     assert build(staff_key=None).recent_activity == []
+
+
+def test_internal_note_reply_and_research_text_never_reach_dashboard(dashboard_env):
+    """Given 메모·자료 조사·질문 답 / When GET /dashboard / Then 종류만 보이고 본문은 없다."""
+    client, (a, *_rest) = dashboard_env
+    mine = {"X-Staff-Key": "park-lee"}
+    secret_memo, secret_research, secret_reply = "비밀메모ZZ1", "비밀조사ZZ2", "비밀답ZZ3"
+    client.post(f"/api/v1/opportunities/{a}/notes", json={"text": secret_memo}, headers=mine)
+    client.post(
+        f"/api/v1/opportunities/{a}/notes",
+        json={"text": secret_research, "kind": "RESEARCH"},
+        headers=mine,
+    )
+    with session_scope() as session:
+        session.add(
+            Note(
+                note_id=new_id("note"),
+                opp_id=a,
+                staff_key="park-lee",
+                text=f"Q: 가상 질문 답: {secret_reply}",
+                kind="REPLY",
+                version=3,
+            )
+        )
+    response = client.get("/api/v1/dashboard", headers=mine)
+    assert response.status_code == 200
+    for secret in (secret_memo, secret_research, secret_reply):
+        assert secret not in response.text
+    summaries = {row["summary"] for row in response.json()["data"]["recentActivity"]}
+    assert summaries == {"메모를 남김", "자료 조사를 기록함", "질문 답을 기록함"}
+    assert {row["kind"] for row in response.json()["data"]["recentActivity"]} == {"NOTE"}
 
 
 def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):

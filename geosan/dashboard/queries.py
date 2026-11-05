@@ -36,6 +36,12 @@ STAGE_LABELS = {
     "WON": "성사",
     "LOST": "거절",
 }
+# 메모 종류별 요약. 본문은 넣지 않는다(계약 C4: 메모·답 글은 대시보드 요약으로 안 나감).
+NOTE_SUMMARIES = {
+    "MEMO": "메모를 남김",
+    "REPLY": "질문 답을 기록함",
+    "RESEARCH": "자료 조사를 기록함",
+}
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}
 OPINION_LABELS = {
@@ -184,12 +190,8 @@ def _recent_activity(
         .order_by(Note.created_at.desc(), Note.note_id.desc())
         .limit(RECENT_ACTIVITY_LIMIT)
     ):
-        if note.kind == "REPLY":
-            summary = f"답 기록 · {note.text.split(' 답: ', 1)[-1]}"
-        elif note.kind == "RESEARCH":
-            summary = f"자료 조사 · {note.text}"
-        else:
-            summary = note.text
+        # 메모·답·자료 조사 글은 내부 전용이라(계약 C4) 요약에는 종류만 적고 본문은 싣지 않는다.
+        summary = NOTE_SUMMARIES.get(note.kind, NOTE_SUMMARIES["MEMO"])
         entries.append((note.created_at, note.opp_id, "NOTE", summary))
     for outcome in session.scalars(
         select(Outcome)
