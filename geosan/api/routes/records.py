@@ -29,6 +29,9 @@ from geosan.api.schemas import (
     QuestionReplyEnvelope,
     QuestionReplyRequest,
     QuestionReplyResponse,
+    RelationEnvelope,
+    RelationRequest,
+    RelationResponse,
     ReviewCheckEnvelope,
     ReviewCheckRequest,
     ReviewCheckResponse,
@@ -37,14 +40,54 @@ from geosan.api.schemas import (
 from geosan.config.errors import FieldError, InputError, NotFoundError, RunFailedError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
-from geosan.opportunity.models import Opportunity
+from geosan.opportunity.models import Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
+from geosan.opportunity.relations import change_relation
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Note, Outcome, ReviewCheck, ReviewOpinion
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
+from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
 
 router = APIRouter()
+
+LOST_REASON_LABELS = {
+    "PRICE": "가격",
+    "LEAD_TIME": "납기",
+    "INCUMBENT_SUPPLIER": "기존 거래처 유지",
+    "NO_DEMAND": "수요 없음",
+    "QUALITY_CERT": "품질·인증 요건",
+    "OTHER": "기타",
+}
+
+
+@router.post("/opportunities/{oppId}/relation", response_model=RelationEnvelope)
+def save_relation(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: RelationRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    customer = change_relation(
+        session, opp_id, body.relation_status, body.eval_id, staff, today_in_seoul()
+    )
+    result = evaluate_in_session(session, [opp_id], staff)
+    if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
+        raise RunFailedError("거래 관계를 재평가하지 못해 저장을 취소했습니다.")
+    return RelationEnvelope(
+        data=RelationResponse(
+            relation_status=customer.relation_status,
+            relation_confirmed_at=customer.relation_confirmed_at,
+            relation_confirmed_by=customer.relation_confirmed_by,
+            eval_id=result.new_eval_ids[0],
+        ),
+        meta=Meta(
+            updated_at=utcnow(),
+            reevaluated=True,
+            dataset_kind=customer.dataset_kind,
+            has_virtual_data=customer.is_virtual,
+        ),
+    )
 
 
 def derive_review_items(data: OpportunityDetail) -> list[ReviewItem]:
@@ -308,6 +351,7 @@ def outcome_view(row: Outcome | None) -> dict | None:
         "updatedBy": row.created_by,
         "updatedAt": row.created_at.isoformat(),
         "status": row.status,
+        "lostReasonCode": row.lost_reason_code if row.status == "LOST" else None,
         "nextScheduleAt": row.next_schedule_at.isoformat() if row.next_schedule_at else None,
         "nextScheduleNote": row.next_schedule_note,
     }
@@ -323,8 +367,13 @@ def save_outcome(
     fields = scan_contacts(
         {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
     )
-    if body.status == "LOST" and not (body.reason and body.reason.strip()):
-        fields.append(FieldError(path="reason", message="거절 사유를 적어 주세요."))
+    if body.status == "LOST":
+        if body.lost_reason_code is None:
+            fields.append(FieldError(path="lostReasonCode", message="거절 이유를 골라 주세요."))
+    elif "lost_reason_code" in body.model_fields_set:
+        fields.append(
+            FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
+        )
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)
@@ -335,6 +384,22 @@ def save_outcome(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_outcome(session, opp_id)
     values = body.model_dump(exclude={"eval_id", "expected_version"})
+    # C1·#250: 같은 거절 코드로 일정·접촉만 남기면 최신 거절 행의 설명을 이어받는다.
+    # 이전 행 조회와 새 이력 저장은 같은 쓰기 잠금 안에서 처리한다.
+    if body.status == "LOST" and not (body.reason and body.reason.strip()):
+        previous_lost = session.scalar(
+            select(Outcome)
+            .where(Outcome.opp_id == opp_id, Outcome.status == "LOST")
+            .order_by(Outcome.version.desc())
+        )
+        if previous_lost and previous_lost.lost_reason_code == body.lost_reason_code:
+            values["reason"] = previous_lost.reason
+    fields = scan_contacts({"reason": values["reason"]})
+    if body.status == "LOST" and body.lost_reason_code == "OTHER":
+        if not (values["reason"] and values["reason"].strip()):
+            fields.append(FieldError(path="reason", message="기타를 고르면 이유를 적어 주세요."))
+    if fields:
+        raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
     for name in ("next_schedule_at", "next_schedule_note"):
         if previous and name not in body.model_fields_set:
@@ -376,6 +441,29 @@ def activity(
     if opportunity is None:
         raise NotFoundError("활동을 조회할 기회가 없습니다.")
     items = []
+    relation_labels = {
+        "UNCONFIRMED": "확인 전",
+        "NEW_CONFIRMED": "거래 없음",
+        "EXISTING_CONFIRMED": "거래 중",
+    }
+    for row in session.scalars(
+        select(RelationHistory)
+        .where(RelationHistory.opp_id == opp_id)
+        .order_by(RelationHistory.changed_at.desc(), literal_column("rowid").desc())
+        .limit(limit)
+    ):
+        items.append(
+            ActivityItem(
+                at=row.changed_at,
+                actor=row.staff_key,
+                kind="RELATION_CONFIRMED",
+                summary=(
+                    f"거래 관계: {relation_labels[row.from_status]} → "
+                    f"{relation_labels[row.to_status]}"
+                ),
+                previous_value=row.from_status,
+            )
+        )
     for row in session.scalars(
         select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc()).limit(limit)
     ):
@@ -409,6 +497,8 @@ def activity(
             "LOST": "거절",
         }[row.status]
         summary = status_label
+        if row.status == "LOST" and row.lost_reason_code:
+            summary += f" · {LOST_REASON_LABELS[row.lost_reason_code]}"
         if row.method:
             method = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}[row.method]
             result = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}.get(row.result, "")

@@ -24,6 +24,7 @@ from geosan.rules.codes import (
     ClassificationCode,
     DatasetKind,
     FilterState,
+    LostReasonCode,
     NeededStage,
     Opinion,
     Purpose,
@@ -521,6 +522,7 @@ class OutcomeRequest(_RequestModel):
     next_schedule_at: date | None = None
     next_schedule_note: str | None = None
     reason: str | None = None
+    lost_reason_code: LostReasonCode | None = None
     action_id: str | None = None
     method: Literal["CALL", "EMAIL", "VISIT"] | None = None
     result: Literal["REACHED", "ABSENT", "DECLINED"] | None = None
@@ -534,6 +536,18 @@ class OutcomeResponse(RecordMeta):
     status: OutcomeStatus
 
 
+class RelationRequest(_RequestModel):
+    relation_status: RelationStatus
+    eval_id: str = Field(min_length=1, strict=True)
+
+
+class RelationResponse(_ApiModel):
+    relation_status: RelationStatus
+    relation_confirmed_at: date
+    relation_confirmed_by: str
+    eval_id: str
+
+
 class ActivityItem(_ApiModel):
     at: datetime
     actor: str
@@ -544,6 +558,7 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+RelationEnvelope = Envelope[RelationResponse]
 QuestionReplyEnvelope = Envelope[QuestionReplyResponse]
 ReviewCheckEnvelope = Envelope[ReviewCheckResponse]
 MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
