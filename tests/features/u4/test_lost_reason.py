@@ -53,3 +53,61 @@ def no_record(rejected):
     assert rejected.status_code == 400
     with session_scope() as session:
         assert session.scalar(select(func.count()).select_from(Outcome)) == 0
+
+
+@given("기타 이유에 가상 조건 불일치 설명을 저장했다")
+def saved_other(company):
+    client, opp_id, _ = company
+    result = post(
+        client,
+        opp_id,
+        "outcomes",
+        {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 조건 불일치"},
+    )
+    assert result.status_code == 200
+
+
+@when("같은 기타 이유로 설명 없이 다음 일정을 저장한다")
+def save_schedule(company):
+    client, opp_id, _ = company
+    result = post(
+        client,
+        opp_id,
+        "outcomes",
+        {"status": "LOST", "lostReasonCode": "OTHER", "nextScheduleAt": "2026-11-12"},
+    )
+    assert result.status_code == 200
+
+
+@then("이전 설명과 새 일정이 함께 저장되고 이력은 두 줄이다")
+def explanation_and_schedule_are_saved(company):
+    client, opp_id, _ = company
+    with session_scope() as session:
+        rows = list(
+            session.scalars(
+                select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version)
+            )
+        )
+        assert [row.reason for row in rows] == ["가상 조건 불일치", "가상 조건 불일치"]
+        assert rows[1].next_schedule_at.isoformat() == "2026-11-12"
+    assert len(client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]) == 2
+
+
+@given("가격 이유에 가상 가격 설명을 저장했다")
+def saved_price(company):
+    client, opp_id, _ = company
+    result = post(
+        client,
+        opp_id,
+        "outcomes",
+        {"status": "LOST", "lostReasonCode": "PRICE", "reason": "가상 가격 설명"},
+    )
+    assert result.status_code == 200
+
+
+@then("입력 오류이며 이전 가격 이유만 남아 있다")
+def only_previous_price_remains(rejected):
+    assert rejected.status_code == 400
+    with session_scope() as session:
+        rows = list(session.scalars(select(Outcome)))
+        assert len(rows) == 1 and rows[0].lost_reason_code == "PRICE"

@@ -201,15 +201,16 @@ def test_concurrent_lost_reasons_keep_both_rows(records_env):
         assert {row.lost_reason_code for row in rows} == {"PRICE", "NO_DEMAND"}
 
 
-def test_other_requires_explanation_on_every_save_until_contract_changes(records_env):
-    """PM 제안의 이전 설명 이어받기는 아직 약속에 없으므로 임의로 넣지 않는다."""
+@pytest.mark.parametrize("code,label", REASONS)
+def test_same_lost_code_inherits_previous_explanation(records_env, code, label):
+    """PM #250 확정: 같은 거절 이유로 일정만 저장하면 이전 설명을 이어받는다."""
     client, opp_id = records_env
     assert (
         post(
             client,
             opp_id,
             "outcomes",
-            {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 조건"},
+            {"status": "LOST", "lostReasonCode": code, "reason": "가상 조건"},
         ).status_code
         == 200
     )
@@ -217,8 +218,134 @@ def test_other_requires_explanation_on_every_save_until_contract_changes(records
         client,
         opp_id,
         "outcomes",
-        {"status": "LOST", "lostReasonCode": "OTHER", "nextScheduleAt": "2026-11-12"},
+        {"status": "LOST", "lostReasonCode": code, "nextScheduleAt": "2026-11-12"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 200, response.text
+    with session_scope() as session:
+        rows = list(session.scalars(select(Outcome).order_by(Outcome.version)))
+        assert len(rows) == 2 and [row.reason for row in rows] == ["가상 조건", "가상 조건"]
+        assert rows[1].next_schedule_at.isoformat() == "2026-11-12"
+    activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
+    assert all(
+        f"거절 · {label}" in row["summary"] and "가상 조건" in row["summary"] for row in activity
+    )
+
+
+@pytest.mark.parametrize("empty", [None, "", "  "])
+def test_explicit_empty_explanation_is_inherited(records_env, empty):
+    client, opp_id = records_env
+    assert (
+        post(
+            client,
+            opp_id,
+            "outcomes",
+            {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 이전 설명"},
+        ).status_code
+        == 200
+    )
+    assert (
+        post(
+            client,
+            opp_id,
+            "outcomes",
+            {"status": "LOST", "lostReasonCode": "OTHER", "reason": empty},
+        ).status_code
+        == 200
+    )
+    with session_scope() as session:
+        latest = session.scalar(select(Outcome).order_by(Outcome.version.desc()))
+        assert latest.reason == "가상 이전 설명"
+
+
+def test_inheritance_uses_latest_lost_row_and_keeps_explicit_new_text(records_env):
+    client, opp_id = records_env
+    for text in ("가상 첫 설명", "가상 고친 설명", None):
+        assert (
+            post(
+                client,
+                opp_id,
+                "outcomes",
+                {"status": "LOST", "lostReasonCode": "OTHER", "reason": text},
+            ).status_code
+            == 200
+        )
+    with session_scope() as session:
+        rows = list(session.scalars(select(Outcome).order_by(Outcome.version)))
+        assert [row.reason for row in rows] == ["가상 첫 설명", "가상 고친 설명", "가상 고친 설명"]
+
+
+def test_changed_lost_code_does_not_inherit_an_older_matching_code(records_env):
+    client, opp_id = records_env
+    for code in ("OTHER", "PRICE"):
+        assert (
+            post(
+                client,
+                opp_id,
+                "outcomes",
+                {"status": "LOST", "lostReasonCode": code, "reason": "가상 기존 설명"},
+            ).status_code
+            == 200
+        )
+    rejected = post(client, opp_id, "outcomes", {"status": "LOST", "lostReasonCode": "OTHER"})
+    assert rejected.status_code == 400
+    assert "기타를 고르면 이유를 적어 주세요" in rejected.text
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(Outcome)) == 2
+
+
+def test_changed_optional_code_does_not_copy_previous_explanation(records_env):
+    client, opp_id = records_env
+    assert (
+        post(
+            client,
+            opp_id,
+            "outcomes",
+            {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 기타 설명"},
+        ).status_code
+        == 200
+    )
+    assert (
+        post(client, opp_id, "outcomes", {"status": "LOST", "lostReasonCode": "PRICE"}).status_code
+        == 200
+    )
+    with session_scope() as session:
+        latest = session.scalar(select(Outcome).order_by(Outcome.version.desc()))
+        assert latest.lost_reason_code == "PRICE" and latest.reason is None
+
+
+def test_inherited_explanation_cannot_bypass_contact_validation(records_env):
+    client, opp_id = records_env
+    assert (
+        post(
+            client,
+            opp_id,
+            "outcomes",
+            {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 설명"},
+        ).status_code
+        == 200
+    )
+    with session_scope() as session:
+        session.scalar(select(Outcome)).reason = "가상 이전 연락처 test@example.invalid"
+    rejected = post(client, opp_id, "outcomes", {"status": "LOST", "lostReasonCode": "OTHER"})
+    assert rejected.status_code == 400 and "test@example.invalid" not in rejected.text
     with session_scope() as session:
         assert session.scalar(select(func.count()).select_from(Outcome)) == 1
+
+
+def test_concurrent_explanation_change_and_schedule_keep_latest_explanation(records_env):
+    client, opp_id = records_env
+    original = {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 첫 설명"}
+    assert post(client, opp_id, "outcomes", original).status_code == 200
+    updates = [
+        {**original, "reason": "가상 고친 설명"},
+        {"status": "LOST", "lostReasonCode": "OTHER", "nextScheduleAt": "2026-11-12"},
+    ]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda body: post(client, opp_id, "outcomes", body), updates))
+    assert all(response.status_code == 200 for response in responses)
+    with session_scope() as session:
+        rows = list(session.scalars(select(Outcome).order_by(Outcome.version)))
+        assert [row.version for row in rows] == [1, 2, 3]
+        assert rows[0].reason == "가상 첫 설명"
+        assert rows[-1].reason == "가상 고친 설명"
+        assert rows[-1].next_schedule_at.isoformat() == "2026-11-12"

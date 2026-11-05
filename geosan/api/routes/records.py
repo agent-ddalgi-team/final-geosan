@@ -336,8 +336,6 @@ def save_outcome(
     if body.status == "LOST":
         if body.lost_reason_code is None:
             fields.append(FieldError(path="lostReasonCode", message="거절 이유를 골라 주세요."))
-        elif body.lost_reason_code == "OTHER" and not (body.reason and body.reason.strip()):
-            fields.append(FieldError(path="reason", message="기타를 고르면 이유를 적어 주세요."))
     elif "lost_reason_code" in body.model_fields_set:
         fields.append(
             FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
@@ -352,6 +350,22 @@ def save_outcome(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_outcome(session, opp_id)
     values = body.model_dump(exclude={"eval_id", "expected_version"})
+    # C1·#250: 같은 거절 코드로 일정·접촉만 남기면 최신 거절 행의 설명을 이어받는다.
+    # 이전 행 조회와 새 이력 저장은 같은 쓰기 잠금 안에서 처리한다.
+    if body.status == "LOST" and not (body.reason and body.reason.strip()):
+        previous_lost = session.scalar(
+            select(Outcome)
+            .where(Outcome.opp_id == opp_id, Outcome.status == "LOST")
+            .order_by(Outcome.version.desc())
+        )
+        if previous_lost and previous_lost.lost_reason_code == body.lost_reason_code:
+            values["reason"] = previous_lost.reason
+    fields = scan_contacts({"reason": values["reason"]})
+    if body.status == "LOST" and body.lost_reason_code == "OTHER":
+        if not (values["reason"] and values["reason"].strip()):
+            fields.append(FieldError(path="reason", message="기타를 고르면 이유를 적어 주세요."))
+    if fields:
+        raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
     for name in ("next_schedule_at", "next_schedule_note"):
         if previous and name not in body.model_fields_set:
