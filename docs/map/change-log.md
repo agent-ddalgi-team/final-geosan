@@ -55,8 +55,9 @@ timeline
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
 |---|---|---|---|---|
-| 새 후보 회사를 모으는 방법 | 사람이 공공 자료 파일(CSV)을 내려받아 넣음 | 서버가 공공 자료 창구(산단공 공장등록 API)를 정해진 주기로 불러 새 후보를 더함. 파일 방식은 예비 | 사람이 파일을 주지 않아도 목록이 새로워져야 함 | ✅ [#221] |
-| AI가 점수 입력까지 제안 | 사람이 회사별 파일에 점수 항목을 적어야 순위에 들어감 | AI가 점수 입력과 공정 연결을 제안하고, "AI 제안·확인 전" 흐린 점수로 순위에 들어감. 2차 | 수집만 자동이면 점수 없는 회사만 쌓임 | ✅ [#286] |
+| 새 후보 회사를 모으는 방법 | 사람이 공공 자료 파일(CSV)을 내려받아 넣음 | 서버가 공공 자료 창구(산단공 공장등록 API)를 정해진 주기로 불러 새 후보를 더함. 파일 방식은 예비 | 사람이 파일을 주지 않아도 목록이 새로워져야 함 | ✅ [자동 갱신 제안] · [#221] |
+| AI가 점수 입력까지 제안 | 사람이 회사별 파일에 점수 항목을 적어야 순위에 들어감 | AI가 점수 입력과 공정 연결을 제안하고, "AI 제안·확인 전" 흐린 점수로 순위에 들어감. 2차 | 수집만 자동이면 점수 없는 회사만 쌓임 | ✅ [자동 갱신 제안] · [#286] |
+| 근거를 다시 조사하는 때 | 담당자가 [다시 조사]를 누를 때만 (11/3 결정) | 세 가지: ① 상세를 열었을 때 근거가 오래됐으면 자동으로 ② [다시 조사]를 누를 때 ③ 정기적으로 순위 위쪽 회사와 새 후보만. 2차 | 자료가 사람 손 없이 새로워지게 하려고. 비용은 월 한도 안에서 | ✅ [자동 갱신 제안] |
 | 전체 기획·현황 지도 | 없음 | `docs/map/`에 지도 문서 4개 | 말로 요청한 기획 수정이 쌓여 전체 모습이 보이지 않음 | ✅ [#293] |
 
 ### 2026-11-04
@@ -183,6 +184,7 @@ timeline
 [점수 표시 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/score-display-pending-20261104.md
 [비슷한 회사 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/similar-companies-strategy-20261104.md
 [전략 초안 틀]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/strategy-draft-template-20261104.md
+[자동 갱신 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/auto-refresh-candidates-proposal-20261105.md
 [처음 범위 문서]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/ideation/scope-definition/scope-document.md
 
 [#27]: https://github.com/agent-ddalgi-team/final-geosan/issues/27
