@@ -73,7 +73,7 @@ def base_date() -> date:
 
 @pytest.fixture(autouse=True)
 def fixed_today(monkeypatch: pytest.MonkeyPatch) -> None:
-    """평가의 "오늘"을 BASE_DATE로 고정한다(NFR12, #280). 기준일을 직접 넣는 테스트는 그 값을 쓴다."""
+    """평가의 "오늘"을 BASE_DATE로 고정한다(NFR12, #280). 기준일을 직접 넣으면 그 값을 쓴다."""
     from geosan.workflows import flow_evaluate
 
     monkeypatch.setattr(flow_evaluate, "today_in_seoul", lambda: BASE_DATE)
