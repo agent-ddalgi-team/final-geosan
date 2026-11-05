@@ -3,12 +3,15 @@
 import http.client
 import json
 import os
+import time
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from geosan.config.errors import AppError
 from geosan.evidence.homepage import HomepageSearchResult
+from geosan.evidence.reader import MAX_BYTES, interrupt_at, remaining
+from geosan.evidence.research_context import current_research
 from geosan.evidence.transfer import configuration_error, finish_search, reserve_search
 from geosan.storage.base import utcnow
 
@@ -32,8 +35,26 @@ class _Usage(BaseModel):
 
 def _post_response(body: dict, api_key: str) -> dict:
     """고정된 HTTPS 주소로 한 번 보낸다. 다른 주소로의 이동은 따라가지 않는다."""
-    connection = http.client.HTTPSConnection(OPENAI_HOST, timeout=TIMEOUT_SECONDS)
+    deadline = time.monotonic() + TIMEOUT_SECONDS
+    context = current_research.get()
+    timeout = TIMEOUT_SECONDS
+    if context is not None:
+        deadline = min(deadline, context.deadline)
+        timeout = min(timeout, remaining(context.deadline))
+    connection = http.client.HTTPSConnection(OPENAI_HOST, timeout=timeout)
+    timer = None
+
+    def request_remaining():
+        if context is not None:
+            remaining(context.deadline)
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise TimeoutError("검색 요청 시간 초과")
+        return seconds
+
     try:
+        connection.connect()
+        timer = interrupt_at(connection.sock, deadline)
         connection.request(
             "POST",
             RESPONSE_PATH,
@@ -43,8 +64,24 @@ def _post_response(body: dict, api_key: str) -> dict:
         response = connection.getresponse()
         if response.status != 200:
             raise _HttpError(response.status)
-        return json.loads(response.read())
+        chunks = []
+        size = 0
+        while True:
+            request_remaining()
+            if connection.sock:
+                connection.sock.settimeout(min(TIMEOUT_SECONDS, request_remaining()))
+            chunk = response.read1(65536)
+            request_remaining()
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_BYTES:
+                raise ValueError("검색 응답이 너무 큼")
+            chunks.append(chunk)
+        return json.loads(b"".join(chunks))
     finally:
+        if timer:
+            timer.cancel()
         connection.close()
 
 
@@ -165,7 +202,10 @@ def search_openai(
 ) -> HomepageSearchResult:
     """공개 출처 검사를 마친 회사만 호출한다. 매 시도에 새로운 한도 검사를 적용한다."""
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    context = current_research.get()
     for attempt in range(2):
+        if context is not None:
+            remaining(context.deadline)
         ticket = reserve_search(opp_id, bool(api_key), db_path)
         try:
             response = _post_response(_request(ticket.llm.model, company_name, address), api_key)
@@ -184,6 +224,8 @@ def search_openai(
             ) from None
         except (OSError, http.client.HTTPException, ValueError):
             # 과금 여부를 알 수 없으므로 호출 기록을 미확정으로 보존하고 추가 전송을 차단한다.
+            if context is not None:
+                remaining(context.deadline)
             raise AppError(
                 "홈페이지 검색 응답을 받지 못했습니다.",
                 "잠시 뒤 다시 조사해 주세요.",
@@ -201,6 +243,8 @@ def search_openai(
                 kind="LLM_FAILED",
             ) from None
         finish_search(ticket, usage.input_tokens, usage.output_tokens, search_count, db_path)
+        if context is not None:
+            remaining(context.deadline)
         try:
             return _result(response)
         except (KeyError, TypeError, ValueError, ValidationError):

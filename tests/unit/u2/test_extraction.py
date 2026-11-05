@@ -175,7 +175,9 @@ def test_answered_question_is_not_rewritten_by_research(extract_env):
         )
         row.status = "APPLIED"
         row.question_text = "담당자가 이미 답을 반영한 질문"
-    assert flow_extract.run_extract(case.opp_id, URL).ok
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert result.ok
+    assert result.counts["questionCount"] == 0
     with session_scope() as session:
         row = session.scalar(
             select(ConfirmationQuestion).where(
@@ -201,6 +203,7 @@ def test_requirement_candidates_are_unconfirmed_evidence(extract_env):
     result = flow_extract.run_extract(case.opp_id, URL)
     assert result.ok, result.error
     assert counts()[3] == before[3]
+    assert result.counts == {"evidenceCount": 2, "requirementCandidateCount": 1, "questionCount": 1}
     with session_scope() as session:
         row = session.scalar(
             select(Evidence).where(
