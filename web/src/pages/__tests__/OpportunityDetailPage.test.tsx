@@ -297,6 +297,26 @@ describe('OpportunityDetailPage', () => {
     expect(screen.queryByTestId('detail-score-existing-tag')).not.toBeInTheDocument();
   });
 
+  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지 확인이 필요하면 띠가 보인다 (#210)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
+    );
+    renderPage();
+    expect(await screen.findByTestId('company-summary-line')).toHaveTextContent(
+      '알루미늄 주물 표면처리 전문 가상 기업',
+    );
+    expect(screen.getByTestId('company-highlights')).toBeInTheDocument();
+    expect(screen.getByTestId('company-phone-link')).toHaveTextContent('041-000-0000');
+    expect(screen.getByTestId('homepage-band')).toHaveTextContent('홈페이지 확인 필요');
+  });
+
+  it('홈페이지가 확정이거나 AI가 찾은 상태면 띠가 없다 (#210)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await screen.findByTestId('company-summary-line');
+    expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
+  });
+
   it('접촉 횟수는 기록 영역이 아니라 머리에 보이고, 접촉을 저장하면 머리의 횟수가 바로 늘어난다 (#210)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(

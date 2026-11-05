@@ -37,6 +37,21 @@ export function formatMonthDay(value: string | null | undefined): string | null 
   return p ? `${Number(p.month)}/${Number(p.day)}` : null;
 }
 
+/**
+ * 지금(`now`) 기준으로 `iso`가 며칠 전인지(한국 날짜 기준 일수). 오늘이면 0, 미래이거나 읽을 수 없으면 null.
+ * "조사 11/5 (3일 전)"의 괄호 안에 쓴다. 시각은 인자로 받아 시험이 현재 시각에 기대지 않게 한다.
+ */
+export function daysAgo(iso: string | null | undefined, now: Date = new Date()): number | null {
+  if (!iso) return null;
+  const then = kstParts(iso, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const today = kstParts(now.toISOString(), { year: 'numeric', month: '2-digit', day: '2-digit' });
+  if (!then || !today) return null;
+  const day = (p: Record<string, string>) =>
+    Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day));
+  const diff = Math.round((day(today) - day(then)) / 86_400_000);
+  return diff < 0 ? null : diff;
+}
+
 /** "09:05" — "저장됨 HH:MM"에 쓴다. */
 export function formatHourMinute(iso: string | Date | null | undefined): string | null {
   if (!iso) return null;

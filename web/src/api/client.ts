@@ -15,6 +15,8 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  MainPhoneConfirmRequest,
+  MainPhoneConfirmResponse,
   RelationRequest,
   RelationResponse,
   ReplyRequest,
@@ -190,6 +192,18 @@ export function postQuestionReply(questionId: string, body: ReplyRequest, staffK
   });
 }
 
+/** 대표번호 [맞음](#209). 번호는 못 고치고 확인한 시각·담당자만 남긴다. */
+export function postMainPhoneConfirm(
+  oppId: string,
+  body: MainPhoneConfirmRequest,
+  staffKey: string,
+) {
+  return request<MainPhoneConfirmResponse>(
+    `/opportunities/${encodeURIComponent(oppId)}/main-phone/confirm`,
+    { method: 'POST', body, staffKey },
+  );
+}
+
 /** 거래 관계 저장(#265). 저장하면 서버가 이력을 남기고 이 회사를 다시 평가한다. */
 export function postRelation(oppId: string, body: RelationRequest, staffKey: string) {
   return request<RelationResponse>(`/opportunities/${encodeURIComponent(oppId)}/relation`, {
@@ -293,6 +307,22 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         replyText: body.replyText ?? '',
         repliedAt: body.repliedAt ?? now.slice(0, 10),
         repliedBy: options.staffKey,
+      },
+      meta: { updatedAt: now },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/main-phone\/confirm$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const body = (options.body ?? {}) as Partial<MainPhoneConfirmRequest>;
+    return {
+      data: {
+        mainPhone: body.expectedPhone ?? '',
+        mainPhoneConfirmedAt: now,
+        mainPhoneConfirmedBy: options.staffKey,
       },
       meta: { updatedAt: now },
     } as unknown as Envelope<T>;

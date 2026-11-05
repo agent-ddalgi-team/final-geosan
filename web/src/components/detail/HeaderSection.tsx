@@ -5,6 +5,7 @@ import type { ContactCount, DetailHeader } from '../../api/types';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
+import CompanySummary, { HomepageBand } from './CompanySummary';
 import RelationControl from './RelationControl';
 import {
   cardRows,
@@ -141,6 +142,7 @@ export default function HeaderSection({
           <StatusTag tone="ask">{cardRows.brochureTag}</StatusTag>
         ) : null}
       </div>
+      <HomepageBand status={header.homepageStatus} />
       <div
         data-testid="detail-meta"
         style={{ display: 'flex', flexWrap: 'wrap', gap: 24, color: colors.textSecondary }}
@@ -173,6 +175,7 @@ export default function HeaderSection({
           </span>
         ) : null}
       </div>
+      <CompanySummary oppId={oppId} header={header} onReload={onRelationChanged} />
     </div>
   );
 }
