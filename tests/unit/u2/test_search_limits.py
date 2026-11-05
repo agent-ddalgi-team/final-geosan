@@ -273,6 +273,97 @@ def test_legacy_search_usage_and_incomplete_response(search_env):
     assert logs()[0].cost_usd == Decimal("0.014")
 
 
+@pytest.mark.parametrize("action", ["search", "open_page", "find_in_page"])
+def test_completed_search_accepts_only_unprocessed_calls_after_provider_limit(search_env, action):
+    """Given 상한으로 추가 호출 무시 / When 완료 응답 / Then 주소·실제 사용량 저장."""
+    case, transport = search_env
+    reply = provider_reply()
+    reply["max_tool_calls"] = 1
+    reply["output"].insert(
+        1, {"type": "web_search_call", "status": "searching", "action": {"type": action}}
+    )
+    transport.side_effect = None
+    transport.return_value = reply
+
+    result = find_case_homepage(case.opp_id)
+
+    assert result.url == "https://example.org/"
+    transport.assert_called_once()
+    (row,) = logs()
+    assert row.web_search_calls == 1
+    assert row.cost_usd == Decimal("0.014")
+    with session_scope() as session:
+        assert session.get(Customer, case.customer_id).homepage_url == result.url
+
+
+@pytest.mark.parametrize(
+    ("limit", "count", "first_status", "extra_status", "response_status"),
+    [
+        (None, 1, "completed", "searching", "completed"),
+        (True, 1, "completed", "searching", "completed"),
+        (2, 1, "completed", "searching", "completed"),
+        (1, 0, "completed", "searching", "completed"),
+        (1, 2, "completed", "searching", "completed"),
+        (1, 1, "searching", "searching", "completed"),
+        (1, 1, "completed", "failed", "completed"),
+        (1, 1, "completed", "in_progress", "completed"),
+        (1, 1, "completed", "searching", "incomplete"),
+    ],
+)
+def test_incomplete_search_is_not_mistaken_for_an_ignored_extra_call(
+    search_env, limit, count, first_status, extra_status, response_status
+):
+    """Given 상한 무시로 확인할 수 없는 응답 / When 검색 / Then 실패하며 회사 값은 보존."""
+    case, transport = search_env
+    reply = provider_reply()
+    reply["max_tool_calls"] = limit
+    reply["status"] = response_status
+    reply["tool_usage"]["web_search"]["num_requests"] = count
+    reply["output"][0]["status"] = first_status
+    reply["output"].insert(
+        1, {"type": "web_search_call", "status": extra_status, "action": {"type": "search"}}
+    )
+    transport.side_effect = None
+    transport.return_value = reply
+
+    with pytest.raises(AppError) as exc:
+        find_case_homepage(case.opp_id)
+
+    assert exc.value.kind == "LLM_FAILED"
+    transport.assert_called_once()
+    assert logs()[0].web_search_calls == count
+    with session_scope() as session:
+        assert session.get(Customer, case.customer_id).homepage_url is None
+
+
+@pytest.mark.parametrize(
+    "change", ["missing_usage", "error", "incomplete_details", "invalid_answer"]
+)
+def test_ignored_extra_call_does_not_bypass_other_response_checks(search_env, change):
+    case, transport = search_env
+    reply = provider_reply()
+    reply["max_tool_calls"] = 1
+    reply["output"].insert(
+        1, {"type": "web_search_call", "status": "searching", "action": {"type": "search"}}
+    )
+    if change == "missing_usage":
+        del reply["tool_usage"]
+    elif change == "invalid_answer":
+        reply["output"][-1]["content"][0]["text"] = "invalid JSON"
+    else:
+        reply[change] = {"reason": "실패한 응답"}
+    transport.side_effect = None
+    transport.return_value = reply
+
+    with pytest.raises(AppError):
+        find_case_homepage(case.opp_id)
+
+    row = logs()[0]
+    assert row.cost_usd == (None if change == "missing_usage" else Decimal("0.014"))
+    with session_scope() as session:
+        assert session.get(Customer, case.customer_id).homepage_url is None
+
+
 def test_concurrent_reservations_cannot_overdraw_last_call(search_env, tmp_db):
     case, _ = search_env
     change_setting("homepageDiscovery", dailyCallLimit=1)

@@ -39,7 +39,12 @@ def test_card_returns_latest_version_of_each_stage(records_env, status):  # noqa
         client,
         opp_id,
         "outcomes",
-        {"status": status, "reason": "가상 시험 사유", "nextScheduleNote": "가상 일정"},
+        {
+            "status": status,
+            "reason": "가상 시험 사유",
+            "nextScheduleNote": "가상 일정",
+            **({"lostReasonCode": "OTHER"} if status == "LOST" else {}),
+        },
     )
     assert saved.status_code == 200
     response = client.get("/api/v1/opportunities", params={"stage": status})
