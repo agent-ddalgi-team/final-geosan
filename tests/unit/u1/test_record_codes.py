@@ -34,6 +34,6 @@ def test_record_codes_match_the_published_contract():
         "EVIDENCE_GRADE_CONFIRMED",
         "NOTE",
     ]
-    assert list(NoteKind) == ["MEMO", "RESEARCH"]
+    assert list(NoteKind) == ["MEMO", "RESEARCH", "REPLY"]
     assert list(ReviewItemKind) == ["QUESTION", "DATA_NOT_FOUND", "DATA_INSUFFICIENT"]
     assert list(ReviewItemSource) == ["AI", "CASE_FILE", "RULE"]

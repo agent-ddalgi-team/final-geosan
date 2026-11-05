@@ -190,7 +190,12 @@ class CardRecords(_ApiModel):
     )
 
 
+ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
+
+
 class OpportunityCard(_ApiModel):
+    score_state: ScoreState
+    relation_status: RelationStatus
     region: str | None = None
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
@@ -227,6 +232,7 @@ class OpportunityCard(_ApiModel):
 
 
 class DetailHeader(_ApiModel):
+    score_state: ScoreState
     relation_confirmed_at: date | None
     relation_confirmed_by: str | None
     homepage_status: Literal["AI_FOUND", "NEEDS_CONFIRMATION", "CONFIRMED", "NOT_FOUND"] | None = (
@@ -288,6 +294,7 @@ class Question(_ApiModel):
     overdue: bool = False
     reply_text: str | None = None
     replied_at: str | None = None
+    replied_by: str | None = None
     linked_opp_ids: list[str] = Field(default_factory=list)
     is_user_added: bool = False
 
@@ -404,6 +411,21 @@ class ReviewItem(_ApiModel):
     checked: bool = False
     checked_by: str | None = None
     checked_at: datetime | None = None
+    reply_text: str | None = None
+    replied_at: str | None = None
+    replied_by: str | None = None
+
+
+class QuestionReplyRequest(_RequestModel):
+    reply_text: str = Field(min_length=1, max_length=500, strict=True)
+    replied_at: date
+
+
+class QuestionReplyResponse(_ApiModel):
+    question_id: str
+    reply_text: str
+    replied_at: date
+    replied_by: str
 
 
 class ReviewCheckRequest(_RequestModel):
@@ -535,6 +557,7 @@ class ActivityItem(_ApiModel):
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
 RelationEnvelope = Envelope[RelationResponse]
+QuestionReplyEnvelope = Envelope[QuestionReplyResponse]
 ReviewCheckEnvelope = Envelope[ReviewCheckResponse]
 MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
 ActivityEnvelope = Envelope[list[ActivityItem]]

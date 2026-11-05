@@ -44,6 +44,7 @@ ALLOWED: dict[str, set[str]] = {
         "records",
         "rules",
         "storage",
+        "workflows",  # #265 PM 2026-11-04: 저장 뒤 재평가는 API에서 호출한다.
     },
     "workflows": {
         "config",

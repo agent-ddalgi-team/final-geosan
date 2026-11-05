@@ -50,6 +50,8 @@ class TransferLog(CommonColumns, Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     web_search_calls: Mapped[int | None] = mapped_column(Integer)
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
+    reconciled_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    reconciled_by: Mapped[str | None] = mapped_column(String(64))
 
 
 @dataclass(frozen=True)

@@ -13,3 +13,4 @@ from tests.steps.u1.steps_opinion import *  # noqa: F403
 from tests.steps.u1.steps_opportunity import *  # noqa: F403
 from tests.steps.u1.steps_requirements import *  # noqa: F403
 from tests.steps.u1.steps_sales_records import *  # noqa: F403
+from tests.steps.u1.steps_score_state import *  # noqa: F403
