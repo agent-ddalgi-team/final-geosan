@@ -18,6 +18,7 @@
 
 | 갱신한 날 | ✅ 됨 | ⏳ 진행 중 | 📅 2차 예정 | ⏸ 보류 | 이번에 달라진 것 |
 |---|---|---|---|---|---|
+| 2026-11-05 저녁 | 40 | 9 | 15 | 1 | 거래 관계 단추, 회사 소개와 대표번호 [맞음], 기록 한 칸, AI 조사가 "됨"으로 ([#307]) |
 | 2026-11-05 | 35 | 13 | 15 | 1 | 지도를 처음 만듦 ([#293]) |
 
 ---
@@ -224,3 +225,4 @@ timeline
 [#275]: https://github.com/agent-ddalgi-team/final-geosan/issues/275
 [#286]: https://github.com/agent-ddalgi-team/final-geosan/issues/286
 [#293]: https://github.com/agent-ddalgi-team/final-geosan/issues/293
+[#307]: https://github.com/agent-ddalgi-team/final-geosan/issues/307
