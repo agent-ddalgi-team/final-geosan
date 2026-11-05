@@ -128,6 +128,42 @@ def test_repeated_partial_evaluation_uses_latest_peer_result_and_can_restore_ord
     assert_list_ranks(client, order)
 
 
+def test_shared_customer_moves_all_its_opportunities_without_recalculating_peers(tmp_db, tmp_path):
+    """Given 같은 회사의 카드 둘 / When 거래 중 저장 / Then 둘 다 뒤로 가고 점수는 보존된다."""
+    import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
+    cases = []
+    for key, name in (
+        ("shared-a", "가상공유회사"),
+        ("shared-b", "가상공유회사"),
+        ("unrelated", "가상다른회사"),
+    ):
+        document = factories.apjeong_renamed_customer(key, name)
+        document["customer"]["relationStatus"] = "NEW_CONFIRMED"
+        cases.append(import_case(_write(tmp_path, f"{key}.json", document)))
+    assert cases[0].customer_id == cases[1].customer_id != cases[2].customer_id
+    assert flow_evaluate.run_evaluation().ok
+    target, sibling, unrelated = [case.opp_id for case in cases]
+    with TestClient(create_app()) as client:
+        original_order = [row["oppId"] for row in cards(client)]
+        before = current_runs([target, sibling, unrelated])
+        response = save(client, target, "EXISTING_CONFIRMED", detail(client, target)["evalId"])
+        assert response.status_code == 200, response.text
+        # BR6.4~6.5: 동점 카드끼리의 기존 기회 ID 순서는 보존하고 거래 중 묶음만 뒤로 보낸다.
+        expected = [unrelated] + [opp_id for opp_id in original_order if opp_id != unrelated]
+        assert_list_ranks(client, expected)
+        assert all(row["relationStatus"] == "EXISTING_CONFIRMED" for row in cards(client)[1:])
+        assert cards(client, page=1, pageSize=1)[0]["oppId"] == unrelated
+        assert [row["oppId"] for row in cards(client, process="ANODIZING")] == expected
+        after = current_runs([sibling, unrelated])
+        for opp_id in after:
+            assert {k: v for k, v in after[opp_id].items() if k != "original_rank"} == {
+                k: v for k, v in before[opp_id].items() if k != "original_rank"
+            }
+        response = save(client, target, "NEW_CONFIRMED", detail(client, target)["evalId"])
+        assert response.status_code == 200, response.text
+        assert_list_ranks(client, original_order)
+
+
 def test_research_reevaluation_preserves_peer_scores_and_population_ranks(extract_env, tmp_path):
     case, transport = extract_env
     opp_ids = [

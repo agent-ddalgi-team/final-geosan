@@ -25,7 +25,7 @@ from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.evaluation.snapshot import Snapshot, build_snapshot, canonical_hash
 from geosan.opportunity.models import Opportunity
 from geosan.questions.store import upsert_question
-from geosan.rules.codes import ClassificationCode, SortGroup
+from geosan.rules.codes import ClassificationCode, RelationStatus, SortGroup
 from geosan.rules.engine import evaluate, rank
 from geosan.rules.models import EvaluationOutput, RankInput, SortKey
 from geosan.storage.session import session_scope
@@ -104,7 +104,9 @@ def _targets(session: Session, opp_ids: list[str] | None) -> list[Opportunity]:
     return rows
 
 
-def _stored_rank_input(run: EvaluationRun) -> RankInput:
+def _stored_rank_input(
+    run: EvaluationRun, *, relation_status: RelationStatus | None = None
+) -> RankInput:
     """다른 회사는 점수를 다시 계산하지 않고 마지막 평가의 정렬값만 읽는다."""
     code = ClassificationCode(run.classification_code)
     group = {
@@ -117,7 +119,11 @@ def _stored_rank_input(run: EvaluationRun) -> RankInput:
         profile=run.profile,
         sort_key=SortKey(
             group=group,
-            relation_status=run.input_snapshot["opportunity"]["relationStatus"],
+            relation_status=(
+                relation_status
+                if relation_status is not None
+                else run.input_snapshot["opportunity"]["relationStatus"]
+            ),
             valid_until=run.valid_until,
             E=run.score_e,
             F=run.score_f,
@@ -177,9 +183,25 @@ def _population_ranks(
         latest.setdefault(row.opp_id, row)
     if population - replacements.keys() - latest.keys():
         raise RunFailedError("목록의 최신 평가를 확인할 수 없습니다.")
+    customer_ids = dict(
+        session.execute(
+            select(Opportunity.opp_id, Opportunity.customer_id).where(
+                Opportunity.opp_id.in_(population)
+            )
+        ).all()
+    )
+    # 거래 관계는 회사 단위다. 같은 회사의 다른 기회도 이번에 확인한 상태로 정렬하되
+    # 그 기회의 점수·분류·평가 번호·입력 스냅샷은 다시 계산하거나 덮어쓰지 않는다.
+    updated_relations = {
+        customer_ids[opp_id]: row.sort_key.relation_status for opp_id, row in replacements.items()
+    }
     ranks = _rank_inputs(
         [
-            replacements[opp_id] if opp_id in replacements else _stored_rank_input(latest[opp_id])
+            replacements[opp_id]
+            if opp_id in replacements
+            else _stored_rank_input(
+                latest[opp_id], relation_status=updated_relations.get(customer_ids[opp_id])
+            )
             for opp_id in sorted(population)
         ],
         runtime,

@@ -2,7 +2,10 @@ from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 
 from geosan.api.app import create_app
+from geosan.capability.importer import import_capability
+from geosan.opportunity.importer import import_case
 from geosan.workflows import flow_evaluate, flow_extract
+from tests import factories
 from tests.unit.u1 import test_partial_ranking as support
 from tests.unit.u2 import test_extraction as extraction_support
 
@@ -30,11 +33,54 @@ def research_companies(extract_env, tmp_path):
         yield client, order, support.current_runs(opp_ids)
 
 
+@given(
+    "같은 가상 회사의 기회 둘과 다른 회사의 기회 하나가 전체 평가되어 있다",
+    target_fixture="population",
+)
+def shared_customer(tmp_db, tmp_path):
+    import_capability(support._write(tmp_path, "cap.json", factories.capability_file()))
+    opp_ids = []
+    for key, name in (
+        ("shared-a", "가상공유회사"),
+        ("shared-b", "가상공유회사"),
+        ("unrelated", "가상다른회사"),
+    ):
+        document = factories.apjeong_renamed_customer(key, name)
+        document["customer"]["relationStatus"] = "NEW_CONFIRMED"
+        opp_ids.append(import_case(support._write(tmp_path, f"{key}.json", document)).opp_id)
+    assert flow_evaluate.run_evaluation().ok
+    with TestClient(create_app()) as client:
+        yield client, opp_ids, support.current_runs(opp_ids)
+
+
 @when("첫 회사의 거래 관계를 거래 중으로 저장한다", target_fixture="updated")
 def existing_customer(population):
     client, order, _ = population
     target, _ = support.move_first_to_existing(client)
     return target, order[1:] + [target]
+
+
+@when("같은 회사의 첫 기회를 거래 중으로 저장한다", target_fixture="updated")
+def shared_relation(population):
+    client, order, _ = population
+    target = order[0]
+    response = support.save(
+        client, target, "EXISTING_CONFIRMED", support.detail(client, target)["evalId"]
+    )
+    assert response.status_code == 200, response.text
+    return target, [order[2], *order[:2]]
+
+
+@then("그 회사의 두 카드가 신규 회사 뒤에 보인다")
+def shared_cards(population, updated):
+    client, _, _ = population
+    _, expected = updated
+    support.assert_list_ranks(client, expected)
+    assert [row["relationStatus"] for row in support.cards(client)] == [
+        "NEW_CONFIRMED",
+        "EXISTING_CONFIRMED",
+        "EXISTING_CONFIRMED",
+    ]
 
 
 @when("마지막 회사의 홈페이지를 가짜 외부 응답으로 조사하고 재평가한다", target_fixture="updated")
