@@ -417,7 +417,7 @@ paths:
           description: >-
             Envelope(
               counts{ NOT_CONTACTED: int, INTERESTED: int, IN_CONTACT: int, QUOTE_SAMPLE: int, SCHEDULE_DUE: int, WON_LAST_12M: int, LOST_LAST_12M: int },   # 미접촉 / 관심 / 접촉 중 / 견적·샘플 / 이번 주 일정(오늘 이전~7일). 누르면 /opportunities?stage=… (SCHEDULE_DUE는 ?filter=SCHEDULE_DUE). (추가 2026-11-04 PM 결정 #229, 2차) 성사·거절 = 최신 단계가 WON·LOST이고 그 기록 시각이 오늘부터 365일 안. 누르면 ?stage=WON·LOST 목록(목록은 전체, 분석 줄에 "최근 12개월 n건"). 분석 줄 meta.analysis{ sampleCount, avgContacts, contactReach{CALL,EMAIL,VISIT:{reached,tried}}, avgDaysToOutcome, topIndustries[], topProcesses[], lostReasons[](LOST만) } — 표본 10건 미만이면 화면은 비율 없이 건수만
-              schedule[ { oppId, customerName, oppTitle, dueAt: date, note: string, overdue: boolean, staffKey } ],   # 기한 지남(overdue) 맨 위, 그다음 날짜순. 출처: /outcomes의 nextScheduleAt·nextScheduleNote
+              schedule[ { oppId, customerName, oppTitle, dueAt: date, note: string, overdue: boolean, staffKey } ],   # 기한 지남(overdue) 맨 위, 그다음 날짜순. 출처: /outcomes의 nextScheduleAt·nextScheduleNote. (추가 2026-11-05 PM 결정, #279) 최신 단계가 성사·거절(WON·LOST)로 끝난 영업에 남은 다음 일정은 앞으로 할 일이 아니므로 일정과 SCHEDULE_DUE 건수에서 뺀다
               recentActivity[ { at: datetime, oppId, customerName, kind: enum[NOTE, STAGE, CONTACT_ATTEMPT, SCHEDULE, OPINION], summary: string } ],   # 최근 내가 한 기록 10건(요청의 담당자 키로 거름, Q4)
               asOf: datetime,
               breakdown?: {   # (추가 2026-11-03 PM 결정, 대시보드 집계) 없으면 화면은 공정·산업군 막대 줄을 숨긴다 — 실제 집계(#216)가 붙기 전 거산 전달본에 가짜 숫자가 보이면 안 되므로. 가짜 숫자 모드(VITE_USE_FIXTURES)에서만 고정값으로 채움
@@ -848,6 +848,7 @@ ExternalSourceApi (공장등록·나라장터):
 | C1·C3 | (2026-11-04, PM 결정 #212 ① — 거래 확인 전 점수 표시) 카드 `scoreDisplay` 규칙 한 줄(소개서 묶음이 아니어도 점수가 있으면 숫자 그대로, 값 형식 변경), 카드·상세 머리 `scoreState`(CONFIRMED/PENDING/NONE → 화면 흐리게), 카드 `relationStatus`(꼬리표 "거래 확인 전"·"기존 거래처"). 정렬은 계산 점수 기준 그대로. 고정 문구 demoLabel 유지(②). 제안 `../delivery-planning/score-display-pending-20261104.md` | 규칙 표시 함수(유동렬)·카드 응답(이강욱)·화면(고선주), 이슈 번호는 제안서 상태 줄 |
 | C0·C1·C3·C6 | (2026-11-04, PM 결정 — 거래 관계 화면 입력, 1차) `POST /opportunities/{oppId}/relation`(거래 없음/거래 중/확인 전 되돌리기, 재평가 한 트랜잭션, 같은 값 400, STALE_EVALUATION 409), 상세 머리 `relationConfirmedAt`·`relationConfirmedBy`, ActivityItem `RELATION_CONFIRMED`, `opp_customer.relation_confirmed_by`, `opp_relation_history`(변경 이력), C3 거래 중 기회 맨 아래 정렬 설정 `existingCustomerPlacement`(기본 BOTTOM). 모두 더하는 변경 | 서버 이강욱·화면 고선주, 이슈 번호는 제안서 상태 줄 |
 | C1 | (2026-11-04, PM 결정 #229 — 대시보드 성사·거절) `/dashboard` counts에 `WON_LAST_12M`·`LOST_LAST_12M`(최근 12개월), 성사·거절 목록 `meta.analysis`(규칙 집계, 표본 10건 미만은 건수만), 대시보드 대상 규칙 `WON_THIS_YEAR` → `WON_LAST_12M`(연도 기준은 1월에 0 — 코드 없음, 화면 가짜 숫자 파일 이름 1곳). 더하는 변경. 시연용 자료는 DB 파일 분리(#274) | #229(2차)·#216(가짜 숫자 파일 이름) |
+| C1 | (2026-11-05, PM 결정 #279 — 대시보드 일정) `/dashboard` schedule·counts.SCHEDULE_DUE에서 최신 단계가 성사·거절로 끝난 영업의 남은 다음 일정 제외. 더하는 변경(규칙 명시) | #216·PR #279(고선주) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
