@@ -51,6 +51,15 @@ from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
 
 router = APIRouter()
 
+LOST_REASON_LABELS = {
+    "PRICE": "가격",
+    "LEAD_TIME": "납기",
+    "INCUMBENT_SUPPLIER": "기존 거래처 유지",
+    "NO_DEMAND": "수요 없음",
+    "QUALITY_CERT": "품질·인증 요건",
+    "OTHER": "기타",
+}
+
 
 @router.post("/opportunities/{oppId}/relation", response_model=RelationEnvelope)
 def save_relation(
@@ -342,6 +351,7 @@ def outcome_view(row: Outcome | None) -> dict | None:
         "updatedBy": row.created_by,
         "updatedAt": row.created_at.isoformat(),
         "status": row.status,
+        "lostReasonCode": row.lost_reason_code if row.status == "LOST" else None,
         "nextScheduleAt": row.next_schedule_at.isoformat() if row.next_schedule_at else None,
         "nextScheduleNote": row.next_schedule_note,
     }
@@ -357,8 +367,13 @@ def save_outcome(
     fields = scan_contacts(
         {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
     )
-    if body.status == "LOST" and not (body.reason and body.reason.strip()):
-        fields.append(FieldError(path="reason", message="거절 사유를 적어 주세요."))
+    if body.status == "LOST":
+        if body.lost_reason_code is None:
+            fields.append(FieldError(path="lostReasonCode", message="거절 이유를 골라 주세요."))
+    elif "lost_reason_code" in body.model_fields_set:
+        fields.append(
+            FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
+        )
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)
@@ -369,6 +384,22 @@ def save_outcome(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_outcome(session, opp_id)
     values = body.model_dump(exclude={"eval_id", "expected_version"})
+    # C1·#250: 같은 거절 코드로 일정·접촉만 남기면 최신 거절 행의 설명을 이어받는다.
+    # 이전 행 조회와 새 이력 저장은 같은 쓰기 잠금 안에서 처리한다.
+    if body.status == "LOST" and not (body.reason and body.reason.strip()):
+        previous_lost = session.scalar(
+            select(Outcome)
+            .where(Outcome.opp_id == opp_id, Outcome.status == "LOST")
+            .order_by(Outcome.version.desc())
+        )
+        if previous_lost and previous_lost.lost_reason_code == body.lost_reason_code:
+            values["reason"] = previous_lost.reason
+    fields = scan_contacts({"reason": values["reason"]})
+    if body.status == "LOST" and body.lost_reason_code == "OTHER":
+        if not (values["reason"] and values["reason"].strip()):
+            fields.append(FieldError(path="reason", message="기타를 고르면 이유를 적어 주세요."))
+    if fields:
+        raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
     for name in ("next_schedule_at", "next_schedule_note"):
         if previous and name not in body.model_fields_set:
@@ -466,6 +497,8 @@ def activity(
             "LOST": "거절",
         }[row.status]
         summary = status_label
+        if row.status == "LOST" and row.lost_reason_code:
+            summary += f" · {LOST_REASON_LABELS[row.lost_reason_code]}"
         if row.method:
             method = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}[row.method]
             result = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}.get(row.result, "")

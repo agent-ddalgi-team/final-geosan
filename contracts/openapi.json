@@ -933,6 +933,19 @@
         "title": "IndustryCount",
         "type": "object"
       },
+      "LostReasonCode": {
+        "description": "#250 PM 승인: 계약 C0의 거절 이유 코드 6종.",
+        "enum": [
+          "PRICE",
+          "LEAD_TIME",
+          "INCUMBENT_SUPPLIER",
+          "NO_DEMAND",
+          "QUALITY_CERT",
+          "OTHER"
+        ],
+        "title": "LostReasonCode",
+        "type": "string"
+      },
       "MainPhoneConfirmRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1712,6 +1725,16 @@
               }
             ],
             "title": "Expectedversion"
+          },
+          "lostReasonCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "memo": {
             "anyOf": [

@@ -1,5 +1,6 @@
 """#265: 가상 자료·실제 임시 DB·실제 엔진·API로 거래 관계 저장을 검사한다."""
 
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -251,6 +252,34 @@ def test_migration_preserves_old_customer_and_starts_without_history(relation_en
     assert after["header"]["relationConfirmedBy"] is None
     with session_scope() as session:
         assert session.scalar(select(RelationHistory)) is None
+
+
+def test_relation_migration_preserves_existing_lost_reason_rows(relation_env, tmp_db):
+    """Given 거절 이유 저장 DB / When 거래 관계 열을 내렸다 올림 / Then 기존 행을 보존한다."""
+    client, opp_id, _ = relation_env
+    response = client.post(
+        f"/api/v1/opportunities/{opp_id}/outcomes",
+        json={"status": "LOST", "lostReasonCode": "PRICE", "reason": "가상 가격 조건"},
+        headers={"X-Staff-Key": "park-lee"},
+    )
+    assert response.status_code == 200, response.text
+    before_detail = detail(client, opp_id)
+    with sqlite3.connect(tmp_db) as connection:
+        before_rows = connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall()
+    assert before_detail["records"]["outcome"]["lostReasonCode"] == "PRICE"
+    assert downgrade(tmp_db, "rec_007") == ["rec_007"]
+    with sqlite3.connect(tmp_db) as connection:
+        assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
+            before_rows
+        )
+    assert upgrade_to_head(tmp_db) == ["opp_007"]
+    assert upgrade_to_head(tmp_db) == ["opp_007"]
+    with sqlite3.connect(tmp_db) as connection:
+        assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
+            before_rows
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert detail(client, opp_id) == before_detail
 
 
 def test_staff_relation_is_not_passed_to_search_adapter(relation_env):
