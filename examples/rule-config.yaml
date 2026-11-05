@@ -5,7 +5,7 @@
 # 출처: 요구사항 부록 A(기획서 v0.15 부록 F.1·F.2·F.4·F.6·F.7·F.9·F.10), 기능 설계 rules.md BR4~BR6.
 # 형식 설명서: contracts/rule-config.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
 
-version: v0.17-c
+version: v0.17-d
 hypothesisNote: "기업 승인 전 가설"
 
 # ---------- A.1 신규 기회 프로필 (8항목, 적합도 70 + 시점 30) ----------
@@ -179,6 +179,10 @@ otherGroupSort:
     - { key: E, order: desc }
     - { key: P, order: desc }
     - { key: oppId, order: asc }
+
+# 기존 거래처 배치 (BR6.5, PM 승인 2026-11-04 #262). 점수·분류 계산은 그대로다.
+# BOTTOM: 그룹 정렬 뒤 거래 중 기회만 맨 아래로, 각각의 기존 순서는 유지. INLINE: 원래 정렬.
+existingCustomerPlacement: BOTTOM
 
 # 거산 값 묶음 종류 (FR4.14)
 datasetKinds: [VIRTUAL_REVIEWED, BROCHURE, COMPANY_CONFIRMED]

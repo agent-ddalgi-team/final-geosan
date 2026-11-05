@@ -378,9 +378,9 @@ rules:
   - id: BR6.5
     statement: 접촉 후보가 아닌 분류(OTHER 그룹)의 정렬은 모든 거산 값 묶음에서 E 내림 → P(판정한 배점) 내림 → 기회 ID다(2026-10-25 PM 결정, #63 원칙 2: 동점이면 더 많이 확인한 회사를 앞에 두고, 가능 점수 R은 정렬에 쓰지 않는다. 그 전에는 default R → E, 소개서 E → R 순이었다. default의 R 먼저는 '조사 우선순위' 용도였고 그 역할은 11월 세 묶음 안의 ②가 맡는다). 이것은 기획서 부록 F에 없는 화면용 규칙이라 '가설·설정값'(`otherGroupSort`)으로 둔다.
     category: calculation
-    applies_to: sortKey (group OTHER)
+    applies_to: sortKey (OTHER 안 정렬·전체 그룹의 기존 거래처 배치)
     trigger: run_evaluation(rank)
-    logic: 설정 otherGroupSort {default: [E desc, P desc, oppId], brochure: [E desc, P desc, oppId]} (v0.17-c). 묶음 sortRule에 적용한 이름을 기록한다. 접촉 후보 여부·11분기·A정밀 기대값에는 영향 없음.
+    logic: 설정 otherGroupSort {default: [E desc, P desc, oppId], brochure: [E desc, P desc, oppId]}는 그대로다. 모든 그룹을 정렬한 뒤 existingCustomerPlacement=BOTTOM(기본)이면 relationStatus=EXISTING_CONFIRMED인 기회만 맨 아래로 보내고 두 묶음 안의 기존 순서를 유지한다. INLINE이면 그룹 정렬 그대로다(v0.17-d, PM 승인 2026-11-04 #262). 점수·분류·단독 A정밀 기대값에는 영향 없음.
     violation: 설정 없이 코드에 고정하면 결함.
     source: Q6 A, C3 갱신 제안, FR4.11
 
@@ -512,12 +512,12 @@ rules:
     violation: 다른 묶음의 평가가 섞여 보이면 결함.
     source: FR6.1, AC6.1.1, AC6.1.3, C1
   - id: BR10.2
-    statement: 카드의 점수는 접촉 후보(⑤⑥⑦)와 ⑧~⑪에서 S를 반올림한 정수이고, ②③은 "--"이되 거산 값 묶음이 '소개서'면 "참고 N"으로 보인다.
+    statement: 카드의 점수는 점수가 있으면 "E점 · 판정 항목 수/전체 항목 수"이고, ②③도 숫자를 유지한다. 소개서 묶음의 ②③은 "참고 " 접두를 유지한다(PM 승인 2026-11-04 #262).
     category: policy
-    applies_to: OpportunityCard.scoreS·scoreDisplay
+    applies_to: OpportunityCard.scoreS·scoreDisplay·scoreState
     trigger: 목록 조회
-    logic: scoreDisplay = IF classification ∈ {FILTER_PENDING, OPS_PENDING} THEN (IF datasetKind=BROCHURE THEN "참고 " + round(S) ELSE "--") ELSE round(S). S가 null이면 "--". 평가 시점에 계산해 EvaluationRun.scoreDisplay에 저장한다. 응답에는 scoreS(숫자|null)와 scoreDisplay(문구)를 함께 싣는다(C1 OpportunityCard에 scoreDisplay 더하기 — 더하는 변경, 약속 파일 반영).
-    violation: 소개서 묶음에서 "--"만 보이면 결함(Q5).
+    logic: S가 null이면 scoreDisplay="--"·scoreState=NONE이다. 0점을 포함해 점수가 있으면 "E점 · n/전체"를 쓰고, FILTER_PENDING·OPS_PENDING이면 scoreState=PENDING(소개서만 "참고 " 접두), 그 밖에는 CONFIRMED다. 평가 시점에 계산해 scoreDisplay를 저장하며 점수·분류·승인 차단은 바꾸지 않는다. 응답은 scoreS·scoreDisplay·scoreState를 함께 낸다(C1·C3).
+    violation: 점수가 있는 확인 전 기회의 숫자를 숨기거나 0점을 점수 없음으로 처리하면 결함(#262).
     source: Q5 A, FR6.1, AC5.3.6
   - id: BR10.3
     statement: 막는 조건 줄에는 "(승인 막힘)" 또는 "(승인은 막지 않음)"이 글자로 붙고, blocksApproval은 분류 코드표(blocksApproval)와 PENDING_BLOCKS 요구 유무로 정한다.

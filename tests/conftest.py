@@ -3,6 +3,9 @@
 - `no_network`(autouse): 소켓 연결을 막아 외부 호출이 생기면 테스트가 실패한다(NFR4.3).
 - `base_date`: 고정 기준일 2026-10-20(A정밀 파일 baseDate). 현재 시각에 의존하는 테스트를
   두지 않는다(NFR12).
+- `fixed_today`(autouse): 평가 기준일을 안 주면 쓰는 "오늘"(`today_in_seoul`)을 같은 날짜로
+  고정한다. 예시 공고 마감(2026-11-10)이 실제 날짜에 가까워지면 시점 점수가 내려가 검사가
+  달력에 따라 깨졌기 때문(2026-11-05, #280).
 - `examples_dir`와 예시 파일 경로 픽스처: `examples/`를 그대로 쓴다.
 - `tmp_db`: 임시 폴더의 SQLite 파일에 init-db(마이그레이션)를 적용하고 GEOSAN_DB_PATH로 넣는다.
   앱 설정 사본은 가상 묶음(`examples/app-settings-virtual.yaml`, VIRTUAL_REVIEWED)으로 미리 만든다.
@@ -66,6 +69,14 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def base_date() -> date:
     return BASE_DATE
+
+
+@pytest.fixture(autouse=True)
+def fixed_today(monkeypatch: pytest.MonkeyPatch) -> None:
+    """평가의 "오늘"을 BASE_DATE로 고정한다(NFR12, #280). 기준일을 직접 넣으면 그 값을 쓴다."""
+    from geosan.workflows import flow_evaluate
+
+    monkeypatch.setattr(flow_evaluate, "today_in_seoul", lambda: BASE_DATE)
 
 
 @pytest.fixture
