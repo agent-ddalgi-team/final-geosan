@@ -312,6 +312,38 @@ export const detailHeader = {
   owner: '담당',
 } as const;
 
+/** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
+export const companySummary = {
+  title: '회사 소개',
+  /** "조사 11/5 (3일 전)" */
+  researched: (date: string, ago: string) => `조사 ${date} (${ago})`,
+  /** 사례 파일로만 만든 요약(AI 조사 전). */
+  caseFileBasis: '사례 파일 기준',
+  stale: '오래됨',
+  aiSuggestion: 'AI 제안',
+  summaryLine: '한 줄',
+  highlights: '특징',
+  /** "거산에서 12.3km" */
+  distance: (km: number) => `거산에서 ${km}km`,
+  mainPhone: '대표',
+  phoneSource: '출처',
+  phoneSourceHomepage: '홈페이지',
+  phoneSourceCsv: '공장현황 자료',
+  phoneUnconfirmed: '담당자 확인 전',
+  /** "담당자 확인 11/5 영업 담당" */
+  phoneConfirmed: (date: string, name: string) => `담당자 확인 ${date} ${name}`,
+  phoneConfirmButton: '맞음',
+  phoneConfirmFailed: '대표번호를 확인하지 못했습니다.',
+  phoneStale: '그 사이 번호가 바뀌었습니다. 상세를 새로 불러온 뒤 다시 눌러 주세요.',
+  pickStaffFirst: '담당자를 고르면 확인할 수 있습니다.',
+  reload: '새로 불러오기',
+  bandNeedsConfirmation: '홈페이지 확인 필요',
+  bandNotFound: '홈페이지 못 찾음',
+  /** 오늘 기준 며칠 전. */
+  today: '오늘',
+  daysAgo: (days: number) => `${days}일 전`,
+} as const;
+
 /** 상세 머리 거래 관계 줄(#266): 지금 상태 글자, 바꾸는 단추, 안내·오류 문구. */
 export const relationControl = {
   title: '거래 관계',
