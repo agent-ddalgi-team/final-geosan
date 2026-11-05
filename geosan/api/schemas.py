@@ -536,6 +536,18 @@ class OutcomeResponse(RecordMeta):
     status: OutcomeStatus
 
 
+class RelationRequest(_RequestModel):
+    relation_status: RelationStatus
+    eval_id: str = Field(min_length=1, strict=True)
+
+
+class RelationResponse(_ApiModel):
+    relation_status: RelationStatus
+    relation_confirmed_at: date
+    relation_confirmed_by: str
+    eval_id: str
+
+
 class ActivityItem(_ApiModel):
     at: datetime
     actor: str
@@ -546,6 +558,7 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+RelationEnvelope = Envelope[RelationResponse]
 QuestionReplyEnvelope = Envelope[QuestionReplyResponse]
 ReviewCheckEnvelope = Envelope[ReviewCheckResponse]
 MainPhoneConfirmEnvelope = Envelope[MainPhoneConfirmResponse]
