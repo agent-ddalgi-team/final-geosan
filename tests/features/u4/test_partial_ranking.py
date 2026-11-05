@@ -83,6 +83,12 @@ def shared_cards(population, updated):
     ]
 
 
+@when("다른 회사만 다시 평가한다")
+def reevaluate_unrelated(population):
+    _, order, _ = population
+    assert flow_evaluate.run_evaluation([order[2]]).ok
+
+
 @when("마지막 회사의 홈페이지를 가짜 외부 응답으로 조사하고 재평가한다", target_fixture="updated")
 def research_customer(population, extract_env):
     _, order, _ = population

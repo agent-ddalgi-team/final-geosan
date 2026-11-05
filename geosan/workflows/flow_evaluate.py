@@ -23,7 +23,7 @@ from geosan.evaluation.ledger import (
 )
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.evaluation.snapshot import Snapshot, build_snapshot, canonical_hash
-from geosan.opportunity.models import Opportunity
+from geosan.opportunity.models import Customer, Opportunity
 from geosan.questions.store import upsert_question
 from geosan.rules.codes import ClassificationCode, RelationStatus, SortGroup
 from geosan.rules.engine import evaluate, rank
@@ -163,8 +163,6 @@ def _population_ranks(
     )
     population = {row.opp_id for row in anchors}
     replacements = {row.opp_id: row for row in inputs if row.opp_id in population}
-    if not replacements:
-        return _rank_inputs(inputs, runtime)
 
     latest: dict[str, EvaluationRun] = {}
     for row in session.scalars(
@@ -183,24 +181,24 @@ def _population_ranks(
         latest.setdefault(row.opp_id, row)
     if population - replacements.keys() - latest.keys():
         raise RunFailedError("목록의 최신 평가를 확인할 수 없습니다.")
-    customer_ids = dict(
+    relations = dict(
         session.execute(
-            select(Opportunity.opp_id, Opportunity.customer_id).where(
-                Opportunity.opp_id.in_(population)
-            )
+            select(Opportunity.opp_id, Customer.relation_status)
+            .join(Customer, Opportunity.customer_id == Customer.customer_id)
+            .where(Opportunity.opp_id.in_(population))
         ).all()
     )
-    # 거래 관계는 회사 단위다. 같은 회사의 다른 기회도 이번에 확인한 상태로 정렬하되
-    # 그 기회의 점수·분류·평가 번호·입력 스냅샷은 다시 계산하거나 덮어쓰지 않는다.
-    updated_relations = {
-        customer_ids[opp_id]: row.sort_key.relation_status for opp_id, row in replacements.items()
-    }
+    if population - relations.keys():
+        raise RunFailedError("목록의 현재 거래 관계를 확인할 수 없습니다.")
+    # 거래 관계는 회사의 현재 값이다. 옛 평가 입력으로 되돌리지 않는다.
+    # 목록 밖의 기회에서 바꾼 관계도 같은 회사의 기존 카드 정렬에 반영한다.
+    # 점수·분류·평가 번호·입력 스냅샷은 다시 계산하거나 덮어쓰지 않는다.
     ranks = _rank_inputs(
         [
             replacements[opp_id]
             if opp_id in replacements
             else _stored_rank_input(
-                latest[opp_id], relation_status=updated_relations.get(customer_ids[opp_id])
+                latest[opp_id], relation_status=RelationStatus(relations[opp_id])
             )
             for opp_id in sorted(population)
         ],
