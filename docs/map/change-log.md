@@ -1,0 +1,226 @@
+# 기획 변경 기록 — 무엇이 언제 왜 바뀌었나
+
+> **기준일: 2026-11-05** · [지도 입구로 돌아가기](README.md)
+
+이 문서는 **쌓아 가는 기록**입니다. 지도(기능 지도·구조 지도)는 늘 "지금" 한 벌만 두고, 바뀐 내용은 여기에 한 줄씩 더합니다.
+
+- **1장 지도 갱신 기록** — 지도를 갱신할 때마다 건수 한 줄. "지난번 이후 무엇이 달라졌나"를 봅니다.
+- **2장 큰 줄기** — 기획이 바뀐 흐름을 그림 한 장으로 봅니다.
+- **3장 기획 변경** — 결정 하나에 한 줄. 최근 것이 위에 있습니다.
+- **4장 일하는 방식 변경** — 기능이 아니라 팀 규칙이 바뀐 것.
+- **5장 출발점** — 처음(10/19)에 만들기로 한 것과 안 만들기로 한 것.
+
+---
+
+## 1. 지도 갱신 기록
+
+지도를 갱신할 때마다 맨 위에 한 줄을 더합니다. 건수는 [기능 지도](feature-map.md)의 줄 수입니다.
+
+| 갱신한 날 | ✅ 됨 | ⏳ 진행 중 | 📅 2차 예정 | ⏸ 보류 | 이번에 달라진 것 |
+|---|---|---|---|---|---|
+| 2026-11-05 | 35 | 13 | 15 | 1 | 지도를 처음 만듦 ([#293]) |
+
+---
+
+## 2. 큰 줄기
+
+```mermaid
+timeline
+    title 기획이 바뀐 큰 줄기
+    10월 19일 : 처음 범위 확정 : 화면 3개와 규칙 계산
+    10월 21일 : 10월 말 부분 시연 추가 : 실제 기업은 손으로 정리
+    10월 29일 : 거산 방문 : 18곳으로 바로 영업을 시작하고 싶다는 의견
+    11월 3일 : 마감 대신 되는 순서대로 전달 : 기록과 대시보드를 맨 앞으로 : 재접촉은 보류
+    11월 4일 : 답 적기와 거래 관계 입력 추가 : 2차 기능 정리
+    11월 5일 : 후보 수집을 자동으로 바꿈 : 지도 문서 시작
+```
+
+**그림을 글로 풀면**
+
+1. **10/19** 처음 범위를 정했습니다. 화면 3개(추천 목록·근거 상세·의견)와 규칙 계산이 중심이었습니다.
+2. **10/21** 10월 말에 거산에 보여 줄 "부분 시연"을 더했습니다. 실제 기업 10~20곳을 팀이 손으로 정리하기로 했습니다.
+3. **10/29** 거산을 방문했습니다. 거산은 정리된 18곳으로 바로 영업을 시작하고, 영업 기록이 쌓이기를 원했습니다.
+4. **11/3** 방문 결과로 기획을 크게 바꿨습니다. 11/15를 마감으로 보지 않고 되는 순서대로 전달하며, 담당자 기록과 대시보드를 가장 먼저 만들고, 재접촉은 보류했습니다.
+5. **11/4** 화면을 써 본 뒤 답 적기와 거래 관계 입력을 더했고, 2차로 넘길 기능을 정리했습니다.
+6. **11/5** 새 후보 회사를 사람이 아니라 서버가 자동으로 모으는 방식으로 바꿨습니다.
+
+---
+
+## 3. 기획 변경
+
+**읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
+
+### 2026-11-05
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 새 후보 회사를 모으는 방법 | 사람이 공공 자료 파일(CSV)을 내려받아 넣음 | 서버가 공공 자료 창구(산단공 공장등록 API)를 정해진 주기로 불러 새 후보를 더함. 파일 방식은 예비 | 사람이 파일을 주지 않아도 목록이 새로워져야 함 | ✅ [#221] |
+| AI가 점수 입력까지 제안 | 사람이 회사별 파일에 점수 항목을 적어야 순위에 들어감 | AI가 점수 입력과 공정 연결을 제안하고, "AI 제안·확인 전" 흐린 점수로 순위에 들어감. 2차 | 수집만 자동이면 점수 없는 회사만 쌓임 | ✅ [#286] |
+| 전체 기획·현황 지도 | 없음 | `docs/map/`에 지도 문서 4개 | 말로 요청한 기획 수정이 쌓여 전체 모습이 보이지 않음 | ✅ [#293] |
+
+### 2026-11-04
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 검토사항 질문에 답 적기 | 질문은 읽기만 함 | 질문 줄마다 [답 적기]. 답은 영업 메모처럼 내부 전용. 1차 | 화면을 써 본 뒤 PM 요청 | ✅ [답 적기 제안] · [#248] [#249] |
+| 거래 확인 전 카드의 점수 | 점수를 가리거나 "참고 50점"으로 표시 | 점수를 흐리게 보여 주고 "거래 확인 전" 꼬리표. 순서는 그대로 | 거산 값 확인 뒤 18곳 점수가 모두 가려져 비교할 수 없었음 | ✅ [점수 표시 제안] · [#262] [#263] [#264] |
+| 거래 관계 입력 | PM이 회사별 파일을 고쳐야 바뀜 | 담당자가 상세 화면 머리에서 [거래 없음] [거래 중]을 고르고 되돌릴 수 있음. 저장하면 순위를 다시 계산. 1차 | 거래 관계는 거산이 쓰면서 알려 주기로 함 | ✅ [점수 표시 제안] · [#265] [#266] |
+| 거래 중인 회사의 목록 위치 | 신규 회사와 같이 정렬 | 목록에 남기되 "기존 거래처" 꼬리표를 달고 맨 아래로 | 새 거래처를 찾는 용도라 위쪽이 깨끗해야 함 | ✅ 팀 기본안. 거산에 확인할지는 ❓ [#275] |
+| 잘못 저장한 기록 | 지우기 없음 | 지우지 않고 "잘못 입력"으로 표시(줄 긋기, 건수에서 빠짐). 2차 | 실수는 생기는데 지우면 기록을 믿을 수 없게 됨 | ✅ [기록 취소 제안] · [#253] [#254] |
+| 검토사항의 "자료 못 찾음·부족" 줄 | 표시만 함 | [메모 적기]와 [붙여넣고 조사] 두 길. 2차 | 담당자가 직접 찾은 자료를 쓸 수 있게 | ✅ [자료 줄 제안] · [#259] [#260] |
+| 비슷한 회사 참고 | 없음 | 같은 공정·산업군 회사 최대 5곳의 영업 단계·거절 이유·최근 메모를 상세에 보여 줌. 2차 | 쌓인 기록을 다음 영업의 참고로 씀 | ✅ [비슷한 회사 제안] · [#268] [#269] |
+| 영업 전략 초안 틀 | 없음 | 네 문단 틀(왜 이 회사 / 먼저 확인할 것 / 첫 접근 / 피할 것). 2차 | 상세 화면 "영업 전략" 영역 준비 | 📝 PM 초안, 거산 의견 전 · [전략 초안 틀] · [#27] |
+| 영업 메모를 AI에 보내 전략 제안 받기 | 메모는 밖으로 나가지 않음 | 미정 (안 보냄 / 이름·연락처를 지우고 보냄 / 고른 메모만 보냄) | 거산의 답이 필요함 | 📝 결정 전 · [#247] |
+
+### 2026-11-03 — 방문 뒤 큰 변경
+
+**일정과 우선순위**
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 전달 일정 | 11/15까지 끝내는 것이 마감 | 11/15는 마감이 아님. 되는 순서대로 거산에 전달 | 거산이 18곳으로 바로 영업을 시작하며 기록이 쌓이기를 원함 | ✅ [범위 변경 제안] · [#208] |
+| 담당자 기록 | 나중 순서. 담기·접촉 승인·결과 기록 | 가장 먼저. 네 가지 기록(접촉 시도·영업 메모·영업 단계·다음 일정) | 쌓이는 자료의 핵심 | ✅ [범위 변경 제안] · [#209] [#210] |
+| "담기" 기능 | 만들기로 함 | 만들지 않음. 영업 단계에 "관심"을 넣어 대신함 | 단계로 걸러 보면 같은 효과 | ✅ [범위 변경 제안] · [#211] |
+| 접촉 승인 | 승인·거절·취소 절차 | 화면에서 숨김. 자리는 남겨 둠 | 담당자가 1~2명이면 걸림돌 | ✅ [범위 변경 제안] · [#131] |
+| 기록 고치기·지우기 | 정해지지 않음 | 지우기 없음. 메모는 덧붙이기, 단계·일정은 새 줄 | 기록을 믿을 수 있어야 함 | ✅ [범위 변경 제안] |
+| 대시보드 | 나중 순서. 건수 4개 | 첫 화면. 건수 5개(미접촉·관심·접촉 중·견적·샘플·이번 주 일정) + 일정 + 최근 내 기록 + 회사 이름 검색 | 첫 화면에서 오늘 할 일을 보게 | ✅ [범위 변경 제안] · [#215] [#216] |
+| 접속 보호·배포·백업 | 나중 순서 | 앞 순서. 11/10까지 한 번 올려 봄 | 실제 기록이 쌓이면 접속 환경과 백업이 먼저 | ✅ [범위 변경 제안] · [#213] [#214] |
+| 재접촉(기존 거래처 다시 영업) | 1차에 만듦 | 보류. 거산이 원하면 다시 시작 | 거산이 신규 영업을 먼저 원함 | ✅ [범위 변경 제안] |
+| AI 근거 추출 | 10월 말~11월 초 | 미루지 않고 기록·배포와 동시에 진행. 18곳 먼저 | PM이 "지금부터"로 정함 | ✅ [범위 변경 제안] · [#219] |
+| 후보 수집 | 11/6까지 | 11/17부터 | 18곳으로 시작하면 당장 필요 없음 | ✅ [범위 변경 제안] · [#221] |
+| 거산 확인 창구 | 질문 목록 화면·내보내기·검수 전환 모두 | 검수 전환 명령만 먼저. 나머지는 2차 | 나머지는 AI 근거 추출 뒤에야 가능 | ✅ [범위 변경 제안] · [#212] [#223] |
+| 소개서 값의 "거산 확인" 상태 | 값마다 확인 대기 | 소개서 값 전부를 "거산 확인 완료"로 바꾸고 18곳을 다시 평가 | 거산 담당자가 방문 때 전체를 확인해 줌 | ✅ [범위 변경 제안] · [#212] |
+
+**화면**
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 상세 화면 구성 | 추천 이유·근거·의견 중심 | 다섯 영역: ① 회사 소개 ② 추천 이유 ③ 검토사항 ④ 영업 전략 ⑤ 담당자 기록. ④만 2차 | PM이 정리한 화면 구성. 넘치는 일은 줄이지 않고 전달을 늦춤 | ✅ [상세 화면 구성] |
+| 상세 머리의 "기업 요약"과 [다시 조사] | 없음 | 홈페이지·대표번호·한 줄 소개·특징·조사 날짜와 [다시 조사] 단추. 자동으로 주기 조사는 하지 않음 | 자동 조사는 비용이 계속 들고 순위가 모르게 바뀜 | ✅ [상세 머리 조사] |
+| 추천 목록 공정 탭 | 공정이 섞인 한 줄 순위 | 공정별 탭. 순위도 공정 안에서 | 거산 영업이 공정별로 진행됨 | ✅ [공정 탭] · [#209] [#210] |
+| 추천 목록 지역·산업 선택 | 없음 | 공정 → 지역 → 산업 순서로 고르기 | 좌표나 AI 없이 바로 만들 수 있음 | ✅ [지역·산업 선택] · [#230] |
+| 대시보드 공정·산업군 막대 | 없음 | 만들되 2차. 실제 숫자가 나오기 전에는 숨김 | 상세 화면을 1차로 당기며 옮김 | ✅ [대시보드 막대·지도] · [#229] |
+| 엑셀 내려받기 | 1차 | 2차 | 같은 이유 | ✅ [상세 화면 구성] · [#217] |
+| 거산과의 거리·지도 | 없음 | 지도 앱 링크 2개만 1차. 거리 표시·가까운 순·대시보드 지도는 2차 | 좌표를 얻는 창구 승인이 먼저 필요 | ✅ [거리·지도 제안] · [#222] [#226] |
+
+**자료·AI·환경**
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 홈페이지 찾기와 외부 AI | 자동으로 찾는 것은 나중, 방식 미정 | AI 웹 검색이 홈페이지를 찾아 저장하고 근거 추출·재평가까지 자동으로 이어 감. 담당자는 상세에서 확인·수정 | 다른 검색 서비스는 결과 저장과 AI 입력이 약관상 금지 | ✅ [외부 AI 설정] · [#218] |
+| 연락처 규칙 | 연락처는 어디에도 저장하지 않음 | 영업 메모에는 상대 담당자 연락처를 적을 수 있고, 공개된 회사 대표번호는 상세에 보임. 밖으로는 내보내지 않음 | 프로그램을 거산 담당자의 내부 메모장으로 봄 | ✅ [연락처 규칙 변경] |
+| 올려 두는 곳(배포) | 화면과 서버를 한 덩어리로, 서비스 미정 | 화면과 서버를 두 서비스에 나눠 올림. 한 덩어리 방식은 예비로 남김 | 화면만 고칠 때 서버가 멈추지 않음 | ✅ [배포 결정] · [#213] |
+
+### 2026-10-21
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 10월 말 목표 | 가상 사례 1건이 끝까지 도는 것 | 여기에 부분 시연을 더함. 공정 1~2개, 실제 기업 10~20곳의 참고 순위와 근거 | 결과가 타당한지 거산 의견을 먼저 받으려고 | ✅ [뼈대 변경 제안] |
+| 실제 기업을 넣는 방법 | 자동 수집이 들어온 뒤 | 회사별 파일을 팀이 손으로 써서 넣음 | 뼈대와 자동화를 같은 주에 만들면 뼈대가 늦어짐 | ✅ [뼈대 변경 제안] |
+| 뼈대를 만드는 방식 | AI가 한 번에 만듦 | 얇은 틀만 PM이 먼저 올리고 팀원 3명이 자기 부분을 넓힘 | 4명이 같이 일하도록 | ✅ [뼈대 변경 제안] |
+| 실제 기업 카드의 점수 | 점수 표시 없음 | "참고 ○점"으로 표시하고 "거산 확인 전" 문구를 붙임 | 목록만 보고 순위를 설명하려고 | ✅ [뼈대 변경 제안] · [#180] |
+
+---
+
+## 4. 일하는 방식 변경
+
+기능이 아니라 팀 규칙이 바뀐 것입니다. 자세한 내용은 저장소 맨 위의 `AGENTS.md`에 있습니다.
+
+| 날짜 | 바뀐 것 |
+|---|---|
+| 11/5 | 지도 문서를 `docs/map/`에서 관리 ([#293]). 우선순위 표시와 전달 차수를 짝 맞춤 |
+| 11/4 | 칸반 보드를 쓰지 않고 이슈 목록만 봄 ([#271]). 이슈 본문에 "왜 · 흐름" 5줄 |
+| 11/3 | 전달 차수에 "2차 보강(11/17 이후)" 추가 |
+| 10/27 | 글쓰기 규칙(첫 줄 결론, 어디 얘기인지 먼저), 우선순위 표시 4단계 ([#154]) |
+| 10/24 | 발표 재료를 그날 바로 적기 |
+| 10/22 | 기본 작업 줄기를 `develop`으로. 합치기는 PM과 이강욱만 |
+| 10/21 | 테스트 없이 PR을 올리지 않기. 진행 상황의 기준은 이슈 하나 |
+
+---
+
+## 5. 출발점 — 처음(10/19) 범위
+
+**만들기로 한 것**
+
+- 거산의 공정·인증을 고객 회사의 영업 기회와 견주어 추천 이유·확인 질문·다음 할 일을 보여 주는 웹 도구
+- 꼭 맞아야 하는 조건으로 거르기 → 점수 → 분류 → 순서 정하기 (기획서의 규칙 숫자 그대로)
+- 화면 3개: 추천 목록, 근거 상세, 의견·결과
+- 홈페이지 본문을 주면 AI가 근거와 확인 질문을 뽑기 (공개 자료만)
+- 공공 자료에서 실제 후보 회사 불러오기
+- 그다음 차례: 재접촉, 승인·접촉·결과 기록, 외부 자료 추가, 홈페이지 자동 찾기, 거산 접속 환경
+- 더 뒤 차례: 엑셀·PDF 출력, 화면 다듬기
+
+**안 만들기로 한 것** (지금도 그대로)
+
+- 단가·견적 금액 계산, 납기 확정, 고객에게 자동 발송, 가격·경쟁사 비교
+- 견적 요청서·도면 자동 정리, 점수 비중 자동 조정, 예측 모델 학습
+- 다른 업무 시스템(고객 관리·자원 관리·메일) 연동
+- 채용 공고 사이트, 유료 기업 정보, 홈페이지에서 연락처 자동 수집
+
+근거: [처음 범위 문서]
+
+---
+
+## 근거 문서
+
+변경 제안 문서는 모두 설계 기록 폴더(`aidlc/…/inception/delivery-planning/`)에 있습니다.
+
+[뼈대 변경 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/b1-change-proposal-20261021.md
+[범위 변경 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/scope-change-proposal-20261102.md
+[연락처 규칙 변경]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/contact-policy-change-20261103.md
+[외부 AI 설정]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/llm-settings-proposal-20261103.md
+[배포 결정]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/hosting-decision-20261103.md
+[상세 화면 구성]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/detail-screen-layout-20261103.md
+[상세 머리 조사]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/detail-header-research-20261103.md
+[공정 탭]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/process-tabs-20261103.md
+[지역·산업 선택]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/list-filters-region-industry-20261103.md
+[대시보드 막대·지도]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/dashboard-breakdown-map-20261103.md
+[거리·지도 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/distance-map-proposal-20261103.md
+[기록 취소 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/record-cancel-20261104.md
+[답 적기 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/review-answer-inline-20261104.md
+[자료 줄 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/review-gap-memo-paste-20261104.md
+[점수 표시 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/score-display-pending-20261104.md
+[비슷한 회사 제안]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/similar-companies-strategy-20261104.md
+[전략 초안 틀]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/inception/delivery-planning/strategy-draft-template-20261104.md
+[처음 범위 문서]: ../../aidlc/spaces/default/intents/261019-geosan-sales-agent/ideation/scope-definition/scope-document.md
+
+[#27]: https://github.com/agent-ddalgi-team/final-geosan/issues/27
+[#131]: https://github.com/agent-ddalgi-team/final-geosan/issues/131
+[#154]: https://github.com/agent-ddalgi-team/final-geosan/issues/154
+[#180]: https://github.com/agent-ddalgi-team/final-geosan/issues/180
+[#208]: https://github.com/agent-ddalgi-team/final-geosan/issues/208
+[#209]: https://github.com/agent-ddalgi-team/final-geosan/issues/209
+[#210]: https://github.com/agent-ddalgi-team/final-geosan/issues/210
+[#211]: https://github.com/agent-ddalgi-team/final-geosan/issues/211
+[#212]: https://github.com/agent-ddalgi-team/final-geosan/issues/212
+[#213]: https://github.com/agent-ddalgi-team/final-geosan/issues/213
+[#214]: https://github.com/agent-ddalgi-team/final-geosan/issues/214
+[#215]: https://github.com/agent-ddalgi-team/final-geosan/issues/215
+[#216]: https://github.com/agent-ddalgi-team/final-geosan/issues/216
+[#217]: https://github.com/agent-ddalgi-team/final-geosan/issues/217
+[#218]: https://github.com/agent-ddalgi-team/final-geosan/issues/218
+[#219]: https://github.com/agent-ddalgi-team/final-geosan/issues/219
+[#221]: https://github.com/agent-ddalgi-team/final-geosan/issues/221
+[#222]: https://github.com/agent-ddalgi-team/final-geosan/issues/222
+[#223]: https://github.com/agent-ddalgi-team/final-geosan/issues/223
+[#226]: https://github.com/agent-ddalgi-team/final-geosan/issues/226
+[#229]: https://github.com/agent-ddalgi-team/final-geosan/issues/229
+[#230]: https://github.com/agent-ddalgi-team/final-geosan/issues/230
+[#247]: https://github.com/agent-ddalgi-team/final-geosan/issues/247
+[#248]: https://github.com/agent-ddalgi-team/final-geosan/issues/248
+[#249]: https://github.com/agent-ddalgi-team/final-geosan/issues/249
+[#253]: https://github.com/agent-ddalgi-team/final-geosan/issues/253
+[#254]: https://github.com/agent-ddalgi-team/final-geosan/issues/254
+[#259]: https://github.com/agent-ddalgi-team/final-geosan/issues/259
+[#260]: https://github.com/agent-ddalgi-team/final-geosan/issues/260
+[#262]: https://github.com/agent-ddalgi-team/final-geosan/issues/262
+[#263]: https://github.com/agent-ddalgi-team/final-geosan/issues/263
+[#264]: https://github.com/agent-ddalgi-team/final-geosan/issues/264
+[#265]: https://github.com/agent-ddalgi-team/final-geosan/issues/265
+[#266]: https://github.com/agent-ddalgi-team/final-geosan/issues/266
+[#268]: https://github.com/agent-ddalgi-team/final-geosan/issues/268
+[#269]: https://github.com/agent-ddalgi-team/final-geosan/issues/269
+[#271]: https://github.com/agent-ddalgi-team/final-geosan/issues/271
+[#275]: https://github.com/agent-ddalgi-team/final-geosan/issues/275
+[#286]: https://github.com/agent-ddalgi-team/final-geosan/issues/286
+[#293]: https://github.com/agent-ddalgi-team/final-geosan/issues/293
