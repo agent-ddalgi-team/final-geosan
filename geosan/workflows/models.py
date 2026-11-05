@@ -22,12 +22,16 @@ class FlowResult:
     summary: str = ""
     """명령 출력 마지막 줄의 쉬운 한국어 요약. 예: '묶음 b-01, 기회 1건, 지금 바로 연락 검토 1'."""
 
+    counts: dict[str, int] | None = None
+    """PM 확정 C2: run_extract의 새 근거·요구 후보·질문 건수. 다른 흐름은 None."""
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "ok": self.ok,
             "affectedOppIds": list(self.affected_opp_ids),
             "newEvalIds": list(self.new_eval_ids),
             "error": self.error.to_error_body()["error"] if self.error else None,
+            "counts": dict(self.counts) if self.counts is not None else None,
         }
 
     @classmethod

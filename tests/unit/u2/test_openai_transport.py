@@ -2,11 +2,16 @@
 
 import http.client
 import json
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
+import pytest
+
+from geosan.config.errors import AppError
 from geosan.evidence import openai_search
 from geosan.evidence.homepage import find_case_homepage
+from geosan.evidence.research_context import research_context
 from tests.unit.u2 import test_search_limits as search_support
 from tests.unit.u2.test_search_limits import logs, provider_reply
 
@@ -62,3 +67,44 @@ def test_real_request_serialization_and_accounting(search_env, monkeypatch):
     assert body["store"] is False
     assert result.url == "https://example.org/"
     assert logs()[0].input_tokens == 1000
+
+
+def test_research_deadline_interrupts_a_stalled_real_response(search_env, monkeypatch):
+    case, _ = search_env
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            self.send_response(200)
+            self.send_header("Content-Length", "100")
+            self.end_headers()
+            self.wfile.flush()
+            time.sleep(0.5)
+
+        def log_message(self, *args):
+            pass
+
+    with HTTPServer(("127.0.0.1", 0), Handler) as server:
+        worker = Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        monkeypatch.setattr(
+            openai_search.http.client,
+            "HTTPSConnection",
+            lambda host, timeout: http.client.HTTPConnection(
+                "127.0.0.1", server.server_port, timeout=timeout
+            ),
+        )
+        monkeypatch.setattr(openai_search, "_post_response", REAL_POST)
+        try:
+            with research_context() as context:
+                context.deadline = time.monotonic() + 0.2
+                start = time.monotonic()
+                with pytest.raises(AppError) as error:
+                    find_case_homepage(case.opp_id)
+                assert error.value.kind == "TIMEOUT"
+                assert time.monotonic() - start < 2
+        finally:
+            server.shutdown()
+            worker.join()
+    assert len(logs()) == 1 and logs()[0].call_count == 1
+    assert logs()[0].cost_usd is None
