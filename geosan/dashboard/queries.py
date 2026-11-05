@@ -115,17 +115,37 @@ def _latest_outcomes(session: Session, population) -> list[Outcome]:
     )
 
 
-def _schedule(
-    session: Session, latest: list[Outcome], today: date
-) -> tuple[list[ScheduleItem], int]:
-    limit = today + timedelta(days=SCHEDULE_WINDOW_DAYS)
-    due = [
-        row
-        for row in latest
-        if row.next_schedule_at is not None
-        and row.status not in CLOSED_STATUSES
-        and row.next_schedule_at <= limit
-    ]
+def schedule_due_outcomes(today: date, population=None):
+    """'이번 주 일정'에 드는 영업 기록(기회마다 최신 한 행)을 고르는 select.
+
+    조건: 다음 일정이 있고, 끝나지 않은 영업(성사·거절 아님)이며, 일정일이 오늘 + 7일 이하
+    (기한 지남 포함). 대시보드 건수·일정 카드와 목록 거르기(`?filter=SCHEDULE_DUE`)가 이
+    한 곳을 같이 써서 눌렀을 때 열리는 목록 건수가 건수와 늘 같다.
+    """
+    newest = select(Outcome.opp_id, func.max(Outcome.version).label("version")).group_by(
+        Outcome.opp_id
+    )
+    if population is not None:
+        newest = newest.where(Outcome.opp_id.in_(population))
+    newest = newest.subquery()
+    return (
+        select(Outcome)
+        .join(newest, and_(Outcome.opp_id == newest.c.opp_id, Outcome.version == newest.c.version))
+        .where(
+            Outcome.next_schedule_at.is_not(None),
+            Outcome.status.notin_(CLOSED_STATUSES),
+            Outcome.next_schedule_at <= today + timedelta(days=SCHEDULE_WINDOW_DAYS),
+        )
+    )
+
+
+def schedule_due_opp_ids(today: date):
+    """목록 거르기용: '이번 주 일정'에 드는 기회 번호를 고르는 select."""
+    return select(schedule_due_outcomes(today).subquery().c.opp_id)
+
+
+def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleItem], int]:
+    due = list(session.scalars(schedule_due_outcomes(today, population)))
     if not due:
         return [], 0
     names = {
@@ -255,7 +275,7 @@ def build_dashboard(
         by_status[row.status] = by_status.get(row.status, 0) + 1
     # 기록이 없거나 최신 단계가 미접촉이면 미접촉이다(목록의 ?stage=NOT_EXECUTED와 같다).
     recorded = sum(count for status, count in by_status.items() if status != "NOT_EXECUTED")
-    schedule, due_count = _schedule(session, latest, today)
+    schedule, due_count = _schedule(session, population, today)
     counts = DashboardCounts(
         not_contacted=total - recorded,
         interested=by_status.get("INTERESTED", 0),

@@ -154,6 +154,43 @@ def test_schedule_window_orders_overdue_first_and_skips_closed(dashboard_env):
     assert counts_of(data)["SCHEDULE_DUE"] == 2
 
 
+def test_schedule_list_filter_matches_dashboard_count(dashboard_env, monkeypatch):
+    """Given 7일 안·기한 지남·8일 뒤·끝난 영업 / When 건수와 일정 목록 / Then 같다."""
+    monkeypatch.setattr("geosan.api.routes.dashboard.utcnow", lambda: NOW)
+    client, (a, b, c, d) = dashboard_env
+    record(client, a, {"status": "INTERESTED", "nextScheduleAt": "2026-11-12"})
+    record(client, b, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-01"})
+    record(client, c, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-13"})
+    record(client, d, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-06"})
+    record(client, d, {"status": "LOST", "reason": "가상 거절 사유"})
+    dashboard = client.get("/api/v1/dashboard").json()["data"]
+    listed = client.get("/api/v1/opportunities", params={"filter": "SCHEDULE_DUE"})
+    assert listed.status_code == 200
+    assert listed.json()["meta"]["total"] == dashboard["counts"]["SCHEDULE_DUE"] == 2
+    assert {row["oppId"] for row in listed.json()["data"]} == {a, b}
+    assert {row["oppId"] for row in listed.json()["data"]} == {
+        row["oppId"] for row in dashboard["schedule"]
+    }
+    # 단계와 함께 걸어도 같은 기준이다.
+    both = client.get(
+        "/api/v1/opportunities", params={"filter": "SCHEDULE_DUE", "stage": "IN_PROGRESS"}
+    )
+    assert [row["oppId"] for row in both.json()["data"]] == [b]
+
+
+def test_list_still_rejects_unconnected_filters_and_plain_list_is_unchanged(dashboard_env):
+    """Given 거르기 등록 / When 연결 안 된 값 요청 / Then 이전처럼 입력 오류, 일반 목록은 그대로."""
+    client, _ids = dashboard_env
+    url = "/api/v1/opportunities"
+    assert client.get(url).json()["meta"]["total"] == 4
+    for params in ({"filter": "OTHER"}, {"filter": ""}, {"tab": "later"}, {"bookmarked": "true"}):
+        response = client.get(url, params=params)
+        assert response.status_code == 400, params
+        assert "아직 연결되지 않았습니다" in response.text
+    empty = client.get(url, params={"filter": "SCHEDULE_DUE"})
+    assert empty.status_code == 200 and empty.json()["meta"]["total"] == 0
+
+
 def test_stage_only_save_keeps_earlier_schedule_in_dashboard(dashboard_env):
     """Given 일정을 잡은 뒤 단계만 바꿈 / When 조회 / Then 앞서 잡은 일정이 계속 보인다."""
     client, (a, *_rest) = dashboard_env
