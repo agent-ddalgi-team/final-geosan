@@ -164,6 +164,7 @@ class RuleConfig(_ContractModel):
     research_requirements: ResearchRequirementsConfig
     classification_labels: dict[str, str]
     other_group_sort: OtherGroupSort
+    existing_customer_placement: Literal["BOTTOM", "INLINE"] = "BOTTOM"
     dataset_kinds: list[DatasetKind]
     rule_hash: str | None = Field(default=None, description="파일 내용 SHA-256. 로더가 채운다")
 
@@ -464,6 +465,7 @@ class DisplayFlags(_ContractModel):
 
 class SortKey(_ContractModel):
     group: SortGroup
+    relation_status: RelationStatus = RelationStatus.UNCONFIRMED
     valid_until: date | None = None
     E: int
     F: int
@@ -502,6 +504,7 @@ class EvaluationOutput(_ContractModel):
     timing: TimingRequirements
     research_ready: bool
     classification_code: ClassificationCode
+    score_state: Literal["CONFIRMED", "PENDING", "NONE"]
     display_flags: DisplayFlags
     sort_key: SortKey
     question_candidates: list[QuestionCandidate] = Field(default_factory=list)

@@ -218,6 +218,20 @@ def transfer_unblock(
     )
 
 
+@app.command("research")
+def research(
+    missing_homepage: bool = typer.Option(False, "--missing-homepage", help="홈페이지 없는 사례만"),
+    all_companies: bool = typer.Option(False, "--all", help="주소가 있는 사례도 다시 조사"),
+    limit: str | None = typer.Option(
+        None, "--limit", metavar="N", help="이번 최대 사례 수, 1 이상"
+    ),
+) -> None:
+    """공개 신규 사례를 검색·추출·재평가합니다. 기본은 홈페이지 없는 실제 사례만입니다."""
+    from geosan.commands.research import run_research
+
+    raise typer.Exit(code=run_research(missing_homepage, all_companies, limit))
+
+
 @app.command("cost")
 def cost(
     month: str | None = typer.Option(None, "--month", help="비용을 볼 월 YYYY-MM. 기본 이번 달"),

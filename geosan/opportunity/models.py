@@ -37,6 +37,7 @@ class Customer(CommonColumns, Base):
     identity_basis: Mapped[str | None] = mapped_column(Text)
     relation_status: Mapped[str] = mapped_column(String(24), nullable=False)
     relation_confirmed_at: Mapped[date | None] = mapped_column(Date)
+    relation_confirmed_by: Mapped[str | None] = mapped_column(String(64))
     company_filter_status: Mapped[str] = mapped_column(String(16), nullable=False, default="PASS")
     company_filter_reason: Mapped[str | None] = mapped_column(Text)
     security_grade: Mapped[str] = mapped_column(String(24), nullable=False)
@@ -76,6 +77,24 @@ class Opportunity(CommonColumns, Base):
     review_due_at: Mapped[date | None] = mapped_column(Date)
     merge_history: Mapped[Any | None] = mapped_column(JSON)
     card_reason: Mapped[str | None] = mapped_column(Text)  # 카드 추천 이유 한 문장 (#139, rec_002)
+
+
+class RelationHistory(CommonColumns, Base):
+    """담당자가 바꾼 거래 관계를 덧붙인다(C6, PM 승인 #265)."""
+
+    __tablename__ = "opp_relation_history"
+
+    relation_history_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    customer_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_customer.customer_id"), nullable=False
+    )
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
+    )
+    from_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
 
 
 class Interaction(Supersedable, CommonColumns, Base):

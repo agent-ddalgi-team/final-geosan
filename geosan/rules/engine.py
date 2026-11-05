@@ -1,7 +1,7 @@
 """규칙 엔진의 약속된 진입점. 모든 계산은 입력 스냅샷에만 의존한다 (BR4.8, C3)."""
 
 from geosan.rules.classify import classify, display_texts
-from geosan.rules.codes import CoreEvidenceMet, DatasetKind
+from geosan.rules.codes import ClassificationCode, CoreEvidenceMet, DatasetKind
 from geosan.rules.items import calculate_items
 from geosan.rules.models import (
     DisplayFlags,
@@ -39,6 +39,13 @@ def evaluate(evaluation_input: EvaluationInput) -> EvaluationOutput:
         timing=timing,
         research_ready=not missing,
         classification_code=code,
+        score_state=(
+            "NONE"
+            if totals.S is None
+            else "PENDING"
+            if code in {ClassificationCode.FILTER_PENDING, ClassificationCode.OPS_PENDING}
+            else "CONFIRMED"
+        ),
         display_flags=DisplayFlags(
             core_evidence_recheck=core == CoreEvidenceMet.RECHECK,
             brochure_dataset=data.dataset_kind == DatasetKind.BROCHURE,

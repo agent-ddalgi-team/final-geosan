@@ -35,6 +35,7 @@ cd web && npm ci && cd ..
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
 | 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·입력/출력 토큰·비용을 합산합니다. 미확정 비용이 있으면 종료 코드 2입니다. |
+| 홈페이지 없는 사례 일괄 조사 | `geosan research` 또는 `geosan research --missing-homepage`. 현재 묶음의 공개된 실제 신규 사례를 검색·본문 읽기·근거 추출·재평가합니다. `--limit 5`로 최대 건수를 정하고, `--all`은 기존 주소도 다시 읽습니다. |
 | 미확정 AI 사용 기록 정리 | `geosan transfer-unblock`은 조회만 합니다. 제공사에서 기록별 사용량을 확인한 뒤 모든 정산 인자를 넣습니다. 필요한 계정·서버 권한과 실행 순서는 [막힌 기록 푸는 법](docs/transfer-unblock-guide.md)을 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
@@ -59,9 +60,20 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 홈페이지는 공개 IP만 접속하며 robots 제한·자동 수집 금지 표시·읽기 실패가 있으면 붙여넣기를 안내합니다.
 페이지의 제한 표시를 검사하지만 별도 이용약관 문서의 법적 허용 여부를 자동 판정하지는 않습니다. 운영자는 해당 사이트의 이용 조건을 확인해야 합니다.
 근거·질문·회사 요약과 재평가는 한 번에 저장하며, 실패하면 전부 되돌립니다. 실제 호출 비용은 별도로 남습니다.
-재조사 전 근거는 이력으로 남기고, AI의 요구 후보는 ‘미확인 근거’로만 저장합니다(정식 요구사항 등록 기준은 PM 결정 대기).
-`POST /homepage` 화면 연결·자동 검색 뒤 추출 호출·`research` 일괄 명령은 아직 연결하지 않았습니다.
-화면 API 담당자는 이 내부 흐름의 `FlowResult.ok`를 확인한 뒤 재평가 성공을 표시해야 합니다.
+재조사 전 근거는 이력으로 남기고, AI의 요구 후보는 PM 결정대로 ‘미확인 근거’로만 저장합니다.
+`geosan research`는 `homepageDiscovery.autoResearch: true`와 외부 AI 설정을 등록한 뒤 실행합니다.
+가상 사례·내부 자료·재접촉·다른 묶음은 대상에서 제외합니다. 기존 주소는 보존하고 그 주소로 추출합니다.
+검색부터 저장까지 한 사례의 전체 한도는 60초이며, 홈페이지를 못 찾으면 추출을 건너뜁니다.
+사이트 읽기 실패는 다음 사례로 이어 가지만 호출·비용 한도, 사용량 미확정, 설정 오류는 전체를 멈추고 남은 건수를 알립니다.
+회사별 새 근거 수·이번 호출 비용을 표시하며, 미확정 비용은 0원으로 확정하지 않습니다.
+실행 실패가 있으면 종료 코드 2, 잘못된 옵션·자동 조사 꺼짐은 1입니다. 못 찾음은 별도 집계합니다.
+`geosan import-case <file.json>`도 저장을 마친 뒤 같은 설정에 따라 **투입한 한 곳만** 바로 조사합니다.
+자동 조사가 꺼져 있거나 가상·비공개·재접촉·다른 묶음이면 저장만 합니다(종료 코드 0).
+재투입도 한 번 조사하며 저장된 홈페이지 주소를 재사용합니다. 이전 근거·평가 이력은 보존합니다.
+조사가 실패하면 사례 저장은 유지하고 실패 이유와 종료 코드 2를 알립니다. 파일을 다시 넣을 필요는 없습니다.
+홈페이지를 못 찾은 경우에는 저장을 유지하고 추출·재평가를 건너뛰었다고 알립니다(종료 코드 0).
+`POST /homepage` 화면 연결과 U3 수집 직후의 자동 시작은 별도 작업입니다.
+화면 API 담당자는 `FlowResult.ok`와 PM이 확정한 `counts`(근거 전체·요구 후보·질문 수)로 성공을 표시해야 합니다.
 
 뼈대 기본 틀(Part A) 시점에는 명령 이름만 등록되어 있고 본문은 "아직 구현되지 않았습니다(담당, Step)"를 내고 종료 코드 2로 끝납니다.
 서버는 기본 `127.0.0.1:8000`에서 듣습니다. 배포할 때만 `--host 0.0.0.0 --port <포트>`를 지정합니다. 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
@@ -168,5 +180,7 @@ scripts/                check.sh · check-secrets.sh (맥·리눅스) · check.p
 - 담당자 이름·이메일·전화 같은 연락처는 어디에도 저장하지 않습니다.
 
 ## 5. 설계 문서
+
+**먼저 볼 곳: [`docs/map/`](docs/map/README.md)** — 지금 기준의 전체 기획과 현황을 그림과 쉬운 말로 정리한 지도입니다(기능 지도 · 구조 지도 · 기획 변경 기록). 아래 설계 문서는 그 지도의 근거 자료입니다.
 
 `aidlc/spaces/default/intents/261019-geosan-sales-agent/` 아래에 있습니다. 구현 전에 자기 모듈의 기능 설계(`construction/u1-skeleton/functional-design/`의 `rules.md`·`entities.md`·`functional-spec.md`)와 계약(`inception/contract-design/contract-summary.md`)을 읽습니다. 코드 생성 계획과 단위 테스트 지침은 `construction/u1-skeleton/code-generation/`에 있습니다.

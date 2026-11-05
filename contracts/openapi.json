@@ -312,6 +312,78 @@
         "title": "ContactCount",
         "type": "object"
       },
+      "Dashboard": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "breakdown": {
+            "title": "Breakdown",
+            "type": "null"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DashboardCounts"
+          },
+          "recentActivity": {
+            "items": {
+              "$ref": "#/components/schemas/RecentActivityItem"
+            },
+            "title": "Recentactivity",
+            "type": "array"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleItem"
+            },
+            "title": "Schedule",
+            "type": "array"
+          }
+        },
+        "required": [
+          "counts",
+          "schedule",
+          "recentActivity",
+          "asOf"
+        ],
+        "title": "Dashboard",
+        "type": "object"
+      },
+      "DashboardCounts": {
+        "description": "누르면 /opportunities?stage=… (SCHEDULE_DUE만 ?filter=SCHEDULE_DUE).",
+        "properties": {
+          "INTERESTED": {
+            "title": "Interested",
+            "type": "integer"
+          },
+          "IN_CONTACT": {
+            "title": "In Contact",
+            "type": "integer"
+          },
+          "NOT_CONTACTED": {
+            "title": "Not Contacted",
+            "type": "integer"
+          },
+          "QUOTE_SAMPLE": {
+            "title": "Quote Sample",
+            "type": "integer"
+          },
+          "SCHEDULE_DUE": {
+            "title": "Schedule Due",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "NOT_CONTACTED",
+          "INTERESTED",
+          "IN_CONTACT",
+          "QUOTE_SAMPLE",
+          "SCHEDULE_DUE"
+        ],
+        "title": "DashboardCounts",
+        "type": "object"
+      },
       "DatasetKind": {
         "enum": [
           "VIRTUAL_REVIEWED",
@@ -683,6 +755,21 @@
         "title": "Envelope[ConfigUi]",
         "type": "object"
       },
+      "Envelope_Dashboard_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Dashboard"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
       "Envelope_MainPhoneConfirmResponse_": {
         "properties": {
           "data": {
@@ -771,6 +858,21 @@
           "data"
         ],
         "title": "Envelope[QuestionReplyResponse]",
+        "type": "object"
+      },
+      "Envelope_RelationResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RelationResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[RelationResponse]",
         "type": "object"
       },
       "Envelope_ReviewCheckResponse_": {
@@ -917,6 +1019,19 @@
         ],
         "title": "IndustryCount",
         "type": "object"
+      },
+      "LostReasonCode": {
+        "description": "#250 PM 승인: 계약 C0의 거절 이유 코드 6종.",
+        "enum": [
+          "PRICE",
+          "LEAD_TIME",
+          "INCUMBENT_SUPPLIER",
+          "NO_DEMAND",
+          "QUALITY_CERT",
+          "OTHER"
+        ],
+        "title": "LostReasonCode",
+        "type": "string"
       },
       "MainPhoneConfirmRequest": {
         "additionalProperties": false,
@@ -1698,6 +1813,16 @@
             ],
             "title": "Expectedversion"
           },
+          "lostReasonCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "memo": {
             "anyOf": [
               {
@@ -2191,6 +2316,47 @@
         "title": "Reasons",
         "type": "object"
       },
+      "RecentActivityItem": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "NOTE",
+              "STAGE",
+              "CONTACT_ATTEMPT",
+              "SCHEDULE",
+              "OPINION"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "oppId",
+          "customerName",
+          "kind",
+          "summary"
+        ],
+        "title": "RecentActivityItem",
+        "type": "object"
+      },
       "RecordsUi": {
         "properties": {
           "approvalEnabled": {
@@ -2225,6 +2391,53 @@
           "count"
         ],
         "title": "RegionCount",
+        "type": "object"
+      },
+      "RelationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evalId": {
+            "minLength": 1,
+            "title": "Evalid",
+            "type": "string"
+          },
+          "relationStatus": {
+            "$ref": "#/components/schemas/RelationStatus"
+          }
+        },
+        "required": [
+          "relationStatus",
+          "evalId"
+        ],
+        "title": "RelationRequest",
+        "type": "object"
+      },
+      "RelationResponse": {
+        "properties": {
+          "evalId": {
+            "title": "Evalid",
+            "type": "string"
+          },
+          "relationConfirmedAt": {
+            "format": "date",
+            "title": "Relationconfirmedat",
+            "type": "string"
+          },
+          "relationConfirmedBy": {
+            "title": "Relationconfirmedby",
+            "type": "string"
+          },
+          "relationStatus": {
+            "$ref": "#/components/schemas/RelationStatus"
+          }
+        },
+        "required": [
+          "relationStatus",
+          "relationConfirmedAt",
+          "relationConfirmedBy",
+          "evalId"
+        ],
+        "title": "RelationResponse",
         "type": "object"
       },
       "RelationStatus": {
@@ -2482,6 +2695,50 @@
         ],
         "title": "ReviewStatus",
         "type": "string"
+      },
+      "ScheduleItem": {
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date",
+            "title": "Dueat",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "oppTitle": {
+            "title": "Opptitle",
+            "type": "string"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "staffKey": {
+            "title": "Staffkey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "customerName",
+          "oppTitle",
+          "dueAt",
+          "note",
+          "overdue",
+          "staffKey"
+        ],
+        "title": "ScheduleItem",
+        "type": "object"
       },
       "ScoreItemView": {
         "properties": {
@@ -2761,6 +3018,53 @@
           }
         },
         "summary": "Config Ui"
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "description": "건수 5개·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Dashboard_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dashboard"
       }
     },
     "/api/v1/opportunities": {
@@ -3263,6 +3567,71 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/relation": {
+      "post": {
+        "operationId": "save_relation_api_v1_opportunities__oppId__relation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RelationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Relation"
       }
     },
     "/api/v1/opportunities/{oppId}/review-items/{itemId}/check": {

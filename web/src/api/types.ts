@@ -19,6 +19,9 @@ export type ClassificationCode =
 
 export type ReviewStatus = 'UNAVAILABLE' | 'PENDING' | 'REVIEWED' | 'RECHECK';
 export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRMED';
+/** 점수 확인 상태(#263): CONFIRMED 확정, PENDING 거래 확인 전(값은 있으나 확정 전), NONE 점수 없음 */
+export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
+export type HomepageStatus = 'AI_FOUND' | 'NEEDS_CONFIRMATION' | 'CONFIRMED' | 'NOT_FOUND';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
 export type NeededStage = 'NOW' | 'LATER' | 'UNKNOWN';
@@ -151,6 +154,10 @@ export interface CardRecords {
 }
 
 export interface OpportunityCard {
+  /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
+  scoreState?: ScoreState;
+  /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
+  relationStatus?: RelationStatus;
   oppId: string;
   rank: number;
   title: string;
@@ -175,11 +182,32 @@ export interface OpportunityCard {
 // ---------- GET /opportunities/{oppId} (S2 상세) ----------
 
 export interface DetailHeader {
+  /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
+  scoreState?: ScoreState;
   title: string;
   customerName: string;
   opportunityItem: string;
   relationStatus: RelationStatus;
   relationNote?: string | null;
+  /** 거래 관계를 담당자가 마지막으로 바꾼 날(YYYY-MM-DD)과 담당자 키. 한 번도 안 바꿨으면 없음(#266). */
+  relationConfirmedAt?: string | null;
+  relationConfirmedBy?: string | null;
+  /** 홈페이지 상태. NEEDS_CONFIRMATION·NOT_FOUND면 맨 위 띠가 보인다(결정 B). 없으면 띠 없음. */
+  homepageStatus?: HomepageStatus | null;
+  /** 거산에서 떨어진 거리(km). 거리 기능(#222) 전까지 null이고, 없으면 보이지 않는다. */
+  distanceKm?: number | null;
+  /** 회사 대표번호(내부 메모장용, 2026-11-03 PM 결정)와 출처·담당자 확인(#209). */
+  mainPhone?: string | null;
+  mainPhoneSource?: 'HOMEPAGE' | 'CSV' | null;
+  mainPhoneSourceUrl?: string | null;
+  mainPhoneConfirmedAt?: string | null;
+  mainPhoneConfirmedBy?: string | null;
+  /** 기업 요약: 한 줄 소개, 특징(최대 3개), 조사 시각, 출처(AI 또는 사례 파일), 오래됨. */
+  summaryLine?: string | null;
+  highlights?: string[];
+  researchedAt?: string | null;
+  researchSource?: 'AI' | 'CASE_FILE' | null;
+  researchStale?: boolean;
   purpose: Purpose;
   owner?: string | null;
   classificationCode: ClassificationCode;
@@ -401,6 +429,35 @@ export interface ReviewCheckResponse {
   checkedAt?: string | null;
 }
 
+// ---------- POST /opportunities/{oppId}/main-phone/confirm (대표번호 [맞음], #209) ----------
+
+export interface MainPhoneConfirmRequest {
+  /** 지금 화면에 보이는 번호. 그 사이 번호가 바뀌었으면 서버가 409(STALE_VALUE)로 막는다. */
+  expectedPhone: string;
+}
+
+export interface MainPhoneConfirmResponse {
+  mainPhone: string;
+  mainPhoneConfirmedAt: string;
+  mainPhoneConfirmedBy: string;
+}
+
+// ---------- POST /opportunities/{oppId}/relation (거래 관계 입력, #265·#266) ----------
+
+export interface RelationRequest {
+  relationStatus: RelationStatus;
+  /** 지금 보고 있는 평가 ID. 그 사이 다시 평가됐으면 서버가 409(STALE_EVALUATION)로 막는다. */
+  evalId: string;
+}
+
+export interface RelationResponse {
+  relationStatus: RelationStatus;
+  relationConfirmedAt: string;
+  relationConfirmedBy: string;
+  /** 저장 뒤 다시 평가한 새 평가 ID. */
+  evalId: string;
+}
+
 // ---------- POST /questions/{questionId}/reply (검토사항 [답 적기], 2026-11-04) ----------
 
 export interface ReplyRequest {
@@ -426,6 +483,7 @@ export type ActivityKind =
   | 'REPLY'
   | 'OUTCOME'
   | 'EVIDENCE_GRADE_CONFIRMED'
+  | 'RELATION_CONFIRMED'
   | 'NOTE';
 
 /** 활동 이력 한 줄(C1 ActivityItem). actor는 담당자 키 또는 system. */

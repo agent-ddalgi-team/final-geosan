@@ -15,6 +15,7 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError
+from geosan.evidence.research_context import current_research
 from geosan.storage.base import Base, CommonColumns, UtcDateTime, new_id, utcnow
 from geosan.storage.session import session_scope
 
@@ -180,6 +181,9 @@ def _reserve(
                 requested_by=requested_by,
             )
         )
+    context = current_research.get()
+    if context is not None:
+        context.log_ids.append(log_id)
     if error:
         raise error
     return SearchTicket(log_id, llm)

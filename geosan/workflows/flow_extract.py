@@ -17,6 +17,7 @@ from geosan.evidence.contacts import extract_main_phone
 from geosan.evidence.extraction import extract_evidence
 from geosan.evidence.public_items import approve_page, check_opportunity
 from geosan.evidence.reader import MAX_BYTES, Page, fetch, remaining, validate_url
+from geosan.evidence.research_context import current_research
 from geosan.evidence.store import store_extraction
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.opportunity.queries import store_company_research
@@ -37,7 +38,12 @@ def run_extract(
     requested_by: str = "system",
 ) -> FlowResult:
     deadline = time.monotonic() + 60
+    context = current_research.get()
+    if context is not None:
+        deadline = min(deadline, context.deadline)
     try:
+        if context is not None:
+            remaining(deadline)
         check_opportunity(opp_id)
         with session_scope() as session:
             opportunity = session.get(Opportunity, opp_id)
@@ -124,6 +130,11 @@ def run_extract(
                 question_count += 1
             remaining(deadline)
         evaluated.summary = f"근거 {len(evidence)}건·질문 {question_count}건 저장, 재평가 완료"
+        evaluated.counts = {
+            "evidenceCount": len(evidence),
+            "requirementCandidateCount": len(result.requirement_candidates),
+            "questionCount": question_count,
+        }
         return evaluated
     except Exception as exc:
         error = (

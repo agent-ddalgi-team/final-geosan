@@ -78,6 +78,33 @@ def counts():
         )
 
 
+def test_frame_only_page_never_calls_ai_or_changes_saved_case(extract_env, monkeypatch):
+    from geosan.evidence import reader
+    from tests.unit.u2.test_homepage_reader import FRAME_PAGE
+
+    case, transport = extract_env
+    before = counts()
+    with session_scope() as session:
+        summary = session.get(Customer, case.customer_id).summary_line
+    monkeypatch.setattr(flow_extract, "fetch", reader.fetch)
+    monkeypatch.setattr(
+        reader,
+        "_get",
+        lambda url, _: (
+            (404, {}, "")
+            if url.endswith("robots.txt")
+            else (200, {"content-type": "text/html"}, FRAME_PAGE)
+        ),
+    )
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert not result.ok and result.error.kind == "UNREACHABLE"
+    assert transport.call_count == 0 and support.logs() == []
+    assert counts() == before
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        assert customer.summary_line == summary and customer.research_source == "CASE_FILE"
+
+
 def test_body_extract_store_and_real_reevaluation(extract_env):
     case, transport = extract_env
     before = counts()
@@ -175,7 +202,9 @@ def test_answered_question_is_not_rewritten_by_research(extract_env):
         )
         row.status = "APPLIED"
         row.question_text = "담당자가 이미 답을 반영한 질문"
-    assert flow_extract.run_extract(case.opp_id, URL).ok
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert result.ok
+    assert result.counts["questionCount"] == 0
     with session_scope() as session:
         row = session.scalar(
             select(ConfirmationQuestion).where(
@@ -201,6 +230,7 @@ def test_requirement_candidates_are_unconfirmed_evidence(extract_env):
     result = flow_extract.run_extract(case.opp_id, URL)
     assert result.ok, result.error
     assert counts()[3] == before[3]
+    assert result.counts == {"evidenceCount": 2, "requirementCandidateCount": 1, "questionCount": 1}
     with session_scope() as session:
         row = session.scalar(
             select(Evidence).where(
