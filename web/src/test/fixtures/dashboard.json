@@ -89,7 +89,7 @@
           "INTERESTED",
           "IN_PROGRESS",
           "SAMPLE_OR_REGISTRATION_APPROVED",
-          "WON_THIS_YEAR"
+          "WON_LAST_12M"
         ],
         "total": 8
       },

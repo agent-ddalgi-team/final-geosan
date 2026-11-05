@@ -115,6 +115,12 @@ export default function OpportunityDetailPage() {
       {data ? (
         <div data-testid="opportunity-detail" style={{ display: 'grid', gap: spacing.cardGap }}>
           <HeaderSection
+            oppId={oppId}
+            evalId={data.evalId}
+            onRelationChanged={() => {
+              setReload((n) => n + 1);
+              setTimelineVersion((n) => n + 1);
+            }}
             header={data.header}
             ownerName={ownerName}
             classificationOverrides={config?.classificationLabels}

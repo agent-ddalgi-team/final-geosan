@@ -312,6 +312,20 @@ export const detailHeader = {
   owner: '담당',
 } as const;
 
+/** 상세 머리 거래 관계 줄(#266): 지금 상태 글자, 바꾸는 단추, 안내·오류 문구. */
+export const relationControl = {
+  title: '거래 관계',
+  state: { NEW_CONFIRMED: '거래 없음', EXISTING_CONFIRMED: '거래 중', UNCONFIRMED: '확인 전' },
+  /** 지금 상태가 아닌 두 가지로 바꾸는 단추 글자. */
+  action: { NEW_CONFIRMED: '거래 없음', EXISTING_CONFIRMED: '거래 중', UNCONFIRMED: '확인 전으로' },
+  hint: '바꾸면 이 회사를 다시 평가합니다.',
+  pickStaffFirst: '담당자를 고르면 바꿀 수 있습니다.',
+  saved: '거래 관계를 바꾸고 다시 평가했습니다.',
+  saveFailed: '거래 관계를 저장하지 못했습니다.',
+  stale: '그 사이 다시 평가되었습니다. 상세를 새로 불러온 뒤 다시 눌러 주세요.',
+  reload: '새로 불러오기',
+} as const;
+
 /** 확인 질문 상태(QuestionStatus). */
 export const questionStatusLabels: Record<QuestionStatus, string> = {
   WAITING: '대기',
@@ -537,6 +551,7 @@ export const activityKindLabels: Record<ActivityKind, string> = {
   REPLY: '답 기록',
   OUTCOME: '영업 단계',
   EVIDENCE_GRADE_CONFIRMED: '근거 등급 확인',
+  RELATION_CONFIRMED: '거래 관계',
   NOTE: '메모',
 };
 
