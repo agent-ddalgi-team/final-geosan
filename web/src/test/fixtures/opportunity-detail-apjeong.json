@@ -9,6 +9,7 @@
       "purpose": "NEW_PROPOSAL",
       "owner": "park-lee",
       "classificationCode": "CONTACT_URGENT",
+      "scoreState": "CONFIRMED",
       "coreEvidenceRecheck": false,
       "scoreDisplay": "77점 · 7/8",
       "isVirtual": true,

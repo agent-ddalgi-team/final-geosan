@@ -5,7 +5,7 @@ import { Button, Card, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { OpportunityCard as CardData } from '../../api/types';
 import StatusTag from '../common/StatusTag';
-import { scoreAriaLabel, scoreText } from '../common/scoreDisplay';
+import ScoreLine from '../common/ScoreLine';
 import OpinionArea from '../opinion/OpinionArea';
 import {
   cardRows,
@@ -18,7 +18,6 @@ import {
   outcomeStatusTone,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
-
 export interface OpportunityCardProps {
   card: CardData;
   /** 서버 앱 설정(/config/ui)의 분류 문구. 있으면 기본 대응표보다 먼저 쓴다. */
@@ -108,14 +107,12 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
               {cardRows.reevaluated}
             </StatusTag>
           ) : null}
-          <span
-            role="group"
-            aria-label={scoreAriaLabel(card.scoreDisplay)}
-            data-testid="card-score"
-            style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
-          >
-            {scoreText(card.scoreDisplay)}
-          </span>
+          <ScoreLine
+            scoreDisplay={card.scoreDisplay}
+            scoreState={card.scoreState}
+            relationStatus={card.relationStatus}
+            testId="card-score"
+          />
         </div>
 
         <Row label={cardRows.reason} title={card.reason}>

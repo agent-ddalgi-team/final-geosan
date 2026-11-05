@@ -5,6 +5,8 @@
       "rank": 1,
       "title": "A정밀 · 밸브 바디 아노다이징",
       "classificationCode": "CONTACT_URGENT",
+      "scoreState": "CONFIRMED",
+      "relationStatus": "EXISTING_CONFIRMED",
       "coreEvidenceRecheck": false,
       "scoreS": 81.1,
       "scoreDisplay": "77점 · 7/8",

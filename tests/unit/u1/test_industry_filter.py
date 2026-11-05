@@ -18,7 +18,7 @@ from tests.unit.u1.test_snapshot_ledger import _write
 
 
 @pytest.fixture
-def industry_env(tmp_db, tmp_path):
+def industry_env(tmp_db, tmp_path, base_date):
     import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
     ids = []
     for index, industries in enumerate([["반도체", "자동차 부품"], ["자동차 부품"], []]):
@@ -26,7 +26,7 @@ def industry_env(tmp_db, tmp_path):
         case["customer"]["bizNumber"] = None
         case["customer"]["industries"] = industries
         ids.append(import_case(_write(tmp_path, f"case-{index}.json", case)).opp_id)
-    assert run_evaluation().ok
+    assert run_evaluation(base_date=base_date).ok
     with TestClient(create_app()) as client:
         yield client, ids
 

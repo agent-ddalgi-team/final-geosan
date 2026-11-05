@@ -7,7 +7,7 @@ import OpportunityListPage, { PAGE_SIZE } from '../OpportunityListPage';
 import { ApiError, getOpportunities } from '../../api/client';
 import type { Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { cardRows, pagination, states } from '../../labels/ko';
+import { cardRows, pagination, scoreTags, states } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -183,6 +183,50 @@ describe('OpportunityListPage', () => {
       'aria-label',
       '점수 산정 전',
     );
+  });
+
+  it('카드: 거래 확인 전 점수는 흐리게 "거래 확인 전" 꼬리표가 붙고, 확정·점수 없음에는 붙지 않는다 (#264)', async () => {
+    const pending: OpportunityCard = {
+      ...apjeong,
+      oppId: 'opp-2',
+      rank: 2,
+      scoreState: 'PENDING',
+      relationStatus: 'UNCONFIRMED',
+      scoreDisplay: '50점 · 3/8',
+    };
+    const none: OpportunityCard = {
+      ...pending,
+      oppId: 'opp-3',
+      rank: 3,
+      scoreState: 'NONE',
+      scoreDisplay: '--',
+    };
+    mockedGet.mockResolvedValueOnce(reply([apjeong, pending, none]));
+    renderPage();
+    const cards = await screen.findAllByTestId('opportunity-card');
+    // 확정 + 거래 중: 진한 점수, "기존 거래처"만.
+    expect(within(cards[0]).getByTestId('card-score')).toHaveAttribute(
+      'data-score-state',
+      'CONFIRMED',
+    );
+    expect(within(cards[0]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
+    expect(within(cards[0]).getByTestId('card-score-existing-tag')).toHaveTextContent(
+      scoreTags.existing,
+    );
+    // 거래 확인 전: 점수 글자는 서버 그대로, 흐림 표시와 꼬리표.
+    expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^50점 · 3\/8$/);
+    expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
+      'data-score-state',
+      'PENDING',
+    );
+    expect(within(cards[1]).getByTestId('card-score-pending-tag')).toHaveTextContent(
+      scoreTags.pending,
+    );
+    expect(within(cards[1]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
+    // 점수 없음: "점수 --" 그대로, 꼬리표 없음.
+    expect(within(cards[2]).getByTestId('card-score')).toHaveTextContent(/^점수 --$/);
+    expect(within(cards[2]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
+    expect(within(cards[2]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
   });
 
   it.each([true, false])(
