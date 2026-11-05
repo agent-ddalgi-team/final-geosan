@@ -5,6 +5,7 @@ import type { DetailHeader } from '../../api/types';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
+import RelationControl from './RelationControl';
 import {
   cardRows,
   classificationLabels,
@@ -16,11 +17,15 @@ import {
   labelFor,
   mapLinkLabels,
   purposeLabels,
-  relationStatusLabels,
 } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 
 export interface HeaderSectionProps {
+  oppId: string;
+  /** 지금 보고 있는 평가 ID(거래 관계를 바꿀 때 서버에 함께 보낸다). 평가 전이면 null. */
+  evalId: string | null;
+  /** 거래 관계를 바꿨거나 새로 불러오기를 눌렀을 때. 상세 화면이 서버에서 다시 읽는다. */
+  onRelationChanged: () => void;
   header: DetailHeader;
   /** 담당자 키를 이름으로 바꾼 값. 모르면 담당 줄을 보이지 않는다. */
   ownerName?: string | null;
@@ -28,6 +33,9 @@ export interface HeaderSectionProps {
 }
 
 export default function HeaderSection({
+  oppId,
+  evalId,
+  onRelationChanged,
   header,
   ownerName,
   classificationOverrides,
@@ -42,8 +50,6 @@ export default function HeaderSection({
     header.classificationCode in classificationTone
       ? classificationTone[header.classificationCode]
       : 'neutral';
-  // 서버가 "기존 (2024년 아연도금 견적)"처럼 쉬운 설명을 주면 그것을 쓰고, 없으면 코드표 문구를 쓴다.
-  const relation = header.relationNote || labelFor(relationStatusLabels, header.relationStatus);
   // http(s) 주소일 때만 링크로 보인다. 그 밖의 값(javascript: 등)은 보이지 않는다.
   const homepage =
     header.homepageUrl && /^https?:\/\/\S+$/.test(header.homepageUrl) ? header.homepageUrl : null;
@@ -135,9 +141,15 @@ export default function HeaderSection({
         data-testid="detail-meta"
         style={{ display: 'flex', flexWrap: 'wrap', gap: 24, color: colors.textSecondary }}
       >
-        <span>
-          {detailHeader.relation}: {relation}
-        </span>
+        <RelationControl
+          oppId={oppId}
+          evalId={evalId}
+          status={header.relationStatus}
+          note={header.relationNote}
+          confirmedAt={header.relationConfirmedAt}
+          confirmedBy={header.relationConfirmedBy}
+          onChanged={onRelationChanged}
+        />
         <span>
           {detailHeader.purpose}: {labelFor(purposeLabels, header.purpose)}
         </span>
