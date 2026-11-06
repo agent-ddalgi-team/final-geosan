@@ -38,7 +38,7 @@ function outcomeReply(overrides: Partial<OutcomeResponse> = {}) {
       version: 1,
       updatedBy: 'park-lee',
       updatedAt: '2026-11-04T01:12:00Z',
-      status: 'INTERESTED' as const,
+      status: 'IN_PROGRESS' as const,
       ...overrides,
     },
     meta: {},
@@ -154,7 +154,7 @@ describe('RecordsArea', () => {
     ['SAMPLE_OR_REGISTRATION_APPROVED', 'SAMPLE_OR_REGISTRATION_APPROVED'],
     ['ON_HOLD', 'ON_HOLD'],
   ] as const)(
-    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (접촉 중 자동 전환은 미접촉·관심일 때만)',
+    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (접촉 중 자동 전환은 미접촉일 때만)',
     async (from, expected) => {
       const user = userEvent.setup();
       mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: expected }));
@@ -186,7 +186,7 @@ describe('RecordsArea', () => {
         version: 1,
         updatedBy: 'park-lee',
         updatedAt: '2026-11-03T00:00:00Z',
-        status: 'INTERESTED',
+        status: 'ON_HOLD',
       },
       onContactRecorded,
     });
@@ -195,7 +195,7 @@ describe('RecordsArea', () => {
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));
     expect(mockedOutcome).not.toHaveBeenCalled();
     expect(onContactRecorded).not.toHaveBeenCalled();
-    expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 관심');
+    expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 보류');
   });
 
   it('영업 메모를 남기면 글을 서버로 보내고 입력칸이 비워진다 (연락처가 있어도 막지 않음)', async () => {
@@ -277,19 +277,36 @@ describe('RecordsArea', () => {
   it('영업 단계를 고르면 단계가 저장되고 현재 단계가 바뀐다', async () => {
     const user = userEvent.setup();
     const onOutcomeSaved = vi.fn();
-    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'INTERESTED' }));
+    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'ON_HOLD' }));
     renderArea(frameValue(), { onOutcomeSaved });
-    await pick(user, 'records-stage-select', '관심');
+    await pick(user, 'records-stage-select', '보류');
     await user.click(screen.getByTestId('records-stage-save-button'));
     await waitFor(() =>
       expect(mockedOutcome).toHaveBeenCalledWith(
         OPP,
-        { evalId: EVAL, status: 'INTERESTED' },
+        { evalId: EVAL, status: 'ON_HOLD' },
         'park-lee',
       ),
     );
-    expect(await screen.findByTestId('records-stage-current')).toHaveTextContent('현재 단계: 관심');
-    expect(onOutcomeSaved).toHaveBeenCalledWith(expect.objectContaining({ status: 'INTERESTED' }));
+    expect(await screen.findByTestId('records-stage-current')).toHaveTextContent('현재 단계: 보류');
+    expect(onOutcomeSaved).toHaveBeenCalledWith(expect.objectContaining({ status: 'ON_HOLD' }));
+  });
+
+  it('영업 단계 선택지에는 "관심"이 없다: 관심은 단계가 아니라 켜고 끄는 단추다 (#357)', () => {
+    renderArea();
+    expect(
+      within(screen.getByTestId('records-stage-select'))
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([
+      recordsArea.selectPlaceholder,
+      '미접촉',
+      '접촉',
+      '견적·샘플',
+      '보류',
+      '성사',
+      '거절',
+    ]);
   });
 
   it('거절을 고르면 거절 이유 선택 상자가 나오고 이유를 고르기 전에는 저장이 잠긴다', async () => {
@@ -382,15 +399,15 @@ describe('RecordsArea', () => {
 
   it('거절이 아닌 단계로 바꾸면 거절 이유 상자가 숨고 이유 코드는 요청에 들어가지 않는다', async () => {
     const user = userEvent.setup();
-    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'INTERESTED' }));
+    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'ON_HOLD' }));
     renderArea();
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
-    await pick(user, 'records-stage-select', '관심');
+    await pick(user, 'records-stage-select', '보류');
     expect(screen.queryByTestId('records-stage-lost-code')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('records-stage-save-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
-    expect(mockedOutcome.mock.calls[0][1]).toEqual({ evalId: EVAL, status: 'INTERESTED' });
+    expect(mockedOutcome.mock.calls[0][1]).toEqual({ evalId: EVAL, status: 'ON_HOLD' });
   });
 
   it('처음부터 거절 · 가격인 기록은 현재 단계 줄에 이유까지 보인다', () => {
@@ -431,7 +448,7 @@ describe('RecordsArea', () => {
     );
   });
 
-  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 관심 단계는 접촉으로 넘어간다', async () => {
+  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 미접촉 단계는 접촉으로 넘어간다', async () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
     renderArea(frameValue(), {
@@ -439,7 +456,7 @@ describe('RecordsArea', () => {
         version: 1,
         updatedBy: 'park-lee',
         updatedAt: '2026-11-03T00:00:00Z',
-        status: 'INTERESTED',
+        status: 'NOT_EXECUTED',
       },
     });
     await pick(user, 'records-kind', '전화');
