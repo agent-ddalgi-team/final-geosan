@@ -9,12 +9,17 @@ import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
+import IngestForm from '../components/list/IngestForm';
+import IngestSummary from '../components/list/IngestSummary';
+import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
 import OpportunityCard from '../components/list/OpportunityCard';
-import { listFilters, pagination, states } from '../labels/ko';
+import { candidateSearch, listFilters, pagination, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
+/** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
+export const INGEST_POLL_MS = 5000;
 
 interface Result {
   key: string;
@@ -32,9 +37,13 @@ export default function OpportunityListPage() {
   const stage = params.get('stage');
   const filter = params.get('filter');
   const q = params.get('q');
+  // "이번 수집만"(#316)은 주소 `?batch=latest`로만 남긴다. 다른 값은 전체로 읽는다.
+  const latestOnly = params.get('batch') === 'latest';
   // 대시보드 건수·검색으로 넘어온 전체 목록에는 공정 탭이 없다.
   const tabsMode = !stage && !filter && !q;
-  const filterKey = [process, region, industry, stage, filter, q].map((v) => v ?? '').join('|');
+  const filterKey = [process, region, industry, stage, filter, q, latestOnly ? 'latest' : '']
+    .map((v) => v ?? '')
+    .join('|');
 
   // 조건이 바뀌면 1쪽부터 다시 본다.
   const [pageState, setPageState] = useState({ key: filterKey, page: 1 });
@@ -54,6 +63,8 @@ export default function OpportunityListPage() {
       stage,
       filter,
       q,
+      // 전체 보기일 때는 이 칸을 아예 보내지 않는다(서버·기존 시험이 보는 요청 모양을 바꾸지 않음).
+      ...(latestOnly ? { batch: 'latest' } : {}),
     })
       .then((envelope) => {
         setMenu(envelope.meta);
@@ -76,7 +87,19 @@ export default function OpportunityListPage() {
         if (!controller.signal.aborted) setResult({ key: requestKey, error });
       });
     return () => controller.abort();
-  }, [page, process, region, industry, stage, filter, q, tabsMode, requestKey, setParams]);
+  }, [
+    page,
+    process,
+    region,
+    industry,
+    stage,
+    filter,
+    q,
+    latestOnly,
+    tabsMode,
+    requestKey,
+    setParams,
+  ]);
 
   const current = result?.key === requestKey ? result : null;
   const meta = current?.meta ?? null;
@@ -89,6 +112,38 @@ export default function OpportunityListPage() {
   }, [meta, setBannerMeta]);
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
+
+  // 후보 수집 진행만 조용히 다시 읽는다(목록을 비우거나 깜박이지 않는다). 읽지 못하면 이전 표시를 그대로 둔다.
+  const ingestOptions = useIngestOptions();
+  const refreshIngest = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const envelope = await getOpportunities(1, 1, signal, {});
+      const latest = envelope.meta.latestIngest ?? null;
+      if (!signal?.aborted) {
+        setMenu((prev) => (prev ? { ...prev, latestIngest: latest } : prev));
+      }
+      return latest;
+    } catch {
+      return undefined;
+    }
+  }, []);
+  const ingestRunning = menu?.latestIngest?.status === 'RUNNING';
+  useEffect(() => {
+    if (!ingestRunning) return undefined;
+    const controller = new AbortController();
+    const timer = window.setInterval(() => {
+      void refreshIngest(controller.signal).then((latest) => {
+        // 끝났으면(또는 실패했으면) 새로 들어온 회사가 보이도록 목록을 한 번 다시 불러온다.
+        if (latest && latest.status !== 'RUNNING' && !controller.signal.aborted) {
+          setReload((n) => n + 1);
+        }
+      });
+    }, INGEST_POLL_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [ingestRunning, refreshIngest]);
 
   const update = useCallback(
     (changes: Record<string, string | null>) => {
@@ -123,15 +178,31 @@ export default function OpportunityListPage() {
   else if (current.error) state = 'error';
   else if (items.length === 0) state = 'empty';
 
-  const emptyText =
-    region || industry
+  const emptyText = latestOnly
+    ? candidateSearch.latestEmpty
+    : region || industry
       ? listFilters.filteredEmpty
       : stage || filter || q
         ? listFilters.noMatch
         : states.listEmpty;
+  const latestIngest = menu?.latestIngest ?? null;
 
   return (
     <>
+      {ingestOptions ? (
+        <IngestForm
+          options={ingestOptions}
+          running={ingestRunning}
+          onStarted={() => void refreshIngest()}
+        />
+      ) : null}
+      {latestIngest ? (
+        <IngestSummary
+          ingest={latestIngest}
+          scope={latestOnly ? 'latest' : 'all'}
+          onScope={(scope) => update({ batch: scope === 'latest' ? 'latest' : null })}
+        />
+      ) : null}
       {menu ? (
         <ListFilterBar
           processCounts={menu.processCounts ?? []}

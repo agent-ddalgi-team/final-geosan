@@ -50,6 +50,50 @@ export interface Meta {
   /** 지역·산업 선택지와 건수. 현재 공정 탭 안 건수이고 0건은 서버가 빼서 준다. */
   regionCounts?: RegionCount[] | null;
   industryCounts?: IndustryCount[] | null;
+  /** 마지막 후보 수집 회차 요약(#316, 계약 C1 `meta.latestIngest`). 한 번도 안 가져왔으면 null·없음. */
+  latestIngest?: LatestIngest | null;
+}
+
+/** 후보 수집 회차 상태(계약 C1). 가져오는 중 / 끝남 / 실패. */
+export type IngestStatus = 'RUNNING' | 'DONE' | 'FAILED';
+
+/**
+ * 마지막 후보 수집 회차 요약(계약 C1 `meta.latestIngest`, 2026-11-05 PM 결정 ①·후보 찾기 1차).
+ * 목록 머리 "훑어본 ○곳 · 고른 ○곳 · 조사 ○/○"에 쓴다. 건수 칸은 서버가 아직 안 주면 없다.
+ */
+export interface LatestIngest {
+  batchId: string;
+  status: IngestStatus;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  /** 파일에서 지역으로 추린 회사 수. */
+  scannedCount?: number | null;
+  /** AI가 판단을 끝낸 수. */
+  judgedCount?: number | null;
+  /** 고른 수(목록에 들어온 새 회사). */
+  pickedCount?: number | null;
+  /** 새 회사 가운데 자동 조사를 끝낸 수. */
+  researchDoneCount?: number | null;
+  /** 이름이 비슷해 "확인 필요"로 남은 수. */
+  mergeCandidateCount?: number | null;
+}
+
+/**
+ * 후보 가져오기 요청(계약 C1 `POST /ingest` 본문, #316). 공정은 1개 이상 필수이고,
+ * 지역·산업은 보내지 않으면 서버가 설정 전체로 본다. 설정에 없는 값은 서버가 400으로 돌려준다.
+ */
+export interface IngestRequest {
+  processCodes: string[];
+  regions?: string[];
+  industries?: string[];
+}
+
+/** 후보 가져오기 응답. 회차를 만든 직후 바로 오고, 진행은 목록 `meta.latestIngest`로 본다. */
+export interface IngestResponse {
+  batchId: string;
+  newCount: number;
+  mergeCandidateCount: number;
+  skippedCount: number;
 }
 
 export interface ProcessCount {
@@ -179,6 +223,12 @@ export interface OpportunityCard {
   industries?: string[];
   /** 이 기회가 걸린 공정 코드들. 카드는 공정 이름 꼬리표로 바꿔 보인다. */
   processCodes?: string[];
+  /** AI가 이 회사를 고른 이유 한 줄(#316, 후보 찾기로 들어온 회사만). 없으면 줄을 그리지 않는다. */
+  pickReason?: string | null;
+  /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */
+  isNewInLatestBatch?: boolean;
+  /** 이 회사가 들어온 시각(ISO). 꼬리표 날짜에 쓴다. 사례 파일 회사는 null. */
+  ingestedAt?: string | null;
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
