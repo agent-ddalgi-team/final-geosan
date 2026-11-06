@@ -3233,7 +3233,8 @@
         "enum": [
           "QUESTION",
           "DATA_NOT_FOUND",
-          "DATA_INSUFFICIENT"
+          "DATA_INSUFFICIENT",
+          "OWN_PLATING_LINE_SUSPECTED"
         ],
         "title": "ReviewItemKind",
         "type": "string"
