@@ -78,6 +78,24 @@ export interface LatestIngest {
   mergeCandidateCount?: number | null;
 }
 
+/**
+ * 후보 가져오기 요청(계약 C1 `POST /ingest` 본문, #316). 공정은 1개 이상 필수이고,
+ * 지역·산업은 보내지 않으면 서버가 설정 전체로 본다. 설정에 없는 값은 서버가 400으로 돌려준다.
+ */
+export interface IngestRequest {
+  processCodes: string[];
+  regions?: string[];
+  industries?: string[];
+}
+
+/** 후보 가져오기 응답. 회차를 만든 직후 바로 오고, 진행은 목록 `meta.latestIngest`로 본다. */
+export interface IngestResponse {
+  batchId: string;
+  newCount: number;
+  mergeCandidateCount: number;
+  skippedCount: number;
+}
+
 export interface ProcessCount {
   processCode: string;
   processName: string;

@@ -9,13 +9,17 @@ import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
+import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
+import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
 import OpportunityCard from '../components/list/OpportunityCard';
 import { candidateSearch, listFilters, pagination, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
+/** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
+export const INGEST_POLL_MS = 5000;
 
 interface Result {
   key: string;
@@ -109,6 +113,38 @@ export default function OpportunityListPage() {
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
 
+  // 후보 수집 진행만 조용히 다시 읽는다(목록을 비우거나 깜박이지 않는다). 읽지 못하면 이전 표시를 그대로 둔다.
+  const ingestOptions = useIngestOptions();
+  const refreshIngest = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const envelope = await getOpportunities(1, 1, signal, {});
+      const latest = envelope.meta.latestIngest ?? null;
+      if (!signal?.aborted) {
+        setMenu((prev) => (prev ? { ...prev, latestIngest: latest } : prev));
+      }
+      return latest;
+    } catch {
+      return undefined;
+    }
+  }, []);
+  const ingestRunning = menu?.latestIngest?.status === 'RUNNING';
+  useEffect(() => {
+    if (!ingestRunning) return undefined;
+    const controller = new AbortController();
+    const timer = window.setInterval(() => {
+      void refreshIngest(controller.signal).then((latest) => {
+        // 끝났으면(또는 실패했으면) 새로 들어온 회사가 보이도록 목록을 한 번 다시 불러온다.
+        if (latest && latest.status !== 'RUNNING' && !controller.signal.aborted) {
+          setReload((n) => n + 1);
+        }
+      });
+    }, INGEST_POLL_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [ingestRunning, refreshIngest]);
+
   const update = useCallback(
     (changes: Record<string, string | null>) => {
       setParams((prev) => {
@@ -153,6 +189,13 @@ export default function OpportunityListPage() {
 
   return (
     <>
+      {ingestOptions ? (
+        <IngestForm
+          options={ingestOptions}
+          running={ingestRunning}
+          onStarted={() => void refreshIngest()}
+        />
+      ) : null}
       {latestIngest ? (
         <IngestSummary
           ingest={latestIngest}

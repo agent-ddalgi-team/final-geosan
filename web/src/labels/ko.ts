@@ -353,6 +353,22 @@ export const candidateSearch = {
   scopeAll: '전체',
   /** "이번 수집만"인데 고른 회사가 하나도 없을 때. */
   latestEmpty: '이번에 새로 들어온 회사가 없습니다. 보기를 "전체"로 바꿔 보세요',
+  /** 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 가져오기]를 누른다. 모달 없이 인라인이다. */
+  formTitle: '새 후보 찾기 조건',
+  processLabel: '공정',
+  processHint: '공정을 하나 이상 고르세요',
+  regionLabel: '지역',
+  regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
+  industryLabel: '산업',
+  industryHint: '안 고르면 산업을 가리지 않습니다',
+  fetchButton: '새 후보 가져오기',
+  fetching: '가져오는 중',
+  pickStaffFirst: '담당자를 고르면 가져올 수 있습니다',
+  started: '가져오기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
+  alreadyRunning: '지금 가져오는 중입니다. 끝난 뒤에 다시 눌러 주세요',
+  sourceFailed: '공개 자료를 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요',
+  invalidCondition: '고른 조건을 서버가 받지 않았습니다',
+  startFailed: '후보 가져오기를 시작하지 못했습니다',
 } as const;
 
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
