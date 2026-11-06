@@ -68,6 +68,8 @@ function CountCell({ countKey, value, large = false, hint }: CellProps) {
         aria-label={hint ? `${name} ${value}${unit} (${hint})` : `${name} ${value}${unit}`}
         style={{
           display: 'block',
+          // 높이 100%에 안쪽 여백이 더해져 칸이 줄 밖으로 삐져나오지 않게 한다(아래 구역 제목과 겹쳤음).
+          boxSizing: 'border-box',
           height: '100%',
           padding: spacing.cardPadding,
           background: colors.bgContainer,
