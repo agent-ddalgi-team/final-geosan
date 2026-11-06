@@ -9,10 +9,16 @@ from typing import Annotated
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Path, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
+from geosan.api.ingest_views import (
+    candidate_order,
+    collected_evaluations,
+    discovery_fields,
+    latest_ingest,
+)
 from geosan.api.routes.records import (
     contact_counts,
     latest_opinion,
@@ -187,6 +193,7 @@ def _header(context: DetailContext) -> dict:
             homepage_status=customer.homepage_status,
             homepage_confidence=customer.homepage_confidence,
             homepage_source=customer.homepage_source,
+            **discovery_fields(customer),
         )
     }
 
@@ -506,6 +513,7 @@ def list_opportunities(
     industry: str | None = None,
     region: str | None = None,
     q: str | None = None,
+    ingest_batch: Annotated[str | None, Query(alias="batch")] = None,
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -519,22 +527,28 @@ def list_opportunities(
     ):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
-    if batch is None:
-        return OpportunityListEnvelope(
-            data=[],
-            meta=Meta(
-                updated_at=None,
-                has_virtual_data=False,
-                dataset_kind=dataset_kind,
-                total=0,
-                process_counts=[],
-                industry_counts=[],
-                region_counts=[],
-                not_evaluated_count=session.scalar(select(func.count()).select_from(Opportunity)),
-            ),
+    progress = latest_ingest(session, dataset_kind.value)
+    full_batch_id = batch.batch_id if batch else None
+    added_eval_ids = collected_evaluations(session, dataset_kind.value, full_batch_id)
+    query = select(EvaluationRun).where(
+        or_(
+            EvaluationRun.batch_id == full_batch_id if batch else False,
+            EvaluationRun.eval_id.in_(added_eval_ids),
         )
-    population = select(EvaluationRun.opp_id).where(EvaluationRun.batch_id == batch.batch_id)
-    query = select(EvaluationRun).where(EvaluationRun.batch_id == batch.batch_id)
+    )
+    all_population = select(query.subquery().c.opp_id)
+    if ingest_batch is not None:
+        selected_batch = ingest_batch
+        if ingest_batch == "latest":
+            selected_batch = progress.batch_id if progress else None
+        query = query.where(
+            EvaluationRun.opp_id.in_(
+                select(Opportunity.opp_id)
+                .join(Customer, Opportunity.customer_id == Customer.customer_id)
+                .where(Customer.ingest_batch_id == selected_batch if selected_batch else False)
+            )
+        )
+    population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
     links = session.execute(
         select(OppProcessLink.opp_id, OppProcessLink.process_code)
@@ -642,19 +656,29 @@ def list_opportunities(
     for filter_function in list_filters:
         query = filter_function(session, query, request)
     total = session.scalar(select(func.count()).select_from(query.subquery()))
-    originals = session.scalars(
-        query.order_by(EvaluationRun.original_rank).offset((page - 1) * page_size).limit(page_size)
-    )
-    cards = []
-    for position, original in enumerate(originals, start=(page - 1) * page_size + 1):
+    rows = []
+    for original in session.scalars(query):
         current = latest_confirmed_evaluation(session, original.opp_id)
         opportunity = session.get(Opportunity, original.opp_id)
         customer = session.get(Customer, opportunity.customer_id) if opportunity else None
         if current is None or opportunity is None or customer is None:
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
+        rows.append((original, current, opportunity, customer))
+    rows.sort(key=lambda row: candidate_order(row[0], row[1], row[3], full_batch_id))
+    start = (page - 1) * page_size
+    cards = []
+    for position, (original, current, opportunity, customer) in enumerate(
+        rows[start : start + page_size], start=start + 1
+    ):
         outcome = latest_outcome(session, opportunity.opp_id)
         cards.append(
             OpportunityCard(
+                **discovery_fields(customer),
+                ingest_batch_id=customer.ingest_batch_id,
+                ingested_at=customer.ingested_at,
+                is_new_in_latest_batch=bool(
+                    progress and customer.ingest_batch_id == progress.batch_id
+                ),
                 score_state=_score_state(current),
                 relation_status=customer.relation_status,
                 region=_address_region(customer.address),
@@ -667,7 +691,14 @@ def list_opportunities(
                 ],
                 opp_id=opportunity.opp_id,
                 rank=position
-                if process is not None or industry is not None or region is not None
+                if (
+                    process is not None
+                    or industry is not None
+                    or region is not None
+                    or ingest_batch is not None
+                    or original.batch_id != full_batch_id
+                    or (customer.ingest_batch_id is not None and current.score_s is None)
+                )
                 else original.original_rank,
                 title=f"{customer.name} · {opportunity.item}",
                 classification_code=current.classification_code,
@@ -694,12 +725,17 @@ def list_opportunities(
     not_evaluated = session.scalar(
         select(func.count())
         .select_from(Opportunity)
-        .where(Opportunity.created_at > batch.created_at, Opportunity.opp_id.not_in(population))
+        .where(
+            Opportunity.dataset_kind == dataset_kind.value,
+            Opportunity.created_at > batch.created_at if batch else True,
+            Opportunity.opp_id.not_in(all_population),
+        )
     )
     return OpportunityListEnvelope(
         data=cards,
         meta=Meta(
-            updated_at=batch.created_at,
+            updated_at=batch.created_at if batch else None,
+            latest_ingest=progress,
             has_virtual_data=any(card.is_virtual for card in cards),
             dataset_kind=dataset_kind,
             total=total,
