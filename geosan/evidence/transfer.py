@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import Integer, Numeric, String, select
+from sqlalchemy import CheckConstraint, Integer, Numeric, String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from geosan.config.app_settings import (
@@ -33,11 +33,23 @@ def configuration_error() -> AppError:
 
 
 class TransferLog(CommonColumns, Base):
+    """외부 호출 한 번의 기록. 이 표의 열은 PM 세션만 고친다.
+
+    영업기회가 있는 호출은 opp_id, 회사가 목록에 들어오기 전의 후보 판단은 batch_id(회차 번호)를
+    채운다. 둘 중 하나는 꼭 있어야 한다(#327, PM 결정 2026-11-06).
+    """
+
     __tablename__ = "tg_transfer_log"
+    __table_args__ = (
+        CheckConstraint(
+            "opp_id IS NOT NULL OR batch_id IS NOT NULL", name="ck_tg_transfer_log_ref"
+        ),
+    )
 
     transfer_log_id: Mapped[str] = mapped_column(String(40), primary_key=True)
     occurred_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
-    opp_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    opp_id: Mapped[str | None] = mapped_column(String(40))
+    batch_id: Mapped[str | None] = mapped_column(String(40), index=True)
     purpose: Mapped[str] = mapped_column(String(24), nullable=False)
     kind: Mapped[str] = mapped_column(String(24), nullable=False)
     mode: Mapped[str] = mapped_column(String(16), nullable=False)
