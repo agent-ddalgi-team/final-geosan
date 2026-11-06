@@ -149,6 +149,8 @@ export interface ListFilters {
   filter?: string | null;
   /** 회사·기회·산업군 검색어. */
   q?: string | null;
+  /** 후보 가져오기 회차(#316). `latest`면 마지막 수집 회차에 들어온 회사만("이번 수집만"). 안 주면 전체. */
+  batch?: string | null;
 }
 
 export function getOpportunities(

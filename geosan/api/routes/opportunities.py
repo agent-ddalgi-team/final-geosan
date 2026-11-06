@@ -185,6 +185,8 @@ def _header(context: DetailContext) -> dict:
             is_recontact=False,
             homepage_url=_homepage_url(context),
             homepage_status=customer.homepage_status,
+            homepage_confidence=customer.homepage_confidence,
+            homepage_source=customer.homepage_source,
         )
     }
 
