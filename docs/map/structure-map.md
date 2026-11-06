@@ -285,7 +285,7 @@ flowchart LR
 
 <details><summary>기술 메모 (확인한 방법과 근거 파일)</summary>
 
-- 기준: `develop` 줄기의 2026-11-06 상태(커밋 `a8986ea`).
+- 기준: `develop` 줄기의 2026-11-06 상태(커밋 `5b325bf`).
 - 명령 16개: `geosan/commands/app.py`에 등록된 명령 15개와 `db merge-heads`.
 - 표 34개: `migrations/versions/`의 표 만들기 34건.
 - 창구 13개: `contracts/openapi.json`의 경로.

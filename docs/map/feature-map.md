@@ -201,7 +201,7 @@ flowchart LR
 
 <details><summary>기술 메모 (확인한 방법과 근거 파일)</summary>
 
-- 기준: `develop` 줄기의 2026-11-06 상태(커밋 `a8986ea`).
+- 기준: `develop` 줄기의 2026-11-06 상태(커밋 `5b325bf`).
 - 화면 기능은 `web/src/pages/`, `web/src/components/`, `web/src/labels/ko.ts`를, 서버 연결은 `contracts/openapi.json`과 `geosan/api/routes/`를 읽어 확인했다. 브라우저 실행은 하지 않았다.
 - 목록 거르기: `web/src/pages/OpportunityListPage.tsx`가 주소의 `process`·`region`·`industry`·`stage`·`filter`·`q`를 읽어 `web/src/api/client.ts`의 목록 요청에 붙여 보낸다. 거르는 줄은 `web/src/components/list/ListFilterBar.tsx`. 코드와 테스트로 확인했고 브라우저 실행은 하지 않았다.
 - 건수는 이 문서의 표에서 상태 표시가 붙은 줄을 센 것이다.
