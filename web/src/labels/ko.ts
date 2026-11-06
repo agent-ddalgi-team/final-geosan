@@ -177,26 +177,49 @@ export const frame = {
   pageTitleDashboard: '대시보드',
 } as const;
 
-/** 대시보드(S4) 문구. 건수 5개·일정·최근 기록·검색·공정/산업군 막대. */
+/** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
 export const dashboardTexts = {
   searchLabel: '회사 이름 검색',
   searchPlaceholder: '회사 이름을 입력하세요',
   searchButton: '검색',
-  countsLabel: '영업 단계별 건수',
   countUnits: {
     NOT_CONTACTED: '곳',
-    INTERESTED: '곳',
     IN_CONTACT: '곳',
     QUOTE_SAMPLE: '곳',
     SCHEDULE_DUE: '건',
+    BOOKMARKED: '곳',
+    NO_OPINION: '곳',
+    NEED_CHECK: '곳',
+    NOT_TARGET: '곳',
+    ON_HOLD: '곳',
+    DONE: '곳',
   },
+  /** 칸 이름. 목록 머리의 "무엇으로 걸렀는지"도 같은 말을 쓴다. */
   countNames: {
     NOT_CONTACTED: '미접촉',
-    INTERESTED: '관심',
     IN_CONTACT: '접촉 중',
     QUOTE_SAMPLE: '견적·샘플',
     SCHEDULE_DUE: '이번 주 일정',
+    BOOKMARKED: '관심 기업',
+    NO_OPINION: '의견 전',
+    NEED_CHECK: '추가 확인 필요',
+    NOT_TARGET: '제외',
+    ON_HOLD: '보류',
+    DONE: '완료',
   },
+  /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
+  bookmarkSectionTitle: '관심 기업',
+  progressSectionTitle: '영업 진행',
+  progressSectionHint: '관심 기업 가운데 검토 권고를 받은 뒤의 진행',
+  /** "미접촉" 칸의 작은 풀이: 검토 권고를 받았고 아직 접촉하지 않은 곳. */
+  notContactedHint: '검토 권고 · 접촉 전',
+  /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
+  bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
+  bookmarkEmptyLink: '추천 목록',
+  bookmarkEmptyTail: '에서 [관심]을 눌러 담아 보세요',
+  /** 서버가 아직 옛 집계를 줄 때. 뜻이 달라진 숫자를 새 칸에 넣어 보이지 않는다. */
+  countsOutdated:
+    '관심 기업 건수를 아직 받지 못했습니다. 서버가 새 집계로 바뀌면 여기에 나타납니다.',
   scheduleTitle: '일정',
   scheduleEmpty: '예정된 일정이 없습니다.',
   scheduleOverdue: '지남',
