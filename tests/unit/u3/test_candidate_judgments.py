@@ -43,8 +43,6 @@ def criteria(**changes):
     return {
         "process_catalog": dict(PROCESSES),
         "industry_catalog": list(INDUSTRIES),
-        "process_codes": ["ZINC_PLATING", "ANODIZING"],
-        "industries": list(INDUSTRIES),
         "prompt": "제조업 여부와 필요한 공정을 공개 생산품 글에서 판단한다.",
     } | changes
 
@@ -267,8 +265,6 @@ def test_criteria_fingerprint_ignores_order_and_does_not_mutate_inputs():
     reordered = criteria(
         process_catalog=dict(reversed(list(PROCESSES.items()))),
         industry_catalog=list(reversed(INDUSTRIES)),
-        process_codes=list(reversed(list(PROCESSES))),
-        industries=list(reversed(INDUSTRIES)),
     )
     assert version == candidate_criteria_version(**reordered)
     assert len(version) == 64
@@ -281,8 +277,6 @@ def test_criteria_fingerprint_ignores_order_and_does_not_mutate_inputs():
         {"process_catalog": PROCESSES | {"ZINC_PLATING": "전기아연도금"}},
         {"process_catalog": PROCESSES | {"NEW_PROCESS": "새 공정"}},
         {"industry_catalog": INDUSTRIES + ["새 산업"]},
-        {"process_codes": ["ZINC_PLATING"]},
-        {"industries": []},
         {"prompt": "변경된 판단 지시문"},
     ],
 )
@@ -295,8 +289,8 @@ def test_changed_criteria_cannot_reuse_old_fingerprint(change):
 @pytest.mark.parametrize(
     "change",
     [
-        {"process_codes": ["UNKNOWN"]},
-        {"industries": ["UNKNOWN"]},
+        {"process_catalog": {}},
+        {"industry_catalog": ["자동차 부품", "자동차 부품"]},
         {"prompt": " "},
         {"prompt": None},
     ],
@@ -304,3 +298,23 @@ def test_changed_criteria_cannot_reuse_old_fingerprint(change):
 def test_invalid_criteria_is_not_fingerprinted(change):
     with pytest.raises(InputError):
         candidate_criteria_version(**criteria(**change))
+
+
+def test_changed_selection_reuses_full_catalog_judgments_and_best_fit_reason():
+    """#221 PM 결정: 선택은 나중에 거르고 전체 목록과 지시문만 기준에 넣는다."""
+    version = candidate_criteria_version(**criteria())
+    parsed = parse(
+        [
+            judgment("zinc"),
+            judgment("aluminium", processCodes=["ANODIZING"], industries=["반도체"]),
+            judgment("logistics", isManufacturer=False),
+        ],
+        ["zinc", "aluminium", "logistics"],
+    )
+    before = copy.deepcopy(parsed)
+    zinc = select_candidates(parsed, process_codes=["ZINC_PLATING"], industries=["자동차 부품"])
+    aluminium = select_candidates(parsed, process_codes=["ANODIZING"], industries=["반도체"])
+    assert [row.row_id for row in zinc] == ["zinc"]
+    assert [row.row_id for row in aluminium] == ["aluminium"]
+    assert version == candidate_criteria_version(**criteria())
+    assert parsed == before  # 전체 기준의 적합도·이유와 탈락 판단도 그대로 보존한다.

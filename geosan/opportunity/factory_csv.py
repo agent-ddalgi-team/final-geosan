@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from geosan.config.errors import InputError
+from geosan.evidence.contacts import scrub_contacts
 from geosan.opportunity.queries import normalize_address, normalize_name
 
 SOURCE_ID = "kicox-factory-csv"
@@ -112,6 +113,7 @@ def read_factory_csv(path: Path, *, regions: Sequence[str]) -> FactoryCsvResult:
     호출자는 선택 지역이 앱 설정 안에 있는지 먼저 검사한다. 빈 지역 목록은 거부한다.
     읽는 중에는 DB 저장·외부 전송을 하지 않으며, CSV 문법 오류가 있으면 전부 거부한다.
     열 수가 틀리거나 이름·주소가 없는 행은 값 없이 행 번호와 사유만 돌려준다.
+    공개 칸에 연락처 형식이 섞인 행도 확인 필요로 건너뛴다. 추가 개인정보 열은 버린다.
     생산품이 비어 있거나 자체 표면처리로 보여도 여기서는 임의로 제외하지 않는다.
     """
     if isinstance(regions, str) or not regions or any(not region.strip() for region in regions):
@@ -166,10 +168,16 @@ def _read_rows(reader, encoding: str, regions: set[str]) -> FactoryCsvResult:
             filtered_count += 1
             continue
         product = values[positions["생산품"]].strip()
+        complex_name = values[positions["단지명"]].strip() or None
+        if any(
+            scrub_contacts(value)[1] for value in (company, address, product, complex_name or "")
+        ):
+            skipped.append(SkippedRow(row_no, "공개 본문에 연락처 형식이 있어 확인 필요"))
+            continue
         rows.append(
             FactoryRow(
                 company_name=company,
-                complex_name=values[positions["단지명"]].strip() or None,
+                complex_name=complex_name,
                 product=product,
                 address=address,
                 region=region,
