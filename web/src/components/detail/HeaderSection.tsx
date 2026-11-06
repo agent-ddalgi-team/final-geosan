@@ -1,7 +1,8 @@
-// 상세 머리(S2): 목록으로 / 분류·점수·가상 표시 / 고객 관계·대응·담당. 이름(h1)은 공통 틀이 보인다.
+// 상세 머리(S2): 목록으로 / 분류·점수·가상 표시·[관심] 단추 / 고객 관계·대응·담당. 이름(h1)은 공통 틀이 보인다.
 import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import type { ContactCount, DetailHeader } from '../../api/types';
+import type { BookmarkRecord, ContactCount, DetailHeader } from '../../api/types';
+import BookmarkButton from '../common/BookmarkButton';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
@@ -29,6 +30,10 @@ export interface HeaderSectionProps {
   /** 거래 관계를 바꿨거나 새로 불러오기를 눌렀을 때. 상세 화면이 서버에서 다시 읽는다. */
   onRelationChanged: () => void;
   header: DetailHeader;
+  /** 관심 표시(#357). 한 번도 켠 적이 없으면 null. 기록을 저장하면 상세 화면이 서버 값으로 다시 맞춰 준다. */
+  bookmark: BookmarkRecord | null;
+  /** [관심] 단추로 켜거나 껐을 때 서버가 돌려준 값을 알린다. */
+  onBookmarkChanged: (bookmark: BookmarkRecord) => void;
   /** 접촉 횟수(전화·방문·메일). 서버가 주지 않으면 줄을 보이지 않는다. 기록을 저장하면 상세 화면이 바꿔 준다. */
   contactCount?: ContactCount | null;
   /** 담당자 키를 이름으로 바꾼 값. 모르면 담당 줄을 보이지 않는다. */
@@ -41,6 +46,8 @@ export default function HeaderSection({
   evalId,
   onRelationChanged,
   header,
+  bookmark,
+  onBookmarkChanged,
   contactCount,
   ownerName,
   classificationOverrides,
@@ -141,6 +148,7 @@ export default function HeaderSection({
         {header.datasetKind === 'BROCHURE' ? (
           <StatusTag tone="ask">{cardRows.brochureTag}</StatusTag>
         ) : null}
+        <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
       </div>
       <HomepageBand status={header.homepageStatus} />
       <div

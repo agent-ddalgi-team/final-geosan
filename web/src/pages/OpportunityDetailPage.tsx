@@ -1,12 +1,14 @@
 // 근거 상세(S2, BR10.5·BR10.7): 위에서부터 ① 추천 이유 ② 요구 판정 ③ 공정 연결 ④ 근거 자료 ⑤ 점수(접힘) + 맨 아래 의견.
 // 서버가 reviewItems를 주면 추천 이유 바로 아래에 "검토사항" 영역이 붙고 확인 질문은 거기로 옮겨 간다(U5).
 // 맨 아래에 기록 영역(종류 선택 한 칸·영업 단계·다음 일정)과 그 아래 활동 타임라인이 붙는다. 접촉 횟수는 머리에 보인다. 승인·거산 확인 요청은 뒤 단위라 만들지 않는다.
+// 머리의 [관심] 단추(#357): 검토 의견·메모·영업 기록을 저장하면 서버가 관심을 켜므로, 그 저장 뒤에 관심 값만 조용히 다시 읽는다(화면 전체를 다시 그리지 않는다).
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError, getOpportunityDetail } from '../api/client';
 import type { ContactCount, ContactMethod, Meta, OpportunityDetail } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
+import { useBookmark } from '../components/common/useBookmark';
 import ApprovalEligibilityLine from '../components/detail/ApprovalEligibilityLine';
 import DetailSection from '../components/detail/DetailSection';
 import EvidenceSection from '../components/detail/EvidenceSection';
@@ -78,6 +80,8 @@ export default function OpportunityDetailPage() {
     });
   };
 
+  const bookmarkState = useBookmark(oppId, data, data?.records.bookmark ?? null);
+
   // 이름(h1)은 기업·기회 이름으로, 띠는 이 응답의 meta로(재평가됨은 10초만).
   useEffect(() => {
     if (!data) return undefined;
@@ -143,6 +147,11 @@ export default function OpportunityDetailPage() {
               setTimelineVersion((n) => n + 1);
             }}
             header={data.header}
+            bookmark={bookmarkState.bookmark}
+            onBookmarkChanged={(next) => {
+              bookmarkState.change(next);
+              setTimelineVersion((n) => n + 1);
+            }}
             contactCount={contactCount}
             ownerName={ownerName}
             classificationOverrides={config?.classificationLabels}
@@ -181,6 +190,7 @@ export default function OpportunityDetailPage() {
                 oppId={oppId}
                 evalId={data.evalId}
                 record={data.records.opinion ?? null}
+                onSaved={() => void bookmarkState.sync()}
               />
             ) : (
               <p style={{ margin: 0 }}>{states.notEvaluatedYet}</p>
@@ -193,7 +203,10 @@ export default function OpportunityDetailPage() {
               evalId={data.evalId}
               outcome={data.records.outcome ?? null}
               onContactRecorded={onContactRecorded}
-              onRecorded={() => setTimelineVersion((n) => n + 1)}
+              onRecorded={() => {
+                setTimelineVersion((n) => n + 1);
+                void bookmarkState.sync();
+              }}
             />
             <ActivityTimeline
               key={`${oppId}:timeline`}

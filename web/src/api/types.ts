@@ -191,12 +191,7 @@ export interface OpinionRecord extends RecordMeta {
  * "관심"은 단계가 아니라 따로 켜고 끄는 표시(`records.bookmark`)다(약속 v3, 2026-11-06 PM 결정 #356).
  */
 export type OutcomeStatus =
-  | 'NOT_EXECUTED'
-  | 'IN_PROGRESS'
-  | 'SAMPLE_OR_REGISTRATION_APPROVED'
-  | 'ON_HOLD'
-  | 'WON'
-  | 'LOST';
+  'NOT_EXECUTED' | 'IN_PROGRESS' | 'SAMPLE_OR_REGISTRATION_APPROVED' | 'ON_HOLD' | 'WON' | 'LOST';
 /** 거절 이유 코드(C0 lostReasonCode, 더하는 변경 2026-11-04). 영업 단계 LOST 저장 때 필수. */
 export type LostReasonCode =
   'PRICE' | 'LEAD_TIME' | 'INCUMBENT_SUPPLIER' | 'NO_DEMAND' | 'QUALITY_CERT' | 'OTHER';
@@ -212,9 +207,17 @@ export interface OutcomeRecord extends RecordMeta {
   nextScheduleNote?: string | null;
 }
 
+/**
+ * 관심 표시(C1 records.bookmark, 약속 v3 2026-11-06 PM 결정 #356). 한 번도 켠 적이 없으면 null이고,
+ * 관심 기업인지는 `active === true`로 본다. 팀이 함께 쓰는 값이라 누가 언제 바꿨는지가 같이 온다.
+ */
+export interface BookmarkRecord extends RecordMeta {
+  active: boolean;
+}
+
 export interface CardRecords {
   opinion?: OpinionRecord | null;
-  bookmark?: Record<string, unknown> | null;
+  bookmark?: BookmarkRecord | null;
   outcome?: OutcomeRecord | null;
 }
 
@@ -402,7 +405,7 @@ export interface ContactCount {
 
 export interface DetailRecords {
   opinion?: OpinionRecord | null;
-  bookmark?: Record<string, unknown> | null;
+  bookmark?: BookmarkRecord | null;
   approval?: Record<string, unknown> | null;
   outcome?: OutcomeRecord | null;
   contactCount?: ContactCount | null;
@@ -458,6 +461,16 @@ export interface OpinionRequest {
 }
 
 export type OpinionResponse = OpinionRecord;
+
+// ---------- PUT /opportunities/{oppId}/bookmark (관심 켜고 끄기, #356) ----------
+
+export interface BookmarkRequest {
+  /** true면 관심으로 켜고 false면 끈다. 기록이 있는 회사는 서버가 끄기를 422로 거부한다. */
+  active: boolean;
+  expectedVersion?: number | null;
+}
+
+export type BookmarkResponse = BookmarkRecord;
 
 // ---------- POST /notes, POST /outcomes (U5 기록) ----------
 

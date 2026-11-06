@@ -589,6 +589,18 @@ export const recordsArea = {
   selectPlaceholder: '고르세요',
 } as const;
 
+/**
+ * [관심] 단추(#357, 약속 v3 #356): 목록 카드와 상세 머리. 관심은 영업 단계가 아니라 켜고 끄는 표시다.
+ * 끄기가 거부될 때의 문구는 서버가 주는 글을 그대로 보이므로 여기에 두지 않는다.
+ */
+export const bookmarkTexts = {
+  /** 꺼져 있을 때 단추 글자. 누르면 관심 기업으로 담긴다. */
+  off: '관심',
+  /** 켜져 있을 때 단추 글자. */
+  on: '관심 기업',
+  pickStaffFirst: '담당자를 고르면 관심으로 담을 수 있습니다',
+} as const;
+
 /** 상세 "검토사항" 영역(U5): 담당자가 확인하면 체크. 목록은 평가 결과에서 나오고 체크 상태만 저장된다. */
 export const reviewArea = {
   title: '검토사항',
@@ -642,7 +654,7 @@ export const timelineArea = {
 export const activityKindLabels: Record<ActivityKind, string> = {
   CLASSIFICATION: '분류',
   OPINION: '의견',
-  BOOKMARK: '담기',
+  BOOKMARK: '관심',
   APPROVAL: '승인',
   CONTACT_ATTEMPT: '접촉 시도',
   REPLY: '답 기록',
