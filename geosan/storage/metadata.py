@@ -14,6 +14,7 @@ from geosan.evaluation import models as evaluation_models
 from geosan.evidence import models as evidence_models
 from geosan.evidence import transfer as transfer_models
 from geosan.opportunity import models as opportunity_models
+from geosan.opportunity import source_models
 from geosan.questions import models as questions_models
 from geosan.records import models as records_models
 from geosan.storage.base import Base
@@ -22,6 +23,7 @@ MODEL_MODULES = (
     config_models,
     capability_models,
     opportunity_models,
+    source_models,
     evidence_models,
     transfer_models,
     evaluation_models,
@@ -29,7 +31,17 @@ MODEL_MODULES = (
     records_models,
 )
 
-TABLE_PREFIXES: tuple[str, ...] = ("cfg_", "cap_", "opp_", "ev_", "eval_", "q_", "rec_", "tg_")
+TABLE_PREFIXES: tuple[str, ...] = (
+    "cfg_",
+    "cap_",
+    "opp_",
+    "src_",
+    "ev_",
+    "eval_",
+    "q_",
+    "rec_",
+    "tg_",
+)
 """등록된 업무 테이블 접두사(계약 C6 소유 순서)."""
 
 
