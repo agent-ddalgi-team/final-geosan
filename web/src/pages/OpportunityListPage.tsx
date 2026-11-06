@@ -1,11 +1,15 @@
-// 추천 목록(S1, BR10.1·BR10.7): 공정 탭 + 지역·산업 선택 + 순위 순 카드 + 쪽 넘김(20건씩) + 다섯 상태.
+// 추천 목록(S1, BR10.1·BR10.7): 공정·지역·산업 선택란 + 회사 이름 검색 + 정렬 + 순위 순 카드 + 쪽 넘김(20건씩) + 다섯 상태.
 // 조건은 모두 주소(`?process=&region=&industry=`, 대시보드에서 넘어올 때는 `?stage=`·`?filter=`·`?q=`)에 남겨
 // 새로 고침·공유해도 유지되고, 서버에 그대로 보낸다. 서버가 순위를 조건 안 번호로 다시 매긴다.
-// 대시보드 건수·검색으로 넘어온 목록은 탭 없이 전체(공정 섞임)이다. 재접촉 탭·정렬 변경은 뒤 단위라 만들지 않는다.
+// 공정은 선택란이고 "전체"가 없다(#361): 주소에 공정이 없으면 회사가 있는 첫 공정을 골라 주소에 넣는다.
+// 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
+// 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
+//   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
+// 정렬(#361): "추천 순"뿐이다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 서버로 `sort`를 보내지 않는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
-// 관심 기업 보기도 공정 탭 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
+// 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Pagination } from 'antd';
 import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
@@ -17,12 +21,29 @@ import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import OpportunityCard from '../components/list/OpportunityCard';
-import { bookmarkList, candidateSearch, listFilters, pagination, states } from '../labels/ko';
+import {
+  bookmarkList,
+  candidateSearch,
+  listFilters,
+  listSearch,
+  pagination,
+  states,
+} from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
 /** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
 export const INGEST_POLL_MS = 5000;
+
+/** 검색하기 직전의 주소(물음표 뒤 조건)를 주소 기록에 실을 때 쓰는 이름. */
+const SEARCH_RETURN_KEY = 'searchReturn';
+
+/** 주소 기록에 실린 "검색하기 직전의 주소"를 읽는다. 없거나 글자가 아니면 null(직전 주소를 모름). */
+function readSearchReturn(state: unknown): string | null {
+  if (typeof state !== 'object' || state === null) return null;
+  const value = (state as Record<string, unknown>)[SEARCH_RETURN_KEY];
+  return typeof value === 'string' ? value : null;
+}
 
 interface Result {
   key: string;
@@ -34,21 +55,29 @@ interface Result {
 export default function OpportunityListPage() {
   const { config, setBannerMeta } = useFrame();
   const [params, setParams] = useSearchParams();
-  const process = params.get('process');
-  const region = params.get('region');
-  const industry = params.get('industry');
-  const stage = params.get('stage');
-  const filter = params.get('filter');
-  const q = params.get('q');
+  const location = useLocation();
+  // 검색어(#361). 빈 글자·공백만 있는 값은 검색이 아닌 것으로 읽는다.
+  const qParam = params.get('q');
+  const q = qParam && qParam.trim() ? qParam : null;
+  const searching = q !== null;
+  // 검색 중에는 전체 후보에서 찾으므로 주소에 다른 조건이 같이 적혀 있어도 읽지 않는다(서버에는 검색어만 간다).
+  const condition = (key: string) => (searching ? null : params.get(key));
+  const process = condition('process');
+  const region = condition('region');
+  const industry = condition('industry');
+  const stage = condition('stage');
+  const filter = condition('filter');
   // "이번 수집만"(#316)은 주소 `?batch=latest`로만 남긴다. 다른 값은 전체로 읽는다.
-  const latestOnly = params.get('batch') === 'latest';
+  const latestOnly = condition('batch') === 'latest';
   // "관심 기업" 보기(#357)는 주소 `?bookmarked=true`로만 남긴다. 다른 값은 평소 목록으로 읽는다.
-  const bookmarked = params.get('bookmarked') === 'true';
+  const bookmarked = condition('bookmarked') === 'true';
   // 검토 의견 거르기는 관심 기업 보기에서만 쓴다(거르기 단추가 그 보기에만 있다). 표에 없는 값은 "전체 보기"로 읽는다.
-  const opinionParam = params.get('opinion');
+  const opinionParam = condition('opinion');
   const opinion = bookmarked && isOpinionFilter(opinionParam) ? opinionParam : null;
-  // 대시보드 건수·검색으로 넘어온 전체 목록과 관심 기업 보기에는 공정 탭이 없다.
-  const tabsMode = !stage && !filter && !q && !bookmarked;
+  // 공정 선택란은 평소 목록에만 있다. 대시보드 건수로 넘어온 전체 목록·검색 결과·관심 기업 보기에는 없다.
+  const processMode = !stage && !filter && !searching && !bookmarked;
+  // 검색하기 직전의 주소. 대시보드에서 검색으로 바로 넘어왔으면 모른다(null).
+  const searchReturn = readSearchReturn(location.state);
   const filterKey = [
     process,
     region,
@@ -68,7 +97,7 @@ export default function OpportunityListPage() {
   const page = pageState.key === filterKey ? pageState.page : 1;
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
-  // 탭·선택지는 목록을 다시 불러오는 동안에도 사라지지 않게 마지막 응답의 meta를 기억한다.
+  // 선택란의 선택지는 목록을 다시 불러오는 동안에도 사라지지 않게 마지막 응답의 meta를 기억한다.
   const [menu, setMenu] = useState<Meta | null>(null);
   const requestKey = `${filterKey}:${page}:${reload}`;
 
@@ -89,13 +118,20 @@ export default function OpportunityListPage() {
     })
       .then((envelope) => {
         setMenu(envelope.meta);
-        const tabs = envelope.meta.processCounts ?? [];
-        if (tabsMode && !process && tabs.length > 0) {
-          // 처음 여는 탭은 첫 공정이다. 주소를 첫 공정으로 바꾸고(뒤로 가기 기록은 남기지 않는다) 그 공정으로 다시 불러온다.
+        const choices = envelope.meta.processCounts ?? [];
+        if (
+          processMode &&
+          choices.length > 0 &&
+          !choices.some((item) => item.processCode === process)
+        ) {
+          // "전체"가 없어 항상 공정 하나가 골라져 있어야 한다. 주소에 공정이 없으면(또는 선택지에 없는 값이면)
+          // 회사가 1곳 이상인 첫 공정을, 그런 공정이 없으면 맨 첫 공정을 고른다.
+          // 주소를 그 공정으로 바꾸고(뒤로 가기 기록은 남기지 않는다) 그 공정으로 다시 불러온다.
+          const first = choices.find((item) => item.count > 0) ?? choices[0];
           setParams(
             (prev) => {
               const next = new URLSearchParams(prev);
-              next.set('process', tabs[0].processCode);
+              next.set('process', first.processCode);
               return next;
             },
             { replace: true },
@@ -119,7 +155,7 @@ export default function OpportunityListPage() {
     latestOnly,
     bookmarked,
     opinion,
-    tabsMode,
+    processMode,
     requestKey,
     setParams,
   ]);
@@ -172,6 +208,8 @@ export default function OpportunityListPage() {
     (changes: Record<string, string | null>) => {
       setParams((prev) => {
         const next = new URLSearchParams(prev);
+        // 보기·조건을 바꾸면 검색에서 나온다(검색은 조건과 섞지 않고 전체 후보에서만 한다).
+        next.delete('q');
         for (const [key, value] of Object.entries(changes)) {
           if (value) next.set(key, value);
           else next.delete(key);
@@ -181,6 +219,27 @@ export default function OpportunityListPage() {
     },
     [setParams],
   );
+
+  // 검색: 주소를 `?q=검색어` 하나로 바꾼다. 돌아갈 주소는 검색하기 직전 것을 기억하고,
+  // 검색 중에 다른 이름으로 다시 검색하면 처음 검색하기 전의 주소를 그대로 넘긴다.
+  const search = useCallback(
+    (text: string) => {
+      if (text === q) return;
+      const back = searching ? searchReturn : location.search;
+      setParams(
+        new URLSearchParams({ q: text }),
+        back === null ? undefined : { state: { [SEARCH_RETURN_KEY]: back } },
+      );
+    },
+    [q, searching, searchReturn, location.search, setParams],
+  );
+
+  // [검색 지우기]: 검색하기 직전의 주소로 돌아간다. 모르면 조건 없는 목록으로 간다.
+  const clearSearch = useCallback(() => {
+    const next = new URLSearchParams(searchReturn ?? '');
+    next.delete('q');
+    setParams(next);
+  }, [searchReturn, setParams]);
 
   const processNames = useMemo(
     () =>
@@ -201,15 +260,23 @@ export default function OpportunityListPage() {
   else if (current.error) state = 'error';
   else if (items.length === 0) state = 'empty';
 
-  const emptyText = latestOnly
-    ? candidateSearch.latestEmpty
-    : region || industry
-      ? listFilters.filteredEmpty
-      : stage || filter || q || opinion
-        ? listFilters.noMatch
-        : bookmarked
-          ? bookmarkList.empty
-          : states.listEmpty;
+  // 고른 공정에 회사가 한 곳도 없으면(전체 건수 0) 다른 조건과 상관없이 그 안내를 먼저 보인다.
+  const processIsEmpty =
+    processMode &&
+    (meta?.processCounts ?? []).some((item) => item.processCode === process && item.count === 0);
+  const emptyText = searching
+    ? listSearch.empty
+    : processIsEmpty
+      ? listFilters.processEmpty
+      : latestOnly
+        ? candidateSearch.latestEmpty
+        : region || industry
+          ? listFilters.filteredEmpty
+          : stage || filter || opinion
+            ? listFilters.noMatch
+            : bookmarked
+              ? bookmarkList.empty
+              : states.listEmpty;
   const latestIngest = menu?.latestIngest ?? null;
 
   return (
@@ -232,28 +299,30 @@ export default function OpportunityListPage() {
         bookmarked={bookmarked}
         opinion={opinion}
         filter={filter}
-        // 관심 기업 보기는 공정 탭 없이 전체에서 거르므로 켤 때 공정 조건을 뺀다. 끌 때는 의견 거르기도 같이 뺀다.
+        // 관심 기업 보기는 공정 선택란 없이 전체에서 거르므로 켤 때 공정 조건을 뺀다. 끌 때는 의견 거르기도 같이 뺀다.
         onBookmarked={(on) =>
           update(on ? { bookmarked: 'true', process: null } : { bookmarked: null, opinion: null })
         }
         onOpinion={(value) => update({ opinion: value })}
         onClearFilter={() => update({ filter: null })}
       />
-      {menu ? (
-        <ListFilterBar
-          processCounts={menu.processCounts ?? []}
-          showTabs={tabsMode}
-          process={process}
-          region={region}
-          industry={industry}
-          regionCounts={menu.regionCounts ?? []}
-          industryCounts={menu.industryCounts ?? []}
-          // 탭을 바꾸면 지역·산업은 전체로 돌린다(선택지 건수가 공정 탭마다 달라서).
-          onProcess={(code) => update({ process: code, region: null, industry: null })}
-          onRegion={(value) => update({ region: value })}
-          onIndustry={(value) => update({ industry: value })}
-        />
-      ) : null}
+      {/* 검색 칸은 서버 응답 전에도(불러오지 못했을 때도) 쓸 수 있게 머리를 항상 그린다. 선택지는 응답이 오면 채워진다. */}
+      <ListFilterBar
+        processCounts={menu?.processCounts ?? []}
+        showProcess={processMode}
+        process={process}
+        region={region}
+        industry={industry}
+        regionCounts={menu?.regionCounts ?? []}
+        industryCounts={menu?.industryCounts ?? []}
+        query={q}
+        // 공정을 바꾸면 지역·산업은 전체로 돌린다(선택지 건수가 공정마다 달라서).
+        onProcess={(code) => update({ process: code, region: null, industry: null })}
+        onRegion={(value) => update({ region: value })}
+        onIndustry={(value) => update({ industry: value })}
+        onSearch={search}
+        onClearSearch={clearSearch}
+      />
       <FiveStates
         state={state}
         emptyText={emptyText}

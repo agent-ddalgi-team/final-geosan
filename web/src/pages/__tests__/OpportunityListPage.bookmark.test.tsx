@@ -80,17 +80,17 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
   });
 
-  it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정 탭 없이 전체에서 거른다', async () => {
+  it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정 선택란 없이 전체에서 거른다', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
     renderPage('/opportunities?process=ANODIZING');
     await screen.findByTestId('opportunity-card');
-    expect(screen.getByTestId('list-process-tabs')).toBeInTheDocument();
+    expect(screen.getByTestId('list-process-select')).toBeInTheDocument();
     await user.click(screen.getByTestId('list-bookmarked-on'));
     await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, bookmarked: 'true' }));
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities\?bookmarked=true$/);
     expect(screen.getByTestId('list-bookmarked-title')).toHaveTextContent(/^관심 기업$/);
-    expect(screen.queryByTestId('list-process-tabs')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-bookmarked-on')).not.toBeInTheDocument();
   });
 
@@ -98,7 +98,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
     renderPage('/opportunities?bookmarked=true');
     await screen.findByTestId('opportunity-card');
-    // 대시보드 "관심 기업 N곳"에서 넘어온 주소다. 공정 탭으로 바꾸지 않고 한 번만 부른다.
+    // 대시보드 "관심 기업 N곳"에서 넘어온 주소다. 공정을 골라 주소를 바꾸지 않고 한 번만 부른다.
     expect(mockedGet).toHaveBeenCalledTimes(1);
     expect(mockedGet).toHaveBeenLastCalledWith(1, PAGE_SIZE, expect.any(AbortSignal), {
       ...NO_FILTERS,
@@ -232,7 +232,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
         expect(screen.getByTestId('list-filter-name')).toHaveTextContent(new RegExp(`^${name}$`));
         expect(name).toBe(dashboardTexts.countNames[key as keyof typeof dashboardTexts.countNames]);
         expect(screen.getByTestId('list-filter-clear')).toHaveTextContent(bookmarkList.clearFilter);
-        expect(screen.queryByTestId('list-process-tabs')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
       },
     );
 

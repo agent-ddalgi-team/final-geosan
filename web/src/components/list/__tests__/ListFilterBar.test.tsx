@@ -1,21 +1,36 @@
-// 목록 머리(#210): 공정 탭 표시·선택·누르기 / 지역·산업 선택지와 "전체" / 탭 숨김 / 주소에서 온 값 유지.
+// 목록 머리(#210 → #361): 공정 선택란(9종·0곳 포함·"전체" 없음) / 지역·산업 선택지와 "전체" / 공정 선택란 숨김 /
+// 주소에서 온 값 유지 / 회사 이름 검색 칸과 결과 줄·[검색 지우기] / 정렬("가까운 순"은 준비 중).
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ListFilterBar from '../ListFilterBar';
 import type { ListFilterBarProps } from '../ListFilterBar';
-import { listFilters } from '../../../labels/ko';
+import { listFilters, listSearch } from '../../../labels/ko';
 
-const TABS = [
-  { processCode: 'ZINC_PLATING', processName: '전기아연도금', count: 9 },
-  { processCode: 'ANODIZING', processName: '아노다이징', count: 10 },
+/** 거산 공정 9종(서버가 주는 순서). 회사가 0곳인 공정도 함께 온다. */
+const PROCESSES = [
+  { processCode: 'ZINC_PLATING', processName: '아연도금(전기아연도금)', count: 9 },
+  { processCode: 'ANODIZING', processName: '아노다이징(양극산화피막)', count: 10 },
+  { processCode: 'BLACK_OXIDE', processName: '알카리 흑착(흑색산화피막)', count: 0 },
+  { processCode: 'ELECTROLESS_NICKEL', processName: '무전해 니켈', count: 0 },
+  { processCode: 'CHROME_PLATING', processName: '크롬 도금', count: 0 },
+  { processCode: 'ELECTROPOLISHING', processName: '전해연마', count: 0 },
+  { processCode: 'PHOSPHATE_COATING', processName: '인산염 피막', count: 0 },
+  { processCode: 'CHROMATE', processName: '크로메이트(화성피막)', count: 0 },
+  { processCode: 'PASSIVATION', processName: '부동태(부동태 처리)', count: 0 },
 ];
 
 function renderBar(overrides: Partial<ListFilterBarProps> = {}) {
-  const handlers = { onProcess: vi.fn(), onRegion: vi.fn(), onIndustry: vi.fn() };
+  const handlers = {
+    onProcess: vi.fn(),
+    onRegion: vi.fn(),
+    onIndustry: vi.fn(),
+    onSearch: vi.fn(),
+    onClearSearch: vi.fn(),
+  };
   render(
     <ListFilterBar
-      processCounts={TABS}
-      showTabs
+      processCounts={PROCESSES}
+      showProcess
       process="ZINC_PLATING"
       region={null}
       industry={null}
@@ -24,6 +39,7 @@ function renderBar(overrides: Partial<ListFilterBarProps> = {}) {
         { region: '아산시', count: 5 },
       ]}
       industryCounts={[{ industry: '자동차 부품', count: 4 }]}
+      query={null}
       {...handlers}
       {...overrides}
     />,
@@ -31,46 +47,73 @@ function renderBar(overrides: Partial<ListFilterBarProps> = {}) {
   return handlers;
 }
 
+const optionTexts = (testId: string) =>
+  within(screen.getByTestId(testId))
+    .getAllByRole('option')
+    .map((option) => option.textContent);
+
 describe('ListFilterBar', () => {
-  it('공정마다 "이름 (건수)" 탭이 보이고 지금 공정만 선택 표시다', () => {
-    renderBar();
-    expect(screen.getByRole('tablist', { name: listFilters.tabsLabel })).toBeInTheDocument();
-    const tabs = screen.getAllByRole('tab');
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['전기아연도금 (9)', '아노다이징 (10)']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false']);
-  });
+  describe('공정 선택란 (#361)', () => {
+    it('거산 공정 9종이 서버가 준 순서대로 "이름 곳 수"로 보이고, 0곳인 공정도 보인다', () => {
+      renderBar();
+      expect(screen.getByLabelText(listFilters.processLabel)).toBe(
+        screen.getByTestId('list-process-select'),
+      );
+      expect(optionTexts('list-process-select')).toEqual([
+        '아연도금(전기아연도금) 9',
+        '아노다이징(양극산화피막) 10',
+        '알카리 흑착(흑색산화피막) 0',
+        '무전해 니켈 0',
+        '크롬 도금 0',
+        '전해연마 0',
+        '인산염 피막 0',
+        '크로메이트(화성피막) 0',
+        '부동태(부동태 처리) 0',
+      ]);
+    });
 
-  it('다른 탭을 누르면 그 공정 코드를 알리고, 지금 탭을 다시 눌러도 알리지 않는다', async () => {
-    const user = userEvent.setup();
-    const { onProcess } = renderBar();
-    await user.click(screen.getByTestId('list-process-tab-ZINC_PLATING'));
-    expect(onProcess).not.toHaveBeenCalled();
-    await user.click(screen.getByTestId('list-process-tab-ANODIZING'));
-    expect(onProcess).toHaveBeenCalledWith('ANODIZING');
-  });
+    it('"전체" 선택지가 없고 지금 공정이 골라져 있다', () => {
+      renderBar({ process: 'ANODIZING' });
+      const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
+      expect(select.value).toBe('ANODIZING');
+      expect(
+        within(select).queryByRole('option', { name: listFilters.all }),
+      ).not.toBeInTheDocument();
+      expect(within(select).getAllByRole('option')).toHaveLength(9);
+    });
 
-  it('탭을 숨기라고 하거나 공정이 하나도 없으면 탭 줄이 없다', () => {
-    renderBar({ showTabs: false });
-    expect(screen.queryByTestId('list-process-tabs')).not.toBeInTheDocument();
-  });
+    it('탭 줄은 더 이상 없다(공정은 선택란 하나로 고른다)', () => {
+      renderBar();
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    });
 
-  it('공정이 없으면 탭이 없다', () => {
-    renderBar({ processCounts: [] });
-    expect(screen.queryByTestId('list-process-tabs')).not.toBeInTheDocument();
+    it('다른 공정을 고르면 그 공정 코드를 알린다(0곳인 공정도 고를 수 있다)', async () => {
+      const user = userEvent.setup();
+      const { onProcess } = renderBar();
+      await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
+      expect(onProcess).toHaveBeenLastCalledWith('ANODIZING');
+      await user.selectOptions(screen.getByTestId('list-process-select'), 'CHROME_PLATING');
+      expect(onProcess).toHaveBeenLastCalledWith('CHROME_PLATING');
+    });
+
+    it('공정 선택란을 숨기라고 하면 공정 선택란만 없고 지역·산업 선택란은 남는다', () => {
+      renderBar({ showProcess: false });
+      expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
+      expect(screen.getByTestId('list-industry-select')).toBeInTheDocument();
+    });
+
+    it('공정이 하나도 없으면 공정 선택란이 없다', () => {
+      renderBar({ processCounts: [] });
+      expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
+    });
   });
 
   it('지역·산업 선택지는 "전체"가 맨 앞이고 이름 옆에 건수가 붙는다', () => {
     renderBar();
-    expect(
-      within(screen.getByTestId('list-region-select'))
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual(['전체', '천안 인근 8', '아산시 5']);
-    expect(
-      within(screen.getByTestId('list-industry-select'))
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual(['전체', '자동차 부품 4']);
+    expect(optionTexts('list-region-select')).toEqual(['전체', '천안 인근 8', '아산시 5']);
+    expect(optionTexts('list-industry-select')).toEqual(['전체', '자동차 부품 4']);
     expect(screen.getByLabelText(listFilters.regionLabel)).toBe(
       screen.getByTestId('list-region-select'),
     );
@@ -99,5 +142,82 @@ describe('ListFilterBar', () => {
     renderBar({ regionCounts: [], industryCounts: [] });
     expect(screen.queryByTestId('list-region-select')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-industry-select')).not.toBeInTheDocument();
+  });
+
+  describe('회사 이름 검색 칸 (#361)', () => {
+    it('검색 칸에 이름과 자리 글자가 있고, 평소에는 결과 줄이 없다', () => {
+      renderBar();
+      const input = screen.getByRole('searchbox', { name: listSearch.label });
+      expect(input).toBe(screen.getByTestId('list-search-input'));
+      expect(input).toHaveAttribute('placeholder', '회사 이름을 입력하세요');
+      expect(input).toHaveValue('');
+      expect(screen.getByTestId('list-search-button')).toHaveTextContent(/^검색$/);
+      expect(screen.queryByTestId('list-search-line')).not.toBeInTheDocument();
+    });
+
+    it('[검색]을 누르거나 Enter를 치면 앞뒤 공백을 뗀 검색어를 알린다', async () => {
+      const user = userEvent.setup();
+      const { onSearch } = renderBar();
+      await user.type(screen.getByTestId('list-search-input'), '  코파스 ');
+      await user.click(screen.getByTestId('list-search-button'));
+      expect(onSearch).toHaveBeenLastCalledWith('코파스');
+      await user.clear(screen.getByTestId('list-search-input'));
+      await user.type(screen.getByTestId('list-search-input'), '명화금속{Enter}');
+      expect(onSearch).toHaveBeenLastCalledWith('명화금속');
+      expect(onSearch).toHaveBeenCalledTimes(2);
+    });
+
+    it('빈 검색어·공백만 있는 검색어로는 알리지 않는다', async () => {
+      const user = userEvent.setup();
+      const { onSearch } = renderBar();
+      await user.click(screen.getByTestId('list-search-button'));
+      await user.type(screen.getByTestId('list-search-input'), '   {Enter}');
+      expect(onSearch).not.toHaveBeenCalled();
+    });
+
+    it('검색 중에는 세 선택란이 숨고, 결과 줄에 "전체 후보에서 찾은 결과"와 검색어·[검색 지우기]가 보인다', async () => {
+      const user = userEvent.setup();
+      const { onClearSearch } = renderBar({ query: '코파스', region: '아산시' });
+      expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-region-select')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-industry-select')).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-search-line')).toHaveTextContent('전체 후보에서 찾은 결과');
+      expect(screen.getByTestId('list-search-query')).toHaveTextContent(/^코파스$/);
+      // 검색 칸은 검색 중에도 보이고 지금 검색어가 들어 있다.
+      expect(screen.getByTestId('list-search-input')).toHaveValue('코파스');
+      expect(screen.getByTestId('list-search-clear')).toHaveTextContent(/^검색 지우기$/);
+      await user.click(screen.getByTestId('list-search-clear'));
+      expect(onClearSearch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('정렬 (#361)', () => {
+    it('"추천 순"이 골라져 있고 "가까운 순 (준비 중)"은 고를 수 없게 표시된다', () => {
+      renderBar();
+      const group = screen.getByRole('group', { name: listSearch.sortLabel });
+      const buttons = within(group).getAllByRole('button');
+      expect(buttons.map((button) => button.textContent)).toEqual([
+        '추천 순',
+        '가까운 순 (준비 중)',
+      ]);
+      expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
+      expect(buttons[1]).toHaveAttribute('aria-pressed', 'false');
+      expect(buttons[1]).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('"가까운 순 (준비 중)"을 눌러도 아무것도 알리지 않고 "추천 순"이 그대로 골라져 있다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar();
+      await user.click(screen.getByTestId('list-sort-distance'));
+      await user.click(screen.getByTestId('list-sort-rank'));
+      for (const handler of Object.values(handlers)) expect(handler).not.toHaveBeenCalled();
+      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('정렬 묶음은 검색 중에도, 공정 선택란이 없는 보기에서도 보인다', () => {
+      renderBar({ query: '코파스', showProcess: false });
+      expect(screen.getByTestId('list-sort')).toBeInTheDocument();
+    });
   });
 });
