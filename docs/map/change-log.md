@@ -1,6 +1,6 @@
 # 기획 변경 기록 — 무엇이 언제 왜 바뀌었나
 
-> **기준일: 2026-11-05** · [지도 입구로 돌아가기](README.md)
+> **기준일: 2026-11-06** · [지도 입구로 돌아가기](README.md)
 
 이 문서는 **쌓아 가는 기록**입니다. 지도(기능 지도·구조 지도)는 늘 "지금" 한 벌만 두고, 바뀐 내용은 여기에 한 줄씩 더합니다.
 
@@ -18,6 +18,7 @@
 
 | 갱신한 날 | ✅ 됨 | ⏳ 진행 중 | 📅 2차 예정 | ⏸ 보류 | 이번에 달라진 것 |
 |---|---|---|---|---|---|
+| 2026-11-06 | 44 | 9 | 14 | 1 | 목록의 공정 탭·지역·산업 거르기, 대시보드 건수 카드·검색이 목록을 거르는 것이 "됨"으로. 카드의 공정·지역·산업 꼬리표 줄을 더함. "거래 중" 회사의 카드가 여럿일 때의 순서 보완도 끝남. 기능 68줄 ([#306], [#305], [#325]) |
 | 2026-11-05 늦은 밤 | 40 | 12 | 14 | 1 | 후보 찾기 웹 검색(진행 중)과 채용 공고 근거(2차 예정) 줄을 더함. 기능 67줄 ([#313]) |
 | 2026-11-05 밤 | 40 | 11 | 13 | 1 | 후보 찾기와 AI 점수 제안을 1차로 당김 ([#221], [#286]) |
 | 2026-11-05 저녁 | 40 | 9 | 15 | 1 | 거래 관계 단추, 회사 소개와 대표번호 [맞음], 기록 한 칸, AI 조사가 "됨"으로 ([#307]) |
@@ -52,6 +53,13 @@ timeline
 ## 3. 기획 변경
 
 **읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
+
+### 2026-11-06
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 후보 목록의 출발점 | 공장현황 파일 하나. 산단공 조회는 고른 회사의 정보 채우기에만 씀 | 파일 + 산단공 조회의 단지 입주 목록 둘. 조회가 안 되면 파일 목록으로 계속하고 화면에 작게 알림 | 파일은 1년에 한 번 나와서 그 뒤 입주한 회사가 빠짐. 천안제3일반산업단지는 파일 100줄, 조회 266줄이고 조회에만 있는 제조업이 14곳 | ✅ [#323] · [#221] |
+| 표면처리를 직접 하는 회사 | 수질유해물질 업체 명단으로 표시하기로 했으나 아직 안 만듦 | 후보 찾기에서 AI와 업종명으로 판단해 "표면처리를 직접 하는 회사일 수 있음 · 확인 필요" 꼬리표를 붙임. 자동으로 빼지 않고, 빼는 것은 담당자가 "검토 대상 제외"로 함 | 실제 파일에서 아산의 아노다이징 회사가 후보로 나옴. 자체 설비가 있어도 외주를 줄 수 있어 단정하지 않음 | ✅ [#319] · [#221] |
 
 ### 2026-11-05
 
@@ -238,7 +246,12 @@ timeline
 [#275]: https://github.com/agent-ddalgi-team/final-geosan/issues/275
 [#286]: https://github.com/agent-ddalgi-team/final-geosan/issues/286
 [#293]: https://github.com/agent-ddalgi-team/final-geosan/issues/293
+[#305]: https://github.com/agent-ddalgi-team/final-geosan/issues/305
+[#306]: https://github.com/agent-ddalgi-team/final-geosan/issues/306
 [#307]: https://github.com/agent-ddalgi-team/final-geosan/issues/307
 [#313]: https://github.com/agent-ddalgi-team/final-geosan/issues/313
 [#314]: https://github.com/agent-ddalgi-team/final-geosan/issues/314
 [#315]: https://github.com/agent-ddalgi-team/final-geosan/issues/315
+[#319]: https://github.com/agent-ddalgi-team/final-geosan/issues/319
+[#323]: https://github.com/agent-ddalgi-team/final-geosan/issues/323
+[#325]: https://github.com/agent-ddalgi-team/final-geosan/issues/325
