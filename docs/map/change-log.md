@@ -18,7 +18,7 @@
 
 | 갱신한 날 | ✅ 됨 | ⏳ 진행 중 | 📅 2차 예정 | ⏸ 보류 | 이번에 달라진 것 |
 |---|---|---|---|---|---|
-| 2026-11-06 | 44 | 9 | 14 | 1 | 목록의 공정 탭·지역·산업 거르기, 대시보드 건수 카드·검색이 목록을 거르는 것이 "됨"으로. 카드의 공정·지역·산업 꼬리표 줄을 더함. 기능 68줄 ([#306], [#325]) |
+| 2026-11-06 | 44 | 9 | 14 | 1 | 목록의 공정 탭·지역·산업 거르기, 대시보드 건수 카드·검색이 목록을 거르는 것이 "됨"으로. 카드의 공정·지역·산업 꼬리표 줄을 더함. "거래 중" 회사의 카드가 여럿일 때의 순서 보완도 끝남. 기능 68줄 ([#306], [#305], [#325]) |
 | 2026-11-05 늦은 밤 | 40 | 12 | 14 | 1 | 후보 찾기 웹 검색(진행 중)과 채용 공고 근거(2차 예정) 줄을 더함. 기능 67줄 ([#313]) |
 | 2026-11-05 밤 | 40 | 11 | 13 | 1 | 후보 찾기와 AI 점수 제안을 1차로 당김 ([#221], [#286]) |
 | 2026-11-05 저녁 | 40 | 9 | 15 | 1 | 거래 관계 단추, 회사 소개와 대표번호 [맞음], 기록 한 칸, AI 조사가 "됨"으로 ([#307]) |
@@ -239,6 +239,7 @@ timeline
 [#275]: https://github.com/agent-ddalgi-team/final-geosan/issues/275
 [#286]: https://github.com/agent-ddalgi-team/final-geosan/issues/286
 [#293]: https://github.com/agent-ddalgi-team/final-geosan/issues/293
+[#305]: https://github.com/agent-ddalgi-team/final-geosan/issues/305
 [#306]: https://github.com/agent-ddalgi-team/final-geosan/issues/306
 [#307]: https://github.com/agent-ddalgi-team/final-geosan/issues/307
 [#313]: https://github.com/agent-ddalgi-team/final-geosan/issues/313
