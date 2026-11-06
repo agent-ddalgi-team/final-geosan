@@ -73,6 +73,8 @@ function renderPage(staffKey: string | null = 'park-lee') {
 
 describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
   beforeEach(() => {
+    // 지난번에 본 공정 기억(#368)이 검사 사이에 넘어가지 않게 지운다.
+    window.localStorage.clear();
     mockedGet.mockReset();
     mockedPost.mockReset();
     mockedOptions.mockReset();

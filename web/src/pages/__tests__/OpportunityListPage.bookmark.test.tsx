@@ -67,6 +67,8 @@ const lastFilters = () => mockedGet.mock.calls.at(-1)?.[3];
 
 describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
   beforeEach(() => {
+    // 지난번에 본 공정 기억(#368)이 검사 사이에 넘어가지 않게 지운다.
+    window.localStorage.clear();
     mockedGet.mockReset();
   });
 

@@ -1,4 +1,5 @@
-// 추천 목록 머리(#361, 2026-11-06 PM 결정): 공정 선택란(9종·0곳 포함·"전체" 없음·처음 고르는 공정) /
+// 추천 목록 머리(#361, 2026-11-06 PM 결정): 공정 선택란(9종·0곳 포함·"전체" 없음) /
+// 공정을 고르기 전에는 목록을 비워 두고 마지막으로 본 공정을 기억한다(#368, 2026-11-06 PM 결정) /
 // 회사 이름 검색(전체 후보에서, 검색어만 보냄, [검색 지우기]로 직전 주소 복귀) / 정렬("가까운 순"은 준비 중).
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -8,6 +9,7 @@ import OpportunityListPage from '../OpportunityListPage';
 import { getOpportunities } from '../../api/client';
 import type { Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
+import { LAST_PROCESS_STORAGE_KEY } from '../../components/list/lastProcess';
 import { bookmarkList, listFilters, listSearch } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
@@ -95,6 +97,8 @@ async function searchFor(user: ReturnType<typeof userEvent.setup>, text: string)
 
 describe('OpportunityListPage 목록 머리 (#361)', () => {
   beforeEach(() => {
+    // 지난번에 본 공정 기억(#368)이 검사 사이에 넘어가지 않게 지운다.
+    window.localStorage.clear();
     mockedGet.mockReset();
   });
 
@@ -130,34 +134,6 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
-    it('처음 열면 회사가 1곳 이상인 첫 공정이 골라진다(맨 첫 공정이 0곳이어도)', async () => {
-      const firstEmpty = [
-        { ...NINE[2], count: 0 },
-        { ...NINE[4], count: 0 },
-        { ...NINE[1], count: 10 },
-        { ...NINE[0], count: 9 },
-      ];
-      mockedGet.mockResolvedValue(reply([apjeong], { processCounts: firstEmpty }));
-      renderPage();
-      await screen.findByTestId('opportunity-card');
-      expect(mockedGet).toHaveBeenCalledTimes(2);
-      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
-      expect(mockedGet.mock.calls[1][3]).toEqual({ ...NO_FILTERS, process: 'ANODIZING' });
-      expect(locationText()).toBe('/opportunities?process=ANODIZING');
-      expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe(
-        'ANODIZING',
-      );
-    });
-
-    it('회사가 있는 공정이 하나도 없으면 맨 첫 공정이 골라지고 0곳 안내가 보인다', async () => {
-      const allEmpty = NINE.map((item) => ({ ...item, count: 0 }));
-      mockedGet.mockResolvedValue(reply([], { processCounts: allEmpty, total: 0 }));
-      renderPage();
-      expect(await screen.findByText(listFilters.processEmpty)).toBeInTheDocument();
-      expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' });
-      expect(locationText()).toBe('/opportunities?process=ZINC_PLATING');
-    });
-
     it('0곳인 공정을 고르면 그 공정으로 불러오고 빈 목록과 안내 문장이 보인다', async () => {
       const user = userEvent.setup();
       mockedGet.mockImplementation((_page, _size, _signal, filters) =>
@@ -191,18 +167,6 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(screen.queryByText(listFilters.processEmpty)).not.toBeInTheDocument();
     });
 
-    it('주소의 공정이 선택지에 없는 값이면 회사가 있는 첫 공정으로 바꿔 다시 불러온다', async () => {
-      mockedGet.mockResolvedValue(reply([apjeong], MENU));
-      renderPage('/opportunities?process=NOT_A_PROCESS');
-      await waitFor(() => expect(locationText()).toBe('/opportunities?process=ZINC_PLATING'));
-      await waitFor(() =>
-        expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' }),
-      );
-      expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe(
-        'ZINC_PLATING',
-      );
-    });
-
     it('공정·지역·산업을 바꾸면 맞는 조건을 서버에 보내고 주소에 남긴다', async () => {
       const user = userEvent.setup();
       mockedGet.mockResolvedValue(reply([apjeong], MENU));
@@ -229,6 +193,191 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
       await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ANODIZING' }));
       expect(locationParams()).toEqual({ process: 'ANODIZING' });
+    });
+  });
+
+  // 처음 열 때의 규칙(#368, 2026-11-06 PM 결정): #361의 "처음에는 (회사가 있는) 첫 공정"을 바꿨다.
+  // 프로그램이 공정을 대신 고르지 않고, 고르기 전에는 목록을 비워 두며, 마지막으로 본 공정을 브라우저에 기억한다.
+  describe('공정을 고르기 전 (#368)', () => {
+    const remembered = () => window.localStorage.getItem(LAST_PROCESS_STORAGE_KEY);
+
+    it('기억한 공정 없이 처음 열면 공정이 골라져 있지 않고, 카드 없이 "공정을 고르면…" 안내만 보인다', async () => {
+      mockedGet.mockResolvedValue(reply([apjeong], { ...MENU, total: 19 }));
+      renderPage();
+      expect(
+        await screen.findByText('공정을 고르면 그 공정의 후보가 나타납니다'),
+      ).toBeInTheDocument();
+      // 프로그램이 공정을 대신 고르지 않는다: 한 번만 부르고 주소도 그대로다.
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+      expect(locationText()).toBe('/opportunities');
+      // 서로 다른 공정의 회사를 한 줄로 섞어 보이지 않는다.
+      expect(screen.queryByTestId('opportunity-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-total')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-pagination')).not.toBeInTheDocument();
+      const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
+      expect(select.value).toBe('');
+      const options = within(select).getAllByRole('option') as HTMLOptionElement[];
+      expect(options).toHaveLength(10);
+      expect(options[0]).toHaveTextContent(/^공정을 고르세요$/);
+      expect(options[0]).toBeDisabled();
+      expect(options[1]).toHaveTextContent('아연도금(전기아연도금) 9');
+      // 지역·산업만으로는 목록을 보이지 않으므로 공정을 고르기 전에는 두 선택란이 없다.
+      expect(screen.queryByTestId('list-region-select')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-industry-select')).not.toBeInTheDocument();
+      // 검색 칸과 정렬은 고르기 전에도 쓸 수 있다.
+      expect(screen.getByTestId('list-search-input')).toBeInTheDocument();
+      expect(screen.getByTestId('list-sort')).toBeInTheDocument();
+      expect(remembered()).toBeNull();
+    });
+
+    it('회사가 있는 공정이 하나도 없어도 공정을 대신 고르지 않고, 0곳 공정 안내가 아니라 고르라는 안내다', async () => {
+      const allEmpty = NINE.map((item) => ({ ...item, count: 0 }));
+      mockedGet.mockResolvedValue(reply([], { processCounts: allEmpty, total: 0 }));
+      renderPage();
+      expect(await screen.findByText(listFilters.pickProcess)).toBeInTheDocument();
+      expect(screen.queryByText(listFilters.processEmpty)).not.toBeInTheDocument();
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(locationText()).toBe('/opportunities');
+    });
+
+    it('공정을 고르면 그 공정의 카드와 지역·산업 선택란이 나타나고, 고르라는 글자는 사라진다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage();
+      await screen.findByText(listFilters.pickProcess);
+      await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
+      await screen.findByTestId('opportunity-card');
+      expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ANODIZING' });
+      expect(locationText()).toBe('/opportunities?process=ANODIZING');
+      expect(screen.queryByText(listFilters.pickProcess)).not.toBeInTheDocument();
+      const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
+      expect(select.value).toBe('ANODIZING');
+      expect(within(select).getAllByRole('option')).toHaveLength(9);
+      expect(
+        within(select).queryByRole('option', { name: listFilters.processPlaceholder }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
+      expect(screen.getByTestId('list-industry-select')).toBeInTheDocument();
+      expect(remembered()).toBe('ANODIZING');
+    });
+
+    it('공정을 본 뒤 공정 없이 목록을 다시 열면 지난번에 본 공정으로 바로 열린다', async () => {
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      const first = renderPage('/opportunities?process=ANODIZING');
+      await screen.findByTestId('opportunity-card');
+      expect(remembered()).toBe('ANODIZING');
+      first.unmount();
+      mockedGet.mockClear();
+      renderPage();
+      await screen.findByTestId('opportunity-card');
+      expect(locationText()).toBe('/opportunities?process=ANODIZING');
+      expect(mockedGet).toHaveBeenCalledTimes(2);
+      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+      expect(mockedGet.mock.calls[1][3]).toEqual({ ...NO_FILTERS, process: 'ANODIZING' });
+      expect(screen.queryByText(listFilters.pickProcess)).not.toBeInTheDocument();
+      expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe(
+        'ANODIZING',
+      );
+    });
+
+    it('다른 공정으로 바꾸면 기억도 그 공정으로 바뀐다(0곳인 공정도)', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockImplementation((_page, _size, _signal, filters) =>
+        Promise.resolve(
+          filters?.process === 'CHROME_PLATING'
+            ? reply([], { ...MENU, regionCounts: [], industryCounts: [], total: 0 })
+            : reply([apjeong], MENU),
+        ),
+      );
+      renderPage('/opportunities?process=ZINC_PLATING');
+      await screen.findByTestId('opportunity-card');
+      expect(remembered()).toBe('ZINC_PLATING');
+      await user.selectOptions(screen.getByTestId('list-process-select'), 'CHROME_PLATING');
+      await screen.findByText(listFilters.processEmpty);
+      expect(remembered()).toBe('CHROME_PLATING');
+    });
+
+    it('기억한 공정이 더는 없는 공정이면 기억을 지우고 고르기 전 상태로 연다', async () => {
+      window.localStorage.setItem(LAST_PROCESS_STORAGE_KEY, 'OLD_PROCESS');
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage();
+      expect(await screen.findByText(listFilters.pickProcess)).toBeInTheDocument();
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(locationText()).toBe('/opportunities');
+      expect(remembered()).toBeNull();
+    });
+
+    it('주소의 공정이 선택지에 없는 값이면 그 값을 지우고 고르기 전 상태로 돌아간다', async () => {
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?process=NOT_A_PROCESS&region=아산시');
+      expect(await screen.findByText(listFilters.pickProcess)).toBeInTheDocument();
+      expect(locationParams()).toEqual({ region: '아산시' });
+      expect(lastFilters()).toEqual({ ...NO_FILTERS, region: '아산시' });
+      expect(screen.queryByTestId('opportunity-card')).not.toBeInTheDocument();
+      expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe('');
+      // 틀린 공정은 기억하지 않는다.
+      expect(remembered()).toBeNull();
+    });
+
+    it('주소의 공정이 선택지에 없는 값이어도 기억한 공정이 있으면 그 공정으로 연다', async () => {
+      window.localStorage.setItem(LAST_PROCESS_STORAGE_KEY, 'ZINC_PLATING');
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?process=NOT_A_PROCESS');
+      await waitFor(() => expect(locationText()).toBe('/opportunities?process=ZINC_PLATING'));
+      await waitFor(() =>
+        expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' }),
+      );
+      await screen.findByTestId('opportunity-card');
+    });
+
+    it.each([
+      ['/opportunities?q=A정밀', { q: 'A정밀' }],
+      ['/opportunities?bookmarked=true', { bookmarked: 'true' }],
+      ['/opportunities?filter=NOT_CONTACTED', { filter: 'NOT_CONTACTED' }],
+      ['/opportunities?stage=IN_PROGRESS', { stage: 'IN_PROGRESS' }],
+    ])(
+      '%s 는 공정을 고르지 않아도 바로 나오고, 기억한 공정으로 바뀌지도 않는다',
+      async (url, expected) => {
+        window.localStorage.setItem(LAST_PROCESS_STORAGE_KEY, 'ANODIZING');
+        mockedGet.mockResolvedValue(reply([apjeong], MENU));
+        renderPage(url);
+        await screen.findByTestId('opportunity-card');
+        expect(mockedGet).toHaveBeenCalledTimes(1);
+        expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, ...expected });
+        expect(screen.queryByText(listFilters.pickProcess)).not.toBeInTheDocument();
+        expect(screen.getByTestId('location')).toHaveTextContent(url);
+        // 공정 없이 본 목록은 기억을 바꾸지 않는다.
+        expect(remembered()).toBe('ANODIZING');
+      },
+    );
+
+    it('공정 선택지가 하나도 오지 않으면(공정 자료 없음) 고르라고 하지 않고 온 목록을 그대로 보인다', async () => {
+      mockedGet.mockResolvedValue(reply([apjeong]));
+      renderPage();
+      await screen.findByTestId('opportunity-card');
+      expect(screen.queryByText(listFilters.pickProcess)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
+    });
+
+    it('브라우저 저장소를 쓸 수 없어도 목록은 열리고 공정을 고를 수 있다', async () => {
+      const user = userEvent.setup();
+      const blocked = () => {
+        throw new Error('저장소 사용 불가');
+      };
+      const getSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+      const setSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+      try {
+        mockedGet.mockResolvedValue(reply([apjeong], MENU));
+        renderPage();
+        await screen.findByText(listFilters.pickProcess);
+        await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
+        await screen.findByTestId('opportunity-card');
+        expect(locationText()).toBe('/opportunities?process=ANODIZING');
+      } finally {
+        getSpy.mockRestore();
+        setSpy.mockRestore();
+      }
     });
   });
 

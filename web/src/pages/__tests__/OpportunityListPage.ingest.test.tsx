@@ -75,6 +75,8 @@ function renderPage(initial = '/opportunities') {
 
 describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
   beforeEach(() => {
+    // 지난번에 본 공정 기억(#368)이 검사 사이에 넘어가지 않게 지운다.
+    window.localStorage.clear();
     mockedGet.mockReset();
   });
 
@@ -143,6 +145,8 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
 
 describe('추천 목록 · 후보 수집 요약과 보기 전환(#316)', () => {
   beforeEach(() => {
+    // 지난번에 본 공정 기억(#368)이 검사 사이에 넘어가지 않게 지운다.
+    window.localStorage.clear();
     mockedGet.mockReset();
   });
 
