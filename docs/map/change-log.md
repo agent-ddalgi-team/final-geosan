@@ -54,6 +54,13 @@ timeline
 
 **읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
 
+### 2026-11-06
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 후보 목록의 출발점 | 공장현황 파일 하나. 산단공 조회는 고른 회사의 정보 채우기에만 씀 | 파일 + 산단공 조회의 단지 입주 목록 둘. 조회가 안 되면 파일 목록으로 계속하고 화면에 작게 알림 | 파일은 1년에 한 번 나와서 그 뒤 입주한 회사가 빠짐. 천안제3일반산업단지는 파일 100줄, 조회 266줄이고 조회에만 있는 제조업이 14곳 | ✅ [#323] · [#221] |
+| 표면처리를 직접 하는 회사 | 수질유해물질 업체 명단으로 표시하기로 했으나 아직 안 만듦 | 후보 찾기에서 AI와 업종명으로 판단해 "표면처리를 직접 하는 회사일 수 있음 · 확인 필요" 꼬리표를 붙임. 자동으로 빼지 않고, 빼는 것은 담당자가 "검토 대상 제외"로 함 | 실제 파일에서 아산의 아노다이징 회사가 후보로 나옴. 자체 설비가 있어도 외주를 줄 수 있어 단정하지 않음 | ✅ [#319] · [#221] |
+
 ### 2026-11-05
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
@@ -245,4 +252,6 @@ timeline
 [#313]: https://github.com/agent-ddalgi-team/final-geosan/issues/313
 [#314]: https://github.com/agent-ddalgi-team/final-geosan/issues/314
 [#315]: https://github.com/agent-ddalgi-team/final-geosan/issues/315
+[#319]: https://github.com/agent-ddalgi-team/final-geosan/issues/319
+[#323]: https://github.com/agent-ddalgi-team/final-geosan/issues/323
 [#325]: https://github.com/agent-ddalgi-team/final-geosan/issues/325
