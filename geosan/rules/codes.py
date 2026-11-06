@@ -345,6 +345,23 @@ class ProcessCode(StrEnum):
     PASSIVATION = "PASSIVATION"  # 부동태
 
 
+class DiscoverySource(StrEnum):
+    """회사가 목록에 들어온 길 (C0, 2026-11-05·11-06 PM 결정 #313·#323)."""
+
+    CASE_FILE = "CASE_FILE"  # 사례 파일로 넣은 회사
+    FACTORY_FILE = "FACTORY_FILE"  # 공장현황 파일에서 찾은 회사
+    FACTORY_API = "FACTORY_API"  # 파일에는 없고 공장등록 조회의 단지 입주 목록에만 있던 회사
+    WEB_SEARCH = "WEB_SEARCH"  # AI 웹 검색으로 찾은 회사
+
+
+class FitLevel(StrEnum):
+    """AI가 본 공정 적합도. 점수 전 회사를 줄 세우는 데만 쓴다 (C0, 2026-11-05 PM 결정 #313)."""
+
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+
+
 VIEWER_STAFF_KEY = "viewer"
 """예약 담당자 키(보기 전용). 기록 요청은 403 (BR9.3)."""
 
