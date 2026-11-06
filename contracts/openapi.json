@@ -883,6 +883,36 @@
         "title": "Envelope[Dashboard]",
         "type": "object"
       },
+      "Envelope_HomepageConfirmation_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HomepageConfirmation"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[HomepageConfirmation]",
+        "type": "object"
+      },
+      "Envelope_HomepageResearch_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HomepageResearch"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[HomepageResearch]",
+        "type": "object"
+      },
       "Envelope_MainPhoneConfirmResponse_": {
         "properties": {
           "data": {
@@ -1123,6 +1153,97 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HomepageConfirmation": {
+        "properties": {
+          "homepageSource": {
+            "const": "STAFF",
+            "title": "Homepagesource",
+            "type": "string"
+          },
+          "homepageStatus": {
+            "const": "CONFIRMED",
+            "title": "Homepagestatus",
+            "type": "string"
+          },
+          "homepageUrl": {
+            "title": "Homepageurl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "homepageUrl",
+          "homepageStatus",
+          "homepageSource"
+        ],
+        "title": "HomepageConfirmation",
+        "type": "object"
+      },
+      "HomepageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmOnly": {
+            "default": false,
+            "title": "Confirmonly",
+            "type": "boolean"
+          },
+          "pastedText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pastedtext"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "uri",
+            "title": "Url"
+          }
+        },
+        "title": "HomepageRequest",
+        "type": "object"
+      },
+      "HomepageResearch": {
+        "properties": {
+          "evalId": {
+            "title": "Evalid",
+            "type": "string"
+          },
+          "evidenceCount": {
+            "minimum": 0.0,
+            "title": "Evidencecount",
+            "type": "integer"
+          },
+          "questionCount": {
+            "minimum": 0.0,
+            "title": "Questioncount",
+            "type": "integer"
+          },
+          "requirementCandidateCount": {
+            "minimum": 0.0,
+            "title": "Requirementcandidatecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "evidenceCount",
+          "requirementCandidateCount",
+          "questionCount",
+          "evalId"
+        ],
+        "title": "HomepageResearch",
         "type": "object"
       },
       "IndustryCount": {
@@ -3734,6 +3855,79 @@
           }
         },
         "summary": "Activity"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/homepage": {
+      "post": {
+        "operationId": "save_homepage_api_v1_opportunities__oppId__homepage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HomepageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope_HomepageResearch_"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Envelope_HomepageConfirmation_"
+                    }
+                  ],
+                  "title": "Response Save Homepage Api V1 Opportunities  Oppid  Homepage Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Homepage"
       }
     },
     "/api/v1/opportunities/{oppId}/main-phone/confirm": {
