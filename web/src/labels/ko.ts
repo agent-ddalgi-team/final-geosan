@@ -360,7 +360,6 @@ export const listFilters = {
 export const bookmarkList = {
   title: '관심 기업',
   showOnly: '관심 기업만 보기',
-  showAll: '전체 추천 목록 보기',
   opinionGroupLabel: '검토 의견으로 거르기',
   /** 거르기 단추 다섯 개. "기타"는 세 의견 중 아무것도 고르지 않은 회사만 나온다. */
   opinionFilters: {

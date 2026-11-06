@@ -169,16 +169,13 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(screen.getByTestId('list-opinion-NONE')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('[전체 추천 목록 보기]를 누르면 관심 보기와 의견 거르기가 주소에서 빠지고 평소 목록으로 돌아간다', async () => {
-    const user = userEvent.setup();
+  it('관심 보기에는 전체 목록으로 돌아가는 단추를 따로 두지 않는다(위쪽 메뉴가 그 일을 한다)', async () => {
     mockedGet.mockResolvedValue(reply([apjeong]));
     renderPage('/opportunities?bookmarked=true&opinion=WORTH_REVIEW');
     await screen.findByTestId('opportunity-card');
-    await user.click(screen.getByRole('button', { name: bookmarkList.showAll }));
-    await waitFor(() => expect(lastFilters()).toEqual(NO_FILTERS));
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities$/);
-    expect(screen.getByTestId('list-bookmarked-on')).toBeInTheDocument();
-    expect(screen.queryByTestId('list-opinion-filter')).not.toBeInTheDocument();
+    expect(screen.getByTestId('list-opinion-filter')).toBeInTheDocument();
+    expect(screen.queryByTestId('list-bookmarked-off')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('list-bookmarked-on')).not.toBeInTheDocument();
   });
 
   it('관심 보기가 아니거나 표에 없는 의견 값은 서버에 보내지 않는다', async () => {
@@ -194,7 +191,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(screen.getByTestId('list-opinion-ALL')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('관심 보기에서 0곳이면 카드의 [관심]을 눌러 담으라는 문구를 보이고, 머리 단추는 그대로 남는다', async () => {
+  it('관심 보기에서 0곳이면 카드의 [관심]을 눌러 담으라는 문구를 보이고, 머리의 의견 거르기는 그대로 남는다', async () => {
     mockedGet.mockResolvedValue(reply([], { total: 0 }));
     renderPage('/opportunities?bookmarked=true');
     expect(await screen.findByText(bookmarkList.empty)).toBeInTheDocument();
@@ -202,7 +199,6 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
       '관심으로 고른 회사가 없습니다. 카드의 [관심]을 눌러 담아 보세요',
     );
     expect(screen.queryByText(states.listEmpty)).not.toBeInTheDocument();
-    expect(screen.getByTestId('list-bookmarked-off')).toBeInTheDocument();
     expect(screen.getByTestId('list-opinion-filter')).toBeInTheDocument();
   });
 

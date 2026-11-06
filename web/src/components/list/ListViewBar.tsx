@@ -1,6 +1,7 @@
 // 추천 목록 머리의 "보기" 줄(#357, 2026-11-06 PM 결정): 관심 기업만 보기와 대시보드 칸으로 걸러 본 목록의 이름.
 //  - 평소: [관심 기업만 보기] 단추 하나.
-//  - 관심 기업 보기: "관심 기업" + 검토 의견 거르기(전체 보기 / 검토 권고 / 추가 확인 필요 / 제외 기업 / 기타) + [전체 추천 목록 보기].
+//  - 관심 기업 보기: "관심 기업" + 검토 의견 거르기(전체 보기 / 검토 권고 / 추가 확인 필요 / 제외 기업 / 기타).
+//    전체 목록으로 돌아가는 단추는 두지 않는다. 위쪽 메뉴 "영업 후보 목록"이 그 일을 한다(PM 2026-11-06).
 //  - 대시보드 칸을 누르고 왔으면: 무엇으로 걸렀는지 칸 이름(대시보드와 같은 말)과 [거르기 풀기].
 // 고른 값은 부모가 주소(`?bookmarked=true&opinion=…&filter=…`)에 남기고, 이 부품은 고른 값을 알리기만 한다. 모달 없이 인라인이다.
 import { Button } from 'antd';
@@ -28,6 +29,7 @@ export interface ListViewBarProps {
   opinion: OpinionFilter | null;
   /** 주소의 `filter=` 값(대시보드 칸 이름표). 없으면 null. */
   filter: string | null;
+  /** [관심 기업만 보기]를 눌렀을 때. 끄는 단추는 없다(위쪽 메뉴로 전체 목록에 돌아간다). */
   onBookmarked: (on: boolean) => void;
   onOpinion: (opinion: OpinionFilter | null) => void;
   onClearFilter: () => void;
@@ -98,9 +100,6 @@ export default function ListViewBar({
               );
             })}
           </div>
-          <Button onClick={() => onBookmarked(false)} data-testid="list-bookmarked-off">
-            {bookmarkList.showAll}
-          </Button>
         </div>
       ) : (
         <div style={rowStyle}>
