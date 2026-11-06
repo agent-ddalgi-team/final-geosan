@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
 from geosan.evidence.transfer import TransferLog, finish_search, reserve_candidate_judgment
-from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.factory_csv import SOURCE_ID, read_factory_csv
 from geosan.opportunity.factory_store import store_factory_csv
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 from geosan.opportunity.source_models import CandidateJudgment, SourceContract, SourceFactoryRow
@@ -335,3 +335,24 @@ def test_error_after_sql_update_rolls_back_product_and_missing_marker(ingest_bat
     assert [row.row_id for row in rows()] == list(first.row_ids)
     assert [row.product for row in rows()] == ["볼트", "너트"]
     assert all(row.file_date == OLD and row.missing_since is None for row in rows())
+
+
+@pytest.mark.parametrize("change", ["status", "regions", "approval"])
+def test_file_read_holds_no_write_lock_and_context_is_rechecked(
+    ingest_batch, factory_file, monkeypatch, change
+):
+    def concurrent_change(path, *, regions):
+        # 파일을 읽는 중 다른 연결이 실제 쓰기를 할 수 있어야 한다(C5).
+        with session_scope() as session:
+            if change == "status":
+                session.get(IngestBatch, ingest_batch).status = "FAILED"
+            elif change == "regions":
+                session.get(IngestBatch, ingest_batch).criteria = {"regions": ["대전"]}
+            else:
+                session.get(SourceContract, SOURCE_ID).confirmed_at = None
+        return read_factory_csv(path, regions=regions)
+
+    monkeypatch.setattr("geosan.opportunity.factory_store.read_factory_csv", concurrent_change)
+    with pytest.raises(AppError):
+        save(ingest_batch, factory_file, [A])
+    assert rows() == []

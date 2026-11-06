@@ -1,6 +1,7 @@
 """공개 CSV 행을 PM의 src_factory_row에 저장한다(C5·C6, #366).
 
-읽기·갱신은 하나의 저장 묶음이다. 회사 등록·판단 저장·AI 호출은 하지 않는다.
+원본은 저장 잠금 밖에서 읽고, 갱신은 하나의 저장 묶음으로 처리한다(C5).
+회사 등록·판단 저장·AI 호출은 하지 않는다.
 반환한 행 ID는 전송 승인 결과가 아니다. 실제 어댑터가 승인과 본문 조회를 맡는다.
 """
 
@@ -124,11 +125,16 @@ def store_factory_csv(
         raise InputError("공장현황 파일 위치를 확인해 주세요.") from None
     try:
         with session_scope(db_path) as session:
-            # 승인·회차 확인과 원본 갱신을 한 쓰기 잠금으로 묶는다. HTTP 호출은 없다.
+            _, regions = _context(session, batch_id)
+        # C5: 파일 읽기는 트랜잭션 밖. 이용 확인을 마친 소스만 읽는다.
+        result = read_factory_csv(path, regions=regions)
+        incoming = _unique_rows(result.rows)
+        with session_scope(db_path) as session:
+            # 읽는 동안 회차나 승인이 바뀌었을 수 있어 저장 잠금 안에서 다시 검사한다.
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
-            batch, regions = _context(session, batch_id)
-            result = read_factory_csv(path, regions=regions)
-            incoming = _unique_rows(result.rows)
+            batch, current_regions = _context(session, batch_id)
+            if set(regions) != set(current_regions):
+                raise InputError("파일을 읽는 동안 회차의 찾기 지역이 바뀌었습니다.")
             existing = session.scalars(
                 select(SourceFactoryRow).where(
                     SourceFactoryRow.source_id == SOURCE_ID,
