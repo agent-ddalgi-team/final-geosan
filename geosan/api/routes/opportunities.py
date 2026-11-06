@@ -564,6 +564,8 @@ def list_opportunities(
         .where(Process.dataset_kind == dataset_kind.value)
         .order_by(func.coalesce(imported_at, Process.created_at), Process.process_id)
     ).all()
+    # 목록 머리 선택란(#361): 기회가 0곳인 공정도 count 0으로 싣는다.
+    # 거산 공정 전부를 역량 파일 순서로 보낸다.
     process_counts = [
         ProcessCount(
             process_code=row.code,
@@ -571,7 +573,6 @@ def list_opportunities(
             count=sum(row.code in codes for codes in codes_by_opportunity.values()),
         )
         for row in processes
-        if any(row.code in codes for codes in codes_by_opportunity.values())
     ]
     companies = session.execute(
         select(Opportunity, Customer)
