@@ -45,9 +45,9 @@ export interface Meta {
   evaluatedAsNew?: boolean | null;
   total?: number | null;
   notEvaluatedCount?: number | null;
-  /** 목록 머리용(#210). 공정 탭: 기회가 있는 공정만, 역량 파일 순서. */
+  /** 목록 머리 공정 선택란용(#210 → #361). 거산 공정 전부, 역량 파일 순서. 회사가 0곳인 공정도 count 0으로 온다. */
   processCounts?: ProcessCount[] | null;
-  /** 지역·산업 선택지와 건수. 현재 공정 탭 안 건수이고 0건은 서버가 빼서 준다. */
+  /** 지역·산업 선택지와 건수. 지금 고른 공정 안 건수이고 0건은 서버가 빼서 준다. */
   regionCounts?: RegionCount[] | null;
   industryCounts?: IndustryCount[] | null;
   /** 마지막 후보 수집 회차 요약(#316, 계약 C1 `meta.latestIngest`). 한 번도 안 가져왔으면 null·없음. */

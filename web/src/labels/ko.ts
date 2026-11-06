@@ -335,22 +335,44 @@ export const detailHeader = {
   owner: '담당',
 } as const;
 
-/** 추천 목록 머리의 공정 탭·지역·산업 선택과 카드 꼬리표(#210, 결정 2026-11-03 밤). */
+/**
+ * 추천 목록 머리의 공정·지역·산업 선택란과 카드 꼬리표(#210, 결정 2026-11-03 밤).
+ * 공정은 탭에서 선택란으로 바뀌었고 "전체"를 두지 않는다(#361, 2026-11-06 PM 결정).
+ */
 export const listFilters = {
-  tabsLabel: '공정',
+  processLabel: '공정',
   regionLabel: '지역',
   industryLabel: '산업',
   all: '전체',
-  /** "천안 인근 8" */
+  /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
-  /** "전기아연도금 (9)" */
-  tab: (name: string, count: number) => `${name} (${count})`,
   /** 조건을 걸었는데 0건일 때. */
   filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
-  /** 대시보드 건수·검색으로 넘어와 걸러진 목록이 비었을 때. */
+  /** 대시보드 건수로 넘어와 걸러진 목록이 비었을 때. */
   noMatch: '이 조건에 맞는 후보가 없습니다.',
+  /** 고른 공정에 회사가 한 곳도 없을 때(#361). */
+  processEmpty: '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
   regionUnknown: '지역 미확인',
   industryUnknown: '산업 미확정',
+} as const;
+
+/**
+ * 추천 목록 머리의 회사 이름 검색 칸과 정렬(#361, 2026-11-06 PM 결정).
+ * 검색 칸 이름·자리 글자·단추는 대시보드 검색 칸과 뜻이 같아 같은 말을 쓴다.
+ */
+export const listSearch = {
+  label: dashboardTexts.searchLabel,
+  placeholder: dashboardTexts.searchPlaceholder,
+  button: dashboardTexts.searchButton,
+  /** 검색 중일 때 결과 위에 검색어와 함께 보인다. 검색은 고른 공정·지역·산업과 상관없이 전체 후보에서 한다. */
+  resultTitle: '전체 후보에서 찾은 결과',
+  clear: '검색 지우기',
+  /** 검색했는데 0곳일 때. */
+  empty: '이 이름으로 찾은 후보가 없습니다',
+  sortLabel: '정렬',
+  sortRank: '추천 순',
+  /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
+  sortDistance: '가까운 순 (준비 중)',
 } as const;
 
 /**

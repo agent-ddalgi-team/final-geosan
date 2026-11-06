@@ -290,8 +290,9 @@ describe('OpportunityListPage', () => {
     expect(screen.getAllByTestId('card-rank')[0]).toHaveTextContent('21');
   });
 
-  describe('공정 탭·지역·산업 선택 (#210)', () => {
-    it('조건 없이 처음 열면 첫 공정 탭을 주소에 넣고 그 공정으로 다시 불러온다', async () => {
+  // 공정은 탭에서 선택란으로 바뀌었다(#361, 2026-11-06 PM 결정). 검사의 뜻은 그대로 두고 선택란 기준으로 본다.
+  describe('공정·지역·산업 선택란 (#210, #361)', () => {
+    it('조건 없이 처음 열면 첫 공정을 주소에 넣고 그 공정으로 다시 불러온다', async () => {
       mockedGet.mockResolvedValueOnce(reply([apjeong], { processCounts: TABS }));
       mockedGet.mockResolvedValueOnce(reply([apjeong], { processCounts: TABS, total: 9 }));
       renderPage();
@@ -302,20 +303,16 @@ describe('OpportunityListPage', () => {
       expect(screen.getByTestId('location')).toHaveTextContent(
         '/opportunities?process=ZINC_PLATING',
       );
-      expect(screen.getByTestId('list-process-tab-ZINC_PLATING')).toHaveAttribute(
-        'aria-selected',
-        'true',
-      );
-      expect(screen.getByTestId('list-process-tab-ANODIZING')).toHaveAttribute(
-        'aria-selected',
-        'false',
-      );
-      expect(screen.getByTestId('list-process-tab-ZINC_PLATING')).toHaveTextContent(
-        '전기아연도금 (9)',
-      );
+      const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
+      expect(select.value).toBe('ZINC_PLATING');
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['전기아연도금 9', '아노다이징 10']);
     });
 
-    it('탭을 누르면 그 공정으로 다시 불러오고 지역·산업은 전체로 돌아간다', async () => {
+    it('공정을 고르면 그 공정으로 다시 불러오고 지역·산업은 전체로 돌아간다', async () => {
       const user = userEvent.setup();
       mockedGet.mockResolvedValue(
         reply([apjeong], {
@@ -326,7 +323,7 @@ describe('OpportunityListPage', () => {
       );
       renderPage('/opportunities?process=ZINC_PLATING&region=아산시&industry=자동차 부품');
       await screen.findByTestId('opportunity-card');
-      await user.click(screen.getByTestId('list-process-tab-ANODIZING'));
+      await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
       await waitFor(() =>
         expect(mockedGet).toHaveBeenLastCalledWith(1, PAGE_SIZE, expect.any(AbortSignal), {
           ...NO_FILTERS,
@@ -419,19 +416,19 @@ describe('OpportunityListPage', () => {
       ['/opportunities?filter=SCHEDULE_DUE', { filter: 'SCHEDULE_DUE' }],
       ['/opportunities?q=A정밀', { q: 'A정밀' }],
     ])(
-      '대시보드에서 %s 로 넘어오면 조건을 서버에 보내고 공정 탭 없이 전체를 보인다',
+      '대시보드에서 %s 로 넘어오면 조건을 서버에 보내고 공정 선택란 없이 전체를 보인다',
       async (url, expected) => {
         mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
         renderPage(url);
         await screen.findByTestId('opportunity-card');
         expect(mockedGet).toHaveBeenCalledTimes(1);
         expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, ...expected });
-        expect(screen.queryByTestId('list-process-tabs')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
         expect(screen.getByTestId('location')).toHaveTextContent(url);
       },
     );
 
-    it('걸러서 0건이면 조건을 바꿔 보라는 문구를 보이고, 탭·선택 상자는 그대로 남는다', async () => {
+    it('걸러서 0건이면 조건을 바꿔 보라는 문구를 보이고, 공정·지역 선택란은 그대로 남는다', async () => {
       mockedGet.mockResolvedValue(
         reply([], {
           processCounts: TABS,
@@ -442,7 +439,9 @@ describe('OpportunityListPage', () => {
       );
       renderPage('/opportunities?process=ANODIZING&region=아산시');
       expect(await screen.findByText(listFilters.filteredEmpty)).toBeInTheDocument();
-      expect(screen.getByTestId('list-process-tab-ANODIZING')).toBeInTheDocument();
+      expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe(
+        'ANODIZING',
+      );
       expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
     });
 
