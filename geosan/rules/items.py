@@ -1,4 +1,4 @@
-"""입력과 설정만으로 신규 기회의 항목 점수를 계산한다 (BR4.1~4.5)."""
+"""입력과 설정만으로 신규 기회의 항목 점수를 계산한다 (BR4.1, BR4.2, BR4.3, BR4.4, BR4.5)."""
 
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def resolve_match_rate(item: ItemInput, config: ProfileItemConfig) -> float | No
 
 
 def calculate_items(data: EvaluationInput) -> list[ItemJudgmentOutput]:
-    """누락 항목도 미확보 행으로 남기고 설정 순서대로 계산한다 (BR4.1~4.5)."""
+    """누락 항목도 미확보로 남기고 설정 순서대로 계산한다 (BR4.1, BR4.2, BR4.3, BR4.4, BR4.5)."""
     if data.profile != Profile.NEW:
         raise ValueError("재접촉 프로필 계산은 U6에서 구현합니다")
     configs = data.rule_config.new_profile_items
@@ -137,7 +137,11 @@ def calculate_items(data: EvaluationInput) -> list[ItemJudgmentOutput]:
 def _calculate_item(
     item: ItemInput, config: ProfileItemConfig, data: EvaluationInput
 ) -> ItemJudgmentOutput:
-    """완료 상태·근거·대표 신호를 확인한 뒤 한 항목만 계산한다 (BR4.1~4.5)."""
+    """완료 상태·근거·대표 신호를 확인한 뒤 한 항목만 계산한다 (BR4.1, BR4.2, BR4.3, BR4.4, BR4.5).
+
+    BR4.3의 확실도는 입력 상태와 설정으로 정한다. 출처 등급 판정은 입력 전에 끝나며,
+    여기서는 D등급 자료만 연결된 항목을 점수 근거로 쓰지 않도록 확인한다.
+    """
     rate = resolve_match_rate(item, config)
     state, decay = item.state, 1.0
     reason = "입력된 판정 상태와 설정값으로 계산했습니다"

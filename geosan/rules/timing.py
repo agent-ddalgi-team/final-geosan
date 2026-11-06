@@ -16,7 +16,7 @@ from geosan.rules.models import (
 
 
 def core_evidence(data: EvaluationInput, items: list[ItemJudgmentOutput]) -> CoreEvidenceMet:
-    """설정의 핵심 항목 상태와 대조에 쓰인 공정·소재 검수를 확인한다 (BR5.1)."""
+    """설정의 핵심 항목 상태와 대조에 쓰인 공정·소재 검수를 확인한다 (BR1.3, BR5.1)."""
     rule = data.rule_config.core_evidence.new
     by_code = {item.item_code: item for item in items}
     if not rule.items or any(
@@ -58,7 +58,11 @@ def direct_action_signals(data: EvaluationInput) -> list[SignalInput]:
 
 
 def timing_requirements(data: EvaluationInput) -> TimingRequirements:
-    """같은 행동 신호의 실행기간과 현재 담당자 체크를 반영한다 (BR5.2~5.4)."""
+    """같은 행동 신호의 실행기간과 현재 담당자 체크를 반영한다 (BR5.2, BR5.3, BR5.4).
+
+    BR5.4의 마감일·필수 요구 판정 변경에 따른 체크 초기화는 평가 원장이 맡는다.
+    여기서는 현재 체크 여부를 판정한다.
+    """
     actions = direct_action_signals(data)
     agreed = any(
         s.agreed_window is not None
@@ -138,6 +142,7 @@ def readiness_needs_reset(
         raise ValueError("같은 기회의 기한 체크만 비교할 수 있습니다")
 
     def signature(data: EvaluationInput, checks: list[RequirementCheckOutput]):
+        """행동 신호의 기한·예정일과 지금 필수 요구 결과만 비교 대상으로 묶는다 (BR7.4)."""
         deadlines = sorted(
             (s.signal_id, s.deadline_at, s.scheduled_at) for s in direct_action_signals(data)
         )

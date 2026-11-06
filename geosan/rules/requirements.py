@@ -1,4 +1,6 @@
-"""요구 조건 판정·표시·공정별 필터를 입력 스냅샷만으로 계산한다 (BR3.1~3.7, BR3.10).
+"""요구 조건 판정·표시·공정별 필터를 입력 스냅샷만으로 계산한다.
+
+적용 규칙: BR3.1, BR3.2, BR3.3, BR3.4, BR3.5, BR3.6, BR3.7, BR3.10.
 
 REQUIRED·UNKNOWN 단계의 PASS 표시는 BR3.3·S08을 잠정 적용한다(이슈 #6, PM 확정 대기).
 DB·파일·현재 시각을 사용하지 않고 경계 모델이나 입력을 변경하지 않는다.
@@ -51,7 +53,10 @@ class RequirementComparison:
 
 @dataclass(frozen=True)
 class RequirementAssessment:
-    """C3 EvaluationOutput의 요구·필터 관련 값만 묶은 내부 계산 결과 (BR3.1~3.7)."""
+    """C3 EvaluationOutput의 요구·필터 관련 값만 묶은 내부 계산 결과.
+
+    적용 규칙: BR3.1, BR3.2, BR3.3, BR3.4, BR3.5, BR3.6, BR3.7.
+    """
 
     requirement_checks: list[RequirementCheckOutput]
     filter_state: FilterState
@@ -81,7 +86,10 @@ def requirement_display(requirement: RequirementInput, result: CheckResult) -> C
 def check_requirement(
     requirement: RequirementInput, evaluation_input: EvaluationInput
 ) -> RequirementCheckOutput:
-    """요구 하나의 비교 결과를 기존 C3 판정 행으로 만든다 (BR3.1~3.6)."""
+    """요구 하나의 비교 결과·단계·범위·표시를 C3 판정 행으로 만든다 (BR3.1, BR3.3, BR3.5, BR3.6).
+
+    판정 행을 저장하는 일은 평가 원장이 맡는다.
+    """
     comparison = compare_requirement(requirement, evaluation_input)
     reason = comparison.reason
     if comparison.result == CheckResult.EXCLUDED and requirement.req_level != ReqLevel.REQUIRED:
@@ -170,7 +178,10 @@ def _check_process_link(
     evaluation_input: EvaluationInput,
     blocking: list[RequirementCheckOutput],
 ) -> ProcessLinkResult:
-    """공정·소재와 그 연결의 필수 요구만 판정해 다른 연결로 제외를 전파하지 않는다 (BR3.7)."""
+    """공정 연결별 검수·필수 요구를 판정해 제외를 전파하지 않는다 (BR1.3, BR3.4, BR3.7, BR5.6).
+
+    소개서 값의 검수 대기는 필터 제외 대신 운영 준비로 남긴다.
+    """
     checks = [
         check
         for check in blocking
@@ -232,7 +243,7 @@ def _check_process_link(
 def compare_requirement(
     requirement: RequirementInput, evaluation_input: EvaluationInput
 ) -> RequirementComparison:
-    """요구 하나를 비교한다. 수준·필요 단계는 추정하거나 바꾸지 않는다 (BR3.1~3.6).
+    """요구 하나를 비교한다. 수준·필요 단계는 추정하거나 바꾸지 않는다 (BR3.2, BR3.5, BR3.6).
 
     LATER는 현재 자격의 충족 여부와 무관하게 UNKNOWN이다. QUANTITY_DELIVERY는
     항상 UNKNOWN이며 필터에서 제외해야 한다(BR3.6). 표시값·필터는 여기서 계산하지 않는다.
@@ -297,10 +308,14 @@ def _compare_qualification_candidate(
     qualification: QualificationInput,
     evaluation_input: EvaluationInput,
 ) -> RequirementComparison:
-    """검수·주체·사업장·범위·기간·현재 상태를 함께 확인한다 (BR1.3~1.5, BR3.2)."""
+    """검수·주체·사업장·범위·기간·현재 상태를 함께 확인한다 (BR1.3, BR1.4, BR1.5, BR3.2).
+
+    BR1.5의 최신 상태 이력 선택은 입력 전에 끝난다. 여기서는 전달받은 상태와 기간을 대조한다.
+    """
     compared_value = qualification.model_dump(mode="json", by_alias=True)
 
     def result(code: CheckResult, reason: str) -> RequirementComparison:
+        """자격 판정에 사유·비교값·자격 ID를 붙인다 (BR3.1, BR3.2)."""
         return RequirementComparison(code, reason, compared_value, qualification.qual_id)
 
     if qualification.review_status != ReviewStatus.REVIEWED:
@@ -345,7 +360,7 @@ def _compare_qualification_candidate(
 def _compare_technical(
     requirement: RequirementInput, evaluation_input: EvaluationInput
 ) -> RequirementComparison:
-    """해당 공정의 검수된 수치 사양과 동일 이름·동일 단위로 대조한다 (BR3.6).
+    """해당 공정의 수치 사양과 동일 이름·동일 단위로 대조한다 (BR1.2, BR3.6).
 
     설정에 없는 이름 대응표나 단위 변환은 추정하지 않는다. 설비·시험 설명은
     수치 사양(SPEC) 대조 대상에 포함하지 않는다.
@@ -386,7 +401,7 @@ def _compare_technical(
 def _compare_specification(
     required_value: float, capability: CapabilityInput
 ) -> RequirementComparison:
-    """검수된 최소·최대 범위의 양 끝을 포함해 비교한다 (BR3.6)."""
+    """검수된 수치 사양의 최소·최대 범위 양 끝을 포함해 비교한다 (BR1.2, BR1.3, BR3.6)."""
     compared_value = capability.model_dump(mode="json", by_alias=True)
     if capability.review_status != ReviewStatus.REVIEWED:
         return RequirementComparison(

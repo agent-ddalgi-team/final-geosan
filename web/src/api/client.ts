@@ -135,8 +135,32 @@ export function getConfigUi(signal?: AbortSignal) {
   return request<ConfigUi>('/config/ui', { signal });
 }
 
-export function getOpportunities(page = 1, pageSize = 20, signal?: AbortSignal) {
+/** 목록 조건(#210). 비어 있는 값은 보내지 않는다. 서버는 이 조건들을 모두 AND로 건다. */
+export interface ListFilters {
+  /** 공정 코드(예: ANODIZING). 주면 그 공정 연결 기회만, 순위는 그 안 번호. */
+  process?: string | null;
+  /** 시·군 또는 묶음 이름(예: 천안 인근, 아산시). */
+  region?: string | null;
+  /** 설정에 있는 산업군 이름. */
+  industry?: string | null;
+  /** 영업 단계(예: INTERESTED). 대시보드 건수에서 넘어올 때 쓴다. */
+  stage?: string | null;
+  /** 대시보드 "이번 주 일정"에서 넘어올 때 SCHEDULE_DUE. */
+  filter?: string | null;
+  /** 회사·기회·산업군 검색어. */
+  q?: string | null;
+}
+
+export function getOpportunities(
+  page = 1,
+  pageSize = 20,
+  signal?: AbortSignal,
+  filters: ListFilters = {},
+) {
   const query = new URLSearchParams({ tab: 'new', page: String(page), pageSize: String(pageSize) });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) query.set(key, value);
+  }
   return request<OpportunityCard[]>(`/opportunities?${query.toString()}`, { signal });
 }
 
