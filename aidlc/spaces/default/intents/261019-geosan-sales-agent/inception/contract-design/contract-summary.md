@@ -509,6 +509,8 @@ flows:
     then: [OpportunityRegistry 병합, 영향 기회, run_evaluation]
   run_ingest:                # ⑥ 수집 (U3·U9)
     input: { sourceId: string, scopeOverride: object | null, requestedBy: string }
+    # (갱신 2026-11-06 PM 결정, #342 — 윗줄을 바꿈) input: { batchId: string }. 창구(POST /ingest)나 명령(geosan ingest)이 회차(opp_ingest_batch)를 먼저 만들고 회차 번호만 넘긴다. 소스·조건(criteria)·최대 건수(maxCandidates)·다시 판단 여부(rejudge)·요청자(requestedBy)는 실행 함수가 회차에서 읽는다(C6 #327 줄과 같음). 함수가 아직 없어 깨지는 코드는 없다
+    #   AI 판단 다시 쓰기(PM 결정 2026-11-06, #221): 거산 전체 공정·산업 목록으로 한 번 판단해 저장하고(탈락 판단도 저장), 담당자가 조건을 바꾸면 저장된 판단에서 거르기만 한다. criteriaVersion에 담당자가 고른 공정·산업을 넣지 않는다(C6 src_candidate_judgment 줄 그대로). fitLevel·pickReason은 회사당 하나이고 거산 공정 가운데 가장 잘 맞는 공정 기준이다(공정별 등급은 1차에 없음)
     outside: [SourceIngestion 어댑터 읽기(파일·API, 재시도 1회)]
     then: [정규화·병합 후보, OpportunityRegistry 등록, IngestionRun 집계, run_evaluation(새 기회)]
 ```
@@ -912,6 +914,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C0·C1·C4·C5·C6·C7·C9 | (2026-11-06, PM 결정 — 목록에 조회의 단지 입주 목록을 더함) 후보 찾기의 목록 출발점을 **공장현황 파일 하나에서 파일 + 공장등록 조회의 단지 입주 목록 둘로** 늘린다(확인: 천안제3일반산업단지 파일 100행·조회 266행, 조회에만 있는 제조업 14곳). 2026-11-05 저녁 줄의 "산업단지명 조회를 목록에 쓰는 설계는 2차 때 다시 정한다"를 1차로 당긴 것이고, 파일을 목록으로 쓰는 것은 그대로다(단지 밖 공장은 파일에서만 나옴). 부를 단지 이름은 파일의 단지명에서 얻고, 조회 결과는 주소로 다시 거르며, 파일과 같은 회사는 더하지 않는다. `discoverySource` `FACTORY_API`, `meta.latestIngest.complexListSkippedReason`과 화면 문구, C4 업종명 전송, `src_factory_row` 3열·`src_complex_fetch`, 설정 `ingestion.complexList`. 대표자 이름·팩스번호·전화번호·홈페이지 주소는 목록 단계에서 버린다. 옛 줄 2곳은 지우지 않고 "바뀜" 표시만 붙임. 그 밖은 모두 더하는 변경 | #323 · #221 (1차, 유동렬) |
 | C4·C6 | (2026-11-06, PM 결정 — 후보 찾기 저장 표) 회차·확인 필요 후보·공장 행·AI 판단·단지 조회 기록·웹 검색 실행과 후보·소스 이용 확인·수집 집계 표 9개와 회사·공정 연결의 찾기 칸을 **PM 세션이 한 PR로 먼저 만든다**(유동렬·이강욱은 이 표에 쓰는 코드만 만든다). 약속에 없던 칸을 먼저 적음: 회차의 `maxCandidates`·`rejudge`·`skippedCount`·`failureReason`·웹 건수 5칸, 회사의 `fitLevel`·`pickReason`, 실행 중 회차는 DB가 하나만 허용. **AI 사용 기록(`tg_transfer_log`)의 `oppId`를 빈 값 허용으로 바꾸고 `batchId`를 더함**(후보 판단은 영업기회가 생기기 전이라 번호가 없음 — 따로 표를 만들지 않아 월 한도 합산이 한 곳에 남는다). 카드·목록 머리 응답 칸과 명세 파일 갱신은 다음 PR. tg_ 한 칸만 형식 변경(넓히는 쪽), 나머지는 더하는 변경 | #327 · #221·#317 (1차) |
 | C7 | (2026-11-06, PM 결정 — 사례 파일 홈페이지 칸) 사례 파일 `customer.homepageUrl`(선택)을 더함. 적으면 확정·사례 파일 출처로 저장해 상세 회사 링크가 공식 주소를 가리킨다(모션텍처럼 근거 주소에서 홍보관 주소가 뽑히는 문제). 비우면 지금 주소 유지, 담당자가 고친 주소가 있으면 그 값 유지 + 경고. `contracts/case-file.schema.json`·예시 틀·작성 안내서 같이 고침. 더하는 변경 | #190 · #332 (PM), 모션텍 파일은 유동렬 |
+| C0·C1·C2 | (2026-11-06, PM 결정 — 후보 찾기 응답 칸과 실행 함수 입력) 이미 적혀 있던 응답 칸을 **공통 응답 모델과 명세 파일에 실음**: 목록 `meta.latestIngest`(회차 요약 19칸), 카드의 `ingestBatchId`·`ingestedAt`·`isNewInLatestBatch`, 카드·상세 머리의 `discoverySource`·`discoverySourceUrl`·`registryStatus`·`fitLevel`·`pickReason`·`ownPlatingLineSuspected`·`ownPlatingLineBasis`, 코드표 `DiscoverySource`·`FitLevel`. 상세에서는 머리에 둔다(위치가 안 적혀 있었음). 값은 창구(#317)가 채우고 그 전에는 응답에 안 나온다. **C2 `run_ingest` 입력을 회차 번호 하나로 맞춤**(C6 #327 줄과 달랐던 것을 정리, 함수는 아직 없음). **AI 판단은 한 번 해 두고 조건이 바뀌면 거르기만 함**, `fitLevel`·`pickReason`은 가장 잘 맞는 공정 기준(#221). 응답 칸은 더하는 변경, C2는 구현 전 형식 정리 | #342 · #317·#221 (1차) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
