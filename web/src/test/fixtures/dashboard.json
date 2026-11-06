@@ -1,10 +1,15 @@
 {
   "data": {
     "counts": {
-      "NOT_CONTACTED": 12,
-      "INTERESTED": 4,
-      "IN_CONTACT": 3,
+      "BOOKMARKED": 12,
+      "NO_OPINION": 3,
+      "NEED_CHECK": 2,
+      "NOT_TARGET": 1,
+      "NOT_CONTACTED": 2,
+      "IN_CONTACT": 2,
       "QUOTE_SAMPLE": 1,
+      "ON_HOLD": 0,
+      "DONE": 1,
       "SCHEDULE_DUE": 3
     },
     "schedule": [
@@ -58,7 +63,7 @@
         "oppId": "opp-1",
         "customerName": "A정밀",
         "kind": "STAGE",
-        "summary": "관심 → 접촉 중"
+        "summary": "미접촉 → 접촉 중"
       },
       {
         "at": "2026-11-02T11:25:00+09:00",
@@ -85,12 +90,7 @@
     "asOf": "2026-11-03T09:00:00+09:00",
     "breakdown": {
       "basis": {
-        "statuses": [
-          "INTERESTED",
-          "IN_PROGRESS",
-          "SAMPLE_OR_REGISTRATION_APPROVED",
-          "WON_LAST_12M"
-        ],
+        "statuses": ["IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED", "WON_LAST_12M"],
         "total": 8
       },
       "byProcess": [

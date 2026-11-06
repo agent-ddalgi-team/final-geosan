@@ -16,7 +16,6 @@ describe('labels', () => {
   it('영업 단계·접촉 방법과 결과·검토사항을 약속한 순서의 쉬운 말로 읽는다', () => {
     expect(Object.values(outcomeStatusLabels)).toEqual([
       '미접촉',
-      '관심',
       '접촉',
       '견적·샘플',
       '보류',

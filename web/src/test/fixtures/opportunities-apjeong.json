@@ -31,6 +31,17 @@
     "hasVirtualData": true,
     "datasetKind": "VIRTUAL_REVIEWED",
     "total": 1,
-    "notEvaluatedCount": 0
+    "notEvaluatedCount": 0,
+    "processCounts": [
+      { "processCode": "ZINC_PLATING", "processName": "아연도금(전기아연도금)", "count": 0 },
+      { "processCode": "ANODIZING", "processName": "아노다이징", "count": 1 },
+      { "processCode": "BLACK_OXIDE", "processName": "흑착색(알카리흑착)", "count": 0 },
+      { "processCode": "CHROMATE", "processName": "크로메이트", "count": 0 },
+      { "processCode": "ELECTROPOLISHING", "processName": "전해연마", "count": 0 },
+      { "processCode": "CHROME_PLATING", "processName": "크롬도금", "count": 0 },
+      { "processCode": "ELECTROLESS_NICKEL", "processName": "무전해니켈", "count": 0 },
+      { "processCode": "PHOSPHATE_COATING", "processName": "인산염피막", "count": 0 },
+      { "processCode": "PASSIVATION", "processName": "부동태", "count": 0 }
+    ]
   }
 }

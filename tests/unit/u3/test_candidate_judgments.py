@@ -1,4 +1,4 @@
-"""#328: 가상 AI 결과의 전체 행 검증·조건 선택·기준 변경 검사. 외부 호출 없음."""
+"""#328·#336: 가상 AI 결과의 행·조건·표면처리 표시 검사. 외부 호출 없음."""
 
 import copy
 import json
@@ -24,6 +24,8 @@ def judgment(row_id="row-1", **changes):
         "industries": ["자동차 부품"],
         "reason": "볼트를 만드는 회사로 아연도금 수요를 확인할 수 있음",
         "fitLevel": "HIGH",
+        "ownPlatingLineSuspected": False,
+        "ownPlatingLineBasis": None,
     }
     return value | changes
 
@@ -41,8 +43,6 @@ def criteria(**changes):
     return {
         "process_catalog": dict(PROCESSES),
         "industry_catalog": list(INDUSTRIES),
-        "process_codes": ["ZINC_PLATING", "ANODIZING"],
-        "industries": list(INDUSTRIES),
         "prompt": "제조업 여부와 필요한 공정을 공개 생산품 글에서 판단한다.",
     } | changes
 
@@ -54,6 +54,51 @@ def test_valid_judgments_return_in_approved_order_without_changing_proposals():
     assert [item.fit_level for item in result] == ["HIGH", "LOW"]
     assert result[0].model_dump(by_alias=True) == rows[1]
     assert result[1].model_dump(by_alias=True) == rows[0]
+
+
+@pytest.mark.parametrize(
+    "suspected,basis", [(False, None), (True, "생산품: 알루미늄 아노다이징"), (True, None)]
+)
+def test_surface_fields_are_preserved_without_automatic_exclusion(suspected, basis):
+    row = judgment(ownPlatingLineSuspected=suspected, ownPlatingLineBasis=basis)
+    parsed = parse([row])
+    assert parsed[0].model_dump(by_alias=True) == row
+    assert select_candidates(parsed, process_codes=["ZINC_PLATING"]) == parsed
+    assert parsed[0].is_manufacturer is True
+    assert parsed[0].process_codes == ["ZINC_PLATING"]
+    assert parsed[0].fit_level == "HIGH"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"ownPlatingLineSuspected": "true"},
+        {"ownPlatingLineSuspected": 1},
+        {"ownPlatingLineSuspected": None},
+        {"ownPlatingLineBasis": 1},
+        {"ownPlatingLineBasis": []},
+        {"ownPlatingLineBasis": ""},
+        {"ownPlatingLineBasis": "  "},
+    ],
+)
+def test_surface_fields_reject_invalid_values(changes):
+    with pytest.raises(AppError) as error:
+        parse([judgment(**changes)])
+    assert error.value.kind == "LLM_FAILED"
+
+
+@pytest.mark.parametrize(
+    "basis",
+    ["test@example.invalid로 문의", "가상번호 010-0000-0000", "가상 ＴＥＳＴ＠example.invalid"],
+)
+def test_surface_basis_contacts_reject_whole_response_without_echo(basis, caplog):
+    rows = [judgment(), judgment("row-2", ownPlatingLineSuspected=True, ownPlatingLineBasis=basis)]
+    with pytest.raises(AppError) as error:
+        parse(rows, ["row-1", "row-2"])
+    assert error.value.kind == "LLM_FAILED"
+    assert error.value.status == 503
+    assert basis not in str(error.value) + repr(error.value.to_error_body()) + caplog.text
+    assert error.value.__suppress_context__ is True
 
 
 @pytest.mark.parametrize(
@@ -99,7 +144,17 @@ def test_invalid_types_or_values_are_not_coerced_or_silently_removed(changes):
 
 
 @pytest.mark.parametrize(
-    "field", ["rowId", "isManufacturer", "processCodes", "industries", "reason", "fitLevel"]
+    "field",
+    [
+        "rowId",
+        "isManufacturer",
+        "processCodes",
+        "industries",
+        "reason",
+        "fitLevel",
+        "ownPlatingLineSuspected",
+        "ownPlatingLineBasis",
+    ],
 )
 def test_every_contract_field_is_required(field):
     value = judgment()
@@ -210,8 +265,6 @@ def test_criteria_fingerprint_ignores_order_and_does_not_mutate_inputs():
     reordered = criteria(
         process_catalog=dict(reversed(list(PROCESSES.items()))),
         industry_catalog=list(reversed(INDUSTRIES)),
-        process_codes=list(reversed(list(PROCESSES))),
-        industries=list(reversed(INDUSTRIES)),
     )
     assert version == candidate_criteria_version(**reordered)
     assert len(version) == 64
@@ -224,8 +277,6 @@ def test_criteria_fingerprint_ignores_order_and_does_not_mutate_inputs():
         {"process_catalog": PROCESSES | {"ZINC_PLATING": "전기아연도금"}},
         {"process_catalog": PROCESSES | {"NEW_PROCESS": "새 공정"}},
         {"industry_catalog": INDUSTRIES + ["새 산업"]},
-        {"process_codes": ["ZINC_PLATING"]},
-        {"industries": []},
         {"prompt": "변경된 판단 지시문"},
     ],
 )
@@ -238,8 +289,8 @@ def test_changed_criteria_cannot_reuse_old_fingerprint(change):
 @pytest.mark.parametrize(
     "change",
     [
-        {"process_codes": ["UNKNOWN"]},
-        {"industries": ["UNKNOWN"]},
+        {"process_catalog": {}},
+        {"industry_catalog": ["자동차 부품", "자동차 부품"]},
         {"prompt": " "},
         {"prompt": None},
     ],
@@ -247,3 +298,23 @@ def test_changed_criteria_cannot_reuse_old_fingerprint(change):
 def test_invalid_criteria_is_not_fingerprinted(change):
     with pytest.raises(InputError):
         candidate_criteria_version(**criteria(**change))
+
+
+def test_changed_selection_reuses_full_catalog_judgments_and_best_fit_reason():
+    """#221 PM 결정: 선택은 나중에 거르고 전체 목록과 지시문만 기준에 넣는다."""
+    version = candidate_criteria_version(**criteria())
+    parsed = parse(
+        [
+            judgment("zinc"),
+            judgment("aluminium", processCodes=["ANODIZING"], industries=["반도체"]),
+            judgment("logistics", isManufacturer=False),
+        ],
+        ["zinc", "aluminium", "logistics"],
+    )
+    before = copy.deepcopy(parsed)
+    zinc = select_candidates(parsed, process_codes=["ZINC_PLATING"], industries=["자동차 부품"])
+    aluminium = select_candidates(parsed, process_codes=["ANODIZING"], industries=["반도체"])
+    assert [row.row_id for row in zinc] == ["zinc"]
+    assert [row.row_id for row in aluminium] == ["aluminium"]
+    assert version == candidate_criteria_version(**criteria())
+    assert parsed == before  # 전체 기준의 적합도·이유와 탈락 판단도 그대로 보존한다.

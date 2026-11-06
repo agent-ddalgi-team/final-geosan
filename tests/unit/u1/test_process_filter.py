@@ -63,8 +63,15 @@ def test_process_tabs_count_distinct_current_links_and_keep_file_order(process_e
     expected_codes = [
         p["code"] for p in capability["processes"] if p["code"] in {"ANODIZING", "ZINC_PLATING"}
     ]
-    assert [p["processCode"] for p in counts] == expected_codes
-    assert {p["processCode"]: p["count"] for p in counts} == {"ANODIZING": 2, "ZINC_PLATING": 2}
+    # 목록 머리 선택란(#361, PM 결정 2026-11-06): 기회가 0곳인 공정도 역량 파일 순서대로 모두 온다.
+    all_codes = [p["code"] for p in capability["processes"]]
+    assert len(all_codes) == 9
+    assert [p["processCode"] for p in counts] == all_codes
+    assert {p["processCode"]: p["count"] for p in counts} == {
+        **dict.fromkeys(all_codes, 0),
+        "ANODIZING": 2,
+        "ZINC_PLATING": 2,
+    }
     assert all("— 가상" not in p["processName"] for p in counts)
     both = next(row for row in whole["data"] if row["oppId"] == ids[1])
     assert both["processCodes"] == expected_codes
@@ -86,13 +93,13 @@ def test_process_filter_precedes_paging_and_combines_with_stage(process_env):
     assert second["meta"]["total"] == 2
     response = client.post(
         f"/api/v1/opportunities/{ids[1]}/outcomes",
-        json={"status": "INTERESTED"},
+        json={"status": "IN_PROGRESS"},
         headers={"X-Staff-Key": "park-lee"},
     )
     assert response.status_code == 200
-    interested = client.get(base + "&stage=INTERESTED").json()
-    assert [row["oppId"] for row in interested["data"]] == [ids[1]]
-    assert interested["data"][0]["rank"] == 1
+    in_contact = client.get(base + "&stage=IN_PROGRESS").json()
+    assert [row["oppId"] for row in in_contact["data"]] == [ids[1]]
+    assert in_contact["data"][0]["rank"] == 1
     assert client.get(base + "&page=3&pageSize=1").json()["data"] == []
     assert client.get("/api/v1/opportunities?process=BLACK_OXIDE").json()["data"] == []
     assert client.get("/api/v1/opportunities?process=WRONG").status_code == 400
@@ -113,8 +120,37 @@ def test_tabs_follow_reimported_capability_order(process_env, tmp_path):
     capability["processes"].reverse()
     import_capability(_write(tmp_path, "reordered.json", capability))
     counts = client.get("/api/v1/opportunities").json()["meta"]["processCounts"]
+    # 0곳인 공정도 함께 오므로(#361) 다시 넣은 파일의 공정 순서 전체와 같아야 한다.
     assert [row["processCode"] for row in counts] == [
+        row["code"] for row in capability["processes"]
+    ]
+    assert {row["processCode"]: row["count"] for row in counts if row["count"]} == {
+        "ANODIZING": 2,
+        "ZINC_PLATING": 2,
+    }
+
+
+def test_process_with_no_company_is_listed_with_zero_and_returns_empty_list(process_env):
+    """Given 회사가 0곳인 공정 / When 목록·그 공정 조회 / Then 건수 0으로 실리고 빈 목록(#361)."""
+    client, _, capability = process_env
+    whole = client.get("/api/v1/opportunities").json()
+    by_code = {row["processCode"]: row for row in whole["meta"]["processCounts"]}
+    zero_codes = [
         row["code"]
         for row in capability["processes"]
-        if row["code"] in {"ANODIZING", "ZINC_PLATING"}
+        if row["code"] not in {"ANODIZING", "ZINC_PLATING"}
     ]
+    assert len(zero_codes) == 7
+    # 교체된 연결(BLACK_OXIDE)만 있는 공정도 0곳으로 센다.
+    assert all(by_code[code]["count"] == 0 for code in zero_codes)
+    assert all(by_code[code]["processName"] for code in zero_codes)
+    for code in ("CHROME_PLATING", "BLACK_OXIDE"):
+        response = client.get(f"/api/v1/opportunities?process={code}")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["data"] == []
+        assert body["meta"]["total"] == 0
+        # 공정 건수는 고른 공정과 상관없이 같은 9종이다.
+        assert body["meta"]["processCounts"] == whole["meta"]["processCounts"]
+        assert body["meta"]["regionCounts"] == []
+        assert body["meta"]["industryCounts"] == []
