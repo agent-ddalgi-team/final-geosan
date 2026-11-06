@@ -8,6 +8,7 @@
 brand.demoLabel.
 더하는 변경(2026-11-06 PM 확인, #342): 후보 찾기 응답 칸 — meta.latestIngest, 카드의 들어온
 회차·고른 이유·공정 적합도 등, 상세 머리의 같은 칸. 값은 창구(#317)가 채운다.
+더하는 변경(2026-11-06 PM 확인, #347): meta.latestIngest.failureReason(찾기 실패 사유 한 줄).
 고친 것(2026-10-22 PM 확인, 이슈 #33): Scores의 `E/P/S/R/C` 키를 대문자 별칭으로 고정
 (약속 C1과 같음).
 """
@@ -113,6 +114,9 @@ class LatestIngest(_ApiModel):
     web_from_cache: bool
     web_skipped_reason: Literal["DAILY_LIMIT", "DISABLED"] | None
     complex_list_skipped_reason: Literal["DAILY_LIMIT", "SOURCE_ERROR", "DISABLED"] | None
+    failure_reason: str | None = Field(
+        description="찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)"
+    )
 
 
 class Meta(_ApiModel):
