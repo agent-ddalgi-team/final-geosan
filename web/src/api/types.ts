@@ -45,6 +45,25 @@ export interface Meta {
   evaluatedAsNew?: boolean | null;
   total?: number | null;
   notEvaluatedCount?: number | null;
+  /** 목록 머리용(#210). 공정 탭: 기회가 있는 공정만, 역량 파일 순서. */
+  processCounts?: ProcessCount[] | null;
+  /** 지역·산업 선택지와 건수. 현재 공정 탭 안 건수이고 0건은 서버가 빼서 준다. */
+  regionCounts?: RegionCount[] | null;
+  industryCounts?: IndustryCount[] | null;
+}
+
+export interface ProcessCount {
+  processCode: string;
+  processName: string;
+  count: number;
+}
+export interface RegionCount {
+  region: string;
+  count: number;
+}
+export interface IndustryCount {
+  industry: string;
+  count: number;
 }
 
 /** 성공 응답 `{ data, meta }`. */
@@ -154,6 +173,12 @@ export interface CardRecords {
 }
 
 export interface OpportunityCard {
+  /** 이 회사 주소의 시·군(예: 아산시). 주소가 없으면 null이고 카드는 "지역 미확인"을 보인다(#210). */
+  region?: string | null;
+  /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */
+  industries?: string[];
+  /** 이 기회가 걸린 공정 코드들. 카드는 공정 이름 꼬리표로 바꿔 보인다. */
+  processCodes?: string[];
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
