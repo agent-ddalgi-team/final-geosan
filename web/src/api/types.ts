@@ -186,10 +186,12 @@ export interface OpinionRecord extends RecordMeta {
   memo?: string | null;
 }
 
-/** 영업 단계 기록(C1 records.outcome). 카드에는 단계 꼬리표용으로 status만 쓴다. */
+/**
+ * 영업 단계 기록(C1 records.outcome). 카드에는 단계 꼬리표용으로 status만 쓴다.
+ * "관심"은 단계가 아니라 따로 켜고 끄는 표시(`records.bookmark`)다(약속 v3, 2026-11-06 PM 결정 #356).
+ */
 export type OutcomeStatus =
   | 'NOT_EXECUTED'
-  | 'INTERESTED'
   | 'IN_PROGRESS'
   | 'SAMPLE_OR_REGISTRATION_APPROVED'
   | 'ON_HOLD'

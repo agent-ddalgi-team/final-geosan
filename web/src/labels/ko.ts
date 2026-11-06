@@ -496,7 +496,6 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
 /** 영업 기록·검토사항의 쉬운 말 (약속 C0, C1). */
 export const outcomeStatusLabels = {
   NOT_EXECUTED: '미접촉',
-  INTERESTED: '관심',
   IN_PROGRESS: '접촉',
   SAMPLE_OR_REGISTRATION_APPROVED: '견적·샘플',
   ON_HOLD: '보류',
@@ -535,7 +534,6 @@ export const reviewItemSourceLabels = {
 
 /** 카드 영업 단계 꼬리표 색. 미접촉은 꼬리표를 보이지 않는다. */
 export const outcomeStatusTone: Record<string, StatusTone> = {
-  INTERESTED: 'ask',
   IN_PROGRESS: 'wait',
   SAMPLE_OR_REGISTRATION_APPROVED: 'ok',
   ON_HOLD: 'neutral',

@@ -218,11 +218,9 @@ export default function RecordsArea({
 
   async function onSaveContact() {
     if (!method || !result) return;
-    // 접촉했으니 아직 미접촉·관심이면 "접촉"으로 넘어가고, 그 뒤 단계는 그대로 둔다.
+    // 접촉했으니 아직 미접촉이면 "접촉"으로 넘어가고, 그 뒤 단계는 그대로 둔다.
     const status: OutcomeStatus =
-      currentStatus && currentStatus !== 'NOT_EXECUTED' && currentStatus !== 'INTERESTED'
-        ? currentStatus
-        : 'IN_PROGRESS';
+      currentStatus && currentStatus !== 'NOT_EXECUTED' ? currentStatus : 'IN_PROGRESS';
     const ok = await saveOutcome('contact', {
       status,
       method,

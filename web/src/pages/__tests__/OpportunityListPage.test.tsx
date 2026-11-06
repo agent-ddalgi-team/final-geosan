@@ -153,7 +153,7 @@ describe('OpportunityListPage', () => {
       }) as unknown as OpportunityCard;
     mockedGet.mockResolvedValueOnce(
       reply([
-        { ...withStage('INTERESTED'), oppId: 'a' },
+        { ...withStage('ON_HOLD'), oppId: 'a' },
         { ...withStage('IN_PROGRESS'), oppId: 'b' },
         { ...withStage('NOT_EXECUTED'), oppId: 'c' },
         { ...withStage(null), oppId: 'd' },
@@ -161,7 +161,7 @@ describe('OpportunityListPage', () => {
     );
     renderPage();
     const cards = await screen.findAllByTestId('opportunity-card');
-    expect(within(cards[0]).getByTestId('card-stage-tag')).toHaveTextContent('관심');
+    expect(within(cards[0]).getByTestId('card-stage-tag')).toHaveTextContent('보류');
     expect(within(cards[1]).getByTestId('card-stage-tag')).toHaveTextContent('접촉');
     expect(within(cards[2]).queryByTestId('card-stage-tag')).not.toBeInTheDocument();
     expect(within(cards[3]).queryByTestId('card-stage-tag')).not.toBeInTheDocument();
@@ -415,7 +415,7 @@ describe('OpportunityListPage', () => {
     });
 
     it.each([
-      ['/opportunities?stage=INTERESTED', { stage: 'INTERESTED' }],
+      ['/opportunities?stage=IN_PROGRESS', { stage: 'IN_PROGRESS' }],
       ['/opportunities?filter=SCHEDULE_DUE', { filter: 'SCHEDULE_DUE' }],
       ['/opportunities?q=A정밀', { q: 'A정밀' }],
     ])(

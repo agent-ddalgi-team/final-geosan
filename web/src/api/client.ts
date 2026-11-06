@@ -145,7 +145,7 @@ export interface ListFilters {
   region?: string | null;
   /** 설정에 있는 산업군 이름. */
   industry?: string | null;
-  /** 영업 단계(예: INTERESTED). 대시보드 건수에서 넘어올 때 쓴다. */
+  /** 영업 단계(예: IN_PROGRESS). 주소 `?stage=`로 넘어올 때 쓴다. */
   stage?: string | null;
   /** 대시보드 "이번 주 일정"에서 넘어올 때 SCHEDULE_DUE. */
   filter?: string | null;
