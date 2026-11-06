@@ -1210,6 +1210,18 @@
             ],
             "description": "조건 없이 돌린 회차는 null"
           },
+          "failureReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)",
+            "title": "Failurereason"
+          },
           "finishedAt": {
             "anyOf": [
               {
@@ -1327,7 +1339,8 @@
           "webDroppedCount",
           "webFromCache",
           "webSkippedReason",
-          "complexListSkippedReason"
+          "complexListSkippedReason",
+          "failureReason"
         ],
         "title": "LatestIngest",
         "type": "object"
