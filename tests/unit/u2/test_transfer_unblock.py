@@ -379,7 +379,8 @@ def test_old_database_upgrade_preserves_transfer_values(tmp_path, previous_revis
     assert upgrade_to_head(path) == ["tg_003"]
     with sqlite3.connect(path) as connection:
         after = connection.execute("SELECT * FROM tg_transfer_log").fetchone()
-    assert after == (*before, None, None)
+    # 옛 값은 그대로이고 뒤에 새 칸 셋(정산 시각·처리자, #327의 회차 번호)만 빈 값으로 붙는다.
+    assert after == (*before, None, None, None)
 
 
 def test_reconciliation_migration_preserves_question_reply_in_both_directions(tmp_path):
