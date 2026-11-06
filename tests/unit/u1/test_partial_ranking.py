@@ -128,6 +128,45 @@ def test_repeated_partial_evaluation_uses_latest_peer_result_and_can_restore_ord
     assert_list_ranks(client, order)
 
 
+def test_shared_customer_moves_all_its_opportunities_without_recalculating_peers(tmp_db, tmp_path):
+    """Given 같은 회사의 카드 둘 / When 거래 중 저장 / Then 둘 다 뒤로 가고 점수는 보존된다."""
+    import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
+    cases = []
+    for key, name in (
+        ("shared-a", "가상공유회사"),
+        ("shared-b", "가상공유회사"),
+        ("unrelated", "가상다른회사"),
+    ):
+        document = factories.apjeong_renamed_customer(key, name)
+        document["customer"]["relationStatus"] = "NEW_CONFIRMED"
+        cases.append(import_case(_write(tmp_path, f"{key}.json", document)))
+    assert cases[0].customer_id == cases[1].customer_id != cases[2].customer_id
+    assert flow_evaluate.run_evaluation().ok
+    target, sibling, unrelated = [case.opp_id for case in cases]
+    with TestClient(create_app()) as client:
+        original_order = [row["oppId"] for row in cards(client)]
+        before = current_runs([target, sibling, unrelated])
+        response = save(client, target, "EXISTING_CONFIRMED", detail(client, target)["evalId"])
+        assert response.status_code == 200, response.text
+        # BR6.4~6.5: 동점 카드끼리의 기존 기회 ID 순서는 보존하고 거래 중 묶음만 뒤로 보낸다.
+        expected = [unrelated] + [opp_id for opp_id in original_order if opp_id != unrelated]
+        assert_list_ranks(client, expected)
+        assert all(row["relationStatus"] == "EXISTING_CONFIRMED" for row in cards(client)[1:])
+        assert cards(client, page=1, pageSize=1)[0]["oppId"] == unrelated
+        assert [row["oppId"] for row in cards(client, process="ANODIZING")] == expected
+        after = current_runs([sibling, unrelated])
+        for opp_id in after:
+            assert {k: v for k, v in after[opp_id].items() if k != "original_rank"} == {
+                k: v for k, v in before[opp_id].items() if k != "original_rank"
+            }
+        # 다른 회사만 재평가해도 같은 회사의 옛 입력 스냅샷 때문에 순서가 되돌아가면 안 된다.
+        assert flow_evaluate.run_evaluation([unrelated]).ok
+        assert_list_ranks(client, expected)
+        response = save(client, target, "NEW_CONFIRMED", detail(client, target)["evalId"])
+        assert response.status_code == 200, response.text
+        assert_list_ranks(client, original_order)
+
+
 def test_research_reevaluation_preserves_peer_scores_and_population_ranks(extract_env, tmp_path):
     case, transport = extract_env
     opp_ids = [
@@ -192,6 +231,29 @@ def test_new_case_outside_full_population_does_not_leave_gaps(ranking_env, tmp_p
     assert flow_evaluate.run_evaluation([outside]).ok
     assert_list_ranks(client, order)
     assert current_runs([outside])[outside]["original_rank"] == 1
+
+
+def test_outside_opportunity_relation_updates_its_customers_visible_card(tmp_db, tmp_path):
+    """Given 목록 밖의 같은 회사 기회 / When 거래 중 저장 / Then 기존 카드도 함께 뒤로 간다."""
+    import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
+    target = add_case(tmp_path, "shared-company")
+    unrelated = add_case(tmp_path, "unrelated-company")
+    assert flow_evaluate.run_evaluation().ok
+    document = factories.apjeong_renamed_customer("outside-shared", "가상후보 shared-company")
+    document["customer"]["relationStatus"] = "NEW_CONFIRMED"
+    outside = import_case(_write(tmp_path, "outside-shared.json", document)).opp_id
+    assert flow_evaluate.run_evaluation([outside]).ok
+    before = current_runs([target, unrelated])
+    with TestClient(create_app()) as client:
+        assert len(cards(client)) == 2  # 목록 밖의 기회 자체는 전체 평가 전까지 섞지 않는다.
+        response = save(client, outside, "EXISTING_CONFIRMED", detail(client, outside)["evalId"])
+        assert response.status_code == 200, response.text
+        assert_list_ranks(client, [unrelated, target])
+        after = current_runs([target, unrelated])
+        for opp_id in after:
+            assert {k: v for k, v in after[opp_id].items() if k != "original_rank"} == {
+                k: v for k, v in before[opp_id].items() if k != "original_rank"
+            }
 
 
 def test_partial_evaluation_before_any_full_batch_stays_supported(tmp_db, tmp_path):
