@@ -1,6 +1,7 @@
 """SalesRecords 최소형 테이블 (rec_, entities.md). 이 파일의 열은 PM 세션만 고친다.
 
 U1은 담당자 의견(ReviewOpinion)만 둔다. 담기·승인·결과(U5)는 자기 테이블을 더한다.
+관심(찜) 표 rec_bookmark는 2026-11-06 PM 결정(#356)으로 더했다.
 """
 
 from __future__ import annotations
@@ -11,6 +12,22 @@ from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from geosan.storage.base import Base, CommonColumns, UtcDateTime
+
+
+class Bookmark(CommonColumns, Base):
+    """관심(찜) 표시. 켜고 끌 때마다 새 행이며 마지막 행이 현재 값이다(C6, #356)."""
+
+    __tablename__ = "rec_bookmark"
+
+    bookmark_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False, index=True
+    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    # 어떻게 생긴 행인지: MANUAL(단추) / AUTO_RECORD(기록 저장 때 자동) / MIGRATED(옮긴 자료)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class Note(CommonColumns, Base):

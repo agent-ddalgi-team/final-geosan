@@ -1,14 +1,16 @@
-"""대시보드 집계 (계약 C1 `GET /dashboard` v2, 이슈 #216).
+"""대시보드 집계 (계약 C1 `GET /dashboard` v3, 이슈 #216·#356).
 
-읽는 곳은 기록 표(단계·일정·메모·의견)와 최근 확정 평가의 대상 목록뿐이다.
+읽는 곳은 기록 표(관심·단계·일정·메모·의견)와 최근 확정 평가의 대상 목록뿐이다.
 평가 점수·분류는 섞지 않는다.
-세는 대상은 추천 목록(`GET /opportunities`)과 같다: 활성 거산 묶음의
-최근 확정 전체 평가 안에 있는 기회. 그래서 대시보드 건수를 눌러 열리는
-목록 건수와 같은 기준이 된다.
+건수는 **관심으로 켜 둔 기회만** 센다(#356). 대상 범위는 추천 목록(`GET /opportunities`)과
+같다: 활성 거산 묶음의 최근 확정 전체 평가 안에 있는 기회. 칸 나누기는 `classify_bookmarked`
+한 곳이 맡고 목록 거르기(`?filter=<칸>`)도 같은 함수를 써서, 칸의 숫자와 눌러 열리는 목록
+건수가 늘 같다.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -18,7 +20,7 @@ from sqlalchemy.orm import Session
 from geosan.evaluation.ledger import latest_full_batch
 from geosan.evaluation.models import EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.records.models import Note, Outcome, ReviewOpinion
+from geosan.records.models import Bookmark, Note, Outcome, ReviewOpinion
 
 # 계약 C1: "이번 주 일정" = 기한이 지난 것부터 오늘 + 7일까지.
 SCHEDULE_WINDOW_DAYS = 7
@@ -29,7 +31,6 @@ CLOSED_STATUSES = ("WON", "LOST")
 
 STAGE_LABELS = {
     "NOT_EXECUTED": "미접촉",
-    "INTERESTED": "관심",
     "IN_PROGRESS": "접촉",
     "SAMPLE_OR_REGISTRATION_APPROVED": "견적·샘플",
     "ON_HOLD": "보류",
@@ -51,12 +52,45 @@ OPINION_LABELS = {
 }
 
 
+# 계약 C1(#356): 관심 기업 전체 칸과, 관심 기업 하나가 꼭 하나에만 드는 여덟 칸.
+BOOKMARKED_KEY = "BOOKMARKED"
+BOARD_KEYS = (
+    "NO_OPINION",
+    "NEED_CHECK",
+    "NOT_TARGET",
+    "NOT_CONTACTED",
+    "IN_CONTACT",
+    "QUOTE_SAMPLE",
+    "ON_HOLD",
+    "DONE",
+)
+# ② 최신 영업 단계 → 칸. 여기 없는 단계(기록 없음·NOT_EXECUTED)는 ③ 검토 의견으로 정한다.
+_STAGE_BOARD_KEYS = {
+    "IN_PROGRESS": "IN_CONTACT",
+    "SAMPLE_OR_REGISTRATION_APPROVED": "QUOTE_SAMPLE",
+    "ON_HOLD": "ON_HOLD",
+    "WON": "DONE",
+    "LOST": "DONE",
+}
+# ③ 접촉 전일 때 최신 검토 의견 → 칸. None은 의견을 아직 고르지 않은 기회다.
+_OPINION_BOARD_KEYS = {
+    "WORTH_REVIEW": "NOT_CONTACTED",
+    "NEED_CHECK": "NEED_CHECK",
+    None: "NO_OPINION",
+}
+
+
 @dataclass(frozen=True)
 class DashboardCounts:
+    bookmarked: int
+    no_opinion: int
+    need_check: int
+    not_target: int
     not_contacted: int
-    interested: int
     in_contact: int
     quote_sample: int
+    on_hold: int
+    done: int
     schedule_due: int
 
 
@@ -113,6 +147,67 @@ def _latest_outcomes(session: Session, population) -> list[Outcome]:
             )
         )
     )
+
+
+def bookmarked_opp_ids(population=None):
+    """관심으로 켜 둔 기회 번호를 고르는 select: 기회마다 마지막 관심 행이 '켬'인 것.
+
+    대시보드 건수와 목록 거르기(`?bookmarked=true`, `?filter=<칸>`)가 이 한 곳을 같이 쓴다.
+    """
+    newest = select(Bookmark.opp_id, func.max(Bookmark.version).label("version")).group_by(
+        Bookmark.opp_id
+    )
+    if population is not None:
+        newest = newest.where(Bookmark.opp_id.in_(population))
+    newest = newest.subquery()
+    return (
+        select(Bookmark.opp_id)
+        .join(
+            newest, and_(Bookmark.opp_id == newest.c.opp_id, Bookmark.version == newest.c.version)
+        )
+        .where(Bookmark.active.is_(True))
+    )
+
+
+def board_key(opinion: str | None, stage: str | None) -> str:
+    """관심 기업 하나가 드는 칸(계약 C1 #356). 위에서부터 처음 맞는 칸 하나다.
+
+    ① 최신 검토 의견이 검토 대상 제외 → NOT_TARGET
+    ② 최신 영업 단계가 접촉·견적/샘플·보류·성사/거절 → IN_CONTACT·QUOTE_SAMPLE·ON_HOLD·DONE
+    ③ 단계 기록이 없거나 미접촉 → 의견에 따라 NOT_CONTACTED·NEED_CHECK·NO_OPINION
+    """
+    if opinion == "NOT_TARGET":
+        return "NOT_TARGET"
+    if stage in _STAGE_BOARD_KEYS:
+        return _STAGE_BOARD_KEYS[stage]
+    if stage not in (None, "NOT_EXECUTED"):
+        raise ValueError(f"모르는 영업 단계 값이라 대시보드 칸을 정할 수 없습니다: {stage!r}")
+    if opinion not in _OPINION_BOARD_KEYS:
+        raise ValueError(f"모르는 검토 의견 값이라 대시보드 칸을 정할 수 없습니다: {opinion!r}")
+    return _OPINION_BOARD_KEYS[opinion]
+
+
+def classify_bookmarked(session: Session, population=None) -> dict[str, str]:
+    """관심으로 켜 둔 기회마다 드는 칸 이름. 관심이 아닌 기회는 결과에 없다.
+
+    대시보드 건수와 목록 `?filter=<칸>`이 이 함수 하나를 같이 쓴다. `population`을 주면
+    그 안의 기회만 본다(대시보드: 최근 확정 평가 대상). 안 주면 관심 기업 전체다(목록은
+    자기 쪽에서 평가 대상과 AND 한다).
+    """
+    bookmarked = bookmarked_opp_ids(population)
+    opp_ids = list(session.scalars(bookmarked))
+    if not opp_ids:
+        return {}
+    # 상세·카드의 최신 의견(버전, 그다음 저장 시각)과 같은 순서로 마지막 행을 고른다.
+    opinions: dict[str, str] = {}
+    for opp_id, opinion in session.execute(
+        select(ReviewOpinion.opp_id, ReviewOpinion.opinion)
+        .where(ReviewOpinion.opp_id.in_(bookmarked))
+        .order_by(ReviewOpinion.version, ReviewOpinion.recorded_at)
+    ):
+        opinions[opp_id] = opinion
+    stages = {row.opp_id: row.status for row in _latest_outcomes(session, bookmarked)}
+    return {opp_id: board_key(opinions.get(opp_id), stages.get(opp_id)) for opp_id in opp_ids}
 
 
 def schedule_due_outcomes(today: date, population=None):
@@ -246,6 +341,16 @@ def _recent_activity(
     ]
 
 
+def _counts(classified: dict[str, str], schedule_due: int) -> DashboardCounts:
+    """칸별 건수. 여덟 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다."""
+    tally = Counter(classified.values())
+    return DashboardCounts(
+        bookmarked=len(classified),
+        schedule_due=schedule_due,
+        **{key.lower(): tally[key] for key in BOARD_KEYS},
+    )
+
+
 def build_dashboard(
     session: Session,
     *,
@@ -257,32 +362,15 @@ def build_dashboard(
     """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12)."""
     batch = latest_full_batch(session, dataset_kind=dataset_kind)
     if batch is None:
-        zero = DashboardCounts(
-            not_contacted=0, interested=0, in_contact=0, quote_sample=0, schedule_due=0
-        )
+        zero = _counts({}, 0)
         return DashboardResult(
             Dashboard(counts=zero, schedule=[], recent_activity=[], as_of=now), False
         )
     population = select(EvaluationRun.opp_id).where(EvaluationRun.batch_id == batch.batch_id)
-    total = session.scalar(
-        select(func.count(func.distinct(EvaluationRun.opp_id))).where(
-            EvaluationRun.batch_id == batch.batch_id
-        )
-    )
-    latest = _latest_outcomes(session, population)
-    by_status: dict[str, int] = {}
-    for row in latest:
-        by_status[row.status] = by_status.get(row.status, 0) + 1
-    # 기록이 없거나 최신 단계가 미접촉이면 미접촉이다(목록의 ?stage=NOT_EXECUTED와 같다).
-    recorded = sum(count for status, count in by_status.items() if status != "NOT_EXECUTED")
+    # 관심으로 켜 둔 기회만 센다. 관심이 아닌 기회는 어느 칸에도 들지 않는다(#356).
+    classified = classify_bookmarked(session, population)
     schedule, due_count = _schedule(session, population, today)
-    counts = DashboardCounts(
-        not_contacted=total - recorded,
-        interested=by_status.get("INTERESTED", 0),
-        in_contact=by_status.get("IN_PROGRESS", 0),
-        quote_sample=by_status.get("SAMPLE_OR_REGISTRATION_APPROVED", 0),
-        schedule_due=due_count,
-    )
+    counts = _counts(classified, due_count)
     has_virtual = bool(
         session.scalar(
             select(func.count())
