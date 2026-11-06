@@ -39,6 +39,7 @@ LATEST_INGEST_KEYS = {
     "webFromCache",
     "webSkippedReason",
     "complexListSkippedReason",
+    "failureReason",  # (#347) 찾기 실패 사유 한 줄
 }
 # 약속 요약 C1 "카드·상세에 더하는 칸"(#313·#319).
 FOUND_COMPANY_KEYS = {
@@ -109,6 +110,8 @@ def test_latest_ingest_is_built_from_a_saved_batch_row(tmp_db: Path) -> None:
     # 안 돌린 웹 검색·산단공 조회는 "안 씀·이유 없음"으로 그대로 나온다(없는 칸이 아니다).
     assert (latest["webSearchUsed"], latest["webSkippedReason"]) == (False, None)
     assert latest["complexListSkippedReason"] is None
+    # 실패하지 않은 회차의 실패 사유는 빈 값으로 나온다(#347).
+    assert latest["failureReason"] is None
 
 
 def test_latest_ingest_without_criteria_keeps_null(tmp_db: Path) -> None:
@@ -121,6 +124,26 @@ def test_latest_ingest_without_criteria_keeps_null(tmp_db: Path) -> None:
     assert summary.criteria is None
     assert summary.finished_at == finished
     assert summary.new_count == 7
+
+
+def test_latest_ingest_carries_failure_reason_of_a_failed_batch(tmp_db: Path) -> None:
+    """Given 실패로 끝난 회차 / When 요약을 만듦 / Then 사유 한 줄이 그대로 나온다(#347)."""
+    reason = "공장현황 파일을 읽지 못했습니다"
+    batch_id = _saved_batch(
+        tmp_db,
+        status="FAILED",
+        finished_at=datetime(2026, 11, 6, 9, 5, tzinfo=UTC),
+        failure_reason=reason,
+    )
+    with session_scope(tmp_db) as session:
+        row = session.get(IngestBatch, batch_id)
+        summary = LatestIngest.model_validate(row, from_attributes=True)
+    latest = Meta(latest_ingest=summary).model_dump(by_alias=True, mode="json", exclude_unset=True)[
+        "latestIngest"
+    ]
+    assert (latest["status"], latest["failureReason"]) == ("FAILED", reason)
+    # 공공자료 갈래가 실패한 회차는 웹 검색을 돌리지 않고, 건너뛴 이유 칸은 비워 둔다(#345).
+    assert (latest["webSearchUsed"], latest["webSkippedReason"]) == (False, None)
 
 
 def test_latest_ingest_rejects_missing_counts() -> None:

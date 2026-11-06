@@ -30,4 +30,29 @@ describe('getDashboard', () => {
     expect(fetchSpy.mock.calls[0][0]).toBe('/api/v1/dashboard');
     expect(envelope.data.asOf).toBe(dashboardFixture.data.asOf);
   });
+
+  it('담당자 키를 주면 X-Staff-Key 헤더로 보내 서버가 "최근 내 기록"을 그 담당자 것으로 채우게 한다 (#216 후속)', async () => {
+    vi.stubEnv('VITE_USE_FIXTURES', '0');
+    const body = JSON.stringify({ data: dashboardFixture.data, meta: { total: null } });
+    const fetchSpy = vi.fn().mockResolvedValue(new Response(body, { status: 200 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    await getDashboard(undefined, 'park-lee');
+    const init = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect((init.headers as Record<string, string>)['X-Staff-Key']).toBe('park-lee');
+  });
+
+  it('담당자 키가 없거나 null이면 헤더를 아예 보내지 않는다 (보기 전용·담당자 미선택)', async () => {
+    vi.stubEnv('VITE_USE_FIXTURES', '0');
+    const body = JSON.stringify({ data: dashboardFixture.data, meta: { total: null } });
+    // 호출마다 새 응답을 만든다(같은 응답 본문은 한 번만 읽을 수 있다).
+    const fetchSpy = vi.fn().mockImplementation(async () => new Response(body, { status: 200 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    await getDashboard(undefined, null);
+    await getDashboard();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    for (const call of fetchSpy.mock.calls) {
+      const init = call[1] as RequestInit;
+      expect(init.headers as Record<string, string>).not.toHaveProperty('X-Staff-Key');
+    }
+  });
 });

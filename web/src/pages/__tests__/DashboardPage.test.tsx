@@ -202,6 +202,117 @@ describe('DashboardPage', () => {
     );
   });
 
+  describe('최근 내 기록은 고른 담당자 것이다 (#216 후속)', () => {
+    type Frame = { staffKey: string | null; canRecord: boolean };
+    const park: Frame = { staffKey: 'park-lee', canRecord: true };
+
+    /** 담당자 값을 바꿔 다시 그릴 수 있게 틀 값만 받는 렌더 도우미. */
+    function renderWithFrame(frame: Frame) {
+      const tree = (value: Frame) => (
+        <MemoryRouter initialEntries={['/']}>
+          <FrameContext.Provider
+            value={{
+              config: null,
+              staffKey: value.staffKey,
+              setStaffKey: () => {},
+              canRecord: value.canRecord,
+              setBannerMeta: () => {},
+              setPageTitle: () => {},
+            }}
+          >
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+            </Routes>
+          </FrameContext.Provider>
+        </MemoryRouter>
+      );
+      const view = render(tree(frame));
+      return { change: (next: Frame) => view.rerender(tree(next)) };
+    }
+
+    const withRecent = (summary: string): Dashboard => ({
+      ...fixtureData,
+      recentActivity: [
+        {
+          at: '2026-11-05T09:00:00+09:00',
+          oppId: 'opp-9',
+          customerName: '시험 회사',
+          kind: 'NOTE',
+          summary,
+        },
+      ],
+    });
+
+    it('기록할 수 있는 담당자를 골랐으면 그 키를 서버에 보낸다', async () => {
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderWithFrame(park);
+      await screen.findByTestId('dashboard-counts');
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(mockedGet.mock.calls[0][1]).toBe('park-lee');
+    });
+
+    it.each([
+      ['보기 전용', { staffKey: 'viewer', canRecord: false }],
+      ['담당자 미선택', { staffKey: null, canRecord: false }],
+    ])('%s이면 키를 보내지 않는다', async (_name, frame) => {
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderWithFrame(frame);
+      await screen.findByTestId('dashboard-counts');
+      expect(mockedGet.mock.calls[0][1] ?? null).toBeNull();
+    });
+
+    it('담당자를 바꾸면 이전 요청을 중단하고 다시 읽어 새 담당자의 기록이 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(reply(withRecent('박 담당의 메모')));
+      mockedGet.mockResolvedValueOnce(reply(withRecent('김 과장의 메모')));
+      const { change } = renderWithFrame(park);
+      expect(await screen.findByText('박 담당의 메모')).toBeInTheDocument();
+      const firstSignal = mockedGet.mock.calls[0][0] as AbortSignal;
+
+      change({ staffKey: 'kim-gwajang', canRecord: true });
+      expect(await screen.findByText('김 과장의 메모')).toBeInTheDocument();
+      expect(screen.queryByText('박 담당의 메모')).not.toBeInTheDocument();
+      expect(mockedGet).toHaveBeenCalledTimes(2);
+      expect(mockedGet.mock.calls[1][1]).toBe('kim-gwajang');
+      expect(firstSignal.aborted).toBe(true);
+    });
+
+    it('바뀌는 동안에는 이전 담당자의 기록을 그대로 두지 않고 불러오는 중으로 바뀐다', async () => {
+      let resolveSecond: (value: Envelope<Dashboard>) => void = () => {};
+      mockedGet.mockResolvedValueOnce(reply(withRecent('박 담당의 메모')));
+      mockedGet.mockReturnValueOnce(new Promise((r) => (resolveSecond = r)));
+      const { change } = renderWithFrame(park);
+      await screen.findByText('박 담당의 메모');
+      change({ staffKey: 'kim-gwajang', canRecord: true });
+      expect(await screen.findByTestId('five-states-loading')).toBeInTheDocument();
+      expect(screen.queryByText('박 담당의 메모')).not.toBeInTheDocument();
+      resolveSecond(reply(withRecent('김 과장의 메모')));
+      expect(await screen.findByText('김 과장의 메모')).toBeInTheDocument();
+    });
+
+    it('이전 담당자의 응답이 늦게 와도 새 담당자 화면을 덮지 않는다', async () => {
+      let resolveFirst: (value: Envelope<Dashboard>) => void = () => {};
+      mockedGet.mockReturnValueOnce(new Promise((r) => (resolveFirst = r)));
+      mockedGet.mockResolvedValueOnce(reply(withRecent('김 과장의 메모')));
+      const { change } = renderWithFrame(park);
+      change({ staffKey: 'kim-gwajang', canRecord: true });
+      expect(await screen.findByText('김 과장의 메모')).toBeInTheDocument();
+      // 박 담당 요청이 이제야 끝난다(이미 중단된 요청).
+      resolveFirst(reply(withRecent('박 담당의 메모')));
+      await new Promise((r) => setTimeout(r, 50));
+      expect(screen.getByText('김 과장의 메모')).toBeInTheDocument();
+      expect(screen.queryByText('박 담당의 메모')).not.toBeInTheDocument();
+    });
+
+    it('같은 담당자로 다시 그려도 서버를 또 부르지 않는다', async () => {
+      mockedGet.mockResolvedValue(reply(fixtureData));
+      const { change } = renderWithFrame(park);
+      await screen.findByTestId('dashboard-counts');
+      change({ ...park });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('공정·산업군 막대', () => {
     it('breakdown이 없으면 막대 줄을 숨긴다(실제 집계 전 전달본에 가짜 숫자가 보이면 안 된다)', async () => {
       const { breakdown: _breakdown, ...withoutBreakdown } = fixtureData;
