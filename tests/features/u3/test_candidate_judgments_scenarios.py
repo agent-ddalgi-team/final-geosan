@@ -85,8 +85,6 @@ def same_criteria():
     return {
         "process_catalog": PROCESSES,
         "industry_catalog": INDUSTRIES,
-        "process_codes": list(PROCESSES),
-        "industries": INDUSTRIES,
         "prompt": "생산품 글로 제조업과 공정을 판단한다.",
     }
 
@@ -96,8 +94,6 @@ def fingerprint(criteria):
     reversed_criteria = criteria | {
         "process_catalog": dict(reversed(list(PROCESSES.items()))),
         "industry_catalog": list(reversed(INDUSTRIES)),
-        "process_codes": list(reversed(PROCESSES)),
-        "industries": list(reversed(INDUSTRIES)),
     }
     return (
         candidate_criteria_version(**criteria),
@@ -110,6 +106,30 @@ def fingerprint(criteria):
 def compare(versions):
     assert versions[0] == versions[1]
     assert versions[0] != versions[2]
+
+
+@when("전체 목록의 판단을 아연도금과 아노다이징으로 각각 거른다", target_fixture="reused")
+def reuse_full_catalog(response):
+    parsed = parse_candidate_judgments(
+        json.dumps(response),
+        approved_row_ids=[row["rowId"] for row in response],
+        process_catalog=PROCESSES,
+        industry_catalog=INDUSTRIES,
+    )
+    criteria = same_criteria()
+    version = candidate_criteria_version(**criteria)
+    zinc = select_candidates(parsed, process_codes=["ZINC_PLATING"])
+    anodizing = select_candidates(parsed, process_codes=["ANODIZING"])
+    return parsed, zinc, anodizing, version, candidate_criteria_version(**criteria)
+
+
+@then("선택 결과는 달라도 재사용 기준과 전체 판단 내용은 유지된다")
+def full_judgment_unchanged(reused, response):
+    parsed, zinc, anodizing, before, after = reused
+    assert [row.row_id for row in zinc] == ["bolt"]
+    assert [row.row_id for row in anodizing] == ["other"]
+    assert before == after
+    assert [row.model_dump(by_alias=True) for row in parsed] == response
 
 
 @given(
