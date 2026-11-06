@@ -1,4 +1,4 @@
-"""#328: 가상 AI 결과의 전체 행 검증·조건 선택·기준 변경 검사. 외부 호출 없음."""
+"""#328·#336: 가상 AI 결과의 행·조건·표면처리 표시 검사. 외부 호출 없음."""
 
 import copy
 import json
@@ -24,6 +24,8 @@ def judgment(row_id="row-1", **changes):
         "industries": ["자동차 부품"],
         "reason": "볼트를 만드는 회사로 아연도금 수요를 확인할 수 있음",
         "fitLevel": "HIGH",
+        "ownPlatingLineSuspected": False,
+        "ownPlatingLineBasis": None,
     }
     return value | changes
 
@@ -54,6 +56,51 @@ def test_valid_judgments_return_in_approved_order_without_changing_proposals():
     assert [item.fit_level for item in result] == ["HIGH", "LOW"]
     assert result[0].model_dump(by_alias=True) == rows[1]
     assert result[1].model_dump(by_alias=True) == rows[0]
+
+
+@pytest.mark.parametrize(
+    "suspected,basis", [(False, None), (True, "생산품: 알루미늄 아노다이징"), (True, None)]
+)
+def test_surface_fields_are_preserved_without_automatic_exclusion(suspected, basis):
+    row = judgment(ownPlatingLineSuspected=suspected, ownPlatingLineBasis=basis)
+    parsed = parse([row])
+    assert parsed[0].model_dump(by_alias=True) == row
+    assert select_candidates(parsed, process_codes=["ZINC_PLATING"]) == parsed
+    assert parsed[0].is_manufacturer is True
+    assert parsed[0].process_codes == ["ZINC_PLATING"]
+    assert parsed[0].fit_level == "HIGH"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"ownPlatingLineSuspected": "true"},
+        {"ownPlatingLineSuspected": 1},
+        {"ownPlatingLineSuspected": None},
+        {"ownPlatingLineBasis": 1},
+        {"ownPlatingLineBasis": []},
+        {"ownPlatingLineBasis": ""},
+        {"ownPlatingLineBasis": "  "},
+    ],
+)
+def test_surface_fields_reject_invalid_values(changes):
+    with pytest.raises(AppError) as error:
+        parse([judgment(**changes)])
+    assert error.value.kind == "LLM_FAILED"
+
+
+@pytest.mark.parametrize(
+    "basis",
+    ["test@example.invalid로 문의", "가상번호 010-0000-0000", "가상 ＴＥＳＴ＠example.invalid"],
+)
+def test_surface_basis_contacts_reject_whole_response_without_echo(basis, caplog):
+    rows = [judgment(), judgment("row-2", ownPlatingLineSuspected=True, ownPlatingLineBasis=basis)]
+    with pytest.raises(AppError) as error:
+        parse(rows, ["row-1", "row-2"])
+    assert error.value.kind == "LLM_FAILED"
+    assert error.value.status == 503
+    assert basis not in str(error.value) + repr(error.value.to_error_body()) + caplog.text
+    assert error.value.__suppress_context__ is True
 
 
 @pytest.mark.parametrize(
@@ -99,7 +146,17 @@ def test_invalid_types_or_values_are_not_coerced_or_silently_removed(changes):
 
 
 @pytest.mark.parametrize(
-    "field", ["rowId", "isManufacturer", "processCodes", "industries", "reason", "fitLevel"]
+    "field",
+    [
+        "rowId",
+        "isManufacturer",
+        "processCodes",
+        "industries",
+        "reason",
+        "fitLevel",
+        "ownPlatingLineSuspected",
+        "ownPlatingLineBasis",
+    ],
 )
 def test_every_contract_field_is_required(field):
     value = judgment()
