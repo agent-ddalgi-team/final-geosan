@@ -4,6 +4,13 @@ import { request } from './client';
 import type { Dashboard } from './dashboardTypes';
 import type { Envelope } from './types';
 
-export function getDashboard(signal?: AbortSignal): Promise<Envelope<Dashboard>> {
-  return request<Dashboard>('/dashboard', { signal });
+/**
+ * 대시보드 집계 읽기. `staffKey`를 주면 `X-Staff-Key` 헤더로 보내 서버가 "최근 내 기록"을 그 담당자 것으로 채운다.
+ * 키를 안 주면(보기 전용·담당자 미선택) 헤더를 보내지 않고, 서버는 그 목록을 빈 채로 돌려준다(#216 후속).
+ */
+export function getDashboard(
+  signal?: AbortSignal,
+  staffKey?: string | null,
+): Promise<Envelope<Dashboard>> {
+  return request<Dashboard>('/dashboard', { signal, staffKey });
 }
