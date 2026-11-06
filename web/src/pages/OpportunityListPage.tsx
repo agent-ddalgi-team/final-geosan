@@ -1,7 +1,8 @@
 // 추천 목록(S1, BR10.1·BR10.7): 공정·지역·산업 선택란 + 회사 이름 검색 + 정렬 + 순위 순 카드 + 쪽 넘김(20건씩) + 다섯 상태.
 // 조건은 모두 주소(`?process=&region=&industry=`, 대시보드에서 넘어올 때는 `?stage=`·`?filter=`·`?q=`)에 남겨
 // 새로 고침·공유해도 유지되고, 서버에 그대로 보낸다. 서버가 순위를 조건 안 번호로 다시 매긴다.
-// 공정은 선택란이고 "전체"가 없다(#361): 주소에 공정이 없으면 회사가 있는 첫 공정을 골라 주소에 넣는다.
+// 공정은 선택란이고 "전체"가 없다(#361). 공정을 고르기 전에는 목록을 비워 둔다(#368, 2026-11-06 PM 결정):
+//   주소에 공정이 없으면 이 브라우저에서 마지막으로 본 공정으로 열고, 기억한 공정이 없으면 카드 없이 "공정을 고르면…" 안내만 보인다.
 // 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
 // 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
@@ -19,6 +20,7 @@ import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
 import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
+import { readLastProcess, storeLastProcess } from '../components/list/lastProcess';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import OpportunityCard from '../components/list/OpportunityCard';
 import {
@@ -119,24 +121,35 @@ export default function OpportunityListPage() {
       .then((envelope) => {
         setMenu(envelope.meta);
         const choices = envelope.meta.processCounts ?? [];
-        if (
-          processMode &&
-          choices.length > 0 &&
-          !choices.some((item) => item.processCode === process)
-        ) {
-          // "전체"가 없어 항상 공정 하나가 골라져 있어야 한다. 주소에 공정이 없으면(또는 선택지에 없는 값이면)
-          // 회사가 1곳 이상인 첫 공정을, 그런 공정이 없으면 맨 첫 공정을 고른다.
-          // 주소를 그 공정으로 바꾸고(뒤로 가기 기록은 남기지 않는다) 그 공정으로 다시 불러온다.
-          const first = choices.find((item) => item.count > 0) ?? choices[0];
-          setParams(
-            (prev) => {
-              const next = new URLSearchParams(prev);
-              next.set('process', first.processCode);
-              return next;
-            },
-            { replace: true },
-          );
-          return;
+        const isChoice = (code: string | null) => choices.some((item) => item.processCode === code);
+        if (processMode && choices.length > 0) {
+          if (isChoice(process)) {
+            // 다음에 공정 없이 목록을 열면 이 공정으로 바로 열리도록 기억한다.
+            storeLastProcess(process);
+          } else {
+            // 공정을 아직 고르지 않았다(주소에 없거나 선택지에 없는 값). 프로그램이 공정을 대신 고르지 않는다(#368).
+            const remembered = readLastProcess();
+            const usable = isChoice(remembered);
+            // 기억한 공정이 더는 없는 공정이면 지운다.
+            if (remembered !== null && !usable) storeLastProcess(null);
+            if (usable || process) {
+              // 지난번에 본 공정이 있으면 그 공정으로, 없으면 주소의 틀린 공정만 지우고 다시 불러온다
+              // (뒤로 가기 기록은 남기지 않는다).
+              setParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev);
+                  if (usable && remembered) next.set('process', remembered);
+                  else next.delete('process');
+                  return next;
+                },
+                { replace: true },
+              );
+              return;
+            }
+            // 고르기 전: 서로 다른 공정의 회사를 한 줄로 섞어 보이지 않도록 카드는 비워 두고 선택지만 쓴다.
+            setResult({ key: requestKey, items: [], meta: envelope.meta });
+            return;
+          }
         }
         setResult({ key: requestKey, items: envelope.data, meta: envelope.meta });
       })
@@ -260,23 +273,27 @@ export default function OpportunityListPage() {
   else if (current.error) state = 'error';
   else if (items.length === 0) state = 'empty';
 
+  // 공정을 아직 고르지 않았으면(#368) 다른 조건과 상관없이 고르라는 안내를 보인다.
+  const processUnpicked = processMode && !process && (meta?.processCounts ?? []).length > 0;
   // 고른 공정에 회사가 한 곳도 없으면(전체 건수 0) 다른 조건과 상관없이 그 안내를 먼저 보인다.
   const processIsEmpty =
     processMode &&
     (meta?.processCounts ?? []).some((item) => item.processCode === process && item.count === 0);
   const emptyText = searching
     ? listSearch.empty
-    : processIsEmpty
-      ? listFilters.processEmpty
-      : latestOnly
-        ? candidateSearch.latestEmpty
-        : region || industry
-          ? listFilters.filteredEmpty
-          : stage || filter || opinion
-            ? listFilters.noMatch
-            : bookmarked
-              ? bookmarkList.empty
-              : states.listEmpty;
+    : processUnpicked
+      ? listFilters.pickProcess
+      : processIsEmpty
+        ? listFilters.processEmpty
+        : latestOnly
+          ? candidateSearch.latestEmpty
+          : region || industry
+            ? listFilters.filteredEmpty
+            : stage || filter || opinion
+              ? listFilters.noMatch
+              : bookmarked
+                ? bookmarkList.empty
+                : states.listEmpty;
   const latestIngest = menu?.latestIngest ?? null;
 
   return (

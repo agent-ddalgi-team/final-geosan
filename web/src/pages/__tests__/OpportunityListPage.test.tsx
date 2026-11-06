@@ -64,6 +64,8 @@ function renderPage(initial = '/opportunities') {
 
 describe('OpportunityListPage', () => {
   beforeEach(() => {
+    // 지난번에 본 공정 기억(#368)이 검사 사이에 넘어가지 않게 지운다.
+    window.localStorage.clear();
     mockedGet.mockReset();
   });
 
@@ -292,21 +294,37 @@ describe('OpportunityListPage', () => {
 
   // 공정은 탭에서 선택란으로 바뀌었다(#361, 2026-11-06 PM 결정). 검사의 뜻은 그대로 두고 선택란 기준으로 본다.
   describe('공정·지역·산업 선택란 (#210, #361)', () => {
-    it('조건 없이 처음 열면 첫 공정을 주소에 넣고 그 공정으로 다시 불러온다', async () => {
+    // 처음 열 때의 규칙이 바뀌었다(#368, 2026-11-06 PM 결정): 프로그램이 첫 공정을 대신 고르지 않고,
+    // 공정을 고르기 전에는 목록을 비워 둔다. 자세한 검사는 OpportunityListPage.header.test.tsx에 있다.
+    it('조건 없이 처음 열면 공정을 대신 고르지 않고, 고른 뒤에 그 공정으로 다시 불러온다', async () => {
+      const user = userEvent.setup();
       mockedGet.mockResolvedValueOnce(reply([apjeong], { processCounts: TABS }));
       mockedGet.mockResolvedValueOnce(reply([apjeong], { processCounts: TABS, total: 9 }));
       renderPage();
+      expect(await screen.findByText(listFilters.pickProcess)).toBeInTheDocument();
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+      expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities$/);
+      expect(screen.queryByTestId('opportunity-card')).not.toBeInTheDocument();
+      const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
+      expect(select.value).toBe('');
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual([listFilters.processPlaceholder, '전기아연도금 9', '아노다이징 10']);
+      await user.selectOptions(select, 'ZINC_PLATING');
       await screen.findByTestId('opportunity-card');
       expect(mockedGet).toHaveBeenCalledTimes(2);
-      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
       expect(mockedGet.mock.calls[1][3]).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' });
       expect(screen.getByTestId('location')).toHaveTextContent(
         '/opportunities?process=ZINC_PLATING',
       );
-      const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
-      expect(select.value).toBe('ZINC_PLATING');
+      expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe(
+        'ZINC_PLATING',
+      );
       expect(
-        within(select)
+        within(screen.getByTestId('list-process-select'))
           .getAllByRole('option')
           .map((option) => option.textContent),
       ).toEqual(['전기아연도금 9', '아노다이징 10']);
