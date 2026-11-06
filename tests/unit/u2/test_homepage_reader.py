@@ -23,6 +23,7 @@ FRAME_PAGE = """<html><head><title>가상 회사</title></head>
     "body",
     [
         FRAME_PAGE,
+        FRAME_PAGE.replace("</head>", ""),
         "<head><title>가상 회사</title><script>loadCompany()</script></head><body></body>",
         "<title>가상 회사</title>",
     ],
@@ -66,6 +67,49 @@ def test_real_body_survives_metadata_and_frame_fallback_removal(monkeypatch):
     assert page.text == "공개 제품 볼트\n자동차용 부품을 생산합니다."
 
 
+@pytest.mark.parametrize(
+    "head",
+    [
+        "<head><title>가상 회사</title>",
+        "<HEAD><TITLE>가상 회사</TITLE>",
+        "<head><title>가상 회사</title><script>loadCompany()</script><style>css</style>",
+    ],
+)
+def test_body_start_reads_text_when_head_end_is_omitted(monkeypatch, head):
+    body = head + "<BODY><p>공개 제품 볼트를 생산합니다.</p></BODY>"
+    monkeypatch.setattr(
+        reader,
+        "_get",
+        lambda url, _: (
+            (404, {}, "")
+            if url.endswith("robots.txt")
+            else (200, {"content-type": "text/html"}, body)
+        ),
+    )
+    page = reader.fetch("https://example.org/", time.monotonic() + 60)
+    assert page.text == "공개 제품 볼트를 생산합니다."
+
+
+@pytest.mark.parametrize("hidden", ["template", "noframes", "noscript"])
+def test_body_inside_hidden_block_does_not_end_head(monkeypatch, hidden):
+    body = (
+        "<head><title>가상 회사</title>"
+        f"<{hidden}></head><body>숨길 안내</body></{hidden}>"
+        "머리말 잡문<body><p>공개 제품 볼트를 생산합니다.</p></body>"
+    )
+    monkeypatch.setattr(
+        reader,
+        "_get",
+        lambda url, _: (
+            (404, {}, "")
+            if url.endswith("robots.txt")
+            else (200, {"content-type": "text/html"}, body)
+        ),
+    )
+    page = reader.fetch("https://example.org/", time.monotonic() + 60)
+    assert page.text == "공개 제품 볼트를 생산합니다."
+
+
 def test_html_reader_checks_robots_and_discards_scripts(monkeypatch):
     calls = []
 
@@ -106,6 +150,7 @@ def test_robots_denial_never_reads_body(monkeypatch, status, robots):
     [
         ('<meta name="robots" content="noai"><p>본문</p>', {}),
         ('<head><meta name="robots" content="noai"></head><body>본문</body>', {}),
+        ('<head><meta name="robots" content="noai"><body>본문</body>', {}),
         ("공개 자료 자동 수집 금지", {}),
         ("본문", {"x-robots-tag": "noai"}),
     ],
