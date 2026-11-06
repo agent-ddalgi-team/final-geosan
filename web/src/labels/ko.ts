@@ -330,6 +330,31 @@ export const listFilters = {
   industryUnknown: '산업 미확정',
 } as const;
 
+/** 후보 찾기 화면(#316, 결정 2026-11-05): 목록 머리 수집 요약·"이번 수집만/전체" 전환과 카드의 고른 이유·점수 전·이번에 들어옴. */
+export const candidateSearch = {
+  /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
+  pickReasonRow: '고른 이유',
+  /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
+  beforeScore: '점수 전',
+  /** "이번에 들어옴" 꼬리표. 날짜를 알면 "이번에 들어옴 · 11/20"으로 보인다. */
+  newInBatch: '이번에 들어옴',
+  newInBatchWithDate: (date: string) => `이번에 들어옴 · ${date}`,
+  /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */
+  summaryTitle: '후보 가져오기',
+  running: '지금 가져오는 중입니다',
+  failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
+  scanned: (n: number) => `훑어본 회사 ${n.toLocaleString('ko-KR')}곳`,
+  picked: (n: number) => `고른 회사 ${n.toLocaleString('ko-KR')}곳`,
+  researched: (done: number, total: number) => `조사 ${done}/${total}`,
+  mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
+  /** "이번 수집만 / 전체" 전환. */
+  scopeLabel: '보기',
+  scopeLatest: '이번 수집만',
+  scopeAll: '전체',
+  /** "이번 수집만"인데 고른 회사가 하나도 없을 때. */
+  latestEmpty: '이번에 새로 들어온 회사가 없습니다. 보기를 "전체"로 바꿔 보세요',
+} as const;
+
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
 export const companySummary = {
   title: '회사 소개',
