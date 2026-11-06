@@ -414,6 +414,22 @@
           "datasetKind": {
             "$ref": "#/components/schemas/DatasetKind"
           },
+          "discoverySource": {
+            "$ref": "#/components/schemas/DiscoverySource",
+            "default": "CASE_FILE",
+            "description": "회사가 목록에 들어온 길 (C1, #342)"
+          },
+          "discoverySourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discoverysourceurl"
+          },
           "distanceKm": {
             "anyOf": [
               {
@@ -425,6 +441,17 @@
             ],
             "title": "Distancekm"
           },
+          "fitLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
+          },
           "highlights": {
             "items": {
               "type": "string"
@@ -432,6 +459,35 @@
             "maxItems": 3,
             "title": "Highlights",
             "type": "array"
+          },
+          "homepageConfidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0~1. AI가 찾았을 때만 (C1, #331)",
+            "title": "Homepageconfidence"
+          },
+          "homepageSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "STAFF",
+                  "CASE_FILE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "홈페이지 주소를 누가 정했나: AI·담당자·사례 파일 (C1, #331)",
+            "title": "Homepagesource"
           },
           "homepageStatus": {
             "anyOf": [
@@ -553,6 +609,24 @@
             "title": "Opportunityitem",
             "type": "string"
           },
+          "ownPlatingLineBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "그 표시의 근거 한 줄",
+            "title": "Ownplatinglinebasis"
+          },
+          "ownPlatingLineSuspected": {
+            "default": false,
+            "description": "표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
+            "title": "Ownplatinglinesuspected",
+            "type": "boolean"
+          },
           "owner": {
             "anyOf": [
               {
@@ -564,8 +638,36 @@
             ],
             "title": "Owner"
           },
+          "pickReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI가 고른 이유 한 줄",
+            "title": "Pickreason"
+          },
           "purpose": {
             "$ref": "#/components/schemas/Purpose"
+          },
+          "registryStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FOUND",
+                  "NOT_FOUND"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공공 등록 자료에서 확인됐는지. 웹에서 찾은 회사만 값이 있다",
+            "title": "Registrystatus"
           },
           "relationConfirmedAt": {
             "anyOf": [
@@ -739,6 +841,17 @@
         },
         "title": "DetailRecords",
         "type": "object"
+      },
+      "DiscoverySource": {
+        "description": "회사가 목록에 들어온 길 (C0, 2026-11-05·11-06 PM 결정 #313·#323).",
+        "enum": [
+          "CASE_FILE",
+          "FACTORY_FILE",
+          "FACTORY_API",
+          "WEB_SEARCH"
+        ],
+        "title": "DiscoverySource",
+        "type": "string"
       },
       "Envelope_ConfigUi_": {
         "properties": {
@@ -989,6 +1102,16 @@
         "title": "FilterState",
         "type": "string"
       },
+      "FitLevel": {
+        "description": "AI가 본 공정 적합도. 점수 전 회사를 줄 세우는 데만 쓴다 (C0, 2026-11-05 PM 결정 #313).",
+        "enum": [
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ],
+        "title": "FitLevel",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1018,6 +1141,195 @@
           "count"
         ],
         "title": "IndustryCount",
+        "type": "object"
+      },
+      "IngestCriteria": {
+        "description": "찾기 회차의 조건: 담당자가 고른 공정·지역·산업 (C1 POST /ingest 본문과 같은 이름).",
+        "properties": {
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "processCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCodes",
+          "regions",
+          "industries"
+        ],
+        "title": "IngestCriteria",
+        "type": "object"
+      },
+      "LatestIngest": {
+        "description": "마지막 찾기 회차 요약 (C1 `meta.latestIngest`, #221·#313·#323).\n\n목록 머리 \"훑어본 ○곳 · 판단 완료 ○곳 · 고른 ○곳 · 조사 ○/○\"에 쓴다. 칸에 기본값을 두지 않아\n창구가 회차 행의 값을 빠짐없이 채워야 한다(안 채운 건수가 0으로 보이지 않게).",
+        "properties": {
+          "batchId": {
+            "title": "Batchid",
+            "type": "string"
+          },
+          "complexListSkippedReason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DAILY_LIMIT",
+                  "SOURCE_ERROR",
+                  "DISABLED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complexlistskippedreason"
+          },
+          "criteria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngestCriteria"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "조건 없이 돌린 회차는 null"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "judgePendingCount": {
+            "description": "AI 한도에 걸려 판단이 남은 수",
+            "title": "Judgependingcount",
+            "type": "integer"
+          },
+          "judgedCount": {
+            "description": "AI가 판단을 끝낸 수",
+            "title": "Judgedcount",
+            "type": "integer"
+          },
+          "mergeCandidateCount": {
+            "description": "이름이 비슷해 \"확인 필요\"로 남은 수",
+            "title": "Mergecandidatecount",
+            "type": "integer"
+          },
+          "newCount": {
+            "description": "목록에 새로 들어온 회사 수",
+            "title": "Newcount",
+            "type": "integer"
+          },
+          "pickedCount": {
+            "description": "AI가 고른 수",
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "researchDoneCount": {
+            "description": "새 회사 가운데 자동 조사를 끝낸 수",
+            "title": "Researchdonecount",
+            "type": "integer"
+          },
+          "scannedCount": {
+            "description": "파일·조회에서 지역으로 추려 합친 회사 수",
+            "title": "Scannedcount",
+            "type": "integer"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "title": "Startedat",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "RUNNING",
+              "DONE",
+              "FAILED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "webCandidateCount": {
+            "title": "Webcandidatecount",
+            "type": "integer"
+          },
+          "webDroppedCount": {
+            "description": "채용·유료 사이트 결과, 출처 없음, 홈페이지 미확인으로 버린 수",
+            "title": "Webdroppedcount",
+            "type": "integer"
+          },
+          "webFromCache": {
+            "title": "Webfromcache",
+            "type": "boolean"
+          },
+          "webSearchUsed": {
+            "title": "Websearchused",
+            "type": "boolean"
+          },
+          "webSkippedReason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DAILY_LIMIT",
+                  "DISABLED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webskippedreason"
+          }
+        },
+        "required": [
+          "batchId",
+          "sourceId",
+          "startedAt",
+          "finishedAt",
+          "status",
+          "criteria",
+          "newCount",
+          "mergeCandidateCount",
+          "researchDoneCount",
+          "scannedCount",
+          "judgedCount",
+          "pickedCount",
+          "judgePendingCount",
+          "webSearchUsed",
+          "webCandidateCount",
+          "webDroppedCount",
+          "webFromCache",
+          "webSkippedReason",
+          "complexListSkippedReason"
+        ],
+        "title": "LatestIngest",
         "type": "object"
       },
       "LostReasonCode": {
@@ -1113,6 +1425,17 @@
               }
             ],
             "title": "Industrycounts"
+          },
+          "latestIngest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestIngest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "마지막 찾기 회차 요약. 한 번도 안 찾았으면 null (C1, #342)"
           },
           "notEvaluatedCount": {
             "anyOf": [
@@ -1502,9 +1825,36 @@
           "datasetKind": {
             "$ref": "#/components/schemas/DatasetKind"
           },
+          "discoverySource": {
+            "$ref": "#/components/schemas/DiscoverySource",
+            "default": "CASE_FILE",
+            "description": "회사가 목록에 들어온 길 (C1, #342)"
+          },
+          "discoverySourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discoverysourceurl"
+          },
           "evalId": {
             "title": "Evalid",
             "type": "string"
+          },
+          "fitLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
           },
           "industries": {
             "items": {
@@ -1512,6 +1862,37 @@
             },
             "title": "Industries",
             "type": "array"
+          },
+          "ingestBatchId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이 회사가 들어온 찾기 회차. 사례 파일 투입은 null",
+            "title": "Ingestbatchid"
+          },
+          "ingestedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "들어온 시각",
+            "title": "Ingestedat"
+          },
+          "isNewInLatestBatch": {
+            "default": false,
+            "description": "마지막 찾기 회차에 들어온 회사면 true(\"이번에 들어옴\")",
+            "title": "Isnewinlatestbatch",
+            "type": "boolean"
           },
           "isRecontact": {
             "default": false,
@@ -1529,6 +1910,36 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "ownPlatingLineBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "그 표시의 근거 한 줄",
+            "title": "Ownplatinglinebasis"
+          },
+          "ownPlatingLineSuspected": {
+            "default": false,
+            "description": "표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
+            "title": "Ownplatinglinesuspected",
+            "type": "boolean"
+          },
+          "pickReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI가 고른 이유 한 줄",
+            "title": "Pickreason"
           },
           "processCodes": {
             "items": {
@@ -1575,6 +1986,22 @@
               }
             ],
             "title": "Region"
+          },
+          "registryStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FOUND",
+                  "NOT_FOUND"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공공 등록 자료에서 확인됐는지. 웹에서 찾은 회사만 값이 있다",
+            "title": "Registrystatus"
           },
           "relationStatus": {
             "$ref": "#/components/schemas/RelationStatus"

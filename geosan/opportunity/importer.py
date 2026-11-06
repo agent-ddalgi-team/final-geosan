@@ -152,6 +152,7 @@ def _store(
         customer = Customer(customer_id=new_id("cust"), **common)
         session.add(customer)
     values = model.customer.model_dump(mode="json")
+    file_homepage_url = values.pop("homepage_url")
     values.update(
         normalized_name=normalize_name(model.customer.name),
         normalized_address=normalize_address(model.customer.address),
@@ -166,6 +167,20 @@ def _store(
         values.pop("relation_confirmed_at")
     for key, value in values.items():
         setattr(customer, key, value)
+    if file_homepage_url is not None:
+        # (#190·#332) 파일 주소는 확정 값이다. 담당자가 화면에서 고친 주소가 있으면 그 값을 남긴다.
+        if customer.homepage_source == "STAFF":
+            if customer.homepage_url != file_homepage_url:
+                warnings.append(
+                    "홈페이지 주소는 담당자가 입력한 값을 유지합니다. "
+                    "사례 파일 값은 반영하지 않았습니다."
+                )
+        else:
+            customer.homepage_url = file_homepage_url
+            customer.homepage_status = "CONFIRMED"
+            customer.homepage_source = "CASE_FILE"
+            customer.homepage_confidence = None
+            customer.homepage_reason = None
     customer.summary_line = model.opportunity.card_reason
     customer.highlights = []
     customer.researched_at = utcnow()

@@ -50,6 +50,8 @@ from geosan.rules.codes import (
 STAFF_KEY_PATTERN = r"^[a-z0-9-]{1,32}$"
 CASE_ID_PATTERN = r"^[a-z0-9][a-z0-9-]*$"
 BIZ_NUMBER_PATTERN = r"^[0-9]{10}$"
+# 회사 홈페이지 주소: http·https만. 빈칸과 @(사람 계정·메일 주소)가 들어가면 거부한다(#332).
+HOMEPAGE_URL_PATTERN = r"^https?://[^\s@]+$"
 
 
 class FileModel(BaseModel):
@@ -74,6 +76,12 @@ class CaseCustomer(FileModel):
     name: str = Field(min_length=1)
     biz_number: str | None = Field(default=None, pattern=BIZ_NUMBER_PATTERN)
     address: str | None = None
+    homepage_url: str | None = Field(
+        default=None,
+        pattern=HOMEPAGE_URL_PATTERN,
+        description="회사 공식 홈페이지 주소(선택). 투입하면 확정·사례 파일 출처로 저장. "
+        "더하는 변경 2026-11-06 PM, #190·#332",
+    )
     identity_basis: str | None = None
     relation_status: RelationStatus
     relation_confirmed_at: date | None = None
