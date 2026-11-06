@@ -1,4 +1,7 @@
-"""담당자가 본 평가에 의견을 새 행으로 남긴다. 시스템 평가에는 쓰지 않는다."""
+"""담당자가 본 평가에 의견을 새 행으로 남긴다. 시스템 평가에는 쓰지 않는다.
+
+관심(찜) 켜고 끄기와 자동 관심도 여기에 둔다(#356).
+"""
 
 from typing import Annotated
 
@@ -10,6 +13,10 @@ from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.schemas import (
     ActivityEnvelope,
     ActivityItem,
+    BookmarkEnvelope,
+    BookmarkRecord,
+    BookmarkRequest,
+    BookmarkResponse,
     ContactCount,
     MainPhoneConfirmEnvelope,
     MainPhoneConfirmRequest,
@@ -37,14 +44,14 @@ from geosan.api.schemas import (
     ReviewCheckResponse,
     ReviewItem,
 )
-from geosan.config.errors import FieldError, InputError, NotFoundError, RunFailedError
+from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
-from geosan.records.models import Note, Outcome, ReviewCheck, ReviewOpinion
+from geosan.records.models import Bookmark, Note, Outcome, ReviewCheck, ReviewOpinion
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
@@ -337,6 +344,123 @@ def save_main_phone_confirmation(
     )
 
 
+def latest_bookmark(session: Session, opp_id: str) -> Bookmark | None:
+    """관심 표시의 마지막 행(현재 값). 한 번도 켠 적이 없으면 None."""
+    return session.scalar(
+        select(Bookmark).where(Bookmark.opp_id == opp_id).order_by(Bookmark.version.desc())
+    )
+
+
+def bookmark_view(row: Bookmark | None) -> BookmarkRecord | None:
+    if row is None:
+        return None
+    return BookmarkRecord(
+        version=row.version,
+        updated_by=row.staff_key,
+        updated_at=row.created_at,
+        active=row.active,
+    )
+
+
+def _add_bookmark(
+    session: Session,
+    opportunity: Opportunity,
+    staff: str,
+    *,
+    active: bool,
+    source: str,
+    previous: Bookmark | None,
+) -> Bookmark:
+    row = Bookmark(
+        bookmark_id=new_id("bookmark"),
+        opp_id=opportunity.opp_id,
+        active=active,
+        staff_key=staff,
+        source=source,
+        version=previous.version + 1 if previous else 1,
+        created_at=utcnow(),
+        created_by=staff,
+        dataset_kind=opportunity.dataset_kind,
+        is_virtual=opportunity.is_virtual,
+    )
+    session.add(row)
+    return row
+
+
+def ensure_bookmarked(session: Session, opportunity: Opportunity, staff: str) -> None:
+    """자동 관심(#356): 관심이 꺼진 기회에 기록을 남기면 같은 저장 안에서 관심을 켠다.
+
+    기록 창구가 쓰기 잠금을 잡은 뒤, 새 기록 행을 넣기 전에 부른다. 저장이 실패하면 같이 되돌린다.
+    """
+    previous = latest_bookmark(session, opportunity.opp_id)
+    if previous is not None and previous.active:
+        return
+    _add_bookmark(session, opportunity, staff, active=True, source="AUTO_RECORD", previous=previous)
+
+
+def _has_sales_records(session: Session, opp_id: str) -> bool:
+    """메모·영업 기록·검토 의견 행이 하나라도 있는지."""
+    return any(
+        session.scalar(select(model.opp_id).where(model.opp_id == opp_id).limit(1)) is not None
+        for model in (Note, Outcome, ReviewOpinion)
+    )
+
+
+@router.put("/opportunities/{oppId}/bookmark", response_model=BookmarkEnvelope)
+def save_bookmark(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: BookmarkRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    """관심 켜고 끄기(#356). 켜고 끌 때마다 새 행을 쌓고, 같은 값이면 새 행을 만들지 않는다."""
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("관심을 바꿀 기회가 없습니다.")
+    # 마지막 행 읽기와 새 행 추가가 겹치지 않게 쓰기 잠금을 먼저 잡는다.
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    previous = latest_bookmark(session, opp_id)
+    if body.active == (previous is not None and previous.active):
+        # 이미 같은 값이다. 한 번도 켠 적이 없는 기회를 끄라는 요청은
+        # 돌려줄 행이 없으므로 버전 0으로 답한다.
+        current = bookmark_view(previous) or BookmarkRecord(
+            version=0, updated_by=staff, updated_at=utcnow(), active=False
+        )
+        return BookmarkEnvelope(
+            data=BookmarkResponse(**current.model_dump()),
+            meta=Meta(
+                updated_at=current.updated_at,
+                has_virtual_data=opportunity.is_virtual,
+                dataset_kind=opportunity.dataset_kind,
+            ),
+        )
+    if not body.active and _has_sales_records(session, opp_id):
+        raise AppError(
+            message="기록이 있는 회사는 관심에서 뺄 수 없습니다",
+            next_action="빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요",
+            status=422,
+            kind="BOOKMARK_HAS_RECORDS",
+        )
+    row = _add_bookmark(
+        session, opportunity, staff, active=body.active, source="MANUAL", previous=previous
+    )
+    session.flush()
+    previous_value = None
+    if previous and previous.version > (body.expected_version or 0):
+        previous_value = bookmark_view(previous).model_dump(mode="json", by_alias=True)
+    return BookmarkEnvelope(
+        data=BookmarkResponse(**bookmark_view(row).model_dump()),
+        meta=Meta(
+            updated_at=row.created_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
+            previous_value=previous_value,
+        ),
+    )
+
+
 def latest_outcome(session: Session, opp_id: str) -> Outcome | None:
     return session.scalar(
         select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version.desc())
@@ -404,6 +528,7 @@ def save_outcome(
     for name in ("next_schedule_at", "next_schedule_note"):
         if previous and name not in body.model_fields_set:
             values[name] = getattr(previous, name)
+    ensure_bookmarked(session, opportunity, staff)
     row = Outcome(
         outcome_id=new_id("outcome"),
         opp_id=opp_id,
@@ -563,6 +688,7 @@ def save_note(
         select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc())
     )
     now = utcnow()
+    ensure_bookmarked(session, opportunity, staff)
     row = Note(
         note_id=new_id("note"),
         opp_id=opp_id,
@@ -650,6 +776,7 @@ def save_opinion(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_opinion(session, opp_id)
     now = utcnow()
+    ensure_bookmarked(session, opportunity, staff)
     row = ReviewOpinion(
         opinion_id=new_id("opinion"),
         opp_id=opp_id,

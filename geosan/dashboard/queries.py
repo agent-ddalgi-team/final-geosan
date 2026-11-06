@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from geosan.evaluation.ledger import latest_full_batch
 from geosan.evaluation.models import EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.records.models import Note, Outcome, ReviewOpinion
+from geosan.records.models import Bookmark, Note, Outcome, ReviewOpinion
 
 # 계약 C1: "이번 주 일정" = 기한이 지난 것부터 오늘 + 7일까지.
 SCHEDULE_WINDOW_DAYS = 7
@@ -112,6 +112,26 @@ def _latest_outcomes(session: Session, population) -> list[Outcome]:
                 newest, and_(Outcome.opp_id == newest.c.opp_id, Outcome.version == newest.c.version)
             )
         )
+    )
+
+
+def bookmarked_opp_ids(population=None):
+    """관심으로 켜 둔 기회 번호를 고르는 select: 기회마다 마지막 관심 행이 '켬'인 것.
+
+    목록 거르기(`?bookmarked=true`)가 쓴다(#356).
+    """
+    newest = select(Bookmark.opp_id, func.max(Bookmark.version).label("version")).group_by(
+        Bookmark.opp_id
+    )
+    if population is not None:
+        newest = newest.where(Bookmark.opp_id.in_(population))
+    newest = newest.subquery()
+    return (
+        select(Bookmark.opp_id)
+        .join(
+            newest, and_(Bookmark.opp_id == newest.c.opp_id, Bookmark.version == newest.c.version)
+        )
+        .where(Bookmark.active.is_(True))
     )
 
 

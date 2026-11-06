@@ -93,7 +93,7 @@ def test_empty_database_shows_zero_counts_and_hides_breakdown(tmp_db):
 
 @pytest.mark.parametrize(
     "params",
-    [{"filter": "OTHER"}, {"filter": ""}, {"tab": "recontact"}, {"bookmarked": "true"}],
+    [{"filter": "OTHER"}, {"filter": ""}, {"tab": "recontact"}],
 )
 def test_empty_database_list_still_rejects_unconnected_input(tmp_db, params):
     """Given 평가한 회사 없음 / When 연결 안 된 조건 / Then 빈 목록(200)이 아니라 입력 오류(400)."""
@@ -102,7 +102,8 @@ def test_empty_database_list_still_rejects_unconnected_input(tmp_db, params):
         assert response.status_code == 400, params
         assert "아직 연결되지 않았습니다" in response.text
         # 연결된 조건과 조건 없는 목록은 빈 DB에서도 정상으로 빈 목록이다.
-        for ok_params in ({}, {"filter": "SCHEDULE_DUE"}):
+        # 관심 목록(bookmarked)은 #356에서 연결했다.
+        for ok_params in ({}, {"filter": "SCHEDULE_DUE"}, {"bookmarked": "true"}):
             ok = client.get("/api/v1/opportunities", params=ok_params)
             assert ok.status_code == 200 and ok.json()["data"] == [], ok_params
 
@@ -201,12 +202,14 @@ def test_list_still_rejects_unconnected_filters_and_plain_list_is_unchanged(dash
     client, _ids = dashboard_env
     url = "/api/v1/opportunities"
     assert client.get(url).json()["meta"]["total"] == 4
-    for params in ({"filter": "OTHER"}, {"filter": ""}, {"tab": "later"}, {"bookmarked": "true"}):
+    for params in ({"filter": "OTHER"}, {"filter": ""}, {"tab": "later"}):
         response = client.get(url, params=params)
         assert response.status_code == 400, params
         assert "아직 연결되지 않았습니다" in response.text
-    empty = client.get(url, params={"filter": "SCHEDULE_DUE"})
-    assert empty.status_code == 200 and empty.json()["meta"]["total"] == 0
+    # 관심 목록(bookmarked=true)은 #356에서 연결했다. 아직 관심 기업이 없어 빈 목록이다.
+    for params in ({"filter": "SCHEDULE_DUE"}, {"bookmarked": "true"}):
+        empty = client.get(url, params=params)
+        assert empty.status_code == 200 and empty.json()["meta"]["total"] == 0, params
 
 
 def test_stage_only_save_keeps_earlier_schedule_in_dashboard(dashboard_env):
