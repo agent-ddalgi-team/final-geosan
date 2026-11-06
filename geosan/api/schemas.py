@@ -6,6 +6,8 @@
 
 더하는 변경(2026-10-21 PM 확인): OpportunityCard.scoreDisplay, meta.notEvaluatedCount,
 brand.demoLabel.
+더하는 변경(2026-11-06 PM 확인, #342): 후보 찾기 응답 칸 — meta.latestIngest, 카드의 들어온
+회차·고른 이유·공정 적합도 등, 상세 머리의 같은 칸. 값은 창구(#317)가 채운다.
 고친 것(2026-10-22 PM 확인, 이슈 #33): Scores의 `E/P/S/R/C` 키를 대문자 별칭으로 고정
 (약속 C1과 같음).
 """
@@ -23,7 +25,9 @@ from geosan.rules.codes import (
     CheckDisplay,
     ClassificationCode,
     DatasetKind,
+    DiscoverySource,
     FilterState,
+    FitLevel,
     LostReasonCode,
     NeededStage,
     Opinion,
@@ -73,6 +77,44 @@ class RegionCount(_ApiModel):
     count: int
 
 
+class IngestCriteria(_ApiModel):
+    """찾기 회차의 조건: 담당자가 고른 공정·지역·산업 (C1 POST /ingest 본문과 같은 이름)."""
+
+    process_codes: list[str]
+    regions: list[str]
+    industries: list[str]
+
+
+class LatestIngest(_ApiModel):
+    """마지막 찾기 회차 요약 (C1 `meta.latestIngest`, #221·#313·#323).
+
+    목록 머리 "훑어본 ○곳 · 판단 완료 ○곳 · 고른 ○곳 · 조사 ○/○"에 쓴다. 칸에 기본값을 두지 않아
+    창구가 회차 행의 값을 빠짐없이 채워야 한다(안 채운 건수가 0으로 보이지 않게).
+    """
+
+    batch_id: str
+    source_id: str
+    started_at: datetime
+    finished_at: datetime | None
+    status: Literal["RUNNING", "DONE", "FAILED"]
+    criteria: IngestCriteria | None = Field(description="조건 없이 돌린 회차는 null")
+    new_count: int = Field(description="목록에 새로 들어온 회사 수")
+    merge_candidate_count: int = Field(description='이름이 비슷해 "확인 필요"로 남은 수')
+    research_done_count: int = Field(description="새 회사 가운데 자동 조사를 끝낸 수")
+    scanned_count: int = Field(description="파일·조회에서 지역으로 추려 합친 회사 수")
+    judged_count: int = Field(description="AI가 판단을 끝낸 수")
+    picked_count: int = Field(description="AI가 고른 수")
+    judge_pending_count: int = Field(description="AI 한도에 걸려 판단이 남은 수")
+    web_search_used: bool
+    web_candidate_count: int
+    web_dropped_count: int = Field(
+        description="채용·유료 사이트 결과, 출처 없음, 홈페이지 미확인으로 버린 수"
+    )
+    web_from_cache: bool
+    web_skipped_reason: Literal["DAILY_LIMIT", "DISABLED"] | None
+    complex_list_skipped_reason: Literal["DAILY_LIMIT", "SOURCE_ERROR", "DISABLED"] | None
+
+
 class Meta(_ApiModel):
     """성공 응답 meta. 목록·상세·기록이 공통으로 쓴다."""
 
@@ -90,6 +132,9 @@ class Meta(_ApiModel):
     region_counts: list[RegionCount] | None = None
     not_evaluated_count: int | None = Field(
         default=None, description="최신 FULL 묶음 뒤에 투입되어 아직 목록에 없는 기회 수"
+    )
+    latest_ingest: LatestIngest | None = Field(
+        default=None, description="마지막 찾기 회차 요약. 한 번도 안 찾았으면 null (C1, #342)"
     )
 
 
@@ -225,6 +270,30 @@ class OpportunityCard(_ApiModel):
     eval_id: str
     reevaluated: bool = False
     dataset_kind: DatasetKind
+    # 후보 찾기(#221, C1). 값은 창구(#317)가 회사 행에서 채운다.
+    ingest_batch_id: str | None = Field(
+        default=None, description="이 회사가 들어온 찾기 회차. 사례 파일 투입은 null"
+    )
+    ingested_at: datetime | None = Field(default=None, description="들어온 시각")
+    is_new_in_latest_batch: bool = Field(
+        default=False, description='마지막 찾기 회차에 들어온 회사면 true("이번에 들어옴")'
+    )
+    discovery_source: DiscoverySource = Field(
+        default=DiscoverySource.CASE_FILE, description="회사가 목록에 들어온 길 (C1, #342)"
+    )
+    discovery_source_url: str | None = None
+    registry_status: Literal["FOUND", "NOT_FOUND"] | None = Field(
+        default=None, description="공공 등록 자료에서 확인됐는지. 웹에서 찾은 회사만 값이 있다"
+    )
+    fit_level: FitLevel | None = Field(
+        default=None, description="AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
+    )
+    pick_reason: str | None = Field(default=None, description="AI가 고른 이유 한 줄")
+    own_plating_line_suspected: bool = Field(
+        default=False,
+        description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
+    )
+    own_plating_line_basis: str | None = Field(default=None, description="그 표시의 근거 한 줄")
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +314,23 @@ class DetailHeader(_ApiModel):
     homepage_source: Literal["AI", "STAFF", "CASE_FILE"] | None = Field(
         default=None, description="홈페이지 주소를 누가 정했나: AI·담당자·사례 파일 (C1, #331)"
     )
+    # 후보 찾기(#221, C1 "카드·상세에 더하는 칸"). 카드와 같은 이름·뜻.
+    discovery_source: DiscoverySource = Field(
+        default=DiscoverySource.CASE_FILE, description="회사가 목록에 들어온 길 (C1, #342)"
+    )
+    discovery_source_url: str | None = None
+    registry_status: Literal["FOUND", "NOT_FOUND"] | None = Field(
+        default=None, description="공공 등록 자료에서 확인됐는지. 웹에서 찾은 회사만 값이 있다"
+    )
+    fit_level: FitLevel | None = Field(
+        default=None, description="AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
+    )
+    pick_reason: str | None = Field(default=None, description="AI가 고른 이유 한 줄")
+    own_plating_line_suspected: bool = Field(
+        default=False,
+        description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
+    )
+    own_plating_line_basis: str | None = Field(default=None, description="그 표시의 근거 한 줄")
     industries: list[str] = Field(default_factory=list)
     industries_source: str | None = None
     address: str

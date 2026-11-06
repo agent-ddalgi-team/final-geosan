@@ -7,6 +7,8 @@ import type {
   ConfigUi,
   Envelope,
   ErrorBody,
+  IngestRequest,
+  IngestResponse,
   NoteRequest,
   NoteResponse,
   OpinionRequest,
@@ -239,6 +241,14 @@ export function postRelation(oppId: string, body: RelationRequest, staffKey: str
   });
 }
 
+/**
+ * 새 후보 가져오기(#316, 계약 C1 `POST /ingest`). 회차를 만든 직후 바로 응답하고 찾기는 서버 뒤에서 이어진다.
+ * 이미 가져오는 중이면 409 INGEST_RUNNING, 소스 읽기 실패는 503, 설정 밖 값은 400, 보기 전용은 403이다.
+ */
+export function postIngest(body: IngestRequest, staffKey: string) {
+  return request<IngestResponse>('/ingest', { method: 'POST', body, staffKey });
+}
+
 /** 활동 이력(U5). 서버가 시각 순으로 준다. 한도 기본 20, 최대 100. */
 export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   return request<ActivityItem[]>(
@@ -368,6 +378,22 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         evalId: `${body.evalId ?? 'eval'}-reevaluated`,
       },
       meta: { updatedAt: now, reevaluated: true },
+    } as unknown as Envelope<T>;
+  }
+  if (route === '/ingest' && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    // 가짜 모드: 회차를 만든 것처럼 바로 응답한다. 진행·결과는 목록 가짜 응답에 들어 있지 않다.
+    return {
+      data: {
+        batchId: `batch-fixture-${Date.now()}`,
+        newCount: 0,
+        mergeCandidateCount: 0,
+        skippedCount: 0,
+      },
+      meta: { updatedAt: new Date().toISOString() },
     } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/activity$/.test(route)) {
