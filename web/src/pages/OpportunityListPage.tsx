@@ -9,9 +9,10 @@ import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
+import IngestSummary from '../components/list/IngestSummary';
 import ListFilterBar from '../components/list/ListFilterBar';
 import OpportunityCard from '../components/list/OpportunityCard';
-import { listFilters, pagination, states } from '../labels/ko';
+import { candidateSearch, listFilters, pagination, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
@@ -32,9 +33,13 @@ export default function OpportunityListPage() {
   const stage = params.get('stage');
   const filter = params.get('filter');
   const q = params.get('q');
+  // "이번 수집만"(#316)은 주소 `?batch=latest`로만 남긴다. 다른 값은 전체로 읽는다.
+  const latestOnly = params.get('batch') === 'latest';
   // 대시보드 건수·검색으로 넘어온 전체 목록에는 공정 탭이 없다.
   const tabsMode = !stage && !filter && !q;
-  const filterKey = [process, region, industry, stage, filter, q].map((v) => v ?? '').join('|');
+  const filterKey = [process, region, industry, stage, filter, q, latestOnly ? 'latest' : '']
+    .map((v) => v ?? '')
+    .join('|');
 
   // 조건이 바뀌면 1쪽부터 다시 본다.
   const [pageState, setPageState] = useState({ key: filterKey, page: 1 });
@@ -54,6 +59,8 @@ export default function OpportunityListPage() {
       stage,
       filter,
       q,
+      // 전체 보기일 때는 이 칸을 아예 보내지 않는다(서버·기존 시험이 보는 요청 모양을 바꾸지 않음).
+      ...(latestOnly ? { batch: 'latest' } : {}),
     })
       .then((envelope) => {
         setMenu(envelope.meta);
@@ -76,7 +83,19 @@ export default function OpportunityListPage() {
         if (!controller.signal.aborted) setResult({ key: requestKey, error });
       });
     return () => controller.abort();
-  }, [page, process, region, industry, stage, filter, q, tabsMode, requestKey, setParams]);
+  }, [
+    page,
+    process,
+    region,
+    industry,
+    stage,
+    filter,
+    q,
+    latestOnly,
+    tabsMode,
+    requestKey,
+    setParams,
+  ]);
 
   const current = result?.key === requestKey ? result : null;
   const meta = current?.meta ?? null;
@@ -123,15 +142,24 @@ export default function OpportunityListPage() {
   else if (current.error) state = 'error';
   else if (items.length === 0) state = 'empty';
 
-  const emptyText =
-    region || industry
+  const emptyText = latestOnly
+    ? candidateSearch.latestEmpty
+    : region || industry
       ? listFilters.filteredEmpty
       : stage || filter || q
         ? listFilters.noMatch
         : states.listEmpty;
+  const latestIngest = menu?.latestIngest ?? null;
 
   return (
     <>
+      {latestIngest ? (
+        <IngestSummary
+          ingest={latestIngest}
+          scope={latestOnly ? 'latest' : 'all'}
+          onScope={(scope) => update({ batch: scope === 'latest' ? 'latest' : null })}
+        />
+      ) : null}
       {menu ? (
         <ListFilterBar
           processCounts={menu.processCounts ?? []}

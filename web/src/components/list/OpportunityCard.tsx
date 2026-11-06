@@ -8,6 +8,7 @@ import StatusTag from '../common/StatusTag';
 import ScoreLine from '../common/ScoreLine';
 import OpinionArea from '../opinion/OpinionArea';
 import {
+  candidateSearch,
   cardRows,
   classificationLabels,
   classificationTone,
@@ -19,6 +20,7 @@ import {
   outcomeStatusTone,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { formatMonthDay } from '../../utils/time';
 export interface OpportunityCardProps {
   card: CardData;
   /** 서버 앱 설정(/config/ui)의 분류 문구. 있으면 기본 대응표보다 먼저 쓴다. */
@@ -58,6 +60,11 @@ export default function OpportunityCard({
   const blocker = card.blocker.text;
   // 영업 단계 꼬리표(U5): 서버가 카드 records.outcome.status를 주면 보인다. 미접촉은 꼬리표를 달지 않는다.
   const stageStatus = card.records.outcome?.status ?? null;
+  // 후보 찾기로 들어온 회사(#316): 고른 이유가 있고 점수가 아직 없으면 "점수 전"으로 보인다.
+  // 사례 파일 18곳은 고른 이유가 없어서 서버 점수 글자("--" 포함)가 지금처럼 그대로 보인다.
+  const pickReason = card.pickReason?.trim() ? card.pickReason : null;
+  const beforeScore = pickReason !== null && card.scoreState === 'NONE';
+  const newInBatchDate = card.isNewInLatestBatch ? formatMonthDay(card.ingestedAt) : null;
 
   return (
     <Card
@@ -140,14 +147,36 @@ export default function OpportunityCard({
               {cardRows.reevaluated}
             </StatusTag>
           ) : null}
-          <ScoreLine
-            scoreDisplay={card.scoreDisplay}
-            scoreState={card.scoreState}
-            relationStatus={card.relationStatus}
-            testId="card-score"
-          />
+          {card.isNewInLatestBatch ? (
+            <StatusTag tone="ask" data-testid="card-new-in-batch-tag">
+              {newInBatchDate
+                ? candidateSearch.newInBatchWithDate(newInBatchDate)
+                : candidateSearch.newInBatch}
+            </StatusTag>
+          ) : null}
+          {beforeScore ? (
+            <span
+              data-testid="card-score"
+              data-score-state={card.scoreState}
+              style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}
+            >
+              {candidateSearch.beforeScore}
+            </span>
+          ) : (
+            <ScoreLine
+              scoreDisplay={card.scoreDisplay}
+              scoreState={card.scoreState}
+              relationStatus={card.relationStatus}
+              testId="card-score"
+            />
+          )}
         </div>
 
+        {pickReason ? (
+          <Row label={candidateSearch.pickReasonRow} title={pickReason}>
+            <span data-testid="card-pick-reason">{pickReason}</span>
+          </Row>
+        ) : null}
         <Row label={cardRows.reason} title={card.reason}>
           <span data-testid="card-reason">{card.reason}</span>
         </Row>

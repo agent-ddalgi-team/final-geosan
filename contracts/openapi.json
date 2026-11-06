@@ -433,6 +433,35 @@
             "title": "Highlights",
             "type": "array"
           },
+          "homepageConfidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0~1. AI가 찾았을 때만 (C1, #331)",
+            "title": "Homepageconfidence"
+          },
+          "homepageSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AI",
+                  "STAFF",
+                  "CASE_FILE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "홈페이지 주소를 누가 정했나: AI·담당자·사례 파일 (C1, #331)",
+            "title": "Homepagesource"
+          },
           "homepageStatus": {
             "anyOf": [
               {
