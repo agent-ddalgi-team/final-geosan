@@ -14,8 +14,9 @@ from geosan.config.app_settings import (
     load_app_settings,
     read_app_settings,
 )
-from geosan.config.errors import AppError
+from geosan.config.errors import AppError, InputError, NotFoundError
 from geosan.evidence.research_context import current_research
+from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import Base, CommonColumns, UtcDateTime, new_id, utcnow
 from geosan.storage.session import session_scope
 
@@ -103,8 +104,27 @@ def reserve_extraction(
     return _reserve(opp_id, key_present, db_path, "EXTERNAL_AI", requested_by)
 
 
+def reserve_candidate_judgment(
+    batch_id: str, key_present: bool, db_path: Path | str | None = None
+) -> SearchTicket:
+    """후보 판단의 호출을 회차에 예약한다(C4·C6, #366). 본문 전송 승인은 별도다.
+
+    응답 사용량은 기존 finish_search로 확정한다. 본문 검사·실제 HTTP 호출·재시도는
+    후속 어댑터가 담당하며, 이 함수만 불렀다고 외부 전송이 승인된 것은 아니다.
+    """
+    if not isinstance(batch_id, str) or not batch_id.strip():
+        raise InputError("후보 찾기 회차 번호를 확인해 주세요.")
+    return _reserve(None, key_present, db_path, "EXTERNAL_AI", "SYSTEM", batch_id=batch_id)
+
+
 def _reserve(
-    opp_id: str, key_present: bool, db_path: Path | str | None, purpose: str, requested_by: str
+    opp_id: str | None,
+    key_present: bool,
+    db_path: Path | str | None,
+    purpose: str,
+    requested_by: str,
+    *,
+    batch_id: str | None = None,
 ) -> SearchTicket:
     """검사와 호출 수 증가를 같은 쓰기 잠금에서 처리한다. HTTP 중에는 잠금을 잡지 않는다."""
     now = utcnow()
@@ -114,6 +134,18 @@ def _reserve(
     error = None
     with session_scope(db_path) as session:
         session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        batch = None
+        if batch_id is not None:
+            batch = session.get(IngestBatch, batch_id)
+            if batch is None:
+                raise NotFoundError("후보 찾기 회차를 찾을 수 없습니다.")
+            if batch.status != "RUNNING":
+                raise AppError(
+                    "실행 중인 후보 찾기 회차가 아닙니다.",
+                    "현재 찾기 상태를 확인해 주세요.",
+                    status=409,
+                )
+            requested_by = batch.requested_by
         settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
         llm = settings.llm
         rows = session.scalars(
@@ -182,6 +214,7 @@ def _reserve(
                 transfer_log_id=log_id,
                 occurred_at=now,
                 opp_id=opp_id,
+                batch_id=batch_id,
                 purpose=purpose,
                 kind="WEB_SEARCH" if is_search else "PUBLIC_TEXT",
                 mode=llm.mode,
@@ -191,6 +224,9 @@ def _reserve(
                 reject_reason=error.message if error else None,
                 call_count=0 if error else 1,
                 requested_by=requested_by,
+                is_virtual=batch.is_virtual if batch is not None else False,
+                dataset_kind=batch.dataset_kind if batch is not None else None,
+                session_ref=batch.session_ref if batch is not None else None,
             )
         )
     context = current_research.get()
