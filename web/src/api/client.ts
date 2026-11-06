@@ -316,7 +316,7 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
   if (route === '/opportunities') {
     const envelope = (await import('../test/fixtures/opportunities-apjeong.json'))
       .default as unknown as Envelope<OpportunityCard[]>;
-    // 이 화면에서 켜고 끈 관심을 카드에 얹고, `bookmarked=true`면 관심 기업만 돌려준다. 다른 조건은 거르지 않는다.
+    // 이 화면에서 켜고 끈 관심을 카드에 얹고, `bookmarked=true`면 관심 기업만 돌려준다.
     const cards = envelope.data.map((card) => ({
       ...card,
       records: {
@@ -324,14 +324,22 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         bookmark: fixtureBookmarks.get(card.oppId) ?? card.records.bookmark ?? null,
       },
     }));
-    const bookmarkedOnly = new URLSearchParams(search).get('bookmarked') === 'true';
-    const data = bookmarkedOnly
-      ? cards.filter((card) => card.records.bookmark?.active === true)
-      : cards;
-    return {
-      data,
-      meta: bookmarkedOnly ? { ...envelope.meta, total: data.length } : envelope.meta,
-    } as unknown as Envelope<T>;
+    const query = new URLSearchParams(search);
+    const bookmarkedOnly = query.get('bookmarked') === 'true';
+    // 목록 머리(#361) 흉내: 가짜 카드에는 공정 칸이 없어서, 곳 수가 0인 공정을 고르면 빈 목록을 돌려주는 것으로 대신한다.
+    // 검색어(`q`)는 카드 제목에 그 글자가 든 회사만 남긴다. 지역·산업 같은 다른 조건은 거르지 않는다.
+    const process = query.get('process');
+    const emptyProcess = (envelope.meta.processCounts ?? []).some(
+      (item) => item.processCode === process && item.count === 0,
+    );
+    const q = query.get('q');
+    const data = cards.filter(
+      (card) =>
+        !emptyProcess &&
+        (!bookmarkedOnly || card.records.bookmark?.active === true) &&
+        (!q || card.title.includes(q)),
+    );
+    return { data, meta: { ...envelope.meta, total: data.length } } as unknown as Envelope<T>;
   }
   if (route === '/dashboard') {
     return (await import('../test/fixtures/dashboard.json')).default as unknown as Envelope<T>;
