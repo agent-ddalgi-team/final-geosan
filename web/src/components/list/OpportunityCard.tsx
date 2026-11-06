@@ -14,6 +14,7 @@ import {
   coreEvidenceRecheckLabel,
   frame,
   labelFor,
+  listFilters,
   outcomeStatusLabels,
   outcomeStatusTone,
 } from '../../labels/ko';
@@ -22,6 +23,8 @@ export interface OpportunityCardProps {
   card: CardData;
   /** 서버 앱 설정(/config/ui)의 분류 문구. 있으면 기본 대응표보다 먼저 쓴다. */
   classificationOverrides?: Record<string, string>;
+  /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. */
+  processNames?: Record<string, string>;
 }
 
 function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
@@ -35,7 +38,11 @@ function Row({ label, children, title }: { label: string; children: ReactNode; t
   );
 }
 
-export default function OpportunityCard({ card, classificationOverrides }: OpportunityCardProps) {
+export default function OpportunityCard({
+  card,
+  classificationOverrides,
+  processNames,
+}: OpportunityCardProps) {
   const navigate = useNavigate();
   const detailPath = `/opportunities/${encodeURIComponent(card.oppId)}`;
   const classification = labelFor(
@@ -86,6 +93,32 @@ export default function OpportunityCard({ card, classificationOverrides }: Oppor
           </span>
           {card.coreEvidenceRecheck ? (
             <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
+          ) : null}
+          {(card.processCodes ?? []).map((code) =>
+            processNames?.[code] ? (
+              <StatusTag key={code} tone="neutral" data-testid="card-process-tag">
+                {processNames[code]}
+              </StatusTag>
+            ) : null,
+          )}
+          {/* 서버가 지역·산업 칸을 주면 값이 없을 때 "미확인/미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
+          {card.region !== undefined ? (
+            <StatusTag tone="neutral" data-testid="card-region-tag">
+              {card.region ?? listFilters.regionUnknown}
+            </StatusTag>
+          ) : null}
+          {card.industries !== undefined ? (
+            card.industries.length > 0 ? (
+              card.industries.map((industry) => (
+                <StatusTag key={industry} tone="neutral" data-testid="card-industry-tag">
+                  {industry}
+                </StatusTag>
+              ))
+            ) : (
+              <StatusTag tone="neutral" data-testid="card-industry-tag">
+                {listFilters.industryUnknown}
+              </StatusTag>
+            )
           ) : null}
           {card.isVirtual ? (
             <StatusTag tone="wait" data-testid="card-virtual-tag">
