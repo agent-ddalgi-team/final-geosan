@@ -7,10 +7,11 @@
   "datasetKind": "BROCHURE",
   "notes": [],
   "customer": {
-    "_설명": "name: 상호(㈜·(주) 포함 가능). bizNumber: 사업자번호 10자리(모르면 null). address: 주소(모르면 null). identityBasis: 어디서 확인했는지. relationStatus: NEW_CONFIRMED(신규 확인) / EXISTING_CONFIRMED(기존 거래처 확인) / UNCONFIRMED(미확인 — 거산 확인 전 실제 기업은 이 값). relationConfirmedAt: YYYY-MM-DD 또는 null. securityGrade: PUBLIC / EXTERNAL_AI_OK / INTERNAL_ONLY / FORBIDDEN / UNKNOWN (공개 자료만 썼으면 PUBLIC).",
+    "_설명": "name: 상호(㈜·(주) 포함 가능). bizNumber: 사업자번호 10자리(모르면 null). address: 주소(모르면 null). homepageUrl: 회사 공식 홈페이지 주소(http:// 또는 https://로 시작, 확실할 때만. 모르면 null — 비우면 AI가 찾는다). identityBasis: 어디서 확인했는지. relationStatus: NEW_CONFIRMED(신규 확인) / EXISTING_CONFIRMED(기존 거래처 확인) / UNCONFIRMED(미확인 — 거산 확인 전 실제 기업은 이 값). relationConfirmedAt: YYYY-MM-DD 또는 null. securityGrade: PUBLIC / EXTERNAL_AI_OK / INTERNAL_ONLY / FORBIDDEN / UNKNOWN (공개 자료만 썼으면 PUBLIC).",
     "name": "",
     "bizNumber": null,
     "address": null,
+    "homepageUrl": null,
     "identityBasis": "",
     "relationStatus": "UNCONFIRMED",
     "relationConfirmedAt": null,

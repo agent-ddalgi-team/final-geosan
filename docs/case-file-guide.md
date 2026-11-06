@@ -112,6 +112,7 @@ AI 도구(Claude Code·Codex)에 공개 홈페이지 본문을 넣어 초안을 
 | `isVirtual` | `false` | 실제 기업 |
 | `datasetKind` | `BROCHURE` | 10월 말 부분 시연은 소개서 묶음(거산 확인 전)으로 평가 |
 | `customer.relationStatus` | 보통 `UNCONFIRMED` | 거산 확인 전. 확인되면 PM이 바꿈 |
+| `customer.homepageUrl` | 공식 홈페이지 주소 또는 `null` | 확실할 때만 적습니다(`http://`·`https://`로 시작). 적으면 "확정" 주소로 저장되고, 비우면 AI가 찾은 주소를 그대로 둡니다. 담당자가 화면에서 고친 주소가 있으면 그 값이 남습니다(2026-11-06, #190) |
 | `signals[].agreedWindow` | `null` | G0 합의 전 실제 후보는 합의값 없음(BR5.3) |
 | `readinessCheck` | `null` | 담당자 체크는 화면(U5) 또는 PM 투입 |
 | `expected` | `null` | 기대값은 가상 사례에만 |

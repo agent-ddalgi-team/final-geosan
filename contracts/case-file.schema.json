@@ -24,6 +24,7 @@
         "bizNumber": { "type": ["string", "null"], "pattern": "^[0-9]{10}$" },
         "address": { "type": ["string", "null"] },
         "industries": { "type": "array", "maxItems": 3, "items": { "type": "string" }, "description": "설정 industries 목록 안 값. 사례 파일 출처 CASE_FILE (2026-11-03 PM 승인)" },
+        "homepageUrl": { "type": ["string", "null"], "pattern": "^https?://[^\\s@]+$", "description": "회사 공식 홈페이지 주소(선택). 투입하면 확정(CONFIRMED)·사례 파일 출처(CASE_FILE)로 저장. 비우면 지금 주소를 그대로 둠 (2026-11-06 PM 결정, #190·#332)" },
         "identityBasis": { "type": ["string", "null"] },
         "relationStatus": { "$ref": "#/$defs/relationStatus" },
         "relationConfirmedAt": { "type": ["string", "null"], "format": "date" },
