@@ -520,12 +520,24 @@ export const reviewItemKindLabels = {
   QUESTION: 'AI 확인 질문',
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
+  OWN_PLATING_LINE_SUSPECTED: '표면처리를 직접 하는 회사일 수 있음',
 } as const;
 /** 꼬리표 글자. 질문은 뒤에 "·상대 회사" / "·거산"이 붙는다. */
 export const reviewItemKindTagLabels = {
   QUESTION: 'AI 질문',
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
+  OWN_PLATING_LINE_SUSPECTED: '표면처리 직접 · 확인 필요',
+} as const;
+
+/**
+ * "표면처리를 직접 하는 회사일 수 있음" 표시(#319, 결정 2026-11-06). 카드 꼬리표 글자와 근거 줄 이름.
+ * 거산이 표면처리를 하는 회사라서 같은 일을 하는 회사는 영업 대상이 아닐 수 있다. 자동으로 빼지 않고 담당자가 확인한다.
+ */
+export const ownPlatingLine = {
+  tag: '표면처리를 직접 하는 회사일 수 있음 · 확인 필요',
+  /** 근거 줄 이름. 카드에 이미 있는 "추천 근거"와 헷갈리지 않게 "확인 근거"로 한다. 예: 확인 근거 | 생산품 "알루미늄 아노다이징" */
+  basisLabel: '확인 근거',
 } as const;
 export const reviewItemSourceLabels = {
   AI: 'AI 조사',
