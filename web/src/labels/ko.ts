@@ -353,6 +353,31 @@ export const listFilters = {
   industryUnknown: '산업 미확정',
 } as const;
 
+/**
+ * 추천 목록 머리의 "관심 기업" 보기(#357, 2026-11-06 PM 결정)와, 대시보드 칸을 누르고 넘어온 목록의 이름 줄.
+ * 칸 이름 자체는 대시보드와 같은 말(`dashboardTexts.countNames`)을 쓴다.
+ */
+export const bookmarkList = {
+  title: '관심 기업',
+  showOnly: '관심 기업만 보기',
+  showAll: '전체 추천 목록 보기',
+  opinionGroupLabel: '검토 의견으로 거르기',
+  /** 거르기 단추 다섯 개. "기타"는 세 의견 중 아무것도 고르지 않은 회사만 나온다. */
+  opinionFilters: {
+    ALL: '전체 보기',
+    WORTH_REVIEW: '검토 권고',
+    NEED_CHECK: '추가 확인 필요',
+    NOT_TARGET: '제외 기업',
+    NONE: '기타',
+  },
+  /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
+  empty: '관심으로 고른 회사가 없습니다. 카드의 [관심]을 눌러 담아 보세요',
+  filterPrefix: '거른 조건',
+  /** 주소의 조건 값이 대시보드 칸 이름표에 없을 때 대신 보이는 말. */
+  filterUnknown: '대시보드에서 고른 조건',
+  clearFilter: '거르기 풀기',
+} as const;
+
 /** 후보 찾기 화면(#316, 결정 2026-11-05): 목록 머리 수집 요약·"이번 수집만/전체" 전환과 카드의 고른 이유·점수 전·이번에 들어옴. */
 export const candidateSearch = {
   /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
