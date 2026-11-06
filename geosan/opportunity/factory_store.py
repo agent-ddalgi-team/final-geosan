@@ -18,8 +18,9 @@ from geosan.config.app_settings import (
     load_app_settings,
     read_app_settings,
 )
-from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
+from geosan.config.errors import AppError, InputError, NotFoundError
 from geosan.opportunity.factory_csv import SOURCE_ID, FactoryCsvResult, read_factory_csv
+from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.queries import normalize_address, normalize_name
 from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
@@ -184,5 +185,7 @@ def store_factory_csv(
                         row.missing_since = file_date
             session.flush()
         return StoredFactoryCsv(tuple(stored_ids), result)
-    except SQLAlchemyError:
-        raise RunFailedError("공개 공장 행을 저장하지 못했습니다.") from None
+    except SQLAlchemyError as exc:
+        raise storage_failure(
+            exc, operation="factory", message="공개 공장 행을 저장하지 못했습니다."
+        ) from None
