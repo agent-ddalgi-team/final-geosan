@@ -312,6 +312,56 @@ export const detailHeader = {
   owner: '담당',
 } as const;
 
+/** 추천 목록 머리의 공정 탭·지역·산업 선택과 카드 꼬리표(#210, 결정 2026-11-03 밤). */
+export const listFilters = {
+  tabsLabel: '공정',
+  regionLabel: '지역',
+  industryLabel: '산업',
+  all: '전체',
+  /** "천안 인근 8" */
+  option: (name: string, count: number) => `${name} ${count}`,
+  /** "전기아연도금 (9)" */
+  tab: (name: string, count: number) => `${name} (${count})`,
+  /** 조건을 걸었는데 0건일 때. */
+  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
+  /** 대시보드 건수·검색으로 넘어와 걸러진 목록이 비었을 때. */
+  noMatch: '이 조건에 맞는 후보가 없습니다.',
+  regionUnknown: '지역 미확인',
+  industryUnknown: '산업 미확정',
+} as const;
+
+/** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
+export const companySummary = {
+  title: '회사 소개',
+  /** "조사 11/5 (3일 전)" */
+  researched: (date: string, ago: string) => `조사 ${date} (${ago})`,
+  /** 사례 파일로만 만든 요약(AI 조사 전). */
+  caseFileBasis: '사례 파일 기준',
+  stale: '오래됨',
+  aiSuggestion: 'AI 제안',
+  summaryLine: '한 줄',
+  highlights: '특징',
+  /** "거산에서 12.3km" */
+  distance: (km: number) => `거산에서 ${km}km`,
+  mainPhone: '대표',
+  phoneSource: '출처',
+  phoneSourceHomepage: '홈페이지',
+  phoneSourceCsv: '공장현황 자료',
+  phoneUnconfirmed: '담당자 확인 전',
+  /** "담당자 확인 11/5 영업 담당" */
+  phoneConfirmed: (date: string, name: string) => `담당자 확인 ${date} ${name}`,
+  phoneConfirmButton: '맞음',
+  phoneConfirmFailed: '대표번호를 확인하지 못했습니다.',
+  phoneStale: '그 사이 번호가 바뀌었습니다. 상세를 새로 불러온 뒤 다시 눌러 주세요.',
+  pickStaffFirst: '담당자를 고르면 확인할 수 있습니다.',
+  reload: '새로 불러오기',
+  bandNeedsConfirmation: '홈페이지 확인 필요',
+  bandNotFound: '홈페이지 못 찾음',
+  /** 오늘 기준 며칠 전. */
+  today: '오늘',
+  daysAgo: (days: number) => `${days}일 전`,
+} as const;
+
 /** 상세 머리 거래 관계 줄(#266): 지금 상태 글자, 바꾸는 단추, 안내·오류 문구. */
 export const relationControl = {
   title: '거래 관계',
@@ -455,19 +505,27 @@ export const outcomeStatusTone: Record<string, StatusTone> = {
 /** 상세 하단 "기록" 영역(U5): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정. */
 export const recordsArea = {
   title: '기록',
-  contactTitle: '접촉 시도',
+  /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
+  entryTitle: '기록 남기기',
+  entryKind: '종류',
   contactMethod: '방법',
   contactResult: '결과',
   contactDate: '날짜',
   contactSave: '접촉 기록 저장',
-  contactCount: (total: number, call: number, email: number, visit: number) =>
-    `접촉 ${total}회 (전화 ${call} · 메일 ${email} · 방문 ${visit})`,
-  noteTitle: '영업 메모',
-  noteKind: '종류',
+  /** 상세 머리 "접촉 3회 (전화 2 · 방문 1)". 0회인 방법은 빼고, 접촉이 없으면 "접촉 없음". */
+  contactCount: (total: number, call: number, email: number, visit: number) => {
+    const parts = [
+      call > 0 ? `전화 ${call}` : '',
+      visit > 0 ? `방문 ${visit}` : '',
+      email > 0 ? `메일 ${email}` : '',
+    ].filter(Boolean);
+    return total === 0 ? '접촉 없음' : `접촉 ${total}회 (${parts.join(' · ')})`;
+  },
   noteLabel: '메모 내용',
   noteCounter: (used: number, max: number) => `${used} / ${max}자`,
   noteHint: '메모는 덧붙이기만 되고 고치거나 지울 수 없습니다. 이 메모는 외부로 나가지 않습니다.',
   noteSave: '메모 남기기',
+  researchSave: '자료 조사 남기기',
   stageTitle: '영업 단계',
   stageCurrent: '현재 단계',
   stageNone: '아직 기록 없음',

@@ -1,4 +1,4 @@
-"""순서가 있는 열한 분류와 목록·상세 표시값 (BR5.6, BR6.1~6.3, BR10.2~10.3)."""
+"""순서가 있는 열한 분류와 목록·상세 표시값 (BR5.6, BR6.1, BR6.2, BR6.3, BR10.2, BR10.3)."""
 
 from geosan.rules.codes import (
     CheckDisplay,
@@ -43,7 +43,7 @@ def _next_action(data: EvaluationInput, fallback: str) -> str:
 
 
 def _pending_process_names(data: EvaluationInput) -> list[str] | None:
-    """연결·사용한 값의 검수 상태로 실제 공정 이름을 찾는다 (BR5.6, #160)."""
+    """연결·사용한 값의 검수 상태로 막는 조건에 쓸 공정 이름을 찾는다 (BR5.6, BR10.3, #160)."""
     processes = {
         p.process_id: p for p in data.capability.processes if p.dataset_kind == data.dataset_kind
     }
@@ -81,7 +81,7 @@ def _pending_process_names(data: EvaluationInput) -> list[str] | None:
 
 
 def _has_final_consonant(text: str) -> bool:
-    """한글 받침에 맞춰 조사(과·와, 이·가)를 붙인다. 비한글 이름은 '이'로 잇는다."""
+    """막는 조건 문장의 한글 받침을 확인한다. 비한글 이름은 '이'로 잇는다 (BR10.3)."""
     last = text.rstrip()[-1]
     return (ord(last) - ord("가")) % 28 != 0 if "가" <= last <= "힣" else True
 
@@ -118,7 +118,10 @@ def classify(
     timing: TimingRequirements,
     research_ready: bool,
 ) -> Code:
-    """반올림한 표시 점수 대신 E·P·R로 첫 해당 분류를 정한다 (BR6.1~6.3, BR5.6)."""
+    """반올림한 표시 점수 대신 E·P·R로 첫 해당 분류를 정한다 (BR5.6, BR6.1, BR6.2, BR6.3).
+
+    BR6.2의 핵심 근거 재확인은 접촉 분기를 건너뛰고 보완·보류 분기에서 판단한다.
+    """
     if filter_state == FilterState.EXCLUDED:
         return Code.FILTER_EXCLUDED
     if filter_state == FilterState.PENDING:
@@ -161,7 +164,10 @@ def display_texts(
     core: CoreEvidenceMet,
     missing_research: list[str],
 ) -> DisplayTexts:
-    """분류·요구·관계 확인 상태를 설명하고 승인 가능 여부를 한 번만 계산한다 (BR10.2~10.3)."""
+    """분류·요구·관계 확인 상태를 설명하고 승인 가능 여부를 한 번만 계산한다.
+
+    적용 규칙: BR3.10, BR5.6, BR6.2, BR6.3, BR10.2, BR10.3.
+    """
     label = data.rule_config.classification_labels[code]
     blockers = []
     if assessment.filter_state == FilterState.EXCLUDED:

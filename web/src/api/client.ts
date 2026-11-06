@@ -15,6 +15,8 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  MainPhoneConfirmRequest,
+  MainPhoneConfirmResponse,
   RelationRequest,
   RelationResponse,
   ReplyRequest,
@@ -133,8 +135,32 @@ export function getConfigUi(signal?: AbortSignal) {
   return request<ConfigUi>('/config/ui', { signal });
 }
 
-export function getOpportunities(page = 1, pageSize = 20, signal?: AbortSignal) {
+/** 목록 조건(#210). 비어 있는 값은 보내지 않는다. 서버는 이 조건들을 모두 AND로 건다. */
+export interface ListFilters {
+  /** 공정 코드(예: ANODIZING). 주면 그 공정 연결 기회만, 순위는 그 안 번호. */
+  process?: string | null;
+  /** 시·군 또는 묶음 이름(예: 천안 인근, 아산시). */
+  region?: string | null;
+  /** 설정에 있는 산업군 이름. */
+  industry?: string | null;
+  /** 영업 단계(예: INTERESTED). 대시보드 건수에서 넘어올 때 쓴다. */
+  stage?: string | null;
+  /** 대시보드 "이번 주 일정"에서 넘어올 때 SCHEDULE_DUE. */
+  filter?: string | null;
+  /** 회사·기회·산업군 검색어. */
+  q?: string | null;
+}
+
+export function getOpportunities(
+  page = 1,
+  pageSize = 20,
+  signal?: AbortSignal,
+  filters: ListFilters = {},
+) {
   const query = new URLSearchParams({ tab: 'new', page: String(page), pageSize: String(pageSize) });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) query.set(key, value);
+  }
   return request<OpportunityCard[]>(`/opportunities?${query.toString()}`, { signal });
 }
 
@@ -188,6 +214,18 @@ export function postQuestionReply(questionId: string, body: ReplyRequest, staffK
     body,
     staffKey,
   });
+}
+
+/** 대표번호 [맞음](#209). 번호는 못 고치고 확인한 시각·담당자만 남긴다. */
+export function postMainPhoneConfirm(
+  oppId: string,
+  body: MainPhoneConfirmRequest,
+  staffKey: string,
+) {
+  return request<MainPhoneConfirmResponse>(
+    `/opportunities/${encodeURIComponent(oppId)}/main-phone/confirm`,
+    { method: 'POST', body, staffKey },
+  );
 }
 
 /** 거래 관계 저장(#265). 저장하면 서버가 이력을 남기고 이 회사를 다시 평가한다. */
@@ -293,6 +331,22 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         replyText: body.replyText ?? '',
         repliedAt: body.repliedAt ?? now.slice(0, 10),
         repliedBy: options.staffKey,
+      },
+      meta: { updatedAt: now },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/main-phone\/confirm$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const body = (options.body ?? {}) as Partial<MainPhoneConfirmRequest>;
+    return {
+      data: {
+        mainPhone: body.expectedPhone ?? '',
+        mainPhoneConfirmedAt: now,
+        mainPhoneConfirmedBy: options.staffKey,
       },
       meta: { updatedAt: now },
     } as unknown as Envelope<T>;

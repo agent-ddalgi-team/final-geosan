@@ -21,6 +21,7 @@ export type ReviewStatus = 'UNAVAILABLE' | 'PENDING' | 'REVIEWED' | 'RECHECK';
 export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRMED';
 /** 점수 확인 상태(#263): CONFIRMED 확정, PENDING 거래 확인 전(값은 있으나 확정 전), NONE 점수 없음 */
 export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
+export type HomepageStatus = 'AI_FOUND' | 'NEEDS_CONFIRMATION' | 'CONFIRMED' | 'NOT_FOUND';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
 export type NeededStage = 'NOW' | 'LATER' | 'UNKNOWN';
@@ -44,6 +45,25 @@ export interface Meta {
   evaluatedAsNew?: boolean | null;
   total?: number | null;
   notEvaluatedCount?: number | null;
+  /** 목록 머리용(#210). 공정 탭: 기회가 있는 공정만, 역량 파일 순서. */
+  processCounts?: ProcessCount[] | null;
+  /** 지역·산업 선택지와 건수. 현재 공정 탭 안 건수이고 0건은 서버가 빼서 준다. */
+  regionCounts?: RegionCount[] | null;
+  industryCounts?: IndustryCount[] | null;
+}
+
+export interface ProcessCount {
+  processCode: string;
+  processName: string;
+  count: number;
+}
+export interface RegionCount {
+  region: string;
+  count: number;
+}
+export interface IndustryCount {
+  industry: string;
+  count: number;
 }
 
 /** 성공 응답 `{ data, meta }`. */
@@ -153,6 +173,12 @@ export interface CardRecords {
 }
 
 export interface OpportunityCard {
+  /** 이 회사 주소의 시·군(예: 아산시). 주소가 없으면 null이고 카드는 "지역 미확인"을 보인다(#210). */
+  region?: string | null;
+  /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */
+  industries?: string[];
+  /** 이 기회가 걸린 공정 코드들. 카드는 공정 이름 꼬리표로 바꿔 보인다. */
+  processCodes?: string[];
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
@@ -191,6 +217,22 @@ export interface DetailHeader {
   /** 거래 관계를 담당자가 마지막으로 바꾼 날(YYYY-MM-DD)과 담당자 키. 한 번도 안 바꿨으면 없음(#266). */
   relationConfirmedAt?: string | null;
   relationConfirmedBy?: string | null;
+  /** 홈페이지 상태. NEEDS_CONFIRMATION·NOT_FOUND면 맨 위 띠가 보인다(결정 B). 없으면 띠 없음. */
+  homepageStatus?: HomepageStatus | null;
+  /** 거산에서 떨어진 거리(km). 거리 기능(#222) 전까지 null이고, 없으면 보이지 않는다. */
+  distanceKm?: number | null;
+  /** 회사 대표번호(내부 메모장용, 2026-11-03 PM 결정)와 출처·담당자 확인(#209). */
+  mainPhone?: string | null;
+  mainPhoneSource?: 'HOMEPAGE' | 'CSV' | null;
+  mainPhoneSourceUrl?: string | null;
+  mainPhoneConfirmedAt?: string | null;
+  mainPhoneConfirmedBy?: string | null;
+  /** 기업 요약: 한 줄 소개, 특징(최대 3개), 조사 시각, 출처(AI 또는 사례 파일), 오래됨. */
+  summaryLine?: string | null;
+  highlights?: string[];
+  researchedAt?: string | null;
+  researchSource?: 'AI' | 'CASE_FILE' | null;
+  researchStale?: boolean;
   purpose: Purpose;
   owner?: string | null;
   classificationCode: ClassificationCode;
@@ -410,6 +452,19 @@ export interface ReviewCheckResponse {
   checked: boolean;
   checkedBy?: string | null;
   checkedAt?: string | null;
+}
+
+// ---------- POST /opportunities/{oppId}/main-phone/confirm (대표번호 [맞음], #209) ----------
+
+export interface MainPhoneConfirmRequest {
+  /** 지금 화면에 보이는 번호. 그 사이 번호가 바뀌었으면 서버가 409(STALE_VALUE)로 막는다. */
+  expectedPhone: string;
+}
+
+export interface MainPhoneConfirmResponse {
+  mainPhone: string;
+  mainPhoneConfirmedAt: string;
+  mainPhoneConfirmedBy: string;
 }
 
 // ---------- POST /opportunities/{oppId}/relation (거래 관계 입력, #265·#266) ----------

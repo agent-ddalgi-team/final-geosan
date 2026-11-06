@@ -59,5 +59,5 @@ def evaluate(evaluation_input: EvaluationInput) -> EvaluationOutput:
 def rank(
     outputs: list[RankInput], dataset_kind: DatasetKind, rule_config: RuleConfig
 ) -> list[RankOutput]:
-    """같은 프로필의 평가에 원래 순위를 매긴다 (BR6.4~6.5, C3)."""
+    """같은 프로필의 평가에 원래 순위를 매긴다 (BR6.4, BR6.5, C3)."""
     return rank_outputs(outputs, dataset_kind, rule_config)

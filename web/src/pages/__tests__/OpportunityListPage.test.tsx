@@ -2,12 +2,12 @@
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import OpportunityListPage, { PAGE_SIZE } from '../OpportunityListPage';
 import { ApiError, getOpportunities } from '../../api/client';
 import type { Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { cardRows, pagination, scoreTags, states } from '../../labels/ko';
+import { cardRows, listFilters, pagination, scoreTags, states } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -22,9 +22,29 @@ function reply(items: OpportunityCard[], meta = {}): Envelope<OpportunityCard[]>
   return { data: items, meta: { total: items.length, ...meta } };
 }
 
-function renderPage() {
+/** 조건이 하나도 없을 때 getOpportunities의 네 번째 인자. */
+const NO_FILTERS = {
+  process: null,
+  region: null,
+  industry: null,
+  stage: null,
+  filter: null,
+  q: null,
+};
+
+const TABS = [
+  { processCode: 'ZINC_PLATING', processName: '전기아연도금', count: 9 },
+  { processCode: 'ANODIZING', processName: '아노다이징', count: 10 },
+];
+
+function LocationProbe() {
+  const location = useLocation();
+  return <p data-testid="location">{`${location.pathname}${location.search}`}</p>;
+}
+
+function renderPage(initial = '/opportunities') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initial]}>
       <FrameContext.Provider
         value={{
           config: null,
@@ -36,6 +56,7 @@ function renderPage() {
         }}
       >
         <OpportunityListPage />
+        <LocationProbe />
       </FrameContext.Provider>
     </MemoryRouter>,
   );
@@ -264,7 +285,241 @@ describe('OpportunityListPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('list-range-text')).toHaveTextContent(pagination.total(21, 40, 45)),
     );
-    expect(mockedGet).toHaveBeenLastCalledWith(2, PAGE_SIZE, expect.any(AbortSignal));
+    // 조건이 하나도 없으면 모두 null로 서버에 간다(client가 빈 값은 주소에 싣지 않는다).
+    expect(mockedGet).toHaveBeenLastCalledWith(2, PAGE_SIZE, expect.any(AbortSignal), NO_FILTERS);
     expect(screen.getAllByTestId('card-rank')[0]).toHaveTextContent('21');
+  });
+
+  describe('공정 탭·지역·산업 선택 (#210)', () => {
+    it('조건 없이 처음 열면 첫 공정 탭을 주소에 넣고 그 공정으로 다시 불러온다', async () => {
+      mockedGet.mockResolvedValueOnce(reply([apjeong], { processCounts: TABS }));
+      mockedGet.mockResolvedValueOnce(reply([apjeong], { processCounts: TABS, total: 9 }));
+      renderPage();
+      await screen.findByTestId('opportunity-card');
+      expect(mockedGet).toHaveBeenCalledTimes(2);
+      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+      expect(mockedGet.mock.calls[1][3]).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' });
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/opportunities?process=ZINC_PLATING',
+      );
+      expect(screen.getByTestId('list-process-tab-ZINC_PLATING')).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByTestId('list-process-tab-ANODIZING')).toHaveAttribute(
+        'aria-selected',
+        'false',
+      );
+      expect(screen.getByTestId('list-process-tab-ZINC_PLATING')).toHaveTextContent(
+        '전기아연도금 (9)',
+      );
+    });
+
+    it('탭을 누르면 그 공정으로 다시 불러오고 지역·산업은 전체로 돌아간다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(
+        reply([apjeong], {
+          processCounts: TABS,
+          regionCounts: [{ region: '아산시', count: 3 }],
+          industryCounts: [{ industry: '자동차 부품', count: 2 }],
+        }),
+      );
+      renderPage('/opportunities?process=ZINC_PLATING&region=아산시&industry=자동차 부품');
+      await screen.findByTestId('opportunity-card');
+      await user.click(screen.getByTestId('list-process-tab-ANODIZING'));
+      await waitFor(() =>
+        expect(mockedGet).toHaveBeenLastCalledWith(1, PAGE_SIZE, expect.any(AbortSignal), {
+          ...NO_FILTERS,
+          process: 'ANODIZING',
+        }),
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent('/opportunities?process=ANODIZING');
+      expect(screen.getByTestId('location')).not.toHaveTextContent('region');
+      expect(screen.getByTestId('location')).not.toHaveTextContent('industry');
+    });
+
+    it('주소에 있는 조건을 서버에 그대로 보내고, 드롭다운에 고른 값이 보인다 (새로 고침해도 유지)', async () => {
+      mockedGet.mockResolvedValue(
+        reply([apjeong], {
+          processCounts: TABS,
+          regionCounts: [
+            { region: '천안 인근', count: 8 },
+            { region: '아산시', count: 3 },
+          ],
+          industryCounts: [{ industry: '자동차 부품', count: 2 }],
+        }),
+      );
+      renderPage('/opportunities?process=ANODIZING&region=아산시&industry=자동차 부품');
+      await screen.findByTestId('opportunity-card');
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      expect(mockedGet.mock.calls[0][3]).toEqual({
+        ...NO_FILTERS,
+        process: 'ANODIZING',
+        region: '아산시',
+        industry: '자동차 부품',
+      });
+      expect((screen.getByTestId('list-region-select') as HTMLSelectElement).value).toBe('아산시');
+      expect((screen.getByTestId('list-industry-select') as HTMLSelectElement).value).toBe(
+        '자동차 부품',
+      );
+    });
+
+    it('지역·산업을 고르면 주소에 남기고 다시 불러오며, 전체로 돌리면 조건이 빠진다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(
+        reply([apjeong], {
+          processCounts: TABS,
+          regionCounts: [
+            { region: '천안 인근', count: 8 },
+            { region: '아산시', count: 3 },
+          ],
+          industryCounts: [{ industry: '자동차 부품', count: 2 }],
+        }),
+      );
+      renderPage('/opportunities?process=ZINC_PLATING');
+      await screen.findByTestId('opportunity-card');
+      expect(
+        within(screen.getByTestId('list-region-select'))
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['전체', '천안 인근 8', '아산시 3']);
+      await user.selectOptions(screen.getByTestId('list-region-select'), '아산시');
+      await waitFor(() =>
+        expect(mockedGet.mock.calls.at(-1)?.[3]).toEqual({
+          ...NO_FILTERS,
+          process: 'ZINC_PLATING',
+          region: '아산시',
+        }),
+      );
+      await user.selectOptions(screen.getByTestId('list-industry-select'), '자동차 부품');
+      await waitFor(() =>
+        expect(mockedGet.mock.calls.at(-1)?.[3]).toEqual({
+          ...NO_FILTERS,
+          process: 'ZINC_PLATING',
+          region: '아산시',
+          industry: '자동차 부품',
+        }),
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'process=ZINC_PLATING&region=%EC%95%84%EC%82%B0%EC%8B%9C',
+      );
+      await user.selectOptions(screen.getByTestId('list-region-select'), listFilters.all);
+      await waitFor(() =>
+        expect(mockedGet.mock.calls.at(-1)?.[3]).toEqual({
+          ...NO_FILTERS,
+          process: 'ZINC_PLATING',
+          industry: '자동차 부품',
+        }),
+      );
+      expect(screen.getByTestId('location')).not.toHaveTextContent('region');
+    });
+
+    it.each([
+      ['/opportunities?stage=INTERESTED', { stage: 'INTERESTED' }],
+      ['/opportunities?filter=SCHEDULE_DUE', { filter: 'SCHEDULE_DUE' }],
+      ['/opportunities?q=A정밀', { q: 'A정밀' }],
+    ])(
+      '대시보드에서 %s 로 넘어오면 조건을 서버에 보내고 공정 탭 없이 전체를 보인다',
+      async (url, expected) => {
+        mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
+        renderPage(url);
+        await screen.findByTestId('opportunity-card');
+        expect(mockedGet).toHaveBeenCalledTimes(1);
+        expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, ...expected });
+        expect(screen.queryByTestId('list-process-tabs')).not.toBeInTheDocument();
+        expect(screen.getByTestId('location')).toHaveTextContent(url);
+      },
+    );
+
+    it('걸러서 0건이면 조건을 바꿔 보라는 문구를 보이고, 탭·선택 상자는 그대로 남는다', async () => {
+      mockedGet.mockResolvedValue(
+        reply([], {
+          processCounts: TABS,
+          regionCounts: [{ region: '아산시', count: 3 }],
+          industryCounts: [],
+          total: 0,
+        }),
+      );
+      renderPage('/opportunities?process=ANODIZING&region=아산시');
+      expect(await screen.findByText(listFilters.filteredEmpty)).toBeInTheDocument();
+      expect(screen.getByTestId('list-process-tab-ANODIZING')).toBeInTheDocument();
+      expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
+    });
+
+    it('대시보드 조건(단계)으로 걸러서 0건이면 "이 조건에 맞는 후보가 없습니다."를 보인다', async () => {
+      mockedGet.mockResolvedValue(reply([], { total: 0 }));
+      renderPage('/opportunities?stage=WON');
+      expect(await screen.findByText(listFilters.noMatch)).toBeInTheDocument();
+    });
+
+    it('카드에 공정 이름·지역·산업 꼬리표가 붙고, 지역·산업이 비면 "지역 미확인"·"산업 미확정"이 보인다', async () => {
+      const filled: OpportunityCard = {
+        ...apjeong,
+        processCodes: ['ANODIZING'],
+        region: '아산시',
+        industries: ['자동차 부품', '방위산업'],
+      };
+      const empty: OpportunityCard = {
+        ...apjeong,
+        oppId: 'opp-2',
+        rank: 2,
+        processCodes: ['ZINC_PLATING'],
+        region: null,
+        industries: [],
+      };
+      mockedGet.mockResolvedValue(reply([filled, empty], { processCounts: TABS, total: 2 }));
+      renderPage('/opportunities?process=ANODIZING');
+      const cards = await screen.findAllByTestId('opportunity-card');
+      expect(within(cards[0]).getByTestId('card-process-tag')).toHaveTextContent('아노다이징');
+      expect(within(cards[0]).getByTestId('card-region-tag')).toHaveTextContent('아산시');
+      expect(
+        within(cards[0])
+          .getAllByTestId('card-industry-tag')
+          .map((tag) => tag.textContent),
+      ).toEqual(['자동차 부품', '방위산업']);
+      expect(within(cards[1]).getByTestId('card-process-tag')).toHaveTextContent('전기아연도금');
+      expect(within(cards[1]).getByTestId('card-region-tag')).toHaveTextContent(
+        listFilters.regionUnknown,
+      );
+      expect(within(cards[1]).getByTestId('card-industry-tag')).toHaveTextContent(
+        listFilters.industryUnknown,
+      );
+    });
+
+    it('서버가 지역·산업 칸을 주지 않는 옛 응답이면 꼬리표 자리에 아무것도 붙지 않는다', async () => {
+      mockedGet.mockResolvedValue(reply([apjeong]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).queryByTestId('card-region-tag')).not.toBeInTheDocument();
+      expect(within(card).queryByTestId('card-industry-tag')).not.toBeInTheDocument();
+      expect(within(card).queryByTestId('card-process-tag')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('list-filter-bar')).toBeInTheDocument();
+    });
+
+    it('조건이 바뀌면 1쪽부터 다시 본다', async () => {
+      const user = userEvent.setup();
+      const many = Array.from({ length: PAGE_SIZE }, (_, index) => ({
+        ...apjeong,
+        oppId: `opp-${index}`,
+        rank: index + 1,
+      }));
+      mockedGet.mockResolvedValue(
+        reply(many, {
+          total: 45,
+          processCounts: TABS,
+          regionCounts: [{ region: '아산시', count: 3 }],
+          industryCounts: [],
+        }),
+      );
+      renderPage('/opportunities?process=ZINC_PLATING');
+      await screen.findAllByTestId('opportunity-card');
+      await user.click(screen.getByRole('listitem', { name: '2' }));
+      await waitFor(() => expect(mockedGet.mock.calls.at(-1)?.[0]).toBe(2));
+      await user.selectOptions(screen.getByTestId('list-region-select'), '아산시');
+      await waitFor(() =>
+        expect(mockedGet.mock.calls.at(-1)?.[3]).toMatchObject({ region: '아산시' }),
+      );
+      expect(mockedGet.mock.calls.at(-1)?.[0]).toBe(1);
+    });
   });
 });

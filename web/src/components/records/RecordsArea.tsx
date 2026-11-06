@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { Button, Input, Typography } from 'antd';
 import { ApiError, postNote, postOutcome } from '../../api/client';
 import type {
-  ContactCount,
   ContactMethod,
   ContactResult,
   LostReasonCode,
@@ -36,7 +35,8 @@ export interface RecordsAreaProps {
   evalId?: string | null;
   /** 서버가 가진 현재 영업 단계·일정(없으면 null). 처음 보일 때만 쓴다. */
   outcome?: OutcomeRecord | null;
-  contactCount?: ContactCount | null;
+  /** 접촉(전화·방문·메일)을 저장했을 때 알린다. 접촉 횟수는 상세 머리가 보인다. */
+  onContactRecorded?: (method: ContactMethod) => void;
   /** 단계가 바뀌면 알린다(카드 꼬리표 갱신용). */
   onOutcomeSaved?: (outcome: OutcomeRecord) => void;
   /** 접촉·메모·단계·일정 중 무엇이든 저장이 끝나면 알린다(타임라인 새로 불러오기용). */
@@ -44,6 +44,16 @@ export interface RecordsAreaProps {
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
+
+/** 기록 종류 한 칸의 선택지. 전화·방문·메일은 접촉(영업 결과), 메모·자료 조사는 메모로 저장된다. */
+type RecordKind = 'MEMO' | 'CALL' | 'VISIT' | 'EMAIL' | 'RESEARCH';
+
+const RECORD_KIND_ORDER: RecordKind[] = ['MEMO', 'CALL', 'VISIT', 'EMAIL', 'RESEARCH'];
+
+function recordKindLabel(kind: RecordKind): string {
+  if (kind === 'MEMO' || kind === 'RESEARCH') return noteKindLabels[kind];
+  return contactMethodLabels[kind];
+}
 
 function today(): string {
   const now = new Date();
@@ -55,8 +65,6 @@ function today(): string {
 function options(labels: Record<string, string>) {
   return Object.entries(labels).map(([value, label]) => ({ value, label }));
 }
-
-const EMPTY_COUNT: ContactCount = { total: 0, call: 0, email: 0, visit: 0 };
 
 interface NativeSelectProps {
   label: string;
@@ -111,7 +119,7 @@ export default function RecordsArea({
   oppId,
   evalId,
   outcome: initialOutcome,
-  contactCount,
+  onContactRecorded,
   onOutcomeSaved,
   onRecorded,
 }: RecordsAreaProps) {
@@ -119,18 +127,20 @@ export default function RecordsArea({
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
 
   const [outcome, setOutcome] = useState<OutcomeRecord | null>(initialOutcome ?? null);
-  const [count, setCount] = useState<ContactCount>(contactCount ?? EMPTY_COUNT);
   const [busy, setBusy] = useState<BlockKey | null>(null);
   const [message, setMessage] = useState<{ block: BlockKey; text: string; error: boolean } | null>(
     null,
   );
 
-  const [method, setMethod] = useState<ContactMethod | null>(null);
+  // 종류 한 칸. 전화·방문·메일이면 결과·날짜 입력이, 메모·자료 조사면 글 입력이 보인다.
+  const [recordKind, setRecordKind] = useState<RecordKind>('MEMO');
   const [result, setResult] = useState<ContactResult | null>(null);
   const [attemptedAt, setAttemptedAt] = useState(today());
-
-  const [noteKind, setNoteKind] = useState<NoteKind>('MEMO');
   const [noteText, setNoteText] = useState('');
+
+  const method: ContactMethod | null =
+    recordKind === 'CALL' || recordKind === 'VISIT' || recordKind === 'EMAIL' ? recordKind : null;
+  const noteKind: NoteKind = recordKind === 'RESEARCH' ? 'RESEARCH' : 'MEMO';
 
   const [stage, setStage] = useState<OutcomeStatus | null>(null);
   const [lostReason, setLostReason] = useState('');
@@ -222,13 +232,7 @@ export default function RecordsArea({
       ...(status === 'LOST' ? keepLostReason() : {}),
     });
     if (ok) {
-      setCount((prev) => ({
-        total: prev.total + 1,
-        call: prev.call + (method === 'CALL' ? 1 : 0),
-        email: prev.email + (method === 'EMAIL' ? 1 : 0),
-        visit: prev.visit + (method === 'VISIT' ? 1 : 0),
-      }));
-      setMethod(null);
+      onContactRecorded?.(method);
       setResult(null);
     }
   }
@@ -316,96 +320,86 @@ export default function RecordsArea({
         </Typography.Text>
       ) : null}
 
-      <section aria-labelledby={`records-contact-${oppId}`} style={blockStyle}>
-        <Typography.Title level={3} id={`records-contact-${oppId}`} style={{ margin: 0 }}>
-          {recordsArea.contactTitle}
-        </Typography.Title>
-        <span data-testid="records-contact-count" style={hintStyle}>
-          {recordsArea.contactCount(count.total, count.call, count.email, count.visit)}
-        </span>
-        <div style={rowStyle}>
-          <NativeSelect
-            label={recordsArea.contactMethod}
-            placeholder={`${recordsArea.contactMethod} ${recordsArea.selectPlaceholder}`}
-            value={method}
-            options={options(contactMethodLabels)}
-            onChange={(value) => setMethod(value as ContactMethod | null)}
-            disabled={disabled}
-            testId="records-contact-method"
-          />
-          <NativeSelect
-            label={recordsArea.contactResult}
-            placeholder={`${recordsArea.contactResult} ${recordsArea.selectPlaceholder}`}
-            value={result}
-            options={options(contactResultLabels)}
-            onChange={(value) => setResult(value as ContactResult | null)}
-            disabled={disabled}
-            testId="records-contact-result"
-          />
-          <Input
-            type="date"
-            aria-label={recordsArea.contactDate}
-            style={{ width: 160 }}
-            value={attemptedAt}
-            onChange={(event) => setAttemptedAt(event.target.value)}
-            disabled={disabled}
-            data-testid="records-contact-date"
-          />
-          <Button
-            type="primary"
-            disabled={disabled || !method || !result || attemptedAt === ''}
-            loading={busy === 'contact'}
-            onClick={() => void onSaveContact()}
-            data-testid="records-contact-save-button"
-          >
-            {recordsArea.contactSave}
-          </Button>
-        </div>
-        {blockMessage('contact')}
-      </section>
-
-      <section aria-labelledby={`records-note-${oppId}`} style={blockStyle}>
-        <Typography.Title level={3} id={`records-note-${oppId}`} style={{ margin: 0 }}>
-          {recordsArea.noteTitle}
+      <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
+        <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
+          {recordsArea.entryTitle}
         </Typography.Title>
         <div style={rowStyle}>
           <NativeSelect
-            label={recordsArea.noteKind}
-            value={noteKind}
-            options={options(noteKindLabels)}
-            onChange={(value) => setNoteKind((value as NoteKind | null) ?? 'MEMO')}
+            label={recordsArea.entryKind}
+            value={recordKind}
+            options={RECORD_KIND_ORDER.map((kind) => ({
+              value: kind,
+              label: recordKindLabel(kind),
+            }))}
+            onChange={(value) => setRecordKind((value as RecordKind | null) ?? 'MEMO')}
             disabled={disabled}
-            testId="records-note-kind"
+            testId="records-kind"
           />
+          {method ? (
+            <>
+              <NativeSelect
+                label={recordsArea.contactResult}
+                placeholder={`${recordsArea.contactResult} ${recordsArea.selectPlaceholder}`}
+                value={result}
+                options={options(contactResultLabels)}
+                onChange={(value) => setResult(value as ContactResult | null)}
+                disabled={disabled}
+                testId="records-contact-result"
+              />
+              <Input
+                type="date"
+                aria-label={recordsArea.contactDate}
+                style={{ width: 160 }}
+                value={attemptedAt}
+                onChange={(event) => setAttemptedAt(event.target.value)}
+                disabled={disabled}
+                data-testid="records-contact-date"
+              />
+              <Button
+                type="primary"
+                disabled={disabled || !result || attemptedAt === ''}
+                loading={busy === 'contact'}
+                onClick={() => void onSaveContact()}
+                data-testid="records-contact-save-button"
+              >
+                {recordsArea.contactSave}
+              </Button>
+            </>
+          ) : null}
         </div>
-        <Input.TextArea
-          aria-label={recordsArea.noteLabel}
-          value={noteText}
-          rows={2}
-          autoSize={{ minRows: 2, maxRows: 6 }}
-          maxLength={noteMax}
-          onChange={(event) => setNoteText(event.target.value)}
-          disabled={disabled}
-          data-testid="records-note-input"
-        />
-        <span style={hintStyle}>
-          {recordsArea.noteHint}{' '}
-          <span data-testid="records-note-counter">
-            {recordsArea.noteCounter(noteText.length, noteMax)}
-          </span>
-        </span>
-        <div>
-          <Button
-            type="primary"
-            disabled={disabled || noteText.trim() === ''}
-            loading={busy === 'note'}
-            onClick={() => void onSaveNote()}
-            data-testid="records-note-save-button"
-          >
-            {recordsArea.noteSave}
-          </Button>
-        </div>
-        {blockMessage('note')}
+        {method ? null : (
+          <>
+            <Input.TextArea
+              aria-label={recordsArea.noteLabel}
+              value={noteText}
+              rows={2}
+              autoSize={{ minRows: 2, maxRows: 6 }}
+              maxLength={noteMax}
+              onChange={(event) => setNoteText(event.target.value)}
+              disabled={disabled}
+              data-testid="records-note-input"
+            />
+            <span style={hintStyle}>
+              {recordsArea.noteHint}{' '}
+              <span data-testid="records-note-counter">
+                {recordsArea.noteCounter(noteText.length, noteMax)}
+              </span>
+            </span>
+            <div>
+              <Button
+                type="primary"
+                disabled={disabled || noteText.trim() === ''}
+                loading={busy === 'note'}
+                onClick={() => void onSaveNote()}
+                data-testid="records-note-save-button"
+              >
+                {noteKind === 'RESEARCH' ? recordsArea.researchSave : recordsArea.noteSave}
+              </Button>
+            </div>
+          </>
+        )}
+        {blockMessage(method ? 'contact' : 'note')}
       </section>
 
       <section aria-labelledby={`records-stage-${oppId}`} style={blockStyle}>

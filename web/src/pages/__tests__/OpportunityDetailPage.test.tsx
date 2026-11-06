@@ -8,6 +8,7 @@ import {
   ApiError,
   getActivity,
   getOpportunityDetail,
+  postOutcome,
   postQuestionReply,
   postRelation,
 } from '../../api/client';
@@ -30,8 +31,10 @@ vi.mock('../../api/client', async (importOriginal) => ({
   getActivity: vi.fn(),
   postQuestionReply: vi.fn(),
   postRelation: vi.fn(),
+  postOutcome: vi.fn(),
 }));
 
+const mockedOutcome = vi.mocked(postOutcome);
 const mockedRelation = vi.mocked(postRelation);
 const mockedGet = vi.mocked(getOpportunityDetail);
 const mockedReply = vi.mocked(postQuestionReply);
@@ -81,6 +84,7 @@ describe('OpportunityDetailPage', () => {
     mockedActivity.mockReset();
     mockedReply.mockReset();
     mockedRelation.mockReset();
+    mockedOutcome.mockReset();
     mockedActivity.mockResolvedValue({
       data: [],
       meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
@@ -291,6 +295,64 @@ describe('OpportunityDetailPage', () => {
     expect(score).toHaveAttribute('data-score-state', 'PENDING');
     expect(screen.getByTestId('detail-score-pending-tag')).toHaveTextContent(scoreTags.pending);
     expect(screen.queryByTestId('detail-score-existing-tag')).not.toBeInTheDocument();
+  });
+
+  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지 확인이 필요하면 띠가 보인다 (#210)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
+    );
+    renderPage();
+    expect(await screen.findByTestId('company-summary-line')).toHaveTextContent(
+      '알루미늄 주물 표면처리 전문 가상 기업',
+    );
+    expect(screen.getByTestId('company-highlights')).toBeInTheDocument();
+    expect(screen.getByTestId('company-phone-link')).toHaveTextContent('041-000-0000');
+    expect(screen.getByTestId('homepage-band')).toHaveTextContent('홈페이지 확인 필요');
+  });
+
+  it('홈페이지가 확정이거나 AI가 찾은 상태면 띠가 없다 (#210)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await screen.findByTestId('company-summary-line');
+    expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
+  });
+
+  it('접촉 횟수는 기록 영역이 아니라 머리에 보이고, 접촉을 저장하면 머리의 횟수가 바로 늘어난다 (#210)', async () => {
+    const user = userEvent.setup();
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        records: { ...base.records, contactCount: { total: 3, call: 2, email: 0, visit: 1 } },
+      }),
+    );
+    mockedOutcome.mockResolvedValueOnce({
+      data: {
+        version: 1,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-04T01:12:00Z',
+        status: 'IN_PROGRESS',
+      },
+      meta: {},
+    });
+    renderPage();
+    const count = await screen.findByTestId('detail-contact-count');
+    expect(count).toHaveTextContent('접촉 3회 (전화 2 · 방문 1)');
+    expect(within(screen.getByTestId('detail-records')).queryByText(/접촉 3회/)).toBeNull();
+    await user.selectOptions(screen.getByTestId('records-kind'), '메일');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() =>
+      expect(screen.getByTestId('detail-contact-count')).toHaveTextContent(
+        '접촉 4회 (전화 2 · 방문 1 · 메일 1)',
+      ),
+    );
+  });
+
+  it('서버가 접촉 횟수를 주지 않으면 머리의 접촉 횟수 줄은 보이지 않는다 (#210)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await screen.findByTestId('detail-relation-text');
+    expect(screen.queryByTestId('detail-contact-count')).not.toBeInTheDocument();
   });
 
   it('거래 관계를 바꾸면 서버에 저장한 뒤 상세와 활동 이력을 새로 불러온다 (#266)', async () => {
