@@ -134,6 +134,17 @@ def cost_survives(ticket, batch):
     assert any("$0.004000" in line for line in output)
 
 
+@then("원문 없이 저장 실패의 원인 분류와 문의 번호가 로그에 남는다")
+def safe_failure_record(caplog):
+    records = [
+        row for row in caplog.records if row.getMessage().startswith("ingest.factory.failed.")
+    ]
+    assert len(records) == 1 and records[0].ref
+    assert "sqlalchemy_error" in records[0].getMessage()
+    assert "가상 저장 오류" not in caplog.text
+    assert records[0].exc_info is None
+
+
 @when("회차 호출의 사용량을 확정하지 않은 채 홈페이지 검색을 요청한다", target_fixture="failure")
 def unconfirmed(batch):
     reserve_candidate_judgment(batch, True)
