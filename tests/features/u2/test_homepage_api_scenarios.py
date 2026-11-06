@@ -5,6 +5,7 @@ from pytest_bdd import given, scenarios, then, when
 from geosan.config.errors import AppError
 from geosan.workflows import flow_extract
 from tests.unit.u1 import test_homepage_api as support
+from tests.unit.u1 import test_homepage_history as history_support
 
 search_env = support.search_env
 extract_env = support.extract_env
@@ -81,3 +82,12 @@ def correction_preserved(homepage_env, response, saved):
     assert header["homepageUrl"] == "https://example.org/corrected-company"
     assert header["homepageStatus"] == "CONFIRMED"
     assert transport.call_count == 1
+
+
+@then("주소 변경 이력에 이전 주소와 새 주소가 한 번 남는다")
+def address_history_preserved(homepage_env):
+    (row,) = history_support.notes(homepage_env)
+    assert row.kind == "RESEARCH" and row.version == 1
+    assert row.text == (
+        f"홈페이지 주소 변경 · 이전 {support.URL} · 새 https://example.org/corrected-company"
+    )

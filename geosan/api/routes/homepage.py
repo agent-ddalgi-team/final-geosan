@@ -5,13 +5,15 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, Path, Request
 from pydantic import Field, model_validator
+from sqlalchemy import select
 
 from geosan.api.deps import get_session, require_staff
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.errors import AppError, NotFoundError, RunFailedError
 from geosan.evidence.reader import MAX_BYTES, validate_url
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.storage.base import utcnow
+from geosan.records.models import Note
+from geosan.storage.base import new_id, utcnow
 from geosan.workflows import flow_extract
 
 router = APIRouter()
@@ -91,12 +93,33 @@ def save_homepage(
                 and body.url is not None
                 and (not customer.homepage_url or validate_url(customer.homepage_url) != url)
             ):
+                previous_url = customer.homepage_url
+                previous_note = session.scalar(
+                    select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc())
+                )
+                now = utcnow()
                 customer.homepage_url = url
                 customer.homepage_status = "CONFIRMED"
                 customer.homepage_source = "STAFF"
                 customer.homepage_confidence = None
                 customer.homepage_reason = None
-                customer.homepage_fetched_at = utcnow()
+                customer.homepage_fetched_at = now
+                # PM #304: 주소와 이전 주소 기록을 함께 확정한 뒤 조사를 시작한다.
+                # 조사가 실패해도 둘은 남고, 같은 주소 재시도에는 새 기록을 만들지 않는다.
+                session.add(
+                    Note(
+                        note_id=new_id("note"),
+                        opp_id=opp_id,
+                        staff_key=staff,
+                        text=f"홈페이지 주소 변경 · 이전 {previous_url or '없음'} · 새 {url}",
+                        kind="RESEARCH",
+                        version=previous_note.version + 1 if previous_note else 1,
+                        created_at=now,
+                        created_by=staff,
+                        dataset_kind=opportunity.dataset_kind,
+                        is_virtual=opportunity.is_virtual,
+                    )
+                )
         session.flush()
 
     if body.confirm_only:
