@@ -10,8 +10,8 @@ brand.demoLabel.
 회차·고른 이유·공정 적합도 등, 상세 머리의 같은 칸. 값은 창구(#317)가 채운다.
 고친 것(2026-10-22 PM 확인, 이슈 #33): Scores의 `E/P/S/R/C` 키를 대문자 별칭으로 고정
 (약속 C1과 같음).
-바꾼 것(2026-11-06 PM 결정, #356, 계약 v3): 관심(찜) 모델 BookmarkRecord·BookmarkRequest·
-BookmarkResponse 추가, records.bookmark를 그 모양으로.
+바꾼 것(2026-11-06 PM 결정, #356, 계약 v3): 영업 단계에서 INTERESTED 삭제, 관심(찜) 모델
+BookmarkRecord·BookmarkRequest·BookmarkResponse 추가, records.bookmark를 그 모양으로.
 """
 
 from __future__ import annotations
@@ -607,7 +607,6 @@ class MainPhoneConfirmResponse(_ApiModel):
 
 OutcomeStatus = Literal[
     "NOT_EXECUTED",
-    "INTERESTED",
     "IN_PROGRESS",
     "SAMPLE_OR_REGISTRATION_APPROVED",
     "ON_HOLD",

@@ -56,7 +56,7 @@ def test_lost_reason_is_saved_and_visible_without_changing_scores(records_env, c
         ({"status": "LOST", "lostReasonCode": "OTHER"}, "reason"),
         ({"status": "LOST", "lostReasonCode": "OTHER", "reason": "  "}, "reason"),
         ({"status": "WON", "lostReasonCode": "PRICE"}, "lostReasonCode"),
-        ({"status": "INTERESTED", "lostReasonCode": None}, "lostReasonCode"),
+        ({"status": "IN_PROGRESS", "lostReasonCode": None}, "lostReasonCode"),
         (
             {
                 "status": "LOST",
@@ -82,14 +82,14 @@ def test_leaving_lost_clears_current_code_and_preserves_history(records_env):
         post(client, opp_id, "outcomes", {"status": "LOST", "lostReasonCode": "PRICE"}).status_code
         == 200
     )
-    assert post(client, opp_id, "outcomes", {"status": "INTERESTED"}).status_code == 200
+    assert post(client, opp_id, "outcomes", {"status": "IN_PROGRESS"}).status_code == 200
     detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
     assert detail["records"]["outcome"]["lostReasonCode"] is None
     with session_scope() as session:
         rows = list(session.scalars(select(Outcome).order_by(Outcome.version)))
         assert [(row.status, row.lost_reason_code) for row in rows] == [
             ("LOST", "PRICE"),
-            ("INTERESTED", None),
+            ("IN_PROGRESS", None),
         ]
 
 
@@ -108,7 +108,7 @@ def test_forbidden_staff_cannot_save_lost_reason(records_env, staff):
 
 def test_failed_lost_save_preserves_previous_outcome(records_env):
     client, opp_id = records_env
-    assert post(client, opp_id, "outcomes", {"status": "INTERESTED"}).status_code == 200
+    assert post(client, opp_id, "outcomes", {"status": "IN_PROGRESS"}).status_code == 200
     attempts = []
 
     def fail_insert(*_):
@@ -123,7 +123,7 @@ def test_failed_lost_save_preserves_previous_outcome(records_env):
     assert response.status_code == 500 and attempts == [1]
     with session_scope() as session:
         rows = list(session.scalars(select(Outcome)))
-        assert len(rows) == 1 and rows[0].status == "INTERESTED"
+        assert len(rows) == 1 and rows[0].status == "IN_PROGRESS"
 
 
 def test_legacy_outcomes_survive_upgrade_and_remain_readable(records_env, tmp_db):

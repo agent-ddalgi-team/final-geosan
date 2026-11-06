@@ -15,7 +15,6 @@ from geosan.rules.codes import (
 def test_record_codes_match_the_published_contract():
     assert list(OutcomeStatus) == [
         "NOT_EXECUTED",
-        "INTERESTED",
         "IN_PROGRESS",
         "SAMPLE_OR_REGISTRATION_APPROVED",
         "ON_HOLD",

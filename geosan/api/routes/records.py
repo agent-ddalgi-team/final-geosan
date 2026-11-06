@@ -614,7 +614,6 @@ def activity(
     ):
         status_label = {
             "NOT_EXECUTED": "미접촉",
-            "INTERESTED": "관심",
             "IN_PROGRESS": "접촉",
             "SAMPLE_OR_REGISTRATION_APPROVED": "견적·샘플",
             "ON_HOLD": "보류",
