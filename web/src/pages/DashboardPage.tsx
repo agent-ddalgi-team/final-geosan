@@ -18,7 +18,8 @@ import { dashboardTexts } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 interface Result {
-  key: number;
+  /** 어떤 요청의 결과인지: 다시 시도 횟수와 담당자. 담당자가 바뀌면 이전 결과는 보이지 않는다. */
+  key: string;
   data?: Dashboard;
   meta?: Meta;
   error?: unknown;
@@ -27,23 +28,30 @@ interface Result {
 const sectionStyle = { display: 'grid', gap: 12, alignContent: 'start' } as const;
 
 export default function DashboardPage() {
-  const { setBannerMeta } = useFrame();
+  const { setBannerMeta, staffKey, canRecord } = useFrame();
   const navigate = useNavigate();
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [query, setQuery] = useState('');
+  // "최근 내 기록"은 고른 담당자 것이다. 기록할 수 없는 계정(보기 전용·담당자 미선택)은 키를 보내지 않는다(#216 후속).
+  const recordKey = canRecord ? staffKey : null;
+  const requestKey = `${reload}:${recordKey ?? ''}`;
 
   useEffect(() => {
     const controller = new AbortController();
-    getDashboard(controller.signal)
-      .then((envelope) => setResult({ key: reload, data: envelope.data, meta: envelope.meta }))
+    getDashboard(controller.signal, recordKey)
+      .then((envelope) => {
+        // 담당자를 바꾸거나 화면을 떠난 뒤 늦게 온 응답은 새 화면을 덮지 않는다.
+        if (controller.signal.aborted) return;
+        setResult({ key: requestKey, data: envelope.data, meta: envelope.meta });
+      })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setResult({ key: reload, error });
+        if (!controller.signal.aborted) setResult({ key: requestKey, error });
       });
     return () => controller.abort();
-  }, [reload]);
+  }, [requestKey, recordKey]);
 
-  const current = result?.key === reload ? result : null;
+  const current = result?.key === requestKey ? result : null;
   const meta = current?.meta ?? null;
 
   // 띠(가상 데이터·갱신 시각)는 대시보드 응답의 meta를 따른다.

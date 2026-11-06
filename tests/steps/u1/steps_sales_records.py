@@ -29,10 +29,10 @@ def verify_card_without_outcome(record_context):
     assert card["records"]["outcome"] is None
 
 
-@when("관심 다음에 접촉 단계를 저장하면")
+@when("미접촉 다음에 접촉 단계를 저장하면")
 def save_two_stages(record_context):
     client, opp_id, _ = record_context
-    for status in ("INTERESTED", "IN_PROGRESS"):
+    for status in ("NOT_EXECUTED", "IN_PROGRESS"):
         assert post(client, opp_id, "outcomes", {"status": status}).status_code == 200
 
 
@@ -47,8 +47,8 @@ def verify_card_latest_outcome(record_context):
     assert detail["scores"] == scores
 
 
-@when("관심 단계와 가상 영업 메모를 저장하면")
-def save_interest_and_note(record_context):
+@when("접촉 단계와 가상 영업 메모를 저장하면")
+def save_stage_and_note(record_context):
     client, opp_id, _ = record_context
     assert (
         post(
@@ -56,7 +56,7 @@ def save_interest_and_note(record_context):
             opp_id,
             "outcomes",
             {
-                "status": "INTERESTED",
+                "status": "IN_PROGRESS",
                 "nextScheduleAt": "2026-11-12",
                 "nextScheduleNote": "견적 준비",
             },
@@ -72,7 +72,10 @@ def save_interest_and_note(record_context):
 @then("관심 목록과 활동 이력에서 기록을 확인하고 점수는 그대로다")
 def verify_saved_records(record_context):
     client, opp_id, scores = record_context
-    assert client.get("/api/v1/opportunities?stage=INTERESTED").json()["data"][0]["oppId"] == opp_id
+    # 기록을 남긴 회사는 자동으로 관심 목록에 들고(#356), 단계로 걸러도 보인다.
+    for query in ("bookmarked=true", "stage=IN_PROGRESS"):
+        listed = client.get(f"/api/v1/opportunities?{query}").json()["data"]
+        assert [card["oppId"] for card in listed] == [opp_id], query
     activities = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
     assert {item["kind"] for item in activities} >= {"NOTE", "OUTCOME"}
     assert client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"] == scores

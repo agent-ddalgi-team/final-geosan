@@ -61,12 +61,12 @@ def test_regions_preserve_raw_address_and_combine_all_filters(region_env):
     assert (
         client.post(
             f"{url}/{ids[0]}/outcomes",
-            json={"status": "INTERESTED"},
+            json={"status": "IN_PROGRESS"},
             headers={"X-Staff-Key": "park-lee"},
         ).status_code
         == 200
     )
-    params = dict(region="천안 인근", process="ANODIZING", industry="반도체", stage="INTERESTED")
+    params = dict(region="천안 인근", process="ANODIZING", industry="반도체", stage="IN_PROGRESS")
     result = client.get(url, params=params).json()
     assert [row["oppId"] for row in result["data"]] == ids[:1]
     assert client.get(url, params={**params, "region": "아산시"}).json()["data"] == []

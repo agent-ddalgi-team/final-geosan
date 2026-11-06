@@ -1,4 +1,7 @@
-"""#216: 대시보드 건수·이번 주 일정·최근 내 기록을 실제 기록 표(SQLite)에서 집계한다.
+"""#216·#356: 대시보드 건수·이번 주 일정·최근 내 기록을 실제 기록 표(SQLite)에서 집계한다.
+
+건수는 관심으로 켜 둔 회사만 센다(#356, 계약 v3). 칸별 규칙의 자세한 검사는
+`test_bookmark_board.py`에 있다.
 
 현재 시각에 기대지 않도록 집계 함수에는 오늘(2026-11-05)과 지금을 직접 넣는다(NFR12).
 기록은 실제 API로 저장하므로 저장 시각만 실제 시각이다. 가상 사례만 쓴다(거산 실제 사양 아님).
@@ -23,12 +26,22 @@ from tests.unit.u1.test_snapshot_ledger import _write
 
 TODAY = date(2026, 11, 5)
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=KST)
-STAGES = {
-    "NOT_CONTACTED": "NOT_EXECUTED",
-    "INTERESTED": "INTERESTED",
-    "IN_CONTACT": "IN_PROGRESS",
-    "QUOTE_SAMPLE": "SAMPLE_OR_REGISTRATION_APPROVED",
-}
+# 계약 C1(#356)의 건수 키 10개.
+COUNT_KEYS = (
+    "BOOKMARKED",
+    "NO_OPINION",
+    "NEED_CHECK",
+    "NOT_TARGET",
+    "NOT_CONTACTED",
+    "IN_CONTACT",
+    "QUOTE_SAMPLE",
+    "ON_HOLD",
+    "DONE",
+    "SCHEDULE_DUE",
+)
+# 관심 기업 하나가 꼭 하나에만 드는 여덟 칸(합 = BOOKMARKED).
+BOARD_KEYS = COUNT_KEYS[1:9]
+ZERO_COUNTS = dict.fromkeys(COUNT_KEYS, 0)
 
 
 @pytest.fixture
@@ -64,14 +77,7 @@ def build(staff_key="park-lee"):
 
 
 def counts_of(data):
-    counts = data.counts
-    return {
-        "NOT_CONTACTED": counts.not_contacted,
-        "INTERESTED": counts.interested,
-        "IN_CONTACT": counts.in_contact,
-        "QUOTE_SAMPLE": counts.quote_sample,
-        "SCHEDULE_DUE": counts.schedule_due,
-    }
+    return {key: getattr(data.counts, key.lower()) for key in COUNT_KEYS}
 
 
 def test_empty_database_shows_zero_counts_and_hides_breakdown(tmp_db):
@@ -80,20 +86,14 @@ def test_empty_database_shows_zero_counts_and_hides_breakdown(tmp_db):
         response = client.get("/api/v1/dashboard", headers={"X-Staff-Key": "park-lee"})
     assert response.status_code == 200
     data = response.json()["data"]
-    assert data["counts"] == {
-        "NOT_CONTACTED": 0,
-        "INTERESTED": 0,
-        "IN_CONTACT": 0,
-        "QUOTE_SAMPLE": 0,
-        "SCHEDULE_DUE": 0,
-    }
+    assert data["counts"] == ZERO_COUNTS
     assert data["schedule"] == [] and data["recentActivity"] == []
     assert data["breakdown"] is None
 
 
 @pytest.mark.parametrize(
     "params",
-    [{"filter": "OTHER"}, {"filter": ""}, {"tab": "recontact"}, {"bookmarked": "true"}],
+    [{"filter": "OTHER"}, {"filter": ""}, {"filter": "INTERESTED"}, {"tab": "recontact"}],
 )
 def test_empty_database_list_still_rejects_unconnected_input(tmp_db, params):
     """Given 평가한 회사 없음 / When 연결 안 된 조건 / Then 빈 목록(200)이 아니라 입력 오류(400)."""
@@ -102,39 +102,67 @@ def test_empty_database_list_still_rejects_unconnected_input(tmp_db, params):
         assert response.status_code == 400, params
         assert "아직 연결되지 않았습니다" in response.text
         # 연결된 조건과 조건 없는 목록은 빈 DB에서도 정상으로 빈 목록이다.
-        for ok_params in ({}, {"filter": "SCHEDULE_DUE"}):
+        # 관심 목록(bookmarked)과 대시보드 칸 거르기는 #356에서 연결했다.
+        connected = (
+            {},
+            {"filter": "SCHEDULE_DUE"},
+            {"bookmarked": "true"},
+            {"opinion": "NONE"},
+            *({"filter": key} for key in COUNT_KEYS),
+        )
+        for ok_params in connected:
             ok = client.get("/api/v1/opportunities", params=ok_params)
             assert ok.status_code == 200 and ok.json()["data"] == [], ok_params
 
 
 def test_counts_follow_latest_stage_and_match_list_filter(dashboard_env):
-    """Given 회사 4곳의 단계가 다름 / When 조회 / Then 최신 단계로 세고 목록 ?stage= 건수와 같다."""
+    """Given 회사 4곳 중 3곳에 단계 기록 / When 조회 / Then 최신 단계로 세고 눌러 연 목록과 같다."""
     client, (a, b, c, _d) = dashboard_env
-    record(client, a, {"status": "INTERESTED"})
-    record(client, b, {"status": "INTERESTED"})
-    record(client, b, {"status": "IN_PROGRESS"})  # 최신 단계만 센다: 관심에서 빠진다
-    record(client, c, {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})
+    record(client, a, {"status": "IN_PROGRESS"})
+    record(client, b, {"status": "IN_PROGRESS"})
+    record(client, b, {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})  # 최신 단계만 센다
+    record(client, c, {"status": "ON_HOLD"})
     counts = counts_of(build())
+    # 기록을 남긴 3곳만 관심 기업이다. 아무 기록도 없는 d는 어느 칸에도 없다(#356).
     assert counts == {
-        "NOT_CONTACTED": 1,
-        "INTERESTED": 1,
+        **ZERO_COUNTS,
+        "BOOKMARKED": 3,
         "IN_CONTACT": 1,
         "QUOTE_SAMPLE": 1,
-        "SCHEDULE_DUE": 0,
+        "ON_HOLD": 1,
     }
-    # 건수를 눌렀을 때 열리는 목록과 같은 기준이다(이슈 #216 할 일 2).
-    for key, stage in STAGES.items():
-        listed = client.get("/api/v1/opportunities", params={"stage": stage}).json()["meta"]
+    assert sum(counts[key] for key in BOARD_KEYS) == counts["BOOKMARKED"]
+    # 건수를 눌렀을 때 열리는 목록과 같은 기준이다(이슈 #216 할 일 2, #356).
+    for key in ("BOOKMARKED", *BOARD_KEYS):
+        listed = client.get("/api/v1/opportunities", params={"filter": key}).json()["meta"]
         assert listed["total"] == counts[key], key
+    # 단계로 거르는 목록(?stage=)은 관심과 상관없이 그대로다: 기록 없는 d는 미접촉이다.
+    for stage, total in (("IN_PROGRESS", 1), ("ON_HOLD", 1), ("NOT_EXECUTED", 1)):
+        listed = client.get("/api/v1/opportunities", params={"stage": stage}).json()["meta"]
+        assert listed["total"] == total, stage
 
 
-def test_not_executed_record_counts_as_not_contacted(dashboard_env):
-    """Given 단계를 미접촉으로 되돌림 / When 조회 / Then 기록이 없는 회사와 함께 미접촉이다."""
+def test_not_executed_record_falls_back_to_opinion_columns(dashboard_env):
+    """Given 단계를 미접촉으로 되돌림 / When 조회 / Then 접촉 칸에서 빠져 검토 의견 칸으로 간다."""
     client, (a, *_rest) = dashboard_env
-    record(client, a, {"status": "INTERESTED"})
+    record(client, a, {"status": "IN_PROGRESS"})
     record(client, a, {"status": "NOT_EXECUTED"})
     counts = counts_of(build())
-    assert counts["NOT_CONTACTED"] == 4 and counts["INTERESTED"] == 0
+    # 기록이 없는 나머지 3곳은 관심 기업이 아니라서 미접촉으로 세지 않는다(#356).
+    assert counts == {**ZERO_COUNTS, "BOOKMARKED": 1, "NO_OPINION": 1}
+    eval_id = next(
+        row["evalId"]
+        for row in client.get("/api/v1/opportunities").json()["data"]
+        if row["oppId"] == a
+    )
+    saved = client.post(
+        f"/api/v1/opportunities/{a}/opinions",
+        json={"evalId": eval_id, "opinion": "WORTH_REVIEW"},
+        headers={"X-Staff-Key": "park-lee"},
+    )
+    assert saved.status_code == 200
+    # 미접촉 = 검토 권고를 받았는데 아직 접촉 전.
+    assert counts_of(build()) == {**ZERO_COUNTS, "BOOKMARKED": 1, "NOT_CONTACTED": 1}
 
 
 def test_schedule_window_orders_overdue_first_and_skips_closed(dashboard_env):
@@ -143,7 +171,11 @@ def test_schedule_window_orders_overdue_first_and_skips_closed(dashboard_env):
     record(
         client,
         a,
-        {"status": "INTERESTED", "nextScheduleAt": "2026-11-12", "nextScheduleNote": "방문"},
+        {
+            "status": "SAMPLE_OR_REGISTRATION_APPROVED",
+            "nextScheduleAt": "2026-11-12",
+            "nextScheduleNote": "방문",
+        },
     )
     record(
         client,
@@ -176,7 +208,7 @@ def test_schedule_list_filter_matches_dashboard_count(dashboard_env, monkeypatch
     """Given 7일 안·기한 지남·8일 뒤·끝난 영업 / When 건수와 일정 목록 / Then 같다."""
     monkeypatch.setattr("geosan.api.routes.dashboard.utcnow", lambda: NOW)
     client, (a, b, c, d) = dashboard_env
-    record(client, a, {"status": "INTERESTED", "nextScheduleAt": "2026-11-12"})
+    record(client, a, {"status": "SAMPLE_OR_REGISTRATION_APPROVED", "nextScheduleAt": "2026-11-12"})
     record(client, b, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-01"})
     record(client, c, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-13"})
     record(client, d, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-06"})
@@ -201,19 +233,23 @@ def test_list_still_rejects_unconnected_filters_and_plain_list_is_unchanged(dash
     client, _ids = dashboard_env
     url = "/api/v1/opportunities"
     assert client.get(url).json()["meta"]["total"] == 4
-    for params in ({"filter": "OTHER"}, {"filter": ""}, {"tab": "later"}, {"bookmarked": "true"}):
+    for params in ({"filter": "OTHER"}, {"filter": ""}, {"filter": "INTERESTED"}, {"tab": "later"}):
         response = client.get(url, params=params)
         assert response.status_code == 400, params
         assert "아직 연결되지 않았습니다" in response.text
-    empty = client.get(url, params={"filter": "SCHEDULE_DUE"})
-    assert empty.status_code == 200 and empty.json()["meta"]["total"] == 0
+    # 관심 목록(bookmarked=true)은 #356에서 연결했다. 아직 관심 기업이 없어 빈 목록이다.
+    for params in ({"filter": "SCHEDULE_DUE"}, {"bookmarked": "true"}, {"filter": "BOOKMARKED"}):
+        empty = client.get(url, params=params)
+        assert empty.status_code == 200 and empty.json()["meta"]["total"] == 0, params
+    # false는 거르지 않는다.
+    assert client.get(url, params={"bookmarked": "false"}).json()["meta"]["total"] == 4
 
 
 def test_stage_only_save_keeps_earlier_schedule_in_dashboard(dashboard_env):
     """Given 일정을 잡은 뒤 단계만 바꿈 / When 조회 / Then 앞서 잡은 일정이 계속 보인다."""
     client, (a, *_rest) = dashboard_env
-    record(client, a, {"status": "INTERESTED", "nextScheduleAt": "2026-11-08"})
-    record(client, a, {"status": "IN_PROGRESS"})
+    record(client, a, {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-08"})
+    record(client, a, {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})
     data = build()
     assert [(row.opp_id, row.due_at) for row in data.schedule] == [(a, date(2026, 11, 8))]
 
@@ -228,7 +264,7 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
         if row["oppId"] == a
     )
     client.post(f"/api/v1/opportunities/{a}/notes", json={"text": "도금 두께 문의"}, headers=mine)
-    record(client, a, {"status": "INTERESTED"})
+    record(client, a, {"status": "NOT_EXECUTED"})
     record(client, a, {"status": "IN_PROGRESS"})
     record(
         client,
@@ -251,7 +287,7 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
         headers=mine,
     )
     # 다른 담당자의 기록은 내 목록에 나오지 않는다.
-    record(client, b, {"status": "INTERESTED"}, staff="kim-gwajang")
+    record(client, b, {"status": "IN_PROGRESS"}, staff="kim-gwajang")
     client.post(
         f"/api/v1/opportunities/{b}/notes",
         json={"text": "남의 메모"},
@@ -262,8 +298,8 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
         ("OPINION", "검토 의견: 검토 권고"),
         ("SCHEDULE", "다음 일정: 11/12 방문"),
         ("CONTACT_ATTEMPT", "전화 시도, 부재"),
-        ("STAGE", "관심 → 접촉"),
-        ("STAGE", "관심"),
+        ("STAGE", "미접촉 → 접촉"),
+        ("STAGE", "미접촉"),
         ("NOTE", "메모를 남김"),
     ]
     assert all(row.opp_id == a and row.customer_name for row in rows)
@@ -320,18 +356,20 @@ def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):
     """Given 기록 1건 / When GET /dashboard / Then 계약 모양(대문자 건수 키·breakdown null)."""
     client, (a, *_rest) = dashboard_env
     record(
-        client, a, {"status": "INTERESTED", "nextScheduleAt": "2000-01-01", "nextScheduleNote": "x"}
+        client,
+        a,
+        {"status": "IN_PROGRESS", "nextScheduleAt": "2000-01-01", "nextScheduleNote": "x"},
     )
     staff = client.get("/api/v1/dashboard", headers={"X-Staff-Key": "park-lee"})
     assert staff.status_code == 200
     body = staff.json()
     assert set(body["data"]) == {"counts", "schedule", "recentActivity", "asOf", "breakdown"}
-    assert set(body["data"]["counts"]) == {
-        "NOT_CONTACTED",
-        "INTERESTED",
-        "IN_CONTACT",
-        "QUOTE_SAMPLE",
-        "SCHEDULE_DUE",
+    assert set(body["data"]["counts"]) == set(COUNT_KEYS)
+    assert body["data"]["counts"] == {
+        **ZERO_COUNTS,
+        "BOOKMARKED": 1,
+        "IN_CONTACT": 1,
+        "SCHEDULE_DUE": 1,
     }
     assert body["data"]["breakdown"] is None
     assert set(body["data"]["schedule"][0]) == {

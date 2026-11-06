@@ -29,12 +29,22 @@ class CandidateJudgment(FileModel):
     industries: list[str]
     reason: str = Field(min_length=1)
     fit_level: Literal["HIGH", "MEDIUM", "LOW"]
+    own_plating_line_suspected: bool
+    own_plating_line_basis: str | None
 
     @field_validator("reason")
     @classmethod
     def reason_without_contacts(cls, value: str) -> str:
         if not value.strip() or scrub_contacts(value)[1]:
             raise ValueError("고른 이유가 비어 있거나 연락처가 있습니다.")
+        return value
+
+    @field_validator("own_plating_line_basis")
+    @classmethod
+    def surface_basis_without_contacts(cls, value: str | None) -> str | None:
+        """C9는 근거의 null을 허용한다. 글이 있으면 기존 연락처 검사를 적용한다."""
+        if value is not None and (not value.strip() or scrub_contacts(value)[1]):
+            raise ValueError("표면처리 판단 근거가 비어 있거나 연락처가 있습니다.")
         return value
 
 

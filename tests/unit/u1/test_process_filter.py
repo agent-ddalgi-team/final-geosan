@@ -86,13 +86,13 @@ def test_process_filter_precedes_paging_and_combines_with_stage(process_env):
     assert second["meta"]["total"] == 2
     response = client.post(
         f"/api/v1/opportunities/{ids[1]}/outcomes",
-        json={"status": "INTERESTED"},
+        json={"status": "IN_PROGRESS"},
         headers={"X-Staff-Key": "park-lee"},
     )
     assert response.status_code == 200
-    interested = client.get(base + "&stage=INTERESTED").json()
-    assert [row["oppId"] for row in interested["data"]] == [ids[1]]
-    assert interested["data"][0]["rank"] == 1
+    in_contact = client.get(base + "&stage=IN_PROGRESS").json()
+    assert [row["oppId"] for row in in_contact["data"]] == [ids[1]]
+    assert in_contact["data"][0]["rank"] == 1
     assert client.get(base + "&page=3&pageSize=1").json()["data"] == []
     assert client.get("/api/v1/opportunities?process=BLACK_OXIDE").json()["data"] == []
     assert client.get("/api/v1/opportunities?process=WRONG").status_code == 400
