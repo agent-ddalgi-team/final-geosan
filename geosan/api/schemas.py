@@ -239,6 +239,12 @@ class DetailHeader(_ApiModel):
     homepage_status: Literal["AI_FOUND", "NEEDS_CONFIRMATION", "CONFIRMED", "NOT_FOUND"] | None = (
         None
     )
+    homepage_confidence: float | None = Field(
+        default=None, description="0~1. AI가 찾았을 때만 (C1, #331)"
+    )
+    homepage_source: Literal["AI", "STAFF", "CASE_FILE"] | None = Field(
+        default=None, description="홈페이지 주소를 누가 정했나: AI·담당자·사례 파일 (C1, #331)"
+    )
     industries: list[str] = Field(default_factory=list)
     industries_source: str | None = None
     address: str

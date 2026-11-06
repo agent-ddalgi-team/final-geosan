@@ -622,3 +622,31 @@ def test_detail_header_homepage_and_item_evidence_ids(api_env):
         rows[3].security_grade = "FORBIDDEN"
     data = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
     assert data["header"]["homepageUrl"] == "http://www.example-virtual.co.kr/"
+
+
+@pytest.mark.parametrize(
+    ("saved", "expected"),
+    [
+        ((None, None, None), (None, None, None)),
+        (("AI_FOUND", "AI", 0.82), ("AI_FOUND", "AI", 0.82)),
+        (("NEEDS_CONFIRMATION", "AI", 0.4), ("NEEDS_CONFIRMATION", "AI", 0.4)),
+        (("CONFIRMED", "STAFF", None), ("CONFIRMED", "STAFF", None)),
+        (("CONFIRMED", "CASE_FILE", None), ("CONFIRMED", "CASE_FILE", None)),
+    ],
+)
+def test_detail_header_tells_who_set_the_homepage(api_env, saved, expected):
+    """Given 저장된 홈페이지 상태·출처·확신도 / When 상세 조회 / Then 머리에 그대로 실린다 (#331).
+
+    임시 DB와 실제 API 경로로 본다. 홈페이지 찾기·AI 호출은 하지 않는다.
+    """
+    client, opp_id, _ = api_env
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, opp_id)
+        customer = session.get(Customer, opportunity.customer_id)
+        customer.homepage_status, customer.homepage_source, customer.homepage_confidence = saved
+    header = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["header"]
+    assert (
+        header["homepageStatus"],
+        header["homepageSource"],
+        header["homepageConfidence"],
+    ) == expected
