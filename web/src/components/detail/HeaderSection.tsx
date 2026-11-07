@@ -7,6 +7,7 @@ import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
 import CompanySummary, { HomepageBand } from './CompanySummary';
+import HomepageControls from './HomepageControls';
 import RelationControl from './RelationControl';
 import {
   cardRows,
@@ -122,6 +123,12 @@ export default function HeaderSection({
           </a>
         </div>
       ) : null}
+      <HomepageControls
+        oppId={oppId}
+        homepageUrl={homepage}
+        status={header.homepageStatus}
+        onReload={onRelationChanged}
+      />
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
         <span
           role="group"

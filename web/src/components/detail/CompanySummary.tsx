@@ -1,6 +1,6 @@
 // 상세 머리의 기업 요약(#210, 결정 2026-11-03): 홈페이지 상태 띠 + "회사 소개" 줄들.
 // 조사일(3일 전)·오래됨, 거산에서의 거리, 대표번호(출처·담당자 확인 [맞음]), 한 줄 소개·특징(AI 제안).
-// 값이 없는 줄은 보이지 않는다. 홈페이지 [맞음]·[고치기]·[다시 조사]는 서버 `POST /homepage`가 생긴 뒤에 더한다.
+// 값이 없는 줄은 보이지 않는다. 홈페이지 [맞음]·[고치기]·[다시 조사]는 `HomepageControls.tsx`(서버 `POST /homepage`)에 있다.
 import { useState } from 'react';
 import { Button } from 'antd';
 import { ApiError, postMainPhoneConfirm } from '../../api/client';
