@@ -222,9 +222,13 @@ def test_last_daily_slot_cannot_be_reused_for_retry(registry, monkeypatch):
     assert len([row for row in rows if row.reject_reason == "DAILY_LIMIT"]) == 1
 
 
-def test_disabled_and_missing_key_never_reserve_a_call(registry, monkeypatch):
+@pytest.mark.parametrize("bad_key", [None, "synthetic key", "가상키"])
+def test_disabled_and_missing_key_never_reserve_a_call(registry, monkeypatch, bad_key):
     calls = responses(monkeypatch)
-    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY")
+    if bad_key is None:
+        monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY")
+    else:
+        monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", bad_key)
     assert source.fetch_complex_list(registry, "가상단지").skipped_reason == "SOURCE_ERROR"
     configure(enabled=False)
     with session_scope() as session:
@@ -233,7 +237,9 @@ def test_disabled_and_missing_key_never_reserve_a_call(registry, monkeypatch):
     assert calls == logs() == []
 
 
-@pytest.mark.parametrize("name", ["", "  ", None, "단지\n이름", "https://example.test", "x" * 201])
+@pytest.mark.parametrize(
+    "name", ["", "  ", None, "단지\n이름", "https://example.test", "x" * 201, "\ud800"]
+)
 def test_bad_names_never_reach_provider(registry, monkeypatch, name):
     calls = responses(monkeypatch)
     with pytest.raises(InputError):

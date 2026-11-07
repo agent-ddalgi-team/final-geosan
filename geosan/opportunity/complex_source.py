@@ -74,6 +74,10 @@ def validate_complex_name(name: str) -> str:
         or "://" in name
     ):
         raise InputError("공개 단지 이름을 확인해 주세요.")
+    try:
+        name.encode("utf-8")
+    except UnicodeError:
+        raise InputError("공개 단지 이름을 확인해 주세요.") from None
     return name.strip()
 
 
@@ -182,7 +186,12 @@ def fetch_complex_list(
         if not config.enabled:
             return ComplexLookupResult(skipped_reason="DISABLED")
         key = os.environ.get("DATA_GO_KR_SERVICE_KEY", "").strip()
-        if not key or any(char.isspace() for char in key):
+        if (
+            not key
+            or not key.isascii()
+            or not key.isprintable()
+            or any(char.isspace() for char in key)
+        ):
             return ComplexLookupResult(skipped_reason="SOURCE_ERROR")
         rows, skipped = (), ()
         raw_count = filtered_count = pages_read = 0
