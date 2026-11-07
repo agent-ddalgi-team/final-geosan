@@ -149,6 +149,31 @@ def test_restore_returns_db_to_backup_and_keeps_current(tmp_db: Path, tmp_path: 
     assert not tmp_db.with_name(tmp_db.name + ".restoring").exists()
 
 
+def test_restore_closes_own_db_connections_before_replacing(
+    tmp_db: Path, tmp_path: Path, monkeypatch
+):
+    """Given 이 프로세스에 DB 연결(엔진 풀)이 남아 있음 / When restore(y)
+    / Then 바꿔 끼우기 전에 연결을 모두 닫는다 (Windows의 '열린 파일 교체 거부' 흉내, #392)."""
+    from geosan.commands import restore as restore_module
+    from geosan.storage import engine as engine_module
+
+    backup_file = _make_backup(tmp_db, tmp_path / "bk")
+    engine_module.get_engine(tmp_db)  # 설정 준비 단계처럼 엔진이 캐시에 남은 상태
+    assert engine_module._engines, "테스트 전제: 엔진 캐시가 비어 있지 않아야 한다"
+
+    real_replace = os.replace
+
+    def replace_like_windows(src, dst):
+        if engine_module._engines:
+            raise PermissionError(5, "다른 프로세스가 파일을 사용 중입니다 (WinError 5 흉내)")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(restore_module.os, "replace", replace_like_windows)
+    code, out = _run("restore", str(backup_file), input_text="y\n")
+    assert code == 0, out
+    assert not engine_module._engines
+
+
 def test_restore_declined_changes_nothing(tmp_db: Path, tmp_path: Path):
     """Given 백업 파일 / When restore에 n / Then 아무것도 바꾸지 않고 종료 코드 0."""
     backup_file = _make_backup(tmp_db, tmp_path / "bk")

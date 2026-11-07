@@ -16,7 +16,7 @@ import typer
 
 from geosan.commands.backup import check_backup_file, create_backup
 from geosan.commands.serving_marker import running_server
-from geosan.storage.engine import database_path
+from geosan.storage.engine import database_path, dispose_engines
 
 EXIT_OK = 0
 EXIT_INPUT_ERROR = 1
@@ -90,7 +90,9 @@ def run_restore(backup_file: Path) -> int:
             typer.echo("바뀐 것 없음")
             return EXIT_RUN_FAILED
 
-    # ⑤ 바꿔 넣기
+    # ⑤ 바꿔 넣기. 이 프로세스가 쥔 DB 연결(엔진 풀)을 먼저 모두 닫는다.
+    #    Windows는 열려 있는 파일을 바꿔 끼우지 못한다(#392).
+    dispose_engines()
     try:
         replace_database(db_path, backup_file)
     except Exception as exc:
