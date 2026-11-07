@@ -1,5 +1,5 @@
-// 목록 머리(#210 → #361): 공정 선택란(9종·0곳 포함·"전체" 없음) / 지역·산업 선택지와 "전체" / 공정 선택란 숨김 /
-// 공정을 고르기 전(#368): "공정을 고르세요"가 보이고 지역·산업 선택란이 숨는다 /
+// 목록 머리(#210 → #361): 공정 선택란(9종·0곳 포함) / 지역·산업 선택지와 "전체" / 공정 선택란 숨김 /
+// 공정을 고르기 전(#368 → #383, 2026-11-07 PM 결정): 맨 위 "전체(공정별로 묶음)"가 골라져 보이고 지역·산업 선택란도 보인다 /
 // 주소에서 온 값 유지 / 회사 이름 검색 칸과 결과 줄·[검색 지우기] / 정렬("가까운 순"은 준비 중).
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -55,12 +55,13 @@ const optionTexts = (testId: string) =>
 
 describe('ListFilterBar', () => {
   describe('공정 선택란 (#361)', () => {
-    it('거산 공정 9종이 서버가 준 순서대로 "이름 곳 수"로 보이고, 0곳인 공정도 보인다', () => {
+    it('맨 위 "전체(공정별로 묶음)" 아래에 거산 공정 9종이 서버가 준 순서대로 "이름 곳 수"로 보이고, 0곳인 공정도 보인다', () => {
       renderBar();
       expect(screen.getByLabelText(listFilters.processLabel)).toBe(
         screen.getByTestId('list-process-select'),
       );
       expect(optionTexts('list-process-select')).toEqual([
+        '전체(공정별로 묶음)',
         '아연도금(전기아연도금) 9',
         '아노다이징(양극산화피막) 10',
         '알카리 흑착(흑색산화피막) 0',
@@ -73,14 +74,14 @@ describe('ListFilterBar', () => {
       ]);
     });
 
-    it('"전체" 선택지가 없고 지금 공정이 골라져 있다', () => {
+    it('지금 공정이 골라져 있고, 지역·산업의 "전체"와 같은 글자의 선택지는 없다(공정은 "전체(공정별로 묶음)")', () => {
       renderBar({ process: 'ANODIZING' });
       const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
       expect(select.value).toBe('ANODIZING');
       expect(
         within(select).queryByRole('option', { name: listFilters.all }),
       ).not.toBeInTheDocument();
-      expect(within(select).getAllByRole('option')).toHaveLength(9);
+      expect(within(select).getAllByRole('option')).toHaveLength(10);
     });
 
     it('탭 줄은 더 이상 없다(공정은 선택란 하나로 고른다)', () => {
@@ -111,31 +112,30 @@ describe('ListFilterBar', () => {
     });
   });
 
-  describe('공정을 고르기 전 (#368)', () => {
-    it('고른 공정이 없으면 맨 위에 고를 수 없는 "공정을 고르세요"가 보이고 그 아래에 9종이 있다', () => {
+  // #368의 "공정을 고르세요"·지역·산업 숨김을 #383(2026-11-07 PM 결정)이 바꿨다: 묶음 보기가 골라진 것으로 보이고 지역·산업도 보인다.
+  describe('공정을 고르기 전 — 묶음 보기 (#383)', () => {
+    it('고른 공정이 없으면 맨 위 "전체(공정별로 묶음)"가 골라져 보이고(고를 수 있다) 그 아래에 9종이 있다', () => {
       renderBar({ process: null });
       const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
       expect(select.value).toBe('');
       const options = within(select).getAllByRole('option') as HTMLOptionElement[];
       expect(options).toHaveLength(10);
-      expect(options[0]).toHaveTextContent(/^공정을 고르세요$/);
-      expect(options[0]).toBeDisabled();
+      expect(options[0]).toHaveTextContent(/^전체\(공정별로 묶음\)$/);
+      expect(options[0]).not.toBeDisabled();
       expect(options[0].value).toBe('');
       expect(options[1]).toHaveTextContent('아연도금(전기아연도금) 9');
-      expect(
-        within(select).queryByRole('option', { name: listFilters.all }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('공정을 고르세요')).not.toBeInTheDocument();
     });
 
-    it('고른 공정이 없으면 지역·산업 선택란이 숨고, 검색 칸과 정렬은 남는다', () => {
+    it('고른 공정이 없어도 지역·산업 선택란이 보이고, 검색 칸과 정렬도 남는다', () => {
       renderBar({ process: null });
-      expect(screen.queryByTestId('list-region-select')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('list-industry-select')).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
+      expect(screen.getByTestId('list-industry-select')).toBeInTheDocument();
       expect(screen.getByTestId('list-search-input')).toBeInTheDocument();
       expect(screen.getByTestId('list-sort')).toBeInTheDocument();
     });
 
-    it('고르기 전 상태에서 공정을 고르면 그 공정 코드를 알린다', async () => {
+    it('묶음 보기에서 공정을 고르면 그 공정 코드를 알린다', async () => {
       const user = userEvent.setup();
       const handlers = renderBar({ process: null });
       await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
@@ -143,19 +143,21 @@ describe('ListFilterBar', () => {
       expect(handlers.onProcess).toHaveBeenCalledWith('ANODIZING');
     });
 
-    it('공정이 골라져 있으면 "공정을 고르세요"는 없다', () => {
-      renderBar();
-      expect(optionTexts('list-process-select')).toHaveLength(9);
-      expect(
-        screen.queryByRole('option', { name: listFilters.processPlaceholder }),
-      ).not.toBeInTheDocument();
+    it('공정 하나를 고른 상태에서 "전체(공정별로 묶음)"를 고르면 null을 알린다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar({ process: 'ANODIZING' });
+      await user.selectOptions(screen.getByTestId('list-process-select'), '');
+      expect(handlers.onProcess).toHaveBeenCalledTimes(1);
+      expect(handlers.onProcess).toHaveBeenCalledWith(null);
     });
 
-    it('주소의 공정이 선택지에 없는 값이면 고르지 않은 것으로 보인다', () => {
+    it('주소의 공정이 선택지에 없는 값이면 "전체(공정별로 묶음)"가 골라진 것으로 보이고 그 값은 선택지에 더하지 않는다', () => {
       renderBar({ process: 'NOT_A_PROCESS' });
       expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe('');
-      expect(optionTexts('list-process-select')[0]).toBe(listFilters.processPlaceholder);
-      expect(screen.queryByTestId('list-region-select')).not.toBeInTheDocument();
+      expect(optionTexts('list-process-select')).toHaveLength(10);
+      expect(optionTexts('list-process-select')[0]).toBe(listFilters.processGrouped);
+      expect(screen.queryByText(/NOT_A_PROCESS/)).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
     });
 
     it('공정 선택란이 없는 보기(관심 기업·대시보드 칸)에서는 공정이 없어도 지역·산업 선택란이 보인다', () => {
