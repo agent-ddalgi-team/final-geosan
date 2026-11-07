@@ -134,6 +134,10 @@ describe('DashboardPage', () => {
       expect(read('dashboard-section-progress')).toEqual(progressCells);
       // 맨 앞 큰 칸은 관심 기업 전체다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveTextContent('관심 기업12곳');
+      // 칸 높이에 안쪽 여백이 더해져 아래 구역 제목과 겹치지 않게, 여백을 높이 안에 넣는다.
+      expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveStyle({
+        boxSizing: 'border-box',
+      });
       // "미접촉" 칸에는 작은 풀이가 붙는다.
       expect(screen.getByTestId('dashboard-count-NOT_CONTACTED-hint')).toHaveTextContent(
         dashboardTexts.notContactedHint,

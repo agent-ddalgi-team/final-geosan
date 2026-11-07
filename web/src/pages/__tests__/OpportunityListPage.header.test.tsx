@@ -610,4 +610,26 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       for (const call of mockedGet.mock.calls) expect(call[3]).not.toHaveProperty('sort');
     });
   });
+
+  describe('순위 번호', () => {
+    it('공정 하나를 고른 목록에서는 카드에 순위 번호가 보인다', async () => {
+      mockedGet.mockResolvedValue(reply([apjeong], { processCounts: NINE }));
+      renderPage('/opportunities?process=ANODIZING');
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).getByTestId('card-rank')).toHaveTextContent('1');
+    });
+
+    it.each([
+      ['검색 결과', '/opportunities?q=A정밀'],
+      ['관심 기업 목록', '/opportunities?bookmarked=true'],
+      ['대시보드 칸으로 넘어온 목록', '/opportunities?filter=NEED_CHECK'],
+      ['영업 단계로 넘어온 목록', '/opportunities?stage=IN_PROGRESS'],
+    ])('%s처럼 공정이 섞인 목록에서는 순위 번호를 숨긴다 (PM 결정 2026-11-06)', async (_, path) => {
+      mockedGet.mockResolvedValue(reply([apjeong], { processCounts: NINE }));
+      renderPage(path);
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).queryByTestId('card-rank')).not.toBeInTheDocument();
+      expect(within(card).getByRole('heading', { level: 2 })).toHaveTextContent('A정밀');
+    });
+  });
 });
