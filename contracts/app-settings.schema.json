@@ -69,7 +69,18 @@
         "_설명": { "type": "string" },
         "regions": { "type": "array", "items": { "type": "string" } },
         "productKeywords": { "type": "array", "items": { "type": "string" } },
-        "maxCandidates": { "type": "integer", "minimum": 1 }
+        "maxCandidates": { "type": "integer", "minimum": 1 },
+        "complexList": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "단지 입주 목록 조회 설정. 기본값은 2026-11-07 PM 결정(#393·#394).",
+          "properties": {
+            "_설명": { "type": "string" },
+            "enabled": { "type": "boolean", "default": false },
+            "cacheDays": { "type": "integer", "minimum": 1, "default": 7 },
+            "extraNames": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        }
       }
     },
     "llm": {
