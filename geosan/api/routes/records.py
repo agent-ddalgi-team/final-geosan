@@ -47,7 +47,7 @@ from geosan.api.schemas import (
 from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
-from geosan.opportunity.models import Opportunity, RelationHistory
+from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
@@ -164,6 +164,32 @@ def review_items_for_detail(
     session: Session, opp_id: str, data: OpportunityDetail
 ) -> list[ReviewItem]:
     items = derive_review_items(data)
+    opportunity = session.get(Opportunity, opp_id)
+    customer = session.get(Customer, opportunity.customer_id) if opportunity else None
+    if customer is None:
+        raise RunFailedError("검토사항의 기회·회사 연결을 확인해 주세요.")
+    if customer.own_plating_line_suspected:
+        source = {
+            "AI": ReviewItemSource.AI,
+            "INDUSTRY_NAME": ReviewItemSource.RULE,
+        }.get(customer.own_plating_line_source)
+        if source is None:
+            raise RunFailedError("표면처리 확인 줄의 출처를 확인해 주세요.")
+        text = "표면처리를 직접 하는 회사일 수 있음"
+        if customer.own_plating_line_basis:
+            text += f": {customer.own_plating_line_basis}"
+        items.append(
+            ReviewItem(
+                item_id="FLAG:OWN_PLATING_LINE_SUSPECTED",
+                kind=ReviewItemKind.OWN_PLATING_LINE_SUSPECTED,
+                source=source,
+                text=text,
+                target_label=None,
+                checked=False,
+                checked_by=None,
+                checked_at=None,
+            )
+        )
     # SQLite의 저장 순서로 고른다. 시계가 같거나 되돌아가도 마지막 추가 행이 현재 값이다.
     latest_rowids = (
         select(func.max(literal_column("rowid")))
