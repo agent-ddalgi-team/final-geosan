@@ -1,11 +1,14 @@
 // 추천 카드(S1, BR10.1~BR10.3, interaction-spec 2.1): 순위·기업/기회·분류(쉬운 말)·점수·추천 이유·막는 조건·
-// 다음 할 일 + 의견 영역 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
+// 다음 할 일 + 의견 영역 + [관심] 단추 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
+// [관심](#357)은 영업 단계가 아니라 켜고 끄는 표시다. 카드에서 검토 의견을 저장하면 서버가 관심을 켜므로 그 뒤 관심 값을 다시 읽는다.
 import type { ReactNode } from 'react';
 import { Button, Card, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { OpportunityCard as CardData } from '../../api/types';
+import BookmarkButton from '../common/BookmarkButton';
 import StatusTag from '../common/StatusTag';
 import ScoreLine from '../common/ScoreLine';
+import { useBookmark } from '../common/useBookmark';
 import OpinionArea from '../opinion/OpinionArea';
 import {
   candidateSearch,
@@ -65,6 +68,7 @@ export default function OpportunityCard({
   const pickReason = card.pickReason?.trim() ? card.pickReason : null;
   const beforeScore = pickReason !== null && card.scoreState === 'NONE';
   const newInBatchDate = card.isNewInLatestBatch ? formatMonthDay(card.ingestedAt) : null;
+  const bookmarkState = useBookmark(card.oppId, card, card.records.bookmark ?? null);
 
   return (
     <Card
@@ -201,17 +205,33 @@ export default function OpportunityCard({
             oppId={card.oppId}
             evalId={card.evalId}
             record={card.records.opinion ?? null}
+            onSaved={() => void bookmarkState.sync()}
           />
-          <Button
-            href={detailPath}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(detailPath);
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 12,
             }}
-            data-testid="card-view-detail-link"
           >
-            {frame.viewDetail} <span aria-hidden="true">→</span>
-          </Button>
+            <BookmarkButton
+              oppId={card.oppId}
+              bookmark={bookmarkState.bookmark}
+              onChanged={bookmarkState.change}
+            />
+            <Button
+              href={detailPath}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(detailPath);
+              }}
+              data-testid="card-view-detail-link"
+            >
+              {frame.viewDetail} <span aria-hidden="true">→</span>
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

@@ -1,11 +1,28 @@
-// 대시보드 응답 타입 — 계약 C1 `GET /dashboard` v2(2026-11-03) 모양 그대로(필드 이름 camelCase).
+// 대시보드 응답 타입 — 계약 C1 `GET /dashboard` 모양 그대로(필드 이름 camelCase).
+// 건수는 약속 v3(2026-11-06 PM 결정 #356)로 바뀌었다: 관심으로 고른 회사만 세고, 화면은 두 구역으로 보인다.
 // types.ts(경계 파일)는 건드리지 않고 U7 전용 타입을 이 파일에 둔다.
 
-/** 건수 5개의 키. 누르면 /opportunities?stage=… (SCHEDULE_DUE만 ?filter=SCHEDULE_DUE). */
+/**
+ * 건수 칸의 이름표 10개.
+ * - "관심 기업" 구역: BOOKMARKED(관심 기업 전체) · NO_OPINION(의견 전) · NEED_CHECK(추가 확인 필요) · NOT_TARGET(제외)
+ * - "영업 진행" 구역: NOT_CONTACTED(검토 권고를 받았고 아직 접촉 전) · IN_CONTACT · QUOTE_SAMPLE · ON_HOLD · DONE(성사·거절)
+ * - SCHEDULE_DUE(이번 주 일정)는 예전 그대로다.
+ * BOOKMARKED를 누르면 /opportunities?bookmarked=true, 나머지는 /opportunities?filter=<이름표>.
+ */
 export type DashboardCountKey =
-  'NOT_CONTACTED' | 'INTERESTED' | 'IN_CONTACT' | 'QUOTE_SAMPLE' | 'SCHEDULE_DUE';
+  | 'BOOKMARKED'
+  | 'NO_OPINION'
+  | 'NEED_CHECK'
+  | 'NOT_TARGET'
+  | 'NOT_CONTACTED'
+  | 'IN_CONTACT'
+  | 'QUOTE_SAMPLE'
+  | 'ON_HOLD'
+  | 'DONE'
+  | 'SCHEDULE_DUE';
 
-export type DashboardCounts = Record<DashboardCountKey, number>;
+/** 서버가 아직 옛 모양을 주면 새 이름표가 없을 수 있다. 화면은 없는 칸을 0으로 지어내지 않고 뺀다. */
+export type DashboardCounts = Partial<Record<DashboardCountKey, number>>;
 
 export interface DashboardScheduleItem {
   oppId: string;

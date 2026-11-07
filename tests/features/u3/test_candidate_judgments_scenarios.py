@@ -25,6 +25,8 @@ def proposal(row_id, manufacturer=True, process="ZINC_PLATING"):
         "industries": ["자동차 부품"],
         "reason": "가상 생산품 자료에 따른 공정 제안",
         "fitLevel": "MEDIUM",
+        "ownPlatingLineSuspected": False,
+        "ownPlatingLineBasis": None,
     }
 
 
@@ -83,8 +85,6 @@ def same_criteria():
     return {
         "process_catalog": PROCESSES,
         "industry_catalog": INDUSTRIES,
-        "process_codes": list(PROCESSES),
-        "industries": INDUSTRIES,
         "prompt": "생산품 글로 제조업과 공정을 판단한다.",
     }
 
@@ -94,8 +94,6 @@ def fingerprint(criteria):
     reversed_criteria = criteria | {
         "process_catalog": dict(reversed(list(PROCESSES.items()))),
         "industry_catalog": list(reversed(INDUSTRIES)),
-        "process_codes": list(reversed(PROCESSES)),
-        "industries": list(reversed(INDUSTRIES)),
     }
     return (
         candidate_criteria_version(**criteria),
@@ -108,3 +106,94 @@ def fingerprint(criteria):
 def compare(versions):
     assert versions[0] == versions[1]
     assert versions[0] != versions[2]
+
+
+@when("전체 목록의 판단을 아연도금과 아노다이징으로 각각 거른다", target_fixture="reused")
+def reuse_full_catalog(response):
+    parsed = parse_candidate_judgments(
+        json.dumps(response),
+        approved_row_ids=[row["rowId"] for row in response],
+        process_catalog=PROCESSES,
+        industry_catalog=INDUSTRIES,
+    )
+    criteria = same_criteria()
+    version = candidate_criteria_version(**criteria)
+    zinc = select_candidates(parsed, process_codes=["ZINC_PLATING"])
+    anodizing = select_candidates(parsed, process_codes=["ANODIZING"])
+    return parsed, zinc, anodizing, version, candidate_criteria_version(**criteria)
+
+
+@then("선택 결과는 달라도 재사용 기준과 전체 판단 내용은 유지된다")
+def full_judgment_unchanged(reused, response):
+    parsed, zinc, anodizing, before, after = reused
+    assert [row.row_id for row in zinc] == ["bolt"]
+    assert [row.row_id for row in anodizing] == ["other"]
+    assert before == after
+    assert [row.model_dump(by_alias=True) for row in parsed] == response
+
+
+@given(
+    "표면처리를 직접 하는 회사로 의심되는 가상 AI 판단이 있다", target_fixture="surface_response"
+)
+def surface_response():
+    return [
+        proposal("surface", process="ANODIZING")
+        | {
+            "ownPlatingLineSuspected": True,
+            "ownPlatingLineBasis": "생산품: 알루미늄 아노다이징",
+        }
+    ]
+
+
+@when("표시가 있는 판단을 검사하고 공정 조건으로 고른다", target_fixture="surface_selection")
+def choose_surface(surface_response):
+    parsed = parse_candidate_judgments(
+        json.dumps(surface_response),
+        approved_row_ids=["surface"],
+        process_catalog=PROCESSES,
+        industry_catalog=INDUSTRIES,
+    )
+    return select_candidates(parsed, process_codes=["ANODIZING"])
+
+
+@then("후보를 자동 제외하지 않고 표시와 근거 및 기존 적합도를 보존한다")
+def surface_is_retained(surface_selection):
+    assert len(surface_selection) == 1
+    row = surface_selection[0]
+    assert row.own_plating_line_suspected is True
+    assert row.own_plating_line_basis == "생산품: 알루미늄 아노다이징"
+    assert row.is_manufacturer is True
+    assert row.process_codes == ["ANODIZING"]
+    assert row.fit_level == "MEDIUM"
+
+
+@given("표면처리 근거에 연락처가 들어 있는 가상 AI 판단이 있다", target_fixture="unsafe_surface")
+def unsafe_surface():
+    return [
+        proposal("safe"),
+        proposal("unsafe")
+        | {
+            "ownPlatingLineSuspected": True,
+            "ownPlatingLineBasis": "test@example.invalid로 문의",
+        },
+    ]
+
+
+@when("연락처가 있는 근거를 포함한 두 판단을 검사한다", target_fixture="unsafe_error")
+def inspect_unsafe_surface(unsafe_surface):
+    try:
+        parse_candidate_judgments(
+            json.dumps(unsafe_surface),
+            approved_row_ids=["safe", "unsafe"],
+            process_catalog=PROCESSES,
+            industry_catalog=INDUSTRIES,
+        )
+    except AppError as error:
+        return error
+    raise AssertionError("연락처가 있는 판단을 성공으로 처리했습니다.")
+
+
+@then("전체 판단을 거부하고 오류에 연락처를 노출하지 않는다")
+def unsafe_surface_is_rejected(unsafe_error):
+    assert unsafe_error.kind == "LLM_FAILED"
+    assert "test@example.invalid" not in str(unsafe_error) + repr(unsafe_error.to_error_body())
