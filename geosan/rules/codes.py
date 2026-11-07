@@ -229,7 +229,6 @@ class Opinion(StrEnum):
 
 class OutcomeStatus(StrEnum):
     NOT_EXECUTED = "NOT_EXECUTED"
-    INTERESTED = "INTERESTED"
     IN_PROGRESS = "IN_PROGRESS"
     SAMPLE_OR_REGISTRATION_APPROVED = "SAMPLE_OR_REGISTRATION_APPROVED"
     ON_HOLD = "ON_HOLD"
@@ -282,6 +281,9 @@ class ReviewItemKind(StrEnum):
     QUESTION = "QUESTION"
     DATA_NOT_FOUND = "DATA_NOT_FOUND"
     DATA_INSUFFICIENT = "DATA_INSUFFICIENT"
+    # 더하는 변경(2026-11-06 PM 확인, #319·#359): 표면처리를 직접 하는 회사일 수 있음.
+    # 출처는 AI 또는 RULE. 자동으로 빼지 않고 담당자가 확인한다(FR9.3).
+    OWN_PLATING_LINE_SUSPECTED = "OWN_PLATING_LINE_SUSPECTED"
 
 
 class ReviewItemSource(StrEnum):

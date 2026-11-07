@@ -105,6 +105,95 @@
         "title": "Blocker",
         "type": "object"
       },
+      "BookmarkRecord": {
+        "description": "관심(찜) 표시의 최신 값(#356). 한 번도 켠 적이 없으면 records.bookmark가 null이다.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt",
+          "active"
+        ],
+        "title": "BookmarkRecord",
+        "type": "object"
+      },
+      "BookmarkRequest": {
+        "additionalProperties": false,
+        "description": "관심 켜고 끄기 요청(#356). 관심은 평가와 무관해 evalId를 받지 않는다.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedversion"
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "title": "BookmarkRequest",
+        "type": "object"
+      },
+      "BookmarkResponse": {
+        "description": "응답 data: RecordMeta + active. 이전 값은 meta.previousValue.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt",
+          "active"
+        ],
+        "title": "BookmarkResponse",
+        "type": "object"
+      },
       "Brand": {
         "properties": {
           "brandName": {
@@ -163,15 +252,13 @@
           "bookmark": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/BookmarkRecord"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "U5",
-            "title": "Bookmark"
+            "description": "관심 표시의 최신 값. 한 번도 켠 적 없으면 null (#356)"
           },
           "opinion": {
             "anyOf": [
@@ -351,18 +438,38 @@
         "type": "object"
       },
       "DashboardCounts": {
-        "description": "누르면 /opportunities?stage=… (SCHEDULE_DUE만 ?filter=SCHEDULE_DUE).",
+        "description": "관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>\n(BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 여덟 칸의 합은 BOOKMARKED와 같다.",
         "properties": {
-          "INTERESTED": {
-            "title": "Interested",
+          "BOOKMARKED": {
+            "title": "Bookmarked",
+            "type": "integer"
+          },
+          "DONE": {
+            "title": "Done",
             "type": "integer"
           },
           "IN_CONTACT": {
             "title": "In Contact",
             "type": "integer"
           },
+          "NEED_CHECK": {
+            "title": "Need Check",
+            "type": "integer"
+          },
           "NOT_CONTACTED": {
             "title": "Not Contacted",
+            "type": "integer"
+          },
+          "NOT_TARGET": {
+            "title": "Not Target",
+            "type": "integer"
+          },
+          "NO_OPINION": {
+            "title": "No Opinion",
+            "type": "integer"
+          },
+          "ON_HOLD": {
+            "title": "On Hold",
             "type": "integer"
           },
           "QUOTE_SAMPLE": {
@@ -375,10 +482,15 @@
           }
         },
         "required": [
+          "BOOKMARKED",
+          "NO_OPINION",
+          "NEED_CHECK",
+          "NOT_TARGET",
           "NOT_CONTACTED",
-          "INTERESTED",
           "IN_CONTACT",
           "QUOTE_SAMPLE",
+          "ON_HOLD",
+          "DONE",
           "SCHEDULE_DUE"
         ],
         "title": "DashboardCounts",
@@ -804,14 +916,12 @@
           "bookmark": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/BookmarkRecord"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Bookmark"
+            ]
           },
           "contactCount": {
             "$ref": "#/components/schemas/ContactCount"
@@ -852,6 +962,21 @@
         ],
         "title": "DiscoverySource",
         "type": "string"
+      },
+      "Envelope_BookmarkResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BookmarkResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[BookmarkResponse]",
+        "type": "object"
       },
       "Envelope_ConfigUi_": {
         "properties": {
@@ -1331,6 +1456,18 @@
             ],
             "description": "조건 없이 돌린 회차는 null"
           },
+          "failureReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)",
+            "title": "Failurereason"
+          },
           "finishedAt": {
             "anyOf": [
               {
@@ -1448,7 +1585,8 @@
           "webDroppedCount",
           "webFromCache",
           "webSkippedReason",
-          "complexListSkippedReason"
+          "complexListSkippedReason",
+          "failureReason"
         ],
         "title": "LatestIngest",
         "type": "object"
@@ -2457,7 +2595,6 @@
           "status": {
             "enum": [
               "NOT_EXECUTED",
-              "INTERESTED",
               "IN_PROGRESS",
               "SAMPLE_OR_REGISTRATION_APPROVED",
               "ON_HOLD",
@@ -2479,7 +2616,6 @@
           "status": {
             "enum": [
               "NOT_EXECUTED",
-              "INTERESTED",
               "IN_PROGRESS",
               "SAMPLE_OR_REGISTRATION_APPROVED",
               "ON_HOLD",
@@ -2516,7 +2652,6 @@
       "OutcomeStatus": {
         "enum": [
           "NOT_EXECUTED",
-          "INTERESTED",
           "IN_PROGRESS",
           "SAMPLE_OR_REGISTRATION_APPROVED",
           "ON_HOLD",
@@ -3219,7 +3354,8 @@
         "enum": [
           "QUESTION",
           "DATA_NOT_FOUND",
-          "DATA_INSUFFICIENT"
+          "DATA_INSUFFICIENT",
+          "OWN_PLATING_LINE_SUSPECTED"
         ],
         "title": "ReviewItemKind",
         "type": "string"
@@ -3570,7 +3706,7 @@
     },
     "/api/v1/dashboard": {
       "get": {
-        "description": "건수 5개·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
+        "description": "건수 10칸·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
         "operationId": "dashboard_api_v1_dashboard_get",
         "parameters": [
           {
@@ -3661,7 +3797,6 @@
                 {
                   "enum": [
                     "NOT_EXECUTED",
-                    "INTERESTED",
                     "IN_PROGRESS",
                     "SAMPLE_OR_REGISTRATION_APPROVED",
                     "ON_HOLD",
@@ -3675,6 +3810,44 @@
                 }
               ],
               "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "opinion",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "WORTH_REVIEW",
+                    "NEED_CHECK",
+                    "NOT_TARGET",
+                    "NONE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opinion"
             }
           },
           {
@@ -3855,6 +4028,72 @@
           }
         },
         "summary": "Activity"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/bookmark": {
+      "put": {
+        "description": "관심 켜고 끄기(#356). 켜고 끌 때마다 새 행을 쌓고, 같은 값이면 새 행을 만들지 않는다.",
+        "operationId": "save_bookmark_api_v1_opportunities__oppId__bookmark_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookmarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_BookmarkResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Bookmark"
       }
     },
     "/api/v1/opportunities/{oppId}/homepage": {

@@ -204,7 +204,7 @@ def test_existing_notes_survive_kind_migration(records_env, tmp_db):
     client, opp_id = records_env
     assert post(client, opp_id, "notes", {"text": "이전 가상 메모"}).status_code == 200
     assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
-    assert upgrade_to_head(tmp_db) == ["tg_003"]
+    assert upgrade_to_head(tmp_db) == ["rec_008"]
     with session_scope() as session:
         note = session.scalar(select(Note).where(Note.opp_id == opp_id))
         assert (note.kind, note.text, note.version) == ("MEMO", "이전 가상 메모", 1)
@@ -260,7 +260,12 @@ def test_note_request_logs_and_errors_hide_contact(records_env, request_logs, mo
     "kind,model,initial,update",
     [
         ("notes", Note, {"text": "보존할 가상 메모"}, {"text": "private-note@example.invalid"}),
-        ("outcomes", Outcome, {"status": "INTERESTED"}, {"status": "IN_PROGRESS"}),
+        (
+            "outcomes",
+            Outcome,
+            {"status": "IN_PROGRESS"},
+            {"status": "SAMPLE_OR_REGISTRATION_APPROVED"},
+        ),
     ],
 )
 def test_record_commit_failure_rolls_back_without_retry(
@@ -344,7 +349,7 @@ def test_note_length_comes_from_config_and_rejection_writes_nothing(records_env)
 
 
 @pytest.mark.parametrize(
-    "kind,body", [("notes", {"text": "가상 메모"}), ("outcomes", {"status": "INTERESTED"})]
+    "kind,body", [("notes", {"text": "가상 메모"}), ("outcomes", {"status": "IN_PROGRESS"})]
 )
 def test_staff_permissions_and_missing_opportunity(records_env, kind, body):
     """Given 보기 전용·없는 기회 / When 저장 / Then 권한·존재 오류로 거부한다."""
@@ -356,7 +361,7 @@ def test_staff_permissions_and_missing_opportunity(records_env, kind, body):
 
 
 def test_outcomes_keep_history_and_filter_latest_stage_without_changing_score(records_env):
-    """Given 미접촉 기회 / When 관심→접촉 기록 / Then 이력·일정 유지, 최신 단계만 거른다."""
+    """Given 미접촉 기회 / When 접촉→견적·샘플 기록 / Then 이력·일정 유지, 최신 단계만 거른다."""
     client, opp_id = records_env
     detail_url = f"/api/v1/opportunities/{opp_id}"
     before = client.get(detail_url).json()["data"]["scores"]
@@ -366,7 +371,7 @@ def test_outcomes_keep_history_and_filter_latest_stage_without_changing_score(re
         opp_id,
         "outcomes",
         {
-            "status": "INTERESTED",
+            "status": "IN_PROGRESS",
             "nextScheduleAt": "2026-11-12",
             "nextScheduleNote": "견적 준비",
         },
@@ -377,7 +382,7 @@ def test_outcomes_keep_history_and_filter_latest_stage_without_changing_score(re
         opp_id,
         "outcomes",
         {
-            "status": "IN_PROGRESS",
+            "status": "SAMPLE_OR_REGISTRATION_APPROVED",
             "expectedVersion": 0,
             "method": "CALL",
             "result": "ABSENT",
@@ -385,16 +390,17 @@ def test_outcomes_keep_history_and_filter_latest_stage_without_changing_score(re
         },
     )
     assert second.status_code == 200
-    assert second.json()["meta"]["previousValue"]["status"] == "INTERESTED"
-    assert client.get("/api/v1/opportunities?stage=INTERESTED").json()["meta"]["total"] == 0
-    assert client.get("/api/v1/opportunities?stage=IN_PROGRESS").json()["meta"]["total"] == 1
+    assert second.json()["meta"]["previousValue"]["status"] == "IN_PROGRESS"
+    assert client.get("/api/v1/opportunities?stage=IN_PROGRESS").json()["meta"]["total"] == 0
+    stage_url = "/api/v1/opportunities?stage=SAMPLE_OR_REGISTRATION_APPROVED"
+    assert client.get(stage_url).json()["meta"]["total"] == 1
     after = client.get(detail_url).json()["data"]
     assert after["scores"] == before
     assert after["records"]["outcome"]["nextScheduleAt"] == "2026-11-12"
     assert after["records"]["outcome"]["nextScheduleNote"] == "견적 준비"
     with session_scope() as session:
         rows = session.scalars(select(Outcome).order_by(Outcome.version)).all()
-        assert [r.status for r in rows] == ["INTERESTED", "IN_PROGRESS"]
+        assert [r.status for r in rows] == ["IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED"]
         assert rows[1].next_schedule_note == "견적 준비"
         assert rows[1].method == "CALL" and rows[1].result == "ABSENT"
     activities = client.get(f"{detail_url}/activity?limit=1").json()["data"]
@@ -408,9 +414,9 @@ def test_outcomes_keep_history_and_filter_latest_stage_without_changing_score(re
         {"status": "LOST"},
         {"status": "LOST", "reason": " "},
         {"status": "UNKNOWN"},
-        {"status": "INTERESTED", "method": "PHONE"},
-        {"status": "INTERESTED", "result": "CONNECTED"},
-        {"status": "INTERESTED", "attemptedAt": "날짜 아님"},
+        {"status": "IN_PROGRESS", "method": "PHONE"},
+        {"status": "IN_PROGRESS", "result": "CONNECTED"},
+        {"status": "IN_PROGRESS", "attemptedAt": "날짜 아님"},
     ],
 )
 def test_invalid_outcomes_do_not_write(records_env, body):

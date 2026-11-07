@@ -31,7 +31,7 @@ def test_card_returns_latest_version_of_each_stage(records_env, status):  # noqa
     """Given 이전 기록의 시각이 더 늦음 / When 단계 추가 / Then 최신 버전을 상세와 같이 표시한다."""
     client, opp_id = records_env
     before = client.get("/api/v1/opportunities").json()["data"][0]
-    assert post(client, opp_id, "outcomes", {"status": "INTERESTED"}).status_code == 200
+    assert post(client, opp_id, "outcomes", {"status": "IN_PROGRESS"}).status_code == 200
     with session_scope() as session:
         previous = session.scalar(select(Outcome).where(Outcome.opp_id == opp_id))
         previous.created_at = datetime(2099, 1, 1, tzinfo=UTC)
@@ -56,15 +56,18 @@ def test_card_returns_latest_version_of_each_stage(records_env, status):  # noqa
     for key in ("oppId", "rank", "scoreDisplay", "scoreS", "classificationCode", "evalId"):
         assert card[key] == before[key]
     assert card["records"]["opinion"] == before["records"]["opinion"]
-    assert card["records"]["bookmark"] == before["records"]["bookmark"]
+    # 기록을 남기면 같은 저장 안에서 관심이 켜진다(#356 자동 관심). 그 밖의 카드 값은 그대로다.
+    assert before["records"]["bookmark"] is None
+    assert card["records"]["bookmark"]["active"] is True
 
 
 def test_card_outcomes_do_not_leak_between_companies_or_pages(industry_env):  # noqa: F811
     """Given 단계가 서로 다른 세 회사 / When 목록·다음 쪽 조회 / Then 각 기회의 단계만 보인다."""
     client, ids = industry_env
-    assert post(client, ids[0], "outcomes", {"status": "INTERESTED"}).status_code == 200
-    assert post(client, ids[1], "outcomes", {"status": "IN_PROGRESS"}).status_code == 200
-    expected = {ids[0]: {"status": "INTERESTED"}, ids[1]: {"status": "IN_PROGRESS"}, ids[2]: None}
+    assert post(client, ids[0], "outcomes", {"status": "IN_PROGRESS"}).status_code == 200
+    second = {"status": "SAMPLE_OR_REGISTRATION_APPROVED"}
+    assert post(client, ids[1], "outcomes", second).status_code == 200
+    expected = {ids[0]: {"status": "IN_PROGRESS"}, ids[1]: second, ids[2]: None}
     whole = client.get("/api/v1/opportunities").json()
     assert len(whole["data"]) == whole["meta"]["total"] == 3
     for page, card in enumerate(whole["data"], start=1):

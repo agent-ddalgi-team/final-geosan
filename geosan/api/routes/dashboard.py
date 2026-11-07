@@ -1,4 +1,4 @@
-"""대시보드 경로 (U7, 계약 C1 `GET /dashboard` v2). 응답 모양은 이 파일에 둔다(경로 묶음별 모델)."""
+"""대시보드 경로 (U7, 계약 C1 `GET /dashboard` v3). 응답 모양은 이 파일에 둔다(경로 묶음별 모델)."""
 
 from datetime import date, datetime
 from typing import Annotated, Literal
@@ -9,7 +9,13 @@ from pydantic import Field
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
-from geosan.dashboard.queries import build_dashboard, schedule_due_opp_ids
+from geosan.dashboard.queries import (
+    BOARD_KEYS,
+    BOOKMARKED_KEY,
+    build_dashboard,
+    classify_bookmarked,
+    schedule_due_opp_ids,
+)
 from geosan.evaluation.models import EvaluationRun
 from geosan.evidence.transfer import KST
 from geosan.storage.base import utcnow
@@ -17,18 +23,26 @@ from geosan.storage.base import utcnow
 router = APIRouter()
 
 SCHEDULE_DUE_FILTER = "SCHEDULE_DUE"
+# 대시보드 칸을 누르면 열리는 목록 `?filter=<칸>` 값 9개(#356).
+BOARD_FILTERS = frozenset({BOOKMARKED_KEY, *BOARD_KEYS})
 
 ActivityKind = Literal["NOTE", "STAGE", "CONTACT_ATTEMPT", "SCHEDULE", "OPINION"]
 
 
 class DashboardCounts(_ApiModel):
-    """누르면 /opportunities?stage=… (SCHEDULE_DUE만 ?filter=SCHEDULE_DUE)."""
+    """관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>
+    (BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 여덟 칸의 합은 BOOKMARKED와 같다."""
 
     # 계약의 건수 키는 대문자 코드 그대로다(camelCase로 바꾸지 않는다).
+    bookmarked: int = Field(alias="BOOKMARKED")
+    no_opinion: int = Field(alias="NO_OPINION")
+    need_check: int = Field(alias="NEED_CHECK")
+    not_target: int = Field(alias="NOT_TARGET")
     not_contacted: int = Field(alias="NOT_CONTACTED")
-    interested: int = Field(alias="INTERESTED")
     in_contact: int = Field(alias="IN_CONTACT")
     quote_sample: int = Field(alias="QUOTE_SAMPLE")
+    on_hold: int = Field(alias="ON_HOLD")
+    done: int = Field(alias="DONE")
     schedule_due: int = Field(alias="SCHEDULE_DUE")
 
 
@@ -66,7 +80,7 @@ def schedule_due_list_filter(session, query, request: Request):
     """추천 목록 `?filter=SCHEDULE_DUE`: 대시보드 '이번 주 일정' 건수와 같은 기준으로 거른다.
 
     `opportunities.py`의 지원 값(`supported_filters`)과 거르기 자리(`list_filters`)에 등록만 한다.
-    연결되지 않은 값(다른 filter 값·탭·북마크)을 막는 입력 검사는 목록 쪽 첫 검사가 맡는다.
+    연결되지 않은 값(다른 filter 값·탭)을 막는 입력 검사는 목록 쪽 첫 검사가 맡는다.
     """
     if request.query_params.get("filter") != SCHEDULE_DUE_FILTER:
         return query
@@ -74,9 +88,26 @@ def schedule_due_list_filter(session, query, request: Request):
     return query.where(EvaluationRun.opp_id.in_(schedule_due_opp_ids(today)))
 
 
+def bookmark_board_list_filter(session, query, request: Request):
+    """추천 목록 `?filter=<대시보드 칸>`: 대시보드와 같은 분류 함수로 거른다(#356).
+
+    `BOOKMARKED`는 관심 기업 전체, 나머지 여덟 값은 그 칸에 든 관심 기업만 남긴다.
+    """
+    key = request.query_params.get("filter")
+    if key not in BOARD_FILTERS:
+        return query
+    classified = classify_bookmarked(session)
+    opp_ids = [
+        opp_id for opp_id, board in classified.items() if key == BOOKMARKED_KEY or board == key
+    ]
+    return query.where(EvaluationRun.opp_id.in_(opp_ids))
+
+
 supported_filters.add(SCHEDULE_DUE_FILTER)
-if schedule_due_list_filter not in list_filters:
-    list_filters.append(schedule_due_list_filter)
+supported_filters.update(BOARD_FILTERS)
+for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter):
+    if _list_filter not in list_filters:
+        list_filters.append(_list_filter)
 
 
 @router.get("/dashboard", response_model=DashboardEnvelope)
@@ -84,7 +115,7 @@ def dashboard(
     session: SessionDep,
     staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
 ):
-    """건수 5개·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다."""
+    """건수 10칸·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다."""
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
     now = utcnow()

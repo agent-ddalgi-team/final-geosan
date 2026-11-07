@@ -55,7 +55,7 @@ def test_industry_search_counts_and_combined_process_filter(industry_env):
         client.get(url, params={"process": "ZINC_PLATING"}).json()["meta"]["industryCounts"] == []
     )
     assert (
-        client.get(url, params={"industry": "반도체", "stage": "INTERESTED"}).json()["data"] == []
+        client.get(url, params={"industry": "반도체", "stage": "IN_PROGRESS"}).json()["data"] == []
     )
     assert client.get(url, params={"industry": "미등록"}).status_code == 400
     for card in whole["data"]:

@@ -8,8 +8,11 @@
 brand.demoLabel.
 더하는 변경(2026-11-06 PM 확인, #342): 후보 찾기 응답 칸 — meta.latestIngest, 카드의 들어온
 회차·고른 이유·공정 적합도 등, 상세 머리의 같은 칸. 값은 창구(#317)가 채운다.
+더하는 변경(2026-11-06 PM 확인, #347): meta.latestIngest.failureReason(찾기 실패 사유 한 줄).
 고친 것(2026-10-22 PM 확인, 이슈 #33): Scores의 `E/P/S/R/C` 키를 대문자 별칭으로 고정
 (약속 C1과 같음).
+바꾼 것(2026-11-06 PM 결정, #356, 계약 v3): 영업 단계에서 INTERESTED 삭제, 관심(찜) 모델
+BookmarkRecord·BookmarkRequest·BookmarkResponse 추가, records.bookmark를 그 모양으로.
 """
 
 from __future__ import annotations
@@ -113,6 +116,9 @@ class LatestIngest(_ApiModel):
     web_from_cache: bool
     web_skipped_reason: Literal["DAILY_LIMIT", "DISABLED"] | None
     complex_list_skipped_reason: Literal["DAILY_LIMIT", "SOURCE_ERROR", "DISABLED"] | None
+    failure_reason: str | None = Field(
+        description="찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)"
+    )
 
 
 class Meta(_ApiModel):
@@ -222,6 +228,12 @@ class OpinionRecord(RecordMeta):
     memo: str | None = None
 
 
+class BookmarkRecord(RecordMeta):
+    """관심(찜) 표시의 최신 값(#356). 한 번도 켠 적이 없으면 records.bookmark가 null이다."""
+
+    active: bool
+
+
 class CardOutcome(_ApiModel):
     """카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242)."""
 
@@ -230,7 +242,9 @@ class CardOutcome(_ApiModel):
 
 class CardRecords(_ApiModel):
     opinion: OpinionRecord | None = None
-    bookmark: dict[str, Any] | None = Field(default=None, description="U5")
+    bookmark: BookmarkRecord | None = Field(
+        default=None, description="관심 표시의 최신 값. 한 번도 켠 적 없으면 null (#356)"
+    )
     outcome: CardOutcome | None = Field(
         default=None, description="최신 영업 단계. 기록 없으면 null"
     )
@@ -490,7 +504,7 @@ class ContactCount(_ApiModel):
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
     opinion: OpinionRecord | None = None
-    bookmark: dict[str, Any] | None = None
+    bookmark: BookmarkRecord | None = None
     approval: dict[str, Any] | None = None
     outcome: dict[str, Any] | None = None
 
@@ -597,7 +611,6 @@ class MainPhoneConfirmResponse(_ApiModel):
 
 OutcomeStatus = Literal[
     "NOT_EXECUTED",
-    "INTERESTED",
     "IN_PROGRESS",
     "SAMPLE_OR_REGISTRATION_APPROVED",
     "ON_HOLD",
@@ -628,6 +641,17 @@ class OutcomeResponse(RecordMeta):
     status: OutcomeStatus
 
 
+class BookmarkRequest(_RequestModel):
+    """관심 켜고 끄기 요청(#356). 관심은 평가와 무관해 evalId를 받지 않는다."""
+
+    active: bool
+    expected_version: int | None = Field(default=None, ge=0)
+
+
+class BookmarkResponse(BookmarkRecord):
+    """응답 data: RecordMeta + active. 이전 값은 meta.previousValue."""
+
+
 class RelationRequest(_RequestModel):
     relation_status: RelationStatus
     eval_id: str = Field(min_length=1, strict=True)
@@ -650,6 +674,7 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+BookmarkEnvelope = Envelope[BookmarkResponse]
 RelationEnvelope = Envelope[RelationResponse]
 QuestionReplyEnvelope = Envelope[QuestionReplyResponse]
 ReviewCheckEnvelope = Envelope[ReviewCheckResponse]
