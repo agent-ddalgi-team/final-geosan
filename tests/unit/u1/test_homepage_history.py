@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from geosan.config.errors import AppError
 from geosan.opportunity.models import Customer
-from geosan.records.models import Note
+from geosan.records.models import Bookmark, Note
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_extract
 from tests.unit.u1 import test_homepage_api as support
@@ -144,4 +144,19 @@ def test_history_save_failure_rolls_back_address_before_external_call(homepage_e
             support.URL,
             "AI_FOUND",
             "AI",
+        )
+
+
+def test_program_made_address_note_does_not_turn_bookmark_on(homepage_env):
+    """Given 관심이 꺼진 회사 / When 주소를 고쳐 프로그램이 변경 기록을 남김 / Then 관심 그대로.
+
+    자동 관심은 담당자가 직접 저장한 메모·단계·의견에만 건다(PM 결정 2026-11-07, #380).
+    """
+    assert support.post(homepage_env, {"url": CHANGED}).status_code == 200
+    (row,) = notes(homepage_env)
+    assert row.kind == "RESEARCH" and CHANGED in row.text
+    with session_scope() as session:
+        assert (
+            session.scalar(select(Bookmark).where(Bookmark.opp_id == homepage_env[1].opp_id))
+            is None
         )

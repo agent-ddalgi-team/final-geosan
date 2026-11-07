@@ -19,7 +19,7 @@ from geosan.evidence.public_items import approve_page
 from geosan.evidence.reader import Page
 from geosan.opportunity.importer import import_case
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
-from geosan.records.models import Note
+from geosan.records.models import Bookmark, Note
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.migrate import downgrade, upgrade_to_head
 from geosan.storage.session import session_scope
@@ -344,3 +344,19 @@ def test_concurrent_replies_keep_both_histories_and_versions(reply_env):
             )
             assert [row.version for row in notes] == [1, 2]
             assert notes[-1].text == f"Q:{question_id} 답: {question.reply_text}"
+
+
+def test_program_made_reply_note_does_not_turn_bookmark_on(reply_env):
+    """Given 관심이 꺼진 두 회사 / When 질문 답으로 프로그램이 답 이력을 남김 / Then 관심 그대로.
+
+    자동 관심은 담당자가 직접 저장한 메모·단계·의견에만 건다(PM 결정 2026-11-07, #380).
+    """
+    client, opp_id, other_id, question_id = reply_env
+    assert reply(client, question_id).status_code == 200
+    with session_scope() as session:
+        assert (
+            session.scalar(select(func.count()).select_from(Note).where(Note.kind == "REPLY")) >= 1
+        )
+        assert (
+            session.scalar(select(Bookmark).where(Bookmark.opp_id.in_([opp_id, other_id]))) is None
+        )
