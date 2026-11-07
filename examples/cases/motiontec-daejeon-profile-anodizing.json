@@ -22,6 +22,7 @@
   ],
   "customer": {
     "name": "(주)모션텍",
+    "homepageUrl": "http://www.motiontec.co.kr/",
     "bizNumber": null,
     "address": "대전광역시 유성구 테크노1로 11-10 (관평동)",
     "industries": ["기계·설비"],
