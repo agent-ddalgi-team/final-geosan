@@ -739,6 +739,17 @@ export const timelineArea = {
   loading: '불러오는 중',
   system: '시스템',
   listLabel: '활동 이력 목록',
+  /** 묶음 전환 단추(#389). 기본은 전체. */
+  groupFilterLabel: '활동 이력 거르기',
+  groupAll: '전체',
+  groupEmpty: (group: string) => `${group} 기록이 아직 없습니다.`,
+} as const;
+
+/** 활동 이력 묶음(#389) 쉬운 말. 묶음 정의는 components/records/activityGroups.ts. */
+export const activityGroupLabels = {
+  SALES: '영업 활동',
+  FACT: '사실',
+  FEEDBACK: '의견',
 } as const;
 
 /** 활동 이력 종류(ActivityKind) 쉬운 말. */

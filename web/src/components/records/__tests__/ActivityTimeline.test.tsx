@@ -5,7 +5,7 @@ import ActivityTimeline, { sortRecentFirst } from '../ActivityTimeline';
 import { ApiError, getActivity } from '../../../api/client';
 import type { ActivityItem, ConfigUi, Envelope } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
-import { timelineArea } from '../../../labels/ko';
+import { activityGroupLabels, timelineArea } from '../../../labels/ko';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -31,6 +31,21 @@ const note: ActivityItem = {
   actor: 'unknown-key',
   kind: 'NOTE',
   summary: '공정 문의 메모',
+};
+
+const relation: ActivityItem = {
+  at: '2026-11-06T11:00:00+09:00',
+  actor: 'park-lee',
+  kind: 'RELATION_CONFIRMED',
+  summary: '거래 관계: 확인 전 → 거래 없음',
+  previousValue: 'UNCONFIRMED',
+};
+const opinion: ActivityItem = {
+  at: '2026-11-06T12:00:00+09:00',
+  actor: 'park-lee',
+  kind: 'OPINION',
+  summary: '검토 권고',
+  evalId: 'eval-1',
 };
 
 const config = { staff: [{ key: 'park-lee', displayName: '박 이사' }] } as unknown as ConfigUi;
@@ -123,5 +138,63 @@ describe('ActivityTimeline', () => {
     await waitFor(() => expect(screen.getAllByTestId('timeline-item')).toHaveLength(2));
     expect(screen.getAllByTestId('timeline-summary')[0]).toHaveTextContent(newer.summary);
     expect(mockedGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('종류 태그는 묶음별로 색이 다르다: 영업 활동 회색, 사실 파랑, 의견 노랑', async () => {
+    mockedGet.mockResolvedValueOnce(reply([newer, relation, opinion, older, note]));
+    renderTimeline();
+    const kinds = await screen.findAllByTestId('timeline-kind');
+    const toneOf = (label: string) =>
+      kinds.find((el) => el.textContent === label)?.getAttribute('data-tone');
+    expect(toneOf('접촉 시도')).toBe('neutral');
+    expect(toneOf('메모')).toBe('neutral');
+    expect(toneOf('거래 관계')).toBe('ask');
+    expect(toneOf('의견')).toBe('wait');
+    expect(toneOf('분류')).toBe('wait');
+  });
+
+  it('묶음 단추로 한 묶음만 보고 전체로 돌아온다. 기본은 전체', async () => {
+    mockedGet.mockResolvedValueOnce(reply([newer, relation, opinion, older, note]));
+    renderTimeline();
+    expect(await screen.findAllByTestId('timeline-item')).toHaveLength(5);
+    expect(screen.getByTestId('timeline-group-ALL')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FACT }));
+    expect(screen.getAllByTestId('timeline-item')).toHaveLength(1);
+    expect(screen.getByTestId('timeline-summary')).toHaveTextContent(relation.summary);
+
+    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.SALES }));
+    expect(screen.getAllByTestId('timeline-summary').map((el) => el.textContent)).toEqual([
+      newer.summary,
+      note.summary,
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FEEDBACK }));
+    expect(screen.getAllByTestId('timeline-summary').map((el) => el.textContent)).toEqual([
+      opinion.summary,
+      older.summary,
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: timelineArea.groupAll }));
+    expect(screen.getAllByTestId('timeline-item')).toHaveLength(5);
+    expect(mockedGet).toHaveBeenCalledTimes(1); // 거르기는 화면에서만, 다시 불러오지 않는다
+  });
+
+  it('고른 묶음에 줄이 없으면 안내 한 줄을 보인다', async () => {
+    mockedGet.mockResolvedValueOnce(reply([newer]));
+    renderTimeline();
+    await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FEEDBACK }));
+    expect(screen.queryByTestId('timeline-item')).not.toBeInTheDocument();
+    expect(screen.getByTestId('timeline-group-empty')).toHaveTextContent(
+      timelineArea.groupEmpty(activityGroupLabels.FEEDBACK),
+    );
+  });
+
+  it('기록이 전혀 없으면 묶음 단추도 보이지 않는다', async () => {
+    mockedGet.mockResolvedValueOnce(reply([]));
+    renderTimeline();
+    await screen.findByTestId('timeline-empty');
+    expect(screen.queryByTestId('timeline-group-filter')).not.toBeInTheDocument();
   });
 });

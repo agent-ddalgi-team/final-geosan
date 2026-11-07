@@ -1,12 +1,16 @@
 // 활동 이력 타임라인(U5, 기록 영역 아래): GET /activity를 최근 순으로 한 줄씩.
 // 줄마다 시각 · 작성자 · 종류 · 내용. 예: "11/06 14:20 박 이사 전화 · 부재 '담당자 외근'". 읽기 전용이다.
+// 종류는 뜻이 같은 3묶음(영업 활동·사실·의견)끼리 같은 색 태그로 보이고, 위의 단추로 한 묶음만 본다(#389).
 // 기업이 바뀌면 부르는 쪽이 key로 새로 만든다. 다시 불러오는 동안에는 이전 줄을 그대로 둔다.
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { getActivity } from '../../api/client';
 import type { ActivityItem } from '../../api/types';
-import { activityKindLabels, labelFor, timelineArea } from '../../labels/ko';
+import { activityGroupLabels, activityKindLabels, labelFor, timelineArea } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
+import StatusTag from '../common/StatusTag';
+import { ACTIVITY_GROUPS, activityGroupTone, groupOf } from './activityGroups';
+import type { ActivityGroup } from './activityGroups';
 import { formatMonthDayTime } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
@@ -28,9 +32,25 @@ export function sortRecentFirst(items: ActivityItem[]): ActivityItem[] {
     .map((entry) => entry.item);
 }
 
+const groupButtonStyle = (selected: boolean) =>
+  ({
+    minHeight: 32,
+    padding: '0 12px',
+    borderRadius: 8,
+    border: `1px solid ${selected ? colors.text : colors.border}`,
+    background: selected ? colors.text : colors.bgContainer,
+    color: selected ? colors.bgContainer : colors.text,
+    font: 'inherit',
+    fontSize: typography.fontSizeSecondary,
+    fontWeight: selected ? 700 : 400,
+    cursor: 'pointer',
+  }) as const;
+
 export default function ActivityTimeline({ oppId, refreshKey = 0 }: ActivityTimelineProps) {
   const { config } = useFrame();
   const [retry, setRetry] = useState(0);
+  /** 고른 묶음. null이면 전체. 기업이 바뀌면 부르는 쪽이 key로 새로 만들어 전체로 돌아간다. */
+  const [group, setGroup] = useState<ActivityGroup | null>(null);
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -56,6 +76,13 @@ export default function ActivityTimeline({ oppId, refreshKey = 0 }: ActivityTime
     color: colors.textSecondary,
     fontSize: typography.fontSizeSecondary,
   } as const;
+
+  const visible =
+    items === null ? null : items.filter((item) => group === null || groupOf(item.kind) === group);
+  const groupChoices: { value: ActivityGroup | null; label: string }[] = [
+    { value: null, label: timelineArea.groupAll },
+    ...ACTIVITY_GROUPS.map((value) => ({ value, label: activityGroupLabels[value] })),
+  ];
 
   return (
     <section aria-labelledby={`timeline-${oppId}`} data-testid="activity-timeline">
@@ -84,23 +111,54 @@ export default function ActivityTimeline({ oppId, refreshKey = 0 }: ActivityTime
         </span>
       ) : null}
       {items !== null && items.length > 0 ? (
+        <div
+          role="group"
+          aria-label={timelineArea.groupFilterLabel}
+          data-testid="timeline-group-filter"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}
+        >
+          {groupChoices.map((choice) => {
+            const selected = choice.value === group;
+            return (
+              <button
+                key={choice.value ?? 'ALL'}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => {
+                  if (!selected) setGroup(choice.value);
+                }}
+                style={groupButtonStyle(selected)}
+                data-testid={`timeline-group-${choice.value ?? 'ALL'}`}
+              >
+                {choice.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {visible !== null && items !== null && items.length > 0 && visible.length === 0 ? (
+        <span data-testid="timeline-group-empty" style={secondary}>
+          {timelineArea.groupEmpty(group === null ? '' : activityGroupLabels[group])}
+        </span>
+      ) : null}
+      {visible !== null && visible.length > 0 ? (
         <ol
           aria-label={timelineArea.listLabel}
           style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}
         >
-          {items.map((item, index) => (
+          {visible.map((item, index) => (
             <li
               key={`${item.at}-${index}`}
               data-testid="timeline-item"
-              style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
             >
               <span data-testid="timeline-time" style={secondary}>
                 {formatMonthDayTime(item.at) ?? ''}
               </span>
               <span data-testid="timeline-actor">{actorName(item.actor)}</span>
-              <span data-testid="timeline-kind" style={{ fontWeight: 600 }}>
+              <StatusTag tone={activityGroupTone[groupOf(item.kind)]} data-testid="timeline-kind">
                 {labelFor(activityKindLabels, item.kind)}
-              </span>
+              </StatusTag>
               <span data-testid="timeline-summary">{item.summary}</span>
             </li>
           ))}
