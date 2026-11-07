@@ -85,6 +85,35 @@ def serve(
     raise typer.Exit(code=run_serve(port, host))
 
 
+@app.command("backup")
+def backup(
+    to: Path | None = typer.Option(
+        None,
+        "--to",
+        help="백업을 둘 폴더. 기본은 현재 폴더의 backups/. 배포 서버에서는 영구 저장 공간 안 폴더",
+    ),
+) -> None:
+    """지금 데이터베이스를 파일 하나로 복사해 둡니다(서버가 켜져 있어도 안전, 계약 C8·#214)."""
+    from geosan.commands.backup import run_backup
+
+    raise typer.Exit(code=run_backup(to))
+
+
+@app.command("restore")
+def restore(
+    backup_file: Path = typer.Argument(
+        ..., help="되돌릴 백업 파일(.db). `geosan backup`이 만든 파일"
+    ),
+) -> None:
+    """서버를 멈춘 상태에서 백업 파일로 되돌립니다.
+
+    지금 DB는 먼저 따로 보관하고 확인 질문을 한 번 합니다.
+    """
+    from geosan.commands.restore import run_restore
+
+    raise typer.Exit(code=run_restore(backup_file))
+
+
 @app.command("check-config")
 def check_config(
     rule_config: Path | None = typer.Argument(None, help="규칙 설정 파일(rule-config.yaml)"),

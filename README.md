@@ -40,6 +40,7 @@ cd web && npm ci && cd ..
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
+| 백업·되돌리기 | `geosan backup [--to <폴더>]`(서버 켜진 채로 가능, 기본 `backups/`) → 문제가 생기면 서버를 멈추고 `geosan restore <백업 파일>`(확인 질문 1회, 지금 DB는 자동 보관) → `geosan init-db` → `geosan serve`. 절차는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) |
 
 검수 전환은 거래 관계나 필수 요구의 확인 상태를 바꾸지 않습니다. 기존 점수 표시 약속에 따라
 확인 묶음에서도 필수조건 확인 필요·운영 준비 중인 카드는 `--`로 보입니다.
@@ -86,7 +87,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 
 - Railway: 저장소 루트, 배포 가지 `main`, 서비스 1개와 영구 볼륨 `/data`. 환경 변수 `GEOSAN_DB_PATH=/data/geosan.db`, `GEOSAN_PASSWORD`, `OPENAI_API_KEY`는 서비스 설정에만 넣습니다. `PORT`는 Railway가 제공하며 `railway.json`의 시작 명령이 `--port`로 전달합니다. 로컬 `geosan serve`는 `PORT`를 자동으로 읽지 않습니다.
 - Python 의존성 설치는 저장소 루트에서 `pip install -r requirements.lock -e .`를 사용합니다. 화면 빌드는 Railway에서 필요하지 않습니다.
-- 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전 백업·복원은 PM의 #214 절차를 따릅니다.
+- 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전에는 같은 자리에서 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
 - 이후 `geosan check-config examples/rule-config.yaml examples/app-settings.yaml`로 설정을 등록합니다. 공개 배포 전 운영용 앱 설정의 `accessProtection.enabled`를 켜고 검증해야 합니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
 - Vercel: Root Directory `web`, 배포 가지 `main`, 설치 `npm ci`, 빌드 `npm run build`, 출력 `dist`, 환경 변수 `VITE_USE_FIXTURES=0`. 서버 비밀번호·API 키를 Vercel의 `VITE_` 변수에 넣지 않습니다.
 
