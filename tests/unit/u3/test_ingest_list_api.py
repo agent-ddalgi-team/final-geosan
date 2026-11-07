@@ -59,6 +59,7 @@ def add_candidate(tmp_path, key, *, batch_id="find-latest", fit="HIGH", own=Fals
         customer.pick_reason = "알루미늄 부품을 생산해 아노다이징 공정 확인이 필요함"
         customer.own_plating_line_suspected = own
         customer.own_plating_line_basis = "홈페이지에 자체 도금 설비가 표시됨" if own else None
+        customer.own_plating_line_source = "AI" if own else None
         run = latest_confirmed_evaluation(session, opp_id)
         # 점수 입력 제안 전 상태를 재현한다. 기존 A정밀의 기대값은 바꾸지 않는다.
         run.score_s = None
