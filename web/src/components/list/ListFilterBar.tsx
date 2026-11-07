@@ -1,6 +1,7 @@
 // 추천 목록 머리(#210 → #361, 2026-11-06 PM 결정): 공정·지역·산업 선택란 + 회사 이름 검색 칸 + 정렬. 모달 없이 인라인이다.
-//  - 공정은 탭이 아니라 선택란이다. "전체"를 두지 않고, 회사가 0곳인 공정도 보인다.
-//  - 공정을 아직 고르지 않았으면(#368) 공정 선택란 맨 위에 "공정을 고르세요"가 보이고 지역·산업 선택란은 숨는다.
+//  - 공정은 탭이 아니라 선택란이다. 회사가 0곳인 공정도 보인다.
+//  - 공정 선택란 맨 위는 "전체(공정별로 묶음)"다(#383, 2026-11-07 PM 결정). 고른 공정이 없으면(주소에 공정이 없거나
+//    선택지에 없는 값이면) 이것이 골라진 것으로 보이고, 지역·산업 선택란은 이때도 보여 먼저 고를 수 있다.
 //  - 검색하면 고른 조건과 상관없이 전체 후보에서 찾는다. 검색 중에는 세 선택란을 숨기고 결과 줄과 [검색 지우기]를 보인다.
 //  - 정렬은 "추천 순"만 고를 수 있다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 눌러도 아무 일이 없다.
 // 선택과 검색어는 부모가 주소(`?process=&region=&industry=`, `?q=`)에 남기고, 이 부품은 고른 값을 알리기만 한다.
@@ -24,7 +25,8 @@ export interface ListFilterBarProps {
   industryCounts: IndustryCount[];
   /** 지금 검색어(주소 `q=`). 있으면 검색 중이라 세 선택란을 숨기고 결과 줄을 보인다. */
   query: string | null;
-  onProcess: (code: string) => void;
+  /** 공정 하나를 고르면 그 코드, "전체(공정별로 묶음)"를 고르면 null. */
+  onProcess: (code: string | null) => void;
   onRegion: (region: string | null) => void;
   onIndustry: (industry: string | null) => void;
   /** [검색]·Enter. 앞뒤 공백을 뗀 검색어만 알린다(빈 검색어로는 알리지 않는다). */
@@ -70,10 +72,10 @@ interface FilterSelectProps {
   value: string | null;
   /** value는 서버에 보내는 값, name은 화면에 보이는 이름. */
   items: { value: string; name: string; count: number }[];
-  /** true면 맨 앞에 "전체"를 둔다(지역·산업). 공정은 "전체"가 없다. */
-  withAll: boolean;
-  /** "전체"가 없는 선택란에서 고른 값이 없을 때(선택지에 없는 값일 때도) 맨 위에 보이는 글자. 고를 수는 없다. */
-  placeholder?: string;
+  /** 맨 앞 "전체" 선택지의 글자(지역·산업은 "전체", 공정은 "전체(공정별로 묶음)"). 값은 빈 글자다. */
+  allLabel: string;
+  /** true면 고른 값이 선택지에 없을 때 0건으로 함께 보여 고른 값이 사라지지 않게 한다(지역·산업). */
+  keepUnknown: boolean;
   onChange: (value: string | null) => void;
   testId: string;
 }
@@ -83,18 +85,17 @@ function FilterSelect({
   label,
   value,
   items,
-  withAll,
-  placeholder,
+  allLabel,
+  keepUnknown,
   onChange,
   testId,
 }: FilterSelectProps) {
+  const known = items.some((item) => item.value === value);
   // 주소에서 온 지역·산업 값이 선택지에 없으면(그 공정에 0건) 고른 값이 사라지지 않도록 0건으로 함께 보인다.
   const shown =
-    withAll && value && !items.some((item) => item.value === value)
-      ? [...items, { value, name: value, count: 0 }]
-      : items;
-  // "전체"가 없는 선택란(공정)은 고른 값이 선택지에 없으면 아무것도 고르지 않은 것으로 보인다.
-  const unpicked = !withAll && !items.some((item) => item.value === value);
+    keepUnknown && value && !known ? [...items, { value, name: value, count: 0 }] : items;
+  // 공정 선택란은 고른 값이 선택지에 없으면 맨 위 "전체(공정별로 묶음)"가 골라진 것으로 보인다.
+  const current = known || (keepUnknown && value) ? value : '';
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <label htmlFor={id} style={labelStyle}>
@@ -102,17 +103,12 @@ function FilterSelect({
       </label>
       <select
         id={id}
-        value={unpicked ? '' : (value ?? '')}
+        value={current ?? ''}
         style={selectStyle}
         onChange={(event) => onChange(event.target.value === '' ? null : event.target.value)}
         data-testid={testId}
       >
-        {withAll ? <option value="">{listFilters.all}</option> : null}
-        {unpicked && placeholder ? (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        ) : null}
+        <option value="">{allLabel}</option>
         {shown.map((item) => (
           <option key={item.value} value={item.value}>
             {listFilters.option(item.name, item.count)}
@@ -186,12 +182,9 @@ export default function ListFilterBar({
 }: ListFilterBarProps) {
   const searching = query !== null;
   const hasProcess = !searching && showProcess && processCounts.length > 0;
-  // 공정을 고르기 전에는 지역·산업 선택란을 보이지 않는다(곳 수가 고른 공정 안 건수라서, #368).
-  const waitingProcess = hasProcess && !processCounts.some((item) => item.processCode === process);
+  // 지역·산업 선택란은 공정을 고르기 전(묶음 보기)에도 보인다(#383). 곳 수는 부모가 준 응답의 것이다.
   const hasSelects =
-    !searching &&
-    !waitingProcess &&
-    (regionCounts.length > 0 || industryCounts.length > 0 || region || industry);
+    !searching && (regionCounts.length > 0 || industryCounts.length > 0 || region || industry);
   return (
     <div data-testid="list-filter-bar" style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
       <div style={rowStyle}>
@@ -205,10 +198,14 @@ export default function ListFilterBar({
               name: item.processName,
               count: item.count,
             }))}
-            withAll={false}
-            placeholder={listFilters.processPlaceholder}
+            allLabel={listFilters.processGrouped}
+            keepUnknown={false}
             onChange={(code) => {
-              if (code && code !== process) onProcess(code);
+              // 선택지에 없는 공정이 주소에 있을 때 "전체(공정별로 묶음)"를 다시 고르는 것도 바뀐 것으로 알린다.
+              const shownNow = processCounts.some((item) => item.processCode === process)
+                ? process
+                : null;
+              if (code !== shownNow) onProcess(code);
             }}
             testId="list-process-select"
           />
@@ -224,7 +221,8 @@ export default function ListFilterBar({
                 name: item.region,
                 count: item.count,
               }))}
-              withAll
+              allLabel={listFilters.all}
+              keepUnknown
               onChange={onRegion}
               testId="list-region-select"
             />
@@ -237,7 +235,8 @@ export default function ListFilterBar({
                 name: item.industry,
                 count: item.count,
               }))}
-              withAll
+              allLabel={listFilters.all}
+              keepUnknown
               onChange={onIndustry}
               testId="list-industry-select"
             />
