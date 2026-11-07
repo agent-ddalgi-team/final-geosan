@@ -356,6 +356,7 @@ export default function OpportunityListPage() {
                 card={card}
                 classificationOverrides={config?.classificationLabels}
                 processNames={processNames}
+                showRank={processMode}
               />
             </li>
           ))}
