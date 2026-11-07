@@ -1,13 +1,18 @@
 """공식 XML 모양의 가상 응답 검사. 네트워크·실제 인증키·운영 DB를 쓰지 않는다."""
 
 import hashlib
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from xml.etree import ElementTree as ET
 
 import pytest
 
 from geosan.config.errors import InputError
-from geosan.opportunity.complex_rows import ComplexSourceError, parse_complex_page
+from geosan.opportunity.complex_rows import (
+    ComplexSourceError,
+    combine_factory_rows,
+    parse_complex_page,
+)
+from geosan.opportunity.factory_csv import read_factory_csv
 
 
 def item(**changes):
@@ -213,6 +218,8 @@ def test_empty_out_of_range_page_is_not_an_empty_success():
         document().replace(b"<totalCount>1</totalCount>", b"<totalCount />"),
         document().replace(b"<cmpnyNm>", b"<cmpnyNm><nested>PRIVATE_MARKER</nested>"),
         document().replace(b"<cmpnyNm>", b"<cmpnyNm>duplicate</cmpnyNm><cmpnyNm>"),
+        document([]).replace(b"<items />", b"<items>PRIVATE_MARKER</items>"),
+        document().replace(b"</item>", b"</item>PRIVATE_MARKER"),
     ],
 )
 def test_malformed_or_ambiguous_xml_is_rejected_without_raw_text(xml, caplog):
@@ -255,3 +262,112 @@ def test_invalid_pagination_is_a_caller_error(changes):
 def test_non_xml_input_is_a_caller_error():
     with pytest.raises(InputError):
         parse(None)
+
+
+def test_file_rows_win_by_normalized_name_and_address(factory_file):
+    csv_rows = read_factory_csv(
+        factory_file([[1, "(주)가상볼트", "가상아산단지", "파일 생산품", "충남 아산시 가상길 1"]]),
+        regions=["충남"],
+    ).rows
+    api_rows = parse(
+        document(
+            [
+                item(rnAdres="충남 아산시 가상길 1", mainProductCn="조회 생산품"),
+                item(cmpnyNm="가상너트", fctryManageNo="2026000000002"),
+            ]
+        )
+    ).rows
+    result = combine_factory_rows(csv_rows, api_rows)
+    assert result.file_rows == csv_rows
+    assert result.file_rows[0].product == "파일 생산품"
+    assert [row.company_name for row in result.added_rows] == ["가상너트"]
+    assert result.duplicate_count == 1
+
+
+def test_same_name_different_address_and_same_address_different_name_stay(factory_file):
+    csv_rows = read_factory_csv(
+        factory_file([[1, "가상볼트", "", "볼트", "충남 아산시 가상길 1"]]), regions=["충남"]
+    ).rows
+    api_rows = parse(
+        document(
+            [
+                item(rnAdres="충남 아산시 가상길 2"),
+                item(cmpnyNm="가상너트", rnAdres="충남 아산시 가상길 1", fctryManageNo="2"),
+            ]
+        )
+    ).rows
+    result = combine_factory_rows(csv_rows, api_rows)
+    assert result.added_rows == api_rows and result.duplicate_count == 0
+
+
+def test_csv_rows_with_different_products_are_not_collapsed(factory_file):
+    csv_rows = read_factory_csv(
+        factory_file(
+            [
+                [1, "가상볼트", "", "볼트", "충남 아산시 가상길 1"],
+                [2, "가상볼트", "", "너트", "충남 아산시 가상길 1"],
+            ]
+        ),
+        regions=["충남"],
+    ).rows
+    result = combine_factory_rows(
+        csv_rows, parse(document([item(rnAdres="충남 아산시 가상길 1")])).rows
+    )
+    assert result.file_rows == csv_rows and len(result.file_rows) == 2
+    assert result.added_rows == () and result.duplicate_count == 1
+
+
+@pytest.mark.parametrize("number", ["2026000000001", ""])
+def test_identical_api_rows_from_multiple_queries_are_counted_once(number):
+    rows = parse(document([item(fctryManageNo=number), item(fctryManageNo=number)])).rows
+    result = combine_factory_rows([], rows)
+    assert result.added_rows == (rows[0],) and result.duplicate_count == 1
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("product", "다른 생산품"), ("address", "충남 다른길 2"), ("industry_name", "다른 업종")],
+)
+def test_same_management_number_with_conflicting_data_never_overwrites(field, value, caplog):
+    row = parse(document()).rows[0]
+    with pytest.raises(ComplexSourceError) as caught:
+        combine_factory_rows([], [row, replace(row, **{field: value})])
+    assert caught.value.skipped_reason == "SOURCE_ERROR"
+    assert value not in str(caught.value) + caplog.text
+
+
+def test_different_management_numbers_are_not_merged_without_confirmation():
+    rows = parse(document([item(), item(fctryManageNo="2026000000002")])).rows
+    result = combine_factory_rows([], rows)
+    assert result.added_rows == rows and result.duplicate_count == 0
+
+
+def test_missing_management_numbers_with_different_products_preserve_both_rows():
+    rows = parse(
+        document([item(fctryManageNo=""), item(fctryManageNo="", mainProductCn="너트")])
+    ).rows
+    result = combine_factory_rows([], rows)
+    assert result.added_rows == rows and result.duplicate_count == 0
+
+
+def test_empty_combination_returns_empty_input_without_claiming_source_success():
+    result = combine_factory_rows([], [])
+    assert result.file_rows == result.added_rows == () and result.duplicate_count == 0
+
+
+@pytest.mark.parametrize(
+    "file_rows,api_rows",
+    [
+        (None, []),
+        ([], None),
+        ([{}], []),
+        ([], [{}]),
+        ([None], []),
+        ([], "xml"),
+        ("", []),
+        ([], b""),
+    ],
+)
+def test_unparsed_combination_input_is_rejected(file_rows, api_rows):
+    with pytest.raises(InputError):
+        combine_factory_rows(file_rows, api_rows)

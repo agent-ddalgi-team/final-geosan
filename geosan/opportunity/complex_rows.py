@@ -53,6 +53,53 @@ class ComplexPage:
         return self.page_no * self.page_size < self.total_count
 
 
+@dataclass(frozen=True, slots=True)
+class CombinedFactoryRows:
+    """파일 원문은 유지하고 조회에서 더할 행만 구분한다. 회사 등록·병합 결과는 아니다."""
+
+    file_rows: tuple[FactoryRow, ...]
+    added_rows: tuple[ComplexFactoryRow, ...]
+    duplicate_count: int
+
+
+def combine_factory_rows(
+    file_rows: Sequence[FactoryRow], complex_rows: Sequence[ComplexFactoryRow]
+) -> CombinedFactoryRows:
+    """주소로 거른 응답을 파일과 합친다(C5). CSV의 생산품별 원문은 바꾸지 않는다.
+
+    파일과 이름·주소가 같은 조회 행은 제외한다. 조회의 같은 관리번호가 다른 내용으로
+    오면 전체 결합을 거부한다. 번호가 없으면 완전히 같은 행만 중복으로 본다.
+    번호가 다르거나 번호 없이 생산품이 다른 행은 임의로 합치지 않는다.
+    조회 실패·미완료 여부와 건수는 호출자가 별도로 보존해야 한다.
+    """
+    if (
+        not isinstance(file_rows, Sequence)
+        or not isinstance(complex_rows, Sequence)
+        or isinstance(file_rows, (str, bytes))
+        or isinstance(complex_rows, (str, bytes))
+        or any(type(row) is not FactoryRow for row in file_rows)
+        or any(type(row) is not ComplexFactoryRow for row in complex_rows)
+    ):
+        raise InputError("파일 읽기와 조회 응답 검사를 마친 공장 행을 넘겨 주세요.")
+    file_keys = {row.identity_key for row in file_rows}
+    seen_numbers: dict[str, ComplexFactoryRow] = {}
+    seen_rows: set[ComplexFactoryRow] = set()
+    added, duplicates = [], 0
+    for row in complex_rows:
+        number = row.factory_manage_no
+        if number:
+            previous = seen_numbers.get(number)
+            if previous is not None and previous != row:
+                raise ComplexSourceError()
+            seen_numbers[number] = row
+        if row.identity_key in file_keys or row in seen_rows:
+            duplicates += 1
+        else:
+            added.append(row)
+        seen_rows.add(row)
+    return CombinedFactoryRows(tuple(file_rows), tuple(added), duplicates)
+
+
 class _NoDtd(ET.TreeBuilder):
     def doctype(self, name, pubid, system):
         # 문자열 검색과 달리 UTF-16 XML에서도 엔티티 선언 전에 거부한다.
@@ -167,6 +214,10 @@ def parse_complex_page(
         raise ComplexSourceError()
     items_node = _one(body, "items", required=total != 0)
     items = list(items_node) if items_node is not None else []
+    if items_node is not None and (
+        (items_node.text or "").strip() or any((item.tail or "").strip() for item in items)
+    ):
+        raise ComplexSourceError()
     if any(item.tag != "item" for item in items) or len(items) != min(size, total - offset):
         raise ComplexSourceError()
     rows, skipped, filtered = [], [], 0
