@@ -1038,6 +1038,21 @@
         "title": "Envelope[HomepageResearch]",
         "type": "object"
       },
+      "Envelope_IngestAccepted_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IngestAccepted"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[IngestAccepted]",
+        "type": "object"
+      },
       "Envelope_MainPhoneConfirmResponse_": {
         "properties": {
           "data": {
@@ -1389,6 +1404,38 @@
         "title": "IndustryCount",
         "type": "object"
       },
+      "IngestAccepted": {
+        "description": "C1 POST /ingest 접수 시점의 회차 번호·건수. 찾기 완료를 뜻하지 않는다.",
+        "properties": {
+          "batchId": {
+            "title": "Batchid",
+            "type": "string"
+          },
+          "mergeCandidateCount": {
+            "minimum": 0.0,
+            "title": "Mergecandidatecount",
+            "type": "integer"
+          },
+          "newCount": {
+            "minimum": 0.0,
+            "title": "Newcount",
+            "type": "integer"
+          },
+          "skippedCount": {
+            "minimum": 0.0,
+            "title": "Skippedcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batchId",
+          "newCount",
+          "mergeCandidateCount",
+          "skippedCount"
+        ],
+        "title": "IngestAccepted",
+        "type": "object"
+      },
       "IngestCriteria": {
         "description": "찾기 회차의 조건: 담당자가 고른 공정·지역·산업 (C1 POST /ingest 본문과 같은 이름).",
         "properties": {
@@ -1420,6 +1467,57 @@
           "industries"
         ],
         "title": "IngestCriteria",
+        "type": "object"
+      },
+      "IngestRequest": {
+        "additionalProperties": false,
+        "description": "계약 C1 POST /ingest의 조건. 공정은 필수, 지역 생략은 설정 전체다.",
+        "properties": {
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "processCodes": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessCode"
+            },
+            "minItems": 1,
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "sourceId": {
+            "default": "kicox-factory-csv",
+            "minLength": 1,
+            "title": "Sourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processCodes"
+        ],
+        "title": "IngestRequest",
         "type": "object"
       },
       "LatestIngest": {
@@ -3751,6 +3849,62 @@
         "summary": "Dashboard"
       }
     },
+    "/api/v1/ingest": {
+      "post": {
+        "operationId": "start_ingest_api_v1_ingest_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_IngestAccepted_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Ingest"
+      }
+    },
     "/api/v1/opportunities": {
       "get": {
         "operationId": "list_opportunities_api_v1_opportunities_get",
@@ -3912,6 +4066,22 @@
                 }
               ],
               "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "batch",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch"
             }
           }
         ],

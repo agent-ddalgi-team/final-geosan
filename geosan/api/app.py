@@ -9,6 +9,7 @@ import logging
 import re
 import sys
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -169,7 +170,7 @@ class ScreenFiles(StaticFiles):
         return await super().get_response("index.html", scope)
 
 
-def create_app() -> FastAPI:
+def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI:
     configure_logging()
     app = FastAPI(title="거산 영업지원 API", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(RequestBoundary)
@@ -211,6 +212,10 @@ def create_app() -> FastAPI:
         homepage.router,
     ):
         app.include_router(router, prefix="/api/v1")
+    # 실제 찾기는 회차 번호 하나를 받는 함수로 연결한다. 연결 전에는 회차를 만들지 않는다.
+    from geosan.api.routes.ingest import create_ingest_router
+
+    app.include_router(create_ingest_router(ingest_runner), prefix="/api/v1")
     dist = Path(__file__).resolve().parents[2] / "web" / "dist"
     if dist.is_dir():
         app.mount("/", ScreenFiles(directory=dist, html=True), name="web")
