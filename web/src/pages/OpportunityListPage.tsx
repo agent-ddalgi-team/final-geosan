@@ -1,8 +1,10 @@
 // 추천 목록(S1, BR10.1·BR10.7): 공정·지역·산업 선택란 + 회사 이름 검색 + 정렬 + 순위 순 카드 + 쪽 넘김(20건씩) + 다섯 상태.
 // 조건은 모두 주소(`?process=&region=&industry=`, 대시보드에서 넘어올 때는 `?stage=`·`?filter=`·`?q=`)에 남겨
 // 새로 고침·공유해도 유지되고, 서버에 그대로 보낸다. 서버가 순위를 조건 안 번호로 다시 매긴다.
-// 공정은 선택란이고 "전체"가 없다(#361). 공정을 고르기 전에는 목록을 비워 둔다(#368, 2026-11-06 PM 결정):
-//   주소에 공정이 없으면 이 브라우저에서 마지막으로 본 공정으로 열고, 기억한 공정이 없으면 카드 없이 "공정을 고르면…" 안내만 보인다.
+// 공정은 선택란이다(#361). 공정을 고르기 전에는 공정별 묶음으로 보인다(#383, 2026-11-07 PM 결정; #368의 빈 목록을 바꿈):
+//   주소에 공정이 없으면 서버가 준 공정 선택지 가운데 회사가 있는 공정마다 `process=<코드>`로 따로 불러 묶음으로 보인다.
+//   묶음 안 번호는 그 공정 안 순위 그대로이고, 서로 다른 공정을 한 줄 순위로 섞지 않는다. 지역·산업은 묶음 보기에서도 고를 수 있다.
+//   마지막으로 본 선택(공정 하나 또는 묶음 보기)은 이 브라우저가 기억해, 공정 없이 열면 그것으로 연다. 프로그램이 공정을 대신 고르지 않는다.
 // 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
 // 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
@@ -10,7 +12,7 @@
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Pagination } from 'antd';
 import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
@@ -20,9 +22,14 @@ import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
 import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
-import { readLastProcess, storeLastProcess } from '../components/list/lastProcess';
+import {
+  GROUPED_VIEW_CHOICE,
+  readLastProcess,
+  storeLastProcess,
+} from '../components/list/lastProcess';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import OpportunityCard from '../components/list/OpportunityCard';
+import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
 import {
   bookmarkList,
   candidateSearch,
@@ -103,9 +110,9 @@ export default function OpportunityListPage() {
   const [menu, setMenu] = useState<Meta | null>(null);
   const requestKey = `${filterKey}:${page}:${reload}`;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getOpportunities(page, PAGE_SIZE, controller.signal, {
+  // 서버에 보내는 조건. 묶음 보기의 묶음 요청도 이 모양에 `process`만 바꿔 보낸다.
+  const baseFilters = useMemo(
+    () => ({
       process,
       region,
       industry,
@@ -117,7 +124,13 @@ export default function OpportunityListPage() {
       // 관심 기업 보기와 그 안의 검토 의견 거르기도 켰을 때만 보낸다.
       ...(bookmarked ? { bookmarked: 'true' } : {}),
       ...(opinion ? { opinion } : {}),
-    })
+    }),
+    [process, region, industry, stage, filter, q, latestOnly, bookmarked, opinion],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getOpportunities(page, PAGE_SIZE, controller.signal, baseFilters)
       .then((envelope) => {
         setMenu(envelope.meta);
         const choices = envelope.meta.processCounts ?? [];
@@ -127,13 +140,11 @@ export default function OpportunityListPage() {
             // 다음에 공정 없이 목록을 열면 이 공정으로 바로 열리도록 기억한다.
             storeLastProcess(process);
           } else {
-            // 공정을 아직 고르지 않았다(주소에 없거나 선택지에 없는 값). 프로그램이 공정을 대신 고르지 않는다(#368).
+            // 공정이 골라져 있지 않다(주소에 없거나 선택지에 없는 값). 프로그램이 공정을 대신 고르지 않는다(#368).
             const remembered = readLastProcess();
             const usable = isChoice(remembered);
-            // 기억한 공정이 더는 없는 공정이면 지운다.
-            if (remembered !== null && !usable) storeLastProcess(null);
             if (usable || process) {
-              // 지난번에 본 공정이 있으면 그 공정으로, 없으면 주소의 틀린 공정만 지우고 다시 불러온다
+              // 지난번에 본 공정이 있으면 그 공정으로, 없으면 주소의 틀린 공정만 지우고(묶음 보기) 다시 불러온다
               // (뒤로 가기 기록은 남기지 않는다).
               setParams(
                 (prev) => {
@@ -146,7 +157,9 @@ export default function OpportunityListPage() {
               );
               return;
             }
-            // 고르기 전: 서로 다른 공정의 회사를 한 줄로 섞어 보이지 않도록 카드는 비워 두고 선택지만 쓴다.
+            // 묶음 보기(#383): 기억이 없거나 묶음 보기이거나 더는 없는 공정이면 묶음 보기로 열고 그렇게 기억한다.
+            // 이 응답의 카드(공정 섞임)는 쓰지 않고 선택지·곳 수만 쓴다. 묶음은 공정마다 따로 부른다.
+            storeLastProcess(GROUPED_VIEW_CHOICE);
             setResult({ key: requestKey, items: [], meta: envelope.meta });
             return;
           }
@@ -157,24 +170,24 @@ export default function OpportunityListPage() {
         if (!controller.signal.aborted) setResult({ key: requestKey, error });
       });
     return () => controller.abort();
-  }, [
-    page,
-    process,
-    region,
-    industry,
-    stage,
-    filter,
-    q,
-    latestOnly,
-    bookmarked,
-    opinion,
-    processMode,
-    requestKey,
-    setParams,
-  ]);
+  }, [page, baseFilters, process, processMode, requestKey, setParams]);
 
   const current = result?.key === requestKey ? result : null;
   const meta = current?.meta ?? null;
+
+  // 묶음 보기(#383): 공정 선택란이 있는 평소 목록에서 공정을 고르지 않았고 공정 선택지가 왔을 때.
+  const grouped = processMode && !process && (meta?.processCounts ?? []).length > 0;
+  // 회사가 1곳 이상인 공정만 묶음으로 부른다(선택지 곳 수는 지역·산업과 상관없는 전체 건수라, 조건을 걸면 0곳이 될 수 있다).
+  const groupCodes = useMemo(
+    () =>
+      grouped
+        ? (meta?.processCounts ?? [])
+            .filter((item) => item.count > 0)
+            .map((item) => item.processCode)
+        : [],
+    [grouped, meta],
+  );
+  const groups = useProcessGroups(groupCodes, baseFilters, reload);
 
   // 띠(가상 데이터·거산 확인 전·갱신 시각)는 목록 응답의 meta를 따른다.
   useEffect(() => {
@@ -268,33 +281,50 @@ export default function OpportunityListPage() {
   const to = from + items.length - 1;
   const notEvaluated = meta?.notEvaluatedCount ?? 0;
 
+  // 묶음 보기에서 모든 묶음이 0곳이면(또는 회사가 있는 공정이 없으면) 비어 있음으로 본다. 실패한 묶음이 있으면 그 자리를 보인다.
+  const groupsAllEmpty =
+    grouped &&
+    groupCodes.every((code) => {
+      const group = groups.resultFor(code);
+      return group?.items !== undefined && group.items.length === 0;
+    });
+
   let state: 'loading' | 'error' | 'empty' | 'ready' = 'ready';
   if (!current) state = 'loading';
   else if (current.error) state = 'error';
-  else if (items.length === 0) state = 'empty';
+  else if (grouped ? groupsAllEmpty : items.length === 0) state = 'empty';
 
-  // 공정을 아직 고르지 않았으면(#368) 다른 조건과 상관없이 고르라는 안내를 보인다.
-  const processUnpicked = processMode && !process && (meta?.processCounts ?? []).length > 0;
   // 고른 공정에 회사가 한 곳도 없으면(전체 건수 0) 다른 조건과 상관없이 그 안내를 먼저 보인다.
   const processIsEmpty =
     processMode &&
     (meta?.processCounts ?? []).some((item) => item.processCode === process && item.count === 0);
+  // 묶음 보기에서 회사가 있는 공정은 있는데 조건(지역·산업·이번 수집만) 때문에 모든 묶음이 0곳이면 조건을 바꿔 보라는 문구다.
+  const groupsFiltered = grouped && groupCodes.length > 0;
   const emptyText = searching
     ? listSearch.empty
-    : processUnpicked
-      ? listFilters.pickProcess
-      : processIsEmpty
-        ? listFilters.processEmpty
-        : latestOnly
-          ? candidateSearch.latestEmpty
-          : region || industry
-            ? listFilters.filteredEmpty
-            : stage || filter || opinion
-              ? listFilters.noMatch
-              : bookmarked
-                ? bookmarkList.empty
-                : states.listEmpty;
+    : processIsEmpty
+      ? listFilters.processEmpty
+      : latestOnly
+        ? candidateSearch.latestEmpty
+        : region || industry || groupsFiltered
+          ? listFilters.filteredEmpty
+          : stage || filter || opinion
+            ? listFilters.noMatch
+            : bookmarked
+              ? bookmarkList.empty
+              : states.listEmpty;
   const latestIngest = menu?.latestIngest ?? null;
+  // 묶음 머리에 끼우는 고른 조건 이름(지역·산업). 값이 곧 화면 이름이다.
+  const groupConditions = [region, industry].filter((value): value is string => Boolean(value));
+  // "이 공정만 보기" 링크: 그 묶음을 부른 조건 그대로 공정 하나를 고른 보기로 간다.
+  const onlyProcessHref = (code: string) => {
+    const next = new URLSearchParams();
+    next.set('process', code);
+    if (region) next.set('region', region);
+    if (industry) next.set('industry', industry);
+    if (latestOnly) next.set('batch', 'latest');
+    return `${location.pathname}?${next.toString()}`;
+  };
 
   return (
     <>
@@ -334,7 +364,12 @@ export default function OpportunityListPage() {
         industryCounts={menu?.industryCounts ?? []}
         query={q}
         // 공정을 바꾸면 지역·산업은 전체로 돌린다(선택지 건수가 공정마다 달라서).
-        onProcess={(code) => update({ process: code, region: null, industry: null })}
+        // 선택란에서 고른 것은 바로 기억한다. "전체(공정별로 묶음)"를 골랐을 때 지난번 공정 기억이 되살아나
+        // 그 공정으로 돌아가 버리지 않게 하려는 것이다(주소에 공정이 없으면 기억한 것으로 여는 규칙 때문).
+        onProcess={(code) => {
+          storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
+          update({ process: code, region: null, industry: null });
+        }}
         onRegion={(value) => update({ region: value })}
         onIndustry={(value) => update({ industry: value })}
         onSearch={search}
@@ -355,35 +390,107 @@ export default function OpportunityListPage() {
             fontSize: typography.fontSizeSecondary,
           }}
         >
-          {pagination.totalLine(total)}
+          {grouped
+            ? `${pagination.totalLine(total)} · ${listFilters.groupedNote}`
+            : pagination.totalLine(total)}
         </p>
-        <ol
-          data-testid="opportunity-list"
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
-            display: 'grid',
-            gap: spacing.cardGap,
-          }}
-        >
-          {items.map((card) => (
-            <li key={card.oppId}>
-              <OpportunityCard
-                card={card}
-                classificationOverrides={config?.classificationLabels}
-                processNames={processNames}
-                showRank={processMode}
-              />
-            </li>
-          ))}
-        </ol>
+        {grouped ? (
+          // 묶음 보기(#383): 공정마다 묶음 하나. 묶음 안 번호는 그 공정 안 순위다. 0곳인 묶음은 보이지 않는다.
+          <div data-testid="process-groups" style={{ display: 'grid', gap: spacing.sectionGap }}>
+            {groupCodes.map((code) => {
+              const group = groups.resultFor(code);
+              const groupItems = group?.items ?? [];
+              if (group?.items !== undefined && groupItems.length === 0) return null;
+              const groupTotal = group?.meta?.total ?? groupItems.length;
+              return (
+                <section
+                  key={code}
+                  data-testid={`process-group-${code}`}
+                  aria-label={processNames[code] ?? code}
+                >
+                  <FiveStates
+                    state={!group ? 'loading' : group.error ? 'error' : 'ready'}
+                    errorTitle={states.listError}
+                    error={group?.error}
+                    onRetry={() => groups.retry(code)}
+                    skeletonCount={1}
+                    data-testid={`process-group-${code}-states`}
+                  >
+                    <h2
+                      data-testid="process-group-title"
+                      style={{
+                        margin: `0 0 ${spacing.cardGap}px`,
+                        fontSize: typography.fontSizeCardTitle,
+                      }}
+                    >
+                      {listFilters.groupTitle(
+                        processNames[code] ?? code,
+                        groupConditions,
+                        groupTotal,
+                      )}
+                    </h2>
+                    <ol
+                      data-testid="opportunity-list"
+                      style={{
+                        listStyle: 'none',
+                        margin: 0,
+                        padding: 0,
+                        display: 'grid',
+                        gap: spacing.cardGap,
+                      }}
+                    >
+                      {groupItems.map((card) => (
+                        <li key={card.oppId}>
+                          <OpportunityCard
+                            card={card}
+                            classificationOverrides={config?.classificationLabels}
+                            processNames={processNames}
+                            showRank
+                          />
+                        </li>
+                      ))}
+                    </ol>
+                    {groupTotal > GROUP_PAGE_SIZE ? (
+                      <p style={{ marginTop: spacing.cardGap, marginBottom: 0 }}>
+                        <Link to={onlyProcessHref(code)} data-testid="process-group-more">
+                          {listFilters.onlyThisProcess}
+                        </Link>
+                      </p>
+                    ) : null}
+                  </FiveStates>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          <ol
+            data-testid="opportunity-list"
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'grid',
+              gap: spacing.cardGap,
+            }}
+          >
+            {items.map((card) => (
+              <li key={card.oppId}>
+                <OpportunityCard
+                  card={card}
+                  classificationOverrides={config?.classificationLabels}
+                  processNames={processNames}
+                  showRank={processMode}
+                />
+              </li>
+            ))}
+          </ol>
+        )}
         {notEvaluated > 0 ? (
           <p data-testid="list-not-evaluated" style={{ color: colors.textSecondary }}>
             {states.notEvaluatedCount(notEvaluated)}
           </p>
         ) : null}
-        {total > 1 ? (
+        {!grouped && total > 1 ? (
           <div
             data-testid="list-pagination"
             style={{
