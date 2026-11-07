@@ -26,6 +26,11 @@ ingestion:
   regions: ["충남", "대전", "세종"]
   productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
   maxCandidates: 50
+  complexList:
+    _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 7일(#393). 실제 조회·보관 실행은 후속 연결."
+    enabled: false
+    cacheDays: 7
+    extraNames: []
 
 # 외부 LLM. NONE은 호출 차단, EXTERNAL은 키·모델·사용량 확인 뒤 호출한다.
 llm:
