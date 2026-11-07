@@ -31,6 +31,11 @@ export interface OpportunityCardProps {
   classificationOverrides?: Record<string, string>;
   /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. */
   processNames?: Record<string, string>;
+  /**
+   * 순위 번호를 보일지(#361, PM 결정 2026-11-06). 공정 하나를 고른 목록에서만 보인다.
+   * 검색 결과·관심 기업 목록·대시보드 칸으로 넘어온 목록은 공정이 섞여 있어 번호를 숨긴다.
+   */
+  showRank?: boolean;
 }
 
 function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
@@ -48,6 +53,7 @@ export default function OpportunityCard({
   card,
   classificationOverrides,
   processNames,
+  showRank = true,
 }: OpportunityCardProps) {
   const navigate = useNavigate();
   const detailPath = `/opportunities/${encodeURIComponent(card.oppId)}`;
@@ -84,14 +90,16 @@ export default function OpportunityCard({
     >
       <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span
-            data-testid="card-rank"
-            role="img"
-            aria-label={`${cardRows.rankPrefix} ${card.rank}`}
-            style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
-          >
-            {card.rank}
-          </span>
+          {showRank ? (
+            <span
+              data-testid="card-rank"
+              role="img"
+              aria-label={`${cardRows.rankPrefix} ${card.rank}`}
+              style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
+            >
+              {card.rank}
+            </span>
+          ) : null}
           <Typography.Title
             level={2}
             data-testid="card-title"
