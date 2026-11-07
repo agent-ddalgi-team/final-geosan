@@ -20,6 +20,8 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  HomepageRequest,
+  HomepageResponse,
   MainPhoneConfirmRequest,
   MainPhoneConfirmResponse,
   RelationRequest,
@@ -56,6 +58,8 @@ export interface RequestOptions {
   /** 기록 요청에만 붙인다. 없으면 헤더를 보내지 않는다. */
   staffKey?: string | null;
   signal?: AbortSignal;
+  /** 요청 중단 한도(밀리초). 안 주면 10초. 홈페이지 조사처럼 서버가 60초까지 걸리는 요청만 늘린다. */
+  timeoutMs?: number;
 }
 
 export function isFixtureMode(): boolean {
@@ -72,7 +76,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     return fixtureResponse<T>(path, options);
   }
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? REQUEST_TIMEOUT_MS);
   options.signal?.addEventListener('abort', () => controller.abort());
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
@@ -249,6 +253,23 @@ export function postMainPhoneConfirm(
     `/opportunities/${encodeURIComponent(oppId)}/main-phone/confirm`,
     { method: 'POST', body, staffKey },
   );
+}
+
+/** 홈페이지 조사 한도. 서버가 전체 60초 안에 끝내므로 화면은 그보다 조금 더 기다린다(계약 C1 `POST /homepage`). */
+export const HOMEPAGE_TIMEOUT_MS = 65_000;
+
+/**
+ * 홈페이지 [맞음]·[고치기]·[다시 조사]·본문 붙여넣기(#210·#304, 계약 C1 `POST /homepage`).
+ * `confirmOnly`면 외부 호출 없이 확인 상태만 저장하고, 아니면 근거 추출·재평가까지 한다.
+ * 실패는 409 STALE_VALUE, 422 ROBOTS_DISALLOW·TERMS_DISALLOW·UNREACHABLE, 503 kind 6종이다.
+ */
+export function postHomepage(oppId: string, body: HomepageRequest, staffKey: string) {
+  return request<HomepageResponse>(`/opportunities/${encodeURIComponent(oppId)}/homepage`, {
+    method: 'POST',
+    body,
+    staffKey,
+    timeoutMs: HOMEPAGE_TIMEOUT_MS,
+  });
 }
 
 /** 거래 관계 저장(#265). 저장하면 서버가 이력을 남기고 이 회사를 다시 평가한다. */
@@ -451,6 +472,22 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: now },
     } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/homepage$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const body = (options.body ?? {}) as Partial<HomepageRequest>;
+    const data = body.confirmOnly
+      ? {
+          homepageUrl: body.url ?? 'https://example.test',
+          homepageStatus: 'CONFIRMED',
+          homepageSource: 'STAFF',
+        }
+      : { evidenceCount: 3, requirementCandidateCount: 1, questionCount: 1, evalId: `eval-${now}` };
+    return { data, meta: { updatedAt: now } } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/relation$/.test(route) && options.method === 'POST') {
     if (!options.staffKey || options.staffKey === 'viewer') {

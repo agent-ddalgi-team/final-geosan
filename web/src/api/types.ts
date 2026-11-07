@@ -547,6 +547,33 @@ export interface MainPhoneConfirmResponse {
   mainPhoneConfirmedBy: string;
 }
 
+// ---------- POST /opportunities/{oppId}/homepage (홈페이지 [맞음]·[고치기]·[다시 조사], #210·#304) ----------
+
+/** 세 가지 중 하나로 보낸다: `{confirmOnly: true}`(맞음), `{url}`(고치기), `{}`(다시 조사), `{pastedText}`(본문 붙여넣기). 맞음과 본문은 함께 못 보낸다(400). */
+export interface HomepageRequest {
+  url?: string;
+  pastedText?: string;
+  confirmOnly?: boolean;
+}
+
+/** 조사를 실행했을 때의 응답. */
+export interface HomepageResearchResponse {
+  evidenceCount: number;
+  /** evidenceCount 가운데 "요구 후보(미확인)" 수. */
+  requirementCandidateCount: number;
+  questionCount: number;
+  evalId: string;
+}
+
+/** [맞음](confirmOnly)을 눌렀을 때의 응답. 외부 호출·재평가 없음. */
+export interface HomepageConfirmResponse {
+  homepageUrl: string;
+  homepageStatus: 'CONFIRMED';
+  homepageSource: 'STAFF';
+}
+
+export type HomepageResponse = HomepageResearchResponse | HomepageConfirmResponse;
+
 // ---------- POST /opportunities/{oppId}/relation (거래 관계 입력, #265·#266) ----------
 
 export interface RelationRequest {

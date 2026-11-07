@@ -482,6 +482,38 @@ export const companySummary = {
   daysAgo: (days: number) => `${days}일 전`,
 } as const;
 
+/**
+ * 상세 머리 홈페이지 줄(#210, 서버 #304): [맞음]·[고치기]·[다시 조사]와 본문 붙여넣기 칸.
+ * 실패 문구는 서버가 주는 message·nextAction을 그대로 보이므로 여기에는 모양에 쓰는 말만 둔다.
+ */
+export const homepageControls = {
+  confirmButton: '맞음',
+  editButton: '고치기',
+  /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
+  addButton: '주소 넣기',
+  rerunButton: '다시 조사',
+  urlLabel: '홈페이지 주소',
+  urlPlaceholder: 'https://',
+  runWithUrl: '이 주소로 조사',
+  cancel: '취소',
+  invalidUrl: '홈페이지 주소는 http:// 또는 https:// 로 시작해야 합니다.',
+  pasteLabel: '공개 본문 붙여넣기',
+  pastePlaceholder: '홈페이지에 공개된 소개 글을 여기에 붙여 넣어 주세요',
+  pasteEmpty: '붙여 넣은 내용이 비어 있습니다.',
+  runWithPaste: '붙여 넣은 내용으로 조사',
+  running: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
+  /** 못 눌러서 잠긴 이유(한도 초과·설정 전). 서버 안내 문구 아래에 작게 보인다. */
+  locked: '이 조사는 지금 다시 누를 수 없습니다.',
+  pickStaffFirst: '담당자를 고르면 누를 수 있습니다.',
+  reload: '새로 불러오기',
+  /** 문의 번호(서버 ref). 작게 보인다. */
+  ref: (ref: string) => `문의 번호 ${ref}`,
+  confirmed: '홈페이지 주소를 맞다고 확인했습니다.',
+  /** "근거 3건(확인 필요 1건 포함)·질문 1건 저장, 재평가 완료" */
+  researched: (evidence: number, candidates: number, questions: number) =>
+    `근거 ${evidence}건${candidates > 0 ? `(확인 필요 ${candidates}건 포함)` : ''}·질문 ${questions}건 저장, 재평가 완료`,
+} as const;
+
 /** 상세 머리 거래 관계 줄(#266): 지금 상태 글자, 바꾸는 단추, 안내·오류 문구. */
 export const relationControl = {
   title: '거래 관계',
