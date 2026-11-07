@@ -356,6 +356,18 @@ class DiscoverySource(StrEnum):
     WEB_SEARCH = "WEB_SEARCH"  # AI 웹 검색으로 찾은 회사
 
 
+class TransferPurpose(StrEnum):
+    """외부 호출 기록에 더하는 용도(C6·C9, 2026-11-07 PM 결정 #393)."""
+
+    PUBLIC_SOURCE = "PUBLIC_SOURCE"
+
+
+class TransferKind(StrEnum):
+    """공공 조회 종류(C6·C9, #393). 기존 AI 전송 코드는 그대로 쓴다."""
+
+    FACTORY_REGISTRY = "FACTORY_REGISTRY"
+
+
 class FitLevel(StrEnum):
     """AI가 본 공정 적합도. 점수 전 회사를 줄 세우는 데만 쓴다 (C0, 2026-11-05 PM 결정 #313)."""
 
