@@ -21,6 +21,7 @@ import {
   listFilters,
   outcomeStatusLabels,
   outcomeStatusTone,
+  ownPlatingLine,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
@@ -74,6 +75,11 @@ export default function OpportunityCard({
   const pickReason = card.pickReason?.trim() ? card.pickReason : null;
   const beforeScore = pickReason !== null && card.scoreState === 'NONE';
   const newInBatchDate = card.isNewInLatestBatch ? formatMonthDay(card.ingestedAt) : null;
+  // 표면처리를 직접 하는 회사일 수 있음(#319): 서버가 참으로 준 회사에만 꼬리표를 붙인다. 회사를 빼거나 순서를 바꾸지 않는다.
+  // 근거 한 줄은 표시가 참일 때만 보이고, 없으면 꼬리표만 보인다.
+  const ownPlating = card.ownPlatingLineSuspected === true;
+  const ownPlatingBasis =
+    ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
   const bookmarkState = useBookmark(card.oppId, card, card.records.bookmark ?? null);
 
   return (
@@ -166,6 +172,11 @@ export default function OpportunityCard({
                 : candidateSearch.newInBatch}
             </StatusTag>
           ) : null}
+          {ownPlating ? (
+            <StatusTag tone="ask" data-testid="card-own-plating-tag">
+              {ownPlatingLine.tag}
+            </StatusTag>
+          ) : null}
           {beforeScore ? (
             <span
               data-testid="card-score"
@@ -184,6 +195,11 @@ export default function OpportunityCard({
           )}
         </div>
 
+        {ownPlatingBasis ? (
+          <Row label={ownPlatingLine.basisLabel} title={ownPlatingBasis}>
+            <span data-testid="card-own-plating-basis">{ownPlatingBasis}</span>
+          </Row>
+        ) : null}
         {pickReason ? (
           <Row label={candidateSearch.pickReasonRow} title={pickReason}>
             <span data-testid="card-pick-reason">{pickReason}</span>

@@ -234,6 +234,14 @@ export interface OpportunityCard {
   isNewInLatestBatch?: boolean;
   /** 이 회사가 들어온 시각(ISO). 꼬리표 날짜에 쓴다. 사례 파일 회사는 null. */
   ingestedAt?: string | null;
+  /**
+   * 표면처리를 직접 하는 회사일 수 있음(#319, 계약 C1). 참이면 꼬리표 "…확인 필요"를 붙인다.
+   * 자동으로 빼지 않는다(FR9.3): 서버도 화면도 목록에서 회사를 빼지 않고, 제외는 담당자의 검토 의견으로만 한다.
+   * 서버가 안 주거나 거짓이면 아무것도 보이지 않는다.
+   */
+  ownPlatingLineSuspected?: boolean;
+  /** 그 표시의 근거 한 줄. 예: 생산품 "알루미늄 아노다이징". 없으면 꼬리표만 보인다. */
+  ownPlatingLineBasis?: string | null;
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
@@ -412,7 +420,12 @@ export interface DetailRecords {
 }
 
 /** 검토사항 한 줄(C1 reviewItems, 더하는 변경 2026-11-03 밤). 목록은 평가 결과에서 파생되고 체크 상태만 저장된다. */
-export type ReviewItemKind = 'QUESTION' | 'DATA_NOT_FOUND' | 'DATA_INSUFFICIENT';
+export type ReviewItemKind =
+  | 'QUESTION'
+  | 'DATA_NOT_FOUND'
+  | 'DATA_INSUFFICIENT'
+  /** 표면처리를 직접 하는 회사일 수 있음(#319, 계약 C1). 출처는 AI 또는 규칙. 서버가 값을 채우기 전에는 오지 않는다. */
+  | 'OWN_PLATING_LINE_SUSPECTED';
 export type ReviewItemSource = 'AI' | 'CASE_FILE' | 'RULE';
 export type ReviewTargetLabel = '상대 회사' | '거산';
 
