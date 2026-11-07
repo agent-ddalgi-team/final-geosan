@@ -16,7 +16,7 @@ from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 
-scenarios("u1/motiontec_homepage.feature")
+scenarios("u2/motiontec_homepage.feature")
 
 CASE_NAME = "motiontec-daejeon-profile-anodizing.json"
 OFFICIAL_URL = "http://www.motiontec.co.kr/"
