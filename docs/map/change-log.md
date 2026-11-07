@@ -1,6 +1,6 @@
 # 기획 변경 기록 — 무엇이 언제 왜 바뀌었나
 
-> **기준일: 2026-11-06** · [지도 입구로 돌아가기](README.md)
+> **기준일: 2026-11-07** · [지도 입구로 돌아가기](README.md)
 
 이 문서는 **쌓아 가는 기록**입니다. 지도(기능 지도·구조 지도)는 늘 "지금" 한 벌만 두고, 바뀐 내용은 여기에 한 줄씩 더합니다.
 
@@ -54,6 +54,12 @@ timeline
 ## 3. 기획 변경
 
 **읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
+
+### 2026-11-07
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 공정을 고르기 전의 목록 | 비워 두고 공정을 먼저 고르게 함(#368) | 공정별 묶음으로 보이고 지역·산업을 먼저 고를 수 있음. 묶음 안에서만 번호 | 지역을 먼저 골라 인근 후보를 훑는 쓰임. 섞인 순위 금지는 그대로 | ✅ [#383] · [#368] |
 
 ### 2026-11-06
 
@@ -267,5 +273,6 @@ timeline
 [#357]: https://github.com/agent-ddalgi-team/final-geosan/issues/357
 [#361]: https://github.com/agent-ddalgi-team/final-geosan/issues/361
 [#368]: https://github.com/agent-ddalgi-team/final-geosan/issues/368
+[#383]: https://github.com/agent-ddalgi-team/final-geosan/issues/383
 [#345]: https://github.com/agent-ddalgi-team/final-geosan/issues/345
 [#348]: https://github.com/agent-ddalgi-team/final-geosan/issues/348
