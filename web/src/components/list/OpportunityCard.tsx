@@ -1,11 +1,14 @@
 // 추천 카드(S1, BR10.1~BR10.3, interaction-spec 2.1): 순위·기업/기회·분류(쉬운 말)·점수·추천 이유·막는 조건·
-// 다음 할 일 + 의견 영역 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
+// 다음 할 일 + 의견 영역 + [관심] 단추 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
+// [관심](#357)은 영업 단계가 아니라 켜고 끄는 표시다. 카드에서 검토 의견을 저장하면 서버가 관심을 켜므로 그 뒤 관심 값을 다시 읽는다.
 import type { ReactNode } from 'react';
 import { Button, Card, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { OpportunityCard as CardData } from '../../api/types';
+import BookmarkButton from '../common/BookmarkButton';
 import StatusTag from '../common/StatusTag';
 import ScoreLine from '../common/ScoreLine';
+import { useBookmark } from '../common/useBookmark';
 import OpinionArea from '../opinion/OpinionArea';
 import {
   candidateSearch,
@@ -18,6 +21,7 @@ import {
   listFilters,
   outcomeStatusLabels,
   outcomeStatusTone,
+  ownPlatingLine,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
@@ -27,6 +31,11 @@ export interface OpportunityCardProps {
   classificationOverrides?: Record<string, string>;
   /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. */
   processNames?: Record<string, string>;
+  /**
+   * 순위 번호를 보일지(#361, PM 결정 2026-11-06). 공정 하나를 고른 목록에서만 보인다.
+   * 검색 결과·관심 기업 목록·대시보드 칸으로 넘어온 목록은 공정이 섞여 있어 번호를 숨긴다.
+   */
+  showRank?: boolean;
 }
 
 function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
@@ -44,6 +53,7 @@ export default function OpportunityCard({
   card,
   classificationOverrides,
   processNames,
+  showRank = true,
 }: OpportunityCardProps) {
   const navigate = useNavigate();
   const detailPath = `/opportunities/${encodeURIComponent(card.oppId)}`;
@@ -65,6 +75,12 @@ export default function OpportunityCard({
   const pickReason = card.pickReason?.trim() ? card.pickReason : null;
   const beforeScore = pickReason !== null && card.scoreState === 'NONE';
   const newInBatchDate = card.isNewInLatestBatch ? formatMonthDay(card.ingestedAt) : null;
+  // 표면처리를 직접 하는 회사일 수 있음(#319): 서버가 참으로 준 회사에만 꼬리표를 붙인다. 회사를 빼거나 순서를 바꾸지 않는다.
+  // 근거 한 줄은 표시가 참일 때만 보이고, 없으면 꼬리표만 보인다.
+  const ownPlating = card.ownPlatingLineSuspected === true;
+  const ownPlatingBasis =
+    ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
+  const bookmarkState = useBookmark(card.oppId, card, card.records.bookmark ?? null);
 
   return (
     <Card
@@ -74,14 +90,16 @@ export default function OpportunityCard({
     >
       <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span
-            data-testid="card-rank"
-            role="img"
-            aria-label={`${cardRows.rankPrefix} ${card.rank}`}
-            style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
-          >
-            {card.rank}
-          </span>
+          {showRank ? (
+            <span
+              data-testid="card-rank"
+              role="img"
+              aria-label={`${cardRows.rankPrefix} ${card.rank}`}
+              style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
+            >
+              {card.rank}
+            </span>
+          ) : null}
           <Typography.Title
             level={2}
             data-testid="card-title"
@@ -154,6 +172,11 @@ export default function OpportunityCard({
                 : candidateSearch.newInBatch}
             </StatusTag>
           ) : null}
+          {ownPlating ? (
+            <StatusTag tone="ask" data-testid="card-own-plating-tag">
+              {ownPlatingLine.tag}
+            </StatusTag>
+          ) : null}
           {beforeScore ? (
             <span
               data-testid="card-score"
@@ -172,6 +195,11 @@ export default function OpportunityCard({
           )}
         </div>
 
+        {ownPlatingBasis ? (
+          <Row label={ownPlatingLine.basisLabel} title={ownPlatingBasis}>
+            <span data-testid="card-own-plating-basis">{ownPlatingBasis}</span>
+          </Row>
+        ) : null}
         {pickReason ? (
           <Row label={candidateSearch.pickReasonRow} title={pickReason}>
             <span data-testid="card-pick-reason">{pickReason}</span>
@@ -201,17 +229,33 @@ export default function OpportunityCard({
             oppId={card.oppId}
             evalId={card.evalId}
             record={card.records.opinion ?? null}
+            onSaved={() => void bookmarkState.sync()}
           />
-          <Button
-            href={detailPath}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(detailPath);
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 12,
             }}
-            data-testid="card-view-detail-link"
           >
-            {frame.viewDetail} <span aria-hidden="true">→</span>
-          </Button>
+            <BookmarkButton
+              oppId={card.oppId}
+              bookmark={bookmarkState.bookmark}
+              onChanged={bookmarkState.change}
+            />
+            <Button
+              href={detailPath}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(detailPath);
+              }}
+              data-testid="card-view-detail-link"
+            >
+              {frame.viewDetail} <span aria-hidden="true">→</span>
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

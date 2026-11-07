@@ -45,9 +45,9 @@ export interface Meta {
   evaluatedAsNew?: boolean | null;
   total?: number | null;
   notEvaluatedCount?: number | null;
-  /** 목록 머리용(#210). 공정 탭: 기회가 있는 공정만, 역량 파일 순서. */
+  /** 목록 머리 공정 선택란용(#210 → #361). 거산 공정 전부, 역량 파일 순서. 회사가 0곳인 공정도 count 0으로 온다. */
   processCounts?: ProcessCount[] | null;
-  /** 지역·산업 선택지와 건수. 현재 공정 탭 안 건수이고 0건은 서버가 빼서 준다. */
+  /** 지역·산업 선택지와 건수. 지금 고른 공정 안 건수이고 0건은 서버가 빼서 준다. */
   regionCounts?: RegionCount[] | null;
   industryCounts?: IndustryCount[] | null;
   /** 마지막 후보 수집 회차 요약(#316, 계약 C1 `meta.latestIngest`). 한 번도 안 가져왔으면 null·없음. */
@@ -186,15 +186,12 @@ export interface OpinionRecord extends RecordMeta {
   memo?: string | null;
 }
 
-/** 영업 단계 기록(C1 records.outcome). 카드에는 단계 꼬리표용으로 status만 쓴다. */
+/**
+ * 영업 단계 기록(C1 records.outcome). 카드에는 단계 꼬리표용으로 status만 쓴다.
+ * "관심"은 단계가 아니라 따로 켜고 끄는 표시(`records.bookmark`)다(약속 v3, 2026-11-06 PM 결정 #356).
+ */
 export type OutcomeStatus =
-  | 'NOT_EXECUTED'
-  | 'INTERESTED'
-  | 'IN_PROGRESS'
-  | 'SAMPLE_OR_REGISTRATION_APPROVED'
-  | 'ON_HOLD'
-  | 'WON'
-  | 'LOST';
+  'NOT_EXECUTED' | 'IN_PROGRESS' | 'SAMPLE_OR_REGISTRATION_APPROVED' | 'ON_HOLD' | 'WON' | 'LOST';
 /** 거절 이유 코드(C0 lostReasonCode, 더하는 변경 2026-11-04). 영업 단계 LOST 저장 때 필수. */
 export type LostReasonCode =
   'PRICE' | 'LEAD_TIME' | 'INCUMBENT_SUPPLIER' | 'NO_DEMAND' | 'QUALITY_CERT' | 'OTHER';
@@ -210,9 +207,17 @@ export interface OutcomeRecord extends RecordMeta {
   nextScheduleNote?: string | null;
 }
 
+/**
+ * 관심 표시(C1 records.bookmark, 약속 v3 2026-11-06 PM 결정 #356). 한 번도 켠 적이 없으면 null이고,
+ * 관심 기업인지는 `active === true`로 본다. 팀이 함께 쓰는 값이라 누가 언제 바꿨는지가 같이 온다.
+ */
+export interface BookmarkRecord extends RecordMeta {
+  active: boolean;
+}
+
 export interface CardRecords {
   opinion?: OpinionRecord | null;
-  bookmark?: Record<string, unknown> | null;
+  bookmark?: BookmarkRecord | null;
   outcome?: OutcomeRecord | null;
 }
 
@@ -229,6 +234,14 @@ export interface OpportunityCard {
   isNewInLatestBatch?: boolean;
   /** 이 회사가 들어온 시각(ISO). 꼬리표 날짜에 쓴다. 사례 파일 회사는 null. */
   ingestedAt?: string | null;
+  /**
+   * 표면처리를 직접 하는 회사일 수 있음(#319, 계약 C1). 참이면 꼬리표 "…확인 필요"를 붙인다.
+   * 자동으로 빼지 않는다(FR9.3): 서버도 화면도 목록에서 회사를 빼지 않고, 제외는 담당자의 검토 의견으로만 한다.
+   * 서버가 안 주거나 거짓이면 아무것도 보이지 않는다.
+   */
+  ownPlatingLineSuspected?: boolean;
+  /** 그 표시의 근거 한 줄. 예: 생산품 "알루미늄 아노다이징". 없으면 꼬리표만 보인다. */
+  ownPlatingLineBasis?: string | null;
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
@@ -290,6 +303,8 @@ export interface DetailHeader {
   scoreDisplay: string;
   /** 회사 페이지 뿌리 주소(더하는 변경 #176). 없으면 null/없음. 화면은 http(s)일 때만 링크로 보인다. */
   homepageUrl?: string | null;
+  /** 표면처리를 직접 하는 회사일 수 있음(#319, #364). 참이면 머리 이름 옆에 꼬리표만 보인다(근거 줄은 카드·검토사항에서). 없거나 거짓이면 아무것도 안 보인다. */
+  ownPlatingLineSuspected?: boolean;
   /** 회사 주소(C1 header.address). 지도 링크를 만드는 데만 쓴다. */
   address?: string | null;
   isVirtual: boolean;
@@ -400,14 +415,19 @@ export interface ContactCount {
 
 export interface DetailRecords {
   opinion?: OpinionRecord | null;
-  bookmark?: Record<string, unknown> | null;
+  bookmark?: BookmarkRecord | null;
   approval?: Record<string, unknown> | null;
   outcome?: OutcomeRecord | null;
   contactCount?: ContactCount | null;
 }
 
 /** 검토사항 한 줄(C1 reviewItems, 더하는 변경 2026-11-03 밤). 목록은 평가 결과에서 파생되고 체크 상태만 저장된다. */
-export type ReviewItemKind = 'QUESTION' | 'DATA_NOT_FOUND' | 'DATA_INSUFFICIENT';
+export type ReviewItemKind =
+  | 'QUESTION'
+  | 'DATA_NOT_FOUND'
+  | 'DATA_INSUFFICIENT'
+  /** 표면처리를 직접 하는 회사일 수 있음(#319, 계약 C1). 출처는 AI 또는 규칙. 서버가 값을 채우기 전에는 오지 않는다. */
+  | 'OWN_PLATING_LINE_SUSPECTED';
 export type ReviewItemSource = 'AI' | 'CASE_FILE' | 'RULE';
 export type ReviewTargetLabel = '상대 회사' | '거산';
 
@@ -456,6 +476,16 @@ export interface OpinionRequest {
 }
 
 export type OpinionResponse = OpinionRecord;
+
+// ---------- PUT /opportunities/{oppId}/bookmark (관심 켜고 끄기, #356) ----------
+
+export interface BookmarkRequest {
+  /** true면 관심으로 켜고 false면 끈다. 기록이 있는 회사는 서버가 끄기를 422로 거부한다. */
+  active: boolean;
+  expectedVersion?: number | null;
+}
+
+export type BookmarkResponse = BookmarkRecord;
 
 // ---------- POST /notes, POST /outcomes (U5 기록) ----------
 
@@ -516,6 +546,33 @@ export interface MainPhoneConfirmResponse {
   mainPhoneConfirmedAt: string;
   mainPhoneConfirmedBy: string;
 }
+
+// ---------- POST /opportunities/{oppId}/homepage (홈페이지 [맞음]·[고치기]·[다시 조사], #210·#304) ----------
+
+/** 세 가지 중 하나로 보낸다: `{confirmOnly: true}`(맞음), `{url}`(고치기), `{}`(다시 조사), `{pastedText}`(본문 붙여넣기). 맞음과 본문은 함께 못 보낸다(400). */
+export interface HomepageRequest {
+  url?: string;
+  pastedText?: string;
+  confirmOnly?: boolean;
+}
+
+/** 조사를 실행했을 때의 응답. */
+export interface HomepageResearchResponse {
+  evidenceCount: number;
+  /** evidenceCount 가운데 "요구 후보(미확인)" 수. */
+  requirementCandidateCount: number;
+  questionCount: number;
+  evalId: string;
+}
+
+/** [맞음](confirmOnly)을 눌렀을 때의 응답. 외부 호출·재평가 없음. */
+export interface HomepageConfirmResponse {
+  homepageUrl: string;
+  homepageStatus: 'CONFIRMED';
+  homepageSource: 'STAFF';
+}
+
+export type HomepageResponse = HomepageResearchResponse | HomepageConfirmResponse;
 
 // ---------- POST /opportunities/{oppId}/relation (거래 관계 입력, #265·#266) ----------
 

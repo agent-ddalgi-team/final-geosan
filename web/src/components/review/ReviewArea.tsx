@@ -40,6 +40,8 @@ const KIND_TONE: Record<ReviewItemKind, StatusTone> = {
   QUESTION: 'ask',
   DATA_NOT_FOUND: 'wait',
   DATA_INSUFFICIENT: 'wait',
+  // 표면처리를 직접 하는 회사일 수 있음(#319): 담당자가 확인해야 하는 표시다. 줄은 서버가 준 그대로 보이고 화면이 빼지 않는다.
+  OWN_PLATING_LINE_SUSPECTED: 'ask',
 };
 
 export default function ReviewArea({

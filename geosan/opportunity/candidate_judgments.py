@@ -29,12 +29,22 @@ class CandidateJudgment(FileModel):
     industries: list[str]
     reason: str = Field(min_length=1)
     fit_level: Literal["HIGH", "MEDIUM", "LOW"]
+    own_plating_line_suspected: bool
+    own_plating_line_basis: str | None
 
     @field_validator("reason")
     @classmethod
     def reason_without_contacts(cls, value: str) -> str:
         if not value.strip() or scrub_contacts(value)[1]:
             raise ValueError("고른 이유가 비어 있거나 연락처가 있습니다.")
+        return value
+
+    @field_validator("own_plating_line_basis")
+    @classmethod
+    def surface_basis_without_contacts(cls, value: str | None) -> str | None:
+        """C9는 근거의 null을 허용한다. 글이 있으면 기존 연락처 검사를 적용한다."""
+        if value is not None and (not value.strip() or scrub_contacts(value)[1]):
+            raise ValueError("표면처리 판단 근거가 비어 있거나 연락처가 있습니다.")
         return value
 
 
@@ -143,32 +153,22 @@ def candidate_criteria_version(
     *,
     process_catalog: Mapping[str, str],
     industry_catalog: Sequence[str],
-    process_codes: Sequence[str],
-    industries: Sequence[str],
     prompt: str,
 ) -> str:
     """판단 재사용용 기준 지문(C6). 생산품 해시는 FactoryRow.product_hash를 따로 비교한다.
 
-    목록 순서만 바뀐 것은 같은 기준이다. 공정 코드·이름, 산업 목록, 선택 조건 또는
-    실제 사용하는 지시문이 바뀌면 다른 기준이다. 지역은 AI 판단 전 주소 필터로 처리한다.
+    목록 순서만 바뀐 것은 같은 기준이다. 전체 공정 코드·이름, 전체 산업 목록 또는
+    실제 사용하는 지시문이 바뀌면 다른 기준이다. 선택 공정·산업은 판단 뒤 거르기에만
+    쓰므로 기준에 넣지 않는다(#221 PM 결정). 지역은 AI 판단 전 주소 필터로 처리한다.
     이 값만으로 DB의 저장된 판단이 최신이라고 확정하거나 다시 판단 요청을 생략하지 않는다.
     """
-    allowed_processes, allowed_industries = _catalogs(process_catalog, industry_catalog)
-    selected_processes = _labels(process_codes, required=True)
-    selected_industries = _labels(industries)
-    if (
-        not set(selected_processes) <= allowed_processes
-        or not set(selected_industries) <= allowed_industries
-        or not isinstance(prompt, str)
-        or not prompt.strip()
-    ):
-        raise InputError("후보 판단의 선택 조건이나 지시문이 올바르지 않습니다.")
+    _, allowed_industries = _catalogs(process_catalog, industry_catalog)
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise InputError("후보 판단의 지시문이 올바르지 않습니다.")
     canonical = json.dumps(
         {
             "processCatalog": dict(process_catalog),
             "industryCatalog": sorted(allowed_industries),
-            "processCodes": sorted(selected_processes),
-            "industries": sorted(selected_industries),
             "prompt": prompt,
         },
         sort_keys=True,

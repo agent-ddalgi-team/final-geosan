@@ -246,7 +246,7 @@ def test_migration_preserves_old_customer_and_starts_without_history(relation_en
     client, opp_id, _ = relation_env
     before = detail(client, opp_id)
     assert downgrade(tmp_db, "tg_001") == ["tg_001"]
-    assert upgrade_to_head(tmp_db) == ["tg_003"]
+    assert upgrade_to_head(tmp_db) == ["rec_008"]
     after = detail(client, opp_id)
     assert after == before
     assert after["header"]["relationConfirmedBy"] is None
@@ -272,14 +272,21 @@ def test_relation_migration_preserves_existing_lost_reason_rows(relation_env, tm
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
             before_rows
         )
-    assert upgrade_to_head(tmp_db) == ["tg_003"]
-    assert upgrade_to_head(tmp_db) == ["tg_003"]
+    assert upgrade_to_head(tmp_db) == ["rec_008"]
+    assert upgrade_to_head(tmp_db) == ["rec_008"]
     with sqlite3.connect(tmp_db) as connection:
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
             before_rows
         )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-    assert detail(client, opp_id) == before_detail
+    after_detail = detail(client, opp_id)
+    # 관심 표(rec_008, #356)는 내리면 지워지고 다시 올릴 때 기록이 있는 회사를 다시 켠다.
+    # 그래서 관심은 계속 켜져 있지만 누가·언제는 옮긴 자료(system) 것으로 바뀐다.
+    before_bookmark = before_detail["records"].pop("bookmark")
+    after_bookmark = after_detail["records"].pop("bookmark")
+    assert before_bookmark["active"] is True and after_bookmark["active"] is True
+    assert (before_bookmark["updatedBy"], after_bookmark["updatedBy"]) == ("park-lee", "system")
+    assert after_detail == before_detail
 
 
 def test_staff_relation_is_not_passed_to_search_adapter(relation_env):

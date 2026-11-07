@@ -201,7 +201,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
             )
         )
 
-    from geosan.api.routes import config, dashboard, opportunities, records, session
+    from geosan.api.routes import config, dashboard, homepage, opportunities, records, session
 
     for router in (
         config.router,
@@ -209,14 +209,13 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         records.router,
         session.router,
         dashboard.router,
+        homepage.router,
     ):
         app.include_router(router, prefix="/api/v1")
-    # #317: 실제 찾기가 준비되기 전에는 테스트에서만 실행 함수를 주입한다.
-    # 기본 앱·명세에는 가짜 찾기나 실행되지 않을 회차 접수 창구를 등록하지 않는다.
-    if ingest_runner is not None:
-        from geosan.api.routes.ingest import create_ingest_router
+    # 실제 찾기는 회차 번호 하나를 받는 함수로 연결한다. 연결 전에는 회차를 만들지 않는다.
+    from geosan.api.routes.ingest import create_ingest_router
 
-        app.include_router(create_ingest_router(ingest_runner), prefix="/api/v1")
+    app.include_router(create_ingest_router(ingest_runner), prefix="/api/v1")
     dist = Path(__file__).resolve().parents[2] / "web" / "dist"
     if dist.is_dir():
         app.mount("/", ScreenFiles(directory=dist, html=True), name="web")

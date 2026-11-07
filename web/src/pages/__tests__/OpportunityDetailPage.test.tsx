@@ -11,8 +11,9 @@ import {
   postOutcome,
   postQuestionReply,
   postRelation,
+  putBookmark,
 } from '../../api/client';
-import type { Envelope, OpportunityDetail, Question } from '../../api/types';
+import type { BookmarkRecord, Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
   detailSections,
@@ -32,8 +33,10 @@ vi.mock('../../api/client', async (importOriginal) => ({
   postQuestionReply: vi.fn(),
   postRelation: vi.fn(),
   postOutcome: vi.fn(),
+  putBookmark: vi.fn(),
 }));
 
+const mockedBookmark = vi.mocked(putBookmark);
 const mockedOutcome = vi.mocked(postOutcome);
 const mockedRelation = vi.mocked(postRelation);
 const mockedGet = vi.mocked(getOpportunityDetail);
@@ -85,6 +88,7 @@ describe('OpportunityDetailPage', () => {
     mockedReply.mockReset();
     mockedRelation.mockReset();
     mockedOutcome.mockReset();
+    mockedBookmark.mockReset();
     mockedActivity.mockResolvedValue({
       data: [],
       meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
@@ -391,6 +395,103 @@ describe('OpportunityDetailPage', () => {
       expect(screen.getByTestId('detail-relation-text')).toHaveTextContent('거래 관계: 거래 없음'),
     );
     expect(mockedActivity.mock.calls.length).toBeGreaterThan(activityCallsBefore);
+  });
+
+  describe('머리의 [관심] 단추 (#357)', () => {
+    const bookmarked: BookmarkRecord = {
+      version: 1,
+      updatedBy: 'park-lee',
+      updatedAt: '2026-11-06T01:00:00Z',
+      active: true,
+    };
+    const withBookmark = (value: BookmarkRecord | null): OpportunityDetail => ({
+      ...base,
+      records: { ...base.records, bookmark: value },
+    });
+
+    it('상세 응답의 관심 값대로 머리에 "관심"(꺼짐) 또는 "관심 기업"(켜짐)이 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(reply(withBookmark(bookmarked)));
+      renderPage();
+      const header = await screen.findByTestId('detail-header');
+      const button = within(header).getByTestId('bookmark-button');
+      expect(button).toHaveTextContent(/^관심 기업$/);
+      expect(button).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('[관심]을 누르면 켜기 요청을 보내고 머리 단추가 바뀌며, 상세를 통째로 다시 부르지 않고 활동 이력만 새로 읽는다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValueOnce(reply(withBookmark(null)));
+      mockedBookmark.mockResolvedValueOnce({ data: bookmarked, meta: {} });
+      renderPage();
+      const button = await screen.findByTestId('bookmark-button');
+      expect(button).toHaveTextContent(/^관심$/);
+      expect(button).toHaveAttribute('aria-pressed', 'false');
+      await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(1));
+      await user.click(button);
+      expect(mockedBookmark).toHaveBeenCalledWith(
+        'opp-1',
+        { active: true, expectedVersion: null },
+        'park-lee',
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'true'),
+      );
+      expect(mockedGet).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
+    });
+
+    it('영업 기록을 저장하면 관심 값만 서버에서 다시 읽어 머리 단추를 "관심 기업"으로 맞춘다 (자동 관심)', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValueOnce(reply(withBookmark(null)));
+      // 저장 뒤 다시 읽을 때 서버는 관심을 켠 값을 준다.
+      mockedGet.mockResolvedValueOnce(reply(withBookmark(bookmarked)));
+      mockedOutcome.mockResolvedValueOnce({
+        data: {
+          version: 1,
+          updatedBy: 'park-lee',
+          updatedAt: '2026-11-06T01:12:00Z',
+          status: 'ON_HOLD',
+        },
+        meta: {},
+      });
+      renderPage();
+      expect(await screen.findByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false');
+      await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
+      await user.click(screen.getByTestId('records-stage-save-button'));
+      await waitFor(() =>
+        expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'true'),
+      );
+      expect(mockedGet).toHaveBeenCalledTimes(2);
+      // 화면을 통째로 다시 그리지 않아 방금 저장한 안내와 현재 단계가 그대로 남는다.
+      expect(screen.getByTestId('records-stage-saved')).toBeInTheDocument();
+      expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 보류');
+      // 관심은 서버가 켠다. 화면이 따로 켜기 요청을 보내지 않는다.
+      expect(mockedBookmark).not.toHaveBeenCalled();
+    });
+
+    it('저장 뒤 관심 값을 다시 읽지 못해도 상세 화면은 그대로이고 단추는 지금 값을 유지한다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValueOnce(reply(withBookmark(null)));
+      mockedGet.mockRejectedValueOnce(new Error('boom'));
+      mockedOutcome.mockResolvedValueOnce({
+        data: {
+          version: 1,
+          updatedBy: 'park-lee',
+          updatedAt: '2026-11-06T01:12:00Z',
+          status: 'ON_HOLD',
+        },
+        meta: {},
+      });
+      renderPage();
+      await screen.findByTestId('bookmark-button');
+      await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
+      await user.click(screen.getByTestId('records-stage-save-button'));
+      await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+      expect(screen.getByTestId('opportunity-detail')).toBeInTheDocument();
+      expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.queryByTestId('bookmark-error')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('five-states-error')).not.toBeInTheDocument();
+    });
   });
 
   it('상세 머리: 거래 중으로 확인된 회사는 점수가 확정이어도 "기존 거래처" 꼬리표가 붙는다 (#264)', async () => {

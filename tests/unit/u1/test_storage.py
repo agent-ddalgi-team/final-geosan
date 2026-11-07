@@ -65,8 +65,8 @@ def test_upgrade_both_branches_preserves_existing_data(tmp_path: Path, previous:
                 "failure_count, created_at, created_by, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 ("test-failure", "2026-11-04", "2026-11-03", 3, "2026-11-03", "test", 1),
             )
-    assert upgrade_to_head(db) == ["tg_003"]
-    assert upgrade_to_head(db) == ["tg_003"]
+    assert upgrade_to_head(db) == ["rec_008"]
+    assert upgrade_to_head(db) == ["rec_008"]
     with sqlite3.connect(db) as connection:
         assert connection.execute(
             "SELECT name, normalized_address, address FROM opp_customer WHERE customer_id=?",
@@ -128,7 +128,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["tg_003"]
+    assert first == script_heads() == ["rec_008"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -171,7 +171,7 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["tg_003"]
+    assert upgrade_to_head(tmp_db) == ["rec_008"]
     assert "tg_transfer_log" in _table_names(tmp_db)
     assert "homepage_status" in _column_names(tmp_db, "opp_customer")
     assert "rec_review_check" in _table_names(tmp_db)
@@ -185,7 +185,7 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
 
 
 def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
-    """표 43개(후보 찾기 9개 포함, #327)가 DB·metadata에 일치한다(계약 C6)."""
+    """표 44개(후보 찾기 9개 #327, 관심 표 #356 포함)가 DB·metadata에 일치한다(계약 C6)."""
     expected_counts = {
         "cfg_": 2,
         "cap_": 7,
@@ -194,13 +194,13 @@ def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
         "ev_": 1,
         "eval_": 7,
         "q_": 3,
-        "rec_": 4,
+        "rec_": 5,
         "web_": 1,
         "tg_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    assert len(db_tables) == 43
+    assert len(db_tables) == 44
     prefixes = (*TABLE_PREFIXES, "web_")
     for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix

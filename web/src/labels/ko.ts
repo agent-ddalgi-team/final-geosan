@@ -177,26 +177,49 @@ export const frame = {
   pageTitleDashboard: '대시보드',
 } as const;
 
-/** 대시보드(S4) 문구. 건수 5개·일정·최근 기록·검색·공정/산업군 막대. */
+/** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
 export const dashboardTexts = {
   searchLabel: '회사 이름 검색',
   searchPlaceholder: '회사 이름을 입력하세요',
   searchButton: '검색',
-  countsLabel: '영업 단계별 건수',
   countUnits: {
     NOT_CONTACTED: '곳',
-    INTERESTED: '곳',
     IN_CONTACT: '곳',
     QUOTE_SAMPLE: '곳',
     SCHEDULE_DUE: '건',
+    BOOKMARKED: '곳',
+    NO_OPINION: '곳',
+    NEED_CHECK: '곳',
+    NOT_TARGET: '곳',
+    ON_HOLD: '곳',
+    DONE: '곳',
   },
+  /** 칸 이름. 목록 머리의 "무엇으로 걸렀는지"도 같은 말을 쓴다. */
   countNames: {
     NOT_CONTACTED: '미접촉',
-    INTERESTED: '관심',
     IN_CONTACT: '접촉 중',
     QUOTE_SAMPLE: '견적·샘플',
     SCHEDULE_DUE: '이번 주 일정',
+    BOOKMARKED: '관심 기업',
+    NO_OPINION: '의견 전',
+    NEED_CHECK: '추가 확인 필요',
+    NOT_TARGET: '제외',
+    ON_HOLD: '보류',
+    DONE: '완료',
   },
+  /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
+  bookmarkSectionTitle: '관심 기업',
+  progressSectionTitle: '영업 진행',
+  progressSectionHint: '관심 기업 가운데 검토 권고를 받은 뒤의 진행',
+  /** "미접촉" 칸의 작은 풀이: 검토 권고를 받았고 아직 접촉하지 않은 곳. */
+  notContactedHint: '검토 권고 · 접촉 전',
+  /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
+  bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
+  bookmarkEmptyLink: '추천 목록',
+  bookmarkEmptyTail: '에서 [관심]을 눌러 담아 보세요',
+  /** 서버가 아직 옛 집계를 줄 때. 뜻이 달라진 숫자를 새 칸에 넣어 보이지 않는다. */
+  countsOutdated:
+    '관심 기업 건수를 아직 받지 못했습니다. 서버가 새 집계로 바뀌면 여기에 나타납니다.',
   scheduleTitle: '일정',
   scheduleEmpty: '예정된 일정이 없습니다.',
   scheduleOverdue: '지남',
@@ -312,22 +335,78 @@ export const detailHeader = {
   owner: '담당',
 } as const;
 
-/** 추천 목록 머리의 공정 탭·지역·산업 선택과 카드 꼬리표(#210, 결정 2026-11-03 밤). */
+/**
+ * 추천 목록 머리의 공정·지역·산업 선택란과 카드 꼬리표(#210, 결정 2026-11-03 밤).
+ * 공정은 탭에서 선택란으로 바뀌었다(#361, 2026-11-06 PM 결정).
+ * 공정을 고르기 전에는 "전체(공정별로 묶음)"로 공정별 묶음을 본다(#383, 2026-11-07 PM 결정; #368의 빈 목록을 바꿈).
+ */
 export const listFilters = {
-  tabsLabel: '공정',
+  processLabel: '공정',
   regionLabel: '지역',
   industryLabel: '산업',
   all: '전체',
-  /** "천안 인근 8" */
+  /** 공정 선택란 맨 위(#383). 고르면 공정마다 따로 불러 공정별 묶음으로 보인다. */
+  processGrouped: '전체(공정별로 묶음)',
+  /** 묶음 머리(#383). "아연도금(전기아연도금) · 천안 인근 · 자동차 부품 · 9곳"처럼 고른 조건 이름을 사이에 끼운다. */
+  groupTitle: (processName: string, conditions: string[], count: number) =>
+    [processName, ...conditions, `${count}곳`].join(' · '),
+  /** 묶음 보기일 때 전체 곳 수 줄 뒤에 붙이는 말(#383). */
+  groupedNote: '공정별로 묶어 보는 중',
+  /** 한 공정이 묶음 상한(50곳)을 넘을 때 묶음 끝의 링크(#383). 그 공정 하나를 고른 보기로 간다. */
+  onlyThisProcess: '이 공정만 보기',
+  /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
-  /** "전기아연도금 (9)" */
-  tab: (name: string, count: number) => `${name} (${count})`,
   /** 조건을 걸었는데 0건일 때. */
   filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
-  /** 대시보드 건수·검색으로 넘어와 걸러진 목록이 비었을 때. */
+  /** 대시보드 건수로 넘어와 걸러진 목록이 비었을 때. */
   noMatch: '이 조건에 맞는 후보가 없습니다.',
+  /** 고른 공정에 회사가 한 곳도 없을 때(#361). */
+  processEmpty: '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
   regionUnknown: '지역 미확인',
   industryUnknown: '산업 미확정',
+} as const;
+
+/**
+ * 추천 목록 머리의 회사 이름 검색 칸과 정렬(#361, 2026-11-06 PM 결정).
+ * 검색 칸 이름·자리 글자·단추는 대시보드 검색 칸과 뜻이 같아 같은 말을 쓴다.
+ */
+export const listSearch = {
+  label: dashboardTexts.searchLabel,
+  placeholder: dashboardTexts.searchPlaceholder,
+  button: dashboardTexts.searchButton,
+  /** 검색 중일 때 결과 위에 검색어와 함께 보인다. 검색은 고른 공정·지역·산업과 상관없이 전체 후보에서 한다. */
+  resultTitle: '전체 후보에서 찾은 결과',
+  clear: '검색 지우기',
+  /** 검색했는데 0곳일 때. */
+  empty: '이 이름으로 찾은 후보가 없습니다',
+  sortLabel: '정렬',
+  sortRank: '추천 순',
+  /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
+  sortDistance: '가까운 순 (준비 중)',
+} as const;
+
+/**
+ * 추천 목록 머리의 "관심 기업" 보기(#357, 2026-11-06 PM 결정)와, 대시보드 칸을 누르고 넘어온 목록의 이름 줄.
+ * 칸 이름 자체는 대시보드와 같은 말(`dashboardTexts.countNames`)을 쓴다.
+ */
+export const bookmarkList = {
+  title: '관심 기업',
+  showOnly: '관심 기업만 보기',
+  opinionGroupLabel: '검토 의견으로 거르기',
+  /** 거르기 단추 다섯 개. "기타"는 세 의견 중 아무것도 고르지 않은 회사만 나온다. */
+  opinionFilters: {
+    ALL: '전체 보기',
+    WORTH_REVIEW: '검토 권고',
+    NEED_CHECK: '추가 확인 필요',
+    NOT_TARGET: '제외 기업',
+    NONE: '기타',
+  },
+  /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
+  empty: '관심으로 고른 회사가 없습니다. 카드의 [관심]을 눌러 담아 보세요',
+  filterPrefix: '거른 조건',
+  /** 주소의 조건 값이 대시보드 칸 이름표에 없을 때 대신 보이는 말. */
+  filterUnknown: '대시보드에서 고른 조건',
+  clearFilter: '거르기 풀기',
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05): 목록 머리 수집 요약·"이번 수집만/전체" 전환과 카드의 고른 이유·점수 전·이번에 들어옴. */
@@ -401,6 +480,38 @@ export const companySummary = {
   /** 오늘 기준 며칠 전. */
   today: '오늘',
   daysAgo: (days: number) => `${days}일 전`,
+} as const;
+
+/**
+ * 상세 머리 홈페이지 줄(#210, 서버 #304): [맞음]·[고치기]·[다시 조사]와 본문 붙여넣기 칸.
+ * 실패 문구는 서버가 주는 message·nextAction을 그대로 보이므로 여기에는 모양에 쓰는 말만 둔다.
+ */
+export const homepageControls = {
+  confirmButton: '맞음',
+  editButton: '고치기',
+  /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
+  addButton: '주소 넣기',
+  rerunButton: '다시 조사',
+  urlLabel: '홈페이지 주소',
+  urlPlaceholder: 'https://',
+  runWithUrl: '이 주소로 조사',
+  cancel: '취소',
+  invalidUrl: '홈페이지 주소는 http:// 또는 https:// 로 시작해야 합니다.',
+  pasteLabel: '공개 본문 붙여넣기',
+  pastePlaceholder: '홈페이지에 공개된 소개 글을 여기에 붙여 넣어 주세요',
+  pasteEmpty: '붙여 넣은 내용이 비어 있습니다.',
+  runWithPaste: '붙여 넣은 내용으로 조사',
+  running: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
+  /** 못 눌러서 잠긴 이유(한도 초과·설정 전). 서버 안내 문구 아래에 작게 보인다. */
+  locked: '이 조사는 지금 다시 누를 수 없습니다.',
+  pickStaffFirst: '담당자를 고르면 누를 수 있습니다.',
+  reload: '새로 불러오기',
+  /** 문의 번호(서버 ref). 작게 보인다. */
+  ref: (ref: string) => `문의 번호 ${ref}`,
+  confirmed: '홈페이지 주소를 맞다고 확인했습니다.',
+  /** "근거 3건(확인 필요 1건 포함)·질문 1건 저장, 재평가 완료" */
+  researched: (evidence: number, candidates: number, questions: number) =>
+    `근거 ${evidence}건${candidates > 0 ? `(확인 필요 ${candidates}건 포함)` : ''}·질문 ${questions}건 저장, 재평가 완료`,
 } as const;
 
 /** 상세 머리 거래 관계 줄(#266): 지금 상태 글자, 바꾸는 단추, 안내·오류 문구. */
@@ -496,7 +607,6 @@ export const datasetKindLabels: Record<DatasetKind, string> = {
 /** 영업 기록·검토사항의 쉬운 말 (약속 C0, C1). */
 export const outcomeStatusLabels = {
   NOT_EXECUTED: '미접촉',
-  INTERESTED: '관심',
   IN_PROGRESS: '접촉',
   SAMPLE_OR_REGISTRATION_APPROVED: '견적·샘플',
   ON_HOLD: '보류',
@@ -520,12 +630,24 @@ export const reviewItemKindLabels = {
   QUESTION: 'AI 확인 질문',
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
+  OWN_PLATING_LINE_SUSPECTED: '표면처리를 직접 하는 회사일 수 있음',
 } as const;
 /** 꼬리표 글자. 질문은 뒤에 "·상대 회사" / "·거산"이 붙는다. */
 export const reviewItemKindTagLabels = {
   QUESTION: 'AI 질문',
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
+  OWN_PLATING_LINE_SUSPECTED: '표면처리 직접 · 확인 필요',
+} as const;
+
+/**
+ * "표면처리를 직접 하는 회사일 수 있음" 표시(#319, 결정 2026-11-06). 카드 꼬리표 글자와 근거 줄 이름.
+ * 거산이 표면처리를 하는 회사라서 같은 일을 하는 회사는 영업 대상이 아닐 수 있다. 자동으로 빼지 않고 담당자가 확인한다.
+ */
+export const ownPlatingLine = {
+  tag: '표면처리를 직접 하는 회사일 수 있음 · 확인 필요',
+  /** 근거 줄 이름. 카드에 이미 있는 "추천 근거"와 헷갈리지 않게 "확인 근거"로 한다. 예: 확인 근거 | 생산품 "알루미늄 아노다이징" */
+  basisLabel: '확인 근거',
 } as const;
 export const reviewItemSourceLabels = {
   AI: 'AI 조사',
@@ -535,7 +657,6 @@ export const reviewItemSourceLabels = {
 
 /** 카드 영업 단계 꼬리표 색. 미접촉은 꼬리표를 보이지 않는다. */
 export const outcomeStatusTone: Record<string, StatusTone> = {
-  INTERESTED: 'ask',
   IN_PROGRESS: 'wait',
   SAMPLE_OR_REGISTRATION_APPROVED: 'ok',
   ON_HOLD: 'neutral',
@@ -591,6 +712,18 @@ export const recordsArea = {
   selectPlaceholder: '고르세요',
 } as const;
 
+/**
+ * [관심] 단추(#357, 약속 v3 #356): 목록 카드와 상세 머리. 관심은 영업 단계가 아니라 켜고 끄는 표시다.
+ * 끄기가 거부될 때의 문구는 서버가 주는 글을 그대로 보이므로 여기에 두지 않는다.
+ */
+export const bookmarkTexts = {
+  /** 꺼져 있을 때 단추 글자. 누르면 관심 기업으로 담긴다. */
+  off: '관심',
+  /** 켜져 있을 때 단추 글자. */
+  on: '관심 기업',
+  pickStaffFirst: '담당자를 고르면 관심으로 담을 수 있습니다',
+} as const;
+
 /** 상세 "검토사항" 영역(U5): 담당자가 확인하면 체크. 목록은 평가 결과에서 나오고 체크 상태만 저장된다. */
 export const reviewArea = {
   title: '검토사항',
@@ -638,13 +771,24 @@ export const timelineArea = {
   loading: '불러오는 중',
   system: '시스템',
   listLabel: '활동 이력 목록',
+  /** 묶음 전환 단추(#389). 기본은 전체. */
+  groupFilterLabel: '활동 이력 거르기',
+  groupAll: '전체',
+  groupEmpty: (group: string) => `${group} 기록이 아직 없습니다.`,
+} as const;
+
+/** 활동 이력 묶음(#389) 쉬운 말. 묶음 정의는 components/records/activityGroups.ts. */
+export const activityGroupLabels = {
+  SALES: '영업 활동',
+  FACT: '사실',
+  FEEDBACK: '의견',
 } as const;
 
 /** 활동 이력 종류(ActivityKind) 쉬운 말. */
 export const activityKindLabels: Record<ActivityKind, string> = {
   CLASSIFICATION: '분류',
   OPINION: '의견',
-  BOOKMARK: '담기',
+  BOOKMARK: '관심',
   APPROVAL: '승인',
   CONTACT_ATTEMPT: '접촉 시도',
   REPLY: '답 기록',

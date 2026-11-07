@@ -8,11 +8,11 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Header, Request
 from pydantic import Field
 
-from geosan.api.deps import get_session
+from geosan.api.deps import get_session, require_staff
 from geosan.api.ingest_batches import reserve_ingest_batch
 from geosan.api.ingest_conditions import IngestRequest
 from geosan.api.schemas import Envelope, Meta, _ApiModel
-from geosan.config.errors import RunFailedError, new_ref
+from geosan.config.errors import AppError, RunFailedError, new_ref
 from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
@@ -50,8 +50,8 @@ def _execute_batch(run_batch: Callable[[str], None], batch_id: str) -> None:
         logger.error("ingest.failed", extra={"batchId": batch_id, "ref": new_ref()})
 
 
-def create_ingest_router(run_batch: Callable[[str], None]) -> APIRouter:
-    """실제 찾기는 아직 없으므로 현재는 가짜 찾기를 주입한 API 검사에서만 등록한다."""
+def create_ingest_router(run_batch: Callable[[str], None] | None) -> APIRouter:
+    """명세와 실제 경로를 함께 등록하고, 찾기 연결이 없으면 접수를 거부한다."""
     router = APIRouter()
 
     @router.post("/ingest", response_model=Envelope[IngestAccepted])
@@ -62,6 +62,13 @@ def create_ingest_router(run_batch: Callable[[str], None]) -> APIRouter:
         staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
     ):
         with contextmanager(get_session)(request) as session:
+            if run_batch is None:
+                require_staff(session, staff_key)
+                raise AppError(
+                    "후보 찾기 실행 연결이 아직 준비되지 않았습니다.",
+                    "연결이 준비된 뒤 다시 시도해 주세요.",
+                    status=503,
+                )
             batch = reserve_ingest_batch(session, body, staff_key=staff_key)
             data = IngestAccepted(
                 batch_id=batch.batch_id,

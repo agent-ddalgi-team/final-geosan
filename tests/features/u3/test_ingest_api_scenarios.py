@@ -52,6 +52,23 @@ def failing(api_context):
     return client
 
 
+@given("현재 공정과 실제 임시 DB가 있지만 찾기는 연결하지 않은 API가 있다", target_fixture="client")
+def unconnected(api_context):
+    clients, _ = api_context
+    client = TestClient(create_app())
+    client.__enter__()
+    clients.append(client)
+    return client
+
+
+@then("연결 준비 안내를 돌려주고 회차와 가짜 실행을 남기지 않는다")
+def unconnected_refused(api_context, response):
+    _, calls = api_context
+    assert response.status_code == 503
+    assert "연결" in response.json()["error"]["message"]
+    assert calls == [] and support.support.batches() == []
+
+
 @given("이미 실행 중인 찾기 회차가 있다")
 def running():
     with session_scope() as session:

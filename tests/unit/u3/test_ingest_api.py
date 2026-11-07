@@ -209,5 +209,22 @@ def test_protected_access_requires_login_even_with_a_valid_staff_key(batch_db, e
     assert finder.calls == [] and support.batches() == []
 
 
-def test_normal_app_never_registers_a_fake_search_endpoint(batch_db):
-    assert not any(getattr(route, "path", None) == PATH for route in create_app().routes)
+def test_default_app_exports_the_ingest_contract_without_a_fake_runner():
+    """PM #317 명세 반영 지시: 실행 함수를 주입하지 않아도 요청 경로를 명세에 싣는다."""
+    operation = create_app().openapi()["paths"][PATH]["post"]
+    assert operation["requestBody"]["required"] is True
+
+
+def test_default_app_refuses_an_unconnected_search_without_creating_a_batch(batch_db):
+    with TestClient(create_app()) as client:
+        response = post(client)
+    assert response.status_code == 503
+    assert "연결" in response.json()["error"]["message"]
+    assert support.batches() == []
+
+
+@pytest.mark.parametrize("staff", [None, "viewer", "unknown"])
+def test_unconnected_search_still_requires_a_recording_staff_member(batch_db, staff):
+    with TestClient(create_app()) as client:
+        assert post(client, staff=staff).status_code == 403
+    assert support.batches() == []

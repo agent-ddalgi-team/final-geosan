@@ -40,6 +40,7 @@ cd web && npm ci && cd ..
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
+| 백업·되돌리기 | `geosan backup [--to <폴더>]`(서버 켜진 채로 가능, 기본 `backups/`) → 문제가 생기면 서버를 멈추고 `geosan restore <백업 파일>`(확인 질문 1회, 지금 DB는 자동 보관) → `geosan init-db` → `geosan serve`. 절차는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) |
 
 검수 전환은 거래 관계나 필수 요구의 확인 상태를 바꾸지 않습니다. 기존 점수 표시 약속에 따라
 확인 묶음에서도 필수조건 확인 필요·운영 준비 중인 카드는 `--`로 보입니다.
@@ -86,7 +87,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 
 - Railway: 저장소 루트, 배포 가지 `main`, 서비스 1개와 영구 볼륨 `/data`. 환경 변수 `GEOSAN_DB_PATH=/data/geosan.db`, `GEOSAN_PASSWORD`, `OPENAI_API_KEY`는 서비스 설정에만 넣습니다. `PORT`는 Railway가 제공하며 `railway.json`의 시작 명령이 `--port`로 전달합니다. 로컬 `geosan serve`는 `PORT`를 자동으로 읽지 않습니다.
 - Python 의존성 설치는 저장소 루트에서 `pip install -r requirements.lock -e .`를 사용합니다. 화면 빌드는 Railway에서 필요하지 않습니다.
-- 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전 백업·복원은 PM의 #214 절차를 따릅니다.
+- 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전에는 같은 자리에서 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
 - 이후 `geosan check-config examples/rule-config.yaml examples/app-settings.yaml`로 설정을 등록합니다. 공개 배포 전 운영용 앱 설정의 `accessProtection.enabled`를 켜고 검증해야 합니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
 - Vercel: Root Directory `web`, 배포 가지 `main`, 설치 `npm ci`, 빌드 `npm run build`, 출력 `dist`, 환경 변수 `VITE_USE_FIXTURES=0`. 서버 비밀번호·API 키를 Vercel의 `VITE_` 변수에 넣지 않습니다.
 
@@ -113,6 +114,23 @@ API 서버도 성공·오류 응답 모두에 `Cache-Control: no-store`와 `x-ve
 접속 보호(#213): `geosan init-db`로 세션 테이블을 준비한 뒤, 사용하는 앱 설정의 `accessProtection.enabled`를 `true`로 바꾸고 기존 `geosan check-config` 명령으로 등록합니다. 비밀번호는 서버 환경 변수 `GEOSAN_PASSWORD`에만 넣습니다. 환경 변수가 없거나 비어 있으면 로그인이 실패하며 API는 열리지 않습니다. `.env`는 자동으로 읽지 않습니다.
 
 화면에서 공용 비밀번호를 입력하면 12시간짜리 `HttpOnly; Secure; SameSite=Lax` 쿠키가 발급됩니다. 보호가 켜진 환경은 HTTPS가 필요합니다. 로컬 HTTP 시연은 기존 끄기 설정을 사용합니다. API를 사용해도 세션 만료 시각은 연장되지 않습니다. 로그인 실패 횟수는 공용 비밀번호 전체에 대해 DB에서 세며 5회 실패하면 모두 30초 동안 기다립니다. 새로고침·서버 재시작으로 이 횟수를 초기화하지 않습니다. 실제 Vercel·Railway 연결은 별도 PR에서 진행합니다.
+
+### 후보 찾기용 공장현황 원본 준비 (#213, PM 2026-11-06 추가)
+
+후보 찾기는 Git에 없는 공개 CSV 원본도 필요합니다. GitHub 연결 배포만으로는 이 파일이 서버로 따라가지 않습니다. 서버 연결이 준비되면 공개 원본을 서버에서 직접 받거나, 아래와 같이 확인한 로컬 파일을 복사하는 방법을 정합니다. **실제 서버 업로드·읽기 확인은 아직 남아 있습니다.**
+
+1. [공공데이터포털의 전국등록공장현황](https://www.data.go.kr/data/15105482/fileData.do)에서 기준일 **2025-12-31** 원본을 받습니다. 2026-11-07 확인 당시 내려받는 파일은 ZIP이며, 압축 안에서 `한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv`만 꺼냅니다. 함께 들어 있는 데이터 설명 CSV와 혼동하지 않습니다. 로컬에서는 `data/sources/kicox-factory-csv/20251231/` 아래에 둡니다. 엑셀로 열어 다시 저장하거나 글자 저장 방식(CP949)을 바꾸지 않습니다.
+2. 원본은 **22,414,740바이트·자료 220,705행**입니다. 파일 지문(SHA-256)은 `7b939f05759887245f7dcb59a63aa40c83f87a5f0f187e46103c233d6c1453f3`입니다. PowerShell에서는 아래 명령으로 확인합니다. 값이 다르면 덮어쓰거나 그대로 수집에 쓰지 말고 PM에게 기준 파일을 확인합니다.
+
+   ```powershell
+   $sourceFile = 'data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv'
+   (Get-Item -LiteralPath $sourceFile).Length
+   Get-FileHash -LiteralPath $sourceFile -Algorithm SHA256
+   ```
+
+3. 서버에서는 DB와 같은 **영구 볼륨 `/data`** 안의 `/data/sources/kicox-factory-csv/20251231/`에 원본을 둡니다. 저장소 기준 `./data/`나 빌드 작업 폴더에만 두면 영구 볼륨의 파일이 아닐 수 있습니다. 서버에 배치한 뒤에도 크기·지문과 실행 계정의 파일 읽기 권한을 확인하고, 재배포 후 같은 파일이 남는지 확인합니다.
+4. 후보 찾기 설정이 반영된 버전(#221)에서 `ingestion.factoryCsvPath`가 **서버 볼륨 안 CSV의 전체 경로**를 가리키게 합니다. 이 설정 키와 예시 설정은 #221에서 반영하므로 먼저 임의로 추가하지 않습니다. 산단공 조회 키 `DATA_GO_KR_SERVICE_KEY`도 서버 환경변수에만 넣고, 화면의 `VITE_` 변수·이슈·저장소에는 넣지 않습니다.
+5. CSV와 DB는 Git에 올리지 않습니다. 다시 받을 수 있는 공개 CSV는 백업 대상에서 제외하고, DB 백업은 #214 절차를 따릅니다. 원본 배치 확인을 위해 전체 후보 찾기나 유료 AI 호출을 실행하지 않습니다.
 
 ## 3. 검사 (PR 전에 꼭)
 

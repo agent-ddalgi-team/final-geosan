@@ -213,3 +213,23 @@ def test_reads_every_row_without_premature_candidate_limit(tmp_path):
     path = write_csv(tmp_path, [ROW] * 75)
     result = read_factory_csv(path, regions=["충남"])
     assert len(result.rows) == result.raw_count == 75
+
+
+@pytest.mark.parametrize("column", [1, 2, 3, 4])
+def test_contact_like_public_field_is_reported_without_retaining_value(tmp_path, column, caplog):
+    unsafe = list(ROW)
+    unsafe[column] += " test@example.invalid"
+    result = read_factory_csv(write_csv(tmp_path, [ROW, unsafe]), regions=["충남"])
+    assert len(result.rows) == 1 and result.raw_count == 2
+    assert [(row.row_no, row.reason) for row in result.skipped_rows] == [
+        (3, "공개 본문에 연락처 형식이 있어 확인 필요")
+    ]
+    assert "test@example.invalid" not in repr(result) + caplog.text
+
+
+def test_address_number_ambiguous_with_phone_is_not_silently_accepted(tmp_path):
+    ambiguous = list(ROW)
+    ambiguous[4] = "충남 아산시 가상로 1 (가상리 1588-0000 공장)"
+    result = read_factory_csv(write_csv(tmp_path, [ambiguous]), regions=["충남"])
+    assert result.rows == () and len(result.skipped_rows) == 1
+    assert result.skipped_rows[0].row_no == 2

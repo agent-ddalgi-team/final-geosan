@@ -15,6 +15,7 @@ from pathlib import Path
 import typer
 
 from geosan.commands.check_config import run_check_config
+from geosan.commands.serving_marker import remove_marker, write_marker
 from geosan.storage.engine import database_path
 
 EXIT_OK = 0
@@ -82,6 +83,8 @@ def run_serve(port: int, host: str = HOST) -> int:
         return EXIT_RUN_FAILED
 
     typer.echo(f"서버 시작: http://{host}:{port} ({screen}, {db_path.name}). 중지는 Ctrl+C.")
+    # 켜져 있는 동안 DB 옆에 실행 중 표식을 둔다. restore가 이것을 보고 복원을 거부한다(#214).
+    write_marker(db_path, port, host)
     try:
         _run_server(port, host)
     except KeyboardInterrupt:
@@ -89,5 +92,7 @@ def run_serve(port: int, host: str = HOST) -> int:
     except Exception as exc:  # 어떤 실패든 숨기지 않고 종류만 보인다(본문·스택은 로그에만)
         typer.echo(f"오류: 서버가 멈췄습니다 ({type(exc).__name__}).")
         return EXIT_RUN_FAILED
+    finally:
+        remove_marker(db_path)
     typer.echo("서버를 종료했습니다.")
     return EXIT_OK

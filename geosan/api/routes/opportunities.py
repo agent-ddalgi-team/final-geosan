@@ -5,7 +5,7 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Path, Query, Request
@@ -20,7 +20,9 @@ from geosan.api.ingest_views import (
     latest_ingest,
 )
 from geosan.api.routes.records import (
+    bookmark_view,
     contact_counts,
+    latest_bookmark,
     latest_opinion,
     latest_outcome,
     opinion_view,
@@ -55,6 +57,7 @@ from geosan.api.schemas import (
 from geosan.capability.models import FieldEvidence, Process
 from geosan.capability.queries import get_process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
+from geosan.dashboard.queries import bookmarked_opp_ids
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
 from geosan.evaluation.models import (
     EvaluationBatch,
@@ -68,7 +71,7 @@ from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
-from geosan.records.models import Outcome
+from geosan.records.models import Outcome, ReviewOpinion
 from geosan.rules.codes import ProcessCode
 from geosan.storage.base import utcnow
 
@@ -77,6 +80,8 @@ list_filters: list[Callable] = []
 # 목록이 받는 `filter` 값. 값을 더하는 부품이 여기에 등록하고 처리 함수는 list_filters에 더한다.
 # 여기에 없는 값은 입력 오류다(거르기 함수가 있어도, 평가 자료가 없을 때도 같다).
 supported_filters: set[str] = set()
+# 목록의 `opinion` 조건(#356): 최신 검토 의견 세 값 + NONE(의견을 아직 고르지 않은 기회).
+OpinionFilter = Literal["WORTH_REVIEW", "NEED_CHECK", "NOT_TARGET", "NONE"]
 
 
 @dataclass
@@ -420,7 +425,7 @@ def _records(context: DetailContext) -> dict:
         "records": DetailRecords(
             contact_count=contact_counts(context.session, context.opportunity.opp_id),
             opinion=opinion_view(latest_opinion(context.session, context.opportunity.opp_id)),
-            bookmark=None,
+            bookmark=bookmark_view(latest_bookmark(context.session, context.opportunity.opp_id)),
             approval=None,
             outcome=outcome_view(latest_outcome(context.session, context.opportunity.opp_id)),
         )
@@ -509,6 +514,8 @@ def list_opportunities(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
     stage: OutcomeStatus | None = None,
+    bookmarked: bool | None = None,
+    opinion: OpinionFilter | None = None,
     process: ProcessCode | None = None,
     industry: str | None = None,
     region: str | None = None,
@@ -520,11 +527,7 @@ def list_opportunities(
     if industry is not None and industry not in runtime.app_settings.industries:
         raise InputError("설정 목록에 있는 산업군을 선택해 주세요.")
     params = request.query_params
-    if (
-        tab != "new"
-        or "bookmarked" in params
-        or ("filter" in params and params["filter"] not in supported_filters)
-    ):
+    if tab != "new" or ("filter" in params and params["filter"] not in supported_filters):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
@@ -575,6 +578,8 @@ def list_opportunities(
         .where(Process.dataset_kind == dataset_kind.value)
         .order_by(func.coalesce(imported_at, Process.created_at), Process.process_id)
     ).all()
+    # 목록 머리 선택란(#361): 기회가 0곳인 공정도 count 0으로 싣는다.
+    # 거산 공정 전부를 역량 파일 순서로 보낸다.
     process_counts = [
         ProcessCount(
             process_code=row.code,
@@ -582,7 +587,6 @@ def list_opportunities(
             count=sum(row.code in codes for codes in codes_by_opportunity.values()),
         )
         for row in processes
-        if any(row.code in codes for codes in codes_by_opportunity.values())
     ]
     companies = session.execute(
         select(Opportunity, Customer)
@@ -653,6 +657,21 @@ def list_opportunities(
             .scalar_subquery()
         )
         query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
+    if bookmarked:
+        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
+        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
+    if opinion is not None:
+        # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
+        current_opinion = (
+            select(ReviewOpinion.opinion)
+            .where(ReviewOpinion.opp_id == EvaluationRun.opp_id)
+            .order_by(ReviewOpinion.version.desc(), ReviewOpinion.recorded_at.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(
+            current_opinion.is_(None) if opinion == "NONE" else current_opinion == opinion
+        )
     for filter_function in list_filters:
         query = filter_function(session, query, request)
     total = session.scalar(select(func.count()).select_from(query.subquery()))
@@ -710,7 +729,7 @@ def list_opportunities(
                 next_action=current.next_action,
                 records=CardRecords(
                     opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),
-                    bookmark=None,
+                    bookmark=bookmark_view(latest_bookmark(session, opportunity.opp_id)),
                     outcome=CardOutcome(status=outcome.status) if outcome is not None else None,
                 ),
                 stage=None,

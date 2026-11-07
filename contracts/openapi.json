@@ -105,6 +105,95 @@
         "title": "Blocker",
         "type": "object"
       },
+      "BookmarkRecord": {
+        "description": "관심(찜) 표시의 최신 값(#356). 한 번도 켠 적이 없으면 records.bookmark가 null이다.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt",
+          "active"
+        ],
+        "title": "BookmarkRecord",
+        "type": "object"
+      },
+      "BookmarkRequest": {
+        "additionalProperties": false,
+        "description": "관심 켜고 끄기 요청(#356). 관심은 평가와 무관해 evalId를 받지 않는다.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedversion"
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "title": "BookmarkRequest",
+        "type": "object"
+      },
+      "BookmarkResponse": {
+        "description": "응답 data: RecordMeta + active. 이전 값은 meta.previousValue.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "staffKey",
+            "title": "Updatedby",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "updatedBy",
+          "updatedAt",
+          "active"
+        ],
+        "title": "BookmarkResponse",
+        "type": "object"
+      },
       "Brand": {
         "properties": {
           "brandName": {
@@ -163,15 +252,13 @@
           "bookmark": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/BookmarkRecord"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "U5",
-            "title": "Bookmark"
+            "description": "관심 표시의 최신 값. 한 번도 켠 적 없으면 null (#356)"
           },
           "opinion": {
             "anyOf": [
@@ -351,18 +438,38 @@
         "type": "object"
       },
       "DashboardCounts": {
-        "description": "누르면 /opportunities?stage=… (SCHEDULE_DUE만 ?filter=SCHEDULE_DUE).",
+        "description": "관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>\n(BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 여덟 칸의 합은 BOOKMARKED와 같다.",
         "properties": {
-          "INTERESTED": {
-            "title": "Interested",
+          "BOOKMARKED": {
+            "title": "Bookmarked",
+            "type": "integer"
+          },
+          "DONE": {
+            "title": "Done",
             "type": "integer"
           },
           "IN_CONTACT": {
             "title": "In Contact",
             "type": "integer"
           },
+          "NEED_CHECK": {
+            "title": "Need Check",
+            "type": "integer"
+          },
           "NOT_CONTACTED": {
             "title": "Not Contacted",
+            "type": "integer"
+          },
+          "NOT_TARGET": {
+            "title": "Not Target",
+            "type": "integer"
+          },
+          "NO_OPINION": {
+            "title": "No Opinion",
+            "type": "integer"
+          },
+          "ON_HOLD": {
+            "title": "On Hold",
             "type": "integer"
           },
           "QUOTE_SAMPLE": {
@@ -375,10 +482,15 @@
           }
         },
         "required": [
+          "BOOKMARKED",
+          "NO_OPINION",
+          "NEED_CHECK",
+          "NOT_TARGET",
           "NOT_CONTACTED",
-          "INTERESTED",
           "IN_CONTACT",
           "QUOTE_SAMPLE",
+          "ON_HOLD",
+          "DONE",
           "SCHEDULE_DUE"
         ],
         "title": "DashboardCounts",
@@ -804,14 +916,12 @@
           "bookmark": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/BookmarkRecord"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Bookmark"
+            ]
           },
           "contactCount": {
             "$ref": "#/components/schemas/ContactCount"
@@ -853,6 +963,21 @@
         "title": "DiscoverySource",
         "type": "string"
       },
+      "Envelope_BookmarkResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BookmarkResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[BookmarkResponse]",
+        "type": "object"
+      },
       "Envelope_ConfigUi_": {
         "properties": {
           "data": {
@@ -881,6 +1006,51 @@
           "data"
         ],
         "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
+      "Envelope_HomepageConfirmation_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HomepageConfirmation"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[HomepageConfirmation]",
+        "type": "object"
+      },
+      "Envelope_HomepageResearch_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HomepageResearch"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[HomepageResearch]",
+        "type": "object"
+      },
+      "Envelope_IngestAccepted_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IngestAccepted"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[IngestAccepted]",
         "type": "object"
       },
       "Envelope_MainPhoneConfirmResponse_": {
@@ -1125,6 +1295,97 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HomepageConfirmation": {
+        "properties": {
+          "homepageSource": {
+            "const": "STAFF",
+            "title": "Homepagesource",
+            "type": "string"
+          },
+          "homepageStatus": {
+            "const": "CONFIRMED",
+            "title": "Homepagestatus",
+            "type": "string"
+          },
+          "homepageUrl": {
+            "title": "Homepageurl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "homepageUrl",
+          "homepageStatus",
+          "homepageSource"
+        ],
+        "title": "HomepageConfirmation",
+        "type": "object"
+      },
+      "HomepageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmOnly": {
+            "default": false,
+            "title": "Confirmonly",
+            "type": "boolean"
+          },
+          "pastedText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pastedtext"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "uri",
+            "title": "Url"
+          }
+        },
+        "title": "HomepageRequest",
+        "type": "object"
+      },
+      "HomepageResearch": {
+        "properties": {
+          "evalId": {
+            "title": "Evalid",
+            "type": "string"
+          },
+          "evidenceCount": {
+            "minimum": 0.0,
+            "title": "Evidencecount",
+            "type": "integer"
+          },
+          "questionCount": {
+            "minimum": 0.0,
+            "title": "Questioncount",
+            "type": "integer"
+          },
+          "requirementCandidateCount": {
+            "minimum": 0.0,
+            "title": "Requirementcandidatecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "evidenceCount",
+          "requirementCandidateCount",
+          "questionCount",
+          "evalId"
+        ],
+        "title": "HomepageResearch",
+        "type": "object"
+      },
       "IndustryCount": {
         "properties": {
           "count": {
@@ -1141,6 +1402,38 @@
           "count"
         ],
         "title": "IndustryCount",
+        "type": "object"
+      },
+      "IngestAccepted": {
+        "description": "C1 POST /ingest 접수 시점의 회차 번호·건수. 찾기 완료를 뜻하지 않는다.",
+        "properties": {
+          "batchId": {
+            "title": "Batchid",
+            "type": "string"
+          },
+          "mergeCandidateCount": {
+            "minimum": 0.0,
+            "title": "Mergecandidatecount",
+            "type": "integer"
+          },
+          "newCount": {
+            "minimum": 0.0,
+            "title": "Newcount",
+            "type": "integer"
+          },
+          "skippedCount": {
+            "minimum": 0.0,
+            "title": "Skippedcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batchId",
+          "newCount",
+          "mergeCandidateCount",
+          "skippedCount"
+        ],
+        "title": "IngestAccepted",
         "type": "object"
       },
       "IngestCriteria": {
@@ -1176,6 +1469,57 @@
         "title": "IngestCriteria",
         "type": "object"
       },
+      "IngestRequest": {
+        "additionalProperties": false,
+        "description": "계약 C1 POST /ingest의 조건. 공정은 필수, 지역 생략은 설정 전체다.",
+        "properties": {
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "processCodes": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessCode"
+            },
+            "minItems": 1,
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "sourceId": {
+            "default": "kicox-factory-csv",
+            "minLength": 1,
+            "title": "Sourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processCodes"
+        ],
+        "title": "IngestRequest",
+        "type": "object"
+      },
       "LatestIngest": {
         "description": "마지막 찾기 회차 요약 (C1 `meta.latestIngest`, #221·#313·#323).\n\n목록 머리 \"훑어본 ○곳 · 판단 완료 ○곳 · 고른 ○곳 · 조사 ○/○\"에 쓴다. 칸에 기본값을 두지 않아\n창구가 회차 행의 값을 빠짐없이 채워야 한다(안 채운 건수가 0으로 보이지 않게).",
         "properties": {
@@ -1209,6 +1553,18 @@
               }
             ],
             "description": "조건 없이 돌린 회차는 null"
+          },
+          "failureReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)",
+            "title": "Failurereason"
           },
           "finishedAt": {
             "anyOf": [
@@ -1327,7 +1683,8 @@
           "webDroppedCount",
           "webFromCache",
           "webSkippedReason",
-          "complexListSkippedReason"
+          "complexListSkippedReason",
+          "failureReason"
         ],
         "title": "LatestIngest",
         "type": "object"
@@ -2336,7 +2693,6 @@
           "status": {
             "enum": [
               "NOT_EXECUTED",
-              "INTERESTED",
               "IN_PROGRESS",
               "SAMPLE_OR_REGISTRATION_APPROVED",
               "ON_HOLD",
@@ -2358,7 +2714,6 @@
           "status": {
             "enum": [
               "NOT_EXECUTED",
-              "INTERESTED",
               "IN_PROGRESS",
               "SAMPLE_OR_REGISTRATION_APPROVED",
               "ON_HOLD",
@@ -2395,7 +2750,6 @@
       "OutcomeStatus": {
         "enum": [
           "NOT_EXECUTED",
-          "INTERESTED",
           "IN_PROGRESS",
           "SAMPLE_OR_REGISTRATION_APPROVED",
           "ON_HOLD",
@@ -3098,7 +3452,8 @@
         "enum": [
           "QUESTION",
           "DATA_NOT_FOUND",
-          "DATA_INSUFFICIENT"
+          "DATA_INSUFFICIENT",
+          "OWN_PLATING_LINE_SUSPECTED"
         ],
         "title": "ReviewItemKind",
         "type": "string"
@@ -3449,7 +3804,7 @@
     },
     "/api/v1/dashboard": {
       "get": {
-        "description": "건수 5개·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
+        "description": "건수 10칸·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
         "operationId": "dashboard_api_v1_dashboard_get",
         "parameters": [
           {
@@ -3492,6 +3847,62 @@
           }
         },
         "summary": "Dashboard"
+      }
+    },
+    "/api/v1/ingest": {
+      "post": {
+        "operationId": "start_ingest_api_v1_ingest_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_IngestAccepted_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Ingest"
       }
     },
     "/api/v1/opportunities": {
@@ -3540,7 +3951,6 @@
                 {
                   "enum": [
                     "NOT_EXECUTED",
-                    "INTERESTED",
                     "IN_PROGRESS",
                     "SAMPLE_OR_REGISTRATION_APPROVED",
                     "ON_HOLD",
@@ -3554,6 +3964,44 @@
                 }
               ],
               "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "opinion",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "WORTH_REVIEW",
+                    "NEED_CHECK",
+                    "NOT_TARGET",
+                    "NONE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opinion"
             }
           },
           {
@@ -3618,6 +4066,22 @@
                 }
               ],
               "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "batch",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch"
             }
           }
         ],
@@ -3734,6 +4198,145 @@
           }
         },
         "summary": "Activity"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/bookmark": {
+      "put": {
+        "description": "관심 켜고 끄기(#356). 켜고 끌 때마다 새 행을 쌓고, 같은 값이면 새 행을 만들지 않는다.",
+        "operationId": "save_bookmark_api_v1_opportunities__oppId__bookmark_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookmarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_BookmarkResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Bookmark"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/homepage": {
+      "post": {
+        "operationId": "save_homepage_api_v1_opportunities__oppId__homepage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HomepageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Envelope_HomepageResearch_"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Envelope_HomepageConfirmation_"
+                    }
+                  ],
+                  "title": "Response Save Homepage Api V1 Opportunities  Oppid  Homepage Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Homepage"
       }
     },
     "/api/v1/opportunities/{oppId}/main-phone/confirm": {

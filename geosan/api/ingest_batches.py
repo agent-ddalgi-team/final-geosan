@@ -1,4 +1,4 @@
-"""#317 회차 예약 준비. 실제 찾기 함수·공통 응답 연결 전에는 API 경로에 등록하지 않는다."""
+"""#317 담당자·조건을 확인하고 실행 중 회차를 하나만 예약한다."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
