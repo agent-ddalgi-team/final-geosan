@@ -303,6 +303,8 @@ export interface DetailHeader {
   scoreDisplay: string;
   /** 회사 페이지 뿌리 주소(더하는 변경 #176). 없으면 null/없음. 화면은 http(s)일 때만 링크로 보인다. */
   homepageUrl?: string | null;
+  /** 표면처리를 직접 하는 회사일 수 있음(#319, #364). 참이면 머리 이름 옆에 꼬리표만 보인다(근거 줄은 카드·검토사항에서). 없거나 거짓이면 아무것도 안 보인다. */
+  ownPlatingLineSuspected?: boolean;
   /** 회사 주소(C1 header.address). 지도 링크를 만드는 데만 쓴다. */
   address?: string | null;
   isVirtual: boolean;

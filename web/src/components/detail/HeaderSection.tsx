@@ -18,6 +18,7 @@ import {
   homepageLinkLabel,
   labelFor,
   mapLinkLabels,
+  ownPlatingLine,
   purposeLabels,
   recordsArea,
 } from '../../labels/ko';
@@ -147,6 +148,11 @@ export default function HeaderSection({
         ) : null}
         {header.datasetKind === 'BROCHURE' ? (
           <StatusTag tone="ask">{cardRows.brochureTag}</StatusTag>
+        ) : null}
+        {header.ownPlatingLineSuspected === true ? (
+          <StatusTag tone="ask" data-testid="detail-own-plating-tag">
+            {ownPlatingLine.tag}
+          </StatusTag>
         ) : null}
         <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
       </div>
