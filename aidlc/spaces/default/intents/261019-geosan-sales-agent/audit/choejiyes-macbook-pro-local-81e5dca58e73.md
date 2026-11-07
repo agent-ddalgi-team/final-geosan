@@ -43539,3 +43539,200 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 19537a9c-7b11-414c-bcd7-0a3979b53648
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-11-06T14:49:34Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-06T14:52:45Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a216ec9e9365e708a
+**Message**: 오늘 올라온 PR을 검토해 합치는 일을 하고 있고, 지금은 AI-DLC 진행 기록을 올린 PR #372의 자동 검사를 기다리는 중입니다. 통과하면 합친 뒤 본 작업 폴더를 develop으로 되돌려 놓겠습니다.
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-06T14:54:53Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: af2a8848a969bd88e
+**Message**: 추천대로 해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T14:55:08Z
+**Event**: HUMAN_TURN
+**Session**: 19537a9c-7b11-414c-bcd7-0a3979b53648
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-06T14:58:25Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a338f6181290d8d4d
+**Message**: 열린 PR을 확인해 합치고 영업 후보 목록 화면을 고치는 작업을 해 왔고, 지금은 AI-DLC 진행 기록 PR #372의 파이썬 검사를 기다리는 중입니다. 통과하면 합치고 본 작업 폴더를 develop으로 돌려놓겠습니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-06T15:08:10Z
+**Event**: HUMAN_TURN
+**Session**: 19537a9c-7b11-414c-bcd7-0a3979b53648
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-06T15:11:54Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: aa8a6193b0c8b569e
+**Message**: 열린 PR을 확인해 합치는 일을 했고, #362·#365·#369·#367·#372를 develop에 합쳐 기록 파일까지 올린 상태입니다. 다음은 #354와 #355가 충돌을 풀어 다시 올라오면 검토하는 것입니다.
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-06T15:29:34Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a69e2a8f988b67bde
+**Message**: 거산 영업지원 프로그램의 목록 머리(공정·지역·산업 선택란, 검색, 정렬) 변경을 PR #365로 올려 자동 검사 중이고, 확인용 화면은 8002번에 떠 있습니다. 다음은 PM이 합치기와 검색 결과의 순위 번호 숨김 여부를 정해 주시는 것입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T01:26:35Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T01:30:00Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: afdc65ab5f17dac32
+**Message**: 둘 다 해줘, 통과하면 합치고 사례 파일도 넣어줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T01:30:01Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T01:30:44Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T01:31:10Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a5875dc7b6c3c9df5
+**Message**: 백업 만들고 사례 파일 18곳 다시 넣어줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T01:56:04Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T01:57:22Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T01:57:50Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T02:01:29Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a46d804175582962e
+**Message**: 통과하면 합치고 8001 다시 띄워줘
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T02:06:11Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ad5f1218cbf39a1b0
+**Message**: 거산 영업지원 1차 전달 준비 중이고, 지금은 관심 기능·목록 머리 변경을 마치고 빠졌던 고침 두 가지(대시보드 겹침, 순위 번호)를 PR #377로 올려 자동 검사를 기다리는 중입니다. 다음은 PM이 #377 합치기를 승인하면 합치고 8001번 서버를 다시 띄우는 것입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T02:07:48Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T02:10:58Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T02:13:54Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a8ca4459a189fa140
+**Message**: 어제 이전 글도 같이 고쳐줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T02:16:31Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T02:17:13Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T02:17:56Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: af9137e8d96f4ac6e
+**Message**: PR #354하고 #355 확인해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T02:22:47Z
+**Event**: HUMAN_TURN
+**Session**: eb77190e-5cdf-40c2-a0c1-10861abc47b2
+
+---
