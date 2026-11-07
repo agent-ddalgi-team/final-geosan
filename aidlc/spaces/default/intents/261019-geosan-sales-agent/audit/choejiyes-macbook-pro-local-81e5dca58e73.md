@@ -44561,3 +44561,277 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:40:40Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T11:44:41Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: aa1706f8a49719ec1
+**Message**: 오늘 목표는 거산 1차 전달 준비이고, 방금 PR 검토·합치기와 복원 버그 수정을 마친 뒤 AI-DLC 기록 PR #401의 CI를 기다리는 중입니다. 다음은 #220 전달 준비 안내서 초안 작성입니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T11:53:09Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T11:57:40Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a0d03ce36fb66aafe
+**Message**: 거산 1차 전달 준비를 진행 중이며, 오늘 PR 7개를 합치고 기록 파일 올리기와 8001번 서버 재시작까지 끝냈습니다. 다음은 #220 전달 준비 안내서 초안 작성입니다.
+
+---
+
+## Session Compacted
+**Timestamp**: 2026-11-07T12:48:28Z
+**Event**: SESSION_COMPACTED
+**Current Stage**: functional-design
+**State Validity**: valid
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T12:50:20Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a96455475816ab599
+**Message**: <analysis>\nChronological walk-through of the session after the prior summary:\n\n1. User "이어서 해줘" → checked PR #391 CI (all pass), merged with `--admin`, commented on #389, pulled develop, rebuilt web (
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T13:56:56Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:05:14Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a3ad83c2575bc07e9
+**Message**: 거산 1차 전달 준비 중이며, 기능 지도 수정 PR #408과 전달 안내서 초안 PR #410을 올려 자동 검사를 기다리고 있습니다. 검사가 끝나면 두 PR을 합치고 develop을 받겠습니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:08:38Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:09:04Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a75e24a7a905846da
+**Message**: 1번으로 해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:09:40Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:14:04Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:14:26Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:16:51Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:20:46Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ae99723f2fb1b1047
+**Message**: 거산 1차 전달 준비 중이며, 지금은 유동렬의 #405(산단공 조회 결과 7일 보관 방식)에 대한 추천안을 드리고 PM 결정을 기다리는 중입니다. 결정하시면 약속 줄·칸 추가 PR과 #405 답 댓글을 올립니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:23:30Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:24:35Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: aa91463f16a8404ec
+**Message**: 추천안대로 진행해, 모델·마이그레이션까지 네가 해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:30:34Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:30:55Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a3e35f95ae43cf422
+**Message**: 추천안대로 가고 모델·마이그레이션까지 해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:32:31Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:32:47Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a7bfd1fc8704787d6
+**Message**: 추천안대로 진행해, 모델·마이그레이션까지 네가 해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:33:58Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:34:22Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:34:50Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: ae6becea387e21c71
+**Message**: 30일로 하고 추천안대로 모델·마이그레이션까지 진행해줘
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:36:08Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:36:18Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: afe20a2bf280e3824
+**Message**: 그래 둘 다 진행해
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:36:35Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:36:48Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a3f084b41a44452b0
+**Message**: 그대로 진행해
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:39:17Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:39:33Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a7d6046c586d3c7a5
+**Message**: 진행해
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:41:14Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-07T14:41:59Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a3df1588592a422dd
+**Message**: 댓글 달아
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:44:55Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:46:44Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-07T14:48:26Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
