@@ -4,7 +4,7 @@
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,6 +30,9 @@ class ComplexCollectionResult:
     combined: CombinedFactoryRows
     lookups: tuple[tuple[str, ComplexLookupResult], ...]
     skipped_reason: str | None
+    batch_id: str | None = None
+    regions: tuple[str, ...] = ()
+    extra_names: tuple[str, ...] = ()
 
 
 def collect_complex_rows(
@@ -48,7 +51,9 @@ def collect_complex_rows(
         if any(row.region not in regions for row in file_rows):
             raise InputError("회차의 찾기 지역으로 추린 공장 파일 행만 넘겨 주세요.")
         if not config.enabled:
-            return ComplexCollectionResult(combined, (), "DISABLED")
+            return ComplexCollectionResult(
+                combined, (), "DISABLED", batch_id, regions, tuple(config.extra_names)
+            )
         extra_names = tuple(config.extra_names)
         names = tuple(
             dict.fromkeys(
@@ -59,7 +64,7 @@ def collect_complex_rows(
                 ]
             )
         )
-        lookups, api_rows, reason = [], (), None
+        lookups, api_rows, all_rows, reason = [], (), (), None
         for name in names:
             current_regions, current_config = complex_settings(batch_id, db_path)
             if (
@@ -73,12 +78,21 @@ def collect_complex_rows(
             result = fetch_complex_list(batch_id, name, db_path=db_path)
             lookups.append((name, result))
             try:
+                incoming = result.all_rows if result.all_rows is not None else result.rows
+                combine_factory_rows((), all_rows + incoming)
                 combined = combine_factory_rows(file_rows, api_rows + result.rows)
             except ComplexSourceError:
                 reason = "SOURCE_ERROR"
+                lookups[-1] = (
+                    name,
+                    replace(
+                        result, rows=(), all_rows=(), skipped_reason=reason, cached_fetch_id=None
+                    ),
+                )
                 break
             # 파일과 겹치는 행도 다음 조회와 관리번호 충돌을 검사할 수 있게 보존한다.
             api_rows += result.rows
+            all_rows += incoming
             if result.skipped_reason:
                 reason = result.skipped_reason
                 break
@@ -87,7 +101,9 @@ def collect_complex_rows(
             raise InputError("조회하는 동안 찾기 지역이나 추가 단지 설정이 바뀌었습니다.")
         if not current_config.enabled:
             reason = "DISABLED"
-        return ComplexCollectionResult(combined, tuple(lookups), reason)
+        return ComplexCollectionResult(
+            combined, tuple(lookups), reason, batch_id, regions, extra_names
+        )
     except SQLAlchemyError as error:
         raise storage_failure(
             error, operation="factory", message="단지 조회 설정을 읽지 못했습니다."
