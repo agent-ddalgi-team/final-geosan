@@ -96,13 +96,10 @@ def register_candidates(
         ):
             raise InputError("공개 공장 행에 연락처가 있어 등록하지 않았습니다.")
 
+    # 검수 전환은 거산 값의 활성 묶음만 바꾸고 고객의 원본 묶음은 보존한다(#212).
+    # 같은 실제 회사를 BROCHURE/COMPANY_CONFIRMED로 나누지 않는다. 가상 고객은 분리한다.
     customers = list(
-        session.scalars(
-            select(Customer).where(
-                Customer.dataset_kind == batch.dataset_kind,
-                Customer.is_virtual == batch.is_virtual,
-            )
-        )
+        session.scalars(select(Customer).where(Customer.is_virtual == batch.is_virtual))
     )
     common = dict(
         created_by=batch.requested_by,
