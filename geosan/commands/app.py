@@ -1,4 +1,4 @@
-"""`geosan` 명령줄 앱 (Typer). 계약 C8의 명령 9개 + `db merge-heads`.
+"""`geosan` 명령줄 앱 (Typer). 계약 C8의 운영 명령과 `db merge-heads`.
 
 명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, `export_contracts.py`, …)에
 있다. 앞으로 새 명령을 먼저 등록만 할 때는 `not_implemented_yet`으로 오류를 숨기지 않고
@@ -29,6 +29,34 @@ app = typer.Typer(
     add_completion=False,
     rich_markup_mode=None,
 )
+
+
+@app.command("ingest")
+def ingest(
+    source_id: str = typer.Argument(..., help="공개 공장현황 소스 kicox-factory-csv"),
+    process: list[str] = typer.Option(..., "--process", help="찾을 공정 코드, 여러 번 지정 가능"),
+    region: list[str] | None = typer.Option(None, "--region", help="찾을 지역, 생략하면 설정 전체"),
+    industry: list[str] | None = typer.Option(None, "--industry", help="찾을 산업, 생략하면 전체"),
+    maximum: int | None = typer.Option(None, "--max", help="등록 후보 최대 건수, 설정 상한 이내"),
+    rejudge: bool = typer.Option(
+        False, "--rejudge", help="저장한 판단을 무시하고 다시 판단, 비용 발생"
+    ),
+):
+    """공개 공장 자료에서 후보를 찾고 등록·재평가·신규 회사 조사를 이어서 실행합니다."""
+    from geosan.commands.ingest import run_ingest_command
+
+    raise typer.Exit(
+        code=run_ingest_command(
+            source_id,
+            processes=process,
+            regions=region or [],
+            industries=industry or [],
+            maximum=maximum,
+            rejudge=rejudge,
+        )
+    )
+
+
 db_app = typer.Typer(
     name="db",
     help="데이터베이스 마이그레이션 보조 명령.",
