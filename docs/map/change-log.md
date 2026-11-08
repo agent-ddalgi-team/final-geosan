@@ -290,3 +290,6 @@ timeline
 [#433]: https://github.com/agent-ddalgi-team/final-geosan/issues/433
 [#434]: https://github.com/agent-ddalgi-team/final-geosan/issues/434
 [#435]: https://github.com/agent-ddalgi-team/final-geosan/issues/435
+| 영업 단계·접촉·메모 기록과 순위의 연결 | 검토 의견만 "어느 평가를 보고 남겼나"가 남음. 접촉·단계·메모는 회사 번호만 | 접촉·단계·메모 저장 행에도 그때 본 평가 번호를 남김(화면 변화 없음). 낡은 번호여도 저장, 다른 회사 번호만 거부. 1차, 11/15 전 | 이 서비스의 핵심은 쓸수록 거산에 맞게 순위·근거가 맞춰지는 것. 그러려면 "몇 위를 보고 연락했고 결과가 어땠나"가 처음부터 남아야 하고, 늦게 넣으면 그 전 기록은 복구 불가. 기록이 순위에 돌아오는 되먹임은 2차([#268] [#269]) | ⏳ [#451] (약속) · [#450] (서버) |
+[#450]: https://github.com/agent-ddalgi-team/final-geosan/issues/450
+[#451]: https://github.com/agent-ddalgi-team/final-geosan/issues/451
