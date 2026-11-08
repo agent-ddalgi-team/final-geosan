@@ -163,8 +163,17 @@ export interface RecordsConfig {
   noteMaxLength: number;
 }
 
+/** 후보 가져오기 조건 칸의 선택지(C1 더하는 변경 #424). 서버가 아직 안 주면 없음. */
+export interface IngestOptionsConfig {
+  /** 활성 묶음 역량 파일의 공정 전부(기회 0건인 공정도 포함, 역량 파일 순서 그대로). */
+  processes: { code: string; name: string }[];
+  regions: string[];
+  industries: string[];
+}
+
 export interface ConfigUi {
   records?: RecordsConfig;
+  ingestOptions?: IngestOptionsConfig;
   staff: StaffEntry[];
   brand: Brand;
   classificationLabels: Record<string, string>;
