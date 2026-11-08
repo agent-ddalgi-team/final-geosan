@@ -1,9 +1,10 @@
 """대시보드 집계 (계약 C1 `GET /dashboard` v3, 이슈 #216·#356).
 
-읽는 곳은 기록 표(관심·단계·일정·메모·의견)와 최근 확정 평가의 대상 목록뿐이다.
+읽는 곳은 기록 표(관심·단계·일정·메모·의견)와 회사별 최신 확정 평가뿐이다.
 평가 점수·분류는 섞지 않는다.
 건수는 **관심으로 켜 둔 기회만** 센다(#356). 대상 범위는 추천 목록(`GET /opportunities`)과
-같다: 활성 거산 묶음의 최근 확정 전체 평가 안에 있는 기회. 칸 나누기는 `classify_bookmarked`
+같다: 활성 거산 묶음에 속하며 최신 확정 평가가 있는 기회(#465). 전체 평가는 기다리지 않는다.
+칸 나누기는 `classify_bookmarked`
 한 곳이 맡고 목록 거르기(`?filter=<칸>`)도 같은 함수를 써서, 칸의 숫자와 눌러 열리는 목록
 건수가 늘 같다.
 """
@@ -17,8 +18,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from geosan.evaluation.ledger import latest_full_batch
-from geosan.evaluation.models import EvaluationRun
+from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.records.models import Bookmark, Note, Outcome, ReviewOpinion
 
@@ -191,7 +191,7 @@ def classify_bookmarked(session: Session, population=None) -> dict[str, str]:
     """관심으로 켜 둔 기회마다 드는 칸 이름. 관심이 아닌 기회는 결과에 없다.
 
     대시보드 건수와 목록 `?filter=<칸>`이 이 함수 하나를 같이 쓴다. `population`을 주면
-    그 안의 기회만 본다(대시보드: 최근 확정 평가 대상). 안 주면 관심 기업 전체다(목록은
+    그 안의 기회만 본다(대시보드: 활성 묶음의 최신 확정 평가 대상). 안 주면 관심 기업 전체다(목록은
     자기 쪽에서 평가 대상과 AND 한다).
     """
     bookmarked = bookmarked_opp_ids(population)
@@ -360,13 +360,42 @@ def build_dashboard(
     now: datetime,
 ) -> DashboardResult:
     """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12)."""
-    batch = latest_full_batch(session, dataset_kind=dataset_kind)
-    if batch is None:
-        zero = _counts({}, 0)
-        return DashboardResult(
-            Dashboard(counts=zero, schedule=[], recent_activity=[], as_of=now), False
+    # latest_confirmed_evaluation과 같은 순서로 최신 확정 평가를 먼저 고른다.
+    # 묶음 조건을 먼저 걸면 다른 묶음으로 바뀐 회사의 낡은 평가가 다시 잡힐 수 있다.
+    confirmed = (
+        select(
+            EvaluationRun.opp_id,
+            EvaluationRun.dataset_kind.label("run_dataset_kind"),
+            EvaluationBatch.dataset_kind.label("batch_dataset_kind"),
+            func.row_number()
+            .over(
+                partition_by=EvaluationRun.opp_id,
+                order_by=(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc()),
+            )
+            .label("position"),
         )
-    population = select(EvaluationRun.opp_id).where(EvaluationRun.batch_id == batch.batch_id)
+        .join(EvaluationBatch, EvaluationRun.batch_id == EvaluationBatch.batch_id)
+        .where(
+            EvaluationRun.run_status == "CONFIRMED",
+            EvaluationBatch.status == "CONFIRMED",
+            EvaluationRun.opp_id.in_(bookmarked_opp_ids()),
+        )
+        .subquery()
+    )
+    population = (
+        select(Opportunity.opp_id)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .join(confirmed, confirmed.c.opp_id == Opportunity.opp_id)
+        .where(
+            confirmed.c.position == 1,
+            confirmed.c.run_dataset_kind == dataset_kind,
+            confirmed.c.batch_dataset_kind == dataset_kind,
+            # 회사의 원본 자료 표시는 검수 전환 뒤에도 BROCHURE로 남을 수 있다.
+            # 현재 기준은 평가 묶음으로 고르고, 가상 회사와 실제 회사는 분리한다.
+            Opportunity.is_virtual.is_(dataset_kind == "VIRTUAL_REVIEWED"),
+            Customer.is_virtual.is_(dataset_kind == "VIRTUAL_REVIEWED"),
+        )
+    )
     # 관심으로 켜 둔 기회만 센다. 관심이 아닌 기회는 어느 칸에도 들지 않는다(#356).
     classified = classify_bookmarked(session, population)
     schedule, due_count = _schedule(session, population, today)
