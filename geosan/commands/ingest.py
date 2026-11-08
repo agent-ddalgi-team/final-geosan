@@ -4,7 +4,6 @@ import typer
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from geosan.api.ingest_conditions import IngestRequest, validate_ingest_conditions
 from geosan.capability.models import Process
 from geosan.config.errors import AppError, InputError, RunFailedError, exit_code_for
 from geosan.config.registry import load_runtime_config
@@ -14,6 +13,7 @@ from geosan.storage.base import new_id, utcnow
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_ingest import run_ingest
+from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_conditions
 
 
 def reserve_command_batch(source_id, processes, regions, industries, maximum, rejudge):

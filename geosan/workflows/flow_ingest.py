@@ -9,10 +9,9 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from geosan.api.ingest_conditions import IngestRequest, validate_ingest_conditions
-from geosan.capability.models import Process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.config.registry import load_runtime_config
+from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.opportunity.candidate_judgments import select_candidates
 from geosan.opportunity.factory_csv import SOURCE_ID
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
@@ -20,6 +19,7 @@ from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
+from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_conditions
 from geosan.workflows.ingest_sources import FactoryFileDateError, store_dated_factory_csv
 from geosan.workflows.research import research_one
 
@@ -102,9 +102,7 @@ def _context(batch):
             "industries",
         }:
             raise InputError("회차에 저장된 찾기 조건을 확인해 주세요.")
-        codes = session.scalars(
-            select(Process.code).where(Process.dataset_kind == batch.dataset_kind)
-        ).all()
+        codes = {row.code for row in _capability_snapshot(session, batch.dataset_kind).processes}
         body = IngestRequest.model_validate(
             {"sourceId": batch.source_id, "max": batch.max_candidates, **batch.criteria}
         )
