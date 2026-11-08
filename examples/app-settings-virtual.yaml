@@ -26,6 +26,11 @@ ingestion:
   regions: ["충남", "대전", "세종"]
   productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
   maxCandidates: 50
+  aiPick:
+    enabled: false
+    rowsPerCall: 100
+    promptFile: examples/prompts/candidate-pick.md
+    surfaceTreatmentIndustryNames: []  # 업종명 규칙의 값은 PM이 정한 뒤 넣는다.
   complexList:
     _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 15일(#405, 처음 7일 #393). 실제 조회·보관 실행은 후속 연결."
     enabled: false

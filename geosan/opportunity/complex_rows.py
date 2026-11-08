@@ -139,7 +139,7 @@ def _public_row(item, regions):
     if not company or not address:
         return "회사명 또는 공장주소가 비어 있음"
     region = _region_name(address.split()[0].rstrip(","))
-    if region not in regions:
+    if regions is not None and region not in regions:
         return None
     product = _text(item, "mainProductCn", required=False)
     complex_name = _text(item, "irsttNm", required=False)
@@ -170,6 +170,7 @@ def parse_complex_page(
     regions: Sequence[str],
     expected_page: int,
     page_size: int,
+    all_regions: bool = False,
 ) -> ComplexPage:
     """요청한 한 쪽을 검사한다. 실패·잘못된 페이지·빠진 행을 빈 성공으로 바꾸지 않는다.
 
@@ -190,7 +191,9 @@ def parse_complex_page(
         raise InputError("조회 한 페이지의 건수는 1~1000 사이여야 합니다.")
     if not isinstance(xml, (bytes, str)):
         raise InputError("조회 응답은 XML 바이트 또는 문자열이어야 합니다.")
-    selected = {_region_name(region) for region in regions}
+    if type(all_regions) is not bool:
+        raise InputError("전체 지역 읽기 여부를 확인해 주세요.")
+    selected = None if all_regions else {_region_name(region) for region in regions}
     try:
         root = ET.fromstring(xml, parser=ET.XMLParser(target=_NoDtd()))
     except (ET.ParseError, ValueError, LookupError):
