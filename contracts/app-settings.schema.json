@@ -73,11 +73,11 @@
         "complexList": {
           "type": "object",
           "additionalProperties": false,
-          "description": "단지 입주 목록 조회 설정. 기본값은 2026-11-07 PM 결정(#393·#394).",
+          "description": "단지 입주 목록 조회 설정. 기본값은 PM 결정(#393·#394, cacheDays 15는 2026-11-08 #405).",
           "properties": {
             "_설명": { "type": "string" },
             "enabled": { "type": "boolean", "default": false },
-            "cacheDays": { "type": "integer", "minimum": 1, "default": 7 },
+            "cacheDays": { "type": "integer", "minimum": 1, "default": 15 },
             "extraNames": { "type": "array", "items": { "type": "string" }, "default": [] }
           }
         }

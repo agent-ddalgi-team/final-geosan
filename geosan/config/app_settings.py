@@ -37,7 +37,7 @@ class ComplexListSettings(FileModel):
     """C7: 단지 조회 설정. PM 승인 기본값(#393·#394), 실제 조회 연결은 U3에서 한다."""
 
     enabled: bool = Field(default=False, strict=True)
-    cache_days: int = Field(default=7, ge=1, strict=True)
+    cache_days: int = Field(default=15, ge=1, strict=True)
     extra_names: list[str] = Field(default_factory=list)
 
 
