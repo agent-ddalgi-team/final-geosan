@@ -144,6 +144,7 @@ def build_snapshot(
     base_date: date,
     dataset_kind: str,
     rule_config: RuleConfig,
+    allow_empty_inputs: bool = False,
 ) -> Snapshot | None:
     opportunity = session.get(Opportunity, opp_id)
     if opportunity is None:
@@ -154,7 +155,8 @@ def build_snapshot(
     inputs = current_item_inputs(session, opp_id)
     expected = {item.item_code for item in rule_config.new_profile_items}
     if len(inputs) != len(expected) or {item.item_code for item in inputs} != expected:
-        return None
+        if inputs or not allow_empty_inputs:
+            return None
 
     capability = _capability_snapshot(session, dataset_kind)
     processes = {row.code: row for row in capability.processes}
@@ -191,7 +193,8 @@ def build_snapshot(
         **{row.record_id: row.review_status for row in capability.delivery_records},
     }
     operational_ready = (
-        refs_complete
+        bool(inputs)
+        and refs_complete
         and all(reviews[key] == "REVIEWED" for item in items for key in item.used_capability_ids)
         and all(
             row.security_grade in {"PUBLIC", "EXTERNAL_AI_OK", "INTERNAL_ONLY"}

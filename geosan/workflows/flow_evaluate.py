@@ -34,6 +34,24 @@ from geosan.workflows.models import FlowResult
 logger = logging.getLogger(__name__)
 
 
+def _not_evaluated_output(snapshot: Snapshot, customer: Customer) -> EvaluationOutput:
+    """PM #440: 실제 입력 없는 수집 후보는 점수 없이 평가 전 기록만 남긴다."""
+    output = EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
+    if output.totals.S is not None or any(row.score is not None for row in output.items):
+        raise RunFailedError("점수 입력 전 후보의 평가 결과를 확인해 주세요.")
+    # 입력 행은 만들지 않는다. 누락 항목의 미확보 판정·합계는 기존 엔진 결과 그대로다.
+    output.question_candidates = []
+    output.classification_code = ClassificationCode.NOT_EVALUATED
+    output.score_state = "NONE"
+    output.sort_key.group = SortGroup.OTHER
+    output.display.reason = customer.pick_reason or ""
+    output.display.blocker_text = "점수 입력 전 · 거래 관계·필수조건 확인 전"
+    output.display.blocks_approval = True
+    output.display.score_display = "--"
+    output.display.next_action = "AI 조사 결과 확인 뒤 점수 입력"
+    return output
+
+
 def today_in_seoul() -> date:
     return datetime.now(timezone(timedelta(hours=9), name="Asia/Seoul")).date()
 
@@ -63,13 +81,21 @@ def code_version() -> str:
 def validate_output(snapshot: Snapshot, output: EvaluationOutput) -> None:
     source = snapshot.evaluation_input
     totals = output.totals
+    expected_items = source.item_inputs
+    if not expected_items and output.classification_code == ClassificationCode.NOT_EVALUATED:
+        expected_items = source.rule_config.new_profile_items
+        if (
+            output.score_state != "NONE"
+            or totals.S is not None
+            or any(row.state != "UNAVAILABLE" or row.score is not None for row in output.items)
+        ):
+            raise RunFailedError("점수 입력 전 후보의 항목 판정을 확인해 주세요.")
     valid = (
         0 <= totals.E <= totals.P <= 100
         and totals.E <= totals.R <= 100
         and totals.E == totals.F + totals.T
-        and len(output.items) == len(source.item_inputs)
-        and {item.item_code for item in output.items}
-        == {item.item_code for item in source.item_inputs}
+        and len(output.items) == len(expected_items)
+        and {item.item_code for item in output.items} == {item.item_code for item in expected_items}
         and output.sort_key.opp_id == source.opportunity.opp_id
         and {row.req_id for row in output.requirement_checks}
         == {row.req_id for row in source.requirements}
@@ -262,24 +288,34 @@ def _run_evaluation(
             }
             computed = []
             for opportunity in targets:
+                customer = session.get(Customer, opportunity.customer_id)
                 snapshot = build_snapshot(
                     session,
                     opportunity.opp_id,
                     base_date=batch.base_date,
                     dataset_kind=batch.dataset_kind,
                     rule_config=runtime.rule_config,
+                    allow_empty_inputs=bool(customer and customer.ingest_batch_id is not None),
                 )
                 if snapshot is None:
                     skipped.append(f"{opportunity.opp_id}: 항목 입력 없음")
                     continue
-                output = EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
+                output = (
+                    _not_evaluated_output(snapshot, customer)
+                    if not snapshot.evaluation_input.item_inputs
+                    else EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
+                )
                 validate_output(snapshot, output)
                 reset_reason = readiness_reset_reason(session, snapshot, output)
                 if reset_reason:
                     snapshot.evaluation_input.readiness_check = None
                     snapshot.document["readinessCheck"] = None
                     snapshot.snapshot_hash = canonical_hash(snapshot.document)
-                    output = EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
+                    output = (
+                        _not_evaluated_output(snapshot, customer)
+                        if not snapshot.evaluation_input.item_inputs
+                        else EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
+                    )
                     validate_output(snapshot, output)
                 computed.append((snapshot, output, reset_reason))
             ranks = _population_ranks(

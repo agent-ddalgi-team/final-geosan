@@ -54,6 +54,7 @@ class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
     max_candidates: int = Field(ge=1)
+    factory_csv_path: str = ""
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
     ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
 

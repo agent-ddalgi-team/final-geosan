@@ -26,6 +26,8 @@ ingestion:
   regions: ["충남", "대전", "세종"]
   productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
   maxCandidates: 50
+  # 기준일 YYYYMMDD가 파일명 끝 또는 바로 위 폴더에 있어야 한다. CSV는 Git에 올리지 않는다.
+  factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
   aiPick:
     enabled: false
     rowsPerCall: 100

@@ -26,6 +26,8 @@ ingestion:
   regions: ["충남", "대전", "세종"]
   productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
   maxCandidates: 50
+  # 가상 검사에서도 실제 파일 경로를 지정한다. 외부 AI는 기본으로 꺼져 있다.
+  factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
   aiPick:
     enabled: false
     rowsPerCall: 100

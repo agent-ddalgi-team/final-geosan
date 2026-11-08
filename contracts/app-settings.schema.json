@@ -70,6 +70,7 @@
         "regions": { "type": "array", "items": { "type": "string" } },
         "productKeywords": { "type": "array", "items": { "type": "string" } },
         "maxCandidates": { "type": "integer", "minimum": 1 },
+        "factoryCsvPath": { "type": "string", "default": "", "description": "공장현황 CSV 경로. 비어 있으면 후보 찾기를 실행할 수 없다. 파일명 또는 바로 위 폴더에 기준일 YYYYMMDD가 있어야 한다(PM #427)." },
         "aiPick": {
           "type": "object",
           "additionalProperties": false,
