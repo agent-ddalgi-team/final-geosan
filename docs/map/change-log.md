@@ -59,6 +59,7 @@ timeline
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
 |---|---|---|---|---|
+| 상세 기록 구역의 세 칸(기록 남기기·영업 단계·다음 일정) | 같은 모양으로 나란히, 순서 안내 없음. 접촉 기록에 앞날도 넣을 수 있음 | 머리에 "① 한 일 → ② 지금 단계 → ③ 다음 할 일" 안내. 접촉 날짜는 오늘까지(뒤면 저장 거부). 접촉을 적은 뒤 단계가 미접촉이면 "접촉으로 바꿀까요?" 한 번 묻기 | PM도 접촉 기록의 미래 날짜를 대시보드 일정으로 오해함. 세 칸 합치기는 대시보드 계산·기획서의 세 기록 분리까지 건드려 2차 이후 | ✅ [#432] · [#433] [#434] [#435] |
 | 산단공 단지 조회 결과를 다시 쓰는 기간 | 7일(11/7 결정) | 15일. 설정값이라 코드는 그대로 | 공장 등록은 월 단위로 바뀌어 7일은 뜻이 작고, 2차의 한 달 자동 수집보다는 짧아야 해서. 호출 비용 차이는 거의 없음 | ✅ [#405] |
 | 단지 조회 결과를 다시 쓸 때 "어느 조회가 어떤 공장을 받았나"를 찾는 법 | 공장 행의 "받은 시각"으로 찾음 | 조회 기록에 받은 행 번호 목록 칸을 두고 그 목록으로 찾음. 받은 행은 지역과 상관없이 전부 저장하고 쓸 때 거름. 다 받은 조회만 다시 씀 | 다른 단지명 조회가 같은 공장을 또 받으면 시각이 덮여 앞 조회의 결과가 빠지는데, 프로그램은 그걸 완전한 결과로 믿게 됨 | ✅ [#405] · [#404] |
 
@@ -285,3 +286,7 @@ timeline
 [#348]: https://github.com/agent-ddalgi-team/final-geosan/issues/348
 [#405]: https://github.com/agent-ddalgi-team/final-geosan/issues/405
 [#404]: https://github.com/agent-ddalgi-team/final-geosan/issues/404
+[#432]: https://github.com/agent-ddalgi-team/final-geosan/issues/432
+[#433]: https://github.com/agent-ddalgi-team/final-geosan/issues/433
+[#434]: https://github.com/agent-ddalgi-team/final-geosan/issues/434
+[#435]: https://github.com/agent-ddalgi-team/final-geosan/issues/435
