@@ -76,7 +76,39 @@ export interface LatestIngest {
   researchDoneCount?: number | null;
   /** 이름이 비슷해 "확인 필요"로 남은 수. */
   mergeCandidateCount?: number | null;
+  // ---- 아래는 더하는 칸(#442, PM 결정 2026-11-08). 서버가 아직 안 주면 없다. ----
+  sourceId?: string;
+  /** 찾기 조건. 조건 없이 돌린 회차는 null. */
+  criteria?: IngestCriteria | null;
+  /** 목록에 새로 들어온 회사 수. */
+  newCount?: number | null;
+  /** AI 한도에 걸려 판단이 남은 수. */
+  judgePendingCount?: number | null;
+  /** 찾기가 실패했을 때의 사유 한 줄(서버가 준 쉬운 말). 실패가 아니면 null. */
+  failureReason?: string | null;
+  webSearchUsed?: boolean;
+  webCandidateCount?: number | null;
+  /** 채용·유료 사이트 결과, 출처 없음, 홈페이지 미확인으로 버린 수. */
+  webDroppedCount?: number | null;
+  webFromCache?: boolean;
+  /** 웹 검색을 건너뛴 이유 코드. 건너뛰지 않았으면 null. */
+  webSkippedReason?: WebSkippedReason | null;
+  /** 단지 목록 조회를 건너뛴 이유 코드. 건너뛰지 않았으면 null. */
+  complexListSkippedReason?: ComplexListSkippedReason | null;
 }
+
+/** 찾기 회차의 조건(계약 C1 `POST /ingest` 본문과 같은 이름). */
+export interface IngestCriteria {
+  processCodes: string[];
+  regions: string[];
+  industries: string[];
+}
+
+/** 웹 검색을 건너뛴 이유(계약 C1): 하루 한도 / 꺼 둠. */
+export type WebSkippedReason = 'DAILY_LIMIT' | 'DISABLED';
+
+/** 단지 목록 조회를 건너뛴 이유(계약 C1): 하루 한도 / 소스 읽기 실패 / 꺼 둠. */
+export type ComplexListSkippedReason = 'DAILY_LIMIT' | 'SOURCE_ERROR' | 'DISABLED';
 
 /**
  * 후보 가져오기 요청(계약 C1 `POST /ingest` 본문, #316). 공정은 1개 이상 필수이고,

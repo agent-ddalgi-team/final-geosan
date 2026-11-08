@@ -422,6 +422,17 @@ export const candidateSearch = {
   summaryTitle: '후보 가져오기',
   running: '지금 가져오는 중입니다',
   failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
+  /**
+   * 한도 등으로 건너뛴 일(#442). 문장은 약속 C1에 정해진 그대로다(웹 검색 #313, 단지 조회 #323).
+   * 대응표에 없는 코드(DISABLED처럼 꺼 둔 것, 모르는 코드)는 안내하지 않는다.
+   */
+  webSkipped: {
+    DAILY_LIMIT: '오늘 웹 검색 한도 도달',
+  },
+  complexListSkipped: {
+    DAILY_LIMIT: '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
+    SOURCE_ERROR: '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
+  },
   scanned: (n: number) => `훑어본 회사 ${n.toLocaleString('ko-KR')}곳`,
   picked: (n: number) => `고른 회사 ${n.toLocaleString('ko-KR')}곳`,
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
