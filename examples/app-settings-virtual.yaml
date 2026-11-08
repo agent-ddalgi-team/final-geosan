@@ -27,9 +27,9 @@ ingestion:
   productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
   maxCandidates: 50
   complexList:
-    _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 7일(#393). 실제 조회·보관 실행은 후속 연결."
+    _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 15일(#405, 처음 7일 #393). 실제 조회·보관 실행은 후속 연결."
     enabled: false
-    cacheDays: 7
+    cacheDays: 15
     extraNames: []
 
 # 외부 LLM (U2에서 쓴다). U1은 NONE이며 외부 호출 코드가 없다.

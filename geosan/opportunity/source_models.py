@@ -94,7 +94,7 @@ class CandidateJudgment(CommonColumns, Base):
 
 
 class ComplexFetch(CommonColumns, Base):
-    """단지별 입주 목록을 언제 받았나. expires_at까지는 다시 부르지 않는다(C5, #323)."""
+    """단지별 입주 목록을 언제 받았나. expires_at까지는 다시 부르지 않는다(C5, #323·#405)."""
 
     __tablename__ = "src_complex_fetch"
 
@@ -104,6 +104,11 @@ class ComplexFetch(CommonColumns, Base):
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
+    # 이 조회가 받은 공장 행(src_factory_row.row_id) 목록(#405, PM 결정 2026-11-08).
+    # 같은 공장을 다른 조회가 또 받아도 각 조회의 목록은 그대로 남는다. 다시 쓸 때는
+    # status OK이고 expires_at 전인 조회의 이 목록만 읽는다.
+    # row_count > 0인데 목록이 비어 있는 옛 기록은 다시 쓰지 않는다.
+    row_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class WebSearchRun(CommonColumns, Base):

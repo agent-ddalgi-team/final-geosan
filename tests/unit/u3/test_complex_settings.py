@@ -1,4 +1,4 @@
-"""#393: 예전 설정 호환·PM 기본값·운영자가 고친 값의 DB 왕복."""
+"""#393·#405: 예전 설정 호환·PM 기본값(보관 15일)·운영자가 고친 값의 DB 왕복."""
 
 import json
 from pathlib import Path
@@ -21,12 +21,12 @@ def test_old_settings_and_both_examples_use_pm_defaults(app_settings_path):
         settings = load_app_settings(filename)
         assert settings.ingestion.complex_list.model_dump(by_alias=True) == {
             "enabled": False,
-            "cacheDays": 7,
+            "cacheDays": 15,
             "extraNames": [],
         }
         old = settings.model_dump(by_alias=True)
         del old["ingestion"]["complexList"]
-        assert AppSettings.model_validate(old).ingestion.complex_list.cache_days == 7
+        assert AppSettings.model_validate(old).ingestion.complex_list.cache_days == 15
 
 
 def test_config_file_and_database_preserve_operator_values(tmp_db, tmp_path, app_settings_path):
