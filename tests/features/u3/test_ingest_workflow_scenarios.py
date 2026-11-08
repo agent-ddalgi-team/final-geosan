@@ -1,9 +1,11 @@
 """S02: 가짜 후보 부품과 실제 SQLite·명령으로 회차 두 번을 이어 실행한다."""
 
+from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from sqlalchemy import select
 from typer.testing import CliRunner
 
+from geosan.api.app import create_app
 from geosan.commands.app import app
 from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.source_models import SourceFactoryRow
@@ -65,3 +67,26 @@ def failed_without_writing_or_judging(flow_context, date_result):
         rows = session.scalars(select(IngestBatch)).all()
         assert len(rows) == 1 and rows[0].status == "FAILED"
         assert session.scalar(select(SourceFactoryRow)) is None
+
+
+@when("운영자가 아연도금 후보를 한 번 찾는다", target_fixture="pending_result")
+def find_once(flow_context):
+    return CliRunner().invoke(
+        app, ["ingest", "kicox-factory-csv", "--process", "ZINC_PLATING", "--region", "충남"]
+    )
+
+
+@then("새 후보의 평가 전 카드와 상세가 실제 평가 번호로 열린다")
+def pending_card_and_detail(pending_result):
+    assert pending_result.exit_code == 0, pending_result.output
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/opportunities")
+        assert response.status_code == 200
+        cards = response.json()["data"]
+        assert len(cards) == 1
+        card = cards[0]
+        assert card["evalId"] and card["scoreState"] == "NONE"
+        assert card["classificationCode"] == "NOT_EVALUATED" and card["scoreDisplay"] == "--"
+        detail = client.get(f"/api/v1/opportunities/{card['oppId']}")
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["data"]["evalId"] == card["evalId"]
