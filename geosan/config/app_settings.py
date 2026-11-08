@@ -41,11 +41,21 @@ class ComplexListSettings(FileModel):
     extra_names: list[str] = Field(default_factory=list)
 
 
+class AiPickSettings(FileModel):
+    """C7: #425·#430 PM 승인. 100행 묶음은 pick-v1 표본 계획의 기본값이다."""
+
+    enabled: bool = Field(default=False, strict=True)
+    rows_per_call: int = Field(default=100, ge=1, strict=True)
+    prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
+    surface_treatment_industry_names: list[str] = Field(default_factory=list)
+
+
 class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
     max_candidates: int = Field(ge=1)
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
+    ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
 
 
 class LlmSettings(FileModel):

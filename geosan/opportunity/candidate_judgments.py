@@ -17,6 +17,24 @@ from geosan.config.errors import AppError, InputError
 from geosan.config.schemas import FileModel
 from geosan.evidence.contacts import scrub_contacts
 
+CANDIDATE_INPUT_FIELDS = (
+    "rowId",
+    "companyName",
+    "complexName",
+    "product",
+    "industryName",
+    "address",
+)
+
+
+def candidate_product_hash(product: str, industry_name: str | None) -> str:
+    """판단 메모의 지문은 생산품과 업종명을 함께 묶는다(#425 PM 결정).
+
+    원본 표의 생산품 무결성 해시와 구별한다. 원본·조회 캐시의 기존 행 번호는 바꾸지 않는다.
+    """
+    value = json.dumps([product, industry_name], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
 
 class CandidateJudgment(FileModel):
     """현재 병합된 C9의 결과. 제조업 여부는 문자열이나 숫자로 대신 받지 않는다."""
@@ -114,6 +132,7 @@ def parse_candidate_judgments(
                 or len(set(judgment.industries)) != len(judgment.industries)
                 or not set(judgment.process_codes) <= allowed_processes
                 or not set(judgment.industries) <= allowed_industries
+                or len(judgment.industries) > 3
             ):
                 raise ValueError("AI 판단이 허용 목록과 맞지 않습니다.")
         return tuple(by_id[row_id] for row_id in row_ids)
@@ -154,11 +173,12 @@ def candidate_criteria_version(
     process_catalog: Mapping[str, str],
     industry_catalog: Sequence[str],
     prompt: str,
+    input_fields: Sequence[str] = CANDIDATE_INPUT_FIELDS,
 ) -> str:
-    """판단 재사용용 기준 지문(C6). 생산품 해시는 FactoryRow.product_hash를 따로 비교한다.
+    """판단 재사용용 기준 지문(C6). 생산품·업종명의 판단 지문은 별도로 비교한다.
 
     목록 순서만 바뀐 것은 같은 기준이다. 전체 공정 코드·이름, 전체 산업 목록 또는
-    실제 사용하는 지시문이 바뀌면 다른 기준이다. 선택 공정·산업은 판단 뒤 거르기에만
+    실제 사용하는 지시문·입력 칸 목록이 바뀌면 다른 기준이다. 선택 공정·산업은 판단 뒤 거르기에만
     쓰므로 기준에 넣지 않는다(#221 PM 결정). 지역은 AI 판단 전 주소 필터로 처리한다.
     이 값만으로 DB의 저장된 판단이 최신이라고 확정하거나 다시 판단 요청을 생략하지 않는다.
     """
@@ -170,6 +190,7 @@ def candidate_criteria_version(
             "processCatalog": dict(process_catalog),
             "industryCatalog": sorted(allowed_industries),
             "prompt": prompt,
+            "inputFields": list(_labels(input_fields, required=True)),
         },
         sort_keys=True,
         ensure_ascii=False,

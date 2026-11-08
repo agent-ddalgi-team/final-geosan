@@ -70,6 +70,18 @@
         "regions": { "type": "array", "items": { "type": "string" } },
         "productKeywords": { "type": "array", "items": { "type": "string" } },
         "maxCandidates": { "type": "integer", "minimum": 1 },
+        "aiPick": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "후보 판단 설정. PM 승인 #425·#430, 지시문 pick-v1.",
+          "properties": {
+            "_설명": { "type": "string" },
+            "enabled": { "type": "boolean", "default": false },
+            "rowsPerCall": { "type": "integer", "minimum": 1, "default": 100 },
+            "promptFile": { "type": "string", "minLength": 1, "default": "examples/prompts/candidate-pick.md" },
+            "surfaceTreatmentIndustryNames": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        },
         "complexList": {
           "type": "object",
           "additionalProperties": false,
