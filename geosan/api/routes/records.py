@@ -68,6 +68,25 @@ LOST_REASON_LABELS = {
 }
 
 
+def validate_viewed_evaluation(session: Session, opp_id: str, eval_id: str | None) -> None:
+    """본 평가 번호를 검사한다(C6, #450). 낡은 번호는 허용하고 없으면 비워 둔다."""
+    if eval_id is None:
+        return
+    evaluation = session.get(EvaluationRun, eval_id)
+    batch = session.get(EvaluationBatch, evaluation.batch_id) if evaluation else None
+    if (
+        evaluation is None
+        or evaluation.opp_id != opp_id
+        or evaluation.run_status not in {"CONFIRMED", "SUPERSEDED"}
+        or batch is None
+        or batch.status != "CONFIRMED"
+    ):
+        raise InputError(
+            "이 기회에서 본 평가 ID를 넣어 주세요.",
+            fields=[FieldError(path="evalId", message="기회와 평가 연결을 확인해 주세요.")],
+        )
+
+
 @router.post("/opportunities/{oppId}/relation", response_model=RelationEnvelope)
 def save_relation(
     opp_id: Annotated[str, Path(alias="oppId")],
@@ -536,11 +555,12 @@ def save_outcome(
     opportunity = session.get(Opportunity, opp_id)
     if opportunity is None:
         raise NotFoundError("기록을 남길 기회가 없습니다.")
+    validate_viewed_evaluation(session, opp_id, body.eval_id)
     connection = session.connection()
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_outcome(session, opp_id)
-    values = body.model_dump(exclude={"eval_id", "expected_version"})
+    values = body.model_dump(exclude={"expected_version"})
     # C1·#250: 같은 거절 코드로 일정·접촉만 남기면 최신 거절 행의 설명을 이어받는다.
     # 이전 행 조회와 새 이력 저장은 같은 쓰기 잠금 안에서 처리한다.
     if body.status == "LOST" and not (body.reason and body.reason.strip()):
@@ -713,6 +733,7 @@ def save_note(
     opportunity = session.get(Opportunity, opp_id)
     if opportunity is None:
         raise NotFoundError("메모를 남길 기회가 없습니다.")
+    validate_viewed_evaluation(session, opp_id, body.eval_id)
     connection = session.connection()
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
@@ -726,6 +747,7 @@ def save_note(
         opp_id=opp_id,
         staff_key=staff,
         text=body.text,
+        eval_id=body.eval_id,
         kind=body.kind,
         version=previous.version + 1 if previous else 1,
         created_at=now,
@@ -789,19 +811,7 @@ def save_opinion(
     opportunity = session.get(Opportunity, opp_id)
     if opportunity is None:
         raise NotFoundError("의견을 남길 기회가 없습니다.")
-    evaluation = session.get(EvaluationRun, body.eval_id)
-    batch = session.get(EvaluationBatch, evaluation.batch_id) if evaluation else None
-    if (
-        evaluation is None
-        or evaluation.opp_id != opp_id
-        or evaluation.run_status not in {"CONFIRMED", "SUPERSEDED"}
-        or batch is None
-        or batch.status != "CONFIRMED"
-    ):
-        raise InputError(
-            "이 기회에서 본 평가 ID를 넣어 주세요.",
-            fields=[FieldError(path="evalId", message="기회와 평가 연결을 확인해 주세요.")],
-        )
+    validate_viewed_evaluation(session, opp_id, body.eval_id)
     # SQLite의 쓰기 잠금을 먼저 잡아 의견 버전 읽기와 추가가 겹치지 않게 한다.
     connection = session.connection()
     if not connection.connection.driver_connection.in_transaction:

@@ -2,13 +2,66 @@
 
 from datetime import date
 
-from pytest_bdd import given, then, when
+from pytest_bdd import given, parsers, then, when
 
 from geosan.api.routes import records
 from tests.unit.u1.test_industry_filter import industry_env  # noqa: F401
 from tests.unit.u1.test_region_filter import region_env  # noqa: F401
 from tests.unit.u1.test_sales_records import post, set_test_phone
 from tests.unit.u1.test_sales_records import records_env as sales_env  # noqa: F401
+
+
+@when(
+    parsers.parse("{state} 평가 번호로 영업 기록과 메모를 저장하면"),
+    target_fixture="viewed_records",
+)
+def save_records_with_viewed_evaluation(record_context, tmp_path, state):
+    from geosan.opportunity.importer import import_case
+    from geosan.workflows.flow_evaluate import run_evaluation
+    from tests import factories
+    from tests.unit.u1.test_record_evaluation import body_for, viewed_evaluation
+    from tests.unit.u1.test_snapshot_ledger import _write
+
+    client, opp_id, _ = record_context
+    eval_id = viewed_evaluation(client, opp_id)
+    if state == "낡은":
+        assert run_evaluation().ok
+        assert viewed_evaluation(client, opp_id) != eval_id
+    elif state == "다른 회사":
+        case = factories.apjeong_case()
+        case["caseId"] = "scenario-other"
+        case["customer"]["name"] = "가상 다른 회사"
+        other = import_case(_write(tmp_path, "other.json", case))
+        assert run_evaluation().ok
+        eval_id = viewed_evaluation(client, other.opp_id)
+    elif state == "없는":
+        eval_id = None
+    # 재평가는 판정 행 번호를 새로 만든다. 기록 저장 직전과 직후를 비교한다.
+    scores_before_save = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"]
+    responses = [
+        post(client, opp_id, kind, body_for(kind, eval_id)) for kind in ("outcomes", "notes")
+    ]
+    return responses, eval_id, scores_before_save
+
+
+@then(parsers.parse("{result} 결과이고 당시 평가 번호 저장 규칙을 지킨다"))
+def verify_records_viewed_evaluation(record_context, viewed_records, result):
+    from sqlalchemy import select
+
+    from geosan.records.models import Bookmark, Note, Outcome
+    from geosan.storage.session import session_scope
+
+    client, opp_id, _ = record_context
+    responses, eval_id, scores = viewed_records
+    expected_status = 400 if result == "거부" else 200
+    assert [response.status_code for response in responses] == [expected_status, expected_status]
+    with session_scope() as session:
+        for model in (Outcome, Note):
+            rows = session.scalars(select(model).where(model.opp_id == opp_id)).all()
+            assert [row.eval_id for row in rows] == ([] if result == "거부" else [eval_id])
+        if result == "거부":
+            assert session.scalar(select(Bookmark)) is None
+    assert client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"] == scores
 
 
 @given("영업 기록용 가상 기회를 평가했다", target_fixture="record_context")
