@@ -45427,3 +45427,160 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:47:39Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:50:08Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+**Picked**: ["웹 페이지(아티팩트)로 발행 (Recommended)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-08T10:50:08Z
+**Event**: QUESTION_REPLIED
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+**Question**: 발표 때 지도를 그림으로 보고 정리해 둘 곳을 어디에 만들까요? (지도 문서 4벌의 Mermaid 그림을 한 화면에 모아 보여 주는 것이 목표입니다)
+**Reply**: 웹 페이지(아티팩트)로 발행 (Recommended)
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:51:56Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:54:57Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:55:44Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:00:01Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:01:38Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:03:43Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:08:15Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:09:02Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:18:12Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:48:32Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T11:58:07Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:02:04Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:03:31Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:05:31Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:05:45Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:12:47Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:18:35Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:23:15Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T12:26:00Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
