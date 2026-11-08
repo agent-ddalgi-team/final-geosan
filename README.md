@@ -149,6 +149,18 @@ API 서버도 성공·오류 응답 모두에 `Cache-Control: no-store`와 `x-ve
 재사용할 때 보관 기간을 늘리지 않습니다. 보관 일수는 위 `cacheDays` 설정을 따릅니다.
 화면의 [찾기]·전체 실행 연결도 후속 작업입니다.
 
+AI 후보 판단 내부 연결은 `ingestion.aiPick`에서 설정합니다(#425). 기본은 꺼짐(`enabled: false`),
+한 번에 100행(`rowsPerCall`), 지시문은 저장소 기준 `examples/prompts/candidate-pick.md`
+(`promptFile`)입니다. PM이 승인한 지시문을 바꿀 때는 파일의 버전·날짜도 함께 바꿉니다.
+`surfaceTreatmentIndustryNames`는 PM이 정할 업종명 규칙 목록이며 아직 빈 목록입니다.
+실제 호출에는 기존 `llm.mode: EXTERNAL`·허용 모델·단가·월 한도와 실행 프로세스의
+`OPENAI_API_KEY`가 필요합니다. 설정 변경은 기존 `geosan check-config`로 등록합니다.
+`pick_candidates`는 행 번호만 받고 공개 본문을 직접 읽습니다. 전체 공정·산업으로 한 번
+판단하므로 선택 조건만 바꾸면 다시 부르지 않고, 생산품·업종명 또는 지시문·허용 목록·입력
+칸이 바뀌면 다시 판단합니다. 사용량을 모르는 호출은 기존 비용 정리 절차 전까지 다음 호출을
+막습니다. 전체 실행·회사 등록은 #427·#426에서 이어가며, 500행 실측과 전체 파일 AI 호출은
+PM의 표본·비용 결정 뒤에 진행합니다.
+
 ## 3. 검사 (PR 전에 꼭)
 
 목록의 산업군 선택지는 앱 설정의 `industries` 순서로 표시합니다. 사례 파일의

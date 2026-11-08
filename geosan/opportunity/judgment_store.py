@@ -20,6 +20,7 @@ from geosan.opportunity.candidate_judgments import (
     CandidateJudgment,
     _labels,
     candidate_criteria_version,
+    candidate_product_hash,
     parse_candidate_judgments,
 )
 from geosan.opportunity.factory_csv import SOURCE_ID
@@ -39,6 +40,7 @@ class JudgmentRowState:
     source_id: str
     product_hash: str
     previous_judgment_id: str | None
+    content_hash: str
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,16 @@ def _latest(session, row_ids, version):
     return latest
 
 
+def public_row_content_hash(row):
+    """전송 직전·저장 직전에 공개 본문이 바뀌지 않았는지 확인한다."""
+    value = json.dumps(
+        [row.company_name, row.complex_name, row.product, row.industry_name, row.address],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
 def _as_response(row):
     return {
         "rowId": row.row_id,
@@ -140,6 +152,11 @@ def prepare_candidate_judgments(
             session.connection().exec_driver_sql("BEGIN")
             batch, regions = _context(session, batch_id)
             found = _rows(session, ids, regions)
+            if any(
+                row.dataset_kind != batch.dataset_kind or row.is_virtual != batch.is_virtual
+                for row in found.values()
+            ):
+                raise InputError("이번 회차의 자료 묶음에 있는 공개 공장 행만 판단할 수 있습니다.")
             latest = _latest(session, ids, version)
             states, pending, cached = [], [], []
             for row_id in ids:
@@ -149,11 +166,16 @@ def prepare_candidate_judgments(
                     JudgmentRowState(
                         row_id,
                         row.source_id,
-                        row.product_hash,
+                        candidate_product_hash(row.product, row.industry_name),
                         old.judgment_id if old else None,
+                        public_row_content_hash(row),
                     )
                 )
-                if not batch.rejudge and old is not None and old.product_hash == row.product_hash:
+                if (
+                    not batch.rejudge
+                    and old is not None
+                    and old.product_hash == candidate_product_hash(row.product, row.industry_name)
+                ):
                     cached.append(_as_response(old))
                 else:
                     pending.append(row_id)
@@ -228,7 +250,12 @@ def save_candidate_judgments(
             for before in plan.rows:
                 row = found[before.row_id]
                 previous = latest.get(before.row_id)
-                if row.product_hash != before.product_hash or row.source_id != before.source_id:
+                if (
+                    public_row_content_hash(row) != before.content_hash
+                    or row.source_id != before.source_id
+                    or row.dataset_kind != batch.dataset_kind
+                    or row.is_virtual != batch.is_virtual
+                ):
                     raise InputError(
                         "판단하는 동안 공개 공장 자료가 바뀌었습니다. 다시 확인해 주세요."
                     )
@@ -247,7 +274,9 @@ def save_candidate_judgments(
                         judgment_id=judgment_id,
                         row_id=judgment.row_id,
                         criteria_version=plan.criteria_version,
-                        product_hash=found[judgment.row_id].product_hash,
+                        product_hash=candidate_product_hash(
+                            found[judgment.row_id].product, found[judgment.row_id].industry_name
+                        ),
                         is_manufacturer=judgment.is_manufacturer,
                         process_codes=judgment.process_codes,
                         industries=judgment.industries,
