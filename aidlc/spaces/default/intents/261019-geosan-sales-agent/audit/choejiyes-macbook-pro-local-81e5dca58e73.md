@@ -45322,107 +45322,108 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 ---
 
 ## Human Turn
-**Timestamp**: 2026-11-08T09:43:52Z
+**Timestamp**: 2026-11-08T10:20:02Z
 **Event**: HUMAN_TURN
-**Session**: 64b6eb29-4152-4a77-b785-73dc32306718
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
 
 ---
 
 ## Human Turn
-**Timestamp**: 2026-11-08T09:44:28Z
+**Timestamp**: 2026-11-08T10:21:22Z
 **Event**: HUMAN_TURN
 **Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
 
 ---
 
 ## Human Turn
-**Timestamp**: 2026-11-08T09:52:31Z
+**Timestamp**: 2026-11-08T10:22:13Z
 **Event**: HUMAN_TURN
-**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
 
 ---
 
-## Human Turn
-**Timestamp**: 2026-11-08T09:54:45Z
-**Event**: HUMAN_TURN
-**Session**: 64b6eb29-4152-4a77-b785-73dc32306718
+## Session End
+**Timestamp**: 2026-11-08T10:23:12Z
+**Event**: SESSION_ENDED
+**Reason**: other
+
+---
+
+## Session End
+**Timestamp**: 2026-11-08T10:23:37Z
+**Event**: SESSION_ENDED
+**Reason**: other
 
 ---
 
 ## Session Start
-**Timestamp**: 2026-11-08T09:55:50Z
+**Timestamp**: 2026-11-08T10:23:44Z
 **Event**: SESSION_STARTED
 **Source**: startup
-**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
 
 ---
 
 ## Human Turn
-**Timestamp**: 2026-11-08T09:56:01Z
+**Timestamp**: 2026-11-08T10:23:51Z
 **Event**: HUMAN_TURN
-**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
 
 ---
 
 ## Human Turn
-**Timestamp**: 2026-11-08T09:58:57Z
-**Event**: HUMAN_TURN
-**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:10:34Z
-**Event**: HUMAN_TURN
-**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:13:17Z
-**Event**: HUMAN_TURN
-**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:13:42Z
-**Event**: HUMAN_TURN
-**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:13:43Z
-**Event**: HUMAN_TURN
-**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:15:02Z
-**Event**: HUMAN_TURN
-**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:16:18Z
-**Event**: HUMAN_TURN
-**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:18:20Z
-**Event**: HUMAN_TURN
-**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
-
----
-
-## Human Turn
-**Timestamp**: 2026-11-08T10:18:45Z
+**Timestamp**: 2026-11-08T10:24:07Z
 **Event**: HUMAN_TURN
 **Session**: 64b6eb29-4152-4a77-b785-73dc32306718
+
+---
+
+## Session End
+**Timestamp**: 2026-11-08T10:25:08Z
+**Event**: SESSION_ENDED
+**Reason**: other
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:27:09Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:34:48Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-08T10:38:48Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:39:12Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:42:36Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:44:52Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
 
 ---
