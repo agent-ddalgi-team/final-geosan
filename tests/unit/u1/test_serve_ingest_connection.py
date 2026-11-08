@@ -1,10 +1,7 @@
 """#428: 서버 시작이 전달한 실행 함수로 실제 API·임시 DB를 잇는다.
 
-#427이 합쳐지기 전에는 실행 부품만 대역으로 주입한다. 실제 후보 찾기 검사는 #427 소유다.
+연결 경계의 실행 함수만 대역으로 바꾼다. 실제 부품 연결은 test_ingest_server_real.py에서 본다.
 """
-
-import sys
-from types import ModuleType
 
 import pytest
 import uvicorn
@@ -15,14 +12,13 @@ from geosan.commands import serve
 from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
+from geosan.workflows import flow_ingest
 from tests.unit.u3.test_ingest_api import BODY, post
 from tests.unit.u3.test_ingest_batches import batch_db as batch_db
 
 
 def server_app(monkeypatch, run):
-    module = ModuleType("geosan.workflows.flow_ingest")
-    module.run_ingest = run
-    monkeypatch.setitem(sys.modules, module.__name__, module)
+    monkeypatch.setattr(flow_ingest, "run_ingest", run)
     started = []
     monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: started.append((app, kwargs)))
     serve._run_server(18767, "127.0.0.1")
