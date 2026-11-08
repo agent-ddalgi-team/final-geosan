@@ -154,7 +154,7 @@ describe('RecordsArea', () => {
     ['SAMPLE_OR_REGISTRATION_APPROVED', 'SAMPLE_OR_REGISTRATION_APPROVED'],
     ['ON_HOLD', 'ON_HOLD'],
   ] as const)(
-    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (접촉 중 자동 전환은 미접촉일 때만)',
+    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (미접촉일 때도 자동으로 바꾸지 않고 묻기만 한다, #433)',
     async (from, expected) => {
       const user = userEvent.setup();
       mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: expected }));
@@ -448,9 +448,11 @@ describe('RecordsArea', () => {
     );
   });
 
-  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 미접촉 단계는 접촉으로 넘어간다', async () => {
+  // #433(PM 결정 2026-11-08, 약속 C1 "자동 변경 아님"): 미접촉이어도 접촉 저장이 단계를 자동으로 바꾸지 않는다.
+  // 예전에는 여기서 IN_PROGRESS로 넘어갔다. 지금은 단계를 그대로 싣고 "접촉으로 바꿀까요?"를 묻는다(RecordsArea.flow 시험).
+  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 미접촉 단계는 그대로 둔다(자동으로 바꾸지 않고 묻는다)', async () => {
     const user = userEvent.setup();
-    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
+    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'NOT_EXECUTED' }));
     renderArea(frameValue(), {
       outcome: {
         version: 1,
@@ -467,7 +469,7 @@ describe('RecordsArea', () => {
     const [, body] = mockedOutcome.mock.calls[0];
     expect(body).toMatchObject({
       evalId: EVAL,
-      status: 'IN_PROGRESS',
+      status: 'NOT_EXECUTED',
       method: 'CALL',
       result: 'ABSENT',
     });

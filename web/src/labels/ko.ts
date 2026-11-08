@@ -721,6 +721,15 @@ export const recordsArea = {
   pickStaffFirst: '먼저 담당자를 고르세요',
   required: '필수',
   selectPlaceholder: '고르세요',
+  /** 세 칸을 "한 일 → 지금 단계 → 다음 할 일" 순서로 읽게 하는 안내(#433, PM 결정 2026-11-08). */
+  flowGuide: '① 한 일 적기(접촉·메모) → ② 지금 단계 → ③ 다음 할 일',
+  stepOne: '①',
+  stepTwo: '②',
+  stepThree: '③',
+  /** 접촉을 적은 뒤 단계가 미접촉이면 한 번 묻는다. 자동으로 바꾸지 않는다. */
+  stageSuggest: '단계를 접촉으로 바꿀까요?',
+  stageSuggestApply: '접촉으로 바꾸기',
+  stageSuggestDismiss: '닫기',
 } as const;
 
 /**

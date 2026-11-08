@@ -24,7 +24,7 @@ import {
   recordsArea,
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
-import { formatHourMinute } from '../../utils/time';
+import { formatHourMinute, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
 export const DEFAULT_NOTE_MAX_LENGTH = 200;
@@ -55,12 +55,8 @@ function recordKindLabel(kind: RecordKind): string {
   return contactMethodLabels[kind];
 }
 
-function today(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${month}-${day}`;
-}
+/** 접촉 날짜가 오늘(한국 시간)보다 뒤라서 서버가 돌려보낸 오류의 칸 이름(약속 C1, #433). */
+const CONTACT_DATE_FIELD = 'attemptedAt';
 
 function options(labels: Record<string, string>) {
   return Object.entries(labels).map(([value, label]) => ({ value, label }));
@@ -135,8 +131,12 @@ export default function RecordsArea({
   // 종류 한 칸. 전화·방문·메일이면 결과·날짜 입력이, 메모·자료 조사면 글 입력이 보인다.
   const [recordKind, setRecordKind] = useState<RecordKind>('MEMO');
   const [result, setResult] = useState<ContactResult | null>(null);
-  const [attemptedAt, setAttemptedAt] = useState(today());
+  // 접촉 날짜는 오늘(한국 시간)까지만 고른다. 서버가 그 뒤 날짜를 400으로 돌려주면 그 문장을 날짜 칸 아래에 보인다.
+  const [attemptedAt, setAttemptedAt] = useState(todayKst());
+  const [dateError, setDateError] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  // 접촉을 적은 뒤 단계가 미접촉이면 "접촉으로 바꿀까요?"를 이 회사에서 한 번만 묻는다(자동 변경 아님).
+  const [stageSuggestion, setStageSuggestion] = useState<'idle' | 'shown' | 'used'>('idle');
 
   const method: ContactMethod | null =
     recordKind === 'CALL' || recordKind === 'VISIT' || recordKind === 'EMAIL' ? recordKind : null;
@@ -169,6 +169,7 @@ export default function RecordsArea({
     if (!staffKey) return false;
     setBusy(block);
     setMessage(null);
+    setDateError(null);
     try {
       const envelope = await postOutcome(
         oppId,
@@ -193,7 +194,13 @@ export default function RecordsArea({
       succeed(block, saved.updatedAt);
       return true;
     } catch (caught) {
-      fail(block, caught);
+      // 접촉 날짜가 오늘 뒤라서 서버가 돌려보냈으면 그 문장을 날짜 칸 아래에 보인다.
+      const dateField =
+        block === 'contact' && caught instanceof ApiError
+          ? caught.body.fields?.find((field) => field.path === CONTACT_DATE_FIELD)
+          : undefined;
+      if (dateField) setDateError(dateField.message);
+      else fail(block, caught);
       return false;
     } finally {
       setBusy(null);
@@ -218,9 +225,10 @@ export default function RecordsArea({
 
   async function onSaveContact() {
     if (!method || !result) return;
-    // 접촉했으니 아직 미접촉이면 "접촉"으로 넘어가고, 그 뒤 단계는 그대로 둔다.
-    const status: OutcomeStatus =
-      currentStatus && currentStatus !== 'NOT_EXECUTED' ? currentStatus : 'IN_PROGRESS';
+    // 접촉을 적어도 단계는 자동으로 바꾸지 않는다(PM 결정 2026-11-08, #433): 지금 단계를 그대로 싣는다.
+    // 단계 기록이 아직 없거나 미접촉이면, 저장이 끝난 뒤 "접촉으로 바꿀까요?"를 한 번 묻는다.
+    const status: OutcomeStatus = currentStatus ?? 'NOT_EXECUTED';
+    const askStage = status === 'NOT_EXECUTED';
     const ok = await saveOutcome('contact', {
       status,
       method,
@@ -232,7 +240,14 @@ export default function RecordsArea({
     if (ok) {
       onContactRecorded?.(method);
       setResult(null);
+      if (askStage) setStageSuggestion((previous) => (previous === 'idle' ? 'shown' : previous));
     }
+  }
+
+  /** 제안의 [접촉으로 바꾸기]: 영업 단계 저장과 같은 호출로 "접촉"을 저장한다. 하루 일정은 그대로 둔다. */
+  async function onApplyStageSuggestion() {
+    const ok = await saveOutcome('stage', { status: 'IN_PROGRESS', ...keepSchedule() });
+    if (ok) setStageSuggestion('used');
   }
 
   async function onSaveNote() {
@@ -318,8 +333,15 @@ export default function RecordsArea({
         </Typography.Text>
       ) : null}
 
+      <Typography.Text type="secondary" data-testid="records-flow-guide">
+        {recordsArea.flowGuide}
+      </Typography.Text>
+
       <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
+          <span aria-hidden="true" data-testid="records-step-1">
+            {recordsArea.stepOne}{' '}
+          </span>
           {recordsArea.entryTitle}
         </Typography.Title>
         <div style={rowStyle}>
@@ -348,9 +370,15 @@ export default function RecordsArea({
               <Input
                 type="date"
                 aria-label={recordsArea.contactDate}
+                aria-invalid={dateError ? 'true' : undefined}
+                aria-describedby={dateError ? `records-contact-date-error-${oppId}` : undefined}
                 style={{ width: 160 }}
                 value={attemptedAt}
-                onChange={(event) => setAttemptedAt(event.target.value)}
+                max={todayKst()}
+                onChange={(event) => {
+                  setAttemptedAt(event.target.value);
+                  setDateError(null);
+                }}
                 disabled={disabled}
                 data-testid="records-contact-date"
               />
@@ -397,11 +425,48 @@ export default function RecordsArea({
             </div>
           </>
         )}
+        {method && dateError ? (
+          <span
+            role="alert"
+            id={`records-contact-date-error-${oppId}`}
+            data-testid="records-contact-date-error"
+            style={{ color: colors.error }}
+          >
+            {dateError}
+          </span>
+        ) : null}
         {blockMessage(method ? 'contact' : 'note')}
+        {stageSuggestion === 'shown' &&
+        (currentStatus === null || currentStatus === 'NOT_EXECUTED') ? (
+          <div style={rowStyle} data-testid="records-stage-suggestion">
+            <span>{recordsArea.stageSuggest}</span>
+            <Button
+              size="small"
+              type="primary"
+              disabled={disabled}
+              loading={busy === 'stage'}
+              onClick={() => void onApplyStageSuggestion()}
+              data-testid="records-stage-suggestion-apply"
+            >
+              {recordsArea.stageSuggestApply}
+            </Button>
+            <Button
+              size="small"
+              disabled={disabled}
+              onClick={() => setStageSuggestion('used')}
+              data-testid="records-stage-suggestion-dismiss"
+            >
+              {recordsArea.stageSuggestDismiss}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <section aria-labelledby={`records-stage-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-stage-${oppId}`} style={{ margin: 0 }}>
+          <span aria-hidden="true" data-testid="records-step-2">
+            {recordsArea.stepTwo}{' '}
+          </span>
           {recordsArea.stageTitle}
         </Typography.Title>
         <span data-testid="records-stage-current" style={hintStyle}>
@@ -483,6 +548,9 @@ export default function RecordsArea({
 
       <section aria-labelledby={`records-schedule-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-schedule-${oppId}`} style={{ margin: 0 }}>
+          <span aria-hidden="true" data-testid="records-step-3">
+            {recordsArea.stepThree}{' '}
+          </span>
           {recordsArea.scheduleTitle}
         </Typography.Title>
         <div style={rowStyle}>
