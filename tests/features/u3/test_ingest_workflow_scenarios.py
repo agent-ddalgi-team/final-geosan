@@ -6,7 +6,9 @@ from typer.testing import CliRunner
 
 from geosan.commands.app import app
 from geosan.opportunity.models import IngestBatch
+from geosan.opportunity.source_models import SourceFactoryRow
 from geosan.storage.session import session_scope
+from geosan.workflows.ingest_sources import store_dated_factory_csv
 from tests.unit.u3 import conftest as factory_support
 from tests.unit.u3 import test_flow_ingest as support
 
@@ -40,3 +42,26 @@ def completed(flow_context, results):
     with session_scope() as session:
         rows = session.scalars(select(IngestBatch)).all()
         assert len(rows) == 2 and all(row.status == "DONE" for row in rows)
+
+
+@when("운영자가 기준일 없는 파일로 후보 찾기를 실행한다", target_fixture="date_result")
+def requested_without_date(flow_context, monkeypatch):
+    monkeypatch.setattr(
+        support.flow,
+        "load_source_rows",
+        lambda batch_id: store_dated_factory_csv(batch_id, flow_context.path),
+    )
+    return CliRunner().invoke(
+        app, ["ingest", "kicox-factory-csv", "--process", "ZINC_PLATING", "--region", "충남"]
+    )
+
+
+@then("기준일 안내와 실패 상태가 보이고 공장 저장과 AI 판단은 실행되지 않는다")
+def failed_without_writing_or_judging(flow_context, date_result):
+    assert date_result.exit_code == 2 and "FAILED" in date_result.output
+    assert "파일명이나 폴더명에 기준일(YYYYMMDD)이 있어야 합니다" in date_result.output
+    assert flow_context.picker.calls == 0
+    with session_scope() as session:
+        rows = session.scalars(select(IngestBatch)).all()
+        assert len(rows) == 1 and rows[0].status == "FAILED"
+        assert session.scalar(select(SourceFactoryRow)) is None

@@ -5,6 +5,7 @@
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -19,6 +20,7 @@ from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
+from geosan.workflows.ingest_sources import FactoryFileDateError, store_dated_factory_csv
 from geosan.workflows.research import research_one
 
 
@@ -32,8 +34,34 @@ class SourceRows:
 
 
 def load_source_rows(batch_id: str) -> SourceRows:
-    """원본 갱신·조회 저장 부품이 준비되기 전에는 성공으로 접수하지 않는다."""
-    raise RunFailedError("공장 원본을 읽는 실행 연결이 아직 준비되지 않았습니다.")
+    """승인된 경로 설정으로 파일을 저장하고, 켜져 있을 때만 단지 조회를 잇는다."""
+    with session_scope() as session:
+        settings = load_runtime_config(session).app_settings.ingestion
+    # PM이 정한 순서대로 #425의 설정 추가가 먼저다. 준비 전 환경은 성공으로 처리하지 않는다.
+    path = getattr(settings, "factory_csv_path", None)
+    if not isinstance(path, str) or not path.strip():
+        raise InputError("공장현황 파일 경로 설정을 먼저 준비해 주세요.")
+    stored = store_dated_factory_csv(batch_id, Path(path))
+    if not settings.complex_list.enabled:
+        return SourceRows(stored.row_ids, stored.csv.raw_count, "DISABLED")
+
+    collected = collect_complex_rows(batch_id, stored.csv.rows)
+    complex_rows = store_complex_rows(batch_id, collected)
+    row_ids = tuple(dict.fromkeys((*stored.row_ids, *complex_rows.row_ids)))
+    additional_count = len(set(row_ids) - set(stored.row_ids))
+    return SourceRows(row_ids, stored.csv.raw_count + additional_count, complex_rows.skipped_reason)
+
+
+def collect_complex_rows(batch_id, file_rows):
+    from geosan.opportunity.complex_collection import collect_complex_rows as collect
+
+    return collect(batch_id, file_rows)
+
+
+def store_complex_rows(batch_id, collected):
+    from geosan.opportunity.complex_store import store_complex_rows as store
+
+    return store(batch_id, collected)
 
 
 def pick_candidates(batch_id, row_ids):
@@ -203,7 +231,11 @@ def run_ingest(batch_id: str) -> None:
                     current = session.get(IngestBatch, batch_id)
                     current.research_done_count += 1
                     current.finished_at = utcnow()
-    except Exception:
-        message = f"{stage}을 마치지 못했습니다. 자료와 설정을 확인해 주세요."
+    except Exception as error:
+        message = (
+            error.message
+            if isinstance(error, FactoryFileDateError)
+            else f"{stage}을 마치지 못했습니다. 자료와 설정을 확인해 주세요."
+        )
         _failed(batch_id, message)
         raise RunFailedError(message) from None
