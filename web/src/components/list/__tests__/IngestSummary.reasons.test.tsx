@@ -46,21 +46,36 @@ describe('수집 요약 · 실패 사유(#442)', () => {
 });
 
 describe('수집 요약 · 건너뜀 안내(#442)', () => {
-  it('웹 검색이 하루 한도에 걸렸으면 쉬운 말로 알린다', () => {
+  // 문장은 약속 C1에 정해진 그대로다(웹 검색 #313, 단지 조회 #323).
+  it('웹 검색이 하루 한도에 걸렸으면 "오늘 웹 검색 한도 도달"을 알린다', () => {
     show({ ...DONE, webSkippedReason: 'DAILY_LIMIT' });
-    expect(screen.getByTestId('ingest-skipped')).toHaveTextContent(
-      '오늘 웹 검색 한도에 걸려 웹 검색은 건너뛰었습니다',
-    );
+    expect(screen.getByTestId('ingest-skipped')).toHaveTextContent('오늘 웹 검색 한도 도달');
     // 건수 줄은 그대로 보인다.
     expect(screen.getByTestId('ingest-counts')).toHaveTextContent('훑어본 회사 3,672곳');
   });
 
+  it('단지 조회가 하루 한도나 조회 실패로 건너뛰어지면 같은 한 문장을 알린다', () => {
+    for (const reason of ['DAILY_LIMIT', 'SOURCE_ERROR'] as const) {
+      const { unmount } = show({ ...DONE, complexListSkippedReason: reason });
+      expect(screen.getByTestId('ingest-skipped')).toHaveTextContent(
+        '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
+      );
+      unmount();
+    }
+  });
+
   it('웹 검색과 단지 조회가 모두 건너뛰어졌으면 두 줄을 모두 보인다', () => {
-    show({ ...DONE, webSkippedReason: 'DISABLED', complexListSkippedReason: 'SOURCE_ERROR' });
+    show({ ...DONE, webSkippedReason: 'DAILY_LIMIT', complexListSkippedReason: 'SOURCE_ERROR' });
     const notices = screen.getAllByTestId('ingest-skipped');
     expect(notices).toHaveLength(2);
-    expect(notices[0]).toHaveTextContent('웹 검색이 꺼져 있어 건너뛰었습니다');
-    expect(notices[1]).toHaveTextContent('단지 목록을 읽지 못해 건너뛰었습니다');
+    expect(notices[0]).toHaveTextContent('오늘 웹 검색 한도 도달');
+    expect(notices[1]).toHaveTextContent('산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음');
+  });
+
+  it('꺼 둔 것(DISABLED)은 안내할 일이 아니라서 보이지 않는다', () => {
+    show({ ...DONE, webSkippedReason: 'DISABLED', complexListSkippedReason: 'DISABLED' });
+    expect(screen.queryByTestId('ingest-skipped')).not.toBeInTheDocument();
+    expect(skippedNotices({ ...DONE, webSkippedReason: 'DISABLED' })).toEqual([]);
   });
 
   it('건너뛴 일이 없으면(null·없음) 안내가 보이지 않는다', () => {
@@ -90,11 +105,10 @@ describe('수집 요약 · 건너뜀 안내(#442)', () => {
     expect(screen.queryByTestId('ingest-skipped')).not.toBeInTheDocument();
   });
 
-  it('쉬운 말 대응표가 모든 이유 코드를 덮는다', () => {
-    expect(Object.keys(candidateSearch.webSkipped).sort()).toEqual(['DAILY_LIMIT', 'DISABLED']);
+  it('쉬운 말 대응표에는 안내하기로 한 이유 코드만 있다(DISABLED는 없다)', () => {
+    expect(Object.keys(candidateSearch.webSkipped).sort()).toEqual(['DAILY_LIMIT']);
     expect(Object.keys(candidateSearch.complexListSkipped).sort()).toEqual([
       'DAILY_LIMIT',
-      'DISABLED',
       'SOURCE_ERROR',
     ]);
   });
