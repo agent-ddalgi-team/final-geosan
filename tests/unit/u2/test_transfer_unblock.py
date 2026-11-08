@@ -375,8 +375,8 @@ def test_old_database_upgrade_preserves_transfer_values(tmp_path, previous_revis
             ),
         )
         before = connection.execute("SELECT * FROM tg_transfer_log").fetchone()
-    assert upgrade_to_head(path) == ["src_002"]
-    assert upgrade_to_head(path) == ["src_002"]
+    assert upgrade_to_head(path) == ["rec_009"]
+    assert upgrade_to_head(path) == ["rec_009"]
     with sqlite3.connect(path) as connection:
         after = connection.execute("SELECT * FROM tg_transfer_log").fetchone()
     # 옛 값은 그대로이고 뒤에 새 칸 셋(정산 시각·처리자, #327의 회차 번호)만 빈 값으로 붙는다.
@@ -412,7 +412,7 @@ def test_reconciliation_migration_preserves_question_reply_in_both_directions(tm
         if target == "q_002":
             command.downgrade(alembic_config(path), target)
         else:
-            assert upgrade_to_head(path) == ["src_002"]
+            assert upgrade_to_head(path) == ["rec_009"]
         with sqlite3.connect(path) as connection:
             assert connection.execute("SELECT * FROM q_question").fetchone() == before
 
