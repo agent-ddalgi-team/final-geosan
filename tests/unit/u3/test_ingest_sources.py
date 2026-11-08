@@ -102,7 +102,7 @@ def test_storage_failure_is_not_retried_or_returned_as_success(monkeypatch):
 
 @pytest.fixture
 def source_runtime(ingest_env, monkeypatch):
-    """#425 먼저 병합 결정에 따라 공통 설정은 바꾸지 않고 검사에서 경로만 주입한다."""
+    """원본 읽기 분기만 격리한다. 전체 실행 검사는 실제 설정 사본을 읽는다."""
     path = ingest_env.path.with_name("factories_20251231.csv")
     path.write_bytes(ingest_env.path.read_bytes())
     settings = SimpleNamespace(
@@ -173,7 +173,7 @@ def test_complex_failure_does_not_fall_back_to_file_success(source_runtime, monk
 
 
 def test_missing_path_setting_stops_before_reading(source_runtime, monkeypatch):
-    source_runtime.factory_csv_path = None
+    source_runtime.factory_csv_path = ""
 
     def unexpected_store(*args):
         pytest.fail("경로 설정이 없으면 파일을 읽으면 안 된다")
@@ -185,7 +185,7 @@ def test_missing_path_setting_stops_before_reading(source_runtime, monkeypatch):
 
 def test_batch_failure_keeps_safe_date_guidance_and_does_not_judge(ingest_env, monkeypatch):
     def load_without_date(batch_id):
-        return sources.store_dated_factory_csv(batch_id, ingest_env.path)
+        return sources.store_dated_factory_csv(batch_id, ingest_env.path.with_name("factories.csv"))
 
     monkeypatch.setattr(flow, "load_source_rows", load_without_date)
     batch_id = support.new_batch()

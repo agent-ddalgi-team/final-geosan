@@ -1,4 +1,4 @@
-"""S02: 가짜 후보 부품과 실제 SQLite·명령으로 회차 두 번을 이어 실행한다."""
+"""S02: 외부 AI 응답만 대체하고 실제 파일·판단·등록·SQLite·명령을 잇는다."""
 
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
@@ -51,7 +51,9 @@ def requested_without_date(flow_context, monkeypatch):
     monkeypatch.setattr(
         support.flow,
         "load_source_rows",
-        lambda batch_id: store_dated_factory_csv(batch_id, flow_context.path),
+        lambda batch_id: store_dated_factory_csv(
+            batch_id, flow_context.path.with_name("factories.csv")
+        ),
     )
     return CliRunner().invoke(
         app, ["ingest", "kicox-factory-csv", "--process", "ZINC_PLATING", "--region", "충남"]

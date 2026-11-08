@@ -1,4 +1,4 @@
-"""#427 독립 흐름: PM 확정 규격의 가짜 부품·실제 DB·실제 부분 재평가를 사용한다."""
+"""#427: 외부 응답만 대체하고 실제 파일·판단·등록·부분 재평가를 연결한다."""
 
 from datetime import date
 from pathlib import Path
@@ -12,7 +12,9 @@ from geosan.api.app import create_app
 from geosan.capability.importer import import_capability
 from geosan.config.app_settings import load_app_settings, sync_app_settings
 from geosan.config.errors import AppError
-from geosan.opportunity.factory_store import store_factory_csv
+from geosan.config.models import AppSetting
+from geosan.opportunity import candidate_pick
+from geosan.opportunity.candidate_registration import register_candidates
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 from geosan.opportunity.source_models import SourceContract
@@ -22,7 +24,7 @@ from geosan.workflows import flow_ingest as flow
 from geosan.workflows.models import FlowResult
 from geosan.workflows.research import ResearchResult
 from tests import factories
-from tests.fakes.ingest_components import FakeCandidatePicker, fake_register_candidates
+from tests.fakes.ingest_responses import FakeCandidateResponses
 from tests.unit.u1.test_snapshot_ledger import _write
 
 
@@ -77,14 +79,22 @@ def ingest_env(tmp_db, tmp_path, factory_file, monkeypatch):
         ]
     )
 
-    def load(batch_id):
-        stored = store_factory_csv(batch_id, path, date(2025, 12, 31))
-        return flow.SourceRows(stored.row_ids, stored.csv.raw_count)
-
-    picker = FakeCandidatePicker()
-    monkeypatch.setattr(flow, "load_source_rows", load)
-    monkeypatch.setattr(flow, "pick_candidates", picker)
-    monkeypatch.setattr(flow, "register_candidates", fake_register_candidates)
+    dated_path = path.with_name("factories_20251231.csv")
+    dated_path.write_bytes(path.read_bytes())
+    path = dated_path
+    with session_scope() as session:
+        settings = session.get(AppSetting, "ingestion")
+        settings.value = settings.value | {
+            "factoryCsvPath": str(path),
+            "aiPick": {"enabled": True, "rowsPerCall": 100},
+        }
+        llm = session.get(AppSetting, "llm")
+        llm.value = load_app_settings(Path("examples/app-settings.yaml")).llm.model_dump(
+            by_alias=True, mode="json"
+        ) | {"mode": "EXTERNAL"}
+    picker = FakeCandidateResponses()
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
+    monkeypatch.setattr(candidate_pick, "_post", picker)
     return SimpleNamespace(picker=picker, path=path)
 
 
@@ -121,6 +131,57 @@ def test_rejudge_repeats_judgment_but_skips_existing_company(ingest_env):
     assert saved(second).new_count == 0 and saved(second).skipped_count == 1
 
 
+@pytest.mark.parametrize("fault", ["path", "disabled", "key"])
+def test_missing_execution_settings_fail_before_external_call(ingest_env, monkeypatch, fault):
+    with session_scope() as session:
+        row = session.get(AppSetting, "ingestion")
+        if fault == "path":
+            row.value = row.value | {"factoryCsvPath": ""}
+        elif fault == "disabled":
+            row.value = row.value | {"aiPick": {"enabled": False}}
+    if fault == "key":
+        monkeypatch.delenv("OPENAI_API_KEY")
+    batch_id = new_batch()
+    with pytest.raises(AppError):
+        flow.run_ingest(batch_id)
+    assert saved(batch_id).status == "FAILED" and saved(batch_id).new_count == 0
+    assert ingest_env.picker.calls == 0
+
+
+def test_enabled_complex_lookup_uses_real_cache_and_registration(ingest_env, monkeypatch):
+    from geosan.opportunity import complex_source
+    from geosan.opportunity.source_models import ComplexFetch
+    from tests.unit.u3.test_complex_source import configure, responses, xml
+
+    configure(enabled=True)
+    monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "synthetic")
+    with session_scope() as session:
+        session.add(
+            SourceContract(
+                source_id=complex_source.SOURCE_ID,
+                source_name="가상 조회",
+                allowed_use="검사",
+                allowed_storage="검사",
+                confirmed_at=date(2026, 1, 1),
+                is_virtual=True,
+            )
+        )
+    calls = responses(monkeypatch, xml([("가상 추가사", "충남 아산시 가상로 9", "EXTRA")]))
+    first = new_batch()
+    flow.run_ingest(first)
+    batch = saved(first)
+    assert (batch.scanned_count, batch.judged_count, batch.new_count) == (4, 4, 2)
+    assert batch.complex_list_skipped_reason is None
+    monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY")
+    monkeypatch.delenv("OPENAI_API_KEY")
+    second = new_batch()
+    flow.run_ingest(second)
+    assert saved(second).new_count == 0 and saved(second).skipped_count == 2
+    assert len(calls) == ingest_env.picker.calls == 1
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(ComplexFetch)) == 1
+
+
 def test_public_source_failure_stops_judgment_registration_and_records_safe_failure(
     ingest_env, monkeypatch
 ):
@@ -152,7 +213,7 @@ def test_missing_judgment_fails_before_registration(ingest_env, monkeypatch):
 
 def test_registration_failure_rolls_back_company_and_counts_together(ingest_env, monkeypatch):
     def failed(session, batch_id, judgments):
-        fake_register_candidates(session, batch_id, judgments)
+        register_candidates(session, batch_id, judgments)
         session.flush()
         raise RuntimeError("등록 확정 전 실패")
 
@@ -268,7 +329,7 @@ def test_complex_partial_reason_is_preserved_in_batch(ingest_env, monkeypatch):
 
 def test_registration_invalid_count_rolls_back_written_company(ingest_env, monkeypatch):
     def invalid(session, batch_id, judgments):
-        fake_register_candidates(session, batch_id, judgments)
+        register_candidates(session, batch_id, judgments)
         return SimpleNamespace(new_count=-1, skipped_count=0, merge_candidate_count=0)
 
     monkeypatch.setattr(flow, "register_candidates", invalid)
@@ -283,7 +344,12 @@ def test_registration_invalid_count_rolls_back_written_company(ingest_env, monke
 def _brochure_runtime():
     import_capability(Path("examples/capability-geosan-brochure.json"))
     with session_scope() as session:
-        sync_app_settings(session, load_app_settings(Path("examples/app-settings.yaml")))
+        ingestion = session.get(AppSetting, "ingestion").value
+        settings = load_app_settings(Path("examples/app-settings.yaml"))
+        settings.ingestion.factory_csv_path = ingestion["factoryCsvPath"]
+        settings.ingestion.ai_pick.enabled = True
+        settings.llm.mode = "EXTERNAL"
+        sync_app_settings(session, settings)
 
 
 def test_only_new_public_companies_are_researched_after_registration_done(ingest_env, monkeypatch):

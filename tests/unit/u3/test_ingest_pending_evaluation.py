@@ -125,8 +125,8 @@ def test_empty_case_file_company_keeps_original_skip_behavior(ingest_env, tmp_pa
     assert result.ok and result.new_eval_ids == [] and "항목 입력 없음" in result.summary
 
 
-def test_pending_population_is_listed_but_dashboard_waits_for_full_evaluation(ingest_env, tmp_path):
-    """현재 계약의 전체 평가 범위와 후보 추가 뒤의 집계 차이를 PM에게 확인할 근거다."""
+def test_pending_candidate_stays_listed_and_bookmarked_after_full_evaluation(ingest_env, tmp_path):
+    """평가 전 후보도 관심 기업에 남는다. 즉시 대시보드 집계는 PM 후속 #465가 검증한다."""
     import_case(_write(tmp_path, "anchor.json", factories.apjeong_case()))
     assert support.flow.run_evaluation().ok
     support.flow.run_ingest(support.new_batch())
@@ -144,8 +144,9 @@ def test_pending_population_is_listed_but_dashboard_waits_for_full_evaluation(in
             client.get("/api/v1/opportunities", params={"bookmarked": True}).json()["meta"]["total"]
             == 1
         )
-        before_full = client.get("/api/v1/dashboard").json()["data"]["counts"]
-        assert before_full["BOOKMARKED"] == 0 and before_full["NO_OPINION"] == 0
+        bookmarked = client.get("/api/v1/opportunities", params={"bookmarked": True}).json()["data"]
+        assert bookmarked[0]["oppId"] == opp_id
+        assert bookmarked[0]["classificationCode"] == "NOT_EVALUATED"
         assert support.flow.run_evaluation().ok
         after_full = client.get("/api/v1/dashboard").json()["data"]["counts"]
         assert after_full["BOOKMARKED"] == after_full["NO_OPINION"] == 1

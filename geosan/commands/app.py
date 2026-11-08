@@ -1,4 +1,4 @@
-"""`geosan` 명령줄 앱 (Typer). 계약 C8의 명령 9개 + `db merge-heads`.
+"""`geosan` 명령줄 앱 (Typer). 계약 C8의 운영 명령과 `db merge-heads`.
 
 명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, `export_contracts.py`, …)에
 있다. 앞으로 새 명령을 먼저 등록만 할 때는 `not_implemented_yet`으로 오류를 숨기지 않고

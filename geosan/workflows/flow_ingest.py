@@ -1,7 +1,7 @@
 """#427 회차 번호로 후보 판단·등록·재평가·신규 회사 조사를 순서대로 실행한다.
 
-판단·등록 부품은 PM이 #427에서 확정한 규격을 쓴다. 가짜 부품은 검사에서만 주입한다.
-원본 갱신 부품과 공통 설정은 선행 작업을 반영한 뒤 연결한다.
+PM이 #427에서 확정한 규격으로 공개 원본·판단·등록 부품을 연결한다.
+검사에서는 외부 통신만 대체하고, 저장과 평가 및 목록 조회는 실제 부품을 쓴다.
 """
 
 from dataclasses import dataclass
@@ -13,6 +13,10 @@ from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.config.registry import load_runtime_config
 from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.opportunity.candidate_judgments import select_candidates
+from geosan.opportunity.candidate_pick import pick_candidates
+from geosan.opportunity.candidate_registration import register_candidates
+from geosan.opportunity.complex_collection import collect_complex_rows
+from geosan.opportunity.complex_store import store_complex_rows
 from geosan.opportunity.factory_csv import SOURCE_ID
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
@@ -37,9 +41,8 @@ def load_source_rows(batch_id: str) -> SourceRows:
     """승인된 경로 설정으로 파일을 저장하고, 켜져 있을 때만 단지 조회를 잇는다."""
     with session_scope() as session:
         settings = load_runtime_config(session).app_settings.ingestion
-    # PM이 정한 순서대로 #425의 설정 추가가 먼저다. 준비 전 환경은 성공으로 처리하지 않는다.
-    path = getattr(settings, "factory_csv_path", None)
-    if not isinstance(path, str) or not path.strip():
+    path = settings.factory_csv_path
+    if not path.strip():
         raise InputError("공장현황 파일 경로 설정을 먼저 준비해 주세요.")
     stored = store_dated_factory_csv(batch_id, Path(path))
     if not settings.complex_list.enabled:
@@ -50,30 +53,6 @@ def load_source_rows(batch_id: str) -> SourceRows:
     row_ids = tuple(dict.fromkeys((*stored.row_ids, *complex_rows.row_ids)))
     additional_count = len(set(row_ids) - set(stored.row_ids))
     return SourceRows(row_ids, stored.csv.raw_count + additional_count, complex_rows.skipped_reason)
-
-
-def collect_complex_rows(batch_id, file_rows):
-    from geosan.opportunity.complex_collection import collect_complex_rows as collect
-
-    return collect(batch_id, file_rows)
-
-
-def store_complex_rows(batch_id, collected):
-    from geosan.opportunity.complex_store import store_complex_rows as store
-
-    return store(batch_id, collected)
-
-
-def pick_candidates(batch_id, row_ids):
-    from geosan.opportunity.candidate_pick import pick_candidates as pick
-
-    return pick(batch_id, row_ids)
-
-
-def register_candidates(session, batch_id, judgments):
-    from geosan.opportunity.candidate_registration import register_candidates as register
-
-    return register(session, batch_id, judgments)
 
 
 def _running(session, batch_id):
