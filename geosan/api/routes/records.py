@@ -536,6 +536,13 @@ def save_outcome(
     fields = scan_contacts(
         {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
     )
+    if body.attempted_at is not None and body.attempted_at > today_in_seoul():
+        fields.append(
+            FieldError(
+                path="attemptedAt",
+                message="앞으로 할 일은 다음 일정에 적어 주세요. 접촉 날짜는 오늘까지입니다.",
+            )
+        )
     if body.status == "LOST":
         if body.lost_reason_code is None:
             fields.append(FieldError(path="lostReasonCode", message="거절 이유를 골라 주세요."))

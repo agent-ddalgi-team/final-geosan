@@ -1,7 +1,10 @@
 """#209 추가 S10 시나리오. 임시 DB·실제 API·실제 규칙 엔진을 사용한다."""
 
+from datetime import date
+
 from pytest_bdd import given, parsers, then, when
 
+from geosan.api.routes import records
 from tests.unit.u1.test_industry_filter import industry_env  # noqa: F401
 from tests.unit.u1.test_region_filter import region_env  # noqa: F401
 from tests.unit.u1.test_sales_records import post, set_test_phone
@@ -66,6 +69,39 @@ def evaluated_opportunity(sales_env):  # noqa: F811
     client, opp_id = sales_env
     scores = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"]
     return client, opp_id, scores
+
+
+@when("내일 날짜의 접촉 기록을 저장하면", target_fixture="future_contact_result")
+def save_future_contact(record_context, monkeypatch):
+    client, opp_id, _ = record_context
+    monkeypatch.setattr(records, "today_in_seoul", lambda: date(2026, 11, 8))
+    return post(
+        client,
+        opp_id,
+        "outcomes",
+        {
+            "status": "IN_PROGRESS",
+            "method": "CALL",
+            "result": "ABSENT",
+            "attemptedAt": "2026-11-09",
+        },
+    )
+
+
+@then("접촉 날짜 안내가 나오고 기록과 점수는 그대로다")
+def verify_future_contact_not_saved(record_context, future_contact_result):
+    client, opp_id, scores = record_context
+    assert future_contact_result.status_code == 400
+    assert future_contact_result.json()["error"]["fields"] == [
+        {
+            "path": "attemptedAt",
+            "message": "앞으로 할 일은 다음 일정에 적어 주세요. 접촉 날짜는 오늘까지입니다.",
+        }
+    ]
+    detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    assert detail["records"]["outcome"] is None
+    assert detail["records"]["contactCount"]["total"] == 0
+    assert detail["scores"] == scores
 
 
 @when("추천 목록 카드를 조회하면")
