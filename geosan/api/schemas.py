@@ -34,6 +34,7 @@ from geosan.rules.codes import (
     LostReasonCode,
     NeededStage,
     Opinion,
+    ProcessCode,
     Purpose,
     QuestionStatus,
     QuestionTargetKind,
@@ -202,6 +203,17 @@ class RecordsUi(_ApiModel):
     note_max_length: int
 
 
+class IngestProcessOption(_ApiModel):
+    code: ProcessCode
+    name: str
+
+
+class IngestOptions(_ApiModel):
+    processes: list[IngestProcessOption]
+    regions: list[str]
+    industries: list[str]
+
+
 class ConfigUi(_ApiModel):
     staff: list[StaffEntry]
     brand: Brand
@@ -210,6 +222,7 @@ class ConfigUi(_ApiModel):
     access_protection_enabled: bool
     rule_version: str
     records: RecordsUi
+    ingest_options: IngestOptions
 
 
 # ---------------------------------------------------------------------------

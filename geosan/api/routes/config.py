@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from sqlalchemy import func, select
 
 from geosan.api.deps import SessionDep, runtime_for
+from geosan.api.process_catalog import load_process_catalog
 from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, Meta
 from geosan.capability.models import Process
 from geosan.config.models import AppSetting
@@ -24,6 +25,14 @@ def config_ui(session: SessionDep):
             access_protection_enabled=settings.access_protection.enabled,
             rule_version=runtime.rule_config.version,
             records=settings.records.model_dump(),
+            ingest_options={
+                "processes": [
+                    {"code": row.code, "name": row.name}
+                    for row in load_process_catalog(session, settings.active_dataset_kind)
+                ],
+                "regions": settings.ingestion.regions,
+                "industries": settings.industries,
+            },
         ),
         meta=Meta(
             updated_at=session.scalar(select(func.max(AppSetting.updated_at))),
