@@ -126,6 +126,6 @@ def read_settings(old_settings):
     return AppSettings.model_validate(old_settings).ingestion.complex_list
 
 
-@then("단지 조회는 꺼져 있고 보관 일수는 7일이며 추가 단지 목록은 비어 있다")
+@then("단지 조회는 꺼져 있고 보관 일수는 15일이며 추가 단지 목록은 비어 있다")
 def defaults(settings):
-    assert not settings.enabled and settings.cache_days == 7 and settings.extra_names == []
+    assert not settings.enabled and settings.cache_days == 15 and settings.extra_names == []

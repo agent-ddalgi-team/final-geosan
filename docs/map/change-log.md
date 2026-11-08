@@ -55,6 +55,13 @@ timeline
 
 **읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
 
+### 2026-11-08
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 산단공 단지 조회 결과를 다시 쓰는 기간 | 7일(11/7 결정) | 15일. 설정값이라 코드는 그대로 | 공장 등록은 월 단위로 바뀌어 7일은 뜻이 작고, 2차의 한 달 자동 수집보다는 짧아야 해서. 호출 비용 차이는 거의 없음 | ✅ [#405] |
+| 단지 조회 결과를 다시 쓸 때 "어느 조회가 어떤 공장을 받았나"를 찾는 법 | 공장 행의 "받은 시각"으로 찾음 | 조회 기록에 받은 행 번호 목록 칸을 두고 그 목록으로 찾음. 받은 행은 지역과 상관없이 전부 저장하고 쓸 때 거름. 다 받은 조회만 다시 씀 | 다른 단지명 조회가 같은 공장을 또 받으면 시각이 덮여 앞 조회의 결과가 빠지는데, 프로그램은 그걸 완전한 결과로 믿게 됨 | ✅ [#405] · [#404] |
+
 ### 2026-11-07
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
@@ -276,3 +283,5 @@ timeline
 [#383]: https://github.com/agent-ddalgi-team/final-geosan/issues/383
 [#345]: https://github.com/agent-ddalgi-team/final-geosan/issues/345
 [#348]: https://github.com/agent-ddalgi-team/final-geosan/issues/348
+[#405]: https://github.com/agent-ddalgi-team/final-geosan/issues/405
+[#404]: https://github.com/agent-ddalgi-team/final-geosan/issues/404
