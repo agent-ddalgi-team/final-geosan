@@ -275,7 +275,7 @@ paths:
       responses: { '200': { description: 세션 쿠키 발급(HttpOnly·Secure·SameSite=Lax, 12시간) }, '401': { description: 비밀번호가 맞지 않습니다 }, '429': { description: '5회 연속 실패, retryAfterSeconds 30' } }
   /config/ui:
     get:
-      summary: 담당자 목록(키·표시 이름)·브랜드·쉬운 말 코드표·접속 보호 여부 (U1). (추가 2026-11-03 밤, PM 결정 #209) 응답 `records: { approvalEnabled: boolean, noteMaxLength: integer }` — 설정 C7 `records` 값을 그대로. 화면은 approvalEnabled false면 승인 버튼·칸을 숨기고, noteMaxLength로 메모 글자 상한을 보여 준다
+      summary: 담당자 목록(키·표시 이름)·브랜드·쉬운 말 코드표·접속 보호 여부 (U1). (추가 2026-11-03 밤, PM 결정 #209) 응답 `records: { approvalEnabled: boolean, noteMaxLength: integer }` — 설정 C7 `records` 값을 그대로. 화면은 approvalEnabled false면 승인 버튼·칸을 숨기고, noteMaxLength로 메모 글자 상한을 보여 준다 (추가 2026-11-08 PM 결정, 후보 가져오기 선택지 #424·#316) 응답 `ingestOptions: { processes: [{ code: processCode, name: string }], regions: [string], industries: [string] }` — [영업 후보 목록 › 후보 가져오기 줄] 조건 칸의 선택지. 값은 활성 묶음 역량 파일의 공정 전부(9종, 역량 파일 순서 그대로, 기회 0건인 공정도 포함), 설정 `ingestion.regions`, 설정 `industries`를 그대로 싣는다. 목록 응답의 `meta.processCounts`·`regionCounts`·`industryCounts`는 이미 들어온 회사의 건수라 아직 회사가 없는 공정을 찾는 조건 칸에는 쓰지 않는다. 화면은 이 값으로만 조건 칸을 그리고 코드에 값을 직접 적지 않는다. 선택지를 주는 새 경로는 두지 않는다. 더하는 변경
       responses: { '200': { description: Envelope } }
   /opportunities:
     get:
@@ -933,6 +933,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C1 | (2026-11-07, PM 결정 — 표면처리 확인 줄 규격) #319의 "검토사항에 OWN_PLATING_LINE_SUSPECTED 줄을 만든다"의 줄 번호·문장·출처를 정함: itemId `FLAG:OWN_PLATING_LINE_SUSPECTED` 고정 하나, text "표면처리를 직접 하는 회사일 수 있음: <근거>"(근거 없으면 앞 문장만), source는 표시 출처대로 `AI`/`RULE`, targetLabel null. 체크는 기존 `/review-items/{itemId}/check` 그대로이고 **점수 전 회사는 체크를 저장하지 않는다**(A안. B "점수 전에도 체크되게 약속·DB 보완"은 11/15 범위가 늘어 안 고름). 더하는 변경 | #363·#386 |
 | C6·C7·C9 | (2026-11-07, PM 결정 — 산단공 조회 보관 일수·하루 호출 기록) 유동렬 #221 질문 답. `ingestion.complexList.cacheDays` 값 **7** 확정. 공장등록 조회의 하루 호출 1,000회는 **새 표 없이 `tg_transfer_log`에 HTTP 호출마다 1행**(purpose `PUBLIC_SOURCE`, kind `FACTORY_REGISTRY`, costUsd 0, 본문 없음, batchId 또는 oppId)을 남겨 KST 오늘 ALLOW 행 합으로 센다. 월 OpenAI 상한 집계와는 분리. 코드값 2개 추가·설정값 확정이라 더하는 변경 | #393 · #221·#390 (유동렬) |
 | C5·C7·C9 | (2026-11-08, PM 결정 — 단지 조회 결과 다시 쓰기의 저장 칸·보관 일수) 유동렬 #405 질문 답. `src_complex_fetch`에 `rowIds: json[string]`(이 조회가 받은 공장 행 번호 목록) 한 칸을 더해 조회마다 받은 행을 기억한다 — 받은 시각만으로는 다른 단지명 조회가 같은 공장을 또 받을 때 앞 조회의 결과가 빠졌기 때문. 받은 행은 지역과 상관없이 전부 저장하고 다시 쓸 때 거르며, 다시 쓰는 것은 status OK·만료 전 조회만. `ingestion.complexList.cacheDays` 기본값 **7 → 15**(공장 등록은 월 단위로 바뀌어 7일은 뜻이 작고, 2차 한 달 수집보다는 짧게). 칸 하나 더함·설정값 변경이라 더하는 변경, 버전 그대로 | #405 · #404 (유동렬) · PR(PM) |
+| C1 | (2026-11-08, PM 결정 — 후보 가져오기 조건 칸 선택지) 고선주 #316 질문 답. `/config/ui` 응답에 `ingestOptions`(공정 9종 코드·이름, 지역 목록, 산업 목록)를 더한다. 목록 응답의 공정·지역·산업 건수는 이미 들어온 회사 기준이라 회사가 없는 공정을 찾는 조건 칸에 쓸 수 없고, 설정값을 화면이 이미 부르는 화면 설정 응답 한 곳에서 주는 것이 가장 단순하기 때문. 안 고른 방법: 선택지 전용 새 경로(경로가 늘고 두 곳을 불러야 함), 화면 코드에 값 직접 적기(설정값이라 안 됨). 칸 하나 더함이라 더하는 변경, 버전 그대로 | #424 · #316(화면, 고선주) · #428(서버, 이강욱) · #221 |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
