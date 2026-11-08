@@ -31,6 +31,31 @@ export function summaryParts(ingest: LatestIngest): string[] {
   return parts;
 }
 
+/**
+ * 실패 사유 한 줄. 서버가 쉬운 문장으로 준 것을 그대로 보이고(화면에서 새로 짓지 않는다),
+ * 없으면 기존 고정 문구를 쓴다.
+ */
+export function failureText(ingest: LatestIngest): string {
+  const reason = typeof ingest.failureReason === 'string' ? ingest.failureReason.trim() : '';
+  return reason || candidateSearch.failed;
+}
+
+/** 한도 등으로 건너뛴 일을 쉬운 말 문장으로 바꾼다. 서버가 안 준 칸과 모르는 코드는 뺀다. */
+export function skippedNotices(ingest: LatestIngest): string[] {
+  const notices: string[] = [];
+  const web: string | undefined = ingest.webSkippedReason
+    ? (candidateSearch.webSkipped as Record<string, string>)[ingest.webSkippedReason]
+    : undefined;
+  if (web) notices.push(web);
+  const complex: string | undefined = ingest.complexListSkippedReason
+    ? (candidateSearch.complexListSkipped as Record<string, string>)[
+        ingest.complexListSkippedReason
+      ]
+    : undefined;
+  if (complex) notices.push(complex);
+  return notices;
+}
+
 const scopeButton = (selected: boolean) =>
   ({
     minHeight: 36,
@@ -46,6 +71,7 @@ const scopeButton = (selected: boolean) =>
 
 export default function IngestSummary({ ingest, scope, onScope }: IngestSummaryProps) {
   const parts = summaryParts(ingest);
+  const notices = skippedNotices(ingest);
   const failed = ingest.status === 'FAILED';
   const running = ingest.status === 'RUNNING';
   return (
@@ -68,7 +94,7 @@ export default function IngestSummary({ ingest, scope, onScope }: IngestSummaryP
       >
         <span style={{ fontWeight: 700, color: colors.text }}>{candidateSearch.summaryTitle}</span>
         {failed ? (
-          <span data-testid="ingest-failed"> · {candidateSearch.failed}</span>
+          <span data-testid="ingest-failed"> · {failureText(ingest)}</span>
         ) : (
           <>
             {running ? (
@@ -77,6 +103,12 @@ export default function IngestSummary({ ingest, scope, onScope }: IngestSummaryP
             {parts.length > 0 ? (
               <span data-testid="ingest-counts"> · {parts.join(' · ')}</span>
             ) : null}
+            {notices.map((text) => (
+              <span key={text} data-testid="ingest-skipped">
+                {' '}
+                · {text}
+              </span>
+            ))}
           </>
         )}
       </div>

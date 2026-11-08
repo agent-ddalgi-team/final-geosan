@@ -422,6 +422,16 @@ export const candidateSearch = {
   summaryTitle: '후보 가져오기',
   running: '지금 가져오는 중입니다',
   failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
+  /** 한도 등으로 건너뛴 일(#442). 서버가 주는 이유 코드를 쉬운 말로 바꾼다. 모르는 코드는 보이지 않는다. */
+  webSkipped: {
+    DAILY_LIMIT: '오늘 웹 검색 한도에 걸려 웹 검색은 건너뛰었습니다',
+    DISABLED: '웹 검색이 꺼져 있어 건너뛰었습니다',
+  },
+  complexListSkipped: {
+    DAILY_LIMIT: '오늘 단지 조회 한도에 걸려 단지 목록 조회는 건너뛰었습니다',
+    SOURCE_ERROR: '단지 목록을 읽지 못해 건너뛰었습니다',
+    DISABLED: '단지 목록 조회가 꺼져 있어 건너뛰었습니다',
+  },
   scanned: (n: number) => `훑어본 회사 ${n.toLocaleString('ko-KR')}곳`,
   picked: (n: number) => `고른 회사 ${n.toLocaleString('ko-KR')}곳`,
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
