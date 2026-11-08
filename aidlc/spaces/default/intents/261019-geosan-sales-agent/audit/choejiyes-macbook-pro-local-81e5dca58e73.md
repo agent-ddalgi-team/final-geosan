@@ -45320,3 +45320,109 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-11-08T09:43:52Z
+**Event**: HUMAN_TURN
+**Session**: 64b6eb29-4152-4a77-b785-73dc32306718
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T09:44:28Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T09:52:31Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T09:54:45Z
+**Event**: HUMAN_TURN
+**Session**: 64b6eb29-4152-4a77-b785-73dc32306718
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-08T09:55:50Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T09:56:01Z
+**Event**: HUMAN_TURN
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T09:58:57Z
+**Event**: HUMAN_TURN
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:10:34Z
+**Event**: HUMAN_TURN
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:13:17Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:13:42Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:13:43Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:15:02Z
+**Event**: HUMAN_TURN
+**Session**: c76636ba-3c57-420d-b077-1a17c232f46d
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:16:18Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:18:20Z
+**Event**: HUMAN_TURN
+**Session**: 97c2e79a-fc79-46a9-80aa-6d7f0eb8da10
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T10:18:45Z
+**Event**: HUMAN_TURN
+**Session**: 64b6eb29-4152-4a77-b785-73dc32306718
+
+---
