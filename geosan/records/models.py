@@ -40,6 +40,8 @@ class Note(CommonColumns, Base):
         String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
     )
     staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    # #450·C6: 기록할 때 본 평가. 옛 기록·번호 없는 요청은 비워 둔다.
+    eval_id: Mapped[str | None] = mapped_column(String(40))
     text: Mapped[str] = mapped_column(Text, nullable=False)
     kind: Mapped[str] = mapped_column(
         String(16), nullable=False, default="MEMO", server_default="MEMO"
@@ -57,6 +59,7 @@ class Outcome(CommonColumns, Base):
         String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
     )
     status: Mapped[str] = mapped_column(String(40), nullable=False)
+    eval_id: Mapped[str | None] = mapped_column(String(40))
     reply_received: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     next_schedule_at: Mapped[date | None] = mapped_column(Date)
     next_schedule_note: Mapped[str | None] = mapped_column(Text)
