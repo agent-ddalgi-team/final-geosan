@@ -18,6 +18,7 @@ from geosan.api.ingest_views import (
     collected_evaluations,
     discovery_fields,
     latest_ingest,
+    recent_order,
 )
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
@@ -527,6 +528,7 @@ def list_opportunities(
     region: str | None = None,
     q: str | None = None,
     ingest_batch: Annotated[str | None, Query(alias="batch")] = None,
+    sort: str = "rank",
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -535,6 +537,12 @@ def list_opportunities(
     params = request.query_params
     if tab != "new" or ("filter" in params and params["filter"] not in supported_filters):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
+    # 정렬(#516): rank = 추천 순(기본), recent = 들어온 시각 최신 순.
+    # distance(#222)는 아직 연결 전이라 거부한다.
+    if sort not in ("rank", "recent"):
+        raise InputError(
+            "이 정렬은 아직 연결되지 않았습니다. 추천 순 또는 최근 들어온 순을 골라 주세요."
+        )
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
     full_batch_id = batch.batch_id if batch else None
@@ -674,6 +682,10 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         rows.append((original, current, opportunity, customer))
     rows.sort(key=lambda row: candidate_order(row[0], row[1], row[3], full_batch_id))
+    if sort == "recent":
+        # 들어온 시각이 최신인 회사를 앞에 두고, 시각이 없는(사례 파일) 회사는 뒤에 둔다.
+        # 추천 순으로 먼저 정렬해 두었으므로 같은 시각끼리는 그 순서가 유지된다(안정 정렬).
+        rows.sort(key=lambda row: recent_order(row[3]))
     start = (page - 1) * page_size
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
@@ -707,6 +719,7 @@ def list_opportunities(
                     or industry is not None
                     or region is not None
                     or ingest_batch is not None
+                    or sort == "recent"
                     or original.batch_id != full_batch_id
                     or (customer.ingest_batch_id is not None and current.score_s is None)
                 )
