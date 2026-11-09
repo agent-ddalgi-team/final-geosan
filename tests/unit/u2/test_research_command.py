@@ -188,6 +188,20 @@ def test_only_current_public_real_new_cases_are_selected(batch_env, excluded):
     assert not search_support.logs()
 
 
+def test_ingested_company_is_selected_like_a_case(batch_env):
+    """후보 찾기로 들어온 회사(사례 파일 아님)도 조사 대상이다(#492)."""
+    case, _ = batch_env
+    with session_scope() as session:
+        session.get(Opportunity, case.opp_id).case_id = None
+        customer = session.get(Customer, case.customer_id)
+        customer.ingest_batch_id = "batch-test"
+        customer.discovery_source = "FACTORY_FILE"
+    result = runner.invoke(app, ["research", "--all"])
+    assert result.exit_code == 0, result.output
+    assert "찾음" in result.output and "저장·재평가 1건" in result.output
+    assert search_support.logs()
+
+
 def test_disabled_auto_research_makes_no_calls(batch_env):
     search_support.change_setting("homepageDiscovery", autoResearch=False)
     result = runner.invoke(app, ["research"])

@@ -27,7 +27,7 @@ from geosan.config.app_settings import (
 from geosan.config.errors import AppError, InputError
 from geosan.config.validators import find_contact
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.opportunity.queries import store_case_homepage
+from geosan.opportunity.queries import public_origin_condition, store_case_homepage
 from geosan.rules.codes import SecurityGrade
 from geosan.storage.session import session_scope
 
@@ -101,7 +101,8 @@ def find_case_homepage(
                 Customer.homepage_status,
             )
             .join(Opportunity, Opportunity.customer_id == Customer.customer_id)
-            .where(Opportunity.opp_id == opp_id, Opportunity.case_id.is_not(None))
+            # 사례 파일 회사와 후보 찾기로 들어온 회사(#492). 출처 없는 회사는 검색하지 않는다.
+            .where(Opportunity.opp_id == opp_id, public_origin_condition())
         ).one_or_none()
     if customer is None or customer.security_grade != SecurityGrade.PUBLIC:
         if search is None:

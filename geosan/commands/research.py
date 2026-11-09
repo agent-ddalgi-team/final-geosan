@@ -13,6 +13,7 @@ from geosan.config.app_settings import (
 from geosan.config.errors import AppError, InputError, exit_code_for
 from geosan.evidence.contacts import scrub_contacts
 from geosan.opportunity.models import Customer, Opportunity
+from geosan.opportunity.queries import public_origin_condition
 from geosan.storage.session import session_scope
 from geosan.workflows.research import ResearchResult, research_one
 
@@ -59,7 +60,7 @@ def run_research(
                 .where(
                     Opportunity.dataset_kind == settings.active_dataset_kind.value,
                     Opportunity.purpose == "NEW_PROPOSAL",
-                    Opportunity.case_id.is_not(None),
+                    public_origin_condition(),  # 사례 파일 + 후보 찾기 회사(#492)
                     Opportunity.is_virtual.is_(False),
                     Customer.security_grade == "PUBLIC",
                 )
