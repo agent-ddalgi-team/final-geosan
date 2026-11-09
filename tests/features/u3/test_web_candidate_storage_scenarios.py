@@ -5,13 +5,19 @@ from pytest_bdd import given, scenarios, then, when
 from sqlalchemy import func, select
 
 from geosan.config.errors import InputError
+from geosan.opportunity import candidate_web
 from geosan.opportunity import web_candidate_store as store
 from geosan.opportunity.candidate_pick import pick_candidates
 from geosan.opportunity.candidate_web import search_candidates
 from geosan.opportunity.models import Customer
-from geosan.opportunity.source_models import CandidateJudgment, SourceFactoryRow, WebSearchRun
+from geosan.opportunity.source_models import (
+    CandidateJudgment,
+    SourceFactoryRow,
+    WebCandidate,
+    WebSearchRun,
+)
 from geosan.storage.session import session_scope
-from tests.fakes.web_candidate_search import BATCH, logs
+from tests.fakes.web_candidate_search import BATCH, candidate, logs, response
 from tests.fakes.web_candidate_storage import setup_web_storage
 
 scenarios("u3/web_candidate_storage.feature")
@@ -20,6 +26,27 @@ scenarios("u3/web_candidate_storage.feature")
 @given("웹 후보 검색과 AI 판단을 켠 가상 회차가 있다", target_fixture="context")
 def ready(tmp_db, app_settings_path, monkeypatch):
     return {"calls": setup_web_storage(app_settings_path, monkeypatch)}
+
+
+@given("검색 제공처가 공공 자료 주소를 출처로 돌려준다")
+def public_source(context, monkeypatch):
+    context["source_url"] = "https://www.data.go.kr/data/15105482/fileData.do"
+
+    def search(body, key):
+        context["calls"]["search"].append(body)
+        return response([candidate(sourceUrl=context["source_url"])])
+
+    monkeypatch.setattr(candidate_web, "_post_response", search)
+
+
+@then("공공 자료 출처 주소가 그대로 저장되어 있다")
+def saved_source(context):
+    with session_scope() as session:
+        row = session.get(WebCandidate, context["stored"].candidate_ids[0])
+        assert row.source_url == context["source_url"]
+        assert row.source_domain == "www.data.go.kr"
+        assert row.registry_status == "FOUND"
+        assert context["result"].dropped_count == 0
 
 
 @when("가상 검색과 등록 확인 결과를 저장하고 웹 후보를 판단한다")

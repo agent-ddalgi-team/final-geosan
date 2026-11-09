@@ -23,7 +23,7 @@ def safe_public_text(value: str) -> bool:
 
 def source_url(value, blocked_domains) -> str | None:
     """도메인 경계·하위 도메인을 검사한다. 페이지를 열거나 DNS를 조회하지 않는다."""
-    if not isinstance(value, str) or not value or not safe_public_text(value):
+    if not isinstance(value, str) or not value:
         return None
     if any(c.isspace() or ord(c) < 32 or c == "\\" for c in value):
         return None
@@ -39,6 +39,17 @@ def source_url(value, blocked_domains) -> str | None:
             or host.endswith((".localhost", ".local", ".internal"))
             or any(host == domain or host.endswith("." + domain) for domain in blocked_domains)
         ):
+            return None
+        # 공공데이터포털 자료 경로의 8자리 식별자는 전화번호가 아니다(#515).
+        # 그 위치만 가리고 검사하며, 질의·조각·다른 경로의 숫자와 인명 검사는 유지한다.
+        privacy_text = value
+        resource = re.fullmatch(r"/data/([0-9]{8})/(?:fileData|openapi)\.do", parts.path)
+        if host in {"data.go.kr", "www.data.go.kr"} and resource:
+            start, end = resource.span(1)
+            privacy_text = parts._replace(
+                path=parts.path[:start] + "resource" + parts.path[end:]
+            ).geturl()
+        if not safe_public_text(privacy_text):
             return None
         port = f":{parts.port}" if parts.port is not None else ""
         return urlunsplit((parts.scheme, host + port, parts.path or "/", parts.query, ""))
@@ -125,7 +136,11 @@ def parse_search_results(response: dict, blocked_domains: tuple[str, ...], maxim
         if (
             url not in sources
             or not url
-            or any(not safe_public_text(value) for value in item.values() if isinstance(value, str))
+            or any(
+                not safe_public_text(value)
+                for value in (name, address, snippet)
+                if isinstance(value, str)
+            )
         ):
             continue
         homepage = item.get("homepageUrl")
