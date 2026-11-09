@@ -24,7 +24,7 @@ from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_conditions
-from geosan.workflows.ingest_sources import FactoryFileDateError, store_dated_factory_csv
+from geosan.workflows.ingest_sources import store_dated_factory_csv
 from geosan.workflows.research import research_one
 
 
@@ -211,7 +211,7 @@ def run_ingest(batch_id: str) -> None:
     except Exception as error:
         message = (
             error.message
-            if isinstance(error, FactoryFileDateError)
+            if isinstance(error, (InputError, RunFailedError))
             else f"{stage}을 마치지 못했습니다. 자료와 설정을 확인해 주세요."
         )
         _failed(batch_id, message)

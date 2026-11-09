@@ -12,7 +12,7 @@ from geosan.api.deps import get_session, require_staff
 from geosan.api.ingest_batches import reserve_ingest_batch
 from geosan.api.ingest_conditions import IngestRequest
 from geosan.api.schemas import Envelope, Meta, _ApiModel
-from geosan.config.errors import AppError, RunFailedError, new_ref
+from geosan.config.errors import AppError, InputError, RunFailedError, new_ref
 from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
@@ -37,16 +37,21 @@ def _execute_batch(run_batch: Callable[[str], None], batch_id: str) -> None:
             batch = session.get(IngestBatch, batch_id)
             if batch is None or batch.status not in {"DONE", "FAILED"}:
                 raise RunFailedError("후보 찾기의 완료 상태를 확인해 주세요.")
-    except Exception:
-        # 외부 예외 문장에는 연락처·비밀값이 섞일 수 있어 저장·로그에 복사하지 않는다.
+    except Exception as error:
+        # 실행 흐름이 기록한 안전한 사유를 보존하고, 외부 예외 원문은 복사하지 않는다.
         # 실패 기록 자체를 저장하지 못하면 예외가 그대로 올라가며 성공으로 숨기지 않는다.
         with session_scope() as session:
             batch = session.get(IngestBatch, batch_id)
             if batch is None:
                 raise RunFailedError("후보 찾기 회차를 확인해 주세요.") from None
+            if batch.status != "FAILED" or not batch.failure_reason:
+                batch.failure_reason = (
+                    error.message
+                    if isinstance(error, (InputError, RunFailedError))
+                    else "후보 찾기를 끝내지 못했습니다. 다시 시도해 주세요."
+                )
             batch.status = "FAILED"
             batch.finished_at = utcnow()
-            batch.failure_reason = "후보 찾기를 끝내지 못했습니다. 다시 시도해 주세요."
         logger.error("ingest.failed", extra={"batchId": batch_id, "ref": new_ref()})
 
 
