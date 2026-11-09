@@ -41,10 +41,17 @@ def _run_server(port: int, host: str = HOST) -> None:
     import uvicorn
 
     from geosan.api.app import configure_logging, create_app
+    from geosan.workflows.flow_ingest import run_ingest
 
     configure_logging()
     # geosan 로거가 JSON 한 줄 로그를 맡으므로 uvicorn의 기본 로그 설정은 끈다(NFR10.1).
-    uvicorn.run(create_app(), host=host, port=port, log_config=None, access_log=False)
+    uvicorn.run(
+        create_app(ingest_runner=run_ingest),
+        host=host,
+        port=port,
+        log_config=None,
+        access_log=False,
+    )
 
 
 def run_serve(port: int, host: str = HOST) -> int:

@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Path, Query, Request
-from sqlalchemy import func, literal_column, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
@@ -19,6 +19,7 @@ from geosan.api.ingest_views import (
     discovery_fields,
     latest_ingest,
 )
+from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
     bookmark_view,
     contact_counts,
@@ -54,7 +55,6 @@ from geosan.api.schemas import (
     Scores,
     ScoreState,
 )
-from geosan.capability.models import FieldEvidence, Process
 from geosan.capability.queries import get_process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.dashboard.queries import bookmarked_opp_ids
@@ -561,31 +561,7 @@ def list_opportunities(
     codes_by_opportunity: dict[str, set[str]] = {}
     for opp_id, code in links:
         codes_by_opportunity.setdefault(opp_id, set()).add(code)
-    # 투입기는 파일 순서대로 공정별 검수 이력을 남긴다. 재투입한 파일의 순서도 반영한다.
-    process_reviews = (
-        select(FieldEvidence)
-        .where(
-            FieldEvidence.target_table == Process.__tablename__,
-            FieldEvidence.target_id == Process.process_id,
-            FieldEvidence.target_field == "reviewStatus",
-            FieldEvidence.dataset_kind == dataset_kind.value,
-        )
-        .correlate(Process)
-    )
-    imported_at = process_reviews.with_only_columns(
-        func.max(FieldEvidence.created_at)
-    ).scalar_subquery()
-    # 같은 시각에 저장돼도 파일 순서대로 flush한 이력의 실제 삽입 순서는 다르다.
-    imported_order = process_reviews.with_only_columns(
-        func.max(literal_column("cap_field_evidence.rowid"))
-    ).scalar_subquery()
-    processes = session.scalars(
-        select(Process)
-        .where(Process.dataset_kind == dataset_kind.value)
-        .order_by(
-            func.coalesce(imported_at, Process.created_at), imported_order, Process.process_id
-        )
-    ).all()
+    processes = load_process_catalog(session, dataset_kind)
     # 목록 머리 선택란(#361): 기회가 0곳인 공정도 count 0으로 싣는다.
     # 거산 공정 전부를 역량 파일 순서로 보낸다.
     process_counts = [
