@@ -238,6 +238,7 @@ export type LostReasonCode =
   'PRICE' | 'LEAD_TIME' | 'INCUMBENT_SUPPLIER' | 'NO_DEMAND' | 'QUALITY_CERT' | 'OTHER';
 export type ContactMethod = 'CALL' | 'EMAIL' | 'VISIT';
 export type ContactResult = 'REACHED' | 'ABSENT' | 'DECLINED';
+export type JudgmentCheck = 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
 export type NoteKind = 'MEMO' | 'RESEARCH';
 
 export interface OutcomeRecord extends RecordMeta {
@@ -561,6 +562,8 @@ export interface OutcomeRequest {
   method?: ContactMethod;
   result?: ContactResult;
   attemptedAt?: string;
+  /** 접촉 때 AI 판단이 맞았나(#531). 접촉 기록에서만 보낸다. */
+  judgmentCheck?: JudgmentCheck;
 }
 
 export interface OutcomeResponse extends RecordMeta {

@@ -629,6 +629,12 @@ export const outcomeStatusLabels = {
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
+/** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
+export const judgmentCheckLabels = {
+  MATCHED: '맞음',
+  MISMATCHED: '다름',
+  UNKNOWN: '모름',
+} as const;
 /** 거절 이유 코드(LostReasonCode) 쉬운 말. 영업 단계가 거절일 때 고른다. */
 export const lostReasonLabels = {
   PRICE: '가격',
@@ -689,6 +695,7 @@ export const recordsArea = {
   entryKind: '종류',
   contactMethod: '방법',
   contactResult: '결과',
+  judgmentCheck: 'AI 판단이 맞았나',
   contactDate: '날짜',
   contactSave: '접촉 기록 저장',
   /** 상세 머리 "접촉 3회 (전화 2 · 방문 1)". 0회인 방법은 빼고, 접촉이 없으면 "접촉 없음". */

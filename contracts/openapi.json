@@ -1573,6 +1573,16 @@
         "title": "IngestRequest",
         "type": "object"
       },
+      "JudgmentCheck": {
+        "description": "접촉해 보니 AI 판단이 맞았나(#531). 영업 성과와 별개다. 외주처가 있어도 사실이면 맞음.",
+        "enum": [
+          "MATCHED",
+          "MISMATCHED",
+          "UNKNOWN"
+        ],
+        "title": "JudgmentCheck",
+        "type": "string"
+      },
       "LatestIngest": {
         "description": "마지막 찾기 회차 요약 (C1 `meta.latestIngest`, #221·#313·#323).\n\n목록 머리 \"훑어본 ○곳 · 판단 완료 ○곳 · 고른 ○곳 · 조사 ○/○\"에 쓴다. 칸에 기본값을 두지 않아\n창구가 회차 행의 값을 빠짐없이 채워야 한다(안 채운 건수가 0으로 보이지 않게).",
         "properties": {
@@ -2649,6 +2659,16 @@
               }
             ],
             "title": "Expectedversion"
+          },
+          "judgmentCheck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JudgmentCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "lostReasonCode": {
             "anyOf": [
