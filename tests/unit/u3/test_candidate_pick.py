@@ -8,7 +8,12 @@ from sqlalchemy import event, select
 from sqlalchemy.exc import OperationalError
 
 from geosan.capability.models import FieldEvidence, Process
-from geosan.config.app_settings import AiPickSettings, AppSettings, load_app_settings
+from geosan.config.app_settings import (
+    DEFAULT_PICK_EXCLUDE_KEYWORDS,
+    AiPickSettings,
+    AppSettings,
+    load_app_settings,
+)
 from geosan.config.errors import AppError
 from geosan.config.models import AppSetting
 from geosan.evidence.transfer import TransferLog
@@ -32,7 +37,15 @@ def setting(key, **changes):
 def pick_context(ingest_batch, public_rows, tmp_path, monkeypatch):
     prompt = tmp_path / "prompt.md"
     prompt.write_text("가상 검사: 공개 공장을 전체 공정으로 판단한다.", encoding="utf-8")
-    setting("ingestion", aiPick={"enabled": True, "rowsPerCall": 1, "promptFile": str(prompt)})
+    setting(
+        "ingestion",
+        aiPick={
+            "enabled": True,
+            "rowsPerCall": 1,
+            "promptFile": str(prompt),
+            "excludeKeywords": [],
+        },
+    )
     with session_scope() as session:
         session.get(AppSetting, "activeDatasetKind").value = "VIRTUAL_REVIEWED"
         for code, name in [("ZINC_PLATING", "아연도금"), ("ANODIZING", "아노다이징")]:
@@ -121,7 +134,12 @@ def test_grouped_calls_store_all_judgments_and_reuse_without_key(pick_context, m
 def test_negative_judgment_stays_saved_and_selection_excludes_it(pick_context, monkeypatch):
     setting(
         "ingestion",
-        aiPick={"enabled": True, "rowsPerCall": 100, "promptFile": str(pick_context["prompt"])},
+        aiPick={
+            "enabled": True,
+            "rowsPerCall": 100,
+            "promptFile": str(pick_context["prompt"]),
+            "excludeKeywords": [],
+        },
     )
     fake(pick_context, monkeypatch)
     result = run(pick_context)
@@ -358,11 +376,14 @@ def test_process_names_follow_import_order_even_with_equal_timestamps(pick_conte
 def test_old_settings_default_off_and_examples_match(app_settings_path):
     for filename in (app_settings_path, "examples/app-settings-virtual.yaml"):
         data = load_app_settings(filename).model_dump(by_alias=True)
-        assert data["ingestion"].pop("aiPick") == {
+        pick = data["ingestion"].pop("aiPick")
+        assert pick["excludeKeywords"] == list(DEFAULT_PICK_EXCLUDE_KEYWORDS)
+        assert {key: value for key, value in pick.items() if key != "excludeKeywords"} == {
             "enabled": False,
-            "rowsPerCall": 100,
+            "rowsPerCall": 20,
             "promptFile": "examples/prompts/candidate-pick.md",
             "surfaceTreatmentIndustryNames": [],
+            "model": None,
         }
         assert AppSettings.model_validate(data).ingestion.ai_pick == AiPickSettings()
 
@@ -389,3 +410,91 @@ def test_row_id_with_phone_like_digits_is_still_sent(pick_context, monkeypatch):
     assert [item.row_id for item in judgments] == context["ids"]
     sent = [json.loads(call["input"])[0]["rowId"] for call in context["calls"]]
     assert PHONE_LIKE_ROW_ID in sent
+
+
+def test_excluded_keyword_rows_are_judged_by_rule_without_ai(pick_context, monkeypatch):
+    """#491: 생산품이 '운송 서비스'인 행은 AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다."""
+    context = pick_context
+    setting(
+        "ingestion",
+        aiPick={
+            "enabled": True,
+            "rowsPerCall": 1,
+            "promptFile": str(context["prompt"]),
+            "excludeKeywords": ["운송"],
+        },
+    )
+    fake(context, monkeypatch)
+    judgments = run(context)
+    bolts, logistics = judgments
+    assert bolts.is_manufacturer is True and logistics.is_manufacturer is False
+    assert logistics.reason == "" and logistics.process_codes == []
+    sent = [json.loads(call["input"])[0]["rowId"] for call in context["calls"]]
+    assert sent == [context["ids"][0]]
+    with session_scope() as session:
+        stored_models = {
+            row.row_id: row.model for row in session.scalars(select(CandidateJudgment)).all()
+        }
+    assert stored_models[context["ids"][1]] == pick.RULE_MODEL
+    assert stored_models[context["ids"][0]] != pick.RULE_MODEL
+    # 두 번째 실행은 둘 다 저장된 판단을 다시 쓴다(AI 호출 0회).
+    context["calls"].clear()
+    assert [row.row_id for row in run(context)] == list(context["ids"])
+    assert context["calls"] == []
+
+
+def test_manufacturing_hint_keeps_row_for_ai_despite_keyword():
+    assert pick.rule_excluded({"product": "운송 서비스", "industryName": None}, ("운송",)) is True
+    assert (
+        pick.rule_excluded({"product": "운송장비 부품 제조", "industryName": None}, ("운송",))
+        is False
+    )
+    assert pick.rule_excluded({"product": "", "industryName": None}, ("운송",)) is False
+    assert pick.rule_excluded({"product": "볼트", "industryName": "도매업"}, ("도매",)) is True
+
+
+def test_pick_model_override_is_used_for_the_call(pick_context, monkeypatch):
+    """#491: aiPick.model을 두면 후보 고르기만 그 모델로 부르고 저장 기록에도 남는다."""
+    context = pick_context
+    setting("llm", allowedModels=["gpt-6.1-sol", "gpt-6-luna"], model="gpt-6.1-sol")
+    setting(
+        "ingestion",
+        aiPick={
+            "enabled": True,
+            "rowsPerCall": 1,
+            "promptFile": str(context["prompt"]),
+            "model": "gpt-6-luna",
+            "excludeKeywords": [],
+        },
+    )
+    fake(context, monkeypatch)
+    run(context)
+    assert {call["model"] for call in context["calls"]} == {"gpt-6-luna"}
+    with session_scope() as session:
+        models = {row.model for row in session.scalars(select(CandidateJudgment)).all()}
+    assert "gpt-6-luna" in models
+
+
+def test_pick_model_outside_allowed_list_is_rejected(app_settings_path):
+    """설정 파일 검사에서 막힌다(check-config). 허용 목록 밖 모델은 읽는 단계에서 거부."""
+    data = load_app_settings(app_settings_path).model_dump(by_alias=True)
+    data["llm"]["allowedModels"] = ["gpt-6.1-sol"]
+    data["ingestion"]["aiPick"]["model"] = "x-9"
+    with pytest.raises(ValueError):
+        AppSettings.model_validate(data)
+    data["ingestion"]["aiPick"]["model"] = "gpt-6.1-sol"
+    assert AppSettings.model_validate(data).ingestion.ai_pick.model == "gpt-6.1-sol"
+
+
+def test_manufacturer_answer_without_reason_is_rejected(pick_context, monkeypatch):
+    context = pick_context
+
+    def mutate(answer, _call_no):
+        text = json.loads(answer["output"][0]["content"][0]["text"])
+        text[0]["reason"] = ""
+        answer["output"][0]["content"][0]["text"] = json.dumps(text, ensure_ascii=False)
+        return answer
+
+    fake(context, monkeypatch, mutate)
+    with pytest.raises(AppError):
+        run(context)

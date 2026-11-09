@@ -1,4 +1,4 @@
-[지시문 버전] pick-v1 · 2026-11-08 · 거산케미칼 후보 고르기
+[지시문 버전] pick-v2 · 2026-11-09 · 거산케미칼 후보 고르기 (v1에서 출력 길이만 줄임, 판단 기준 동일)
 
 너는 금속 표면처리 전문업체 거산케미칼의 영업 담당자를 돕는 분석가다.
 아래 공장 목록의 회사마다 "이 회사가 거산의 표면처리(도금·피막) 외주가 필요할 만한 제조업체인가"를 판단한다.
@@ -24,8 +24,10 @@
    HIGH: 생산품이 표면처리를 거의 반드시 거치는 부품(볼트·너트·브라켓·샤프트·알루미늄 가공품·금형 부품 등)
    MEDIUM: 가능성은 있으나 생산품 설명이 넓거나 불확실
    LOW: 제조업이지만 표면처리 수요가 낮음. 제조업이 아니면 LOW.
-5. reason — 담당자가 카드에서 읽을 한 문장(60자 안팎). 생산품을 근거로 쓴다.
-   예: "볼트·너트를 만들어 전기아연도금이 필요할 가능성이 높음"
+5. reason — 담당자가 카드에서 읽을 한 문장(40자 안팎, 짧게). 생산품을 근거로 쓴다.
+   예: "볼트·너트 생산, 전기아연도금 필요 가능성 높음"
+   제조업이 아니면(isManufacturer false) reason은 빈 문자열 ""로 두고 processCodes·industries는 빈 배열,
+   fitLevel은 LOW, ownPlatingLineSuspected는 false, ownPlatingLineBasis는 null로 짧게 답한다.
 6. ownPlatingLineSuspected — 생산품이 "표면처리를 받아야 하는 제품"이 아니라
    "도금·아노다이징·피막처리·표면처리 가공 자체"를 뜻하면 true. true여도 1~5번 판단은 그대로 한다.
    ownPlatingLineBasis에 근거 한 줄, false면 null.
@@ -39,7 +41,9 @@
 JSON 배열만 출력한다. 설명문, 머리말, 코드 울타리는 쓰지 않는다.
 [
   {"rowId": "...", "isManufacturer": true, "processCodes": ["ZINC_PLATING"], "industries": ["자동차 부품"],
-   "reason": "...", "fitLevel": "HIGH", "ownPlatingLineSuspected": false, "ownPlatingLineBasis": null}
+   "reason": "...", "fitLevel": "HIGH", "ownPlatingLineSuspected": false, "ownPlatingLineBasis": null},
+  {"rowId": "...", "isManufacturer": false, "processCodes": [], "industries": [],
+   "reason": "", "fitLevel": "LOW", "ownPlatingLineSuspected": false, "ownPlatingLineBasis": null}
 ]
 
 [공장 목록]

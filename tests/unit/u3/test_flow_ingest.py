@@ -86,7 +86,7 @@ def ingest_env(tmp_db, tmp_path, factory_file, monkeypatch):
         settings = session.get(AppSetting, "ingestion")
         settings.value = settings.value | {
             "factoryCsvPath": str(path),
-            "aiPick": {"enabled": True, "rowsPerCall": 100},
+            "aiPick": {"enabled": True, "rowsPerCall": 100, "excludeKeywords": []},
         }
         llm = session.get(AppSetting, "llm")
         llm.value = load_app_settings(Path("examples/app-settings.yaml")).llm.model_dump(

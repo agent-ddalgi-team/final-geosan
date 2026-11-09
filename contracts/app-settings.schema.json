@@ -97,9 +97,11 @@
           "properties": {
             "_설명": { "type": "string" },
             "enabled": { "type": "boolean", "default": false },
-            "rowsPerCall": { "type": "integer", "minimum": 1, "default": 100 },
+            "rowsPerCall": { "type": "integer", "minimum": 1, "default": 20, "description": "한 번에 AI에 보내는 공장 행 수. 100행은 60초 한도를 넘겨 20으로 낮춤(PM #491, 2026-11-09)." },
             "promptFile": { "type": "string", "minLength": 1, "default": "examples/prompts/candidate-pick.md" },
-            "surfaceTreatmentIndustryNames": { "type": "array", "items": { "type": "string" }, "default": [] }
+            "surfaceTreatmentIndustryNames": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "model": { "type": ["string", "null"], "minLength": 1, "default": null, "description": "후보 고르기에만 쓸 모델. llm.allowedModels 안의 이름. 비우면 llm.model(PM #491, 모델 비교용)." },
+            "excludeKeywords": { "type": "array", "items": { "type": "string" }, "description": "생산품·업종명에 이 말이 있고 제조 낌새가 없으면 AI에 보내지 않고 '제조업 아님'으로 기록(PM #491). 기본 목록은 코드의 DEFAULT_PICK_EXCLUDE_KEYWORDS." }
           }
         },
         "complexList": {

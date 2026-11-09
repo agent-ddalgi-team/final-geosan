@@ -30,9 +30,11 @@ ingestion:
   factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
   aiPick:
     enabled: false
-    rowsPerCall: 100
+    rowsPerCall: 20  # 100행은 60초 한도를 넘김(PM #491, 2026-11-09)
     promptFile: examples/prompts/candidate-pick.md
     surfaceTreatmentIndustryNames: []  # 업종명 규칙의 값은 PM이 정한 뒤 넣는다.
+    model: null  # 후보 고르기만 다른 모델로(예: gpt-6-luna). 비우면 llm.model. 모델 비교용(PM #491)
+    excludeKeywords: [운송, 물류, 택배, 창고업, 도매, 소매, 무역, 소프트웨어, 정보서비스, 통신서비스, 식품, 음료, 제과, 제빵, 섬유, 의류, 봉제, 출판, 광고, 교육, 컨설팅, 부동산, 건설업, 토목, 시공, 음식점, 숙박]  # 제조 낌새(제조·생산·가공·부품·제작) 없이 이 말만 있으면 AI에 안 보냄
   complexList:
     _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 15일(#405, 처음 7일 #393). 실제 조회·보관 실행은 후속 연결."
     enabled: false
