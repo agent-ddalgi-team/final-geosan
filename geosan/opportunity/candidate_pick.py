@@ -160,10 +160,13 @@ def _public_rows(plan, ids, db_path):
                 "industryName": row.industry_name,
                 "address": row.address,
             }
+            # 연락처 검사는 글 칸만 본다. 행 번호(rowId)는 무작위 문자·숫자라 전화번호처럼 보일 수
+            # 있어 검사에서 뺀다(#505).
+            texts = [value for key, value in item.items() if key != "rowId" and value is not None]
             if (
                 not row.company_name.strip()
                 or (plan.source_kind == "FACTORY" and not row.address.strip())
-                or any(value is not None and not _safe_text(value) for value in item.values())
+                or any(not _safe_text(value) for value in texts)
             ):
                 raise InputError("공개 공장 본문에 연락처가 있어 전송할 수 없습니다.")
             result.append(item)

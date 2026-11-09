@@ -371,3 +371,21 @@ def test_old_settings_default_off_and_examples_match(app_settings_path):
 def test_invalid_batch_size_does_not_coerce(value):
     with pytest.raises(ValueError):
         AiPickSettings(rows_per_call=value)
+
+
+PHONE_LIKE_ROW_ID = "factory-01M6Z00RYQBP07979303397SFN"
+
+
+def test_row_id_with_phone_like_digits_is_still_sent(pick_context, monkeypatch):
+    """#505: 행 번호의 숫자 열은 연락처가 아니다. 글 칸만 검사하고 행은 그대로 보낸다."""
+    context = pick_context
+    first = context["ids"][0]
+    with session_scope() as session:
+        row = session.get(SourceFactoryRow, first)
+        row.row_id = PHONE_LIKE_ROW_ID
+    context["ids"] = [PHONE_LIKE_ROW_ID, *context["ids"][1:]]
+    fake(context, monkeypatch)
+    judgments = run(context)
+    assert [item.row_id for item in judgments] == context["ids"]
+    sent = [json.loads(call["input"])[0]["rowId"] for call in context["calls"]]
+    assert PHONE_LIKE_ROW_ID in sent
