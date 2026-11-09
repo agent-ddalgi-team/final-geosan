@@ -3,7 +3,8 @@
 //  - 공정 선택란 맨 위는 "전체(공정별로 묶음)"다(#383, 2026-11-07 PM 결정). 고른 공정이 없으면(주소에 공정이 없거나
 //    선택지에 없는 값이면) 이것이 골라진 것으로 보이고, 지역·산업 선택란은 이때도 보여 먼저 고를 수 있다.
 //  - 검색하면 고른 조건과 상관없이 전체 후보에서 찾는다. 검색 중에는 세 선택란을 숨기고 결과 줄과 [검색 지우기]를 보인다.
-//  - 정렬은 "추천 순"만 고를 수 있다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 눌러도 아무 일이 없다.
+//  - 정렬은 "추천 순"과 "최근 들어온 순"(#516)을 고를 수 있다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고
+//    눌러도 아무 일이 없다. 고른 정렬은 부모가 주소(`?sort=recent`)에 남긴다.
 // 선택과 검색어는 부모가 주소(`?process=&region=&industry=`, `?q=`)에 남기고, 이 부품은 고른 값을 알리기만 한다.
 // 선택지 옆 숫자는 서버가 준 건수다. 지역·산업은 건수가 0인 선택지를 서버가 빼서 주고, 공정은 0곳도 함께 준다.
 import { useState } from 'react';
@@ -12,6 +13,9 @@ import { Button } from 'antd';
 import type { IndustryCount, ProcessCount, RegionCount } from '../../api/types';
 import { listFilters, listSearch } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
+
+/** 목록 정렬(#516). rank = 추천 순(기본), recent = 들어온 시각 최신 순. */
+export type ListSort = 'rank' | 'recent';
 
 export interface ListFilterBarProps {
   /** 공정 선택지(거산 공정 전부, 역량 파일 순서. 회사가 0곳인 공정도 온다). */
@@ -32,6 +36,10 @@ export interface ListFilterBarProps {
   /** [검색]·Enter. 앞뒤 공백을 뗀 검색어만 알린다(빈 검색어로는 알리지 않는다). */
   onSearch: (text: string) => void;
   onClearSearch: () => void;
+  /** 지금 정렬(주소 `sort=`). 없으면 추천 순. */
+  sort: ListSort;
+  /** 다른 정렬을 고르면 알린다. 이미 골라진 것을 다시 눌러도 알리지 않는다. */
+  onSort: (sort: ListSort) => void;
 }
 
 const controlStyle = {
@@ -179,6 +187,8 @@ export default function ListFilterBar({
   onIndustry,
   onSearch,
   onClearSearch,
+  sort,
+  onSort,
 }: ListFilterBarProps) {
   const searching = query !== null;
   const hasProcess = !searching && showProcess && processCounts.length > 0;
@@ -254,11 +264,25 @@ export default function ListFilterBar({
           </span>
           <button
             type="button"
-            aria-pressed="true"
-            style={sortStyle(true)}
+            aria-pressed={sort === 'rank'}
+            onClick={() => {
+              if (sort !== 'rank') onSort('rank');
+            }}
+            style={sortStyle(sort === 'rank')}
             data-testid="list-sort-rank"
           >
             {listSearch.sortRank}
+          </button>
+          <button
+            type="button"
+            aria-pressed={sort === 'recent'}
+            onClick={() => {
+              if (sort !== 'recent') onSort('recent');
+            }}
+            style={sortStyle(sort === 'recent')}
+            data-testid="list-sort-recent"
+          >
+            {listSearch.sortRecent}
           </button>
           {/* 준비 중: 낭독기에도 읽히도록 지우지 않고 aria-disabled로 둔다. 누르는 일을 붙이지 않아 아무 요청도 없다. */}
           <button

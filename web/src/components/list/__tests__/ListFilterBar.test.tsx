@@ -27,9 +27,11 @@ function renderBar(overrides: Partial<ListFilterBarProps> = {}) {
     onIndustry: vi.fn(),
     onSearch: vi.fn(),
     onClearSearch: vi.fn(),
+    onSort: vi.fn(),
   };
   render(
     <ListFilterBar
+      sort="rank"
       processCounts={PROCESSES}
       showProcess
       process="ZINC_PLATING"
@@ -249,18 +251,40 @@ describe('ListFilterBar', () => {
     });
   });
 
-  describe('정렬 (#361)', () => {
-    it('"추천 순"이 골라져 있고 "가까운 순 (준비 중)"은 고를 수 없게 표시된다', () => {
+  describe('정렬 (#361 · #516)', () => {
+    it('"추천 순"이 골라져 있고, "최근 들어온 순"은 고를 수 있으며, "가까운 순 (준비 중)"은 고를 수 없게 표시된다', () => {
       renderBar();
       const group = screen.getByRole('group', { name: listSearch.sortLabel });
       const buttons = within(group).getAllByRole('button');
       expect(buttons.map((button) => button.textContent)).toEqual([
         '추천 순',
+        '최근 들어온 순',
         '가까운 순 (준비 중)',
       ]);
       expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
       expect(buttons[1]).toHaveAttribute('aria-pressed', 'false');
-      expect(buttons[1]).toHaveAttribute('aria-disabled', 'true');
+      expect(buttons[1]).not.toHaveAttribute('aria-disabled');
+      expect(buttons[2]).toHaveAttribute('aria-pressed', 'false');
+      expect(buttons[2]).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('"최근 들어온 순"을 누르면 recent를 알리고, 이미 골라진 정렬을 다시 눌러도 알리지 않는다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar();
+      await user.click(screen.getByTestId('list-sort-recent'));
+      expect(handlers.onSort).toHaveBeenCalledTimes(1);
+      expect(handlers.onSort).toHaveBeenCalledWith('recent');
+      await user.click(screen.getByTestId('list-sort-rank'));
+      expect(handlers.onSort).toHaveBeenCalledTimes(1);
+    });
+
+    it('주소의 정렬이 recent면 "최근 들어온 순"이 골라져 보이고 "추천 순"을 누르면 rank를 알린다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar({ sort: 'recent' });
+      expect(screen.getByTestId('list-sort-recent')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'false');
+      await user.click(screen.getByTestId('list-sort-rank'));
+      expect(handlers.onSort).toHaveBeenCalledWith('rank');
     });
 
     it('"가까운 순 (준비 중)"을 눌러도 아무것도 알리지 않고 "추천 순"이 그대로 골라져 있다', async () => {
