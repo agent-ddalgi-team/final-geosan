@@ -8,7 +8,8 @@
 // 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
 // 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
-// 정렬(#361): "추천 순"뿐이다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 서버로 `sort`를 보내지 않는다.
+// 정렬(#361·#516): "추천 순"(기본, 서버로 `sort`를 보내지 않음)과 "최근 들어온 순"(`?sort=recent`).
+// "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 아무것도 보내지 않는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,7 +23,9 @@ import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
 import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
+import type { ListSort } from '../components/list/ListFilterBar';
 import {
+  FLAT_VIEW_CHOICE,
   GROUPED_VIEW_CHOICE,
   readLastProcess,
   storeLastProcess,
@@ -30,14 +33,7 @@ import {
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import OpportunityCard from '../components/list/OpportunityCard';
 import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
-import {
-  bookmarkList,
-  candidateSearch,
-  listFilters,
-  listSearch,
-  pagination,
-  states,
-} from '../labels/ko';
+import { bookmarkList, listFilters, listSearch, pagination, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
@@ -76,8 +72,8 @@ export default function OpportunityListPage() {
   const industry = condition('industry');
   const stage = condition('stage');
   const filter = condition('filter');
-  // "이번 수집만"(#316)은 주소 `?batch=latest`로만 남긴다. 다른 값은 전체로 읽는다.
-  const latestOnly = condition('batch') === 'latest';
+  // 정렬(#516)은 주소 `?sort=recent`로만 남긴다. 다른 값은 추천 순으로 읽는다.
+  const sort: ListSort = condition('sort') === 'recent' ? 'recent' : 'rank';
   // "관심 기업" 보기(#357)는 주소 `?bookmarked=true`로만 남긴다. 다른 값은 평소 목록으로 읽는다.
   const bookmarked = condition('bookmarked') === 'true';
   // 검토 의견 거르기는 관심 기업 보기에서만 쓴다(거르기 단추가 그 보기에만 있다). 표에 없는 값은 "전체 보기"로 읽는다.
@@ -85,6 +81,8 @@ export default function OpportunityListPage() {
   const opinion = bookmarked && isOpinionFilter(opinionParam) ? opinionParam : null;
   // 공정 선택란은 평소 목록에만 있다. 대시보드 건수로 넘어온 전체 목록·검색 결과·관심 기업 보기에는 없다.
   const processMode = !stage && !filter && !searching && !bookmarked;
+  // 전체 보기(#516): 평소 목록에서 공정을 고르지 않고 주소에 `view=all`이 있으면 묶지 않고 한 줄로 본다.
+  const flat = processMode && !process && condition('view') === 'all';
   // 검색하기 직전의 주소. 대시보드에서 검색으로 바로 넘어왔으면 모른다(null).
   const searchReturn = readSearchReturn(location.state);
   const filterKey = [
@@ -94,9 +92,11 @@ export default function OpportunityListPage() {
     stage,
     filter,
     q,
-    latestOnly ? 'latest' : '',
+    sort === 'recent' ? 'recent' : '',
     bookmarked ? 'bookmarked' : '',
     opinion,
+    // 서버 요청은 같지만 묶음 보기는 첫 응답의 카드를 버리므로, 전체 보기로 바꾸면 다시 불러야 한다.
+    flat ? 'all' : '',
   ]
     .map((v) => v ?? '')
     .join('|');
@@ -119,13 +119,13 @@ export default function OpportunityListPage() {
       stage,
       filter,
       q,
-      // 전체 보기일 때는 이 칸을 아예 보내지 않는다(서버·기존 시험이 보는 요청 모양을 바꾸지 않음).
-      ...(latestOnly ? { batch: 'latest' } : {}),
+      // 추천 순일 때는 이 칸을 아예 보내지 않는다(서버·기존 시험이 보는 요청 모양을 바꾸지 않음).
+      ...(sort === 'recent' ? { sort: 'recent' } : {}),
       // 관심 기업 보기와 그 안의 검토 의견 거르기도 켰을 때만 보낸다.
       ...(bookmarked ? { bookmarked: 'true' } : {}),
       ...(opinion ? { opinion } : {}),
     }),
-    [process, region, industry, stage, filter, q, latestOnly, bookmarked, opinion],
+    [process, region, industry, stage, filter, q, sort, bookmarked, opinion],
   );
 
   useEffect(() => {
@@ -139,6 +139,11 @@ export default function OpportunityListPage() {
           if (isChoice(process)) {
             // 다음에 공정 없이 목록을 열면 이 공정으로 바로 열리도록 기억한다.
             storeLastProcess(process);
+          } else if (flat) {
+            // 전체 보기(#516): 공정 상관없이 이 응답의 카드를 한 줄로 그대로 보이고, 그렇게 기억한다.
+            storeLastProcess(FLAT_VIEW_CHOICE);
+            setResult({ key: requestKey, items: envelope.data, meta: envelope.meta });
+            return;
           } else {
             // 공정이 골라져 있지 않다(주소에 없거나 선택지에 없는 값). 프로그램이 공정을 대신 고르지 않는다(#368).
             const remembered = readLastProcess();
@@ -151,6 +156,18 @@ export default function OpportunityListPage() {
                   const next = new URLSearchParams(prev);
                   if (usable && remembered) next.set('process', remembered);
                   else next.delete('process');
+                  return next;
+                },
+                { replace: true },
+              );
+              return;
+            }
+            if (remembered === FLAT_VIEW_CHOICE) {
+              // 지난번에 전체 보기를 봤으면 그것으로 연다(주소에 view=all을 더해 다시 부른다. 기록은 남기지 않는다).
+              setParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set('view', 'all');
                   return next;
                 },
                 { replace: true },
@@ -170,13 +187,13 @@ export default function OpportunityListPage() {
         if (!controller.signal.aborted) setResult({ key: requestKey, error });
       });
     return () => controller.abort();
-  }, [page, baseFilters, process, processMode, requestKey, setParams]);
+  }, [page, baseFilters, process, processMode, flat, requestKey, setParams]);
 
   const current = result?.key === requestKey ? result : null;
   const meta = current?.meta ?? null;
 
-  // 묶음 보기(#383): 공정 선택란이 있는 평소 목록에서 공정을 고르지 않았고 공정 선택지가 왔을 때.
-  const grouped = processMode && !process && (meta?.processCounts ?? []).length > 0;
+  // 묶음 보기(#383): 공정 선택란이 있는 평소 목록에서 공정을 고르지 않았고 공정 선택지가 왔을 때. 전체 보기(#516)면 묶지 않는다.
+  const grouped = processMode && !process && !flat && (meta?.processCounts ?? []).length > 0;
   // 회사가 1곳 이상인 공정만 묶음으로 부른다(선택지 곳 수는 지역·산업과 상관없는 전체 건수라, 조건을 걸면 0곳이 될 수 있다).
   const groupCodes = useMemo(
     () =>
@@ -298,21 +315,21 @@ export default function OpportunityListPage() {
   const processIsEmpty =
     processMode &&
     (meta?.processCounts ?? []).some((item) => item.processCode === process && item.count === 0);
-  // 묶음 보기에서 회사가 있는 공정은 있는데 조건(지역·산업·이번 수집만) 때문에 모든 묶음이 0곳이면 조건을 바꿔 보라는 문구다.
+  // 묶음 보기에서 회사가 있는 공정은 있는데 조건(지역·산업) 때문에 모든 묶음이 0곳이면 조건을 바꿔 보라는 문구다.
   const groupsFiltered = grouped && groupCodes.length > 0;
+  // 관심 기업 보기에서 공정을 골라 0곳이면 "관심 기업 없음"이 아니라 조건을 바꿔 보라는 문구다(#516).
+  const bookmarkedByProcess = bookmarked && process !== null;
   const emptyText = searching
     ? listSearch.empty
     : processIsEmpty
       ? listFilters.processEmpty
-      : latestOnly
-        ? candidateSearch.latestEmpty
-        : region || industry || groupsFiltered
-          ? listFilters.filteredEmpty
-          : stage || filter || opinion
-            ? listFilters.noMatch
-            : bookmarked
-              ? bookmarkList.empty
-              : states.listEmpty;
+      : region || industry || groupsFiltered || bookmarkedByProcess
+        ? listFilters.filteredEmpty
+        : stage || filter || opinion
+          ? listFilters.noMatch
+          : bookmarked
+            ? bookmarkList.empty
+            : states.listEmpty;
   const latestIngest = menu?.latestIngest ?? null;
   // 묶음 머리에 끼우는 고른 조건 이름(지역·산업). 값이 곧 화면 이름이다.
   const groupConditions = [region, industry].filter((value): value is string => Boolean(value));
@@ -322,7 +339,7 @@ export default function OpportunityListPage() {
     next.set('process', code);
     if (region) next.set('region', region);
     if (industry) next.set('industry', industry);
-    if (latestOnly) next.set('batch', 'latest');
+    if (sort === 'recent') next.set('sort', 'recent');
     return `${location.pathname}?${next.toString()}`;
   };
 
@@ -335,18 +352,13 @@ export default function OpportunityListPage() {
           onStarted={() => void refreshIngest()}
         />
       ) : null}
-      {latestIngest ? (
-        <IngestSummary
-          ingest={latestIngest}
-          scope={latestOnly ? 'latest' : 'all'}
-          onScope={(scope) => update({ batch: scope === 'latest' ? 'latest' : null })}
-        />
-      ) : null}
+      {latestIngest ? <IngestSummary ingest={latestIngest} /> : null}
       <ListViewBar
         bookmarked={bookmarked}
         opinion={opinion}
         filter={filter}
-        // 관심 기업 보기는 공정 선택란 없이 전체에서 거르므로 켤 때 공정 조건을 뺀다. 끌 때는 의견 거르기도 같이 뺀다.
+        // 관심 기업 보기는 "전체"에서 시작하므로 켤 때 공정 조건을 뺀다(그 안에서 다시 고를 수 있다, #516).
+        // 끌 때는 의견 거르기도 같이 뺀다.
         onBookmarked={(on) =>
           update(on ? { bookmarked: 'true', process: null } : { bookmarked: null, opinion: null })
         }
@@ -356,7 +368,9 @@ export default function OpportunityListPage() {
       {/* 검색 칸은 서버 응답 전에도(불러오지 못했을 때도) 쓸 수 있게 머리를 항상 그린다. 선택지는 응답이 오면 채워진다. */}
       <ListFilterBar
         processCounts={menu?.processCounts ?? []}
-        showProcess={processMode}
+        // 관심 기업 보기에도 공정 선택란을 둔다(#516, PM 2026-11-09). 묶지 않으므로 맨 위는 "전체"다.
+        showProcess={processMode || bookmarked}
+        processGrouped={processMode && !flat}
         process={process}
         region={region}
         industry={industry}
@@ -367,13 +381,25 @@ export default function OpportunityListPage() {
         // 선택란에서 고른 것은 바로 기억한다. "전체(공정별로 묶음)"를 골랐을 때 지난번 공정 기억이 되살아나
         // 그 공정으로 돌아가 버리지 않게 하려는 것이다(주소에 공정이 없으면 기억한 것으로 여는 규칙 때문).
         onProcess={(code) => {
-          storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
-          update({ process: code, region: null, industry: null });
+          // 관심 기업 보기에서 고른 공정은 기억하지 않는다(평소 목록의 "마지막 선택"과 섞이지 않게).
+          if (processMode) storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
+          // 공정을 고르면(또는 묶음 보기로 돌아가면) 전체 보기에서 나온다.
+          update({ process: code, region: null, industry: null, view: null });
         }}
         onRegion={(value) => update({ region: value })}
         onIndustry={(value) => update({ industry: value })}
         onSearch={search}
         onClearSearch={clearSearch}
+        sort={sort}
+        // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기와 요청 모양이 그대로).
+        onSort={(value) => update({ sort: value === 'recent' ? 'recent' : null })}
+        // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
+        showFlat={processMode}
+        flat={flat}
+        onFlat={(on) => {
+          storeLastProcess(on ? FLAT_VIEW_CHOICE : GROUPED_VIEW_CHOICE);
+          update(on ? { view: 'all', process: null } : { view: null });
+        }}
       />
       <FiveStates
         state={state}
@@ -392,7 +418,9 @@ export default function OpportunityListPage() {
         >
           {grouped
             ? `${pagination.totalLine(total)} · ${listFilters.groupedNote}`
-            : pagination.totalLine(total)}
+            : flat
+              ? `${pagination.totalLine(total)} · ${listFilters.flatNote}`
+              : pagination.totalLine(total)}
         </p>
         {grouped ? (
           // 묶음 보기(#383): 공정마다 묶음 하나. 묶음 안 번호는 그 공정 안 순위다. 0곳인 묶음은 보이지 않는다.
@@ -479,7 +507,8 @@ export default function OpportunityListPage() {
                   card={card}
                   classificationOverrides={config?.classificationLabels}
                   processNames={processNames}
-                  showRank={processMode}
+                  // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
+                  showRank={processMode && !flat}
                 />
               </li>
             ))}

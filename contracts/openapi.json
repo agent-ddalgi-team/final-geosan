@@ -4156,6 +4156,16 @@
               ],
               "title": "Batch"
             }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "title": "Sort",
+              "type": "string"
+            }
           }
         ],
         "responses": {

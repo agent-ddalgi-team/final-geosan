@@ -208,3 +208,28 @@ def test_interested_stage_is_no_longer_accepted(dashboard_env):  # noqa: F811
         assert session.scalar(select(func.count()).select_from(Outcome)) == 0
     assert bookmark_rows() == []
     assert "INTERESTED" not in api_counts(client)
+
+
+def test_bookmarked_list_counts_choices_inside_bookmarks_only(board_env):
+    """Given 1곳만 관심 / When bookmarked=true 목록 / Then 선택지 건수는 관심 기업 안에서만."""
+    client, ids = board_env
+    set_bookmark(client, ids[0], True)
+    everyone = client.get(URL).json()["meta"]
+    mine = client.get(URL, params={"bookmarked": "true"}).json()["meta"]
+    assert sum(row["count"] for row in everyone["processCounts"]) >= 10
+    # 공정 선택지는 9종 모두 오되(0곳 포함) 건수는 관심 1곳의 공정에만 붙는다.
+    assert [row["processCode"] for row in mine["processCounts"]] == [
+        row["processCode"] for row in everyone["processCounts"]
+    ]
+    assert (
+        sum(row["count"] for row in mine["processCounts"])
+        == len([row for row in mine["processCounts"] if row["count"] == 1])
+        >= 1
+    )
+    assert all(row["count"] in (0, 1) for row in mine["processCounts"])
+    assert sum(row["count"] for row in mine["regionCounts"]) <= 2  # 묶음 이름 + 시·군 각 1곳
+    # 공정을 함께 고르면 관심 기업 안에서 그 공정만 남는다.
+    code = next(row["processCode"] for row in mine["processCounts"] if row["count"] == 1)
+    assert listed_ids(client, bookmarked="true", process=code) == {ids[0]}
+    other = next(row["processCode"] for row in mine["processCounts"] if row["count"] == 0)
+    assert listed_ids(client, bookmarked="true", process=other) == set()
