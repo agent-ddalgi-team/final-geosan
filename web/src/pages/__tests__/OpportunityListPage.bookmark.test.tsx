@@ -82,7 +82,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
   });
 
-  it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정 선택란 없이 전체에서 거른다', async () => {
+  it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정은 "전체"에서 시작한다', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
     renderPage('/opportunities?process=ANODIZING');
@@ -92,8 +92,36 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, bookmarked: 'true' }));
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities\?bookmarked=true$/);
     expect(screen.getByTestId('list-bookmarked-title')).toHaveTextContent(/^관심 기업$/);
-    expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
+    // 관심 기업 보기에도 공정 선택란이 있고(#516), 묶지 않으므로 맨 위는 "전체"다.
+    const select = screen.getByTestId('list-process-select') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(select.options[0].textContent).toBe(listFilters.all);
     expect(screen.queryByTestId('list-bookmarked-on')).not.toBeInTheDocument();
+  });
+
+  it('관심 기업 보기에서 공정을 고르면 관심 조건과 함께 보내고 주소에 남기되, 평소 목록의 마지막 공정 기억은 바꾸지 않는다(#516)', async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem('geosan.list.lastProcess', 'ZINC_PLATING');
+    mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
+    renderPage('/opportunities?bookmarked=true');
+    await screen.findByTestId('opportunity-card');
+    await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
+    await waitFor(() =>
+      expect(lastFilters()).toEqual({ ...NO_FILTERS, bookmarked: 'true', process: 'ANODIZING' }),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent('bookmarked=true');
+    expect(screen.getByTestId('location')).toHaveTextContent('process=ANODIZING');
+    expect(screen.getByTestId('list-bookmarked-title')).toBeInTheDocument();
+    expect(window.localStorage.getItem('geosan.list.lastProcess')).toBe('ZINC_PLATING');
+    // 공정이 섞이지 않아도 관심 기업 보기는 순위 번호를 숨긴 채다(PM 결정 2026-11-06).
+    expect(screen.queryByTestId('card-rank')).not.toBeInTheDocument();
+  });
+
+  it('관심 기업 보기에서 고른 공정에 관심 기업이 없으면 조건을 바꿔 보라는 안내가 보인다(#516)', async () => {
+    mockedGet.mockResolvedValue(reply([], { processCounts: TABS }));
+    renderPage('/opportunities?bookmarked=true&process=ANODIZING');
+    expect(await screen.findByText(listFilters.filteredEmpty)).toBeInTheDocument();
+    expect(screen.queryByText(bookmarkList.empty)).not.toBeInTheDocument();
   });
 
   it('관심 기업 보기에는 거르기 단추 다섯 개가 순서대로 있고 처음에는 "전체 보기"가 눌려 있다', async () => {
