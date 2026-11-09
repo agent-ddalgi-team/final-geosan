@@ -295,11 +295,13 @@ export default function OpportunityListPage() {
     (meta?.processCounts ?? []).some((item) => item.processCode === process && item.count === 0);
   // 묶음 보기에서 회사가 있는 공정은 있는데 조건(지역·산업) 때문에 모든 묶음이 0곳이면 조건을 바꿔 보라는 문구다.
   const groupsFiltered = grouped && groupCodes.length > 0;
+  // 관심 기업 보기에서 공정을 골라 0곳이면 "관심 기업 없음"이 아니라 조건을 바꿔 보라는 문구다(#516).
+  const bookmarkedByProcess = bookmarked && process !== null;
   const emptyText = searching
     ? listSearch.empty
     : processIsEmpty
       ? listFilters.processEmpty
-      : region || industry || groupsFiltered
+      : region || industry || groupsFiltered || bookmarkedByProcess
         ? listFilters.filteredEmpty
         : stage || filter || opinion
           ? listFilters.noMatch
@@ -333,7 +335,8 @@ export default function OpportunityListPage() {
         bookmarked={bookmarked}
         opinion={opinion}
         filter={filter}
-        // 관심 기업 보기는 공정 선택란 없이 전체에서 거르므로 켤 때 공정 조건을 뺀다. 끌 때는 의견 거르기도 같이 뺀다.
+        // 관심 기업 보기는 "전체"에서 시작하므로 켤 때 공정 조건을 뺀다(그 안에서 다시 고를 수 있다, #516).
+        // 끌 때는 의견 거르기도 같이 뺀다.
         onBookmarked={(on) =>
           update(on ? { bookmarked: 'true', process: null } : { bookmarked: null, opinion: null })
         }
@@ -343,7 +346,9 @@ export default function OpportunityListPage() {
       {/* 검색 칸은 서버 응답 전에도(불러오지 못했을 때도) 쓸 수 있게 머리를 항상 그린다. 선택지는 응답이 오면 채워진다. */}
       <ListFilterBar
         processCounts={menu?.processCounts ?? []}
-        showProcess={processMode}
+        // 관심 기업 보기에도 공정 선택란을 둔다(#516, PM 2026-11-09). 묶지 않으므로 맨 위는 "전체"다.
+        showProcess={processMode || bookmarked}
+        processGrouped={processMode}
         process={process}
         region={region}
         industry={industry}
@@ -354,7 +359,8 @@ export default function OpportunityListPage() {
         // 선택란에서 고른 것은 바로 기억한다. "전체(공정별로 묶음)"를 골랐을 때 지난번 공정 기억이 되살아나
         // 그 공정으로 돌아가 버리지 않게 하려는 것이다(주소에 공정이 없으면 기억한 것으로 여는 규칙 때문).
         onProcess={(code) => {
-          storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
+          // 관심 기업 보기에서 고른 공정은 기억하지 않는다(평소 목록의 "마지막 선택"과 섞이지 않게).
+          if (processMode) storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
           update({ process: code, region: null, industry: null });
         }}
         onRegion={(value) => update({ region: value })}

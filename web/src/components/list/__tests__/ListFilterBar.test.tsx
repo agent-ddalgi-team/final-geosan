@@ -162,11 +162,17 @@ describe('ListFilterBar', () => {
       expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
     });
 
-    it('공정 선택란이 없는 보기(관심 기업·대시보드 칸)에서는 공정이 없어도 지역·산업 선택란이 보인다', () => {
+    it('공정 선택란이 없는 보기(대시보드 칸)에서는 공정이 없어도 지역·산업 선택란이 보인다', () => {
       renderBar({ showProcess: false, process: null });
       expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
       expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
       expect(screen.getByTestId('list-industry-select')).toBeInTheDocument();
+    });
+
+    it('묶지 않는 보기(관심 기업, #516)에서는 공정 선택란 맨 위가 "전체"다', () => {
+      renderBar({ processGrouped: false, process: null });
+      expect(optionTexts('list-process-select')[0]).toBe(listFilters.all);
+      expect(optionTexts('list-process-select')).toHaveLength(PROCESSES.length + 1);
     });
   });
 

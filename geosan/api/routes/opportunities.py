@@ -565,6 +565,10 @@ def list_opportunities(
                 .where(Customer.ingest_batch_id == selected_batch if selected_batch else False)
             )
         )
+    if bookmarked:
+        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
+        # 선택지(공정·지역·산업) 건수도 관심 기업 안에서 세도록 건수 계산보다 먼저 건다(#516).
+        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
     population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
     links = session.execute(
@@ -655,9 +659,6 @@ def list_opportunities(
             .scalar_subquery()
         )
         query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
-    if bookmarked:
-        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
-        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
     if opinion is not None:
         # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
         current_opinion = (

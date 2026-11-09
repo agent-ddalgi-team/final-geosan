@@ -681,8 +681,8 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       mockedGet.mockResolvedValue(reply([apjeong], MENU));
       renderPage('/opportunities?bookmarked=true&opinion=NEED_CHECK');
       await screen.findByTestId('opportunity-card');
-      // 관심 기업 보기에는 공정 선택란이 없지만 검색 칸은 있다.
-      expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
+      // 관심 기업 보기에도 공정 선택란(#516)과 검색 칸이 있다.
+      expect(screen.getByTestId('list-process-select')).toBeInTheDocument();
       await searchFor(user, '코파스');
       await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, q: '코파스' }));
       expect(locationParams()).toEqual({ q: '코파스' });

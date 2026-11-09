@@ -2,6 +2,7 @@
 //  - 공정은 탭이 아니라 선택란이다. 회사가 0곳인 공정도 보인다.
 //  - 공정 선택란 맨 위는 "전체(공정별로 묶음)"다(#383, 2026-11-07 PM 결정). 고른 공정이 없으면(주소에 공정이 없거나
 //    선택지에 없는 값이면) 이것이 골라진 것으로 보이고, 지역·산업 선택란은 이때도 보여 먼저 고를 수 있다.
+//    관심 기업 보기(#516, 2026-11-09 PM 지시)에도 공정 선택란이 있다. 거기서는 묶지 않으므로 맨 위가 "전체"다.
 //  - 검색하면 고른 조건과 상관없이 전체 후보에서 찾는다. 검색 중에는 세 선택란을 숨기고 결과 줄과 [검색 지우기]를 보인다.
 //  - 정렬은 "추천 순"과 "최근 들어온 순"(#516)을 고를 수 있다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고
 //    눌러도 아무 일이 없다. 고른 정렬은 부모가 주소(`?sort=recent`)에 남긴다.
@@ -20,8 +21,10 @@ export type ListSort = 'rank' | 'recent';
 export interface ListFilterBarProps {
   /** 공정 선택지(거산 공정 전부, 역량 파일 순서. 회사가 0곳인 공정도 온다). */
   processCounts: ProcessCount[];
-  /** false면 공정 선택란을 그리지 않는다(관심 기업 보기, 대시보드 칸으로 넘어온 전체 목록). */
+  /** false면 공정 선택란을 그리지 않는다(대시보드 칸으로 넘어온 전체 목록). */
   showProcess: boolean;
+  /** 공정 선택란 맨 위 글자. true(기본)면 "전체(공정별로 묶음)", false면 "전체"(관심 기업 보기처럼 묶지 않는 보기). */
+  processGrouped?: boolean;
   process: string | null;
   region: string | null;
   industry: string | null;
@@ -176,6 +179,7 @@ function SearchBox({ initial, onSearch }: SearchBoxProps) {
 export default function ListFilterBar({
   processCounts,
   showProcess,
+  processGrouped = true,
   process,
   region,
   industry,
@@ -208,7 +212,7 @@ export default function ListFilterBar({
               name: item.processName,
               count: item.count,
             }))}
-            allLabel={listFilters.processGrouped}
+            allLabel={processGrouped ? listFilters.processGrouped : listFilters.all}
             keepUnknown={false}
             onChange={(code) => {
               // 선택지에 없는 공정이 주소에 있을 때 "전체(공정별로 묶음)"를 다시 고르는 것도 바뀐 것으로 알린다.
