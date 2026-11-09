@@ -39,6 +39,7 @@ from geosan.storage.session import session_scope
 SOURCE_ID = "kicox-production-api"
 API_HOST = "apis.data.go.kr"
 API_PATH = "/B550624/fctryRegistInfo/getFctryListInIrsttService_v2"
+COMPANY_API_PATH = "/B550624/fctryRegistInfo/getFctryPrdctnService_v2"
 TIMEOUT_SECONDS = 30  # C9 ExternalSourceApi
 PAGE_SIZE = 1000  # C9 제공처 최대 건수
 
@@ -103,16 +104,18 @@ def complex_settings_in_session(session, batch_id):
     return tuple(regions), config
 
 
-def _request_page(name, key, page_no):
-    """고정 HTTPS 주소로 한 번만 요청한다. 리다이렉트·숨은 재시도는 없다."""
+def _request_page(name, key, page_no, *, company_lookup=False):
+    """공식 단지명/회사명 주소로 한 번만 요청한다. 리다이렉트·숨은 재시도는 없다."""
+    if type(company_lookup) is not bool:
+        raise InputError("공장등록 조회 종류를 확인해 주세요.")
     path = (
-        API_PATH
+        (COMPANY_API_PATH if company_lookup else API_PATH)
         + "?"
         + urlencode(
             {
                 # 포털의 일반 키·URL 인코딩된 키 모두 한 번만 인코딩해 보낸다. '+'는 보존한다.
                 "serviceKey": unquote(key),
-                "irsttNm": name,
+                "cmpnyNm" if company_lookup else "irsttNm": name,
                 "pageNo": page_no,
                 "numOfRows": PAGE_SIZE,
                 "type": "XML",
