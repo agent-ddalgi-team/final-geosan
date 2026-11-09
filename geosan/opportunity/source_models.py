@@ -10,7 +10,17 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Date, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Date,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from geosan.storage.base import Base, CommonColumns, UtcDateTime
@@ -75,10 +85,20 @@ class CandidateJudgment(CommonColumns, Base):
     """AI 고르기 메모. product_hash나 criteria_version이 달라지면 낡은 판단으로 본다(C6)."""
 
     __tablename__ = "src_candidate_judgment"
+    __table_args__ = (
+        CheckConstraint(
+            "(row_id IS NOT NULL AND web_candidate_id IS NULL) OR "
+            "(row_id IS NULL AND web_candidate_id IS NOT NULL)",
+            name="ck_src_candidate_judgment_source",
+        ),
+    )
 
     judgment_id: Mapped[str] = mapped_column(String(40), primary_key=True)
-    row_id: Mapped[str] = mapped_column(
-        String(40), ForeignKey("src_factory_row.row_id"), nullable=False, index=True
+    row_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("src_factory_row.row_id"), index=True
+    )
+    web_candidate_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("src_web_candidate.candidate_id"), index=True
     )
     criteria_version: Mapped[str] = mapped_column(String(64), nullable=False)
     product_hash: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -142,3 +162,4 @@ class WebCandidate(CommonColumns, Base):
     registry_status: Mapped[str] = mapped_column(String(16), nullable=False)
     homepage_url: Mapped[str | None] = mapped_column(Text)
     dropped_reason: Mapped[str | None] = mapped_column(String(40))
+    snippet: Mapped[str | None] = mapped_column(Text)

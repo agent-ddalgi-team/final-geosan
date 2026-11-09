@@ -271,8 +271,8 @@ def test_upgrade_preserves_legacy_question_and_note(reply_env, tmp_db):
         == 200
     )
     assert downgrade(tmp_db, "tg_001") == ["tg_001"]
-    assert upgrade_to_head(tmp_db) == ["rec_009"]
-    assert upgrade_to_head(tmp_db) == ["rec_009"]
+    assert upgrade_to_head(tmp_db) == ["src_003"]
+    assert upgrade_to_head(tmp_db) == ["src_003"]
     with session_scope() as session:
         question = session.get(ConfirmationQuestion, question_id)
         assert (

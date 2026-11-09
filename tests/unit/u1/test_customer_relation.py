@@ -246,7 +246,7 @@ def test_migration_preserves_old_customer_and_starts_without_history(relation_en
     client, opp_id, _ = relation_env
     before = detail(client, opp_id)
     assert downgrade(tmp_db, "tg_001") == ["tg_001"]
-    assert upgrade_to_head(tmp_db) == ["rec_009"]
+    assert upgrade_to_head(tmp_db) == ["src_003"]
     after = detail(client, opp_id)
     assert after == before
     assert after["header"]["relationConfirmedBy"] is None
@@ -273,8 +273,8 @@ def test_relation_migration_preserves_existing_lost_reason_rows(relation_env, tm
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == [
             row[:-1] for row in before_rows
         ]
-    assert upgrade_to_head(tmp_db) == ["rec_009"]
-    assert upgrade_to_head(tmp_db) == ["rec_009"]
+    assert upgrade_to_head(tmp_db) == ["src_003"]
+    assert upgrade_to_head(tmp_db) == ["src_003"]
     with sqlite3.connect(tmp_db) as connection:
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
             before_rows
