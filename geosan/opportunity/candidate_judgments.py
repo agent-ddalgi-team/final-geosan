@@ -175,6 +175,15 @@ def select_candidates(
     )
 
 
+def rank_candidates(judgments: Sequence[CandidateJudgment]) -> list[CandidateJudgment]:
+    """적합도 상 → 중 → 하, 표면처리 직접 표시는 뒤로(목록의 점수 전 순서와 같다, #528)."""
+    order = ("HIGH", "MEDIUM", "LOW")
+    return sorted(
+        judgments,
+        key=lambda item: (item.own_plating_line_suspected, order.index(item.fit_level)),
+    )
+
+
 def candidate_criteria_version(
     *,
     process_catalog: Mapping[str, str],
