@@ -9,6 +9,7 @@ brand.demoLabel.
 더하는 변경(2026-11-06 PM 확인, #342): 후보 찾기 응답 칸 — meta.latestIngest, 카드의 들어온
 회차·고른 이유·공정 적합도 등, 상세 머리의 같은 칸. 값은 창구(#317)가 채운다.
 더하는 변경(2026-11-06 PM 확인, #347): meta.latestIngest.failureReason(찾기 실패 사유 한 줄).
+더하는 변경(2026-11-09 PM 확인, #497): ReviewItem.stepOptions·ReviewCheckRequest.stepLabel.
 고친 것(2026-10-22 PM 확인, 이슈 #33): Scores의 `E/P/S/R/C` 키를 대문자 별칭으로 고정
 (약속 C1과 같음).
 바꾼 것(2026-11-06 PM 결정, #356, 계약 v3): 영업 단계에서 INTERESTED 삭제, 관심(찜) 모델
@@ -534,6 +535,9 @@ class ReviewItem(_ApiModel):
     reply_text: str | None = None
     replied_at: str | None = None
     replied_by: str | None = None
+    step_options: list[str] | None = Field(
+        default=None, description="AI 점수 제안의 허용 단계 이름. 다른 검토사항은 null(#497)"
+    )
 
 
 class QuestionReplyRequest(_RequestModel):
@@ -551,6 +555,11 @@ class QuestionReplyResponse(_ApiModel):
 class ReviewCheckRequest(_RequestModel):
     checked: bool = Field(strict=True)
     eval_id: str = Field(min_length=1)
+    step_label: str | None = Field(
+        default=None,
+        strict=True,
+        description="AI 점수 제안의 고칠 단계. 생략하면 그대로 확정(#497)",
+    )
 
 
 class ReviewCheckResponse(_ApiModel):
