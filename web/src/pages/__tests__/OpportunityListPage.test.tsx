@@ -214,6 +214,8 @@ describe('OpportunityListPage', () => {
       oppId: 'opp-2',
       rank: 2,
       scoreState: 'PENDING',
+      // 서버는 거래 확인 전 점수를 분류가 필수조건 확인 대기일 때만 준다. 그 밖의 PENDING은 AI 제안이다(#498).
+      classificationCode: 'FILTER_PENDING',
       relationStatus: 'UNCONFIRMED',
       scoreDisplay: '50점 · 3/8',
     };
@@ -250,6 +252,31 @@ describe('OpportunityListPage', () => {
     expect(within(cards[2]).getByTestId('card-score')).toHaveTextContent(/^점수 --$/);
     expect(within(cards[2]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
     expect(within(cards[2]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
+  });
+
+  it('카드: AI 제안으로 계산된 점수(확정 전인데 분류가 확인 대기가 아님)는 흐리게 "AI 제안 · 확인 전"이 붙는다 (#498)', async () => {
+    const proposed: OpportunityCard = {
+      ...apjeong,
+      oppId: 'opp-ai',
+      rank: 2,
+      scoreState: 'PENDING',
+      classificationCode: 'CONTACT_REVIEW',
+      relationStatus: 'UNCONFIRMED',
+      scoreDisplay: '참고 50점 · 3/8',
+    };
+    mockedGet.mockResolvedValueOnce(reply([apjeong, proposed]));
+    renderPage();
+    const cards = await screen.findAllByTestId('opportunity-card');
+    expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
+      'data-score-state',
+      'PENDING',
+    );
+    expect(within(cards[1]).getByTestId('card-score-ai-proposal-tag')).toHaveTextContent(
+      'AI 제안 · 확인 전',
+    );
+    expect(within(cards[1]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
+    // 확정된 카드에는 어느 꼬리표도 없다.
+    expect(within(cards[0]).queryByTestId('card-score-ai-proposal-tag')).not.toBeInTheDocument();
   });
 
   it.each([true, false])(

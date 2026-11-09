@@ -189,6 +189,7 @@ export default function OpportunityCard({
               scoreDisplay={card.scoreDisplay}
               scoreState={card.scoreState}
               relationStatus={card.relationStatus}
+              classificationCode={card.classificationCode}
               testId="card-score"
             />
           )}

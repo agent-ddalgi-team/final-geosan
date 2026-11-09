@@ -249,11 +249,11 @@ def evaluated_regions(region_env):  # noqa: F811
     return {"client": client, "ids": ids, "original": client.get("/api/v1/opportunities").json()}
 
 
-@when("천안 인근과 아노다이징 및 반도체를 함께 선택하면")
+@when("충남과 아노다이징 및 반도체를 함께 선택하면")
 def select_region_filters(region_context):
     response = region_context["client"].get(
         "/api/v1/opportunities",
-        params={"region": "천안 인근", "process": "ANODIZING", "industry": "반도체"},
+        params={"region": "충남", "process": "ANODIZING", "industry": "반도체"},
     )
     assert response.status_code == 200
     region_context["response"] = response.json()
