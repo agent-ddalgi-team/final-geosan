@@ -25,6 +25,17 @@ if TYPE_CHECKING:
     from geosan.evidence.homepage import HomepageSearchResult
 
 
+def public_origin_condition():
+    """공개 출처로 확인된 회사 조건(#492).
+
+    사례 파일로 들어온 회사(case_id)이거나, 소스 이용 확인을 거친 후보 찾기 회차로
+    들어온 회사(ingest_batch_id — 공장현황 파일·단지 조회·웹 검색)다. 회차는 소스 확인
+    기록(C5 SourceContract) 없이는 만들어지지 않으므로 둘 다 공개 출처다. 둘 다 없으면
+    출처를 모르는 회사라 외부 검색·저장을 하지 않는다.
+    """
+    return or_(Opportunity.case_id.is_not(None), Customer.ingest_batch_id.is_not(None))
+
+
 def store_case_homepage(
     session: Session,
     opp_id: str,
@@ -35,12 +46,14 @@ def store_case_homepage(
     min_confidence: float,
 ) -> None:
     """검색 중 바뀐 고객·확정 주소·더 최근 결과를 덮어쓰지 않고 한 번에 저장한다."""
+    # 사례 파일 회사뿐 아니라 후보 찾기로 들어온 회사도 공개 출처다(#492).
     case_exists = (
         select(Opportunity.opp_id)
+        .join(Customer, Customer.customer_id == Opportunity.customer_id)
         .where(
             Opportunity.opp_id == opp_id,
             Opportunity.customer_id == customer_id,
-            Opportunity.case_id.is_not(None),
+            public_origin_condition(),
         )
         .exists()
     )

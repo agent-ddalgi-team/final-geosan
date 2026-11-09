@@ -65,6 +65,38 @@ def test_unidentified_source_never_searches(imported):
     search.assert_not_called()
 
 
+def _as_ingested(imported, *, batch_id="batch-test"):
+    """사례 파일이 아니라 후보 찾기 회차로 들어온 회사 모양으로 바꾼다(#492)."""
+    with session_scope() as session:
+        session.get(Opportunity, imported.opp_id).case_id = None
+        customer = session.get(Customer, imported.customer_id)
+        customer.ingest_batch_id = batch_id
+        customer.discovery_source = "FACTORY_FILE"
+
+
+def test_ingested_company_is_searched_and_stored(imported):
+    """후보 찾기로 들어온 회사(사례 파일 아님)도 공개 출처로 보고 검색·저장한다(#492)."""
+    _as_ingested(imported)
+    search = Mock(return_value=REPLY)
+    result = find_case_homepage(imported.opp_id, search=search)
+    search.assert_called_once()
+    with session_scope() as session:
+        customer = session.get(Customer, imported.customer_id)
+        assert customer.homepage_url == REPLY["url"] == result.url
+        assert customer.homepage_source == "AI"
+
+
+def test_ingested_company_still_requires_public_grade(imported):
+    """출처가 있어도 보안 등급이 PUBLIC이 아니면 검색하지 않는다(#492)."""
+    _as_ingested(imported)
+    with session_scope() as session:
+        session.get(Customer, imported.customer_id).security_grade = "INTERNAL_ONLY"
+    search = Mock()
+    with pytest.raises(InputError):
+        find_case_homepage(imported.opp_id, search=search)
+    search.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "changes",
     [
