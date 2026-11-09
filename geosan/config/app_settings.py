@@ -7,12 +7,13 @@ DB 사본은 `cfg_app_setting`(키-값)이며 API·평가 흐름은 `registry.lo
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -48,6 +49,35 @@ class AiPickSettings(FileModel):
     rows_per_call: int = Field(default=100, ge=1, strict=True)
     prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
     surface_treatment_industry_names: list[str] = Field(default_factory=list)
+
+
+class CandidateWebSearchSettings(FileModel):
+    """C7·#314 11/9 PM 승인: 꺼짐, 하루 20회, 15일 보관. 도메인은 설정에서 읽는다."""
+
+    enabled: bool = Field(default=False, strict=True)
+    daily_search_limit: int = Field(default=20, ge=0, strict=True)
+    cache_days: int = Field(default=15, ge=1, strict=True)
+    blocked_domains: list[str] = Field(default_factory=list, max_length=100)
+
+    @field_validator("blocked_domains")
+    @classmethod
+    def check_domains(cls, values: list[str]) -> list[str]:
+        domains = []
+        for value in values:
+            if not re.fullmatch(
+                r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}", value
+            ):
+                raise ValueError("막는 사이트에는 주소 전체 대신 도메인 이름만 적어 주세요.")
+            domains.append(value.lower())
+        if len(set(domains)) != len(domains):
+            raise ValueError("막는 사이트 목록에 같은 도메인이 두 번 있습니다.")
+        return domains
+
+    @model_validator(mode="after")
+    def enabled_needs_domains(self):
+        if self.enabled and not self.blocked_domains:
+            raise ValueError("웹 후보 검색을 켜려면 막는 사이트 목록을 먼저 적어 주세요.")
+        return self
 
 
 class IngestionSettings(FileModel):
@@ -141,6 +171,9 @@ class AppSettings(FileModel):
     ingestion: IngestionSettings
     llm: LlmSettings
     homepage_discovery: HomepageDiscoverySettings
+    candidate_web_search: CandidateWebSearchSettings = Field(
+        default_factory=CandidateWebSearchSettings
+    )
     brand: BrandSettings
     access_protection: AccessProtectionSettings
     records: RecordsSettings = Field(default_factory=RecordsSettings)
