@@ -19,7 +19,12 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError, InputError, NotFoundError
-from geosan.opportunity.factory_csv import SOURCE_ID, FactoryCsvResult, read_factory_csv
+from geosan.opportunity.factory_csv import (
+    SOURCE_ID,
+    FactoryCsvResult,
+    parent_regions,
+    read_factory_csv,
+)
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.queries import normalize_address, normalize_name
@@ -59,7 +64,8 @@ def _context(session, batch_id):
         or not set(regions) <= set(settings.ingestion.regions)
     ):
         raise InputError("회차에 저장된 찾기 지역을 확인해 주세요.")
-    return batch, regions
+    # 파일 읽기·저장·판단 검사는 시·도 단위다. 시·군 추리기는 AI 판단 직전에 한다(#521).
+    return batch, parent_regions(regions)
 
 
 def _unique_rows(rows):
