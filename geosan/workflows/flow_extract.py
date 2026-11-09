@@ -13,6 +13,9 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError, InputError, RunFailedError
+from geosan.config.registry import load_runtime_config
+from geosan.evaluation.proposals import store_item_proposals, store_process_link_proposals
+from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.evidence.contacts import extract_main_phone
 from geosan.evidence.extraction import extract_evidence
 from geosan.evidence.public_items import approve_page, check_opportunity
@@ -62,6 +65,20 @@ def run_extract(
             )
             customer_id = customer.customer_id
             url = validate_url(url or customer.homepage_url or "")
+            # #286: 점수 8항목(규칙 설정)과 활성 묶음 공정 코드를 AI에 알려 제안을 받는다.
+            rule_config = load_runtime_config(session).rule_config
+            item_catalog = [
+                {
+                    "code": item.item_code,
+                    "label": item.label,
+                    "steps": list(item.match_rate_steps),
+                }
+                for item in rule_config.new_profile_items
+            ]
+            process_codes = sorted(
+                row.code
+                for row in _capability_snapshot(session, opportunity.dataset_kind).processes
+            )
         if pasted_text is not None:
             if not pasted_text.strip() or len(pasted_text.encode("utf-8")) > MAX_BYTES:
                 raise InputError("붙여넣을 공개 본문의 길이를 확인해 주세요.")
@@ -73,7 +90,12 @@ def run_extract(
         )
         with approve_page(opp_id, page) as approved_ids:
             result = extract_evidence(
-                approved_ids, opp_id, deadline=deadline, requested_by=requested_by
+                approved_ids,
+                opp_id,
+                deadline=deadline,
+                requested_by=requested_by,
+                item_catalog=item_catalog,
+                process_codes=process_codes,
             )
         remaining(deadline)
         with session_scope() as session:
@@ -100,6 +122,22 @@ def run_extract(
                 phone_source_url=phone_url,
             )
             evidence = store_extraction(session, opportunity, result, page.url, requested_by)
+            # #286: 점수 입력·공정 연결 제안을 AI·확인 전으로 저장한 뒤 재평가한다(사람 값 우선).
+            proposal_count = store_item_proposals(
+                session,
+                opportunity,
+                result,
+                evidence,
+                rule_config=rule_config,
+                requested_by=requested_by,
+            )
+            link_count = store_process_link_proposals(
+                session,
+                opportunity,
+                result,
+                allowed_codes=set(process_codes),
+                requested_by=requested_by,
+            )
             evaluated = evaluate_in_session(session, [opp_id], requested_by)
             if not evaluated.new_eval_ids:
                 raise RunFailedError("평가할 입력이 없어 조사 결과를 저장하지 않았습니다.")
@@ -129,7 +167,10 @@ def run_extract(
                 )
                 question_count += 1
             remaining(deadline)
-        evaluated.summary = f"근거 {len(evidence)}건·질문 {question_count}건 저장, 재평가 완료"
+        evaluated.summary = (
+            f"근거 {len(evidence)}건·질문 {question_count}건·점수 제안 {proposal_count}건·"
+            f"공정 제안 {link_count}건 저장, 재평가 완료"
+        )
         evaluated.counts = {
             "evidenceCount": len(evidence),
             "requirementCandidateCount": len(result.requirement_candidates),

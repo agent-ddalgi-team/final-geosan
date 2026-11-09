@@ -23,6 +23,14 @@ def current_item_inputs(session: Session, opp_id: str) -> list[ItemJudgmentInput
     )
 
 
+AI_PROPOSED = "AI"
+
+
+def has_ai_pending_inputs(session: Session, opp_id: str) -> bool:
+    """현재 점수 입력에 AI 제안(확인 전) 행이 하나라도 있으면 True(#286, C1 scoreState PENDING)."""
+    return any(row.proposed_by == AI_PROPOSED for row in current_item_inputs(session, opp_id))
+
+
 def current_readiness_check(session: Session, opp_id: str) -> ReadinessCheck | None:
     return session.scalar(
         select(ReadinessCheck)
