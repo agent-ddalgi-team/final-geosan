@@ -70,6 +70,7 @@ from geosan.evaluation.models import (
 )
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
+from geosan.opportunity.factory_csv import address_city
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Outcome, ReviewOpinion
@@ -507,7 +508,8 @@ def _address_region(address: str | None) -> str | None:
         return None
     if parts[0].endswith(("광역시", "특별시")) or parts[0].startswith("세종"):
         return parts[0]
-    return parts[1] if len(parts) > 1 else None
+    # "천안시서북구"처럼 구가 붙은 주소도 천안시로 묶는다(#521).
+    return (address_city(address) or parts[1]) if len(parts) > 1 else None
 
 
 @router.get(

@@ -17,7 +17,7 @@ from geosan.opportunity import candidate_pick
 from geosan.opportunity.candidate_registration import register_candidates
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
-from geosan.opportunity.source_models import SourceContract
+from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_ingest as flow
@@ -386,3 +386,46 @@ def test_research_failure_keeps_registration_and_completed_research_count(ingest
         flow.run_ingest(batch_id)
     batch = saved(batch_id)
     assert batch.status == "FAILED" and batch.new_count == 2 and batch.research_done_count == 1
+
+
+def _choose_regions(batch_id, regions):
+    with session_scope() as session:
+        batch = session.get(IngestBatch, batch_id)
+        batch.criteria = batch.criteria | {"regions": regions}
+
+
+def _second_row_in(ingest_env, address):
+    text = ingest_env.path.read_text(encoding="utf-8")
+    ingest_env.path.write_text(text.replace("충청남도 당진시 가상길 2", address), encoding="utf-8")
+
+
+def test_city_choice_judges_only_that_city_and_stores_province_rows(ingest_env):
+    """#521 Given 당진시 2행·천안시 1행 / When 당진시만 / Then 2행만 판단, 저장은 충남 3행."""
+    _second_row_in(ingest_env, "충청남도 천안시서북구 가상길 2")
+    batch_id = new_batch()
+    _choose_regions(batch_id, ["당진시"])
+    flow.run_ingest(batch_id)
+    batch = saved(batch_id)
+    assert batch.status == "DONE" and batch.judged_count == 2
+    with session_scope() as session:
+        regions = session.scalars(select(SourceFactoryRow.region)).all()
+    assert sorted(regions) == ["충남", "충남", "충남"]
+
+
+def test_city_with_district_suffix_is_matched_and_province_choice_keeps_all(ingest_env):
+    _second_row_in(ingest_env, "충청남도 천안시서북구 가상길 2")
+    city = new_batch()
+    _choose_regions(city, ["천안시"])
+    flow.run_ingest(city)
+    assert saved(city).judged_count == 1
+    whole = new_batch()
+    flow.run_ingest(whole)
+    assert saved(whole).judged_count == 3
+
+
+def test_city_without_rows_finishes_without_ai_call(ingest_env):
+    batch_id = new_batch()
+    _choose_regions(batch_id, ["서산시"])
+    flow.run_ingest(batch_id)
+    assert saved(batch_id).status == "DONE" and saved(batch_id).judged_count == 0
+    assert ingest_env.picker.calls == 0

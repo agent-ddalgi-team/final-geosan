@@ -4,7 +4,7 @@ PM이 #427에서 확정한 규격으로 공개 원본·판단·등록 부품을 
 검사에서는 외부 통신만 대체하고, 저장과 평가 및 목록 조회는 실제 부품을 쓴다.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from sqlalchemy import select
@@ -17,7 +17,7 @@ from geosan.opportunity.candidate_pick import pick_candidates
 from geosan.opportunity.candidate_registration import register_candidates
 from geosan.opportunity.complex_collection import collect_complex_rows
 from geosan.opportunity.complex_store import store_complex_rows
-from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.factory_csv import SOURCE_ID, parent_regions, row_in_selected_regions
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
 from geosan.storage.base import utcnow
@@ -103,10 +103,28 @@ def _validate_source_rows(batch, source):
             select(SourceFactoryRow).where(SourceFactoryRow.row_id.in_(source.row_ids))
         ).all()
         if {row.row_id for row in rows} != set(source.row_ids) or any(
-            row.region not in batch.criteria["regions"] or row.missing_since is not None
+            row.region not in parent_regions(batch.criteria["regions"])
+            or row.missing_since is not None
             for row in rows
         ):
             raise RunFailedError("찾기 지역의 현재 공장 행만 판단할 수 있습니다.")
+
+
+def _selected_row_ids(batch, row_ids):
+    """시·군을 골랐으면 그 시·군 행만 AI 판단으로 넘긴다(#521). 비용은 고른 만큼만 든다."""
+    selected = batch.criteria["regions"]
+    with session_scope() as session:
+        rows = {
+            row.row_id: row
+            for row in session.scalars(
+                select(SourceFactoryRow).where(SourceFactoryRow.row_id.in_(row_ids))
+            )
+        }
+        return tuple(
+            row_id
+            for row_id in row_ids
+            if row_in_selected_regions(rows[row_id].region, rows[row_id].address, selected)
+        )
 
 
 def _new_opportunities(session, batch):
@@ -164,6 +182,7 @@ def run_ingest(batch_id: str) -> None:
         # 공공자료 읽기가 실패하면 뒤 단계와 웹 검색(#314)은 실행하지 않는다.
         source = load_source_rows(batch_id)
         _validate_source_rows(batch, source)
+        source = replace(source, row_ids=_selected_row_ids(batch, source.row_ids))
         with session_scope() as session:
             current = _running(session, batch_id)
             current.scanned_count = source.scanned_count
