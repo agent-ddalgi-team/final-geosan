@@ -45668,3 +45668,408 @@ PM 2차 지시로 갱신 필요 표 1~8을 반영: requirements 1장·FR6.1, sco
 **Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
 
 ---
+
+## Human Turn
+**Timestamp**: 2026-11-08T15:43:43Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T23:54:16Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-08T23:57:52Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T00:42:41Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T00:57:12Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T00:58:05Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:04:59Z
+**Event**: HUMAN_TURN
+**Session**: 219b7f49-c56c-4f42-8d44-3eb22cc26936
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-09T01:05:17Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: d4119afd-19db-46b6-b25e-01f52e89e509
+
+---
+
+## Subagent Completed
+**Timestamp**: 2026-11-09T01:09:11Z
+**Event**: SUBAGENT_COMPLETED
+**Agent Type**: unknown
+**Agent ID**: a8cec215a5243bc7c
+**Message**: 후보 찾기가 실제로 동작하는지 확인 중입니다. 막혔던 소스 확인 기록을 넣은 뒤 세종·전기아연도금·최대 10곳으로 AI 찾기를 돌리고 있고, 끝나면 결과와 비용을 알려 드립니다.
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:09:51Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:11:16Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:50:13Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:53:13Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+**Picked**: ["숫자를 적어 줄게 (Other에 입력)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-09T01:53:14Z
+**Event**: QUESTION_REPLIED
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+**Question**: 막힌 AI 사용 기록(transfer-01M6YXKK…, 11/9 10:08:49 KST, gpt-6.1-sol 요청 1건)을 풀려면 OpenAI 사용량 화면 숫자가 필요합니다. https://platform.openai.com/settings/organization/usage 에서 11/9 10:08 무렵 그 요청의 입력 토큰·출력 토큰·비용(USD)을 확인해 적어 주실 수 있나요?
+**Reply**: 숫자를 적어 줄게 (Other에 입력)
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:53:18Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:54:36Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:55:54Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:58:46Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:59:04Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:59:19Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+**Picked**: ["0으로 정리하고 지금 진행 (PM 결정)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-09T01:59:20Z
+**Event**: QUESTION_REPLIED
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+**Question**: OpenAI 화면에 10:08 요청이 0으로 보입니다. 사용량 화면은 반영이 수십 분~몇 시간 늦을 수 있어, 안내서는 "아직 집계 안 됨은 0이 아니다"라고 적고 있습니다. 어떻게 할까요?
+**Reply**: 0으로 정리하고 지금 진행 (PM 결정)
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T01:59:36Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:00:15Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:05:43Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:07:01Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:10:12Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:14:32Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:19:51Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:27:20Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:31:14Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:32:05Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:32:52Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:33:40Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T02:36:03Z
+**Event**: HUMAN_TURN
+**Session**: 9a73502c-906e-4823-bac7-7ec782c78a13
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:09:08Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:11:21Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:50:15Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:52:53Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:56:03Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:57:41Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T03:59:40Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Session Start
+**Timestamp**: 2026-11-09T04:35:30Z
+**Event**: SESSION_STARTED
+**Source**: startup
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T04:36:07Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T04:40:13Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T04:44:03Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T04:53:37Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T04:54:09Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T04:59:28Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:03:53Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:06:12Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:11:50Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:14:30Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:20:02Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+**Picked**: ["단계 선택지 칸 하나 추가 (Recommended)"]
+
+---
+
+## Question Replied
+**Timestamp**: 2026-11-09T05:20:03Z
+**Event**: QUESTION_REPLIED
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+**Question**: #497(서버)·#498(화면)의 [고치기] 입력을 어떻게 정할까요? 약속 C1의 체크 요청(POST /review-items/{itemId}/check)에 칸을 더해야 해서 PM 확인이 필요합니다.
+**Reply**: 단계 선택지 칸 하나 추가 (Recommended)
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:22:55Z
+**Event**: HUMAN_TURN
+**Session**: 873afdbd-0563-40db-b3a9-a2f756aa5c27
+
+---
+
+## Human Turn
+**Timestamp**: 2026-11-09T05:29:48Z
+**Event**: HUMAN_TURN
+**Session**: 82c093ce-b16c-4ce6-ade3-3df14c419454
+
+---
