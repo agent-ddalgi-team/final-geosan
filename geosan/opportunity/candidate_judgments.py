@@ -11,7 +11,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Literal
 
-from pydantic import ConfigDict, Field, TypeAdapter, field_validator
+from pydantic import ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 from geosan.config.errors import AppError, InputError
 from geosan.config.schemas import FileModel
@@ -45,7 +45,7 @@ class CandidateJudgment(FileModel):
     is_manufacturer: bool
     process_codes: list[str]
     industries: list[str]
-    reason: str = Field(min_length=1)
+    reason: str
     fit_level: Literal["HIGH", "MEDIUM", "LOW"]
     own_plating_line_suspected: bool
     own_plating_line_basis: str | None
@@ -53,9 +53,16 @@ class CandidateJudgment(FileModel):
     @field_validator("reason")
     @classmethod
     def reason_without_contacts(cls, value: str) -> str:
-        if not value.strip() or scrub_contacts(value)[1]:
-            raise ValueError("고른 이유가 비어 있거나 연락처가 있습니다.")
+        if scrub_contacts(value)[1]:
+            raise ValueError("고른 이유에 연락처가 있습니다.")
         return value
+
+    @model_validator(mode="after")
+    def manufacturer_needs_reason(self) -> CandidateJudgment:
+        """제조업이면 이유가 있어야 한다. 아니면 빈 이유로 짧게 답해도 된다(pick-v2, #491)."""
+        if self.is_manufacturer and not self.reason.strip():
+            raise ValueError("제조업 판단에는 고른 이유가 있어야 합니다.")
+        return self
 
     @field_validator("own_plating_line_basis")
     @classmethod

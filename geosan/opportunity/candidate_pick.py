@@ -124,7 +124,54 @@ def _load_context(batch_id, db_path):
         raise InputError(
             "후보 판단 지시문·공정·산업 이름에 빈 값이나 연락처가 없는지 확인해 주세요."
         )
-    return PickContext(config, dataset, processes, industries, _INPUT_GUARD + "\n\n" + prompt)
+    if config.model is not None and (
+        not _safe_text(config.model)
+        or (settings.llm.allowed_models and config.model not in settings.llm.allowed_models)
+    ):
+        raise InputError(
+            "후보 고르기 모델(ingestion.aiPick.model)은 허용 모델 목록 안이어야 합니다."
+        )
+    # 제외 키워드는 기준 버전에 들어가게 지시문 뒤에 붙인다(#491). 바뀌면 다시 판단한다.
+    excluded = "\n\n[코드가 미리 거른 키워드]\n" + json.dumps(
+        sorted(set(config.exclude_keywords)), ensure_ascii=False
+    )
+    return PickContext(
+        config, dataset, processes, industries, _INPUT_GUARD + "\n\n" + prompt + excluded
+    )
+
+
+_MANUFACTURING_HINTS = ("제조", "생산", "가공", "부품", "제작")
+
+
+def rule_excluded(item, keywords) -> bool:
+    """생산품·업종명에 제외 키워드가 있고 제조 낌새가 없으면 AI에 보내지 않는다(#491)."""
+    text = " ".join(str(item.get(key) or "") for key in ("product", "industryName"))
+    if not text.strip() or not any(word in text for word in keywords):
+        return False
+    return not any(hint in text for hint in _MANUFACTURING_HINTS)
+
+
+RULE_MODEL = "rule:exclude-keyword"
+
+
+def _rule_response(items) -> str:
+    """코드가 거른 행의 '제조업 아님' 판단. AI 답과 같은 모양이라 같은 저장·재사용 길을 탄다."""
+    return json.dumps(
+        [
+            {
+                "rowId": item["rowId"],
+                "isManufacturer": False,
+                "processCodes": [],
+                "industries": [],
+                "reason": "",
+                "fitLevel": "LOW",
+                "ownPlatingLineSuspected": False,
+                "ownPlatingLineBasis": None,
+            }
+            for item in items
+        ],
+        ensure_ascii=False,
+    )
 
 
 def _version(context):
@@ -284,8 +331,9 @@ def _call(plan, context, db_path):
             raise InputError("판단 지시문이나 설정·공정 목록이 바뀌었습니다. 다시 실행해 주세요.")
         rows = _public_rows(plan, plan.pending_row_ids, db_path)
         ticket = reserve_candidate_judgment(plan.batch_id, key_present, db_path)
+        model = context.config.model or ticket.llm.model
         try:
-            response = _post(_payload(context, rows, ticket.llm.model), key, deadline)
+            response = _post(_payload(context, rows, model), key, deadline)
         except _HttpError as error:
             if error.status in (400, 401, 403, 404, 429):
                 finish_search(ticket, 0, 0, 0, db_path)
@@ -306,7 +354,7 @@ def _call(plan, context, db_path):
             text = _answer(response)
         except (KeyError, TypeError, ValueError, AttributeError):
             raise _failure("AI 후보 판단 답변이 미완료이거나 형식이 올바르지 않습니다.") from None
-        return text, ticket.llm.model
+        return text, model
     raise AssertionError("후보 판단 재시도 횟수")
 
 
@@ -326,11 +374,33 @@ def pick_candidates(
             db_path=db_path,
             source_kind=source_kind,
         )
-        _public_rows(plan, ids, db_path)
+        items = {item["rowId"]: item for item in _public_rows(plan, ids, db_path)}
         results = {row.row_id: row for row in plan.reused}
+        # #491: 명백히 제조업이 아닌 행은 AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다.
+        keywords = tuple(context.config.exclude_keywords)
+        excluded = [
+            row_id for row_id in plan.pending_row_ids if rule_excluded(items[row_id], keywords)
+        ]
+        if excluded:
+            part = replace(
+                plan,
+                pending_row_ids=tuple(excluded),
+                rows=tuple(row for row in plan.rows if row.row_id in excluded),
+                reused=(),
+            )
+            text = _rule_response([items[row_id] for row_id in excluded])
+            judgments = parse_candidate_judgments(
+                text,
+                approved_row_ids=excluded,
+                process_catalog=dict(context.processes),
+                industry_catalog=context.industries,
+            )
+            save_candidate_judgments(part, text, model=RULE_MODEL, db_path=db_path)
+            results.update((row.row_id, row) for row in judgments)
+        ai_pending = tuple(row_id for row_id in plan.pending_row_ids if row_id not in excluded)
         size = context.config.rows_per_call
-        for start in range(0, len(plan.pending_row_ids), size):
-            pending = plan.pending_row_ids[start : start + size]
+        for start in range(0, len(ai_pending), size):
+            pending = ai_pending[start : start + size]
             part = replace(
                 plan,
                 pending_row_ids=pending,
