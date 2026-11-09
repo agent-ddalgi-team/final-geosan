@@ -798,6 +798,7 @@ commands:
   geosan init-db                                 # U1. 데이터베이스 만들기·마이그레이션 적용(처음·갱신 모두)
   geosan serve [--port N] [--host 127.0.0.1|0.0.0.0] # U1. 서버 실행, 기본은 내 PC 전용. 배포 주소 선택은 #213 PM 지시(2026-11-03). (추가 2026-11-04 PM 결정, 사고 방지 #274) 배포 설정(--host 0.0.0.0 또는 GEOSAN_PASSWORD 설정)에서 DB 파일 이름이 geosan-demo.db이거나 DB 안에 시연 표시(앱 설정 사본 demo 플래그)가 있으면 "시연용 DB는 배포 환경에서 쓸 수 없습니다"를 내고 종료 코드 2로 시작하지 않는다. 로컬(127.0.0.1, 비밀번호 없음)에서는 시연 DB 허용. 2차 #274에서 구현
   geosan check-config [rule-config.yaml] [app-settings.yaml]   # U1. 설정 파일 형식 검사(오류는 C7 형식: 줄·항목·이유)
+  geosan source-confirm <sourceId> --by <staffKey> [--terms <url>] [--on <YYYY-MM-DD>]   # (추가 2026-11-09 PM 승인, #489) kicox-factory-csv·kicox-production-api 이용·저장 확인을 C5 SourceContract에 기록. 소스 이름·허용 용도·저장 범위·약관 기본 주소는 명령 코드의 소스별 표, 확인자는 설정에 등록된 기록 담당자만(보기 전용 거부). 확인일 기본은 서울 오늘, 미래 날짜·모르는 소스·기존 기록은 거부. created_by는 확인자, is_virtual=false, dataset_kind는 비움. 출력은 소스 이름·확인일·저장 완료 한 줄. 종료 0 성공, 1 입력 오류, 2 DB 처리 실패. --terms 기본값은 https://www.data.go.kr/data/15105482/fileData.do (파일)·https://www.data.go.kr/data/15087611/openapi.do (조회), 두 자료 모두 이용허락범위 제한 없음(PM 직접 확인 2026-11-09 #489 댓글). 공공누리 유형은 지어 넣지 않음
   geosan import-capability <file.json>           # U1. 형식·연락처 검사 → 저장(재투입 규칙 적용)
   geosan import-case <file.json>                 # U1. 가상 사례 묶음 투입(투입 순서 자동). 실제 기업도 같은 형식(isVirtual: false)
   geosan check-case <file.json>                  # U1. (갱신 제안 2026-10-21, 기능 설계 Q8 답 확정 후 적용) 저장 없이 형식·허용 값·연락처 패턴만 검사. DB 없이 팀원 컴퓨터에서 실행. (PM 지시 2026-10-21) 코드 생성 Part A-2(Step 11)에서 먼저 연결해 팀원이 10/22부터 쓴다
@@ -822,6 +823,7 @@ commands:
   geosan research [--missing-homepage | --all] [--limit N]   # (추가 2026-11-03 저녁, PM 결정 B) 이미 들어와 있는 회사(18곳)에 ②→③→④→재평가를 일괄로 돌린다. 기본은 홈페이지 없는 회사만. 1곳마다 결과 줄(찾음/확인 필요/못 찾음, 근거 수, 비용) 출력. 상한에 걸리면 멈추고 남은 건수 안내
 guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   처음 설치·실행: [init-db, check-config, serve]                     # 3
+  공공 소스 이용 확인: [source-confirm(공장현황 파일), source-confirm(공장등록 조회)]   # #489, 설정 등록 뒤 serve 전에 실행. 조회를 끈 환경은 두 번째 생략
   가상 사례 투입·평가·확인: [import-case, evaluate, verify-case]     # 3
   거산 값 투입: [import-capability, evaluate]                         # 2
   후보 수집: [ingest, merge-list / merge-confirm]                     # 2~3
@@ -903,6 +905,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C7 | 위치 정보를 주는 JSON/YAML 로더 선택과 `_설명` 키 처리 | U1 (코드 생성) |
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
+| C8 | (2026-11-09 PM 승인, #489 댓글) `source-confirm` 운영 명령 추가. 소스 2개의 이용·저장 확인을 담당자·서울 날짜와 함께 기록하며 기존 기록은 덮지 않음. 더하는 변경 | #489 이강욱 |
 | C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03 저녁, PM 결정 B 확정)**: **OpenAI 웹 검색 도구**가 찾아 주소·확신도를 바로 저장하고, 회사가 들어올 때 근거 추출·재평가까지 자동으로 잇는다. 담당자는 상세 화면에서 [맞음]/주소 고치기. 확신도 낮으면 "홈페이지 확인 필요" 띠. 비용은 월 $20 상한 안(1곳 약 4~6센트). (낮에 정한 네이버 검색 API 안은 특약상 담당자 확정이 먼저 필요해 같은 날 버림. 구글 Custom Search는 신규 중단) U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder) | ~~U9~~ → U2 |
 | C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회(웹 검색 호출 포함). 키는 OPENAI_API_KEY 하나(결정 B로 네이버 키 불필요). 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. **(2026-11-03 저녁 결정 B)** 상세 머리 homepageStatus·homepageConfidence·homepageSource, `POST /homepage` confirmOnly, `homepageDiscovery` 칸 3개, `geosan research` 명령, HomepageFinder find/save/confirm — 더하는 변경. `naverSearch`·`/homepage-candidates`는 "안 씀". 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
 | C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소는 봉주로 303-1 본사(PM 최종 확정 2026-11-03 밤. 소개서 기업개요는 본사, '오시는 길' 슬라이드는 제2공장으로 적는 같은 주소), 설정 `geosan.address` | #222 (11/17 주, 코드 PR과 같이) |
