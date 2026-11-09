@@ -3,6 +3,9 @@
 // 체크와 해제는 모두 새 기록이라 지우는 단추는 없다(Q5). 저장이 끝난 뒤에만 체크 모양이 바뀐다.
 // 질문 줄에는 [답 적기]가 붙는다(2026-11-04): 누르면 줄 아래에 인라인 입력 한 칸이 열리고(모달 없음, 500자),
 // 저장하면 "답: …"이 보인다. 답이 있으면 [답 고치기]. 답을 저장해도 체크는 자동으로 바뀌지 않는다.
+// AI 제안 줄(#498, 2026-11-09)에는 체크 상자 대신 [확정]·[고치기]가 붙는다. [확정]은 기존 체크 저장 그대로
+// (checked:true), [고치기]는 줄 안에 드롭다운이 열려(모달 없음) 서버가 준 단계 하나를 고르고 checked:true와 stepLabel을
+// 함께 보낸다. 공정 연결 제안은 1차에 [확정]만. 저장이 끝나면 점수가 바뀌므로 상세를 다시 불러오게 알린다.
 import { useState } from 'react';
 import { Button, Typography } from 'antd';
 import { ApiError, postQuestionReply, postReviewCheck } from '../../api/client';
@@ -21,6 +24,18 @@ export interface ReviewAreaProps {
   items: ReviewItem[];
   /** 답 저장이 끝났을 때 알린다(활동 이력을 새로 불러오게). */
   onReplied?: () => void;
+  /** AI 제안 줄의 [확정]·[고치기] 저장이 끝났을 때 알린다(점수가 바뀌므로 상세를 다시 불러오게). */
+  onProposalSaved?: () => void;
+}
+
+/** AI가 제안한 줄(점수 입력·공정 연결). 체크 상자 대신 [확정]·[고치기]가 붙는다. */
+export function isProposal(item: ReviewItem): boolean {
+  return item.kind === 'ITEM_INPUT_PROPOSAL' || item.kind === 'PROCESS_LINK_PROPOSAL';
+}
+
+/** [고치기]는 점수 입력 제안 줄이고 서버가 단계 선택지를 줬을 때만 보인다(공정 연결은 1차에 [확정]만). */
+export function canFixProposal(item: ReviewItem): boolean {
+  return item.kind === 'ITEM_INPUT_PROPOSAL' && (item.stepOptions?.length ?? 0) > 0;
 }
 
 /** 줄 번호 "Q:<질문번호>"에서 질문 번호를 꺼낸다. 질문 줄이 아니면 null. */
@@ -42,6 +57,9 @@ const KIND_TONE: Record<ReviewItemKind, StatusTone> = {
   DATA_INSUFFICIENT: 'wait',
   // 표면처리를 직접 하는 회사일 수 있음(#319): 담당자가 확인해야 하는 표시다. 줄은 서버가 준 그대로 보이고 화면이 빼지 않는다.
   OWN_PLATING_LINE_SUSPECTED: 'ask',
+  // AI가 제안한 값은 사람이 확인하기 전이라 "확인 필요" 색으로 보인다(#498).
+  ITEM_INPUT_PROPOSAL: 'ask',
+  PROCESS_LINK_PROPOSAL: 'ask',
 };
 
 export default function ReviewArea({
@@ -49,6 +67,7 @@ export default function ReviewArea({
   evalId,
   items: initialItems,
   onReplied,
+  onProposalSaved,
 }: ReviewAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const [items, setItems] = useState<ReviewItem[]>(initialItems);
@@ -59,6 +78,9 @@ export default function ReviewArea({
   const [draft, setDraft] = useState('');
   const [replyBusy, setReplyBusy] = useState(false);
   const [replyError, setReplyError] = useState<{ itemId: string; text: string } | null>(null);
+  // [고치기] 드롭다운: 한 번에 한 줄만 연다. 고른 단계가 없으면 저장할 수 없다.
+  const [fixingId, setFixingId] = useState<string | null>(null);
+  const [stepDraft, setStepDraft] = useState('');
 
   const done = items.filter((item) => item.checked).length;
   const locked = !canRecord || !evalId || busyId !== null;
@@ -98,6 +120,50 @@ export default function ReviewArea({
     } finally {
       setBusyId(null);
     }
+  }
+
+  /** [확정](stepLabel 없음) 또는 [고치기](stepLabel 있음). 둘 다 checked:true로 기존 체크 저장을 쓴다. */
+  async function saveProposal(item: ReviewItem, stepLabel?: string) {
+    if (!staffKey || !evalId) return;
+    setBusyId(item.itemId);
+    setError(null);
+    try {
+      const body =
+        stepLabel === undefined ? { checked: true, evalId } : { checked: true, evalId, stepLabel };
+      const envelope = await postReviewCheck(oppId, item.itemId, body, staffKey);
+      const saved = envelope.data;
+      setItems((prev) =>
+        prev.map((entry) =>
+          entry.itemId === item.itemId
+            ? {
+                ...entry,
+                checked: saved.checked,
+                checkedBy: saved.checkedBy ?? null,
+                checkedAt: saved.checkedAt ?? null,
+              }
+            : entry,
+        ),
+      );
+      setFixingId(null);
+      setStepDraft('');
+      onProposalSaved?.();
+    } catch (caught) {
+      const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
+      setError({ itemId: item.itemId, text: `${reviewArea.saveFailed} (${detail})` });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function openFix(item: ReviewItem) {
+    setFixingId(item.itemId);
+    setStepDraft('');
+    setError(null);
+  }
+
+  function closeFix() {
+    setFixingId(null);
+    setStepDraft('');
   }
 
   function openReply(item: ReviewItem) {
@@ -179,22 +245,53 @@ export default function ReviewArea({
             return (
               <li key={item.itemId} data-testid="review-item">
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                  <input
-                    id={inputId}
-                    type="checkbox"
-                    checked={item.checked}
-                    disabled={locked}
-                    onChange={() => void toggle(item)}
-                    aria-label={reviewArea.checkLabel(item.text)}
-                    data-testid="review-checkbox"
-                    style={{ width: 20, height: 20 }}
-                  />
+                  {isProposal(item) ? null : (
+                    <input
+                      id={inputId}
+                      type="checkbox"
+                      checked={item.checked}
+                      disabled={locked}
+                      onChange={() => void toggle(item)}
+                      aria-label={reviewArea.checkLabel(item.text)}
+                      data-testid="review-checkbox"
+                      style={{ width: 20, height: 20 }}
+                    />
+                  )}
                   <StatusTag tone={KIND_TONE[item.kind] ?? 'neutral'} data-testid="review-tag">
                     {reviewArea.tag(item.kind, item.targetLabel)}
                   </StatusTag>
-                  <label htmlFor={inputId} data-testid="review-text">
-                    {item.text}
-                  </label>
+                  {isProposal(item) ? (
+                    <span data-testid="review-text">{item.text}</span>
+                  ) : (
+                    <label htmlFor={inputId} data-testid="review-text">
+                      {item.text}
+                    </label>
+                  )}
+                  {isProposal(item) && !item.checked ? (
+                    <>
+                      <Button
+                        type="primary"
+                        size="small"
+                        disabled={locked}
+                        onClick={() => void saveProposal(item)}
+                        aria-label={reviewArea.proposalConfirmLabel(item.text)}
+                        data-testid="review-proposal-confirm"
+                      >
+                        {reviewArea.proposalConfirm}
+                      </Button>
+                      {canFixProposal(item) ? (
+                        <Button
+                          size="small"
+                          disabled={locked}
+                          onClick={() => openFix(item)}
+                          aria-label={reviewArea.proposalFixLabel(item.text)}
+                          data-testid="review-proposal-fix"
+                        >
+                          {reviewArea.proposalFix}
+                        </Button>
+                      ) : null}
+                    </>
+                  ) : null}
                   {questionIdOf(item) ? (
                     <Button
                       size="small"
@@ -272,6 +369,45 @@ export default function ReviewArea({
                         {replyError.text}
                       </div>
                     ) : null}
+                  </div>
+                ) : null}
+                {fixingId === item.itemId ? (
+                  <div
+                    data-testid="review-fix-editor"
+                    style={{ marginLeft: 28, display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                  >
+                    <select
+                      value={stepDraft}
+                      onChange={(event) => setStepDraft(event.target.value)}
+                      disabled={locked}
+                      aria-label={reviewArea.stepPickerLabel}
+                      data-testid="review-fix-select"
+                      style={{ font: 'inherit', padding: 4 }}
+                    >
+                      <option value="">{reviewArea.stepPlaceholder}</option>
+                      {(item.stepOptions ?? []).map((step) => (
+                        <option key={step} value={step}>
+                          {step}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="primary"
+                      size="small"
+                      disabled={locked || stepDraft === ''}
+                      onClick={() => void saveProposal(item, stepDraft)}
+                      data-testid="review-fix-save"
+                    >
+                      {reviewArea.stepSave}
+                    </Button>
+                    <Button
+                      size="small"
+                      disabled={busyId !== null}
+                      onClick={closeFix}
+                      data-testid="review-fix-cancel"
+                    >
+                      {reviewArea.stepCancel}
+                    </Button>
                   </div>
                 ) : null}
                 {item.checked && who && when ? (
