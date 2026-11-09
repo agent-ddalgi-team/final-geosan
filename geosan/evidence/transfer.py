@@ -117,6 +117,15 @@ def reserve_candidate_judgment(
     return _reserve(None, key_present, db_path, "EXTERNAL_AI", "SYSTEM", batch_id=batch_id)
 
 
+def reserve_candidate_search(
+    batch_id: str, key_present: bool, db_path: Path | str | None = None
+) -> SearchTicket:
+    """C4·C9: 후보 웹 검색의 하루 한도는 별도, 월 호출·비용·미확정 기록은 공유한다."""
+    if not isinstance(batch_id, str) or not batch_id.strip():
+        raise InputError("후보 찾기 회차 번호를 확인해 주세요.")
+    return _reserve(None, key_present, db_path, "EXTERNAL_SEARCH", "SYSTEM", batch_id=batch_id)
+
+
 def _reserve(
     opp_id: str | None,
     key_present: bool,
@@ -158,14 +167,26 @@ def _reserve(
         daily_calls = sum(
             row.call_count
             for row in rows
-            if row.kind == "WEB_SEARCH" and row.occurred_at >= day_start
+            if row.kind == "WEB_SEARCH"
+            and row.occurred_at >= day_start
+            and (row.batch_id is not None) == (batch_id is not None)
         )
         cost = sum((row.cost_usd or Decimal(0) for row in rows), Decimal(0))
         is_search = purpose == "EXTERNAL_SEARCH"
+        search_enabled = (
+            settings.candidate_web_search.enabled
+            if batch_id
+            else settings.homepage_discovery.enabled
+        )
+        daily_limit = (
+            settings.candidate_web_search.daily_search_limit
+            if batch_id
+            else settings.homepage_discovery.daily_call_limit
+        )
         minimum_search_cost = (
             Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000 if is_search else Decimal(0)
         )
-        if (is_search and not settings.homepage_discovery.enabled) or llm.mode != "EXTERNAL":
+        if (is_search and not search_enabled) or llm.mode != "EXTERNAL":
             error = configuration_error()
         elif not key_present:
             error = configuration_error()
@@ -180,7 +201,7 @@ def _reserve(
             <= 0
         ):
             error = configuration_error()
-        elif is_search and daily_calls >= settings.homepage_discovery.daily_call_limit:
+        elif is_search and daily_calls >= daily_limit:
             error = AppError(
                 "오늘 검색 한도 초과",
                 "다음 날 다시 조사해 주세요.",

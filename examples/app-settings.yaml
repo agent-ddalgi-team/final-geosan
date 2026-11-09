@@ -84,6 +84,25 @@ listFilters:
     - label: "천안 인근"
       cities: ["천안시", "아산시"]
 
+# 후보 웹 검색: #314 PM 승인 2026-11-09. 실행 흐름 연결 전에는 꺼 둔다.
+candidateWebSearch:
+  enabled: false
+  dailySearchLimit: 20
+  cacheDays: 15
+  blockedDomains:
+    - saramin.co.kr
+    - jobkorea.co.kr
+    - wanted.co.kr
+    - incruit.com
+    - work24.go.kr
+    - work.go.kr
+    - jobplanet.co.kr
+    - catch.co.kr
+    - nicebizinfo.com
+    - cretop.com
+    - kreditjob.com
+    - thevc.kr
+
 # 산업군 초안: 거산 확인 뒤 설정에서 조정 (2026-11-03 PM 승인)
 industries:
   - 방위산업

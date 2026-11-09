@@ -7,6 +7,25 @@
   "required": ["staff", "activeDatasetKind", "ingestion", "llm", "homepageDiscovery", "brand", "accessProtection"],
   "additionalProperties": false,
   "properties": {
+    "candidateWebSearch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "후보 웹 검색 독립 설정(C7, #314 2026-11-09 PM 승인). 하위 도메인도 차단한다.",
+      "properties": {
+        "_설명": { "type": "string" },
+        "enabled": { "type": "boolean", "default": false },
+        "dailySearchLimit": { "type": "integer", "minimum": 0, "default": 20 },
+        "cacheDays": { "type": "integer", "minimum": 1, "default": 15 },
+        "blockedDomains": {
+          "type": "array", "maxItems": 100, "uniqueItems": true, "default": [],
+          "items": { "type": "string", "pattern": "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$" }
+        }
+      },
+      "allOf": [{
+        "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
+        "then": { "required": ["blockedDomains"], "properties": { "blockedDomains": { "minItems": 1 } } }
+      }]
+    },
     "records": {
       "type": "object",
       "additionalProperties": false,
