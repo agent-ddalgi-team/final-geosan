@@ -3,7 +3,7 @@
 from copy import deepcopy
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from geosan.capability.models import (
@@ -125,10 +125,32 @@ def copy_confirmed_dataset(
     for model in (*REVIEW_MODELS, QualificationStatus, FieldEvidence):
         if session.scalar(select(model).where(model.dataset_kind == "COMPANY_CONFIRMED").limit(1)):
             raise InputError("이미 COMPANY_CONFIRMED 묶음이 있습니다. 덮어쓰지 않습니다.")
-    originals = {
-        model: list(session.scalars(select(model).where(model.dataset_kind == "BROCHURE")))
-        for model in (*REVIEW_MODELS, QualificationStatus)
-    }
+    originals = {}
+    for model in (*REVIEW_MODELS, QualificationStatus):
+        query = select(model).where(model.dataset_kind == "BROCHURE")
+        if model is Process:
+            # 목록·후보 선택지와 같은 최신 투입 순서로 복사 이력을 만든다.
+            # 검수 시각이 같으면 파일 순서로 저장된 이력의 순번을 사용한다(#406·#483).
+            reviews = (
+                select(FieldEvidence)
+                .where(
+                    FieldEvidence.target_table == Process.__tablename__,
+                    FieldEvidence.target_id == Process.process_id,
+                    FieldEvidence.target_field == "reviewStatus",
+                    FieldEvidence.dataset_kind == "BROCHURE",
+                )
+                .correlate(Process)
+            )
+            imported_at = reviews.with_only_columns(
+                func.max(FieldEvidence.created_at)
+            ).scalar_subquery()
+            imported_order = reviews.with_only_columns(
+                func.max(literal_column("cap_field_evidence.rowid"))
+            ).scalar_subquery()
+            query = query.order_by(
+                func.coalesce(imported_at, Process.created_at), imported_order, Process.process_id
+            )
+        originals[model] = list(session.scalars(query))
     if not originals[Process]:
         raise InputError("복사할 소개서 값이 없습니다. 먼저 소개서 역량 파일을 투입해 주세요.")
     if not reviewer.strip() or not basis.strip():
