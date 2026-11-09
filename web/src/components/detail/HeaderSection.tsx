@@ -146,6 +146,7 @@ export default function HeaderSection({
           scoreDisplay={header.scoreDisplay}
           scoreState={header.scoreState}
           relationStatus={header.relationStatus}
+          classificationCode={header.classificationCode}
           testId="detail-score"
         />
         {header.isVirtual ? (
