@@ -2,14 +2,18 @@
 // 공정을 고르기 전에는 공정별 묶음으로 보이고 마지막 선택(공정 하나·묶음 보기)을 기억한다(#368 → #383, 2026-11-07 PM 결정) /
 // 회사 이름 검색(전체 후보에서, 검색어만 보냄, [검색 지우기]로 직전 주소 복귀) / 정렬("가까운 순"은 준비 중).
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import OpportunityListPage from '../OpportunityListPage';
 import { getOpportunities } from '../../api/client';
 import type { Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { GROUPED_VIEW_CHOICE, LAST_PROCESS_STORAGE_KEY } from '../../components/list/lastProcess';
+import {
+  FLAT_VIEW_CHOICE,
+  GROUPED_VIEW_CHOICE,
+  LAST_PROCESS_STORAGE_KEY,
+} from '../../components/list/lastProcess';
 import { GROUP_PAGE_SIZE } from '../../components/list/useProcessGroups';
 import { bookmarkList, listFilters, listSearch, states } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
@@ -589,6 +593,84 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
         getSpy.mockRestore();
         setSpy.mockRestore();
       }
+    });
+
+    describe('정렬 줄의 "전체 보기" — 공정 상관없이 한 줄로 (#516)', () => {
+      it('누르면 주소에 view=all이 남고, 공정 없는 요청 하나의 카드를 묶음 없이 한 줄로 보이며 순위 번호는 숨긴다. 전체 보기로 기억한다', async () => {
+        const user = userEvent.setup();
+        serveGroups({ ZINC_PLATING: cards('zinc', 2), ANODIZING: cards('ano', 3) });
+        renderPage();
+        await waitFor(() => expect(groupTitles()).toHaveLength(2));
+        expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'false');
+        await user.click(screen.getByTestId('list-view-all'));
+        await waitFor(() => expect(locationParams()).toEqual({ view: 'all' }));
+        await screen.findByTestId('opportunity-card');
+        expect(screen.queryAllByTestId('process-group-title')).toHaveLength(0);
+        expect(screen.getAllByTestId('opportunity-card')).toHaveLength(1);
+        expect(screen.queryByTestId('card-rank')).not.toBeInTheDocument();
+        expect(screen.getByText(/공정 상관없이 한 줄로 보는 중/)).toBeInTheDocument();
+        expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'true');
+        // 전체 보기 요청은 공정 없이 한 번이고 `view`는 서버에 보내지 않는다.
+        expect(lastFilters()?.process).toBeNull();
+        expect(lastFilters()).not.toHaveProperty('view');
+        expect(remembered()).toBe(FLAT_VIEW_CHOICE);
+        // 공정 선택란은 그대로 있고 맨 위는 묶지 않으므로 "전체"다.
+        expect(
+          within(screen.getByTestId('list-process-select')).getAllByRole('option')[0],
+        ).toHaveTextContent(listFilters.all);
+      });
+
+      it('다시 누르면 묶음 보기로 돌아가고 그렇게 기억한다', async () => {
+        const user = userEvent.setup();
+        serveGroups({ ZINC_PLATING: cards('zinc', 1), ANODIZING: cards('ano', 1) });
+        renderPage('/opportunities?view=all');
+        await screen.findByTestId('opportunity-card');
+        expect(remembered()).toBe(FLAT_VIEW_CHOICE);
+        await user.click(screen.getByTestId('list-view-all'));
+        await waitFor(() => expect(groupTitles()).toHaveLength(2));
+        expect(locationParams()).toEqual({});
+        expect(remembered()).toBe(GROUPED_VIEW_CHOICE);
+        expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      it('지난번에 전체 보기를 봤으면 공정 없이 열 때 전체 보기로 열린다', async () => {
+        window.localStorage.setItem(LAST_PROCESS_STORAGE_KEY, FLAT_VIEW_CHOICE);
+        serveGroups({ ZINC_PLATING: cards('zinc', 1), ANODIZING: cards('ano', 1) });
+        renderPage();
+        await screen.findByTestId('opportunity-card');
+        expect(locationParams()).toEqual({ view: 'all' });
+        expect(screen.queryAllByTestId('process-group-title')).toHaveLength(0);
+        expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'true');
+      });
+
+      it('전체 보기에서 공정을 고르면 전체 보기에서 나와 그 공정 보기가 되고, "최근 들어온 순"은 전체 보기에서도 요청에 들어간다', async () => {
+        const user = userEvent.setup();
+        serveGroups({ ZINC_PLATING: cards('zinc', 1), ANODIZING: cards('ano', 1) });
+        renderPage('/opportunities?view=all&sort=recent');
+        await screen.findByTestId('opportunity-card');
+        expect(lastFilters()).toMatchObject({ sort: 'recent' });
+        expect(lastFilters()?.process).toBeNull();
+        await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
+        await waitFor(() =>
+          expect(locationParams()).toEqual({ process: 'ANODIZING', sort: 'recent' }),
+        );
+        expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'false');
+        expect(remembered()).toBe('ANODIZING');
+      });
+
+      it('검색·관심 기업·대시보드 칸 보기에는 "전체 보기" 단추가 없다', async () => {
+        mockedGet.mockResolvedValue(reply([apjeong], MENU));
+        for (const url of [
+          '/opportunities?q=A정밀',
+          '/opportunities?bookmarked=true',
+          '/opportunities?filter=NOT_CONTACTED',
+        ]) {
+          cleanup();
+          renderPage(url);
+          await screen.findByTestId('opportunity-card');
+          expect(screen.queryByTestId('list-view-all')).not.toBeInTheDocument();
+        }
+      });
     });
   });
 

@@ -1,7 +1,7 @@
 // 목록 머리(#210 → #361): 공정 선택란(9종·0곳 포함) / 지역·산업 선택지와 "전체" / 공정 선택란 숨김 /
 // 공정을 고르기 전(#368 → #383, 2026-11-07 PM 결정): 맨 위 "전체(공정별로 묶음)"가 골라져 보이고 지역·산업 선택란도 보인다 /
 // 주소에서 온 값 유지 / 회사 이름 검색 칸과 결과 줄·[검색 지우기] / 정렬("가까운 순"은 준비 중).
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ListFilterBar from '../ListFilterBar';
 import type { ListFilterBarProps } from '../ListFilterBar';
@@ -28,10 +28,12 @@ function renderBar(overrides: Partial<ListFilterBarProps> = {}) {
     onSearch: vi.fn(),
     onClearSearch: vi.fn(),
     onSort: vi.fn(),
+    onFlat: vi.fn(),
   };
   render(
     <ListFilterBar
       sort="rank"
+      showFlat
       processCounts={PROCESSES}
       showProcess
       process="ZINC_PLATING"
@@ -266,12 +268,34 @@ describe('ListFilterBar', () => {
         '추천 순',
         '최근 들어온 순',
         '가까운 순 (준비 중)',
+        '전체 보기',
       ]);
       expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
       expect(buttons[1]).toHaveAttribute('aria-pressed', 'false');
       expect(buttons[1]).not.toHaveAttribute('aria-disabled');
       expect(buttons[2]).toHaveAttribute('aria-pressed', 'false');
       expect(buttons[2]).toHaveAttribute('aria-disabled', 'true');
+      expect(buttons[3]).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('"전체 보기"를 누르면 켜기를 알리고, 켜져 있을 때 누르면 끄기를 알린다(#516)', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar();
+      await user.click(screen.getByTestId('list-view-all'));
+      expect(handlers.onFlat).toHaveBeenCalledWith(true);
+      expect(handlers.onSort).not.toHaveBeenCalled();
+    });
+
+    it('전체 보기가 켜져 있으면 눌린 모양이고, 평소 목록이 아닌 보기(showFlat=false)에는 단추가 없다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar({ flat: true });
+      expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'true');
+      await user.click(screen.getByTestId('list-view-all'));
+      expect(handlers.onFlat).toHaveBeenCalledWith(false);
+      cleanup();
+      renderBar({ showFlat: false });
+      expect(screen.queryByTestId('list-view-all')).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-sort-recent')).toBeInTheDocument();
     });
 
     it('"최근 들어온 순"을 누르면 recent를 알리고, 이미 골라진 정렬을 다시 눌러도 알리지 않는다', async () => {

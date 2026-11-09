@@ -6,6 +6,8 @@
 //  - 검색하면 고른 조건과 상관없이 전체 후보에서 찾는다. 검색 중에는 세 선택란을 숨기고 결과 줄과 [검색 지우기]를 보인다.
 //  - 정렬은 "추천 순"과 "최근 들어온 순"(#516)을 고를 수 있다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고
 //    눌러도 아무 일이 없다. 고른 정렬은 부모가 주소(`?sort=recent`)에 남긴다.
+//  - 정렬 줄 마지막 "전체 보기"(#516, PM 지시 2026-11-09)는 평소 목록에서만 보이고, 누르면 공정별 묶음을 풀어
+//    모든 회사를 한 줄로 본다(주소 `?view=all`). 다시 누르면 묶음 보기로 돌아간다.
 // 선택과 검색어는 부모가 주소(`?process=&region=&industry=`, `?q=`)에 남기고, 이 부품은 고른 값을 알리기만 한다.
 // 선택지 옆 숫자는 서버가 준 건수다. 지역·산업은 건수가 0인 선택지를 서버가 빼서 주고, 공정은 0곳도 함께 준다.
 import { useState } from 'react';
@@ -43,6 +45,12 @@ export interface ListFilterBarProps {
   sort: ListSort;
   /** 다른 정렬을 고르면 알린다. 이미 골라진 것을 다시 눌러도 알리지 않는다. */
   onSort: (sort: ListSort) => void;
+  /** true면 정렬 줄 끝에 "전체 보기" 단추를 그린다(평소 목록). 검색·관심 기업·대시보드 칸 보기에는 없다. */
+  showFlat?: boolean;
+  /** "전체 보기"가 눌려 있는지(주소 `view=all`). */
+  flat?: boolean;
+  /** "전체 보기"를 누르면 켜고 끄기를 알린다. */
+  onFlat?: (on: boolean) => void;
 }
 
 const controlStyle = {
@@ -64,17 +72,18 @@ const labelStyle = {
   fontSize: typography.fontSizeSecondary,
 } as const;
 
-const sortStyle = (selected: boolean) =>
+/** 정렬 줄 단추. enabled가 false면(준비 중) 흐리게 보이고 누를 수 없는 모양이다. */
+const sortStyle = (selected: boolean, enabled = true) =>
   ({
     minHeight: 36,
     padding: '0 14px',
     borderRadius: 8,
-    border: `1px solid ${selected ? colors.text : colors.borderSecondary}`,
+    border: `1px solid ${selected ? colors.text : enabled ? colors.border : colors.borderSecondary}`,
     background: selected ? colors.text : colors.bgContainer,
-    color: selected ? colors.bgContainer : colors.textDimmed,
+    color: selected ? colors.bgContainer : enabled ? colors.text : colors.textDimmed,
     font: 'inherit',
     fontWeight: selected ? 700 : 400,
-    cursor: selected ? 'default' : 'not-allowed',
+    cursor: selected ? 'default' : enabled ? 'pointer' : 'not-allowed',
   }) as const;
 
 interface FilterSelectProps {
@@ -193,6 +202,9 @@ export default function ListFilterBar({
   onClearSearch,
   sort,
   onSort,
+  showFlat = false,
+  flat = false,
+  onFlat,
 }: ListFilterBarProps) {
   const searching = query !== null;
   const hasProcess = !searching && showProcess && processCounts.length > 0;
@@ -293,11 +305,22 @@ export default function ListFilterBar({
             type="button"
             aria-pressed="false"
             aria-disabled="true"
-            style={sortStyle(false)}
+            style={sortStyle(false, false)}
             data-testid="list-sort-distance"
           >
             {listSearch.sortDistance}
           </button>
+          {showFlat ? (
+            <button
+              type="button"
+              aria-pressed={flat}
+              onClick={() => onFlat?.(!flat)}
+              style={{ ...sortStyle(flat), marginLeft: 8, cursor: 'pointer' }}
+              data-testid="list-view-all"
+            >
+              {listSearch.viewAll}
+            </button>
+          ) : null}
         </div>
       </div>
       {searching ? (
