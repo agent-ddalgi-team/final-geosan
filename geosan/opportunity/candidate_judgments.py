@@ -27,7 +27,7 @@ CANDIDATE_INPUT_FIELDS = (
 )
 
 
-def candidate_product_hash(product: str, industry_name: str | None) -> str:
+def candidate_product_hash(product: str | None, industry_name: str | None) -> str:
     """판단 메모의 지문은 생산품과 업종명을 함께 묶는다(#425 PM 결정).
 
     원본 표의 생산품 무결성 해시와 구별한다. 원본·조회 캐시의 기존 행 번호는 바꾸지 않는다.

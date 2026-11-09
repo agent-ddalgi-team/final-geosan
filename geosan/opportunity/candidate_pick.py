@@ -37,7 +37,7 @@ from geosan.opportunity.candidate_judgments import (
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.judgment_store import (
-    _rows,
+    judgment_rows,
     prepare_candidate_judgments,
     public_row_content_hash,
     save_candidate_judgments,
@@ -140,7 +140,7 @@ def _public_rows(plan, ids, db_path):
         batch, regions = _context(session, plan.batch_id)
         if set(regions) != set(plan.regions) or batch.rejudge != plan.rejudge:
             raise InputError("판단하는 동안 찾기 지역이나 다시 판단 여부가 바뀌었습니다.")
-        found = _rows(session, ids, regions)
+        found = judgment_rows(session, batch, ids, regions, plan.source_kind)
         before = {row.row_id: row for row in plan.rows}
         result = []
         for row_id in ids:
@@ -162,7 +162,7 @@ def _public_rows(plan, ids, db_path):
             }
             if (
                 not row.company_name.strip()
-                or not row.address.strip()
+                or (plan.source_kind == "FACTORY" and not row.address.strip())
                 or any(value is not None and not _safe_text(value) for value in item.values())
             ):
                 raise InputError("공개 공장 본문에 연락처가 있어 전송할 수 없습니다.")
@@ -308,7 +308,7 @@ def _call(plan, context, db_path):
 
 
 def pick_candidates(
-    batch_id: str, row_ids, *, db_path: Path | str | None = None
+    batch_id: str, row_ids, *, db_path: Path | str | None = None, source_kind="FACTORY"
 ) -> list[CandidateJudgment]:
     """요청한 행 전부의 판단을 순서대로 반환한다. 일부 실패면 예외, 확정 비용은 보존한다."""
     ids = _labels(row_ids)
@@ -321,6 +321,7 @@ def pick_candidates(
             industry_catalog=context.industries,
             prompt=context.prompt,
             db_path=db_path,
+            source_kind=source_kind,
         )
         _public_rows(plan, ids, db_path)
         results = {row.row_id: row for row in plan.reused}

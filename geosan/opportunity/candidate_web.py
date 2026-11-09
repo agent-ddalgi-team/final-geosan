@@ -8,6 +8,7 @@ import hashlib
 import http.client
 import json
 import os
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -64,9 +65,9 @@ class CandidateSearchResult:
     skipped_reason: str | None = None
 
 
-def load_search_context(batch_id: str, db_path=None) -> SearchContext:
+def load_search_context(batch_id: str, db_path=None, *, session=None) -> SearchContext:
     """승인된 선택값과 공정 이름만 읽는다. 역량·거래·메모를 조회하지 않는다."""
-    with session_scope(db_path) as session:
+    with nullcontext(session) if session is not None else session_scope(db_path) as session:
         batch = session.get(IngestBatch, batch_id)
         if batch is None:
             raise NotFoundError("후보 찾기 회차를 찾을 수 없습니다.")
