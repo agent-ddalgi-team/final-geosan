@@ -38,6 +38,8 @@ def answer():
         "questions": [{"text": "직접 생산 여부를 확인했나요?", "targetKind": "OPPORTUNITY"}],
         "requirementCandidates": [],
         "companySummary": {"line": "정밀 볼트 생산 기업", "highlights": ["자동차용 부품 가공"]},
+        "itemInputProposals": [],
+        "processLinkProposals": [],
     }
 
 
@@ -230,7 +232,11 @@ def test_requirement_candidates_are_unconfirmed_evidence(extract_env):
     result = flow_extract.run_extract(case.opp_id, URL)
     assert result.ok, result.error
     assert counts()[3] == before[3]
-    assert result.counts == {"evidenceCount": 2, "requirementCandidateCount": 1, "questionCount": 1}
+    assert result.counts == {
+        "evidenceCount": 2,
+        "requirementCandidateCount": 1,
+        "questionCount": 1,
+    }
     with session_scope() as session:
         row = session.scalar(
             select(Evidence).where(

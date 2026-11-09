@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from geosan import __version__
 from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.config.registry import RuntimeConfig, load_runtime_config
+from geosan.evaluation.inputs import has_ai_pending_inputs
 from geosan.evaluation.ledger import (
     create_batch,
     latest_full_batch,
@@ -49,6 +50,21 @@ def _not_evaluated_output(snapshot: Snapshot, customer: Customer) -> EvaluationO
     output.display.blocks_approval = True
     output.display.score_display = "--"
     output.display.next_action = "AI 조사 결과 확인 뒤 점수 입력"
+    return output
+
+
+def _evaluate_snapshot(session, snapshot: Snapshot, customer: Customer) -> EvaluationOutput:
+    """입력 없는 수집 후보는 평가 전 기록, 있으면 규칙 엔진.
+
+    AI 제안(확인 전)으로 계산한 점수는 PENDING으로 표시한다(#286).
+    """
+    if not snapshot.evaluation_input.item_inputs:
+        return _not_evaluated_output(snapshot, customer)
+    output = EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
+    if output.score_state == "CONFIRMED" and has_ai_pending_inputs(
+        session, snapshot.evaluation_input.opportunity.opp_id
+    ):
+        output.score_state = "PENDING"
     return output
 
 
@@ -300,22 +316,14 @@ def _run_evaluation(
                 if snapshot is None:
                     skipped.append(f"{opportunity.opp_id}: 항목 입력 없음")
                     continue
-                output = (
-                    _not_evaluated_output(snapshot, customer)
-                    if not snapshot.evaluation_input.item_inputs
-                    else EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
-                )
+                output = _evaluate_snapshot(session, snapshot, customer)
                 validate_output(snapshot, output)
                 reset_reason = readiness_reset_reason(session, snapshot, output)
                 if reset_reason:
                     snapshot.evaluation_input.readiness_check = None
                     snapshot.document["readinessCheck"] = None
                     snapshot.snapshot_hash = canonical_hash(snapshot.document)
-                    output = (
-                        _not_evaluated_output(snapshot, customer)
-                        if not snapshot.evaluation_input.item_inputs
-                        else EvaluationOutput.model_validate(evaluate(snapshot.evaluation_input))
-                    )
+                    output = _evaluate_snapshot(session, snapshot, customer)
                     validate_output(snapshot, output)
                 computed.append((snapshot, output, reset_reason))
             ranks = _population_ranks(

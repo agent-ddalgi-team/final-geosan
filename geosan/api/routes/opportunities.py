@@ -58,6 +58,7 @@ from geosan.api.schemas import (
 from geosan.capability.queries import get_process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.dashboard.queries import bookmarked_opp_ids
+from geosan.evaluation.inputs import has_ai_pending_inputs
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
 from geosan.evaluation.models import (
     EvaluationBatch,
@@ -146,11 +147,14 @@ def _homepage_url(context: DetailContext) -> str | None:
     return max(sorted(roots), key=roots.get)
 
 
-def _score_state(run: EvaluationRun | None) -> ScoreState:
-    """#262 저장 연결 전, #263에서 허용한 기존 분류·점수 기반 표시 상태(C1)."""
+def _score_state(run: EvaluationRun | None, *, ai_pending: bool = False) -> ScoreState:
+    """#262 저장 연결 전, #263에서 허용한 기존 분류·점수 기반 표시 상태(C1).
+
+    ai_pending: 현재 점수 입력에 AI 제안(확인 전)이 있으면 점수를 흐리게 보인다(#286).
+    """
     if run is None or run.score_s is None:
         return "NONE"
-    if run.classification_code in {"FILTER_PENDING", "OPS_PENDING"}:
+    if ai_pending or run.classification_code in {"FILTER_PENDING", "OPS_PENDING"}:
         return "PENDING"
     return "CONFIRMED"
 
@@ -160,7 +164,9 @@ def _header(context: DetailContext) -> dict:
     research = runtime_for(context.session).app_settings.research
     return {
         "header": DetailHeader(
-            score_state=_score_state(run),
+            score_state=_score_state(
+                run, ai_pending=has_ai_pending_inputs(context.session, opportunity.opp_id)
+            ),
             relation_confirmed_at=customer.relation_confirmed_at,
             # #265의 승인된 C6 열이 생기기 전 사례 파일 자료에는 담당자가 없다.
             relation_confirmed_by=getattr(customer, "relation_confirmed_by", None),
@@ -682,7 +688,9 @@ def list_opportunities(
                 is_new_in_latest_batch=bool(
                     progress and customer.ingest_batch_id == progress.batch_id
                 ),
-                score_state=_score_state(current),
+                score_state=_score_state(
+                    current, ai_pending=has_ai_pending_inputs(session, opportunity.opp_id)
+                ),
                 relation_status=customer.relation_status,
                 region=_address_region(customer.address),
                 industries=customer.industries or [],
