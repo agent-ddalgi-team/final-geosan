@@ -468,7 +468,11 @@ export type ReviewItemKind =
   | 'DATA_NOT_FOUND'
   | 'DATA_INSUFFICIENT'
   /** 표면처리를 직접 하는 회사일 수 있음(#319, 계약 C1). 출처는 AI 또는 규칙. 서버가 값을 채우기 전에는 오지 않는다. */
-  | 'OWN_PLATING_LINE_SUSPECTED';
+  | 'OWN_PLATING_LINE_SUSPECTED'
+  /** AI가 제안한 점수 입력 항목(#286·#498, 계약 C0·C1). 줄 번호는 `II:<항목코드>`. [확정]·[고치기]로 담당자 값이 된다. */
+  | 'ITEM_INPUT_PROPOSAL'
+  /** AI가 제안한 공정 연결(#286·#498). 줄 번호는 `PL:<공정코드>`. 1차는 [확정]만. */
+  | 'PROCESS_LINK_PROPOSAL';
 export type ReviewItemSource = 'AI' | 'CASE_FILE' | 'RULE';
 export type ReviewTargetLabel = '상대 회사' | '거산';
 
@@ -485,6 +489,11 @@ export interface ReviewItem {
   replyText?: string | null;
   repliedAt?: string | null;
   repliedBy?: string | null;
+  /**
+   * [고치기] 드롭다운의 선택지(#498, PM 결정 2026-11-09, 더하는 변경). 점수 입력 제안 줄(`II:`)에만 오고,
+   * 그 항목의 설정 단계 이름이 설정 순서대로 들어 있다(예: ["정확히 일치", "일부 가능"]). 다른 줄은 null이거나 없다.
+   */
+  stepOptions?: string[] | null;
 }
 
 export interface OpportunityDetail {
@@ -566,6 +575,11 @@ export interface OutcomeResponse extends RecordMeta {
 export interface ReviewCheckRequest {
   checked: boolean;
   evalId: string;
+  /**
+   * [고치기]로 고른 단계 이름(#498, PM 결정 2026-11-09, 더하는 변경). 점수 입력 제안 줄(`II:`)에서
+   * `checked: true`와 함께 보내며 그 항목의 설정 단계 이름 중 하나여야 한다. 생략하면 [확정](AI 제안 값 그대로).
+   */
+  stepLabel?: string | null;
 }
 
 export interface ReviewCheckResponse {

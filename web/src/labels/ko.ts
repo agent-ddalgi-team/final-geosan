@@ -642,6 +642,8 @@ export const reviewItemKindLabels = {
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
   OWN_PLATING_LINE_SUSPECTED: '표면처리를 직접 하는 회사일 수 있음',
+  ITEM_INPUT_PROPOSAL: 'AI 제안 점수 입력',
+  PROCESS_LINK_PROPOSAL: 'AI 제안 공정 연결',
 } as const;
 /** 꼬리표 글자. 질문은 뒤에 "·상대 회사" / "·거산"이 붙는다. */
 export const reviewItemKindTagLabels = {
@@ -649,6 +651,8 @@ export const reviewItemKindTagLabels = {
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
   OWN_PLATING_LINE_SUSPECTED: '표면처리 직접 · 확인 필요',
+  ITEM_INPUT_PROPOSAL: 'AI 제안 점수 입력',
+  PROCESS_LINK_PROPOSAL: 'AI 제안 공정 연결',
 } as const;
 
 /**
@@ -780,6 +784,18 @@ export const reviewArea = {
   /** "박 이사 · 11/6" */
   repliedBy: (name: string, date: string) => `${name} · ${date}`,
   replySaveFailed: '답을 저장하지 못했습니다. 다시 시도',
+  /**
+   * AI 제안 줄의 [확정]·[고치기](#498, PM 결정 2026-11-09). 제안 줄에는 체크 상자 대신 이 단추가 붙는다.
+   * [고치기]는 줄 안에 드롭다운이 열려(모달 없음) 단계 하나를 고른다. 공정 연결 제안은 1차에 [확정]만.
+   */
+  proposalConfirm: '확정',
+  proposalFix: '고치기',
+  proposalConfirmLabel: (text: string) => `확정: ${text}`,
+  proposalFixLabel: (text: string) => `고치기: ${text}`,
+  stepPickerLabel: '고칠 단계',
+  stepPlaceholder: '단계를 고르세요',
+  stepSave: '이 단계로 확정',
+  stepCancel: '취소',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
