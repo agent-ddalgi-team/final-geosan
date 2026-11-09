@@ -88,6 +88,46 @@ def _region_name(value: str) -> str:
     return _REGION_NAMES.get(value, value)
 
 
+# 후보 찾기에서 시·군으로도 고를 수 있는 시·도(PM 결정 2026-11-09, #521).
+CITY_PARENTS = {
+    city: "충남"
+    for city in (
+        "천안시",
+        "아산시",
+        "당진시",
+        "서산시",
+        "공주시",
+        "보령시",
+        "논산시",
+        "계룡시",
+        "금산군",
+        "부여군",
+        "서천군",
+        "청양군",
+        "홍성군",
+        "예산군",
+        "태안군",
+    )
+}
+
+
+def parent_regions(regions: Sequence[str]) -> list[str]:
+    """고른 지역을 저장 단위(시·도)로 푼다. 예: ["천안시", "서산시", "대전"] → ["충남", "대전"]."""
+    return list(dict.fromkeys(CITY_PARENTS.get(region, region) for region in regions))
+
+
+def address_city(address: str) -> str | None:
+    """주소 둘째 칸의 시·군 이름. "천안시서북구"도 천안시로 본다. 목록에 없으면 None."""
+    parts = address.split()
+    token = parts[1].rstrip(",") if len(parts) > 1 else ""
+    return next((city for city in CITY_PARENTS if token.startswith(city)), None)
+
+
+def row_in_selected_regions(region: str, address: str, selected: Sequence[str]) -> bool:
+    """시·도를 통째로 골랐으면 그 시·도 전부, 시·군을 골랐으면 그 시·군 행만 맞다."""
+    return region in selected or address_city(address) in selected
+
+
 def _decode(path: Path) -> tuple[str, str]:
     try:
         data = path.read_bytes()
