@@ -11,6 +11,7 @@
 // 정렬(#361·#516): "추천 순"(기본, 서버로 `sort`를 보내지 않음)과 "최근 들어온 순"(`?sort=recent`).
 // "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 아무것도 보내지 않는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
+// "제외한 회사" 보기(#536): 주소 `?excluded=true`면 검토 대상 제외로 저장한 회사만 보인다(서버에는 `opinion=NOT_TARGET`).
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
@@ -33,7 +34,14 @@ import {
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import OpportunityCard from '../components/list/OpportunityCard';
 import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
-import { bookmarkList, listFilters, listSearch, pagination, states } from '../labels/ko';
+import {
+  bookmarkList,
+  excludedList,
+  listFilters,
+  listSearch,
+  pagination,
+  states,
+} from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
@@ -76,11 +84,13 @@ export default function OpportunityListPage() {
   const sort: ListSort = condition('sort') === 'recent' ? 'recent' : 'rank';
   // "관심 기업" 보기(#357)는 주소 `?bookmarked=true`로만 남긴다. 다른 값은 평소 목록으로 읽는다.
   const bookmarked = condition('bookmarked') === 'true';
+  // "제외한 회사" 보기(#536)는 주소 `?excluded=true`로만 남긴다. 관심 기업 보기와 같이 켜지면 관심 기업 보기를 따른다.
+  const excluded = !bookmarked && condition('excluded') === 'true';
   // 검토 의견 거르기는 관심 기업 보기에서만 쓴다(거르기 단추가 그 보기에만 있다). 표에 없는 값은 "전체 보기"로 읽는다.
   const opinionParam = condition('opinion');
   const opinion = bookmarked && isOpinionFilter(opinionParam) ? opinionParam : null;
   // 공정 선택란은 평소 목록에만 있다. 대시보드 건수로 넘어온 전체 목록·검색 결과·관심 기업 보기에는 없다.
-  const processMode = !stage && !filter && !searching && !bookmarked;
+  const processMode = !stage && !filter && !searching && !bookmarked && !excluded;
   // 전체 보기(#516): 평소 목록에서 공정을 고르지 않고 주소에 `view=all`이 있으면 묶지 않고 한 줄로 본다.
   const flat = processMode && !process && condition('view') === 'all';
   // 검색하기 직전의 주소. 대시보드에서 검색으로 바로 넘어왔으면 모른다(null).
@@ -94,6 +104,7 @@ export default function OpportunityListPage() {
     q,
     sort === 'recent' ? 'recent' : '',
     bookmarked ? 'bookmarked' : '',
+    excluded ? 'excluded' : '',
     opinion,
     // 서버 요청은 같지만 묶음 보기는 첫 응답의 카드를 버리므로, 전체 보기로 바꾸면 다시 불러야 한다.
     flat ? 'all' : '',
@@ -124,8 +135,10 @@ export default function OpportunityListPage() {
       // 관심 기업 보기와 그 안의 검토 의견 거르기도 켰을 때만 보낸다.
       ...(bookmarked ? { bookmarked: 'true' } : {}),
       ...(opinion ? { opinion } : {}),
+      // 제외한 회사 보기는 관심 조건 없이 최신 의견이 검토 대상 제외인 회사만 달라고 한다.
+      ...(excluded ? { opinion: 'NOT_TARGET' } : {}),
     }),
-    [process, region, industry, stage, filter, q, sort, bookmarked, opinion],
+    [process, region, industry, stage, filter, q, sort, bookmarked, opinion, excluded],
   );
 
   useEffect(() => {
@@ -318,7 +331,8 @@ export default function OpportunityListPage() {
   // 묶음 보기에서 회사가 있는 공정은 있는데 조건(지역·산업) 때문에 모든 묶음이 0곳이면 조건을 바꿔 보라는 문구다.
   const groupsFiltered = grouped && groupCodes.length > 0;
   // 관심 기업 보기에서 공정을 골라 0곳이면 "관심 기업 없음"이 아니라 조건을 바꿔 보라는 문구다(#516).
-  const bookmarkedByProcess = bookmarked && process !== null;
+  // 제외한 회사 보기도 같다(#536).
+  const bookmarkedByProcess = (bookmarked || excluded) && process !== null;
   const emptyText = searching
     ? listSearch.empty
     : processIsEmpty
@@ -329,7 +343,9 @@ export default function OpportunityListPage() {
           ? listFilters.noMatch
           : bookmarked
             ? bookmarkList.empty
-            : states.listEmpty;
+            : excluded
+              ? excludedList.empty
+              : states.listEmpty;
   const latestIngest = menu?.latestIngest ?? null;
   // 묶음 머리에 끼우는 고른 조건 이름(지역·산업). 값이 곧 화면 이름이다.
   const groupConditions = [region, industry].filter((value): value is string => Boolean(value));
@@ -355,12 +371,25 @@ export default function OpportunityListPage() {
       {latestIngest ? <IngestSummary ingest={latestIngest} /> : null}
       <ListViewBar
         bookmarked={bookmarked}
+        excluded={excluded}
         opinion={opinion}
         filter={filter}
         // 관심 기업 보기는 "전체"에서 시작하므로 켤 때 공정 조건을 뺀다(그 안에서 다시 고를 수 있다, #516).
         // 끌 때는 의견 거르기도 같이 뺀다.
         onBookmarked={(on) =>
-          update(on ? { bookmarked: 'true', process: null } : { bookmarked: null, opinion: null })
+          update(
+            on
+              ? { bookmarked: 'true', excluded: null, process: null }
+              : { bookmarked: null, opinion: null },
+          )
+        }
+        // 제외한 회사 보기(#536)도 "전체"에서 시작한다. 관심 기업 보기의 의견 거르기는 같이 뺀다.
+        onExcluded={(on) =>
+          update(
+            on
+              ? { excluded: 'true', bookmarked: null, opinion: null, process: null }
+              : { excluded: null },
+          )
         }
         onOpinion={(value) => update({ opinion: value })}
         onClearFilter={() => update({ filter: null })}
@@ -369,7 +398,7 @@ export default function OpportunityListPage() {
       <ListFilterBar
         processCounts={menu?.processCounts ?? []}
         // 관심 기업 보기에도 공정 선택란을 둔다(#516, PM 2026-11-09). 묶지 않으므로 맨 위는 "전체"다.
-        showProcess={processMode || bookmarked}
+        showProcess={processMode || bookmarked || excluded}
         processGrouped={processMode && !flat}
         process={process}
         region={region}

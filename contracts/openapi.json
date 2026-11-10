@@ -442,7 +442,7 @@
         "type": "object"
       },
       "DashboardCounts": {
-        "description": "관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>\n(BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 여덟 칸의 합은 BOOKMARKED와 같다.",
+        "description": "관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>\n(BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 일곱 칸의 합은 BOOKMARKED와 같다.\n검토 대상 제외로 저장한 회사는 관심 기업이 아니라서 칸이 없다(#536).",
         "properties": {
           "BOOKMARKED": {
             "title": "Bookmarked",
@@ -462,10 +462,6 @@
           },
           "NOT_CONTACTED": {
             "title": "Not Contacted",
-            "type": "integer"
-          },
-          "NOT_TARGET": {
-            "title": "Not Target",
             "type": "integer"
           },
           "NO_OPINION": {
@@ -489,7 +485,6 @@
           "BOOKMARKED",
           "NO_OPINION",
           "NEED_CHECK",
-          "NOT_TARGET",
           "NOT_CONTACTED",
           "IN_CONTACT",
           "QUOTE_SAMPLE",

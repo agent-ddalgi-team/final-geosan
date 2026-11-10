@@ -114,10 +114,10 @@ describe('DashboardPage', () => {
       await screen.findByTestId('dashboard-counts');
       const bookmarkCells: Array<[string, string]> = [
         ['관심 기업 12곳', '/opportunities?bookmarked=true'],
-        ['의견 전 3곳', '/opportunities?filter=NO_OPINION'],
+        ['의견 전 4곳', '/opportunities?filter=NO_OPINION'],
         ['추가 확인 필요 2곳', '/opportunities?filter=NEED_CHECK'],
-        ['제외 1곳', '/opportunities?filter=NOT_TARGET'],
       ];
+      // 검토 대상 제외로 저장한 회사는 관심 기업에서 빠져(#536) "제외" 칸이 없다.
       const progressCells: Array<[string, string]> = [
         ['미접촉 2곳 (검토 권고 · 접촉 전)', '/opportunities?filter=NOT_CONTACTED'],
         ['접촉 중 2곳', '/opportunities?filter=IN_CONTACT'],
