@@ -10,6 +10,7 @@ from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
+from geosan.api.proposal_review import confirm_proposal, proposal_review_items
 from geosan.api.schemas import (
     ActivityEnvelope,
     ActivityItem,
@@ -231,6 +232,9 @@ def review_items_for_detail(
             item.checked = row.checked
             item.checked_by = row.staff_key
             item.checked_at = row.created_at
+        item.step_options = None
+    # 새 AI 제안은 이전 버전의 체크 표시를 물려받지 않는다.
+    items.extend(proposal_review_items(session, opportunity, data))
     return items
 
 
@@ -326,9 +330,42 @@ def save_review_check(
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     current = opportunity_detail(opp_id, session).data
-    if not any(item.item_id == item_id for item in current.review_items):
+    selected_item = next((item for item in current.review_items if item.item_id == item_id), None)
+    if selected_item is None:
         raise NotFoundError("현재 검토사항에 없는 항목입니다.")
     now = utcnow()
+    is_proposal = selected_item.kind in {
+        ReviewItemKind.ITEM_INPUT_PROPOSAL,
+        ReviewItemKind.PROCESS_LINK_PROPOSAL,
+    }
+    if not is_proposal and body.step_label is not None:
+        raise InputError("단계 고치기는 AI 점수 입력 제안에서만 할 수 있습니다.")
+    if is_proposal:
+        if not body.checked:
+            raise InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
+        summary = confirm_proposal(
+            session, opportunity, item_id, step_label=body.step_label, staff=staff, now=now
+        )
+        session.flush()
+        result = evaluate_in_session(session, [opp_id], staff)
+        if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
+            raise RunFailedError("AI 제안을 재평가하지 못해 저장을 취소했습니다.")
+        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
+        session.add(
+            Note(
+                note_id=new_id("note"),
+                opp_id=opp_id,
+                staff_key=staff,
+                kind="MEMO",
+                text=summary,
+                eval_id=body.eval_id,
+                version=version + 1,
+                created_at=now,
+                created_by=staff,
+                dataset_kind=opportunity.dataset_kind,
+                is_virtual=opportunity.is_virtual,
+            )
+        )
     row = ReviewCheck(
         review_check_id=new_id("rcheck"),
         opp_id=opp_id,
@@ -347,7 +384,12 @@ def save_review_check(
         data=ReviewCheckResponse(
             item_id=item_id, checked=row.checked, checked_by=staff, checked_at=now
         ),
-        meta=Meta(updated_at=now, dataset_kind=row.dataset_kind, has_virtual_data=row.is_virtual),
+        meta=Meta(
+            updated_at=now,
+            dataset_kind=row.dataset_kind,
+            has_virtual_data=row.is_virtual,
+            **({"reevaluated": True} if is_proposal else {}),
+        ),
     )
 
 
