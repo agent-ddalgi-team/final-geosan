@@ -51,7 +51,7 @@ describe('수집 요약 · 건너뜀 안내(#442)', () => {
     show({ ...DONE, webSkippedReason: 'DAILY_LIMIT' });
     expect(screen.getByTestId('ingest-skipped')).toHaveTextContent('오늘 웹 검색 한도 도달');
     // 건수 줄은 그대로 보인다.
-    expect(screen.getByTestId('ingest-counts')).toHaveTextContent('훑어본 회사 3,672곳');
+    expect(screen.getByTestId('ingest-counts')).toHaveTextContent('훑어본 공장 3,672곳');
   });
 
   it('단지 조회가 하루 한도나 조회 실패로 건너뛰어지면 같은 한 문장을 알린다', () => {

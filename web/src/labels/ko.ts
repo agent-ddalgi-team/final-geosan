@@ -434,8 +434,8 @@ export const candidateSearch = {
   /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
   ingestedOn: (date: string) => `${date} 들어옴`,
   /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */
-  summaryTitle: '후보 가져오기',
-  running: '지금 가져오는 중입니다',
+  summaryTitle: '영업 후보 더하기',
+  running: '지금 영업 후보로 더하는 중입니다',
   failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
   /**
    * 한도 등으로 건너뛴 일(#442). 문장은 약속 C1에 정해진 그대로다(웹 검색 #313, 단지 조회 #323).
@@ -448,26 +448,45 @@ export const candidateSearch = {
     DAILY_LIMIT: '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
     SOURCE_ERROR: '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
   },
-  scanned: (n: number) => `훑어본 회사 ${n.toLocaleString('ko-KR')}곳`,
-  picked: (n: number) => `고른 회사 ${n.toLocaleString('ko-KR')}곳`,
+  scanned: (n: number) => `훑어본 공장 ${n.toLocaleString('ko-KR')}곳`,
+  picked: (n: number) => `고른 공장 ${n.toLocaleString('ko-KR')}곳`,
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
-  /** 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 가져오기]를 누른다. 모달 없이 인라인이다. */
-  formTitle: '새 후보 찾기 조건',
+  /**
+   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [영업 후보로 더하기 💰]를 누른다. 모달 없이 인라인이다.
+   * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
+   */
+  formTitle: '영업 후보로 더할 공장 조건',
   processLabel: '공정',
   processHint: '공정을 하나 이상 고르세요',
   regionLabel: '지역',
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '새 후보 가져오기',
-  fetching: '가져오는 중',
-  pickStaffFirst: '담당자를 고르면 가져올 수 있습니다',
-  started: '가져오기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
-  alreadyRunning: '지금 가져오는 중입니다. 끝난 뒤에 다시 눌러 주세요',
+  fetchButton: '영업 후보로 더하기 💰',
+  fetching: '더하는 중',
+  pickStaffFirst: '담당자를 고르면 더할 수 있습니다',
+  started: '더하기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
+  alreadyRunning: '지금 더하는 중입니다. 끝난 뒤에 다시 눌러 주세요',
   sourceFailed: '공개 자료를 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요',
   invalidCondition: '고른 조건을 서버가 받지 않았습니다',
-  startFailed: '후보 가져오기를 시작하지 못했습니다',
+  startFailed: '영업 후보 더하기를 시작하지 못했습니다',
+  /**
+   * 맞는 공장 수 줄(#549 ①, 약속 C1 `GET /ingest/preview`). 조건을 고르면 서버가 저장된 AI 판단만 세서
+   * 바로 보인다(외부 호출 없음, 0원). 예: "맞는 공장 1,518곳 (상 134 · 중 1,382 · 하 2) · 영업 후보로 들어온 곳 100곳"
+   */
+  previewMatched: (n: number) => `맞는 공장 ${n.toLocaleString('ko-KR')}곳`,
+  previewFits: (high: number, medium: number, low: number) =>
+    `(상 ${high.toLocaleString('ko-KR')} · 중 ${medium.toLocaleString('ko-KR')} · 하 ${low.toLocaleString('ko-KR')})`,
+  previewRegistered: (n: number) => `영업 후보로 들어온 곳 ${n.toLocaleString('ko-KR')}곳`,
+  previewAddableHigh: (n: number) => `아직 안 들어온 상 ${n.toLocaleString('ko-KR')}곳`,
+  /** 고른 지역에 AI가 아직 판단하지 않은 공장이 있을 때(#549 ②). 금액은 2단계에서 붙인다. */
+  previewUnjudged: (n: number) => `아직 AI 판단 전 ${n.toLocaleString('ko-KR')}곳`,
+  previewAdd: (n: number) => `누르면 최대 ${n.toLocaleString('ko-KR')}곳을 영업 후보로 더합니다`,
+  previewNothingToAdd: '더할 공장이 없습니다',
+  previewFree: '조건을 바꿔 보는 것은 비용이 들지 않습니다',
+  previewLoading: '맞는 공장을 세는 중',
+  previewFailed: '맞는 공장 수를 불러오지 못했습니다',
 } as const;
 
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
