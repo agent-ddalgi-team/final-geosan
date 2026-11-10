@@ -193,8 +193,33 @@ def test_incomplete_row_is_reported_while_other_pages_continue(registry, monkeyp
         xml([ROWS[2]], page=2, total=3),
     )
     result = source.fetch_complex_list(registry, "가상단지")
-    assert result.skipped_reason == "SOURCE_ERROR" and len(result.rows) == 2
+    assert result.skipped_reason is None and len(result.rows) == 2
     assert result.pages_read == 2 and result.skipped_rows[0].row_no == 2
+
+
+@pytest.mark.parametrize("name", ["", "문의 010-0000-0000"])
+def test_invalid_row_does_not_turn_complete_lookup_into_source_failure(registry, monkeypatch, name):
+    calls = responses(monkeypatch, xml([(name, "충남 아산시 가상로 2", "F2")]))
+    result = source.fetch_complex_list(registry, "가상단지")
+    assert result.skipped_reason is None and result.rows == ()
+    assert result.raw_count == 1 and len(result.skipped_rows) == 1
+    assert result.skipped_rows[0].row_no == 1 and result.skipped_rows[0].reason
+    assert len(calls) == 1 and "010-0000-0000" not in repr(result)
+
+
+def test_real_page_failure_after_bad_row_still_reports_source_error(registry, monkeypatch):
+    responses(
+        monkeypatch,
+        xml([ROWS[0], ("", "충남 아산시 가상로 2", "F2")], total=3),
+        OSError(),
+        OSError(),
+    )
+    result = source.fetch_complex_list(registry, "가상단지")
+    assert result.skipped_reason == "SOURCE_ERROR" and len(result.rows) == 1
+    assert len(result.skipped_rows) == 1 and len(logs()) == 3
+    with session_scope() as session:
+        (run,) = session.scalars(select(source.IngestionRun)).all()
+        assert run.status == "FAILED" and len(run.skipped_rows) == 1
 
 
 def test_last_daily_slot_cannot_be_reused_for_retry(registry, monkeypatch):
