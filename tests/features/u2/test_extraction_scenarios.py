@@ -35,7 +35,8 @@ def run(extract_env):
 @then("새 근거와 질문과 실제 재평가가 함께 저장된다")
 def stored(result):
     assert result.ok and len(result.new_eval_ids) == 1
-    assert "근거 1건·질문 1건 저장" in result.summary
+    # #286에서 안내에 점수 제안·공정 제안 건수가 더해졌다(#527, PM 확인 2026-11-10).
+    assert "근거 1건·질문 1건·점수 제안 0건·공정 제안 0건 저장, 재평가 완료" in result.summary
 
 
 @given("홈페이지 머리말 끝 표시 없이 실제 본문이 시작된다", target_fixture="before_head")
