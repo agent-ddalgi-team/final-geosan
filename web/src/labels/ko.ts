@@ -804,6 +804,24 @@ export const reviewArea = {
   stepPlaceholder: '단계를 고르세요',
   stepSave: '이 단계로 확정',
   stepCancel: '취소',
+  /**
+   * 자료 줄("자료 못 찾음"·"자료 부족")의 [붙여넣고 조사](#260, PM 결정 2026-11-04). 공개 본문만 붙여 넣고,
+   * 서버는 기존 홈페이지 조사 요청(url + pastedText)으로 근거를 뽑아 다시 평가한다. 줄 안 인라인(모달 없음).
+   */
+  pasteButton: '붙여넣고 조사',
+  pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
+  pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
+  pasteUrlPlaceholder: 'https://',
+  pasteTextLabel: '공개 본문',
+  pasteTextPlaceholder: '공개된 홈페이지 글이나 공고 본문을 붙여 넣어 주세요',
+  pasteHint: '공개 자료만 됩니다. 붙여넣은 글은 AI에 보내 근거를 뽑고 다시 평가합니다.',
+  pasteInvalidUrl: '출처 주소는 http:// 또는 https:// 로 시작해야 합니다.',
+  pasteEmpty: '붙여 넣은 내용이 비어 있습니다.',
+  pasteSubmit: '조사',
+  pasteCancel: '취소',
+  pasteRunning: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
+  pasteLocked: '이 조사는 지금 다시 누를 수 없습니다.',
+  pasteReload: '새로 불러오기',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
