@@ -125,7 +125,7 @@ def test_one_site_failure_preserves_data_and_continues(batch_env, tmp_path, monk
         assert session.get(Customer, second.customer_id).research_source == "AI"
 
 
-@pytest.mark.parametrize("setting", ["daily", "monthly", "cost", "unknown", "config"])
+@pytest.mark.parametrize("setting", ["daily", "monthly", "cost", "config"])
 def test_global_block_stops_remaining_companies(batch_env, tmp_path, setting):
     add_case(tmp_path)
     if setting == "daily":
@@ -136,16 +136,43 @@ def test_global_block_stops_remaining_companies(batch_env, tmp_path, setting):
         search_support.change_setting("llm", monthlyCostLimitUsd=0.01)
     elif setting == "config":
         search_support.change_setting("llm", mode="NONE")
-    else:
-        openai_search._post_response.side_effect = TimeoutError()
     result = runner.invoke(app, ["research"])
     assert result.exit_code == 2
     assert "남은 대상 1건" in result.output and "처리 1건" in result.output
     calls = sum(row.call_count for row in search_support.logs())
-    assert calls == (1 if setting in ("monthly", "unknown") else 0)
-    if setting == "unknown":
-        assert "총비용 미확정" in result.output
-        assert search_support.logs()[0].cost_usd is None
+    assert calls == (1 if setting == "monthly" else 0)
+
+
+@pytest.mark.parametrize("purpose", ["search", "extract"])
+@pytest.mark.parametrize("at_limit", [False, True])
+def test_missing_usage_continues_next_company_unless_estimated_budget_is_full(
+    batch_env, tmp_path, purpose, at_limit
+):
+    first, extraction = batch_env
+    second = add_case(tmp_path)
+    if at_limit:
+        search_support.change_setting("llm", monthlyCostLimitUsd=0.1)
+    if purpose == "search":
+        openai_search._post_response.side_effect = [TimeoutError(), _answer()]
+    else:
+        extraction.side_effect = [TimeoutError(), extraction_support.reply()]
+    result = runner.invoke(app, ["research"])
+    assert result.exit_code == 2  # 첫 회사의 실패를 성공으로 숨기지 않는다.
+    assert "총비용 미확정" in result.output and "처리 2건" in result.output
+    if at_limit:
+        assert "이번 달 비용 한도 초과" in result.output
+        assert "저장·재평가 0건" in result.output
+    else:
+        assert "저장·재평가 1건" in result.output and "실패 1건" in result.output
+        assert "조사를 멈췄습니다" not in result.output
+    with session_scope() as session:
+        assert session.get(Customer, first.customer_id).research_source != "AI"
+        assert (session.get(Customer, second.customer_id).research_source == "AI") is not at_limit
+    rows = search_support.logs()
+    assert sum(row.call_count for row in rows) == (
+        (1 if purpose == "search" else 2) if at_limit else (3 if purpose == "search" else 4)
+    )
+    assert sum(row.call_count > 0 and row.cost_usd is None for row in rows) == 1
 
 
 def test_limit_leaves_unprocessed_count(batch_env, tmp_path):
