@@ -3,7 +3,9 @@
 import pytest
 from pytest_bdd import given, scenarios, then, when
 
+from geosan.commands.cost import run_cost
 from geosan.config.errors import AppError
+from geosan.config.models import AppSetting
 from geosan.evidence.transfer import TransferLog
 from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.source_models import CandidateJudgment, SourceFactoryRow
@@ -33,6 +35,13 @@ def missing(pick_context, monkeypatch):
 def unknown(pick_context, monkeypatch):
     fake(pick_context, monkeypatch, lambda answer, count: answer | {"usage": None})
     return pick_context
+
+
+@given("한 번의 추정 비용이 이번 달 상한과 같다")
+def limit():
+    with session_scope() as session:
+        row = session.get(AppSetting, "llm")
+        row.value = row.value | {"monthlyCostLimitUsd": row.value["unconfirmedCallCostUsd"]}
 
 
 @when("두 행을 판단한 뒤 고른 공정만 바꿔 다시 판단한다")
@@ -87,8 +96,21 @@ def cost_only(context):
     assert row.input_tokens == 1000 and row.output_tokens == 200 and row.cost_usd > 0
 
 
-@then("첫 호출만 나가고 다음 실행은 사용량 미확정 오류다")
-def blocked(context):
+@then("호출은 두 번 나가고 모르는 사용량은 추정 비용에 더한다")
+def estimated(context):
+    assert len(context["calls"]) == 2
+    assert context["error"].kind == "LLM_FAILED"
+    assert not stored(CandidateJudgment)
+    assert all(row.cost_usd is None and row.call_count == 1 for row in stored(TransferLog))
+    output = []
+    assert run_cost(None, output.append) == 2
+    assert any("추정 비용 $0.200000" in line for line in output)
+
+
+@then("첫 호출만 나가고 다음 실행은 비용 한도 오류다")
+def limited(context):
     assert len(context["calls"]) == 1
-    assert context["error"].kind == "USAGE_UNCONFIRMED"
+    assert context["error"].kind == "LLM_LIMIT"
     assert stored(TransferLog)[0].cost_usd is None
+    assert sorted(row.call_count for row in stored(TransferLog)) == [0, 1]
+    assert not stored(CandidateJudgment)
