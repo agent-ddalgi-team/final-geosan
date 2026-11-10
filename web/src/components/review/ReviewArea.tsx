@@ -6,7 +6,9 @@
 // AI 제안 줄(#498, 2026-11-09)에는 체크 상자 대신 [확정]·[고치기]가 붙는다. [확정]은 기존 체크 저장 그대로
 // (checked:true), [고치기]는 줄 안에 드롭다운이 열려(모달 없음) 서버가 준 단계 하나를 고르고 checked:true와 stepLabel을
 // 함께 보낸다. 공정 연결 제안은 1차에 [확정]만. 저장이 끝나면 점수가 바뀌므로 상세를 다시 불러오게 알린다.
-import { useState } from 'react';
+// 자료 줄(#260, 2026-11-04)에는 [붙여넣고 조사]가 붙는다: 줄 아래에 출처 주소·공개 본문 입력이 열리고(모달 없음),
+// 기존 홈페이지 조사 요청으로 근거를 뽑아 다시 평가한다. 체크는 자동으로 바뀌지 않는다. 한 번에 한 줄만 열고 조사 중에는 다른 줄도 잠근다.
+import { useEffect, useState } from 'react';
 import { Button, Typography } from 'antd';
 import { ApiError, postQuestionReply, postReviewCheck } from '../../api/client';
 import type { ReviewItem, ReviewItemKind } from '../../api/types';
@@ -16,6 +18,13 @@ import { colors, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
 import { useFrame } from '../frame/FrameContext';
+import PasteResearchForm from './PasteResearchForm';
+
+/**
+ * 조사가 끝나면 상세를 새로 불러오고 이 영역도 새로 그려져 안내가 사라진다.
+ * 그래서 성공 안내는 여기에 맡겨 두었다가 새로 그려진 영역이 한 번 꺼내 보인다.
+ */
+const pendingPasteNotices = new Map<string, string>();
 
 export interface ReviewAreaProps {
   oppId: string;
@@ -26,6 +35,15 @@ export interface ReviewAreaProps {
   onReplied?: () => void;
   /** AI 제안 줄의 [확정]·[고치기] 저장이 끝났을 때 알린다(점수가 바뀌므로 상세를 다시 불러오게). */
   onProposalSaved?: () => void;
+  /** 확정된 홈페이지 주소(http/https). [붙여넣고 조사]의 출처 칸에 미리 채운다. 없으면 빈 칸. */
+  homepageUrl?: string | null;
+  /** [붙여넣고 조사]가 성공했거나 [새로 불러오기]를 누르면 부른다(상세·활동 이력을 다시 읽게). */
+  onResearched?: () => void;
+}
+
+/** 자료 줄: 담당자가 찾아 보완할 수 있는 "자료 못 찾음"·"자료 부족" 줄. */
+export function isGapLine(item: ReviewItem): boolean {
+  return item.kind === 'DATA_NOT_FOUND' || item.kind === 'DATA_INSUFFICIENT';
 }
 
 /** AI가 제안한 줄(점수 입력·공정 연결). 체크 상자 대신 [확정]·[고치기]가 붙는다. */
@@ -68,6 +86,8 @@ export default function ReviewArea({
   items: initialItems,
   onReplied,
   onProposalSaved,
+  homepageUrl = null,
+  onResearched,
 }: ReviewAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const [items, setItems] = useState<ReviewItem[]>(initialItems);
@@ -81,6 +101,16 @@ export default function ReviewArea({
   // [고치기] 드롭다운: 한 번에 한 줄만 연다. 고른 단계가 없으면 저장할 수 없다.
   const [fixingId, setFixingId] = useState<string | null>(null);
   const [stepDraft, setStepDraft] = useState('');
+  // [붙여넣고 조사]: 한 번에 한 줄만 연다. 조사 중에는 다른 줄의 단추도 잠근다.
+  const [pasteOpenId, setPasteOpenId] = useState<string | null>(null);
+  const [pasteBusy, setPasteBusy] = useState(false);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(
+    () => pendingPasteNotices.get(oppId) ?? null,
+  );
+
+  useEffect(() => {
+    pendingPasteNotices.delete(oppId);
+  }, [oppId]);
 
   const done = items.filter((item) => item.checked).length;
   const locked = !canRecord || !evalId || busyId !== null;
@@ -229,6 +259,11 @@ export default function ReviewArea({
           {reviewArea.pickStaffFirst}
         </Typography.Text>
       ) : null}
+      {pasteNotice ? (
+        <span role="status" style={secondary} data-testid="review-paste-notice">
+          {pasteNotice}
+        </span>
+      ) : null}
       {items.length === 0 ? (
         <p data-testid="review-empty" style={{ margin: 0 }}>
           {reviewArea.empty}
@@ -303,7 +338,36 @@ export default function ReviewArea({
                       {item.replyText ? reviewArea.replyEdit : reviewArea.replyAdd}
                     </Button>
                   ) : null}
+                  {isGapLine(item) ? (
+                    <Button
+                      size="small"
+                      disabled={!canRecord || !staffKey || pasteBusy}
+                      onClick={() => {
+                        setPasteNotice(null);
+                        setPasteOpenId((open) => (open === item.itemId ? null : item.itemId));
+                      }}
+                      aria-label={reviewArea.pasteButtonLabel(item.text)}
+                      data-testid="review-paste-button"
+                    >
+                      {reviewArea.pasteButton}
+                    </Button>
+                  ) : null}
                 </div>
+                {pasteOpenId === item.itemId ? (
+                  <PasteResearchForm
+                    oppId={oppId}
+                    defaultUrl={homepageUrl}
+                    onBusyChange={setPasteBusy}
+                    onCancel={() => setPasteOpenId(null)}
+                    onReload={() => onResearched?.()}
+                    onDone={(notice) => {
+                      pendingPasteNotices.set(oppId, notice);
+                      setPasteNotice(notice);
+                      setPasteOpenId(null);
+                      onResearched?.();
+                    }}
+                  />
+                ) : null}
                 {item.replyText && editingId !== item.itemId ? (
                   <div data-testid="review-reply" style={{ marginLeft: 28 }}>
                     <span>
