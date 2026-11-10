@@ -592,6 +592,8 @@ def save_outcome(
         fields.append(
             FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
         )
+    if body.judgment_check is not None and body.method is None:
+        fields.append(FieldError(path="judgmentCheck", message="접촉 기록에서만 고를 수 있습니다."))
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)

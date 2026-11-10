@@ -32,6 +32,7 @@ from geosan.rules.codes import (
     DiscoverySource,
     FilterState,
     FitLevel,
+    JudgmentCheck,
     LostReasonCode,
     NeededStage,
     Opinion,
@@ -654,6 +655,7 @@ class OutcomeRequest(_RequestModel):
     method: Literal["CALL", "EMAIL", "VISIT"] | None = None
     result: Literal["REACHED", "ABSENT", "DECLINED"] | None = None
     attempted_at: date | None = None
+    judgment_check: JudgmentCheck | None = None
     eval_id: str | None = None
     expected_version: int | None = Field(default=None, ge=0)
     memo: str | None = Field(default=None, max_length=200)
