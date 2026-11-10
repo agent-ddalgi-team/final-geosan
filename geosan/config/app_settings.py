@@ -42,13 +42,51 @@ class ComplexListSettings(FileModel):
     extra_names: list[str] = Field(default_factory=list)
 
 
+DEFAULT_PICK_EXCLUDE_KEYWORDS = (
+    "운송",
+    "물류",
+    "택배",
+    "창고업",
+    "도매",
+    "소매",
+    "무역",
+    "소프트웨어",
+    "정보서비스",
+    "통신서비스",
+    "식품",
+    "음료",
+    "제과",
+    "제빵",
+    "섬유",
+    "의류",
+    "봉제",
+    "출판",
+    "광고",
+    "교육",
+    "컨설팅",
+    "부동산",
+    "건설업",
+    "토목",
+    "시공",
+    "음식점",
+    "숙박",
+)
+
+
 class AiPickSettings(FileModel):
-    """C7: #425·#430 PM 승인. 100행 묶음은 pick-v1 표본 계획의 기본값이다."""
+    """C7: #425·#430 PM 승인. 묶음 기본값은 20행(#491, 100행은 60초 한도를 넘김).
+
+    model: 후보 고르기에만 쓸 모델(llm.allowedModels 안). 비우면 llm.model.
+    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작)가 없으면
+    AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감). 기준 버전에 포함된다.
+    """
 
     enabled: bool = Field(default=False, strict=True)
-    rows_per_call: int = Field(default=100, ge=1, strict=True)
+    rows_per_call: int = Field(default=20, ge=1, strict=True)
     prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
     surface_treatment_industry_names: list[str] = Field(default_factory=list)
+    model: str | None = Field(default=None, min_length=1)
+    exclude_keywords: list[str] = Field(default_factory=lambda: list(DEFAULT_PICK_EXCLUDE_KEYWORDS))
 
 
 class CandidateWebSearchSettings(FileModel):
@@ -188,6 +226,19 @@ class AppSettings(FileModel):
     def is_recording_staff(self, key: str | None) -> bool:
         """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3)."""
         return bool(key) and key in self.staff_keys() and key != VIEWER_STAFF_KEY
+
+    @model_validator(mode="after")
+    def check_pick_model(self) -> AppSettings:
+        pick_model = self.ingestion.ai_pick.model
+        if (
+            pick_model is not None
+            and self.llm.allowed_models
+            and pick_model not in self.llm.allowed_models
+        ):
+            raise ValueError(
+                "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
 
 
 @dataclass

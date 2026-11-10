@@ -170,6 +170,21 @@ export default function OpportunityDetailPage() {
                 evalId={data.evalId}
                 items={data.reviewItems}
                 onReplied={() => setTimelineVersion((n) => n + 1)}
+                homepageUrl={
+                  data.header.homepageUrl && /^https?:\/\/\S+$/.test(data.header.homepageUrl)
+                    ? data.header.homepageUrl
+                    : null
+                }
+                onResearched={() => {
+                  // 붙여넣고 조사하면 근거가 늘고 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#260).
+                  setReload((n) => n + 1);
+                  setTimelineVersion((n) => n + 1);
+                }}
+                onProposalSaved={() => {
+                  // AI 제안을 확정·고치면 점수가 바뀌어 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#498).
+                  setReload((n) => n + 1);
+                  setTimelineVersion((n) => n + 1);
+                }}
               />
             </DetailSection>
           ) : null}

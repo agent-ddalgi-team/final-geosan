@@ -31,6 +31,19 @@ app = typer.Typer(
 )
 
 
+@app.command("source-confirm")
+def source_confirm(
+    source_id: str = typer.Argument(..., help="kicox-factory-csv 또는 kicox-production-api"),
+    staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),
+    terms: str | None = typer.Option(None, "--terms", help="운영자가 확인한 소스 약관 주소"),
+    on: str | None = typer.Option(None, "--on", help="확인일 YYYY-MM-DD, 기본은 서울 오늘"),
+) -> None:
+    """공공 소스의 이용·저장 확인을 기록합니다. 기존 기록은 덮어쓰지 않습니다."""
+    from geosan.commands.source_confirm import run_source_confirm
+
+    raise typer.Exit(code=run_source_confirm(source_id, staff_key=staff_key, terms=terms, on=on))
+
+
 @app.command("ingest")
 def ingest(
     source_id: str = typer.Argument(..., help="공개 공장현황 소스 kicox-factory-csv"),
