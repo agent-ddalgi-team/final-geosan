@@ -15,7 +15,7 @@ const DONE: LatestIngest = {
 };
 
 function show(ingest: LatestIngest) {
-  return render(<IngestSummary ingest={ingest} scope="latest" onScope={() => {}} />);
+  return render(<IngestSummary ingest={ingest} />);
 }
 
 describe('수집 요약 · 실패 사유(#442)', () => {

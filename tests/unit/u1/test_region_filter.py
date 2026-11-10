@@ -52,7 +52,7 @@ def test_regions_preserve_raw_address_and_combine_all_filters(region_env):
     for opp_id, address, region in zip(ids, addresses, expected_regions, strict=True):
         assert by_id[opp_id]["region"] == region
         assert client.get(f"{url}/{opp_id}").json()["data"]["header"]["address"] == (address or "")
-    selected = client.get(url, params={"region": "천안 인근"}).json()
+    selected = client.get(url, params={"region": "충남"}).json()
     assert {row["oppId"] for row in selected["data"]} == set(ids[:2])
     assert [row["rank"] for row in selected["data"]] == [1, 2]
     assert selected["meta"]["regionCounts"] == whole["meta"]["regionCounts"]
@@ -66,12 +66,12 @@ def test_regions_preserve_raw_address_and_combine_all_filters(region_env):
         ).status_code
         == 200
     )
-    params = dict(region="천안 인근", process="ANODIZING", industry="반도체", stage="IN_PROGRESS")
+    params = dict(region="충남", process="ANODIZING", industry="반도체", stage="IN_PROGRESS")
     result = client.get(url, params=params).json()
     assert [row["oppId"] for row in result["data"]] == ids[:1]
     assert client.get(url, params={**params, "region": "아산시"}).json()["data"] == []
     assert client.get(url, params={"region": "미등록 지역"}).json()["data"] == []
-    page = client.get(url, params={"region": "천안 인근", "pageSize": 1, "page": 2}).json()
+    page = client.get(url, params={"region": "충남", "pageSize": 1, "page": 2}).json()
     assert page["meta"]["total"] == 2 and page["data"][0]["rank"] == 2
 
 

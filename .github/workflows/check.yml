@@ -40,10 +40,8 @@ jobs:
       - name: 단위 테스트 + 커버리지 80% 하한
         run: python -m pytest tests/unit -q --cov=geosan --cov-report=term-missing --cov-fail-under=80
 
-      # 한시적: 세 트랙(규칙·투입/API·화면)이 다 합쳐지기 전에는 시나리오가 실패하는 것이 정상이다.
-      # Step 28에서 continue-on-error를 제거한다.
+      # 시나리오는 필수다(#527, PM 결정 2026-11-10). 실패하면 빨간 X가 난다.
       - name: 시나리오 테스트 (tests/features)
-        continue-on-error: true
         run: python -m pytest tests/features -q --no-cov
 
       # 한시적: verify-case는 Step 19·27에서 완성된다. Step 28에서 continue-on-error를 제거한다.

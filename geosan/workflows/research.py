@@ -18,6 +18,9 @@ from geosan.workflows.flow_extract import run_extract
 
 logger = logging.getLogger(__name__)
 
+# 이어 가도 소용없거나 비용을 모르는 오류. 나머지 오류는 그 회사만 건너뛴다.
+STOP_KINDS = {"LLM_LIMIT", "SEARCH_LIMIT", "USAGE_UNCONFIRMED", "LLM_NOT_CONFIGURED"}
+
 
 @dataclass
 class ResearchResult:
