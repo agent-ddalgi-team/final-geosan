@@ -190,7 +190,6 @@ export const dashboardTexts = {
     BOOKMARKED: '곳',
     NO_OPINION: '곳',
     NEED_CHECK: '곳',
-    NOT_TARGET: '곳',
     ON_HOLD: '곳',
     DONE: '곳',
   },
@@ -203,7 +202,6 @@ export const dashboardTexts = {
     BOOKMARKED: '관심 기업',
     NO_OPINION: '의견 전',
     NEED_CHECK: '추가 확인 필요',
-    NOT_TARGET: '제외',
     ON_HOLD: '보류',
     DONE: '완료',
   },
@@ -401,12 +399,14 @@ export const bookmarkList = {
   title: '관심 기업',
   showOnly: '관심 기업만 보기',
   opinionGroupLabel: '검토 의견으로 거르기',
-  /** 거르기 단추 다섯 개. "기타"는 세 의견 중 아무것도 고르지 않은 회사만 나온다. */
+  /**
+   * 거르기 단추 네 개. "기타"는 의견을 아직 고르지 않은 회사만 나온다.
+   * 검토 대상 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
+   */
   opinionFilters: {
     ALL: '전체 보기',
     WORTH_REVIEW: '검토 권고',
     NEED_CHECK: '추가 확인 필요',
-    NOT_TARGET: '제외 기업',
     NONE: '기타',
   },
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
@@ -415,6 +415,14 @@ export const bookmarkList = {
   /** 주소의 조건 값이 대시보드 칸 이름표에 없을 때 대신 보이는 말. */
   filterUnknown: '대시보드에서 고른 조건',
   clearFilter: '거르기 풀기',
+} as const;
+
+/** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 검토 대상 제외로 저장한 회사만 모아 본다. */
+export const excludedList = {
+  showOnly: '제외한 회사 보기',
+  title: '제외한 회사',
+  hint: '검토 대상 제외로 저장한 회사입니다. 검토 의견을 바꾸면 관심 기업으로 돌아갑니다',
+  empty: '검토 대상 제외로 저장한 회사가 없습니다',
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */

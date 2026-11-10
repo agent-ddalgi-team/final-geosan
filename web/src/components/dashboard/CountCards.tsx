@@ -1,5 +1,6 @@
 // 건수 두 구역(#357, 2026-11-06 PM 결정): 대시보드는 관심으로 고른 회사만 센다.
-//  ① "관심 기업": 관심 기업 전체(큰 칸) / 의견 전 / 추가 확인 필요 / 제외
+//  ① "관심 기업": 관심 기업 전체(큰 칸) / 의견 전 / 추가 확인 필요
+//     (검토 대상 제외로 저장한 회사는 관심 기업에서 빠져 칸이 없다, #536)
 //  ② "영업 진행": 미접촉(검토 권고 · 접촉 전) / 접촉 중 / 견적·샘플 / 보류 / 완료 + 이번 주 일정
 // 칸을 누르면 그 조건으로 걸러진 추천 목록으로 간다(관심 기업은 ?bookmarked=true, 나머지는 ?filter=<칸 이름표>).
 // 서버가 주지 않은 칸은 0으로 지어내지 않고 뺀다. 옛 집계(관심 기업 건수가 없음)면 두 구역 대신 안내를 보인다.
@@ -9,12 +10,7 @@ import { dashboardTexts } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 
 /** ① "관심 기업" 구역의 칸 순서. 맨 앞 BOOKMARKED가 큰 칸이다. */
-export const BOOKMARK_ORDER: DashboardCountKey[] = [
-  'BOOKMARKED',
-  'NO_OPINION',
-  'NEED_CHECK',
-  'NOT_TARGET',
-];
+export const BOOKMARK_ORDER: DashboardCountKey[] = ['BOOKMARKED', 'NO_OPINION', 'NEED_CHECK'];
 
 /** ② "영업 진행" 구역의 칸 순서. 이번 주 일정은 진행 단계 뒤에 둔다. */
 export const PROGRESS_ORDER: DashboardCountKey[] = [
