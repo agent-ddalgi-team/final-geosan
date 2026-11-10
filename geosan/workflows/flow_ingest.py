@@ -4,7 +4,8 @@ PM이 #427에서 확정한 규격으로 공개 원본·판단·등록 부품을 
 검사에서는 외부 통신만 대체하고, 저장과 평가 및 목록 조회는 실제 부품을 쓴다.
 """
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from sqlalchemy import select
@@ -12,12 +13,12 @@ from sqlalchemy import select
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.config.registry import load_runtime_config
 from geosan.evaluation.snapshot import _capability_snapshot
-from geosan.opportunity.candidate_judgments import select_candidates
+from geosan.opportunity.candidate_judgments import rank_candidates, select_candidates
 from geosan.opportunity.candidate_pick import pick_candidates
-from geosan.opportunity.candidate_registration import register_candidates
+from geosan.opportunity.candidate_registration import register_candidates, registered_row_ids
 from geosan.opportunity.complex_collection import collect_complex_rows
 from geosan.opportunity.complex_store import store_complex_rows
-from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.factory_csv import SOURCE_ID, parent_regions, row_in_selected_regions
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
 from geosan.storage.base import utcnow
@@ -25,7 +26,9 @@ from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_conditions
 from geosan.workflows.ingest_sources import store_dated_factory_csv
-from geosan.workflows.research import research_one
+from geosan.workflows.research import STOP_KINDS, research_one
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -103,10 +106,28 @@ def _validate_source_rows(batch, source):
             select(SourceFactoryRow).where(SourceFactoryRow.row_id.in_(source.row_ids))
         ).all()
         if {row.row_id for row in rows} != set(source.row_ids) or any(
-            row.region not in batch.criteria["regions"] or row.missing_since is not None
+            row.region not in parent_regions(batch.criteria["regions"])
+            or row.missing_since is not None
             for row in rows
         ):
             raise RunFailedError("찾기 지역의 현재 공장 행만 판단할 수 있습니다.")
+
+
+def _selected_row_ids(batch, row_ids):
+    """시·군을 골랐으면 그 시·군 행만 AI 판단으로 넘긴다(#521). 비용은 고른 만큼만 든다."""
+    selected = batch.criteria["regions"]
+    with session_scope() as session:
+        rows = {
+            row.row_id: row
+            for row in session.scalars(
+                select(SourceFactoryRow).where(SourceFactoryRow.row_id.in_(row_ids))
+            )
+        }
+        return tuple(
+            row_id
+            for row_id in row_ids
+            if row_in_selected_regions(rows[row_id].region, rows[row_id].address, selected)
+        )
 
 
 def _new_opportunities(session, batch):
@@ -164,6 +185,7 @@ def run_ingest(batch_id: str) -> None:
         # 공공자료 읽기가 실패하면 뒤 단계와 웹 검색(#314)은 실행하지 않는다.
         source = load_source_rows(batch_id)
         _validate_source_rows(batch, source)
+        source = replace(source, row_ids=_selected_row_ids(batch, source.row_ids))
         with session_scope() as session:
             current = _running(session, batch_id)
             current.scanned_count = source.scanned_count
@@ -181,9 +203,16 @@ def run_ingest(batch_id: str) -> None:
             current = _running(session, batch_id)
             current.judged_count = len(judgments)
             current.judge_pending_count = 0
-        selected = select_candidates(
+        matched = select_candidates(
             judgments, process_codes=prepared.process_codes, industries=prepared.industries
-        )[: prepared.max_candidates]
+        )
+        # 이미 있는 회사를 뺀 뒤 적합도 순으로 자른다. 다시 누르면 다음 회사가 들어온다(#528).
+        with session_scope() as session:
+            registered = registered_row_ids(session, batch_id, matched) if matched else set()
+        fresh = [item for item in matched if item.row_id not in registered]
+        known = [item for item in matched if item.row_id in registered]
+        # 이미 있는 회사도 넘겨야 건너뜀 건수가 그대로 남는다.
+        selected = [*rank_candidates(fresh)[: prepared.max_candidates], *known]
         with session_scope() as session:
             _running(session, batch_id).picked_count = len(selected)
         stage = "후보 등록"
@@ -202,8 +231,16 @@ def run_ingest(batch_id: str) -> None:
         if settings.homepage_discovery.auto_research and not batch.is_virtual:
             for opp_id in affected:
                 result = research_one(opp_id)
-                if result.error is not None or result.usage_unconfirmed:
+                if result.usage_unconfirmed or (
+                    result.error is not None and result.error.kind in STOP_KINDS
+                ):
                     raise RunFailedError("새 후보 홈페이지 조사를 완료하지 못했습니다.")
+                if result.error is not None:
+                    # 약속 C1: 실패는 그 회사만 남기고 다음 회사로 넘어간다(#528).
+                    logger.warning(
+                        "ingest.research_skipped",
+                        extra={"batchId": batch_id, "oppId": opp_id, "kind": result.error.kind},
+                    )
                 with session_scope() as session:
                     current = session.get(IngestBatch, batch_id)
                     current.research_done_count += 1

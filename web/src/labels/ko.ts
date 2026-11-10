@@ -261,6 +261,8 @@ export const cardRows = {
 export const scoreTags = {
   pending: '거래 확인 전',
   existing: '기존 거래처',
+  /** AI가 제안한 값으로 계산된 점수(#498, 계약 C1 #286). 사람이 확정하기 전까지 흐리게 보인다. */
+  aiProposal: 'AI 제안 · 확인 전',
 } as const;
 
 /** 상세 제목 아래 회사 홈페이지 링크 글(#175, 용어 #202). 홍보관(블로그) 주소도 있어 "기업 소개 페이지"로 쓴다. */
@@ -352,6 +354,8 @@ export const listFilters = {
     [processName, ...conditions, `${count}곳`].join(' · '),
   /** 묶음 보기일 때 전체 곳 수 줄 뒤에 붙이는 말(#383). */
   groupedNote: '공정별로 묶어 보는 중',
+  /** 전체 보기(#516)일 때 전체 곳 수 줄 뒤에 붙이는 말. 공정이 섞여 순위 번호는 보이지 않는다. */
+  flatNote: '공정 상관없이 한 줄로 보는 중 · 순위 번호 없음',
   /** 한 공정이 묶음 상한(50곳)을 넘을 때 묶음 끝의 링크(#383). 그 공정 하나를 고른 보기로 간다. */
   onlyThisProcess: '이 공정만 보기',
   /** "천안 인근 8", "크롬 도금 0" */
@@ -381,8 +385,12 @@ export const listSearch = {
   empty: '이 이름으로 찾은 후보가 없습니다',
   sortLabel: '정렬',
   sortRank: '추천 순',
+  /** 최근 들어온 순(#516): 들어온 시각이 최신인 회사가 위, 사례 파일 회사는 아래. */
+  sortRecent: '최근 들어온 순',
   /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
   sortDistance: '가까운 순 (준비 중)',
+  /** 정렬 줄 마지막 단추(#516, PM 지시 2026-11-09): 공정별 묶음을 풀고 모든 회사를 한 줄로 본다. 다시 누르면 묶음 보기. */
+  viewAll: '전체 보기',
 } as const;
 
 /**
@@ -409,15 +417,14 @@ export const bookmarkList = {
   clearFilter: '거르기 풀기',
 } as const;
 
-/** 후보 찾기 화면(#316, 결정 2026-11-05): 목록 머리 수집 요약·"이번 수집만/전체" 전환과 카드의 고른 이유·점수 전·이번에 들어옴. */
+/** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
 export const candidateSearch = {
   /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
-  /** "이번에 들어옴" 꼬리표. 날짜를 알면 "이번에 들어옴 · 11/20"으로 보인다. */
-  newInBatch: '이번에 들어옴',
-  newInBatchWithDate: (date: string) => `이번에 들어옴 · ${date}`,
+  /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
+  ingestedOn: (date: string) => `${date} 들어옴`,
   /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */
   summaryTitle: '후보 가져오기',
   running: '지금 가져오는 중입니다',
@@ -437,12 +444,6 @@ export const candidateSearch = {
   picked: (n: number) => `고른 회사 ${n.toLocaleString('ko-KR')}곳`,
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
-  /** "이번 수집만 / 전체" 전환. */
-  scopeLabel: '보기',
-  scopeLatest: '이번 수집만',
-  scopeAll: '전체',
-  /** "이번 수집만"인데 고른 회사가 하나도 없을 때. */
-  latestEmpty: '이번에 새로 들어온 회사가 없습니다. 보기를 "전체"로 바꿔 보세요',
   /** 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 가져오기]를 누른다. 모달 없이 인라인이다. */
   formTitle: '새 후보 찾기 조건',
   processLabel: '공정',
@@ -642,6 +643,8 @@ export const reviewItemKindLabels = {
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
   OWN_PLATING_LINE_SUSPECTED: '표면처리를 직접 하는 회사일 수 있음',
+  ITEM_INPUT_PROPOSAL: 'AI 제안 점수 입력',
+  PROCESS_LINK_PROPOSAL: 'AI 제안 공정 연결',
 } as const;
 /** 꼬리표 글자. 질문은 뒤에 "·상대 회사" / "·거산"이 붙는다. */
 export const reviewItemKindTagLabels = {
@@ -649,6 +652,8 @@ export const reviewItemKindTagLabels = {
   DATA_NOT_FOUND: '자료 못 찾음',
   DATA_INSUFFICIENT: '자료 부족',
   OWN_PLATING_LINE_SUSPECTED: '표면처리 직접 · 확인 필요',
+  ITEM_INPUT_PROPOSAL: 'AI 제안 점수 입력',
+  PROCESS_LINK_PROPOSAL: 'AI 제안 공정 연결',
 } as const;
 
 /**
@@ -780,6 +785,18 @@ export const reviewArea = {
   /** "박 이사 · 11/6" */
   repliedBy: (name: string, date: string) => `${name} · ${date}`,
   replySaveFailed: '답을 저장하지 못했습니다. 다시 시도',
+  /**
+   * AI 제안 줄의 [확정]·[고치기](#498, PM 결정 2026-11-09). 제안 줄에는 체크 상자 대신 이 단추가 붙는다.
+   * [고치기]는 줄 안에 드롭다운이 열려(모달 없음) 단계 하나를 고른다. 공정 연결 제안은 1차에 [확정]만.
+   */
+  proposalConfirm: '확정',
+  proposalFix: '고치기',
+  proposalConfirmLabel: (text: string) => `확정: ${text}`,
+  proposalFixLabel: (text: string) => `고치기: ${text}`,
+  stepPickerLabel: '고칠 단계',
+  stepPlaceholder: '단계를 고르세요',
+  stepSave: '이 단계로 확정',
+  stepCancel: '취소',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
