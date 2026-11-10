@@ -82,11 +82,12 @@ class Extraction(FileModel):
 
 
 def _post(payload: dict, key: str, deadline: float) -> dict:
-    connection = http.client.HTTPSConnection("api.openai.com", timeout=min(20, remaining(deadline)))
+    connection = http.client.HTTPSConnection("api.openai.com", timeout=remaining(deadline))
     timer = None
     try:
         connection.connect()
         timer = interrupt_at(connection.sock, deadline)
+        connection.sock.settimeout(remaining(deadline))
         connection.request(
             "POST",
             "/v1/responses",
@@ -101,7 +102,7 @@ def _post(payload: dict, key: str, deadline: float) -> dict:
         while True:
             remaining(deadline)
             if connection.sock:
-                connection.sock.settimeout(min(20, remaining(deadline)))
+                connection.sock.settimeout(remaining(deadline))
             chunk = response.read1(65536)
             remaining(deadline)
             if not chunk:

@@ -48,6 +48,7 @@ llm:
   model: null
   _설명: "monthlyCallLimit·costPerThousandTokens 값은 설계에 없음 — PM 확인 필요(U2 진입 전). 0은 '아직 정하지 않음'."
   monthlyCallLimit: 0
+  unconfirmedCallCostUsd: 0.10  # 사용량을 못 받은 호출의 추정 비용(#538).
   costPerThousandTokens: 0
 
 # 가상 사례는 홈페이지 검색을 끈다. 기존 두 칸만 있는 설정도 그대로 읽을 수 있다.

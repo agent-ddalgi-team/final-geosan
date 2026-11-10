@@ -94,9 +94,8 @@ def test_unknown_usage_is_not_success_or_retried(ready, monkeypatch):
     with pytest.raises(AppError) as error:
         web.search_candidates(BATCH)
     assert error.value.kind == "LLM_FAILED" and logs()[0].cost_usd is None
-    with pytest.raises(AppError) as error:
-        reserve_search("opp-test", True, None)
-    assert error.value.kind == "USAGE_UNCONFIRMED"
+    reserve_search("opp-test", True, None)
+    assert [row.call_count for row in logs()] == [1, 1]
 
 
 def test_bad_answer_accounts_cost_before_failing(ready, monkeypatch):
