@@ -23,7 +23,7 @@ from geosan.storage.base import utcnow
 router = APIRouter()
 
 SCHEDULE_DUE_FILTER = "SCHEDULE_DUE"
-# 대시보드 칸을 누르면 열리는 목록 `?filter=<칸>` 값 9개(#356).
+# 대시보드 칸을 누르면 열리는 목록 `?filter=<칸>` 값 8개(#356, #536에서 제외 칸 삭제).
 BOARD_FILTERS = frozenset({BOOKMARKED_KEY, *BOARD_KEYS})
 
 ActivityKind = Literal["NOTE", "STAGE", "CONTACT_ATTEMPT", "SCHEDULE", "OPINION"]
@@ -31,13 +31,13 @@ ActivityKind = Literal["NOTE", "STAGE", "CONTACT_ATTEMPT", "SCHEDULE", "OPINION"
 
 class DashboardCounts(_ApiModel):
     """관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>
-    (BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 여덟 칸의 합은 BOOKMARKED와 같다."""
+    (BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 일곱 칸의 합은 BOOKMARKED와 같다.
+    검토 대상 제외로 저장한 회사는 관심 기업이 아니라서 칸이 없다(#536)."""
 
     # 계약의 건수 키는 대문자 코드 그대로다(camelCase로 바꾸지 않는다).
     bookmarked: int = Field(alias="BOOKMARKED")
     no_opinion: int = Field(alias="NO_OPINION")
     need_check: int = Field(alias="NEED_CHECK")
-    not_target: int = Field(alias="NOT_TARGET")
     not_contacted: int = Field(alias="NOT_CONTACTED")
     in_contact: int = Field(alias="IN_CONTACT")
     quote_sample: int = Field(alias="QUOTE_SAMPLE")
@@ -91,7 +91,7 @@ def schedule_due_list_filter(session, query, request: Request):
 def bookmark_board_list_filter(session, query, request: Request):
     """추천 목록 `?filter=<대시보드 칸>`: 대시보드와 같은 분류 함수로 거른다(#356).
 
-    `BOOKMARKED`는 관심 기업 전체, 나머지 여덟 값은 그 칸에 든 관심 기업만 남긴다.
+    `BOOKMARKED`는 관심 기업 전체, 나머지 일곱 값은 그 칸에 든 관심 기업만 남긴다.
     """
     key = request.query_params.get("filter")
     if key not in BOARD_FILTERS:

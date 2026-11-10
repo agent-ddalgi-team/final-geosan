@@ -1,6 +1,7 @@
 """#356: 대시보드가 관심으로 고른 회사만 세고, 칸을 눌러 연 목록과 건수가 같은지 본다.
 
-관심 기업 하나는 여덟 칸 가운데 꼭 하나에만 든다(계약 C1 v3, PM 결정 2026-11-06).
+관심 기업 하나는 일곱 칸 가운데 꼭 하나에만 든다(계약 C1 v3, PM 결정 2026-11-06).
+검토 대상 제외로 저장한 회사는 관심 기업이 아니라서 어느 칸에도 없다(계약 v4, #536).
 관심 켜고 끄기·자동 관심 검사는 `test_bookmark.py`에 있다. 가상 사례만 쓴다(거산 실제 사양 아님).
 """
 
@@ -76,10 +77,9 @@ def test_each_bookmarked_company_falls_in_exactly_one_column(board_env):
     expected["NEED_CHECK"].add(ids[1])
     give_opinion(client, ids[3], "WORTH_REVIEW")
     expected["NOT_CONTACTED"].add(ids[3])
-    # ① 검토 대상 제외는 영업 단계보다 먼저다.
+    # 검토 대상 제외는 접촉 중이어도 관심 기업에서 빠져 어느 칸에도 없다(#536).
     record(client, ids[2], {"status": "IN_PROGRESS"})
     give_opinion(client, ids[2], "NOT_TARGET")
-    expected["NOT_TARGET"].add(ids[2])
     # ② 최신 영업 단계: 검토 권고가 있어도 접촉을 시작했으면 미접촉이 아니다.
     give_opinion(client, ids[4], "WORTH_REVIEW")
     record(client, ids[4], {"status": "IN_PROGRESS"})
@@ -98,7 +98,7 @@ def test_each_bookmarked_company_falls_in_exactly_one_column(board_env):
     assert set(counts) == set(COUNT_KEYS)
     assert counts == {
         **{key: len(found) for key, found in expected.items()},
-        "BOOKMARKED": 9,
+        "BOOKMARKED": 8,
         "SCHEDULE_DUE": 0,
     }
     assert counts == counts_of(build())
@@ -108,7 +108,7 @@ def test_each_bookmarked_company_falls_in_exactly_one_column(board_env):
         assert listed_ids(client, filter=key) == expected[key], key
         total = client.get(URL, params={"filter": key}).json()["meta"]["total"]
         assert total == counts[key], key
-    everyone = set(ids[:9])
+    everyone = set(ids[:9]) - {ids[2]}
     assert listed_ids(client, filter="BOOKMARKED") == everyone
     assert listed_ids(client, bookmarked="true") == everyone
     # 칸 거르기는 다른 거르기와 AND다.
@@ -134,9 +134,10 @@ def test_column_follows_latest_opinion_stage_and_bookmark(dashboard_env):  # noq
     only("NOT_CONTACTED")
     record(client, a, {"status": "IN_PROGRESS"})
     only("IN_CONTACT")
-    give_opinion(client, a, "NOT_TARGET")
-    only("NOT_TARGET")
-    give_opinion(client, a, "WORTH_REVIEW")  # 제외를 풀면 다시 영업 단계 칸으로
+    give_opinion(client, a, "NOT_TARGET")  # 제외하면 관심 기업에서 빠진다(#536)
+    assert api_counts(client) == ZERO_COUNTS
+    assert listed_ids(client, bookmarked="true") == set()
+    give_opinion(client, a, "WORTH_REVIEW")  # 제외를 풀면 관심이 다시 켜지고 영업 단계 칸으로
     only("IN_CONTACT")
     record(client, a, {"status": "NOT_EXECUTED"})
     only("NOT_CONTACTED")
@@ -155,8 +156,6 @@ def test_column_follows_latest_opinion_stage_and_bookmark(dashboard_env):  # noq
 @pytest.mark.parametrize(
     "opinion,stage,expected",
     [
-        ("NOT_TARGET", None, "NOT_TARGET"),
-        ("NOT_TARGET", "WON", "NOT_TARGET"),
         (None, "IN_PROGRESS", "IN_CONTACT"),
         ("WORTH_REVIEW", "SAMPLE_OR_REGISTRATION_APPROVED", "QUOTE_SAMPLE"),
         ("NEED_CHECK", "ON_HOLD", "ON_HOLD"),
@@ -171,7 +170,7 @@ def test_column_follows_latest_opinion_stage_and_bookmark(dashboard_env):  # noq
     ],
 )
 def test_board_key_takes_the_first_matching_rule(opinion, stage, expected):
-    """계약 C1(#356)의 순서: ① 제외 → ② 영업 단계 → ③ 검토 의견."""
+    """계약 C1(#356·#536)의 순서: ① 영업 단계 → ② 검토 의견."""
     assert board_key(opinion, stage) == expected
     assert expected in BOARD_KEYS
 
@@ -183,15 +182,26 @@ def test_board_key_refuses_unknown_codes(opinion, stage):
         board_key(opinion, stage)
 
 
-def test_excluding_a_recorded_company_keeps_it_bookmarked(dashboard_env):  # noqa: F811
-    """Given 기록이 있어 관심을 끌 수 없는 회사 / When 안내대로 '검토 대상 제외' / Then 제외 칸."""
+@pytest.mark.parametrize("stage", [None, "IN_PROGRESS", "WON"])
+def test_board_key_refuses_excluded_company_in_bookmarks(stage):
+    """관심 기업에 검토 대상 제외 의견이 있으면 기록이 어긋난 것이라 칸에 넣지 않고 알린다(#536)."""
+    with pytest.raises(ValueError, match="관심 기업에 검토 대상 제외"):
+        board_key("NOT_TARGET", stage)
+
+
+def test_excluding_a_recorded_company_removes_it_from_bookmarks(dashboard_env):  # noqa: F811
+    """Given 기록이 있어 관심을 끌 수 없는 회사 / When 안내대로 '검토 대상 제외'
+    / Then 관심 기업에서 빠져 어느 칸에도 없고, 옛 "제외" 칸 주소는 입력 오류다(#536)."""
     client, (a, *_rest) = dashboard_env
     write_note(client, a)
     assert set_bookmark(client, a, False).status_code == 422
     assert api_counts(client) == {**ZERO_COUNTS, "BOOKMARKED": 1, "NO_OPINION": 1}
     give_opinion(client, a, "NOT_TARGET")
-    assert api_counts(client) == {**ZERO_COUNTS, "BOOKMARKED": 1, "NOT_TARGET": 1}
-    assert listed_ids(client, bookmarked="true") == {a}
+    assert api_counts(client) == ZERO_COUNTS
+    assert "NOT_TARGET" not in api_counts(client)
+    assert listed_ids(client, bookmarked="true") == set()
+    assert listed_ids(client, opinion="NOT_TARGET") == {a}
+    assert client.get(URL, params={"filter": "NOT_TARGET"}).status_code == 400
 
 
 def test_interested_stage_is_no_longer_accepted(dashboard_env):  # noqa: F811

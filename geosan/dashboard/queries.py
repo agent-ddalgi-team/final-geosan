@@ -52,12 +52,12 @@ OPINION_LABELS = {
 }
 
 
-# 계약 C1(#356): 관심 기업 전체 칸과, 관심 기업 하나가 꼭 하나에만 드는 여덟 칸.
+# 계약 C1(#356, #536): 관심 기업 전체 칸과, 관심 기업 하나가 꼭 하나에만 드는 일곱 칸.
+# 검토 대상 제외로 저장한 회사는 관심 기업이 아니므로 칸이 없다(#536).
 BOOKMARKED_KEY = "BOOKMARKED"
 BOARD_KEYS = (
     "NO_OPINION",
     "NEED_CHECK",
-    "NOT_TARGET",
     "NOT_CONTACTED",
     "IN_CONTACT",
     "QUOTE_SAMPLE",
@@ -85,7 +85,6 @@ class DashboardCounts:
     bookmarked: int
     no_opinion: int
     need_check: int
-    not_target: int
     not_contacted: int
     in_contact: int
     quote_sample: int
@@ -170,14 +169,20 @@ def bookmarked_opp_ids(population=None):
 
 
 def board_key(opinion: str | None, stage: str | None) -> str:
-    """관심 기업 하나가 드는 칸(계약 C1 #356). 위에서부터 처음 맞는 칸 하나다.
+    """관심 기업 하나가 드는 칸(계약 C1 #356·#536). 위에서부터 처음 맞는 칸 하나다.
 
-    ① 최신 검토 의견이 검토 대상 제외 → NOT_TARGET
-    ② 최신 영업 단계가 접촉·견적/샘플·보류·성사/거절 → IN_CONTACT·QUOTE_SAMPLE·ON_HOLD·DONE
-    ③ 단계 기록이 없거나 미접촉 → 의견에 따라 NOT_CONTACTED·NEED_CHECK·NO_OPINION
+    ① 최신 영업 단계가 접촉·견적/샘플·보류·성사/거절 → IN_CONTACT·QUOTE_SAMPLE·ON_HOLD·DONE
+    ② 단계 기록이 없거나 미접촉 → 의견에 따라 NOT_CONTACTED·NEED_CHECK·NO_OPINION
+
+    검토 대상 제외 의견을 저장하면 관심이 꺼지므로(#536) 관심 기업에 제외 의견은 없다.
+    있으면 기록이 어긋난 것이라 숨기지 않고 오류로 알린다.
     """
     if opinion == "NOT_TARGET":
-        return "NOT_TARGET"
+        raise ValueError(
+            "관심 기업에 검토 대상 제외 의견인 회사가 있습니다. "
+            "제외를 저장하면 관심이 꺼져야 합니다"
+            " (#536). `geosan init-db`로 마이그레이션이 최신인지 확인해 주세요."
+        )
     if stage in _STAGE_BOARD_KEYS:
         return _STAGE_BOARD_KEYS[stage]
     if stage not in (None, "NOT_EXECUTED"):
@@ -342,7 +347,7 @@ def _recent_activity(
 
 
 def _counts(classified: dict[str, str], schedule_due: int) -> DashboardCounts:
-    """칸별 건수. 여덟 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다."""
+    """칸별 건수. 일곱 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다."""
     tally = Counter(classified.values())
     return DashboardCounts(
         bookmarked=len(classified),

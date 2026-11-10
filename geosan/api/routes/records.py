@@ -432,15 +432,34 @@ def _add_bookmark(
     return row
 
 
+def _set_bookmark_by_record(
+    session: Session, opportunity: Opportunity, staff: str, *, active: bool
+) -> None:
+    """기록 저장이 관심을 바꾼다(source AUTO_RECORD). 이미 그 값이면 새 행을 만들지 않는다."""
+    previous = latest_bookmark(session, opportunity.opp_id)
+    if (previous is not None and previous.active) == active:
+        return
+    _add_bookmark(
+        session, opportunity, staff, active=active, source="AUTO_RECORD", previous=previous
+    )
+
+
+def _is_excluded(session: Session, opp_id: str) -> bool:
+    """최신 검토 의견이 검토 대상 제외인가(#536). 제외한 회사는 관심 기업이 아니다."""
+    opinion = latest_opinion(session, opp_id)
+    return opinion is not None and opinion.opinion == "NOT_TARGET"
+
+
 def ensure_bookmarked(session: Session, opportunity: Opportunity, staff: str) -> None:
-    """자동 관심(#356): 관심이 꺼진 기회에 기록을 남기면 같은 저장 안에서 관심을 켠다.
+    """자동 관심(#356): 관심이 꺼진 기회에 메모·영업 기록을 남기면 같은 저장 안에서 관심을 켠다.
 
     기록 창구가 쓰기 잠금을 잡은 뒤, 새 기록 행을 넣기 전에 부른다. 저장이 실패하면 같이 되돌린다.
+    최신 검토 의견이 검토 대상 제외인 기회는 켜지 않는다(#536). 검토 의견 저장은 `save_opinion`이
+    의견 값에 따라 따로 켜고 끈다.
     """
-    previous = latest_bookmark(session, opportunity.opp_id)
-    if previous is not None and previous.active:
+    if _is_excluded(session, opportunity.opp_id):
         return
-    _add_bookmark(session, opportunity, staff, active=True, source="AUTO_RECORD", previous=previous)
+    _set_bookmark_by_record(session, opportunity, staff, active=True)
 
 
 def _has_sales_records(session: Session, opp_id: str) -> bool:
@@ -467,6 +486,15 @@ def save_bookmark(
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_bookmark(session, opp_id)
+    if body.active and _is_excluded(session, opp_id):
+        raise AppError(
+            message="검토 대상 제외로 저장한 회사입니다",
+            next_action=(
+                "관심 기업에 다시 담으려면 검토 의견을 검토 권고나 추가 확인 필요로 바꿔 주세요"
+            ),
+            status=422,
+            kind="BOOKMARK_EXCLUDED",
+        )
     if body.active == (previous is not None and previous.active):
         # 이미 같은 값이다. 한 번도 켠 적이 없는 기회를 끄라는 요청은
         # 돌려줄 행이 없으므로 버전 0으로 답한다.
@@ -820,7 +848,9 @@ def save_opinion(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_opinion(session, opp_id)
     now = utcnow()
-    ensure_bookmarked(session, opportunity, staff)
+    # 검토 대상 제외면 관심을 끄고, 다른 의견이면 켠다(#536).
+    # 제외였다가 의견을 바꾼 회사도 다시 켜진다.
+    _set_bookmark_by_record(session, opportunity, staff, active=body.opinion != "NOT_TARGET")
     row = ReviewOpinion(
         opinion_id=new_id("opinion"),
         opp_id=opp_id,
