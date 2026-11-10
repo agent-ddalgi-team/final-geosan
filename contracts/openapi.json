@@ -3376,6 +3376,18 @@
             "minLength": 1,
             "title": "Evalid",
             "type": "string"
+          },
+          "stepLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI 점수 제안의 고칠 단계. 생략하면 그대로 확정(#497)",
+            "title": "Steplabel"
           }
         },
         "required": [
@@ -3487,6 +3499,21 @@
           "source": {
             "$ref": "#/components/schemas/ReviewItemSource"
           },
+          "stepOptions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI 점수 제안의 허용 단계 이름. 다른 검토사항은 null(#497)",
+            "title": "Stepoptions"
+          },
           "targetLabel": {
             "anyOf": [
               {
@@ -3521,6 +3548,8 @@
           "QUESTION",
           "DATA_NOT_FOUND",
           "DATA_INSUFFICIENT",
+          "ITEM_INPUT_PROPOSAL",
+          "PROCESS_LINK_PROPOSAL",
           "OWN_PLATING_LINE_SUSPECTED"
         ],
         "title": "ReviewItemKind",

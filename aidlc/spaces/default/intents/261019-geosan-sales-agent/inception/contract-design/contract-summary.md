@@ -324,7 +324,9 @@ paths:
   /opportunities/{oppId}/review-items/{itemId}/check:
     post:
       summary: (추가 2026-11-03 밤 PM 반영, 상세 화면 (3) 검토사항) 담당자 체크·해제 (U5). 체크·해제 모두 rec_review_check 새 행(Q5 지우기 없음), 담당자명·시각 자동
-      requestBody: { content: { application/json: { schema: { type: object, required: [checked, evalId], properties: { checked: { type: boolean }, evalId: { type: string } } } } } }
+      # (추가 2026-11-09 PM 승인, #497 댓글) AI 점수 제안 II:<itemCode>는 checked:true로 확정. stepLabel을 더하면 해당 항목 matchRateSteps의 단계 이름으로 고침. 공정 제안 PL:<processCode>는 확정만 허용. 제안 줄 checked:false, PL·일반 줄의 stepLabel 값은 400. 저장·재평가·활동 이력을 한 트랜잭션으로 처리하며 사람 값은 AI가 덮지 않음
+      # 상세 reviewItems의 II: 줄에 stepOptions: [string]을 추가(설정 단계 이름 순서), 다른 줄은 null. 제안의 근거 인용을 보이며 기존 질문·확인 줄은 그대로 유지. C6의 기존 열로 출처·확정 정보를 표현(#286)
+      requestBody: { content: { application/json: { schema: { type: object, required: [checked, evalId], properties: { checked: { type: boolean }, evalId: { type: string }, stepLabel: { type: string, nullable: true, description: '선택. AI 점수 입력 제안의 고칠 단계 이름. 생략·null이면 제안값 그대로 확정' } } } } } }
       responses: { '200': { description: '저장됨 (itemId, checked, checkedBy, checkedAt)' }, '404': { description: 'itemId가 현재 reviewItems에 없음' }, '403': { description: 담당자 키 없음·보기 전용 } }
   /opportunities/{oppId}/bookmark:
     put:
@@ -907,6 +909,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C7 | 아연도금 가상 사례의 기대값(FR10.2) | U10 (사례 설계) |
 | C8 | 명령 이름 접두어 `geosan`과 설치 방식(`python -m` vs 스크립트) | U1 (코드 생성) |
 | C8 | (2026-11-09 PM 승인, #489 댓글) `source-confirm` 운영 명령 추가. 소스 2개의 이용·저장 확인을 담당자·서울 날짜와 함께 기록하며 기존 기록은 덮지 않음. 더하는 변경 | #489 이강욱 |
+| C1 | (2026-11-09 PM 승인, #497 댓글) AI 점수 제안의 확정·고치기를 기존 check 경로로 처리. 요청 stepLabel 선택 칸·상세 제안 줄 stepOptions 선택지 추가, 공정 제안은 확정만. 기존 열로 새 버전·확정자·시각 기록 뒤 재평가·활동 이력 저장. 더하는 변경 | #497 이강욱 · 화면 #498 고선주 |
 | C9 | 홈페이지 자동 탐색의 검색 방식·비용·약관 → **답(2026-11-03 저녁, PM 결정 B 확정)**: **OpenAI 웹 검색 도구**가 찾아 주소·확신도를 바로 저장하고, 회사가 들어올 때 근거 추출·재평가까지 자동으로 잇는다. 담당자는 상세 화면에서 [맞음]/주소 고치기. 확신도 낮으면 "홈페이지 확인 필요" 띠. 비용은 월 $20 상한 안(1곳 약 4~6센트). (낮에 정한 네이버 검색 API 안은 특약상 담당자 확정이 먼저 필요해 같은 날 버림. 구글 Custom Search는 신규 중단) U9가 아니라 **U2에서 함께** 구현(C9 HomepageFinder) | ~~U9~~ → U2 |
 | C4·C7·C9 | (2026-11-03, PM 결정 3) 외부 AI 제공사 OpenAI(근거 추출 ③④에만), 모델 gpt-6.1-sol(비교용 gpt-6-luna), 단가 입력 $2/출력 $10 per 1M, 월 비용 상한 $20(50% 알림, OpenAI에만), 월 호출 상한 1,000회(웹 검색 호출 포함). 키는 OPENAI_API_KEY 하나(결정 B로 네이버 키 불필요). 설정 키 추가·C4 비용 상한 거부·EXTERNAL_SEARCH 용도·C1 `/llm-usage`·C9 provider/retention/HomepageFinder. 모두 더하는 변경. **(2026-11-03 저녁 결정 B)** 상세 머리 homepageStatus·homepageConfidence·homepageSource, `POST /homepage` confirmOnly, `homepageDiscovery` 칸 3개, `geosan research` 명령, HomepageFinder find/save/confirm — 더하는 변경. `naverSearch`·`/homepage-candidates`는 "안 씀". 제안서 `../delivery-planning/llm-settings-proposal-20261103.md` | U2 (코드 PR에서 LlmSettings·예시 파일·.env.example 같이) |
 | C0·C1·C4·C6·C7·C8·C9 | (2026-11-03, PM 결정 거리·지도) 거리 필터·정렬(`sort`·`maxDistanceKm`·카드 `distanceKm`), 용도 EXTERNAL_GEOCODE, 고객 좌표 열 4개, 설정 `geosan`·`geocoding`·`distanceFilterPresetsKm`, 명령 `geocode`, GeocodeAdapter. 지도 링크 2개는 화면이 주소로 만들어 약속 변경 없음(#210). 코드는 1차 전달 뒤 #222에서. 기준 주소는 봉주로 303-1 본사(PM 최종 확정 2026-11-03 밤. 소개서 기업개요는 본사, '오시는 길' 슬라이드는 제2공장으로 적는 같은 주소), 설정 `geosan.address` | #222 (11/17 주, 코드 PR과 같이) |
