@@ -162,11 +162,11 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
       candidateSearch.running,
     );
     expect(within(summary).getByTestId('ingest-counts')).toHaveTextContent(
-      '훑어본 회사 3,672곳 · 고른 회사 12곳 · 조사 3/12',
+      '훑어본 공장 3,672곳 · 고른 공장 12곳 · 조사 3/12',
     );
   });
 
-  it('끝났으면 "지금 가져오는 중" 없이 건수만 보이고, 이름이 비슷한 회사가 있으면 "확인 필요"를 더한다', async () => {
+  it('끝났으면 "지금 더하는 중" 없이 건수만 보이고, 이름이 비슷한 회사가 있으면 "확인 필요"를 더한다', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([found], { ...RUNNING, status: 'DONE', researchDoneCount: 12, mergeCandidateCount: 2 }),
     );
@@ -174,7 +174,7 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     const summary = await screen.findByTestId('ingest-summary');
     expect(within(summary).queryByTestId('ingest-running')).not.toBeInTheDocument();
     expect(within(summary).getByTestId('ingest-counts')).toHaveTextContent(
-      '훑어본 회사 3,672곳 · 고른 회사 12곳 · 조사 12/12 · 확인 필요 2곳',
+      '훑어본 공장 3,672곳 · 고른 공장 12곳 · 조사 12/12 · 확인 필요 2곳',
     );
   });
 
@@ -201,7 +201,7 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     );
     renderPage();
     const counts = await screen.findByTestId('ingest-counts');
-    expect(counts).toHaveTextContent('훑어본 회사 100곳 · 고른 회사 5곳');
+    expect(counts).toHaveTextContent('훑어본 공장 100곳 · 고른 공장 5곳');
     expect(counts).not.toHaveTextContent('조사');
   });
 

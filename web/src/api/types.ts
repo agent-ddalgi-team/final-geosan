@@ -120,6 +120,20 @@ export interface IngestRequest {
   industries?: string[];
 }
 
+/**
+ * 고른 조건의 맞는 공장 수(계약 C1 `GET /ingest/preview`, #549 1단계). 서버가 저장된 AI 판단만 세서 0원이다.
+ * 예상 금액·잠금 칸은 2단계에서 더한다.
+ */
+export interface IngestPreview {
+  matchedCount: number;
+  fitCounts: { HIGH: number; MEDIUM: number; LOW: number };
+  registeredCount: number;
+  addableCount: number;
+  addableHighCount: number;
+  unjudgedCount: number;
+  addCount: number;
+}
+
 /** 후보 가져오기 응답. 회차를 만든 직후 바로 오고, 진행은 목록 `meta.latestIngest`로 본다. */
 export interface IngestResponse {
   batchId: string;
