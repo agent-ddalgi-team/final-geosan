@@ -1,5 +1,8 @@
 """U5 기록·검토사항 코드의 약속 값과 순서 (#211)."""
 
+import json
+from pathlib import Path
+
 import pytest
 
 from geosan.api.schemas import ReviewItem
@@ -46,15 +49,25 @@ def test_record_codes_match_the_published_contract():
         "NOTE",
     ]
     assert list(NoteKind) == ["MEMO", "RESEARCH", "REPLY"]
-    # 앞의 세 값은 처음 약속 그대로이고, 네 번째는 약속 요약 C1에 더해진 종류다
-    # (표면처리를 직접 하는 회사 표시 #319, 2026-11-06 PM 결정, #359).
+    # 약속 요약 C0·C1과 #497 PM 승인대로 AI 점수·공정 제안 두 종류를 포함한다.
     assert list(ReviewItemKind) == [
         "QUESTION",
         "DATA_NOT_FOUND",
         "DATA_INSUFFICIENT",
+        "ITEM_INPUT_PROPOSAL",
+        "PROCESS_LINK_PROPOSAL",
         "OWN_PLATING_LINE_SUSPECTED",
     ]
     assert list(ReviewItemSource) == ["AI", "CASE_FILE", "RULE"]
+
+
+def test_review_item_kinds_match_published_openapi() -> None:
+    """Given 승인된 명세 / When 검토사항 종류 비교 / Then 값과 순서가 모두 같다(#497)."""
+    contract_path = Path(__file__).resolve().parents[3] / "contracts" / "openapi.json"
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    assert [kind.value for kind in ReviewItemKind] == contract["components"]["schemas"][
+        "ReviewItemKind"
+    ]["enum"]
 
 
 @pytest.mark.parametrize("source", ["AI", "RULE"])
