@@ -119,6 +119,7 @@ def test_grouped_calls_store_all_judgments_and_reuse_without_key(pick_context, m
             "product",
             "industryName",
             "address",
+            "rawMaterials",
         }
     monkeypatch.delenv("OPENAI_API_KEY")
     with session_scope() as session:
