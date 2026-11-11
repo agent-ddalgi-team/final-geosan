@@ -184,5 +184,9 @@ otherGroupSort:
 # BOTTOM: 그룹 정렬 뒤 거래 중 기회만 맨 아래로, 각각의 기존 순서는 유지. INLINE: 원래 정렬.
 existingCustomerPlacement: BOTTOM
 
+# 거래 관계 확인 (PM 결정 2026-11-11, #567). 신규 잠재고객만 찾으므로 거래 관계 확인은 기획에서 보류.
+# IGNORE: 거래 관계 "확인 전"을 필수조건 대기·막는 조건으로 쓰지 않는다. BLOCK: 기획서 S06 동작(확인 전이면 대기).
+relationCheck: IGNORE
+
 # 거산 값 묶음 종류 (FR4.14)
 datasetKinds: [VIRTUAL_REVIEWED, BROCHURE, COMPANY_CONFIRMED]

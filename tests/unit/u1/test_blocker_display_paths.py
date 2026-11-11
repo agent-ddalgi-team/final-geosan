@@ -28,7 +28,11 @@ def test_blocker_matches_in_export_and_real_database_api(tmp_db, tmp_path):
     raw["customer"]["relationConfirmedAt"] = None
     case_path = cases / "case.json"
     case_path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
-    report = build_report(capability, cases, base_date=date(2026, 10, 27))
+    # 거래 확인 전을 막는 조건으로 보이는 경로이므로 거래 관계 확인을 켠 설정을 쓴다(#567).
+    rule_path = factories.relation_check_rule_config(tmp_path, "BLOCK")
+    report = build_report(
+        capability, cases, base_date=date(2026, 10, 27), rule_config_path=rule_path
+    )
     row = report.rows[0]
     expected = "거래 여부와 거산의 아노다이징 — 가상 소개서 표기 공정과 ISO 9001이 아직 확인 전"
     assert row.output.display.blocker_text == expected
@@ -49,9 +53,7 @@ def test_blocker_matches_in_export_and_real_database_api(tmp_db, tmp_path):
         assert all("(승인은 막지 않음)" not in line for line in blocker_lines)
 
     with session_scope() as session:
-        register_config_files(
-            session, ROOT / "examples/rule-config.yaml", ROOT / "examples/app-settings.yaml"
-        )
+        register_config_files(session, rule_path, ROOT / "examples/app-settings.yaml")
     import_capability(capability)
     opp_id = import_case(case_path).opp_id
     evaluated = run_evaluation(base_date=date(2026, 10, 27))

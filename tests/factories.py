@@ -278,3 +278,29 @@ def rule_engine_input(filename: str = "apjeong-input.json"):
 def replace_contract(model: Any, **changes: Any) -> Any:
     """테스트 변형도 원래 경계 모델로 다시 검사한다(문자열 enum 포함)."""
     return type(model).model_validate(model.model_dump() | changes)
+
+
+def relation_check_rule_config(tmp_path: Path, mode: str = "BLOCK") -> Path:
+    """예시 규칙 설정에서 거래 관계 확인 칸만 바꾼 사본 경로(#567). 확인 전 동작은 BLOCK."""
+    source = (EXAMPLES_DIR / "rule-config.yaml").read_text(encoding="utf-8")
+    assert source.count("relationCheck: IGNORE") == 1, (
+        "예시 규칙 설정의 거래 관계 확인 칸이 바뀌었습니다"
+    )
+    path = tmp_path / f"rule-config-relation-{mode.lower()}.yaml"
+    path.write_text(
+        source.replace("relationCheck: IGNORE", f"relationCheck: {mode}"), encoding="utf-8"
+    )
+    return path
+
+
+def register_relation_check(tmp_path: Path, mode: str = "BLOCK") -> Path:
+    """사본을 현재 DB의 규칙 설정으로 등록한다(같은 버전 DRAFT라 해시만 바뀜)."""
+    from geosan.config.rule_config import load_rule_config, register_rule_config_version
+    from geosan.storage.session import session_scope
+
+    path = relation_check_rule_config(tmp_path, mode)
+    config = load_rule_config(path)
+    assert config.relation_check == mode
+    with session_scope() as session:
+        register_rule_config_version(session, config, path)
+    return path
