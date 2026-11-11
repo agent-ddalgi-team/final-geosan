@@ -88,6 +88,12 @@ def _region_name(value: str) -> str:
     return _REGION_NAMES.get(value, value)
 
 
+def address_region(address: str) -> str:
+    """주소 첫 칸의 시·도 약칭. 예: "충청남도 천안시 ..." → "충남"."""
+    parts = address.split()
+    return _region_name(parts[0].rstrip(",")) if parts else ""
+
+
 # 후보 찾기에서 시·군으로도 고를 수 있는 시·도(PM 결정 2026-11-09, #521).
 CITY_PARENTS = {
     city: "충남"
