@@ -75,41 +75,53 @@ def _load_context(batch_id, db_path):
     with session_scope(db_path) as session:
         batch, _ = _context(session, batch_id)
         settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
-        config = settings.ingestion.ai_pick
-        if not config.enabled:
+        if not settings.ingestion.ai_pick.enabled:
             raise configuration_error()
         if batch.dataset_kind != settings.active_dataset_kind:
             raise InputError("회차의 자료 묶음과 현재 거산 값 묶음이 다릅니다.")
-        # 공정 이름·코드만 읽는다. 역량 값·거래 이력·검수 근거는 전송 자료에 넣지 않는다.
-        reviews = (
-            select(FieldEvidence)
-            .where(
-                FieldEvidence.target_table == Process.__tablename__,
-                FieldEvidence.target_id == Process.process_id,
-                FieldEvidence.target_field == "reviewStatus",
-                FieldEvidence.dataset_kind == settings.active_dataset_kind,
+        return _criteria_context(session, settings)
+
+
+def current_criteria_version(session) -> str:
+    """지금 설정·공정·지시문의 판단 기준 지문. 회차 없이 저장된 판단을 셀 때 쓴다(#549).
+
+    AI를 부르지 않는다. 판단이 꺼져 있어도 기준 지문은 같은 규칙으로 만든다.
+    """
+    settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
+    return _version(_criteria_context(session, settings))
+
+
+def _criteria_context(session, settings):
+    """판단 기준에 들어가는 공정·산업·지시문을 읽는다. 회차 검사는 호출자가 한다."""
+    config = settings.ingestion.ai_pick
+    dataset = str(settings.active_dataset_kind.value)
+    # 공정 이름·코드만 읽는다. 역량 값·거래 이력·검수 근거는 전송 자료에 넣지 않는다.
+    reviews = (
+        select(FieldEvidence)
+        .where(
+            FieldEvidence.target_table == Process.__tablename__,
+            FieldEvidence.target_id == Process.process_id,
+            FieldEvidence.target_field == "reviewStatus",
+            FieldEvidence.dataset_kind == settings.active_dataset_kind,
+        )
+        .correlate(Process)
+    )
+    imported_at = reviews.with_only_columns(func.max(FieldEvidence.created_at)).scalar_subquery()
+    imported_order = reviews.with_only_columns(
+        func.max(literal_column("cap_field_evidence.rowid"))
+    ).scalar_subquery()
+    processes = tuple(
+        session.execute(
+            select(Process.code, Process.name)
+            .where(Process.dataset_kind == settings.active_dataset_kind)
+            .order_by(
+                func.coalesce(imported_at, Process.created_at),
+                imported_order,
+                Process.process_id,
             )
-            .correlate(Process)
-        )
-        imported_at = reviews.with_only_columns(
-            func.max(FieldEvidence.created_at)
-        ).scalar_subquery()
-        imported_order = reviews.with_only_columns(
-            func.max(literal_column("cap_field_evidence.rowid"))
-        ).scalar_subquery()
-        processes = tuple(
-            session.execute(
-                select(Process.code, Process.name)
-                .where(Process.dataset_kind == settings.active_dataset_kind)
-                .order_by(
-                    func.coalesce(imported_at, Process.created_at),
-                    imported_order,
-                    Process.process_id,
-                )
-            ).all()
-        )
-        industries = tuple(settings.industries)
-        dataset = batch.dataset_kind
+        ).all()
+    )
+    industries = tuple(settings.industries)
     try:
         path = Path(config.prompt_file)
         if not path.is_absolute():

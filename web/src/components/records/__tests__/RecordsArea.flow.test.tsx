@@ -73,6 +73,30 @@ describe('기록 구역 · ① 안내와 번호 (#433)', () => {
     mockedNote.mockReset();
   });
 
+  it('연결됐으면 AI 판단이 맞았나를 골라 함께 저장하고, 부재면 묻지 않는다(#531)', async () => {
+    const user = userEvent.setup();
+    renderArea({ outcome: outcome('IN_PROGRESS') });
+    await user.selectOptions(screen.getByTestId('records-kind'), '방문');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
+    expect(screen.queryByTestId('records-judgment-check')).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.selectOptions(screen.getByTestId('records-judgment-check'), '맞음');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(mockedOutcome).toHaveBeenCalled());
+    expect(mockedOutcome.mock.calls[0][1]).toMatchObject({
+      result: 'REACHED',
+      judgmentCheck: 'MATCHED',
+    });
+  });
+
+  it('AI 판단을 고르지 않아도 접촉은 저장된다(#531)', async () => {
+    const user = userEvent.setup();
+    renderArea({ outcome: outcome('IN_PROGRESS') });
+    await saveContact(user);
+    await waitFor(() => expect(mockedOutcome).toHaveBeenCalled());
+    expect(mockedOutcome.mock.calls[0][1]).not.toHaveProperty('judgmentCheck');
+  });
+
   it('머리에 "한 일 → 지금 단계 → 다음 할 일" 안내 한 줄이 보이고, 세 칸 제목 앞에 ①②③이 붙는다', () => {
     renderArea();
     expect(screen.getByTestId('records-flow-guide')).toHaveTextContent(recordsArea.flowGuide);

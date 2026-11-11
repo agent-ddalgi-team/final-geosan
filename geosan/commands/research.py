@@ -15,10 +15,9 @@ from geosan.evidence.contacts import scrub_contacts
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.opportunity.queries import public_origin_condition
 from geosan.storage.session import session_scope
-from geosan.workflows.research import ResearchResult, research_one
+from geosan.workflows.research import STOP_KINDS, ResearchResult, research_one
 
 logger = logging.getLogger(__name__)
-STOP_KINDS = {"LLM_LIMIT", "SEARCH_LIMIT", "USAGE_UNCONFIRMED", "LLM_NOT_CONFIGURED"}
 STATUS_LABELS = {
     "AI_FOUND": "찾음",
     "CONFIRMED": "확인된 주소",

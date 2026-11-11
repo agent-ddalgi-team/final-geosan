@@ -16,10 +16,17 @@ from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.config.registry import load_runtime_config
 from geosan.evaluation.proposals import store_item_proposals, store_process_link_proposals
 from geosan.evaluation.snapshot import _capability_snapshot
-from geosan.evidence.contacts import extract_main_phone
+from geosan.evidence.contacts import extract_main_phone, scrub_contacts
 from geosan.evidence.extraction import extract_evidence
-from geosan.evidence.public_items import approve_page, check_opportunity
-from geosan.evidence.reader import MAX_BYTES, Page, fetch, remaining, validate_url
+from geosan.evidence.public_items import approve_pages, check_opportunity
+from geosan.evidence.reader import (
+    MAX_BYTES,
+    Page,
+    fetch,
+    fetch_more,
+    remaining,
+    validate_url,
+)
 from geosan.evidence.research_context import current_research
 from geosan.evidence.store import store_extraction
 from geosan.opportunity.models import Customer, Opportunity
@@ -82,13 +89,29 @@ def run_extract(
         if pasted_text is not None:
             if not pasted_text.strip() or len(pasted_text.encode("utf-8")) > MAX_BYTES:
                 raise InputError("붙여넣을 공개 본문의 길이를 확인해 주세요.")
-            page = Page(url, pasted_text)
+            pages = [Page(url, pasted_text)]
         else:
-            page = fetch(url, deadline)
-        phone, phone_url = extract_main_phone(
-            page.text, page.url, settings.main_phone.allowed_prefixes
-        )
-        with approve_page(opp_id, page) as approved_ids:
+            # #557: 첫 화면과 이름이 맞는 같은 사이트 안쪽 페이지를 읽어 AI는 한 번만 부른다.
+            discovery = settings.homepage_discovery
+            first = fetch(url, deadline)
+            pages = [
+                first,
+                *fetch_more(
+                    first,
+                    deadline,
+                    extra_pages=discovery.extra_pages,
+                    hints=discovery.extra_page_hints,
+                    max_chars=discovery.extra_page_max_chars,
+                ),
+            ]
+        phone, phone_url = None, None
+        for page in pages:
+            phone, phone_url = extract_main_phone(
+                page.text, page.url, settings.main_phone.allowed_prefixes
+            )
+            if phone:
+                break
+        with approve_pages(opp_id, pages) as approved_ids:
             result = extract_evidence(
                 approved_ids,
                 opp_id,
@@ -121,7 +144,14 @@ def run_extract(
                 phone=phone,
                 phone_source_url=phone_url,
             )
-            evidence = store_extraction(session, opportunity, result, page.url, requested_by)
+            evidence = store_extraction(
+                session,
+                opportunity,
+                result,
+                pages[0].url,
+                requested_by,
+                source_for=_source_finder(pages),
+            )
             # #286: 점수 입력·공정 연결 제안을 AI·확인 전으로 저장한 뒤 재평가한다(사람 값 우선).
             proposal_count = store_item_proposals(
                 session,
@@ -185,3 +215,16 @@ def run_extract(
         )
         logger.error("근거 추출 실패: ref=%s type=%s", error.ref, type(exc).__name__)
         return FlowResult.failed(error)
+
+
+def _source_finder(pages: list[Page]):
+    """인용문이 그대로 들어 있는 페이지 주소를 돌려준다. 못 찾으면 첫 화면 주소(#557).
+
+    AI에는 연락처를 지운 본문이 갔으므로 같은 방식으로 지운 본문에서 찾는다.
+    """
+    cleaned = [(page.url, scrub_contacts(page.text)[0]) for page in pages]
+
+    def source_for(quote: str) -> str:
+        return next((url for url, text in cleaned if quote and quote in text), pages[0].url)
+
+    return source_for

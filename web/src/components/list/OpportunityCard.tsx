@@ -74,7 +74,10 @@ export default function OpportunityCard({
   // 사례 파일 18곳은 고른 이유가 없어서 서버 점수 글자("--" 포함)가 지금처럼 그대로 보인다.
   const pickReason = card.pickReason?.trim() ? card.pickReason : null;
   const beforeScore = pickReason !== null && card.scoreState === 'NONE';
-  const newInBatchDate = card.isNewInLatestBatch ? formatMonthDay(card.ingestedAt) : null;
+  // 점수 전 회사는 서버가 고른 이유를 추천 근거 칸에 그대로 넣는다(#555). 같은 문장이면 고른 이유 한 줄만 보인다.
+  const reasonSameAsPick = pickReason !== null && pickReason.trim() === card.reason.trim();
+  // 들어온 날짜 꼬리표(#516): 후보 찾기로 들어온 시각이 있으면 "11/9 들어옴". 마지막 회차인지와 무관하다.
+  const ingestedOn = formatMonthDay(card.ingestedAt);
   // 표면처리를 직접 하는 회사일 수 있음(#319): 서버가 참으로 준 회사에만 꼬리표를 붙인다. 회사를 빼거나 순서를 바꾸지 않는다.
   // 근거 한 줄은 표시가 참일 때만 보이고, 없으면 꼬리표만 보인다.
   const ownPlating = card.ownPlatingLineSuspected === true;
@@ -165,11 +168,9 @@ export default function OpportunityCard({
               {cardRows.reevaluated}
             </StatusTag>
           ) : null}
-          {card.isNewInLatestBatch ? (
-            <StatusTag tone="ask" data-testid="card-new-in-batch-tag">
-              {newInBatchDate
-                ? candidateSearch.newInBatchWithDate(newInBatchDate)
-                : candidateSearch.newInBatch}
+          {ingestedOn ? (
+            <StatusTag tone="ask" data-testid="card-ingested-tag">
+              {candidateSearch.ingestedOn(ingestedOn)}
             </StatusTag>
           ) : null}
           {ownPlating ? (
@@ -190,6 +191,7 @@ export default function OpportunityCard({
               scoreDisplay={card.scoreDisplay}
               scoreState={card.scoreState}
               relationStatus={card.relationStatus}
+              classificationCode={card.classificationCode}
               testId="card-score"
             />
           )}
@@ -205,9 +207,11 @@ export default function OpportunityCard({
             <span data-testid="card-pick-reason">{pickReason}</span>
           </Row>
         ) : null}
-        <Row label={cardRows.reason} title={card.reason}>
-          <span data-testid="card-reason">{card.reason}</span>
-        </Row>
+        {reasonSameAsPick ? null : (
+          <Row label={cardRows.reason} title={card.reason}>
+            <span data-testid="card-reason">{card.reason}</span>
+          </Row>
+        )}
         <Row label={cardRows.blocker} title={blocker}>
           <span data-testid="card-blocker">{blocker}</span>
         </Row>

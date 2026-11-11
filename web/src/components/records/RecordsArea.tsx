@@ -8,6 +8,7 @@ import { ApiError, postNote, postOutcome } from '../../api/client';
 import type {
   ContactMethod,
   ContactResult,
+  JudgmentCheck,
   LostReasonCode,
   NoteKind,
   OutcomeRecord,
@@ -17,6 +18,7 @@ import type {
 import {
   contactMethodLabels,
   contactResultLabels,
+  judgmentCheckLabels,
   errorTexts,
   lostReasonLabels,
   noteKindLabels,
@@ -131,6 +133,7 @@ export default function RecordsArea({
   // 종류 한 칸. 전화·방문·메일이면 결과·날짜 입력이, 메모·자료 조사면 글 입력이 보인다.
   const [recordKind, setRecordKind] = useState<RecordKind>('MEMO');
   const [result, setResult] = useState<ContactResult | null>(null);
+  const [judgmentCheck, setJudgmentCheck] = useState<JudgmentCheck | null>(null);
   // 접촉 날짜는 오늘(한국 시간)까지만 고른다. 서버가 그 뒤 날짜를 400으로 돌려주면 그 문장을 날짜 칸 아래에 보인다.
   const [attemptedAt, setAttemptedAt] = useState(todayKst());
   const [dateError, setDateError] = useState<string | null>(null);
@@ -223,6 +226,9 @@ export default function RecordsArea({
     };
   }
 
+  // 통화가 된 경우에만 판단이 맞았는지 알 수 있다. 부재면 묻지 않는다(#531).
+  const spokeToCompany = result === 'REACHED' || result === 'DECLINED';
+
   async function onSaveContact() {
     if (!method || !result) return;
     // 접촉을 적어도 단계는 자동으로 바꾸지 않는다(PM 결정 2026-11-08, #433): 지금 단계를 그대로 싣는다.
@@ -234,12 +240,14 @@ export default function RecordsArea({
       method,
       result,
       attemptedAt,
+      ...(spokeToCompany && judgmentCheck ? { judgmentCheck } : {}),
       ...keepSchedule(),
       ...(status === 'LOST' ? keepLostReason() : {}),
     });
     if (ok) {
       onContactRecorded?.(method);
       setResult(null);
+      setJudgmentCheck(null);
       if (askStage) setStageSuggestion((previous) => (previous === 'idle' ? 'shown' : previous));
     }
   }
@@ -367,6 +375,17 @@ export default function RecordsArea({
                 disabled={disabled}
                 testId="records-contact-result"
               />
+              {spokeToCompany ? (
+                <NativeSelect
+                  label={recordsArea.judgmentCheck}
+                  placeholder={`${recordsArea.judgmentCheck} ${recordsArea.selectPlaceholder}`}
+                  value={judgmentCheck}
+                  options={options(judgmentCheckLabels)}
+                  onChange={(value) => setJudgmentCheck(value as JudgmentCheck | null)}
+                  disabled={disabled}
+                  testId="records-judgment-check"
+                />
+              ) : null}
               <Input
                 type="date"
                 aria-label={recordsArea.contactDate}
