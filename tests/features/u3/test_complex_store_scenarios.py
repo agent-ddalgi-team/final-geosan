@@ -6,7 +6,7 @@ from sqlalchemy import select
 from geosan.opportunity.complex_collection import collect_complex_rows
 from geosan.opportunity.complex_store import store_complex_rows
 from geosan.opportunity.models import IngestBatch
-from geosan.opportunity.source_models import ComplexFetch, SourceFactoryRow
+from geosan.opportunity.source_models import ComplexFetch, IngestionRun, SourceFactoryRow
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 from tests.unit.u3.conftest import ingest_batch as ingest_batch
@@ -47,6 +47,21 @@ def partial(registry, monkeypatch):
 def empty(registry, monkeypatch):
     configure(extraNames=["가상단지"])
     return {"batch": registry, "calls": responses(monkeypatch, xml([]))}
+
+
+@given(
+    "첫 단지에 빈 회사명 한 줄과 다음 쪽이 있고 다른 단지도 정상 응답한다",
+    target_fixture="context",
+)
+def invalid_row(registry, monkeypatch):
+    configure(extraNames=["단지A", "단지B"])
+    calls = responses(
+        monkeypatch,
+        xml([ROWS[0], ("", "충남 아산시 가상로 2", "F2")], total=3),
+        xml([ROWS[2]], page=2, total=3),
+        xml([("다음단지공장", "충남 아산시 다른길 4", "F4")]),
+    )
+    return {"batch": registry, "calls": calls}
 
 
 @when("충남을 골라 조회하고 저장한 뒤 대전을 골라 다시 실행한다")
@@ -110,3 +125,22 @@ def no_rows(context):
     (fetch,) = records(ComplexFetch)
     assert fetch.status == "OK" and fetch.row_count == 0 and fetch.row_ids == []
     assert all(result.skipped_reason is None for result in context["results"])
+
+
+@then("다음 단지까지 정상 공장 세 곳을 받고 잘못된 줄의 번호와 사유를 회차에 남긴다")
+def skipped_row_record(context):
+    assert context["calls"] == [("단지A", 1), ("단지A", 2), ("단지B", 1)]
+    assert len(records(SourceFactoryRow)) == 3
+    (run,) = records(IngestionRun)
+    assert run.batch_id == context["batch"] and run.source_id == "kicox-production-api"
+    assert run.raw_count == 3 and run.status == "OK"
+    assert run.skipped_rows == [{"rowNo": 2, "reason": "단지A: 회사명 또는 공장주소가 비어 있음"}]
+    assert all(result.skipped_reason is None for result in context["results"])
+
+
+@then("정상 조회 두 건은 재사용되어 두 번째 실행의 추가 호출이 없다")
+def reuse_after_skipping(context):
+    assert [fetch.status for fetch in records(ComplexFetch)] == ["OK", "OK"]
+    assert len(context["results"][0].row_ids) == 3
+    assert context["results"][1].reused_count == 3
+    assert len(context["calls"]) == 3

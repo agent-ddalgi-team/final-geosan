@@ -17,7 +17,7 @@ from geosan.opportunity import candidate_pick
 from geosan.opportunity.candidate_registration import register_candidates
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
-from geosan.opportunity.source_models import SourceContract
+from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_ingest as flow
@@ -370,19 +370,115 @@ def test_only_new_public_companies_are_researched_after_registration_done(ingest
     assert len(researched) == 1 and saved(next_batch).skipped_count == 1
 
 
-def test_research_failure_keeps_registration_and_completed_research_count(ingest_env, monkeypatch):
+def test_research_error_skips_that_company_and_continues(ingest_env, monkeypatch):
     _brochure_runtime()
     calls = []
 
     def research(opp_id):
         calls.append(opp_id)
-        if len(calls) == 2:
+        if len(calls) == 1:
             return ResearchResult(error=AppError("가상 오류", "가상 확인"))
         return ResearchResult(status="NOT_FOUND")
 
     monkeypatch.setattr(flow, "research_one", research)
     batch_id = new_batch(["ZINC_PLATING", "ANODIZING"], dataset="BROCHURE")
+    flow.run_ingest(batch_id)
+    batch = saved(batch_id)
+    assert len(calls) == 2  # 약속 C1: 실패는 그 회사만 남기고 다음으로(#528)
+    assert batch.status == "DONE" and batch.new_count == 2 and batch.research_done_count == 2
+
+
+@pytest.mark.parametrize("stop", ["limit", "unconfirmed"])
+def test_cost_limit_or_unknown_usage_still_stops_research(ingest_env, monkeypatch, stop):
+    _brochure_runtime()
+    calls = []
+
+    def research(opp_id):
+        calls.append(opp_id)
+        if stop == "limit":
+            return ResearchResult(error=AppError("가상 한도", "확인", kind="LLM_LIMIT"))
+        return ResearchResult(usage_unconfirmed=True)
+
+    monkeypatch.setattr(flow, "research_one", research)
+    batch_id = new_batch(["ZINC_PLATING", "ANODIZING"], dataset="BROCHURE")
     with pytest.raises(AppError):
         flow.run_ingest(batch_id)
+    assert len(calls) == 1 and saved(batch_id).status == "FAILED"
+    assert saved(batch_id).new_count == 2
+
+
+def _with_first_row_low(monkeypatch):
+    original = flow.pick_candidates
+
+    def pick(batch_id, row_ids, **kwargs):
+        rows = original(batch_id, row_ids, **kwargs)
+        return [rows[0].model_copy(update={"fit_level": "LOW"}), *rows[1:]]
+
+    monkeypatch.setattr(flow, "pick_candidates", pick)
+
+
+def _registered_names():
+    with session_scope() as session:
+        return sorted(session.scalars(select(Customer.name)).all())
+
+
+def test_higher_fit_is_registered_first_within_the_limit(ingest_env, monkeypatch):
+    """#528 Given 앞 행 하·뒤 행 상 / When 최대 1곳 / Then 파일 순서가 아니라 상을 등록한다."""
+    _with_first_row_low(monkeypatch)
+    batch_id = new_batch(["ZINC_PLATING", "ANODIZING"], maximum=1)
+    flow.run_ingest(batch_id)
+    assert _registered_names() == ["가상 패널사"]
+
+
+def test_next_run_registers_the_next_company(ingest_env):
+    """#528 Given 조건에 맞는 2곳·최대 1곳 / When 두 번 / Then 다음 회사가 들어온다."""
+    first = new_batch(["ZINC_PLATING", "ANODIZING"], maximum=1)
+    flow.run_ingest(first)
+    second = new_batch(["ZINC_PLATING", "ANODIZING"], maximum=1)
+    flow.run_ingest(second)
+    assert _registered_names() == ["가상 볼트사", "가상 패널사"]
+    assert (saved(second).new_count, saved(second).skipped_count) == (1, 1)
+    assert saved(second).picked_count == 2
+
+
+def _choose_regions(batch_id, regions):
+    with session_scope() as session:
+        batch = session.get(IngestBatch, batch_id)
+        batch.criteria = batch.criteria | {"regions": regions}
+
+
+def _second_row_in(ingest_env, address):
+    text = ingest_env.path.read_text(encoding="utf-8")
+    ingest_env.path.write_text(text.replace("충청남도 당진시 가상길 2", address), encoding="utf-8")
+
+
+def test_city_choice_judges_only_that_city_and_stores_province_rows(ingest_env):
+    """#521 Given 당진시 2행·천안시 1행 / When 당진시만 / Then 2행만 판단, 저장은 충남 3행."""
+    _second_row_in(ingest_env, "충청남도 천안시서북구 가상길 2")
+    batch_id = new_batch()
+    _choose_regions(batch_id, ["당진시"])
+    flow.run_ingest(batch_id)
     batch = saved(batch_id)
-    assert batch.status == "FAILED" and batch.new_count == 2 and batch.research_done_count == 1
+    assert batch.status == "DONE" and batch.judged_count == 2
+    with session_scope() as session:
+        regions = session.scalars(select(SourceFactoryRow.region)).all()
+    assert sorted(regions) == ["충남", "충남", "충남"]
+
+
+def test_city_with_district_suffix_is_matched_and_province_choice_keeps_all(ingest_env):
+    _second_row_in(ingest_env, "충청남도 천안시서북구 가상길 2")
+    city = new_batch()
+    _choose_regions(city, ["천안시"])
+    flow.run_ingest(city)
+    assert saved(city).judged_count == 1
+    whole = new_batch()
+    flow.run_ingest(whole)
+    assert saved(whole).judged_count == 3
+
+
+def test_city_without_rows_finishes_without_ai_call(ingest_env):
+    batch_id = new_batch()
+    _choose_regions(batch_id, ["서산시"])
+    flow.run_ingest(batch_id)
+    assert saved(batch_id).status == "DONE" and saved(batch_id).judged_count == 0
+    assert ingest_env.picker.calls == 0

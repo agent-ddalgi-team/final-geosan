@@ -32,8 +32,8 @@ from geosan.opportunity.complex_rows import (
 from geosan.opportunity.factory_csv import SkippedRow
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.ingest_errors import storage_failure
-from geosan.opportunity.source_models import SourceContract
-from geosan.storage.base import utcnow
+from geosan.opportunity.source_models import IngestionRun, SourceContract
+from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 
 SOURCE_ID = "kicox-production-api"
@@ -270,6 +270,28 @@ def fetch_complex_list(
             raise InputError("조회하는 동안 회차의 찾기 지역이 바뀌었습니다.")
         if not current_config.enabled:
             reason = "DISABLED"
+        if skipped:
+            # C5의 기존 수집 기록에 원문 없이 행 번호·사유만 남긴다(#546).
+            # 이후 공개 행 저장이 실패해도 이 조회·건너뜀 기록은 보존한다.
+            with session_scope(db_path) as session:
+                batch, _ = _context(session, batch_id)
+                session.add(
+                    IngestionRun(
+                        run_id=new_id("ingestion"),
+                        batch_id=batch_id,
+                        source_id=SOURCE_ID,
+                        raw_count=raw_count,
+                        skipped_rows=[
+                            {"rowNo": row.row_no, "reason": f"{name}: {row.reason}"}
+                            for row in skipped
+                        ],
+                        status="FAILED" if reason else "OK",
+                        created_by=batch.requested_by,
+                        dataset_kind=batch.dataset_kind,
+                        is_virtual=batch.is_virtual,
+                        session_ref=batch.session_ref,
+                    )
+                )
         selected = tuple(row for row in rows if row.region in regions)
         return ComplexLookupResult(
             selected,
@@ -277,7 +299,7 @@ def fetch_complex_list(
             filtered_count,
             skipped,
             pages_read,
-            reason or ("SOURCE_ERROR" if skipped else None),
+            reason,
             rows,
             fetched_at,
         )

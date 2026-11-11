@@ -29,8 +29,9 @@ run_python() {
   echo "== [3/5] 단위 테스트 + 커버리지 80% 하한"
   "$PY" -m pytest tests/unit -q --cov=geosan --cov-report=term-missing --cov-fail-under=80
 
-  echo "== [4/5] 시나리오 테스트 (세 트랙 합쳐지기 전에는 실패가 정상 — Step 28에서 필수로 바꿈)"
-  "$PY" -m pytest tests/features -q --no-cov || echo "   (시나리오 실패: 통합 전까지 허용)"
+  # 시나리오는 필수다(#527, PM 결정 2026-11-10). 실패하면 여기서 멈춘다.
+  echo "== [4/5] 시나리오 테스트 (필수)"
+  "$PY" -m pytest tests/features -q --no-cov
 
   echo "== [5/5] 뼈대 검증 (임시 DB, Step 19·27 전에는 실패가 정상 — Step 28에서 필수로 바꿈)"
   tmpdb="$(mktemp -d)/geosan-check.db"

@@ -10,6 +10,7 @@ from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
+from geosan.api.proposal_review import confirm_proposal, proposal_review_items
 from geosan.api.schemas import (
     ActivityEnvelope,
     ActivityItem,
@@ -231,6 +232,9 @@ def review_items_for_detail(
             item.checked = row.checked
             item.checked_by = row.staff_key
             item.checked_at = row.created_at
+        item.step_options = None
+    # 새 AI 제안은 이전 버전의 체크 표시를 물려받지 않는다.
+    items.extend(proposal_review_items(session, opportunity, data))
     return items
 
 
@@ -326,9 +330,42 @@ def save_review_check(
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     current = opportunity_detail(opp_id, session).data
-    if not any(item.item_id == item_id for item in current.review_items):
+    selected_item = next((item for item in current.review_items if item.item_id == item_id), None)
+    if selected_item is None:
         raise NotFoundError("현재 검토사항에 없는 항목입니다.")
     now = utcnow()
+    is_proposal = selected_item.kind in {
+        ReviewItemKind.ITEM_INPUT_PROPOSAL,
+        ReviewItemKind.PROCESS_LINK_PROPOSAL,
+    }
+    if not is_proposal and body.step_label is not None:
+        raise InputError("단계 고치기는 AI 점수 입력 제안에서만 할 수 있습니다.")
+    if is_proposal:
+        if not body.checked:
+            raise InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
+        summary = confirm_proposal(
+            session, opportunity, item_id, step_label=body.step_label, staff=staff, now=now
+        )
+        session.flush()
+        result = evaluate_in_session(session, [opp_id], staff)
+        if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
+            raise RunFailedError("AI 제안을 재평가하지 못해 저장을 취소했습니다.")
+        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
+        session.add(
+            Note(
+                note_id=new_id("note"),
+                opp_id=opp_id,
+                staff_key=staff,
+                kind="MEMO",
+                text=summary,
+                eval_id=body.eval_id,
+                version=version + 1,
+                created_at=now,
+                created_by=staff,
+                dataset_kind=opportunity.dataset_kind,
+                is_virtual=opportunity.is_virtual,
+            )
+        )
     row = ReviewCheck(
         review_check_id=new_id("rcheck"),
         opp_id=opp_id,
@@ -347,7 +384,12 @@ def save_review_check(
         data=ReviewCheckResponse(
             item_id=item_id, checked=row.checked, checked_by=staff, checked_at=now
         ),
-        meta=Meta(updated_at=now, dataset_kind=row.dataset_kind, has_virtual_data=row.is_virtual),
+        meta=Meta(
+            updated_at=now,
+            dataset_kind=row.dataset_kind,
+            has_virtual_data=row.is_virtual,
+            **({"reevaluated": True} if is_proposal else {}),
+        ),
     )
 
 
@@ -432,15 +474,34 @@ def _add_bookmark(
     return row
 
 
+def _set_bookmark_by_record(
+    session: Session, opportunity: Opportunity, staff: str, *, active: bool
+) -> None:
+    """기록 저장이 관심을 바꾼다(source AUTO_RECORD). 이미 그 값이면 새 행을 만들지 않는다."""
+    previous = latest_bookmark(session, opportunity.opp_id)
+    if (previous is not None and previous.active) == active:
+        return
+    _add_bookmark(
+        session, opportunity, staff, active=active, source="AUTO_RECORD", previous=previous
+    )
+
+
+def _is_excluded(session: Session, opp_id: str) -> bool:
+    """최신 검토 의견이 검토 대상 제외인가(#536). 제외한 회사는 관심 기업이 아니다."""
+    opinion = latest_opinion(session, opp_id)
+    return opinion is not None and opinion.opinion == "NOT_TARGET"
+
+
 def ensure_bookmarked(session: Session, opportunity: Opportunity, staff: str) -> None:
-    """자동 관심(#356): 관심이 꺼진 기회에 기록을 남기면 같은 저장 안에서 관심을 켠다.
+    """자동 관심(#356): 관심이 꺼진 기회에 메모·영업 기록을 남기면 같은 저장 안에서 관심을 켠다.
 
     기록 창구가 쓰기 잠금을 잡은 뒤, 새 기록 행을 넣기 전에 부른다. 저장이 실패하면 같이 되돌린다.
+    최신 검토 의견이 검토 대상 제외인 기회는 켜지 않는다(#536). 검토 의견 저장은 `save_opinion`이
+    의견 값에 따라 따로 켜고 끈다.
     """
-    previous = latest_bookmark(session, opportunity.opp_id)
-    if previous is not None and previous.active:
+    if _is_excluded(session, opportunity.opp_id):
         return
-    _add_bookmark(session, opportunity, staff, active=True, source="AUTO_RECORD", previous=previous)
+    _set_bookmark_by_record(session, opportunity, staff, active=True)
 
 
 def _has_sales_records(session: Session, opp_id: str) -> bool:
@@ -467,6 +528,15 @@ def save_bookmark(
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_bookmark(session, opp_id)
+    if body.active and _is_excluded(session, opp_id):
+        raise AppError(
+            message="검토 대상 제외로 저장한 회사입니다",
+            next_action=(
+                "관심 기업에 다시 담으려면 검토 의견을 검토 권고나 추가 확인 필요로 바꿔 주세요"
+            ),
+            status=422,
+            kind="BOOKMARK_EXCLUDED",
+        )
     if body.active == (previous is not None and previous.active):
         # 이미 같은 값이다. 한 번도 켠 적이 없는 기회를 끄라는 요청은
         # 돌려줄 행이 없으므로 버전 0으로 답한다.
@@ -550,6 +620,8 @@ def save_outcome(
         fields.append(
             FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
         )
+    if body.judgment_check is not None and body.method is None:
+        fields.append(FieldError(path="judgmentCheck", message="접촉 기록에서만 고를 수 있습니다."))
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)
@@ -818,7 +890,9 @@ def save_opinion(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_opinion(session, opp_id)
     now = utcnow()
-    ensure_bookmarked(session, opportunity, staff)
+    # 검토 대상 제외면 관심을 끄고, 다른 의견이면 켠다(#536).
+    # 제외였다가 의견을 바꾼 회사도 다시 켜진다.
+    _set_bookmark_by_record(session, opportunity, staff, active=body.opinion != "NOT_TARGET")
     row = ReviewOpinion(
         opinion_id=new_id("opinion"),
         opp_id=opp_id,

@@ -1,5 +1,7 @@
 """AI 근거는 미확인 후보로 저장하며 사람의 근거와 이전 조사 이력을 보존한다."""
 
+from collections.abc import Callable
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,7 +17,9 @@ def store_extraction(
     result: Extraction,
     source_url: str,
     requested_by: str,
+    source_for: Callable[[str], str] | None = None,
 ) -> list[Evidence]:
+    """source_for가 있으면 인용문이 실제로 들어 있는 페이지 주소를 근거 출처로 쓴다(#557)."""
     now = utcnow()
     for row in session.scalars(
         select(Evidence).where(
@@ -29,21 +33,24 @@ def store_extraction(
         row.superseded_at = now
     rows = []
     proposals = [
-        ProposedEvidence(
-            quote=f"요구 후보(미확인): {item.name}\n공개 본문: {item.quote}",
-            subject="REQUIREMENT",
-            occurred_at_candidate=None,
-            source_grade_proposed="D",
-            certainty_proposed="UNKNOWN",
+        (
+            ProposedEvidence(
+                quote=f"요구 후보(미확인): {item.name}\n공개 본문: {item.quote}",
+                subject="REQUIREMENT",
+                occurred_at_candidate=None,
+                source_grade_proposed="D",
+                certainty_proposed="UNKNOWN",
+            ),
+            item.quote,
         )
         for item in result.requirement_candidates
     ]
-    for item in [*result.evidence, *proposals]:
+    for item, quoted in [*((item, item.quote) for item in result.evidence), *proposals]:
         row = Evidence(
             evidence_id=new_id("ev"),
             opp_id=opportunity.opp_id,
             source_grade=item.source_grade_proposed.value,
-            source_ref=source_url,
+            source_ref=source_for(quoted) if source_for else source_url,
             quote=item.quote,
             subject=item.subject.value,
             occurred_at=item.occurred_at_candidate,

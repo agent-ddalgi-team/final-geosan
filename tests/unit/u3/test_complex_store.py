@@ -12,7 +12,7 @@ from geosan.opportunity.complex_collection import collect_complex_rows
 from geosan.opportunity.complex_store import store_complex_rows
 from geosan.opportunity.factory_store import store_factory_csv
 from geosan.opportunity.models import IngestBatch
-from geosan.opportunity.source_models import ComplexFetch, SourceFactoryRow
+from geosan.opportunity.source_models import ComplexFetch, IngestionRun, SourceFactoryRow
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 from tests.unit.u3.test_complex_source import ROWS, configure, logs, responses, xml
@@ -211,6 +211,28 @@ def test_store_failure_rolls_back_rows_and_fetch_but_keeps_external_call_record(
     finally:
         event.remove(ComplexFetch, "before_insert", fail)
     assert not saved(SourceFactoryRow) and not saved(ComplexFetch) and len(logs()) == 1
+
+
+def test_skipped_row_record_survives_later_public_row_storage_failure(batch, monkeypatch):
+    responses(monkeypatch, xml([ROWS[0], ("", "충남 아산시 가상로 2", "F2")]))
+    collected = collect_complex_rows(batch, ())
+
+    def fail(*args):
+        raise OperationalError("PRIVATE_SQL", {}, Exception("PRIVATE_VALUE"))
+
+    event.listen(ComplexFetch, "before_insert", fail)
+    try:
+        with pytest.raises(AppError):
+            store_complex_rows(batch, collected)
+    finally:
+        event.remove(ComplexFetch, "before_insert", fail)
+    assert not saved(SourceFactoryRow) and not saved(ComplexFetch)
+    (run,) = saved(IngestionRun)
+    assert run.batch_id == batch and run.raw_count == 2 and run.status == "OK"
+    assert run.skipped_rows == [
+        {"rowNo": 2, "reason": "가상단지: 회사명 또는 공장주소가 비어 있음"}
+    ]
+    assert len(logs()) == 1
 
 
 def test_cache_duration_comes_from_settings(batch, monkeypatch):

@@ -288,6 +288,8 @@ describe('OpportunityDetailPage', () => {
         header: {
           ...base.header,
           scoreState: 'PENDING',
+          // 서버는 거래 확인 전 점수를 분류가 필수조건 확인 대기일 때만 준다. 그 밖의 PENDING은 AI 제안이다(#498).
+          classificationCode: 'FILTER_PENDING',
           relationStatus: 'UNCONFIRMED',
           scoreDisplay: '50점 · 3/8',
         },
@@ -299,6 +301,28 @@ describe('OpportunityDetailPage', () => {
     expect(score).toHaveAttribute('data-score-state', 'PENDING');
     expect(screen.getByTestId('detail-score-pending-tag')).toHaveTextContent(scoreTags.pending);
     expect(screen.queryByTestId('detail-score-existing-tag')).not.toBeInTheDocument();
+  });
+
+  it('상세 머리: AI 제안으로 계산된 점수(확정 전인데 분류가 확인 대기가 아님)는 흐리게 "AI 제안 · 확인 전"이 붙는다 (#498)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        header: {
+          ...base.header,
+          scoreState: 'PENDING',
+          classificationCode: 'CONTACT_REVIEW',
+          relationStatus: 'UNCONFIRMED',
+          scoreDisplay: '참고 50점 · 3/8',
+        },
+      }),
+    );
+    renderPage();
+    const score = await screen.findByTestId('detail-score');
+    expect(score).toHaveAttribute('data-score-state', 'PENDING');
+    expect(screen.getByTestId('detail-score-ai-proposal-tag')).toHaveTextContent(
+      'AI 제안 · 확인 전',
+    );
+    expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
   });
 
   it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지 확인이 필요하면 띠가 보인다 (#210)', async () => {
