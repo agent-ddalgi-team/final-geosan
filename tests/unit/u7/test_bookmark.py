@@ -1,6 +1,7 @@
 """#356: 관심(찜) 켜고 끄기, 자동 관심, 목록 거르기, 카드·상세 표시를 실제 SQLite와 API로 본다.
 
 관심은 영업 단계가 아니라 따로 켜고 끄는 표시다(계약 v3, PM 결정 2026-11-06).
+검토 대상 제외로 저장한 회사는 관심 기업이 아니다(계약 v4, PM 결정 2026-11-10 #536).
 대시보드 칸 검사는 `test_bookmark_board.py`에 있다. 가상 사례만 쓴다(거산 실제 사양 아님).
 """
 
@@ -154,6 +155,118 @@ def test_failed_record_save_rolls_bookmark_back(dashboard_env, kind, model):  # 
 
 
 # ---------------------------------------------------------------------------
+# 검토 대상 제외는 관심 기업이 아니다 (#536, 계약 v4)
+# ---------------------------------------------------------------------------
+
+EXCLUDED_MESSAGE = "검토 대상 제외로 저장한 회사입니다"
+EXCLUDED_NEXT_ACTION = (
+    "관심 기업에 다시 담으려면 검토 의견을 검토 권고나 추가 확인 필요로 바꿔 주세요"
+)
+
+
+def test_saving_not_target_turns_bookmark_off_and_keeps_records(dashboard_env):  # noqa: F811
+    """Given 메모·단계가 있는 관심 기업 / When 검토 대상 제외 저장
+    / Then 같은 저장에서 관심이 꺼지고
+    기록은 그대로 남으며, 끄기 거부 안내대로 하면 정말 빠진다."""
+    client, (a, b, *_rest) = dashboard_env
+    write_note(client, a)
+    record(client, a, {"status": "IN_PROGRESS"})
+    give_opinion(client, b, "NEED_CHECK")
+    assert set_bookmark(client, a, False).json()["error"]["nextAction"] == REFUSAL_NEXT_ACTION
+    give_opinion(client, a, "NOT_TARGET", staff="kim-gwajang")
+    assert bookmark_rows(a) == [
+        (a, 1, True, "AUTO_RECORD", "park-lee"),
+        (a, 2, False, "AUTO_RECORD", "kim-gwajang"),
+    ]
+    detail = client.get(f"{URL}/{a}").json()["data"]
+    assert detail["records"]["bookmark"]["active"] is False
+    assert detail["records"]["opinion"]["opinion"] == "NOT_TARGET"
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(Note)) == 1
+        assert session.scalar(select(func.count()).select_from(Outcome)) == 1
+    assert listed_ids(client, bookmarked="true") == {b}
+    assert listed_ids(client, opinion="NOT_TARGET") == {a}
+
+
+def test_not_target_on_never_bookmarked_company_adds_no_row(dashboard_env):  # noqa: F811
+    """Given 관심을 켠 적 없는 회사 / When 바로 검토 대상 제외 저장
+    / Then 관심 행을 만들지 않는다."""
+    client, (a, *_rest) = dashboard_env
+    give_opinion(client, a, "NOT_TARGET")
+    assert bookmark_rows() == []
+    assert client.get(f"{URL}/{a}").json()["data"]["records"]["bookmark"] is None
+
+
+def test_records_on_excluded_company_do_not_turn_bookmark_on(dashboard_env):  # noqa: F811
+    """Given 검토 대상 제외 회사 / When 메모·영업 기록 저장 / Then 저장은 되고 관심은 꺼진 채다."""
+    client, (a, *_rest) = dashboard_env
+    set_bookmark(client, a, True)
+    give_opinion(client, a, "NOT_TARGET")
+    before = bookmark_rows(a)
+    write_note(client, a, text="가상 제외 뒤 메모")
+    record(client, a, {"status": "LOST", "lostReasonCode": "PRICE", "reason": "가상 가격 조건"})
+    assert bookmark_rows(a) == before
+    assert before[-1][2] is False
+    assert listed_ids(client, bookmarked="true") == set()
+
+
+def test_turning_bookmark_on_is_refused_for_excluded_company(dashboard_env):  # noqa: F811
+    """Given 검토 대상 제외 회사 / When [관심] 켜기
+    / Then 422로 거부하고 의견을 바꾸라고 안내한다."""
+    client, (a, *_rest) = dashboard_env
+    give_opinion(client, a, "NOT_TARGET")
+    response = set_bookmark(client, a, True)
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["kind"] == "BOOKMARK_EXCLUDED"
+    assert error["message"] == EXCLUDED_MESSAGE
+    assert error["nextAction"] == EXCLUDED_NEXT_ACTION
+    assert bookmark_rows() == []
+    # 끄기는 이미 꺼져 있으니 그대로 지금 값을 돌려준다.
+    off = set_bookmark(client, a, False)
+    assert off.status_code == 200 and off.json()["data"]["active"] is False
+
+
+@pytest.mark.parametrize("opinion", ["WORTH_REVIEW", "NEED_CHECK"])
+def test_changing_opinion_back_turns_bookmark_on_again(dashboard_env, opinion):  # noqa: F811
+    """Given 검토 대상 제외로 관심이 꺼진 회사 / When 의견을 검토 권고·추가 확인 필요로 바꿈
+    / Then 같은 저장에서 관심이 다시 켜지고 관심 기업 목록에 돌아온다."""
+    client, (a, *_rest) = dashboard_env
+    give_opinion(client, a, "WORTH_REVIEW")
+    give_opinion(client, a, "NOT_TARGET")
+    give_opinion(client, a, opinion, staff="kim-gwajang")
+    assert bookmark_rows(a) == [
+        (a, 1, True, "AUTO_RECORD", "park-lee"),
+        (a, 2, False, "AUTO_RECORD", "park-lee"),
+        (a, 3, True, "AUTO_RECORD", "kim-gwajang"),
+    ]
+    assert listed_ids(client, bookmarked="true") == {a}
+    assert listed_ids(client, opinion="NOT_TARGET") == set()
+
+
+def test_failed_not_target_save_keeps_bookmark_on(dashboard_env):  # noqa: F811
+    """Given 관심 기업 / When 검토 대상 제외 저장이 DB에서 실패 / Then 관심 끔도 함께 되돌린다."""
+    client, (a, *_rest) = dashboard_env
+    set_bookmark(client, a, True)
+    before = bookmark_rows()
+
+    def fail_insert(*_):
+        raise RuntimeError("가상 저장 실패")
+
+    event.listen(ReviewOpinion, "before_insert", fail_insert)
+    try:
+        response = client.post(
+            f"{URL}/{a}/opinions",
+            json={"evalId": eval_ids(client)[a], "opinion": "NOT_TARGET", "reason": "가상 사유"},
+            headers=MINE,
+        )
+    finally:
+        event.remove(ReviewOpinion, "before_insert", fail_insert)
+    assert response.status_code == 500
+    assert bookmark_rows() == before
+
+
+# ---------------------------------------------------------------------------
 # 관심 켜고 끄기 창구
 # ---------------------------------------------------------------------------
 
@@ -271,7 +384,9 @@ def test_list_filters_by_bookmark_and_latest_opinion(dashboard_env):  # noqa: F8
     assert listed_ids(client, opinion="NONE") == {d}  # 의견을 한 번도 안 고른 회사
     assert listed_ids(client) == everyone
     assert listed_ids(client, bookmarked="false") == everyone
-    assert listed_ids(client, bookmarked="true") == {a, b, c}
+    # 검토 대상 제외로 저장한 c는 관심 기업이 아니다(#536).
+    assert listed_ids(client, bookmarked="true") == {a, b}
+    assert listed_ids(client, bookmarked="true", opinion="NOT_TARGET") == set()
     # 다른 거르기와 모두 AND.
     assert listed_ids(client, bookmarked="true", opinion="NONE") == set()
     assert set_bookmark(client, d, True).status_code == 200

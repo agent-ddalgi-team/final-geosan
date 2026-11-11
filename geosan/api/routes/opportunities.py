@@ -18,6 +18,7 @@ from geosan.api.ingest_views import (
     collected_evaluations,
     discovery_fields,
     latest_ingest,
+    recent_order,
 )
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
@@ -529,6 +530,7 @@ def list_opportunities(
     region: str | None = None,
     q: str | None = None,
     ingest_batch: Annotated[str | None, Query(alias="batch")] = None,
+    sort: str = "rank",
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -537,6 +539,12 @@ def list_opportunities(
     params = request.query_params
     if tab != "new" or ("filter" in params and params["filter"] not in supported_filters):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
+    # 정렬(#516): rank = 추천 순(기본), recent = 들어온 시각 최신 순.
+    # distance(#222)는 아직 연결 전이라 거부한다.
+    if sort not in ("rank", "recent"):
+        raise InputError(
+            "이 정렬은 아직 연결되지 않았습니다. 추천 순 또는 최근 들어온 순을 골라 주세요."
+        )
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
     full_batch_id = batch.batch_id if batch else None
@@ -559,6 +567,10 @@ def list_opportunities(
                 .where(Customer.ingest_batch_id == selected_batch if selected_batch else False)
             )
         )
+    if bookmarked:
+        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
+        # 선택지(공정·지역·산업) 건수도 관심 기업 안에서 세도록 건수 계산보다 먼저 건다(#516).
+        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
     population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
     links = session.execute(
@@ -649,9 +661,6 @@ def list_opportunities(
             .scalar_subquery()
         )
         query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
-    if bookmarked:
-        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
-        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
     if opinion is not None:
         # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
         current_opinion = (
@@ -676,6 +685,10 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         rows.append((original, current, opportunity, customer))
     rows.sort(key=lambda row: candidate_order(row[0], row[1], row[3], full_batch_id))
+    if sort == "recent":
+        # 들어온 시각이 최신인 회사를 앞에 두고, 시각이 없는(사례 파일) 회사는 뒤에 둔다.
+        # 추천 순으로 먼저 정렬해 두었으므로 같은 시각끼리는 그 순서가 유지된다(안정 정렬).
+        rows.sort(key=lambda row: recent_order(row[3]))
     start = (page - 1) * page_size
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
@@ -709,6 +722,7 @@ def list_opportunities(
                     or industry is not None
                     or region is not None
                     or ingest_batch is not None
+                    or sort == "recent"
                     or original.batch_id != full_batch_id
                     or (customer.ingest_batch_id is not None and current.score_s is None)
                 )

@@ -1,11 +1,12 @@
-// 후보 가져오기 조건 칸(#316, 결정 2026-11-05): 공정(1개 이상)·지역·산업을 고르고 [새 후보 가져오기]를 누른다.
+// 후보 가져오기 조건 칸(#316, 결정 2026-11-05): 공정(1개 이상)·지역·산업을 고르고 [영업 후보로 더하기 💰]를 누른다.
+// 공정을 고르면 맞는 공장 수 줄이 바로 보인다(#549 ①, GET /ingest/preview — 저장된 판단만 세서 0원).
 // 선택지는 밖에서 넘겨받는다(설정 값이라 코드에 직접 쓰지 않는다). 모달 없이 인라인이다.
 // 누르면 서버가 회차를 만든 직후 바로 응답하고(POST /ingest), 진행은 목록 머리 수집 요약이 서버에서 다시 읽어 보인다.
 // 보기 전용(viewer)이면 통째로 숨기고, 담당자를 고르기 전에는 잠근다. 이미 가져오는 중이면 잠근다.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from 'antd';
-import { ApiError, postIngest } from '../../api/client';
-import type { IngestRequest } from '../../api/types';
+import { ApiError, getIngestPreview, postIngest } from '../../api/client';
+import type { IngestPreview, IngestRequest } from '../../api/types';
 import { candidateSearch, errorTexts } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
@@ -26,6 +27,47 @@ export interface IngestFormProps {
 }
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
+
+type PreviewState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ok'; data: IngestPreview }
+  | { status: 'error' };
+
+/** 조건을 바꾸는 동안 요청이 몰리지 않게 잠깐 기다렸다가 센다(밀리초, 화면이 정한 값). */
+const PREVIEW_DELAY_MS = 300;
+
+/** 서버에는 화면에서 고른 순서가 아니라 선택지 순서대로 보낸다(같은 조건이면 같은 요청). */
+function requestBody(
+  options: IngestOptions,
+  processes: string[],
+  regions: string[],
+  industries: string[],
+): IngestRequest {
+  const order = <T,>(all: T[], picked: string[], key: (item: T) => string) =>
+    all.map(key).filter((value) => picked.includes(value));
+  return {
+    processCodes: order(options.processes, processes, (p) => p.code),
+    ...(regions.length > 0 ? { regions: order(options.regions, regions, (r) => r) } : {}),
+    ...(industries.length > 0
+      ? { industries: order(options.industries, industries, (i) => i) }
+      : {}),
+  };
+}
+
+function previewText(data: IngestPreview): string {
+  const parts = [
+    `${candidateSearch.previewMatched(data.matchedCount)} ${candidateSearch.previewFits(
+      data.fitCounts.HIGH,
+      data.fitCounts.MEDIUM,
+      data.fitCounts.LOW,
+    )}`,
+    candidateSearch.previewRegistered(data.registeredCount),
+    candidateSearch.previewAddableHigh(data.addableHighCount),
+  ];
+  if (data.unjudgedCount > 0) parts.push(candidateSearch.previewUnjudged(data.unjudgedCount));
+  return parts.join(' · ');
+}
 
 function toggled(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -78,22 +120,44 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
   const [industries, setIndustries] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const isViewer = staffKey === VIEWER_KEY;
+  const previewKey = JSON.stringify(requestBody(options, processes, regions, industries));
+  // 더하기가 끝나면(running이 풀리면) 들어온 곳 수가 바뀌므로 다시 센다.
+  const fetchKey = `${previewKey}|${String(running)}`;
+  const [fetched, setFetched] = useState<{ key: string; result: PreviewState } | null>(null);
+  const preview: PreviewState =
+    isViewer || processes.length === 0
+      ? { status: 'idle' }
+      : fetched?.key === fetchKey
+        ? fetched.result
+        : { status: 'loading' };
+
+  // 조건이 바뀌면 잠깐 기다렸다가 센다. 지난 요청은 취소하고, 늦게 온 답은 버린다.
+  useEffect(() => {
+    if (isViewer || processes.length === 0) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      getIngestPreview(JSON.parse(previewKey) as IngestRequest, controller.signal)
+        .then((envelope) =>
+          setFetched({ key: fetchKey, result: { status: 'ok', data: envelope.data } }),
+        )
+        .catch(() => {
+          if (!controller.signal.aborted)
+            setFetched({ key: fetchKey, result: { status: 'error' } });
+        });
+    }, PREVIEW_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [isViewer, previewKey, fetchKey, processes.length]);
 
   // 보기 전용 계정에는 단추 자체를 보이지 않는다(실수 방지, FR14.1).
-  if (staffKey === VIEWER_KEY) return null;
+  if (isViewer) return null;
 
   async function submit() {
     if (!staffKey || !canRecord || processes.length === 0) return;
-    // 서버에는 화면에서 고른 순서가 아니라 선택지 순서대로 보낸다(같은 조건이면 같은 요청).
-    const order = <T,>(all: T[], picked: string[], key: (item: T) => string) =>
-      all.map(key).filter((value) => picked.includes(value));
-    const body: IngestRequest = {
-      processCodes: order(options.processes, processes, (p) => p.code),
-      ...(regions.length > 0 ? { regions: order(options.regions, regions, (r) => r) } : {}),
-      ...(industries.length > 0
-        ? { industries: order(options.industries, industries, (i) => i) }
-        : {}),
-    };
+    const body = requestBody(options, processes, regions, industries);
     setSubmitting(true);
     setNotice(null);
     try {
@@ -178,6 +242,30 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
           onToggle={(value) => setIndustries((prev) => toggled(prev, value))}
           testId="ingest-industry"
         />
+      ) : null}
+      {preview.status !== 'idle' ? (
+        <div
+          role="status"
+          data-testid="ingest-preview"
+          style={{ display: 'grid', gap: 2, fontSize: typography.fontSizeSecondary }}
+        >
+          {preview.status === 'loading' ? (
+            <span style={{ color: colors.textSecondary }}>{candidateSearch.previewLoading}</span>
+          ) : preview.status === 'error' ? (
+            <span style={{ color: colors.error }}>{candidateSearch.previewFailed}</span>
+          ) : (
+            <>
+              <span data-testid="ingest-preview-counts">{previewText(preview.data)}</span>
+              <span data-testid="ingest-preview-add" style={{ color: colors.textSecondary }}>
+                {preview.data.addCount > 0
+                  ? candidateSearch.previewAdd(preview.data.addCount)
+                  : candidateSearch.previewNothingToAdd}
+                {' · '}
+                {candidateSearch.previewFree}
+              </span>
+            </>
+          )}
+        </div>
       ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
         <Button

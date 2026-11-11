@@ -190,7 +190,6 @@ export const dashboardTexts = {
     BOOKMARKED: '곳',
     NO_OPINION: '곳',
     NEED_CHECK: '곳',
-    NOT_TARGET: '곳',
     ON_HOLD: '곳',
     DONE: '곳',
   },
@@ -203,7 +202,6 @@ export const dashboardTexts = {
     BOOKMARKED: '관심 기업',
     NO_OPINION: '의견 전',
     NEED_CHECK: '추가 확인 필요',
-    NOT_TARGET: '제외',
     ON_HOLD: '보류',
     DONE: '완료',
   },
@@ -354,6 +352,8 @@ export const listFilters = {
     [processName, ...conditions, `${count}곳`].join(' · '),
   /** 묶음 보기일 때 전체 곳 수 줄 뒤에 붙이는 말(#383). */
   groupedNote: '공정별로 묶어 보는 중',
+  /** 전체 보기(#516)일 때 전체 곳 수 줄 뒤에 붙이는 말. 공정이 섞여 순위 번호는 보이지 않는다. */
+  flatNote: '공정 상관없이 한 줄로 보는 중 · 순위 번호 없음',
   /** 한 공정이 묶음 상한(50곳)을 넘을 때 묶음 끝의 링크(#383). 그 공정 하나를 고른 보기로 간다. */
   onlyThisProcess: '이 공정만 보기',
   /** "천안 인근 8", "크롬 도금 0" */
@@ -383,8 +383,12 @@ export const listSearch = {
   empty: '이 이름으로 찾은 후보가 없습니다',
   sortLabel: '정렬',
   sortRank: '추천 순',
+  /** 최근 들어온 순(#516): 들어온 시각이 최신인 회사가 위, 사례 파일 회사는 아래. */
+  sortRecent: '최근 들어온 순',
   /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
   sortDistance: '가까운 순 (준비 중)',
+  /** 정렬 줄 마지막 단추(#516, PM 지시 2026-11-09): 공정별 묶음을 풀고 모든 회사를 한 줄로 본다. 다시 누르면 묶음 보기. */
+  viewAll: '전체 보기',
 } as const;
 
 /**
@@ -395,12 +399,14 @@ export const bookmarkList = {
   title: '관심 기업',
   showOnly: '관심 기업만 보기',
   opinionGroupLabel: '검토 의견으로 거르기',
-  /** 거르기 단추 다섯 개. "기타"는 세 의견 중 아무것도 고르지 않은 회사만 나온다. */
+  /**
+   * 거르기 단추 네 개. "기타"는 의견을 아직 고르지 않은 회사만 나온다.
+   * 검토 대상 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
+   */
   opinionFilters: {
     ALL: '전체 보기',
     WORTH_REVIEW: '검토 권고',
     NEED_CHECK: '추가 확인 필요',
-    NOT_TARGET: '제외 기업',
     NONE: '기타',
   },
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
@@ -411,18 +417,25 @@ export const bookmarkList = {
   clearFilter: '거르기 풀기',
 } as const;
 
-/** 후보 찾기 화면(#316, 결정 2026-11-05): 목록 머리 수집 요약·"이번 수집만/전체" 전환과 카드의 고른 이유·점수 전·이번에 들어옴. */
+/** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 검토 대상 제외로 저장한 회사만 모아 본다. */
+export const excludedList = {
+  showOnly: '제외한 회사 보기',
+  title: '제외한 회사',
+  hint: '검토 대상 제외로 저장한 회사입니다. 검토 의견을 바꾸면 관심 기업으로 돌아갑니다',
+  empty: '검토 대상 제외로 저장한 회사가 없습니다',
+} as const;
+
+/** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
 export const candidateSearch = {
   /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
-  /** "이번에 들어옴" 꼬리표. 날짜를 알면 "이번에 들어옴 · 11/20"으로 보인다. */
-  newInBatch: '이번에 들어옴',
-  newInBatchWithDate: (date: string) => `이번에 들어옴 · ${date}`,
+  /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
+  ingestedOn: (date: string) => `${date} 들어옴`,
   /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */
-  summaryTitle: '후보 가져오기',
-  running: '지금 가져오는 중입니다',
+  summaryTitle: '영업 후보 더하기',
+  running: '지금 영업 후보로 더하는 중입니다',
   failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
   /**
    * 한도 등으로 건너뛴 일(#442). 문장은 약속 C1에 정해진 그대로다(웹 검색 #313, 단지 조회 #323).
@@ -435,35 +448,69 @@ export const candidateSearch = {
     DAILY_LIMIT: '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
     SOURCE_ERROR: '산단공 조회를 다 못 불러옴 · 파일 목록으로 찾음',
   },
-  scanned: (n: number) => `훑어본 회사 ${n.toLocaleString('ko-KR')}곳`,
-  picked: (n: number) => `고른 회사 ${n.toLocaleString('ko-KR')}곳`,
+  scanned: (n: number) => `훑어본 공장 ${n.toLocaleString('ko-KR')}곳`,
+  picked: (n: number) => `고른 공장 ${n.toLocaleString('ko-KR')}곳`,
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
-  /** "이번 수집만 / 전체" 전환. */
-  scopeLabel: '보기',
-  scopeLatest: '이번 수집만',
-  scopeAll: '전체',
-  /** "이번 수집만"인데 고른 회사가 하나도 없을 때. */
-  latestEmpty: '이번에 새로 들어온 회사가 없습니다. 보기를 "전체"로 바꿔 보세요',
-  /** 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 가져오기]를 누른다. 모달 없이 인라인이다. */
-  formTitle: '새 후보 찾기 조건',
+  /**
+   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [영업 후보로 더하기 💰]를 누른다. 모달 없이 인라인이다.
+   * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
+   */
+  formTitle: '영업 후보로 더할 공장 조건',
   processLabel: '공정',
   processHint: '공정을 하나 이상 고르세요',
   regionLabel: '지역',
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '새 후보 가져오기',
-  fetching: '가져오는 중',
-  pickStaffFirst: '담당자를 고르면 가져올 수 있습니다',
-  started: '가져오기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
-  alreadyRunning: '지금 가져오는 중입니다. 끝난 뒤에 다시 눌러 주세요',
+  fetchButton: '영업 후보로 더하기 💰',
+  fetching: '더하는 중',
+  pickStaffFirst: '담당자를 고르면 더할 수 있습니다',
+  started: '더하기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
+  alreadyRunning: '지금 더하는 중입니다. 끝난 뒤에 다시 눌러 주세요',
   sourceFailed: '공개 자료를 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요',
   invalidCondition: '고른 조건을 서버가 받지 않았습니다',
-  startFailed: '후보 가져오기를 시작하지 못했습니다',
+  startFailed: '영업 후보 더하기를 시작하지 못했습니다',
+  /**
+   * 맞는 공장 수 줄(#549 ①, 약속 C1 `GET /ingest/preview`). 조건을 고르면 서버가 저장된 AI 판단만 세서
+   * 바로 보인다(외부 호출 없음, 0원). 예: "맞는 공장 1,518곳 (상 134 · 중 1,382 · 하 2) · 영업 후보로 들어온 곳 100곳"
+   */
+  previewMatched: (n: number) => `맞는 공장 ${n.toLocaleString('ko-KR')}곳`,
+  previewFits: (high: number, medium: number, low: number) =>
+    `(상 ${high.toLocaleString('ko-KR')} · 중 ${medium.toLocaleString('ko-KR')} · 하 ${low.toLocaleString('ko-KR')})`,
+  previewRegistered: (n: number) => `영업 후보로 들어온 곳 ${n.toLocaleString('ko-KR')}곳`,
+  previewAddableHigh: (n: number) => `아직 안 들어온 상 ${n.toLocaleString('ko-KR')}곳`,
+  /** 고른 지역에 AI가 아직 판단하지 않은 공장이 있을 때(#549 ②). 금액은 2단계에서 붙인다. */
+  previewUnjudged: (n: number) => `아직 AI 판단 전 ${n.toLocaleString('ko-KR')}곳`,
+  previewAdd: (n: number) => `누르면 최대 ${n.toLocaleString('ko-KR')}곳을 영업 후보로 더합니다`,
+  previewNothingToAdd: '더할 공장이 없습니다',
+  previewFree: '조건을 바꿔 보는 것은 비용이 들지 않습니다',
+  previewLoading: '맞는 공장을 세는 중',
+  previewFailed: '맞는 공장 수를 불러오지 못했습니다',
 } as const;
 
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
+/**
+ * 상세 맨 위 "이 회사 한눈에"(#563): ① 홈페이지 ② 한두 줄 소개 ③ 왜 이 회사인지·적합도.
+ * 모두 이미 저장된 값이라 새 AI 호출이 없다. 값이 없으면 그다음 근거로 대신한다.
+ */
+export const companyGlance = {
+  title: '이 회사 한눈에',
+  homepage: '홈페이지',
+  /** 공식 홈페이지가 없을 때 대신 보이는 링크 이름. */
+  searchPage: '검색에서 찾은 페이지',
+  evidencePage: '근거가 나온 페이지',
+  noHomepage: '홈페이지를 찾지 못했습니다',
+  needsConfirm: '확인 필요',
+  intro: '소개',
+  /** 조사한 한 줄 소개가 없을 때: 공장 자료의 생산품·업종으로 만든 줄. */
+  factoryBasis: '공장 자료 기준',
+  produces: (item: string) => `${item} 생산`,
+  why: '왜 이 회사',
+  aiJudgment: 'AI 판단',
+  fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
+} as const;
+
 export const companySummary = {
   title: '회사 소개',
   /** "조사 11/5 (3일 전)" */
@@ -629,6 +676,12 @@ export const outcomeStatusLabels = {
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
+/** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
+export const judgmentCheckLabels = {
+  MATCHED: '맞음',
+  MISMATCHED: '다름',
+  UNKNOWN: '모름',
+} as const;
 /** 거절 이유 코드(LostReasonCode) 쉬운 말. 영업 단계가 거절일 때 고른다. */
 export const lostReasonLabels = {
   PRICE: '가격',
@@ -689,6 +742,7 @@ export const recordsArea = {
   entryKind: '종류',
   contactMethod: '방법',
   contactResult: '결과',
+  judgmentCheck: 'AI 판단이 맞았나',
   contactDate: '날짜',
   contactSave: '접촉 기록 저장',
   /** 상세 머리 "접촉 3회 (전화 2 · 방문 1)". 0회인 방법은 빼고, 접촉이 없으면 "접촉 없음". */
@@ -798,6 +852,24 @@ export const reviewArea = {
   stepPlaceholder: '단계를 고르세요',
   stepSave: '이 단계로 확정',
   stepCancel: '취소',
+  /**
+   * 자료 줄("자료 못 찾음"·"자료 부족")의 [붙여넣고 조사](#260, PM 결정 2026-11-04). 공개 본문만 붙여 넣고,
+   * 서버는 기존 홈페이지 조사 요청(url + pastedText)으로 근거를 뽑아 다시 평가한다. 줄 안 인라인(모달 없음).
+   */
+  pasteButton: '붙여넣고 조사',
+  pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
+  pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
+  pasteUrlPlaceholder: 'https://',
+  pasteTextLabel: '공개 본문',
+  pasteTextPlaceholder: '공개된 홈페이지 글이나 공고 본문을 붙여 넣어 주세요',
+  pasteHint: '공개 자료만 됩니다. 붙여넣은 글은 AI에 보내 근거를 뽑고 다시 평가합니다.',
+  pasteInvalidUrl: '출처 주소는 http:// 또는 https:// 로 시작해야 합니다.',
+  pasteEmpty: '붙여 넣은 내용이 비어 있습니다.',
+  pasteSubmit: '조사',
+  pasteCancel: '취소',
+  pasteRunning: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
+  pasteLocked: '이 조사는 지금 다시 누를 수 없습니다.',
+  pasteReload: '새로 불러오기',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */

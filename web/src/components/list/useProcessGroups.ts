@@ -1,6 +1,6 @@
 // 공정별 묶음 보기(#383, 2026-11-07 PM 결정)의 묶음 요청.
 // 공정을 고르기 전에는 서버가 준 공정 선택지 가운데 회사가 1곳 이상인 공정마다 지금의 목록 요청을
-// `process=<코드>`만 바꿔 따로 부른다(같은 지역·산업·"이번 수집만" 조건, 1쪽, 50곳). 서버 응답 모양은 그대로다.
+// `process=<코드>`만 바꿔 따로 부른다(같은 지역·산업·정렬 조건, 1쪽, 50곳). 서버 응답 모양은 그대로다.
 // 묶음 하나가 실패해도 다른 묶음은 보이고, [다시 시도]는 그 묶음만 다시 부른다.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOpportunities } from '../../api/client';
@@ -29,7 +29,7 @@ export interface ProcessGroups {
 
 /**
  * @param codes 묶음으로 보일 공정 코드(회사가 1곳 이상인 공정). 비어 있으면 아무것도 부르지 않는다.
- * @param filters 공정을 뺀 나머지 조건(지역·산업·이번 수집만). 묶음마다 `process`만 더해 보낸다.
+ * @param filters 공정을 뺀 나머지 조건(지역·산업·정렬). 묶음마다 `process`만 더해 보낸다.
  * @param version 부모 목록이 다시 불러올 때마다 올라가는 번호. 바뀌면 모든 묶음을 다시 부른다.
  */
 export function useProcessGroups(
