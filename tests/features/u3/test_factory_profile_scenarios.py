@@ -76,7 +76,8 @@ def water_item(context):
     assert after["reviewItems"][:-1] == before["reviewItems"]
     item = after["reviewItems"][-1]
     assert item["itemId"] == plating.ITEM_ID and item["source"] == "RULE"
-    assert item["text"] == f"{plating.LABEL}: 특정수질유해물질 배출 사업장 명단에 있음"
+    basis = "특정수질유해물질 배출 사업장 명단에 있음(국립환경과학원, 공공누리 제1유형)"
+    assert item["text"] == f"{plating.LABEL}: {basis}"
     assert after["header"]["factoryProfile"] is None
 
 
