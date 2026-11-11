@@ -179,6 +179,22 @@ export const frame = {
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
 export const dashboardTexts = {
+  calendarTitle: '일정 달력',
+  calendarEmpty: '잡아 둔 일정이 아직 없어요.',
+  calendarHint: '일정이 있는 날을 누르면 내용이 보입니다.',
+  popoverClose: '닫기',
+  popoverDetail: '상세 보기',
+  mapTitle: '영업 지역 지도',
+  mapLoading: '관심 기업 위치를 불러오는 중입니다.',
+  mapError: '관심 기업 위치를 불러오지 못했습니다. 지도는 시·도 구분만 보입니다.',
+  mapNoBookmark: '아직 관심으로 고른 회사가 없어 칠한 곳이 없습니다.',
+  mapSummary: (total: number, placed: number, unknown: number) =>
+    `관심 기업 ${total}곳 중 위치를 아는 ${placed}곳이 점으로 보입니다(위치를 모르는 ${unknown}곳은 표시하지 않음). 점은 시·군 가운데 근처이고 본사와의 거리는 직선 기준이라 정확한 주소 위치는 아닙니다`,
+  mapLegendHq: '본사',
+  mapLegendInterest: '관심',
+  mapLegendProgress: '진행 중',
+  mapLegendWon: '성사',
+  mapLegendOther: '보류·거절',
   searchLabel: '회사 이름 검색',
   searchPlaceholder: '회사 이름을 입력하세요',
   searchButton: '검색',

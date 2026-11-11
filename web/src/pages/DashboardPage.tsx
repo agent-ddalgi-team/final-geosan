@@ -10,12 +10,14 @@ import type { Dashboard } from '../api/dashboardTypes';
 import type { Meta } from '../api/types';
 import BreakdownBars from '../components/dashboard/BreakdownBars';
 import CountCards from '../components/dashboard/CountCards';
+import DashboardCalendar from '../components/dashboard/DashboardCalendar';
+import KoreaMapCard from '../components/dashboard/KoreaMapCard';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
-import ScheduleList from '../components/dashboard/ScheduleList';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
+import { todayKst } from '../utils/time';
 
 interface Result {
   /** 어떤 요청의 결과인지: 다시 시도 횟수와 담당자. 담당자가 바뀌면 이전 결과는 보이지 않는다. */
@@ -25,7 +27,18 @@ interface Result {
   error?: unknown;
 }
 
-const sectionStyle = { display: 'grid', gap: 12, alignContent: 'start' } as const;
+// 흰 카드: 달력·일정·최근 기록을 같은 모양으로 묶는다(연한 테두리, 둥근 모서리).
+const sectionStyle = {
+  display: 'grid',
+  gap: 12,
+  alignContent: 'start',
+  boxSizing: 'border-box',
+  background: colors.bgContainer,
+  border: `1px solid ${colors.borderSecondary}`,
+  borderRadius: 12,
+  padding: spacing.cardPadding,
+} as const;
+const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
 
 export default function DashboardPage() {
   const { setBannerMeta, staffKey, canRecord } = useFrame();
@@ -161,28 +174,37 @@ export default function DashboardPage() {
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: spacing.sectionGap,
+            gap: spacing.cardGap,
           }}
         >
-          <section aria-labelledby="dashboard-schedule-title" style={sectionStyle}>
-            <h2
-              id="dashboard-schedule-title"
-              style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
-            >
-              {dashboardTexts.scheduleTitle}
+          <section
+            aria-labelledby="dashboard-calendar-title"
+            data-testid="dashboard-calendar-section"
+            style={sectionStyle}
+          >
+            <h2 id="dashboard-calendar-title" style={cardTitleStyle}>
+              {dashboardTexts.calendarTitle}
             </h2>
-            <ScheduleList items={data?.schedule ?? []} />
+            <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />
           </section>
-          <section aria-labelledby="dashboard-recent-title" style={sectionStyle}>
-            <h2
-              id="dashboard-recent-title"
-              style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
-            >
-              {dashboardTexts.recentTitle}
+          <section
+            aria-labelledby="dashboard-map-title"
+            data-testid="dashboard-map-section"
+            style={sectionStyle}
+          >
+            <h2 id="dashboard-map-title" style={cardTitleStyle}>
+              {dashboardTexts.mapTitle}
             </h2>
-            <RecentActivityList items={data?.recentActivity ?? []} />
+            <KoreaMapCard />
           </section>
         </div>
+
+        <section aria-labelledby="dashboard-recent-title" style={sectionStyle}>
+          <h2 id="dashboard-recent-title" style={cardTitleStyle}>
+            {dashboardTexts.recentTitle}
+          </h2>
+          <RecentActivityList items={data?.recentActivity ?? []} />
+        </section>
       </div>
     </FiveStates>
   );

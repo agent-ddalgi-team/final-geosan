@@ -37,6 +37,15 @@ const listStyle = {
 } as const;
 
 const sectionStyle = { display: 'grid', gap: 12, alignContent: 'start' } as const;
+// "영업 진행" 구역은 흰 카드 하나로 묶는다.
+const cardSectionStyle = {
+  ...sectionStyle,
+  boxSizing: 'border-box',
+  background: colors.bgContainer,
+  border: `1px solid ${colors.borderSecondary}`,
+  borderRadius: 12,
+  padding: spacing.cardPadding,
+} as const;
 const titleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
 const smallStyle = {
   color: colors.textSecondary,
@@ -69,8 +78,8 @@ function CountCell({ countKey, value, large = false, hint }: CellProps) {
           height: '100%',
           padding: spacing.cardPadding,
           background: colors.bgContainer,
-          border: large ? `2px solid ${colors.text}` : `1px solid ${colors.borderSecondary}`,
-          borderRadius: 8,
+          border: `1px solid ${colors.borderSecondary}`,
+          borderRadius: 12,
           color: colors.text,
           textDecoration: 'none',
         }}
@@ -85,7 +94,7 @@ function CountCell({ countKey, value, large = false, hint }: CellProps) {
         >
           {name}
         </span>
-        <span style={{ fontSize: typography.fontSizeH1, fontWeight: large ? 700 : 600 }}>
+        <span style={{ fontSize: typography.fontSizeH1, fontWeight: 700 }}>
           {value}
           <span style={{ fontSize: typography.fontSizeSecondary, fontWeight: 400 }}>{unit}</span>
         </span>
@@ -174,7 +183,7 @@ export default function CountCards({ counts }: { counts: DashboardCounts }) {
         <section
           aria-labelledby="dashboard-progress-title"
           data-testid="dashboard-section-progress"
-          style={sectionStyle}
+          style={cardSectionStyle}
         >
           <h2 id="dashboard-progress-title" style={titleStyle}>
             {dashboardTexts.progressSectionTitle}{' '}
