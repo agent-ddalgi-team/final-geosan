@@ -33,7 +33,10 @@ app = typer.Typer(
 
 @app.command("source-confirm")
 def source_confirm(
-    source_id: str = typer.Argument(..., help="kicox-factory-csv 또는 kicox-production-api"),
+    source_id: str = typer.Argument(
+        ...,
+        help="kicox-factory-csv, kicox-production-api, factoryon-xlsx, nier-water-csv 중 하나",
+    ),
     staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),
     terms: str | None = typer.Option(None, "--terms", help="운영자가 확인한 소스 약관 주소"),
     on: str | None = typer.Option(None, "--on", help="확인일 YYYY-MM-DD, 기본은 서울 오늘"),
@@ -42,6 +45,17 @@ def source_confirm(
     from geosan.commands.source_confirm import run_source_confirm
 
     raise typer.Exit(code=run_source_confirm(source_id, staff_key=staff_key, terms=terms, on=on))
+
+
+@app.command("source-load")
+def source_load(
+    source_id: str = typer.Argument(..., help="factoryon-xlsx 또는 nier-water-csv"),
+    files: list[Path] = typer.Argument(..., help="불러올 파일. 이름에 기준일 YYYYMMDD가 있어야 함"),
+) -> None:
+    """팩토리온 공장조회·수질 명단을 넣고 목록 회사에 공장 정보·표면처리 표시를 붙입니다."""
+    from geosan.commands.source_load import run_source_load
+
+    raise typer.Exit(code=run_source_load(source_id, files))
 
 
 @app.command("ingest")

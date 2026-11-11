@@ -28,6 +28,7 @@ from geosan.opportunity.candidate_judgments import (
     select_candidates,
 )
 from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.factory_profile import ProfileIndex, apply_to_customer
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.judgment_store import _rows
 from geosan.opportunity.models import (
@@ -134,6 +135,9 @@ def register_candidates(
         is_virtual=batch.is_virtual,
     )
     now = utcnow()
+    # 팩토리온·수질 명단 보조 자료가 있으면 새 회사에도 같은 규칙으로 붙인다(#573).
+    profile_index = ProfileIndex(session)
+    surface_codes = settings.ingestion.ai_pick.surface_treatment_industry_codes
     new_count = skipped_count = merge_count = 0
     # 파일·조회 양쪽에 있는 새 회사는 파일 출처를 우선한다(C5).
     for judgment in sorted(checked, key=lambda item: rows[item.row_id].source_id != SOURCE_ID):
@@ -176,6 +180,8 @@ def register_candidates(
             own_plating_line_source=source,
             **common,
         )
+        if not batch.is_virtual:
+            apply_to_customer(customer, profile_index, surface_codes)
         session.add(customer)
         session.flush()
         opportunity = Opportunity(

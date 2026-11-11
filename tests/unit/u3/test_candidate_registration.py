@@ -388,3 +388,27 @@ def test_existing_18_api_cards_scores_and_ranks_are_preserved(
     assert snapshot(Customer)[:18] == saved_customers
     assert len(rows(Customer)) == len(rows(Opportunity)) == 19
     # 새 회사의 평가 전 기록과 카드 생성은 #427이 담당한다. 이 함수는 평가하지 않는다.
+
+
+@pytest.mark.parametrize("virtual", [False, True])
+def test_new_company_gets_factory_profile_only_for_real_batches(
+    registration_context, tmp_path, virtual
+):
+    """#573: Given 같은 이름·주소의 팩토리온 행 / When 등록 / Then 실제 회차 회사에만 붙는다."""
+    from tests.unit.u3 import test_factory_profile as profile
+
+    with session_scope() as session:
+        # 회차와 공장 행은 같은 자료 묶음이어야 등록된다.
+        session.get(IngestBatch, BATCH).is_virtual = virtual
+        session.get(SourceFactoryRow, "row-a").is_virtual = virtual
+    profile._store(
+        tmp_path,
+        [profile.row(**{"회사명": "가상볼트", "공장주소(도로명)": "충남 아산시 가상길 1"})],
+    )
+    assert register() == RegistrationResult(1, 0, 0)
+    (customer,) = rows(Customer)
+    if virtual:
+        assert customer.factory_profile_date is None and not customer.own_plating_line_suspected
+    else:
+        assert customer.factory_employee_count == 12 and customer.factory_scale == "소기업"
+        assert customer.own_plating_line_source == "INDUSTRY_CODE"
