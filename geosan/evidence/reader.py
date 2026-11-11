@@ -210,6 +210,14 @@ def _same_site(url: str, other: str) -> bool:
     return bool(host(url)) and host(url) == host(other)
 
 
+def _linked_url(base_url: str, href: str) -> str | None:
+    """읽을 수 없는 링크는 건너뛴다. 주소 해석 실패도 안쪽 페이지 실패다(#557)."""
+    try:
+        return validate_url(urljoin(base_url, href))
+    except (AppError, ValueError):
+        return None
+
+
 class _Text(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -324,10 +332,10 @@ def fetch_more(
     for href, label in first.links:
         if len(pages) >= extra_pages or time.monotonic() >= extra_deadline:
             break
-        target = urljoin(first.url, href).split("#", 1)[0]
-        parts = urlsplit(target)
-        if parts.scheme not in ("http", "https") or not _same_site(first.url, target):
+        target = _linked_url(first.url, href)
+        if target is None or not _same_site(first.url, target):
             continue
+        parts = urlsplit(target)
         if _page_key(target) in seen:
             continue
         place = unquote(f"{parts.path}?{parts.query}")
@@ -335,7 +343,7 @@ def fetch_more(
             continue
         seen.add(_page_key(target))
         try:
-            page = _fetch(target, extra_deadline)
+            page = _fetch(target, extra_deadline, site_url=first.url)
         except AppError as error:
             if error.kind == "TIMEOUT":
                 break
@@ -353,9 +361,13 @@ def _page_key(url: str) -> str:
     return f"{host}{parts.path.rstrip('/') or '/'}?{parts.query}"
 
 
-def _fetch(url: str, deadline: float) -> Page:
+def _fetch(url: str, deadline: float, *, site_url: str | None = None) -> Page:
     url = validate_url(url)
     for _ in range(6):
+        # 첫 홈페이지의 주소 이동은 허용하되, 안쪽 페이지·프레임은 원래 사이트 안에서만 읽는다.
+        # 다음 사이트의 robots.txt를 요청하기 전에도 이 경계를 확인한다(#556·#557).
+        if site_url is not None and not _same_site(site_url, url):
+            break
         parts = urlsplit(url)
         robots_url = urlunsplit((parts.scheme, parts.netloc, "/robots.txt", "", ""))
         status, robots = _read_robots(robots_url, deadline)
@@ -379,7 +391,10 @@ def _fetch(url: str, deadline: float) -> Page:
             )
         status, headers, body = _read(url, deadline)
         if status in (301, 302, 303, 307, 308) and headers.get("location"):
-            url = validate_url(urljoin(url, headers["location"]))
+            target = _linked_url(url, headers["location"])
+            if target is None:
+                break
+            url = target
             continue
         if status != 200 or not any(
             kind in headers.get("content-type", "") for kind in ("text/html", "text/plain")
@@ -406,19 +421,15 @@ def _fetch(url: str, deadline: float) -> Page:
             return Page(url, text, tuple(parser_html.links))
         # 프레임 화면은 첫 화면에 글이 없다.
         # 같은 사이트의 첫 프레임 페이지를 robots 검사부터 다시 읽는다.
-        frame = next(
-            (
-                urljoin(url, src)
-                for src in parser_html.frames
-                if _same_site(url, urljoin(url, src)) and urljoin(url, src).split("#")[0] != url
-            ),
-            None,
-        )
-        if frame:
-            try:
-                url = validate_url(frame)
-            except AppError:
+        frame = None
+        for src in parser_html.frames:
+            target = _linked_url(url, src)
+            if target is not None and _same_site(url, target) and target != url:
+                frame = target
                 break
+        if frame:
+            site_url = site_url or url
+            url = frame
             continue
         break
     raise AppError(
