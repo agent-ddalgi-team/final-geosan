@@ -192,6 +192,8 @@ def review_items_for_detail(
         source = {
             "AI": ReviewItemSource.AI,
             "INDUSTRY_NAME": ReviewItemSource.RULE,
+            "INDUSTRY_CODE": ReviewItemSource.RULE,
+            "WATER_LIST": ReviewItemSource.RULE,
         }.get(customer.own_plating_line_source)
         if source is None:
             raise RunFailedError("표면처리 확인 줄의 출처를 확인해 주세요.")

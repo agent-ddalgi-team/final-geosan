@@ -85,8 +85,17 @@ class AiPickSettings(FileModel):
     rows_per_call: int = Field(default=20, ge=1, strict=True)
     prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
     surface_treatment_industry_names: list[str] = Field(default_factory=list)
+    # 팩토리온 업종번호(표준산업분류 5자리)가 여기 있으면 표면처리 표시(#573). 값은 PM이 정한다.
+    surface_treatment_industry_codes: list[str] = Field(default_factory=list)
     model: str | None = Field(default=None, min_length=1)
     exclude_keywords: list[str] = Field(default_factory=lambda: list(DEFAULT_PICK_EXCLUDE_KEYWORDS))
+
+    @field_validator("surface_treatment_industry_codes")
+    @classmethod
+    def _industry_codes(cls, value: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"[0-9]{5}", code) for code in value):
+            raise ValueError("업종번호는 숫자 5자리로 적어 주세요. 예: 25922")
+        return value
 
 
 class CandidateWebSearchSettings(FileModel):

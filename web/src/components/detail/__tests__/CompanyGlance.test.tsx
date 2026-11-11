@@ -3,7 +3,7 @@
 import { render, screen, within } from '@testing-library/react';
 import CompanyGlance, { pickGlanceLink } from '../CompanyGlance';
 import type { DetailHeader, EvidenceView } from '../../../api/types';
-import { companyGlance } from '../../../labels/ko';
+import { companyGlance, factoryProfileLabels } from '../../../labels/ko';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
 
 const base = {
@@ -113,5 +113,29 @@ describe('이 회사 한눈에(#563)', () => {
     );
     expect(screen.queryByTestId('glance-why')).not.toBeInTheDocument();
     expect(screen.getByTestId('company-summary-line')).not.toHaveTextContent('AI 제안');
+  });
+  it('공장 정보가 붙었으면 원자재·종업원 수(추정)·규모와 자료 기준일을 보인다(#573)', () => {
+    render(
+      <CompanyGlance
+        header={{
+          ...base,
+          factoryProfile: {
+            rawMaterials: '철선',
+            employeeCount: 76,
+            scale: '중기업',
+            fileDate: '2026-11-11',
+          },
+        }}
+      />,
+    );
+    const row = within(screen.getByTestId('glance-factory-profile'));
+    expect(row.getByText(factoryProfileLabels.row)).toBeInTheDocument();
+    expect(row.getByText('원자재 철선 · 종업원 약 76명(추정) · 중기업')).toBeInTheDocument();
+    expect(row.getByText('(팩토리온 11/11 기준)')).toBeInTheDocument();
+  });
+
+  it('공장 정보가 없으면 줄을 그리지 않는다(#573)', () => {
+    render(<CompanyGlance header={{ ...base, factoryProfile: null }} />);
+    expect(screen.queryByTestId('glance-factory-profile')).not.toBeInTheDocument();
   });
 });

@@ -20,6 +20,8 @@ dependencies = [
   "typer>=0.12",
   # 홈페이지 읽기의 인증서 확인 목록. 운영체제 목록이 오래되면 새 인증 기관을 몰라 읽기가 실패한다(#556).
   "certifi>=2024.2",
+  # 팩토리온 공장조회 엑셀(.xlsx) 읽기(#573).
+  "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
