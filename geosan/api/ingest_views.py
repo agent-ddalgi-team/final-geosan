@@ -84,3 +84,10 @@ def candidate_order(
             original.opp_id,
         )
     return (0, original.batch_id != full_batch_id, original.original_rank or 0, original.opp_id)
+
+
+def recent_order(customer: Customer) -> tuple:
+    """최근 들어온 순(#516): 들어온 시각이 최신인 회사가 앞, 시각이 없는 사례 파일 회사는 뒤."""
+    if customer.ingested_at is None:
+        return (1, 0.0)
+    return (0, -customer.ingested_at.timestamp())

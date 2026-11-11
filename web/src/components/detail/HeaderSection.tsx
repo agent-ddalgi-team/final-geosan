@@ -1,11 +1,12 @@
 // 상세 머리(S2): 목록으로 / 분류·점수·가상 표시·[관심] 단추 / 고객 관계·대응·담당. 이름(h1)은 공통 틀이 보인다.
 import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import type { BookmarkRecord, ContactCount, DetailHeader } from '../../api/types';
+import type { BookmarkRecord, ContactCount, DetailHeader, EvidenceView } from '../../api/types';
 import BookmarkButton from '../common/BookmarkButton';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
+import CompanyGlance from './CompanyGlance';
 import CompanySummary, { HomepageBand } from './CompanySummary';
 import HomepageControls from './HomepageControls';
 import RelationControl from './RelationControl';
@@ -16,7 +17,6 @@ import {
   coreEvidenceRecheckLabel,
   detailHeader,
   frame,
-  homepageLinkLabel,
   labelFor,
   mapLinkLabels,
   ownPlatingLine,
@@ -41,6 +41,8 @@ export interface HeaderSectionProps {
   /** 담당자 키를 이름으로 바꾼 값. 모르면 담당 줄을 보이지 않는다. */
   ownerName?: string | null;
   classificationOverrides?: Record<string, string>;
+  /** 근거 목록. 공식 홈페이지가 없을 때 "근거가 나온 페이지" 링크를 고르는 데 쓴다(#563). */
+  evidence?: EvidenceView[];
 }
 
 export default function HeaderSection({
@@ -53,6 +55,7 @@ export default function HeaderSection({
   contactCount,
   ownerName,
   classificationOverrides,
+  evidence,
 }: HeaderSectionProps) {
   const navigate = useNavigate();
   const classification = labelFor(
@@ -85,6 +88,14 @@ export default function HeaderSection({
           <span aria-hidden="true">‹</span> {frame.backToList}
         </Button>
       </div>
+      <CompanyGlance header={header} evidence={evidence} />
+      {/* 홈페이지 [맞음]·[고치기]·[다시 조사]는 한눈에 칸의 홈페이지 줄 바로 아래에 둔다(#563). */}
+      <HomepageControls
+        oppId={oppId}
+        homepageUrl={homepage}
+        status={header.homepageStatus}
+        onReload={onRelationChanged}
+      />
       {mapLinks ? (
         <div
           data-testid="detail-map-links"
@@ -111,24 +122,6 @@ export default function HeaderSection({
           </a>
         </div>
       ) : null}
-      {homepage ? (
-        <div data-testid="detail-homepage">
-          <a
-            href={homepage}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: 'underline' }}
-          >
-            {homepageLinkLabel} ↗ {homepage}
-          </a>
-        </div>
-      ) : null}
-      <HomepageControls
-        oppId={oppId}
-        homepageUrl={homepage}
-        status={header.homepageStatus}
-        onReload={onRelationChanged}
-      />
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
         <span
           role="group"
@@ -146,6 +139,7 @@ export default function HeaderSection({
           scoreDisplay={header.scoreDisplay}
           scoreState={header.scoreState}
           relationStatus={header.relationStatus}
+          classificationCode={header.classificationCode}
           testId="detail-score"
         />
         {header.isVirtual ? (
@@ -196,7 +190,13 @@ export default function HeaderSection({
           </span>
         ) : null}
       </div>
-      <CompanySummary oppId={oppId} header={header} onReload={onRelationChanged} />
+      {/* 한 줄 소개는 맨 위 "이 회사 한눈에"로 옮겼다(#563). 여기는 조사일·대표번호·특징. */}
+      <CompanySummary
+        oppId={oppId}
+        header={header}
+        onReload={onRelationChanged}
+        showSummaryLine={false}
+      />
     </div>
   );
 }

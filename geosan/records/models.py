@@ -66,6 +66,8 @@ class Outcome(CommonColumns, Base):
     reason: Mapped[str | None] = mapped_column(Text)
     # #250 PM 계약 C6: 이전 기록은 그대로 두고 거절 행에만 코드값을 더한다.
     lost_reason_code: Mapped[str | None] = mapped_column(String(32))
+    # #531·C6: 접촉 때 AI 판단이 맞았나. 2차 되먹임 재료. 옛 기록·안 고른 기록은 비워 둔다.
+    judgment_check: Mapped[str | None] = mapped_column(String(16))
     memo: Mapped[str | None] = mapped_column(Text)
     action_id: Mapped[str | None] = mapped_column(String(40))
     method: Mapped[str | None] = mapped_column(String(16))

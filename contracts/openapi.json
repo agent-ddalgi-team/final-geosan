@@ -442,7 +442,7 @@
         "type": "object"
       },
       "DashboardCounts": {
-        "description": "관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>\n(BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 여덟 칸의 합은 BOOKMARKED와 같다.",
+        "description": "관심으로 켜 둔 기회만 센다(#356). 누르면 /opportunities?filter=<키>\n(BOOKMARKED는 ?bookmarked=true). 일정 칸을 뺀 일곱 칸의 합은 BOOKMARKED와 같다.\n검토 대상 제외로 저장한 회사는 관심 기업이 아니라서 칸이 없다(#536).",
         "properties": {
           "BOOKMARKED": {
             "title": "Bookmarked",
@@ -462,10 +462,6 @@
           },
           "NOT_CONTACTED": {
             "title": "Not Contacted",
-            "type": "integer"
-          },
-          "NOT_TARGET": {
-            "title": "Not Target",
             "type": "integer"
           },
           "NO_OPINION": {
@@ -489,7 +485,6 @@
           "BOOKMARKED",
           "NO_OPINION",
           "NEED_CHECK",
-          "NOT_TARGET",
           "NOT_CONTACTED",
           "IN_CONTACT",
           "QUOTE_SAMPLE",
@@ -1057,6 +1052,21 @@
         "title": "Envelope[IngestAccepted]",
         "type": "object"
       },
+      "Envelope_IngestPreview_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IngestPreview"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[IngestPreview]",
+        "type": "object"
+      },
       "Envelope_MainPhoneConfirmResponse_": {
         "properties": {
           "data": {
@@ -1275,6 +1285,33 @@
         ],
         "title": "FilterState",
         "type": "string"
+      },
+      "FitCounts": {
+        "description": "적합도별 맞는 공장 수. 칸 이름은 코드값 그대로(HIGH·MEDIUM·LOW).",
+        "properties": {
+          "HIGH": {
+            "minimum": 0.0,
+            "title": "High",
+            "type": "integer"
+          },
+          "LOW": {
+            "minimum": 0.0,
+            "title": "Low",
+            "type": "integer"
+          },
+          "MEDIUM": {
+            "minimum": 0.0,
+            "title": "Medium",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ],
+        "title": "FitCounts",
+        "type": "object"
       },
       "FitLevel": {
         "description": "AI가 본 공정 적합도. 점수 전 회사를 줄 세우는 데만 쓴다 (C0, 2026-11-05 PM 결정 #313).",
@@ -1505,6 +1542,60 @@
         "title": "IngestOptions",
         "type": "object"
       },
+      "IngestPreview": {
+        "description": "C1 GET /ingest/preview의 숫자 칸(#549 1단계). 예상 금액·잠금 칸은 2단계에서 더한다.",
+        "properties": {
+          "addCount": {
+            "description": "지금 누르면 더할 최대 곳 수",
+            "minimum": 0.0,
+            "title": "Addcount",
+            "type": "integer"
+          },
+          "addableCount": {
+            "description": "아직 안 들어온 곳",
+            "minimum": 0.0,
+            "title": "Addablecount",
+            "type": "integer"
+          },
+          "addableHighCount": {
+            "minimum": 0.0,
+            "title": "Addablehighcount",
+            "type": "integer"
+          },
+          "fitCounts": {
+            "$ref": "#/components/schemas/FitCounts"
+          },
+          "matchedCount": {
+            "description": "맞는 공장 수(제조업 + 고른 공정·산업)",
+            "minimum": 0.0,
+            "title": "Matchedcount",
+            "type": "integer"
+          },
+          "registeredCount": {
+            "description": "그중 이미 영업 후보로 들어온 곳",
+            "minimum": 0.0,
+            "title": "Registeredcount",
+            "type": "integer"
+          },
+          "unjudgedCount": {
+            "description": "고른 지역의 공장 중 판단이 없거나 낡은 곳",
+            "minimum": 0.0,
+            "title": "Unjudgedcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "matchedCount",
+          "fitCounts",
+          "registeredCount",
+          "addableCount",
+          "addableHighCount",
+          "unjudgedCount",
+          "addCount"
+        ],
+        "title": "IngestPreview",
+        "type": "object"
+      },
       "IngestProcessOption": {
         "properties": {
           "code": {
@@ -1572,6 +1663,16 @@
         ],
         "title": "IngestRequest",
         "type": "object"
+      },
+      "JudgmentCheck": {
+        "description": "접촉해 보니 AI 판단이 맞았나(#531). 영업 성과와 별개다. 외주처가 있어도 사실이면 맞음.",
+        "enum": [
+          "MATCHED",
+          "MISMATCHED",
+          "UNKNOWN"
+        ],
+        "title": "JudgmentCheck",
+        "type": "string"
       },
       "LatestIngest": {
         "description": "마지막 찾기 회차 요약 (C1 `meta.latestIngest`, #221·#313·#323).\n\n목록 머리 \"훑어본 ○곳 · 판단 완료 ○곳 · 고른 ○곳 · 조사 ○/○\"에 쓴다. 칸에 기본값을 두지 않아\n창구가 회차 행의 값을 빠짐없이 채워야 한다(안 채운 건수가 0으로 보이지 않게).",
@@ -2650,6 +2751,16 @@
             ],
             "title": "Expectedversion"
           },
+          "judgmentCheck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JudgmentCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "lostReasonCode": {
             "anyOf": [
               {
@@ -3361,6 +3472,18 @@
             "minLength": 1,
             "title": "Evalid",
             "type": "string"
+          },
+          "stepLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI 점수 제안의 고칠 단계. 생략하면 그대로 확정(#497)",
+            "title": "Steplabel"
           }
         },
         "required": [
@@ -3472,6 +3595,21 @@
           "source": {
             "$ref": "#/components/schemas/ReviewItemSource"
           },
+          "stepOptions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI 점수 제안의 허용 단계 이름. 다른 검토사항은 null(#497)",
+            "title": "Stepoptions"
+          },
           "targetLabel": {
             "anyOf": [
               {
@@ -3506,6 +3644,8 @@
           "QUESTION",
           "DATA_NOT_FOUND",
           "DATA_INSUFFICIENT",
+          "ITEM_INPUT_PROPOSAL",
+          "PROCESS_LINK_PROPOSAL",
           "OWN_PLATING_LINE_SUSPECTED"
         ],
         "title": "ReviewItemKind",
@@ -3958,6 +4098,76 @@
         "summary": "Start Ingest"
       }
     },
+    "/api/v1/ingest/preview": {
+      "get": {
+        "description": "고른 조건의 맞는 공장 수를 저장된 판단으로만 센다. 외부 호출·저장 없음, 키 없이 읽음.",
+        "operationId": "ingest_preview_api_v1_ingest_preview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "processCodes",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Processcodes",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "regions",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Regions",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industries",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Industries",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_IngestPreview_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Preview"
+      }
+    },
     "/api/v1/opportunities": {
       "get": {
         "operationId": "list_opportunities_api_v1_opportunities_get",
@@ -4135,6 +4345,16 @@
                 }
               ],
               "title": "Batch"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "title": "Sort",
+              "type": "string"
             }
           }
         ],

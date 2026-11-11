@@ -42,13 +42,51 @@ class ComplexListSettings(FileModel):
     extra_names: list[str] = Field(default_factory=list)
 
 
+DEFAULT_PICK_EXCLUDE_KEYWORDS = (
+    "운송",
+    "물류",
+    "택배",
+    "창고업",
+    "도매",
+    "소매",
+    "무역",
+    "소프트웨어",
+    "정보서비스",
+    "통신서비스",
+    "식품",
+    "음료",
+    "제과",
+    "제빵",
+    "섬유",
+    "의류",
+    "봉제",
+    "출판",
+    "광고",
+    "교육",
+    "컨설팅",
+    "부동산",
+    "건설업",
+    "토목",
+    "시공",
+    "음식점",
+    "숙박",
+)
+
+
 class AiPickSettings(FileModel):
-    """C7: #425·#430 PM 승인. 100행 묶음은 pick-v1 표본 계획의 기본값이다."""
+    """C7: #425·#430 PM 승인. 묶음 기본값은 20행(#491, 100행은 60초 한도를 넘김).
+
+    model: 후보 고르기에만 쓸 모델(llm.allowedModels 안). 비우면 llm.model.
+    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작)가 없으면
+    AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감). 기준 버전에 포함된다.
+    """
 
     enabled: bool = Field(default=False, strict=True)
-    rows_per_call: int = Field(default=100, ge=1, strict=True)
+    rows_per_call: int = Field(default=20, ge=1, strict=True)
     prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
     surface_treatment_industry_names: list[str] = Field(default_factory=list)
+    model: str | None = Field(default=None, min_length=1)
+    exclude_keywords: list[str] = Field(default_factory=lambda: list(DEFAULT_PICK_EXCLUDE_KEYWORDS))
 
 
 class CandidateWebSearchSettings(FileModel):
@@ -117,6 +155,38 @@ class HomepageDiscoverySettings(FileModel):
     min_confidence: float = Field(default=0.7, ge=0, le=1, strict=True, allow_inf_nan=False)
     auto_research: bool = Field(default=False, strict=True)
     daily_call_limit: int = Field(default=200, ge=0, strict=True)
+    # 계약 C7 #557: 첫 화면 말고 더 읽는 같은 사이트 페이지. 기본값은 PM 승인값(2026-11-11)이며
+    # 이 키가 없는 예전 설정 파일도 읽히게 둔다. 0이면 첫 화면만 읽는다.
+    extra_pages: int = Field(default=3, ge=0, le=10, strict=True)
+    extra_page_hints: list[str] = Field(
+        default_factory=lambda: [
+            "회사소개",
+            "회사 소개",
+            "인사말",
+            "연혁",
+            "제품",
+            "사업",
+            "설비",
+            "인증",
+            "실적",
+            "납품",
+            "about",
+            "company",
+            "product",
+            "business",
+            "history",
+            "facility",
+        ]
+    )
+    extra_page_max_chars: int = Field(default=6000, ge=500, strict=True)
+
+    @field_validator("extra_page_hints")
+    @classmethod
+    def _hints_are_words(cls, value: list[str]) -> list[str]:
+        cleaned = [hint.strip() for hint in value]
+        if any(not hint for hint in cleaned):
+            raise ValueError("빈 말은 넣을 수 없습니다.")
+        return cleaned
 
 
 class BrandSettings(FileModel):
@@ -188,6 +258,19 @@ class AppSettings(FileModel):
     def is_recording_staff(self, key: str | None) -> bool:
         """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3)."""
         return bool(key) and key in self.staff_keys() and key != VIEWER_STAFF_KEY
+
+    @model_validator(mode="after")
+    def check_pick_model(self) -> AppSettings:
+        pick_model = self.ingestion.ai_pick.model
+        if (
+            pick_model is not None
+            and self.llm.allowed_models
+            and pick_model not in self.llm.allowed_models
+        ):
+            raise ValueError(
+                "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
 
 
 @dataclass

@@ -23,16 +23,19 @@ activeDatasetKind: VIRTUAL_REVIEWED
 
 # 수집 범위 (U3에서 쓴다, FR9.1 기본값). U1은 읽기만 한다.
 ingestion:
-  regions: ["충남", "대전", "세종"]
+  # "충남"은 충남 전체, 시·군을 고르면 그 시·군만 AI가 판단한다(PM 결정 2026-11-09, #521).
+  regions: ["충남", "천안시", "아산시", "당진시", "서산시", "공주시", "보령시", "논산시", "계룡시", "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군", "대전", "세종"]
   productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
   maxCandidates: 50
   # 가상 검사에서도 실제 파일 경로를 지정한다. 외부 AI는 기본으로 꺼져 있다.
   factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
   aiPick:
     enabled: false
-    rowsPerCall: 100
+    rowsPerCall: 20  # 100행은 60초 한도를 넘김(PM #491, 2026-11-09)
     promptFile: examples/prompts/candidate-pick.md
     surfaceTreatmentIndustryNames: []  # 업종명 규칙의 값은 PM이 정한 뒤 넣는다.
+    model: null  # 후보 고르기만 다른 모델로(예: gpt-6-luna). 비우면 llm.model. 모델 비교용(PM #491)
+    excludeKeywords: [운송, 물류, 택배, 창고업, 도매, 소매, 무역, 소프트웨어, 정보서비스, 통신서비스, 식품, 음료, 제과, 제빵, 섬유, 의류, 봉제, 출판, 광고, 교육, 컨설팅, 부동산, 건설업, 토목, 시공, 음식점, 숙박]  # 제조 낌새(제조·생산·가공·부품·제작) 없이 이 말만 있으면 AI에 안 보냄
   complexList:
     _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 15일(#405, 처음 7일 #393). 실제 조회·보관 실행은 후속 연결."
     enabled: false
@@ -66,8 +69,8 @@ accessProtection:
 
 listFilters:
   regionPresets:
-    - label: "천안 인근"
-      cities: ["천안시", "아산시"]
+    - label: "충남"  # PM 결정 2026-11-09(#517): "천안 인근"은 모호해 충남 시·군 전체 묶음으로. 시·군 선택지는 자동으로 따로 보인다.
+      cities: ["천안시", "아산시", "당진시", "서산시", "공주시", "보령시", "논산시", "계룡시", "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군"]
 
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 가상 검사에서도 기본은 꺼 둔다.
 candidateWebSearch:

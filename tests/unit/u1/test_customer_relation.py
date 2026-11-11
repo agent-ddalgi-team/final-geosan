@@ -246,7 +246,7 @@ def test_migration_preserves_old_customer_and_starts_without_history(relation_en
     client, opp_id, _ = relation_env
     before = detail(client, opp_id)
     assert downgrade(tmp_db, "tg_001") == ["tg_001"]
-    assert upgrade_to_head(tmp_db) == ["src_003"]
+    assert upgrade_to_head(tmp_db) == ["rec_011"]
     after = detail(client, opp_id)
     assert after == before
     assert after["header"]["relationConfirmedBy"] is None
@@ -269,12 +269,13 @@ def test_relation_migration_preserves_existing_lost_reason_rows(relation_env, tm
     assert before_detail["records"]["outcome"]["lostReasonCode"] == "PRICE"
     assert downgrade(tmp_db, "rec_007") == ["rec_007"]
     with sqlite3.connect(tmp_db) as connection:
-        # rec_009를 내리면 마지막 eval_id 열만 빠진다. 기존 모든 열은 그대로 비교한다.
+        # rec_009·rec_010을 내리면 마지막 두 열(eval_id·judgment_check)만 빠진다.
+        # 기존 모든 열은 그대로 비교한다.
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == [
-            row[:-1] for row in before_rows
+            row[:-2] for row in before_rows
         ]
-    assert upgrade_to_head(tmp_db) == ["src_003"]
-    assert upgrade_to_head(tmp_db) == ["src_003"]
+    assert upgrade_to_head(tmp_db) == ["rec_011"]
+    assert upgrade_to_head(tmp_db) == ["rec_011"]
     with sqlite3.connect(tmp_db) as connection:
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
             before_rows
