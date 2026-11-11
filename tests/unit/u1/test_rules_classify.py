@@ -587,3 +587,36 @@ def test_blocker_ignores_preferred_and_later_requirements():
     result = evaluate(data)
     assert result.display.blocker_text == "없음 — 지금 단계 필수 요구 통과"
     assert result.display.blocks_approval is False
+
+
+def test_relation_check_ignore_drops_relation_from_blocker_text():
+    """Given IGNORE와 거래 미확인·소개서, When 평가, Then 막는 조건에 거래 여부가 없다 (#567)."""
+    data = rule_engine_input()
+    data.dataset_kind = DatasetKind.BROCHURE
+    data.opportunity.relation_status = RelationStatus.UNCONFIRMED
+    data.rule_config.relation_check = "IGNORE"
+    for process in data.capability.processes:
+        process.dataset_kind = DatasetKind.BROCHURE
+        process.name = "관련 없는 공정"
+    process = next(p for p in data.capability.processes if p.code == "ANODIZING")
+    process.name = "아노다이징(양극산화피막)"
+    data.requirements[0].needed_stage = NeededStage.UNKNOWN
+    result = evaluate(data)
+    assert "거래" not in result.display.blocker_text
+    assert (
+        result.display.blocker_text
+        == "거산의 아노다이징(양극산화피막) 공정과 ISO 9001이 아직 확인 전"
+    )
+
+
+def test_relation_check_ignore_lets_unconfirmed_company_reach_normal_classification():
+    """Given IGNORE와 거래 미확인 A정밀, When 평가, Then 필터 대기가 아니고 점수는 같다 (#567)."""
+    data = rule_engine_input()
+    data.opportunity.relation_status = RelationStatus.UNCONFIRMED
+    blocked = evaluate(data)
+    data.rule_config.relation_check = "IGNORE"
+    ignored = evaluate(data)
+    assert blocked.classification_code == "FILTER_PENDING"
+    assert ignored.classification_code != "FILTER_PENDING"
+    assert "거래" not in ignored.display.blocker_text
+    assert (ignored.totals.E, ignored.totals.P) == (blocked.totals.E, blocked.totals.P)
