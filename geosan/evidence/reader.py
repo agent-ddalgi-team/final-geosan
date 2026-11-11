@@ -14,6 +14,8 @@ from threading import Timer
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.robotparser import RobotFileParser
 
+import certifi
+
 from geosan.config.errors import AppError
 from geosan.evidence.contacts import scrub_contacts
 
@@ -97,7 +99,11 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
     timer = None
     try:
         connection.sock = (
-            ssl.create_default_context().wrap_socket(raw, server_hostname=host)
+            # 운영체제 인증서 목록이 오래되면 새 인증 기관을 몰라 실패한다(#556).
+            # 확인은 끄지 않고 목록만 certifi로 맞춘다.
+            ssl.create_default_context(cafile=certifi.where()).wrap_socket(
+                raw, server_hostname=host
+            )
             if parts.scheme == "https"
             else raw
         )
@@ -129,11 +135,7 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
         body = b"".join(chunks)
         if response.length:
             raise http.client.IncompleteRead(body)
-        charset = response.headers.get_content_charset()
-        if not charset:
-            match = re.search(rb"charset\s*=\s*[\"']?([\w-]+)", body[:4096], re.I)
-            charset = match[1].decode("ascii") if match else "utf-8"
-        return response.status, headers, body.decode(charset, errors="strict")
+        return response.status, headers, _decode(response, body)
     finally:
         if timer:
             timer.cancel()
@@ -160,6 +162,51 @@ def _read(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
     )
 
 
+def _read_robots(url: str, deadline: float) -> tuple[int, str]:
+    """robots.txt를 읽는다. 표준(RFC 9309)대로 이동은 5번까지 따라간다(#556).
+
+    http→https 이동이나 "없는 페이지" 화면으로 보내는 호스팅이 흔하다. 예전에는 이동을 금지로 읽어
+    막지 않은 회사도 "자동으로 읽을 수 없는 홈페이지"가 됐다. 끝까지 이동하면 읽지 않는다.
+    """
+    for _ in range(6):
+        status, headers, body = _read(url, deadline)
+        if status not in (301, 302, 303, 307, 308) or not headers.get("location"):
+            # "없는 페이지" 화면이 200으로 와도 규칙 줄이 없으니 허용으로 읽힌다.
+            # 형식과 상관없이 규칙은 그대로 읽는다.
+            return status, body
+        url = validate_url(urljoin(url, headers["location"]))
+    return 508, ""
+
+
+def _decode(response: http.client.HTTPResponse, body: bytes) -> str:
+    """본문 글자를 푼다. 이동 응답의 본문은 쓰지 않으므로 풀지 않는다(#556)."""
+    if 300 <= response.status < 400:
+        return ""
+    charset = response.headers.get_content_charset()
+    if not charset:
+        match = re.search(rb"charset\s*=\s*[\"']?([\w-]+)", body[:4096], re.I)
+        charset = match[1].decode("ascii") if match else None
+    # EUC-KR로 적힌 국내 홈페이지에는 EUC-KR에 없는 글자가 섞이는 일이 흔하다.
+    # 그래서 그 확장(CP949)으로 읽는다.
+    if charset and charset.lower().replace("_", "-") in ("euc-kr", "ks-c-5601-1987", "ksc5601"):
+        charset = "cp949"
+    if charset:
+        return body.decode(charset, errors="strict")
+    try:
+        return body.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        # 글자 방식을 적지 않은 국내 홈페이지. 이것도 아니면 읽기 실패로 안내한다.
+        return body.decode("cp949", errors="strict")
+
+
+def _same_site(url: str, other: str) -> bool:
+    def host(value: str) -> str:
+        name = (urlsplit(value).hostname or "").lower()
+        return name[4:] if name.startswith("www.") else name
+
+    return bool(host(url)) and host(url) == host(other)
+
+
 class _Text(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -167,6 +214,8 @@ class _Text(HTMLParser):
         self.skip = 0
         self.parts: list[str] = []
         self.denied = False
+        # 본문이 비어 있는 프레임 화면(옛날 홈페이지)에서 따라갈 안쪽 페이지 주소(#556).
+        self.frames: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         # </head>가 생략돼도 실제 본문은 읽되, 숨김 영역 안의 <body>는 제외한다.
@@ -178,6 +227,8 @@ class _Text(HTMLParser):
         if tag in ("p", "div", "br", "li", "footer", "header"):
             self.parts.append("\n")
         attrs = dict(attrs)
+        if tag in ("frame", "iframe") and (attrs.get("src") or "").strip():
+            self.frames.append(attrs["src"].strip())
         if tag == "meta" and attrs.get("name", "").lower() in ("robots", "geosanresearch"):
             self.denied |= bool(_DENIAL.search(attrs.get("content", "")))
 
@@ -206,7 +257,7 @@ def fetch(url: str, deadline: float) -> Page:
     for _ in range(6):
         parts = urlsplit(url)
         robots_url = urlunsplit((parts.scheme, parts.netloc, "/robots.txt", "", ""))
-        status, _, robots = _read(robots_url, deadline)
+        status, robots = _read_robots(robots_url, deadline)
         parser = RobotFileParser()
         parser.parse(robots.splitlines() if status == 200 else [])
         if status not in (200, 404, 410) or (status == 200 and not parser.can_fetch(AGENT, url)):
@@ -251,6 +302,22 @@ def fetch(url: str, deadline: float) -> Page:
             )
         if text:
             return Page(url, text)
+        # 프레임 화면은 첫 화면에 글이 없다.
+        # 같은 사이트의 첫 프레임 페이지를 robots 검사부터 다시 읽는다.
+        frame = next(
+            (
+                urljoin(url, src)
+                for src in parser_html.frames
+                if _same_site(url, urljoin(url, src)) and urljoin(url, src).split("#")[0] != url
+            ),
+            None,
+        )
+        if frame:
+            try:
+                url = validate_url(frame)
+            except AppError:
+                break
+            continue
         break
     raise AppError(
         "홈페이지 본문을 읽을 수 없습니다.",
