@@ -506,6 +506,27 @@ export const candidateSearch = {
 } as const;
 
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
+/**
+ * 상세 맨 위 "이 회사 한눈에"(#563): ① 홈페이지 ② 한두 줄 소개 ③ 왜 이 회사인지·적합도.
+ * 모두 이미 저장된 값이라 새 AI 호출이 없다. 값이 없으면 그다음 근거로 대신한다.
+ */
+export const companyGlance = {
+  title: '이 회사 한눈에',
+  homepage: '홈페이지',
+  /** 공식 홈페이지가 없을 때 대신 보이는 링크 이름. */
+  searchPage: '검색에서 찾은 페이지',
+  evidencePage: '근거가 나온 페이지',
+  noHomepage: '홈페이지를 찾지 못했습니다',
+  needsConfirm: '확인 필요',
+  intro: '소개',
+  /** 조사한 한 줄 소개가 없을 때: 공장 자료의 생산품·업종으로 만든 줄. */
+  factoryBasis: '공장 자료 기준',
+  produces: (item: string) => `${item} 생산`,
+  why: '왜 이 회사',
+  aiJudgment: 'AI 판단',
+  fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
+} as const;
+
 export const companySummary = {
   title: '회사 소개',
   /** "조사 11/5 (3일 전)" */
