@@ -355,11 +355,18 @@ def store_water(session: Session, rows: Sequence[WaterRow], file_date: date) -> 
 class ProfileIndex:
     """저장된 보조 자료를 한 번 읽어 회사마다 붙일 행을 찾는다(C5 "회사 붙이기")."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, names: Iterable[str] | None = None) -> None:
+        """names를 주면 그 회사들의 팩토리온 행만 읽고 수질 명단은 읽지 않는다(후보 판단, #570)."""
         self.by_name: dict[str, list[FactoryProfile]] = defaultdict(list)
-        for row in session.scalars(select(FactoryProfile)):
+        query = select(FactoryProfile)
+        if names is not None:
+            keys = sorted({company_key(name) for name in names})
+            query = query.where(FactoryProfile.normalized_name.in_(keys))
+        for row in session.scalars(query):
             self.by_name[row.normalized_name].append(row)
-        self.water: list[WaterSite] = list(session.scalars(select(WaterSite)))
+        self.water: list[WaterSite] = (
+            list(session.scalars(select(WaterSite))) if names is None else []
+        )
 
     def profile_for(self, name: str, address: str | None) -> FactoryProfile | None:
         if not address:
