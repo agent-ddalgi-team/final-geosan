@@ -147,6 +147,7 @@ export default function OpportunityDetailPage() {
               setTimelineVersion((n) => n + 1);
             }}
             header={data.header}
+            evidence={data.evidence}
             bookmark={bookmarkState.bookmark}
             onBookmarkChanged={(next) => {
               bookmarkState.change(next);
