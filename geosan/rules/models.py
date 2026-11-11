@@ -165,6 +165,9 @@ class RuleConfig(_ContractModel):
     classification_labels: dict[str, str]
     other_group_sort: OtherGroupSort
     existing_customer_placement: Literal["BOTTOM", "INLINE"] = "BOTTOM"
+    # BLOCK: 거래 관계 "확인 전"이면 필터 대기(BR3.10, S06). IGNORE: 신규 잠재고객만 찾으므로
+    # 확인 전을 대기 사유로 쓰지 않는다(PM 결정 2026-11-11, #567). 생략하면 BLOCK(이전 동작).
+    relation_check: Literal["BLOCK", "IGNORE"] = "BLOCK"
     dataset_kinds: list[DatasetKind]
     rule_hash: str | None = Field(default=None, description="파일 내용 SHA-256. 로더가 채운다")
 

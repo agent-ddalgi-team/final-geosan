@@ -159,7 +159,10 @@ def assess_requirements(evaluation_input: EvaluationInput) -> RequirementAssessm
     ]
     pending = (
         evaluation_input.opportunity.company_filter_status == FilterState.PENDING
-        or evaluation_input.opportunity.relation_status == RelationStatus.UNCONFIRMED
+        or (
+            evaluation_input.rule_config.relation_check == "BLOCK"
+            and evaluation_input.opportunity.relation_status == RelationStatus.UNCONFIRMED
+        )
         or any(link.result == FilterState.PENDING for link in remaining)
         or any(_check_is_pending(check) for check in active_checks)
     )

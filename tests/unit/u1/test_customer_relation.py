@@ -25,6 +25,8 @@ from tests.unit.u1.test_snapshot_ledger import _write
 
 @pytest.fixture
 def relation_env(tmp_db, tmp_path):
+    # 거래 확인 전 → 필수조건 대기를 검사하므로 거래 관계 확인을 켠 설정을 쓴다(#567).
+    factories.register_relation_check(tmp_path, "BLOCK")
     import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
     case_path = _write(tmp_path, "case.json", factories.apjeong_with_relation("UNCONFIRMED"))
     result = import_case(case_path)

@@ -62,6 +62,12 @@ timeline
 
 **읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
 
+### 2026-11-11
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 거래 관계 확인 | 거래 관계가 "확인 전"이면 필수조건 대기로 멈춤(기획서 S06). AI가 찾은 회사 177곳 전부가 "거래 여부가 아직 확인 전"으로 멈춤 | 규칙 설정으로 끔: "확인 전"이어도 거래 관계 때문에는 멈추지 않고 막는 조건에서 "거래 여부"가 빠짐. "거래 중"으로 표시한 회사는 그대로 맨 아래 | 신규 잠재고객만 찾으므로 거래 관계 확인은 기획에서 보류 | ✅ PM 결정 2026-11-11 · [#567] |
+
 ### 2026-11-10
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
@@ -329,3 +335,4 @@ timeline
 [#549]: https://github.com/agent-ddalgi-team/final-geosan/issues/549
 [#552]: https://github.com/agent-ddalgi-team/final-geosan/pull/552
 [#557]: https://github.com/agent-ddalgi-team/final-geosan/issues/557
+[#567]: https://github.com/agent-ddalgi-team/final-geosan/issues/567
