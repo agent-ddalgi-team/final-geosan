@@ -39,9 +39,17 @@ export interface CompanySummaryProps {
   onReload: () => void;
   /** 시험이 현재 시각에 기대지 않게 지금 시각을 받을 수 있다. */
   now?: Date;
+  /** 한 줄 소개를 여기서 보일지. 상세 머리는 맨 위 "이 회사 한눈에"에서 보여 끈다(#563). */
+  showSummaryLine?: boolean;
 }
 
-export default function CompanySummary({ oppId, header, onReload, now }: CompanySummaryProps) {
+export default function CompanySummary({
+  oppId,
+  header,
+  onReload,
+  now,
+  showSummaryLine = true,
+}: CompanySummaryProps) {
   const { staffKey, canRecord, config } = useFrame();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ at: string; by: string } | null>(null);
@@ -54,7 +62,7 @@ export default function CompanySummary({ oppId, header, onReload, now }: Company
   const isAi = header.researchSource === 'AI';
   const hasAnything =
     Boolean(header.researchedAt) ||
-    Boolean(header.summaryLine) ||
+    (showSummaryLine && Boolean(header.summaryLine)) ||
     highlights.length > 0 ||
     phone !== null ||
     distance !== null;
@@ -203,7 +211,7 @@ export default function CompanySummary({ oppId, header, onReload, now }: Company
         </div>
       ) : null}
 
-      {header.summaryLine ? (
+      {showSummaryLine && header.summaryLine ? (
         <div style={rowStyle} data-testid="company-summary-line">
           <span>
             {companySummary.summaryLine}: {header.summaryLine}
