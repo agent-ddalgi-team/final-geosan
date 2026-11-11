@@ -586,6 +586,7 @@ rank:                                   # 순위도 RuleEngine 책임(도메인 
     - REVIEW 안: E → F → directConfirmedWeight → P → validUntil → oppId
     - OTHER 안(접촉 후보가 아닌 분류, 화면 정렬용): **모든 거산 값 묶음에서 E 내림 → P(판정한 배점) 내림 → oppId** (설정 `otherGroupSort` v0.17-c, 가설·설정값, PM 결정 2026-10-25 #63 원칙 2 "동점이면 더 많이 확인한 회사를 앞에"). 가능 점수 R은 정렬에 쓰지 않는다
     - (추가 2026-11-04 PM 기본안, #212 ① 거래 관계 입력) **거래 중(relationStatus EXISTING_CONFIRMED)인 기회는 같은 목록(공정 탭·전체) 맨 아래**로 보낸다: 접촉 후보 그룹·그 밖 그룹을 먼저 모두 정렬한 뒤 거래 중만 뒤로 빼고, 그 안에서는 위 규칙 순. 설정 `existingCustomerPlacement: BOTTOM | INLINE`(기본 BOTTOM, `examples/rule-config.yaml`). 카드 꼬리표 "기존 거래처". 분류·점수는 바꾸지 않는다(기존 거래처도 똑같이 평가). INLINE이면 지금처럼 섞어 정렬. 가상 사례 A정밀(EXISTING_CONFIRMED)은 단독 목록이라 기대값 11항목 영향 없음
+    - (추가 2026-11-11 PM 결정, #567 거래 관계 확인 보류) 설정 `relationCheck: BLOCK | IGNORE`(생략 시 BLOCK = 이전 동작, 예시 파일은 IGNORE). IGNORE면 거래 관계 확인 전(UNCONFIRMED)을 필터 대기·막는 조건("거래 관계 확인 전"·"거래 여부")으로 쓰지 않는다. 신규 잠재고객만 찾으므로 거래 관계 확인은 기획에서 보류. 거래 중 정렬(`existingCustomerPlacement`)·점수 계산은 그대로. S06은 BLOCK 동작으로 유지
     - 이력: 처음에는 default R 내림 → E → oppId, 2026-10-21 갱신(기능 설계 Q6)으로 소개서 묶음만 E → R → oppId, 2026-10-25 v0.17-b로 소개서 E → P, v0.17-c로 default도 E → P. 부록 F.10은 접촉 분류 3가지의 순서만 정하므로 기획서 규칙·A정밀 기대값은 바뀌지 않는다(뜻·형식이 바뀌는 변경 아님, 버전 유지)
 expectedValues:
   apjeongCase: { E: 77, P: 95, S: 81.1, R: 82, filterState: PASS, coreEvidenceMet: MET, classificationCode: CONTACT_URGENT }
@@ -980,6 +981,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C1 | (2026-11-09, PM 결정 — 목록 정렬 "최근 들어온 순" #516) 목록 `sort`에 `recent`를 더한다(들어온 시각 최신 순, 시각 없는 사례 파일 회사는 뒤에 추천 순 그대로, rank는 그 순서 번호). 화면의 "이번 수집만 / 전체" 전환과 카드 "이번에 들어옴" 꼬리표를 없애고, 꼬리표는 `ingestedAt`으로 "11/9 들어옴". `batch=`·`isNewInLatestBatch`는 지우지 않고 두되 화면이 쓰지 않는다. 이유: 마지막 회차 기준은 같은 조건 재실행·실패에 바로 비어 버린다(11/9 오전 10곳이 오후 재실행 뒤 안 보임). 안 고른 방법: 기준을 "회사를 실제로 더한 마지막 회차"로 바꾸기(두 번 나눠 들어온 날은 반만 보임). 더하는 변경 | #516 (1차, PR과 같이) |
 | C1 | (2026-11-09, PM 결정 — 관심 기업 보기의 공정 선택란·"전체 보기" #516) 관심 기업 목록에도 공정 선택란을 둔다(맨 위 "전체", `process=` 함께 사용). `bookmarked=true`일 때 `meta.processCounts`·`regionCounts`·`industryCounts`는 관심 기업 안의 건수로 바뀐다(뜻이 달라지지만 이 값을 쓰는 곳은 이 화면뿐이고 거산 전달 전이라 영향 0, PM 판단으로 버전은 올리지 않음). 정렬 줄 끝 "전체 보기"는 화면 주소 `?view=all`만 쓰고 서버 조건은 그대로이며 순위 번호를 숨긴다. 안 고른 방법: 관심 기업 보기는 곳 수를 전체 기준으로 두기(고를 수 있는 곳 수와 실제 결과가 달라짐) | #516 (1차, PR과 같이) |
 | C3·C7·C8 | (2026-10-21 부분 시연 변경) `baseDate` 키(Q4), BROCHURE OTHER 정렬(Q6, 가설·설정값), `brand.demoLabel`(Q7), `check-case` 명령(Q8) — 기능 설계 Q 답으로 확정. 모두 "더하는 변경"(C3 정렬은 팀이 더한 규칙의 변경, 기획서 규칙 아님) | U1 (기능 설계, 10/21) |
+| C3·C7 | (2026-11-11, PM 결정 #567 — 거래 관계 확인 보류) 규칙 설정 `relationCheck`(BLOCK 또는 IGNORE, 생략 시 BLOCK). IGNORE면 거래 관계 확인 전을 필터 대기·막는 조건으로 쓰지 않음. 예시 파일 IGNORE. 더하는 변경(생략 시 이전 동작) | PM 세션 |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
 

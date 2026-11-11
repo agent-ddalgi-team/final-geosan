@@ -151,6 +151,17 @@ def _db_ready(tmp_db: Path) -> None:
     assert tmp_db.exists(), "init-db가 DB 파일을 만들지 않았습니다"
 
 
+@given(P("규칙 설정의 거래 관계 확인을 {mode:Code}로 둔 사본을 등록했다"))
+def _register_relation_check(tmp_db: Path, tmp_path: Path, mode: str) -> None:
+    """예시 규칙 설정에서 거래 관계 확인 칸만 바꾼 사본을 등록한다(#567).
+
+    거래 확인 전 동작(S06·#262·#263·#265)을 검사하는 시나리오는 BLOCK을 쓴다.
+    DB 준비는 다시 해도 안전하다.
+    """
+    init_db(tmp_db)
+    factories.register_relation_check(tmp_path, mode)
+
+
 @given("가상 검수 역량 파일을 투입했다")
 @when("가상 검수 역량 파일을 투입하면")
 def _import_capability(ctx: ScenarioContext) -> None:

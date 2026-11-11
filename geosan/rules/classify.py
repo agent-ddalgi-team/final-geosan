@@ -86,6 +86,14 @@ def _has_final_consonant(text: str) -> bool:
     return (ord(last) - ord("가")) % 28 != 0 if "가" <= last <= "힣" else True
 
 
+def _relation_blocks(data: EvaluationInput) -> bool:
+    """거래 관계 확인 전이 막는 조건인지. IGNORE면 쓰지 않는다(PM 결정 2026-11-11, #567)."""
+    return (
+        data.rule_config.relation_check == "BLOCK"
+        and data.opportunity.relation_status == "UNCONFIRMED"
+    )
+
+
 def _blocker_text(data: EvaluationInput, assessment: RequirementAssessment, fallback: str) -> str:
     """표시만 바꾸고 제외 사유·승인 판정은 보존한다 (BR10.3, #160 PM 결정)."""
     if assessment.filter_state == FilterState.EXCLUDED:
@@ -93,7 +101,7 @@ def _blocker_text(data: EvaluationInput, assessment: RequirementAssessment, fall
     names = _pending_process_names(data)
     if names is None:
         return fallback
-    parts = ["거래 여부"] if data.opportunity.relation_status == "UNCONFIRMED" else []
+    parts = ["거래 여부"] if _relation_blocks(data) else []
     parts.extend(f"거산의 {name} 공정" for name in names)
     requirements = {req.req_id: req for req in data.requirements}
     parts.extend(
@@ -181,7 +189,7 @@ def display_texts(
             blockers.append(check.reason)
     if data.dataset_kind == DatasetKind.BROCHURE:
         blockers.append("거산 확인 전")
-    if data.opportunity.relation_status == "UNCONFIRMED":
+    if _relation_blocks(data):
         blockers.append("거래 관계 확인 전")
     blocked = bool(blockers)
     blocker = "; ".join(dict.fromkeys(blockers)) if blocked else "없음 — 지금 단계 필수 요구 통과"
