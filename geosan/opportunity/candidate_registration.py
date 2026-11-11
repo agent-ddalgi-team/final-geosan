@@ -52,21 +52,25 @@ class RegistrationResult:
 def registered_row_ids(session, batch_id: str, judgments) -> set[str]:
     """이름·주소가 모두 같은 회사가 이미 목록에 있는 행(#528). 등록 때 건너뛰는 기준과 같다."""
     batch, _ = _context(session, batch_id)
-    known = {
-        (customer.normalized_name, customer.normalized_address)
-        for customer in session.scalars(
-            select(Customer).where(Customer.is_virtual == batch.is_virtual)
-        )
-    }
+    known = registered_company_keys(session, is_virtual=batch.is_virtual)
     rows = session.scalars(
         select(SourceFactoryRow).where(
             SourceFactoryRow.row_id.in_([item.row_id for item in judgments])
         )
     )
+    return {row.row_id for row in rows if company_key(row.company_name, row.address) in known}
+
+
+def company_key(company_name: str, address: str) -> tuple[str, str]:
+    """같은 회사를 가리는 이름·주소 짝. 등록 때 건너뛰는 기준과 같다(#528)."""
+    return normalize_name(company_name), normalize_address(address)
+
+
+def registered_company_keys(session, *, is_virtual: bool) -> set[tuple[str, str]]:
+    """이미 목록에 있는 회사의 이름·주소 짝. 회차 없이 들어온 곳을 셀 때도 쓴다(#549)."""
     return {
-        row.row_id
-        for row in rows
-        if (normalize_name(row.company_name), normalize_address(row.address)) in known
+        (customer.normalized_name, customer.normalized_address)
+        for customer in session.scalars(select(Customer).where(Customer.is_virtual == is_virtual))
     }
 
 

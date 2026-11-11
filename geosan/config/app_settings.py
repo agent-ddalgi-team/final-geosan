@@ -156,6 +156,38 @@ class HomepageDiscoverySettings(FileModel):
     min_confidence: float = Field(default=0.7, ge=0, le=1, strict=True, allow_inf_nan=False)
     auto_research: bool = Field(default=False, strict=True)
     daily_call_limit: int = Field(default=200, ge=0, strict=True)
+    # 계약 C7 #557: 첫 화면 말고 더 읽는 같은 사이트 페이지. 기본값은 PM 승인값(2026-11-11)이며
+    # 이 키가 없는 예전 설정 파일도 읽히게 둔다. 0이면 첫 화면만 읽는다.
+    extra_pages: int = Field(default=3, ge=0, le=10, strict=True)
+    extra_page_hints: list[str] = Field(
+        default_factory=lambda: [
+            "회사소개",
+            "회사 소개",
+            "인사말",
+            "연혁",
+            "제품",
+            "사업",
+            "설비",
+            "인증",
+            "실적",
+            "납품",
+            "about",
+            "company",
+            "product",
+            "business",
+            "history",
+            "facility",
+        ]
+    )
+    extra_page_max_chars: int = Field(default=6000, ge=500, strict=True)
+
+    @field_validator("extra_page_hints")
+    @classmethod
+    def _hints_are_words(cls, value: list[str]) -> list[str]:
+        cleaned = [hint.strip() for hint in value]
+        if any(not hint for hint in cleaned):
+            raise ValueError("빈 말은 넣을 수 없습니다.")
+        return cleaned
 
 
 class BrandSettings(FileModel):

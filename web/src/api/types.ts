@@ -30,6 +30,9 @@ export type CheckDisplay =
 export type FilterState = 'PASS' | 'PENDING' | 'EXCLUDED';
 export type Certainty = 'CONFIRMED' | 'STRONG' | 'WEAK' | 'UNKNOWN';
 export type SourceGrade = 'A' | 'B' | 'C' | 'D';
+
+/** 후보 찾기의 공정 적합도(C0 fitLevel). */
+export type FitLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 export type Opinion = 'WORTH_REVIEW' | 'NEED_CHECK' | 'NOT_TARGET';
 export type QuestionStatus = 'WAITING' | 'REQUESTED' | 'REPLIED' | 'APPLIED';
 export type QuestionTargetKind =
@@ -118,6 +121,20 @@ export interface IngestRequest {
   processCodes: string[];
   regions?: string[];
   industries?: string[];
+}
+
+/**
+ * 고른 조건의 맞는 공장 수(계약 C1 `GET /ingest/preview`, #549 1단계). 서버가 저장된 AI 판단만 세서 0원이다.
+ * 예상 금액·잠금 칸은 2단계에서 더한다.
+ */
+export interface IngestPreview {
+  matchedCount: number;
+  fitCounts: { HIGH: number; MEDIUM: number; LOW: number };
+  registeredCount: number;
+  addableCount: number;
+  addableHighCount: number;
+  unjudgedCount: number;
+  addCount: number;
 }
 
 /** 후보 가져오기 응답. 회차를 만든 직후 바로 오고, 진행은 목록 `meta.latestIngest`로 본다. */
@@ -349,6 +366,14 @@ export interface DetailHeader {
   ownPlatingLineSuspected?: boolean;
   /** 회사 주소(C1 header.address). 지도 링크를 만드는 데만 쓴다. */
   address?: string | null;
+  /** 후보 찾기 때 저장한 AI 판단(C1 header, #316·#563): 적합도와 고른 이유. 사례 파일 회사는 없음. */
+  fitLevel?: FitLevel | null;
+  pickReason?: string | null;
+  /** 이 회사를 찾은 경로와 그 출처 주소(웹 검색으로 찾았을 때만 주소가 있다). */
+  discoverySource?: string | null;
+  discoverySourceUrl?: string | null;
+  /** 산업 꼬리표(AI 제안 또는 사람이 고친 값). */
+  industries?: string[];
   isVirtual: boolean;
   datasetKind: DatasetKind;
   isRecontact: boolean;

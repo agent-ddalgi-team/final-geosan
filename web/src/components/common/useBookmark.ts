@@ -8,7 +8,10 @@ export interface BookmarkState {
   bookmark: BookmarkRecord | null;
   /** [관심] 단추로 켜거나 끈 결과(서버가 돌려준 값)를 반영한다. */
   change: (next: BookmarkRecord) => void;
-  /** 메모·영업 기록·검토 의견을 저장한 뒤 부른다. 서버가 관심을 켰을 수 있어 관심 값만 다시 읽는다. */
+  /**
+   * 메모·영업 기록·검토 의견을 저장한 뒤 부른다. 서버가 관심을 켰을(검토 대상 제외면 껐을, #536) 수 있어
+   * 관심 값만 다시 읽는다.
+   */
   sync: () => Promise<void>;
 }
 

@@ -15,6 +15,7 @@ anyio==4.15.1
     #   watchfiles
 certifi==2026.10.19
     # via
+    #   geosan (pyproject.toml)
     #   httpcore
     #   httpx
 click==8.5.0

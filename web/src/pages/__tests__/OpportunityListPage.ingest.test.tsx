@@ -9,7 +9,7 @@ import OpportunityListPage from '../OpportunityListPage';
 import { getOpportunities } from '../../api/client';
 import type { Envelope, LatestIngest, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { candidateSearch } from '../../labels/ko';
+import { candidateSearch, cardRows } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -137,6 +137,29 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.queryByTestId('card-ingested-tag')).not.toBeInTheDocument();
   });
 
+  it('추천 근거가 고른 이유와 같은 문장이면 고른 이유 한 줄만 보인다(#555)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply([{ ...found, reason: ' 볼트·너트를 만들어 전기아연도금이 필요할 가능성이 높음 ' }]),
+    );
+    renderPage();
+    const card = within(await screen.findByTestId('opportunity-card'));
+    expect(card.getByTestId('card-pick-reason')).toHaveTextContent(
+      '볼트·너트를 만들어 전기아연도금이 필요할 가능성이 높음',
+    );
+    expect(card.queryByTestId('card-reason')).not.toBeInTheDocument();
+    expect(card.queryByText(cardRows.reason)).not.toBeInTheDocument();
+  });
+
+  it('조사 뒤 추천 근거가 고른 이유와 다르면 두 줄이 모두 보인다(#555)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply([{ ...found, reason: '홈페이지에 "아연도금 볼트 월 30만 개 생산" 확인' }]),
+    );
+    renderPage();
+    const card = within(await screen.findByTestId('opportunity-card'));
+    expect(card.getByTestId('card-pick-reason')).toBeInTheDocument();
+    expect(card.getByTestId('card-reason')).toHaveTextContent('아연도금 볼트 월 30만 개 생산');
+  });
+
   it('고른 이유가 공백뿐이면 줄을 그리지 않고 점수 전도 아니다', async () => {
     mockedGet.mockResolvedValueOnce(reply([{ ...found, pickReason: '   ' }]));
     renderPage();
@@ -162,11 +185,11 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
       candidateSearch.running,
     );
     expect(within(summary).getByTestId('ingest-counts')).toHaveTextContent(
-      '훑어본 회사 3,672곳 · 고른 회사 12곳 · 조사 3/12',
+      '훑어본 공장 3,672곳 · 고른 공장 12곳 · 조사 3/12',
     );
   });
 
-  it('끝났으면 "지금 가져오는 중" 없이 건수만 보이고, 이름이 비슷한 회사가 있으면 "확인 필요"를 더한다', async () => {
+  it('끝났으면 "지금 더하는 중" 없이 건수만 보이고, 이름이 비슷한 회사가 있으면 "확인 필요"를 더한다', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([found], { ...RUNNING, status: 'DONE', researchDoneCount: 12, mergeCandidateCount: 2 }),
     );
@@ -174,7 +197,7 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     const summary = await screen.findByTestId('ingest-summary');
     expect(within(summary).queryByTestId('ingest-running')).not.toBeInTheDocument();
     expect(within(summary).getByTestId('ingest-counts')).toHaveTextContent(
-      '훑어본 회사 3,672곳 · 고른 회사 12곳 · 조사 12/12 · 확인 필요 2곳',
+      '훑어본 공장 3,672곳 · 고른 공장 12곳 · 조사 12/12 · 확인 필요 2곳',
     );
   });
 
@@ -201,7 +224,7 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     );
     renderPage();
     const counts = await screen.findByTestId('ingest-counts');
-    expect(counts).toHaveTextContent('훑어본 회사 100곳 · 고른 회사 5곳');
+    expect(counts).toHaveTextContent('훑어본 공장 100곳 · 고른 공장 5곳');
     expect(counts).not.toHaveTextContent('조사');
   });
 

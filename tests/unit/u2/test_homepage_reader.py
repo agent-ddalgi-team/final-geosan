@@ -2,8 +2,10 @@
 
 import socket
 import time
+from email.message import Message
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -14,7 +16,7 @@ from geosan.evidence import reader
 from geosan.evidence.contacts import extract_main_phone, scrub_contacts
 
 FRAME_PAGE = """<html><head><title>가상 회사</title></head>
-<frameset><frame src="https://example.org/company">
+<frameset><frame src="https://other.example/company">
 <noframes><body>This page uses frames. Your browser does not support frames.</body></noframes>
 </frameset></html>"""
 
@@ -29,6 +31,7 @@ FRAME_PAGE = """<html><head><title>가상 회사</title></head>
     ],
 )
 def test_frame_notice_or_title_alone_is_not_company_body(monkeypatch, body):
+    # 프레임 주소가 다른 사이트면 따라가지 않는다(#556: 같은 사이트 프레임만 따라감).
     calls = []
 
     def get(url, _):
@@ -293,3 +296,164 @@ def test_unreadable_body_is_failure_not_empty_success(monkeypatch, response):
     with pytest.raises(AppError) as error:
         reader.fetch("https://example.org/", time.monotonic() + 60)
     assert error.value.kind == "UNREACHABLE"
+
+
+# ---------- #556: 프레임 화면·robots 이동·한글 글자 방식·인증서 목록 ----------
+
+
+def _site(pages):
+    """주소별 가짜 응답. 없는 주소는 404."""
+    calls = []
+
+    def get(url, _):
+        calls.append(url)
+        return pages.get(url, (404, {}, ""))
+
+    return calls, get
+
+
+def test_same_site_frame_page_is_followed_after_its_robots_check(monkeypatch):
+    frame = (
+        '<html><head><title>(주)가상클러치</title></head><frameset rows="*,0">'
+        '<frame src="main.php"><frame src="null.htm"></frameset></html>'
+    )
+    calls, get = _site(
+        {
+            "https://www.example.org/": (200, {"content-type": "text/html"}, frame),
+            "https://www.example.org/main.php": (
+                200,
+                {"content-type": "text/html"},
+                "<p>회사소개</p><p>에어클러치·브레이크 생산</p>",
+            ),
+        }
+    )
+    monkeypatch.setattr(reader, "_get", get)
+    page = reader.fetch("https://www.example.org/", time.monotonic() + 60)
+    assert page.url == "https://www.example.org/main.php"
+    assert page.text == "회사소개\n에어클러치·브레이크 생산"
+    assert calls == [
+        "https://www.example.org/robots.txt",
+        "https://www.example.org/",
+        "https://www.example.org/robots.txt",
+        "https://www.example.org/main.php",
+    ]
+
+
+def test_frame_page_blocked_by_robots_is_not_read(monkeypatch):
+    calls, get = _site(
+        {
+            "https://example.org/robots.txt": (200, {}, "User-agent: *\nDisallow: /inner"),
+            "https://example.org/": (
+                200,
+                {"content-type": "text/html"},
+                '<frameset><frame src="/inner/main.html"></frameset>',
+            ),
+        }
+    )
+    monkeypatch.setattr(reader, "_get", get)
+    with pytest.raises(AppError) as error:
+        reader.fetch("https://example.org/", time.monotonic() + 60)
+    assert error.value.kind == "ROBOTS_DISALLOW"
+    assert "https://example.org/inner/main.html" not in calls
+
+
+@pytest.mark.parametrize(
+    "target,response",
+    [
+        # http → https로 옮긴 robots 파일이 없으면 허용(RFC 9309)
+        ("https://example.org/robots.txt", (404, {}, "")),
+        # 호스팅이 "없는 페이지" 화면으로 보내면 규칙 줄이 없으니 허용
+        ("http://hosting.example/404.html", (200, {"content-type": "text/html"}, "<h1>없음</h1>")),
+    ],
+)
+def test_robots_redirect_is_followed_and_missing_file_allows(monkeypatch, target, response):
+    calls, get = _site(
+        {
+            "http://example.org/robots.txt": (302, {"location": target}, ""),
+            target: response,
+            "http://example.org/": (200, {"content-type": "text/html"}, "<p>볼트 생산</p>"),
+        }
+    )
+    monkeypatch.setattr(reader, "_get", get)
+    assert reader.fetch("http://example.org/", time.monotonic() + 60).text == "볼트 생산"
+    assert calls[:2] == ["http://example.org/robots.txt", target]
+
+
+def test_robots_redirect_destination_rules_are_kept(monkeypatch):
+    calls, get = _site(
+        {
+            "http://example.org/robots.txt": (
+                301,
+                {"location": "https://example.org/robots.txt"},
+                "",
+            ),
+            "https://example.org/robots.txt": (200, {}, "User-agent: *\nDisallow: /"),
+        }
+    )
+    monkeypatch.setattr(reader, "_get", get)
+    with pytest.raises(AppError) as error:
+        reader.fetch("http://example.org/", time.monotonic() + 60)
+    assert error.value.kind == "ROBOTS_DISALLOW"
+    assert all(url.endswith("robots.txt") for url in calls)
+
+
+def test_endless_robots_redirect_is_not_read(monkeypatch):
+    calls = []
+
+    def get(url, _):
+        calls.append(url)
+        return 302, {"location": url}, ""
+
+    monkeypatch.setattr(reader, "_get", get)
+    with pytest.raises(AppError) as error:
+        reader.fetch("https://example.org/", time.monotonic() + 60)
+    assert error.value.kind == "ROBOTS_DISALLOW"
+    assert len(calls) == 6 and all(url.endswith("robots.txt") for url in calls)
+
+
+def _response(status, content_type):
+    headers = Message()
+    headers["Content-Type"] = content_type
+    return SimpleNamespace(status=status, headers=headers)
+
+
+@pytest.mark.parametrize(
+    "content_type,body",
+    [
+        # 글자 방식을 적지 않은 국내 홈페이지
+        ("text/html", "<p>대돌 볼트</p>".encode("cp949")),
+        # EUC-KR이라고 적었지만 EUC-KR에 없는 글자(똠)가 섞임
+        ("text/html; charset=euc-kr", "<p>똠방 대돌 볼트</p>".encode("cp949")),
+        ("text/html", b'<meta charset="EUC-KR"><p>' + "대돌 볼트".encode("cp949") + b"</p>"),
+    ],
+)
+def test_korean_pages_decode_without_declared_or_exact_charset(content_type, body):
+    assert "대돌 볼트" in reader._decode(_response(200, content_type), body)
+
+
+def test_redirect_body_is_not_decoded():
+    # https → http로 옮기는 응답 본문에 EUC-KR 글자가 있어도 읽기가 실패하지 않는다.
+    assert reader._decode(_response(302, "text/html"), "이동".encode("cp949")) == ""
+
+
+def test_undecodable_body_still_fails():
+    with pytest.raises(UnicodeDecodeError):
+        reader._decode(_response(200, "text/html; charset=utf-8"), b"\xff\xfe\xb5")
+
+
+def test_https_uses_certifi_bundle_and_keeps_verification(monkeypatch):
+    seen = {}
+
+    class Stop(Exception):
+        pass
+
+    def context(**kwargs):
+        seen.update(kwargs)
+        raise Stop
+
+    monkeypatch.setattr(reader, "_public_address", lambda *_: "93.184.215.14")
+    monkeypatch.setattr(socket, "create_connection", lambda *_a, **_k: socket.socket())
+    monkeypatch.setattr(reader.ssl, "create_default_context", context)
+    with pytest.raises(Stop):
+        reader._get("https://example.org/", time.monotonic() + 60)
+    assert seen == {"cafile": reader.certifi.where()}
