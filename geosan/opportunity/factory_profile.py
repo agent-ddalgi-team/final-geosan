@@ -37,7 +37,8 @@ SOURCE_IDS = (FACTORYON_SOURCE_ID, WATER_SOURCE_ID)
 
 # 표면처리 표시의 출처 가운데 이 자료로 다시 계산하는 것(C6). AI·업종명 표시는 건드리지 않는다.
 RULE_SOURCES = ("INDUSTRY_CODE", "WATER_LIST")
-WATER_BASIS = "특정수질유해물질 배출 사업장 명단에 있음"
+# 수질 명단은 공공누리 제1유형(출처표시)이라 근거 줄에 기관과 유형을 함께 보인다(#583).
+WATER_BASIS = "특정수질유해물질 배출 사업장 명단에 있음(국립환경과학원, 공공누리 제1유형)"
 
 _FACTORYON_NAME = "회사명"
 _FACTORYON_ROAD = "공장주소(도로명)"

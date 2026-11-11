@@ -131,7 +131,7 @@ describe('이 회사 한눈에(#563)', () => {
     const row = within(screen.getByTestId('glance-factory-profile'));
     expect(row.getByText(factoryProfileLabels.row)).toBeInTheDocument();
     expect(row.getByText('원자재 철선 · 종업원 약 76명(추정) · 중기업')).toBeInTheDocument();
-    expect(row.getByText('(팩토리온 11/11 기준)')).toBeInTheDocument();
+    expect(row.getByText('(한국산업단지공단 팩토리온 11/11 기준, 가공)')).toBeInTheDocument();
   });
 
   it('공장 정보가 없으면 줄을 그리지 않는다(#573)', () => {
