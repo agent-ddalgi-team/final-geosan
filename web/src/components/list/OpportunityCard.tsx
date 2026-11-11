@@ -14,6 +14,7 @@ import {
   candidateSearch,
   cardRows,
   classificationLabels,
+  factoryProfileLabels,
   classificationTone,
   coreEvidenceRecheckLabel,
   frame,
@@ -24,6 +25,7 @@ import {
   ownPlatingLine,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { factoryProfileText } from '../../utils/factoryProfile';
 import { formatMonthDay } from '../../utils/time';
 export interface OpportunityCardProps {
   card: CardData;
@@ -80,6 +82,7 @@ export default function OpportunityCard({
   const ingestedOn = formatMonthDay(card.ingestedAt);
   // 표면처리를 직접 하는 회사일 수 있음(#319): 서버가 참으로 준 회사에만 꼬리표를 붙인다. 회사를 빼거나 순서를 바꾸지 않는다.
   // 근거 한 줄은 표시가 참일 때만 보이고, 없으면 꼬리표만 보인다.
+  const factoryLine = factoryProfileText(card.factoryProfile);
   const ownPlating = card.ownPlatingLineSuspected === true;
   const ownPlatingBasis =
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
@@ -205,6 +208,11 @@ export default function OpportunityCard({
         {pickReason ? (
           <Row label={candidateSearch.pickReasonRow} title={pickReason}>
             <span data-testid="card-pick-reason">{pickReason}</span>
+          </Row>
+        ) : null}
+        {factoryLine ? (
+          <Row label={factoryProfileLabels.row} title={factoryLine}>
+            <span data-testid="card-factory-profile">{factoryLine}</span>
           </Row>
         ) : null}
         {reasonSameAsPick ? null : (
