@@ -11,6 +11,8 @@ import { candidateSearch } from '../../../labels/ko';
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   postIngest: vi.fn(),
+  // 숫자 줄(#549)은 IngestForm.preview.test.tsx에서 본다. 여기서는 답하지 않는 요청으로 둔다.
+  getIngestPreview: vi.fn(() => new Promise(() => {})),
 }));
 
 const mockedPost = vi.mocked(postIngest);

@@ -9,7 +9,7 @@ from geosan.config.errors import InputError
 from geosan.opportunity import complex_collection as collection
 from geosan.opportunity.complex_rows import ComplexFactoryRow
 from geosan.opportunity.complex_source import ComplexLookupResult
-from geosan.opportunity.factory_csv import FactoryRow
+from geosan.opportunity.factory_csv import FactoryRow, SkippedRow
 
 
 def row(name, complex_name, *, api=False, number=None, region="충남"):
@@ -85,6 +85,24 @@ def test_partial_failure_keeps_file_and_received_rows_then_stops(context, monkey
     assert result.skipped_reason == reason and calls == ["단지A", "단지B"]
     assert result.combined.file_rows == tuple(files)
     assert result.combined.added_rows == (first, partial)
+
+
+def test_row_warning_does_not_skip_remaining_complexes(context, monkeypatch):
+    first = row("정상공장", "단지A", api=True, number="F1")
+    following = row("다음공장", "단지C", api=True, number="F2")
+    calls = stub(
+        monkeypatch,
+        [
+            ComplexLookupResult(
+                rows=(first,), skipped_rows=(SkippedRow(2, "회사명 또는 공장주소가 비어 있음"),)
+            ),
+            ComplexLookupResult(rows=(following,)),
+        ],
+    )
+    result = collection.collect_complex_rows("batch", ())
+    assert calls == ["단지A", "단지C"] and result.skipped_reason is None
+    assert result.combined.added_rows == (first, following)
+    assert len(result.lookups[0][1].skipped_rows) == 1
 
 
 def test_conflicting_factory_across_queries_does_not_overwrite_previous_row(context, monkeypatch):

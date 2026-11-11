@@ -4,6 +4,7 @@ PM이 #427에서 확정한 규격으로 공개 원본·판단·등록 부품을 
 검사에서는 외부 통신만 대체하고, 저장과 평가 및 목록 조회는 실제 부품을 쓴다.
 """
 
+import logging
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -12,9 +13,9 @@ from sqlalchemy import select
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.config.registry import load_runtime_config
 from geosan.evaluation.snapshot import _capability_snapshot
-from geosan.opportunity.candidate_judgments import select_candidates
+from geosan.opportunity.candidate_judgments import rank_candidates, select_candidates
 from geosan.opportunity.candidate_pick import pick_candidates
-from geosan.opportunity.candidate_registration import register_candidates
+from geosan.opportunity.candidate_registration import register_candidates, registered_row_ids
 from geosan.opportunity.complex_collection import collect_complex_rows
 from geosan.opportunity.complex_store import store_complex_rows
 from geosan.opportunity.factory_csv import SOURCE_ID, parent_regions, row_in_selected_regions
@@ -25,7 +26,9 @@ from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_conditions
 from geosan.workflows.ingest_sources import store_dated_factory_csv
-from geosan.workflows.research import research_one
+from geosan.workflows.research import STOP_KINDS, research_one
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -200,9 +203,16 @@ def run_ingest(batch_id: str) -> None:
             current = _running(session, batch_id)
             current.judged_count = len(judgments)
             current.judge_pending_count = 0
-        selected = select_candidates(
+        matched = select_candidates(
             judgments, process_codes=prepared.process_codes, industries=prepared.industries
-        )[: prepared.max_candidates]
+        )
+        # 이미 있는 회사를 뺀 뒤 적합도 순으로 자른다. 다시 누르면 다음 회사가 들어온다(#528).
+        with session_scope() as session:
+            registered = registered_row_ids(session, batch_id, matched) if matched else set()
+        fresh = [item for item in matched if item.row_id not in registered]
+        known = [item for item in matched if item.row_id in registered]
+        # 이미 있는 회사도 넘겨야 건너뜀 건수가 그대로 남는다.
+        selected = [*rank_candidates(fresh)[: prepared.max_candidates], *known]
         with session_scope() as session:
             _running(session, batch_id).picked_count = len(selected)
         stage = "후보 등록"
@@ -221,8 +231,16 @@ def run_ingest(batch_id: str) -> None:
         if settings.homepage_discovery.auto_research and not batch.is_virtual:
             for opp_id in affected:
                 result = research_one(opp_id)
-                if result.error is not None or result.usage_unconfirmed:
+                if result.usage_unconfirmed or (
+                    result.error is not None and result.error.kind in STOP_KINDS
+                ):
                     raise RunFailedError("새 후보 홈페이지 조사를 완료하지 못했습니다.")
+                if result.error is not None:
+                    # 약속 C1: 실패는 그 회사만 남기고 다음 회사로 넘어간다(#528).
+                    logger.warning(
+                        "ingest.research_skipped",
+                        extra={"batchId": batch_id, "oppId": opp_id, "kind": result.error.kind},
+                    )
                 with session_scope() as session:
                     current = session.get(IngestBatch, batch_id)
                     current.research_done_count += 1

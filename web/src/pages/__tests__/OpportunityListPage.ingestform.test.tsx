@@ -140,13 +140,13 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     );
     renderPage();
     await screen.findByTestId('opportunity-card');
-    expect(screen.getByTestId('ingest-counts')).toHaveTextContent('고른 회사 3곳');
+    expect(screen.getByTestId('ingest-counts')).toHaveTextContent('고른 공장 3곳');
     picked = 7;
     await act(async () => {
       await vi.advanceTimersByTimeAsync(INGEST_POLL_MS);
     });
     await waitFor(() =>
-      expect(screen.getByTestId('ingest-counts')).toHaveTextContent('고른 회사 7곳'),
+      expect(screen.getByTestId('ingest-counts')).toHaveTextContent('고른 공장 7곳'),
     );
     expect(screen.queryByTestId('five-states-loading')).not.toBeInTheDocument();
     expect(
@@ -196,7 +196,7 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(INGEST_POLL_MS);
     });
-    expect(screen.getByTestId('ingest-counts')).toHaveTextContent('고른 회사 3곳');
+    expect(screen.getByTestId('ingest-counts')).toHaveTextContent('고른 공장 3곳');
     expect(screen.getByTestId('opportunity-card')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });

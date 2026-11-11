@@ -10,6 +10,7 @@ import type {
   ConfigUi,
   Envelope,
   ErrorBody,
+  IngestPreview,
   IngestRequest,
   IngestResponse,
   NoteRequest,
@@ -162,8 +163,8 @@ export interface ListFilters {
   opinion?: string | null;
   /** 회사·기회·산업군 검색어. */
   q?: string | null;
-  /** 후보 가져오기 회차(#316). `latest`면 마지막 수집 회차에 들어온 회사만("이번 수집만"). 안 주면 전체. */
-  batch?: string | null;
+  /** 정렬(#516). `recent`면 들어온 시각 최신 순("최근 들어온 순"). 안 주면 추천 순. */
+  sort?: string | null;
 }
 
 export function getOpportunities(
@@ -290,6 +291,18 @@ export function postIngest(body: IngestRequest, staffKey: string) {
 }
 
 /** 활동 이력(U5). 서버가 시각 순으로 준다. 한도 기본 20, 최대 100. */
+/**
+ * 고른 조건의 맞는 공장 수(#549, 계약 C1 `GET /ingest/preview`). 외부 호출 없이 저장된 판단만 센다.
+ * 조건 값은 POST /ingest와 같고, 설정 밖 값은 400이다.
+ */
+export function getIngestPreview(body: IngestRequest, signal?: AbortSignal) {
+  const query = new URLSearchParams();
+  body.processCodes.forEach((code) => query.append('processCodes', code));
+  (body.regions ?? []).forEach((region) => query.append('regions', region));
+  (body.industries ?? []).forEach((industry) => query.append('industries', industry));
+  return request<IngestPreview>(`/ingest/preview?${query.toString()}`, { signal });
+}
+
 export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   return request<ActivityItem[]>(
     `/opportunities/${encodeURIComponent(oppId)}/activity?limit=${limit}`,
@@ -505,6 +518,19 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: now, reevaluated: true },
     } as unknown as Envelope<T>;
+  }
+  if (route === '/ingest/preview') {
+    // 가짜 모드: 고른 조건과 상관없이 같은 숫자를 돌려준다(화면 모양 확인용).
+    const data: IngestPreview = {
+      matchedCount: 1518,
+      fitCounts: { HIGH: 134, MEDIUM: 1382, LOW: 2 },
+      registeredCount: 100,
+      addableCount: 1418,
+      addableHighCount: 34,
+      unjudgedCount: 0,
+      addCount: 50,
+    };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
   }
   if (route === '/ingest' && options.method === 'POST') {
     if (!options.staffKey || options.staffKey === 'viewer') {
