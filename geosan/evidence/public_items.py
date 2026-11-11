@@ -49,16 +49,27 @@ def check_opportunity(opp_id: str) -> None:
 @contextmanager
 def approve_page(opp_id: str, page: Page):
     """외부 읽기에서 얻은 공개 본문만 보관하고, 성공·실패 모두 끝나면 즉시 비운다."""
+    with approve_pages(opp_id, [page]) as item_ids:
+        yield item_ids
+
+
+@contextmanager
+def approve_pages(opp_id: str, pages: list[Page]):
+    """같은 조사에서 읽은 여러 페이지를 페이지마다 항목 하나로 보관한다(#557)."""
     check_opportunity(opp_id)
-    text, _ = scrub_contacts(page.text)
-    item_id = new_id("public")
-    with _lock:
-        _items[item_id] = PublicItem(opp_id, page.url, text)
+    item_ids = []
     try:
-        yield [item_id]
+        for page in pages:
+            text, _ = scrub_contacts(page.text)
+            item_id = new_id("public")
+            with _lock:
+                _items[item_id] = PublicItem(opp_id, page.url, text)
+            item_ids.append(item_id)
+        yield item_ids
     finally:
         with _lock:
-            _items.pop(item_id, None)
+            for item_id in item_ids:
+                _items.pop(item_id, None)
 
 
 def approved_items(approved_item_ids: list[str], opp_id: str) -> list[PublicItem]:

@@ -67,6 +67,10 @@ homepageDiscovery:
   minConfidence: 0.7     # 이 값보다 낮으면 담당자가 홈페이지를 확인한다.
   autoResearch: true     # 새 사례의 홈페이지와 근거를 자동으로 조사할지 정한다.
   dailyCallLimit: 200    # 하루에 허용할 홈페이지 검색 횟수. 0이면 허용하지 않는다.
+  # 안쪽 페이지 읽기(#557): 첫 화면 링크 중 이름이 맞는 같은 사이트 페이지를 몇 장 더 읽어 한 번에 AI에 보낸다.
+  extraPages: 3          # 첫 화면 말고 더 읽는 페이지 수. 0이면 첫 화면만 읽는다.
+  extraPageHints: [회사소개, 회사 소개, 인사말, 연혁, 제품, 사업, 설비, 인증, 실적, 납품, about, company, product, business, history, facility]
+  extraPageMaxChars: 6000  # 안쪽 페이지 1장에서 AI에 보내는 글자 상한.
 
 # 브랜드. 로고·강조색은 자료가 오면 여기만 바꾼다(FR6.8). 초기값은 상세 화면 설계의 팀 제안.
 # demoLabel: 띠에 함께 보이는 문구. 10/29 부분 시연 동안 "부분 시연·거산 확인 전"으로 둔다(BR10.4, PM 결정 2026-10-24).
