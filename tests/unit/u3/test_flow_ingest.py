@@ -13,6 +13,7 @@ from geosan.capability.importer import import_capability
 from geosan.config.app_settings import load_app_settings, sync_app_settings
 from geosan.config.errors import AppError
 from geosan.config.models import AppSetting
+from geosan.evaluation.models import EvaluationRun
 from geosan.opportunity import candidate_pick
 from geosan.opportunity.candidate_registration import register_candidates
 from geosan.opportunity.importer import import_case
@@ -501,3 +502,91 @@ def test_city_without_rows_finishes_without_ai_call(ingest_env):
     flow.run_ingest(batch_id)
     assert saved(batch_id).status == "DONE" and saved(batch_id).judged_count == 0
     assert ingest_env.picker.calls == 0
+
+
+NEW_REASON = "가상 볼트 절삭가공으로 도금 외주 가능성"
+
+
+def with_changed_judgment(monkeypatch, **changes):
+    """#615: 다시 판단에서 문장·적합도(또는 넘긴 값)가 달라진 응답을 흉내 낸다."""
+    original = flow.pick_candidates
+    update = {"reason": NEW_REASON, "fit_level": "MEDIUM"} | changes
+
+    def pick(batch_id, row_ids, **kwargs):
+        return [
+            row.model_copy(update=update) if row.is_manufacturer else row
+            for row in original(batch_id, row_ids, **kwargs)
+        ]
+
+    monkeypatch.setattr(flow, "pick_candidates", pick)
+
+
+def _card():
+    with session_scope() as session:
+        customer = session.scalars(select(Customer)).one()
+        opportunity = session.scalars(select(Opportunity)).one()
+        runs = session.scalars(
+            select(EvaluationRun).where(EvaluationRun.opp_id == opportunity.opp_id)
+        ).all()
+        confirmed = [run.reason for run in runs if run.run_status == "CONFIRMED"]
+        return SimpleNamespace(
+            reason=customer.pick_reason,
+            fit=customer.fit_level,
+            card_reason=opportunity.card_reason,
+            eval_reasons=confirmed,
+            run_count=len(runs),
+        )
+
+
+def test_rejudge_refreshes_existing_card_and_reevaluates_without_research(ingest_env, monkeypatch):
+    """#615 Given 등록된 회사 / When 판단이 달라짐 / Then 카드·평가 문장이 바뀌고 조사는 없다."""
+    _brochure_runtime()
+    researched = []
+    monkeypatch.setattr(
+        flow,
+        "research_one",
+        lambda opp_id: researched.append(opp_id) or ResearchResult(status="NOT_FOUND"),
+    )
+    flow.run_ingest(new_batch(dataset="BROCHURE"))
+    before = _card()
+    assert before.reason != NEW_REASON and before.fit == "HIGH" and len(researched) == 1
+    with_changed_judgment(monkeypatch)
+    second = new_batch(dataset="BROCHURE", rejudge=True)
+    flow.run_ingest(second)
+    after = _card()
+    assert (after.reason, after.fit, after.card_reason) == (NEW_REASON, "MEDIUM", NEW_REASON)
+    assert after.eval_reasons == [NEW_REASON] and after.run_count == before.run_count + 1
+    assert len(researched) == 1
+    assert (saved(second).new_count, saved(second).skipped_count) == (0, 1)
+
+
+def test_unchanged_judgment_does_not_reevaluate_existing_company(ingest_env):
+    """#615 Given 등록된 회사 / When 같은 판단으로 다시 찾음 / Then 평가 기록이 늘지 않는다."""
+    flow.run_ingest(new_batch())
+    before = _card()
+    flow.run_ingest(new_batch())
+    assert _card() == before
+
+
+def test_company_outside_the_new_condition_is_still_refreshed(ingest_env, monkeypatch):
+    """#615 Given 아연도금으로 등록 / When 다른 공정으로 찾고 판단이 달라짐 / Then 카드가 바뀐다."""
+    flow.run_ingest(new_batch())
+    with_changed_judgment(monkeypatch)
+    second = new_batch("ANODIZING", rejudge=True)
+    flow.run_ingest(second)
+    with session_scope() as session:
+        bolt = session.scalars(select(Customer).where(Customer.name == "가상 볼트사")).one()
+        assert (bolt.pick_reason, bolt.fit_level) == (NEW_REASON, "MEDIUM")
+
+
+def test_stale_evaluation_sentence_is_repaired_on_the_next_run(ingest_env, monkeypatch):
+    """#615 Given 카드만 바뀌고 재평가가 실패 / When 다시 찾음 / Then 평가 문장도 맞춰진다."""
+    flow.run_ingest(new_batch())
+    with_changed_judgment(monkeypatch)
+    with monkeypatch.context() as patch:
+        patch.setattr(flow, "run_evaluation", lambda **_: FlowResult(ok=False))
+        with pytest.raises(AppError):
+            flow.run_ingest(new_batch(rejudge=True))
+    assert _card().reason == NEW_REASON and _card().eval_reasons != [NEW_REASON]
+    flow.run_ingest(new_batch())
+    assert _card().eval_reasons == [NEW_REASON]

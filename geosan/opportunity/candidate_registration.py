@@ -1,7 +1,8 @@
 """#426·#523: 고른 공개 공장·등록 확인된 웹 후보를 회사·기회·AI 공정으로 등록한다.
 
 호출자가 등록과 회차 집계를 같은 트랜잭션으로 확정한다. 여기서는 커밋·평가·조사를
-하지 않는다. 기존 고객은 고치지 않으며 같은 이름 또는 주소는 사람의 확인 대상으로 둔다.
+하지 않는다. 등록은 기존 고객을 고치지 않으며 같은 이름 또는 주소는 사람의 확인 대상으로 둔다.
+다시 판단한 결과를 기존 회사 카드에 옮기는 일은 refresh_registered_candidates만 한다(#615).
 """
 
 from __future__ import annotations
@@ -102,6 +103,63 @@ def registered_company_keys(session, *, is_virtual: bool) -> set[tuple[str, str]
         (customer.normalized_name, customer.normalized_address)
         for customer in session.scalars(select(Customer).where(Customer.is_virtual == is_virtual))
     }
+
+
+def refresh_registered_candidates(
+    session: Session, batch_id: str, judgments: Sequence[CandidateJudgment]
+) -> list[str]:
+    """최신 판단의 추천 이유·적합도를 이미 목록에 있는 회사 카드에 옮긴다(#615, PM 결정 2026-11-12).
+
+    AI가 찾아 올린 회사(회차 번호가 있는 회사)만 바꾼다. 사례 파일 회사와 담당자가 정한 값
+    (거래 관계·산업군·출처·공정 연결)은 건드리지 않는다. "제조업 아님"으로 바뀐 판단은 옮기지
+    않는다. 기회의 카드 문장은 옛 추천 이유와 같을 때만 바꾼다(손으로 고친 문장 보존).
+    이름·주소가 맞은 회사의 기회 번호를 값이 그대로여도 돌려준다. 평가 문장 맞추기는 호출자 몫이다.
+    """
+    batch, _ = _context(session, batch_id)
+    picked = {item.row_id: item for item in judgments if item.is_manufacturer}
+    if not picked:
+        return []
+    customers = {}
+    for customer in session.scalars(
+        select(Customer)
+        .where(Customer.is_virtual == batch.is_virtual, Customer.ingest_batch_id.is_not(None))
+        .order_by(Customer.customer_id)
+    ):
+        customers.setdefault((customer.normalized_name, customer.normalized_address), customer)
+    rows = session.scalars(
+        select(SourceFactoryRow)
+        .where(SourceFactoryRow.row_id.in_(list(picked)))
+        .order_by(SourceFactoryRow.source_id != SOURCE_ID, SourceFactoryRow.row_id)
+    )
+    done: set[str] = set()
+    opp_ids: list[str] = []
+    for row in rows:
+        customer = customers.get(company_key(row.company_name, row.address))
+        if (
+            customer is None
+            or customer.customer_id in done
+            or not shares_public_source(row.dataset_kind, batch.dataset_kind)
+            or row.is_virtual != batch.is_virtual
+        ):
+            continue
+        # 파일·조회 양쪽에 같은 회사가 있으면 등록 때처럼 파일 행의 판단을 쓴다(C5).
+        done.add(customer.customer_id)
+        judgment = picked[row.row_id]
+        opportunities = list(
+            session.scalars(
+                select(Opportunity)
+                .where(Opportunity.customer_id == customer.customer_id)
+                .order_by(Opportunity.opp_id)
+            )
+        )
+        for opportunity in opportunities:
+            if opportunity.card_reason == customer.pick_reason:
+                opportunity.card_reason = judgment.reason
+        customer.pick_reason = judgment.reason
+        customer.fit_level = judgment.fit_level
+        opp_ids.extend(opportunity.opp_id for opportunity in opportunities)
+    session.flush()
+    return opp_ids
 
 
 def _registration_rows(session, batch, ids, regions, source_kind):
