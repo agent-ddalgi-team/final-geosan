@@ -92,3 +92,25 @@ def pending_card_and_detail(pending_result):
         detail = client.get(f"/api/v1/opportunities/{card['oppId']}")
         assert detail.status_code == 200, detail.text
         assert detail.json()["data"]["evalId"] == card["evalId"]
+
+
+@when(
+    "운영자가 아연도금 후보를 찾은 뒤 문장과 적합도가 달라진 판단으로 다시 찾는다",
+    target_fixture="refresh_results",
+)
+def find_then_rejudge(flow_context, monkeypatch):
+    command = ["ingest", "kicox-factory-csv", "--process", "ZINC_PLATING", "--region", "충남"]
+    first = CliRunner().invoke(app, command)
+    support.with_changed_judgment(monkeypatch)
+    return first, CliRunner().invoke(app, [*command, "--rejudge"])
+
+
+@then("기존 회사 카드의 추천 이유와 적합도가 최신 판단으로 보이고 새 회사는 늘지 않는다")
+def refreshed_card(refresh_results):
+    assert all(result.exit_code == 0 for result in refresh_results), refresh_results[1].output
+    with TestClient(create_app()) as client:
+        (card,) = client.get("/api/v1/opportunities").json()["data"]
+        assert card["pickReason"] == support.NEW_REASON and card["fitLevel"] == "MEDIUM"
+        detail = client.get(f"/api/v1/opportunities/{card['oppId']}").json()["data"]
+        assert detail["reasons"]["reason"] == support.NEW_REASON
+        assert detail["header"]["pickReason"] == support.NEW_REASON
