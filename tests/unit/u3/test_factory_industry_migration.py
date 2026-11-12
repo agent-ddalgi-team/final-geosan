@@ -14,7 +14,7 @@ from geosan.storage.migrate import alembic_config, current_revisions, downgrade,
 from tests.unit.u3.test_ingest_tables import _columns, _insert_filled
 
 BEFORE = "src_004"
-HEAD = "src_005"
+HEAD = "rec_012"
 
 
 def test_old_companies_keep_their_values_and_get_an_empty_industry_name(tmp_path: Path) -> None:

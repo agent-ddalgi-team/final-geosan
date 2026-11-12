@@ -21,6 +21,7 @@ import {
   labelFor,
   listFilters,
   outcomeStatusLabels,
+  salesStepLabels,
   outcomeStatusTone,
   ownPlatingLine,
 } from '../../labels/ko';
@@ -163,7 +164,10 @@ export default function OpportunityCard({
           ) : null}
           {stageStatus && stageStatus !== 'NOT_EXECUTED' ? (
             <StatusTag tone={outcomeStatusTone[stageStatus] ?? 'neutral'}>
-              <span data-testid="card-stage-tag">{outcomeStatusLabels[stageStatus]}</span>
+              <span data-testid="card-stage-tag">
+                {outcomeStatusLabels[stageStatus]}
+                {card.salesStep ? ` · ${salesStepLabels[card.salesStep]}` : ''}
+              </span>
             </StatusTag>
           ) : null}
           {card.reevaluated ? (

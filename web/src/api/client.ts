@@ -34,6 +34,7 @@ import type {
   ReplyResponse,
   ReviewCheckRequest,
   ReviewCheckResponse,
+  SalesQuestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -214,6 +215,11 @@ export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
     body,
     staffKey,
   });
+}
+
+/** 꼬리 질문 묶음(#607). 질문 파일을 그대로 받는다. 외부 호출·저장 없음. */
+export function getSalesQuestions() {
+  return request<SalesQuestions>('/sales-questions');
 }
 
 /** 영업 단계·접촉 시도·다음 일정 저장(U5). 저장할 때마다 새 행이 쌓인다. */

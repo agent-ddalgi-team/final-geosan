@@ -2,9 +2,9 @@
 // 메모는 덧붙이기만 되고, 단계·일정은 저장할 때마다 새 행이 쌓인다(서버 규칙 Q5). 수정·삭제 단추는 두지 않는다.
 // 상대 회사 담당자 연락처를 메모에 적어도 막지 않는다(PM 결정 2026-11-03: 내부 메모장). 글자 수 초과 등
 // 서버가 돌려주는 쉬운 말은 그대로 보인다.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Input, Typography } from 'antd';
-import { ApiError, postNote, postOutcome } from '../../api/client';
+import { ApiError, getSalesQuestions, postNote, postOutcome } from '../../api/client';
 import type {
   ContactMethod,
   ContactResult,
@@ -14,6 +14,9 @@ import type {
   OutcomeRecord,
   OutcomeRequest,
   OutcomeStatus,
+  SalesQuestions,
+  SalesStep,
+  SalesStepView,
 } from '../../api/types';
 import {
   contactMethodLabels,
@@ -24,12 +27,29 @@ import {
   noteKindLabels,
   outcomeStatusLabels,
   recordsArea,
+  salesQuestionTexts,
+  salesStepLabels,
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
+import { STEP_ORDER, SalesQuestionFields, SalesStepSummary } from './SalesQuestions';
 
 export const DEFAULT_NOTE_MAX_LENGTH = 200;
+/** 접촉 기록 한 줄 메모 상한(#607, 설정 records.memoLineMaxLength 초기값). 넘으면 서버가 400. */
+export const MEMO_LINE_MAX_LENGTH = 100;
+
+// 질문 파일은 한 번만 받는다(문구가 바뀌면 새로 고침으로 다시 받는다).
+let questionsCache: Promise<SalesQuestions> | null = null;
+function loadSalesQuestions(): Promise<SalesQuestions> {
+  questionsCache ??= getSalesQuestions()
+    .then((envelope) => envelope.data)
+    .catch((caught: unknown) => {
+      questionsCache = null;
+      throw caught;
+    });
+  return questionsCache;
+}
 
 export interface RecordsAreaProps {
   oppId: string;
@@ -43,6 +63,10 @@ export interface RecordsAreaProps {
   onOutcomeSaved?: (outcome: OutcomeRecord) => void;
   /** 접촉·메모·단계·일정 중 무엇이든 저장이 끝나면 알린다(타임라인 새로 불러오기용). */
   onRecorded?: () => void;
+  /** 세부 단계·알아낸 것(#607). 상세가 다시 불러올 때마다 새 값이 들어온다. */
+  salesStep?: SalesStepView | null;
+  /** 접촉·단계 고치기를 저장해 세부 단계가 바뀌었을 수 있을 때 알린다(상세 다시 불러오기용). */
+  onSalesStepChanged?: () => void;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
@@ -120,6 +144,8 @@ export default function RecordsArea({
   onContactRecorded,
   onOutcomeSaved,
   onRecorded,
+  salesStep = null,
+  onSalesStepChanged,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -138,8 +164,25 @@ export default function RecordsArea({
   const [attemptedAt, setAttemptedAt] = useState(todayKst());
   const [dateError, setDateError] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
-  // 접촉을 적은 뒤 단계가 미접촉이면 "접촉으로 바꿀까요?"를 이 회사에서 한 번만 묻는다(자동 변경 아님).
-  const [stageSuggestion, setStageSuggestion] = useState<'idle' | 'shown' | 'used'>('idle');
+  // #607 꼬리 질문: 이번 접촉에서 고른 답과 한 줄 메모. 저장하면 비운다.
+  const [questions, setQuestions] = useState<SalesQuestions | null>(null);
+  const [questionsFailed, setQuestionsFailed] = useState(false);
+  const [picked, setPicked] = useState<Record<string, string>>({});
+  const [memoLine, setMemoLine] = useState('');
+  const [override, setOverride] = useState<SalesStep | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadSalesQuestions()
+      .then((loaded) => {
+        if (alive) setQuestions(loaded);
+      })
+      .catch(() => {
+        if (alive) setQuestionsFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const method: ContactMethod | null =
     recordKind === 'CALL' || recordKind === 'VISIT' || recordKind === 'EMAIL' ? recordKind : null;
@@ -231,16 +274,22 @@ export default function RecordsArea({
 
   async function onSaveContact() {
     if (!method || !result) return;
-    // 접촉을 적어도 단계는 자동으로 바꾸지 않는다(PM 결정 2026-11-08, #433): 지금 단계를 그대로 싣는다.
-    // 단계 기록이 아직 없거나 미접촉이면, 저장이 끝난 뒤 "접촉으로 바꿀까요?"를 한 번 묻는다.
+    // 지금 단계를 그대로 싣는다. 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 앞으로만
+    // 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈). 보류·성사·거절은 그대로.
     const status: OutcomeStatus = currentStatus ?? 'NOT_EXECUTED';
-    const askStage = status === 'NOT_EXECUTED';
+    const answers =
+      result === 'REACHED'
+        ? Object.entries(picked).map(([questionId, answerId]) => ({ questionId, answerId }))
+        : [];
+    const memo = memoLine.trim();
     const ok = await saveOutcome('contact', {
       status,
       method,
       result,
       attemptedAt,
       ...(spokeToCompany && judgmentCheck ? { judgmentCheck } : {}),
+      ...(answers.length > 0 ? { answers } : {}),
+      ...(memo ? { memo } : {}),
       ...keepSchedule(),
       ...(status === 'LOST' ? keepLostReason() : {}),
     });
@@ -248,14 +297,26 @@ export default function RecordsArea({
       onContactRecorded?.(method);
       setResult(null);
       setJudgmentCheck(null);
-      if (askStage) setStageSuggestion((previous) => (previous === 'idle' ? 'shown' : previous));
+      setPicked({});
+      setMemoLine('');
+      onSalesStepChanged?.();
     }
   }
 
-  /** 제안의 [접촉으로 바꾸기]: 영업 단계 저장과 같은 호출로 "접촉"을 저장한다. 하루 일정은 그대로 둔다. */
-  async function onApplyStageSuggestion() {
-    const ok = await saveOutcome('stage', { status: 'IN_PROGRESS', ...keepSchedule() });
-    if (ok) setStageSuggestion('used');
+  /** [단계 고치기](#607): 세부 단계를 담당자가 정한다. 큰 단계·일정은 그대로 싣는다. */
+  async function onSaveOverride() {
+    if (!override) return;
+    const status: OutcomeStatus = currentStatus ?? 'IN_PROGRESS';
+    const ok = await saveOutcome('stage', {
+      status,
+      stepOverride: override,
+      ...keepSchedule(),
+      ...(status === 'LOST' ? keepLostReason() : {}),
+    });
+    if (ok) {
+      setOverride(null);
+      onSalesStepChanged?.();
+    }
   }
 
   async function onSaveNote() {
@@ -344,6 +405,8 @@ export default function RecordsArea({
       <Typography.Text type="secondary" data-testid="records-flow-guide">
         {recordsArea.flowGuide}
       </Typography.Text>
+
+      <SalesStepSummary step={salesStep} status={currentStatus} questions={questions} />
 
       <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
@@ -444,6 +507,44 @@ export default function RecordsArea({
             </div>
           </>
         )}
+        {method && result === 'REACHED' && questions ? (
+          <SalesQuestionFields
+            questions={questions}
+            step={salesStep}
+            picked={picked}
+            onPick={(questionId, answerId) =>
+              setPicked((previous) => {
+                const next = { ...previous };
+                if (answerId === null) delete next[questionId];
+                else next[questionId] = answerId;
+                return next;
+              })
+            }
+            disabled={disabled}
+          />
+        ) : null}
+        {method && result === 'REACHED' && questionsFailed ? (
+          <span style={hintStyle} data-testid="sales-questions-failed">
+            {salesQuestionTexts.loadFailed}
+          </span>
+        ) : null}
+        {method && result ? (
+          <>
+            <Input
+              aria-label={salesQuestionTexts.memoLabel}
+              placeholder={salesQuestionTexts.memoLabel}
+              value={memoLine}
+              maxLength={MEMO_LINE_MAX_LENGTH}
+              onChange={(event) => setMemoLine(event.target.value)}
+              disabled={disabled}
+              data-testid="records-contact-memo"
+            />
+            <span style={hintStyle}>
+              {salesQuestionTexts.memoHint}{' '}
+              {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
+            </span>
+          </>
+        ) : null}
         {method && dateError ? (
           <span
             role="alert"
@@ -455,30 +556,6 @@ export default function RecordsArea({
           </span>
         ) : null}
         {blockMessage(method ? 'contact' : 'note')}
-        {stageSuggestion === 'shown' &&
-        (currentStatus === null || currentStatus === 'NOT_EXECUTED') ? (
-          <div style={rowStyle} data-testid="records-stage-suggestion">
-            <span>{recordsArea.stageSuggest}</span>
-            <Button
-              size="small"
-              type="primary"
-              disabled={disabled}
-              loading={busy === 'stage'}
-              onClick={() => void onApplyStageSuggestion()}
-              data-testid="records-stage-suggestion-apply"
-            >
-              {recordsArea.stageSuggestApply}
-            </Button>
-            <Button
-              size="small"
-              disabled={disabled}
-              onClick={() => setStageSuggestion('used')}
-              data-testid="records-stage-suggestion-dismiss"
-            >
-              {recordsArea.stageSuggestDismiss}
-            </Button>
-          </div>
-        ) : null}
       </section>
 
       <section aria-labelledby={`records-stage-${oppId}`} style={blockStyle}>
@@ -495,6 +572,9 @@ export default function RecordsArea({
             : currentStatus
               ? outcomeStatusLabels[currentStatus]
               : recordsArea.stageNone}
+        </span>
+        <span style={hintStyle} data-testid="records-stage-auto-hint">
+          {recordsArea.stageAutoHint}
         </span>
         <div style={rowStyle}>
           <NativeSelect
@@ -561,6 +641,27 @@ export default function RecordsArea({
               </span>
             ) : null}
           </>
+        ) : null}
+        {salesStep?.code ? (
+          <div style={rowStyle}>
+            <NativeSelect
+              label={salesQuestionTexts.overrideLabel}
+              placeholder={salesQuestionTexts.overrideLabel}
+              value={override}
+              options={STEP_ORDER.map((code) => ({ value: code, label: salesStepLabels[code] }))}
+              onChange={(value) => setOverride(value as SalesStep | null)}
+              disabled={disabled}
+              testId="records-step-override"
+            />
+            <Button
+              disabled={disabled || !override || override === salesStep.code}
+              loading={busy === 'stage'}
+              onClick={() => void onSaveOverride()}
+              data-testid="records-step-override-save"
+            >
+              {salesQuestionTexts.overrideSave}
+            </Button>
+          </div>
         ) : null}
         {blockMessage('stage')}
       </section>

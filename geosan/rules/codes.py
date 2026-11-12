@@ -259,6 +259,16 @@ class ContactResult(StrEnum):
     DECLINED = "DECLINED"
 
 
+class SalesStep(StrEnum):
+    """#607: 큰 단계(OutcomeStatus) 안의 세부 단계. 꼬리 질문 답으로 알아낸 사실로 정한다."""
+
+    NOT_REACHED = "NOT_REACHED"
+    REACHED = "REACHED"
+    DEMAND_CONFIRMED = "DEMAND_CONFIRMED"
+    MATERIAL_QUOTE = "MATERIAL_QUOTE"
+    VISIT_SAMPLE = "VISIT_SAMPLE"
+
+
 class JudgmentCheck(StrEnum):
     """접촉해 보니 AI 판단이 맞았나(#531). 영업 성과와 별개다. 외주처가 있어도 사실이면 맞음."""
 
