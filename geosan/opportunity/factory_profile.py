@@ -421,7 +421,7 @@ class ProfileIndex:
 def apply_to_customer(
     customer: Customer, index: ProfileIndex, surface_codes: Sequence[str]
 ) -> tuple[bool, int]:
-    """공장 정보 4열을 옮기고 규칙 출처의 표면처리 표시를 다시 계산한다.
+    """공장 정보 5열(#573의 4열 + 업종명 #617)을 옮기고 규칙 출처의 표면처리 표시를 다시 계산한다.
 
     돌려주는 값: (붙었는지, 표시 변화 +1 새로 붙음 / -1 풀림 / 0 그대로).
     """
@@ -429,6 +429,7 @@ def apply_to_customer(
     customer.factory_raw_materials = profile.raw_materials if profile else None
     customer.factory_employee_count = profile.employee_count if profile else None
     customer.factory_scale = profile.scale if profile else None
+    customer.factory_industry_name = profile.industry_name if profile else None
     customer.factory_profile_date = profile.file_date if profile else None
     if customer.own_plating_line_source not in (None, *RULE_SOURCES):
         return profile is not None, 0

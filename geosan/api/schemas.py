@@ -279,6 +279,9 @@ class FactoryProfile(_ApiModel):
         description="공장 등록 때 적은 종업원 수. 갱신되지 않을 수 있어 언제나 추정으로 보인다",
     )
     scale: str | None = Field(default=None, description="공장 규모. 예: 소기업")
+    industry_name: str | None = Field(
+        default=None, description="공장 등록 업종명(#617). 예: 절삭가공 및 유사처리업"
+    )
     file_date: date = Field(description="팩토리온 자료 기준일")
 
 
