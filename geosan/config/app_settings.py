@@ -237,6 +237,15 @@ class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
 
 
+class SalesAnalysisSettings(FileModel):
+    """계약 C7 `salesAnalysis`(#608). 기준 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+
+    # 표본(접촉한 곳 수)이 이 값보다 적으면 비율을 내지 않는다.
+    min_sample_for_ratio: int = Field(ge=1, strict=True)
+    # 성사·거절은 결과 기록이 이 일수 안인 것만 센다.
+    closed_window_days: int = Field(ge=1, strict=True)
+
+
 class MainPhoneSettings(FileModel):
     allowed_prefixes: list[str] = Field(default_factory=list)
 
@@ -281,6 +290,8 @@ class AppSettings(FileModel):
     access_protection: AccessProtectionSettings
     records: RecordsSettings = Field(default_factory=RecordsSettings)
     research: ResearchSettings = Field(default_factory=ResearchSettings)
+    # #608: 이 칸이 없는 옛 설정 파일도 읽는다. DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    sales_analysis: SalesAnalysisSettings | None = None
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
@@ -442,7 +453,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
     data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
     if not data:
         return None
-    return AppSettings.model_validate(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+    return AppSettings.model_validate(
+        _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+    )
 
 
 ADDED_LLM_KEYS = ("unconfirmedCallCostUsd",)
@@ -460,6 +473,19 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).llm.model_dump(by_alias=True)
     filled = {**llm, **{key: defaults[key] for key in missing}}
     return {**data, "llm": filled}
+
+
+ADDED_SECTIONS = ("salesAnalysis",)
+"""#608 뒤에 생긴 묶음. 그 전에 만든 설정 파일·DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 없거나 비어 있는 묶음만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    missing = [key for key in ADDED_SECTIONS if data.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
+    return {**data, **{key: defaults[key] for key in missing}}
 
 
 ADDED_INGESTION_KEYS = ("costEstimate",)

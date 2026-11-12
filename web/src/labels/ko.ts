@@ -181,6 +181,8 @@ export const frame = {
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
   menuDashboard: '대시보드',
   pageTitleDashboard: '대시보드',
+  menuSalesAnalysis: '영업 분석',
+  pageTitleSalesAnalysis: '영업 분석',
 } as const;
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
@@ -1146,3 +1148,71 @@ export const scoreStateLabels: Record<string, string> = {
   NO_BONUS: '가점 없음',
   UNAVAILABLE: '자료 미확보',
 };
+
+/** 영업 분석(#608): 영업 기록만으로 계산한 공정별·회사별 표. 내부 참고용이고 밖으로 나가지 않는다. */
+export const salesAnalysisTexts = {
+  loadError: '영업 분석표를 불러오지 못했습니다.',
+  intro: '담당자가 남긴 접촉·단계·거절 이유 기록만으로 계산합니다. AI는 쓰지 않습니다.',
+  /** "11/13 09:00 기준 · 접촉 기록이 있는 회사 3곳 · 성사·거절은 최근 365일 안의 것만" */
+  basis: (asOf: string | null, companyCount: number, windowDays: number) =>
+    [
+      asOf ? `${asOf} 기준` : null,
+      `접촉 기록이 있는 회사 ${companyCount}곳`,
+      `성사·거절은 최근 ${windowDays}일 안의 것만`,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+  olderExcluded: (count: number) => `그보다 오래된 성사·거절 ${count}곳은 표에서 빠졌습니다.`,
+  countRule: (minSample: number) =>
+    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 한 회사가 공정·산업군이 여러 개면 각각 셉니다.`,
+  empty:
+    '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
+  emptyAction: '영업 후보 목록으로',
+  processTitle: '공정별',
+  processTableLabel: '공정별 영업 분석표',
+  companyTitle: '회사별',
+  companyTableLabel: '회사별 영업 분석표',
+  processColumns: {
+    name: '공정 · 산업군',
+    contacted: '접촉한 곳',
+    inProgress: '진행 중',
+    onHold: '보류',
+    won: '성사',
+    lost: '거절',
+    avgToWon: '성사까지 평균 접촉',
+    reach: '방법별 연결/시도',
+    lostReasons: '거절 이유',
+    ratio: '비율',
+  },
+  companyColumns: {
+    name: '회사',
+    process: '공정',
+    industry: '산업군',
+    contacts: '접촉',
+    stage: '지금 단계',
+    firstContact: '첫 접촉',
+    lastContact: '마지막 접촉',
+    sinceFirst: '첫 접촉 뒤',
+    outcome: '결과',
+  },
+  none: '—',
+  places: (count: number) => `${count}곳`,
+  times: (value: number) => `${value}번`,
+  days: (count: number) => `${count}일`,
+  /** 공정 줄 아래 산업군 줄 앞머리. */
+  industryPrefix: '└ ',
+  /** "전화 2/3" — 연결/시도. */
+  reach: (method: string, reached: number, tried: number) => `${method} ${reached}/${tried}`,
+  reasonCount: (label: string, count: number) => `${label} ${count}`,
+  methodCount: (label: string, count: number) => `${label} ${count}`,
+  /** 표본이 기준보다 적을 때 비율 칸에 보이는 말. */
+  sampleOnly: (count: number) => `표본 ${count}건`,
+  wonRatio: (percent: number) => `성사 ${percent}%`,
+  reachRatio: (method: string, percent: number) => `${method} 연결 ${percent}%`,
+  /** "접촉 · 수요 확인" / "거절 · 가격" */
+  stageWithDetail: (stage: string, detail: string) => `${stage} · ${detail}`,
+  /** "첫 접촉 뒤 21일 만에 성사 (11/10)" */
+  outcomeAfter: (days: number, stage: string, date: string | null) =>
+    `첫 접촉 뒤 ${days}일 만에 ${stage}${date ? ` (${date})` : ''}`,
+  openCompanyLabel: (name: string) => `${name} 상세 보기`,
+} as const;

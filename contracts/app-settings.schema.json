@@ -43,6 +43,17 @@
         "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 }
       }
     },
+    "salesAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minSampleForRatio", "closedWindowDays"],
+      "description": "영업 분석표(C1 /sales-analysis, #608) 기준 숫자. 이 묶음이 없는 옛 설정은 예시 파일(examples/app-settings.yaml) 값으로 읽는다.",
+      "properties": {
+        "_설명": { "type": "string" },
+        "minSampleForRatio": { "type": "integer", "minimum": 1, "description": "표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 \"표본 n건\"만 보인다. 초기값 10" },
+        "closedWindowDays": { "type": "integer", "minimum": 1, "description": "성사·거절은 결과 기록이 이 일수 안인 것만 센다. 초기값 365" }
+      }
+    },
     "listFilters": {
       "type": "object",
       "additionalProperties": false,
