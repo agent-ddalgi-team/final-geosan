@@ -373,3 +373,56 @@ def test_provider_failure_kind_and_instructions_are_not_replaced(homepage_env, m
     assert response.json()["error"]["message"] == error.message
     assert response.json()["error"]["nextAction"] == error.next_action
     assert run.call_count == 1 and homepage_env[2].call_count == 0
+
+
+@pytest.fixture
+def no_homepage_env(extract_env):
+    """#596: 홈페이지를 못 찾은 회사(주소 없음)."""
+    case, transport = extract_env
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        customer.homepage_url = None
+        customer.homepage_status = "NOT_FOUND"
+    with TestClient(create_app()) as client:
+        yield client, case, transport
+
+
+def test_rerun_without_address_finds_homepage_first_then_researches(no_homepage_env, monkeypatch):
+    """Given 주소 없는 회사 / When 빈 요청(다시 조사) / Then 홈페이지 찾기 → 조사·재평가."""
+    from geosan.api.routes import homepage as route
+
+    finder = Mock(return_value=Mock(url=URL))
+    monkeypatch.setattr(route, "find_case_homepage", finder)
+    before = support.counts()
+    response = post(no_homepage_env, {})
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["evidenceCount"] == 1
+    assert response.json()["meta"]["reevaluated"] is True
+    finder.assert_called_once_with(no_homepage_env[1].opp_id)
+    assert no_homepage_env[2].call_count == 1
+    assert support.counts()[0] == before[0] + 1
+
+
+def test_rerun_without_address_reports_not_found_and_saves_nothing(no_homepage_env, monkeypatch):
+    """Given 주소 없는 회사 / When 또 못 찾음 / Then 422 HOMEPAGE_NOT_FOUND, 조사 없음."""
+    from geosan.api.routes import homepage as route
+
+    monkeypatch.setattr(route, "find_case_homepage", Mock(return_value=Mock(url=None)))
+    before = support.counts()
+    response = post(no_homepage_env, {})
+    assert response.status_code == 422
+    body = response.json()["error"]
+    assert body["kind"] == "HOMEPAGE_NOT_FOUND"
+    assert body["message"] == "홈페이지를 찾지 못했습니다."
+    assert no_homepage_env[2].call_count == 0 and support.counts() == before
+
+
+def test_rerun_with_saved_address_never_searches_again(homepage_env, monkeypatch):
+    """Given 주소 있는 회사 / When 빈 요청 / Then 홈페이지를 다시 찾지 않고 그 주소로 조사한다."""
+    from geosan.api.routes import homepage as route
+
+    finder = Mock(side_effect=AssertionError("주소가 있으면 다시 찾지 않습니다"))
+    monkeypatch.setattr(route, "find_case_homepage", finder)
+    response = post(homepage_env, {})
+    assert response.status_code == 200, response.text
+    assert finder.call_count == 0 and homepage_env[2].call_count == 1

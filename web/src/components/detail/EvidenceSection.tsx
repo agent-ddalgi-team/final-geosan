@@ -15,13 +15,7 @@ function CertaintyText({ certainty }: { certainty: EvidenceView['certainty'] }) 
   return <span>{text}</span>;
 }
 
-export default function EvidenceSection({
-  evidence,
-  homepageNeedsConfirm,
-}: {
-  evidence: EvidenceView[];
-  homepageNeedsConfirm: boolean;
-}) {
+export default function EvidenceSection({ evidence }: { evidence: EvidenceView[] }) {
   return (
     <DetailSection id="detail-evidence" title={detailSections.evidence}>
       {evidence.length === 0 ? (
@@ -76,11 +70,6 @@ export default function EvidenceSection({
           ))}
         </ul>
       )}
-      {homepageNeedsConfirm ? (
-        <p data-testid="homepage-needs-confirm" style={{ margin: 0 }}>
-          {evidenceRows.homepageNeedsConfirm}
-        </p>
-      ) : null}
     </DetailSection>
   );
 }

@@ -94,6 +94,28 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.getByTestId('card-ingested-tag')).toHaveTextContent('11/20 들어옴');
   });
 
+  it.each([
+    ['RUNNING', '점수 전 · 조사 중'],
+    ['NO_SCORE_EVIDENCE', '점수 전 · 조사 중단'],
+    ['NOT_FOUND', '점수 전 · 조사 중단'],
+    ['READ_FAILED', '점수 전 · 조사 중단'],
+    ['NOT_TRIED', '점수 전 · 조사 중단'],
+  ] as const)('조사 상태 %s면 카드에는 "%s"만 보인다(이유는 상세, #596)', async (state, text) => {
+    mockedGet.mockResolvedValueOnce(reply([{ ...found, researchState: state }]));
+    renderPage();
+    const card = within(await screen.findByTestId('opportunity-card'));
+    expect(card.getByTestId('card-score')).toHaveTextContent(text);
+    expect(card.getByTestId('card-research-state')).toHaveAttribute('data-research-state', state);
+  });
+
+  it('조사 상태가 없으면(점수가 났거나 옛 응답) "점수 전"만 보이고 꼬리표가 없다(#596)', async () => {
+    mockedGet.mockResolvedValueOnce(reply([{ ...found, researchState: null }]));
+    renderPage();
+    const card = within(await screen.findByTestId('opportunity-card'));
+    expect(card.getByTestId('card-score')).toHaveTextContent(candidateSearch.beforeScore);
+    expect(card.queryByTestId('card-research-state')).not.toBeInTheDocument();
+  });
+
   it('들어온 시각을 모르면 날짜 꼬리표가 없고 고른 이유는 계속 보인다', async () => {
     mockedGet.mockResolvedValueOnce(reply([{ ...found, ingestedAt: null }]));
     renderPage();

@@ -31,6 +31,34 @@ def factory_profile(customer: Customer) -> FactoryProfile | None:
     )
 
 
+def research_state(
+    customer: Customer, progress: LatestIngest | None, *, scored: bool
+) -> str | None:
+    """점수가 아직 없는 찾은 회사의 조사 상태(#596). 점수가 있거나 사례 파일 회사면 None.
+
+    카드는 RUNNING이면 "조사 중", 나머지는 "조사 중단"만 보이고, 상세가 이유를 보인다.
+    "조사 중"은 목록 머리의 "조사 n/m" 진행 표시와 같은 기준(마지막 찾기 회차의 수)을 쓴다.
+    """
+    if scored or customer.ingest_batch_id is None:
+        return None
+    if (
+        progress is not None
+        and customer.ingest_batch_id == progress.batch_id
+        and (
+            progress.status == "RUNNING"
+            or (progress.status == "DONE" and progress.research_done_count < progress.new_count)
+        )
+    ):
+        return "RUNNING"
+    if customer.researched_at is not None:
+        return "NO_SCORE_EVIDENCE"
+    if customer.homepage_status == "NOT_FOUND":
+        return "NOT_FOUND"
+    if customer.homepage_url:
+        return "READ_FAILED"
+    return "NOT_TRIED"
+
+
 def discovery_fields(customer: Customer) -> dict:
     return {
         **{
