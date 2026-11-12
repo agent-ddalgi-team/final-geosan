@@ -27,7 +27,7 @@ from tests.unit.u3.test_ingest_tables import (
 )
 
 BEFORE = "tg_003"
-HEAD = "src_004"
+HEAD = "rec_012"
 RECORD_TABLES = ("rec_note", "rec_outcome", "rec_review_opinion")
 # 기회 번호 → (자료 묶음, 가상 여부). opp-none만 기록이 하나도 없다.
 OPPORTUNITIES = {
