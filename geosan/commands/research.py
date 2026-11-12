@@ -88,7 +88,7 @@ def run_research(
             else:
                 completed += 1
             print_research_result(name, result, echo)
-            if result.usage_unconfirmed or (result.error and result.error.kind in STOP_KINDS):
+            if result.error and result.error.kind in STOP_KINDS:
                 echo(f"조사를 멈췄습니다. 남은 대상 {len(rows) - processed}건.")
                 break
         echo(

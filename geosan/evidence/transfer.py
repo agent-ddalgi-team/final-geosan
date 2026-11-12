@@ -74,6 +74,15 @@ class SearchTicket:
     llm: LlmSettings
 
 
+def accounted_cost(row: TransferLog, llm: LlmSettings) -> Decimal:
+    """실제 비용이 없을 때만 추정한다. 원본을 채우지 않아 나중에 실제 값으로 정산할 수 있다."""
+    if not row.call_count:
+        return Decimal(0)
+    if row.cost_usd is not None:
+        return row.cost_usd
+    return Decimal(str(llm.unconfirmed_call_cost_usd)) * row.call_count
+
+
 def record_search_rejection(
     opp_id: str, reason: str, db_path: Path | str | None, *, purpose: str = "EXTERNAL_SEARCH"
 ) -> None:
@@ -120,7 +129,7 @@ def reserve_candidate_judgment(
 def reserve_candidate_search(
     batch_id: str, key_present: bool, db_path: Path | str | None = None
 ) -> SearchTicket:
-    """C4·C9: 후보 웹 검색의 하루 한도는 별도, 월 호출·비용·미확정 기록은 공유한다."""
+    """C4·C9: 후보 웹 검색의 하루 한도는 별도, 월 호출·비용(미확정은 추정)은 공유한다."""
     if not isinstance(batch_id, str) or not batch_id.strip():
         raise InputError("후보 찾기 회차 번호를 확인해 주세요.")
     return _reserve(None, key_present, db_path, "EXTERNAL_SEARCH", "SYSTEM", batch_id=batch_id)
@@ -171,7 +180,7 @@ def _reserve(
             and row.occurred_at >= day_start
             and (row.batch_id is not None) == (batch_id is not None)
         )
-        cost = sum((row.cost_usd or Decimal(0) for row in rows), Decimal(0))
+        cost = sum((accounted_cost(row, llm) for row in rows), Decimal(0))
         is_search = purpose == "EXTERNAL_SEARCH"
         search_enabled = (
             settings.candidate_web_search.enabled
@@ -214,13 +223,6 @@ def _reserve(
                 "다음 달 다시 조사해 주세요.",
                 status=503,
                 kind="LLM_LIMIT",
-            )
-        elif any(row.cost_usd is None for row in rows):
-            error = AppError(
-                "AI 사용 기록에 문제가 있어 조사를 멈췄습니다",
-                "문의 번호와 함께 운영자에게 알려 주세요",
-                status=503,
-                kind="USAGE_UNCONFIRMED",
             )
         elif cost + minimum_search_cost >= Decimal(str(llm.monthly_cost_limit_usd)):
             error = AppError(

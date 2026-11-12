@@ -149,6 +149,7 @@ class LlmSettings(FileModel):
         default=0, ge=0, strict=True, allow_inf_nan=False
     )
     monthly_cost_limit_usd: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
+    unconfirmed_call_cost_usd: float = Field(gt=0, strict=True, allow_inf_nan=False)
     cost_alert_ratio: float = Field(default=0.5, ge=0, le=1, strict=True, allow_inf_nan=False)
 
     @model_validator(mode="after")

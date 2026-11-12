@@ -54,6 +54,7 @@ llm:
   outputCostPerMillionTokens: 10.0
   webSearchCostPerThousandCalls: 10.0
   monthlyCostLimitUsd: 20
+  unconfirmedCallCostUsd: 0.10  # 사용량을 못 받은 호출의 추정 비용(#538).
   costAlertRatio: 0.5
   costPerThousandTokens: 0
 

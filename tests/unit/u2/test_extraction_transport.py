@@ -39,7 +39,7 @@ def test_real_extraction_request_and_database(extract_env, monkeypatch):
         worker.start()
 
         def local(host, *, timeout):
-            assert host == "api.openai.com" and 0 < timeout <= 20
+            assert host == "api.openai.com" and 20 < timeout <= 60
             return http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=timeout)
 
         monkeypatch.setattr(extraction.http.client, "HTTPSConnection", local)

@@ -13,7 +13,7 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError, InputError, exit_code_for
-from geosan.evidence.transfer import KST, TransferLog
+from geosan.evidence.transfer import KST, TransferLog, accounted_cost
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 
@@ -42,7 +42,10 @@ def run_cost(month: str | None, echo=typer.echo) -> int:
                 )
             ).all()
         calls = sum(row.call_count for row in rows)
-        cost = sum((row.cost_usd or Decimal(0) for row in rows), Decimal(0))
+        confirmed_cost = sum((row.cost_usd or Decimal(0) for row in rows), Decimal(0))
+        pending = [row for row in rows if row.call_count and row.cost_usd is None]
+        cost = sum((accounted_cost(row, settings.llm) for row in rows), Decimal(0))
+        estimated_cost = sum((accounted_cost(row, settings.llm) for row in pending), Decimal(0))
         input_tokens = sum(row.input_tokens or 0 for row in rows)
         output_tokens = sum(row.output_tokens or 0 for row in rows)
         rejected = sum(row.decision == "REJECTED" for row in rows)
@@ -57,13 +60,16 @@ def run_cost(month: str | None, echo=typer.echo) -> int:
             f"({call_ratio:.1f}%), 거부 {rejected}건"
         )
         echo(f"입력 {input_tokens}·출력 {output_tokens}토큰, 웹 검색 {searches}회")
-        echo(f"확인된 비용 ${cost:.6f}/${llm.monthly_cost_limit_usd:.2f} ({cost_ratio:.1f}%)")
+        echo(f"확인된 비용 ${confirmed_cost:.6f}")
+        if pending:
+            echo(f"추정 비용 ${estimated_cost:.6f} (사용량 미확정 {len(pending)}건)")
+        echo(f"한도 계산 비용 ${cost:.6f}/${llm.monthly_cost_limit_usd:.2f} ({cost_ratio:.1f}%)")
         if cost >= Decimal(str(llm.monthly_cost_limit_usd)) * Decimal(str(llm.cost_alert_ratio)):
             echo("알림: 이번 달 비용이 알림 기준에 도달했습니다.")
-        if any(row.call_count and row.cost_usd is None for row in rows):
+        if pending:
             echo(
                 "사용량 미확정 호출이 있습니다. 실제 총비용은 미확인입니다. "
-                "제공사 사용량을 확인해 주세요."
+                "추정 비용을 포함해 한도를 계산하며, 필요할 때만 실제 사용량으로 정산합니다."
             )
             return 2
         return 0

@@ -388,16 +388,14 @@ def test_research_error_skips_that_company_and_continues(ingest_env, monkeypatch
     assert batch.status == "DONE" and batch.new_count == 2 and batch.research_done_count == 2
 
 
-@pytest.mark.parametrize("stop", ["limit", "unconfirmed"])
-def test_cost_limit_or_unknown_usage_still_stops_research(ingest_env, monkeypatch, stop):
+@pytest.mark.parametrize("stop", ["LLM_LIMIT", "SEARCH_LIMIT", "LLM_NOT_CONFIGURED"])
+def test_limits_and_configuration_still_stop_research(ingest_env, monkeypatch, stop):
     _brochure_runtime()
     calls = []
 
     def research(opp_id):
         calls.append(opp_id)
-        if stop == "limit":
-            return ResearchResult(error=AppError("가상 한도", "확인", kind="LLM_LIMIT"))
-        return ResearchResult(usage_unconfirmed=True)
+        return ResearchResult(error=AppError("가상 한도·설정 오류", "확인", kind=stop))
 
     monkeypatch.setattr(flow, "research_one", research)
     batch_id = new_batch(["ZINC_PLATING", "ANODIZING"], dataset="BROCHURE")
@@ -405,6 +403,27 @@ def test_cost_limit_or_unknown_usage_still_stops_research(ingest_env, monkeypatc
         flow.run_ingest(batch_id)
     assert len(calls) == 1 and saved(batch_id).status == "FAILED"
     assert saved(batch_id).new_count == 2
+
+
+def test_unknown_usage_skips_failed_company_and_researches_next(ingest_env, monkeypatch):
+    _brochure_runtime()
+    calls = []
+
+    def research(opp_id):
+        calls.append(opp_id)
+        if len(calls) == 1:
+            return ResearchResult(
+                usage_unconfirmed=True,
+                error=AppError("응답을 받지 못했습니다", "다시 조사", kind="LLM_FAILED"),
+            )
+        return ResearchResult(status="NOT_FOUND")
+
+    monkeypatch.setattr(flow, "research_one", research)
+    batch_id = new_batch(["ZINC_PLATING", "ANODIZING"], dataset="BROCHURE")
+    flow.run_ingest(batch_id)
+    batch = saved(batch_id)
+    assert len(calls) == 2
+    assert batch.status == "DONE" and batch.new_count == 2 and batch.research_done_count == 2
 
 
 def _with_first_row_low(monkeypatch):

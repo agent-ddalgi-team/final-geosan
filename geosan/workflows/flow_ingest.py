@@ -231,9 +231,7 @@ def run_ingest(batch_id: str) -> None:
         if settings.homepage_discovery.auto_research and not batch.is_virtual:
             for opp_id in affected:
                 result = research_one(opp_id)
-                if result.usage_unconfirmed or (
-                    result.error is not None and result.error.kind in STOP_KINDS
-                ):
+                if result.error is not None and result.error.kind in STOP_KINDS:
                     raise RunFailedError("새 후보 홈페이지 조사를 완료하지 못했습니다.")
                 if result.error is not None:
                     # 약속 C1: 실패는 그 회사만 남기고 다음 회사로 넘어간다(#528).
