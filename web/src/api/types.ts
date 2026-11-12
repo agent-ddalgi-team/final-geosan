@@ -291,6 +291,8 @@ export interface FactoryProfile {
   /** 공장 등록 때 적은 인원. 갱신되지 않을 수 있어 화면은 언제나 "(추정)"으로 보인다. */
   employeeCount: number | null;
   scale: string | null;
+  /** 공장 등록 업종명(#617). 옛 응답에는 없다. */
+  industryName?: string | null;
   /** 자료 기준일 YYYY-MM-DD */
   fileDate: string;
 }
