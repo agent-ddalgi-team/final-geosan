@@ -418,7 +418,24 @@ def read_app_settings(session: Session) -> AppSettings | None:
     data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
     if not data:
         return None
-    return AppSettings.model_validate(data)
+    return AppSettings.model_validate(_fill_added_llm_keys(data))
+
+
+ADDED_LLM_KEYS = ("unconfirmedCallCostUsd",)
+"""#538 뒤에 생긴 필수 llm 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다(#591)."""
+
+
+def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 llm 칸만 예시 파일 값으로 채운 새 dict. 다른 칸은 그대로 둔다."""
+    llm = data.get("llm")
+    if not isinstance(llm, dict):
+        return data
+    missing = [key for key in ADDED_LLM_KEYS if key not in llm]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).llm.model_dump(by_alias=True)
+    filled = {**llm, **{key: defaults[key] for key in missing}}
+    return {**data, "llm": filled}
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"
