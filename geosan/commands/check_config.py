@@ -20,8 +20,8 @@ from geosan.config.registry import (
     register_config_files,
 )
 from geosan.config.rule_config import check_rule_config_file
+from geosan.config.sales_questions import check_sales_questions_file, questions_path
 from geosan.config.validators import format_field_error
-from geosan.records.sales_questions import check_sales_questions_file, questions_path
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
 

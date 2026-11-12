@@ -11,6 +11,13 @@ from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.proposal_review import confirm_proposal, proposal_review_items
+from geosan.api.sales_step import (
+    AnswerRow,
+    RecordRow,
+    SalesStepState,
+    compute_sales_step,
+    stage_for,
+)
 from geosan.api.schemas import (
     ActivityEnvelope,
     ActivityItem,
@@ -52,6 +59,7 @@ from geosan.api.schemas import (
     SalesStepEntry,
 )
 from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
+from geosan.config.sales_questions import SalesQuestions, load_sales_questions
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity, RelationHistory
@@ -65,15 +73,6 @@ from geosan.records.models import (
     OutcomeAnswer,
     ReviewCheck,
     ReviewOpinion,
-)
-from geosan.records.sales_questions import (
-    AnswerRow,
-    RecordRow,
-    SalesQuestions,
-    SalesStepState,
-    compute_sales_step,
-    load_sales_questions,
-    stage_for,
 )
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow

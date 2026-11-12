@@ -6,14 +6,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from geosan.api.sales_step import AnswerRow, RecordRow, compute_sales_step, stage_for
 from geosan.commands.app import app
-from geosan.records.sales_questions import (
-    AnswerRow,
-    RecordRow,
-    check_sales_questions_file,
-    compute_sales_step,
-    stage_for,
-)
+from geosan.config.sales_questions import check_sales_questions_file
 
 EXAMPLE = Path("examples/sales-questions.yaml")
 STEPS = """steps:
