@@ -942,6 +942,46 @@ export const timelineArea = {
     `취소 · ${[name, date].filter(Boolean).join(' · ')}`,
 } as const;
 
+/**
+ * 상세 "비슷한 회사 참고"(#269, PM 결정 2026-11-04 A안)와 영업 전략 영역의 "참고한 이력" 상자.
+ * 같은 공정·산업군 다른 회사 최대 5곳의 영업 단계·거절 이유·마지막 접촉·최근 메모를 내부에서만 본다.
+ */
+export const peersArea = {
+  title: '비슷한 회사 참고',
+  /** 영역 머리 한 줄. 메모가 들어 있어 영업 메모와 같은 취급이다. */
+  internalNote: '내부 참고 · 밖으로 안 나감',
+  loading: '불러오는 중',
+  loadFailed: '비슷한 회사를 불러오지 못했습니다.',
+  retry: '다시 불러오기',
+  empty: '같은 공정·산업군의 다른 회사가 아직 없습니다.',
+  listLabel: '비슷한 회사 목록',
+  /** 요약 줄 묶음 사이 구분 "같은 공정 4곳 · 산업군 2곳 | 접촉 1 · 거절 1(가격) | 전화 연결 3/5". */
+  summaryDivider: ' | ',
+  summaryCounts: (processCount: number, industryCount: number) =>
+    `같은 공정 ${processCount}곳 · 산업군 ${industryCount}곳`,
+  /** "거절 3(가격 2 · 납기 1)" 처럼 거절 건수 뒤에 이유 상위를 붙인다. */
+  stageCount: (label: string, count: number, reasons?: string) =>
+    reasons ? `${label} ${count}(${reasons})` : `${label} ${count}`,
+  reasonCount: (label: string, count: number) => `${label} ${count}`,
+  reachCount: (method: string, reached: number, tried: number) =>
+    `${method} 연결 ${reached}/${tried}`,
+  sameProcess: '같은 공정',
+  sameIndustry: '같은 산업군',
+  noStage: '영업 기록 없음',
+  /** 거절이면 "거절 · 가격". */
+  lostWithReason: (stage: string, reason: string) => `${stage} · ${reason}`,
+  noContact: '접촉 기록 없음',
+  /** "11/06 전화" */
+  lastContact: (date: string, method: string) => [date, method].filter(Boolean).join(' '),
+  notePrefix: '메모:',
+  /** 메모 줄은 120자에서 자르고 "…". */
+  noteMaxLength: 120,
+  openCompanyLabel: (name: string) => `${name} 상세 보기`,
+  /** 영업 전략 영역(#27)의 "참고한 이력" 상자. 초안 글(공개 자료 기반 AI)과 섞지 않는다. */
+  referenceTitle: '참고한 이력',
+  referenceCompaniesShown: 2,
+} as const;
+
 /** 활동 이력 묶음(#389) 쉬운 말. 묶음 정의는 components/records/activityGroups.ts. */
 export const activityGroupLabels = {
   SALES: '영업 활동',

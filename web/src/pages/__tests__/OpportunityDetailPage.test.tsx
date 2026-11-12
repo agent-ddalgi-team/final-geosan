@@ -8,6 +8,7 @@ import {
   ApiError,
   getActivity,
   getOpportunityDetail,
+  getPeers,
   postNote,
   postOutcome,
   postQuestionReply,
@@ -21,6 +22,7 @@ import {
   detailSections,
   frame,
   opinionArea,
+  peersArea,
   recordsArea,
   reviewArea,
   scoreTags,
@@ -32,6 +34,7 @@ vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
   getOpportunityDetail: vi.fn(),
   getActivity: vi.fn(),
+  getPeers: vi.fn(),
   postQuestionReply: vi.fn(),
   postNote: vi.fn(),
   postRecordCancel: vi.fn(),
@@ -48,6 +51,7 @@ const mockedRelation = vi.mocked(postRelation);
 const mockedGet = vi.mocked(getOpportunityDetail);
 const mockedReply = vi.mocked(postQuestionReply);
 const mockedActivity = vi.mocked(getActivity);
+const mockedPeers = vi.mocked(getPeers);
 const fixtureData = detailFixture.data as unknown as OpportunityDetail;
 // 가짜 응답 파일에는 검토사항이 들어 있다. 아래 시험은 "서버가 아직 검토사항을 안 주는" 모양에서 시작한다.
 const base: OpportunityDetail = { ...fixtureData, reviewItems: undefined };
@@ -91,6 +95,20 @@ describe('OpportunityDetailPage', () => {
   beforeEach(() => {
     mockedGet.mockReset();
     mockedActivity.mockReset();
+    mockedPeers.mockReset();
+    mockedPeers.mockResolvedValue({
+      data: {
+        summary: {
+          processCount: 0,
+          industryCount: 0,
+          stageCounts: {},
+          topLostReasons: [],
+          contactReach: {},
+        },
+        companies: [],
+      },
+      meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
+    });
     mockedReply.mockReset();
     mockedRelation.mockReset();
     mockedOutcome.mockReset();
@@ -197,6 +215,54 @@ describe('OpportunityDetailPage', () => {
     await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
   });
 
+  it('맨 아래에 "비슷한 회사 참고"가 붙고 이 회사의 비슷한 회사를 불러와 보인다 (#269)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    mockedPeers.mockResolvedValue({
+      data: {
+        summary: {
+          processCount: 1,
+          industryCount: 0,
+          stageCounts: { IN_PROGRESS: 1 },
+          topLostReasons: [],
+          contactReach: {},
+        },
+        companies: [
+          {
+            oppId: 'opp-peer-1',
+            name: '코파스',
+            processCodes: ['ZINC_PLATING'],
+            industries: [],
+            outcomeStatus: 'IN_PROGRESS',
+            lostReasonCode: null,
+            lastContactAt: null,
+            lastContactMethod: null,
+            lastNote: null,
+            sameProcess: true,
+            sameIndustry: false,
+          },
+        ],
+      },
+      meta: { updatedAt: '2026-11-12T09:00:00+09:00' },
+    });
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    const section = screen.getByTestId('detail-peers');
+    expect(await within(section).findByTestId('peer-company-name')).toHaveTextContent('코파스');
+    expect(mockedPeers).toHaveBeenCalledWith('opp-1', expect.any(AbortSignal));
+  });
+
+  it('비슷한 회사를 못 불러와도 상세의 다른 영역은 그대로 보이고 그 영역만 [다시 불러오기]를 보인다 (#269)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    mockedPeers.mockRejectedValue(
+      new ApiError(500, { message: '서버 오류', nextAction: '잠시 뒤', ref: 'r-1' }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(await screen.findByTestId('peers-error')).toBeInTheDocument();
+    expect(screen.getByTestId('detail-records')).toBeInTheDocument();
+    expect(screen.queryByTestId('detail-error')).not.toBeInTheDocument();
+  });
+
   it('자료 줄에 메모를 저장하면 활동 이력만 새로 불러오고 상세는 다시 읽지 않는다 (#260)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(
@@ -274,6 +340,7 @@ describe('OpportunityDetailPage', () => {
       expect.stringContaining(detailSections.scores),
       opinionArea.groupLabel,
       recordsArea.title,
+      peersArea.title,
     ]);
     const opinion = screen.getByTestId('detail-opinion');
     expect(within(opinion).getByTestId('opinion-area')).toBeInTheDocument();
