@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from geosan.api.ingest_views import latest_ingest
 from geosan.api.schemas import DetailHeader, LatestIngest, Meta, OpportunityCard
 from geosan.opportunity.models import Customer, IngestBatch
 from geosan.rules.codes import DiscoverySource, FitLevel
@@ -40,6 +41,8 @@ LATEST_INGEST_KEYS = {
     "webSkippedReason",
     "complexListSkippedReason",
     "failureReason",  # (#347) 찾기 실패 사유 한 줄
+    "estimatedUsd",  # (#549) 접수 때 예상 금액. 옛 회차는 null
+    "actualUsd",  # (#549) 전송 기록에서 센 실제 금액
 }
 # 약속 요약 C1 "카드·상세에 더하는 칸"(#313·#319).
 FOUND_COMPANY_KEYS = {
@@ -63,6 +66,7 @@ def _saved_batch(tmp_db: Path, **overrides: object) -> str:
         "started_at": datetime(2026, 11, 6, 9, 0, tzinfo=UTC),
         "status": "RUNNING",
         "is_virtual": True,
+        "dataset_kind": "VIRTUAL_REVIEWED",
     }
     values.update(overrides)
     with session_scope(tmp_db) as session:
@@ -89,8 +93,9 @@ def test_latest_ingest_is_built_from_a_saved_batch_row(tmp_db: Path) -> None:
         judge_pending_count=0,
     )
     with session_scope(tmp_db) as session:
-        row = session.get(IngestBatch, batch_id)
-        summary = LatestIngest.model_validate(row, from_attributes=True)
+        # 실제 금액(#549)은 회차 행이 아니라 전송 기록에서 세므로 창구가 쓰는 함수로 만든다.
+        summary = latest_ingest(session, "VIRTUAL_REVIEWED")
+    assert summary.batch_id == batch_id
     data = Meta(latest_ingest=summary).model_dump(by_alias=True, mode="json", exclude_unset=True)
 
     latest = data["latestIngest"]
@@ -119,8 +124,9 @@ def test_latest_ingest_without_criteria_keeps_null(tmp_db: Path) -> None:
     finished = datetime(2026, 11, 6, 9, 30, tzinfo=UTC)
     batch_id = _saved_batch(tmp_db, status="DONE", finished_at=finished, new_count=7)
     with session_scope(tmp_db) as session:
-        row = session.get(IngestBatch, batch_id)
-        summary = LatestIngest.model_validate(row, from_attributes=True)
+        # 실제 금액(#549)은 회차 행이 아니라 전송 기록에서 세므로 창구가 쓰는 함수로 만든다.
+        summary = latest_ingest(session, "VIRTUAL_REVIEWED")
+    assert summary.batch_id == batch_id
     assert summary.criteria is None
     assert summary.finished_at == finished
     assert summary.new_count == 7
@@ -136,8 +142,9 @@ def test_latest_ingest_carries_failure_reason_of_a_failed_batch(tmp_db: Path) ->
         failure_reason=reason,
     )
     with session_scope(tmp_db) as session:
-        row = session.get(IngestBatch, batch_id)
-        summary = LatestIngest.model_validate(row, from_attributes=True)
+        # 실제 금액(#549)은 회차 행이 아니라 전송 기록에서 세므로 창구가 쓰는 함수로 만든다.
+        summary = latest_ingest(session, "VIRTUAL_REVIEWED")
+    assert summary.batch_id == batch_id
     latest = Meta(latest_ingest=summary).model_dump(by_alias=True, mode="json", exclude_unset=True)[
         "latestIngest"
     ]

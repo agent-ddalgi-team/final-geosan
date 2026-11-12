@@ -127,10 +127,23 @@ class CandidateWebSearchSettings(FileModel):
         return self
 
 
+class CostEstimateSettings(FileModel):
+    """C7 #549: 누르기 전 예상 금액·잠금 계산에만 쓰는 단가. 실제 한도 검사는 전송 기록으로 한다.
+
+    값은 PM이 실측을 보고 고친다. 네 칸 모두 0보다 커야 한다.
+    """
+
+    judge_usd_per_row: float = Field(gt=0, strict=True, allow_inf_nan=False)
+    research_usd_per_company: float = Field(gt=0, strict=True, allow_inf_nan=False)
+    research_calls_per_company: int = Field(gt=0, strict=True)
+    web_search_usd_per_batch: float = Field(gt=0, strict=True, allow_inf_nan=False)
+
+
 class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
     max_candidates: int = Field(ge=1)
+    cost_estimate: CostEstimateSettings
     factory_csv_path: str = ""
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
     ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
@@ -255,6 +268,13 @@ class ListFilterSettings(FileModel):
     region_presets: list[RegionPreset] = Field(default_factory=list)
 
 
+class DashboardSettings(FileModel):
+    """계약 C7 `dashboard`(2026-11-03 PM 결정). 이 칸이 없는 옛 설정 파일·DB 사본도 읽는다."""
+
+    # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
+    count_proposed_industries: bool = True
+
+
 class AppSettings(FileModel):
     """앱 설정 한 벌(C7 AppSettings). 더하는 변경(2026-10-21 PM 확인): brand.demoLabel."""
 
@@ -275,6 +295,7 @@ class AppSettings(FileModel):
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
+    dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
@@ -432,7 +453,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
     data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
     if not data:
         return None
-    return AppSettings.model_validate(_fill_added_sections(_fill_added_llm_keys(data)))
+    return AppSettings.model_validate(
+        _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+    )
 
 
 ADDED_LLM_KEYS = ("unconfirmedCallCostUsd",)
@@ -463,6 +486,23 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
         return data
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
     return {**data, **{key: defaults[key] for key in missing}}
+
+
+ADDED_INGESTION_KEYS = ("costEstimate",)
+"""#549 뒤에 생긴 필수 ingestion 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 ingestion 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    ingestion = data.get("ingestion")
+    if not isinstance(ingestion, dict):
+        return data
+    missing = [key for key in ADDED_INGESTION_KEYS if key not in ingestion]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
+    filled = {**ingestion, **{key: defaults[key] for key in missing}}
+    return {**data, "ingestion": filled}
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"

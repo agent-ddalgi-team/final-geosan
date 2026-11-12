@@ -24,7 +24,7 @@ def test_old_records_stay_empty_and_survive_schema_round_trip(tmp_path):
         for table in ("rec_note", "rec_outcome"):
             before[table] = connection.execute(f"SELECT * FROM {table}").fetchall()
     for _ in range(2):
-        assert upgrade_to_head(db) == ["rec_012"]
+        assert upgrade_to_head(db) == ["opp_009"]
         with sqlite3.connect(db) as connection:
             for table, rows in before.items():
                 assert connection.execute(f"SELECT * FROM {table}").fetchall() == [
@@ -41,4 +41,4 @@ def test_old_records_stay_empty_and_survive_schema_round_trip(tmp_path):
         with sqlite3.connect(db) as connection:
             for table, rows in before.items():
                 assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
-    assert upgrade_to_head(db) == ["rec_012"]
+    assert upgrade_to_head(db) == ["opp_009"]

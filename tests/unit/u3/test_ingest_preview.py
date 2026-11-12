@@ -173,7 +173,22 @@ def test_api_returns_counts_without_staff_key_and_rejects_bad_conditions(judged)
             "addableHighCount": 1,
             "unjudgedCount": 0,
             "addCount": 1,
+            # 2단계(#549)에서 더한 칸. 값의 계산은 test_ingest_estimate.py가 본다.
+            "estimate": ok.json()["data"]["estimate"],
+            "month": ok.json()["data"]["month"],
+            "blocked": None,
         }
+        assert set(ok.json()["data"]["estimate"]) == {
+            "judgeRows",
+            "judgeCalls",
+            "judgeUsd",
+            "researchCount",
+            "researchCalls",
+            "researchUsd",
+            "webSearchUsd",
+            "totalUsd",
+        }
+        assert set(ok.json()["data"]["month"]) == {"usedUsd", "limitUsd", "usedCalls", "limitCalls"}
         missing = client.get(PATH, params={"regions": "충남"})
         assert missing.status_code == 400
         assert missing.json()["error"]["message"] == "찾기 조건을 확인해 주세요."
