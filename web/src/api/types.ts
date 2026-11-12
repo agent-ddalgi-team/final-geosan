@@ -21,6 +21,9 @@ export type ReviewStatus = 'UNAVAILABLE' | 'PENDING' | 'REVIEWED' | 'RECHECK';
 export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRMED';
 /** 점수 확인 상태(#263): CONFIRMED 확정, PENDING 거래 확인 전(값은 있으나 확정 전), NONE 점수 없음 */
 export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
+/** 조사 상태(#596). 카드는 "조사 중"/"조사 중단"만, 상세는 멈춘 이유까지 보인다. */
+export type ResearchState =
+  'RUNNING' | 'NO_SCORE_EVIDENCE' | 'NOT_FOUND' | 'READ_FAILED' | 'NOT_TRIED';
 export type HomepageStatus = 'AI_FOUND' | 'NEEDS_CONFIRMATION' | 'CONFIRMED' | 'NOT_FOUND';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
@@ -315,6 +318,11 @@ export interface OpportunityCard {
   factoryProfile?: FactoryProfile | null;
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
+  /**
+   * 점수가 아직 없는 찾은 회사의 조사 상태(#596). "점수 전" 옆에 "조사 중" 또는 "조사 중단"이 붙는다.
+   * 점수가 있거나 사례 파일 회사면 null(또는 옛 응답이라 없음)이고 아무것도 붙지 않는다.
+   */
+  researchState?: ResearchState | null;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
   relationStatus?: RelationStatus;
   oppId: string;
@@ -343,6 +351,8 @@ export interface OpportunityCard {
 export interface DetailHeader {
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
+  /** 카드와 같은 조사 상태(#596). 점수 줄 옆에 "조사 중" 또는 "조사 중단 · 이유"가 붙는다. */
+  researchState?: ResearchState | null;
   title: string;
   customerName: string;
   opportunityItem: string;

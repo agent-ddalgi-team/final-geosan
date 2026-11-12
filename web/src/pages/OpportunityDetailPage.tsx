@@ -195,10 +195,7 @@ export default function OpportunityDetailPage() {
             <ApprovalEligibilityLine eligibility={data.approvalEligibility} />
           </DetailSection>
           <ProcessLinksSection links={data.processLinks} />
-          <EvidenceSection
-            evidence={data.evidence}
-            homepageNeedsConfirm={data.homepageNeedsConfirm}
-          />
+          <EvidenceSection evidence={data.evidence} />
           <ScoresCollapse scores={data.scores} />
           <DetailSection id="detail-opinion" title={opinionArea.groupLabel}>
             {data.evalId ? (
