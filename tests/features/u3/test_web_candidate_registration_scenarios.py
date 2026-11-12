@@ -10,7 +10,11 @@ from geosan.opportunity.source_models import WebCandidate
 from geosan.storage.session import session_scope
 from tests.unit.u3.test_candidate_registration import BATCH, existing, judgment, rows, snapshot
 from tests.unit.u3.test_candidate_registration import registration_context as registration_context
-from tests.unit.u3.test_web_candidate_registration import register_web, saved_candidates
+from tests.unit.u3.test_web_candidate_registration import (
+    profile_web_selection,
+    register_web,
+    saved_candidates,
+)
 from tests.unit.u3.test_web_candidate_registration import web_context as web_context
 
 scenarios("u3/web_candidate_registration.feature")
@@ -19,6 +23,22 @@ scenarios("u3/web_candidate_registration.feature")
 @given("등록 확인된 웹 후보와 선정 판단이 있다", target_fixture="context")
 def ready(web_context):
     return {"selected": judgment(saved_candidates().candidate_ids[0])}
+
+
+@given("공장 정보와 이름·주소가 같은 실제 자료 묶음의 웹 후보가 있다", target_fixture="context")
+def profile_ready(web_context, tmp_path):
+    return {"selected": profile_web_selection(tmp_path)}
+
+
+@then("웹 출처를 유지하면서 공장 원자재와 종업원 수가 함께 저장된다")
+def profile_saved(context):
+    assert context["result"] == RegistrationResult(1, 0, 0)
+    (customer,) = rows(Customer)
+    assert customer.discovery_source == "WEB_SEARCH" and customer.registry_status == "FOUND"
+    assert customer.discovery_source_url == "https://bolt.example/products"
+    assert customer.factory_raw_materials == "강판, SUS"
+    assert customer.factory_employee_count == 12 and customer.factory_scale == "소기업"
+    assert not customer.is_virtual and customer.own_plating_line_source == "INDUSTRY_CODE"
 
 
 @given("이름과 주소가 같은 사례 회사가 있다")

@@ -10,7 +10,9 @@ from sqlalchemy import select
 from geosan.api.deps import get_session, require_staff
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.errors import AppError, NotFoundError, RunFailedError
+from geosan.evidence.homepage import find_case_homepage
 from geosan.evidence.reader import MAX_BYTES, validate_url
+from geosan.evidence.research_context import research_context
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.records.models import Note
 from geosan.storage.base import new_id, utcnow
@@ -68,7 +70,18 @@ def save_homepage(
         customer = session.get(Customer, opportunity.customer_id) if opportunity else None
         if customer is None:
             raise NotFoundError("홈페이지를 확인할 회사가 없습니다.")
-        url = validate_url(body.url if body.url is not None else customer.homepage_url or "")
+        # #596: 주소 없는 회사의 [다시 조사](빈 요청)는 세션을 닫은 뒤 홈페이지 찾기부터 한다.
+        find_first = (
+            not body.confirm_only
+            and body.url is None
+            and body.pasted_text is None
+            and not customer.homepage_url
+        )
+        url = (
+            None
+            if find_first
+            else validate_url(body.url if body.url is not None else customer.homepage_url or "")
+        )
         if body.confirm_only:
             if not customer.homepage_url or validate_url(customer.homepage_url) != url:
                 raise AppError(
@@ -127,9 +140,24 @@ def save_homepage(
             data=data, meta=Meta(reevaluated=False, updated_at=utcnow())
         )
 
-    result = flow_extract.run_extract(
-        opp_id, url=url, pasted_text=body.pasted_text, requested_by=staff
-    )
+    if find_first:
+        # 찾기와 추출을 합쳐 60초 안에서 한다(C1 `/homepage` 전체 한도, C8과 같은 묶음).
+        with research_context():
+            found = find_case_homepage(opp_id)
+            if not found.url:
+                raise AppError(
+                    "홈페이지를 찾지 못했습니다.",
+                    "회사 이름·주소를 확인한 뒤 나중에 다시 조사해 주세요.",
+                    status=422,
+                    kind="HOMEPAGE_NOT_FOUND",
+                )
+            result = flow_extract.run_extract(
+                opp_id, url=validate_url(found.url), requested_by=staff
+            )
+    else:
+        result = flow_extract.run_extract(
+            opp_id, url=url, pasted_text=body.pasted_text, requested_by=staff
+        )
     if not result.ok:
         raise result.error or RunFailedError("조사 결과를 저장하지 못했습니다.")
     if (

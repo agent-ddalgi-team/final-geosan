@@ -1,6 +1,6 @@
 // 상세 머리의 기업 요약(#210, 결정 2026-11-03): 홈페이지 상태 띠 + "회사 소개" 줄들.
 // 조사일(3일 전)·오래됨, 거산에서의 거리, 대표번호(출처·담당자 확인 [맞음]), 한 줄 소개·특징(AI 제안).
-// 값이 없는 줄은 보이지 않는다. 홈페이지 [맞음]·[고치기]·[다시 조사]는 `HomepageControls.tsx`(서버 `POST /homepage`)에 있다.
+// 값이 없는 줄은 보이지 않는다. 홈페이지 [다시 조사]는 `HomepageControls.tsx`(서버 `POST /homepage`)에 있다.
 import { useState } from 'react';
 import { Button } from 'antd';
 import { ApiError, postMainPhoneConfirm } from '../../api/client';
@@ -16,13 +16,12 @@ const rowStyle = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap:
 
 /** 맨 위 띠: 홈페이지 확신이 낮거나 못 찾았을 때만 보인다. */
 export function HomepageBand({ status }: { status?: DetailHeader['homepageStatus'] }) {
-  if (status !== 'NEEDS_CONFIRMATION' && status !== 'NOT_FOUND') return null;
+  // "홈페이지 확인 필요" 띠는 [맞음] 단추와 함께 없앴다(#596). 못 찾은 회사만 알린다.
+  if (status !== 'NOT_FOUND') return null;
   return (
     <div role="status" data-testid="homepage-band" data-status={status}>
       <StatusTag tone="wait" icon="⚠">
-        {status === 'NOT_FOUND'
-          ? companySummary.bandNotFound
-          : companySummary.bandNeedsConfirmation}
+        {companySummary.bandNotFound}
       </StatusTag>
     </div>
   );

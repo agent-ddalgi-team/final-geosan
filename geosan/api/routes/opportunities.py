@@ -19,6 +19,7 @@ from geosan.api.ingest_views import (
     discovery_fields,
     latest_ingest,
     recent_order,
+    research_state,
 )
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
@@ -168,6 +169,11 @@ def _header(context: DetailContext) -> dict:
         "header": DetailHeader(
             score_state=_score_state(
                 run, ai_pending=has_ai_pending_inputs(context.session, opportunity.opp_id)
+            ),
+            research_state=research_state(
+                customer,
+                latest_ingest(context.session, opportunity.dataset_kind),
+                scored=run is not None and run.score_s is not None,
             ),
             relation_confirmed_at=customer.relation_confirmed_at,
             # #265의 승인된 C6 열이 생기기 전 사례 파일 자료에는 담당자가 없다.
@@ -702,6 +708,9 @@ def list_opportunities(
                 ingested_at=customer.ingested_at,
                 is_new_in_latest_batch=bool(
                     progress and customer.ingest_batch_id == progress.batch_id
+                ),
+                research_state=research_state(
+                    customer, progress, scored=current.score_s is not None
                 ),
                 score_state=_score_state(
                     current, ai_pending=has_ai_pending_inputs(session, opportunity.opp_id)
