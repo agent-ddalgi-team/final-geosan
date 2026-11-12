@@ -698,6 +698,37 @@ export const outcomeStatusLabels = {
   LOST: '거절',
 } as const;
 
+/** 세부 단계(#607). 큰 단계 안의 단계라 카드는 "접촉 · 수요 확인"처럼 붙여 보인다. */
+export const salesStepLabels = {
+  NOT_REACHED: '연결 전',
+  REACHED: '연결됨',
+  DEMAND_CONFIRMED: '수요 확인',
+  MATERIAL_QUOTE: '자료·견적',
+  VISIT_SAMPLE: '방문·샘플',
+} as const;
+
+/** 상세 기록 구역의 꼬리 질문(#607, PM 결정 2026-11-12). 문구는 질문 파일에서 오고 여기는 틀만. */
+export const salesQuestionTexts = {
+  summaryTitle: '지금 세부 단계',
+  /** "수요 확인 (10/22부터)" */
+  stepSince: (label: string, since: string | null) =>
+    since ? `${label} (${since.slice(5).replace('-', '/')}부터)` : label,
+  stepNone: '아직 접촉 없음',
+  stepClosed: '보류·성사·거절에는 세부 단계가 없습니다',
+  overridden: '담당자가 고침',
+  known: '알아낸 것',
+  knownNone: '아직 없음',
+  unknown: '아직 모르는 것',
+  questionsTitle: '이번 접촉에서 알게 된 것',
+  questionsHint: '아는 것만 고르세요. 고르지 않은 질문은 다음 접촉 때 다시 보입니다.',
+  clearAnswer: '선택 지우기',
+  memoLabel: '한 줄 메모 (선택)',
+  memoHint: '질문에 없는 이야기만 짧게 적어 주세요. 이 메모는 외부로 나가지 않습니다.',
+  overrideLabel: '세부 단계 고치기',
+  overrideSave: '단계 고치기',
+  loadFailed: '꼬리 질문을 불러오지 못했습니다. 접촉 기록은 그대로 저장할 수 있습니다.',
+} as const;
+
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
 /** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
@@ -810,10 +841,9 @@ export const recordsArea = {
   stepOne: '①',
   stepTwo: '②',
   stepThree: '③',
-  /** 접촉을 적은 뒤 단계가 미접촉이면 한 번 묻는다. 자동으로 바꾸지 않는다. */
-  stageSuggest: '단계를 접촉으로 바꿀까요?',
-  stageSuggestApply: '접촉으로 바꾸기',
-  stageSuggestDismiss: '닫기',
+  /** 접촉을 저장하면 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 자동으로 바꾼다(#607이 #433의 묻기를 바꿈). */
+  stageAutoHint:
+    '접촉을 저장하면 단계는 답에 따라 앞으로 바뀝니다. 보류·성사·거절만 직접 고르세요.',
 } as const;
 
 /**

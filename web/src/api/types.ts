@@ -260,6 +260,51 @@ export type LostReasonCode =
   'PRICE' | 'LEAD_TIME' | 'INCUMBENT_SUPPLIER' | 'NO_DEMAND' | 'QUALITY_CERT' | 'OTHER';
 export type ContactMethod = 'CALL' | 'EMAIL' | 'VISIT';
 export type ContactResult = 'REACHED' | 'ABSENT' | 'DECLINED';
+
+/** 큰 단계(접촉·견적·샘플) 안의 세부 단계(#607, C0 salesStep). 꼬리 질문 답으로 알아낸 사실로 정한다. */
+export type SalesStep =
+  'NOT_REACHED' | 'REACHED' | 'DEMAND_CONFIRMED' | 'MATERIAL_QUOTE' | 'VISIT_SAMPLE';
+
+export interface KnownSalesAnswer {
+  questionId: string;
+  question: string;
+  answerId: string;
+  answer: string;
+  at: string;
+  by: string;
+}
+
+/** 상세 records.salesStep(#607). code가 null이면 접촉이 없거나 보류·성사·거절이다. */
+export interface SalesStepView {
+  code: SalesStep | null;
+  since: string | null;
+  overridden: boolean;
+  known: KnownSalesAnswer[];
+  openQuestions: string[];
+}
+
+export interface SalesAnswerOption {
+  answerId: string;
+  label: string;
+  reaches?: SalesStep | null;
+}
+
+export interface SalesQuestion {
+  questionId: string;
+  text: string;
+  /** 이 세부 단계일 때 보인다. ALL이면 모든 세부 단계. */
+  step: SalesStep | 'ALL';
+  /** 앞 답이 이 보기 중 하나일 때만 보인다(꼬리). */
+  showWhen?: { answers: Record<string, string[]> } | null;
+  answers: SalesAnswerOption[];
+}
+
+/** GET /sales-questions(#607). 질문 파일 그대로. */
+export interface SalesQuestions {
+  version: number;
+  steps: { code: SalesStep; label: string; stage: OutcomeStatus }[];
+  questions: SalesQuestion[];
+}
 export type JudgmentCheck = 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
 export type NoteKind = 'MEMO' | 'RESEARCH';
 
@@ -327,6 +372,8 @@ export interface OpportunityCard {
   researchState?: ResearchState | null;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
   relationStatus?: RelationStatus;
+  /** 세부 단계(#607). 카드 단계 꼬리표 옆에 "접촉 · 수요 확인"처럼 붙는다. 없으면 큰 단계만. */
+  salesStep?: SalesStep | null;
   oppId: string;
   rank: number;
   title: string;
@@ -512,6 +559,8 @@ export interface DetailRecords {
   approval?: Record<string, unknown> | null;
   outcome?: OutcomeRecord | null;
   contactCount?: ContactCount | null;
+  /** 세부 단계·알아낸 것·아직 모르는 질문(#607). 옛 응답이면 없다. */
+  salesStep?: SalesStepView | null;
 }
 
 /** 검토사항 한 줄(C1 reviewItems, 더하는 변경 2026-11-03 밤). 목록은 평가 결과에서 파생되고 체크 상태만 저장된다. */
@@ -615,6 +664,12 @@ export interface OutcomeRequest {
   attemptedAt?: string;
   /** 접촉 때 AI 판단이 맞았나(#531). 접촉 기록에서만 보낸다. */
   judgmentCheck?: JudgmentCheck;
+  /** 한 줄 메모(#607). 설정 records.memoLineMaxLength(초기 100자)까지. */
+  memo?: string;
+  /** 꼬리 질문 답(#607). 연결된 접촉에서만 보낸다. */
+  answers?: { questionId: string; answerId: string }[];
+  /** [단계 고치기](#607). */
+  stepOverride?: SalesStep;
 }
 
 export interface OutcomeResponse extends RecordMeta {

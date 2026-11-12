@@ -6,7 +6,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError, getOpportunityDetail } from '../api/client';
-import type { ContactCount, ContactMethod, Meta, OpportunityDetail } from '../api/types';
+import type {
+  ContactCount,
+  ContactMethod,
+  Meta,
+  OpportunityDetail,
+  SalesStepView,
+} from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
 import ApprovalEligibilityLine from '../components/detail/ApprovalEligibilityLine';
@@ -78,6 +84,24 @@ export default function OpportunityDetailPage() {
         visit: prev.visit + (method === 'VISIT' ? 1 : 0),
       },
     });
+  };
+
+  // #607 세부 단계는 서버가 기록에서 계산한다. 접촉·단계 고치기를 저장하면 상세를 조용히 다시 받아
+  // 세부 단계만 바꾼다(화면 전체를 다시 그리지 않아 입력 중인 칸과 머리 접촉 횟수가 그대로다).
+  const [freshStep, setFreshStep] = useState<{
+    data: OpportunityDetail;
+    step: SalesStepView | null;
+  } | null>(null);
+  const salesStep =
+    freshStep && freshStep.data === data ? freshStep.step : (data?.records.salesStep ?? null);
+  const onSalesStepChanged = () => {
+    if (!data) return;
+    Promise.resolve()
+      .then(() => getOpportunityDetail(oppId))
+      .then((envelope) => setFreshStep({ data, step: envelope.data.records.salesStep ?? null }))
+      .catch(() => {
+        // 못 받으면 지난 요약을 그대로 둔다. 저장은 이미 끝났고 다음에 상세를 열면 새 값이 보인다.
+      });
   };
 
   const bookmarkState = useBookmark(oppId, data, data?.records.bookmark ?? null);
@@ -215,6 +239,8 @@ export default function OpportunityDetailPage() {
               oppId={oppId}
               evalId={data.evalId}
               outcome={data.records.outcome ?? null}
+              salesStep={salesStep}
+              onSalesStepChanged={onSalesStepChanged}
               onContactRecorded={onContactRecorded}
               onRecorded={() => {
                 setTimelineVersion((n) => n + 1);
