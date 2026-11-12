@@ -880,6 +880,24 @@ export const reviewArea = {
    * 자료 줄("자료 못 찾음"·"자료 부족")의 [붙여넣고 조사](#260, PM 결정 2026-11-04). 공개 본문만 붙여 넣고,
    * 서버는 기존 홈페이지 조사 요청(url + pastedText)으로 근거를 뽑아 다시 평가한다. 줄 안 인라인(모달 없음).
    */
+  /**
+   * 자료 줄의 [메모 적기]/[메모 고치기](#260, PM 결정 2026-11-04). 기록용이라 점수는 안 바뀌고 밖으로 나가지 않는다.
+   * 줄 안 인라인 입력(모달 없음, 500자). 저장하면 줄 아래 "메모: … — 박 이사 · 11/20".
+   */
+  memoAdd: '메모 적기',
+  memoEdit: '메모 고치기',
+  memoButtonLabel: (text: string) => `메모 적기: ${text}`,
+  memoInputLabel: '자료 조사 메모',
+  memoPlaceholder: '찾은 내용과 출처 주소를 적으세요. 예: 홈페이지 연혁에 2023 납품 기재 https://…',
+  memoHint:
+    '기록용 메모입니다. 점수는 바뀌지 않고 밖으로 나가지 않습니다. 저장하면 이전 메모는 활동 이력에 남습니다.',
+  memoMaxLength: 500,
+  memoCounter: (count: number, max: number) => `${count} / ${max}자`,
+  memoSave: '메모 저장',
+  memoCancel: '취소',
+  /** "메모: 홈페이지 연혁에 2023 납품 기재" */
+  memoPrefix: '메모:',
+  memoSaveFailed: '메모를 저장하지 못했습니다. 다시 시도',
   pasteButton: '붙여넣고 조사',
   pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
   pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',

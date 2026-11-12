@@ -546,6 +546,18 @@ export interface ReviewItem {
    * 그 항목의 설정 단계 이름이 설정 순서대로 들어 있다(예: ["정확히 일치", "일부 가능"]). 다른 줄은 null이거나 없다.
    */
   stepOptions?: string[] | null;
+  /**
+   * 자료 줄(DATA_NOT_FOUND·DATA_INSUFFICIENT)의 최신 자료 조사 메모 하나(#259·#260, 더하는 변경 2026-11-12).
+   * 취소되지 않은 것만 온다. 없으면 null이고 다른 종류의 줄은 언제나 null이다. 영업 메모와 같은 취급(내부 전용).
+   */
+  note?: ReviewItemNote | null;
+}
+
+/** 자료 줄에 붙은 메모(C1 reviewItems[].note). by는 담당자 키. */
+export interface ReviewItemNote {
+  text: string;
+  by: string;
+  at: string;
 }
 
 export interface OpportunityDetail {
@@ -595,6 +607,11 @@ export interface NoteRequest {
   text: string;
   kind?: NoteKind;
   evalId?: string | null;
+  /**
+   * 검토사항 자료 줄 번호(#259·#260, 더하는 변경 2026-11-12). 있으면 kind는 RESEARCH여야 하고(아니면 400),
+   * 질문 줄이면 400, 없는 줄이면 404, 글자 상한 500자. 없으면 지금과 같은 일반 메모.
+   */
+  itemId?: string | null;
 }
 
 export interface NoteResponse extends RecordMeta {

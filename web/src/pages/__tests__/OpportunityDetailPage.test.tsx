@@ -8,6 +8,7 @@ import {
   ApiError,
   getActivity,
   getOpportunityDetail,
+  postNote,
   postOutcome,
   postQuestionReply,
   postRecordCancel,
@@ -32,12 +33,14 @@ vi.mock('../../api/client', async (importOriginal) => ({
   getOpportunityDetail: vi.fn(),
   getActivity: vi.fn(),
   postQuestionReply: vi.fn(),
+  postNote: vi.fn(),
   postRecordCancel: vi.fn(),
   postRelation: vi.fn(),
   postOutcome: vi.fn(),
   putBookmark: vi.fn(),
 }));
 
+const mockedNote = vi.mocked(postNote);
 const mockedCancel = vi.mocked(postRecordCancel);
 const mockedBookmark = vi.mocked(putBookmark);
 const mockedOutcome = vi.mocked(postOutcome);
@@ -92,6 +95,7 @@ describe('OpportunityDetailPage', () => {
     mockedRelation.mockReset();
     mockedOutcome.mockReset();
     mockedBookmark.mockReset();
+    mockedNote.mockReset();
     mockedCancel.mockReset();
     mockedActivity.mockResolvedValue({
       data: [],
@@ -191,6 +195,47 @@ describe('OpportunityDetailPage', () => {
     });
     await user.click(screen.getByTestId('review-reply-save'));
     await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
+  });
+
+  it('자료 줄에 메모를 저장하면 활동 이력만 새로 불러오고 상세는 다시 읽지 않는다 (#260)', async () => {
+    const user = userEvent.setup();
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        reviewItems: [
+          {
+            itemId: 'GAP:HOMEPAGE',
+            kind: 'DATA_NOT_FOUND',
+            source: 'RULE',
+            text: '홈페이지를 찾지 못함',
+            targetLabel: null,
+            checked: false,
+          },
+        ],
+      }),
+    );
+    mockedNote.mockResolvedValueOnce({
+      data: {
+        version: 1,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-20T10:00:00+09:00',
+        noteId: 'note-1',
+      },
+      meta: {},
+    });
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByTestId('review-memo-button'));
+    fireEvent.change(screen.getByTestId('review-memo-input'), {
+      target: { value: '홈페이지 연혁에 2023 납품 기재' },
+    });
+    await user.click(screen.getByTestId('review-memo-save'));
+    expect(await screen.findByTestId('review-memo')).toHaveTextContent(
+      '메모: 홈페이지 연혁에 2023 납품 기재',
+    );
+    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
+    expect(mockedGet).toHaveBeenCalledTimes(1);
   });
 
   it('기록 영역 아래에 활동 타임라인이 붙고 최근 순으로 보인다', async () => {
