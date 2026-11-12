@@ -15,17 +15,9 @@ from __future__ import annotations
 
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 
-from geosan.dashboard.sales_analysis import KST, CompanyRecords, summarize_company
-from geosan.rules.codes import (
-    ClassificationCode,
-    FitLevel,
-    LostReasonCode,
-    OutcomeStatus,
-    RelationStatus,
-    SortGroup,
-)
+from geosan.dashboard.sales_analysis import STATUS_WON, CompanyRecords, summarize_company
 
 NOW = "NOW"
 CHECK = "CHECK"
@@ -48,20 +40,20 @@ MONITOR = "MONITOR"
 
 _OPINION_EXCLUDED = "NOT_TARGET"
 _OPINION_NEED_CHECK = "NEED_CHECK"
-_STAGES_CLOSED_OR_HOLD = frozenset({OutcomeStatus.WON, OutcomeStatus.LOST, OutcomeStatus.ON_HOLD})
-_STAGES_IN_PROGRESS = frozenset(
-    {OutcomeStatus.IN_PROGRESS, OutcomeStatus.SAMPLE_OR_REGISTRATION_APPROVED}
-)
-_PENDING_CLASSES = frozenset({ClassificationCode.FILTER_PENDING, ClassificationCode.OPS_PENDING})
-# 부록 F의 접촉 분류 순서(지금 바로 → 계획 → 확인 후 → 그 밖). 규칙 엔진의 정렬 묶음과 같은 값.
-_SORT_GROUPS = {
-    ClassificationCode.CONTACT_URGENT: SortGroup.URGENT,
-    ClassificationCode.CONTACT_PLANNED: SortGroup.PLANNED,
-    ClassificationCode.CONTACT_REVIEW: SortGroup.REVIEW,
-}
-_GROUP_ORDER = {group: index for index, group in enumerate(SortGroup)}
-_FIT_ORDER = {level: index for index, level in enumerate(FitLevel)}
-_LOST_REASON_ORDER = {code.value: index for index, code in enumerate(LostReasonCode)}
+# 계약 C0의 코드값. 이 부품은 규칙·설정 부품을 가져오지 않아서(`queries.py`와 같은 방식) 글자 그대로
+# 적는다. 코드표 전체가 필요한 것(거절 이유 순서)과 시간대는 창구가 인자로 넘긴다.
+_STAGES_CLOSED_OR_HOLD = frozenset({"WON", "LOST", "ON_HOLD"})
+_STAGES_IN_PROGRESS = frozenset({"IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED"})
+_CLASS_FILTER_EXCLUDED = "FILTER_EXCLUDED"
+_CLASS_NOT_EVALUATED = "NOT_EVALUATED"
+_CLASS_CONTACT_REVIEW = "CONTACT_REVIEW"
+_PENDING_CLASSES = frozenset({"FILTER_PENDING", "OPS_PENDING"})
+_RELATION_EXISTING = "EXISTING_CONFIRMED"
+_FIT_HIGH = "HIGH"
+# 부록 F의 접촉 분류 순서(지금 바로 → 계획 → 확인 후 → 그 밖). 규칙 엔진의 정렬 묶음과 같은 순서.
+_CONTACT_CLASS_ORDER = {"CONTACT_URGENT": 0, "CONTACT_PLANNED": 1, _CLASS_CONTACT_REVIEW: 2}
+_OTHER_CLASS_ORDER = len(_CONTACT_CLASS_ORDER)
+_FIT_ORDER = {_FIT_HIGH: 0, "MEDIUM": 1, "LOW": 2}
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +77,7 @@ class CompanyState:
 
 
 def is_unevaluated(state: CompanyState) -> bool:
-    return not state.scored or state.classification_code == ClassificationCode.NOT_EVALUATED
+    return not state.scored or state.classification_code == _CLASS_NOT_EVALUATED
 
 
 def assign_bucket(
@@ -97,9 +89,9 @@ def assign_bucket(
     """(묶음, 그 묶음에 든 이유). 위에서부터 처음 맞는 줄 하나로 정한다."""
     if state.opinion == _OPINION_EXCLUDED:
         return LATER, EXCLUDED_OPINION
-    if state.classification_code == ClassificationCode.FILTER_EXCLUDED:
+    if state.classification_code == _CLASS_FILTER_EXCLUDED:
         return LATER, REQUIRED_FAILED
-    if state.relation_status == RelationStatus.EXISTING_CONFIRMED:
+    if state.relation_status == _RELATION_EXISTING:
         return LATER, EXISTING_CUSTOMER
     if state.outcome_status in _STAGES_CLOSED_OR_HOLD:
         return LATER, CLOSED_OR_HOLD
@@ -112,13 +104,10 @@ def assign_bucket(
     if is_unevaluated(state):
         if state.own_plating:
             return CHECK, OWN_PLATING
-        if state.fit_level == FitLevel.HIGH:
+        if state.fit_level == _FIT_HIGH:
             return (NOW if unscored_high_fit_to_now else CHECK), NOT_EVALUATED_HIGH_FIT
         return LATER, NOT_EVALUATED_LOWER_FIT
-    if (
-        state.core_evidence_recheck
-        or state.classification_code == ClassificationCode.CONTACT_REVIEW
-    ):
+    if state.core_evidence_recheck or state.classification_code == _CLASS_CONTACT_REVIEW:
         return CHECK, EVIDENCE_RECHECK
     if state.own_plating:
         return CHECK, OWN_PLATING
@@ -169,17 +158,17 @@ class RankAdjust:
 
 
 def closed_results(
-    companies: Sequence[CompanyRecords], *, window_days: int, now: datetime
+    companies: Sequence[CompanyRecords], *, window_days: int, now: datetime, tz: tzinfo
 ) -> list[ClosedResult]:
     """영업 분석표와 같은 기준으로 최근 성사·거절 회사만 고른다.
 
     접촉 시도가 있는 회사만 세고, 결과 기록 시각(성사·거절로 처음 바뀐 행)이 기간 안이어야 한다.
     """
     oldest = now - timedelta(days=window_days)
-    today = now.astimezone(KST).date()
+    today = now.astimezone(tz).date()
     results = []
     for company in companies:
-        row = summarize_company(company, today)
+        row = summarize_company(company, today, tz=tz)
         if row is None or row.closed_at is None or row.closed_at < oldest:
             continue
         results.append(
@@ -187,7 +176,7 @@ def closed_results(
                 opp_id=row.opp_id,
                 process_codes=frozenset(row.process_codes),
                 industries=frozenset(row.industries),
-                won=row.outcome_status == OutcomeStatus.WON,
+                won=row.outcome_status == STATUS_WON,
                 lost_reason_code=row.lost_reason_code,
             )
         )
@@ -203,6 +192,7 @@ def adjustment_for(
     rule: AdjustRule,
     processes: Sequence[tuple[str, str]],
     industry_order: Sequence[str],
+    lost_reason_order: Sequence[str],
 ) -> RankAdjust | None:
     """이 회사를 뺀 같은 공정 × 산업군 회사들의 성사·거절로 조정 단계를 정한다.
 
@@ -211,6 +201,7 @@ def adjustment_for(
     기준보다 적으면 조정하지 않는다(None).
     """
     others = [row for row in results if row.opp_id != opp_id]
+    reason_order = {code: index for index, code in enumerate(lost_reason_order)}
     ordered_industries = [name for name in industry_order if name in industries] + sorted(
         name for name in industries if name not in industry_order
     )
@@ -246,7 +237,7 @@ def adjustment_for(
         lost_count=len(lost),
         counted_lost_reasons=sorted(
             {row.lost_reason_code for row in lost},
-            key=lambda reason: _LOST_REASON_ORDER.get(reason, len(_LOST_REASON_ORDER)),
+            key=lambda reason: reason_order.get(reason, len(reason_order)),
         ),
         window_days=rule.window_days,
     )
@@ -275,12 +266,11 @@ def contact_order_key(
     시점 신호(유효 기한 가까운 순 → 시점 조건 충족 수 → T 점수) → 지금 순서(`base_position`).
     마지막 키가 추천 순의 자리 번호라 같은 입력이면 늘 같은 순서가 나온다.
     """
-    group = _SORT_GROUPS.get(state.classification_code, SortGroup.OTHER)
     fit = state.fit_level or null_fit_level_as
     return (
         BUCKETS.index(bucket),
         basis == OWN_PLATING and is_unevaluated(state),
-        _GROUP_ORDER[group],
+        _CONTACT_CLASS_ORDER.get(state.classification_code, _OTHER_CLASS_ORDER),
         _FIT_ORDER[fit],
         -level,
         valid_until or date.max,

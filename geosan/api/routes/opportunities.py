@@ -64,6 +64,7 @@ from geosan.api.schemas import (
 )
 from geosan.capability.queries import get_process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
+from geosan.config.sales_questions import KST
 from geosan.dashboard.contact_order import (
     BUCKETS,
     AdjustRule,
@@ -91,7 +92,7 @@ from geosan.opportunity.factory_csv import address_city
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Outcome, ReviewOpinion
-from geosan.rules.codes import ProcessCode
+from geosan.rules.codes import LostReasonCode, ProcessCode
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -610,7 +611,9 @@ def _contact_placements(
         ),
         window_days=rule.window_days,
         now=utcnow(),
+        tz=KST,
     )
+    lost_reason_order = [code.value for code in LostReasonCode]
     placements = {}
     for position, (_original, current, opportunity, customer) in enumerate(rows):
         state = CompanyState(
@@ -637,6 +640,7 @@ def _contact_placements(
             rule=rule,
             processes=processes,
             industry_order=runtime.app_settings.industries,
+            lost_reason_order=lost_reason_order,
         )
         timing = current.timing_requirements
         placements[opportunity.opp_id] = _Placement(

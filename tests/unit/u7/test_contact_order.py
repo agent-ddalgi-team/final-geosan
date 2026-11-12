@@ -20,10 +20,13 @@ from geosan.dashboard.contact_order import (
 )
 from geosan.dashboard.sales_analysis import CompanyRecords, RecordLine
 from geosan.evidence.transfer import KST
+from geosan.rules.codes import LostReasonCode
 
 NOW = datetime(2026, 11, 13, 9, 0, tzinfo=KST)
 PROCESSES = [("ANODIZING", "아노다이징"), ("ZINC", "아연도금")]
 INDUSTRIES = ["방위산업", "자동차 부품"]
+# 계산 함수에 넘기는 거절 이유 코드표 순서(계약 C0). 창구가 넘기는 값과 같다.
+LOST_REASON_ORDER = [code.value for code in LostReasonCode]
 SETTINGS = load_app_settings(DEFAULT_APP_SETTINGS_PATH).contact_list
 RULE = AdjustRule(
     window_days=SETTINGS.adjust.window_days,
@@ -222,10 +225,11 @@ def adjust(
         opp_id,
         processes,
         industries,
-        closed_results(companies, window_days=rule.window_days, now=NOW),
+        closed_results(companies, window_days=rule.window_days, now=NOW, tz=KST),
         rule=rule,
         processes=PROCESSES,
         industry_order=INDUSTRIES,
+        lost_reason_order=LOST_REASON_ORDER,
     )
 
 
