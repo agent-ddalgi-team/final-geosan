@@ -1,11 +1,19 @@
 """저장된 수집 회차와 회사의 후보 찾기 정보를 응답에 연결한다."""
 
-from sqlalchemy import select
+from decimal import Decimal
+
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.schemas import FactoryProfile, LatestIngest
+from geosan.config.app_settings import (
+    DEFAULT_APP_SETTINGS_PATH,
+    load_app_settings,
+    read_app_settings,
+)
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun
+from geosan.evidence.transfer import TransferLog, accounted_cost
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 
 
@@ -16,7 +24,36 @@ def latest_ingest(session: Session, dataset_kind: str) -> LatestIngest | None:
         .order_by(IngestBatch.started_at.desc(), IngestBatch.batch_id.desc())
         .limit(1)
     )
-    return LatestIngest.model_validate(row, from_attributes=True) if row else None
+    if row is None:
+        return None
+    fields = {name: getattr(row, name) for name in LatestIngest.model_fields if hasattr(row, name)}
+    return LatestIngest.model_validate({**fields, "actual_usd": _actual_usd(session, row)})
+
+
+def _actual_usd(session: Session, batch: IngestBatch) -> float:
+    """회차에 붙은 전송 기록 + 그 회차로 들어온 회사의 자동 조사 기록의 비용 합(C1 #549).
+
+    자동 조사는 회차가 도는 동안(시작~끝 시각) 그 회사에 생긴 기록으로 가린다. 끝난 뒤
+    담당자가 누른 [다시 조사]는 넣지 않는다. 사용량을 못 받은 호출은 설정의 추정 비용으로 친다.
+    """
+    settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
+    new_opps = (
+        select(Opportunity.opp_id)
+        .join(Customer, Customer.customer_id == Opportunity.customer_id)
+        .where(Customer.ingest_batch_id == batch.batch_id)
+    )
+    research = [TransferLog.opp_id.in_(new_opps), TransferLog.occurred_at >= batch.started_at]
+    if batch.finished_at is not None:
+        research.append(TransferLog.occurred_at <= batch.finished_at)
+    rows = session.scalars(
+        select(TransferLog).where(
+            TransferLog.purpose.in_(["EXTERNAL_SEARCH", "EXTERNAL_AI"]),
+            TransferLog.call_count > 0,
+            or_(TransferLog.batch_id == batch.batch_id, and_(*research)),
+        )
+    ).all()
+    total = sum((accounted_cost(item, settings.llm) for item in rows), Decimal(0))
+    return float(round(total, 6))
 
 
 def factory_profile(customer: Customer) -> FactoryProfile | None:

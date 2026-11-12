@@ -744,6 +744,33 @@ def list_opportunities(
         )
         for row in processes
     ]
+    if stage is not None:
+        current_stage = (
+            select(Outcome.status)
+            .where(Outcome.opp_id == EvaluationRun.opp_id)
+            .order_by(Outcome.version.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
+    if opinion is not None:
+        # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
+        current_opinion = (
+            select(ReviewOpinion.opinion)
+            .where(ReviewOpinion.opp_id == EvaluationRun.opp_id)
+            .order_by(ReviewOpinion.version.desc(), ReviewOpinion.recorded_at.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(
+            current_opinion.is_(None) if opinion == "NONE" else current_opinion == opinion
+        )
+    for filter_function in list_filters:
+        query = filter_function(session, query, request)
+    # 지역·산업 곳 수는 지금 걸러 본 목록 안에서 센다(#370): 관심·수집 회차에 더해
+    # 의견·영업 단계·대시보드 칸 조건까지 건 뒤의 회사만 센다. 공정 곳 수(위)는 그대로 둔다.
+    # 지역·산업·검색어 조건은 아래에서 따로 걸어, 고른 뒤에도 다른 선택지의 곳 수가 남는다.
+    facet_ids = set(session.scalars(select(query.subquery().c.opp_id)))
     companies = session.execute(
         select(Opportunity, Customer)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
@@ -752,7 +779,8 @@ def list_opportunities(
     tab_companies = [
         (opportunity, customer)
         for opportunity, customer in companies
-        if process is None or process in codes_by_opportunity.get(opportunity.opp_id, set())
+        if opportunity.opp_id in facet_ids
+        and (process is None or process in codes_by_opportunity.get(opportunity.opp_id, set()))
     ]
     industry_counts = [
         IndustryCount(
@@ -804,29 +832,6 @@ def list_opportunities(
                 )
             )
         )
-    if stage is not None:
-        current_stage = (
-            select(Outcome.status)
-            .where(Outcome.opp_id == EvaluationRun.opp_id)
-            .order_by(Outcome.version.desc())
-            .limit(1)
-            .scalar_subquery()
-        )
-        query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
-    if opinion is not None:
-        # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
-        current_opinion = (
-            select(ReviewOpinion.opinion)
-            .where(ReviewOpinion.opp_id == EvaluationRun.opp_id)
-            .order_by(ReviewOpinion.version.desc(), ReviewOpinion.recorded_at.desc())
-            .limit(1)
-            .scalar_subquery()
-        )
-        query = query.where(
-            current_opinion.is_(None) if opinion == "NONE" else current_opinion == opinion
-        )
-    for filter_function in list_filters:
-        query = filter_function(session, query, request)
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = []
     for original in session.scalars(query):

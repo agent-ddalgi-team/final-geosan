@@ -10,6 +10,7 @@ import { ApiError, postHomepage } from '../../api/client';
 import type { ErrorBody } from '../../api/types';
 import { errorTexts, homepageControls, reviewArea } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
+import MonthSpendLine from '../common/MonthSpendLine';
 import { useFrame } from '../frame/FrameContext';
 
 /** 다시 눌러도 풀리지 않는 실패 종류. 조사 단추를 잠근다. */
@@ -142,6 +143,7 @@ export default function PasteResearchForm({
         <Button size="small" disabled={busy} onClick={onCancel} data-testid="review-paste-cancel">
           {reviewArea.pasteCancel}
         </Button>
+        <MonthSpendLine />
         {busy ? (
           <span role="status" style={secondary} data-testid="review-paste-running">
             {reviewArea.pasteRunning}

@@ -3,7 +3,8 @@
 import logging
 from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Annotated
+from dataclasses import asdict
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Header, Query, Request
 from pydantic import Field, ValidationError
@@ -15,7 +16,7 @@ from geosan.api.ingest_conditions import IngestRequest, validate_ingest_conditio
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.capability.models import Process
 from geosan.config.errors import AppError, InputError, RunFailedError, new_ref
-from geosan.opportunity.ingest_preview import preview_counts
+from geosan.opportunity.ingest_preview import ingest_budget, read_month_usage
 from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
@@ -40,16 +41,50 @@ class FitCounts(_ApiModel):
     low: int = Field(alias="LOW", ge=0)
 
 
-class IngestPreview(_ApiModel):
-    """C1 GET /ingest/preview의 숫자 칸(#549 1단계). 예상 금액·잠금 칸은 2단계에서 더한다."""
+class IngestEstimate(_ApiModel):
+    """지금 누르면 들 것으로 보는 호출 수와 금액(달러, 추정). 단가는 설정 ingestion.costEstimate."""
 
-    matched_count: int = Field(ge=0, description="맞는 공장 수(제조업 + 고른 공정·산업)")
-    fit_counts: FitCounts
-    registered_count: int = Field(ge=0, description="그중 이미 영업 후보로 들어온 곳")
-    addable_count: int = Field(ge=0, description="아직 안 들어온 곳")
-    addable_high_count: int = Field(ge=0)
-    unjudged_count: int = Field(ge=0, description="고른 지역의 공장 중 판단이 없거나 낡은 곳")
-    add_count: int = Field(ge=0, description="지금 누르면 더할 최대 곳 수")
+    judge_rows: int = Field(ge=0, description="AI가 새로 판단할 공장 수(판단 전 수)")
+    judge_calls: int = Field(ge=0)
+    judge_usd: float = Field(ge=0)
+    research_count: int = Field(ge=0, description="자동 조사할 곳 수(자동 조사가 꺼져 있으면 0)")
+    research_calls: int = Field(ge=0)
+    research_usd: float = Field(ge=0)
+    web_search_usd: float = Field(ge=0, description="같은 조건의 저장된 웹 검색 결과가 있으면 0")
+    total_usd: float = Field(ge=0)
+
+
+class IngestMonth(_ApiModel):
+    """이번 달(한국 시간) 사용액·호출 수와 한도. 전송 보호의 월 합과 같은 계산이다."""
+
+    used_usd: float = Field(ge=0)
+    limit_usd: float = Field(ge=0)
+    used_calls: int = Field(ge=0)
+    limit_calls: int = Field(ge=0)
+
+
+class IngestBlocked(_ApiModel):
+    """예상 금액이 이번 달 남은 한도를 넘어 단추를 잠가야 하는 이유."""
+
+    kind: Literal["OVER_COST", "OVER_CALLS"]
+    judgeable_rows: int = Field(ge=0, description="남은 금액·호출로 판단할 수 있는 공장 수")
+
+
+class IngestPreview(_ApiModel):
+    """C1 GET /ingest/preview(#549). 조건 없이 부르면 month만 채우고 나머지는 null이다."""
+
+    matched_count: int | None = Field(ge=0, description="맞는 공장 수(제조업 + 고른 공정·산업)")
+    fit_counts: FitCounts | None
+    registered_count: int | None = Field(ge=0, description="그중 이미 영업 후보로 들어온 곳")
+    addable_count: int | None = Field(ge=0, description="아직 안 들어온 곳")
+    addable_high_count: int | None = Field(ge=0)
+    unjudged_count: int | None = Field(
+        ge=0, description="고른 지역의 공장 중 판단이 없거나 낡은 곳"
+    )
+    add_count: int | None = Field(ge=0, description="지금 누르면 더할 최대 곳 수")
+    estimate: IngestEstimate | None
+    month: IngestMonth
+    blocked: IngestBlocked | None = Field(description="한도를 넘지 않으면 null")
 
 
 def _execute_batch(run_batch: Callable[[str], None], batch_id: str) -> None:
@@ -89,9 +124,27 @@ def create_ingest_router(run_batch: Callable[[str], None] | None) -> APIRouter:
         regions: Annotated[list[str], Query()] = [],  # noqa: B006
         industries: Annotated[list[str], Query()] = [],  # noqa: B006
     ):
-        """고른 조건의 맞는 공장 수를 저장된 판단으로만 센다. 외부 호출·저장 없음, 키 없이 읽음."""
+        """고른 조건의 맞는 공장 수와 예상 금액을 저장된 자료로만 센다. 외부 호출·저장 없음."""
         runtime = runtime_for(session)
-        dataset_kind = runtime.app_settings.active_dataset_kind.value
+        settings = runtime.app_settings
+        dataset_kind = settings.active_dataset_kind.value
+        meta = Meta(dataset_kind=dataset_kind)
+        if not (process_codes or regions or industries):
+            # [다시 조사]·[붙여넣고 조사]용: 이번 달 사용액만 돌려준다.
+            month = IngestMonth(**asdict(read_month_usage(session, settings)))
+            data = IngestPreview(
+                matched_count=None,
+                fit_counts=None,
+                registered_count=None,
+                addable_count=None,
+                addable_high_count=None,
+                unjudged_count=None,
+                add_count=None,
+                estimate=None,
+                month=month,
+                blocked=None,
+            )
+            return Envelope[IngestPreview](data=data, meta=meta)
         try:
             body = IngestRequest.model_validate(
                 {"processCodes": process_codes, "regions": regions, "industries": industries}
@@ -102,16 +155,17 @@ def create_ingest_router(run_batch: Callable[[str], None] | None) -> APIRouter:
             ) from None
         codes = session.scalars(select(Process.code).where(Process.dataset_kind == dataset_kind))
         prepared = validate_ingest_conditions(
-            body, settings=runtime.app_settings, available_process_codes=set(codes)
+            body, settings=settings, available_process_codes=set(codes)
         )
-        counts = preview_counts(
+        budget = ingest_budget(
             session,
             process_codes=prepared.process_codes,
             regions=prepared.regions,
             industries=prepared.industries,
             max_candidates=prepared.max_candidates,
-            dataset_kind=dataset_kind,
+            settings=settings,
         )
+        counts = budget.counts
         data = IngestPreview(
             matched_count=counts.matched_count,
             fit_counts=FitCounts(
@@ -124,8 +178,11 @@ def create_ingest_router(run_batch: Callable[[str], None] | None) -> APIRouter:
             addable_high_count=counts.addable_high_count,
             unjudged_count=counts.unjudged_count,
             add_count=counts.add_count,
+            estimate=IngestEstimate(**asdict(budget.estimate)),
+            month=IngestMonth(**asdict(budget.month)),
+            blocked=IngestBlocked(**asdict(budget.blocked)) if budget.blocked else None,
         )
-        return Envelope[IngestPreview](data=data, meta=Meta(dataset_kind=dataset_kind))
+        return Envelope[IngestPreview](data=data, meta=meta)
 
     @router.post("/ingest", response_model=Envelope[IngestAccepted])
     def start_ingest(

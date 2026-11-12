@@ -10,6 +10,7 @@ import { ApiError, postHomepage } from '../../api/client';
 import type { ErrorBody, HomepageRequest } from '../../api/types';
 import { errorTexts, homepageControls } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
+import MonthSpendLine from '../common/MonthSpendLine';
 import { useFrame } from '../frame/FrameContext';
 
 /** 다시 눌러도 풀리지 않는 실패 종류. 조사 단추를 잠근다. */
@@ -114,6 +115,7 @@ export default function HomepageControls({ oppId, onReload }: HomepageControlsPr
         >
           {homepageControls.rerunButton}
         </Button>
+        {canRecord ? <MonthSpendLine /> : null}
         {!canRecord ? (
           <span style={secondary} data-testid="homepage-pick-staff">
             {homepageControls.pickStaffFirst}

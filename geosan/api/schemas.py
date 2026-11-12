@@ -123,6 +123,12 @@ class LatestIngest(_ApiModel):
     failure_reason: str | None = Field(
         description="찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)"
     )
+    estimated_usd: float | None = Field(
+        description="접수 때 예상 금액(달러). 이 칸이 생기기 전의 옛 회차는 null (C1, #549)"
+    )
+    actual_usd: float = Field(
+        description="이 회차의 AI 판단·웹 검색·새 회사 자동 조사에 실제로 든 금액(달러) (C1, #549)"
+    )
 
 
 class BucketCounts(_ApiModel):
