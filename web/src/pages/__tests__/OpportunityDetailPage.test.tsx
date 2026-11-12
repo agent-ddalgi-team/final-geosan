@@ -10,6 +10,7 @@ import {
   getOpportunityDetail,
   postOutcome,
   postQuestionReply,
+  postRecordCancel,
   postRelation,
   putBookmark,
 } from '../../api/client';
@@ -31,11 +32,13 @@ vi.mock('../../api/client', async (importOriginal) => ({
   getOpportunityDetail: vi.fn(),
   getActivity: vi.fn(),
   postQuestionReply: vi.fn(),
+  postRecordCancel: vi.fn(),
   postRelation: vi.fn(),
   postOutcome: vi.fn(),
   putBookmark: vi.fn(),
 }));
 
+const mockedCancel = vi.mocked(postRecordCancel);
 const mockedBookmark = vi.mocked(putBookmark);
 const mockedOutcome = vi.mocked(postOutcome);
 const mockedRelation = vi.mocked(postRelation);
@@ -89,6 +92,7 @@ describe('OpportunityDetailPage', () => {
     mockedRelation.mockReset();
     mockedOutcome.mockReset();
     mockedBookmark.mockReset();
+    mockedCancel.mockReset();
     mockedActivity.mockResolvedValue({
       data: [],
       meta: { updatedAt: '2026-10-20T09:00:00+09:00' },
@@ -404,6 +408,61 @@ describe('OpportunityDetailPage', () => {
         '접촉 4회 (전화 2 · 방문 1 · 메일 1)',
       ),
     );
+  });
+
+  it('활동 이력에서 [잘못 입력]을 표시하면 상세를 다시 불러와 접촉 횟수가 서버 값으로 돌아온다 (#254)', async () => {
+    const user = userEvent.setup();
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        records: { ...base.records, contactCount: { total: 3, call: 2, email: 0, visit: 1 } },
+      }),
+    );
+    // 취소 뒤 서버가 취소된 접촉을 빼고 다시 센 값.
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        records: { ...base.records, contactCount: { total: 2, call: 1, email: 0, visit: 1 } },
+      }),
+    );
+    mockedActivity.mockResolvedValue({
+      data: [
+        {
+          at: '2026-11-06T14:20:00+09:00',
+          actor: 'park-lee',
+          kind: 'CONTACT_ATTEMPT',
+          summary: "전화 · 부재 '담당자 외근'",
+          recordId: 'outcome-7',
+          recordKind: 'OUTCOME',
+          cancelled: false,
+        },
+      ],
+      meta: { updatedAt: '2026-11-06T14:30:00+09:00' },
+    });
+    mockedCancel.mockResolvedValueOnce({
+      data: {
+        recordId: 'outcome-7',
+        recordKind: 'OUTCOME',
+        cancelledBy: 'park-lee',
+        cancelledAt: '2026-11-06T15:00:00+09:00',
+      },
+      meta: {},
+    });
+    renderPage();
+    expect(await screen.findByTestId('detail-contact-count')).toHaveTextContent(
+      '접촉 3회 (전화 2 · 방문 1)',
+    );
+    const activityCallsBefore = mockedActivity.mock.calls.length;
+    await user.click(await screen.findByTestId('timeline-cancel-open'));
+    await user.click(screen.getByTestId('timeline-cancel-confirm'));
+    expect(mockedCancel).toHaveBeenCalledWith('opp-1', 'outcome-7', {}, 'park-lee');
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByTestId('detail-contact-count')).toHaveTextContent(
+        '접촉 2회 (전화 1 · 방문 1)',
+      ),
+    );
+    expect(mockedActivity.mock.calls.length).toBeGreaterThan(activityCallsBefore);
   });
 
   it('서버가 접촉 횟수를 주지 않으면 머리의 접촉 횟수 줄은 보이지 않는다 (#210)', async () => {

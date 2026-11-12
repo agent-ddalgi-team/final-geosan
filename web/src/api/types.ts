@@ -213,6 +213,8 @@ export interface Brand {
 export interface RecordsConfig {
   approvalEnabled: boolean;
   noteMaxLength: number;
+  /** 기록 취소(#253·#254): true면 남의 기록도 취소할 수 있다. 안 주면 본인 기록만(false). */
+  cancelByAnyStaff?: boolean;
 }
 
 /** 후보 가져오기 조건 칸의 선택지(C1 더하는 변경 #424). 서버가 아직 안 주면 없음. */
@@ -723,9 +725,16 @@ export type ActivityKind =
   | 'OUTCOME'
   | 'EVIDENCE_GRADE_CONFIRMED'
   | 'RELATION_CONFIRMED'
-  | 'NOTE';
+  | 'NOTE'
+  | 'RECORD_CANCELLED';
 
-/** 활동 이력 한 줄(C1 ActivityItem). actor는 담당자 키 또는 system. */
+/** 취소할 수 있는 저장 행의 종류(C1 ActivityItem.recordKind). NOTE = 메모·자료 조사·답 이력, OUTCOME = 접촉·단계·일정. */
+export type RecordKind = 'NOTE' | 'OUTCOME';
+
+/**
+ * 활동 이력 한 줄(C1 ActivityItem). actor는 담당자 키 또는 system.
+ * 기록 취소(#253·#254) 칸 5개는 서버가 모두 줄 수도, 옛 응답이라 하나도 안 줄 수도 있어 선택으로 둔다.
+ */
 export interface ActivityItem {
   at: string;
   actor: string;
@@ -733,6 +742,29 @@ export interface ActivityItem {
   summary: string;
   previousValue?: string | null;
   evalId?: string | null;
+  /** 이 줄을 만든 저장 행 번호. 취소 단추가 쓴다. 분류·의견·관심·거래 관계·취소 줄은 null. */
+  recordId?: string | null;
+  recordKind?: RecordKind | null;
+  /** 잘못 입력으로 표시된 줄이면 true. 줄은 지우지 않고 화면이 줄을 긋는다. */
+  cancelled?: boolean;
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+}
+
+// ---------- POST /opportunities/{oppId}/records/{recordId}/cancel (기록 취소 [잘못 입력], 2026-11-12) ----------
+
+export interface RecordCancelRequest {
+  /** 이유(선택, 200자까지). */
+  reason?: string | null;
+  /** 화면이 보고 있던 평가 번호(선택). */
+  evalId?: string | null;
+}
+
+export interface RecordCancelResponse {
+  recordId: string;
+  recordKind: RecordKind;
+  cancelledBy: string;
+  cancelledAt: string;
 }
 
 export type ConfigUiEnvelope = Envelope<ConfigUi>;
