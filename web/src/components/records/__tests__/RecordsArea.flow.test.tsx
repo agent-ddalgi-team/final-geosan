@@ -1,5 +1,5 @@
 // 기록 구역 세 칸 흐름(#433, PM 결정 2026-11-08): ① 안내·번호 / ② 접촉 날짜는 오늘(한국 시간)까지 + 서버 400 안내 /
-// ③ 접촉을 적은 뒤 단계가 미접촉이면 "접촉으로 바꿀까요?"를 한 번 묻는다(자동 변경 아님).
+// ③ 접촉을 적으면 단계는 서버가 앞으로만 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈).
 // 서버 호출(postNote·postOutcome)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,6 +15,7 @@ vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   postNote: vi.fn(),
   postOutcome: vi.fn(),
+  getSalesQuestions: vi.fn(() => new Promise(() => {})),
 }));
 
 const mockedOutcome = vi.mocked(postOutcome);
@@ -157,62 +158,33 @@ describe('기록 구역 · ② 접촉 날짜는 오늘까지 (#433)', () => {
   });
 });
 
-describe('기록 구역 · ③ 접촉 뒤 단계 제안 (#433)', () => {
+describe('기록 구역 · ③ 접촉 뒤 단계는 서버가 앞으로만 바꾼다 (#607이 #433의 묻기를 바꿈)', () => {
   beforeEach(() => {
     mockedOutcome.mockReset();
   });
 
-  it('단계 기록이 없는 회사에 접촉을 적으면 단계를 자동으로 바꾸지 않고 "접촉으로 바꿀까요?"를 묻는다', async () => {
+  it('미접촉 회사에 접촉을 적으면 지금 단계를 그대로 보내고, 서버가 바꾼 "접촉"을 보이며 묻지 않는다', async () => {
     const user = userEvent.setup();
-    mockedOutcome.mockResolvedValueOnce(reply('NOT_EXECUTED'));
-    renderArea();
+    mockedOutcome.mockResolvedValueOnce(reply('IN_PROGRESS'));
+    const onSalesStepChanged = vi.fn();
+    renderArea({ onSalesStepChanged });
     await saveContact(user);
-    expect(await screen.findByTestId('records-stage-suggestion')).toHaveTextContent(
-      recordsArea.stageSuggest,
+    await waitFor(() =>
+      expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉'),
     );
-    // 접촉 저장은 지금 단계(기록 없음 → 미접촉)를 그대로 싣는다.
     expect(mockedOutcome.mock.calls[0][1]).toMatchObject({
       status: 'NOT_EXECUTED',
       method: 'VISIT',
     });
-    expect(screen.getByTestId('records-stage-current')).toHaveTextContent(
-      `${recordsArea.stageCurrent}: 미접촉`,
-    );
-  });
-
-  it('[접촉으로 바꾸기]를 누르면 영업 단계 저장(접촉)을 부르고, 제안은 사라지며 타임라인을 다시 읽게 한다', async () => {
-    const user = userEvent.setup();
-    mockedOutcome
-      .mockResolvedValueOnce(reply('NOT_EXECUTED'))
-      .mockResolvedValueOnce(reply('IN_PROGRESS'));
-    const { onRecorded } = renderArea({ outcome: outcome('NOT_EXECUTED') });
-    await saveContact(user);
-    await user.click(await screen.findByTestId('records-stage-suggestion-apply'));
-    await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(2));
-    expect(mockedOutcome.mock.calls[1][1]).toMatchObject({ evalId: EVAL, status: 'IN_PROGRESS' });
-    expect(mockedOutcome.mock.calls[1][1]).not.toHaveProperty('method');
-    await waitFor(() =>
-      expect(screen.queryByTestId('records-stage-suggestion')).not.toBeInTheDocument(),
-    );
-    expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
-    expect(onRecorded).toHaveBeenCalledTimes(2);
-  });
-
-  it('[닫기]를 누르면 사라지고, 다음 접촉을 적어도 같은 회사에서는 다시 묻지 않는다', async () => {
-    const user = userEvent.setup();
-    mockedOutcome.mockResolvedValue(reply('NOT_EXECUTED'));
-    renderArea({ outcome: outcome('NOT_EXECUTED') });
-    await saveContact(user);
-    await user.click(await screen.findByTestId('records-stage-suggestion-dismiss'));
     expect(screen.queryByTestId('records-stage-suggestion')).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
-    await user.click(screen.getByTestId('records-contact-save-button'));
-    await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(2));
-    expect(screen.queryByTestId('records-stage-suggestion')).not.toBeInTheDocument();
+    expect(screen.getByTestId('records-stage-auto-hint')).toHaveTextContent(
+      recordsArea.stageAutoHint,
+    );
+    expect(onSalesStepChanged).toHaveBeenCalledTimes(1);
   });
 
   it.each(['IN_PROGRESS', 'ON_HOLD', 'WON'] as const)(
-    '이미 %s 단계면 접촉을 적어도 묻지 않고 단계도 그대로 보낸다',
+    '이미 %s 단계면 접촉을 적어도 단계를 그대로 보낸다',
     async (status) => {
       const user = userEvent.setup();
       mockedOutcome.mockResolvedValueOnce(reply(status));
@@ -220,22 +192,22 @@ describe('기록 구역 · ③ 접촉 뒤 단계 제안 (#433)', () => {
       await saveContact(user);
       await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
       expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ status });
-      expect(screen.queryByTestId('records-stage-suggestion')).not.toBeInTheDocument();
     },
   );
 
-  it('접촉 저장이 실패하면 제안을 보이지 않는다', async () => {
+  it('접촉 저장이 실패하면 세부 단계를 다시 불러오지 않는다', async () => {
     const user = userEvent.setup();
     mockedOutcome.mockRejectedValueOnce(
       new ApiError(500, { message: '서버 오류', nextAction: '', ref: 'r3' }),
     );
-    renderArea({ outcome: outcome('NOT_EXECUTED') });
+    const onSalesStepChanged = vi.fn();
+    renderArea({ outcome: outcome('NOT_EXECUTED'), onSalesStepChanged });
     await saveContact(user);
     await screen.findByTestId('records-contact-error');
-    expect(screen.queryByTestId('records-stage-suggestion')).not.toBeInTheDocument();
+    expect(onSalesStepChanged).not.toHaveBeenCalled();
   });
 
-  it('메모만 남기면 단계를 묻지 않는다', async () => {
+  it('메모만 남기면 단계를 건드리지 않는다', async () => {
     const user = userEvent.setup();
     mockedNote.mockResolvedValueOnce({
       data: { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-08T01:00:00Z', noteId: 'n-1' },
@@ -245,6 +217,6 @@ describe('기록 구역 · ③ 접촉 뒤 단계 제안 (#433)', () => {
     await user.type(screen.getByTestId('records-note-input'), '그냥 메모');
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));
-    expect(screen.queryByTestId('records-stage-suggestion')).not.toBeInTheDocument();
+    expect(mockedOutcome).not.toHaveBeenCalled();
   });
 });

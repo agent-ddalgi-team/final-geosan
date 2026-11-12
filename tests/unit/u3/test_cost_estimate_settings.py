@@ -97,7 +97,7 @@ def test_migration_adds_nullable_column_and_old_batch_stays_empty(tmp_path, monk
     / Then 옛 회차의 예상 금액은 비어 있고, 내려도 실행 중 회차 하나만 허용하는 색인이 남는다."""
     db = tmp_path / "old.db"
     monkeypatch.setenv("GEOSAN_DB_PATH", str(db))
-    command.upgrade(alembic_config(db), "src_005")
+    command.upgrade(alembic_config(db), "rec_012")
     assert "estimated_usd" not in _columns(db)
     with sqlite3.connect(db) as con:
         from tests.unit.u3.test_ingest_tables import _insert_filled
@@ -106,6 +106,6 @@ def test_migration_adds_nullable_column_and_old_batch_stays_empty(tmp_path, monk
     assert upgrade_to_head(db) == ["opp_009"]
     with sqlite3.connect(db) as con:
         assert con.execute("SELECT estimated_usd FROM opp_ingest_batch").fetchall() == [(None,)]
-    command.downgrade(alembic_config(db), "src_005")
+    command.downgrade(alembic_config(db), "rec_012")
     assert "estimated_usd" not in _columns(db)
     assert "uq_opp_ingest_batch_running" in _indexes(db)

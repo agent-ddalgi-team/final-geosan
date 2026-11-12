@@ -45,6 +45,7 @@ from geosan.rules.codes import (
     ReviewItemKind,
     ReviewItemSource,
     ReviewStatus,
+    SalesStep,
     SourceGrade,
 )
 from geosan.rules.codes import (
@@ -297,6 +298,7 @@ class OpportunityCard(_ApiModel):
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
     contact_count: int = 0
+    sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str
     rank: int
     title: str = Field(description="기업 · 기회 이름")
@@ -557,8 +559,28 @@ class ContactCount(_ApiModel):
     visit: int = 0
 
 
+class KnownSalesAnswer(_ApiModel):
+    question_id: str
+    question: str
+    answer_id: str
+    answer: str
+    at: date
+    by: str
+
+
+class SalesStepView(_ApiModel):
+    """#607 상세 records.salesStep. 세부 단계·알아낸 것·아직 모르는 질문."""
+
+    code: SalesStep | None = None
+    since: date | None = None
+    overridden: bool = False
+    known: list[KnownSalesAnswer] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
+
+
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
+    sales_step: SalesStepView = Field(default_factory=SalesStepView)
     opinion: OpinionRecord | None = None
     bookmark: BookmarkRecord | None = None
     approval: dict[str, Any] | None = None
@@ -683,6 +705,13 @@ OutcomeStatus = Literal[
 ]
 
 
+class OutcomeAnswerInput(_RequestModel):
+    """#607 꼬리 질문 답 하나(코드만, 문구는 저장하지 않는다)."""
+
+    question_id: str = Field(min_length=1, max_length=40)
+    answer_id: str = Field(min_length=1, max_length=40)
+
+
 class OutcomeRequest(_RequestModel):
     """계약 C1의 코드 값. #211 공통 코드표와 같은 계약으로 연결한다."""
 
@@ -700,6 +729,9 @@ class OutcomeRequest(_RequestModel):
     eval_id: str | None = None
     expected_version: int | None = Field(default=None, ge=0)
     memo: str | None = Field(default=None, max_length=200)
+    # #607: 꼬리 질문 답(코드)과 [단계 고치기]. 둘 다 선택이며 옛 요청은 그대로 받는다.
+    answers: list[OutcomeAnswerInput] = Field(default_factory=list, max_length=20)
+    step_override: SalesStep | None = None
 
 
 class OutcomeResponse(RecordMeta):
@@ -739,6 +771,41 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+
+
+class SalesStepEntry(_ApiModel):
+    code: SalesStep
+    label: str
+    stage: SalesOutcomeStatus
+
+
+class SalesAnswerOption(_ApiModel):
+    answer_id: str
+    label: str
+    reaches: SalesStep | None = None
+
+
+class SalesShowWhen(_ApiModel):
+    answers: dict[str, list[str]]
+
+
+class SalesQuestionView(_ApiModel):
+    question_id: str
+    text: str
+    step: SalesStep | Literal["ALL"]
+    show_when: SalesShowWhen | None = None
+    answers: list[SalesAnswerOption]
+
+
+class SalesQuestionsView(_ApiModel):
+    """#607 GET /sales-questions. 질문 파일을 화면에 주는 모양."""
+
+    version: int
+    steps: list[SalesStepEntry]
+    questions: list[SalesQuestionView]
+
+
+SalesQuestionsEnvelope = Envelope[SalesQuestionsView]
 BookmarkEnvelope = Envelope[BookmarkResponse]
 RelationEnvelope = Envelope[RelationResponse]
 QuestionReplyEnvelope = Envelope[QuestionReplyResponse]

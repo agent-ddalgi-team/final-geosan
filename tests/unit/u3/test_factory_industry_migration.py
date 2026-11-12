@@ -14,7 +14,7 @@ from geosan.storage.migrate import alembic_config, current_revisions, downgrade,
 from tests.unit.u3.test_ingest_tables import _columns, _insert_filled
 
 BEFORE = "src_004"
-HEAD = "opp_009"  # 최신 이관(#549의 예상 금액 칸이 src_005 뒤에 붙는다)
+HEAD = "opp_009"  # 최신 이관(#549의 예상 금액 칸이 맨 뒤에 붙는다)
 
 
 def test_old_companies_keep_their_values_and_get_an_empty_industry_name(tmp_path: Path) -> None:

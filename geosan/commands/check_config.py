@@ -20,6 +20,7 @@ from geosan.config.registry import (
     register_config_files,
 )
 from geosan.config.rule_config import check_rule_config_file
+from geosan.config.sales_questions import check_sales_questions_file, questions_path
 from geosan.config.validators import format_field_error
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
@@ -55,6 +56,13 @@ def run_check_config(
         for error in app_result.errors:
             typer.echo(f"오류 [{app_path.name}]: {format_field_error(error)}")
         errors += len(app_result.errors)
+        # #607: 설정이 가리키는 꼬리 질문 파일도 함께 검사한다(인자는 그대로).
+        if app_result.settings is not None:
+            questions_file = questions_path(app_result.settings.records.sales_questions_file)
+            questions_result = check_sales_questions_file(questions_file)
+            for error in questions_result.errors:
+                typer.echo(f"오류 [{questions_file.name}]: {format_field_error(error)}")
+            errors += len(questions_result.errors)
     except AppError as exc:
         for error in exc.fields:
             typer.echo(f"오류: {format_field_error(error)}")

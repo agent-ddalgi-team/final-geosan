@@ -197,13 +197,13 @@ def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
         "ev_": 1,
         "eval_": 7,
         "q_": 3,
-        "rec_": 5,
+        "rec_": 6,
         "web_": 1,
         "tg_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    assert len(db_tables) == 46
+    assert len(db_tables) == 47
     prefixes = (*TABLE_PREFIXES, "web_")
     for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix

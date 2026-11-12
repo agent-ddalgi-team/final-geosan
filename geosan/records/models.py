@@ -73,7 +73,23 @@ class Outcome(CommonColumns, Base):
     method: Mapped[str | None] = mapped_column(String(16))
     result: Mapped[str | None] = mapped_column(String(16))
     attempted_at: Mapped[date | None] = mapped_column(Date)
+    # #607·C6: [단계 고치기]로 담당자가 정한 세부 단계(SalesStep). 옛 행·안 고친 행은 비워 둔다.
+    step_override: Mapped[str | None] = mapped_column(String(24))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class OutcomeAnswer(CommonColumns, Base):
+    """#607·C6: 접촉 기록의 꼬리 질문 답(코드). 답마다 새 행이며 수정·삭제하지 않는다."""
+
+    __tablename__ = "rec_outcome_answer"
+
+    answer_row_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    outcome_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("rec_outcome.outcome_id"), nullable=False, index=True
+    )
+    opp_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    question_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    answer_id: Mapped[str] = mapped_column(String(40), nullable=False)
 
 
 class ReviewCheck(CommonColumns, Base):

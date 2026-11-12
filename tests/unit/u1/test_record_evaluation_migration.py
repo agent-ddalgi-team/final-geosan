@@ -28,8 +28,9 @@ def test_old_records_stay_empty_and_survive_schema_round_trip(tmp_path):
         with sqlite3.connect(db) as connection:
             for table, rows in before.items():
                 assert connection.execute(f"SELECT * FROM {table}").fetchall() == [
-                    # rec_outcome에는 뒤이어 judgment_check(rec_010)도 비어 있는 채로 붙는다.
-                    (*row, None, *([None] if table == "rec_outcome" else []))
+                    # rec_outcome에는 뒤이어 judgment_check(rec_010)와 step_override(rec_012)도
+                    # 비어 있는 채로 붙는다.
+                    (*row, None, *([None, None] if table == "rec_outcome" else []))
                     for row in rows
                 ]
                 columns = {row[1]: row for row in connection.execute(f"PRAGMA table_info({table})")}

@@ -976,6 +976,9 @@
               }
             ],
             "title": "Outcome"
+          },
+          "salesStep": {
+            "$ref": "#/components/schemas/SalesStepView"
           }
         },
         "title": "DetailRecords",
@@ -1215,6 +1218,21 @@
           "data"
         ],
         "title": "Envelope[ReviewCheckResponse]",
+        "type": "object"
+      },
+      "Envelope_SalesQuestionsView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SalesQuestionsView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[SalesQuestionsView]",
         "type": "object"
       },
       "Envelope_list_ActivityItem__": {
@@ -1961,6 +1979,45 @@
         ],
         "title": "JudgmentCheck",
         "type": "string"
+      },
+      "KnownSalesAnswer": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "at": {
+            "format": "date",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "question",
+          "answerId",
+          "answer",
+          "at",
+          "by"
+        ],
+        "title": "KnownSalesAnswer",
+        "type": "object"
       },
       "LatestIngest": {
         "description": "마지막 찾기 회차 요약 (C1 `meta.latestIngest`, #221·#313·#323).\n\n목록 머리 \"훑어본 ○곳 · 판단 완료 ○곳 · 고른 ○곳 · 조사 ○/○\"에 쓴다. 칸에 기본값을 두지 않아\n창구가 회차 행의 값을 빠짐없이 채워야 한다(안 채운 건수가 0으로 보이지 않게).",
@@ -2854,6 +2911,17 @@
             "description": "점수가 아직 없는 찾은 회사의 조사 상태(#596). 카드는 RUNNING이면 '조사 중', 나머지는 '조사 중단'. 점수가 있거나 사례 파일 회사면 null",
             "title": "Researchstate"
           },
+          "salesStep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#607 세부 단계"
+          },
           "scoreDisplay": {
             "description": "'<E>점 · <n>/<전체>'(예: '77점 · 7/8'), 판정 0개면 '--', 소개서 묶음이면 '참고 ' 접두(예: '참고 50점 · 3/8') (BR10.2, PM 결정 2026-10-28 #180)",
             "title": "Scoredisplay",
@@ -3038,6 +3106,30 @@
         "title": "OpportunityDetail",
         "type": "object"
       },
+      "OutcomeAnswerInput": {
+        "additionalProperties": false,
+        "description": "#607 꼬리 질문 답 하나(코드만, 문구는 저장하지 않는다).",
+        "properties": {
+          "answerId": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Answerid",
+            "type": "string"
+          },
+          "questionId": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Questionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "answerId"
+        ],
+        "title": "OutcomeAnswerInput",
+        "type": "object"
+      },
       "OutcomeRequest": {
         "additionalProperties": false,
         "description": "계약 C1의 코드 값. #211 공통 코드표와 같은 계약으로 연결한다.",
@@ -3052,6 +3144,14 @@
               }
             ],
             "title": "Actionid"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/OutcomeAnswerInput"
+            },
+            "maxItems": 20,
+            "title": "Answers",
+            "type": "array"
           },
           "attemptedAt": {
             "anyOf": [
@@ -3202,6 +3302,16 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "stepOverride": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4007,6 +4117,213 @@
         ],
         "title": "ReviewStatus",
         "type": "string"
+      },
+      "SalesAnswerOption": {
+        "properties": {
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "reaches": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "answerId",
+          "label"
+        ],
+        "title": "SalesAnswerOption",
+        "type": "object"
+      },
+      "SalesQuestionView": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/SalesAnswerOption"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "showWhen": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesShowWhen"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "const": "ALL",
+                "type": "string"
+              }
+            ],
+            "title": "Step"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "text",
+          "step",
+          "answers"
+        ],
+        "title": "SalesQuestionView",
+        "type": "object"
+      },
+      "SalesQuestionsView": {
+        "description": "#607 GET /sales-questions. 질문 파일을 화면에 주는 모양.",
+        "properties": {
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/SalesQuestionView"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/SalesStepEntry"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "steps",
+          "questions"
+        ],
+        "title": "SalesQuestionsView",
+        "type": "object"
+      },
+      "SalesShowWhen": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Answers",
+            "type": "object"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "title": "SalesShowWhen",
+        "type": "object"
+      },
+      "SalesStep": {
+        "description": "#607: 큰 단계(OutcomeStatus) 안의 세부 단계. 꼬리 질문 답으로 알아낸 사실로 정한다.",
+        "enum": [
+          "NOT_REACHED",
+          "REACHED",
+          "DEMAND_CONFIRMED",
+          "MATERIAL_QUOTE",
+          "VISIT_SAMPLE"
+        ],
+        "title": "SalesStep",
+        "type": "string"
+      },
+      "SalesStepEntry": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SalesStep"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/OutcomeStatus"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "stage"
+        ],
+        "title": "SalesStepEntry",
+        "type": "object"
+      },
+      "SalesStepView": {
+        "description": "#607 상세 records.salesStep. 세부 단계·알아낸 것·아직 모르는 질문.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "known": {
+            "items": {
+              "$ref": "#/components/schemas/KnownSalesAnswer"
+            },
+            "title": "Known",
+            "type": "array"
+          },
+          "openQuestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Openquestions",
+            "type": "array"
+          },
+          "overridden": {
+            "default": false,
+            "title": "Overridden",
+            "type": "boolean"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          }
+        },
+        "title": "SalesStepView",
+        "type": "object"
       },
       "ScheduleItem": {
         "properties": {
@@ -5411,6 +5728,25 @@
           }
         },
         "summary": "Save Question Reply"
+      }
+    },
+    "/api/v1/sales-questions": {
+      "get": {
+        "description": "#607 꼬리 질문 묶음. 외부 호출·저장 없음, 보기 전용도 조회.",
+        "operationId": "get_sales_questions_api_v1_sales_questions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SalesQuestionsView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Sales Questions"
       }
     },
     "/api/v1/session": {
