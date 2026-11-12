@@ -266,6 +266,7 @@ class CardRecords(_ApiModel):
 
 
 ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
+ResearchState = Literal["RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED"]
 
 
 class FactoryProfile(_ApiModel):
@@ -338,6 +339,13 @@ class OpportunityCard(_ApiModel):
     factory_profile: FactoryProfile | None = Field(
         default=None,
         description="팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null",
+    )
+    research_state: ResearchState | None = Field(
+        default=None,
+        description=(
+            "조사가 끝나지 않은 후보 찾기 회사의 조사 상태(#596). 화면은 '점수 전' 옆 꼬리표. "
+            "조사가 끝났거나 사례 파일 회사면 null"
+        ),
     )
 
 

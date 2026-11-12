@@ -19,6 +19,7 @@ from geosan.api.ingest_views import (
     discovery_fields,
     latest_ingest,
     recent_order,
+    research_state,
 )
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
@@ -703,6 +704,7 @@ def list_opportunities(
                 is_new_in_latest_batch=bool(
                     progress and customer.ingest_batch_id == progress.batch_id
                 ),
+                research_state=research_state(customer, progress),
                 score_state=_score_state(
                     current, ai_pending=has_ai_pending_inputs(session, opportunity.opp_id)
                 ),
