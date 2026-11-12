@@ -26,6 +26,8 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   typer
 coverage==7.16.2
     # via pytest-cov
+et-xmlfile==2.0.0
+    # via openpyxl
 fastapi==0.156.4
     # via geosan (pyproject.toml)
 gherkin-official==42.0.1
@@ -56,6 +58,8 @@ markupsafe==3.0.4
     # via mako
 mdurl==0.1.2
     # via markdown-it-py
+openpyxl==3.1.5
+    # via geosan (pyproject.toml)
 opentelemetry-api==1.45.1
     # via fastapi
 packaging==26.3

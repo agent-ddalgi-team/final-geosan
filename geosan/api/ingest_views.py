@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from geosan.api.schemas import LatestIngest
+from geosan.api.schemas import FactoryProfile, LatestIngest
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
@@ -19,18 +19,33 @@ def latest_ingest(session: Session, dataset_kind: str) -> LatestIngest | None:
     return LatestIngest.model_validate(row, from_attributes=True) if row else None
 
 
+def factory_profile(customer: Customer) -> FactoryProfile | None:
+    """회사에 붙여 둔 팩토리온 공장 정보(#573). 기준일이 없으면 붙은 공장이 없다."""
+    if customer.factory_profile_date is None:
+        return None
+    return FactoryProfile(
+        raw_materials=customer.factory_raw_materials,
+        employee_count=customer.factory_employee_count,
+        scale=customer.factory_scale,
+        file_date=customer.factory_profile_date,
+    )
+
+
 def discovery_fields(customer: Customer) -> dict:
     return {
-        name: getattr(customer, name)
-        for name in (
-            "discovery_source",
-            "discovery_source_url",
-            "registry_status",
-            "fit_level",
-            "pick_reason",
-            "own_plating_line_suspected",
-            "own_plating_line_basis",
-        )
+        **{
+            name: getattr(customer, name)
+            for name in (
+                "discovery_source",
+                "discovery_source_url",
+                "registry_status",
+                "fit_level",
+                "pick_reason",
+                "own_plating_line_suspected",
+                "own_plating_line_basis",
+            )
+        },
+        "factory_profile": factory_profile(customer),
     }
 
 

@@ -119,6 +119,7 @@ def test_grouped_calls_store_all_judgments_and_reuse_without_key(pick_context, m
             "product",
             "industryName",
             "address",
+            "rawMaterials",
         }
     monkeypatch.delenv("OPENAI_API_KEY")
     with session_scope() as session:
@@ -383,6 +384,8 @@ def test_old_settings_default_off_and_examples_match(app_settings_path):
             "rowsPerCall": 20,
             "promptFile": "examples/prompts/candidate-pick.md",
             "surfaceTreatmentIndustryNames": [],
+            # #573 PM 승인: 예시 설정의 도금업·도장 및 기타 피막처리업 업종번호.
+            "surfaceTreatmentIndustryCodes": ["25922", "25923"],
             "model": None,
         }
         assert AppSettings.model_validate(data).ingestion.ai_pick == AiPickSettings()

@@ -47,6 +47,26 @@ _SOURCES = {
             "판단용 지문 저장. 대표자 이름·팩스·전화·개인 연락처는 읽는 즉시 버림"
         ),
     },
+    # #573 PM 승인: 목록 회사에 붙이는 보조 자료. 약관 주소 기본값이 없어 --terms를 꼭 받는다.
+    "factoryon-xlsx": {
+        "source_name": "산단공 팩토리온 공장조회 내려받기",
+        "allowed_use": (
+            "목록에 있는 회사에 원자재·종업원 수(추정)·업종번호·공장 규모를 붙여 보여 줌"
+        ),
+        "terms_ref": None,
+        "allowed_storage": (
+            "회사명·공장주소·원자재·종업원 수·업종번호·업종명·공장 규모와 기준일·지역 저장. "
+            "전화번호·홈페이지·대표자·개인 연락처는 읽는 즉시 버림"
+        ),
+    },
+    "nier-water-csv": {
+        "source_name": "국립환경과학원 특정수질유해물질 배출량조사 업체정보",
+        "allowed_use": "목록에 있는 회사가 배출 사업장 명단에 있으면 표면처리 직접 여부 확인 표시",
+        "terms_ref": None,
+        "allowed_storage": (
+            "사업장명·소재지·관할기관·폐수처리형태와 기준일·지역 저장. 개인 연락처는 저장하지 않음"
+        ),
+    },
 }
 
 
@@ -93,10 +113,11 @@ def run_source_confirm(
     try:
         source = _SOURCES.get(source_id)
         if source is None:
-            raise InputError("소스는 kicox-factory-csv 또는 kicox-production-api를 넣어 주세요.")
-        source_values = source | {
-            "terms_ref": _terms_ref(terms if terms is not None else source["terms_ref"])
-        }
+            raise InputError(f"소스는 {', '.join(_SOURCES)} 중 하나를 넣어 주세요.")
+        terms = terms if terms is not None else source["terms_ref"]
+        if terms is None:
+            raise InputError("이 소스는 확인한 약관 주소를 --terms로 꼭 넣어 주세요.")
+        source_values = source | {"terms_ref": _terms_ref(terms)}
         if not database_path().is_file():
             raise InputError("데이터베이스가 없습니다. 먼저 geosan init-db를 실행해 주세요.")
         with session_scope() as session:

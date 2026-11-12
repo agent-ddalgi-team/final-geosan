@@ -24,15 +24,21 @@ CANDIDATE_INPUT_FIELDS = (
     "product",
     "industryName",
     "address",
+    "rawMaterials",
 )
 
 
-def candidate_product_hash(product: str | None, industry_name: str | None) -> str:
+def candidate_product_hash(
+    product: str | None, industry_name: str | None, raw_materials: str | None = None
+) -> str:
     """판단 메모의 지문은 생산품과 업종명을 함께 묶는다(#425 PM 결정).
 
     원본 표의 생산품 무결성 해시와 구별한다. 원본·조회 캐시의 기존 행 번호는 바꾸지 않는다.
+    팩토리온 원자재가 붙은 행은 원자재도 묶어 원자재만 바뀌어도 다시 판단한다(#570).
+    원자재가 없으면 예전과 같은 두 값 지문이다.
     """
-    value = json.dumps([product, industry_name], ensure_ascii=False, separators=(",", ":"))
+    values = [product, industry_name] + ([raw_materials] if raw_materials is not None else [])
+    value = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 

@@ -69,6 +69,11 @@ class Customer(CommonColumns, Base):
     )
     own_plating_line_basis: Mapped[str | None] = mapped_column(Text)
     own_plating_line_source: Mapped[str | None] = mapped_column(String(16))
+    # 팩토리온 공장조회에서 붙인 값(C6, #573). 종업원 수는 언제나 추정이다.
+    factory_raw_materials: Mapped[str | None] = mapped_column(Text)
+    factory_employee_count: Mapped[int | None] = mapped_column(Integer)
+    factory_scale: Mapped[str | None] = mapped_column(String(40))
+    factory_profile_date: Mapped[date | None] = mapped_column(Date)
 
 
 class Opportunity(CommonColumns, Base):

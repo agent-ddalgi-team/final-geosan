@@ -516,6 +516,15 @@ export const companyGlance = {
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
 } as const;
 
+/** 팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 종업원 수는 등록 때 값이라 언제나 "(추정)"을 붙인다. */
+export const factoryProfileLabels = {
+  row: '공장 정보',
+  rawMaterials: (value: string) => `원자재 ${value}`,
+  employees: (count: number) => `종업원 약 ${count}명(추정)`,
+  /** 줄 끝 흐린 글자(출처 표시, #583): "한국산업단지공단 팩토리온 11/11 기준, 가공" */
+  basis: (date: string) => `한국산업단지공단 팩토리온 ${date} 기준, 가공`,
+} as const;
+
 export const companySummary = {
   title: '회사 소개',
   /** "조사 11/5 (3일 전)" */

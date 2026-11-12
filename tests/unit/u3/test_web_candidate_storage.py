@@ -66,6 +66,7 @@ def test_saved_result_and_judgments_are_reused_after_reopening_database(ready):
         "product": "볼트와 너트 생산",
         "industryName": None,
         "address": "충남 아산시",
+        "rawMaterials": None,  # 웹 후보는 팩토리온 자료와 맞추지 않는다(#570)
     }
     assert "PRIVATE_INTERNAL_MARKER" not in json.dumps(ready, ensure_ascii=False)
     assert [row.cost_usd for row in logs()] == [Decimal("0.014"), Decimal("0.004")]
