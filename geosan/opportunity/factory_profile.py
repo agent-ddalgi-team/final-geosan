@@ -104,6 +104,26 @@ def city_key(address: str) -> str:
     return f"{address_region(address)}|{second}"
 
 
+_ROAD = re.compile(r"(?:로|길)$")
+_BUILDING = re.compile(r"^\d+(?:-\d+)?")
+
+
+def road_key(address: str | None) -> str | None:
+    """도로명과 건물번호까지의 주소 열쇠(#613). 예: "충남|천안시|번영로|467".
+
+    괄호 안 동 이름·"외 19필지" 같은 표기 차이는 뺀다. 도로명이 없는 지번 주소는 None이다.
+    """
+    if not address:
+        return None
+    value = re.sub(r"\(.*?\)", " ", unicodedata.normalize("NFKC", address))
+    words = re.split(r"\s외\s?\d", value)[0].split()
+    for word, after in zip(words, words[1:], strict=False):
+        number = _BUILDING.match(after)
+        if _ROAD.search(word) and number:
+            return f"{city_key(address)}|{word}|{number.group()}"
+    return None
+
+
 def file_date_of(path: Path) -> date:
     """파일 이름 앞이나 끝의 YYYYMMDD. 없거나 실제 날짜가 아니면 거부한다."""
     found = _FILE_DATE.findall(path.stem)
@@ -385,14 +405,15 @@ class ProfileIndex:
         return None
 
     def water_for(self, name: str, address: str | None) -> WaterSite | None:
+        """사업장명이 회사명과 같거나 회사명으로 시작하고 도로명·건물번호가 같은 행(#613)."""
         key = company_key(name)
-        if not address or len(key) < 2:
+        road = road_key(address)
+        if road is None or len(key) < 2:
             return None
-        city = city_key(address)
         for row in self.water:
-            if (row.normalized_name == key or row.normalized_name.startswith(key)) and city_key(
+            if (row.normalized_name == key or row.normalized_name.startswith(key)) and road_key(
                 row.address
-            ) == city:
+            ) == road:
                 return row
         return None
 
