@@ -362,6 +362,7 @@ def test_source_load_command_stores_and_attaches(tmp_db, tmp_path):
     assert result.exit_code == 0, result.output
     assert "2행을 읽어 1행을 저장" in result.output and "붙은 회사 1곳" in result.output
     assert customer(customer_id).factory_scale == "소기업"
+    assert customer(customer_id).factory_industry_name == "절삭가공 외 1 종"
 
 
 def test_source_load_rejects_mixed_dates_and_unknown_sources(tmp_db, tmp_path):
@@ -384,3 +385,28 @@ def test_source_confirm_requires_terms_for_new_sources(tmp_db):
         ["source-confirm", "nier-water-csv", "--by", "choi-pm", "--terms", "https://example.org/t"],
     )
     assert ok.exit_code == 0, ok.output
+
+
+def test_industry_name_follows_the_attached_profile_and_clears_without_one(tmp_db, tmp_path):
+    """#617 Given 붙은 공장 행 / When 다시 붙임 / Then 업종명이 옮겨지고, 행이 없으면 비운다."""
+    confirm("factoryon-xlsx")
+    matched = add_customer("(주)가상볼트", "충청남도 천안시 서북구 가상로 1")
+    unmatched = add_customer(
+        "가상너트", "충청남도 아산시 가상로 9", factory_industry_name="옛 업종", biz_number="8"
+    )
+    path = factoryon_file(tmp_path, [row(**{"업종명": "절삭가공 및 유사처리업"})])
+    result = CliRunner().invoke(app, ["source-load", "factoryon-xlsx", str(path)])
+    assert result.exit_code == 0, result.output
+    assert customer(matched).factory_industry_name == "절삭가공 및 유사처리업"
+    assert customer(unmatched).factory_industry_name is None
+
+
+def test_industry_name_with_contact_shape_is_not_stored(tmp_db, tmp_path):
+    """#617: 업종명 칸에 연락처 모양 값이 섞이면 저장하지 않는다(기존 규칙 그대로)."""
+    confirm("factoryon-xlsx")
+    customer_id = add_customer("(주)가상볼트", "충청남도 천안시 서북구 가상로 1")
+    path = factoryon_file(tmp_path, [row(**{"업종명": "문의 041-000-0000"})])
+    result = CliRunner().invoke(app, ["source-load", "factoryon-xlsx", str(path)])
+    assert result.exit_code == 0, result.output
+    assert customer(customer_id).factory_industry_name is None
+    assert customer(customer_id).factory_scale == "소기업"

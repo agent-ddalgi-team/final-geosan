@@ -529,6 +529,8 @@ export const companyGlance = {
 /** 팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 종업원 수는 등록 때 값이라 언제나 "(추정)"을 붙인다. */
 export const factoryProfileLabels = {
   row: '공장 정보',
+  /** 공장 등록 업종명(#617). AI 추정이 아니라 등록 자료에 적힌 사실이다. */
+  industry: (value: string) => `업종 ${value}`,
   rawMaterials: (value: string) => `원자재 ${value}`,
   employees: (count: number) => `종업원 약 ${count}명(추정)`,
   /** 줄 끝 흐린 글자(출처 표시, #583): "한국산업단지공단 팩토리온 11/11 기준, 가공" */
@@ -698,6 +700,37 @@ export const outcomeStatusLabels = {
   LOST: '거절',
 } as const;
 
+/** 세부 단계(#607). 큰 단계 안의 단계라 카드는 "접촉 · 수요 확인"처럼 붙여 보인다. */
+export const salesStepLabels = {
+  NOT_REACHED: '연결 전',
+  REACHED: '연결됨',
+  DEMAND_CONFIRMED: '수요 확인',
+  MATERIAL_QUOTE: '자료·견적',
+  VISIT_SAMPLE: '방문·샘플',
+} as const;
+
+/** 상세 기록 구역의 꼬리 질문(#607, PM 결정 2026-11-12). 문구는 질문 파일에서 오고 여기는 틀만. */
+export const salesQuestionTexts = {
+  summaryTitle: '지금 세부 단계',
+  /** "수요 확인 (10/22부터)" */
+  stepSince: (label: string, since: string | null) =>
+    since ? `${label} (${since.slice(5).replace('-', '/')}부터)` : label,
+  stepNone: '아직 접촉 없음',
+  stepClosed: '보류·성사·거절에는 세부 단계가 없습니다',
+  overridden: '담당자가 고침',
+  known: '알아낸 것',
+  knownNone: '아직 없음',
+  unknown: '아직 모르는 것',
+  questionsTitle: '이번 접촉에서 알게 된 것',
+  questionsHint: '아는 것만 고르세요. 고르지 않은 질문은 다음 접촉 때 다시 보입니다.',
+  clearAnswer: '선택 지우기',
+  memoLabel: '한 줄 메모 (선택)',
+  memoHint: '질문에 없는 이야기만 짧게 적어 주세요. 이 메모는 외부로 나가지 않습니다.',
+  overrideLabel: '세부 단계 고치기',
+  overrideSave: '단계 고치기',
+  loadFailed: '꼬리 질문을 불러오지 못했습니다. 접촉 기록은 그대로 저장할 수 있습니다.',
+} as const;
+
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
 /** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
@@ -810,10 +843,9 @@ export const recordsArea = {
   stepOne: '①',
   stepTwo: '②',
   stepThree: '③',
-  /** 접촉을 적은 뒤 단계가 미접촉이면 한 번 묻는다. 자동으로 바꾸지 않는다. */
-  stageSuggest: '단계를 접촉으로 바꿀까요?',
-  stageSuggestApply: '접촉으로 바꾸기',
-  stageSuggestDismiss: '닫기',
+  /** 접촉을 저장하면 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 자동으로 바꾼다(#607이 #433의 묻기를 바꿈). */
+  stageAutoHint:
+    '접촉을 저장하면 단계는 답에 따라 앞으로 바뀝니다. 보류·성사·거절만 직접 고르세요.',
 } as const;
 
 /**
@@ -880,6 +912,24 @@ export const reviewArea = {
    * 자료 줄("자료 못 찾음"·"자료 부족")의 [붙여넣고 조사](#260, PM 결정 2026-11-04). 공개 본문만 붙여 넣고,
    * 서버는 기존 홈페이지 조사 요청(url + pastedText)으로 근거를 뽑아 다시 평가한다. 줄 안 인라인(모달 없음).
    */
+  /**
+   * 자료 줄의 [메모 적기]/[메모 고치기](#260, PM 결정 2026-11-04). 기록용이라 점수는 안 바뀌고 밖으로 나가지 않는다.
+   * 줄 안 인라인 입력(모달 없음, 500자). 저장하면 줄 아래 "메모: … — 박 이사 · 11/20".
+   */
+  memoAdd: '메모 적기',
+  memoEdit: '메모 고치기',
+  memoButtonLabel: (text: string) => `메모 적기: ${text}`,
+  memoInputLabel: '자료 조사 메모',
+  memoPlaceholder: '찾은 내용과 출처 주소를 적으세요. 예: 홈페이지 연혁에 2023 납품 기재 https://…',
+  memoHint:
+    '기록용 메모입니다. 점수는 바뀌지 않고 밖으로 나가지 않습니다. 저장하면 이전 메모는 활동 이력에 남습니다.',
+  memoMaxLength: 500,
+  memoCounter: (count: number, max: number) => `${count} / ${max}자`,
+  memoSave: '메모 저장',
+  memoCancel: '취소',
+  /** "메모: 홈페이지 연혁에 2023 납품 기재" */
+  memoPrefix: '메모:',
+  memoSaveFailed: '메모를 저장하지 못했습니다. 다시 시도',
   pasteButton: '붙여넣고 조사',
   pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
   pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
@@ -922,6 +972,46 @@ export const timelineArea = {
   /** 취소된 줄 아래 한 줄. 예: "취소 · 박 이사 · 11/06". */
   cancelledNote: (name: string, date: string) =>
     `취소 · ${[name, date].filter(Boolean).join(' · ')}`,
+} as const;
+
+/**
+ * 상세 "비슷한 회사 참고"(#269, PM 결정 2026-11-04 A안)와 영업 전략 영역의 "참고한 이력" 상자.
+ * 같은 공정·산업군 다른 회사 최대 5곳의 영업 단계·거절 이유·마지막 접촉·최근 메모를 내부에서만 본다.
+ */
+export const peersArea = {
+  title: '비슷한 회사 참고',
+  /** 영역 머리 한 줄. 메모가 들어 있어 영업 메모와 같은 취급이다. */
+  internalNote: '내부 참고 · 밖으로 안 나감',
+  loading: '불러오는 중',
+  loadFailed: '비슷한 회사를 불러오지 못했습니다.',
+  retry: '다시 불러오기',
+  empty: '같은 공정·산업군의 다른 회사가 아직 없습니다.',
+  listLabel: '비슷한 회사 목록',
+  /** 요약 줄 묶음 사이 구분 "같은 공정 4곳 · 산업군 2곳 | 접촉 1 · 거절 1(가격) | 전화 연결 3/5". */
+  summaryDivider: ' | ',
+  summaryCounts: (processCount: number, industryCount: number) =>
+    `같은 공정 ${processCount}곳 · 산업군 ${industryCount}곳`,
+  /** "거절 3(가격 2 · 납기 1)" 처럼 거절 건수 뒤에 이유 상위를 붙인다. */
+  stageCount: (label: string, count: number, reasons?: string) =>
+    reasons ? `${label} ${count}(${reasons})` : `${label} ${count}`,
+  reasonCount: (label: string, count: number) => `${label} ${count}`,
+  reachCount: (method: string, reached: number, tried: number) =>
+    `${method} 연결 ${reached}/${tried}`,
+  sameProcess: '같은 공정',
+  sameIndustry: '같은 산업군',
+  noStage: '영업 기록 없음',
+  /** 거절이면 "거절 · 가격". */
+  lostWithReason: (stage: string, reason: string) => `${stage} · ${reason}`,
+  noContact: '접촉 기록 없음',
+  /** "11/06 전화" */
+  lastContact: (date: string, method: string) => [date, method].filter(Boolean).join(' '),
+  notePrefix: '메모:',
+  /** 메모 줄은 120자에서 자르고 "…". */
+  noteMaxLength: 120,
+  openCompanyLabel: (name: string) => `${name} 상세 보기`,
+  /** 영업 전략 영역(#27)의 "참고한 이력" 상자. 초안 글(공개 자료 기반 AI)과 섞지 않는다. */
+  referenceTitle: '참고한 이력',
+  referenceCompaniesShown: 2,
 } as const;
 
 /** 활동 이력 묶음(#389) 쉬운 말. 묶음 정의는 components/records/activityGroups.ts. */

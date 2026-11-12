@@ -11,6 +11,13 @@ from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.proposal_review import confirm_proposal, proposal_review_items
+from geosan.api.sales_step import (
+    AnswerRow,
+    RecordRow,
+    SalesStepState,
+    compute_sales_step,
+    stage_for,
+)
 from geosan.api.schemas import (
     ActivityEnvelope,
     ActivityItem,
@@ -44,15 +51,29 @@ from geosan.api.schemas import (
     ReviewCheckRequest,
     ReviewCheckResponse,
     ReviewItem,
+    SalesAnswerOption,
+    SalesQuestionsEnvelope,
+    SalesQuestionsView,
+    SalesQuestionView,
+    SalesShowWhen,
+    SalesStepEntry,
 )
 from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
+from geosan.config.sales_questions import SalesQuestions, load_sales_questions
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
-from geosan.records.models import Bookmark, Note, Outcome, ReviewCheck, ReviewOpinion
+from geosan.records.models import (
+    Bookmark,
+    Note,
+    Outcome,
+    OutcomeAnswer,
+    ReviewCheck,
+    ReviewOpinion,
+)
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
@@ -578,6 +599,68 @@ def save_bookmark(
     )
 
 
+def sales_questions(session: Session) -> SalesQuestions:
+    """#607 꼬리 질문 파일. 한 요청 안에서는 한 번만 읽는다."""
+    if "sales_questions" not in session.info:
+        file_setting = runtime_for(session).app_settings.records.sales_questions_file
+        session.info["sales_questions"] = load_sales_questions(file_setting)
+    return session.info["sales_questions"]
+
+
+def _answer_errors(body: OutcomeRequest, questions: SalesQuestions | None) -> list[FieldError]:
+    if not body.answers or questions is None:
+        return []
+    if body.method is None or body.result != "REACHED":
+        return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
+    errors: list[FieldError] = []
+    seen: set[str] = set()
+    for index, answer in enumerate(body.answers):
+        question = questions.question(answer.question_id)
+        if question is None or question.option(answer.answer_id) is None:
+            message = "질문 목록에 없는 질문이나 보기입니다. 화면을 새로 고쳐 주세요."
+        elif answer.question_id in seen:
+            message = "같은 질문에 두 번 답했습니다."
+        else:
+            seen.add(answer.question_id)
+            continue
+        errors.append(FieldError(path=f"answers[{index}]", message=message))
+    return errors
+
+
+def sales_step_state(
+    session: Session,
+    opp_id: str,
+    *,
+    status: str | None,
+    questions: SalesQuestions | None = None,
+) -> SalesStepState:
+    """#607 기록에서 세부 단계를 매번 계산한다(저장하지 않음)."""
+    rows = [
+        RecordRow(
+            outcome_id=row.outcome_id,
+            method=row.method,
+            attempted_at=row.attempted_at,
+            created_at=row.created_at,
+            created_by=row.created_by,
+            step_override=row.step_override,
+        )
+        for row in session.scalars(
+            select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version)
+        )
+    ]
+    if not rows:
+        return SalesStepState()
+    answers = [
+        AnswerRow(row.outcome_id, row.question_id, row.answer_id)
+        for row in session.scalars(
+            select(OutcomeAnswer)
+            .where(OutcomeAnswer.opp_id == opp_id)
+            .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
+        )
+    ]
+    return compute_sales_step(rows, answers, questions or sales_questions(session), status)
+
+
 def latest_outcome(session: Session, opp_id: str) -> Outcome | None:
     return session.scalar(
         select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version.desc())
@@ -624,6 +707,16 @@ def save_outcome(
         )
     if body.judgment_check is not None and body.method is None:
         fields.append(FieldError(path="judgmentCheck", message="접촉 기록에서만 고를 수 있습니다."))
+    records_settings = runtime_for(session).app_settings.records
+    if body.memo and len(body.memo) > records_settings.memo_line_max_length:
+        fields.append(
+            FieldError(
+                path="memo",
+                message=f"한 줄 메모는 {records_settings.memo_line_max_length}자까지입니다.",
+            )
+        )
+    questions = sales_questions(session) if body.answers else None
+    fields.extend(_answer_errors(body, questions))
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)
@@ -656,6 +749,7 @@ def save_outcome(
         if previous and name not in body.model_fields_set:
             values[name] = getattr(previous, name)
     ensure_bookmarked(session, opportunity, staff)
+    values.pop("answers", None)
     row = Outcome(
         outcome_id=new_id("outcome"),
         opp_id=opp_id,
@@ -666,7 +760,25 @@ def save_outcome(
         is_virtual=opportunity.is_virtual,
     )
     session.add(row)
+    for answer in body.answers:
+        session.add(
+            OutcomeAnswer(
+                answer_row_id=new_id("answer"),
+                outcome_id=row.outcome_id,
+                opp_id=opp_id,
+                question_id=answer.question_id,
+                answer_id=answer.answer_id,
+                created_by=staff,
+                dataset_kind=opportunity.dataset_kind,
+                is_virtual=opportunity.is_virtual,
+            )
+        )
     session.flush()
+    # #607: 큰 단계는 같은 저장 안에서 세부 단계를 따라 앞으로만 바뀐다(보류·성사·거절은 그대로).
+    if row.method or body.answers or body.step_override:
+        step = sales_step_state(session, opp_id, status=None, questions=questions).code
+        row.status = stage_for(row.status, row.method, step)
+        session.flush()
     previous_value = None
     if previous and previous.version > (body.expected_version or 0):
         previous_value = outcome_view(previous)
@@ -680,6 +792,39 @@ def save_outcome(
             dataset_kind=row.dataset_kind,
             previous_value=previous_value,
         ),
+    )
+
+
+@router.get("/sales-questions", response_model=SalesQuestionsEnvelope)
+def get_sales_questions(session: SessionDep):
+    """#607 꼬리 질문 묶음. 외부 호출·저장 없음, 보기 전용도 조회."""
+    questions = sales_questions(session)
+    return SalesQuestionsEnvelope(
+        data=SalesQuestionsView(
+            version=questions.version,
+            steps=[
+                SalesStepEntry(code=entry.code, label=entry.label, stage=entry.stage)
+                for entry in questions.steps
+            ],
+            questions=[
+                SalesQuestionView(
+                    question_id=question.id,
+                    text=question.text,
+                    step=question.step,
+                    show_when=SalesShowWhen(answers=question.show_when.answers)
+                    if question.show_when
+                    else None,
+                    answers=[
+                        SalesAnswerOption(
+                            answer_id=option.id, label=option.label, reaches=option.reaches
+                        )
+                        for option in question.answers
+                    ],
+                )
+                for question in questions.questions
+            ],
+        ),
+        meta=Meta(),
     )
 
 

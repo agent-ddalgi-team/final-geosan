@@ -21,6 +21,7 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  PeersResponse,
   HomepageRequest,
   HomepageResponse,
   MainPhoneConfirmRequest,
@@ -33,6 +34,7 @@ import type {
   ReplyResponse,
   ReviewCheckRequest,
   ReviewCheckResponse,
+  SalesQuestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -215,6 +217,11 @@ export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
   });
 }
 
+/** 꼬리 질문 묶음(#607). 질문 파일을 그대로 받는다. 외부 호출·저장 없음. */
+export function getSalesQuestions() {
+  return request<SalesQuestions>('/sales-questions');
+}
+
 /** 영업 단계·접촉 시도·다음 일정 저장(U5). 저장할 때마다 새 행이 쌓인다. */
 export function postOutcome(oppId: string, body: OutcomeRequest, staffKey: string) {
   return request<OutcomeResponse>(`/opportunities/${encodeURIComponent(oppId)}/outcomes`, {
@@ -310,6 +317,14 @@ export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
     `/opportunities/${encodeURIComponent(oppId)}/activity?limit=${limit}`,
     { signal },
   );
+}
+
+/**
+ * 비슷한 회사 참고(#269, 계약 C1 `GET /opportunities/{oppId}/peers`). 같은 공정·산업군 다른 회사 최대 5곳과 요약.
+ * 읽기라 담당자 키 없이도(보기 전용 포함) 볼 수 있다. 메모 글이 들어 있어 영업 메모와 같은 취급이다.
+ */
+export function getPeers(oppId: string, signal?: AbortSignal) {
+  return request<PeersResponse>(`/opportunities/${encodeURIComponent(oppId)}/peers`, { signal });
 }
 
 /**
@@ -565,6 +580,9 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: new Date().toISOString() },
     } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/peers$/.test(route)) {
+    return (await import('../test/fixtures/peers.json')).default as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/records\/[^/]+\/cancel$/.test(route) && options.method === 'POST') {
     if (!options.staffKey || options.staffKey === 'viewer') {

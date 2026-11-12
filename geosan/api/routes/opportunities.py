@@ -31,6 +31,7 @@ from geosan.api.routes.records import (
     opinion_view,
     outcome_view,
     review_items_for_detail,
+    sales_step_state,
 )
 from geosan.api.schemas import (
     ApprovalEligibility,
@@ -41,6 +42,7 @@ from geosan.api.schemas import (
     DetailRecords,
     EvidenceView,
     IndustryCount,
+    KnownSalesAnswer,
     Meta,
     OpportunityCard,
     OpportunityDetail,
@@ -53,6 +55,7 @@ from geosan.api.schemas import (
     Reasons,
     RegionCount,
     RequirementCheckView,
+    SalesStepView,
     ScoreItemView,
     Scores,
     ScoreState,
@@ -434,14 +437,29 @@ def _scores(context: DetailContext) -> dict:
     }
 
 
+def _sales_step_view(session, opp_id: str, status: str | None) -> SalesStepView:
+    state = sales_step_state(session, opp_id, status=status)
+    return SalesStepView(
+        code=state.code,
+        since=state.since,
+        overridden=state.overridden,
+        known=[KnownSalesAnswer(**vars(item)) for item in state.known],
+        open_questions=state.open_questions,
+    )
+
+
 def _records(context: DetailContext) -> dict:
+    outcome = latest_outcome(context.session, context.opportunity.opp_id)
     return {
         "records": DetailRecords(
             contact_count=contact_counts(context.session, context.opportunity.opp_id),
+            sales_step=_sales_step_view(
+                context.session, context.opportunity.opp_id, outcome.status if outcome else None
+            ),
             opinion=opinion_view(latest_opinion(context.session, context.opportunity.opp_id)),
             bookmark=bookmark_view(latest_bookmark(context.session, context.opportunity.opp_id)),
             approval=None,
-            outcome=outcome_view(latest_outcome(context.session, context.opportunity.opp_id)),
+            outcome=outcome_view(outcome),
         )
     }
 
@@ -719,6 +737,9 @@ def list_opportunities(
                 region=_address_region(customer.address),
                 industries=customer.industries or [],
                 contact_count=contact_counts(session, opportunity.opp_id).total,
+                sales_step=sales_step_state(
+                    session, opportunity.opp_id, status=outcome.status if outcome else None
+                ).code,
                 process_codes=[
                     row.code
                     for row in processes
