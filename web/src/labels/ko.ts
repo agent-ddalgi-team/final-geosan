@@ -1158,3 +1158,53 @@ export const salesAnalysisTexts = {
     `첫 접촉 뒤 ${days}일 만에 ${stage}${date ? ` (${date})` : ''}`,
   openCompanyLabel: (name: string) => `${name} 상세 보기`,
 } as const;
+
+// 추천 목록의 세 묶음(#610). 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
+const contactBucketTitles = { NOW: '지금 연락할 곳', CHECK: '확인 필요', LATER: '나중' } as const;
+export const contactBuckets = {
+  titles: contactBucketTitles,
+  /** 묶음이 바뀌는 자리의 제목. 예: "지금 연락할 곳 9곳" */
+  title: (bucket: keyof typeof contactBucketTitles, count: number) =>
+    `${contactBucketTitles[bucket]} ${count}곳`,
+  /** 카드 꼬리표: 그 묶음에 든 이유. */
+  basis: {
+    EXCLUDED_OPINION: '검토 대상 제외',
+    REQUIRED_FAILED: '필수조건 탈락',
+    EXISTING_CUSTOMER: '거래 중',
+    CLOSED_OR_HOLD: '성사·거절·보류',
+    IN_PROGRESS: '접촉 진행 중',
+    NEED_CHECK_OPINION: '추가 확인 의견',
+    REQUIRED_PENDING: '필수조건 확인 전',
+    OWN_PLATING: '표면처리 직접 여부 확인',
+    NOT_EVALUATED_HIGH_FIT: '평가 전 · 적합도 상',
+    NOT_EVALUATED_LOWER_FIT: '평가 전 · 적합도 낮음',
+    EVIDENCE_RECHECK: '핵심 근거 재확인',
+    REQUIRED_PASSED: '필수조건 통과',
+    MONITOR: '지켜보기',
+  },
+  /** 카드의 조정 이유 줄 이름. */
+  adjustRow: '순서 조정',
+  /**
+   * 조정 이유 한 줄. 예: "같은 공정·산업(아연도금 · 자동차 부품)에서 최근 12개월 성사 2곳 → 위로",
+   * "…거절 3곳(수요 없음) → 아래로". 성사·거절 가운데 0곳인 쪽은 적지 않는다.
+   */
+  adjustLine: (adjust: {
+    level: number;
+    processName: string;
+    industry: string;
+    wonCount: number;
+    lostCount: number;
+    lostReasons: string[];
+    windowDays: number;
+  }) => {
+    const months = Math.round((adjust.windowDays / 365) * 12);
+    const period = months >= 1 ? `최근 ${months}개월` : `최근 ${adjust.windowDays}일`;
+    const counts = [
+      adjust.wonCount > 0 ? `성사 ${adjust.wonCount}곳` : null,
+      adjust.lostCount > 0
+        ? `거절 ${adjust.lostCount}곳${adjust.lostReasons.length > 0 ? `(${adjust.lostReasons.join('·')})` : ''}`
+        : null,
+    ].filter((part) => part !== null);
+    return `같은 공정·산업(${adjust.processName} · ${adjust.industry})에서 ${period} ${counts.join(' · ')} → ${adjust.level > 0 ? '위로' : '아래로'}`;
+  },
+} as const;

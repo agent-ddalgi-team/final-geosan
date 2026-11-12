@@ -23,7 +23,10 @@
       "recontact": null,
       "evalId": "eval-01HAPJEONG0000000000000001",
       "reevaluated": false,
-      "datasetKind": "VIRTUAL_REVIEWED"
+      "datasetKind": "VIRTUAL_REVIEWED",
+      "bucket": "LATER",
+      "bucketBasis": "EXISTING_CUSTOMER",
+      "rankAdjust": null
     }
   ],
   "meta": {
@@ -32,6 +35,7 @@
     "datasetKind": "VIRTUAL_REVIEWED",
     "total": 1,
     "notEvaluatedCount": 0,
+    "bucketCounts": { "NOW": 0, "CHECK": 0, "LATER": 1 },
     "processCounts": [
       { "processCode": "ZINC_PLATING", "processName": "아연도금(전기아연도금)", "count": 0 },
       { "processCode": "ANODIZING", "processName": "아노다이징", "count": 1 },
