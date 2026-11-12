@@ -1,17 +1,18 @@
-// 상세 머리 홈페이지 줄의 단추(#210, 서버 #304, 계약 C1 `POST /homepage`): [맞음]·[고치기]·[다시 조사].
-// [맞음]은 외부 호출 없이 확인 상태만 저장한다. [고치기]는 주소를 바꿔 조사하고, [다시 조사]는 지금 주소로 다시 조사한다.
+// 상세 우측 상단 [다시 조사](#210, 서버 #304, 계약 C1 `POST /homepage`).
+// 지금 주소로 다시 조사하고, 주소가 없는 회사는 서버가 홈페이지 찾기부터 한다(#596, PM 결정 2026-11-12).
+// [맞음]·[고치기]는 담당자 할 일을 줄이려고 없앴다(#596). 읽기 거부 때 본문 붙여넣기 칸은 남긴다.
 // 실패는 서버 문구를 그대로 보이고(문의 번호는 작게), 종류(kind)로는 모양만 가른다. 모달 없이 인라인이다.
 //   ROBOTS_DISALLOW·TERMS_DISALLOW → 본문 붙여넣기 칸 열기 / LLM_LIMIT·SEARCH_LIMIT·USAGE_UNCONFIRMED·LLM_NOT_CONFIGURED → 조사 단추 잠금
-//   STALE_VALUE → [새로 불러오기] / UNREACHABLE·TIMEOUT·LLM_FAILED → 단추 그대로(다시 시도 가능)
+//   STALE_VALUE → [새로 불러오기] / UNREACHABLE·TIMEOUT·LLM_FAILED·HOMEPAGE_NOT_FOUND → 단추 그대로(다시 시도 가능)
 import { useEffect, useState } from 'react';
 import { Button, Input } from 'antd';
 import { ApiError, postHomepage } from '../../api/client';
-import type { ErrorBody, HomepageRequest, HomepageStatus } from '../../api/types';
+import type { ErrorBody, HomepageRequest } from '../../api/types';
 import { errorTexts, homepageControls } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
-/** 다시 눌러도 풀리지 않는 실패 종류. 조사 단추를 잠근다([맞음]은 외부 호출이 없어 그대로 누를 수 있다). */
+/** 다시 눌러도 풀리지 않는 실패 종류. 조사 단추를 잠근다. */
 const LOCKING_KINDS = new Set([
   'LLM_LIMIT',
   'SEARCH_LIMIT',
@@ -30,26 +31,15 @@ const pendingNotices = new Map<string, string>();
 
 export interface HomepageControlsProps {
   oppId: string;
-  /** http(s)로 확인된 지금 홈페이지 주소. 없으면 [맞음]·[다시 조사]는 없고 [주소 넣기]만 있다. */
-  homepageUrl: string | null;
-  status?: HomepageStatus | null;
   /** 성공했거나 [새로 불러오기]를 누르면 부른다. 상세 화면이 서버에서 다시 읽는다. */
   onReload: () => void;
 }
 
-type Busy = 'confirm' | 'research' | null;
+type Busy = 'research' | null;
 
-export default function HomepageControls({
-  oppId,
-  homepageUrl,
-  status,
-  onReload,
-}: HomepageControlsProps) {
+export default function HomepageControls({ oppId, onReload }: HomepageControlsProps) {
   const { staffKey, canRecord } = useFrame();
   const [busy, setBusy] = useState<Busy>(null);
-  const [editing, setEditing] = useState(false);
-  const [urlText, setUrlText] = useState(homepageUrl ?? '');
-  const [urlError, setUrlError] = useState<string | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
@@ -64,7 +54,6 @@ export default function HomepageControls({
   const stale = error?.kind === 'STALE_VALUE';
   const disabled = !canRecord || busy !== null;
   const researchDisabled = disabled || locked;
-  const showConfirm = homepageUrl !== null && status !== 'CONFIRMED';
 
   async function send(body: HomepageRequest, kind: Exclude<Busy, null>) {
     if (!staffKey) return;
@@ -74,16 +63,16 @@ export default function HomepageControls({
     try {
       const envelope = await postHomepage(oppId, body, staffKey);
       const data = envelope.data;
-      pendingNotices.set(
-        oppId,
-        'evidenceCount' in data
-          ? homepageControls.researched(
-              data.evidenceCount,
-              data.requirementCandidateCount,
-              data.questionCount,
-            )
-          : homepageControls.confirmed,
-      );
+      if ('evidenceCount' in data) {
+        pendingNotices.set(
+          oppId,
+          homepageControls.researched(
+            data.evidenceCount,
+            data.requirementCandidateCount,
+            data.questionCount,
+          ),
+        );
+      }
       onReload();
     } catch (caught) {
       const body =
@@ -97,16 +86,6 @@ export default function HomepageControls({
     }
   }
 
-  function submitUrl() {
-    const value = urlText.trim();
-    if (!/^https?:\/\/\S+$/.test(value)) {
-      setUrlError(homepageControls.invalidUrl);
-      return;
-    }
-    setUrlError(null);
-    void send({ url: value }, 'research');
-  }
-
   function submitPaste() {
     if (!pasteText.trim()) {
       setPasteError(homepageControls.pasteEmpty);
@@ -117,42 +96,24 @@ export default function HomepageControls({
   }
 
   return (
-    <div data-testid="homepage-controls" style={{ display: 'grid', gap: 8 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-        {showConfirm ? (
-          <Button
-            size="small"
-            disabled={disabled}
-            loading={busy === 'confirm'}
-            onClick={() => void send({ confirmOnly: true }, 'confirm')}
-            data-testid="homepage-confirm-button"
-          >
-            {homepageControls.confirmButton}
-          </Button>
-        ) : null}
+    <div data-testid="homepage-controls" style={{ display: 'grid', gap: 8, justifyItems: 'end' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 8,
+        }}
+      >
         <Button
-          size="small"
           disabled={researchDisabled}
-          onClick={() => {
-            setUrlText(homepageUrl ?? '');
-            setUrlError(null);
-            setEditing((open) => !open);
-          }}
-          data-testid="homepage-edit-button"
+          loading={busy === 'research' && !pasteOpen}
+          onClick={() => void send({}, 'research')}
+          data-testid="homepage-rerun-button"
         >
-          {homepageUrl ? homepageControls.editButton : homepageControls.addButton}
+          {homepageControls.rerunButton}
         </Button>
-        {homepageUrl ? (
-          <Button
-            size="small"
-            disabled={researchDisabled}
-            loading={busy === 'research' && !editing && !pasteOpen}
-            onClick={() => void send({}, 'research')}
-            data-testid="homepage-rerun-button"
-          >
-            {homepageControls.rerunButton}
-          </Button>
-        ) : null}
         {!canRecord ? (
           <span style={secondary} data-testid="homepage-pick-staff">
             {homepageControls.pickStaffFirst}
@@ -169,42 +130,6 @@ export default function HomepageControls({
           </span>
         ) : null}
       </div>
-
-      {editing ? (
-        <div style={{ display: 'grid', gap: 4 }} data-testid="homepage-edit-form">
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span style={secondary}>{homepageControls.urlLabel}</span>
-            <Input
-              value={urlText}
-              onChange={(event) => setUrlText(event.target.value)}
-              onPressEnter={submitUrl}
-              placeholder={homepageControls.urlPlaceholder}
-              disabled={busy !== null}
-              data-testid="homepage-url-input"
-            />
-          </label>
-          {urlError ? (
-            <span role="alert" style={{ color: colors.error }} data-testid="homepage-url-error">
-              {urlError}
-            </span>
-          ) : null}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button
-              size="small"
-              type="primary"
-              disabled={researchDisabled}
-              loading={busy === 'research'}
-              onClick={submitUrl}
-              data-testid="homepage-url-submit"
-            >
-              {homepageControls.runWithUrl}
-            </Button>
-            <Button size="small" onClick={() => setEditing(false)} disabled={busy !== null}>
-              {homepageControls.cancel}
-            </Button>
-          </div>
-        </div>
-      ) : null}
 
       {pasteOpen ? (
         <div style={{ display: 'grid', gap: 4 }} data-testid="homepage-paste-form">

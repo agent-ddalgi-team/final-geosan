@@ -329,9 +329,9 @@ describe('OpportunityDetailPage', () => {
     expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
   });
 
-  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지 확인이 필요하면 띠가 보인다 (#210)', async () => {
+  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보인다 (#210)', async () => {
     mockedGet.mockResolvedValueOnce(
-      reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
+      reply({ ...base, header: { ...base.header, homepageStatus: 'NOT_FOUND' } }),
     );
     renderPage();
     expect(await screen.findByTestId('company-summary-line')).toHaveTextContent(
@@ -339,14 +339,44 @@ describe('OpportunityDetailPage', () => {
     );
     expect(screen.getByTestId('company-highlights')).toBeInTheDocument();
     expect(screen.getByTestId('company-phone-link')).toHaveTextContent('041-000-0000');
-    expect(screen.getByTestId('homepage-band')).toHaveTextContent('홈페이지 확인 필요');
+    // 홈페이지 띠는 없애고(#596) 점수 줄 옆 "조사 중단 · 이유" 꼬리표로 대신한다.
+    expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
   });
 
-  it('홈페이지가 확정이거나 AI가 찾은 상태면 띠가 없다 (#210)', async () => {
-    mockedGet.mockResolvedValueOnce(reply(base));
+  it.each([
+    ['RUNNING', '조사 중'],
+    ['NO_SCORE_EVIDENCE', '조사 중단 · 점수 근거 없음'],
+    ['NOT_FOUND', '조사 중단 · 홈페이지 못 찾음'],
+    ['READ_FAILED', '조사 중단 · 홈페이지 읽기 실패'],
+    ['NOT_TRIED', '조사 중단 · 조사 안 됨'],
+  ] as const)('조사 상태 %s면 점수 줄 옆에 "%s"가 보인다 (#596)', async (state, text) => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, researchState: state } }),
+    );
+    renderPage();
+    expect(await screen.findByTestId('detail-research-state')).toHaveTextContent(text);
+  });
+
+  it('조사 상태가 없으면(점수가 남) 꼬리표가 없고, 확신이 낮은 홈페이지에도 확인 표시가 없다 (#596)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
+    );
     renderPage();
     await screen.findByTestId('company-summary-line');
+    expect(screen.queryByTestId('detail-research-state')).not.toBeInTheDocument();
     expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('homepage-needs-confirm')).not.toBeInTheDocument();
+  });
+
+  it('[다시 조사]는 상세 맨 위 "목록으로"와 같은 줄에 하나만 있고 [맞음]·[고치기]는 없다 (#596)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    const back = await screen.findByTestId('back-to-list-link');
+    const rerun = screen.getByTestId('homepage-rerun-button');
+    expect(back.parentElement).toBe(screen.getByTestId('homepage-controls').parentElement);
+    expect(rerun).toHaveTextContent('다시 조사');
+    expect(screen.queryByTestId('homepage-confirm-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('homepage-edit-button')).not.toBeInTheDocument();
   });
 
   it('접촉 횟수는 기록 영역이 아니라 머리에 보이고, 접촉을 저장하면 머리의 횟수가 바로 늘어난다 (#210)', async () => {
