@@ -22,6 +22,7 @@ from geosan.opportunity.factory_profile import (
     file_date_of,
     read_factoryon,
     read_water,
+    road_key,
     store_profiles,
     store_water,
 )
@@ -273,7 +274,7 @@ def test_flags_come_from_industry_code_or_water_list_and_are_recalculated(tmp_db
                 }
             ),
         ],
-        ["가상선재 당진공장,금강유역환경청,충청남도 당진시 송악로 1,위탁처리"],
+        ["가상선재 당진공장,금강유역환경청,충청남도 당진시 가상로 7,위탁처리"],
     )
     code_id = add_customer("(주)가상볼트", "충청남도 천안시 서북구 가상로 1")
     water_id = add_customer("가상선재", "충청남도 당진시 가상로 7")
@@ -306,10 +307,48 @@ def test_flags_come_from_industry_code_or_water_list_and_are_recalculated(tmp_db
 
 
 def test_water_list_needs_the_same_city(tmp_db, tmp_path):
-    _store(tmp_path, [row()], ["가상선재 공장,원주지방환경청,충청남도 서산시 가상로 1,위탁처리"])
+    _store(tmp_path, [row()], ["가상선재 공장,원주지방환경청,충청남도 서산시 가상로 7,위탁처리"])
     with session_scope() as session:
         assert ProfileIndex(session).water_for("가상선재", "충청남도 당진시 가상로 7") is None
         assert company_key("(주) 가상 선재") == "가상선재"
+
+
+def test_water_list_needs_the_same_road_and_building_number(tmp_db, tmp_path):
+    """#613 Given 같은 시에 이름이 같은 사업장 / When 붙임 / Then 도로명·건물번호가 같을 때만.
+
+    "외 19필지"·괄호 안 동 이름은 표기 차이로 본다. 지번 주소는 견줄 수 없어 붙이지 않는다.
+    """
+    _store(
+        tmp_path,
+        [row()],
+        [
+            "가상선재 당진공장,금강유역환경청,충청남도 당진시 가상로 7,위탁처리",
+            "가상콜마 관정공장,금강유역환경청,충청남도 당진시 산단길 22-17,위탁처리",
+        ],
+    )
+    with session_scope() as session:
+        index = ProfileIndex(session)
+        assert (
+            index.water_for("가상선재", "충청남도 당진시 가상로 7 (가상동) 외 19필지") is not None
+        )
+        assert index.water_for("가상선재", "충청남도 당진시 가상로 8") is None
+        assert index.water_for("가상콜마", "충청남도 당진시 덕고개길 12-11 외 3필지") is None
+        assert index.water_for("가상콜마", "충청남도 당진시 산단길 22-17") is not None
+        assert index.water_for("가상선재", "충청남도 당진시 가상리 349번지") is None
+
+
+@pytest.mark.parametrize(
+    ("address", "key"),
+    [
+        ("충청남도 천안시 서북구 번영로 467 (성성동, 가상(주))", "충남|천안시|번영로|467"),
+        ("세종특별자치시 조치원읍 번암공단1길 16 외 19필지", "세종|조치원읍|번암공단1길|16"),
+        ("충청남도 천안시 서북구 성거읍 망향로 854 외1필지 외 1필지", "충남|천안시|망향로|854"),
+        ("충청남도 천안시 동남구 성남면 대화리 349번지", None),
+        (None, None),
+    ],
+)
+def test_road_key_ignores_lot_counts_and_parentheses(address, key):
+    assert road_key(address) == key
 
 
 def test_source_load_command_stores_and_attaches(tmp_db, tmp_path):

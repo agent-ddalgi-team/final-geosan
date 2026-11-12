@@ -25,6 +25,8 @@ import type {
   HomepageResponse,
   MainPhoneConfirmRequest,
   MainPhoneConfirmResponse,
+  RecordCancelRequest,
+  RecordCancelResponse,
   RelationRequest,
   RelationResponse,
   ReplyRequest,
@@ -310,6 +312,22 @@ export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   );
 }
 
+/**
+ * 기록 취소 [잘못 입력](#254, 계약 C1 `POST /records/{recordId}/cancel`). 행은 지우지 않고 취소 표시만 남긴다.
+ * 본인 기록이 아니면 403, 그 기회에 없는 기록이면 404, 이미 취소됐으면 409, 이유가 200자를 넘으면 400이다.
+ */
+export function postRecordCancel(
+  oppId: string,
+  recordId: string,
+  body: RecordCancelRequest,
+  staffKey: string,
+) {
+  return request<RecordCancelResponse>(
+    `/opportunities/${encodeURIComponent(oppId)}/records/${encodeURIComponent(recordId)}/cancel`,
+    { method: 'POST', body, staffKey },
+  );
+}
+
 // ---------- 가짜 응답 전환 지점 (Step 3 fixtures) ----------
 
 // 가짜 모드의 관심 표시(#357). 서버가 없으니 이 화면이 떠 있는 동안만 기억하고, 새로 고침하면 처음으로 돌아간다.
@@ -546,6 +564,23 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         skippedCount: 0,
       },
       meta: { updatedAt: new Date().toISOString() },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/records\/[^/]+\/cancel$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const recordId = decodeURIComponent(route.split('/')[4] ?? '');
+    return {
+      data: {
+        recordId,
+        recordKind: recordId.startsWith('outcome') ? 'OUTCOME' : 'NOTE',
+        cancelledBy: options.staffKey,
+        cancelledAt: now,
+      },
+      meta: { updatedAt: now },
     } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/activity$/.test(route)) {

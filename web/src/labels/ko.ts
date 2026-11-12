@@ -927,6 +927,19 @@ export const timelineArea = {
   groupFilterLabel: '활동 이력 거르기',
   groupAll: '전체',
   groupEmpty: (group: string) => `${group} 기록이 아직 없습니다.`,
+  /** 기록 취소(#254): 내 기록 줄의 [잘못 입력]과 줄 안에 열리는 확인 한 줄(모달 없음). */
+  cancelButton: '잘못 입력',
+  cancelButtonLabel: (summary: string) => `잘못 입력으로 표시: ${summary}`,
+  cancelPrompt: '이 기록을 잘못 입력으로 표시합니다. 이유(선택)',
+  cancelReasonLabel: '취소 이유(선택)',
+  cancelReasonMaxLength: 200,
+  cancelConfirm: '표시',
+  cancelClose: '닫기',
+  cancelBusy: '표시하는 중',
+  cancelFailed: '잘못 입력으로 표시하지 못했습니다.',
+  /** 취소된 줄 아래 한 줄. 예: "취소 · 박 이사 · 11/06". */
+  cancelledNote: (name: string, date: string) =>
+    `취소 · ${[name, date].filter(Boolean).join(' · ')}`,
 } as const;
 
 /** 활동 이력 묶음(#389) 쉬운 말. 묶음 정의는 components/records/activityGroups.ts. */
@@ -948,6 +961,7 @@ export const activityKindLabels: Record<ActivityKind, string> = {
   EVIDENCE_GRADE_CONFIRMED: '근거 등급 확인',
   RELATION_CONFIRMED: '거래 관계',
   NOTE: '메모',
+  RECORD_CANCELLED: '기록 취소',
 };
 
 /** 상세 머리 지도 링크 글자. */
