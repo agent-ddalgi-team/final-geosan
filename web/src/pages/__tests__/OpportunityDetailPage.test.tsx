@@ -1,6 +1,6 @@
 // 근거 상세(S2): 영역 순서 / 질문 3개+펼치기 / 요구 0개 문구 / 확인·추정 글자 / 점수 접힘 / 404 (+ 요구 표, 오류).
 // 서버 호출(getOpportunityDetail)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
@@ -325,9 +325,9 @@ describe('OpportunityDetailPage', () => {
     expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
   });
 
-  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지 확인이 필요하면 띠가 보인다 (#210)', async () => {
+  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지를 못 찾았으면 띠가 보인다 (#210, #596)', async () => {
     mockedGet.mockResolvedValueOnce(
-      reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
+      reply({ ...base, header: { ...base.header, homepageStatus: 'NOT_FOUND' } }),
     );
     renderPage();
     expect(await screen.findByTestId('company-summary-line')).toHaveTextContent(
@@ -335,14 +335,33 @@ describe('OpportunityDetailPage', () => {
     );
     expect(screen.getByTestId('company-highlights')).toBeInTheDocument();
     expect(screen.getByTestId('company-phone-link')).toHaveTextContent('041-000-0000');
-    expect(screen.getByTestId('homepage-band')).toHaveTextContent('홈페이지 확인 필요');
+    expect(screen.getByTestId('homepage-band')).toHaveTextContent('홈페이지 못 찾음');
   });
 
-  it('홈페이지가 확정이거나 AI가 찾은 상태면 띠가 없다 (#210)', async () => {
+  it('홈페이지가 확정이거나 AI가 찾은 상태, 확신이 낮은 상태면 띠가 없다 (#210, #596)', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     renderPage();
     await screen.findByTestId('company-summary-line');
     expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
+    cleanup();
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
+    );
+    renderPage();
+    await screen.findByTestId('company-summary-line');
+    expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('homepage-needs-confirm')).not.toBeInTheDocument();
+  });
+
+  it('[다시 조사]는 상세 맨 위 "목록으로"와 같은 줄에 하나만 있고 [맞음]·[고치기]는 없다 (#596)', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    const back = await screen.findByTestId('back-to-list-link');
+    const rerun = screen.getByTestId('homepage-rerun-button');
+    expect(back.parentElement).toBe(screen.getByTestId('homepage-controls').parentElement);
+    expect(rerun).toHaveTextContent('다시 조사');
+    expect(screen.queryByTestId('homepage-confirm-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('homepage-edit-button')).not.toBeInTheDocument();
   });
 
   it('접촉 횟수는 기록 영역이 아니라 머리에 보이고, 접촉을 저장하면 머리의 횟수가 바로 늘어난다 (#210)', async () => {

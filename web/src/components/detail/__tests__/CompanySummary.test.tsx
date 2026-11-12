@@ -213,16 +213,17 @@ describe('CompanySummary', () => {
 });
 
 describe('HomepageBand', () => {
-  it.each([
-    ['NEEDS_CONFIRMATION', companySummary.bandNeedsConfirmation],
-    ['NOT_FOUND', companySummary.bandNotFound],
-  ] as const)('%s이면 띠가 "%s"로 보인다', (status, text) => {
-    render(<HomepageBand status={status} />);
-    expect(screen.getByTestId('homepage-band')).toHaveTextContent(text);
+  it('NOT_FOUND이면 띠가 "홈페이지 못 찾음"으로 보인다', () => {
+    render(<HomepageBand status="NOT_FOUND" />);
+    expect(screen.getByTestId('homepage-band')).toHaveTextContent(companySummary.bandNotFound);
   });
 
-  it.each(['AI_FOUND', 'CONFIRMED', null, undefined] as const)('%s이면 띠가 없다', (status) => {
-    const { container } = render(<HomepageBand status={status} />);
-    expect(container).toBeEmptyDOMElement();
-  });
+  // "홈페이지 확인 필요" 띠는 [맞음]과 함께 없앴다(#596, PM 결정 2026-11-12).
+  it.each(['NEEDS_CONFIRMATION', 'AI_FOUND', 'CONFIRMED', null, undefined] as const)(
+    '%s이면 띠가 없다',
+    (status) => {
+      const { container } = render(<HomepageBand status={status} />);
+      expect(container).toBeEmptyDOMElement();
+    },
+  );
 });

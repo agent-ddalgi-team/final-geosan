@@ -436,6 +436,13 @@ export const candidateSearch = {
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
+  /** "점수 전" 옆 조사 상태(#596). 서버 researchState 코드 → 쉬운 말. */
+  researchState: {
+    RUNNING: '조사 중',
+    NOT_FOUND: '홈페이지 못 찾음',
+    READ_FAILED: '홈페이지 읽기 실패',
+    NOT_TRIED: '조사 안 됨',
+  } as Record<string, string>,
   /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
   ingestedOn: (date: string) => `${date} 들어옴`,
   /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */

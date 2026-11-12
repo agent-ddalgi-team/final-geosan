@@ -67,14 +67,20 @@ export default function HeaderSection({
     header.classificationCode in classificationTone
       ? classificationTone[header.classificationCode]
       : 'neutral';
-  // http(s) 주소일 때만 링크로 보인다. 그 밖의 값(javascript: 등)은 보이지 않는다.
-  const homepage =
-    header.homepageUrl && /^https?:\/\/\S+$/.test(header.homepageUrl) ? header.homepageUrl : null;
   const mapLinks = buildMapLinks(header.address);
 
   return (
     <div data-testid="detail-header" style={{ display: 'grid', gap: 12 }}>
-      <div>
+      {/* 목록으로(왼쪽)와 [다시 조사](우측 상단, #596)를 한 줄에 둔다. */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+        }}
+      >
         <Button
           type="link"
           href="/opportunities"
@@ -87,15 +93,9 @@ export default function HeaderSection({
         >
           <span aria-hidden="true">‹</span> {frame.backToList}
         </Button>
+        <HomepageControls oppId={oppId} onReload={onRelationChanged} />
       </div>
       <CompanyGlance header={header} evidence={evidence} />
-      {/* 홈페이지 [맞음]·[고치기]·[다시 조사]는 한눈에 칸의 홈페이지 줄 바로 아래에 둔다(#563). */}
-      <HomepageControls
-        oppId={oppId}
-        homepageUrl={homepage}
-        status={header.homepageStatus}
-        onReload={onRelationChanged}
-      />
       {mapLinks ? (
         <div
           data-testid="detail-map-links"

@@ -188,6 +188,12 @@ export default function OpportunityCard({
               style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}
             >
               {candidateSearch.beforeScore}
+              {card.researchState && candidateSearch.researchState[card.researchState] ? (
+                <span data-testid="card-research-state" data-research-state={card.researchState}>
+                  {' · '}
+                  {candidateSearch.researchState[card.researchState]}
+                </span>
+              ) : null}
             </span>
           ) : (
             <ScoreLine
