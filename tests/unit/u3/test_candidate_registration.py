@@ -17,7 +17,11 @@ from geosan.config.errors import AppError
 from geosan.config.models import AppSetting
 from geosan.evaluation.models import EvaluationRun, ItemJudgmentInput
 from geosan.opportunity.candidate_judgments import CandidateJudgment
-from geosan.opportunity.candidate_registration import RegistrationResult, register_candidates
+from geosan.opportunity.candidate_registration import (
+    RegistrationResult,
+    refresh_registered_candidates,
+    register_candidates,
+)
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import (
     Customer,
@@ -412,3 +416,62 @@ def test_new_company_gets_factory_profile_only_for_real_batches(
     else:
         assert customer.factory_employee_count == 12 and customer.factory_scale == "소기업"
         assert customer.own_plating_line_source == "INDUSTRY_CODE"
+
+
+def refresh(*judgments):
+    with session_scope() as session:
+        return refresh_registered_candidates(session, BATCH, judgments)
+
+
+NEWER = dict(reason="볼트 냉간단조로 아연도금 외주 가능성", fitLevel="MEDIUM")
+
+
+def test_refresh_moves_latest_reason_and_fit_to_ai_found_company(registration_context):
+    """#615: AI가 올린 회사만 추천 이유·적합도·카드 문장을 최신 판단으로 바꾼다."""
+    register()
+    (opportunity,) = rows(Opportunity)
+    links = snapshot(OppProcessLink)
+    assert refresh(judgment(**NEWER, processCodes=["ZINC_PLATING"])) == [opportunity.opp_id]
+    (customer,) = rows(Customer)
+    assert (customer.pick_reason, customer.fit_level) == (NEWER["reason"], "MEDIUM")
+    assert rows(Opportunity)[0].card_reason == NEWER["reason"]
+    # 산업군·공정 연결·거래 관계는 이번 범위가 아니다.
+    assert customer.industries == ["자동차 부품"] and customer.relation_status == "UNCONFIRMED"
+    assert snapshot(OppProcessLink) == links
+
+
+def test_refresh_keeps_case_file_company_and_hand_written_card_sentence(registration_context):
+    """#615: 사례 파일 회사는 그대로, 손으로 고친 카드 문장도 그대로 둔다."""
+    existing(fit_level="LOW", pick_reason="기존 담당자 값")
+    before = snapshot(Customer)
+    assert refresh(judgment(**NEWER)) == []
+    assert snapshot(Customer) == before
+
+    with session_scope() as session:
+        session.add(public_row("row-b", company_name="가상너트", address="충남 아산시 가상길 2"))
+    register(judgment("row-b"))
+    with session_scope() as session:
+        session.scalars(select(Opportunity)).one().card_reason = "담당자가 고친 문장"
+    refresh(judgment("row-b", **NEWER))
+    assert rows(Opportunity)[0].card_reason == "담당자가 고친 문장"
+    assert {row.pick_reason for row in rows(Customer)} == {"기존 담당자 값", NEWER["reason"]}
+
+
+def test_refresh_ignores_non_manufacturer_and_unregistered_rows(registration_context):
+    """#615: "제조업 아님"으로 바뀐 판단과 목록에 없는 회사는 건드리지 않는다."""
+    register()
+    before = snapshot(Customer)
+    assert refresh(judgment(isManufacturer=False, reason="", fitLevel="LOW")) == []
+    with session_scope() as session:
+        session.add(public_row("row-b", company_name="가상너트", address="충남 아산시 가상길 2"))
+    assert refresh(judgment("row-b", **NEWER)) == []
+    assert snapshot(Customer) == before and len(rows(Opportunity)) == 1
+
+
+def test_refresh_prefers_file_row_when_file_and_lookup_rows_match(registration_context):
+    """#615: 같은 회사가 파일·조회 양쪽에 있으면 등록 때처럼 파일 행 판단을 쓴다(C5)."""
+    register()
+    with session_scope() as session:
+        session.add(public_row("row-api", source_id=API))
+    refresh(judgment("row-api", reason="조회 행 판단", fitLevel="LOW"), judgment(**NEWER))
+    assert rows(Customer)[0].pick_reason == NEWER["reason"]

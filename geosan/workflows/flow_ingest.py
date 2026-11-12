@@ -12,10 +12,15 @@ from sqlalchemy import select
 
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
 from geosan.config.registry import load_runtime_config
+from geosan.evaluation.models import EvaluationRun
 from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.opportunity.candidate_judgments import rank_candidates, select_candidates
 from geosan.opportunity.candidate_pick import pick_candidates
-from geosan.opportunity.candidate_registration import register_candidates, registered_row_ids
+from geosan.opportunity.candidate_registration import (
+    refresh_registered_candidates,
+    register_candidates,
+    registered_row_ids,
+)
 from geosan.opportunity.complex_collection import collect_complex_rows
 from geosan.opportunity.complex_store import store_complex_rows
 from geosan.opportunity.factory_csv import SOURCE_ID, parent_regions, row_in_selected_regions
@@ -161,6 +166,36 @@ def _register(batch_id, selected):
         return affected
 
 
+def _refresh(batch_id, judgments):
+    """이미 있는 회사 카드에 최신 판단을 옮기고, 평가 문장이 카드와 달라진 기회만 돌려준다(#615).
+
+    지난번 재평가가 실패해 평가 문장만 옛것으로 남은 기회도 여기서 다시 잡힌다.
+    """
+    with session_scope() as session:
+        session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        _running(session, batch_id)
+        stale = []
+        for opp_id in refresh_registered_candidates(session, batch_id, judgments):
+            opportunity = session.get(Opportunity, opp_id)
+            customer = session.get(Customer, opportunity.customer_id)
+            run = session.scalar(
+                select(EvaluationRun)
+                .where(EvaluationRun.opp_id == opp_id, EvaluationRun.run_status == "CONFIRMED")
+                .order_by(EvaluationRun.created_at.desc())
+                .limit(1)
+            )
+            if run is None:
+                continue
+            shown = (
+                customer.pick_reason or ""
+                if run.classification_code == "NOT_EVALUATED"
+                else opportunity.card_reason
+            )
+            if shown is not None and run.reason != shown:
+                stale.append(opp_id)
+        return stale
+
+
 def _failed(batch_id, message):
     # 실패 기록 자체의 저장 실패는 숨기거나 저장 재시도하지 않는다.
     with session_scope() as session:
@@ -217,9 +252,14 @@ def run_ingest(batch_id: str) -> None:
             _running(session, batch_id).picked_count = len(selected)
         stage = "후보 등록"
         affected = _register(batch_id, selected)
+        stage = "기존 회사 카드 갱신"
+        # 조건에 안 맞게 된 회사도 카드가 옛 판단으로 남지 않게 판단 전체를 넘긴다(#615).
+        refreshed = [opp_id for opp_id in _refresh(batch_id, judgments) if opp_id not in affected]
         stage = "새 후보 재평가"
-        if affected:
-            result = run_evaluation(opp_ids=affected, requested_by=batch.requested_by)
+        if affected or refreshed:
+            result = run_evaluation(
+                opp_ids=[*affected, *refreshed], requested_by=batch.requested_by
+            )
             if not result.ok:
                 raise RunFailedError("새 후보의 재평가를 완료하지 못했습니다.")
         with session_scope() as session:
