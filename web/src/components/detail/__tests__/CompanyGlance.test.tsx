@@ -134,6 +134,27 @@ describe('이 회사 한눈에(#563)', () => {
     expect(row.getByText('(한국산업단지공단 팩토리온 11/11 기준, 가공)')).toBeInTheDocument();
   });
 
+  it('공장 등록 업종명이 있으면 공장 정보 줄 맨 앞에 보인다(#617)', () => {
+    render(
+      <CompanyGlance
+        header={{
+          ...base,
+          factoryProfile: {
+            rawMaterials: null,
+            employeeCount: 1,
+            scale: '소기업',
+            industryName: '절삭가공 및 유사처리업',
+            fileDate: '2026-11-11',
+          },
+        }}
+      />,
+    );
+    const row = within(screen.getByTestId('glance-factory-profile'));
+    expect(
+      row.getByText('업종 절삭가공 및 유사처리업 · 종업원 약 1명(추정) · 소기업'),
+    ).toBeInTheDocument();
+  });
+
   it('공장 정보가 없으면 줄을 그리지 않는다(#573)', () => {
     render(<CompanyGlance header={{ ...base, factoryProfile: null }} />);
     expect(screen.queryByTestId('glance-factory-profile')).not.toBeInTheDocument();

@@ -68,6 +68,7 @@ def profile_shown(context):
         "rawMaterials": "강판, SUS",
         "employeeCount": 12,
         "scale": "소기업",
+        "industryName": "절삭가공 외 1 종",
         "fileDate": date(2026, 11, 11).isoformat(),
     }
     cards = client.get("/api/v1/opportunities").json()["data"]
@@ -76,6 +77,16 @@ def profile_shown(context):
     assert detail(client, opp_id)["header"]["factoryProfile"] == expected
     # 업종번호 25929(그 밖의 금속가공)는 표면처리 표시를 붙이지 않는다.
     assert card["ownPlatingLineSuspected"] is False
+
+
+@then("카드와 상세 머리에 공장 등록 업종명이 함께 나온다")
+def industry_shown(context):
+    """#617: 업종명은 AI 추정이 아니라 공장 등록 자료의 값 그대로다."""
+    client, opp_id = context
+    cards = client.get("/api/v1/opportunities").json()["data"]
+    card = next(card for card in cards if card["oppId"] == opp_id)
+    assert card["factoryProfile"]["industryName"] == "절삭가공 외 1 종"
+    assert detail(client, opp_id)["header"]["factoryProfile"]["industryName"] == "절삭가공 외 1 종"
 
 
 @then("상세 검토사항 끝에 수질 명단 근거의 표면처리 확인 줄이 규칙 출처로 생긴다")

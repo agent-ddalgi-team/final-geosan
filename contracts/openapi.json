@@ -1328,6 +1328,18 @@
             "title": "Filedate",
             "type": "string"
           },
+          "industryName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공장 등록 업종명(#617). 예: 절삭가공 및 유사처리업",
+            "title": "Industryname"
+          },
           "rawMaterials": {
             "anyOf": [
               {
