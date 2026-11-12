@@ -30,6 +30,7 @@ import PeersArea from '../components/peers/PeersArea';
 import ActivityTimeline from '../components/records/ActivityTimeline';
 import RecordsArea from '../components/records/RecordsArea';
 import ReviewArea from '../components/review/ReviewArea';
+import WhyRecommended from '../components/review/WhyRecommended';
 import {
   detailSections,
   frame,
@@ -199,6 +200,7 @@ export default function OpportunityDetailPage() {
           />
           {data.reviewItems !== undefined ? (
             <DetailSection id="detail-review" title={reviewArea.title}>
+              <WhyRecommended header={data.header} processLinks={data.processLinks} />
               <ReviewArea
                 key={`${oppId}:${data.evalId}:review`}
                 oppId={oppId}

@@ -974,6 +974,34 @@ export const reviewArea = {
   pasteRunning: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
   pasteLocked: '이 조사는 지금 다시 누를 수 없습니다.',
   pasteReload: '새로 불러오기',
+  /**
+   * 줄이 많을 때의 묶음(#619, PM 요청 2026-11-13). "확인 필요"만 펼쳐 두고 나머지 두 묶음은 접어 둔다.
+   * 줄 글은 서버가 준 그대로이고 여기에는 묶음 머리 문구만 둔다.
+   */
+  /** "확인 필요 0 / 3" — 펼쳐 둔 묶음의 줄만 센다. */
+  askProgress: (done: number, total: number) => `확인 필요 ${done} / ${total}`,
+  askEmpty: '지금 바로 확인할 줄은 없습니다. 아래 묶음은 눌러서 펼쳐 볼 수 있습니다.',
+  /** "아직 근거·자료가 없는 항목 10개 보기" / "AI 공정 연결 제안 7개 보기 · 아연도금, 아노다이징 외 5개" */
+  foldHead: (
+    group: 'gap' | 'process',
+    count: number,
+    open: boolean,
+    shown: readonly string[],
+    rest: number,
+    recorded: number,
+  ) => {
+    const title = group === 'gap' ? '아직 근거·자료가 없는 항목' : 'AI 공정 연결 제안';
+    const nameText =
+      shown.length > 0 ? ` · ${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''}` : '';
+    const recordedText = recorded > 0 ? ` · 기록한 줄 ${recorded}개` : '';
+    return `${open ? '▾' : '▸'} ${title} ${count}개 ${open ? '접기' : '보기'}${nameText}${recordedText}`;
+  },
+  foldListLabel: (group: 'gap' | 'process') =>
+    group === 'gap' ? '근거·자료가 없는 항목 목록' : 'AI 공정 연결 제안 목록',
+  /** 검토사항 맨 위 "왜 추천했나" 한 줄. 고른 이유·등록 사실은 바로 위 "이 회사 한눈에"에 있어 다시 적지 않는다. */
+  whyTitle: '왜 추천했나',
+  whyProcesses: (names: readonly string[]) => `연결된 공정: ${names.join(', ')}`,
+  whySeeGlance: '고른 이유와 등록 사실은 위 "이 회사 한눈에"에 있습니다.',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
