@@ -83,6 +83,26 @@ def accounted_cost(row: TransferLog, llm: LlmSettings) -> Decimal:
     return Decimal(str(llm.unconfirmed_call_cost_usd)) * row.call_count
 
 
+def month_usage(session, llm: LlmSettings, *, now: datetime | None = None) -> tuple[int, Decimal]:
+    """이번 달(한국 시간) 외부 호출 수와 한도 계산 비용. 예약 검사(_reserve)와 같은 기준이다.
+
+    사용량을 못 받은 호출은 accounted_cost로 추정해 더한다. 읽기만 하고 아무것도 저장하지 않는다.
+    """
+    local = (now or utcnow()).astimezone(KST)
+    month_start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
+    rows = session.scalars(
+        select(TransferLog).where(
+            TransferLog.occurred_at >= month_start,
+            TransferLog.purpose.in_(["EXTERNAL_SEARCH", "EXTERNAL_AI"]),
+            TransferLog.call_count > 0,
+        )
+    ).all()
+    return (
+        sum(row.call_count for row in rows),
+        sum((accounted_cost(row, llm) for row in rows), Decimal(0)),
+    )
+
+
 def record_search_rejection(
     opp_id: str, reason: str, db_path: Path | str | None, *, purpose: str = "EXTERNAL_SEARCH"
 ) -> None:

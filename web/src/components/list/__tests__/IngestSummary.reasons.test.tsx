@@ -113,3 +113,20 @@ describe('수집 요약 · 건너뜀 안내(#442)', () => {
     ]);
   });
 });
+
+describe('수집 요약 · 실제 금액 끝 줄(#549)', () => {
+  it('끝난 회차는 "n곳을 더했습니다 · 실제 $…"를 보인다', () => {
+    show({ ...DONE, newCount: 20, estimatedUsd: 0.8, actualUsd: 0.74 });
+    expect(screen.getByTestId('ingest-added-cost')).toHaveTextContent(
+      '20곳을 더했습니다 · 실제 $0.74',
+    );
+  });
+
+  it('서버가 실제 금액을 안 주었거나 아직 더하는 중이면 끝 줄을 지어내지 않는다', () => {
+    const { unmount } = show({ ...DONE, newCount: 20 });
+    expect(screen.queryByTestId('ingest-added-cost')).not.toBeInTheDocument();
+    unmount();
+    show({ ...DONE, status: 'RUNNING', newCount: 3, actualUsd: 0.1 });
+    expect(screen.queryByTestId('ingest-added-cost')).not.toBeInTheDocument();
+  });
+});
