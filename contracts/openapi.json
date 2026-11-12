@@ -552,6 +552,17 @@
             ],
             "title": "Distancekm"
           },
+          "factoryProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FactoryProfile"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null"
+          },
           "fitLevel": {
             "anyOf": [
               {
@@ -1275,6 +1286,58 @@
           "subject"
         ],
         "title": "EvidenceView",
+        "type": "object"
+      },
+      "FactoryProfile": {
+        "description": "공장 등록 정보(C1, #573). 순서·점수·분류에는 쓰지 않는다.",
+        "properties": {
+          "employeeCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공장 등록 때 적은 종업원 수. 갱신되지 않을 수 있어 언제나 추정으로 보인다",
+            "title": "Employeecount"
+          },
+          "fileDate": {
+            "description": "팩토리온 자료 기준일",
+            "format": "date",
+            "title": "Filedate",
+            "type": "string"
+          },
+          "rawMaterials": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "원자재. 예: 강판, SUS",
+            "title": "Rawmaterials"
+          },
+          "scale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공장 규모. 예: 소기업",
+            "title": "Scale"
+          }
+        },
+        "required": [
+          "fileDate"
+        ],
+        "title": "FactoryProfile",
         "type": "object"
       },
       "FilterState": {
@@ -2355,6 +2418,17 @@
           "evalId": {
             "title": "Evalid",
             "type": "string"
+          },
+          "factoryProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FactoryProfile"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null"
           },
           "fitLevel": {
             "anyOf": [

@@ -3,8 +3,15 @@
 // 모두 서버가 이미 저장해 둔 값(조사 결과·후보 판단·공장 자료)이라 새 AI 호출이 없다.
 // 값이 없으면 그다음 근거로 대신하고, 대신할 것도 없으면 그 줄을 짧게 안내하거나 뺀다.
 import type { DetailHeader, EvidenceView, SourceGrade } from '../../api/types';
-import { companyGlance, companySummary, homepageLinkLabel } from '../../labels/ko';
+import {
+  companyGlance,
+  companySummary,
+  factoryProfileLabels,
+  homepageLinkLabel,
+} from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { factoryProfileText } from '../../utils/factoryProfile';
+import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
 
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
@@ -63,6 +70,7 @@ export default function CompanyGlance({
     : industries.join(' · ') || null;
   const pickReason = header.pickReason?.trim() || null;
   const fit = header.fitLevel ?? null;
+  const factoryLine = factoryProfileText(header.factoryProfile);
 
   return (
     <section
@@ -116,6 +124,16 @@ export default function CompanyGlance({
           ) : (
             <span style={secondary}>({companyGlance.factoryBasis})</span>
           )}
+        </div>
+      ) : null}
+
+      {factoryLine && header.factoryProfile ? (
+        <div style={rowStyle} data-testid="glance-factory-profile">
+          <span style={labelStyle}>{factoryProfileLabels.row}</span>
+          <span>{factoryLine}</span>
+          <span style={secondary}>
+            ({factoryProfileLabels.basis(formatMonthDay(header.factoryProfile.fileDate) ?? '')})
+          </span>
         </div>
       ) : null}
 

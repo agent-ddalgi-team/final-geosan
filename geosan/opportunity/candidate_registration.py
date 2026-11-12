@@ -30,6 +30,7 @@ from geosan.opportunity.candidate_judgments import (
 )
 from geosan.opportunity.complex_store import API_SOURCE_ID
 from geosan.opportunity.factory_csv import SOURCE_ID, _region_name
+from geosan.opportunity.factory_profile import ProfileIndex, apply_to_customer
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.judgment_store import _check_web_judgment_text, judgment_rows
 from geosan.opportunity.models import (
@@ -41,6 +42,7 @@ from geosan.opportunity.models import (
 )
 from geosan.opportunity.queries import normalize_address, normalize_name
 from geosan.opportunity.source_models import SourceContract, SourceFactoryRow, WebCandidate
+from geosan.opportunity.web_candidate_store import web_judgment_rows
 from geosan.storage.base import new_id, utcnow
 
 
@@ -51,15 +53,36 @@ class RegistrationResult:
     merge_candidate_count: int
 
 
-def registered_row_ids(session, batch_id: str, judgments) -> set[str]:
-    """이름·주소가 모두 같은 회사가 이미 목록에 있는 행(#528). 등록 때 건너뛰는 기준과 같다."""
+def registered_row_ids(
+    session,
+    batch_id: str,
+    judgments,
+    *,
+    source_kind: Literal["FACTORY", "WEB"] = "FACTORY",
+) -> set[str]:
+    """이름·주소가 모두 같은 기존 회사의 후보 번호(#528·#532). 등록·합치기는 하지 않는다.
+
+    WEB은 유효한 보관 후보만 읽는다. 주소가 없으면 같은 회사라고 단정해 제외하지 않는다.
+    반환한 번호를 최대 건수 선택 전에 빼되, 기존 회사의 값과 판단 연결은 보존한다.
+    """
+    if source_kind not in ("FACTORY", "WEB"):
+        raise InputError("기존 회사 확인에 사용할 후보의 출처 종류를 확인해 주세요.")
     batch, _ = _context(session, batch_id)
     known = registered_company_keys(session, is_virtual=batch.is_virtual)
-    rows = session.scalars(
-        select(SourceFactoryRow).where(
-            SourceFactoryRow.row_id.in_([item.row_id for item in judgments])
+    if source_kind == "WEB":
+        ids = _labels([item.row_id for item in judgments])
+        found = web_judgment_rows(session, batch, ids)
+        rows = (
+            row
+            for row in found.values()
+            if normalize_name(row.company_name) and normalize_address(row.address)
         )
-    )
+    else:
+        rows = session.scalars(
+            select(SourceFactoryRow).where(
+                SourceFactoryRow.row_id.in_([item.row_id for item in judgments])
+            )
+        )
     return {row.row_id for row in rows if company_key(row.company_name, row.address) in known}
 
 
@@ -189,6 +212,9 @@ def register_candidates(
         is_virtual=batch.is_virtual,
     )
     now = utcnow()
+    # 팩토리온·수질 명단 보조 자료가 있으면 새 회사에도 같은 규칙으로 붙인다(#573).
+    profile_index = ProfileIndex(session)
+    surface_codes = settings.ingestion.ai_pick.surface_treatment_industry_codes
     new_count = skipped_count = merge_count = 0
     # 파일·조회 양쪽에 있는 새 회사는 파일 출처를 우선한다(C5).
     for judgment in sorted(checked, key=lambda item: rows[item.row_id].source_id != SOURCE_ID):
@@ -230,6 +256,8 @@ def register_candidates(
             **_discovery_fields(row, source_kind),
             **common,
         )
+        if not batch.is_virtual:
+            apply_to_customer(customer, profile_index, surface_codes)
         session.add(customer)
         session.flush()
         opportunity = Opportunity(
