@@ -11,7 +11,6 @@ import type { Meta } from '../api/types';
 import BreakdownBars from '../components/dashboard/BreakdownBars';
 import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
-import KoreaMapCard from '../components/dashboard/KoreaMapCard';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -187,24 +186,13 @@ export default function DashboardPage() {
             </h2>
             <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />
           </section>
-          <section
-            aria-labelledby="dashboard-map-title"
-            data-testid="dashboard-map-section"
-            style={sectionStyle}
-          >
-            <h2 id="dashboard-map-title" style={cardTitleStyle}>
-              {dashboardTexts.mapTitle}
+          <section aria-labelledby="dashboard-recent-title" style={sectionStyle}>
+            <h2 id="dashboard-recent-title" style={cardTitleStyle}>
+              {dashboardTexts.recentTitle}
             </h2>
-            <KoreaMapCard />
+            <RecentActivityList items={data?.recentActivity ?? []} />
           </section>
         </div>
-
-        <section aria-labelledby="dashboard-recent-title" style={sectionStyle}>
-          <h2 id="dashboard-recent-title" style={cardTitleStyle}>
-            {dashboardTexts.recentTitle}
-          </h2>
-          <RecentActivityList items={data?.recentActivity ?? []} />
-        </section>
       </div>
     </FiveStates>
   );

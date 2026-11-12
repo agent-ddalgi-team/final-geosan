@@ -14,23 +14,6 @@ import { dashboardTexts, states } from '../../labels/ko';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
-// 지도 카드는 관심 기업 목록(시·군)을 따로 읽는다. 여기서는 가짜 응답으로 대신한다(실제 서버 연결 확인이 아니다).
-vi.mock('../../api/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../api/client')>();
-  return {
-    ...actual,
-    getOpportunities: vi.fn(() =>
-      Promise.resolve({
-        data: [
-          { oppId: 'm-1', title: '가 회사 · 시험', region: '당진시', records: {} },
-          { oppId: 'm-2', title: '나 회사 · 시험', region: '아산시', records: {} },
-          { oppId: 'm-3', title: '다 회사 · 시험', region: null, records: {} },
-        ],
-        meta: { hasVirtualData: true, datasetKind: 'VIRTUAL_REVIEWED' },
-      }),
-    ),
-  };
-});
 
 const mockedGet = vi.mocked(getDashboard);
 const fixtureData = dashboardFixture.data as unknown as Dashboard;
