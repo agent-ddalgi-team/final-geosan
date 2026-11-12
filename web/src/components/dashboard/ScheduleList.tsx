@@ -27,7 +27,11 @@ export default function ScheduleList({ items }: { items: DashboardScheduleItem[]
       style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}
     >
       {sortSchedule(items).map((item) => (
-        <li key={`${item.oppId}-${item.dueAt}-${item.note}`} data-testid="dashboard-schedule-item">
+        <li
+          key={`${item.oppId}-${item.dueAt}-${item.note}`}
+          data-testid="dashboard-schedule-item"
+          style={{ borderBottom: `1px solid ${colors.borderSecondary}`, paddingBottom: 8 }}
+        >
           <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`}>
             {item.overdue ? (
               <span
