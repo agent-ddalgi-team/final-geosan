@@ -228,6 +228,11 @@ export default function OpportunityDetailPage() {
               key={`${oppId}:timeline`}
               oppId={oppId}
               refreshKey={timelineVersion}
+              onCancelled={() => {
+                // 취소하면 현재 단계·일정·접촉 횟수·카드 꼬리표가 이전 값으로 돌아가므로 상세를 다시 불러온다(#254).
+                // 활동 이력은 이 부품이 스스로 다시 불러온다.
+                setReload((n) => n + 1);
+              }}
             />
           </DetailSection>
         </div>
