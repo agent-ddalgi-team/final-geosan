@@ -25,6 +25,22 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from geosan.storage.base import Base, CommonColumns, UtcDateTime
 
+# 공개 자료(공장 행·단지 조회·웹 후보·AI 판단)를 함께 쓰는 묶음(#586, PM 결정 2026-11-12).
+# 묶음은 거산 역량 값을 소개서 / 거산 확인으로 나누는 것이라, 실제 공개 자료는 둘이 같이 쓴다.
+# 가상 묶음은 실제 자료와 섞지 않는다.
+_REAL_KINDS = ("BROCHURE", "COMPANY_CONFIRMED")
+
+
+def public_source_kinds(kind: object) -> tuple[str, ...]:
+    """이 묶음의 회차가 다시 쓸 수 있는 공개 자료의 묶음 목록."""
+    value = str(getattr(kind, "value", kind))
+    return _REAL_KINDS if value in _REAL_KINDS else (value,)
+
+
+def shares_public_source(row_kind: object, batch_kind: object) -> bool:
+    """공개 자료 행의 묶음이 회차 묶음과 같이 쓰이는지."""
+    return str(getattr(row_kind, "value", row_kind)) in public_source_kinds(batch_kind)
+
 
 class SourceContract(CommonColumns, Base):
     """소스 이용 확인표. confirmed_at이 없는 소스는 수집을 시작하지 않는다(C5)."""

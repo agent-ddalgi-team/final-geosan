@@ -20,7 +20,7 @@ from geosan.opportunity.factory_csv import parent_regions, row_in_selected_regio
 from geosan.opportunity.factory_profile import ProfileIndex
 from geosan.opportunity.judgment_store import _SOURCES, judgment_inputs
 from geosan.opportunity.source_models import CandidateJudgment as StoredJudgment
-from geosan.opportunity.source_models import SourceFactoryRow
+from geosan.opportunity.source_models import SourceFactoryRow, public_source_kinds
 
 FIT_LEVELS = ("HIGH", "MEDIUM", "LOW")
 
@@ -63,7 +63,7 @@ def preview_counts(
                 SourceFactoryRow.source_id.in_(sorted(_SOURCES)),
                 SourceFactoryRow.region.in_(parent_regions(regions)),
                 SourceFactoryRow.missing_since.is_(None),
-                SourceFactoryRow.dataset_kind == dataset_kind,
+                SourceFactoryRow.dataset_kind.in_(public_source_kinds(dataset_kind)),
                 SourceFactoryRow.is_virtual == is_virtual,
             )
         )

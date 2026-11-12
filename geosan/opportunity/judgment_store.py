@@ -30,7 +30,11 @@ from geosan.opportunity.factory_profile import ProfileIndex
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.source_models import CandidateJudgment as StoredJudgment
-from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
+from geosan.opportunity.source_models import (
+    SourceContract,
+    SourceFactoryRow,
+    shares_public_source,
+)
 from geosan.opportunity.web_candidate_store import web_judgment_rows
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
@@ -224,7 +228,8 @@ def prepare_candidate_judgments(
             batch, regions = _context(session, batch_id)
             found = judgment_rows(session, batch, ids, regions, source_kind)
             if any(
-                row.dataset_kind != batch.dataset_kind or row.is_virtual != batch.is_virtual
+                not shares_public_source(row.dataset_kind, batch.dataset_kind)
+                or row.is_virtual != batch.is_virtual
                 for row in found.values()
             ):
                 raise InputError("이번 회차의 자료 묶음에 있는 공개 공장 행만 판단할 수 있습니다.")
@@ -326,7 +331,7 @@ def save_candidate_judgments(
                 if (
                     public_row_content_hash(row, inputs[before.row_id]) != before.content_hash
                     or row.source_id != before.source_id
-                    or row.dataset_kind != batch.dataset_kind
+                    or not shares_public_source(row.dataset_kind, batch.dataset_kind)
                     or row.is_virtual != batch.is_virtual
                 ):
                     raise InputError(

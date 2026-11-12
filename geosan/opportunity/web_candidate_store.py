@@ -23,7 +23,12 @@ from geosan.opportunity.candidate_web_results import (
 from geosan.opportunity.factory_csv import _region_name, parent_regions, row_in_selected_regions
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.models import IngestBatch
-from geosan.opportunity.source_models import WebCandidate, WebSearchRun
+from geosan.opportunity.source_models import (
+    WebCandidate,
+    WebSearchRun,
+    public_source_kinds,
+    shares_public_source,
+)
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 
@@ -83,7 +88,7 @@ def _check_candidate(candidate, context):
 
 def _fresh(run, context, batch, now):
     return (
-        run.dataset_kind == batch.dataset_kind
+        shares_public_source(run.dataset_kind, batch.dataset_kind)
         and run.is_virtual == batch.is_virtual
         and can_reuse_search(
             stored_hash=run.criteria_hash,
@@ -113,7 +118,7 @@ def _validated_rows(session, run, context, batch):
     for row in rows:
         url = _check_candidate(row, context)
         if (
-            row.dataset_kind != batch.dataset_kind
+            not shares_public_source(row.dataset_kind, batch.dataset_kind)
             or row.is_virtual != batch.is_virtual
             or row.source_domain != urlsplit(url).hostname
             or row.registry_status not in {"FOUND", "NOT_FOUND"}
@@ -127,7 +132,7 @@ def _cached(session, context, batch):
         select(WebSearchRun)
         .where(
             WebSearchRun.criteria_hash == context.criteria_hash,
-            WebSearchRun.dataset_kind == batch.dataset_kind,
+            WebSearchRun.dataset_kind.in_(public_source_kinds(batch.dataset_kind)),
             WebSearchRun.is_virtual == batch.is_virtual,
         )
         .order_by(WebSearchRun.searched_at.desc(), WebSearchRun.run_id.desc())

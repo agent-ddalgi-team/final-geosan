@@ -43,6 +43,7 @@ from geosan.opportunity.judgment_store import (
     public_row_content_hash,
     save_candidate_judgments,
 )
+from geosan.opportunity.source_models import shares_public_source
 from geosan.storage.session import session_scope
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -207,7 +208,7 @@ def _public_rows(plan, ids, db_path):
         for row_id in ids:
             row = found[row_id]
             if (
-                row.dataset_kind != batch.dataset_kind
+                not shares_public_source(row.dataset_kind, batch.dataset_kind)
                 or row.is_virtual != batch.is_virtual
                 or row.source_id != before[row_id].source_id
                 or public_row_content_hash(row, inputs[row_id]) != before[row_id].content_hash
