@@ -15,6 +15,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import sales_step_state
 from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel
 from geosan.config.errors import RunFailedError
+from geosan.config.sales_questions import KST
 from geosan.dashboard.sales_analysis import (
     build_sales_analysis,
     load_company_records,
@@ -145,6 +146,9 @@ def sales_analysis(session: SessionDep):
         min_sample_for_ratio=settings.min_sample_for_ratio,
         closed_window_days=settings.closed_window_days,
         now=now,
+        # 계산 부품은 규칙·설정 부품을 가져오지 않는다. 시간대와 거절 이유 순서는 여기서 넘긴다.
+        tz=KST,
+        lost_reason_order=[code.value for code in LostReasonCode],
     )
     data = SalesAnalysis(
         as_of=result.as_of,

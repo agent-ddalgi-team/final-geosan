@@ -15,33 +15,34 @@ import re
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from geosan.config.sales_questions import KST
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Outcome
-from geosan.rules.codes import ContactMethod, ContactResult, LostReasonCode, OutcomeStatus
 
-CONTACT_METHODS: tuple[str, ...] = tuple(ContactMethod)
+# 계약 C0의 코드값. 이 부품은 규칙·설정 부품을 가져오지 않아서(`queries.py`와 같은 방식) 글자 그대로
+# 적는다. 코드표 전체가 필요한 것(거절 이유 순서)과 시간대는 창구가 인자로 넘긴다.
+STATUS_WON = "WON"
+STATUS_LOST = "LOST"
+STATUS_ON_HOLD = "ON_HOLD"
+METHOD_CALL = "CALL"
+METHOD_EMAIL = "EMAIL"
+METHOD_VISIT = "VISIT"
+RESULT_REACHED = "REACHED"
+CONTACT_METHODS: tuple[str, ...] = (METHOD_CALL, METHOD_EMAIL, METHOD_VISIT)
 # 접촉은 했지만 아직 끝나지 않은 단계. 접촉만 적고 단계를 안 바꾼 옛 기록(미접촉)도 여기에 센다.
-IN_PROGRESS_STATUSES = frozenset(
-    {
-        OutcomeStatus.NOT_EXECUTED,
-        OutcomeStatus.IN_PROGRESS,
-        OutcomeStatus.SAMPLE_OR_REGISTRATION_APPROVED,
-    }
-)
-CLOSED_STATUSES = frozenset({OutcomeStatus.WON, OutcomeStatus.LOST})
+IN_PROGRESS_STATUSES = frozenset({"NOT_EXECUTED", "IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED"})
+CLOSED_STATUSES = frozenset({STATUS_WON, STATUS_LOST})
+KNOWN_STATUSES = IN_PROGRESS_STATUSES | CLOSED_STATUSES | {STATUS_ON_HOLD}
 # 계약 C1: 공정 연결이 없는 회사와 산업군이 없는 회사는 맨 끝 줄에 따로 센다.
 NO_PROCESS_NAME = "공정 미확정"
 NO_INDUSTRY_NAME = "미확정"
 _VIRTUAL_DATASET_KIND = "VIRTUAL_REVIEWED"
-_LOST_REASON_ORDER = {code.value: index for index, code in enumerate(LostReasonCode)}
 
 
 # ---------------------------------------------------------------------------
@@ -197,8 +198,8 @@ def _ratio(count: int, total: int) -> float | None:
     return _rounded(Decimal(count) / Decimal(total), "0.01")
 
 
-def _contact_day(line: RecordLine) -> date:
-    return line.attempted_at or line.created_at.astimezone(KST).date()
+def _contact_day(line: RecordLine, tz: tzinfo) -> date:
+    return line.attempted_at or line.created_at.astimezone(tz).date()
 
 
 def _closed_since(lines: Sequence[RecordLine]) -> datetime | None:
@@ -212,20 +213,23 @@ def _closed_since(lines: Sequence[RecordLine]) -> datetime | None:
     return since
 
 
-def summarize_company(company: CompanyRecords, today: date) -> CompanyRow | None:
-    """회사 한 곳의 기록을 표 한 줄로 줄인다. 접촉 시도가 없으면 표 대상이 아니라 None."""
+def summarize_company(company: CompanyRecords, today: date, *, tz: tzinfo) -> CompanyRow | None:
+    """회사 한 곳의 기록을 표 한 줄로 줄인다. 접촉 시도가 없으면 표 대상이 아니라 None.
+
+    `tz`는 저장 시각을 날짜로 바꿀 때 쓰는 시간대(한국 시간)로, 창구가 넘긴다.
+    """
     contacts = [line for line in company.lines if line.method in CONTACT_METHODS]
     if not contacts:
         return None
     status = company.lines[-1].status
-    if status not in set(OutcomeStatus):
+    if status not in KNOWN_STATUSES:
         raise ValueError(f"모르는 영업 단계 값이라 분석표에 셀 수 없습니다: {status!r}")
     tried = Counter(line.method for line in contacts)
-    reached = Counter(line.method for line in contacts if line.result == ContactResult.REACHED)
-    days = [_contact_day(line) for line in contacts]
+    reached = Counter(line.method for line in contacts if line.result == RESULT_REACHED)
+    days = [_contact_day(line, tz) for line in contacts]
     first, last = min(days), max(days)
     closed_at = _closed_since(company.lines)
-    outcome_at = closed_at.astimezone(KST).date() if closed_at else None
+    outcome_at = closed_at.astimezone(tz).date() if closed_at else None
     return CompanyRow(
         opp_id=company.opp_id,
         name=company.name,
@@ -233,15 +237,13 @@ def summarize_company(company: CompanyRecords, today: date) -> CompanyRow | None
         industries=list(company.industries),
         contact_count=ContactCount(
             total=len(contacts),
-            call=tried[ContactMethod.CALL],
-            email=tried[ContactMethod.EMAIL],
-            visit=tried[ContactMethod.VISIT],
+            call=tried[METHOD_CALL],
+            email=tried[METHOD_EMAIL],
+            visit=tried[METHOD_VISIT],
         ),
         outcome_status=status,
         sales_step=company.sales_step,
-        lost_reason_code=(
-            company.lines[-1].lost_reason_code if status == OutcomeStatus.LOST else None
-        ),
+        lost_reason_code=(company.lines[-1].lost_reason_code if status == STATUS_LOST else None),
         first_contact_at=first,
         last_contact_at=last,
         days_since_first_contact=max((today - first).days, 0),
@@ -257,11 +259,17 @@ def summarize_company(company: CompanyRecords, today: date) -> CompanyRow | None
     )
 
 
-def group_stats(rows: Sequence[CompanyRow], min_sample_for_ratio: int) -> GroupStats:
-    """회사 줄 묶음의 집계 칸. 표본이 기준보다 적으면 비율(ratios)을 내지 않는다."""
+def group_stats(
+    rows: Sequence[CompanyRow], min_sample_for_ratio: int, lost_reason_order: Sequence[str]
+) -> GroupStats:
+    """회사 줄 묶음의 집계 칸. 표본이 기준보다 적으면 비율(ratios)을 내지 않는다.
+
+    `lost_reason_order`는 계약 C0 거절 이유 코드표 순서(건수가 같을 때의 순서)로, 창구가 넘긴다.
+    """
+    reason_order = {code: index for index, code in enumerate(lost_reason_order)}
     contacted = len(rows)
     statuses = Counter(row.outcome_status for row in rows)
-    won = [row for row in rows if row.outcome_status == OutcomeStatus.WON]
+    won = [row for row in rows if row.outcome_status == STATUS_WON]
     reach = ContactReach(
         **{
             method.lower(): ReachCount(
@@ -286,9 +294,9 @@ def group_stats(rows: Sequence[CompanyRow], min_sample_for_ratio: int) -> GroupS
     return GroupStats(
         contacted_count=contacted,
         in_progress_count=sum(statuses[status] for status in IN_PROGRESS_STATUSES),
-        on_hold_count=statuses[OutcomeStatus.ON_HOLD],
+        on_hold_count=statuses[STATUS_ON_HOLD],
         won_count=len(won),
-        lost_count=statuses[OutcomeStatus.LOST],
+        lost_count=statuses[STATUS_LOST],
         avg_contacts_to_won=(
             _rounded(
                 Decimal(sum(row.contact_count.total for row in won)) / Decimal(len(won)), "0.1"
@@ -303,7 +311,7 @@ def group_stats(rows: Sequence[CompanyRow], min_sample_for_ratio: int) -> GroupS
                 reasons.items(),
                 key=lambda item: (
                     -item[1],
-                    _LOST_REASON_ORDER.get(item[0], len(_LOST_REASON_ORDER)),
+                    reason_order.get(item[0], len(reason_order)),
                 ),
             )
         ],
@@ -312,16 +320,25 @@ def group_stats(rows: Sequence[CompanyRow], min_sample_for_ratio: int) -> GroupS
 
 
 def _industry_rows(
-    rows: Sequence[CompanyRow], industries: Sequence[str], min_sample_for_ratio: int
+    rows: Sequence[CompanyRow],
+    industries: Sequence[str],
+    min_sample_for_ratio: int,
+    lost_reason_order: Sequence[str],
 ) -> list[IndustryRow]:
     result = []
     for name in industries:
         members = [row for row in rows if name in row.industries]
         if members:
-            result.append(IndustryRow(name, group_stats(members, min_sample_for_ratio)))
+            result.append(
+                IndustryRow(name, group_stats(members, min_sample_for_ratio, lost_reason_order))
+            )
     unknown = [row for row in rows if not any(name in industries for name in row.industries)]
     if unknown:
-        result.append(IndustryRow(NO_INDUSTRY_NAME, group_stats(unknown, min_sample_for_ratio)))
+        result.append(
+            IndustryRow(
+                NO_INDUSTRY_NAME, group_stats(unknown, min_sample_for_ratio, lost_reason_order)
+            )
+        )
     return result
 
 
@@ -333,18 +350,20 @@ def build_sales_analysis(
     min_sample_for_ratio: int,
     closed_window_days: int,
     now: datetime,
+    tz: tzinfo,
+    lost_reason_order: Sequence[str],
 ) -> SalesAnalysis:
     """공정별·회사별 표를 계산한다. 시각은 직접 읽지 않고 `now`를 받는다(NFR12).
 
     `processes`는 역량 파일 순서의 (코드, 이름), `industries`는 설정 순서다. 한 회사가
     공정·산업군이 여러 개면 각각 세므로 줄의 합이 회사 수보다 클 수 있다.
     """
-    today = now.astimezone(KST).date()
+    today = now.astimezone(tz).date()
     oldest_closed = now - timedelta(days=closed_window_days)
     rows: list[CompanyRow] = []
     older_closed = 0
     for company in companies:
-        row = summarize_company(company, today)
+        row = summarize_company(company, today, tz=tz)
         if row is None:
             continue
         if row.closed_at is not None and row.closed_at < oldest_closed:
@@ -364,8 +383,10 @@ def build_sales_analysis(
                 ProcessRow(
                     process_code=code,
                     process_name=name,
-                    stats=group_stats(members, min_sample_for_ratio),
-                    by_industry=_industry_rows(members, industries, min_sample_for_ratio),
+                    stats=group_stats(members, min_sample_for_ratio, lost_reason_order),
+                    by_industry=_industry_rows(
+                        members, industries, min_sample_for_ratio, lost_reason_order
+                    ),
                 )
             )
     unlinked = [row for row in rows if not row.process_codes]
@@ -374,8 +395,10 @@ def build_sales_analysis(
             ProcessRow(
                 process_code=None,
                 process_name=NO_PROCESS_NAME,
-                stats=group_stats(unlinked, min_sample_for_ratio),
-                by_industry=_industry_rows(unlinked, industries, min_sample_for_ratio),
+                stats=group_stats(unlinked, min_sample_for_ratio, lost_reason_order),
+                by_industry=_industry_rows(
+                    unlinked, industries, min_sample_for_ratio, lost_reason_order
+                ),
             )
         )
     return SalesAnalysis(
