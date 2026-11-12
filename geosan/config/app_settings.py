@@ -243,6 +243,13 @@ class ListFilterSettings(FileModel):
     region_presets: list[RegionPreset] = Field(default_factory=list)
 
 
+class DashboardSettings(FileModel):
+    """계약 C7 `dashboard`(2026-11-03 PM 결정). 이 칸이 없는 옛 설정 파일·DB 사본도 읽는다."""
+
+    # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
+    count_proposed_industries: bool = True
+
+
 class AppSettings(FileModel):
     """앱 설정 한 벌(C7 AppSettings). 더하는 변경(2026-10-21 PM 확인): brand.demoLabel."""
 
@@ -261,6 +268,7 @@ class AppSettings(FileModel):
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
+    dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
