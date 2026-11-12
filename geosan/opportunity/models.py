@@ -284,6 +284,8 @@ class IngestBatch(CommonColumns, Base):
     web_from_cache: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     web_skipped_reason: Mapped[str | None] = mapped_column(String(16))
     complex_list_skipped_reason: Mapped[str | None] = mapped_column(String(16))
+    # 접수 때 예상 금액(C6 #549). 옛 회차는 null. 실제 금액은 전송 기록에서 센다.
+    estimated_usd: Mapped[float | None] = mapped_column(Float)
 
 
 class MergeCandidate(CommonColumns, Base):

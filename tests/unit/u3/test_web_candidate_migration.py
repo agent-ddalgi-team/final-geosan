@@ -21,7 +21,7 @@ def test_upgrade_preserves_old_judgment_and_round_trip(tmp_path):
         con.row_factory = sqlite3.Row
         before = dict(con.execute("SELECT * FROM src_candidate_judgment").fetchone())
     for _ in range(2):
-        assert upgrade_to_head(path) == ["src_004"]
+        assert upgrade_to_head(path) == ["opp_009"]
         with sqlite3.connect(path) as con:
             con.row_factory = sqlite3.Row
             assert dict(
