@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from geosan.commands.app import app
+from geosan.commands.check_config import run_check_config
 from geosan.config.app_settings import (
     check_app_settings_file,
     load_app_settings,
@@ -115,6 +116,37 @@ def test_check_config_updates_old_database_copy_without_losing_selected_settings
     assert result.exit_code == 1 and "unconfirmedCallCostUsd" in result.output
     with session_scope() as session:
         assert read_app_settings(session) == settings
+
+
+def _drop_estimate_from_database_copy(app_settings_path):
+    """#538 이전에 만든 DB처럼 llm 사본에서 추정 비용 칸을 뺀다."""
+    settings = load_app_settings(app_settings_path)
+    settings.llm.monthly_call_limit = 123
+    with session_scope() as session:
+        sync_app_settings(session, settings)
+        row = session.get(AppSetting, "llm")
+        row.value = {
+            key: value for key, value in row.value.items() if key != "unconfirmedCallCostUsd"
+        }
+    return settings
+
+
+def test_old_database_copy_without_estimate_reads_example_value(tmp_db, app_settings_path):
+    """#591: 옛 DB 사본에 칸이 없어도 읽기가 멈추지 않고, 예시 파일 값을 쓰며 다른 칸은 그대로다."""
+    _drop_estimate_from_database_copy(app_settings_path)
+    example = load_app_settings("examples/app-settings.yaml")
+    with session_scope() as session:
+        settings = read_app_settings(session)
+    assert settings.llm.unconfirmed_call_cost_usd == example.llm.unconfirmed_call_cost_usd
+    assert settings.llm.monthly_call_limit == 123
+
+
+def test_server_config_check_passes_on_old_database_copy(tmp_db, app_settings_path):
+    """#591: 서버 시작 전 검사(등록 없이 DB 사본 읽기)가 옛 DB에서 통과한다."""
+    _drop_estimate_from_database_copy(app_settings_path)
+    with session_scope() as session:
+        assert "unconfirmedCallCostUsd" not in session.get(AppSetting, "llm").value
+    assert run_check_config(None, None, register=False) == 0
 
 
 def test_confirmed_zero_replaces_estimate_and_is_not_charged_again(search_env):
