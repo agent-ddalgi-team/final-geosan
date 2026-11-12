@@ -181,6 +181,7 @@ export default function OpportunityDetailPage() {
                 evalId={data.evalId}
                 items={data.reviewItems}
                 onReplied={() => setTimelineVersion((n) => n + 1)}
+                onMemoSaved={() => setTimelineVersion((n) => n + 1)}
                 homepageUrl={
                   data.header.homepageUrl && /^https?:\/\/\S+$/.test(data.header.homepageUrl)
                     ? data.header.homepageUrl
