@@ -422,7 +422,7 @@ export default function OpportunityListPage() {
         onSearch={search}
         onClearSearch={clearSearch}
         sort={sort}
-        // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기와 요청 모양이 그대로).
+        // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기가 그대로 열린다). 서버에는 세 묶음 순으로 달라고 한다(#610).
         onSort={(value) => update({ sort: value === 'recent' ? 'recent' : null })}
         // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
         showFlat={processMode}
