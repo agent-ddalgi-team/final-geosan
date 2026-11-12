@@ -1,6 +1,6 @@
 // 근거 상세(S2): 영역 순서 / 질문 3개+펼치기 / 요구 0개 문구 / 확인·추정 글자 / 점수 접힘 / 404 (+ 요구 표, 오류).
 // 서버 호출(getOpportunityDetail)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
@@ -325,7 +325,7 @@ describe('OpportunityDetailPage', () => {
     expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
   });
 
-  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보이고, 홈페이지를 못 찾았으면 띠가 보인다 (#210, #596)', async () => {
+  it('상세 머리에 기업 요약(한 줄·특징·대표번호)이 보인다 (#210)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({ ...base, header: { ...base.header, homepageStatus: 'NOT_FOUND' } }),
     );
@@ -335,20 +335,31 @@ describe('OpportunityDetailPage', () => {
     );
     expect(screen.getByTestId('company-highlights')).toBeInTheDocument();
     expect(screen.getByTestId('company-phone-link')).toHaveTextContent('041-000-0000');
-    expect(screen.getByTestId('homepage-band')).toHaveTextContent('홈페이지 못 찾음');
+    // 홈페이지 띠는 없애고(#596) 점수 줄 옆 "조사 중단 · 이유" 꼬리표로 대신한다.
+    expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
   });
 
-  it('홈페이지가 확정이거나 AI가 찾은 상태, 확신이 낮은 상태면 띠가 없다 (#210, #596)', async () => {
-    mockedGet.mockResolvedValueOnce(reply(base));
+  it.each([
+    ['RUNNING', '조사 중'],
+    ['NO_SCORE_EVIDENCE', '조사 중단 · 점수 근거 없음'],
+    ['NOT_FOUND', '조사 중단 · 홈페이지 못 찾음'],
+    ['READ_FAILED', '조사 중단 · 홈페이지 읽기 실패'],
+    ['NOT_TRIED', '조사 중단 · 조사 안 됨'],
+  ] as const)('조사 상태 %s면 점수 줄 옆에 "%s"가 보인다 (#596)', async (state, text) => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, researchState: state } }),
+    );
     renderPage();
-    await screen.findByTestId('company-summary-line');
-    expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
-    cleanup();
+    expect(await screen.findByTestId('detail-research-state')).toHaveTextContent(text);
+  });
+
+  it('조사 상태가 없으면(점수가 남) 꼬리표가 없고, 확신이 낮은 홈페이지에도 확인 표시가 없다 (#596)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({ ...base, header: { ...base.header, homepageStatus: 'NEEDS_CONFIRMATION' } }),
     );
     renderPage();
     await screen.findByTestId('company-summary-line');
+    expect(screen.queryByTestId('detail-research-state')).not.toBeInTheDocument();
     expect(screen.queryByTestId('homepage-band')).not.toBeInTheDocument();
     expect(screen.queryByTestId('homepage-needs-confirm')).not.toBeInTheDocument();
   });

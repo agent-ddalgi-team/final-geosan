@@ -266,7 +266,7 @@ class CardRecords(_ApiModel):
 
 
 ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
-ResearchState = Literal["RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED"]
+ResearchState = Literal["RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED", "NO_SCORE_EVIDENCE"]
 
 
 class FactoryProfile(_ApiModel):
@@ -343,8 +343,8 @@ class OpportunityCard(_ApiModel):
     research_state: ResearchState | None = Field(
         default=None,
         description=(
-            "조사가 끝나지 않은 후보 찾기 회사의 조사 상태(#596). 화면은 '점수 전' 옆 꼬리표. "
-            "조사가 끝났거나 사례 파일 회사면 null"
+            "점수가 아직 없는 찾은 회사의 조사 상태(#596). 카드는 RUNNING이면 '조사 중', "
+            "나머지는 '조사 중단'. 점수가 있거나 사례 파일 회사면 null"
         ),
     )
 
@@ -356,6 +356,10 @@ class OpportunityCard(_ApiModel):
 
 class DetailHeader(_ApiModel):
     score_state: ScoreState
+    research_state: ResearchState | None = Field(
+        default=None,
+        description="카드와 같은 조사 상태(#596). 상세는 '조사 중단 · 이유' 꼬리표로 보인다",
+    )
     relation_confirmed_at: date | None
     relation_confirmed_by: str | None
     homepage_status: Literal["AI_FOUND", "NEEDS_CONFIRMATION", "CONFIRMED", "NOT_FOUND"] | None = (

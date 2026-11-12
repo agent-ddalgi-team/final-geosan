@@ -849,6 +849,25 @@
             "title": "Researchstale",
             "type": "boolean"
           },
+          "researchState": {
+            "anyOf": [
+              {
+                "enum": [
+                  "RUNNING",
+                  "NOT_FOUND",
+                  "READ_FAILED",
+                  "NOT_TRIED",
+                  "NO_SCORE_EVIDENCE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드와 같은 조사 상태(#596). 상세는 '조사 중단 · 이유' 꼬리표로 보인다",
+            "title": "Researchstate"
+          },
           "researchedAt": {
             "anyOf": [
               {
@@ -2590,6 +2609,25 @@
           },
           "relationStatus": {
             "$ref": "#/components/schemas/RelationStatus"
+          },
+          "researchState": {
+            "anyOf": [
+              {
+                "enum": [
+                  "RUNNING",
+                  "NOT_FOUND",
+                  "READ_FAILED",
+                  "NOT_TRIED",
+                  "NO_SCORE_EVIDENCE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "점수가 아직 없는 찾은 회사의 조사 상태(#596). 카드는 RUNNING이면 '조사 중', 나머지는 '조사 중단'. 점수가 있거나 사례 파일 회사면 null",
+            "title": "Researchstate"
           },
           "scoreDisplay": {
             "description": "'<E>점 · <n>/<전체>'(예: '77점 · 7/8'), 판정 0개면 '--', 소개서 묶음이면 '참고 ' 접두(예: '참고 50점 · 3/8') (BR10.2, PM 결정 2026-10-28 #180)",

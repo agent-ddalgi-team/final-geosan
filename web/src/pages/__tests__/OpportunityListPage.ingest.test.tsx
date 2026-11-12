@@ -96,10 +96,11 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
 
   it.each([
     ['RUNNING', '점수 전 · 조사 중'],
-    ['NOT_FOUND', '점수 전 · 홈페이지 못 찾음'],
-    ['READ_FAILED', '점수 전 · 홈페이지 읽기 실패'],
-    ['NOT_TRIED', '점수 전 · 조사 안 됨'],
-  ] as const)('조사 상태 %s면 "점수 전" 옆에 이유가 붙는다(#596)', async (state, text) => {
+    ['NO_SCORE_EVIDENCE', '점수 전 · 조사 중단'],
+    ['NOT_FOUND', '점수 전 · 조사 중단'],
+    ['READ_FAILED', '점수 전 · 조사 중단'],
+    ['NOT_TRIED', '점수 전 · 조사 중단'],
+  ] as const)('조사 상태 %s면 카드에는 "%s"만 보인다(이유는 상세, #596)', async (state, text) => {
     mockedGet.mockResolvedValueOnce(reply([{ ...found, researchState: state }]));
     renderPage();
     const card = within(await screen.findByTestId('opportunity-card'));
@@ -107,20 +108,12 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.getByTestId('card-research-state')).toHaveAttribute('data-research-state', state);
   });
 
-  it('조사 상태가 없거나 모르는 값이면 "점수 전"만 보인다(#596)', async () => {
-    mockedGet.mockResolvedValueOnce(
-      reply([
-        { ...found, researchState: null },
-        { ...found, oppId: 'opp-x', researchState: 'SOMETHING' as never },
-      ]),
-    );
+  it('조사 상태가 없으면(점수가 났거나 옛 응답) "점수 전"만 보이고 꼬리표가 없다(#596)', async () => {
+    mockedGet.mockResolvedValueOnce(reply([{ ...found, researchState: null }]));
     renderPage();
-    const cards = await screen.findAllByTestId('opportunity-card');
-    for (const node of cards) {
-      const card = within(node);
-      expect(card.getByTestId('card-score')).toHaveTextContent(candidateSearch.beforeScore);
-      expect(card.queryByTestId('card-research-state')).not.toBeInTheDocument();
-    }
+    const card = within(await screen.findByTestId('opportunity-card'));
+    expect(card.getByTestId('card-score')).toHaveTextContent(candidateSearch.beforeScore);
+    expect(card.queryByTestId('card-research-state')).not.toBeInTheDocument();
   });
 
   it('들어온 시각을 모르면 날짜 꼬리표가 없고 고른 이유는 계속 보인다', async () => {

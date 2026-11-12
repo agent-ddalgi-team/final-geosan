@@ -436,9 +436,12 @@ export const candidateSearch = {
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
-  /** "점수 전" 옆 조사 상태(#596). 서버 researchState 코드 → 쉬운 말. */
-  researchState: {
-    RUNNING: '조사 중',
+  /** 카드 "점수 전" 옆 조사 상태(#596): RUNNING이면 "조사 중", 나머지는 모두 "조사 중단". */
+  researchRunning: '조사 중',
+  researchStopped: '조사 중단',
+  /** 상세 점수 줄 옆 "조사 중단 · 이유"의 이유(#596). 서버 researchState 코드 → 쉬운 말. */
+  researchStopReason: {
+    NO_SCORE_EVIDENCE: '점수 근거 없음',
     NOT_FOUND: '홈페이지 못 찾음',
     READ_FAILED: '홈페이지 읽기 실패',
     NOT_TRIED: '조사 안 됨',

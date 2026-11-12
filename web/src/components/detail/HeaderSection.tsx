@@ -7,10 +7,11 @@ import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
 import CompanyGlance from './CompanyGlance';
-import CompanySummary, { HomepageBand } from './CompanySummary';
+import CompanySummary from './CompanySummary';
 import HomepageControls from './HomepageControls';
 import RelationControl from './RelationControl';
 import {
+  candidateSearch,
   cardRows,
   classificationLabels,
   classificationTone,
@@ -142,6 +143,19 @@ export default function HeaderSection({
           classificationCode={header.classificationCode}
           testId="detail-score"
         />
+        {/* 점수가 아직 없으면 조사 상태와 멈춘 이유(#596). "홈페이지 못 찾음" 띠는 이 꼬리표로 대신한다. */}
+        {header.researchState ? (
+          <span data-testid="detail-research-state" data-research-state={header.researchState}>
+            <StatusTag tone={header.researchState === 'RUNNING' ? 'neutral' : 'wait'}>
+              {header.researchState === 'RUNNING'
+                ? candidateSearch.researchRunning
+                : `${candidateSearch.researchStopped} · ${labelFor(
+                    candidateSearch.researchStopReason,
+                    header.researchState,
+                  )}`}
+            </StatusTag>
+          </span>
+        ) : null}
         {header.isVirtual ? (
           <StatusTag tone="wait" data-testid="detail-virtual-tag">
             {cardRows.virtualTag}
@@ -157,7 +171,6 @@ export default function HeaderSection({
         ) : null}
         <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
       </div>
-      <HomepageBand status={header.homepageStatus} />
       <div
         data-testid="detail-meta"
         style={{ display: 'flex', flexWrap: 'wrap', gap: 24, color: colors.textSecondary }}
