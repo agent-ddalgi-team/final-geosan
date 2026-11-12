@@ -52,6 +52,34 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AnalysisBasis": {
+        "properties": {
+          "closedWindowDays": {
+            "title": "Closedwindowdays",
+            "type": "integer"
+          },
+          "companyCount": {
+            "title": "Companycount",
+            "type": "integer"
+          },
+          "minSampleForRatio": {
+            "title": "Minsampleforratio",
+            "type": "integer"
+          },
+          "olderClosedExcluded": {
+            "title": "Olderclosedexcluded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "minSampleForRatio",
+          "closedWindowDays",
+          "companyCount",
+          "olderClosedExcluded"
+        ],
+        "title": "AnalysisBasis",
+        "type": "object"
+      },
       "ApprovalEligibility": {
         "properties": {
           "allowedPurposes": {
@@ -326,6 +354,112 @@
         "title": "ClassificationCode",
         "type": "string"
       },
+      "CompanyRow": {
+        "properties": {
+          "contactCount": {
+            "$ref": "#/components/schemas/ContactCount"
+          },
+          "daysSinceFirstContact": {
+            "title": "Dayssincefirstcontact",
+            "type": "integer"
+          },
+          "daysToOutcome": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daystooutcome"
+          },
+          "firstContactAt": {
+            "format": "date",
+            "title": "Firstcontactat",
+            "type": "string"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "lastContactAt": {
+            "format": "date",
+            "title": "Lastcontactat",
+            "type": "string"
+          },
+          "lostReasonCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomeat"
+          },
+          "outcomeStatus": {
+            "$ref": "#/components/schemas/OutcomeStatus"
+          },
+          "processCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "salesStep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "processCodes",
+          "industries",
+          "contactCount",
+          "outcomeStatus",
+          "salesStep",
+          "lostReasonCode",
+          "firstContactAt",
+          "lastContactAt",
+          "daysSinceFirstContact",
+          "outcomeAt",
+          "daysToOutcome"
+        ],
+        "title": "CompanyRow",
+        "type": "object"
+      },
       "ConfigUi": {
         "properties": {
           "accessProtectionEnabled": {
@@ -401,6 +535,27 @@
           }
         },
         "title": "ContactCount",
+        "type": "object"
+      },
+      "ContactReach": {
+        "description": "방법별 시도(tried)와 그중 연결(reached). 키는 계약의 대문자 코드 그대로다.",
+        "properties": {
+          "CALL": {
+            "$ref": "#/components/schemas/ReachCount"
+          },
+          "EMAIL": {
+            "$ref": "#/components/schemas/ReachCount"
+          },
+          "VISIT": {
+            "$ref": "#/components/schemas/ReachCount"
+          }
+        },
+        "required": [
+          "CALL",
+          "EMAIL",
+          "VISIT"
+        ],
+        "title": "ContactReach",
         "type": "object"
       },
       "Dashboard": {
@@ -1220,6 +1375,21 @@
         "title": "Envelope[ReviewCheckResponse]",
         "type": "object"
       },
+      "Envelope_SalesAnalysis_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SalesAnalysis"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[SalesAnalysis]",
+        "type": "object"
+      },
       "Envelope_SalesQuestionsView_": {
         "properties": {
           "data": {
@@ -1555,6 +1725,79 @@
           "count"
         ],
         "title": "IndustryCount",
+        "type": "object"
+      },
+      "IndustryRow": {
+        "properties": {
+          "avgContactsToWon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstowon"
+          },
+          "contactReach": {
+            "$ref": "#/components/schemas/ContactReach"
+          },
+          "contactedCount": {
+            "title": "Contactedcount",
+            "type": "integer"
+          },
+          "inProgressCount": {
+            "title": "Inprogresscount",
+            "type": "integer"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          },
+          "lostCount": {
+            "title": "Lostcount",
+            "type": "integer"
+          },
+          "lostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCount"
+            },
+            "title": "Lostreasons",
+            "type": "array"
+          },
+          "onHoldCount": {
+            "title": "Onholdcount",
+            "type": "integer"
+          },
+          "ratios": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ratios"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contactedCount",
+          "inProgressCount",
+          "onHoldCount",
+          "wonCount",
+          "lostCount",
+          "avgContactsToWon",
+          "contactReach",
+          "lostReasons",
+          "ratios",
+          "industry"
+        ],
+        "title": "IndustryRow",
         "type": "object"
       },
       "IngestAccepted": {
@@ -2006,6 +2249,23 @@
         ],
         "title": "LostReasonCode",
         "type": "string"
+      },
+      "LostReasonCount": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/LostReasonCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "LostReasonCount",
+        "type": "object"
       },
       "MainPhoneConfirmRequest": {
         "additionalProperties": false,
@@ -3257,6 +3517,99 @@
         "title": "ProcessLinkView",
         "type": "object"
       },
+      "ProcessRow": {
+        "properties": {
+          "avgContactsToWon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstowon"
+          },
+          "byIndustry": {
+            "items": {
+              "$ref": "#/components/schemas/IndustryRow"
+            },
+            "title": "Byindustry",
+            "type": "array"
+          },
+          "contactReach": {
+            "$ref": "#/components/schemas/ContactReach"
+          },
+          "contactedCount": {
+            "title": "Contactedcount",
+            "type": "integer"
+          },
+          "inProgressCount": {
+            "title": "Inprogresscount",
+            "type": "integer"
+          },
+          "lostCount": {
+            "title": "Lostcount",
+            "type": "integer"
+          },
+          "lostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCount"
+            },
+            "title": "Lostreasons",
+            "type": "array"
+          },
+          "onHoldCount": {
+            "title": "Onholdcount",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "title": "Processname",
+            "type": "string"
+          },
+          "ratios": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ratios"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contactedCount",
+          "inProgressCount",
+          "onHoldCount",
+          "wonCount",
+          "lostCount",
+          "avgContactsToWon",
+          "contactReach",
+          "lostReasons",
+          "ratios",
+          "processCode",
+          "processName",
+          "byIndustry"
+        ],
+        "title": "ProcessRow",
+        "type": "object"
+      },
       "Purpose": {
         "enum": [
           "NEW_PROPOSAL",
@@ -3469,6 +3822,86 @@
         ],
         "title": "QuestionTargetKind",
         "type": "string"
+      },
+      "Ratios": {
+        "description": "표본이 설정 기준 이상일 때만 싣는 비율(소수 2자리).",
+        "properties": {
+          "reach": {
+            "$ref": "#/components/schemas/ReachRatios"
+          },
+          "won": {
+            "title": "Won",
+            "type": "number"
+          }
+        },
+        "required": [
+          "won",
+          "reach"
+        ],
+        "title": "Ratios",
+        "type": "object"
+      },
+      "ReachCount": {
+        "properties": {
+          "reached": {
+            "title": "Reached",
+            "type": "integer"
+          },
+          "tried": {
+            "title": "Tried",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reached",
+          "tried"
+        ],
+        "title": "ReachCount",
+        "type": "object"
+      },
+      "ReachRatios": {
+        "properties": {
+          "CALL": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call"
+          },
+          "EMAIL": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "VISIT": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visit"
+          }
+        },
+        "required": [
+          "CALL",
+          "EMAIL",
+          "VISIT"
+        ],
+        "title": "ReachRatios",
+        "type": "object"
       },
       "Reasons": {
         "properties": {
@@ -3904,6 +4337,40 @@
         ],
         "title": "ReviewStatus",
         "type": "string"
+      },
+      "SalesAnalysis": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/AnalysisBasis"
+          },
+          "byProcess": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessRow"
+            },
+            "title": "Byprocess",
+            "type": "array"
+          },
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyRow"
+            },
+            "title": "Companies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "asOf",
+          "basis",
+          "byProcess",
+          "companies"
+        ],
+        "title": "SalesAnalysis",
+        "type": "object"
       },
       "SalesAnswerOption": {
         "properties": {
@@ -5515,6 +5982,25 @@
           }
         },
         "summary": "Save Question Reply"
+      }
+    },
+    "/api/v1/sales-analysis": {
+      "get": {
+        "description": "공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.",
+        "operationId": "sales_analysis_api_v1_sales_analysis_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SalesAnalysis_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sales Analysis"
       }
     },
     "/api/v1/sales-questions": {
