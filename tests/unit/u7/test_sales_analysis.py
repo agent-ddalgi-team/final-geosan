@@ -21,6 +21,7 @@ from geosan.dashboard.sales_analysis import (
 from geosan.evidence.transfer import KST
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Note, Outcome
+from geosan.rules.codes import LostReasonCode
 from geosan.storage.base import new_id
 from geosan.storage.session import session_scope
 from tests.unit.u7 import test_dashboard as support
@@ -32,6 +33,8 @@ NOW = datetime(2026, 11, 13, 9, 0, tzinfo=KST)
 PROCESSES = [("ANODIZING", "아노다이징"), ("ZINC", "아연도금"), ("CHROMATE", "크로메이트")]
 INDUSTRIES = ["방위산업", "자동차 부품"]
 VIEWER = {"X-Staff-Key": "viewer"}
+# 계산 함수에 넘기는 거절 이유 코드표 순서(계약 C0). 창구가 넘기는 값과 같다.
+LOST_REASON_ORDER = [code.value for code in LostReasonCode]
 
 
 def line(status="IN_PROGRESS", method=None, result=None, day=None, reason=None, at=NOW):
@@ -68,6 +71,8 @@ def analyse(companies, min_sample=10, window=365, now=NOW):
         min_sample_for_ratio=min_sample,
         closed_window_days=window,
         now=now,
+        tz=KST,
+        lost_reason_order=LOST_REASON_ORDER,
     )
 
 
@@ -120,7 +125,7 @@ def test_contact_day_falls_back_to_the_saved_day_in_korea():
     """Given 접촉 날짜가 비어 있는 옛 행 / When 계산 / Then 저장한 날(한국 날짜)을 쓴다."""
     saved = datetime(2026, 11, 2, 23, 30, tzinfo=KST)
     row = summarize_company(
-        company("옛기록", [line(method="EMAIL", result="ABSENT", at=saved)]), NOW.date()
+        company("옛기록", [line(method="EMAIL", result="ABSENT", at=saved)]), NOW.date(), tz=KST
     )
     assert row.first_contact_at == date(2026, 11, 2)
     assert row.outcome_at is None and row.days_to_outcome is None
