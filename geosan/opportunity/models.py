@@ -73,6 +73,8 @@ class Customer(CommonColumns, Base):
     factory_raw_materials: Mapped[str | None] = mapped_column(Text)
     factory_employee_count: Mapped[int | None] = mapped_column(Integer)
     factory_scale: Mapped[str | None] = mapped_column(String(40))
+    # 공장 등록 업종명(#617). AI 추정이 아니라 등록 사실로 화면에 보인다.
+    factory_industry_name: Mapped[str | None] = mapped_column(String(200))
     factory_profile_date: Mapped[date | None] = mapped_column(Date)
 
 

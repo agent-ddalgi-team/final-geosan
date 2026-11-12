@@ -330,6 +330,8 @@ export interface FactoryProfile {
   /** 공장 등록 때 적은 인원. 갱신되지 않을 수 있어 화면은 언제나 "(추정)"으로 보인다. */
   employeeCount: number | null;
   scale: string | null;
+  /** 공장 등록 업종명(#617). 옛 응답에는 없다. */
+  industryName?: string | null;
   /** 자료 기준일 YYYY-MM-DD */
   fileDate: string;
 }
@@ -585,6 +587,18 @@ export interface ReviewItem {
    * 그 항목의 설정 단계 이름이 설정 순서대로 들어 있다(예: ["정확히 일치", "일부 가능"]). 다른 줄은 null이거나 없다.
    */
   stepOptions?: string[] | null;
+  /**
+   * 자료 줄(DATA_NOT_FOUND·DATA_INSUFFICIENT)의 최신 자료 조사 메모 하나(#259·#260, 더하는 변경 2026-11-12).
+   * 취소되지 않은 것만 온다. 없으면 null이고 다른 종류의 줄은 언제나 null이다. 영업 메모와 같은 취급(내부 전용).
+   */
+  note?: ReviewItemNote | null;
+}
+
+/** 자료 줄에 붙은 메모(C1 reviewItems[].note). by는 담당자 키. */
+export interface ReviewItemNote {
+  text: string;
+  by: string;
+  at: string;
 }
 
 export interface OpportunityDetail {
@@ -634,6 +648,11 @@ export interface NoteRequest {
   text: string;
   kind?: NoteKind;
   evalId?: string | null;
+  /**
+   * 검토사항 자료 줄 번호(#259·#260, 더하는 변경 2026-11-12). 있으면 kind는 RESEARCH여야 하고(아니면 400),
+   * 질문 줄이면 400, 없는 줄이면 404, 글자 상한 500자. 없으면 지금과 같은 일반 메모.
+   */
+  itemId?: string | null;
 }
 
 export interface NoteResponse extends RecordMeta {
@@ -804,6 +823,55 @@ export interface RecordCancelResponse {
   recordKind: RecordKind;
   cancelledBy: string;
   cancelledAt: string;
+}
+
+// ---------- GET /opportunities/{oppId}/peers (비슷한 회사 참고, 2026-11-12, 더하는 변경 #268·#269) ----------
+
+/** 접촉 방법 하나의 연결 수(연결됨 reached / 시도 tried). */
+export interface PeerContactReach {
+  reached: number;
+  tried: number;
+}
+
+/**
+ * 비슷한 회사 요약. 건수만 싣고 메모 글은 넣지 않는다.
+ * stageCounts의 키는 영업 단계 코드(outcomeStatus), topLostReasons는 많은 순 최대 3.
+ */
+export interface PeersSummary {
+  processCount: number;
+  industryCount: number;
+  stageCounts: Record<string, number>;
+  topLostReasons: { code: string; count: number }[];
+  contactReach: Partial<Record<ContactMethod, PeerContactReach>>;
+}
+
+/** 비슷한 회사의 최근 메모 한 줄(서버가 120자에서 자른다). 영업 메모와 같은 취급(내부 전용). */
+export interface PeerNote {
+  text: string;
+  by: string;
+  at: string;
+}
+
+export interface PeerCompany {
+  oppId: string;
+  name: string;
+  processCodes: string[];
+  industries: string[];
+  /** 영업 단계 코드. 기록이 없으면 null. */
+  outcomeStatus: string | null;
+  /** 거절 이유 코드. 단계가 거절일 때만. */
+  lostReasonCode: string | null;
+  lastContactAt: string | null;
+  lastContactMethod: ContactMethod | null;
+  lastNote: PeerNote | null;
+  sameProcess: boolean;
+  sameIndustry: boolean;
+}
+
+export interface PeersResponse {
+  summary: PeersSummary;
+  /** 최대 5곳. 없으면 빈 배열. */
+  companies: PeerCompany[];
 }
 
 export type ConfigUiEnvelope = Envelope<ConfigUi>;

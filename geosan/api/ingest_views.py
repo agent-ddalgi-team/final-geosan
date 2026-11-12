@@ -64,6 +64,7 @@ def factory_profile(customer: Customer) -> FactoryProfile | None:
         raw_materials=customer.factory_raw_materials,
         employee_count=customer.factory_employee_count,
         scale=customer.factory_scale,
+        industry_name=customer.factory_industry_name,
         file_date=customer.factory_profile_date,
     )
 

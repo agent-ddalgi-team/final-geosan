@@ -6,6 +6,8 @@
 // AI 제안 줄(#498, 2026-11-09)에는 체크 상자 대신 [확정]·[고치기]가 붙는다. [확정]은 기존 체크 저장 그대로
 // (checked:true), [고치기]는 줄 안에 드롭다운이 열려(모달 없음) 서버가 준 단계 하나를 고르고 checked:true와 stepLabel을
 // 함께 보낸다. 공정 연결 제안은 1차에 [확정]만. 저장이 끝나면 점수가 바뀌므로 상세를 다시 불러오게 알린다.
+// 자료 줄에는 [메모 적기]도 붙는다(#260, 2026-11-12): 줄 아래에 인라인 입력이 열리고(모달 없음, 500자) 저장하면
+// "메모: … — 박 이사 · 11/20"이 보인다(주소는 눌러 새 창으로). 있으면 [메모 고치기]. 기록용이라 점수·체크는 바뀌지 않는다.
 // 자료 줄(#260, 2026-11-04)에는 [붙여넣고 조사]가 붙는다: 줄 아래에 출처 주소·공개 본문 입력이 열리고(모달 없음),
 // 기존 홈페이지 조사 요청으로 근거를 뽑아 다시 평가한다. 체크는 자동으로 바뀌지 않는다. 한 번에 한 줄만 열고 조사 중에는 다른 줄도 잠근다.
 import { useEffect, useState } from 'react';
@@ -18,6 +20,7 @@ import { colors, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
 import { useFrame } from '../frame/FrameContext';
+import GapMemoEditor, { linkifyMemo } from './GapMemoEditor';
 import PasteResearchForm from './PasteResearchForm';
 
 /**
@@ -33,6 +36,8 @@ export interface ReviewAreaProps {
   items: ReviewItem[];
   /** 답 저장이 끝났을 때 알린다(활동 이력을 새로 불러오게). */
   onReplied?: () => void;
+  /** 자료 줄 메모 저장이 끝났을 때 알린다(활동 이력을 새로 불러오게). 점수는 안 바뀌므로 상세는 다시 안 읽는다. */
+  onMemoSaved?: () => void;
   /** AI 제안 줄의 [확정]·[고치기] 저장이 끝났을 때 알린다(점수가 바뀌므로 상세를 다시 불러오게). */
   onProposalSaved?: () => void;
   /** 확정된 홈페이지 주소(http/https). [붙여넣고 조사]의 출처 칸에 미리 채운다. 없으면 빈 칸. */
@@ -85,6 +90,7 @@ export default function ReviewArea({
   evalId,
   items: initialItems,
   onReplied,
+  onMemoSaved,
   onProposalSaved,
   homepageUrl = null,
   onResearched,
@@ -101,6 +107,8 @@ export default function ReviewArea({
   // [고치기] 드롭다운: 한 번에 한 줄만 연다. 고른 단계가 없으면 저장할 수 없다.
   const [fixingId, setFixingId] = useState<string | null>(null);
   const [stepDraft, setStepDraft] = useState('');
+  // [메모 적기]: 한 번에 한 줄만 연다.
+  const [memoOpenId, setMemoOpenId] = useState<string | null>(null);
   // [붙여넣고 조사]: 한 번에 한 줄만 연다. 조사 중에는 다른 줄의 단추도 잠근다.
   const [pasteOpenId, setPasteOpenId] = useState<string | null>(null);
   const [pasteBusy, setPasteBusy] = useState(false);
@@ -341,6 +349,19 @@ export default function ReviewArea({
                   {isGapLine(item) ? (
                     <Button
                       size="small"
+                      disabled={!canRecord || !staffKey}
+                      onClick={() =>
+                        setMemoOpenId((open) => (open === item.itemId ? null : item.itemId))
+                      }
+                      aria-label={reviewArea.memoButtonLabel(item.text)}
+                      data-testid="review-memo-button"
+                    >
+                      {item.note ? reviewArea.memoEdit : reviewArea.memoAdd}
+                    </Button>
+                  ) : null}
+                  {isGapLine(item) ? (
+                    <Button
+                      size="small"
                       disabled={!canRecord || !staffKey || pasteBusy}
                       onClick={() => {
                         setPasteNotice(null);
@@ -365,6 +386,41 @@ export default function ReviewArea({
                       setPasteNotice(notice);
                       setPasteOpenId(null);
                       onResearched?.();
+                    }}
+                  />
+                ) : null}
+                {isGapLine(item) && item.note && memoOpenId !== item.itemId ? (
+                  <div data-testid="review-memo" style={{ marginLeft: 28 }}>
+                    <span>
+                      {reviewArea.memoPrefix} {linkifyMemo(item.note.text)}
+                    </span>
+                    {personName(item.note.by) && formatMonthDay(item.note.at) ? (
+                      <span data-testid="review-memo-by" style={secondary}>
+                        {' — '}
+                        {reviewArea.repliedBy(
+                          personName(item.note.by),
+                          formatMonthDay(item.note.at) ?? '',
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {isGapLine(item) && memoOpenId === item.itemId && staffKey ? (
+                  <GapMemoEditor
+                    oppId={oppId}
+                    itemId={item.itemId}
+                    evalId={evalId}
+                    staffKey={staffKey}
+                    initialText={item.note?.text ?? ''}
+                    onCancel={() => setMemoOpenId(null)}
+                    onSaved={(note) => {
+                      setItems((prev) =>
+                        prev.map((entry) =>
+                          entry.itemId === item.itemId ? { ...entry, note } : entry,
+                        ),
+                      );
+                      setMemoOpenId(null);
+                      onMemoSaved?.();
                     }}
                   />
                 ) : null}
