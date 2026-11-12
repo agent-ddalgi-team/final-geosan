@@ -7,7 +7,7 @@ from datetime import date
 
 from pytest_bdd import given, scenarios, then, when
 
-from geosan.opportunity.factory_profile import ProfileIndex, apply_to_customer
+from geosan.opportunity.factory_profile import ProfileIndex, apply_to_customer, road_key
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.session import session_scope
 from tests.unit.u1 import test_own_plating_review as plating
@@ -35,12 +35,21 @@ def profile_saved(records_env, tmp_path):
     return client, opp_id
 
 
-@given("목록 회사와 같은 시의 수질 명단 사업장이 저장돼 있다", target_fixture="context")
+@given(
+    "목록 회사와 같은 도로명·건물번호의 수질 명단 사업장이 저장돼 있다",
+    target_fixture="context",
+)
 def water_saved(records_env, tmp_path):
     client, opp_id = records_env
-    name, address = _company(opp_id)
-    city = " ".join(address.split()[:2])
-    support._store(tmp_path, [], [f"{name} 제2공장,금강유역환경청,{city} 가상로 99,위탁처리"])
+    # #613: 같은 시·군만으로는 붙이지 않고 도로명·건물번호까지 같아야 붙인다.
+    # 시드 회사 주소에는 도로명이 없어 가상 도로명 주소를 넣는다.
+    address = "충남 천안시 가상로 7"
+    with session_scope() as session:
+        customer = session.get(Customer, session.get(Opportunity, opp_id).customer_id)
+        customer.address = address
+        name = customer.name
+    assert road_key(address) is not None
+    support._store(tmp_path, [], [f"{name} 제2공장,금강유역환경청,{address},위탁처리"])
     return client, opp_id, detail(client, opp_id)
 
 
