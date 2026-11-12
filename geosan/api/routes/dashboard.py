@@ -7,11 +7,13 @@ from fastapi import APIRouter, Header, Request
 from pydantic import Field
 
 from geosan.api.deps import SessionDep, runtime_for
+from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
+    BreakdownSource,
     build_dashboard,
     classify_bookmarked,
     schedule_due_opp_ids,
@@ -64,13 +66,42 @@ class RecentActivityItem(_ApiModel):
     summary: str
 
 
+class BreakdownBasis(_ApiModel):
+    """막대에 세는 "대시보드 대상": 관심 / 진행 중 / 최근 12개월 성공. total은 그 기회 수."""
+
+    statuses: list[str]
+    total: int
+
+
+class ProcessBreakdownItem(_ApiModel):
+    process_code: str
+    process_name: str
+    count: int
+    ratio: float
+
+
+class IndustryBreakdownItem(_ApiModel):
+    industry: str
+    count: int
+    ratio: float
+    includes_proposed: bool
+
+
+class DashboardBreakdown(_ApiModel):
+    """공정별·산업군별 막대(#627). ratio = count ÷ basis.total, 소수 2자리."""
+
+    basis: BreakdownBasis
+    by_process: list[ProcessBreakdownItem]
+    by_industry: list[IndustryBreakdownItem]
+
+
 class Dashboard(_ApiModel):
     counts: DashboardCounts
     schedule: list[ScheduleItem]
     recent_activity: list[RecentActivityItem]
     as_of: datetime
-    # 공정·산업군 막대(breakdown)는 2차(#229)에서 붙인다. 없으면(null) 화면이 막대 줄을 숨긴다.
-    breakdown: None = None
+    # 가상 묶음이면 없다(null, 가상 사례는 집계에서 제외). 없으면 화면이 막대 줄을 숨긴다.
+    breakdown: DashboardBreakdown | None = None
 
 
 DashboardEnvelope = Envelope[Dashboard]
@@ -115,7 +146,10 @@ def dashboard(
     session: SessionDep,
     staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
 ):
-    """건수 10칸·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다."""
+    """건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대.
+
+    보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.
+    """
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
     now = utcnow()
@@ -125,6 +159,11 @@ def dashboard(
         staff_key=staff_key if runtime.app_settings.is_recording_staff(staff_key) else None,
         today=now.astimezone(KST).date(),
         now=now,
+        breakdown_source=BreakdownSource(
+            processes=[(row.code, row.name) for row in load_process_catalog(session, dataset_kind)],
+            industries=runtime.app_settings.industries,
+            count_proposed_industries=runtime.app_settings.dashboard.count_proposed_industries,
+        ),
     )
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),

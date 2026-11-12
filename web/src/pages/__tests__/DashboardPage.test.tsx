@@ -465,6 +465,63 @@ describe('DashboardPage', () => {
       expect(screen.queryByTestId('dashboard-breakdown-empty')).not.toBeInTheDocument();
     });
 
+    it('서버가 막대 없음(null)으로 보내면(가상 묶음) 막대 줄을 숨긴다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, breakdown: null }));
+      renderPage();
+      await screen.findByTestId('dashboard-counts');
+      expect(screen.queryByTestId('dashboard-breakdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('dashboard-breakdown-empty')).not.toBeInTheDocument();
+    });
+
+    it('서버가 집계한 값(#627)을 그대로 보인다: 대상 수·공정 순서·산업군 "AI 제안 포함"', async () => {
+      const fromServer: Dashboard = {
+        ...fixtureData,
+        breakdown: {
+          basis: {
+            statuses: [
+              'INTERESTED',
+              'IN_PROGRESS',
+              'SAMPLE_OR_REGISTRATION_APPROVED',
+              'WON_LAST_12M',
+            ],
+            total: 4,
+          },
+          byProcess: [
+            { processCode: 'ZINC_PLATING', processName: '아연도금', count: 1, ratio: 0.25 },
+            { processCode: 'ANODIZING', processName: '아노다이징', count: 4, ratio: 1 },
+            { processCode: 'PASSIVATION', processName: '부동태', count: 0, ratio: 0 },
+          ],
+          byIndustry: [
+            { industry: '방위산업', count: 2, ratio: 0.5, includesProposed: true },
+            { industry: '반도체', count: 0, ratio: 0, includesProposed: false },
+            { industry: '미확정', count: 2, ratio: 0.5, includesProposed: false },
+          ],
+        },
+      };
+      mockedGet.mockResolvedValueOnce(reply(fromServer));
+      renderPage();
+      const process = await screen.findByTestId('dashboard-by-process');
+      expect(screen.getByTestId('dashboard-breakdown-basis')).toHaveTextContent(
+        dashboardTexts.breakdownBasis(4),
+      );
+      const processRows = within(process).getAllByTestId('dashboard-by-process-row');
+      expect(processRows.map((row) => row.textContent)).toEqual([
+        '아연도금1곳 (25%)',
+        '아노다이징4곳 (100%)',
+        '부동태0곳 (0%)',
+      ]);
+      const industry = screen.getByTestId('dashboard-by-industry');
+      expect(within(industry).getByTestId('dashboard-by-industry-proposed')).toHaveTextContent(
+        dashboardTexts.breakdownProposed,
+      );
+      const industryRows = within(industry).getAllByTestId('dashboard-by-industry-row');
+      expect(industryRows.map((row) => row.textContent)).toEqual([
+        '방위산업2곳 (50%)',
+        '반도체0곳 (0%)',
+        '미확정2곳 (50%)',
+      ]);
+    });
+
     it('공정 9종은 0곳도 모두 보이고 "3곳 (38%)" 형식으로 개수와 비율을 글자로 보인다', async () => {
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();

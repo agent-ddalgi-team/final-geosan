@@ -15,6 +15,12 @@ import type {
   ReviewStatus,
 } from '../api/types';
 
+/** 달러 금액을 보이는 글자로(#549). 예: 0.74 → "$0.74", 30 → "$30.00". 1센트보다 작으면 "$0.01 미만". */
+export function usdText(value: number): string {
+  if (value > 0 && value < 0.01) return '$0.01 미만';
+  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export const classificationLabels: Record<ClassificationCode, string> = {
   FILTER_EXCLUDED: '대상 아님(제외)',
   FILTER_PENDING: '필수조건 확인 필요',
@@ -495,13 +501,37 @@ export const candidateSearch = {
     `(상 ${high.toLocaleString('ko-KR')} · 중 ${medium.toLocaleString('ko-KR')} · 하 ${low.toLocaleString('ko-KR')})`,
   previewRegistered: (n: number) => `영업 후보로 들어온 곳 ${n.toLocaleString('ko-KR')}곳`,
   previewAddableHigh: (n: number) => `아직 안 들어온 상 ${n.toLocaleString('ko-KR')}곳`,
-  /** 고른 지역에 AI가 아직 판단하지 않은 공장이 있을 때(#549 ②). 금액은 2단계에서 붙인다. */
-  previewUnjudged: (n: number) => `아직 AI 판단 전 ${n.toLocaleString('ko-KR')}곳`,
+  /** 고른 지역에 AI가 아직 판단하지 않은 공장이 있을 때(#549 ②). 예: "아직 AI 판단 전 17,358곳 · 판단에 약 $34.72" */
+  previewUnjudged: (n: number, judgeUsd: number) =>
+    `아직 AI 판단 전 ${n.toLocaleString('ko-KR')}곳 · 판단에 약 ${usdText(judgeUsd)}`,
+  /** 누르기 전 확인 줄의 예상 금액(#549 ②). 예: "예상 약 $2.00" */
+  previewEstimate: (totalUsd: number) => `예상 약 ${usdText(totalUsd)}`,
+  /**
+   * 한도를 넘어 단추를 잠글 때(#549 ②, 문장은 약속 C1 그대로).
+   * 예: "이번 달 남은 금액으로 약 8,400곳까지 판단할 수 있습니다 · 시·군을 골라 나눠 진행해 주세요"
+   */
+  previewBlocked: (judgeableRows: number) =>
+    `이번 달 남은 금액으로 약 ${judgeableRows.toLocaleString('ko-KR')}곳까지 판단할 수 있습니다 · 시·군을 골라 나눠 진행해 주세요`,
+  /** 서버가 한도 초과로 거부했을 때(422 INGEST_OVER_BUDGET). 서버 문장 두 개를 이어 보인다. */
+  overBudget: (message: string, nextAction: string) => `${message} · ${nextAction}`,
+  /** 머리 수집 요약의 끝 줄(#549). 예: "20곳을 더했습니다 · 실제 $0.74" */
+  addedWithCost: (n: number, actualUsd: number) =>
+    `${n.toLocaleString('ko-KR')}곳을 더했습니다 · 실제 ${usdText(actualUsd)}`,
   previewAdd: (n: number) => `누르면 최대 ${n.toLocaleString('ko-KR')}곳을 영업 후보로 더합니다`,
   previewNothingToAdd: '더할 공장이 없습니다',
   previewFree: '조건을 바꿔 보는 것은 비용이 들지 않습니다',
   previewLoading: '맞는 공장을 세는 중',
   previewFailed: '맞는 공장 수를 불러오지 못했습니다',
+} as const;
+
+/**
+ * 돈이 드는 단추(💰) 옆에 보이는 이번 달 AI 사용액(#549 ③). 서버의 월 합을 그대로 보인다.
+ * 예: "이번 달 AI 사용 $3.20 / $20.00"
+ */
+export const monthSpend = {
+  used: (usedUsd: number, limitUsd: number) =>
+    `이번 달 AI 사용 ${usdText(usedUsd)} / ${usdText(limitUsd)}`,
+  failed: '이번 달 AI 사용액을 불러오지 못했습니다',
 } as const;
 
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
@@ -577,7 +607,7 @@ export const homepageControls = {
   editButton: '고치기',
   /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
   addButton: '주소 넣기',
-  rerunButton: '다시 조사',
+  rerunButton: '다시 조사 💰',
   urlLabel: '홈페이지 주소',
   urlPlaceholder: 'https://',
   runWithUrl: '이 주소로 조사',
@@ -930,7 +960,7 @@ export const reviewArea = {
   /** "메모: 홈페이지 연혁에 2023 납품 기재" */
   memoPrefix: '메모:',
   memoSaveFailed: '메모를 저장하지 못했습니다. 다시 시도',
-  pasteButton: '붙여넣고 조사',
+  pasteButton: '붙여넣고 조사 💰',
   pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
   pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
   pasteUrlPlaceholder: 'https://',
@@ -944,6 +974,34 @@ export const reviewArea = {
   pasteRunning: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
   pasteLocked: '이 조사는 지금 다시 누를 수 없습니다.',
   pasteReload: '새로 불러오기',
+  /**
+   * 줄이 많을 때의 묶음(#619, PM 요청 2026-11-13). "확인 필요"만 펼쳐 두고 나머지 두 묶음은 접어 둔다.
+   * 줄 글은 서버가 준 그대로이고 여기에는 묶음 머리 문구만 둔다.
+   */
+  /** "확인 필요 0 / 3" — 펼쳐 둔 묶음의 줄만 센다. */
+  askProgress: (done: number, total: number) => `확인 필요 ${done} / ${total}`,
+  askEmpty: '지금 바로 확인할 줄은 없습니다. 아래 묶음은 눌러서 펼쳐 볼 수 있습니다.',
+  /** "아직 근거·자료가 없는 항목 10개 보기" / "AI 공정 연결 제안 7개 보기 · 아연도금, 아노다이징 외 5개" */
+  foldHead: (
+    group: 'gap' | 'process',
+    count: number,
+    open: boolean,
+    shown: readonly string[],
+    rest: number,
+    recorded: number,
+  ) => {
+    const title = group === 'gap' ? '아직 근거·자료가 없는 항목' : 'AI 공정 연결 제안';
+    const nameText =
+      shown.length > 0 ? ` · ${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''}` : '';
+    const recordedText = recorded > 0 ? ` · 기록한 줄 ${recorded}개` : '';
+    return `${open ? '▾' : '▸'} ${title} ${count}개 ${open ? '접기' : '보기'}${nameText}${recordedText}`;
+  },
+  foldListLabel: (group: 'gap' | 'process') =>
+    group === 'gap' ? '근거·자료가 없는 항목 목록' : 'AI 공정 연결 제안 목록',
+  /** 검토사항 맨 위 "왜 추천했나" 한 줄. 고른 이유·등록 사실은 바로 위 "이 회사 한눈에"에 있어 다시 적지 않는다. */
+  whyTitle: '왜 추천했나',
+  whyProcesses: (names: readonly string[]) => `연결된 공정: ${names.join(', ')}`,
+  whySeeGlance: '고른 이유와 등록 사실은 위 "이 회사 한눈에"에 있습니다.',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */

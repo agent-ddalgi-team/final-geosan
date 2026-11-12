@@ -1,5 +1,6 @@
 // 후보 가져오기 조건 칸(#316, 결정 2026-11-05): 공정(1개 이상)·지역·산업을 고르고 [영업 후보로 더하기 💰]를 누른다.
 // 공정을 고르면 맞는 공장 수 줄이 바로 보인다(#549 ①, GET /ingest/preview — 저장된 판단만 세서 0원).
+// 그 아래 확인 줄에 누르기 전 예상 금액과 이번 달 사용액을 보이고, 한도를 넘으면 단추를 잠근다(#549 ②).
 // 선택지는 밖에서 넘겨받는다(설정 값이라 코드에 직접 쓰지 않는다). 모달 없이 인라인이다.
 // 누르면 서버가 회차를 만든 직후 바로 응답하고(POST /ingest), 진행은 목록 머리 수집 요약이 서버에서 다시 읽어 보인다.
 // 보기 전용(viewer)이면 통째로 숨기고, 담당자를 고르기 전에는 잠근다. 이미 가져오는 중이면 잠근다.
@@ -7,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { ApiError, getIngestPreview, postIngest } from '../../api/client';
 import type { IngestPreview, IngestRequest } from '../../api/types';
-import { candidateSearch, errorTexts } from '../../labels/ko';
+import { candidateSearch, errorTexts, monthSpend } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 
@@ -65,7 +66,9 @@ function previewText(data: IngestPreview): string {
     candidateSearch.previewRegistered(data.registeredCount),
     candidateSearch.previewAddableHigh(data.addableHighCount),
   ];
-  if (data.unjudgedCount > 0) parts.push(candidateSearch.previewUnjudged(data.unjudgedCount));
+  if (data.unjudgedCount > 0) {
+    parts.push(candidateSearch.previewUnjudged(data.unjudgedCount, data.estimate.judgeUsd));
+  }
   return parts.join(' · ');
 }
 
@@ -177,6 +180,12 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
             kind: 'error',
             text: `${candidateSearch.invalidCondition} (${caught.body.message})`,
           });
+        } else if (caught.status === 422 && caught.body.kind === 'INGEST_OVER_BUDGET') {
+          // 화면 잠금 뒤에 다른 사용으로 한도가 찼을 때. 서버 문장을 그대로 보인다.
+          setNotice({
+            kind: 'error',
+            text: candidateSearch.overBudget(caught.body.message, caught.body.nextAction),
+          });
         } else if (caught.status === 403) {
           setNotice({ kind: 'error', text: candidateSearch.pickStaffFirst });
         } else {
@@ -196,7 +205,10 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
     }
   }
 
-  const disabled = !canRecord || submitting || running || processes.length === 0;
+  // 예상 금액이 이번 달 남은 한도를 넘으면 잠근다. 서버도 같은 검사로 거부한다.
+  const blocked = preview.status === 'ok' ? preview.data.blocked : null;
+  const disabled =
+    !canRecord || submitting || running || processes.length === 0 || blocked !== null;
   const hint = !canRecord
     ? candidateSearch.pickStaffFirst
     : running
@@ -261,8 +273,21 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
                   ? candidateSearch.previewAdd(preview.data.addCount)
                   : candidateSearch.previewNothingToAdd}
                 {' · '}
+                {candidateSearch.previewEstimate(preview.data.estimate.totalUsd)}
+                {' · '}
+                {monthSpend.used(preview.data.month.usedUsd, preview.data.month.limitUsd)}
+                {' · '}
                 {candidateSearch.previewFree}
               </span>
+              {blocked ? (
+                <span
+                  role="alert"
+                  data-testid="ingest-preview-blocked"
+                  style={{ color: colors.error }}
+                >
+                  {candidateSearch.previewBlocked(blocked.judgeableRows)}
+                </span>
+              ) : null}
             </>
           )}
         </div>

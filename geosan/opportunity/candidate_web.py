@@ -65,10 +65,13 @@ class CandidateSearchResult:
     skipped_reason: str | None = None
 
 
-def load_search_context(batch_id: str, db_path=None, *, session=None) -> SearchContext:
-    """승인된 선택값과 공정 이름만 읽는다. 역량·거래·메모를 조회하지 않는다."""
+def load_search_context(batch_id: str, db_path=None, *, session=None, batch=None) -> SearchContext:
+    """승인된 선택값과 공정 이름만 읽는다. 역량·거래·메모를 조회하지 않는다.
+
+    batch를 넘기면 저장된 회차 대신 그 조건으로 만든다(#549 예상 금액: 회차를 만들기 전 계산).
+    """
     with nullcontext(session) if session is not None else session_scope(db_path) as session:
-        batch = session.get(IngestBatch, batch_id)
+        batch = batch if batch is not None else session.get(IngestBatch, batch_id)
         if batch is None:
             raise NotFoundError("후보 찾기 회차를 찾을 수 없습니다.")
         settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
