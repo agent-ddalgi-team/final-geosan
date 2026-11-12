@@ -24,7 +24,12 @@ from geosan.opportunity.factory_csv import _region_name
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.queries import normalize_address, normalize_name
-from geosan.opportunity.source_models import ComplexFetch, SourceFactoryRow
+from geosan.opportunity.source_models import (
+    ComplexFetch,
+    SourceFactoryRow,
+    public_source_kinds,
+    shares_public_source,
+)
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 
@@ -88,7 +93,7 @@ def _cached(session, fetch, batch, now):
         or fetch.status != "OK"
         or fetch.expires_at <= now
         or fetch.fetched_at > now
-        or fetch.dataset_kind != batch.dataset_kind
+        or not shares_public_source(fetch.dataset_kind, batch.dataset_kind)
         or fetch.is_virtual != batch.is_virtual
         or not isinstance(fetch.row_ids, list)
         or any(not isinstance(value, str) or not value for value in fetch.row_ids)
@@ -102,7 +107,7 @@ def _cached(session, fetch, batch, now):
     by_id = {row.row_id: row for row in stored}
     if len(by_id) != len(fetch.row_ids) or any(
         row.source_id not in (API_SOURCE_ID, CSV_SOURCE_ID)
-        or row.dataset_kind != batch.dataset_kind
+        or not shares_public_source(row.dataset_kind, batch.dataset_kind)
         or row.is_virtual != batch.is_virtual
         or row.missing_since is not None
         for row in stored
@@ -127,7 +132,7 @@ def read_cached_complex(batch_id, name, *, db_path=None):
                 ComplexFetch.complex_name == name,
                 ComplexFetch.status == "OK",
                 ComplexFetch.expires_at > now,
-                ComplexFetch.dataset_kind == batch.dataset_kind,
+                ComplexFetch.dataset_kind.in_(public_source_kinds(batch.dataset_kind)),
                 ComplexFetch.is_virtual == batch.is_virtual,
             )
             .order_by(ComplexFetch.fetched_at.desc(), ComplexFetch.fetch_id.desc())
@@ -150,7 +155,7 @@ def _file_rows(session, batch, collected):
     files = session.scalars(
         select(SourceFactoryRow).where(
             SourceFactoryRow.source_id == CSV_SOURCE_ID,
-            SourceFactoryRow.dataset_kind == batch.dataset_kind,
+            SourceFactoryRow.dataset_kind.in_(public_source_kinds(batch.dataset_kind)),
             SourceFactoryRow.is_virtual == batch.is_virtual,
             SourceFactoryRow.missing_since.is_(None),
         )
@@ -251,7 +256,7 @@ def store_complex_rows(
                 session.scalars(
                     select(SourceFactoryRow).where(
                         SourceFactoryRow.source_id == API_SOURCE_ID,
-                        SourceFactoryRow.dataset_kind == batch.dataset_kind,
+                        SourceFactoryRow.dataset_kind.in_(public_source_kinds(batch.dataset_kind)),
                         SourceFactoryRow.is_virtual == batch.is_virtual,
                     )
                 )

@@ -39,7 +39,7 @@ from geosan.opportunity.models import (
     OppProcessLink,
 )
 from geosan.opportunity.queries import normalize_address, normalize_name
-from geosan.opportunity.source_models import SourceFactoryRow
+from geosan.opportunity.source_models import SourceFactoryRow, shares_public_source
 from geosan.storage.base import new_id, utcnow
 
 
@@ -113,7 +113,10 @@ def register_candidates(
     if len(selected) != len(checked):
         raise InputError("이번 회차의 조건으로 고른 제조업 판단만 등록할 수 있습니다.")
     for row in rows.values():
-        if row.dataset_kind != batch.dataset_kind or row.is_virtual != batch.is_virtual:
+        if (
+            not shares_public_source(row.dataset_kind, batch.dataset_kind)
+            or row.is_virtual != batch.is_virtual
+        ):
             raise InputError("이번 회차의 자료 묶음에 있는 공개 공장 행만 등록할 수 있습니다.")
         if not normalize_name(row.company_name) or not normalize_address(row.address):
             raise InputError("공개 공장 행의 회사명과 주소를 확인해 주세요.")
