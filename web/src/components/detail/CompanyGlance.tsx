@@ -23,20 +23,13 @@ function httpUrl(value: string | null | undefined): string | null {
   return value && /^https?:\/\/\S+$/.test(value) ? value : null;
 }
 
-type GlanceLink =
-  | { kind: 'homepage'; url: string; needsConfirm: boolean }
-  | { kind: 'search' | 'evidence'; url: string }
-  | null;
+type GlanceLink = { kind: 'homepage' | 'search' | 'evidence'; url: string } | null;
 
 /** 공식 홈페이지 → 검색에서 찾은 페이지 → 등급이 가장 높은 근거의 출처 페이지 순으로 고른다. */
 export function pickGlanceLink(header: DetailHeader, evidence: EvidenceView[]): GlanceLink {
   const homepage = httpUrl(header.homepageUrl);
   if (homepage) {
-    return {
-      kind: 'homepage',
-      url: homepage,
-      needsConfirm: header.homepageStatus === 'NEEDS_CONFIRMATION',
-    };
+    return { kind: 'homepage', url: homepage };
   }
   const found = httpUrl(header.discoverySourceUrl);
   if (found) return { kind: 'search', url: found };
@@ -105,9 +98,6 @@ export default function CompanyGlance({
             {companyGlance.noHomepage}
           </span>
         )}
-        {link?.kind === 'homepage' && link.needsConfirm ? (
-          <StatusTag tone="wait">{companyGlance.needsConfirm}</StatusTag>
-        ) : null}
       </div>
 
       {summary || factoryIntro ? (

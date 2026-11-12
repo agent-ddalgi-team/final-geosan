@@ -59,7 +59,7 @@ describe('이 회사 한눈에(#563)', () => {
     expect(box.queryByText(companyGlance.needsConfirm)).not.toBeInTheDocument();
   });
 
-  it('확신이 낮은 홈페이지에는 "확인 필요"가 붙는다', () => {
+  it('확신이 낮은 홈페이지에도 "확인 필요"를 붙이지 않는다(#596, 확인 단추를 없앰)', () => {
     render(
       <CompanyGlance
         header={{
@@ -69,7 +69,7 @@ describe('이 회사 한눈에(#563)', () => {
         }}
       />,
     );
-    expect(screen.getByTestId('glance-homepage')).toHaveTextContent(companyGlance.needsConfirm);
+    expect(screen.getByTestId('glance-homepage')).not.toHaveTextContent(companyGlance.needsConfirm);
   });
 
   it('홈페이지가 없으면 검색에서 찾은 페이지, 그것도 없으면 등급이 가장 높은 근거 페이지를 보인다', () => {
