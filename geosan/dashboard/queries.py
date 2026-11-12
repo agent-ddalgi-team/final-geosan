@@ -12,14 +12,16 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
-from geosan.opportunity.models import Customer, Opportunity
+from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Bookmark, Note, Outcome, ReviewOpinion
 
 # 계약 C1: "이번 주 일정" = 기한이 지난 것부터 오늘 + 7일까지.
@@ -79,6 +81,67 @@ _OPINION_BOARD_KEYS = {
     None: "NO_OPINION",
 }
 
+# 계약 C1 breakdown: "대시보드 대상" = 관심 / 진행 중 / 최근 12개월 성공. 응답 basis.statuses에
+# 계약에 적힌 이름 그대로 싣는다.
+BREAKDOWN_STATUSES = (
+    "INTERESTED",
+    "IN_PROGRESS",
+    "SAMPLE_OR_REGISTRATION_APPROVED",
+    "WON_LAST_12M",
+)
+# 관심으로 켜 두고 아직 접촉 전(단계 기록 없음·미접촉)이면 "관심" 묶음이다(#356).
+_INTERESTED_STAGES = (None, "NOT_EXECUTED")
+_IN_PROGRESS_STAGES = ("IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED")
+# 계약 C1: 최근 12개월 성공 = 성사로 바뀐 기록이 오늘부터 365일 안.
+WON_WINDOW_DAYS = 365
+# 계약 C1: 산업군이 하나도 없는 회사는 맨 끝 "미확정" 줄에 센다.
+UNCONFIRMED_INDUSTRY = "미확정"
+# AI가 제안하고 사람이 아직 확정하지 않은 산업군의 출처 값(C6 industriesSource).
+_PROPOSED_INDUSTRY_SOURCE = "AI"
+# 가상 사례는 공정·산업군 집계에 세지 않는다(계약 C1). 가상 묶음에서는 막대를 만들지 않는다.
+_VIRTUAL_DATASET_KIND = "VIRTUAL_REVIEWED"
+
+
+@dataclass(frozen=True)
+class BreakdownSource:
+    """공정·산업군 막대를 만들 때 창구(API)가 넘겨 주는 재료.
+
+    공정 목록은 역량 파일 순서의 (코드, 이름), 산업군 목록은 설정 `industries` 순서다.
+    """
+
+    processes: Sequence[tuple[str, str]]
+    industries: Sequence[str]
+    count_proposed_industries: bool
+
+
+@dataclass(frozen=True)
+class BreakdownBasis:
+    statuses: list[str]
+    total: int
+
+
+@dataclass(frozen=True)
+class ProcessBreakdownItem:
+    process_code: str
+    process_name: str
+    count: int
+    ratio: float
+
+
+@dataclass(frozen=True)
+class IndustryBreakdownItem:
+    industry: str
+    count: int
+    ratio: float
+    includes_proposed: bool
+
+
+@dataclass(frozen=True)
+class Breakdown:
+    basis: BreakdownBasis
+    by_process: list[ProcessBreakdownItem]
+    by_industry: list[IndustryBreakdownItem]
+
 
 @dataclass(frozen=True)
 class DashboardCounts:
@@ -119,6 +182,8 @@ class Dashboard:
     schedule: list[ScheduleItem]
     recent_activity: list[RecentActivityItem]
     as_of: datetime
+    # 가상 묶음이거나 재료를 받지 않았으면 None. 화면은 None이면 막대 줄을 숨긴다.
+    breakdown: Breakdown | None = None
 
 
 @dataclass(frozen=True)
@@ -356,6 +421,129 @@ def _counts(classified: dict[str, str], schedule_due: int) -> DashboardCounts:
     )
 
 
+def _ratio(count: int, total: int) -> float:
+    """count ÷ total, 소수 2자리(0.5는 올림). 대상이 0곳이면 나누지 않고 0이다."""
+    if total == 0:
+        return 0.0
+    return float(
+        (Decimal(count) / Decimal(total)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    )
+
+
+def _won_since(session: Session, opp_ids: list[str]) -> dict[str, datetime]:
+    """지금 성사인 기회마다 성사로 바뀐 기록의 저장 시각.
+
+    성사 뒤에 덧붙인 기록(일정·메모 수정)이 있어도 성사로 처음 바뀐 행의 시각을 쓴다.
+    """
+    since: dict[str, datetime] = {}
+    if not opp_ids:
+        return since
+    for opp_id, status, created_at in session.execute(
+        select(Outcome.opp_id, Outcome.status, Outcome.created_at)
+        .where(Outcome.opp_id.in_(opp_ids))
+        .order_by(Outcome.opp_id, Outcome.version)
+    ):
+        if status != "WON":
+            since.pop(opp_id, None)
+        elif opp_id not in since:
+            since[opp_id] = created_at
+    return since
+
+
+def breakdown_target_opp_ids(session: Session, population, now: datetime) -> list[str]:
+    """막대에 세는 "대시보드 대상" 기회 번호(계약 C1 breakdown.basis).
+
+    관심으로 켜 둔 기회 가운데 ① 아직 접촉 전(관심) ② 접촉·견적/샘플(진행 중)
+    ③ 성사로 바뀐 지 365일 안(최근 12개월 성공)만 남긴다. 관심이 아닌 기회(미접촉)와
+    보류·거절·12개월 이전 성공은 뺀다. 관심 기업 고르기와 최신 단계 읽기는 건수와 같은
+    함수(`bookmarked_opp_ids`, `_latest_outcomes`)를 쓴다.
+    """
+    bookmarked = bookmarked_opp_ids(population)
+    opp_ids = list(session.scalars(bookmarked))
+    if not opp_ids:
+        return []
+    stages = {row.opp_id: row.status for row in _latest_outcomes(session, bookmarked)}
+    won_since = _won_since(session, [opp_id for opp_id in opp_ids if stages.get(opp_id) == "WON"])
+    oldest_won = now - timedelta(days=WON_WINDOW_DAYS)
+    targets = []
+    for opp_id in opp_ids:
+        stage = stages.get(opp_id)
+        if stage in _INTERESTED_STAGES or stage in _IN_PROGRESS_STAGES:
+            targets.append(opp_id)
+        elif stage == "WON" and won_since[opp_id] >= oldest_won:
+            targets.append(opp_id)
+    return targets
+
+
+def build_breakdown(
+    session: Session, population, source: BreakdownSource, now: datetime
+) -> Breakdown:
+    """공정별·산업군별 막대(계약 C1 breakdown). 읽기만 한다.
+
+    공정은 목록의 공정 건수와 같은 방식으로 센다(교체된 연결은 빼고, 같은 기회·공정은 한 번).
+    한 회사가 여러 공정·산업군이면 각각 세므로 비율의 합이 1을 넘을 수 있다.
+    """
+    targets = breakdown_target_opp_ids(session, population, now)
+    total = len(targets)
+    codes_by_opportunity: dict[str, set[str]] = {}
+    industries_by_opportunity: dict[str, tuple[list[str], bool]] = {}
+    if targets:
+        for opp_id, code in session.execute(
+            select(OppProcessLink.opp_id, OppProcessLink.process_code)
+            .where(OppProcessLink.opp_id.in_(targets), OppProcessLink.superseded_at.is_(None))
+            .distinct()
+        ):
+            codes_by_opportunity.setdefault(opp_id, set()).add(code)
+        for opp_id, industries, industries_source in session.execute(
+            select(Opportunity.opp_id, Customer.industries, Customer.industries_source)
+            .join(Customer, Opportunity.customer_id == Customer.customer_id)
+            .where(Opportunity.opp_id.in_(targets))
+        ):
+            proposed = industries_source == _PROPOSED_INDUSTRY_SOURCE
+            # 설정을 끄면 AI 제안뿐인 회사는 산업군이 없는 것으로 보고 "미확정"에 센다.
+            counted = [] if proposed and not source.count_proposed_industries else industries
+            industries_by_opportunity[opp_id] = (
+                [name for name in counted or [] if name in source.industries],
+                proposed,
+            )
+    by_process = [
+        ProcessBreakdownItem(
+            process_code=code,
+            process_name=name,
+            count=(count := sum(code in codes for codes in codes_by_opportunity.values())),
+            ratio=_ratio(count, total),
+        )
+        for code, name in source.processes
+    ]
+    by_industry = []
+    for name in source.industries:
+        holders = [
+            proposed for names, proposed in industries_by_opportunity.values() if name in names
+        ]
+        by_industry.append(
+            IndustryBreakdownItem(
+                industry=name,
+                count=len(holders),
+                ratio=_ratio(len(holders), total),
+                includes_proposed=any(holders),
+            )
+        )
+    unconfirmed = sum(not names for names, _ in industries_by_opportunity.values())
+    by_industry.append(
+        IndustryBreakdownItem(
+            industry=UNCONFIRMED_INDUSTRY,
+            count=unconfirmed,
+            ratio=_ratio(unconfirmed, total),
+            includes_proposed=False,
+        )
+    )
+    return Breakdown(
+        basis=BreakdownBasis(statuses=list(BREAKDOWN_STATUSES), total=total),
+        by_process=by_process,
+        by_industry=by_industry,
+    )
+
+
 def build_dashboard(
     session: Session,
     *,
@@ -363,8 +551,13 @@ def build_dashboard(
     staff_key: str | None,
     today: date,
     now: datetime,
+    breakdown_source: BreakdownSource | None = None,
 ) -> DashboardResult:
-    """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12)."""
+    """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
+
+    `breakdown_source`를 주면 공정·산업군 막대도 만든다. 가상 묶음은 가상 사례뿐이라
+    (집계에서 제외, 계약 C1) 막대를 만들지 않는다.
+    """
     # latest_confirmed_evaluation과 같은 순서로 최신 확정 평가를 먼저 고른다.
     # 묶음 조건을 먼저 걸면 다른 묶음으로 바뀐 회사의 낡은 평가가 다시 잡힐 수 있다.
     confirmed = (
@@ -412,12 +605,16 @@ def build_dashboard(
             .where(Opportunity.opp_id.in_(population), Opportunity.is_virtual.is_(True))
         )
     )
+    breakdown = None
+    if breakdown_source is not None and dataset_kind != _VIRTUAL_DATASET_KIND:
+        breakdown = build_breakdown(session, population, breakdown_source, now)
     return DashboardResult(
         Dashboard(
             counts=counts,
             schedule=schedule,
             recent_activity=_recent_activity(session, population, staff_key),
             as_of=now,
+            breakdown=breakdown,
         ),
         has_virtual,
     )

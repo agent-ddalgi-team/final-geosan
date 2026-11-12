@@ -234,6 +234,28 @@
         "title": "Brand",
         "type": "object"
       },
+      "BreakdownBasis": {
+        "description": "막대에 세는 \"대시보드 대상\": 관심 / 진행 중 / 최근 12개월 성공. total은 그 기회 수.",
+        "properties": {
+          "statuses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Statuses",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "statuses",
+          "total"
+        ],
+        "title": "BreakdownBasis",
+        "type": "object"
+      },
       "CardOutcome": {
         "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
         "properties": {
@@ -411,8 +433,14 @@
             "type": "string"
           },
           "breakdown": {
-            "title": "Breakdown",
-            "type": "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "counts": {
             "$ref": "#/components/schemas/DashboardCounts"
@@ -439,6 +467,35 @@
           "asOf"
         ],
         "title": "Dashboard",
+        "type": "object"
+      },
+      "DashboardBreakdown": {
+        "description": "공정별·산업군별 막대(#627). ratio = count ÷ basis.total, 소수 2자리.",
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/BreakdownBasis"
+          },
+          "byIndustry": {
+            "items": {
+              "$ref": "#/components/schemas/IndustryBreakdownItem"
+            },
+            "title": "Byindustry",
+            "type": "array"
+          },
+          "byProcess": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessBreakdownItem"
+            },
+            "title": "Byprocess",
+            "type": "array"
+          }
+        },
+        "required": [
+          "basis",
+          "byProcess",
+          "byIndustry"
+        ],
+        "title": "DashboardBreakdown",
         "type": "object"
       },
       "DashboardCounts": {
@@ -1537,6 +1594,34 @@
           "evalId"
         ],
         "title": "HomepageResearch",
+        "type": "object"
+      },
+      "IndustryBreakdownItem": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "includesProposed": {
+            "title": "Includesproposed",
+            "type": "boolean"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "industry",
+          "count",
+          "ratio",
+          "includesProposed"
+        ],
+        "title": "IndustryBreakdownItem",
         "type": "object"
       },
       "IndustryCount": {
@@ -3370,6 +3455,34 @@
         "title": "OutcomeStatus",
         "type": "string"
       },
+      "ProcessBreakdownItem": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "processCode": {
+            "title": "Processcode",
+            "type": "string"
+          },
+          "processName": {
+            "title": "Processname",
+            "type": "string"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "processCode",
+          "processName",
+          "count",
+          "ratio"
+        ],
+        "title": "ProcessBreakdownItem",
+        "type": "object"
+      },
       "ProcessCode": {
         "description": "거산 공정 9종 (FR1.1). 영문 코드는 팀 제안이며 이름은 역량 파일의 name에서 온다.",
         "enum": [
@@ -4651,7 +4764,7 @@
     },
     "/api/v1/dashboard": {
       "get": {
-        "description": "건수 10칸·이번 주 일정·최근 내 기록. 보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
+        "description": "건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대.\n\n보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
         "operationId": "dashboard_api_v1_dashboard_get",
         "parameters": [
           {
