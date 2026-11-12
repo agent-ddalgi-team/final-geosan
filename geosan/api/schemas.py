@@ -268,6 +268,18 @@ class CardRecords(_ApiModel):
 ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
 
 
+class FactoryProfile(_ApiModel):
+    """공장 등록 정보(C1, #573). 순서·점수·분류에는 쓰지 않는다."""
+
+    raw_materials: str | None = Field(default=None, description="원자재. 예: 강판, SUS")
+    employee_count: int | None = Field(
+        default=None,
+        description="공장 등록 때 적은 종업원 수. 갱신되지 않을 수 있어 언제나 추정으로 보인다",
+    )
+    scale: str | None = Field(default=None, description="공장 규모. 예: 소기업")
+    file_date: date = Field(description="팩토리온 자료 기준일")
+
+
 class OpportunityCard(_ApiModel):
     score_state: ScoreState
     relation_status: RelationStatus
@@ -323,6 +335,10 @@ class OpportunityCard(_ApiModel):
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
     )
     own_plating_line_basis: str | None = Field(default=None, description="그 표시의 근거 한 줄")
+    factory_profile: FactoryProfile | None = Field(
+        default=None,
+        description="팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -360,6 +376,10 @@ class DetailHeader(_ApiModel):
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
     )
     own_plating_line_basis: str | None = Field(default=None, description="그 표시의 근거 한 줄")
+    factory_profile: FactoryProfile | None = Field(
+        default=None,
+        description="팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null",
+    )
     industries: list[str] = Field(default_factory=list)
     industries_source: str | None = None
     address: str

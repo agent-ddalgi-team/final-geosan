@@ -280,6 +280,16 @@ export interface CardRecords {
   outcome?: OutcomeRecord | null;
 }
 
+/** 팩토리온 공장조회에서 붙인 공장 등록 정보(C1 factoryProfile, #573). 순서·점수에는 쓰지 않는다. */
+export interface FactoryProfile {
+  rawMaterials: string | null;
+  /** 공장 등록 때 적은 인원. 갱신되지 않을 수 있어 화면은 언제나 "(추정)"으로 보인다. */
+  employeeCount: number | null;
+  scale: string | null;
+  /** 자료 기준일 YYYY-MM-DD */
+  fileDate: string;
+}
+
 export interface OpportunityCard {
   /** 이 회사 주소의 시·군(예: 아산시). 주소가 없으면 null이고 카드는 "지역 미확인"을 보인다(#210). */
   region?: string | null;
@@ -301,6 +311,8 @@ export interface OpportunityCard {
   ownPlatingLineSuspected?: boolean;
   /** 그 표시의 근거 한 줄. 예: 생산품 "알루미늄 아노다이징". 없으면 꼬리표만 보인다. */
   ownPlatingLineBasis?: string | null;
+  /** 공장 등록 정보(#573). 맞는 공장이 없으면 null이고 줄을 그리지 않는다. */
+  factoryProfile?: FactoryProfile | null;
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
   scoreState?: ScoreState;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
@@ -374,6 +386,8 @@ export interface DetailHeader {
   discoverySourceUrl?: string | null;
   /** 산업 꼬리표(AI 제안 또는 사람이 고친 값). */
   industries?: string[];
+  /** 공장 등록 정보(#573). 없으면 "이 회사 한눈에"에 줄을 그리지 않는다. */
+  factoryProfile?: FactoryProfile | null;
   isVirtual: boolean;
   datasetKind: DatasetKind;
   isRecontact: boolean;

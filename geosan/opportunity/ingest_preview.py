@@ -13,11 +13,12 @@ from dataclasses import dataclass
 
 from sqlalchemy import select
 
-from geosan.opportunity.candidate_judgments import candidate_product_hash, select_candidates
+from geosan.opportunity.candidate_judgments import select_candidates
 from geosan.opportunity.candidate_pick import current_criteria_version
 from geosan.opportunity.candidate_registration import company_key, registered_company_keys
 from geosan.opportunity.factory_csv import parent_regions, row_in_selected_regions
-from geosan.opportunity.judgment_store import _SOURCES
+from geosan.opportunity.factory_profile import ProfileIndex
+from geosan.opportunity.judgment_store import _SOURCES, judgment_inputs
 from geosan.opportunity.source_models import CandidateJudgment as StoredJudgment
 from geosan.opportunity.source_models import SourceFactoryRow
 
@@ -89,11 +90,12 @@ def preview_counts(
     for judgment in judged:
         if judgment.row_id in by_id:
             latest.setdefault(judgment.row_id, judgment)
+    # 판단 때와 같은 입력(팩토리온 원자재·업종명 포함, #570)으로 지문을 비교한다.
+    inputs = judgment_inputs(session, rows, index=ProfileIndex(session))
     current = [
         judgment
         for row_id, judgment in latest.items()
-        if judgment.product_hash
-        == candidate_product_hash(by_id[row_id].product, by_id[row_id].industry_name)
+        if judgment.product_hash == inputs[row_id].product_hash(by_id[row_id].product)
     ]
     matched = select_candidates(current, process_codes=process_codes, industries=industries)
     known = registered_company_keys(session, is_virtual=is_virtual)

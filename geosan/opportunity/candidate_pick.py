@@ -37,6 +37,7 @@ from geosan.opportunity.candidate_judgments import (
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.judgment_store import (
+    judgment_inputs,
     judgment_rows,
     prepare_candidate_judgments,
     public_row_content_hash,
@@ -200,6 +201,7 @@ def _public_rows(plan, ids, db_path):
         if set(regions) != set(plan.regions) or batch.rejudge != plan.rejudge:
             raise InputError("판단하는 동안 찾기 지역이나 다시 판단 여부가 바뀌었습니다.")
         found = judgment_rows(session, batch, ids, regions, plan.source_kind)
+        inputs = judgment_inputs(session, found, plan.source_kind)
         before = {row.row_id: row for row in plan.rows}
         result = []
         for row_id in ids:
@@ -208,7 +210,7 @@ def _public_rows(plan, ids, db_path):
                 row.dataset_kind != batch.dataset_kind
                 or row.is_virtual != batch.is_virtual
                 or row.source_id != before[row_id].source_id
-                or public_row_content_hash(row) != before[row_id].content_hash
+                or public_row_content_hash(row, inputs[row_id]) != before[row_id].content_hash
             ):
                 raise InputError("판단할 공개 공장 자료가 바뀌었습니다. 다시 확인해 주세요.")
             item = {
@@ -216,8 +218,10 @@ def _public_rows(plan, ids, db_path):
                 "companyName": row.company_name,
                 "complexName": row.complex_name,
                 "product": row.product,
-                "industryName": row.industry_name,
+                "industryName": inputs[row_id].industry_name,
                 "address": row.address,
+                # 팩토리온 공장 등록 원자재(#570). 연락처 모양 값은 넣을 때 이미 버렸다.
+                "rawMaterials": inputs[row_id].raw_materials,
             }
             # 연락처 검사는 글 칸만 본다. 행 번호(rowId)는 무작위 문자·숫자라 전화번호처럼 보일 수
             # 있어 검사에서 뺀다(#505).
@@ -247,7 +251,8 @@ def _payload(context, rows, model):
         .replace(
             "{입력 칸 목록. 1차: rowId, 회사명, 단지명, 생산품, 업종명(있으면), 공장 주소}",
             "rowId, companyName(회사명), complexName(단지명), product(생산품), "
-            "industryName(업종명, 없으면 null), address(공장 주소)",
+            "industryName(업종명, 없으면 null), address(공장 주소), "
+            "rawMaterials(공장 등록 때 적은 원자재, 없으면 null)",
         )
         .replace("{100행}", "공장 목록은 아래 입력 메시지의 JSON 배열이다.")
     )

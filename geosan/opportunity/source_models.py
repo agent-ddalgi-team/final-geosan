@@ -163,3 +163,48 @@ class WebCandidate(CommonColumns, Base):
     homepage_url: Mapped[str | None] = mapped_column(Text)
     dropped_reason: Mapped[str | None] = mapped_column(String(40))
     snippet: Mapped[str | None] = mapped_column(Text)
+
+
+class FactoryProfile(CommonColumns, Base):
+    """팩토리온 공장조회 행(C5 factoryon-xlsx, #573). 목록 회사에 붙이는 보조 자료다.
+
+    후보 목록의 출발점이 아니다. 새 파일을 넣으면 이 소스의 행을 통째로 바꾼다.
+    종업원 수는 공장 등록 때 적은 값이라 언제나 추정으로 보인다. 전화·홈페이지 열은 없다.
+    """
+
+    __tablename__ = "src_factory_profile"
+    __table_args__ = (Index("ix_src_factory_profile_name", "normalized_name"),)
+
+    profile_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    source_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    file_date: Mapped[date] = mapped_column(Date, nullable=False)
+    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    address: Mapped[str] = mapped_column(String(300), nullable=False)
+    normalized_address: Mapped[str] = mapped_column(String(300), nullable=False)
+    region: Mapped[str] = mapped_column(String(40), nullable=False)
+    raw_materials: Mapped[str | None] = mapped_column(Text)
+    employee_count: Mapped[int | None] = mapped_column(Integer)
+    industry_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    industry_name: Mapped[str | None] = mapped_column(String(200))
+    scale: Mapped[str | None] = mapped_column(String(40))
+    loaded_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+
+class WaterSite(CommonColumns, Base):
+    """특정수질유해물질 배출 사업장(C5 nier-water-csv, #573). 같은 사업장은 한 행으로 합친다."""
+
+    __tablename__ = "src_water_site"
+    __table_args__ = (Index("ix_src_water_site_name", "normalized_name"),)
+
+    site_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    source_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    file_date: Mapped[date] = mapped_column(Date, nullable=False)
+    site_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    address: Mapped[str] = mapped_column(String(300), nullable=False)
+    normalized_address: Mapped[str] = mapped_column(String(300), nullable=False)
+    region: Mapped[str] = mapped_column(String(40), nullable=False)
+    agency: Mapped[str | None] = mapped_column(String(200))
+    treatment_types: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    loaded_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
