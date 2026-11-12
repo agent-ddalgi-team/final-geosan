@@ -90,7 +90,7 @@ body.present .mermaid svg{max-width:none;width:100%}
 <body>
 <header>
   <h1>거산 영업 비서 지도</h1>
-  <p>거산케미칼 AI 영업지원 2차 · 지도 문서 네 벌(기능·구조·기획 변경·데이터)의 그림을 한 화면에 모았습니다. 기준일 2026-11-08, <code>develop</code> 줄기.</p>
+  <p>거산케미칼 AI 영업지원 2차 · 지도 문서 네 벌(기능·구조·기획 변경·데이터)의 그림을 한 화면에 모았습니다. 기준일 2026-11-12, <code>develop</code> 줄기.</p>
 </header>
 <div class="topbar">
   <nav aria-label="지도 고르기">
@@ -200,7 +200,7 @@ body.present .mermaid svg{max-width:none;width:100%}
   <div class="card">
     <h2 id="h-progress">지금 어디까지 왔나</h2>
     <div class="chips">
-      <span class="chip ok">✅ 됨 57</span><span class="chip wip">⏳ 진행 중 7</span><span class="chip next">📅 2차 예정 17</span><span class="chip hold">⏸ 보류 1</span><span class="chip">기능 82줄 · 2026-11-09</span>
+      <span class="chip ok">✅ 됨 64</span><span class="chip wip">⏳ 진행 중 7</span><span class="chip next">📅 2차 예정 18</span><span class="chip hold">⏸ 보류 1</span><span class="chip">기능 90줄 · 2026-11-12</span>
     </div>
     <div class="grid2">
       <div>
@@ -212,10 +212,10 @@ body.present .mermaid svg{max-width:none;width:100%}
           <thead><tr><th>묶음</th><th>쉬운 말</th><th>지금 위치</th></tr></thead>
           <tbody>
             <tr><td>U1 뼈대</td><td>가상 사례 1건이 넣기 → 평가 → 화면 → 의견 저장까지</td><td><span class="chip ok">✅</span></td></tr>
-            <tr><td>U2 AI 조사</td><td>홈페이지를 찾아 읽고 근거와 질문을 뽑는다</td><td><span class="chip wip">⏳ 1차</span></td></tr>
+            <tr><td>U2 AI 조사</td><td>홈페이지를 찾아 읽고 근거와 질문을 뽑는다</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
             <tr><td>U3 후보 찾기</td><td>담당자가 고른 조건으로 공공자료에서 후보를 찾는다</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
             <tr><td>U4 거산 확인 창구</td><td>거산 값을 "확인 완료"로 바꾼다</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
-            <tr><td>U5 담당자 기록</td><td>접촉·메모·영업 단계·일정</td><td><span class="chip wip">⏳ 1차</span></td></tr>
+            <tr><td>U5 담당자 기록</td><td>접촉·메모·영업 단계·일정</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
             <tr><td>U6 재접촉</td><td>예전 거래처를 다시 영업</td><td><span class="chip hold">⏸ 보류</span></td></tr>
             <tr><td>U7 대시보드</td><td>건수·일정·최근 기록</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
             <tr><td>U8 접속·배포</td><td>비밀번호, 올리기, 백업</td><td><span class="chip wip">⏳ 1차</span></td></tr>
@@ -341,25 +341,25 @@ flowchart LR
 </script>
 <script type="text/plain" id="mm-pie">
 pie showData
-    title 기능 82줄의 상태 (2026-11-09)
-    "됨" : 57
+    title 기능 90줄의 상태 (2026-11-12)
+    "됨" : 64
     "진행 중" : 7
-    "2차 예정" : 17
+    "2차 예정" : 18
     "보류" : 1
 </script>
 <script type="text/plain" id="mm-units">
 flowchart TB
     subgraph DONE["✅ 끝남"]
         U1["U1 뼈대<br/>가상 사례 1건이<br/>처음부터 끝까지 돈다"]
+        U2["U2<br/>AI 조사<br/>1차 몫"]
+        U5["U5<br/>담당자 기록<br/>1차 몫"]
         U7["U7<br/>대시보드<br/>1차 몫"]
     end
     subgraph NOW["⏳ 1차 진행 중 — 되는 순서대로 거산에 전달"]
-        U5["U5<br/>담당자 기록"]
-        U8["U8<br/>접속 · 배포 · 백업"]
-        U2["U2<br/>AI 조사"]
-        U4["U4<br/>거산 소개서 내용을<br/>'거산이 확인함'으로 바꾸기"]
-        U10["U10<br/>전달 준비"]
         U3["U3<br/>조건을 골라<br/>후보 찾기"]
+        U4["U4<br/>거산 소개서 내용을<br/>'거산이 확인함'으로 바꾸기"]
+        U8["U8<br/>접속 · 배포"]
+        U10["U10<br/>전달 준비"]
     end
     subgraph NEXT["📅 2차 — 11/17 이후"]
         X0["U3 나머지<br/>매달 자동 수집"]
