@@ -100,6 +100,21 @@ def test_http_error_is_closed_without_reading_redirect_body(wire, status):
     assert len(connection.calls) == 2
 
 
+def test_company_lookup_uses_official_company_parameter_and_no_private_fields(wire):
+    connection, captured = wire
+    source._request_page("가상볼트 & 공장", "synthetic%2B%2F%3D", 2, company_lookup=True)
+    _, path, _ = connection.calls[1]
+    assert urlsplit(path).path == "/B550624/fctryRegistInfo/getFctryPrdctnService_v2"
+    assert parse_qs(urlsplit(path).query) == {
+        "serviceKey": ["synthetic+/="],
+        "cmpnyNm": ["가상볼트 & 공장"],
+        "pageNo": ["2"],
+        "numOfRows": ["1000"],
+        "type": ["XML"],
+    }
+    assert captured["host"] == "apis.data.go.kr" and connection.closed
+
+
 def test_body_size_limit_is_not_silently_truncated(wire, monkeypatch):
     connection, captured = wire
     monkeypatch.setattr(source, "MAX_BYTES", 8)
