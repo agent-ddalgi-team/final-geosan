@@ -83,6 +83,11 @@ brand:
   colorPrimary: "#1F5FBF"
   demoLabel: "부분 시연·거산 확인 전"
 
+# 영업 분석표(#608, 계약 C7). 숫자는 PM이 정한다(#229와 같은 기준, 거산 사용 뒤 재조정).
+salesAnalysis:
+  minSampleForRatio: 10   # 표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 "표본 n건"만 보인다.
+  closedWindowDays: 365   # 성사·거절은 결과 기록이 이 일수 안인 것만 센다(최근 12개월).
+
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:
   enabled: false
