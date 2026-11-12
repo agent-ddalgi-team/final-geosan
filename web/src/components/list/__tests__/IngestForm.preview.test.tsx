@@ -35,6 +35,18 @@ function envelope(data: Partial<IngestPreview> = {}): Envelope<IngestPreview> {
       addableHighCount: 32,
       unjudgedCount: 0,
       addCount: 50,
+      estimate: {
+        judgeRows: 0,
+        judgeCalls: 0,
+        judgeUsd: 0,
+        researchCount: 50,
+        researchCalls: 100,
+        researchUsd: 2,
+        webSearchUsd: 0,
+        totalUsd: 2,
+      },
+      month: { usedUsd: 3.2, limitUsd: 20, usedCalls: 180, limitCalls: 1000 },
+      blocked: null,
       ...data,
     },
     meta: {},
@@ -87,7 +99,7 @@ describe('IngestForm 맞는 공장 수 줄 (#549)', () => {
     );
     expect(screen.getByTestId('ingest-preview-counts')).not.toHaveTextContent('AI 판단 전');
     expect(screen.getByTestId('ingest-preview-add')).toHaveTextContent(
-      '누르면 최대 50곳을 영업 후보로 더합니다 · 조건을 바꿔 보는 것은 비용이 들지 않습니다',
+      '누르면 최대 50곳을 영업 후보로 더합니다 · 예상 약 $2.00 · 이번 달 AI 사용 $3.20 / $20.00 · 조건을 바꿔 보는 것은 비용이 들지 않습니다',
     );
     expect(mockedPreview).toHaveBeenLastCalledWith(
       { processCodes: ['ZINC_PLATING'], regions: ['대전'] },
@@ -95,13 +107,73 @@ describe('IngestForm 맞는 공장 수 줄 (#549)', () => {
     );
   });
 
-  it('고른 지역에 AI가 아직 판단하지 않은 공장이 있으면 "아직 AI 판단 전 n곳"을 덧붙인다', async () => {
-    mockedPreview.mockResolvedValue(envelope({ unjudgedCount: 9917 }));
+  it('고른 지역에 AI가 아직 판단하지 않은 공장이 있으면 "아직 AI 판단 전 n곳 · 판단에 약 $…"을 덧붙인다', async () => {
+    mockedPreview.mockResolvedValue(
+      envelope({
+        unjudgedCount: 9917,
+        estimate: {
+          judgeRows: 9917,
+          judgeCalls: 496,
+          judgeUsd: 19.834,
+          researchCount: 50,
+          researchCalls: 100,
+          researchUsd: 2,
+          webSearchUsd: 0,
+          totalUsd: 21.834,
+        },
+      }),
+    );
     renderForm();
     await userEvent.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
     await waitFor(() =>
       expect(screen.getByTestId('ingest-preview-counts')).toHaveTextContent(
-        '· 아직 AI 판단 전 9,917곳',
+        '· 아직 AI 판단 전 9,917곳 · 판단에 약 $19.83',
+      ),
+    );
+    expect(screen.getByTestId('ingest-preview-add')).toHaveTextContent('예상 약 $21.83');
+  });
+
+  it('예상이 이번 달 남은 금액을 넘으면 단추를 잠그고 나눠 진행하라고 알린다', async () => {
+    mockedPreview.mockResolvedValue(
+      envelope({ unjudgedCount: 17358, blocked: { kind: 'OVER_COST', judgeableRows: 8400 } }),
+    );
+    renderForm();
+    await userEvent.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ingest-preview-blocked')).toHaveTextContent(
+        '이번 달 남은 금액으로 약 8,400곳까지 판단할 수 있습니다 · 시·군을 골라 나눠 진행해 주세요',
+      ),
+    );
+    expect(screen.getByTestId('ingest-submit')).toBeDisabled();
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  it('잠기지 않았으면 잠금 문구가 없고 단추를 누를 수 있다', async () => {
+    mockedPreview.mockResolvedValue(envelope());
+    renderForm();
+    await userEvent.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
+    await waitFor(() => expect(screen.getByTestId('ingest-preview-add')).toBeInTheDocument());
+    expect(screen.queryByTestId('ingest-preview-blocked')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ingest-submit')).toBeEnabled();
+  });
+
+  it('서버가 한도 초과(422 INGEST_OVER_BUDGET)로 거부하면 서버 문장을 그대로 보인다', async () => {
+    mockedPreview.mockResolvedValue(envelope());
+    mockedPost.mockRejectedValue(
+      new ApiError(422, {
+        message: '이번 달 남은 AI 금액을 넘습니다',
+        nextAction: '시·군을 골라 나눠 진행해 주세요',
+        ref: 'r-2',
+        kind: 'INGEST_OVER_BUDGET',
+      }),
+    );
+    renderForm();
+    await userEvent.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
+    await waitFor(() => expect(screen.getByTestId('ingest-submit')).toBeEnabled());
+    await userEvent.click(screen.getByTestId('ingest-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ingest-notice')).toHaveTextContent(
+        '이번 달 남은 AI 금액을 넘습니다 · 시·군을 골라 나눠 진행해 주세요',
       ),
     );
   });

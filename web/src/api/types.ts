@@ -101,6 +101,10 @@ export interface LatestIngest {
   webSkippedReason?: WebSkippedReason | null;
   /** 단지 목록 조회를 건너뛴 이유 코드. 건너뛰지 않았으면 null. */
   complexListSkippedReason?: ComplexListSkippedReason | null;
+  /** 접수 때 예상 금액(달러, #549). 이 칸이 생기기 전의 옛 회차는 null. */
+  estimatedUsd?: number | null;
+  /** 이 회차에 실제로 든 금액(달러, #549). 서버가 아직 안 주면 없다. */
+  actualUsd?: number | null;
 }
 
 /** 찾기 회차의 조건(계약 C1 `POST /ingest` 본문과 같은 이름). */
@@ -126,9 +130,36 @@ export interface IngestRequest {
   industries?: string[];
 }
 
+/** 지금 누르면 들 것으로 보는 호출 수와 금액(달러, 추정). 계약 C1 `GET /ingest/preview` estimate. */
+export interface IngestEstimate {
+  judgeRows: number;
+  judgeCalls: number;
+  judgeUsd: number;
+  researchCount: number;
+  researchCalls: number;
+  researchUsd: number;
+  webSearchUsd: number;
+  totalUsd: number;
+}
+
+/** 이번 달 사용액·호출 수와 한도(계약 C1 month). */
+export interface IngestMonth {
+  usedUsd: number;
+  limitUsd: number;
+  usedCalls: number;
+  limitCalls: number;
+}
+
+/** 예상이 이번 달 남은 한도를 넘어 단추를 잠그는 이유(계약 C1 blocked). */
+export interface IngestBlocked {
+  kind: 'OVER_COST' | 'OVER_CALLS';
+  /** 남은 금액·호출로 판단할 수 있는 공장 수. */
+  judgeableRows: number;
+}
+
 /**
- * 고른 조건의 맞는 공장 수(계약 C1 `GET /ingest/preview`, #549 1단계). 서버가 저장된 AI 판단만 세서 0원이다.
- * 예상 금액·잠금 칸은 2단계에서 더한다.
+ * 고른 조건의 맞는 공장 수와 누르기 전 예상 금액(계약 C1 `GET /ingest/preview`, #549).
+ * 서버가 저장된 자료만 세서 0원이다. 조건 없이 부르면 month만 오고 나머지는 null이다.
  */
 export interface IngestPreview {
   matchedCount: number;
@@ -138,6 +169,14 @@ export interface IngestPreview {
   addableHighCount: number;
   unjudgedCount: number;
   addCount: number;
+  estimate: IngestEstimate;
+  month: IngestMonth;
+  blocked: IngestBlocked | null;
+}
+
+/** 조건 없이 부른 `GET /ingest/preview`: 이번 달 사용액만 온다([다시 조사]·[붙여넣고 조사]용). */
+export interface MonthSpend {
+  month: IngestMonth;
 }
 
 /** 후보 가져오기 응답. 회차를 만든 직후 바로 오고, 진행은 목록 `meta.latestIngest`로 본다. */
