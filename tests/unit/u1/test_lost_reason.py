@@ -148,8 +148,8 @@ def test_legacy_outcomes_survive_upgrade_and_remain_readable(records_env, tmp_db
         assert "lost_reason_code" not in [
             row[1] for row in connection.execute("PRAGMA table_info(rec_outcome)")
         ]
-    assert upgrade_to_head(tmp_db) == ["src_004"]
-    assert upgrade_to_head(tmp_db) == ["src_004"]
+    assert upgrade_to_head(tmp_db) == ["src_005"]
+    assert upgrade_to_head(tmp_db) == ["src_005"]
     with sqlite3.connect(tmp_db) as connection:
         assert connection.execute(query).fetchall() == original
         assert connection.execute("SELECT lost_reason_code FROM rec_outcome").fetchall() == [
