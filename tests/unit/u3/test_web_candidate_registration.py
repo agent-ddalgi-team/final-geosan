@@ -7,11 +7,12 @@ from threading import Barrier
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.exc import OperationalError
 
 from geosan.api.app import create_app
 from geosan.capability.importer import import_capability
+from geosan.capability.models import Process
 from geosan.config.app_settings import read_app_settings, sync_app_settings
 from geosan.config.errors import AppError
 from geosan.evaluation.models import EvaluationRun, ItemJudgmentInput
@@ -38,6 +39,7 @@ from geosan.opportunity.source_models import (
     WebSearchRun,
 )
 from geosan.opportunity.web_candidate_store import save_web_search
+from geosan.rules.codes import DatasetKind
 from geosan.storage.base import utcnow
 from geosan.storage.engine import get_engine
 from geosan.storage.session import session_scope
@@ -83,6 +85,60 @@ def saved_candidates(*candidates, statuses=None):
 def register_web(*judgments):
     with session_scope() as session:
         return register_candidates(session, BATCH, judgments, source_kind="WEB")
+
+
+def profile_web_selection(
+    tmp_path, *, virtual=False, name="가상볼트", address="충남 아산시 가상길 1"
+):
+    """실제 자료 묶음도 가상 회사·임시 DB로 준비해 웹 등록과 공장 정보 연결을 확인한다."""
+    from tests.unit.u3 import test_factory_profile as profile
+
+    if not virtual:
+        with session_scope() as session:
+            settings = read_app_settings(session)
+            settings.active_dataset_kind = DatasetKind.BROCHURE
+            sync_app_settings(session, settings)
+            batch = session.get(IngestBatch, BATCH)
+            batch.dataset_kind, batch.is_virtual = "BROCHURE", False
+            for process in session.scalars(select(Process)):
+                process.dataset_kind, process.is_virtual = "BROCHURE", False
+    profile._store(
+        tmp_path,
+        [profile.row(**{"회사명": "가상볼트", "공장주소(도로명)": "충남 아산시 가상길 1"})],
+    )
+    saved = saved_candidates(
+        WebSearchCandidate(name, address, "https://bolt.example/products", "볼트")
+    )
+    return judgment(saved.candidate_ids[0])
+
+
+@pytest.mark.parametrize(
+    ("virtual", "name", "address", "matched"),
+    [
+        (False, "가상볼트", "충남 아산시 가상길 1", True),
+        (True, "가상볼트", "충남 아산시 가상길 1", False),
+        (False, "가상너트", "충남 아산시 가상길 1", False),
+        (False, "가상볼트", "충남 천안시 가상길 1", False),
+    ],
+)
+def test_web_registration_attaches_only_matching_real_factory_profile(
+    web_context, tmp_path, virtual, name, address, matched
+):
+    selected = profile_web_selection(tmp_path, virtual=virtual, name=name, address=address)
+    assert register_web(selected) == RegistrationResult(1, 0, 0)
+    (customer,) = rows(Customer)
+    assert customer.discovery_source == "WEB_SEARCH" and customer.registry_status == "FOUND"
+    assert customer.discovery_source_url == "https://bolt.example/products"
+    assert customer.is_virtual == virtual
+    if matched:
+        assert customer.factory_raw_materials == "강판, SUS"
+        assert customer.factory_employee_count == 12 and customer.factory_scale == "소기업"
+        assert customer.factory_profile_date is not None
+        assert customer.own_plating_line_source == "INDUSTRY_CODE"
+    else:
+        assert customer.factory_raw_materials is customer.factory_employee_count is None
+        assert customer.factory_scale is customer.factory_profile_date is None
+        assert not customer.own_plating_line_suspected
 
 
 def test_confirmed_web_candidate_keeps_web_source_and_registry_status(web_context):
