@@ -200,12 +200,12 @@ describe('DashboardPage', () => {
       expect(screen.queryByTestId('dashboard-count-NOT_CONTACTED')).not.toBeInTheDocument();
       expect(screen.queryByTestId('dashboard-count-BOOKMARKED')).not.toBeInTheDocument();
       expect(screen.getByTestId('dashboard-counts')).not.toHaveTextContent('0곳');
-      // 뜻이 그대로인 이번 주 일정과 아래 일정·최근 기록은 계속 보인다.
+      // 뜻이 그대로인 이번 주 일정과 아래 일정 달력·최근 기록은 계속 보인다.
       expect(screen.getByTestId('dashboard-count-SCHEDULE_DUE')).toHaveAttribute(
         'aria-label',
         '이번 주 일정 3건',
       );
-      expect(screen.getAllByTestId('dashboard-schedule-item')).toHaveLength(4);
+      expect(screen.getByTestId('dashboard-calendar')).toBeInTheDocument();
     });
 
     it('새 모양인데 일부 칸만 빠져 있으면 그 칸만 빼고 나머지는 보인다', async () => {
@@ -225,17 +225,45 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('일정은 기한 지남이 맨 위, 그다음 날짜순으로 보이고 지남 표시가 붙는다', async () => {
-    mockedGet.mockResolvedValueOnce(reply(fixtureData));
-    renderPage();
-    const items = await screen.findAllByTestId('dashboard-schedule-item');
-    expect(items.map((item) => item.textContent)).toEqual([
-      '지남10/30 D테크(가상) 방문 일정 다시 잡기',
-      '지남11/1 A정밀 견적 보내기',
-      '11/4 B금속(가상) 공정 확인 질문 보내기',
-      '11/6 C산업(가상) 샘플 결과 확인 전화',
-    ]);
-    expect(screen.getAllByTestId('dashboard-schedule-overdue')).toHaveLength(2);
+  describe('일정 달력과 날짜 팝업 (일정 목록 자리를 달력이 맡는다)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('일정이 있는 날을 누르면 작은 창에 회사·건·내용이 보이고, 기한 지남에는 지남 표시가 붙는다', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderPage();
+      expect(await screen.findByTestId('dashboard-calendar-title')).toHaveTextContent(
+        '2026년 11월',
+      );
+      // 11/1(A정밀 견적 보내기)은 기한이 지났다.
+      await userEvent.click(screen.getByTestId('dashboard-calendar-day-2026-11-01'));
+      const popover = screen.getByTestId('dashboard-calendar-popover');
+      expect(popover).toHaveAttribute('aria-modal', 'false');
+      expect(popover).toHaveTextContent('A정밀');
+      expect(popover).toHaveTextContent('견적 보내기');
+      expect(screen.getByTestId('dashboard-schedule-overdue')).toBeInTheDocument();
+      expect(
+        within(popover).getByRole('link', { name: dashboardTexts.popoverDetail }),
+      ).toHaveAttribute('href', '/opportunities/opp-1');
+      // 다른 날을 누르면 그 날 내용으로 바뀌고, [닫기]를 누르면 닫힌다.
+      await userEvent.click(screen.getByTestId('dashboard-calendar-day-2026-11-06'));
+      expect(screen.getByTestId('dashboard-calendar-popover')).toHaveTextContent('C산업(가상)');
+      expect(screen.queryByTestId('dashboard-schedule-overdue')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByTestId('dashboard-calendar-popover-close'));
+      expect(screen.queryByTestId('dashboard-calendar-popover')).not.toBeInTheDocument();
+    });
+
+    it('일정이 있는 칸과 달리 일정이 없는 날은 눌러도 팝업이 열리지 않는다', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderPage();
+      await userEvent.click(await screen.findByTestId('dashboard-calendar-day-2026-11-05'));
+      expect(screen.queryByTestId('dashboard-calendar-popover')).not.toBeInTheDocument();
+    });
   });
 
   it('sortSchedule은 원본 배열을 바꾸지 않고 지남 → 날짜 순으로 돌려준다', () => {
@@ -250,7 +278,7 @@ describe('DashboardPage', () => {
     mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, schedule: [] }));
     renderPage();
     expect(await screen.findByTestId('dashboard-schedule-empty')).toHaveTextContent(
-      dashboardTexts.scheduleEmpty,
+      dashboardTexts.calendarEmpty,
     );
   });
 
