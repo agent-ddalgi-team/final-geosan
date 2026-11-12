@@ -882,6 +882,24 @@ export const reviewArea = {
    * 자료 줄("자료 못 찾음"·"자료 부족")의 [붙여넣고 조사](#260, PM 결정 2026-11-04). 공개 본문만 붙여 넣고,
    * 서버는 기존 홈페이지 조사 요청(url + pastedText)으로 근거를 뽑아 다시 평가한다. 줄 안 인라인(모달 없음).
    */
+  /**
+   * 자료 줄의 [메모 적기]/[메모 고치기](#260, PM 결정 2026-11-04). 기록용이라 점수는 안 바뀌고 밖으로 나가지 않는다.
+   * 줄 안 인라인 입력(모달 없음, 500자). 저장하면 줄 아래 "메모: … — 박 이사 · 11/20".
+   */
+  memoAdd: '메모 적기',
+  memoEdit: '메모 고치기',
+  memoButtonLabel: (text: string) => `메모 적기: ${text}`,
+  memoInputLabel: '자료 조사 메모',
+  memoPlaceholder: '찾은 내용과 출처 주소를 적으세요. 예: 홈페이지 연혁에 2023 납품 기재 https://…',
+  memoHint:
+    '기록용 메모입니다. 점수는 바뀌지 않고 밖으로 나가지 않습니다. 저장하면 이전 메모는 활동 이력에 남습니다.',
+  memoMaxLength: 500,
+  memoCounter: (count: number, max: number) => `${count} / ${max}자`,
+  memoSave: '메모 저장',
+  memoCancel: '취소',
+  /** "메모: 홈페이지 연혁에 2023 납품 기재" */
+  memoPrefix: '메모:',
+  memoSaveFailed: '메모를 저장하지 못했습니다. 다시 시도',
   pasteButton: '붙여넣고 조사',
   pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
   pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
@@ -924,6 +942,46 @@ export const timelineArea = {
   /** 취소된 줄 아래 한 줄. 예: "취소 · 박 이사 · 11/06". */
   cancelledNote: (name: string, date: string) =>
     `취소 · ${[name, date].filter(Boolean).join(' · ')}`,
+} as const;
+
+/**
+ * 상세 "비슷한 회사 참고"(#269, PM 결정 2026-11-04 A안)와 영업 전략 영역의 "참고한 이력" 상자.
+ * 같은 공정·산업군 다른 회사 최대 5곳의 영업 단계·거절 이유·마지막 접촉·최근 메모를 내부에서만 본다.
+ */
+export const peersArea = {
+  title: '비슷한 회사 참고',
+  /** 영역 머리 한 줄. 메모가 들어 있어 영업 메모와 같은 취급이다. */
+  internalNote: '내부 참고 · 밖으로 안 나감',
+  loading: '불러오는 중',
+  loadFailed: '비슷한 회사를 불러오지 못했습니다.',
+  retry: '다시 불러오기',
+  empty: '같은 공정·산업군의 다른 회사가 아직 없습니다.',
+  listLabel: '비슷한 회사 목록',
+  /** 요약 줄 묶음 사이 구분 "같은 공정 4곳 · 산업군 2곳 | 접촉 1 · 거절 1(가격) | 전화 연결 3/5". */
+  summaryDivider: ' | ',
+  summaryCounts: (processCount: number, industryCount: number) =>
+    `같은 공정 ${processCount}곳 · 산업군 ${industryCount}곳`,
+  /** "거절 3(가격 2 · 납기 1)" 처럼 거절 건수 뒤에 이유 상위를 붙인다. */
+  stageCount: (label: string, count: number, reasons?: string) =>
+    reasons ? `${label} ${count}(${reasons})` : `${label} ${count}`,
+  reasonCount: (label: string, count: number) => `${label} ${count}`,
+  reachCount: (method: string, reached: number, tried: number) =>
+    `${method} 연결 ${reached}/${tried}`,
+  sameProcess: '같은 공정',
+  sameIndustry: '같은 산업군',
+  noStage: '영업 기록 없음',
+  /** 거절이면 "거절 · 가격". */
+  lostWithReason: (stage: string, reason: string) => `${stage} · ${reason}`,
+  noContact: '접촉 기록 없음',
+  /** "11/06 전화" */
+  lastContact: (date: string, method: string) => [date, method].filter(Boolean).join(' '),
+  notePrefix: '메모:',
+  /** 메모 줄은 120자에서 자르고 "…". */
+  noteMaxLength: 120,
+  openCompanyLabel: (name: string) => `${name} 상세 보기`,
+  /** 영업 전략 영역(#27)의 "참고한 이력" 상자. 초안 글(공개 자료 기반 AI)과 섞지 않는다. */
+  referenceTitle: '참고한 이력',
+  referenceCompaniesShown: 2,
 } as const;
 
 /** 활동 이력 묶음(#389) 쉬운 말. 묶음 정의는 components/records/activityGroups.ts. */
