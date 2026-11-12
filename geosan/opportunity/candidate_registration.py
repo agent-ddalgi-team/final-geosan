@@ -1,4 +1,4 @@
-"""#426: 고른 공개 공장 행을 회사·기회·AI 공정 연결로 등록한다(C5·C6).
+"""#426·#523: 고른 공개 공장·등록 확인된 웹 후보를 회사·기회·AI 공정으로 등록한다.
 
 호출자가 등록과 회차 집계를 같은 트랜잭션으로 확정한다. 여기서는 커밋·평가·조사를
 하지 않는다. 기존 고객은 고치지 않으며 같은 이름 또는 주소는 사람의 확인 대상으로 둔다.
@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,10 +28,11 @@ from geosan.opportunity.candidate_judgments import (
     parse_candidate_judgments,
     select_candidates,
 )
-from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.complex_store import API_SOURCE_ID
+from geosan.opportunity.factory_csv import SOURCE_ID, _region_name
 from geosan.opportunity.factory_profile import ProfileIndex, apply_to_customer
 from geosan.opportunity.factory_store import _context
-from geosan.opportunity.judgment_store import _rows
+from geosan.opportunity.judgment_store import _check_web_judgment_text, judgment_rows
 from geosan.opportunity.models import (
     Customer,
     DiscoveryPath,
@@ -39,7 +41,13 @@ from geosan.opportunity.models import (
     OppProcessLink,
 )
 from geosan.opportunity.queries import normalize_address, normalize_name
-from geosan.opportunity.source_models import SourceFactoryRow, shares_public_source
+from geosan.opportunity.source_models import (
+    SourceContract,
+    SourceFactoryRow,
+    WebCandidate,
+    shares_public_source,
+)
+from geosan.opportunity.web_candidate_store import web_judgment_rows
 from geosan.storage.base import new_id, utcnow
 
 
@@ -50,15 +58,36 @@ class RegistrationResult:
     merge_candidate_count: int
 
 
-def registered_row_ids(session, batch_id: str, judgments) -> set[str]:
-    """이름·주소가 모두 같은 회사가 이미 목록에 있는 행(#528). 등록 때 건너뛰는 기준과 같다."""
+def registered_row_ids(
+    session,
+    batch_id: str,
+    judgments,
+    *,
+    source_kind: Literal["FACTORY", "WEB"] = "FACTORY",
+) -> set[str]:
+    """이름·주소가 모두 같은 기존 회사의 후보 번호(#528·#532). 등록·합치기는 하지 않는다.
+
+    WEB은 유효한 보관 후보만 읽는다. 주소가 없으면 같은 회사라고 단정해 제외하지 않는다.
+    반환한 번호를 최대 건수 선택 전에 빼되, 기존 회사의 값과 판단 연결은 보존한다.
+    """
+    if source_kind not in ("FACTORY", "WEB"):
+        raise InputError("기존 회사 확인에 사용할 후보의 출처 종류를 확인해 주세요.")
     batch, _ = _context(session, batch_id)
     known = registered_company_keys(session, is_virtual=batch.is_virtual)
-    rows = session.scalars(
-        select(SourceFactoryRow).where(
-            SourceFactoryRow.row_id.in_([item.row_id for item in judgments])
+    if source_kind == "WEB":
+        ids = _labels([item.row_id for item in judgments])
+        found = web_judgment_rows(session, batch, ids)
+        rows = (
+            row
+            for row in found.values()
+            if normalize_name(row.company_name) and normalize_address(row.address)
         )
-    )
+    else:
+        rows = session.scalars(
+            select(SourceFactoryRow).where(
+                SourceFactoryRow.row_id.in_([item.row_id for item in judgments])
+            )
+        )
     return {row.row_id for row in rows if company_key(row.company_name, row.address) in known}
 
 
@@ -75,14 +104,66 @@ def registered_company_keys(session, *, is_virtual: bool) -> set[tuple[str, str]
     }
 
 
+def _registration_rows(session, batch, ids, regions, source_kind):
+    rows = judgment_rows(session, batch, ids, regions, source_kind)
+    if source_kind == "WEB":
+        contract = session.get(SourceContract, API_SOURCE_ID)
+        if contract is None or contract.confirmed_at is None:
+            raise InputError("공장등록 조회 소스의 이용·저장 확인을 먼저 기록해 주세요.")
+        statuses = dict(
+            session.execute(
+                select(WebCandidate.candidate_id, WebCandidate.registry_status).where(
+                    WebCandidate.candidate_id.in_(ids)
+                )
+            ).all()
+        )
+        for row in rows.values():
+            if statuses[row.row_id] != "FOUND":
+                raise InputError("공장등록 확인이 끝난 웹 후보만 이 단계에서 등록할 수 있습니다.")
+            if (
+                not row.address
+                or not row.address.strip()
+                or _region_name(row.address.split()[0]) not in regions
+            ):
+                raise InputError("웹 후보의 주소가 이번 회차의 찾기 지역인지 확인해 주세요.")
+            if (
+                not row.product
+                or not row.product.strip()
+                or len(row.product) > Opportunity.__table__.c.item.type.length
+            ):
+                raise InputError("등록할 웹 후보의 생산품 요약이 비어 있거나 너무 깁니다.")
+    return rows
+
+
+def _discovery_fields(row, source_kind):
+    if source_kind == "WEB":
+        return {
+            "identity_basis": "공장등록 확인을 마친 웹 후보의 회사명과 주소",
+            "discovery_source": "WEB_SEARCH",
+            "discovery_source_url": row.source_url,
+            "registry_status": "FOUND",
+        }
+    return {
+        "identity_basis": "공개 공장 자료의 회사명과 공장주소",
+        "discovery_source": "FACTORY_FILE" if row.source_id == SOURCE_ID else "FACTORY_API",
+    }
+
+
 def register_candidates(
-    session: Session, batch_id: str, judgments: Sequence[CandidateJudgment]
+    session: Session,
+    batch_id: str,
+    judgments: Sequence[CandidateJudgment],
+    *,
+    source_kind: Literal["FACTORY", "WEB"] = "FACTORY",
 ) -> RegistrationResult:
     """선정 결과만 받는다. 새 회사 수·건너뛴 행 수·확인할 고객 쌍 수를 돌려준다.
 
     공개 행·판단 전체를 검사한 뒤 쓰기 시작한다. 저장 오류는 그대로 올려 호출자가
     회차 집계와 함께 되돌리게 한다. 동일 입력 재실행은 새 회사·확인 쌍을 만들지 않는다.
+    WEB은 호출자가 공장등록 확인을 마쳐 FOUND로 보관한 후보만 받는다. 실제 조회는 하지 않는다.
     """
+    if source_kind not in ("FACTORY", "WEB"):
+        raise InputError("회사 등록에 사용할 후보의 출처 종류를 확인해 주세요.")
     connection = session.connection()
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
@@ -93,7 +174,7 @@ def register_candidates(
     ids = _labels([judgment.row_id for judgment in judgments])
     if not ids:
         return RegistrationResult(0, 0, 0)
-    rows = _rows(session, ids, regions)
+    rows = _registration_rows(session, batch, ids, regions, source_kind)
     processes = dict(
         session.execute(
             select(Process.code, Process.name).where(Process.dataset_kind == batch.dataset_kind)
@@ -105,6 +186,7 @@ def register_candidates(
         process_catalog=processes,
         industry_catalog=settings.industries,
     )
+    _check_web_judgment_text(checked, source_kind)
     selected = select_candidates(
         checked,
         process_codes=batch.criteria.get("processCodes", []),
@@ -168,10 +250,8 @@ def register_candidates(
             normalized_name=name,
             address=row.address,
             normalized_address=address,
-            identity_basis="공개 공장 자료의 회사명과 공장주소",
             relation_status="UNCONFIRMED",
             security_grade="PUBLIC",
-            discovery_source="FACTORY_FILE" if row.source_id == SOURCE_ID else "FACTORY_API",
             fit_level=judgment.fit_level,
             pick_reason=judgment.reason,
             industries=list(judgment.industries),
@@ -181,6 +261,7 @@ def register_candidates(
             own_plating_line_suspected=suspected,
             own_plating_line_basis=basis,
             own_plating_line_source=source,
+            **_discovery_fields(row, source_kind),
             **common,
         )
         if not batch.is_virtual:

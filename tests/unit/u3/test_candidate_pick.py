@@ -208,7 +208,7 @@ def test_bad_response_fails_whole_call_but_keeps_confirmed_cost(pick_context, mo
 
 
 @pytest.mark.parametrize("fault", ["timeout", "usage", "server"])
-def test_unknown_usage_blocks_next_call_without_hidden_retry(pick_context, monkeypatch, fault):
+def test_unknown_usage_allows_next_call_without_hidden_retry(pick_context, monkeypatch, fault):
     def fail(answer, count):
         if fault == "timeout":
             raise TimeoutError("PRIVATE_PROVIDER_ERROR")
@@ -222,8 +222,8 @@ def test_unknown_usage_blocks_next_call_without_hidden_retry(pick_context, monke
         run(pick_context)
     with pytest.raises(AppError) as error:
         run(pick_context)
-    assert error.value.kind == "USAGE_UNCONFIRMED"
-    assert len(pick_context["calls"]) == 1 and stored(TransferLog)[0].cost_usd is None
+    assert error.value.kind == "LLM_FAILED"
+    assert len(pick_context["calls"]) == 2 and stored(TransferLog)[0].cost_usd is None
     assert not stored(CandidateJudgment)
 
 

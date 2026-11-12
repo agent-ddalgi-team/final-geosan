@@ -20,6 +20,7 @@ from geosan.opportunity.candidate_web_results import (
     safe_public_text,
     source_url,
 )
+from geosan.opportunity.factory_csv import _region_name, parent_regions, row_in_selected_regions
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.source_models import (
@@ -268,6 +269,16 @@ def web_judgment_rows(session, batch, ids):
         _validated_rows(session, run, context, batch)
     if any(row.dropped_reason is not None for row in rows.values()):
         raise InputError("제외한 웹 후보는 판단할 수 없습니다.")
+    # 검색 조건이 맞아도 답에는 다른 지역이 섞일 수 있다(#529). 저장·재사용·전송의
+    # 공통 승인 단계에서 원래 선택(시·군 포함)을 검사한다. C9의 빈 주소는 채우지 않는다.
+    parents = parent_regions(context.regions)
+    for row in rows.values():
+        if row.address and row.address.strip():
+            region = _region_name(row.address.split()[0])
+            if region not in parents or not row_in_selected_regions(
+                region, row.address, context.regions
+            ):
+                raise InputError("웹 후보의 주소가 이번 회차의 선택 지역인지 확인해 주세요.")
     return {
         key: WebJudgmentRow(
             key,

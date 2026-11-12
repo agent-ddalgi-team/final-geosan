@@ -34,12 +34,12 @@ cd web && npm ci && cd ..
 | 개별 값 확인·재확인 | `geosan review-set <대상 종류> <ID> REVIEWED --by <검수자> --basis <확인 근거>`. 대상 종류는 `PROCESS`(공정), `CAPABILITY`(세부 역량), `QUALIFICATION`(자격), `FIELD`(실적·범위)이며 현재 활성 묶음의 값만 받습니다. 검수 완료 값을 다시 확인해야 하면 상태에 `RECHECK`를 넣습니다. 이력 저장과 전체 재평가를 함께 실행하며 검수자·근거에 연락처는 넣지 않습니다. |
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
-| 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·입력/출력 토큰·비용을 합산합니다. 미확정 비용이 있으면 종료 코드 2입니다. |
+| 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·토큰·확인된 비용·추정 비용·한도 계산 비용을 보여 줍니다. 미확정 비용이 있으면 종료 코드 2이며, 호출은 추정 비용을 더한 월 한도 안에서 계속할 수 있습니다. |
 | 홈페이지 없는 사례 일괄 조사 | `geosan research` 또는 `geosan research --missing-homepage`. 현재 묶음의 공개된 실제 신규 사례를 검색·본문 읽기·근거 추출·재평가합니다. `--limit 5`로 최대 건수를 정하고, `--all`은 기존 주소도 다시 읽습니다. |
 | 공공자료에서 새 후보 찾기 | 승인된 소스와 `ingestion.factoryCsvPath`·`aiPick`·외부 AI 설정을 준비한 뒤 `geosan ingest kicox-factory-csv --process ZINC_PLATING --region 충남`을 실행합니다. `--industry`, `--max`, `--rejudge`를 선택할 수 있습니다. 파일명 끝 또는 바로 위 폴더의 기준일(YYYYMMDD)을 읽고, 선택한 새 회사만 등록·재평가·조사합니다. |
 | 공공 소스 이용·저장 확인 | `geosan source-confirm <소스ID> --by <담당자 키> [--terms <약관 주소>] [--on YYYY-MM-DD]`. 소스는 `kicox-factory-csv`(공장현황 파일)·`kicox-production-api`(공장등록 조회)·`factoryon-xlsx`(팩토리온 공장조회)·`nier-water-csv`(수질 명단) 네 개이고, 뒤 두 개는 약관 주소 기본값이 없어 `--terms`를 꼭 넣습니다. 이름·허용 용도·저장 범위와 확인자·확인일을 기록합니다. 기존 기록은 덮어쓰지 않습니다. |
 | 목록 회사에 공장 정보·수질 명단 붙이기 | `geosan source-load factoryon-xlsx <지역별 .xlsx>...` 또는 `geosan source-load nier-water-csv <수질 명단 .csv>`. 파일 이름에 기준일(YYYYMMDD)이 있어야 하고, 넣은 뒤 목록 회사에 원자재·종업원 수(추정)·공장 규모와 표면처리 표시를 다시 붙입니다. AI 비용 없음(#573). Numbers 파일은 CSV로 내보내 넣습니다. |
-| 미확정 AI 사용 기록 정리 | `geosan transfer-unblock`은 조회만 합니다. 제공사에서 기록별 사용량을 확인한 뒤 모든 정산 인자를 넣습니다. 필요한 계정·서버 권한과 실행 순서는 [막힌 기록 푸는 법](docs/transfer-unblock-guide.md)을 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
+| 미확정 AI 사용 기록 정리(선택) | `geosan transfer-unblock`은 조회만 합니다. 필요할 때 제공사에서 기록별 사용량을 확인해 정산하면 추정 대신 실제 비용을 씁니다. 필요한 계정·서버 권한과 실행 순서는 [사용량 정산 안내](docs/transfer-unblock-guide.md)를 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
@@ -81,7 +81,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 `geosan research`는 `homepageDiscovery.autoResearch: true`와 외부 AI 설정을 등록한 뒤 실행합니다.
 가상 사례·내부 자료·재접촉·다른 묶음은 대상에서 제외합니다. 기존 주소는 보존하고 그 주소로 추출합니다.
 검색부터 저장까지 한 사례의 전체 한도는 60초이며, 홈페이지를 못 찾으면 추출을 건너뜁니다.
-사이트 읽기 실패는 다음 사례로 이어 가지만 호출·비용 한도, 사용량 미확정, 설정 오류는 전체를 멈추고 남은 건수를 알립니다.
+사이트 읽기·AI 응답 실패는 그 회사만 실패로 두고 다음 사례로 이어 갑니다. 사용량이 없으면 추정 비용을 월 한도에 더하며, 호출·비용 한도와 설정 오류일 때는 전체를 멈추고 남은 건수를 알립니다.
 회사별 새 근거 수·이번 호출 비용을 표시하며, 미확정 비용은 0원으로 확정하지 않습니다.
 실행 실패가 있으면 종료 코드 2, 잘못된 옵션·자동 조사 꺼짐은 1입니다. 못 찾음은 별도 집계합니다.
 `geosan import-case <file.json>`도 저장을 마친 뒤 같은 설정에 따라 **투입한 한 곳만** 바로 조사합니다.

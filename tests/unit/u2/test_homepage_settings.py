@@ -69,6 +69,7 @@ def test_invalid_openai_prices_and_model_are_rejected(values):
                 "model": None,
                 "monthlyCallLimit": 0,
                 "costPerThousandTokens": 0,
+                "unconfirmedCallCostUsd": 0.10,
                 **values,
             }
         )

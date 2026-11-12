@@ -179,6 +179,11 @@ export const frame = {
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
 export const dashboardTexts = {
+  calendarTitle: '일정 달력',
+  calendarEmpty: '잡아 둔 일정이 아직 없어요.',
+  calendarHint: '일정이 있는 날을 누르면 내용이 보입니다.',
+  popoverClose: '닫기',
+  popoverDetail: '상세 보기',
   searchLabel: '회사 이름 검색',
   searchPlaceholder: '회사 이름을 입력하세요',
   searchButton: '검색',

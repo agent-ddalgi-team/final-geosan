@@ -223,7 +223,7 @@ def search_openai(
                 kind="LLM_FAILED",
             ) from None
         except (OSError, http.client.HTTPException, ValueError):
-            # 과금 여부를 알 수 없으므로 호출 기록을 미확정으로 보존하고 추가 전송을 차단한다.
+            # 실제 사용량은 미확정으로 보존하고 월 비용 계산에는 설정의 추정 비용을 더한다.
             if context is not None:
                 remaining(context.deadline)
             raise AppError(

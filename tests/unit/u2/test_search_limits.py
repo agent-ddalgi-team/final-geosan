@@ -172,7 +172,7 @@ def test_retry_is_stopped_at_daily_limit(search_env):
     transport.assert_called_once()
 
 
-def test_unknown_usage_blocks_later_attempts(search_env):
+def test_unknown_usage_allows_later_attempts_within_budget(search_env):
     case, transport = search_env
     transport.side_effect = TimeoutError("test-only-placeholder")
     with pytest.raises(AppError) as exc:
@@ -180,8 +180,8 @@ def test_unknown_usage_blocks_later_attempts(search_env):
     assert "test-only-placeholder" not in str(exc.value)
     with pytest.raises(AppError) as exc:
         find_case_homepage(case.opp_id)
-    assert exc.value.kind == "USAGE_UNCONFIRMED"
-    transport.assert_called_once()
+    assert exc.value.kind == "LLM_FAILED"
+    assert transport.call_count == 2
     assert logs()[0].cost_usd is None
 
 
@@ -215,8 +215,8 @@ def test_unreadable_usage_remains_pending(search_env, change):
     assert logs()[0].cost_usd is None
     with pytest.raises(AppError) as exc:
         find_case_homepage(case.opp_id)
-    assert exc.value.kind == "USAGE_UNCONFIRMED"
-    transport.assert_called_once()
+    assert exc.value.kind == "LLM_FAILED"
+    assert transport.call_count == 2
 
 
 def test_invalid_answer_keeps_cost_and_previous_customer(search_env):
