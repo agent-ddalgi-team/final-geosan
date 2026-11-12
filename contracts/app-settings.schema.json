@@ -82,13 +82,26 @@
     "activeDatasetKind": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
     "ingestion": {
       "type": "object",
-      "required": ["regions", "productKeywords", "maxCandidates"],
+      "required": ["regions", "productKeywords", "maxCandidates", "costEstimate"],
       "additionalProperties": false,
       "properties": {
         "_설명": { "type": "string" },
         "regions": { "type": "array", "items": { "type": "string" } },
         "productKeywords": { "type": "array", "items": { "type": "string" } },
         "maxCandidates": { "type": "integer", "minimum": 1 },
+        "costEstimate": {
+          "type": "object",
+          "required": ["judgeUsdPerRow", "researchUsdPerCompany", "researchCallsPerCompany", "webSearchUsdPerBatch"],
+          "additionalProperties": false,
+          "description": "누르기 전 예상 금액·잠금 계산에만 쓰는 단가(PM 결정 #549). 실제 한도 검사는 전송 기록으로 한다. 모두 0보다 큼.",
+          "properties": {
+            "_설명": { "type": "string" },
+            "judgeUsdPerRow": { "type": "number", "exclusiveMinimum": 0, "description": "공장 1행 AI 판단 금액. 초기 0.002." },
+            "researchUsdPerCompany": { "type": "number", "exclusiveMinimum": 0, "description": "회사 1곳 자동 조사 금액. 초기 0.04." },
+            "researchCallsPerCompany": { "type": "integer", "exclusiveMinimum": 0, "description": "회사 1곳 조사의 호출 수. 초기 2." },
+            "webSearchUsdPerBatch": { "type": "number", "exclusiveMinimum": 0, "description": "후보 웹 검색 1회 금액. 초기 0.04." }
+          }
+        },
         "factoryCsvPath": { "type": "string", "default": "", "description": "공장현황 CSV 경로. 비어 있으면 후보 찾기를 실행할 수 없다. 파일명 또는 바로 위 폴더에 기준일 YYYYMMDD가 있어야 한다(PM #427)." },
         "aiPick": {
           "type": "object",

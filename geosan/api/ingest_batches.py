@@ -7,6 +7,7 @@ from geosan.api.deps import require_staff, runtime_for
 from geosan.api.ingest_conditions import IngestRequest, validate_ingest_conditions
 from geosan.capability.models import Process
 from geosan.config.errors import AppError
+from geosan.opportunity.ingest_preview import ingest_budget, over_budget_error
 from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import new_id, utcnow
 
@@ -43,6 +44,17 @@ def reserve_ingest_batch(
             status=409,
             kind="INGEST_RUNNING",
         )
+    # 화면 잠금만 믿지 않고 회차를 만들기 전에 같은 계산을 다시 한다(C1 #549).
+    budget = ingest_budget(
+        session,
+        process_codes=prepared.process_codes,
+        regions=prepared.regions,
+        industries=prepared.industries,
+        max_candidates=prepared.max_candidates,
+        settings=runtime.app_settings,
+    )
+    if budget.blocked is not None:
+        raise over_budget_error()
     now = utcnow()
     batch = IngestBatch(
         batch_id=new_id("batch"),
@@ -57,6 +69,7 @@ def reserve_ingest_batch(
         },
         max_candidates=prepared.max_candidates,
         rejudge=False,
+        estimated_usd=budget.estimate.total_usd,
         dataset_kind=dataset_kind,
         is_virtual=dataset_kind == "VIRTUAL_REVIEWED",
         created_at=now,
