@@ -725,6 +725,55 @@ export interface ActivityItem {
   evalId?: string | null;
 }
 
+// ---------- GET /opportunities/{oppId}/peers (비슷한 회사 참고, 2026-11-12, 더하는 변경 #268·#269) ----------
+
+/** 접촉 방법 하나의 연결 수(연결됨 reached / 시도 tried). */
+export interface PeerContactReach {
+  reached: number;
+  tried: number;
+}
+
+/**
+ * 비슷한 회사 요약. 건수만 싣고 메모 글은 넣지 않는다.
+ * stageCounts의 키는 영업 단계 코드(outcomeStatus), topLostReasons는 많은 순 최대 3.
+ */
+export interface PeersSummary {
+  processCount: number;
+  industryCount: number;
+  stageCounts: Record<string, number>;
+  topLostReasons: { code: string; count: number }[];
+  contactReach: Partial<Record<ContactMethod, PeerContactReach>>;
+}
+
+/** 비슷한 회사의 최근 메모 한 줄(서버가 120자에서 자른다). 영업 메모와 같은 취급(내부 전용). */
+export interface PeerNote {
+  text: string;
+  by: string;
+  at: string;
+}
+
+export interface PeerCompany {
+  oppId: string;
+  name: string;
+  processCodes: string[];
+  industries: string[];
+  /** 영업 단계 코드. 기록이 없으면 null. */
+  outcomeStatus: string | null;
+  /** 거절 이유 코드. 단계가 거절일 때만. */
+  lostReasonCode: string | null;
+  lastContactAt: string | null;
+  lastContactMethod: ContactMethod | null;
+  lastNote: PeerNote | null;
+  sameProcess: boolean;
+  sameIndustry: boolean;
+}
+
+export interface PeersResponse {
+  summary: PeersSummary;
+  /** 최대 5곳. 없으면 빈 배열. */
+  companies: PeerCompany[];
+}
+
 export type ConfigUiEnvelope = Envelope<ConfigUi>;
 export type OpportunityListEnvelope = Envelope<OpportunityCard[]>;
 export type OpportunityDetailEnvelope = Envelope<OpportunityDetail>;

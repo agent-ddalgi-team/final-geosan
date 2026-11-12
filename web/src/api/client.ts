@@ -21,6 +21,7 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  PeersResponse,
   HomepageRequest,
   HomepageResponse,
   MainPhoneConfirmRequest,
@@ -310,6 +311,14 @@ export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   );
 }
 
+/**
+ * 비슷한 회사 참고(#269, 계약 C1 `GET /opportunities/{oppId}/peers`). 같은 공정·산업군 다른 회사 최대 5곳과 요약.
+ * 읽기라 담당자 키 없이도(보기 전용 포함) 볼 수 있다. 메모 글이 들어 있어 영업 메모와 같은 취급이다.
+ */
+export function getPeers(oppId: string, signal?: AbortSignal) {
+  return request<PeersResponse>(`/opportunities/${encodeURIComponent(oppId)}/peers`, { signal });
+}
+
 // ---------- 가짜 응답 전환 지점 (Step 3 fixtures) ----------
 
 // 가짜 모드의 관심 표시(#357). 서버가 없으니 이 화면이 떠 있는 동안만 기억하고, 새로 고침하면 처음으로 돌아간다.
@@ -547,6 +556,9 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: new Date().toISOString() },
     } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/peers$/.test(route)) {
+    return (await import('../test/fixtures/peers.json')).default as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/activity$/.test(route)) {
     return { data: [], meta: { updatedAt: new Date().toISOString() } } as unknown as Envelope<T>;
