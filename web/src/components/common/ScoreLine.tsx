@@ -17,6 +17,11 @@ export interface ScoreLineProps {
   relationStatus?: RelationStatus;
   /** 분류(#498). PENDING의 이유를 가르는 데 쓴다. 안 주면 "거래 확인 전"으로 본다. */
   classificationCode?: ClassificationCode;
+  /**
+   * true면 "거래 확인 전" 꼬리표를 그리지 않는다(#674, PM 결정 2026-11-13: 상세는 거래 관계를 다루지 않는다).
+   * 점수 글자의 흐림과 "AI 제안 · 확인 전"·"기존 거래처" 꼬리표는 그대로다. 카드는 이 값을 주지 않는다.
+   */
+  hidePendingTag?: boolean;
   /** 점수 글자의 data-testid. 꼬리표는 `${testId}-pending-tag`(거래 확인 전), `${testId}-ai-proposal-tag`(AI 제안), `${testId}-existing-tag`. */
   testId: string;
 }
@@ -32,6 +37,7 @@ export default function ScoreLine({
   scoreState,
   relationStatus,
   classificationCode,
+  hidePendingTag = false,
   testId,
 }: ScoreLineProps) {
   const pending = scoreState === 'PENDING';
@@ -57,7 +63,7 @@ export default function ScoreLine({
           <StatusTag tone="ask" data-testid={`${testId}-ai-proposal-tag`}>
             {scoreTags.aiProposal}
           </StatusTag>
-        ) : (
+        ) : hidePendingTag ? null : (
           <StatusTag tone="ask" data-testid={`${testId}-pending-tag`}>
             {scoreTags.pending}
           </StatusTag>
