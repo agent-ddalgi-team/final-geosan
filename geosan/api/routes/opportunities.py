@@ -83,7 +83,11 @@ from geosan.dashboard.sales_analysis import (
     process_display_name,
 )
 from geosan.evaluation.inputs import has_ai_pending_inputs
-from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
+from geosan.evaluation.ledger import (
+    latest_confirmed_evaluation,
+    latest_confirmed_evaluations,
+    latest_full_batch,
+)
 from geosan.evaluation.models import (
     EvaluationBatch,
     EvaluationRun,
@@ -876,10 +880,23 @@ def list_opportunities(
         )
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = []
-    for original in session.scalars(query):
-        current = latest_confirmed_evaluation(session, original.opp_id)
-        opportunity = session.get(Opportunity, original.opp_id)
-        customer = session.get(Customer, opportunity.customer_id) if opportunity else None
+    originals = list(session.scalars(query))
+    # 최신 평가·기회·고객을 회사마다 따로 묻지 않고 한 번씩 모아 읽는다(#686).
+    opp_ids = [original.opp_id for original in originals]
+    currents = latest_confirmed_evaluations(session, opp_ids)
+    opportunities_by_id = {
+        row.opp_id: row
+        for row in session.scalars(select(Opportunity).where(Opportunity.opp_id.in_(opp_ids)))
+    }
+    customer_ids = {row.customer_id for row in opportunities_by_id.values()}
+    customers_by_id = {
+        row.customer_id: row
+        for row in session.scalars(select(Customer).where(Customer.customer_id.in_(customer_ids)))
+    }
+    for original in originals:
+        current = currents.get(original.opp_id)
+        opportunity = opportunities_by_id.get(original.opp_id)
+        customer = customers_by_id.get(opportunity.customer_id) if opportunity else None
         if current is None or opportunity is None or customer is None:
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         rows.append((original, current, opportunity, customer))
@@ -891,6 +908,7 @@ def list_opportunities(
             [row[3] for row in rows],
             {row[3].customer_id: row[2].opp_id for row in rows},
             runtime.app_settings,
+            live=False,
         )
         if max_distance_km is not None:
             rows = [
@@ -936,6 +954,7 @@ def list_opportunities(
             [row[3] for row in visible_rows],
             {row[3].customer_id: row[2].opp_id for row in visible_rows},
             runtime.app_settings,
+            live=False,
         )
     # 검토사항 줄에 쓸 구체적인 말(#659): 보이는 카드의 평가 기록을 모아 한 번에 읽는다.
     check_points = card_check_points(session, [row[1] for row in visible_rows])
