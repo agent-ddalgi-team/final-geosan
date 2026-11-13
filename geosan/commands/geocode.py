@@ -18,7 +18,7 @@ from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.session import session_scope
 
 
-def _active_evaluated_opp_ids(dataset_kind):
+def active_evaluated_opp_ids(dataset_kind):
     """최신 확정 평가가 활성 묶음인 기회(#664). 목록·대시보드 지도와 같은 기준이다.
 
     회사의 원본 자료 표시는 검수 전환 뒤에도 BROCHURE로 남을 수 있어 그것만 보면
@@ -61,7 +61,7 @@ def run_geocode(missing_only=True):
                     or_(
                         Customer.dataset_kind == settings.active_dataset_kind.value,
                         Opportunity.opp_id.in_(
-                            _active_evaluated_opp_ids(settings.active_dataset_kind.value)
+                            active_evaluated_opp_ids(settings.active_dataset_kind.value)
                         ),
                     )
                 )

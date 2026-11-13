@@ -35,7 +35,7 @@ def use_csv(tmp_path, *, active=None, enabled=True, files=None):
         sync_app_settings(session, settings)
 
 
-def add_evaluation(kind, number=1, run_status="CONFIRMED"):
+def add_evaluation(kind, number=1, run_status="CONFIRMED", opp_id="opp-geocode"):
     with session_scope() as session:
         batch_id = f"batch-{number}"
         session.add(
@@ -58,7 +58,7 @@ def add_evaluation(kind, number=1, run_status="CONFIRMED"):
             EvaluationRun(
                 eval_id=f"eval-{number}",
                 batch_id=batch_id,
-                opp_id="opp-geocode",
+                opp_id=opp_id,
                 profile="NEW",
                 run_status=run_status,
                 input_snapshot={},
