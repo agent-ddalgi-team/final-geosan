@@ -834,6 +834,9 @@ export const salesQuestionTexts = {
   nextDatePast: '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
   closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
+  /** 한 통화에 보이는 질문 수를 넘은 질문은 접어 둔다(#691). "다음 통화에서 물을 것 3개" + [지금 더 묻기] */
+  moreQuestions: (count: number) => `다음 통화에서 물을 것 ${count}개`,
+  askMoreNow: '지금 더 묻기',
   /** 날짜를 바로 고르는 줄(#691, PM 결정 2026-11-13): 오늘부터 2주 + 다른 날짜 + [없음]. */
   nextDateToday: '오늘',
   nextDateOther: '다른 날짜',

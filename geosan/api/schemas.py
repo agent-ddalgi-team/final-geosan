@@ -223,6 +223,8 @@ class RecordsUi(_ApiModel):
     approval_enabled: bool
     note_max_length: int
     cancel_by_any_staff: bool = False
+    # #691: 한 통화에 보이는 통화 내용 질문 수(설정 records.questionsPerContact 그대로).
+    questions_per_contact: int
 
 
 class ExportUi(_ApiModel):

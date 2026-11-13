@@ -239,6 +239,8 @@ class RecordsSettings(FileModel):
     # #607: 꼬리 질문 파일 위치(저장소 기준 상대 경로)와 접촉 기록 한 줄 메모 상한.
     sales_questions_file: str = Field(default="examples/sales-questions.yaml", min_length=1)
     memo_line_max_length: int = Field(default=100, ge=1, le=200)
+    # #691: 기록 남기기 칸에서 한 통화에 보이는 통화 내용 질문 수. 넘는 질문은 화면이 접어 둔다.
+    questions_per_contact: int = Field(default=6, ge=1, le=20)
 
 
 class ResearchSettings(FileModel):

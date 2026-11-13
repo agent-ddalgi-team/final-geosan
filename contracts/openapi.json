@@ -5038,11 +5038,16 @@
           "noteMaxLength": {
             "title": "Notemaxlength",
             "type": "integer"
+          },
+          "questionsPerContact": {
+            "title": "Questionspercontact",
+            "type": "integer"
           }
         },
         "required": [
           "approvalEnabled",
-          "noteMaxLength"
+          "noteMaxLength",
+          "questionsPerContact"
         ],
         "title": "RecordsUi",
         "type": "object"

@@ -58,6 +58,30 @@ export function contactDefaults(questions: SalesQuestions | null): Record<string
   return picks;
 }
 
+/**
+ * 한 통화에 보이는 수를 세는 "통화 내용 질문"(#691): 세부 단계별 질문과 그 꼬리.
+ * 공정·산업 확인(choices)과 모든 단계 질문(다음 할 일·마무리)은 세지 않고 늘 보인다.
+ */
+export function isTalkQuestion(question: SalesQuestion): boolean {
+  return !question.choices && question.step !== 'ALL';
+}
+
+/**
+ * 이번 통화에서 접어 둘 질문 ID(#691, PM 결정 2026-11-13). 화면에 나오는 순서대로 통화 내용 질문을
+ * limit개까지 보이고 넘는 것을 접는다. 이미 답을 고른 질문은 접지 않는다. limit이 없으면 접지 않는다.
+ */
+export function foldedQuestionIds(
+  shown: SalesQuestion[],
+  picked: Record<string, string>,
+  limit: number | null | undefined,
+): string[] {
+  if (!limit || limit < 1) return [];
+  return shown
+    .filter(isTalkQuestion)
+    .filter((question, index) => index >= limit && !picked[question.questionId])
+    .map((question) => question.questionId);
+}
+
 export interface ClosingRoute {
   /** "다음 할 일은?" 질문과, 마무리 질문을 여는 보기("끝"). */
   openerId: string;
@@ -226,6 +250,8 @@ export interface SalesQuestionFieldsProps {
   hideAnswerIds?: Record<string, string[]>;
   /** 묶음 위 한 줄을 바꿔 쓸 때(#691). */
   stepLine?: string;
+  /** 한 통화에 보이는 통화 내용 질문 수(#691, 설정 records.questionsPerContact). 없으면 접지 않는다. */
+  limit?: number | null;
 }
 
 /** 접촉 결과가 "연결됨"·"거절"일 때 접촉 기록 칸 아래에 보이는 질문들. 고르지 않아도 저장된다. */
@@ -247,12 +273,17 @@ export function SalesQuestionFields({
   hideQuestionIds = [],
   hideAnswerIds = {},
   stepLine,
+  limit = null,
 }: SalesQuestionFieldsProps) {
+  // [지금 더 묻기]를 눌렀는지(#691). 저장하면 묶음이 새로 그려져 다시 접힌다.
+  const [askMore, setAskMore] = useState(false);
   // 이미 확정된 공정·산업은 다시 묻지 않고 한 줄로 보인다(#691). [바꾸기]를 누른 질문만 펼친다.
   const [changing, setChanging] = useState<string[]>([]);
   const all = visibleQuestions(questions, step, picked, allOnly);
-  const shown = all.filter((question) => !hideQuestionIds.includes(question.questionId));
-  if (shown.length === 0) return null;
+  const unhidden = all.filter((question) => !hideQuestionIds.includes(question.questionId));
+  const folded = askMore ? [] : foldedQuestionIds(unhidden, picked, limit);
+  const shown = unhidden.filter((question) => !folded.includes(question.questionId));
+  if (shown.length === 0 && folded.length === 0) return null;
   const nextAction = onNextDate ? nextActionPick(questions, all, picked) : null;
   // 단계 이름은 질문 파일의 것을 먼저 쓰고, 없으면 쉬운 말 대응표.
   const stepLabel = (code: SalesStep) =>
@@ -399,6 +430,25 @@ export function SalesQuestionFields({
             </div>
           );
         })}
+        {/* 넘는 질문은 접어 둔다(#691). 답이 없으니 다음 통화에서 다시 나온다. 지금 다 물어도 된다. */}
+        {folded.length > 0 ? (
+          <div
+            data-testid="sales-questions-more"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
+          >
+            <Typography.Text type="secondary" style={{ fontSize: typography.fontSizeSecondary }}>
+              {salesQuestionTexts.moreQuestions(folded.length)}
+            </Typography.Text>
+            <Button
+              size="small"
+              disabled={disabled}
+              onClick={() => setAskMore(true)}
+              data-testid="sales-questions-more-button"
+            >
+              {salesQuestionTexts.askMoreNow}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </fieldset>
   );

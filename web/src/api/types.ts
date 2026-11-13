@@ -287,6 +287,8 @@ export interface RecordsConfig {
   noteMaxLength: number;
   /** 기록 취소(#253·#254): true면 남의 기록도 취소할 수 있다. 안 주면 본인 기록만(false). */
   cancelByAnyStaff?: boolean;
+  /** 한 통화에 보이는 통화 내용 질문 수(#691). 서버가 안 주면 화면은 접지 않는다. */
+  questionsPerContact?: number;
 }
 
 /** 후보 가져오기 조건 칸의 선택지(C1 더하는 변경 #424). 서버가 아직 안 주면 없음. */

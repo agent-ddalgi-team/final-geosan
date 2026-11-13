@@ -743,6 +743,7 @@ export default function RecordsArea({
                 ? { [route.openerId]: route.endAnswerIds }
                 : {}
             }
+            limit={config?.records?.questionsPerContact ?? null}
             stepLine={
               declineMode && declineChoice === DECLINE_CONTINUE
                 ? salesQuestionTexts.stepLineDeclinedContinue

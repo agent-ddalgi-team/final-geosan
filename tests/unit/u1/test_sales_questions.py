@@ -357,3 +357,22 @@ def test_stage_requests_and_plain_contacts_work_as_before(records_env):
     assert save(client, opp_id, again)["status"] == "LOST"
     assert latest_row(opp_id)[:2] == ("LOST", "LEAD_TIME")
     assert save(client, opp_id, {"status": "IN_PROGRESS"})["status"] == "IN_PROGRESS"
+
+
+def test_questions_per_contact_setting_reaches_the_screen_config(records_env):
+    """#691 Given 설정 사본 / When 화면 설정 조회 / Then 한 통화 질문 수가 설정 값 그대로 온다."""
+    from geosan.config.models import AppSetting
+
+    client, _ = records_env
+
+    def shown():
+        return client.get("/api/v1/config/ui").json()["data"]["records"]["questionsPerContact"]
+
+    assert shown() == 6
+    # 이 칸이 없는 옛 설정 사본도 기본값으로 읽는다.
+    with session_scope() as session:
+        session.get(AppSetting, "records").value = {"noteMaxLength": 150}
+    assert shown() == 6
+    with session_scope() as session:
+        session.get(AppSetting, "records").value = {"questionsPerContact": 4}
+    assert shown() == 4
