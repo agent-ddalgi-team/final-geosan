@@ -83,3 +83,32 @@ def no_rows(body):
 @then("달력에 보일 일정은 그대로 1건이다")
 def schedule_kept(body):
     assert len(body["schedule"]) == 1 and body["counts"]["SCHEDULE_DUE"] == 1
+
+
+@given("필수조건이 아직 정해지지 않은 회사를 관심으로 켰다")
+def bookmark_pending(env):
+    client, ids = env
+    assert set_bookmark(client, ids["stage"], True).status_code == 200
+
+
+@when("핵심 근거가 모자란 회사의 영업을 보류로 저장한다")
+def hold_weak(env):
+    client, ids = env
+    record(client, ids["weak"], {"status": "ON_HOLD"})
+
+
+@then("확인할 것이 남은 관심 회사는 필수조건이 정해지지 않은 회사 1곳뿐이다")
+def only_pending_left(env, body):
+    _, ids = env
+    rows = [row for row in body["todayChecks"] if row["kind"] == "CHECK_LEFT"]
+    assert len(rows) == 1 and rows[0]["count"] == 1
+    assert [item["oppId"] for item in rows[0]["items"]] == [ids["stage"]]
+
+
+@then("그 줄의 건수와 눌러 연 목록의 건수가 같다")
+def same_count_as_list(env, body):
+    client, ids = env
+    row = next(row for row in body["todayChecks"] if row["kind"] == "CHECK_LEFT")
+    listed = client.get("/api/v1/opportunities", params={"filter": "CHECK_LEFT"}).json()
+    assert listed["meta"]["total"] == row["count"]
+    assert [card["oppId"] for card in listed["data"]] == [ids["stage"]]

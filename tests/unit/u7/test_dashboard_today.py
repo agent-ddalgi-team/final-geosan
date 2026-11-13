@@ -31,15 +31,23 @@ def _weak_case():
     return data
 
 
+def _stage_unknown_case():
+    """필수 요구의 필요 시점이 미확인이라 필수 판정이 대기이고 문장이 요구 이름을 말하는 회사."""
+    data = factories.apjeong_renamed_customer("case-today-stage", "E기계(가상)")
+    factories.find_requirement(data, "ISO 9001")["neededStage"] = "UNKNOWN"
+    return data
+
+
 @pytest.fixture
 def today_env(tmp_db, tmp_path, monkeypatch):
-    """가상 회사 4곳: 평소 3곳(a·b·c)과 핵심 근거가 모자란 1곳(weak). 기록은 아직 없다."""
+    """가상 회사 5곳: 평소 3곳(a·b·c), 핵심 근거가 모자란 1곳(weak), 필수 판정 대기 1곳(stage)."""
     import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
     cases = {
         "a": factories.apjeong_case(),
         "b": factories.apjeong_renamed_customer("case-today-b", "B금속(가상)"),
         "c": factories.apjeong_renamed_customer("case-today-c", "C산업(가상)"),
         "weak": _weak_case(),
+        "stage": _stage_unknown_case(),
     }
     ids = {
         name: import_case(_write(tmp_path, f"case-{name}.json", data)).opp_id
@@ -200,3 +208,29 @@ def test_dashboard_part_builds_schedule_rows_without_check_left(today_env):
         ("SCHEDULE_TODAY", 2),
         ("SCHEDULE_OVERDUE", 1),
     ]
+
+
+@pytest.mark.parametrize("status", ["WON", "LOST", "ON_HOLD"])
+def test_check_left_skips_closed_or_held_company(today_env, status):
+    """Given 근거가 모자란 관심 회사 / When 성사·거절·보류로 끝남 / Then 줄과 목록에서 빠진다."""
+    client, ids = today_env
+    record(client, ids["weak"], {"status": "IN_PROGRESS"})
+    assert listed(client, filter="CHECK_LEFT") == [ids["weak"]]
+    body = {"status": status}
+    if status == "LOST":
+        body["lostReasonCode"] = "INCUMBENT_SUPPLIER"
+    record(client, ids["weak"], body)
+    assert "CHECK_LEFT" not in rows_of(dashboard_data(client))
+    assert listed(client, filter="CHECK_LEFT") == []
+
+
+def test_check_left_counts_pending_company_whose_sentence_names_the_requirement(today_env):
+    """Given 검토사항 문장이 요구 이름을 말하는 필수 판정 대기 회사 / When 관심 / Then 센다."""
+    client, ids = today_env
+    assert set_bookmark(client, ids["stage"], True).status_code == 200
+    card = client.get("/api/v1/opportunities", params={"filter": "CHECK_LEFT"}).json()["data"][0]
+    # 카드에는 "확인할 것:" 줄 재료가 따로 없다(문장이 이미 요구 이름을 말한다).
+    assert card["oppId"] == ids["stage"] and "ISO 9001" in card["blocker"]["text"]
+    assert card["checkPoints"] == [] and card["coreEvidenceGaps"] == []
+    row = rows_of(dashboard_data(client))["CHECK_LEFT"]
+    assert [item["oppId"] for item in row["items"]] == [ids["stage"]]

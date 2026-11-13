@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from geosan.dashboard.queries import classify_bookmarked
 from geosan.dashboard.sales_analysis import LINK_CONFIRMED
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun, ItemJudgment, RequirementCheck
@@ -36,6 +37,8 @@ _EMPTY = CardCheckPoints()
 _OLD_NOT_EVALUATED_TEXT = "점수 입력 전 · 거래 관계·필수조건 확인 전"
 _NOT_EVALUATED_TEXT = "점수 입력 전 · 필수조건 확인 전"
 _NO_EVIDENCE_STATES = {"UNAVAILABLE", "NO_SIGNAL"}
+# 대시보드 칸 이름: 보류 / 완료(성사·거절). "확인할 것이 남은 회사"에 세지 않는다(#679).
+_CLOSED_BOARDS = ("ON_HOLD", "DONE")
 
 
 def shown_blocker_text(text: str) -> str:
@@ -236,20 +239,27 @@ def card_check_points(session: Session, runs: list[EvaluationRun]) -> dict[str, 
 def check_left_opp_ids(
     session: Session, opp_ids: list[str], catalog_codes: set[str] | frozenset[str]
 ) -> list[str]:
-    """`opp_ids` 가운데 목록 카드 "검토사항" 줄에 "확인할 것: …"이 보이는 회사(#679).
+    """`opp_ids`(관심 기업) 가운데 "확인할 것이 남은 관심 회사"(#679).
 
     대시보드 "확인할 것이 남은 관심 회사" 건수와 목록 `?filter=CHECK_LEFT`가 이 한 곳을 같이 쓴다.
-    카드와 같은 값으로 판단한다(판정·점수는 다시 계산하지 않는다):
-    확정된 공정이 없고 AI 제안만 있거나 분류가 "평가 전" / 확인 전인 필수조건(checkPoints)이 있음 /
-    핵심 근거가 모자란 이유(coreEvidenceGaps)가 있음. 공정은 카드처럼 거산 공정 목록
-    (`catalog_codes`)에 있는 것만 센다. 최신 확정 평가가 없는 기회는 카드가 없으므로 뺀다.
+    평가 기록에 저장된 값으로만 판단한다(판정·점수는 다시 계산하지 않는다). 하나라도 맞으면 센다:
+    필수 판정이 대기(검토사항 문장이 이미 요구 이름을 말해 카드에 "확인할 것:" 줄이 없어도) /
+    확정된 공정이 없고 AI 제안만 있음 / 분류가 "평가 전" / 핵심 근거가 모자란 이유가 있음.
+    최신 영업 단계가 성사·거절·보류인 회사는 뺀다(끝난 회사는 오늘 할 일이 아니다, PM 결정
+    2026-11-13). 최신 단계는 대시보드 칸 나누기와 같은 함수로 본다(취소한 기록 제외).
+    공정은 카드처럼 거산 공정 목록(`catalog_codes`)에 있는 것만 센다. 최신 확정 평가가 없는
+    기회는 카드가 없으므로 뺀다. 카드의 낱말 줄 계산은 바꾸지 않는다.
     """
     if not opp_ids:
         return []
+    closed = {
+        opp_id for opp_id, board in classify_bookmarked(session).items() if board in _CLOSED_BOARDS
+    }
     runs = {
         opp_id: run
         for opp_id in opp_ids
-        if (run := latest_confirmed_evaluation(session, opp_id)) is not None
+        if opp_id not in closed
+        and (run := latest_confirmed_evaluation(session, opp_id)) is not None
     }
     linked: dict[str, set[str]] = {}
     confirmed: dict[str, set[str]] = {}
@@ -269,7 +279,11 @@ def check_left_opp_ids(
         not_evaluated = run.classification_code == "NOT_EVALUATED"
         proposed_count = len(linked.get(opp_id, set()) - confirmed.get(opp_id, set()))
         process_unconfirmed = not confirmed.get(opp_id) and (proposed_count > 0 or not_evaluated)
-        card = points[run.eval_id]
-        if process_unconfirmed or not_evaluated or card.check_points or card.core_evidence_gaps:
+        if (
+            run.filter_state == "PENDING"
+            or process_unconfirmed
+            or not_evaluated
+            or points[run.eval_id].core_evidence_gaps
+        ):
             left.append(opp_id)
     return left
