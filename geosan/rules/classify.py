@@ -22,8 +22,8 @@ ITEM_SHORT_NAMES = {
     "NEW_PERF": "목적",
     "SIG_EXPAND": "증설",
     "SIG_ORDER": "수주",
-    "SIG_BID": "공고",
-    "SIG_HIRE": "채용",
+    "SIG_BID": "구매·외주 의향",
+    "SIG_HIRE": "관심",
 }
 
 

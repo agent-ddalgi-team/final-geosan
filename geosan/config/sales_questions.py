@@ -18,6 +18,7 @@ from geosan.config.loader import LoadedDocument, load_document
 from geosan.config.schemas import FileModel
 from geosan.config.validators import pydantic_errors_to_fields, scan_contacts
 from geosan.rules.codes import LostReasonCode, OutcomeStatus, SalesStep
+from geosan.rules.models import RuleConfig
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KST = ZoneInfo("Asia/Seoul")
@@ -52,6 +53,8 @@ class AnswerOption(FileModel):
     # #643: 이 답이면 큰 단계를 끝낸다(closes) · 이 답이 거절 이유 코드다(lostReason).
     closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
     lost_reason: LostReasonCode | None = None
+    # #691: 화면이 미리 골라 두는 보기. 이 칸이 있는 질문은 접촉 자체에 대한 질문이다.
+    default: bool = False
 
 
 class ShowWhen(FileModel):
@@ -70,6 +73,11 @@ class SalesQuestion(FileModel):
 
     def option(self, answer_id: str) -> AnswerOption | None:
         return next((item for item in self.answers if item.id == answer_id), None)
+
+    @property
+    def about_contact(self) -> bool:
+        """#691 기본 보기가 있는 질문(누가 먼저 연락했나). 부재 접촉에도 답을 받는다."""
+        return any(item.default for item in self.answers)
 
 
 class SalesQuestions(FileModel):
@@ -133,7 +141,32 @@ class SalesQuestions(FileModel):
                         f"질문 '{question.id}'의 showWhen에 '{target}'에 없는 보기가 있습니다"
                     )
         self._closing_meaning()
+        self._default_meaning()
         return self
+
+    def _default_meaning(self) -> None:
+        """#691 기본 보기 칸(default)의 어긋남을 거부한다."""
+        for question in self.questions:
+            if not question.about_contact:
+                continue
+            if sum(1 for item in question.answers if item.default) > 1:
+                raise ValueError(f"질문 '{question.id}'에 default 보기는 하나만 둘 수 있습니다")
+            if question.step != ALL_STEPS or question.show_when is not None:
+                raise ValueError(
+                    f"default 보기가 있는 질문 '{question.id}'는 step이 ALL이고 "
+                    "showWhen이 없어야 합니다"
+                )
+            if any(item.reaches or item.closes or item.lost_reason for item in question.answers):
+                raise ValueError(
+                    f"default 보기가 있는 질문 '{question.id}'의 보기에는 "
+                    "reaches·closes·lostReason을 쓸 수 없습니다"
+                )
+            for other in self.questions:
+                if other.show_when and question.id in other.show_when.answers:
+                    raise ValueError(
+                        f"질문 '{other.id}'의 showWhen은 default 보기가 있는 질문 "
+                        f"'{question.id}'을 가리킬 수 없습니다"
+                    )
 
     def _closing_meaning(self) -> None:
         """#643 마무리 답 칸(closes·lostReason)의 어긋남을 거부한다."""
@@ -214,6 +247,34 @@ def check_sales_questions_file(path: Path | str) -> SalesQuestionsCheck:
             document, None, pydantic_errors_to_fields(exc, document.data, document)
         )
     return SalesQuestionsCheck(document, questions, [])
+
+
+def call_signal_errors(
+    config: RuleConfig, questions: SalesQuestions, document: LoadedDocument | None = None
+) -> list[FieldError]:
+    """#685 규칙 설정 `callSignals`의 질문·보기 id가 꼬리 질문 파일에 실제로 있는지 본다.
+
+    `document`는 규칙 설정 파일(줄 번호용)이다. 보기를 회사 값에서 가져오는 질문(choices)은 못 쓴다.
+    """
+    errors: list[FieldError] = []
+    for index, rule in enumerate(config.call_signals):
+        for answer_index, answer in enumerate(rule.answers):
+            path = f"callSignals[{index}].answers[{answer_index}]"
+            question = questions.question(answer.question_id)
+            if question is None:
+                message = f"꼬리 질문 파일에 없는 질문 '{answer.question_id}'입니다"
+            elif question.choices:
+                message = (
+                    f"질문 '{answer.question_id}'는 보기를 회사 값에서 가져오는 질문(choices)이라 "
+                    "통화 신호 대응표에 쓸 수 없습니다"
+                )
+            elif question.option(answer.answer_id) is None:
+                message = f"질문 '{answer.question_id}'에 없는 보기 '{answer.answer_id}'입니다"
+            else:
+                continue
+            line = document.line_of(path) if document is not None else None
+            errors.append(FieldError(path=path, message=message, line=line))
+    return errors
 
 
 def load_sales_questions(file_setting: str) -> SalesQuestions:

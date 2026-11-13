@@ -239,10 +239,23 @@ class RecordsSettings(FileModel):
     # #607: 꼬리 질문 파일 위치(저장소 기준 상대 경로)와 접촉 기록 한 줄 메모 상한.
     sales_questions_file: str = Field(default="examples/sales-questions.yaml", min_length=1)
     memo_line_max_length: int = Field(default=100, ge=1, le=200)
+    # #691: 기록 남기기 칸에서 한 통화에 보이는 통화 내용 질문 수. 넘는 질문은 화면이 접어 둔다.
+    questions_per_contact: int = Field(default=6, ge=1, le=20)
 
 
 class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
+    # #690: 관심을 켜서 저절로 도는 조사가 하루에 쓸 수 있는 AI 비용(달러).
+    # 0이면 꺼짐(묶음이 없는 파일의 기본).
+    auto_on_bookmark_daily_cost_usd: float = Field(
+        default=0, ge=0, strict=True, allow_inf_nan=False
+    )
+    # #677: 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에 다시 조사를 제안한다.
+    # 0이면 제안하지 않음(묶음이 없는 파일의 기본). 제안만 하고 저절로 조사하지 않는다.
+    suggest_again_after_days: int = Field(default=0, ge=0, strict=True)
+    # #511: 공식 홈페이지를 못 찾았을 때 회사가 직접 운영하는 공개 페이지 1개를 "확인 필요"로
+    # 받을지. 기본 꺼짐(묶음·칸이 없는 파일도 꺼짐). PM이 켠다.
+    allow_unofficial_page: bool = Field(default=False, strict=True)
 
 
 XLSX_DOWNLOAD_LOG_READY = False
@@ -406,6 +419,8 @@ class AppSettings(FileModel):
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
     geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
+    # 대시보드 지도 "같이 들를 곳" 반경(km, #673 PM 결정 2026-11-13).
+    visit_group_radius_km: float = Field(default=5, gt=0, le=50)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
@@ -424,6 +439,16 @@ class AppSettings(FileModel):
         ):
             raise ValueError(
                 "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def unofficial_page_needs_blocked_domains(self) -> AppSettings:
+        # #511: 채용·유료 기업 정보 사이트를 버릴 목록 없이는 공개 페이지 받기를 켤 수 없다.
+        if self.research.allow_unofficial_page and not self.candidate_web_search.blocked_domains:
+            raise ValueError(
+                "research.allowUnofficialPage를 켜려면 candidateWebSearch.blockedDomains에 "
+                "막는 사이트 목록을 먼저 적어 주세요."
             )
         return self
 
@@ -565,7 +590,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
         return None
     return AppSettings.model_validate(
         _fill_added_contact_list_keys(
-            _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+            _fill_added_research_keys(
+                _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+            )
         )
     )
 
@@ -632,6 +659,27 @@ def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
     filled = {**ingestion, **{key: defaults[key] for key in missing}}
     return {**data, "ingestion": filled}
+
+
+ADDED_RESEARCH_KEYS = (
+    "autoOnBookmarkDailyCostUsd",
+    "suggestAgainAfterDays",
+    "allowUnofficialPage",
+)
+"""#690·#677·#511 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_research_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 research 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    research = data.get("research")
+    if not isinstance(research, dict):
+        return data
+    missing = [key for key in ADDED_RESEARCH_KEYS if key not in research]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).research.model_dump(by_alias=True)
+    filled = {**research, **{key: defaults[key] for key in missing}}
+    return {**data, "research": filled}
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"

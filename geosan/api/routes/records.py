@@ -6,13 +6,15 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
+from geosan.api.auto_research import attach_background, queue_on_bookmark
+from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
-from geosan.api.proposal_review import confirm_proposal, proposal_review_items
+from geosan.api.proposal_review import confirm_proposal, dismiss_proposal, proposal_review_items
 from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
 from geosan.api.sales_step import (
     AnswerRow,
@@ -99,7 +101,8 @@ from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
 
-router = APIRouter()
+# #690: 관심이 켜지는 저장 뒤 조사를 응답 뒤에 돌릴 수 있게 요청마다 할 일 목록을 걸어 둔다.
+router = APIRouter(dependencies=[Depends(attach_background)])
 
 LOST_REASON_LABELS = {
     "PRICE": "가격",
@@ -109,6 +112,14 @@ LOST_REASON_LABELS = {
     "QUALITY_CERT": "품질·인증 요건",
     "OTHER": "기타",
 }
+
+
+# #697: 접촉 기록이 검토 의견을 영업 대상(WORTH_REVIEW)으로 정할 때 의견 행의 메모에 남기는 문장.
+CONTACT_SETS_TARGET_MEMO = "접촉 기록을 남겨 영업 대상으로 정함"
+CONTACT_RESTORES_TARGET_MEMO = "접촉 기록을 남기며 제외에서 영업 대상으로 되돌림"
+# 접촉을 남기면 저절로 영업 대상이 되는 지금 의견: 의견 없음·검토 중.
+# 제외는 확인을 받았을 때만 바꾼다.
+_CONTACT_PROMOTES_FROM = (None, "NEED_CHECK")
 
 
 # 자료 조사 메모를 붙일 수 있는 검토사항 줄(자료 못 찾음·자료 부족)과 활동 이력에 붙이는 꼬리표.
@@ -417,10 +428,14 @@ def save_review_check(
         raise InputError("단계 고치기는 AI 점수 입력 제안에서만 할 수 있습니다.")
     if is_proposal:
         if not body.checked:
-            raise InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
-        summary = confirm_proposal(
-            session, opportunity, item_id, step_label=body.step_label, staff=staff, now=now
-        )
+            # #677 [확정 값 유지]: 확정한 공정이 있는 회사의 다른 AI 공정 제안만 물리칠 수 있다.
+            if body.step_label is not None:
+                raise InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
+            summary = dismiss_proposal(session, opportunity, item_id, now=now)
+        else:
+            summary = confirm_proposal(
+                session, opportunity, item_id, step_label=body.step_label, staff=staff, now=now
+            )
         session.flush()
         result = evaluate_in_session(session, [opp_id], staff)
         if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
@@ -567,6 +582,9 @@ def _add_bookmark(
         is_virtual=opportunity.is_virtual,
     )
     session.add(row)
+    if active:
+        # #690: 관심이 켜지면 홈페이지가 있고 조사 전인 회사는 응답 뒤 조사가 저절로 돈다.
+        queue_on_bookmark(session, opportunity)
     return row
 
 
@@ -628,9 +646,9 @@ def save_bookmark(
     previous = latest_bookmark(session, opp_id)
     if body.active and _is_excluded(session, opp_id):
         raise AppError(
-            message="검토 대상 제외로 저장한 회사입니다",
+            message="제외로 저장한 회사입니다",
             next_action=(
-                "관심 기업에 다시 담으려면 검토 의견을 검토 권고나 추가 확인 필요로 바꿔 주세요"
+                "관심 기업에 다시 담으려면 검토 의견을 영업 대상이나 검토 중으로 바꿔 주세요"
             ),
             status=422,
             kind="BOOKMARK_EXCLUDED",
@@ -652,7 +670,7 @@ def save_bookmark(
     if not body.active and _has_sales_records(session, opp_id):
         raise AppError(
             message="기록이 있는 회사는 관심에서 뺄 수 없습니다",
-            next_action="빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요",
+            next_action="빼려면 검토 의견을 '제외'로 저장해 주세요",
             status=422,
             kind="BOOKMARK_HAS_RECORDS",
         )
@@ -741,7 +759,16 @@ def _answer_errors(
     if not body.answers or questions is None:
         return []
     if body.method is None or body.result not in ("REACHED", "DECLINED"):
-        return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
+        # #691: 부재 접촉에는 기본 보기가 있는 질문(누가 먼저 연락했나)의 답만 받는다.
+        about_contact = (questions.question(answer.question_id) for answer in body.answers)
+        if (
+            body.method is None
+            or body.result != "ABSENT"
+            or not all(
+                question is not None and question.about_contact for question in about_contact
+            )
+        ):
+            return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
     errors: list[FieldError] = []
     seen: set[str] = set()
     seen_choices: set[tuple[str, str]] = set()
@@ -892,6 +919,10 @@ def save_outcome(
         )
     if body.judgment_check is not None and body.method is None:
         fields.append(FieldError(path="judgmentCheck", message="접촉 기록에서만 고를 수 있습니다."))
+    if body.restore_excluded and body.method is None:
+        fields.append(
+            FieldError(path="restoreExcluded", message="접촉 기록에서만 고를 수 있습니다.")
+        )
     records_settings = runtime_for(session).app_settings.records
     if body.memo and len(body.memo) > records_settings.memo_line_max_length:
         fields.append(
@@ -939,8 +970,11 @@ def save_outcome(
     for name in ("next_schedule_at", "next_schedule_note"):
         if previous and name not in body.model_fields_set:
             values[name] = getattr(previous, name)
+    # #697: 접촉을 남기면 같은 저장 안에서 검토 의견이 영업 대상으로 정해진다(관심도 여기서 켠다).
+    _set_target_by_contact(session, opportunity, staff, body)
     ensure_bookmarked(session, opportunity, staff)
     values.pop("answers", None)
+    values.pop("restore_excluded", None)
     # 버전은 취소한 행까지 센 마지막 번호 다음이다(취소해도 행과 번호는 남는다).
     last_version = (
         session.scalar(select(func.max(Outcome.version)).where(Outcome.opp_id == opp_id)) or 0
@@ -969,8 +1003,16 @@ def save_outcome(
             )
         )
     session.flush()
+    # #685: 지금 유효한 답을 통화 신호로 맞춘다. 점수 입력이 바뀌면 아래에서 한 번만 다시 평가한다.
+    call_changed = _sync_call_signals(session, opportunity, staff)
     reevaluated = _confirm_choices(
-        session, opportunity, _choice_values(body, questions), catalog or {}, body.eval_id, staff
+        session,
+        opportunity,
+        _choice_values(body, questions),
+        catalog or {},
+        body.eval_id,
+        staff,
+        call_changed=call_changed,
     )
     # #607: 큰 단계는 같은 저장 안에서 세부 단계를 따라 앞으로만 바뀐다(보류·성사·거절은 그대로).
     if row.method or body.answers or body.step_override:
@@ -994,6 +1036,24 @@ def save_outcome(
     )
 
 
+def _sync_call_signals(session: Session, opportunity: Opportunity, staff: str) -> bool:
+    """#685 통화에서 확인한 신호를 지금 답에 맞춘다. 점수 입력이 바뀌었으면 True."""
+    return sync_call_signals(
+        session,
+        opportunity,
+        runtime_for(session).rule_config,
+        staff=staff,
+        load_questions=lambda: sales_questions(session),
+    )
+
+
+def _reevaluate_one(session: Session, opp_id: str, staff: str, message: str) -> None:
+    """그 회사 1곳을 다시 평가한다. 실패하면 같은 트랜잭션의 저장까지 전부 취소된다."""
+    result = evaluate_in_session(session, [opp_id], staff)
+    if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
+        raise RunFailedError(message)
+
+
 def _confirm_choices(
     session: Session,
     opportunity: Opportunity,
@@ -1001,14 +1061,24 @@ def _confirm_choices(
     catalog: dict[str, dict[str, str]],
     eval_id: str | None,
     staff: str,
+    *,
+    call_changed: bool = False,
 ) -> bool:
     """#652 꼬리 질문에서 고른 공정·산업군으로 이 회사 값을 확정한다. 다시 평가했으면 True.
 
     접촉 기록과 같은 트랜잭션이다: 공정 연결이 바뀌면 다시 평가하고, 평가가 실패하면 전부 취소된다.
-    바뀐 것이 있으면 활동 이력에 한 줄을 남긴다. 고른 값이 없으면 아무것도 하지 않는다.
+    바뀐 것이 있으면 활동 이력에 한 줄을 남긴다. 고른 값이 없으면 공정·산업은 건드리지 않는다.
+    `call_changed`(#685 통화 신호로 점수 입력이 바뀜)면 공정이 그대로여도 다시 평가한다(한 번만).
     """
     if not values:
-        return False
+        if call_changed:
+            _reevaluate_one(
+                session,
+                opportunity.opp_id,
+                staff,
+                "통화에서 확인한 신호를 다시 평가하지 못해 저장을 취소했습니다.",
+            )
+        return call_changed
     now = utcnow()
     opp_id = opportunity.opp_id
     results = []
@@ -1022,11 +1092,17 @@ def _confirm_choices(
         industries = [name for name in order if name in values["INDUSTRY"]]
         results.append(confirm_industries(session, opportunity, industries, now=now))
     session.flush()
-    reevaluated = any(result.links_changed for result in results)
+    links_changed = any(result.links_changed for result in results)
+    reevaluated = links_changed or call_changed
     if reevaluated:
-        result = evaluate_in_session(session, [opp_id], staff)
-        if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
-            raise RunFailedError("공정 확인을 다시 평가하지 못해 저장을 취소했습니다.")
+        _reevaluate_one(
+            session,
+            opp_id,
+            staff,
+            "공정 확인을 다시 평가하지 못해 저장을 취소했습니다."
+            if links_changed
+            else "통화에서 확인한 신호를 다시 평가하지 못해 저장을 취소했습니다.",
+        )
     summaries = [result.summary for result in results if result.summary]
     if summaries:
         version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
@@ -1083,6 +1159,7 @@ def get_sales_questions(session: SessionDep):
                             reaches=option.reaches,
                             closes=option.closes,
                             lost_reason=option.lost_reason,
+                            default=option.default,
                         )
                         for option in question.answers
                     ],
@@ -1167,6 +1244,21 @@ def activity(
                 cancelled_at=row.cancelled_at,
             )
         )
+    # #691: 접촉 줄 끝에 먼저 연락한 쪽을 붙인다.
+    # 기본 보기가 있는 질문에서 기본이 아닌 보기를 고른 접촉만 해당한다.
+    first_mover: dict[str, str] = {}
+    contact_answers = session.execute(
+        select(OutcomeAnswer.outcome_id, OutcomeAnswer.question_id, OutcomeAnswer.answer_id).where(
+            OutcomeAnswer.opp_id == opp_id
+        )
+    ).all()
+    if contact_answers:
+        questions = sales_questions(session)
+        for outcome_id, question_id, answer_id in contact_answers:
+            question = questions.question(question_id)
+            option = question.option(answer_id) if question and question.about_contact else None
+            if option is not None and not option.default:
+                first_mover[outcome_id] = option.label
     for row in session.scalars(
         select(Outcome)
         .where(Outcome.opp_id == opp_id)
@@ -1188,6 +1280,9 @@ def activity(
             method = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}[row.method]
             result = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}.get(row.result, "")
             summary += f" · {row.attempted_at or ''} {method} {result}"
+            if row.outcome_id in first_mover:
+                tail = "옴" if row.method == "VISIT" else "먼저"
+                summary += f" · {first_mover[row.outcome_id]} {tail}"
         if row.next_schedule_at:
             summary += f" · 다음 일정 {row.next_schedule_at} {row.next_schedule_note or ''}"
         if row.reason:
@@ -1334,6 +1429,7 @@ def cancel_record(
     """잘못 저장한 메모·영업 기록을 "잘못 입력"으로 표시한다(#253, PM 결정 2026-11-04 A안).
 
     행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.
+    예외(#685): 접촉 기록을 취소해 통화에서 확인한 신호가 바뀌면 같은 저장 안에서 다시 평가한다.
     """
     reason = body.reason.strip() if body.reason and body.reason.strip() else None
     fields = scan_contacts({"reason": reason})
@@ -1367,6 +1463,14 @@ def cancel_record(
     row.cancelled_by = staff
     row.cancel_reason = reason
     session.flush()
+    reevaluated = kind == "OUTCOME" and _sync_call_signals(session, opportunity, staff)
+    if reevaluated:
+        _reevaluate_one(
+            session,
+            opp_id,
+            staff,
+            "통화에서 확인한 신호를 다시 평가하지 못해 취소 표시를 저장하지 않았습니다.",
+        )
     return RecordCancelEnvelope(
         data=RecordCancelResponse(
             record_id=record_id, record_kind=kind, cancelled_by=staff, cancelled_at=now
@@ -1375,6 +1479,7 @@ def cancel_record(
             updated_at=now,
             has_virtual_data=opportunity.is_virtual,
             dataset_kind=opportunity.dataset_kind,
+            **({"reevaluated": True} if reevaluated else {}),
         ),
     )
 
@@ -1400,6 +1505,76 @@ def opinion_view(row: ReviewOpinion | None) -> OpinionRecord | None:
     )
 
 
+def _add_opinion(
+    session: Session,
+    opportunity: Opportunity,
+    staff: str,
+    *,
+    opinion: str,
+    eval_id: str,
+    memo: str | None,
+    reason: str | None,
+    previous: ReviewOpinion | None,
+) -> ReviewOpinion:
+    """검토 의견을 새 행으로 더한다. 의견 저장(`save_opinion`)과 접촉 저장(#697)이 같이 쓴다.
+
+    쓰기 잠금을 잡고 `previous`(지금 최신 의견)를 읽은 뒤에 부른다.
+    제외(NOT_TARGET)면 관심을 끄고, 다른 의견이면 켠다(#536).
+    제외였다가 의견을 바꾼 회사도 다시 켜진다.
+    """
+    _set_bookmark_by_record(session, opportunity, staff, active=opinion != "NOT_TARGET")
+    row = ReviewOpinion(
+        opinion_id=new_id("opinion"),
+        opp_id=opportunity.opp_id,
+        eval_id=eval_id,
+        opinion=opinion,
+        memo=memo,
+        reason=reason,
+        staff_name=staff,
+        recorded_at=utcnow(),
+        previous_opinion_id=previous.opinion_id if previous else None,
+        version=previous.version + 1 if previous else 1,
+        dataset_kind=opportunity.dataset_kind,
+        is_virtual=opportunity.is_virtual,
+        created_by=staff,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def _set_target_by_contact(
+    session: Session, opportunity: Opportunity, staff: str, body: OutcomeRequest
+) -> None:
+    """#697 접촉(전화·메일·방문)을 남기면 검토 의견을 영업 대상으로 정한다(계약 C1 /outcomes).
+
+    의견이 없거나 검토 중이면 영업 대상 행을 더한다. 이미 영업 대상이면 그대로 둔다.
+    제외한 회사는 담당자가 되돌리기를 확인했을 때(`restoreExcluded`)만 바꾼다.
+    의견 행에는 본 평가 번호가 꼭 있어야 해서, 번호 없이 온 접촉(아직 평가 전인 회사)은
+    의견을 정하지 않는다.
+    """
+    if body.method is None or body.eval_id is None:
+        return
+    previous = latest_opinion(session, opportunity.opp_id)
+    current = previous.opinion if previous else None
+    if current in _CONTACT_PROMOTES_FROM:
+        memo = CONTACT_SETS_TARGET_MEMO
+    elif current == "NOT_TARGET" and body.restore_excluded:
+        memo = CONTACT_RESTORES_TARGET_MEMO
+    else:
+        return
+    _add_opinion(
+        session,
+        opportunity,
+        staff,
+        opinion="WORTH_REVIEW",
+        eval_id=body.eval_id,
+        memo=memo,
+        reason=None,
+        previous=previous,
+    )
+
+
 @router.post(
     "/opportunities/{oppId}/opinions",
     response_model=OpinionEnvelope,
@@ -1413,9 +1588,7 @@ def save_opinion(
 ):
     fields = scan_contacts({"reason": body.reason, "memo": body.memo})
     if body.opinion == "NOT_TARGET" and (body.reason is None or not body.reason.strip()):
-        fields.append(
-            FieldError(path="reason", message="검토 대상 제외를 고르면 사유가 필요합니다.")
-        )
+        fields.append(FieldError(path="reason", message="제외를 고르면 사유가 필요합니다."))
     if body.expected_version is not None and body.expected_version < 0:
         fields.append(
             FieldError(path="expectedVersion", message="버전은 0 이상의 정수여야 합니다.")
@@ -1431,27 +1604,17 @@ def save_opinion(
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_opinion(session, opp_id)
-    now = utcnow()
-    # 검토 대상 제외면 관심을 끄고, 다른 의견이면 켠다(#536).
-    # 제외였다가 의견을 바꾼 회사도 다시 켜진다.
-    _set_bookmark_by_record(session, opportunity, staff, active=body.opinion != "NOT_TARGET")
-    row = ReviewOpinion(
-        opinion_id=new_id("opinion"),
-        opp_id=opp_id,
-        eval_id=body.eval_id,
+    row = _add_opinion(
+        session,
+        opportunity,
+        staff,
         opinion=body.opinion.value,
+        eval_id=body.eval_id,
         memo=body.memo,
         reason=body.reason,
-        staff_name=staff,
-        recorded_at=now,
-        previous_opinion_id=previous.opinion_id if previous else None,
-        version=previous.version + 1 if previous else 1,
-        dataset_kind=opportunity.dataset_kind,
-        is_virtual=opportunity.is_virtual,
-        created_by=staff,
+        previous=previous,
     )
-    session.add(row)
-    session.flush()
+    now = row.recorded_at
     previous_value = None
     if previous and previous.version > (body.expected_version or 0):
         previous_value = opinion_view(previous).model_dump(mode="json", by_alias=True)

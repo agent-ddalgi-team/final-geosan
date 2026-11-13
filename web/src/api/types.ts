@@ -23,8 +23,10 @@ export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRM
 export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
 /** 조사 상태(#596). 카드는 "조사 중"/"조사 중단"만, 상세는 멈춘 이유까지 보인다. */
 export type ResearchState =
-  'RUNNING' | 'NO_SCORE_EVIDENCE' | 'NOT_FOUND' | 'READ_FAILED' | 'NOT_TRIED';
+  'RUNNING' | 'NO_SCORE_EVIDENCE' | 'NOT_FOUND' | 'READ_FAILED' | 'NOT_TRIED' | 'LIMIT_SKIPPED';
 export type HomepageStatus = 'AI_FOUND' | 'NEEDS_CONFIRMATION' | 'CONFIRMED' | 'NOT_FOUND';
+/** 공식 홈페이지 대신 찾은 공개 페이지의 종류(#511): 회사 블로그·SNS·쇼핑몰, 공공·지자체 페이지. */
+export type HomepagePageKind = 'BLOG' | 'SNS' | 'SHOP' | 'PUBLIC_PAGE';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
 export type NeededStage = 'NOW' | 'LATER' | 'UNKNOWN';
@@ -289,6 +291,8 @@ export interface RecordsConfig {
   noteMaxLength: number;
   /** 기록 취소(#253·#254): true면 남의 기록도 취소할 수 있다. 안 주면 본인 기록만(false). */
   cancelByAnyStaff?: boolean;
+  /** 한 통화에 보이는 통화 내용 질문 수(#691). 서버가 안 주면 화면은 접지 않는다. */
+  questionsPerContact?: number;
 }
 
 /** 후보 가져오기 조건 칸의 선택지(C1 더하는 변경 #424). 서버가 아직 안 주면 없음. */
@@ -315,6 +319,8 @@ export interface ConfigUi {
   activeDatasetKind: DatasetKind;
   accessProtectionEnabled: boolean;
   ruleVersion: string;
+  /** 목록 거리 범위 선택지(km, #666). 설정 distanceFilterPresetsKm 그대로. 옛 응답에는 없다. */
+  distanceFilterPresetsKm?: number[];
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
@@ -372,6 +378,8 @@ export interface SalesAnswerOption {
   closes?: 'WON' | 'LOST' | 'ON_HOLD' | null;
   /** 이 답이 거절 이유 코드다(#643). */
   lostReason?: LostReasonCode | null;
+  /** 화면이 미리 골라 두는 보기(#691). 이 칸이 있는 질문은 접촉 자체에 대한 질문이다. */
+  default?: boolean;
 }
 
 export interface SalesQuestion {
@@ -433,6 +441,8 @@ export interface FactoryProfile {
 }
 
 export interface OpportunityCard {
+  /** 거산 본사에서의 직선거리(km, #222·#666). 좌표를 못 찾으면 null이고 카드에 보이지 않는다. */
+  distanceKm?: number | null;
   /** 이 회사 주소의 시·군(예: 아산시). 주소가 없으면 null이고 카드는 "지역 미확인"을 보인다(#210). */
   region?: string | null;
   /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */
@@ -524,6 +534,13 @@ export interface DetailHeader {
   relationConfirmedBy?: string | null;
   /** 홈페이지 상태. NEEDS_CONFIRMATION·NOT_FOUND면 맨 위 띠가 보인다(결정 B). 없으면 띠 없음. */
   homepageStatus?: HomepageStatus | null;
+  /** AI가 홈페이지를 찾았을 때의 확신도(0~1). */
+  homepageConfidence?: number | null;
+  /**
+   * 저장된 주소가 공식 홈페이지가 아니라 대신 찾은 공개 페이지일 때 그 종류(#511).
+   * 이때 homepageStatus는 NEEDS_CONFIRMATION이다. 공식 홈페이지거나 담당자가 확인했으면 없음.
+   */
+  homepagePageKind?: HomepagePageKind | null;
   /** 거산에서 떨어진 거리(km). 거리 기능(#222) 전까지 null이고, 없으면 보이지 않는다. */
   distanceKm?: number | null;
   /** 회사 대표번호(내부 메모장용, 2026-11-03 PM 결정)와 출처·담당자 확인(#209). */
@@ -538,6 +555,8 @@ export interface DetailHeader {
   researchedAt?: string | null;
   researchSource?: 'AI' | 'CASE_FILE' | null;
   researchStale?: boolean;
+  /** 관심 회사이고 AI가 조사한 지 설정 일수(`research.suggestAgainAfterDays`)보다 오래됨 → 다시 조사 제안(#677). */
+  researchSuggestAgain?: boolean;
   purpose: Purpose;
   owner?: string | null;
   classificationCode: ClassificationCode;
@@ -803,6 +822,8 @@ export interface OutcomeRequest {
   answers?: { questionId: string; answerId: string }[];
   /** [단계 고치기](#607). */
   stepOverride?: SalesStep;
+  /** 제외한 회사에 접촉을 남기면서 검토 의견을 영업 대상으로 되돌릴지(#697). 접촉 기록에서만 보낸다. */
+  restoreExcluded?: boolean;
 }
 
 export interface OutcomeResponse extends RecordMeta {

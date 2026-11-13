@@ -232,6 +232,8 @@ class RecordsUi(_ApiModel):
     approval_enabled: bool
     note_max_length: int
     cancel_by_any_staff: bool = False
+    # #691: 한 통화에 보이는 통화 내용 질문 수(설정 records.questionsPerContact 그대로).
+    questions_per_contact: int
 
 
 class ExportUi(_ApiModel):
@@ -259,6 +261,9 @@ class ConfigUi(_ApiModel):
     records: RecordsUi
     ingest_options: IngestOptions
     export: ExportUi
+    distance_filter_presets_km: list[float] = Field(
+        description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -300,7 +305,9 @@ class CardRecords(_ApiModel):
 
 
 ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
-ResearchState = Literal["RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED", "NO_SCORE_EVIDENCE"]
+ResearchState = Literal[
+    "RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED", "NO_SCORE_EVIDENCE", "LIMIT_SKIPPED"
+]
 
 
 class FactoryProfile(_ApiModel):
@@ -477,6 +484,14 @@ class DetailHeader(_ApiModel):
     homepage_source: Literal["AI", "STAFF", "CASE_FILE"] | None = Field(
         default=None, description="홈페이지 주소를 누가 정했나: AI·담당자·사례 파일 (C1, #331)"
     )
+    homepage_page_kind: Literal["BLOG", "SNS", "SHOP", "PUBLIC_PAGE"] | None = Field(
+        default=None,
+        description=(
+            "저장된 주소가 공식 홈페이지가 아니라 대신 찾은 공개 페이지일 때 그 종류"
+            "(회사 블로그·SNS·쇼핑몰·공공 페이지). "
+            "이때 homepageStatus는 NEEDS_CONFIRMATION (C1, #511)"
+        ),
+    )
     # 후보 찾기(#221, C1 "카드·상세에 더하는 칸"). 카드와 같은 이름·뜻.
     discovery_source: DiscoverySource = Field(
         default=DiscoverySource.CASE_FILE, description="회사가 목록에 들어온 길 (C1, #342)"
@@ -512,6 +527,10 @@ class DetailHeader(_ApiModel):
     researched_at: datetime | None = None
     research_source: Literal["AI", "CASE_FILE"] | None = None
     research_stale: bool = False
+    research_suggest_again: bool = Field(
+        default=False,
+        description="관심 회사이고 AI 조사한 지 설정 일수보다 오래됨 → 다시 조사 제안(#677)",
+    )
     title: str
     customer_name: str
     opportunity_item: str
@@ -846,6 +865,8 @@ class OutcomeRequest(_RequestModel):
     # #607: 꼬리 질문 답(코드)과 [단계 고치기]. 둘 다 선택이며 옛 요청은 그대로 받는다.
     answers: list[OutcomeAnswerInput] = Field(default_factory=list, max_length=20)
     step_override: SalesStep | None = None
+    # #697: 제외한 회사에 접촉을 남기면서 검토 의견을 영업 대상으로 되돌릴지. 접촉 기록에서만.
+    restore_excluded: bool = False
 
 
 class OutcomeResponse(RecordMeta):
@@ -919,6 +940,8 @@ class SalesAnswerOption(_ApiModel):
     # #643: 마무리 답 칸. 질문 파일 그대로, 없으면 null.
     closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
     lost_reason: LostReasonCode | None = None
+    # #691: 화면이 미리 골라 두는 보기(질문 파일 그대로, 없으면 false).
+    default: bool = False
 
 
 class SalesShowWhen(_ApiModel):

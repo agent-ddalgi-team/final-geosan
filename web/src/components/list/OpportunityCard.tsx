@@ -182,7 +182,18 @@ export default function OpportunityCard({
             data-testid="card-title"
             style={{ margin: 0, fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
           >
-            {card.title}
+            {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
+            <a
+              href={detailPath}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(detailPath);
+              }}
+              style={{ color: 'inherit' }}
+              data-testid="card-title-link"
+            >
+              {card.title}
+            </a>
           </Typography.Title>
           {showClassification ? (
             <span
@@ -214,6 +225,12 @@ export default function OpportunityCard({
           )}
           {/* 지역 꼬리표는 두지 않는다(#659): 목록 머리의 지역 선택란과 겹친다. */}
           {/* 서버가 산업 칸을 주면 값이 없을 때 "산업 미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
+          {/* 거산 본사에서의 직선거리(#666). 좌표를 못 찾은 회사(null)는 꼬리표를 붙이지 않는다. */}
+          {typeof card.distanceKm === 'number' ? (
+            <StatusTag tone="neutral" data-testid="card-distance-tag">
+              {listFilters.cardDistance(card.distanceKm)}
+            </StatusTag>
+          ) : null}
           {card.industries !== undefined ? (
             card.industries.length > 0 ? (
               card.industries.map((industry) => (

@@ -83,11 +83,14 @@ export const checkDisplayTone: Record<CheckDisplay, StatusTone> = {
   EXCLUDED: 'no',
 };
 
-/** 의견 3값과 버튼 문구. */
+/**
+ * 의견 3값과 버튼 문구. 화면에 보이는 말만 바꿨고 저장 값(코드)은 그대로다(#697, PM 결정 2026-11-13):
+ * 검토 권고 → 영업 대상, 추가 확인 필요 → 검토 중, 검토 대상 제외 → 제외.
+ */
 export const opinionLabels: Record<Opinion, string> = {
-  WORTH_REVIEW: '검토 권고',
-  NEED_CHECK: '추가 확인 필요',
-  NOT_TARGET: '검토 대상 제외',
+  WORTH_REVIEW: '영업 대상',
+  NEED_CHECK: '검토 중',
+  NOT_TARGET: '제외',
 };
 
 export const reqLevelLabels = {
@@ -155,7 +158,7 @@ export const opinionArea = {
   savedSummaryPrefix: '의견:',
   edit: '수정',
   saveFailed: '저장하지 못했습니다. 다시 시도',
-  reasonLabel: '검토 대상 제외 사유',
+  reasonLabel: '제외 사유',
   reasonRequired: '사유를 적어 주세요',
   memoLabel: '메모(선택, 200자)',
   pickStaffFirst: '먼저 담당자를 고르세요',
@@ -208,22 +211,39 @@ export const dashboardTexts = {
   },
   /** 칸 이름. 목록 머리의 "무엇으로 걸렀는지"도 같은 말을 쓴다. */
   countNames: {
-    NOT_CONTACTED: '미접촉',
+    NOT_CONTACTED: '영업 대상 · 접촉 전',
     IN_CONTACT: '접촉 중',
     QUOTE_SAMPLE: '견적·샘플',
     SCHEDULE_DUE: '이번 주 일정',
     BOOKMARKED: '관심 기업',
     NO_OPINION: '의견 전',
-    NEED_CHECK: '추가 확인 필요',
+    NEED_CHECK: '검토 중',
     ON_HOLD: '보류',
     DONE: '완료',
+    /** "오늘 확인할 것" 줄을 누르고 넘어온 목록의 이름(#679). 건수 칸은 아니다. */
+    CHECK_LEFT: '확인할 것이 남은 관심 회사',
   },
+  /** 맨 위 "오늘 확인할 것"(#679, PM 결정 2026-11-13): 저장된 값으로 센 줄 목록. AI는 쓰지 않는다. */
+  todayTitle: '오늘 확인할 것',
+  todayEmpty: '오늘 확인할 것이 없습니다',
+  todayRowNames: {
+    SCHEDULE_TODAY: '오늘 일정',
+    SCHEDULE_OVERDUE: '놓친 일정',
+    CHECK_LEFT: '확인할 것이 남은 관심 회사',
+  },
+  todayRowUnits: {
+    SCHEDULE_TODAY: '건',
+    SCHEDULE_OVERDUE: '건',
+    CHECK_LEFT: '곳',
+  },
+  /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
+  todayMore: (count: number) => `외 ${count}`,
   /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
   bookmarkSectionTitle: '관심 기업',
   progressSectionTitle: '영업 진행',
-  progressSectionHint: '관심 기업 가운데 검토 권고를 받은 뒤의 진행',
-  /** "미접촉" 칸의 작은 풀이: 검토 권고를 받았고 아직 접촉하지 않은 곳. */
-  notContactedHint: '검토 권고 · 접촉 전',
+  progressSectionHint: '관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
+  /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
+  notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
   bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
   bookmarkEmptyLink: '추천 목록',
@@ -275,6 +295,25 @@ export const dashboardMapTexts = {
   emptyAction: '추천 목록 가기',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
+  /** 네이버 지도(#671)를 불러오는 동안. */
+  mapLoading: '네이버 지도를 불러오는 중입니다.',
+  /** 키 인증(허용 URL 미등록 등)·네트워크 실패. 원·점은 자리표시로 계속 보인다. */
+  mapFailed: '네이버 지도를 불러오지 못해 원과 점의 상대 위치만 보여요.',
+  /** 낭독기용 점 목록 이름. */
+  pointList: '지도에 표시된 회사',
+  /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
+  visitTitle: '같이 들를 곳',
+  visitHint: (km: number) =>
+    `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
+  /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
+  visitNearbyCount: (count: number) => `근처 ${count}곳`,
+  /** 근처 회사 줄: "1.8km · 관심". */
+  visitNearbyDistance: (km: number) => `${km}km`,
+  /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
+  fromAnchor: (name: string, km: number) => `${name}에서 ${km}km`,
+  visitMore: (count: number) => `${count}곳 더 보기`,
+  visitNone: '이 반경 안에 같이 들를 다른 관심 기업이 없어요.',
+  visitEmpty: '진행 중·관심 회사가 없어 묶을 곳이 없어요.',
 } as const;
 
 /** 카드·상세 줄 머리말. */
@@ -430,13 +469,18 @@ export const listFilters = {
   /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
   /** 조건을 걸었는데 0건일 때. */
-  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
+  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업·거리를 '전체'로 바꿔 보세요",
   /** 대시보드 건수로 넘어와 걸러진 목록이 비었을 때. */
   noMatch: '이 조건에 맞는 후보가 없습니다.',
   /** 고른 공정에 회사가 한 곳도 없을 때(#361). */
   processEmpty: '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
   regionUnknown: '지역 미확인',
   industryUnknown: '산업 미확정',
+  /** 거리 범위 선택란(#666). 선택지는 서버 설정(`/config/ui` distanceFilterPresetsKm). */
+  distanceLabel: '거리',
+  distanceWithin: (km: number) => `${km}km 이내`,
+  /** 카드 꼬리표(#666): 거산 본사에서 직선거리. 미확인이면 꼬리표를 보이지 않는다. */
+  cardDistance: (km: number) => `거산에서 ${km}km`,
 } as const;
 
 /**
@@ -456,8 +500,8 @@ export const listSearch = {
   sortRank: '추천 순',
   /** 최근 들어온 순(#516): 들어온 시각이 최신인 회사가 위, 사례 파일 회사는 아래. */
   sortRecent: '최근 들어온 순',
-  /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
-  sortDistance: '가까운 순 (준비 중)',
+  /** 가까운 순(#666): 거산 본사에서 가까운 회사가 위, 거리 미확인은 맨 아래. */
+  sortDistance: '가까운 순',
   /** 정렬 줄 마지막 단추(#516, PM 지시 2026-11-09): 공정별 묶음을 풀고 모든 회사를 한 줄로 본다. 다시 누르면 묶음 보기. */
   viewAll: '전체 보기',
 } as const;
@@ -472,12 +516,12 @@ export const bookmarkList = {
   opinionGroupLabel: '검토 의견으로 거르기',
   /**
    * 거르기 단추 네 개. "기타"는 의견을 아직 고르지 않은 회사만 나온다.
-   * 검토 대상 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
+   * 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
    */
   opinionFilters: {
     ALL: '전체 보기',
-    WORTH_REVIEW: '검토 권고',
-    NEED_CHECK: '추가 확인 필요',
+    WORTH_REVIEW: '영업 대상',
+    NEED_CHECK: '검토 중',
     NONE: '기타',
   },
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
@@ -495,12 +539,12 @@ export const bookmarkList = {
   movedLink: '관심 기업 보기',
 } as const;
 
-/** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 검토 대상 제외로 저장한 회사만 모아 본다. */
+/** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 제외로 저장한 회사만 모아 본다. */
 export const excludedList = {
   showOnly: '제외한 회사 보기',
   title: '제외한 회사',
-  hint: '검토 대상 제외로 저장한 회사입니다. 검토 의견을 바꾸면 관심 기업으로 돌아갑니다',
-  empty: '검토 대상 제외로 저장한 회사가 없습니다',
+  hint: '제외로 저장한 회사입니다. 검토 의견을 바꾸면 관심 기업으로 돌아갑니다',
+  empty: '제외로 저장한 회사가 없습니다',
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
@@ -518,6 +562,8 @@ export const candidateSearch = {
     NOT_FOUND: '홈페이지 못 찾음',
     READ_FAILED: '홈페이지 읽기 실패',
     NOT_TRIED: '조사 안 됨',
+    /** #690: 관심으로 저절로 도는 조사가 하루 금액 설정 때문에 돌지 않았다. [다시 조사]로 돌릴 수 있다. */
+    LIMIT_SKIPPED: '자동 조사 한도로 조사 안 함',
   } as Record<string, string>,
   /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
   ingestedOn: (date: string) => `${date} 들어옴`,
@@ -614,6 +660,14 @@ export const companyGlance = {
   evidencePage: '근거가 나온 페이지',
   noHomepage: '홈페이지를 찾지 못했습니다',
   needsConfirm: '확인 필요',
+  /** #511: 공식 홈페이지 대신 찾은 공개 페이지. 홈페이지 줄 아래에 "확인 필요 · (이 글) · 확신도 0.3"으로 보인다. */
+  unofficialPage: {
+    BLOG: '공식 홈페이지는 못 찾았고 회사 블로그 페이지',
+    SNS: '공식 홈페이지는 못 찾았고 회사 SNS 페이지',
+    SHOP: '공식 홈페이지는 못 찾았고 회사 쇼핑몰 페이지',
+    PUBLIC_PAGE: '공식 홈페이지는 못 찾았고 공공·지자체의 회사 소개 페이지',
+  },
+  confidence: (value: number) => `확신도 ${value.toFixed(1)}`,
   intro: '소개',
   /** 조사한 한 줄 소개가 없을 때: 공장 자료의 생산품·업종으로 만든 줄. */
   factoryBasis: '공장 자료 기준',
@@ -640,6 +694,8 @@ export const companySummary = {
   /** 사례 파일로만 만든 요약(AI 조사 전). */
   caseFileBasis: '사례 파일 기준',
   stale: '오래됨',
+  /** #677: 조사한 지 한 달(설정)이 지난 관심 회사의 "한눈에" 근거 상태 줄 꼬리표. */
+  suggestAgainTag: '다시 조사할 때',
   aiSuggestion: 'AI 제안',
   summaryLine: '한 줄',
   highlights: '특징',
@@ -674,6 +730,8 @@ export const homepageControls = {
   /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
   addButton: '주소 넣기',
   rerunButton: '다시 조사 💰',
+  /** #677: 조사한 지 한 달(설정)이 지난 관심 회사. [다시 조사] 단추 옆에 보인다. 저절로 조사하지 않는다. */
+  suggestAgain: (days: number) => `조사한 지 ${days}일 · 새 정보가 있을 수 있어요`,
   urlLabel: '홈페이지 주소',
   urlPlaceholder: 'https://',
   runWithUrl: '이 주소로 조사',
@@ -841,6 +899,30 @@ export const salesQuestionTexts = {
   nextDatePast: '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
   closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
+  /** 한 통화에 보이는 질문 수를 넘은 질문은 접어 둔다(#691). "다음 통화에서 물을 것 3개" + [지금 더 묻기] */
+  moreQuestions: (count: number) => `다음 통화에서 물을 것 ${count}개`,
+  askMoreNow: '지금 더 묻기',
+  /** 날짜를 바로 고르는 줄(#691, PM 결정 2026-11-13): 오늘부터 2주 + 다른 날짜 + [없음]. */
+  nextDateToday: '오늘',
+  nextDateOther: '다른 날짜',
+  nextDateNone: '없음',
+  nextDateListLabel: '가까운 날짜',
+  /** 요일 한 글자(일요일부터). "11/20(금)" */
+  weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+  nextDateNonePreview: '다음 일정은 잡지 않습니다.',
+  /** "다음 일정은 잡지 않습니다. 지금 일정 11/20 견적은 그대로 둡니다." */
+  nextDateNoneKeeps: (date: string, note: string) =>
+    `다음 일정은 잡지 않습니다. 지금 일정 ${[date, note].filter((part) => part).join(' ')}은(는) 그대로 둡니다.`,
+  /** 접촉 결과가 "거절"이면 바로 묻는 한 번(#691). 고른 대로 "끝 → 거절·보류" 답을 대신 실어 보낸다. */
+  declineAsk: '어떻게 할까요?',
+  /** 마무리 보기의 쉬운 말(큰 단계 코드로 찾는다). 없으면 질문 파일의 보기 문구를 쓴다. */
+  declineCloseLabels: { LOST: '거절로 마무리' } as Record<string, string>,
+  declineContinue: '아직 끝 아님 · 다시 연락',
+  declineUnpicked:
+    '아직 고르지 않았습니다. 이대로 저장하면 접촉만 남고 영업 단계는 바뀌지 않습니다.',
+  stepLineDeclinedContinue: '거절이지만 끝이 아니라면 다음 할 일과 날짜를 골라 주세요.',
+  /** 방문일 때 "누가 먼저 연락했나요?" 보기의 다른 말(보기 코드로 찾는다). 없으면 질문 파일의 문구. */
+  contactVisitLabels: { OURS: '우리가 감', THEIRS: '상대가 옴' } as Record<string, string>,
 } as const;
 
 /** 꼬리 질문의 공정·산업 확인(#652): 여러 개를 고르면 그 회사의 공정·산업이 확정된다. */
@@ -873,6 +955,10 @@ export const salesChoiceTexts = {
       : `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남습니다.`,
   keepIndustryPreview: (names: string) =>
     `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
+  /** 이미 확정된 값이 있으면 질문 대신 이 한 줄(#691). "확정됨: 아연도금" + [바꾸기] */
+  confirmedLine: (names: string) => `확정됨: ${names}`,
+  change: '바꾸기',
+  changeClose: '그대로 두기',
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
@@ -946,6 +1032,13 @@ export const recordsArea = {
   judgmentCheck: 'AI 판단이 맞았나',
   contactDate: '날짜',
   contactSave: '접촉 기록 저장',
+  /**
+   * 제외한 회사에 접촉을 남기려 할 때 그 자리에서 한 번 묻는다(#697, PM 결정 2026-11-13). 창은 띄우지 않는다.
+   * 제외가 아닌 회사는 묻지 않고, 접촉을 남기면 서버가 검토 의견을 "영업 대상"으로 정한다.
+   */
+  excludedAsk: '제외한 회사입니다. 영업 대상으로 되돌릴까요?',
+  excludedRestoreSave: '영업 대상으로 되돌리고 저장',
+  excludedKeepSave: '제외인 채로 저장',
   /** 상세 머리 "접촉 3회 (전화 2 · 방문 1)". 0회인 방법은 빼고, 접촉이 없으면 "접촉 없음". */
   contactCount: (total: number, call: number, email: number, visit: number) => {
     const parts = [
@@ -993,6 +1086,12 @@ export const recordsArea = {
   scheduleFixOpen: '일정만 바꾸기',
   scheduleNewOpen: '일정 잡기',
   scheduleFixClose: '접기',
+  /** 통화 없이 일정만 잡기(#691): 종류를 고르면 "할 일 한 줄"이 그 말로 채워진다(고쳐 쓸 수 있다). */
+  scheduleKind: '종류',
+  scheduleOnlyHint:
+    '통화 기록 없이 일정만 잡습니다(우리가 가는 방문 등). 종류를 고르면 내용이 채워집니다.',
+  /** 상세 머리의 바로 가기 단추(#691). 누르면 적는 곳의 "기록 남기기" 칸으로 내려간다. */
+  goRecord: '기록 남기기',
   /** "영업 단계" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#674). 누르면 그 자리에서 펼쳐진다. */
   stageFixAsk: '단계가 잘못됐나요?',
   stageFixOpen: '단계 고치기',
@@ -1261,8 +1360,8 @@ export const itemShortLabels: Record<string, string> = {
   NEW_PERF: '처리 목적',
   SIG_EXPAND: '증설',
   SIG_ORDER: '수주',
-  SIG_BID: '공고',
-  SIG_HIRE: '채용',
+  SIG_BID: '구매·외주 의향',
+  SIG_HIRE: '관심',
 };
 
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
@@ -1335,12 +1434,51 @@ export const salesAnalysisTexts = {
     `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 한 회사가 공정·산업군이 여러 개면 각각 셉니다.`,
   /** #652부터: 확정된 공정·산업군만 센다. 확인 전 회사는 "확인 전" 한 줄에 모인다. */
   countRuleConfirmed: (minSample: number) =>
-    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 담당자가 확인한 공정·산업군으로만 세고, 아직 확인 전인 회사는 "공정 확인 전"·"산업 확인 전" 줄에 모읍니다. 확정된 공정·산업군이 여러 개인 회사는 각각 셉니다.`,
+    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 담당자가 확인한 공정·산업군으로만 세고, 아직 확인 전인 회사는 "공정 확인 전"·"산업 확인 전" 줄에 모읍니다.`,
+  /** 공정별 표 아래(#684). 여러 공정·산업군이 확정된 회사는 줄마다 세므로 합계 줄을 따로 둔다. */
+  sumNote:
+    '확정된 공정·산업군이 여러 개인 회사는 줄마다 셉니다. 그래서 줄을 더하면 전체보다 클 수 있습니다. 전체 줄은 회사를 한 번씩만 셉니다.',
+  /** 공정별 표 맨 위 합계 줄 이름(#684). */
+  totalRow: '전체',
+  overlapProcess: '공정',
+  overlapIndustry: '산업',
+  /** "이 중 다른 공정에도 든 회사 2곳" */
+  overlap: (kind: string, count: number) => `이 중 다른 ${kind}에도 든 회사 ${count}곳`,
+  /** AI 제안 적중 한 줄(#678). 지금은 공정만 센다. */
+  hitProcess: '공정',
+  /** "공정 12/15" — 적중/확정한 회사 */
+  hitCount: (kind: string, hit: number, confirmed: number) => `${kind} ${hit}/${confirmed}`,
+  hitWithRatio: (count: string, percent: number) => `${count} (${percent}%)`,
+  hitLine: (parts: string) =>
+    `AI 제안 적중 — ${parts} (AI가 공정을 제안한 회사 가운데 담당자가 확정한 회사 기준)`,
+  /** 단계별 접촉 표(#684). */
+  stepTitle: '단계별 접촉',
+  stepTableLabel: '단계별 접촉 분석표',
+  stepNote:
+    '접촉은 그 접촉을 저장하기 바로 전의 세부 단계에 셉니다(첫 접촉은 "연결 전"). "이 단계까지 접촉"은 그 단계에 처음 이른 접촉까지의 횟수이고, 건너뛴 단계에는 세지 않습니다. 표본이 적으면 평균·비율 없이 건수만 보입니다.',
+  stepColumns: {
+    step: '세부 단계',
+    toReach: '이 단계까지 접촉',
+    contacts: '이 단계에서 접촉',
+    reach: '이 단계에서 방법별 연결/시도',
+    ratio: '비율',
+  },
+  /** "평균 3.5번 (6곳)" */
+  stepToReachAvg: (avg: number, count: number) => `평균 ${avg}번 (${count}곳)`,
+  /** 표본이 적을 때: "2곳 · 모두 7번" */
+  stepToReachSum: (count: number, sum: number) => `${count}곳 · 모두 ${sum}번`,
+  /** "3곳 · 접촉 8번" */
+  stepContacts: (count: number, contacts: number) => `${count}곳 · 접촉 ${contacts}번`,
   /** 회사별 표에서 확정된 공정·산업군이 없을 때. */
   unconfirmed: '확인 전',
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
   emptyAction: '영업 후보 목록으로',
+  /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
+  breakdownTitle: '관심 기업 분포',
+  breakdownNote:
+    '이 막대는 관심 기업을 기준으로 세고 AI가 제안한 공정·산업도 함께 셉니다. 아래 표는 접촉 기록이 있는 회사를 확정된 공정·산업만으로 세어 기준이 다릅니다.',
+  breakdownLoadError: '관심 기업 분포를 불러오지 못했습니다.',
   processTitle: '공정별',
   processTableLabel: '공정별 영업 분석표',
   companyTitle: '회사별',
@@ -1412,7 +1550,7 @@ export const contactBuckets = {
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
   /** 그 묶음에 든 이유. 카드에는 끝난 회사의 이유(앞 네 줄)만 꼬리표로 보인다. */
   basis: {
-    EXCLUDED_OPINION: '검토 대상 제외',
+    EXCLUDED_OPINION: '제외',
     REQUIRED_FAILED: '필수조건 탈락',
     EXISTING_CUSTOMER: '거래 중',
     CLOSED_OR_HOLD: '성사·거절·보류',
@@ -1422,7 +1560,7 @@ export const contactBuckets = {
     HOMEPAGE_NOT_FOUND: '홈페이지 못 찾음',
     RESEARCH_NOT_RUN: '조사 전',
     IN_PROGRESS: '접촉 진행 중',
-    NEED_CHECK_OPINION: '추가 확인 의견',
+    NEED_CHECK_OPINION: '검토 중',
     REQUIRED_PENDING: '필수조건 확인 전',
     OWN_PLATING: '표면처리 직접 여부 확인',
     NOT_EVALUATED_HIGH_FIT: '평가 전 · 적합도 상',
@@ -1513,6 +1651,21 @@ export const detailReport = {
      */
     markConfirmed: '확인됨',
     markAi: 'AI 제안 · 확인 전',
+    /**
+     * #677(PM 결정 2026-11-13): 사람이 확정한 공정이 있는데 AI가 다른 공정을 제안했을 때 공정 줄 아래에 보인다.
+     * 확정 값은 저절로 바뀌지 않는다. [확정 값 유지]는 그 제안을 물리치고, [○○도 추가]는 확정 공정에 더한다.
+     */
+    difference: {
+      tag: 'AI는 다르게 봄',
+      /** "AI 새 제안: 니켈도금 · 확정 값: 아연도금" */
+      line: (proposed: string, confirmed: readonly string[]) =>
+        `AI 새 제안: ${proposed} · 확정 값: ${confirmed.join(', ')}`,
+      keep: '확정 값 유지',
+      /** "니켈도금도 추가" */
+      add: (proposed: string) => `${proposed}도 추가`,
+      pickStaffFirst: '담당자를 고르면 고를 수 있습니다.',
+      failed: '저장하지 못했습니다.',
+    },
     markConfirmedAria: (text: string) => `${text} (사람이 확인한 값)`,
     markAiAria: 'AI 제안 · 확인 전 (사람이 확인하기 전)',
     /** "외 1개" */
@@ -1541,6 +1694,8 @@ export const detailReport = {
     checkWords: (words: readonly string[], names: readonly string[]) =>
       `${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
     checkNone: '지금 확인할 것 없음',
+    /** 낱말은 없는데 아래 "2. 통화에서 확인할 것"에 줄이 있을 때(#691). */
+    checkCallCount: (count: number) => `통화에서 확인할 것 ${count}가지 (아래 2번)`,
     /** "마지막 접촉 11/12" */
     lastContact: (date: string) => `마지막 접촉 ${date}`,
     phone: '대표번호',

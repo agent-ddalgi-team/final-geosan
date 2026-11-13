@@ -38,6 +38,7 @@ from geosan.config.validators import (
     scan_contacts,
 )
 from geosan.rules.codes import (
+    CALL_SIGNAL_KINDS,
     CapKind,
     ItemCode,
     ItemState,
@@ -443,6 +444,13 @@ def _check_requirements(model: CaseFile, link_codes: set[str], c: _Collector) ->
 def _check_signals(model: CaseFile, c: _Collector) -> None:
     for index, signal in enumerate(model.signals):
         base = f"signals[{index}]"
+        if signal.signal_kind in CALL_SIGNAL_KINDS:
+            # #685: 통화 신호는 접촉 기록의 꼬리 질문 답에서 서버가 만든다(사례 파일로는 안 넣음).
+            c.error(
+                f"{base}.signalKind",
+                f"통화 신호({signal.signal_kind})는 사례 파일에 적을 수 없습니다. "
+                "접촉 기록의 꼬리 질문 답에서만 만들어집니다",
+            )
         if signal.signal_kind == SignalKind.BID and signal.deadline_at is None:
             c.warn(
                 f"{base}.deadlineAt",

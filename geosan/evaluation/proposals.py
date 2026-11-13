@@ -7,10 +7,11 @@ AI 제안은 `proposed_by = "AI"` 행으로 남고, 담당자가 확정하면 ST
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.config.rule_config import match_rate_steps
+from geosan.evaluation.call_inputs import apply_call_signal_inputs, call_item_codes
 from geosan.evaluation.inputs import AI_PROPOSED, current_item_inputs, has_ai_pending_inputs
 from geosan.evaluation.models import ItemJudgmentInput
 from geosan.evidence.extraction import Extraction
@@ -35,12 +36,18 @@ def store_item_proposals(
 ) -> int:
     """제안을 점수 입력 행으로 저장하고 저장한 제안 수를 돌려준다.
 
-    - 사람 값(FILE·STAFF)이 있는 항목은 건너뛴다(사례 파일 18곳 보호).
+    - 사람 값(FILE·STAFF·통화에서 확인한 CALL)이 있는 항목은 건너뛴다(사례 파일 18곳 보호).
     - 제안이 하나도 없으면 아무것도 쓰지 않는다(회사는 "평가 전" 그대로).
     - 제안이 있으면 8항목을 모두 채운다: 제안 없는 항목은 UNAVAILABLE(점수 null) AI 행.
       이전 AI 행은 대체(superseded)한다.
     """
-    proposals = {item.item_code.value: item for item in result.item_input_proposals}
+    # #685: 통화에서 확인한 신호로 채우는 항목은 AI 제안을 받지 않는다(와도 저장하지 않는다).
+    call_items = call_item_codes(rule_config)
+    proposals = {
+        item.item_code.value: item
+        for item in result.item_input_proposals
+        if item.item_code.value not in call_items
+    }
     if not proposals:
         return 0
     steps = match_rate_steps(rule_config)
@@ -101,6 +108,10 @@ def store_item_proposals(
             )
         )
     session.flush()
+    # #685: 8항목 입력이 생겼으니, 먼저 저장돼 있던 통화 신호가 있으면 그 값을 함께 넣는다.
+    apply_call_signal_inputs(
+        session, opportunity.opp_id, rule_config, entered_by=requested_by, now=now
+    )
     return stored
 
 
@@ -112,12 +123,19 @@ def store_process_link_proposals(
     allowed_codes: set[str],
     requested_by: str,
 ) -> int:
-    """아직 연결되지 않은 공정만 AI·확인 전 연결로 더한다. 기존 연결은 건드리지 않는다."""
+    """아직 연결되지 않은 공정만 AI·확인 전 연결로 더한다. 기존 연결은 건드리지 않는다.
+
+    #677: 담당자가 뺀 AI 제안(이력으로만 남은 AI·확인 전 행)의 공정은 다시 붙이지 않는다.
+    같은 차이를 다시 조사할 때마다 다시 묻지 않기 위해서다.
+    """
     linked = set(
         session.scalars(
             select(OppProcessLink.process_code).where(
                 OppProcessLink.opp_id == opportunity.opp_id,
-                OppProcessLink.superseded_at.is_(None),
+                or_(
+                    OppProcessLink.superseded_at.is_(None),
+                    and_(OppProcessLink.source == AI, OppProcessLink.state == "PENDING"),
+                ),
             )
         )
     )

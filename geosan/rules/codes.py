@@ -100,6 +100,12 @@ class SignalKind(StrEnum):
     HIRING = "HIRING"
     REORDER_CYCLE = "REORDER_CYCLE"
     NEXT_CONTACT = "NEXT_CONTACT"
+    # (추가 2026-11-13 #685) 통화에서 확인한 신호. 꼬리 질문 답에서 서버가 만들고 점수에만 쓴다.
+    CALL_INTENT = "CALL_INTENT"
+    CALL_INTEREST = "CALL_INTEREST"
+
+
+CALL_SIGNAL_KINDS = frozenset({SignalKind.CALL_INTENT, SignalKind.CALL_INTEREST})
 
 
 class SignalRelation(StrEnum):

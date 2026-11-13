@@ -56,3 +56,43 @@ def continued(batch_env, second, result):
         assert session.get(Customer, batch_env[0].customer_id).research_source != "AI"
         assert session.get(Customer, second.customer_id).research_source == "AI"
         assert session.scalar(select(EvaluationRun).where(EvaluationRun.opp_id == second.opp_id))
+
+
+# ---------- #690: 기본 대상에 "주소는 있는데 조사가 안 된 회사" ----------
+
+
+@given("홈페이지 주소는 있는데 조사 날짜와 근거가 없는 공개 신규 사례가 있다")
+def unresearched(batch_env):
+    support.give_address(batch_env[0], researched=False)
+
+
+@given("홈페이지 주소가 있고 이미 조사된 공개 신규 사례가 있다")
+def researched(batch_env):
+    support.give_address(batch_env[0], researched=True)
+
+
+@when("조건 없이 일괄 조사 명령을 실행한다", target_fixture="result")
+def run_default():
+    return CliRunner().invoke(app, ["research"])
+
+
+@then("홈페이지 찾기 검색 없이 그 주소로 조사해 근거와 평가를 저장한다")
+def researched_by_address(batch_env, result):
+    case, extraction = batch_env
+    assert result.exit_code == 0, result.output
+    assert "저장·재평가 1건" in result.output
+    assert extraction.call_count == 1
+    assert [row.purpose for row in support.search_support.logs()] == ["EXTERNAL_AI"]
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        assert customer.researched_at is not None
+        assert customer.homepage_url == support.extraction_support.URL
+        assert session.scalar(select(Evidence).where(Evidence.is_llm_proposed.is_(True)))
+        assert session.scalar(select(EvaluationRun))
+
+
+@then("조사할 사례가 없다고 알리고 아무것도 부르지 않는다")
+def nothing_to_do(batch_env, result):
+    assert result.exit_code == 0, result.output
+    assert "처리 0건" in result.output
+    assert batch_env[1].call_count == 0 and not support.search_support.logs()
