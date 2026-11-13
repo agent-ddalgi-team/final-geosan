@@ -3307,6 +3307,14 @@
             "title": "Bucketbasis",
             "type": "string"
           },
+          "checkPoints": {
+            "description": "#659 필수조건 가운데 확인 전인 조건(평가 기록의 사실만)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Checkpoints",
+            "type": "array"
+          },
           "classificationCode": {
             "$ref": "#/components/schemas/ClassificationCode"
           },
@@ -3322,6 +3330,14 @@
             "default": 0,
             "title": "Contactcount",
             "type": "integer"
+          },
+          "coreEvidenceGaps": {
+            "description": "#659 핵심 근거를 다시 확인해야 하는 이유(평가 기록의 사실만)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Coreevidencegaps",
+            "type": "array"
           },
           "coreEvidenceRecheck": {
             "default": false,

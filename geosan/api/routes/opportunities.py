@@ -12,6 +12,7 @@ from fastapi import APIRouter, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from geosan.api.check_points import card_check_points
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.ingest_views import (
     candidate_order,
@@ -934,6 +935,8 @@ def list_opportunities(
             {row[3].customer_id: row[2].opp_id for row in visible_rows},
             runtime.app_settings,
         )
+    # 검토사항 줄에 쓸 구체적인 말(#659): 보이는 카드의 평가 기록을 모아 한 번에 읽는다.
+    check_points = card_check_points(session, [row[1] for row in visible_rows])
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
         visible_rows, start=start + 1
@@ -969,6 +972,8 @@ def list_opportunities(
                 process_codes=process_codes,
                 confirmed_process_codes=confirmed_codes,
                 proposed_process_count=len(process_codes) - len(confirmed_codes),
+                check_points=check_points[current.eval_id].check_points,
+                core_evidence_gaps=check_points[current.eval_id].core_evidence_gaps,
                 opp_id=opportunity.opp_id,
                 bucket=placements[opportunity.opp_id].bucket,
                 bucket_basis=placements[opportunity.opp_id].basis,
