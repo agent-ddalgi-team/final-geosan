@@ -23,6 +23,7 @@ import CallChecklist from '../components/detail/CallChecklist';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
 import HeaderSection from '../components/detail/HeaderSection';
+import IndustryChips from '../components/detail/IndustryChips';
 import ReasonsSection from '../components/detail/ReasonsSection';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import WhyThisCompany from '../components/detail/WhyThisCompany';
@@ -311,6 +312,16 @@ export default function OpportunityDetailPage() {
             <span>{detailReport.writeDivider}</span>
             <span aria-hidden="true" style={{ flex: 1, height: 1, background: colors.border }} />
           </div>
+          {/* 산업군 칩(#646): AI 제안을 [확정]·[고치기]. 저장하면 상세와 활동 이력을 새로 불러온다. */}
+          <IndustryChips
+            key={`${oppId}:industries`}
+            oppId={oppId}
+            header={data.header}
+            onSaved={() => {
+              setReload((n) => n + 1);
+              setTimelineVersion((n) => n + 1);
+            }}
+          />
           <DetailSection id="detail-opinion" title={opinionArea.groupLabel}>
             {data.evalId ? (
               <OpinionArea

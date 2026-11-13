@@ -883,6 +883,15 @@ export interface RelationResponse {
   evalId: string;
 }
 
+// ---------- POST /opportunities/{oppId}/industries (상세 산업군 칩, #646) ----------
+
+export interface IndustriesResponse {
+  industries: string[];
+  /** STAFF = 담당자 확정. 빈 배열로 되돌렸으면 null. */
+  industriesSource: 'STAFF' | null;
+  industriesConfirmedAt: string | null;
+}
+
 // ---------- POST /questions/{questionId}/reply (검토사항 [답 적기], 2026-11-04) ----------
 
 export interface ReplyRequest {

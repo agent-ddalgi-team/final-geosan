@@ -23,6 +23,7 @@ import {
   detailReport,
   detailSections,
   frame,
+  industryChips,
   opinionArea,
   peersArea,
   recordsArea,
@@ -343,6 +344,8 @@ describe('OpportunityDetailPage', () => {
       detailSections.reasons,
       detailSections.callChecklist,
       expect.stringContaining(detailSections.scores),
+      // 적는 곳 맨 앞: 산업군 칩(#646).
+      industryChips.title,
       opinionArea.groupLabel,
       recordsArea.title,
       peersArea.title,

@@ -1586,3 +1586,24 @@ export const detailReport = {
   /** 읽는 곳과 적는 곳을 가르는 줄. */
   writeDivider: '여기부터 적는 곳',
 } as const;
+
+/** 상세 "회사 소개 · 산업군" 칩(#646): AI 제안을 [확정]하거나 [고치기]로 바꾼다. */
+export const industryChips = {
+  title: '회사 소개 · 산업군',
+  none: '산업 미확정',
+  /** 사람이 확인하기 전의 값 옆에 붙는 말. 예: "자동차 부품 (AI 제안)". */
+  aiMark: '(AI 제안)',
+  aiAria: (name: string) => `${name} (AI 제안 · 사람이 확인하기 전)`,
+  confirmedAria: (name: string) => `${name} (사람이 확인한 값)`,
+  source: { STAFF: '담당자 확정', CASE_FILE: '사례 파일 값' },
+  confirm: '확정',
+  edit: '고치기',
+  save: '저장',
+  cancel: '취소',
+  groupLabel: '이 회사의 산업군 고르기',
+  hint: '맞으면 [확정], 다르면 [고치기]로 고릅니다. 확정한 값으로 영업 분석을 셉니다.',
+  editHint: (max: number) => `산업군은 ${max}개까지 고를 수 있습니다.`,
+  pickStaffFirst: '담당자를 고르면 바꿀 수 있습니다.',
+  noOptions: '산업군 목록을 불러오지 못해 고칠 수 없습니다.',
+  saveFailed: '산업군을 저장하지 못했습니다.',
+} as const;
