@@ -6,10 +6,11 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
+from geosan.api.auto_research import attach_background, queue_on_bookmark
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
@@ -100,7 +101,8 @@ from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
 
-router = APIRouter()
+# #690: 관심이 켜지는 저장 뒤 조사를 응답 뒤에 돌릴 수 있게 요청마다 할 일 목록을 걸어 둔다.
+router = APIRouter(dependencies=[Depends(attach_background)])
 
 LOST_REASON_LABELS = {
     "PRICE": "가격",
@@ -576,6 +578,9 @@ def _add_bookmark(
         is_virtual=opportunity.is_virtual,
     )
     session.add(row)
+    if active:
+        # #690: 관심이 켜지면 홈페이지가 있고 조사 전인 회사는 응답 뒤 조사가 저절로 돈다.
+        queue_on_bookmark(session, opportunity)
     return row
 
 

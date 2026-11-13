@@ -531,6 +531,8 @@ export const candidateSearch = {
     NOT_FOUND: '홈페이지 못 찾음',
     READ_FAILED: '홈페이지 읽기 실패',
     NOT_TRIED: '조사 안 됨',
+    /** #690: 관심으로 저절로 도는 조사가 하루 금액 설정 때문에 돌지 않았다. [다시 조사]로 돌릴 수 있다. */
+    LIMIT_SKIPPED: '자동 조사 한도로 조사 안 함',
   } as Record<string, string>,
   /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
   ingestedOn: (date: string) => `${date} 들어옴`,
@@ -1389,7 +1391,41 @@ export const salesAnalysisTexts = {
     `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 한 회사가 공정·산업군이 여러 개면 각각 셉니다.`,
   /** #652부터: 확정된 공정·산업군만 센다. 확인 전 회사는 "확인 전" 한 줄에 모인다. */
   countRuleConfirmed: (minSample: number) =>
-    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 담당자가 확인한 공정·산업군으로만 세고, 아직 확인 전인 회사는 "공정 확인 전"·"산업 확인 전" 줄에 모읍니다. 확정된 공정·산업군이 여러 개인 회사는 각각 셉니다.`,
+    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 담당자가 확인한 공정·산업군으로만 세고, 아직 확인 전인 회사는 "공정 확인 전"·"산업 확인 전" 줄에 모읍니다.`,
+  /** 공정별 표 아래(#684). 여러 공정·산업군이 확정된 회사는 줄마다 세므로 합계 줄을 따로 둔다. */
+  sumNote:
+    '확정된 공정·산업군이 여러 개인 회사는 줄마다 셉니다. 그래서 줄을 더하면 전체보다 클 수 있습니다. 전체 줄은 회사를 한 번씩만 셉니다.',
+  /** 공정별 표 맨 위 합계 줄 이름(#684). */
+  totalRow: '전체',
+  overlapProcess: '공정',
+  overlapIndustry: '산업',
+  /** "이 중 다른 공정에도 든 회사 2곳" */
+  overlap: (kind: string, count: number) => `이 중 다른 ${kind}에도 든 회사 ${count}곳`,
+  /** AI 제안 적중 한 줄(#678). 지금은 공정만 센다. */
+  hitProcess: '공정',
+  /** "공정 12/15" — 적중/확정한 회사 */
+  hitCount: (kind: string, hit: number, confirmed: number) => `${kind} ${hit}/${confirmed}`,
+  hitWithRatio: (count: string, percent: number) => `${count} (${percent}%)`,
+  hitLine: (parts: string) =>
+    `AI 제안 적중 — ${parts} (AI가 공정을 제안한 회사 가운데 담당자가 확정한 회사 기준)`,
+  /** 단계별 접촉 표(#684). */
+  stepTitle: '단계별 접촉',
+  stepTableLabel: '단계별 접촉 분석표',
+  stepNote:
+    '접촉은 그 접촉을 저장하기 바로 전의 세부 단계에 셉니다(첫 접촉은 "연결 전"). "이 단계까지 접촉"은 그 단계에 처음 이른 접촉까지의 횟수이고, 건너뛴 단계에는 세지 않습니다. 표본이 적으면 평균·비율 없이 건수만 보입니다.',
+  stepColumns: {
+    step: '세부 단계',
+    toReach: '이 단계까지 접촉',
+    contacts: '이 단계에서 접촉',
+    reach: '이 단계에서 방법별 연결/시도',
+    ratio: '비율',
+  },
+  /** "평균 3.5번 (6곳)" */
+  stepToReachAvg: (avg: number, count: number) => `평균 ${avg}번 (${count}곳)`,
+  /** 표본이 적을 때: "2곳 · 모두 7번" */
+  stepToReachSum: (count: number, sum: number) => `${count}곳 · 모두 ${sum}번`,
+  /** "3곳 · 접촉 8번" */
+  stepContacts: (count: number, contacts: number) => `${count}곳 · 접촉 ${contacts}번`,
   /** 회사별 표에서 확정된 공정·산업군이 없을 때. */
   unconfirmed: '확인 전',
   empty:
