@@ -247,3 +247,19 @@ scripts/                check.sh · check-secrets.sh (맥·리눅스) · check.p
 **먼저 볼 곳: [`docs/map/`](docs/map/README.md)** — 지금 기준의 전체 기획과 현황을 그림과 쉬운 말로 정리한 지도입니다(기능 지도 · 구조 지도 · 기획 변경 기록). 아래 설계 문서는 그 지도의 근거 자료입니다.
 
 `aidlc/spaces/default/intents/261019-geosan-sales-agent/` 아래에 있습니다. 구현 전에 자기 모듈의 기능 설계(`construction/u1-skeleton/functional-design/`의 `rules.md`·`entities.md`·`functional-spec.md`)와 계약(`inception/contract-design/contract-summary.md`)을 읽습니다. 코드 생성 계획과 단위 테스트 지침은 `construction/u1-skeleton/code-generation/`에 있습니다.
+
+## 6. 회사 좌표와 거리 (#222)
+
+`geosan geocode --missing-only`는 활성 묶음의 공개 실제 회사를 대상으로 이미 저장된 좌표를 재사용합니다.
+없는 좌표는 **위치 CSV → 행안부 주소검색 후 같은 CSV 대조 → 좌표제공 API → 네이버 Geocoding** 순서로 확인합니다.
+가상·비공개·연락처가 섞인 주소는 외부에 보내지 않습니다. 다른 건물·복수 위치·빈 좌표는 임의로 확정하지 않습니다.
+
+- 앱 설정 `geocoding.locationCsvFiles`에 위치정보요약DB CSV 파일 목록, `locationCsvBaseDate`에 자료 기준일을 넣습니다. 상대 경로는 프로그램을 실행하는 폴더 기준입니다.
+- 외부 조회는 `geocoding.enabled`로 켜며 `dailyCallLimit`의 초기값은 10,000회입니다. 행안부·네이버·재시도를 모두 합산합니다. 조회 오류는 미확인과 구분해 실패로 보고합니다.
+- 행안부 키는 `JUSO_SEARCH_KEY`·`JUSO_COORD_KEY` 환경변수에만 둡니다. 좌표계 변환과 거리 계산에는 별도 API가 필요 없습니다.
+- 네이버는 `naverFallbackEnabled`와 서버 환경변수 `NCP_MAPS_KEY_ID`·`NCP_MAPS_KEY`가 준비됐을 때 사용합니다. 받은 결과는 해당 요청의 실시간 지도·거리 표시용이며 DB·파일·공용 캐시에 저장하지 않습니다. 명령의 실시간 확인 건수도 저장 건수와 구분됩니다.
+- 거산 기준 주소·위도·경도는 `geosan.address`·`lat`·`lng`입니다. 기준 좌표가 없으면 거리 값은 비어 있습니다. 회사 좌표가 있어도 점수와 기본 추천 순위는 바뀌지 않습니다.
+
+공공좌표는 DB에 출처·확인시각과 함께 저장하며 카드·상세 응답의 `distanceKm`에서 직선거리를 제공합니다.
+키 교체는 서버 환경변수만 바꾸고 서버를 다시 실행합니다. 브라우저 사용자마다 등록하지 않습니다.
+API 서버와 지도 화면은 별도 작업이며, 가까운 순·거리 필터 화면 및 대시보드 지도는 해당 담당 작업에서 연결합니다.

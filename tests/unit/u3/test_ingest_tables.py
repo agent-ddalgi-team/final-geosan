@@ -21,7 +21,7 @@ from geosan.storage.migrate import alembic_config, current_revisions, downgrade,
 from geosan.storage.session import session_scope
 
 BEFORE = "opp_007"
-HEAD = "rec_013"
+HEAD = "merge_002"
 NEW_TABLES = {
     "opp_ingest_batch",
     "opp_merge_candidate",
