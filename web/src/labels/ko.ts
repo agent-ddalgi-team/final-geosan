@@ -343,7 +343,10 @@ export const scoreAria = {
  * `processLinks`도 지금 화면이 쓰지 않는 키다.
  */
 export const detailSections = {
-  reasons: '1. 추천 근거와 후속 조치',
+  /** 2026-11-13 PM 결정(#674): 추천 근거와 근거 자료를 한 구역으로 합치고 제목을 바꿨다(전에는 "1. 추천 근거와 후속 조치"). */
+  reasons: '1. 왜 이 회사인가',
+  /** 2026-11-13 PM 결정(#674): 검토사항을 읽기 전용 목록으로 바꾼 구역. */
+  callChecklist: '2. 통화에서 확인할 것',
   requirements: '고객이 요구하는 것과 거산의 준비 상태',
   processLinks: '공정 적합성 검토',
   evidence: '2. 근거 자료',
@@ -808,6 +811,11 @@ export const salesQuestionTexts = {
   knownNone: '아직 없음',
   unknown: '아직 모르는 것',
   questionsTitle: '이번 접촉에서 알게 된 것',
+  /** 꼬리 질문 묶음 위 한 줄(#674): 왜 이 질문들이 나오는지. "지금 단계: 수요 확인 — 이 단계의 질문과 모든 단계 공통 질문입니다." */
+  stepLine: (label: string) => `지금 단계: ${label} — 이 단계의 질문과 모든 단계 공통 질문입니다.`,
+  stepLineFirst: (label: string) =>
+    `첫 접촉이라 '${label}' 단계의 질문과 모든 단계 공통 질문이 보입니다.`,
+  stepLineDeclined: '접촉 결과가 거절이라 모든 단계 공통 질문만 보입니다.',
   questionsHint: '아는 것만 고르세요. 고르지 않은 질문은 다음 접촉 때 다시 보입니다.',
   clearAnswer: '선택 지우기',
   memoLabel: '한 줄 메모 (선택)',
@@ -817,6 +825,13 @@ export const salesQuestionTexts = {
   loadFailed: '꼬리 질문을 불러오지 못했습니다. 접촉 기록은 그대로 저장할 수 있습니다.',
   /** 마무리 답을 골랐을 때 저장 전 미리 알림(#643). "저장하면 영업 단계가 '거절 · 가격'(으)로 바뀝니다." */
   closePreview: (stage: string) => `저장하면 영업 단계가 '${stage}'(으)로 바뀝니다.`,
+  /** "다음 할 일"에서 끝이 아닌 할 일을 고르면 바로 아래에 날짜를 묻는다(#683, PM 결정 2026-11-13). */
+  nextDateLabel: '언제 할까요?',
+  nextDateHint: '안 넣어도 됩니다. 넣으면 다음 일정으로 잡힙니다.',
+  /** "저장하면 다음 일정이 11/20 견적(으)로 잡힙니다." */
+  nextDatePreview: (date: string, action: string) =>
+    `저장하면 다음 일정이 ${date} ${action}(으)로 잡힙니다.`,
+  nextDatePast: '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
   closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
 } as const;
@@ -961,7 +976,20 @@ export const recordsArea = {
   required: '필수',
   selectPlaceholder: '고르세요',
   /** 세 칸을 "한 일 → 지금 단계 → 다음 할 일" 순서로 읽게 하는 안내(#433, PM 결정 2026-11-08). */
-  flowGuide: '① 한 일 적기(접촉·메모) → ② 지금 단계 → ③ 다음 할 일',
+  /** 2026-11-13 PM 지시(#674): 단계는 꼬리 질문 답으로 저절로 저장되므로 안내에서 "지금 단계"를 뺐다(전에는 세 칸). */
+  /** 2026-11-13 PM 결정(#683): 다음 일정도 꼬리 질문에서 같이 잡으므로 ①·② 두 걸음 안내를 한 줄로 줄였다. */
+  flowGuide: '한 일 적기(접촉·꼬리 질문·메모·다음 일정) · 영업 단계는 저절로 정해집니다',
+  /** "다음 일정" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#683). 누르면 그 자리에서 펼쳐진다. */
+  scheduleCurrent: (date: string, note: string) =>
+    note ? `지금 일정: ${date} ${note}` : `지금 일정: ${date}`,
+  scheduleNone: '다음 일정 없음',
+  scheduleFixOpen: '일정만 바꾸기',
+  scheduleNewOpen: '일정 잡기',
+  scheduleFixClose: '접기',
+  /** "영업 단계" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#674). 누르면 그 자리에서 펼쳐진다. */
+  stageFixAsk: '단계가 잘못됐나요?',
+  stageFixOpen: '단계 고치기',
+  stageFixClose: '접기',
   stepOne: '①',
   stepTwo: '②',
   stepThree: '③',
@@ -1226,8 +1254,8 @@ export const itemShortLabels: Record<string, string> = {
   NEW_PERF: '처리 목적',
   SIG_EXPAND: '증설',
   SIG_ORDER: '수주',
-  SIG_BID: '공고',
-  SIG_HIRE: '채용',
+  SIG_BID: '구매·외주 의향',
+  SIG_HIRE: '관심',
 };
 
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
@@ -1403,4 +1431,136 @@ export const contactBuckets = {
     ].filter((part) => part !== null);
     return `같은 공정·산업(${adjust.processName} · ${adjust.industry})에서 ${period} ${counts.join(' · ')} → ${adjust.level > 0 ? '위로' : '아래로'}`;
   },
+} as const;
+
+/**
+ * 상세 화면을 읽는 보고서처럼(#674, PM 결정 2026-11-13): 위는 읽기(진행 막대·한눈에·1~3번 구역), 아래는 적는 곳.
+ * 여기에는 새로 생긴 틀 문구만 둔다. 값은 서버 응답에서 온다.
+ */
+export const detailReport = {
+  /** 맨 위 단계 진행 막대. 끝 칸 "성사"는 큰 단계 이름(outcomeStatusLabels.WON)과 같은 말이다. */
+  progress: {
+    title: '영업 단계',
+    won: '성사',
+    /** "지금 (11/12부터)" */
+    now: (since: string | null) => (since ? `지금 (${since}부터)` : '지금'),
+    noContact: '아직 접촉 기록이 없습니다',
+    /** "✕ 거절 (가격)" — 이유가 없으면 "✕ 거절" */
+    lost: (reason: string | null) => `✕ 거절${reason ? ` (${reason})` : ''}`,
+    hold: '⏸ 보류',
+    wonDone: '✓ 성사',
+    /** 점마다 화면 낭독·마우스 올림 글: "수요 확인 — 지금 단계" */
+    stateText: { done: '지나온 단계', current: '지금 단계', todo: '아직' },
+    dot: (label: string, state: string) => `${label} — ${state}`,
+    /** 막대 전체를 글로: "6단계 중 3단계 수요 확인 (11/12부터)" */
+    ariaCurrent: (total: number, index: number, label: string, since: string | null) =>
+      `${total}단계 중 ${index}단계 ${label}${since ? ` (${since}부터)` : ''}`,
+    ariaNoContact: (total: number) => `${total}단계 중 시작 전 · 아직 접촉 기록이 없습니다`,
+    ariaWon: (total: number) => `${total}단계 모두 지나 성사`,
+    ariaLost: (total: number, index: number, label: string | null, reason: string | null) =>
+      `${total}단계 중 ${label ? `${index}단계 ${label}에서` : '시작 전에'} 거절${reason ? ` (${reason})` : ''}`,
+    ariaHold: (total: number, index: number, label: string | null) =>
+      `${total}단계 중 ${label ? `${index}단계 ${label}에서` : '시작 전에'} 보류`,
+    /** "다음 일정: 11/20 견적 보내기" */
+    nextSchedule: (date: string, note: string | null) =>
+      `다음 일정: ${date}${note ? ` ${note}` : ''}`,
+  },
+  /** "한눈에" 상자. 다섯 묶음의 줄 머리말과, 값이 없을 때의 짧은 말. */
+  glance: {
+    title: '한눈에',
+    company: '어떤 회사',
+    fit: '거산과 맞는 점',
+    evidence: '근거 상태',
+    check: '확인할 것',
+    sales: '영업 상태',
+    notResearched: '아직 조사 전',
+    highlights: '특징',
+    process: '공정',
+    material: '소재',
+    industry: '산업',
+    distance: '거리',
+    confirmed: '확정',
+    aiProposal: 'AI 제안',
+    pending: '확인 전',
+    /**
+     * "거산과 맞는 점"의 상태 표시(PM 지시 2026-11-13): 사람이 확인한 값은 초록 ✓ "확인됨"(소재는 ✓ "통과"),
+     * AI가 제안만 한 값은 회색 ○ "AI 제안 · 확인 전". 전의 "· 확정"·"· 통과" 글자를 이 표시로 바꿨다.
+     */
+    markConfirmed: '확인됨',
+    markAi: 'AI 제안 · 확인 전',
+    markConfirmedAria: (text: string) => `${text} (사람이 확인한 값)`,
+    markAiAria: 'AI 제안 · 확인 전 (사람이 확인하기 전)',
+    /** "외 1개" */
+    moreCount: (rest: number) => `외 ${rest}개`,
+    /** AI가 제안한 공정 이름들: "아연도금, 아노다이징, 흑착색 외 2개" */
+    processProposedNames: (shown: readonly string[], rest: number) =>
+      `${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''}`,
+    /** "아연도금(전기아연도금) · 확정 외 1개" */
+    processConfirmed: (name: string, rest: number) =>
+      `${name} · 확정${rest > 0 ? ` 외 ${rest}개` : ''}`,
+    /** "확인 전 · AI 제안 5개(아연도금, 아노다이징, 흑착색 외 2개)" */
+    processProposed: (count: number, shown: readonly string[], rest: number) =>
+      `확인 전 · AI 제안 ${count}개${shown.length > 0 ? `(${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''})` : ''}`,
+    /** "철 · 통과" */
+    materialLine: (material: string, result: string | null) =>
+      result ? `${material} · ${result}` : material,
+    /** "기계·설비 · 확정" / "기계·설비 · AI 제안" */
+    industryLine: (names: readonly string[], source: string) => `${names.join(', ')} · ${source}`,
+    /** "근거 5건" / "근거 없음" */
+    evidenceCount: (count: number) => (count > 0 ? `근거 ${count}건` : '근거 없음'),
+    homepageFound: '홈페이지 있음',
+    homepageNotFound: '홈페이지 못 찾음',
+    homepageNone: '홈페이지 없음',
+    researchRunning: '조사 중',
+    /** 낱말(공정·소재·근거 부족) 뒤에 이름 그대로 보이는 조건 앞 3개 + "외 n개". 카드 "확인할 것" 줄과 같은 조립이다. */
+    checkWords: (words: readonly string[], names: readonly string[]) =>
+      `${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
+    checkNone: '지금 확인할 것 없음',
+    /** "마지막 접촉 11/12" */
+    lastContact: (date: string) => `마지막 접촉 ${date}`,
+    phone: '대표번호',
+    mapLabel: '지도',
+  },
+  /** "1. 왜 이 회사인가" */
+  why: {
+    pickReason: 'AI가 고른 이유',
+    reason: '추천 근거',
+    factory: '공장 등록 정보',
+    otherEvidence: '그 밖의 근거 자료',
+    evidenceTitle: '근거 자료',
+    noEvidenceYet:
+      '아직 조사한 근거 자료가 없습니다. [다시 조사]를 누르면 홈페이지를 찾아 근거를 뽑습니다.',
+    evidenceListLabel: (line: string) => `근거 자료: ${line}`,
+  },
+  /** "2. 통화에서 확인할 것" — 읽기만 한다. 적는 것은 아래 "기록 남기기"에서. */
+  call: {
+    hint: '통화·방문 때 물어볼 것입니다. 들은 답은 아래 "기록 남기기"의 꼬리 질문과 한 줄 메모에 적습니다.',
+    listLabel: '통화에서 확인할 것 목록',
+    empty: '지금 확인할 것이 없습니다.',
+    /** 꼬리 질문 파일에 같은 질문이 없을 때 쓰는 말. */
+    materialQuestion: '부품 소재가 무엇인가요?',
+    processFallback: '어떤 공정을 맡길 수 있나요?',
+    industryFallback: '어느 산업인가요?',
+    /** 줄 앞 낱말: "소재 — 부품 소재가 무엇인가요?" */
+    topic: { process: '공정', material: '소재', industry: '산업' },
+    nextAction: '후속 조치',
+    checked: (name: string, date: string) => `✓ 확인함 — ${name} · ${date}`,
+    checkedPlain: '✓ 확인함',
+    /** "▸ 아직 근거·자료가 없는 항목 4개 보기" */
+    gapHead: (count: number, open: boolean) =>
+      `${open ? '▾' : '▸'} 아직 근거·자료가 없는 항목 ${count}개 ${open ? '접기' : '보기'}`,
+    gapListLabel: '근거·자료가 없는 항목 목록',
+  },
+  /** "3. 점수 자세히 보기" 제목 줄 요약과 그 안으로 옮긴 AI 점수 입력 제안. */
+  scores: {
+    /** "참고 72점 · 8항목 중 5항목 근거 있음" */
+    summary: (scoreText: string, total: number, withEvidence: number) =>
+      `${scoreText} · ${total}항목 중 ${withEvidence}항목 근거 있음`,
+    before: '점수 전',
+    proposalsTitle: 'AI 점수 입력 제안',
+    proposalsHint:
+      '맞으면 [확정], 다르면 [고치기]로 단계를 고릅니다. 저장하면 점수를 다시 계산합니다.',
+  },
+  /** 읽는 곳과 적는 곳을 가르는 줄. */
+  writeDivider: '여기부터 적는 곳',
 } as const;

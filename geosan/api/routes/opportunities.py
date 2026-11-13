@@ -26,6 +26,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
     bookmark_view,
     contact_counts,
+    last_contact_at,
     latest_bookmark,
     latest_opinion,
     latest_outcome,
@@ -482,6 +483,7 @@ def _records(context: DetailContext) -> dict:
     return {
         "records": DetailRecords(
             contact_count=contact_counts(context.session, context.opportunity.opp_id),
+            last_contact_at=last_contact_at(context.session, context.opportunity.opp_id),
             sales_step=_sales_step_view(
                 context.session, context.opportunity.opp_id, outcome.status if outcome else None
             ),

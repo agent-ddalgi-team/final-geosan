@@ -669,6 +669,8 @@ export interface DetailRecords {
   approval?: Record<string, unknown> | null;
   outcome?: OutcomeRecord | null;
   contactCount?: ContactCount | null;
+  /** 취소 안 된 접촉 시도 가운데 가장 늦은 접촉 날짜(YYYY-MM-DD, #674). 접촉이 없거나 옛 응답이면 없다. */
+  lastContactAt?: string | null;
   /** 세부 단계·알아낸 것·아직 모르는 질문(#607). 옛 응답이면 없다. */
   salesStep?: SalesStepView | null;
 }
