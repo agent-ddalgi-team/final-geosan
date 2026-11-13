@@ -257,6 +257,8 @@ export const dashboardTexts = {
 export const cardRows = {
   reason: '추천 근거',
   blocker: '검토사항',
+  /** 확정된 공정이 없고 AI 제안만 있는 회사의 검토사항 줄 뒤에 붙는다(#659). "맞는 공정이 아직 확인 전 · AI 제안 5개" */
+  processUnconfirmed: (count: number) => `맞는 공정이 아직 확인 전 · AI 제안 ${count}개`,
   nextAction: '후속 조치',
   rankPrefix: '순위',
   scorePrefix: '점수',
@@ -1040,6 +1042,11 @@ export const reviewArea = {
   /** 검토사항 맨 위 "왜 추천했나" 한 줄. 고른 이유·등록 사실은 바로 위 "이 회사 한눈에"에 있어 다시 적지 않는다. */
   whyTitle: '왜 추천했나',
   whyProcesses: (names: readonly string[]) => `연결된 공정: ${names.join(', ')}`,
+  /** 확정된 공정이 없고 AI 제안만 있을 때(#659). "…AI 제안 5개(아연도금, 아노다이징 외 3개) — 통화 뒤 꼬리 질문에서 확정하세요" */
+  whyProcessUnconfirmed: (count: number, shown: readonly string[], rest: number) => {
+    const names = shown.length > 0 ? `(${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''})` : '';
+    return `맞는 공정이 아직 확인 전입니다 · AI 제안 ${count}개${names} — 통화 뒤 꼬리 질문에서 확정하세요`;
+  },
   whySeeGlance: '고른 이유와 등록 사실은 위 "이 회사 한눈에"에 있습니다.',
 } as const;
 

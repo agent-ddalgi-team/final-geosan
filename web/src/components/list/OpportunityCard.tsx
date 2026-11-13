@@ -34,7 +34,7 @@ export interface OpportunityCardProps {
   card: CardData;
   /** 서버 앱 설정(/config/ui)의 분류 문구. 있으면 기본 대응표보다 먼저 쓴다. */
   classificationOverrides?: Record<string, string>;
-  /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. */
+  /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. 꼬리표는 확정된 공정만(#659). */
   processNames?: Record<string, string>;
   /**
    * 순위 번호를 보일지(#361, PM 결정 2026-11-06). 공정 하나를 고른 목록에서만 보인다.
@@ -73,6 +73,15 @@ export default function OpportunityCard({
       : 'neutral';
   // 막는 조건은 서버 문구 그대로 보인다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
   const blocker = card.blocker.text;
+  // 공정 꼬리표는 확정된 공정만(#659, PM 결정 2026-11-13). AI가 제안만 한 공정은 꼬리표로 보이지 않고,
+  // 확정된 공정이 하나도 없으면 검토사항 줄 뒤에 "맞는 공정이 아직 확인 전 · AI 제안 n개"를 덧붙인다.
+  const confirmedProcessCodes = card.confirmedProcessCodes ?? [];
+  const proposedProcessCount = card.proposedProcessCount ?? 0;
+  const processUnconfirmed =
+    confirmedProcessCodes.length === 0 && proposedProcessCount > 0
+      ? cardRows.processUnconfirmed(proposedProcessCount)
+      : null;
+  const blockerLine = processUnconfirmed ? `${blocker} · ${processUnconfirmed}` : blocker;
   // 영업 단계 꼬리표(U5): 서버가 카드 records.outcome.status를 주면 보인다. 미접촉은 꼬리표를 달지 않는다.
   const stageStatus = card.records.outcome?.status ?? null;
   // 후보 찾기로 들어온 회사(#316): 고른 이유가 있고 점수가 아직 없으면 "점수 전"으로 보인다.
@@ -148,19 +157,15 @@ export default function OpportunityCard({
               {bucketBasis}
             </StatusTag>
           ) : null}
-          {(card.processCodes ?? []).map((code) =>
+          {confirmedProcessCodes.map((code) =>
             processNames?.[code] ? (
               <StatusTag key={code} tone="neutral" data-testid="card-process-tag">
                 {processNames[code]}
               </StatusTag>
             ) : null,
           )}
-          {/* 서버가 지역·산업 칸을 주면 값이 없을 때 "미확인/미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
-          {card.region !== undefined ? (
-            <StatusTag tone="neutral" data-testid="card-region-tag">
-              {card.region ?? listFilters.regionUnknown}
-            </StatusTag>
-          ) : null}
+          {/* 지역 꼬리표는 두지 않는다(#659): 목록 머리의 지역 선택란과 겹친다. */}
+          {/* 서버가 산업 칸을 주면 값이 없을 때 "산업 미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
           {card.industries !== undefined ? (
             card.industries.length > 0 ? (
               card.industries.map((industry) => (
@@ -259,8 +264,14 @@ export default function OpportunityCard({
             <span data-testid="card-reason">{card.reason}</span>
           </Row>
         )}
-        <Row label={cardRows.blocker} title={blocker}>
+        <Row label={cardRows.blocker} title={blockerLine}>
           <span data-testid="card-blocker">{blocker}</span>
+          {processUnconfirmed ? (
+            <span data-testid="card-process-unconfirmed">
+              {' · '}
+              {processUnconfirmed}
+            </span>
+          ) : null}
         </Row>
         {/* 후속 조치는 카드에 두지 않고 상세 "1. 추천 근거와 후속 조치"에서 읽는다(#647, PM 결정 2026-11-13). */}
 

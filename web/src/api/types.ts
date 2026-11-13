@@ -435,8 +435,12 @@ export interface OpportunityCard {
   region?: string | null;
   /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */
   industries?: string[];
-  /** 이 기회가 걸린 공정 코드들. 카드는 공정 이름 꼬리표로 바꿔 보인다. */
+  /** 이 기회가 걸린 공정 코드들(확정 + AI 제안). 공정 선택란·묶음 순서가 쓴다. 카드 꼬리표에는 쓰지 않는다(#659). */
   processCodes?: string[];
+  /** 그 가운데 확정된 공정만(사례 파일·담당자, #659). 카드는 이 값만 공정 이름 꼬리표로 보인다. */
+  confirmedProcessCodes?: string[];
+  /** 아직 확정되지 않은(AI 제안) 공정 수(#659). 확정이 없고 이 값이 있으면 검토사항 줄에 "확인 전"을 덧붙인다. */
+  proposedProcessCount?: number;
   /** AI가 이 회사를 고른 이유 한 줄(#316, 후보 찾기로 들어온 회사만). 없으면 줄을 그리지 않는다. */
   pickReason?: string | null;
   /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */

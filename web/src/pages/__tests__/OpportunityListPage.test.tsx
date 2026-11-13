@@ -506,10 +506,12 @@ describe('OpportunityListPage', () => {
       expect(await screen.findByText(listFilters.noMatch)).toBeInTheDocument();
     });
 
-    it('카드에 공정 이름·지역·산업 꼬리표가 붙고, 지역·산업이 비면 "지역 미확인"·"산업 미확정"이 보인다', async () => {
+    it('카드에 확정된 공정 이름·산업 꼬리표가 붙고 지역 꼬리표는 없다. 산업이 비면 "산업 미확정"이 보인다(#659)', async () => {
       const filled: OpportunityCard = {
         ...apjeong,
         processCodes: ['ANODIZING'],
+        confirmedProcessCodes: ['ANODIZING'],
+        proposedProcessCount: 0,
         region: '아산시',
         industries: ['자동차 부품', '방위산업'],
       };
@@ -518,6 +520,8 @@ describe('OpportunityListPage', () => {
         oppId: 'opp-2',
         rank: 2,
         processCodes: ['ZINC_PLATING'],
+        confirmedProcessCodes: ['ZINC_PLATING'],
+        proposedProcessCount: 0,
         region: null,
         industries: [],
       };
@@ -525,19 +529,72 @@ describe('OpportunityListPage', () => {
       renderPage('/opportunities?process=ANODIZING');
       const cards = await screen.findAllByTestId('opportunity-card');
       expect(within(cards[0]).getByTestId('card-process-tag')).toHaveTextContent('아노다이징');
-      expect(within(cards[0]).getByTestId('card-region-tag')).toHaveTextContent('아산시');
       expect(
         within(cards[0])
           .getAllByTestId('card-industry-tag')
           .map((tag) => tag.textContent),
       ).toEqual(['자동차 부품', '방위산업']);
       expect(within(cards[1]).getByTestId('card-process-tag')).toHaveTextContent('전기아연도금');
-      expect(within(cards[1]).getByTestId('card-region-tag')).toHaveTextContent(
-        listFilters.regionUnknown,
-      );
       expect(within(cards[1]).getByTestId('card-industry-tag')).toHaveTextContent(
         listFilters.industryUnknown,
       );
+      // 지역은 목록 머리 선택란과 겹쳐 카드에서 뺐다. 값이 있든 없든 꼬리표가 없다.
+      for (const card of cards) {
+        expect(within(card).queryByTestId('card-region-tag')).not.toBeInTheDocument();
+        expect(card).not.toHaveTextContent('아산시');
+        expect(card).not.toHaveTextContent(listFilters.regionUnknown);
+        expect(within(card).queryByTestId('card-process-unconfirmed')).not.toBeInTheDocument();
+      }
+    });
+
+    it('AI 제안만 있는 회사는 공정 꼬리표가 없고 검토사항 줄 뒤에 "맞는 공정이 아직 확인 전 · AI 제안 n개"가 붙는다(#659)', async () => {
+      const proposedOnly: OpportunityCard = {
+        ...apjeong,
+        processCodes: ['ANODIZING', 'ZINC_PLATING'],
+        confirmedProcessCodes: [],
+        proposedProcessCount: 2,
+        blocker: { text: '없음 — 필수조건 통과', blocksApproval: false },
+      };
+      mockedGet.mockResolvedValue(reply([proposedOnly], { processCounts: TABS, total: 1 }));
+      renderPage('/opportunities?process=ANODIZING');
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).queryByTestId('card-process-tag')).not.toBeInTheDocument();
+      // 서버 문장은 그대로 두고 뒤에 덧붙여 한 줄로 보인다.
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent('없음 — 필수조건 통과');
+      expect(within(card).getByTestId('card-process-unconfirmed')).toHaveTextContent(
+        '맞는 공정이 아직 확인 전 · AI 제안 2개',
+      );
+      expect(
+        within(card).getByTitle('없음 — 필수조건 통과 · 맞는 공정이 아직 확인 전 · AI 제안 2개'),
+      ).toBeInTheDocument();
+    });
+
+    it('확정과 AI 제안이 섞인 회사는 확정된 공정 꼬리표만 보이고 검토사항 줄에 덧붙이지 않는다(#659)', async () => {
+      const mixed: OpportunityCard = {
+        ...apjeong,
+        processCodes: ['ANODIZING', 'ZINC_PLATING'],
+        confirmedProcessCodes: ['ANODIZING'],
+        proposedProcessCount: 1,
+      };
+      mockedGet.mockResolvedValue(reply([mixed], { processCounts: TABS, total: 1 }));
+      renderPage('/opportunities?process=ANODIZING');
+      const card = await screen.findByTestId('opportunity-card');
+      expect(
+        within(card)
+          .getAllByTestId('card-process-tag')
+          .map((tag) => tag.textContent),
+      ).toEqual(['아노다이징']);
+      expect(within(card).queryByTestId('card-process-unconfirmed')).not.toBeInTheDocument();
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(apjeong.blocker.text);
+    });
+
+    it('확정된 공정 칸이 없는 옛 응답이면 공정 코드가 있어도 꼬리표를 붙이지 않는다(#659)', async () => {
+      const old: OpportunityCard = { ...apjeong, processCodes: ['ANODIZING'] };
+      mockedGet.mockResolvedValue(reply([old], { processCounts: TABS, total: 1 }));
+      renderPage('/opportunities?process=ANODIZING');
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).queryByTestId('card-process-tag')).not.toBeInTheDocument();
+      expect(within(card).queryByTestId('card-process-unconfirmed')).not.toBeInTheDocument();
     });
 
     it('서버가 지역·산업 칸을 주지 않는 옛 응답이면 꼬리표 자리에 아무것도 붙지 않는다', async () => {
