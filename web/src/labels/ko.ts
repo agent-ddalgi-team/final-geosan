@@ -1299,6 +1299,27 @@ export const scoreDetails = {
   evaluatedPrefix: '평가',
 } as const;
 
+/**
+ * 상세 점수표의 표시 묶음(#611, PM 결정 2026-11-14). 계산은 그대로 두고 8항목을 묶어 보이기만 한다.
+ * 어느 항목이 어느 묶음인지는 components/detail/scoreGroups.ts 한 곳에 있다.
+ */
+export const scoreGroups = {
+  titles: {
+    PROCESS: '① 공정이 맞나',
+    OUTSOURCE: '② 외주를 줄까',
+    DISTANCE: '③ 가까운가',
+    FIT: '④ 얼마나 잘 맞나',
+    TIMING: '⑤ 지금 살 사람인가',
+    OTHER: '그 밖',
+  },
+  /** 묶음 제목 줄: "① 공정이 맞나 · 30/35" (이 묶음 항목 점수의 합 / 배점의 합) */
+  head: (title: string, score: number, weight: number) => `${title} · ${score}/${weight}`,
+  /** 거리는 점수 항목이 아니다(#222). */
+  distanceNote: '거리는 점수에 넣지 않습니다. 거리 값이 있으면 맨 위 "한눈에"에 보입니다.',
+  /** 서버가 이 묶음의 항목을 하나도 보내지 않았을 때. */
+  emptyNote: '이 묶음에 해당하는 점수 항목이 없습니다.',
+} as const;
+
 /** 점수 항목 상태. 표 밖 상태는 labelFor가 코드 그대로 보이고 콘솔에 경고한다. */
 export const scoreStateLabels: Record<string, string> = {
   CONFIRMED: '확인',
