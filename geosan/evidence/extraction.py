@@ -128,7 +128,7 @@ def _proposal_instructions(item_catalog: list[dict] | None, process_codes: list[
     ]
     codes = ", ".join(process_codes or []) or "(없음)"
     return (
-        "점수 항목 제안: 아래 8항목 가운데 공개 본문에 근거 문장이 있는 항목만 "
+        "점수 항목 제안: 아래 항목 가운데 공개 본문에 근거 문장이 있는 항목만 "
         "itemInputProposals에 넣는다. matchRateStep은 그 항목의 허용 단계 이름 중 하나를 그대로 "
         "쓴다. certaintyProposed는 본문이 직접 말하면 STRONG, 짐작이면 WEAK다(CONFIRMED는 쓰지 "
         "않는다). factJudged는 담당자가 읽을 한 문장, quote는 본문 문장 그대로. 근거 없는 항목은 "

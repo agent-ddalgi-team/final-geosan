@@ -20,7 +20,7 @@ import { colors, typography } from '../../theme/tokens';
 /** 처음부터 보이는 질문 수. */
 export const VISIBLE_QUESTIONS = 3;
 
-interface SummaryLine {
+export interface SummaryLine {
   key: string;
   text: string;
   /** 줄 끝 괄호 안 글자를 누르면 열 원문 주소. 괄호가 없거나 주소 있는 근거가 없으면 없다. */
@@ -41,7 +41,10 @@ function firstSourceUrl(item: ScoreItemView, evidence: EvidenceView[]): string |
 }
 
 /** 요약이 있는 항목만, 점수 표와 같은 순서로. 추정 항목(강한·약한)은 이름 뒤에 "(추정)"을 붙인다. */
-function summaryLines(items: ScoreItemView[] | undefined, evidence: EvidenceView[]): SummaryLine[] {
+export function summaryLines(
+  items: ScoreItemView[] | undefined,
+  evidence: EvidenceView[],
+): SummaryLine[] {
   return (items ?? [])
     .filter((item) => item.summary)
     .map((item) => {
@@ -63,12 +66,18 @@ export default function ReasonsSection({
   scoreItems,
   evidence = [],
   hideQuestions = false,
+  onlyFollowUp = false,
 }: {
   reasons: Reasons;
   scoreItems?: ScoreItemView[];
   evidence?: EvidenceView[];
   /** 확인 질문이 "검토사항" 영역으로 옮겨 갔으면 true(서버가 reviewItems를 줄 때). */
   hideQuestions?: boolean;
+  /**
+   * 추천 근거 줄 없이 후속 조치와 확인 질문만 보인다(#674): 추천 근거는 "1. 왜 이 회사인가"가 보이므로,
+   * 서버가 검토사항을 안 주는 옛 응답에서 "2. 통화에서 확인할 것" 자리에 이 부품을 쓸 때 켠다.
+   */
+  onlyFollowUp?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { questions } = reasons;
@@ -77,9 +86,12 @@ export default function ReasonsSection({
   const lines = summaryLines(scoreItems, evidence);
 
   return (
-    <DetailSection id="detail-reasons" title={detailSections.reasons}>
+    <DetailSection
+      id={onlyFollowUp ? 'detail-review' : 'detail-reasons'}
+      title={onlyFollowUp ? detailSections.callChecklist : detailSections.reasons}
+    >
       <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
-        {lines.length > 0 ? (
+        {onlyFollowUp ? null : lines.length > 0 ? (
           <li data-testid="detail-reason">
             {cardRows.reason}
             <ul

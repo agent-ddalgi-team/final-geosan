@@ -76,6 +76,10 @@ describe('RecordsArea', () => {
         status: 'IN_PROGRESS',
       },
     });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
+    // 다음 일정 칸도 기본으로 접혀 있다(#683). [일정 잡기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByRole('heading', { name: recordsArea.entryTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.stageTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
@@ -191,6 +195,8 @@ describe('RecordsArea', () => {
       },
       onContactRecorded,
     });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '그냥 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));
@@ -280,6 +286,8 @@ describe('RecordsArea', () => {
     const onOutcomeSaved = vi.fn();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'ON_HOLD' }));
     renderArea(frameValue(), { onOutcomeSaved });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '보류');
     await user.click(screen.getByTestId('records-stage-save-button'));
     await waitFor(() =>
@@ -295,6 +303,8 @@ describe('RecordsArea', () => {
 
   it('영업 단계 선택지에는 "관심"이 없다: 관심은 단계가 아니라 켜고 끄는 단추다 (#357)', () => {
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(
       within(screen.getByTestId('records-stage-select'))
         .getAllByRole('option')
@@ -313,6 +323,8 @@ describe('RecordsArea', () => {
   it('거절을 고르면 거절 이유 선택 상자가 나오고 이유를 고르기 전에는 저장이 잠긴다', async () => {
     const user = userEvent.setup();
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(screen.queryByTestId('records-stage-lost-code')).not.toBeInTheDocument();
     await pick(user, 'records-stage-select', '거절');
     const select = screen.getByTestId('records-stage-lost-code');
@@ -338,6 +350,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'PRICE' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
     await user.click(screen.getByTestId('records-stage-save-button'));
@@ -359,6 +373,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'OTHER' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '기타');
     expect(screen.getByTestId('records-stage-reason-error')).toHaveTextContent(
@@ -383,6 +399,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'PRICE' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
     fireEvent.change(screen.getByTestId('records-stage-reason-input'), {
@@ -402,6 +420,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'ON_HOLD' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
     await pick(user, 'records-stage-select', '보류');
@@ -421,6 +441,8 @@ describe('RecordsArea', () => {
         lostReasonCode: 'PRICE',
       },
     });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 거절 · 가격');
   });
 
@@ -436,6 +458,8 @@ describe('RecordsArea', () => {
         lostReasonCode: 'PRICE',
       },
     });
+    // 다음 일정 칸은 기본으로 접혀 있다(#683).
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     fireEvent.change(screen.getByTestId('records-schedule-date'), {
       target: { value: '2026-12-01' },
     });
@@ -488,6 +512,8 @@ describe('RecordsArea', () => {
         status: 'IN_PROGRESS',
       },
     });
+    // 다음 일정 칸은 기본으로 접혀 있다(#683).
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     fireEvent.change(screen.getByTestId('records-schedule-date'), {
       target: { value: '2026-11-10' },
@@ -516,7 +542,10 @@ describe('RecordsArea', () => {
       recordsArea.pickStaffFirst,
     );
     expect(screen.getByTestId('records-note-input')).toBeDisabled();
+    // 다음 일정 칸은 기본으로 접혀 있다(#683). 펼쳐 볼 수는 있어도 입력은 막혀 있다.
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-date')).toBeDisabled();
+    expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     expect(mockedNote).not.toHaveBeenCalled();
   });
 });

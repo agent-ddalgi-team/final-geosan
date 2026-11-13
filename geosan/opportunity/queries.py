@@ -19,6 +19,7 @@ from geosan.opportunity.models import (
     Requirement,
     Signal,
 )
+from geosan.rules.codes import CALL_SIGNAL_KINDS
 from geosan.storage.base import utcnow
 
 if TYPE_CHECKING:
@@ -224,5 +225,8 @@ def supersede_children(session: Session, opp_id: str) -> None:
     now = utcnow()
     for model in (Requirement, Signal, DiscoveryPath, OppProcessLink, Interaction):
         for row in current_rows(session, model, opp_id):
+            # #685: 통화에서 확인한 신호는 접촉 기록에서 온 것이라 사례 파일 재투입이 지우지 않는다.
+            if model is Signal and row.signal_kind in CALL_SIGNAL_KINDS:
+                continue
             row.superseded_at = now
     session.flush()

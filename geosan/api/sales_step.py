@@ -66,6 +66,10 @@ def _day(row: RecordRow) -> date:
     return row.attempted_at or row.created_at.astimezone(KST).date()
 
 
+contact_day = _day
+"""접촉 날짜(없으면 저장한 날). 통화 신호 날짜(#685)도 같은 기준을 쓴다."""
+
+
 def _later(step: SalesStep, current: SalesStep | None) -> bool:
     return current is None or STEP_ORDER.index(step) > STEP_ORDER.index(current)
 

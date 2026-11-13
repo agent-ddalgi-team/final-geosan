@@ -47,6 +47,11 @@ export interface ReviewAreaProps {
   homepageUrl?: string | null;
   /** [붙여넣고 조사]가 성공했거나 [새로 불러오기]를 누르면 부른다(상세·활동 이력을 다시 읽게). */
   onResearched?: () => void;
+  /**
+   * AI 점수 입력 제안 줄만 넘겨 "점수 자세히 보기" 안에 넣을 때 true(#674, PM 결정 2026-11-13).
+   * 체크 안내·진행 수("확인 0 / 8")를 그리지 않는다. [확정]·[고치기]는 그대로 동작한다.
+   */
+  proposalsOnly?: boolean;
 }
 
 /** 자료 줄: 담당자가 찾아 보완할 수 있는 "자료 못 찾음"·"자료 부족" 줄. */
@@ -134,6 +139,7 @@ export default function ReviewArea({
   onProposalSaved,
   homepageUrl = null,
   onResearched,
+  proposalsOnly = false,
 }: ReviewAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const [items, setItems] = useState<ReviewItem[]>(initialItems);
@@ -568,7 +574,7 @@ export default function ReviewArea({
 
   return (
     <div data-testid="review-area" style={{ display: 'grid', gap: 8 }}>
-      {folded && askItems.length === 0 ? null : (
+      {proposalsOnly || (folded && askItems.length === 0) ? null : (
         <span data-testid="review-progress" style={{ fontWeight: 600 }}>
           {folded
             ? reviewArea.askProgress(
@@ -578,7 +584,7 @@ export default function ReviewArea({
             : reviewArea.progress(done, items.length)}
         </span>
       )}
-      <span style={secondary}>{reviewArea.hint}</span>
+      {proposalsOnly ? null : <span style={secondary}>{reviewArea.hint}</span>}
       {!canRecord ? (
         <Typography.Text type="secondary" data-testid="review-pick-staff-text">
           {reviewArea.pickStaffFirst}

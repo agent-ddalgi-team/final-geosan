@@ -1,4 +1,4 @@
-// 2. 고객이 요구하는 것과 거산의 준비 상태: 진짜 표(머리글 행 th scope="col"), 10행 넘으면 안에서 스크롤.
+// (2026-11-13 PM 결정 #659로 상세 화면에서 뺀 구역. 지금 쓰는 곳 없음) 고객이 요구하는 것과 거산의 준비 상태: 진짜 표(머리글 행 th scope="col"), 10행 넘으면 안에서 스크롤.
 // 판정은 색+글자+아이콘 글자로 보인다(접근성 A3, S2-3).
 import type { RequirementCheckView } from '../../api/types';
 import StatusTag from '../common/StatusTag';
