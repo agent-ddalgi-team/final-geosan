@@ -99,6 +99,8 @@ describe('네이버 지도 바탕(#671)', () => {
     window.naver = { maps: sdk.api as never };
     renderMap('test-key');
     await screen.findByTestId('dashboard-naver-map');
+    // 지도 상자가 먼저 그려지고 그리기는 그 뒤 효과에서 일어나므로 끝날 때까지 기다린다.
+    await waitFor(() => expect(sdk.calls.some((c) => c.kind === 'fitBounds')).toBe(true));
     const circles = sdk.calls.filter((c) => c.kind === 'Circle');
     expect(circles.map((c) => (c.args[0] as { radius: number }).radius)).toEqual([
       30000, 50000, 100000,
@@ -125,6 +127,7 @@ describe('네이버 지도 바탕(#671)', () => {
     window.naver = { maps: sdk.api as never };
     renderMap('test-key');
     await screen.findByTestId('dashboard-naver-map');
+    await waitFor(() => expect(sdk.clicks.size).toBe(4));
     const handlers = [...sdk.clicks.values()];
     expect(handlers).toHaveLength(4);
     handlers[0]();
