@@ -12,6 +12,34 @@
             "title": "At",
             "type": "string"
           },
+          "cancelled": {
+            "default": false,
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelledat"
+          },
+          "cancelledBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelledby"
+          },
           "evalId": {
             "anyOf": [
               {
@@ -37,6 +65,32 @@
               }
             ],
             "title": "Previousvalue"
+          },
+          "recordId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordid"
+          },
+          "recordKind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "NOTE",
+                  "OUTCOME"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkind"
           },
           "summary": {
             "title": "Summary",
@@ -1428,6 +1482,21 @@
           "data"
         ],
         "title": "Envelope[QuestionReplyResponse]",
+        "type": "object"
+      },
+      "Envelope_RecordCancelResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordCancelResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[RecordCancelResponse]",
         "type": "object"
       },
       "Envelope_RelationResponse_": {
@@ -4447,10 +4516,78 @@
         "title": "RecentActivityItem",
         "type": "object"
       },
+      "RecordCancelRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalid"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RecordCancelRequest",
+        "type": "object"
+      },
+      "RecordCancelResponse": {
+        "properties": {
+          "cancelledAt": {
+            "format": "date-time",
+            "title": "Cancelledat",
+            "type": "string"
+          },
+          "cancelledBy": {
+            "title": "Cancelledby",
+            "type": "string"
+          },
+          "recordId": {
+            "title": "Recordid",
+            "type": "string"
+          },
+          "recordKind": {
+            "enum": [
+              "NOTE",
+              "OUTCOME"
+            ],
+            "title": "Recordkind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordId",
+          "recordKind",
+          "cancelledBy",
+          "cancelledAt"
+        ],
+        "title": "RecordCancelResponse",
+        "type": "object"
+      },
       "RecordsUi": {
         "properties": {
           "approvalEnabled": {
             "title": "Approvalenabled",
+            "type": "boolean"
+          },
+          "cancelByAnyStaff": {
+            "default": false,
+            "title": "Cancelbyanystaff",
             "type": "boolean"
           },
           "noteMaxLength": {
@@ -6443,6 +6580,81 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {
+      "post": {
+        "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.",
+        "operationId": "cancel_record_api_v1_opportunities__oppId__records__recordId__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "title": "Recordid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RecordCancelResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Record"
       }
     },
     "/api/v1/opportunities/{oppId}/relation": {

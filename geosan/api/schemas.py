@@ -222,6 +222,7 @@ class Brand(_ApiModel):
 class RecordsUi(_ApiModel):
     approval_enabled: bool
     note_max_length: int
+    cancel_by_any_staff: bool = False
 
 
 class ExportUi(_ApiModel):
@@ -831,8 +832,27 @@ class ActivityItem(_ApiModel):
     summary: str
     previous_value: str | None = None
     eval_id: str | None = None
+    # #253: 이 줄을 만든 저장 행(메모·영업 기록)과 잘못 입력 표시. 그 밖의 줄은 비워 둔다.
+    record_id: str | None = None
+    record_kind: Literal["NOTE", "OUTCOME"] | None = None
+    cancelled: bool = False
+    cancelled_by: str | None = None
+    cancelled_at: datetime | None = None
 
 
+class RecordCancelRequest(_RequestModel):
+    reason: str | None = Field(default=None, max_length=200)
+    eval_id: str | None = None
+
+
+class RecordCancelResponse(_ApiModel):
+    record_id: str
+    record_kind: Literal["NOTE", "OUTCOME"]
+    cancelled_by: str
+    cancelled_at: datetime
+
+
+RecordCancelEnvelope = Envelope[RecordCancelResponse]
 OutcomeEnvelope = Envelope[OutcomeResponse]
 
 
