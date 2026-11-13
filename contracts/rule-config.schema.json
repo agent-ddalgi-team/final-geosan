@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://geosan.local/contracts/rule-config.schema.json",
   "title": "RuleConfig — 규칙 설정 파일 (계약 C7, YAML)",
-  "description": "모든 수치는 기업 승인 전 가설이며 코드가 아니라 이 파일에 둔다(BR7.6). 값을 바꾸면 version을 올린다. `_설명` 키는 어느 객체에든 허용된다. 더하는 변경(2026-10-21 PM 확인): otherGroupSort.",
+  "description": "모든 수치는 기업 승인 전 가설이며 코드가 아니라 이 파일에 둔다(BR7.6). 값을 바꾸면 version을 올린다. `_설명` 키는 어느 객체에든 허용된다. 더하는 변경(2026-10-21 PM 확인): otherGroupSort. 더하는 변경(2026-11-13 PM 결정, #685): callSignals.",
   "type": "object",
   "required": ["version", "hypothesisNote", "newProfileItems", "recontactProfileItems", "certainty", "generalDecay", "recontactDates", "thresholds", "rounding", "coreEvidence", "timingRequirements", "researchRequirements", "classificationLabels", "otherGroupSort", "datasetKinds"],
   "additionalProperties": false,
@@ -175,6 +175,12 @@
       "default": "BLOCK",
       "description": "PM 결정 2026-11-11, #567: BLOCK은 거래 관계 확인 전(UNCONFIRMED)이면 필터 대기·막는 조건(BR3.10, S06). IGNORE는 신규 잠재고객만 찾으므로 확인 전을 대기 사유로 쓰지 않는다. 거래 중(EXISTING_CONFIRMED) 정렬은 existingCustomerPlacement가 그대로 맡는다. 이전 설정 파일에서 생략하면 BLOCK."
     },
+    "callSignals": {
+      "type": "array",
+      "default": [],
+      "description": "PM 결정 2026-11-13, #685: 꼬리 질문 답 → 통화에서 확인한 신호 대응표. 항목 코드·배점은 그대로 두고 SIG_BID(구매·외주 의향)·SIG_HIRE(관심)를 통화 답으로 채운다. 대응표에 없는 답(아직 없음·관심 낮음·모름·무응답)은 신호를 만들지 않는다(0점 확정이 아니라 아직 모름). 통화 신호의 감쇠는 통화 날짜 기준 generalDecay 그대로. 이전 설정 파일에서 생략하면 빈 목록(통화 신호 없음).",
+      "items": { "$ref": "#/$defs/callSignalRule" }
+    },
     "datasetKinds": {
       "type": "array",
       "items": { "type": "string", "enum": ["VIRTUAL_REVIEWED", "BROCHURE", "COMPANY_CONFIRMED"] },
@@ -199,6 +205,31 @@
           "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
         },
         "decay": { "type": "string", "enum": ["NONE", "GENERAL", "BID_EXCEPTION", "HIRE"] }
+      }
+    },
+    "callSignalRule": {
+      "type": "object",
+      "required": ["itemCode", "signalKind", "answers"],
+      "additionalProperties": false,
+      "properties": {
+        "_설명": { "type": "string" },
+        "itemCode": { "type": "string", "pattern": "^[A-Z][A-Z_]+$", "description": "신규 프로필의 시점 항목 코드. 한 번씩만 적는다" },
+        "signalKind": { "type": "string", "enum": ["CALL_INTENT", "CALL_INTEREST"], "description": "이 항목이 쓰는 통화 신호 종류. 한 번씩만 적는다" },
+        "answers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["questionId", "answerId", "relation"],
+            "additionalProperties": false,
+            "properties": {
+              "_설명": { "type": "string" },
+              "questionId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,39}$", "description": "꼬리 질문 파일(sales-questions.yaml)의 질문 id" },
+              "answerId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,39}$", "description": "그 질문의 보기 id" },
+              "relation": { "type": "string", "enum": ["DIRECT", "INDIRECT"], "description": "DIRECT = 확인·직접 관련(배점 전부), INDIRECT = 확인·간접 관련(절반)" }
+            }
+          }
+        }
       }
     },
     "coreEvidenceRule": {

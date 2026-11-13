@@ -98,19 +98,19 @@ describe('기록 구역 · ① 안내와 번호 (#433)', () => {
     expect(mockedOutcome.mock.calls[0][1]).not.toHaveProperty('judgmentCheck');
   });
 
-  it('머리에 "한 일 적기 → 다음 할 일" 안내 한 줄이 보이고, 두 칸 제목 앞에 ①②가 붙는다(영업 단계는 접힌 칸이라 번호가 없다, #674)', () => {
+  // #683(PM 결정 2026-11-13): 다음 일정을 꼬리 질문에서 같이 잡게 되어 "① 한 일 → ② 다음 할 일" 두 걸음이
+  // 한 걸음이 됐다. 그래서 ①② 번호를 떼고 안내를 한 줄로 바꿨다(전에는 두 칸 제목 앞에 ①②가 붙었다).
+  it('머리에 "한 일 적기(접촉·꼬리 질문·메모·다음 일정)" 안내 한 줄이 보이고, 제목 앞 번호는 없다(#683)', () => {
     renderArea();
-    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    // 영업 단계·다음 일정 칸은 기본으로 접혀 있다(#674·#683). 눌러 펼친다.
     fireEvent.click(screen.getByTestId('records-stage-toggle'));
-    expect(screen.getByTestId('records-flow-guide')).toHaveTextContent(recordsArea.flowGuide);
-    expect(screen.getByTestId('records-step-1')).toHaveTextContent('①');
-    expect(screen.getByTestId('records-step-2')).toHaveTextContent('②');
-    expect(screen.queryByTestId('records-step-3')).not.toBeInTheDocument();
-    // ②는 "다음 일정" 제목 앞에 붙는다.
-    expect(screen.getByTestId('records-step-2').parentElement).toHaveTextContent(
-      recordsArea.scheduleTitle,
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
+    expect(screen.getByTestId('records-flow-guide')).toHaveTextContent(
+      '한 일 적기(접촉·꼬리 질문·메모·다음 일정) · 영업 단계는 저절로 정해집니다',
     );
-    // 번호는 그림 글자라 제목의 낭독 이름은 그대로다.
+    for (const id of ['records-step-1', 'records-step-2', 'records-step-3']) {
+      expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    }
     expect(screen.getByRole('heading', { name: recordsArea.entryTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.stageTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
@@ -140,9 +140,10 @@ describe('기록 구역 · 영업 단계 칸은 접어 둔다 (#674, PM 지시 2
       expect(screen.queryByTestId(id)).not.toBeInTheDocument();
     }
     expect(screen.queryByRole('heading', { name: recordsArea.stageTitle })).not.toBeInTheDocument();
-    // 기록 남기기와 다음 일정은 그대로 펼쳐져 있다.
+    // 기록 남기기는 그대로 펼쳐져 있다. 다음 일정 칸은 #683부터 한 줄로 접혀 있다.
     expect(screen.getByTestId('records-kind')).toBeInTheDocument();
-    expect(screen.getByTestId('records-schedule-date')).toBeInTheDocument();
+    expect(screen.getByTestId('records-schedule-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('records-schedule-date')).not.toBeInTheDocument();
   });
 
   it('[단계 고치기]를 누르면 그 자리에서 펼쳐져 단계를 저장할 수 있고, 다시 누르면 접힌다', async () => {

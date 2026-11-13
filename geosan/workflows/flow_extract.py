@@ -14,6 +14,7 @@ from geosan.config.app_settings import (
 )
 from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.config.registry import load_runtime_config
+from geosan.evaluation.call_inputs import call_item_codes
 from geosan.evaluation.proposals import store_item_proposals, store_process_link_proposals
 from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.evidence.contacts import extract_main_phone, scrub_contacts
@@ -73,7 +74,9 @@ def run_extract(
             customer_id = customer.customer_id
             url = validate_url(url or customer.homepage_url or "")
             # #286: 점수 8항목(규칙 설정)과 활성 묶음 공정 코드를 AI에 알려 제안을 받는다.
+            # #685: 통화에서 확인한 신호로 채우는 항목(구매·외주 의향, 관심)은 AI에 묻지 않는다.
             rule_config = load_runtime_config(session).rule_config
+            call_items = call_item_codes(rule_config)
             item_catalog = [
                 {
                     "code": item.item_code,
@@ -81,6 +84,7 @@ def run_extract(
                     "steps": list(item.match_rate_steps),
                 }
                 for item in rule_config.new_profile_items
+                if item.item_code not in call_items
             ]
             process_codes = sorted(
                 row.code
