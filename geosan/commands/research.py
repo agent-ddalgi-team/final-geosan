@@ -3,8 +3,9 @@
 import logging
 
 import typer
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
+from geosan.commands.geocode import active_evaluated_opp_ids
 from geosan.config.app_settings import (
     DEFAULT_APP_SETTINGS_PATH,
     load_app_settings,
@@ -57,7 +58,14 @@ def run_research(
                 select(Opportunity.opp_id, Customer.name)
                 .join(Customer, Customer.customer_id == Opportunity.customer_id)
                 .where(
-                    Opportunity.dataset_kind == settings.active_dataset_kind.value,
+                    # 영업 건 원본 표시가 검수 전환 뒤에도 BROCHURE로 남을 수 있어, 최신 확정 평가가
+                    # 활성 묶음인 기회도 대상으로 본다(#664, 좌표 채우기와 같은 기준).
+                    or_(
+                        Opportunity.dataset_kind == settings.active_dataset_kind.value,
+                        Opportunity.opp_id.in_(
+                            active_evaluated_opp_ids(settings.active_dataset_kind.value)
+                        ),
+                    ),
                     Opportunity.purpose == "NEW_PROPOSAL",
                     public_origin_condition(),  # 사례 파일 + 후보 찾기 회사(#492)
                     Opportunity.is_virtual.is_(False),

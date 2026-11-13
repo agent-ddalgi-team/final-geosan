@@ -127,12 +127,23 @@ export function SalesQuestionFields({
 }: SalesQuestionFieldsProps) {
   const shown = visibleQuestions(questions, step, picked, allOnly);
   if (shown.length === 0) return null;
+  // 단계 이름은 질문 파일의 것을 먼저 쓰고, 없으면 쉬운 말 대응표.
+  const stepLabel = (code: SalesStep) =>
+    questions.steps?.find((item) => item.code === code)?.label ?? salesStepLabels[code];
   return (
     <fieldset
       data-testid="sales-questions"
       style={{ border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, margin: 0 }}
     >
       <legend style={{ padding: '0 4px' }}>{salesQuestionTexts.questionsTitle}</legend>
+      {/* 왜 이 질문들이 나오는지 한 줄(#674): 질문은 세부 단계마다 다르고 "모든 단계" 질문은 늘 나온다. */}
+      <div data-testid="sales-questions-step" style={{ marginBottom: 4 }}>
+        {allOnly
+          ? salesQuestionTexts.stepLineDeclined
+          : step?.code
+            ? salesQuestionTexts.stepLine(stepLabel(step.code))
+            : salesQuestionTexts.stepLineFirst(stepLabel('NOT_REACHED'))}
+      </div>
       <Typography.Text type="secondary" style={{ fontSize: typography.fontSizeSecondary }}>
         {salesQuestionTexts.questionsHint}
       </Typography.Text>

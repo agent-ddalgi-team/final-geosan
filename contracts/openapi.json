@@ -1304,6 +1304,18 @@
           "contactCount": {
             "$ref": "#/components/schemas/ContactCount"
           },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactat"
+          },
           "opinion": {
             "anyOf": [
               {

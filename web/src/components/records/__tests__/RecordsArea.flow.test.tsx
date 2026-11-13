@@ -1,7 +1,7 @@
 // 기록 구역 세 칸 흐름(#433, PM 결정 2026-11-08): ① 안내·번호 / ② 접촉 날짜는 오늘(한국 시간)까지 + 서버 400 안내 /
 // ③ 접촉을 적으면 단계는 서버가 앞으로만 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈).
 // 서버 호출(postNote·postOutcome)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import { ApiError, postNote, postOutcome } from '../../../api/client';
@@ -98,16 +98,95 @@ describe('기록 구역 · ① 안내와 번호 (#433)', () => {
     expect(mockedOutcome.mock.calls[0][1]).not.toHaveProperty('judgmentCheck');
   });
 
-  it('머리에 "한 일 → 지금 단계 → 다음 할 일" 안내 한 줄이 보이고, 세 칸 제목 앞에 ①②③이 붙는다', () => {
+  it('머리에 "한 일 적기 → 다음 할 일" 안내 한 줄이 보이고, 두 칸 제목 앞에 ①②가 붙는다(영업 단계는 접힌 칸이라 번호가 없다, #674)', () => {
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(screen.getByTestId('records-flow-guide')).toHaveTextContent(recordsArea.flowGuide);
     expect(screen.getByTestId('records-step-1')).toHaveTextContent('①');
     expect(screen.getByTestId('records-step-2')).toHaveTextContent('②');
-    expect(screen.getByTestId('records-step-3')).toHaveTextContent('③');
+    expect(screen.queryByTestId('records-step-3')).not.toBeInTheDocument();
+    // ②는 "다음 일정" 제목 앞에 붙는다.
+    expect(screen.getByTestId('records-step-2').parentElement).toHaveTextContent(
+      recordsArea.scheduleTitle,
+    );
     // 번호는 그림 글자라 제목의 낭독 이름은 그대로다.
     expect(screen.getByRole('heading', { name: recordsArea.entryTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.stageTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
+  });
+});
+
+describe('기록 구역 · 영업 단계 칸은 접어 둔다 (#674, PM 지시 2026-11-13)', () => {
+  beforeEach(() => {
+    mockedOutcome.mockReset();
+    mockedNote.mockReset();
+  });
+
+  it('처음에는 "단계가 잘못됐나요? [단계 고치기]" 한 줄만 보이고 단계 선택 칸·현재 단계 글은 숨겨져 있다', () => {
+    renderArea({ outcome: outcome('IN_PROGRESS') });
+    const line = screen.getByTestId('records-stage-fix');
+    expect(line).toHaveTextContent('단계가 잘못됐나요?');
+    const toggle = screen.getByTestId('records-stage-toggle');
+    expect(toggle).toHaveTextContent('단계 고치기');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    for (const id of [
+      'records-stage-select',
+      'records-stage-save-button',
+      'records-stage-current',
+      'records-stage-auto-hint',
+      'records-step-override',
+    ]) {
+      expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole('heading', { name: recordsArea.stageTitle })).not.toBeInTheDocument();
+    // 기록 남기기와 다음 일정은 그대로 펼쳐져 있다.
+    expect(screen.getByTestId('records-kind')).toBeInTheDocument();
+    expect(screen.getByTestId('records-schedule-date')).toBeInTheDocument();
+  });
+
+  it('[단계 고치기]를 누르면 그 자리에서 펼쳐져 단계를 저장할 수 있고, 다시 누르면 접힌다', async () => {
+    const user = userEvent.setup();
+    mockedOutcome.mockResolvedValueOnce(reply('ON_HOLD'));
+    renderArea({ outcome: outcome('IN_PROGRESS') });
+    const toggle = screen.getByTestId('records-stage-toggle');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveTextContent('접기');
+    expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
+    expect(screen.getByTestId('records-stage-auto-hint')).toHaveTextContent(
+      recordsArea.stageAutoHint,
+    );
+    await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
+    await user.click(screen.getByTestId('records-stage-save-button'));
+    await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
+    expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ status: 'ON_HOLD' });
+    // 저장 뒤에도 펼친 채로 남아 바뀐 단계와 "저장됨"이 보인다.
+    expect(await screen.findByTestId('records-stage-current')).toHaveTextContent('현재 단계: 보류');
+    expect(screen.getByTestId('records-stage-saved')).toBeInTheDocument();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('records-stage-select')).not.toBeInTheDocument();
+  });
+
+  it('세부 단계 고치기도 같은 접힌 자리 안에 있다', async () => {
+    const user = userEvent.setup();
+    renderArea({
+      outcome: outcome('IN_PROGRESS'),
+      salesStep: {
+        code: 'REACHED',
+        since: '2026-11-10',
+        overridden: false,
+        known: [],
+        openQuestions: [],
+      },
+    });
+    expect(screen.queryByTestId('records-step-override')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('records-stage-toggle'));
+    const body = screen.getByTestId('records-stage-body');
+    expect(body).toContainElement(screen.getByTestId('records-stage-select'));
+    expect(body).toContainElement(screen.getByTestId('records-step-override'));
+    expect(body).toContainElement(screen.getByTestId('records-step-override-save'));
   });
 });
 
@@ -168,6 +247,8 @@ describe('기록 구역 · ③ 접촉 뒤 단계는 서버가 앞으로만 바�
     mockedOutcome.mockResolvedValueOnce(reply('IN_PROGRESS'));
     const onSalesStepChanged = vi.fn();
     renderArea({ onSalesStepChanged });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await saveContact(user);
     await waitFor(() =>
       expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉'),
