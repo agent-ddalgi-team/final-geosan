@@ -96,6 +96,13 @@ def address_region(address: str) -> str:
 
 
 _POSTCODE = re.compile(r"^\(\d{5}\)\s*")
+
+
+def without_postcode(address: str) -> str:
+    """주소 앞에 붙은 "(31246)" 같은 우편번호를 뗀다. 웹 페이지의 주소에 자주 붙어 온다."""
+    return _POSTCODE.sub("", address.strip())
+
+
 _DISTRICT = re.compile(r"^([가-힣]{2,}?)[시군구]")
 
 
@@ -105,7 +112,7 @@ def address_district(address: str | None) -> tuple[str, str] | None:
     예: "충남 천안시 동남구 …"·"(31246) 충청남도 천안시서북구 …" → ("충남", "천안").
     세종처럼 시·도 아래 시·군이 없는 곳은 ("세종", "").
     """
-    parts = _POSTCODE.sub("", (address or "").strip()).split()
+    parts = without_postcode(address or "").split()
     if not parts:
         return None
     region = _region_name(parts[0].rstrip(","))

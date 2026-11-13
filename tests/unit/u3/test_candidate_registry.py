@@ -285,3 +285,19 @@ def test_city_of_an_address_is_read_the_same_way_for_web_and_registry_text(addre
     from geosan.opportunity.factory_csv import address_district
 
     assert address_district(address) == expected
+
+
+@pytest.mark.parametrize(
+    "address,inside",
+    [
+        ("(31246) 충남 천안시 동남구 가상길 87", True),
+        ("(31246)충청남도 아산시 가상로 1", True),
+        ("(06000) 서울특별시 강남구 가상로 1", False),
+        ("(31246)", True),
+    ],
+)
+def test_postcode_in_front_of_a_web_address_does_not_put_it_outside_the_region(address, inside):
+    """실제 검색(2026-11-13)에서 우편번호가 붙은 천안 회사가 '선택 지역 밖'으로 버려졌다."""
+    from geosan.opportunity.web_candidate_store import address_in_regions
+
+    assert address_in_regions(address, ("충남",)) is inside
