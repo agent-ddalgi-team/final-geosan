@@ -330,8 +330,9 @@ flowchart LR
 [#594]: https://github.com/agent-ddalgi-team/final-geosan/issues/594
 [#605]: https://github.com/agent-ddalgi-team/final-geosan/issues/605
 
-### 2026-11-13 좌표 서버 작업 중 (#222)
+### 2026-11-13 좌표 서버 작업 중 (#651, 상위 #222)
 
 - `geosan/opportunity/geo*`·`location_csv.py`: CSV 대조, 외부 좌표 조회, 공공좌표 저장, 실시간 거리 계산. 이강욱 담당.
 - `geosan/commands/geocode.py`: 좌표 없는 회사의 처리 명령. API는 카드·상세 거리 값만 연결하며 지도 서버(#642)·화면(#641)은 별도다.
 - 기존 설계의 “지오코딩은 행안부만 사용” 문장은 11/13 확인으로 변경됐다. 네이버 결과는 저장하지 않는다. 브라우저 지도 SDK의 Service 호출 금지는 유지한다.
+- 로컬 DB의 공공좌표 저장과 실제 상세 화면 거리 표시를 확인했다. 네이버는 키 미등록으로 실연결 전이며, 지도 표시·거리 필터 화면은 이 작업에 포함하지 않는다.
