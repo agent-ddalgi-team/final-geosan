@@ -3184,6 +3184,14 @@
           "classificationCode": {
             "$ref": "#/components/schemas/ClassificationCode"
           },
+          "confirmedProcessCodes": {
+            "description": "#659 processCodes 가운데 확정된 공정만(사례 파일·담당자). 카드 공정 꼬리표",
+            "items": {
+              "type": "string"
+            },
+            "title": "Confirmedprocesscodes",
+            "type": "array"
+          },
           "contactCount": {
             "default": 0,
             "title": "Contactcount",
@@ -3330,6 +3338,12 @@
             },
             "title": "Processcodes",
             "type": "array"
+          },
+          "proposedProcessCount": {
+            "default": 0,
+            "description": "#659 processCodes 가운데 아직 확정되지 않은(AI 제안) 공정 수",
+            "title": "Proposedprocesscount",
+            "type": "integer"
           },
           "rank": {
             "title": "Rank",

@@ -75,7 +75,11 @@ from geosan.dashboard.contact_order import (
     contact_order_key,
 )
 from geosan.dashboard.queries import bookmarked_opp_ids
-from geosan.dashboard.sales_analysis import load_company_records, process_display_name
+from geosan.dashboard.sales_analysis import (
+    LINK_CONFIRMED,
+    load_company_records,
+    process_display_name,
+)
 from geosan.evaluation.inputs import has_ai_pending_inputs
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
 from geosan.evaluation.models import (
@@ -729,14 +733,18 @@ def list_opportunities(
         query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
     population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
+    # 확정 여부(#659)도 같은 조회 한 번으로 모아 읽는다. 카드마다 다시 읽지 않는다.
     links = session.execute(
-        select(OppProcessLink.opp_id, OppProcessLink.process_code)
+        select(OppProcessLink.opp_id, OppProcessLink.process_code, OppProcessLink.state)
         .where(OppProcessLink.opp_id.in_(population), OppProcessLink.superseded_at.is_(None))
         .distinct()
     ).all()
     codes_by_opportunity: dict[str, set[str]] = {}
-    for opp_id, code in links:
+    confirmed_by_opportunity: dict[str, set[str]] = {}
+    for opp_id, code, link_state in links:
         codes_by_opportunity.setdefault(opp_id, set()).add(code)
+        if link_state == LINK_CONFIRMED:
+            confirmed_by_opportunity.setdefault(opp_id, set()).add(code)
     processes = load_process_catalog(session, dataset_kind)
     # 목록 머리 선택란(#361): 기회가 0곳인 공정도 count 0으로 싣는다.
     # 거산 공정 전부를 역량 파일 순서로 보낸다.
@@ -873,6 +881,11 @@ def list_opportunities(
         rows[start : start + page_size], start=start + 1
     ):
         outcome = latest_outcome(session, opportunity.opp_id)
+        linked = codes_by_opportunity.get(opportunity.opp_id, set())
+        confirmed = confirmed_by_opportunity.get(opportunity.opp_id, set())
+        process_codes = [row.code for row in processes if row.code in linked]
+        # 확정된 공정만(#659). 같은 공정에 확정 행과 AI 제안 행이 함께 있으면 확정으로 본다.
+        confirmed_codes = [code for code in process_codes if code in confirmed]
         cards.append(
             OpportunityCard(
                 **discovery_fields(customer),
@@ -894,11 +907,9 @@ def list_opportunities(
                 sales_step=sales_step_state(
                     session, opportunity.opp_id, status=outcome.status if outcome else None
                 ).code,
-                process_codes=[
-                    row.code
-                    for row in processes
-                    if row.code in codes_by_opportunity.get(opportunity.opp_id, set())
-                ],
+                process_codes=process_codes,
+                confirmed_process_codes=confirmed_codes,
+                proposed_process_count=len(process_codes) - len(confirmed_codes),
                 opp_id=opportunity.opp_id,
                 bucket=placements[opportunity.opp_id].bucket,
                 bucket_basis=placements[opportunity.opp_id].basis,

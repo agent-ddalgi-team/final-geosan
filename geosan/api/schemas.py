@@ -351,6 +351,13 @@ class OpportunityCard(_ApiModel):
     region: str | None = None
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
+    confirmed_process_codes: list[str] = Field(
+        default_factory=list,
+        description="#659 processCodes 가운데 확정된 공정만(사례 파일·담당자). 카드 공정 꼬리표",
+    )
+    proposed_process_count: int = Field(
+        default=0, description="#659 processCodes 가운데 아직 확정되지 않은(AI 제안) 공정 수"
+    )
     contact_count: int = 0
     sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str
