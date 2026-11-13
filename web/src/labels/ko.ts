@@ -298,6 +298,19 @@ export const dashboardMapTexts = {
   mapFailed: '네이버 지도를 불러오지 못해 원과 점의 상대 위치만 보여요.',
   /** 낭독기용 점 목록 이름. */
   pointList: '지도에 표시된 회사',
+  /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
+  visitTitle: '같이 들를 곳',
+  visitHint: (km: number) =>
+    `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
+  /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
+  visitNearbyCount: (count: number) => `근처 ${count}곳`,
+  /** 근처 회사 줄: "1.8km · 관심". */
+  visitNearbyDistance: (km: number) => `${km}km`,
+  /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
+  fromAnchor: (name: string, km: number) => `${name}에서 ${km}km`,
+  visitMore: (count: number) => `${count}곳 더 보기`,
+  visitNone: '이 반경 안에 같이 들를 다른 관심 기업이 없어요.',
+  visitEmpty: '진행 중·관심 회사가 없어 묶을 곳이 없어요.',
 } as const;
 
 /** 카드·상세 줄 머리말. */

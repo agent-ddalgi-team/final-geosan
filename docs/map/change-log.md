@@ -68,6 +68,7 @@ timeline
 
 ## 3. 기획 변경
 
+- **2026-11-13 · #673 · PM 결정:** 영업 방문 계획용 "같이 들를 곳"을 대시보드 지도 아래에 둔다. 자세히 보기는 그 회사 정보만 둔다(PM). 중심은 진행 중·관심 회사, 근처도 관심 기업만(처음엔 목록 후보 전부였으나 아직 보지 않은 회사일 수 있어 PM이 같은 날 정정), 반경은 설정 5km. 줄은 단계 · 회사 이름 · 거리 → 근처 N곳 순서. 지도 응답·설정에 칸을 더하는 변경.
 - **2026-11-13 · #666 · PM 결정:** 목록 카드에 거산까지 거리를 보이고 "가까운 순"·거리 선택란을 켠다. 거리 선택지는 화면에 고정하지 않고 화면 설정 응답에 칸 하나(`distanceFilterPresetsKm`)를 더해 서버 설정과 맞춘다(더하는 변경). 상세는 주소와 비교하기 쉽게 주소 바로 옆에 거리를 둔다.
 - **2026-11-13 · #222 · 이강욱 확인:** 좌표 확보를 위치 CSV → 주소검색·CSV 재대조 → 좌표제공 → 네이버 보완으로 변경. 공공좌표만 저장하며 네이버는 실시간 표시 전용. CSV 목록·기준일·보완 스위치와 하루 합계 10,000회 한도를 확정. 지도 화면·지도 서버는 #641·#642에서 별도로 연결.
 
@@ -401,6 +402,7 @@ timeline
 [#666]: https://github.com/agent-ddalgi-team/final-geosan/issues/666
 [#668]: https://github.com/agent-ddalgi-team/final-geosan/issues/668
 [#224]: https://github.com/agent-ddalgi-team/final-geosan/issues/224
+[#673]: https://github.com/agent-ddalgi-team/final-geosan/issues/673
 [#681]: https://github.com/agent-ddalgi-team/final-geosan/issues/681
 [#680]: https://github.com/agent-ddalgi-team/final-geosan/issues/680
 [#609]: https://github.com/agent-ddalgi-team/final-geosan/issues/609
