@@ -860,6 +860,8 @@ class SalesQuestionView(_ApiModel):
     text: str
     step: SalesStep | Literal["ALL"]
     show_when: SalesShowWhen | None = None
+    # #652: 보기를 회사 값에서 가져오는 질문(여러 개 고름). answers는 서버가 목록으로 채운다.
+    choices: Literal["PROCESS", "INDUSTRY"] | None = None
     answers: list[SalesAnswerOption]
 
 

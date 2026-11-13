@@ -4913,6 +4913,21 @@
             "title": "Answers",
             "type": "array"
           },
+          "choices": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PROCESS",
+                  "INDUSTRY"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choices"
+          },
           "questionId": {
             "title": "Questionid",
             "type": "string"

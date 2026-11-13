@@ -35,6 +35,8 @@ ALL_STEPS = "ALL"
 _ID = r"^[A-Z][A-Z0-9_]{0,39}$"
 OLD_QUESTION = "예전 질문"
 OLD_ANSWER = "예전 보기"
+# 고정 보기 질문의 보기 수 하한(약속 C7 "보기 2~8개").
+MIN_ANSWERS = 2
 
 
 class StepEntry(FileModel):
@@ -61,7 +63,10 @@ class SalesQuestion(FileModel):
     step: SalesStep | Literal["ALL"]
     text: str = Field(min_length=1, max_length=100)
     show_when: ShowWhen | None = None
-    answers: list[AnswerOption] = Field(min_length=2, max_length=8)
+    # 고정 보기(answers)와 회사 값에서 가져오는 보기(choices, #652) 가운데 하나만 쓴다.
+    answers: list[AnswerOption] = Field(default_factory=list, max_length=8)
+    # #652: PROCESS = 거산 공정 목록, INDUSTRY = 설정 산업군. 여러 개를 고르는 질문이다.
+    choices: Literal["PROCESS", "INDUSTRY"] | None = None
 
     def option(self, answer_id: str) -> AnswerOption | None:
         return next((item for item in self.answers if item.id == answer_id), None)
@@ -85,10 +90,22 @@ class SalesQuestions(FileModel):
                     f"{entry.code}의 stage는 {STEP_STAGE[entry.code].value}여야 합니다"
                 )
         seen: set[str] = set()
+        seen_choices: set[str] = set()
         for question in self.questions:
             if question.id in seen:
                 raise ValueError(f"질문 id '{question.id}'가 두 번 있습니다")
             seen.add(question.id)
+            if question.choices and question.answers:
+                raise ValueError(f"질문 '{question.id}'에 answers와 choices를 같이 쓸 수 없습니다")
+            if question.choices is None and len(question.answers) < MIN_ANSWERS:
+                raise ValueError(
+                    f"질문 '{question.id}'에 보기(answers)를 {MIN_ANSWERS}개 이상 적거나 "
+                    "choices를 적어 주세요"
+                )
+            if question.choices in seen_choices:
+                raise ValueError(f"choices: {question.choices} 질문은 파일에 하나만 둘 수 있습니다")
+            if question.choices:
+                seen_choices.add(question.choices)
             answer_ids = [item.id for item in question.answers]
             if len(set(answer_ids)) != len(answer_ids):
                 raise ValueError(f"질문 '{question.id}'에 같은 보기 id가 두 번 있습니다")
@@ -100,6 +117,11 @@ class SalesQuestions(FileModel):
                     raise ValueError(f"질문 '{question.id}'의 showWhen이 자기 자신을 가리킵니다")
                 if target not in by_id:
                     raise ValueError(f"질문 '{question.id}'의 showWhen에 없는 질문 '{target}'")
+                if by_id[target].choices:
+                    raise ValueError(
+                        f"질문 '{question.id}'의 showWhen은 choices 질문 '{target}'을 "
+                        "가리킬 수 없습니다"
+                    )
                 missing = [item for item in answer_ids if by_id[target].option(item) is None]
                 if not answer_ids or missing:
                     raise ValueError(

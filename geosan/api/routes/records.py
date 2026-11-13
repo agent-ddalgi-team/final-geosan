@@ -10,7 +10,9 @@ from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
+from geosan.api.process_catalog import load_process_catalog
 from geosan.api.proposal_review import confirm_proposal, proposal_review_items
+from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
 from geosan.api.sales_step import (
     AnswerRow,
     RecordRow,
@@ -61,6 +63,7 @@ from geosan.api.schemas import (
 from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
 from geosan.config.sales_questions import ALL_STEPS, SalesQuestions, load_sales_questions
 from geosan.config.validators import scan_contacts
+from geosan.dashboard.sales_analysis import process_display_name
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
@@ -607,16 +610,78 @@ def sales_questions(session: Session) -> SalesQuestions:
     return session.info["sales_questions"]
 
 
-def _answer_errors(body: OutcomeRequest, questions: SalesQuestions | None) -> list[FieldError]:
+def choice_catalog(session: Session) -> dict[str, dict[str, str]]:
+    """#652 보기를 회사 값에서 가져오는 질문의 {종류: {값: 이름}}. 한 요청 안에서는 한 번만 읽는다.
+
+    PROCESS는 활성 묶음의 거산 공정 목록(역량 파일 순서), INDUSTRY는 설정 산업군(그 순서)이다.
+    """
+    if "sales_choice_catalog" not in session.info:
+        settings = runtime_for(session).app_settings
+        session.info["sales_choice_catalog"] = {
+            "PROCESS": {
+                row.code: process_display_name(row.name)
+                for row in load_process_catalog(session, settings.active_dataset_kind)
+            },
+            "INDUSTRY": {name: name for name in settings.industries},
+        }
+    return session.info["sales_choice_catalog"]
+
+
+def _choice_values(body: OutcomeRequest, questions: SalesQuestions | None) -> dict[str, list[str]]:
+    """#652 이번 답에서 고른 공정 코드·산업군 이름. 그 질문에 답하지 않았으면 키가 없다."""
+    values: dict[str, list[str]] = {}
+    if questions is None:
+        return values
+    for answer in body.answers:
+        question = questions.question(answer.question_id)
+        if question is not None and question.choices:
+            values.setdefault(question.choices, []).append(answer.answer_id)
+    return values
+
+
+def _choice_error(
+    body: OutcomeRequest,
+    question,
+    answer_id: str,
+    seen: set[tuple[str, str]],
+    catalog: dict[str, dict[str, str]],
+) -> str | None:
+    """#652 여러 값을 고르는 질문의 답 하나를 검사한다. 괜찮으면 None."""
+    pair = (question.id, answer_id)
+    if answer_id not in catalog.get(question.choices, {}):
+        return "질문 목록에 없는 질문이나 보기입니다. 화면을 새로 고쳐 주세요."
+    if pair in seen:
+        return "같은 보기를 두 번 골랐습니다."
+    if body.result == "DECLINED" and question.step != ALL_STEPS:
+        return "거절로 끝난 접촉에서는 모든 단계 질문만 답할 수 있습니다."
+    seen.add(pair)
+    picked = sum(1 for found, _ in seen if found == question.id)
+    if question.choices == "INDUSTRY" and picked > MAX_INDUSTRIES:
+        return f"산업군은 {MAX_INDUSTRIES}개까지 고를 수 있습니다."
+    return None
+
+
+def _answer_errors(
+    body: OutcomeRequest,
+    questions: SalesQuestions | None,
+    catalog: dict[str, dict[str, str]] | None = None,
+) -> list[FieldError]:
     if not body.answers or questions is None:
         return []
     if body.method is None or body.result not in ("REACHED", "DECLINED"):
         return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
     errors: list[FieldError] = []
     seen: set[str] = set()
+    seen_choices: set[tuple[str, str]] = set()
     chosen = {answer.question_id: answer.answer_id for answer in body.answers}
     for index, answer in enumerate(body.answers):
         question = questions.question(answer.question_id)
+        if question is not None and question.choices:
+            # #652: 여러 값을 고르는 질문은 같은 질문 id가 값마다 한 번씩 온다.
+            message = _choice_error(body, question, answer.answer_id, seen_choices, catalog or {})
+            if message:
+                errors.append(FieldError(path=f"answers[{index}]", message=message))
+            continue
         option = question.option(answer.answer_id) if question else None
         if question is None or option is None:
             message = "질문 목록에 없는 질문이나 보기입니다. 화면을 새로 고쳐 주세요."
@@ -689,7 +754,9 @@ def sales_step_state(
             .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
         )
     ]
-    return compute_sales_step(rows, answers, questions or sales_questions(session), status)
+    questions = questions or sales_questions(session)
+    labels = choice_catalog(session) if any(q.choices for q in questions.questions) else None
+    return compute_sales_step(rows, answers, questions, status, labels)
 
 
 def latest_outcome(session: Session, opp_id: str) -> Outcome | None:
@@ -730,7 +797,8 @@ def save_outcome(
             )
         )
     questions = sales_questions(session) if body.answers else None
-    answer_fields = _answer_errors(body, questions)
+    catalog = choice_catalog(session) if questions else None
+    answer_fields = _answer_errors(body, questions, catalog)
     # #643: 이번 답에 단계를 끝내는 답이 있으면 요청 status 대신 그 값과 거절 이유 답을 쓴다.
     closing = None if answer_fields else _closing_answer(body, questions)
     status = closing[0] if closing else body.status
@@ -813,6 +881,9 @@ def save_outcome(
             )
         )
     session.flush()
+    reevaluated = _confirm_choices(
+        session, opportunity, _choice_values(body, questions), catalog or {}, body.eval_id, staff
+    )
     # #607: 큰 단계는 같은 저장 안에서 세부 단계를 따라 앞으로만 바뀐다(보류·성사·거절은 그대로).
     if row.method or body.answers or body.step_override:
         step = sales_step_state(session, opp_id, status=None, questions=questions).code
@@ -830,14 +901,71 @@ def save_outcome(
             has_virtual_data=row.is_virtual,
             dataset_kind=row.dataset_kind,
             previous_value=previous_value,
+            **({"reevaluated": True} if reevaluated else {}),
         ),
     )
+
+
+def _confirm_choices(
+    session: Session,
+    opportunity: Opportunity,
+    values: dict[str, list[str]],
+    catalog: dict[str, dict[str, str]],
+    eval_id: str | None,
+    staff: str,
+) -> bool:
+    """#652 꼬리 질문에서 고른 공정·산업군으로 이 회사 값을 확정한다. 다시 평가했으면 True.
+
+    접촉 기록과 같은 트랜잭션이다: 공정 연결이 바뀌면 다시 평가하고, 평가가 실패하면 전부 취소된다.
+    바뀐 것이 있으면 활동 이력에 한 줄을 남긴다. 고른 값이 없으면 아무것도 하지 않는다.
+    """
+    if not values:
+        return False
+    now = utcnow()
+    opp_id = opportunity.opp_id
+    results = []
+    if values.get("PROCESS"):
+        names = catalog.get("PROCESS", {})
+        # 저장·이력 문장은 고른 순서가 아니라 역량 파일 순서로 맞춘다.
+        codes = [code for code in names if code in values["PROCESS"]]
+        results.append(confirm_processes(session, opportunity, codes, names, staff=staff, now=now))
+    if values.get("INDUSTRY"):
+        order = catalog.get("INDUSTRY", {})
+        industries = [name for name in order if name in values["INDUSTRY"]]
+        results.append(confirm_industries(session, opportunity, industries, now=now))
+    session.flush()
+    reevaluated = any(result.links_changed for result in results)
+    if reevaluated:
+        result = evaluate_in_session(session, [opp_id], staff)
+        if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
+            raise RunFailedError("공정 확인을 다시 평가하지 못해 저장을 취소했습니다.")
+    summaries = [result.summary for result in results if result.summary]
+    if summaries:
+        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
+        session.add(
+            Note(
+                note_id=new_id("note"),
+                opp_id=opp_id,
+                staff_key=staff,
+                kind="MEMO",
+                text=" / ".join(summaries),
+                eval_id=eval_id,
+                version=version + 1,
+                created_at=now,
+                created_by=staff,
+                dataset_kind=opportunity.dataset_kind,
+                is_virtual=opportunity.is_virtual,
+            )
+        )
+        session.flush()
+    return reevaluated
 
 
 @router.get("/sales-questions", response_model=SalesQuestionsEnvelope)
 def get_sales_questions(session: SessionDep):
     """#607 꼬리 질문 묶음. 외부 호출·저장 없음, 보기 전용도 조회."""
     questions = sales_questions(session)
+    catalog = choice_catalog(session) if any(q.choices for q in questions.questions) else {}
     return SalesQuestionsEnvelope(
         data=SalesQuestionsView(
             version=questions.version,
@@ -853,7 +981,14 @@ def get_sales_questions(session: SessionDep):
                     show_when=SalesShowWhen(answers=question.show_when.answers)
                     if question.show_when
                     else None,
+                    choices=question.choices,
+                    # #652: choices 질문의 보기는 파일이 아니라 공정 목록·설정 산업군에서 채운다.
                     answers=[
+                        SalesAnswerOption(answer_id=value, label=label)
+                        for value, label in catalog[question.choices].items()
+                    ]
+                    if question.choices
+                    else [
                         SalesAnswerOption(
                             answer_id=option.id,
                             label=option.label,
