@@ -65,6 +65,64 @@ function proposal(code: string, name: string): ReviewItem {
   };
 }
 
+describe('DetailGlance 공식 홈페이지 대신 찾은 공개 페이지 (#511)', () => {
+  function renderWith(header: DetailHeader) {
+    render(
+      <DetailGlance
+        header={header}
+        processLinks={[link]}
+        evidence={evidence(1)}
+        reviewItems={[]}
+        requirements={[]}
+        now={NOW}
+      />,
+    );
+  }
+
+  it('회사 블로그 페이지면 주소 옆에 확인 필요·이유·확신도가 보인다', () => {
+    renderWith({
+      ...full,
+      homepageUrl: 'https://blog.example.invalid/company',
+      homepageStatus: 'NEEDS_CONFIRMATION',
+      homepageConfidence: 0.3,
+      homepagePageKind: 'BLOG',
+    });
+    expect(screen.getByTestId('detail-homepage')).toHaveTextContent(
+      'https://blog.example.invalid/company',
+    );
+    expect(screen.getByTestId('glance-homepage-unofficial')).toHaveTextContent(
+      /^확인 필요 · 공식 홈페이지는 못 찾았고 회사 블로그 페이지 · 확신도 0\.3$/,
+    );
+  });
+
+  it('확신도가 없으면 확인 필요와 이유만 보인다', () => {
+    renderWith({
+      ...full,
+      homepageStatus: 'NEEDS_CONFIRMATION',
+      homepageConfidence: null,
+      homepagePageKind: 'PUBLIC_PAGE',
+    });
+    expect(screen.getByTestId('glance-homepage-unofficial')).toHaveTextContent(
+      /^확인 필요 · 공식 홈페이지는 못 찾았고 공공·지자체의 회사 소개 페이지$/,
+    );
+  });
+
+  it('공식 홈페이지거나 담당자가 확인한 주소면 이 줄이 없다', () => {
+    renderWith({ ...full, homepageStatus: 'AI_FOUND', homepageConfidence: 0.9 });
+    expect(screen.queryByTestId('glance-homepage-unofficial')).toBeNull();
+  });
+
+  it('확신도가 낮을 뿐인 공식 홈페이지(종류 없음)에는 이 줄이 없다', () => {
+    renderWith({ ...full, homepageStatus: 'NEEDS_CONFIRMATION', homepageConfidence: 0.4 });
+    expect(screen.queryByTestId('glance-homepage-unofficial')).toBeNull();
+  });
+
+  it('담당자가 맞음으로 확인하면(CONFIRMED) 종류 값이 남아 있어도 보이지 않는다', () => {
+    renderWith({ ...full, homepageStatus: 'CONFIRMED', homepagePageKind: 'BLOG' });
+    expect(screen.queryByTestId('glance-homepage-unofficial')).toBeNull();
+  });
+});
+
 describe('DetailGlance (#674)', () => {
   it('값이 있으면 다섯 묶음에 회사 설명·맞는 점·근거 상태·확인할 것·영업 상태가 한눈에 보인다', () => {
     render(
@@ -116,11 +174,13 @@ describe('DetailGlance (#674)', () => {
       'data-mark',
       'confirmed',
     );
-    // 거리는 계산한 숫자라 표시가 없다.
+    // 거리는 주소 바로 옆에 둔다(#666 PM 결정: 주소와 같이 보고 비교). 계산한 숫자라 표시가 없다.
+    const addressLine = within(box).getByTestId('glance-factory-profile');
+    expect(within(addressLine).getByTestId('detail-distance')).toHaveTextContent('거산에서 42km');
     expect(
-      within(within(box).getByTestId('company-distance')).queryByTestId('glance-fit-mark'),
+      within(within(addressLine).getByTestId('detail-distance')).queryByTestId('glance-fit-mark'),
     ).not.toBeInTheDocument();
-    expect(within(box).getByTestId('company-distance')).toHaveTextContent('거산에서 42km');
+    expect(within(box).queryByTestId('company-distance')).not.toBeInTheDocument();
 
     expect(within(box).getByTestId('glance-evidence-text')).toHaveTextContent(
       '근거 5건 · 홈페이지 있음 · 적합도 상 · 조사 11/10 (3일 전)',
@@ -173,7 +233,7 @@ describe('DetailGlance (#674)', () => {
     expect(within(box).getByTestId('glance-not-researched')).toHaveTextContent('아직 조사 전');
     expect(within(box).queryByTestId('glance-factory-profile')).not.toBeInTheDocument();
     expect(within(box).queryByTestId('company-phone')).not.toBeInTheDocument();
-    expect(within(box).queryByTestId('company-distance')).not.toBeInTheDocument();
+    expect(within(box).queryByTestId('detail-distance')).not.toBeInTheDocument();
     // AI가 제안만 한 공정은 초록이 아니라 중립 표시 ○ "AI 제안 · 확인 전"이다.
     const process = within(box).getByTestId('glance-fit-process');
     expect(process).toHaveTextContent(/^공정아연도금, 아노다이징 ○AI 제안 · 확인 전$/);
@@ -245,6 +305,19 @@ describe('DetailGlance (#674)', () => {
       <DetailGlance header={header} processLinks={[link]} evidence={evidence(1)} now={NOW} />,
     );
     expect(screen.getByTestId('glance-check-text')).toHaveTextContent('지금 확인할 것 없음');
+    // #691: 낱말은 없어도 아래 "2. 통화에서 확인할 것"에 줄이 있으면 그 수를 적는다(두 곳이 어긋나지 않게).
+    rerender(
+      <DetailGlance
+        header={header}
+        processLinks={[link]}
+        evidence={evidence(1)}
+        callCheckCount={2}
+        now={NOW}
+      />,
+    );
+    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(
+      /^통화에서 확인할 것 2가지 \(아래 2번\)$/,
+    );
     rerender(
       <DetailGlance
         header={header}

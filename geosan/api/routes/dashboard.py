@@ -12,7 +12,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.config.errors import AppError
-from geosan.dashboard.map_points import build_map_points
+from geosan.dashboard.map_points import build_map_points, build_visit_groups
 from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
@@ -43,12 +43,30 @@ class MapPoint(MapCenter):
     distance_km: float
 
 
+class VisitNearby(MapCenter):
+    """ "같이 들를 곳"의 근처 관심 기업(#673). distance_km는 묶음 중심 회사에서의 직선거리."""
+
+    opp_id: str
+    customer_name: str
+    distance_km: float
+    group: Literal["INTERESTED", "IN_PROGRESS", "WON_THIS_YEAR"]
+
+
+class VisitGroup(_ApiModel):
+    """방문할 회사(points 가운데 진행 중·관심) 하나와 그 반경 안의 근처 회사(가까운 순)."""
+
+    opp_id: str
+    nearby: list[VisitNearby]
+
+
 class DashboardMap(_ApiModel):
     center: MapCenter
     rings_km: list[float]
     points: list[MapPoint]
     missing_coordinates: int
     as_of: datetime
+    visit_radius_km: float
+    visit_groups: list[VisitGroup]
 
 
 DashboardMapEnvelope = Envelope[DashboardMap]
@@ -68,6 +86,7 @@ def dashboard_map(response: Response, session: SessionDep):
         )
     now = utcnow()
     points, missing = build_map_points(session, settings, now, tz=KST)
+    visit_groups = build_visit_groups(settings, points)
     return DashboardMapEnvelope(
         data=DashboardMap(
             center=MapCenter(lat=settings.geosan.lat, lng=settings.geosan.lng),
@@ -75,6 +94,8 @@ def dashboard_map(response: Response, session: SessionDep):
             points=[MapPoint.model_validate(point) for point in points],
             missing_coordinates=missing,
             as_of=now,
+            visit_radius_km=settings.visit_group_radius_km,
+            visit_groups=[VisitGroup.model_validate(group) for group in visit_groups],
         ),
         meta=Meta(
             updated_at=now,

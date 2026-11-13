@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import OpportunityListPage from '../OpportunityListPage';
 import { getOpportunities } from '../../api/client';
-import type { Envelope, OpportunityCard } from '../../api/types';
+import type { ConfigUi, Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
   FLAT_VIEW_CHOICE,
@@ -38,9 +38,12 @@ const NO_FILTERS = {
   stage: null,
   filter: null,
   q: null,
-  // 추천 순은 세 묶음 순(#610)으로 달라고 한다.
+  // 추천 순은 근거 상태 묶음 순(#610·#675)으로 달라고 한다.
   sort: 'contact',
 };
+
+/** 평소 목록(공정 하나·공정별 묶음·전체 보기)이 보내는 조건: 관심으로 고른 회사는 빼 달라고 한다(#675). */
+const HOME_FILTERS = { ...NO_FILTERS, hideBookmarked: 'true' };
 
 /** 거산 공정 9종(서버가 주는 순서). 앞의 두 공정에만 회사가 있다. */
 const NINE = [
@@ -69,12 +72,12 @@ function LocationProbe() {
   return <p data-testid="location">{`${location.pathname}${location.search}`}</p>;
 }
 
-function renderPage(initial = '/opportunities') {
+function renderPage(initial = '/opportunities', config: ConfigUi | null = null) {
   return render(
     <MemoryRouter initialEntries={[initial]}>
       <FrameContext.Provider
         value={{
-          config: null,
+          config,
           staffKey: 'park-lee',
           setStaffKey: () => {},
           canRecord: true,
@@ -159,7 +162,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
           '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
         ),
       ).toBeInTheDocument();
-      expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'CHROME_PLATING' });
+      expect(lastFilters()).toEqual({ ...HOME_FILTERS, process: 'CHROME_PLATING' });
       expect(locationText()).toBe('/opportunities?process=CHROME_PLATING');
       expect(screen.queryByTestId('opportunity-card')).not.toBeInTheDocument();
       // 빈 공정에서도 선택란은 남아 다른 공정으로 바꿀 수 있다.
@@ -182,12 +185,16 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await screen.findByTestId('opportunity-card');
       await user.selectOptions(screen.getByTestId('list-region-select'), '아산시');
       await waitFor(() =>
-        expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING', region: '아산시' }),
+        expect(lastFilters()).toEqual({
+          ...HOME_FILTERS,
+          process: 'ZINC_PLATING',
+          region: '아산시',
+        }),
       );
       await user.selectOptions(screen.getByTestId('list-industry-select'), '자동차 부품');
       await waitFor(() =>
         expect(lastFilters()).toEqual({
-          ...NO_FILTERS,
+          ...HOME_FILTERS,
           process: 'ZINC_PLATING',
           region: '아산시',
           industry: '자동차 부품',
@@ -199,7 +206,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
         industry: '자동차 부품',
       });
       await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
-      await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ANODIZING' }));
+      await waitFor(() => expect(lastFilters()).toEqual({ ...HOME_FILTERS, process: 'ANODIZING' }));
       expect(locationParams()).toEqual({ process: 'ANODIZING' });
     });
   });
@@ -238,13 +245,13 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await waitFor(() => expect(groupTitles()).toHaveLength(2));
       // 첫 요청은 조건 없이(선택지·곳 수), 그다음 회사가 1곳 이상인 공정만 1쪽·50곳으로 따로 부른다. 0곳 공정은 부르지 않는다.
       expect(mockedGet).toHaveBeenCalledTimes(3);
-      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+      expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
       expect(groupCalls()).toEqual([null, 'ZINC_PLATING', 'ANODIZING']);
       expect(mockedGet.mock.calls[1]).toEqual([
         1,
         GROUP_PAGE_SIZE,
         expect.any(AbortSignal),
-        { ...NO_FILTERS, process: 'ZINC_PLATING' },
+        { ...HOME_FILTERS, process: 'ZINC_PLATING' },
       ]);
       expect(locationText()).toBe('/opportunities');
       // 묶음 머리는 "<공정 이름> · n곳", 묶음 안 번호는 그 공정 안 순위(1부터).
@@ -295,14 +302,14 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await user.selectOptions(screen.getByTestId('list-region-select'), '천안 인근');
       await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(3));
       expect(locationParams()).toEqual({ region: '천안 인근' });
-      expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, region: '천안 인근' });
+      expect(mockedGet.mock.calls[0][3]).toEqual({ ...HOME_FILTERS, region: '천안 인근' });
       expect(mockedGet.mock.calls[1][3]).toEqual({
-        ...NO_FILTERS,
+        ...HOME_FILTERS,
         process: 'ZINC_PLATING',
         region: '천안 인근',
       });
       expect(mockedGet.mock.calls[2][3]).toEqual({
-        ...NO_FILTERS,
+        ...HOME_FILTERS,
         process: 'ANODIZING',
         region: '천안 인근',
       });
@@ -435,7 +442,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       mockedGet.mockClear();
       await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
       await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(1));
-      expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ANODIZING' });
+      expect(lastFilters()).toEqual({ ...HOME_FILTERS, process: 'ANODIZING' });
       expect(locationText()).toBe('/opportunities?process=ANODIZING');
       await screen.findByTestId('opportunity-card');
       expect(screen.queryByTestId('process-group-title')).not.toBeInTheDocument();
@@ -470,8 +477,8 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await screen.findByTestId('opportunity-card');
       expect(locationText()).toBe('/opportunities?process=ANODIZING');
       expect(mockedGet).toHaveBeenCalledTimes(2);
-      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
-      expect(mockedGet.mock.calls[1][3]).toEqual({ ...NO_FILTERS, process: 'ANODIZING' });
+      expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
+      expect(mockedGet.mock.calls[1][3]).toEqual({ ...HOME_FILTERS, process: 'ANODIZING' });
       expect(screen.queryByTestId('process-group-title')).not.toBeInTheDocument();
       expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe(
         'ANODIZING',
@@ -523,7 +530,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await waitFor(() => expect(groupTitles()).toHaveLength(2));
       expect(locationParams()).toEqual({ region: '아산시' });
       expect(mockedGet.mock.calls[0][3]).toEqual({
-        ...NO_FILTERS,
+        ...HOME_FILTERS,
         process: 'NOT_A_PROCESS',
         region: '아산시',
       });
@@ -540,7 +547,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       renderPage('/opportunities?process=NOT_A_PROCESS');
       await waitFor(() => expect(locationText()).toBe('/opportunities?process=ZINC_PLATING'));
       await waitFor(() =>
-        expect(lastFilters()).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' }),
+        expect(lastFilters()).toEqual({ ...HOME_FILTERS, process: 'ZINC_PLATING' }),
       );
       await screen.findByTestId('opportunity-card');
     });
@@ -726,7 +733,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await user.click(await screen.findByTestId('list-search-clear'));
       await waitFor(() =>
         expect(lastFilters()).toEqual({
-          ...NO_FILTERS,
+          ...HOME_FILTERS,
           process: 'ANODIZING',
           region: '아산시',
           industry: '자동차 부품',
@@ -813,7 +820,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(screen.getByTestId('list-search-query')).toHaveTextContent(/^A정밀$/);
       expect(screen.getByTestId('list-search-input')).toHaveValue('A정밀');
       await user.click(screen.getByTestId('list-search-clear'));
-      await waitFor(() => expect(lastFilters()).toEqual(NO_FILTERS));
+      await waitFor(() => expect(lastFilters()).toEqual(HOME_FILTERS));
       expect(locationText()).toBe('/opportunities');
     });
 
@@ -871,25 +878,42 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
   });
 
   describe('정렬', () => {
-    it('"추천 순"이 골라져 있고, "가까운 순 (준비 중)"은 고를 수 없게 표시되며 눌러도 요청이 없다', async () => {
-      const user = userEvent.setup();
+    it('"추천 순"이 골라져 있으면 서버에 세 묶음 순(`sort=contact`, #610)으로 달라고 하고 주소에는 남기지 않는다', async () => {
       mockedGet.mockResolvedValue(reply([apjeong], MENU));
       renderPage('/opportunities?process=ANODIZING');
       await screen.findByTestId('opportunity-card');
       const group = screen.getByRole('group', { name: listSearch.sortLabel });
-      const rank = within(group).getByRole('button', { name: '추천 순' });
-      const distance = within(group).getByRole('button', { name: '가까운 순 (준비 중)' });
-      expect(rank).toHaveAttribute('aria-pressed', 'true');
-      expect(distance).toHaveAttribute('aria-disabled', 'true');
-      expect(distance).toHaveAttribute('aria-pressed', 'false');
-      const calls = mockedGet.mock.calls.length;
-      await user.click(distance);
-      await user.click(rank);
-      expect(mockedGet).toHaveBeenCalledTimes(calls);
-      expect(rank).toHaveAttribute('aria-pressed', 'true');
+      expect(within(group).getByRole('button', { name: '추천 순' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
       expect(locationText()).toBe('/opportunities?process=ANODIZING');
-      // 추천 순은 서버에 세 묶음 순(`sort=contact`, #610)으로 달라고 한다. 주소에는 남기지 않는다.
       for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
+    });
+
+    it('"가까운 순"을 누르면 주소에 sort=distance가 남고 서버에도 distance로 부른다(#666)', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([{ ...apjeong, distanceKm: 8.2 }], MENU));
+      renderPage('/opportunities?process=ANODIZING');
+      await screen.findByTestId('opportunity-card');
+      await user.click(screen.getByTestId('list-sort-distance'));
+      await waitFor(() => expect(lastFilters()).toMatchObject({ sort: 'distance' }));
+      expect(locationParams()).toEqual({ process: 'ANODIZING', sort: 'distance' });
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('card-distance-tag')).toHaveTextContent('거산에서 8.2km');
+    });
+
+    it('거리 범위는 설정 선택지로 고르고 서버에 maxDistanceKm로 보내며, 선택지에 없는 주소 값은 무시한다(#666)', async () => {
+      const user = userEvent.setup();
+      const config = { distanceFilterPresetsKm: [30, 50, 100] } as unknown as ConfigUi;
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?process=ANODIZING&maxDistanceKm=70', config);
+      await screen.findByTestId('opportunity-card');
+      expect(lastFilters()).not.toHaveProperty('maxDistanceKm');
+      expect(screen.getByTestId('list-distance-select')).toHaveValue('');
+      await user.selectOptions(screen.getByTestId('list-distance-select'), '50');
+      await waitFor(() => expect(lastFilters()).toMatchObject({ maxDistanceKm: '50' }));
+      expect(locationParams()).toMatchObject({ maxDistanceKm: '50' });
     });
 
     it.each([
@@ -901,7 +925,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       renderPage(url);
       await screen.findByTestId('opportunity-card');
       expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'false');
       for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
     });
   });

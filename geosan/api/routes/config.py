@@ -26,6 +26,7 @@ def config_ui(session: SessionDep):
             rule_version=runtime.rule_config.version,
             records=settings.records.model_dump(),
             export=settings.export.model_dump(),
+            distance_filter_presets_km=settings.distance_filter_presets_km,
             ingest_options={
                 "processes": [
                     {"code": row.code, "name": row.name}

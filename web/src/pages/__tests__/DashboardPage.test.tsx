@@ -99,7 +99,7 @@ describe('DashboardPage', () => {
         .map((heading) => heading.textContent);
       expect(titles).toEqual([
         '관심 기업',
-        '영업 진행 관심 기업 가운데 검토 권고를 받은 뒤의 진행',
+        '영업 진행 관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
       ]);
       expect(screen.getByTestId('dashboard-progress-hint')).toHaveTextContent(
         dashboardTexts.progressSectionHint,
@@ -119,11 +119,11 @@ describe('DashboardPage', () => {
       const bookmarkCells: Array<[string, string]> = [
         ['관심 기업 12곳', '/opportunities?bookmarked=true'],
         ['의견 전 4곳', '/opportunities?filter=NO_OPINION'],
-        ['추가 확인 필요 2곳', '/opportunities?filter=NEED_CHECK'],
+        ['검토 중 2곳', '/opportunities?filter=NEED_CHECK'],
       ];
-      // 검토 대상 제외로 저장한 회사는 관심 기업에서 빠져(#536) "제외" 칸이 없다.
+      // 제외로 저장한 회사는 관심 기업에서 빠져(#536) "제외" 칸이 없다.
       const progressCells: Array<[string, string]> = [
-        ['미접촉 2곳 (검토 권고 · 접촉 전)', '/opportunities?filter=NOT_CONTACTED'],
+        ['영업 대상 · 접촉 전 2곳 (아직 연락하지 않은 곳)', '/opportunities?filter=NOT_CONTACTED'],
         ['접촉 중 2곳', '/opportunities?filter=IN_CONTACT'],
         ['견적·샘플 1곳', '/opportunities?filter=QUOTE_SAMPLE'],
         ['보류 0곳', '/opportunities?filter=ON_HOLD'],
@@ -142,7 +142,7 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveStyle({
         boxSizing: 'border-box',
       });
-      // "미접촉" 칸에는 작은 풀이가 붙는다.
+      // "영업 대상 · 접촉 전" 칸에는 작은 풀이가 붙는다.
       expect(screen.getByTestId('dashboard-count-NOT_CONTACTED-hint')).toHaveTextContent(
         dashboardTexts.notContactedHint,
       );

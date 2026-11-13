@@ -252,7 +252,9 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     });
   });
 
-  it('접촉 결과가 거절이어도 "끝 → 보류"로 보류가 저장된다', async () => {
+  // #691: 결과가 "거절"이면 "다음 할 일 → 끝 → 어떻게 끝났나요?"를 차례로 묻지 않고 "어떻게 할까요?" 한 번으로 묻는다.
+  // 서버로 가는 답("끝", "보류")은 전과 같다.
+  it('접촉 결과가 거절이면 "어떻게 할까요?"에서 보류를 골라 보류가 저장된다(보내는 답은 "끝 → 보류" 그대로)', async () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('ON_HOLD'));
     renderArea();
@@ -260,10 +262,11 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await user.selectOptions(screen.getByTestId('records-kind'), '전화');
     await user.selectOptions(screen.getByTestId('records-contact-result'), '거절');
-    await screen.findByTestId('sales-question-NEXT_ACTION');
+    const decline = await screen.findByTestId('records-decline');
     expect(screen.queryByTestId('sales-question-PLATING_NOW')).not.toBeInTheDocument();
-    await pick(user, 'NEXT_ACTION', '끝');
-    await pick(user, 'CLOSE_RESULT', '보류 · 나중에 다시');
+    expect(screen.queryByTestId('sales-question-NEXT_ACTION')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sales-question-CLOSE_RESULT')).not.toBeInTheDocument();
+    await user.click(within(decline).getByText('보류 · 나중에 다시'));
     expect(screen.getByTestId('records-close-preview')).toHaveTextContent("'보류'");
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
