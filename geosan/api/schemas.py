@@ -352,6 +352,25 @@ class OpportunityCard(_ApiModel):
     region: str | None = None
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
+    confirmed_process_codes: list[str] = Field(
+        default_factory=list,
+        description="#659 processCodes 가운데 확정된 공정만(사례 파일·담당자). 카드 공정 꼬리표",
+    )
+    proposed_process_count: int = Field(
+        default=0, description="#659 processCodes 가운데 아직 확정되지 않은(AI 제안) 공정 수"
+    )
+    check_points: list[str] = Field(
+        default_factory=list,
+        description="#659 필수조건 가운데 확인 전인 조건(평가 기록의 사실만)",
+    )
+    core_evidence_gaps: list[str] = Field(
+        default_factory=list,
+        description="#659 핵심 근거를 다시 확인해야 하는 이유(평가 기록의 사실만)",
+    )
+    check_kinds: list[Literal["PROCESS", "MATERIAL", "REQUIREMENT", "COMPANY_FILTER"]] = Field(
+        default_factory=list,
+        description="#659 checkPoints 각 줄의 종류(같은 순서·같은 개수). 카드가 낱말로 줄일 때",
+    )
     contact_count: int = 0
     sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str

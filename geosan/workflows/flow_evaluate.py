@@ -46,7 +46,7 @@ def _not_evaluated_output(snapshot: Snapshot, customer: Customer) -> EvaluationO
     output.score_state = "NONE"
     output.sort_key.group = SortGroup.OTHER
     output.display.reason = customer.pick_reason or ""
-    output.display.blocker_text = "점수 입력 전 · 거래 관계·필수조건 확인 전"
+    output.display.blocker_text = "점수 입력 전 · 필수조건 확인 전"
     output.display.blocks_approval = True
     output.display.score_display = "--"
     output.display.next_action = "AI 조사 결과 확인 뒤 점수 입력"

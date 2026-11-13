@@ -281,6 +281,31 @@ export const dashboardMapTexts = {
 export const cardRows = {
   reason: '추천 근거',
   blocker: '검토사항',
+  /** 확정된 공정이 없고 AI 제안만 있는 회사의 검토사항 줄 뒤에 붙는다(#659). "맞는 공정이 아직 확인 전 · AI 제안 5개" */
+  processUnconfirmed: (count: number) => `맞는 공정이 아직 확인 전 · AI 제안 ${count}개`,
+  /**
+   * 필수조건 가운데 확인 전인 조건(#659, 서버 checkPoints). 검토사항 줄에 서버 문장 대신 보인다.
+   * 앞 3개만 적고 나머지는 "외 n개". 예: "확인할 것: 거래 관계 · 아노다이징 적용 부품의 소재"
+   */
+  checkPoints: (points: string[]) =>
+    `확인할 것: ${points.slice(0, 3).join(' · ')}${points.length > 3 ? ` 외 ${points.length - 3}개` : ''}`,
+  /**
+   * 핵심 근거를 다시 확인해야 하는 이유(#659, 서버 coreEvidenceGaps). 앞 2개만 적고 나머지는 "외 n개".
+   * 예: "핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거 없음"
+   */
+  coreEvidenceGaps: (gaps: string[]) =>
+    `핵심 근거 부족: ${gaps.slice(0, 2).join(' · ')}${gaps.length > 2 ? ` 외 ${gaps.length - 2}개` : ''}`,
+  /**
+   * 카드 검토사항 줄의 낱말(#659, PM 지시 2026-11-13): 긴 문장 대신 "확인할 것: 공정 · 소재 · 근거 부족"처럼 보인다.
+   * 약한 추정뿐·근거 없음은 구분하지 않고 "근거 부족" 하나로 쓴다. 긴 문장은 상세 화면에서 읽는다.
+   */
+  checkWords: { process: '공정', material: '소재', evidence: '근거 부족' },
+  /**
+   * 낱말(공정·소재·근거 부족)을 먼저 적고, 이름 그대로 보이는 조건(필수 요구 이름 등)은 앞 3개 + "외 n개".
+   * 예: "확인할 것: 공정 · 소재 · 근거 부족", "확인할 것: 소재 · 방산 납품 자격 · RoHS · ISO 9001 외 1개"
+   */
+  checkWordsLine: (words: string[], names: string[]) =>
+    `확인할 것: ${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
   nextAction: '후속 조치',
   rankPrefix: '순위',
   scorePrefix: '점수',
@@ -310,13 +335,19 @@ export const scoreAria = {
   unavailable: '점수 산정 전',
 };
 
-/** 상세 영역 제목(BR10.5 순서). */
+/**
+ * 상세 영역 제목(BR10.5 순서).
+ * 2026-11-13 PM 결정(#659): "고객이 요구하는 것과 거산의 준비 상태" 구역을 화면에서 빼고 번호를 다시 매겼다.
+ * `requirements`는 지금 화면이 쓰지 않는 키다(구역 부품을 다시 쓸 때를 위해 남긴다).
+ * 같은 날 PM 지시로 "공정 적합성 검토" 구역도 화면에서 빼고(검토사항 맨 위 한 줄이 대신한다) 번호를 1~3으로 매겼다.
+ * `processLinks`도 지금 화면이 쓰지 않는 키다.
+ */
 export const detailSections = {
   reasons: '1. 추천 근거와 후속 조치',
-  requirements: '2. 고객이 요구하는 것과 거산의 준비 상태',
-  processLinks: '3. 공정 적합성 검토',
-  evidence: '4. 근거 자료',
-  scores: '5. 점수 자세히 보기',
+  requirements: '고객이 요구하는 것과 거산의 준비 상태',
+  processLinks: '공정 적합성 검토',
+  evidence: '2. 근거 자료',
+  scores: '3. 점수 자세히 보기',
   estimateMark: '(추정)',
   questionsHeading: '거산 역량 확인사항',
   questionsHint:
@@ -1064,7 +1095,31 @@ export const reviewArea = {
   /** 검토사항 맨 위 "왜 추천했나" 한 줄. 고른 이유·등록 사실은 바로 위 "이 회사 한눈에"에 있어 다시 적지 않는다. */
   whyTitle: '왜 추천했나',
   whyProcesses: (names: readonly string[]) => `연결된 공정: ${names.join(', ')}`,
+  /** 확정된 공정이 없고 AI 제안만 있을 때(#659). "…AI 제안 5개(아연도금, 아노다이징 외 3개) — 통화 뒤 꼬리 질문에서 확정하세요" */
+  whyProcessUnconfirmed: (count: number, shown: readonly string[], rest: number) => {
+    const names = shown.length > 0 ? `(${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''})` : '';
+    return `맞는 공정이 아직 확인 전입니다 · AI 제안 ${count}개${names} — 통화 뒤 꼬리 질문에서 확정하세요`;
+  },
   whySeeGlance: '고른 이유와 등록 사실은 위 "이 회사 한눈에"에 있습니다.',
+  /**
+   * 확정된 공정 한 줄(#659, PM 지시 2026-11-13): "공정 적합성 검토" 구역을 빼고 여기 한 줄로 합쳤다.
+   * 첫 공정만 소재·판정까지 적고 나머지는 "외 n개". 예: "공정: 아연도금(전기아연도금) · 소재 철 · 통과 외 1개"
+   */
+  whyProcessLine: (name: string, material: string | null, result: string | null, rest: number) =>
+    `공정: ${[name, material ? `소재 ${material}` : null, result].filter((part) => part !== null).join(' · ')}${rest > 0 ? ` 외 ${rest}개` : ''}`,
+  /** 마우스를 올리면 보이는 공정 한 개의 자세한 말. 예: "아연도금 · 소재 철 · 통과 — 지금 단계 필수 요구 통과" */
+  whyProcessDetail: (
+    name: string,
+    material: string | null,
+    result: string | null,
+    reason: string | null,
+  ) =>
+    `${[name, material ? `소재 ${material}` : null, result].filter((part) => part !== null).join(' · ')}${reason ? ` — ${reason}` : ''}`,
+  /** 확정된 공정이 없고 AI 제안만 있을 때. 예: "공정 확인 전 · AI 제안 5개(아연도금, 아노다이징, 흑착색 외 2개)" */
+  whyProcessPending: (count: number, shown: readonly string[], rest: number) => {
+    const names = shown.length > 0 ? `(${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''})` : '';
+    return `공정 확인 전 · AI 제안 ${count}개${names}`;
+  },
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */

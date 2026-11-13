@@ -53,19 +53,41 @@ describe('상세 › 검토사항 "왜 추천했나"', () => {
     });
   });
 
-  it('검토사항 영역 안, 줄 목록 위에 연결된 공정 이름이 보인다', async () => {
+  it('검토사항 영역 안, 줄 목록 위에 공정 한 줄이 보이고 "공정 적합성 검토" 구역은 없다', async () => {
     mockedGet.mockResolvedValueOnce(reply({ ...base, reviewItems: [] }));
     renderPage();
     const review = await screen.findByTestId('detail-review');
     const why = within(review).getByTestId('review-why');
-    const expected = [
-      ...new Set(base.processLinks.map((link) => link.processName || link.processCode)),
-    ];
+    // 가상 사례의 공정 연결 1건: 이름 · 적용 소재 · 판정을 한 줄로(PM 지시 2026-11-13 #659).
+    expect(base.processLinks).toHaveLength(1);
     expect(within(why).getByTestId('review-why-processes')).toHaveTextContent(
-      `연결된 공정: ${expected.join(', ')}`,
+      /^공정: 아노다이징 — 가상 · 소재 알루미늄 주물 · 통과$/,
     );
+    // 같은 내용을 두 군데에 쓰지 않는다: 아래쪽 구역은 그리지 않는다.
+    expect(screen.queryByTestId('detail-process-links')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('process-link')).not.toBeInTheDocument();
     const area = within(review).getByTestId('review-area');
     expect(why.compareDocumentPosition(area) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('공정 연결이 모두 AI 제안이면 "공정 확인 전 · AI 제안 n개"가 보이고 접힌 제안 줄은 그대로다(#659)', async () => {
+    const reviewItems = base.processLinks.map((link) => ({
+      itemId: `PL:${link.processCode}`,
+      kind: 'PROCESS_LINK_PROPOSAL',
+      source: 'AI',
+      text: `AI 공정 연결 제안 · ${link.processName || link.processCode} · 근거: 인용 없음`,
+      checked: false,
+    })) as unknown as OpportunityDetail['reviewItems'];
+    mockedGet.mockResolvedValueOnce(reply({ ...base, reviewItems }));
+    renderPage();
+    const review = await screen.findByTestId('detail-review');
+    const why = within(review).getByTestId('review-why');
+    expect(within(why).queryByTestId('review-why-processes')).not.toBeInTheDocument();
+    const count = new Set(base.processLinks.map((link) => link.processCode)).size;
+    expect(within(why).getByTestId('review-why-process-unconfirmed')).toHaveTextContent(
+      `공정 확인 전 · AI 제안 ${count}개`,
+    );
+    expect(within(review).getByTestId('review-area')).toHaveTextContent('AI 공정 연결 제안');
   });
 
   it('검토사항이 없는 옛 응답이면 "왜 추천했나"도 없다', async () => {
