@@ -1,6 +1,7 @@
 // 상세 "한눈에" 상자(#674, PM 결정 2026-11-13): 어떤 회사 / 거산과 맞는 점 / 근거 상태 / 확인할 것 / 영업 상태.
 // 전에는 머리에 흩어져 있던 홈페이지 줄·대표번호 줄·공장 정보 줄·산업 꼬리표·접촉 횟수를 이 상자 한 곳에 모은다.
 // 모두 상세 응답에 이미 있는 값이고 읽기만 한다(단추·입력 없음. 링크는 새 창).
+// 예외 하나(#677): 확정한 공정과 다른 AI 공정 제안이 있으면 공정 줄 아래에 [확정 값 유지]·[○○도 추가]가 보인다.
 // 값이 없는 줄은 줄째 빼거나 "확인 전"·"아직 조사 전"으로 적는다.
 import type { ReactNode } from 'react';
 import type {
@@ -33,6 +34,8 @@ import { useFrame } from '../frame/FrameContext';
 import { choiceMarksOf } from '../records/ChoiceQuestion';
 import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
 import { pickGlanceLink } from './CompanyGlance';
+import ProcessDifference from './ProcessDifference';
+import type { ProcessProposal } from './ProcessDifference';
 
 const texts = detailReport.glance;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
@@ -47,7 +50,7 @@ export function processStateOf(
   header: DetailHeader,
   processLinks: ProcessLinkView[],
   reviewItems: ReviewItem[],
-): { confirmed: ProcessLinkView[]; proposedNames: string[] } {
+): { confirmed: ProcessLinkView[]; proposedNames: string[]; proposals: ProcessProposal[] } {
   const marks = choiceMarksOf({ processLinks, reviewItems, header }).process;
   const seen = new Set<string>();
   const confirmed = processLinks.filter((link) => {
@@ -58,17 +61,18 @@ export function processStateOf(
   const nameOfLink = new Map(
     processLinks.map((link) => [link.processCode, link.processName || link.processCode]),
   );
-  const proposedNames = [
-    ...new Set(
-      reviewItems
-        .filter((item) => item.kind === 'PROCESS_LINK_PROPOSAL')
-        .map((item) => {
-          const code = item.itemId.replace(/^PL:/, '');
-          return nameOfLink.get(code) ?? processNameOf(item) ?? code;
-        }),
-    ),
-  ];
-  return { confirmed, proposedNames };
+  const proposals: ProcessProposal[] = [];
+  for (const item of reviewItems) {
+    if (item.kind !== 'PROCESS_LINK_PROPOSAL') continue;
+    if (proposals.some((entry) => entry.itemId === item.itemId)) continue;
+    const code = item.itemId.replace(/^PL:/, '');
+    proposals.push({
+      itemId: item.itemId,
+      name: nameOfLink.get(code) ?? processNameOf(item) ?? code,
+    });
+  }
+  const proposedNames = [...new Set(proposals.map((entry) => entry.name))];
+  return { confirmed, proposedNames, proposals };
 }
 
 export interface DetailCheckWords {
@@ -186,6 +190,11 @@ export interface DetailGlanceProps {
   lastContactAt?: string | null;
   /** 시험이 현재 시각에 기대지 않게 지금 시각을 받을 수 있다. */
   now?: Date;
+  /**
+   * 공정 줄 아래 "AI는 다르게 봄"에서 고를 때 쓰는 값(#677). 넘기지 않으면 그 줄을 그리지 않는다.
+   * 이 상자에서 단추가 있는 곳은 그 줄뿐이다.
+   */
+  processChoice?: { oppId: string; evalId: string | null; onSaved: () => void };
 }
 
 export default function DetailGlance({
@@ -197,6 +206,7 @@ export default function DetailGlance({
   contactCount,
   lastContactAt,
   now,
+  processChoice,
 }: DetailGlanceProps) {
   const { config } = useFrame();
 
@@ -221,8 +231,10 @@ export default function DetailGlance({
   const isAi = header.researchSource === 'AI';
 
   // ── 거산과 맞는 점
-  const { confirmed, proposedNames } = processStateOf(header, processLinks, reviewItems);
+  const { confirmed, proposedNames, proposals } = processStateOf(header, processLinks, reviewItems);
   const firstLink = confirmed[0] ?? null;
+  // #677: 사람이 확정한 공정이 있는데 AI가 다른 공정을 제안했다. 덮어쓰지 않고 줄로 알린다.
+  const showDifference = Boolean(processChoice) && confirmed.length > 0 && proposals.length > 0;
   const materialLink = confirmed.find((row) => row.appliedMaterial) ?? null;
   // 사람이 확인한 산업(사례 파일·담당자 확정)만 초록 체크다. AI가 붙인 값은 중립 표시.
   const industryConfirmed =
@@ -449,6 +461,15 @@ export default function DetailGlance({
               texts.pending
             )}
           </FitLine>
+          {showDifference && processChoice ? (
+            <ProcessDifference
+              oppId={processChoice.oppId}
+              evalId={processChoice.evalId}
+              proposals={proposals}
+              confirmedNames={confirmed.map((row) => row.processName || row.processCode)}
+              onSaved={processChoice.onSaved}
+            />
+          ) : null}
           <FitLine label={texts.material} testId="glance-fit-material">
             {materialLink?.appliedMaterial ? (
               <>

@@ -1494,6 +1494,21 @@ export const detailReport = {
      */
     markConfirmed: '확인됨',
     markAi: 'AI 제안 · 확인 전',
+    /**
+     * #677(PM 결정 2026-11-13): 사람이 확정한 공정이 있는데 AI가 다른 공정을 제안했을 때 공정 줄 아래에 보인다.
+     * 확정 값은 저절로 바뀌지 않는다. [확정 값 유지]는 그 제안을 물리치고, [○○도 추가]는 확정 공정에 더한다.
+     */
+    difference: {
+      tag: 'AI는 다르게 봄',
+      /** "AI 새 제안: 니켈도금 · 확정 값: 아연도금" */
+      line: (proposed: string, confirmed: readonly string[]) =>
+        `AI 새 제안: ${proposed} · 확정 값: ${confirmed.join(', ')}`,
+      keep: '확정 값 유지',
+      /** "니켈도금도 추가" */
+      add: (proposed: string) => `${proposed}도 추가`,
+      pickStaffFirst: '담당자를 고르면 고를 수 있습니다.',
+      failed: '저장하지 못했습니다.',
+    },
     markConfirmedAria: (text: string) => `${text} (사람이 확인한 값)`,
     markAiAria: 'AI 제안 · 확인 전 (사람이 확인하기 전)',
     /** "외 1개" */

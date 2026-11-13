@@ -14,7 +14,7 @@ from geosan.api.auto_research import attach_background, queue_on_bookmark
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
-from geosan.api.proposal_review import confirm_proposal, proposal_review_items
+from geosan.api.proposal_review import confirm_proposal, dismiss_proposal, proposal_review_items
 from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
 from geosan.api.sales_step import (
     AnswerRow,
@@ -420,10 +420,14 @@ def save_review_check(
         raise InputError("단계 고치기는 AI 점수 입력 제안에서만 할 수 있습니다.")
     if is_proposal:
         if not body.checked:
-            raise InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
-        summary = confirm_proposal(
-            session, opportunity, item_id, step_label=body.step_label, staff=staff, now=now
-        )
+            # #677 [확정 값 유지]: 확정한 공정이 있는 회사의 다른 AI 공정 제안만 물리칠 수 있다.
+            if body.step_label is not None:
+                raise InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
+            summary = dismiss_proposal(session, opportunity, item_id, now=now)
+        else:
+            summary = confirm_proposal(
+                session, opportunity, item_id, step_label=body.step_label, staff=staff, now=now
+            )
         session.flush()
         result = evaluate_in_session(session, [opp_id], staff)
         if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
