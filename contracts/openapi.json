@@ -2887,6 +2887,17 @@
             ],
             "title": "Expectedversion"
           },
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
           "kind": {
             "default": "MEMO",
             "enum": [
@@ -4823,6 +4834,17 @@
           "kind": {
             "$ref": "#/components/schemas/ReviewItemKind"
           },
+          "note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewItemNote"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "자료 줄에 붙은 최신 자료 조사 메모. 다른 줄은 null(#259)"
+          },
           "repliedAt": {
             "anyOf": [
               {
@@ -4914,6 +4936,31 @@
         ],
         "title": "ReviewItemKind",
         "type": "string"
+      },
+      "ReviewItemNote": {
+        "description": "자료 줄에 붙은 최신 자료 조사 메모(#259). 영업 메모와 같은 내부 전용 취급이다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "by",
+          "at"
+        ],
+        "title": "ReviewItemNote",
+        "type": "object"
       },
       "ReviewItemSource": {
         "enum": [

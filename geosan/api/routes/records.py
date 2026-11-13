@@ -19,6 +19,7 @@ from geosan.api.sales_step import (
     stage_for,
 )
 from geosan.api.schemas import (
+    REVIEW_TEXT_MAX_LENGTH,
     ActivityEnvelope,
     ActivityItem,
     BookmarkEnvelope,
@@ -54,6 +55,7 @@ from geosan.api.schemas import (
     ReviewCheckRequest,
     ReviewCheckResponse,
     ReviewItem,
+    ReviewItemNote,
     SalesAnswerOption,
     SalesQuestionsEnvelope,
     SalesQuestionsView,
@@ -97,6 +99,14 @@ LOST_REASON_LABELS = {
     "NO_DEMAND": "수요 없음",
     "QUALITY_CERT": "품질·인증 요건",
     "OTHER": "기타",
+}
+
+
+# 자료 조사 메모를 붙일 수 있는 검토사항 줄(자료 못 찾음·자료 부족)과 활동 이력에 붙이는 꼬리표.
+GAP_KINDS = {ReviewItemKind.DATA_NOT_FOUND, ReviewItemKind.DATA_INSUFFICIENT}
+GAP_LABELS = {
+    ReviewItemKind.DATA_NOT_FOUND: "자료 못 찾음",
+    ReviewItemKind.DATA_INSUFFICIENT: "자료 부족",
 }
 
 
@@ -266,8 +276,31 @@ def review_items_for_detail(
             item.checked_by = row.staff_key
             item.checked_at = row.created_at
         item.step_options = None
+        # 응답은 넣은 칸만 내보내므로, 메모가 없는 줄도 null로 분명히 넣는다.
+        item.note = None
+    # 자료 줄에는 그 줄에 붙인 자료 조사 메모 가운데 취소되지 않은 최신 하나를 붙인다(#259).
+    gap_ids = [item.item_id for item in items if item.kind in GAP_KINDS]
+    if gap_ids:
+        notes: dict[str, Note] = {}
+        for row in session.scalars(
+            select(Note)
+            .where(
+                Note.opp_id == opp_id,
+                Note.kind == "RESEARCH",
+                Note.item_id.in_(gap_ids),
+                Note.cancelled_at.is_(None),
+            )
+            .order_by(Note.version)
+        ):
+            notes[row.item_id] = row
+        for item in items:
+            if row := notes.get(item.item_id):
+                item.note = ReviewItemNote(text=row.text, by=row.staff_key, at=row.created_at)
     # 새 AI 제안은 이전 버전의 체크 표시를 물려받지 않는다.
-    items.extend(proposal_review_items(session, opportunity, data))
+    proposals = proposal_review_items(session, opportunity, data)
+    for item in proposals:
+        item.note = None
+    items.extend(proposals)
     return items
 
 
@@ -870,6 +903,19 @@ def activity(
     if opportunity is None:
         raise NotFoundError("활동을 조회할 기회가 없습니다.")
     items = []
+    gap_cache: dict[str, str] = {}
+
+    def gap_lines() -> dict[str, str]:
+        """지금 검토사항의 자료 줄 글. 줄에 붙인 메모가 있을 때만 한 번 조립한다."""
+        if not gap_cache:
+            from geosan.api.routes.opportunities import opportunity_detail
+
+            gap_cache[""] = ""
+            for item in opportunity_detail(opp_id, session).data.review_items:
+                if item.kind in GAP_KINDS:
+                    gap_cache[item.item_id] = f"[{GAP_LABELS[item.kind]}] {item.text}"
+        return gap_cache
+
     relation_labels = {
         "UNCONFIRMED": "확인 전",
         "NEW_CONFIRMED": "거래 없음",
@@ -902,7 +948,9 @@ def activity(
         elif row.kind == "REPLY":
             summary = f"답 기록 · {row.text.split(' 답: ', 1)[-1]}"
         elif row.kind == "RESEARCH":
-            summary = f"자료 조사 · {row.text}"
+            # 자료 줄에 붙인 메모는 앞에 그 줄 글을 붙인다(#259). 지금은 없는 줄이면 메모만 보인다.
+            line = gap_lines().get(row.item_id) if row.item_id else None
+            summary = f"자료 조사 · {line} · {row.text}" if line else f"자료 조사 · {row.text}"
         else:
             summary = row.text
         items.append(
@@ -1005,6 +1053,19 @@ def save_note(
     staff: StaffDep,
 ):
     limit = runtime_for(session).app_settings.records.note_max_length
+    if body.item_id is not None:
+        # 자료 줄 메모(#259): 자료 조사만, 질문 줄은 [답 적기]로, 상한은 [답 적기]와 같은 값.
+        limit = REVIEW_TEXT_MAX_LENGTH
+        if body.item_id.startswith("Q:"):
+            raise InputError(
+                "질문 줄은 [답 적기]로 적어 주세요",
+                fields=[FieldError(path="itemId", message="질문 줄에는 메모를 붙일 수 없습니다.")],
+            )
+        if body.kind != "RESEARCH":
+            raise InputError(
+                "검토사항 줄에는 자료 조사 메모만 붙일 수 있습니다.",
+                fields=[FieldError(path="kind", message="자료 조사로 골라 주세요.")],
+            )
     if len(body.text) > limit:
         raise InputError(
             "영업 메모의 글자 수를 확인해 주세요.",
@@ -1017,6 +1078,19 @@ def save_note(
     connection = session.connection()
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
+    if body.item_id is not None:
+        # 화면에 보이는 검토사항과 붙일 수 있는 줄이 어긋나지 않게 상세 조립을 다시 쓴다.
+        from geosan.api.routes.opportunities import opportunity_detail
+
+        current = opportunity_detail(opp_id, session).data.review_items
+        target = next((item for item in current if item.item_id == body.item_id), None)
+        if target is None:
+            raise NotFoundError("현재 검토사항에 없는 줄입니다.", "화면을 새로 고쳐 주세요.")
+        if target.kind not in GAP_KINDS:
+            raise InputError(
+                "자료 못 찾음·자료 부족 줄에만 메모를 붙일 수 있습니다.",
+                fields=[FieldError(path="itemId", message="자료 줄을 골라 주세요.")],
+            )
     previous = session.scalar(
         select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc())
     )
@@ -1029,6 +1103,7 @@ def save_note(
         text=body.text,
         eval_id=body.eval_id,
         kind=body.kind,
+        item_id=body.item_id,
         version=previous.version + 1 if previous else 1,
         created_at=now,
         created_by=staff,
