@@ -3,6 +3,7 @@
 관심(찜) 켜고 끄기와 자동 관심도 여기에 둔다(#356).
 """
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
@@ -73,7 +74,12 @@ from geosan.config.errors import (
     NotFoundError,
     RunFailedError,
 )
-from geosan.config.sales_questions import ALL_STEPS, SalesQuestions, load_sales_questions
+from geosan.config.sales_questions import (
+    ALL_STEPS,
+    KST,
+    SalesQuestions,
+    load_sales_questions,
+)
 from geosan.config.validators import scan_contacts
 from geosan.dashboard.sales_analysis import process_display_name
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
@@ -480,6 +486,23 @@ def contact_counts(session: Session, opp_id: str) -> ContactCount:
         email=counts.get("EMAIL", 0),
         visit=counts.get("VISIT", 0),
     )
+
+
+def last_contact_at(session: Session, opp_id: str) -> date | None:
+    """취소 안 된 접촉 시도 가운데 가장 늦은 접촉 날짜(#674). 접촉이 없으면 None.
+
+    접촉 날짜는 attemptedAt, 없으면 저장한 날(한국 날짜)이다.
+    영업 분석표의 lastContactAt과 같은 기준이다.
+    """
+    rows = session.execute(
+        select(Outcome.attempted_at, Outcome.created_at).where(
+            Outcome.opp_id == opp_id,
+            Outcome.method.in_(["CALL", "EMAIL", "VISIT"]),
+            Outcome.cancelled_at.is_(None),
+        )
+    ).all()
+    days = [attempted or created.astimezone(KST).date() for attempted, created in rows]
+    return max(days) if days else None
 
 
 @router.post("/opportunities/{oppId}/main-phone/confirm", response_model=MainPhoneConfirmEnvelope)

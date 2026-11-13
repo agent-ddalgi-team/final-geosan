@@ -1,4 +1,4 @@
-// 3. 공정 연결: 거산 공정 이름 · 적용 소재 · 판정(글자).
+// (2026-11-13 PM 지시 #659로 상세 화면에서 뺀 구역. 지금 쓰는 곳 없음. 공정은 검토사항 맨 위 한 줄이 대신한다) 공정 적합성 검토(공정 연결): 거산 공정 이름 · 적용 소재 · 판정(글자).
 import type { ProcessLinkView } from '../../api/types';
 import StatusTag from '../common/StatusTag';
 import DetailSection from './DetailSection';
