@@ -301,7 +301,7 @@ def test_init_db_and_merge_heads_commands(tmp_path: Path, monkeypatch: pytest.Mo
     code, output = _run("init-db")
     assert code == 0 and "이미 최신" in output
     code, output = _run("db", "merge-heads")
-    assert code == 0 and "하나(rec_014)" in output
+    assert code == 0 and "하나(src_006)" in output
     assert os.path.exists(tmp_path / "cli.db")
 
 
