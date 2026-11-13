@@ -25,6 +25,7 @@ def config_ui(session: SessionDep):
             access_protection_enabled=settings.access_protection.enabled,
             rule_version=runtime.rule_config.version,
             records=settings.records.model_dump(),
+            export=settings.export.model_dump(),
             ingest_options={
                 "processes": [
                     {"code": row.code, "name": row.name}
