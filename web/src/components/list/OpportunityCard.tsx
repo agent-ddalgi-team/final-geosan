@@ -136,7 +136,7 @@ export default function OpportunityCard({
   const ownPlatingBasis =
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
   // 근거 상태 묶음(#675, PM 결정 2026-11-13): 묶음 이유 꼬리표 자리에는 공정 적합도 하나("적합도 상")를 보인다.
-  // 끝난 회사만 끝난 이유("거래 중"·"성사·거절·보류"·"검토 대상 제외"·"필수조건 탈락")를 그 자리에 보인다.
+  // 끝난 회사만 끝난 이유("거래 중"·"성사·거절·보류"·"제외"·"필수조건 탈락")를 그 자리에 보인다.
   const closed = card.bucket === 'CLOSED';
   const closedBasis = closed && card.bucketBasis ? contactBuckets.basis[card.bucketBasis] : null;
   const fitTag = !closed && card.bucket && card.fitLevel ? contactBuckets.fit[card.fitLevel] : null;

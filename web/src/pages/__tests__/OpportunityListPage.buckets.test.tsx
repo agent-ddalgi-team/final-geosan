@@ -195,7 +195,7 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
   });
 
   it.each([
-    ['EXCLUDED_OPINION', '검토 대상 제외'],
+    ['EXCLUDED_OPINION', '제외'],
     ['REQUIRED_FAILED', '필수조건 탈락'],
     ['EXISTING_CUSTOMER', '거래 중'],
     ['CLOSED_OR_HOLD', '성사·거절·보류'],
