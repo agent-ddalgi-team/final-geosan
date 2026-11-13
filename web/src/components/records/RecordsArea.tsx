@@ -88,6 +88,11 @@ export interface RecordsAreaProps {
   choiceMarks?: ChoiceMarks | null;
   /** 꼬리 질문으로 공정·산업을 확정해 저장했을 때 알린다(점수·검토사항까지 상세 전체 다시 불러오기용). */
   onCompanyConfirmed?: () => void;
+  /**
+   * 이 회사의 최신 검토 의견이 "제외"인지(#697). 제외한 회사에 접촉을 남기려 하면 저장 전에 그 자리에서
+   * 한 번 묻는다: 영업 대상으로 되돌리고 저장할지, 제외인 채로 저장할지.
+   */
+  excluded?: boolean;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
@@ -180,6 +185,7 @@ export default function RecordsArea({
   onSalesStepChanged,
   choiceMarks = null,
   onCompanyConfirmed,
+  excluded = false,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -219,6 +225,8 @@ export default function RecordsArea({
   const [contactPicks, setContactPicks] = useState<Record<string, string>>({});
   // 결과가 "거절"일 때 "어떻게 할까요?"에서 고른 것(#691): 마무리 보기 ID 또는 "아직 끝 아님".
   const [declineChoice, setDeclineChoice] = useState<string | null>(null);
+  // 제외한 회사에 [접촉 기록 저장]을 눌러 "영업 대상으로 되돌릴까요?"를 묻는 중인지(#697).
+  const [askExcluded, setAskExcluded] = useState(false);
   useEffect(() => {
     let alive = true;
     loadSalesQuestions()
@@ -382,8 +390,16 @@ export default function RecordsArea({
   const plannedDate = nextAction && !closing ? nextDate : '';
   const plannedDatePast = plannedDate !== '' && plannedDate < todayKst();
 
-  async function onSaveContact() {
+  /**
+   * 접촉 저장. 제외한 회사면 먼저 한 번 묻고(#697), 답(`restore`)을 받은 뒤에 저장한다.
+   * 제외가 아닌 회사는 묻지 않는다: 서버가 같은 저장 안에서 검토 의견을 "영업 대상"으로 정한다.
+   */
+  async function onSaveContact(restore?: boolean) {
     if (!method || !result || closingNeedsReason || closingNeedsMemo || plannedDatePast) return;
+    if (excluded && restore === undefined) {
+      setAskExcluded(true);
+      return;
+    }
     // 지금 단계를 그대로 싣는다. 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 앞으로만
     // 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈). 마무리 답을 골랐으면 서버가
     // 그 답으로 보류·성사·거절과 거절 이유를 정한다(#643). 화면도 같은 값을 실어 보낸다.
@@ -434,8 +450,10 @@ export default function RecordsArea({
         ? { nextScheduleAt: plannedDate, nextScheduleNote: nextAction.label }
         : keepSchedule()),
       ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),
+      ...(restore ? { restoreExcluded: true } : {}),
     });
     if (ok) {
+      setAskExcluded(false);
       if (closing) {
         setSavedLostReason(closing.lostReasonCode === 'OTHER' ? memo : '');
       }
@@ -849,6 +867,32 @@ export default function RecordsArea({
         ) : (
           blockMessage('note')
         )}
+        {/* 제외한 회사에 접촉을 남기려 할 때만: 창 없이 이 자리에서 한 번 묻는다(#697). */}
+        {method && excluded && askExcluded ? (
+          <div
+            role="group"
+            aria-label={recordsArea.excludedAsk}
+            data-testid="records-excluded-ask"
+            style={rowStyle}
+          >
+            <span role="status">{recordsArea.excludedAsk}</span>
+            <Button
+              type="primary"
+              disabled={disabled}
+              onClick={() => void onSaveContact(true)}
+              data-testid="records-excluded-restore-button"
+            >
+              {recordsArea.excludedRestoreSave}
+            </Button>
+            <Button
+              disabled={disabled}
+              onClick={() => void onSaveContact(false)}
+              data-testid="records-excluded-keep-button"
+            >
+              {recordsArea.excludedKeepSave}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       {/* 영업 단계 칸은 기본으로 접어 둔다(#674, PM 지시 2026-11-13): 단계는 꼬리 질문 답으로 저절로 저장되고

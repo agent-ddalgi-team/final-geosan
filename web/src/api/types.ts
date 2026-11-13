@@ -803,6 +803,8 @@ export interface OutcomeRequest {
   answers?: { questionId: string; answerId: string }[];
   /** [단계 고치기](#607). */
   stepOverride?: SalesStep;
+  /** 제외한 회사에 접촉을 남기면서 검토 의견을 영업 대상으로 되돌릴지(#697). 접촉 기록에서만 보낸다. */
+  restoreExcluded?: boolean;
 }
 
 export interface OutcomeResponse extends RecordMeta {
