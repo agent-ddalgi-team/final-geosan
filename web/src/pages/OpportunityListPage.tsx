@@ -10,7 +10,8 @@
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
 // 정렬(#361·#516·#610): "추천 순"(기본, 서버로 `sort=contact` = 세 묶음 순)과 "최근 들어온 순"(`?sort=recent`).
 //   추천 순에서는 묶음이 바뀌는 자리에 "지금 연락할 곳 9곳"·"확인 필요 122곳"·"나중 49곳" 제목을 끼운다(공정별 묶음 안에서도).
-// "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 아무것도 보내지 않는다.
+// 가까운 순(#666): 주소 `?sort=distance`, 서버에도 `sort=distance`. 거리 범위는 `?maxDistanceKm=50`(선택지는 /config/ui).
+//   서버가 전체 후보의 거리를 본 뒤 거르고 정렬한다(#658). 카드에는 "거산에서 8.2km" 꼬리표가 붙는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
 // "제외한 회사" 보기(#536): 주소 `?excluded=true`면 검토 대상 제외로 저장한 회사만 보인다(서버에는 `opinion=NOT_TARGET`).
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
@@ -83,8 +84,14 @@ export default function OpportunityListPage() {
   const industry = condition('industry');
   const stage = condition('stage');
   const filter = condition('filter');
-  // 정렬(#516)은 주소 `?sort=recent`로만 남긴다. 다른 값은 추천 순으로 읽는다.
-  const sort: ListSort = condition('sort') === 'recent' ? 'recent' : 'rank';
+  // 정렬(#516·#666)은 주소 `?sort=recent`·`?sort=distance`로만 남긴다. 다른 값은 추천 순으로 읽는다.
+  const sortParam = condition('sort');
+  const sort: ListSort =
+    sortParam === 'recent' ? 'recent' : sortParam === 'distance' ? 'distance' : 'rank';
+  // 거리 범위(#666): 설정 선택지에 있는 값만 읽는다. 없는 값은 "전체"로 읽어 서버 400을 피한다.
+  const distancePresets = config?.distanceFilterPresetsKm ?? [];
+  const distanceParam = Number(condition('maxDistanceKm'));
+  const maxDistanceKm = distancePresets.includes(distanceParam) ? distanceParam : null;
   // "관심 기업" 보기(#357)는 주소 `?bookmarked=true`로만 남긴다. 다른 값은 평소 목록으로 읽는다.
   const bookmarked = condition('bookmarked') === 'true';
   // "제외한 회사" 보기(#536)는 주소 `?excluded=true`로만 남긴다. 관심 기업 보기와 같이 켜지면 관심 기업 보기를 따른다.
@@ -105,7 +112,8 @@ export default function OpportunityListPage() {
     stage,
     filter,
     q,
-    sort === 'recent' ? 'recent' : '',
+    sort === 'rank' ? '' : sort,
+    maxDistanceKm === null ? '' : String(maxDistanceKm),
     bookmarked ? 'bookmarked' : '',
     excluded ? 'excluded' : '',
     opinion,
@@ -134,14 +142,28 @@ export default function OpportunityListPage() {
       filter,
       q,
       // 추천 순은 세 묶음 순(#610)으로 달라고 한다. 주소에는 남기지 않는다(주소에 sort가 없으면 추천 순).
-      sort: sort === 'recent' ? 'recent' : 'contact',
+      sort: sort === 'rank' ? 'contact' : sort,
+      // 거리 범위(#666)는 골랐을 때만 보낸다.
+      ...(maxDistanceKm !== null ? { maxDistanceKm: String(maxDistanceKm) } : {}),
       // 관심 기업 보기와 그 안의 검토 의견 거르기도 켰을 때만 보낸다.
       ...(bookmarked ? { bookmarked: 'true' } : {}),
       ...(opinion ? { opinion } : {}),
       // 제외한 회사 보기는 관심 조건 없이 최신 의견이 검토 대상 제외인 회사만 달라고 한다.
       ...(excluded ? { opinion: 'NOT_TARGET' } : {}),
     }),
-    [process, region, industry, stage, filter, q, sort, bookmarked, opinion, excluded],
+    [
+      process,
+      region,
+      industry,
+      stage,
+      filter,
+      q,
+      sort,
+      maxDistanceKm,
+      bookmarked,
+      opinion,
+      excluded,
+    ],
   );
 
   useEffect(() => {
@@ -340,7 +362,7 @@ export default function OpportunityListPage() {
     ? listSearch.empty
     : processIsEmpty
       ? listFilters.processEmpty
-      : region || industry || groupsFiltered || bookmarkedByProcess
+      : region || industry || maxDistanceKm !== null || groupsFiltered || bookmarkedByProcess
         ? listFilters.filteredEmpty
         : stage || filter || opinion
           ? listFilters.noMatch
@@ -358,7 +380,8 @@ export default function OpportunityListPage() {
     next.set('process', code);
     if (region) next.set('region', region);
     if (industry) next.set('industry', industry);
-    if (sort === 'recent') next.set('sort', 'recent');
+    if (sort !== 'rank') next.set('sort', sort);
+    if (maxDistanceKm !== null) next.set('maxDistanceKm', String(maxDistanceKm));
     return `${location.pathname}?${next.toString()}`;
   };
 
@@ -424,7 +447,10 @@ export default function OpportunityListPage() {
         onClearSearch={clearSearch}
         sort={sort}
         // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기가 그대로 열린다). 서버에는 세 묶음 순으로 달라고 한다(#610).
-        onSort={(value) => update({ sort: value === 'recent' ? 'recent' : null })}
+        onSort={(value) => update({ sort: value === 'rank' ? null : value })}
+        distancePresets={distancePresets}
+        maxDistanceKm={maxDistanceKm}
+        onMaxDistance={(km) => update({ maxDistanceKm: km === null ? null : String(km) })}
         // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
         showFlat={processMode}
         flat={flat}

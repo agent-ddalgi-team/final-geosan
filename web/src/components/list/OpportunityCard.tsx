@@ -161,6 +161,12 @@ export default function OpportunityCard({
               {card.region ?? listFilters.regionUnknown}
             </StatusTag>
           ) : null}
+          {/* 거산 본사에서의 직선거리(#666). 좌표를 못 찾은 회사(null)는 꼬리표를 붙이지 않는다. */}
+          {typeof card.distanceKm === 'number' ? (
+            <StatusTag tone="neutral" data-testid="card-distance-tag">
+              {listFilters.cardDistance(card.distanceKm)}
+            </StatusTag>
+          ) : null}
           {card.industries !== undefined ? (
             card.industries.length > 0 ? (
               card.industries.map((industry) => (

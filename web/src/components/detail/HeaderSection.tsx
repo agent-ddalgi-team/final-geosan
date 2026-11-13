@@ -15,6 +15,7 @@ import {
   cardRows,
   classificationLabels,
   classificationTone,
+  companySummary,
   coreEvidenceRecheckLabel,
   detailHeader,
   frame,
@@ -103,6 +104,12 @@ export default function HeaderSection({
           style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}
         >
           <span style={{ color: colors.textSecondary }}>{header.address}</span>
+          {/* 주소와 나란히 거산 본사까지의 직선거리(#666, PM 요청: 주소와 같이 보고 비교). */}
+          {typeof header.distanceKm === 'number' ? (
+            <strong data-testid="detail-distance">
+              {companySummary.distance(header.distanceKm)}
+            </strong>
+          ) : null}
           <a
             href={mapLinks.naver}
             target="_blank"
@@ -209,6 +216,7 @@ export default function HeaderSection({
         header={header}
         onReload={onRelationChanged}
         showSummaryLine={false}
+        showDistance={false}
       />
     </div>
   );

@@ -396,13 +396,18 @@ export const listFilters = {
   /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
   /** 조건을 걸었는데 0건일 때. */
-  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
+  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업·거리를 '전체'로 바꿔 보세요",
   /** 대시보드 건수로 넘어와 걸러진 목록이 비었을 때. */
   noMatch: '이 조건에 맞는 후보가 없습니다.',
   /** 고른 공정에 회사가 한 곳도 없을 때(#361). */
   processEmpty: '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
   regionUnknown: '지역 미확인',
   industryUnknown: '산업 미확정',
+  /** 거리 범위 선택란(#666). 선택지는 서버 설정(`/config/ui` distanceFilterPresetsKm). */
+  distanceLabel: '거리',
+  distanceWithin: (km: number) => `${km}km 이내`,
+  /** 카드 꼬리표(#666): 거산 본사에서 직선거리. 미확인이면 꼬리표를 보이지 않는다. */
+  cardDistance: (km: number) => `거산에서 ${km}km`,
 } as const;
 
 /**
@@ -422,8 +427,8 @@ export const listSearch = {
   sortRank: '추천 순',
   /** 최근 들어온 순(#516): 들어온 시각이 최신인 회사가 위, 사례 파일 회사는 아래. */
   sortRecent: '최근 들어온 순',
-  /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
-  sortDistance: '가까운 순 (준비 중)',
+  /** 가까운 순(#666): 거산 본사에서 가까운 회사가 위, 거리 미확인은 맨 아래. */
+  sortDistance: '가까운 순',
   /** 정렬 줄 마지막 단추(#516, PM 지시 2026-11-09): 공정별 묶음을 풀고 모든 회사를 한 줄로 본다. 다시 누르면 묶음 보기. */
   viewAll: '전체 보기',
 } as const;
