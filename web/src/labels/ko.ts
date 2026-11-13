@@ -1254,8 +1254,8 @@ export const itemShortLabels: Record<string, string> = {
   NEW_PERF: '처리 목적',
   SIG_EXPAND: '증설',
   SIG_ORDER: '수주',
-  SIG_BID: '공고',
-  SIG_HIRE: '채용',
+  SIG_BID: '구매·외주 의향',
+  SIG_HIRE: '관심',
 };
 
 /** 점수 자세히 보기 — 전문 용어(E/P/S/R)는 여기서만 쓴다(BR10.9). */
