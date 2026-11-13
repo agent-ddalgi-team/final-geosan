@@ -7184,7 +7184,7 @@
     },
     "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {
       "post": {
-        "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.",
+        "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.\n예외(#685): 접촉 기록을 취소해 통화에서 확인한 신호가 바뀌면 같은 저장 안에서 다시 평가한다.",
         "operationId": "cancel_record_api_v1_opportunities__oppId__records__recordId__cancel_post",
         "parameters": [
           {

@@ -78,6 +78,8 @@ describe('RecordsArea', () => {
     });
     // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
     fireEvent.click(screen.getByTestId('records-stage-toggle'));
+    // 다음 일정 칸도 기본으로 접혀 있다(#683). [일정 잡기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByRole('heading', { name: recordsArea.entryTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.stageTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
@@ -456,6 +458,8 @@ describe('RecordsArea', () => {
         lostReasonCode: 'PRICE',
       },
     });
+    // 다음 일정 칸은 기본으로 접혀 있다(#683).
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     fireEvent.change(screen.getByTestId('records-schedule-date'), {
       target: { value: '2026-12-01' },
     });
@@ -508,6 +512,8 @@ describe('RecordsArea', () => {
         status: 'IN_PROGRESS',
       },
     });
+    // 다음 일정 칸은 기본으로 접혀 있다(#683).
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     fireEvent.change(screen.getByTestId('records-schedule-date'), {
       target: { value: '2026-11-10' },
@@ -536,7 +542,10 @@ describe('RecordsArea', () => {
       recordsArea.pickStaffFirst,
     );
     expect(screen.getByTestId('records-note-input')).toBeDisabled();
+    // 다음 일정 칸은 기본으로 접혀 있다(#683). 펼쳐 볼 수는 있어도 입력은 막혀 있다.
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-date')).toBeDisabled();
+    expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     expect(mockedNote).not.toHaveBeenCalled();
   });
 });
