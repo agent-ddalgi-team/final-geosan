@@ -28,6 +28,8 @@ export interface AnalysisStats {
 
 export interface IndustryAnalysisRow extends AnalysisStats {
   industry: string;
+  /** (#684) 이 줄의 회사 가운데 같은 공정 아래 다른 산업군 줄에도 든 회사 수. */
+  overlapCount: number;
 }
 
 export interface ProcessAnalysisRow extends AnalysisStats {
@@ -35,6 +37,26 @@ export interface ProcessAnalysisRow extends AnalysisStats {
   processCode: string | null;
   processName: string;
   byIndustry: IndustryAnalysisRow[];
+  /** (#684) 이 줄의 회사 가운데 다른 공정 줄에도 든 회사 수. */
+  overlapCount: number;
+}
+
+/** (#684) 세부 단계 한 줄. 서버가 기록 행과 답으로 다시 계산한 단계로 센다. */
+export interface StepAnalysisRow {
+  step: string;
+  /** 이 단계에 머무는 동안 접촉한 회사 수. */
+  contactedCount: number;
+  /** 이 단계에 머무는 동안의 접촉 시도 수. */
+  contactCount: number;
+  contactReach: Record<ContactMethodCode, ReachCount>;
+  /** 접촉한 회사 수가 설정 기준보다 적으면 null. */
+  reachRatios: Record<ContactMethodCode, number | null> | null;
+  /** 이 단계에 이른 회사 수. */
+  reachedCount: number;
+  /** 그 회사들이 이 단계에 처음 이른 접촉까지의 접촉 수 합. */
+  contactsToReach: number;
+  /** 이른 회사 수가 설정 기준보다 적으면 null: 화면은 평균 없이 합과 회사 수만 보인다. */
+  avgContactsToReach: number | null;
 }
 
 export interface CompanyAnalysisRow {
@@ -63,6 +85,10 @@ export interface SalesAnalysis {
   };
   byProcess: ProcessAnalysisRow[];
   companies: CompanyAnalysisRow[];
+  /** (#684) 회사를 한 번씩만 센 합계. */
+  total: AnalysisStats;
+  /** (#684) 단계별 접촉. 접촉도 도달도 없는 단계는 없다. */
+  bySalesStep: StepAnalysisRow[];
 }
 
 export function getSalesAnalysis(signal?: AbortSignal): Promise<Envelope<SalesAnalysis>> {

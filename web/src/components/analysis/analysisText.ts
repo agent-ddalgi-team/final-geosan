@@ -1,6 +1,11 @@
 // 영업 분석표(#608)의 칸 글자를 만드는 순수 함수. 숫자는 서버가 계산한 값 그대로이고 여기서는 쉬운 말로만 바꾼다.
 // 표본이 설정 기준보다 적으면(서버가 ratios를 null로 줌) 비율을 지어내지 않고 "표본 n건"만 보인다.
-import type { AnalysisStats, CompanyAnalysisRow, ContactMethodCode } from '../../api/salesAnalysis';
+import type {
+  AnalysisStats,
+  CompanyAnalysisRow,
+  ContactMethodCode,
+  StepAnalysisRow,
+} from '../../api/salesAnalysis';
 import {
   contactMethodLabels,
   labelFor,
@@ -15,7 +20,7 @@ const METHODS: ContactMethodCode[] = ['CALL', 'EMAIL', 'VISIT'];
 const percent = (ratio: number) => Math.round(ratio * 100);
 
 /** "전화 2/3 · 방문 1/1" — 시도가 없는 방법은 빼고, 하나도 없으면 "—". */
-export function reachText(stats: AnalysisStats): string {
+export function reachText(stats: Pick<AnalysisStats, 'contactReach'>): string {
   const parts = METHODS.filter((method) => stats.contactReach[method].tried > 0).map((method) =>
     texts.reach(
       contactMethodLabels[method],
@@ -43,6 +48,32 @@ export function ratioText(stats: AnalysisStats): string {
     return ratio === null ? [] : [texts.reachRatio(contactMethodLabels[method], percent(ratio))];
   });
   return [texts.wonRatio(percent(ratios.won)), ...reach].join(' · ');
+}
+
+/** (#684) "평균 3.5번 (6곳)" — 표본이 적으면 평균 없이 "2곳 · 모두 7번", 이른 회사가 없으면 "—". */
+export function stepToReachText(row: StepAnalysisRow): string {
+  if (row.reachedCount === 0) return texts.none;
+  return row.avgContactsToReach === null
+    ? texts.stepToReachSum(row.reachedCount, row.contactsToReach)
+    : texts.stepToReachAvg(row.avgContactsToReach, row.reachedCount);
+}
+
+/** (#684) "3곳 · 접촉 8번" — 그 단계에 머무는 동안 접촉이 없으면 "—". */
+export function stepContactsText(row: StepAnalysisRow): string {
+  if (row.contactCount === 0) return texts.none;
+  return texts.stepContacts(row.contactedCount, row.contactCount);
+}
+
+/** (#684) 표본이 적으면 "표본 3건", 충분하면 "전화 연결 67% · 메일 연결 100%". */
+export function stepRatioText(row: StepAnalysisRow): string {
+  if (row.contactCount === 0) return texts.none;
+  const ratios = row.reachRatios;
+  if (!ratios) return texts.sampleOnly(row.contactedCount);
+  const parts = METHODS.flatMap((method) => {
+    const ratio = ratios[method];
+    return ratio === null ? [] : [texts.reachRatio(contactMethodLabels[method], percent(ratio))];
+  });
+  return parts.length > 0 ? parts.join(' · ') : texts.none;
 }
 
 export function avgToWonText(stats: AnalysisStats): string {

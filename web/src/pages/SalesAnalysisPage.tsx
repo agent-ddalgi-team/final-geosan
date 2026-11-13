@@ -12,6 +12,7 @@ import type { Meta } from '../api/types';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
 import ProcessAnalysisTable from '../components/analysis/ProcessAnalysisTable';
+import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { peersArea, salesAnalysisTexts as texts } from '../labels/ko';
@@ -145,8 +146,22 @@ export default function SalesAnalysisPage() {
               <h2 id="analysis-process-title" style={titleStyle}>
                 {texts.processTitle}
               </h2>
-              <ProcessAnalysisTable rows={data.byProcess} />
+              <ProcessAnalysisTable rows={data.byProcess} total={data.total} />
+              <p data-testid="analysis-sum-note" style={secondary}>
+                {texts.sumNote}
+              </p>
             </section>
+            {data.bySalesStep.length > 0 ? (
+              <section aria-labelledby="analysis-step-title" style={sectionStyle}>
+                <h2 id="analysis-step-title" style={titleStyle}>
+                  {texts.stepTitle}
+                </h2>
+                <StepAnalysisTable rows={data.bySalesStep} />
+                <p data-testid="analysis-step-note" style={secondary}>
+                  {texts.stepNote}
+                </p>
+              </section>
+            ) : null}
             <section aria-labelledby="analysis-company-title" style={sectionStyle}>
               <h2 id="analysis-company-title" style={titleStyle}>
                 {texts.companyTitle}
