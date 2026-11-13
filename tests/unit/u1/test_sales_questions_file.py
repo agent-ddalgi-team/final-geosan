@@ -228,3 +228,79 @@ def test_broken_closing_questions_are_rejected(tmp_path, text, expected):
     result = check_sales_questions_file(write(tmp_path, text))
     assert result.questions is None
     assert any(expected in f"{error.path} {error.message}" for error in result.errors), result
+
+
+# ---------------------------------------------------------------------------
+# #652: 보기를 회사 값에서 가져오는 질문(choices)
+# ---------------------------------------------------------------------------
+
+CHOICE = """  - id: CONFIRM_PROCESS
+    step: REACHED
+    text: 어떤 공정을 맡길 수 있나요?
+    choices: PROCESS
+"""
+
+
+def test_choice_questions_pass(tmp_path):
+    text = "version: 1\n" + STEPS + "questions:\n" + QUESTION + CHOICE
+    result = check_sales_questions_file(write(tmp_path, text))
+    assert result.errors == []
+    question = result.questions.question("CONFIRM_PROCESS")
+    assert (question.choices, question.answers) == ("PROCESS", [])
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (
+            CHOICE
+            + "    answers:\n      - { id: YES, label: 있음 }\n      - { id: NO, label: 없음 }\n",
+            "answers와 choices를 같이",
+        ),
+        (CHOICE.replace("    choices: PROCESS\n", ""), "choices를 적어 주세요"),
+        (QUESTION.replace("      - { id: IN_HOUSE, label: 직접 함 }\n", ""), "2개 이상"),
+        (CHOICE.replace("PROCESS", "REGION"), "choices"),
+        (CHOICE.replace("step: REACHED", "step: ALL"), "step은 ALL일 수 없습니다"),
+        (CHOICE + CHOICE.replace("CONFIRM_PROCESS", "CONFIRM_AGAIN"), "하나만 둘 수 있습니다"),
+        (
+            CHOICE
+            + QUESTION.replace("PLATING_NOW", "AFTER_CHOICE")
+            + "    showWhen: { answers: { CONFIRM_PROCESS: [ZINC_PLATING] } }\n",
+            "choices 질문 'CONFIRM_PROCESS'",
+        ),
+    ],
+)
+def test_broken_choice_questions_are_rejected(tmp_path, text, expected):
+    """answers와 choices는 하나만, choices 질문은 종류마다 하나, 꼬리 조건으로 가리킬 수 없다."""
+    result = check_sales_questions_file(
+        write(tmp_path, "version: 1\n" + STEPS + "questions:\n" + text)
+    )
+    assert result.questions is None
+    assert any(expected in f"{error.path} {error.message}" for error in result.errors), result
+
+
+def test_choice_question_keeps_every_value_of_the_latest_answering_contact():
+    """Given 공정을 두 번 답함 / When 계산 / Then 가장 최근 접촉에서 고른 값만 값마다 한 줄."""
+    questions = check_sales_questions_file(EXAMPLE).questions
+    labels = {"PROCESS": {"ZINC_PLATING": "아연도금", "CHROMATE": "크로메이트"}, "INDUSTRY": {}}
+    state = compute_sales_step(
+        [row("o1"), row("o2"), row("o3")],
+        [
+            AnswerRow("o1", "CONFIRM_PROCESS", "ANODIZING"),
+            AnswerRow("o2", "CONFIRM_PROCESS", "ZINC_PLATING"),
+            AnswerRow("o2", "CONFIRM_PROCESS", "CHROMATE"),
+            AnswerRow("o2", "CONFIRM_INDUSTRY", "없어진 산업"),
+            AnswerRow("o3", "INTEREST", "HIGH"),
+        ],
+        questions,
+        "IN_PROGRESS",
+        labels,
+    )
+    known = [(item.question_id, item.answer_id, item.answer) for item in state.known]
+    assert known == [
+        ("INTEREST", "HIGH", "높음"),
+        ("CONFIRM_PROCESS", "ZINC_PLATING", "아연도금"),
+        ("CONFIRM_PROCESS", "CHROMATE", "크로메이트"),
+        ("CONFIRM_INDUSTRY", "없어진 산업", "예전 보기"),
+    ]
+    assert "CONFIRM_PROCESS" not in state.open_questions

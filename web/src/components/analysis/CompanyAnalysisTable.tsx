@@ -14,7 +14,8 @@ export interface CompanyAnalysisTableProps {
 
 export default function CompanyAnalysisTable({ rows, processNames }: CompanyAnalysisTableProps) {
   const columns = texts.companyColumns;
-  const list = (items: string[]) => (items.length > 0 ? items.join(' · ') : texts.none);
+  // 확정된 공정·산업군이 없으면 "확인 전"(#652). 서버가 확정된 값만 보낸다.
+  const list = (items: string[]) => (items.length > 0 ? items.join(' · ') : texts.unconfirmed);
   return (
     <div
       tabIndex={0}

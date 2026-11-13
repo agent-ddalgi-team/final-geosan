@@ -39,9 +39,12 @@ CONTACT_METHODS: tuple[str, ...] = (METHOD_CALL, METHOD_EMAIL, METHOD_VISIT)
 IN_PROGRESS_STATUSES = frozenset({"NOT_EXECUTED", "IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED"})
 CLOSED_STATUSES = frozenset({STATUS_WON, STATUS_LOST})
 KNOWN_STATUSES = IN_PROGRESS_STATUSES | CLOSED_STATUSES | {STATUS_ON_HOLD}
-# 계약 C1: 공정 연결이 없는 회사와 산업군이 없는 회사는 맨 끝 줄에 따로 센다.
-NO_PROCESS_NAME = "공정 미확정"
-NO_INDUSTRY_NAME = "미확정"
+# 계약 C1(#652): 확정된 공정이 없는 회사와 확정된 산업군이 없는 회사는 맨 끝 줄에 따로 센다.
+NO_PROCESS_NAME = "공정 확인 전"
+NO_INDUSTRY_NAME = "산업 확인 전"
+# 확정된 값만 센다(#652): 공정 연결은 state CONFIRMED(사례 파일·담당자), 산업군은 아래 출처만.
+LINK_CONFIRMED = "CONFIRMED"
+CONFIRMED_INDUSTRY_SOURCES = frozenset({"CASE_FILE", "STAFF"})
 _VIRTUAL_DATASET_KIND = "VIRTUAL_REVIEWED"
 
 
@@ -356,7 +359,8 @@ def build_sales_analysis(
     """공정별·회사별 표를 계산한다. 시각은 직접 읽지 않고 `now`를 받는다(NFR12).
 
     `processes`는 역량 파일 순서의 (코드, 이름), `industries`는 설정 순서다. 한 회사가
-    공정·산업군이 여러 개면 각각 세므로 줄의 합이 회사 수보다 클 수 있다.
+    공정·산업군이 여러 개면 각각 세므로 줄의 합이 회사 수보다 클 수 있다. 영업 분석표는
+    확정된 공정·산업군만 넘겨받으므로(#652) 확인 전 회사는 "확인 전" 한 줄에만 들어간다.
     """
     today = now.astimezone(tz).date()
     oldest_closed = now - timedelta(days=closed_window_days)
@@ -431,7 +435,7 @@ def _live_outcomes(virtual: bool):
     이 select 한 곳에서 뺀다.
     """
     return (
-        select(Outcome, Customer.name, Customer.industries)
+        select(Outcome, Customer.name, Customer.industries, Customer.industries_source)
         .join(Opportunity, Outcome.opp_id == Opportunity.opp_id)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
         .where(
@@ -448,17 +452,23 @@ def load_company_records(
     *,
     dataset_kind: str,
     sales_step_of: Callable[[str, str], str | None],
+    confirmed_only: bool = False,
 ) -> list[CompanyRecords]:
     """접촉 시도가 있는 회사의 기록을 계산용 값으로 읽는다.
 
     대상은 추천 목록과 같다: 활성 묶음에 속하고 최신 확정 평가가 있는 기회. 가상 회사와 실제
     회사는 섞지 않는다. `sales_step_of(opp_id, 최신 단계)`는 카드와 같은 세부 단계 계산을
     창구가 넘겨 준다(이 부품이 창구를 거꾸로 부르지 않게).
+
+    `confirmed_only`가 True면 확정된 공정 연결(사례 파일·담당자)과 확정된 산업군(사례 파일·담당자)만
+    싣는다(#652 영업 분석표). False면 전처럼 AI 제안까지 싣는다(세 묶음 순서 조정 #610이 쓰는 값).
     """
     grouped: dict[str, tuple[str, list[str], list[RecordLine]]] = {}
-    for outcome, name, industries in session.execute(
+    for outcome, name, industries, industries_source in session.execute(
         _live_outcomes(dataset_kind == _VIRTUAL_DATASET_KIND)
     ):
+        if confirmed_only and industries_source not in CONFIRMED_INDUSTRY_SOURCES:
+            industries = []
         _, _, lines = grouped.setdefault(outcome.opp_id, (name, list(industries or []), []))
         lines.append(
             RecordLine(
@@ -483,11 +493,12 @@ def load_company_records(
     codes: dict[str, set[str]] = {}
     if targets:
         # 목록과 같은 방식: 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
-        for opp_id, code in session.execute(
-            select(OppProcessLink.opp_id, OppProcessLink.process_code)
-            .where(OppProcessLink.opp_id.in_(targets), OppProcessLink.superseded_at.is_(None))
-            .distinct()
-        ):
+        links = select(OppProcessLink.opp_id, OppProcessLink.process_code).where(
+            OppProcessLink.opp_id.in_(targets), OppProcessLink.superseded_at.is_(None)
+        )
+        if confirmed_only:
+            links = links.where(OppProcessLink.state == LINK_CONFIRMED)
+        for opp_id, code in session.execute(links.distinct()):
             codes.setdefault(opp_id, set()).add(code)
     return [
         CompanyRecords(

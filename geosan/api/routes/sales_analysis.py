@@ -135,6 +135,8 @@ def sales_analysis(session: SessionDep):
         session,
         dataset_kind=dataset_kind.value,
         sales_step_of=lambda opp_id, status: sales_step_state(session, opp_id, status=status).code,
+        # #652: 영업 분석표는 확정된 공정·산업군만 센다. 확인 전 회사는 "확인 전" 한 줄.
+        confirmed_only=True,
     )
     result = build_sales_analysis(
         companies,

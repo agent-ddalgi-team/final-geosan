@@ -641,6 +641,15 @@
         "title": "ContactCount",
         "type": "object"
       },
+      "ContactMethod": {
+        "enum": [
+          "CALL",
+          "EMAIL",
+          "VISIT"
+        ],
+        "title": "ContactMethod",
+        "type": "string"
+      },
       "ContactReach": {
         "description": "방법별 시도(tried)와 그중 연결(reached). 키는 계약의 대문자 코드 그대로다.",
         "properties": {
@@ -787,6 +796,45 @@
           "SCHEDULE_DUE"
         ],
         "title": "DashboardCounts",
+        "type": "object"
+      },
+      "DashboardMap": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "center": {
+            "$ref": "#/components/schemas/MapCenter"
+          },
+          "missingCoordinates": {
+            "title": "Missingcoordinates",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/MapPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "ringsKm": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ringskm",
+            "type": "array"
+          }
+        },
+        "required": [
+          "center",
+          "ringsKm",
+          "points",
+          "missingCoordinates",
+          "asOf"
+        ],
+        "title": "DashboardMap",
         "type": "object"
       },
       "DatasetKind": {
@@ -1319,6 +1367,21 @@
         "title": "Envelope[ConfigUi]",
         "type": "object"
       },
+      "Envelope_DashboardMap_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardMap"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DashboardMap]",
+        "type": "object"
+      },
       "Envelope_Dashboard_": {
         "properties": {
           "data": {
@@ -1467,6 +1530,21 @@
           "data"
         ],
         "title": "Envelope[OutcomeResponse]",
+        "type": "object"
+      },
+      "Envelope_Peers_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Peers"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[Peers]",
         "type": "object"
       },
       "Envelope_QuestionReplyResponse_": {
@@ -2714,6 +2792,67 @@
         "title": "MainPhoneConfirmResponse",
         "type": "object"
       },
+      "MapCenter": {
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "MapCenter",
+        "type": "object"
+      },
+      "MapPoint": {
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "INTERESTED",
+              "IN_PROGRESS",
+              "WON_THIS_YEAR"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lat",
+          "lng",
+          "oppId",
+          "customerName",
+          "group",
+          "distanceKm"
+        ],
+        "title": "MapPoint",
+        "type": "object"
+      },
       "Meta": {
         "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
         "properties": {
@@ -3901,6 +4040,234 @@
         ],
         "title": "OutcomeStatus",
         "type": "string"
+      },
+      "PeerCompany": {
+        "properties": {
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactat"
+          },
+          "lastContactMethod": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastNote": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeerNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lostReasonCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "sameIndustry": {
+            "title": "Sameindustry",
+            "type": "boolean"
+          },
+          "sameProcess": {
+            "title": "Sameprocess",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "processCodes",
+          "industries",
+          "outcomeStatus",
+          "lostReasonCode",
+          "lastContactAt",
+          "lastContactMethod",
+          "lastNote",
+          "sameProcess",
+          "sameIndustry"
+        ],
+        "title": "PeerCompany",
+        "type": "object"
+      },
+      "PeerLostReason": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/LostReasonCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "PeerLostReason",
+        "type": "object"
+      },
+      "PeerNote": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "by",
+          "at"
+        ],
+        "title": "PeerNote",
+        "type": "object"
+      },
+      "PeerReach": {
+        "properties": {
+          "reached": {
+            "title": "Reached",
+            "type": "integer"
+          },
+          "tried": {
+            "title": "Tried",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reached",
+          "tried"
+        ],
+        "title": "PeerReach",
+        "type": "object"
+      },
+      "Peers": {
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/PeerCompany"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PeersSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "companies"
+        ],
+        "title": "Peers",
+        "type": "object"
+      },
+      "PeersSummary": {
+        "properties": {
+          "contactReach": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PeerReach"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ContactMethod"
+            },
+            "title": "Contactreach",
+            "type": "object"
+          },
+          "industryCount": {
+            "title": "Industrycount",
+            "type": "integer"
+          },
+          "processCount": {
+            "title": "Processcount",
+            "type": "integer"
+          },
+          "stageCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/OutcomeStatus"
+            },
+            "title": "Stagecounts",
+            "type": "object"
+          },
+          "topLostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/PeerLostReason"
+            },
+            "title": "Toplostreasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCount",
+          "industryCount",
+          "stageCounts",
+          "topLostReasons",
+          "contactReach"
+        ],
+        "title": "PeersSummary",
+        "type": "object"
       },
       "ProcessBreakdownItem": {
         "properties": {
@@ -5108,6 +5475,21 @@
             "title": "Answers",
             "type": "array"
           },
+          "choices": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PROCESS",
+                  "INDUSTRY"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choices"
+          },
           "questionId": {
             "title": "Questionid",
             "type": "string"
@@ -5649,6 +6031,25 @@
         "summary": "Dashboard"
       }
     },
+    "/api/v1/dashboard/map": {
+      "get": {
+        "description": "지도 전용 읽기. 내부 메모·연락처·대표번호·주소는 응답 모델에 없다.",
+        "operationId": "dashboard_map_api_v1_dashboard_map_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DashboardMap_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dashboard Map"
+      }
+    },
     "/api/v1/export/xlsx": {
       "get": {
         "description": "목록 조회와 같은 조건을 받아 쪽 나눔 없이 전부 담는다.\n\n대시보드 칸 조건(`filter`)은 목록 조회가 주소에서 직접 읽는다.\n설정 `export.xlsxEnabled`가 꺼져 있으면 아무것도 읽지 않고 422 kind EXPORT_DISABLED로\n거부한다(빈 파일을 성공처럼 주지 않는다).",
@@ -6149,6 +6550,23 @@
               "default": "rank",
               "title": "Sort",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxDistanceKm",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Maxdistancekm"
             }
           }
         ],
@@ -6664,6 +7082,46 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/peers": {
+      "get": {
+        "description": "같은 공정·산업군의 다른 회사 최대 5곳과 건수 요약. 저장하지 않고 읽을 때 계산한다.",
+        "operationId": "peers_api_v1_opportunities__oppId__peers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Peers_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Peers"
       }
     },
     "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {

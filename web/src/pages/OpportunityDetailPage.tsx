@@ -28,6 +28,7 @@ import { useFrame } from '../components/frame/FrameContext';
 import OpinionArea from '../components/opinion/OpinionArea';
 import PeersArea from '../components/peers/PeersArea';
 import ActivityTimeline from '../components/records/ActivityTimeline';
+import { choiceMarksOf } from '../components/records/ChoiceQuestion';
 import RecordsArea from '../components/records/RecordsArea';
 import ReviewArea from '../components/review/ReviewArea';
 import WhyRecommended from '../components/review/WhyRecommended';
@@ -254,6 +255,9 @@ export default function OpportunityDetailPage() {
               outcome={data.records.outcome ?? null}
               salesStep={salesStep}
               onSalesStepChanged={onSalesStepChanged}
+              choiceMarks={choiceMarksOf(data)}
+              // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
+              onCompanyConfirmed={() => setReload((n) => n + 1)}
               onContactRecorded={onContactRecorded}
               onRecorded={() => {
                 setTimelineVersion((n) => n + 1);

@@ -14,6 +14,8 @@ import { dashboardTexts, states } from '../../labels/ko';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
+// 지도 칸(#641)은 DashboardMap.test.tsx에서 따로 본다. 여기서는 응답이 오지 않게 막아 둔다.
+vi.mock('../../api/dashboardMap', () => ({ getDashboardMap: vi.fn(() => new Promise(() => {})) }));
 
 const mockedGet = vi.mocked(getDashboard);
 const fixtureData = dashboardFixture.data as unknown as Dashboard;

@@ -109,7 +109,7 @@ export default function SalesAnalysisPage() {
                   : ''}
               </p>
               <p data-testid="analysis-count-rule" style={secondary}>
-                {texts.countRule(data.basis.minSampleForRatio)}
+                {texts.countRuleConfirmed(data.basis.minSampleForRatio)}
               </p>
             </div>
             <section aria-labelledby="analysis-process-title" style={sectionStyle}>

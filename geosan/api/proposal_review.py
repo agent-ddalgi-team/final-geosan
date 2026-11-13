@@ -89,6 +89,30 @@ def proposal_review_items(
     return items
 
 
+def confirm_ai_link(session: Session, row: OppProcessLink, *, staff: str, now: datetime) -> None:
+    """AI 공정 제안 행을 이력으로 남기고 같은 내용의 담당자 확정 행을 만든다(#497, #652도 씀)."""
+    row.superseded_at = now
+    session.add(
+        OppProcessLink(
+            link_id=new_id("link"),
+            opp_id=row.opp_id,
+            process_code=row.process_code,
+            applied_material=row.applied_material,
+            current_result=row.current_result,
+            current_reason=row.current_reason,
+            evidence_ref=row.evidence_ref,
+            source="STAFF",
+            state="CONFIRMED",
+            confirmed_by=staff,
+            confirmed_at=now,
+            dataset_kind=row.dataset_kind,
+            is_virtual=row.is_virtual,
+            created_by=staff,
+            created_at=now,
+        )
+    )
+
+
 def confirm_proposal(
     session: Session,
     opportunity: Opportunity,
@@ -117,26 +141,7 @@ def confirm_proposal(
     )
     if row is None:
         raise NotFoundError("현재 확정할 AI 공정 제안이 없습니다.")
-    row.superseded_at = now
-    session.add(
-        OppProcessLink(
-            link_id=new_id("link"),
-            opp_id=opportunity.opp_id,
-            process_code=row.process_code,
-            applied_material=row.applied_material,
-            current_result=row.current_result,
-            current_reason=row.current_reason,
-            evidence_ref=row.evidence_ref,
-            source="STAFF",
-            state="CONFIRMED",
-            confirmed_by=staff,
-            confirmed_at=now,
-            dataset_kind=row.dataset_kind,
-            is_virtual=row.is_virtual,
-            created_by=staff,
-            created_at=now,
-        )
-    )
+    confirm_ai_link(session, row, staff=staff, now=now)
     name = (
         session.scalar(
             select(Process.name).where(
