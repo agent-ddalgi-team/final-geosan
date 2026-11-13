@@ -27,7 +27,19 @@ class CardCheckPoints:
 
 
 _EMPTY = CardCheckPoints()
+# "평가 전" 회사의 검토사항 문장. 2026-11-13 전에 저장된 평가 기록에는 옛 문장이 남아 있다.
+_OLD_NOT_EVALUATED_TEXT = "점수 입력 전 · 거래 관계·필수조건 확인 전"
+_NOT_EVALUATED_TEXT = "점수 입력 전 · 필수조건 확인 전"
 _NO_EVIDENCE_STATES = {"UNAVAILABLE", "NO_SIGNAL"}
+
+
+def shown_blocker_text(text: str) -> str:
+    """응답에 보일 검토사항 문장. 옛 "평가 전" 문장과 똑같을 때만 새 문장으로 바꾼다.
+
+    PM 지시 2026-11-13(#659): 재접촉 관리를 하지 않으므로 "거래 관계"를 뺀다. 저장된 평가 기록은
+    고치지 않고, 다른 문장(규칙이 만든 문장 포함)은 그대로 돌려준다.
+    """
+    return _NOT_EVALUATED_TEXT if text == _OLD_NOT_EVALUATED_TEXT else text
 
 
 def _generic_filter_text(run: EvaluationRun) -> bool:
@@ -40,14 +52,9 @@ def _required_points(run: EvaluationRun, checks: list[RequirementCheck]) -> list
     """필수조건이 정해지지 않은 이유를 평가 때 입력에서 찾는다. 판정은 다시 하지 않는다."""
     snapshot = run.input_snapshot
     opportunity = snapshot.get("opportunity", {})
-    config = snapshot.get("ruleConfig", {})
     requirements = {row["reqId"]: row for row in snapshot.get("requirements", [])}
     points: list[str] = []
-    if (
-        config.get("relationCheck") == "BLOCK"
-        and opportunity.get("relationStatus") == "UNCONFIRMED"
-    ):
-        points.append("거래 관계")
+    # 거래 관계는 "확인할 것"에 넣지 않는다(PM 지시 2026-11-13: 재접촉 관리를 하지 않는다).
     if opportunity.get("companyFilterStatus") == "PENDING":
         points.append("회사 단위 필수조건")
 

@@ -11,11 +11,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event
 
 from geosan.api.app import create_app
-from geosan.api.check_points import _core_gaps, _required_points
+from geosan.api.check_points import _core_gaps, _required_points, shown_blocker_text
 from geosan.capability.importer import import_capability
+from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun
 from geosan.opportunity.importer import import_case
-from geosan.storage.session import get_engine
+from geosan.storage.session import get_engine, session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from tests import factories
 from tests.unit.u1.test_snapshot_ledger import _write
@@ -102,6 +103,24 @@ def test_specific_server_sentence_is_kept_as_is(check_env):
     assert card["checkPoints"] == []
 
 
+def test_stored_old_sentence_is_shown_as_new_in_list_and_detail(check_env):
+    """Given 옛 "평가 전" 문장이 저장된 평가 기록 / When 목록·상세 / Then 거래 관계 없는 새 문장.
+
+    저장된 값은 그대로다(PM 지시 2026-11-13: 다시 평가하지 않아도 화면에는 새 문장이 보인다).
+    """
+    client, ids = check_env
+    old_text = "점수 입력 전 · 거래 관계·필수조건 확인 전"
+    with session_scope() as session:
+        run = latest_confirmed_evaluation(session, ids["plain"])
+        run.blocker_text = old_text
+        eval_id = run.eval_id
+    assert _cards(client)[ids["plain"]]["blocker"]["text"] == "점수 입력 전 · 필수조건 확인 전"
+    detail = client.get(f"/api/v1/opportunities/{ids['plain']}").json()["data"]
+    assert detail["approvalEligibility"]["reason"] == "점수 입력 전 · 필수조건 확인 전"
+    with session_scope() as session:
+        assert session.get(EvaluationRun, eval_id).blocker_text == old_text
+
+
 def test_judgment_tables_are_read_once_for_the_whole_list(check_env):
     """Given 회사 4곳 / When 목록 / Then 요구 판정·항목 판정 표는 회사 수와 무관하게 한 번씩만."""
     client, _ = check_env
@@ -184,8 +203,8 @@ def _judgment(state, used=()):
     return SimpleNamespace(state=state, used_capability_ids=list(used))
 
 
-def test_points_follow_the_order_relation_process_material_requirement():
-    """Given 거래 관계·거산 공정·소재·요구가 모두 확인 전 / Then 그 순서로, 사실만 적는다."""
+def test_points_follow_the_order_process_material_requirement():
+    """Given 거산 공정·소재·요구가 모두 확인 전 / Then 그 순서로, 사실만(거래 관계는 뺀다)."""
     run = _run(
         opportunity={"relationStatus": "UNCONFIRMED"},
         ruleConfig={"relationCheck": "BLOCK"},
@@ -201,7 +220,6 @@ def test_points_follow_the_order_relation_process_material_requirement():
     )  # fmt: skip
     checks = [_check("r1"), _check("r2"), _check("r3"), _check("r4", stage="UNKNOWN")]
     assert _required_points(run, checks) == [
-        "거래 관계",
         "거산 전기아연도금 공정(거산 확인 전)",
         "공정 2개 적용 부품의 소재",
         "방산 납품 자격",
@@ -209,10 +227,25 @@ def test_points_follow_the_order_relation_process_material_requirement():
     ]
 
 
-def test_relation_is_not_listed_when_the_setting_ignores_it():
-    """Given 거래 관계 확인 전이지만 설정이 막지 않음 / Then 확인할 것에 넣지 않는다."""
-    run = _run(opportunity={"relationStatus": "UNCONFIRMED"})
-    assert _required_points(run, []) == []
+def test_relation_is_never_listed_even_when_unconfirmed():
+    """Given 거래 관계가 확인 전(설정이 막든 안 막든) / Then 확인할 것에 나오지 않는다."""
+    for config in ({"relationCheck": "BLOCK"}, {"relationCheck": "IGNORE"}, {}):
+        run = _run(opportunity={"relationStatus": "UNCONFIRMED"}, ruleConfig=config)
+        assert _required_points(run, []) == []
+
+
+def test_old_not_evaluated_sentence_is_shown_without_relation():
+    """Given 옛 "평가 전" 문장 / Then 거래 관계가 빠지고, 다른 문장은 그대로다."""
+    assert shown_blocker_text("점수 입력 전 · 거래 관계·필수조건 확인 전") == (
+        "점수 입력 전 · 필수조건 확인 전"
+    )
+    for text in (
+        "점수 입력 전 · 필수조건 확인 전",
+        "거래 관계 확인 전",
+        "없음 — 바로 검토 가능",
+        "",
+    ):
+        assert shown_blocker_text(text) == text
 
 
 def test_excluded_or_mismatched_links_are_not_listed():

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from geosan.api.check_points import card_check_points
+from geosan.api.check_points import card_check_points, shown_blocker_text
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.ingest_views import (
     candidate_order,
@@ -327,7 +327,7 @@ def _requirements(context: DetailContext) -> dict:
         "requirements": views,
         "approval_eligibility": ApprovalEligibility(
             eligible=not run.blocks_approval if run else False,
-            reason=run.blocker_text if run else "평가 후 확인할 수 있습니다.",
+            reason=shown_blocker_text(run.blocker_text) if run else "평가 후 확인할 수 있습니다.",
             readiness_checked=bool(run and run.timing_requirements["readiness"]),
             readiness_needs_recheck=bool(readiness and readiness.reset_at),
             allowed_purposes=[],
@@ -997,7 +997,10 @@ def list_opportunities(
                 score_s=current.score_s,
                 score_display=current.score_display,
                 reason=current.reason,
-                blocker=Blocker(text=current.blocker_text, blocks_approval=current.blocks_approval),
+                blocker=Blocker(
+                    text=shown_blocker_text(current.blocker_text),
+                    blocks_approval=current.blocks_approval,
+                ),
                 next_action=current.next_action,
                 records=CardRecords(
                     opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),

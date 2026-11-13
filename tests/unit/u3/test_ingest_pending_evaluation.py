@@ -45,7 +45,7 @@ def test_empty_found_company_has_real_pending_record_and_opens_detail(
         customer = session.get(Customer, session.get(Opportunity, opp_id).customer_id)
         assert run.classification_code == "NOT_EVALUATED" and run.score_s is None
         assert run.reason == customer.pick_reason
-        assert run.blocker_text == "점수 입력 전 · 거래 관계·필수조건 확인 전"
+        assert run.blocker_text == "점수 입력 전 · 필수조건 확인 전"
         assert run.next_action == "AI 조사 결과 확인 뒤 점수 입력"
         assert run.score_display == "--" and run.blocks_approval
         assert run.input_snapshot["itemInputs"] == [] and not run.operational_ready
