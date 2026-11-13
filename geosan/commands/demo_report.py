@@ -90,6 +90,8 @@ SIGNAL_KIND_LABELS = {
     "NEW_ORDER": "신규 수주",
     "BID": "공고",
     "HIRING": "채용",
+    "CALL_INTENT": "통화 의향",
+    "CALL_INTEREST": "통화 관심",
     "REORDER_CYCLE": "재주문 주기",
     "NEXT_CONTACT": "다음 연락",
 }
