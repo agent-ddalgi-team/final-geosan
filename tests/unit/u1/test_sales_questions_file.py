@@ -87,8 +87,11 @@ def test_check_config_also_checks_the_question_file(tmp_path, monkeypatch):
     settings = Path("examples/app-settings.yaml").read_text(encoding="utf-8")
     broken = write(tmp_path, "version: 1\n" + STEPS + "questions: []\n")
     settings_path = tmp_path / "app-settings.yaml"
+    # 예시 설정에 records 묶음이 생겼으므로(#691) 묶음을 새로 붙이지 않고 그 안에 칸을 넣는다
+    assert settings.count("\nrecords:\n") == 1
     settings_path.write_text(
-        settings + f"\nrecords:\n  salesQuestionsFile: {broken}\n", encoding="utf-8"
+        settings.replace("\nrecords:\n", f"\nrecords:\n  salesQuestionsFile: {broken}\n"),
+        encoding="utf-8",
     )
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "none.db"))
     result = CliRunner().invoke(
