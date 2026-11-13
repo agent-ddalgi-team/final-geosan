@@ -4,6 +4,7 @@ from collections import Counter
 
 import typer
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.config.app_settings import read_app_settings
 from geosan.config.errors import AppError, InputError, exit_code_for
@@ -65,6 +66,12 @@ def run_geocode(missing_only=True):
         typer.echo(error.next_action)
         _summary(counts)
         return exit_code_for(error)
+    except SQLAlchemyError:
+        # 저장 실패의 SQL 매개변수에는 좌표가 있어 예외 원문을 출력하지 않는다.
+        counts["failed"] += 1
+        typer.echo("좌표 저장에 실패했습니다. DB 상태를 확인한 뒤 다시 실행해 주세요.")
+        _summary(counts)
+        return 2
     _summary(counts)
     return 0
 

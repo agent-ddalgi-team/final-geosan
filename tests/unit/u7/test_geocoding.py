@@ -351,6 +351,42 @@ def test_csv_configuration_requires_date_and_naver_requires_enabled():
         GeocodingSettings(naver_fallback_enabled=True)
 
 
+def test_coordinate_migration_preserves_existing_company(public_company):
+    from alembic import command
+
+    from geosan.storage.migrate import alembic_config, upgrade_to_head
+
+    command.downgrade(alembic_config(public_company), "opp_009")
+    assert upgrade_to_head(public_company) == ["opp_010"]
+    with session_scope() as session:
+        customer = session.get(Customer, "cust-geocode")
+        assert customer.address == ADDRESS and customer.name == "시험공장"
+        assert customer.relation_status == "UNCONFIRMED"
+        assert customer.lat is None and customer.lng is None
+
+
+def test_cli_database_failure_does_not_print_coordinate_parameters(
+    public_company, tmp_path, monkeypatch, capsys
+):
+    from sqlalchemy.exc import OperationalError
+
+    with session_scope() as session:
+        settings = read_app_settings(session)
+        settings.geocoding.location_csv_files = [str(csv_file(tmp_path))]
+        settings.geocoding.location_csv_base_date = date(2026, 10, 31)
+        sync_app_settings(session, settings)
+
+    def fail(*a, **k):
+        raise OperationalError(
+            "private coordinates", "private parameters", RuntimeError("private details")
+        )
+
+    monkeypatch.setattr("geosan.commands.geocode.store_public_coordinate", fail)
+    assert run_geocode(True) == 2
+    output = capsys.readouterr().out
+    assert "private" not in output and "실패" in output
+
+
 @pytest.mark.parametrize("protected", [False, True])
 def test_live_naver_http_logs_without_locking_or_storing_result(
     public_company, monkeypatch, protected

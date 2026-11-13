@@ -4,6 +4,7 @@ import csv
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import lru_cache
+from math import isfinite
 from pathlib import Path
 
 from geosan.config.errors import InputError
@@ -81,7 +82,9 @@ class LocationIndex:
                         )
                         try:
                             x, y = float(row["X좌표"]), float(row["Y좌표"])
-                            point = utmk_to_lat_lng(x, y) if x > 0 and y > 0 else None
+                            point = (
+                                (x, y) if isfinite(x) and isfinite(y) and x > 0 and y > 0 else None
+                            )
                         except (ValueError, OverflowError):
                             point = None
                         self.rows[key].append((compact(row["읍면동명"]), row["도로명코드"], point))
@@ -111,5 +114,8 @@ class LocationIndex:
         points = {p[2] for p in options}
         if None in points or len(points) != 1:
             return None
-        lat, lng = points.pop()
+        try:
+            lat, lng = utmk_to_lat_lng(*points.pop())
+        except (ValueError, OverflowError):
+            return None
         return GeoPoint(lat, lng, "CSV", address.query)
