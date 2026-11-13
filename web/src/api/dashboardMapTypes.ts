@@ -29,14 +29,14 @@ export interface DashboardMap {
   visitGroups?: DashboardVisitGroup[];
 }
 
-/** "같이 들를 곳" 근처 회사. distanceKm는 묶음 중심 회사에서의 직선거리. group이 null이면 지도 대상이 아닌 후보. */
+/** "같이 들를 곳" 근처 관심 기업(#673). distanceKm는 묶음 중심 회사에서의 직선거리. */
 export interface DashboardVisitNearby {
   oppId: string;
   customerName: string;
   lat: number;
   lng: number;
   distanceKm: number;
-  group: DashboardMapGroup | null;
+  group: DashboardMapGroup;
 }
 
 export interface DashboardVisitGroup {

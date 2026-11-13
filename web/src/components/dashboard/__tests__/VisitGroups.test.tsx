@@ -49,8 +49,8 @@ describe('같이 들를 곳(#673)', () => {
       'dashboard-visit-nearby-item',
     );
     expect(items.map((item) => item.textContent)).toEqual([
-      '가상 자차산업 1.8km · 관심 전',
-      '가상 카타정공 3.2km · 관심 전',
+      '가상 자차산업 1.8km · 관심',
+      '가상 카타정공 3.2km · 관심',
     ]);
     expect(within(items[0]).getByRole('link')).toHaveAttribute('href', '/opportunities/opp-near-1');
     await user.click(first);
@@ -65,7 +65,7 @@ describe('같이 들를 곳(#673)', () => {
       lat: 36.9,
       lng: 126.95,
       distanceKm: index / 10,
-      group: null,
+      group: 'INTERESTED' as const,
     }));
     renderMap({ ...data, visitGroups: [{ oppId: 'opp-map-1', nearby: many }] });
     await user.click(screen.getByTestId('dashboard-visit-row'));
@@ -142,7 +142,7 @@ describe('같이 들를 곳(#673)', () => {
     }
   });
 
-  it('펼친 묶음의 근처 ○를 누르면 "관심 전 · 중심 회사에서 거리" 말풍선, 마우스를 올리면 이름이 뜬다', async () => {
+  it('펼친 묶음의 근처 ○를 누르면 "관심 · 중심 회사에서 거리" 말풍선, 마우스를 올리면 이름이 뜬다', async () => {
     const user = userEvent.setup();
     const listeners: { target: unknown; name: string; handler: () => void }[] = [];
     class Base {
@@ -184,7 +184,7 @@ describe('같이 들를 곳(#673)', () => {
     act(() => clicks[clicks.length - 2].handler());
     const callout = await screen.findByTestId('dashboard-map-callout');
     expect(callout).toHaveTextContent('가상 자차산업');
-    expect(callout).toHaveTextContent('관심 전 · 가상 가나정밀에서 1.8km');
+    expect(callout).toHaveTextContent('관심 · 가상 가나정밀에서 1.8km');
     expect(within(callout).getByRole('link')).toHaveAttribute('href', '/opportunities/opp-near-1');
   });
 });

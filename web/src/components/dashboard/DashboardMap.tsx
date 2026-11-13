@@ -314,7 +314,7 @@ export default function DashboardMap({
             <>
               <strong>{chosenNearby.customerName}</strong>
               <span>
-                {chosenNearby.group ? t.groups[chosenNearby.group] : t.candidate} ·{' '}
+                {t.groups[chosenNearby.group]} ·{' '}
                 {t.fromAnchor(openAnchor?.customerName ?? '', chosenNearby.distanceKm)}
               </span>
             </>

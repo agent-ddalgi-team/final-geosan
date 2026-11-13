@@ -82,7 +82,7 @@ def dashboard_map(response: Response, session: SessionDep):
         )
     now = utcnow()
     points, missing = build_map_points(session, settings, now, tz=KST)
-    visit_groups = build_visit_groups(session, settings, points)
+    visit_groups = build_visit_groups(settings, points)
     return DashboardMapEnvelope(
         data=DashboardMap(
             center=MapCenter(lat=settings.geosan.lat, lng=settings.geosan.lng),

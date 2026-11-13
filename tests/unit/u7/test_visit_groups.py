@@ -1,6 +1,7 @@
-"""#673: 대시보드 지도 "같이 들를 곳". 방문할 회사(진행 중·관심) 근처 반경 안의 후보를 묶는다.
+"""#673: 대시보드 지도 "같이 들를 곳". 방문할 회사(진행 중·관심) 근처 반경 안의 관심 기업을 묶는다.
 
-모든 데이터는 가상이다. 저장된 공공좌표만 쓰고 외부 좌표 조회는 하지 않는다.
+근처 회사도 관심 기업만이다(PM 정정 2026-11-13: 목록 후보는 아직 보지 않은 회사일 수 있음).
+모든 데이터는 가상이다.
 """
 
 import pytest
@@ -17,7 +18,7 @@ from geosan.config.app_settings import (
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
-from tests.unit.u7.test_bookmark import give_opinion, set_bookmark
+from tests.unit.u7.test_bookmark import set_bookmark
 from tests.unit.u7.test_dashboard import record
 from tests.unit.u7.test_dashboard_breakdown import add_company
 from tests.unit.u7.test_dashboard_breakdown import brochure_env as brochure_env
@@ -29,7 +30,7 @@ PLACES = {
     "near": (38.01, 127.5),
     "mid": (38.03, 127.5),
     "far": (38.1, 127.5),
-    "excluded": (38.005, 127.5),
+    "unseen": (38.005, 127.5),
     "nocoord": None,
     "busy": (38.2, 127.5),
 }
@@ -51,10 +52,10 @@ def visit_env(brochure_env, monkeypatch):
                 customer.lat, customer.lng, customer.geocode_source = *place, "CSV"
     monkeypatch.setattr("geosan.api.routes.dashboard.utcnow", lambda: NOW)
     with TestClient(create_app()) as client:
-        for name in ("anchor", "busy"):
+        # 관심 기업: anchor·near·far·busy·nocoord. mid·unseen은 목록에만 있는 회사(관심 아님).
+        for name in ("anchor", "near", "far", "busy", "nocoord"):
             assert set_bookmark(client, ids[name], True).status_code == 200
         record(client, ids["busy"], {"status": "IN_PROGRESS"})
-        give_opinion(client, ids["excluded"], "NOT_TARGET")
         yield client, ids
 
 
@@ -65,21 +66,24 @@ def visit(client):
 
 
 def test_groups_list_in_progress_first_then_interested_with_nearby_by_distance(visit_env):
-    """Given 진행 중 1곳·관심 1곳 / When 지도 / Then 진행 중이 먼저, 근처는 5km 안 가까운 순."""
+    """Given 진행 중 1곳·관심 3곳 / When 지도 / Then 진행 중이 먼저, 근처는 5km 안 관심 기업만."""
     client, ids = visit_env
     body = visit(client)
     assert body["visitRadiusKm"] == 5
-    assert [group["oppId"] for group in body["visitGroups"]] == [ids["busy"], ids["anchor"]]
-    busy, anchor = body["visitGroups"]
-    assert busy["nearby"] == []
+    order = [group["oppId"] for group in body["visitGroups"]]
+    assert order == [ids["busy"], ids["anchor"], ids["near"], ids["far"]]
+    anchor = body["visitGroups"][1]
     names = [(row["customerName"], row["distanceKm"], row["group"]) for row in anchor["nearby"]]
-    assert names == [("가상 near", 1.1, None), ("가상 mid", 3.3, None)]
+    assert names == [("가상 near", 1.1, "INTERESTED")]
 
 
-def test_excluded_opinion_missing_coordinate_and_far_companies_are_not_nearby(visit_env):
+def test_unbookmarked_list_companies_missing_coordinate_and_far_are_not_nearby(visit_env):
+    """Given 목록에만 있는 가까운 회사 2곳 / When 지도 / Then 근처에 넣지 않는다(PM 정정)."""
     client, ids = visit_env
-    nearby = {row["oppId"] for group in visit(client)["visitGroups"] for row in group["nearby"]}
-    assert not nearby & {ids["excluded"], ids["nocoord"], ids["far"], ids["anchor"]}
+    body = visit(client)
+    anchor = next(group for group in body["visitGroups"] if group["oppId"] == ids["anchor"])
+    nearby = {row["oppId"] for row in anchor["nearby"]}
+    assert not nearby & {ids["mid"], ids["unseen"], ids["nocoord"], ids["far"], ids["anchor"]}
 
 
 def test_radius_comes_from_settings_and_targets_show_their_group(visit_env):
@@ -102,7 +106,8 @@ def test_radius_comes_from_settings_and_targets_show_their_group(visit_env):
 def test_this_year_success_is_not_a_visit_center(visit_env):
     client, ids = visit_env
     record(client, ids["busy"], {"status": "WON"})
-    assert [group["oppId"] for group in visit(client)["visitGroups"]] == [ids["anchor"]]
+    centers = [group["oppId"] for group in visit(client)["visitGroups"]]
+    assert ids["busy"] not in centers and centers == [ids["anchor"], ids["near"], ids["far"]]
 
 
 def test_no_external_lookup_for_nearby_companies(visit_env, monkeypatch):

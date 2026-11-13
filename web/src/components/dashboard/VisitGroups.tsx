@@ -108,8 +108,7 @@ export default function VisitGroups({
                             {row.customerName}
                           </Link>{' '}
                           <span style={secondary}>
-                            {t.visitNearbyDistance(row.distanceKm)} ·{' '}
-                            {row.group ? t.groups[row.group] : t.candidate}
+                            {t.visitNearbyDistance(row.distanceKm)} · {t.groups[row.group]}
                           </span>
                         </li>
                       ))}
