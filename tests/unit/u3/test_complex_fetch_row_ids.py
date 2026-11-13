@@ -20,7 +20,7 @@ from geosan.storage.session import session_scope
 from tests.unit.u3.test_ingest_tables import _columns, _insert_filled
 
 BEFORE = "rec_008"
-HEAD = "src_005"
+HEAD = "opp_009"
 
 
 def test_old_fetch_rows_get_an_empty_row_id_list_and_survive_round_trip(tmp_path: Path) -> None:

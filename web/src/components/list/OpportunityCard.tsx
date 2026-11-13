@@ -16,11 +16,14 @@ import {
   classificationLabels,
   factoryProfileLabels,
   classificationTone,
+  contactBuckets,
   coreEvidenceRecheckLabel,
   frame,
   labelFor,
   listFilters,
+  lostReasonLabels,
   outcomeStatusLabels,
+  salesStepLabels,
   outcomeStatusTone,
   ownPlatingLine,
 } from '../../labels/ko';
@@ -86,6 +89,21 @@ export default function OpportunityCard({
   const ownPlating = card.ownPlatingLineSuspected === true;
   const ownPlatingBasis =
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
+  // 세 묶음(#610): 그 묶음에 든 이유 꼬리표와, 영업 결과로 순서가 움직였을 때만 보이는 이유 한 줄.
+  // 조정 단계가 0이면(표본 부족이거나 성사·거절이 서로 지움) 순서가 그대로라 줄을 보이지 않는다.
+  const bucketBasis = card.bucketBasis ? contactBuckets.basis[card.bucketBasis] : null;
+  const adjust = card.rankAdjust && card.rankAdjust.level !== 0 ? card.rankAdjust : null;
+  const adjustLine = adjust
+    ? contactBuckets.adjustLine({
+        level: adjust.level,
+        processName: adjust.processName,
+        industry: adjust.industry,
+        wonCount: adjust.wonCount,
+        lostCount: adjust.lostCount,
+        lostReasons: adjust.countedLostReasons.map((code) => lostReasonLabels[code]),
+        windowDays: adjust.windowDays,
+      })
+    : null;
   const bookmarkState = useBookmark(card.oppId, card, card.records.bookmark ?? null);
 
   return (
@@ -125,6 +143,11 @@ export default function OpportunityCard({
           {card.coreEvidenceRecheck ? (
             <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
           ) : null}
+          {bucketBasis ? (
+            <StatusTag tone="neutral" data-testid="card-bucket-basis">
+              {bucketBasis}
+            </StatusTag>
+          ) : null}
           {(card.processCodes ?? []).map((code) =>
             processNames?.[code] ? (
               <StatusTag key={code} tone="neutral" data-testid="card-process-tag">
@@ -163,7 +186,10 @@ export default function OpportunityCard({
           ) : null}
           {stageStatus && stageStatus !== 'NOT_EXECUTED' ? (
             <StatusTag tone={outcomeStatusTone[stageStatus] ?? 'neutral'}>
-              <span data-testid="card-stage-tag">{outcomeStatusLabels[stageStatus]}</span>
+              <span data-testid="card-stage-tag">
+                {outcomeStatusLabels[stageStatus]}
+                {card.salesStep ? ` · ${salesStepLabels[card.salesStep]}` : ''}
+              </span>
             </StatusTag>
           ) : null}
           {card.reevaluated ? (
@@ -208,6 +234,11 @@ export default function OpportunityCard({
           )}
         </div>
 
+        {adjustLine ? (
+          <Row label={contactBuckets.adjustRow} title={adjustLine}>
+            <span data-testid="card-rank-adjust">{adjustLine}</span>
+          </Row>
+        ) : null}
         {ownPlatingBasis ? (
           <Row label={ownPlatingLine.basisLabel} title={ownPlatingBasis}>
             <span data-testid="card-own-plating-basis">{ownPlatingBasis}</span>

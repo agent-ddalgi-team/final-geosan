@@ -13,6 +13,7 @@ import type {
   IngestPreview,
   IngestRequest,
   IngestResponse,
+  MonthSpend,
   NoteRequest,
   NoteResponse,
   OpinionRequest,
@@ -34,6 +35,7 @@ import type {
   ReplyResponse,
   ReviewCheckRequest,
   ReviewCheckResponse,
+  SalesQuestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -216,6 +218,11 @@ export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
   });
 }
 
+/** 꼬리 질문 묶음(#607). 질문 파일을 그대로 받는다. 외부 호출·저장 없음. */
+export function getSalesQuestions() {
+  return request<SalesQuestions>('/sales-questions');
+}
+
 /** 영업 단계·접촉 시도·다음 일정 저장(U5). 저장할 때마다 새 행이 쌓인다. */
 export function postOutcome(oppId: string, body: OutcomeRequest, staffKey: string) {
   return request<OutcomeResponse>(`/opportunities/${encodeURIComponent(oppId)}/outcomes`, {
@@ -304,6 +311,11 @@ export function getIngestPreview(body: IngestRequest, signal?: AbortSignal) {
   (body.regions ?? []).forEach((region) => query.append('regions', region));
   (body.industries ?? []).forEach((industry) => query.append('industries', industry));
   return request<IngestPreview>(`/ingest/preview?${query.toString()}`, { signal });
+}
+
+/** 이번 달 AI 사용액(#549). 조건 없이 부른 `GET /ingest/preview`의 month만 쓴다(새 경로 없음, 0원). */
+export function getMonthSpend(signal?: AbortSignal) {
+  return request<MonthSpend>('/ingest/preview', { signal });
 }
 
 export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
@@ -547,6 +559,9 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
     } as unknown as Envelope<T>;
   }
   if (route === '/ingest/preview') {
+    const month = { usedUsd: 3.2, limitUsd: 20, usedCalls: 180, limitCalls: 1000 };
+    // 조건 없이 부르면 이번 달 사용액만 돌려준다([다시 조사]·[붙여넣고 조사]용).
+    if (!search) return { data: { month }, meta: { updatedAt: null } } as unknown as Envelope<T>;
     // 가짜 모드: 고른 조건과 상관없이 같은 숫자를 돌려준다(화면 모양 확인용).
     const data: IngestPreview = {
       matchedCount: 1518,
@@ -556,6 +571,18 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       addableHighCount: 34,
       unjudgedCount: 0,
       addCount: 50,
+      estimate: {
+        judgeRows: 0,
+        judgeCalls: 0,
+        judgeUsd: 0,
+        researchCount: 50,
+        researchCalls: 100,
+        researchUsd: 2,
+        webSearchUsd: 0,
+        totalUsd: 2,
+      },
+      month,
+      blocked: null,
     };
     return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
   }

@@ -30,6 +30,8 @@ const NO_FILTERS = {
   stage: null,
   filter: null,
   q: null,
+  // 추천 순은 세 묶음 순(#610)으로 달라고 한다.
+  sort: 'contact',
 };
 
 const TABS = [

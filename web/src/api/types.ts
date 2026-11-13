@@ -58,6 +58,39 @@ export interface Meta {
   industryCounts?: IndustryCount[] | null;
   /** 마지막 후보 수집 회차 요약(#316, 계약 C1 `meta.latestIngest`). 한 번도 안 가져왔으면 null·없음. */
   latestIngest?: LatestIngest | null;
+  /** 거른 조건 안의 묶음별 건수(#610). 쪽 넘김과 무관하다. 묶음 제목 옆 "9곳"에 쓴다. */
+  bucketCounts?: Record<ContactBucket, number> | null;
+}
+
+/** 추천 목록의 세 묶음(#610, C0 contactBucket): 지금 연락할 곳 / 확인 필요 / 나중. */
+export type ContactBucket = 'NOW' | 'CHECK' | 'LATER';
+/** 그 묶음에 든 이유(#610, C0 bucketBasis). 카드 꼬리표로 보인다. */
+export type BucketBasis =
+  | 'EXCLUDED_OPINION'
+  | 'REQUIRED_FAILED'
+  | 'EXISTING_CUSTOMER'
+  | 'CLOSED_OR_HOLD'
+  | 'IN_PROGRESS'
+  | 'NEED_CHECK_OPINION'
+  | 'REQUIRED_PENDING'
+  | 'OWN_PLATING'
+  | 'NOT_EVALUATED_HIGH_FIT'
+  | 'NOT_EVALUATED_LOWER_FIT'
+  | 'EVIDENCE_RECHECK'
+  | 'REQUIRED_PASSED'
+  | 'MONITOR';
+/** 같은 공정·산업군의 최근 성사·거절로 묶음 안 순서를 올리거나 내린 근거(#610). 서버가 읽을 때 계산한다. */
+export interface RankAdjust {
+  /** 양수는 위로, 음수는 아래로, 0은 그대로. */
+  level: number;
+  processCode: string;
+  processName: string;
+  industry: string;
+  wonCount: number;
+  /** 설정에 적힌 이유로 센 거절 수. */
+  lostCount: number;
+  countedLostReasons: LostReasonCode[];
+  windowDays: number;
 }
 
 /** 후보 수집 회차 상태(계약 C1). 가져오는 중 / 끝남 / 실패. */
@@ -101,6 +134,10 @@ export interface LatestIngest {
   webSkippedReason?: WebSkippedReason | null;
   /** 단지 목록 조회를 건너뛴 이유 코드. 건너뛰지 않았으면 null. */
   complexListSkippedReason?: ComplexListSkippedReason | null;
+  /** 접수 때 예상 금액(달러, #549). 이 칸이 생기기 전의 옛 회차는 null. */
+  estimatedUsd?: number | null;
+  /** 이 회차에 실제로 든 금액(달러, #549). 서버가 아직 안 주면 없다. */
+  actualUsd?: number | null;
 }
 
 /** 찾기 회차의 조건(계약 C1 `POST /ingest` 본문과 같은 이름). */
@@ -126,9 +163,36 @@ export interface IngestRequest {
   industries?: string[];
 }
 
+/** 지금 누르면 들 것으로 보는 호출 수와 금액(달러, 추정). 계약 C1 `GET /ingest/preview` estimate. */
+export interface IngestEstimate {
+  judgeRows: number;
+  judgeCalls: number;
+  judgeUsd: number;
+  researchCount: number;
+  researchCalls: number;
+  researchUsd: number;
+  webSearchUsd: number;
+  totalUsd: number;
+}
+
+/** 이번 달 사용액·호출 수와 한도(계약 C1 month). */
+export interface IngestMonth {
+  usedUsd: number;
+  limitUsd: number;
+  usedCalls: number;
+  limitCalls: number;
+}
+
+/** 예상이 이번 달 남은 한도를 넘어 단추를 잠그는 이유(계약 C1 blocked). */
+export interface IngestBlocked {
+  kind: 'OVER_COST' | 'OVER_CALLS';
+  /** 남은 금액·호출로 판단할 수 있는 공장 수. */
+  judgeableRows: number;
+}
+
 /**
- * 고른 조건의 맞는 공장 수(계약 C1 `GET /ingest/preview`, #549 1단계). 서버가 저장된 AI 판단만 세서 0원이다.
- * 예상 금액·잠금 칸은 2단계에서 더한다.
+ * 고른 조건의 맞는 공장 수와 누르기 전 예상 금액(계약 C1 `GET /ingest/preview`, #549).
+ * 서버가 저장된 자료만 세서 0원이다. 조건 없이 부르면 month만 오고 나머지는 null이다.
  */
 export interface IngestPreview {
   matchedCount: number;
@@ -138,6 +202,14 @@ export interface IngestPreview {
   addableHighCount: number;
   unjudgedCount: number;
   addCount: number;
+  estimate: IngestEstimate;
+  month: IngestMonth;
+  blocked: IngestBlocked | null;
+}
+
+/** 조건 없이 부른 `GET /ingest/preview`: 이번 달 사용액만 온다([다시 조사]·[붙여넣고 조사]용). */
+export interface MonthSpend {
+  month: IngestMonth;
 }
 
 /** 후보 가져오기 응답. 회차를 만든 직후 바로 오고, 진행은 목록 `meta.latestIngest`로 본다. */
@@ -260,6 +332,51 @@ export type LostReasonCode =
   'PRICE' | 'LEAD_TIME' | 'INCUMBENT_SUPPLIER' | 'NO_DEMAND' | 'QUALITY_CERT' | 'OTHER';
 export type ContactMethod = 'CALL' | 'EMAIL' | 'VISIT';
 export type ContactResult = 'REACHED' | 'ABSENT' | 'DECLINED';
+
+/** 큰 단계(접촉·견적·샘플) 안의 세부 단계(#607, C0 salesStep). 꼬리 질문 답으로 알아낸 사실로 정한다. */
+export type SalesStep =
+  'NOT_REACHED' | 'REACHED' | 'DEMAND_CONFIRMED' | 'MATERIAL_QUOTE' | 'VISIT_SAMPLE';
+
+export interface KnownSalesAnswer {
+  questionId: string;
+  question: string;
+  answerId: string;
+  answer: string;
+  at: string;
+  by: string;
+}
+
+/** 상세 records.salesStep(#607). code가 null이면 접촉이 없거나 보류·성사·거절이다. */
+export interface SalesStepView {
+  code: SalesStep | null;
+  since: string | null;
+  overridden: boolean;
+  known: KnownSalesAnswer[];
+  openQuestions: string[];
+}
+
+export interface SalesAnswerOption {
+  answerId: string;
+  label: string;
+  reaches?: SalesStep | null;
+}
+
+export interface SalesQuestion {
+  questionId: string;
+  text: string;
+  /** 이 세부 단계일 때 보인다. ALL이면 모든 세부 단계. */
+  step: SalesStep | 'ALL';
+  /** 앞 답이 이 보기 중 하나일 때만 보인다(꼬리). */
+  showWhen?: { answers: Record<string, string[]> } | null;
+  answers: SalesAnswerOption[];
+}
+
+/** GET /sales-questions(#607). 질문 파일 그대로. */
+export interface SalesQuestions {
+  version: number;
+  steps: { code: SalesStep; label: string; stage: OutcomeStatus }[];
+  questions: SalesQuestion[];
+}
 export type JudgmentCheck = 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
 export type NoteKind = 'MEMO' | 'RESEARCH';
 
@@ -329,6 +446,13 @@ export interface OpportunityCard {
   researchState?: ResearchState | null;
   /** 거래 관계(#263). EXISTING_CONFIRMED면 점수 옆에 "기존 거래처" 꼬리표. */
   relationStatus?: RelationStatus;
+  /** 세부 단계(#607). 카드 단계 꼬리표 옆에 "접촉 · 수요 확인"처럼 붙는다. 없으면 큰 단계만. */
+  salesStep?: SalesStep | null;
+  /** 세 묶음(#610). 없으면(옛 응답) 묶음 제목·꼬리표를 보이지 않는다. */
+  bucket?: ContactBucket;
+  bucketBasis?: BucketBasis;
+  /** 영업 결과 조정(#610). null이면 조정 이유 줄을 보이지 않는다. */
+  rankAdjust?: RankAdjust | null;
   oppId: string;
   rank: number;
   title: string;
@@ -514,6 +638,8 @@ export interface DetailRecords {
   approval?: Record<string, unknown> | null;
   outcome?: OutcomeRecord | null;
   contactCount?: ContactCount | null;
+  /** 세부 단계·알아낸 것·아직 모르는 질문(#607). 옛 응답이면 없다. */
+  salesStep?: SalesStepView | null;
 }
 
 /** 검토사항 한 줄(C1 reviewItems, 더하는 변경 2026-11-03 밤). 목록은 평가 결과에서 파생되고 체크 상태만 저장된다. */
@@ -634,6 +760,12 @@ export interface OutcomeRequest {
   attemptedAt?: string;
   /** 접촉 때 AI 판단이 맞았나(#531). 접촉 기록에서만 보낸다. */
   judgmentCheck?: JudgmentCheck;
+  /** 한 줄 메모(#607). 설정 records.memoLineMaxLength(초기 100자)까지. */
+  memo?: string;
+  /** 꼬리 질문 답(#607). 연결된 접촉에서만 보낸다. */
+  answers?: { questionId: string; answerId: string }[];
+  /** [단계 고치기](#607). */
+  stepOverride?: SalesStep;
 }
 
 export interface OutcomeResponse extends RecordMeta {

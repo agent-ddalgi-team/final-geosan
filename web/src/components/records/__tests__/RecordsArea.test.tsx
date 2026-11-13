@@ -13,6 +13,7 @@ vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   postNote: vi.fn(),
   postOutcome: vi.fn(),
+  getSalesQuestions: vi.fn(() => new Promise(() => {})),
 }));
 
 const mockedNote = vi.mocked(postNote);

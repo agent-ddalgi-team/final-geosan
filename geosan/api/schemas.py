@@ -45,6 +45,7 @@ from geosan.rules.codes import (
     ReviewItemKind,
     ReviewItemSource,
     ReviewStatus,
+    SalesStep,
     SourceGrade,
 )
 from geosan.rules.codes import (
@@ -122,6 +123,20 @@ class LatestIngest(_ApiModel):
     failure_reason: str | None = Field(
         description="찾기가 실패했을 때의 사유 한 줄(쉬운 말). 실패가 아니면 null (C1, #347)"
     )
+    estimated_usd: float | None = Field(
+        description="접수 때 예상 금액(달러). 이 칸이 생기기 전의 옛 회차는 null (C1, #549)"
+    )
+    actual_usd: float = Field(
+        description="이 회차의 AI 판단·웹 검색·새 회사 자동 조사에 실제로 든 금액(달러) (C1, #549)"
+    )
+
+
+class BucketCounts(_ApiModel):
+    """목록의 묶음별 건수(#610). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다."""
+
+    now: int = Field(alias="NOW")
+    check: int = Field(alias="CHECK")
+    later: int = Field(alias="LATER")
 
 
 class Meta(_ApiModel):
@@ -144,6 +159,10 @@ class Meta(_ApiModel):
     )
     latest_ingest: LatestIngest | None = Field(
         default=None, description="마지막 찾기 회차 요약. 한 번도 안 찾았으면 null (C1, #342)"
+    )
+    bucket_counts: BucketCounts | None = Field(
+        default=None,
+        description="목록에서 거른 조건 안의 묶음별 건수(#610). 쪽 넘김과 무관하고 합은 total",
     )
 
 
@@ -284,6 +303,42 @@ class FactoryProfile(_ApiModel):
     file_date: date = Field(description="팩토리온 자료 기준일")
 
 
+ContactBucket = Literal["NOW", "CHECK", "LATER"]
+BucketBasis = Literal[
+    "EXCLUDED_OPINION",
+    "REQUIRED_FAILED",
+    "EXISTING_CUSTOMER",
+    "CLOSED_OR_HOLD",
+    "IN_PROGRESS",
+    "NEED_CHECK_OPINION",
+    "REQUIRED_PENDING",
+    "OWN_PLATING",
+    "NOT_EVALUATED_HIGH_FIT",
+    "NOT_EVALUATED_LOWER_FIT",
+    "EVIDENCE_RECHECK",
+    "REQUIRED_PASSED",
+    "MONITOR",
+]
+
+
+class RankAdjust(_ApiModel):
+    """영업 결과로 묶음 안 순서를 올리거나 내린 근거(#610). 읽을 때 계산하고 저장하지 않는다.
+
+    약속 C6에 이름만 있는 `eval_rank_adjustment`(사람이 순위를 고치는 표)와 뜻이 다르다.
+    """
+
+    level: int = Field(description="조정 단계. 양수는 위로, 음수는 아래로, 0은 그대로")
+    process_code: str
+    process_name: str
+    industry: str
+    won_count: int = Field(description="같은 공정·산업군에서 기간 안에 성사한 다른 회사 수")
+    lost_count: int = Field(description="같은 기준의 거절 가운데 설정에 적힌 이유로 센 회사 수")
+    counted_lost_reasons: list[LostReasonCode] = Field(
+        description="센 거절에 실제로 나온 이유 코드"
+    )
+    window_days: int
+
+
 class OpportunityCard(_ApiModel):
     score_state: ScoreState
     relation_status: RelationStatus
@@ -291,6 +346,7 @@ class OpportunityCard(_ApiModel):
     industries: list[str] = Field(default_factory=list)
     process_codes: list[str] = Field(default_factory=list)
     contact_count: int = 0
+    sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str
     rank: int
     title: str = Field(description="기업 · 기회 이름")
@@ -348,6 +404,16 @@ class OpportunityCard(_ApiModel):
         description=(
             "점수가 아직 없는 찾은 회사의 조사 상태(#596). 카드는 RUNNING이면 '조사 중', "
             "나머지는 '조사 중단'. 점수가 있거나 사례 파일 회사면 null"
+        ),
+    )
+    # 추천 목록 세 묶음(#610, C1). 저장하지 않고 목록을 읽을 때 계산한다. 모든 정렬에서 준다.
+    bucket: ContactBucket = Field(description="지금 연락할 곳 / 확인 필요 / 나중")
+    bucket_basis: BucketBasis = Field(description="그 묶음에 든 이유 하나(카드 꼬리표)")
+    rank_adjust: RankAdjust | None = Field(
+        default=None,
+        description=(
+            "같은 공정·산업군의 최근 성사·거절로 정한 조정. 표본이 설정 기준보다 적거나 "
+            "공정·산업군이 없으면 null"
         ),
     )
 
@@ -551,8 +617,28 @@ class ContactCount(_ApiModel):
     visit: int = 0
 
 
+class KnownSalesAnswer(_ApiModel):
+    question_id: str
+    question: str
+    answer_id: str
+    answer: str
+    at: date
+    by: str
+
+
+class SalesStepView(_ApiModel):
+    """#607 상세 records.salesStep. 세부 단계·알아낸 것·아직 모르는 질문."""
+
+    code: SalesStep | None = None
+    since: date | None = None
+    overridden: bool = False
+    known: list[KnownSalesAnswer] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
+
+
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
+    sales_step: SalesStepView = Field(default_factory=SalesStepView)
     opinion: OpinionRecord | None = None
     bookmark: BookmarkRecord | None = None
     approval: dict[str, Any] | None = None
@@ -677,6 +763,13 @@ OutcomeStatus = Literal[
 ]
 
 
+class OutcomeAnswerInput(_RequestModel):
+    """#607 꼬리 질문 답 하나(코드만, 문구는 저장하지 않는다)."""
+
+    question_id: str = Field(min_length=1, max_length=40)
+    answer_id: str = Field(min_length=1, max_length=40)
+
+
 class OutcomeRequest(_RequestModel):
     """계약 C1의 코드 값. #211 공통 코드표와 같은 계약으로 연결한다."""
 
@@ -694,6 +787,9 @@ class OutcomeRequest(_RequestModel):
     eval_id: str | None = None
     expected_version: int | None = Field(default=None, ge=0)
     memo: str | None = Field(default=None, max_length=200)
+    # #607: 꼬리 질문 답(코드)과 [단계 고치기]. 둘 다 선택이며 옛 요청은 그대로 받는다.
+    answers: list[OutcomeAnswerInput] = Field(default_factory=list, max_length=20)
+    step_override: SalesStep | None = None
 
 
 class OutcomeResponse(RecordMeta):
@@ -733,6 +829,41 @@ class ActivityItem(_ApiModel):
 
 
 OutcomeEnvelope = Envelope[OutcomeResponse]
+
+
+class SalesStepEntry(_ApiModel):
+    code: SalesStep
+    label: str
+    stage: SalesOutcomeStatus
+
+
+class SalesAnswerOption(_ApiModel):
+    answer_id: str
+    label: str
+    reaches: SalesStep | None = None
+
+
+class SalesShowWhen(_ApiModel):
+    answers: dict[str, list[str]]
+
+
+class SalesQuestionView(_ApiModel):
+    question_id: str
+    text: str
+    step: SalesStep | Literal["ALL"]
+    show_when: SalesShowWhen | None = None
+    answers: list[SalesAnswerOption]
+
+
+class SalesQuestionsView(_ApiModel):
+    """#607 GET /sales-questions. 질문 파일을 화면에 주는 모양."""
+
+    version: int
+    steps: list[SalesStepEntry]
+    questions: list[SalesQuestionView]
+
+
+SalesQuestionsEnvelope = Envelope[SalesQuestionsView]
 BookmarkEnvelope = Envelope[BookmarkResponse]
 RelationEnvelope = Envelope[RelationResponse]
 QuestionReplyEnvelope = Envelope[QuestionReplyResponse]

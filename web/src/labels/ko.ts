@@ -15,6 +15,12 @@ import type {
   ReviewStatus,
 } from '../api/types';
 
+/** 달러 금액을 보이는 글자로(#549). 예: 0.74 → "$0.74", 30 → "$30.00". 1센트보다 작으면 "$0.01 미만". */
+export function usdText(value: number): string {
+  if (value > 0 && value < 0.01) return '$0.01 미만';
+  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export const classificationLabels: Record<ClassificationCode, string> = {
   FILTER_EXCLUDED: '대상 아님(제외)',
   FILTER_PENDING: '필수조건 확인 필요',
@@ -175,6 +181,8 @@ export const frame = {
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
   menuDashboard: '대시보드',
   pageTitleDashboard: '대시보드',
+  menuSalesAnalysis: '영업 분석',
+  pageTitleSalesAnalysis: '영업 분석',
 } as const;
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
@@ -495,13 +503,37 @@ export const candidateSearch = {
     `(상 ${high.toLocaleString('ko-KR')} · 중 ${medium.toLocaleString('ko-KR')} · 하 ${low.toLocaleString('ko-KR')})`,
   previewRegistered: (n: number) => `영업 후보로 들어온 곳 ${n.toLocaleString('ko-KR')}곳`,
   previewAddableHigh: (n: number) => `아직 안 들어온 상 ${n.toLocaleString('ko-KR')}곳`,
-  /** 고른 지역에 AI가 아직 판단하지 않은 공장이 있을 때(#549 ②). 금액은 2단계에서 붙인다. */
-  previewUnjudged: (n: number) => `아직 AI 판단 전 ${n.toLocaleString('ko-KR')}곳`,
+  /** 고른 지역에 AI가 아직 판단하지 않은 공장이 있을 때(#549 ②). 예: "아직 AI 판단 전 17,358곳 · 판단에 약 $34.72" */
+  previewUnjudged: (n: number, judgeUsd: number) =>
+    `아직 AI 판단 전 ${n.toLocaleString('ko-KR')}곳 · 판단에 약 ${usdText(judgeUsd)}`,
+  /** 누르기 전 확인 줄의 예상 금액(#549 ②). 예: "예상 약 $2.00" */
+  previewEstimate: (totalUsd: number) => `예상 약 ${usdText(totalUsd)}`,
+  /**
+   * 한도를 넘어 단추를 잠글 때(#549 ②, 문장은 약속 C1 그대로).
+   * 예: "이번 달 남은 금액으로 약 8,400곳까지 판단할 수 있습니다 · 시·군을 골라 나눠 진행해 주세요"
+   */
+  previewBlocked: (judgeableRows: number) =>
+    `이번 달 남은 금액으로 약 ${judgeableRows.toLocaleString('ko-KR')}곳까지 판단할 수 있습니다 · 시·군을 골라 나눠 진행해 주세요`,
+  /** 서버가 한도 초과로 거부했을 때(422 INGEST_OVER_BUDGET). 서버 문장 두 개를 이어 보인다. */
+  overBudget: (message: string, nextAction: string) => `${message} · ${nextAction}`,
+  /** 머리 수집 요약의 끝 줄(#549). 예: "20곳을 더했습니다 · 실제 $0.74" */
+  addedWithCost: (n: number, actualUsd: number) =>
+    `${n.toLocaleString('ko-KR')}곳을 더했습니다 · 실제 ${usdText(actualUsd)}`,
   previewAdd: (n: number) => `누르면 최대 ${n.toLocaleString('ko-KR')}곳을 영업 후보로 더합니다`,
   previewNothingToAdd: '더할 공장이 없습니다',
   previewFree: '조건을 바꿔 보는 것은 비용이 들지 않습니다',
   previewLoading: '맞는 공장을 세는 중',
   previewFailed: '맞는 공장 수를 불러오지 못했습니다',
+} as const;
+
+/**
+ * 돈이 드는 단추(💰) 옆에 보이는 이번 달 AI 사용액(#549 ③). 서버의 월 합을 그대로 보인다.
+ * 예: "이번 달 AI 사용 $3.20 / $20.00"
+ */
+export const monthSpend = {
+  used: (usedUsd: number, limitUsd: number) =>
+    `이번 달 AI 사용 ${usdText(usedUsd)} / ${usdText(limitUsd)}`,
+  failed: '이번 달 AI 사용액을 불러오지 못했습니다',
 } as const;
 
 /** 상세 머리 "기업 요약"(#210): 조사일·한 줄·특징·대표번호와 홈페이지 상태 띠. */
@@ -577,7 +609,7 @@ export const homepageControls = {
   editButton: '고치기',
   /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
   addButton: '주소 넣기',
-  rerunButton: '다시 조사',
+  rerunButton: '다시 조사 💰',
   urlLabel: '홈페이지 주소',
   urlPlaceholder: 'https://',
   runWithUrl: '이 주소로 조사',
@@ -700,6 +732,37 @@ export const outcomeStatusLabels = {
   LOST: '거절',
 } as const;
 
+/** 세부 단계(#607). 큰 단계 안의 단계라 카드는 "접촉 · 수요 확인"처럼 붙여 보인다. */
+export const salesStepLabels = {
+  NOT_REACHED: '연결 전',
+  REACHED: '연결됨',
+  DEMAND_CONFIRMED: '수요 확인',
+  MATERIAL_QUOTE: '자료·견적',
+  VISIT_SAMPLE: '방문·샘플',
+} as const;
+
+/** 상세 기록 구역의 꼬리 질문(#607, PM 결정 2026-11-12). 문구는 질문 파일에서 오고 여기는 틀만. */
+export const salesQuestionTexts = {
+  summaryTitle: '지금 세부 단계',
+  /** "수요 확인 (10/22부터)" */
+  stepSince: (label: string, since: string | null) =>
+    since ? `${label} (${since.slice(5).replace('-', '/')}부터)` : label,
+  stepNone: '아직 접촉 없음',
+  stepClosed: '보류·성사·거절에는 세부 단계가 없습니다',
+  overridden: '담당자가 고침',
+  known: '알아낸 것',
+  knownNone: '아직 없음',
+  unknown: '아직 모르는 것',
+  questionsTitle: '이번 접촉에서 알게 된 것',
+  questionsHint: '아는 것만 고르세요. 고르지 않은 질문은 다음 접촉 때 다시 보입니다.',
+  clearAnswer: '선택 지우기',
+  memoLabel: '한 줄 메모 (선택)',
+  memoHint: '질문에 없는 이야기만 짧게 적어 주세요. 이 메모는 외부로 나가지 않습니다.',
+  overrideLabel: '세부 단계 고치기',
+  overrideSave: '단계 고치기',
+  loadFailed: '꼬리 질문을 불러오지 못했습니다. 접촉 기록은 그대로 저장할 수 있습니다.',
+} as const;
+
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
 /** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
@@ -812,10 +875,9 @@ export const recordsArea = {
   stepOne: '①',
   stepTwo: '②',
   stepThree: '③',
-  /** 접촉을 적은 뒤 단계가 미접촉이면 한 번 묻는다. 자동으로 바꾸지 않는다. */
-  stageSuggest: '단계를 접촉으로 바꿀까요?',
-  stageSuggestApply: '접촉으로 바꾸기',
-  stageSuggestDismiss: '닫기',
+  /** 접촉을 저장하면 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 자동으로 바꾼다(#607이 #433의 묻기를 바꿈). */
+  stageAutoHint:
+    '접촉을 저장하면 단계는 답에 따라 앞으로 바뀝니다. 보류·성사·거절만 직접 고르세요.',
 } as const;
 
 /**
@@ -900,7 +962,7 @@ export const reviewArea = {
   /** "메모: 홈페이지 연혁에 2023 납품 기재" */
   memoPrefix: '메모:',
   memoSaveFailed: '메모를 저장하지 못했습니다. 다시 시도',
-  pasteButton: '붙여넣고 조사',
+  pasteButton: '붙여넣고 조사 💰',
   pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
   pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
   pasteUrlPlaceholder: 'https://',
@@ -914,6 +976,34 @@ export const reviewArea = {
   pasteRunning: '조사 중입니다. 최대 1분 걸릴 수 있습니다.',
   pasteLocked: '이 조사는 지금 다시 누를 수 없습니다.',
   pasteReload: '새로 불러오기',
+  /**
+   * 줄이 많을 때의 묶음(#619, PM 요청 2026-11-13). "확인 필요"만 펼쳐 두고 나머지 두 묶음은 접어 둔다.
+   * 줄 글은 서버가 준 그대로이고 여기에는 묶음 머리 문구만 둔다.
+   */
+  /** "확인 필요 0 / 3" — 펼쳐 둔 묶음의 줄만 센다. */
+  askProgress: (done: number, total: number) => `확인 필요 ${done} / ${total}`,
+  askEmpty: '지금 바로 확인할 줄은 없습니다. 아래 묶음은 눌러서 펼쳐 볼 수 있습니다.',
+  /** "아직 근거·자료가 없는 항목 10개 보기" / "AI 공정 연결 제안 7개 보기 · 아연도금, 아노다이징 외 5개" */
+  foldHead: (
+    group: 'gap' | 'process',
+    count: number,
+    open: boolean,
+    shown: readonly string[],
+    rest: number,
+    recorded: number,
+  ) => {
+    const title = group === 'gap' ? '아직 근거·자료가 없는 항목' : 'AI 공정 연결 제안';
+    const nameText =
+      shown.length > 0 ? ` · ${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''}` : '';
+    const recordedText = recorded > 0 ? ` · 기록한 줄 ${recorded}개` : '';
+    return `${open ? '▾' : '▸'} ${title} ${count}개 ${open ? '접기' : '보기'}${nameText}${recordedText}`;
+  },
+  foldListLabel: (group: 'gap' | 'process') =>
+    group === 'gap' ? '근거·자료가 없는 항목 목록' : 'AI 공정 연결 제안 목록',
+  /** 검토사항 맨 위 "왜 추천했나" 한 줄. 고른 이유·등록 사실은 바로 위 "이 회사 한눈에"에 있어 다시 적지 않는다. */
+  whyTitle: '왜 추천했나',
+  whyProcesses: (names: readonly string[]) => `연결된 공정: ${names.join(', ')}`,
+  whySeeGlance: '고른 이유와 등록 사실은 위 "이 회사 한눈에"에 있습니다.',
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
@@ -1074,4 +1164,122 @@ export const listExport = {
   defaultFileName: '거산_추천목록.xlsx',
   /** 서버 없이 가짜 응답으로 화면만 볼 때. */
   noFixture: '서버 없이 화면만 보는 중에는 엑셀을 만들 수 없습니다.',
+} as const;
+
+/** 영업 분석(#608): 영업 기록만으로 계산한 공정별·회사별 표. 내부 참고용이고 밖으로 나가지 않는다. */
+export const salesAnalysisTexts = {
+  loadError: '영업 분석표를 불러오지 못했습니다.',
+  intro: '담당자가 남긴 접촉·단계·거절 이유 기록만으로 계산합니다. AI는 쓰지 않습니다.',
+  /** "11/13 09:00 기준 · 접촉 기록이 있는 회사 3곳 · 성사·거절은 최근 365일 안의 것만" */
+  basis: (asOf: string | null, companyCount: number, windowDays: number) =>
+    [
+      asOf ? `${asOf} 기준` : null,
+      `접촉 기록이 있는 회사 ${companyCount}곳`,
+      `성사·거절은 최근 ${windowDays}일 안의 것만`,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+  olderExcluded: (count: number) => `그보다 오래된 성사·거절 ${count}곳은 표에서 빠졌습니다.`,
+  countRule: (minSample: number) =>
+    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 한 회사가 공정·산업군이 여러 개면 각각 셉니다.`,
+  empty:
+    '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
+  emptyAction: '영업 후보 목록으로',
+  processTitle: '공정별',
+  processTableLabel: '공정별 영업 분석표',
+  companyTitle: '회사별',
+  companyTableLabel: '회사별 영업 분석표',
+  processColumns: {
+    name: '공정 · 산업군',
+    contacted: '접촉한 곳',
+    inProgress: '진행 중',
+    onHold: '보류',
+    won: '성사',
+    lost: '거절',
+    avgToWon: '성사까지 평균 접촉',
+    reach: '방법별 연결/시도',
+    lostReasons: '거절 이유',
+    ratio: '비율',
+  },
+  companyColumns: {
+    name: '회사',
+    process: '공정',
+    industry: '산업군',
+    contacts: '접촉',
+    stage: '지금 단계',
+    firstContact: '첫 접촉',
+    lastContact: '마지막 접촉',
+    sinceFirst: '첫 접촉 뒤',
+    outcome: '결과',
+  },
+  none: '—',
+  places: (count: number) => `${count}곳`,
+  times: (value: number) => `${value}번`,
+  days: (count: number) => `${count}일`,
+  /** 공정 줄 아래 산업군 줄 앞머리. */
+  industryPrefix: '└ ',
+  /** "전화 2/3" — 연결/시도. */
+  reach: (method: string, reached: number, tried: number) => `${method} ${reached}/${tried}`,
+  reasonCount: (label: string, count: number) => `${label} ${count}`,
+  methodCount: (label: string, count: number) => `${label} ${count}`,
+  /** 표본이 기준보다 적을 때 비율 칸에 보이는 말. */
+  sampleOnly: (count: number) => `표본 ${count}건`,
+  wonRatio: (percent: number) => `성사 ${percent}%`,
+  reachRatio: (method: string, percent: number) => `${method} 연결 ${percent}%`,
+  /** "접촉 · 수요 확인" / "거절 · 가격" */
+  stageWithDetail: (stage: string, detail: string) => `${stage} · ${detail}`,
+  /** "첫 접촉 뒤 21일 만에 성사 (11/10)" */
+  outcomeAfter: (days: number, stage: string, date: string | null) =>
+    `첫 접촉 뒤 ${days}일 만에 ${stage}${date ? ` (${date})` : ''}`,
+  openCompanyLabel: (name: string) => `${name} 상세 보기`,
+} as const;
+
+// 추천 목록의 세 묶음(#610). 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
+const contactBucketTitles = { NOW: '지금 연락할 곳', CHECK: '확인 필요', LATER: '나중' } as const;
+export const contactBuckets = {
+  titles: contactBucketTitles,
+  /** 묶음이 바뀌는 자리의 제목. 예: "지금 연락할 곳 9곳" */
+  title: (bucket: keyof typeof contactBucketTitles, count: number) =>
+    `${contactBucketTitles[bucket]} ${count}곳`,
+  /** 카드 꼬리표: 그 묶음에 든 이유. */
+  basis: {
+    EXCLUDED_OPINION: '검토 대상 제외',
+    REQUIRED_FAILED: '필수조건 탈락',
+    EXISTING_CUSTOMER: '거래 중',
+    CLOSED_OR_HOLD: '성사·거절·보류',
+    IN_PROGRESS: '접촉 진행 중',
+    NEED_CHECK_OPINION: '추가 확인 의견',
+    REQUIRED_PENDING: '필수조건 확인 전',
+    OWN_PLATING: '표면처리 직접 여부 확인',
+    NOT_EVALUATED_HIGH_FIT: '평가 전 · 적합도 상',
+    NOT_EVALUATED_LOWER_FIT: '평가 전 · 적합도 낮음',
+    EVIDENCE_RECHECK: '핵심 근거 재확인',
+    REQUIRED_PASSED: '필수조건 통과',
+    MONITOR: '지켜보기',
+  },
+  /** 카드의 조정 이유 줄 이름. */
+  adjustRow: '순서 조정',
+  /**
+   * 조정 이유 한 줄. 예: "같은 공정·산업(아연도금 · 자동차 부품)에서 최근 12개월 성사 2곳 → 위로",
+   * "…거절 3곳(수요 없음) → 아래로". 성사·거절 가운데 0곳인 쪽은 적지 않는다.
+   */
+  adjustLine: (adjust: {
+    level: number;
+    processName: string;
+    industry: string;
+    wonCount: number;
+    lostCount: number;
+    lostReasons: string[];
+    windowDays: number;
+  }) => {
+    const months = Math.round((adjust.windowDays / 365) * 12);
+    const period = months >= 1 ? `최근 ${months}개월` : `최근 ${adjust.windowDays}일`;
+    const counts = [
+      adjust.wonCount > 0 ? `성사 ${adjust.wonCount}곳` : null,
+      adjust.lostCount > 0
+        ? `거절 ${adjust.lostCount}곳${adjust.lostReasons.length > 0 ? `(${adjust.lostReasons.join('·')})` : ''}`
+        : null,
+    ].filter((part) => part !== null);
+    return `같은 공정·산업(${adjust.processName} · ${adjust.industry})에서 ${period} ${counts.join(' · ')} → ${adjust.level > 0 ? '위로' : '아래로'}`;
+  },
 } as const;

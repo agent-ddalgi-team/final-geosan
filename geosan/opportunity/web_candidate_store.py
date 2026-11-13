@@ -160,6 +160,25 @@ def find_cached_web_search(batch_id: str, *, db_path=None) -> StoredWebSearch | 
         ) from None
 
 
+def has_cached_web_search(
+    session, *, criteria: dict, max_candidates: int, dataset_kind: str, is_virtual: bool
+) -> bool:
+    """회차를 만들기 전에 같은 조건의 보관 결과가 있는지 본다(#549 예상 금액). 읽기만 한다.
+
+    실행 때와 같은 지문·보관 기간 판정을 쓴다. 망가진 보관 결과는 실행 때처럼 오류로 알린다.
+    """
+    draft = IngestBatch(
+        batch_id="preview",
+        status="RUNNING",
+        criteria=criteria,
+        max_candidates=max_candidates,
+        dataset_kind=dataset_kind,
+        is_virtual=is_virtual,
+    )
+    context = load_search_context(draft.batch_id, session=session, batch=draft)
+    return context.enabled and _cached(session, context, draft) is not None
+
+
 def save_web_search(
     batch_id: str, result: CandidateSearchResult, *, registry_statuses, db_path=None
 ) -> StoredWebSearch:

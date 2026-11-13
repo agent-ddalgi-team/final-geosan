@@ -8,6 +8,7 @@ from geosan.capability.models import Process
 from geosan.config.errors import AppError, InputError, RunFailedError, exit_code_for
 from geosan.config.registry import load_runtime_config
 from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.ingest_preview import ingest_budget, over_budget_error
 from geosan.opportunity.models import IngestBatch
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.engine import database_path
@@ -50,6 +51,18 @@ def reserve_command_batch(source_id, processes, regions, industries, maximum, re
                 status=409,
                 kind="INGEST_RUNNING",
             )
+        # 화면·API와 같은 예상 금액 검사. 넘으면 회차를 만들지 않는다(C8 #549, 우회 인자 없음).
+        budget = ingest_budget(
+            session,
+            process_codes=prepared.process_codes,
+            regions=prepared.regions,
+            industries=prepared.industries,
+            max_candidates=prepared.max_candidates,
+            settings=runtime.app_settings,
+            rejudge=rejudge,
+        )
+        if budget.blocked is not None:
+            raise over_budget_error()
         now = utcnow()
         batch_id = new_id("batch")
         session.add(
@@ -61,6 +74,7 @@ def reserve_command_batch(source_id, processes, regions, industries, maximum, re
                 status="RUNNING",
                 max_candidates=prepared.max_candidates,
                 rejudge=rejudge,
+                estimated_usd=budget.estimate.total_usd,
                 dataset_kind=dataset,
                 is_virtual=dataset == "VIRTUAL_REVIEWED",
                 created_by="SYSTEM",

@@ -86,6 +86,14 @@ export default function IngestSummary({ ingest }: IngestSummaryProps) {
             {parts.length > 0 ? (
               <span data-testid="ingest-counts"> · {parts.join(' · ')}</span>
             ) : null}
+            {ingest.status === 'DONE' &&
+            typeof ingest.newCount === 'number' &&
+            typeof ingest.actualUsd === 'number' ? (
+              <span data-testid="ingest-added-cost">
+                {' '}
+                · {candidateSearch.addedWithCost(ingest.newCount, ingest.actualUsd)}
+              </span>
+            ) : null}
             {notices.map((text) => (
               <span key={text} data-testid="ingest-skipped">
                 {' '}

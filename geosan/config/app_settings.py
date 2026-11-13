@@ -21,7 +21,13 @@ from geosan.config.errors import FieldError, InputError
 from geosan.config.loader import LoadedDocument, join_path, load_document
 from geosan.config.schemas import STAFF_KEY_PATTERN, FileModel
 from geosan.config.validators import format_field_error, pydantic_errors_to_fields
-from geosan.rules.codes import VIEWER_STAFF_KEY, DatasetKind
+from geosan.rules.codes import (
+    VIEWER_STAFF_KEY,
+    ClassificationCode,
+    DatasetKind,
+    FitLevel,
+    LostReasonCode,
+)
 
 SECRET_KEY_NAMES: frozenset[str] = frozenset(
     {"password", "passwd", "apikey", "api_key", "token", "secret", "accesskey", "access_key"}
@@ -127,10 +133,23 @@ class CandidateWebSearchSettings(FileModel):
         return self
 
 
+class CostEstimateSettings(FileModel):
+    """C7 #549: 누르기 전 예상 금액·잠금 계산에만 쓰는 단가. 실제 한도 검사는 전송 기록으로 한다.
+
+    값은 PM이 실측을 보고 고친다. 네 칸 모두 0보다 커야 한다.
+    """
+
+    judge_usd_per_row: float = Field(gt=0, strict=True, allow_inf_nan=False)
+    research_usd_per_company: float = Field(gt=0, strict=True, allow_inf_nan=False)
+    research_calls_per_company: int = Field(gt=0, strict=True)
+    web_search_usd_per_batch: float = Field(gt=0, strict=True, allow_inf_nan=False)
+
+
 class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
     max_candidates: int = Field(ge=1)
+    cost_estimate: CostEstimateSettings
     factory_csv_path: str = ""
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
     ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
@@ -215,10 +234,47 @@ class RecordsSettings(FileModel):
 
     approval_enabled: bool = False
     note_max_length: int = Field(default=200, ge=1)
+    # #607: 꼬리 질문 파일 위치(저장소 기준 상대 경로)와 접촉 기록 한 줄 메모 상한.
+    sales_questions_file: str = Field(default="examples/sales-questions.yaml", min_length=1)
+    memo_line_max_length: int = Field(default=100, ge=1, le=200)
 
 
 class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
+
+
+class SalesAnalysisSettings(FileModel):
+    """계약 C7 `salesAnalysis`(#608). 기준 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+
+    # 표본(접촉한 곳 수)이 이 값보다 적으면 비율을 내지 않는다.
+    min_sample_for_ratio: int = Field(ge=1, strict=True)
+    # 성사·거절은 결과 기록이 이 일수 안인 것만 센다.
+    closed_window_days: int = Field(ge=1, strict=True)
+
+
+class ContactAdjustSettings(FileModel):
+    """계약 C7 `contactList.adjust`(#610). 같은 공정·산업군의 성사·거절로 순서를 조정하는 기준."""
+
+    window_days: int = Field(ge=1, strict=True)
+    # 표본(성사 + 센 거절)이 이 값보다 적으면 조정하지 않는다.
+    min_closed_count: int = Field(ge=1, strict=True)
+    won_per_step: int = Field(ge=1, strict=True)
+    max_up: int = Field(ge=0, strict=True)
+    lost_per_step: int = Field(ge=1, strict=True)
+    max_down: int = Field(ge=0, strict=True)
+    lost_reasons_counted: list[LostReasonCode]
+
+
+class ContactListSettings(FileModel):
+    """계약 C7 `contactList`(#610). 기준은 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+
+    # 막는 조건이 없을 때 "지금 연락할 곳"에 드는 분류.
+    now_classifications: list[ClassificationCode]
+    # true면 평가 전 + 적합도 상 회사를 "지금 연락할 곳"에 넣는다.
+    unscored_high_fit_to_now: bool = Field(strict=True)
+    # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
+    null_fit_level_as: FitLevel
+    adjust: ContactAdjustSettings
 
 
 class MainPhoneSettings(FileModel):
@@ -243,6 +299,13 @@ class ListFilterSettings(FileModel):
     region_presets: list[RegionPreset] = Field(default_factory=list)
 
 
+class DashboardSettings(FileModel):
+    """계약 C7 `dashboard`(2026-11-03 PM 결정). 이 칸이 없는 옛 설정 파일·DB 사본도 읽는다."""
+
+    # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
+    count_proposed_industries: bool = True
+
+
 class AppSettings(FileModel):
     """앱 설정 한 벌(C7 AppSettings). 더하는 변경(2026-10-21 PM 확인): brand.demoLabel."""
 
@@ -258,9 +321,14 @@ class AppSettings(FileModel):
     access_protection: AccessProtectionSettings
     records: RecordsSettings = Field(default_factory=RecordsSettings)
     research: ResearchSettings = Field(default_factory=ResearchSettings)
+    # #608: 이 칸이 없는 옛 설정 파일도 읽는다. DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    sales_analysis: SalesAnalysisSettings | None = None
+    # #610: 위와 같은 방식. 옛 설정에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    contact_list: ContactListSettings | None = None
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
+    dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
@@ -418,7 +486,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
     data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
     if not data:
         return None
-    return AppSettings.model_validate(_fill_added_llm_keys(data))
+    return AppSettings.model_validate(
+        _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+    )
 
 
 ADDED_LLM_KEYS = ("unconfirmedCallCostUsd",)
@@ -436,6 +506,36 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).llm.model_dump(by_alias=True)
     filled = {**llm, **{key: defaults[key] for key in missing}}
     return {**data, "llm": filled}
+
+
+ADDED_SECTIONS = ("salesAnalysis", "contactList")
+"""#608·#610 뒤에 생긴 묶음. 그 전에 만든 설정 파일·DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 없거나 비어 있는 묶음만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    missing = [key for key in ADDED_SECTIONS if data.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
+    return {**data, **{key: defaults[key] for key in missing}}
+
+
+ADDED_INGESTION_KEYS = ("costEstimate",)
+"""#549 뒤에 생긴 필수 ingestion 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 ingestion 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    ingestion = data.get("ingestion")
+    if not isinstance(ingestion, dict):
+        return data
+    missing = [key for key in ADDED_INGESTION_KEYS if key not in ingestion]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
+    filled = {**ingestion, **{key: defaults[key] for key in missing}}
+    return {**data, "ingestion": filled}
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"

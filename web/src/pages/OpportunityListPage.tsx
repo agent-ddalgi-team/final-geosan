@@ -8,7 +8,8 @@
 // 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
 // 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
-// 정렬(#361·#516): "추천 순"(기본, 서버로 `sort`를 보내지 않음)과 "최근 들어온 순"(`?sort=recent`).
+// 정렬(#361·#516·#610): "추천 순"(기본, 서버로 `sort=contact` = 세 묶음 순)과 "최근 들어온 순"(`?sort=recent`).
+//   추천 순에서는 묶음이 바뀌는 자리에 "지금 연락할 곳 9곳"·"확인 필요 122곳"·"나중 49곳" 제목을 끼운다(공정별 묶음 안에서도).
 // "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 아무것도 보내지 않는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
 // "제외한 회사" 보기(#536): 주소 `?excluded=true`면 검토 대상 제외로 저장한 회사만 보인다(서버에는 `opinion=NOT_TARGET`).
@@ -32,6 +33,7 @@ import {
   readLastProcess,
   storeLastProcess,
 } from '../components/list/lastProcess';
+import BucketedCards from '../components/list/BucketedCards';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import OpportunityCard from '../components/list/OpportunityCard';
 import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
@@ -131,8 +133,8 @@ export default function OpportunityListPage() {
       stage,
       filter,
       q,
-      // 추천 순일 때는 이 칸을 아예 보내지 않는다(서버·기존 시험이 보는 요청 모양을 바꾸지 않음).
-      ...(sort === 'recent' ? { sort: 'recent' } : {}),
+      // 추천 순은 세 묶음 순(#610)으로 달라고 한다. 주소에는 남기지 않는다(주소에 sort가 없으면 추천 순).
+      sort: sort === 'recent' ? 'recent' : 'contact',
       // 관심 기업 보기와 그 안의 검토 의견 거르기도 켰을 때만 보낸다.
       ...(bookmarked ? { bookmarked: 'true' } : {}),
       ...(opinion ? { opinion } : {}),
@@ -421,7 +423,7 @@ export default function OpportunityListPage() {
         onSearch={search}
         onClearSearch={clearSearch}
         sort={sort}
-        // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기와 요청 모양이 그대로).
+        // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기가 그대로 열린다). 서버에는 세 묶음 순으로 달라고 한다(#610).
         onSort={(value) => update({ sort: value === 'recent' ? 'recent' : null })}
         // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
         showFlat={processMode}
@@ -500,27 +502,19 @@ export default function OpportunityListPage() {
                         groupTotal,
                       )}
                     </h2>
-                    <ol
-                      data-testid="opportunity-list"
-                      style={{
-                        listStyle: 'none',
-                        margin: 0,
-                        padding: 0,
-                        display: 'grid',
-                        gap: spacing.cardGap,
-                      }}
-                    >
-                      {groupItems.map((card) => (
-                        <li key={card.oppId}>
-                          <OpportunityCard
-                            card={card}
-                            classificationOverrides={config?.classificationLabels}
-                            processNames={processNames}
-                            showRank
-                          />
-                        </li>
-                      ))}
-                    </ol>
+                    <BucketedCards
+                      items={groupItems}
+                      bucketCounts={group?.meta?.bucketCounts}
+                      showBuckets={sort === 'rank'}
+                      renderCard={(card) => (
+                        <OpportunityCard
+                          card={card}
+                          classificationOverrides={config?.classificationLabels}
+                          processNames={processNames}
+                          showRank
+                        />
+                      )}
+                    />
                     {groupTotal > GROUP_PAGE_SIZE ? (
                       <p style={{ marginTop: spacing.cardGap, marginBottom: 0 }}>
                         <Link to={onlyProcessHref(code)} data-testid="process-group-more">
@@ -534,28 +528,20 @@ export default function OpportunityListPage() {
             })}
           </div>
         ) : (
-          <ol
-            data-testid="opportunity-list"
-            style={{
-              listStyle: 'none',
-              margin: 0,
-              padding: 0,
-              display: 'grid',
-              gap: spacing.cardGap,
-            }}
-          >
-            {items.map((card) => (
-              <li key={card.oppId}>
-                <OpportunityCard
-                  card={card}
-                  classificationOverrides={config?.classificationLabels}
-                  processNames={processNames}
-                  // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
-                  showRank={processMode && !flat}
-                />
-              </li>
-            ))}
-          </ol>
+          <BucketedCards
+            items={items}
+            bucketCounts={meta?.bucketCounts}
+            showBuckets={sort === 'rank'}
+            renderCard={(card) => (
+              <OpportunityCard
+                card={card}
+                classificationOverrides={config?.classificationLabels}
+                processNames={processNames}
+                // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
+                showRank={processMode && !flat}
+              />
+            )}
+          />
         )}
         {notEvaluated > 0 ? (
           <p data-testid="list-not-evaluated" style={{ color: colors.textSecondary }}>
