@@ -837,6 +837,8 @@ class OutcomeRequest(_RequestModel):
     # #607: 꼬리 질문 답(코드)과 [단계 고치기]. 둘 다 선택이며 옛 요청은 그대로 받는다.
     answers: list[OutcomeAnswerInput] = Field(default_factory=list, max_length=20)
     step_override: SalesStep | None = None
+    # #697: 제외한 회사에 접촉을 남기면서 검토 의견을 영업 대상으로 되돌릴지. 접촉 기록에서만.
+    restore_excluded: bool = False
 
 
 class OutcomeResponse(RecordMeta):

@@ -112,6 +112,14 @@ LOST_REASON_LABELS = {
 }
 
 
+# #697: 접촉 기록이 검토 의견을 영업 대상(WORTH_REVIEW)으로 정할 때 의견 행의 메모에 남기는 문장.
+CONTACT_SETS_TARGET_MEMO = "접촉 기록을 남겨 영업 대상으로 정함"
+CONTACT_RESTORES_TARGET_MEMO = "접촉 기록을 남기며 제외에서 영업 대상으로 되돌림"
+# 접촉을 남기면 저절로 영업 대상이 되는 지금 의견: 의견 없음·검토 중.
+# 제외는 확인을 받았을 때만 바꾼다.
+_CONTACT_PROMOTES_FROM = (None, "NEED_CHECK")
+
+
 # 자료 조사 메모를 붙일 수 있는 검토사항 줄(자료 못 찾음·자료 부족)과 활동 이력에 붙이는 꼬리표.
 GAP_KINDS = {ReviewItemKind.DATA_NOT_FOUND, ReviewItemKind.DATA_INSUFFICIENT}
 GAP_LABELS = {
@@ -902,6 +910,10 @@ def save_outcome(
         )
     if body.judgment_check is not None and body.method is None:
         fields.append(FieldError(path="judgmentCheck", message="접촉 기록에서만 고를 수 있습니다."))
+    if body.restore_excluded and body.method is None:
+        fields.append(
+            FieldError(path="restoreExcluded", message="접촉 기록에서만 고를 수 있습니다.")
+        )
     records_settings = runtime_for(session).app_settings.records
     if body.memo and len(body.memo) > records_settings.memo_line_max_length:
         fields.append(
@@ -949,8 +961,11 @@ def save_outcome(
     for name in ("next_schedule_at", "next_schedule_note"):
         if previous and name not in body.model_fields_set:
             values[name] = getattr(previous, name)
+    # #697: 접촉을 남기면 같은 저장 안에서 검토 의견이 영업 대상으로 정해진다(관심도 여기서 켠다).
+    _set_target_by_contact(session, opportunity, staff, body)
     ensure_bookmarked(session, opportunity, staff)
     values.pop("answers", None)
+    values.pop("restore_excluded", None)
     # 버전은 취소한 행까지 센 마지막 번호 다음이다(취소해도 행과 번호는 남는다).
     last_version = (
         session.scalar(select(func.max(Outcome.version)).where(Outcome.opp_id == opp_id)) or 0
@@ -1481,6 +1496,76 @@ def opinion_view(row: ReviewOpinion | None) -> OpinionRecord | None:
     )
 
 
+def _add_opinion(
+    session: Session,
+    opportunity: Opportunity,
+    staff: str,
+    *,
+    opinion: str,
+    eval_id: str,
+    memo: str | None,
+    reason: str | None,
+    previous: ReviewOpinion | None,
+) -> ReviewOpinion:
+    """검토 의견을 새 행으로 더한다. 의견 저장(`save_opinion`)과 접촉 저장(#697)이 같이 쓴다.
+
+    쓰기 잠금을 잡고 `previous`(지금 최신 의견)를 읽은 뒤에 부른다.
+    제외(NOT_TARGET)면 관심을 끄고, 다른 의견이면 켠다(#536).
+    제외였다가 의견을 바꾼 회사도 다시 켜진다.
+    """
+    _set_bookmark_by_record(session, opportunity, staff, active=opinion != "NOT_TARGET")
+    row = ReviewOpinion(
+        opinion_id=new_id("opinion"),
+        opp_id=opportunity.opp_id,
+        eval_id=eval_id,
+        opinion=opinion,
+        memo=memo,
+        reason=reason,
+        staff_name=staff,
+        recorded_at=utcnow(),
+        previous_opinion_id=previous.opinion_id if previous else None,
+        version=previous.version + 1 if previous else 1,
+        dataset_kind=opportunity.dataset_kind,
+        is_virtual=opportunity.is_virtual,
+        created_by=staff,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def _set_target_by_contact(
+    session: Session, opportunity: Opportunity, staff: str, body: OutcomeRequest
+) -> None:
+    """#697 접촉(전화·메일·방문)을 남기면 검토 의견을 영업 대상으로 정한다(계약 C1 /outcomes).
+
+    의견이 없거나 검토 중이면 영업 대상 행을 더한다. 이미 영업 대상이면 그대로 둔다.
+    제외한 회사는 담당자가 되돌리기를 확인했을 때(`restoreExcluded`)만 바꾼다.
+    의견 행에는 본 평가 번호가 꼭 있어야 해서, 번호 없이 온 접촉(아직 평가 전인 회사)은
+    의견을 정하지 않는다.
+    """
+    if body.method is None or body.eval_id is None:
+        return
+    previous = latest_opinion(session, opportunity.opp_id)
+    current = previous.opinion if previous else None
+    if current in _CONTACT_PROMOTES_FROM:
+        memo = CONTACT_SETS_TARGET_MEMO
+    elif current == "NOT_TARGET" and body.restore_excluded:
+        memo = CONTACT_RESTORES_TARGET_MEMO
+    else:
+        return
+    _add_opinion(
+        session,
+        opportunity,
+        staff,
+        opinion="WORTH_REVIEW",
+        eval_id=body.eval_id,
+        memo=memo,
+        reason=None,
+        previous=previous,
+    )
+
+
 @router.post(
     "/opportunities/{oppId}/opinions",
     response_model=OpinionEnvelope,
@@ -1510,27 +1595,17 @@ def save_opinion(
     if not connection.connection.driver_connection.in_transaction:
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_opinion(session, opp_id)
-    now = utcnow()
-    # 검토 대상 제외면 관심을 끄고, 다른 의견이면 켠다(#536).
-    # 제외였다가 의견을 바꾼 회사도 다시 켜진다.
-    _set_bookmark_by_record(session, opportunity, staff, active=body.opinion != "NOT_TARGET")
-    row = ReviewOpinion(
-        opinion_id=new_id("opinion"),
-        opp_id=opp_id,
-        eval_id=body.eval_id,
+    row = _add_opinion(
+        session,
+        opportunity,
+        staff,
         opinion=body.opinion.value,
+        eval_id=body.eval_id,
         memo=body.memo,
         reason=body.reason,
-        staff_name=staff,
-        recorded_at=now,
-        previous_opinion_id=previous.opinion_id if previous else None,
-        version=previous.version + 1 if previous else 1,
-        dataset_kind=opportunity.dataset_kind,
-        is_virtual=opportunity.is_virtual,
-        created_by=staff,
+        previous=previous,
     )
-    session.add(row)
-    session.flush()
+    now = row.recorded_at
     previous_value = None
     if previous and previous.version > (body.expected_version or 0):
         previous_value = opinion_view(previous).model_dump(mode="json", by_alias=True)
