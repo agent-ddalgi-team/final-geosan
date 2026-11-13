@@ -107,6 +107,10 @@ export:
 # 월 비용·호출 한도(llm)는 따로 그대로 적용된다.
 research:
   autoOnBookmarkDailyCostUsd: 1.0
+  # 다시 조사 제안 (#677, PM 결정 2026-11-13). AI가 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에
+  # "조사한 지 n일 · 새 정보가 있을 수 있어요"를 [다시 조사] 단추 옆에 보인다. 알리기만 하고 저절로 조사하지 않는다.
+  # 0이면 제안하지 않는다.
+  suggestAgainAfterDays: 30
 
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:

@@ -508,6 +508,10 @@ class DetailHeader(_ApiModel):
     researched_at: datetime | None = None
     research_source: Literal["AI", "CASE_FILE"] | None = None
     research_stale: bool = False
+    research_suggest_again: bool = Field(
+        default=False,
+        description="관심 회사이고 AI 조사한 지 설정 일수보다 오래됨 → 다시 조사 제안(#677)",
+    )
     title: str
     customer_name: str
     opportunity_item: str

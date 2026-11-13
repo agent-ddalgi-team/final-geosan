@@ -542,6 +542,8 @@ export interface DetailHeader {
   researchedAt?: string | null;
   researchSource?: 'AI' | 'CASE_FILE' | null;
   researchStale?: boolean;
+  /** 관심 회사이고 AI가 조사한 지 설정 일수(`research.suggestAgainAfterDays`)보다 오래됨 → 다시 조사 제안(#677). */
+  researchSuggestAgain?: boolean;
   purpose: Purpose;
   owner?: string | null;
   classificationCode: ClassificationCode;

@@ -65,6 +65,7 @@ from geosan.api.schemas import (
     ScoreState,
 )
 from geosan.capability.queries import get_process
+from geosan.config.app_settings import ResearchSettings
 from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
 from geosan.config.sales_questions import KST
 from geosan.dashboard.contact_order import (
@@ -189,6 +190,21 @@ def _score_state(run: EvaluationRun | None, *, ai_pending: bool = False) -> Scor
     return "CONFIRMED"
 
 
+def _suggest_research_again(context: DetailContext, research: ResearchSettings) -> bool:
+    """#677: AI가 조사한 지 설정 일수보다 오래 지난 관심 회사에만 다시 조사를 제안한다.
+
+    알리기만 한다. 조사는 담당자가 [다시 조사]를 누를 때만 돈다. 설정이 0이면 제안하지 않는다.
+    """
+    customer = context.customer
+    days = research.suggest_again_after_days
+    if days <= 0 or customer.researched_at is None or customer.research_source != "AI":
+        return False
+    if utcnow() - customer.researched_at <= timedelta(days=days):
+        return False
+    bookmark = latest_bookmark(context.session, context.opportunity.opp_id)
+    return bookmark is not None and bookmark.active
+
+
 def _header(context: DetailContext) -> dict:
     distances = customer_distances(
         context.session,
@@ -228,6 +244,7 @@ def _header(context: DetailContext) -> dict:
                 customer.researched_at is not None
                 and utcnow() - customer.researched_at > timedelta(days=research.stale_after_days)
             ),
+            research_suggest_again=_suggest_research_again(context, research),
             title=f"{customer.name} · {opportunity.item}",
             customer_name=customer.name,
             opportunity_item=opportunity.item,

@@ -3,6 +3,7 @@
 //   → 2. 통화에서 확인할 것(읽기 전용) → 3. 점수 자세히 보기(접힘, 안에 AI 점수 입력 제안 [확정]·[고치기]).
 // 아래(적는 곳): 검토 의견 → 기록 남기기(접촉·꼬리 질문·한 줄 메모·다음 일정) → 활동 이력 → 비슷한 회사 참고(#269).
 // 읽는 곳의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이다. 서버 창구는 그대로 두고 화면에서만 부르지 않는다.
+// 예외(#677): 확정한 공정과 다른 AI 공정 제안이 있을 때만 "한눈에" 공정 줄 아래에 [확정 값 유지]·[○○도 추가]가 보인다.
 // 머리의 [기록 남기기](#691)는 적는 곳의 "기록 남기기" 칸으로 내려가는 이동 단추다(저장하지 않는다).
 // 머리의 [관심] 단추(#357): 검토 의견·메모·영업 기록을 저장하면 서버가 관심을 켜므로, 그 저장 뒤에 관심 값만 조용히 다시 읽는다.
 import { useCallback, useEffect, useState } from 'react';
@@ -275,6 +276,15 @@ export default function OpportunityDetailPage() {
             requirements={data.requirements}
             contactCount={contactCount}
             lastContactAt={lastContactAt}
+            processChoice={{
+              oppId,
+              evalId: data.evalId,
+              // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
+              onSaved: () => {
+                setReload((n) => n + 1);
+                setTimelineVersion((n) => n + 1);
+              },
+            }}
             callCheckCount={
               data.reviewItems !== undefined
                 ? callCheckCountOf(

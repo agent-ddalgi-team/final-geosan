@@ -679,6 +679,8 @@ export const companySummary = {
   /** 사례 파일로만 만든 요약(AI 조사 전). */
   caseFileBasis: '사례 파일 기준',
   stale: '오래됨',
+  /** #677: 조사한 지 한 달(설정)이 지난 관심 회사의 "한눈에" 근거 상태 줄 꼬리표. */
+  suggestAgainTag: '다시 조사할 때',
   aiSuggestion: 'AI 제안',
   summaryLine: '한 줄',
   highlights: '특징',
@@ -713,6 +715,8 @@ export const homepageControls = {
   /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
   addButton: '주소 넣기',
   rerunButton: '다시 조사 💰',
+  /** #677: 조사한 지 한 달(설정)이 지난 관심 회사. [다시 조사] 단추 옆에 보인다. 저절로 조사하지 않는다. */
+  suggestAgain: (days: number) => `조사한 지 ${days}일 · 새 정보가 있을 수 있어요`,
   urlLabel: '홈페이지 주소',
   urlPlaceholder: 'https://',
   runWithUrl: '이 주소로 조사',
@@ -1614,6 +1618,21 @@ export const detailReport = {
      */
     markConfirmed: '확인됨',
     markAi: 'AI 제안 · 확인 전',
+    /**
+     * #677(PM 결정 2026-11-13): 사람이 확정한 공정이 있는데 AI가 다른 공정을 제안했을 때 공정 줄 아래에 보인다.
+     * 확정 값은 저절로 바뀌지 않는다. [확정 값 유지]는 그 제안을 물리치고, [○○도 추가]는 확정 공정에 더한다.
+     */
+    difference: {
+      tag: 'AI는 다르게 봄',
+      /** "AI 새 제안: 니켈도금 · 확정 값: 아연도금" */
+      line: (proposed: string, confirmed: readonly string[]) =>
+        `AI 새 제안: ${proposed} · 확정 값: ${confirmed.join(', ')}`,
+      keep: '확정 값 유지',
+      /** "니켈도금도 추가" */
+      add: (proposed: string) => `${proposed}도 추가`,
+      pickStaffFirst: '담당자를 고르면 고를 수 있습니다.',
+      failed: '저장하지 못했습니다.',
+    },
     markConfirmedAria: (text: string) => `${text} (사람이 확인한 값)`,
     markAiAria: 'AI 제안 · 확인 전 (사람이 확인하기 전)',
     /** "외 1개" */
