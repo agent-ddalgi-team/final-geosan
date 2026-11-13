@@ -266,15 +266,16 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     expect(screen.queryByText('이번 수집만')).not.toBeInTheDocument();
   });
 
-  it('처음에는 "추천 순"이고 요청에 sort가 없다. "최근 들어온 순"을 누르면 주소와 요청에 sort=recent가 들어가며 1쪽부터 다시 본다', async () => {
+  it('처음에는 "추천 순"이고 요청은 sort=contact(세 묶음 순, #610)이다. "최근 들어온 순"을 누르면 주소와 요청에 sort=recent가 들어가며 1쪽부터 다시 본다', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply([found], RUNNING));
     renderPage();
     await screen.findByTestId('ingest-summary');
     expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('list-sort-recent')).toHaveAttribute('aria-pressed', 'false');
-    // 추천 순 요청에는 sort 칸이 아예 없다(기존 요청 모양 그대로).
-    expect(mockedGet.mock.calls[0][3]).not.toHaveProperty('sort');
+    // 추천 순 요청은 세 묶음 순으로 달라고 한다(#610). 주소에는 sort를 남기지 않는다.
+    expect(mockedGet.mock.calls[0][3]).toMatchObject({ sort: 'contact' });
+    expect(screen.getByTestId('location')).not.toHaveTextContent('sort');
     expect(mockedGet.mock.calls[0][3]).not.toHaveProperty('batch');
 
     await user.click(screen.getByTestId('list-sort-recent'));
@@ -284,7 +285,7 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     expect(screen.getByTestId('list-sort-recent')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('주소에 sort=recent가 있으면 "최근 들어온 순"으로 열리고, "추천 순"을 누르면 sort가 빠진다', async () => {
+  it('주소에 sort=recent가 있으면 "최근 들어온 순"으로 열리고, "추천 순"을 누르면 주소에서 sort가 빠지고 요청은 sort=contact가 된다', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply([found], RUNNING));
     renderPage('/opportunities?sort=recent');
@@ -293,15 +294,17 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     expect(screen.getByTestId('list-sort-recent')).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByTestId('list-sort-rank'));
-    await waitFor(() => expect(mockedGet.mock.calls.at(-1)?.[3]).not.toHaveProperty('sort'));
+    await waitFor(() =>
+      expect(mockedGet.mock.calls.at(-1)?.[3]).toMatchObject({ sort: 'contact' }),
+    );
     expect(screen.getByTestId('location')).not.toHaveTextContent('sort');
   });
 
-  it('sort가 recent가 아닌 다른 값이면 추천 순으로 읽고 서버에 보내지 않는다', async () => {
+  it('sort가 recent가 아닌 다른 값이면 추천 순으로 읽고 그 값을 서버에 보내지 않는다', async () => {
     mockedGet.mockResolvedValue(reply([found], RUNNING));
     renderPage('/opportunities?sort=other');
     await screen.findByTestId('ingest-summary');
-    expect(mockedGet.mock.calls[0][3]).not.toHaveProperty('sort');
+    expect(mockedGet.mock.calls[0][3]).toMatchObject({ sort: 'contact' });
     expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
   });
 

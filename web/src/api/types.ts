@@ -58,6 +58,39 @@ export interface Meta {
   industryCounts?: IndustryCount[] | null;
   /** 마지막 후보 수집 회차 요약(#316, 계약 C1 `meta.latestIngest`). 한 번도 안 가져왔으면 null·없음. */
   latestIngest?: LatestIngest | null;
+  /** 거른 조건 안의 묶음별 건수(#610). 쪽 넘김과 무관하다. 묶음 제목 옆 "9곳"에 쓴다. */
+  bucketCounts?: Record<ContactBucket, number> | null;
+}
+
+/** 추천 목록의 세 묶음(#610, C0 contactBucket): 지금 연락할 곳 / 확인 필요 / 나중. */
+export type ContactBucket = 'NOW' | 'CHECK' | 'LATER';
+/** 그 묶음에 든 이유(#610, C0 bucketBasis). 카드 꼬리표로 보인다. */
+export type BucketBasis =
+  | 'EXCLUDED_OPINION'
+  | 'REQUIRED_FAILED'
+  | 'EXISTING_CUSTOMER'
+  | 'CLOSED_OR_HOLD'
+  | 'IN_PROGRESS'
+  | 'NEED_CHECK_OPINION'
+  | 'REQUIRED_PENDING'
+  | 'OWN_PLATING'
+  | 'NOT_EVALUATED_HIGH_FIT'
+  | 'NOT_EVALUATED_LOWER_FIT'
+  | 'EVIDENCE_RECHECK'
+  | 'REQUIRED_PASSED'
+  | 'MONITOR';
+/** 같은 공정·산업군의 최근 성사·거절로 묶음 안 순서를 올리거나 내린 근거(#610). 서버가 읽을 때 계산한다. */
+export interface RankAdjust {
+  /** 양수는 위로, 음수는 아래로, 0은 그대로. */
+  level: number;
+  processCode: string;
+  processName: string;
+  industry: string;
+  wonCount: number;
+  /** 설정에 적힌 이유로 센 거절 수. */
+  lostCount: number;
+  countedLostReasons: LostReasonCode[];
+  windowDays: number;
 }
 
 /** 후보 수집 회차 상태(계약 C1). 가져오는 중 / 끝남 / 실패. */
@@ -415,6 +448,11 @@ export interface OpportunityCard {
   relationStatus?: RelationStatus;
   /** 세부 단계(#607). 카드 단계 꼬리표 옆에 "접촉 · 수요 확인"처럼 붙는다. 없으면 큰 단계만. */
   salesStep?: SalesStep | null;
+  /** 세 묶음(#610). 없으면(옛 응답) 묶음 제목·꼬리표를 보이지 않는다. */
+  bucket?: ContactBucket;
+  bucketBasis?: BucketBasis;
+  /** 영업 결과 조정(#610). null이면 조정 이유 줄을 보이지 않는다. */
+  rankAdjust?: RankAdjust | null;
   oppId: string;
   rank: number;
   title: string;

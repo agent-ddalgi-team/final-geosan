@@ -38,6 +38,8 @@ const NO_FILTERS = {
   stage: null,
   filter: null,
   q: null,
+  // 추천 순은 세 묶음 순(#610)으로 달라고 한다.
+  sort: 'contact',
 };
 
 /** 거산 공정 9종(서버가 주는 순서). 앞의 두 공정에만 회사가 있다. */
@@ -886,21 +888,21 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(mockedGet).toHaveBeenCalledTimes(calls);
       expect(rank).toHaveAttribute('aria-pressed', 'true');
       expect(locationText()).toBe('/opportunities?process=ANODIZING');
-      // 서버로 `sort`를 보내지 않는다.
-      for (const call of mockedGet.mock.calls) expect(call[3]).not.toHaveProperty('sort');
+      // 추천 순은 서버에 세 묶음 순(`sort=contact`, #610)으로 달라고 한다. 주소에는 남기지 않는다.
+      for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
     });
 
     it.each([
       '/opportunities?q=A정밀',
       '/opportunities?bookmarked=true',
       '/opportunities?filter=NOT_CONTACTED',
-    ])('정렬 묶음은 %s 에서도 보이고 `sort`는 보내지 않는다', async (url) => {
+    ])('정렬 묶음은 %s 에서도 보이고 추천 순(`sort=contact`)으로 부른다', async (url) => {
       mockedGet.mockResolvedValue(reply([apjeong], MENU));
       renderPage(url);
       await screen.findByTestId('opportunity-card');
       expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-disabled', 'true');
-      for (const call of mockedGet.mock.calls) expect(call[3]).not.toHaveProperty('sort');
+      for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
     });
   });
 

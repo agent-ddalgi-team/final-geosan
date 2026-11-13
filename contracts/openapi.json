@@ -284,6 +284,30 @@
         "title": "BreakdownBasis",
         "type": "object"
       },
+      "BucketCounts": {
+        "description": "목록의 묶음별 건수(#610). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다.",
+        "properties": {
+          "CHECK": {
+            "title": "Check",
+            "type": "integer"
+          },
+          "LATER": {
+            "title": "Later",
+            "type": "integer"
+          },
+          "NOW": {
+            "title": "Now",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "NOW",
+          "CHECK",
+          "LATER"
+        ],
+        "title": "BucketCounts",
+        "type": "object"
+      },
       "CardOutcome": {
         "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
         "properties": {
@@ -2606,6 +2630,17 @@
       "Meta": {
         "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
         "properties": {
+          "bucketCounts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BucketCounts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "목록에서 거른 조건 안의 묶음별 건수(#610). 쪽 넘김과 무관하고 합은 total"
+          },
           "datasetKind": {
             "anyOf": [
               {
@@ -3029,6 +3064,36 @@
           "blocker": {
             "$ref": "#/components/schemas/Blocker"
           },
+          "bucket": {
+            "description": "지금 연락할 곳 / 확인 필요 / 나중",
+            "enum": [
+              "NOW",
+              "CHECK",
+              "LATER"
+            ],
+            "title": "Bucket",
+            "type": "string"
+          },
+          "bucketBasis": {
+            "description": "그 묶음에 든 이유 하나(카드 꼬리표)",
+            "enum": [
+              "EXCLUDED_OPINION",
+              "REQUIRED_FAILED",
+              "EXISTING_CUSTOMER",
+              "CLOSED_OR_HOLD",
+              "IN_PROGRESS",
+              "NEED_CHECK_OPINION",
+              "REQUIRED_PENDING",
+              "OWN_PLATING",
+              "NOT_EVALUATED_HIGH_FIT",
+              "NOT_EVALUATED_LOWER_FIT",
+              "EVIDENCE_RECHECK",
+              "REQUIRED_PASSED",
+              "MONITOR"
+            ],
+            "title": "Bucketbasis",
+            "type": "string"
+          },
           "classificationCode": {
             "$ref": "#/components/schemas/ClassificationCode"
           },
@@ -3183,6 +3248,17 @@
             "title": "Rank",
             "type": "integer"
           },
+          "rankAdjust": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RankAdjust"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "같은 공정·산업군의 최근 성사·거절로 정한 조정. 표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -3324,7 +3400,9 @@
           "nextAction",
           "isVirtual",
           "evalId",
-          "datasetKind"
+          "datasetKind",
+          "bucket",
+          "bucketBasis"
         ],
         "title": "OpportunityCard",
         "type": "object"
@@ -4148,6 +4226,62 @@
         ],
         "title": "QuestionTargetKind",
         "type": "string"
+      },
+      "RankAdjust": {
+        "description": "영업 결과로 묶음 안 순서를 올리거나 내린 근거(#610). 읽을 때 계산하고 저장하지 않는다.\n\n약속 C6에 이름만 있는 `eval_rank_adjustment`(사람이 순위를 고치는 표)와 뜻이 다르다.",
+        "properties": {
+          "countedLostReasons": {
+            "description": "센 거절에 실제로 나온 이유 코드",
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCode"
+            },
+            "title": "Countedlostreasons",
+            "type": "array"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          },
+          "level": {
+            "description": "조정 단계. 양수는 위로, 음수는 아래로, 0은 그대로",
+            "title": "Level",
+            "type": "integer"
+          },
+          "lostCount": {
+            "description": "같은 기준의 거절 가운데 설정에 적힌 이유로 센 회사 수",
+            "title": "Lostcount",
+            "type": "integer"
+          },
+          "processCode": {
+            "title": "Processcode",
+            "type": "string"
+          },
+          "processName": {
+            "title": "Processname",
+            "type": "string"
+          },
+          "windowDays": {
+            "title": "Windowdays",
+            "type": "integer"
+          },
+          "wonCount": {
+            "description": "같은 공정·산업군에서 기간 안에 성사한 다른 회사 수",
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level",
+          "processCode",
+          "processName",
+          "industry",
+          "wonCount",
+          "lostCount",
+          "countedLostReasons",
+          "windowDays"
+        ],
+        "title": "RankAdjust",
+        "type": "object"
       },
       "Ratios": {
         "description": "표본이 설정 기준 이상일 때만 싣는 비율(소수 2자리).",

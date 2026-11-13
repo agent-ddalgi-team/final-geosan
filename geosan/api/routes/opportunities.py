@@ -36,6 +36,7 @@ from geosan.api.routes.records import (
 from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
+    BucketCounts,
     CardOutcome,
     CardRecords,
     DetailHeader,
@@ -52,6 +53,7 @@ from geosan.api.schemas import (
     ProcessCount,
     ProcessLinkView,
     Question,
+    RankAdjust,
     Reasons,
     RegionCount,
     RequirementCheckView,
@@ -62,7 +64,18 @@ from geosan.api.schemas import (
 )
 from geosan.capability.queries import get_process
 from geosan.config.errors import InputError, NotFoundError, RunFailedError
+from geosan.config.sales_questions import KST
+from geosan.dashboard.contact_order import (
+    BUCKETS,
+    AdjustRule,
+    CompanyState,
+    adjustment_for,
+    assign_bucket,
+    closed_results,
+    contact_order_key,
+)
 from geosan.dashboard.queries import bookmarked_opp_ids
+from geosan.dashboard.sales_analysis import load_company_records, process_display_name
 from geosan.evaluation.inputs import has_ai_pending_inputs
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
 from geosan.evaluation.models import (
@@ -79,7 +92,7 @@ from geosan.opportunity.factory_csv import address_city
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Outcome, ReviewOpinion
-from geosan.rules.codes import ProcessCode
+from geosan.rules.codes import LostReasonCode, ProcessCode
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -537,6 +550,120 @@ def _address_region(address: str | None) -> str | None:
     return (address_city(address) or parts[1]) if len(parts) > 1 else None
 
 
+@dataclass(frozen=True)
+class _Placement:
+    """카드 한 장의 묶음·이유·조정과 `sort=contact` 정렬 키(#610)."""
+
+    bucket: str
+    basis: str
+    adjust: RankAdjust | None
+    order_key: tuple
+
+
+def _contact_placements(
+    session: Session,
+    rows: list[tuple[EvaluationRun, EvaluationRun, Opportunity, Customer]],
+    *,
+    codes_by_opportunity: dict[str, set[str]],
+    processes: list[tuple[str, str]],
+) -> dict[str, _Placement]:
+    """추천 순으로 세운 `rows`의 회사마다 세 묶음 자리를 계산한다(계약 C1, #610).
+
+    최신 검토 의견·영업 단계·성사/거절 기록은 요청당 한 번씩만 읽는다(회사마다 읽지 않는다).
+    점수·분류·기존 순위는 읽기만 하고 아무것도 저장하지 않는다.
+    """
+    if not rows:
+        return {}
+    runtime = runtime_for(session)
+    settings = runtime.app_settings.contact_list
+    if settings is None:
+        # 기준을 코드에서 지어내지 않는다(규칙 ⑩). 설정이 없으면 목록을 내지 않고 알린다.
+        raise RunFailedError(
+            "추천 목록 묶음 기준(contactList)이 설정에 없습니다. 앱 설정 파일을 확인해 주세요."
+        )
+    # 카드·상세의 최신 값과 같은 순서로 읽어 마지막 행이 남게 한다.
+    opinions = dict(
+        session.execute(
+            select(ReviewOpinion.opp_id, ReviewOpinion.opinion).order_by(
+                ReviewOpinion.version, ReviewOpinion.recorded_at
+            )
+        ).all()
+    )
+    stages = dict(
+        session.execute(select(Outcome.opp_id, Outcome.status).order_by(Outcome.version)).all()
+    )
+    adjust = settings.adjust
+    rule = AdjustRule(
+        window_days=adjust.window_days,
+        min_closed_count=adjust.min_closed_count,
+        won_per_step=adjust.won_per_step,
+        max_up=adjust.max_up,
+        lost_per_step=adjust.lost_per_step,
+        max_down=adjust.max_down,
+        lost_reasons_counted=frozenset(adjust.lost_reasons_counted),
+    )
+    # 영업 분석표와 같은 조회·요약 함수로 센다(가상·실제 분리 포함). 세부 단계는 쓰지 않는다.
+    results = closed_results(
+        load_company_records(
+            session,
+            dataset_kind=runtime.app_settings.active_dataset_kind.value,
+            sales_step_of=lambda _opp_id, _status: None,
+        ),
+        window_days=rule.window_days,
+        now=utcnow(),
+        tz=KST,
+    )
+    lost_reason_order = [code.value for code in LostReasonCode]
+    placements = {}
+    for position, (_original, current, opportunity, customer) in enumerate(rows):
+        state = CompanyState(
+            opinion=opinions.get(opportunity.opp_id),
+            classification_code=current.classification_code,
+            relation_status=customer.relation_status,
+            outcome_status=stages.get(opportunity.opp_id),
+            scored=current.score_s is not None,
+            fit_level=customer.fit_level,
+            own_plating=bool(customer.own_plating_line_suspected),
+            core_evidence_recheck=current.core_evidence_recheck_flag,
+            blocks_approval=current.blocks_approval,
+        )
+        bucket, basis = assign_bucket(
+            state,
+            now_classifications=settings.now_classifications,
+            unscored_high_fit_to_now=settings.unscored_high_fit_to_now,
+        )
+        found = adjustment_for(
+            opportunity.opp_id,
+            codes_by_opportunity.get(opportunity.opp_id, set()),
+            customer.industries or [],
+            results,
+            rule=rule,
+            processes=processes,
+            industry_order=runtime.app_settings.industries,
+            lost_reason_order=lost_reason_order,
+        )
+        timing = current.timing_requirements
+        placements[opportunity.opp_id] = _Placement(
+            bucket=bucket,
+            basis=basis,
+            adjust=RankAdjust.model_validate(found, from_attributes=True) if found else None,
+            order_key=contact_order_key(
+                bucket=bucket,
+                basis=basis,
+                state=state,
+                null_fit_level_as=settings.null_fit_level_as,
+                level=found.level if found else 0,
+                valid_until=current.valid_until,
+                timing_met_count=(
+                    sum(bool(value) for value in timing.values()) if isinstance(timing, dict) else 0
+                ),
+                score_t=current.score_t,
+                base_position=position,
+            ),
+        )
+    return placements
+
+
 @router.get(
     "/opportunities", response_model=OpportunityListEnvelope, response_model_exclude_unset=True
 )
@@ -564,8 +691,9 @@ def list_opportunities(
     if tab != "new" or ("filter" in params and params["filter"] not in supported_filters):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
     # 정렬(#516): rank = 추천 순(기본), recent = 들어온 시각 최신 순.
+    # contact(#610) = 세 묶음 순(지금 연락할 곳 → 확인 필요 → 나중). rank의 뜻은 그대로다.
     # distance(#222)는 아직 연결 전이라 거부한다.
-    if sort not in ("rank", "recent"):
+    if sort not in ("rank", "recent", "contact"):
         raise InputError(
             "이 정렬은 아직 연결되지 않았습니다. 추천 순 또는 최근 들어온 순을 골라 주세요."
         )
@@ -714,6 +842,23 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         rows.append((original, current, opportunity, customer))
     rows.sort(key=lambda row: candidate_order(row[0], row[1], row[3], full_batch_id))
+    # 세 묶음(#610): 추천 순으로 세운 자리 번호를 마지막 정렬 키로 넘긴다.
+    placements = _contact_placements(
+        session,
+        rows,
+        codes_by_opportunity=codes_by_opportunity,
+        processes=[(row.code, process_display_name(row.name)) for row in processes],
+    )
+    bucket_counts = Counter(placements[row[2].opp_id].bucket for row in rows)
+    bucket_ranks: dict[str, int] = {}
+    if sort == "contact":
+        rows.sort(key=lambda row: placements[row[2].opp_id].order_key)
+        # 카드 번호는 묶음 안 순서다(묶음마다 1부터).
+        seen: Counter[str] = Counter()
+        for row in rows:
+            name = placements[row[2].opp_id].bucket
+            seen[name] += 1
+            bucket_ranks[row[2].opp_id] = seen[name]
     if sort == "recent":
         # 들어온 시각이 최신인 회사를 앞에 두고, 시각이 없는(사례 파일) 회사는 뒤에 둔다.
         # 추천 순으로 먼저 정렬해 두었으므로 같은 시각끼리는 그 순서가 유지된다(안정 정렬).
@@ -751,7 +896,12 @@ def list_opportunities(
                     if row.code in codes_by_opportunity.get(opportunity.opp_id, set())
                 ],
                 opp_id=opportunity.opp_id,
-                rank=position
+                bucket=placements[opportunity.opp_id].bucket,
+                bucket_basis=placements[opportunity.opp_id].basis,
+                rank_adjust=placements[opportunity.opp_id].adjust,
+                rank=bucket_ranks[opportunity.opp_id]
+                if sort == "contact"
+                else position
                 if (
                     process is not None
                     or industry is not None
@@ -805,5 +955,6 @@ def list_opportunities(
             industry_counts=industry_counts,
             region_counts=region_counts,
             not_evaluated_count=not_evaluated,
+            bucket_counts=BucketCounts(**{name.lower(): bucket_counts[name] for name in BUCKETS}),
         ),
     )

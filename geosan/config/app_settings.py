@@ -21,7 +21,13 @@ from geosan.config.errors import FieldError, InputError
 from geosan.config.loader import LoadedDocument, join_path, load_document
 from geosan.config.schemas import STAFF_KEY_PATTERN, FileModel
 from geosan.config.validators import format_field_error, pydantic_errors_to_fields
-from geosan.rules.codes import VIEWER_STAFF_KEY, DatasetKind
+from geosan.rules.codes import (
+    VIEWER_STAFF_KEY,
+    ClassificationCode,
+    DatasetKind,
+    FitLevel,
+    LostReasonCode,
+)
 
 SECRET_KEY_NAMES: frozenset[str] = frozenset(
     {"password", "passwd", "apikey", "api_key", "token", "secret", "accesskey", "access_key"}
@@ -246,6 +252,31 @@ class SalesAnalysisSettings(FileModel):
     closed_window_days: int = Field(ge=1, strict=True)
 
 
+class ContactAdjustSettings(FileModel):
+    """계약 C7 `contactList.adjust`(#610). 같은 공정·산업군의 성사·거절로 순서를 조정하는 기준."""
+
+    window_days: int = Field(ge=1, strict=True)
+    # 표본(성사 + 센 거절)이 이 값보다 적으면 조정하지 않는다.
+    min_closed_count: int = Field(ge=1, strict=True)
+    won_per_step: int = Field(ge=1, strict=True)
+    max_up: int = Field(ge=0, strict=True)
+    lost_per_step: int = Field(ge=1, strict=True)
+    max_down: int = Field(ge=0, strict=True)
+    lost_reasons_counted: list[LostReasonCode]
+
+
+class ContactListSettings(FileModel):
+    """계약 C7 `contactList`(#610). 기준은 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+
+    # 막는 조건이 없을 때 "지금 연락할 곳"에 드는 분류.
+    now_classifications: list[ClassificationCode]
+    # true면 평가 전 + 적합도 상 회사를 "지금 연락할 곳"에 넣는다.
+    unscored_high_fit_to_now: bool = Field(strict=True)
+    # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
+    null_fit_level_as: FitLevel
+    adjust: ContactAdjustSettings
+
+
 class MainPhoneSettings(FileModel):
     allowed_prefixes: list[str] = Field(default_factory=list)
 
@@ -292,6 +323,8 @@ class AppSettings(FileModel):
     research: ResearchSettings = Field(default_factory=ResearchSettings)
     # #608: 이 칸이 없는 옛 설정 파일도 읽는다. DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     sales_analysis: SalesAnalysisSettings | None = None
+    # #610: 위와 같은 방식. 옛 설정에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    contact_list: ContactListSettings | None = None
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
@@ -475,8 +508,8 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis",)
-"""#608 뒤에 생긴 묶음. 그 전에 만든 설정 파일·DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_SECTIONS = ("salesAnalysis", "contactList")
+"""#608·#610 뒤에 생긴 묶음. 그 전에 만든 설정 파일·DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
