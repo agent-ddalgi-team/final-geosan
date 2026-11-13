@@ -46,6 +46,10 @@ class Note(CommonColumns, Base):
     kind: Mapped[str] = mapped_column(
         String(16), nullable=False, default="MEMO", server_default="MEMO"
     )
+    # #253·C6: 잘못 입력으로 표시(취소)한 시각·담당자·이유. 행은 지우지 않고 이 세 칸만 채운다.
+    cancelled_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    cancelled_by: Mapped[str | None] = mapped_column(String(32))
+    cancel_reason: Mapped[str | None] = mapped_column(String(200))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
@@ -75,6 +79,10 @@ class Outcome(CommonColumns, Base):
     attempted_at: Mapped[date | None] = mapped_column(Date)
     # #607·C6: [단계 고치기]로 담당자가 정한 세부 단계(SalesStep). 옛 행·안 고친 행은 비워 둔다.
     step_override: Mapped[str | None] = mapped_column(String(24))
+    # #253·C6: 잘못 입력으로 표시(취소)한 시각·담당자·이유. 행은 지우지 않고 이 세 칸만 채운다.
+    cancelled_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    cancelled_by: Mapped[str | None] = mapped_column(String(32))
+    cancel_reason: Mapped[str | None] = mapped_column(String(200))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
