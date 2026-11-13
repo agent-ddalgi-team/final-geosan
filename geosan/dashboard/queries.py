@@ -562,20 +562,8 @@ def build_breakdown(
     )
 
 
-def build_dashboard(
-    session: Session,
-    *,
-    dataset_kind: str,
-    staff_key: str | None,
-    today: date,
-    now: datetime,
-    breakdown_source: BreakdownSource | None = None,
-) -> DashboardResult:
-    """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
-
-    `breakdown_source`를 주면 공정·산업군 막대도 만든다. 가상 묶음은 가상 사례뿐이라
-    (집계에서 제외, 계약 C1) 막대를 만들지 않는다.
-    """
+def dashboard_population(dataset_kind: str):
+    """관심 켠 기회의 최신 확정 평가·활성 묶음 범위를 대시보드와 지도가 공유한다."""
     # latest_confirmed_evaluation과 같은 순서로 최신 확정 평가를 먼저 고른다.
     # 묶음 조건을 먼저 걸면 다른 묶음으로 바뀐 회사의 낡은 평가가 다시 잡힐 수 있다.
     confirmed = (
@@ -612,6 +600,24 @@ def build_dashboard(
             Customer.is_virtual.is_(dataset_kind == "VIRTUAL_REVIEWED"),
         )
     )
+    return population
+
+
+def build_dashboard(
+    session: Session,
+    *,
+    dataset_kind: str,
+    staff_key: str | None,
+    today: date,
+    now: datetime,
+    breakdown_source: BreakdownSource | None = None,
+) -> DashboardResult:
+    """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
+
+    `breakdown_source`를 주면 공정·산업군 막대도 만든다. 가상 묶음은 가상 사례뿐이라
+    (집계에서 제외, 계약 C1) 막대를 만들지 않는다.
+    """
+    population = dashboard_population(dataset_kind)
     # 관심으로 켜 둔 기회만 센다. 관심이 아닌 기회는 어느 칸에도 들지 않는다(#356).
     classified = classify_bookmarked(session, population)
     schedule, due_count = _schedule(session, population, today)

@@ -43,15 +43,16 @@ def distance(point, settings):
     )
 
 
-def customer_distances(session, customers, opp_ids, settings):
-    """API 요청의 거리만 반환한다. 네이버 응답·거리·좌표를 어디에도 저장하지 않는다."""
-    distances = {c.customer_id: distance(stored_point(c), settings) for c in customers}
+def customer_points(session, customers, opp_ids, settings):
+    """이번 요청의 좌표만 반환한다. 네이버 결과는 공용 캐시·DB·파일에 저장하지 않는다."""
+    customers = list({c.customer_id: c for c in customers}.values())
+    points = {c.customer_id: stored_point(c) for c in customers}
     if (
         not settings.geocoding.enabled
         or not settings.geocoding.naver_fallback_enabled
         or settings.geosan.lat is None
     ):
-        return distances
+        return points
     pending = [
         (c.customer_id, c.address, opp_ids[c.customer_id])
         for c in customers
@@ -61,7 +62,7 @@ def customer_distances(session, customers, opp_ids, settings):
         and parse_address(c.address) is not None
     ]
     if not pending:
-        return distances
+        return points
     # 접속 확인 쓰기는 요청 의존성에서 먼저 완료했다. 이 읽기 세션은 커밋하지 않는다.
     resolver = GeocodeResolver(
         location_index(settings.geocoding.location_csv_files), settings.geocoding
@@ -70,5 +71,13 @@ def customer_distances(session, customers, opp_ids, settings):
         point = resolver.resolve(address, GeocodeClient(opp_id, address))
         if point and point.source in {"CSV", "JUSO"}:
             store_public_coordinate(customer_id, address, point)
-        distances[customer_id] = distance(point, settings)
-    return distances
+        points[customer_id] = point
+    return points
+
+
+def customer_distances(session, customers, opp_ids, settings):
+    """카드·상세가 같은 좌표 처리로 직선거리만 읽는다."""
+    return {
+        customer_id: distance(point, settings)
+        for customer_id, point in customer_points(session, customers, opp_ids, settings).items()
+    }

@@ -494,8 +494,9 @@ paths:
             )
   /dashboard/map:
     get:
-      summary: (추가 2026-11-03 PM 결정, 2차 #222 지도 하위) 대시보드 지도용 점 목록. 접속 보호 뒤에만. 응답에 메모·연락처·대표번호 없음. 좌표는 도로명주소 API로 구해 저장한 값(네이버 지도에서 받은 값 아님)
+      summary: (추가 2026-11-03 PM 결정, 2차 #222 지도 하위) 대시보드 지도용 점 목록. 접속 보호 뒤에만. 응답에 메모·연락처·대표번호 없음. 좌표는 CSV·행안부 공공좌표를 우선 재사용하고, 없는 주소는 승인한 4단계 조회로 보완한다. 네이버 결과는 이 응답 안에서만 사용하며 저장·재사용하지 않는다(2026-11-13 이강욱 확인, #651·#642)
       responses: { '200': { description: 'Envelope(center{ lat, lng }(설정 geosan), ringsKm: [30, 50, 100](설정 distanceFilterPresetsKm), points[{ oppId, customerName, lat, lng, group: enum[INTERESTED, IN_PROGRESS, WON_THIS_YEAR], distanceKm }], missingCoordinates: int, asOf)' } }
+      # 2026-11-13 이강욱 확인 #642: 성공 범위는 한국 시간 올해 1월 1일~현재, 최초 성사 전환 시각 기준(이후 메모로 작년 성사가 올해로 바뀌지 않음). 대시보드 막대의 최근 12개월과 구분. 관심·진행·견적/샘플·올해 성사 중 관심 켠 실제 공개 회사만, 최신 확정 평가와 활성 평가 묶음 기준. 취소한 기록은 제외. 좌표 없음은 missingCoordinates에만 세고, 원본 주소·메모·연락처는 응답하지 않음. 거산 기준 좌표 미설정은 공통 오류로 알림. 응답은 Cache-Control: no-store.
   /opportunities/{oppId}/homepage-candidates:
     get:
       summary: (안 씀 — 2026-11-03 저녁 PM 결정 B) 네이버 결과 목록을 보여 주던 경로. ② 홈페이지 찾기는 OpenAI 웹 검색이 자동으로 하고 결과는 상세 머리(homepageStatus·homepageUrl)로 보이므로 이 경로는 만들지 않는다. 경로 호환을 위해 이름만 남김
