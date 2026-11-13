@@ -5292,9 +5292,35 @@
             "title": "Answerid",
             "type": "string"
           },
+          "closes": {
+            "anyOf": [
+              {
+                "enum": [
+                  "WON",
+                  "LOST",
+                  "ON_HOLD"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes"
+          },
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "lostReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reaches": {
             "anyOf": [

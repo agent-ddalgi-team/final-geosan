@@ -33,7 +33,13 @@ import {
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
-import { STEP_ORDER, SalesQuestionFields, SalesStepSummary } from './SalesQuestions';
+import {
+  STEP_ORDER,
+  SalesQuestionFields,
+  SalesStepSummary,
+  closingPick,
+  visibleQuestions,
+} from './SalesQuestions';
 
 export const DEFAULT_NOTE_MAX_LENGTH = 200;
 /** 접촉 기록 한 줄 메모 상한(#607, 설정 records.memoLineMaxLength 초기값). 넘으면 서버가 400. */
@@ -272,16 +278,42 @@ export default function RecordsArea({
   // 통화가 된 경우에만 판단이 맞았는지 알 수 있다. 부재면 묻지 않는다(#531).
   const spokeToCompany = result === 'REACHED' || result === 'DECLINED';
 
+  // 꼬리 질문은 통화가 된 접촉에서만 보인다. "거절"이면 "다음 할 일"과 마무리 질문만(#643).
+  const shownQuestions =
+    method && spokeToCompany && questions
+      ? visibleQuestions(questions, salesStep, picked, result === 'DECLINED')
+      : [];
+  // 마무리 답("끝 → 성사·거절·보류")을 골랐으면 저장할 때 단계가 그 값으로 정해진다(#643).
+  const closing = closingPick(shownQuestions, picked);
+  const closingNeedsReason = closing?.status === 'LOST' && closing.lostReasonCode === null;
+  const closingNeedsMemo = closing?.lostReasonCode === 'OTHER' && memoLine.trim() === '';
+  const closingLabel = closing
+    ? closing.status === 'LOST' && closing.lostReasonCode
+      ? recordsArea.stageCurrentLost(lostReasonLabels[closing.lostReasonCode])
+      : outcomeStatusLabels[closing.status]
+    : null;
+
   async function onSaveContact() {
-    if (!method || !result) return;
+    if (!method || !result || closingNeedsReason || closingNeedsMemo) return;
     // 지금 단계를 그대로 싣는다. 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 앞으로만
-    // 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈). 보류·성사·거절은 그대로.
-    const status: OutcomeStatus = currentStatus ?? 'NOT_EXECUTED';
-    const answers =
-      result === 'REACHED'
-        ? Object.entries(picked).map(([questionId, answerId]) => ({ questionId, answerId }))
-        : [];
+    // 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈). 마무리 답을 골랐으면 서버가
+    // 그 답으로 보류·성사·거절과 거절 이유를 정한다(#643). 화면도 같은 값을 실어 보낸다.
+    const status: OutcomeStatus = closing?.status ?? currentStatus ?? 'NOT_EXECUTED';
+    // 지금 보이는 질문의 답만 보낸다(가려진 꼬리 질문에 남은 옛 선택은 보내지 않는다).
+    const answers = shownQuestions
+      .filter((question) => picked[question.questionId])
+      .map((question) => ({
+        questionId: question.questionId,
+        answerId: picked[question.questionId],
+      }));
     const memo = memoLine.trim();
+    const closingReason: Pick<OutcomeRequest, 'lostReasonCode' | 'reason'> = closing?.lostReasonCode
+      ? {
+          lostReasonCode: closing.lostReasonCode,
+          // 기타는 사유 글이 필수라 한 줄 메모를 사유로도 싣는다(기존 서버 규칙 그대로).
+          ...(closing.lostReasonCode === 'OTHER' ? { reason: memo } : {}),
+        }
+      : {};
     const ok = await saveOutcome('contact', {
       status,
       method,
@@ -291,9 +323,12 @@ export default function RecordsArea({
       ...(answers.length > 0 ? { answers } : {}),
       ...(memo ? { memo } : {}),
       ...keepSchedule(),
-      ...(status === 'LOST' ? keepLostReason() : {}),
+      ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),
     });
     if (ok) {
+      if (closing) {
+        setSavedLostReason(closing.lostReasonCode === 'OTHER' ? memo : '');
+      }
       onContactRecorded?.(method);
       setResult(null);
       setJudgmentCheck(null);
@@ -466,7 +501,13 @@ export default function RecordsArea({
               />
               <Button
                 type="primary"
-                disabled={disabled || !result || attemptedAt === ''}
+                disabled={
+                  disabled ||
+                  !result ||
+                  attemptedAt === '' ||
+                  closingNeedsReason ||
+                  closingNeedsMemo
+                }
                 loading={busy === 'contact'}
                 onClick={() => void onSaveContact()}
                 data-testid="records-contact-save-button"
@@ -507,11 +548,12 @@ export default function RecordsArea({
             </div>
           </>
         )}
-        {method && result === 'REACHED' && questions ? (
+        {method && spokeToCompany && questions ? (
           <SalesQuestionFields
             questions={questions}
             step={salesStep}
             picked={picked}
+            allOnly={result === 'DECLINED'}
             onPick={(questionId, answerId) =>
               setPicked((previous) => {
                 const next = { ...previous };
@@ -523,7 +565,7 @@ export default function RecordsArea({
             disabled={disabled}
           />
         ) : null}
-        {method && result === 'REACHED' && questionsFailed ? (
+        {method && spokeToCompany && questionsFailed ? (
           <span style={hintStyle} data-testid="sales-questions-failed">
             {salesQuestionTexts.loadFailed}
           </span>
@@ -544,6 +586,18 @@ export default function RecordsArea({
               {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
             </span>
           </>
+        ) : null}
+        {closingLabel ? (
+          <span data-testid="records-close-preview" aria-live="polite">
+            {salesQuestionTexts.closePreview(closingLabel)}
+          </span>
+        ) : null}
+        {closingNeedsReason || closingNeedsMemo ? (
+          <span data-testid="records-close-blocked" style={{ color: colors.error }}>
+            {closingNeedsReason
+              ? salesQuestionTexts.closeNeedsReason
+              : salesQuestionTexts.closeOtherNeedsMemo}
+          </span>
         ) : null}
         {method && dateError ? (
           <span
