@@ -53,6 +53,8 @@ def test_config_ui_returns_current_record_settings(records_env, enabled, limit):
         "approvalEnabled": enabled,
         "noteMaxLength": limit,
         "cancelByAnyStaff": False,
+        # questionsPerContact는 #691에서 약속(C1 /config/ui, C7)에 더한 칸이다. 기본 6.
+        "questionsPerContact": 6,
     }
 
 
@@ -236,7 +238,7 @@ def test_existing_notes_survive_kind_migration(records_env, tmp_db):
     client, opp_id = records_env
     assert post(client, opp_id, "notes", {"text": "이전 가상 메모"}).status_code == 200
     assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
-    assert upgrade_to_head(tmp_db) == ["rec_014"]
+    assert upgrade_to_head(tmp_db) == ["src_006"]
     with session_scope() as session:
         note = session.scalar(select(Note).where(Note.opp_id == opp_id))
         assert (note.kind, note.text, note.version) == ("MEMO", "이전 가상 메모", 1)

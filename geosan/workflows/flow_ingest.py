@@ -31,6 +31,7 @@ from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_conditions
 from geosan.workflows.ingest_sources import store_dated_factory_csv
+from geosan.workflows.ingest_web import run_web_branch
 from geosan.workflows.research import STOP_KINDS, research_one
 
 logger = logging.getLogger(__name__)
@@ -262,6 +263,24 @@ def run_ingest(batch_id: str) -> None:
             )
             if not result.ok:
                 raise RunFailedError("새 후보의 재평가를 완료하지 못했습니다.")
+        # 웹 검색 갈래는 공공자료 회사의 등록·평가가 끝난 직후에 시작한다(C1, #345).
+        # 웹 갈래가 실패해도 이미 들어온 공공자료 회사의 자동 조사는 마친 뒤에 실패로 알린다.
+        web_affected: list[str] = []
+        web_error: Exception | None = None
+        try:
+            added = run_web_branch(
+                batch_id,
+                process_codes=prepared.process_codes,
+                industries=prepared.industries,
+                max_candidates=prepared.max_candidates,
+            )
+            if added:
+                result = run_evaluation(opp_ids=added, requested_by=batch.requested_by)
+                if not result.ok:
+                    raise RunFailedError("웹에서 찾은 새 후보의 재평가를 완료하지 못했습니다.")
+            web_affected = added
+        except Exception as error:
+            web_error = error
         with session_scope() as session:
             current = _running(session, batch_id)
             current.status = "DONE"
@@ -269,7 +288,8 @@ def run_ingest(batch_id: str) -> None:
             current.finished_at = utcnow()
         stage = "새 후보 홈페이지 조사"
         if settings.homepage_discovery.auto_research and not batch.is_virtual:
-            for opp_id in affected:
+            # 자동 조사는 두 갈래의 회사가 모두 들어온 뒤에 한 줄로 돈다.
+            for opp_id in [*affected, *web_affected]:
                 result = research_one(opp_id)
                 if result.error is not None and result.error.kind in STOP_KINDS:
                     raise RunFailedError("새 후보 홈페이지 조사를 완료하지 못했습니다.")
@@ -283,6 +303,9 @@ def run_ingest(batch_id: str) -> None:
                     current = session.get(IngestBatch, batch_id)
                     current.research_done_count += 1
                     current.finished_at = utcnow()
+        if web_error is not None:
+            stage = "웹 후보 검색"
+            raise web_error
     except Exception as error:
         message = (
             error.message

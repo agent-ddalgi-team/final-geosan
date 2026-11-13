@@ -1,10 +1,13 @@
 // 기록 영역(U5, 상세 하단): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정 네 칸. 모달·서랍 없이 인라인.
 // 다음 일정은 꼬리 질문 "다음 할 일은?" 아래 날짜로 접촉과 함께 잡고, 따로 있는 일정 칸은 접어 둔다(#683).
+// 덜 누르고 덜 오르내리게(#691, PM 결정 2026-11-13): 종류는 "전화"로 시작하고, "누가 먼저 연락했나"는 종류 옆에
+// 기본 "우리가"로 골라져 있으며, [접촉 기록 저장]은 꼬리 질문·한 줄 메모 아래 맨 끝에 있다. 결과가 "거절"이면
+// "어떻게 할까요?" 한 번으로 마무리 답을 대신 싣는다. 접힌 일정 칸에서는 통화 없이 종류·날짜로 일정만 잡는다.
 // 메모는 덧붙이기만 되고, 단계·일정은 저장할 때마다 새 행이 쌓인다(서버 규칙 Q5). 수정·삭제 단추는 두지 않는다.
 // 상대 회사 담당자 연락처를 메모에 적어도 막지 않는다(PM 결정 2026-11-03: 내부 메모장). 글자 수 초과 등
 // 서버가 돌려주는 쉬운 말은 그대로 보인다.
 import { useEffect, useState } from 'react';
-import { Button, Input, Typography } from 'antd';
+import { Button, Input, Radio, Typography } from 'antd';
 import { ApiError, getSalesQuestions, postNote, postOutcome } from '../../api/client';
 import type {
   ContactMethod,
@@ -36,11 +39,15 @@ import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 import { choiceAnswerIds } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
+import QuickDate from './QuickDate';
 import {
   STEP_ORDER,
   SalesQuestionFields,
   SalesStepSummary,
   closingPick,
+  closingRouteOf,
+  contactDefaults,
+  contactQuestionsOf,
   nextActionPick,
   visibleQuestions,
 } from './SalesQuestions';
@@ -81,12 +88,25 @@ export interface RecordsAreaProps {
   choiceMarks?: ChoiceMarks | null;
   /** 꼬리 질문으로 공정·산업을 확정해 저장했을 때 알린다(점수·검토사항까지 상세 전체 다시 불러오기용). */
   onCompanyConfirmed?: () => void;
+  /**
+   * 이 회사의 최신 검토 의견이 "제외"인지(#697). 제외한 회사에 접촉을 남기려 하면 저장 전에 그 자리에서
+   * 한 번 묻는다: 영업 대상으로 되돌리고 저장할지, 제외인 채로 저장할지.
+   */
+  excluded?: boolean;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
 
 /** 기록 종류 한 칸의 선택지. 전화·방문·메일은 접촉(영업 결과), 메모·자료 조사는 메모로 저장된다. */
 type RecordKind = 'MEMO' | 'CALL' | 'VISIT' | 'EMAIL' | 'RESEARCH';
+
+/** "어떻게 할까요?"에서 "아직 끝 아님 · 다시 연락"을 고른 상태(#691). 마무리 보기는 그 보기의 ID를 쓴다. */
+const DECLINE_CONTINUE = '__CONTINUE__';
+
+/** 상세 머리의 [기록 남기기]가 초점을 옮길 첫 입력(종류 고르기)의 id. */
+export function recordsEntryInputId(oppId: string): string {
+  return `records-kind-${oppId}`;
+}
 
 const RECORD_KIND_ORDER: RecordKind[] = ['MEMO', 'CALL', 'VISIT', 'EMAIL', 'RESEARCH'];
 
@@ -111,6 +131,7 @@ interface NativeSelectProps {
   onChange: (value: string | null) => void;
   disabled?: boolean;
   testId: string;
+  id?: string;
 }
 
 /** 브라우저 기본 선택 상자. antd Select보다 가볍고 키보드·낭독기에서 그대로 동작한다. */
@@ -122,9 +143,11 @@ function NativeSelect({
   onChange,
   disabled,
   testId,
+  id,
 }: NativeSelectProps) {
   return (
     <select
+      id={id}
       aria-label={label}
       value={value ?? ''}
       disabled={disabled}
@@ -162,6 +185,7 @@ export default function RecordsArea({
   onSalesStepChanged,
   choiceMarks = null,
   onCompanyConfirmed,
+  excluded = false,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -173,7 +197,8 @@ export default function RecordsArea({
   );
 
   // 종류 한 칸. 전화·방문·메일이면 결과·날짜 입력이, 메모·자료 조사면 글 입력이 보인다.
-  const [recordKind, setRecordKind] = useState<RecordKind>('MEMO');
+  // 통화 기록이 가장 잦아 "전화"로 시작한다(#691). 메모만 적을 때는 종류에서 "메모"를 고른다.
+  const [recordKind, setRecordKind] = useState<RecordKind>('CALL');
   const [result, setResult] = useState<ContactResult | null>(null);
   const [judgmentCheck, setJudgmentCheck] = useState<JudgmentCheck | null>(null);
   // 접촉 날짜는 오늘(한국 시간)까지만 고른다. 서버가 그 뒤 날짜를 400으로 돌려주면 그 문장을 날짜 칸 아래에 보인다.
@@ -194,6 +219,14 @@ export default function RecordsArea({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   // 꼬리 질문 "다음 할 일은?" 아래 "언제 할까요?" 날짜(#683). 저장하면 비운다.
   const [nextDate, setNextDate] = useState('');
+  // "언제 할까요?"에서 [없음]을 눌렀는지(#691). 일정 없이 지나간다(있던 일정은 그대로).
+  const [nextNone, setNextNone] = useState(false);
+  // 접촉 자체에 대한 질문("누가 먼저 연락했나요?" #691)에서 기본값과 다르게 고른 답.
+  const [contactPicks, setContactPicks] = useState<Record<string, string>>({});
+  // 결과가 "거절"일 때 "어떻게 할까요?"에서 고른 것(#691): 마무리 보기 ID 또는 "아직 끝 아님".
+  const [declineChoice, setDeclineChoice] = useState<string | null>(null);
+  // 제외한 회사에 [접촉 기록 저장]을 눌러 "영업 대상으로 되돌릴까요?"를 묻는 중인지(#697).
+  const [askExcluded, setAskExcluded] = useState(false);
   useEffect(() => {
     let alive = true;
     loadSalesQuestions()
@@ -299,6 +332,44 @@ export default function RecordsArea({
   // 통화가 된 경우에만 판단이 맞았는지 알 수 있다. 부재면 묻지 않는다(#531).
   const spokeToCompany = result === 'REACHED' || result === 'DECLINED';
 
+  // 접촉마다 남기는 답(누가 먼저 연락했나): 기본 보기가 골라져 있고 부재 접촉에도 보낸다(#691).
+  const contactQuestions = contactQuestionsOf(questions);
+  const contactAnswers = { ...contactDefaults(questions), ...contactPicks };
+
+  // 결과가 "거절"이면 "다음 할 일 → 끝 → 어떻게 끝났나요?"를 차례로 묻지 않고 한 번에 묻는다(#691).
+  // 어느 질문·보기가 그 길인지는 질문 파일에서 찾는다. 못 찾으면 전처럼 질문을 차례로 보인다.
+  const route = closingRouteOf(questions);
+  const declineOptions = (route?.options ?? []).filter((option) => option.closes !== 'WON');
+  const declineMode = method !== null && result === 'DECLINED' && declineOptions.length > 0;
+
+  function clearRoutePicks(previous: Record<string, string>): Record<string, string> {
+    if (!route) return previous;
+    const next = { ...previous };
+    delete next[route.openerId];
+    delete next[route.closingId];
+    return next;
+  }
+
+  function onDeclineChoice(choice: string) {
+    setDeclineChoice(choice);
+    setPicked((previous) => {
+      const next = clearRoutePicks(previous);
+      if (route && choice !== DECLINE_CONTINUE) {
+        // 고른 대로 "끝"과 마무리 답을 대신 싣는다. 서버 규칙(#643)은 그대로다.
+        next[route.openerId] = route.endAnswerIds[0];
+        next[route.closingId] = choice;
+      }
+      return next;
+    });
+  }
+
+  function onResultChange(value: ContactResult | null) {
+    setResult(value);
+    // 결과가 바뀌면 "어떻게 할까요?"와 그 선택이 대신 실은 답을 비운다.
+    setDeclineChoice(null);
+    setPicked(clearRoutePicks);
+  }
+
   // 꼬리 질문은 통화가 된 접촉에서만 보인다. "거절"이면 "다음 할 일"과 마무리 질문만(#643).
   const shownQuestions =
     method && spokeToCompany && questions
@@ -319,8 +390,16 @@ export default function RecordsArea({
   const plannedDate = nextAction && !closing ? nextDate : '';
   const plannedDatePast = plannedDate !== '' && plannedDate < todayKst();
 
-  async function onSaveContact() {
+  /**
+   * 접촉 저장. 제외한 회사면 먼저 한 번 묻고(#697), 답(`restore`)을 받은 뒤에 저장한다.
+   * 제외가 아닌 회사는 묻지 않는다: 서버가 같은 저장 안에서 검토 의견을 "영업 대상"으로 정한다.
+   */
+  async function onSaveContact(restore?: boolean) {
     if (!method || !result || closingNeedsReason || closingNeedsMemo || plannedDatePast) return;
+    if (excluded && restore === undefined) {
+      setAskExcluded(true);
+      return;
+    }
     // 지금 단계를 그대로 싣는다. 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 앞으로만
     // 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈). 마무리 답을 골랐으면 서버가
     // 그 답으로 보류·성사·거절과 거절 이유를 정한다(#643). 화면도 같은 값을 실어 보낸다.
@@ -335,6 +414,13 @@ export default function RecordsArea({
         ),
       );
     const answers = [
+      // 누가 먼저 연락했나(#691): 접촉(전화·메일·방문)마다, 부재여도 보낸다.
+      ...contactQuestions
+        .filter((question) => contactAnswers[question.questionId])
+        .map((question) => ({
+          questionId: question.questionId,
+          answerId: contactAnswers[question.questionId],
+        })),
       ...shownQuestions
         .filter((question) => !question.choices && picked[question.questionId])
         .map((question) => ({
@@ -364,8 +450,10 @@ export default function RecordsArea({
         ? { nextScheduleAt: plannedDate, nextScheduleNote: nextAction.label }
         : keepSchedule()),
       ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),
+      ...(restore ? { restoreExcluded: true } : {}),
     });
     if (ok) {
+      setAskExcluded(false);
       if (closing) {
         setSavedLostReason(closing.lostReasonCode === 'OTHER' ? memo : '');
       }
@@ -376,6 +464,9 @@ export default function RecordsArea({
       setPickedMany({});
       setMemoLine('');
       setNextDate('');
+      setNextNone(false);
+      setContactPicks({});
+      setDeclineChoice(null);
       // 공정·산업을 확정했으면 점수·검토사항도 바뀌므로 상세 전체를 다시 불러오게 알린다(#652).
       if (choiceAnswers.length > 0 && onCompanyConfirmed) onCompanyConfirmed();
       else onSalesStepChanged?.();
@@ -453,6 +544,21 @@ export default function RecordsArea({
     });
   }
 
+  // 일정만 잡을 때 고르는 종류(#691): 방문·전화·메일 + 질문 파일 "다음 할 일"의 끝이 아닌 보기(자료 보내기·견적…).
+  const nextActionQuestion = questions?.questions.find(
+    (question) => question.questionId === route?.openerId,
+  );
+  const scheduleKinds = [
+    ...new Set([
+      contactMethodLabels.VISIT,
+      contactMethodLabels.CALL,
+      contactMethodLabels.EMAIL,
+      ...(nextActionQuestion?.answers ?? [])
+        .filter((option) => !route?.endAnswerIds.includes(option.answerId))
+        .map((option) => option.label),
+    ]),
+  ];
+
   function blockMessage(block: BlockKey) {
     if (!message || message.block !== block) return null;
     return message.error ? (
@@ -499,18 +605,44 @@ export default function RecordsArea({
               value: kind,
               label: recordKindLabel(kind),
             }))}
-            onChange={(value) => setRecordKind((value as RecordKind | null) ?? 'MEMO')}
+            onChange={(value) => setRecordKind((value as RecordKind | null) ?? 'CALL')}
             disabled={disabled}
             testId="records-kind"
+            id={recordsEntryInputId(oppId)}
           />
           {method ? (
             <>
+              {/* 누가 먼저 연락했나(#691): 기본 "우리가"가 골라져 있어 대부분 누를 필요가 없다. 방문은 "우리가 감 / 상대가 옴". */}
+              {contactQuestions.map((question) => (
+                <NativeSelect
+                  key={question.questionId}
+                  label={question.text}
+                  value={contactAnswers[question.questionId] ?? null}
+                  options={question.answers.map((option) => ({
+                    value: option.answerId,
+                    label:
+                      method === 'VISIT'
+                        ? (salesQuestionTexts.contactVisitLabels[option.answerId] ?? option.label)
+                        : option.label,
+                  }))}
+                  onChange={(value) =>
+                    setContactPicks((previous) => {
+                      const next = { ...previous };
+                      if (value === null) delete next[question.questionId];
+                      else next[question.questionId] = value;
+                      return next;
+                    })
+                  }
+                  disabled={disabled}
+                  testId={`records-contact-question-${question.questionId}`}
+                />
+              ))}
               <NativeSelect
                 label={recordsArea.contactResult}
                 placeholder={`${recordsArea.contactResult} ${recordsArea.selectPlaceholder}`}
                 value={result}
                 options={options(contactResultLabels)}
-                onChange={(value) => setResult(value as ContactResult | null)}
+                onChange={(value) => onResultChange(value as ContactResult | null)}
                 disabled={disabled}
                 testId="records-contact-result"
               />
@@ -540,22 +672,6 @@ export default function RecordsArea({
                 disabled={disabled}
                 data-testid="records-contact-date"
               />
-              <Button
-                type="primary"
-                disabled={
-                  disabled ||
-                  !result ||
-                  attemptedAt === '' ||
-                  plannedDatePast ||
-                  closingNeedsReason ||
-                  closingNeedsMemo
-                }
-                loading={busy === 'contact'}
-                onClick={() => void onSaveContact()}
-                data-testid="records-contact-save-button"
-              >
-                {recordsArea.contactSave}
-              </Button>
             </>
           ) : null}
         </div>
@@ -590,6 +706,25 @@ export default function RecordsArea({
             </div>
           </>
         )}
+        {declineMode ? (
+          <div data-testid="records-decline" style={{ display: 'grid', gap: 4 }}>
+            <div id={`records-decline-label-${oppId}`}>{salesQuestionTexts.declineAsk}</div>
+            <Radio.Group
+              aria-labelledby={`records-decline-label-${oppId}`}
+              optionType="button"
+              value={declineChoice}
+              disabled={disabled}
+              onChange={(event) => onDeclineChoice(event.target.value as string)}
+              options={[
+                ...declineOptions.map((option) => ({
+                  value: option.answerId,
+                  label: salesQuestionTexts.declineCloseLabels[option.closes] ?? option.label,
+                })),
+                { value: DECLINE_CONTINUE, label: salesQuestionTexts.declineContinue },
+              ]}
+            />
+          </div>
+        ) : null}
         {method && spokeToCompany && questions ? (
           <SalesQuestionFields
             questions={questions}
@@ -612,6 +747,26 @@ export default function RecordsArea({
             nextDate={nextDate}
             onNextDate={setNextDate}
             nextDateMin={todayKst()}
+            nextNone={nextNone}
+            onNextNone={setNextNone}
+            hideQuestionIds={
+              declineMode && route
+                ? declineChoice === DECLINE_CONTINUE
+                  ? [route.closingId]
+                  : [route.openerId, route.closingId]
+                : []
+            }
+            hideAnswerIds={
+              declineMode && route && declineChoice === DECLINE_CONTINUE
+                ? { [route.openerId]: route.endAnswerIds }
+                : {}
+            }
+            limit={config?.records?.questionsPerContact ?? null}
+            stepLine={
+              declineMode && declineChoice === DECLINE_CONTINUE
+                ? salesQuestionTexts.stepLineDeclinedContinue
+                : undefined
+            }
             disabled={disabled}
           />
         ) : null}
@@ -650,6 +805,21 @@ export default function RecordsArea({
             )}
           </span>
         ) : null}
+        {nextAction && !closing && nextNone ? (
+          <span data-testid="records-next-none-preview" aria-live="polite">
+            {outcome?.nextScheduleAt
+              ? salesQuestionTexts.nextDateNoneKeeps(
+                  formatMonthDay(outcome.nextScheduleAt) ?? outcome.nextScheduleAt,
+                  outcome.nextScheduleNote ?? '',
+                )
+              : salesQuestionTexts.nextDateNonePreview}
+          </span>
+        ) : null}
+        {declineMode && declineChoice === null ? (
+          <span data-testid="records-decline-unpicked" style={hintStyle}>
+            {salesQuestionTexts.declineUnpicked}
+          </span>
+        ) : null}
         {plannedDatePast ? (
           <span role="alert" data-testid="records-next-date-error" style={{ color: colors.error }}>
             {salesQuestionTexts.nextDatePast}
@@ -672,7 +842,57 @@ export default function RecordsArea({
             {dateError}
           </span>
         ) : null}
-        {blockMessage(method ? 'contact' : 'note')}
+        {/* 저장 단추는 꼬리 질문·날짜·한 줄 메모 아래 맨 끝에 둔다(#691): 다 답한 뒤 위로 올라가지 않는다.
+            저장 알림("저장됨 21:15")도 이 자리에 남는다. */}
+        {method ? (
+          <div style={rowStyle}>
+            <Button
+              type="primary"
+              disabled={
+                disabled ||
+                !result ||
+                attemptedAt === '' ||
+                plannedDatePast ||
+                closingNeedsReason ||
+                closingNeedsMemo
+              }
+              loading={busy === 'contact'}
+              onClick={() => void onSaveContact()}
+              data-testid="records-contact-save-button"
+            >
+              {recordsArea.contactSave}
+            </Button>
+            {blockMessage('contact')}
+          </div>
+        ) : (
+          blockMessage('note')
+        )}
+        {/* 제외한 회사에 접촉을 남기려 할 때만: 창 없이 이 자리에서 한 번 묻는다(#697). */}
+        {method && excluded && askExcluded ? (
+          <div
+            role="group"
+            aria-label={recordsArea.excludedAsk}
+            data-testid="records-excluded-ask"
+            style={rowStyle}
+          >
+            <span role="status">{recordsArea.excludedAsk}</span>
+            <Button
+              type="primary"
+              disabled={disabled}
+              onClick={() => void onSaveContact(true)}
+              data-testid="records-excluded-restore-button"
+            >
+              {recordsArea.excludedRestoreSave}
+            </Button>
+            <Button
+              disabled={disabled}
+              onClick={() => void onSaveContact(false)}
+              data-testid="records-excluded-keep-button"
+            >
+              {recordsArea.excludedKeepSave}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       {/* 영업 단계 칸은 기본으로 접어 둔다(#674, PM 지시 2026-11-13): 단계는 꼬리 질문 답으로 저절로 저장되고
@@ -851,16 +1071,40 @@ export default function RecordsArea({
               <Typography.Title level={4} id={`records-schedule-${oppId}`} style={{ margin: 0 }}>
                 {recordsArea.scheduleTitle}
               </Typography.Title>
+              <span style={hintStyle} data-testid="records-schedule-only-hint">
+                {recordsArea.scheduleOnlyHint}
+              </span>
+              {/* 통화 없이 일정만 잡기(#691): 종류를 고르면 "할 일 한 줄"이 그 말로 채워진다. */}
+              <div
+                role="group"
+                aria-label={recordsArea.scheduleKind}
+                style={rowStyle}
+                data-testid="records-schedule-kinds"
+              >
+                {scheduleKinds.map((label) => (
+                  <Button
+                    key={label}
+                    size="small"
+                    type={scheduleNote === label ? 'primary' : 'default'}
+                    aria-pressed={scheduleNote === label}
+                    disabled={disabled}
+                    onClick={() => setScheduleNote(label)}
+                    data-testid="records-schedule-kind"
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <QuickDate
+                value={scheduleAt}
+                onChange={setScheduleAt}
+                from={todayKst()}
+                disabled={disabled}
+                label={recordsArea.scheduleDate}
+                inputTestId="records-schedule-date"
+                testId="records-schedule-quick"
+              />
               <div style={rowStyle}>
-                <Input
-                  type="date"
-                  aria-label={recordsArea.scheduleDate}
-                  style={{ width: 160 }}
-                  value={scheduleAt}
-                  onChange={(event) => setScheduleAt(event.target.value)}
-                  disabled={disabled}
-                  data-testid="records-schedule-date"
-                />
                 <Input
                   aria-label={recordsArea.scheduleNote}
                   placeholder={recordsArea.scheduleNote}

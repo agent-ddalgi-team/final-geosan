@@ -1,7 +1,8 @@
 // 영업 꼬리 질문(#607, PM 결정 2026-11-12): 상세 기록 구역의 세부 단계 요약과 접촉 기록의 질문 칸.
 // 문구·보기·갈라지는 조건은 서버의 질문 파일(GET /sales-questions)에서 오고, 답은 코드로만 보낸다.
 // 세부 단계는 서버가 기록에서 계산한다. 화면은 지금 고른 답으로 다음 단계 질문을 미리 펼쳐 보일 뿐이다.
-import { Button, Input, Radio, Typography } from 'antd';
+import { useState } from 'react';
+import { Button, Radio, Typography } from 'antd';
 import type {
   LostReasonCode,
   OutcomeStatus,
@@ -10,10 +11,16 @@ import type {
   SalesStep,
   SalesStepView,
 } from '../../api/types';
-import { outcomeStatusLabels, salesQuestionTexts, salesStepLabels } from '../../labels/ko';
+import {
+  outcomeStatusLabels,
+  salesChoiceTexts,
+  salesQuestionTexts,
+  salesStepLabels,
+} from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
-import { ChoiceQuestionField } from './ChoiceQuestion';
+import { ChoiceQuestionField, confirmedLabels } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
+import QuickDate from './QuickDate';
 
 export const STEP_ORDER: SalesStep[] = [
   'NOT_REACHED',
@@ -27,6 +34,85 @@ const CLOSED: OutcomeStatus[] = ['ON_HOLD', 'WON', 'LOST'];
 
 function order(step: SalesStep): number {
   return STEP_ORDER.indexOf(step);
+}
+
+/**
+ * 접촉 자체에 대한 질문(#691 "누가 먼저 연락했나요?"): 보기에 기본 보기(default)가 있는 질문이다.
+ * 꼬리 질문 묶음이 아니라 종류·결과 줄 옆에 보이고, "알아낸 것"·"아직 모르는 것"에 넣지 않는다.
+ */
+export function isContactQuestion(question: SalesQuestion): boolean {
+  return !question.choices && question.answers.some((option) => option.default);
+}
+
+export function contactQuestionsOf(questions: SalesQuestions | null): SalesQuestion[] {
+  return (questions?.questions ?? []).filter(isContactQuestion);
+}
+
+/** 접촉 질문마다 미리 골라 둘 보기(기본 "우리가"). */
+export function contactDefaults(questions: SalesQuestions | null): Record<string, string> {
+  const picks: Record<string, string> = {};
+  for (const question of contactQuestionsOf(questions)) {
+    const option = question.answers.find((item) => item.default);
+    if (option) picks[question.questionId] = option.answerId;
+  }
+  return picks;
+}
+
+/**
+ * 한 통화에 보이는 수를 세는 "통화 내용 질문"(#691): 세부 단계별 질문과 그 꼬리.
+ * 공정·산업 확인(choices)과 모든 단계 질문(다음 할 일·마무리)은 세지 않고 늘 보인다.
+ */
+export function isTalkQuestion(question: SalesQuestion): boolean {
+  return !question.choices && question.step !== 'ALL';
+}
+
+/**
+ * 이번 통화에서 접어 둘 질문 ID(#691, PM 결정 2026-11-13). 화면에 나오는 순서대로 통화 내용 질문을
+ * limit개까지 보이고 넘는 것을 접는다. 이미 답을 고른 질문은 접지 않는다. limit이 없으면 접지 않는다.
+ */
+export function foldedQuestionIds(
+  shown: SalesQuestion[],
+  picked: Record<string, string>,
+  limit: number | null | undefined,
+): string[] {
+  if (!limit || limit < 1) return [];
+  return shown
+    .filter(isTalkQuestion)
+    .filter((question, index) => index >= limit && !picked[question.questionId])
+    .map((question) => question.questionId);
+}
+
+export interface ClosingRoute {
+  /** "다음 할 일은?" 질문과, 마무리 질문을 여는 보기("끝"). */
+  openerId: string;
+  endAnswerIds: string[];
+  /** 마무리 질문("어떻게 끝났나요?")과 그 보기 가운데 단계를 끝내는 것. */
+  closingId: string;
+  options: { answerId: string; label: string; closes: 'WON' | 'LOST' | 'ON_HOLD' }[];
+}
+
+/**
+ * 질문 파일에서 "끝 → 어떻게 끝났나요?" 길을 찾는다(#691). 질문 id를 화면에 고정하지 않는다:
+ * 보기에 closes가 있는 질문이 마무리 질문이고, 그 질문의 showWhen이 가리키는 질문·보기가 "다음 할 일"의 "끝"이다.
+ * 그런 길이 하나로 정해지지 않으면 null(화면은 전처럼 질문을 차례로 보인다).
+ */
+export function closingRouteOf(questions: SalesQuestions | null): ClosingRoute | null {
+  const closing = (questions?.questions ?? []).filter((question) =>
+    question.answers.some((option) => option.closes),
+  );
+  if (closing.length !== 1) return null;
+  const conditions = Object.entries(closing[0].showWhen?.answers ?? {});
+  if (conditions.length !== 1 || conditions[0][1].length === 0) return null;
+  return {
+    openerId: conditions[0][0],
+    endAnswerIds: conditions[0][1],
+    closingId: closing[0].questionId,
+    options: closing[0].answers.flatMap((option) =>
+      option.closes
+        ? [{ answerId: option.answerId, label: option.label, closes: option.closes }]
+        : [],
+    ),
+  };
 }
 
 /**
@@ -56,6 +142,8 @@ export function visibleQuestions(
   const shownIds = new Set<string>();
   // 질문 파일 순서대로 본다. 꼬리는 앞 질문이 지금 보일 때만 보인다(가려진 질문의 옛 선택으로 열리지 않게).
   return questions.questions.filter((question) => {
+    // 접촉 자체에 대한 질문(#691)은 종류·결과 줄 옆에 따로 보인다.
+    if (isContactQuestion(question)) return false;
     // 공정·산업 확인(#652 choices)은 그 단계부터 답이 생길 때까지 뒤 단계에서도 계속 묻는다.
     const inRange =
       question.step === 'ALL' ||
@@ -153,6 +241,17 @@ export interface SalesQuestionFieldsProps {
   onNextDate?: (value: string) => void;
   /** 고를 수 있는 가장 이른 날짜(오늘, 한국 시간). */
   nextDateMin?: string;
+  /** "언제 할까요?"에서 [없음]을 눌렀는지(#691). onNextNone이 있을 때만 단추가 보인다. */
+  nextNone?: boolean;
+  onNextNone?: (none: boolean) => void;
+  /** 묶음에서 보이지 않게 할 질문(#691 거절 바로 마무리: 화면이 답을 대신 싣는 질문). 답은 그대로 보낸다. */
+  hideQuestionIds?: string[];
+  /** 질문별로 보이지 않게 할 보기(#691 "아직 끝 아님"에서는 "끝"을 뺀다). */
+  hideAnswerIds?: Record<string, string[]>;
+  /** 묶음 위 한 줄을 바꿔 쓸 때(#691). */
+  stepLine?: string;
+  /** 한 통화에 보이는 통화 내용 질문 수(#691, 설정 records.questionsPerContact). 없으면 접지 않는다. */
+  limit?: number | null;
 }
 
 /** 접촉 결과가 "연결됨"·"거절"일 때 접촉 기록 칸 아래에 보이는 질문들. 고르지 않아도 저장된다. */
@@ -169,10 +268,23 @@ export function SalesQuestionFields({
   nextDate = '',
   onNextDate,
   nextDateMin,
+  nextNone = false,
+  onNextNone,
+  hideQuestionIds = [],
+  hideAnswerIds = {},
+  stepLine,
+  limit = null,
 }: SalesQuestionFieldsProps) {
-  const shown = visibleQuestions(questions, step, picked, allOnly);
-  if (shown.length === 0) return null;
-  const nextAction = onNextDate ? nextActionPick(questions, shown, picked) : null;
+  // [지금 더 묻기]를 눌렀는지(#691). 저장하면 묶음이 새로 그려져 다시 접힌다.
+  const [askMore, setAskMore] = useState(false);
+  // 이미 확정된 공정·산업은 다시 묻지 않고 한 줄로 보인다(#691). [바꾸기]를 누른 질문만 펼친다.
+  const [changing, setChanging] = useState<string[]>([]);
+  const all = visibleQuestions(questions, step, picked, allOnly);
+  const unhidden = all.filter((question) => !hideQuestionIds.includes(question.questionId));
+  const folded = askMore ? [] : foldedQuestionIds(unhidden, picked, limit);
+  const shown = unhidden.filter((question) => !folded.includes(question.questionId));
+  if (shown.length === 0 && folded.length === 0) return null;
+  const nextAction = onNextDate ? nextActionPick(questions, all, picked) : null;
   // 단계 이름은 질문 파일의 것을 먼저 쓰고, 없으면 쉬운 말 대응표.
   const stepLabel = (code: SalesStep) =>
     questions.steps?.find((item) => item.code === code)?.label ?? salesStepLabels[code];
@@ -184,87 +296,159 @@ export function SalesQuestionFields({
       <legend style={{ padding: '0 4px' }}>{salesQuestionTexts.questionsTitle}</legend>
       {/* 왜 이 질문들이 나오는지 한 줄(#674): 질문은 세부 단계마다 다르고 "모든 단계" 질문은 늘 나온다. */}
       <div data-testid="sales-questions-step" style={{ marginBottom: 4 }}>
-        {allOnly
-          ? salesQuestionTexts.stepLineDeclined
-          : step?.code
-            ? salesQuestionTexts.stepLine(stepLabel(step.code))
-            : salesQuestionTexts.stepLineFirst(stepLabel('NOT_REACHED'))}
+        {stepLine
+          ? stepLine
+          : allOnly
+            ? salesQuestionTexts.stepLineDeclined
+            : step?.code
+              ? salesQuestionTexts.stepLine(stepLabel(step.code))
+              : salesQuestionTexts.stepLineFirst(stepLabel('NOT_REACHED'))}
       </div>
       <Typography.Text type="secondary" style={{ fontSize: typography.fontSizeSecondary }}>
         {salesQuestionTexts.questionsHint}
       </Typography.Text>
       <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
-        {shown.map((question) => (
-          <div key={question.questionId} data-testid={`sales-question-${question.questionId}`}>
-            <div id={`sales-question-label-${question.questionId}`} style={{ marginBottom: 4 }}>
-              {question.text}
-            </div>
-            {question.choices ? (
-              <ChoiceQuestionField
-                question={question}
-                picked={pickedMany[question.questionId] ?? []}
-                marks={marks}
-                onChange={(values) => onPickMany?.(question.questionId, values)}
-                disabled={disabled}
-              />
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                <Radio.Group
-                  aria-labelledby={`sales-question-label-${question.questionId}`}
-                  optionType="button"
-                  value={picked[question.questionId] ?? null}
-                  disabled={disabled}
-                  onChange={(event) => onPick(question.questionId, event.target.value as string)}
-                  options={question.answers.map((option) => ({
-                    value: option.answerId,
-                    label: option.label,
-                  }))}
-                />
-                {picked[question.questionId] ? (
-                  <Button
-                    size="small"
-                    type="link"
-                    disabled={disabled}
-                    onClick={() => onPick(question.questionId, null)}
-                    data-testid={`sales-question-clear-${question.questionId}`}
-                  >
-                    {salesQuestionTexts.clearAnswer}
-                  </Button>
-                ) : null}
-              </div>
-            )}
-            {/* 끝이 아닌 할 일을 고르면 날짜를 이어서 묻는다(#683). 비워 두면 일정은 그대로다. */}
-            {nextAction?.questionId === question.questionId ? (
-              <label
-                data-testid="sales-next-date-field"
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 8,
-                  alignItems: 'center',
-                  marginTop: 8,
-                }}
+        {shown.map((question) => {
+          const confirmed = question.choices ? confirmedLabels(question, marks) : [];
+          const isChanging = changing.includes(question.questionId);
+          if (confirmed.length > 0 && !isChanging) {
+            // 누르지 않고 저장하면 이 질문의 답을 보내지 않는다(남은 AI 제안은 그대로, #652 규칙).
+            return (
+              <div
+                key={question.questionId}
+                data-testid={`sales-question-${question.questionId}`}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
               >
-                <span>{salesQuestionTexts.nextDateLabel}</span>
-                <Input
-                  type="date"
-                  style={{ width: 160 }}
-                  value={nextDate}
-                  min={nextDateMin}
-                  onChange={(event) => onNextDate?.(event.target.value)}
+                <span data-testid={`sales-choice-confirmed-${question.questionId}`}>
+                  {salesChoiceTexts.confirmedLine(confirmed.join(', '))}
+                </span>
+                <Button
+                  size="small"
                   disabled={disabled}
-                  data-testid="sales-next-date"
-                />
+                  aria-label={`${question.text} ${salesChoiceTexts.change}`}
+                  onClick={() => setChanging((ids) => [...ids, question.questionId])}
+                  data-testid={`sales-choice-change-${question.questionId}`}
+                >
+                  {salesChoiceTexts.change}
+                </Button>
                 <Typography.Text
                   type="secondary"
                   style={{ fontSize: typography.fontSizeSecondary }}
                 >
-                  {salesQuestionTexts.nextDateHint}
+                  {question.text}
                 </Typography.Text>
-              </label>
-            ) : null}
+              </div>
+            );
+          }
+          return (
+            <div key={question.questionId} data-testid={`sales-question-${question.questionId}`}>
+              <div
+                id={`sales-question-label-${question.questionId}`}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}
+              >
+                <span>{question.text}</span>
+                {confirmed.length > 0 ? (
+                  <Button
+                    size="small"
+                    type="link"
+                    disabled={disabled}
+                    onClick={() => {
+                      onPickMany?.(question.questionId, []);
+                      setChanging((ids) => ids.filter((id) => id !== question.questionId));
+                    }}
+                    data-testid={`sales-choice-keep-${question.questionId}`}
+                    style={{ padding: 0, height: 'auto' }}
+                  >
+                    {salesChoiceTexts.changeClose}
+                  </Button>
+                ) : null}
+              </div>
+              {question.choices ? (
+                <ChoiceQuestionField
+                  question={question}
+                  picked={pickedMany[question.questionId] ?? []}
+                  marks={marks}
+                  onChange={(values) => onPickMany?.(question.questionId, values)}
+                  disabled={disabled}
+                />
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <Radio.Group
+                    aria-labelledby={`sales-question-label-${question.questionId}`}
+                    optionType="button"
+                    value={picked[question.questionId] ?? null}
+                    disabled={disabled}
+                    onChange={(event) => onPick(question.questionId, event.target.value as string)}
+                    options={question.answers
+                      .filter(
+                        (option) =>
+                          !(hideAnswerIds[question.questionId] ?? []).includes(option.answerId),
+                      )
+                      .map((option) => ({ value: option.answerId, label: option.label }))}
+                  />
+                  {picked[question.questionId] ? (
+                    <Button
+                      size="small"
+                      type="link"
+                      disabled={disabled}
+                      onClick={() => onPick(question.questionId, null)}
+                      data-testid={`sales-question-clear-${question.questionId}`}
+                    >
+                      {salesQuestionTexts.clearAnswer}
+                    </Button>
+                  ) : null}
+                </div>
+              )}
+              {/* 끝이 아닌 할 일을 고르면 날짜를 이어서 묻는다(#683). 날짜는 눌러 여는 달력 대신 바로 고르게
+                펼쳐 보이고, 없으면 [없음]으로 지나간다(#691). 비워 두면 일정은 그대로다. */}
+              {nextAction?.questionId === question.questionId ? (
+                <div
+                  data-testid="sales-next-date-field"
+                  style={{ display: 'grid', gap: 4, marginTop: 8 }}
+                >
+                  <span>{salesQuestionTexts.nextDateLabel}</span>
+                  <QuickDate
+                    value={nextDate}
+                    onChange={(value) => onNextDate?.(value)}
+                    from={nextDateMin ?? ''}
+                    inputMin={nextDateMin}
+                    none={nextNone}
+                    onNone={onNextNone}
+                    disabled={disabled}
+                    label={salesQuestionTexts.nextDateLabel}
+                    inputTestId="sales-next-date"
+                    testId="sales-next-quick"
+                  />
+                  <Typography.Text
+                    type="secondary"
+                    style={{ fontSize: typography.fontSizeSecondary }}
+                  >
+                    {salesQuestionTexts.nextDateHint}
+                  </Typography.Text>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+        {/* 넘는 질문은 접어 둔다(#691). 답이 없으니 다음 통화에서 다시 나온다. 지금 다 물어도 된다. */}
+        {folded.length > 0 ? (
+          <div
+            data-testid="sales-questions-more"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
+          >
+            <Typography.Text type="secondary" style={{ fontSize: typography.fontSizeSecondary }}>
+              {salesQuestionTexts.moreQuestions(folded.length)}
+            </Typography.Text>
+            <Button
+              size="small"
+              disabled={disabled}
+              onClick={() => setAskMore(true)}
+              data-testid="sales-questions-more-button"
+            >
+              {salesQuestionTexts.askMoreNow}
+            </Button>
           </div>
-        ))}
+        ) : null}
       </div>
     </fieldset>
   );
@@ -303,6 +487,9 @@ export function SalesStepSummary({ step, status, questions }: SalesStepSummaryPr
     .map((id) => questions?.questions.find((item) => item.questionId === id))
     .filter((item): item is SalesQuestion => item !== undefined && item.step !== 'ALL')
     .map((item) => item.text);
+  // 접촉 자체에 대한 답("누가 먼저 연락했나요?" #691)은 회사에 대해 알아낸 것이 아니라서 뺀다.
+  const aboutContact = new Set(contactQuestionsOf(questions).map((item) => item.questionId));
+  const known = (step?.known ?? []).filter((item) => !aboutContact.has(item.questionId));
   return (
     <div data-testid="sales-step-summary" style={{ display: 'grid', gap: 4 }}>
       <span>
@@ -312,9 +499,7 @@ export function SalesStepSummary({ step, status, questions }: SalesStepSummaryPr
       </span>
       <span data-testid="sales-step-known">
         {salesQuestionTexts.known}:{' '}
-        {step && step.known.length > 0
-          ? knownLines(step.known).join(' · ')
-          : salesQuestionTexts.knownNone}
+        {known.length > 0 ? knownLines(known).join(' · ') : salesQuestionTexts.knownNone}
       </span>
       {unknown.length > 0 ? (
         <span data-testid="sales-step-unknown" style={hint}>

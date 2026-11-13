@@ -8,15 +8,20 @@
 // 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
 // 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
-// 정렬(#361·#516·#610): "추천 순"(기본, 서버로 `sort=contact` = 세 묶음 순)과 "최근 들어온 순"(`?sort=recent`).
-//   추천 순에서는 묶음이 바뀌는 자리에 "지금 연락할 곳 9곳"·"확인 필요 122곳"·"나중 49곳" 제목을 끼운다(공정별 묶음 안에서도).
-// "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고 아무것도 보내지 않는다.
+// 정렬(#361·#516·#610·#675): "추천 순"(기본, 서버로 `sort=contact` = 근거 상태 묶음 순)과 "최근 들어온 순"(`?sort=recent`).
+//   추천 순에서는 묶음이 바뀌는 자리에 "근거 있음 30곳"·"근거 조금 25곳"·"홈페이지 없음 81곳"·"조사 전 44곳"·"끝난 회사 ○곳"
+//   제목을 끼운다(공정별 묶음 안에서도).
+// 관심으로 고른 회사 빼기(#675, PM 결정 2026-11-13): 평소 목록(공정 하나·공정별 묶음·전체 보기)은 신규 기업을 찾는 곳이라
+//   관심으로 고른 회사를 싣지 않는다(서버로 `hideBookmarked=true`). 목록 머리의 "관심 기업도 함께 보기" 스위치를 켜면
+//   주소에 `?withBookmarked=true`가 남고 지금처럼 섞어 본다. [관심]을 누르면 그 카드가 목록에서 빠지고 안내 한 줄이 보인다.
+// 가까운 순(#666): 주소 `?sort=distance`, 서버에도 `sort=distance`. 거리 범위는 `?maxDistanceKm=50`(선택지는 /config/ui).
+//   서버가 전체 후보의 거리를 본 뒤 거르고 정렬한다(#658). 카드에는 "거산에서 8.2km" 꼬리표가 붙는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
 // "제외한 회사" 보기(#536): 주소 `?excluded=true`면 검토 대상 제외로 저장한 회사만 보인다(서버에는 `opinion=NOT_TARGET`).
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Pagination } from 'antd';
+import { Pagination, Switch } from 'antd';
 import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
@@ -35,6 +40,7 @@ import {
 } from '../components/list/lastProcess';
 import BucketedCards from '../components/list/BucketedCards';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
+import { withoutMoved } from '../components/list/movedToBookmarks';
 import OpportunityCard from '../components/list/OpportunityCard';
 import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
 import {
@@ -83,8 +89,14 @@ export default function OpportunityListPage() {
   const industry = condition('industry');
   const stage = condition('stage');
   const filter = condition('filter');
-  // 정렬(#516)은 주소 `?sort=recent`로만 남긴다. 다른 값은 추천 순으로 읽는다.
-  const sort: ListSort = condition('sort') === 'recent' ? 'recent' : 'rank';
+  // 정렬(#516·#666)은 주소 `?sort=recent`·`?sort=distance`로만 남긴다. 다른 값은 추천 순으로 읽는다.
+  const sortParam = condition('sort');
+  const sort: ListSort =
+    sortParam === 'recent' ? 'recent' : sortParam === 'distance' ? 'distance' : 'rank';
+  // 거리 범위(#666): 설정 선택지에 있는 값만 읽는다. 없는 값은 "전체"로 읽어 서버 400을 피한다.
+  const distancePresets = config?.distanceFilterPresetsKm ?? [];
+  const distanceParam = Number(condition('maxDistanceKm'));
+  const maxDistanceKm = distancePresets.includes(distanceParam) ? distanceParam : null;
   // "관심 기업" 보기(#357)는 주소 `?bookmarked=true`로만 남긴다. 다른 값은 평소 목록으로 읽는다.
   const bookmarked = condition('bookmarked') === 'true';
   // "제외한 회사" 보기(#536)는 주소 `?excluded=true`로만 남긴다. 관심 기업 보기와 같이 켜지면 관심 기업 보기를 따른다.
@@ -96,6 +108,9 @@ export default function OpportunityListPage() {
   const processMode = !stage && !filter && !searching && !bookmarked && !excluded;
   // 전체 보기(#516): 평소 목록에서 공정을 고르지 않고 주소에 `view=all`이 있으면 묶지 않고 한 줄로 본다.
   const flat = processMode && !process && condition('view') === 'all';
+  // 관심으로 고른 회사 빼기(#675): 평소 목록에서만, "함께 보기"(주소 `withBookmarked=true`)를 켜지 않았을 때.
+  const withBookmarked = condition('withBookmarked') === 'true';
+  const hideBookmarked = processMode && !withBookmarked;
   // 검색하기 직전의 주소. 대시보드에서 검색으로 바로 넘어왔으면 모른다(null).
   const searchReturn = readSearchReturn(location.state);
   const filterKey = [
@@ -105,12 +120,14 @@ export default function OpportunityListPage() {
     stage,
     filter,
     q,
-    sort === 'recent' ? 'recent' : '',
+    sort === 'rank' ? '' : sort,
+    maxDistanceKm === null ? '' : String(maxDistanceKm),
     bookmarked ? 'bookmarked' : '',
     excluded ? 'excluded' : '',
     opinion,
     // 서버 요청은 같지만 묶음 보기는 첫 응답의 카드를 버리므로, 전체 보기로 바꾸면 다시 불러야 한다.
     flat ? 'all' : '',
+    hideBookmarked ? 'hide' : '',
   ]
     .map((v) => v ?? '')
     .join('|');
@@ -133,16 +150,38 @@ export default function OpportunityListPage() {
       stage,
       filter,
       q,
-      // 추천 순은 세 묶음 순(#610)으로 달라고 한다. 주소에는 남기지 않는다(주소에 sort가 없으면 추천 순).
-      sort: sort === 'recent' ? 'recent' : 'contact',
+      // 추천 순은 근거 상태 묶음 순(#610·#675)으로 달라고 한다. 주소에는 남기지 않는다(주소에 sort가 없으면 추천 순).
+      sort: sort === 'rank' ? 'contact' : sort,
+      // 거리 범위(#666)는 골랐을 때만 보낸다.
+      ...(maxDistanceKm !== null ? { maxDistanceKm: String(maxDistanceKm) } : {}),
       // 관심 기업 보기와 그 안의 검토 의견 거르기도 켰을 때만 보낸다.
       ...(bookmarked ? { bookmarked: 'true' } : {}),
       ...(opinion ? { opinion } : {}),
       // 제외한 회사 보기는 관심 조건 없이 최신 의견이 검토 대상 제외인 회사만 달라고 한다.
       ...(excluded ? { opinion: 'NOT_TARGET' } : {}),
+      // 평소 목록은 관심으로 고른 회사를 빼 달라고 한다(#675). 곳 수도 뺀 뒤의 숫자로 온다.
+      ...(hideBookmarked ? { hideBookmarked: 'true' } : {}),
     }),
-    [process, region, industry, stage, filter, q, sort, bookmarked, opinion, excluded],
+    [
+      process,
+      region,
+      industry,
+      stage,
+      filter,
+      q,
+      sort,
+      maxDistanceKm,
+      bookmarked,
+      opinion,
+      excluded,
+      hideBookmarked,
+    ],
   );
+
+  // 이 응답을 보는 동안 [관심]을 눌러 관심 기업으로 옮긴 회사(#675). 다시 불러오면 서버가 빼서 주므로 비운다.
+  const [moved, setMoved] = useState<{ key: string; ids: string[] }>({ key: '', ids: [] });
+  // 안내 한 줄은 조건을 바꾸기 전까지 남긴다.
+  const [movedNoticeKey, setMovedNoticeKey] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -207,6 +246,21 @@ export default function OpportunityListPage() {
 
   const current = result?.key === requestKey ? result : null;
   const meta = current?.meta ?? null;
+  const movedIds = useMemo(
+    () => new Set(hideBookmarked && moved.key === requestKey ? moved.ids : []),
+    [hideBookmarked, moved, requestKey],
+  );
+  const onBookmarkedOn = useCallback(
+    (card: CardData) => {
+      if (!hideBookmarked) return;
+      setMoved((prev) => ({
+        key: requestKey,
+        ids: [...(prev.key === requestKey ? prev.ids : []), card.oppId],
+      }));
+      setMovedNoticeKey(filterKey);
+    },
+    [hideBookmarked, requestKey, filterKey],
+  );
 
   // 묶음 보기(#383): 공정 선택란이 있는 평소 목록에서 공정을 고르지 않았고 공정 선택지가 왔을 때. 전체 보기(#516)면 묶지 않는다.
   const grouped = processMode && !process && !flat && (meta?.processCounts ?? []).length > 0;
@@ -308,8 +362,16 @@ export default function OpportunityListPage() {
     [menu],
   );
 
-  const items = current?.items ?? [];
-  const total = meta?.total ?? items.length;
+  // 방금 관심 기업으로 옮긴 카드는 빼고, 곳 수·묶음별 곳 수도 그만큼 줄여 보인다(#675).
+  const shown = withoutMoved(
+    current?.items ?? [],
+    meta?.total ?? current?.items?.length ?? 0,
+    meta?.bucketCounts,
+    movedIds,
+  );
+  const items = shown.items;
+  // 묶음 보기는 첫 응답의 카드를 쓰지 않으므로(공정마다 따로 부른다), 맨 위 곳 수는 옮긴 회사 수만큼 줄인다.
+  const total = grouped ? Math.max(0, (meta?.total ?? 0) - movedIds.size) : shown.total;
   const from = (page - 1) * PAGE_SIZE + 1;
   const to = from + items.length - 1;
   const notEvaluated = meta?.notEvaluatedCount ?? 0;
@@ -319,7 +381,7 @@ export default function OpportunityListPage() {
     grouped &&
     groupCodes.every((code) => {
       const group = groups.resultFor(code);
-      return group?.items !== undefined && group.items.length === 0;
+      return group?.items !== undefined && group.items.every((card) => movedIds.has(card.oppId));
     });
 
   let state: 'loading' | 'error' | 'empty' | 'ready' = 'ready';
@@ -340,7 +402,7 @@ export default function OpportunityListPage() {
     ? listSearch.empty
     : processIsEmpty
       ? listFilters.processEmpty
-      : region || industry || groupsFiltered || bookmarkedByProcess
+      : region || industry || maxDistanceKm !== null || groupsFiltered || bookmarkedByProcess
         ? listFilters.filteredEmpty
         : stage || filter || opinion
           ? listFilters.noMatch
@@ -358,9 +420,15 @@ export default function OpportunityListPage() {
     next.set('process', code);
     if (region) next.set('region', region);
     if (industry) next.set('industry', industry);
-    if (sort === 'recent') next.set('sort', 'recent');
+    if (sort !== 'rank') next.set('sort', sort);
+    if (maxDistanceKm !== null) next.set('maxDistanceKm', String(maxDistanceKm));
+    if (withBookmarked) next.set('withBookmarked', 'true');
     return `${location.pathname}?${next.toString()}`;
   };
+  // 목록 머리 "관심 기업 ○곳"(#675): 서버가 센 수에 방금 옮긴 회사를 더한다.
+  const bookmarkedCount =
+    typeof menu?.bookmarkedCount === 'number' ? menu.bookmarkedCount + movedIds.size : null;
+  const bookmarkedHref = `${location.pathname}?bookmarked=true`;
 
   return (
     <>
@@ -424,7 +492,10 @@ export default function OpportunityListPage() {
         onClearSearch={clearSearch}
         sort={sort}
         // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기가 그대로 열린다). 서버에는 세 묶음 순으로 달라고 한다(#610).
-        onSort={(value) => update({ sort: value === 'recent' ? 'recent' : null })}
+        onSort={(value) => update({ sort: value === 'rank' ? null : value })}
+        distancePresets={distancePresets}
+        maxDistanceKm={maxDistanceKm}
+        onMaxDistance={(km) => update({ maxDistanceKm: km === null ? null : String(km) })}
         // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
         showFlat={processMode}
         flat={flat}
@@ -433,6 +504,43 @@ export default function OpportunityListPage() {
           update(on ? { view: 'all', process: null } : { view: null });
         }}
       />
+      {processMode ? (
+        // 평소 목록 머리(#675): 관심으로 고른 회사는 빠져 있다. 몇 곳인지와 함께 보는 스위치를 보인다.
+        <div
+          data-testid="list-bookmarked-line"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 16,
+            marginBottom: spacing.cardGap,
+            fontSize: typography.fontSizeSecondary,
+          }}
+        >
+          {bookmarkedCount !== null && bookmarkedCount > 0 ? (
+            <Link to={bookmarkedHref} data-testid="list-bookmarked-count-link">
+              {bookmarkList.countLink(bookmarkedCount)}
+            </Link>
+          ) : null}
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Switch
+              size="small"
+              checked={withBookmarked}
+              onChange={(on) => update({ withBookmarked: on ? 'true' : null })}
+              data-testid="list-with-bookmarked"
+            />
+            <span>{bookmarkList.withBookmarked}</span>
+          </label>
+          {movedNoticeKey === filterKey ? (
+            <span role="status" data-testid="list-moved-notice">
+              {bookmarkList.moved} ·{' '}
+              <Link to={bookmarkedHref} data-testid="list-moved-link">
+                {bookmarkList.movedLink}
+              </Link>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <FiveStates
         state={state}
         emptyText={emptyText}
@@ -473,9 +581,15 @@ export default function OpportunityListPage() {
           <div data-testid="process-groups" style={{ display: 'grid', gap: spacing.sectionGap }}>
             {groupCodes.map((code) => {
               const group = groups.resultFor(code);
-              const groupItems = group?.items ?? [];
+              const groupShown = withoutMoved(
+                group?.items ?? [],
+                group?.meta?.total ?? group?.items?.length ?? 0,
+                group?.meta?.bucketCounts,
+                movedIds,
+              );
+              const groupItems = groupShown.items;
               if (group?.items !== undefined && groupItems.length === 0) return null;
-              const groupTotal = group?.meta?.total ?? groupItems.length;
+              const groupTotal = groupShown.total;
               return (
                 <section
                   key={code}
@@ -505,7 +619,7 @@ export default function OpportunityListPage() {
                     </h2>
                     <BucketedCards
                       items={groupItems}
-                      bucketCounts={group?.meta?.bucketCounts}
+                      bucketCounts={groupShown.bucketCounts}
                       showBuckets={sort === 'rank'}
                       renderCard={(card) => (
                         <OpportunityCard
@@ -513,6 +627,7 @@ export default function OpportunityListPage() {
                           classificationOverrides={config?.classificationLabels}
                           processNames={processNames}
                           showRank
+                          onBookmarkedOn={onBookmarkedOn}
                         />
                       )}
                     />
@@ -531,7 +646,7 @@ export default function OpportunityListPage() {
         ) : (
           <BucketedCards
             items={items}
-            bucketCounts={meta?.bucketCounts}
+            bucketCounts={shown.bucketCounts}
             showBuckets={sort === 'rank'}
             renderCard={(card) => (
               <OpportunityCard
@@ -540,6 +655,7 @@ export default function OpportunityListPage() {
                 processNames={processNames}
                 // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
                 showRank={processMode && !flat}
+                onBookmarkedOn={onBookmarkedOn}
               />
             )}
           />

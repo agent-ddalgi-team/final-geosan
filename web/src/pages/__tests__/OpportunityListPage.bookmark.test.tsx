@@ -1,6 +1,6 @@
 // 추천 목록의 "관심 기업" 보기(#357): [관심 기업만 보기] 켜기·끄기 / 검토 의견 거르기 네 개가 보내는 조건 /
 // 주소에 남아 새로 고침해도 유지 / 대시보드 칸으로 걸러 본 목록의 이름과 [거르기 풀기] / 빈 목록 문구.
-// "제외한 회사" 보기(#536): 검토 대상 제외는 관심 기업에서 빠지므로 거르기 단추가 아니라 따로 보는 보기다.
+// "제외한 회사" 보기(#536): 제외로 저장한 회사는 관심 기업에서 빠지므로 거르기 단추가 아니라 따로 보는 보기다.
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -32,9 +32,12 @@ const NO_FILTERS = {
   stage: null,
   filter: null,
   q: null,
-  // 추천 순은 세 묶음 순(#610)으로 달라고 한다.
+  // 추천 순은 근거 상태 묶음 순(#610·#675)으로 달라고 한다.
   sort: 'contact',
 };
+
+/** 평소 목록(공정 하나·공정별 묶음·전체 보기)이 보내는 조건: 관심으로 고른 회사는 빼 달라고 한다(#675). */
+const HOME_FILTERS = { ...NO_FILTERS, hideBookmarked: 'true' };
 
 const TABS = [
   { processCode: 'ZINC_PLATING', processName: '전기아연도금', count: 9 },
@@ -84,7 +87,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(screen.queryByTestId('list-bookmarked-view')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-excluded-view')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-filter-line')).not.toBeInTheDocument();
-    expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+    expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
   });
 
   it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정은 "전체"에서 시작한다', async () => {
@@ -143,8 +146,8 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     const buttons = within(group).getAllByRole('button');
     expect(buttons.map((button) => button.textContent)).toEqual([
       '전체 보기',
-      '검토 권고',
-      '추가 확인 필요',
+      '영업 대상',
+      '검토 중',
       '기타',
     ]);
     expect(buttons.map((button) => button.getAttribute('aria-pressed'))).toEqual([
@@ -156,8 +159,8 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
   });
 
   it.each([
-    ['검토 권고', 'WORTH_REVIEW'],
-    ['추가 확인 필요', 'NEED_CHECK'],
+    ['영업 대상', 'WORTH_REVIEW'],
+    ['검토 중', 'NEED_CHECK'],
     ['기타', 'NONE'],
   ])('거르기 "%s"를 누르면 의견 조건 %s 를 보내고 주소에 남긴다', async (label, value) => {
     const user = userEvent.setup();
@@ -214,7 +217,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     mockedGet.mockResolvedValue(reply([apjeong]));
     const { unmount } = renderPage('/opportunities?opinion=NEED_CHECK');
     await screen.findByTestId('opportunity-card');
-    expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+    expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
     unmount();
     mockedGet.mockClear();
     renderPage('/opportunities?bookmarked=true&opinion=SOMETHING');
@@ -253,8 +256,8 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
   describe('대시보드 칸으로 걸러 본 목록', () => {
     it.each([
       ['NO_OPINION', '의견 전'],
-      ['NEED_CHECK', '추가 확인 필요'],
-      ['NOT_CONTACTED', '미접촉'],
+      ['NEED_CHECK', '검토 중'],
+      ['NOT_CONTACTED', '영업 대상 · 접촉 전'],
       ['IN_CONTACT', '접촉 중'],
       ['QUOTE_SAMPLE', '견적·샘플'],
       ['ON_HOLD', '보류'],
@@ -282,7 +285,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
       renderPage('/opportunities?filter=NOT_CONTACTED');
       await screen.findByTestId('opportunity-card');
       await user.click(screen.getByTestId('list-filter-clear'));
-      await waitFor(() => expect(lastFilters()).toEqual(NO_FILTERS));
+      await waitFor(() => expect(lastFilters()).toEqual(HOME_FILTERS));
       expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities$/);
       expect(screen.queryByTestId('list-filter-line')).not.toBeInTheDocument();
     });
