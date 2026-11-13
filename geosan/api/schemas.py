@@ -346,6 +346,7 @@ class RankAdjust(_ApiModel):
 
 
 class OpportunityCard(_ApiModel):
+    distance_km: float | None = None
     score_state: ScoreState
     relation_status: RelationStatus
     region: str | None = None

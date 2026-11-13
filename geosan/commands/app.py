@@ -31,6 +31,18 @@ app = typer.Typer(
 )
 
 
+@app.command("geocode")
+def geocode(
+    missing_only: bool = typer.Option(
+        False, "--missing-only", help="기존 공공좌표는 다시 조회하지 않습니다."
+    ),
+) -> None:
+    """위치자료와 API로 실제 회사 좌표를 확인하고 공공좌표만 저장합니다."""
+    from geosan.commands.geocode import run_geocode
+
+    raise typer.Exit(run_geocode(missing_only))
+
+
 @app.command("source-confirm")
 def source_confirm(
     source_id: str = typer.Argument(
