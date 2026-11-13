@@ -492,6 +492,11 @@ export default function DetailGlance({
                 {companySummary.stale}
               </StatusTag>
             ) : null}
+            {header.researchSuggestAgain ? (
+              <StatusTag tone="ask" data-testid="company-suggest-again-tag">
+                {companySummary.suggestAgainTag}
+              </StatusTag>
+            ) : null}
           </div>
         </Row>
 

@@ -635,6 +635,8 @@ export const companySummary = {
   /** 사례 파일로만 만든 요약(AI 조사 전). */
   caseFileBasis: '사례 파일 기준',
   stale: '오래됨',
+  /** #677: 조사한 지 한 달(설정)이 지난 관심 회사의 "한눈에" 근거 상태 줄 꼬리표. */
+  suggestAgainTag: '다시 조사할 때',
   aiSuggestion: 'AI 제안',
   summaryLine: '한 줄',
   highlights: '특징',
@@ -669,6 +671,8 @@ export const homepageControls = {
   /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
   addButton: '주소 넣기',
   rerunButton: '다시 조사 💰',
+  /** #677: 조사한 지 한 달(설정)이 지난 관심 회사. [다시 조사] 단추 옆에 보인다. 저절로 조사하지 않는다. */
+  suggestAgain: (days: number) => `조사한 지 ${days}일 · 새 정보가 있을 수 있어요`,
   urlLabel: '홈페이지 주소',
   urlPlaceholder: 'https://',
   runWithUrl: '이 주소로 조사',

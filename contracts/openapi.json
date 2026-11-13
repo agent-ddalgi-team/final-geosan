@@ -1211,6 +1211,12 @@
             "description": "카드와 같은 조사 상태(#596). 상세는 '조사 중단 · 이유' 꼬리표로 보인다",
             "title": "Researchstate"
           },
+          "researchSuggestAgain": {
+            "default": false,
+            "description": "관심 회사이고 AI 조사한 지 설정 일수보다 오래됨 → 다시 조사 제안(#677)",
+            "title": "Researchsuggestagain",
+            "type": "boolean"
+          },
           "researchedAt": {
             "anyOf": [
               {

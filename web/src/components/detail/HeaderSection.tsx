@@ -29,6 +29,7 @@ import {
   purposeLabels,
 } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
+import { daysAgo } from '../../utils/time';
 
 export interface HeaderSectionProps {
   oppId: string;
@@ -76,6 +77,9 @@ export default function HeaderSection({
       ? classificationTone[header.classificationCode]
       : 'neutral';
   const showClassification = !HIDDEN_CLASSIFICATIONS.has(header.classificationCode);
+  // #677: 서버가 다시 조사를 제안한 관심 회사. 화면에서 관심을 끄면 바로 숨긴다.
+  const suggestDays =
+    header.researchSuggestAgain && bookmark?.active ? daysAgo(header.researchedAt) : null;
 
   return (
     <div data-testid="detail-header" style={{ display: 'grid', gap: 12 }}>
@@ -111,7 +115,7 @@ export default function HeaderSection({
           }}
         >
           <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
-          <HomepageControls oppId={oppId} onReload={onReload} />
+          <HomepageControls oppId={oppId} onReload={onReload} suggestDays={suggestDays} />
         </div>
       </div>
       <SalesProgressBar
