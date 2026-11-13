@@ -234,6 +234,8 @@ class RecordsSettings(FileModel):
 
     approval_enabled: bool = False
     note_max_length: int = Field(default=200, ge=1)
+    # #253: false면 본인이 저장한 기록만 잘못 입력으로 표시할 수 있다.
+    cancel_by_any_staff: bool = False
     # #607: 꼬리 질문 파일 위치(저장소 기준 상대 경로)와 접촉 기록 한 줄 메모 상한.
     sales_questions_file: str = Field(default="examples/sales-questions.yaml", min_length=1)
     memo_line_max_length: int = Field(default=100, ge=1, le=200)

@@ -590,7 +590,11 @@ def _contact_placements(
         ).all()
     )
     stages = dict(
-        session.execute(select(Outcome.opp_id, Outcome.status).order_by(Outcome.version)).all()
+        session.execute(
+            select(Outcome.opp_id, Outcome.status)
+            .where(Outcome.cancelled_at.is_(None))
+            .order_by(Outcome.version)
+        ).all()
     )
     adjust = settings.adjust
     rule = AdjustRule(
@@ -747,7 +751,7 @@ def list_opportunities(
     if stage is not None:
         current_stage = (
             select(Outcome.status)
-            .where(Outcome.opp_id == EvaluationRun.opp_id)
+            .where(Outcome.opp_id == EvaluationRun.opp_id, Outcome.cancelled_at.is_(None))
             .order_by(Outcome.version.desc())
             .limit(1)
             .scalar_subquery()

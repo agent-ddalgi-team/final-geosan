@@ -170,9 +170,11 @@ def verify_saved_records(record_context):
     assert client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]["scores"] == scores
     detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
     assert detail["records"]["outcome"]["nextScheduleNote"] == "견적 준비"
+    # cancelByAnyStaff는 #253에서 약속(C1 /config/ui, C7)에 더한 칸이다. 기본 false.
     assert client.get("/api/v1/config/ui").json()["data"]["records"] == {
         "approvalEnabled": False,
         "noteMaxLength": 200,
+        "cancelByAnyStaff": False,
     }
 
 

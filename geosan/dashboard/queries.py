@@ -197,10 +197,10 @@ def _month_day(value: date) -> str:
 
 
 def _latest_outcomes(session: Session, population) -> list[Outcome]:
-    """기회마다 가장 새로 저장한 영업 기록 한 행."""
+    """기회마다 가장 새로 저장한 영업 기록 한 행. 잘못 입력으로 표시한 행은 뺀다(#253)."""
     newest = (
         select(Outcome.opp_id, func.max(Outcome.version).label("version"))
-        .where(Outcome.opp_id.in_(population))
+        .where(Outcome.opp_id.in_(population), Outcome.cancelled_at.is_(None))
         .group_by(Outcome.opp_id)
         .subquery()
     )
@@ -287,8 +287,11 @@ def schedule_due_outcomes(today: date, population=None):
     (기한 지남 포함). 대시보드 건수·일정 카드와 목록 거르기(`?filter=SCHEDULE_DUE`)가 이
     한 곳을 같이 써서 눌렀을 때 열리는 목록 건수가 건수와 늘 같다.
     """
-    newest = select(Outcome.opp_id, func.max(Outcome.version).label("version")).group_by(
-        Outcome.opp_id
+    # 잘못 입력으로 표시한 행은 빼고 최신 행을 고른다(#253).
+    newest = (
+        select(Outcome.opp_id, func.max(Outcome.version).label("version"))
+        .where(Outcome.cancelled_at.is_(None))
+        .group_by(Outcome.opp_id)
     )
     if population is not None:
         newest = newest.where(Outcome.opp_id.in_(population))
@@ -343,8 +346,15 @@ def _outcome_activity(session: Session, row: Outcome) -> tuple[str, str]:
         method = METHOD_LABELS.get(row.method, row.method)
         result = RESULT_LABELS.get(row.result or "", "")
         return "CONTACT_ATTEMPT", f"{method} 시도, {result}" if result else f"{method} 시도"
+    # 바로 앞의 살아 있는 기록과 견준다. 잘못 입력으로 표시한 행은 건너뛴다(#253).
     previous = session.scalar(
-        select(Outcome).where(Outcome.opp_id == row.opp_id, Outcome.version == row.version - 1)
+        select(Outcome)
+        .where(
+            Outcome.opp_id == row.opp_id,
+            Outcome.version < row.version,
+            Outcome.cancelled_at.is_(None),
+        )
+        .order_by(Outcome.version.desc())
     )
     label = STAGE_LABELS.get(row.status, row.status)
     if previous is not None and previous.status == row.status:
@@ -371,7 +381,11 @@ def _recent_activity(
     entries: list[tuple[datetime, str, str, str]] = []  # (시각, 기회, 종류, 설명)
     for note in session.scalars(
         select(Note)
-        .where(Note.staff_key == staff_key, Note.opp_id.in_(population))
+        .where(
+            Note.staff_key == staff_key,
+            Note.opp_id.in_(population),
+            Note.cancelled_at.is_(None),
+        )
         .order_by(Note.created_at.desc(), Note.note_id.desc())
         .limit(RECENT_ACTIVITY_LIMIT)
     ):
@@ -380,7 +394,11 @@ def _recent_activity(
         entries.append((note.created_at, note.opp_id, "NOTE", summary))
     for outcome in session.scalars(
         select(Outcome)
-        .where(Outcome.created_by == staff_key, Outcome.opp_id.in_(population))
+        .where(
+            Outcome.created_by == staff_key,
+            Outcome.opp_id.in_(population),
+            Outcome.cancelled_at.is_(None),
+        )
         .order_by(Outcome.created_at.desc(), Outcome.outcome_id.desc())
         .limit(RECENT_ACTIVITY_LIMIT)
     ):
@@ -440,7 +458,7 @@ def _won_since(session: Session, opp_ids: list[str]) -> dict[str, datetime]:
         return since
     for opp_id, status, created_at in session.execute(
         select(Outcome.opp_id, Outcome.status, Outcome.created_at)
-        .where(Outcome.opp_id.in_(opp_ids))
+        .where(Outcome.opp_id.in_(opp_ids), Outcome.cancelled_at.is_(None))
         .order_by(Outcome.opp_id, Outcome.version)
     ):
         if status != "WON":
