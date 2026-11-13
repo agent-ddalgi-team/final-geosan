@@ -1,5 +1,5 @@
 // 영업 분석 › 공정별 표(#608): 공정 줄 아래에 산업군 줄을 들여 쓴다. 진짜 표(th scope)로 그린다.
-// 한 회사가 공정·산업군이 여러 개면 각각 세므로 줄의 합이 회사 수보다 클 수 있다(머리 안내 줄이 알린다).
+// 확정된 공정·산업군만 센다(#652). 확정된 값이 여러 개인 회사는 각각 세므로 줄의 합이 회사 수보다 클 수 있다(머리 안내 줄이 알린다).
 import { Fragment } from 'react';
 import type { AnalysisStats, ProcessAnalysisRow } from '../../api/salesAnalysis';
 import { salesAnalysisTexts as texts } from '../../labels/ko';

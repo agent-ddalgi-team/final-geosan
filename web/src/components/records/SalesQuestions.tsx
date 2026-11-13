@@ -12,6 +12,8 @@ import type {
 } from '../../api/types';
 import { outcomeStatusLabels, salesQuestionTexts, salesStepLabels } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
+import { ChoiceQuestionField } from './ChoiceQuestion';
+import type { ChoiceMarks } from './ChoiceQuestion';
 
 export const STEP_ORDER: SalesStep[] = [
   'NOT_REACHED',
@@ -54,9 +56,12 @@ export function visibleQuestions(
   const shownIds = new Set<string>();
   // 질문 파일 순서대로 본다. 꼬리는 앞 질문이 지금 보일 때만 보인다(가려진 질문의 옛 선택으로 열리지 않게).
   return questions.questions.filter((question) => {
+    // 공정·산업 확인(#652 choices)은 그 단계부터 답이 생길 때까지 뒤 단계에서도 계속 묻는다.
     const inRange =
       question.step === 'ALL' ||
-      (!allOnly && order(question.step) >= order(base) && order(question.step) <= order(reach));
+      (!allOnly &&
+        (Boolean(question.choices) || order(question.step) >= order(base)) &&
+        order(question.step) <= order(reach));
     const unanswered = question.step === 'ALL' || !(question.questionId in known);
     const conditions = Object.entries(question.showWhen?.answers ?? {});
     const shown = conditions.every(([target, answerIds]) =>
@@ -101,6 +106,11 @@ export interface SalesQuestionFieldsProps {
   disabled?: boolean;
   /** 접촉 결과가 "거절"이면 "모든 단계" 질문과 그 꼬리만 보인다(#643). */
   allOnly?: boolean;
+  /** 여러 개를 고르는 질문(#652 공정·산업 확인)에서 고른 값. */
+  pickedMany?: Record<string, string[]>;
+  onPickMany?: (questionId: string, values: string[]) => void;
+  /** 이 회사에 붙어 있는 공정·산업군 표시(AI 제안·확정). */
+  marks?: ChoiceMarks | null;
 }
 
 /** 접촉 결과가 "연결됨"·"거절"일 때 접촉 기록 칸 아래에 보이는 질문들. 고르지 않아도 저장된다. */
@@ -111,6 +121,9 @@ export function SalesQuestionFields({
   onPick,
   disabled,
   allOnly = false,
+  pickedMany = {},
+  onPickMany,
+  marks = null,
 }: SalesQuestionFieldsProps) {
   const shown = visibleQuestions(questions, step, picked, allOnly);
   if (shown.length === 0) return null;
@@ -129,35 +142,56 @@ export function SalesQuestionFields({
             <div id={`sales-question-label-${question.questionId}`} style={{ marginBottom: 4 }}>
               {question.text}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-              <Radio.Group
-                aria-labelledby={`sales-question-label-${question.questionId}`}
-                optionType="button"
-                value={picked[question.questionId] ?? null}
+            {question.choices ? (
+              <ChoiceQuestionField
+                question={question}
+                picked={pickedMany[question.questionId] ?? []}
+                marks={marks}
+                onChange={(values) => onPickMany?.(question.questionId, values)}
                 disabled={disabled}
-                onChange={(event) => onPick(question.questionId, event.target.value as string)}
-                options={question.answers.map((option) => ({
-                  value: option.answerId,
-                  label: option.label,
-                }))}
               />
-              {picked[question.questionId] ? (
-                <Button
-                  size="small"
-                  type="link"
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <Radio.Group
+                  aria-labelledby={`sales-question-label-${question.questionId}`}
+                  optionType="button"
+                  value={picked[question.questionId] ?? null}
                   disabled={disabled}
-                  onClick={() => onPick(question.questionId, null)}
-                  data-testid={`sales-question-clear-${question.questionId}`}
-                >
-                  {salesQuestionTexts.clearAnswer}
-                </Button>
-              ) : null}
-            </div>
+                  onChange={(event) => onPick(question.questionId, event.target.value as string)}
+                  options={question.answers.map((option) => ({
+                    value: option.answerId,
+                    label: option.label,
+                  }))}
+                />
+                {picked[question.questionId] ? (
+                  <Button
+                    size="small"
+                    type="link"
+                    disabled={disabled}
+                    onClick={() => onPick(question.questionId, null)}
+                    data-testid={`sales-question-clear-${question.questionId}`}
+                  >
+                    {salesQuestionTexts.clearAnswer}
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </div>
         ))}
       </div>
     </fieldset>
   );
+}
+
+/** "질문 답" 줄들. 여러 값을 고른 질문(#652)은 같은 질문의 답을 쉼표로 이어 한 줄로 만든다. */
+function knownLines(known: SalesStepView['known']): string[] {
+  const answers = new Map<string, { question: string; values: string[] }>();
+  for (const item of known) {
+    const found = answers.get(item.questionId);
+    if (found) found.values.push(item.answer);
+    else answers.set(item.questionId, { question: item.question, values: [item.answer] });
+  }
+  return [...answers.values()].map((item) => `${item.question} ${item.values.join(', ')}`);
 }
 
 export interface SalesStepSummaryProps {
@@ -192,7 +226,7 @@ export function SalesStepSummary({ step, status, questions }: SalesStepSummaryPr
       <span data-testid="sales-step-known">
         {salesQuestionTexts.known}:{' '}
         {step && step.known.length > 0
-          ? step.known.map((item) => `${item.question} ${item.answer}`).join(' · ')
+          ? knownLines(step.known).join(' · ')
           : salesQuestionTexts.knownNone}
       </span>
       {unknown.length > 0 ? (

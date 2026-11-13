@@ -16,6 +16,7 @@ from geosan.dashboard.sales_analysis import (
     CompanyRecords,
     RecordLine,
     build_sales_analysis,
+    load_company_records,
     summarize_company,
 )
 from geosan.evidence.transfer import KST
@@ -153,12 +154,12 @@ def test_process_rows_follow_catalog_order_and_unlinked_companies_go_last():
     assert [(row.process_code, row.process_name) for row in result.by_process] == [
         ("ANODIZING", "아노다이징"),
         ("ZINC", "아연도금"),
-        (None, "공정 미확정"),
+        (None, "공정 확인 전"),  # #652: 줄 이름이 "공정 미확정"에서 바뀜
     ]
 
 
 def test_industry_rows_follow_settings_order_and_unknown_goes_last():
-    """Given 산업군이 둘·하나·없음인 회사 / When 계산 / Then 설정 순서 + 맨 끝 '미확정'."""
+    """Given 산업군이 둘·하나·없음인 회사 / When 계산 / Then 설정 순서 + 맨 끝 '산업 확인 전'."""
     result = analyse(
         [
             company("둘", [call()], industries=("자동차 부품", "방위산업")),
@@ -171,7 +172,7 @@ def test_industry_rows_follow_settings_order_and_unknown_goes_last():
     assert [(row.industry, row.stats.contacted_count) for row in rows] == [
         ("방위산업", 1),
         ("자동차 부품", 2),
-        ("미확정", 2),
+        ("산업 확인 전", 2),  # #652: 줄 이름이 "미확정"에서 바뀜
     ]
 
 
@@ -349,7 +350,9 @@ def test_api_tables_match_saved_records_and_viewer_can_read(dashboard_env):
     record(client, c, contact("REACHED", day="2026-10-18"))
     with session_scope() as session:
         customer_id = session.get(Opportunity, a).customer_id
-        session.get(Customer, customer_id).industries = ["자동차 부품"]
+        customer = session.get(Customer, customer_id)
+        # #652: 확정된 산업군만 센다. 사례 파일에 사람이 적은 값으로 넣는다.
+        customer.industries, customer.industries_source = ["자동차 부품"], "CASE_FILE"
     body = analysis(client)
     data = body["data"]
     assert body["meta"]["hasVirtualData"] is True  # 가상 묶음이면 화면 띠에 가상 표시
@@ -377,7 +380,7 @@ def test_api_tables_match_saved_records_and_viewer_can_read(dashboard_env):
     assert row["ratios"] is None  # 표본 3곳 < 기준 10
     assert [(item["industry"], item["contactedCount"]) for item in row["byIndustry"]] == [
         ("자동차 부품", 1),
-        ("미확정", 2),
+        ("산업 확인 전", 2),
     ]
     companies = {item["oppId"]: item for item in data["companies"]}
     assert set(companies) == {a, b, c}
@@ -417,6 +420,43 @@ def test_api_counts_a_company_under_each_of_its_processes(dashboard_env):
     assert all(row["contactedCount"] == 1 for row in data["byProcess"])
     assert len(data["companies"]) == 1
     assert sorted(data["companies"][0]["processCodes"]) == ["ANODIZING", "CHROMATE"]
+
+
+def test_api_counts_only_confirmed_processes_and_industries(dashboard_env):
+    """Given AI 제안 공정 연결·AI 산업군이 붙은 회사 / When 조회 / Then 확정된 값만 센다(#652).
+
+    세 묶음 순서 조정(#610)이 쓰는 기본 읽기는 전처럼 AI 제안까지 싣는다.
+    """
+    client, (a, *_rest) = dashboard_env
+    record(client, a, contact())
+    with session_scope() as session:
+        session.add(
+            OppProcessLink(
+                link_id=new_id("link"),
+                opp_id=a,
+                process_code="CHROMATE",
+                source="AI",
+                state="PENDING",
+                created_by="system",
+                dataset_kind="VIRTUAL_REVIEWED",
+                is_virtual=True,
+            )
+        )
+        customer = session.get(Customer, session.get(Opportunity, a).customer_id)
+        customer.industries, customer.industries_source = ["반도체"], "AI"
+    data = analysis(client)["data"]
+    assert [row["processCode"] for row in data["byProcess"]] == ["ANODIZING"]
+    assert [item["industry"] for item in data["byProcess"][0]["byIndustry"]] == ["산업 확인 전"]
+    assert (data["companies"][0]["processCodes"], data["companies"][0]["industries"]) == (
+        ["ANODIZING"],
+        [],
+    )
+    with session_scope() as session:
+        loaded = load_company_records(
+            session, dataset_kind="VIRTUAL_REVIEWED", sales_step_of=lambda *_: None
+        )
+    assert loaded[0].process_codes == ("ANODIZING", "CHROMATE")
+    assert loaded[0].industries == ("반도체",)
 
 
 def test_api_never_returns_memo_text_staff_or_contacts(dashboard_env):
