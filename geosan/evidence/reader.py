@@ -146,19 +146,32 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
         raw.close()
 
 
+def _failure_reason(error: Exception) -> str:
+    """읽기 실패를 네 가지로 나눈다(#690). 인증서 검증은 끄지 않고 이유만 구분해 남긴다."""
+    if isinstance(error, ssl.SSLCertVerificationError):
+        return "인증서 문제"
+    if isinstance(error, socket.gaierror):
+        return "주소를 찾을 수 없음"
+    if isinstance(error, TimeoutError):
+        return "시간 초과"
+    return "그 밖"
+
+
 def _read(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
+    reason = "그 밖"
     for attempt in range(2):
         try:
             response = _get(url, deadline)
             if response[0] < 500 or attempt:
                 return response
-        except (OSError, http.client.HTTPException, ValueError, LookupError):
+        except (OSError, http.client.HTTPException, ValueError, LookupError) as error:
+            reason = _failure_reason(error)
             if attempt:
                 break
         remaining(deadline)
     remaining(deadline)
     raise AppError(
-        "홈페이지를 읽을 수 없습니다.",
+        f"홈페이지를 읽을 수 없습니다. ({reason})",
         "공개 본문을 직접 붙여넣어 주세요.",
         status=422,
         kind="UNREACHABLE",
@@ -179,6 +192,15 @@ def _read_robots(url: str, deadline: float) -> tuple[int, str]:
             return status, body
         url = validate_url(urljoin(url, headers["location"]))
     return 508, ""
+
+
+def _robots_missing(status: int) -> bool:
+    """robots.txt가 "없다"고 볼 응답인가(RFC 9309 2.3.1.3, #690). 없으면 제한 없음으로 읽는다.
+
+    잘못된 주소 이동 끝의 400처럼 404·410이 아닌 4xx도 "없음"이다. 접근 거부(401·403)와
+    너무 잦은 요청(429)은 사이트가 막는 신호일 수 있어 지금처럼 읽지 않는다. 5xx도 읽지 않는다.
+    """
+    return 400 <= status < 500 and status not in (401, 403, 429)
 
 
 def _decode(response: http.client.HTTPResponse, body: bytes) -> str:
@@ -373,7 +395,9 @@ def _fetch(url: str, deadline: float, *, site_url: str | None = None) -> Page:
         status, robots = _read_robots(robots_url, deadline)
         parser = RobotFileParser()
         parser.parse(robots.splitlines() if status == 200 else [])
-        if status not in (200, 404, 410) or (status == 200 and not parser.can_fetch(AGENT, url)):
+        if not (status == 200 or _robots_missing(status)) or (
+            status == 200 and not parser.can_fetch(AGENT, url)
+        ):
             raise AppError(
                 "자동으로 읽을 수 없는 홈페이지입니다.",
                 "이용 조건을 확인하고 공개 본문을 붙여넣어 주세요.",

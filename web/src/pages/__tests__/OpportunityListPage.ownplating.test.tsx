@@ -15,7 +15,13 @@ vi.mock('../../api/client', async (importOriginal) => ({
 }));
 
 const mockedGet = vi.mocked(getOpportunities);
-const apjeong = listFixture.data[0] as unknown as OpportunityCard;
+// 점수는 "근거 있음" 묶음 카드에만 보인다(#675). 사례 파일 18곳은 근거가 3건 이상이라 그 묶음에 든다.
+// 가짜 응답의 A정밀은 거래 중이라 "끝난 회사" 묶음이므로, 여기서는 근거 있음 묶음의 카드로 바꿔 쓴다.
+const apjeong = {
+  ...listFixture.data[0],
+  bucket: 'EVIDENCE_READY',
+  bucketBasis: 'EVIDENCE_ENOUGH',
+} as unknown as OpportunityCard;
 
 function card(oppId: string, rank: number, extra: Partial<OpportunityCard> = {}): OpportunityCard {
   return { ...apjeong, oppId, rank, title: `시험 회사 ${oppId}`, ...extra };

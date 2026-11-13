@@ -3,7 +3,7 @@
 import logging
 
 import typer
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 
 from geosan.commands.geocode import active_evaluated_opp_ids
 from geosan.config.app_settings import (
@@ -13,6 +13,7 @@ from geosan.config.app_settings import (
 )
 from geosan.config.errors import AppError, InputError, exit_code_for
 from geosan.evidence.contacts import scrub_contacts
+from geosan.evidence.models import Evidence
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.opportunity.queries import public_origin_condition
 from geosan.storage.session import session_scope
@@ -73,8 +74,22 @@ def run_research(
                 )
                 .order_by(Opportunity.created_at, Opportunity.opp_id)
             )
-            if not all_companies:
+            if missing_homepage:
                 query = query.where(Customer.homepage_url.is_(None))
+            elif not all_companies:
+                # #690: 기본은 주소 없는 회사 + 주소는 있는데 조사가 안 된 회사(조사 날짜 없음,
+                # 살아 있는 근거 0건). 읽기에 실패했거나 조사가 한 번도 안 돈 회사를 다시 돌린다.
+                live_evidence = (
+                    select(Evidence.evidence_id)
+                    .where(Evidence.opp_id == Opportunity.opp_id, Evidence.superseded_at.is_(None))
+                    .exists()
+                )
+                query = query.where(
+                    or_(
+                        Customer.homepage_url.is_(None),
+                        and_(Customer.researched_at.is_(None), ~live_evidence),
+                    )
+                )
             rows = session.execute(query).all()
         if not rows:
             echo("조사할 공개 신규 사례가 없습니다. 처리 0건.")

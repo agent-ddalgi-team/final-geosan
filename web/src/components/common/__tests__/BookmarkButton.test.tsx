@@ -105,7 +105,7 @@ describe('BookmarkButton', () => {
     mockedPut.mockRejectedValueOnce(
       new ApiError(422, {
         message: '기록이 있는 회사는 관심에서 뺄 수 없습니다',
-        nextAction: "빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요",
+        nextAction: "빼려면 검토 의견을 '제외'로 저장해 주세요",
         ref: 'r-1',
         kind: 'BOOKMARK_HAS_RECORDS',
       }),
@@ -117,7 +117,7 @@ describe('BookmarkButton', () => {
       /^기록이 있는 회사는 관심에서 뺄 수 없습니다$/,
     );
     expect(screen.getByTestId('bookmark-refused-next')).toHaveTextContent(
-      /^빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요$/,
+      /^빼려면 검토 의견을 '제외'로 저장해 주세요$/,
     );
     // 코드 이름은 화면에 보이지 않는다.
     expect(alert).not.toHaveTextContent('BOOKMARK_HAS_RECORDS');

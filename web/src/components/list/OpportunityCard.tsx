@@ -40,6 +40,11 @@ export interface OpportunityCardProps {
    * 검색 결과·관심 기업 목록·대시보드 칸으로 넘어온 목록은 공정이 섞여 있어 번호를 숨긴다.
    */
   showRank?: boolean;
+  /**
+   * [관심] 단추로 관심을 켰을 때 알린다(#675). 관심 기업을 뺀 평소 목록이 이 카드를 목록에서 빼고
+   * "관심 기업으로 옮겼습니다" 안내를 보이는 데 쓴다. 끌 때와 검토 의견 저장으로 켜질 때는 알리지 않는다.
+   */
+  onBookmarkedOn?: (card: CardData) => void;
 }
 
 function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
@@ -58,6 +63,7 @@ export default function OpportunityCard({
   classificationOverrides,
   processNames,
   showRank = true,
+  onBookmarkedOn,
 }: OpportunityCardProps) {
   const navigate = useNavigate();
   const detailPath = `/opportunities/${encodeURIComponent(card.oppId)}`;
@@ -129,17 +135,17 @@ export default function OpportunityCard({
   const ownPlating = card.ownPlatingLineSuspected === true;
   const ownPlatingBasis =
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
-  // 세 묶음(#610): 그 묶음에 든 이유 꼬리표와, 영업 결과로 순서가 움직였을 때만 보이는 이유 한 줄.
+  // 근거 상태 묶음(#675, PM 결정 2026-11-13): 묶음 이유 꼬리표 자리에는 공정 적합도 하나("적합도 상")를 보인다.
+  // 끝난 회사만 끝난 이유("거래 중"·"성사·거절·보류"·"제외"·"필수조건 탈락")를 그 자리에 보인다.
+  const closed = card.bucket === 'CLOSED';
+  const closedBasis = closed && card.bucketBasis ? contactBuckets.basis[card.bucketBasis] : null;
+  const fitTag = !closed && card.bucket && card.fitLevel ? contactBuckets.fit[card.fitLevel] : null;
+  // 점수와 "순서 조정" 줄은 점수를 매길 근거가 있는 "근거 있음" 묶음 카드에만 보인다.
+  // 서버가 묶음 칸을 주지 않으면(옛 응답) 지금처럼 보인다.
+  const evidenceReady = card.bucket === undefined || card.bucket === 'EVIDENCE_READY';
   // 조정 단계가 0이면(표본 부족이거나 성사·거절이 서로 지움) 순서가 그대로라 줄을 보이지 않는다.
-  const bucketBasis =
-    card.bucketBasis &&
-    card.bucketBasis !== 'REQUIRED_PENDING' &&
-    card.bucketBasis !== 'EVIDENCE_RECHECK' &&
-    card.bucketBasis !== 'NOT_EVALUATED_HIGH_FIT' &&
-    card.bucketBasis !== 'NOT_EVALUATED_LOWER_FIT'
-      ? contactBuckets.basis[card.bucketBasis]
-      : null;
-  const adjust = card.rankAdjust && card.rankAdjust.level !== 0 ? card.rankAdjust : null;
+  const adjust =
+    evidenceReady && card.rankAdjust && card.rankAdjust.level !== 0 ? card.rankAdjust : null;
   const adjustLine = adjust
     ? contactBuckets.adjustLine({
         level: adjust.level,
@@ -176,7 +182,18 @@ export default function OpportunityCard({
             data-testid="card-title"
             style={{ margin: 0, fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
           >
-            {card.title}
+            {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
+            <a
+              href={detailPath}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(detailPath);
+              }}
+              style={{ color: 'inherit' }}
+              data-testid="card-title-link"
+            >
+              {card.title}
+            </a>
           </Typography.Title>
           {showClassification ? (
             <span
@@ -189,9 +206,14 @@ export default function OpportunityCard({
               </StatusTag>
             </span>
           ) : null}
-          {bucketBasis ? (
+          {closedBasis ? (
             <StatusTag tone="neutral" data-testid="card-bucket-basis">
-              {bucketBasis}
+              {closedBasis}
+            </StatusTag>
+          ) : null}
+          {fitTag ? (
+            <StatusTag tone="neutral" data-testid="card-fit-level">
+              {fitTag}
             </StatusTag>
           ) : null}
           {confirmedProcessCodes.map((code) =>
@@ -271,7 +293,7 @@ export default function OpportunityCard({
                 </span>
               ) : null}
             </span>
-          ) : (
+          ) : evidenceReady ? (
             <ScoreLine
               scoreDisplay={card.scoreDisplay}
               scoreState={card.scoreState}
@@ -279,7 +301,7 @@ export default function OpportunityCard({
               classificationCode={card.classificationCode}
               testId="card-score"
             />
-          )}
+          ) : null}
         </div>
 
         {adjustLine ? (
@@ -340,7 +362,10 @@ export default function OpportunityCard({
             <BookmarkButton
               oppId={card.oppId}
               bookmark={bookmarkState.bookmark}
-              onChanged={bookmarkState.change}
+              onChanged={(next) => {
+                bookmarkState.change(next);
+                if (next.active) onBookmarkedOn?.(card);
+              }}
             />
             <Button
               href={detailPath}
