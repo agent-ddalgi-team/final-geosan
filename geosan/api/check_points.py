@@ -15,7 +15,10 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from geosan.dashboard.sales_analysis import LINK_CONFIRMED
+from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun, ItemJudgment, RequirementCheck
+from geosan.opportunity.models import OppProcessLink
 
 
 @dataclass(frozen=True)
@@ -228,3 +231,45 @@ def card_check_points(session: Session, runs: list[EvaluationRun]) -> dict[str, 
             else _EMPTY
         )
     return result
+
+
+def check_left_opp_ids(
+    session: Session, opp_ids: list[str], catalog_codes: set[str] | frozenset[str]
+) -> list[str]:
+    """`opp_ids` 가운데 목록 카드 "검토사항" 줄에 "확인할 것: …"이 보이는 회사(#679).
+
+    대시보드 "확인할 것이 남은 관심 회사" 건수와 목록 `?filter=CHECK_LEFT`가 이 한 곳을 같이 쓴다.
+    카드와 같은 값으로 판단한다(판정·점수는 다시 계산하지 않는다):
+    확정된 공정이 없고 AI 제안만 있거나 분류가 "평가 전" / 확인 전인 필수조건(checkPoints)이 있음 /
+    핵심 근거가 모자란 이유(coreEvidenceGaps)가 있음. 공정은 카드처럼 거산 공정 목록
+    (`catalog_codes`)에 있는 것만 센다. 최신 확정 평가가 없는 기회는 카드가 없으므로 뺀다.
+    """
+    if not opp_ids:
+        return []
+    runs = {
+        opp_id: run
+        for opp_id in opp_ids
+        if (run := latest_confirmed_evaluation(session, opp_id)) is not None
+    }
+    linked: dict[str, set[str]] = {}
+    confirmed: dict[str, set[str]] = {}
+    for opp_id, code, state in session.execute(
+        select(OppProcessLink.opp_id, OppProcessLink.process_code, OppProcessLink.state)
+        .where(OppProcessLink.opp_id.in_(list(runs)), OppProcessLink.superseded_at.is_(None))
+        .distinct()
+    ):
+        if code not in catalog_codes:
+            continue
+        linked.setdefault(opp_id, set()).add(code)
+        if state == LINK_CONFIRMED:
+            confirmed.setdefault(opp_id, set()).add(code)
+    points = card_check_points(session, list(runs.values()))
+    left = []
+    for opp_id, run in runs.items():
+        not_evaluated = run.classification_code == "NOT_EVALUATED"
+        proposed_count = len(linked.get(opp_id, set()) - confirmed.get(opp_id, set()))
+        process_unconfirmed = not confirmed.get(opp_id) and (proposed_count > 0 or not_evaluated)
+        card = points[run.eval_id]
+        if process_unconfirmed or not_evaluated or card.check_points or card.core_evidence_gaps:
+            left.append(opp_id)
+    return left
