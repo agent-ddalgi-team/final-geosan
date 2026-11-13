@@ -558,13 +558,12 @@ export const companyGlance = {
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
 } as const;
 
-/** 팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 종업원 수는 등록 때 값이라 언제나 "(추정)"을 붙인다. */
+/** 팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 종업원 수는 실제와 많이 달라 화면에 보이지 않는다(#635). */
 export const factoryProfileLabels = {
   row: '공장 정보',
   /** 공장 등록 업종명(#617). AI 추정이 아니라 등록 자료에 적힌 사실이다. */
   industry: (value: string) => `업종 ${value}`,
   rawMaterials: (value: string) => `원자재 ${value}`,
-  employees: (count: number) => `종업원 약 ${count}명(추정)`,
   /** 줄 끝 흐린 글자(출처 표시, #583): "한국산업단지공단 팩토리온 11/11 기준, 가공" */
   basis: (date: string) => `한국산업단지공단 팩토리온 ${date} 기준, 가공`,
 } as const;
