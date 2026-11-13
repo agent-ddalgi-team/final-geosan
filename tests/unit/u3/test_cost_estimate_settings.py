@@ -35,7 +35,7 @@ def test_example_files_carry_contract_initial_values(path):
         "judgeUsdPerRow": 0.002,
         "researchUsdPerCompany": 0.04,
         "researchCallsPerCompany": 2,
-        "webSearchUsdPerBatch": 0.04,
+        "webSearchUsdPerBatch": 0.11,
     }
 
 

@@ -355,5 +355,6 @@ def test_old_settings_copy_without_new_key_still_reads(judged, missing):
     setting("homepageDiscovery", autoResearch=True)
     with session_scope() as session:
         prices = load_runtime_config(session).app_settings.ingestion.cost_estimate
-        assert prices.model_dump(by_alias=True) == PRICES
+        # 예시 파일의 웹 검색 단가는 검색 3번 기준 0.11이다(PM 결정 2026-11-13 #706).
+        assert prices.model_dump(by_alias=True) == PRICES | {"webSearchUsdPerBatch": 0.11}
     assert budget().estimate.research_usd == 0.04
