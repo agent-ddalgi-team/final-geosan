@@ -71,3 +71,37 @@ def absent_rejected(context):
     ]
     assert who_first_answers(context["opp_id"]) == []
     assert support.step_of(context["client"], context["opp_id"])["code"] is None
+
+
+@when("걸려 온 전화와 상대가 온 방문과 우리가 건 전화를 차례로 저장하면")
+def three_contacts(context):
+    client, opp_id = context["client"], context["opp_id"]
+    theirs = [("WHO_FIRST", "THEIRS")]
+    support.save(client, opp_id, support.contact(attemptedAt="2026-10-18", answers=theirs))
+    visit = support.contact(attemptedAt="2026-10-19", answers=theirs, method="VISIT")
+    support.save(client, opp_id, visit)
+    ours = support.contact(
+        result="ABSENT", attemptedAt="2026-10-20", answers=[("WHO_FIRST", "OURS")]
+    )
+    support.save(client, opp_id, ours)
+    support.save(client, opp_id, support.contact(result="ABSENT", attemptedAt="2026-10-21"))
+
+
+@then(
+    '활동 이력의 접촉 줄은 "상대가 먼저"와 "상대가 옴"으로 끝나고 '
+    "우리가 건 전화에는 아무것도 붙지 않는다"
+)
+def activity_tails(context):
+    client, opp_id = context["client"], context["opp_id"]
+    rows = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
+    contacts = {
+        row["summary"].split(" · ")[1]: row["summary"]
+        for row in rows
+        if row["kind"] == "CONTACT_ATTEMPT"
+    }
+    assert contacts == {
+        "2026-10-18 전화 연결됨": "접촉 · 2026-10-18 전화 연결됨 · 상대가 먼저",
+        "2026-10-19 방문 연결됨": "접촉 · 2026-10-19 방문 연결됨 · 상대가 옴",
+        "2026-10-20 전화 부재": "접촉 · 2026-10-20 전화 부재",
+        "2026-10-21 전화 부재": "접촉 · 2026-10-21 전화 부재",
+    }
