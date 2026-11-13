@@ -29,6 +29,11 @@ class Customer(CommonColumns, Base):
     biz_number: Mapped[str | None] = mapped_column(String(10), unique=True)
     normalized_address: Mapped[str | None] = mapped_column(String(300))
     address: Mapped[str | None] = mapped_column(String(300))
+    # C6 #222: 공공자료 좌표만 저장한다. 네이버 응답은 저장하지 않는다.
+    lat: Mapped[float | None] = mapped_column(Float)
+    lng: Mapped[float | None] = mapped_column(Float)
+    geocoded_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    geocode_source: Mapped[str | None] = mapped_column(String(16))
     homepage_url: Mapped[str | None] = mapped_column(Text)
     homepage_status: Mapped[str | None] = mapped_column(String(24))
     homepage_source: Mapped[str | None] = mapped_column(String(16))

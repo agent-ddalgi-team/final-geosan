@@ -7,6 +7,136 @@
   "required": ["staff", "activeDatasetKind", "ingestion", "llm", "homepageDiscovery", "brand", "accessProtection"],
   "additionalProperties": false,
   "properties": {
+    "geosan": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "거산 기준 주소와 좌표(C7 #222). 좌표는 준비 전 함께 null.",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "lat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -180,
+          "maximum": 180
+        },
+        "_설명": {
+          "type": "string"
+        }
+      }
+    },
+    "geocoding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "2026-11-13 확인: CSV 우선·행안부 보완·네이버 실시간 전용. 키는 환경변수.",
+      "properties": {
+        "provider": {
+          "const": "JUSO",
+          "default": "JUSO"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "dailyCallLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        },
+        "locationCsvFiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "locationCsvBaseDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "default": null
+        },
+        "naverFallbackEnabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "_설명": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "locationCsvFiles"
+            ],
+            "properties": {
+              "locationCsvFiles": {
+                "minItems": 1
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "locationCsvBaseDate"
+            ],
+            "properties": {
+              "locationCsvBaseDate": {
+                "type": "string",
+                "format": "date"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "naverFallbackEnabled"
+            ],
+            "properties": {
+              "naverFallbackEnabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "distanceFilterPresetsKm": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "default": [
+        30,
+        50,
+        100
+      ]
+    },
     "candidateWebSearch": {
       "type": "object",
       "additionalProperties": false,

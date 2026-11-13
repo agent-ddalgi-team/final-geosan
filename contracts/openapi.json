@@ -3248,6 +3248,17 @@
             ],
             "title": "Discoverysourceurl"
           },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
           "evalId": {
             "title": "Evalid",
             "type": "string"
