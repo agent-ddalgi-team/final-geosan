@@ -1,4 +1,4 @@
-// 3. 근거 자료: 출처 · 출처 등급 · 확인/추정 글자(추정이 확정처럼 보이면 결함, AC10.1.3).
+// 2. 근거 자료: 출처 · 출처 등급 · 확인/추정 글자(추정이 확정처럼 보이면 결함, AC10.1.3).
 // 홈페이지 주소 입력·확정은 뒤 단위라 "확인이 필요합니다" 안내 글자만 보인다.
 import type { EvidenceView } from '../../api/types';
 import StatusTag from '../common/StatusTag';

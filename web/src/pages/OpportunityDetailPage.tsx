@@ -19,7 +19,6 @@ import { useBookmark } from '../components/common/useBookmark';
 import DetailSection from '../components/detail/DetailSection';
 import EvidenceSection from '../components/detail/EvidenceSection';
 import HeaderSection from '../components/detail/HeaderSection';
-import ProcessLinksSection from '../components/detail/ProcessLinksSection';
 import ReasonsSection from '../components/detail/ReasonsSection';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import { useFrame } from '../components/frame/FrameContext';
@@ -223,7 +222,8 @@ export default function OpportunityDetailPage() {
           ) : null}
           {/* "고객이 요구하는 것과 거산의 준비 상태" 구역(요구 표 + 승인 가능 여부 한 줄)은 그리지 않는다
               (PM 결정 2026-11-13 #659: 재접촉 관리를 하지 않는다). 서버 응답은 그대로 온다. */}
-          <ProcessLinksSection links={data.processLinks} />
+          {/* "공정 적합성 검토" 구역도 그리지 않는다(PM 지시 2026-11-13 #659): 공정은 검토사항 맨 위
+              "왜 추천했나" 한 줄에만 적는다. 서버 응답(processLinks)은 그대로 온다. */}
           <EvidenceSection evidence={data.evidence} />
           <ScoresCollapse scores={data.scores} />
           <DetailSection id="detail-opinion" title={opinionArea.groupLabel}>

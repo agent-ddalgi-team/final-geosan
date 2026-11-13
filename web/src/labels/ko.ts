@@ -339,13 +339,15 @@ export const scoreAria = {
  * 상세 영역 제목(BR10.5 순서).
  * 2026-11-13 PM 결정(#659): "고객이 요구하는 것과 거산의 준비 상태" 구역을 화면에서 빼고 번호를 다시 매겼다.
  * `requirements`는 지금 화면이 쓰지 않는 키다(구역 부품을 다시 쓸 때를 위해 남긴다).
+ * 같은 날 PM 지시로 "공정 적합성 검토" 구역도 화면에서 빼고(검토사항 맨 위 한 줄이 대신한다) 번호를 1~3으로 매겼다.
+ * `processLinks`도 지금 화면이 쓰지 않는 키다.
  */
 export const detailSections = {
   reasons: '1. 추천 근거와 후속 조치',
   requirements: '고객이 요구하는 것과 거산의 준비 상태',
-  processLinks: '2. 공정 적합성 검토',
-  evidence: '3. 근거 자료',
-  scores: '4. 점수 자세히 보기',
+  processLinks: '공정 적합성 검토',
+  evidence: '2. 근거 자료',
+  scores: '3. 점수 자세히 보기',
   estimateMark: '(추정)',
   questionsHeading: '거산 역량 확인사항',
   questionsHint:
@@ -1099,6 +1101,25 @@ export const reviewArea = {
     return `맞는 공정이 아직 확인 전입니다 · AI 제안 ${count}개${names} — 통화 뒤 꼬리 질문에서 확정하세요`;
   },
   whySeeGlance: '고른 이유와 등록 사실은 위 "이 회사 한눈에"에 있습니다.',
+  /**
+   * 확정된 공정 한 줄(#659, PM 지시 2026-11-13): "공정 적합성 검토" 구역을 빼고 여기 한 줄로 합쳤다.
+   * 첫 공정만 소재·판정까지 적고 나머지는 "외 n개". 예: "공정: 아연도금(전기아연도금) · 소재 철 · 통과 외 1개"
+   */
+  whyProcessLine: (name: string, material: string | null, result: string | null, rest: number) =>
+    `공정: ${[name, material ? `소재 ${material}` : null, result].filter((part) => part !== null).join(' · ')}${rest > 0 ? ` 외 ${rest}개` : ''}`,
+  /** 마우스를 올리면 보이는 공정 한 개의 자세한 말. 예: "아연도금 · 소재 철 · 통과 — 지금 단계 필수 요구 통과" */
+  whyProcessDetail: (
+    name: string,
+    material: string | null,
+    result: string | null,
+    reason: string | null,
+  ) =>
+    `${[name, material ? `소재 ${material}` : null, result].filter((part) => part !== null).join(' · ')}${reason ? ` — ${reason}` : ''}`,
+  /** 확정된 공정이 없고 AI 제안만 있을 때. 예: "공정 확인 전 · AI 제안 5개(아연도금, 아노다이징, 흑착색 외 2개)" */
+  whyProcessPending: (count: number, shown: readonly string[], rest: number) => {
+    const names = shown.length > 0 ? `(${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''})` : '';
+    return `공정 확인 전 · AI 제안 ${count}개${names}`;
+  },
 } as const;
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */

@@ -151,11 +151,11 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    // "요구와 준비 상태" 구역은 화면에서 뺐다(PM 결정 2026-11-13 #659). 검토사항 다음이 공정 적합성이다.
+    // "요구와 준비 상태"·"공정 적합성 검토" 구역은 화면에서 뺐다(PM 결정 2026-11-13 #659). 검토사항 다음이 근거 자료다.
     expect(headings.slice(0, 3)).toEqual([
       detailSections.reasons,
       reviewArea.title,
-      detailSections.processLinks,
+      detailSections.evidence,
     ]);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
     const review = screen.getByTestId('detail-review');
@@ -328,14 +328,13 @@ describe('OpportunityDetailPage', () => {
     expect(mockedActivity).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
   });
 
-  it('영역이 1~4번 순서로 나오고 맨 아래에 의견 영역이 있으며 이름이 제목으로 올라간다', async () => {
+  it('영역이 1~3번 순서로 나오고 맨 아래에 의견 영역이 있으며 이름이 제목으로 올라간다', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     const setPageTitle = renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual([
       detailSections.reasons,
-      detailSections.processLinks,
       detailSections.evidence,
       expect.stringContaining(detailSections.scores),
       opinionArea.groupLabel,
@@ -762,6 +761,18 @@ describe('OpportunityDetailPage', () => {
 
   // PM 결정 2026-11-13(#659): 재접촉 관리를 하지 않으므로 "고객이 요구하는 것과 거산의 준비 상태" 구역을 그리지 않는다.
   // 요구 표와 "승인 가능 여부" 줄의 모양 검사는 부품 시험(components/detail/__tests__/RequirementsTable.test.tsx)으로 옮겼다.
+  it('공정 적합성 검토 구역은 공정 연결이 있어도 보이지 않는다', async () => {
+    mockedGet.mockResolvedValueOnce(reply(base));
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(base.processLinks.length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('detail-process-links')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('process-link')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(detailSections.processLinks, { exact: false }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each([
     ['요구가 있을 때', base],
     ['요구가 없을 때', { ...base, requirements: [] }],
