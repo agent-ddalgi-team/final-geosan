@@ -5,8 +5,15 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SalesAnalysisPage from '../SalesAnalysisPage';
 import AppFrame from '../../components/frame/AppFrame';
+import type { DashboardBreakdown } from '../../api/dashboardTypes';
 import type { AnalysisStats, SalesAnalysis } from '../../api/salesAnalysis';
-import { banner, frame, peersArea, salesAnalysisTexts as texts } from '../../labels/ko';
+import {
+  banner,
+  dashboardTexts,
+  frame,
+  peersArea,
+  salesAnalysisTexts as texts,
+} from '../../labels/ko';
 import configFixture from '../../test/fixtures/config-ui.json';
 
 function stats(overrides: Partial<AnalysisStats> = {}): AnalysisStats {
@@ -95,7 +102,29 @@ const EMPTY: SalesAnalysis = {
   companies: [],
 };
 
-function installFetch(analysis: SalesAnalysis | 'fail', meta: object = {}) {
+// 대시보드 집계의 막대 값(#679 "관심 기업 분포"). 가상 회사·가상 숫자다.
+const BREAKDOWN: DashboardBreakdown = {
+  basis: {
+    statuses: ['INTERESTED', 'IN_PROGRESS', 'SAMPLE_OR_REGISTRATION_APPROVED', 'WON_LAST_12M'],
+    total: 4,
+  },
+  byProcess: [
+    { processCode: 'ZINC_PLATING', processName: '아연도금', count: 1, ratio: 0.25 },
+    { processCode: 'ANODIZING', processName: '아노다이징', count: 4, ratio: 1 },
+    { processCode: 'PASSIVATION', processName: '부동태', count: 0, ratio: 0 },
+  ],
+  byIndustry: [
+    { industry: '방위산업', count: 2, ratio: 0.5, includesProposed: true },
+    { industry: '반도체', count: 0, ratio: 0, includesProposed: false },
+    { industry: '미확정', count: 2, ratio: 0.5, includesProposed: false },
+  ],
+};
+
+function installFetch(
+  analysis: SalesAnalysis | 'fail',
+  meta: object = {},
+  breakdown: DashboardBreakdown | null | 'fail' = null,
+) {
   const paths: string[] = [];
   vi.stubGlobal(
     'fetch',
@@ -104,6 +133,20 @@ function installFetch(analysis: SalesAnalysis | 'fail', meta: object = {}) {
       paths.push(`${init?.method ?? 'GET'} ${path}`);
       if (path === '/config/ui') {
         return new Response(JSON.stringify({ data: configFixture.data, meta: {} }));
+      }
+      if (path === '/dashboard') {
+        if (breakdown === 'fail') {
+          const error = { message: '잠시 뒤 다시 해 주세요.', nextAction: '다시 시도', ref: 'r2' };
+          return new Response(JSON.stringify({ error }), { status: 500 });
+        }
+        const data = {
+          counts: {},
+          schedule: [],
+          recentActivity: [],
+          asOf: ANALYSIS.asOf,
+          breakdown,
+        };
+        return new Response(JSON.stringify({ data, meta: {} }));
       }
       if (path === '/sales-analysis') {
         if (analysis === 'fail') {
@@ -262,5 +305,113 @@ describe('영업 분석 화면 (#608)', () => {
     expect(paths.filter((path) => !path.startsWith('GET '))).toEqual([]);
     expect(paths.filter((path) => path.endsWith('/sales-analysis'))).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /엑셀|내보내기|AI/ })).not.toBeInTheDocument();
+  });
+
+  describe('관심 기업 분포 (#679: 대시보드에서 옮겨 온 공정별·산업군별 막대)', () => {
+    it('표 위쪽에 제목과 함께 서버가 집계한 값(#627)을 그대로 보인다', async () => {
+      installFetch(ANALYSIS, {}, BREAKDOWN);
+      renderPage();
+      const section = await screen.findByTestId('analysis-breakdown');
+      expect(within(section).getByRole('heading', { level: 2 })).toHaveTextContent(
+        texts.breakdownTitle,
+      );
+      expect(screen.getByTestId('analysis-breakdown-basis')).toHaveTextContent(
+        dashboardTexts.breakdownBasis(4),
+      );
+      const processRows = within(screen.getByTestId('analysis-by-process')).getAllByTestId(
+        'analysis-by-process-row',
+      );
+      expect(processRows.map((row) => row.textContent)).toEqual([
+        '아연도금1곳 (25%)',
+        '아노다이징4곳 (100%)',
+        '부동태0곳 (0%)',
+      ]);
+      const industry = screen.getByTestId('analysis-by-industry');
+      expect(within(industry).getByTestId('analysis-by-industry-proposed')).toHaveTextContent(
+        dashboardTexts.breakdownProposed,
+      );
+      expect(
+        within(industry)
+          .getAllByTestId('analysis-by-industry-row')
+          .map((row) => row.textContent),
+      ).toEqual(['방위산업2곳 (50%)', '반도체0곳 (0%)', '미확정2곳 (50%)']);
+      // 막대는 공정별·회사별 표보다 위에 있다.
+      const table = await screen.findByTestId('analysis-process-table');
+      expect(
+        section.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('막대 아래에 아래 표와 세는 기준이 다르다는 한 줄을 붙인다', async () => {
+      installFetch(ANALYSIS, {}, BREAKDOWN);
+      renderPage();
+      expect(await screen.findByTestId('analysis-breakdown-note')).toHaveTextContent(
+        texts.breakdownNote,
+      );
+      expect(texts.breakdownNote).toContain('AI가 제안한 공정·산업도 함께');
+      expect(texts.breakdownNote).toContain('확정된 공정·산업만');
+    });
+
+    it('AI 제안이 하나도 없으면 "AI 제안 포함"을 보이지 않는다', async () => {
+      const noProposed = {
+        ...BREAKDOWN,
+        byIndustry: BREAKDOWN.byIndustry.map((item) => ({ ...item, includesProposed: false })),
+      };
+      installFetch(ANALYSIS, {}, noProposed);
+      renderPage();
+      await screen.findByTestId('analysis-by-industry');
+      expect(screen.queryByTestId('analysis-by-industry-proposed')).not.toBeInTheDocument();
+    });
+
+    it('대상이 0곳이면 막대 대신 안내와 [추천 목록 가기]를 보인다', async () => {
+      installFetch(
+        ANALYSIS,
+        {},
+        { basis: { statuses: [], total: 0 }, byProcess: [], byIndustry: [] },
+      );
+      renderPage();
+      expect(await screen.findByTestId('analysis-breakdown-empty')).toHaveTextContent(
+        dashboardTexts.breakdownEmptyText,
+      );
+      expect(screen.queryByTestId('analysis-by-process')).not.toBeInTheDocument();
+      const link = screen.getByTestId('analysis-breakdown-empty-link');
+      expect(link).toHaveAttribute('href', '/opportunities');
+      expect(link).toHaveTextContent(dashboardTexts.breakdownEmptyAction);
+    });
+
+    it('서버가 막대 없음(null)으로 보내면(가상 묶음) 구역을 숨기고 표는 그대로 보인다', async () => {
+      installFetch(ANALYSIS, {}, null);
+      renderPage();
+      await screen.findByTestId('analysis-company-table');
+      expect(screen.queryByTestId('analysis-breakdown')).not.toBeInTheDocument();
+    });
+
+    it('접촉 기록이 없어 표가 비어도 관심 기업 분포는 보인다', async () => {
+      installFetch(EMPTY, {}, BREAKDOWN);
+      renderPage();
+      expect(await screen.findByTestId('analysis-empty')).toBeInTheDocument();
+      expect(await screen.findByTestId('analysis-by-process')).toBeInTheDocument();
+    });
+
+    it('막대 값을 못 읽으면 숨기지 않고 못 불러왔다고 알리며, 표는 그대로 보인다', async () => {
+      installFetch(ANALYSIS, {}, 'fail');
+      renderPage();
+      expect(await screen.findByTestId('analysis-breakdown-error')).toHaveTextContent(
+        texts.breakdownLoadError,
+      );
+      expect(await screen.findByTestId('analysis-company-table')).toBeInTheDocument();
+    });
+
+    it('새 경로를 만들지 않고 대시보드 집계를 담당자 키 없이 한 번 읽는다', async () => {
+      const paths = installFetch(ANALYSIS, {}, BREAKDOWN);
+      renderPage();
+      await screen.findByTestId('analysis-by-process');
+      expect(paths.filter((path) => path === 'GET /dashboard')).toHaveLength(1);
+      const calls = vi
+        .mocked(fetch)
+        .mock.calls.filter(([url]) => String(url).endsWith('/dashboard'));
+      const headers = new Headers((calls[0][1] as RequestInit | undefined)?.headers);
+      expect(headers.has('X-Staff-Key')).toBe(false);
+    });
   });
 });

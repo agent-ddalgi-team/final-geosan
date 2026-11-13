@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -176,6 +176,30 @@ class RecentActivityItem:
     summary: str
 
 
+# "오늘 확인할 것" 줄의 종류(#679, 계약 C1 todayChecks). 줄 순서도 이 순서다.
+TODAY_SCHEDULE_TODAY = "SCHEDULE_TODAY"
+TODAY_SCHEDULE_OVERDUE = "SCHEDULE_OVERDUE"
+TODAY_CHECK_LEFT = "CHECK_LEFT"
+
+
+@dataclass(frozen=True)
+class TodayCheckItem:
+    opp_id: str
+    customer_name: str
+    # 일정 줄만 날짜와 일정 한 줄이 있다. 메모 글·연락처는 싣지 않는다.
+    due_at: date | None = None
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class TodayCheckRow:
+    kind: str
+    count: int
+    items: list[TodayCheckItem]
+    # 누르면 열 목록의 `?filter=` 값. 없으면 화면이 줄 아래에 작은 목록을 편다.
+    list_filter: str | None = None
+
+
 @dataclass(frozen=True)
 class Dashboard:
     counts: DashboardCounts
@@ -184,6 +208,8 @@ class Dashboard:
     as_of: datetime
     # 가상 묶음이거나 재료를 받지 않았으면 None. 화면은 None이면 막대 줄을 숨긴다.
     breakdown: Breakdown | None = None
+    # 맨 위 "오늘 확인할 것" 줄 목록(#679). 0건인 줄은 없다.
+    today_checks: list[TodayCheckRow] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -338,6 +364,52 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
         for row in sorted(due, key=lambda r: (r.next_schedule_at, r.opp_id))
     ]
     return items, len(items)
+
+
+def build_today_checks(
+    session: Session,
+    schedule: list[ScheduleItem],
+    today: date,
+    check_left_opp_ids: Sequence[str] | None = None,
+) -> list[TodayCheckRow]:
+    """맨 위 "오늘 확인할 것" 줄 목록(#679). AI 없이 저장된 값으로만 만든다.
+
+    일정 두 줄은 달력이 쓰는 일정 목록(`schedule`)에서 그대로 골라 달력과 숫자가 어긋나지 않는다.
+    "확인할 것이 남은 관심 회사"는 카드와 같은 계산이 창구 쪽(api)에 있어서, 창구가 계산한
+    기회 번호를 받아 이름만 붙인다(이 부품은 api를 가져오지 않는다). 0건인 줄은 만들지 않는다.
+    줄을 더할 때(예: #677 "다시 조사할 때")는 이 목록에 한 줄을 덧붙이면 된다.
+    """
+
+    def schedule_row(kind: str, picked: list[ScheduleItem]) -> TodayCheckRow:
+        return TodayCheckRow(
+            kind=kind,
+            count=len(picked),
+            items=[
+                TodayCheckItem(row.opp_id, row.customer_name, row.due_at, row.note)
+                for row in picked
+            ],
+        )
+
+    rows = [
+        schedule_row(TODAY_SCHEDULE_TODAY, [row for row in schedule if row.due_at == today]),
+        schedule_row(TODAY_SCHEDULE_OVERDUE, [row for row in schedule if row.overdue]),
+    ]
+    if check_left_opp_ids:
+        names = session.execute(
+            select(Opportunity.opp_id, Customer.name)
+            .join(Customer, Opportunity.customer_id == Customer.customer_id)
+            .where(Opportunity.opp_id.in_(check_left_opp_ids))
+            .order_by(Customer.name, Opportunity.opp_id)
+        ).all()
+        rows.append(
+            TodayCheckRow(
+                kind=TODAY_CHECK_LEFT,
+                count=len(names),
+                items=[TodayCheckItem(opp_id, name) for opp_id, name in names],
+                list_filter=TODAY_CHECK_LEFT,
+            )
+        )
+    return [row for row in rows if row.count > 0]
 
 
 def _outcome_activity(session: Session, row: Outcome) -> tuple[str, str]:
@@ -611,8 +683,11 @@ def build_dashboard(
     today: date,
     now: datetime,
     breakdown_source: BreakdownSource | None = None,
+    check_left_opp_ids: Sequence[str] | None = None,
 ) -> DashboardResult:
     """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
+
+    `check_left_opp_ids`는 창구가 카드와 같은 계산으로 고른 "확인할 것이 남은 관심 회사"다(#679).
 
     `breakdown_source`를 주면 공정·산업군 막대도 만든다. 가상 묶음은 가상 사례뿐이라
     (집계에서 제외, 계약 C1) 막대를 만들지 않는다.
@@ -639,6 +714,7 @@ def build_dashboard(
             recent_activity=_recent_activity(session, population, staff_key),
             as_of=now,
             breakdown=breakdown,
+            today_checks=build_today_checks(session, schedule, today, check_left_opp_ids),
         ),
         has_virtual,
     )
