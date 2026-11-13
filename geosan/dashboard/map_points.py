@@ -55,11 +55,13 @@ def build_map_points(session, settings, now, *, tz):
             )
         )
     ]
+    # 대시보드 지도도 저장된 공공좌표만 쓴다(#686). 실시간 보완은 상세에서만.
     locations = customer_points(
         session,
         [customer for _, customer, _ in targets],
         {customer.customer_id: opportunity.opp_id for opportunity, customer, _ in targets},
         settings,
+        live=False,
     )
     points = []
     missing = 0
