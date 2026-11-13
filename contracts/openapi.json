@@ -1446,6 +1446,21 @@
         "title": "Envelope[HomepageResearch]",
         "type": "object"
       },
+      "Envelope_IndustriesResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IndustriesResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[IndustriesResponse]",
+        "type": "object"
+      },
       "Envelope_IngestAccepted_": {
         "properties": {
           "data": {
@@ -1972,6 +1987,67 @@
           "evalId"
         ],
         "title": "HomepageResearch",
+        "type": "object"
+      },
+      "IndustriesRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "industries": {
+            "description": "설정 industries 안 값, 최대 3개. 빈 배열이면 미확정으로 되돌린다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "industries"
+        ],
+        "title": "IndustriesRequest",
+        "type": "object"
+      },
+      "IndustriesResponse": {
+        "properties": {
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "industriesConfirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industriesconfirmedat"
+          },
+          "industriesSource": {
+            "anyOf": [
+              {
+                "const": "STAFF",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "STAFF = 담당자 확정. 빈 배열로 되돌렸으면 null",
+            "title": "Industriessource"
+          }
+        },
+        "required": [
+          "industries",
+          "industriesSource",
+          "industriesConfirmedAt"
+        ],
+        "title": "IndustriesResponse",
         "type": "object"
       },
       "IndustryBreakdownItem": {
@@ -6970,6 +7046,71 @@
           }
         },
         "summary": "Save Homepage"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/industries": {
+      "post": {
+        "operationId": "save_industries_api_v1_opportunities__oppId__industries_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndustriesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_IndustriesResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Industries"
       }
     },
     "/api/v1/opportunities/{oppId}/main-phone/confirm": {
