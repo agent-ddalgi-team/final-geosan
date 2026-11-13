@@ -1,7 +1,7 @@
 // 영업 꼬리 질문(#607, PM 결정 2026-11-12): 상세 기록 구역의 세부 단계 요약과 접촉 기록의 질문 칸.
 // 문구·보기·갈라지는 조건은 서버의 질문 파일(GET /sales-questions)에서 오고, 답은 코드로만 보낸다.
 // 세부 단계는 서버가 기록에서 계산한다. 화면은 지금 고른 답으로 다음 단계 질문을 미리 펼쳐 보일 뿐이다.
-import { Button, Radio, Typography } from 'antd';
+import { Button, Input, Radio, Typography } from 'antd';
 import type {
   LostReasonCode,
   OutcomeStatus,
@@ -98,6 +98,43 @@ export function closingPick(
   return { status, lostReasonCode: status === 'LOST' ? lostReasonCode : null };
 }
 
+export interface NextActionPick {
+  /** "다음 할 일은?" 질문의 ID. */
+  questionId: string;
+  /** 고른 할 일의 쉬운 말("견적"). 다음 일정의 내용으로 쓴다. */
+  label: string;
+}
+
+/**
+ * 지금 고른 "다음 할 일"(#683). 끝이 아닌 할 일을 골랐을 때만 값이 있다.
+ * 어느 질문이 "다음 할 일"인지는 질문 파일에서 읽는다: 마무리 질문(보기에 closes가 있는 질문)을
+ * 여는 질문이 "다음 할 일"이고, 그 마무리 질문을 여는 보기("끝")는 날짜를 묻지 않는다.
+ */
+export function nextActionPick(
+  questions: SalesQuestions,
+  shown: SalesQuestion[],
+  picked: Record<string, string>,
+): NextActionPick | null {
+  const ending = new Map<string, Set<string>>();
+  for (const question of questions.questions) {
+    if (!question.answers.some((option) => option.closes)) continue;
+    for (const [target, answerIds] of Object.entries(question.showWhen?.answers ?? {})) {
+      const ids = ending.get(target) ?? new Set<string>();
+      for (const answerId of answerIds) ids.add(answerId);
+      ending.set(target, ids);
+    }
+  }
+  for (const question of shown) {
+    const ends = ending.get(question.questionId);
+    if (!ends || question.choices) continue;
+    const option = question.answers.find((item) => item.answerId === picked[question.questionId]);
+    if (option && !ends.has(option.answerId) && !option.closes) {
+      return { questionId: question.questionId, label: option.label };
+    }
+  }
+  return null;
+}
+
 export interface SalesQuestionFieldsProps {
   questions: SalesQuestions;
   step: SalesStepView | null;
@@ -111,6 +148,11 @@ export interface SalesQuestionFieldsProps {
   onPickMany?: (questionId: string, values: string[]) => void;
   /** 이 회사에 붙어 있는 공정·산업군 표시(AI 제안·확정). */
   marks?: ChoiceMarks | null;
+  /** "다음 할 일" 아래 "언제 할까요?" 날짜(#683, YYYY-MM-DD 또는 빈 값). onNextDate가 있을 때만 칸이 보인다. */
+  nextDate?: string;
+  onNextDate?: (value: string) => void;
+  /** 고를 수 있는 가장 이른 날짜(오늘, 한국 시간). */
+  nextDateMin?: string;
 }
 
 /** 접촉 결과가 "연결됨"·"거절"일 때 접촉 기록 칸 아래에 보이는 질문들. 고르지 않아도 저장된다. */
@@ -124,15 +166,30 @@ export function SalesQuestionFields({
   pickedMany = {},
   onPickMany,
   marks = null,
+  nextDate = '',
+  onNextDate,
+  nextDateMin,
 }: SalesQuestionFieldsProps) {
   const shown = visibleQuestions(questions, step, picked, allOnly);
   if (shown.length === 0) return null;
+  const nextAction = onNextDate ? nextActionPick(questions, shown, picked) : null;
+  // 단계 이름은 질문 파일의 것을 먼저 쓰고, 없으면 쉬운 말 대응표.
+  const stepLabel = (code: SalesStep) =>
+    questions.steps?.find((item) => item.code === code)?.label ?? salesStepLabels[code];
   return (
     <fieldset
       data-testid="sales-questions"
       style={{ border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, margin: 0 }}
     >
       <legend style={{ padding: '0 4px' }}>{salesQuestionTexts.questionsTitle}</legend>
+      {/* 왜 이 질문들이 나오는지 한 줄(#674): 질문은 세부 단계마다 다르고 "모든 단계" 질문은 늘 나온다. */}
+      <div data-testid="sales-questions-step" style={{ marginBottom: 4 }}>
+        {allOnly
+          ? salesQuestionTexts.stepLineDeclined
+          : step?.code
+            ? salesQuestionTexts.stepLine(stepLabel(step.code))
+            : salesQuestionTexts.stepLineFirst(stepLabel('NOT_REACHED'))}
+      </div>
       <Typography.Text type="secondary" style={{ fontSize: typography.fontSizeSecondary }}>
         {salesQuestionTexts.questionsHint}
       </Typography.Text>
@@ -176,6 +233,36 @@ export function SalesQuestionFields({
                 ) : null}
               </div>
             )}
+            {/* 끝이 아닌 할 일을 고르면 날짜를 이어서 묻는다(#683). 비워 두면 일정은 그대로다. */}
+            {nextAction?.questionId === question.questionId ? (
+              <label
+                data-testid="sales-next-date-field"
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  alignItems: 'center',
+                  marginTop: 8,
+                }}
+              >
+                <span>{salesQuestionTexts.nextDateLabel}</span>
+                <Input
+                  type="date"
+                  style={{ width: 160 }}
+                  value={nextDate}
+                  min={nextDateMin}
+                  onChange={(event) => onNextDate?.(event.target.value)}
+                  disabled={disabled}
+                  data-testid="sales-next-date"
+                />
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: typography.fontSizeSecondary }}
+                >
+                  {salesQuestionTexts.nextDateHint}
+                </Typography.Text>
+              </label>
+            ) : null}
           </div>
         ))}
       </div>

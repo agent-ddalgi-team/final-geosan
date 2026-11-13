@@ -1,18 +1,19 @@
-// 대시보드(S4, 첫 화면): 회사 이름 검색 · 건수 두 구역("관심 기업" → "영업 진행") · (공정·산업군 막대) · 일정 · 최근 내 기록.
-// 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v3, #216·#356)에서 온다. 관심으로 고른 회사만 센다. 공정·산업군 막대는 서버가 주지 않으면(2차 #229 전) 숨긴다.
+// 대시보드(S4, 첫 화면): 회사 이름 검색 · 오늘 확인할 것 · 일정 달력 · 건수 두 구역("관심 기업" → "영업 진행") · 최근 내 기록 · 지도.
+// 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v3, #216·#356)에서 온다. 관심으로 고른 회사만 센다.
+// 공정·산업군 막대는 영업 분석 화면으로 옮겼다(#679, PM 결정 2026-11-13). 대시보드는 오늘 할 일과 진행을 한눈에 보는 곳이다.
 // 검색은 /opportunities?q=이름 으로 이동한다(계약: 검색은 목록의 q 조건). 목록이 q를 읽는 것은 서버 연결 뒤다.
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button, Input } from 'antd';
 import { getDashboard } from '../api/dashboard';
 import type { Dashboard } from '../api/dashboardTypes';
 import type { Meta } from '../api/types';
-import BreakdownBars from '../components/dashboard/BreakdownBars';
 import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
+import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
@@ -88,7 +89,6 @@ export default function DashboardPage() {
   else if (current.error) state = 'error';
 
   const data = current?.data;
-  const breakdown = data?.breakdown ?? null;
 
   return (
     <FiveStates
@@ -115,87 +115,34 @@ export default function DashboardPage() {
           </Button>
         </form>
 
+        {/* 위에서부터: 오늘 확인할 것 → 일정 달력 → 영업 진행(건수 칸) → 최근 내 기록 → 지도 (#679). */}
+        {data ? <TodayChecks rows={data.todayChecks} /> : null}
+
+        <section
+          aria-labelledby="dashboard-calendar-title"
+          data-testid="dashboard-calendar-section"
+          style={sectionStyle}
+        >
+          <h2 id="dashboard-calendar-title" style={cardTitleStyle}>
+            {dashboardTexts.calendarTitle}
+          </h2>
+          <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />
+        </section>
+
         {data ? <CountCards counts={data.counts} /> : null}
 
-        {breakdown ? (
-          breakdown.basis.total === 0 ? (
-            <section data-testid="dashboard-breakdown-empty" style={sectionStyle}>
-              <p style={{ margin: 0, color: colors.textSecondary }}>
-                {dashboardTexts.breakdownEmptyText}
-              </p>
-              <div>
-                <Link to="/opportunities" data-testid="dashboard-breakdown-empty-link">
-                  {dashboardTexts.breakdownEmptyAction}
-                </Link>
-              </div>
-            </section>
-          ) : (
-            <div data-testid="dashboard-breakdown">
-              <p
-                data-testid="dashboard-breakdown-basis"
-                style={{ margin: '0 0 12px', color: colors.textSecondary }}
-              >
-                {dashboardTexts.breakdownBasis(breakdown.basis.total)}
-              </p>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                  gap: spacing.sectionGap,
-                }}
-              >
-                <BreakdownBars
-                  testId="dashboard-by-process"
-                  title={dashboardTexts.breakdownProcessTitle}
-                  rows={breakdown.byProcess.map((item) => ({
-                    key: item.processCode,
-                    name: item.processName,
-                    count: item.count,
-                    ratio: item.ratio,
-                  }))}
-                />
-                <BreakdownBars
-                  testId="dashboard-by-industry"
-                  title={dashboardTexts.breakdownIndustryTitle}
-                  includesProposed={breakdown.byIndustry.some((item) => item.includesProposed)}
-                  rows={breakdown.byIndustry.map((item) => ({
-                    key: item.industry,
-                    name: item.industry,
-                    count: item.count,
-                    ratio: item.ratio,
-                  }))}
-                />
-              </div>
-            </div>
-          )
-        ) : null}
+        <section
+          aria-labelledby="dashboard-recent-title"
+          data-testid="dashboard-recent-section"
+          style={sectionStyle}
+        >
+          <h2 id="dashboard-recent-title" style={cardTitleStyle}>
+            {dashboardTexts.recentTitle}
+          </h2>
+          <RecentActivityList items={data?.recentActivity ?? []} />
+        </section>
 
         <DashboardMapSection />
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: spacing.cardGap,
-          }}
-        >
-          <section
-            aria-labelledby="dashboard-calendar-title"
-            data-testid="dashboard-calendar-section"
-            style={sectionStyle}
-          >
-            <h2 id="dashboard-calendar-title" style={cardTitleStyle}>
-              {dashboardTexts.calendarTitle}
-            </h2>
-            <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />
-          </section>
-          <section aria-labelledby="dashboard-recent-title" style={sectionStyle}>
-            <h2 id="dashboard-recent-title" style={cardTitleStyle}>
-              {dashboardTexts.recentTitle}
-            </h2>
-            <RecentActivityList items={data?.recentActivity ?? []} />
-          </section>
-        </div>
       </div>
     </FiveStates>
   );

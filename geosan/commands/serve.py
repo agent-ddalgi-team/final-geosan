@@ -10,6 +10,7 @@ API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정
 from __future__ import annotations
 
 import socket
+import time
 from pathlib import Path
 
 import typer
@@ -54,6 +55,30 @@ def _run_server(port: int, host: str = HOST) -> None:
     )
 
 
+def _warm_location_index() -> None:
+    """좌표 조회를 켰고 위치 CSV가 있으면 색인을 한 번 만들어 둔다. 실패해도 서버는 띄운다."""
+    from geosan.config.app_settings import read_app_settings
+    from geosan.config.errors import AppError
+    from geosan.opportunity.location_csv import location_index
+    from geosan.storage.session import session_scope
+
+    with session_scope() as session:
+        settings = read_app_settings(session)
+    if settings is None or not settings.geocoding.enabled:
+        return
+    files = settings.geocoding.location_csv_files
+    if not files:
+        return
+    started = time.monotonic()
+    try:
+        location_index(files)
+    except AppError as error:
+        # 파일이 없으면 거리 기능만 안 된다. 숨기지 않고 알리되 목록·상세는 계속 쓰게 한다.
+        typer.echo(f"경고: {error.message} 거리 계산 전에 설정의 위치 CSV 경로를 확인해 주세요.")
+        return
+    typer.echo(f"위치 CSV {len(files)}개를 미리 읽었습니다 ({time.monotonic() - started:.1f}초).")
+
+
 def run_serve(port: int, host: str = HOST) -> int:
     if host not in (HOST, "0.0.0.0"):
         typer.echo("오류: 듣는 주소는 127.0.0.1 또는 0.0.0.0으로 지정해 주세요.")
@@ -88,6 +113,10 @@ def run_serve(port: int, host: str = HOST) -> int:
     if port_in_use(port, host):
         typer.echo(f"포트 {port}이 사용 중입니다. --port로 바꾸세요.")
         return EXIT_RUN_FAILED
+
+    # 5) 위치 CSV 색인을 미리 읽는다(#664). 받은 CSV 3개(64만 줄)는 처음 읽는 데 10초가 넘어
+    #    서버를 켠 뒤 첫 가까운 순 요청이 요청 제한(10초)에 걸려 실패했다.
+    _warm_location_index()
 
     typer.echo(f"서버 시작: http://{host}:{port} ({screen}, {db_path.name}). 중지는 Ctrl+C.")
     # 켜져 있는 동안 DB 옆에 실행 중 표식을 둔다. restore가 이것을 보고 복원을 거부한다(#214).

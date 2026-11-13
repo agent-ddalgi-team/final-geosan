@@ -580,6 +580,14 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "distanceFilterPresetsKm": {
+            "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Distancefilterpresetskm",
+            "type": "array"
+          },
           "export": {
             "$ref": "#/components/schemas/ExportUi"
           },
@@ -610,7 +618,8 @@
           "ruleVersion",
           "records",
           "ingestOptions",
-          "export"
+          "export",
+          "distanceFilterPresetsKm"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -703,6 +712,13 @@
               "$ref": "#/components/schemas/ScheduleItem"
             },
             "title": "Schedule",
+            "type": "array"
+          },
+          "todayChecks": {
+            "items": {
+              "$ref": "#/components/schemas/TodayCheckRow"
+            },
+            "title": "Todaychecks",
             "type": "array"
           }
         },
@@ -1309,6 +1325,18 @@
           },
           "contactCount": {
             "$ref": "#/components/schemas/ContactCount"
+          },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactat"
           },
           "opinion": {
             "anyOf": [
@@ -3344,13 +3372,51 @@
             "title": "Bucketbasis",
             "type": "string"
           },
+          "checkKinds": {
+            "description": "#659 checkPoints 각 줄의 종류(같은 순서·같은 개수). 카드가 낱말로 줄일 때",
+            "items": {
+              "enum": [
+                "PROCESS",
+                "MATERIAL",
+                "REQUIREMENT",
+                "COMPANY_FILTER"
+              ],
+              "type": "string"
+            },
+            "title": "Checkkinds",
+            "type": "array"
+          },
+          "checkPoints": {
+            "description": "#659 필수조건 가운데 확인 전인 조건(평가 기록의 사실만)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Checkpoints",
+            "type": "array"
+          },
           "classificationCode": {
             "$ref": "#/components/schemas/ClassificationCode"
+          },
+          "confirmedProcessCodes": {
+            "description": "#659 processCodes 가운데 확정된 공정만(사례 파일·담당자). 카드 공정 꼬리표",
+            "items": {
+              "type": "string"
+            },
+            "title": "Confirmedprocesscodes",
+            "type": "array"
           },
           "contactCount": {
             "default": 0,
             "title": "Contactcount",
             "type": "integer"
+          },
+          "coreEvidenceGaps": {
+            "description": "#659 핵심 근거를 다시 확인해야 하는 이유(평가 기록의 사실만)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Coreevidencegaps",
+            "type": "array"
           },
           "coreEvidenceRecheck": {
             "default": false,
@@ -3504,6 +3570,12 @@
             },
             "title": "Processcodes",
             "type": "array"
+          },
+          "proposedProcessCount": {
+            "default": 0,
+            "description": "#659 processCodes 가운데 아직 확정되지 않은(AI 제안) 공정 수",
+            "title": "Proposedprocesscount",
+            "type": "integer"
           },
           "rank": {
             "title": "Rank",
@@ -5931,6 +6003,91 @@
         "title": "StaffEntry",
         "type": "object"
       },
+      "TodayCheckItem": {
+        "description": "회사 이름·날짜·일정 한 줄만. 메모 글·연락처·대표번호는 이 모델에 없다.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "customerName"
+        ],
+        "title": "TodayCheckItem",
+        "type": "object"
+      },
+      "TodayCheckRow": {
+        "description": "맨 위 \"오늘 확인할 것\"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677).",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TodayCheckItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "SCHEDULE_TODAY",
+              "SCHEDULE_OVERDUE",
+              "CHECK_LEFT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "listFilter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listfilter"
+          }
+        },
+        "required": [
+          "kind",
+          "count",
+          "items"
+        ],
+        "title": "TodayCheckRow",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -6065,7 +6222,7 @@
     },
     "/api/v1/dashboard": {
       "get": {
-        "description": "건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대.\n\n보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
+        "description": "건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대·오늘 확인할 것 줄.\n\n보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
         "operationId": "dashboard_api_v1_dashboard_get",
         "parameters": [
           {
@@ -7205,7 +7362,7 @@
     },
     "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {
       "post": {
-        "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.",
+        "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.\n예외(#685): 접촉 기록을 취소해 통화에서 확인한 신호가 바뀌면 같은 저장 안에서 다시 평가한다.",
         "operationId": "cancel_record_api_v1_opportunities__oppId__records__recordId__cancel_post",
         "parameters": [
           {

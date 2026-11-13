@@ -68,6 +68,25 @@ export interface DashboardBreakdown {
   byIndustry: IndustryBreakdownItem[];
 }
 
+/** "오늘 확인할 것" 줄의 종류(#679). 서버가 뒤에 값을 늘릴 수 있어(#677) 화면은 모르는 값을 보이지 않는다. */
+export type TodayCheckKind = 'SCHEDULE_TODAY' | 'SCHEDULE_OVERDUE' | 'CHECK_LEFT';
+
+export interface TodayCheckItem {
+  oppId: string;
+  customerName: string;
+  /** 일정 줄만 날짜(YYYY-MM-DD)와 일정 한 줄이 있다. */
+  dueAt: string | null;
+  note: string | null;
+}
+
+export interface TodayCheckRow {
+  kind: TodayCheckKind | (string & {});
+  count: number;
+  items: TodayCheckItem[];
+  /** 있으면 누를 때 /opportunities?filter=<값> 목록으로, 없으면 줄 아래에 작은 목록을 편다. */
+  listFilter: string | null;
+}
+
 export interface Dashboard {
   counts: DashboardCounts;
   schedule: DashboardScheduleItem[];
@@ -75,4 +94,6 @@ export interface Dashboard {
   asOf: string;
   /** 없으면 화면은 공정·산업군 막대 줄을 숨긴다(실제 집계 전 거산 전달본에 가짜 숫자가 보이면 안 됨). */
   breakdown?: DashboardBreakdown | null;
+  /** 맨 위 "오늘 확인할 것" 줄 목록(#679). 0건인 줄은 오지 않는다. 옛 서버면 칸이 없다. */
+  todayChecks?: TodayCheckRow[];
 }

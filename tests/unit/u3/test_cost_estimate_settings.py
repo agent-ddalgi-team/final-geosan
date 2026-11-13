@@ -103,7 +103,7 @@ def test_migration_adds_nullable_column_and_old_batch_stays_empty(tmp_path, monk
         from tests.unit.u3.test_ingest_tables import _insert_filled
 
         _insert_filled(con, "opp_ingest_batch", batch_id="batch-old", status="DONE")
-    assert upgrade_to_head(db) == ["rec_014"]
+    assert upgrade_to_head(db) == ["src_006"]
     with sqlite3.connect(db) as con:
         assert con.execute("SELECT estimated_usd FROM opp_ingest_batch").fetchall() == [(None,)]
     command.downgrade(alembic_config(db), "rec_012")
