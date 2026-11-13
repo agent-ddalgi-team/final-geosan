@@ -21,6 +21,7 @@ import { getOpportunities } from '../api/client';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
+import ExportButton from '../components/list/ExportButton';
 import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
 import { useIngestOptions } from '../components/list/useIngestOptions';
@@ -439,20 +440,34 @@ export default function OpportunityListPage() {
         error={current?.error}
         onRetry={retry}
       >
-        <p
-          data-testid="list-total"
+        <div
           style={{
-            color: colors.textSecondary,
-            marginTop: 0,
-            fontSize: typography.fontSizeSecondary,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: spacing.cardGap,
           }}
         >
-          {grouped
-            ? `${pagination.totalLine(total)} · ${listFilters.groupedNote}`
-            : flat
-              ? `${pagination.totalLine(total)} · ${listFilters.flatNote}`
-              : pagination.totalLine(total)}
-        </p>
+          <p
+            data-testid="list-total"
+            style={{
+              color: colors.textSecondary,
+              margin: 0,
+              fontSize: typography.fontSizeSecondary,
+            }}
+          >
+            {grouped
+              ? `${pagination.totalLine(total)} · ${listFilters.groupedNote}`
+              : flat
+                ? `${pagination.totalLine(total)} · ${listFilters.flatNote}`
+                : pagination.totalLine(total)}
+          </p>
+          {/* 엑셀 내려받기(#217): 목록을 부른 조건 그대로 보낸다. 쪽 번호는 보내지 않아 전체가 담긴다.
+              설정(export.xlsxEnabled)이 켜져 있을 때만 보인다. 꺼져 있거나 설정을 아직 못 읽었으면 숨긴다. */}
+          {config?.export?.xlsxEnabled === true ? <ExportButton filters={baseFilters} /> : null}
+        </div>
         {grouped ? (
           // 묶음 보기(#383): 공정마다 묶음 하나. 묶음 안 번호는 그 공정 안 순위다. 0곳인 묶음은 보이지 않는다.
           <div data-testid="process-groups" style={{ display: 'grid', gap: spacing.sectionGap }}>

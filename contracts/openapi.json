@@ -526,6 +526,9 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "export": {
+            "$ref": "#/components/schemas/ExportUi"
+          },
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
@@ -552,7 +555,8 @@
           "accessProtectionEnabled",
           "ruleVersion",
           "records",
-          "ingestOptions"
+          "ingestOptions",
+          "export"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -1574,6 +1578,20 @@
           "subject"
         ],
         "title": "EvidenceView",
+        "type": "object"
+      },
+      "ExportUi": {
+        "properties": {
+          "xlsxEnabled": {
+            "description": "false면 화면이 [엑셀 내려받기] 단추를 숨긴다(#217)",
+            "title": "Xlsxenabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "xlsxEnabled"
+        ],
+        "title": "ExportUi",
         "type": "object"
       },
       "FactoryProfile": {
@@ -5434,6 +5452,193 @@
           }
         },
         "summary": "Dashboard"
+      }
+    },
+    "/api/v1/export/xlsx": {
+      "get": {
+        "description": "목록 조회와 같은 조건을 받아 쪽 나눔 없이 전부 담는다.\n\n대시보드 칸 조건(`filter`)은 목록 조회가 주소에서 직접 읽는다.\n설정 `export.xlsxEnabled`가 꺼져 있으면 아무것도 읽지 않고 422 kind EXPORT_DISABLED로\n거부한다(빈 파일을 성공처럼 주지 않는다).",
+        "operationId": "export_xlsx_api_v1_export_xlsx_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "default": "new",
+              "title": "Tab",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "NOT_EXECUTED",
+                    "IN_PROGRESS",
+                    "SAMPLE_OR_REGISTRATION_APPROVED",
+                    "ON_HOLD",
+                    "WON",
+                    "LOST"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "opinion",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "WORTH_REVIEW",
+                    "NEED_CHECK",
+                    "NOT_TARGET",
+                    "NONE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opinion"
+            }
+          },
+          {
+            "in": "query",
+            "name": "process",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProcessCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Process"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Industry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "batch",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "title": "Sort",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          },
+          "422": {
+            "description": "kind EXPORT_REJECTED, rejectedItems[]"
+          }
+        },
+        "summary": "Export Xlsx"
       }
     },
     "/api/v1/ingest": {

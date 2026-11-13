@@ -1154,6 +1154,23 @@ export const scoreStateLabels: Record<string, string> = {
   UNAVAILABLE: '자료 미확보',
 };
 
+/**
+ * 추천 목록 [엑셀 내려받기](#217). 지금 걸러 본 목록 전체를 내부용 엑셀로 받는다.
+ * 파일에는 회사·공정·점수·단계·다음 일정 다섯 열만 있고 영업 메모·대표번호는 담지 않는다(약속 C4).
+ */
+export const listExport = {
+  button: '엑셀 내려받기',
+  /** 단추에 마우스를 올리면 보이는 풀이. */
+  hint: '지금 걸러 본 목록 전체를 내부용 엑셀로 받습니다. 영업 메모와 대표번호는 담지 않습니다.',
+  done: (fileName: string) =>
+    `${fileName} 파일을 내려받았습니다. 내부용이며 고객 제출용이 아닙니다.`,
+  failed: '엑셀을 내려받지 못했습니다.',
+  /** 서버가 파일 이름을 주지 않았을 때 쓰는 이름. */
+  defaultFileName: '거산_추천목록.xlsx',
+  /** 서버 없이 가짜 응답으로 화면만 볼 때. */
+  noFixture: '서버 없이 화면만 보는 중에는 엑셀을 만들 수 없습니다.',
+} as const;
+
 /** 영업 분석(#608): 영업 기록만으로 계산한 공정별·회사별 표. 내부 참고용이고 밖으로 나가지 않는다. */
 export const salesAnalysisTexts = {
   loadError: '영업 분석표를 불러오지 못했습니다.',
