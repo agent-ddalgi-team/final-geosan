@@ -17,7 +17,7 @@ const data = mapFixture.data as unknown as MapData;
 function renderMap(value: MapData) {
   return render(
     <MemoryRouter>
-      <DashboardMap data={value} />
+      <DashboardMap data={value} mapClientId="" />
     </MemoryRouter>,
   );
 }
@@ -63,7 +63,10 @@ describe('DashboardMap', () => {
   it('키보드(Enter)로도 점을 고를 수 있다', async () => {
     const user = userEvent.setup();
     renderMap(data);
-    screen.getByRole('button', { name: /가상 다라금속/ }).focus();
+    // 지도 아래 "같이 들를 곳"(#673) 줄에도 회사 이름이 있어 지도 그림 안에서 찾는다.
+    within(screen.getByRole('group', { name: t.title }))
+      .getByRole('button', { name: /가상 다라금속/ })
+      .focus();
     await user.keyboard('{Enter}');
     expect(screen.getByTestId('dashboard-map-callout')).toHaveTextContent('가상 다라금속');
   });
