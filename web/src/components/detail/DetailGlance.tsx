@@ -231,11 +231,10 @@ export default function DetailGlance({
 
   // ── 확인할 것
   const check = detailCheckWordsOf(header, processLinks, reviewItems, requirements);
-  const words = [
-    check.process ? cardRows.checkWords.process : null,
-    check.material ? cardRows.checkWords.material : null,
-    check.evidence ? cardRows.checkWords.evidence : null,
-  ].filter((word): word is string => word !== null);
+  const words: string[] = [];
+  if (check.process) words.push(cardRows.checkWords.process);
+  if (check.material) words.push(cardRows.checkWords.material);
+  if (check.evidence) words.push(cardRows.checkWords.evidence);
   const checkText =
     words.length > 0 || check.names.length > 0
       ? texts.checkWords(words, check.names)
