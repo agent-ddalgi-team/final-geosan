@@ -48,9 +48,11 @@ def test_config_ui_returns_current_record_settings(records_env, enabled, limit):
         }
     response = client.get("/api/v1/config/ui")
     assert response.status_code == 200
+    # cancelByAnyStaff는 #253에서 약속(C1 /config/ui, C7)에 더한 칸이다. 기본 false.
     assert response.json()["data"]["records"] == {
         "approvalEnabled": enabled,
         "noteMaxLength": limit,
+        "cancelByAnyStaff": False,
     }
 
 
@@ -204,7 +206,7 @@ def test_existing_notes_survive_kind_migration(records_env, tmp_db):
     client, opp_id = records_env
     assert post(client, opp_id, "notes", {"text": "이전 가상 메모"}).status_code == 200
     assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
-    assert upgrade_to_head(tmp_db) == ["opp_010"]
+    assert upgrade_to_head(tmp_db) == ["merge_002"]
     with session_scope() as session:
         note = session.scalar(select(Note).where(Note.opp_id == opp_id))
         assert (note.kind, note.text, note.version) == ("MEMO", "이전 가상 메모", 1)

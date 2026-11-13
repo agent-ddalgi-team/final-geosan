@@ -12,6 +12,34 @@
             "title": "At",
             "type": "string"
           },
+          "cancelled": {
+            "default": false,
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelledat"
+          },
+          "cancelledBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelledby"
+          },
           "evalId": {
             "anyOf": [
               {
@@ -37,6 +65,32 @@
               }
             ],
             "title": "Previousvalue"
+          },
+          "recordId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordid"
+          },
+          "recordKind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "NOTE",
+                  "OUTCOME"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkind"
           },
           "summary": {
             "title": "Summary",
@@ -526,6 +580,9 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "export": {
+            "$ref": "#/components/schemas/ExportUi"
+          },
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
@@ -552,7 +609,8 @@
           "accessProtectionEnabled",
           "ruleVersion",
           "records",
-          "ingestOptions"
+          "ingestOptions",
+          "export"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -1426,6 +1484,21 @@
         "title": "Envelope[QuestionReplyResponse]",
         "type": "object"
       },
+      "Envelope_RecordCancelResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordCancelResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[RecordCancelResponse]",
+        "type": "object"
+      },
       "Envelope_RelationResponse_": {
         "properties": {
           "data": {
@@ -1574,6 +1647,20 @@
           "subject"
         ],
         "title": "EvidenceView",
+        "type": "object"
+      },
+      "ExportUi": {
+        "properties": {
+          "xlsxEnabled": {
+            "description": "false면 화면이 [엑셀 내려받기] 단추를 숨긴다(#217)",
+            "title": "Xlsxenabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "xlsxEnabled"
+        ],
+        "title": "ExportUi",
         "type": "object"
       },
       "FactoryProfile": {
@@ -4429,10 +4516,78 @@
         "title": "RecentActivityItem",
         "type": "object"
       },
+      "RecordCancelRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalid"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RecordCancelRequest",
+        "type": "object"
+      },
+      "RecordCancelResponse": {
+        "properties": {
+          "cancelledAt": {
+            "format": "date-time",
+            "title": "Cancelledat",
+            "type": "string"
+          },
+          "cancelledBy": {
+            "title": "Cancelledby",
+            "type": "string"
+          },
+          "recordId": {
+            "title": "Recordid",
+            "type": "string"
+          },
+          "recordKind": {
+            "enum": [
+              "NOTE",
+              "OUTCOME"
+            ],
+            "title": "Recordkind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordId",
+          "recordKind",
+          "cancelledBy",
+          "cancelledAt"
+        ],
+        "title": "RecordCancelResponse",
+        "type": "object"
+      },
       "RecordsUi": {
         "properties": {
           "approvalEnabled": {
             "title": "Approvalenabled",
+            "type": "boolean"
+          },
+          "cancelByAnyStaff": {
+            "default": false,
+            "title": "Cancelbyanystaff",
             "type": "boolean"
           },
           "noteMaxLength": {
@@ -5410,6 +5565,193 @@
         "summary": "Dashboard"
       }
     },
+    "/api/v1/export/xlsx": {
+      "get": {
+        "description": "목록 조회와 같은 조건을 받아 쪽 나눔 없이 전부 담는다.\n\n대시보드 칸 조건(`filter`)은 목록 조회가 주소에서 직접 읽는다.\n설정 `export.xlsxEnabled`가 꺼져 있으면 아무것도 읽지 않고 422 kind EXPORT_DISABLED로\n거부한다(빈 파일을 성공처럼 주지 않는다).",
+        "operationId": "export_xlsx_api_v1_export_xlsx_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "default": "new",
+              "title": "Tab",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "NOT_EXECUTED",
+                    "IN_PROGRESS",
+                    "SAMPLE_OR_REGISTRATION_APPROVED",
+                    "ON_HOLD",
+                    "WON",
+                    "LOST"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "opinion",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "WORTH_REVIEW",
+                    "NEED_CHECK",
+                    "NOT_TARGET",
+                    "NONE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opinion"
+            }
+          },
+          {
+            "in": "query",
+            "name": "process",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProcessCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Process"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Industry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "batch",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "title": "Sort",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          },
+          "422": {
+            "description": "kind EXPORT_REJECTED, rejectedItems[]"
+          }
+        },
+        "summary": "Export Xlsx"
+      }
+    },
     "/api/v1/ingest": {
       "post": {
         "operationId": "start_ingest_api_v1_ingest_post",
@@ -6238,6 +6580,81 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {
+      "post": {
+        "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.",
+        "operationId": "cancel_record_api_v1_opportunities__oppId__records__recordId__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "title": "Recordid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RecordCancelResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Record"
       }
     },
     "/api/v1/opportunities/{oppId}/relation": {

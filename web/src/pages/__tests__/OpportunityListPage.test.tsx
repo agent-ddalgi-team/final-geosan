@@ -133,7 +133,9 @@ describe('OpportunityListPage', () => {
     expect(view.getByTestId('card-blocker')).toHaveTextContent(
       /^없음 — 지금 단계 꼭 필요한 요구\(ISO 9001\) 통과$/,
     );
-    expect(view.getByTestId('card-next-action')).toHaveTextContent('응모 전 피막 두께 요구 확인');
+    // 후속 조치는 카드에 없고 상세에서만 읽는다(#647).
+    expect(view.queryByTestId('card-next-action')).not.toBeInTheDocument();
+    expect(view.queryByText('응모 전 피막 두께 요구 확인')).not.toBeInTheDocument();
     expect(view.getByTestId('card-virtual-tag')).toHaveTextContent(cardRows.virtualTag);
     expect(view.getByTestId('card-view-detail-link')).toHaveAttribute(
       'href',

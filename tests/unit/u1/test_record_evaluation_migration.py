@@ -24,13 +24,21 @@ def test_old_records_stay_empty_and_survive_schema_round_trip(tmp_path):
         for table in ("rec_note", "rec_outcome"):
             before[table] = connection.execute(f"SELECT * FROM {table}").fetchall()
     for _ in range(2):
-        assert upgrade_to_head(db) == ["opp_010"]
+        assert upgrade_to_head(db) == ["merge_002"]
         with sqlite3.connect(db) as connection:
             for table, rows in before.items():
                 assert connection.execute(f"SELECT * FROM {table}").fetchall() == [
                     # rec_outcome에는 뒤이어 judgment_check(rec_010)와 step_override(rec_012)도
-                    # 비어 있는 채로 붙는다.
-                    (*row, None, *([None, None] if table == "rec_outcome" else []))
+                    # 비어 있는 채로 붙는다. 두 표 모두 끝에 잘못 입력 표시 칸 셋(rec_013)이
+                    # 비어 있는 채로 붙는다(#253).
+                    (
+                        *row,
+                        None,
+                        *([None, None] if table == "rec_outcome" else []),
+                        None,
+                        None,
+                        None,
+                    )
                     for row in rows
                 ]
                 columns = {row[1]: row for row in connection.execute(f"PRAGMA table_info({table})")}
@@ -41,4 +49,4 @@ def test_old_records_stay_empty_and_survive_schema_round_trip(tmp_path):
         with sqlite3.connect(db) as connection:
             for table, rows in before.items():
                 assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
-    assert upgrade_to_head(db) == ["opp_010"]
+    assert upgrade_to_head(db) == ["merge_002"]

@@ -357,12 +357,54 @@ def test_coordinate_migration_preserves_existing_company(public_company):
     from geosan.storage.migrate import alembic_config, upgrade_to_head
 
     command.downgrade(alembic_config(public_company), "opp_009")
-    assert upgrade_to_head(public_company) == ["opp_010"]
+    assert upgrade_to_head(public_company) == ["merge_002"]
     with session_scope() as session:
         customer = session.get(Customer, "cust-geocode")
         assert customer.address == ADDRESS and customer.name == "시험공장"
         assert customer.relation_status == "UNCONFIRMED"
         assert customer.lat is None and customer.lng is None
+
+
+@pytest.mark.parametrize("previous", ["opp_010", "rec_013"])
+def test_merge_preserves_coordinates_and_record_cancellation_from_either_branch(tmp_path, previous):
+    import sqlite3
+
+    from alembic import command
+
+    from geosan.storage.migrate import alembic_config, upgrade_to_head
+    from tests.unit.u3.test_ingest_tables import _insert_filled
+
+    db = tmp_path / "both-features.db"
+    command.upgrade(alembic_config(db), previous)
+    with sqlite3.connect(db) as connection:
+        _insert_filled(connection, "opp_customer", customer_id="cust-both", name="가상 공장")
+        _insert_filled(connection, "opp_opportunity", opp_id="opp-both", customer_id="cust-both")
+        _insert_filled(
+            connection, "rec_note", note_id="note-both", opp_id="opp-both", text="보존 메모"
+        )
+        if previous == "opp_010":
+            connection.execute("UPDATE opp_customer SET lat=38, lng=127.5, geocode_source='CSV'")
+        else:
+            connection.execute(
+                "UPDATE rec_note SET cancel_reason='잘못 입력', cancelled_by='tester'"
+            )
+        snapshots = {}
+        for table in ["opp_customer", "opp_opportunity", "rec_note"]:
+            columns = [row[1] for row in connection.execute(f"PRAGMA table_info({table})")]
+            snapshots[table] = (columns, connection.execute(f"SELECT * FROM {table}").fetchall())
+    assert upgrade_to_head(db) == ["merge_002"]
+    assert upgrade_to_head(db) == ["merge_002"]
+    with sqlite3.connect(db) as connection:
+        for table, (columns, rows) in snapshots.items():
+            selected = ",".join(columns)
+            assert connection.execute(f"SELECT {selected} FROM {table}").fetchall() == rows
+        assert connection.execute("SELECT lat,lng FROM opp_customer").fetchone() == (
+            (38.0, 127.5) if previous == "opp_010" else (None, None)
+        )
+        assert connection.execute("SELECT cancel_reason FROM rec_note").fetchone() == (
+            ("잘못 입력",) if previous == "rec_013" else (None,)
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_cli_database_failure_does_not_print_coordinate_parameters(

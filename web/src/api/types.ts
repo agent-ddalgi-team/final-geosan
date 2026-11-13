@@ -297,9 +297,16 @@ export interface IngestOptionsConfig {
   industries: string[];
 }
 
+/** 내보내기 스위치(C7 export, 더하는 변경 #217). 서버가 아직 안 주면 없음 = 꺼짐으로 본다. */
+export interface ExportConfig {
+  /** true일 때만 추천 목록에 [엑셀 내려받기] 단추를 보인다. */
+  xlsxEnabled: boolean;
+}
+
 export interface ConfigUi {
   records?: RecordsConfig;
   ingestOptions?: IngestOptionsConfig;
+  export?: ExportConfig;
   staff: StaffEntry[];
   brand: Brand;
   classificationLabels: Record<string, string>;
