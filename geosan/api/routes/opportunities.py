@@ -89,6 +89,7 @@ from geosan.evaluation.models import (
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.factory_csv import address_city
+from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Outcome, ReviewOpinion
@@ -179,6 +180,12 @@ def _score_state(run: EvaluationRun | None, *, ai_pending: bool = False) -> Scor
 
 
 def _header(context: DetailContext) -> dict:
+    distances = customer_distances(
+        context.session,
+        [context.customer],
+        {context.customer.customer_id: context.opportunity.opp_id},
+        runtime_for(context.session).app_settings,
+    )
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
     research = runtime_for(context.session).app_settings.research
     return {
@@ -197,7 +204,7 @@ def _header(context: DetailContext) -> dict:
             industries=customer.industries or [],
             industries_source=customer.industries_source,
             address=customer.address or "",
-            distance_km=None,
+            distance_km=distances[customer.customer_id],
             main_phone=customer.main_phone,
             main_phone_source=customer.main_phone_source,
             main_phone_source_url=customer.main_phone_source_url,
@@ -864,13 +871,21 @@ def list_opportunities(
         # 추천 순으로 먼저 정렬해 두었으므로 같은 시각끼리는 그 순서가 유지된다(안정 정렬).
         rows.sort(key=lambda row: recent_order(row[3]))
     start = (page - 1) * page_size
+    visible_rows = rows[start : start + page_size]
+    distances = customer_distances(
+        session,
+        [row[3] for row in visible_rows],
+        {row[3].customer_id: row[2].opp_id for row in visible_rows},
+        runtime.app_settings,
+    )
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
-        rows[start : start + page_size], start=start + 1
+        visible_rows, start=start + 1
     ):
         outcome = latest_outcome(session, opportunity.opp_id)
         cards.append(
             OpportunityCard(
+                distance_km=distances[customer.customer_id],
                 **discovery_fields(customer),
                 ingest_batch_id=customer.ingest_batch_id,
                 ingested_at=customer.ingested_at,
