@@ -580,6 +580,14 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "distanceFilterPresetsKm": {
+            "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Distancefilterpresetskm",
+            "type": "array"
+          },
           "export": {
             "$ref": "#/components/schemas/ExportUi"
           },
@@ -610,7 +618,8 @@
           "ruleVersion",
           "records",
           "ingestOptions",
-          "export"
+          "export",
+          "distanceFilterPresetsKm"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -703,6 +712,13 @@
               "$ref": "#/components/schemas/ScheduleItem"
             },
             "title": "Schedule",
+            "type": "array"
+          },
+          "todayChecks": {
+            "items": {
+              "$ref": "#/components/schemas/TodayCheckRow"
+            },
+            "title": "Todaychecks",
             "type": "array"
           }
         },
@@ -825,6 +841,17 @@
             },
             "title": "Ringskm",
             "type": "array"
+          },
+          "visitGroups": {
+            "items": {
+              "$ref": "#/components/schemas/VisitGroup"
+            },
+            "title": "Visitgroups",
+            "type": "array"
+          },
+          "visitRadiusKm": {
+            "title": "Visitradiuskm",
+            "type": "number"
           }
         },
         "required": [
@@ -832,7 +859,9 @@
           "ringsKm",
           "points",
           "missingCoordinates",
-          "asOf"
+          "asOf",
+          "visitRadiusKm",
+          "visitGroups"
         ],
         "title": "DashboardMap",
         "type": "object"
@@ -5974,6 +6003,91 @@
         "title": "StaffEntry",
         "type": "object"
       },
+      "TodayCheckItem": {
+        "description": "회사 이름·날짜·일정 한 줄만. 메모 글·연락처·대표번호는 이 모델에 없다.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "customerName"
+        ],
+        "title": "TodayCheckItem",
+        "type": "object"
+      },
+      "TodayCheckRow": {
+        "description": "맨 위 \"오늘 확인할 것\"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677).",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TodayCheckItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "SCHEDULE_TODAY",
+              "SCHEDULE_OVERDUE",
+              "CHECK_LEFT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "listFilter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listfilter"
+          }
+        },
+        "required": [
+          "kind",
+          "count",
+          "items"
+        ],
+        "title": "TodayCheckRow",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -6013,6 +6127,72 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VisitGroup": {
+        "description": "방문할 회사(points 가운데 진행 중·관심) 하나와 그 반경 안의 근처 회사(가까운 순).",
+        "properties": {
+          "nearby": {
+            "items": {
+              "$ref": "#/components/schemas/VisitNearby"
+            },
+            "title": "Nearby",
+            "type": "array"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "nearby"
+        ],
+        "title": "VisitGroup",
+        "type": "object"
+      },
+      "VisitNearby": {
+        "description": "\"같이 들를 곳\"의 근처 관심 기업(#673). distance_km는 묶음 중심 회사에서의 직선거리.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "INTERESTED",
+              "IN_PROGRESS",
+              "WON_THIS_YEAR"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lat",
+          "lng",
+          "oppId",
+          "customerName",
+          "distanceKm",
+          "group"
+        ],
+        "title": "VisitNearby",
+        "type": "object"
       }
     }
   },
@@ -6042,7 +6222,7 @@
     },
     "/api/v1/dashboard": {
       "get": {
-        "description": "건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대.\n\n보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
+        "description": "건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대·오늘 확인할 것 줄.\n\n보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.",
         "operationId": "dashboard_api_v1_dashboard_get",
         "parameters": [
           {

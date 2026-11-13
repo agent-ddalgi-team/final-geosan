@@ -91,7 +91,16 @@ def test_map_contract_reads_config_and_excludes_sensitive_fields(map_env):
     response = client.get("/api/v1/dashboard/map")
     assert response.status_code == 200
     body = response.json()["data"]
-    assert set(body) == {"center", "ringsKm", "points", "missingCoordinates", "asOf"}
+    # visitRadiusKm·visitGroups는 #673(PM 결정 2026-11-13)에서 더한 칸이다.
+    assert set(body) == {
+        "center",
+        "ringsKm",
+        "points",
+        "missingCoordinates",
+        "asOf",
+        "visitRadiusKm",
+        "visitGroups",
+    }
     assert body["center"] == {"lat": 38.0, "lng": 127.5}
     assert body["ringsKm"] == [25, 60, 120]
     assert body["missingCoordinates"] == 0

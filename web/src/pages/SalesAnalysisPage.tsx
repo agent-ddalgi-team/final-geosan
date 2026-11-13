@@ -1,12 +1,16 @@
 // 영업 분석(#608, PM 결정 2026-11-12: 대시보드와 따로 둔 화면). 영업 기록만으로 서버가 계산한 공정별·회사별 표를 보인다.
 // 읽기 전용이라 보기 전용 담당자도 본다. 영업 기록에서 나온 내부 참고 화면이라 엑셀·AI로 내보내는 단추를 두지 않는다.
 // 가상 묶음이면 응답 meta를 띠에 알려 "가상" 표시가 보인다.
+// 맨 위 "관심 기업 분포"(#679, PM 결정 2026-11-13)는 대시보드에서 옮겨 온 공정별·산업군별 막대다.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getDashboard } from '../api/dashboard';
+import type { DashboardBreakdown } from '../api/dashboardTypes';
 import { getSalesAnalysis } from '../api/salesAnalysis';
 import type { SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
+import InterestBreakdown from '../components/analysis/InterestBreakdown';
 import ProcessAnalysisTable from '../components/analysis/ProcessAnalysisTable';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -64,6 +68,27 @@ export default function SalesAnalysisPage() {
     return () => setBannerMeta(null);
   }, [meta, setBannerMeta]);
 
+  // "관심 기업 분포" 막대(#679): 새 경로 없이 대시보드 집계를 한 번 더 읽어 막대 값만 쓴다.
+  // 담당자 키는 보내지 않는다(최근 내 기록은 쓰지 않는다). 못 읽어도 아래 표는 그대로 보인다.
+  const [breakdown, setBreakdown] = useState<{
+    key: number;
+    value?: DashboardBreakdown | null;
+    failed?: boolean;
+  } | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    getDashboard(controller.signal)
+      .then((envelope) => {
+        if (controller.signal.aborted) return;
+        setBreakdown({ key: reload, value: envelope.data.breakdown ?? null });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setBreakdown({ key: reload, failed: true });
+      });
+    return () => controller.abort();
+  }, [reload]);
+  const currentBreakdown = breakdown?.key === reload ? breakdown : null;
+
   const retry = useCallback(() => setReload((n) => n + 1), []);
 
   const data = current?.data;
@@ -82,6 +107,10 @@ export default function SalesAnalysisPage() {
       <p data-testid="analysis-internal-note" style={secondary}>
         {peersArea.internalNote} · {texts.intro}
       </p>
+      <InterestBreakdown
+        breakdown={currentBreakdown?.value}
+        failed={currentBreakdown?.failed === true}
+      />
       <FiveStates
         data-testid="analysis"
         state={state}

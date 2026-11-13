@@ -217,7 +217,24 @@ export const dashboardTexts = {
     NEED_CHECK: '추가 확인 필요',
     ON_HOLD: '보류',
     DONE: '완료',
+    /** "오늘 확인할 것" 줄을 누르고 넘어온 목록의 이름(#679). 건수 칸은 아니다. */
+    CHECK_LEFT: '확인할 것이 남은 관심 회사',
   },
+  /** 맨 위 "오늘 확인할 것"(#679, PM 결정 2026-11-13): 저장된 값으로 센 줄 목록. AI는 쓰지 않는다. */
+  todayTitle: '오늘 확인할 것',
+  todayEmpty: '오늘 확인할 것이 없습니다',
+  todayRowNames: {
+    SCHEDULE_TODAY: '오늘 일정',
+    SCHEDULE_OVERDUE: '놓친 일정',
+    CHECK_LEFT: '확인할 것이 남은 관심 회사',
+  },
+  todayRowUnits: {
+    SCHEDULE_TODAY: '건',
+    SCHEDULE_OVERDUE: '건',
+    CHECK_LEFT: '곳',
+  },
+  /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
+  todayMore: (count: number) => `외 ${count}`,
   /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
   bookmarkSectionTitle: '관심 기업',
   progressSectionTitle: '영업 진행',
@@ -275,6 +292,25 @@ export const dashboardMapTexts = {
   emptyAction: '추천 목록 가기',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
+  /** 네이버 지도(#671)를 불러오는 동안. */
+  mapLoading: '네이버 지도를 불러오는 중입니다.',
+  /** 키 인증(허용 URL 미등록 등)·네트워크 실패. 원·점은 자리표시로 계속 보인다. */
+  mapFailed: '네이버 지도를 불러오지 못해 원과 점의 상대 위치만 보여요.',
+  /** 낭독기용 점 목록 이름. */
+  pointList: '지도에 표시된 회사',
+  /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
+  visitTitle: '같이 들를 곳',
+  visitHint: (km: number) =>
+    `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
+  /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
+  visitNearbyCount: (count: number) => `근처 ${count}곳`,
+  /** 근처 회사 줄: "1.8km · 관심". */
+  visitNearbyDistance: (km: number) => `${km}km`,
+  /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
+  fromAnchor: (name: string, km: number) => `${name}에서 ${km}km`,
+  visitMore: (count: number) => `${count}곳 더 보기`,
+  visitNone: '이 반경 안에 같이 들를 다른 관심 기업이 없어요.',
+  visitEmpty: '진행 중·관심 회사가 없어 묶을 곳이 없어요.',
 } as const;
 
 /** 카드·상세 줄 머리말. */
@@ -430,13 +466,18 @@ export const listFilters = {
   /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
   /** 조건을 걸었는데 0건일 때. */
-  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
+  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업·거리를 '전체'로 바꿔 보세요",
   /** 대시보드 건수로 넘어와 걸러진 목록이 비었을 때. */
   noMatch: '이 조건에 맞는 후보가 없습니다.',
   /** 고른 공정에 회사가 한 곳도 없을 때(#361). */
   processEmpty: '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
   regionUnknown: '지역 미확인',
   industryUnknown: '산업 미확정',
+  /** 거리 범위 선택란(#666). 선택지는 서버 설정(`/config/ui` distanceFilterPresetsKm). */
+  distanceLabel: '거리',
+  distanceWithin: (km: number) => `${km}km 이내`,
+  /** 카드 꼬리표(#666): 거산 본사에서 직선거리. 미확인이면 꼬리표를 보이지 않는다. */
+  cardDistance: (km: number) => `거산에서 ${km}km`,
 } as const;
 
 /**
@@ -456,8 +497,8 @@ export const listSearch = {
   sortRank: '추천 순',
   /** 최근 들어온 순(#516): 들어온 시각이 최신인 회사가 위, 사례 파일 회사는 아래. */
   sortRecent: '최근 들어온 순',
-  /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
-  sortDistance: '가까운 순 (준비 중)',
+  /** 가까운 순(#666): 거산 본사에서 가까운 회사가 위, 거리 미확인은 맨 아래. */
+  sortDistance: '가까운 순',
   /** 정렬 줄 마지막 단추(#516, PM 지시 2026-11-09): 공정별 묶음을 풀고 모든 회사를 한 줄로 본다. 다시 누르면 묶음 보기. */
   viewAll: '전체 보기',
 } as const;
@@ -1334,6 +1375,11 @@ export const salesAnalysisTexts = {
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
   emptyAction: '영업 후보 목록으로',
+  /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
+  breakdownTitle: '관심 기업 분포',
+  breakdownNote:
+    '이 막대는 관심 기업을 기준으로 세고 AI가 제안한 공정·산업도 함께 셉니다. 아래 표는 접촉 기록이 있는 회사를 확정된 공정·산업만으로 세어 기준이 다릅니다.',
+  breakdownLoadError: '관심 기업 분포를 불러오지 못했습니다.',
   processTitle: '공정별',
   processTableLabel: '공정별 영업 분석표',
   companyTitle: '회사별',
