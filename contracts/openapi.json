@@ -3307,6 +3307,20 @@
             "title": "Bucketbasis",
             "type": "string"
           },
+          "checkKinds": {
+            "description": "#659 checkPoints 각 줄의 종류(같은 순서·같은 개수). 카드가 낱말로 줄일 때",
+            "items": {
+              "enum": [
+                "PROCESS",
+                "MATERIAL",
+                "REQUIREMENT",
+                "COMPANY_FILTER"
+              ],
+              "type": "string"
+            },
+            "title": "Checkkinds",
+            "type": "array"
+          },
           "checkPoints": {
             "description": "#659 필수조건 가운데 확인 전인 조건(평가 기록의 사실만)",
             "items": {

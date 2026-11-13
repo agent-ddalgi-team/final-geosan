@@ -70,34 +70,49 @@ export default function OpportunityCard({
     card.classificationCode in classificationTone
       ? classificationTone[card.classificationCode]
       : 'neutral';
-  // 검토사항 줄(#659, PM 지시 2026-11-13): 서버가 "무엇이 확인 전인지"·"왜 핵심 근거를 다시 봐야 하는지"를
-  // 주면 그 말을 보인다. 없으면 서버 문구 그대로다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
+  // 검토사항 줄(#659, PM 지시 2026-11-13): 긴 문장 대신 "확인할 것: 공정 · 소재 · 근거 부족"처럼 낱말로 보인다.
+  // 종류는 서버가 알려 준다(checkKinds). 문장을 글자로 맞춰 추측하지 않는다. "(승인 …)" 꼬리표도 덧붙이지 않는다(#160, #171).
+  const notEvaluated = card.classificationCode === 'NOT_EVALUATED';
   const checkPoints = card.checkPoints ?? [];
-  const coreGaps = card.coreEvidenceGaps ?? [];
-  const coreGapsText = coreGaps.length > 0 ? cardRows.coreEvidenceGaps(coreGaps) : null;
-  // 필수조건은 통과했는데 핵심 근거만 모자란 회사는 "없음 — …" 대신 모자란 이유를 앞에 보인다.
-  const coreGapsOnly =
-    coreGapsText !== null && checkPoints.length === 0 && !card.blocker.blocksApproval;
-  const blocker = coreGapsOnly
-    ? coreGapsText
-    : checkPoints.length > 0
-      ? cardRows.checkPoints(checkPoints)
-      : card.blocker.text;
-  const coreGapsSuffix = coreGapsOnly ? null : coreGapsText;
-  // 공정 꼬리표는 확정된 공정만(#659, PM 결정 2026-11-13). AI가 제안만 한 공정은 꼬리표로 보이지 않고,
-  // 확정된 공정이 하나도 없으면 검토사항 줄 뒤에 "맞는 공정이 아직 확인 전 · AI 제안 n개"를 덧붙인다.
+  const checkKinds = card.checkKinds ?? [];
+  // 종류가 줄 수와 맞을 때만 쓴다. 안 맞으면(옛 응답) 서버 글자를 그대로 이름으로 보인다.
+  const kindsUsable = checkKinds.length === checkPoints.length;
+  // 공정 꼬리표는 확정된 공정만(#659, PM 결정 2026-11-13). AI가 제안만 한 공정은 꼬리표로 보이지 않는다.
   const confirmedProcessCodes = card.confirmedProcessCodes ?? [];
   const proposedProcessCount = card.proposedProcessCount ?? 0;
+  // "공정": 확정된 공정이 없고 AI 제안만 있거나(평가 전 회사는 제안이 없어도), 거산 공정 값이 확인 전일 때.
   const processUnconfirmed =
-    confirmedProcessCodes.length === 0 && proposedProcessCount > 0
-      ? cardRows.processUnconfirmed(proposedProcessCount)
+    card.confirmedProcessCodes !== undefined &&
+    confirmedProcessCodes.length === 0 &&
+    (proposedProcessCount > 0 || notEvaluated);
+  const checkWords = [
+    processUnconfirmed || (kindsUsable && checkKinds.includes('PROCESS'))
+      ? cardRows.checkWords.process
+      : null,
+    kindsUsable && checkKinds.includes('MATERIAL') ? cardRows.checkWords.material : null,
+    // 평가 전 회사는 점수 항목이 아직 하나도 없어서 근거 부족이다.
+    (card.coreEvidenceGaps ?? []).length > 0 || notEvaluated ? cardRows.checkWords.evidence : null,
+  ].filter((word) => word !== null);
+  const checkNames = kindsUsable
+    ? checkPoints.filter((_, index) => !['PROCESS', 'MATERIAL'].includes(checkKinds[index]))
+    : checkPoints;
+  const checkLine =
+    checkWords.length > 0 || checkNames.length > 0
+      ? cardRows.checkWordsLine(checkWords, checkNames)
       : null;
-  const blockerLine = [blocker, processUnconfirmed, coreGapsSuffix]
-    .filter((part) => part !== null)
-    .join(' · ');
+  // 서버 문장이 이미 요구 이름을 말하는 회사(승인을 막는데 확인 전 조건을 따로 주지 않음)는 그 문장을 남기고 뒤에 잇는다.
+  // "없음 — …"이나 평가 전 문장("점수 입력 전 …")은 낱말 줄이 대신한다.
+  const keepServerText = card.blocker.blocksApproval && checkPoints.length === 0 && !notEvaluated;
+  const blockerLine =
+    checkLine === null
+      ? card.blocker.text
+      : keepServerText
+        ? `${card.blocker.text} · ${checkLine}`
+        : checkLine;
   // 머리 줄에서 빼는 꼬리표(#659): "필수조건 확인 필요"·"필수조건 확인 전"·"핵심 근거 재확인"은 무엇을
   // 확인하라는 말인지 알 수 없어 보이지 않고, 검토사항 줄이 대신 말한다. 묶음 제목은 그대로다.
-  const showClassification = card.classificationCode !== 'FILTER_PENDING';
+  // "평가 전"·"평가 전 · 적합도 상/낮음"도 보이지 않는다(PM 지시 2026-11-13): 점수가 없다는 것은 점수 자리에서 안다.
+  const showClassification = card.classificationCode !== 'FILTER_PENDING' && !notEvaluated;
   // 영업 단계 꼬리표(U5): 서버가 카드 records.outcome.status를 주면 보인다. 미접촉은 꼬리표를 달지 않는다.
   const stageStatus = card.records.outcome?.status ?? null;
   // 후보 찾기로 들어온 회사(#316): 고른 이유가 있고 점수가 아직 없으면 "점수 전"으로 보인다.
@@ -119,7 +134,9 @@ export default function OpportunityCard({
   const bucketBasis =
     card.bucketBasis &&
     card.bucketBasis !== 'REQUIRED_PENDING' &&
-    card.bucketBasis !== 'EVIDENCE_RECHECK'
+    card.bucketBasis !== 'EVIDENCE_RECHECK' &&
+    card.bucketBasis !== 'NOT_EVALUATED_HIGH_FIT' &&
+    card.bucketBasis !== 'NOT_EVALUATED_LOWER_FIT'
       ? contactBuckets.basis[card.bucketBasis]
       : null;
   const adjust = card.rankAdjust && card.rankAdjust.level !== 0 ? card.rankAdjust : null;
@@ -285,19 +302,7 @@ export default function OpportunityCard({
           </Row>
         )}
         <Row label={cardRows.blocker} title={blockerLine}>
-          <span data-testid="card-blocker">{blocker}</span>
-          {processUnconfirmed ? (
-            <span data-testid="card-process-unconfirmed">
-              {' · '}
-              {processUnconfirmed}
-            </span>
-          ) : null}
-          {coreGapsSuffix ? (
-            <span data-testid="card-core-gaps">
-              {' · '}
-              {coreGapsSuffix}
-            </span>
-          ) : null}
+          <span data-testid="card-blocker">{blockerLine}</span>
         </Row>
         {/* 후속 조치는 카드에 두지 않고 상세 "1. 추천 근거와 후속 조치"에서 읽는다(#647, PM 결정 2026-11-13). */}
 

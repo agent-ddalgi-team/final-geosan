@@ -61,6 +61,12 @@ def test_empty_found_company_has_real_pending_record_and_opens_detail(
         card = listed.json()["data"][0]
         assert card["evalId"] == run.eval_id and card["scoreState"] == "NONE"
         assert card["scoreDisplay"] == "--" and card["classificationCode"] == "NOT_EVALUATED"
+        # 서버 문장은 그대로 두고(상세·보고서용), 카드가 낱말로 줄일 재료를 따로 준다(#659).
+        assert card["blocker"]["text"] == "점수 입력 전 · 필수조건 확인 전"
+        assert len(card["checkPoints"]) == 1
+        assert card["checkPoints"][0].endswith("적용 부품의 소재")
+        assert card["checkKinds"] == ["MATERIAL"]
+        assert card["coreEvidenceGaps"] == []
         detail = client.get(f"/api/v1/opportunities/{opp_id}")
         assert detail.status_code == 200, detail.text
         assert detail.json()["data"]["evalId"] == run.eval_id

@@ -367,6 +367,10 @@ class OpportunityCard(_ApiModel):
         default_factory=list,
         description="#659 핵심 근거를 다시 확인해야 하는 이유(평가 기록의 사실만)",
     )
+    check_kinds: list[Literal["PROCESS", "MATERIAL", "REQUIREMENT", "COMPANY_FILTER"]] = Field(
+        default_factory=list,
+        description="#659 checkPoints 각 줄의 종류(같은 순서·같은 개수). 카드가 낱말로 줄일 때",
+    )
     contact_count: int = 0
     sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str

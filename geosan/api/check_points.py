@@ -24,6 +24,8 @@ class CardCheckPoints:
 
     check_points: list[str] = field(default_factory=list)
     core_evidence_gaps: list[str] = field(default_factory=list)
+    # check_points와 같은 순서·같은 개수. 화면이 문장을 글자로 맞춰 추측하지 않게 종류를 알려 준다.
+    check_kinds: list[str] = field(default_factory=list)
 
 
 _EMPTY = CardCheckPoints()
@@ -49,14 +51,22 @@ def _generic_filter_text(run: EvaluationRun) -> bool:
 
 
 def _required_points(run: EvaluationRun, checks: list[RequirementCheck]) -> list[str]:
-    """필수조건이 정해지지 않은 이유를 평가 때 입력에서 찾는다. 판정은 다시 하지 않는다."""
+    """필수조건이 정해지지 않은 이유(문장만). 종류까지 필요하면 _required_rows를 쓴다."""
+    return [text for _, text in _required_rows(run, checks)]
+
+
+def _required_rows(run: EvaluationRun, checks: list[RequirementCheck]) -> list[tuple[str, str]]:
+    """필수조건이 정해지지 않은 이유를 평가 때 입력에서 찾는다. 판정은 다시 하지 않는다.
+
+    (종류, 문장) 쌍으로 돌려준다. 종류는 PROCESS·MATERIAL·REQUIREMENT·COMPANY_FILTER.
+    """
     snapshot = run.input_snapshot
     opportunity = snapshot.get("opportunity", {})
     requirements = {row["reqId"]: row for row in snapshot.get("requirements", [])}
-    points: list[str] = []
+    points: list[tuple[str, str]] = []
     # 거래 관계는 "확인할 것"에 넣지 않는다(PM 지시 2026-11-13: 재접촉 관리를 하지 않는다).
     if opportunity.get("companyFilterStatus") == "PENDING":
-        points.append("회사 단위 필수조건")
+        points.append(("COMPANY_FILTER", "회사 단위 필수조건"))
 
     # 지금 단계의 필수 요구만 막는다(수량·납기와 나중 단계 요구는 막지 않는다).
     blocking = [
@@ -84,7 +94,7 @@ def _required_points(run: EvaluationRun, checks: list[RequirementCheck]) -> list
             continue
         process = processes.get((link.get("processId"), link.get("processCode")))
         if process is None:
-            points.append(f"거산 역량 자료에 없는 공정({link.get('processCode')})")
+            points.append(("PROCESS", f"거산 역량 자료에 없는 공정({link.get('processCode')})"))
             continue
         name = (process.get("name") or "").strip() or process["code"]
         codes = process.get("materialCodes") or []
@@ -93,23 +103,29 @@ def _required_points(run: EvaluationRun, checks: list[RequirementCheck]) -> list
         if status == "REVIEWED" and codes and applied and applied not in codes:
             continue  # 소재가 맞지 않아 이 공정 연결은 이미 제외로 정해졌다.
         if status != "REVIEWED" and not (brochure and status == "PENDING"):
-            points.append(f"거산 {name} 공정(거산 확인 전)")
+            points.append(("PROCESS", f"거산 {name} 공정(거산 확인 전)"))
         if not codes:
-            points.append(f"거산 {name}의 처리 소재")
+            points.append(("MATERIAL", f"거산 {name}의 처리 소재"))
         if not applied:
             no_material.append(name)
     if len(no_material) == 1:
-        points.append(f"{no_material[0]} 적용 부품의 소재")
+        points.append(("MATERIAL", f"{no_material[0]} 적용 부품의 소재"))
     elif no_material:
-        points.append(f"공정 {len(no_material)}개 적용 부품의 소재")
+        points.append(("MATERIAL", f"공정 {len(no_material)}개 적용 부품의 소재"))
     for check in blocking:
         if check.link_id in excluded_links and check.scope_judged == "PROCESS_LINK":
             continue
         if check.stage_judged == "UNKNOWN":
-            points.append(f"{requirements[check.req_id]['name']}(필요 시점 미확인)")
+            points.append(
+                ("REQUIREMENT", f"{requirements[check.req_id]['name']}(필요 시점 미확인)")
+            )
         elif check.result == "UNKNOWN":
-            points.append(requirements[check.req_id]["name"])
-    return list(dict.fromkeys(points))
+            points.append(("REQUIREMENT", requirements[check.req_id]["name"]))
+    # 같은 문장은 한 번만(처음 나온 종류를 쓴다).
+    seen: dict[str, str] = {}
+    for kind, text in points:
+        seen.setdefault(text, kind)
+    return [(kind, text) for text, kind in seen.items()]
 
 
 def _core_gaps(run: EvaluationRun, judgments: dict[str, ItemJudgment]) -> list[str]:
@@ -174,10 +190,15 @@ def _core_gaps(run: EvaluationRun, judgments: dict[str, ItemJudgment]) -> list[s
 
 def card_check_points(session: Session, runs: list[EvaluationRun]) -> dict[str, CardCheckPoints]:
     """보이는 카드들의 평가 기록에서 확인할 것을 한 번에 만든다. 키는 평가 번호."""
+    # "평가 전" 회사도 필수조건이 대기면 확인 전인 조건을 준다(PM 지시 2026-11-13).
+    # 카드가 "점수 입력 전 …" 문장 대신 낱말로 보이기 때문이다.
     pending = [
-        run.eval_id for run in runs if run.filter_state == "PENDING" and _generic_filter_text(run)
+        run.eval_id
+        for run in runs
+        if run.filter_state == "PENDING"
+        and (_generic_filter_text(run) or run.classification_code == "NOT_EVALUATED")
     ]
-    # "평가 전" 회사는 검토사항 문장이 이미 "점수 입력 전"이라고 말하므로 이유를 덧붙이지 않는다.
+    # "평가 전" 회사의 핵심 근거 이유는 덧붙이지 않는다(점수 항목이 아직 하나도 없다).
     recheck = [
         run.eval_id
         for run in runs
@@ -197,9 +218,13 @@ def card_check_points(session: Session, runs: list[EvaluationRun]) -> dict[str, 
             judgments.setdefault(row.eval_id, {})[row.item_code] = row
     result: dict[str, CardCheckPoints] = {}
     for run in runs:
-        points = (
-            _required_points(run, checks.get(run.eval_id, [])) if run.eval_id in pending else []
-        )
+        rows = _required_rows(run, checks.get(run.eval_id, [])) if run.eval_id in pending else []
         gaps = _core_gaps(run, judgments.get(run.eval_id, {})) if run.eval_id in recheck else []
-        result[run.eval_id] = CardCheckPoints(points, gaps) if points or gaps else _EMPTY
+        result[run.eval_id] = (
+            CardCheckPoints(
+                [text for _, text in rows], gaps, check_kinds=[kind for kind, _ in rows]
+            )
+            if rows or gaps
+            else _EMPTY
+        )
     return result

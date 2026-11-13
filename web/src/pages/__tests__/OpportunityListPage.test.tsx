@@ -333,10 +333,12 @@ describe('OpportunityListPage', () => {
       coreEvidenceRecheck: false,
       blocker: { text: '필수조건 확인 필요', blocksApproval: true },
       checkPoints: ['아노다이징 적용 부품의 소재'],
+      checkKinds: ['MATERIAL'],
       coreEvidenceGaps: [],
     };
 
-    it('필수조건 확인 전 회사는 꼬리표 대신 검토사항 줄에 확인 전인 조건을 적는다', async () => {
+    // PM 지시 2026-11-13: 카드는 긴 문장 대신 낱말("공정"·"소재"·"근거 부족")로만 적는다.
+    it('소재만 모르는 회사는 꼬리표 대신 검토사항 줄에 "소재" 한 낱말을 적는다', async () => {
       mockedGet.mockResolvedValue(reply([pending]));
       renderPage();
       const card = await screen.findByTestId('opportunity-card');
@@ -344,32 +346,94 @@ describe('OpportunityListPage', () => {
       expect(within(card).queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
       expect(card).not.toHaveTextContent('필수조건 확인 필요');
       expect(card).not.toHaveTextContent('필수조건 확인 전');
-      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
-        /^확인할 것: 아노다이징 적용 부품의 소재$/,
-      );
-      expect(within(card).queryByTestId('card-core-gaps')).not.toBeInTheDocument();
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(/^확인할 것: 소재$/);
     });
 
-    it('확인 전인 조건이 많으면 앞 3개만 적고 "외 n개"로 줄인다', async () => {
+    it('공정·소재는 낱말로 줄이고 필수 요구는 이름 그대로 앞 3개만 적고 "외 n개"로 줄인다', async () => {
       const many: OpportunityCard = {
         ...pending,
         checkPoints: [
-          '거래 관계',
           '거산 아노다이징 공정(거산 확인 전)',
+          '거산 아노다이징의 처리 소재',
+          '공정 2개 적용 부품의 소재',
           '방산 납품 자격',
           'RoHS',
           'ISO 9001',
+          'Nadcap(필요 시점 미확인)',
+        ],
+        checkKinds: [
+          'PROCESS',
+          'MATERIAL',
+          'MATERIAL',
+          'REQUIREMENT',
+          'REQUIREMENT',
+          'REQUIREMENT',
+          'REQUIREMENT',
         ],
       };
       mockedGet.mockResolvedValue(reply([many]));
       renderPage();
       const card = await screen.findByTestId('opportunity-card');
       expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
-        /^확인할 것: 거래 관계 · 거산 아노다이징 공정\(거산 확인 전\) · 방산 납품 자격 외 2개$/,
+        /^확인할 것: 공정 · 소재 · 방산 납품 자격 · RoHS · ISO 9001 외 1개$/,
       );
     });
 
-    it('핵심 근거 재확인 회사는 꼬리표 두 개 대신 왜 모자란지를 검토사항 줄에 적는다', async () => {
+    it('종류 칸이 없는 옛 응답이면 글자로 추측하지 않고 서버 글자를 이름 그대로 적는다', async () => {
+      const old: OpportunityCard = { ...pending };
+      delete old.checkKinds;
+      mockedGet.mockResolvedValue(reply([old]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
+        /^확인할 것: 아노다이징 적용 부품의 소재$/,
+      );
+    });
+
+    it('평가 전 회사는 "평가 전" 꼬리표 없이 검토사항 줄에 낱말만 적는다', async () => {
+      const notEvaluated: OpportunityCard = {
+        ...apjeong,
+        classificationCode: 'NOT_EVALUATED',
+        bucket: 'CHECK',
+        bucketBasis: 'NOT_EVALUATED_HIGH_FIT',
+        coreEvidenceRecheck: true,
+        blocker: { text: '점수 입력 전 · 필수조건 확인 전', blocksApproval: true },
+        processCodes: ['ANODIZING', 'ZINC_PLATING'],
+        confirmedProcessCodes: [],
+        proposedProcessCount: 2,
+        checkPoints: ['공정 2개 적용 부품의 소재'],
+        checkKinds: ['MATERIAL'],
+        coreEvidenceGaps: [],
+      };
+      const bare: OpportunityCard = {
+        ...notEvaluated,
+        oppId: 'opp-bare',
+        bucketBasis: 'NOT_EVALUATED_LOWER_FIT',
+        processCodes: ['ANODIZING'],
+        confirmedProcessCodes: ['ANODIZING'],
+        proposedProcessCount: 0,
+        checkPoints: [],
+        checkKinds: [],
+      };
+      mockedGet.mockResolvedValue(reply([notEvaluated, bare], { processCounts: [], total: 2 }));
+      renderPage();
+      const cards = await screen.findAllByTestId('opportunity-card');
+      for (const card of cards) {
+        expect(within(card).queryByTestId('card-classification')).not.toBeInTheDocument();
+        expect(within(card).queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
+        expect(card).not.toHaveTextContent('평가 전');
+        expect(card).not.toHaveTextContent('점수 입력 전');
+      }
+      expect(within(cards[0]).getByTestId('card-blocker')).toHaveTextContent(
+        /^확인할 것: 공정 · 소재 · 근거 부족$/,
+      );
+      // 공정이 확정돼 있고 확인 전 조건이 없으면 있는 것만 적는다.
+      expect(within(cards[1]).getByTestId('card-blocker')).toHaveTextContent(
+        /^확인할 것: 근거 부족$/,
+      );
+    });
+
+    it('핵심 근거 재확인 회사는 꼬리표 두 개 대신 검토사항 줄에 "근거 부족" 한 낱말을 적는다', async () => {
       const recheck: OpportunityCard = {
         ...apjeong,
         classificationCode: 'WATCH',
@@ -387,14 +451,13 @@ describe('OpportunityListPage', () => {
       expect(card).not.toHaveTextContent('핵심 근거 재확인');
       // 다른 분류 꼬리표는 그대로 보인다.
       expect(within(card).getByTestId('card-classification')).toHaveTextContent('동향 모니터링');
-      // "없음 — …" 뒤에 붙이면 말이 어긋나므로 모자란 이유만 보인다.
-      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
-        /^핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐$/,
-      );
+      // "없음 — …" 뒤에 붙이면 말이 어긋나므로 낱말만 보인다. 약한 추정뿐·근거 없음은 구분하지 않는다.
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(/^확인할 것: 근거 부족$/);
+      expect(card).not.toHaveTextContent('약한 추정뿐');
       expect(card).not.toHaveTextContent('없음 — 지금 단계 필수 요구 통과');
     });
 
-    it('둘 다 해당하고 AI 제안만 있는 회사는 확인할 것 → 공정 확인 전 → 핵심 근거 순으로 한 줄에 잇는다', async () => {
+    it('둘 다 해당하고 AI 제안만 있는 회사는 공정 · 소재 · 근거 부족 순으로 한 줄에 적는다', async () => {
       const both: OpportunityCard = {
         ...pending,
         coreEvidenceRecheck: true,
@@ -402,6 +465,7 @@ describe('OpportunityListPage', () => {
         confirmedProcessCodes: [],
         proposedProcessCount: 2,
         checkPoints: ['공정 2개 적용 부품의 소재'],
+        checkKinds: ['MATERIAL'],
         coreEvidenceGaps: [
           '표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐',
           '소재와 보유 공정 일치 근거 없음',
@@ -413,30 +477,21 @@ describe('OpportunityListPage', () => {
       const card = await screen.findByTestId('opportunity-card');
       expect(card).not.toHaveTextContent('핵심 근거 재확인');
       expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
-        /^확인할 것: 공정 2개 적용 부품의 소재$/,
+        /^확인할 것: 공정 · 소재 · 근거 부족$/,
       );
-      expect(within(card).getByTestId('card-process-unconfirmed')).toHaveTextContent(
-        '맞는 공정이 아직 확인 전 · AI 제안 2개',
-      );
-      expect(within(card).getByTestId('card-core-gaps')).toHaveTextContent(
-        '핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐 · 소재와 보유 공정 일치 근거 없음 외 1개',
-      );
-      expect(
-        within(card).getByTitle(
-          '확인할 것: 공정 2개 적용 부품의 소재 · 맞는 공정이 아직 확인 전 · AI 제안 2개 · 핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐 · 소재와 보유 공정 일치 근거 없음 외 1개',
-        ),
-      ).toBeInTheDocument();
+      expect(card).not.toHaveTextContent('AI 제안 2개');
+      expect(within(card).getByTitle('확인할 것: 공정 · 소재 · 근거 부족')).toBeInTheDocument();
     });
 
     it('서버가 구체적인 말을 주지 않으면(재료 없음·옛 응답) 서버 문장을 그대로 보인다', async () => {
       const plain: OpportunityCard = { ...pending };
       delete plain.checkPoints;
+      delete plain.checkKinds;
       delete plain.coreEvidenceGaps;
       mockedGet.mockResolvedValue(reply([plain]));
       renderPage();
       const card = await screen.findByTestId('opportunity-card');
       expect(within(card).getByTestId('card-blocker')).toHaveTextContent(/^필수조건 확인 필요$/);
-      expect(within(card).queryByTestId('card-core-gaps')).not.toBeInTheDocument();
     });
 
     it('평소 회사는 분류·묶음 이유 꼬리표와 검토사항 문장이 그대로다', async () => {
@@ -677,11 +732,11 @@ describe('OpportunityListPage', () => {
         expect(within(card).queryByTestId('card-region-tag')).not.toBeInTheDocument();
         expect(card).not.toHaveTextContent('아산시');
         expect(card).not.toHaveTextContent(listFilters.regionUnknown);
-        expect(within(card).queryByTestId('card-process-unconfirmed')).not.toBeInTheDocument();
+        expect(within(card).getByTestId('card-blocker')).not.toHaveTextContent('공정');
       }
     });
 
-    it('AI 제안만 있는 회사는 공정 꼬리표가 없고 검토사항 줄 뒤에 "맞는 공정이 아직 확인 전 · AI 제안 n개"가 붙는다(#659)', async () => {
+    it('AI 제안만 있는 회사는 공정 꼬리표가 없고 검토사항 줄에 "공정" 한 낱말이 보인다(#659)', async () => {
       const proposedOnly: OpportunityCard = {
         ...apjeong,
         processCodes: ['ANODIZING', 'ZINC_PLATING'],
@@ -693,14 +748,10 @@ describe('OpportunityListPage', () => {
       renderPage('/opportunities?process=ANODIZING');
       const card = await screen.findByTestId('opportunity-card');
       expect(within(card).queryByTestId('card-process-tag')).not.toBeInTheDocument();
-      // 서버 문장은 그대로 두고 뒤에 덧붙여 한 줄로 보인다.
-      expect(within(card).getByTestId('card-blocker')).toHaveTextContent('없음 — 필수조건 통과');
-      expect(within(card).getByTestId('card-process-unconfirmed')).toHaveTextContent(
-        '맞는 공정이 아직 확인 전 · AI 제안 2개',
-      );
-      expect(
-        within(card).getByTitle('없음 — 필수조건 통과 · 맞는 공정이 아직 확인 전 · AI 제안 2개'),
-      ).toBeInTheDocument();
+      // PM 지시 2026-11-13: "없음 — …" 뒤에 긴 문장을 붙이지 않고 낱말만 적는다(제안 개수는 카드에 쓰지 않는다).
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(/^확인할 것: 공정$/);
+      expect(card).not.toHaveTextContent('AI 제안 2개');
+      expect(within(card).getByTitle('확인할 것: 공정')).toBeInTheDocument();
     });
 
     it('확정과 AI 제안이 섞인 회사는 확정된 공정 꼬리표만 보이고 검토사항 줄에 덧붙이지 않는다(#659)', async () => {
@@ -718,7 +769,6 @@ describe('OpportunityListPage', () => {
           .getAllByTestId('card-process-tag')
           .map((tag) => tag.textContent),
       ).toEqual(['아노다이징']);
-      expect(within(card).queryByTestId('card-process-unconfirmed')).not.toBeInTheDocument();
       expect(within(card).getByTestId('card-blocker')).toHaveTextContent(apjeong.blocker.text);
     });
 
@@ -728,7 +778,7 @@ describe('OpportunityListPage', () => {
       renderPage('/opportunities?process=ANODIZING');
       const card = await screen.findByTestId('opportunity-card');
       expect(within(card).queryByTestId('card-process-tag')).not.toBeInTheDocument();
-      expect(within(card).queryByTestId('card-process-unconfirmed')).not.toBeInTheDocument();
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(apjeong.blocker.text);
     });
 
     it('서버가 지역·산업 칸을 주지 않는 옛 응답이면 꼬리표 자리에 아무것도 붙지 않는다', async () => {

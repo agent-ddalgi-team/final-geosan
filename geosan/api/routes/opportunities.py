@@ -974,6 +974,7 @@ def list_opportunities(
                 proposed_process_count=len(process_codes) - len(confirmed_codes),
                 check_points=check_points[current.eval_id].check_points,
                 core_evidence_gaps=check_points[current.eval_id].core_evidence_gaps,
+                check_kinds=check_points[current.eval_id].check_kinds,
                 opp_id=opportunity.opp_id,
                 bucket=placements[opportunity.opp_id].bucket,
                 bucket_basis=placements[opportunity.opp_id].basis,

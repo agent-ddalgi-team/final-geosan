@@ -11,7 +11,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event
 
 from geosan.api.app import create_app
-from geosan.api.check_points import _core_gaps, _required_points, shown_blocker_text
+from geosan.api.check_points import (
+    _core_gaps,
+    _required_points,
+    _required_rows,
+    shown_blocker_text,
+)
 from geosan.capability.importer import import_capability
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun
@@ -66,6 +71,7 @@ def test_plain_company_has_no_extra_lines(check_env):
     assert card["classificationCode"] != "FILTER_PENDING"
     assert card["coreEvidenceRecheck"] is False
     assert card["checkPoints"] == []
+    assert card["checkKinds"] == []
     assert card["coreEvidenceGaps"] == []
 
 
@@ -83,6 +89,8 @@ def test_pending_company_names_the_condition_that_is_not_confirmed(check_env):
         if row["code"] == "ANODIZING"
     )
     assert card["checkPoints"] == [f"{name} 적용 부품의 소재"]
+    # 화면이 문장을 글자로 맞춰 추측하지 않게 종류를 같은 순서로 준다.
+    assert card["checkKinds"] == ["MATERIAL"]
 
 
 def test_recheck_company_says_which_core_item_is_weak(check_env):
@@ -224,6 +232,13 @@ def test_points_follow_the_order_process_material_requirement():
         "공정 2개 적용 부품의 소재",
         "방산 납품 자격",
         "RoHS(필요 시점 미확인)",
+    ]
+    # 종류는 문장과 같은 순서·같은 개수다.
+    assert [kind for kind, _ in _required_rows(run, checks)] == [
+        "PROCESS",
+        "MATERIAL",
+        "REQUIREMENT",
+        "REQUIREMENT",
     ]
 
 

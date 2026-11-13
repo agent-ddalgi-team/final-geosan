@@ -295,6 +295,17 @@ export const cardRows = {
    */
   coreEvidenceGaps: (gaps: string[]) =>
     `핵심 근거 부족: ${gaps.slice(0, 2).join(' · ')}${gaps.length > 2 ? ` 외 ${gaps.length - 2}개` : ''}`,
+  /**
+   * 카드 검토사항 줄의 낱말(#659, PM 지시 2026-11-13): 긴 문장 대신 "확인할 것: 공정 · 소재 · 근거 부족"처럼 보인다.
+   * 약한 추정뿐·근거 없음은 구분하지 않고 "근거 부족" 하나로 쓴다. 긴 문장은 상세 화면에서 읽는다.
+   */
+  checkWords: { process: '공정', material: '소재', evidence: '근거 부족' },
+  /**
+   * 낱말(공정·소재·근거 부족)을 먼저 적고, 이름 그대로 보이는 조건(필수 요구 이름 등)은 앞 3개 + "외 n개".
+   * 예: "확인할 것: 공정 · 소재 · 근거 부족", "확인할 것: 소재 · 방산 납품 자격 · RoHS · ISO 9001 외 1개"
+   */
+  checkWordsLine: (words: string[], names: string[]) =>
+    `확인할 것: ${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
   nextAction: '후속 조치',
   rankPrefix: '순위',
   scorePrefix: '점수',

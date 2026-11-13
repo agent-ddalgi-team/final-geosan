@@ -445,6 +445,11 @@ export interface OpportunityCard {
   checkPoints?: string[];
   /** 핵심 근거를 다시 확인해야 하는 이유(#659). 비어 있지 않으면 검토사항 줄에 "핵심 근거 부족: …"으로 보인다. */
   coreEvidenceGaps?: string[];
+  /**
+   * checkPoints 각 줄의 종류(#659, 같은 순서·같은 개수). 카드가 검토사항 줄을 낱말로 줄일 때 쓴다:
+   * PROCESS → "공정", MATERIAL → "소재", 나머지(REQUIREMENT·COMPANY_FILTER)는 checkPoints 글자 그대로.
+   */
+  checkKinds?: Array<'PROCESS' | 'MATERIAL' | 'REQUIREMENT' | 'COMPANY_FILTER'>;
   /** AI가 이 회사를 고른 이유 한 줄(#316, 후보 찾기로 들어온 회사만). 없으면 줄을 그리지 않는다. */
   pickReason?: string | null;
   /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */
