@@ -1,5 +1,6 @@
 // 추천 목록의 [엑셀 내려받기](#217): 단추가 목록을 부른 조건 그대로(쪽 번호 없이) 내려받기를 부른다 /
-// 보기 전용도 쓸 수 있다(읽기) / 빈 목록·불러오지 못한 목록에는 단추가 없다.
+// 보기 전용도 쓸 수 있다(읽기) / 빈 목록·불러오지 못한 목록에는 단추가 없다 /
+// 설정으로 꺼져 있거나 설정을 못 읽었으면 단추가 없다(PM 결정 2026-11-13: 만들어 두고 꺼 둠).
 // 서버 호출(getOpportunities·getListXlsx)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -7,8 +8,9 @@ import { MemoryRouter } from 'react-router-dom';
 import OpportunityListPage from '../OpportunityListPage';
 import { ApiError, getOpportunities } from '../../api/client';
 import { getListXlsx, saveFile } from '../../api/exportXlsx';
-import type { Envelope, OpportunityCard } from '../../api/types';
+import type { ConfigUi, Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
+import configFixture from '../../test/fixtures/config-ui.json';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -31,12 +33,21 @@ function reply(items: OpportunityCard[], meta = {}): Envelope<OpportunityCard[]>
   return { data: items, meta: { total: items.length, ...meta } };
 }
 
-function renderPage(initial: string, staffKey: string | null = 'park-lee') {
+const BASE_CONFIG = configFixture.data as unknown as ConfigUi;
+/** 서버 화면 설정에서 엑셀 내려받기가 켜진 상태. 이 파일의 기본값이다. */
+const EXPORT_ON: ConfigUi = { ...BASE_CONFIG, export: { xlsxEnabled: true } };
+const EXPORT_OFF: ConfigUi = { ...BASE_CONFIG, export: { xlsxEnabled: false } };
+
+function renderPage(
+  initial: string,
+  staffKey: string | null = 'park-lee',
+  config: ConfigUi | null = EXPORT_ON,
+) {
   return render(
     <MemoryRouter initialEntries={[initial]}>
       <FrameContext.Provider
         value={{
-          config: null,
+          config,
           staffKey,
           setStaffKey: () => {},
           canRecord: staffKey !== null && staffKey !== 'viewer',
@@ -135,6 +146,25 @@ describe('OpportunityListPage [엑셀 내려받기] (#217)', () => {
     );
     expect(screen.getByTestId('opportunity-card')).toBeInTheDocument();
     expect(mockedSave).not.toHaveBeenCalled();
+  });
+
+  it('설정으로 꺼져 있으면 목록은 그대로 보이고 단추만 없다', async () => {
+    mockedList.mockResolvedValue(reply([apjeong]));
+    renderPage('/opportunities?stage=IN_PROGRESS', 'park-lee', EXPORT_OFF);
+    await screen.findByTestId('opportunity-card');
+    expect(screen.queryByTestId('list-export')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('list-export-button')).not.toBeInTheDocument();
+    expect(mockedXlsx).not.toHaveBeenCalled();
+  });
+
+  it('설정을 아직 못 읽었거나 서버가 스위치 칸을 주지 않으면 단추가 없다', async () => {
+    mockedList.mockResolvedValue(reply([apjeong]));
+    for (const config of [null, BASE_CONFIG]) {
+      const view = renderPage('/opportunities?stage=IN_PROGRESS', 'park-lee', config);
+      await screen.findByTestId('opportunity-card');
+      expect(screen.queryByTestId('list-export-button')).not.toBeInTheDocument();
+      view.unmount();
+    }
   });
 
   it('빈 목록과 불러오지 못한 목록에는 단추가 없다', async () => {

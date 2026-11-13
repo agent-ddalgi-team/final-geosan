@@ -464,8 +464,9 @@ export default function OpportunityListPage() {
                 ? `${pagination.totalLine(total)} · ${listFilters.flatNote}`
                 : pagination.totalLine(total)}
           </p>
-          {/* 엑셀 내려받기(#217): 목록을 부른 조건 그대로 보낸다. 쪽 번호는 보내지 않아 전체가 담긴다. */}
-          <ExportButton filters={baseFilters} />
+          {/* 엑셀 내려받기(#217): 목록을 부른 조건 그대로 보낸다. 쪽 번호는 보내지 않아 전체가 담긴다.
+              설정(export.xlsxEnabled)이 켜져 있을 때만 보인다. 꺼져 있거나 설정을 아직 못 읽었으면 숨긴다. */}
+          {config?.export?.xlsxEnabled === true ? <ExportButton filters={baseFilters} /> : null}
         </div>
         {grouped ? (
           // 묶음 보기(#383): 공정마다 묶음 하나. 묶음 안 번호는 그 공정 안 순위다. 0곳인 묶음은 보이지 않는다.
