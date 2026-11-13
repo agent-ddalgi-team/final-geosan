@@ -59,7 +59,7 @@ from geosan.api.schemas import (
     SalesStepEntry,
 )
 from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
-from geosan.config.sales_questions import SalesQuestions, load_sales_questions
+from geosan.config.sales_questions import ALL_STEPS, SalesQuestions, load_sales_questions
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.models import Customer, Opportunity, RelationHistory
@@ -610,21 +610,52 @@ def sales_questions(session: Session) -> SalesQuestions:
 def _answer_errors(body: OutcomeRequest, questions: SalesQuestions | None) -> list[FieldError]:
     if not body.answers or questions is None:
         return []
-    if body.method is None or body.result != "REACHED":
+    if body.method is None or body.result not in ("REACHED", "DECLINED"):
         return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
     errors: list[FieldError] = []
     seen: set[str] = set()
+    chosen = {answer.question_id: answer.answer_id for answer in body.answers}
     for index, answer in enumerate(body.answers):
         question = questions.question(answer.question_id)
-        if question is None or question.option(answer.answer_id) is None:
+        option = question.option(answer.answer_id) if question else None
+        if question is None or option is None:
             message = "질문 목록에 없는 질문이나 보기입니다. 화면을 새로 고쳐 주세요."
         elif answer.question_id in seen:
             message = "같은 질문에 두 번 답했습니다."
+        elif body.result == "DECLINED" and question.step != ALL_STEPS:
+            # #643: 거절로 끝난 접촉에서는 "다음 할 일"과 그 꼬리(모든 단계 질문)만 받는다.
+            message = "거절로 끝난 접촉에서는 모든 단계 질문만 답할 수 있습니다."
+        elif (option.closes or option.lost_reason) and not all(
+            chosen.get(target) in answer_ids
+            for target, answer_ids in (
+                question.show_when.answers if question.show_when else {}
+            ).items()
+        ):
+            # #643: 단계를 끝내는 답은 앞 질문의 답("끝", "거절")이 같은 요청에 있을 때만 받는다.
+            message = "앞 질문의 답과 맞지 않는 답입니다. 화면을 새로 고쳐 주세요."
         else:
             seen.add(answer.question_id)
             continue
         errors.append(FieldError(path=f"answers[{index}]", message=message))
     return errors
+
+
+def _closing_answer(
+    body: OutcomeRequest, questions: SalesQuestions | None
+) -> tuple[str, str | None] | None:
+    """#643 이번 답 가운데 단계를 끝내는 답(closes)과 거절 이유 답(lostReason)의 코드."""
+    if questions is None:
+        return None
+    closes: str | None = None
+    lost_reason: str | None = None
+    for answer in body.answers:
+        question = questions.question(answer.question_id)
+        option = question.option(answer.answer_id) if question else None
+        if option and option.closes:
+            closes = option.closes
+        if option and option.lost_reason:
+            lost_reason = str(option.lost_reason.value)
+    return (closes, lost_reason if closes == "LOST" else None) if closes else None
 
 
 def sales_step_state(
@@ -698,10 +729,16 @@ def save_outcome(
                 message="앞으로 할 일은 다음 일정에 적어 주세요. 접촉 날짜는 오늘까지입니다.",
             )
         )
-    if body.status == "LOST":
-        if body.lost_reason_code is None:
+    questions = sales_questions(session) if body.answers else None
+    answer_fields = _answer_errors(body, questions)
+    # #643: 이번 답에 단계를 끝내는 답이 있으면 요청 status 대신 그 값과 거절 이유 답을 쓴다.
+    closing = None if answer_fields else _closing_answer(body, questions)
+    status = closing[0] if closing else body.status
+    lost_reason_code = closing[1] if closing else body.lost_reason_code
+    if status == "LOST":
+        if lost_reason_code is None:
             fields.append(FieldError(path="lostReasonCode", message="거절 이유를 골라 주세요."))
-    elif "lost_reason_code" in body.model_fields_set:
+    elif closing is None and "lost_reason_code" in body.model_fields_set:
         fields.append(
             FieldError(path="lostReasonCode", message="거절 단계에서만 이유 코드를 넣어 주세요.")
         )
@@ -715,8 +752,7 @@ def save_outcome(
                 message=f"한 줄 메모는 {records_settings.memo_line_max_length}자까지입니다.",
             )
         )
-    questions = sales_questions(session) if body.answers else None
-    fields.extend(_answer_errors(body, questions))
+    fields.extend(answer_fields)
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     opportunity = session.get(Opportunity, opp_id)
@@ -728,18 +764,21 @@ def save_outcome(
         connection.exec_driver_sql("BEGIN IMMEDIATE")
     previous = latest_outcome(session, opp_id)
     values = body.model_dump(exclude={"expected_version"})
+    values["status"], values["lost_reason_code"] = status, lost_reason_code
+    if closing and status != "LOST":
+        values["reason"] = None
     # C1·#250: 같은 거절 코드로 일정·접촉만 남기면 최신 거절 행의 설명을 이어받는다.
     # 이전 행 조회와 새 이력 저장은 같은 쓰기 잠금 안에서 처리한다.
-    if body.status == "LOST" and not (body.reason and body.reason.strip()):
+    if status == "LOST" and not (body.reason and body.reason.strip()):
         previous_lost = session.scalar(
             select(Outcome)
             .where(Outcome.opp_id == opp_id, Outcome.status == "LOST")
             .order_by(Outcome.version.desc())
         )
-        if previous_lost and previous_lost.lost_reason_code == body.lost_reason_code:
+        if previous_lost and previous_lost.lost_reason_code == lost_reason_code:
             values["reason"] = previous_lost.reason
     fields = scan_contacts({"reason": values["reason"]})
-    if body.status == "LOST" and body.lost_reason_code == "OTHER":
+    if status == "LOST" and lost_reason_code == "OTHER":
         if not (values["reason"] and values["reason"].strip()):
             fields.append(FieldError(path="reason", message="기타를 고르면 이유를 적어 주세요."))
     if fields:
@@ -816,7 +855,11 @@ def get_sales_questions(session: SessionDep):
                     else None,
                     answers=[
                         SalesAnswerOption(
-                            answer_id=option.id, label=option.label, reaches=option.reaches
+                            answer_id=option.id,
+                            label=option.label,
+                            reaches=option.reaches,
+                            closes=option.closes,
+                            lost_reason=option.lost_reason,
                         )
                         for option in question.answers
                     ],

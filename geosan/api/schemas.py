@@ -841,6 +841,9 @@ class SalesAnswerOption(_ApiModel):
     answer_id: str
     label: str
     reaches: SalesStep | None = None
+    # #643: 마무리 답 칸. 질문 파일 그대로, 없으면 null.
+    closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
+    lost_reason: LostReasonCode | None = None
 
 
 class SalesShowWhen(_ApiModel):
