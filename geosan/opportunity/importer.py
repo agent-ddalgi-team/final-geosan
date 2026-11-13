@@ -153,6 +153,9 @@ def _store(
         session.add(customer)
     values = model.customer.model_dump(mode="json")
     file_homepage_url = values.pop("homepage_url")
+    if customer.address != model.customer.address:
+        # 새 주소에 예전 좌표를 붙여 거리 표시하는 일을 막는다.
+        customer.lat = customer.lng = customer.geocoded_at = customer.geocode_source = None
     values.update(
         normalized_name=normalize_name(model.customer.name),
         normalized_address=normalize_address(model.customer.address),
