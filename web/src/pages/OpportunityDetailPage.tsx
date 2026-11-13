@@ -3,6 +3,7 @@
 //   → 2. 통화에서 확인할 것(읽기 전용) → 3. 점수 자세히 보기(접힘, 안에 AI 점수 입력 제안 [확정]·[고치기]).
 // 아래(적는 곳): 검토 의견 → 기록 남기기(접촉·꼬리 질문·한 줄 메모·다음 일정) → 활동 이력 → 비슷한 회사 참고(#269).
 // 읽는 곳의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이다. 서버 창구는 그대로 두고 화면에서만 부르지 않는다.
+// 머리의 [기록 남기기](#691)는 적는 곳의 "기록 남기기" 칸으로 내려가는 이동 단추다(저장하지 않는다).
 // 머리의 [관심] 단추(#357): 검토 의견·메모·영업 기록을 저장하면 서버가 관심을 켜므로, 그 저장 뒤에 관심 값만 조용히 다시 읽는다.
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
@@ -19,7 +20,7 @@ import type {
 } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
-import CallChecklist from '../components/detail/CallChecklist';
+import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
 import HeaderSection from '../components/detail/HeaderSection';
@@ -31,7 +32,7 @@ import OpinionArea from '../components/opinion/OpinionArea';
 import PeersArea from '../components/peers/PeersArea';
 import ActivityTimeline from '../components/records/ActivityTimeline';
 import { choiceMarksOf } from '../components/records/ChoiceQuestion';
-import RecordsArea from '../components/records/RecordsArea';
+import RecordsArea, { recordsEntryInputId } from '../components/records/RecordsArea';
 import ReviewArea from '../components/review/ReviewArea';
 import { detailReport, frame, opinionArea, peersArea, recordsArea, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
@@ -66,7 +67,16 @@ export default function OpportunityDetailPage() {
     return () => controller.abort();
   }, [oppId, requestKey]);
 
-  const current = result?.key === requestKey ? result : null;
+  // 꼬리 질문으로 공정·산업을 확정하면 상세 전체를 다시 받는다(#652). 그동안 화면을 비우면 맨 위로 튀고
+  // 기록 칸의 "저장됨" 알림과 고른 종류가 사라지므로, 이 다시 받기만은 지난 화면을 그대로 둔 채 조용히 한다(#691).
+  const [quietKey, setQuietKey] = useState<string | null>(null);
+  const reloadQuietly = () => {
+    setQuietKey(`${oppId}:${reload + 1}`);
+    setReload(reload + 1);
+  };
+  const stale =
+    quietKey === requestKey && result?.data && result.key.startsWith(`${oppId}:`) ? result : null;
+  const current = result?.key === requestKey ? result : stale;
   const data = current?.data ?? null;
   const meta = current?.meta ?? null;
 
@@ -173,6 +183,13 @@ export default function OpportunityDetailPage() {
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
   const goList = () => navigate('/opportunities');
+  /** 머리의 [기록 남기기]: 기록 칸으로 내려가 첫 입력(종류)에 초점을 둔다. 저장은 하지 않는다. */
+  const goRecord = () => {
+    const input = document.getElementById(recordsEntryInputId(oppId));
+    const target = input ?? document.getElementById('detail-records');
+    target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    input?.focus({ preventScroll: true });
+  };
 
   const notFound = current?.error instanceof ApiError && current.error.status === 404;
   let state: 'loading' | 'error' | 'empty' | 'ready' = 'ready';
@@ -218,6 +235,7 @@ export default function OpportunityDetailPage() {
               setReload((n) => n + 1);
               setTimelineVersion((n) => n + 1);
             }}
+            onGoRecord={goRecord}
             header={data.header}
             bookmark={bookmarkState.bookmark}
             onBookmarkChanged={(next) => {
@@ -239,6 +257,21 @@ export default function OpportunityDetailPage() {
             requirements={data.requirements}
             contactCount={contactCount}
             lastContactAt={lastContactAt}
+            callCheckCount={
+              data.reviewItems !== undefined
+                ? callCheckCountOf(
+                    {
+                      header: data.header,
+                      reasons: data.reasons,
+                      processLinks: data.processLinks,
+                      reviewItems: data.reviewItems,
+                      requirements: data.requirements,
+                      salesStep,
+                    },
+                    salesQuestions,
+                  )
+                : 0
+            }
           />
           <WhyThisCompany
             header={data.header}
@@ -335,7 +368,7 @@ export default function OpportunityDetailPage() {
               onOutcomeSaved={(saved) => setSavedOutcome({ data, outcome: saved })}
               choiceMarks={choiceMarksOf(data)}
               // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
-              onCompanyConfirmed={() => setReload((n) => n + 1)}
+              onCompanyConfirmed={reloadQuietly}
               onContactRecorded={onContactRecorded}
               onRecorded={() => {
                 setTimelineVersion((n) => n + 1);

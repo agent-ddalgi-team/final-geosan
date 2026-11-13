@@ -1,5 +1,5 @@
 // 상세 머리(S2, #674 PM 결정 2026-11-13): 목록으로 / [관심]·[다시 조사] / 단계 진행 막대 / 분류·점수·가상 표시 / 대응·담당.
-// 이름(h1)은 공통 틀이 보인다. 읽는 곳이라 단추는 [목록으로]·[관심]·[다시 조사]뿐이다.
+// 이름(h1)은 공통 틀이 보인다. 읽는 곳이라 단추는 [목록으로]·[관심]·[다시 조사]와, 기록 칸으로 내려가는 [기록 남기기](#691, 이동만)뿐이다.
 // 홈페이지·대표번호·공장 정보·산업·접촉 횟수는 바로 아래 "한눈에" 상자(`DetailGlance.tsx`)로 모았다.
 // 거래 관계 입력(`RelationControl`)과 점수 옆 "거래 확인 전" 표시는 뺐다(재접촉 관리를 하지 않는다). "기존 거래처" 표시는 남는다.
 // 분류 꼬리표 "필수조건 확인 필요"·"핵심 근거 재확인 필요"·"평가 전"은 카드(#659)와 같게 보이지 않는다.
@@ -27,6 +27,7 @@ import {
   labelFor,
   ownPlatingLine,
   purposeLabels,
+  recordsArea,
 } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 
@@ -34,6 +35,8 @@ export interface HeaderSectionProps {
   oppId: string;
   /** [다시 조사]가 끝났거나 새로 불러오기를 눌렀을 때. 상세 화면이 서버에서 다시 읽는다. */
   onReload: () => void;
+  /** [기록 남기기](#691): 적는 곳의 기록 남기기 칸으로 내려간다. 없으면 단추를 보이지 않는다. */
+  onGoRecord?: () => void;
   header: DetailHeader;
   /** 관심 표시(#357). 한 번도 켠 적이 없으면 null. 기록을 저장하면 상세 화면이 서버 값으로 다시 맞춰 준다. */
   bookmark: BookmarkRecord | null;
@@ -55,6 +58,7 @@ const HIDDEN_CLASSIFICATIONS = new Set(['FILTER_PENDING', 'NOT_EVALUATED']);
 export default function HeaderSection({
   oppId,
   onReload,
+  onGoRecord,
   header,
   bookmark,
   onBookmarkChanged,
@@ -110,6 +114,11 @@ export default function HeaderSection({
             gap: 12,
           }}
         >
+          {onGoRecord ? (
+            <Button type="primary" onClick={onGoRecord} data-testid="detail-go-record-button">
+              {recordsArea.goRecord} <span aria-hidden="true">↓</span>
+            </Button>
+          ) : null}
           <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
           <HomepageControls oppId={oppId} onReload={onReload} />
         </div>

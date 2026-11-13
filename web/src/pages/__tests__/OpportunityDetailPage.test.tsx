@@ -390,6 +390,41 @@ describe('OpportunityDetailPage', () => {
     expect(kakao).toHaveAttribute('rel', expect.stringContaining('noopener'));
   });
 
+  it('주소 바로 옆에 거산까지 거리가 보이고, 회사 소개 줄에는 같은 거리를 또 보이지 않는다(#666)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        header: {
+          ...base.header,
+          address: '충청남도 아산시 시험로 10',
+          distanceKm: 12.3,
+          researchedAt: '2026-11-01T00:00:00Z',
+        },
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    // 주소 줄(주소 · 거리 · 지도 링크)이 한 줄이다(#674에서 "한눈에" 상자로 옮김).
+    const row = screen.getByTestId('glance-factory-profile');
+    expect(within(row).getByTestId('detail-map-links')).toBeInTheDocument();
+    expect(within(row).getByTestId('detail-distance')).toHaveTextContent('거산에서 12.3km');
+    expect(row).toHaveTextContent('충청남도 아산시 시험로 10');
+    expect(screen.queryByTestId('company-distance')).not.toBeInTheDocument();
+  });
+
+  it('거리를 모르면(null) 주소 옆 거리를 보이지 않는다', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...base,
+        header: { ...base.header, address: '충청남도 아산시 시험로 10', distanceKm: null },
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(screen.getByTestId('detail-map-links')).toBeInTheDocument();
+    expect(screen.queryByTestId('detail-distance')).not.toBeInTheDocument();
+  });
+
   it('주소가 없으면 지도 링크를 보이지 않는다', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     renderPage();
@@ -716,7 +751,8 @@ describe('OpportunityDetailPage', () => {
       expect(review).not.toHaveTextContent('채용');
     });
 
-    it('구분 줄 위(읽는 곳)의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이고 입력칸이 없다', async () => {
+    // #691: 머리에 [기록 남기기]가 더해졌다. 저장하지 않고 기록 칸으로 내려가기만 하는 이동 단추다.
+    it('구분 줄 위(읽는 곳)의 단추는 [목록으로]·[관심]·[다시 조사]·[기록 남기기](이동)와 접힌 구역을 여는 단추뿐이고 입력칸이 없다', async () => {
       mockedGet.mockResolvedValueOnce(
         reply({
           ...fixtureData,
@@ -742,6 +778,7 @@ describe('OpportunityDetailPage', () => {
           'bookmark-button',
           // 대표번호는 누르면 전화가 걸리는 링크다(단추가 아님).
           'company-phone-link',
+          'detail-go-record-button',
           'detail-scores-toggle',
           'homepage-rerun-button',
           'review-fold-toggle-gap',

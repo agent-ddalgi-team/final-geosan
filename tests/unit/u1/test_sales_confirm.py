@@ -129,6 +129,7 @@ def test_sales_questions_fill_choices_from_process_list_and_settings(confirm_env
             "reaches": None,
             "closes": None,
             "lostReason": None,
+            "default": False,
         },
         {
             "answerId": "ANODIZING",
@@ -136,6 +137,7 @@ def test_sales_questions_fill_choices_from_process_list_and_settings(confirm_env
             "reaches": None,
             "closes": None,
             "lostReason": None,
+            "default": False,
         },
     ]
     assert len(process["answers"]) == 9

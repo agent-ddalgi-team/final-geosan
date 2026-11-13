@@ -242,6 +242,8 @@ class RecordsSettings(FileModel):
     # #607: 꼬리 질문 파일 위치(저장소 기준 상대 경로)와 접촉 기록 한 줄 메모 상한.
     sales_questions_file: str = Field(default="examples/sales-questions.yaml", min_length=1)
     memo_line_max_length: int = Field(default=100, ge=1, le=200)
+    # #691: 기록 남기기 칸에서 한 통화에 보이는 통화 내용 질문 수. 넘는 질문은 화면이 접어 둔다.
+    questions_per_contact: int = Field(default=6, ge=1, le=20)
 
 
 class ResearchSettings(FileModel):
@@ -407,6 +409,8 @@ class AppSettings(FileModel):
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
     geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
+    # 대시보드 지도 "같이 들를 곳" 반경(km, #673 PM 결정 2026-11-13).
+    visit_group_radius_km: float = Field(default=5, gt=0, le=50)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]

@@ -287,6 +287,8 @@ export interface RecordsConfig {
   noteMaxLength: number;
   /** 기록 취소(#253·#254): true면 남의 기록도 취소할 수 있다. 안 주면 본인 기록만(false). */
   cancelByAnyStaff?: boolean;
+  /** 한 통화에 보이는 통화 내용 질문 수(#691). 서버가 안 주면 화면은 접지 않는다. */
+  questionsPerContact?: number;
 }
 
 /** 후보 가져오기 조건 칸의 선택지(C1 더하는 변경 #424). 서버가 아직 안 주면 없음. */
@@ -313,6 +315,8 @@ export interface ConfigUi {
   activeDatasetKind: DatasetKind;
   accessProtectionEnabled: boolean;
   ruleVersion: string;
+  /** 목록 거리 범위 선택지(km, #666). 설정 distanceFilterPresetsKm 그대로. 옛 응답에는 없다. */
+  distanceFilterPresetsKm?: number[];
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
@@ -370,6 +374,8 @@ export interface SalesAnswerOption {
   closes?: 'WON' | 'LOST' | 'ON_HOLD' | null;
   /** 이 답이 거절 이유 코드다(#643). */
   lostReason?: LostReasonCode | null;
+  /** 화면이 미리 골라 두는 보기(#691). 이 칸이 있는 질문은 접촉 자체에 대한 질문이다. */
+  default?: boolean;
 }
 
 export interface SalesQuestion {
@@ -431,6 +437,8 @@ export interface FactoryProfile {
 }
 
 export interface OpportunityCard {
+  /** 거산 본사에서의 직선거리(km, #222·#666). 좌표를 못 찾으면 null이고 카드에 보이지 않는다. */
+  distanceKm?: number | null;
   /** 이 회사 주소의 시·군(예: 아산시). 주소가 없으면 null이고 카드는 "지역 미확인"을 보인다(#210). */
   region?: string | null;
   /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */

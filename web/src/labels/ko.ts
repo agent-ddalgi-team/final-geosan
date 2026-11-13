@@ -292,6 +292,25 @@ export const dashboardMapTexts = {
   emptyAction: '추천 목록 가기',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
+  /** 네이버 지도(#671)를 불러오는 동안. */
+  mapLoading: '네이버 지도를 불러오는 중입니다.',
+  /** 키 인증(허용 URL 미등록 등)·네트워크 실패. 원·점은 자리표시로 계속 보인다. */
+  mapFailed: '네이버 지도를 불러오지 못해 원과 점의 상대 위치만 보여요.',
+  /** 낭독기용 점 목록 이름. */
+  pointList: '지도에 표시된 회사',
+  /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
+  visitTitle: '같이 들를 곳',
+  visitHint: (km: number) =>
+    `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
+  /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
+  visitNearbyCount: (count: number) => `근처 ${count}곳`,
+  /** 근처 회사 줄: "1.8km · 관심". */
+  visitNearbyDistance: (km: number) => `${km}km`,
+  /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
+  fromAnchor: (name: string, km: number) => `${name}에서 ${km}km`,
+  visitMore: (count: number) => `${count}곳 더 보기`,
+  visitNone: '이 반경 안에 같이 들를 다른 관심 기업이 없어요.',
+  visitEmpty: '진행 중·관심 회사가 없어 묶을 곳이 없어요.',
 } as const;
 
 /** 카드·상세 줄 머리말. */
@@ -447,13 +466,18 @@ export const listFilters = {
   /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
   /** 조건을 걸었는데 0건일 때. */
-  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업을 '전체'로 바꿔 보세요",
+  filteredEmpty: "이 조건에 맞는 후보가 없습니다. 지역·산업·거리를 '전체'로 바꿔 보세요",
   /** 대시보드 건수로 넘어와 걸러진 목록이 비었을 때. */
   noMatch: '이 조건에 맞는 후보가 없습니다.',
   /** 고른 공정에 회사가 한 곳도 없을 때(#361). */
   processEmpty: '이 공정의 후보가 아직 없습니다. 후보 찾기로 회사를 찾으면 여기에 나타납니다',
   regionUnknown: '지역 미확인',
   industryUnknown: '산업 미확정',
+  /** 거리 범위 선택란(#666). 선택지는 서버 설정(`/config/ui` distanceFilterPresetsKm). */
+  distanceLabel: '거리',
+  distanceWithin: (km: number) => `${km}km 이내`,
+  /** 카드 꼬리표(#666): 거산 본사에서 직선거리. 미확인이면 꼬리표를 보이지 않는다. */
+  cardDistance: (km: number) => `거산에서 ${km}km`,
 } as const;
 
 /**
@@ -473,8 +497,8 @@ export const listSearch = {
   sortRank: '추천 순',
   /** 최근 들어온 순(#516): 들어온 시각이 최신인 회사가 위, 사례 파일 회사는 아래. */
   sortRecent: '최근 들어온 순',
-  /** 거리 작업(#222, 2차) 전까지 고를 수 없게 흐리게만 보인다. */
-  sortDistance: '가까운 순 (준비 중)',
+  /** 가까운 순(#666): 거산 본사에서 가까운 회사가 위, 거리 미확인은 맨 아래. */
+  sortDistance: '가까운 순',
   /** 정렬 줄 마지막 단추(#516, PM 지시 2026-11-09): 공정별 묶음을 풀고 모든 회사를 한 줄로 본다. 다시 누르면 묶음 보기. */
   viewAll: '전체 보기',
 } as const;
@@ -851,6 +875,30 @@ export const salesQuestionTexts = {
   nextDatePast: '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
   closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
+  /** 한 통화에 보이는 질문 수를 넘은 질문은 접어 둔다(#691). "다음 통화에서 물을 것 3개" + [지금 더 묻기] */
+  moreQuestions: (count: number) => `다음 통화에서 물을 것 ${count}개`,
+  askMoreNow: '지금 더 묻기',
+  /** 날짜를 바로 고르는 줄(#691, PM 결정 2026-11-13): 오늘부터 2주 + 다른 날짜 + [없음]. */
+  nextDateToday: '오늘',
+  nextDateOther: '다른 날짜',
+  nextDateNone: '없음',
+  nextDateListLabel: '가까운 날짜',
+  /** 요일 한 글자(일요일부터). "11/20(금)" */
+  weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+  nextDateNonePreview: '다음 일정은 잡지 않습니다.',
+  /** "다음 일정은 잡지 않습니다. 지금 일정 11/20 견적은 그대로 둡니다." */
+  nextDateNoneKeeps: (date: string, note: string) =>
+    `다음 일정은 잡지 않습니다. 지금 일정 ${[date, note].filter((part) => part).join(' ')}은(는) 그대로 둡니다.`,
+  /** 접촉 결과가 "거절"이면 바로 묻는 한 번(#691). 고른 대로 "끝 → 거절·보류" 답을 대신 실어 보낸다. */
+  declineAsk: '어떻게 할까요?',
+  /** 마무리 보기의 쉬운 말(큰 단계 코드로 찾는다). 없으면 질문 파일의 보기 문구를 쓴다. */
+  declineCloseLabels: { LOST: '거절로 마무리' } as Record<string, string>,
+  declineContinue: '아직 끝 아님 · 다시 연락',
+  declineUnpicked:
+    '아직 고르지 않았습니다. 이대로 저장하면 접촉만 남고 영업 단계는 바뀌지 않습니다.',
+  stepLineDeclinedContinue: '거절이지만 끝이 아니라면 다음 할 일과 날짜를 골라 주세요.',
+  /** 방문일 때 "누가 먼저 연락했나요?" 보기의 다른 말(보기 코드로 찾는다). 없으면 질문 파일의 문구. */
+  contactVisitLabels: { OURS: '우리가 감', THEIRS: '상대가 옴' } as Record<string, string>,
 } as const;
 
 /** 꼬리 질문의 공정·산업 확인(#652): 여러 개를 고르면 그 회사의 공정·산업이 확정된다. */
@@ -883,6 +931,10 @@ export const salesChoiceTexts = {
       : `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남습니다.`,
   keepIndustryPreview: (names: string) =>
     `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
+  /** 이미 확정된 값이 있으면 질문 대신 이 한 줄(#691). "확정됨: 아연도금" + [바꾸기] */
+  confirmedLine: (names: string) => `확정됨: ${names}`,
+  change: '바꾸기',
+  changeClose: '그대로 두기',
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
@@ -1003,6 +1055,12 @@ export const recordsArea = {
   scheduleFixOpen: '일정만 바꾸기',
   scheduleNewOpen: '일정 잡기',
   scheduleFixClose: '접기',
+  /** 통화 없이 일정만 잡기(#691): 종류를 고르면 "할 일 한 줄"이 그 말로 채워진다(고쳐 쓸 수 있다). */
+  scheduleKind: '종류',
+  scheduleOnlyHint:
+    '통화 기록 없이 일정만 잡습니다(우리가 가는 방문 등). 종류를 고르면 내용이 채워집니다.',
+  /** 상세 머리의 바로 가기 단추(#691). 누르면 적는 곳의 "기록 남기기" 칸으로 내려간다. */
+  goRecord: '기록 남기기',
   /** "영업 단계" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#674). 누르면 그 자리에서 펼쳐진다. */
   stageFixAsk: '단계가 잘못됐나요?',
   stageFixOpen: '단계 고치기',
@@ -1538,6 +1596,8 @@ export const detailReport = {
     checkWords: (words: readonly string[], names: readonly string[]) =>
       `${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
     checkNone: '지금 확인할 것 없음',
+    /** 낱말은 없는데 아래 "2. 통화에서 확인할 것"에 줄이 있을 때(#691). */
+    checkCallCount: (count: number) => `통화에서 확인할 것 ${count}가지 (아래 2번)`,
     /** "마지막 접촉 11/12" */
     lastContact: (date: string) => `마지막 접촉 ${date}`,
     phone: '대표번호',
