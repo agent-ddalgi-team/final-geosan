@@ -1,4 +1,4 @@
-// 카드 "공장 정보" 줄(#573): 팩토리온 공장조회에서 붙인 원자재·종업원 수(추정)·공장 규모.
+// 카드 "공장 정보" 줄(#573): 팩토리온 공장조회에서 붙인 원자재·공장 규모. 종업원 수는 보이지 않는다(#635).
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -49,7 +49,7 @@ describe('카드 · 공장 정보 줄 (#573)', () => {
     mockedGet.mockReset();
   });
 
-  it('원자재·종업원 수·규모를 한 줄로 보이고 종업원 수에는 언제나 "(추정)"을 붙인다', async () => {
+  it('원자재·규모를 한 줄로 보이고 종업원 수는 보이지 않는다(#635)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([
         card('a', 1, {
@@ -65,12 +65,10 @@ describe('카드 · 공장 정보 줄 (#573)', () => {
     renderPage();
     const view = within(await screen.findByTestId('opportunity-card'));
     expect(view.getByText(factoryProfileLabels.row)).toBeInTheDocument();
-    expect(view.getByTestId('card-factory-profile')).toHaveTextContent(
-      '원자재 강판, SUS · 종업원 약 12명(추정) · 소기업',
-    );
+    expect(view.getByTestId('card-factory-profile')).toHaveTextContent('원자재 강판, SUS · 소기업');
   });
 
-  it('빈 값은 빼고 남은 것만 보인다', async () => {
+  it('종업원 수만 있는 공장은 보일 값이 없어 줄을 그리지 않는다(#635)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([
         card('a', 1, {
@@ -85,7 +83,7 @@ describe('카드 · 공장 정보 줄 (#573)', () => {
     );
     renderPage();
     const view = within(await screen.findByTestId('opportunity-card'));
-    expect(view.getByTestId('card-factory-profile')).toHaveTextContent(/^종업원 약 4명\(추정\)$/);
+    expect(view.queryByTestId('card-factory-profile')).not.toBeInTheDocument();
   });
 
   it('붙은 공장이 없거나 값이 하나도 없으면 줄을 그리지 않는다', async () => {
