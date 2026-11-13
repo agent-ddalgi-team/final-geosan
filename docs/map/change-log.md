@@ -384,3 +384,5 @@ timeline
 [#549]: https://github.com/agent-ddalgi-team/final-geosan/issues/549
 [#370]: https://github.com/agent-ddalgi-team/final-geosan/issues/370
 [#647]: https://github.com/agent-ddalgi-team/final-geosan/issues/647
+
+- **2026-11-13 · #642 · 이강욱 확인:** 지도 성공 범위는 한국 시간 올해 1월 1일 이후로 기존 지도 약속을 유지. 최근 12개월을 쓰는 대시보드 막대와 구분한다. 지도 서버는 공공좌표 우선·네이버 실시간 전용 결정을 적용하며 지도 화면은 별도다.
