@@ -199,6 +199,36 @@ def test_contact_counts_include_attempt_history_only(records_env):
     assert next(row for row in cards if row["oppId"] == opp_id)["contactCount"] == 4
 
 
+def test_last_contact_date_is_latest_live_attempt(records_env):
+    """Given 접촉 2건 뒤 늦은 것 취소 / When 상세 조회 / Then 마지막 접촉 날짜가 바뀐다(#674)."""
+    client, opp_id = records_env
+    url = f"/api/v1/opportunities/{opp_id}"
+    assert client.get(url).json()["data"]["records"]["lastContactAt"] is None
+    late_id = None
+    for day in ("2026-11-05", "2026-11-03"):
+        response = post(
+            client,
+            opp_id,
+            "outcomes",
+            {"status": "IN_PROGRESS", "method": "CALL", "result": "ABSENT", "attemptedAt": day},
+        )
+        assert response.status_code == 200
+        if late_id is None:
+            rows = client.get(f"{url}/activity").json()["data"]
+            late_id = next(row["recordId"] for row in rows if row["kind"] == "CONTACT_ATTEMPT")
+    # 단계만 바꾼 행과 메모는 접촉이 아니라 날짜에 넣지 않는다.
+    assert post(client, opp_id, "outcomes", {"status": "ON_HOLD"}).status_code == 200
+    assert post(client, opp_id, "notes", {"kind": "MEMO", "text": "가상 기록"}).status_code == 200
+    assert client.get(url).json()["data"]["records"]["lastContactAt"] == "2026-11-05"
+    cancelled = client.post(
+        f"{url}/records/{late_id}/cancel",
+        json={},
+        headers={"X-Staff-Key": "park-lee"},
+    )
+    assert cancelled.status_code == 200
+    assert client.get(url).json()["data"]["records"]["lastContactAt"] == "2026-11-03"
+
+
 def test_existing_notes_survive_kind_migration(records_env, tmp_db):
     """Given 이전 메모 / When 새 열 마이그레이션 / Then 기존 메모는 MEMO이고 내용은 그대로다."""
     from geosan.storage.migrate import downgrade, upgrade_to_head

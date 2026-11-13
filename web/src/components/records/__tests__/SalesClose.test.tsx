@@ -1,6 +1,6 @@
 // #643 마무리 꼬리 질문: "끝"을 고르면 "어떻게 끝났나요?"·"거절 이유는?"이 이어지고 그 답으로 단계가 정해진다.
 // 서버 호출(getSalesQuestions·postOutcome)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import { closingPick, visibleQuestions } from '../SalesQuestions';
@@ -188,6 +188,8 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('LOST'));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await user.selectOptions(screen.getByTestId('records-kind'), '전화');
     await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
     await pick(user, 'NEXT_ACTION', '끝');
@@ -254,6 +256,8 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('ON_HOLD'));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await user.selectOptions(screen.getByTestId('records-kind'), '전화');
     await user.selectOptions(screen.getByTestId('records-contact-result'), '거절');
     await screen.findByTestId('sales-question-NEXT_ACTION');
@@ -301,6 +305,8 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('ON_HOLD'));
     renderArea('WON');
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(screen.getByTestId('records-stage-auto-hint')).toHaveTextContent(
       '단계는 꼬리 질문 답에 따라 저절로 저장됩니다. 잘못됐을 때만 여기서 고치세요.',
     );

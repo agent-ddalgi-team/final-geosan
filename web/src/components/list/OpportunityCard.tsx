@@ -17,7 +17,6 @@ import {
   factoryProfileLabels,
   classificationTone,
   contactBuckets,
-  coreEvidenceRecheckLabel,
   frame,
   labelFor,
   listFilters,
@@ -34,7 +33,7 @@ export interface OpportunityCardProps {
   card: CardData;
   /** 서버 앱 설정(/config/ui)의 분류 문구. 있으면 기본 대응표보다 먼저 쓴다. */
   classificationOverrides?: Record<string, string>;
-  /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. */
+  /** 공정 코드 → 공정 이름(목록 응답 meta.processCounts). 없으면 공정 꼬리표를 보이지 않는다. 꼬리표는 확정된 공정만(#659). */
   processNames?: Record<string, string>;
   /**
    * 순위 번호를 보일지(#361, PM 결정 2026-11-06). 공정 하나를 고른 목록에서만 보인다.
@@ -71,8 +70,49 @@ export default function OpportunityCard({
     card.classificationCode in classificationTone
       ? classificationTone[card.classificationCode]
       : 'neutral';
-  // 막는 조건은 서버 문구 그대로 보인다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
-  const blocker = card.blocker.text;
+  // 검토사항 줄(#659, PM 지시 2026-11-13): 긴 문장 대신 "확인할 것: 공정 · 소재 · 근거 부족"처럼 낱말로 보인다.
+  // 종류는 서버가 알려 준다(checkKinds). 문장을 글자로 맞춰 추측하지 않는다. "(승인 …)" 꼬리표도 덧붙이지 않는다(#160, #171).
+  const notEvaluated = card.classificationCode === 'NOT_EVALUATED';
+  const checkPoints = card.checkPoints ?? [];
+  const checkKinds = card.checkKinds ?? [];
+  // 종류가 줄 수와 맞을 때만 쓴다. 안 맞으면(옛 응답) 서버 글자를 그대로 이름으로 보인다.
+  const kindsUsable = checkKinds.length === checkPoints.length;
+  // 공정 꼬리표는 확정된 공정만(#659, PM 결정 2026-11-13). AI가 제안만 한 공정은 꼬리표로 보이지 않는다.
+  const confirmedProcessCodes = card.confirmedProcessCodes ?? [];
+  const proposedProcessCount = card.proposedProcessCount ?? 0;
+  // "공정": 확정된 공정이 없고 AI 제안만 있거나(평가 전 회사는 제안이 없어도), 거산 공정 값이 확인 전일 때.
+  const processUnconfirmed =
+    card.confirmedProcessCodes !== undefined &&
+    confirmedProcessCodes.length === 0 &&
+    (proposedProcessCount > 0 || notEvaluated);
+  const checkWords = [
+    processUnconfirmed || (kindsUsable && checkKinds.includes('PROCESS'))
+      ? cardRows.checkWords.process
+      : null,
+    kindsUsable && checkKinds.includes('MATERIAL') ? cardRows.checkWords.material : null,
+    // 평가 전 회사는 점수 항목이 아직 하나도 없어서 근거 부족이다.
+    (card.coreEvidenceGaps ?? []).length > 0 || notEvaluated ? cardRows.checkWords.evidence : null,
+  ].filter((word) => word !== null);
+  const checkNames = kindsUsable
+    ? checkPoints.filter((_, index) => !['PROCESS', 'MATERIAL'].includes(checkKinds[index]))
+    : checkPoints;
+  const checkLine =
+    checkWords.length > 0 || checkNames.length > 0
+      ? cardRows.checkWordsLine(checkWords, checkNames)
+      : null;
+  // 서버 문장이 이미 요구 이름을 말하는 회사(승인을 막는데 확인 전 조건을 따로 주지 않음)는 그 문장을 남기고 뒤에 잇는다.
+  // "없음 — …"이나 평가 전 문장("점수 입력 전 …")은 낱말 줄이 대신한다.
+  const keepServerText = card.blocker.blocksApproval && checkPoints.length === 0 && !notEvaluated;
+  const blockerLine =
+    checkLine === null
+      ? card.blocker.text
+      : keepServerText
+        ? `${card.blocker.text} · ${checkLine}`
+        : checkLine;
+  // 머리 줄에서 빼는 꼬리표(#659): "필수조건 확인 필요"·"필수조건 확인 전"·"핵심 근거 재확인"은 무엇을
+  // 확인하라는 말인지 알 수 없어 보이지 않고, 검토사항 줄이 대신 말한다. 묶음 제목은 그대로다.
+  // "평가 전"·"평가 전 · 적합도 상/낮음"도 보이지 않는다(PM 지시 2026-11-13): 점수가 없다는 것은 점수 자리에서 안다.
+  const showClassification = card.classificationCode !== 'FILTER_PENDING' && !notEvaluated;
   // 영업 단계 꼬리표(U5): 서버가 카드 records.outcome.status를 주면 보인다. 미접촉은 꼬리표를 달지 않는다.
   const stageStatus = card.records.outcome?.status ?? null;
   // 후보 찾기로 들어온 회사(#316): 고른 이유가 있고 점수가 아직 없으면 "점수 전"으로 보인다.
@@ -91,7 +131,14 @@ export default function OpportunityCard({
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
   // 세 묶음(#610): 그 묶음에 든 이유 꼬리표와, 영업 결과로 순서가 움직였을 때만 보이는 이유 한 줄.
   // 조정 단계가 0이면(표본 부족이거나 성사·거절이 서로 지움) 순서가 그대로라 줄을 보이지 않는다.
-  const bucketBasis = card.bucketBasis ? contactBuckets.basis[card.bucketBasis] : null;
+  const bucketBasis =
+    card.bucketBasis &&
+    card.bucketBasis !== 'REQUIRED_PENDING' &&
+    card.bucketBasis !== 'EVIDENCE_RECHECK' &&
+    card.bucketBasis !== 'NOT_EVALUATED_HIGH_FIT' &&
+    card.bucketBasis !== 'NOT_EVALUATED_LOWER_FIT'
+      ? contactBuckets.basis[card.bucketBasis]
+      : null;
   const adjust = card.rankAdjust && card.rankAdjust.level !== 0 ? card.rankAdjust : null;
   const adjustLine = adjust
     ? contactBuckets.adjustLine({
@@ -131,36 +178,31 @@ export default function OpportunityCard({
           >
             {card.title}
           </Typography.Title>
-          <span
-            role="group"
-            aria-label={`분류: ${classification}`}
-            data-testid="card-classification"
-          >
-            <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
-              {classification}
-            </StatusTag>
-          </span>
-          {card.coreEvidenceRecheck ? (
-            <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
+          {showClassification ? (
+            <span
+              role="group"
+              aria-label={`분류: ${classification}`}
+              data-testid="card-classification"
+            >
+              <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
+                {classification}
+              </StatusTag>
+            </span>
           ) : null}
           {bucketBasis ? (
             <StatusTag tone="neutral" data-testid="card-bucket-basis">
               {bucketBasis}
             </StatusTag>
           ) : null}
-          {(card.processCodes ?? []).map((code) =>
+          {confirmedProcessCodes.map((code) =>
             processNames?.[code] ? (
               <StatusTag key={code} tone="neutral" data-testid="card-process-tag">
                 {processNames[code]}
               </StatusTag>
             ) : null,
           )}
-          {/* 서버가 지역·산업 칸을 주면 값이 없을 때 "미확인/미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
-          {card.region !== undefined ? (
-            <StatusTag tone="neutral" data-testid="card-region-tag">
-              {card.region ?? listFilters.regionUnknown}
-            </StatusTag>
-          ) : null}
+          {/* 지역 꼬리표는 두지 않는다(#659): 목록 머리의 지역 선택란과 겹친다. */}
+          {/* 서버가 산업 칸을 주면 값이 없을 때 "산업 미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
           {card.industries !== undefined ? (
             card.industries.length > 0 ? (
               card.industries.map((industry) => (
@@ -259,8 +301,8 @@ export default function OpportunityCard({
             <span data-testid="card-reason">{card.reason}</span>
           </Row>
         )}
-        <Row label={cardRows.blocker} title={blocker}>
-          <span data-testid="card-blocker">{blocker}</span>
+        <Row label={cardRows.blocker} title={blockerLine}>
+          <span data-testid="card-blocker">{blockerLine}</span>
         </Row>
         {/* 후속 조치는 카드에 두지 않고 상세 "1. 추천 근거와 후속 조치"에서 읽는다(#647, PM 결정 2026-11-13). */}
 

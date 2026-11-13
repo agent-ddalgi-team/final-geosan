@@ -12,6 +12,7 @@ from fastapi import APIRouter, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from geosan.api.check_points import card_check_points, shown_blocker_text
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.ingest_views import (
     candidate_order,
@@ -25,6 +26,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
     bookmark_view,
     contact_counts,
+    last_contact_at,
     latest_bookmark,
     latest_opinion,
     latest_outcome,
@@ -75,7 +77,11 @@ from geosan.dashboard.contact_order import (
     contact_order_key,
 )
 from geosan.dashboard.queries import bookmarked_opp_ids
-from geosan.dashboard.sales_analysis import load_company_records, process_display_name
+from geosan.dashboard.sales_analysis import (
+    LINK_CONFIRMED,
+    load_company_records,
+    process_display_name,
+)
 from geosan.evaluation.inputs import has_ai_pending_inputs
 from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
 from geosan.evaluation.models import (
@@ -322,7 +328,7 @@ def _requirements(context: DetailContext) -> dict:
         "requirements": views,
         "approval_eligibility": ApprovalEligibility(
             eligible=not run.blocks_approval if run else False,
-            reason=run.blocker_text if run else "평가 후 확인할 수 있습니다.",
+            reason=shown_blocker_text(run.blocker_text) if run else "평가 후 확인할 수 있습니다.",
             readiness_checked=bool(run and run.timing_requirements["readiness"]),
             readiness_needs_recheck=bool(readiness and readiness.reset_at),
             allowed_purposes=[],
@@ -473,6 +479,7 @@ def _records(context: DetailContext) -> dict:
     return {
         "records": DetailRecords(
             contact_count=contact_counts(context.session, context.opportunity.opp_id),
+            last_contact_at=last_contact_at(context.session, context.opportunity.opp_id),
             sales_step=_sales_step_view(
                 context.session, context.opportunity.opp_id, outcome.status if outcome else None
             ),
@@ -756,14 +763,18 @@ def list_opportunities(
         query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
     population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
+    # 확정 여부(#659)도 같은 조회 한 번으로 모아 읽는다. 카드마다 다시 읽지 않는다.
     links = session.execute(
-        select(OppProcessLink.opp_id, OppProcessLink.process_code)
+        select(OppProcessLink.opp_id, OppProcessLink.process_code, OppProcessLink.state)
         .where(OppProcessLink.opp_id.in_(population), OppProcessLink.superseded_at.is_(None))
         .distinct()
     ).all()
     codes_by_opportunity: dict[str, set[str]] = {}
-    for opp_id, code in links:
+    confirmed_by_opportunity: dict[str, set[str]] = {}
+    for opp_id, code, link_state in links:
         codes_by_opportunity.setdefault(opp_id, set()).add(code)
+        if link_state == LINK_CONFIRMED:
+            confirmed_by_opportunity.setdefault(opp_id, set()).add(code)
     processes = load_process_catalog(session, dataset_kind)
     # 목록 머리 선택란(#361): 기회가 0곳인 공정도 count 0으로 싣는다.
     # 거산 공정 전부를 역량 파일 순서로 보낸다.
@@ -926,11 +937,18 @@ def list_opportunities(
             {row[3].customer_id: row[2].opp_id for row in visible_rows},
             runtime.app_settings,
         )
+    # 검토사항 줄에 쓸 구체적인 말(#659): 보이는 카드의 평가 기록을 모아 한 번에 읽는다.
+    check_points = card_check_points(session, [row[1] for row in visible_rows])
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
         visible_rows, start=start + 1
     ):
         outcome = latest_outcome(session, opportunity.opp_id)
+        linked = codes_by_opportunity.get(opportunity.opp_id, set())
+        confirmed = confirmed_by_opportunity.get(opportunity.opp_id, set())
+        process_codes = [row.code for row in processes if row.code in linked]
+        # 확정된 공정만(#659). 같은 공정에 확정 행과 AI 제안 행이 함께 있으면 확정으로 본다.
+        confirmed_codes = [code for code in process_codes if code in confirmed]
         cards.append(
             OpportunityCard(
                 distance_km=distances[customer.customer_id],
@@ -953,11 +971,12 @@ def list_opportunities(
                 sales_step=sales_step_state(
                     session, opportunity.opp_id, status=outcome.status if outcome else None
                 ).code,
-                process_codes=[
-                    row.code
-                    for row in processes
-                    if row.code in codes_by_opportunity.get(opportunity.opp_id, set())
-                ],
+                process_codes=process_codes,
+                confirmed_process_codes=confirmed_codes,
+                proposed_process_count=len(process_codes) - len(confirmed_codes),
+                check_points=check_points[current.eval_id].check_points,
+                core_evidence_gaps=check_points[current.eval_id].core_evidence_gaps,
+                check_kinds=check_points[current.eval_id].check_kinds,
                 opp_id=opportunity.opp_id,
                 bucket=placements[opportunity.opp_id].bucket,
                 bucket_basis=placements[opportunity.opp_id].basis,
@@ -981,7 +1000,10 @@ def list_opportunities(
                 score_s=current.score_s,
                 score_display=current.score_display,
                 reason=current.reason,
-                blocker=Blocker(text=current.blocker_text, blocks_approval=current.blocks_approval),
+                blocker=Blocker(
+                    text=shown_blocker_text(current.blocker_text),
+                    blocks_approval=current.blocks_approval,
+                ),
                 next_action=current.next_action,
                 records=CardRecords(
                     opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),

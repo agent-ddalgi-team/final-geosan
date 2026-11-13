@@ -68,10 +68,15 @@ def test_equal_review_times_preserve_file_order_and_existing_results(
     }
     assert [row["oppId"] for row in after["data"]] == [row["oppId"] for row in before["data"]]
     for old, new in zip(before["data"], after["data"], strict=True):
-        assert {key: value for key, value in old.items() if key != "processCodes"} == {
-            key: value for key, value in new.items() if key != "processCodes"
+        # 공정 순서를 따르는 두 칸(#659의 확정 공정 포함)은 아래에서 새 파일 순서로 따로 본다.
+        ordered_keys = {"processCodes", "confirmedProcessCodes"}
+        assert {key: value for key, value in old.items() if key not in ordered_keys} == {
+            key: value for key, value in new.items() if key not in ordered_keys
         }
         assert new["processCodes"] == [code for code in expected if code in old["processCodes"]]
+        assert new["confirmedProcessCodes"] == [
+            code for code in expected if code in old["confirmedProcessCodes"]
+        ]
 
 
 def test_repeated_reimports_with_same_time_use_latest_file_order(process_env, tmp_path):
