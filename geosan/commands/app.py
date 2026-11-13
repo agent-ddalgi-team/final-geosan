@@ -322,7 +322,10 @@ def research(
         None, "--limit", metavar="N", help="이번 최대 사례 수, 1 이상"
     ),
 ) -> None:
-    """공개 신규 사례를 검색·추출·재평가합니다. 기본은 홈페이지 없는 실제 사례만입니다."""
+    """공개 신규 사례를 검색·추출·재평가합니다.
+
+    기본은 홈페이지가 없거나, 주소는 있는데 아직 조사가 안 된 실제 사례입니다.
+    """
     from geosan.commands.research import run_research
 
     raise typer.Exit(code=run_research(missing_homepage, all_companies, limit))
@@ -374,6 +377,22 @@ def demo_report(
     from geosan.commands.demo_report import run_demo_report
 
     raise typer.Exit(code=run_demo_report(capability, cases, out, base_date))
+
+
+@app.command("seed-demo-records")
+def seed_demo_records(
+    file: Path | None = typer.Argument(
+        None, help="가상 영업 기록 파일(YAML). 기본 examples/demo-records.yaml"
+    ),
+) -> None:
+    """발표 시연용 DB에 가상 회사의 영업 기록(성사·거절)을 넣습니다.
+
+    시연 표시가 있는 DB에서만 동작합니다. 실제 DB에는 넣지 않습니다(종료 코드 1).
+    이미 영업 기록이 있는 회사는 건너뜁니다(#274, 계약 C8).
+    """
+    from geosan.commands.seed_demo_records import run_seed_demo_records
+
+    raise typer.Exit(code=run_seed_demo_records(file))
 
 
 @db_app.command("merge-heads")

@@ -53,6 +53,8 @@ def test_config_ui_returns_current_record_settings(records_env, enabled, limit):
         "approvalEnabled": enabled,
         "noteMaxLength": limit,
         "cancelByAnyStaff": False,
+        # questionsPerContact는 #691에서 약속(C1 /config/ui, C7)에 더한 칸이다. 기본 6.
+        "questionsPerContact": 6,
     }
 
 

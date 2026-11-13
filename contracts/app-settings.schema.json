@@ -137,6 +137,13 @@
         100
       ]
     },
+    "visitGroupRadiusKm": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 50,
+      "default": 5,
+      "description": "대시보드 지도 '같이 들를 곳' 반경(km, #673)"
+    },
     "candidateWebSearch": {
       "type": "object",
       "additionalProperties": false,
@@ -162,7 +169,8 @@
       "properties": {
         "_설명": { "type": "string" },
         "approvalEnabled": { "type": "boolean", "default": false },
-        "noteMaxLength": { "type": "integer", "minimum": 1, "default": 200 }
+        "noteMaxLength": { "type": "integer", "minimum": 1, "default": 200 },
+        "questionsPerContact": { "type": "integer", "minimum": 1, "maximum": 20, "default": 6 }
       }
     },
     "research": {
@@ -170,7 +178,10 @@
       "additionalProperties": false,
       "properties": {
         "_설명": { "type": "string" },
-        "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 }
+        "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 },
+        "autoOnBookmarkDailyCostUsd": { "type": "number", "minimum": 0, "default": 0, "description": "(추가 2026-11-13 #690) 관심을 켜서 저절로 도는 조사가 하루(한국 시간)에 쓸 수 있는 AI 비용(달러). 오늘 쓴 금액이 이 값보다 적을 때만 새 조사를 시작한다(마지막 한 곳만큼은 넘을 수 있다). 예시 설정 1.0, 0이면 꺼짐. 이 칸이 없는 옛 설정 사본은 예시 파일 값으로 읽는다." },
+        "suggestAgainAfterDays": { "type": "integer", "minimum": 0, "default": 0, "description": "(추가 2026-11-14 #677) AI가 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에 다시 조사를 제안한다(C1 header.researchSuggestAgain). 알리기만 하고 저절로 조사하지 않는다. 예시 설정 30, 0이면 제안하지 않음. 이 칸이 없는 옛 설정 사본은 예시 파일 값으로 읽는다." },
+        "allowUnofficialPage": { "type": "boolean", "default": false, "description": "(추가 2026-11-14 #511 — PM 결정 2026-11-09) true면 홈페이지 찾기가 공식 홈페이지를 못 찾았을 때 같은 한 번의 검색 결과에서 회사가 직접 운영하는 공개 페이지(블로그·SNS·쇼핑몰)나 공공·지자체 페이지 1개를 \"확인 필요\"로 저장하고 약한 근거만 뽑는다. 채용·유료 기업 정보 사이트는 candidateWebSearch.blockedDomains로 버리며 그 목록이 비어 있으면 true를 설정 검사가 거부한다. 초기값 false(PM이 켠다). 이 칸이 없는 옛 설정 사본은 예시 파일 값으로 읽는다." }
       }
     },
     "salesAnalysis": {
@@ -196,22 +207,23 @@
     "contactList": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["nowClassifications", "unscoredHighFitToNow", "nullFitLevelAs", "adjust"],
-      "description": "추천 목록 세 묶음(C1 sort=contact·카드 bucket·rankAdjust, #610) 기준. 이 묶음이 없는 옛 설정은 예시 파일(examples/app-settings.yaml) 값으로 읽는다. 부록 F 점수·분류·기존 순위는 바꾸지 않는다.",
+      "required": ["nullFitLevelAs", "adjust"],
+      "description": "추천 목록 묶음(C1 sort=contact·카드 bucket·rankAdjust, #610) 기준. 묶음은 근거 상태로 바뀌었다(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사. 이 묶음이 없는 옛 설정은 예시 파일(examples/app-settings.yaml) 값으로 읽는다. 부록 F 점수·분류·기존 순위는 바꾸지 않는다.",
       "properties": {
         "_설명": { "type": "string" },
+        "evidenceReadyMin": { "type": ["integer", "null"], "minimum": 1, "description": "살아 있는 근거(교체되지 않았고 처리 금지가 아닌 근거)가 이 수 이상이면 \"근거 있음\" 묶음(#675). 초기값 3. 이 키가 없는 옛 설정은 예시 파일 값으로 읽는다" },
         "nowClassifications": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": { "type": "string", "enum": ["FILTER_EXCLUDED", "FILTER_PENDING", "OPS_PENDING", "NOT_EVALUATED", "CONTACT_URGENT", "CONTACT_PLANNED", "CONTACT_REVIEW", "RESEARCH", "CONDITIONAL_WAIT", "WATCH", "LOW"] },
-          "description": "막는 조건이 없을 때 \"지금 연락할 곳\"에 드는 분류. 초기값 CONTACT_URGENT, CONTACT_PLANNED, RESEARCH, CONDITIONAL_WAIT. 필수 탈락·제외 의견·거래 중인 회사는 이 값과 무관하게 들지 않는다"
+          "description": "더는 쓰지 않음(#675). 세 묶음(#610) 때 \"지금 연락할 곳\"에 드는 분류였다. 옛 설정이 깨지지 않게 읽기만 한다"
         },
-        "unscoredHighFitToNow": { "type": "boolean", "description": "true면 평가 전 + 적합도 상 회사를 \"지금 연락할 곳\"에 넣는다. 초기값 false(확인 필요에 둔다)" },
+        "unscoredHighFitToNow": { "type": ["boolean", "null"], "description": "더는 쓰지 않음(#675). 세 묶음(#610) 때 평가 전 + 적합도 상 회사를 \"지금 연락할 곳\"에 넣는 스위치였다. 옛 설정이 깨지지 않게 읽기만 한다" },
         "nullFitLevelAs": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"], "description": "적합도가 없는 회사(사례 파일로 넣은 회사)를 묶음 안 순서에서 어느 적합도로 볼지. 초기값 HIGH" },
         "adjust": {
           "type": "object",
           "additionalProperties": false,
           "required": ["windowDays", "minClosedCount", "wonPerStep", "maxUp", "lostPerStep", "maxDown", "lostReasonsCounted"],
-          "description": "같은 공정·산업군의 최근 성사·거절로 묶음 안 순서를 올리거나 내리는 기준. 묶음을 넘지 않는다.",
+          "description": "같은 공정·산업군의 최근 성사·거절로 \"근거 있음\" 묶음 안 순서를 올리거나 내리는 기준(#675부터 그 묶음에서만). 묶음을 넘지 않는다.",
           "properties": {
             "_설명": { "type": "string" },
             "windowDays": { "type": "integer", "minimum": 1, "description": "결과 기록이 이 일수 안인 성사·거절만 센다. 초기값 365" },
@@ -368,7 +380,8 @@
         "logoUrl": { "type": ["string", "null"] },
         "brandName": { "type": "string", "minLength": 1 },
         "colorPrimary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
-        "demoLabel": { "type": ["string", "null"], "description": "띠에 함께 보이는 문구. 예: 부분 시연·거산 확인 전" }
+        "demoLabel": { "type": ["string", "null"], "description": "띠에 함께 보이는 문구. 예: 부분 시연·거산 확인 전" },
+        "demo": { "type": "boolean", "default": false, "description": "시연용 DB 표시(#274). 시연용 설정 파일(examples/app-settings-demo.yaml)에만 true로 적는다. true로 등록한 DB는 배포 설정(--host 0.0.0.0 또는 GEOSAN_PASSWORD)에서 서버가 시작되지 않고, seed-demo-records는 이 표시가 있는 DB에만 가상 기록을 넣는다." }
       }
     },
     "accessProtection": {

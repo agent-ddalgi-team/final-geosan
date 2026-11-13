@@ -34,11 +34,20 @@ export interface HomepageControlsProps {
   oppId: string;
   /** 성공했거나 [새로 불러오기]를 누르면 부른다. 상세 화면이 서버에서 다시 읽는다. */
   onReload: () => void;
+  /**
+   * 다시 조사를 제안할 때 조사한 지 며칠인지(#677). 단추 옆에 안내를 보이고 단추를 강조한다.
+   * 알리기만 한다. 누르기 전에는 조사하지 않는다. 제안이 없으면 null.
+   */
+  suggestDays?: number | null;
 }
 
 type Busy = 'research' | null;
 
-export default function HomepageControls({ oppId, onReload }: HomepageControlsProps) {
+export default function HomepageControls({
+  oppId,
+  onReload,
+  suggestDays = null,
+}: HomepageControlsProps) {
   const { staffKey, canRecord } = useFrame();
   const [busy, setBusy] = useState<Busy>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -107,7 +116,13 @@ export default function HomepageControls({ oppId, onReload }: HomepageControlsPr
           gap: 8,
         }}
       >
+        {suggestDays !== null ? (
+          <span style={{ color: colors.text }} data-testid="homepage-suggest-again">
+            {homepageControls.suggestAgain(suggestDays)}
+          </span>
+        ) : null}
         <Button
+          type={suggestDays !== null ? 'primary' : 'default'}
           disabled={researchDisabled}
           loading={busy === 'research' && !pasteOpen}
           onClick={() => void send({}, 'research')}

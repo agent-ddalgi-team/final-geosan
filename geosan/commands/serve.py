@@ -9,6 +9,7 @@ API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정
 
 from __future__ import annotations
 
+import os
 import socket
 import time
 from pathlib import Path
@@ -79,6 +80,26 @@ def _warm_location_index() -> None:
     typer.echo(f"위치 CSV {len(files)}개를 미리 읽었습니다 ({time.monotonic() - started:.1f}초).")
 
 
+DEMO_DB_FILE_NAME = "geosan-demo.db"
+"""발표 시연용 DB의 약속된 파일 이름(#274). 이름을 바꿔도 DB 안 시연 표시로 알아본다."""
+
+
+def _is_deploy_setting(host: str) -> bool:
+    """배포 설정인가: 바깥에서 들어오는 주소로 듣거나 배포용 비밀번호가 있는 환경(계약 C8)."""
+    return host == "0.0.0.0" or bool(os.environ.get("GEOSAN_PASSWORD"))
+
+
+def _is_demo_db(db_path: Path) -> bool:
+    """시연용 DB인가: 파일 이름이 geosan-demo.db이거나 앱 설정 사본에 시연 표시가 있다."""
+    from geosan.config.app_settings import is_demo_database
+    from geosan.storage.session import session_scope
+
+    if db_path.name == DEMO_DB_FILE_NAME:
+        return True
+    with session_scope(db_path) as session:
+        return is_demo_database(session)
+
+
 def run_serve(port: int, host: str = HOST) -> int:
     if host not in (HOST, "0.0.0.0"):
         typer.echo("오류: 듣는 주소는 127.0.0.1 또는 0.0.0.0으로 지정해 주세요.")
@@ -100,6 +121,15 @@ def run_serve(port: int, host: str = HOST) -> int:
         typer.echo(f"오류: 데이터베이스 파일이 없습니다 ({db_path}).")
         typer.echo("먼저 `geosan init-db`를 실행해 주세요.")
         return EXIT_INPUT_ERROR
+
+    # 2-1) 시연용 DB는 배포 설정에서 시작하지 않는다(#274, 계약 C8). 로컬에서는 그대로 쓴다.
+    if _is_deploy_setting(host) and _is_demo_db(db_path):
+        typer.echo("시연용 DB는 배포 환경에서 쓸 수 없습니다.")
+        typer.echo(
+            f"배포 설정(--host 0.0.0.0 또는 GEOSAN_PASSWORD)에서는 {db_path.name}로 서버를 "
+            "시작하지 않습니다. GEOSAN_DB_PATH를 실제 DB로 바꿔 주세요."
+        )
+        return EXIT_RUN_FAILED
 
     # 3) 화면 빌드 결과가 없으면 API만 띄운다는 것을 알린다(실패는 아니다).
     screen = "API + 화면" if (WEB_DIST / "index.html").exists() else "API만"

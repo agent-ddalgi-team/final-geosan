@@ -14,6 +14,7 @@ import {
   activityKindLabels,
   errorTexts,
   labelFor,
+  opinionLabels,
   timelineArea,
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
@@ -34,6 +35,17 @@ export interface ActivityTimelineProps {
 /** 줄 하나를 가리키는 값. 같은 저장 행이 여러 줄이어도 시각까지 합쳐 구분한다. */
 function lineKey(item: ActivityItem): string {
   return `${item.at}|${item.recordId ?? ''}`;
+}
+
+/**
+ * 줄의 내용. 검토 의견 줄은 서버가 의견 코드("NEED_CHECK")를 그대로 주므로 쉬운 말("검토 중")로 바꾼다(#691).
+ * 대응표에 없는 값이면 받은 글 그대로 보인다.
+ */
+export function summaryText(item: ActivityItem): string {
+  if (item.kind === 'OPINION' && item.summary in opinionLabels) {
+    return labelFor(opinionLabels, item.summary);
+  }
+  return item.summary;
 }
 
 /** 최근 순(시각이 늦은 것이 위). 같은 시각이면 서버가 준 순서를 뒤집어 늦게 쌓인 것이 위로 온다. */
@@ -234,7 +246,7 @@ export default function ActivityTimeline({
                       : undefined
                   }
                 >
-                  {item.summary}
+                  {summaryText(item)}
                 </span>
                 {item.cancelled === true ? (
                   <span data-testid="timeline-cancelled-note" style={secondary}>
@@ -249,7 +261,7 @@ export default function ActivityTimeline({
                     size="small"
                     type="link"
                     onClick={() => openCancel(item)}
-                    aria-label={timelineArea.cancelButtonLabel(item.summary)}
+                    aria-label={timelineArea.cancelButtonLabel(summaryText(item))}
                     data-testid="timeline-cancel-open"
                     style={{ padding: 0, height: 'auto' }}
                   >

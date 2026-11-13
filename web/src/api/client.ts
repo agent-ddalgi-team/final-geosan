@@ -10,6 +10,7 @@ import type {
   ConfigUi,
   Envelope,
   ErrorBody,
+  IndustriesResponse,
   IngestPreview,
   IngestRequest,
   IngestResponse,
@@ -164,12 +165,16 @@ export interface ListFilters {
   filter?: string | null;
   /** `true`면 관심으로 켜 둔 회사만("관심 기업" 목록, #356). 안 주면 거르지 않는다. */
   bookmarked?: string | null;
+  /** `true`면 관심으로 켜 둔 회사를 뺀다(평소 목록, #675). 안 주면 빼지 않는다. */
+  hideBookmarked?: string | null;
   /** 최신 검토 의견으로 거르기(#356): WORTH_REVIEW·NEED_CHECK·NOT_TARGET, NONE은 의견이 없는 회사("기타"). */
   opinion?: string | null;
   /** 회사·기회·산업군 검색어. */
   q?: string | null;
-  /** 정렬(#516). `recent`면 들어온 시각 최신 순("최근 들어온 순"). 안 주면 추천 순. */
+  /** 정렬(#516). `recent`면 들어온 시각 최신 순("최근 들어온 순"), `distance`면 가까운 순(#666). 안 주면 추천 순. */
   sort?: string | null;
+  /** 이 거리(km) 안의 회사만(#666). 값은 `/config/ui`의 distanceFilterPresetsKm 가운데 하나. */
+  maxDistanceKm?: string | null;
 }
 
 export function getOpportunities(
@@ -293,6 +298,18 @@ export function postRelation(oppId: string, body: RelationRequest, staffKey: str
 }
 
 /**
+ * 상세 산업군 칩의 [확정]·[고치기] 저장(#646, 계약 C1 `POST /opportunities/{oppId}/industries`).
+ * 설정 산업군 목록 안 값만·최대 3개. 다시 평가하지 않고 활동 이력에 한 줄이 남는다. 목록 밖 값은 400.
+ */
+export function postIndustries(oppId: string, industries: string[], staffKey: string) {
+  return request<IndustriesResponse>(`/opportunities/${encodeURIComponent(oppId)}/industries`, {
+    method: 'POST',
+    body: { industries },
+    staffKey,
+  });
+}
+
+/**
  * 새 후보 가져오기(#316, 계약 C1 `POST /ingest`). 회차를 만든 직후 바로 응답하고 찾기는 서버 뒤에서 이어진다.
  * 이미 가져오는 중이면 409 INGEST_RUNNING, 소스 읽기 실패는 503, 설정 밖 값은 400, 보기 전용은 403이다.
  */
@@ -399,6 +416,7 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
     }));
     const query = new URLSearchParams(search);
     const bookmarkedOnly = query.get('bookmarked') === 'true';
+    const hideBookmarked = query.get('hideBookmarked') === 'true';
     // 목록 머리(#361) 흉내: 가짜 카드에는 공정 칸이 없어서, 곳 수가 0인 공정을 고르면 빈 목록을 돌려주는 것으로 대신한다.
     // 검색어(`q`)는 카드 제목에 그 글자가 든 회사만 남긴다. 지역·산업 같은 다른 조건은 거르지 않는다.
     const process = query.get('process');
@@ -410,9 +428,14 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       (card) =>
         !emptyProcess &&
         (!bookmarkedOnly || card.records.bookmark?.active === true) &&
+        (!hideBookmarked || card.records.bookmark?.active !== true) &&
         (!q || card.title.includes(q)),
     );
-    return { data, meta: { ...envelope.meta, total: data.length } } as unknown as Envelope<T>;
+    const bookmarkedCount = cards.filter((card) => card.records.bookmark?.active === true).length;
+    return {
+      data,
+      meta: { ...envelope.meta, total: data.length, bookmarkedCount },
+    } as unknown as Envelope<T>;
   }
   if (route === '/dashboard') {
     return (await import('../test/fixtures/dashboard.json')).default as unknown as Envelope<T>;

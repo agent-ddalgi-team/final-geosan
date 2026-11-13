@@ -1,7 +1,8 @@
-"""#610: 추천 목록 세 묶음·영업 결과 조정·묶음 안 순서의 계산 함수 검사.
+"""#675: 추천 목록의 근거 상태 묶음·영업 결과 조정(#610)·묶음 안 순서의 계산 함수 검사.
 
 받은 값만 쓰는 순수 함수라 DB 없이 확인한다. 가상 이름만 쓴다(거산 실제 사양 아님).
-기준 숫자(표본 5곳·성사 2곳마다 한 단계 등)는 예시 설정 `contactList` 값을 읽어 쓴다.
+기준 숫자(근거 3건·표본 5곳·성사 2곳마다 한 단계 등)는 예시 설정 `contactList` 값을 읽어 쓴다.
+#610의 세 묶음(지금 연락할 곳 / 확인 필요 / 나중) 검사를 PM 결정(2026-11-13)에 따라 바꿨다.
 """
 
 from dataclasses import replace
@@ -37,33 +38,30 @@ RULE = AdjustRule(
     max_down=SETTINGS.adjust.max_down,
     lost_reasons_counted=frozenset(SETTINGS.adjust.lost_reasons_counted),
 )
-# 필수를 통과하고 막는 조건이 없는 회사. 검사마다 한두 칸만 바꿔 쓴다.
-PASSED = CompanyState(
+READY_MIN = SETTINGS.evidence_ready_min
+# 끝나지 않았고 근거가 기준만큼 있는 회사. 검사마다 한두 칸만 바꿔 쓴다.
+READY = CompanyState(
     opinion=None,
     classification_code="CONTACT_PLANNED",
     relation_status="NEW_CONFIRMED",
     outcome_status=None,
-    scored=True,
     fit_level=None,
-    own_plating=False,
-    core_evidence_recheck=False,
-    blocks_approval=False,
+    evidence_count=READY_MIN,
+    homepage_url="https://example.invalid/",
+    homepage_status="AI_FOUND",
 )
-UNSCORED = replace(
-    PASSED,
+# 후보 찾기로 막 들어와 아직 조사가 돌지 않은 회사.
+FRESH = replace(
+    READY,
     classification_code="NOT_EVALUATED",
-    scored=False,
-    core_evidence_recheck=True,
-    blocks_approval=True,
+    evidence_count=0,
+    homepage_url=None,
+    homepage_status=None,
 )
 
 
-def bucket(state, switch=False):
-    return assign_bucket(
-        state,
-        now_classifications=SETTINGS.now_classifications,
-        unscored_high_fit_to_now=switch,
-    )
+def bucket(state, ready_min=READY_MIN):
+    return assign_bucket(state, evidence_ready_min=ready_min)
 
 
 # ---------------------------------------------------------------------------
@@ -71,95 +69,125 @@ def bucket(state, switch=False):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("change", "expected"),
-    [
-        ({"opinion": "NOT_TARGET"}, ("LATER", "EXCLUDED_OPINION")),
-        ({"classification_code": "FILTER_EXCLUDED"}, ("LATER", "REQUIRED_FAILED")),
-        ({"relation_status": "EXISTING_CONFIRMED"}, ("LATER", "EXISTING_CUSTOMER")),
-        ({"outcome_status": "WON"}, ("LATER", "CLOSED_OR_HOLD")),
-        ({"outcome_status": "LOST"}, ("LATER", "CLOSED_OR_HOLD")),
-        ({"outcome_status": "ON_HOLD"}, ("LATER", "CLOSED_OR_HOLD")),
-        ({"outcome_status": "IN_PROGRESS"}, ("NOW", "IN_PROGRESS")),
-        ({"outcome_status": "SAMPLE_OR_REGISTRATION_APPROVED"}, ("NOW", "IN_PROGRESS")),
-        ({"opinion": "NEED_CHECK"}, ("CHECK", "NEED_CHECK_OPINION")),
-        ({"classification_code": "FILTER_PENDING"}, ("CHECK", "REQUIRED_PENDING")),
-        ({"classification_code": "OPS_PENDING"}, ("CHECK", "REQUIRED_PENDING")),
-        ({"core_evidence_recheck": True}, ("CHECK", "EVIDENCE_RECHECK")),
-        ({"classification_code": "CONTACT_REVIEW"}, ("CHECK", "EVIDENCE_RECHECK")),
-        ({"own_plating": True}, ("CHECK", "OWN_PLATING")),
-        ({}, ("NOW", "REQUIRED_PASSED")),
-        ({"classification_code": "CONTACT_URGENT"}, ("NOW", "REQUIRED_PASSED")),
-        ({"classification_code": "RESEARCH"}, ("NOW", "REQUIRED_PASSED")),
-        ({"classification_code": "CONDITIONAL_WAIT"}, ("NOW", "REQUIRED_PASSED")),
-        ({"classification_code": "WATCH"}, ("LATER", "MONITOR")),
-        ({"classification_code": "LOW"}, ("LATER", "MONITOR")),
-        ({"blocks_approval": True}, ("LATER", "MONITOR")),
-        ({"outcome_status": "NOT_EXECUTED"}, ("NOW", "REQUIRED_PASSED")),
-        ({"opinion": "WORTH_REVIEW"}, ("NOW", "REQUIRED_PASSED")),
-    ],
-)
-def test_each_bucket_rule_for_scored_companies(change, expected):
-    """Given 점수 있는 회사의 상태 한 가지 / When 묶음을 정하면 / Then 그 줄의 묶음과 이유."""
-    assert bucket(replace(PASSED, **change)) == expected
+def test_example_threshold_is_three():
+    """Given 예시 설정 / When 근거 기준을 읽으면 / Then 3건(PM 결정 2026-11-13의 초기값)."""
+    assert READY_MIN == 3
 
 
 @pytest.mark.parametrize(
     ("change", "expected"),
     [
-        ({"own_plating": True, "fit_level": "HIGH"}, ("CHECK", "OWN_PLATING")),
-        ({"fit_level": "HIGH"}, ("CHECK", "NOT_EVALUATED_HIGH_FIT")),
-        ({"fit_level": "MEDIUM"}, ("LATER", "NOT_EVALUATED_LOWER_FIT")),
-        ({"fit_level": "LOW"}, ("LATER", "NOT_EVALUATED_LOWER_FIT")),
-        ({"fit_level": None}, ("LATER", "NOT_EVALUATED_LOWER_FIT")),
+        ({}, ("EVIDENCE_READY", "EVIDENCE_ENOUGH")),
+        ({"evidence_count": 30}, ("EVIDENCE_READY", "EVIDENCE_ENOUGH")),
+        # 근거가 충분하면 홈페이지 기록이 없어도(사례 파일 회사) 근거 있음이다.
+        (
+            {"homepage_url": None, "homepage_status": None},
+            ("EVIDENCE_READY", "EVIDENCE_ENOUGH"),
+        ),
+        (
+            {"homepage_url": None, "homepage_status": "NOT_FOUND"},
+            ("EVIDENCE_READY", "EVIDENCE_ENOUGH"),
+        ),
+        ({"evidence_count": 2}, ("EVIDENCE_SOME", "EVIDENCE_FEW")),
+        ({"evidence_count": 1}, ("EVIDENCE_SOME", "EVIDENCE_FEW")),
+        # 근거가 1건이라도 있으면 홈페이지를 못 찾았어도 근거 조금이다.
+        (
+            {"evidence_count": 1, "homepage_url": None, "homepage_status": "NOT_FOUND"},
+            ("EVIDENCE_SOME", "EVIDENCE_FEW"),
+        ),
+        ({"evidence_count": 0}, ("EVIDENCE_SOME", "HOMEPAGE_ONLY")),
+        (
+            {"evidence_count": 0, "homepage_status": "NEEDS_CONFIRMATION"},
+            ("EVIDENCE_SOME", "HOMEPAGE_ONLY"),
+        ),
+        ({"evidence_count": 0, "homepage_status": "CONFIRMED"}, ("EVIDENCE_SOME", "HOMEPAGE_ONLY")),
+        # 근거 출처에서 주소만 알고 찾기 기록은 없는 회사도 주소가 있으면 근거 조금이다.
+        ({"evidence_count": 0, "homepage_status": None}, ("EVIDENCE_SOME", "HOMEPAGE_ONLY")),
+        (
+            {"evidence_count": 0, "homepage_url": None, "homepage_status": "NOT_FOUND"},
+            ("NO_HOMEPAGE", "HOMEPAGE_NOT_FOUND"),
+        ),
+        # 못 찾음으로 적혔으면 옛 주소가 남아 있어도 홈페이지 없음이다.
+        (
+            {"evidence_count": 0, "homepage_status": "NOT_FOUND"},
+            ("NO_HOMEPAGE", "HOMEPAGE_NOT_FOUND"),
+        ),
+        (
+            {"evidence_count": 0, "homepage_url": None, "homepage_status": None},
+            ("NOT_RESEARCHED", "RESEARCH_NOT_RUN"),
+        ),
+        (
+            {"evidence_count": 0, "homepage_url": "", "homepage_status": None},
+            ("NOT_RESEARCHED", "RESEARCH_NOT_RUN"),
+        ),
     ],
 )
-def test_each_bucket_rule_for_unevaluated_companies(change, expected):
-    """Given 평가 전 회사(핵심 근거 재확인 표시가 켜져 있음) / When / Then 평가 전 줄이 먼저."""
-    assert bucket(replace(UNSCORED, **change)) == expected
-
-
-def test_unevaluated_high_fit_is_never_now_unless_the_switch_is_on():
-    """Given 평가 전 + 적합도 상 / When 스위치 끔·켬 / Then 끄면 확인 필요, 켜면 지금 연락."""
-    state = replace(UNSCORED, fit_level="HIGH")
-    assert bucket(state)[0] == "CHECK"
-    assert bucket(state, switch=True) == ("NOW", "NOT_EVALUATED_HIGH_FIT")
-    # 스위치는 적합도 상에만 듣는다.
-    assert bucket(replace(UNSCORED, fit_level="MEDIUM"), switch=True)[0] == "LATER"
-
-
-def test_in_progress_wins_over_need_check_opinion():
-    """Given 접촉 중인데 의견은 추가 확인 필요 / When / Then 지금 연락(진행 중)."""
-    state = replace(PASSED, outcome_status="IN_PROGRESS", opinion="NEED_CHECK")
-    assert bucket(state) == ("NOW", "IN_PROGRESS")
-    # 필수조건 확인 전이어도 이미 접촉 중이면 지금 연락이다.
-    pending = replace(state, classification_code="FILTER_PENDING", blocks_approval=True)
-    assert bucket(pending) == ("NOW", "IN_PROGRESS")
+def test_each_evidence_bucket_rule(change, expected):
+    """Given 끝나지 않은 회사의 근거·홈페이지 상태 / When 묶음을 정하면 / Then 그 줄의 묶음·이유."""
+    assert bucket(replace(READY, **change)) == expected
 
 
 @pytest.mark.parametrize(
-    "blocked",
+    ("change", "expected"),
     [
-        {"classification_code": "FILTER_EXCLUDED"},
-        {"opinion": "NOT_TARGET"},
-        {"relation_status": "EXISTING_CONFIRMED"},
+        ({"opinion": "NOT_TARGET"}, ("CLOSED", "EXCLUDED_OPINION")),
+        ({"classification_code": "FILTER_EXCLUDED"}, ("CLOSED", "REQUIRED_FAILED")),
+        ({"relation_status": "EXISTING_CONFIRMED"}, ("CLOSED", "EXISTING_CUSTOMER")),
+        ({"outcome_status": "WON"}, ("CLOSED", "CLOSED_OR_HOLD")),
+        ({"outcome_status": "LOST"}, ("CLOSED", "CLOSED_OR_HOLD")),
+        ({"outcome_status": "ON_HOLD"}, ("CLOSED", "CLOSED_OR_HOLD")),
     ],
 )
-@pytest.mark.parametrize("base", [PASSED, replace(UNSCORED, fit_level="HIGH")])
-def test_required_failed_excluded_and_existing_are_never_now(blocked, base):
-    """Given 필수 탈락·제외 의견·거래 중 / When 스위치를 켜고 접촉 중이어도 / Then 늘 나중."""
-    state = replace(base, outcome_status="IN_PROGRESS", **blocked)
-    assert bucket(state, switch=True)[0] == "LATER"
-    assert bucket(state)[0] == "LATER"
+@pytest.mark.parametrize("base", [READY, replace(READY, evidence_count=1), FRESH])
+def test_closed_companies_are_closed_whatever_the_evidence(change, expected, base):
+    """Given 탈락·제외·거래 중·성사·거절·보류 / When 근거가 많든 없든 / Then 늘 끝난 회사."""
+    assert bucket(replace(base, **change)) == expected
 
 
-def test_now_classifications_come_from_settings():
-    """Given 설정에서 분류 하나만 남김 / When / Then 다른 분류는 지금 연락에 들지 않는다."""
-    state = replace(PASSED, classification_code="CONDITIONAL_WAIT")
-    result = assign_bucket(
-        state, now_classifications=["CONTACT_URGENT"], unscored_high_fit_to_now=False
+def test_closed_reasons_keep_the_old_first_match_order():
+    """Given 끝난 이유가 겹침 / When / Then 제외 의견 → 필수 탈락 → 거래 중 → 성사·거절·보류."""
+    everything = replace(
+        READY,
+        opinion="NOT_TARGET",
+        classification_code="FILTER_EXCLUDED",
+        relation_status="EXISTING_CONFIRMED",
+        outcome_status="LOST",
     )
-    assert result == ("LATER", "MONITOR")
+    assert bucket(everything)[1] == "EXCLUDED_OPINION"
+    assert bucket(replace(everything, opinion=None))[1] == "REQUIRED_FAILED"
+    without_failed = replace(everything, opinion=None, classification_code="CONTACT_PLANNED")
+    assert bucket(without_failed)[1] == "EXISTING_CUSTOMER"
+    assert bucket(replace(without_failed, relation_status="UNCONFIRMED"))[1] == "CLOSED_OR_HOLD"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"outcome_status": "IN_PROGRESS"},
+        {"outcome_status": "SAMPLE_OR_REGISTRATION_APPROVED"},
+        {"outcome_status": "NOT_EXECUTED"},
+        {"opinion": "NEED_CHECK"},
+        {"opinion": "WORTH_REVIEW"},
+        {"classification_code": "FILTER_PENDING"},
+        {"classification_code": "OPS_PENDING"},
+        {"classification_code": "NOT_EVALUATED"},
+        {"classification_code": "WATCH"},
+        {"classification_code": "LOW"},
+        {"relation_status": "UNCONFIRMED"},
+    ],
+)
+def test_states_that_used_to_split_the_three_buckets_no_longer_matter(change):
+    """Given 접촉 중·추가 확인 필요·필수 확인 전·관찰 분류 / When / Then 근거 수로만 묶는다."""
+    assert bucket(replace(READY, **change)) == ("EVIDENCE_READY", "EVIDENCE_ENOUGH")
+    assert bucket(replace(FRESH, **change)) == ("NOT_RESEARCHED", "RESEARCH_NOT_RUN")
+
+
+def test_threshold_comes_from_settings():
+    """Given 근거 2건 / When 기준 3건·2건 / Then 3건이면 근거 조금, 2건이면 근거 있음."""
+    state = replace(READY, evidence_count=2)
+    assert bucket(state)[0] == "EVIDENCE_SOME"
+    assert bucket(state, ready_min=2)[0] == "EVIDENCE_READY"
+    assert bucket(replace(READY, evidence_count=4), ready_min=5)[0] == "EVIDENCE_SOME"
 
 
 # ---------------------------------------------------------------------------
@@ -339,11 +367,10 @@ def test_rule_numbers_come_from_settings():
 # ---------------------------------------------------------------------------
 
 
-def key(state=PASSED, position=1, level=0, valid_until=None, met=0, score_t=0, switch=False):
-    name, basis = bucket(state, switch=switch)
+def key(state=READY, position=1, level=0, valid_until=None, met=0, score_t=0):
+    name, _basis = bucket(state)
     return contact_order_key(
         bucket=name,
-        basis=basis,
         state=state,
         null_fit_level_as=SETTINGS.null_fit_level_as,
         level=level,
@@ -354,23 +381,45 @@ def key(state=PASSED, position=1, level=0, valid_until=None, met=0, score_t=0, s
     )
 
 
+SOME = replace(READY, evidence_count=1)
+NOT_FOUND = replace(READY, evidence_count=0, homepage_url=None, homepage_status="NOT_FOUND")
+LOST = replace(READY, outcome_status="LOST")
+
+
 def test_buckets_come_before_everything_else():
-    """Given 세 묶음의 회사 / When 정렬 / Then 지금 연락 → 확인 필요 → 나중(조정은 묶음 안만)."""
-    now = key(PASSED, position=9, level=-1)
-    check = key(replace(PASSED, core_evidence_recheck=True), position=2, level=2)
-    later = key(replace(PASSED, classification_code="WATCH"), position=1, level=2)
-    assert sorted([later, check, now]) == [now, check, later]
+    """Given 다섯 묶음의 회사 / When 정렬 / Then 근거 있음 → 조금 → 홈페이지 없음 → 조사 전 → 끝."""
+    ready = key(replace(READY, fit_level="LOW"), position=9, level=-1)
+    some = key(replace(SOME, fit_level="HIGH"), position=4, level=2)
+    not_found = key(replace(NOT_FOUND, fit_level="HIGH"), position=3)
+    fresh = key(replace(FRESH, fit_level="HIGH"), position=2)
+    closed_company = key(replace(LOST, fit_level="HIGH"), position=1, level=2)
+    shuffled = [closed_company, fresh, some, ready, not_found]
+    assert sorted(shuffled) == [ready, some, not_found, fresh, closed_company]
 
 
-def test_order_inside_a_bucket():
-    """Given 같은 묶음 / When 정렬 / Then 접촉 분류 → 적합도 → 조정 → 시점 신호 → 지금 순서."""
-    urgent = key(replace(PASSED, classification_code="CONTACT_URGENT"), position=9, level=-1)
+@pytest.mark.parametrize("base", [READY, SOME, NOT_FOUND, FRESH, LOST])
+def test_fit_level_comes_first_inside_every_bucket(base):
+    """Given 같은 묶음 / When 정렬 / Then 적합도 상 → 중 → 하, 지금 순서보다 먼저."""
+    high = key(replace(base, fit_level="HIGH"), position=9)
+    medium = key(replace(base, fit_level="MEDIUM"), position=5)
+    low = key(replace(base, fit_level="LOW"), position=1)
+    assert high < medium < low
+
+
+def test_order_inside_the_evidence_ready_bucket():
+    """Given 근거 있음 묶음 / When 정렬 / Then 적합도 → 접촉 분류 → 조정 → 시점 신호 → 지금 순서."""
+    # 적합도가 분류보다 먼저다(#675): 적합도 중인 '지금 바로 연락'은 적합도 상인 '계획' 뒤.
+    urgent_medium = key(
+        replace(READY, classification_code="CONTACT_URGENT", fit_level="MEDIUM"), position=1
+    )
+    planned_high = key(replace(READY, fit_level="HIGH"), position=9, level=-1)
+    assert planned_high < urgent_medium
+    # 적합도가 같으면 접촉 분류(부록 F 순서)가 조정보다 먼저다.
+    urgent = key(replace(READY, classification_code="CONTACT_URGENT"), position=9, level=-1)
     planned = key(position=8, level=2)
-    assert urgent < planned
-    other_high = key(replace(PASSED, classification_code="RESEARCH", fit_level="HIGH"), 7)
-    other_low = key(replace(PASSED, classification_code="RESEARCH", fit_level="LOW"), 1, level=2)
-    assert planned < other_high < other_low
-    # 적합도가 같으면 조정 단계가 큰 쪽이 위.
+    other = key(replace(READY, classification_code="RESEARCH"), position=1, level=2)
+    assert urgent < planned < other
+    # 분류가 같으면 조정 단계가 큰 쪽이 위.
     assert key(position=5, level=1) < key(position=1, level=0) < key(position=0, level=-1)
     # 조정이 같으면 유효 기한이 가까운 곳 → 기한 없는 곳, 그다음 시점 조건 수 → T 점수.
     soon, far = date(2026, 11, 20), date(2026, 12, 20)
@@ -381,25 +430,27 @@ def test_order_inside_a_bucket():
     assert key(position=1) < key(position=2)
 
 
+@pytest.mark.parametrize("base", [SOME, NOT_FOUND, FRESH, LOST])
+def test_other_buckets_use_only_fit_level_and_the_old_order(base):
+    """Given 근거 있음이 아닌 묶음 / When 분류·조정·시점 신호가 달라도 / Then 지금 순서 그대로."""
+    front = key(replace(base, classification_code="LOW"), position=1, level=-1)
+    back = key(
+        replace(base, classification_code="CONTACT_URGENT"),
+        position=2,
+        level=2,
+        valid_until=date(2026, 11, 20),
+        met=3,
+        score_t=90,
+    )
+    assert front < back
+
+
 def test_missing_fit_level_is_read_from_settings():
     """Given 적합도가 없는 사례 파일 회사 / When 정렬 / Then 설정 값(상)으로 본다."""
     assert SETTINGS.null_fit_level_as == "HIGH"
-    none, medium = key(position=2), key(replace(PASSED, fit_level="MEDIUM"), position=1)
+    none, medium = key(position=2), key(replace(READY, fit_level="MEDIUM"), position=1)
     assert none < medium
-
-
-def test_unevaluated_own_plating_goes_to_the_end_of_check():
-    """Given 평가 전 + 표면처리 직접 표시 / When 정렬 / Then 확인 필요 묶음의 맨 뒤."""
-    own = key(replace(UNSCORED, fit_level="HIGH", own_plating=True), position=1, level=2)
-    high = key(replace(UNSCORED, fit_level="HIGH"), position=9)
-    pending = key(
-        replace(PASSED, classification_code="FILTER_PENDING", fit_level="LOW"), position=8
-    )
-    later = key(replace(UNSCORED, fit_level="LOW"), position=0)
-    assert sorted([later, own, high, pending]) == [high, pending, own, later]
-    # 점수가 있는 표면처리 표시 회사는 맨 뒤로 보내지 않는다.
-    scored_own = key(replace(PASSED, own_plating=True, fit_level="HIGH"), position=9)
-    assert scored_own < own
+    assert key(position=2) == key(replace(READY, fit_level="HIGH"), position=2)
 
 
 def test_same_input_gives_the_same_key():
