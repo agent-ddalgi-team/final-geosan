@@ -180,9 +180,12 @@ def test_virtual_dataset_has_no_map_points(map_env):
     assert data(client)["points"] == []
 
 
-def test_provider_failure_is_not_reported_as_missing_coordinates(map_env, monkeypatch):
-    from geosan.config.errors import AppError
+def test_map_uses_only_stored_coordinates_and_counts_unknown(map_env, monkeypatch):
+    """#686 PM 결정 2026-11-13: 지도는 저장된 위치만 쓰고 외부 조회를 하지 않는다.
 
+    예전에는 지도에서도 네이버 실시간 보완·조회 실패를 다뤘다(#642). 이제 위치를 모르는 회사는
+    좌표 없는 회사 수로만 센다. 실시간 보완은 회사 한 곳의 자세히 보기에서만 한다.
+    """
     client, opp_id = map_env
     with session_scope() as session:
         customer_for(session, opp_id).lat = None
@@ -190,29 +193,23 @@ def test_provider_failure_is_not_reported_as_missing_coordinates(map_env, monkey
         settings.geocoding.enabled = settings.geocoding.naver_fallback_enabled = True
         sync_app_settings(session, settings)
 
-    def unavailable(*args):
-        raise AppError("좌표 조회 실패", "다시 조회", status=503)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("지도에서 외부 좌표 조회를 부르면 안 됩니다")
 
-    monkeypatch.setattr("geosan.opportunity.geocoding.GeocodeResolver.resolve", unavailable)
-    assert client.get("/api/v1/dashboard/map").status_code == 503
+    monkeypatch.setattr("geosan.opportunity.geocoding.GeocodeResolver.resolve", forbidden)
+    monkeypatch.setattr("geosan.opportunity.geocode_http.request_json", forbidden)
+    body = data(client)
+    assert body["points"] == [] and body["missingCoordinates"] == 1
 
 
-def test_authenticated_live_naver_map_does_not_lock_or_store_coordinates(map_env, monkeypatch):
+def test_authenticated_map_does_not_call_or_log_external_lookup(map_env, monkeypatch):
     client, opp_id = map_env
     token = "a" * 43
-    for key in ["JUSO_SEARCH_KEY", "NCP_MAPS_KEY_ID", "NCP_MAPS_KEY"]:
-        monkeypatch.setenv(key, "test-only")
 
-    def provider(host, *args, **kwargs):
-        if host == "business.juso.go.kr":
-            return {"results": {"common": {"errorCode": "0", "totalCount": "0"}, "juso": []}}
-        return {
-            "status": "OK",
-            "meta": {"totalCount": 1},
-            "addresses": [{"roadAddress": ADDRESS, "x": "127.5", "y": "38"}],
-        }
+    def forbidden(*args, **kwargs):
+        raise AssertionError("지도에서 외부 좌표 조회를 부르면 안 됩니다")
 
-    monkeypatch.setattr("geosan.opportunity.geocode_http.request_json", provider)
+    monkeypatch.setattr("geosan.opportunity.geocode_http.request_json", forbidden)
     with session_scope() as session:
         customer = customer_for(session, opp_id)
         customer.lat = customer.lng = None
@@ -229,10 +226,10 @@ def test_authenticated_live_naver_map_does_not_lock_or_store_coordinates(map_env
         )
     assert client.get("/api/v1/dashboard/map").status_code == 401
     client.cookies.set(COOKIE_NAME, token)
-    assert data(client)["points"][0]["distanceKm"] == 0.0
+    assert data(client)["missingCoordinates"] == 1
     with session_scope() as session:
         assert customer_for(session, opp_id).lat is None
         logs = session.scalars(
             select(TransferLog).where(TransferLog.purpose == "EXTERNAL_GEOCODE")
         ).all()
-        assert len(logs) == 2 and all(row.decision == "SUCCESS" for row in logs)
+        assert logs == []
