@@ -832,6 +832,13 @@ export const salesQuestionTexts = {
   loadFailed: '꼬리 질문을 불러오지 못했습니다. 접촉 기록은 그대로 저장할 수 있습니다.',
   /** 마무리 답을 골랐을 때 저장 전 미리 알림(#643). "저장하면 영업 단계가 '거절 · 가격'(으)로 바뀝니다." */
   closePreview: (stage: string) => `저장하면 영업 단계가 '${stage}'(으)로 바뀝니다.`,
+  /** "다음 할 일"에서 끝이 아닌 할 일을 고르면 바로 아래에 날짜를 묻는다(#683, PM 결정 2026-11-13). */
+  nextDateLabel: '언제 할까요?',
+  nextDateHint: '안 넣어도 됩니다. 넣으면 다음 일정으로 잡힙니다.',
+  /** "저장하면 다음 일정이 11/20 견적(으)로 잡힙니다." */
+  nextDatePreview: (date: string, action: string) =>
+    `저장하면 다음 일정이 ${date} ${action}(으)로 잡힙니다.`,
+  nextDatePast: '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
   closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
 } as const;
@@ -977,7 +984,15 @@ export const recordsArea = {
   selectPlaceholder: '고르세요',
   /** 세 칸을 "한 일 → 지금 단계 → 다음 할 일" 순서로 읽게 하는 안내(#433, PM 결정 2026-11-08). */
   /** 2026-11-13 PM 지시(#674): 단계는 꼬리 질문 답으로 저절로 저장되므로 안내에서 "지금 단계"를 뺐다(전에는 세 칸). */
-  flowGuide: '① 한 일 적기(접촉·꼬리 질문·메모) → ② 다음 할 일 · 영업 단계는 저절로 정해집니다',
+  /** 2026-11-13 PM 결정(#683): 다음 일정도 꼬리 질문에서 같이 잡으므로 ①·② 두 걸음 안내를 한 줄로 줄였다. */
+  flowGuide: '한 일 적기(접촉·꼬리 질문·메모·다음 일정) · 영업 단계는 저절로 정해집니다',
+  /** "다음 일정" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#683). 누르면 그 자리에서 펼쳐진다. */
+  scheduleCurrent: (date: string, note: string) =>
+    note ? `지금 일정: ${date} ${note}` : `지금 일정: ${date}`,
+  scheduleNone: '다음 일정 없음',
+  scheduleFixOpen: '일정만 바꾸기',
+  scheduleNewOpen: '일정 잡기',
+  scheduleFixClose: '접기',
   /** "영업 단계" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#674). 누르면 그 자리에서 펼쳐진다. */
   stageFixAsk: '단계가 잘못됐나요?',
   stageFixOpen: '단계 고치기',
