@@ -203,6 +203,12 @@ export default function OpportunityCard({
           )}
           {/* 지역 꼬리표는 두지 않는다(#659): 목록 머리의 지역 선택란과 겹친다. */}
           {/* 서버가 산업 칸을 주면 값이 없을 때 "산업 미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
+          {/* 거산 본사에서의 직선거리(#666). 좌표를 못 찾은 회사(null)는 꼬리표를 붙이지 않는다. */}
+          {typeof card.distanceKm === 'number' ? (
+            <StatusTag tone="neutral" data-testid="card-distance-tag">
+              {listFilters.cardDistance(card.distanceKm)}
+            </StatusTag>
+          ) : null}
           {card.industries !== undefined ? (
             card.industries.length > 0 ? (
               card.industries.map((industry) => (
