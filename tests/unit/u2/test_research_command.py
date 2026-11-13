@@ -303,3 +303,27 @@ def test_counts_are_structured_and_not_parsed_from_summary(batch_env):
     assert result.counts == {"evidenceCount": 1, "requirementCandidateCount": 0, "questionCount": 1}
     assert result.to_dict()["counts"] == result.counts
     assert FlowResult(ok=True).to_dict()["counts"] is None
+
+
+def test_company_with_old_dataset_mark_is_researched_when_its_evaluation_is_active(batch_env):
+    """#664: 영업 건 원본 표시가 활성 묶음과 달라도 최신 확정 평가가 활성 묶음이면 조사한다.
+
+    Given 원본 표시만 다른 묶음 / When research / Then 평가가 없으면 건너뛰고, 있으면 조사한다.
+    """
+    from geosan.config.app_settings import read_app_settings
+    from tests.unit.u7.test_geocode_target_and_warmup import add_evaluation
+
+    case, _ = batch_env
+    with session_scope() as session:
+        active = read_app_settings(session).active_dataset_kind.value
+        other = "BROCHURE" if active != "BROCHURE" else "COMPANY_CONFIRMED"
+        session.get(Opportunity, case.opp_id).dataset_kind = other
+    skipped = runner.invoke(app, ["research"])
+    assert "조사할 공개 신규 사례가 없습니다" in skipped.output, skipped.output
+    assert not search_support.logs()
+    add_evaluation(active, number=664, opp_id=case.opp_id)
+    result = runner.invoke(app, ["research"])
+    assert result.exit_code == 0, result.output
+    assert "저장·재평가 1건" in result.output
+    with session_scope() as session:
+        assert session.get(Customer, case.customer_id).homepage_url == "https://example.org/"
