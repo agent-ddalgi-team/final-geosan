@@ -431,14 +431,18 @@ def process_display_name(name: str) -> str:
 def _live_outcomes(virtual: bool):
     """분석에 세는 영업 기록 행을 고르는 select(기회·저장 순서).
 
-    취소된 기록(#253)은 세지 않는다는 약속을 지키는 자리다. 지금은 취소 표시 열이 아직 없어
-    모든 행이 살아 있는 행이다. 기록 취소 서버가 열을 더하면 이 select 한 곳에 조건을 건다.
+    취소된 기록(#253)은 세지 않는다는 약속을 지키는 자리다. 잘못 입력으로 표시한 행은
+    이 select 한 곳에서 뺀다.
     """
     return (
         select(Outcome, Customer.name, Customer.industries, Customer.industries_source)
         .join(Opportunity, Outcome.opp_id == Opportunity.opp_id)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
-        .where(Opportunity.is_virtual.is_(virtual), Customer.is_virtual.is_(virtual))
+        .where(
+            Opportunity.is_virtual.is_(virtual),
+            Customer.is_virtual.is_(virtual),
+            Outcome.cancelled_at.is_(None),
+        )
         .order_by(Outcome.opp_id, Outcome.version)
     )
 
