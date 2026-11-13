@@ -40,12 +40,12 @@ class MapPoint(MapCenter):
 
 
 class VisitNearby(MapCenter):
-    """ "같이 들를 곳"의 근처 회사(#673). distance_km는 묶음 중심 회사에서의 직선거리."""
+    """ "같이 들를 곳"의 근처 관심 기업(#673). distance_km는 묶음 중심 회사에서의 직선거리."""
 
     opp_id: str
     customer_name: str
     distance_km: float
-    group: Literal["INTERESTED", "IN_PROGRESS", "WON_THIS_YEAR"] | None
+    group: Literal["INTERESTED", "IN_PROGRESS", "WON_THIS_YEAR"]
 
 
 class VisitGroup(_ApiModel):
