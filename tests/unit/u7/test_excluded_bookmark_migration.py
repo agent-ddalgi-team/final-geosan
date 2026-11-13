@@ -16,7 +16,7 @@ from geosan.storage.migrate import alembic_config, current_revisions, downgrade,
 from tests.unit.u3.test_ingest_tables import _insert_filled
 
 BEFORE = "rec_010"
-HEAD = "rec_014"
+HEAD = "src_006"
 
 
 def _seed(db: Path) -> None:
