@@ -57,6 +57,11 @@ function renderArea(
   );
 }
 
+/** 종류를 "메모"로 바꾼다. 기본값이 "전화"로 바뀌어서(#691) 메모 시험은 이것부터 한다. */
+function toMemo() {
+  fireEvent.change(screen.getByTestId('records-kind'), { target: { value: 'MEMO' } });
+}
+
 async function pick(user: ReturnType<typeof userEvent.setup>, testId: string, label: string) {
   await user.selectOptions(screen.getByTestId(testId), label);
 }
@@ -67,7 +72,7 @@ describe('RecordsArea', () => {
     mockedOutcome.mockReset();
   });
 
-  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 메모다', () => {
+  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 전화다(#691)', () => {
     renderArea(frameValue(), {
       outcome: {
         version: 1,
@@ -86,12 +91,16 @@ describe('RecordsArea', () => {
     // 접촉 시도·영업 메모 구역은 따로 없고, 접촉 횟수는 이 영역이 아니라 상세 머리가 보인다.
     expect(screen.queryByTestId('records-contact-count')).not.toBeInTheDocument();
     const kind = screen.getByTestId('records-kind') as HTMLSelectElement;
-    expect(kind.value).toBe('MEMO');
+    expect(kind.value).toBe('CALL');
     expect(
       within(kind)
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['메모', '전화', '방문', '메일', '자료 조사']);
+    expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
+    expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
+    // 메모만 적는 흐름은 종류에서 "메모"를 고르면 그대로다.
+    toMemo();
     expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
@@ -197,6 +206,8 @@ describe('RecordsArea', () => {
     });
     // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
     fireEvent.click(screen.getByTestId('records-stage-toggle'));
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '그냥 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));
@@ -212,6 +223,8 @@ describe('RecordsArea', () => {
       meta: {},
     });
     renderArea();
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), {
       target: { value: '담당자 010-1234-5678 부재, 내일 재통화' },
     });
@@ -240,6 +253,8 @@ describe('RecordsArea', () => {
       new ApiError(400, { message: '실패', nextAction: '', ref: 'r1' }),
     );
     renderArea(frameValue(), { onRecorded });
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '첫 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(onRecorded).toHaveBeenCalledTimes(1));
@@ -256,6 +271,8 @@ describe('RecordsArea', () => {
       new ApiError(400, { message: '메모는 200자까지 쓸 수 있습니다.', nextAction: '', ref: 'r1' }),
     );
     renderArea();
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '긴 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     expect(await screen.findByTestId('records-note-error')).toHaveTextContent(
@@ -278,6 +295,8 @@ describe('RecordsArea', () => {
         },
       }),
     );
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     expect(screen.getByTestId('records-note-counter')).toHaveTextContent('0 / 150자');
   });
 
@@ -541,7 +560,11 @@ describe('RecordsArea', () => {
     expect(screen.getByTestId('records-pick-staff-text')).toHaveTextContent(
       recordsArea.pickStaffFirst,
     );
-    expect(screen.getByTestId('records-note-input')).toBeDisabled();
+    // 종류는 "전화"로 시작한다(#691). 종류·결과·저장 단추가 모두 막혀 있다.
+    expect(screen.getByTestId('records-kind')).toBeDisabled();
+    expect(screen.getByTestId('records-contact-result')).toBeDisabled();
+    expect(screen.getByTestId('records-contact-save-button')).toBeDisabled();
+    expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
     // 다음 일정 칸은 기본으로 접혀 있다(#683). 펼쳐 볼 수는 있어도 입력은 막혀 있다.
     fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-date')).toBeDisabled();

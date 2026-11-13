@@ -223,6 +223,8 @@ class RecordsUi(_ApiModel):
     approval_enabled: bool
     note_max_length: int
     cancel_by_any_staff: bool = False
+    # #691: 한 통화에 보이는 통화 내용 질문 수(설정 records.questionsPerContact 그대로).
+    questions_per_contact: int
 
 
 class ExportUi(_ApiModel):
@@ -841,6 +843,8 @@ class OutcomeRequest(_RequestModel):
     # #607: 꼬리 질문 답(코드)과 [단계 고치기]. 둘 다 선택이며 옛 요청은 그대로 받는다.
     answers: list[OutcomeAnswerInput] = Field(default_factory=list, max_length=20)
     step_override: SalesStep | None = None
+    # #697: 제외한 회사에 접촉을 남기면서 검토 의견을 영업 대상으로 되돌릴지. 접촉 기록에서만.
+    restore_excluded: bool = False
 
 
 class OutcomeResponse(RecordMeta):
@@ -914,6 +918,8 @@ class SalesAnswerOption(_ApiModel):
     # #643: 마무리 답 칸. 질문 파일 그대로, 없으면 null.
     closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
     lost_reason: LostReasonCode | None = None
+    # #691: 화면이 미리 골라 두는 보기(질문 파일 그대로, 없으면 false).
+    default: bool = False
 
 
 class SalesShowWhen(_ApiModel):

@@ -49,8 +49,13 @@ def test_record_keeps_the_viewed_evaluation_even_after_reevaluation(
         row = session.scalar(select(model).where(model.opp_id == opp_id))
         assert row.eval_id == eval_id and row.version == 1
     activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
-    assert len(activity) == 1
-    assert activity[0].get("evalId") is None
+    # #697: 접촉을 남기면 같은 저장에서 검토 의견(영업 대상) 한 줄이 함께 생긴다.
+    # 의견 줄은 본 평가 번호를 싣고(의견의 기존 규칙), 접촉·메모 줄은 싣지 않는다.
+    opinions = [item for item in activity if item["kind"] == "OPINION"]
+    records = [item for item in activity if item["kind"] != "OPINION"]
+    assert len(records) == 1
+    assert records[0].get("evalId") is None
+    assert [item.get("evalId") for item in opinions] == ([eval_id] if kind == "outcomes" else [])
     detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
     if kind == "outcomes":
         assert "evalId" not in detail["records"]["outcome"]

@@ -188,6 +188,8 @@ export interface DetailGlanceProps {
   contactCount?: ContactCount | null;
   /** 마지막 접촉 날짜(YYYY-MM-DD). 없으면 그 말을 빼고 접촉 횟수만 보인다. */
   lastContactAt?: string | null;
+  /** 아래 "2. 통화에서 확인할 것"에 보이는 줄 수(#691). 낱말이 없어도 줄이 있으면 "n가지"로 적는다. */
+  callCheckCount?: number;
   /** 시험이 현재 시각에 기대지 않게 지금 시각을 받을 수 있다. */
   now?: Date;
   /**
@@ -205,6 +207,7 @@ export default function DetailGlance({
   requirements = [],
   contactCount,
   lastContactAt,
+  callCheckCount = 0,
   now,
   processChoice,
 }: DetailGlanceProps) {
@@ -280,7 +283,9 @@ export default function DetailGlance({
   const checkText =
     words.length > 0 || check.names.length > 0
       ? texts.checkWords(words, check.names)
-      : texts.checkNone;
+      : callCheckCount > 0
+        ? texts.checkCallCount(callCheckCount)
+        : texts.checkNone;
 
   // ── 영업 상태
   const lastContact = formatMonthDay(lastContactAt);

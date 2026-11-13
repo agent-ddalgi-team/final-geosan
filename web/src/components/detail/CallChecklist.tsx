@@ -96,11 +96,26 @@ export function callLinesOf(
   const seen = new Set(lines.map((row) => row.text));
   for (const id of detail.salesStep?.openQuestions ?? []) {
     const question = questions?.questions.find((row) => row.questionId === id);
+    // 모든 단계 질문과 접촉 자체에 대한 질문(누가 먼저 연락했나 #691)은 통화에서 물을 말이 아니다.
     if (!question || question.step === 'ALL' || seen.has(question.text)) continue;
     seen.add(question.text);
     lines.push({ key: `open:${id}`, text: question.text });
   }
   return lines;
+}
+
+/**
+ * "2. 통화에서 확인할 것"에 보이는 줄 수(접힌 "근거 없음" 줄은 빼고). "한눈에 › 확인할 것"이 같은 기준을 쓰게 한다(#691):
+ * 아래 목록에 줄이 있는데 위에서 "지금 확인할 것 없음"이라고 하지 않는다.
+ */
+export function callCheckCountOf(
+  detail: Parameters<typeof callLinesOf>[0],
+  questions: SalesQuestions | null,
+): number {
+  const askRows = detail.reviewItems.filter(
+    (item) => !isProposal(item) && reviewGroupOf(item) === 'ask',
+  );
+  return callLinesOf(detail, questions).length + askRows.length;
 }
 
 export interface CallChecklistProps {
