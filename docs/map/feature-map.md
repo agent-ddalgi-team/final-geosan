@@ -404,6 +404,7 @@ flowchart LR
 [#684]: https://github.com/agent-ddalgi-team/final-geosan/issues/684
 [#696]: https://github.com/agent-ddalgi-team/final-geosan/pull/696
 [#678]: https://github.com/agent-ddalgi-team/final-geosan/issues/678
+[#686]: https://github.com/agent-ddalgi-team/final-geosan/issues/686
 [#671]: https://github.com/agent-ddalgi-team/final-geosan/issues/671
 [#673]: https://github.com/agent-ddalgi-team/final-geosan/issues/673
 [#666]: https://github.com/agent-ddalgi-team/final-geosan/issues/666

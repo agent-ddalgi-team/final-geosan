@@ -12,6 +12,8 @@ JSON·YAML을 ruamel.yaml 하나로 읽는다. JSON은 YAML 1.2의 부분집합�
 
 from __future__ import annotations
 
+import copy
+import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -178,9 +180,49 @@ def _scalar(value: Any) -> Any:
     return value
 
 
+# 읽은 설정 파일 기억(#686). 서버는 목록을 열 때마다 설정·규칙·질문 파일을 다시 읽어
+# 요청 시간의 절반을 썼다. 파일 경로·수정 시각(ns)·크기가 같으면 이미 읽은 결과의 복사본을
+# 돌려주고, 하나라도 바뀌면 다시 읽는다.
+# 읽기·형식 오류는 기억하지 않는다(고친 뒤 바로 다시 검사되게).
+_DOCUMENT_CACHE: dict[tuple[str, int, int], LoadedDocument] = {}
+_DOCUMENT_CACHE_LIMIT = 64
+_DOCUMENT_CACHE_LOCK = threading.Lock()
+
+
+def _cache_key(file_path: Path) -> tuple[str, int, int] | None:
+    try:
+        stat = file_path.stat()
+        return (str(file_path.resolve()), stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        return None
+
+
+def _copy(document: LoadedDocument, file_path: Path) -> LoadedDocument:
+    # 부르는 쪽이 고쳐도 기억한 값이 바뀌지 않게 데이터는 깊은 복사로 준다.
+    return LoadedDocument(
+        path=file_path, data=copy.deepcopy(document.data), lines=dict(document.lines)
+    )
+
+
 def load_document(path: Path | str) -> LoadedDocument:
     """파일 하나를 읽어 LoadedDocument로 돌려준다. 읽기·형식 오류는 InputError(줄 번호 포함)."""
     file_path = Path(path)
+    key = _cache_key(file_path)
+    if key is not None:
+        with _DOCUMENT_CACHE_LOCK:
+            cached = _DOCUMENT_CACHE.get(key)
+        if cached is not None:
+            return _copy(cached, file_path)
+    document = _load_document(file_path)
+    if key is not None:
+        with _DOCUMENT_CACHE_LOCK:
+            if len(_DOCUMENT_CACHE) >= _DOCUMENT_CACHE_LIMIT:
+                _DOCUMENT_CACHE.clear()
+            _DOCUMENT_CACHE[key] = _copy(document, file_path)
+    return document
+
+
+def _load_document(file_path: Path) -> LoadedDocument:
     text = _read_text(file_path)
     node = _parse(text, file_path)
     if not isinstance(node, CommentedMap):
