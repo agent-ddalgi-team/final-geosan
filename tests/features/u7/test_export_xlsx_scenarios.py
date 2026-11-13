@@ -19,7 +19,35 @@ PHONE_IN_ITEM = "010-1234-5678"
 def companies(process_env):
     client, ids, _ = process_env
     support.add_outcome(ids[1])
+    support.set_export_enabled(True)
     return client, ids
+
+
+@given("앱 설정에서 엑셀 내려받기가 꺼져 있다")
+def switch_off(env):
+    support.set_export_enabled(False)
+
+
+@when("화면 설정을 읽는다", target_fixture="ui_config")
+def read_ui_config(env):
+    response = env[0].get("/api/v1/config/ui")
+    assert response.status_code == 200, response.text
+    return response.json()["data"]
+
+
+@then("화면 설정이 엑셀 내려받기가 꺼져 있다고 알려 준다")
+def ui_says_off(ui_config):
+    assert ui_config["export"] == {"xlsxEnabled": False}
+
+
+@then("꺼져 있다는 오류를 받고 파일은 없다")
+def disabled(response):
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["kind"] == "EXPORT_DISABLED"
+    assert error["message"] == "엑셀 내려받기가 꺼져 있습니다."
+    assert "content-disposition" not in response.headers
+    assert not response.content.startswith(b"PK")
 
 
 @given("그 회사에 가상 메모와 대표번호가 있고 품목 글에 전화번호가 섞여 있다")

@@ -243,6 +243,13 @@ class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
 
 
+class ExportSettings(FileModel):
+    """계약 C7 `export`(#217, PM 결정 2026-11-13). 엑셀 내려받기는 만들어 두고 꺼 둔다."""
+
+    # false면 내려받기 창구(GET /export/xlsx)가 막히고 화면 단추도 보이지 않는다.
+    xlsx_enabled: bool = Field(default=False, strict=True)
+
+
 class SalesAnalysisSettings(FileModel):
     """계약 C7 `salesAnalysis`(#608). 기준 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
 
@@ -325,6 +332,8 @@ class AppSettings(FileModel):
     sales_analysis: SalesAnalysisSettings | None = None
     # #610: 위와 같은 방식. 옛 설정에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     contact_list: ContactListSettings | None = None
+    # #217: 이 칸이 없는 옛 설정 파일은 꺼짐으로 읽는다. DB 사본에 없으면 예시 파일 값으로 채운다.
+    export: ExportSettings = Field(default_factory=ExportSettings)
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
@@ -508,8 +517,8 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis", "contactList")
-"""#608·#610 뒤에 생긴 묶음. 그 전에 만든 설정 파일·DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_SECTIONS = ("salesAnalysis", "contactList", "export")
+"""#608·#610·#217 뒤에 생긴 묶음. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:

@@ -11,6 +11,13 @@ from openpyxl import load_workbook
 
 from geosan.api.app import create_app
 from geosan.api.models import AccessSession
+from geosan.config import app_settings
+from geosan.config.app_settings import (
+    DEFAULT_APP_SETTINGS_PATH,
+    load_app_settings,
+    read_app_settings,
+)
+from geosan.config.errors import InputError
 from geosan.config.models import AppSetting
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.evaluation.models import EvaluationRun
@@ -23,6 +30,7 @@ from geosan.storage.base import new_id
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from tests import factories
+from tests.conftest import VIRTUAL_APP_SETTINGS_PATH
 from tests.unit.u1.test_process_filter import process_env  # noqa: F401
 from tests.unit.u1.test_snapshot_ledger import _write
 from tests.unit.u7.test_dashboard_population import candidate_env  # noqa: F401
@@ -33,6 +41,20 @@ HEADERS = ["회사", "공정", "점수", "단계", "다음 일정"]
 NOTICE = "내부용·고객 제출용 아님"
 MEMO = "엑셀에 나가면 안 되는 가상 메모"
 PHONE = "041-000-0000"
+
+
+def set_export_enabled(enabled):
+    """설정 사본의 엑셀 내려받기 스위치를 바꾼다(운영자가 설정을 켜고 등록한 것과 같은 상태)."""
+    with session_scope() as session:
+        session.get(AppSetting, "export").value = {"xlsxEnabled": enabled}
+
+
+@pytest.fixture(autouse=True)
+def export_switch_on(request):
+    """예시 설정은 꺼짐이 초기값이다. 임시 DB를 쓰는 검사는 스위치를 켠 상태에서 시작한다."""
+    if "tmp_db" in request.fixturenames:
+        request.getfixturevalue("tmp_db")
+        set_export_enabled(True)
 
 
 def sheet_rows(response):
@@ -285,6 +307,104 @@ def test_access_protection_applies(process_env):  # noqa: F811
     response = client.get(EXPORT_URL)
     assert response.status_code == 401
     assert not response.content.startswith(b"PK")
+
+
+def test_example_settings_keep_the_export_switch_off():
+    """Given 저장소의 예시 설정 두 벌 / When 읽음 / Then 엑셀 내려받기는 꺼져 있다."""
+    for path in (DEFAULT_APP_SETTINGS_PATH, VIRTUAL_APP_SETTINGS_PATH):
+        assert load_app_settings(path).export.xlsx_enabled is False
+
+
+def test_switch_off_blocks_the_export_before_anything_is_read(process_env):  # noqa: F811
+    """Given 스위치 꺼짐 / When 내려받기 / Then 422 EXPORT_DISABLED이고 파일이 나가지 않는다."""
+    client, _, _ = process_env
+    set_export_enabled(False)
+    for params in ({}, {"stage": "IN_PROGRESS"}, {"filter": "NOPE"}):
+        response = client.get(EXPORT_URL, params=params)
+        assert response.status_code == 422, response.text
+        error = response.json()["error"]
+        assert error["kind"] == "EXPORT_DISABLED"
+        assert error["message"] == "엑셀 내려받기가 꺼져 있습니다."
+        assert error["nextAction"] and error["ref"]
+        assert "content-disposition" not in response.headers
+        assert not response.content.startswith(b"PK")
+    assert len(all_cards(client)) == 3
+
+
+def test_switch_can_be_turned_on_again_without_restart(process_env):  # noqa: F811
+    """Given 꺼서 막힌 뒤 / When 설정을 켬 / Then 같은 서버에서 바로 엑셀이 내려온다."""
+    client, _, _ = process_env
+    set_export_enabled(False)
+    assert client.get(EXPORT_URL).status_code == 422
+    set_export_enabled(True)
+    assert sheet_rows(client.get(EXPORT_URL))[1] == HEADERS
+
+
+def test_access_protection_comes_before_the_switch(process_env):  # noqa: F811
+    """Given 접속 보호 켬·스위치 꺼짐 / When 접속 확인 없이 내려받기 / Then 401이 먼저다."""
+    client, _, _ = process_env
+    set_export_enabled(False)
+    with session_scope() as session:
+        session.get(AppSetting, "accessProtection").value = {"enabled": True}
+    assert client.get(EXPORT_URL).status_code == 401
+
+
+def test_screen_settings_tell_whether_the_export_is_on(process_env):  # noqa: F811
+    """Given 스위치 켬·끔 / When 화면 설정 조회 / Then export.xlsxEnabled가 설정 값 그대로다."""
+    client, _, _ = process_env
+    for enabled in (True, False):
+        set_export_enabled(enabled)
+        response = client.get("/api/v1/config/ui")
+        assert response.status_code == 200, response.text
+        assert response.json()["data"]["export"] == {"xlsxEnabled": enabled}
+
+
+def test_settings_file_without_the_section_reads_as_off(tmp_path):
+    """Given #217 전 설정 파일(export 묶음 없음) / When 읽음 / Then 오류 없이 꺼짐으로 읽는다."""
+    lines = DEFAULT_APP_SETTINGS_PATH.read_text(encoding="utf-8").splitlines()
+    start = lines.index("export:")
+    old_file = tmp_path / "old-app-settings.yaml"
+    old_file.write_text("\n".join(lines[:start] + lines[start + 2 :]), encoding="utf-8")
+    assert "xlsxEnabled" not in old_file.read_text(encoding="utf-8")
+    assert load_app_settings(old_file).export.xlsx_enabled is False
+
+
+@pytest.mark.parametrize("example_value", [True, False])
+def test_old_settings_copy_without_the_section_reads_the_example_value(
+    process_env,  # noqa: F811
+    tmp_path,
+    monkeypatch,
+    example_value,
+):
+    """Given #217 전 DB 사본(export 없음) / When 읽음 / Then 예시 파일 값으로 읽고 창구도 따른다."""
+    client, _, _ = process_env
+    example = tmp_path / "app-settings.yaml"
+    example.write_text(
+        DEFAULT_APP_SETTINGS_PATH.read_text(encoding="utf-8").replace(
+            "xlsxEnabled: false", f"xlsxEnabled: {str(example_value).lower()}"
+        ),
+        encoding="utf-8",
+    )
+    assert load_app_settings(example).export.xlsx_enabled is example_value
+    monkeypatch.setattr(app_settings, "DEFAULT_APP_SETTINGS_PATH", example)
+    with session_scope() as session:
+        session.delete(session.get(AppSetting, "export"))
+    with session_scope() as session:
+        assert read_app_settings(session).export.xlsx_enabled is example_value
+    assert client.get(EXPORT_URL).status_code == (200 if example_value else 422)
+
+
+def test_switch_value_must_be_true_or_false(tmp_path):
+    """Given 스위치에 글자 "yes" / When 설정 파일 읽음 / Then 받지 않는다."""
+    broken = tmp_path / "app-settings.yaml"
+    broken.write_text(
+        DEFAULT_APP_SETTINGS_PATH.read_text(encoding="utf-8").replace(
+            "xlsxEnabled: false", 'xlsxEnabled: "yes"'
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises((InputError, ValueError)):
+        load_app_settings(broken)
 
 
 @pytest.mark.parametrize(

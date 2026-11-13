@@ -93,6 +93,12 @@ contactList:
     maxDown: 1             # 아래로는 최대 이 단계까지.
     lostReasonsCounted: [NO_DEMAND, QUALITY_CERT]   # 이 이유의 거절만 센다(수요 없음, 품질·인증 요건).
 
+# 엑셀 내려받기 (#217, 계약 C7 export, PM 결정 2026-11-13). 만들어 두고 꺼 둔다.
+# false면 [영업 후보 목록]의 [엑셀 내려받기] 단추가 보이지 않고 내려받기 창구도 막힌다.
+# 거산이 필요하다고 하면 true로 바꾼다. 켜기 전에 "누가 언제 내려받았는지" 기록부터 만든다(약속 C4).
+export:
+  xlsxEnabled: false
+
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:
   enabled: false

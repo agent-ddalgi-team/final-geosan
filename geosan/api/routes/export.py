@@ -13,7 +13,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Query, Request, Response
 
-from geosan.api.deps import SessionDep
+from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.routes.opportunities import OpinionFilter, list_opportunities
 from geosan.api.routes.records import latest_outcome
 from geosan.api.schemas import OutcomeStatus
@@ -50,6 +50,18 @@ class ExportRejectedError(AppError):
         body = super().to_error_body()
         body["error"]["rejectedItems"] = self.rejected_items
         return body
+
+
+class ExportDisabledError(AppError):
+    """C1·C7: 설정 `export.xlsxEnabled`가 꺼져 있으면 목록을 읽기도 전에 422로 알린다."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="엑셀 내려받기가 꺼져 있습니다.",
+            next_action="필요하면 운영자에게 엑셀 내려받기를 켜 달라고 알려 주세요.",
+            status=422,
+            kind="EXPORT_DISABLED",
+        )
 
 
 def _score_text(card) -> str:
@@ -89,7 +101,11 @@ def export_xlsx(
     """목록 조회와 같은 조건을 받아 쪽 나눔 없이 전부 담는다.
 
     대시보드 칸 조건(`filter`)은 목록 조회가 주소에서 직접 읽는다.
+    설정 `export.xlsxEnabled`가 꺼져 있으면 아무것도 읽지 않고 422 kind EXPORT_DISABLED로
+    거부한다(빈 파일을 성공처럼 주지 않는다).
     """
+    if not runtime_for(session).app_settings.export.xlsx_enabled:
+        raise ExportDisabledError()
     envelope = list_opportunities(
         request,
         session,
