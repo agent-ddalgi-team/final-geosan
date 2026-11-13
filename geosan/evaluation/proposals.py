@@ -7,7 +7,7 @@ AI 제안은 `proposed_by = "AI"` 행으로 남고, 담당자가 확정하면 ST
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.config.rule_config import match_rate_steps
@@ -123,12 +123,19 @@ def store_process_link_proposals(
     allowed_codes: set[str],
     requested_by: str,
 ) -> int:
-    """아직 연결되지 않은 공정만 AI·확인 전 연결로 더한다. 기존 연결은 건드리지 않는다."""
+    """아직 연결되지 않은 공정만 AI·확인 전 연결로 더한다. 기존 연결은 건드리지 않는다.
+
+    #677: 담당자가 뺀 AI 제안(이력으로만 남은 AI·확인 전 행)의 공정은 다시 붙이지 않는다.
+    같은 차이를 다시 조사할 때마다 다시 묻지 않기 위해서다.
+    """
     linked = set(
         session.scalars(
             select(OppProcessLink.process_code).where(
                 OppProcessLink.opp_id == opportunity.opp_id,
-                OppProcessLink.superseded_at.is_(None),
+                or_(
+                    OppProcessLink.superseded_at.is_(None),
+                    and_(OppProcessLink.source == AI, OppProcessLink.state == "PENDING"),
+                ),
             )
         )
     )

@@ -180,6 +180,22 @@ def test_filters_give_the_same_companies_as_the_list(process_env, params):  # no
     assert [row[0] for row in rows] == [card["title"] for card in cards]
 
 
+def test_hide_bookmarked_leaves_picked_companies_out_like_the_list(process_env):  # noqa: F811
+    """Given 관심 1곳 / When hideBookmarked로 내려받기 / Then 목록처럼 그 회사가 빠진다(#675)."""
+    client, ids, _ = process_env
+    response = client.put(
+        f"{LIST_URL}/{ids[0]}/bookmark", json={"active": True}, headers={"X-Staff-Key": "park-lee"}
+    )
+    assert response.status_code == 200, response.text
+    params = {"hideBookmarked": "true", "sort": "contact"}
+    cards = all_cards(client, **params)
+    everything = all_cards(client, sort="contact")
+    assert len(cards) == len(everything) - 1
+    assert ids[0] not in {card["oppId"] for card in cards}
+    rows = sheet_rows(client.get(EXPORT_URL, params=params))[2:]
+    assert [row[0] for row in rows] == [card["title"] for card in cards]
+
+
 def test_all_pages_are_exported_not_only_the_first(process_env):  # noqa: F811
     """Given 한 쪽에 1곳씩 보는 목록 / When 내려받기 / Then 쪽과 상관없이 3곳 전부다."""
     client, _, _ = process_env

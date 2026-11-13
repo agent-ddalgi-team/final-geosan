@@ -106,6 +106,19 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AiProposalHit": {
+        "description": "(#678) 지금은 공정만 센다. 산업군은 확정 전 AI 제안이 저장에 남지 않아 셀 수 없다.",
+        "properties": {
+          "process": {
+            "$ref": "#/components/schemas/ProposalHit"
+          }
+        },
+        "required": [
+          "process"
+        ],
+        "title": "AiProposalHit",
+        "type": "object"
+      },
       "AnalysisBasis": {
         "properties": {
           "closedWindowDays": {
@@ -339,25 +352,35 @@
         "type": "object"
       },
       "BucketCounts": {
-        "description": "목록의 묶음별 건수(#610). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다.",
+        "description": "목록의 묶음별 건수(#610·#675). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다.",
         "properties": {
-          "CHECK": {
-            "title": "Check",
+          "CLOSED": {
+            "title": "Closed",
             "type": "integer"
           },
-          "LATER": {
-            "title": "Later",
+          "EVIDENCE_READY": {
+            "title": "Evidence Ready",
             "type": "integer"
           },
-          "NOW": {
-            "title": "Now",
+          "EVIDENCE_SOME": {
+            "title": "Evidence Some",
+            "type": "integer"
+          },
+          "NOT_RESEARCHED": {
+            "title": "Not Researched",
+            "type": "integer"
+          },
+          "NO_HOMEPAGE": {
+            "title": "No Homepage",
             "type": "integer"
           }
         },
         "required": [
-          "NOW",
-          "CHECK",
-          "LATER"
+          "EVIDENCE_READY",
+          "EVIDENCE_SOME",
+          "NO_HOMEPAGE",
+          "NOT_RESEARCHED",
+          "CLOSED"
         ],
         "title": "BucketCounts",
         "type": "object"
@@ -580,6 +603,14 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "distanceFilterPresetsKm": {
+            "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Distancefilterpresetskm",
+            "type": "array"
+          },
           "export": {
             "$ref": "#/components/schemas/ExportUi"
           },
@@ -610,7 +641,8 @@
           "ruleVersion",
           "records",
           "ingestOptions",
-          "export"
+          "export",
+          "distanceFilterPresetsKm"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -832,6 +864,17 @@
             },
             "title": "Ringskm",
             "type": "array"
+          },
+          "visitGroups": {
+            "items": {
+              "$ref": "#/components/schemas/VisitGroup"
+            },
+            "title": "Visitgroups",
+            "type": "array"
+          },
+          "visitRadiusKm": {
+            "title": "Visitradiuskm",
+            "type": "number"
           }
         },
         "required": [
@@ -839,7 +882,9 @@
           "ringsKm",
           "points",
           "missingCoordinates",
-          "asOf"
+          "asOf",
+          "visitRadiusKm",
+          "visitGroups"
         ],
         "title": "DashboardMap",
         "type": "object"
@@ -942,6 +987,24 @@
             ],
             "description": "0~1. AI가 찾았을 때만 (C1, #331)",
             "title": "Homepageconfidence"
+          },
+          "homepagePageKind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "BLOG",
+                  "SNS",
+                  "SHOP",
+                  "PUBLIC_PAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "저장된 주소가 공식 홈페이지가 아니라 대신 찾은 공개 페이지일 때 그 종류(회사 블로그·SNS·쇼핑몰·공공 페이지). 이때 homepageStatus는 NEEDS_CONFIRMATION (C1, #511)",
+            "title": "Homepagepagekind"
           },
           "homepageSource": {
             "anyOf": [
@@ -1206,7 +1269,8 @@
                   "NOT_FOUND",
                   "READ_FAILED",
                   "NOT_TRIED",
-                  "NO_SCORE_EVIDENCE"
+                  "NO_SCORE_EVIDENCE",
+                  "LIMIT_SKIPPED"
                 ],
                 "type": "string"
               },
@@ -1216,6 +1280,12 @@
             ],
             "description": "카드와 같은 조사 상태(#596). 상세는 '조사 중단 · 이유' 꼬리표로 보인다",
             "title": "Researchstate"
+          },
+          "researchSuggestAgain": {
+            "default": false,
+            "description": "관심 회사이고 AI 조사한 지 설정 일수보다 오래됨 → 다시 조사 제안(#677)",
+            "title": "Researchsuggestagain",
+            "type": "boolean"
           },
           "researchedAt": {
             "anyOf": [
@@ -1885,6 +1955,75 @@
         "title": "FitLevel",
         "type": "string"
       },
+      "GroupStats": {
+        "description": "집계 칸. contactedCount가 표본 수이고 진행 중·보류·성사·거절의 합과 같다.",
+        "properties": {
+          "avgContactsToWon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstowon"
+          },
+          "contactReach": {
+            "$ref": "#/components/schemas/ContactReach"
+          },
+          "contactedCount": {
+            "title": "Contactedcount",
+            "type": "integer"
+          },
+          "inProgressCount": {
+            "title": "Inprogresscount",
+            "type": "integer"
+          },
+          "lostCount": {
+            "title": "Lostcount",
+            "type": "integer"
+          },
+          "lostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCount"
+            },
+            "title": "Lostreasons",
+            "type": "array"
+          },
+          "onHoldCount": {
+            "title": "Onholdcount",
+            "type": "integer"
+          },
+          "ratios": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ratios"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contactedCount",
+          "inProgressCount",
+          "onHoldCount",
+          "wonCount",
+          "lostCount",
+          "avgContactsToWon",
+          "contactReach",
+          "lostReasons",
+          "ratios"
+        ],
+        "title": "GroupStats",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2139,6 +2278,10 @@
             "title": "Onholdcount",
             "type": "integer"
           },
+          "overlapCount": {
+            "title": "Overlapcount",
+            "type": "integer"
+          },
           "ratios": {
             "anyOf": [
               {
@@ -2164,7 +2307,8 @@
           "contactReach",
           "lostReasons",
           "ratios",
-          "industry"
+          "industry",
+          "overlapCount"
         ],
         "title": "IndustryRow",
         "type": "object"
@@ -2951,6 +3095,18 @@
       "Meta": {
         "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
         "properties": {
+          "bookmarkedCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "목록 대상 안에서 관심으로 켜 둔 기회 수(#675). 다른 거르기 조건과 무관하다. 목록 머리 '관심 기업 ○곳' 링크용",
+            "title": "Bookmarkedcount"
+          },
           "bucketCounts": {
             "anyOf": [
               {
@@ -3397,31 +3553,29 @@
             "$ref": "#/components/schemas/Blocker"
           },
           "bucket": {
-            "description": "지금 연락할 곳 / 확인 필요 / 나중",
+            "description": "근거 있음 / 근거 조금 / 홈페이지 없음 / 조사 전 / 끝난 회사",
             "enum": [
-              "NOW",
-              "CHECK",
-              "LATER"
+              "EVIDENCE_READY",
+              "EVIDENCE_SOME",
+              "NO_HOMEPAGE",
+              "NOT_RESEARCHED",
+              "CLOSED"
             ],
             "title": "Bucket",
             "type": "string"
           },
           "bucketBasis": {
-            "description": "그 묶음에 든 이유 하나(카드 꼬리표)",
+            "description": "그 묶음에 든 이유 하나",
             "enum": [
               "EXCLUDED_OPINION",
               "REQUIRED_FAILED",
               "EXISTING_CUSTOMER",
               "CLOSED_OR_HOLD",
-              "IN_PROGRESS",
-              "NEED_CHECK_OPINION",
-              "REQUIRED_PENDING",
-              "OWN_PLATING",
-              "NOT_EVALUATED_HIGH_FIT",
-              "NOT_EVALUATED_LOWER_FIT",
-              "EVIDENCE_RECHECK",
-              "REQUIRED_PASSED",
-              "MONITOR"
+              "EVIDENCE_ENOUGH",
+              "EVIDENCE_FEW",
+              "HOMEPAGE_ONLY",
+              "HOMEPAGE_NOT_FOUND",
+              "RESEARCH_NOT_RUN"
             ],
             "title": "Bucketbasis",
             "type": "string"
@@ -3644,7 +3798,7 @@
                 "type": "null"
               }
             ],
-            "description": "같은 공정·산업군의 최근 성사·거절로 정한 조정. 표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
+            "description": "같은 공정·산업군의 최근 성사·거절로 정한 조정. '근거 있음' 묶음 카드에만 준다(#675). 표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
           },
           "reason": {
             "title": "Reason",
@@ -3708,7 +3862,8 @@
                   "NOT_FOUND",
                   "READ_FAILED",
                   "NOT_TRIED",
-                  "NO_SCORE_EVIDENCE"
+                  "NO_SCORE_EVIDENCE",
+                  "LIMIT_SKIPPED"
                 ],
                 "type": "string"
               },
@@ -4083,6 +4238,11 @@
           "replyReceived": {
             "default": false,
             "title": "Replyreceived",
+            "type": "boolean"
+          },
+          "restoreExcluded": {
+            "default": false,
+            "title": "Restoreexcluded",
             "type": "boolean"
           },
           "result": {
@@ -4582,6 +4742,10 @@
             "title": "Onholdcount",
             "type": "integer"
           },
+          "overlapCount": {
+            "title": "Overlapcount",
+            "type": "integer"
+          },
           "processCode": {
             "anyOf": [
               {
@@ -4624,9 +4788,41 @@
           "ratios",
           "processCode",
           "processName",
-          "byIndustry"
+          "byIndustry",
+          "overlapCount"
         ],
         "title": "ProcessRow",
+        "type": "object"
+      },
+      "ProposalHit": {
+        "description": "(#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수.",
+        "properties": {
+          "confirmedCount": {
+            "title": "Confirmedcount",
+            "type": "integer"
+          },
+          "hitCount": {
+            "title": "Hitcount",
+            "type": "integer"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          }
+        },
+        "required": [
+          "confirmedCount",
+          "hitCount",
+          "ratio"
+        ],
+        "title": "ProposalHit",
         "type": "object"
       },
       "Purpose": {
@@ -5121,11 +5317,16 @@
           "noteMaxLength": {
             "title": "Notemaxlength",
             "type": "integer"
+          },
+          "questionsPerContact": {
+            "title": "Questionspercontact",
+            "type": "integer"
           }
         },
         "required": [
           "approvalEnabled",
-          "noteMaxLength"
+          "noteMaxLength",
+          "questionsPerContact"
         ],
         "title": "RecordsUi",
         "type": "object"
@@ -5519,6 +5720,9 @@
       },
       "SalesAnalysis": {
         "properties": {
+          "aiProposalHit": {
+            "$ref": "#/components/schemas/AiProposalHit"
+          },
           "asOf": {
             "format": "date-time",
             "title": "Asof",
@@ -5534,19 +5738,32 @@
             "title": "Byprocess",
             "type": "array"
           },
+          "bySalesStep": {
+            "items": {
+              "$ref": "#/components/schemas/StepRow"
+            },
+            "title": "Bysalesstep",
+            "type": "array"
+          },
           "companies": {
             "items": {
               "$ref": "#/components/schemas/CompanyRow"
             },
             "title": "Companies",
             "type": "array"
+          },
+          "total": {
+            "$ref": "#/components/schemas/GroupStats"
           }
         },
         "required": [
           "asOf",
           "basis",
           "byProcess",
-          "companies"
+          "companies",
+          "total",
+          "bySalesStep",
+          "aiProposalHit"
         ],
         "title": "SalesAnalysis",
         "type": "object"
@@ -5572,6 +5789,11 @@
               }
             ],
             "title": "Closes"
+          },
+          "default": {
+            "default": false,
+            "title": "Default",
+            "type": "boolean"
           },
           "label": {
             "title": "Label",
@@ -6057,6 +6279,66 @@
         "title": "StaffEntry",
         "type": "object"
       },
+      "StepRow": {
+        "description": "(#684) 세부 단계 한 줄. 앞 네 칸은 그 단계에 머무는 동안, 뒤 세 칸은 그 단계에 이르기까지.",
+        "properties": {
+          "avgContactsToReach": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstoreach"
+          },
+          "contactCount": {
+            "title": "Contactcount",
+            "type": "integer"
+          },
+          "contactReach": {
+            "$ref": "#/components/schemas/ContactReach"
+          },
+          "contactedCount": {
+            "title": "Contactedcount",
+            "type": "integer"
+          },
+          "contactsToReach": {
+            "title": "Contactstoreach",
+            "type": "integer"
+          },
+          "reachRatios": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReachRatios"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reachedCount": {
+            "title": "Reachedcount",
+            "type": "integer"
+          },
+          "step": {
+            "$ref": "#/components/schemas/SalesStep"
+          }
+        },
+        "required": [
+          "step",
+          "contactedCount",
+          "contactCount",
+          "contactReach",
+          "reachRatios",
+          "reachedCount",
+          "contactsToReach",
+          "avgContactsToReach"
+        ],
+        "title": "StepRow",
+        "type": "object"
+      },
       "TodayCheckItem": {
         "description": "회사 이름·날짜·일정 한 줄만. 메모 글·연락처·대표번호는 이 모델에 없다.",
         "properties": {
@@ -6180,6 +6462,72 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VisitGroup": {
+        "description": "방문할 회사(points 가운데 진행 중·관심) 하나와 그 반경 안의 근처 회사(가까운 순).",
+        "properties": {
+          "nearby": {
+            "items": {
+              "$ref": "#/components/schemas/VisitNearby"
+            },
+            "title": "Nearby",
+            "type": "array"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "nearby"
+        ],
+        "title": "VisitGroup",
+        "type": "object"
+      },
+      "VisitNearby": {
+        "description": "\"같이 들를 곳\"의 근처 관심 기업(#673). distance_km는 묶음 중심 회사에서의 직선거리.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "INTERESTED",
+              "IN_PROGRESS",
+              "WON_THIS_YEAR"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lat",
+          "lng",
+          "oppId",
+          "customerName",
+          "distanceKm",
+          "group"
+        ],
+        "title": "VisitNearby",
         "type": "object"
       }
     }
@@ -6327,6 +6675,22 @@
                 }
               ],
               "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hideBookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hidebookmarked"
             }
           },
           {
@@ -6662,6 +7026,22 @@
                 }
               ],
               "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hideBookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hidebookmarked"
             }
           },
           {

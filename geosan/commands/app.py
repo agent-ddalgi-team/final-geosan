@@ -322,7 +322,10 @@ def research(
         None, "--limit", metavar="N", help="이번 최대 사례 수, 1 이상"
     ),
 ) -> None:
-    """공개 신규 사례를 검색·추출·재평가합니다. 기본은 홈페이지 없는 실제 사례만입니다."""
+    """공개 신규 사례를 검색·추출·재평가합니다.
+
+    기본은 홈페이지가 없거나, 주소는 있는데 아직 조사가 안 된 실제 사례입니다.
+    """
     from geosan.commands.research import run_research
 
     raise typer.Exit(code=run_research(missing_homepage, all_companies, limit))

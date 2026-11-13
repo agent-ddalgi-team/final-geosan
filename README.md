@@ -35,7 +35,7 @@ cd web && npm ci && cd ..
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
 | 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·토큰·확인된 비용·추정 비용·한도 계산 비용을 보여 줍니다. 미확정 비용이 있으면 종료 코드 2이며, 호출은 추정 비용을 더한 월 한도 안에서 계속할 수 있습니다. |
-| 홈페이지 없는 사례 일괄 조사 | `geosan research` 또는 `geosan research --missing-homepage`. 현재 묶음의 공개된 실제 신규 사례를 검색·본문 읽기·근거 추출·재평가합니다. `--limit 5`로 최대 건수를 정하고, `--all`은 기존 주소도 다시 읽습니다. |
+| 조사 안 된 사례 일괄 조사 | `geosan research`. 현재 묶음의 공개된 실제 신규 사례 가운데 홈페이지가 없는 회사와, 주소는 있는데 아직 조사가 안 된 회사(조사 날짜 없음·근거 0건)를 검색·본문 읽기·근거 추출·재평가합니다(#690). 주소가 있는 회사는 홈페이지를 다시 찾지 않고 그 주소로 읽습니다. `--missing-homepage`를 붙이면 홈페이지 없는 회사만, `--limit 5`로 최대 건수를 정하고, `--all`은 이미 조사된 회사도 다시 읽습니다. |
 | 공공자료에서 새 후보 찾기 | 승인된 소스와 `ingestion.factoryCsvPath`·`aiPick`·외부 AI 설정을 준비한 뒤 `geosan ingest kicox-factory-csv --process ZINC_PLATING --region 충남`을 실행합니다. `--industry`, `--max`, `--rejudge`를 선택할 수 있습니다. 파일명 끝 또는 바로 위 폴더의 기준일(YYYYMMDD)을 읽고, 선택한 새 회사만 등록·재평가·조사합니다. |
 | 공공 소스 이용·저장 확인 | `geosan source-confirm <소스ID> --by <담당자 키> [--terms <약관 주소>] [--on YYYY-MM-DD]`. 소스는 `kicox-factory-csv`(공장현황 파일)·`kicox-production-api`(공장등록 조회)·`factoryon-xlsx`(팩토리온 공장조회)·`nier-water-csv`(수질 명단) 네 개이고, 뒤 두 개는 약관 주소 기본값이 없어 `--terms`를 꼭 넣습니다. 이름·허용 용도·저장 범위와 확인자·확인일을 기록합니다. 기존 기록은 덮어쓰지 않습니다. |
 | 목록 회사에 공장 정보·수질 명단 붙이기 | `geosan source-load factoryon-xlsx <지역별 .xlsx>...` 또는 `geosan source-load nier-water-csv <수질 명단 .csv>`. 파일 이름에 기준일(YYYYMMDD)이 있어야 하고, 넣은 뒤 목록 회사에 원자재·종업원 수(추정)·공장 규모와 표면처리 표시를 다시 붙입니다. AI 비용 없음(#573). Numbers 파일은 CSV로 내보내 넣습니다. |
@@ -272,3 +272,5 @@ API 서버와 지도 화면은 별도 작업이며, 가까운 순·거리 필터
 기준 좌표가 없으면 거리 정렬·필터는 오류로 알리고, 기존 추천 목록은 계속 열립니다.
 
 지도 데이터는 `GET /api/v1/dashboard/map`에서 읽습니다(#642). 기존 접속 보호를 거치며, 관심 켠 실제 공개 회사 가운데 관심·진행·올해 성공만 포함합니다. 거산 기준점·설정 반경·점·거리·좌표 없는 회사 수를 반환하고, 네이버 실시간 결과가 남지 않도록 응답을 캐시하지 않습니다. 거산 기준 좌표가 없으면 오류로 알립니다. 지도 그림은 #641 화면 작업에서 연결합니다.
+
+대시보드 지도 바탕은 네이버 지도입니다(#671). `web/.env`에 `VITE_NCP_MAPS_CLIENT_ID=<Client ID>`를 적고 `npm --prefix web run build`로 화면을 다시 만듭니다. 네이버 클라우드 콘솔의 Maps 애플리케이션에서 **Dynamic Map**을 켜고 **Web 서비스 URL**에 접속 주소(예: `http://127.0.0.1:8000`)를 등록해야 합니다. 키가 없거나 인증에 실패하면 원과 점의 상대 위치만 보이는 자리표시로 돌아갑니다. 지도에는 좌표·원 반지름만 넘기고 회사 이름·단계·거리는 우리 말풍선으로만 그립니다.

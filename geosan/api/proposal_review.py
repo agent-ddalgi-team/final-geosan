@@ -142,7 +142,48 @@ def confirm_proposal(
     if row is None:
         raise NotFoundError("현재 확정할 AI 공정 제안이 없습니다.")
     confirm_ai_link(session, row, staff=staff, now=now)
-    name = (
+    return f"AI 공정 제안 확정 · {_process_name(session, opportunity, code)}"
+
+
+def dismiss_proposal(
+    session: Session, opportunity: Opportunity, item_id: str, *, now: datetime
+) -> str:
+    """#677 [확정 값 유지]: 사람이 확정한 공정이 있는 회사에서 그와 다른 AI 공정 제안을 물리친다.
+
+    AI 행은 지우지 않고 이력으로만 남긴다(꼬리 질문에서 안 고른 제안을 빼는 #652와 같은 방식).
+    확정한 공정이 없는 회사의 공정 제안과 점수 제안은 지금처럼 물리칠 수 없다.
+    호출자가 재평가와 기록을 같은 트랜잭션에 잇는다.
+    """
+    refuse = InputError("AI 제안은 확정 또는 고치기만 할 수 있습니다.")
+    prefix, _, code = item_id.partition(":")
+    if prefix != "PL":
+        raise refuse
+    rows = list(
+        session.scalars(
+            select(OppProcessLink).where(
+                OppProcessLink.opp_id == opportunity.opp_id,
+                OppProcessLink.superseded_at.is_(None),
+            )
+        )
+    )
+    if not any(row.state == "CONFIRMED" for row in rows):
+        raise refuse
+    row = next(
+        (
+            row
+            for row in rows
+            if row.process_code == code and row.source == AI_PROPOSED and row.state == "PENDING"
+        ),
+        None,
+    )
+    if row is None:
+        raise NotFoundError("현재 물리칠 AI 공정 제안이 없습니다.")
+    row.superseded_at = now
+    return f"AI 공정 제안 물리침 · 확정 값 유지 · {_process_name(session, opportunity, code)}"
+
+
+def _process_name(session: Session, opportunity: Opportunity, code: str) -> str:
+    return (
         session.scalar(
             select(Process.name).where(
                 Process.dataset_kind == opportunity.dataset_kind, Process.code == code
@@ -150,7 +191,6 @@ def confirm_proposal(
         )
         or code
     )
-    return f"AI 공정 제안 확정 · {name}"
 
 
 def _confirm_item(session, opportunity, code, step_label, staff, now):
