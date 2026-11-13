@@ -43,12 +43,18 @@ def distance(point, settings):
     )
 
 
-def customer_points(session, customers, opp_ids, settings):
-    """이번 요청의 좌표만 반환한다. 네이버 결과는 공용 캐시·DB·파일에 저장하지 않는다."""
+def customer_points(session, customers, opp_ids, settings, *, live=True):
+    """이번 요청의 좌표만 반환한다. 네이버 결과는 공용 캐시·DB·파일에 저장하지 않는다.
+
+    `live=False`면 저장된 공공좌표만 쓰고 외부 조회를 하지 않는다. 목록·대시보드 지도는 이렇게
+    부른다(#686, PM 결정 2026-11-13): 못 찾은 회사를 요청마다 다시 물어 느려지고 호출이 쌓였다.
+    네이버 실시간 보완은 회사 한 곳의 자세히 보기에서만 한다.
+    """
     customers = list({c.customer_id: c for c in customers}.values())
     points = {c.customer_id: stored_point(c) for c in customers}
     if (
-        not settings.geocoding.enabled
+        not live
+        or not settings.geocoding.enabled
         or not settings.geocoding.naver_fallback_enabled
         or settings.geosan.lat is None
     ):
@@ -75,9 +81,11 @@ def customer_points(session, customers, opp_ids, settings):
     return points
 
 
-def customer_distances(session, customers, opp_ids, settings):
-    """카드·상세가 같은 좌표 처리로 직선거리만 읽는다."""
+def customer_distances(session, customers, opp_ids, settings, *, live=True):
+    """카드·상세가 같은 좌표 처리로 직선거리만 읽는다. 목록은 `live=False`(#686)."""
     return {
         customer_id: distance(point, settings)
-        for customer_id, point in customer_points(session, customers, opp_ids, settings).items()
+        for customer_id, point in customer_points(
+            session, customers, opp_ids, settings, live=live
+        ).items()
     }
