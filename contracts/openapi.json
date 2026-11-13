@@ -641,6 +641,15 @@
         "title": "ContactCount",
         "type": "object"
       },
+      "ContactMethod": {
+        "enum": [
+          "CALL",
+          "EMAIL",
+          "VISIT"
+        ],
+        "title": "ContactMethod",
+        "type": "string"
+      },
       "ContactReach": {
         "description": "방법별 시도(tried)와 그중 연결(reached). 키는 계약의 대문자 코드 그대로다.",
         "properties": {
@@ -1521,6 +1530,21 @@
           "data"
         ],
         "title": "Envelope[OutcomeResponse]",
+        "type": "object"
+      },
+      "Envelope_Peers_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Peers"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[Peers]",
         "type": "object"
       },
       "Envelope_QuestionReplyResponse_": {
@@ -4016,6 +4040,234 @@
         ],
         "title": "OutcomeStatus",
         "type": "string"
+      },
+      "PeerCompany": {
+        "properties": {
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactat"
+          },
+          "lastContactMethod": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastNote": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeerNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lostReasonCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "sameIndustry": {
+            "title": "Sameindustry",
+            "type": "boolean"
+          },
+          "sameProcess": {
+            "title": "Sameprocess",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "processCodes",
+          "industries",
+          "outcomeStatus",
+          "lostReasonCode",
+          "lastContactAt",
+          "lastContactMethod",
+          "lastNote",
+          "sameProcess",
+          "sameIndustry"
+        ],
+        "title": "PeerCompany",
+        "type": "object"
+      },
+      "PeerLostReason": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/LostReasonCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "PeerLostReason",
+        "type": "object"
+      },
+      "PeerNote": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "by",
+          "at"
+        ],
+        "title": "PeerNote",
+        "type": "object"
+      },
+      "PeerReach": {
+        "properties": {
+          "reached": {
+            "title": "Reached",
+            "type": "integer"
+          },
+          "tried": {
+            "title": "Tried",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reached",
+          "tried"
+        ],
+        "title": "PeerReach",
+        "type": "object"
+      },
+      "Peers": {
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/PeerCompany"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PeersSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "companies"
+        ],
+        "title": "Peers",
+        "type": "object"
+      },
+      "PeersSummary": {
+        "properties": {
+          "contactReach": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PeerReach"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ContactMethod"
+            },
+            "title": "Contactreach",
+            "type": "object"
+          },
+          "industryCount": {
+            "title": "Industrycount",
+            "type": "integer"
+          },
+          "processCount": {
+            "title": "Processcount",
+            "type": "integer"
+          },
+          "stageCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/OutcomeStatus"
+            },
+            "title": "Stagecounts",
+            "type": "object"
+          },
+          "topLostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/PeerLostReason"
+            },
+            "title": "Toplostreasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCount",
+          "industryCount",
+          "stageCounts",
+          "topLostReasons",
+          "contactReach"
+        ],
+        "title": "PeersSummary",
+        "type": "object"
       },
       "ProcessBreakdownItem": {
         "properties": {
@@ -6830,6 +7082,46 @@
           }
         },
         "summary": "Save Outcome"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/peers": {
+      "get": {
+        "description": "같은 공정·산업군의 다른 회사 최대 5곳과 건수 요약. 저장하지 않고 읽을 때 계산한다.",
+        "operationId": "peers_api_v1_opportunities__oppId__peers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Peers_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Peers"
       }
     },
     "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {
