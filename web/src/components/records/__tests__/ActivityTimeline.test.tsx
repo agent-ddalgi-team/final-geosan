@@ -1,7 +1,7 @@
 // 활동 타임라인: 최근 순, 시각·작성자·종류·내용, 빈 상태, 오류와 다시 불러오기, 저장 뒤 새로 불러오기.
 // 서버 호출(getActivity)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import ActivityTimeline, { sortRecentFirst } from '../ActivityTimeline';
+import ActivityTimeline, { sortRecentFirst, summaryText } from '../ActivityTimeline';
 import { ApiError, getActivity, postRecordCancel } from '../../../api/client';
 import type { ActivityItem, ConfigUi, Envelope } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
@@ -115,6 +115,23 @@ describe('ActivityTimeline', () => {
     expect(within(rows[1]).getByTestId('timeline-kind')).toHaveTextContent('메모');
     expect(within(rows[2]).getByTestId('timeline-actor')).toHaveTextContent(timelineArea.system);
     expect(mockedGet).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
+  });
+
+  it('검토 의견 줄은 서버가 준 코드("NEED_CHECK")를 쉬운 말로 보이고, 대응표에 없는 글은 그대로 둔다 (#691)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply([
+        { ...opinion, at: '2026-11-06T13:00:00+09:00', summary: 'NEED_CHECK' },
+        { ...opinion, at: '2026-11-06T12:30:00+09:00', summary: 'NOT_TARGET' },
+        opinion,
+        // 메모에 같은 글자가 있어도 메모는 바꾸지 않는다.
+        { ...note, summary: 'NEED_CHECK' },
+      ]),
+    );
+    renderTimeline();
+    const rows = await screen.findAllByTestId('timeline-item');
+    const texts = rows.map((row) => within(row).getByTestId('timeline-summary').textContent);
+    expect(texts).toEqual(['추가 확인 필요', '검토 대상 제외', '검토 권고', 'NEED_CHECK']);
+    expect(summaryText({ ...opinion, summary: 'WORTH_REVIEW' })).toBe('검토 권고');
   });
 
   it('기록이 하나도 없으면 안내 문구를 보인다', async () => {

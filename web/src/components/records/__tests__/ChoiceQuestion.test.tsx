@@ -100,6 +100,11 @@ async function openQuestions(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByTestId('sales-question-CONFIRM_PROCESS');
 }
 
+/** 이미 확정된 값이 있는 질문은 "확정됨: … [바꾸기]" 한 줄이다(#691). [바꾸기]를 눌러야 고르기가 펼쳐진다. */
+async function change(user: ReturnType<typeof userEvent.setup>, question: string) {
+  await user.click(screen.getByTestId(`sales-choice-change-${question}`));
+}
+
 const box = (question: string, id: string) =>
   screen.getByTestId(`sales-choice-${question}-${id}`) as HTMLInputElement;
 
@@ -278,6 +283,8 @@ describe('접촉 기록에서 공정·산업을 확인한다 (#652)', () => {
       industriesSource: 'CASE_FILE',
     });
     const process = await openQuestions(user);
+    await change(user, 'CONFIRM_PROCESS');
+    await change(user, 'CONFIRM_INDUSTRY');
     expect(box('CONFIRM_PROCESS', 'ANODIZING')).toBeChecked();
     expect(box('CONFIRM_PROCESS', 'ANODIZING')).toBeDisabled();
     expect(process).toHaveTextContent('아노다이징확정됨');
@@ -352,9 +359,8 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
     const onCompanyConfirmed = vi.fn();
     renderArea(MIXED, { onCompanyConfirmed });
     const process = await openQuestions(user);
-    expect(process).toHaveTextContent(
-      "확정된 공정이 맞으면 '지금 확정된 것이 맞음'을 고르고 저장하세요(남은 AI 제안 2개는 빠집니다).",
-    );
+    // 처음에는 한 줄만 보인다. 누르지 않고 저장하면 답을 보내지 않는다.
+    expect(process).toHaveTextContent('확정됨: 아노다이징');
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     expect(vi.mocked(postOutcome).mock.calls[0][1]).not.toHaveProperty('answers');
@@ -362,6 +368,11 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
 
     await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
     await screen.findByTestId('sales-question-CONFIRM_PROCESS');
+    await change(user, 'CONFIRM_PROCESS');
+    await change(user, 'CONFIRM_INDUSTRY');
+    expect(screen.getByTestId('sales-question-CONFIRM_PROCESS')).toHaveTextContent(
+      "확정된 공정이 맞으면 '지금 확정된 것이 맞음'을 고르고 저장하세요(남은 AI 제안 2개는 빠집니다).",
+    );
     await user.click(box('CONFIRM_PROCESS', 'keep'));
     await user.click(box('CONFIRM_INDUSTRY', 'keep'));
     await user.click(screen.getByTestId('records-contact-save-button'));
@@ -379,6 +390,7 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
     const user = userEvent.setup();
     renderArea(MIXED);
     await openQuestions(user);
+    await change(user, 'CONFIRM_PROCESS');
     await user.click(box('CONFIRM_PROCESS', 'keep'));
     await user.click(box('CONFIRM_PROCESS', 'CHROMATE'));
     expect(box('CONFIRM_PROCESS', 'keep')).not.toBeChecked();
