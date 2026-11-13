@@ -411,6 +411,8 @@ class AppSettings(FileModel):
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
     geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
+    # 대시보드 지도 "같이 들를 곳" 반경(km, #673 PM 결정 2026-11-13).
+    visit_group_radius_km: float = Field(default=5, gt=0, le=50)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
