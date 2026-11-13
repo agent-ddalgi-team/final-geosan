@@ -1,5 +1,5 @@
 // 대시보드 지도 "같이 들를 곳"(#673). 가짜 응답으로만 확인한다(실제 서버·네이버 연결 확인 아님).
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardMap from '../DashboardMap';
@@ -49,8 +49,8 @@ describe('같이 들를 곳(#673)', () => {
       'dashboard-visit-nearby-item',
     );
     expect(items.map((item) => item.textContent)).toEqual([
-      '가상 자차산업 1.8km · 후보',
-      '가상 카타정공 3.2km · 후보',
+      '가상 자차산업 1.8km · 관심 전',
+      '가상 카타정공 3.2km · 관심 전',
     ]);
     expect(within(items[0]).getByRole('link')).toHaveAttribute('href', '/opportunities/opp-near-1');
     await user.click(first);
@@ -140,5 +140,51 @@ describe('같이 들를 곳(#673)', () => {
     for (const name of ['가상 자차산업', '가상 카타정공', '가상 가나정밀']) {
       expect(sent).not.toContain(name);
     }
+  });
+
+  it('펼친 묶음의 근처 ○를 누르면 "관심 전 · 중심 회사에서 거리" 말풍선, 마우스를 올리면 이름이 뜬다', async () => {
+    const user = userEvent.setup();
+    const listeners: { target: unknown; name: string; handler: () => void }[] = [];
+    class Base {
+      constructor() {}
+    }
+    window.naver = {
+      maps: {
+        Map: class Map extends Base {
+          fitBounds = () => {};
+          destroy = () => {};
+          getProjection = () => ({ fromCoordToOffset: () => ({ x: 10, y: 20 }) });
+        },
+        LatLng: class LatLng extends Base {
+          lat = () => 0;
+        },
+        Point: class Point extends Base {},
+        Circle: class Circle extends Base {
+          getBounds = () => ({});
+        },
+        Marker: class Marker extends Base {},
+        Event: {
+          addListener: (target: unknown, name: string, handler: () => void) => {
+            listeners.push({ target, name, handler });
+          },
+        },
+      } as never,
+    };
+    renderMap(data, 'test-key');
+    await screen.findByTestId('dashboard-naver-map');
+    await user.click(screen.getAllByTestId('dashboard-visit-row')[0]);
+    // 점 4개 다음에 그려진 근처 ○ 2개의 눌림·올림이 마지막에 걸린다.
+    await waitFor(() =>
+      expect(listeners.filter((row) => row.name === 'click').length).toBeGreaterThanOrEqual(6),
+    );
+    const clicks = listeners.filter((row) => row.name === 'click');
+    const overs = listeners.filter((row) => row.name === 'mouseover');
+    act(() => overs[overs.length - 2].handler());
+    expect(await screen.findByTestId('dashboard-map-hover')).toHaveTextContent('가상 자차산업');
+    act(() => clicks[clicks.length - 2].handler());
+    const callout = await screen.findByTestId('dashboard-map-callout');
+    expect(callout).toHaveTextContent('가상 자차산업');
+    expect(callout).toHaveTextContent('관심 전 · 가상 가나정밀에서 1.8km');
+    expect(within(callout).getByRole('link')).toHaveAttribute('href', '/opportunities/opp-near-1');
   });
 });

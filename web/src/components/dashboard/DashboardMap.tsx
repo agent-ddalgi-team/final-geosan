@@ -99,7 +99,7 @@ export default function DashboardMap({
     return {
       center: { lat: anchor.lat, lng: anchor.lng },
       radiusKm: visitRadius,
-      nearby: group.nearby.map((row) => ({ lat: row.lat, lng: row.lng })),
+      nearby: group.nearby.map((row) => ({ oppId: row.oppId, lat: row.lat, lng: row.lng })),
     };
   }, [visitGroups, visitOpen, visitRadius, data.points]);
   const wantsMap = Boolean(mapClientId) && data.points.length > 0;
@@ -147,6 +147,15 @@ export default function DashboardMap({
   const maxKm = rings[rings.length - 1] ?? 100;
   const scale = MAX_RADIUS / maxKm;
   const chosen = data.points.find((p) => p.oppId === selected) ?? null;
+  // 지도 대상이 아닌 근처 후보(○)를 눌렀을 때: 펼친 "같이 들를 곳" 묶음에서 찾는다(#673).
+  const openGroup = visitGroups?.find((row) => row.oppId === visitOpen) ?? null;
+  const openAnchor = data.points.find((p) => p.oppId === visitOpen) ?? null;
+  const chosenNearby =
+    chosen === null ? (openGroup?.nearby.find((row) => row.oppId === selected) ?? null) : null;
+  const labelFor = (oppId: string) =>
+    data.points.find((p) => p.oppId === oppId)?.customerName ??
+    openGroup?.nearby.find((row) => row.oppId === oppId)?.customerName ??
+    null;
 
   return (
     <div data-testid="dashboard-map" style={{ display: 'grid', gap: 12 }}>
@@ -162,6 +171,7 @@ export default function DashboardMap({
             hqColor={colors.text}
             onSelect={setSelected}
             focus={focus}
+            labelFor={labelFor}
           />
           {/* 지도 점은 키보드로 고를 수 없어 낭독기용 단추 목록을 함께 둔다. */}
           <ul aria-label={t.pointList} data-testid="dashboard-map-point-list" style={srOnly}>
@@ -248,6 +258,8 @@ export default function DashboardMap({
                 >
                   <circle cx={x} cy={y} r={16} fill="transparent" />
                   <Shape group={p.group} x={x} y={y} />
+                  {/* 마우스를 올리면 회사 이름이 뜬다(#673). */}
+                  <title>{p.customerName}</title>
                 </g>
               );
             })}
@@ -277,7 +289,7 @@ export default function DashboardMap({
         ))}
       </ul>
 
-      {chosen ? (
+      {chosen || chosenNearby ? (
         <div
           role="dialog"
           aria-label={t.callout}
@@ -291,13 +303,25 @@ export default function DashboardMap({
             background: colors.bgContainer,
           }}
         >
-          <strong>{chosen.customerName}</strong>
-          <span>
-            {t.groups[chosen.group]} · {t.distance(chosen.distanceKm)}
-          </span>
+          {chosen ? (
+            <>
+              <strong>{chosen.customerName}</strong>
+              <span>
+                {t.groups[chosen.group]} · {t.distance(chosen.distanceKm)}
+              </span>
+            </>
+          ) : chosenNearby ? (
+            <>
+              <strong>{chosenNearby.customerName}</strong>
+              <span>
+                {chosenNearby.group ? t.groups[chosenNearby.group] : t.candidate} ·{' '}
+                {t.fromAnchor(openAnchor?.customerName ?? '', chosenNearby.distanceKm)}
+              </span>
+            </>
+          ) : null}
           <div style={{ display: 'flex', gap: 12 }}>
             <Link
-              to={`/opportunities/${encodeURIComponent(chosen.oppId)}`}
+              to={`/opportunities/${encodeURIComponent((chosen ?? chosenNearby)!.oppId)}`}
               data-testid="dashboard-map-detail-link"
             >
               {t.detailLink}

@@ -2,7 +2,7 @@
 // 약속(계약 C4 screenMapRule): 지도 SDK에 넘기는 값은 좌표와 원의 중심·반지름뿐이다. 회사 이름·영업 단계·거리·메모는
 // SDK 함수 인자로 넘기지 않는다. 점 모양(●◆★)과 "30km" 같은 원 이름만 그림으로 넘기고, 회사 정보는 부모의 HTML 말풍선이 그린다.
 // 검색·지오코딩·길찾기 모듈(submodules)은 불러오지 않는다.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DashboardMapGroup, DashboardMapPoint } from '../../api/dashboardMapTypes';
 
 /* 쓰는 SDK 기능만 좁게 적은 모양. 실제 SDK는 window.naver.maps에 있다. */
@@ -12,9 +12,15 @@ interface NaverLatLng {
 interface NaverBounds {
   readonly extend?: (latlng: NaverLatLng) => void;
 }
+interface NaverOffset {
+  readonly x: number;
+  readonly y: number;
+}
 interface NaverMapInstance {
   fitBounds: (bounds: NaverBounds) => void;
   destroy: () => void;
+  /** 좌표 → 지도 상자 안 화면 위치(px). 마우스를 올린 점 위에 우리 이름표를 띄울 때 쓴다(#673). */
+  getProjection: () => { fromCoordToOffset: (latlng: NaverLatLng) => NaverOffset };
 }
 interface NaverCircle {
   getBounds: () => NaverBounds;
@@ -106,7 +112,7 @@ export function pointIcon(group: DashboardMapGroup, color: string): string {
 
 /** "같이 들를 곳" 근처 회사 표시(○). 회사 정보 없이 모양만. */
 export const NEARBY_ICON =
-  '<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #555"></div>';
+  '<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #555;cursor:pointer"></div>';
 
 export interface NaverMapCanvasProps {
   api: NaverMapsApi;
@@ -123,8 +129,10 @@ export interface NaverMapCanvasProps {
   focus?: {
     center: { lat: number; lng: number };
     radiusKm: number;
-    nearby: { lat: number; lng: number }[];
+    nearby: { oppId: string; lat: number; lng: number }[];
   } | null;
+  /** 마우스를 올린 점의 회사 이름. 이름은 SDK에 넘기지 않고 이 부품의 HTML 이름표로만 그린다(#673). */
+  labelFor?: (oppId: string) => string | null;
 }
 
 export default function NaverMapCanvas({
@@ -137,8 +145,11 @@ export default function NaverMapCanvas({
   hqColor,
   onSelect,
   focus = null,
+  labelFor,
 }: NaverMapCanvasProps) {
   const box = useRef<HTMLDivElement>(null);
+  // 마우스를 올린 점과 그 화면 위치. 이름표는 우리 HTML로 지도 위에 띄운다.
+  const [hover, setHover] = useState<{ oppId: string; x: number; y: number } | null>(null);
   // 지도는 한 번 만들고, 말풍선 선택이 바뀌어도 다시 그리지 않는다.
   const select = useRef(onSelect);
   useEffect(() => {
@@ -149,6 +160,17 @@ export default function NaverMapCanvas({
     if (!box.current) return;
     const middle = new api.LatLng(center.lat, center.lng);
     const map = new api.Map(box.current, { center: middle, zoom: 9, scaleControl: true });
+    // 점에 마우스를 올리면 이름표를, 내리면 지운다. 지도를 끌거나 확대하면 위치가 바뀌니 지운다.
+    const hoverable = (marker: unknown, oppId: string, position: NaverLatLng) => {
+      api.Event.addListener(marker, 'click', () => select.current(oppId));
+      api.Event.addListener(marker, 'mouseover', () => {
+        const offset = map.getProjection().fromCoordToOffset(position);
+        setHover({ oppId, x: offset.x, y: offset.y });
+      });
+      api.Event.addListener(marker, 'mouseout', () => setHover(null));
+    };
+    api.Event.addListener(map, 'dragstart', () => setHover(null));
+    api.Event.addListener(map, 'zoom_changed', () => setHover(null));
     const rings = [...ringsKm].sort((a, b) => a - b);
     let outer: NaverCircle | null = null;
     for (const km of rings) {
@@ -184,15 +206,16 @@ export default function NaverMapCanvas({
       },
     });
     for (const point of points) {
+      const position = new api.LatLng(point.lat, point.lng);
       const marker = new api.Marker({
         map,
-        position: new api.LatLng(point.lat, point.lng),
+        position,
         icon: {
           content: pointIcon(point.group, colors[point.group]),
           anchor: new api.Point(10, 10),
         },
       });
-      api.Event.addListener(marker, 'click', () => select.current(point.oppId));
+      hoverable(marker, point.oppId, position);
     }
     if (focus) {
       const spot = new api.LatLng(focus.center.lat, focus.center.lng);
@@ -208,16 +231,18 @@ export default function NaverMapCanvas({
         clickable: false,
       });
       for (const near of focus.nearby) {
-        new api.Marker({
+        const position = new api.LatLng(near.lat, near.lng);
+        const marker = new api.Marker({
           map,
-          position: new api.LatLng(near.lat, near.lng),
-          clickable: false,
+          position,
           icon: { content: NEARBY_ICON, anchor: new api.Point(7, 7) },
         });
+        hoverable(marker, near.oppId, position);
       }
       map.fitBounds(around.getBounds());
     } else if (outer) map.fitBounds(outer.getBounds());
     return () => {
+      setHover(null);
       try {
         map.destroy();
       } catch {
@@ -227,11 +252,36 @@ export default function NaverMapCanvas({
     };
   }, [api, center.lat, center.lng, ringsKm, points, colors, ringColor, hqColor, focus]);
 
+  const hoverName = hover ? (labelFor?.(hover.oppId) ?? null) : null;
   return (
-    <div
-      ref={box}
-      data-testid="dashboard-naver-map"
-      style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden' }}
-    />
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={box}
+        data-testid="dashboard-naver-map"
+        style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden' }}
+      />
+      {hover && hoverName ? (
+        <div
+          role="tooltip"
+          data-testid="dashboard-map-hover"
+          style={{
+            position: 'absolute',
+            left: hover.x,
+            top: hover.y - 14,
+            transform: 'translate(-50%, -100%)',
+            padding: '2px 8px',
+            borderRadius: 6,
+            background: 'rgba(0,0,0,0.78)',
+            color: '#fff',
+            fontSize: 13,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        >
+          {hoverName}
+        </div>
+      ) : null}
+    </div>
   );
 }

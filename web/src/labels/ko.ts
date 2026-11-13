@@ -288,7 +288,10 @@ export const dashboardMapTexts = {
   visitNearbyCount: (count: number) => `근처 ${count}곳`,
   /** 근처 회사 줄: "1.8km · 후보". 지도 대상이 아닌 회사는 "후보". */
   visitNearbyDistance: (km: number) => `${km}km`,
-  candidate: '후보',
+  /** 영업 후보 목록에 있지만 아직 관심 표시를 하지 않은 회사(#673, PM: "후보"는 관심 기업으로 읽혀 바꿈). */
+  candidate: '관심 전',
+  /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
+  fromAnchor: (name: string, km: number) => `${name}에서 ${km}km`,
   visitMore: (count: number) => `${count}곳 더 보기`,
   visitNone: '이 반경 안에 같이 들를 다른 후보가 없어요.',
   visitEmpty: '진행 중·관심 회사가 없어 묶을 곳이 없어요.',

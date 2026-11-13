@@ -1,6 +1,6 @@
 // 대시보드 지도 바탕을 네이버 지도로(#671). 실제 SDK 대신 window.naver.maps 가짜로 확인한다(실제 연결 확인 아님).
 // 약속 C4 화면 지도 규칙: SDK에는 좌표·원 중심·반지름과 모양 그림만, 회사 이름·단계·거리는 넘기지 않는다.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardMap from '../DashboardMap';
@@ -19,6 +19,7 @@ interface Call {
 function fakeSdk() {
   const calls: Call[] = [];
   const clicks = new Map<unknown, () => void>();
+  const listeners: { target: unknown; name: string; handler: () => void }[] = [];
   class LatLng {
     constructor(
       public la: number,
@@ -34,6 +35,7 @@ function fakeSdk() {
         calls.push({ kind: 'Map', args });
       }
       fitBounds = (...args: unknown[]) => calls.push({ kind: 'fitBounds', args });
+      getProjection = () => ({ fromCoordToOffset: () => ({ x: 120, y: 80 }) });
       destroy = () => calls.push({ kind: 'destroy', args: [] });
     },
     LatLng,
@@ -56,11 +58,12 @@ function fakeSdk() {
     Event: {
       addListener: (target: unknown, name: string, handler: () => void) => {
         calls.push({ kind: 'addListener', args: [name] });
-        clicks.set(target, handler);
+        if (name === 'click') clicks.set(target, handler);
+        listeners.push({ target, name, handler });
       },
     },
   };
-  return { api, calls, clicks };
+  return { api, calls, clicks, listeners };
 }
 
 function renderMap(clientId: string) {
@@ -134,6 +137,23 @@ describe('네이버 지도 바탕(#671)', () => {
     const callout = await screen.findByTestId('dashboard-map-callout');
     expect(within(callout).getByText(data.points[0].customerName)).toBeInTheDocument();
     expect(callout).toHaveTextContent(t.distance(data.points[0].distanceKm));
+  });
+
+  it('점에 마우스를 올리면 그 위에 회사 이름이 뜨고, 내리면 사라진다(#673)', async () => {
+    const sdk = fakeSdk();
+    window.naver = { maps: sdk.api as never };
+    renderMap('test-key');
+    await screen.findByTestId('dashboard-naver-map');
+    await waitFor(() => expect(sdk.clicks.size).toBe(4));
+    const over = sdk.listeners.filter((row) => row.name === 'mouseover');
+    expect(over).toHaveLength(4);
+    act(() => over[1].handler());
+    const tip = await screen.findByTestId('dashboard-map-hover');
+    expect(tip).toHaveTextContent(data.points[1].customerName);
+    expect(tip).toHaveStyle({ left: '120px' });
+    const out = sdk.listeners.filter((row) => row.name === 'mouseout');
+    act(() => out[1].handler());
+    expect(screen.queryByTestId('dashboard-map-hover')).not.toBeInTheDocument();
   });
 
   it('낭독기용 점 목록 단추로도 말풍선을 열 수 있다', async () => {
