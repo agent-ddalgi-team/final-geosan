@@ -21,6 +21,7 @@ from geosan.config.errors import FieldError, InputError
 from geosan.config.loader import LoadedDocument, load_document
 from geosan.config.validators import format_field_error, pydantic_errors_to_fields
 from geosan.rules.codes import ClassificationCode, ItemCode, Profile
+from geosan.rules.items import RELATION_STEPS
 from geosan.rules.models import ProfileItemConfig, RuleConfig
 
 HYPOTHESIS_NOTE = "기업 승인 전 가설"
@@ -127,9 +128,48 @@ def _semantic_errors(config: RuleConfig, document: LoadedDocument) -> list[Field
         if code not in core_items:
             add("coreEvidence.new.items", f"신규 프로필 8항목에 없는 코드 '{code}'입니다")
 
+    _check_call_signals(config, add)
+
     if len(config.dataset_kinds) != len(set(config.dataset_kinds)):
         add("datasetKinds", "같은 묶음 종류가 두 번 적혀 있습니다")
     return errors
+
+
+def _check_call_signals(config: RuleConfig, add: Callable[[str, str], None]) -> None:
+    """#685 통화 신호 대응표: 항목·신호 종류는 한 번씩, 시점 항목만, 단계 이름이 있어야 한다."""
+    items = {item.item_code: item for item in config.new_profile_items}
+    seen_items: set[str] = set()
+    seen_kinds: set[str] = set()
+    for index, rule in enumerate(config.call_signals):
+        base = f"callSignals[{index}]"
+        item = items.get(rule.item_code)
+        if item is None or item.decay == "NONE":
+            add(
+                f"{base}.itemCode",
+                f"신규 프로필의 시점 항목 코드여야 하는데 '{rule.item_code}'이 적혀 있습니다",
+            )
+        else:
+            for step in RELATION_STEPS.values():
+                if step not in item.match_rate_steps:
+                    add(
+                        f"{base}.itemCode",
+                        f"{rule.item_code}의 matchRateSteps에 '{step}' 단계가 있어야 합니다",
+                    )
+        if rule.item_code in seen_items:
+            add(f"{base}.itemCode", f"항목 코드 '{rule.item_code}'가 두 번 나옵니다")
+        seen_items.add(rule.item_code)
+        if rule.signal_kind in seen_kinds:
+            add(f"{base}.signalKind", f"신호 종류 '{rule.signal_kind}'가 두 번 나옵니다")
+        seen_kinds.add(rule.signal_kind)
+        seen_answers: set[tuple[str, str]] = set()
+        for answer_index, answer in enumerate(rule.answers):
+            pair = (answer.question_id, answer.answer_id)
+            if pair in seen_answers:
+                add(
+                    f"{base}.answers[{answer_index}]",
+                    f"같은 답 '{answer.question_id}={answer.answer_id}'가 두 번 나옵니다",
+                )
+            seen_answers.add(pair)
 
 
 def _check_items(

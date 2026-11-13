@@ -18,6 +18,7 @@ from geosan.config.loader import LoadedDocument, load_document
 from geosan.config.schemas import FileModel
 from geosan.config.validators import pydantic_errors_to_fields, scan_contacts
 from geosan.rules.codes import LostReasonCode, OutcomeStatus, SalesStep
+from geosan.rules.models import RuleConfig
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KST = ZoneInfo("Asia/Seoul")
@@ -246,6 +247,34 @@ def check_sales_questions_file(path: Path | str) -> SalesQuestionsCheck:
             document, None, pydantic_errors_to_fields(exc, document.data, document)
         )
     return SalesQuestionsCheck(document, questions, [])
+
+
+def call_signal_errors(
+    config: RuleConfig, questions: SalesQuestions, document: LoadedDocument | None = None
+) -> list[FieldError]:
+    """#685 규칙 설정 `callSignals`의 질문·보기 id가 꼬리 질문 파일에 실제로 있는지 본다.
+
+    `document`는 규칙 설정 파일(줄 번호용)이다. 보기를 회사 값에서 가져오는 질문(choices)은 못 쓴다.
+    """
+    errors: list[FieldError] = []
+    for index, rule in enumerate(config.call_signals):
+        for answer_index, answer in enumerate(rule.answers):
+            path = f"callSignals[{index}].answers[{answer_index}]"
+            question = questions.question(answer.question_id)
+            if question is None:
+                message = f"꼬리 질문 파일에 없는 질문 '{answer.question_id}'입니다"
+            elif question.choices:
+                message = (
+                    f"질문 '{answer.question_id}'는 보기를 회사 값에서 가져오는 질문(choices)이라 "
+                    "통화 신호 대응표에 쓸 수 없습니다"
+                )
+            elif question.option(answer.answer_id) is None:
+                message = f"질문 '{answer.question_id}'에 없는 보기 '{answer.answer_id}'입니다"
+            else:
+                continue
+            line = document.line_of(path) if document is not None else None
+            errors.append(FieldError(path=path, message=message, line=line))
+    return errors
 
 
 def load_sales_questions(file_setting: str) -> SalesQuestions:
