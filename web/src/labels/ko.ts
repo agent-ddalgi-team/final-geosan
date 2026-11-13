@@ -766,6 +766,25 @@ export const salesQuestionTexts = {
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
 } as const;
 
+/** 꼬리 질문의 공정·산업 확인(#652): 여러 개를 고르면 그 회사의 공정·산업이 확정된다. */
+export const salesChoiceTexts = {
+  unknown: '아직 모름',
+  aiTag: 'AI 제안',
+  caseFileTag: '사례 파일',
+  staffTag: '담당자 확정',
+  confirmedTag: '확정됨',
+  hint: '여러 개 고를 수 있습니다. AI 제안은 참고용이라 미리 골라 두지 않았습니다.',
+  lockedHint: '이미 확정된 공정은 그대로 둡니다.',
+  industryMax: (max: number) => `산업군은 ${max}개까지 고를 수 있습니다.`,
+  /** "저장하면 이 회사의 공정이 '아연도금'(으)로 확정되고 다른 AI 제안 4개는 빠집니다." */
+  processPreview: (names: string, dropped: number) =>
+    dropped > 0
+      ? `저장하면 이 회사의 공정이 '${names}'(으)로 확정되고 다른 AI 제안 ${dropped}개는 빠집니다.`
+      : `저장하면 이 회사의 공정이 '${names}'(으)로 확정됩니다.`,
+  industryPreview: (names: string) => `저장하면 이 회사의 산업이 '${names}'(으)로 확정됩니다.`,
+  unknownPreview: '아직 모름이면 저장해도 바뀌지 않고, 다음 접촉에서 다시 묻습니다.',
+} as const;
+
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
 /** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
@@ -1187,6 +1206,11 @@ export const salesAnalysisTexts = {
   olderExcluded: (count: number) => `그보다 오래된 성사·거절 ${count}곳은 표에서 빠졌습니다.`,
   countRule: (minSample: number) =>
     `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 한 회사가 공정·산업군이 여러 개면 각각 셉니다.`,
+  /** #652부터: 확정된 공정·산업군만 센다. 확인 전 회사는 "확인 전" 한 줄에 모인다. */
+  countRuleConfirmed: (minSample: number) =>
+    `표본이 ${minSample}건보다 적은 줄은 비율 없이 건수와 "표본 n건"만 보입니다. 담당자가 확인한 공정·산업군으로만 세고, 아직 확인 전인 회사는 "공정 확인 전"·"산업 확인 전" 줄에 모읍니다. 확정된 공정·산업군이 여러 개인 회사는 각각 셉니다.`,
+  /** 회사별 표에서 확정된 공정·산업군이 없을 때. */
+  unconfirmed: '확인 전',
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
   emptyAction: '영업 후보 목록으로',

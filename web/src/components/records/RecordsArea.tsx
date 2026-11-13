@@ -33,6 +33,8 @@ import {
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
+import { choiceAnswerIds } from './ChoiceQuestion';
+import type { ChoiceMarks } from './ChoiceQuestion';
 import {
   STEP_ORDER,
   SalesQuestionFields,
@@ -73,6 +75,10 @@ export interface RecordsAreaProps {
   salesStep?: SalesStepView | null;
   /** 접촉·단계 고치기를 저장해 세부 단계가 바뀌었을 수 있을 때 알린다(상세 다시 불러오기용). */
   onSalesStepChanged?: () => void;
+  /** 이 회사에 붙어 있는 공정·산업군 표시(#652). 꼬리 질문의 공정·산업 확인 보기에 붙인다. */
+  choiceMarks?: ChoiceMarks | null;
+  /** 꼬리 질문으로 공정·산업을 확정해 저장했을 때 알린다(점수·검토사항까지 상세 전체 다시 불러오기용). */
+  onCompanyConfirmed?: () => void;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
@@ -152,6 +158,8 @@ export default function RecordsArea({
   onRecorded,
   salesStep = null,
   onSalesStepChanged,
+  choiceMarks = null,
+  onCompanyConfirmed,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -174,6 +182,8 @@ export default function RecordsArea({
   const [questions, setQuestions] = useState<SalesQuestions | null>(null);
   const [questionsFailed, setQuestionsFailed] = useState(false);
   const [picked, setPicked] = useState<Record<string, string>>({});
+  // #652 여러 개를 고르는 질문(공정·산업 확인)에서 고른 값.
+  const [pickedMany, setPickedMany] = useState<Record<string, string[]>>({});
   const [memoLine, setMemoLine] = useState('');
   const [override, setOverride] = useState<SalesStep | null>(null);
   useEffect(() => {
@@ -300,12 +310,23 @@ export default function RecordsArea({
     // 그 답으로 보류·성사·거절과 거절 이유를 정한다(#643). 화면도 같은 값을 실어 보낸다.
     const status: OutcomeStatus = closing?.status ?? currentStatus ?? 'NOT_EXECUTED';
     // 지금 보이는 질문의 답만 보낸다(가려진 꼬리 질문에 남은 옛 선택은 보내지 않는다).
-    const answers = shownQuestions
-      .filter((question) => picked[question.questionId])
-      .map((question) => ({
-        questionId: question.questionId,
-        answerId: picked[question.questionId],
-      }));
+    // 여러 개를 고르는 질문(#652)은 고른 값마다 답 하나씩. "아직 모름"이면 보내지 않는다.
+    const choiceAnswers = shownQuestions
+      .filter((question) => question.choices)
+      .flatMap((question) =>
+        choiceAnswerIds(question, pickedMany[question.questionId] ?? [], choiceMarks).map(
+          (answerId) => ({ questionId: question.questionId, answerId }),
+        ),
+      );
+    const answers = [
+      ...shownQuestions
+        .filter((question) => !question.choices && picked[question.questionId])
+        .map((question) => ({
+          questionId: question.questionId,
+          answerId: picked[question.questionId],
+        })),
+      ...choiceAnswers,
+    ];
     const memo = memoLine.trim();
     const closingReason: Pick<OutcomeRequest, 'lostReasonCode' | 'reason'> = closing?.lostReasonCode
       ? {
@@ -333,8 +354,11 @@ export default function RecordsArea({
       setResult(null);
       setJudgmentCheck(null);
       setPicked({});
+      setPickedMany({});
       setMemoLine('');
-      onSalesStepChanged?.();
+      // 공정·산업을 확정했으면 점수·검토사항도 바뀌므로 상세 전체를 다시 불러오게 알린다(#652).
+      if (choiceAnswers.length > 0 && onCompanyConfirmed) onCompanyConfirmed();
+      else onSalesStepChanged?.();
     }
   }
 
@@ -562,6 +586,11 @@ export default function RecordsArea({
                 return next;
               })
             }
+            pickedMany={pickedMany}
+            onPickMany={(questionId, values) =>
+              setPickedMany((previous) => ({ ...previous, [questionId]: values }))
+            }
+            marks={choiceMarks}
             disabled={disabled}
           />
         ) : null}

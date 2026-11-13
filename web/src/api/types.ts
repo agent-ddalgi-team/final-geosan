@@ -379,6 +379,11 @@ export interface SalesQuestion {
   step: SalesStep | 'ALL';
   /** 앞 답이 이 보기 중 하나일 때만 보인다(꼬리). */
   showWhen?: { answers: Record<string, string[]> } | null;
+  /**
+   * 보기를 회사 값에서 가져오는 질문(#652). PROCESS = 거산 공정 목록, INDUSTRY = 설정 산업군.
+   * 여러 개를 고르고, answers는 서버가 그 목록으로 채워 준다. 없으면 보기 하나만 고르는 질문이다.
+   */
+  choices?: 'PROCESS' | 'INDUSTRY' | null;
   answers: SalesAnswerOption[];
 }
 
@@ -535,6 +540,8 @@ export interface DetailHeader {
   discoverySourceUrl?: string | null;
   /** 산업 꼬리표(AI 제안 또는 사람이 고친 값). */
   industries?: string[];
+  /** 산업군 출처(C1 industriesSource): AI 제안 / 담당자 확정 / 사례 파일. 없으면 null. */
+  industriesSource?: 'AI' | 'STAFF' | 'CASE_FILE' | null;
   /** 공장 등록 정보(#573). 없으면 "이 회사 한눈에"에 줄을 그리지 않는다. */
   factoryProfile?: FactoryProfile | null;
   isVirtual: boolean;
