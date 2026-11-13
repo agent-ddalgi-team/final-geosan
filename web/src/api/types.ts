@@ -441,6 +441,10 @@ export interface OpportunityCard {
   confirmedProcessCodes?: string[];
   /** 아직 확정되지 않은(AI 제안) 공정 수(#659). 확정이 없고 이 값이 있으면 검토사항 줄에 "확인 전"을 덧붙인다. */
   proposedProcessCount?: number;
+  /** 필수조건 가운데 확인 전인 조건(#659). 비어 있지 않으면 검토사항 줄에 서버 문장 대신 "확인할 것: …"으로 보인다. */
+  checkPoints?: string[];
+  /** 핵심 근거를 다시 확인해야 하는 이유(#659). 비어 있지 않으면 검토사항 줄에 "핵심 근거 부족: …"으로 보인다. */
+  coreEvidenceGaps?: string[];
   /** AI가 이 회사를 고른 이유 한 줄(#316, 후보 찾기로 들어온 회사만). 없으면 줄을 그리지 않는다. */
   pickReason?: string | null;
   /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */

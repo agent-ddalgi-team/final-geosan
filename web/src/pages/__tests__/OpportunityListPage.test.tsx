@@ -202,9 +202,9 @@ describe('OpportunityListPage', () => {
       cardRows.brochureTag,
     );
     expect(within(cards[0]).getByTestId('card-blocker')).toHaveTextContent(/^거래 관계 확인 전$/);
-    expect(within(cards[0]).getByTestId('card-classification')).toHaveTextContent(
-      '필수조건 확인 필요',
-    );
+    // 분류 꼬리표 "필수조건 확인 필요"는 무엇을 확인하라는 말인지 알 수 없어 카드에서 뺐다(#659).
+    expect(within(cards[0]).queryByTestId('card-classification')).not.toBeInTheDocument();
+    expect(cards[0]).not.toHaveTextContent('필수조건 확인 필요');
     expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^점수 --$/);
     expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
       'aria-label',
@@ -324,6 +324,140 @@ describe('OpportunityListPage', () => {
   });
 
   // 공정은 탭에서 선택란으로 바뀌었다(#361, 2026-11-06 PM 결정). 검사의 뜻은 그대로 두고 선택란 기준으로 본다.
+  describe('카드 검토사항 줄이 무엇을 확인할지 말한다 (#659)', () => {
+    const pending: OpportunityCard = {
+      ...apjeong,
+      classificationCode: 'FILTER_PENDING',
+      bucket: 'CHECK',
+      bucketBasis: 'REQUIRED_PENDING',
+      coreEvidenceRecheck: false,
+      blocker: { text: '필수조건 확인 필요', blocksApproval: true },
+      checkPoints: ['아노다이징 적용 부품의 소재'],
+      coreEvidenceGaps: [],
+    };
+
+    it('필수조건 확인 전 회사는 꼬리표 대신 검토사항 줄에 확인 전인 조건을 적는다', async () => {
+      mockedGet.mockResolvedValue(reply([pending]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).queryByTestId('card-classification')).not.toBeInTheDocument();
+      expect(within(card).queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
+      expect(card).not.toHaveTextContent('필수조건 확인 필요');
+      expect(card).not.toHaveTextContent('필수조건 확인 전');
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
+        /^확인할 것: 아노다이징 적용 부품의 소재$/,
+      );
+      expect(within(card).queryByTestId('card-core-gaps')).not.toBeInTheDocument();
+    });
+
+    it('확인 전인 조건이 많으면 앞 3개만 적고 "외 n개"로 줄인다', async () => {
+      const many: OpportunityCard = {
+        ...pending,
+        checkPoints: [
+          '거래 관계',
+          '거산 아노다이징 공정(거산 확인 전)',
+          '방산 납품 자격',
+          'RoHS',
+          'ISO 9001',
+        ],
+      };
+      mockedGet.mockResolvedValue(reply([many]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
+        /^확인할 것: 거래 관계 · 거산 아노다이징 공정\(거산 확인 전\) · 방산 납품 자격 외 2개$/,
+      );
+    });
+
+    it('핵심 근거 재확인 회사는 꼬리표 두 개 대신 왜 모자란지를 검토사항 줄에 적는다', async () => {
+      const recheck: OpportunityCard = {
+        ...apjeong,
+        classificationCode: 'WATCH',
+        bucket: 'CHECK',
+        bucketBasis: 'EVIDENCE_RECHECK',
+        coreEvidenceRecheck: true,
+        blocker: { text: '없음 — 지금 단계 필수 요구 통과', blocksApproval: false },
+        checkPoints: [],
+        coreEvidenceGaps: ['표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐'],
+      };
+      mockedGet.mockResolvedValue(reply([recheck]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
+      expect(card).not.toHaveTextContent('핵심 근거 재확인');
+      // 다른 분류 꼬리표는 그대로 보인다.
+      expect(within(card).getByTestId('card-classification')).toHaveTextContent('동향 모니터링');
+      // "없음 — …" 뒤에 붙이면 말이 어긋나므로 모자란 이유만 보인다.
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
+        /^핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐$/,
+      );
+      expect(card).not.toHaveTextContent('없음 — 지금 단계 필수 요구 통과');
+    });
+
+    it('둘 다 해당하고 AI 제안만 있는 회사는 확인할 것 → 공정 확인 전 → 핵심 근거 순으로 한 줄에 잇는다', async () => {
+      const both: OpportunityCard = {
+        ...pending,
+        coreEvidenceRecheck: true,
+        processCodes: ['ANODIZING', 'ZINC_PLATING'],
+        confirmedProcessCodes: [],
+        proposedProcessCount: 2,
+        checkPoints: ['공정 2개 적용 부품의 소재'],
+        coreEvidenceGaps: [
+          '표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐',
+          '소재와 보유 공정 일치 근거 없음',
+          '대조한 거산 아노다이징 값이 거산 확인 전',
+        ],
+      };
+      mockedGet.mockResolvedValue(reply([both], { processCounts: [], total: 1 }));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(card).not.toHaveTextContent('핵심 근거 재확인');
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(
+        /^확인할 것: 공정 2개 적용 부품의 소재$/,
+      );
+      expect(within(card).getByTestId('card-process-unconfirmed')).toHaveTextContent(
+        '맞는 공정이 아직 확인 전 · AI 제안 2개',
+      );
+      expect(within(card).getByTestId('card-core-gaps')).toHaveTextContent(
+        '핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐 · 소재와 보유 공정 일치 근거 없음 외 1개',
+      );
+      expect(
+        within(card).getByTitle(
+          '확인할 것: 공정 2개 적용 부품의 소재 · 맞는 공정이 아직 확인 전 · AI 제안 2개 · 핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거: 약한 추정뿐 · 소재와 보유 공정 일치 근거 없음 외 1개',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('서버가 구체적인 말을 주지 않으면(재료 없음·옛 응답) 서버 문장을 그대로 보인다', async () => {
+      const plain: OpportunityCard = { ...pending };
+      delete plain.checkPoints;
+      delete plain.coreEvidenceGaps;
+      mockedGet.mockResolvedValue(reply([plain]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(/^필수조건 확인 필요$/);
+      expect(within(card).queryByTestId('card-core-gaps')).not.toBeInTheDocument();
+    });
+
+    it('평소 회사는 분류·묶음 이유 꼬리표와 검토사항 문장이 그대로다', async () => {
+      const usual: OpportunityCard = {
+        ...apjeong,
+        bucket: 'NOW',
+        bucketBasis: 'REQUIRED_PASSED',
+        checkPoints: [],
+        coreEvidenceGaps: [],
+      };
+      mockedGet.mockResolvedValue(reply([usual]));
+      renderPage();
+      const card = await screen.findByTestId('opportunity-card');
+      expect(within(card).getByTestId('card-classification')).toHaveTextContent(
+        '지금 바로 연락 검토',
+      );
+      expect(within(card).getByTestId('card-bucket-basis')).toHaveTextContent('필수조건 통과');
+      expect(within(card).getByTestId('card-blocker')).toHaveTextContent(apjeong.blocker.text);
+    });
+  });
+
   describe('공정·지역·산업 선택란 (#210, #361)', () => {
     // 처음 열 때의 규칙이 바뀌었다(#368 → #383, 2026-11-07 PM 결정): 프로그램이 첫 공정을 대신 고르지 않고,
     // 공정을 고르기 전에는 공정별 묶음으로 보인다. 자세한 검사는 OpportunityListPage.header.test.tsx에 있다.

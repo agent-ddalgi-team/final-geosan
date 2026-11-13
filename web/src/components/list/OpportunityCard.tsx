@@ -17,7 +17,6 @@ import {
   factoryProfileLabels,
   classificationTone,
   contactBuckets,
-  coreEvidenceRecheckLabel,
   frame,
   labelFor,
   listFilters,
@@ -71,8 +70,20 @@ export default function OpportunityCard({
     card.classificationCode in classificationTone
       ? classificationTone[card.classificationCode]
       : 'neutral';
-  // 막는 조건은 서버 문구 그대로 보인다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
-  const blocker = card.blocker.text;
+  // 검토사항 줄(#659, PM 지시 2026-11-13): 서버가 "무엇이 확인 전인지"·"왜 핵심 근거를 다시 봐야 하는지"를
+  // 주면 그 말을 보인다. 없으면 서버 문구 그대로다. "(승인 …)" 꼬리표를 화면에서 덧붙이지 않는다(#160, #171).
+  const checkPoints = card.checkPoints ?? [];
+  const coreGaps = card.coreEvidenceGaps ?? [];
+  const coreGapsText = coreGaps.length > 0 ? cardRows.coreEvidenceGaps(coreGaps) : null;
+  // 필수조건은 통과했는데 핵심 근거만 모자란 회사는 "없음 — …" 대신 모자란 이유를 앞에 보인다.
+  const coreGapsOnly =
+    coreGapsText !== null && checkPoints.length === 0 && !card.blocker.blocksApproval;
+  const blocker = coreGapsOnly
+    ? coreGapsText
+    : checkPoints.length > 0
+      ? cardRows.checkPoints(checkPoints)
+      : card.blocker.text;
+  const coreGapsSuffix = coreGapsOnly ? null : coreGapsText;
   // 공정 꼬리표는 확정된 공정만(#659, PM 결정 2026-11-13). AI가 제안만 한 공정은 꼬리표로 보이지 않고,
   // 확정된 공정이 하나도 없으면 검토사항 줄 뒤에 "맞는 공정이 아직 확인 전 · AI 제안 n개"를 덧붙인다.
   const confirmedProcessCodes = card.confirmedProcessCodes ?? [];
@@ -81,7 +92,12 @@ export default function OpportunityCard({
     confirmedProcessCodes.length === 0 && proposedProcessCount > 0
       ? cardRows.processUnconfirmed(proposedProcessCount)
       : null;
-  const blockerLine = processUnconfirmed ? `${blocker} · ${processUnconfirmed}` : blocker;
+  const blockerLine = [blocker, processUnconfirmed, coreGapsSuffix]
+    .filter((part) => part !== null)
+    .join(' · ');
+  // 머리 줄에서 빼는 꼬리표(#659): "필수조건 확인 필요"·"필수조건 확인 전"·"핵심 근거 재확인"은 무엇을
+  // 확인하라는 말인지 알 수 없어 보이지 않고, 검토사항 줄이 대신 말한다. 묶음 제목은 그대로다.
+  const showClassification = card.classificationCode !== 'FILTER_PENDING';
   // 영업 단계 꼬리표(U5): 서버가 카드 records.outcome.status를 주면 보인다. 미접촉은 꼬리표를 달지 않는다.
   const stageStatus = card.records.outcome?.status ?? null;
   // 후보 찾기로 들어온 회사(#316): 고른 이유가 있고 점수가 아직 없으면 "점수 전"으로 보인다.
@@ -100,7 +116,12 @@ export default function OpportunityCard({
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
   // 세 묶음(#610): 그 묶음에 든 이유 꼬리표와, 영업 결과로 순서가 움직였을 때만 보이는 이유 한 줄.
   // 조정 단계가 0이면(표본 부족이거나 성사·거절이 서로 지움) 순서가 그대로라 줄을 보이지 않는다.
-  const bucketBasis = card.bucketBasis ? contactBuckets.basis[card.bucketBasis] : null;
+  const bucketBasis =
+    card.bucketBasis &&
+    card.bucketBasis !== 'REQUIRED_PENDING' &&
+    card.bucketBasis !== 'EVIDENCE_RECHECK'
+      ? contactBuckets.basis[card.bucketBasis]
+      : null;
   const adjust = card.rankAdjust && card.rankAdjust.level !== 0 ? card.rankAdjust : null;
   const adjustLine = adjust
     ? contactBuckets.adjustLine({
@@ -140,17 +161,16 @@ export default function OpportunityCard({
           >
             {card.title}
           </Typography.Title>
-          <span
-            role="group"
-            aria-label={`분류: ${classification}`}
-            data-testid="card-classification"
-          >
-            <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
-              {classification}
-            </StatusTag>
-          </span>
-          {card.coreEvidenceRecheck ? (
-            <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
+          {showClassification ? (
+            <span
+              role="group"
+              aria-label={`분류: ${classification}`}
+              data-testid="card-classification"
+            >
+              <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
+                {classification}
+              </StatusTag>
+            </span>
           ) : null}
           {bucketBasis ? (
             <StatusTag tone="neutral" data-testid="card-bucket-basis">
@@ -270,6 +290,12 @@ export default function OpportunityCard({
             <span data-testid="card-process-unconfirmed">
               {' · '}
               {processUnconfirmed}
+            </span>
+          ) : null}
+          {coreGapsSuffix ? (
+            <span data-testid="card-core-gaps">
+              {' · '}
+              {coreGapsSuffix}
             </span>
           ) : null}
         </Row>

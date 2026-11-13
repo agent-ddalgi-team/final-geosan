@@ -283,6 +283,18 @@ export const cardRows = {
   blocker: '검토사항',
   /** 확정된 공정이 없고 AI 제안만 있는 회사의 검토사항 줄 뒤에 붙는다(#659). "맞는 공정이 아직 확인 전 · AI 제안 5개" */
   processUnconfirmed: (count: number) => `맞는 공정이 아직 확인 전 · AI 제안 ${count}개`,
+  /**
+   * 필수조건 가운데 확인 전인 조건(#659, 서버 checkPoints). 검토사항 줄에 서버 문장 대신 보인다.
+   * 앞 3개만 적고 나머지는 "외 n개". 예: "확인할 것: 거래 관계 · 아노다이징 적용 부품의 소재"
+   */
+  checkPoints: (points: string[]) =>
+    `확인할 것: ${points.slice(0, 3).join(' · ')}${points.length > 3 ? ` 외 ${points.length - 3}개` : ''}`,
+  /**
+   * 핵심 근거를 다시 확인해야 하는 이유(#659, 서버 coreEvidenceGaps). 앞 2개만 적고 나머지는 "외 n개".
+   * 예: "핵심 근거 부족: 표면처리가 필요한 제품·부품 생산 근거 없음"
+   */
+  coreEvidenceGaps: (gaps: string[]) =>
+    `핵심 근거 부족: ${gaps.slice(0, 2).join(' · ')}${gaps.length > 2 ? ` 외 ${gaps.length - 2}개` : ''}`,
   nextAction: '후속 조치',
   rankPrefix: '순위',
   scorePrefix: '점수',
