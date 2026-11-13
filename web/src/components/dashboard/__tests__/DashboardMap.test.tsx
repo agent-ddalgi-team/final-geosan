@@ -17,7 +17,7 @@ const data = mapFixture.data as unknown as MapData;
 function renderMap(value: MapData) {
   return render(
     <MemoryRouter>
-      <DashboardMap data={value} />
+      <DashboardMap data={value} mapClientId="" />
     </MemoryRouter>,
   );
 }
