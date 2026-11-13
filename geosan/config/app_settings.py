@@ -223,6 +223,8 @@ class BrandSettings(FileModel):
     brand_name: str = Field(min_length=1)
     color_primary: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
     demo_label: str | None = None
+    # #274: 시연용 DB 표시. 시연용 설정 파일에만 true로 적는다(배포 설정에서는 서버 시작 거부).
+    demo: bool = Field(default=False, strict=True)
 
 
 class AccessProtectionSettings(FileModel):
@@ -611,6 +613,17 @@ def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
     filled = {**ingestion, **{key: defaults[key] for key in missing}}
     return {**data, "ingestion": filled}
+
+
+def is_demo_database(session: Session) -> bool:
+    """이 DB의 앱 설정 사본에 시연 표시(brand.demo)가 있는가(#274). 사본이 없으면 False.
+
+    다른 설정 칸이 옛 모양이어도 판단이 흔들리지 않게 brand 행 하나만 읽는다.
+    """
+    from geosan.config.models import AppSetting
+
+    row = session.get(AppSetting, "brand")
+    return isinstance(row.value if row else None, dict) and row.value.get("demo") is True
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"
