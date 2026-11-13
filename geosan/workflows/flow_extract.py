@@ -18,7 +18,8 @@ from geosan.evaluation.call_inputs import call_item_codes
 from geosan.evaluation.proposals import store_item_proposals, store_process_link_proposals
 from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.evidence.contacts import extract_main_phone, scrub_contacts
-from geosan.evidence.extraction import extract_evidence
+from geosan.evidence.extraction import Extraction, extract_evidence
+from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.public_items import approve_pages, check_opportunity
 from geosan.evidence.reader import (
     MAX_BYTES,
@@ -34,6 +35,7 @@ from geosan.opportunity.models import Customer, Opportunity
 from geosan.opportunity.queries import store_company_research
 from geosan.questions.models import ConfirmationQuestion
 from geosan.questions.store import upsert_question
+from geosan.rules.codes import Certainty
 from geosan.rules.models import QuestionCandidate
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import evaluate_in_session
@@ -72,6 +74,14 @@ def run_extract(
                 customer.main_phone_confirmed_at,
             )
             customer_id = customer.customer_id
+            # #511: 저장된 주소가 공식 홈페이지가 아닌 공개 페이지(확인 필요)인가.
+            # 붙여넣은 본문도 그 페이지의 글이므로 같은 상한을 적용한다.
+            unofficial_page = (
+                unofficial_page_kind(
+                    customer.homepage_status, customer.homepage_source, customer.homepage_reason
+                )
+                is not None
+            )
             url = validate_url(url or customer.homepage_url or "")
             # #286: 점수 8항목(규칙 설정)과 활성 묶음 공정 코드를 AI에 알려 제안을 받는다.
             # #685: 통화에서 확인한 신호로 채우는 항목(구매·외주 의향, 관심)은 AI에 묻지 않는다.
@@ -103,13 +113,15 @@ def run_extract(
                 *fetch_more(
                     first,
                     deadline,
-                    extra_pages=discovery.extra_pages,
+                    # #511: 공개 페이지는 그 1장만 읽는다(같은 주소의 남의 글로 넘어가지 않게).
+                    extra_pages=0 if unofficial_page else discovery.extra_pages,
                     hints=discovery.extra_page_hints,
                     max_chars=discovery.extra_page_max_chars,
                 ),
             ]
         phone, phone_url = None, None
-        for page in pages:
+        # #511: 공개 페이지의 번호는 회사 대표번호인지 알 수 없어 뽑지 않는다.
+        for page in [] if unofficial_page else pages:
             phone, phone_url = extract_main_phone(
                 page.text, page.url, settings.main_phone.allowed_prefixes
             )
@@ -124,6 +136,8 @@ def run_extract(
                 item_catalog=item_catalog,
                 process_codes=process_codes,
             )
+        if unofficial_page:
+            result = cap_to_weak(result)
         remaining(deadline)
         with session_scope() as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
@@ -219,6 +233,28 @@ def run_extract(
         )
         logger.error("근거 추출 실패: ref=%s type=%s", error.ref, type(exc).__name__)
         return FlowResult.failed(error)
+
+
+def cap_to_weak(result: Extraction) -> Extraction:
+    """공식이 아닌 공개 페이지에서 온 근거·점수 제안의 확실도를 약한 추정까지만 둔다 (#511, C9).
+
+    확인·강한 추정으로 온 값만 약한 추정으로 낮춘다. 미확인은 그대로다. 점수 규칙은 건드리지 않는다.
+    """
+    strong = {"CONFIRMED", "STRONG"}
+    return result.model_copy(
+        update={
+            "evidence": [
+                item.model_copy(update={"certainty_proposed": Certainty.WEAK})
+                if item.certainty_proposed in strong
+                else item
+                for item in result.evidence
+            ],
+            "item_input_proposals": [
+                item.model_copy(update={"certainty_proposed": "WEAK"})
+                for item in result.item_input_proposals
+            ],
+        }
+    )
 
 
 def _source_finder(pages: list[Page]):

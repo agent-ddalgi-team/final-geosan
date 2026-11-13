@@ -470,6 +470,14 @@ class DetailHeader(_ApiModel):
     homepage_source: Literal["AI", "STAFF", "CASE_FILE"] | None = Field(
         default=None, description="홈페이지 주소를 누가 정했나: AI·담당자·사례 파일 (C1, #331)"
     )
+    homepage_page_kind: Literal["BLOG", "SNS", "SHOP", "PUBLIC_PAGE"] | None = Field(
+        default=None,
+        description=(
+            "저장된 주소가 공식 홈페이지가 아니라 대신 찾은 공개 페이지일 때 그 종류"
+            "(회사 블로그·SNS·쇼핑몰·공공 페이지). "
+            "이때 homepageStatus는 NEEDS_CONFIRMATION (C1, #511)"
+        ),
+    )
     # 후보 찾기(#221, C1 "카드·상세에 더하는 칸"). 카드와 같은 이름·뜻.
     discovery_source: DiscoverySource = Field(
         default=DiscoverySource.CASE_FILE, description="회사가 목록에 들어온 길 (C1, #342)"
