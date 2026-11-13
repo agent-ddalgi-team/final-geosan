@@ -19,12 +19,12 @@ from typing import Literal
 
 import typer
 from pydantic import Field, ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
-from geosan.api.routes.records import save_outcome
+from geosan.api.routes.records import latest_outcome, save_outcome
 from geosan.api.schemas import OutcomeAnswerInput, OutcomeRequest
 from geosan.config.app_settings import is_demo_database
 from geosan.config.errors import AppError, FieldError
@@ -34,7 +34,6 @@ from geosan.config.registry import REPO_ROOT
 from geosan.config.schemas import STAFF_KEY_PATTERN, FileModel
 from geosan.config.validators import format_field_error, pydantic_errors_to_fields, scan_contacts
 from geosan.opportunity.models import Opportunity
-from geosan.records.models import Outcome
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import today_in_seoul
@@ -133,10 +132,8 @@ def _seed_company(db_path: Path, opp_id: str, company: DemoCompany, staff: str) 
     """회사 한 곳을 한 트랜잭션으로 넣는다. 이미 기록이 있으면 None, 넣었으면 마지막 큰 단계."""
     today = today_in_seoul()
     with session_scope(db_path) as session:
-        existing = session.scalar(
-            select(func.count()).select_from(Outcome).where(Outcome.opp_id == opp_id)
-        )
-        if existing:
+        # 화면의 "현재 영업 기록"과 같은 조회를 쓴다(잘못 입력으로 표시한 행은 세지 않는다).
+        if latest_outcome(session, opp_id) is not None:
             return None
         status = "IN_PROGRESS"
         for contact in company.contacts:
