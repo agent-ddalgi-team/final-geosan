@@ -54,6 +54,7 @@ const ANALYSIS: SalesAnalysis = {
     },
   ],
   total: stats(),
+  aiProposalHit: { process: { confirmedCount: 0, hitCount: 0, ratio: null } },
   bySalesStep: [
     {
       step: 'NOT_REACHED',
@@ -322,6 +323,38 @@ describe('영업 분석 화면 (#608)', () => {
       expect(within(table).getByTestId('analysis-industry-row')).toHaveTextContent(
         '이 중 다른 산업에도 든 회사 1곳',
       );
+    });
+  });
+
+  describe('AI 제안 적중 (#678)', () => {
+    it('담당자가 공정을 확정한 회사 가운데 AI 제안 안에서 고른 수를 건수로 보인다(표본이 적으면 비율 없음)', async () => {
+      installFetch({
+        ...ANALYSIS,
+        aiProposalHit: { process: { confirmedCount: 3, hitCount: 2, ratio: null } },
+      });
+      renderPage();
+      const line = await screen.findByTestId('analysis-proposal-hit');
+      expect(line).toHaveTextContent('AI 제안 적중 — 공정 2/3 (담당자가 공정을 확정한 회사 기준');
+      expect(line.textContent).not.toContain('%');
+      expect(line.textContent).not.toContain('산업');
+    });
+
+    it('표본이 기준 이상이면 서버가 준 비율을 함께 보인다', async () => {
+      installFetch({
+        ...ANALYSIS,
+        aiProposalHit: { process: { confirmedCount: 15, hitCount: 12, ratio: 0.8 } },
+      });
+      renderPage();
+      expect(await screen.findByTestId('analysis-proposal-hit')).toHaveTextContent(
+        'AI 제안 적중 — 공정 12/15 (80%)',
+      );
+    });
+
+    it('담당자가 확정한 회사가 0곳이면 줄을 숨긴다', async () => {
+      installFetch(ANALYSIS);
+      renderPage();
+      await screen.findByTestId('analysis-process-table');
+      expect(screen.queryByTestId('analysis-proposal-hit')).not.toBeInTheDocument();
     });
   });
 

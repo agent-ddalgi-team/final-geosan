@@ -1340,6 +1340,13 @@ export const salesAnalysisTexts = {
   overlapIndustry: '산업',
   /** "이 중 다른 공정에도 든 회사 2곳" */
   overlap: (kind: string, count: number) => `이 중 다른 ${kind}에도 든 회사 ${count}곳`,
+  /** AI 제안 적중 한 줄(#678). 지금은 공정만 센다. */
+  hitProcess: '공정',
+  /** "공정 12/15" — 적중/확정한 회사 */
+  hitCount: (kind: string, hit: number, confirmed: number) => `${kind} ${hit}/${confirmed}`,
+  hitWithRatio: (count: string, percent: number) => `${count} (${percent}%)`,
+  hitLine: (parts: string) =>
+    `AI 제안 적중 — ${parts} (담당자가 공정을 확정한 회사 기준, 확정한 공정이 모두 AI 제안 안에 있던 회사 수)`,
   /** 단계별 접촉 표(#684). */
   stepTitle: '단계별 접촉',
   stepTableLabel: '단계별 접촉 분석표',

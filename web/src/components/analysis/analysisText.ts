@@ -4,6 +4,7 @@ import type {
   AnalysisStats,
   CompanyAnalysisRow,
   ContactMethodCode,
+  ProposalHit,
   StepAnalysisRow,
 } from '../../api/salesAnalysis';
 import {
@@ -74,6 +75,14 @@ export function stepRatioText(row: StepAnalysisRow): string {
     return ratio === null ? [] : [texts.reachRatio(contactMethodLabels[method], percent(ratio))];
   });
   return parts.length > 0 ? parts.join(' · ') : texts.none;
+}
+
+/** (#678) "AI 제안 적중 — 공정 12/15 (80%) (…)" — 표본이 적으면 비율 없이 건수만, 확정한 회사가 없으면 null. */
+export function proposalHitText(process: ProposalHit): string | null {
+  if (process.confirmedCount <= 0) return null;
+  const count = texts.hitCount(texts.hitProcess, process.hitCount, process.confirmedCount);
+  const part = process.ratio === null ? count : texts.hitWithRatio(count, percent(process.ratio));
+  return texts.hitLine(part);
 }
 
 export function avgToWonText(stats: AnalysisStats): string {

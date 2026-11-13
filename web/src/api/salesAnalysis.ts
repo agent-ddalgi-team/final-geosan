@@ -75,6 +75,14 @@ export interface CompanyAnalysisRow {
   daysToOutcome: number | null;
 }
 
+/** (#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수. */
+export interface ProposalHit {
+  confirmedCount: number;
+  hitCount: number;
+  /** 확정한 회사 수가 설정 기준보다 적으면 null: 화면은 "12/15"처럼 건수만 보인다. */
+  ratio: number | null;
+}
+
 export interface SalesAnalysis {
   asOf: string;
   basis: {
@@ -89,6 +97,8 @@ export interface SalesAnalysis {
   total: AnalysisStats;
   /** (#684) 단계별 접촉. 접촉도 도달도 없는 단계는 없다. */
   bySalesStep: StepAnalysisRow[];
+  /** (#678) AI 제안 적중. 지금은 공정만 센다(산업군은 확정 전 AI 제안이 저장에 남지 않는다). */
+  aiProposalHit: { process: ProposalHit };
 }
 
 export function getSalesAnalysis(signal?: AbortSignal): Promise<Envelope<SalesAnalysis>> {

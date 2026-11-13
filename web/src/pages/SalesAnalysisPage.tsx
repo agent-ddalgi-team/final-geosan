@@ -13,6 +13,7 @@ import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
 import ProcessAnalysisTable from '../components/analysis/ProcessAnalysisTable';
 import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
+import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { peersArea, salesAnalysisTexts as texts } from '../labels/ko';
@@ -98,6 +99,8 @@ export default function SalesAnalysisPage() {
   else if (current.error) state = 'error';
   else if (!data || data.companies.length === 0) state = 'empty';
 
+  // AI 제안 적중(#678): 담당자가 공정을 확정한 회사가 없으면 줄을 숨긴다.
+  const hitText = data ? proposalHitText(data.aiProposalHit.process) : null;
   const processNames: Record<string, string> = {};
   for (const row of data?.byProcess ?? []) {
     if (row.processCode) processNames[row.processCode] = row.processName;
@@ -141,6 +144,11 @@ export default function SalesAnalysisPage() {
               <p data-testid="analysis-count-rule" style={secondary}>
                 {texts.countRuleConfirmed(data.basis.minSampleForRatio)}
               </p>
+              {hitText ? (
+                <p data-testid="analysis-proposal-hit" style={{ margin: 0 }}>
+                  {hitText}
+                </p>
+              ) : null}
             </div>
             <section aria-labelledby="analysis-process-title" style={sectionStyle}>
               <h2 id="analysis-process-title" style={titleStyle}>
