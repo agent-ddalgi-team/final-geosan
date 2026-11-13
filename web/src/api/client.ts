@@ -168,8 +168,10 @@ export interface ListFilters {
   opinion?: string | null;
   /** 회사·기회·산업군 검색어. */
   q?: string | null;
-  /** 정렬(#516). `recent`면 들어온 시각 최신 순("최근 들어온 순"). 안 주면 추천 순. */
+  /** 정렬(#516). `recent`면 들어온 시각 최신 순("최근 들어온 순"), `distance`면 가까운 순(#666). 안 주면 추천 순. */
   sort?: string | null;
+  /** 이 거리(km) 안의 회사만(#666). 값은 `/config/ui`의 distanceFilterPresetsKm 가운데 하나. */
+  maxDistanceKm?: string | null;
 }
 
 export function getOpportunities(

@@ -355,6 +355,10 @@ export default function DetailGlance({
           {address || factoryLine ? (
             <div style={line} data-testid="glance-factory-profile">
               <span>{[address, factoryLine].filter((part) => part).join(' · ')}</span>
+              {/* 주소와 나란히 거산 본사까지의 직선거리(#666, PM 요청: 주소와 같이 보고 비교). 계산한 숫자라 확인 표시는 없다. */}
+              {address && distance !== null ? (
+                <strong data-testid="detail-distance">{companySummary.distance(distance)}</strong>
+              ) : null}
               {factoryLine && header.factoryProfile ? (
                 <span style={secondary}>
                   (
@@ -522,11 +526,6 @@ export default function DetailGlance({
               texts.pending
             )}
           </FitLine>
-          {distance !== null ? (
-            <FitLine label={texts.distance} testId="company-distance">
-              {companySummary.distance(distance)}
-            </FitLine>
-          ) : null}
         </Row>
 
         <Row label={texts.evidence} testId="glance-evidence">

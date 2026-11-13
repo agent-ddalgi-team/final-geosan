@@ -317,6 +317,8 @@ export interface ConfigUi {
   activeDatasetKind: DatasetKind;
   accessProtectionEnabled: boolean;
   ruleVersion: string;
+  /** 목록 거리 범위 선택지(km, #666). 설정 distanceFilterPresetsKm 그대로. 옛 응답에는 없다. */
+  distanceFilterPresetsKm?: number[];
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
@@ -437,6 +439,8 @@ export interface FactoryProfile {
 }
 
 export interface OpportunityCard {
+  /** 거산 본사에서의 직선거리(km, #222·#666). 좌표를 못 찾으면 null이고 카드에 보이지 않는다. */
+  distanceKm?: number | null;
   /** 이 회사 주소의 시·군(예: 아산시). 주소가 없으면 null이고 카드는 "지역 미확인"을 보인다(#210). */
   region?: string | null;
   /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */

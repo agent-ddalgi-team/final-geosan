@@ -174,11 +174,13 @@ describe('DetailGlance (#674)', () => {
       'data-mark',
       'confirmed',
     );
-    // 거리는 계산한 숫자라 표시가 없다.
+    // 거리는 주소 바로 옆에 둔다(#666 PM 결정: 주소와 같이 보고 비교). 계산한 숫자라 표시가 없다.
+    const addressLine = within(box).getByTestId('glance-factory-profile');
+    expect(within(addressLine).getByTestId('detail-distance')).toHaveTextContent('거산에서 42km');
     expect(
-      within(within(box).getByTestId('company-distance')).queryByTestId('glance-fit-mark'),
+      within(within(addressLine).getByTestId('detail-distance')).queryByTestId('glance-fit-mark'),
     ).not.toBeInTheDocument();
-    expect(within(box).getByTestId('company-distance')).toHaveTextContent('거산에서 42km');
+    expect(within(box).queryByTestId('company-distance')).not.toBeInTheDocument();
 
     expect(within(box).getByTestId('glance-evidence-text')).toHaveTextContent(
       '근거 5건 · 홈페이지 있음 · 적합도 상 · 조사 11/10 (3일 전)',
@@ -231,7 +233,7 @@ describe('DetailGlance (#674)', () => {
     expect(within(box).getByTestId('glance-not-researched')).toHaveTextContent('아직 조사 전');
     expect(within(box).queryByTestId('glance-factory-profile')).not.toBeInTheDocument();
     expect(within(box).queryByTestId('company-phone')).not.toBeInTheDocument();
-    expect(within(box).queryByTestId('company-distance')).not.toBeInTheDocument();
+    expect(within(box).queryByTestId('detail-distance')).not.toBeInTheDocument();
     // AI가 제안만 한 공정은 초록이 아니라 중립 표시 ○ "AI 제안 · 확인 전"이다.
     const process = within(box).getByTestId('glance-fit-process');
     expect(process).toHaveTextContent(/^공정아연도금, 아노다이징 ○AI 제안 · 확인 전$/);
