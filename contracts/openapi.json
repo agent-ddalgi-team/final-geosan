@@ -789,6 +789,45 @@
         "title": "DashboardCounts",
         "type": "object"
       },
+      "DashboardMap": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "center": {
+            "$ref": "#/components/schemas/MapCenter"
+          },
+          "missingCoordinates": {
+            "title": "Missingcoordinates",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/MapPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "ringsKm": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ringskm",
+            "type": "array"
+          }
+        },
+        "required": [
+          "center",
+          "ringsKm",
+          "points",
+          "missingCoordinates",
+          "asOf"
+        ],
+        "title": "DashboardMap",
+        "type": "object"
+      },
       "DatasetKind": {
         "enum": [
           "VIRTUAL_REVIEWED",
@@ -1317,6 +1356,21 @@
           "data"
         ],
         "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_DashboardMap_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardMap"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DashboardMap]",
         "type": "object"
       },
       "Envelope_Dashboard_": {
@@ -2712,6 +2766,67 @@
           "mainPhoneConfirmedBy"
         ],
         "title": "MainPhoneConfirmResponse",
+        "type": "object"
+      },
+      "MapCenter": {
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "MapCenter",
+        "type": "object"
+      },
+      "MapPoint": {
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "INTERESTED",
+              "IN_PROGRESS",
+              "WON_THIS_YEAR"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lat",
+          "lng",
+          "oppId",
+          "customerName",
+          "group",
+          "distanceKm"
+        ],
+        "title": "MapPoint",
         "type": "object"
       },
       "Meta": {
@@ -5631,6 +5746,25 @@
         "summary": "Dashboard"
       }
     },
+    "/api/v1/dashboard/map": {
+      "get": {
+        "description": "지도 전용 읽기. 내부 메모·연락처·대표번호·주소는 응답 모델에 없다.",
+        "operationId": "dashboard_map_api_v1_dashboard_map_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DashboardMap_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dashboard Map"
+      }
+    },
     "/api/v1/export/xlsx": {
       "get": {
         "description": "목록 조회와 같은 조건을 받아 쪽 나눔 없이 전부 담는다.\n\n대시보드 칸 조건(`filter`)은 목록 조회가 주소에서 직접 읽는다.\n설정 `export.xlsxEnabled`가 꺼져 있으면 아무것도 읽지 않고 422 kind EXPORT_DISABLED로\n거부한다(빈 파일을 성공처럼 주지 않는다).",
@@ -6131,6 +6265,23 @@
               "default": "rank",
               "title": "Sort",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxDistanceKm",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Maxdistancekm"
             }
           }
         ],
