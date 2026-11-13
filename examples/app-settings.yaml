@@ -165,3 +165,17 @@ industries:
   - 기계·설비
   - 건설·건축자재
   - 기타
+
+# 2026-11-13 확인 #222: 공공좌표만 저장, 네이버는 한 요청에서만 사용. 키는 환경 변수.
+geosan:
+  address: "충청남도 천안시 서북구 성거읍 봉주로 303-1"
+  lat: null
+  lng: null
+geocoding:
+  provider: JUSO
+  enabled: false
+  dailyCallLimit: 10000
+  locationCsvFiles: []
+  locationCsvBaseDate: null
+  naverFallbackEnabled: false
+distanceFilterPresetsKm: [30, 50, 100]

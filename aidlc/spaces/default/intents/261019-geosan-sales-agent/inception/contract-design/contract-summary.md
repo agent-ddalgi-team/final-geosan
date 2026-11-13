@@ -662,11 +662,12 @@ check_transfer:
       - (추가 2026-11-05 밤 PM 결정, 후보 찾기 웹 검색 #313·#314) 후보 찾기 웹 검색의 검색어에는 담당자가 고른 조건의 이름(코드표의 공정 이름·지역 이름·산업 이름)만 넣는다. 거산 역량 값(CAPABILITY_VALUE)·내부 이력·거래 관계·메모·이미 목록에 있는 회사의 기록이 하나라도 있으면 전체 거부. 결과 가운데 채용 사이트·유료 기업 정보 사이트(candidateWebSearch.blockedDomains)에서 나온 것은 버리고, 사람 이름·전화·이메일은 저장하지 않는다. 하루 검색 횟수 한도와 월 호출·비용 상한, USAGE_UNCONFIRMED 규칙을 모두 적용
       - (추가 2026-11-12 PM 결정, 웹 검색 갈래 남은 기준 #314·#639) 아직 목록에 없는 웹 후보도 홈페이지 찾기(C9 HomepageFinder.find)를 부를 수 있다. 검색어로 나가는 것은 그 후보의 공개 회사명·주소뿐이다(src_web_candidate 행, kind PUBLIC_TEXT, securityGrade PUBLIC, refId = 후보 행 ID — 행 ID 범위로 승인). 전송 기록(tg_transfer_log)은 oppId 없이 그 후보 찾기 회차의 batchId로 남기고, 비용과 하루·월 한도·USAGE_UNCONFIRMED 규칙도 같은 회차에 합산해 적용한다. 검색 결과 요약 글(snippet)·고른 조건·거산 내부 값(역량 값·내부 이력·거래 관계·메모)은 넣지 않는다
       - (추가 2026-11-05 밤 PM 결정, 채용 공고 근거 #313·#315 — 만들기는 후보 찾기 다음) 찾은 회사의 채용 공고를 찾는 검색어는 기존 허용 kind(CUSTOMER_NAME, CUSTOMER_ADDRESS)만 쓴다. 채용 사이트 페이지를 우리가 직접 읽어 오지 않고 AI 웹 검색이 돌려준 요지와 출처 주소만 받는다. 인사 담당자 이름·연락처는 저장하지 않는다
-    EXTERNAL_GEOCODE:   # (추가 2026-11-03 PM 결정, 거리 #222) 회사 주소 → 좌표 변환. 행정안전부 도로명주소 API(검색 → 좌표제공, 승인키 2개)
+    EXTERNAL_GEOCODE:   # (추가 2026-11-03, 갱신 2026-11-13 이강욱 확인 #222) 회사 주소만 전송. 위치 CSV → 주소검색·CSV 재대조 → 좌표제공 → 네이버 실시간 보완
       - 허용 kind: CUSTOMER_ADDRESS(산단공 공개 CSV 출처, securityGrade PUBLIC)만. 회사명·메모·내부 값·연락처가 섞이면 전체 거부
       - kind 또는 securityGrade 없음·UNKNOWN → 전체 거부
       - 하루 호출 상한(`geocoding.dailyCallLimit`) 초과 → 거부 (kind GEOCODE_LIMIT, 쉬운 말 "오늘 좌표 변환 한도 초과")
       - sideEffect: TransferLog 1행(kind GEOCODE, 시각·고객 ID·호출 수·성공 여부만, 주소 본문 없음). 받은 좌표는 opp_customer에 저장(약관상 저장 금지 문구 없음, 신청서 용도란에 저장 용도 명시)
+      - (2026-11-13 확인) 위 저장 대상은 CSV·행안부 공공좌표뿐이다. 네이버 응답·좌표·파생 거리·개별 주소 결과는 DB·파일·프로세스 공용 캐시에 저장하지 않고 한 요청의 거리 표시에서만 사용한다. 전송 기록에도 좌표·주소·키·응답 본문은 없다. 호출 한도는 행안부 검색·좌표·네이버 및 재시도 합계이며 하루 10,000회(설정 값), 실패도 센다. 빈 응답과 통신·설정 오류는 구분한다.
     OUTPUT_EXPORT:   # 질문 목록(거산에 보내는 것)·엑셀(내부용)
       - securityGrade = FORBIDDEN 또는 UNKNOWN → 전체 거부
       - kind 없음 → 전체 거부
@@ -850,7 +851,7 @@ AppSettings:
   mainPhone: { allowedPrefixes: [string] }   # (추가 2026-11-03 밤 PM 반영, 상세 화면 (1)) 회사 대표번호로 인정하는 앞자리. 초안 ["02", "031", "032", "033", "041", "042", "043", "044", "051", "052", "053", "054", "055", "061", "062", "063", "064"](지역번호만, PM 결정). 전국대표번호를 쓰려면 여기에 더한다. 코드에 적지 않음(규칙 ⑩). 모르는 키 거부 때문에 #219 코드 PR에서 예시 파일과 같이
   research: { staleAfterDays: 90 }
   geosan: { address: string, lat: number, lng: number }   # (추가 2026-11-03 PM 결정, 거리 #222) 거산 기준 주소와 좌표. PM이 한 번 적음(좌표는 지도에서 읽어 넣음). 거리는 모두 이 점에서 잰다
-  geocoding: { provider: JUSO, enabled: boolean, dailyCallLimit: int }   # (추가 2026-11-03 PM 결정) 행정안전부 도로명주소 API. 키는 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY. 기본 enabled false(키 받기 전)
+  geocoding: { provider: JUSO, enabled: boolean, dailyCallLimit: int, locationCsvFiles: [string], locationCsvBaseDate: date|null, naverFallbackEnabled: boolean }   # (2026-11-13 이강욱 확인 #222) 기본 enabled false·dailyCallLimit 10000·locationCsvFiles []·locationCsvBaseDate null·naverFallbackEnabled false. CSV 파일은 받은 위치정보요약DB의 18열 UTF-8 CSV, X·Y는 EPSG:5179. 파일 목록이 있으면 자료 기준일 필수. 네이버 켜기는 enabled true일 때만. 옛 설정은 이 기본값으로 읽는다. 키는 JUSO_SEARCH_KEY·JUSO_COORD_KEY·NCP_MAPS_KEY_ID·NCP_MAPS_KEY 환경 변수뿐. geosan.lat·lng는 좌표 설정 전 함께 null 허용, 없으면 거리 null
   distanceFilterPresetsKm: [30, 50, 100]   # (추가 2026-11-03 PM 결정) 목록 거리 필터 선택지. 대시보드 지도 원 반지름에도 씀
   industries: [string]   # (추가 2026-11-03 PM 결정, 대시보드 산업군) 초안 11개(2026-11-04 PM, #230에서 "건설·건축자재" 더함): 방위산업, 반도체, 반도체 장비, 자동차 부품, 항공우주, 밸브·유체기기, 조선·해양, 전기·전자, 기계·설비, 건설·건축자재, 기타 — 거산 확인 뒤 확정(#208 질문, "자동화 설비" 칸 필요 여부도 질문). 뜻은 "그 회사가 주로 납품하는 산업"(2026-11-04 PM). 코드에 적지 않고 여기서만
   dashboard: { countProposedIndustries: true }   # (추가 2026-11-03 PM 결정) 산업군 집계에 AI 제안 포함(true, 막대 옆 "AI 제안 포함" 표시)
@@ -943,7 +944,7 @@ geosan source-load <sourceId> <파일>...   # (추가 2026-11-11 PM 승인 #573)
   geosan dataset-set <datasetKind>               # U4. 거산 값 묶음 전환(설정 변경 + 재평가 안내)
   geosan backup [--to <dir>]                     # U8 최소형 → U10. SQLite 온라인 백업(VACUUM INTO, 서버가 켜져 있어도 일관된 사본, WAL 포함). (갱신 2026-11-03, Q10) 담당 PM(최지예), U8에 묶음, 10h
   geosan restore <backup-file>                   # U8 최소형 → U10. 서버가 멈춘 상태에서만 허용(켜져 있으면 거부), 복원 전 현재 DB를 자동으로 따로 보관, 확인 질문 1회. (갱신 2026-11-03, Q10) 담당 PM, U8에 묶음
-  geosan geocode [--missing-only]                # (추가 2026-11-03 PM 결정, 거리 #222) 좌표 없는 회사 주소를 도로명주소 API로 좌표로 바꿔 저장. 건수·실패 사유(주소 못 찾음·한도·통신)를 출력. 가상 사례는 건너뜀
+  geosan geocode [--missing-only]                # (2026-11-13 이강욱 확인 #222) 활성 묶음의 공개 실제 회사에 CSV→행안부 검색·CSV→좌표 API→네이버 순서. 공공좌표만 저장하며 기존 좌표는 재사용. 네이버 결과는 이번 실행의 확인 건수로만 보고하고 저장하지 않는다. 저장·재사용·실시간 확인·미확인·실패 건수만 출력. 가상·비공개·주소 없음은 제외. 한도·통신·설정 실패는 종료 코드 2, 미확인은 오류 아님
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
   geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·웹 검색 횟수·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 5곳 시험의 1곳당 비용 측정에 쓴다
   geosan transfer-unblock [--older-than 10m]     # (추가 2026-11-04 PM 승인, #218) 기본은 조회만. 10분 이상 지난 EXTERNAL_SEARCH / EXTERNAL_AI 미확정 실제 호출의 기록 번호·용도·경과 시간·호출 시각·모델 표시. 본문·검색어 없음, DB 변경·외부 요청 없음. older-than은 분 단위이며 최소 10m
@@ -995,12 +996,14 @@ HomepageFinder:                           # (2026-11-03 저녁, PM 결정 B로 �
   limits: homepageDiscovery.dailyCallLimit(기본 200). timeout 20s, retry 1 (TransferLog 호출마다 1행, kind WEB_SEARCH, 검색어 본문 없음). 월 $20·1,000회 상한에 포함
   cost: 웹 검색 도구 1,000회당 $10 + 검색 본문 토큰(1곳 약 1~3센트). 1곳 끝까지(②~④) 약 4~6센트. 5곳 시험에서 실측
   terms: OpenAI API 출력은 저장·가공 가능(사용 약관), 입력은 기본적으로 학습에 안 씀. 따라서 담당자 확정을 먼저 받을 이유가 없어 자동 저장한다
-GeocodeAdapter:                           # (추가 2026-11-03 PM 결정, 거리 #222) 주소 → 좌표. 도로명주소 API 2단계: 검색(주소 글자 → 행정구역·도로명·건물번호 코드) → 좌표제공(코드 → entX/entY)
-  geocode(address) -> { lat, lng, source: JUSO, matchedAddress } | null   # 못 찾으면 null(오류 아님). TransferGuard EXTERNAL_GEOCODE 통과 뒤에만 호출
+GeocodeAdapter:                           # (2026-11-13 이강욱 확인 #222) CSV 직접→행안부 주소검색·동일 CSV→좌표 API→네이버. 찾았으면 다음 단계 생략
+  geocode(address) -> { lat, lng, source: CSV|JUSO|NAVER, matchedAddress } | null   # NAVER는 요청 안에서만 사용하는 내부 결과. CSV·행안부만 고객 좌표 열에 저장. 못 찾으면 null, 실제 오류는 예외. EXTERNAL_GEOCODE 통과 뒤 외부 호출
   keys: 환경 변수 JUSO_SEARCH_KEY·JUSO_COORD_KEY (승인키가 서로 달라 바꿔 쓰면 거부됨). 설정 파일·코드·로그에 적지 않음
   limits: geocoding.dailyCallLimit. timeout 10s, retry 1. 좌표계 변환(entX/entY → 위경도)은 공식을 코드로 둠(패키지 추가 없음, 직선거리 용도라 수십 m 오차 허용)
   distance: 두 위경도 사이 직선거리(구면 공식) km 소수 1자리. 점수·순위에는 쓰지 않는다
-  # (2026-11-03 저녁 PM 요청으로 검토) 네이버클라우드 Maps Geocoding은 약관 제7조 ⑪(결과 좌표 저장·DB화·재사용 금지) 때문에 쓰지 않는다. 지오코딩 공급자는 도로명주소 API 하나
+  # (기존 2026-11-03 결정은 2026-11-13 확인으로 대체) 네이버는 마지막 실시간 보완에 사용하고 저장·재사용하지 않는다. 서버 REST API로만 주소를 보내며 브라우저 SDK Service.* 금지는 유지. 지도 조각 표시와 지오코딩은 별개다
+  # 주소 검증: 시도·시군구·도로명/지번·본번·부번·지하/산 여부 대조. 복수 주소·복수 위치·빈 좌표는 미확인. 이름/연락처/메모는 보내지 않는다. 고객 원본 주소는 바꾸지 않는다
+  # 카드·상세: 저장 공공좌표가 있으면 로컬 계산. 없을 때 naverFallbackEnabled인 경우만 네이버 실시간 주소 검증·거리 계산. 가상·비공개·기준 좌표 없음은 null. 결과를 평가·기본 추천 순위에 넣지 않는다
 RouteAdapter:                             # (2차 후보, 2026-11-03 저녁 PM 결정 — 자리만) 좌표 2점 → 차로 가는 거리·시간. 공급자 네이버클라우드 Maps Directions 5(월 60,000건 무료). 결과는 저장하지 않고 화면에 1회 표시만(약관 제7조 ⑪). 지금은 만들지 않는다
   route(fromLatLng, toLatLng) -> { distanceKm, durationMin, fetchedAt } | null   # 저장 금지. 키 NCP_MAPS_KEY_ID·NCP_MAPS_KEY(2차에서)
 HomepageReader:

@@ -23,6 +23,7 @@ def runtime_for(session: Session) -> RuntimeConfig:
 
 
 def get_session(request: Request) -> Iterator[Session]:
+    fingerprint = None
     with session_scope() as session:
         runtime = runtime_for(session)
         if runtime.app_settings.access_protection.enabled:
@@ -37,6 +38,21 @@ def get_session(request: Request) -> Iterator[Session]:
                     if isinstance(row, CommonColumns):
                         row.session_ref = fingerprint
 
+            event.listen(session, "before_flush", record_session)
+        # 실시간 좌표의 전송 기록은 독립 트랜잭션으로 먼저 저장한다.
+        # 접속 시각 쓰기 잠금을 먼저 끝내야 같은 SQLite에 기록할 때 서로 기다리지 않는다.
+        live_geocode = (
+            request.method == "GET"
+            and request.url.path.startswith("/api/v1/opportunities")
+            and runtime.app_settings.geocoding.enabled
+            and runtime.app_settings.geocoding.naver_fallback_enabled
+        )
+        if not live_geocode:
+            yield session
+            return
+    with session_scope() as session:
+        session.info["runtime_config"] = runtime
+        if fingerprint:
             event.listen(session, "before_flush", record_session)
         yield session
 
