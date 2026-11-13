@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -92,6 +93,28 @@ def address_region(address: str) -> str:
     """주소 첫 칸의 시·도 약칭. 예: "충청남도 천안시 ..." → "충남"."""
     parts = address.split()
     return _region_name(parts[0].rstrip(",")) if parts else ""
+
+
+_POSTCODE = re.compile(r"^\(\d{5}\)\s*")
+_DISTRICT = re.compile(r"^([가-힣]{2,}?)[시군구]")
+
+
+def address_district(address: str | None) -> tuple[str, str] | None:
+    """주소의 (시·도 약칭, 시·군 이름 줄기). 견주는 데만 쓴다. 시·군을 모르면 None.
+
+    예: "충남 천안시 동남구 …"·"(31246) 충청남도 천안시서북구 …" → ("충남", "천안").
+    세종처럼 시·도 아래 시·군이 없는 곳은 ("세종", "").
+    """
+    parts = _POSTCODE.sub("", (address or "").strip()).split()
+    if not parts:
+        return None
+    region = _region_name(parts[0].rstrip(","))
+    if region == "세종":
+        return region, ""
+    if len(parts) < 2:
+        return None
+    found = _DISTRICT.match(parts[1])
+    return region, found.group(1) if found else parts[1]
 
 
 # 후보 찾기에서 시·군으로도 고를 수 있는 시·도(PM 결정 2026-11-09, #521).

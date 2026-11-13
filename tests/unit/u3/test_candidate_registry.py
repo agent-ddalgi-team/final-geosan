@@ -48,9 +48,10 @@ def test_all_pages_then_exact_name_and_address_match(ready, monkeypatch, caplog)
     "address,rows",
     [
         (None, [MATCH]),
-        ("충남 아산시", [MATCH]),
+        ("충남", [MATCH]),
         ("충남 천안시 가상로 9", [MATCH]),
         (MATCH[1], [MATCH, (MATCH[0], MATCH[1], "F2")]),
+        ("충남 아산시", [MATCH, (MATCH[0], "충남 아산시 가상로 7", "F2")]),
         ("경기 수원시 가상로 1", [(MATCH[0], "경기 수원시 가상로 1", "F1")]),
     ],
 )
@@ -61,6 +62,32 @@ def test_missing_partial_different_or_multiple_addresses_need_confirmation(
     result = registry.lookup_candidate_registry(BATCH, candidate(address=address))
     assert result.registry_status is None and result.matched_row is None
     assert result.needs_confirmation and result.skipped_reason is None
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "충남 아산시",
+        "충청남도 아산시 가상로 1 외 1필지",
+        "(31421) 충남 아산시가상구 다른로 9",
+        "충남 아산",
+    ],
+)
+def test_same_name_in_the_same_city_is_found_even_when_address_text_differs(
+    ready, monkeypatch, address
+):
+    """#706 PM 결정: 이름과 시·군이 같은 등록 행이 하나면 확인됨. 글자 차이로 떨어뜨리지 않는다."""
+    responses(monkeypatch, xml([MATCH, (MATCH[0], "충남 천안시 가상로 1", "F2")]))
+    result = registry.lookup_candidate_registry(BATCH, candidate(address=address))
+    assert result.registry_status == "FOUND" and result.matched_row.factory_manage_no == MATCH[2]
+    assert not result.needs_confirmation
+
+
+def test_two_factories_in_one_city_are_told_apart_only_by_the_full_address(ready, monkeypatch):
+    rows = [MATCH, (MATCH[0], "충남 아산시 가상로 7", "F2")]
+    responses(monkeypatch, xml(rows))
+    result = registry.lookup_candidate_registry(BATCH, candidate(address="충남 아산시 가상로 7"))
+    assert result.registry_status == "FOUND" and result.matched_row.factory_manage_no == "F2"
 
 
 def test_only_complete_empty_response_is_not_found(ready, monkeypatch):
@@ -238,3 +265,23 @@ def test_finished_batch_cannot_call(ready, monkeypatch):
     with pytest.raises(InputError):
         registry.lookup_candidate_registry(BATCH, candidate())
     assert not calls and not logs()
+
+
+@pytest.mark.parametrize(
+    "address,expected",
+    [
+        ("충남 천안시 동남구 성남면 가상길 1", ("충남", "천안")),
+        ("(31246) 충청남도 천안시서북구 가상로 2", ("충남", "천안")),
+        ("충남 천안", ("충남", "천안")),
+        ("충청남도 홍성군 은하면", ("충남", "홍성")),
+        ("대전광역시 유성구 가상로 3", ("대전", "유성")),
+        ("세종특별자치시 가상로 4", ("세종", "")),
+        ("충남", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_city_of_an_address_is_read_the_same_way_for_web_and_registry_text(address, expected):
+    from geosan.opportunity.factory_csv import address_district
+
+    assert address_district(address) == expected

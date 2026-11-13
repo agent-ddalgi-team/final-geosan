@@ -32,7 +32,7 @@ ingestion:
     judgeUsdPerRow: 0.002          # 공장 1행 AI 판단(실측 1행 약 $0.0015~0.0018)
     researchUsdPerCompany: 0.04    # 회사 1곳 자동 조사(실측 117곳 평균 $0.038)
     researchCallsPerCompany: 2     # 회사 1곳 조사의 호출 수(실측 평균 1.15회)
-    webSearchUsdPerBatch: 0.04     # 후보 웹 검색 1회(실측 $0.0405)
+    webSearchUsdPerBatch: 0.11     # 후보 웹 검색 1회(검색 3번 기준. 실측 1번 $0.04 · 3번 약 $0.10, #706)
   # 가상 검사에서도 실제 파일 경로를 지정한다. 외부 AI는 기본으로 꺼져 있다.
   factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
   aiPick:
@@ -119,6 +119,8 @@ candidateWebSearch:
   enabled: false
   dailySearchLimit: 20
   cacheDays: 15
+  searchesPerRun: 3      # 한 번 요청에서 AI가 검색하는 횟수(#706: 1번 2곳, 3번 5~10곳)
+  timeoutSeconds: 90     # 응답 대기(실측 3번 29~35초)
   blockedDomains:
     - saramin.co.kr
     - jobkorea.co.kr

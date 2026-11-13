@@ -27,8 +27,8 @@ def ready(tmp_db, app_settings_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
     calls = []
 
-    def send(body, key):
-        assert key == "synthetic"
+    def send(body, key, timeout):
+        assert key == "synthetic" and timeout == 90
         calls.append(body)
         return response()
 
@@ -43,7 +43,7 @@ def test_enabled_search_sends_only_selected_names_and_accounts_usage(ready):
     assert json.loads(ready[0]["input"]) == {"processNames": ["전기아연도금"], "regions": ["충남"]}
     assert "PRIVATE_INTERNAL_MARKER" not in json.dumps(ready)
     assert "ZN" not in ready[0]["input"]
-    assert ready[0]["store"] is False and ready[0]["max_tool_calls"] == 1
+    assert ready[0]["store"] is False and ready[0]["max_tool_calls"] == 3
     assert "jobkorea.co.kr" in ready[0]["tools"][0]["filters"]["blocked_domains"]
     (row,) = logs()
     assert (row.batch_id, row.opp_id, row.requested_by, row.cost_usd) == (
@@ -298,3 +298,20 @@ def test_settings_changed_before_retry_do_not_send_old_conditions(ready, monkeyp
     with pytest.raises(InputError):
         web.search_candidates(BATCH)
     assert len(ready) == 1 and len(logs()) == 1
+
+
+@pytest.mark.parametrize(
+    "values", [{"searchesPerRun": 0}, {"searchesPerRun": 6}, {"timeoutSeconds": 10}]
+)
+def test_search_count_and_wait_time_outside_the_agreed_range_are_rejected(ready, values):
+    """#706: 한 번 요청의 검색 횟수는 1~5, 대기 시간은 20~180초만 받는다."""
+    settings(**values)
+    with pytest.raises(ValueError):
+        web.load_search_context(BATCH)
+
+
+def test_changed_search_count_is_a_new_search_not_a_reused_one(ready):
+    before = web.load_search_context(BATCH).criteria_hash
+    settings(searchesPerRun=5)
+    after = web.load_search_context(BATCH)
+    assert after.criteria_hash != before and after.searches_per_run == 5
