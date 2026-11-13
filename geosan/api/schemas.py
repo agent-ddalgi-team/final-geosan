@@ -659,6 +659,14 @@ class DetailRecords(_ApiModel):
     outcome: dict[str, Any] | None = None
 
 
+class ReviewItemNote(_ApiModel):
+    """자료 줄에 붙은 최신 자료 조사 메모(#259). 영업 메모와 같은 내부 전용 취급이다."""
+
+    text: str
+    by: str
+    at: datetime
+
+
 class ReviewItem(_ApiModel):
     item_id: str
     kind: ReviewItemKind
@@ -674,10 +682,17 @@ class ReviewItem(_ApiModel):
     step_options: list[str] | None = Field(
         default=None, description="AI 점수 제안의 허용 단계 이름. 다른 검토사항은 null(#497)"
     )
+    note: ReviewItemNote | None = Field(
+        default=None, description="자료 줄에 붙은 최신 자료 조사 메모. 다른 줄은 null(#259)"
+    )
+
+
+# 검토사항 줄에 적는 글([답 적기], 자료 줄 메모 #259)의 글자 상한. 약속 C1의 값이다.
+REVIEW_TEXT_MAX_LENGTH = 500
 
 
 class QuestionReplyRequest(_RequestModel):
-    reply_text: str = Field(min_length=1, max_length=500, strict=True)
+    reply_text: str = Field(min_length=1, max_length=REVIEW_TEXT_MAX_LENGTH, strict=True)
     replied_at: date
 
 
@@ -749,6 +764,8 @@ class NoteRequest(_RequestModel):
     kind: Literal["MEMO", "RESEARCH"] = "MEMO"
     text: str
     eval_id: str | None = None
+    # #259: 검토사항 자료 줄 번호. 없으면 지금과 같은 일반 메모.
+    item_id: str | None = None
     expected_version: int | None = Field(default=None, ge=0)
     memo: str | None = Field(default=None, max_length=200)
 

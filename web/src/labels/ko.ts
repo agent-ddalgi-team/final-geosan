@@ -253,6 +253,30 @@ export const dashboardTexts = {
   goToList: '영업 후보 목록으로 이동',
 } as const;
 
+/** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
+export const dashboardMapTexts = {
+  title: '거산 주변 지도',
+  loadError: '지도 정보를 불러오지 못했습니다.',
+  hqLabel: '거산 본사',
+  ringLabel: (km: number) => `${km}km`,
+  groups: {
+    INTERESTED: '관심',
+    IN_PROGRESS: '진행 중',
+    WON_THIS_YEAR: '올해 성공',
+  },
+  legendTitle: '범례',
+  pointAria: (name: string, group: string, km: number) => `${name} · ${group} · ${km}km`,
+  distance: (km: number) => `거산에서 ${km}km`,
+  callout: '회사 정보',
+  detailLink: '자세히 보기',
+  close: '닫기',
+  missingCoordinates: (count: number) => `좌표 없는 회사 ${count}곳`,
+  emptyText: '관심 표시한 회사가 아직 없어요.',
+  emptyAction: '추천 목록 가기',
+  /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
+  placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
+} as const;
+
 /** 카드·상세 줄 머리말. */
 export const cardRows = {
   reason: '추천 근거',

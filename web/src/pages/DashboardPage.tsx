@@ -11,6 +11,7 @@ import type { Meta } from '../api/types';
 import BreakdownBars from '../components/dashboard/BreakdownBars';
 import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
+import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -168,6 +169,8 @@ export default function DashboardPage() {
             </div>
           )
         ) : null}
+
+        <DashboardMapSection />
 
         <div
           style={{
