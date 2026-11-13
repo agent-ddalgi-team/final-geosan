@@ -147,12 +147,10 @@ describe('추천 목록 · 세 묶음 (#610)', () => {
     mockedGet.mockResolvedValue(reply(bucketedCards()));
     renderPage('/opportunities?process=ZINC_PLATING');
     const cards = await screen.findAllByTestId('opportunity-card');
-    expect(cards.map((item) => within(item).getByTestId('card-bucket-basis').textContent)).toEqual([
-      '필수조건 통과',
-      '접촉 진행 중',
-      '평가 전 · 적합도 상',
-      '지켜보기',
-    ]);
+    // "평가 전 · 적합도 상" 꼬리표는 보이지 않는다(PM 지시 2026-11-13 #659). 나머지는 그대로다.
+    expect(
+      cards.map((item) => within(item).queryByTestId('card-bucket-basis')?.textContent ?? null),
+    ).toEqual(['필수조건 통과', '접촉 진행 중', null, '지켜보기']);
     expect(within(cards[0]).getByTestId('card-rank-adjust')).toHaveTextContent(
       '같은 공정·산업(아연도금 · 자동차 부품)에서 최근 12개월 성사 2곳 → 위로',
     );
@@ -242,7 +240,8 @@ describe('추천 목록 · 세 묶음 (#610)', () => {
     await screen.findAllByTestId('opportunity-card');
     expect(mockedGet.mock.calls[0][3]).toMatchObject({ sort: 'recent' });
     expect(titles()).toEqual([]);
-    expect(screen.getAllByTestId('card-bucket-basis')).toHaveLength(4);
+    // 네 장 가운데 "평가 전 · 적합도 상" 한 장은 꼬리표를 보이지 않는다(#659).
+    expect(screen.getAllByTestId('card-bucket-basis')).toHaveLength(3);
   });
 
   it('서버가 묶음 칸을 주지 않으면(옛 응답) 제목도 꼬리표도 없이 지금처럼 보인다', async () => {
