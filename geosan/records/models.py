@@ -46,6 +46,8 @@ class Note(CommonColumns, Base):
     kind: Mapped[str] = mapped_column(
         String(16), nullable=False, default="MEMO", server_default="MEMO"
     )
+    # #259·C6: 검토사항 자료 줄 번호(예 GAP:REQ:req-3). 줄에 붙이지 않은 메모·옛 행은 비워 둔다.
+    item_id: Mapped[str | None] = mapped_column(String(64))
     # #253·C6: 잘못 입력으로 표시(취소)한 시각·담당자·이유. 행은 지우지 않고 이 세 칸만 채운다.
     cancelled_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
     cancelled_by: Mapped[str | None] = mapped_column(String(32))
