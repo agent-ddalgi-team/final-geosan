@@ -24,7 +24,7 @@ import {
   materialLabels,
   recordsArea,
 } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, spacing, statusPalette, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { daysAgo, formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
@@ -127,6 +127,37 @@ function Row({ label, testId, children }: { label: string; testId: string; child
   );
 }
 
+/**
+ * "거산과 맞는 점"의 상태 표시(PM 지시 2026-11-13). 색으로만 구분하지 않게 모양과 글자를 함께 둔다.
+ * confirmed = 사람이 확인한 값(사례 파일·담당자 확정): 초록 ✓ + "확인됨"(소재는 "통과").
+ * ai = AI가 제안만 한 값: 회색 ○ + "AI 제안 · 확인 전". 초록을 쓰지 않는다.
+ */
+function FitMark({ kind, text }: { kind: 'confirmed' | 'ai'; text: string }) {
+  const palette = kind === 'confirmed' ? statusPalette.ok : statusPalette.neutral;
+  return (
+    <span
+      role="img"
+      aria-label={kind === 'confirmed' ? texts.markConfirmedAria(text) : texts.markAiAria}
+      data-testid="glance-fit-mark"
+      data-mark={kind}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '0 10px',
+        borderRadius: 999,
+        background: palette.bg,
+        color: palette.fg,
+        fontSize: typography.fontSizeSecondary,
+        fontWeight: kind === 'confirmed' ? 600 : 400,
+      }}
+    >
+      <span aria-hidden="true">{kind === 'confirmed' ? '✓' : '○'}</span>
+      <span aria-hidden="true">{text}</span>
+    </span>
+  );
+}
+
 function FitLine({
   label,
   testId,
@@ -193,10 +224,9 @@ export default function DetailGlance({
   const { confirmed, proposedNames } = processStateOf(header, processLinks, reviewItems);
   const firstLink = confirmed[0] ?? null;
   const materialLink = confirmed.find((row) => row.appliedMaterial) ?? null;
-  const industrySource =
-    header.industriesSource === 'CASE_FILE' || header.industriesSource === 'STAFF'
-      ? texts.confirmed
-      : texts.aiProposal;
+  // 사람이 확인한 산업(사례 파일·담당자 확정)만 초록 체크다. AI가 붙인 값은 중립 표시.
+  const industryConfirmed =
+    header.industriesSource === 'CASE_FILE' || header.industriesSource === 'STAFF';
   const distance = header.distanceKm ?? null;
 
   // ── 근거 상태
@@ -401,29 +431,51 @@ export default function DetailGlance({
 
         <Row label={texts.fit} testId="glance-fit">
           <FitLine label={texts.process} testId="glance-fit-process">
-            {firstLink
-              ? texts.processConfirmed(
-                  firstLink.processName || firstLink.processCode,
-                  confirmed.length - 1,
-                )
-              : proposedNames.length > 0
-                ? texts.processProposed(
-                    proposedNames.length,
-                    proposedNames.slice(0, REVIEW_FOLD_NAME_LIMIT),
-                    Math.max(0, proposedNames.length - REVIEW_FOLD_NAME_LIMIT),
-                  )
-                : texts.pending}
+            {firstLink ? (
+              <>
+                {firstLink.processName || firstLink.processCode}{' '}
+                <FitMark kind="confirmed" text={texts.markConfirmed} />
+                {confirmed.length > 1 ? ` ${texts.moreCount(confirmed.length - 1)}` : null}
+              </>
+            ) : proposedNames.length > 0 ? (
+              <>
+                {texts.processProposedNames(
+                  proposedNames.slice(0, REVIEW_FOLD_NAME_LIMIT),
+                  Math.max(0, proposedNames.length - REVIEW_FOLD_NAME_LIMIT),
+                )}{' '}
+                <FitMark kind="ai" text={texts.markAi} />
+              </>
+            ) : (
+              texts.pending
+            )}
           </FitLine>
           <FitLine label={texts.material} testId="glance-fit-material">
-            {materialLink?.appliedMaterial
-              ? texts.materialLine(
-                  labelFor(materialLabels, materialLink.appliedMaterial),
-                  materialLink.result ? labelFor(filterStateLabels, materialLink.result) : null,
-                )
-              : texts.pending}
+            {materialLink?.appliedMaterial ? (
+              <>
+                {labelFor(materialLabels, materialLink.appliedMaterial)}{' '}
+                {materialLink.result === 'PASS' ? (
+                  <FitMark kind="confirmed" text={filterStateLabels.PASS} />
+                ) : materialLink.result ? (
+                  `· ${labelFor(filterStateLabels, materialLink.result)}`
+                ) : null}
+              </>
+            ) : (
+              texts.pending
+            )}
           </FitLine>
           <FitLine label={texts.industry} testId="glance-fit-industry">
-            {industries.length > 0 ? texts.industryLine(industries, industrySource) : texts.pending}
+            {industries.length > 0 ? (
+              <>
+                {industries.join(', ')}{' '}
+                {industryConfirmed ? (
+                  <FitMark kind="confirmed" text={texts.markConfirmed} />
+                ) : (
+                  <FitMark kind="ai" text={texts.markAi} />
+                )}
+              </>
+            ) : (
+              texts.pending
+            )}
           </FitLine>
           {distance !== null ? (
             <FitLine label={texts.distance} testId="company-distance">

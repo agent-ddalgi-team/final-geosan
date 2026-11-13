@@ -811,6 +811,11 @@ export const salesQuestionTexts = {
   knownNone: '아직 없음',
   unknown: '아직 모르는 것',
   questionsTitle: '이번 접촉에서 알게 된 것',
+  /** 꼬리 질문 묶음 위 한 줄(#674): 왜 이 질문들이 나오는지. "지금 단계: 수요 확인 — 이 단계의 질문과 모든 단계 공통 질문입니다." */
+  stepLine: (label: string) => `지금 단계: ${label} — 이 단계의 질문과 모든 단계 공통 질문입니다.`,
+  stepLineFirst: (label: string) =>
+    `첫 접촉이라 '${label}' 단계의 질문과 모든 단계 공통 질문이 보입니다.`,
+  stepLineDeclined: '접촉 결과가 거절이라 모든 단계 공통 질문만 보입니다.',
   questionsHint: '아는 것만 고르세요. 고르지 않은 질문은 다음 접촉 때 다시 보입니다.',
   clearAnswer: '선택 지우기',
   memoLabel: '한 줄 메모 (선택)',
@@ -964,7 +969,12 @@ export const recordsArea = {
   required: '필수',
   selectPlaceholder: '고르세요',
   /** 세 칸을 "한 일 → 지금 단계 → 다음 할 일" 순서로 읽게 하는 안내(#433, PM 결정 2026-11-08). */
-  flowGuide: '① 한 일 적기(접촉·메모) → ② 지금 단계 → ③ 다음 할 일',
+  /** 2026-11-13 PM 지시(#674): 단계는 꼬리 질문 답으로 저절로 저장되므로 안내에서 "지금 단계"를 뺐다(전에는 세 칸). */
+  flowGuide: '① 한 일 적기(접촉·꼬리 질문·메모) → ② 다음 할 일 · 영업 단계는 저절로 정해집니다',
+  /** "영업 단계" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#674). 누르면 그 자리에서 펼쳐진다. */
+  stageFixAsk: '단계가 잘못됐나요?',
+  stageFixOpen: '단계 고치기',
+  stageFixClose: '접기',
   stepOne: '①',
   stepTwo: '②',
   stepThree: '③',
@@ -1457,6 +1467,19 @@ export const detailReport = {
     confirmed: '확정',
     aiProposal: 'AI 제안',
     pending: '확인 전',
+    /**
+     * "거산과 맞는 점"의 상태 표시(PM 지시 2026-11-13): 사람이 확인한 값은 초록 ✓ "확인됨"(소재는 ✓ "통과"),
+     * AI가 제안만 한 값은 회색 ○ "AI 제안 · 확인 전". 전의 "· 확정"·"· 통과" 글자를 이 표시로 바꿨다.
+     */
+    markConfirmed: '확인됨',
+    markAi: 'AI 제안 · 확인 전',
+    markConfirmedAria: (text: string) => `${text} (사람이 확인한 값)`,
+    markAiAria: 'AI 제안 · 확인 전 (사람이 확인하기 전)',
+    /** "외 1개" */
+    moreCount: (rest: number) => `외 ${rest}개`,
+    /** AI가 제안한 공정 이름들: "아연도금, 아노다이징, 흑착색 외 2개" */
+    processProposedNames: (shown: readonly string[], rest: number) =>
+      `${shown.join(', ')}${rest > 0 ? ` 외 ${rest}개` : ''}`,
     /** "아연도금(전기아연도금) · 확정 외 1개" */
     processConfirmed: (name: string, rest: number) =>
       `${name} · 확정${rest > 0 ? ` 외 ${rest}개` : ''}`,

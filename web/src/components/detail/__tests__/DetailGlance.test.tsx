@@ -96,13 +96,30 @@ describe('DetailGlance (#674)', () => {
       '출처: 공장현황 자료',
     );
 
-    expect(within(box).getByTestId('glance-fit-process')).toHaveTextContent(
-      /^공정아연도금\(전기아연도금\) · 확정$/,
+    // 사람이 확인한 값(사례 파일·담당자 확정)에만 초록 ✓가 붙는다. 색이 아니라 표시 종류와 글자로 확인한다.
+    const process = within(box).getByTestId('glance-fit-process');
+    expect(process).toHaveTextContent(/^공정아연도금\(전기아연도금\) ✓확인됨$/);
+    expect(within(process).getByTestId('glance-fit-mark')).toHaveAttribute(
+      'data-mark',
+      'confirmed',
     );
-    expect(within(box).getByTestId('glance-fit-material')).toHaveTextContent(/^소재철 · 통과$/);
-    expect(within(box).getByTestId('glance-fit-industry')).toHaveTextContent(
-      /^산업기계·설비 · 확정$/,
+    expect(within(process).getByRole('img')).toHaveAccessibleName('확인됨 (사람이 확인한 값)');
+    const material = within(box).getByTestId('glance-fit-material');
+    expect(material).toHaveTextContent(/^소재철 ✓통과$/);
+    expect(within(material).getByTestId('glance-fit-mark')).toHaveAttribute(
+      'data-mark',
+      'confirmed',
     );
+    const industry = within(box).getByTestId('glance-fit-industry');
+    expect(industry).toHaveTextContent(/^산업기계·설비 ✓확인됨$/);
+    expect(within(industry).getByTestId('glance-fit-mark')).toHaveAttribute(
+      'data-mark',
+      'confirmed',
+    );
+    // 거리는 계산한 숫자라 표시가 없다.
+    expect(
+      within(within(box).getByTestId('company-distance')).queryByTestId('glance-fit-mark'),
+    ).not.toBeInTheDocument();
     expect(within(box).getByTestId('company-distance')).toHaveTextContent('거산에서 42km');
 
     expect(within(box).getByTestId('glance-evidence-text')).toHaveTextContent(
@@ -157,10 +174,17 @@ describe('DetailGlance (#674)', () => {
     expect(within(box).queryByTestId('glance-factory-profile')).not.toBeInTheDocument();
     expect(within(box).queryByTestId('company-phone')).not.toBeInTheDocument();
     expect(within(box).queryByTestId('company-distance')).not.toBeInTheDocument();
-    expect(within(box).getByTestId('glance-fit-process')).toHaveTextContent(
-      '확인 전 · AI 제안 2개(아연도금, 아노다이징)',
+    // AI가 제안만 한 공정은 초록이 아니라 중립 표시 ○ "AI 제안 · 확인 전"이다.
+    const process = within(box).getByTestId('glance-fit-process');
+    expect(process).toHaveTextContent(/^공정아연도금, 아노다이징 ○AI 제안 · 확인 전$/);
+    expect(within(process).getByTestId('glance-fit-mark')).toHaveAttribute('data-mark', 'ai');
+    expect(within(process).getByRole('img')).toHaveAccessibleName(
+      'AI 제안 · 확인 전 (사람이 확인하기 전)',
     );
-    expect(within(box).getByTestId('glance-fit-material')).toHaveTextContent(/^소재확인 전$/);
+    // 값이 없으면 표시 없이 "확인 전".
+    const material = within(box).getByTestId('glance-fit-material');
+    expect(material).toHaveTextContent(/^소재확인 전$/);
+    expect(within(material).queryByTestId('glance-fit-mark')).not.toBeInTheDocument();
     expect(within(box).getByTestId('glance-fit-industry')).toHaveTextContent(/^산업확인 전$/);
     expect(within(box).getByTestId('glance-evidence-text')).toHaveTextContent(
       /^근거 없음 · 아직 조사 전$/,
@@ -169,6 +193,27 @@ describe('DetailGlance (#674)', () => {
       /^공정 · 소재 · 근거 부족$/,
     );
     expect(within(box).getByTestId('detail-contact-count')).toHaveTextContent(/^접촉 없음$/);
+  });
+
+  it('AI가 붙인 산업은 중립 표시, 소재 판정이 통과가 아니면 초록 체크 없이 글자만 보인다', () => {
+    render(
+      <DetailGlance
+        header={{ ...full, industriesSource: 'AI' }}
+        processLinks={[{ ...link, result: 'PENDING' }]}
+        evidence={evidence(1)}
+        now={NOW}
+      />,
+    );
+    const industry = screen.getByTestId('glance-fit-industry');
+    expect(industry).toHaveTextContent(/^산업기계·설비 ○AI 제안 · 확인 전$/);
+    expect(within(industry).getByTestId('glance-fit-mark')).toHaveAttribute('data-mark', 'ai');
+    const material = screen.getByTestId('glance-fit-material');
+    expect(material).toHaveTextContent(/^소재철 · 확인 대기$/);
+    expect(within(material).queryByTestId('glance-fit-mark')).not.toBeInTheDocument();
+    // 초록 체크는 확정된 공정 한 곳뿐이다.
+    expect(
+      screen.getAllByTestId('glance-fit-mark').filter((el) => el.dataset.mark === 'confirmed'),
+    ).toHaveLength(1);
   });
 
   it('홈페이지를 못 찾은 회사는 근거 상태에 "홈페이지 못 찾음 · 근거 없음"을 적는다', () => {

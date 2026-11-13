@@ -61,10 +61,10 @@ describe('상세 › "한눈에"의 공정 줄 (전에는 검토사항 맨 위 "
     // 가상 사례의 공정 연결 1건(PM 지시 2026-11-13 #659 → #674에서 "한눈에"로 옮김).
     expect(base.processLinks).toHaveLength(1);
     expect(within(glance).getByTestId('glance-fit-process')).toHaveTextContent(
-      /^공정아노다이징 — 가상 · 확정$/,
+      /^공정아노다이징 — 가상 ✓확인됨$/,
     );
     expect(within(glance).getByTestId('glance-fit-material')).toHaveTextContent(
-      /^소재알루미늄 주물 · 통과$/,
+      /^소재알루미늄 주물 ✓통과$/,
     );
     // 같은 내용을 두 군데에 쓰지 않는다: 아래쪽 구역도, 옛 "왜 추천했나" 줄도 그리지 않는다.
     expect(screen.queryByTestId('detail-process-links')).not.toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('상세 › "한눈에"의 공정 줄 (전에는 검토사항 맨 위 "
     expect(screen.queryByTestId('review-why')).not.toBeInTheDocument();
   });
 
-  it('공정 연결이 모두 AI 제안이면 "확인 전 · AI 제안 n개"가 보이고, AI 공정 제안 줄과 [확정]은 화면에 없다 (#659 → #674)', async () => {
+  it('공정 연결이 모두 AI 제안이면 중립 표시 "AI 제안 · 확인 전"이 보이고, AI 공정 제안 줄과 [확정]은 화면에 없다 (#659 → #674)', async () => {
     const reviewItems = base.processLinks.map((link) => ({
       itemId: `PL:${link.processCode}`,
       kind: 'PROCESS_LINK_PROPOSAL',
@@ -84,9 +84,10 @@ describe('상세 › "한눈에"의 공정 줄 (전에는 검토사항 맨 위 "
     renderPage();
     const glance = await screen.findByTestId('detail-glance');
     const count = new Set(base.processLinks.map((link) => link.processCode)).size;
-    expect(within(glance).getByTestId('glance-fit-process')).toHaveTextContent(
-      `확인 전 · AI 제안 ${count}개`,
-    );
+    expect(count).toBe(1);
+    const process = within(glance).getByTestId('glance-fit-process');
+    expect(process).toHaveTextContent('AI 제안 · 확인 전');
+    expect(within(process).getByTestId('glance-fit-mark')).toHaveAttribute('data-mark', 'ai');
     // "확인할 것"과 "통화에서 확인할 것"이 공정을 말한다.
     expect(within(glance).getByTestId('glance-check-text')).toHaveTextContent('공정');
     const review = screen.getByTestId('detail-review');
