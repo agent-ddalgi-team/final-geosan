@@ -435,8 +435,21 @@ export interface OpportunityCard {
   region?: string | null;
   /** 산업군(사례 파일에 사람이 적은 값, 최대 3개). 비어 있으면 카드는 "산업 미확정"을 보인다. */
   industries?: string[];
-  /** 이 기회가 걸린 공정 코드들. 카드는 공정 이름 꼬리표로 바꿔 보인다. */
+  /** 이 기회가 걸린 공정 코드들(확정 + AI 제안). 공정 선택란·묶음 순서가 쓴다. 카드 꼬리표에는 쓰지 않는다(#659). */
   processCodes?: string[];
+  /** 그 가운데 확정된 공정만(사례 파일·담당자, #659). 카드는 이 값만 공정 이름 꼬리표로 보인다. */
+  confirmedProcessCodes?: string[];
+  /** 아직 확정되지 않은(AI 제안) 공정 수(#659). 확정이 없고 이 값이 있으면 검토사항 줄에 "확인 전"을 덧붙인다. */
+  proposedProcessCount?: number;
+  /** 필수조건 가운데 확인 전인 조건(#659). 비어 있지 않으면 검토사항 줄에 서버 문장 대신 "확인할 것: …"으로 보인다. */
+  checkPoints?: string[];
+  /** 핵심 근거를 다시 확인해야 하는 이유(#659). 비어 있지 않으면 검토사항 줄에 "핵심 근거 부족: …"으로 보인다. */
+  coreEvidenceGaps?: string[];
+  /**
+   * checkPoints 각 줄의 종류(#659, 같은 순서·같은 개수). 카드가 검토사항 줄을 낱말로 줄일 때 쓴다:
+   * PROCESS → "공정", MATERIAL → "소재", 나머지(REQUIREMENT·COMPANY_FILTER)는 checkPoints 글자 그대로.
+   */
+  checkKinds?: Array<'PROCESS' | 'MATERIAL' | 'REQUIREMENT' | 'COMPANY_FILTER'>;
   /** AI가 이 회사를 고른 이유 한 줄(#316, 후보 찾기로 들어온 회사만). 없으면 줄을 그리지 않는다. */
   pickReason?: string | null;
   /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */
@@ -656,6 +669,8 @@ export interface DetailRecords {
   approval?: Record<string, unknown> | null;
   outcome?: OutcomeRecord | null;
   contactCount?: ContactCount | null;
+  /** 취소 안 된 접촉 시도 가운데 가장 늦은 접촉 날짜(YYYY-MM-DD, #674). 접촉이 없거나 옛 응답이면 없다. */
+  lastContactAt?: string | null;
   /** 세부 단계·알아낸 것·아직 모르는 질문(#607). 옛 응답이면 없다. */
   salesStep?: SalesStepView | null;
 }

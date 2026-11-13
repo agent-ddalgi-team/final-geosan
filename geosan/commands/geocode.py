@@ -3,11 +3,12 @@
 from collections import Counter
 
 import typer
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.config.app_settings import read_app_settings
 from geosan.config.errors import AppError, InputError, exit_code_for
+from geosan.evaluation.models import EvaluationBatch, EvaluationRun
 from geosan.opportunity.geo_store import store_public_coordinate, stored_point
 from geosan.opportunity.geocode_address import parse_address
 from geosan.opportunity.geocode_http import GeocodeClient
@@ -15,6 +16,35 @@ from geosan.opportunity.geocoding import GeocodeResolver
 from geosan.opportunity.location_csv import LocationIndex
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.session import session_scope
+
+
+def active_evaluated_opp_ids(dataset_kind):
+    """최신 확정 평가가 활성 묶음인 기회(#664). 목록·대시보드 지도와 같은 기준이다.
+
+    회사의 원본 자료 표시는 검수 전환 뒤에도 BROCHURE로 남을 수 있어 그것만 보면
+    목록에 보이는 회사 대부분이 좌표 채우기에서 빠졌다.
+    """
+    latest = (
+        select(
+            EvaluationRun.opp_id,
+            EvaluationRun.dataset_kind.label("run_kind"),
+            EvaluationBatch.dataset_kind.label("batch_kind"),
+            func.row_number()
+            .over(
+                partition_by=EvaluationRun.opp_id,
+                order_by=(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc()),
+            )
+            .label("position"),
+        )
+        .join(EvaluationBatch, EvaluationRun.batch_id == EvaluationBatch.batch_id)
+        .where(EvaluationRun.run_status == "CONFIRMED", EvaluationBatch.status == "CONFIRMED")
+        .subquery()
+    )
+    return select(latest.c.opp_id).where(
+        latest.c.position == 1,
+        latest.c.run_kind == dataset_kind,
+        latest.c.batch_kind == dataset_kind,
+    )
 
 
 def run_geocode(missing_only=True):
@@ -27,7 +57,14 @@ def run_geocode(missing_only=True):
             opportunities = session.execute(
                 select(Customer, Opportunity.opp_id)
                 .join(Opportunity, Opportunity.customer_id == Customer.customer_id)
-                .where(Customer.dataset_kind == settings.active_dataset_kind.value)
+                .where(
+                    or_(
+                        Customer.dataset_kind == settings.active_dataset_kind.value,
+                        Opportunity.opp_id.in_(
+                            active_evaluated_opp_ids(settings.active_dataset_kind.value)
+                        ),
+                    )
+                )
             ).all()
             targets = {}
             for customer, opp_id in opportunities:

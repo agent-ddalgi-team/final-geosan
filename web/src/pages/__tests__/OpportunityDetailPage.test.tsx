@@ -1,6 +1,6 @@
 // 근거 상세(S2): 영역 순서 / 질문 3개+펼치기 / 요구 0개 문구 / 확인·추정 글자 / 점수 접힘 / 404 (+ 요구 표, 오류).
 // 서버 호출(getOpportunityDetail)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
@@ -14,11 +14,13 @@ import {
   postQuestionReply,
   postRecordCancel,
   postRelation,
+  postReviewCheck,
   putBookmark,
 } from '../../api/client';
 import type { BookmarkRecord, Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
+  detailReport,
   detailSections,
   frame,
   opinionArea,
@@ -39,6 +41,7 @@ vi.mock('../../api/client', async (importOriginal) => ({
   postNote: vi.fn(),
   postRecordCancel: vi.fn(),
   postRelation: vi.fn(),
+  postReviewCheck: vi.fn(),
   postOutcome: vi.fn(),
   putBookmark: vi.fn(),
 }));
@@ -48,6 +51,7 @@ const mockedCancel = vi.mocked(postRecordCancel);
 const mockedBookmark = vi.mocked(putBookmark);
 const mockedOutcome = vi.mocked(postOutcome);
 const mockedRelation = vi.mocked(postRelation);
+const mockedCheck = vi.mocked(postReviewCheck);
 const mockedGet = vi.mocked(getOpportunityDetail);
 const mockedReply = vi.mocked(postQuestionReply);
 const mockedActivity = vi.mocked(getActivity);
@@ -111,6 +115,7 @@ describe('OpportunityDetailPage', () => {
     });
     mockedReply.mockReset();
     mockedRelation.mockReset();
+    mockedCheck.mockReset();
     mockedOutcome.mockReset();
     mockedBookmark.mockReset();
     mockedNote.mockReset();
@@ -121,7 +126,7 @@ describe('OpportunityDetailPage', () => {
     });
   });
 
-  it('서버가 검토사항을 주면 추천 이유 바로 아래에 영역이 생기고 확인 질문은 1번 영역에서 빠진다', async () => {
+  it('서버가 검토사항을 주면 "2. 통화에서 확인할 것"이 읽기 전용 목록으로 보이고 줄마다의 체크·단추는 없다 (#674)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({
         ...base,
@@ -151,68 +156,77 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings.slice(0, 3)).toEqual([
+    // 읽는 곳 순서(PM 결정 2026-11-13 #674): 한눈에 → 1. 왜 이 회사인가 → 2. 통화에서 확인할 것 → 3. 점수 자세히 보기.
+    // "근거 자료"는 따로 구역을 두지 않고 1번 안에 붙는다.
+    expect(headings.slice(0, 4)).toEqual([
+      detailReport.glance.title,
       detailSections.reasons,
-      reviewArea.title,
-      detailSections.requirements,
+      detailSections.callChecklist,
+      expect.stringContaining(detailSections.scores),
     ]);
+    expect(headings).not.toContain(detailSections.evidence);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
     const review = screen.getByTestId('detail-review');
-    expect(within(review).getByTestId('review-progress')).toHaveTextContent('확인 1 / 2');
-    expect(within(review).getAllByTestId('review-item')).toHaveLength(2);
+    const rows = within(review).getAllByTestId('review-item');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('확인 질문 1');
+    // 이미 저장돼 있던 확인 표시는 그 줄 아래에 읽기 전용으로 보인다.
+    expect(within(rows[1]).getByTestId('review-checked-by')).toHaveTextContent('✓ 확인함');
+    // 읽는 곳에는 체크·[답 적기]·[메모 적기]·[붙여넣고 조사]·진행 수가 없다.
+    expect(within(review).queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(within(review).queryByTestId('review-progress')).not.toBeInTheDocument();
+    for (const id of ['review-reply-button', 'review-memo-button', 'review-paste-button']) {
+      expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    }
   });
 
-  it('서버가 검토사항을 아직 안 주면 영역을 만들지 않고 확인 질문은 예전처럼 1번 영역에 남는다', async () => {
+  it('서버가 검토사항을 아직 안 주면(옛 응답) 2번 자리에 후속 조치와 확인 질문이 예전 모양으로 보인다', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({ ...base, reasons: { ...base.reasons, questions: [1].map(question) } }),
     );
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    expect(screen.queryByTestId('detail-review')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-questions')).toBeInTheDocument();
+    expect(screen.queryByTestId('call-list')).not.toBeInTheDocument();
+    const review = screen.getByTestId('detail-review');
+    expect(within(review).getByTestId('detail-questions')).toBeInTheDocument();
+    expect(within(review).getByTestId('detail-next-action')).toHaveTextContent(
+      base.reasons.nextAction,
+    );
   });
 
-  it('가짜 응답 파일의 검토사항에는 질문 줄 답 1건이 있고 "답: …"과 [답 고치기]가 보인다', async () => {
+  it('가짜 응답 파일의 검토사항에는 질문 줄 답 1건이 있고 "답: …"이 읽기 전용으로 보인다 ([답 적기]·[답 고치기]는 없다, #674)', async () => {
     mockedGet.mockResolvedValueOnce(reply(fixtureData));
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const rows = within(screen.getByTestId('detail-review')).getAllByTestId('review-item');
+    const user = userEvent.setup();
+    const review = screen.getByTestId('detail-review');
+    // 질문 2줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
+    expect(within(review).getAllByTestId('review-item')).toHaveLength(2);
+    const fold = within(review).getByTestId('review-fold-toggle-gap');
+    expect(fold).toHaveTextContent('아직 근거·자료가 없는 항목 1개 보기');
+    expect(fold).toHaveAttribute('aria-expanded', 'false');
+    await user.click(fold);
+    const rows = within(review).getAllByTestId('review-item');
     expect(rows).toHaveLength(3);
+    expect(rows[2]).toHaveTextContent('홈페이지를 찾지 못함');
     expect(within(rows[0]).getByTestId('review-reply')).toHaveTextContent(
       '답: 2024년에 KS 인증 받았다고 함',
     );
-    expect(within(rows[0]).getByTestId('review-reply-button')).toHaveTextContent(
-      reviewArea.replyEdit,
-    );
-    expect(within(rows[1]).getByTestId('review-reply-button')).toHaveTextContent(
-      reviewArea.replyAdd,
-    );
-    // 자료 줄에는 [답 적기]가 없다.
-    expect(within(rows[2]).queryByTestId('review-reply-button')).not.toBeInTheDocument();
+    expect(within(rows[1]).queryByTestId('review-reply')).not.toBeInTheDocument();
+    // 적는 것은 아래 "기록 남기기"에서 한다. 읽는 곳에는 답 단추가 없다.
+    expect(screen.queryByTestId('review-reply-button')).not.toBeInTheDocument();
+    expect(screen.queryByText(reviewArea.replyEdit)).not.toBeInTheDocument();
+    expect(screen.queryByText(reviewArea.replyAdd)).not.toBeInTheDocument();
   });
 
-  it('검토사항에서 답을 저장하면 활동 이력을 새로 불러온다', async () => {
-    const user = userEvent.setup();
+  it('읽는 곳에서는 답을 저장하는 요청을 보내지 않는다: 답 입력칸이 없고 활동 이력은 한 번만 불러온다 (#674)', async () => {
     mockedGet.mockResolvedValueOnce(reply(fixtureData));
-    mockedReply.mockResolvedValueOnce({
-      data: {
-        questionId: 'q-fixture-unanswered',
-        replyText: '직접 생산한다고 함',
-        repliedAt: '2026-11-06',
-        repliedBy: 'park-lee',
-      },
-      meta: {},
-    });
     renderPage();
     await screen.findByTestId('opportunity-detail');
     await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(1));
-    const rows = within(screen.getByTestId('detail-review')).getAllByTestId('review-item');
-    await user.click(within(rows[1]).getByTestId('review-reply-button'));
-    fireEvent.change(screen.getByTestId('review-reply-input'), {
-      target: { value: '직접 생산한다고 함' },
-    });
-    await user.click(screen.getByTestId('review-reply-save'));
-    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('review-reply-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('review-reply-save')).not.toBeInTheDocument();
+    expect(mockedReply).not.toHaveBeenCalled();
   });
 
   it('맨 아래에 "비슷한 회사 참고"가 붙고 이 회사의 비슷한 회사를 불러와 보인다 (#269)', async () => {
@@ -263,8 +277,7 @@ describe('OpportunityDetailPage', () => {
     expect(screen.queryByTestId('detail-error')).not.toBeInTheDocument();
   });
 
-  it('자료 줄에 메모를 저장하면 활동 이력만 새로 불러오고 상세는 다시 읽지 않는다 (#260)', async () => {
-    const user = userEvent.setup();
+  it('자료 줄에 저장돼 있던 메모는 그 줄 아래에 읽기 전용으로 보이고 [메모 적기]·[붙여넣고 조사]는 없다 (#674)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({
         ...base,
@@ -276,32 +289,25 @@ describe('OpportunityDetailPage', () => {
             text: '홈페이지를 찾지 못함',
             targetLabel: null,
             checked: false,
+            note: {
+              text: '홈페이지 연혁에 2023 납품 기재 https://example.com/history',
+              by: 'park-lee',
+              at: '2026-11-20T10:00:00+09:00',
+            },
           },
         ],
       }),
     );
-    mockedNote.mockResolvedValueOnce({
-      data: {
-        version: 1,
-        updatedBy: 'park-lee',
-        updatedAt: '2026-11-20T10:00:00+09:00',
-        noteId: 'note-1',
-      },
-      meta: {},
-    });
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByTestId('review-memo-button'));
-    fireEvent.change(screen.getByTestId('review-memo-input'), {
-      target: { value: '홈페이지 연혁에 2023 납품 기재' },
-    });
-    await user.click(screen.getByTestId('review-memo-save'));
-    expect(await screen.findByTestId('review-memo')).toHaveTextContent(
-      '메모: 홈페이지 연혁에 2023 납품 기재',
-    );
-    await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
-    expect(mockedGet).toHaveBeenCalledTimes(1);
+    // 기록이 달린 줄은 접히지 않고 바로 보인다.
+    const memo = screen.getByTestId('review-memo');
+    expect(memo).toHaveTextContent('메모: 홈페이지 연혁에 2023 납품 기재');
+    expect(within(memo).getByRole('link')).toHaveAttribute('target', '_blank');
+    expect(screen.queryByTestId('review-memo-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('review-memo-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('review-paste-button')).not.toBeInTheDocument();
+    expect(mockedNote).not.toHaveBeenCalled();
   });
 
   it('기록 영역 아래에 활동 타임라인이 붙고 최근 순으로 보인다', async () => {
@@ -327,21 +333,27 @@ describe('OpportunityDetailPage', () => {
     expect(mockedActivity).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
   });
 
-  it('영역이 1~5번 순서로 나오고 맨 아래에 의견 영역이 있으며 이름이 제목으로 올라간다', async () => {
+  it('위는 읽는 곳(한눈에·1~3번), 구분 줄 아래는 적는 곳(검토 의견·기록·비슷한 회사) 순서이고 이름이 제목으로 올라간다 (#674)', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     const setPageTitle = renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual([
+      detailReport.glance.title,
       detailSections.reasons,
-      detailSections.requirements,
-      detailSections.processLinks,
-      detailSections.evidence,
+      detailSections.callChecklist,
       expect.stringContaining(detailSections.scores),
       opinionArea.groupLabel,
       recordsArea.title,
       peersArea.title,
     ]);
+    // 구분 줄 "여기부터 적는 곳"은 점수 구역과 검토 의견 사이에 있다.
+    const divider = screen.getByTestId('detail-write-divider');
+    expect(divider).toHaveTextContent(detailReport.writeDivider);
+    const after = (a: HTMLElement, b: HTMLElement) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after(screen.getByTestId('detail-scores'), divider)).toBe(true);
+    expect(after(divider, screen.getByTestId('detail-opinion'))).toBe(true);
     const opinion = screen.getByTestId('detail-opinion');
     expect(within(opinion).getByTestId('opinion-area')).toBeInTheDocument();
     // 맨 아래 기록 영역에 네 칸이 있다.
@@ -397,7 +409,7 @@ describe('OpportunityDetailPage', () => {
     expect(score.getAttribute('aria-label')).not.toContain('판정');
   });
 
-  it('상세 머리: 거래 확인 전 점수는 흐리게 "거래 확인 전" 꼬리표가 붙고, 확정이면 꼬리표가 없다 (#264)', async () => {
+  it('상세 머리: 확정 전 점수는 흐리게 보이지만 "거래 확인 전" 꼬리표는 붙지 않는다 (#264 → #674에서 뺌)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({
         ...base,
@@ -415,8 +427,12 @@ describe('OpportunityDetailPage', () => {
     const score = await screen.findByTestId('detail-score');
     expect(score).toHaveTextContent(/^50점 · 3\/8$/);
     expect(score).toHaveAttribute('data-score-state', 'PENDING');
-    expect(screen.getByTestId('detail-score-pending-tag')).toHaveTextContent(scoreTags.pending);
+    // 상세는 거래 관계를 다루지 않는다(PM 결정 2026-11-13): 꼬리표를 그리지 않는다. 카드는 그대로다.
+    expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
+    expect(screen.queryByText(scoreTags.pending)).not.toBeInTheDocument();
     expect(screen.queryByTestId('detail-score-existing-tag')).not.toBeInTheDocument();
+    // 분류 꼬리표 "필수조건 확인 필요"도 카드(#659)와 같게 보이지 않는다.
+    expect(screen.queryByTestId('detail-classification')).not.toBeInTheDocument();
   });
 
   it('상세 머리: AI 제안으로 계산된 점수(확정 전인데 분류가 확인 대기가 아님)는 흐리게 "AI 제안 · 확인 전"이 붙는다 (#498)', async () => {
@@ -485,7 +501,9 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     const back = await screen.findByTestId('back-to-list-link');
     const rerun = screen.getByTestId('homepage-rerun-button');
-    expect(back.parentElement).toBe(screen.getByTestId('homepage-controls').parentElement);
+    // 같은 줄 오른쪽에 [관심]과 [다시 조사]가 나란히 있다(#674).
+    expect(back.parentElement).toContainElement(screen.getByTestId('homepage-controls'));
+    expect(back.parentElement).toContainElement(screen.getByTestId('bookmark-button'));
     expect(rerun).toHaveTextContent('다시 조사');
     expect(screen.queryByTestId('homepage-confirm-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('homepage-edit-button')).not.toBeInTheDocument();
@@ -580,46 +598,222 @@ describe('OpportunityDetailPage', () => {
   it('서버가 접촉 횟수를 주지 않으면 머리의 접촉 횟수 줄은 보이지 않는다 (#210)', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     renderPage();
-    await screen.findByTestId('detail-relation-text');
+    await screen.findByTestId('detail-glance');
     expect(screen.queryByTestId('detail-contact-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('glance-sales')).not.toBeInTheDocument();
   });
 
-  it('거래 관계를 바꾸면 서버에 저장한 뒤 상세와 활동 이력을 새로 불러온다 (#266)', async () => {
-    const user = userEvent.setup();
+  it('상세 머리에 거래 관계 입력이 없다: 단추도 "거래 관계: …" 글도 보이지 않고 저장 요청도 가지 않는다 (#266 → #674에서 뺌)', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
-    mockedGet.mockResolvedValueOnce(
-      reply({
-        ...base,
-        evalId: 'eval-reevaluated',
-        reevaluated: true,
-        header: { ...base.header, relationStatus: 'NEW_CONFIRMED', relationNote: null },
-      }),
-    );
-    mockedRelation.mockResolvedValueOnce({
-      data: {
-        relationStatus: 'NEW_CONFIRMED',
-        relationConfirmedAt: '2026-11-05',
-        relationConfirmedBy: 'park-lee',
-        evalId: 'eval-reevaluated',
-      },
-      meta: { reevaluated: true },
-    });
     renderPage();
-    expect(await screen.findByTestId('detail-relation-text')).toHaveTextContent(
-      '거래 관계: 거래 중',
+    await screen.findByTestId('detail-header');
+    expect(screen.queryByTestId('detail-relation-text')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('relation-button-NEW_CONFIRMED')).not.toBeInTheDocument();
+    expect(screen.queryByText(/거래 관계:/)).not.toBeInTheDocument();
+    expect(mockedRelation).not.toHaveBeenCalled();
+  });
+
+  it('거래 중으로 확인된 회사는 점수 옆 "기존 거래처" 표시가 남는다 (#674)', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply({ ...base, header: { ...base.header, relationStatus: 'EXISTING_CONFIRMED' } }),
     );
-    const activityCallsBefore = mockedActivity.mock.calls.length;
-    await user.click(screen.getByTestId('relation-button-NEW_CONFIRMED'));
-    expect(mockedRelation).toHaveBeenCalledWith(
-      'opp-1',
-      { relationStatus: 'NEW_CONFIRMED', evalId: base.evalId },
-      'park-lee',
+    renderPage();
+    expect(await screen.findByTestId('detail-score-existing-tag')).toHaveTextContent(
+      scoreTags.existing,
     );
-    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
-    await waitFor(() =>
-      expect(screen.getByTestId('detail-relation-text')).toHaveTextContent('거래 관계: 거래 없음'),
-    );
-    expect(mockedActivity.mock.calls.length).toBeGreaterThan(activityCallsBefore);
+  });
+
+  describe('읽는 곳과 적는 곳 (#674)', () => {
+    const proposal = {
+      itemId: 'II:NEW_MATERIAL',
+      kind: 'ITEM_INPUT_PROPOSAL' as const,
+      source: 'AI' as const,
+      text: 'AI 제안 · 소재와 보유 공정 일치 — 일부 가능(강한 추정) · 근거: 알루미늄 주물',
+      checked: false,
+      stepOptions: ['정확히 일치', '일부 가능'],
+    };
+    const gap = (code: string, text: string) => ({
+      itemId: `GAP:ITEM:${code}`,
+      kind: 'DATA_INSUFFICIENT' as const,
+      source: 'RULE' as const,
+      text,
+      checked: false,
+    });
+
+    it('점수는 기본으로 접혀 있고 제목 줄에 요약이 보이며, AI 점수 입력 제안의 [확정]·[고치기]는 펼친 안쪽에만 있다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply({ ...base, reviewItems: [proposal] }));
+      mockedCheck.mockResolvedValueOnce({
+        data: {
+          itemId: 'II:NEW_MATERIAL',
+          checked: true,
+          checkedBy: 'park-lee',
+          checkedAt: '2026-11-13T10:00:00+09:00',
+        },
+        meta: { reevaluated: true },
+      });
+      renderPage();
+      await screen.findByTestId('opportunity-detail');
+      const scores = screen.getByTestId('detail-scores');
+      const toggle = within(scores).getByTestId('detail-scores-toggle');
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      // 가상 사례: 8항목 가운데 수주(신호 없음)·채용(자료 미확보)을 뺀 6항목에 근거가 있다.
+      expect(within(scores).getByTestId('detail-scores-summary')).toHaveTextContent(
+        '77점 · 8항목 중 6항목 근거 있음',
+      );
+      // 접혀 있을 때는 제안 단추가 화면 어디에도 없다(통화에서 확인할 것 구역에도 없다).
+      expect(screen.queryByTestId('review-proposal-confirm')).not.toBeInTheDocument();
+      expect(screen.getByTestId('detail-review')).not.toHaveTextContent('AI 제안');
+
+      await user.click(toggle);
+      const proposals = within(scores).getByTestId('score-proposals');
+      expect(within(proposals).getByTestId('review-text')).toHaveTextContent(proposal.text);
+      expect(within(proposals).getByTestId('review-proposal-fix')).toBeInTheDocument();
+      expect(within(scores).getByTestId('score-items-table')).toBeInTheDocument();
+      await user.click(within(proposals).getByTestId('review-proposal-confirm'));
+      expect(mockedCheck).toHaveBeenCalledWith(
+        'opp-1',
+        'II:NEW_MATERIAL',
+        { checked: true, evalId: base.evalId },
+        'park-lee',
+      );
+      // 확정하면 점수가 바뀌므로 상세를 다시 불러오고, 점수 구역은 펼친 채로 남는다.
+      await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+      expect(await screen.findByTestId('detail-scores-toggle')).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+    });
+
+    it('점수가 없으면 점수 구역 제목 줄에 "점수 전"이 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...base, scores: null, reviewItems: [] }));
+      renderPage();
+      await screen.findByTestId('opportunity-detail');
+      expect(screen.getByTestId('detail-scores-summary')).toHaveTextContent(/^점수 전$/);
+      expect(screen.queryByTestId('detail-scores-toggle')).not.toBeInTheDocument();
+    });
+
+    it('공고·채용 "근거 없음" 줄은 접힌 묶음을 펼쳐도 보이지 않고, 나머지는 읽기 전용으로 남는다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...base,
+          reviewItems: [
+            gap('NEW_RECORD', '유사 산업·부품 납품실적 근거 없음'),
+            gap('SIG_BID', '입찰·협력사 모집·구매 공고 근거 없음'),
+            gap('SIG_HIRE', '관련 직무 채용(구매·품질·생산기술·표면처리) 근거 없음'),
+          ],
+        }),
+      );
+      renderPage();
+      await screen.findByTestId('opportunity-detail');
+      const review = screen.getByTestId('detail-review');
+      await user.click(within(review).getByTestId('review-fold-toggle-gap'));
+      const rows = within(review).getAllByTestId('review-item');
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent('유사 산업·부품 납품실적 근거 없음');
+      expect(review).not.toHaveTextContent('공고 근거 없음');
+      expect(review).not.toHaveTextContent('채용');
+    });
+
+    it('구분 줄 위(읽는 곳)의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이고 입력칸이 없다', async () => {
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...fixtureData,
+          reviewItems: [...(fixtureData.reviewItems ?? []), proposal],
+          records: {
+            ...fixtureData.records,
+            contactCount: { total: 1, call: 1, email: 0, visit: 0 },
+          },
+        }),
+      );
+      renderPage();
+      await screen.findByTestId('opportunity-detail');
+      const divider = screen.getByTestId('detail-write-divider');
+      const above = (el: HTMLElement) =>
+        Boolean(el.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const buttons = [...screen.getAllByRole('button'), ...screen.getAllByRole('link')]
+        .filter(above)
+        .filter((el) => el.tagName !== 'A' || el.getAttribute('target') !== '_blank')
+        .map((el) => el.getAttribute('data-testid'));
+      expect(buttons.sort()).toEqual(
+        [
+          'back-to-list-link',
+          'bookmark-button',
+          // 대표번호는 누르면 전화가 걸리는 링크다(단추가 아님).
+          'company-phone-link',
+          'detail-scores-toggle',
+          'homepage-rerun-button',
+          'review-fold-toggle-gap',
+        ].sort(),
+      );
+      for (const role of ['textbox', 'checkbox', 'combobox', 'radio']) {
+        expect(screen.queryAllByRole(role).filter(above)).toHaveLength(0);
+      }
+      // 적는 곳은 구분 줄 아래에 그대로 있다: 검토 의견 → 기록 남기기 → 활동 이력 → 비슷한 회사 참고.
+      const below = ['detail-opinion', 'detail-records', 'detail-peers'].map((id) =>
+        screen.getByTestId(id),
+      );
+      for (const el of below) expect(above(el)).toBe(false);
+      expect(within(below[1]).getByTestId('records-area')).toBeInTheDocument();
+      expect(
+        below[0].compareDocumentPosition(below[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        below[1].compareDocumentPosition(below[2]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('맨 위에 단계 진행 막대가 있고, 접촉 기록이 없으면 모두 빈 점과 "아직 접촉 기록이 없습니다"가 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(reply(base));
+      renderPage();
+      const header = await screen.findByTestId('detail-header');
+      const steps = within(header).getAllByTestId('sales-progress-step');
+      expect(steps).toHaveLength(5);
+      expect(steps.every((el) => el.getAttribute('data-state') === 'todo')).toBe(true);
+      expect(within(header).getByTestId('sales-progress-empty')).toHaveTextContent(
+        '아직 접촉 기록이 없습니다',
+      );
+    });
+
+    it('진행 중인 회사는 지금 단계와 다음 일정이 막대에, 접촉 횟수와 마지막 접촉이 "한눈에"에 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...base,
+          records: {
+            ...base.records,
+            contactCount: { total: 3, call: 2, email: 0, visit: 1 },
+            lastContactAt: '2026-11-12',
+            salesStep: {
+              code: 'DEMAND_CONFIRMED',
+              since: '2026-11-12',
+              overridden: false,
+              known: [],
+              openQuestions: [],
+            },
+            outcome: {
+              version: 3,
+              updatedBy: 'park-lee',
+              updatedAt: '2026-11-12T09:00:00+09:00',
+              status: 'IN_PROGRESS',
+              nextScheduleAt: '2026-11-20',
+              nextScheduleNote: '견적 보내기',
+            },
+          },
+        }),
+      );
+      renderPage();
+      const header = await screen.findByTestId('detail-header');
+      expect(within(header).getByTestId('sales-progress-now')).toHaveTextContent(
+        '지금 (11/12부터)',
+      );
+      expect(within(header).getByTestId('sales-progress-next')).toHaveTextContent(
+        '다음 일정: 11/20 견적 보내기',
+      );
+      expect(screen.getByTestId('detail-contact-count')).toHaveTextContent(
+        '접촉 3회 (전화 2 · 방문 1) · 마지막 접촉 11/12',
+      );
+    });
   });
 
   describe('머리의 [관심] 단추 (#357)', () => {
@@ -681,6 +875,8 @@ describe('OpportunityDetailPage', () => {
       });
       renderPage();
       expect(await screen.findByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false');
+      // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+      await user.click(screen.getByTestId('records-stage-toggle'));
       await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
       await user.click(screen.getByTestId('records-stage-save-button'));
       await waitFor(() =>
@@ -709,6 +905,8 @@ describe('OpportunityDetailPage', () => {
       });
       renderPage();
       await screen.findByTestId('bookmark-button');
+      // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+      await user.click(screen.getByTestId('records-stage-toggle'));
       await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
       await user.click(screen.getByTestId('records-stage-save-button'));
       await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
@@ -760,34 +958,35 @@ describe('OpportunityDetailPage', () => {
     expect(hint).toHaveTextContent('답 기록 기능은 11월에 들어갑니다.');
   });
 
-  it('확인된 요구가 없으면 표 대신 안내 문구를 보인다', async () => {
-    mockedGet.mockResolvedValueOnce(reply({ ...base, requirements: [] }));
-    renderPage();
-    expect(await screen.findByTestId('requirements-empty')).toHaveTextContent(
-      states.noRequirements,
-    );
-    expect(screen.queryByTestId('requirements-table')).not.toBeInTheDocument();
-  });
-
-  it('요구 표는 머리글 행이 있는 진짜 표이고 판정이 색 아닌 글자로도 보인다', async () => {
+  // PM 결정 2026-11-13(#659): 재접촉 관리를 하지 않으므로 "고객이 요구하는 것과 거산의 준비 상태" 구역을 그리지 않는다.
+  // 요구 표와 "승인 가능 여부" 줄의 모양 검사는 부품 시험(components/detail/__tests__/RequirementsTable.test.tsx)으로 옮겼다.
+  it('공정 적합성 검토 구역은 공정 연결이 있어도 보이지 않는다', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     renderPage();
-    const table = await screen.findByTestId('requirements-table');
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(5);
-    for (const th of within(table).getAllByRole('columnheader')) {
-      expect(th).toHaveAttribute('scope', 'col');
-    }
-    const rows = screen.getAllByTestId('requirement-row');
-    expect(rows).toHaveLength(3);
-    expect(rows[0]).toHaveTextContent('ISO 9001');
-    expect(rows[0]).toHaveTextContent('통과 (응모 가능)');
-    expect(rows[1]).toHaveTextContent('품질팀 샘플 승인');
-    expect(rows[1]).toHaveTextContent('나중 단계');
-    expect(rows[2]).toHaveTextContent('Nadcap');
-    expect(rows[2]).toHaveTextContent('질문 필요 (승인은 막지 않음)');
-    expect(screen.getByTestId('approval-eligibility-line')).toHaveTextContent(
-      `${detailSections.approvalEligible}`,
-    );
+    await screen.findByTestId('opportunity-detail');
+    expect(base.processLinks.length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('detail-process-links')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('process-link')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(detailSections.processLinks, { exact: false }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['요구가 있을 때', base],
+    ['요구가 없을 때', { ...base, requirements: [] }],
+  ])('요구와 준비 상태 구역은 %s도 보이지 않는다', async (_name, data) => {
+    mockedGet.mockResolvedValueOnce(reply(data));
+    renderPage();
+    await screen.findByTestId('opportunity-detail');
+    expect(screen.queryByTestId('detail-requirements')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('requirements-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('requirements-empty')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('requirement-row')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('approval-eligibility-line')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(detailSections.requirements, { exact: false }),
+    ).not.toBeInTheDocument();
   });
 
   it('근거는 사실(확인)과 추정을 글자로 구분하고 LLM 제안 표시를 붙인다', async () => {
@@ -858,15 +1057,20 @@ describe('OpportunityDetailPage', () => {
     mockedGet.mockResolvedValueOnce(reply({ ...base, scores: { ...base.scores!, items } }));
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const lines = screen.getAllByTestId('detail-reason-line');
+    const lines = screen.getAllByTestId('detail-reason-text');
     expect(lines.map((line) => line.textContent)).toEqual([
       '제품: 요약 문장 0 (출처 0)',
       '소재: 요약 문장 1 (출처 1)',
       '처리 목적(추정): 요약 문장 2 (출처 2)',
       '표에 없는 긴 항목 이름: 요약 문장 4 (출처 4)',
     ]);
-    expect(screen.getByTestId('detail-reason')).not.toHaveTextContent(base.reasons.reason);
-    expect(screen.getByTestId('detail-next-action')).toHaveTextContent(base.reasons.nextAction);
+    // 항목별 요약이 있으면 서버의 한 줄 추천 이유는 따로 보이지 않는다.
+    expect(screen.queryByTestId('detail-reason')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-reasons')).not.toHaveTextContent(base.reasons.reason);
+    // 후속 조치는 "2. 통화에서 확인할 것" 자리에 있다(검토사항이 없는 옛 응답은 예전 부품).
+    expect(
+      within(screen.getByTestId('detail-review')).getByTestId('detail-next-action'),
+    ).toHaveTextContent(base.reasons.nextAction);
   });
 
   it('요약 줄 끝 괄호 글자는 그 항목 근거의 첫 주소로 가는 새 창 링크가 되고, 주소가 없으면 글자만 보인다 (#175)', async () => {
@@ -907,7 +1111,15 @@ describe('OpportunityDetailPage', () => {
     );
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const lines = screen.getAllByTestId('detail-reason-line');
+    const rows = screen.getAllByTestId('detail-reason-line');
+    const lines = screen.getAllByTestId('detail-reason-text');
+    // 문장 바로 아래에 그 문장에 쓴 근거의 인용과 출처가 붙는다(#674): 첫 줄은 근거 2건, 출처 주소는 새 창 링크.
+    const quotes = within(rows[0]).getAllByTestId('evidence-item');
+    expect(quotes).toHaveLength(2);
+    expect(
+      within(quotes[1]).getByRole('link', { name: 'http://kofas.com/productK/' }),
+    ).toHaveAttribute('target', '_blank');
+    expect(within(rows[1]).getAllByTestId('evidence-item')).toHaveLength(1);
 
     // 글은 그대로이고 괄호 안 글자만 링크다. 주소 있는 첫 근거(ev-b)의 첫 주소를 쓴다.
     expect(lines[0]).toHaveTextContent('제품: 볼트를 만든다고 밝혔습니다. (홈페이지 제품 목록)');
