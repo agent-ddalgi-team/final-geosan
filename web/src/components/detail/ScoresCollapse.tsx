@@ -1,4 +1,4 @@
-// 5. 점수 자세히 보기: 기본 접힘. 전문 용어(E/P/S/R/C)와 항목별 점수는 여기서만 보인다(BR10.9).
+// 4. 점수 자세히 보기: 기본 접힘. 전문 용어(E/P/S/R/C)와 항목별 점수는 여기서만 보인다(BR10.9).
 // 펼침/접힘은 aria-expanded와 글자로 함께 알린다(S2-8).
 import { useState } from 'react';
 import { Statistic } from 'antd';

@@ -151,10 +151,11 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    // "요구와 준비 상태" 구역은 화면에서 뺐다(PM 결정 2026-11-13 #659). 검토사항 다음이 공정 적합성이다.
     expect(headings.slice(0, 3)).toEqual([
       detailSections.reasons,
       reviewArea.title,
-      detailSections.requirements,
+      detailSections.processLinks,
     ]);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
     const review = screen.getByTestId('detail-review');
@@ -327,14 +328,13 @@ describe('OpportunityDetailPage', () => {
     expect(mockedActivity).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
   });
 
-  it('영역이 1~5번 순서로 나오고 맨 아래에 의견 영역이 있으며 이름이 제목으로 올라간다', async () => {
+  it('영역이 1~4번 순서로 나오고 맨 아래에 의견 영역이 있으며 이름이 제목으로 올라간다', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     const setPageTitle = renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual([
       detailSections.reasons,
-      detailSections.requirements,
       detailSections.processLinks,
       detailSections.evidence,
       expect.stringContaining(detailSections.scores),
@@ -760,34 +760,23 @@ describe('OpportunityDetailPage', () => {
     expect(hint).toHaveTextContent('답 기록 기능은 11월에 들어갑니다.');
   });
 
-  it('확인된 요구가 없으면 표 대신 안내 문구를 보인다', async () => {
-    mockedGet.mockResolvedValueOnce(reply({ ...base, requirements: [] }));
+  // PM 결정 2026-11-13(#659): 재접촉 관리를 하지 않으므로 "고객이 요구하는 것과 거산의 준비 상태" 구역을 그리지 않는다.
+  // 요구 표와 "승인 가능 여부" 줄의 모양 검사는 부품 시험(components/detail/__tests__/RequirementsTable.test.tsx)으로 옮겼다.
+  it.each([
+    ['요구가 있을 때', base],
+    ['요구가 없을 때', { ...base, requirements: [] }],
+  ])('요구와 준비 상태 구역은 %s도 보이지 않는다', async (_name, data) => {
+    mockedGet.mockResolvedValueOnce(reply(data));
     renderPage();
-    expect(await screen.findByTestId('requirements-empty')).toHaveTextContent(
-      states.noRequirements,
-    );
+    await screen.findByTestId('opportunity-detail');
+    expect(screen.queryByTestId('detail-requirements')).not.toBeInTheDocument();
     expect(screen.queryByTestId('requirements-table')).not.toBeInTheDocument();
-  });
-
-  it('요구 표는 머리글 행이 있는 진짜 표이고 판정이 색 아닌 글자로도 보인다', async () => {
-    mockedGet.mockResolvedValueOnce(reply(base));
-    renderPage();
-    const table = await screen.findByTestId('requirements-table');
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(5);
-    for (const th of within(table).getAllByRole('columnheader')) {
-      expect(th).toHaveAttribute('scope', 'col');
-    }
-    const rows = screen.getAllByTestId('requirement-row');
-    expect(rows).toHaveLength(3);
-    expect(rows[0]).toHaveTextContent('ISO 9001');
-    expect(rows[0]).toHaveTextContent('통과 (응모 가능)');
-    expect(rows[1]).toHaveTextContent('품질팀 샘플 승인');
-    expect(rows[1]).toHaveTextContent('나중 단계');
-    expect(rows[2]).toHaveTextContent('Nadcap');
-    expect(rows[2]).toHaveTextContent('질문 필요 (승인은 막지 않음)');
-    expect(screen.getByTestId('approval-eligibility-line')).toHaveTextContent(
-      `${detailSections.approvalEligible}`,
-    );
+    expect(screen.queryByTestId('requirements-empty')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('requirement-row')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('approval-eligibility-line')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(detailSections.requirements, { exact: false }),
+    ).not.toBeInTheDocument();
   });
 
   it('근거는 사실(확인)과 추정을 글자로 구분하고 LLM 제안 표시를 붙인다', async () => {

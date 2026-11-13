@@ -324,13 +324,17 @@ export const scoreAria = {
   unavailable: '점수 산정 전',
 };
 
-/** 상세 영역 제목(BR10.5 순서). */
+/**
+ * 상세 영역 제목(BR10.5 순서).
+ * 2026-11-13 PM 결정(#659): "고객이 요구하는 것과 거산의 준비 상태" 구역을 화면에서 빼고 번호를 다시 매겼다.
+ * `requirements`는 지금 화면이 쓰지 않는 키다(구역 부품을 다시 쓸 때를 위해 남긴다).
+ */
 export const detailSections = {
   reasons: '1. 추천 근거와 후속 조치',
-  requirements: '2. 고객이 요구하는 것과 거산의 준비 상태',
-  processLinks: '3. 공정 적합성 검토',
-  evidence: '4. 근거 자료',
-  scores: '5. 점수 자세히 보기',
+  requirements: '고객이 요구하는 것과 거산의 준비 상태',
+  processLinks: '2. 공정 적합성 검토',
+  evidence: '3. 근거 자료',
+  scores: '4. 점수 자세히 보기',
   estimateMark: '(추정)',
   questionsHeading: '거산 역량 확인사항',
   questionsHint:

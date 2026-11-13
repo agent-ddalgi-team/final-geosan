@@ -1,4 +1,4 @@
-// 3. 공정 연결: 거산 공정 이름 · 적용 소재 · 판정(글자).
+// 2. 공정 적합성 검토(공정 연결): 거산 공정 이름 · 적용 소재 · 판정(글자).
 import type { ProcessLinkView } from '../../api/types';
 import StatusTag from '../common/StatusTag';
 import DetailSection from './DetailSection';

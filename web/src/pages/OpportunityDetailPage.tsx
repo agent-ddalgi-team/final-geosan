@@ -16,13 +16,11 @@ import type {
 } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
-import ApprovalEligibilityLine from '../components/detail/ApprovalEligibilityLine';
 import DetailSection from '../components/detail/DetailSection';
 import EvidenceSection from '../components/detail/EvidenceSection';
 import HeaderSection from '../components/detail/HeaderSection';
 import ProcessLinksSection from '../components/detail/ProcessLinksSection';
 import ReasonsSection from '../components/detail/ReasonsSection';
-import RequirementsTable from '../components/detail/RequirementsTable';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import { useFrame } from '../components/frame/FrameContext';
 import OpinionArea from '../components/opinion/OpinionArea';
@@ -32,15 +30,7 @@ import { choiceMarksOf } from '../components/records/ChoiceQuestion';
 import RecordsArea from '../components/records/RecordsArea';
 import ReviewArea from '../components/review/ReviewArea';
 import WhyRecommended from '../components/review/WhyRecommended';
-import {
-  detailSections,
-  frame,
-  opinionArea,
-  peersArea,
-  recordsArea,
-  reviewArea,
-  states,
-} from '../labels/ko';
+import { frame, opinionArea, peersArea, recordsArea, reviewArea, states } from '../labels/ko';
 import { spacing } from '../theme/tokens';
 
 /** "재평가됨" 띠가 보이는 시간(ms, interaction-spec 2.16). */
@@ -231,10 +221,8 @@ export default function OpportunityDetailPage() {
               />
             </DetailSection>
           ) : null}
-          <DetailSection id="detail-requirements" title={detailSections.requirements}>
-            <RequirementsTable requirements={data.requirements} />
-            <ApprovalEligibilityLine eligibility={data.approvalEligibility} />
-          </DetailSection>
+          {/* "고객이 요구하는 것과 거산의 준비 상태" 구역(요구 표 + 승인 가능 여부 한 줄)은 그리지 않는다
+              (PM 결정 2026-11-13 #659: 재접촉 관리를 하지 않는다). 서버 응답은 그대로 온다. */}
           <ProcessLinksSection links={data.processLinks} />
           <EvidenceSection evidence={data.evidence} />
           <ScoresCollapse scores={data.scores} />
