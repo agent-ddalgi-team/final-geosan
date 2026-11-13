@@ -83,11 +83,14 @@ export const checkDisplayTone: Record<CheckDisplay, StatusTone> = {
   EXCLUDED: 'no',
 };
 
-/** 의견 3값과 버튼 문구. */
+/**
+ * 의견 3값과 버튼 문구. 화면에 보이는 말만 바꿨고 저장 값(코드)은 그대로다(#697, PM 결정 2026-11-13):
+ * 검토 권고 → 영업 대상, 추가 확인 필요 → 검토 중, 검토 대상 제외 → 제외.
+ */
 export const opinionLabels: Record<Opinion, string> = {
-  WORTH_REVIEW: '검토 권고',
-  NEED_CHECK: '추가 확인 필요',
-  NOT_TARGET: '검토 대상 제외',
+  WORTH_REVIEW: '영업 대상',
+  NEED_CHECK: '검토 중',
+  NOT_TARGET: '제외',
 };
 
 export const reqLevelLabels = {
@@ -155,7 +158,7 @@ export const opinionArea = {
   savedSummaryPrefix: '의견:',
   edit: '수정',
   saveFailed: '저장하지 못했습니다. 다시 시도',
-  reasonLabel: '검토 대상 제외 사유',
+  reasonLabel: '제외 사유',
   reasonRequired: '사유를 적어 주세요',
   memoLabel: '메모(선택, 200자)',
   pickStaffFirst: '먼저 담당자를 고르세요',
@@ -208,13 +211,13 @@ export const dashboardTexts = {
   },
   /** 칸 이름. 목록 머리의 "무엇으로 걸렀는지"도 같은 말을 쓴다. */
   countNames: {
-    NOT_CONTACTED: '미접촉',
+    NOT_CONTACTED: '영업 대상 · 접촉 전',
     IN_CONTACT: '접촉 중',
     QUOTE_SAMPLE: '견적·샘플',
     SCHEDULE_DUE: '이번 주 일정',
     BOOKMARKED: '관심 기업',
     NO_OPINION: '의견 전',
-    NEED_CHECK: '추가 확인 필요',
+    NEED_CHECK: '검토 중',
     ON_HOLD: '보류',
     DONE: '완료',
     /** "오늘 확인할 것" 줄을 누르고 넘어온 목록의 이름(#679). 건수 칸은 아니다. */
@@ -238,9 +241,9 @@ export const dashboardTexts = {
   /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
   bookmarkSectionTitle: '관심 기업',
   progressSectionTitle: '영업 진행',
-  progressSectionHint: '관심 기업 가운데 검토 권고를 받은 뒤의 진행',
-  /** "미접촉" 칸의 작은 풀이: 검토 권고를 받았고 아직 접촉하지 않은 곳. */
-  notContactedHint: '검토 권고 · 접촉 전',
+  progressSectionHint: '관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
+  /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
+  notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
   bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
   bookmarkEmptyLink: '추천 목록',
@@ -513,12 +516,12 @@ export const bookmarkList = {
   opinionGroupLabel: '검토 의견으로 거르기',
   /**
    * 거르기 단추 네 개. "기타"는 의견을 아직 고르지 않은 회사만 나온다.
-   * 검토 대상 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
+   * 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
    */
   opinionFilters: {
     ALL: '전체 보기',
-    WORTH_REVIEW: '검토 권고',
-    NEED_CHECK: '추가 확인 필요',
+    WORTH_REVIEW: '영업 대상',
+    NEED_CHECK: '검토 중',
     NONE: '기타',
   },
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
@@ -529,12 +532,12 @@ export const bookmarkList = {
   clearFilter: '거르기 풀기',
 } as const;
 
-/** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 검토 대상 제외로 저장한 회사만 모아 본다. */
+/** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 제외로 저장한 회사만 모아 본다. */
 export const excludedList = {
   showOnly: '제외한 회사 보기',
   title: '제외한 회사',
-  hint: '검토 대상 제외로 저장한 회사입니다. 검토 의견을 바꾸면 관심 기업으로 돌아갑니다',
-  empty: '검토 대상 제외로 저장한 회사가 없습니다',
+  hint: '제외로 저장한 회사입니다. 검토 의견을 바꾸면 관심 기업으로 돌아갑니다',
+  empty: '제외로 저장한 회사가 없습니다',
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
@@ -1010,6 +1013,13 @@ export const recordsArea = {
   judgmentCheck: 'AI 판단이 맞았나',
   contactDate: '날짜',
   contactSave: '접촉 기록 저장',
+  /**
+   * 제외한 회사에 접촉을 남기려 할 때 그 자리에서 한 번 묻는다(#697, PM 결정 2026-11-13). 창은 띄우지 않는다.
+   * 제외가 아닌 회사는 묻지 않고, 접촉을 남기면 서버가 검토 의견을 "영업 대상"으로 정한다.
+   */
+  excludedAsk: '제외한 회사입니다. 영업 대상으로 되돌릴까요?',
+  excludedRestoreSave: '영업 대상으로 되돌리고 저장',
+  excludedKeepSave: '제외인 채로 저장',
   /** 상세 머리 "접촉 3회 (전화 2 · 방문 1)". 0회인 방법은 빼고, 접촉이 없으면 "접촉 없음". */
   contactCount: (total: number, call: number, email: number, visit: number) => {
     const parts = [
@@ -1508,12 +1518,12 @@ export const contactBuckets = {
     `${contactBucketTitles[bucket]} ${count}곳`,
   /** 카드 꼬리표: 그 묶음에 든 이유. */
   basis: {
-    EXCLUDED_OPINION: '검토 대상 제외',
+    EXCLUDED_OPINION: '제외',
     REQUIRED_FAILED: '필수조건 탈락',
     EXISTING_CUSTOMER: '거래 중',
     CLOSED_OR_HOLD: '성사·거절·보류',
     IN_PROGRESS: '접촉 진행 중',
-    NEED_CHECK_OPINION: '추가 확인 의견',
+    NEED_CHECK_OPINION: '검토 중',
     REQUIRED_PENDING: '필수조건 확인 전',
     OWN_PLATING: '표면처리 직접 여부 확인',
     NOT_EVALUATED_HIGH_FIT: '평가 전 · 적합도 상',

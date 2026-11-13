@@ -47,10 +47,11 @@ NOTE_SUMMARIES = {
 }
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}
+# 화면에 보이는 말(#697, PM 결정 2026-11-13). 저장 값은 그대로다.
 OPINION_LABELS = {
-    "WORTH_REVIEW": "검토 권고",
-    "NEED_CHECK": "추가 확인 필요",
-    "NOT_TARGET": "검토 대상 제외",
+    "WORTH_REVIEW": "영업 대상",
+    "NEED_CHECK": "검토 중",
+    "NOT_TARGET": "제외",
 }
 
 

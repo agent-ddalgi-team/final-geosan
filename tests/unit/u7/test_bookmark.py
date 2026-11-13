@@ -15,7 +15,7 @@ from tests.unit.u7.test_dashboard import dashboard_env, record  # noqa: F401
 URL = "/api/v1/opportunities"
 MINE = {"X-Staff-Key": "park-lee"}
 REFUSAL_MESSAGE = "기록이 있는 회사는 관심에서 뺄 수 없습니다"
-REFUSAL_NEXT_ACTION = "빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요"
+REFUSAL_NEXT_ACTION = "빼려면 검토 의견을 '제외'로 저장해 주세요"
 
 
 def set_bookmark(client, opp_id, active, staff="park-lee", **extra):
@@ -158,10 +158,8 @@ def test_failed_record_save_rolls_bookmark_back(dashboard_env, kind, model):  # 
 # 검토 대상 제외는 관심 기업이 아니다 (#536, 계약 v4)
 # ---------------------------------------------------------------------------
 
-EXCLUDED_MESSAGE = "검토 대상 제외로 저장한 회사입니다"
-EXCLUDED_NEXT_ACTION = (
-    "관심 기업에 다시 담으려면 검토 의견을 검토 권고나 추가 확인 필요로 바꿔 주세요"
-)
+EXCLUDED_MESSAGE = "제외로 저장한 회사입니다"
+EXCLUDED_NEXT_ACTION = "관심 기업에 다시 담으려면 검토 의견을 영업 대상이나 검토 중으로 바꿔 주세요"
 
 
 def test_saving_not_target_turns_bookmark_off_and_keeps_records(dashboard_env):  # noqa: F811

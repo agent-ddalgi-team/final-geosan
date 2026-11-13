@@ -46,7 +46,7 @@ const opinion: ActivityItem = {
   at: '2026-11-06T12:00:00+09:00',
   actor: 'park-lee',
   kind: 'OPINION',
-  summary: '검토 권고',
+  summary: '영업 대상',
   evalId: 'eval-1',
 };
 
@@ -130,8 +130,8 @@ describe('ActivityTimeline', () => {
     renderTimeline();
     const rows = await screen.findAllByTestId('timeline-item');
     const texts = rows.map((row) => within(row).getByTestId('timeline-summary').textContent);
-    expect(texts).toEqual(['추가 확인 필요', '검토 대상 제외', '검토 권고', 'NEED_CHECK']);
-    expect(summaryText({ ...opinion, summary: 'WORTH_REVIEW' })).toBe('검토 권고');
+    expect(texts).toEqual(['검토 중', '제외', '영업 대상', 'NEED_CHECK']);
+    expect(summaryText({ ...opinion, summary: 'WORTH_REVIEW' })).toBe('영업 대상');
   });
 
   it('기록이 하나도 없으면 안내 문구를 보인다', async () => {

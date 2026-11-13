@@ -5,8 +5,8 @@
 
 /**
  * 건수 칸의 이름표 9개.
- * - "관심 기업" 구역: BOOKMARKED(관심 기업 전체) · NO_OPINION(의견 전) · NEED_CHECK(추가 확인 필요)
- * - "영업 진행" 구역: NOT_CONTACTED(검토 권고를 받았고 아직 접촉 전) · IN_CONTACT · QUOTE_SAMPLE · ON_HOLD · DONE(성사·거절)
+ * - "관심 기업" 구역: BOOKMARKED(관심 기업 전체) · NO_OPINION(의견 전) · NEED_CHECK(검토 중)
+ * - "영업 진행" 구역: NOT_CONTACTED(영업 대상으로 정했고 아직 접촉 전) · IN_CONTACT · QUOTE_SAMPLE · ON_HOLD · DONE(성사·거절)
  * - SCHEDULE_DUE(이번 주 일정)는 예전 그대로다.
  * BOOKMARKED를 누르면 /opportunities?bookmarked=true, 나머지는 /opportunities?filter=<이름표>.
  */

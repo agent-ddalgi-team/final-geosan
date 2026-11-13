@@ -4120,6 +4120,11 @@
             "title": "Replyreceived",
             "type": "boolean"
           },
+          "restoreExcluded": {
+            "default": false,
+            "title": "Restoreexcluded",
+            "type": "boolean"
+          },
           "result": {
             "anyOf": [
               {
