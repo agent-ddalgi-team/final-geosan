@@ -120,10 +120,11 @@ export:
 
 # 관심 자동 조사 (#690, 계약 C7 research, PM 결정 2026-11-13).
 # [관심]을 켠 회사가 홈페이지 주소는 있는데 아직 조사 전이면 조사가 저절로 돈다.
-# autoOnBookmarkPerDay는 그렇게 저절로 도는 조사의 하루(한국 시간) 최대 건수다. 0이면 이 기능이 꺼진다.
+# autoOnBookmarkDailyCostUsd는 그렇게 저절로 도는 조사가 하루(한국 시간)에 쓸 수 있는 AI 비용(달러)이다.
+# 오늘 쓴 금액이 이 값보다 적을 때만 새 조사를 시작한다(마지막 한 곳만큼은 넘을 수 있다). 0이면 이 기능이 꺼진다.
 # 월 비용·호출 한도(llm)는 따로 그대로 적용된다.
 research:
-  autoOnBookmarkPerDay: 10
+  autoOnBookmarkDailyCostUsd: 1.0
 
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:

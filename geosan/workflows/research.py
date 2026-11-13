@@ -47,10 +47,15 @@ def _record_read_failure(opp_id: str, error: AppError) -> None:
         )
 
 
-def research_one(opp_id: str, *, find_homepage: bool = True) -> ResearchResult:
-    """회사 한 곳 조사. find_homepage가 False면 주소가 없을 때 홈페이지 찾기 검색을 하지 않는다."""
+def research_one(
+    opp_id: str, *, find_homepage: bool = True, transfer_requester: str | None = None
+) -> ResearchResult:
+    """회사 한 곳 조사. find_homepage가 False면 주소가 없을 때 홈페이지 찾기 검색을 하지 않는다.
+
+    transfer_requester를 주면 이 조사의 AI 호출 행(전송 기록)에 그 요청자를 남긴다(#690).
+    """
     result = ResearchResult()
-    with research_context() as context:
+    with research_context(transfer_requester) as context:
         try:
             check_opportunity(opp_id)
             with session_scope() as session:

@@ -35,13 +35,13 @@ homepage_env = support.homepage_env
 
 EXAMPLES = Path(__file__).resolve().parents[3] / "examples"
 
-# ---------- 설정 research.autoOnBookmarkPerDay ----------
+# ---------- 설정 research.autoOnBookmarkDailyCostUsd ----------
 
 
 @pytest.mark.parametrize("name", ["app-settings.yaml", "app-settings-virtual.yaml"])
-def test_example_settings_start_at_ten_a_day(name):
-    """Given 예시 설정 두 벌 / Then 관심 자동 조사 하루 건수의 초기값은 10이다."""
-    assert load_app_settings(EXAMPLES / name).research.auto_on_bookmark_per_day == 10
+def test_example_settings_start_at_one_dollar_a_day(name):
+    """Given 예시 설정 두 벌 / Then 관심 자동 조사 하루 금액의 초기값은 1.0달러다."""
+    assert load_app_settings(EXAMPLES / name).research.auto_on_bookmark_daily_cost_usd == 1.0
 
 
 def test_settings_file_without_research_section_keeps_the_feature_off(tmp_path):
@@ -50,18 +50,27 @@ def test_settings_file_without_research_section_keeps_the_feature_off(tmp_path):
     data.pop("research")
     path = tmp_path / "no-research.yaml"
     path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
-    assert load_app_settings(path).research.auto_on_bookmark_per_day == 0
+    assert load_app_settings(path).research.auto_on_bookmark_daily_cost_usd == 0
 
 
-@pytest.mark.parametrize("value", [-1, "10", 1.5, True])
-def test_daily_count_must_be_a_non_negative_integer(tmp_path, value):
+@pytest.mark.parametrize("value", [-0.1, "1.0", True, float("inf"), float("nan")])
+def test_daily_cost_must_be_a_non_negative_finite_number(tmp_path, value):
     data = yaml.safe_load((EXAMPLES / "app-settings.yaml").read_text(encoding="utf-8"))
-    data["research"]["autoOnBookmarkPerDay"] = value
+    data["research"]["autoOnBookmarkDailyCostUsd"] = value
     path = tmp_path / "invalid.yaml"
     path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     result = check_app_settings_file(path)
     assert not result.ok
-    assert any(error.path == "research.autoOnBookmarkPerDay" for error in result.errors)
+    assert any(error.path == "research.autoOnBookmarkDailyCostUsd" for error in result.errors)
+
+
+@pytest.mark.parametrize("value", [0, 0.3, 2])
+def test_daily_cost_accepts_zero_and_decimals(tmp_path, value):
+    data = yaml.safe_load((EXAMPLES / "app-settings.yaml").read_text(encoding="utf-8"))
+    data["research"]["autoOnBookmarkDailyCostUsd"] = value
+    path = tmp_path / "valid.yaml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    assert load_app_settings(path).research.auto_on_bookmark_daily_cost_usd == value
 
 
 def test_old_database_copy_without_the_key_reads_the_example_value(tmp_db, app_settings_path):
@@ -74,7 +83,7 @@ def test_old_database_copy_without_the_key_reads_the_example_value(tmp_db, app_s
     with session_scope() as session:
         research_settings = read_app_settings(session).research
     assert research_settings.stale_after_days == 45
-    assert research_settings.auto_on_bookmark_per_day == 10
+    assert research_settings.auto_on_bookmark_daily_cost_usd == 1.0
 
 
 # ---------- robots.txt 응답 ----------
@@ -256,11 +265,37 @@ def test_unresearched_company_with_homepage_stays_read_failed(found_company):
     assert _state(found_company) == "READ_FAILED"
 
 
-@pytest.mark.parametrize("reason", [auto_research.LIMIT_REASON, auto_research.OFF_REASON])
-def test_company_skipped_by_the_daily_count_shows_limit_skipped(found_company, reason):
-    """Given 하루 건수(또는 0) 때문에 돌지 않음 / Then "읽기 실패"가 아니라 LIMIT_SKIPPED."""
-    _skip(found_company, reason)
+def test_company_skipped_by_the_daily_cost_shows_limit_skipped(found_company):
+    """Given 하루 금액 한도 때문에 돌지 않음 / Then "읽기 실패"가 아니라 LIMIT_SKIPPED."""
+    _skip(found_company)
     assert _state(found_company) == "LIMIT_SKIPPED"
+
+
+def test_other_rejection_of_an_automatic_call_is_not_limit_skipped(found_company):
+    """Given 자동 조사의 AI 호출이 다른 이유(월 한도 등)로 거부 / Then LIMIT_SKIPPED가 아니다."""
+    _skip(found_company, "이번 달 비용 한도 초과")
+    assert _state(found_company) == "READ_FAILED"
+
+
+def test_spent_today_adds_only_automatic_calls_and_estimates_unconfirmed(found_company):
+    """Given 오늘의 호출 행들 / Then 관심 자동 조사 것만, 사용량 미확정은 추정 비용으로 더한다."""
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        llm = read_app_settings(session).llm
+        for requester, cost, calls in [
+            ("auto-bookmark", Decimal("0.02"), 1),
+            ("auto-bookmark", None, 1),  # 사용량을 못 받은 호출
+            ("auto-bookmark", None, 0),  # 시작 표시 행
+            ("system", Decimal("5"), 1),  # 다른 조사
+        ]:
+            row = auto_research._marker(opportunity, reject_reason=None)
+            row.requested_by, row.cost_usd, row.call_count = requester, cost, calls
+            session.add(row)
+        session.flush()
+        expected = Decimal("0.02") + Decimal(str(llm.unconfirmed_call_cost_usd))
+        assert auto_research.spent_today(session, llm) == expected
 
 
 def test_later_research_attempt_replaces_limit_skipped(found_company):

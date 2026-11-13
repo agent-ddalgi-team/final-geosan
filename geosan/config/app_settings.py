@@ -243,8 +243,11 @@ class RecordsSettings(FileModel):
 
 class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
-    # #690: 관심을 켜서 저절로 도는 조사의 하루 최대 건수. 0이면 꺼짐(묶음이 없는 파일의 기본).
-    auto_on_bookmark_per_day: int = Field(default=0, ge=0, strict=True)
+    # #690: 관심을 켜서 저절로 도는 조사가 하루에 쓸 수 있는 AI 비용(달러).
+    # 0이면 꺼짐(묶음이 없는 파일의 기본).
+    auto_on_bookmark_daily_cost_usd: float = Field(
+        default=0, ge=0, strict=True, allow_inf_nan=False
+    )
 
 
 XLSX_DOWNLOAD_LOG_READY = False
@@ -617,7 +620,7 @@ def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "ingestion": filled}
 
 
-ADDED_RESEARCH_KEYS = ("autoOnBookmarkPerDay",)
+ADDED_RESEARCH_KEYS = ("autoOnBookmarkDailyCostUsd",)
 """#690 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 

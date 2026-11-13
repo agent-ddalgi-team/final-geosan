@@ -50,7 +50,27 @@ def prepare(env, *, homepage_url=support.URL, researched=False):
 def set_limit(value):
     with session_scope() as session:
         row = session.get(AppSetting, "research")
-        row.value = {**row.value, "autoOnBookmarkPerDay": value}
+        row.value = {**row.value, "autoOnBookmarkDailyCostUsd": value}
+
+
+def spend_today(env, cost):
+    """다른 회사의 관심 자동 조사가 오늘 AI 호출로 이만큼 썼다."""
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, env[1].opp_id)
+        row = auto_research._marker(opportunity, reject_reason=None)
+        row.opp_id = new_id("opp")
+        row.call_count = 1
+        row.cost_usd = Decimal(cost)
+        session.add(row)
+
+
+def spent_today():
+    with session_scope() as session:
+        from geosan.config.app_settings import read_app_settings
+
+        return auto_research.spent_today(session, read_app_settings(session).llm)
 
 
 def live_evidence(case):
@@ -98,17 +118,19 @@ def researched(homepage_env):
     return prepare(homepage_env, researched=True)
 
 
-@given("오늘 관심 자동 조사가 이미 하루 건수만큼 돌았다")
+@given("오늘 관심 자동 조사가 이미 하루 금액만큼 썼다")
 def limit_used(env):
-    set_limit(1)
-    with session_scope() as session:
-        opportunity = session.get(Opportunity, env[1].opp_id)
-        marker = auto_research._marker(opportunity, reject_reason=None)
-        marker.opp_id = new_id("opp")  # 다른 회사의 조사가 오늘 한 건 돌았다.
-        session.add(marker)
+    set_limit(0.5)
+    spend_today(env, "0.5")
 
 
-@given("관심 자동 조사 하루 건수 설정이 0이다")
+@given("오늘 관심 자동 조사가 하루 금액에 조금 못 미치게 썼다")
+def limit_almost_used(env):
+    set_limit(0.5)
+    spend_today(env, "0.4999")
+
+
+@given("관심 자동 조사 하루 금액 설정이 0이다")
 def limit_zero(env):
     set_limit(0)
 
@@ -189,6 +211,41 @@ def not_researched(env, response):
     with session_scope() as session:
         assert session.get(Customer, case.customer_id).researched_at is None
     assert not auto_research.is_running(case.opp_id)
+
+
+@then("그 조사의 AI 호출 행은 관심 자동 조사 것으로 남는다")
+def call_row(env):
+    with session_scope() as session:
+        rows = session.scalars(
+            select(TransferLog).where(
+                TransferLog.opp_id == env[1].opp_id, TransferLog.call_count > 0
+            )
+        ).all()
+        assert [(row.requested_by, row.decision) for row in rows] == [("auto-bookmark", "ALLOWED")]
+
+
+@then("오늘 쓴 금액은 하루 금액을 넘는다")
+def over_limit(env):
+    from decimal import Decimal
+
+    assert spent_today() > Decimal("0.5")
+
+
+@then("전송 기록에 아무 행도 남지 않는다")
+def no_rows(env):
+    with session_scope() as session:
+        assert session.scalars(select(TransferLog)).all() == []
+
+
+@then("그 회사의 조사 상태는 자동 조사 한도로 조사 안 함이다")
+def limit_state(env):
+    from geosan.api.ingest_views import research_state
+
+    with session_scope() as session:
+        customer = session.get(Customer, env[1].customer_id)
+        customer.ingest_batch_id = "batch-690"
+        assert research_state(customer, None, scored=False) == "LIMIT_SKIPPED"
+        session.rollback()
 
 
 @then(parsers.parse('전송 기록에 "{reason}" 거부 1행이 남는다'))

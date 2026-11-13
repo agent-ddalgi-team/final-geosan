@@ -130,6 +130,10 @@ def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -
 def reserve_extraction(
     opp_id: str, key_present: bool, db_path: Path | str | None, requested_by: str
 ) -> SearchTicket:
+    # #690: 관심 자동 조사는 호출 행의 요청자를 따로 남겨 하루 비용을 셀 수 있게 한다.
+    context = current_research.get()
+    if context is not None and context.transfer_requester:
+        requested_by = context.transfer_requester
     return _reserve(opp_id, key_present, db_path, "EXTERNAL_AI", requested_by)
 
 

@@ -171,7 +171,7 @@
       "properties": {
         "_설명": { "type": "string" },
         "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 },
-        "autoOnBookmarkPerDay": { "type": "integer", "minimum": 0, "default": 0, "description": "(추가 2026-11-13 #690) 관심을 켜서 저절로 도는 조사의 하루(한국 시간) 최대 건수. 예시 설정 10, 0이면 꺼짐. 이 칸이 없는 옛 설정 사본은 예시 파일 값으로 읽는다." }
+        "autoOnBookmarkDailyCostUsd": { "type": "number", "minimum": 0, "default": 0, "description": "(추가 2026-11-13 #690) 관심을 켜서 저절로 도는 조사가 하루(한국 시간)에 쓸 수 있는 AI 비용(달러). 오늘 쓴 금액이 이 값보다 적을 때만 새 조사를 시작한다(마지막 한 곳만큼은 넘을 수 있다). 예시 설정 1.0, 0이면 꺼짐. 이 칸이 없는 옛 설정 사본은 예시 파일 값으로 읽는다." }
       }
     },
     "salesAnalysis": {

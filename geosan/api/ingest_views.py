@@ -98,7 +98,7 @@ def research_state(
     if customer.homepage_status == "NOT_FOUND":
         return "NOT_FOUND"
     if customer.homepage_url:
-        # #690: 관심 자동 조사가 하루 건수 설정 때문에 돌지 않았으면 읽기 실패와 나눠 보인다.
+        # #690: 관심 자동 조사가 하루 금액 설정 때문에 돌지 않았으면 읽기 실패와 나눠 보인다.
         session = _session_of(customer)
         if session is not None and limit_skipped(session, _opp_ids(customer)):
             return "LIMIT_SKIPPED"
