@@ -364,7 +364,19 @@ def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):
     staff = client.get("/api/v1/dashboard", headers={"X-Staff-Key": "park-lee"})
     assert staff.status_code == 200
     body = staff.json()
-    assert set(body["data"]) == {"counts", "schedule", "recentActivity", "asOf", "breakdown"}
+    # 약속에 "오늘 확인할 것" 칸(todayChecks)이 더해졌다(#679).
+    assert set(body["data"]) == {
+        "counts",
+        "schedule",
+        "recentActivity",
+        "asOf",
+        "breakdown",
+        "todayChecks",
+    }
+    # 2000년 일정은 놓친 일정 한 줄이다.
+    assert [(row["kind"], row["count"]) for row in body["data"]["todayChecks"]] == [
+        ("SCHEDULE_OVERDUE", 1)
+    ]
     assert set(body["data"]["counts"]) == set(COUNT_KEYS)
     assert body["data"]["counts"] == {
         **ZERO_COUNTS,
