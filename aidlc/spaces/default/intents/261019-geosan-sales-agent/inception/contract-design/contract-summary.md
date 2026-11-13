@@ -904,9 +904,9 @@ questions:
 ```
 검사(check-config, 줄·항목·이유)에 더하는 것: closes는 WON·LOST·ON_HOLD 중 하나, lostReason은 lostReasonCode 값, 한 보기에 reaches와 closes를 같이 쓰지 않음, closes 보기가 있는 질문과 lostReason 보기가 있는 질문은 파일에 각각 하나뿐, closes LOST 보기가 있으면 lostReason 질문이 반드시 있고 그 질문의 showWhen이 바로 그 LOST 보기만 가리킴, lostReason 질문은 모든 보기에 lostReason이 있고 코드가 겹치지 않음, closes LOST 보기가 없는데 lostReason 보기가 있으면 거부. 마무리 질문 2개(`CLOSE_RESULT`·`LOST_REASON`)의 문구는 거산 확인(#275) 전 초안이고, 거절 이유 보기 문구는 화면의 거절 이유 쉬운 말과 같게 둔다. 화면은 접촉 결과가 "거절"(DECLINED)일 때도 step ALL 질문과 그 꼬리를 보인다(부재는 그대로 질문 없음).
 
-**(추가 2026-11-13 #652 — PM 결정 2026-11-13) 회사 값에서 보기를 가져오는 질문 칸 `choices`** — 질문에 `choices: PROCESS | INDUSTRY`를 적으면 보기를 파일에 적지 않고 서버가 채운다: PROCESS = 거산 공정 목록(역량 파일 순서), INDUSTRY = 설정 industries. 여러 개를 고를 수 있는 질문이다(저장 규칙은 C1 /outcomes). 화면은 그 회사에 AI가 제안했거나 확정된 값을 먼저 보이고 "AI 제안"·"사례 파일"·"확정됨" 표시를 붙이되, AI 제안을 미리 골라 두지 않는다(담당자가 직접 고른다). 이미 확정된 공정은 고른 것으로 보이고 꼬리 질문에서는 뺄 수 없다. "아직 모름"은 화면 전용 보기다(답을 보내지 않음).
+**(추가 2026-11-13 #652 — PM 결정 2026-11-13) 회사 값에서 보기를 가져오는 질문 칸 `choices`** — 질문에 `choices: PROCESS | INDUSTRY`를 적으면 보기를 파일에 적지 않고 서버가 채운다: PROCESS = 거산 공정 목록(역량 파일 순서), INDUSTRY = 설정 industries. 여러 개를 고를 수 있는 질문이다(저장 규칙은 C1 /outcomes). 화면은 그 회사에 AI가 제안했거나 확정된 값을 먼저 보이고 "AI 제안"·"사례 파일"·"확정됨" 표시를 붙이되, AI 제안을 미리 골라 두지 않는다(담당자가 직접 고른다). 이미 확정된 공정은 고른 것으로 보이고 꼬리 질문에서는 뺄 수 없다. "아직 모름"은 화면 전용 보기다(답을 보내지 않음). (보완 2026-11-13 #652 — PM 지시 2026-11-13) choices 질문은 확인될 때까지 묻는다: 세부 단계가 그 질문의 step 이상인 모든 세부 단계에서, 아직 답이 없을 때만 보인다(상세 records.salesStep.openQuestions도 같은 기준). 답이 있으면 다시 묻지 않는다(접촉마다 다시 묻는 step ALL 방식이 아니다). 이미 확정된 값(공정 = 확정된 연결, 산업 = industriesSource가 CASE_FILE·STAFF인 값)이 있는 회사에서는 화면이 "지금 확정된 것이 맞음" 보기를 하나 더 보인다. 담당자가 그것을 고르고 저장하면 확정된 값들이 그대로 답으로 실려 질문이 닫히고, 저장 규칙대로 남은 AI 공정 제안은 빠진다(사례 파일 산업군은 출처가 STAFF로 바뀐다). 아무것도 고르지 않고 접촉만 저장하면 답을 보내지 않으므로 AI 제안은 그대로 남는다.
 ```yaml
-  - id: CONFIRM_PROCESS      # 세부 단계 "연결됨"에서 보인다
+  - id: CONFIRM_PROCESS      # 세부 단계 "연결됨"부터, 답할 때까지 보인다
     step: REACHED
     text: 어떤 공정을 맡길 수 있나요?
     choices: PROCESS         # answers는 적지 않는다
@@ -915,7 +915,7 @@ questions:
     text: 어느 산업인가요?
     choices: INDUSTRY
 ```
-검사(check-config, 줄·항목·이유)에 더하는 것: 질문마다 answers와 choices 가운데 하나만 쓴다(둘 다 쓰거나 둘 다 없으면 거부), choices는 PROCESS·INDUSTRY 중 하나, 같은 choices 값의 질문은 파일에 하나뿐, 다른 질문의 showWhen이 choices 질문을 가리키면 거부(보기가 파일에 없어 조건을 검사할 수 없다). 질문 2개의 문구는 거산 확인(#275) 전 초안이다.
+검사(check-config, 줄·항목·이유)에 더하는 것: 질문마다 answers와 choices 가운데 하나만 쓴다(둘 다 쓰거나 둘 다 없으면 거부), choices는 PROCESS·INDUSTRY 중 하나, 같은 choices 값의 질문은 파일에 하나뿐, 다른 질문의 showWhen이 choices 질문을 가리키면 거부(보기가 파일에 없어 조건을 검사할 수 없다), (보완 2026-11-13 #652) choices 질문의 step은 ALL일 수 없다(시작 세부 단계를 적는다). 질문 2개의 문구는 거산 확인(#275) 전 초안이다.
 
 ### C8. 운영 명령 (명령줄, 운영 안내서의 기준)
 
