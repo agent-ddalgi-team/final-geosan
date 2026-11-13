@@ -370,6 +370,8 @@ export interface SalesAnswerOption {
   closes?: 'WON' | 'LOST' | 'ON_HOLD' | null;
   /** 이 답이 거절 이유 코드다(#643). */
   lostReason?: LostReasonCode | null;
+  /** 화면이 미리 골라 두는 보기(#691). 이 칸이 있는 질문은 접촉 자체에 대한 질문이다. */
+  default?: boolean;
 }
 
 export interface SalesQuestion {

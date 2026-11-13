@@ -296,6 +296,8 @@ describe('기록 구역 · ③ 접촉 뒤 단계는 서버가 앞으로만 바�
       meta: {},
     });
     renderArea({ outcome: outcome('NOT_EXECUTED') });
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    await user.selectOptions(screen.getByTestId('records-kind'), '메모');
     await user.type(screen.getByTestId('records-note-input'), '그냥 메모');
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));

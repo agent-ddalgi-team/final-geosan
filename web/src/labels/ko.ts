@@ -834,6 +834,27 @@ export const salesQuestionTexts = {
   nextDatePast: '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
   closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
   closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
+  /** 날짜를 바로 고르는 줄(#691, PM 결정 2026-11-13): 오늘부터 2주 + 다른 날짜 + [없음]. */
+  nextDateToday: '오늘',
+  nextDateOther: '다른 날짜',
+  nextDateNone: '없음',
+  nextDateListLabel: '가까운 날짜',
+  /** 요일 한 글자(일요일부터). "11/20(금)" */
+  weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+  nextDateNonePreview: '다음 일정은 잡지 않습니다.',
+  /** "다음 일정은 잡지 않습니다. 지금 일정 11/20 견적은 그대로 둡니다." */
+  nextDateNoneKeeps: (date: string, note: string) =>
+    `다음 일정은 잡지 않습니다. 지금 일정 ${[date, note].filter((part) => part).join(' ')}은(는) 그대로 둡니다.`,
+  /** 접촉 결과가 "거절"이면 바로 묻는 한 번(#691). 고른 대로 "끝 → 거절·보류" 답을 대신 실어 보낸다. */
+  declineAsk: '어떻게 할까요?',
+  /** 마무리 보기의 쉬운 말(큰 단계 코드로 찾는다). 없으면 질문 파일의 보기 문구를 쓴다. */
+  declineCloseLabels: { LOST: '거절로 마무리' } as Record<string, string>,
+  declineContinue: '아직 끝 아님 · 다시 연락',
+  declineUnpicked:
+    '아직 고르지 않았습니다. 이대로 저장하면 접촉만 남고 영업 단계는 바뀌지 않습니다.',
+  stepLineDeclinedContinue: '거절이지만 끝이 아니라면 다음 할 일과 날짜를 골라 주세요.',
+  /** 방문일 때 "누가 먼저 연락했나요?" 보기의 다른 말(보기 코드로 찾는다). 없으면 질문 파일의 문구. */
+  contactVisitLabels: { OURS: '우리가 감', THEIRS: '상대가 옴' } as Record<string, string>,
 } as const;
 
 /** 꼬리 질문의 공정·산업 확인(#652): 여러 개를 고르면 그 회사의 공정·산업이 확정된다. */
@@ -866,6 +887,10 @@ export const salesChoiceTexts = {
       : `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남습니다.`,
   keepIndustryPreview: (names: string) =>
     `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
+  /** 이미 확정된 값이 있으면 질문 대신 이 한 줄(#691). "확정됨: 아연도금" + [바꾸기] */
+  confirmedLine: (names: string) => `확정됨: ${names}`,
+  change: '바꾸기',
+  changeClose: '그대로 두기',
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
@@ -986,6 +1011,12 @@ export const recordsArea = {
   scheduleFixOpen: '일정만 바꾸기',
   scheduleNewOpen: '일정 잡기',
   scheduleFixClose: '접기',
+  /** 통화 없이 일정만 잡기(#691): 종류를 고르면 "할 일 한 줄"이 그 말로 채워진다(고쳐 쓸 수 있다). */
+  scheduleKind: '종류',
+  scheduleOnlyHint:
+    '통화 기록 없이 일정만 잡습니다(우리가 가는 방문 등). 종류를 고르면 내용이 채워집니다.',
+  /** 상세 머리의 바로 가기 단추(#691). 누르면 적는 곳의 "기록 남기기" 칸으로 내려간다. */
+  goRecord: '기록 남기기',
   /** "영업 단계" 칸은 기본으로 접어 두고 이 한 줄만 보인다(#674). 누르면 그 자리에서 펼쳐진다. */
   stageFixAsk: '단계가 잘못됐나요?',
   stageFixOpen: '단계 고치기',
@@ -1516,6 +1547,8 @@ export const detailReport = {
     checkWords: (words: readonly string[], names: readonly string[]) =>
       `${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
     checkNone: '지금 확인할 것 없음',
+    /** 낱말은 없는데 아래 "2. 통화에서 확인할 것"에 줄이 있을 때(#691). */
+    checkCallCount: (count: number) => `통화에서 확인할 것 ${count}가지 (아래 2번)`,
     /** "마지막 접촉 11/12" */
     lastContact: (date: string) => `마지막 접촉 ${date}`,
     phone: '대표번호',
