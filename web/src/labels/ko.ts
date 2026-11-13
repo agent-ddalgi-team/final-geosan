@@ -217,7 +217,24 @@ export const dashboardTexts = {
     NEED_CHECK: '추가 확인 필요',
     ON_HOLD: '보류',
     DONE: '완료',
+    /** "오늘 확인할 것" 줄을 누르고 넘어온 목록의 이름(#679). 건수 칸은 아니다. */
+    CHECK_LEFT: '확인할 것이 남은 관심 회사',
   },
+  /** 맨 위 "오늘 확인할 것"(#679, PM 결정 2026-11-13): 저장된 값으로 센 줄 목록. AI는 쓰지 않는다. */
+  todayTitle: '오늘 확인할 것',
+  todayEmpty: '오늘 확인할 것이 없습니다',
+  todayRowNames: {
+    SCHEDULE_TODAY: '오늘 일정',
+    SCHEDULE_OVERDUE: '놓친 일정',
+    CHECK_LEFT: '확인할 것이 남은 관심 회사',
+  },
+  todayRowUnits: {
+    SCHEDULE_TODAY: '건',
+    SCHEDULE_OVERDUE: '건',
+    CHECK_LEFT: '곳',
+  },
+  /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
+  todayMore: (count: number) => `외 ${count}`,
   /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
   bookmarkSectionTitle: '관심 기업',
   progressSectionTitle: '영업 진행',
@@ -1368,6 +1385,11 @@ export const salesAnalysisTexts = {
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
   emptyAction: '영업 후보 목록으로',
+  /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
+  breakdownTitle: '관심 기업 분포',
+  breakdownNote:
+    '이 막대는 관심 기업을 기준으로 세고 AI가 제안한 공정·산업도 함께 셉니다. 아래 표는 접촉 기록이 있는 회사를 확정된 공정·산업만으로 세어 기준이 다릅니다.',
+  breakdownLoadError: '관심 기업 분포를 불러오지 못했습니다.',
   processTitle: '공정별',
   processTableLabel: '공정별 영업 분석표',
   companyTitle: '회사별',
