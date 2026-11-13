@@ -562,8 +562,11 @@ def build_breakdown(
     )
 
 
-def dashboard_population(dataset_kind: str):
-    """관심 켠 기회의 최신 확정 평가·활성 묶음 범위를 대시보드와 지도가 공유한다."""
+def dashboard_population(dataset_kind: str, *, bookmarked_only: bool = True):
+    """관심 켠 기회의 최신 확정 평가·활성 묶음 범위를 대시보드와 지도가 공유한다.
+
+    `bookmarked_only=False`면 관심과 상관없이 활성 묶음의 평가 대상 전부다(지도 같이 들를 곳 #673).
+    """
     # latest_confirmed_evaluation과 같은 순서로 최신 확정 평가를 먼저 고른다.
     # 묶음 조건을 먼저 걸면 다른 묶음으로 바뀐 회사의 낡은 평가가 다시 잡힐 수 있다.
     confirmed = (
@@ -582,7 +585,7 @@ def dashboard_population(dataset_kind: str):
         .where(
             EvaluationRun.run_status == "CONFIRMED",
             EvaluationBatch.status == "CONFIRMED",
-            EvaluationRun.opp_id.in_(bookmarked_opp_ids()),
+            *([EvaluationRun.opp_id.in_(bookmarked_opp_ids())] if bookmarked_only else []),
         )
         .subquery()
     )

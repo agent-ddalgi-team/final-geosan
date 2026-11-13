@@ -104,6 +104,10 @@ export function pointIcon(group: DashboardMapGroup, color: string): string {
   return `<div style="font-size:20px;line-height:20px;color:${color};text-shadow:0 0 2px #fff,0 0 2px #fff;cursor:pointer">${GLYPH[group]}</div>`;
 }
 
+/** "같이 들를 곳" 근처 회사 표시(○). 회사 정보 없이 모양만. */
+export const NEARBY_ICON =
+  '<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #555"></div>';
+
 export interface NaverMapCanvasProps {
   api: NaverMapsApi;
   center: { lat: number; lng: number };
@@ -114,6 +118,13 @@ export interface NaverMapCanvasProps {
   hqColor: string;
   /** 점을 누르면 그 기회 번호를 알린다. 말풍선은 부모가 그린다. */
   onSelect: (oppId: string) => void;
+  /** "같이 들를 곳"(#673)에서 고른 묶음. 있으면 그 회사 둘레 반경 원과 근처 회사(○)를 그리고 그쪽으로 다가간다.
+   *  좌표·반지름만 쓰고 회사 이름은 넘기지 않는다. */
+  focus?: {
+    center: { lat: number; lng: number };
+    radiusKm: number;
+    nearby: { lat: number; lng: number }[];
+  } | null;
 }
 
 export default function NaverMapCanvas({
@@ -125,6 +136,7 @@ export default function NaverMapCanvas({
   ringColor,
   hqColor,
   onSelect,
+  focus = null,
 }: NaverMapCanvasProps) {
   const box = useRef<HTMLDivElement>(null);
   // 지도는 한 번 만들고, 말풍선 선택이 바뀌어도 다시 그리지 않는다.
@@ -182,7 +194,29 @@ export default function NaverMapCanvas({
       });
       api.Event.addListener(marker, 'click', () => select.current(point.oppId));
     }
-    if (outer) map.fitBounds(outer.getBounds());
+    if (focus) {
+      const spot = new api.LatLng(focus.center.lat, focus.center.lng);
+      const around = new api.Circle({
+        map,
+        center: spot,
+        radius: focus.radiusKm * 1000,
+        strokeColor: hqColor,
+        strokeOpacity: 0.9,
+        strokeWeight: 2,
+        fillColor: hqColor,
+        fillOpacity: 0.06,
+        clickable: false,
+      });
+      for (const near of focus.nearby) {
+        new api.Marker({
+          map,
+          position: new api.LatLng(near.lat, near.lng),
+          clickable: false,
+          icon: { content: NEARBY_ICON, anchor: new api.Point(7, 7) },
+        });
+      }
+      map.fitBounds(around.getBounds());
+    } else if (outer) map.fitBounds(outer.getBounds());
     return () => {
       try {
         map.destroy();
@@ -191,7 +225,7 @@ export default function NaverMapCanvas({
         // 정리 오류로 대시보드 전체가 멈추지 않게 여기서만 막는다. 실패 자체는 자리표시 안내 문구로 보인다.
       }
     };
-  }, [api, center.lat, center.lng, ringsKm, points, colors, ringColor, hqColor]);
+  }, [api, center.lat, center.lng, ringsKm, points, colors, ringColor, hqColor, focus]);
 
   return (
     <div

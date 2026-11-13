@@ -179,3 +179,5 @@ geocoding:
   locationCsvBaseDate: null
   naverFallbackEnabled: false
 distanceFilterPresetsKm: [30, 50, 100]
+# 대시보드 지도 "같이 들를 곳": 방문할 회사(진행 중·관심) 근처 이 거리(km) 안의 후보를 묶는다(#673).
+visitGroupRadiusKm: 5

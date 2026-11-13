@@ -3,7 +3,7 @@
 // 키가 없거나 불러오지 못하면 자리표시로 원·점의 상대 위치만 좌표로 계산해 그린다.
 // 약속(계약 C4 screenMapRule): 회사 이름·단계·거리·메모는 지도 SDK에 넘기지 않고 이 부품의 HTML 말풍선으로만 그린다.
 // 지도 업체의 검색·길찾기 기능은 부르지 않는다.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type {
   DashboardMap as DashboardMapData,
@@ -11,6 +11,7 @@ import type {
 } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
 import NaverMapCanvas, { loadNaverMaps, onNaverMapsFailure } from './NaverMapCanvas';
+import VisitGroups from './VisitGroups';
 import type { NaverMapsApi } from './NaverMapCanvas';
 import { colors, spacing, statusPalette, typography } from '../../theme/tokens';
 
@@ -87,6 +88,20 @@ export default function DashboardMap({
   const [selected, setSelected] = useState<string | null>(null);
   const [naver, setNaver] = useState<NaverMapsApi | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  // "같이 들를 곳"(#673)에서 펼친 묶음의 중심 회사.
+  const [visitOpen, setVisitOpen] = useState<string | null>(null);
+  const visitGroups = data.visitGroups;
+  const visitRadius = data.visitRadiusKm;
+  const focus = useMemo(() => {
+    const group = visitGroups?.find((row) => row.oppId === visitOpen);
+    const anchor = data.points.find((point) => point.oppId === visitOpen);
+    if (!group || !anchor || visitRadius === undefined) return null;
+    return {
+      center: { lat: anchor.lat, lng: anchor.lng },
+      radiusKm: visitRadius,
+      nearby: group.nearby.map((row) => ({ lat: row.lat, lng: row.lng })),
+    };
+  }, [visitGroups, visitOpen, visitRadius, data.points]);
   const wantsMap = Boolean(mapClientId) && data.points.length > 0;
 
   useEffect(() => {
@@ -146,6 +161,7 @@ export default function DashboardMap({
             ringColor={colors.textSecondary}
             hqColor={colors.text}
             onSelect={setSelected}
+            focus={focus}
           />
           {/* 지도 점은 키보드로 고를 수 없어 낭독기용 단추 목록을 함께 둔다. */}
           <ul aria-label={t.pointList} data-testid="dashboard-map-point-list" style={srOnly}>
@@ -307,6 +323,17 @@ export default function DashboardMap({
         <p data-testid="dashboard-map-missing" style={missingStyle}>
           {t.missingCoordinates(data.missingCoordinates)}
         </p>
+      ) : null}
+
+      {visitGroups && visitRadius !== undefined ? (
+        <VisitGroups
+          groups={visitGroups}
+          points={data.points}
+          radiusKm={visitRadius}
+          open={visitOpen}
+          onToggle={setVisitOpen}
+          groupColors={GROUP_COLOR}
+        />
       ) : null}
     </div>
   );

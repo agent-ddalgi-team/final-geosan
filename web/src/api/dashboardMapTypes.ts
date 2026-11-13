@@ -23,4 +23,24 @@ export interface DashboardMap {
   /** 좌표를 아직 못 구한 대상 회사 수. */
   missingCoordinates: number;
   asOf: string;
+  /** "같이 들를 곳" 반경(km, #673). 설정 `visitGroupRadiusKm`, 보통 5. 옛 응답에는 없다. */
+  visitRadiusKm?: number;
+  /** 방문할 회사(진행 중·관심)마다 반경 안 후보 묶음. 진행 중 먼저, 그다음 관심(#673). */
+  visitGroups?: DashboardVisitGroup[];
+}
+
+/** "같이 들를 곳" 근처 회사. distanceKm는 묶음 중심 회사에서의 직선거리. group이 null이면 지도 대상이 아닌 후보. */
+export interface DashboardVisitNearby {
+  oppId: string;
+  customerName: string;
+  lat: number;
+  lng: number;
+  distanceKm: number;
+  group: DashboardMapGroup | null;
+}
+
+export interface DashboardVisitGroup {
+  /** 묶음 중심 회사. points 가운데 진행 중·관심 회사의 oppId. */
+  oppId: string;
+  nearby: DashboardVisitNearby[];
 }
