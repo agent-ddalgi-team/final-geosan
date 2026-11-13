@@ -132,11 +132,13 @@ class LatestIngest(_ApiModel):
 
 
 class BucketCounts(_ApiModel):
-    """목록의 묶음별 건수(#610). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다."""
+    """목록의 묶음별 건수(#610·#675). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다."""
 
-    now: int = Field(alias="NOW")
-    check: int = Field(alias="CHECK")
-    later: int = Field(alias="LATER")
+    evidence_ready: int = Field(alias="EVIDENCE_READY")
+    evidence_some: int = Field(alias="EVIDENCE_SOME")
+    no_homepage: int = Field(alias="NO_HOMEPAGE")
+    not_researched: int = Field(alias="NOT_RESEARCHED")
+    closed: int = Field(alias="CLOSED")
 
 
 class Meta(_ApiModel):
@@ -163,6 +165,13 @@ class Meta(_ApiModel):
     bucket_counts: BucketCounts | None = Field(
         default=None,
         description="목록에서 거른 조건 안의 묶음별 건수(#610). 쪽 넘김과 무관하고 합은 total",
+    )
+    bookmarked_count: int | None = Field(
+        default=None,
+        description=(
+            "목록 대상 안에서 관심으로 켜 둔 기회 수(#675). 다른 거르기 조건과 무관하다. "
+            "목록 머리 '관심 기업 ○곳' 링크용"
+        ),
     )
 
 
@@ -309,21 +318,20 @@ class FactoryProfile(_ApiModel):
     file_date: date = Field(description="팩토리온 자료 기준일")
 
 
-ContactBucket = Literal["NOW", "CHECK", "LATER"]
+# 근거 상태 묶음(#675, PM 결정 2026-11-13). #610의 NOW·CHECK·LATER와 옛 이유 값은 내보내지 않는다.
+ContactBucket = Literal[
+    "EVIDENCE_READY", "EVIDENCE_SOME", "NO_HOMEPAGE", "NOT_RESEARCHED", "CLOSED"
+]
 BucketBasis = Literal[
     "EXCLUDED_OPINION",
     "REQUIRED_FAILED",
     "EXISTING_CUSTOMER",
     "CLOSED_OR_HOLD",
-    "IN_PROGRESS",
-    "NEED_CHECK_OPINION",
-    "REQUIRED_PENDING",
-    "OWN_PLATING",
-    "NOT_EVALUATED_HIGH_FIT",
-    "NOT_EVALUATED_LOWER_FIT",
-    "EVIDENCE_RECHECK",
-    "REQUIRED_PASSED",
-    "MONITOR",
+    "EVIDENCE_ENOUGH",
+    "EVIDENCE_FEW",
+    "HOMEPAGE_ONLY",
+    "HOMEPAGE_NOT_FOUND",
+    "RESEARCH_NOT_RUN",
 ]
 
 
@@ -432,14 +440,17 @@ class OpportunityCard(_ApiModel):
             "나머지는 '조사 중단'. 점수가 있거나 사례 파일 회사면 null"
         ),
     )
-    # 추천 목록 세 묶음(#610, C1). 저장하지 않고 목록을 읽을 때 계산한다. 모든 정렬에서 준다.
-    bucket: ContactBucket = Field(description="지금 연락할 곳 / 확인 필요 / 나중")
-    bucket_basis: BucketBasis = Field(description="그 묶음에 든 이유 하나(카드 꼬리표)")
+    # 추천 목록 묶음(#610, 근거 상태로 바꿈 #675, C1). 저장하지 않고 목록을 읽을 때 계산한다.
+    # 모든 정렬에서 준다.
+    bucket: ContactBucket = Field(
+        description="근거 있음 / 근거 조금 / 홈페이지 없음 / 조사 전 / 끝난 회사"
+    )
+    bucket_basis: BucketBasis = Field(description="그 묶음에 든 이유 하나")
     rank_adjust: RankAdjust | None = Field(
         default=None,
         description=(
-            "같은 공정·산업군의 최근 성사·거절로 정한 조정. 표본이 설정 기준보다 적거나 "
-            "공정·산업군이 없으면 null"
+            "같은 공정·산업군의 최근 성사·거절로 정한 조정. '근거 있음' 묶음 카드에만 준다(#675). "
+            "표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
         ),
     )
 
