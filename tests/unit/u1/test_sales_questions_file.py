@@ -143,3 +143,88 @@ def test_override_without_contact_has_no_step():
 )
 def test_big_stage_only_moves_forward(status, method, step, expected):
     assert stage_for(status, method, step) == expected
+
+
+# --- #643: 마무리 답 칸 closes·lostReason 검사 ------------------------------------------
+
+NEXT = """  - id: NEXT_ACTION
+    step: ALL
+    text: 다음 할 일은?
+    answers:
+      - { id: RECONTACT, label: 다시 연락 }
+      - { id: END, label: 끝 }
+"""
+CLOSE = """  - id: CLOSE_RESULT
+    step: ALL
+    text: 어떻게 끝났나요?
+    showWhen: { answers: { NEXT_ACTION: [END] } }
+    answers:
+      - { id: WON, label: 성사, closes: WON }
+      - { id: LOST, label: 거절, closes: LOST }
+      - { id: ON_HOLD, label: 보류, closes: ON_HOLD }
+"""
+REASON = """  - id: LOST_REASON
+    step: ALL
+    text: 거절 이유는?
+    showWhen: { answers: { CLOSE_RESULT: [LOST] } }
+    answers:
+      - { id: PRICE, label: 가격, lostReason: PRICE }
+      - { id: OTHER, label: 기타, lostReason: OTHER }
+"""
+HEAD = "version: 1\n" + STEPS + "questions:\n" + NEXT
+
+
+def test_closing_questions_pass(tmp_path):
+    result = check_sales_questions_file(write(tmp_path, HEAD + CLOSE + REASON))
+    assert result.errors == []
+    example = check_sales_questions_file(EXAMPLE).questions
+    assert [item.closes for item in example.question("CLOSE_RESULT").answers] == [
+        "WON",
+        "LOST",
+        "ON_HOLD",
+    ]
+    assert len(example.question("LOST_REASON").answers) == 6
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (HEAD + CLOSE.replace("closes: WON", "closes: IN_PROGRESS") + REASON, "closes"),
+        (HEAD + CLOSE + REASON.replace("lostReason: PRICE", "lostReason: CHEAP"), "lostReason"),
+        (HEAD + CLOSE, "거절 이유를 정하는 질문"),
+        (
+            HEAD + CLOSE.replace("closes: LOST", "closes: ON_HOLD") + REASON,
+            "closes: LOST 보기가 없습니다",
+        ),
+        (
+            HEAD + CLOSE + REASON.replace("CLOSE_RESULT: [LOST]", "CLOSE_RESULT: [LOST, WON]"),
+            "closes: LOST 보기만",
+        ),
+        (
+            HEAD
+            + CLOSE
+            + REASON.replace("    showWhen: { answers: { CLOSE_RESULT: [LOST] } }\n", ""),
+            "closes: LOST 보기만",
+        ),
+        (HEAD + CLOSE + REASON.replace(", lostReason: OTHER", ""), "모든 보기에 lostReason"),
+        (
+            HEAD + CLOSE + REASON.replace("lostReason: OTHER", "lostReason: PRICE"),
+            "같은 lostReason",
+        ),
+        (
+            HEAD + CLOSE.replace("closes: WON", "closes: WON, reaches: VISIT_SAMPLE") + REASON,
+            "같이 쓸 수 없습니다",
+        ),
+        (
+            HEAD
+            + CLOSE
+            + REASON
+            + CLOSE.replace("CLOSE_RESULT", "CLOSE_AGAIN").replace("closes: LOST", "closes: WON"),
+            "하나만",
+        ),
+    ],
+)
+def test_broken_closing_questions_are_rejected(tmp_path, text, expected):
+    result = check_sales_questions_file(write(tmp_path, text))
+    assert result.questions is None
+    assert any(expected in f"{error.path} {error.message}" for error in result.errors), result
