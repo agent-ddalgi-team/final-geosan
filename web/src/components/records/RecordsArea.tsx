@@ -186,6 +186,8 @@ export default function RecordsArea({
   const [pickedMany, setPickedMany] = useState<Record<string, string[]>>({});
   const [memoLine, setMemoLine] = useState('');
   const [override, setOverride] = useState<SalesStep | null>(null);
+  // "영업 단계" 칸은 기본으로 접혀 있다(#674). [단계 고치기]로 펼친다.
+  const [stageOpen, setStageOpen] = useState(false);
   useEffect(() => {
     let alive = true;
     loadSalesQuestions()
@@ -641,118 +643,148 @@ export default function RecordsArea({
         {blockMessage(method ? 'contact' : 'note')}
       </section>
 
-      <section aria-labelledby={`records-stage-${oppId}`} style={blockStyle}>
-        <Typography.Title level={3} id={`records-stage-${oppId}`} style={{ margin: 0 }}>
-          <span aria-hidden="true" data-testid="records-step-2">
-            {recordsArea.stepTwo}{' '}
-          </span>
-          {recordsArea.stageTitle}
-        </Typography.Title>
-        <span data-testid="records-stage-current" style={hintStyle}>
-          {recordsArea.stageCurrent}:{' '}
-          {currentStatus === 'LOST' && outcome?.lostReasonCode
-            ? recordsArea.stageCurrentLost(lostReasonLabels[outcome.lostReasonCode])
-            : currentStatus
-              ? outcomeStatusLabels[currentStatus]
-              : recordsArea.stageNone}
-        </span>
-        <span style={hintStyle} data-testid="records-stage-auto-hint">
-          {recordsArea.stageAutoHint}
-        </span>
-        <div style={rowStyle}>
-          <NativeSelect
-            label={recordsArea.stageTitle}
-            placeholder={recordsArea.selectPlaceholder}
-            value={stage}
-            options={options(outcomeStatusLabels)}
-            onChange={(value) => {
-              setStage(value as OutcomeStatus | null);
-              // 거절이 아닌 단계로 바꾸면 거절 입력은 비운다(다른 단계에는 이유 코드를 보내지 않는다).
-              if (value !== 'LOST') {
-                setLostCode(null);
-                setLostReason('');
-              }
-            }}
-            disabled={disabled}
-            testId="records-stage-select"
-          />
-          {stage === 'LOST' ? (
-            <NativeSelect
-              label={recordsArea.stageLostCodeLabel}
-              placeholder={`${recordsArea.stageLostCodeLabel} ${recordsArea.selectPlaceholder}`}
-              value={lostCode}
-              options={options(lostReasonLabels)}
-              onChange={(value) => setLostCode(value as LostReasonCode | null)}
-              disabled={disabled}
-              testId="records-stage-lost-code"
-            />
-          ) : null}
+      {/* 영업 단계 칸은 기본으로 접어 둔다(#674, PM 지시 2026-11-13): 단계는 꼬리 질문 답으로 저절로 저장되고
+          지금 단계는 상세 맨 위 진행 막대에 보인다. 잘못됐을 때만 이 한 줄에서 펼쳐 고친다(창 없음).
+          큰 단계 고치기와 세부 단계 고치기(#607)가 같은 접힌 자리에 있다. */}
+      <section aria-label={recordsArea.stageTitle} style={blockStyle}>
+        <div style={rowStyle} data-testid="records-stage-fix">
+          <span style={hintStyle}>{recordsArea.stageFixAsk}</span>
           <Button
-            type="primary"
-            disabled={disabled || !stage || stageSaveBlocked}
-            loading={busy === 'stage'}
-            onClick={() => void onSaveStage()}
-            data-testid="records-stage-save-button"
+            size="small"
+            aria-expanded={stageOpen}
+            aria-controls={`records-stage-body-${oppId}`}
+            onClick={() => setStageOpen((open) => !open)}
+            data-testid="records-stage-toggle"
           >
-            {recordsArea.stageSave}
+            {stageOpen ? recordsArea.stageFixClose : recordsArea.stageFixOpen}
           </Button>
+          {stageOpen ? null : blockMessage('stage')}
         </div>
-        {stage === 'LOST' ? (
-          <>
-            {lostCode === null ? (
-              <span data-testid="records-stage-lost-code-error" style={{ color: colors.error }}>
-                {recordsArea.stageLostCodeRequired}
+        <div
+          id={`records-stage-body-${oppId}`}
+          hidden={!stageOpen}
+          data-testid="records-stage-body"
+          style={stageOpen ? { display: 'grid', gap: 8 } : undefined}
+        >
+          {stageOpen ? (
+            <>
+              <Typography.Title level={4} id={`records-stage-${oppId}`} style={{ margin: 0 }}>
+                {recordsArea.stageTitle}
+              </Typography.Title>
+              <span data-testid="records-stage-current" style={hintStyle}>
+                {recordsArea.stageCurrent}:{' '}
+                {currentStatus === 'LOST' && outcome?.lostReasonCode
+                  ? recordsArea.stageCurrentLost(lostReasonLabels[outcome.lostReasonCode])
+                  : currentStatus
+                    ? outcomeStatusLabels[currentStatus]
+                    : recordsArea.stageNone}
               </span>
-            ) : null}
-            <Input.TextArea
-              aria-label={
-                lostCode === 'OTHER'
-                  ? recordsArea.stageReasonLabel
-                  : recordsArea.stageReasonOptionalLabel
-              }
-              aria-required={lostCode === 'OTHER' ? 'true' : 'false'}
-              value={lostReason}
-              autoSize={{ minRows: 1, maxRows: 4 }}
-              maxLength={noteMax}
-              onChange={(event) => setLostReason(event.target.value)}
-              disabled={disabled}
-              data-testid="records-stage-reason-input"
-            />
-            {lostReasonMissing ? (
-              <span data-testid="records-stage-reason-error" style={{ color: colors.error }}>
-                {recordsArea.stageOtherReasonRequired}
+              <span style={hintStyle} data-testid="records-stage-auto-hint">
+                {recordsArea.stageAutoHint}
               </span>
-            ) : null}
-          </>
-        ) : null}
-        {salesStep?.code ? (
-          <div style={rowStyle}>
-            <NativeSelect
-              label={salesQuestionTexts.overrideLabel}
-              placeholder={salesQuestionTexts.overrideLabel}
-              value={override}
-              options={STEP_ORDER.map((code) => ({ value: code, label: salesStepLabels[code] }))}
-              onChange={(value) => setOverride(value as SalesStep | null)}
-              disabled={disabled}
-              testId="records-step-override"
-            />
-            <Button
-              disabled={disabled || !override || override === salesStep.code}
-              loading={busy === 'stage'}
-              onClick={() => void onSaveOverride()}
-              data-testid="records-step-override-save"
-            >
-              {salesQuestionTexts.overrideSave}
-            </Button>
-          </div>
-        ) : null}
-        {blockMessage('stage')}
+              <div style={rowStyle}>
+                <NativeSelect
+                  label={recordsArea.stageTitle}
+                  placeholder={recordsArea.selectPlaceholder}
+                  value={stage}
+                  options={options(outcomeStatusLabels)}
+                  onChange={(value) => {
+                    setStage(value as OutcomeStatus | null);
+                    // 거절이 아닌 단계로 바꾸면 거절 입력은 비운다(다른 단계에는 이유 코드를 보내지 않는다).
+                    if (value !== 'LOST') {
+                      setLostCode(null);
+                      setLostReason('');
+                    }
+                  }}
+                  disabled={disabled}
+                  testId="records-stage-select"
+                />
+                {stage === 'LOST' ? (
+                  <NativeSelect
+                    label={recordsArea.stageLostCodeLabel}
+                    placeholder={`${recordsArea.stageLostCodeLabel} ${recordsArea.selectPlaceholder}`}
+                    value={lostCode}
+                    options={options(lostReasonLabels)}
+                    onChange={(value) => setLostCode(value as LostReasonCode | null)}
+                    disabled={disabled}
+                    testId="records-stage-lost-code"
+                  />
+                ) : null}
+                <Button
+                  type="primary"
+                  disabled={disabled || !stage || stageSaveBlocked}
+                  loading={busy === 'stage'}
+                  onClick={() => void onSaveStage()}
+                  data-testid="records-stage-save-button"
+                >
+                  {recordsArea.stageSave}
+                </Button>
+              </div>
+              {stage === 'LOST' ? (
+                <>
+                  {lostCode === null ? (
+                    <span
+                      data-testid="records-stage-lost-code-error"
+                      style={{ color: colors.error }}
+                    >
+                      {recordsArea.stageLostCodeRequired}
+                    </span>
+                  ) : null}
+                  <Input.TextArea
+                    aria-label={
+                      lostCode === 'OTHER'
+                        ? recordsArea.stageReasonLabel
+                        : recordsArea.stageReasonOptionalLabel
+                    }
+                    aria-required={lostCode === 'OTHER' ? 'true' : 'false'}
+                    value={lostReason}
+                    autoSize={{ minRows: 1, maxRows: 4 }}
+                    maxLength={noteMax}
+                    onChange={(event) => setLostReason(event.target.value)}
+                    disabled={disabled}
+                    data-testid="records-stage-reason-input"
+                  />
+                  {lostReasonMissing ? (
+                    <span data-testid="records-stage-reason-error" style={{ color: colors.error }}>
+                      {recordsArea.stageOtherReasonRequired}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+              {salesStep?.code ? (
+                <div style={rowStyle}>
+                  <NativeSelect
+                    label={salesQuestionTexts.overrideLabel}
+                    placeholder={salesQuestionTexts.overrideLabel}
+                    value={override}
+                    options={STEP_ORDER.map((code) => ({
+                      value: code,
+                      label: salesStepLabels[code],
+                    }))}
+                    onChange={(value) => setOverride(value as SalesStep | null)}
+                    disabled={disabled}
+                    testId="records-step-override"
+                  />
+                  <Button
+                    disabled={disabled || !override || override === salesStep.code}
+                    loading={busy === 'stage'}
+                    onClick={() => void onSaveOverride()}
+                    data-testid="records-step-override-save"
+                  >
+                    {salesQuestionTexts.overrideSave}
+                  </Button>
+                </div>
+              ) : null}
+              {blockMessage('stage')}
+            </>
+          ) : null}
+        </div>
       </section>
 
       <section aria-labelledby={`records-schedule-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-schedule-${oppId}`} style={{ margin: 0 }}>
-          <span aria-hidden="true" data-testid="records-step-3">
-            {recordsArea.stepThree}{' '}
+          <span aria-hidden="true" data-testid="records-step-2">
+            {recordsArea.stepTwo}{' '}
           </span>
           {recordsArea.scheduleTitle}
         </Typography.Title>

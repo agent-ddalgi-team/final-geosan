@@ -1,6 +1,6 @@
 // #607 꼬리 질문: 보일 질문 고르기, 요약, 접촉 저장에 답·한 줄 메모 싣기, [단계 고치기].
 // 서버 호출(getSalesQuestions·postOutcome)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import { SalesStepSummary, visibleQuestions } from '../SalesQuestions';
@@ -226,6 +226,37 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
     ).not.toBeChecked();
   });
 
+  it('꼬리 질문 묶음 위에 왜 이 질문들이 나오는지 한 줄이 보인다: 지금 단계 / 첫 접촉 / 거절 (#674)', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <FrameContext.Provider value={frame}>
+        <RecordsArea oppId="opp-1" salesStep={stepView({ code: 'DEMAND_CONFIRMED' })} />
+      </FrameContext.Provider>,
+    );
+    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    const line = await screen.findByTestId('sales-questions-step');
+    expect(line).toHaveTextContent(
+      '지금 단계: 수요 확인 — 이 단계의 질문과 모든 단계 공통 질문입니다.',
+    );
+    expect(screen.getByTestId('sales-questions')).toContainElement(line);
+    // 접촉 결과가 거절이면 공통 질문만 보인다는 말로 바뀐다.
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '거절');
+    expect(screen.getByTestId('sales-questions-step')).toHaveTextContent(
+      '접촉 결과가 거절이라 모든 단계 공통 질문만 보입니다.',
+    );
+    // 아직 접촉이 없던 회사의 첫 접촉.
+    rerender(
+      <FrameContext.Provider value={frame}>
+        <RecordsArea oppId="opp-1" salesStep={stepView({ code: null, since: null })} />
+      </FrameContext.Provider>,
+    );
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    expect(screen.getByTestId('sales-questions-step')).toHaveTextContent(
+      "첫 접촉이라 '연결 전' 단계의 질문과 모든 단계 공통 질문이 보입니다.",
+    );
+  });
+
   it('부재면 질문을 보이지 않고 답을 보내지 않는다', async () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('IN_PROGRESS'));
@@ -261,6 +292,8 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         />
       </FrameContext.Provider>,
     );
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await user.selectOptions(screen.getByTestId('records-step-override'), '연결됨');
     await user.click(screen.getByTestId('records-step-override-save'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));

@@ -875,6 +875,8 @@ describe('OpportunityDetailPage', () => {
       });
       renderPage();
       expect(await screen.findByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false');
+      // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+      await user.click(screen.getByTestId('records-stage-toggle'));
       await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
       await user.click(screen.getByTestId('records-stage-save-button'));
       await waitFor(() =>
@@ -903,6 +905,8 @@ describe('OpportunityDetailPage', () => {
       });
       renderPage();
       await screen.findByTestId('bookmark-button');
+      // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+      await user.click(screen.getByTestId('records-stage-toggle'));
       await user.selectOptions(screen.getByTestId('records-stage-select'), '보류');
       await user.click(screen.getByTestId('records-stage-save-button'));
       await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
