@@ -241,7 +241,7 @@ class ExportUi(_ApiModel):
 
 
 class AssistantUi(_ApiModel):
-    """영업 비서(#680) 화면 설정. enabled가 false면 질문 칸·[통화 준비] 대신 안내 한 줄."""
+    """영업 비서(#680) 화면 설정. enabled가 false면 질문 칸 대신 안내 한 줄, [통화 준비]는 숨김."""
 
     enabled: bool = Field(
         description="llm.salesRecordsEnabled가 true이고 llm.mode가 EXTERNAL일 때만 true"
