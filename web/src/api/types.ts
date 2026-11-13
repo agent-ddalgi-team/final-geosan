@@ -359,6 +359,10 @@ export interface SalesAnswerOption {
   answerId: string;
   label: string;
   reaches?: SalesStep | null;
+  /** 이 답이면 큰 단계를 성사·거절·보류로 끝낸다(#643). */
+  closes?: 'WON' | 'LOST' | 'ON_HOLD' | null;
+  /** 이 답이 거절 이유 코드다(#643). */
+  lostReason?: LostReasonCode | null;
 }
 
 export interface SalesQuestion {
