@@ -53,6 +53,21 @@ def add_case(tmp_path, name="다음가상기업"):
     return _real(import_case(_write(tmp_path, f"{name}.json", data)))
 
 
+def give_address(case, *, researched):
+    """회사에 홈페이지 주소를 준다. researched가 False면 조사 날짜·살아 있는 근거를 없앤다."""
+    from geosan.storage.base import utcnow
+
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        customer.homepage_url = extraction_support.URL
+        customer.homepage_status = "AI_FOUND"
+        customer.homepage_source = "AI"
+        if not researched:
+            customer.researched_at = None
+            for row in session.scalars(select(Evidence).where(Evidence.opp_id == case.opp_id)):
+                row.superseded_at = utcnow()
+
+
 def _answer(url="https://example.org/", confidence=0.9):
     response = search_support.provider_reply()
     response["output"][-1]["content"][0]["text"] = json.dumps(
@@ -327,3 +342,47 @@ def test_company_with_old_dataset_mark_is_researched_when_its_evaluation_is_acti
     assert "저장·재평가 1건" in result.output
     with session_scope() as session:
         assert session.get(Customer, case.customer_id).homepage_url == "https://example.org/"
+
+
+# ---------- #690: 기본 대상 ----------
+
+
+def test_default_also_picks_companies_with_address_but_no_research(batch_env, tmp_path):
+    """Given 주소 없는 회사와 주소만 있는 조사 전 회사 / When 기본 실행 / Then 둘 다 조사한다."""
+    case, extraction = batch_env
+    give_address(case, researched=False)
+    missing = add_case(tmp_path, "주소없는가상기업")
+    result = runner.invoke(app, ["research"])
+    assert result.exit_code == 0, result.output
+    assert "처리 2건" in result.output and "저장·재평가 2건" in result.output
+    assert extraction.call_count == 2
+    # 주소가 있던 회사는 홈페이지 찾기 검색을 타지 않는다: 검색은 주소 없는 회사 한 번뿐이다.
+    searches = [row for row in search_support.logs() if row.purpose == "EXTERNAL_SEARCH"]
+    assert [row.opp_id for row in searches] == [missing.opp_id]
+
+
+@pytest.mark.parametrize("left", ["researched_at", "evidence"])
+def test_default_skips_address_companies_that_still_have_research_traces(batch_env, left):
+    """Given 주소 있는 회사에 조사 날짜나 살아 있는 근거가 남음 / Then 기본 대상이 아니다."""
+    case, extraction = batch_env
+    give_address(case, researched=True)
+    with session_scope() as session:
+        if left == "evidence":
+            session.get(Customer, case.customer_id).researched_at = None
+        else:
+            from geosan.storage.base import utcnow
+
+            for row in session.scalars(select(Evidence).where(Evidence.opp_id == case.opp_id)):
+                row.superseded_at = utcnow()
+    result = runner.invoke(app, ["research"])
+    assert result.exit_code == 0 and "처리 0건" in result.output
+    assert extraction.call_count == 0 and not search_support.logs()
+
+
+def test_missing_homepage_flag_still_means_only_companies_without_address(batch_env):
+    """Given 주소만 있는 조사 전 회사 / When --missing-homepage / Then 지금처럼 고르지 않는다."""
+    case, extraction = batch_env
+    give_address(case, researched=False)
+    result = runner.invoke(app, ["research", "--missing-homepage"])
+    assert result.exit_code == 0 and "처리 0건" in result.output
+    assert extraction.call_count == 0
