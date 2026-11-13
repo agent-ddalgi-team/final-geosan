@@ -44,6 +44,9 @@ from geosan.api.schemas import (
     QuestionReplyEnvelope,
     QuestionReplyRequest,
     QuestionReplyResponse,
+    RecordCancelEnvelope,
+    RecordCancelRequest,
+    RecordCancelResponse,
     RelationEnvelope,
     RelationRequest,
     RelationResponse,
@@ -58,7 +61,14 @@ from geosan.api.schemas import (
     SalesShowWhen,
     SalesStepEntry,
 )
-from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
+from geosan.config.errors import (
+    AppError,
+    FieldError,
+    ForbiddenError,
+    InputError,
+    NotFoundError,
+    RunFailedError,
+)
 from geosan.config.sales_questions import SalesQuestions, load_sales_questions
 from geosan.config.validators import scan_contacts
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
@@ -420,7 +430,11 @@ def contact_counts(session: Session, opp_id: str) -> ContactCount:
     counts = dict(
         session.execute(
             select(Outcome.method, func.count())
-            .where(Outcome.opp_id == opp_id, Outcome.method.in_(["CALL", "EMAIL", "VISIT"]))
+            .where(
+                Outcome.opp_id == opp_id,
+                Outcome.method.in_(["CALL", "EMAIL", "VISIT"]),
+                Outcome.cancelled_at.is_(None),
+            )
             .group_by(Outcome.method)
         ).all()
     )
@@ -528,11 +542,13 @@ def ensure_bookmarked(session: Session, opportunity: Opportunity, staff: str) ->
 
 
 def _has_sales_records(session: Session, opp_id: str) -> bool:
-    """메모·영업 기록·검토 의견 행이 하나라도 있는지."""
-    return any(
-        session.scalar(select(model.opp_id).where(model.opp_id == opp_id).limit(1)) is not None
-        for model in (Note, Outcome, ReviewOpinion)
-    )
+    """메모·영업 기록·검토 의견 행이 있는지. 잘못 입력으로 표시한 행은 세지 않는다(#253)."""
+    queries = [
+        select(Note.opp_id).where(Note.opp_id == opp_id, Note.cancelled_at.is_(None)),
+        select(Outcome.opp_id).where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None)),
+        select(ReviewOpinion.opp_id).where(ReviewOpinion.opp_id == opp_id),
+    ]
+    return any(session.scalar(query.limit(1)) is not None for query in queries)
 
 
 @router.put("/opportunities/{oppId}/bookmark", response_model=BookmarkEnvelope)
@@ -645,11 +661,15 @@ def sales_step_state(
             step_override=row.step_override,
         )
         for row in session.scalars(
-            select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version)
+            select(Outcome)
+            .where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None))
+            .order_by(Outcome.version)
         )
     ]
     if not rows:
         return SalesStepState()
+    # 취소한 접촉에 달린 답은 계산에서 뺀다(#253·#607).
+    live_ids = {row.outcome_id for row in rows}
     answers = [
         AnswerRow(row.outcome_id, row.question_id, row.answer_id)
         for row in session.scalars(
@@ -657,13 +677,17 @@ def sales_step_state(
             .where(OutcomeAnswer.opp_id == opp_id)
             .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
         )
+        if row.outcome_id in live_ids
     ]
     return compute_sales_step(rows, answers, questions or sales_questions(session), status)
 
 
 def latest_outcome(session: Session, opp_id: str) -> Outcome | None:
+    """현재 값: 잘못 입력으로 표시한 행을 뺀 최신 영업 기록(#253). 남은 행이 없으면 None."""
     return session.scalar(
-        select(Outcome).where(Outcome.opp_id == opp_id).order_by(Outcome.version.desc())
+        select(Outcome)
+        .where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None))
+        .order_by(Outcome.version.desc())
     )
 
 
@@ -733,7 +757,11 @@ def save_outcome(
     if body.status == "LOST" and not (body.reason and body.reason.strip()):
         previous_lost = session.scalar(
             select(Outcome)
-            .where(Outcome.opp_id == opp_id, Outcome.status == "LOST")
+            .where(
+                Outcome.opp_id == opp_id,
+                Outcome.status == "LOST",
+                Outcome.cancelled_at.is_(None),
+            )
             .order_by(Outcome.version.desc())
         )
         if previous_lost and previous_lost.lost_reason_code == body.lost_reason_code:
@@ -750,11 +778,15 @@ def save_outcome(
             values[name] = getattr(previous, name)
     ensure_bookmarked(session, opportunity, staff)
     values.pop("answers", None)
+    # 버전은 취소한 행까지 센 마지막 번호 다음이다(취소해도 행과 번호는 남는다).
+    last_version = (
+        session.scalar(select(func.max(Outcome.version)).where(Outcome.opp_id == opp_id)) or 0
+    )
     row = Outcome(
         outcome_id=new_id("outcome"),
         opp_id=opp_id,
         **values,
-        version=previous.version + 1 if previous else 1,
+        version=last_version + 1,
         created_by=staff,
         dataset_kind=opportunity.dataset_kind,
         is_virtual=opportunity.is_virtual,
@@ -864,18 +896,26 @@ def activity(
     for row in session.scalars(
         select(Note).where(Note.opp_id == opp_id).order_by(Note.version.desc()).limit(limit)
     ):
+        if row.cancelled_at is not None:
+            # 취소한 메모·답의 본문은 보내지 않는다(DB에만 남는다, C4).
+            summary = "(취소된 메모)"
+        elif row.kind == "REPLY":
+            summary = f"답 기록 · {row.text.split(' 답: ', 1)[-1]}"
+        elif row.kind == "RESEARCH":
+            summary = f"자료 조사 · {row.text}"
+        else:
+            summary = row.text
         items.append(
             ActivityItem(
                 at=row.created_at,
                 actor=row.staff_key,
                 kind="REPLY" if row.kind == "REPLY" else "NOTE",
-                summary=(
-                    f"답 기록 · {row.text.split(' 답: ', 1)[-1]}"
-                    if row.kind == "REPLY"
-                    else f"자료 조사 · {row.text}"
-                    if row.kind == "RESEARCH"
-                    else row.text
-                ),
+                summary=summary,
+                record_id=row.note_id,
+                record_kind="NOTE",
+                cancelled=row.cancelled_at is not None,
+                cancelled_by=row.cancelled_by,
+                cancelled_at=row.cancelled_at,
             )
         )
     for row in session.scalars(
@@ -909,8 +949,29 @@ def activity(
                 actor=row.created_by,
                 kind="CONTACT_ATTEMPT" if row.method else "OUTCOME",
                 summary=summary,
+                record_id=row.outcome_id,
+                record_kind="OUTCOME",
+                cancelled=row.cancelled_at is not None,
+                cancelled_by=row.cancelled_by,
+                cancelled_at=row.cancelled_at,
             )
         )
+    # 취소한 행위도 한 줄로 보인다. 누가 언제 취소했는지가 기록이다.
+    for model in (Note, Outcome):
+        for row in session.scalars(
+            select(model)
+            .where(model.opp_id == opp_id, model.cancelled_at.is_not(None))
+            .order_by(model.cancelled_at.desc())
+            .limit(limit)
+        ):
+            items.append(
+                ActivityItem(
+                    at=row.cancelled_at,
+                    actor=row.cancelled_by,
+                    kind="RECORD_CANCELLED",
+                    summary=f"취소 · {row.cancel_reason}" if row.cancel_reason else "취소",
+                )
+            )
     for row in session.scalars(
         select(ReviewOpinion)
         .where(ReviewOpinion.opp_id == opp_id)
@@ -981,6 +1042,64 @@ def save_note(
             note_id=row.note_id, version=row.version, updated_by=staff, updated_at=now
         ),
         meta=Meta(updated_at=now, has_virtual_data=row.is_virtual, dataset_kind=row.dataset_kind),
+    )
+
+
+@router.post(
+    "/opportunities/{oppId}/records/{recordId}/cancel", response_model=RecordCancelEnvelope
+)
+def cancel_record(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    record_id: Annotated[str, Path(alias="recordId")],
+    body: RecordCancelRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    """잘못 저장한 메모·영업 기록을 "잘못 입력"으로 표시한다(#253, PM 결정 2026-11-04 A안).
+
+    행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.
+    """
+    reason = body.reason.strip() if body.reason and body.reason.strip() else None
+    fields = scan_contacts({"reason": reason})
+    if fields:
+        raise InputError("취소 이유를 확인해 주세요.", fields=fields)
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("기록을 표시할 기회가 없습니다.")
+    validate_viewed_evaluation(session, opp_id, body.eval_id)
+    # 기록 종류는 번호 앞 글자로 가린다(C1). 읽기와 표시가 겹치지 않게 쓰기 잠금을 먼저 잡는다.
+    model, kind = (Outcome, "OUTCOME") if record_id.startswith("outcome") else (Note, "NOTE")
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    row = session.get(model, record_id) if record_id.startswith(("outcome", "note")) else None
+    if row is None or row.opp_id != opp_id:
+        raise NotFoundError("이 기회에 그 기록이 없습니다.")
+    if row.cancelled_at is not None:
+        raise AppError(
+            message="이미 잘못 입력으로 표시된 기록입니다",
+            next_action="화면을 새로 고쳐 주세요",
+            status=409,
+        )
+    owner = row.staff_key if kind == "NOTE" else row.created_by
+    if owner != staff and not runtime_for(session).app_settings.records.cancel_by_any_staff:
+        raise ForbiddenError(
+            "다른 담당자의 기록은 표시할 수 없습니다.", "기록을 저장한 담당자에게 알려 주세요."
+        )
+    now = utcnow()
+    row.cancelled_at = now
+    row.cancelled_by = staff
+    row.cancel_reason = reason
+    session.flush()
+    return RecordCancelEnvelope(
+        data=RecordCancelResponse(
+            record_id=record_id, record_kind=kind, cancelled_by=staff, cancelled_at=now
+        ),
+        meta=Meta(
+            updated_at=now,
+            has_virtual_data=opportunity.is_virtual,
+            dataset_kind=opportunity.dataset_kind,
+        ),
     )
 
 
