@@ -548,6 +548,7 @@ def test_api_proposal_hit_counts_companies_confirmed_within_ai_proposals(dashboa
 def test_api_proposal_hit_ignores_ai_rows_made_after_the_confirmation(dashboard_env):
     """Given 담당자가 먼저 확정한 뒤에 생긴 같은 공정의 AI 행 / When 조회 / Then 적중 아님."""
     client, (a, *_rest) = dashboard_env
+    propose_process(a, "CHROMATE")  # 확정 전에 다른 공정 제안이 있어 분모에는 든다
     confirm_by_answer(client, a, "ZINC_PLATING")
     with session_scope() as session:
         staff_row = session.scalar(
@@ -570,6 +571,40 @@ def test_api_proposal_hit_ignores_ai_rows_made_after_the_confirmation(dashboard_
             )
         )
     assert hit_of(client) == {"confirmedCount": 1, "hitCount": 0, "ratio": None}
+
+
+def test_api_proposal_hit_leaves_out_companies_without_any_ai_proposal(dashboard_env):
+    """Given AI 제안 없이 확정한 회사 1곳 + 제안 안에서 확정한 회사 1곳 / When 조회 / Then 1/1.
+
+    "제안이 틀렸다"와 "제안이 없었다"는 다르다(PM 결정 2026-11-13). 확정한 뒤에야 생긴 AI 행도
+    제안이 없었던 것으로 본다.
+    """
+    client, (a, b, c, _d) = dashboard_env
+    confirm_by_answer(client, a, "ZINC_PLATING")  # AI 제안 0건
+    assert hit_of(client) == {"confirmedCount": 0, "hitCount": 0, "ratio": None}
+    propose_process(b, "CHROMATE")
+    confirm_by_answer(client, b, "CHROMATE")
+    confirm_by_answer(client, c, "ZINC_PLATING")
+    with session_scope() as session:
+        staff_row = session.scalar(
+            select(OppProcessLink).where(
+                OppProcessLink.opp_id == c, OppProcessLink.source == "STAFF"
+            )
+        )
+        session.add(
+            OppProcessLink(
+                link_id=new_id("link"),
+                opp_id=c,
+                process_code="CHROMATE",
+                source="AI",
+                state="PENDING",
+                created_by="system",
+                created_at=staff_row.created_at + timedelta(minutes=1),
+                dataset_kind="VIRTUAL_REVIEWED",
+                is_virtual=True,
+            )
+        )
+    assert hit_of(client) == {"confirmedCount": 1, "hitCount": 1, "ratio": None}
 
 
 def answers(*pairs):

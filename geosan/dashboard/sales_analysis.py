@@ -571,7 +571,9 @@ def load_process_proposal_hit(
     대상은 추천 목록과 같다(활성 묶음, 최신 확정 평가가 있는 기회). 접촉 기록은 보지 않는다.
     담당자 확정 = 지금 살아 있는 공정 연결 가운데 출처가 담당자이고 확정인 행. AI 제안 = 같은
     기회·같은 공정 코드의 AI 행으로, 담당자 행보다 먼저 만들어진 것(확정하면서 이력이 된 행 포함).
-    한 회사가 확정한 공정이 모두 AI 제안 안에 있었을 때만 적중으로 센다.
+    한 회사가 확정한 공정이 모두 AI 제안 안에 있었을 때만 적중으로 센다. AI가 공정을 하나도
+    제안하지 않은 회사(담당자 확정보다 먼저 만들어진 AI 행이 없음)는 세지 않는다 — "제안이
+    틀렸다"와 "제안이 없었다"는 다른 경우다(PM 결정 2026-11-13).
     """
     virtual = dataset_kind == _VIRTUAL_DATASET_KIND
     rows = session.execute(
@@ -599,8 +601,13 @@ def load_process_proposal_hit(
             proposed[key] = min(proposed.get(key, created_at), created_at)
         elif state == LINK_CONFIRMED and superseded_at is None:
             confirmed.setdefault(opp_id, {})[code] = created_at
+    first_proposal: dict[str, datetime] = {}
+    for (opp_id, _code), created_at in proposed.items():
+        first_proposal[opp_id] = min(first_proposal.get(opp_id, created_at), created_at)
     confirmed_count = hit_count = 0
     for opp_id, codes in confirmed.items():
+        if opp_id not in first_proposal or first_proposal[opp_id] > max(codes.values()):
+            continue
         evaluation = latest_confirmed_evaluation(session, opp_id)
         if evaluation is None or evaluation.dataset_kind != dataset_kind:
             continue

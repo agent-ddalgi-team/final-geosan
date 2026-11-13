@@ -334,7 +334,9 @@ describe('영업 분석 화면 (#608)', () => {
       });
       renderPage();
       const line = await screen.findByTestId('analysis-proposal-hit');
-      expect(line).toHaveTextContent('AI 제안 적중 — 공정 2/3 (담당자가 공정을 확정한 회사 기준');
+      expect(line).toHaveTextContent(
+        'AI 제안 적중 — 공정 2/3 (AI가 공정을 제안한 회사 가운데 담당자가 확정한 회사 기준)',
+      );
       expect(line.textContent).not.toContain('%');
       expect(line.textContent).not.toContain('산업');
     });

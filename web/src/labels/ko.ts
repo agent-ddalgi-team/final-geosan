@@ -1346,7 +1346,7 @@ export const salesAnalysisTexts = {
   hitCount: (kind: string, hit: number, confirmed: number) => `${kind} ${hit}/${confirmed}`,
   hitWithRatio: (count: string, percent: number) => `${count} (${percent}%)`,
   hitLine: (parts: string) =>
-    `AI 제안 적중 — ${parts} (담당자가 공정을 확정한 회사 기준, 확정한 공정이 모두 AI 제안 안에 있던 회사 수)`,
+    `AI 제안 적중 — ${parts} (AI가 공정을 제안한 회사 가운데 담당자가 확정한 회사 기준)`,
   /** 단계별 접촉 표(#684). */
   stepTitle: '단계별 접촉',
   stepTableLabel: '단계별 접촉 분석표',
