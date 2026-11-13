@@ -629,9 +629,9 @@ def save_bookmark(
     previous = latest_bookmark(session, opp_id)
     if body.active and _is_excluded(session, opp_id):
         raise AppError(
-            message="검토 대상 제외로 저장한 회사입니다",
+            message="제외로 저장한 회사입니다",
             next_action=(
-                "관심 기업에 다시 담으려면 검토 의견을 검토 권고나 추가 확인 필요로 바꿔 주세요"
+                "관심 기업에 다시 담으려면 검토 의견을 영업 대상이나 검토 중으로 바꿔 주세요"
             ),
             status=422,
             kind="BOOKMARK_EXCLUDED",
@@ -653,7 +653,7 @@ def save_bookmark(
     if not body.active and _has_sales_records(session, opp_id):
         raise AppError(
             message="기록이 있는 회사는 관심에서 뺄 수 없습니다",
-            next_action="빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요",
+            next_action="빼려면 검토 의견을 '제외'로 저장해 주세요",
             status=422,
             kind="BOOKMARK_HAS_RECORDS",
         )
@@ -1494,9 +1494,7 @@ def save_opinion(
 ):
     fields = scan_contacts({"reason": body.reason, "memo": body.memo})
     if body.opinion == "NOT_TARGET" and (body.reason is None or not body.reason.strip()):
-        fields.append(
-            FieldError(path="reason", message="검토 대상 제외를 고르면 사유가 필요합니다.")
-        )
+        fields.append(FieldError(path="reason", message="제외를 고르면 사유가 필요합니다."))
     if body.expected_version is not None and body.expected_version < 0:
         fields.append(
             FieldError(path="expectedVersion", message="버전은 0 이상의 정수여야 합니다.")

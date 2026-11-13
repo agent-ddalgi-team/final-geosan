@@ -296,7 +296,7 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env, monke
     )
     rows = build().recent_activity
     assert [(row.kind, row.summary) for row in rows] == [
-        ("OPINION", "검토 의견: 검토 권고"),
+        ("OPINION", "검토 의견: 영업 대상"),
         ("SCHEDULE", "다음 일정: 11/12 방문"),
         ("CONTACT_ATTEMPT", "전화 시도, 부재"),
         ("STAGE", "미접촉 → 접촉"),
