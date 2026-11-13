@@ -17,6 +17,12 @@ vi.mock('../../api/client', async (importOriginal) => ({
 
 const mockedGet = vi.mocked(getOpportunities);
 const apjeong = listFixture.data[0] as unknown as OpportunityCard;
+/** "근거 있음" 묶음의 카드로 바꾼다(#675). 점수는 이 묶음 카드에만 보인다. 가짜 응답의 A정밀은 거래 중이라 "끝난 회사" 묶음이다. */
+const ready = (card: OpportunityCard): OpportunityCard => ({
+  ...card,
+  bucket: 'EVIDENCE_READY',
+  bucketBasis: 'EVIDENCE_ENOUGH',
+});
 
 function reply(items: OpportunityCard[], meta = {}): Envelope<OpportunityCard[]> {
   return { data: items, meta: { total: items.length, ...meta } };
@@ -30,9 +36,12 @@ const NO_FILTERS = {
   stage: null,
   filter: null,
   q: null,
-  // 추천 순은 세 묶음 순(#610)으로 달라고 한다.
+  // 추천 순은 근거 상태 묶음 순(#610·#675)으로 달라고 한다.
   sort: 'contact',
 };
+
+/** 평소 목록(공정 하나·공정별 묶음·전체 보기)이 보내는 조건: 관심으로 고른 회사는 빼 달라고 한다(#675). */
+const HOME_FILTERS = { ...NO_FILTERS, hideBookmarked: 'true' };
 
 const TABS = [
   { processCode: 'ZINC_PLATING', processName: '전기아연도금', count: 9 },
@@ -113,7 +122,7 @@ describe('OpportunityListPage', () => {
   });
 
   it('A정밀 카드에 순위·분류(쉬운 말)·점수·추천 이유·막는 조건 글자·다음 할 일·자세히 보기가 보인다', async () => {
-    mockedGet.mockResolvedValueOnce(reply([apjeong]));
+    mockedGet.mockResolvedValueOnce(reply([ready(apjeong)]));
     renderPage();
     const card = await screen.findByTestId('opportunity-card');
     const view = within(card);
@@ -181,7 +190,7 @@ describe('OpportunityListPage', () => {
 
   it('거산 확인 전 묶음은 "참고 N"을 보이고 막는 조건에 승인 꼬리표를 덧붙이지 않으며, 점수가 없으면 "--"를 보인다', async () => {
     const brochure: OpportunityCard = {
-      ...apjeong,
+      ...ready(apjeong),
       oppId: 'opp-2',
       rank: 2,
       classificationCode: 'FILTER_PENDING',
@@ -214,7 +223,7 @@ describe('OpportunityListPage', () => {
 
   it('카드: 거래 확인 전 점수는 흐리게 "거래 확인 전" 꼬리표가 붙고, 확정·점수 없음에는 붙지 않는다 (#264)', async () => {
     const pending: OpportunityCard = {
-      ...apjeong,
+      ...ready(apjeong),
       oppId: 'opp-2',
       rank: 2,
       scoreState: 'PENDING',
@@ -230,18 +239,23 @@ describe('OpportunityListPage', () => {
       scoreState: 'NONE',
       scoreDisplay: '--',
     };
-    mockedGet.mockResolvedValueOnce(reply([apjeong, pending, none]));
+    const confirmed: OpportunityCard = { ...ready(apjeong), relationStatus: 'NEW_CONFIRMED' };
+    mockedGet.mockResolvedValueOnce(
+      reply([confirmed, pending, none, { ...apjeong, oppId: 'opp-existing' }]),
+    );
     renderPage();
     const cards = await screen.findAllByTestId('opportunity-card');
-    // 확정 + 거래 중: 진한 점수, "기존 거래처"만.
+    // 확정: 진한 점수, 꼬리표 없음.
     expect(within(cards[0]).getByTestId('card-score')).toHaveAttribute(
       'data-score-state',
       'CONFIRMED',
     );
     expect(within(cards[0]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
-    expect(within(cards[0]).getByTestId('card-score-existing-tag')).toHaveTextContent(
-      scoreTags.existing,
-    );
+    expect(within(cards[0]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
+    // 거래 중인 회사는 "끝난 회사" 묶음이라(#675) 점수 줄과 "기존 거래처" 대신 끝난 이유 "거래 중"이 보인다.
+    expect(within(cards[3]).queryByTestId('card-score')).not.toBeInTheDocument();
+    expect(within(cards[3]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
+    expect(within(cards[3]).getByTestId('card-bucket-basis')).toHaveTextContent('거래 중');
     // 거래 확인 전: 점수 글자는 서버 그대로, 흐림 표시와 꼬리표.
     expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^50점 · 3\/8$/);
     expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
@@ -260,7 +274,7 @@ describe('OpportunityListPage', () => {
 
   it('카드: AI 제안으로 계산된 점수(확정 전인데 분류가 확인 대기가 아님)는 흐리게 "AI 제안 · 확인 전"이 붙는다 (#498)', async () => {
     const proposed: OpportunityCard = {
-      ...apjeong,
+      ...ready(apjeong),
       oppId: 'opp-ai',
       rank: 2,
       scoreState: 'PENDING',
@@ -268,7 +282,7 @@ describe('OpportunityListPage', () => {
       relationStatus: 'UNCONFIRMED',
       scoreDisplay: '참고 50점 · 3/8',
     };
-    mockedGet.mockResolvedValueOnce(reply([apjeong, proposed]));
+    mockedGet.mockResolvedValueOnce(reply([ready(apjeong), proposed]));
     renderPage();
     const cards = await screen.findAllByTestId('opportunity-card');
     expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
@@ -319,7 +333,7 @@ describe('OpportunityListPage', () => {
       expect(screen.getByTestId('list-range-text')).toHaveTextContent(pagination.total(21, 40, 45)),
     );
     // 조건이 하나도 없으면 모두 null로 서버에 간다(client가 빈 값은 주소에 싣지 않는다).
-    expect(mockedGet).toHaveBeenLastCalledWith(2, PAGE_SIZE, expect.any(AbortSignal), NO_FILTERS);
+    expect(mockedGet).toHaveBeenLastCalledWith(2, PAGE_SIZE, expect.any(AbortSignal), HOME_FILTERS);
     expect(screen.getAllByTestId('card-rank')[0]).toHaveTextContent('21');
   });
 
@@ -328,8 +342,8 @@ describe('OpportunityListPage', () => {
     const pending: OpportunityCard = {
       ...apjeong,
       classificationCode: 'FILTER_PENDING',
-      bucket: 'CHECK',
-      bucketBasis: 'REQUIRED_PENDING',
+      bucket: 'EVIDENCE_SOME',
+      bucketBasis: 'EVIDENCE_FEW',
       coreEvidenceRecheck: false,
       blocker: { text: '필수조건 확인 필요', blocksApproval: true },
       checkPoints: ['아노다이징 적용 부품의 소재'],
@@ -394,8 +408,8 @@ describe('OpportunityListPage', () => {
       const notEvaluated: OpportunityCard = {
         ...apjeong,
         classificationCode: 'NOT_EVALUATED',
-        bucket: 'CHECK',
-        bucketBasis: 'NOT_EVALUATED_HIGH_FIT',
+        bucket: 'NOT_RESEARCHED',
+        bucketBasis: 'RESEARCH_NOT_RUN',
         coreEvidenceRecheck: true,
         blocker: { text: '점수 입력 전 · 필수조건 확인 전', blocksApproval: true },
         processCodes: ['ANODIZING', 'ZINC_PLATING'],
@@ -408,7 +422,6 @@ describe('OpportunityListPage', () => {
       const bare: OpportunityCard = {
         ...notEvaluated,
         oppId: 'opp-bare',
-        bucketBasis: 'NOT_EVALUATED_LOWER_FIT',
         processCodes: ['ANODIZING'],
         confirmedProcessCodes: ['ANODIZING'],
         proposedProcessCount: 0,
@@ -437,8 +450,8 @@ describe('OpportunityListPage', () => {
       const recheck: OpportunityCard = {
         ...apjeong,
         classificationCode: 'WATCH',
-        bucket: 'CHECK',
-        bucketBasis: 'EVIDENCE_RECHECK',
+        bucket: 'EVIDENCE_READY',
+        bucketBasis: 'EVIDENCE_ENOUGH',
         coreEvidenceRecheck: true,
         blocker: { text: '없음 — 지금 단계 필수 요구 통과', blocksApproval: false },
         checkPoints: [],
@@ -494,11 +507,12 @@ describe('OpportunityListPage', () => {
       expect(within(card).getByTestId('card-blocker')).toHaveTextContent(/^필수조건 확인 필요$/);
     });
 
-    it('평소 회사는 분류·묶음 이유 꼬리표와 검토사항 문장이 그대로다', async () => {
+    // 묶음 이유 꼬리표("필수조건 통과")는 근거 상태 묶음(#675)에서 없어졌다. 그 자리에는 적합도 하나만 보인다.
+    it('평소 회사는 분류 꼬리표와 검토사항 문장이 그대로이고 묶음 이유 꼬리표는 없다', async () => {
       const usual: OpportunityCard = {
         ...apjeong,
-        bucket: 'NOW',
-        bucketBasis: 'REQUIRED_PASSED',
+        bucket: 'EVIDENCE_READY',
+        bucketBasis: 'EVIDENCE_ENOUGH',
         checkPoints: [],
         coreEvidenceGaps: [],
       };
@@ -508,7 +522,7 @@ describe('OpportunityListPage', () => {
       expect(within(card).getByTestId('card-classification')).toHaveTextContent(
         '지금 바로 연락 검토',
       );
-      expect(within(card).getByTestId('card-bucket-basis')).toHaveTextContent('필수조건 통과');
+      expect(within(card).queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
       expect(within(card).getByTestId('card-blocker')).toHaveTextContent(apjeong.blocker.text);
     });
   });
@@ -529,9 +543,9 @@ describe('OpportunityListPage', () => {
       renderPage();
       // 첫 요청(조건 없음)은 선택지·곳 수를 받고, 회사가 있는 공정마다 그 공정으로 따로 부른다.
       await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(3));
-      expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
-      expect(mockedGet.mock.calls[1][3]).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' });
-      expect(mockedGet.mock.calls[2][3]).toEqual({ ...NO_FILTERS, process: 'ANODIZING' });
+      expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
+      expect(mockedGet.mock.calls[1][3]).toEqual({ ...HOME_FILTERS, process: 'ZINC_PLATING' });
+      expect(mockedGet.mock.calls[2][3]).toEqual({ ...HOME_FILTERS, process: 'ANODIZING' });
       expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities$/);
       expect(await screen.findAllByTestId('process-group-title')).toHaveLength(2);
       expect(screen.getAllByTestId('opportunity-card')).toHaveLength(2);
@@ -545,7 +559,7 @@ describe('OpportunityListPage', () => {
       mockedGet.mockClear();
       await user.selectOptions(select, 'ZINC_PLATING');
       await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(1));
-      expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, process: 'ZINC_PLATING' });
+      expect(mockedGet.mock.calls[0][3]).toEqual({ ...HOME_FILTERS, process: 'ZINC_PLATING' });
       expect(screen.getByTestId('location')).toHaveTextContent(
         '/opportunities?process=ZINC_PLATING',
       );
@@ -570,7 +584,7 @@ describe('OpportunityListPage', () => {
       await user.selectOptions(screen.getByTestId('list-process-select'), 'ANODIZING');
       await waitFor(() =>
         expect(mockedGet).toHaveBeenLastCalledWith(1, PAGE_SIZE, expect.any(AbortSignal), {
-          ...NO_FILTERS,
+          ...HOME_FILTERS,
           process: 'ANODIZING',
         }),
       );
@@ -594,7 +608,7 @@ describe('OpportunityListPage', () => {
       await screen.findByTestId('opportunity-card');
       expect(mockedGet).toHaveBeenCalledTimes(1);
       expect(mockedGet.mock.calls[0][3]).toEqual({
-        ...NO_FILTERS,
+        ...HOME_FILTERS,
         process: 'ANODIZING',
         region: '아산시',
         industry: '자동차 부품',
@@ -627,7 +641,7 @@ describe('OpportunityListPage', () => {
       await user.selectOptions(screen.getByTestId('list-region-select'), '아산시');
       await waitFor(() =>
         expect(mockedGet.mock.calls.at(-1)?.[3]).toEqual({
-          ...NO_FILTERS,
+          ...HOME_FILTERS,
           process: 'ZINC_PLATING',
           region: '아산시',
         }),
@@ -635,7 +649,7 @@ describe('OpportunityListPage', () => {
       await user.selectOptions(screen.getByTestId('list-industry-select'), '자동차 부품');
       await waitFor(() =>
         expect(mockedGet.mock.calls.at(-1)?.[3]).toEqual({
-          ...NO_FILTERS,
+          ...HOME_FILTERS,
           process: 'ZINC_PLATING',
           region: '아산시',
           industry: '자동차 부품',
@@ -647,7 +661,7 @@ describe('OpportunityListPage', () => {
       await user.selectOptions(screen.getByTestId('list-region-select'), listFilters.all);
       await waitFor(() =>
         expect(mockedGet.mock.calls.at(-1)?.[3]).toEqual({
-          ...NO_FILTERS,
+          ...HOME_FILTERS,
           process: 'ZINC_PLATING',
           industry: '자동차 부품',
         }),

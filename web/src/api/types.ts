@@ -60,25 +60,27 @@ export interface Meta {
   latestIngest?: LatestIngest | null;
   /** 거른 조건 안의 묶음별 건수(#610). 쪽 넘김과 무관하다. 묶음 제목 옆 "9곳"에 쓴다. */
   bucketCounts?: Record<ContactBucket, number> | null;
+  /** 목록 대상 안에서 관심으로 켜 둔 회사 수(#675). 다른 거르기 조건과 무관하다. 목록 머리 "관심 기업 ○곳"에 쓴다. */
+  bookmarkedCount?: number | null;
 }
 
-/** 추천 목록의 세 묶음(#610, C0 contactBucket): 지금 연락할 곳 / 확인 필요 / 나중. */
-export type ContactBucket = 'NOW' | 'CHECK' | 'LATER';
-/** 그 묶음에 든 이유(#610, C0 bucketBasis). 카드 꼬리표로 보인다. */
+/**
+ * 추천 목록의 근거 상태 묶음(#675, C0 contactBucket): 근거 있음 / 근거 조금 / 홈페이지 없음 / 조사 전 / 끝난 회사.
+ * #610의 세 묶음(NOW·CHECK·LATER)은 서버가 더는 내보내지 않는다.
+ */
+export type ContactBucket =
+  'EVIDENCE_READY' | 'EVIDENCE_SOME' | 'NO_HOMEPAGE' | 'NOT_RESEARCHED' | 'CLOSED';
+/** 그 묶음에 든 이유(C0 bucketBasis). 카드에는 끝난 회사의 이유(앞 네 값)만 꼬리표로 보인다. */
 export type BucketBasis =
   | 'EXCLUDED_OPINION'
   | 'REQUIRED_FAILED'
   | 'EXISTING_CUSTOMER'
   | 'CLOSED_OR_HOLD'
-  | 'IN_PROGRESS'
-  | 'NEED_CHECK_OPINION'
-  | 'REQUIRED_PENDING'
-  | 'OWN_PLATING'
-  | 'NOT_EVALUATED_HIGH_FIT'
-  | 'NOT_EVALUATED_LOWER_FIT'
-  | 'EVIDENCE_RECHECK'
-  | 'REQUIRED_PASSED'
-  | 'MONITOR';
+  | 'EVIDENCE_ENOUGH'
+  | 'EVIDENCE_FEW'
+  | 'HOMEPAGE_ONLY'
+  | 'HOMEPAGE_NOT_FOUND'
+  | 'RESEARCH_NOT_RUN';
 /** 같은 공정·산업군의 최근 성사·거절로 묶음 안 순서를 올리거나 내린 근거(#610). 서버가 읽을 때 계산한다. */
 export interface RankAdjust {
   /** 양수는 위로, 음수는 아래로, 0은 그대로. */
@@ -452,6 +454,8 @@ export interface OpportunityCard {
   checkKinds?: Array<'PROCESS' | 'MATERIAL' | 'REQUIREMENT' | 'COMPANY_FILTER'>;
   /** AI가 이 회사를 고른 이유 한 줄(#316, 후보 찾기로 들어온 회사만). 없으면 줄을 그리지 않는다. */
   pickReason?: string | null;
+  /** 후보 찾기 때 저장한 공정 적합도(C1 카드 fitLevel). 카드 꼬리표 "적합도 상"에 쓴다(#675). 사례 파일 회사는 없음. */
+  fitLevel?: FitLevel | null;
   /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */
   isNewInLatestBatch?: boolean;
   /** 이 회사가 들어온 시각(ISO). 꼬리표 날짜에 쓴다. 사례 파일 회사는 null. */

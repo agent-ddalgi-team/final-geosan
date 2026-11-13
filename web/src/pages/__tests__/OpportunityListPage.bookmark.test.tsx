@@ -32,9 +32,12 @@ const NO_FILTERS = {
   stage: null,
   filter: null,
   q: null,
-  // 추천 순은 세 묶음 순(#610)으로 달라고 한다.
+  // 추천 순은 근거 상태 묶음 순(#610·#675)으로 달라고 한다.
   sort: 'contact',
 };
+
+/** 평소 목록(공정 하나·공정별 묶음·전체 보기)이 보내는 조건: 관심으로 고른 회사는 빼 달라고 한다(#675). */
+const HOME_FILTERS = { ...NO_FILTERS, hideBookmarked: 'true' };
 
 const TABS = [
   { processCode: 'ZINC_PLATING', processName: '전기아연도금', count: 9 },
@@ -84,7 +87,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(screen.queryByTestId('list-bookmarked-view')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-excluded-view')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-filter-line')).not.toBeInTheDocument();
-    expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+    expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
   });
 
   it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정은 "전체"에서 시작한다', async () => {
@@ -214,7 +217,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     mockedGet.mockResolvedValue(reply([apjeong]));
     const { unmount } = renderPage('/opportunities?opinion=NEED_CHECK');
     await screen.findByTestId('opportunity-card');
-    expect(mockedGet.mock.calls[0][3]).toEqual(NO_FILTERS);
+    expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
     unmount();
     mockedGet.mockClear();
     renderPage('/opportunities?bookmarked=true&opinion=SOMETHING');
@@ -282,7 +285,7 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
       renderPage('/opportunities?filter=NOT_CONTACTED');
       await screen.findByTestId('opportunity-card');
       await user.click(screen.getByTestId('list-filter-clear'));
-      await waitFor(() => expect(lastFilters()).toEqual(NO_FILTERS));
+      await waitFor(() => expect(lastFilters()).toEqual(HOME_FILTERS));
       expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities$/);
       expect(screen.queryByTestId('list-filter-line')).not.toBeInTheDocument();
     });
