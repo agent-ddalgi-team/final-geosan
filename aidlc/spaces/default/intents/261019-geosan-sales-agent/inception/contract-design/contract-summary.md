@@ -705,6 +705,9 @@ exportColumnKinds:          # 내보내기 항목에 붙는 kind (호출자가 �
 scrub_contacts:
   input: { text: string }
   output: { text: string, removedCount: int }     # 이메일·전화번호 패턴 제거. 홈페이지 본문·파일 투입 자유 문장 모두에 적용
+scrub_person_names:          # (추가 2026-11-14 #680 — PM 결정 2026-11-13 #681 · 2026-11-14) 영업 기록 글(메모·한 줄 메모·자유 답)에서 사람 이름을 "[이름]"으로 바꾼다. 직함은 남긴다("김철수 과장" → "[이름] 과장"). 저장된 이름 목록이 없어 모양으로만 찾는다: ① 이름(성씨 + 0~2자, 가려 쓴 "김○○" 포함) + 직함·호칭(님·씨) ② 앞말(담당·담당자·성함·이름·직함) + 세 글자 이름. 직함 목록은 코드 한 곳(PERSON_TITLES). 한계: 직함·호칭·앞말 없이 적힌 이름, 성 없이 적힌 이름, 영어 이름은 못 지운다. 성씨 글자로 시작하는 2~3자 낱말·회사 이름이 직함 앞에 오면 잘못 지울 수 있다(안전한 쪽). 저장된 글은 바꾸지 않고 밖으로 나가는 사본만 바꾼다
+  input: { text: string }
+  output: { text: string, removedCount: int }
 extract_main_phone:          # (추가 2026-11-03 밤 PM 반영, 상세 화면 (1)) 홈페이지 본문에서 회사 대표번호 1개를 코드가 뽑는다. scrub_contacts보다 먼저 돈다
   input: { text: string, pageUrl: string }
   output: { phone: string|null, sourceUrl: string|null }   # 설정 mainPhone.allowedPrefixes(지역번호 02·031~064) 안의 번호 패턴만 후보. 010 휴대폰·전국대표번호(15xx·16xx·18xx)·이메일은 후보 아님(전국대표번호는 설정에 더하면 허용). 후보가 여럿이면 본문에서 먼저 나오는 것. 사람 이름이 같은 줄에 붙은 번호(예 "김○○ 010-…")는 제외
