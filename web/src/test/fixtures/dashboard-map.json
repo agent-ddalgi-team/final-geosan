@@ -1,0 +1,43 @@
+{
+  "data": {
+    "center": { "lat": 36.8, "lng": 126.9 },
+    "ringsKm": [30, 50, 100],
+    "points": [
+      {
+        "oppId": "opp-map-1",
+        "customerName": "가상 가나정밀",
+        "lat": 36.9,
+        "lng": 126.95,
+        "group": "IN_PROGRESS",
+        "distanceKm": 12.3
+      },
+      {
+        "oppId": "opp-map-2",
+        "customerName": "가상 다라금속",
+        "lat": 36.6,
+        "lng": 127.2,
+        "group": "INTERESTED",
+        "distanceKm": 38.4
+      },
+      {
+        "oppId": "opp-map-3",
+        "customerName": "가상 마바플랜트",
+        "lat": 37.3,
+        "lng": 127.0,
+        "group": "WON_THIS_YEAR",
+        "distanceKm": 56.1
+      },
+      {
+        "oppId": "opp-map-4",
+        "customerName": "가상 사아테크",
+        "lat": 36.35,
+        "lng": 127.4,
+        "group": "INTERESTED",
+        "distanceKm": 71.9
+      }
+    ],
+    "missingCoordinates": 2,
+    "asOf": "2026-11-13T09:00:00+09:00"
+  },
+  "meta": { "hasVirtualData": true, "datasetKind": "VIRTUAL_REVIEWED" }
+}
