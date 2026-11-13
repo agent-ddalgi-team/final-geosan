@@ -57,6 +57,24 @@ describe('같이 들를 곳(#673)', () => {
     expect(screen.queryByTestId('dashboard-visit-nearby')).not.toBeInTheDocument();
   });
 
+  it('근처가 10곳을 넘으면 가까운 10곳만 먼저 보이고 [N곳 더 보기]로 나머지를 연다', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 13 }, (_, index) => ({
+      oppId: `opp-many-${index}`,
+      customerName: `가상 단지${index}`,
+      lat: 36.9,
+      lng: 126.95,
+      distanceKm: index / 10,
+      group: null,
+    }));
+    renderMap({ ...data, visitGroups: [{ oppId: 'opp-map-1', nearby: many }] });
+    await user.click(screen.getByTestId('dashboard-visit-row'));
+    expect(screen.getAllByTestId('dashboard-visit-nearby-item')).toHaveLength(10);
+    await user.click(screen.getByTestId('dashboard-visit-more'));
+    expect(screen.getAllByTestId('dashboard-visit-nearby-item')).toHaveLength(13);
+    expect(screen.queryByTestId('dashboard-visit-more')).not.toBeInTheDocument();
+  });
+
   it('근처 후보가 없으면 그렇게 알린다', async () => {
     const user = userEvent.setup();
     renderMap(data);

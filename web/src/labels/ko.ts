@@ -289,6 +289,7 @@ export const dashboardMapTexts = {
   /** 근처 회사 줄: "1.8km · 후보". 지도 대상이 아닌 회사는 "후보". */
   visitNearbyDistance: (km: number) => `${km}km`,
   candidate: '후보',
+  visitMore: (count: number) => `${count}곳 더 보기`,
   visitNone: '이 반경 안에 같이 들를 다른 후보가 없어요.',
   visitEmpty: '진행 중·관심 회사가 없어 묶을 곳이 없어요.',
 } as const;

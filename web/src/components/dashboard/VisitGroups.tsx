@@ -1,6 +1,7 @@
 // 대시보드 지도 아래 "같이 들를 곳"(#673, PM 요청 2026-11-13).
 // 방문할 회사(진행 중·관심)마다 반경 안 후보를 묶어 보인다. 줄은 "단계 · 회사 이름 · 거산에서 ○km → 근처 N곳".
 // 줄을 누르면 펼쳐지고 지도가 그 회사로 다가가 반경 원과 근처 회사(○)를 보인다(지도는 부모가 그린다).
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type {
   DashboardMapPoint,
@@ -20,6 +21,9 @@ export interface VisitGroupsProps {
   groupColors: Record<DashboardMapGroup, string>;
 }
 
+/** 펼친 묶음에 먼저 보이는 근처 회사 수. 산업단지는 5km 안에 수십 곳이라 나머지는 [더 보기]로 연다. */
+export const NEARBY_FIRST = 10;
+
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 
 export default function VisitGroups({
@@ -30,6 +34,7 @@ export default function VisitGroups({
   onToggle,
   groupColors,
 }: VisitGroupsProps) {
+  const [showAll, setShowAll] = useState<string | null>(null);
   const byOpp = new Map(points.map((point) => [point.oppId, point]));
   const rows = groups
     .map((group) => ({ group, anchor: byOpp.get(group.oppId) }))
@@ -94,7 +99,10 @@ export default function VisitGroups({
                       data-testid="dashboard-visit-nearby"
                       style={{ margin: '6px 0 0', paddingLeft: 24, display: 'grid', gap: 4 }}
                     >
-                      {group.nearby.map((row) => (
+                      {(showAll === group.oppId
+                        ? group.nearby
+                        : group.nearby.slice(0, NEARBY_FIRST)
+                      ).map((row) => (
                         <li key={row.oppId} data-testid="dashboard-visit-nearby-item">
                           <Link to={`/opportunities/${encodeURIComponent(row.oppId)}`}>
                             {row.customerName}
@@ -105,6 +113,26 @@ export default function VisitGroups({
                           </span>
                         </li>
                       ))}
+                      {showAll !== group.oppId && group.nearby.length > NEARBY_FIRST ? (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => setShowAll(group.oppId)}
+                            data-testid="dashboard-visit-more"
+                            style={{
+                              background: 'none',
+                              border: 0,
+                              padding: 0,
+                              color: colors.textSecondary,
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                            }}
+                          >
+                            {t.visitMore(group.nearby.length - NEARBY_FIRST)}
+                          </button>
+                        </li>
+                      ) : null}
                     </ul>
                   )
                 ) : null}
