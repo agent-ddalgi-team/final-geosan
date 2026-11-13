@@ -2,6 +2,7 @@ _설명: >-
   영업 기록 꼬리 질문(#607, 약속 C7). 담당자가 접촉을 "연결"로 저장할 때 지금 세부 단계의 질문을 고른다.
   id는 한 번 쓰면 바꾸지 않는다(지난 답이 이 id로 저장된다). 문구(text·label)는 바꿔도 된다.
   reaches가 있는 보기를 고르면 세부 단계가 그 단계까지 앞으로 간다. showWhen이 있으면 앞 답이 그 보기일 때만 보인다(꼬리).
+  closes(WON·LOST·ON_HOLD)가 있는 보기를 고르면 큰 단계가 성사·거절·보류로 저장되고, lostReason 보기는 거절 이유 코드가 된다(#643).
   문구는 거산 확인(#275) 전 초안이다. 가상·거산 실제 사양 아님.
 version: 1
 steps:
@@ -110,3 +111,23 @@ questions:
       - { id: RECONTACT, label: 다시 연락 }
       - { id: VISIT, label: 방문 }
       - { id: END, label: 끝 }
+  # 마무리(#643): "끝"을 골랐을 때만. 이 답으로 큰 단계(성사·거절·보류)와 거절 이유가 저장된다.
+  - id: CLOSE_RESULT
+    step: ALL
+    text: 어떻게 끝났나요?
+    showWhen: { answers: { NEXT_ACTION: [END] } }
+    answers:
+      - { id: WON, label: 성사, closes: WON }
+      - { id: LOST, label: 거절, closes: LOST }
+      - { id: ON_HOLD, label: 보류 · 나중에 다시, closes: ON_HOLD }
+  - id: LOST_REASON
+    step: ALL
+    text: 거절 이유는?
+    showWhen: { answers: { CLOSE_RESULT: [LOST] } }
+    answers:
+      - { id: PRICE, label: 가격, lostReason: PRICE }
+      - { id: LEAD_TIME, label: 납기, lostReason: LEAD_TIME }
+      - { id: INCUMBENT_SUPPLIER, label: 기존 거래처 유지, lostReason: INCUMBENT_SUPPLIER }
+      - { id: NO_DEMAND, label: 수요 없음, lostReason: NO_DEMAND }
+      - { id: QUALITY_CERT, label: 품질·인증 요건, lostReason: QUALITY_CERT }
+      - { id: OTHER, label: 기타, lostReason: OTHER }
