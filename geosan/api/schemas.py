@@ -240,6 +240,15 @@ class ExportUi(_ApiModel):
     xlsx_enabled: bool = Field(description="false면 화면이 [엑셀 내려받기] 단추를 숨긴다(#217)")
 
 
+class AssistantUi(_ApiModel):
+    """영업 비서(#680) 화면 설정. enabled가 false면 질문 칸·[통화 준비] 대신 안내 한 줄."""
+
+    enabled: bool = Field(
+        description="llm.salesRecordsEnabled가 true이고 llm.mode가 EXTERNAL일 때만 true"
+    )
+    question_max_length: int | None = Field(description="설정 assistant 묶음이 없으면 null")
+
+
 class IngestProcessOption(_ApiModel):
     code: ProcessCode
     name: str
@@ -261,6 +270,7 @@ class ConfigUi(_ApiModel):
     records: RecordsUi
     ingest_options: IngestOptions
     export: ExportUi
+    assistant: AssistantUi
     distance_filter_presets_km: list[float] = Field(
         description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
     )
