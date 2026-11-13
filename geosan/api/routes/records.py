@@ -10,6 +10,7 @@ from fastapi import APIRouter, Path, Query
 from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
+from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.proposal_review import confirm_proposal, proposal_review_items
@@ -969,8 +970,16 @@ def save_outcome(
             )
         )
     session.flush()
+    # #685: 지금 유효한 답을 통화 신호로 맞춘다. 점수 입력이 바뀌면 아래에서 한 번만 다시 평가한다.
+    call_changed = _sync_call_signals(session, opportunity, staff)
     reevaluated = _confirm_choices(
-        session, opportunity, _choice_values(body, questions), catalog or {}, body.eval_id, staff
+        session,
+        opportunity,
+        _choice_values(body, questions),
+        catalog or {},
+        body.eval_id,
+        staff,
+        call_changed=call_changed,
     )
     # #607: 큰 단계는 같은 저장 안에서 세부 단계를 따라 앞으로만 바뀐다(보류·성사·거절은 그대로).
     if row.method or body.answers or body.step_override:
@@ -994,6 +1003,24 @@ def save_outcome(
     )
 
 
+def _sync_call_signals(session: Session, opportunity: Opportunity, staff: str) -> bool:
+    """#685 통화에서 확인한 신호를 지금 답에 맞춘다. 점수 입력이 바뀌었으면 True."""
+    return sync_call_signals(
+        session,
+        opportunity,
+        runtime_for(session).rule_config,
+        staff=staff,
+        load_questions=lambda: sales_questions(session),
+    )
+
+
+def _reevaluate_one(session: Session, opp_id: str, staff: str, message: str) -> None:
+    """그 회사 1곳을 다시 평가한다. 실패하면 같은 트랜잭션의 저장까지 전부 취소된다."""
+    result = evaluate_in_session(session, [opp_id], staff)
+    if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
+        raise RunFailedError(message)
+
+
 def _confirm_choices(
     session: Session,
     opportunity: Opportunity,
@@ -1001,14 +1028,24 @@ def _confirm_choices(
     catalog: dict[str, dict[str, str]],
     eval_id: str | None,
     staff: str,
+    *,
+    call_changed: bool = False,
 ) -> bool:
     """#652 꼬리 질문에서 고른 공정·산업군으로 이 회사 값을 확정한다. 다시 평가했으면 True.
 
     접촉 기록과 같은 트랜잭션이다: 공정 연결이 바뀌면 다시 평가하고, 평가가 실패하면 전부 취소된다.
-    바뀐 것이 있으면 활동 이력에 한 줄을 남긴다. 고른 값이 없으면 아무것도 하지 않는다.
+    바뀐 것이 있으면 활동 이력에 한 줄을 남긴다. 고른 값이 없으면 공정·산업은 건드리지 않는다.
+    `call_changed`(#685 통화 신호로 점수 입력이 바뀜)면 공정이 그대로여도 다시 평가한다(한 번만).
     """
     if not values:
-        return False
+        if call_changed:
+            _reevaluate_one(
+                session,
+                opportunity.opp_id,
+                staff,
+                "통화에서 확인한 신호를 다시 평가하지 못해 저장을 취소했습니다.",
+            )
+        return call_changed
     now = utcnow()
     opp_id = opportunity.opp_id
     results = []
@@ -1022,11 +1059,17 @@ def _confirm_choices(
         industries = [name for name in order if name in values["INDUSTRY"]]
         results.append(confirm_industries(session, opportunity, industries, now=now))
     session.flush()
-    reevaluated = any(result.links_changed for result in results)
+    links_changed = any(result.links_changed for result in results)
+    reevaluated = links_changed or call_changed
     if reevaluated:
-        result = evaluate_in_session(session, [opp_id], staff)
-        if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
-            raise RunFailedError("공정 확인을 다시 평가하지 못해 저장을 취소했습니다.")
+        _reevaluate_one(
+            session,
+            opp_id,
+            staff,
+            "공정 확인을 다시 평가하지 못해 저장을 취소했습니다."
+            if links_changed
+            else "통화에서 확인한 신호를 다시 평가하지 못해 저장을 취소했습니다.",
+        )
     summaries = [result.summary for result in results if result.summary]
     if summaries:
         version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
@@ -1334,6 +1377,7 @@ def cancel_record(
     """잘못 저장한 메모·영업 기록을 "잘못 입력"으로 표시한다(#253, PM 결정 2026-11-04 A안).
 
     행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.
+    예외(#685): 접촉 기록을 취소해 통화에서 확인한 신호가 바뀌면 같은 저장 안에서 다시 평가한다.
     """
     reason = body.reason.strip() if body.reason and body.reason.strip() else None
     fields = scan_contacts({"reason": reason})
@@ -1367,6 +1411,14 @@ def cancel_record(
     row.cancelled_by = staff
     row.cancel_reason = reason
     session.flush()
+    reevaluated = kind == "OUTCOME" and _sync_call_signals(session, opportunity, staff)
+    if reevaluated:
+        _reevaluate_one(
+            session,
+            opp_id,
+            staff,
+            "통화에서 확인한 신호를 다시 평가하지 못해 취소 표시를 저장하지 않았습니다.",
+        )
     return RecordCancelEnvelope(
         data=RecordCancelResponse(
             record_id=record_id, record_kind=kind, cancelled_by=staff, cancelled_at=now
@@ -1375,6 +1427,7 @@ def cancel_record(
             updated_at=now,
             has_virtual_data=opportunity.is_virtual,
             dataset_kind=opportunity.dataset_kind,
+            **({"reevaluated": True} if reevaluated else {}),
         ),
     )
 
