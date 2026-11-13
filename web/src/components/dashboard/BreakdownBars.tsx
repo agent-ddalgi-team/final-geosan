@@ -16,6 +16,8 @@ export interface BreakdownBarsProps {
   /** AI 제안 값이 섞여 있으면 제목 옆에 작게 알린다. */
   includesProposed?: boolean;
   testId: string;
+  /** 제목 단계. 다른 구역 제목(h2) 아래에 넣을 때는 3을 준다(#679 영업 분석 "관심 기업 분포"). */
+  headingLevel?: 2 | 3;
 }
 
 export function percentText(ratio: number): string {
@@ -27,10 +29,15 @@ export default function BreakdownBars({
   rows,
   includesProposed = false,
   testId,
+  headingLevel = 2,
 }: BreakdownBarsProps) {
+  const Heading = headingLevel === 3 ? 'h3' : 'h2';
   return (
     <section aria-labelledby={`${testId}-title`} data-testid={testId}>
-      <h2 id={`${testId}-title`} style={{ fontSize: typography.fontSizeCardTitle, marginTop: 0 }}>
+      <Heading
+        id={`${testId}-title`}
+        style={{ fontSize: typography.fontSizeCardTitle, marginTop: 0 }}
+      >
         {title}
         {includesProposed ? (
           <small
@@ -45,7 +52,7 @@ export default function BreakdownBars({
             {dashboardTexts.breakdownProposed}
           </small>
         ) : null}
-      </h2>
+      </Heading>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
         {rows.map((row) => (
           <li key={row.key} data-testid={`${testId}-row`}>
