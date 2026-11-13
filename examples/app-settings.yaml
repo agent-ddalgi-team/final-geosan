@@ -62,6 +62,9 @@ llm:
   monthlyCostLimitUsd: 20
   unconfirmedCallCostUsd: 0.10  # 사용량을 못 받은 호출의 추정 비용(#538).
   costAlertRatio: 0.5
+  # 영업 기록 전용 스위치(#680, PM 결정 2026-11-13 #681). 영업 기록 글(메모·한 줄 메모·질문 답)을
+  # 전화·이메일·사람 이름을 지운 뒤 외부 AI로 보내도 되는지 정한다. false면 하나도 나가지 않는다.
+  salesRecordsEnabled: false
   costPerThousandTokens: 0
 
 # 대표번호 후보는 PM이 승인한 지역번호만 쓴다(#219, 2026-11-03).

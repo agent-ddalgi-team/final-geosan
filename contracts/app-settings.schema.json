@@ -332,6 +332,7 @@
         "webSearchCostPerThousandCalls": { "type": "number", "minimum": 0, "default": 0 },
         "monthlyCostLimitUsd": { "type": "number", "minimum": 0, "default": 0 },
         "costAlertRatio": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "salesRecordsEnabled": { "type": "boolean", "default": false, "description": "(추가 2026-11-14 #680) 영업 기록 전용 스위치. 영업 기록 글(전화·이메일·사람 이름을 지운 것)을 외부 AI로 보내도 되는지. 꺼져 있으면 하나도 나가지 않는다." },
         "monthlyCallLimit": { "type": "integer", "minimum": 0 },
         "costPerThousandTokens": { "type": "number", "minimum": 0 }
       }

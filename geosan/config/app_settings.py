@@ -170,6 +170,8 @@ class LlmSettings(FileModel):
     monthly_cost_limit_usd: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
     unconfirmed_call_cost_usd: float = Field(gt=0, strict=True, allow_inf_nan=False)
     cost_alert_ratio: float = Field(default=0.5, ge=0, le=1, strict=True, allow_inf_nan=False)
+    # #680: 영업 기록 글(연락처·이름을 지운 것)을 외부 AI로 보내도 되는지. 칸이 없으면 꺼짐.
+    sales_records_enabled: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def check_allowed_model(self) -> LlmSettings:
