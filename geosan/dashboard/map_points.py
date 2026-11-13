@@ -9,23 +9,22 @@ from geosan.dashboard.queries import (
     _won_since,
     dashboard_population,
 )
-from geosan.evidence.transfer import KST
 from geosan.opportunity.geo_store import customer_points, distance
 from geosan.opportunity.models import Customer, Opportunity
 
 
-def map_group(status, won_at, now):
+def map_group(status, won_at, now, *, tz):
     if status in {None, "NOT_EXECUTED"}:
         return "INTERESTED"
     if status in {"IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED"}:
         return "IN_PROGRESS"
-    year_start = datetime(now.astimezone(KST).year, 1, 1, tzinfo=KST)
+    year_start = datetime(now.astimezone(tz).year, 1, 1, tzinfo=tz)
     if status == "WON" and won_at is not None and year_start <= won_at <= now:
         return "WON_THIS_YEAR"
     return None
 
 
-def build_map_points(session, settings, now):
+def build_map_points(session, settings, now, *, tz):
     if settings.active_dataset_kind.value == "VIRTUAL_REVIEWED":
         return [], 0
     population = dashboard_population(settings.active_dataset_kind.value)
@@ -46,7 +45,11 @@ def build_map_points(session, settings, now):
     targets = [
         (opportunity, customer, group)
         for opportunity, customer in candidates
-        if (group := map_group(stages.get(opportunity.opp_id), won.get(opportunity.opp_id), now))
+        if (
+            group := map_group(
+                stages.get(opportunity.opp_id), won.get(opportunity.opp_id), now, tz=tz
+            )
+        )
     ]
     locations = customer_points(
         session,

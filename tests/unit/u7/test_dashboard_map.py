@@ -75,7 +75,15 @@ def customer_for(session, opp_id):
     ],
 )
 def test_groups_use_calendar_year_in_korea(status, won_at, expected):
-    assert map_group(status, won_at, NOW) == expected
+    assert map_group(status, won_at, NOW, tz=KST) == expected
+
+
+def test_this_year_uses_supplied_korean_timezone_with_utc_clock():
+    now = datetime(2026, 12, 31, 15, 0, 1, tzinfo=UTC)
+    new_year_won = datetime(2026, 12, 31, 15, 0, tzinfo=UTC)
+    previous_year_won = datetime(2026, 12, 31, 14, 59, 59, tzinfo=UTC)
+    assert map_group("WON", new_year_won, now, tz=KST) == "WON_THIS_YEAR"
+    assert map_group("WON", previous_year_won, now, tz=KST) is None
 
 
 def test_map_contract_reads_config_and_excludes_sensitive_fields(map_env):

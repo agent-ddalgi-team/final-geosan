@@ -253,9 +253,11 @@ def test_stage_only_save_keeps_earlier_schedule_in_dashboard(dashboard_env):
     assert [(row.opp_id, row.due_at) for row in data.schedule] == [(a, date(2026, 11, 8))]
 
 
-def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
+def test_recent_activity_shows_only_my_records_newest_first(dashboard_env, monkeypatch):
     """Given 메모·단계·접촉·일정·의견 기록 / When 조회 / Then 내 기록만 종류별 한 줄, 최신순."""
     client, (a, b, *_rest) = dashboard_env
+    # 집계와 저장 검증에 같은 시험 날짜를 쓴다. 단독 실행 때도 미래 날짜로 오인하지 않는다.
+    monkeypatch.setattr("geosan.api.routes.records.today_in_seoul", lambda: TODAY)
     mine = {"X-Staff-Key": "park-lee"}
     eval_id = next(
         row["evalId"]
