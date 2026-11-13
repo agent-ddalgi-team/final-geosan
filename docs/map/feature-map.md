@@ -114,7 +114,7 @@ flowchart LR
 | [대시보드 › "최근 내 기록"] | 내가 남긴 최근 기록 10건을 보고 누르면 그 회사 상세로 간다. 담당자를 바꾸면 그 담당자의 기록으로 바뀐다 | ✅ 됨 | [#216] [#351] |
 | [대시보드 › 회사 이름 검색] | 이름을 넣고 "검색"을 누르면 그 이름으로 걸러진 목록으로 간다 | ✅ 됨 | [#306] |
 | [대시보드 › "공정별"·"산업군별" 막대] | 관심으로 켜 둔 회사 가운데 접촉 전·진행 중·최근 12개월 성사인 곳을 공정·산업군마다 세어 막대로 본다. 예: "아노다이징 4곳 (100%)", "방위산업 2곳 (50%)", 맨 끝 "미확정". 공정은 9종 모두(0곳 포함), 한 회사가 여러 공정이면 각각 센다. AI 제안 산업군이 섞이면 "AI 제안 포함"이 붙는다. 가상 묶음에서는 숨긴다. 임시 DB와 가짜 응답으로 확인했고 실제 DB·브라우저로는 아직 보지 않았다 | ✅ 됨 | [#229] · [#627] |
-| [대시보드 › 지도] | 거산 본사를 가운데 두고 30·50·100km 원 안의 회사를 점으로 본다 | 📅 2차 예정 | [#226] · 미정 |
+| [대시보드 › 지도] | 거산 본사를 가운데 두고 30·50·100km 원 안의 회사를 점으로 본다. 화면(원·점·범례·말풍선·빈 상태)은 가짜 데이터로 먼저 만들었고(#641), 지도 배경과 서버 연결은 아직 | 📅 2차 예정 | [#226] · [#641] · 서버 #642 |
 
 ## 3. 영업 후보 목록
 
@@ -285,6 +285,7 @@ flowchart LR
 [#223]: https://github.com/agent-ddalgi-team/final-geosan/issues/223
 [#224]: https://github.com/agent-ddalgi-team/final-geosan/issues/224
 [#226]: https://github.com/agent-ddalgi-team/final-geosan/issues/226
+[#641]: https://github.com/agent-ddalgi-team/final-geosan/issues/641
 [#227]: https://github.com/agent-ddalgi-team/final-geosan/issues/227
 [#228]: https://github.com/agent-ddalgi-team/final-geosan/issues/228
 [#229]: https://github.com/agent-ddalgi-team/final-geosan/issues/229
