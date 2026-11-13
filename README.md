@@ -250,11 +250,12 @@ scripts/                check.sh · check-secrets.sh (맥·리눅스) · check.p
 
 ## 6. 회사 좌표와 거리 (#222)
 
-`geosan geocode --missing-only`는 활성 묶음의 공개 실제 회사를 대상으로 이미 저장된 좌표를 재사용합니다.
+`geosan geocode --missing-only`는 활성 묶음의 공개 실제 회사를 대상으로 이미 저장된 좌표를 재사용합니다. 대상은 목록과 같이 최신 확정 평가의 묶음으로 고릅니다(회사 원본 표시가 소개서로 남아 있어도 포함, #664).
 없는 좌표는 **위치 CSV → 행안부 주소검색 후 같은 CSV 대조 → 좌표제공 API → 네이버 Geocoding** 순서로 확인합니다.
 가상·비공개·연락처가 섞인 주소는 외부에 보내지 않습니다. 다른 건물·복수 위치·빈 좌표는 임의로 확정하지 않습니다.
 
 - 앱 설정 `geocoding.locationCsvFiles`에 위치정보요약DB CSV 파일 목록, `locationCsvBaseDate`에 자료 기준일을 넣습니다. 상대 경로는 프로그램을 실행하는 폴더 기준입니다.
+- `geosan serve`는 좌표 조회가 켜져 있으면 시작할 때 위치 CSV를 미리 읽습니다(대전·세종·충남 3개 기준 10초 남짓). 파일이 없으면 경고를 보이고 서버는 띄웁니다(#664).
 - 외부 조회는 `geocoding.enabled`로 켜며 `dailyCallLimit`의 초기값은 10,000회입니다. 행안부·네이버·재시도를 모두 합산합니다. 조회 오류는 미확인과 구분해 실패로 보고합니다.
 - 행안부 키는 `JUSO_SEARCH_KEY`·`JUSO_COORD_KEY` 환경변수에만 둡니다. 좌표계 변환과 거리 계산에는 별도 API가 필요 없습니다.
 - 네이버는 `naverFallbackEnabled`와 서버 환경변수 `NCP_MAPS_KEY_ID`·`NCP_MAPS_KEY`가 준비됐을 때 사용합니다. 받은 결과는 해당 요청의 실시간 지도·거리 표시용이며 DB·파일·공용 캐시에 저장하지 않습니다. 명령의 실시간 확인 건수도 저장 건수와 구분됩니다.
