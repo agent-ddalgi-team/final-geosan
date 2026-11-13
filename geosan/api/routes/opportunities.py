@@ -8,7 +8,7 @@ from datetime import timedelta
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -63,7 +63,7 @@ from geosan.api.schemas import (
     ScoreState,
 )
 from geosan.capability.queries import get_process
-from geosan.config.errors import InputError, NotFoundError, RunFailedError
+from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
 from geosan.config.sales_questions import KST
 from geosan.dashboard.contact_order import (
     BUCKETS,
@@ -680,6 +680,7 @@ def _contact_placements(
 )
 def list_opportunities(
     request: Request,
+    response: Response,
     session: SessionDep,
     tab: str = "new",
     page: Annotated[int, Query(ge=1)] = 1,
@@ -693,6 +694,9 @@ def list_opportunities(
     q: str | None = None,
     ingest_batch: Annotated[str | None, Query(alias="batch")] = None,
     sort: str = "rank",
+    max_distance_km: Annotated[
+        float | None, Query(alias="maxDistanceKm", gt=0, allow_inf_nan=False)
+    ] = None,
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -703,11 +707,27 @@ def list_opportunities(
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
     # 정렬(#516): rank = 추천 순(기본), recent = 들어온 시각 최신 순.
     # contact(#610) = 세 묶음 순(지금 연락할 곳 → 확인 필요 → 나중). rank의 뜻은 그대로다.
-    # distance(#222)는 아직 연결 전이라 거부한다.
-    if sort not in ("rank", "recent", "contact"):
+    # distance(#658)는 페이지를 나누기 전 전체 대상의 거리를 사용한다.
+    if sort not in ("rank", "recent", "contact", "distance"):
         raise InputError(
-            "이 정렬은 아직 연결되지 않았습니다. 추천 순 또는 최근 들어온 순을 골라 주세요."
+            "지원하지 않는 정렬입니다. 추천 순·최근 들어온 순·가까운 순 중에서 골라 주세요."
         )
+    if max_distance_km is not None and (
+        max_distance_km not in runtime.app_settings.distance_filter_presets_km
+    ):
+        raise InputError("설정에 있는 거리 범위를 선택해 주세요.")
+    distance_requested = sort == "distance" or max_distance_km is not None
+    if distance_requested and (
+        runtime.app_settings.geosan.lat is None or runtime.app_settings.geosan.lng is None
+    ):
+        raise AppError(
+            "거산의 기준 좌표가 준비되지 않았습니다.",
+            "운영 담당자가 거산의 기준 좌표를 등록한 뒤 다시 열어 주세요.",
+            status=503,
+        )
+    # 실시간 보완 결과와 그 결과로 정한 순서·거리 조건을 캐시에 남기지 않는다.
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
     full_batch_id = batch.batch_id if batch else None
@@ -853,6 +873,29 @@ def list_opportunities(
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         rows.append((original, current, opportunity, customer))
     rows.sort(key=lambda row: candidate_order(row[0], row[1], row[3], full_batch_id))
+    distances = None
+    if distance_requested:
+        distances = customer_distances(
+            session,
+            [row[3] for row in rows],
+            {row[3].customer_id: row[2].opp_id for row in rows},
+            runtime.app_settings,
+        )
+        if max_distance_km is not None:
+            rows = [
+                row
+                for row in rows
+                if (km := distances[row[3].customer_id]) is not None and km <= max_distance_km
+            ]
+            total = len(rows)
+        if sort == "distance":
+            # Python의 안정 정렬로 같은 거리와 미확인끼리는 기존 추천 순을 지킨다.
+            rows.sort(
+                key=lambda row: (
+                    distances[row[3].customer_id] is None,
+                    distances[row[3].customer_id] or 0,
+                )
+            )
     # 세 묶음(#610): 추천 순으로 세운 자리 번호를 마지막 정렬 키로 넘긴다.
     placements = _contact_placements(
         session,
@@ -876,12 +919,13 @@ def list_opportunities(
         rows.sort(key=lambda row: recent_order(row[3]))
     start = (page - 1) * page_size
     visible_rows = rows[start : start + page_size]
-    distances = customer_distances(
-        session,
-        [row[3] for row in visible_rows],
-        {row[3].customer_id: row[2].opp_id for row in visible_rows},
-        runtime.app_settings,
-    )
+    if distances is None:
+        distances = customer_distances(
+            session,
+            [row[3] for row in visible_rows],
+            {row[3].customer_id: row[2].opp_id for row in visible_rows},
+            runtime.app_settings,
+        )
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
         visible_rows, start=start + 1
@@ -926,7 +970,7 @@ def list_opportunities(
                     or industry is not None
                     or region is not None
                     or ingest_batch is not None
-                    or sort == "recent"
+                    or sort in {"recent", "distance"}
                     or original.batch_id != full_batch_id
                     or (customer.ingest_batch_id is not None and current.score_s is None)
                 )

@@ -190,11 +190,23 @@ def test_all_pages_are_exported_not_only_the_first(process_env):  # noqa: F811
 def test_unsupported_filter_is_rejected_like_the_list(process_env):  # noqa: F811
     """Given 목록이 모르는 조건 / When 내려받기 / Then 목록과 같은 입력 오류이고 파일이 없다."""
     client, _, _ = process_env
-    for params in ({"filter": "NO_SUCH_FILTER"}, {"sort": "distance"}, {"process": "NOPE"}):
+    for params in ({"filter": "NO_SUCH_FILTER"}, {"sort": "unknown"}, {"process": "NOPE"}):
         listed = client.get(LIST_URL, params=params)
         exported = client.get(EXPORT_URL, params=params)
         assert exported.status_code == listed.status_code == 400
         assert exported.headers["content-type"] == "application/json"
+
+
+@pytest.mark.parametrize("params", [{"sort": "distance"}, {"maxDistanceKm": 50}])
+def test_distance_export_remains_rejected_before_live_lookup(process_env, monkeypatch, params):  # noqa: F811
+    """네이버 실시간 결과로 정한 순서·범위를 파일로 남기는 경로를 열지 않는다."""
+    client, _, _ = process_env
+
+    def unexpected_lookup(*args, **kwargs):
+        pytest.fail("거리 내보내기 거부 전에 목록·외부 좌표를 조회하면 안 됩니다.")
+
+    monkeypatch.setattr("geosan.api.routes.export.list_opportunities", unexpected_lookup)
+    assert client.get(EXPORT_URL, params=params).status_code == 400
 
 
 def test_memo_main_phone_and_schedule_note_never_appear(process_env):  # noqa: F811
