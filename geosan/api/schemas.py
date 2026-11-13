@@ -223,6 +223,8 @@ class RecordsUi(_ApiModel):
     approval_enabled: bool
     note_max_length: int
     cancel_by_any_staff: bool = False
+    # #691: 한 통화에 보이는 통화 내용 질문 수(설정 records.questionsPerContact 그대로).
+    questions_per_contact: int
 
 
 class ExportUi(_ApiModel):
@@ -911,6 +913,8 @@ class SalesAnswerOption(_ApiModel):
     # #643: 마무리 답 칸. 질문 파일 그대로, 없으면 null.
     closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
     lost_reason: LostReasonCode | None = None
+    # #691: 화면이 미리 골라 두는 보기(질문 파일 그대로, 없으면 false).
+    default: bool = False
 
 
 class SalesShowWhen(_ApiModel):

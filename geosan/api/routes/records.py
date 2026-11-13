@@ -742,7 +742,16 @@ def _answer_errors(
     if not body.answers or questions is None:
         return []
     if body.method is None or body.result not in ("REACHED", "DECLINED"):
-        return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
+        # #691: 부재 접촉에는 기본 보기가 있는 질문(누가 먼저 연락했나)의 답만 받는다.
+        about_contact = (questions.question(answer.question_id) for answer in body.answers)
+        if (
+            body.method is None
+            or body.result != "ABSENT"
+            or not all(
+                question is not None and question.about_contact for question in about_contact
+            )
+        ):
+            return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
     errors: list[FieldError] = []
     seen: set[str] = set()
     seen_choices: set[tuple[str, str]] = set()
@@ -1126,6 +1135,7 @@ def get_sales_questions(session: SessionDep):
                             reaches=option.reaches,
                             closes=option.closes,
                             lost_reason=option.lost_reason,
+                            default=option.default,
                         )
                         for option in question.answers
                     ],
@@ -1210,6 +1220,21 @@ def activity(
                 cancelled_at=row.cancelled_at,
             )
         )
+    # #691: 접촉 줄 끝에 먼저 연락한 쪽을 붙인다.
+    # 기본 보기가 있는 질문에서 기본이 아닌 보기를 고른 접촉만 해당한다.
+    first_mover: dict[str, str] = {}
+    contact_answers = session.execute(
+        select(OutcomeAnswer.outcome_id, OutcomeAnswer.question_id, OutcomeAnswer.answer_id).where(
+            OutcomeAnswer.opp_id == opp_id
+        )
+    ).all()
+    if contact_answers:
+        questions = sales_questions(session)
+        for outcome_id, question_id, answer_id in contact_answers:
+            question = questions.question(question_id)
+            option = question.option(answer_id) if question and question.about_contact else None
+            if option is not None and not option.default:
+                first_mover[outcome_id] = option.label
     for row in session.scalars(
         select(Outcome)
         .where(Outcome.opp_id == opp_id)
@@ -1231,6 +1256,9 @@ def activity(
             method = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}[row.method]
             result = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}.get(row.result, "")
             summary += f" · {row.attempted_at or ''} {method} {result}"
+            if row.outcome_id in first_mover:
+                tail = "옴" if row.method == "VISIT" else "먼저"
+                summary += f" · {first_mover[row.outcome_id]} {tail}"
         if row.next_schedule_at:
             summary += f" · 다음 일정 {row.next_schedule_at} {row.next_schedule_note or ''}"
         if row.reason:

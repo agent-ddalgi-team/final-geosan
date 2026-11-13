@@ -751,7 +751,8 @@ describe('OpportunityDetailPage', () => {
       expect(review).not.toHaveTextContent('채용');
     });
 
-    it('구분 줄 위(읽는 곳)의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이고 입력칸이 없다', async () => {
+    // #691: 머리에 [기록 남기기]가 더해졌다. 저장하지 않고 기록 칸으로 내려가기만 하는 이동 단추다.
+    it('구분 줄 위(읽는 곳)의 단추는 [목록으로]·[관심]·[다시 조사]·[기록 남기기](이동)와 접힌 구역을 여는 단추뿐이고 입력칸이 없다', async () => {
       mockedGet.mockResolvedValueOnce(
         reply({
           ...fixtureData,
@@ -777,6 +778,7 @@ describe('OpportunityDetailPage', () => {
           'bookmark-button',
           // 대표번호는 누르면 전화가 걸리는 링크다(단추가 아님).
           'company-phone-link',
+          'detail-go-record-button',
           'detail-scores-toggle',
           'homepage-rerun-button',
           'review-fold-toggle-gap',

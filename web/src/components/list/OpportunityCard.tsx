@@ -176,7 +176,18 @@ export default function OpportunityCard({
             data-testid="card-title"
             style={{ margin: 0, fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
           >
-            {card.title}
+            {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
+            <a
+              href={detailPath}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(detailPath);
+              }}
+              style={{ color: 'inherit' }}
+              data-testid="card-title-link"
+            >
+              {card.title}
+            </a>
           </Typography.Title>
           {showClassification ? (
             <span

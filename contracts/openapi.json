@@ -5067,11 +5067,16 @@
           "noteMaxLength": {
             "title": "Notemaxlength",
             "type": "integer"
+          },
+          "questionsPerContact": {
+            "title": "Questionspercontact",
+            "type": "integer"
           }
         },
         "required": [
           "approvalEnabled",
-          "noteMaxLength"
+          "noteMaxLength",
+          "questionsPerContact"
         ],
         "title": "RecordsUi",
         "type": "object"
@@ -5518,6 +5523,11 @@
               }
             ],
             "title": "Closes"
+          },
+          "default": {
+            "default": false,
+            "title": "Default",
+            "type": "boolean"
           },
           "label": {
             "title": "Label",

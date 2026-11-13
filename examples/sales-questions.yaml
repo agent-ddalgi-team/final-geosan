@@ -6,6 +6,8 @@ _설명: >-
   choices(PROCESS·INDUSTRY)가 있는 질문은 보기를 여기 적지 않는다. 거산 공정 목록·설정 산업군에서 오고 여러 개를 고를 수 있으며,
   고른 값으로 그 회사의 공정·산업이 확정된다(#652). answers와 choices는 한 질문에 하나만 쓴다.
   choices 질문은 step에 적은 세부 단계부터, 답이 생길 때까지 그 뒤 단계에서도 계속 보인다(step: ALL은 쓸 수 없다).
+  default: true가 있는 보기는 화면이 미리 골라 둔다(#691). 그런 질문은 통화 내용이 아니라 접촉 자체에 대한 질문이라
+  접촉 종류·결과 줄 옆에 보이고 부재 접촉에도 남는다. step은 ALL, showWhen·reaches·closes·lostReason은 쓸 수 없다.
   문구는 거산 확인(#275) 전 초안이다. 가상·거산 실제 사양 아님.
 version: 1
 steps:
@@ -113,6 +115,13 @@ questions:
       - { id: FAIL, label: 불합격 }
       - { id: WAITING, label: 기다리는 중 }
       - { id: NO_SAMPLE, label: 샘플 없음(방문만) }
+  # 접촉마다(#691): 걸려 온 전화와 건 전화를 구분한다. 세부 단계·영업 단계에 영향 없음.
+  - id: WHO_FIRST
+    step: ALL
+    text: 누가 먼저 연락했나요?
+    answers:
+      - { id: OURS, label: 우리가, default: true }
+      - { id: THEIRS, label: 상대가 }
   # 모든 단계
   - id: NEXT_ACTION
     step: ALL

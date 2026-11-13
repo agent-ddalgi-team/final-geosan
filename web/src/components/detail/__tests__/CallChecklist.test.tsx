@@ -10,7 +10,7 @@ import type {
   SalesStepView,
 } from '../../../api/types';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
-import CallChecklist, { nextActionWithoutMissing } from '../CallChecklist';
+import CallChecklist, { callCheckCountOf, nextActionWithoutMissing } from '../CallChecklist';
 
 const header = {
   ...(detailFixture.data.header as unknown as DetailHeader),
@@ -265,5 +265,46 @@ describe('CallChecklist (#674)', () => {
     expect(nextActionWithoutMissing('응모 전 피막 두께 요구 확인')).toBe(
       '응모 전 피막 두께 요구 확인',
     );
+  });
+});
+
+describe('"한눈에 › 확인할 것"과 같은 기준 (#691)', () => {
+  it('목록에 보이는 줄 수(접힌 "근거 없음"은 빼고)를 그대로 센다', () => {
+    renderList();
+    const shown = screen.getByTestId('call-list').children.length;
+    expect(shown).toBeGreaterThan(0);
+    expect(
+      callCheckCountOf(
+        {
+          header,
+          reasons: {
+            reason: '이유',
+            nextAction: '도금을 외주하는지 확인 · 자료 미확보: 납품실적·증설·공고·채용',
+            questions: [],
+          },
+          processLinks: [pendingLink],
+          reviewItems,
+          requirements: [],
+          salesStep,
+        },
+        questions,
+      ),
+    ).toBe(shown);
+  });
+
+  it('물을 것이 없으면 0이다', () => {
+    expect(
+      callCheckCountOf(
+        {
+          header: { ...header, classificationCode: 'CONTACT_URGENT', industriesSource: 'STAFF' },
+          reasons: { reason: '이유', nextAction: '', questions: [] },
+          processLinks: [{ ...pendingLink, appliedMaterial: 'AL_CASTING', result: 'PASS' }],
+          reviewItems: [],
+          requirements: [],
+          salesStep: null,
+        },
+        questions,
+      ),
+    ).toBe(0);
   });
 });

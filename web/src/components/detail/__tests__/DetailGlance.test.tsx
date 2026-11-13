@@ -247,6 +247,19 @@ describe('DetailGlance (#674)', () => {
       <DetailGlance header={header} processLinks={[link]} evidence={evidence(1)} now={NOW} />,
     );
     expect(screen.getByTestId('glance-check-text')).toHaveTextContent('지금 확인할 것 없음');
+    // #691: 낱말은 없어도 아래 "2. 통화에서 확인할 것"에 줄이 있으면 그 수를 적는다(두 곳이 어긋나지 않게).
+    rerender(
+      <DetailGlance
+        header={header}
+        processLinks={[link]}
+        evidence={evidence(1)}
+        callCheckCount={2}
+        now={NOW}
+      />,
+    );
+    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(
+      /^통화에서 확인할 것 2가지 \(아래 2번\)$/,
+    );
     rerender(
       <DetailGlance
         header={header}

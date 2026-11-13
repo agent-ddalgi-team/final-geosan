@@ -169,7 +169,8 @@
       "properties": {
         "_설명": { "type": "string" },
         "approvalEnabled": { "type": "boolean", "default": false },
-        "noteMaxLength": { "type": "integer", "minimum": 1, "default": 200 }
+        "noteMaxLength": { "type": "integer", "minimum": 1, "default": 200 },
+        "questionsPerContact": { "type": "integer", "minimum": 1, "maximum": 20, "default": 6 }
       }
     },
     "research": {
