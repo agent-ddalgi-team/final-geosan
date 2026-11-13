@@ -201,7 +201,11 @@ export default function OpportunityDetailPage() {
           />
           {data.reviewItems !== undefined ? (
             <DetailSection id="detail-review" title={reviewArea.title}>
-              <WhyRecommended header={data.header} processLinks={data.processLinks} />
+              <WhyRecommended
+                header={data.header}
+                processLinks={data.processLinks}
+                reviewItems={data.reviewItems}
+              />
               <ReviewArea
                 key={`${oppId}:${data.evalId}:review`}
                 oppId={oppId}

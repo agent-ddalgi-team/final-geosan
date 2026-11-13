@@ -68,6 +68,26 @@ describe('상세 › 검토사항 "왜 추천했나"', () => {
     expect(why.compareDocumentPosition(area) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('공정 연결이 모두 AI 제안이면 "연결된 공정" 대신 "맞는 공정이 아직 확인 전입니다"가 보이고 접힌 제안 줄은 그대로다(#659)', async () => {
+    const reviewItems = base.processLinks.map((link) => ({
+      itemId: `PL:${link.processCode}`,
+      kind: 'PROCESS_LINK_PROPOSAL',
+      source: 'AI',
+      text: `AI 공정 연결 제안 · ${link.processName || link.processCode} · 근거: 인용 없음`,
+      checked: false,
+    })) as unknown as OpportunityDetail['reviewItems'];
+    mockedGet.mockResolvedValueOnce(reply({ ...base, reviewItems }));
+    renderPage();
+    const review = await screen.findByTestId('detail-review');
+    const why = within(review).getByTestId('review-why');
+    expect(within(why).queryByTestId('review-why-processes')).not.toBeInTheDocument();
+    const count = new Set(base.processLinks.map((link) => link.processCode)).size;
+    expect(within(why).getByTestId('review-why-process-unconfirmed')).toHaveTextContent(
+      `맞는 공정이 아직 확인 전입니다 · AI 제안 ${count}개`,
+    );
+    expect(within(review).getByTestId('review-area')).toHaveTextContent('AI 공정 연결 제안');
+  });
+
   it('검토사항이 없는 옛 응답이면 "왜 추천했나"도 없다', async () => {
     mockedGet.mockResolvedValueOnce(reply({ ...base, reviewItems: undefined }));
     renderPage();
