@@ -49,3 +49,127 @@ body {
     transition: none !important;
   }
 }
+
+/* 회사별 보고서(#565): 화면에서도 종이 한 쪽처럼 좁고 촘촘하게 보이고, 인쇄할 때는 단추·링크 줄을 숨긴다. */
+.report-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.report-page h1 {
+  margin: 8px 0 0;
+  font-size: 20px;
+}
+
+.report-page h2 {
+  margin: 0 0 6px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #767f8c;
+  font-size: 16px;
+}
+
+.report-page h3 {
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.report-page p {
+  margin: 0;
+}
+
+.report-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.report-actions button {
+  padding: 4px 16px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.report-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-section {
+  margin-top: 14px;
+}
+
+.report-rows {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.report-row dt {
+  font-weight: 600;
+}
+
+.report-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 2px;
+}
+
+.report-list li {
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .report-page {
+    max-width: none;
+    padding: 0;
+    font-size: 11pt;
+  }
+
+  .report-page a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .report-section,
+  .report-table tr,
+  .report-list li {
+    break-inside: avoid;
+  }
+}
