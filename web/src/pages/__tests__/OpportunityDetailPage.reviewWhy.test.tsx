@@ -1,4 +1,5 @@
-// 상세 › 검토사항 맨 위 "왜 추천했나"(#619): 검토사항 영역 안, 줄 목록 위에 붙는다. 검토사항이 없는 옛 응답이면 없다.
+// 상세 › 공정 한 줄. 전에는 검토사항 맨 위 "왜 추천했나"(#619·#659)였고, #674(PM 결정 2026-11-13)부터 "한눈에" 상자의 "거산과 맞는 점"에 보인다.
+// 옛 줄(`WhyRecommended`)의 부품 시험은 `components/review/__tests__/WhyRecommended.test.tsx`에 그대로 있다.
 // 서버 호출(getOpportunityDetail)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -43,7 +44,7 @@ function renderPage() {
   );
 }
 
-describe('상세 › 검토사항 "왜 추천했나"', () => {
+describe('상세 › "한눈에"의 공정 줄 (전에는 검토사항 맨 위 "왜 추천했나")', () => {
   beforeEach(() => {
     mockedGet.mockReset();
     mockedActivity.mockReset();
@@ -53,24 +54,25 @@ describe('상세 › 검토사항 "왜 추천했나"', () => {
     });
   });
 
-  it('검토사항 영역 안, 줄 목록 위에 공정 한 줄이 보이고 "공정 적합성 검토" 구역은 없다', async () => {
+  it('확정된 공정은 "한눈에"의 "거산과 맞는 점"에 이름·확정, 소재·판정으로 보이고 "공정 적합성 검토" 구역은 없다', async () => {
     mockedGet.mockResolvedValueOnce(reply({ ...base, reviewItems: [] }));
     renderPage();
-    const review = await screen.findByTestId('detail-review');
-    const why = within(review).getByTestId('review-why');
-    // 가상 사례의 공정 연결 1건: 이름 · 적용 소재 · 판정을 한 줄로(PM 지시 2026-11-13 #659).
+    const glance = await screen.findByTestId('detail-glance');
+    // 가상 사례의 공정 연결 1건(PM 지시 2026-11-13 #659 → #674에서 "한눈에"로 옮김).
     expect(base.processLinks).toHaveLength(1);
-    expect(within(why).getByTestId('review-why-processes')).toHaveTextContent(
-      /^공정: 아노다이징 — 가상 · 소재 알루미늄 주물 · 통과$/,
+    expect(within(glance).getByTestId('glance-fit-process')).toHaveTextContent(
+      /^공정아노다이징 — 가상 · 확정$/,
     );
-    // 같은 내용을 두 군데에 쓰지 않는다: 아래쪽 구역은 그리지 않는다.
+    expect(within(glance).getByTestId('glance-fit-material')).toHaveTextContent(
+      /^소재알루미늄 주물 · 통과$/,
+    );
+    // 같은 내용을 두 군데에 쓰지 않는다: 아래쪽 구역도, 옛 "왜 추천했나" 줄도 그리지 않는다.
     expect(screen.queryByTestId('detail-process-links')).not.toBeInTheDocument();
     expect(screen.queryByTestId('process-link')).not.toBeInTheDocument();
-    const area = within(review).getByTestId('review-area');
-    expect(why.compareDocumentPosition(area) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId('review-why')).not.toBeInTheDocument();
   });
 
-  it('공정 연결이 모두 AI 제안이면 "공정 확인 전 · AI 제안 n개"가 보이고 접힌 제안 줄은 그대로다(#659)', async () => {
+  it('공정 연결이 모두 AI 제안이면 "확인 전 · AI 제안 n개"가 보이고, AI 공정 제안 줄과 [확정]은 화면에 없다 (#659 → #674)', async () => {
     const reviewItems = base.processLinks.map((link) => ({
       itemId: `PL:${link.processCode}`,
       kind: 'PROCESS_LINK_PROPOSAL',
@@ -80,14 +82,17 @@ describe('상세 › 검토사항 "왜 추천했나"', () => {
     })) as unknown as OpportunityDetail['reviewItems'];
     mockedGet.mockResolvedValueOnce(reply({ ...base, reviewItems }));
     renderPage();
-    const review = await screen.findByTestId('detail-review');
-    const why = within(review).getByTestId('review-why');
-    expect(within(why).queryByTestId('review-why-processes')).not.toBeInTheDocument();
+    const glance = await screen.findByTestId('detail-glance');
     const count = new Set(base.processLinks.map((link) => link.processCode)).size;
-    expect(within(why).getByTestId('review-why-process-unconfirmed')).toHaveTextContent(
-      `공정 확인 전 · AI 제안 ${count}개`,
+    expect(within(glance).getByTestId('glance-fit-process')).toHaveTextContent(
+      `확인 전 · AI 제안 ${count}개`,
     );
-    expect(within(review).getByTestId('review-area')).toHaveTextContent('AI 공정 연결 제안');
+    // "확인할 것"과 "통화에서 확인할 것"이 공정을 말한다.
+    expect(within(glance).getByTestId('glance-check-text')).toHaveTextContent('공정');
+    const review = screen.getByTestId('detail-review');
+    expect(within(review).getByText('공정 —')).toBeInTheDocument();
+    expect(review).not.toHaveTextContent('AI 공정 연결 제안');
+    expect(screen.queryByTestId('review-proposal-confirm')).not.toBeInTheDocument();
   });
 
   it('검토사항이 없는 옛 응답이면 "왜 추천했나"도 없다', async () => {

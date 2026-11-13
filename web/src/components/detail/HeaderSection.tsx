@@ -1,62 +1,69 @@
-// 상세 머리(S2): 목록으로 / 분류·점수·가상 표시·[관심] 단추 / 고객 관계·대응·담당. 이름(h1)은 공통 틀이 보인다.
+// 상세 머리(S2, #674 PM 결정 2026-11-13): 목록으로 / [관심]·[다시 조사] / 단계 진행 막대 / 분류·점수·가상 표시 / 대응·담당.
+// 이름(h1)은 공통 틀이 보인다. 읽는 곳이라 단추는 [목록으로]·[관심]·[다시 조사]뿐이다.
+// 홈페이지·대표번호·공장 정보·산업·접촉 횟수는 바로 아래 "한눈에" 상자(`DetailGlance.tsx`)로 모았다.
+// 거래 관계 입력(`RelationControl`)과 점수 옆 "거래 확인 전" 표시는 뺐다(재접촉 관리를 하지 않는다). "기존 거래처" 표시는 남는다.
+// 분류 꼬리표 "필수조건 확인 필요"·"핵심 근거 재확인 필요"·"평가 전"은 카드(#659)와 같게 보이지 않는다.
 import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import type { BookmarkRecord, ContactCount, DetailHeader, EvidenceView } from '../../api/types';
+import type {
+  BookmarkRecord,
+  DetailHeader,
+  OutcomeRecord,
+  SalesQuestions,
+  SalesStepView,
+} from '../../api/types';
 import BookmarkButton from '../common/BookmarkButton';
 import StatusTag from '../common/StatusTag';
-import { buildMapLinks } from '../common/mapLinks';
 import ScoreLine from '../common/ScoreLine';
-import CompanyGlance from './CompanyGlance';
-import CompanySummary from './CompanySummary';
 import HomepageControls from './HomepageControls';
-import RelationControl from './RelationControl';
+import SalesProgressBar from './SalesProgressBar';
 import {
   candidateSearch,
   cardRows,
   classificationLabels,
   classificationTone,
-  coreEvidenceRecheckLabel,
   detailHeader,
   frame,
   labelFor,
-  mapLinkLabels,
   ownPlatingLine,
   purposeLabels,
-  recordsArea,
 } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 
 export interface HeaderSectionProps {
   oppId: string;
-  /** 지금 보고 있는 평가 ID(거래 관계를 바꿀 때 서버에 함께 보낸다). 평가 전이면 null. */
-  evalId: string | null;
-  /** 거래 관계를 바꿨거나 새로 불러오기를 눌렀을 때. 상세 화면이 서버에서 다시 읽는다. */
-  onRelationChanged: () => void;
+  /** [다시 조사]가 끝났거나 새로 불러오기를 눌렀을 때. 상세 화면이 서버에서 다시 읽는다. */
+  onReload: () => void;
   header: DetailHeader;
   /** 관심 표시(#357). 한 번도 켠 적이 없으면 null. 기록을 저장하면 상세 화면이 서버 값으로 다시 맞춰 준다. */
   bookmark: BookmarkRecord | null;
   /** [관심] 단추로 켜거나 껐을 때 서버가 돌려준 값을 알린다. */
   onBookmarkChanged: (bookmark: BookmarkRecord) => void;
-  /** 접촉 횟수(전화·방문·메일). 서버가 주지 않으면 줄을 보이지 않는다. 기록을 저장하면 상세 화면이 바꿔 준다. */
-  contactCount?: ContactCount | null;
+  /** 단계 진행 막대에 쓰는 값: 세부 단계, 큰 단계·거절 이유·다음 일정, 접촉 수, 질문 파일(단계 이름·순서). */
+  salesStep?: SalesStepView | null;
+  outcome?: OutcomeRecord | null;
+  contactTotal?: number;
+  questions?: SalesQuestions | null;
   /** 담당자 키를 이름으로 바꾼 값. 모르면 담당 줄을 보이지 않는다. */
   ownerName?: string | null;
   classificationOverrides?: Record<string, string>;
-  /** 근거 목록. 공식 홈페이지가 없을 때 "근거가 나온 페이지" 링크를 고르는 데 쓴다(#563). */
-  evidence?: EvidenceView[];
 }
+
+/** 머리에 꼬리표로 보이지 않는 분류(#659 카드와 같다). 무엇을 확인할지는 "한눈에"의 "확인할 것"이 말한다. */
+const HIDDEN_CLASSIFICATIONS = new Set(['FILTER_PENDING', 'NOT_EVALUATED']);
 
 export default function HeaderSection({
   oppId,
-  evalId,
-  onRelationChanged,
+  onReload,
   header,
   bookmark,
   onBookmarkChanged,
-  contactCount,
+  salesStep = null,
+  outcome = null,
+  contactTotal = 0,
+  questions = null,
   ownerName,
   classificationOverrides,
-  evidence,
 }: HeaderSectionProps) {
   const navigate = useNavigate();
   const classification = labelFor(
@@ -68,11 +75,11 @@ export default function HeaderSection({
     header.classificationCode in classificationTone
       ? classificationTone[header.classificationCode]
       : 'neutral';
-  const mapLinks = buildMapLinks(header.address);
+  const showClassification = !HIDDEN_CLASSIFICATIONS.has(header.classificationCode);
 
   return (
     <div data-testid="detail-header" style={{ display: 'grid', gap: 12 }}>
-      {/* 목록으로(왼쪽)와 [다시 조사](우측 상단, #596)를 한 줄에 둔다. */}
+      {/* 목록으로(왼쪽)와 [관심]·[다시 조사](우측 상단, #596)를 한 줄에 둔다. */}
       <div
         style={{
           display: 'flex',
@@ -94,56 +101,46 @@ export default function HeaderSection({
         >
           <span aria-hidden="true">‹</span> {frame.backToList}
         </Button>
-        <HomepageControls oppId={oppId} onReload={onRelationChanged} />
-      </div>
-      <CompanyGlance header={header} evidence={evidence} />
-      {mapLinks ? (
         <div
-          data-testid="detail-map-links"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+            alignItems: 'flex-start',
+            gap: 12,
+          }}
         >
-          <span style={{ color: colors.textSecondary }}>{header.address}</span>
-          <a
-            href={mapLinks.naver}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: 'underline' }}
-            data-testid="detail-map-naver"
-          >
-            {mapLinkLabels.naver} ↗
-          </a>
-          <a
-            href={mapLinks.kakao}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: 'underline' }}
-            data-testid="detail-map-kakao"
-          >
-            {mapLinkLabels.kakao} ↗
-          </a>
+          <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
+          <HomepageControls oppId={oppId} onReload={onReload} />
         </div>
-      ) : null}
+      </div>
+      <SalesProgressBar
+        salesStep={salesStep}
+        outcome={outcome}
+        contactTotal={contactTotal}
+        questions={questions}
+      />
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-        <span
-          role="group"
-          aria-label={`분류: ${classification}`}
-          data-testid="detail-classification"
-        >
-          <StatusTag tone={tone} bold={header.classificationCode === 'CONTACT_URGENT'}>
-            {classification}
-          </StatusTag>
-        </span>
-        {header.coreEvidenceRecheck ? (
-          <StatusTag tone="recheck">{coreEvidenceRecheckLabel}</StatusTag>
+        {showClassification ? (
+          <span
+            role="group"
+            aria-label={`분류: ${classification}`}
+            data-testid="detail-classification"
+          >
+            <StatusTag tone={tone} bold={header.classificationCode === 'CONTACT_URGENT'}>
+              {classification}
+            </StatusTag>
+          </span>
         ) : null}
         <ScoreLine
           scoreDisplay={header.scoreDisplay}
           scoreState={header.scoreState}
           relationStatus={header.relationStatus}
           classificationCode={header.classificationCode}
+          hidePendingTag
           testId="detail-score"
         />
-        {/* 점수가 아직 없으면 조사 상태와 멈춘 이유(#596). "홈페이지 못 찾음" 띠는 이 꼬리표로 대신한다. */}
+        {/* 점수가 아직 없으면 조사 상태와 멈춘 이유(#596). */}
         {header.researchState ? (
           <span data-testid="detail-research-state" data-research-state={header.researchState}>
             <StatusTag tone={header.researchState === 'RUNNING' ? 'neutral' : 'wait'}>
@@ -169,47 +166,20 @@ export default function HeaderSection({
             {ownPlatingLine.tag}
           </StatusTag>
         ) : null}
-        <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
-      </div>
-      <div
-        data-testid="detail-meta"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: 24, color: colors.textSecondary }}
-      >
-        <RelationControl
-          oppId={oppId}
-          evalId={evalId}
-          status={header.relationStatus}
-          note={header.relationNote}
-          confirmedAt={header.relationConfirmedAt}
-          confirmedBy={header.relationConfirmedBy}
-          onChanged={onRelationChanged}
-        />
-        <span>
-          {detailHeader.purpose}: {labelFor(purposeLabels, header.purpose)}
-        </span>
-        {ownerName ? (
+        <span
+          data-testid="detail-meta"
+          style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 16, color: colors.textSecondary }}
+        >
           <span>
-            {detailHeader.owner}: {ownerName}
+            {detailHeader.purpose}: {labelFor(purposeLabels, header.purpose)}
           </span>
-        ) : null}
-        {contactCount ? (
-          <span data-testid="detail-contact-count">
-            {recordsArea.contactCount(
-              contactCount.total,
-              contactCount.call,
-              contactCount.email,
-              contactCount.visit,
-            )}
-          </span>
-        ) : null}
+          {ownerName ? (
+            <span>
+              {detailHeader.owner}: {ownerName}
+            </span>
+          ) : null}
+        </span>
       </div>
-      {/* 한 줄 소개는 맨 위 "이 회사 한눈에"로 옮겼다(#563). 여기는 조사일·대표번호·특징. */}
-      <CompanySummary
-        oppId={oppId}
-        header={header}
-        onReload={onRelationChanged}
-        showSummaryLine={false}
-      />
     </div>
   );
 }
