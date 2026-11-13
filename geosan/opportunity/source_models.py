@@ -15,6 +15,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -179,6 +180,9 @@ class WebCandidate(CommonColumns, Base):
     homepage_url: Mapped[str | None] = mapped_column(Text)
     dropped_reason: Mapped[str | None] = mapped_column(String(40))
     snippet: Mapped[str | None] = mapped_column(Text)
+    # 등록 전 홈페이지 찾기 결과 보관(C9, #639). 목록에 넣을 때 회사로 옮긴다.
+    homepage_confidence: Mapped[float | None] = mapped_column(Float)
+    homepage_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class FactoryProfile(CommonColumns, Base):

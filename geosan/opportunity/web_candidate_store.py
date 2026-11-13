@@ -1,6 +1,6 @@
 """#499: 검색 결과·생산품 요약의 원자적 저장과 보관 결과 조회(C6·C9).
 
-등록 조회 전 상태는 아직 계약에 없으므로, 호출자가 실제 확인한 FOUND/NOT_FOUND를 받는다.
+호출자가 실제 확인한 FOUND/NOT_FOUND, 또는 조회를 끝내지 못한 PENDING(조회 대기, #639)을 받는다.
 이 부품은 등록 여부를 추정하거나 회사를 등록하지 않는다. 외부 호출·저장 재시도도 없다.
 """
 
@@ -31,6 +31,9 @@ from geosan.opportunity.source_models import (
 )
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
+
+# C6: PENDING은 조회 대기. 목록에 넣지 않고 보관만 한다(#639 PM 결정 2026-11-12).
+REGISTRY_STATUSES = frozenset({"FOUND", "NOT_FOUND", "PENDING"})
 
 
 @dataclass(frozen=True)
@@ -121,7 +124,7 @@ def _validated_rows(session, run, context, batch):
             not shares_public_source(row.dataset_kind, batch.dataset_kind)
             or row.is_virtual != batch.is_virtual
             or row.source_domain != urlsplit(url).hostname
-            or row.registry_status not in {"FOUND", "NOT_FOUND"}
+            or row.registry_status not in REGISTRY_STATUSES
         ):
             raise InputError("웹 후보의 자료 묶음·출처·등록 확인 상태를 확인해 주세요.")
     return rows
@@ -189,14 +192,14 @@ def save_web_search(
         not isinstance(registry_statuses, (list, tuple))
         or len(registry_statuses) != len(result.candidates)
         or any(
-            not isinstance(value, str) or value not in {"FOUND", "NOT_FOUND"}
+            not isinstance(value, str) or value not in REGISTRY_STATUSES
             for value in registry_statuses
         )
         or any(not isinstance(value, WebSearchCandidate) for value in result.candidates)
         or type(result.dropped_count) is not int
         or result.dropped_count < 0
     ):
-        raise InputError("각 웹 후보의 실제 등록 조회 결과를 확인해 주세요.")
+        raise InputError("각 웹 후보의 등록 조회 상태를 확인해 주세요.")
     try:
         with session_scope(db_path) as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
@@ -269,6 +272,14 @@ def save_web_search(
         ) from None
 
 
+def address_in_regions(address: str | None, regions) -> bool:
+    """주소가 고른 지역(시·군 포함) 안인지 본다. 주소가 없으면 판정하지 않고 통과시킨다."""
+    if not address or not address.strip():
+        return True
+    region = _region_name(address.split()[0])
+    return region in parent_regions(regions) and row_in_selected_regions(region, address, regions)
+
+
 def web_judgment_rows(session, batch, ids):
     """현재 회차 조건의 유효한 검색 결과에 속한 ID만 판단에 승인한다."""
     ids = _labels(ids)
@@ -290,14 +301,9 @@ def web_judgment_rows(session, batch, ids):
         raise InputError("제외한 웹 후보는 판단할 수 없습니다.")
     # 검색 조건이 맞아도 답에는 다른 지역이 섞일 수 있다(#529). 저장·재사용·전송의
     # 공통 승인 단계에서 원래 선택(시·군 포함)을 검사한다. C9의 빈 주소는 채우지 않는다.
-    parents = parent_regions(context.regions)
     for row in rows.values():
-        if row.address and row.address.strip():
-            region = _region_name(row.address.split()[0])
-            if region not in parents or not row_in_selected_regions(
-                region, row.address, context.regions
-            ):
-                raise InputError("웹 후보의 주소가 이번 회차의 선택 지역인지 확인해 주세요.")
+        if not address_in_regions(row.address, context.regions):
+            raise InputError("웹 후보의 주소가 이번 회차의 선택 지역인지 확인해 주세요.")
     return {
         key: WebJudgmentRow(
             key,
