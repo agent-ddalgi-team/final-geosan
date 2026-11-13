@@ -131,7 +131,12 @@ def test_missing_origin_is_an_error_only_for_distance_conditions(distance_env):
     assert listing(client)["meta"]["total"] == 5
 
 
-def test_live_naver_is_used_once_before_paging_and_never_stored(distance_env, monkeypatch):
+def test_list_uses_only_stored_coordinates_without_external_lookup(distance_env, monkeypatch):
+    """#686 PM 결정 2026-11-13: 목록은 저장된 위치만 쓴다(못 찾은 회사를 요청마다 다시 묻지 않음).
+
+    예전에는 목록에서도 네이버 실시간 보완을 한 번 썼다(#658). 이제 위치를 모르는 회사는
+    거리 미확인으로 거리 조건에서 빠지고, 실시간 보완은 그 회사의 자세히 보기에서만 한다.
+    """
     client, ids = distance_env
     calls = []
     with session_scope() as session:
@@ -139,18 +144,18 @@ def test_live_naver_is_used_once_before_paging_and_never_stored(distance_env, mo
         settings.geocoding.enabled = settings.geocoding.naver_fallback_enabled = True
         sync_app_settings(session, settings)
         customer_for(session, ids[-1]).address = "충청남도 천안시 서북구 성거읍 시험로 10"
-    monkeypatch.setattr(GeocodeClient, "search", lambda *a: [])
 
     def naver(*args):
         calls.append(1)
         return GeoPoint(38, 127.5, "NAVER")
 
     monkeypatch.setattr(GeocodeResolver, "live_naver", naver)
+    monkeypatch.setattr(GeocodeClient, "search", lambda *a: calls.append("juso") or [])
     response = client.get(URL, params={"sort": "distance", "maxDistanceKm": 30, "pageSize": 1})
     assert response.status_code == 200, response.text
-    assert response.json()["data"][0]["oppId"] == ids[-1]
-    assert response.json()["meta"]["total"] == 3
-    assert calls == [1]
+    assert ids[-1] not in [row["oppId"] for row in response.json()["data"]]
+    assert response.json()["meta"]["total"] == 2
+    assert calls == []
     assert response.headers["cache-control"] == "no-store"
     with session_scope() as session:
         customer = customer_for(session, ids[-1])
@@ -160,7 +165,7 @@ def test_live_naver_is_used_once_before_paging_and_never_stored(distance_env, mo
 def test_provider_failure_does_not_return_false_distance_order(distance_env, monkeypatch):
     client, _ = distance_env
 
-    def fail(*args):
+    def fail(*args, **kwargs):
         raise AppError("주소 제공 서버 오류", "다시 시도해 주세요.", status=503)
 
     monkeypatch.setattr("geosan.api.routes.opportunities.customer_distances", fail)
