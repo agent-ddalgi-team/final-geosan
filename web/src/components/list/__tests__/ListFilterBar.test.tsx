@@ -259,22 +259,51 @@ describe('ListFilterBar', () => {
     });
   });
 
+  describe('거리 범위 (#666)', () => {
+    it('서버 설정 선택지로 "30km 이내" 등을 보이고, 고르면 그 숫자를, "전체"를 고르면 null을 알린다', async () => {
+      const user = userEvent.setup();
+      const onMaxDistance = vi.fn();
+      renderBar({ distancePresets: [30, 50, 100], maxDistanceKm: null, onMaxDistance });
+      const select = screen.getByTestId('list-distance-select');
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((o) => o.textContent),
+      ).toEqual(['전체', '30km 이내', '50km 이내', '100km 이내']);
+      await user.selectOptions(select, '50');
+      expect(onMaxDistance).toHaveBeenLastCalledWith(50);
+      cleanup();
+      renderBar({ distancePresets: [30, 50, 100], maxDistanceKm: 50, onMaxDistance });
+      expect(screen.getByTestId('list-distance-select')).toHaveValue('50');
+      await user.selectOptions(screen.getByTestId('list-distance-select'), '');
+      expect(onMaxDistance).toHaveBeenLastCalledWith(null);
+    });
+
+    it('선택지가 없거나(옛 서버) 검색 중이면 거리 선택란을 그리지 않는다', () => {
+      renderBar();
+      expect(screen.queryByTestId('list-distance-select')).not.toBeInTheDocument();
+      cleanup();
+      renderBar({ distancePresets: [30], query: '코파스' });
+      expect(screen.queryByTestId('list-distance-select')).not.toBeInTheDocument();
+    });
+  });
+
   describe('정렬 (#361 · #516)', () => {
-    it('"추천 순"이 골라져 있고, "최근 들어온 순"은 고를 수 있으며, "가까운 순 (준비 중)"은 고를 수 없게 표시된다', () => {
+    it('"추천 순"이 골라져 있고, "최근 들어온 순"과 "가까운 순"(#666)은 고를 수 있다', () => {
       renderBar();
       const group = screen.getByRole('group', { name: listSearch.sortLabel });
       const buttons = within(group).getAllByRole('button');
       expect(buttons.map((button) => button.textContent)).toEqual([
         '추천 순',
         '최근 들어온 순',
-        '가까운 순 (준비 중)',
+        '가까운 순',
         '전체 보기',
       ]);
       expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
       expect(buttons[1]).toHaveAttribute('aria-pressed', 'false');
       expect(buttons[1]).not.toHaveAttribute('aria-disabled');
       expect(buttons[2]).toHaveAttribute('aria-pressed', 'false');
-      expect(buttons[2]).toHaveAttribute('aria-disabled', 'true');
+      expect(buttons[2]).not.toHaveAttribute('aria-disabled');
       expect(buttons[3]).toHaveAttribute('aria-pressed', 'false');
     });
 
@@ -317,14 +346,17 @@ describe('ListFilterBar', () => {
       expect(handlers.onSort).toHaveBeenCalledWith('rank');
     });
 
-    it('"가까운 순 (준비 중)"을 눌러도 아무것도 알리지 않고 "추천 순"이 그대로 골라져 있다', async () => {
+    it('"가까운 순"을 누르면 distance를 알리고, 골라져 있으면 눌린 모양이며 다시 눌러도 알리지 않는다(#666)', async () => {
       const user = userEvent.setup();
       const handlers = renderBar();
       await user.click(screen.getByTestId('list-sort-distance'));
-      await user.click(screen.getByTestId('list-sort-rank'));
-      for (const handler of Object.values(handlers)) expect(handler).not.toHaveBeenCalled();
-      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'false');
+      expect(handlers.onSort).toHaveBeenCalledWith('distance');
+      cleanup();
+      const again = renderBar({ sort: 'distance' });
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'false');
+      await user.click(screen.getByTestId('list-sort-distance'));
+      expect(again.onSort).not.toHaveBeenCalled();
     });
 
     it('정렬 묶음은 검색 중에도, 공정 선택란이 없는 보기에서도 보인다', () => {

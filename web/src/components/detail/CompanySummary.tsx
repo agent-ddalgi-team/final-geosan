@@ -40,6 +40,8 @@ export interface CompanySummaryProps {
   now?: Date;
   /** 한 줄 소개를 여기서 보일지. 상세 머리는 맨 위 "이 회사 한눈에"에서 보여 끈다(#563). */
   showSummaryLine?: boolean;
+  /** 거리를 여기서 보일지. 상세 머리는 주소 줄 옆에 보여 끈다(#666). */
+  showDistance?: boolean;
 }
 
 export default function CompanySummary({
@@ -48,6 +50,7 @@ export default function CompanySummary({
   onReload,
   now,
   showSummaryLine = true,
+  showDistance = true,
 }: CompanySummaryProps) {
   const { staffKey, canRecord, config } = useFrame();
   const [saving, setSaving] = useState(false);
@@ -57,7 +60,7 @@ export default function CompanySummary({
 
   const highlights = header.highlights ?? [];
   const phone = header.mainPhone ?? null;
-  const distance = header.distanceKm ?? null;
+  const distance = showDistance ? (header.distanceKm ?? null) : null;
   const isAi = header.researchSource === 'AI';
   const hasAnything =
     Boolean(header.researchedAt) ||
