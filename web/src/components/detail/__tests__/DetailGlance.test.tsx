@@ -65,6 +65,64 @@ function proposal(code: string, name: string): ReviewItem {
   };
 }
 
+describe('DetailGlance 공식 홈페이지 대신 찾은 공개 페이지 (#511)', () => {
+  function renderWith(header: DetailHeader) {
+    render(
+      <DetailGlance
+        header={header}
+        processLinks={[link]}
+        evidence={evidence(1)}
+        reviewItems={[]}
+        requirements={[]}
+        now={NOW}
+      />,
+    );
+  }
+
+  it('회사 블로그 페이지면 주소 옆에 확인 필요·이유·확신도가 보인다', () => {
+    renderWith({
+      ...full,
+      homepageUrl: 'https://blog.example.invalid/company',
+      homepageStatus: 'NEEDS_CONFIRMATION',
+      homepageConfidence: 0.3,
+      homepagePageKind: 'BLOG',
+    });
+    expect(screen.getByTestId('detail-homepage')).toHaveTextContent(
+      'https://blog.example.invalid/company',
+    );
+    expect(screen.getByTestId('glance-homepage-unofficial')).toHaveTextContent(
+      /^확인 필요 · 공식 홈페이지는 못 찾았고 회사 블로그 페이지 · 확신도 0\.3$/,
+    );
+  });
+
+  it('확신도가 없으면 확인 필요와 이유만 보인다', () => {
+    renderWith({
+      ...full,
+      homepageStatus: 'NEEDS_CONFIRMATION',
+      homepageConfidence: null,
+      homepagePageKind: 'PUBLIC_PAGE',
+    });
+    expect(screen.getByTestId('glance-homepage-unofficial')).toHaveTextContent(
+      /^확인 필요 · 공식 홈페이지는 못 찾았고 공공·지자체의 회사 소개 페이지$/,
+    );
+  });
+
+  it('공식 홈페이지거나 담당자가 확인한 주소면 이 줄이 없다', () => {
+    renderWith({ ...full, homepageStatus: 'AI_FOUND', homepageConfidence: 0.9 });
+    expect(screen.queryByTestId('glance-homepage-unofficial')).toBeNull();
+  });
+
+  it('확신도가 낮을 뿐인 공식 홈페이지(종류 없음)에는 이 줄이 없다', () => {
+    renderWith({ ...full, homepageStatus: 'NEEDS_CONFIRMATION', homepageConfidence: 0.4 });
+    expect(screen.queryByTestId('glance-homepage-unofficial')).toBeNull();
+  });
+
+  it('담당자가 맞음으로 확인하면(CONFIRMED) 종류 값이 남아 있어도 보이지 않는다', () => {
+    renderWith({ ...full, homepageStatus: 'CONFIRMED', homepagePageKind: 'BLOG' });
+    expect(screen.queryByTestId('glance-homepage-unofficial')).toBeNull();
+  });
+});
+
 describe('DetailGlance (#674)', () => {
   it('값이 있으면 다섯 묶음에 회사 설명·맞는 점·근거 상태·확인할 것·영업 상태가 한눈에 보인다', () => {
     render(
