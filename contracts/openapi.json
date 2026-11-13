@@ -978,6 +978,24 @@
             "description": "0~1. AI가 찾았을 때만 (C1, #331)",
             "title": "Homepageconfidence"
           },
+          "homepagePageKind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "BLOG",
+                  "SNS",
+                  "SHOP",
+                  "PUBLIC_PAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "저장된 주소가 공식 홈페이지가 아니라 대신 찾은 공개 페이지일 때 그 종류(회사 블로그·SNS·쇼핑몰·공공 페이지). 이때 homepageStatus는 NEEDS_CONFIRMATION (C1, #511)",
+            "title": "Homepagepagekind"
+          },
           "homepageSource": {
             "anyOf": [
               {

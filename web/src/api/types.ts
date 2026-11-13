@@ -25,6 +25,8 @@ export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
 export type ResearchState =
   'RUNNING' | 'NO_SCORE_EVIDENCE' | 'NOT_FOUND' | 'READ_FAILED' | 'NOT_TRIED' | 'LIMIT_SKIPPED';
 export type HomepageStatus = 'AI_FOUND' | 'NEEDS_CONFIRMATION' | 'CONFIRMED' | 'NOT_FOUND';
+/** 공식 홈페이지 대신 찾은 공개 페이지의 종류(#511): 회사 블로그·SNS·쇼핑몰, 공공·지자체 페이지. */
+export type HomepagePageKind = 'BLOG' | 'SNS' | 'SHOP' | 'PUBLIC_PAGE';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';
 export type NeededStage = 'NOW' | 'LATER' | 'UNKNOWN';
@@ -528,6 +530,13 @@ export interface DetailHeader {
   relationConfirmedBy?: string | null;
   /** 홈페이지 상태. NEEDS_CONFIRMATION·NOT_FOUND면 맨 위 띠가 보인다(결정 B). 없으면 띠 없음. */
   homepageStatus?: HomepageStatus | null;
+  /** AI가 홈페이지를 찾았을 때의 확신도(0~1). */
+  homepageConfidence?: number | null;
+  /**
+   * 저장된 주소가 공식 홈페이지가 아니라 대신 찾은 공개 페이지일 때 그 종류(#511).
+   * 이때 homepageStatus는 NEEDS_CONFIRMATION이다. 공식 홈페이지거나 담당자가 확인했으면 없음.
+   */
+  homepagePageKind?: HomepagePageKind | null;
   /** 거산에서 떨어진 거리(km). 거리 기능(#222) 전까지 null이고, 없으면 보이지 않는다. */
   distanceKm?: number | null;
   /** 회사 대표번호(내부 메모장용, 2026-11-03 PM 결정)와 출처·담당자 확인(#209). */

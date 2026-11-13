@@ -97,6 +97,7 @@ from geosan.evaluation.models import (
     ReadinessCheck,
     RequirementCheck,
 )
+from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.factory_csv import address_city
@@ -262,6 +263,9 @@ def _header(context: DetailContext) -> dict:
             homepage_status=customer.homepage_status,
             homepage_confidence=customer.homepage_confidence,
             homepage_source=customer.homepage_source,
+            homepage_page_kind=unofficial_page_kind(
+                customer.homepage_status, customer.homepage_source, customer.homepage_reason
+            ),
             **discovery_fields(customer),
         )
     }

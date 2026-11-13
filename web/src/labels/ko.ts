@@ -653,6 +653,14 @@ export const companyGlance = {
   evidencePage: '근거가 나온 페이지',
   noHomepage: '홈페이지를 찾지 못했습니다',
   needsConfirm: '확인 필요',
+  /** #511: 공식 홈페이지 대신 찾은 공개 페이지. 홈페이지 줄 아래에 "확인 필요 · (이 글) · 확신도 0.3"으로 보인다. */
+  unofficialPage: {
+    BLOG: '공식 홈페이지는 못 찾았고 회사 블로그 페이지',
+    SNS: '공식 홈페이지는 못 찾았고 회사 SNS 페이지',
+    SHOP: '공식 홈페이지는 못 찾았고 회사 쇼핑몰 페이지',
+    PUBLIC_PAGE: '공식 홈페이지는 못 찾았고 공공·지자체의 회사 소개 페이지',
+  },
+  confidence: (value: number) => `확신도 ${value.toFixed(1)}`,
   intro: '소개',
   /** 조사한 한 줄 소개가 없을 때: 공장 자료의 생산품·업종으로 만든 줄. */
   factoryBasis: '공장 자료 기준',

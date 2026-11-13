@@ -256,6 +256,19 @@ export default function DetailGlance({
           : researched
             ? texts.homepageNone
             : texts.notResearched;
+  // #511: 공식 홈페이지 대신 찾은 공개 페이지면 주소 옆에 "확인 필요 · 이유 · 확신도"를 보인다.
+  const unofficialText =
+    header.homepagePageKind && header.homepageStatus === 'NEEDS_CONFIRMATION'
+      ? [
+          companyGlance.needsConfirm,
+          companyGlance.unofficialPage[header.homepagePageKind],
+          typeof header.homepageConfidence === 'number'
+            ? companyGlance.confidence(header.homepageConfidence)
+            : null,
+        ]
+          .filter((part): part is string => part !== null)
+          .join(' · ')
+      : null;
   const researchedDate = formatMonthDay(header.researchedAt);
   const ago = daysAgo(header.researchedAt, now);
   const researchedText =
@@ -384,6 +397,12 @@ export default function DetailGlance({
                 <ExternalLink url={link.url}>
                   {homepageLinkLabel} ↗ {link.url}
                 </ExternalLink>
+                {unofficialText ? (
+                  <span style={secondary} data-testid="glance-homepage-unofficial">
+                    {' '}
+                    {unofficialText}
+                  </span>
+                ) : null}
               </span>
             ) : link ? (
               <span data-testid="glance-fallback-link" data-kind={link.kind}>
