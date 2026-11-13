@@ -8,6 +8,9 @@ import { typography } from '../../theme/tokens';
 
 /** "아직 모름"을 고른 상태. 서버로는 보내지 않는다. */
 export const UNKNOWN_CHOICE = '__UNKNOWN__';
+/** "지금 확정된 것이 맞음"을 고른 상태. 서버로는 이미 확정된 값들을 답으로 보낸다. */
+export const KEEP_CHOICE = '__KEEP__';
+const SPECIAL = [UNKNOWN_CHOICE, KEEP_CHOICE];
 /** 회사 산업군은 3개까지(약속 C6). 서버도 같은 수로 거부한다. */
 export const MAX_INDUSTRIES = 3;
 
@@ -44,6 +47,23 @@ function lockedValues(question: SalesQuestion, marks: ChoiceMarks | null): strin
     .filter((id) => marks.process[id] === 'CONFIRMED');
 }
 
+/** 이미 확정된 값: 공정은 확정된 연결, 산업은 사례 파일·담당자 확정 값. */
+function confirmedValues(question: SalesQuestion, marks: ChoiceMarks | null): string[] {
+  if (!marks) return [];
+  if (question.choices === 'PROCESS') return lockedValues(question, marks);
+  if (marks.industriesSource !== 'CASE_FILE' && marks.industriesSource !== 'STAFF') return [];
+  return question.answers
+    .map((option) => option.answerId)
+    .filter((id) => marks.industries.includes(id));
+}
+
+/** 고른 값으로 저장하면 빠질 AI 공정 제안 수. */
+function droppedProposals(ids: string[], marks: ChoiceMarks | null): number {
+  return Object.entries(marks?.process ?? {}).filter(
+    ([code, mark]) => mark === 'AI' && !ids.includes(code),
+  ).length;
+}
+
 function tagOf(question: SalesQuestion, id: string, marks: ChoiceMarks | null): string | null {
   if (!marks) return null;
   if (question.choices === 'PROCESS') {
@@ -57,6 +77,7 @@ function tagOf(question: SalesQuestion, id: string, marks: ChoiceMarks | null): 
 
 /**
  * 서버로 보낼 값. 담당자가 새로 고른 것이 없거나 "아직 모름"이면 빈 배열(답을 보내지 않는다).
+ * "지금 확정된 것이 맞음"이면 이미 확정된 값들만 보낸다(아무 조작 없이 저장하면 보내지 않는다).
  * 공정은 이미 확정된 값도 같이 실어 "알아낸 것"에 함께 남긴다(서버는 확정된 연결을 그대로 둔다).
  */
 export function choiceAnswerIds(
@@ -64,7 +85,8 @@ export function choiceAnswerIds(
   picked: string[],
   marks: ChoiceMarks | null,
 ): string[] {
-  const chosen = picked.filter((id) => id !== UNKNOWN_CHOICE);
+  if (picked.includes(KEEP_CHOICE)) return confirmedValues(question, marks);
+  const chosen = picked.filter((id) => !SPECIAL.includes(id));
   if (chosen.length === 0) return [];
   const all = new Set([...lockedValues(question, marks), ...chosen]);
   return question.answers.map((option) => option.answerId).filter((id) => all.has(id));
@@ -83,11 +105,12 @@ export function choicePreview(
     .filter((option) => ids.includes(option.answerId))
     .map((option) => option.label)
     .join(', ');
-  if (question.choices === 'INDUSTRY') return texts.industryPreview(names);
-  const dropped = Object.entries(marks?.process ?? {}).filter(
-    ([code, mark]) => mark === 'AI' && !ids.includes(code),
-  ).length;
-  return texts.processPreview(names, dropped);
+  const keep = picked.includes(KEEP_CHOICE);
+  if (question.choices === 'INDUSTRY') {
+    return keep ? texts.keepIndustryPreview(names) : texts.industryPreview(names);
+  }
+  const dropped = droppedProposals(ids, marks);
+  return keep ? texts.keepProcessPreview(names, dropped) : texts.processPreview(names, dropped);
 }
 
 export interface ChoiceQuestionFieldProps {
@@ -107,6 +130,7 @@ export function ChoiceQuestionField({
 }: ChoiceQuestionFieldProps) {
   const locked = lockedValues(question, marks);
   const unknown = picked.includes(UNKNOWN_CHOICE);
+  const confirmed = confirmedValues(question, marks);
   // 이 회사에 붙어 있는 값(AI 제안·확정)을 먼저, 나머지는 목록 순서대로.
   const options = [
     ...question.answers.filter((option) => tagOf(question, option.answerId, marks)),
@@ -114,12 +138,12 @@ export function ChoiceQuestionField({
   ];
   const full =
     question.choices === 'INDUSTRY' &&
-    picked.filter((id) => id !== UNKNOWN_CHOICE).length >= MAX_INDUSTRIES;
+    picked.filter((id) => !SPECIAL.includes(id)).length >= MAX_INDUSTRIES;
   const preview = choicePreview(question, picked, marks);
   const hint = { fontSize: typography.fontSizeSecondary } as const;
 
   function toggle(id: string, checked: boolean) {
-    const rest = picked.filter((item) => item !== id && item !== UNKNOWN_CHOICE);
+    const rest = picked.filter((item) => item !== id && !SPECIAL.includes(item));
     onChange(checked ? [...rest, id] : rest);
   }
 
@@ -151,6 +175,16 @@ export function ChoiceQuestionField({
             </Checkbox>
           );
         })}
+        {confirmed.length > 0 ? (
+          <Checkbox
+            checked={picked.includes(KEEP_CHOICE)}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.checked ? [KEEP_CHOICE] : [])}
+            data-testid={`sales-choice-${question.questionId}-keep`}
+          >
+            {texts.keep}
+          </Checkbox>
+        ) : null}
         <Checkbox
           checked={unknown}
           disabled={disabled}
@@ -163,6 +197,13 @@ export function ChoiceQuestionField({
       <Typography.Text type="secondary" style={hint}>
         {texts.hint}
         {locked.length > 0 ? ` ${texts.lockedHint}` : ''}
+        {confirmed.length > 0
+          ? ` ${
+              question.choices === 'PROCESS'
+                ? texts.keepProcessHint(droppedProposals(confirmed, marks))
+                : texts.keepIndustryHint
+            }`
+          : ''}
         {question.choices === 'INDUSTRY' ? ` ${texts.industryMax(MAX_INDUSTRIES)}` : ''}
       </Typography.Text>
       {preview ? (

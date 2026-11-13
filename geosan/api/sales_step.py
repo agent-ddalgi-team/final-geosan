@@ -70,6 +70,13 @@ def _later(step: SalesStep, current: SalesStep | None) -> bool:
     return current is None or STEP_ORDER.index(step) > STEP_ORDER.index(current)
 
 
+def _asked_at(question, step: SalesStep | None) -> bool:
+    """이 세부 단계에서 묻는 질문인가. choices 질문(#652)은 그 단계부터 답할 때까지 계속 묻는다."""
+    if question.step == ALL_STEPS or question.step == step:
+        return True
+    return bool(question.choices) and step is not None and not _later(question.step, step)
+
+
 def compute_sales_step(
     rows: Sequence[RecordRow],
     answers: Iterable[AnswerRow],
@@ -137,7 +144,7 @@ def compute_sales_step(
     state.open_questions = [
         question.id
         for question in questions.questions
-        if question.step in (step, ALL_STEPS)
+        if _asked_at(question, step)
         and question.id not in chosen
         and all(
             chosen.get(target) in answer_ids

@@ -237,5 +237,56 @@ def test_answering_again_with_same_values_changes_nothing(confirm_env):
         assert len(list(answers)) == 4
 
 
+def test_confirmed_links_alone_count_as_an_answer_and_drop_the_proposals(confirm_env):
+    """Given 사례 파일 확정 1 + AI 제안 2 / When 확정된 공정만 답함 / Then 제안이 빠지고 닫힌다."""
+    client, _, mixed = confirm_env
+    questions.save(client, mixed, questions.contact(answers=[("WHO_TALKED", "RIGHT_PERSON")]))
+    assert PROCESS in detail(client, mixed)["records"]["salesStep"]["openQuestions"]
+    body = questions.contact(answers=picks(["ANODIZING"]))
+    response = support.post(client, mixed, "outcomes", body)
+    assert response.status_code == 200, response.text
+    assert response.json()["meta"]["reevaluated"] is True
+    assert links(mixed) == {"ANODIZING": ("CASE_FILE", "CONFIRMED", None)}
+    step = detail(client, mixed)["records"]["salesStep"]
+    assert PROCESS not in step["openQuestions"]
+    known = [row["answerId"] for row in step["known"] if row["questionId"] == PROCESS]
+    assert known == ["ANODIZING"]
+
+
+def test_choice_questions_stay_open_after_the_reached_step_until_answered(confirm_env):
+    """Given "연결됨"을 지나 "수요 확인" / When 공정·산업 답이 없음 / Then 계속 묻는다."""
+    client, ai_only, _ = confirm_env
+    questions.save(client, ai_only, questions.contact(answers=[("WHO_TALKED", "RIGHT_PERSON")]))
+    questions.save(client, ai_only, questions.contact(answers=[("PLATING_NOW", "OUTSOURCED")]))
+    step = detail(client, ai_only)["records"]["salesStep"]
+    assert step["code"] == "DEMAND_CONFIRMED"
+    assert {PROCESS, INDUSTRY} <= set(step["openQuestions"])
+    # 보통 질문은 지난 단계 것을 다시 묻지 않는다.
+    assert "INTEREST" not in step["openQuestions"]
+    questions.save(client, ai_only, questions.contact(answers=picks(["ZINC_PLATING"])))
+    step = detail(client, ai_only)["records"]["salesStep"]
+    assert PROCESS not in step["openQuestions"] and INDUSTRY in step["openQuestions"]
+
+
+def test_cancelling_the_contact_reopens_the_question_but_keeps_the_confirmation(confirm_env):
+    """Given 공정을 확정한 접촉 / When 그 접촉을 취소 / Then 답은 빠지고 확정은 그대로.
+
+    지금 동작을 그대로 적어 둔 검사다(#253 취소는 재평가·되돌리기를 하지 않는다).
+    """
+    client, ai_only, _ = confirm_env
+    questions.save(client, ai_only, questions.contact(answers=picks(["ZINC_PLATING"], ["반도체"])))
+    with session_scope() as session:
+        outcome_id = session.scalar(select(Outcome.outcome_id).where(Outcome.opp_id == ai_only))
+    response = client.post(
+        f"/api/v1/opportunities/{ai_only}/records/{outcome_id}/cancel",
+        json={},
+        headers={"X-Staff-Key": "park-lee"},
+    )
+    assert response.status_code == 200, response.text
+    assert links(ai_only) == {"ZINC_PLATING": ("STAFF", "CONFIRMED", "park-lee")}
+    assert industries(ai_only) == (["반도체"], "STAFF", True)
+    assert detail(client, ai_only)["records"]["salesStep"]["known"] == []
+
+
 def failing_evaluation(monkeypatch):
     monkeypatch.setattr(records, "evaluate_in_session", lambda *_: FlowResult(ok=False))

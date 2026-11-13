@@ -106,6 +106,11 @@ class SalesQuestions(FileModel):
                 raise ValueError(f"choices: {question.choices} 질문은 파일에 하나만 둘 수 있습니다")
             if question.choices:
                 seen_choices.add(question.choices)
+                if question.step == ALL_STEPS:
+                    raise ValueError(
+                        f"choices 질문 '{question.id}'의 step은 ALL일 수 없습니다. "
+                        "시작 세부 단계를 적어 주세요"
+                    )
             answer_ids = [item.id for item in question.answers]
             if len(set(answer_ids)) != len(answer_ids):
                 raise ValueError(f"질문 '{question.id}'에 같은 보기 id가 두 번 있습니다")

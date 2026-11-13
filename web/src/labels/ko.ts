@@ -783,6 +783,19 @@ export const salesChoiceTexts = {
       : `저장하면 이 회사의 공정이 '${names}'(으)로 확정됩니다.`,
   industryPreview: (names: string) => `저장하면 이 회사의 산업이 '${names}'(으)로 확정됩니다.`,
   unknownPreview: '아직 모름이면 저장해도 바뀌지 않고, 다음 접촉에서 다시 묻습니다.',
+  /** 이미 확정된 값이 있는 회사에서만 보이는 보기. 고르고 저장하면 확정된 값이 답이 된다. */
+  keep: '지금 확정된 것이 맞음',
+  keepProcessHint: (dropped: number) =>
+    dropped > 0
+      ? `확정된 공정이 맞으면 '지금 확정된 것이 맞음'을 고르고 저장하세요(남은 AI 제안 ${dropped}개는 빠집니다).`
+      : `확정된 공정이 맞으면 '지금 확정된 것이 맞음'을 고르고 저장하세요.`,
+  keepIndustryHint: `확정된 산업이 맞으면 '지금 확정된 것이 맞음'을 고르고 저장하세요.`,
+  keepProcessPreview: (names: string, dropped: number) =>
+    dropped > 0
+      ? `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남고 남은 AI 제안 ${dropped}개는 빠집니다.`
+      : `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남습니다.`,
+  keepIndustryPreview: (names: string) =>
+    `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;

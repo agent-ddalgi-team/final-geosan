@@ -260,6 +260,7 @@ def test_choice_questions_pass(tmp_path):
         (CHOICE.replace("    choices: PROCESS\n", ""), "choices를 적어 주세요"),
         (QUESTION.replace("      - { id: IN_HOUSE, label: 직접 함 }\n", ""), "2개 이상"),
         (CHOICE.replace("PROCESS", "REGION"), "choices"),
+        (CHOICE.replace("step: REACHED", "step: ALL"), "step은 ALL일 수 없습니다"),
         (CHOICE + CHOICE.replace("CONFIRM_PROCESS", "CONFIRM_AGAIN"), "하나만 둘 수 있습니다"),
         (
             CHOICE

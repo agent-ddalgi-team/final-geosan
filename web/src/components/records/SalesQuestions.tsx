@@ -56,9 +56,12 @@ export function visibleQuestions(
   const shownIds = new Set<string>();
   // 질문 파일 순서대로 본다. 꼬리는 앞 질문이 지금 보일 때만 보인다(가려진 질문의 옛 선택으로 열리지 않게).
   return questions.questions.filter((question) => {
+    // 공정·산업 확인(#652 choices)은 그 단계부터 답이 생길 때까지 뒤 단계에서도 계속 묻는다.
     const inRange =
       question.step === 'ALL' ||
-      (!allOnly && order(question.step) >= order(base) && order(question.step) <= order(reach));
+      (!allOnly &&
+        (Boolean(question.choices) || order(question.step) >= order(base)) &&
+        order(question.step) <= order(reach));
     const unanswered = question.step === 'ALL' || !(question.questionId in known);
     const conditions = Object.entries(question.showWhen?.answers ?? {});
     const shown = conditions.every(([target, answerIds]) =>

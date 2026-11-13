@@ -3,9 +3,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
-import { UNKNOWN_CHOICE, choiceAnswerIds, choiceMarksOf, choicePreview } from '../ChoiceQuestion';
+import {
+  KEEP_CHOICE,
+  UNKNOWN_CHOICE,
+  choiceAnswerIds,
+  choiceMarksOf,
+  choicePreview,
+} from '../ChoiceQuestion';
 import type { ChoiceMarks } from '../ChoiceQuestion';
-import { SalesStepSummary } from '../SalesQuestions';
+import { SalesStepSummary, visibleQuestions } from '../SalesQuestions';
 import { getSalesQuestions, postOutcome } from '../../../api/client';
 import type {
   OpportunityDetail,
@@ -284,5 +290,100 @@ describe('접촉 기록에서 공정·산업을 확인한다 (#652)', () => {
     }
     expect(box('CONFIRM_INDUSTRY', '기계·설비')).toBeDisabled();
     expect(box('CONFIRM_INDUSTRY', '반도체')).not.toBeDisabled();
+  });
+});
+
+describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있다 (#652 보완)', () => {
+  const MIXED: ChoiceMarks = {
+    process: { ANODIZING: 'CONFIRMED', ZINC_PLATING: 'AI', CHROMATE: 'AI' },
+    industries: ['방위산업'],
+    industriesSource: 'CASE_FILE',
+  };
+
+  beforeEach(() => {
+    vi.mocked(postOutcome).mockReset();
+    vi.mocked(postOutcome).mockResolvedValue({
+      data: {
+        version: 2,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-13T01:00:00Z',
+        status: 'IN_PROGRESS',
+      },
+      meta: {},
+    });
+    vi.mocked(getSalesQuestions).mockResolvedValue({ data: QUESTIONS, meta: {} });
+  });
+
+  it('"연결됨"을 지난 단계에서도 답이 없으면 보이고, 답이 있으면 안 보인다', () => {
+    const later: SalesStepView = { ...STEP, code: 'MATERIAL_QUOTE' };
+    const ids = (step: SalesStepView | null) =>
+      visibleQuestions(QUESTIONS, step, {}).map((item) => item.questionId);
+    expect(ids(later)).toEqual(['CONFIRM_PROCESS', 'CONFIRM_INDUSTRY']);
+    // 아직 "연결 전"이면 묻지 않는다.
+    expect(ids({ ...STEP, code: 'NOT_REACHED' })).toEqual([]);
+    const answered: SalesStepView = {
+      ...later,
+      known: [
+        {
+          questionId: 'CONFIRM_PROCESS',
+          question: PROCESS.text,
+          answerId: 'ZINC_PLATING',
+          answer: '아연도금',
+          at: '2026-11-10',
+          by: 'park-lee',
+        },
+      ],
+    };
+    expect(ids(answered)).toEqual(['CONFIRM_INDUSTRY']);
+  });
+
+  it('"지금 확정된 것이 맞음"이면 확정된 값만 답으로 보내고 빠질 AI 제안 수를 알린다', () => {
+    expect(choiceAnswerIds(PROCESS, [KEEP_CHOICE], MIXED)).toEqual(['ANODIZING']);
+    expect(choicePreview(PROCESS, [KEEP_CHOICE], MIXED)).toBe(
+      "저장하면 확정된 공정 '아노다이징'이(가) 맞는 것으로 남고 남은 AI 제안 2개는 빠집니다.",
+    );
+    expect(choiceAnswerIds(INDUSTRY, [KEEP_CHOICE], MIXED)).toEqual(['방위산업']);
+    // AI 제안뿐인 산업군은 확정된 값이 아니라 보낼 것이 없다.
+    expect(choiceAnswerIds(INDUSTRY, [KEEP_CHOICE], AI_ONLY)).toEqual([]);
+  });
+
+  it('아무것도 고르지 않고 저장하면 답을 보내지 않고, "맞음"을 고르면 확정된 값을 보낸다', async () => {
+    const user = userEvent.setup();
+    const onCompanyConfirmed = vi.fn();
+    renderArea(MIXED, { onCompanyConfirmed });
+    const process = await openQuestions(user);
+    expect(process).toHaveTextContent(
+      "확정된 공정이 맞으면 '지금 확정된 것이 맞음'을 고르고 저장하세요(남은 AI 제안 2개는 빠집니다).",
+    );
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(postOutcome).mock.calls[0][1]).not.toHaveProperty('answers');
+    expect(onCompanyConfirmed).not.toHaveBeenCalled();
+
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await screen.findByTestId('sales-question-CONFIRM_PROCESS');
+    await user.click(box('CONFIRM_PROCESS', 'keep'));
+    await user.click(box('CONFIRM_INDUSTRY', 'keep'));
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(postOutcome).mock.calls[1][1]).toMatchObject({
+      answers: [
+        { questionId: 'CONFIRM_PROCESS', answerId: 'ANODIZING' },
+        { questionId: 'CONFIRM_INDUSTRY', answerId: '방위산업' },
+      ],
+    });
+    await waitFor(() => expect(onCompanyConfirmed).toHaveBeenCalledTimes(1));
+  });
+
+  it('"맞음"을 고른 뒤 다른 공정을 고르면 "맞음"이 풀린다', async () => {
+    const user = userEvent.setup();
+    renderArea(MIXED);
+    await openQuestions(user);
+    await user.click(box('CONFIRM_PROCESS', 'keep'));
+    await user.click(box('CONFIRM_PROCESS', 'CHROMATE'));
+    expect(box('CONFIRM_PROCESS', 'keep')).not.toBeChecked();
+    expect(screen.getByTestId('sales-choice-preview-CONFIRM_PROCESS')).toHaveTextContent(
+      "저장하면 이 회사의 공정이 '아노다이징, 크로메이트'(으)로 확정되고 다른 AI 제안 1개는 빠집니다.",
+    );
   });
 });
