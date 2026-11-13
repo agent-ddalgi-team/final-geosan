@@ -17,7 +17,7 @@ from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.routes.opportunities import OpinionFilter, list_opportunities
 from geosan.api.routes.records import latest_outcome
 from geosan.api.schemas import OutcomeStatus
-from geosan.config.errors import AppError, RunFailedError
+from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.dashboard.queries import STAGE_LABELS
 from geosan.evidence.contacts import scrub_contacts
 from geosan.evidence.export_guard import ExportItem, check_output_export
@@ -106,8 +106,12 @@ def export_xlsx(
     """
     if not runtime_for(session).app_settings.export.xlsx_enabled:
         raise ExportDisabledError()
+    # 실시간 네이버 결과는 화면 전용이다. 기존에 지원하지 않던 거리 내보내기는 열지 않는다.
+    if sort == "distance" or "maxDistanceKm" in request.query_params:
+        raise InputError("거리 조건은 화면에서만 사용할 수 있습니다.")
     envelope = list_opportunities(
         request,
+        Response(),
         session,
         tab=tab,
         page=1,
