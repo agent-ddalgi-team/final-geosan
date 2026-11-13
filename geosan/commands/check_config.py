@@ -20,7 +20,11 @@ from geosan.config.registry import (
     register_config_files,
 )
 from geosan.config.rule_config import check_rule_config_file
-from geosan.config.sales_questions import check_sales_questions_file, questions_path
+from geosan.config.sales_questions import (
+    call_signal_errors,
+    check_sales_questions_file,
+    questions_path,
+)
 from geosan.config.validators import format_field_error
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
@@ -63,6 +67,13 @@ def run_check_config(
             for error in questions_result.errors:
                 typer.echo(f"오류 [{questions_file.name}]: {format_field_error(error)}")
             errors += len(questions_result.errors)
+            # #685: 통화 신호 대응표의 질문·보기 id가 꼬리 질문 파일에 실제로 있는지 본다.
+            if rule_result.config is not None and questions_result.questions is not None:
+                for error in call_signal_errors(
+                    rule_result.config, questions_result.questions, rule_result.document
+                ):
+                    typer.echo(f"오류 [{rule_path.name}]: {format_field_error(error)}")
+                    errors += 1
     except AppError as exc:
         for error in exc.fields:
             typer.echo(f"오류: {format_field_error(error)}")

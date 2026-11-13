@@ -1,4 +1,5 @@
 // 기록 영역(U5, 상세 하단): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정 네 칸. 모달·서랍 없이 인라인.
+// 다음 일정은 꼬리 질문 "다음 할 일은?" 아래 날짜로 접촉과 함께 잡고, 따로 있는 일정 칸은 접어 둔다(#683).
 // 메모는 덧붙이기만 되고, 단계·일정은 저장할 때마다 새 행이 쌓인다(서버 규칙 Q5). 수정·삭제 단추는 두지 않는다.
 // 상대 회사 담당자 연락처를 메모에 적어도 막지 않는다(PM 결정 2026-11-03: 내부 메모장). 글자 수 초과 등
 // 서버가 돌려주는 쉬운 말은 그대로 보인다.
@@ -31,7 +32,7 @@ import {
   salesStepLabels,
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
-import { formatHourMinute, todayKst } from '../../utils/time';
+import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 import { choiceAnswerIds } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
@@ -40,6 +41,7 @@ import {
   SalesQuestionFields,
   SalesStepSummary,
   closingPick,
+  nextActionPick,
   visibleQuestions,
 } from './SalesQuestions';
 
@@ -188,6 +190,10 @@ export default function RecordsArea({
   const [override, setOverride] = useState<SalesStep | null>(null);
   // "영업 단계" 칸은 기본으로 접혀 있다(#674). [단계 고치기]로 펼친다.
   const [stageOpen, setStageOpen] = useState(false);
+  // "다음 일정" 칸도 접혀 있다(#683). [일정만 바꾸기]로 펼친다.
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  // 꼬리 질문 "다음 할 일은?" 아래 "언제 할까요?" 날짜(#683). 저장하면 비운다.
+  const [nextDate, setNextDate] = useState('');
   useEffect(() => {
     let alive = true;
     loadSalesQuestions()
@@ -253,6 +259,9 @@ export default function RecordsArea({
         nextScheduleNote: envelope.data.nextScheduleNote ?? body.nextScheduleNote ?? null,
       };
       setOutcome(saved);
+      // 접힌 "다음 일정" 칸을 펼쳤을 때 방금 저장한 일정이 들어 있게 한다(#683).
+      setScheduleAt(saved.nextScheduleAt ?? '');
+      setScheduleNote(saved.nextScheduleNote ?? '');
       onOutcomeSaved?.(saved);
       onRecorded?.();
       succeed(block, saved.updatedAt);
@@ -304,9 +313,14 @@ export default function RecordsArea({
       ? recordsArea.stageCurrentLost(lostReasonLabels[closing.lostReasonCode])
       : outcomeStatusLabels[closing.status]
     : null;
+  // 끝이 아닌 "다음 할 일"을 고르고 날짜를 넣었으면 접촉과 함께 다음 일정을 잡는다(#683).
+  // 날짜 칸이 안 보이는 동안(끝·답 지움·부재) 남아 있는 날짜는 쓰지 않는다.
+  const nextAction = questions ? nextActionPick(questions, shownQuestions, picked) : null;
+  const plannedDate = nextAction && !closing ? nextDate : '';
+  const plannedDatePast = plannedDate !== '' && plannedDate < todayKst();
 
   async function onSaveContact() {
-    if (!method || !result || closingNeedsReason || closingNeedsMemo) return;
+    if (!method || !result || closingNeedsReason || closingNeedsMemo || plannedDatePast) return;
     // 지금 단계를 그대로 싣는다. 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 앞으로만
     // 바꾼다(#607, PM 결정 2026-11-12로 #433의 "한 번 묻기"를 바꿈). 마무리 답을 골랐으면 서버가
     // 그 답으로 보류·성사·거절과 거절 이유를 정한다(#643). 화면도 같은 값을 실어 보낸다.
@@ -345,7 +359,10 @@ export default function RecordsArea({
       ...(spokeToCompany && judgmentCheck ? { judgmentCheck } : {}),
       ...(answers.length > 0 ? { answers } : {}),
       ...(memo ? { memo } : {}),
-      ...keepSchedule(),
+      // 날짜를 넣었으면 새 일정(날짜 + 고른 할 일의 쉬운 말), 안 넣었으면 있던 일정을 그대로 싣는다.
+      ...(nextAction && plannedDate !== ''
+        ? { nextScheduleAt: plannedDate, nextScheduleNote: nextAction.label }
+        : keepSchedule()),
       ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),
     });
     if (ok) {
@@ -358,6 +375,7 @@ export default function RecordsArea({
       setPicked({});
       setPickedMany({});
       setMemoLine('');
+      setNextDate('');
       // 공정·산업을 확정했으면 점수·검토사항도 바뀌므로 상세 전체를 다시 불러오게 알린다(#652).
       if (choiceAnswers.length > 0 && onCompanyConfirmed) onCompanyConfirmed();
       else onSalesStepChanged?.();
@@ -471,9 +489,6 @@ export default function RecordsArea({
 
       <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
-          <span aria-hidden="true" data-testid="records-step-1">
-            {recordsArea.stepOne}{' '}
-          </span>
           {recordsArea.entryTitle}
         </Typography.Title>
         <div style={rowStyle}>
@@ -531,6 +546,7 @@ export default function RecordsArea({
                   disabled ||
                   !result ||
                   attemptedAt === '' ||
+                  plannedDatePast ||
                   closingNeedsReason ||
                   closingNeedsMemo
                 }
@@ -593,6 +609,9 @@ export default function RecordsArea({
               setPickedMany((previous) => ({ ...previous, [questionId]: values }))
             }
             marks={choiceMarks}
+            nextDate={nextDate}
+            onNextDate={setNextDate}
+            nextDateMin={todayKst()}
             disabled={disabled}
           />
         ) : null}
@@ -621,6 +640,19 @@ export default function RecordsArea({
         {closingLabel ? (
           <span data-testid="records-close-preview" aria-live="polite">
             {salesQuestionTexts.closePreview(closingLabel)}
+          </span>
+        ) : null}
+        {nextAction && plannedDate !== '' && !plannedDatePast ? (
+          <span data-testid="records-next-date-preview" aria-live="polite">
+            {salesQuestionTexts.nextDatePreview(
+              formatMonthDay(plannedDate) ?? plannedDate,
+              nextAction.label,
+            )}
+          </span>
+        ) : null}
+        {plannedDatePast ? (
+          <span role="alert" data-testid="records-next-date-error" style={{ color: colors.error }}>
+            {salesQuestionTexts.nextDatePast}
           </span>
         ) : null}
         {closingNeedsReason || closingNeedsMemo ? (
@@ -781,44 +813,78 @@ export default function RecordsArea({
         </div>
       </section>
 
-      <section aria-labelledby={`records-schedule-${oppId}`} style={blockStyle}>
-        <Typography.Title level={3} id={`records-schedule-${oppId}`} style={{ margin: 0 }}>
-          <span aria-hidden="true" data-testid="records-step-2">
-            {recordsArea.stepTwo}{' '}
+      {/* 다음 일정 칸도 접어 둔다(#683, PM 결정 2026-11-13): 일정은 꼬리 질문 "다음 할 일은?" 아래 날짜로
+          접촉과 함께 잡는다. 통화 없이 일정만 바꿀 때 이 한 줄에서 펼친다(창 없음, 기능은 그대로). */}
+      <section aria-label={recordsArea.scheduleTitle} style={blockStyle}>
+        <div style={rowStyle} data-testid="records-schedule-fix">
+          <span style={hintStyle} data-testid="records-schedule-current">
+            {outcome?.nextScheduleAt
+              ? recordsArea.scheduleCurrent(
+                  formatMonthDay(outcome.nextScheduleAt) ?? outcome.nextScheduleAt,
+                  outcome.nextScheduleNote ?? '',
+                )
+              : recordsArea.scheduleNone}
           </span>
-          {recordsArea.scheduleTitle}
-        </Typography.Title>
-        <div style={rowStyle}>
-          <Input
-            type="date"
-            aria-label={recordsArea.scheduleDate}
-            style={{ width: 160 }}
-            value={scheduleAt}
-            onChange={(event) => setScheduleAt(event.target.value)}
-            disabled={disabled}
-            data-testid="records-schedule-date"
-          />
-          <Input
-            aria-label={recordsArea.scheduleNote}
-            placeholder={recordsArea.scheduleNote}
-            style={{ flex: 1, minWidth: 200 }}
-            value={scheduleNote}
-            maxLength={noteMax}
-            onChange={(event) => setScheduleNote(event.target.value)}
-            disabled={disabled}
-            data-testid="records-schedule-note"
-          />
           <Button
-            type="primary"
-            disabled={disabled || scheduleAt === ''}
-            loading={busy === 'schedule'}
-            onClick={() => void onSaveSchedule()}
-            data-testid="records-schedule-save-button"
+            size="small"
+            aria-expanded={scheduleOpen}
+            aria-controls={`records-schedule-body-${oppId}`}
+            onClick={() => setScheduleOpen((open) => !open)}
+            data-testid="records-schedule-toggle"
           >
-            {recordsArea.scheduleSave}
+            {scheduleOpen
+              ? recordsArea.scheduleFixClose
+              : outcome?.nextScheduleAt
+                ? recordsArea.scheduleFixOpen
+                : recordsArea.scheduleNewOpen}
           </Button>
+          {scheduleOpen ? null : blockMessage('schedule')}
         </div>
-        {blockMessage('schedule')}
+        <div
+          id={`records-schedule-body-${oppId}`}
+          hidden={!scheduleOpen}
+          data-testid="records-schedule-body"
+          style={scheduleOpen ? { display: 'grid', gap: 8 } : undefined}
+        >
+          {scheduleOpen ? (
+            <>
+              <Typography.Title level={4} id={`records-schedule-${oppId}`} style={{ margin: 0 }}>
+                {recordsArea.scheduleTitle}
+              </Typography.Title>
+              <div style={rowStyle}>
+                <Input
+                  type="date"
+                  aria-label={recordsArea.scheduleDate}
+                  style={{ width: 160 }}
+                  value={scheduleAt}
+                  onChange={(event) => setScheduleAt(event.target.value)}
+                  disabled={disabled}
+                  data-testid="records-schedule-date"
+                />
+                <Input
+                  aria-label={recordsArea.scheduleNote}
+                  placeholder={recordsArea.scheduleNote}
+                  style={{ flex: 1, minWidth: 200 }}
+                  value={scheduleNote}
+                  maxLength={noteMax}
+                  onChange={(event) => setScheduleNote(event.target.value)}
+                  disabled={disabled}
+                  data-testid="records-schedule-note"
+                />
+                <Button
+                  type="primary"
+                  disabled={disabled || scheduleAt === ''}
+                  loading={busy === 'schedule'}
+                  onClick={() => void onSaveSchedule()}
+                  data-testid="records-schedule-save-button"
+                >
+                  {recordsArea.scheduleSave}
+                </Button>
+              </div>
+              {blockMessage('schedule')}
+            </>
+          ) : null}
+        </div>
       </section>
     </div>
   );

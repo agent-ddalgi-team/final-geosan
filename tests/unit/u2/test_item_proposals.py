@@ -6,7 +6,7 @@ from sqlalchemy import select
 from geosan.api.routes.opportunities import _score_state
 from geosan.evaluation.inputs import current_item_inputs, has_ai_pending_inputs, supersede_inputs
 from geosan.evaluation.ledger import latest_confirmed_evaluation
-from geosan.evaluation.models import ItemJudgmentInput
+from geosan.evaluation.models import ItemJudgment, ItemJudgmentInput
 from geosan.opportunity.models import Customer, OppProcessLink
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_extract
@@ -202,3 +202,101 @@ def test_prompt_lists_items_steps_and_process_codes(extract_env):
         "CONFIRMED는 쓰지",
     ):
         assert text in instructions
+
+
+# ---------------------------------------------------------------------------
+# #685 통화에서 확인한 신호: AI는 두 항목을 제안하지 않고, 조사 뒤 통화 값이 함께 들어간다
+# ---------------------------------------------------------------------------
+
+
+def _save_quote_call(opp_id):
+    """담당자가 통화에서 "견적 요청"을 고른 접촉을 실제 API로 저장한다(가상)."""
+    from fastapi.testclient import TestClient
+
+    from geosan.api.app import create_app
+
+    body = {
+        "status": "IN_PROGRESS",
+        "method": "CALL",
+        "result": "REACHED",
+        "attemptedAt": "2026-10-20",
+        "answers": [{"questionId": "QUOTE_REQUEST", "answerId": "QUOTE"}],
+    }
+    with TestClient(create_app()) as client:
+        response = client.post(
+            f"/api/v1/opportunities/{opp_id}/outcomes",
+            json=body,
+            headers={"X-Staff-Key": "park-lee"},
+        )
+    assert response.status_code == 200, response.text
+    return response.json()["meta"]
+
+
+def test_ai_is_not_asked_about_call_signal_items(extract_env):
+    """Given 통화로 채우는 두 항목 / When 조사 / Then AI에 넘기는 항목 목록에 없다."""
+    case, transport = extract_env
+    as_ingested(case)
+    use(transport, proposals())
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert result.ok, result.error
+    sent = str(transport.call_args)
+    # 지시문의 항목 줄("- 코드 이름: 허용 단계 …")에 두 항목이 없다(응답 형식의 코드 목록은 그대로).
+    assert "- NEW_PRODUCT " in sent and "- SIG_EXPAND " in sent
+    assert "- SIG_BID " not in sent and "- SIG_HIRE " not in sent
+    assert "구매·외주 의향" not in sent
+
+
+def test_ai_proposal_for_a_call_signal_item_is_not_stored(extract_env):
+    """Given AI가 통화 항목을 제안해 옴 / When 저장 / Then 그 제안은 버리고 조사는 실패 처리한다."""
+    case, transport = extract_env
+    as_ingested(case)
+    data = proposals()
+    data["itemInputProposals"].append(
+        {
+            "itemCode": "SIG_BID",
+            "matchRateStep": "직접 관련",
+            "certaintyProposed": "STRONG",
+            "factJudged": "협력사를 모집한다",
+            "quote": "정밀 볼트를 생산합니다.",
+        }
+    )
+    use(transport, data)
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert not result.ok
+    assert inputs(case.opp_id) == {}
+
+
+def test_call_signal_saved_before_research_is_applied_when_inputs_appear(extract_env):
+    """Given 평가 전 회사에 견적 요청 통화 / When 나중에 조사로 입력이 생김 / Then 점수 반영."""
+    case, transport = extract_env
+    as_ingested(case)
+    assert run_evaluation(opp_ids=[case.opp_id]).ok
+    meta = _save_quote_call(case.opp_id)
+    # PM 결정 ⑤: 점수 입력이 없는 회사에는 통화 점수만 따로 내지 않는다(신호 행만 저장).
+    assert meta.get("reevaluated") is not True
+    assert inputs(case.opp_id) == {}
+    with session_scope() as session:
+        run = latest_confirmed_evaluation(session, case.opp_id)
+        assert run.classification_code == "NOT_EVALUATED" and run.score_s is None
+    use(transport, proposals())
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert result.ok, result.error
+    rows = inputs(case.opp_id)
+    assert len(rows) == 8
+    bid = rows["SIG_BID"]
+    assert (bid.proposed_by, bid.state, bid.match_rate_step) == ("CALL", "CONFIRMED", "직접 관련")
+    assert bid.fact_judged == "통화에서 확인(10/20)" and bid.evidence_ids == []
+    assert rows["SIG_HIRE"].proposed_by == "AI" and rows["SIG_HIRE"].state == "UNAVAILABLE"
+    with session_scope() as session:
+        run = latest_confirmed_evaluation(session, case.opp_id)
+        judgment = session.scalar(
+            select(ItemJudgment).where(
+                ItemJudgment.eval_id == run.eval_id, ItemJudgment.item_code == "SIG_BID"
+            )
+        )
+        assert judgment.state == "CONFIRMED" and judgment.score is not None
+        assert judgment.score == round(judgment.weight * judgment.decay)
+    # 다시 조사해도 통화에서 확인한 값은 AI 행으로 덮이지 않는다.
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert result.ok, result.error
+    assert inputs(case.opp_id)["SIG_BID"].item_input_id == bid.item_input_id
