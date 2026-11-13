@@ -580,6 +580,14 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "distanceFilterPresetsKm": {
+            "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Distancefilterpresetskm",
+            "type": "array"
+          },
           "export": {
             "$ref": "#/components/schemas/ExportUi"
           },
@@ -610,7 +618,8 @@
           "ruleVersion",
           "records",
           "ingestOptions",
-          "export"
+          "export",
+          "distanceFilterPresetsKm"
         ],
         "title": "ConfigUi",
         "type": "object"
