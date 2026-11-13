@@ -1870,6 +1870,75 @@
         "title": "FitLevel",
         "type": "string"
       },
+      "GroupStats": {
+        "description": "집계 칸. contactedCount가 표본 수이고 진행 중·보류·성사·거절의 합과 같다.",
+        "properties": {
+          "avgContactsToWon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstowon"
+          },
+          "contactReach": {
+            "$ref": "#/components/schemas/ContactReach"
+          },
+          "contactedCount": {
+            "title": "Contactedcount",
+            "type": "integer"
+          },
+          "inProgressCount": {
+            "title": "Inprogresscount",
+            "type": "integer"
+          },
+          "lostCount": {
+            "title": "Lostcount",
+            "type": "integer"
+          },
+          "lostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/LostReasonCount"
+            },
+            "title": "Lostreasons",
+            "type": "array"
+          },
+          "onHoldCount": {
+            "title": "Onholdcount",
+            "type": "integer"
+          },
+          "ratios": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ratios"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contactedCount",
+          "inProgressCount",
+          "onHoldCount",
+          "wonCount",
+          "lostCount",
+          "avgContactsToWon",
+          "contactReach",
+          "lostReasons",
+          "ratios"
+        ],
+        "title": "GroupStats",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2063,6 +2132,10 @@
             "title": "Onholdcount",
             "type": "integer"
           },
+          "overlapCount": {
+            "title": "Overlapcount",
+            "type": "integer"
+          },
           "ratios": {
             "anyOf": [
               {
@@ -2088,7 +2161,8 @@
           "contactReach",
           "lostReasons",
           "ratios",
-          "industry"
+          "industry",
+          "overlapCount"
         ],
         "title": "IndustryRow",
         "type": "object"
@@ -4506,6 +4580,10 @@
             "title": "Onholdcount",
             "type": "integer"
           },
+          "overlapCount": {
+            "title": "Overlapcount",
+            "type": "integer"
+          },
           "processCode": {
             "anyOf": [
               {
@@ -4548,7 +4626,8 @@
           "ratios",
           "processCode",
           "processName",
-          "byIndustry"
+          "byIndustry",
+          "overlapCount"
         ],
         "title": "ProcessRow",
         "type": "object"
@@ -5458,19 +5537,31 @@
             "title": "Byprocess",
             "type": "array"
           },
+          "bySalesStep": {
+            "items": {
+              "$ref": "#/components/schemas/StepRow"
+            },
+            "title": "Bysalesstep",
+            "type": "array"
+          },
           "companies": {
             "items": {
               "$ref": "#/components/schemas/CompanyRow"
             },
             "title": "Companies",
             "type": "array"
+          },
+          "total": {
+            "$ref": "#/components/schemas/GroupStats"
           }
         },
         "required": [
           "asOf",
           "basis",
           "byProcess",
-          "companies"
+          "companies",
+          "total",
+          "bySalesStep"
         ],
         "title": "SalesAnalysis",
         "type": "object"
@@ -5979,6 +6070,66 @@
           "displayName"
         ],
         "title": "StaffEntry",
+        "type": "object"
+      },
+      "StepRow": {
+        "description": "(#684) 세부 단계 한 줄. 앞 네 칸은 그 단계에 머무는 동안, 뒤 세 칸은 그 단계에 이르기까지.",
+        "properties": {
+          "avgContactsToReach": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstoreach"
+          },
+          "contactCount": {
+            "title": "Contactcount",
+            "type": "integer"
+          },
+          "contactReach": {
+            "$ref": "#/components/schemas/ContactReach"
+          },
+          "contactedCount": {
+            "title": "Contactedcount",
+            "type": "integer"
+          },
+          "contactsToReach": {
+            "title": "Contactstoreach",
+            "type": "integer"
+          },
+          "reachRatios": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReachRatios"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reachedCount": {
+            "title": "Reachedcount",
+            "type": "integer"
+          },
+          "step": {
+            "$ref": "#/components/schemas/SalesStep"
+          }
+        },
+        "required": [
+          "step",
+          "contactedCount",
+          "contactCount",
+          "contactReach",
+          "reachRatios",
+          "reachedCount",
+          "contactsToReach",
+          "avgContactsToReach"
+        ],
+        "title": "StepRow",
         "type": "object"
       },
       "TodayCheckItem": {

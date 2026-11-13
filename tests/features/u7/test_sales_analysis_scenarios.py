@@ -103,3 +103,92 @@ def company_row(context):
 def virtual_and_private(context):
     assert context["body"]["meta"]["hasVirtualData"] is True
     assert MEMO not in context["text"] and "park-lee" not in context["text"]
+
+
+# ---------------------------------------------------------------------------
+# #684 합계 줄 · 겹침 수 · 단계별 접촉
+# ---------------------------------------------------------------------------
+
+
+@given("공정 두 개가 확정된 회사 1곳과 공정 하나인 회사 2곳에 전화를 한 번씩 남겼다")
+def overlapping_processes(context):
+    client, (a, b, c, _d) = context["client"], context["opp_ids"]
+    support.confirm_second_process(a)
+    for opp_id in (a, b, c):
+        support.record(client, opp_id, support.contact("REACHED", day="2026-10-20"))
+
+
+@then("합계 줄은 접촉한 곳 3곳이고 공정 줄의 접촉한 곳을 더하면 4곳이다")
+def total_row(context):
+    data = context["body"]["data"]
+    assert data["total"]["contactedCount"] == 3 == data["basis"]["companyCount"]
+    assert data["total"]["inProgressCount"] == 3
+    assert sum(row["contactedCount"] for row in data["byProcess"]) == 4
+
+
+@then("두 공정 줄 모두 다른 공정에도 든 회사 1곳을 알린다")
+def overlap_counts(context):
+    rows = context["body"]["data"]["byProcess"]
+    assert [(row["processCode"], row["contactedCount"], row["overlapCount"]) for row in rows] == [
+        ("ANODIZING", 3, 1),
+        ("CHROMATE", 1, 1),
+    ]
+
+
+@then("합계 줄의 전화 시도는 3번이다")
+def total_reach(context):
+    data = context["body"]["data"]
+    assert data["total"]["contactReach"]["CALL"] == {"reached": 3, "tried": 3}
+    # 공정 줄은 겹친 회사의 접촉을 줄마다 세어 더하면 4번이 된다.
+    assert sum(row["contactReach"]["CALL"]["tried"] for row in data["byProcess"]) == 4
+
+
+@given('한 곳에 전화를 부재 한 번, 연결 한 번 남기고 연결된 전화에서 "외주 줌"이라고 답했다')
+def two_calls_then_demand(context):
+    client, (a, *_rest) = context["client"], context["opp_ids"]
+    support.record(client, a, support.contact("ABSENT", day="2026-10-15"))
+    support.record(
+        client,
+        a,
+        support.contact(
+            "REACHED",
+            day="2026-10-17",
+            answers=[{"questionId": "PLATING_NOW", "answerId": "OUTSOURCED"}],
+        ),
+    )
+
+
+def _steps(context):
+    return {row["step"]: row for row in context["body"]["data"]["bySalesStep"]}
+
+
+@then("연결 전 단계의 전화는 2번 중 1번 연결이다")
+def calls_before_reach(context):
+    row = _steps(context)["NOT_REACHED"]
+    assert (row["contactedCount"], row["contactCount"]) == (1, 2)
+    assert row["contactReach"] == {
+        "CALL": {"reached": 1, "tried": 2},
+        "EMAIL": {"reached": 0, "tried": 0},
+        "VISIT": {"reached": 0, "tried": 0},
+    }
+    assert (row["reachedCount"], row["contactsToReach"]) == (0, 0)
+
+
+@then("수요 확인 단계에 이른 회사는 1곳이고 그때까지 접촉은 2번이다")
+def reached_demand(context):
+    row = _steps(context)["DEMAND_CONFIRMED"]
+    assert (row["reachedCount"], row["contactsToReach"]) == (1, 2)
+    assert row["contactCount"] == 0  # 수요 확인에 이른 뒤로는 아직 접촉이 없다
+    company = context["body"]["data"]["companies"][0]
+    assert company["salesStep"] == "DEMAND_CONFIRMED"  # 카드·상세와 같은 세부 단계
+
+
+@then("건너뛴 연결됨 단계는 단계별 접촉 표에 없다")
+def skipped_step(context):
+    assert list(_steps(context)) == ["NOT_REACHED", "DEMAND_CONFIRMED"]
+
+
+@then("표본이 기준보다 적어 단계별 평균과 비율은 오지 않는다")
+def no_step_ratio(context):
+    for row in context["body"]["data"]["bySalesStep"]:
+        assert row["avgContactsToReach"] is None and row["reachRatios"] is None
