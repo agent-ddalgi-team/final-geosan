@@ -367,7 +367,8 @@
         "logoUrl": { "type": ["string", "null"] },
         "brandName": { "type": "string", "minLength": 1 },
         "colorPrimary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
-        "demoLabel": { "type": ["string", "null"], "description": "띠에 함께 보이는 문구. 예: 부분 시연·거산 확인 전" }
+        "demoLabel": { "type": ["string", "null"], "description": "띠에 함께 보이는 문구. 예: 부분 시연·거산 확인 전" },
+        "demo": { "type": "boolean", "default": false, "description": "시연용 DB 표시(#274). 시연용 설정 파일(examples/app-settings-demo.yaml)에만 true로 적는다. true로 등록한 DB는 배포 설정(--host 0.0.0.0 또는 GEOSAN_PASSWORD)에서 서버가 시작되지 않고, seed-demo-records는 이 표시가 있는 DB에만 가상 기록을 넣는다." }
       }
     },
     "accessProtection": {
