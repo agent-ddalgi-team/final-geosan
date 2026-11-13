@@ -170,7 +170,8 @@
       "additionalProperties": false,
       "properties": {
         "_설명": { "type": "string" },
-        "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 }
+        "staleAfterDays": { "type": "integer", "minimum": 1, "default": 90 },
+        "autoOnBookmarkPerDay": { "type": "integer", "minimum": 0, "default": 0, "description": "(추가 2026-11-13 #690) 관심을 켜서 저절로 도는 조사의 하루(한국 시간) 최대 건수. 예시 설정 10, 0이면 꺼짐. 이 칸이 없는 옛 설정 사본은 예시 파일 값으로 읽는다." }
       }
     },
     "salesAnalysis": {

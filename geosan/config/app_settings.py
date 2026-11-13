@@ -243,6 +243,8 @@ class RecordsSettings(FileModel):
 
 class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
+    # #690: 관심을 켜서 저절로 도는 조사의 하루 최대 건수. 0이면 꺼짐(묶음이 없는 파일의 기본).
+    auto_on_bookmark_per_day: int = Field(default=0, ge=0, strict=True)
 
 
 XLSX_DOWNLOAD_LOG_READY = False
@@ -562,7 +564,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
     if not data:
         return None
     return AppSettings.model_validate(
-        _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+        _fill_added_research_keys(
+            _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+        )
     )
 
 
@@ -611,6 +615,23 @@ def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
     filled = {**ingestion, **{key: defaults[key] for key in missing}}
     return {**data, "ingestion": filled}
+
+
+ADDED_RESEARCH_KEYS = ("autoOnBookmarkPerDay",)
+"""#690 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_research_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 research 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    research = data.get("research")
+    if not isinstance(research, dict):
+        return data
+    missing = [key for key in ADDED_RESEARCH_KEYS if key not in research]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).research.model_dump(by_alias=True)
+    filled = {**research, **{key: defaults[key] for key in missing}}
+    return {**data, "research": filled}
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"

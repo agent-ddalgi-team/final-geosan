@@ -3,8 +3,10 @@
 from decimal import Decimal
 
 from sqlalchemy import and_, or_, select
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 
+from geosan.api.auto_research import any_running, is_running, limit_skipped
 from geosan.api.schemas import FactoryProfile, LatestIngest
 from geosan.config.app_settings import (
     DEFAULT_APP_SETTINGS_PATH,
@@ -88,13 +90,36 @@ def research_state(
         )
     ):
         return "RUNNING"
+    # #690: 관심을 켜서 시작된 조사가 도는 중이면 "조사 중".
+    if any_running() and any(is_running(opp_id) for opp_id in _opp_ids(customer)):
+        return "RUNNING"
     if customer.researched_at is not None:
         return "NO_SCORE_EVIDENCE"
     if customer.homepage_status == "NOT_FOUND":
         return "NOT_FOUND"
     if customer.homepage_url:
+        # #690: 관심 자동 조사가 하루 건수 설정 때문에 돌지 않았으면 읽기 실패와 나눠 보인다.
+        session = _session_of(customer)
+        if session is not None and limit_skipped(session, _opp_ids(customer)):
+            return "LIMIT_SKIPPED"
         return "READ_FAILED"
     return "NOT_TRIED"
+
+
+def _session_of(customer: Customer) -> Session | None:
+    state = sa_inspect(customer, raiseerr=False)
+    return state.session if state is not None else None
+
+
+def _opp_ids(customer: Customer) -> list[str]:
+    session = _session_of(customer)
+    if session is None:
+        return []
+    return list(
+        session.scalars(
+            select(Opportunity.opp_id).where(Opportunity.customer_id == customer.customer_id)
+        )
+    )
 
 
 def discovery_fields(customer: Customer) -> dict:

@@ -23,7 +23,7 @@ export type RelationStatus = 'NEW_CONFIRMED' | 'EXISTING_CONFIRMED' | 'UNCONFIRM
 export type ScoreState = 'CONFIRMED' | 'PENDING' | 'NONE';
 /** 조사 상태(#596). 카드는 "조사 중"/"조사 중단"만, 상세는 멈춘 이유까지 보인다. */
 export type ResearchState =
-  'RUNNING' | 'NO_SCORE_EVIDENCE' | 'NOT_FOUND' | 'READ_FAILED' | 'NOT_TRIED';
+  'RUNNING' | 'NO_SCORE_EVIDENCE' | 'NOT_FOUND' | 'READ_FAILED' | 'NOT_TRIED' | 'LIMIT_SKIPPED';
 export type HomepageStatus = 'AI_FOUND' | 'NEEDS_CONFIRMATION' | 'CONFIRMED' | 'NOT_FOUND';
 export type Purpose = 'NEW_PROPOSAL' | 'FOLLOW_UP_PROPOSAL' | 'REORDER_CHECK';
 export type ReqLevel = 'REQUIRED' | 'PREFERRED' | 'NOT_REQUIRED' | 'UNKNOWN';

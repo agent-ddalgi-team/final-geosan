@@ -291,7 +291,9 @@ class CardRecords(_ApiModel):
 
 
 ScoreState = Literal["CONFIRMED", "PENDING", "NONE"]
-ResearchState = Literal["RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED", "NO_SCORE_EVIDENCE"]
+ResearchState = Literal[
+    "RUNNING", "NOT_FOUND", "READ_FAILED", "NOT_TRIED", "NO_SCORE_EVIDENCE", "LIMIT_SKIPPED"
+]
 
 
 class FactoryProfile(_ApiModel):

@@ -1199,7 +1199,8 @@
                   "NOT_FOUND",
                   "READ_FAILED",
                   "NOT_TRIED",
-                  "NO_SCORE_EVIDENCE"
+                  "NO_SCORE_EVIDENCE",
+                  "LIMIT_SKIPPED"
                 ],
                 "type": "string"
               },
@@ -3625,7 +3626,8 @@
                   "NOT_FOUND",
                   "READ_FAILED",
                   "NOT_TRIED",
-                  "NO_SCORE_EVIDENCE"
+                  "NO_SCORE_EVIDENCE",
+                  "LIMIT_SKIPPED"
                 ],
                 "type": "string"
               },
