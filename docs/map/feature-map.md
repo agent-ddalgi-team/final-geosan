@@ -246,7 +246,7 @@ flowchart LR
 | 무엇 | 정해야 할 것 | 이슈 |
 |---|---|---|
 | 거산이 접속할 주소 | 서버를 올릴 곳의 공개 주소와 계정 연결 확인. 이 답이 있어야 실제 올리기가 이어진다 | [#213] |
-| 영업 메모를 AI에 보낼지 | 안 보냄 / 이름·연락처를 지우고 보냄 / 고른 메모만 보냄 | [#247] |
+| 영업 기록을 외부 AI로 보낼 때 남은 확인 | 보내기로 정함(11/13 PM 결정, 연락처를 지우고 설정 스위치·전송 기록·비용 한도를 거침). 남은 것: AI 제공사 약관 확인, 실제로 매일 쓰기 시작할 때 보내는 항목 목록을 거산과 글로 확인 | [#681] |
 | 거산에 물을 것·전할 것 | 다음 방문·연락 때 확인할 것 모음 | [#275] |
 
 ---
@@ -389,3 +389,4 @@ flowchart LR
 [#685]: https://github.com/agent-ddalgi-team/final-geosan/issues/685
 [#642]: https://github.com/agent-ddalgi-team/final-geosan/issues/642
 [#658]: https://github.com/agent-ddalgi-team/final-geosan/issues/658
+[#681]: https://github.com/agent-ddalgi-team/final-geosan/issues/681
