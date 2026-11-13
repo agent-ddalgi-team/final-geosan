@@ -1,4 +1,4 @@
-"""#607 영업 꼬리 질문 파일(C7 `sales-questions.yaml`)의 모양·검사·읽기.
+"""#607·#643 영업 꼬리 질문 파일(C7 `sales-questions.yaml`)의 모양·검사·읽기.
 
 질문 문구·보기·갈라지는 조건은 파일 하나에 두고, 답은 코드(questionId·answerId)로만 저장한다.
 세부 단계는 접촉 횟수가 아니라 답으로 알아낸 사실로 정하며 앞으로만 간다(뒤로는 [단계 고치기]).
@@ -17,7 +17,7 @@ from geosan.config.errors import AppError, FieldError
 from geosan.config.loader import LoadedDocument, load_document
 from geosan.config.schemas import FileModel
 from geosan.config.validators import pydantic_errors_to_fields, scan_contacts
-from geosan.rules.codes import OutcomeStatus, SalesStep
+from geosan.rules.codes import LostReasonCode, OutcomeStatus, SalesStep
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KST = ZoneInfo("Asia/Seoul")
@@ -47,6 +47,9 @@ class AnswerOption(FileModel):
     id: str = Field(pattern=_ID)
     label: str = Field(min_length=1, max_length=100)
     reaches: SalesStep | None = None
+    # #643: 이 답이면 큰 단계를 끝낸다(closes) · 이 답이 거절 이유 코드다(lostReason).
+    closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
+    lost_reason: LostReasonCode | None = None
 
 
 class ShowWhen(FileModel):
@@ -102,7 +105,51 @@ class SalesQuestions(FileModel):
                     raise ValueError(
                         f"질문 '{question.id}'의 showWhen에 '{target}'에 없는 보기가 있습니다"
                     )
+        self._closing_meaning()
         return self
+
+    def _closing_meaning(self) -> None:
+        """#643 마무리 답 칸(closes·lostReason)의 어긋남을 거부한다."""
+        for question in self.questions:
+            for option in question.answers:
+                if option.reaches and option.closes:
+                    raise ValueError(
+                        f"질문 '{question.id}'의 보기 '{option.id}'에 reaches와 closes를 "
+                        "같이 쓸 수 없습니다"
+                    )
+        closing = [q for q in self.questions if any(item.closes for item in q.answers)]
+        reasons = [q for q in self.questions if any(item.lost_reason for item in q.answers)]
+        if len(closing) > 1:
+            raise ValueError("closes 보기가 있는 질문은 파일에 하나만 둘 수 있습니다")
+        if len(reasons) > 1:
+            raise ValueError("lostReason 보기가 있는 질문은 파일에 하나만 둘 수 있습니다")
+        lost_ids = [
+            item.id for q in closing for item in q.answers if item.closes == OutcomeStatus.LOST
+        ]
+        if not lost_ids:
+            if reasons:
+                raise ValueError(
+                    f"질문 '{reasons[0].id}'에 lostReason 보기가 있는데 "
+                    "closes: LOST 보기가 없습니다"
+                )
+            return
+        if not reasons:
+            raise ValueError(
+                f"질문 '{closing[0].id}'에 closes: LOST 보기가 있으면 "
+                "거절 이유를 정하는 질문(lostReason 보기)이 이어져야 합니다"
+            )
+        reason = reasons[0]
+        conditions = reason.show_when.answers if reason.show_when else {}
+        if sorted(conditions.get(closing[0].id, [])) != sorted(lost_ids) or len(conditions) != 1:
+            raise ValueError(
+                f"질문 '{reason.id}'의 showWhen은 '{closing[0].id}'의 "
+                "closes: LOST 보기만 가리켜야 합니다"
+            )
+        codes = [item.lost_reason for item in reason.answers]
+        if None in codes:
+            raise ValueError(f"질문 '{reason.id}'의 모든 보기에 lostReason을 적어 주세요")
+        if len(set(codes)) != len(codes):
+            raise ValueError(f"질문 '{reason.id}'에 같은 lostReason이 두 번 있습니다")
 
     def question(self, question_id: str) -> SalesQuestion | None:
         return next((item for item in self.questions if item.id == question_id), None)

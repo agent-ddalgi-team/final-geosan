@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -341,6 +341,41 @@ class DashboardSettings(FileModel):
     count_proposed_industries: bool = True
 
 
+class GeosanLocationSettings(FileModel):
+    """거리의 기준점(C7 #222). 좌표가 준비되기 전에는 거리 값을 내지 않는다."""
+
+    address: str = "충청남도 천안시 서북구 성거읍 봉주로 303-1"
+    lat: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    lng: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def coordinate_pair(self):
+        if (self.lat is None) != (self.lng is None):
+            raise ValueError("거산의 위도·경도는 함께 넣거나 함께 비워 주세요.")
+        return self
+
+
+class GeocodingSettings(FileModel):
+    """2026-11-13 확인: CSV 우선, 외부 조회 1만 회, 네이버는 실시간 전용."""
+
+    provider: Literal["JUSO"] = "JUSO"
+    enabled: bool = Field(default=False, strict=True)
+    daily_call_limit: int = Field(default=10000, ge=1, strict=True)
+    location_csv_files: list[str] = Field(default_factory=list)
+    location_csv_base_date: date | None = None
+    naver_fallback_enabled: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def source_settings(self):
+        if any(not name.strip() for name in self.location_csv_files):
+            raise ValueError("위치 CSV 경로는 빈칸으로 넣을 수 없습니다.")
+        if self.location_csv_files and self.location_csv_base_date is None:
+            raise ValueError("위치 CSV를 쓰려면 자료 기준일을 넣어 주세요.")
+        if self.naver_fallback_enabled and not self.enabled:
+            raise ValueError("네이버 실시간 보완은 좌표 조회를 켠 뒤 사용해 주세요.")
+        return self
+
+
 class AppSettings(FileModel):
     """앱 설정 한 벌(C7 AppSettings). 더하는 변경(2026-10-21 PM 확인): brand.demoLabel."""
 
@@ -366,6 +401,9 @@ class AppSettings(FileModel):
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+    geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
+    geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
+    distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]

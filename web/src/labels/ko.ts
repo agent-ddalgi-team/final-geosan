@@ -784,6 +784,10 @@ export const salesQuestionTexts = {
   overrideLabel: '세부 단계 고치기',
   overrideSave: '단계 고치기',
   loadFailed: '꼬리 질문을 불러오지 못했습니다. 접촉 기록은 그대로 저장할 수 있습니다.',
+  /** 마무리 답을 골랐을 때 저장 전 미리 알림(#643). "저장하면 영업 단계가 '거절 · 가격'(으)로 바뀝니다." */
+  closePreview: (stage: string) => `저장하면 영업 단계가 '${stage}'(으)로 바뀝니다.`,
+  closeNeedsReason: '거절 이유를 골라야 저장할 수 있습니다.',
+  closeOtherNeedsMemo: '기타를 골랐으면 한 줄 메모에 이유를 적어 주세요.',
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
@@ -898,9 +902,11 @@ export const recordsArea = {
   stepOne: '①',
   stepTwo: '②',
   stepThree: '③',
-  /** 접촉을 저장하면 서버가 미접촉 → 접촉, 자료·견적 이상이면 → 견적·샘플로 자동으로 바꾼다(#607이 #433의 묻기를 바꿈). */
-  stageAutoHint:
-    '접촉을 저장하면 단계는 답에 따라 앞으로 바뀝니다. 보류·성사·거절만 직접 고르세요.',
+  /**
+   * 접촉을 저장하면 서버가 꼬리 질문 답에 따라 단계를 정한다(#607 앞으로만, #643 보류·성사·거절까지).
+   * 아래 선택 칸은 잘못됐을 때 고치는 용도다.
+   */
+  stageAutoHint: '단계는 꼬리 질문 답에 따라 저절로 저장됩니다. 잘못됐을 때만 여기서 고치세요.',
 } as const;
 
 /**

@@ -329,3 +329,23 @@ flowchart LR
 [#573]: https://github.com/agent-ddalgi-team/final-geosan/issues/573
 [#594]: https://github.com/agent-ddalgi-team/final-geosan/issues/594
 [#605]: https://github.com/agent-ddalgi-team/final-geosan/issues/605
+
+### 2026-11-13 좌표 서버 작업 중 (#651, 상위 #222)
+
+- `geosan/opportunity/geo*`·`location_csv.py`: CSV 대조, 외부 좌표 조회, 공공좌표 저장, 실시간 거리 계산. 이강욱 담당.
+- `geosan/commands/geocode.py`: 좌표 없는 회사의 처리 명령. API는 카드·상세 거리 값만 연결하며 지도 서버(#642)·화면(#641)은 별도다.
+- 기존 설계의 “지오코딩은 행안부만 사용” 문장은 11/13 확인으로 변경됐다. 네이버 결과는 저장하지 않는다. 브라우저 지도 SDK의 Service 호출 금지는 유지한다.
+- 로컬 DB의 공공좌표 저장과 실제 상세 화면 거리 표시를 확인했다. 네이버 실제 조회·주소 대조·비저장도 확인했으며, 지도 표시·거리 필터 화면은 이 작업에 포함하지 않는다.
+
+- 2026-11-13 이강욱 확인 후 `merge_002`로 공공좌표(`opp_010`)와 잘못 입력 표시(`rec_013`) 두 이관을 보존했다. 두 기존 버전에서 각각 올려도 업무 데이터와 좌표·표시가 남는 검사를 추가했다.
+
+### 2026-11-13 지도 데이터 서버 (#642)
+
+- `geosan/api/routes/dashboard.py`의 `GET /api/v1/dashboard/map`: 기존 접속 보호와 지도 전용 응답. 화면은 #641에서 연결.
+- `geosan/dashboard/map_points.py`: 관심·진행·올해 성공을 고르고, 공유 좌표 처리로 공공자료 재사용·네이버 실시간 보완·거리 계산. 대시보드 막대의 최근 12개월과 구분한다.
+
+### 2026-11-13 목록 거리 서버 (#658)
+
+- `geosan/api/routes/opportunities.py`: 전체 대상의 거리를 구한 뒤 거리 조건·정렬·페이지 나누기. 기존 점수·기본 추천 순은 유지한다.
+- `geosan/api/routes/export.py`: 실시간 네이버 결과로 정한 거리 순서·범위가 파일로 남지 않도록, 기존에 지원하지 않던 거리 조건 내보내기는 계속 거부한다.
+- **화면과 차이**: 서버는 가까운 순·거리 조건을 지원하지만 화면은 아직 준비 중이다. 별도 담당 배분 뒤 연결한다.

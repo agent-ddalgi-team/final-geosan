@@ -3,13 +3,15 @@
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Header, Request, Response
 from pydantic import Field
 
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
+from geosan.config.errors import AppError
+from geosan.dashboard.map_points import build_map_points
 from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
@@ -23,6 +25,60 @@ from geosan.evidence.transfer import KST
 from geosan.storage.base import utcnow
 
 router = APIRouter()
+
+
+class MapCenter(_ApiModel):
+    lat: float
+    lng: float
+
+
+class MapPoint(MapCenter):
+    opp_id: str
+    customer_name: str
+    group: Literal["INTERESTED", "IN_PROGRESS", "WON_THIS_YEAR"]
+    distance_km: float
+
+
+class DashboardMap(_ApiModel):
+    center: MapCenter
+    rings_km: list[float]
+    points: list[MapPoint]
+    missing_coordinates: int
+    as_of: datetime
+
+
+DashboardMapEnvelope = Envelope[DashboardMap]
+
+
+@router.get("/dashboard/map", response_model=DashboardMapEnvelope)
+def dashboard_map(response: Response, session: SessionDep):
+    """지도 전용 읽기. 내부 메모·연락처·대표번호·주소는 응답 모델에 없다."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    settings = runtime_for(session).app_settings
+    if settings.geosan.lat is None or settings.geosan.lng is None:
+        raise AppError(
+            "거산의 기준 좌표가 준비되지 않았습니다.",
+            "운영 담당자가 거산의 기준 좌표를 등록한 뒤 다시 열어 주세요.",
+            status=503,
+        )
+    now = utcnow()
+    points, missing = build_map_points(session, settings, now, tz=KST)
+    return DashboardMapEnvelope(
+        data=DashboardMap(
+            center=MapCenter(lat=settings.geosan.lat, lng=settings.geosan.lng),
+            rings_km=settings.distance_filter_presets_km,
+            points=[MapPoint.model_validate(point) for point in points],
+            missing_coordinates=missing,
+            as_of=now,
+        ),
+        meta=Meta(
+            updated_at=now,
+            dataset_kind=settings.active_dataset_kind,
+            has_virtual_data=False,
+        ),
+    )
+
 
 SCHEDULE_DUE_FILTER = "SCHEDULE_DUE"
 # 대시보드 칸을 누르면 열리는 목록 `?filter=<칸>` 값 8개(#356, #536에서 제외 칸 삭제).

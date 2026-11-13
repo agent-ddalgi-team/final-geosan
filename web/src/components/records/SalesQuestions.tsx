@@ -3,6 +3,7 @@
 // 세부 단계는 서버가 기록에서 계산한다. 화면은 지금 고른 답으로 다음 단계 질문을 미리 펼쳐 보일 뿐이다.
 import { Button, Radio, Typography } from 'antd';
 import type {
+  LostReasonCode,
   OutcomeStatus,
   SalesQuestion,
   SalesQuestions,
@@ -29,11 +30,14 @@ function order(step: SalesStep): number {
 /**
  * 이번 접촉에서 보일 질문. 지금 세부 단계부터, 지금 고른 답이 데려가는 단계까지의 질문 가운데
  * 아직 답이 없는 것과 "모든 단계" 질문을 보인다. 꼬리 질문은 앞 답(지난 답 + 지금 고른 답)이 맞을 때만.
+ * "모든 단계" 질문은 접촉마다 다시 묻는 것이라, 그 꼬리(마무리 질문)는 지금 고른 답만 본다(#643).
+ * allOnly면 "모든 단계" 질문과 그 꼬리만 보인다(접촉 결과가 "거절"일 때).
  */
 export function visibleQuestions(
   questions: SalesQuestions,
   step: SalesStepView | null,
   picked: Record<string, string>,
+  allOnly = false,
 ): SalesQuestion[] {
   const base: SalesStep = step?.code ?? 'NOT_REACHED';
   const known: Record<string, string> = {};
@@ -44,15 +48,49 @@ export function visibleQuestions(
     if (option?.reaches && order(option.reaches) > order(reach)) reach = option.reaches;
   }
   const chosen = { ...known, ...picked };
+  const askedEveryTime = new Set(
+    questions.questions.filter((item) => item.step === 'ALL').map((item) => item.questionId),
+  );
+  const shownIds = new Set<string>();
+  // 질문 파일 순서대로 본다. 꼬리는 앞 질문이 지금 보일 때만 보인다(가려진 질문의 옛 선택으로 열리지 않게).
   return questions.questions.filter((question) => {
     const inRange =
       question.step === 'ALL' ||
-      (order(question.step) >= order(base) && order(question.step) <= order(reach));
+      (!allOnly && order(question.step) >= order(base) && order(question.step) <= order(reach));
     const unanswered = question.step === 'ALL' || !(question.questionId in known);
     const conditions = Object.entries(question.showWhen?.answers ?? {});
-    const shown = conditions.every(([target, answerIds]) => answerIds.includes(chosen[target]));
-    return inRange && unanswered && shown;
+    const shown = conditions.every(([target, answerIds]) =>
+      askedEveryTime.has(target)
+        ? shownIds.has(target) && answerIds.includes(picked[target])
+        : answerIds.includes(chosen[target]),
+    );
+    const visible = inRange && unanswered && shown;
+    if (visible) shownIds.add(question.questionId);
+    return visible;
   });
+}
+
+export interface ClosingPick {
+  /** 지금 고른 답이 끝내는 큰 단계. */
+  status: 'WON' | 'LOST' | 'ON_HOLD';
+  /** 거절이면 고른 거절 이유 코드(아직 안 골랐으면 null). */
+  lostReasonCode: LostReasonCode | null;
+}
+
+/** 지금 보이는 질문에서 고른 답 가운데 단계를 끝내는 답(#643). 없으면 null. */
+export function closingPick(
+  shown: SalesQuestion[],
+  picked: Record<string, string>,
+): ClosingPick | null {
+  let status: ClosingPick['status'] | null = null;
+  let lostReasonCode: LostReasonCode | null = null;
+  for (const question of shown) {
+    const option = question.answers.find((item) => item.answerId === picked[question.questionId]);
+    if (option?.closes) status = option.closes;
+    if (option?.lostReason) lostReasonCode = option.lostReason;
+  }
+  if (!status) return null;
+  return { status, lostReasonCode: status === 'LOST' ? lostReasonCode : null };
 }
 
 export interface SalesQuestionFieldsProps {
@@ -61,17 +99,20 @@ export interface SalesQuestionFieldsProps {
   picked: Record<string, string>;
   onPick: (questionId: string, answerId: string | null) => void;
   disabled?: boolean;
+  /** 접촉 결과가 "거절"이면 "모든 단계" 질문과 그 꼬리만 보인다(#643). */
+  allOnly?: boolean;
 }
 
-/** 접촉 결과가 "연결됨"일 때 접촉 기록 칸 아래에 보이는 질문들. 고르지 않아도 저장된다. */
+/** 접촉 결과가 "연결됨"·"거절"일 때 접촉 기록 칸 아래에 보이는 질문들. 고르지 않아도 저장된다. */
 export function SalesQuestionFields({
   questions,
   step,
   picked,
   onPick,
   disabled,
+  allOnly = false,
 }: SalesQuestionFieldsProps) {
-  const shown = visibleQuestions(questions, step, picked);
+  const shown = visibleQuestions(questions, step, picked, allOnly);
   if (shown.length === 0) return null;
   return (
     <fieldset
