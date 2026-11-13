@@ -18,6 +18,8 @@ from geosan.dashboard.sales_analysis import (
     RecordLine,
     build_sales_analysis,
     load_company_records,
+    load_process_proposal_hit,
+    proposal_hit,
     summarize_company,
 )
 from geosan.evidence.transfer import KST
@@ -480,6 +482,94 @@ def confirm_second_process(opp_id, code="CHROMATE"):
                 is_virtual=True,
             )
         )
+
+
+def propose_process(opp_id, code):
+    """AI 공정 제안 행을 DB에 직접 넣는다(가상, 실제 AI 호출 없음)."""
+    with session_scope() as session:
+        session.add(
+            OppProcessLink(
+                link_id=new_id("link"),
+                opp_id=opp_id,
+                process_code=code,
+                current_reason="가상 AI 제안",
+                source="AI",
+                state="PENDING",
+                created_by="system",
+                dataset_kind="VIRTUAL_REVIEWED",
+                is_virtual=True,
+            )
+        )
+
+
+def confirm_by_answer(client, opp_id, *codes):
+    record(client, opp_id, contact(answers=answers(*(("CONFIRM_PROCESS", code) for code in codes))))
+
+
+def hit_of(client):
+    return analysis(client)["data"]["aiProposalHit"]["process"]
+
+
+def test_proposal_hit_ratio_follows_the_sample_minimum():
+    """Given 확정 15곳 중 적중 12곳 / When 기준 10 / Then 0.8, 기준 20이면 건수만."""
+    assert proposal_hit(15, 12, 10).ratio == 0.8
+    assert proposal_hit(15, 12, 20).ratio is None
+    empty = proposal_hit(0, 0, 0)
+    assert (empty.confirmed_count, empty.hit_count, empty.ratio) == (0, 0, None)
+
+
+def test_api_proposal_hit_is_zero_before_any_staff_confirmation(dashboard_env):
+    """Given 사례 파일 확정과 AI 제안뿐 / When 조회 / Then 담당자가 확정한 회사 0곳."""
+    client, (a, *_rest) = dashboard_env
+    propose_process(a, "CHROMATE")
+    assert hit_of(client) == {"confirmedCount": 0, "hitCount": 0, "ratio": None}
+
+
+def test_api_proposal_hit_counts_companies_confirmed_within_ai_proposals(dashboard_env):
+    """Given 제안 안에서 확정 1곳, 제안 밖 확정 1곳, 섞어 확정 1곳 / When 조회 / Then 3곳 중 1곳."""
+    client, (a, b, c, d) = dashboard_env
+    for opp_id in (a, b, c, d):
+        propose_process(opp_id, "CHROMATE")
+    confirm_by_answer(client, a, "CHROMATE")  # 제안 안
+    confirm_by_answer(client, b, "ZINC_PLATING")  # 제안에 없던 공정
+    confirm_by_answer(client, c, "CHROMATE", "ZINC_PLATING")  # 하나는 제안 밖 → 적중 아님
+    assert hit_of(client) == {"confirmedCount": 3, "hitCount": 1, "ratio": None}
+    # d는 AI 제안만 있고 확정 전이다. 사례 파일로 확정된 아노다이징은 어디서도 세지 않는다.
+    with session_scope() as session:
+        result = load_process_proposal_hit(
+            session, dataset_kind="VIRTUAL_REVIEWED", min_sample_for_ratio=3
+        )
+        assert (result.confirmed_count, result.hit_count, result.ratio) == (3, 1, 0.33)
+        # 실제 묶음으로 보면 가상 회사는 섞이지 않는다.
+        real = load_process_proposal_hit(session, dataset_kind="BROCHURE", min_sample_for_ratio=3)
+        assert (real.confirmed_count, real.hit_count) == (0, 0)
+
+
+def test_api_proposal_hit_ignores_ai_rows_made_after_the_confirmation(dashboard_env):
+    """Given 담당자가 먼저 확정한 뒤에 생긴 같은 공정의 AI 행 / When 조회 / Then 적중 아님."""
+    client, (a, *_rest) = dashboard_env
+    confirm_by_answer(client, a, "ZINC_PLATING")
+    with session_scope() as session:
+        staff_row = session.scalar(
+            select(OppProcessLink).where(
+                OppProcessLink.opp_id == a, OppProcessLink.source == "STAFF"
+            )
+        )
+        session.add(
+            OppProcessLink(
+                link_id=new_id("link"),
+                opp_id=a,
+                process_code="ZINC_PLATING",
+                source="AI",
+                state="PENDING",
+                created_by="system",
+                created_at=staff_row.created_at + timedelta(minutes=1),
+                superseded_at=staff_row.created_at + timedelta(minutes=2),
+                dataset_kind="VIRTUAL_REVIEWED",
+                is_virtual=True,
+            )
+        )
+    assert hit_of(client) == {"confirmedCount": 1, "hitCount": 0, "ratio": None}
 
 
 def answers(*pairs):

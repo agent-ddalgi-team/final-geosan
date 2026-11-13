@@ -21,6 +21,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from geosan.evaluation.inputs import AI_PROPOSED
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Outcome
@@ -44,6 +45,8 @@ NO_PROCESS_NAME = "공정 확인 전"
 NO_INDUSTRY_NAME = "산업 확인 전"
 # 확정된 값만 센다(#652): 공정 연결은 state CONFIRMED(사례 파일·담당자), 산업군은 아래 출처만.
 LINK_CONFIRMED = "CONFIRMED"
+# (#678) 담당자가 확정한 공정 연결의 출처 값(꼬리 질문 확정 #652 · 검토사항 [확정] #497).
+LINK_SOURCE_STAFF = "STAFF"
 CONFIRMED_INDUSTRY_SOURCES = frozenset({"CASE_FILE", "STAFF"})
 _VIRTUAL_DATASET_KIND = "VIRTUAL_REVIEWED"
 
@@ -539,6 +542,75 @@ def build_sales_analysis(
 # ---------------------------------------------------------------------------
 # DB 읽기
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProposalHit:
+    """(#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수."""
+
+    confirmed_count: int
+    hit_count: int
+    ratio: float | None
+
+
+def proposal_hit(confirmed_count: int, hit_count: int, min_sample_for_ratio: int) -> ProposalHit:
+    """표본이 기준보다 적으면 비율 없이 건수만 낸다."""
+    enough = confirmed_count >= min_sample_for_ratio and confirmed_count > 0
+    return ProposalHit(
+        confirmed_count=confirmed_count,
+        hit_count=hit_count,
+        ratio=_ratio(hit_count, confirmed_count) if enough else None,
+    )
+
+
+def load_process_proposal_hit(
+    session: Session, *, dataset_kind: str, min_sample_for_ratio: int
+) -> ProposalHit:
+    """(#678) 담당자가 확정한 공정이 AI 제안 안에 있었는지를 회사 수로 센다. 저장·AI 호출 없음.
+
+    대상은 추천 목록과 같다(활성 묶음, 최신 확정 평가가 있는 기회). 접촉 기록은 보지 않는다.
+    담당자 확정 = 지금 살아 있는 공정 연결 가운데 출처가 담당자이고 확정인 행. AI 제안 = 같은
+    기회·같은 공정 코드의 AI 행으로, 담당자 행보다 먼저 만들어진 것(확정하면서 이력이 된 행 포함).
+    한 회사가 확정한 공정이 모두 AI 제안 안에 있었을 때만 적중으로 센다.
+    """
+    virtual = dataset_kind == _VIRTUAL_DATASET_KIND
+    rows = session.execute(
+        select(
+            OppProcessLink.opp_id,
+            OppProcessLink.process_code,
+            OppProcessLink.source,
+            OppProcessLink.state,
+            OppProcessLink.superseded_at,
+            OppProcessLink.created_at,
+        )
+        .join(Opportunity, OppProcessLink.opp_id == Opportunity.opp_id)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(
+            Opportunity.is_virtual.is_(virtual),
+            Customer.is_virtual.is_(virtual),
+            OppProcessLink.source.in_([LINK_SOURCE_STAFF, AI_PROPOSED]),
+        )
+    ).all()
+    confirmed: dict[str, dict[str, datetime]] = {}
+    proposed: dict[tuple[str, str], datetime] = {}
+    for opp_id, code, source, state, superseded_at, created_at in rows:
+        if source == AI_PROPOSED:
+            key = (opp_id, code)
+            proposed[key] = min(proposed.get(key, created_at), created_at)
+        elif state == LINK_CONFIRMED and superseded_at is None:
+            confirmed.setdefault(opp_id, {})[code] = created_at
+    confirmed_count = hit_count = 0
+    for opp_id, codes in confirmed.items():
+        evaluation = latest_confirmed_evaluation(session, opp_id)
+        if evaluation is None or evaluation.dataset_kind != dataset_kind:
+            continue
+        confirmed_count += 1
+        if all(
+            (opp_id, code) in proposed and proposed[(opp_id, code)] <= confirmed_at
+            for code, confirmed_at in codes.items()
+        ):
+            hit_count += 1
+    return proposal_hit(confirmed_count, hit_count, min_sample_for_ratio)
 
 
 def process_display_name(name: str) -> str:

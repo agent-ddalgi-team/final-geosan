@@ -106,6 +106,19 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AiProposalHit": {
+        "description": "(#678) 지금은 공정만 센다. 산업군은 확정 전 AI 제안이 저장에 남지 않아 셀 수 없다.",
+        "properties": {
+          "process": {
+            "$ref": "#/components/schemas/ProposalHit"
+          }
+        },
+        "required": [
+          "process"
+        ],
+        "title": "AiProposalHit",
+        "type": "object"
+      },
       "AnalysisBasis": {
         "properties": {
           "closedWindowDays": {
@@ -4632,6 +4645,37 @@
         "title": "ProcessRow",
         "type": "object"
       },
+      "ProposalHit": {
+        "description": "(#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수.",
+        "properties": {
+          "confirmedCount": {
+            "title": "Confirmedcount",
+            "type": "integer"
+          },
+          "hitCount": {
+            "title": "Hitcount",
+            "type": "integer"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          }
+        },
+        "required": [
+          "confirmedCount",
+          "hitCount",
+          "ratio"
+        ],
+        "title": "ProposalHit",
+        "type": "object"
+      },
       "Purpose": {
         "enum": [
           "NEW_PROPOSAL",
@@ -5522,6 +5566,9 @@
       },
       "SalesAnalysis": {
         "properties": {
+          "aiProposalHit": {
+            "$ref": "#/components/schemas/AiProposalHit"
+          },
           "asOf": {
             "format": "date-time",
             "title": "Asof",
@@ -5561,7 +5608,8 @@
           "byProcess",
           "companies",
           "total",
-          "bySalesStep"
+          "bySalesStep",
+          "aiProposalHit"
         ],
         "title": "SalesAnalysis",
         "type": "object"

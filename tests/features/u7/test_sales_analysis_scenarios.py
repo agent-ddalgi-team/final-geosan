@@ -192,3 +192,44 @@ def skipped_step(context):
 def no_step_ratio(context):
     for row in context["body"]["data"]["bySalesStep"]:
         assert row["avgContactsToReach"] is None and row["reachRatios"] is None
+
+
+# ---------------------------------------------------------------------------
+# #678 AI 제안 적중(공정). AI 제안은 DB에 직접 넣어 흉내 낸다(실제 AI 호출 없음).
+# ---------------------------------------------------------------------------
+
+
+@given("두 곳에 AI가 크로메이트 공정을 제안해 두었다")
+def ai_proposals(context):
+    a, b, *_rest = context["opp_ids"]
+    support.propose_process(a, "CHROMATE")
+    support.propose_process(b, "CHROMATE")
+
+
+@given(
+    "한 곳은 꼬리 질문에서 AI가 제안한 크로메이트를, 다른 한 곳은 제안에 없던 아연도금을 확정했다"
+)
+def confirm_by_answer(context):
+    client, (a, b, *_rest) = context["client"], context["opp_ids"]
+    for opp_id, code in ((a, "CHROMATE"), (b, "ZINC_PLATING")):
+        support.record(
+            client,
+            opp_id,
+            support.contact(answers=support.answers(("CONFIRM_PROCESS", code))),
+        )
+
+
+@then("AI 제안 적중은 공정을 확정한 회사 2곳 가운데 1곳이다")
+def proposal_hit(context):
+    hit = context["body"]["data"]["aiProposalHit"]["process"]
+    assert (hit["confirmedCount"], hit["hitCount"]) == (2, 1)
+
+
+@then("표본이 기준보다 적어 적중 비율은 오지 않는다")
+def no_hit_ratio(context):
+    assert context["body"]["data"]["aiProposalHit"]["process"]["ratio"] is None
+
+
+@then("산업 적중 칸은 없다")
+def no_industry_hit(context):
+    assert set(context["body"]["data"]["aiProposalHit"]) == {"process"}

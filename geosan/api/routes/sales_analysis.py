@@ -22,6 +22,7 @@ from geosan.config.sales_questions import KST, STEP_ORDER
 from geosan.dashboard.sales_analysis import (
     build_sales_analysis,
     load_company_records,
+    load_process_proposal_hit,
     process_display_name,
 )
 from geosan.records.models import Outcome, OutcomeAnswer
@@ -126,6 +127,20 @@ class AnalysisBasis(_ApiModel):
     older_closed_excluded: int
 
 
+class ProposalHit(_ApiModel):
+    """(#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수."""
+
+    confirmed_count: int
+    hit_count: int
+    ratio: float | None
+
+
+class AiProposalHit(_ApiModel):
+    """(#678) 지금은 공정만 센다. 산업군은 확정 전 AI 제안이 저장에 남지 않아 셀 수 없다."""
+
+    process: ProposalHit
+
+
 class SalesAnalysis(_ApiModel):
     as_of: datetime
     basis: AnalysisBasis
@@ -134,6 +149,8 @@ class SalesAnalysis(_ApiModel):
     # (#684) 회사를 한 번씩만 센 합계와 단계별 접촉.
     total: GroupStats
     by_sales_step: list[StepRow]
+    # (#678) AI 제안 적중.
+    ai_proposal_hit: AiProposalHit
 
 
 SalesAnalysisEnvelope = Envelope[SalesAnalysis]
@@ -246,6 +263,16 @@ def sales_analysis(session: SessionDep):
         by_sales_step=[
             StepRow.model_validate(row, from_attributes=True) for row in result.by_sales_step
         ],
+        ai_proposal_hit=AiProposalHit(
+            process=ProposalHit.model_validate(
+                load_process_proposal_hit(
+                    session,
+                    dataset_kind=dataset_kind.value,
+                    min_sample_for_ratio=settings.min_sample_for_ratio,
+                ),
+                from_attributes=True,
+            )
+        ),
     )
     return SalesAnalysisEnvelope(
         data=data,
