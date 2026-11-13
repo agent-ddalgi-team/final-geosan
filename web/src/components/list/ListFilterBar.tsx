@@ -4,8 +4,9 @@
 //    선택지에 없는 값이면) 이것이 골라진 것으로 보이고, 지역·산업 선택란은 이때도 보여 먼저 고를 수 있다.
 //    관심 기업 보기(#516, 2026-11-09 PM 지시)에도 공정 선택란이 있다. 거기서는 묶지 않으므로 맨 위가 "전체"다.
 //  - 검색하면 고른 조건과 상관없이 전체 후보에서 찾는다. 검색 중에는 세 선택란을 숨기고 결과 줄과 [검색 지우기]를 보인다.
-//  - 정렬은 "추천 순"과 "최근 들어온 순"(#516)을 고를 수 있다. "가까운 순"은 거리 작업(#222) 전이라 흐리게만 보이고
-//    눌러도 아무 일이 없다. 고른 정렬은 부모가 주소(`?sort=recent`)에 남긴다.
+//  - 정렬은 "추천 순", "최근 들어온 순"(#516), "가까운 순"(#666)을 고를 수 있다. 고른 정렬은 부모가 주소
+//    (`?sort=recent`·`?sort=distance`)에 남긴다.
+//  - 거리 선택란(#666)은 서버 설정의 선택지(30·50·100km)로 그 거리 안의 회사만 남긴다(주소 `?maxDistanceKm=50`).
 //  - 정렬 줄 마지막 "전체 보기"(#516, PM 지시 2026-11-09)는 평소 목록에서만 보이고, 누르면 공정별 묶음을 풀어
 //    모든 회사를 한 줄로 본다(주소 `?view=all`). 다시 누르면 묶음 보기로 돌아간다.
 // 선택과 검색어는 부모가 주소(`?process=&region=&industry=`, `?q=`)에 남기고, 이 부품은 고른 값을 알리기만 한다.
@@ -18,7 +19,7 @@ import { listFilters, listSearch } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 
 /** 목록 정렬(#516). rank = 추천 순(기본), recent = 들어온 시각 최신 순. */
-export type ListSort = 'rank' | 'recent';
+export type ListSort = 'rank' | 'recent' | 'distance';
 
 export interface ListFilterBarProps {
   /** 공정 선택지(거산 공정 전부, 역량 파일 순서. 회사가 0곳인 공정도 온다). */
@@ -45,6 +46,11 @@ export interface ListFilterBarProps {
   sort: ListSort;
   /** 다른 정렬을 고르면 알린다. 이미 골라진 것을 다시 눌러도 알리지 않는다. */
   onSort: (sort: ListSort) => void;
+  /** 거리 선택지(km, `/config/ui`). 비어 있으면 거리 선택란을 그리지 않는다. */
+  distancePresets?: number[];
+  /** 지금 고른 거리(주소 `maxDistanceKm`). 없으면 "전체". */
+  maxDistanceKm?: number | null;
+  onMaxDistance?: (km: number | null) => void;
   /** true면 정렬 줄 끝에 "전체 보기" 단추를 그린다(평소 목록). 검색·관심 기업·대시보드 칸 보기에는 없다. */
   showFlat?: boolean;
   /** "전체 보기"가 눌려 있는지(주소 `view=all`). */
@@ -90,7 +96,7 @@ interface FilterSelectProps {
   id: string;
   label: string;
   value: string | null;
-  /** value는 서버에 보내는 값, name은 화면에 보이는 이름. */
+  /** value는 서버에 보내는 값, name은 화면에 보이는 이름. count가 음수면 건수 없이 이름만 보인다(거리). */
   items: { value: string; name: string; count: number }[];
   /** 맨 앞 "전체" 선택지의 글자(지역·산업은 "전체", 공정은 "전체(공정별로 묶음)"). 값은 빈 글자다. */
   allLabel: string;
@@ -131,7 +137,7 @@ function FilterSelect({
         <option value="">{allLabel}</option>
         {shown.map((item) => (
           <option key={item.value} value={item.value}>
-            {listFilters.option(item.name, item.count)}
+            {item.count < 0 ? item.name : listFilters.option(item.name, item.count)}
           </option>
         ))}
       </select>
@@ -205,6 +211,9 @@ export default function ListFilterBar({
   showFlat = false,
   flat = false,
   onFlat,
+  distancePresets = [],
+  maxDistanceKm = null,
+  onMaxDistance,
 }: ListFilterBarProps) {
   const searching = query !== null;
   const hasProcess = !searching && showProcess && processCounts.length > 0;
@@ -268,6 +277,22 @@ export default function ListFilterBar({
             />
           </>
         ) : null}
+        {!searching && distancePresets.length > 0 ? (
+          <FilterSelect
+            id="list-distance-select"
+            label={listFilters.distanceLabel}
+            value={maxDistanceKm === null ? null : String(maxDistanceKm)}
+            items={distancePresets.map((km) => ({
+              value: String(km),
+              name: listFilters.distanceWithin(km),
+              count: -1,
+            }))}
+            allLabel={listFilters.all}
+            keepUnknown={false}
+            onChange={(value) => onMaxDistance?.(value === null ? null : Number(value))}
+            testId="list-distance-select"
+          />
+        ) : null}
         <SearchBox key={query ?? ''} initial={query ?? ''} onSearch={onSearch} />
         <div
           role="group"
@@ -300,12 +325,13 @@ export default function ListFilterBar({
           >
             {listSearch.sortRecent}
           </button>
-          {/* 준비 중: 낭독기에도 읽히도록 지우지 않고 aria-disabled로 둔다. 누르는 일을 붙이지 않아 아무 요청도 없다. */}
           <button
             type="button"
-            aria-pressed="false"
-            aria-disabled="true"
-            style={sortStyle(false, false)}
+            aria-pressed={sort === 'distance'}
+            onClick={() => {
+              if (sort !== 'distance') onSort('distance');
+            }}
+            style={sortStyle(sort === 'distance')}
             data-testid="list-sort-distance"
           >
             {listSearch.sortDistance}

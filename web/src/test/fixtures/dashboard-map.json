@@ -1,6 +1,9 @@
 {
   "data": {
-    "center": { "lat": 36.8, "lng": 126.9 },
+    "center": {
+      "lat": 36.8,
+      "lng": 126.9
+    },
     "ringsKm": [30, 50, 100],
     "points": [
       {
@@ -37,7 +40,51 @@
       }
     ],
     "missingCoordinates": 2,
-    "asOf": "2026-11-13T09:00:00+09:00"
+    "asOf": "2026-11-13T09:00:00+09:00",
+    "visitRadiusKm": 5,
+    "visitGroups": [
+      {
+        "oppId": "opp-map-1",
+        "nearby": [
+          {
+            "oppId": "opp-near-1",
+            "customerName": "가상 자차산업",
+            "lat": 36.91,
+            "lng": 126.95,
+            "distanceKm": 1.8,
+            "group": "INTERESTED"
+          },
+          {
+            "oppId": "opp-near-2",
+            "customerName": "가상 카타정공",
+            "lat": 36.93,
+            "lng": 126.96,
+            "distanceKm": 3.2,
+            "group": "INTERESTED"
+          }
+        ]
+      },
+      {
+        "oppId": "opp-map-2",
+        "nearby": []
+      },
+      {
+        "oppId": "opp-map-4",
+        "nearby": [
+          {
+            "oppId": "opp-near-3",
+            "customerName": "가상 파하볼트",
+            "lat": 36.36,
+            "lng": 127.41,
+            "distanceKm": 1.4,
+            "group": "INTERESTED"
+          }
+        ]
+      }
+    ]
   },
-  "meta": { "hasVirtualData": true, "datasetKind": "VIRTUAL_REVIEWED" }
+  "meta": {
+    "hasVirtualData": true,
+    "datasetKind": "VIRTUAL_REVIEWED"
+  }
 }

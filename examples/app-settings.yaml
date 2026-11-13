@@ -191,6 +191,8 @@ geocoding:
   locationCsvBaseDate: null
   naverFallbackEnabled: false
 distanceFilterPresetsKm: [30, 50, 100]
+# 대시보드 지도 "같이 들를 곳": 방문할 회사(진행 중·관심) 근처 이 거리(km) 안의 후보를 묶는다(#673).
+visitGroupRadiusKm: 5
 records:
   _설명: "기록 남기기 칸에서 한 통화에 보이는 통화 내용 질문 수(#691, PM 결정 2026-11-13). 넘는 질문은 '다음 통화에서 물을 것 n개 · [지금 더 묻기]'로 접힌다. 누가 먼저 연락했나·공정·산업 확인·다음 할 일은 세지 않는다."
   questionsPerContact: 6
