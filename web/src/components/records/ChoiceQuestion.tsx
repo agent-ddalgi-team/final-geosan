@@ -57,6 +57,14 @@ function confirmedValues(question: SalesQuestion, marks: ChoiceMarks | null): st
     .filter((id) => marks.industries.includes(id));
 }
 
+/** 이미 확정된 값의 이름(#691 "확정됨: 아연도금" 한 줄). 없으면 빈 배열. */
+export function confirmedLabels(question: SalesQuestion, marks: ChoiceMarks | null): string[] {
+  const ids = confirmedValues(question, marks);
+  return question.answers
+    .filter((option) => ids.includes(option.answerId))
+    .map((option) => option.label);
+}
+
 /** 고른 값으로 저장하면 빠질 AI 공정 제안 수. */
 function droppedProposals(ids: string[], marks: ChoiceMarks | null): number {
   return Object.entries(marks?.process ?? {}).filter(

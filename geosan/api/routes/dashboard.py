@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Header, Request, Response
 from pydantic import Field
 
+from geosan.api.check_points import check_left_opp_ids
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
@@ -15,9 +16,12 @@ from geosan.dashboard.map_points import build_map_points
 from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
+    TODAY_CHECK_LEFT,
     BreakdownSource,
+    bookmarked_opp_ids,
     build_dashboard,
     classify_bookmarked,
+    dashboard_population,
     schedule_due_opp_ids,
 )
 from geosan.evaluation.models import EvaluationRun
@@ -151,6 +155,25 @@ class DashboardBreakdown(_ApiModel):
     by_industry: list[IndustryBreakdownItem]
 
 
+class TodayCheckItem(_ApiModel):
+    """회사 이름·날짜·일정 한 줄만. 메모 글·연락처·대표번호는 이 모델에 없다."""
+
+    opp_id: str
+    customer_name: str
+    due_at: date | None = None
+    note: str | None = None
+
+
+class TodayCheckRow(_ApiModel):
+    """맨 위 "오늘 확인할 것"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677)."""
+
+    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT"]
+    count: int
+    items: list[TodayCheckItem]
+    # 누르면 열 목록의 `?filter=` 값. null이면 화면이 줄 아래에 작은 목록을 편다.
+    list_filter: str | None = None
+
+
 class Dashboard(_ApiModel):
     counts: DashboardCounts
     schedule: list[ScheduleItem]
@@ -158,6 +181,8 @@ class Dashboard(_ApiModel):
     as_of: datetime
     # 가상 묶음이면 없다(null, 가상 사례는 집계에서 제외). 없으면 화면이 막대 줄을 숨긴다.
     breakdown: DashboardBreakdown | None = None
+    # 0건인 줄은 없다. 모두 0건이면 빈 배열이다.
+    today_checks: list[TodayCheckRow] = Field(default_factory=list)
 
 
 DashboardEnvelope = Envelope[Dashboard]
@@ -190,9 +215,25 @@ def bookmark_board_list_filter(session, query, request: Request):
     return query.where(EvaluationRun.opp_id.in_(opp_ids))
 
 
+def _catalog_codes(session, dataset_kind) -> frozenset[str]:
+    return frozenset(row.code for row in load_process_catalog(session, dataset_kind))
+
+
+def check_left_list_filter(session, query, request: Request):
+    """목록 `?filter=CHECK_LEFT`: 대시보드 "확인할 것이 남은 관심 회사"와 같은 계산(#679)."""
+    if request.query_params.get("filter") != TODAY_CHECK_LEFT:
+        return query
+    dataset_kind = runtime_for(session).app_settings.active_dataset_kind
+    opp_ids = check_left_opp_ids(
+        session, list(session.scalars(bookmarked_opp_ids())), _catalog_codes(session, dataset_kind)
+    )
+    return query.where(EvaluationRun.opp_id.in_(opp_ids))
+
+
 supported_filters.add(SCHEDULE_DUE_FILTER)
 supported_filters.update(BOARD_FILTERS)
-for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter):
+supported_filters.add(TODAY_CHECK_LEFT)
+for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter, check_left_list_filter):
     if _list_filter not in list_filters:
         list_filters.append(_list_filter)
 
@@ -202,13 +243,20 @@ def dashboard(
     session: SessionDep,
     staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
 ):
-    """건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대.
+    """건수 10칸·이번 주 일정·최근 내 기록·공정/산업군 막대·오늘 확인할 것 줄.
 
     보기 전용(담당자 키 없음)이면 최근 기록만 비어 있다.
     """
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
     now = utcnow()
+    catalog = load_process_catalog(session, dataset_kind)
+    # "확인할 것이 남은 관심 회사"(#679)는 카드와 같은 계산(api 쪽)이라 창구가 구해 넘긴다.
+    check_left = check_left_opp_ids(
+        session,
+        list(session.scalars(dashboard_population(dataset_kind.value))),
+        frozenset(row.code for row in catalog),
+    )
     result = build_dashboard(
         session,
         dataset_kind=dataset_kind.value,
@@ -216,10 +264,11 @@ def dashboard(
         today=now.astimezone(KST).date(),
         now=now,
         breakdown_source=BreakdownSource(
-            processes=[(row.code, row.name) for row in load_process_catalog(session, dataset_kind)],
+            processes=[(row.code, row.name) for row in catalog],
             industries=runtime.app_settings.industries,
             count_proposed_industries=runtime.app_settings.dashboard.count_proposed_industries,
         ),
+        check_left_opp_ids=check_left,
     )
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),
