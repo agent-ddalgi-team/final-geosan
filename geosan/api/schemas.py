@@ -225,6 +225,10 @@ class RecordsUi(_ApiModel):
     cancel_by_any_staff: bool = False
 
 
+class ExportUi(_ApiModel):
+    xlsx_enabled: bool = Field(description="false면 화면이 [엑셀 내려받기] 단추를 숨긴다(#217)")
+
+
 class IngestProcessOption(_ApiModel):
     code: ProcessCode
     name: str
@@ -245,6 +249,7 @@ class ConfigUi(_ApiModel):
     rule_version: str
     records: RecordsUi
     ingest_options: IngestOptions
+    export: ExportUi
 
 
 # ---------------------------------------------------------------------------

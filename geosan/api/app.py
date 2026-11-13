@@ -204,6 +204,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
     from geosan.api.routes import (
         config,
         dashboard,
+        export,
         homepage,
         opportunities,
         records,
@@ -218,6 +219,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         session.router,
         dashboard.router,
         homepage.router,
+        export.router,
         sales_analysis.router,
     ):
         app.include_router(router, prefix="/api/v1")

@@ -262,9 +262,7 @@ export default function OpportunityCard({
         <Row label={cardRows.blocker} title={blocker}>
           <span data-testid="card-blocker">{blocker}</span>
         </Row>
-        <Row label={cardRows.nextAction} title={card.nextAction}>
-          <span data-testid="card-next-action">{card.nextAction}</span>
-        </Row>
+        {/* 후속 조치는 카드에 두지 않고 상세 "1. 추천 근거와 후속 조치"에서 읽는다(#647, PM 결정 2026-11-13). */}
 
         <div
           style={{
