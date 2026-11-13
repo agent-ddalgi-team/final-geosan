@@ -253,6 +253,9 @@ class ResearchSettings(FileModel):
     # #677: 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에 다시 조사를 제안한다.
     # 0이면 제안하지 않음(묶음이 없는 파일의 기본). 제안만 하고 저절로 조사하지 않는다.
     suggest_again_after_days: int = Field(default=0, ge=0, strict=True)
+    # #511: 공식 홈페이지를 못 찾았을 때 회사가 직접 운영하는 공개 페이지 1개를 "확인 필요"로
+    # 받을지. 기본 꺼짐(묶음·칸이 없는 파일도 꺼짐). PM이 켠다.
+    allow_unofficial_page: bool = Field(default=False, strict=True)
 
 
 XLSX_DOWNLOAD_LOG_READY = False
@@ -432,6 +435,16 @@ class AppSettings(FileModel):
         ):
             raise ValueError(
                 "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def unofficial_page_needs_blocked_domains(self) -> AppSettings:
+        # #511: 채용·유료 기업 정보 사이트를 버릴 목록 없이는 공개 페이지 받기를 켤 수 없다.
+        if self.research.allow_unofficial_page and not self.candidate_web_search.blocked_domains:
+            raise ValueError(
+                "research.allowUnofficialPage를 켜려면 candidateWebSearch.blockedDomains에 "
+                "막는 사이트 목록을 먼저 적어 주세요."
             )
         return self
 
@@ -625,8 +638,12 @@ def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "ingestion": filled}
 
 
-ADDED_RESEARCH_KEYS = ("autoOnBookmarkDailyCostUsd", "suggestAgainAfterDays")
-"""#690·#677 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_RESEARCH_KEYS = (
+    "autoOnBookmarkDailyCostUsd",
+    "suggestAgainAfterDays",
+    "allowUnofficialPage",
+)
+"""#690·#677·#511 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_research_keys(data: dict[str, Any]) -> dict[str, Any]:
