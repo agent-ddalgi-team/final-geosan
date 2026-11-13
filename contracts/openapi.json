@@ -593,6 +593,14 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "distanceFilterPresetsKm": {
+            "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Distancefilterpresetskm",
+            "type": "array"
+          },
           "export": {
             "$ref": "#/components/schemas/ExportUi"
           },
@@ -623,7 +631,8 @@
           "ruleVersion",
           "records",
           "ingestOptions",
-          "export"
+          "export",
+          "distanceFilterPresetsKm"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -845,6 +854,17 @@
             },
             "title": "Ringskm",
             "type": "array"
+          },
+          "visitGroups": {
+            "items": {
+              "$ref": "#/components/schemas/VisitGroup"
+            },
+            "title": "Visitgroups",
+            "type": "array"
+          },
+          "visitRadiusKm": {
+            "title": "Visitradiuskm",
+            "type": "number"
           }
         },
         "required": [
@@ -852,7 +872,9 @@
           "ringsKm",
           "points",
           "missingCoordinates",
-          "asOf"
+          "asOf",
+          "visitRadiusKm",
+          "visitGroups"
         ],
         "title": "DashboardMap",
         "type": "object"
@@ -6320,6 +6342,72 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VisitGroup": {
+        "description": "방문할 회사(points 가운데 진행 중·관심) 하나와 그 반경 안의 근처 회사(가까운 순).",
+        "properties": {
+          "nearby": {
+            "items": {
+              "$ref": "#/components/schemas/VisitNearby"
+            },
+            "title": "Nearby",
+            "type": "array"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "nearby"
+        ],
+        "title": "VisitGroup",
+        "type": "object"
+      },
+      "VisitNearby": {
+        "description": "\"같이 들를 곳\"의 근처 관심 기업(#673). distance_km는 묶음 중심 회사에서의 직선거리.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "INTERESTED",
+              "IN_PROGRESS",
+              "WON_THIS_YEAR"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lat",
+          "lng",
+          "oppId",
+          "customerName",
+          "distanceKm",
+          "group"
+        ],
+        "title": "VisitNearby",
         "type": "object"
       }
     }

@@ -252,6 +252,9 @@ class ConfigUi(_ApiModel):
     records: RecordsUi
     ingest_options: IngestOptions
     export: ExportUi
+    distance_filter_presets_km: list[float] = Field(
+        description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
+    )
 
 
 # ---------------------------------------------------------------------------

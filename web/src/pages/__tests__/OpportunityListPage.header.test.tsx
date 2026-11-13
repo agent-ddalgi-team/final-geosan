@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import OpportunityListPage from '../OpportunityListPage';
 import { getOpportunities } from '../../api/client';
-import type { Envelope, OpportunityCard } from '../../api/types';
+import type { ConfigUi, Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
   FLAT_VIEW_CHOICE,
@@ -69,12 +69,12 @@ function LocationProbe() {
   return <p data-testid="location">{`${location.pathname}${location.search}`}</p>;
 }
 
-function renderPage(initial = '/opportunities') {
+function renderPage(initial = '/opportunities', config: ConfigUi | null = null) {
   return render(
     <MemoryRouter initialEntries={[initial]}>
       <FrameContext.Provider
         value={{
-          config: null,
+          config,
           staffKey: 'park-lee',
           setStaffKey: () => {},
           canRecord: true,
@@ -871,25 +871,42 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
   });
 
   describe('정렬', () => {
-    it('"추천 순"이 골라져 있고, "가까운 순 (준비 중)"은 고를 수 없게 표시되며 눌러도 요청이 없다', async () => {
-      const user = userEvent.setup();
+    it('"추천 순"이 골라져 있으면 서버에 세 묶음 순(`sort=contact`, #610)으로 달라고 하고 주소에는 남기지 않는다', async () => {
       mockedGet.mockResolvedValue(reply([apjeong], MENU));
       renderPage('/opportunities?process=ANODIZING');
       await screen.findByTestId('opportunity-card');
       const group = screen.getByRole('group', { name: listSearch.sortLabel });
-      const rank = within(group).getByRole('button', { name: '추천 순' });
-      const distance = within(group).getByRole('button', { name: '가까운 순 (준비 중)' });
-      expect(rank).toHaveAttribute('aria-pressed', 'true');
-      expect(distance).toHaveAttribute('aria-disabled', 'true');
-      expect(distance).toHaveAttribute('aria-pressed', 'false');
-      const calls = mockedGet.mock.calls.length;
-      await user.click(distance);
-      await user.click(rank);
-      expect(mockedGet).toHaveBeenCalledTimes(calls);
-      expect(rank).toHaveAttribute('aria-pressed', 'true');
+      expect(within(group).getByRole('button', { name: '추천 순' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
       expect(locationText()).toBe('/opportunities?process=ANODIZING');
-      // 추천 순은 서버에 세 묶음 순(`sort=contact`, #610)으로 달라고 한다. 주소에는 남기지 않는다.
       for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
+    });
+
+    it('"가까운 순"을 누르면 주소에 sort=distance가 남고 서버에도 distance로 부른다(#666)', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([{ ...apjeong, distanceKm: 8.2 }], MENU));
+      renderPage('/opportunities?process=ANODIZING');
+      await screen.findByTestId('opportunity-card');
+      await user.click(screen.getByTestId('list-sort-distance'));
+      await waitFor(() => expect(lastFilters()).toMatchObject({ sort: 'distance' }));
+      expect(locationParams()).toEqual({ process: 'ANODIZING', sort: 'distance' });
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('card-distance-tag')).toHaveTextContent('거산에서 8.2km');
+    });
+
+    it('거리 범위는 설정 선택지로 고르고 서버에 maxDistanceKm로 보내며, 선택지에 없는 주소 값은 무시한다(#666)', async () => {
+      const user = userEvent.setup();
+      const config = { distanceFilterPresetsKm: [30, 50, 100] } as unknown as ConfigUi;
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?process=ANODIZING&maxDistanceKm=70', config);
+      await screen.findByTestId('opportunity-card');
+      expect(lastFilters()).not.toHaveProperty('maxDistanceKm');
+      expect(screen.getByTestId('list-distance-select')).toHaveValue('');
+      await user.selectOptions(screen.getByTestId('list-distance-select'), '50');
+      await waitFor(() => expect(lastFilters()).toMatchObject({ maxDistanceKm: '50' }));
+      expect(locationParams()).toMatchObject({ maxDistanceKm: '50' });
     });
 
     it.each([
@@ -901,7 +918,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       renderPage(url);
       await screen.findByTestId('opportunity-card');
       expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'false');
       for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
     });
   });
