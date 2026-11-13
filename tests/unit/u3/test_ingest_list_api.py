@@ -218,7 +218,7 @@ def test_recent_sort_puts_latest_ingested_first_and_case_files_last(api_env, tmp
 
 def test_unconnected_sort_is_rejected(api_env):
     client, _, _ = api_env
-    response = client.get(PATH, params={"sort": "distance"})
+    response = client.get(PATH, params={"sort": "unknown"})
     assert response.status_code == 400
     assert "정렬" in response.json()["error"]["message"]
     assert listed(client, sort="rank")["meta"]["total"] == 1

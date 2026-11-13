@@ -168,9 +168,9 @@ def test_every_sort_carries_bucket_fields_and_counts(contact_env, sort):
 
 
 def test_unknown_sort_is_still_rejected(contact_env):
-    """Given 연결 안 된 정렬 값 / When 조회 / Then 입력 오류."""
+    """Given 약속에 없는 정렬 값 / When 조회 / Then 입력 오류."""
     client, _ = contact_env
-    assert client.get(URL, params={"sort": "distance"}).status_code == 400
+    assert client.get(URL, params={"sort": "unknown"}).status_code == 400
 
 
 # ---------------------------------------------------------------------------

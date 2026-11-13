@@ -43,7 +43,10 @@ def get_session(request: Request) -> Iterator[Session]:
         # 접속 시각 쓰기 잠금을 먼저 끝내야 같은 SQLite에 기록할 때 서로 기다리지 않는다.
         live_geocode = (
             request.method == "GET"
-            and request.url.path.startswith("/api/v1/opportunities")
+            and (
+                request.url.path.startswith("/api/v1/opportunities")
+                or request.url.path == "/api/v1/dashboard/map"
+            )
             and runtime.app_settings.geocoding.enabled
             and runtime.app_settings.geocoding.naver_fallback_enabled
         )
