@@ -741,7 +741,16 @@ def _answer_errors(
     if not body.answers or questions is None:
         return []
     if body.method is None or body.result not in ("REACHED", "DECLINED"):
-        return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
+        # #691: 부재 접촉에는 기본 보기가 있는 질문(누가 먼저 연락했나)의 답만 받는다.
+        about_contact = (questions.question(answer.question_id) for answer in body.answers)
+        if (
+            body.method is None
+            or body.result != "ABSENT"
+            or not all(
+                question is not None and question.about_contact for question in about_contact
+            )
+        ):
+            return [FieldError(path="answers", message="연결된 접촉에서만 답을 고를 수 있습니다.")]
     errors: list[FieldError] = []
     seen: set[str] = set()
     seen_choices: set[tuple[str, str]] = set()
@@ -1083,6 +1092,7 @@ def get_sales_questions(session: SessionDep):
                             reaches=option.reaches,
                             closes=option.closes,
                             lost_reason=option.lost_reason,
+                            default=option.default,
                         )
                         for option in question.answers
                     ],

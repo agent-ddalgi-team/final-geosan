@@ -212,7 +212,13 @@ def test_sales_questions_route_returns_the_file(records_env):
         "reaches": "DEMAND_CONFIRMED",
         "closes": None,  # #643: 응답에 더한 두 칸(마무리 답이 아니면 null)
         "lostReason": None,
+        "default": False,  # #691: 응답에 더한 칸(기본 보기가 아니면 false)
     }
+    who = next(item for item in data["questions"] if item["questionId"] == "WHO_FIRST")
+    assert [(item["answerId"], item["default"]) for item in who["answers"]] == [
+        ("OURS", True),
+        ("THEIRS", False),
+    ]
     close = next(item for item in data["questions"] if item["questionId"] == "CLOSE_RESULT")
     assert close["showWhen"] == {"answers": {"NEXT_ACTION": ["END"]}}
     assert [(item["answerId"], item["closes"]) for item in close["answers"]] == [

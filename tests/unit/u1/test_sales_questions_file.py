@@ -304,3 +304,57 @@ def test_choice_question_keeps_every_value_of_the_latest_answering_contact():
         ("CONFIRM_INDUSTRY", "없어진 산업", "예전 보기"),
     ]
     assert "CONFIRM_PROCESS" not in state.open_questions
+
+
+WHO_FIRST = """  - id: WHO_FIRST
+    step: ALL
+    text: 누가 먼저 연락했나요?
+    answers:
+      - { id: OURS, label: 우리가, default: true }
+      - { id: THEIRS, label: 상대가 }
+"""
+
+
+def test_default_answer_question_passes(tmp_path):
+    """#691 Given 기본 보기가 있는 질문 / When 검사 / Then 통과하고 접촉 자체 질문으로 읽힌다."""
+    text = "version: 1\n" + STEPS + "questions:\n" + QUESTION + WHO_FIRST
+    result = check_sales_questions_file(write(tmp_path, text))
+    assert result.errors == []
+    question = result.questions.question("WHO_FIRST")
+    assert question.about_contact is True
+    assert [item.default for item in question.answers] == [True, False]
+    assert result.questions.question("PLATING_NOW").about_contact is False
+    example = check_sales_questions_file(EXAMPLE).questions.question("WHO_FIRST")
+    assert [(item.id, item.default) for item in example.answers] == [
+        ("OURS", True),
+        ("THEIRS", False),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (WHO_FIRST.replace("label: 상대가 }", "label: 상대가, default: true }"), "하나만"),
+        (WHO_FIRST.replace("step: ALL", "step: REACHED"), "step이 ALL"),
+        (
+            QUESTION + WHO_FIRST + "    showWhen: { answers: { PLATING_NOW: [IN_HOUSE] } }\n",
+            "showWhen이 없어야",
+        ),
+        (
+            WHO_FIRST.replace("label: 상대가 }", "label: 상대가, reaches: REACHED }"),
+            "reaches·closes·lostReason",
+        ),
+        (
+            WHO_FIRST + QUESTION + "    showWhen: { answers: { WHO_FIRST: [THEIRS] } }\n",
+            "가리킬 수 없습니다",
+        ),
+        (WHO_FIRST.replace("default: true", "default: maybe"), "default"),
+    ],
+)
+def test_broken_default_answers_are_rejected(tmp_path, text, expected):
+    """#691 기본 보기는 하나뿐, step ALL, 꼬리·단계 칸 없음."""
+    result = check_sales_questions_file(
+        write(tmp_path, "version: 1\n" + STEPS + "questions:\n" + text)
+    )
+    assert result.questions is None
+    assert any(expected in f"{error.path} {error.message}" for error in result.errors), result

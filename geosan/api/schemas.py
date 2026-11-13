@@ -908,6 +908,8 @@ class SalesAnswerOption(_ApiModel):
     # #643: 마무리 답 칸. 질문 파일 그대로, 없으면 null.
     closes: Literal["WON", "LOST", "ON_HOLD"] | None = None
     lost_reason: LostReasonCode | None = None
+    # #691: 화면이 미리 골라 두는 보기(질문 파일 그대로, 없으면 false).
+    default: bool = False
 
 
 class SalesShowWhen(_ApiModel):

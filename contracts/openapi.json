@@ -5490,6 +5490,11 @@
             ],
             "title": "Closes"
           },
+          "default": {
+            "default": false,
+            "title": "Default",
+            "type": "boolean"
+          },
           "label": {
             "title": "Label",
             "type": "string"
