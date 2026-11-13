@@ -665,6 +665,8 @@ class SalesStepView(_ApiModel):
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
     sales_step: SalesStepView = Field(default_factory=SalesStepView)
+    # #674: 취소 안 된 접촉 시도 가운데 가장 늦은 접촉 날짜. 접촉이 없으면 None.
+    last_contact_at: date | None = None
     opinion: OpinionRecord | None = None
     bookmark: BookmarkRecord | None = None
     approval: dict[str, Any] | None = None
