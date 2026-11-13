@@ -243,11 +243,37 @@ class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
 
 
+XLSX_DOWNLOAD_LOG_READY = False
+"""엑셀을 내려받을 때 "누가 언제 몇 건"을 남기는 기록 1행(C4 TransferLog)이 만들어졌는가.
+
+아직 없다(#217, PM 결정 2026-11-13). 그 기록을 만드는 PR에서만 True로 바꾼다.
+False인 동안에는 `export.xlsxEnabled: true`인 설정을 받아들이지 않는다.
+"""
+
+XLSX_ENABLE_BLOCKED_MESSAGE = (
+    "엑셀 내려받기는 아직 켤 수 없습니다. 누가 언제 내려받았는지 남기는 기록을 "
+    "만들기 전에는 켤 수 없으니 false로 두어 주세요."
+)
+
+
+def xlsx_download_log_ready() -> bool:
+    """내려받은 기록이 준비됐는지 묻는 한 곳. 설정 검사가 이 함수만 본다."""
+    return XLSX_DOWNLOAD_LOG_READY
+
+
 class ExportSettings(FileModel):
     """계약 C7 `export`(#217, PM 결정 2026-11-13). 엑셀 내려받기는 만들어 두고 꺼 둔다."""
 
     # false면 내려받기 창구(GET /export/xlsx)가 막히고 화면 단추도 보이지 않는다.
     xlsx_enabled: bool = Field(default=False, strict=True)
+
+    @field_validator("xlsx_enabled")
+    @classmethod
+    def enabling_needs_download_log(cls, value: bool) -> bool:
+        """설정 파일 읽기·check-config 등록·DB 사본 읽기가 모두 이 검사를 거친다."""
+        if value and not xlsx_download_log_ready():
+            raise ValueError(XLSX_ENABLE_BLOCKED_MESSAGE)
+        return value
 
 
 class SalesAnalysisSettings(FileModel):

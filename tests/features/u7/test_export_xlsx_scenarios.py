@@ -16,9 +16,11 @@ PHONE_IN_ITEM = "010-1234-5678"
     "가상 회사 기회 3건이 목록에 있고 한 곳에 접촉 단계와 다음 일정이 있다",
     target_fixture="env",
 )
-def companies(process_env):
+def companies(process_env, monkeypatch):
     client, ids, _ = process_env
     support.add_outcome(ids[1])
+    # 내려받은 기록이 준비된 뒤 운영자가 스위치를 켠 상태에서 시작한다.
+    support.mark_download_log_ready(monkeypatch)
     support.set_export_enabled(True)
     return client, ids
 

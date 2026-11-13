@@ -8,6 +8,7 @@ from io import BytesIO
 
 import pytest
 from openpyxl import load_workbook
+from pydantic import ValidationError
 
 from geosan.api.app import create_app
 from geosan.api.models import AccessSession
@@ -49,11 +50,20 @@ def set_export_enabled(enabled):
         session.get(AppSetting, "export").value = {"xlsxEnabled": enabled}
 
 
+def mark_download_log_ready(monkeypatch, ready=True):
+    """내려받은 기록이 준비됐는지 묻는 한 곳만 바꾼다(기록을 만든 뒤의 코드와 같은 상태)."""
+    monkeypatch.setattr(app_settings, "XLSX_DOWNLOAD_LOG_READY", ready)
+
+
 @pytest.fixture(autouse=True)
-def export_switch_on(request):
-    """예시 설정은 꺼짐이 초기값이다. 임시 DB를 쓰는 검사는 스위치를 켠 상태에서 시작한다."""
+def export_switch_on(request, monkeypatch):
+    """예시 설정은 꺼짐이 초기값이고, 내려받은 기록이 없는 지금은 켜는 설정을 받지 않는다.
+
+    임시 DB를 쓰는 검사는 "기록이 준비된 뒤 스위치를 켠 상태"에서 시작한다.
+    """
     if "tmp_db" in request.fixturenames:
         request.getfixturevalue("tmp_db")
+        mark_download_log_ready(monkeypatch)
         set_export_enabled(True)
 
 
@@ -392,6 +402,75 @@ def test_old_settings_copy_without_the_section_reads_the_example_value(
     with session_scope() as session:
         assert read_app_settings(session).export.xlsx_enabled is example_value
     assert client.get(EXPORT_URL).status_code == (200 if example_value else 422)
+
+
+def _example_with_switch(tmp_path, value):
+    path = tmp_path / "app-settings.yaml"
+    path.write_text(
+        DEFAULT_APP_SETTINGS_PATH.read_text(encoding="utf-8").replace(
+            "xlsxEnabled: false", f"xlsxEnabled: {value}"
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_download_log_is_not_ready_yet():
+    """Given 지금 코드 / When 준비 여부를 물음 / Then 내려받은 기록은 아직 없다(#217)."""
+    assert app_settings.xlsx_download_log_ready() is False
+
+
+def test_settings_file_that_turns_the_switch_on_is_refused_until_the_log_exists(tmp_path):
+    """Given 내려받은 기록 없음 / When 스위치를 켠 설정 파일 검사 / Then 칸·줄·이유와 함께 거부."""
+    path = _example_with_switch(tmp_path, "true")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    result = app_settings.check_app_settings_file(path)
+    assert result.settings is None
+    assert [(e.path, e.message) for e in result.errors] == [
+        ("export.xlsxEnabled", app_settings.XLSX_ENABLE_BLOCKED_MESSAGE)
+    ]
+    assert lines[result.errors[0].line - 1].strip() == "xlsxEnabled: true"
+    with pytest.raises(InputError) as caught:
+        load_app_settings(path)
+    assert "export.xlsxEnabled" in caught.value.next_action
+    assert "기록을 만들기 전에는 켤 수 없으니" in caught.value.next_action
+
+
+def test_settings_file_with_the_switch_off_passes_while_the_log_is_missing(tmp_path):
+    """Given 내려받은 기록 없음 / When 스위치를 끈 설정 파일 검사 / Then 통과한다."""
+    result = app_settings.check_app_settings_file(_example_with_switch(tmp_path, "false"))
+    assert result.errors == []
+    assert result.settings.export.xlsx_enabled is False
+
+
+def test_settings_file_that_turns_the_switch_on_passes_once_the_log_exists(tmp_path, monkeypatch):
+    """Given 내려받은 기록 준비됨 / When 스위치를 켠 설정 파일 검사 / Then 통과한다."""
+    mark_download_log_ready(monkeypatch)
+    assert load_app_settings(_example_with_switch(tmp_path, "true")).export.xlsx_enabled is True
+
+
+def test_old_settings_copy_with_the_switch_on_is_refused_until_the_log_exists(
+    process_env,  # noqa: F811
+    monkeypatch,
+):
+    """Given DB 사본에 켜짐이 들어 있고 기록 없음 / When 읽음 / Then 거부하고 파일도 안 나간다."""
+    client, _, _ = process_env
+    assert client.get(EXPORT_URL).status_code == 200
+    mark_download_log_ready(monkeypatch, ready=False)
+    with session_scope() as session:
+        assert session.get(AppSetting, "export").value == {"xlsxEnabled": True}
+        with pytest.raises(ValidationError) as caught:
+            read_app_settings(session)
+    errors = caught.value.errors()
+    assert [error["loc"] for error in errors] == [("export", "xlsxEnabled")]
+    assert app_settings.XLSX_ENABLE_BLOCKED_MESSAGE in errors[0]["msg"]
+    response = client.get(EXPORT_URL)
+    assert response.status_code == 500
+    assert not response.content.startswith(b"PK")
+    set_export_enabled(False)
+    with session_scope() as session:
+        assert read_app_settings(session).export.xlsx_enabled is False
+    assert client.get(EXPORT_URL).status_code == 422
 
 
 def test_switch_value_must_be_true_or_false(tmp_path):
