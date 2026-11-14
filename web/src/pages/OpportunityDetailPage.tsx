@@ -35,6 +35,7 @@ import PeersArea from '../components/peers/PeersArea';
 import ActivityTimeline from '../components/records/ActivityTimeline';
 import { choiceMarksOf } from '../components/records/ChoiceQuestion';
 import RecordsArea, { recordsEntryInputId } from '../components/records/RecordsArea';
+import ReportLink from '../components/report/ReportLink';
 import ReviewArea from '../components/review/ReviewArea';
 import { detailReport, frame, opinionArea, peersArea, recordsArea, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
@@ -268,6 +269,7 @@ export default function OpportunityDetailPage() {
             ownerName={ownerName}
             classificationOverrides={config?.classificationLabels}
           />
+          <ReportLink oppId={oppId} />
           <DetailGlance
             header={data.header}
             processLinks={data.processLinks}

@@ -1744,3 +1744,81 @@ export const detailReport = {
   /** 읽는 곳과 적는 곳을 가르는 줄. */
   writeDivider: '여기부터 적는 곳',
 } as const;
+
+/**
+ * 회사별 보고서(#565, PM 결정 2026-11-14): 상세의 [보고서]로 여는 인쇄용 한 쪽 화면.
+ * 상세 응답에 저장된 값만 쓰고 AI를 다시 부르지 않는다. 영업 메모·대표번호·직접 적은 답 글은 넣지 않는다.
+ * 여기에는 틀 문구만 둔다. 코드값의 쉬운 말은 위의 기존 대응표를 그대로 쓴다.
+ */
+export const companyReport = {
+  /** 상세 화면의 링크 글. */
+  link: '보고서',
+  linkHint: '인쇄하기 좋은 한 쪽 보고서를 엽니다. 영업 메모와 대표번호는 넣지 않습니다.',
+  pageTitle: '회사별 보고서',
+  /** 첫 줄 표시. */
+  internal: '내부용 · 거산 확인 전',
+  /** "만든 날 2026-11-14 · 저장된 값 그대로(AI를 다시 부르지 않음)" */
+  madeAt: (date: string) => `만든 날 ${date} · 저장된 값 그대로(AI를 다시 부르지 않음)`,
+  print: '인쇄 · PDF로 저장',
+  backToDetail: '상세로 돌아가기',
+  loadError: '보고서를 만들 값을 불러오지 못했습니다',
+  notFound: '이 회사를 찾을 수 없습니다. 목록에서 다시 골라 주세요.',
+  questionsFailed:
+    '꼬리 질문 문구를 불러오지 못해, 아직 답이 없는 꼬리 질문은 이 보고서에 빠져 있습니다.',
+  /** 값이 없는 칸. 지어내지 않고 이 말로 둔다. */
+  needCheck: '확인 필요',
+  aiProposal: 'AI 제안 · 확인 전',
+  confirmed: '확인됨',
+  sections: {
+    glance: '1. 회사 한눈에',
+    scores: '2. 점수 8항목',
+    evidence: '3. 근거',
+    questions: '4. 확인 질문과 지금까지의 답',
+    sales: '5. 영업 단계와 다음 일정',
+  },
+  glance: {
+    name: '회사',
+    item: '검토 대상',
+    address: '주소',
+    homepage: '홈페이지',
+    intro: '한 줄 소개',
+    fit: '적합도',
+    pickReason: 'AI가 고른 이유',
+    reason: '추천 근거',
+    process: '공정',
+    industry: '산업',
+    score: '점수',
+  },
+  scores: {
+    none: '점수 전 · 확인 필요',
+    columns: { label: '항목', weight: '배점', score: '점수', state: '상태' },
+  },
+  evidence: {
+    none: '저장된 근거가 없습니다 · 확인 필요',
+    source: '출처',
+    /** "10/18" 앞에 붙는 말. */
+    date: (date: string) => `자료 날짜 ${date}`,
+  },
+  questions: {
+    knownTitle: '지금까지 들은 답',
+    knownNone: '아직 들은 답이 없습니다.',
+    askTitle: '방문·통화 때 물을 것',
+    askNone: '지금 물을 것이 없습니다.',
+    /** 직접 적은 답 글은 싣지 않고 답한 날만 적는다. "답 적음 · 11/6 (글은 상세 화면에서)" */
+    answered: (date: string | null) => `답 적음${date ? ` · ${date}` : ''} (글은 상세 화면에서)`,
+    /** "아직 값이 없는 점수 항목: 소재와 보유 공정 일치 · 납품실적" */
+    missingScores: (labels: readonly string[]) => labels.join(' · '),
+    missingScoresTopic: '값이 없는 점수 항목',
+    missingBasicsTopic: '값이 없는 회사 기본 정보',
+  },
+  sales: {
+    stage: '영업 단계',
+    step: '세부 단계',
+    lostReason: '거절 이유',
+    contacts: '접촉',
+    lastContact: '마지막 접촉',
+    nextSchedule: '다음 일정',
+    none: '없음',
+    stepNone: '없음',
+  },
+} as const;
