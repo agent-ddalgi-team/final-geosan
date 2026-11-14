@@ -76,18 +76,18 @@ def research_state(
 ) -> str | None:
     """점수가 아직 없는 찾은 회사의 조사 상태(#596). 점수가 있거나 사례 파일 회사면 None.
 
-    카드는 RUNNING이면 "조사 중", 나머지는 "조사 중단"만 보이고, 상세가 이유를 보인다.
-    "조사 중"은 목록 머리의 "조사 n/m" 진행 표시와 같은 기준(마지막 찾기 회차의 수)을 쓴다.
+    카드는 RUNNING이면 "조사 중", NOT_TRIED면 "조사 전 · 생산품으로만 판단", 나머지는 "조사 중단"만
+    보이고, 상세가 이유를 보인다(#744).
+    (바뀜 #744) 회차가 끝난 뒤에는 "조사 n/m"이 남아 있어도 RUNNING으로 보지 않는다. 자동 조사가
+    적합도 하·하루 금액 한도로 일부 회사를 건너뛰어 그 수가 끝내 같아지지 않기 때문이다. 실제로
+    도는 회사는 서버 메모리 표시나 자동 조사의 시작 표시 행으로 안다.
     """
     if scored or customer.ingest_batch_id is None:
         return None
     if (
         progress is not None
         and customer.ingest_batch_id == progress.batch_id
-        and (
-            progress.status == "RUNNING"
-            or (progress.status == "DONE" and progress.research_done_count < progress.new_count)
-        )
+        and progress.status == "RUNNING"
     ):
         return "RUNNING"
     # #690: 관심을 켜서 시작된 조사가 도는 중이면 "조사 중".
@@ -106,6 +106,11 @@ def research_state(
         if session is not None and limit_skipped(session, _opp_ids(customer)):
             return "LIMIT_SKIPPED"
         return "READ_FAILED"
+    # #744: 홈페이지가 없는 회사도 자동 조사가 방금 시작했으면(홈페이지 찾기 전) "조사 중"이다.
+    # 목록이 회사마다 DB를 더 읽지 않게, 이 서버에서 자동 조사가 도는 중일 때만 시작 표시 행을 본다.
+    session = _session_of(customer)
+    if any_running() and session is not None and just_started(session, _opp_ids(customer)):
+        return "RUNNING"
     return "NOT_TRIED"
 
 

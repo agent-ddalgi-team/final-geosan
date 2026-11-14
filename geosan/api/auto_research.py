@@ -11,52 +11,67 @@
   예상보다 큰 만큼만 넘을 수 있다.
 - "조사 중" 표시: 이 프로세스의 메모리에만 둔다. 서버가 다시 켜지면 사라지고, 그 뒤 화면은
   저장된 값으로 정한 상태(읽기 실패 등)를 보인다.
+- #744: 찾기로 들어온 회사의 자동 조사 대기 줄(workflows/research_queue.py)과 하루 금액을 함께 쓴다.
+  이 서버가 그날 처음 받는 목록 읽기 뒤에 줄을 한 번 이어서 돌린다(다음 날 이어서).
 """
 
 from __future__ import annotations
 
 import logging
-import time
 from contextlib import contextmanager
 from contextvars import ContextVar
-from datetime import UTC, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from threading import Lock
 
 from fastapi import BackgroundTasks
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
 from geosan.config.errors import AppError, RunFailedError
+from geosan.config.sales_questions import CLOSED_STAGES
 from geosan.evidence.models import Evidence
 from geosan.evidence.transfer import (
     KST,
     MONTHLY_LIMIT_REASONS,
     TransferLog,
-    accounted_cost,
     record_search_rejection,
 )
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.storage.base import new_id, utcnow
+from geosan.records.models import Outcome, ReviewOpinion
+from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
+from geosan.workflows import research_queue
 from geosan.workflows.research import research_one
+from geosan.workflows.research_queue import (
+    BOOKMARK_REQUESTER,
+    FAILURE_REASON,
+    LIMIT_REASON,
+    PAUSED_REASON,
+    QUEUE_REQUESTER,
+    any_running,
+    is_running,
+)
 
 logger = logging.getLogger("geosan")
 
-AUTO_REQUESTER = "auto-bookmark"
-LIMIT_REASON = "관심 자동 조사 하루 금액 한도 초과"
-FAILURE_REASON = "자동 조사 중단 · 조사를 끝내지 못했습니다"
-
-# 조사 한 곳의 60초 한도에 여유를 더한 시간. 조사가 끝맺지 못해도(서버가 꺼짐 등)
-# "조사 중" 표시와 "방금 시작한 조사" 셈이 이 시간 뒤에는 저절로 풀린다. 영업 규칙이 아니다.
-_RUNNING_SECONDS = 90
+AUTO_REQUESTER = BOOKMARK_REQUESTER
+# 아래 이름은 대기 줄(#744)과 함께 쓰려고 workflows/research_queue.py로 옮겼다. 같은 값·같은 함수다.
+_RUNNING_SECONDS = research_queue.RUNNING_SECONDS
+_started = research_queue._started
+_day_start = research_queue.day_start
+spent_today = research_queue.spent_today
+_pending_starts = research_queue.pending_starts
+used_today = research_queue.used_today
+__all__ = ["FAILURE_REASON", "LIMIT_REASON", "any_running", "is_running"]
 
 _tasks: ContextVar[BackgroundTasks | None] = ContextVar("geosan_auto_research", default=None)
 # #719: 이번 저장으로 영업이 끝나는(성사·거절·보류) 요청은 관심이 켜져도 조사를 예약하지 않는다.
 _paused: ContextVar[bool] = ContextVar("geosan_auto_research_paused", default=False)
-_started: dict[str, float] = {}
-_lock = Lock()
+# #744: 하루 첫 목록 읽기 때 대기 줄을 한 번 이어서 돌린다. 이 프로세스에서 이미 돌린 날(한국 시간).
+_queue_day = None
+_queue_day_lock = Lock()
 
 
 @contextmanager
@@ -74,43 +89,10 @@ async def attach_background(background_tasks: BackgroundTasks) -> None:
     _tasks.set(background_tasks)
 
 
-def is_running(opp_id: str) -> bool:
-    with _lock:
-        started = _started.get(opp_id)
-        if started is None:
-            return False
-        if time.monotonic() - started > _RUNNING_SECONDS:
-            del _started[opp_id]
-            return False
-        return True
-
-
-def any_running() -> bool:
-    with _lock:
-        return bool(_started)
-
-
-def _day_start():
-    local = utcnow().astimezone(KST)
-    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
-
-
 def _marker(opportunity: Opportunity, *, reject_reason: str | None) -> TransferLog:
     """관심 자동 조사의 시작(허용) 또는 건너뜀(거부) 1행. 호출 수 0, 본문 없음(계약 C4)."""
-    return TransferLog(
-        transfer_log_id=new_id("transfer"),
-        occurred_at=utcnow(),
-        opp_id=opportunity.opp_id,
-        purpose="EXTERNAL_AI",
-        kind="PUBLIC_TEXT",
-        mode="NONE",
-        security_grade="PUBLIC",
-        decision="REJECTED" if reject_reason else "ALLOWED",
-        reject_reason=reject_reason,
-        requested_by=AUTO_REQUESTER,
-        call_count=0,
-        dataset_kind=opportunity.dataset_kind,
-        is_virtual=opportunity.is_virtual,
+    return research_queue.start_marker(
+        opportunity, requester=AUTO_REQUESTER, reject_reason=reject_reason
     )
 
 
@@ -160,64 +142,6 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
     tasks.add_task(run_auto_research, opp_id)
 
 
-def spent_today(session: Session, llm) -> Decimal:
-    """관심 자동 조사가 오늘(한국 시간) 쓴 AI 비용. 월 한도와 같은 계산(미확정 호출은 추정)이다."""
-    rows = session.scalars(
-        select(TransferLog).where(
-            TransferLog.requested_by == AUTO_REQUESTER,
-            TransferLog.occurred_at >= _day_start(),
-            TransferLog.call_count > 0,
-        )
-    ).all()
-    return sum((accounted_cost(row, llm) for row in rows), Decimal(0))
-
-
-def _pending_starts(session: Session) -> list[TransferLog]:
-    """방금 시작해 아직 끝나지 않은 관심 자동 조사의 시작 표시 행(#719).
-
-    조사 한 곳 최대 시간("조사 중" 표시와 같은 시간) 안에 남았고, 그 뒤 그 회사의 AI 호출 행이나
-    거부 행이 아직 없는 것만이다. 서버가 꺼져 끝나지 못한 조사는 시간이 지나면 빠진다.
-    """
-    since = max(_day_start(), utcnow() - timedelta(seconds=_RUNNING_SECONDS))
-    starts = session.scalars(
-        select(TransferLog).where(
-            TransferLog.requested_by == AUTO_REQUESTER,
-            TransferLog.purpose == "EXTERNAL_AI",
-            TransferLog.decision == "ALLOWED",
-            TransferLog.call_count == 0,
-            TransferLog.occurred_at >= since,
-        )
-    ).all()
-    return [
-        row
-        for row in starts
-        if session.scalar(
-            select(TransferLog.transfer_log_id)
-            .where(
-                TransferLog.opp_id == row.opp_id,
-                TransferLog.purpose == "EXTERNAL_AI",
-                TransferLog.transfer_log_id != row.transfer_log_id,
-                TransferLog.occurred_at >= row.occurred_at,
-                or_(TransferLog.call_count > 0, TransferLog.decision == "REJECTED"),
-            )
-            .limit(1)
-        )
-        is None
-    ]
-
-
-def used_today(session: Session, settings, *, pending: list[TransferLog] | None = None) -> Decimal:
-    """하루 금액과 견줄 값: 오늘 쓴 금액 + 방금 시작한 조사 1곳마다 예상 비용(#719).
-
-    비용은 AI 호출이 끝나야 찍혀서, 연달아 관심을 켜면 모두 "아직 0원"으로 보여 한꺼번에
-    시작됐다. 예상 비용은 후보 찾기 예상 금액과 같은 설정(회사 1곳 조사 실측 평균)을 쓴다.
-    """
-    if pending is None:
-        pending = _pending_starts(session)
-    estimate = Decimal(str(settings.ingestion.cost_estimate.research_usd_per_company))
-    return spent_today(session, settings.llm) + estimate * len(pending)
-
-
 def run_auto_research(opp_id: str) -> None:
     """응답 뒤(관심 저장이 확정된 뒤) 한 번 실행. 실패는 숨기지 않는다.
 
@@ -225,8 +149,7 @@ def run_auto_research(opp_id: str) -> None:
     저장이 되돌려진 요청은 이 함수가 불리지 않으므로 표시만 남는 일이 없다.
     """
     started_at = utcnow()
-    with _lock:
-        _started[opp_id] = time.monotonic()
+    research_queue.mark_running(opp_id)
     try:
         try:
             error = research_one(
@@ -243,8 +166,7 @@ def run_auto_research(opp_id: str) -> None:
             logger.warning("bookmark.research_failed", extra={"oppId": opp_id, "ref": error.ref})
             _record_failure(opp_id, error, started_at)
     finally:
-        with _lock:
-            _started.pop(opp_id, None)
+        research_queue.unmark_running(opp_id)
 
 
 def _record_failure(opp_id: str, error: AppError, started_at) -> None:
@@ -280,24 +202,11 @@ def _record_failure(opp_id: str, error: AppError, started_at) -> None:
 
 def _latest_attempt(session: Session, opp_ids: list[str]):
     """이 회사의 마지막 조사 시도 기록(전송 기록의 AI 용도 행) 1행. 없으면 None."""
-    if not opp_ids:
-        return None
-    return session.execute(
-        select(
-            TransferLog.reject_reason,
-            TransferLog.requested_by,
-            TransferLog.decision,
-            TransferLog.call_count,
-            TransferLog.occurred_at,
-        )
-        .where(TransferLog.opp_id.in_(opp_ids), TransferLog.purpose == "EXTERNAL_AI")
-        .order_by(TransferLog.occurred_at.desc(), TransferLog.transfer_log_id.desc())
-        .limit(1)
-    ).one_or_none()
+    return research_queue.latest_attempt(session, opp_ids)
 
 
 def just_started(session: Session, opp_ids: list[str]) -> bool:
-    """관심 저장이 방금 조사를 예약했고 아직 끝나지 않았는가(researchState RUNNING, #719).
+    """자동 조사(관심·대기 줄)가 방금 시작했고 아직 끝나지 않았는가(researchState RUNNING, #744).
 
     서버 메모리의 "조사 중" 표시는 조사가 실제로 시작될 때 켜진다. 저장 직후 화면이 상세를
     다시 읽는 사이에는 저장된 시작 표시 행(마지막 기록이 그 행이고 최대 시간 안)으로 안다.
@@ -305,8 +214,8 @@ def just_started(session: Session, opp_ids: list[str]) -> bool:
     latest = _latest_attempt(session, opp_ids)
     return (
         latest is not None
-        and (latest.requested_by, latest.decision, latest.call_count)
-        == (AUTO_REQUESTER, "ALLOWED", 0)
+        and latest.requested_by in research_queue.AUTO_REQUESTERS
+        and (latest.decision, latest.call_count) == ("ALLOWED", 0)
         and latest.occurred_at >= utcnow() - timedelta(seconds=_RUNNING_SECONDS)
     )
 
@@ -314,12 +223,91 @@ def just_started(session: Session, opp_ids: list[str]) -> bool:
 def limit_skipped(session: Session, opp_ids: list[str]) -> bool:
     """이 회사의 마지막 조사 시도가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED).
 
-    관심 자동 조사의 하루 금액 한도, 그리고 월 한도 거부(#719: 예전에는 "읽기 실패"로 보였다).
-    그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 "한도로 건너뜀"이 아니다.
+    관심 자동 조사의 하루 금액 한도, 월 한도 거부(#719: 예전에는 "읽기 실패"로 보였다),
+    대기 줄의 멈춤(#744). 그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 아니다.
     """
     latest = _latest_attempt(session, opp_ids)
     if latest is None or latest.decision != "REJECTED":
         return False
     if latest.reject_reason in MONTHLY_LIMIT_REASONS:
         return True
-    return (latest.reject_reason, latest.requested_by) == (LIMIT_REASON, AUTO_REQUESTER)
+    return (latest.reject_reason, latest.requested_by) in {
+        (LIMIT_REASON, AUTO_REQUESTER),
+        (PAUSED_REASON, QUEUE_REQUESTER),
+    }
+
+
+# ---------- 찾기 뒤 자동 조사 대기 줄: 다음 날 이어서(#744) ----------
+
+
+def _closed(session: Session, opp_ids: list[str]) -> set[str]:
+    """끝난 회사(#675 "끝난 회사" 묶음 가운데 기록 부품에 있는 것): 제외 의견, 성사·거절·보류.
+
+    거래 중·필수 탈락은 대기 줄 쪽에서 이미 거른다. 최신 값은 목록 묶음과 같은 순서로 읽는다.
+    """
+    opinions = dict(
+        session.execute(
+            select(ReviewOpinion.opp_id, ReviewOpinion.opinion)
+            .where(ReviewOpinion.opp_id.in_(opp_ids))
+            .order_by(ReviewOpinion.version, ReviewOpinion.recorded_at)
+        ).all()
+    )
+    stages = dict(
+        session.execute(
+            select(Outcome.opp_id, Outcome.status)
+            .where(Outcome.opp_id.in_(opp_ids), Outcome.cancelled_at.is_(None))
+            .order_by(Outcome.version)
+        ).all()
+    )
+    closed = {status.value for status in CLOSED_STAGES}
+    return {
+        opp_id
+        for opp_id in opp_ids
+        if opinions.get(opp_id) == _OPINION_EXCLUDED or stages.get(opp_id) in closed
+    }
+
+
+_OPINION_EXCLUDED = "NOT_TARGET"
+
+
+def run_waiting_queue(progress_batch_id: str | None = None) -> research_queue.QueueRun:
+    """조사 대기 줄을 하루 금액 안에서 돌린다. 끝난 회사는 뺀다. 실패는 줄 안에서 기록한다."""
+    return research_queue.run_queue(
+        lambda opp_id: research_one(opp_id),
+        exclude=_closed,
+        progress_batch_id=progress_batch_id,
+    )
+
+
+def continue_queue_today(session: Session, background_tasks: BackgroundTasks) -> None:
+    """목록 읽기에서 부른다. 이 서버가 오늘(한국 시간) 아직 줄을 안 돌렸으면 응답 뒤 한 번 돌린다.
+
+    스위치가 꺼져 있거나 하루 금액이 0이면, 외부 AI 설정이 꺼져 있으면 아무것도 하지 않는다.
+    """
+    global _queue_day
+    settings = runtime_for(session).app_settings
+    if research_queue.daily_limit(settings) is None or settings.llm.mode != "EXTERNAL":
+        return
+    today = utcnow().astimezone(KST).date()
+    with _queue_day_lock:
+        if _queue_day == today:
+            return
+        _queue_day = today
+    background_tasks.add_task(_run_queue_safely)
+
+
+def _run_queue_safely() -> None:
+    try:
+        run = run_waiting_queue()
+    except Exception as error:
+        # 줄이 멈춰도 목록 응답은 이미 나갔다. 숨기지 않고 로그에 남긴다.
+        logger.error("queue.run_failed", extra={"type": type(error).__name__})
+        return
+    logger.info("queue.run_done", extra={"count": len(run.researched), "stopped": run.stopped})
+
+
+def reset_queue_day() -> None:
+    """검사용: 이 서버가 오늘 줄을 돌렸다는 표시를 지운다."""
+    global _queue_day
+    with _queue_day_lock:
+        _queue_day = None

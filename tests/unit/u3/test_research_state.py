@@ -45,15 +45,18 @@ def test_scored_and_case_file_companies_have_no_state():
     assert research_state(company(ingest_batch_id=None), batch(), scored=False) is None
 
 
+# (바뀜 #744, PM 결정 2026-11-14) "회차는 끝났는데 조사 n/m이 덜 참"(DONE, 3/10)은 더는 "조사 중"이
+# 아니다. 자동 조사가 적합도 하·하루 금액 한도로 일부 회사를 건너뛰어 수가 끝내 같아지지 않는다.
+# 그 경우는 test_research_queue.py의
+# test_batch_done_with_unresearched_companies_is_not_running이 본다.
 @pytest.mark.parametrize(
     "progress",
     [
         batch(status="RUNNING", research_done_count=0),
-        batch(status="DONE", new_count=10, research_done_count=3),
     ],
 )
 def test_company_of_a_batch_still_researching_is_running(progress):
-    """Given 마지막 회차가 아직 찾거나 조사하는 중 / Then "조사 중"(목록 머리 "조사 n/m" 기준)."""
+    """Given 마지막 회차가 아직 찾는 중 / Then "조사 중"."""
     customer = company(homepage_status="NOT_FOUND")
     assert research_state(customer, progress, scored=False) == "RUNNING"
 
