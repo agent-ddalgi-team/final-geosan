@@ -149,16 +149,21 @@ interface SearchBoxProps {
   /** 지금 검색어. 검색 중이 아니면 빈 글자. */
   initial: string;
   onSearch: (text: string) => void;
+  /** 검색 중에 칸을 비우고 [검색]·Enter를 누르면 검색을 푼다(#719 후속). */
+  onClear?: () => void;
 }
 
 /** 회사 이름 검색 칸. 주소의 검색어가 바뀌면 부모가 `key`로 새로 그려 칸의 글자를 맞춘다. */
-function SearchBox({ initial, onSearch }: SearchBoxProps) {
+function SearchBox({ initial, onSearch, onClear }: SearchBoxProps) {
   const [text, setText] = useState(initial);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const value = text.trim();
-    // 빈 검색어·공백만 있는 검색어로는 검색하지 않는다.
-    if (!value) return;
+    // 빈 검색어로는 검색하지 않는다. 다만 검색 중이었으면 칸을 비운 것은 "검색 풀기"로 읽는다.
+    if (!value) {
+      if (initial && onClear) onClear();
+      return;
+    }
     onSearch(value);
   };
   return (
@@ -293,7 +298,12 @@ export default function ListFilterBar({
             testId="list-distance-select"
           />
         ) : null}
-        <SearchBox key={query ?? ''} initial={query ?? ''} onSearch={onSearch} />
+        <SearchBox
+          key={query ?? ''}
+          initial={query ?? ''}
+          onSearch={onSearch}
+          onClear={onClearSearch}
+        />
         <div
           role="group"
           aria-label={listSearch.sortLabel}
