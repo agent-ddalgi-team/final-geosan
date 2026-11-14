@@ -42,6 +42,7 @@ cd web && npm ci && cd ..
 | 미확정 AI 사용 기록 정리(선택) | `geosan transfer-unblock`은 조회만 합니다. 필요할 때 제공사에서 기록별 사용량을 확인해 정산하면 추정 대신 실제 비용을 씁니다. 필요한 계정·서버 권한과 실행 순서는 [사용량 정산 안내](docs/transfer-unblock-guide.md)를 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
+| 발표 시연용 DB에 가상 영업 기록 넣기(#274) | `geosan seed-demo-records [examples/demo-records.yaml]`. 시연 표시가 있는 DB에서만 동작하고 실제 DB에서는 거부합니다. 이미 기록이 있는 회사는 건너뜁니다. 순서는 아래 "발표 시연용 DB" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 | 백업·되돌리기 | `geosan backup [--to <폴더>]`(서버 켜진 채로 가능, 기본 `backups/`) → 문제가 생기면 서버를 멈추고 `geosan restore <백업 파일>`(확인 질문 1회, 지금 DB는 자동 보관) → `geosan init-db` → `geosan serve`. 절차는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) |
 
@@ -57,6 +58,26 @@ geosan source-confirm kicox-production-api --by choi-pm
 약관 주소 기본값은 [공장현황 파일 자료 페이지](https://www.data.go.kr/data/15105482/fileData.do)와 [공장등록 조회 자료 페이지](https://www.data.go.kr/data/15087611/openapi.do)입니다. 두 자료 모두 이용허락범위 제한 없음으로 PM이 확인했습니다(2026-11-09, #489). 다른 확인 주소는 `--terms`로 지정합니다.
 `init-db`와 마찬가지로 실제 DB 볼륨이 붙은 실행 환경 안에서 실행해야 합니다. 다른 PC의 DB에 기록해도 서버 DB에는 반영되지 않습니다.
 이 명령은 외부 사이트에 접속하거나 이용 조건을 자동으로 확인하지 않습니다. API 키도 필요하지 않습니다.
+
+**발표 시연용 DB(#274, PM 결정 2026-11-04)** — 가상 회사 6곳(성사 3·거절 3)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
+
+```bash
+export GEOSAN_DB_PATH=./data/geosan-demo.db      # 윈도우 PowerShell: $env:GEOSAN_DB_PATH = "./data/geosan-demo.db"
+geosan init-db
+geosan check-config examples/rule-config.yaml examples/app-settings-demo.yaml   # 띠 "시연용 · 가상 자료" + 시연 표시
+geosan import-capability examples/capability-geosan.json
+geosan import-case examples/case-apjeong.json
+geosan import-case examples/demo/case-demo-b-metal.json
+geosan import-case examples/demo/case-demo-c-industry.json
+geosan import-case examples/demo/case-demo-d-tech.json
+geosan import-case examples/demo/case-demo-e-machining.json
+geosan import-case examples/demo/case-demo-f-valve.json
+geosan evaluate
+geosan seed-demo-records                          # 가상 영업 기록: 성사 3곳·거절 3곳(가격·납기·기존 거래처)
+geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
+```
+
+거산 전달·배포 환경에서는 이 DB를 쓰지 않습니다. 배포 설정(`--host 0.0.0.0` 또는 `GEOSAN_PASSWORD`가 있는 환경)에서 DB 파일 이름이 `geosan-demo.db`이거나 DB 안에 시연 표시(`brand.demo`)가 있으면 `geosan serve`가 "시연용 DB는 배포 환경에서 쓸 수 없습니다"를 내고 종료 코드 2로 멈춥니다. 시연 DB에는 시연용 설정만 등록할 수 있어 파일 이름을 바꿔도 표시가 남습니다. 외부 AI·웹 검색·홈페이지 조사는 시연용 설정에서 모두 꺼져 있습니다.
 
 검수 전환은 거래 관계나 필수 요구의 확인 상태를 바꾸지 않습니다. 기존 점수 표시 약속에 따라
 확인 묶음에서도 필수조건 확인 필요·운영 준비 중인 카드는 `--`로 보입니다.

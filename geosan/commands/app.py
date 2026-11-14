@@ -379,6 +379,22 @@ def demo_report(
     raise typer.Exit(code=run_demo_report(capability, cases, out, base_date))
 
 
+@app.command("seed-demo-records")
+def seed_demo_records(
+    file: Path | None = typer.Argument(
+        None, help="가상 영업 기록 파일(YAML). 기본 examples/demo-records.yaml"
+    ),
+) -> None:
+    """발표 시연용 DB에 가상 회사의 영업 기록(성사·거절)을 넣습니다.
+
+    시연 표시가 있는 DB에서만 동작합니다. 실제 DB에는 넣지 않습니다(종료 코드 1).
+    이미 영업 기록이 있는 회사는 건너뜁니다(#274, 계약 C8).
+    """
+    from geosan.commands.seed_demo_records import run_seed_demo_records
+
+    raise typer.Exit(code=run_seed_demo_records(file))
+
+
 @db_app.command("merge-heads")
 def db_merge_heads() -> None:
     """마이그레이션 머리가 둘일 때 하나로 합칩니다."""

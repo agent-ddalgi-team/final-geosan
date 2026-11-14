@@ -1,0 +1,209 @@
+{
+  "_설명": "E기공(가상) 가상 사례(CaseFile, 계약 C7) — 발표 시연용 DB(#274)에만 넣는다. 회사·품목·근거는 모두 지어낸 것이며 '가상·거산 실제 사양 아님'이다. 실제 회사와 관계없다. 기대값(expected)은 두지 않는다. 형식 설명서: contracts/case-file.schema.json.",
+  "caseId": "demo-e-machining",
+  "baseDate": "2026-11-14",
+  "description": "E기공(가상) 기계 체결 부품 아연도금 — 시연용 가상 사례",
+  "isVirtual": true,
+  "datasetKind": "VIRTUAL_REVIEWED",
+  "notes": [
+    "가상·거산 실제 사양 아님",
+    "발표 시연용 DB 전용 (#274)"
+  ],
+  "customer": {
+    "industries": [
+      "기계·설비"
+    ],
+    "name": "E기공(가상)",
+    "bizNumber": null,
+    "address": "대전 (가상)",
+    "identityBasis": "시연용 가상 사례",
+    "relationStatus": "NEW_CONFIRMED",
+    "relationConfirmedAt": "2026-11-01",
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "기계 체결 부품 아연도금",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": "park-lee"
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "manual-case",
+      "originKey": "demo-e-machining-origin",
+      "discoveredAt": "2026-11-01"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ZINC_PLATING",
+      "appliedMaterial": "FE"
+    }
+  ],
+  "requirements": [],
+  "signals": [
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2026-10-20",
+      "announcedAt": "2026-10-20",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "DIRECT"
+    }
+  ],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "기계 체결 부품 생산 (가상 홈페이지)",
+      "sourceRef": "E기공 홈페이지 제품 소개 (가상)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "철강 소재 (가상 홈페이지)",
+      "sourceRef": "E기공 홈페이지 제품 소개 (가상)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "내식성 요구 (가상 홈페이지)",
+      "sourceRef": "E기공 홈페이지 제품 소개 (가상)",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "가공 설비 증설 (가상 소식)",
+      "sourceRef": "E기공 소식 (가상)",
+      "occurredAt": "2026-10-20",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": 1.0,
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "표면처리가 필요한 기계 체결 부품 생산 (해당, 확인) — 가상",
+      "evidenceRefs": [
+        0
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "철강 — 아연도금 처리 소재와 일치 (확인) — 가상",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ZINC_PLATING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_BONUS",
+      "factJudged": "같은 산업 납품 실적 없음 → 가점 없음 — 가상",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "내식성 요구 — 아연도금 태그와 1개 일치 (확인) — 가상",
+      "evidenceRefs": [
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ZINC_PLATING"
+        }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "직접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "가공 설비 증설 신호 직접 관련 (확인) — 가상",
+      "evidenceRefs": [
+        3
+      ],
+      "signalRefs": [
+        0
+      ],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "신규 수주 신호 없음 (판정 완료)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "공고 신호 없음 (판정 완료)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "채용 신호 미확보",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": null
+}

@@ -1,0 +1,161 @@
+_설명: >-
+  발표 시연용 DB에 넣는 가상 영업 기록(#274, 약속 C7). `geosan seed-demo-records`가 읽는다.
+  회사·메모·이유는 모두 지어낸 것이며 가상·거산 실제 사양 아님. 실제 회사·사람 이름과 연락처는 적지 않는다(적으면 거부된다).
+  caseId는 가상 사례 파일(examples/case-apjeong.json, examples/demo/case-demo-*.json)의 caseId다.
+  daysAgo는 "넣는 날 기준 며칠 전 접촉인지"다. 날짜를 박아 두지 않아 언제 넣어도 최근 12개월 안에 든다.
+  answers의 questionId·answerId는 꼬리 질문 파일(examples/sales-questions.yaml)의 id다.
+  성사·거절은 따로 적지 않는다. 마지막 접촉의 마무리 답(NEXT_ACTION END → CLOSE_RESULT → LOST_REASON)으로 정해진다.
+  시연 표시(brand.demo)가 있는 DB에만 들어가고, 이미 영업 기록이 있는 회사는 건너뛴다.
+version: 1
+staffKey: park-lee
+companies:
+  # ── 성사 3곳: 접촉 2~3회, 견적·샘플을 거쳐 성사 ──
+  - caseId: apjeong-valve-anodizing   # A정밀 · 아노다이징
+    contacts:
+      - daysAgo: 75
+        method: CALL
+        result: REACHED
+        memo: "(가상) 구매 부서와 통화. 밸브 바디 표면처리를 외주로 맡기는 중이라고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+      - daysAgo: 52
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 소개서를 보낸 뒤 견적 요청을 받음"
+        answers:
+          - { questionId: SWITCH_INTENT, answerId: "YES" }
+          - { questionId: INTEREST_DRIVER, answerId: SAMPLE }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 21
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 방문해 샘플 결과를 함께 확인. 양산 물량부터 맡기기로 함"
+        answers:
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-b-metal   # B금속(가상) · 아연도금
+    contacts:
+      - daysAgo: 120
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 담당 부서 부재. 다음 주에 다시 걸기로 함"
+      - daysAgo: 113
+        method: CALL
+        result: REACHED
+        memo: "(가상) 브라켓 도금 외주처를 한 곳 더 찾는 중이라고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: SWITCH_INTENT, answerId: "YES" }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+      - daysAgo: 84
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 견적서를 들고 방문. 샘플 합격 뒤 첫 발주를 받음"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-c-industry   # C산업(가상) · 무전해니켈
+    contacts:
+      - daysAgo: 200
+        method: CALL
+        result: REACHED
+        memo: "(가상) 장비 프레임 부품 도금을 외주로 주고 있고 인증서를 먼저 보고 싶다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: INTEREST_DRIVER, answerId: CERTIFICATION }
+          - { questionId: QUOTE_REQUEST, answerId: MATERIAL }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+      - daysAgo: 160
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 인증서와 견적을 보낸 뒤 방문 요청을 받아 샘플까지 진행. 정기 물량을 맡기로 함"
+        answers:
+          - { questionId: SENT_ITEM, answerId: CERTIFICATE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: VISIT }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  # ── 거절 3곳: 이유는 가격 · 납기 · 기존 거래처 유지 각 1곳 ──
+  - caseId: demo-d-tech   # D테크(가상) · 아노다이징 · 거절(가격)
+    contacts:
+      - daysAgo: 40
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 33
+        method: CALL
+        result: REACHED
+        memo: "(가상) 방열판 아노다이징 견적을 받아 보고 싶다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: INTEREST_DRIVER, answerId: PRICE }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+      - daysAgo: 15
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 견적 검토 결과를 메일로 받음"
+        reason: "(가상) 지금 외주 단가보다 높아 이번에는 진행하지 않겠다는 답"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: PRICE }
+  - caseId: demo-e-machining   # E기공(가상) · 아연도금 · 거절(납기)
+    contacts:
+      - daysAgo: 28
+        method: CALL
+        result: REACHED
+        memo: "(가상) 체결 부품 도금은 외주. 납기가 맞으면 검토하겠다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: LOW }
+          - { questionId: INTEREST_DRIVER, answerId: LEAD_TIME }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 9
+        method: CALL
+        result: REACHED
+        memo: "(가상) 납기 조건을 다시 물어 옴"
+        reason: "(가상) 요구한 납기가 짧아 맞추기 어렵다고 서로 확인"
+        answers:
+          - { questionId: SWITCH_INTENT, answerId: NOT_NOW }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: LEAD_TIME }
+  - caseId: demo-f-valve   # F밸브(가상) · 부동태 · 거절(기존 거래처 유지)
+    contacts:
+      - daysAgo: 20
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일을 보냈으나 답 없음"
+      - daysAgo: 12
+        method: CALL
+        result: DECLINED
+        memo: "(가상) 통화는 됐으나 제안을 거절"
+        reason: "(가상) 오래 거래한 외주처가 있어 바꿀 계획이 없다고 함"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: INCUMBENT_SUPPLIER }
