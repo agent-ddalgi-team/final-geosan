@@ -65,11 +65,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.lock -e .
 
-      # 묶음마다 커버리지 자료만 남긴다. 80% 하한은 아래 python-coverage가 세 묶음을 합쳐서 본다.
+      # 묶음마다 커버리지 자료만 남긴다. 한 묶음만으로는 80%가 안 되므로 여기서는 하한을 보지 않고(--cov-fail-under=0),
+      # 80% 하한은 아래 python-coverage가 세 묶음을 합쳐서 본다(하한 자체는 그대로다).
       - name: 단위 테스트 (${{ matrix.shard.name }})
         env:
           COVERAGE_FILE: .coverage.${{ matrix.shard.name }}
-        run: python -m pytest ${{ matrix.shard.paths }} -q --cov=geosan --cov-report=
+        run: python -m pytest ${{ matrix.shard.paths }} -q --cov=geosan --cov-report= --cov-fail-under=0
 
       - uses: actions/upload-artifact@v4
         with:
