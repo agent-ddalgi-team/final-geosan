@@ -56,6 +56,8 @@ class VisitGroup(_ApiModel):
     """방문할 회사(points 가운데 진행 중·관심) 하나와 그 반경 안의 근처 회사(가까운 순)."""
 
     opp_id: str
+    # 이 회사에 쓴 반경(km). 기본 반경 안이 기준 곳 수 미만이면 넓힌 반경이다(#743).
+    radius_km: float
     nearby: list[VisitNearby]
 
 
@@ -66,6 +68,8 @@ class DashboardMap(_ApiModel):
     missing_coordinates: int
     as_of: datetime
     visit_radius_km: float
+    # 기본 반경 안 관심 기업이 이 수 미만이면 그 회사만 넓힌다(설정, #743).
+    visit_widen_below_count: int
     visit_groups: list[VisitGroup]
 
 
@@ -95,6 +99,7 @@ def dashboard_map(response: Response, session: SessionDep):
             missing_coordinates=missing,
             as_of=now,
             visit_radius_km=settings.visit_group_radius_km,
+            visit_widen_below_count=settings.visit_group_widen_below_count,
             visit_groups=[VisitGroup.model_validate(group) for group in visit_groups],
         ),
         meta=Meta(

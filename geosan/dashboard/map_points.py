@@ -89,8 +89,15 @@ def build_visit_groups(settings, points):
     근처 회사도 관심 기업(지도 점: 관심·진행 중·올해 성공)만 넣는다. 영업 후보 목록에는 담당자가
     아직 보지 않은 회사도 있어서 넣지 않는다(PM 정정 2026-11-13). 좌표는 지도 점과 같은 값을 쓰므로
     외부 좌표 조회를 새로 하지 않는다.
+
+    반경 넓히기(#743, PM 결정 2026-11-14): 회사마다 따로, 기본 반경 안 관심 기업이
+    `visit_group_widen_below_count` 곳 미만이면 그 회사만 `visit_group_wide_radius_km`까지 본다
+    (넓힌 반경이 기본보다 크지 않으면 넓히지 않는다). 대시보드 지도·[묻기]·오늘 정리가 이 결과를
+    함께 쓴다. 묶음마다 쓴 반경을 radius_km로 돌려준다.
     """
-    radius = settings.visit_group_radius_km
+    base = settings.visit_group_radius_km
+    wide = settings.visit_group_wide_radius_km
+    below = settings.visit_group_widen_below_count
     anchors = [point for point in points if point["group"] in VISIT_ANCHOR_GROUPS]
     order = {group: index for index, group in enumerate(VISIT_ANCHOR_GROUPS)}
     anchors.sort(
@@ -98,22 +105,26 @@ def build_visit_groups(settings, points):
     )
     result = []
     for anchor in anchors:
-        nearby = []
-        for point in points:
-            if point["opp_id"] == anchor["opp_id"]:
-                continue
-            km = straight_distance_km(anchor["lat"], anchor["lng"], point["lat"], point["lng"])
-            if km <= radius:
-                nearby.append(
-                    dict(
-                        opp_id=point["opp_id"],
-                        customer_name=point["customer_name"],
-                        lat=point["lat"],
-                        lng=point["lng"],
-                        distance_km=round(km, 1),
-                        group=point["group"],
-                    )
-                )
+        measured = [
+            (point, straight_distance_km(anchor["lat"], anchor["lng"], point["lat"], point["lng"]))
+            for point in points
+            if point["opp_id"] != anchor["opp_id"]
+        ]
+        radius = base
+        if wide > base and sum(km <= base for _, km in measured) < below:
+            radius = wide
+        nearby = [
+            dict(
+                opp_id=point["opp_id"],
+                customer_name=point["customer_name"],
+                lat=point["lat"],
+                lng=point["lng"],
+                distance_km=round(km, 1),
+                group=point["group"],
+            )
+            for point, km in measured
+            if km <= radius
+        ]
         nearby.sort(key=lambda row: (row["distance_km"], row["opp_id"]))
-        result.append(dict(opp_id=anchor["opp_id"], nearby=nearby))
+        result.append(dict(opp_id=anchor["opp_id"], radius_km=radius, nearby=nearby))
     return result

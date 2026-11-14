@@ -144,6 +144,20 @@
       "default": 5,
       "description": "대시보드 지도 '같이 들를 곳' 반경(km, #673)"
     },
+    "visitGroupWidenBelowCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 5,
+      "description": "방문할 회사 기준 visitGroupRadiusKm 안 관심 기업이 이 수 미만이면 그 회사만 visitGroupWideRadiusKm까지 넓힌다(#743)"
+    },
+    "visitGroupWideRadiusKm": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 50,
+      "default": 10,
+      "description": "'같이 들를 곳' 넓힌 반경(km, #743). visitGroupRadiusKm보다 크지 않으면 넓히지 않는다"
+    },
     "candidateWebSearch": {
       "type": "object",
       "additionalProperties": false,

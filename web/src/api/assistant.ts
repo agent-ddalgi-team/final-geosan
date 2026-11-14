@@ -45,6 +45,30 @@ export function postAssistantAsk(question: string, staffKey: string) {
   });
 }
 
+// ---------- 오늘 정리(#743, 계약 C1 `GET /assistant/daily`) ----------
+// 서버가 하루(한국 날짜) 한 번만 AI를 부르고, 같은 날 다시 부르면 기억해 둔 글을 준다(reused = true).
+// 일정·같이 들를 곳(거리는 프로그램이 잰 값)·지난 7일 단계 이동·보류 회사를 몇 줄로 정리한 글이다.
+
+export interface DailyBrief {
+  summary: string;
+  /** 글의 근거 회사. AI가 아니라 서버가 만든다. */
+  sources: AssistantSource[];
+  aiGenerated: true;
+  /** 한국 날짜(YYYY-MM-DD). */
+  day: string;
+  generatedAt: string;
+  /** true = 오늘 이미 쓴 글을 다시 준 것(AI를 부르지 않음). */
+  reused: boolean;
+}
+
+export function getAssistantDaily(staffKey: string, signal?: AbortSignal) {
+  return request<DailyBrief>('/assistant/daily', {
+    staffKey,
+    signal,
+    timeoutMs: ASSISTANT_TIMEOUT_MS,
+  });
+}
+
 export function postCallPrep(oppId: string, staffKey: string) {
   return request<AssistantAnswer>(
     `/opportunities/${encodeURIComponent(oppId)}/assistant/call-prep`,

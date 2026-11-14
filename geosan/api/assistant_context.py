@@ -5,17 +5,19 @@ AI는 DB를 읽지 않는다. 여기서 이미 있는 계산(영업 분석표·�
 
 **고른 값만 싣는다.** 글에 들어가는 것: 회사 이름, 확정된 공정·산업, 관심 여부, 영업 큰 단계·세부
 단계, 접촉 날짜·방법·결과, 거절 이유의 쉬운 말, 꼬리 질문에서 고른 답(질문 글·보기 이름), 다음 일정
-날짜, 그 값들로 센 건수. **자유 글은 하나도 싣지 않는다**: 영업 메모(rec_note), 접촉의 한 줄
-메모(memo), 다음 일정의 할 일 글(next_schedule_note), 결과 사유 글(reason), 검토 의견의 메모·사유,
-비슷한 회사의 마지막 메모. 대표번호·주소·담당자 키·점수도 싣지 않는다(PM 결정 2026-11-14: 이름
-지우기가 직함 없는 이름을 놓친다). 이 파일은 그 칸들을 읽는 코드를 두지 않아 그 약속을 지킨다.
+날짜, 그 값들로 센 건수, 같이 들를 곳의 직선거리(km)·지도 묶음 이름(#743 — 대시보드 지도 함수가
+좌표로 잰 값만 받고 좌표는 싣지 않는다). **자유 글은 하나도 싣지 않는다**: 영업 메모(rec_note),
+접촉의 한 줄 메모(memo), 다음 일정의 할 일 글(next_schedule_note), 결과 사유 글(reason),
+검토 의견의 메모·사유, 비슷한 회사의 마지막 메모. 대표번호·주소·담당자 키·점수도 싣지 않는다
+(PM 결정 2026-11-14: 이름 지우기가 직함 없는 이름을 놓친다). 이 파일은 그 칸들을 읽는 코드를
+두지 않아 그 약속을 지킨다.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,6 +32,7 @@ from geosan.api.routes.records import (
 )
 from geosan.api.routes.sales_analysis import sales_analysis as sales_analysis_view
 from geosan.config.sales_questions import KST
+from geosan.dashboard.map_points import build_map_points, build_visit_groups
 from geosan.dashboard.queries import (
     METHOD_LABELS,
     RESULT_LABELS,
@@ -41,6 +44,7 @@ from geosan.dashboard.queries import (
 from geosan.dashboard.sales_analysis import CONFIRMED_INDUSTRY_SOURCES, LINK_CONFIRMED
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Outcome, OutcomeAnswer
+from geosan.storage.base import utcnow
 
 QUERY_COMPANY_LIST = "COMPANY_LIST"
 QUERY_COMPANY_SUMMARY = "COMPANY_SUMMARY"
@@ -55,6 +59,9 @@ _CLOSED = ("WON", "LOST")
 _WEEKDAYS = "월화수목금토일"
 _STEP_NOT_STARTED = "접촉 전"
 _STEP_ENDED = "해당 없음"
+_ON_HOLD = "ON_HOLD"
+# 대시보드 지도(#642·#673)의 묶음 이름. 화면 이름표(web labels `groups`)와 같은 말이다.
+MAP_GROUP_LABELS = {"INTERESTED": "관심", "IN_PROGRESS": "진행 중", "WON_THIS_YEAR": "올해 성공"}
 
 
 @dataclass(frozen=True)
@@ -259,8 +266,19 @@ def _reach_line(reach) -> str:
     )
 
 
-def build_ask_context(session: Session, today: date, max_companies: int) -> AssistantContext:
-    """질문에 답하기용 조회 5개. 대상은 활성 묶음뿐이다(영업 분석·대시보드와 같은 기준)."""
+@dataclass
+class _Selection:
+    """질문에 답하기·오늘 정리가 함께 쓰는 대상 회사(활성 묶음의 관심 회사 + 접촉한 회사)."""
+
+    analysis: object
+    population: object
+    ordered: list[str]
+    companies: list[_Company]
+    by_id: dict[str, _Company]
+    steps: dict[str, str]
+
+
+def _select_companies(session: Session, max_companies: int) -> _Selection:
     dataset_kind = runtime_for(session).app_settings.active_dataset_kind
     analysis = sales_analysis_view(session).data
     population = dashboard_population(dataset_kind.value)
@@ -275,12 +293,102 @@ def build_ask_context(session: Session, today: date, max_companies: int) -> Assi
     )
     # 관심 회사를 먼저, 그다음 이름순. 상한을 넘는 회사는 조회 글에 싣지 않는다.
     ordered = sorted(names, key=lambda opp_id: (opp_id not in bookmarked, names[opp_id], opp_id))
-    included = ordered[:max_companies]
-    companies = _load_companies(session, included, analysis.companies)
+    companies = _load_companies(session, ordered[:max_companies], analysis.companies)
     for company in companies:
         company.bookmarked = company.opp_id in bookmarked
-    steps = _step_labels(session)
-    by_id = {company.opp_id: company for company in companies}
+    return _Selection(
+        analysis=analysis,
+        population=population,
+        ordered=ordered,
+        companies=companies,
+        by_id={company.opp_id: company for company in companies},
+        steps=_step_labels(session),
+    )
+
+
+def _schedule_lines(
+    session: Session, today: date, selection: _Selection
+) -> tuple[list[str], list[str]]:
+    """놓친 일정·오늘·앞으로 7일(대시보드와 같은 기준). 날짜와 회사 이름만. 실린 회사도 준다."""
+    by_id = selection.by_id
+    due = sorted(
+        (row.next_schedule_at, by_id[row.opp_id].name, row.opp_id)
+        for row in session.scalars(schedule_due_outcomes(today, selection.population))
+        if row.opp_id in by_id
+    )
+    week_end = today + timedelta(days=SCHEDULE_WINDOW_DAYS)
+    lines = []
+    for label, picked in (
+        ("놓친 일정", [item for item in due if item[0] < today]),
+        ("오늘", [item for item in due if item[0] == today]),
+        (f"앞으로 {SCHEDULE_WINDOW_DAYS}일", [item for item in due if today < item[0] <= week_end]),
+    ):
+        text = ", ".join(f"{_day_label(day)} {name}" for day, name, _ in picked) or _NONE
+        lines.append(f"{label}: {text}")
+    return lines, [opp_id for _, _, opp_id in due]
+
+
+def _visit_lines(
+    session: Session, now: datetime, by_id: dict[str, _Company], until: date | None = None
+) -> tuple[list[str], list[str]]:
+    """같이 들를 곳(#743): 대시보드 지도 "같이 들를 곳"(#673)과 같은 계산을 글로 바꾼다.
+
+    반경은 설정 `visitGroupRadiusKm`(그 안 관심 기업이 기준 곳 수 미만이면 그 회사만 넓힌 반경,
+    #743), 중심은 진행 중·관심 회사, 근처는 관심 기업만이다(지도의 함수를 그대로 부르고, 줄마다
+    쓴 반경을 싣는다). 거리는 프로그램이 잰 직선거리다 — AI는 문장만 쓴다. 싣는 것은 회사
+    이름·거리·지도 묶음 이름·다음 일정 날짜뿐이고 주소·좌표는 싣지 않는다. 조회 글에 실린 회사만
+    쓴다. until이 있으면 다음 일정이 그날 이하인 중심 회사만 싣는다(오늘 정리).
+    """
+    settings = runtime_for(session).app_settings
+    points, _missing = build_map_points(session, settings, now, tz=KST)
+    group_of = {point["opp_id"]: point["group"] for point in points}
+    picked = []
+    for group in build_visit_groups(settings, points):
+        anchor = by_id.get(group["opp_id"])
+        nearby = [row for row in group["nearby"] if row["opp_id"] in by_id]
+        if anchor is None or not nearby:
+            continue
+        due = anchor.next_schedule
+        if until is not None and (due is None or due > until):
+            continue
+        picked.append((due is None, due or date.max, anchor.name, anchor, nearby, group))
+    picked.sort(key=lambda item: item[:3])
+    base = settings.visit_group_radius_km
+    below = settings.visit_group_widen_below_count
+    lines = [
+        f"같이 들를 곳: 방문할 회사(진행 중·관심) 근처 {base:g}km 안의 관심 기업"
+        f"({base:g}km 안이 {below}곳 미만인 회사는 "
+        f"{settings.visit_group_wide_radius_km:g}km 안까지). "
+        "거리는 그 회사에서 잰 직선거리. 줄 끝 괄호는 그 줄에 쓴 반경"
+    ]
+    opp_ids = []
+    for _, _, _, anchor, nearby, group in picked:
+        day = _day_label(anchor.next_schedule) if anchor.next_schedule else "일정 없음"
+        near = ", ".join(
+            f"{by_id[row['opp_id']].name} {row['distance_km']}km({MAP_GROUP_LABELS[row['group']]})"
+            for row in nearby
+        )
+        group_label = MAP_GROUP_LABELS[group_of[anchor.opp_id]]
+        radius = group["radius_km"]
+        scope = (
+            f"{radius:g}km 안 · {base:g}km 안이 {below}곳 미만"
+            if radius > base
+            else f"{radius:g}km 안"
+        )
+        lines.append(f"- {day} {anchor.name}({group_label}) → {near} ({scope})")
+        opp_ids += [anchor.opp_id, *(row["opp_id"] for row in nearby)]
+    if not picked:
+        lines.append(_NONE)
+    return lines, opp_ids
+
+
+def build_ask_context(
+    session: Session, today: date, max_companies: int, now: datetime | None = None
+) -> AssistantContext:
+    """질문에 답하기용 조회 5개. 대상은 활성 묶음뿐이다(영업 분석·대시보드와 같은 기준)."""
+    selection = _select_companies(session, max_companies)
+    analysis, ordered, companies = selection.analysis, selection.ordered, selection.companies
+    steps = selection.steps
 
     lines = [f"오늘: {_day_label(today)}", ""]
     lines.append(
@@ -312,19 +420,9 @@ def build_ask_context(session: Session, today: date, max_companies: int) -> Assi
         )
 
     lines += ["", f"[조회 4. 일정] 놓친 일정과 오늘부터 {SCHEDULE_WINDOW_DAYS}일 안의 일정"]
-    due = sorted(
-        (row.next_schedule_at, by_id[row.opp_id].name)
-        for row in session.scalars(schedule_due_outcomes(today, population))
-        if row.opp_id in by_id
-    )
-    week_end = today + timedelta(days=SCHEDULE_WINDOW_DAYS)
-    for label, picked in (
-        ("놓친 일정", [item for item in due if item[0] < today]),
-        ("오늘", [item for item in due if item[0] == today]),
-        (f"앞으로 {SCHEDULE_WINDOW_DAYS}일", [item for item in due if today < item[0] <= week_end]),
-    ):
-        text = ", ".join(f"{_day_label(day)} {name}" for day, name in picked) or _NONE
-        lines.append(f"{label}: {text}")
+    lines += _schedule_lines(session, today, selection)[0]
+    # #743: 일정 조회의 한 부분으로 근처 같이 들를 관심 기업을 싣는다(usedQueries 값은 그대로).
+    lines += _visit_lines(session, now or utcnow(), selection.by_id)[0]
 
     lines += ["", "[조회 5. 거절 이유별 회사] 거절 이유 | 회사 | 확정 공정"]
     lost = [company for company in companies if company.status == "LOST"]
@@ -345,6 +443,100 @@ def build_ask_context(session: Session, today: date, max_companies: int) -> Assi
             QUERY_SCHEDULE,
             QUERY_LOST_REASONS,
         ),
+    )
+
+
+# 앞으로 가는 순서(#743 PM 결정): 미접촉 → 접촉 → 견적·샘플. 보류·성사·거절은 이 줄 밖이다.
+_FORWARD_ORDER = {_NO_STAGE: 0, "IN_PROGRESS": 1, "SAMPLE_OR_REGISTRATION_APPROVED": 2}
+
+
+def _stage_moves(
+    session: Session, opp_ids: Sequence[str], since: date
+) -> list[tuple[date, str, str, str]]:
+    """큰 단계가 앞으로 간 기록(취소한 기록 제외)을 저장 순서대로 본다. 코드값·날짜만 읽는다.
+
+    뒤로 간 이동은 싣지 않는다(PM 결정 2026-11-14): 앞으로 가는 줄(미접촉 → 접촉 → 견적·샘플)에서
+    그 회사가 이미 이른 단계 이하로 가는 이동(예: 접촉 → 미접촉, 그 뒤 다시 접촉)은 빼고, 보류·성사·
+    거절로 바뀐 것은 싣는다. 잘못 입력으로 취소한 기록은 처음부터 보지 않는다.
+    """
+    moves = []
+    previous: dict[str, str] = {}
+    reached: dict[str, int] = {}
+    for opp_id, status, attempted_at, created_at in session.execute(
+        select(Outcome.opp_id, Outcome.status, Outcome.attempted_at, Outcome.created_at)
+        .where(Outcome.opp_id.in_(opp_ids), Outcome.cancelled_at.is_(None))
+        .order_by(Outcome.opp_id, Outcome.version)
+    ):
+        before = previous.get(opp_id, _NO_STAGE)
+        previous[opp_id] = status
+        if status == before:
+            continue
+        rank = _FORWARD_ORDER.get(status)
+        if rank is not None:
+            if rank <= reached.get(opp_id, 0):
+                continue  # 뒤로 갔거나 이미 이른 단계로 되돌아온 것
+            reached[opp_id] = rank
+        day = attempted_at or created_at.astimezone(KST).date()
+        if day >= since:
+            moves.append((day, opp_id, before, status))
+    return sorted(moves)
+
+
+def build_daily_context(
+    session: Session, today: date, now: datetime, max_companies: int
+) -> AssistantContext:
+    """오늘 정리(#743)용 조회 4개: 일정, 이번 주 일정 회사의 같이 들를 곳, 단계 이동, 막힌 회사.
+
+    대상 회사는 질문에 답하기와 같다. 글에 실린 회사가 하나도 없으면 companies가 비어 있다
+    (창구가 보내지 않는다).
+    """
+    selection = _select_companies(session, max_companies)
+    by_id = selection.by_id
+    mentioned: list[str] = []
+
+    lines = [f"오늘: {_day_label(today)}", ""]
+    lines.append(f"[조회 1. 일정] 놓친 일정과 오늘부터 {SCHEDULE_WINDOW_DAYS}일 안의 일정")
+    schedule, opp_ids = _schedule_lines(session, today, selection)
+    lines += schedule
+    mentioned += opp_ids
+
+    lines += ["", "[조회 2. 이번 주 일정이 있는 회사의 같이 들를 곳]"]
+    until = today + timedelta(days=SCHEDULE_WINDOW_DAYS)
+    visits, opp_ids = _visit_lines(session, now, by_id, until=until)
+    lines += visits
+    mentioned += opp_ids
+
+    since = today - timedelta(days=SCHEDULE_WINDOW_DAYS)
+    lines += [
+        "",
+        f"[조회 3. 지난 {SCHEDULE_WINDOW_DAYS}일 단계 이동] "
+        "날짜 | 회사 | 이전 큰 단계 → 지금 큰 단계",
+    ]
+    moves = _stage_moves(session, list(by_id), since)
+    for day, opp_id, before, after in moves:
+        lines.append(
+            f"{day.isoformat()} | {by_id[opp_id].name} | "
+            f"{STAGE_LABELS.get(before, before)} → {STAGE_LABELS.get(after, after)}"
+        )
+        mentioned.append(opp_id)
+    if not moves:
+        lines.append(_NONE)
+
+    lines += ["", "[조회 4. 막힌 회사] 지금 큰 단계가 보류인 회사 | 마지막 접촉"]
+    held = [company for company in selection.companies if company.status == _ON_HOLD]
+    for company in held:
+        last = max((day for day, _, _ in company.contacts), default=None)
+        lines.append(f"{company.name} | {last.isoformat() if last else _NONE}")
+        mentioned.append(company.opp_id)
+    if not held:
+        lines.append(_NONE)
+
+    refs = tuple(CompanyRef(opp_id, by_id[opp_id].name) for opp_id in dict.fromkeys(mentioned))
+    return AssistantContext(
+        text="\n".join(lines),
+        companies=refs,
+        total_companies=len(selection.ordered),
+        used_queries=(),
     )
 
 

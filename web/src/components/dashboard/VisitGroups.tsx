@@ -15,6 +15,8 @@ export interface VisitGroupsProps {
   groups: DashboardVisitGroup[];
   points: DashboardMapPoint[];
   radiusKm: number;
+  /** 기본 반경 안이 이 수 미만이면 넓힌 묶음이다(#743). 옛 응답에는 없다. */
+  widenBelowCount?: number;
   /** 펼친 묶음의 중심 회사 oppId. */
   open: string | null;
   onToggle: (oppId: string | null) => void;
@@ -30,6 +32,7 @@ export default function VisitGroups({
   groups,
   points,
   radiusKm,
+  widenBelowCount,
   open,
   onToggle,
   groupColors,
@@ -85,6 +88,14 @@ export default function VisitGroups({
                   <strong data-testid="dashboard-visit-count">
                     {t.visitNearbyCount(group.nearby.length)}
                   </strong>
+                  {group.radiusKm !== undefined &&
+                  group.radiusKm > radiusKm &&
+                  widenBelowCount !== undefined ? (
+                    <span data-testid="dashboard-visit-widened" style={secondary}>
+                      {' '}
+                      {t.visitWidened(group.radiusKm, radiusKm, widenBelowCount)}
+                    </span>
+                  ) : null}
                 </button>
                 {expanded ? (
                   group.nearby.length === 0 ? (

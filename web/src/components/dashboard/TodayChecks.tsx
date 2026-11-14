@@ -3,6 +3,7 @@
 // 일정 줄은 누르면 줄 아래에 회사 상세로 가는 작은 목록이 펴지고, 걸러 볼 값이 있는 줄은 그 회사들만 걸러진 목록으로 간다.
 // 줄 종류는 뒤에 늘어난다(#677 "다시 조사할 때"·"AI와 다른 값"). 이름표에 없는 종류는 보이지 않는다.
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
@@ -62,10 +63,10 @@ export interface TodayChecksProps {
   /** 서버의 줄 목록. 옛 서버라 칸이 없으면(undefined) 구역을 그리지 않는다. */
   rows: TodayCheckRow[] | undefined;
   /**
-   * 영업 비서(#680)가 한두 문장으로 정리해 줄 자리. 지금은 아무도 넘기지 않아 아무것도 보이지 않는다
-   * (빈 상자·안내 문구 없음). 영업 비서가 생기면 이 값만 채우면 줄 목록 위에 보인다.
+   * 영업 비서의 오늘 정리(#743) 자리: 제목 바로 아래, 줄 목록 위. 대시보드는 스위치가 켜져 있고 담당자를
+   * 골랐을 때만 넘긴다. 넘기지 않으면 아무것도 보이지 않는다(빈 상자·안내 문구 없음).
    */
-  assistantSummary?: string | null;
+  assistantSummary?: ReactNode;
 }
 
 export default function TodayChecks({ rows, assistantSummary = null }: TodayChecksProps) {
@@ -89,9 +90,7 @@ export default function TodayChecks({ rows, assistantSummary = null }: TodayChec
         {dashboardTexts.todayTitle}
       </h2>
       {assistantSummary ? (
-        <p data-testid="dashboard-today-assistant" style={{ margin: 0 }}>
-          {assistantSummary}
-        </p>
+        <div data-testid="dashboard-today-assistant">{assistantSummary}</div>
       ) : null}
       {known.length === 0 ? (
         <p data-testid="dashboard-today-empty" style={{ margin: 0, color: colors.textSecondary }}>
