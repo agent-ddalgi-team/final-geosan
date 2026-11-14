@@ -27,7 +27,7 @@ def test_pyproject_declares_tzdata_for_windows_only():
 
 
 def test_lock_file_pins_tzdata_for_windows_only():
-    """Given 잠금 파일 / When tzdata 줄을 찾으면 / Then 버전이 고정돼 있고 Windows 조건이 붙어 있다."""
+    """Given 잠금 파일 / When tzdata 줄을 찾으면 / Then 버전이 고정돼 있고 Windows 조건이 붙는다."""
     lines = [
         line
         for line in (ROOT / "requirements.lock").read_text(encoding="utf-8").splitlines()
