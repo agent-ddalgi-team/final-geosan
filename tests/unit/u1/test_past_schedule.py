@@ -1,8 +1,8 @@
 """지난 일정 이어받기(PM 결정 2026-11-14). 실제 임시 DB·API, 가상 사례만(거산 실제 사양 아님).
 
-통화·메일·방문을 남기면 이미 지난 일정은 다음 기록으로 넘기지 않는다. 그 날짜 뒤에 연락했으니
-놓친 일정이 아니다. 오늘 이후 일정은 지금처럼 넘기고, 접촉 없이 단계만 고치는 저장은 지난 일정도
-그대로 둔다(대시보드 "놓친 일정"으로 알려야 하므로).
+통화·메일·방문을 그 일정 날짜나 그 뒤에 했으면 일정은 다음 기록으로 넘기지 않는다(#733). 일정대로
+연락했으니 놓친 일정이 아니다. 일정 전 날짜의 접촉, 오늘 이후 일정, 접촉 없이 단계만 고치는 저장은
+지금처럼 넘긴다(지난 일정이면 대시보드 "놓친 일정"으로 알려야 하므로).
 """
 
 from datetime import timedelta
@@ -36,7 +36,7 @@ def _with_past_schedule(dashboard_env):
 def test_contact_after_a_past_schedule_does_not_carry_it(dashboard_env):
     """Given 이틀 전 일정이 남은 회사 / When 새 일정 없이 통화를 남김 / Then 일정이 비워진다."""
     client, opp_id, _ = _with_past_schedule(dashboard_env)
-    _post(client, opp_id, contact())
+    _post(client, opp_id, contact(attemptedAt=today_in_seoul().isoformat()))
     assert _schedule(client, opp_id) == (None, None)
 
 
@@ -44,6 +44,14 @@ def test_stage_only_save_keeps_a_past_schedule(dashboard_env):
     """Given 이틀 전 일정이 남은 회사 / When 접촉 없이 단계만 견적으로 / Then 놓친 일정은 남는다."""
     client, opp_id, past = _with_past_schedule(dashboard_env)
     _post(client, opp_id, {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})
+    assert _schedule(client, opp_id) == (past, "다시 연락")
+
+
+def test_contact_dated_before_the_schedule_keeps_it(dashboard_env):
+    """Given 이틀 전 일정 / When 그보다 앞선 날짜의 통화를 뒤늦게 남김 / Then 일정은 넘어간다."""
+    client, opp_id, past = _with_past_schedule(dashboard_env)
+    earlier = (today_in_seoul() - timedelta(days=5)).isoformat()
+    _post(client, opp_id, contact(attemptedAt=earlier))
     assert _schedule(client, opp_id) == (past, "다시 연락")
 
 
