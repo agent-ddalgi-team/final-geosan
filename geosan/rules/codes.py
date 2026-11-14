@@ -303,6 +303,9 @@ class NoteKind(StrEnum):
     # 활동 이력에서 "변경 기록"으로 보이고 잘못 입력으로 표시할 수 없다.
     # 메모 요청에서는 받지 않는다.
     CHANGE = "CHANGE"
+    # #742 PM 결정 2026-11-14: 영업 코치 피드백 가운데 담당자가 [보고서에 남기기]로 고른 한 줄.
+    # 활동 이력에서 "남긴 피드백"으로 보이고 회사 보고서 "영업 방향"에 실리는 유일한 메모 종류다.
+    ADVICE = "ADVICE"
 
 
 class ReviewItemKind(StrEnum):

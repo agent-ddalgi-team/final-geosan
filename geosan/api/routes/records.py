@@ -62,6 +62,8 @@ from geosan.api.schemas import (
     ReviewItem,
     ReviewItemNote,
     SalesAnswerOption,
+    SalesCoachRequiredWhen,
+    SalesCoachView,
     SalesQuestionsEnvelope,
     SalesQuestionsView,
     SalesQuestionView,
@@ -1006,6 +1008,8 @@ def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: s
                 opp_id=opp_id,
                 question_id=answer.question_id,
                 answer_id=answer.answer_id,
+                # #742: 누가 채웠나. 요청에 없으면 담당자가 고른 답이다.
+                filled_by=answer.filled_by or "STAFF",
                 created_by=staff,
                 dataset_kind=opportunity.dataset_kind,
                 is_virtual=opportunity.is_virtual,
@@ -1136,6 +1140,20 @@ def _confirm_choices(
     return reevaluated
 
 
+def _coach_view(rule) -> SalesCoachView | None:
+    """#742 질문 파일의 coach 칸을 화면 모양으로. 칸이 없으면 None."""
+    if rule is None:
+        return None
+    return SalesCoachView(
+        fill=rule.fill,
+        required=rule.required,
+        required_when=SalesCoachRequiredWhen(answers=rule.required_when.answers)
+        if rule.required_when
+        else None,
+        keyword=rule.keyword,
+    )
+
+
 @router.get("/sales-questions", response_model=SalesQuestionsEnvelope)
 def get_sales_questions(session: SessionDep):
     """#607 꼬리 질문 묶음. 외부 호출·저장 없음, 보기 전용도 조회."""
@@ -1157,6 +1175,7 @@ def get_sales_questions(session: SessionDep):
                     if question.show_when
                     else None,
                     choices=question.choices,
+                    coach=_coach_view(question.coach),
                     # #652: choices 질문의 보기는 파일이 아니라 공정 목록·설정 산업군에서 채운다.
                     answers=[
                         SalesAnswerOption(answer_id=value, label=label)
@@ -1249,11 +1268,14 @@ def activity(
                 ActivityItem(at=row.created_at, actor=row.staff_key, kind="CHANGE", summary=summary)
             )
             continue
+        if row.kind == NoteKind.ADVICE and row.cancelled_at is None:
+            # #742: 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄.
+            summary = f"남긴 피드백 · {row.text}"
         items.append(
             ActivityItem(
                 at=row.created_at,
                 actor=row.staff_key,
-                kind="REPLY" if row.kind == "REPLY" else "NOTE",
+                kind={"REPLY": "REPLY", "ADVICE": "ADVICE"}.get(row.kind, "NOTE"),
                 summary=summary,
                 record_id=row.note_id,
                 record_kind="NOTE",
@@ -1388,6 +1410,13 @@ def save_note(
         raise InputError(
             "영업 메모의 글자 수를 확인해 주세요.",
             fields=[FieldError(path="text", message=f"{limit}자 이내로 적어 주세요.")],
+        )
+    blank = not body.text.strip()
+    if body.kind == NoteKind.ADVICE and (blank or scan_contacts({"text": body.text})):
+        # #742: 남긴 피드백은 회사 보고서로 나가는 글이라 메모와 달리 연락처를 막는다.
+        message = "빈 글이나 전화·이메일이 있는 글은 남길 수 없습니다."
+        raise InputError(
+            "남길 피드백을 확인해 주세요.", fields=[FieldError(path="text", message=message)]
         )
     opportunity = session.get(Opportunity, opp_id)
     if opportunity is None:

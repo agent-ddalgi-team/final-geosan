@@ -3,12 +3,13 @@
 // 서버는 이 회사의 고른 값과 비슷한 회사(같은 공정·산업)의 건수 요약만 AI에 보낸다. 메모 글은 보내지 않고 아무 값도 바꾸지 않는다.
 // 읽는 곳의 단추는 [목록으로]·[관심]·[다시 조사]뿐이라(#674) 구분 줄 아래, 전화 기록을 적는 칸 바로 위에 둔다.
 // 설정을 못 읽었거나 스위치가 꺼져 있으면 단추를 보이지 않는다(꺼짐 안내는 대시보드 질문 칸 자리에 있다).
+// 영업 코치(#742)의 "통화 전" 칸이다: 통화 뒤 메모 [보내기]는 바로 아래 기록 칸에 있다. 창구·한도는 그대로.
 import { useState } from 'react';
 import { Button } from 'antd';
 import { assistantConfigOf, postCallPrep } from '../../api/assistant';
 import type { AssistantAnswer } from '../../api/assistant';
 import { ApiError } from '../../api/client';
-import { assistantTexts as texts, errorTexts } from '../../labels/ko';
+import { coachTexts, assistantTexts as texts, errorTexts } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 import AssistantAnswerBox from './AssistantAnswerBox';
@@ -42,6 +43,9 @@ export default function CallPrep({ oppId }: { oppId: string }) {
 
   return (
     <div data-testid="call-prep" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+      <span data-testid="call-prep-title" style={{ fontWeight: 600 }}>
+        {coachTexts.beforeCallTitle}
+      </span>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         <Button
           data-testid="call-prep-button"

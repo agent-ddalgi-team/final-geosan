@@ -37,6 +37,7 @@ from geosan.api.routes.records import (
     sales_step_state,
 )
 from geosan.api.schemas import (
+    AdviceLine,
     ApprovalEligibility,
     Blocker,
     BucketCounts,
@@ -106,8 +107,8 @@ from geosan.opportunity.factory_csv import address_city
 from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
-from geosan.records.models import Outcome, ReviewOpinion
-from geosan.rules.codes import LostReasonCode, ProcessCode, SecurityGrade
+from geosan.records.models import Note, Outcome, ReviewOpinion
+from geosan.rules.codes import LostReasonCode, NoteKind, ProcessCode, SecurityGrade
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -514,8 +515,26 @@ def _records(context: DetailContext) -> dict:
             bookmark=bookmark_view(latest_bookmark(context.session, context.opportunity.opp_id)),
             approval=None,
             outcome=outcome_view(outcome),
+            advice=_advice_lines(context.session, context.opportunity.opp_id),
         )
     }
+
+
+def _advice_lines(session: Session, opp_id: str) -> list[AdviceLine]:
+    """#742 취소하지 않은 남긴 피드백(rec_note kind ADVICE), 최근 것부터."""
+    rows = session.scalars(
+        select(Note)
+        .where(
+            Note.opp_id == opp_id,
+            Note.kind == NoteKind.ADVICE,
+            Note.cancelled_at.is_(None),
+        )
+        .order_by(Note.version.desc())
+    )
+    return [
+        AdviceLine(note_id=row.note_id, text=row.text, at=row.created_at, by=row.staff_key)
+        for row in rows
+    ]
 
 
 detail_sections: list[Callable] = [

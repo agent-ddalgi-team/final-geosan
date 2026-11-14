@@ -53,6 +53,8 @@ def test_batch_reference_and_requester_survive_usage_and_cost_command(ingest_bat
     assert row.cost_usd == Decimal("0.004")
     assert (row.opp_id, row.batch_id) == (None, ingest_batch)
     output = []
+    # 월 호출 한도는 예시 설정 값이 아니라 이 시험에서 정한다(#742에서 예시 값이 2000으로 바뀜).
+    settings(monthlyCallLimit=1000)
     assert run_cost(None, output.append) == 0
     assert any("호출 1/1000회" in line for line in output)
     assert any("$0.004000" in line for line in output)

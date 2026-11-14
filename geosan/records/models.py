@@ -100,6 +100,9 @@ class OutcomeAnswer(CommonColumns, Base):
     opp_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     question_id: Mapped[str] = mapped_column(String(40), nullable=False)
     answer_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    # #742·C6: 누가 채웠나(STAFF 담당자가 고름 / AI_CONFIRMED 영업 코치가 채우고 그대로 저장).
+    # 옛 행은 비워 둔다.
+    filled_by: Mapped[str | None] = mapped_column(String(16))
 
 
 class ReviewCheck(CommonColumns, Base):

@@ -338,6 +338,30 @@ function Sales({ sales }: { sales: ReportModel['sales'] }) {
   );
 }
 
+/** (#742) 영업 방향: 영업 코치 피드백 가운데 담당자가 [보고서에 남기기]로 고른 줄. */
+function Direction({ lines }: { lines: ReportModel['direction'] }) {
+  if (lines.length === 0) {
+    return (
+      <p style={secondary} data-testid="report-direction-none">
+        {texts.direction.none}
+      </p>
+    );
+  }
+  return (
+    <>
+      <p style={secondary}>{texts.direction.mark}</p>
+      <ul data-testid="report-direction">
+        {lines.map((line, index) => (
+          <li key={`${line.at ?? ''}-${index}`}>
+            {line.at ? `${line.at} · ` : ''}
+            {line.text}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 export default function CompanyReportPage() {
   const { oppId = '' } = useParams();
   const [reload, setReload] = useState(0);
@@ -433,6 +457,9 @@ export default function CompanyReportPage() {
             </Section>
             <Section id="report-sales" title={texts.sections.sales}>
               <Sales sales={model.sales} />
+            </Section>
+            <Section id="report-direction-section" title={texts.sections.direction}>
+              <Direction lines={model.direction} />
             </Section>
           </article>
         ) : null}

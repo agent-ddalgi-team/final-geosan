@@ -1382,6 +1382,7 @@ export const activityKindLabels: Record<ActivityKind, string> = {
   NOTE: '메모',
   RECORD_CANCELLED: '기록 취소',
   CHANGE: '변경 기록',
+  ADVICE: '남긴 피드백',
 };
 
 /** 상세 머리 지도 링크 글자. */
@@ -1838,6 +1839,12 @@ export const companyReport = {
     evidence: '3. 근거',
     questions: '4. 확인 질문과 지금까지의 답',
     sales: '5. 영업 단계와 다음 일정',
+    direction: '6. 영업 방향',
+  },
+  /** (#742) 영업 코치 피드백 가운데 담당자가 [보고서에 남기기]로 고른 줄만 싣는다(메모는 싣지 않는다). */
+  direction: {
+    none: '남긴 피드백이 없습니다.',
+    mark: 'AI 피드백 · 담당자가 고름',
   },
   glance: {
     name: '회사',
@@ -1980,4 +1987,52 @@ export const memoReadTexts = {
   applyFailed: '반영하지 못했습니다.',
   /** 꼬리 질문 파일에 공정 확인 질문이 없어 기존 저장 창구로 반영할 수 없을 때. */
   cannotApply: '이 화면에서 반영할 수 없습니다.',
+} as const;
+
+/**
+ * 영업 코치(#742, PM 결정 2026-11-14): 기록 칸 위 "확인사항", 메모 [보내기] → 정리·빠진 필수 질문·피드백 확인,
+ * [이대로 저장]·[고치기]. 이름은 이 PC 안에만 남고 AI에는 직함과 내용만 간다. 사람이 저장을 눌러야 저장된다.
+ */
+export const coachTexts = {
+  /** 상세 "기록 남기기" 맨 위 통화 전 칸(기존 [통화 준비]를 코치로 옮김). */
+  beforeCallTitle: '영업 코치 · 통화 전',
+  checklistLabel: '확인사항',
+  /** "확인사항: 통화 상대 · 다음 할 일" */
+  checklist: (keywords: readonly string[]) => `확인사항: ${keywords.join(' · ')}`,
+  memoLabel: '통화 메모',
+  memoPlaceholder:
+    '예: 생산관리팀 김 과장 통화. 아연도금 외주 줌. 소개서 보내기로, 금요일 다시 전화',
+  send: '보내기 💰',
+  sendHint:
+    '메모에서 이름·전화를 지운 사본과 이 회사의 지난 기록만 AI에 보냅니다. 저장은 확인한 뒤에 합니다.',
+  direct: '직접 고르기',
+  sending: 'AI가 메모를 정리하는 중입니다…',
+  failed: '코치 답을 받지 못했습니다.',
+  title: 'AI가 정리한 것 · 확인 전',
+  summary: (text: string) => `요약: ${text}`,
+  filledTitle: 'AI가 채운 답',
+  filledMark: 'AI가 채움',
+  noFilled: '메모에서 채운 답이 없습니다.',
+  suggestTitle: 'AI 제안 · 눌러야 들어갑니다',
+  suggestMark: 'AI 제안',
+  suggestPick: '이대로 고르기',
+  suggestPicked: '고름 ✓',
+  suggestUndo: '빼기',
+  missingTitle: '빠진 필수 질문',
+  missingNone: '빠진 필수 질문이 없습니다.',
+  feedbackTitle: '코치 피드백',
+  feedbackNone: '이번에는 짚을 것이 없습니다.',
+  keep: '보고서에 남기기',
+  skip: '넘기기',
+  kept: '보고서에 남김 ✓',
+  skipped: '넘김',
+  /** "(메모: '견적 요청함')" */
+  quote: (text: string) => `(메모: '${text}')`,
+  /** "다음 일정: 11/21 다시 연락" */
+  schedule: (date: string, label: string) => `다음 일정: ${date} ${label}`,
+  scheduleNoDate: (label: string) => `다음 할 일: ${label} (날짜는 메모에 없음)`,
+  save: '이대로 저장',
+  edit: '고치기',
+  editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
+  adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
 } as const;

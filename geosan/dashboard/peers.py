@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Note, Outcome
-from geosan.records.program_note import CHANGE_KIND
+from geosan.records.program_note import ADVICE_KIND, CHANGE_KIND
 
 # 계약 C1의 값: 보여 주는 회사 수 상한, 거절 이유 상위 개수, 메모 한 줄 길이.
 MAX_COMPANIES = 5
@@ -231,8 +231,9 @@ def load_peer_candidates(
             .where(Note.opp_id.in_(opp_ids), Note.cancelled_at.is_(None))
             .order_by(Note.opp_id, Note.version)
         ):
-            if row.kind == CHANGE_KIND:
+            if row.kind in (CHANGE_KIND, ADVICE_KIND):
                 # #731: 변경 기록은 마지막 메모가 아니다. 최근 기록 시각에만 지금처럼 센다.
+                # #742: 남긴 피드백(AI가 쓴 글을 고른 것)도 마지막 메모가 아니다.
                 changed_at[row.opp_id] = row.created_at
             else:
                 notes[row.opp_id] = row

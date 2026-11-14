@@ -106,6 +106,36 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AdviceLine": {
+        "description": "#742 남긴 피드백 한 줄(rec_note kind ADVICE). 회사 보고서 \"영업 방향\"이 이 값만 싣는다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "text",
+          "at",
+          "by"
+        ],
+        "title": "AdviceLine",
+        "type": "object"
+      },
       "AiProposalHit": {
         "description": "(#678) 지금은 공정만 센다. 산업군은 확정 전 AI 제안이 저장에 남지 않아 셀 수 없다.",
         "properties": {
@@ -632,6 +662,173 @@
         ],
         "title": "ClassificationCode",
         "type": "string"
+      },
+      "CoachAnswerView": {
+        "properties": {
+          "answerIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Answerids",
+            "type": "array"
+          },
+          "fill": {
+            "enum": [
+              "AI",
+              "SUGGEST"
+            ],
+            "title": "Fill",
+            "type": "string"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "answerIds",
+          "quote",
+          "fill"
+        ],
+        "title": "CoachAnswerView",
+        "type": "object"
+      },
+      "CoachRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attemptedat"
+          },
+          "memo": {
+            "title": "Memo",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "CALL",
+              "EMAIL",
+              "VISIT"
+            ],
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memo",
+          "method"
+        ],
+        "title": "CoachRequest",
+        "type": "object"
+      },
+      "CoachResult": {
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/CoachAnswerView"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "feedback": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Feedback",
+            "type": "array"
+          },
+          "missingRequired": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missingrequired",
+            "type": "array"
+          },
+          "nextSchedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachScheduleView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "removedContacts": {
+            "title": "Removedcontacts",
+            "type": "integer"
+          },
+          "removedNames": {
+            "title": "Removednames",
+            "type": "integer"
+          },
+          "stepAfter": {
+            "$ref": "#/components/schemas/SalesStep"
+          },
+          "stepBefore": {
+            "$ref": "#/components/schemas/SalesStep"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answers",
+          "feedback",
+          "summary",
+          "missingRequired",
+          "stepBefore",
+          "stepAfter",
+          "removedNames",
+          "removedContacts"
+        ],
+        "title": "CoachResult",
+        "type": "object"
+      },
+      "CoachScheduleView": {
+        "properties": {
+          "actionId": {
+            "title": "Actionid",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          }
+        },
+        "required": [
+          "actionId"
+        ],
+        "title": "CoachScheduleView",
+        "type": "object"
       },
       "CompanyRow": {
         "properties": {
@@ -1563,6 +1760,13 @@
       },
       "DetailRecords": {
         "properties": {
+          "advice": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceLine"
+            },
+            "title": "Advice",
+            "type": "array"
+          },
           "approval": {
             "anyOf": [
               {
@@ -1683,6 +1887,21 @@
           "data"
         ],
         "title": "Envelope[CallPrepAnswer]",
+        "type": "object"
+      },
+      "Envelope_CoachResult_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CoachResult"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CoachResult]",
         "type": "object"
       },
       "Envelope_ConfigUi_": {
@@ -3704,7 +3923,8 @@
             "default": "MEMO",
             "enum": [
               "MEMO",
-              "RESEARCH"
+              "RESEARCH",
+              "ADVICE"
             ],
             "title": "Kind",
             "type": "string"
@@ -4474,6 +4694,22 @@
             "minLength": 1,
             "title": "Answerid",
             "type": "string"
+          },
+          "filledBy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "STAFF",
+                  "AI_CONFIRMED",
+                  "AI_CHANGED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filledby"
           },
           "questionId": {
             "maxLength": 40,
@@ -6235,6 +6471,70 @@
         "title": "SalesAnswerOption",
         "type": "object"
       },
+      "SalesCoachRequiredWhen": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Answers",
+            "type": "object"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "title": "SalesCoachRequiredWhen",
+        "type": "object"
+      },
+      "SalesCoachView": {
+        "description": "#742 질문 파일의 coach 칸 그대로(영업 코치가 그 질문을 다루는 방식·필수 여부·확인사항 말).",
+        "properties": {
+          "fill": {
+            "enum": [
+              "AI",
+              "SUGGEST",
+              "STAFF"
+            ],
+            "title": "Fill",
+            "type": "string"
+          },
+          "keyword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keyword"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "requiredWhen": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesCoachRequiredWhen"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fill",
+          "required"
+        ],
+        "title": "SalesCoachView",
+        "type": "object"
+      },
       "SalesQuestionView": {
         "properties": {
           "answers": {
@@ -6258,6 +6558,16 @@
               }
             ],
             "title": "Choices"
+          },
+          "coach": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesCoachView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "questionId": {
             "title": "Questionid",
@@ -7860,6 +8170,72 @@
           }
         },
         "summary": "Call Prep"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/assistant/coach": {
+      "post": {
+        "description": "저장 전 접촉 메모 하나와 그 회사의 이전 기록을 지운 사본으로 보내 코칭을 받는다(#742).\n\n읽기 전용이다. 답은 저장하지 않고, 담당자가 [이대로 저장]을 누르면 기존 저장 창구가 반영한다.",
+        "operationId": "coach_api_v1_opportunities__oppId__assistant_coach_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoachRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CoachResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Coach"
       }
     },
     "/api/v1/opportunities/{oppId}/assistant/memo-read": {

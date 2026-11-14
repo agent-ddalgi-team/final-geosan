@@ -46,6 +46,8 @@ NOTE_SUMMARIES = {
     "RESEARCH": "자료 조사를 기록함",
     # #731 프로그램이 남긴 변경 기록(공정·산업 확정, AI 제안 확정·물리침)
     "CHANGE": "변경 기록을 남김",
+    # #742 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄
+    "ADVICE": "피드백을 남김",
 }
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}

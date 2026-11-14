@@ -2,6 +2,8 @@
 // 내보내면 안 되는 값은 여기서 읽지 않는다: 대표번호(header.mainPhone*), 영업 메모·검토 의견 메모(records.opinion),
 // 자료 줄 메모(reviewItems[].note), 직접 적은 답 글(replyText — 답한 날짜만 쓴다), 다음 일정의 할 일 글(nextScheduleNote),
 // 거래 관계 메모(relationNote), 담당자 이름·키(by·owner). 새 값을 실으려면 이 파일에 칸을 더해야만 화면에 나온다.
+// 예외 하나(#742): 메모 종류 가운데 "남긴 피드백"(records.advice — 영업 코치 피드백을 담당자가 고른 줄)만
+// "영업 방향"에 싣는다. 글과 날짜만 싣고 담당자 키는 싣지 않는다.
 import type {
   ContactCount,
   FitLevel,
@@ -98,6 +100,8 @@ export interface ReportModel {
     /** (#730) 일정 날짜가 오늘보다 앞선가(놓친 일정). 일정이 없으면 false. */
     nextScheduleMissed: boolean;
   };
+  /** (#742) 영업 방향: 남긴 피드백(최근 것부터). 글과 날짜만. */
+  direction: { text: string; at: string | null }[];
 }
 
 function httpUrl(value: string | null | undefined): string | null {
@@ -280,5 +284,9 @@ export function reportModelOf(
       // 지난 일정이 남을 수 있다(#730 코파스: 마지막 접촉 11/13, 일정 11/12). 지난 것임을 보이게 한다.
       nextScheduleMissed: nextScheduleAt !== null && today !== '' && nextScheduleAt < today,
     },
+    direction: (records.advice ?? []).map((line) => ({
+      text: line.text,
+      at: formatDate(line.at),
+    })),
   };
 }
