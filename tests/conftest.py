@@ -17,12 +17,20 @@
 
 from __future__ import annotations
 
+import importlib
 import socket
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
 
 import pytest
+
+# "오늘"(`today_in_seoul`)을 이름으로 가져다 쓰는 모듈은 `fixed_today`가 바꾸기 전에 먼저 읽어 둔다.
+# 그러지 않으면 테스트 파일을 일부만 골라 돌릴 때(묶음별 실행 포함) 읽는 순서에 따라 그 모듈이
+# 고정된 날짜를 쓰기도 하고 실제 날짜를 쓰기도 해서, 같은 테스트의 결과가 달라진다(2026-11-14 확인).
+# 전체를 한 번에 돌릴 때와 같은 동작(그 모듈은 실제 날짜)을 어떤 순서로 돌려도 지키게 한다.
+for _module in ("geosan.api.routes.records", "geosan.commands.review_set"):
+    importlib.import_module(_module)
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXAMPLES_DIR = ROOT_DIR / "examples"

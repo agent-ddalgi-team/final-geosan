@@ -132,6 +132,37 @@ def test_completed_search_with_ignored_extra_tool_attempt():
     assert len(parse_search_results(data, BLOCKED, 10)[0]) == 1
 
 
+def _searched(times):
+    """실제 응답 모양(#706 실측): 허용한 횟수만큼 completed, 그 뒤 시도 하나는 searching."""
+    data = response()
+    done = next(item for item in data["output"] if item["type"] == "web_search_call")
+    start = data["output"].index(done)
+    data["output"][start + 1 : start + 1] = [
+        *({**done} for _ in range(times - 1)),
+        {"type": "web_search_call", "status": "searching", "action": {"type": "search"}},
+    ]
+    data.update(max_tool_calls=times, tool_usage={"web_search": {"num_requests": times}})
+    return data
+
+
+def test_three_completed_searches_with_one_ignored_attempt_are_read():
+    assert len(parse_search_results(_searched(3), BLOCKED, 10, searches_per_run=3)[0]) == 1
+
+
+@pytest.mark.parametrize("change", ["limit", "usage", "unfinished"])
+def test_unfinished_search_inside_the_allowed_count_is_still_a_failure(change):
+    data = _searched(3)
+    if change == "limit":
+        data["max_tool_calls"] = 5
+    elif change == "usage":
+        data["tool_usage"]["web_search"]["num_requests"] = 2
+    else:
+        calls = [item for item in data["output"] if item["type"] == "web_search_call"]
+        calls[1]["status"] = "searching"
+    with pytest.raises(ValueError):
+        parse_search_results(data, BLOCKED, 10, searches_per_run=3)
+
+
 def test_cache_expiry_conditions_and_shortened_retention():
     start = datetime(2026, 11, 9, tzinfo=UTC)
     values = dict(

@@ -182,6 +182,119 @@
         "title": "ApprovalEligibility",
         "type": "object"
       },
+      "AskAnswer": {
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "companiesIncluded": {
+            "title": "Companiesincluded",
+            "type": "integer"
+          },
+          "companiesTotal": {
+            "title": "Companiestotal",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "usedQueries": {
+            "items": {
+              "enum": [
+                "COMPANY_LIST",
+                "COMPANY_SUMMARY",
+                "SALES_ANALYSIS",
+                "SCHEDULE",
+                "LOST_REASONS",
+                "PEERS"
+              ],
+              "type": "string"
+            },
+            "title": "Usedqueries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "sources",
+          "usedQueries",
+          "companiesIncluded",
+          "companiesTotal"
+        ],
+        "title": "AskAnswer",
+        "type": "object"
+      },
+      "AskRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "AskRequest",
+        "type": "object"
+      },
+      "AssistantSource": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "name"
+        ],
+        "title": "AssistantSource",
+        "type": "object"
+      },
+      "AssistantUi": {
+        "description": "영업 비서(#680) 화면 설정. enabled가 false면 질문 칸 대신 안내 한 줄, [통화 준비]는 숨김.",
+        "properties": {
+          "enabled": {
+            "description": "llm.salesRecordsEnabled가 true이고 llm.mode가 EXTERNAL일 때만 true",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "questionMaxLength": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "설정 assistant 묶음이 없으면 null",
+            "title": "Questionmaxlength"
+          }
+        },
+        "required": [
+          "enabled",
+          "questionMaxLength"
+        ],
+        "title": "AssistantUi",
+        "type": "object"
+      },
       "Blocker": {
         "properties": {
           "blocksApproval": {
@@ -383,6 +496,49 @@
           "CLOSED"
         ],
         "title": "BucketCounts",
+        "type": "object"
+      },
+      "CallPrepAnswer": {
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "usedQueries": {
+            "items": {
+              "enum": [
+                "COMPANY_LIST",
+                "COMPANY_SUMMARY",
+                "SALES_ANALYSIS",
+                "SCHEDULE",
+                "LOST_REASONS",
+                "PEERS"
+              ],
+              "type": "string"
+            },
+            "title": "Usedqueries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "sources",
+          "usedQueries"
+        ],
+        "title": "CallPrepAnswer",
         "type": "object"
       },
       "CardOutcome": {
@@ -592,6 +748,9 @@
           "activeDatasetKind": {
             "$ref": "#/components/schemas/DatasetKind"
           },
+          "assistant": {
+            "$ref": "#/components/schemas/AssistantUi"
+          },
           "brand": {
             "$ref": "#/components/schemas/Brand"
           },
@@ -645,6 +804,7 @@
           "records",
           "ingestOptions",
           "export",
+          "assistant",
           "distanceFilterPresetsKm",
           "research"
         ],
@@ -1430,6 +1590,21 @@
         "title": "DiscoverySource",
         "type": "string"
       },
+      "Envelope_AskAnswer_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AskAnswer"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[AskAnswer]",
+        "type": "object"
+      },
       "Envelope_BookmarkResponse_": {
         "properties": {
           "data": {
@@ -1443,6 +1618,21 @@
           "data"
         ],
         "title": "Envelope[BookmarkResponse]",
+        "type": "object"
+      },
+      "Envelope_CallPrepAnswer_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CallPrepAnswer"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CallPrepAnswer]",
         "type": "object"
       },
       "Envelope_ConfigUi_": {
@@ -6556,6 +6746,63 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/assistant/ask": {
+      "post": {
+        "description": "질문 하나에 정해진 조회 5개의 결과만으로 답한다. 여러 회사의 고른 값이 함께 나간다.",
+        "operationId": "ask_api_v1_assistant_ask_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AskAnswer_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask"
+      }
+    },
     "/api/v1/config/ui": {
       "get": {
         "operationId": "config_ui_api_v1_config_ui_get",
@@ -7305,6 +7552,62 @@
           }
         },
         "summary": "Activity"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/assistant/call-prep": {
+      "post": {
+        "description": "이 회사의 고른 값과 비슷한 회사의 결과 요약으로 통화에서 먼저 확인할 것을 받는다.",
+        "operationId": "call_prep_api_v1_opportunities__oppId__assistant_call_prep_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CallPrepAnswer_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Call Prep"
       }
     },
     "/api/v1/opportunities/{oppId}/bookmark": {

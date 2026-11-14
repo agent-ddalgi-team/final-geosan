@@ -17,7 +17,7 @@ def ready(tmp_db, app_settings_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
     context = {"calls": [], "response": response()}
 
-    def send(body, key):
+    def send(body, key, timeout):
         context["calls"].append(body)
         return context["response"]
 
