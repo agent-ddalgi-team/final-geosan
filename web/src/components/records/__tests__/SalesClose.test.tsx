@@ -156,7 +156,10 @@ function reply(status: OutcomeStatus) {
   };
 }
 
-function renderArea(status: OutcomeStatus = 'IN_PROGRESS') {
+function renderArea(
+  status: OutcomeStatus = 'IN_PROGRESS',
+  schedule: { nextScheduleAt?: string; nextScheduleNote?: string; lostReasonCode?: 'PRICE' } = {},
+) {
   render(
     <FrameContext.Provider value={frame}>
       <RecordsArea
@@ -167,6 +170,7 @@ function renderArea(status: OutcomeStatus = 'IN_PROGRESS') {
           updatedBy: 'park-lee',
           updatedAt: '2026-11-10T00:00:00Z',
           status,
+          ...schedule,
         }}
       />
     </FrameContext.Provider>,
@@ -318,5 +322,45 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     await user.click(screen.getByTestId('records-stage-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     expect(vi.mocked(postOutcome).mock.calls[0][1]).toMatchObject({ status: 'ON_HOLD' });
+  });
+});
+
+describe('성사·거절로 끝나는 저장은 있던 일정을 다시 싣지 않는다 (#719 후속)', () => {
+  beforeEach(() => {
+    vi.mocked(postOutcome).mockReset();
+    vi.mocked(getSalesQuestions).mockResolvedValue({ data: QUESTIONS, meta: {} });
+  });
+
+  it('Given 다시 연락 일정이 있는 진행 중 회사 / When 통화에서 "끝 → 거절 → 가격"으로 저장 / Then 요청에 옛 일정이 없다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postOutcome).mockResolvedValueOnce(reply('LOST'));
+    renderArea('IN_PROGRESS', { nextScheduleAt: '2026-11-20', nextScheduleNote: '다시 연락' });
+    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await pick(user, 'NEXT_ACTION', '끝');
+    await pick(user, 'CLOSE_RESULT', '거절');
+    await pick(user, 'LOST_REASON', '가격');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    const body = vi.mocked(postOutcome).mock.calls[0][1];
+    expect(body).toMatchObject({ status: 'LOST', lostReasonCode: 'PRICE' });
+    expect(body).not.toHaveProperty('nextScheduleAt');
+    expect(body).not.toHaveProperty('nextScheduleNote');
+  });
+
+  it('Given 이미 거절로 끝난 뒤 일부러 잡은 일정 / When 통화를 한 번 더 남김(단계 그대로) / Then 그 일정을 그대로 싣는다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postOutcome).mockResolvedValueOnce(reply('LOST'));
+    renderArea('LOST', {
+      nextScheduleAt: '2026-11-25',
+      nextScheduleNote: '방문',
+      lostReasonCode: 'PRICE',
+    });
+    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    const body = vi.mocked(postOutcome).mock.calls[0][1];
+    expect(body).toMatchObject({ nextScheduleAt: '2026-11-25', nextScheduleNote: '방문' });
   });
 });

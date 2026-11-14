@@ -328,6 +328,15 @@ export default function RecordsArea({
     };
   }
 
+  /**
+   * 이번 저장으로 성사·거절로 "끝나는지"(#719 후속). 끝나는 저장이면 있던 일정을 다시 싣지 않는다 —
+   * 실어 보내면 서버가 "보내온 일정"으로 받아 그대로 남겨, 끝난 회사에 옛 일정이 보였다.
+   * 이미 같은 단계로 끝나 있던 회사(거절 뒤 이유만 고침)는 끝나는 저장이 아니므로 그대로 싣는다.
+   */
+  function endsSale(next: OutcomeStatus): boolean {
+    return (next === 'WON' || next === 'LOST') && currentStatus !== next;
+  }
+
   /** 이미 거절인 채로 일정·접촉만 저장해도 서버가 거절 이유를 요구하므로 현재 이유를 같이 보낸다. */
   function keepLostReason(): Pick<OutcomeRequest, 'lostReasonCode' | 'reason'> {
     if (currentStatus !== 'LOST' || !outcome?.lostReasonCode) return {};
@@ -454,9 +463,12 @@ export default function RecordsArea({
       ...(answers.length > 0 ? { answers } : {}),
       ...(memo ? { memo } : {}),
       // 날짜를 넣었으면 새 일정(날짜 + 고른 할 일의 쉬운 말), 안 넣었으면 있던 일정을 그대로 싣는다.
+      // 성사·거절로 끝나는 저장이면 있던 일정은 싣지 않는다(서버가 비운다, #719).
       ...(nextAction && plannedDate !== ''
         ? { nextScheduleAt: plannedDate, nextScheduleNote: nextAction.label }
-        : keepSchedule()),
+        : endsSale(status)
+          ? {}
+          : keepSchedule()),
       ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),
       ...(restore ? { restoreExcluded: true } : {}),
     });
@@ -530,7 +542,7 @@ export default function RecordsArea({
       status: stage,
       ...(stage === 'LOST' && lostCode ? { lostReasonCode: lostCode } : {}),
       ...(stage === 'LOST' && reason !== '' ? { reason } : {}),
-      ...keepSchedule(),
+      ...(endsSale(stage) ? {} : keepSchedule()),
     });
     if (ok) {
       setSavedLostReason(stage === 'LOST' ? reason : '');
