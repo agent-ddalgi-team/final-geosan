@@ -320,6 +320,10 @@ class AssistantSettings(FileModel):
     # 조회 글에 싣는 회사 수 상한. 넘으면 관심 회사를 먼저 싣는다.
     max_companies: int = Field(ge=1, strict=True)
     max_output_tokens: int = Field(ge=1, strict=True)
+    # #742 영업 코치: 하루(한국 날짜) 호출 상한(전체 회사 합계, 위 질문 한도와 따로 센다)과
+    # 함께 싣는 이전 메모·남긴 피드백 수 상한(각각 최근 것부터).
+    coach_daily_limit: int = Field(ge=1, strict=True)
+    coach_prior_memo_limit: int = Field(ge=1, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -640,7 +644,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
     return AppSettings.model_validate(
         _fill_added_contact_list_keys(
             _fill_added_research_keys(
-                _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+                _fill_added_assistant_keys(
+                    _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+                )
             )
         )
     )
@@ -674,6 +680,23 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
         return data
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
     return {**data, **{key: defaults[key] for key in missing}}
+
+
+ADDED_ASSISTANT_KEYS = ("coachDailyLimit", "coachPriorMemoLimit")
+"""#742 뒤에 생긴 assistant 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 assistant 칸만 예시 파일 값으로 채운 새 dict(#591 방식)."""
+    assistant = data.get("assistant")
+    if not isinstance(assistant, dict):
+        return data
+    missing = [key for key in ADDED_ASSISTANT_KEYS if assistant.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).assistant.model_dump(by_alias=True)
+    filled = {**assistant, **{key: defaults[key] for key in missing}}
+    return {**data, "assistant": filled}
 
 
 ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)

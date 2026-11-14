@@ -710,6 +710,15 @@ class SalesStepView(_ApiModel):
     open_questions: list[str] = Field(default_factory=list)
 
 
+class AdviceLine(_ApiModel):
+    """#742 남긴 피드백 한 줄(rec_note kind ADVICE). 회사 보고서 "영업 방향"이 이 값만 싣는다."""
+
+    note_id: str
+    text: str
+    at: datetime
+    by: str
+
+
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
     sales_step: SalesStepView = Field(default_factory=SalesStepView)
@@ -719,6 +728,8 @@ class DetailRecords(_ApiModel):
     bookmark: BookmarkRecord | None = None
     approval: dict[str, Any] | None = None
     outcome: dict[str, Any] | None = None
+    # #742: 취소하지 않은 남긴 피드백, 최근 것부터.
+    advice: list[AdviceLine] = Field(default_factory=list)
 
 
 class ReviewItemNote(_ApiModel):
@@ -823,7 +834,8 @@ class OpinionResponse(OpinionRecord):
 
 # 화면·테스트가 참고할 수 있는 응답 유형 별칭
 class NoteRequest(_RequestModel):
-    kind: Literal["MEMO", "RESEARCH"] = "MEMO"
+    # #742: ADVICE = 영업 코치 피드백 가운데 [보고서에 남기기]로 고른 한 줄.
+    kind: Literal["MEMO", "RESEARCH", "ADVICE"] = "MEMO"
     text: str
     eval_id: str | None = None
     # #259: 검토사항 자료 줄 번호. 없으면 지금과 같은 일반 메모.
@@ -861,6 +873,8 @@ class OutcomeAnswerInput(_RequestModel):
 
     question_id: str = Field(min_length=1, max_length=40)
     answer_id: str = Field(min_length=1, max_length=40)
+    # #742: 누가 채웠나. 영업 코치가 채운 답을 그대로 저장하면 AI_CONFIRMED, 빠지면 STAFF.
+    filled_by: Literal["STAFF", "AI_CONFIRMED"] | None = None
 
 
 class OutcomeRequest(_RequestModel):
@@ -966,6 +980,19 @@ class SalesShowWhen(_ApiModel):
     answers: dict[str, list[str]]
 
 
+class SalesCoachRequiredWhen(_ApiModel):
+    answers: dict[str, list[str]]
+
+
+class SalesCoachView(_ApiModel):
+    """#742 질문 파일의 coach 칸 그대로(영업 코치가 그 질문을 다루는 방식·필수 여부·확인사항 말)."""
+
+    fill: Literal["AI", "SUGGEST", "STAFF"]
+    required: bool
+    required_when: SalesCoachRequiredWhen | None = None
+    keyword: str | None = None
+
+
 class SalesQuestionView(_ApiModel):
     question_id: str
     text: str
@@ -974,6 +1001,8 @@ class SalesQuestionView(_ApiModel):
     # #652: 보기를 회사 값에서 가져오는 질문(여러 개 고름). answers는 서버가 목록으로 채운다.
     choices: Literal["PROCESS", "INDUSTRY"] | None = None
     answers: list[SalesAnswerOption]
+    # #742: 질문 파일에 coach 칸이 없으면 null.
+    coach: SalesCoachView | None = None
 
 
 class SalesQuestionsView(_ApiModel):
