@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import UTC
 from decimal import Decimal
@@ -42,8 +43,20 @@ LIMIT_REASON = "관심 자동 조사 하루 금액 한도 초과"
 _RUNNING_SECONDS = 90
 
 _tasks: ContextVar[BackgroundTasks | None] = ContextVar("geosan_auto_research", default=None)
+# #719: 이번 저장으로 영업이 끝나는(성사·거절·보류) 요청은 관심이 켜져도 조사를 예약하지 않는다.
+_paused: ContextVar[bool] = ContextVar("geosan_auto_research_paused", default=False)
 _started: dict[str, float] = {}
 _lock = Lock()
+
+
+@contextmanager
+def no_auto_research(paused: bool = True):
+    """이 안에서 관심이 켜져도 조사를 예약하지 않는다(기록도 남기지 않는다)."""
+    token = _paused.set(paused)
+    try:
+        yield
+    finally:
+        _paused.reset(token)
 
 
 async def attach_background(background_tasks: BackgroundTasks) -> None:
@@ -100,6 +113,8 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
     """
     tasks = _tasks.get()
     if tasks is None or opportunity.is_virtual or opportunity.purpose != "NEW_PROPOSAL":
+        return
+    if _paused.get():
         return
     settings = runtime_for(session).app_settings
     # #719: 자동 조사 스위치(후보 찾기 뒤·`geosan research`와 같은 스위치)가 꺼져 있으면

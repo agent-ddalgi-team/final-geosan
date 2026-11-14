@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy import func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
-from geosan.api.auto_research import attach_background, queue_on_bookmark
+from geosan.api.auto_research import attach_background, no_auto_research, queue_on_bookmark
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
@@ -78,6 +78,7 @@ from geosan.config.errors import (
 )
 from geosan.config.sales_questions import (
     ALL_STEPS,
+    CLOSED_STAGES,
     KST,
     SalesQuestions,
     load_sales_questions,
@@ -981,8 +982,10 @@ def save_outcome(
         if previous and name not in body.model_fields_set:
             values[name] = getattr(previous, name)
     # #697: 접촉을 남기면 같은 저장 안에서 검토 의견이 영업 대상으로 정해진다(관심도 여기서 켠다).
-    _set_target_by_contact(session, opportunity, staff, body)
-    ensure_bookmarked(session, opportunity, staff)
+    # #719: 이번 저장으로 성사·거절·보류가 되면 관심이 켜져도 조사를 예약하지 않는다(비용만 나간다).
+    with no_auto_research(status in CLOSED_STAGES):
+        _set_target_by_contact(session, opportunity, staff, body)
+        ensure_bookmarked(session, opportunity, staff)
     values.pop("answers", None)
     values.pop("restore_excluded", None)
     # 버전은 취소한 행까지 센 마지막 번호 다음이다(취소해도 행과 번호는 남는다).

@@ -168,6 +168,51 @@ def note_saved(env):
     )
 
 
+CLOSING = {
+    "거절": {"status": "LOST", "lostReasonCode": "PRICE"},
+    "보류": {"status": "ON_HOLD"},
+}
+
+
+def save_call(env, **extra):
+    client, case, _ = env
+    body = {"status": "IN_PROGRESS", "method": "CALL", "result": "REACHED", **extra}
+    return client.post(f"/api/v1/opportunities/{case.opp_id}/outcomes", json=body, headers=STAFF)
+
+
+@when(
+    parsers.parse('담당자가 그 회사의 첫 통화를 "{stage}"로 마무리해 저장한다'),
+    target_fixture="response",
+)
+def closing_call(env, stage):
+    return save_call(env, **CLOSING[stage])
+
+
+@when("담당자가 그 회사에 진행 중인 통화를 저장한다", target_fixture="response")
+def open_call(env):
+    return save_call(env)
+
+
+@given("그 회사는 통화 없이 거절 단계로 저장된 뒤 관심이 꺼져 있다")
+def closed_without_bookmark(env):
+    """단계만 바꾼 저장도 관심을 켜므로, 준비 단계에서 관심 행을 꺼진 값으로 되돌려 둔다."""
+    client, case, transport = env
+    set_limit(0)
+    response = client.post(
+        f"/api/v1/opportunities/{case.opp_id}/outcomes",
+        json={"status": "LOST", "lostReasonCode": "PRICE"},
+        headers=STAFF,
+    )
+    assert response.status_code == 200, response.text
+    with session_scope() as session:
+        row = session.scalar(
+            select(Bookmark).where(Bookmark.opp_id == case.opp_id).order_by(Bookmark.version.desc())
+        )
+        row.active = False
+    set_limit(1.0)
+    assert transport.call_count == 0
+
+
 def bookmark_is_on(case):
     with session_scope() as session:
         row = session.scalar(
