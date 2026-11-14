@@ -328,7 +328,9 @@ def schedule_due_outcomes(today: date, population=None):
         .join(newest, and_(Outcome.opp_id == newest.c.opp_id, Outcome.version == newest.c.version))
         .where(
             Outcome.next_schedule_at.is_not(None),
-            Outcome.status.notin_(CLOSED_STATUSES),
+            # (바뀜 2026-11-14 #720 — PM 결정) 끝난 영업이라도 남아 있는 일정은 보인다.
+            # 끝나는 저장은 남은 일정을 비우므로(#719), 남아 있는 것은 끝난 뒤 일부러 잡은
+            # 일정이다(#279의 제외를 풂).
             Outcome.next_schedule_at <= today + timedelta(days=SCHEDULE_WINDOW_DAYS),
         )
     )
