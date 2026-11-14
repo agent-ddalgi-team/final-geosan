@@ -1,6 +1,6 @@
 // 상세 머리의 기업 요약(#210, 결정 2026-11-03): 홈페이지 상태 띠 + "회사 소개" 줄들.
 // 조사일(3일 전)·오래됨, 거산에서의 거리, 대표번호(출처·담당자 확인 [맞음]), 한 줄 소개·특징(AI 제안).
-// 값이 없는 줄은 보이지 않는다. 홈페이지 [맞음]·[고치기]·[다시 조사]는 `HomepageControls.tsx`(서버 `POST /homepage`)에 있다.
+// 값이 없는 줄은 보이지 않는다. 홈페이지 [다시 조사]는 `HomepageControls.tsx`(서버 `POST /homepage`)에 있다.
 import { useState } from 'react';
 import { Button } from 'antd';
 import { ApiError, postMainPhoneConfirm } from '../../api/client';
@@ -16,13 +16,12 @@ const rowStyle = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap:
 
 /** 맨 위 띠: 홈페이지 확신이 낮거나 못 찾았을 때만 보인다. */
 export function HomepageBand({ status }: { status?: DetailHeader['homepageStatus'] }) {
-  if (status !== 'NEEDS_CONFIRMATION' && status !== 'NOT_FOUND') return null;
+  // "홈페이지 확인 필요" 띠는 [맞음] 단추와 함께 없앴다(#596). 못 찾은 회사만 알린다.
+  if (status !== 'NOT_FOUND') return null;
   return (
     <div role="status" data-testid="homepage-band" data-status={status}>
       <StatusTag tone="wait" icon="⚠">
-        {status === 'NOT_FOUND'
-          ? companySummary.bandNotFound
-          : companySummary.bandNeedsConfirmation}
+        {companySummary.bandNotFound}
       </StatusTag>
     </div>
   );
@@ -39,9 +38,20 @@ export interface CompanySummaryProps {
   onReload: () => void;
   /** 시험이 현재 시각에 기대지 않게 지금 시각을 받을 수 있다. */
   now?: Date;
+  /** 한 줄 소개를 여기서 보일지. 상세 머리는 맨 위 "이 회사 한눈에"에서 보여 끈다(#563). */
+  showSummaryLine?: boolean;
+  /** 거리를 여기서 보일지. 상세 머리는 주소 줄 옆에 보여 끈다(#666). */
+  showDistance?: boolean;
 }
 
-export default function CompanySummary({ oppId, header, onReload, now }: CompanySummaryProps) {
+export default function CompanySummary({
+  oppId,
+  header,
+  onReload,
+  now,
+  showSummaryLine = true,
+  showDistance = true,
+}: CompanySummaryProps) {
   const { staffKey, canRecord, config } = useFrame();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ at: string; by: string } | null>(null);
@@ -50,11 +60,11 @@ export default function CompanySummary({ oppId, header, onReload, now }: Company
 
   const highlights = header.highlights ?? [];
   const phone = header.mainPhone ?? null;
-  const distance = header.distanceKm ?? null;
+  const distance = showDistance ? (header.distanceKm ?? null) : null;
   const isAi = header.researchSource === 'AI';
   const hasAnything =
     Boolean(header.researchedAt) ||
-    Boolean(header.summaryLine) ||
+    (showSummaryLine && Boolean(header.summaryLine)) ||
     highlights.length > 0 ||
     phone !== null ||
     distance !== null;
@@ -203,7 +213,7 @@ export default function CompanySummary({ oppId, header, onReload, now }: Company
         </div>
       ) : null}
 
-      {header.summaryLine ? (
+      {showSummaryLine && header.summaryLine ? (
         <div style={rowStyle} data-testid="company-summary-line">
           <span>
             {companySummary.summaryLine}: {header.summaryLine}

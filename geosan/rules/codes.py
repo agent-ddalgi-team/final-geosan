@@ -100,6 +100,12 @@ class SignalKind(StrEnum):
     HIRING = "HIRING"
     REORDER_CYCLE = "REORDER_CYCLE"
     NEXT_CONTACT = "NEXT_CONTACT"
+    # (추가 2026-11-13 #685) 통화에서 확인한 신호. 꼬리 질문 답에서 서버가 만들고 점수에만 쓴다.
+    CALL_INTENT = "CALL_INTENT"
+    CALL_INTEREST = "CALL_INTEREST"
+
+
+CALL_SIGNAL_KINDS = frozenset({SignalKind.CALL_INTENT, SignalKind.CALL_INTEREST})
 
 
 class SignalRelation(StrEnum):
@@ -259,6 +265,24 @@ class ContactResult(StrEnum):
     DECLINED = "DECLINED"
 
 
+class SalesStep(StrEnum):
+    """#607: 큰 단계(OutcomeStatus) 안의 세부 단계. 꼬리 질문 답으로 알아낸 사실로 정한다."""
+
+    NOT_REACHED = "NOT_REACHED"
+    REACHED = "REACHED"
+    DEMAND_CONFIRMED = "DEMAND_CONFIRMED"
+    MATERIAL_QUOTE = "MATERIAL_QUOTE"
+    VISIT_SAMPLE = "VISIT_SAMPLE"
+
+
+class JudgmentCheck(StrEnum):
+    """접촉해 보니 AI 판단이 맞았나(#531). 영업 성과와 별개다. 외주처가 있어도 사실이면 맞음."""
+
+    MATCHED = "MATCHED"
+    MISMATCHED = "MISMATCHED"
+    UNKNOWN = "UNKNOWN"
+
+
 class ActivityKind(StrEnum):
     CLASSIFICATION = "CLASSIFICATION"
     OPINION = "OPINION"
@@ -281,6 +305,8 @@ class ReviewItemKind(StrEnum):
     QUESTION = "QUESTION"
     DATA_NOT_FOUND = "DATA_NOT_FOUND"
     DATA_INSUFFICIENT = "DATA_INSUFFICIENT"
+    ITEM_INPUT_PROPOSAL = "ITEM_INPUT_PROPOSAL"
+    PROCESS_LINK_PROPOSAL = "PROCESS_LINK_PROPOSAL"
     # 더하는 변경(2026-11-06 PM 확인, #319·#359): 표면처리를 직접 하는 회사일 수 있음.
     # 출처는 AI 또는 RULE. 자동으로 빼지 않고 담당자가 확인한다(FR9.3).
     OWN_PLATING_LINE_SUSPECTED = "OWN_PLATING_LINE_SUSPECTED"

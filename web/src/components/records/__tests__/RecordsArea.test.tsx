@@ -13,6 +13,7 @@ vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   postNote: vi.fn(),
   postOutcome: vi.fn(),
+  getSalesQuestions: vi.fn(() => new Promise(() => {})),
 }));
 
 const mockedNote = vi.mocked(postNote);
@@ -56,6 +57,11 @@ function renderArea(
   );
 }
 
+/** 종류를 "메모"로 바꾼다. 기본값이 "전화"로 바뀌어서(#691) 메모 시험은 이것부터 한다. */
+function toMemo() {
+  fireEvent.change(screen.getByTestId('records-kind'), { target: { value: 'MEMO' } });
+}
+
 async function pick(user: ReturnType<typeof userEvent.setup>, testId: string, label: string) {
   await user.selectOptions(screen.getByTestId(testId), label);
 }
@@ -66,7 +72,7 @@ describe('RecordsArea', () => {
     mockedOutcome.mockReset();
   });
 
-  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 메모다', () => {
+  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 전화다(#691)', () => {
     renderArea(frameValue(), {
       outcome: {
         version: 1,
@@ -75,18 +81,26 @@ describe('RecordsArea', () => {
         status: 'IN_PROGRESS',
       },
     });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
+    // 다음 일정 칸도 기본으로 접혀 있다(#683). [일정 잡기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByRole('heading', { name: recordsArea.entryTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.stageTitle })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
     // 접촉 시도·영업 메모 구역은 따로 없고, 접촉 횟수는 이 영역이 아니라 상세 머리가 보인다.
     expect(screen.queryByTestId('records-contact-count')).not.toBeInTheDocument();
     const kind = screen.getByTestId('records-kind') as HTMLSelectElement;
-    expect(kind.value).toBe('MEMO');
+    expect(kind.value).toBe('CALL');
     expect(
       within(kind)
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['메모', '전화', '방문', '메일', '자료 조사']);
+    expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
+    expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
+    // 메모만 적는 흐름은 종류에서 "메모"를 고르면 그대로다.
+    toMemo();
     expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
@@ -154,7 +168,7 @@ describe('RecordsArea', () => {
     ['SAMPLE_OR_REGISTRATION_APPROVED', 'SAMPLE_OR_REGISTRATION_APPROVED'],
     ['ON_HOLD', 'ON_HOLD'],
   ] as const)(
-    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (접촉 중 자동 전환은 미접촉일 때만)',
+    '이미 %s 단계면 접촉을 저장해도 단계는 그대로 %s다 (미접촉일 때도 자동으로 바꾸지 않고 묻기만 한다, #433)',
     async (from, expected) => {
       const user = userEvent.setup();
       mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: expected }));
@@ -190,6 +204,10 @@ describe('RecordsArea', () => {
       },
       onContactRecorded,
     });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '그냥 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));
@@ -205,6 +223,8 @@ describe('RecordsArea', () => {
       meta: {},
     });
     renderArea();
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), {
       target: { value: '담당자 010-1234-5678 부재, 내일 재통화' },
     });
@@ -233,6 +253,8 @@ describe('RecordsArea', () => {
       new ApiError(400, { message: '실패', nextAction: '', ref: 'r1' }),
     );
     renderArea(frameValue(), { onRecorded });
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '첫 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(onRecorded).toHaveBeenCalledTimes(1));
@@ -249,6 +271,8 @@ describe('RecordsArea', () => {
       new ApiError(400, { message: '메모는 200자까지 쓸 수 있습니다.', nextAction: '', ref: 'r1' }),
     );
     renderArea();
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     fireEvent.change(screen.getByTestId('records-note-input'), { target: { value: '긴 메모' } });
     await user.click(screen.getByTestId('records-note-save-button'));
     expect(await screen.findByTestId('records-note-error')).toHaveTextContent(
@@ -271,6 +295,8 @@ describe('RecordsArea', () => {
         },
       }),
     );
+    // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
+    toMemo();
     expect(screen.getByTestId('records-note-counter')).toHaveTextContent('0 / 150자');
   });
 
@@ -279,6 +305,8 @@ describe('RecordsArea', () => {
     const onOutcomeSaved = vi.fn();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'ON_HOLD' }));
     renderArea(frameValue(), { onOutcomeSaved });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '보류');
     await user.click(screen.getByTestId('records-stage-save-button'));
     await waitFor(() =>
@@ -294,6 +322,8 @@ describe('RecordsArea', () => {
 
   it('영업 단계 선택지에는 "관심"이 없다: 관심은 단계가 아니라 켜고 끄는 단추다 (#357)', () => {
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(
       within(screen.getByTestId('records-stage-select'))
         .getAllByRole('option')
@@ -312,6 +342,8 @@ describe('RecordsArea', () => {
   it('거절을 고르면 거절 이유 선택 상자가 나오고 이유를 고르기 전에는 저장이 잠긴다', async () => {
     const user = userEvent.setup();
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(screen.queryByTestId('records-stage-lost-code')).not.toBeInTheDocument();
     await pick(user, 'records-stage-select', '거절');
     const select = screen.getByTestId('records-stage-lost-code');
@@ -337,6 +369,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'PRICE' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
     await user.click(screen.getByTestId('records-stage-save-button'));
@@ -358,6 +392,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'OTHER' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '기타');
     expect(screen.getByTestId('records-stage-reason-error')).toHaveTextContent(
@@ -382,6 +418,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'PRICE' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
     fireEvent.change(screen.getByTestId('records-stage-reason-input'), {
@@ -401,6 +439,8 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'ON_HOLD' }));
     renderArea();
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     await pick(user, 'records-stage-select', '거절');
     await pick(user, 'records-stage-lost-code', '가격');
     await pick(user, 'records-stage-select', '보류');
@@ -420,6 +460,8 @@ describe('RecordsArea', () => {
         lostReasonCode: 'PRICE',
       },
     });
+    // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
+    fireEvent.click(screen.getByTestId('records-stage-toggle'));
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 거절 · 가격');
   });
 
@@ -435,6 +477,8 @@ describe('RecordsArea', () => {
         lostReasonCode: 'PRICE',
       },
     });
+    // 다음 일정 칸은 기본으로 접혀 있다(#683).
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     fireEvent.change(screen.getByTestId('records-schedule-date'), {
       target: { value: '2026-12-01' },
     });
@@ -448,9 +492,11 @@ describe('RecordsArea', () => {
     );
   });
 
-  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 미접촉 단계는 접촉으로 넘어간다', async () => {
+  // #433(PM 결정 2026-11-08, 약속 C1 "자동 변경 아님"): 미접촉이어도 접촉 저장이 단계를 자동으로 바꾸지 않는다.
+  // 예전에는 여기서 IN_PROGRESS로 넘어갔다. 지금은 단계를 그대로 싣고 "접촉으로 바꿀까요?"를 묻는다(RecordsArea.flow 시험).
+  it('접촉 시도를 저장하면 방법·결과·날짜가 가고, 미접촉 단계는 그대로 둔다(자동으로 바꾸지 않고 묻는다)', async () => {
     const user = userEvent.setup();
-    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
+    mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'NOT_EXECUTED' }));
     renderArea(frameValue(), {
       outcome: {
         version: 1,
@@ -467,7 +513,7 @@ describe('RecordsArea', () => {
     const [, body] = mockedOutcome.mock.calls[0];
     expect(body).toMatchObject({
       evalId: EVAL,
-      status: 'IN_PROGRESS',
+      status: 'NOT_EXECUTED',
       method: 'CALL',
       result: 'ABSENT',
     });
@@ -485,6 +531,8 @@ describe('RecordsArea', () => {
         status: 'IN_PROGRESS',
       },
     });
+    // 다음 일정 칸은 기본으로 접혀 있다(#683).
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     fireEvent.change(screen.getByTestId('records-schedule-date'), {
       target: { value: '2026-11-10' },
@@ -512,8 +560,15 @@ describe('RecordsArea', () => {
     expect(screen.getByTestId('records-pick-staff-text')).toHaveTextContent(
       recordsArea.pickStaffFirst,
     );
-    expect(screen.getByTestId('records-note-input')).toBeDisabled();
+    // 종류는 "전화"로 시작한다(#691). 종류·결과·저장 단추가 모두 막혀 있다.
+    expect(screen.getByTestId('records-kind')).toBeDisabled();
+    expect(screen.getByTestId('records-contact-result')).toBeDisabled();
+    expect(screen.getByTestId('records-contact-save-button')).toBeDisabled();
+    expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
+    // 다음 일정 칸은 기본으로 접혀 있다(#683). 펼쳐 볼 수는 있어도 입력은 막혀 있다.
+    fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-date')).toBeDisabled();
+    expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     expect(mockedNote).not.toHaveBeenCalled();
   });
 });

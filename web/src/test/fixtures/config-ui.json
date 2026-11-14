@@ -26,6 +26,33 @@
       "WATCH": "지켜보는 중",
       "LOW": "나중에"
     },
+    "ingestOptions": {
+      "processes": [
+        { "code": "ZINC_PLATING", "name": "아연도금(전기아연도금)" },
+        { "code": "ANODIZING", "name": "아노다이징" },
+        { "code": "BLACK_OXIDE", "name": "흑착색(알카리흑착)" },
+        { "code": "CHROMATE", "name": "크로메이트" },
+        { "code": "ELECTROPOLISHING", "name": "전해연마" },
+        { "code": "CHROME_PLATING", "name": "크롬도금" },
+        { "code": "ELECTROLESS_NICKEL", "name": "무전해니켈" },
+        { "code": "PHOSPHATE_COATING", "name": "인산염피막" },
+        { "code": "PASSIVATION", "name": "부동태" }
+      ],
+      "regions": ["충남", "대전", "세종"],
+      "industries": [
+        "방위산업",
+        "반도체",
+        "반도체 장비",
+        "자동차 부품",
+        "항공우주",
+        "밸브·유체기기",
+        "조선·해양",
+        "전기·전자",
+        "기계·설비",
+        "건설·건축자재",
+        "기타"
+      ]
+    },
     "activeDatasetKind": "VIRTUAL_REVIEWED",
     "accessProtectionEnabled": false,
     "ruleVersion": "v0.17-a"

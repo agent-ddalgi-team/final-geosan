@@ -29,6 +29,11 @@ class Customer(CommonColumns, Base):
     biz_number: Mapped[str | None] = mapped_column(String(10), unique=True)
     normalized_address: Mapped[str | None] = mapped_column(String(300))
     address: Mapped[str | None] = mapped_column(String(300))
+    # C6 #222: 공공자료 좌표만 저장한다. 네이버 응답은 저장하지 않는다.
+    lat: Mapped[float | None] = mapped_column(Float)
+    lng: Mapped[float | None] = mapped_column(Float)
+    geocoded_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    geocode_source: Mapped[str | None] = mapped_column(String(16))
     homepage_url: Mapped[str | None] = mapped_column(Text)
     homepage_status: Mapped[str | None] = mapped_column(String(24))
     homepage_source: Mapped[str | None] = mapped_column(String(16))
@@ -69,6 +74,13 @@ class Customer(CommonColumns, Base):
     )
     own_plating_line_basis: Mapped[str | None] = mapped_column(Text)
     own_plating_line_source: Mapped[str | None] = mapped_column(String(16))
+    # 팩토리온 공장조회에서 붙인 값(C6, #573). 종업원 수는 언제나 추정이다.
+    factory_raw_materials: Mapped[str | None] = mapped_column(Text)
+    factory_employee_count: Mapped[int | None] = mapped_column(Integer)
+    factory_scale: Mapped[str | None] = mapped_column(String(40))
+    # 공장 등록 업종명(#617). AI 추정이 아니라 등록 사실로 화면에 보인다.
+    factory_industry_name: Mapped[str | None] = mapped_column(String(200))
+    factory_profile_date: Mapped[date | None] = mapped_column(Date)
 
 
 class Opportunity(CommonColumns, Base):
@@ -279,6 +291,8 @@ class IngestBatch(CommonColumns, Base):
     web_from_cache: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     web_skipped_reason: Mapped[str | None] = mapped_column(String(16))
     complex_list_skipped_reason: Mapped[str | None] = mapped_column(String(16))
+    # 접수 때 예상 금액(C6 #549). 옛 회차는 null. 실제 금액은 전송 기록에서 센다.
+    estimated_usd: Mapped[float | None] = mapped_column(Float)
 
 
 class MergeCandidate(CommonColumns, Base):

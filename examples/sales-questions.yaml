@@ -1,0 +1,154 @@
+_설명: >-
+  영업 기록 꼬리 질문(#607, 약속 C7). 담당자가 접촉을 "연결"로 저장할 때 지금 세부 단계의 질문을 고른다.
+  id는 한 번 쓰면 바꾸지 않는다(지난 답이 이 id로 저장된다). 문구(text·label)는 바꿔도 된다.
+  reaches가 있는 보기를 고르면 세부 단계가 그 단계까지 앞으로 간다. showWhen이 있으면 앞 답이 그 보기일 때만 보인다(꼬리).
+  closes(WON·LOST·ON_HOLD)가 있는 보기를 고르면 큰 단계가 성사·거절·보류로 저장되고, lostReason 보기는 거절 이유 코드가 된다(#643).
+  choices(PROCESS·INDUSTRY)가 있는 질문은 보기를 여기 적지 않는다. 거산 공정 목록·설정 산업군에서 오고 여러 개를 고를 수 있으며,
+  고른 값으로 그 회사의 공정·산업이 확정된다(#652). answers와 choices는 한 질문에 하나만 쓴다.
+  choices 질문은 step에 적은 세부 단계부터, 답이 생길 때까지 그 뒤 단계에서도 계속 보인다(step: ALL은 쓸 수 없다).
+  default: true가 있는 보기는 화면이 미리 골라 둔다(#691). 그런 질문은 통화 내용이 아니라 접촉 자체에 대한 질문이라
+  접촉 종류·결과 줄 옆에 보이고 부재 접촉에도 남는다. step은 ALL, showWhen·reaches·closes·lostReason은 쓸 수 없다.
+  문구는 거산 확인(#275) 전 초안이다. 가상·거산 실제 사양 아님.
+version: 1
+steps:
+  - { code: NOT_REACHED, label: 연결 전, stage: IN_PROGRESS }
+  - { code: REACHED, label: 연결됨, stage: IN_PROGRESS }
+  - { code: DEMAND_CONFIRMED, label: 수요 확인, stage: IN_PROGRESS }
+  - { code: MATERIAL_QUOTE, label: 자료·견적, stage: SAMPLE_OR_REGISTRATION_APPROVED }
+  - { code: VISIT_SAMPLE, label: 방문·샘플, stage: SAMPLE_OR_REGISTRATION_APPROVED }
+questions:
+  # ① 연결 전
+  - id: WHO_TALKED
+    step: NOT_REACHED
+    text: 누구와 이야기했나요?
+    answers:
+      - { id: RIGHT_PERSON, label: 담당 부서, reaches: REACHED }
+      - { id: OTHER_DEPT, label: 다른 부서 }
+      - { id: GUIDE_ONLY, label: 안내만 }
+  # ② 연결됨
+  - id: PLATING_NOW
+    step: REACHED
+    text: 지금 도금은 어떻게 하나요?
+    answers:
+      - { id: IN_HOUSE, label: 직접 함 }
+      - { id: OUTSOURCED, label: 외주 줌, reaches: DEMAND_CONFIRMED }
+      - { id: UNKNOWN, label: 모름 }
+  - id: NEED_PROCESS
+    step: REACHED
+    text: 거산이 맡을 수 있는 공정이 있나요?
+    showWhen: { answers: { PLATING_NOW: [IN_HOUSE] } }
+    answers:
+      - { id: YES, label: 있음, reaches: DEMAND_CONFIRMED }
+      - { id: NO, label: 없음 }
+      - { id: UNKNOWN, label: 모름 }
+  - id: INTEREST
+    step: REACHED
+    text: 관심 정도는?
+    answers:
+      - { id: HIGH, label: 높음 }
+      - { id: MEDIUM, label: 보통 }
+      - { id: LOW, label: 낮음 }
+      - { id: NONE, label: 없음 }
+  # 공정·산업 확인(#652): 고른 값으로 이 회사의 공정·산업이 확정되고 영업 분석이 그 값으로 센다.
+  - id: CONFIRM_PROCESS
+    step: REACHED
+    text: 어떤 공정을 맡길 수 있나요?
+    choices: PROCESS
+  - id: CONFIRM_INDUSTRY
+    step: REACHED
+    text: 어느 산업인가요?
+    choices: INDUSTRY
+  # ③ 수요 확인
+  - id: SWITCH_INTENT
+    step: DEMAND_CONFIRMED
+    text: 외주처를 바꿀 생각이 있나요?
+    showWhen: { answers: { PLATING_NOW: [OUTSOURCED] } }
+    answers:
+      - { id: YES, label: 있음 }
+      - { id: NOT_NOW, label: 지금은 없음 }
+      - { id: UNKNOWN, label: 모름 }
+  - id: INTEREST_DRIVER
+    step: DEMAND_CONFIRMED
+    text: 무엇이 있으면 관심이 커지나요?
+    answers:
+      - { id: PRICE, label: 단가 }
+      - { id: LEAD_TIME, label: 납기 }
+      - { id: CERTIFICATION, label: 인증 }
+      - { id: SAMPLE, label: 샘플 }
+      - { id: UNKNOWN, label: 모름 }
+  - id: QUOTE_REQUEST
+    step: DEMAND_CONFIRMED
+    text: 자료나 견적 요청이 있었나요?
+    answers:
+      - { id: QUOTE, label: 견적 요청, reaches: MATERIAL_QUOTE }
+      - { id: MATERIAL, label: 자료 요청, reaches: MATERIAL_QUOTE }
+      - { id: NOT_YET, label: 아직 없음 }
+  # ④ 자료·견적
+  - id: SENT_ITEM
+    step: MATERIAL_QUOTE
+    text: 무엇을 보냈나요?
+    answers:
+      - { id: BROCHURE, label: 회사소개서 }
+      - { id: CERTIFICATE, label: 인증서 }
+      - { id: QUOTE, label: 견적서 }
+      - { id: NOT_YET, label: 아직 안 보냄 }
+  - id: REPLY
+    step: MATERIAL_QUOTE
+    text: 답이 왔나요?
+    answers:
+      - { id: CAME, label: 왔음 }
+      - { id: NOT_YET, label: 아직 }
+      - { id: NONE, label: 안 옴 }
+  - id: VISIT_OR_SAMPLE
+    step: MATERIAL_QUOTE
+    text: 방문이나 샘플 요청이 있었나요?
+    answers:
+      - { id: VISIT, label: 방문 요청, reaches: VISIT_SAMPLE }
+      - { id: SAMPLE, label: 샘플 요청, reaches: VISIT_SAMPLE }
+      - { id: NOT_YET, label: 아직 없음 }
+  # ⑤ 방문·샘플
+  - id: SAMPLE_RESULT
+    step: VISIT_SAMPLE
+    text: 샘플 결과는?
+    answers:
+      - { id: PASS, label: 합격 }
+      - { id: FAIL, label: 불합격 }
+      - { id: WAITING, label: 기다리는 중 }
+      - { id: NO_SAMPLE, label: 샘플 없음(방문만) }
+  # 접촉마다(#691): 걸려 온 전화와 건 전화를 구분한다. 세부 단계·영업 단계에 영향 없음.
+  - id: WHO_FIRST
+    step: ALL
+    text: 누가 먼저 연락했나요?
+    answers:
+      - { id: OURS, label: 우리가, default: true }
+      - { id: THEIRS, label: 상대가 }
+  # 모든 단계
+  - id: NEXT_ACTION
+    step: ALL
+    text: 다음 할 일은?
+    answers:
+      - { id: SEND_MATERIAL, label: 자료 보내기 }
+      - { id: QUOTE, label: 견적 }
+      - { id: RECONTACT, label: 다시 연락 }
+      - { id: VISIT, label: 방문 }
+      - { id: END, label: 끝 }
+  # 마무리(#643): "끝"을 골랐을 때만. 이 답으로 큰 단계(성사·거절·보류)와 거절 이유가 저장된다.
+  - id: CLOSE_RESULT
+    step: ALL
+    text: 어떻게 끝났나요?
+    showWhen: { answers: { NEXT_ACTION: [END] } }
+    answers:
+      - { id: WON, label: 성사, closes: WON }
+      - { id: LOST, label: 거절, closes: LOST }
+      - { id: ON_HOLD, label: 보류 · 나중에 다시, closes: ON_HOLD }
+  - id: LOST_REASON
+    step: ALL
+    text: 거절 이유는?
+    showWhen: { answers: { CLOSE_RESULT: [LOST] } }
+    answers:
+      - { id: PRICE, label: 가격, lostReason: PRICE }
+      - { id: LEAD_TIME, label: 납기, lostReason: LEAD_TIME }
+      - { id: INCUMBENT_SUPPLIER, label: 기존 거래처 유지, lostReason: INCUMBENT_SUPPLIER }
+      - { id: NO_DEMAND, label: 수요 없음, lostReason: NO_DEMAND }
+      - { id: QUALITY_CERT, label: 품질·인증 요건, lostReason: QUALITY_CERT }
+      - { id: OTHER, label: 기타, lostReason: OTHER }

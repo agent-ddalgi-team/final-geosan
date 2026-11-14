@@ -11,6 +11,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,13 +21,21 @@ from geosan.opportunity.candidate_judgments import (
     CandidateJudgment,
     _labels,
     candidate_criteria_version,
+    candidate_product_hash,
     parse_candidate_judgments,
 )
+from geosan.opportunity.candidate_web_results import safe_public_text
 from geosan.opportunity.factory_csv import SOURCE_ID
+from geosan.opportunity.factory_profile import ProfileIndex
 from geosan.opportunity.factory_store import _context
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.source_models import CandidateJudgment as StoredJudgment
-from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
+from geosan.opportunity.source_models import (
+    SourceContract,
+    SourceFactoryRow,
+    shares_public_source,
+)
+from geosan.opportunity.web_candidate_store import web_judgment_rows
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 
@@ -39,6 +48,7 @@ class JudgmentRowState:
     source_id: str
     product_hash: str
     previous_judgment_id: str | None
+    content_hash: str
 
 
 @dataclass(frozen=True)
@@ -54,6 +64,7 @@ class JudgmentPlan:
     rows: tuple[JudgmentRowState, ...]
     pending_row_ids: tuple[str, ...]
     reused: tuple[CandidateJudgment, ...]
+    source_kind: Literal["FACTORY", "WEB"] = "FACTORY"
 
 
 def _rows(session, row_ids, regions):
@@ -83,13 +94,55 @@ def _rows(session, row_ids, regions):
     return found
 
 
-def _latest(session, row_ids, version):
+def judgment_rows(session, batch, row_ids, regions, source_kind):
+    if source_kind == "FACTORY":
+        return _rows(session, row_ids, regions)
+    if source_kind == "WEB":
+        return web_judgment_rows(session, batch, row_ids)
+    raise InputError("후보 판단의 출처 종류를 확인해 주세요.")
+
+
+@dataclass(frozen=True)
+class JudgmentInput:
+    """AI 판단에 함께 보내는 공장 등록 값(#570). 회사 행의 업종명이 없으면 팩토리온 업종명."""
+
+    industry_name: str | None
+    raw_materials: str | None
+
+    def product_hash(self, product: str | None) -> str:
+        return candidate_product_hash(product, self.industry_name, self.raw_materials)
+
+
+def judgment_inputs(session, rows, source_kind="FACTORY", index=None) -> dict:
+    """행마다 판단 입력 값을 정한다. 공장 행만 팩토리온 행을 찾아 붙인다(이름+주소, #573 규칙).
+
+    웹 후보는 공장 등록 자료와 맞추지 않는다. 전화·홈페이지 칸은 팩토리온 표에 없다.
+    """
+    values = list(rows.values() if isinstance(rows, Mapping) else rows)
+    if source_kind != "FACTORY":
+        return {row.row_id: JudgmentInput(row.industry_name, None) for row in values}
+    if index is None:
+        index = ProfileIndex(session, names=[row.company_name for row in values])
+    result = {}
+    for row in values:
+        profile = index.profile_for(row.company_name, row.address)
+        result[row.row_id] = JudgmentInput(
+            row.industry_name or (profile.industry_name if profile else None),
+            profile.raw_materials if profile else None,
+        )
+    return result
+
+
+def _latest(session, row_ids, version, source_kind="FACTORY"):
     latest = {}
+    id_column = (
+        StoredJudgment.row_id if source_kind == "FACTORY" else StoredJudgment.web_candidate_id
+    )
     if row_ids:
         query = (
             select(StoredJudgment)
             .where(
-                StoredJudgment.row_id.in_(row_ids),
+                id_column.in_(row_ids),
                 StoredJudgment.criteria_version == version,
             )
             .order_by(
@@ -99,13 +152,31 @@ def _latest(session, row_ids, version):
             )
         )
         for row in session.scalars(query):
-            latest.setdefault(row.row_id, row)
+            latest.setdefault(row.row_id if source_kind == "FACTORY" else row.web_candidate_id, row)
     return latest
 
 
-def _as_response(row):
+def public_row_content_hash(row, extra: JudgmentInput | None = None):
+    """전송 직전·저장 직전에 공개 본문(붙인 팩토리온 값 포함, #570)이 바뀌지 않았는지 확인한다."""
+    value = json.dumps(
+        [
+            row.company_name,
+            row.complex_name,
+            row.product,
+            row.industry_name,
+            row.address,
+            *([row.source_url] if hasattr(row, "source_url") else []),
+            *([extra.industry_name, extra.raw_materials] if extra is not None else []),
+        ],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _as_response(row, source_kind="FACTORY"):
     return {
-        "rowId": row.row_id,
+        "rowId": row.row_id if source_kind == "FACTORY" else row.web_candidate_id,
         "isManufacturer": row.is_manufacturer,
         "processCodes": row.process_codes,
         "industries": row.industries,
@@ -116,6 +187,21 @@ def _as_response(row):
     }
 
 
+def _check_web_judgment_text(judgments, source_kind):
+    if source_kind == "WEB" and any(
+        not safe_public_text(value)
+        for judgment in judgments
+        for value in (judgment.reason, judgment.own_plating_line_basis)
+        if value is not None
+    ):
+        raise AppError(
+            "웹 후보 판단에 사람 정보가 있어 저장할 수 없습니다.",
+            "공개 생산품 근거를 확인해 주세요.",
+            status=503,
+            kind="LLM_FAILED",
+        )
+
+
 def prepare_candidate_judgments(
     batch_id: str,
     row_ids: Sequence[str],
@@ -124,6 +210,7 @@ def prepare_candidate_judgments(
     industry_catalog: Sequence[str],
     prompt: str,
     db_path: Path | str | None = None,
+    source_kind: Literal["FACTORY", "WEB"] = "FACTORY",
 ) -> JudgmentPlan:
     """행별 최신 판단을 비교한다. 새로 판단할 행과 재사용할 결과를 입력 순서로 돌려준다."""
     if not isinstance(batch_id, str) or not batch_id.strip():
@@ -139,22 +226,31 @@ def prepare_candidate_judgments(
             # 읽은 행·판단·회차가 서로 다른 시점으로 섞이지 않게 읽기 트랜잭션을 명시한다.
             session.connection().exec_driver_sql("BEGIN")
             batch, regions = _context(session, batch_id)
-            found = _rows(session, ids, regions)
-            latest = _latest(session, ids, version)
+            found = judgment_rows(session, batch, ids, regions, source_kind)
+            if any(
+                not shares_public_source(row.dataset_kind, batch.dataset_kind)
+                or row.is_virtual != batch.is_virtual
+                for row in found.values()
+            ):
+                raise InputError("이번 회차의 자료 묶음에 있는 공개 공장 행만 판단할 수 있습니다.")
+            latest = _latest(session, ids, version, source_kind)
+            inputs = judgment_inputs(session, found, source_kind)
             states, pending, cached = [], [], []
             for row_id in ids:
                 row = found[row_id]
                 old = latest.get(row_id)
+                fingerprint = inputs[row_id].product_hash(row.product)
                 states.append(
                     JudgmentRowState(
                         row_id,
                         row.source_id,
-                        row.product_hash,
+                        fingerprint,
                         old.judgment_id if old else None,
+                        public_row_content_hash(row, inputs[row_id]),
                     )
                 )
-                if not batch.rejudge and old is not None and old.product_hash == row.product_hash:
-                    cached.append(_as_response(old))
+                if not batch.rejudge and old is not None and old.product_hash == fingerprint:
+                    cached.append(_as_response(old, source_kind))
                 else:
                     pending.append(row_id)
             try:
@@ -168,6 +264,7 @@ def prepare_candidate_judgments(
                     if cached
                     else ()
                 )
+                _check_web_judgment_text(reused, source_kind)
             except AppError:
                 raise RunFailedError("저장된 후보 판단이 현재 약속과 맞지 않습니다.") from None
             return JudgmentPlan(
@@ -180,6 +277,7 @@ def prepare_candidate_judgments(
                 tuple(states),
                 tuple(pending),
                 reused,
+                source_kind,
             )
     except SQLAlchemyError as exc:
         raise storage_failure(
@@ -216,6 +314,7 @@ def save_candidate_judgments(
         process_catalog=dict(plan.process_catalog),
         industry_catalog=plan.industry_catalog,
     )
+    _check_web_judgment_text(judgments, plan.source_kind)
     try:
         with session_scope(db_path) as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
@@ -223,12 +322,18 @@ def save_candidate_judgments(
             if set(regions) != set(plan.regions) or batch.rejudge != plan.rejudge:
                 raise InputError("판단하는 동안 회차의 찾기 범위나 다시 판단 여부가 바뀌었습니다.")
             ids = [row.row_id for row in plan.rows]
-            found = _rows(session, ids, regions)
-            latest = _latest(session, ids, plan.criteria_version)
+            found = judgment_rows(session, batch, ids, regions, plan.source_kind)
+            latest = _latest(session, ids, plan.criteria_version, plan.source_kind)
+            inputs = judgment_inputs(session, found, plan.source_kind)
             for before in plan.rows:
                 row = found[before.row_id]
                 previous = latest.get(before.row_id)
-                if row.product_hash != before.product_hash or row.source_id != before.source_id:
+                if (
+                    public_row_content_hash(row, inputs[before.row_id]) != before.content_hash
+                    or row.source_id != before.source_id
+                    or not shares_public_source(row.dataset_kind, batch.dataset_kind)
+                    or row.is_virtual != batch.is_virtual
+                ):
                     raise InputError(
                         "판단하는 동안 공개 공장 자료가 바뀌었습니다. 다시 확인해 주세요."
                     )
@@ -245,9 +350,12 @@ def save_candidate_judgments(
                 session.add(
                     StoredJudgment(
                         judgment_id=judgment_id,
-                        row_id=judgment.row_id,
+                        row_id=judgment.row_id if plan.source_kind == "FACTORY" else None,
+                        web_candidate_id=judgment.row_id if plan.source_kind == "WEB" else None,
                         criteria_version=plan.criteria_version,
-                        product_hash=found[judgment.row_id].product_hash,
+                        product_hash=inputs[judgment.row_id].product_hash(
+                            found[judgment.row_id].product
+                        ),
                         is_manufacturer=judgment.is_manufacturer,
                         process_codes=judgment.process_codes,
                         industries=judgment.industries,

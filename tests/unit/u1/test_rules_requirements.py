@@ -412,3 +412,41 @@ def test_multiple_candidates_are_deterministic_and_input_is_unchanged(
         qualification.holder == original_qualification.holder
         for qualification in data.capability.qualifications
     )
+
+
+@pytest.mark.parametrize(
+    ("relation_check", "relation", "expected"),
+    [
+        ("BLOCK", RelationStatus.UNCONFIRMED, FilterState.PENDING),
+        ("IGNORE", RelationStatus.UNCONFIRMED, FilterState.PASS),
+        ("IGNORE", RelationStatus.NEW_CONFIRMED, FilterState.PASS),
+        ("IGNORE", RelationStatus.EXISTING_CONFIRMED, FilterState.PASS),
+    ],
+)
+def test_relation_check_setting_decides_whether_unconfirmed_relation_waits(
+    evaluation_input: EvaluationInput,
+    relation_check: str,
+    relation: RelationStatus,
+    expected: FilterState,
+) -> None:
+    """Given 거래 관계 확인 설정, When 필터 판정, Then IGNORE면 확인 전은 대기가 아니다 (#567)."""
+    data = evaluation_input
+    data.rule_config.relation_check = relation_check
+    data.opportunity.relation_status = relation
+    assert assess_requirements(data).filter_state == expected
+
+
+def test_relation_check_ignore_keeps_other_pending_reasons(
+    evaluation_input: EvaluationInput,
+) -> None:
+    """Given IGNORE와 소재 빈칸, When 필터 판정, Then 다른 대기 사유는 그대로 대기다 (#567)."""
+    data = evaluation_input
+    data.rule_config.relation_check = "IGNORE"
+    data.opportunity.relation_status = RelationStatus.UNCONFIRMED
+    data.process_links[0].applied_material = None
+    assert assess_requirements(data).filter_state == FilterState.PENDING
+
+
+def test_relation_check_defaults_to_block_when_omitted(evaluation_input: EvaluationInput) -> None:
+    """Given 이전 설정 파일(칸 생략), When 읽기, Then BLOCK(이전 동작)이다 (#567)."""
+    assert evaluation_input.rule_config.relation_check == "BLOCK"

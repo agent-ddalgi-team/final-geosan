@@ -33,9 +33,10 @@ def read_display(client, opp_id):
         ("EXISTING_CONFIRMED", "CONFIRMED"),
     ],
 )
-def test_real_evaluation_exposes_relation_and_score_state(records_env, relation, state):
+def test_real_evaluation_exposes_relation_and_score_state(records_env, tmp_path, relation, state):
     """Given 거래 관계별 가상 평가 / When 목록·상세 조회 / Then 같은 표시 상태와 확인일을 준다."""
     client, opp_id = records_env
+    factories.register_relation_check(tmp_path, "BLOCK")  # 거래 확인 전 대기 동작(#567)
     with session_scope() as session:
         customer = session.get(Customer, session.get(Opportunity, opp_id).customer_id)
         customer.relation_status = relation
@@ -84,9 +85,10 @@ def test_saved_zero_and_missing_scores_are_distinct(records_env, classification,
     assert card["rank"] == original["rank"] and card["evalId"] == original["evalId"]
 
 
-def test_latest_partial_evaluation_is_used_for_state(records_env):
+def test_latest_partial_evaluation_is_used_for_state(records_env, tmp_path):
     """Given 목록 뒤 부분 재평가 / When 조회 / Then 원래 순위와 최신 평가의 상태를 함께 준다."""
     client, opp_id = records_env
+    factories.register_relation_check(tmp_path, "BLOCK")  # 거래 확인 전 대기 동작(#567)
     before, _ = read_display(client, opp_id)
     with session_scope() as session:
         customer = session.get(Customer, session.get(Opportunity, opp_id).customer_id)
@@ -139,3 +141,17 @@ def test_company_states_are_isolated_across_pages_and_filters(industry_env):
     filtered = client.get("/api/v1/opportunities", params={"industry": "반도체"}).json()["data"]
     assert [x["oppId"] for x in filtered] == [ids[0]]
     assert filtered[0]["scoreState"] == expected[ids[0]]
+
+
+def test_relation_check_ignore_keeps_unconfirmed_score_confirmed(records_env):
+    """Given 예시 설정(거래 관계 확인 끔) / When 확인 전으로 재평가 / Then 대기가 아니다 (#567)."""
+    client, opp_id = records_env
+    with session_scope() as session:
+        customer = session.get(Customer, session.get(Opportunity, opp_id).customer_id)
+        customer.relation_status = "UNCONFIRMED"
+        customer.relation_confirmed_at = None
+    assert run_evaluation().ok
+    card, header = read_display(client, opp_id)
+    assert card["relationStatus"] == header["relationStatus"] == "UNCONFIRMED"
+    assert card["scoreState"] == header["scoreState"] == "CONFIRMED"
+    assert card["classificationCode"] != "FILTER_PENDING"

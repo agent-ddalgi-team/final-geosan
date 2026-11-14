@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.config.errors import InputError
@@ -78,6 +78,40 @@ def latest_confirmed_evaluation(session: Session, opp_id: str) -> EvaluationRun 
         )
         .order_by(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc())
     )
+
+
+def latest_confirmed_evaluations(session: Session, opp_ids) -> dict[str, EvaluationRun]:
+    """여러 기회의 최신 확정 평가를 한 번에(#686). 한 곳씩 고르는 함수와 같은 순서다.
+
+    목록이 회사마다 따로 물어 요청 시간의 큰 몫을 쓰던 것을 한 번의 조회로 바꾼다.
+    """
+    ids = list(dict.fromkeys(opp_ids))
+    if not ids:
+        return {}
+    ranked = (
+        select(
+            EvaluationRun.eval_id,
+            func.row_number()
+            .over(
+                partition_by=EvaluationRun.opp_id,
+                order_by=(EvaluationRun.created_at.desc(), EvaluationRun.eval_id.desc()),
+            )
+            .label("position"),
+        )
+        .join(EvaluationBatch, EvaluationRun.batch_id == EvaluationBatch.batch_id)
+        .where(
+            EvaluationRun.opp_id.in_(ids),
+            EvaluationRun.run_status == "CONFIRMED",
+            EvaluationBatch.status == "CONFIRMED",
+        )
+        .subquery()
+    )
+    runs = session.scalars(
+        select(EvaluationRun)
+        .join(ranked, ranked.c.eval_id == EvaluationRun.eval_id)
+        .where(ranked.c.position == 1)
+    ).all()
+    return {run.opp_id: run for run in runs}
 
 
 def reusable_partial_evaluation(

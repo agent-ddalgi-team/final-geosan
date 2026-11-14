@@ -5,12 +5,14 @@
 # 출처: 요구사항 부록 A(기획서 v0.15 부록 F.1·F.2·F.4·F.6·F.7·F.9·F.10), 기능 설계 rules.md BR4~BR6.
 # 형식 설명서: contracts/rule-config.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
 
-version: v0.17-d
+version: v0.17-e
 hypothesisNote: "기업 승인 전 가설"
 
 # ---------- A.1 신규 기회 프로필 (8항목, 적합도 70 + 시점 30) ----------
 # matchRateSteps: 사람이 적는 단계 이름 → 일치도 숫자. 검사기가 이름을 숫자로 바꾼다(BR2.2). 단계 밖 숫자는 오류(BR4.2).
 # decay: NONE(적합도 항목, 감쇠 1) / GENERAL(일반 감쇠) / BID_EXCEPTION(공고 예외) / HIRE(일반 감쇠 + 종료·채용 완료 0)
+# SIG_BID·SIG_HIRE는 뜻을 넓혔다(PM 결정 2026-11-13, #685): 공고 → "구매·외주 의향", 채용 → "관심". 코드·배점은 그대로.
+#   공고(BID)·채용(HIRING) 신호는 전처럼 쓰고, 통화에서 확인한 신호(아래 callSignals)도 이 두 항목에 들어간다.
 newProfileItems:
   - itemCode: NEW_PRODUCT
     label: 표면처리가 필요한 제품·부품 생산 근거
@@ -43,12 +45,12 @@ newProfileItems:
     matchRateSteps: { "직접 관련": 1.0, "간접 관련": 0.5 }
     decay: GENERAL
   - itemCode: SIG_BID
-    label: 입찰·협력사 모집·구매 공고
+    label: 구매·외주 의향
     weight: 7
     matchRateSteps: { "직접 관련": 1.0, "간접 관련": 0.5 }
     decay: BID_EXCEPTION
   - itemCode: SIG_HIRE
-    label: 관련 직무 채용(구매·품질·생산기술·표면처리)
+    label: 관심
     weight: 5
     matchRateSteps: { "직접 관련": 1.0, "간접 관련": 0.5 }
     decay: HIRE
@@ -183,6 +185,31 @@ otherGroupSort:
 # 기존 거래처 배치 (BR6.5, PM 승인 2026-11-04 #262). 점수·분류 계산은 그대로다.
 # BOTTOM: 그룹 정렬 뒤 거래 중 기회만 맨 아래로, 각각의 기존 순서는 유지. INLINE: 원래 정렬.
 existingCustomerPlacement: BOTTOM
+
+# 거래 관계 확인 (PM 결정 2026-11-11, #567). 신규 잠재고객만 찾으므로 거래 관계 확인은 기획에서 보류.
+# IGNORE: 거래 관계 "확인 전"을 필수조건 대기·막는 조건으로 쓰지 않는다. BLOCK: 기획서 S06 동작(확인 전이면 대기).
+relationCheck: IGNORE
+
+# 통화에서 확인한 신호 (PM 결정 2026-11-13, #685). 담당자가 통화 뒤 고른 꼬리 질문 답이 시점 점수로 들어간다.
+# questionId·answerId는 꼬리 질문 파일(examples/sales-questions.yaml)의 id다. relation: DIRECT = 확인·직접 관련(배점 전부),
+# INDIRECT = 확인·간접 관련(절반). 감쇠는 통화 날짜 기준 위 generalDecay 그대로(30일까지 전부 / 90일까지 절반 / 그 뒤 0).
+# 여기 없는 답("아직 없음"·"지금은 없음"·"관심 낮음/없음"·"모름"·무응답)은 신호를 만들지 않는다 = 아직 모름(0점 확정 아님).
+# 같은 질문에 여러 번 답했으면 가장 최근 접촉의 답, 한 항목에 맞는 답이 여럿이면 가장 센 것 하나(직접 > 간접).
+# 통화 신호는 점수에만 쓰고 "지금 바로 연락" 조건과 카드 유효 기한에는 쓰지 않는다. 사례 파일의 공고 점수가 있으면 그것이 우선.
+callSignals:
+  - itemCode: SIG_BID
+    signalKind: CALL_INTENT
+    answers:
+      - { questionId: QUOTE_REQUEST, answerId: QUOTE, relation: DIRECT }      # 견적 요청
+      - { questionId: SWITCH_INTENT, answerId: "YES", relation: DIRECT }      # 외주처를 바꿀 생각 있음
+      - { questionId: QUOTE_REQUEST, answerId: MATERIAL, relation: INDIRECT } # 자료 요청
+  - itemCode: SIG_HIRE
+    signalKind: CALL_INTEREST
+    answers:
+      - { questionId: VISIT_OR_SAMPLE, answerId: VISIT, relation: DIRECT }    # 방문 요청
+      - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE, relation: DIRECT }   # 샘플 요청
+      - { questionId: INTEREST, answerId: HIGH, relation: DIRECT }            # 관심 높음
+      - { questionId: INTEREST, answerId: MEDIUM, relation: INDIRECT }        # 관심 보통
 
 # 거산 값 묶음 종류 (FR4.14)
 datasetKinds: [VIRTUAL_REVIEWED, BROCHURE, COMPANY_CONFIRMED]

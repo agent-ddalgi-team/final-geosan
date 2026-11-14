@@ -3,8 +3,9 @@
 import logging
 
 import typer
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
+from geosan.commands.geocode import active_evaluated_opp_ids
 from geosan.config.app_settings import (
     DEFAULT_APP_SETTINGS_PATH,
     load_app_settings,
@@ -12,12 +13,13 @@ from geosan.config.app_settings import (
 )
 from geosan.config.errors import AppError, InputError, exit_code_for
 from geosan.evidence.contacts import scrub_contacts
+from geosan.evidence.models import Evidence
 from geosan.opportunity.models import Customer, Opportunity
+from geosan.opportunity.queries import public_origin_condition
 from geosan.storage.session import session_scope
-from geosan.workflows.research import ResearchResult, research_one
+from geosan.workflows.research import STOP_KINDS, ResearchResult, research_one
 
 logger = logging.getLogger(__name__)
-STOP_KINDS = {"LLM_LIMIT", "SEARCH_LIMIT", "USAGE_UNCONFIRMED", "LLM_NOT_CONFIGURED"}
 STATUS_LABELS = {
     "AI_FOUND": "찾음",
     "CONFIRMED": "확인된 주소",
@@ -57,16 +59,37 @@ def run_research(
                 select(Opportunity.opp_id, Customer.name)
                 .join(Customer, Customer.customer_id == Opportunity.customer_id)
                 .where(
-                    Opportunity.dataset_kind == settings.active_dataset_kind.value,
+                    # 영업 건 원본 표시가 검수 전환 뒤에도 BROCHURE로 남을 수 있어, 최신 확정 평가가
+                    # 활성 묶음인 기회도 대상으로 본다(#664, 좌표 채우기와 같은 기준).
+                    or_(
+                        Opportunity.dataset_kind == settings.active_dataset_kind.value,
+                        Opportunity.opp_id.in_(
+                            active_evaluated_opp_ids(settings.active_dataset_kind.value)
+                        ),
+                    ),
                     Opportunity.purpose == "NEW_PROPOSAL",
-                    Opportunity.case_id.is_not(None),
+                    public_origin_condition(),  # 사례 파일 + 후보 찾기 회사(#492)
                     Opportunity.is_virtual.is_(False),
                     Customer.security_grade == "PUBLIC",
                 )
                 .order_by(Opportunity.created_at, Opportunity.opp_id)
             )
-            if not all_companies:
+            if missing_homepage:
                 query = query.where(Customer.homepage_url.is_(None))
+            elif not all_companies:
+                # #690: 기본은 주소 없는 회사 + 주소는 있는데 조사가 안 된 회사(조사 날짜 없음,
+                # 살아 있는 근거 0건). 읽기에 실패했거나 조사가 한 번도 안 돈 회사를 다시 돌린다.
+                live_evidence = (
+                    select(Evidence.evidence_id)
+                    .where(Evidence.opp_id == Opportunity.opp_id, Evidence.superseded_at.is_(None))
+                    .exists()
+                )
+                query = query.where(
+                    or_(
+                        Customer.homepage_url.is_(None),
+                        and_(Customer.researched_at.is_(None), ~live_evidence),
+                    )
+                )
             rows = session.execute(query).all()
         if not rows:
             echo("조사할 공개 신규 사례가 없습니다. 처리 0건.")
@@ -88,7 +111,7 @@ def run_research(
             else:
                 completed += 1
             print_research_result(name, result, echo)
-            if result.usage_unconfirmed or (result.error and result.error.kind in STOP_KINDS):
+            if result.error and result.error.kind in STOP_KINDS:
                 echo(f"조사를 멈췄습니다. 남은 대상 {len(rows) - processed}건.")
                 break
         echo(

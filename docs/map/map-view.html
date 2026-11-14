@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>거산 영업 비서 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 레이아웃: 위에 탭 한 줄, 아래에 "그림 + 글 풀이 + 발표 메모" 한 장씩. 발표 모드는 글자·그림을 키운다 */
+  --bg:#f6f4ee;          /* 종이색 바탕 */
+  --panel:#ffffff;       /* 카드 */
+  --ink:#1f2a2e;         /* 본문 */
+  --muted:#5d6b70;       /* 보조 글 */
+  --line:#d9d4c7;        /* 선 */
+  --accent:#0f6b5c;      /* 강조: 거산의 도금·아노다이징 색을 떠올리는 청록 */
+  --accent-soft:#dcefea;
+  --ok:#2e7d4f; --wip:#b26a00; --next:#4356a8; --hold:#7a7a7a;
+  --font-display:"Noto Serif KR", "Apple SD Gothic Neo", serif;
+  --font-body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15191b; --panel:#1e2427; --ink:#e8e6df; --muted:#a3adb1; --line:#333c40;
+    --accent:#5fc3ad; --accent-soft:#1f3a35;
+    --ok:#6fcf97; --wip:#f0b35a; --next:#8fa0e8; --hold:#9a9a9a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15191b; --panel:#1e2427; --ink:#e8e6df; --muted:#a3adb1; --line:#333c40;
+  --accent:#5fc3ad; --accent-soft:#1f3a35;
+  --ok:#6fcf97; --wip:#f0b35a; --next:#8fa0e8; --hold:#9a9a9a;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55}
+header{padding:20px 24px 0;max-width:1200px;margin:0 auto}
+header h1{font-family:var(--font-display);font-size:1.6rem;margin:0 0 4px;text-wrap:balance}
+header p{margin:0;color:var(--muted);font-size:.95rem}
+.topbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;max-width:1200px;margin:14px auto 0;padding:0 24px}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav a{display:inline-block;padding:8px 14px;border:1px solid var(--line);border-radius:999px;color:var(--ink);text-decoration:none;background:var(--panel);font-weight:500}
+nav a:hover{border-color:var(--accent)}
+nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:#fff}
+nav a:focus-visible,button:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tools{display:flex;gap:6px;align-items:center}
+button{font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent)}
+main{max-width:1200px;margin:16px auto 48px;padding:0 24px}
+section.panel{display:none}
+section.panel.show{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:16px}
+.card h2{font-family:var(--font-display);font-size:1.3rem;margin:0 0 6px;text-wrap:balance}
+.card h3{font-size:1.05rem;margin:18px 0 6px}
+.lead{font-size:1.05rem;margin:0 0 10px}
+.lead strong{color:var(--accent)}
+.caption{color:var(--muted);font-size:.95rem;margin:8px 0 0}
+.fig{overflow-x:auto;padding:8px 0}
+.mermaid{display:flex;justify-content:center;min-height:80px}
+.mermaid svg{max-width:100%;height:auto}
+.err{color:#b3261e;white-space:pre-wrap;font-size:.9rem;border:1px dashed #b3261e;padding:8px;border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.95rem;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.chip{border-radius:999px;padding:4px 12px;font-weight:600;font-size:.9rem;background:var(--accent-soft);color:var(--ink)}
+.chip.ok{box-shadow:inset 0 0 0 2px var(--ok)} .chip.wip{box-shadow:inset 0 0 0 2px var(--wip)} .chip.next{box-shadow:inset 0 0 0 2px var(--next)} .chip.hold{box-shadow:inset 0 0 0 2px var(--hold)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.notes{margin-top:8px}
+.notes label{display:block;font-size:.9rem;color:var(--muted);margin-bottom:4px}
+.notes textarea{width:100%;min-height:90px;font:inherit;font-size:.95rem;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical}
+.notes .row{display:flex;gap:8px;align-items:center;margin-top:6px;color:var(--muted);font-size:.85rem}
+ol.steps{padding-left:1.3em;margin:6px 0}
+ol.steps li{margin:4px 0}
+.src{color:var(--muted);font-size:.85rem}
+.src a{color:var(--accent)}
+/* 발표 모드: 글자와 그림을 키우고 메모는 숨긴다 */
+body.present{font-size:19px}
+body.present header p,body.present .notes,body.present .src{display:none}
+body.present .card h2{font-size:1.7rem}
+body.present .mermaid svg{max-width:none;width:100%}
+@media (prefers-reduced-motion:no-preference){nav a,button{transition:border-color .15s}}
+</style>
+</head>
+<body>
+<header>
+  <h1>거산 영업 비서 지도</h1>
+  <p>거산케미칼 AI 영업지원 2차 · 지도 문서 네 벌(기능·구조·기획 변경·데이터)의 그림을 한 화면에 모았습니다. 기준일 2026-11-13, <code>develop</code> 줄기.</p>
+</header>
+<div class="topbar">
+  <nav aria-label="지도 고르기">
+    <a href="#core">핵심</a>
+    <a href="#data">자료 흐름</a>
+    <a href="#screens">화면</a>
+    <a href="#progress">진행 현황</a>
+    <a href="#timeline">시간표</a>
+    <a href="#structure">구조와 경계</a>
+  </nav>
+  <div class="tools">
+    <button id="present" type="button" aria-pressed="false">발표 모드</button>
+  </div>
+</div>
+
+<main>
+
+<!-- ============ 핵심 ============ -->
+<section class="panel" id="core" aria-labelledby="h-core">
+  <div class="card">
+    <h2 id="h-core">이 서비스의 핵심 — 쓸수록 거산에 맞게 순위·근거가 맞춰진다</h2>
+    <p class="lead">공개 자료로 한 번 뽑은 순위를 보여 주고 끝나는 도구가 아닙니다. 담당자가 <strong>기록을 남길수록</strong> 그 기록이 순위와 근거에 되돌아와 <strong>거산의 영업 방식에 맞춰 가는 영업 비서</strong>가 목표입니다. (PM 결정 2026-11-08)</p>
+    <div class="fig"><div class="mermaid" data-src="mm-core"></div></div>
+    <p class="caption">순위를 보고 → 연락하고 기록을 남기면 → 그 기록이 세 갈래로 순위에 돌아옵니다. 1차(지금)는 기록 남기기와 "그때 본 평가 번호" 남기기까지, 세 갈래 되먹임은 2차입니다.</p>
+    <h3>되먹임 3단계 — 통계 학습이 아니라 설명할 수 있는 규칙으로</h3>
+    <table>
+      <thead><tr><th>단계</th><th>무엇이 되나</th><th>예문</th><th>시기</th></tr></thead>
+      <tbody>
+        <tr><td>재료</td><td>접촉·영업 단계·메모를 저장할 때 그때 보고 있던 평가 번호를 같이 남긴다</td><td>"3위를 보고 전화했고 결과는 부재"</td><td><span class="chip wip">⏳ 1차 · #450 #451</span></td></tr>
+        <tr><td>① 같은 회사 반영</td><td>그 회사의 기록이 그 회사의 순위·근거에 바로 반영된다</td><td>"거절(단가) 기록이 있어 순위를 내렸습니다"</td><td><span class="chip next">📅 2차</span></td></tr>
+        <tr><td>② 비슷한 회사로 번짐</td><td>같은 공정·산업군·지역 회사의 기록이 비슷한 회사의 순위·근거에 참고로 들어간다</td><td>"비슷한 회사 3곳이 견적까지 간 산업군입니다"</td><td><span class="chip next">📅 2차 · #268 #269</span></td></tr>
+        <tr><td>③ 선호가 가중치로</td><td>담당자가 반복해서 고른 것을 점수 가중치 제안으로 바꾸고, 사람이 승인해야 적용된다</td><td>"최근 20건 중 15건이 천안 인근이라 거리 가중치를 올릴까요?"</td><td><span class="chip next">📅 2차</span></td></tr>
+      </tbody>
+    </table>
+    <h3>발표에서 재는 법</h3>
+    <p>"처음 1~5위 추천의 성사율 → 기록 반영 뒤 1~5위의 성사율"을 같은 기준으로 비교합니다. 기록이 쌓이기 전에는 숫자가 없으므로 "이 비교가 가능하도록 처음부터 설계했다"까지를 말합니다.</p>
+    <p class="src">출처: docs/presentation-notes.md 0장 · docs/map/feature-map.md "이 서비스의 핵심" 장</p>
+    <div class="notes"><label for="n-core">발표 메모 (이 브라우저에만 저장)</label><textarea id="n-core" data-note="core" placeholder="이 장에서 말할 것, 질문받을 것…"></textarea><div class="row"><button type="button" class="copy" data-for="n-core">메모 복사</button><span class="saved"></span></div></div>
+  </div>
+</section>
+
+<!-- ============ 자료 흐름 ============ -->
+<section class="panel" id="data" aria-labelledby="h-data">
+  <div class="card">
+    <h2 id="h-data">어떤 자료를 넣어 무엇이 나오고, 그것이 어디로 가나</h2>
+    <p class="lead">사람이 넣는 파일 네 가지와 공공·공개 자료 세 가지가 단계를 지나며 <strong>점수·분류·순위</strong>가 되고, 담당자 기록이 그 위에 쌓입니다.</p>
+    <div class="fig"><div class="mermaid" data-src="mm-data"></div></div>
+    <p class="caption">화살표 위 글이 "앞 단계의 출력 = 다음 단계의 입력"입니다. ⏳는 만드는 중, 📅는 2차.</p>
+    <h3>출력이 입력이 되는 고리 세 개</h3>
+    <ol class="steps">
+      <li><strong>③·⑤ → ⑥</strong> 사람이 적은 사례 파일과 AI가 뽑은 근거가 같은 모양의 근거·요구·8항목 입력으로 합쳐져 평가에 들어갑니다. AI가 뽑은 것은 "AI 제안·확인 전"으로 구분됩니다.</li>
+      <li><strong>⑥ → ⑦ → ⑧ → ⑥</strong> 평가 결과를 보고 담당자가 기록하면, 지금은 거래 관계만 되돌아가고 2차에는 기록 전부가 규칙으로 되돌아갑니다.</li>
+      <li><strong>D8·D9 → ③′ → ④⑤⑥</strong> 공공 자료에서 찾은 회사도 사례 파일로 넣은 회사와 같은 길(홈페이지 찾기 → 근거 뽑기 → 평가)을 탑니다. 사람이 8항목을 적지 않았으므로 "점수 전"입니다.</li>
+    </ol>
+    <h3>가지고 진행한 자료 13개</h3>
+    <table>
+      <thead><tr><th>#</th><th>자료</th><th>크기</th><th>꼬리표</th></tr></thead>
+      <tbody>
+        <tr><td>D1</td><td>기획 입력 문서 (기획서 v0.15·v0.17, 데이터 설계서, 자료 상태 메모, 회사소개서, 페르소나, 방문 후 메모, 데이터 소스 리서치)</td><td>8개</td><td>설계 입력. 프로그램이 읽지는 않음</td></tr>
+        <tr><td>D2</td><td>가상 사례 A정밀 (밸브 바디 아노다이징)</td><td>1건</td><td>가상 · 기대값 E 77 / P 95 / S 81.1 / R 82</td></tr>
+        <tr><td>D3</td><td>실제 기업 사례 파일 (아연도금 9 · 아노다이징 9)</td><td>18곳</td><td>실제 · 공개 자료 출처 · 연락처 없음</td></tr>
+        <tr><td>D4</td><td>거산 역량 파일, 가상 검수 묶음</td><td>공정 9 · 인증 3</td><td>가상 검수</td></tr>
+        <tr><td>D5</td><td>거산 역량 파일, 소개서 묶음 (2026-09-21판)</td><td>공정 9 · 인증 12 · 값 110건</td><td>거산 확인 전 → 11/4 시연 DB에서 확인 완료로</td></tr>
+        <tr><td>D6</td><td>규칙 숫자 파일 (배점·확실도·기준점·반올림·분류 11가지)</td><td>판 v0.17-e</td><td>기업 승인 전 가설</td></tr>
+        <tr><td>D7</td><td>앱 설정 (담당자, 후보 찾기 범위, AI 한도, 산업군 10개)</td><td>1개</td><td>비밀값 없음</td></tr>
+        <tr><td>D8</td><td>산단공 전국등록공장현황 파일 (열 5개)</td><td>220,705행</td><td>공공 · 2025-12-31 · 개인정보 열은 받지 않음</td></tr>
+        <tr><td>D9</td><td>산단공 공장등록 조회 (단지 입주 목록)</td><td>하루 1,000회 · 15일 보관</td><td>공공 · 대표자·팩스·전화는 즉시 버림</td></tr>
+        <tr><td>D10</td><td>공개 홈페이지 본문</td><td>회사당 최대 2MB</td><td>공개 · 연락처를 지운 뒤 AI로</td></tr>
+        <tr><td>D11</td><td>저장소(DB)와 백업</td><td>표 47개</td><td>시연 DB는 확인 완료 묶음</td></tr>
+        <tr><td>D12</td><td>담당자 기록 (의견·메모·접촉·단계·일정·체크·답·거래 관계)</td><td>쓰는 만큼</td><td>거산 내부 · 밖으로 안 나감</td></tr>
+        <tr><td>D13</td><td>시연 결과물 (순위표·근거·사실표)</td><td>시연 3회분</td><td>연락처 없음</td></tr>
+      </tbody>
+    </table>
+    <p class="src">출처: docs/map/data-map.md 1~3장</p>
+    <div class="notes"><label for="n-data">발표 메모 (이 브라우저에만 저장)</label><textarea id="n-data" data-note="data"></textarea><div class="row"><button type="button" class="copy" data-for="n-data">메모 복사</button><span class="saved"></span></div></div>
+  </div>
+</section>
+
+<!-- ============ 화면 ============ -->
+<section class="panel" id="screens" aria-labelledby="h-screens">
+  <div class="card">
+    <h2 id="h-screens">이 프로그램이 하는 일 — 다섯 걸음</h2>
+    <p class="lead">거산 영업 담당자가 <strong>"어느 회사에 먼저 연락할까"</strong>를 정하도록 돕는 웹 도구입니다.</p>
+    <div class="fig"><div class="mermaid" data-src="mm-flow5"></div></div>
+    <p class="caption">점선 화살표는 거래 관계를 바꾸면 순위를 다시 계산한다는 뜻입니다. 단가·견적·납기·자동 발송·경쟁사 비교는 만들지 않습니다.</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>화면은 어떻게 이어져 있나</h2>
+      <div class="fig"><div class="mermaid" data-src="mm-screens"></div></div>
+      <p class="caption">접속 → 대시보드 → 목록 ↔ 상세. 지도 앱·회사 홈페이지·근거 출처는 새 창으로 열립니다.</p>
+    </div>
+    <div class="card">
+      <h2>기업 검토 상세의 짜임</h2>
+      <div class="fig"><div class="mermaid" data-src="mm-detail"></div></div>
+      <p class="caption">머리에서 회사를 확인하고, 가운데에서 근거 → 검토사항 → 근거 자료 → 점수 순서로 읽고, 아래에서 의견과 기록을 남깁니다.</p>
+    </div>
+  </div>
+  <div class="card">
+    <p class="src">출처: docs/map/README.md 1장 · docs/map/feature-map.md "화면은 어떻게 이어져 있나" · 4장</p>
+    <div class="notes"><label for="n-screens">발표 메모 (이 브라우저에만 저장)</label><textarea id="n-screens" data-note="screens"></textarea><div class="row"><button type="button" class="copy" data-for="n-screens">메모 복사</button><span class="saved"></span></div></div>
+  </div>
+</section>
+
+<!-- ============ 진행 현황 ============ -->
+<section class="panel" id="progress" aria-labelledby="h-progress">
+  <div class="card">
+    <h2 id="h-progress">지금 어디까지 왔나</h2>
+    <div class="chips">
+      <span class="chip ok">✅ 됨 66</span><span class="chip wip">⏳ 진행 중 6</span><span class="chip next">📅 2차 예정 15</span><span class="chip hold">⏸ 보류 5</span><span class="chip">기능 92줄 · 2026-11-13</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="fig"><div class="mermaid" data-src="mm-pie"></div></div>
+        <p class="caption">"됨"은 화면과 서버가 모두 <code>develop</code>에 합쳐졌다는 뜻입니다. 거산이 접속하는 주소에 올리는 일은 진행 중입니다(#213).</p>
+      </div>
+      <div>
+        <table>
+          <thead><tr><th>묶음</th><th>쉬운 말</th><th>지금 위치</th></tr></thead>
+          <tbody>
+            <tr><td>U1 뼈대</td><td>가상 사례 1건이 넣기 → 평가 → 화면 → 의견 저장까지</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U2 AI 조사</td><td>홈페이지를 찾아 읽고 근거와 질문을 뽑는다</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
+            <tr><td>U3 후보 찾기</td><td>담당자가 고른 조건으로 공공자료에서 후보를 찾는다</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
+            <tr><td>U4 거산 확인 창구</td><td>거산 값을 "확인 완료"로 바꾼다</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
+            <tr><td>U5 담당자 기록</td><td>접촉·메모·영업 단계·일정</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
+            <tr><td>U6 재접촉</td><td>예전 거래처를 다시 영업</td><td><span class="chip hold">⏸ 보류</span></td></tr>
+            <tr><td>U7 대시보드</td><td>건수·일정·최근 기록</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
+            <tr><td>U8 접속·배포</td><td>비밀번호, 올리기, 백업</td><td><span class="chip wip">⏳ 1차</span></td></tr>
+            <tr><td>U10 운영 인계</td><td>안내서·전달 메일</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>작업 묶음 U1~U11의 위치</h2>
+    <div class="fig"><div class="mermaid" data-src="mm-units"></div></div>
+    <p class="src">출처: docs/map/feature-map.md "한눈에" · docs/map/README.md 2장</p>
+    <div class="notes"><label for="n-progress">발표 메모 (이 브라우저에만 저장)</label><textarea id="n-progress" data-note="progress"></textarea><div class="row"><button type="button" class="copy" data-for="n-progress">메모 복사</button><span class="saved"></span></div></div>
+  </div>
+</section>
+
+<!-- ============ 시간표 ============ -->
+<section class="panel" id="timeline" aria-labelledby="h-timeline">
+  <div class="card">
+    <h2 id="h-timeline">기획이 바뀐 큰 줄기</h2>
+    <div class="fig"><div class="mermaid" data-src="mm-changes"></div></div>
+    <p class="caption">10/19 처음 범위 → 10/21 부분 시연 추가 → 10/29 거산 방문 → 11/3 되는 순서대로 전달 → 11/4 답 적기·거래 관계 → 11/5 후보 찾기를 1차로.</p>
+  </div>
+  <div class="card">
+    <h2>자료로 본 진행</h2>
+    <div class="fig"><div class="mermaid" data-src="mm-datatime"></div></div>
+    <p class="caption">어느 시기에 어떤 자료를 가지고 무엇을 했는지. D 번호는 "자료 흐름" 탭의 자료 13개입니다.</p>
+    <p class="src">출처: docs/map/change-log.md 2장 · docs/map/data-map.md 4장</p>
+    <div class="notes"><label for="n-timeline">발표 메모 (이 브라우저에만 저장)</label><textarea id="n-timeline" data-note="timeline"></textarea><div class="row"><button type="button" class="copy" data-for="n-timeline">메모 복사</button><span class="saved"></span></div></div>
+  </div>
+</section>
+
+<!-- ============ 구조와 경계 ============ -->
+<section class="panel" id="structure" aria-labelledby="h-structure">
+  <div class="card">
+    <h2 id="h-structure">누가 어디를 맡나</h2>
+    <p class="lead">4명 비전공 팀이 AI 도구로 만듭니다. 화면은 고선주, 서버·창구·기록은 이강욱, 채점과 AI 조사는 유동렬, 저장소·합치기·문서는 PM(최지예).</p>
+    <div class="fig"><div class="mermaid" data-src="mm-structure"></div></div>
+  </div>
+  <div class="card">
+    <h2>밖으로 나가는 것과 안 나가는 것</h2>
+    <div class="fig"><div class="mermaid" data-src="mm-boundary"></div></div>
+    <p class="caption">쓰는 바깥 서비스는 AI 서비스 하나입니다. 홈페이지를 찾을 때는 회사 이름과 주소만, 근거를 뽑을 때는 연락처를 지운 공개 본문만 보냅니다. 하루 200회·월 1,000회·월 20달러 한도를 부르기 전에 검사합니다.</p>
+    <p class="src">출처: docs/map/structure-map.md 1장 · 8장</p>
+    <div class="notes"><label for="n-structure">발표 메모 (이 브라우저에만 저장)</label><textarea id="n-structure" data-note="structure"></textarea><div class="row"><button type="button" class="copy" data-for="n-structure">메모 복사</button><span class="saved"></span></div></div>
+  </div>
+</section>
+
+</main>
+
+<!-- 그림 원문: 지도 문서의 Mermaid 블록 그대로 -->
+<script type="text/plain" id="mm-core">
+flowchart LR
+    R["추천 순위 · 근거<br/>(공개 자료 + 거산 역량)"] --> U["담당자가 본다<br/>영업 후보 목록 · 상세"]
+    U --> W["기록을 남긴다<br/>접촉 · 영업 단계 · 메모 · 의견<br/>+ 그때 본 평가 번호 ⏳"]
+    W -->|"① 같은 회사 반영 📅"| R
+    W -->|"② 비슷한 회사로 번짐 📅"| R
+    W -->|"③ 선호가 가중치로 (사람 승인) 📅"| R
+</script>
+<script type="text/plain" id="mm-data">
+flowchart TB
+    subgraph IN["사람이 넣는 파일"]
+        D6["D6 규칙 숫자<br/>rule-config.yaml"]
+        D7["D7 앱 설정<br/>app-settings.yaml"]
+        D45["D4·D5 거산 역량 파일<br/>공정 9 · 인증"]
+        D23["D2·D3 사례 파일<br/>A정밀 1 + 실제 18곳"]
+    end
+    subgraph PUB["공공 · 공개 자료"]
+        D8["D8 공장현황 파일<br/>220,705행"]
+        D9["D9 공장등록 조회<br/>단지 입주 목록"]
+        D10["D10 공개 홈페이지 본문"]
+        D14["D14·D15 팩토리온 공장조회 · 수질 명단<br/>보조 자료"]
+    end
+    D6 --> S1["① 설정 등록"]
+    D7 --> S1
+    D45 --> S2["② 거산 역량 넣기"]
+    D23 --> S3["③ 회사 넣기"]
+    D8 --> S3b["③′ 후보 찾기 ⏳<br/>지역 거르기 → AI 판단"]
+    D9 --> S3b
+    D14 -->|"원자재 · 업종 · 표면처리 표시"| S3b
+    S3b -->|"새 회사(점수 전)"| S4
+    S3 -->|"회사명 + 주소"| S4["④ 홈페이지 찾기<br/>AI 웹 검색"]
+    S4 -->|"홈페이지 주소 · 확신도"| S5["⑤ 읽고 근거 뽑기<br/>연락처 지움 → AI 추출"]
+    D10 --> S5
+    S1 -->|"규칙 · 설정"| S6
+    S2 -->|"역량 묶음"| S6
+    S3 -->|"고객 · 기회 · 요구 · 신호 · 8항목 입력"| S6["⑥ 평가<br/>거르기 → 점수 → 분류 → 순위"]
+    S5 -->|"근거 문장 · 확인 질문 · 요구 후보 · 회사 요약"| S6
+    S6 -->|"E·P·S·R · 분류 · 순위 · 질문"| S7["⑦ 화면<br/>대시보드 · 목록 · 상세"]
+    S7 --> S8["⑧ 담당자 기록<br/>의견 · 메모 · 접촉 · 단계 · 일정<br/>+ 그때 본 평가 번호"]
+    S8 -->|"거래 관계 바꿈"| S6
+    S8 -.->|"되먹임 ①②③ 📅 2차"| S6
+    S10["⑩ 거산 확인 전환<br/>review-set"] -->|"묶음 바꿈 → 전체 재평가"| S6
+    S6 --> S11["⑪ 내보내기<br/>순위표 · 백업"]
+</script>
+<script type="text/plain" id="mm-flow5">
+flowchart LR
+    A["① 자료 넣기<br/>거산이 할 수 있는 일<br/>후보 회사"]
+    B["② AI 조사<br/>홈페이지 찾기<br/>읽고 근거 뽑기"]
+    C["③ 평가<br/>조건으로 거르기<br/>점수 → 분류 → 순위"]
+    D["④ 화면<br/>대시보드<br/>영업 후보 목록<br/>기업 검토 상세"]
+    E["⑤ 담당자 기록<br/>의견 · 메모 · 단계<br/>일정 · 거래 관계"]
+    A --> B --> C --> D --> E
+    E -.->|"거래 관계를 바꾸면<br/>순위를 다시 계산"| C
+</script>
+<script type="text/plain" id="mm-screens">
+flowchart TB
+    G["접속 화면<br/>공용 비밀번호"] --> D["대시보드<br/>첫 화면"]
+    D <-->|"위쪽 메뉴로 오감"| L["영업 후보 목록"]
+    D -->|"일정 줄 · 최근 기록 줄을 누름"| S["기업 검토 상세"]
+    L <-->|"자세히 보기 · 목록으로"| S
+    S -.->|"새 창으로 열림"| O["지도 앱<br/>회사 홈페이지<br/>근거 출처"]
+</script>
+<script type="text/plain" id="mm-detail">
+flowchart LR
+    H["머리<br/>회사 이름 · 분류 ✅<br/>점수 · 지도 링크 ✅<br/>관심 단추 ⏳<br/>거래 관계 단추 ✅<br/>회사 소개 · 대표번호 ✅<br/>홈페이지 확인 ⏳"]
+    R["살펴보는 곳<br/>1. 추천 근거 ✅<br/>검토사항 ✅<br/>2. 근거 자료 ✅<br/>3. 점수 자세히 ✅"]
+    W["남기는 곳<br/>검토 의견 ✅<br/>기록 네 가지 ✅<br/>활동 이력 ✅"]
+    K["그 아래<br/>비슷한 회사 참고 ✅<br/>영업 전략 📅"]
+    H --> R --> W
+    W -.-> K
+</script>
+<script type="text/plain" id="mm-pie">
+pie showData
+    title 기능 92줄의 상태 (2026-11-13)
+    "됨" : 66
+    "진행 중" : 6
+    "2차 예정" : 15
+    "보류" : 5
+</script>
+<script type="text/plain" id="mm-units">
+flowchart TB
+    subgraph DONE["✅ 끝남"]
+        U1["U1 뼈대<br/>가상 사례 1건이<br/>처음부터 끝까지 돈다"]
+        U2["U2<br/>AI 조사<br/>1차 몫"]
+        U5["U5<br/>담당자 기록<br/>1차 몫"]
+        U7["U7<br/>대시보드<br/>1차 몫"]
+    end
+    subgraph NOW["⏳ 1차 진행 중 — 되는 순서대로 거산에 전달"]
+        U3["U3<br/>조건을 골라<br/>후보 찾기"]
+        U4["U4<br/>거산 소개서 내용을<br/>'거산이 확인함'으로 바꾸기"]
+    end
+    subgraph NEXT["📅 2차 — 11/17 이후"]
+        X0["U3 나머지<br/>매달 자동 수집"]
+        U8["U8<br/>접속 · 배포<br/>2차가 어느 정도 된 뒤"]
+        U10["U10<br/>전달 준비<br/>배포 때"]
+        X1["U4 나머지<br/>질문 목록 화면"]
+        X2["U5 나머지<br/>접촉 승인 · 기록 취소"]
+        X3["U7 나머지<br/>엑셀 · 지도 · 막대"]
+        X4["새로 더함<br/>영업 전략 · 비슷한 회사"]
+    end
+    subgraph HOLD["⏸ 보류"]
+        U6["U6<br/>재접촉"]
+    end
+    subgraph ASK["❓ 확인 필요"]
+        U9["U9<br/>자료 출처 늘리기"]
+        U11["U11<br/>화면 다듬기"]
+    end
+    DONE --> NOW --> NEXT
+    NEXT ~~~ HOLD
+    NEXT ~~~ ASK
+</script>
+<script type="text/plain" id="mm-changes">
+timeline
+    title 기획이 바뀐 큰 줄기
+    10월 19일 : 처음 범위 확정 : 화면 3개와 규칙 계산
+    10월 21일 : 10월 말 부분 시연 추가 : 실제 기업은 손으로 정리
+    10월 29일 : 거산 방문 : 팀이 찾은 18곳 같은 방식이면 충분하다는 의견
+    11월 3일 : 마감 대신 되는 순서대로 전달 : 기록과 대시보드를 맨 앞으로 : 재접촉은 보류
+    11월 4일 : 답 적기와 거래 관계 입력 추가 : 2차 기능 정리
+    11월 5일 : 후보 수집을 자동으로 바꿈 : 후보 찾기를 1차로 당김 : 후보 찾기에 웹 검색 허용 : 지도 문서 시작
+</script>
+<script type="text/plain" id="mm-datatime">
+timeline
+    title 자료로 본 진행 (2026)
+    10/17~19 : D1 기획 입력 문서 8개 → AI-DLC 설계(요구사항 · 스토리 · 약속)
+    10/20~28 뼈대 : D2 A정밀 가상 1건 + D4 가상 검수 역량 + D6 규칙 v0.17 → E 77 / P 95 / S 81.1 / R 82 검증
+    10/22~28 부분 시연 : D3 실제 18곳 사례 파일 + D5 소개서 묶음(거산 확인 전) → 순위표 3회(D13)
+    10/29 방문 → 11/4 : 거산이 소개서 전체 확인 → review-set으로 시연 DB 110건을 거산 확인 완료 묶음으로, 18곳 재평가
+    11/3~11/7 AI 조사 : 회사명 · 주소 → 홈페이지(D10) → 근거 · 질문 · 회사 요약 · 대표번호 (18곳)
+    11/5~ 후보 찾기 : D8 공장현황 파일 220,705행 + D9 단지 조회 → 지역 거르기 · AI 판단 (만드는 중)
+    11/8~ 되먹임 준비 : 기록에 그때 본 평가 번호 → 2차 되먹임 ①②③의 재료
+    11/9~11/12 후보 등록과 보조 자료 : 공공자료에서 찾은 161곳 등록 · D14 팩토리온 18,798행 + D15 수질 명단 147곳을 목록 회사에 붙임
+</script>
+<script type="text/plain" id="mm-structure">
+flowchart TB
+    U["영업 담당자<br/>브라우저"] --> WEB["화면<br/>web/src/<br/>고선주"]
+    OP["운영자<br/>터미널"] --> CMD["운영 명령<br/>geosan/commands/<br/>이강욱"]
+    WEB --> API["화면 요청 창구<br/>geosan/api/<br/>이강욱"]
+    API --> DASH["대시보드 집계<br/>geosan/dashboard/<br/>고선주"]
+    API --> WF["작업 순서 지휘<br/>geosan/workflows/<br/>이강욱"]
+    CMD --> WF
+    WF --> RULES["채점<br/>geosan/rules/<br/>유동렬"]
+    WF --> EVD["근거 자료실과 AI 조사<br/>geosan/evidence/<br/>유동렬"]
+    subgraph BOOK["대장과 기록 — 이강욱"]
+        CAP["거산 역량<br/>capability/"]
+        OPP["고객과 영업 기회<br/>opportunity/"]
+        EVAL["평가 결과<br/>evaluation/"]
+        QQ["확인 질문<br/>questions/"]
+        REC["담당자 기록<br/>records/"]
+    end
+    API --> BOOK
+    WF --> BOOK
+    DASH --> BOOK
+    BOOK --> DBF[("저장소<br/>geosan/storage/<br/>PM")]
+    EVD -.-> EXT["바깥<br/>AI 서비스<br/>회사 홈페이지"]
+</script>
+<script type="text/plain" id="mm-boundary">
+flowchart LR
+    A["회사 이름 · 주소"] -->|"보냄"| X["외부 AI 서비스"]
+    B["공개 홈페이지 본문<br/>연락처는 지우고"] -->|"보냄"| X
+    C["영업 메모 · 대표번호<br/>거산 내부 자료 · 가상 사례"] -->|"안 보냄"| N["프로그램 안에만"]
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>
+(function(){
+  var dark = (document.documentElement.getAttribute('data-theme') === 'dark') ||
+             (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var cs = getComputedStyle(document.documentElement);
+  var v = function(n){ return cs.getPropertyValue(n).trim(); };
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'loose',
+    theme: 'base',
+    fontFamily: v('--font-body'),
+    themeVariables: {
+      darkMode: dark,
+      background: v('--panel'),
+      primaryColor: v('--accent-soft'),
+      primaryTextColor: v('--ink'),
+      primaryBorderColor: v('--accent'),
+      lineColor: v('--muted'),
+      secondaryColor: v('--bg'),
+      tertiaryColor: v('--bg'),
+      textColor: v('--ink'),
+      fontSize: '15px',
+      pie1: v('--ok'), pie2: v('--wip'), pie3: v('--next'), pie4: v('--hold'),
+      cScale0: v('--accent'), cScale1: v('--next'), cScale2: v('--wip'), cScale3: v('--ok'), cScale4: v('--accent'), cScale5: v('--next'), cScale6: v('--wip')
+    },
+    flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+    timeline: { useMaxWidth: true },
+    pie: { useMaxWidth: true }
+  });
+
+  var panels = Array.prototype.slice.call(document.querySelectorAll('section.panel'));
+  var ids = panels.map(function(p){ return p.id; });
+  var rendered = {};
+
+  function renderPanel(panel){
+    var nodes = Array.prototype.slice.call(panel.querySelectorAll('.mermaid[data-src]'));
+    nodes.forEach(function(node){
+      if (rendered[node.dataset.src]) return;
+      rendered[node.dataset.src] = true;
+      var src = document.getElementById(node.dataset.src);
+      node.textContent = src ? src.textContent.trim() : '';
+    });
+    var todo = nodes.filter(function(n){ return !n.dataset.done; });
+    if (!todo.length) return;
+    todo.forEach(function(n){ n.dataset.done = '1'; });
+    mermaid.run({ nodes: todo }).catch(function(err){
+      todo.forEach(function(n){
+        if (!n.querySelector('svg')) {
+          var pre = document.createElement('pre');
+          pre.className = 'err';
+          pre.textContent = '그림을 그리지 못했습니다: ' + (err && err.message ? err.message : err);
+          n.replaceWith(pre);
+        }
+      });
+    });
+  }
+
+  function show(id){
+    if (ids.indexOf(id) < 0) id = ids[0];
+    panels.forEach(function(p){ p.classList.toggle('show', p.id === id); });
+    document.querySelectorAll('nav a').forEach(function(a){
+      if (a.getAttribute('href') === '#' + id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    renderPanel(document.getElementById(id));
+  }
+  function fromHash(){ show((location.hash || '').replace('#', '')); }
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
+
+  // 발표 모드
+  var pbtn = document.getElementById('present');
+  pbtn.addEventListener('click', function(){
+    var on = document.body.classList.toggle('present');
+    pbtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    pbtn.textContent = on ? '발표 모드 끄기' : '발표 모드';
+  });
+
+  // 발표 메모: 이 브라우저에만 저장
+  var store = { get: function(k){ try { return localStorage.getItem('geosan-map-note-' + k) || ''; } catch(e){ return ''; } },
+                set: function(k, val){ try { localStorage.setItem('geosan-map-note-' + k, val); return true; } catch(e){ return false; } } };
+  document.querySelectorAll('textarea[data-note]').forEach(function(t){
+    t.value = store.get(t.dataset.note);
+    var saved = t.parentElement.querySelector('.saved');
+    var timer;
+    t.addEventListener('input', function(){
+      clearTimeout(timer);
+      timer = setTimeout(function(){
+        saved.textContent = store.set(t.dataset.note, t.value) ? '저장됨' : '이 브라우저에는 저장할 수 없습니다';
+      }, 300);
+    });
+  });
+  document.querySelectorAll('button.copy').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = document.getElementById(b.dataset.for);
+      var saved = t.parentElement.querySelector('.saved');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t.value).then(function(){ saved.textContent = '복사됨'; }, function(){ saved.textContent = '복사가 막혔습니다. 글을 직접 선택해 복사해 주세요'; });
+      } else { saved.textContent = '복사가 막혔습니다. 글을 직접 선택해 복사해 주세요'; }
+    });
+  });
+})();
+</script>
+</body>
+</html>

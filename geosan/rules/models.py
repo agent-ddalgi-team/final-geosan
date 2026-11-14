@@ -7,6 +7,7 @@
   `EvaluationInput.model_validate(json_dict)`로 읽고 `.model_dump(by_alias=True)`로 쓴다.
 - 더하는 변경(2026-10-21 PM 확인): `itemInputs`, `signals[].relation`·`scheduledAt`·`announcedAt`,
   `RuleConfig.otherGroupSort`.
+- 더하는 변경(2026-11-13 PM 결정, #685): `RuleConfig.callSignals`, 통화 신호 종류 2개.
 - `evaluate`·`rank`는 서명만 둔다. 본문은 Step 13(유동렬, `geosan/rules/engine.py`)에서 구현한다.
 """
 
@@ -147,6 +148,22 @@ class OtherGroupSort(_ContractModel):
     brochure: list[SortKeySpec]
 
 
+class CallSignalAnswer(_ContractModel):
+    """꼬리 질문의 답 하나가 통화 신호의 어느 세기인지 (#685)."""
+
+    question_id: str
+    answer_id: str
+    relation: SignalRelation
+
+
+class CallSignalRule(_ContractModel):
+    """점수 항목 하나를 채우는 통화 신호 종류와 답 대응표 (#685, PM 결정 2026-11-13)."""
+
+    item_code: str
+    signal_kind: Literal["CALL_INTENT", "CALL_INTEREST"]
+    answers: list[CallSignalAnswer] = Field(min_length=1)
+
+
 class RuleConfig(_ContractModel):
     """규칙 설정 파일 내용 + 버전·해시. 모든 수치는 기업 승인 전 가설(BR7.6)."""
 
@@ -165,6 +182,11 @@ class RuleConfig(_ContractModel):
     classification_labels: dict[str, str]
     other_group_sort: OtherGroupSort
     existing_customer_placement: Literal["BOTTOM", "INLINE"] = "BOTTOM"
+    # BLOCK: 거래 관계 "확인 전"이면 필터 대기(BR3.10, S06). IGNORE: 신규 잠재고객만 찾으므로
+    # 확인 전을 대기 사유로 쓰지 않는다(PM 결정 2026-11-11, #567). 생략하면 BLOCK(이전 동작).
+    relation_check: Literal["BLOCK", "IGNORE"] = "BLOCK"
+    # 꼬리 질문 답 → 통화에서 확인한 신호 대응표(PM 결정 2026-11-13, #685). 생략하면 통화 신호 없음.
+    call_signals: list[CallSignalRule] = Field(default_factory=list)
     dataset_kinds: list[DatasetKind]
     rule_hash: str | None = Field(default=None, description="파일 내용 SHA-256. 로더가 채운다")
 

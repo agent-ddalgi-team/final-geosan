@@ -140,6 +140,15 @@ export default function AppFrame({ title, children }: AppFrameProps) {
                     {frame.menuOpportunities}
                   </NavLink>
                 </li>
+                <li>
+                  <NavLink
+                    to="/sales-analysis"
+                    data-testid="nav-sales-analysis-link"
+                    style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
+                  >
+                    {frame.menuSalesAnalysis}
+                  </NavLink>
+                </li>
               </ul>
             </nav>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

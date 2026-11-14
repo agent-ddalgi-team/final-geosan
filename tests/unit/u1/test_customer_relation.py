@@ -25,6 +25,8 @@ from tests.unit.u1.test_snapshot_ledger import _write
 
 @pytest.fixture
 def relation_env(tmp_db, tmp_path):
+    # 거래 확인 전 → 필수조건 대기를 검사하므로 거래 관계 확인을 켠 설정을 쓴다(#567).
+    factories.register_relation_check(tmp_path, "BLOCK")
     import_capability(_write(tmp_path, "cap.json", factories.capability_file()))
     case_path = _write(tmp_path, "case.json", factories.apjeong_with_relation("UNCONFIRMED"))
     result = import_case(case_path)
@@ -246,7 +248,7 @@ def test_migration_preserves_old_customer_and_starts_without_history(relation_en
     client, opp_id, _ = relation_env
     before = detail(client, opp_id)
     assert downgrade(tmp_db, "tg_001") == ["tg_001"]
-    assert upgrade_to_head(tmp_db) == ["rec_008"]
+    assert upgrade_to_head(tmp_db) == ["src_006"]
     after = detail(client, opp_id)
     assert after == before
     assert after["header"]["relationConfirmedBy"] is None
@@ -269,11 +271,13 @@ def test_relation_migration_preserves_existing_lost_reason_rows(relation_env, tm
     assert before_detail["records"]["outcome"]["lostReasonCode"] == "PRICE"
     assert downgrade(tmp_db, "rec_007") == ["rec_007"]
     with sqlite3.connect(tmp_db) as connection:
-        assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
-            before_rows
-        )
-    assert upgrade_to_head(tmp_db) == ["rec_008"]
-    assert upgrade_to_head(tmp_db) == ["rec_008"]
+        # rec_009·rec_010·rec_012·rec_013을 내리면 마지막 여섯 열(eval_id·judgment_check·
+        # step_override·잘못 입력 표시 칸 셋)만 빠진다. 기존 모든 열은 그대로 비교한다.
+        assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == [
+            row[:-6] for row in before_rows
+        ]
+    assert upgrade_to_head(tmp_db) == ["src_006"]
+    assert upgrade_to_head(tmp_db) == ["src_006"]
     with sqlite3.connect(tmp_db) as connection:
         assert connection.execute("SELECT * FROM rec_outcome ORDER BY version").fetchall() == (
             before_rows

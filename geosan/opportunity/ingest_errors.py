@@ -12,12 +12,16 @@ from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError, SQLAlch
 
 from geosan.config.errors import RunFailedError
 
-_EVENTS = {"factory": "ingest.factory.failed", "judgment": "ingest.judgment.failed"}
+_EVENTS = {
+    "factory": "ingest.factory.failed",
+    "judgment": "ingest.judgment.failed",
+    "web": "ingest.web.failed",
+}
 _LOGGER = logging.getLogger("geosan")
 
 
 def storage_failure(
-    exc: SQLAlchemyError, *, operation: Literal["factory", "judgment"], message: str
+    exc: SQLAlchemyError, *, operation: Literal["factory", "judgment", "web"], message: str
 ) -> RunFailedError:
     error = RunFailedError(message)
     category = "sqlalchemy_error"

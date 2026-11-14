@@ -8,36 +8,44 @@ from datetime import timedelta
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from geosan.api.check_points import card_check_points, shown_blocker_text
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.ingest_views import (
     candidate_order,
     collected_evaluations,
     discovery_fields,
     latest_ingest,
+    recent_order,
+    research_state,
 )
+from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
     bookmark_view,
     contact_counts,
+    last_contact_at,
     latest_bookmark,
     latest_opinion,
     latest_outcome,
     opinion_view,
     outcome_view,
     review_items_for_detail,
+    sales_step_state,
 )
 from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
+    BucketCounts,
     CardOutcome,
     CardRecords,
     DetailHeader,
     DetailRecords,
     EvidenceView,
     IndustryCount,
+    KnownSalesAnswer,
     Meta,
     OpportunityCard,
     OpportunityDetail,
@@ -47,18 +55,41 @@ from geosan.api.schemas import (
     ProcessCount,
     ProcessLinkView,
     Question,
+    RankAdjust,
     Reasons,
     RegionCount,
     RequirementCheckView,
+    SalesStepView,
     ScoreItemView,
     Scores,
     ScoreState,
 )
-from geosan.capability.models import FieldEvidence, Process
 from geosan.capability.queries import get_process
-from geosan.config.errors import InputError, NotFoundError, RunFailedError
+from geosan.config.app_settings import ResearchSettings
+from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
+from geosan.config.sales_questions import KST
+from geosan.dashboard.contact_order import (
+    BUCKETS,
+    EVIDENCE_READY,
+    AdjustRule,
+    CompanyState,
+    adjustment_for,
+    assign_bucket,
+    closed_results,
+    contact_order_key,
+)
 from geosan.dashboard.queries import bookmarked_opp_ids
-from geosan.evaluation.ledger import latest_confirmed_evaluation, latest_full_batch
+from geosan.dashboard.sales_analysis import (
+    LINK_CONFIRMED,
+    load_company_records,
+    process_display_name,
+)
+from geosan.evaluation.inputs import has_ai_pending_inputs
+from geosan.evaluation.ledger import (
+    latest_confirmed_evaluation,
+    latest_confirmed_evaluations,
+    latest_full_batch,
+)
 from geosan.evaluation.models import (
     EvaluationBatch,
     EvaluationRun,
@@ -67,12 +98,15 @@ from geosan.evaluation.models import (
     ReadinessCheck,
     RequirementCheck,
 )
+from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
+from geosan.opportunity.factory_csv import address_city
+from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Outcome, ReviewOpinion
-from geosan.rules.codes import ProcessCode
+from geosan.rules.codes import LostReasonCode, ProcessCode, SecurityGrade
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -146,28 +180,59 @@ def _homepage_url(context: DetailContext) -> str | None:
     return max(sorted(roots), key=roots.get)
 
 
-def _score_state(run: EvaluationRun | None) -> ScoreState:
-    """#262 저장 연결 전, #263에서 허용한 기존 분류·점수 기반 표시 상태(C1)."""
+def _score_state(run: EvaluationRun | None, *, ai_pending: bool = False) -> ScoreState:
+    """#262 저장 연결 전, #263에서 허용한 기존 분류·점수 기반 표시 상태(C1).
+
+    ai_pending: 현재 점수 입력에 AI 제안(확인 전)이 있으면 점수를 흐리게 보인다(#286).
+    """
     if run is None or run.score_s is None:
         return "NONE"
-    if run.classification_code in {"FILTER_PENDING", "OPS_PENDING"}:
+    if ai_pending or run.classification_code in {"FILTER_PENDING", "OPS_PENDING"}:
         return "PENDING"
     return "CONFIRMED"
 
 
+def _suggest_research_again(context: DetailContext, research: ResearchSettings) -> bool:
+    """#677: AI가 조사한 지 설정 일수보다 오래 지난 관심 회사에만 다시 조사를 제안한다.
+
+    알리기만 한다. 조사는 담당자가 [다시 조사]를 누를 때만 돈다. 설정이 0이면 제안하지 않는다.
+    """
+    customer = context.customer
+    days = research.suggest_again_after_days
+    if days <= 0 or customer.researched_at is None or customer.research_source != "AI":
+        return False
+    if utcnow() - customer.researched_at <= timedelta(days=days):
+        return False
+    bookmark = latest_bookmark(context.session, context.opportunity.opp_id)
+    return bookmark is not None and bookmark.active
+
+
 def _header(context: DetailContext) -> dict:
+    distances = customer_distances(
+        context.session,
+        [context.customer],
+        {context.customer.customer_id: context.opportunity.opp_id},
+        runtime_for(context.session).app_settings,
+    )
     opportunity, customer, run = context.opportunity, context.customer, context.evaluation
     research = runtime_for(context.session).app_settings.research
     return {
         "header": DetailHeader(
-            score_state=_score_state(run),
+            score_state=_score_state(
+                run, ai_pending=has_ai_pending_inputs(context.session, opportunity.opp_id)
+            ),
+            research_state=research_state(
+                customer,
+                latest_ingest(context.session, opportunity.dataset_kind),
+                scored=run is not None and run.score_s is not None,
+            ),
             relation_confirmed_at=customer.relation_confirmed_at,
             # #265의 승인된 C6 열이 생기기 전 사례 파일 자료에는 담당자가 없다.
             relation_confirmed_by=getattr(customer, "relation_confirmed_by", None),
             industries=customer.industries or [],
             industries_source=customer.industries_source,
             address=customer.address or "",
-            distance_km=None,
+            distance_km=distances[customer.customer_id],
             main_phone=customer.main_phone,
             main_phone_source=customer.main_phone_source,
             main_phone_source_url=customer.main_phone_source_url,
@@ -181,6 +246,7 @@ def _header(context: DetailContext) -> dict:
                 customer.researched_at is not None
                 and utcnow() - customer.researched_at > timedelta(days=research.stale_after_days)
             ),
+            research_suggest_again=_suggest_research_again(context, research),
             title=f"{customer.name} · {opportunity.item}",
             customer_name=customer.name,
             opportunity_item=opportunity.item,
@@ -198,6 +264,9 @@ def _header(context: DetailContext) -> dict:
             homepage_status=customer.homepage_status,
             homepage_confidence=customer.homepage_confidence,
             homepage_source=customer.homepage_source,
+            homepage_page_kind=unofficial_page_kind(
+                customer.homepage_status, customer.homepage_source, customer.homepage_reason
+            ),
             **discovery_fields(customer),
         )
     }
@@ -285,7 +354,7 @@ def _requirements(context: DetailContext) -> dict:
         "requirements": views,
         "approval_eligibility": ApprovalEligibility(
             eligible=not run.blocks_approval if run else False,
-            reason=run.blocker_text if run else "평가 후 확인할 수 있습니다.",
+            reason=shown_blocker_text(run.blocker_text) if run else "평가 후 확인할 수 있습니다.",
             readiness_checked=bool(run and run.timing_requirements["readiness"]),
             readiness_needs_recheck=bool(readiness and readiness.reset_at),
             allowed_purposes=[],
@@ -420,14 +489,30 @@ def _scores(context: DetailContext) -> dict:
     }
 
 
+def _sales_step_view(session, opp_id: str, status: str | None) -> SalesStepView:
+    state = sales_step_state(session, opp_id, status=status)
+    return SalesStepView(
+        code=state.code,
+        since=state.since,
+        overridden=state.overridden,
+        known=[KnownSalesAnswer(**vars(item)) for item in state.known],
+        open_questions=state.open_questions,
+    )
+
+
 def _records(context: DetailContext) -> dict:
+    outcome = latest_outcome(context.session, context.opportunity.opp_id)
     return {
         "records": DetailRecords(
             contact_count=contact_counts(context.session, context.opportunity.opp_id),
+            last_contact_at=last_contact_at(context.session, context.opportunity.opp_id),
+            sales_step=_sales_step_view(
+                context.session, context.opportunity.opp_id, outcome.status if outcome else None
+            ),
             opinion=opinion_view(latest_opinion(context.session, context.opportunity.opp_id)),
             bookmark=bookmark_view(latest_bookmark(context.session, context.opportunity.opp_id)),
             approval=None,
-            outcome=outcome_view(latest_outcome(context.session, context.opportunity.opp_id)),
+            outcome=outcome_view(outcome),
         )
     }
 
@@ -501,7 +586,137 @@ def _address_region(address: str | None) -> str | None:
         return None
     if parts[0].endswith(("광역시", "특별시")) or parts[0].startswith("세종"):
         return parts[0]
-    return parts[1] if len(parts) > 1 else None
+    # "천안시서북구"처럼 구가 붙은 주소도 천안시로 묶는다(#521).
+    return (address_city(address) or parts[1]) if len(parts) > 1 else None
+
+
+@dataclass(frozen=True)
+class _Placement:
+    """카드 한 장의 묶음·이유·조정과 `sort=contact` 정렬 키(#610, 근거 상태 묶음 #675)."""
+
+    bucket: str
+    basis: str
+    adjust: RankAdjust | None
+    order_key: tuple
+
+
+def _contact_placements(
+    session: Session,
+    rows: list[tuple[EvaluationRun, EvaluationRun, Opportunity, Customer]],
+    *,
+    codes_by_opportunity: dict[str, set[str]],
+    processes: list[tuple[str, str]],
+) -> dict[str, _Placement]:
+    """추천 순으로 세운 `rows`의 회사마다 근거 상태 묶음 자리를 계산한다(계약 C1, #610·#675).
+
+    최신 검토 의견·영업 단계·성사/거절 기록·근거 수는 요청당 한 번씩만 읽는다(회사마다 읽지
+    않는다). 점수·분류·기존 순위는 읽기만 하고 아무것도 저장하지 않는다.
+    """
+    if not rows:
+        return {}
+    runtime = runtime_for(session)
+    settings = runtime.app_settings.contact_list
+    if settings is None or settings.evidence_ready_min is None:
+        # 기준을 코드에서 지어내지 않는다(규칙 ⑩). 설정이 없으면 목록을 내지 않고 알린다.
+        raise RunFailedError(
+            "추천 목록 묶음 기준(contactList.evidenceReadyMin)이 설정에 없습니다. "
+            "앱 설정 파일을 확인해 주세요."
+        )
+    # 살아 있는 근거 수(#675): 상세 화면 근거 목록(list_evidence)과 같은 기준으로 한 번에 센다.
+    evidence_counts = dict(
+        session.execute(
+            select(Evidence.opp_id, func.count())
+            .where(
+                Evidence.superseded_at.is_(None),
+                Evidence.security_grade != SecurityGrade.FORBIDDEN.value,
+            )
+            .group_by(Evidence.opp_id)
+        ).all()
+    )
+    # 카드·상세의 최신 값과 같은 순서로 읽어 마지막 행이 남게 한다.
+    opinions = dict(
+        session.execute(
+            select(ReviewOpinion.opp_id, ReviewOpinion.opinion).order_by(
+                ReviewOpinion.version, ReviewOpinion.recorded_at
+            )
+        ).all()
+    )
+    stages = dict(
+        session.execute(
+            select(Outcome.opp_id, Outcome.status)
+            .where(Outcome.cancelled_at.is_(None))
+            .order_by(Outcome.version)
+        ).all()
+    )
+    adjust = settings.adjust
+    rule = AdjustRule(
+        window_days=adjust.window_days,
+        min_closed_count=adjust.min_closed_count,
+        won_per_step=adjust.won_per_step,
+        max_up=adjust.max_up,
+        lost_per_step=adjust.lost_per_step,
+        max_down=adjust.max_down,
+        lost_reasons_counted=frozenset(adjust.lost_reasons_counted),
+    )
+    # 영업 분석표와 같은 조회·요약 함수로 센다(가상·실제 분리 포함). 세부 단계는 쓰지 않는다.
+    results = closed_results(
+        load_company_records(
+            session,
+            dataset_kind=runtime.app_settings.active_dataset_kind.value,
+            sales_step_of=lambda _opp_id, _status: None,
+        ),
+        window_days=rule.window_days,
+        now=utcnow(),
+        tz=KST,
+    )
+    lost_reason_order = [code.value for code in LostReasonCode]
+    placements = {}
+    for position, (_original, current, opportunity, customer) in enumerate(rows):
+        state = CompanyState(
+            opinion=opinions.get(opportunity.opp_id),
+            classification_code=current.classification_code,
+            relation_status=customer.relation_status,
+            outcome_status=stages.get(opportunity.opp_id),
+            fit_level=customer.fit_level,
+            evidence_count=evidence_counts.get(opportunity.opp_id, 0),
+            homepage_url=customer.homepage_url,
+            homepage_status=customer.homepage_status,
+        )
+        bucket, basis = assign_bucket(state, evidence_ready_min=settings.evidence_ready_min)
+        # 영업 결과 조정은 점수를 매길 근거가 있는 "근거 있음" 묶음 안에서만 쓴다(#675).
+        found = (
+            adjustment_for(
+                opportunity.opp_id,
+                codes_by_opportunity.get(opportunity.opp_id, set()),
+                customer.industries or [],
+                results,
+                rule=rule,
+                processes=processes,
+                industry_order=runtime.app_settings.industries,
+                lost_reason_order=lost_reason_order,
+            )
+            if bucket == EVIDENCE_READY
+            else None
+        )
+        timing = current.timing_requirements
+        placements[opportunity.opp_id] = _Placement(
+            bucket=bucket,
+            basis=basis,
+            adjust=RankAdjust.model_validate(found, from_attributes=True) if found else None,
+            order_key=contact_order_key(
+                bucket=bucket,
+                state=state,
+                null_fit_level_as=settings.null_fit_level_as,
+                level=found.level if found else 0,
+                valid_until=current.valid_until,
+                timing_met_count=(
+                    sum(bool(value) for value in timing.values()) if isinstance(timing, dict) else 0
+                ),
+                score_t=current.score_t,
+                base_position=position,
+            ),
+        )
+    return placements
 
 
 @router.get(
@@ -509,18 +724,24 @@ def _address_region(address: str | None) -> str | None:
 )
 def list_opportunities(
     request: Request,
+    response: Response,
     session: SessionDep,
     tab: str = "new",
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
     stage: OutcomeStatus | None = None,
     bookmarked: bool | None = None,
+    hide_bookmarked: Annotated[bool | None, Query(alias="hideBookmarked")] = None,
     opinion: OpinionFilter | None = None,
     process: ProcessCode | None = None,
     industry: str | None = None,
     region: str | None = None,
     q: str | None = None,
     ingest_batch: Annotated[str | None, Query(alias="batch")] = None,
+    sort: str = "rank",
+    max_distance_km: Annotated[
+        float | None, Query(alias="maxDistanceKm", gt=0, allow_inf_nan=False)
+    ] = None,
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -529,6 +750,32 @@ def list_opportunities(
     params = request.query_params
     if tab != "new" or ("filter" in params and params["filter"] not in supported_filters):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
+    if bookmarked and hide_bookmarked:
+        raise InputError("관심 기업만 보기와 관심 기업 빼기는 함께 고를 수 없습니다.")
+    # 정렬(#516): rank = 추천 순(기본), recent = 들어온 시각 최신 순.
+    # contact(#610·#675) = 근거 상태 묶음 순(근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 →
+    # 끝난 회사). rank의 뜻은 그대로다.
+    # distance(#658)는 페이지를 나누기 전 전체 대상의 거리를 사용한다.
+    if sort not in ("rank", "recent", "contact", "distance"):
+        raise InputError(
+            "지원하지 않는 정렬입니다. 추천 순·최근 들어온 순·가까운 순 중에서 골라 주세요."
+        )
+    if max_distance_km is not None and (
+        max_distance_km not in runtime.app_settings.distance_filter_presets_km
+    ):
+        raise InputError("설정에 있는 거리 범위를 선택해 주세요.")
+    distance_requested = sort == "distance" or max_distance_km is not None
+    if distance_requested and (
+        runtime.app_settings.geosan.lat is None or runtime.app_settings.geosan.lng is None
+    ):
+        raise AppError(
+            "거산의 기준 좌표가 준비되지 않았습니다.",
+            "운영 담당자가 거산의 기준 좌표를 등록한 뒤 다시 열어 주세요.",
+            status=503,
+        )
+    # 실시간 보완 결과와 그 결과로 정한 순서·거리 조건을 캐시에 남기지 않는다.
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
     full_batch_id = batch.batch_id if batch else None
@@ -540,6 +787,12 @@ def list_opportunities(
         )
     )
     all_population = select(query.subquery().c.opp_id)
+    # 목록 머리 "관심 기업 ○곳"(#675): 다른 거르기 조건과 무관하게 목록 대상 안의 관심 기업 수.
+    bookmarked_count = session.scalar(
+        select(func.count()).select_from(
+            query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids())).subquery()
+        )
+    )
     if ingest_batch is not None:
         selected_batch = ingest_batch
         if ingest_batch == "latest":
@@ -551,33 +804,29 @@ def list_opportunities(
                 .where(Customer.ingest_batch_id == selected_batch if selected_batch else False)
             )
         )
+    if bookmarked:
+        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
+        # 선택지(공정·지역·산업) 건수도 관심 기업 안에서 세도록 건수 계산보다 먼저 건다(#516).
+        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
+    if hide_bookmarked:
+        # 관심으로 고른 회사를 뺀다(#675). 공정·지역·산업 곳 수와 묶음별 곳 수도 뺀 뒤에 세도록
+        # 관심 기업 보기와 같은 자리(건수 계산보다 먼저)에서 건다.
+        query = query.where(EvaluationRun.opp_id.not_in(bookmarked_opp_ids()))
     population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
+    # 확정 여부(#659)도 같은 조회 한 번으로 모아 읽는다. 카드마다 다시 읽지 않는다.
     links = session.execute(
-        select(OppProcessLink.opp_id, OppProcessLink.process_code)
+        select(OppProcessLink.opp_id, OppProcessLink.process_code, OppProcessLink.state)
         .where(OppProcessLink.opp_id.in_(population), OppProcessLink.superseded_at.is_(None))
         .distinct()
     ).all()
     codes_by_opportunity: dict[str, set[str]] = {}
-    for opp_id, code in links:
+    confirmed_by_opportunity: dict[str, set[str]] = {}
+    for opp_id, code, link_state in links:
         codes_by_opportunity.setdefault(opp_id, set()).add(code)
-    # 투입기는 파일 순서대로 공정별 검수 이력을 남긴다. 재투입한 파일의 순서도 반영한다.
-    imported_at = (
-        select(func.max(FieldEvidence.created_at))
-        .where(
-            FieldEvidence.target_table == Process.__tablename__,
-            FieldEvidence.target_id == Process.process_id,
-            FieldEvidence.target_field == "reviewStatus",
-            FieldEvidence.dataset_kind == dataset_kind.value,
-        )
-        .correlate(Process)
-        .scalar_subquery()
-    )
-    processes = session.scalars(
-        select(Process)
-        .where(Process.dataset_kind == dataset_kind.value)
-        .order_by(func.coalesce(imported_at, Process.created_at), Process.process_id)
-    ).all()
+        if link_state == LINK_CONFIRMED:
+            confirmed_by_opportunity.setdefault(opp_id, set()).add(code)
+    processes = load_process_catalog(session, dataset_kind)
     # 목록 머리 선택란(#361): 기회가 0곳인 공정도 count 0으로 싣는다.
     # 거산 공정 전부를 역량 파일 순서로 보낸다.
     process_counts = [
@@ -588,6 +837,33 @@ def list_opportunities(
         )
         for row in processes
     ]
+    if stage is not None:
+        current_stage = (
+            select(Outcome.status)
+            .where(Outcome.opp_id == EvaluationRun.opp_id, Outcome.cancelled_at.is_(None))
+            .order_by(Outcome.version.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
+    if opinion is not None:
+        # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
+        current_opinion = (
+            select(ReviewOpinion.opinion)
+            .where(ReviewOpinion.opp_id == EvaluationRun.opp_id)
+            .order_by(ReviewOpinion.version.desc(), ReviewOpinion.recorded_at.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        query = query.where(
+            current_opinion.is_(None) if opinion == "NONE" else current_opinion == opinion
+        )
+    for filter_function in list_filters:
+        query = filter_function(session, query, request)
+    # 지역·산업 곳 수는 지금 걸러 본 목록 안에서 센다(#370): 관심·수집 회차에 더해
+    # 의견·영업 단계·대시보드 칸 조건까지 건 뒤의 회사만 센다. 공정 곳 수(위)는 그대로 둔다.
+    # 지역·산업·검색어 조건은 아래에서 따로 걸어, 고른 뒤에도 다른 선택지의 곳 수가 남는다.
+    facet_ids = set(session.scalars(select(query.subquery().c.opp_id)))
     companies = session.execute(
         select(Opportunity, Customer)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
@@ -596,7 +872,8 @@ def list_opportunities(
     tab_companies = [
         (opportunity, customer)
         for opportunity, customer in companies
-        if process is None or process in codes_by_opportunity.get(opportunity.opp_id, set())
+        if opportunity.opp_id in facet_ids
+        and (process is None or process in codes_by_opportunity.get(opportunity.opp_id, set()))
     ]
     industry_counts = [
         IndustryCount(
@@ -648,73 +925,137 @@ def list_opportunities(
                 )
             )
         )
-    if stage is not None:
-        current_stage = (
-            select(Outcome.status)
-            .where(Outcome.opp_id == EvaluationRun.opp_id)
-            .order_by(Outcome.version.desc())
-            .limit(1)
-            .scalar_subquery()
-        )
-        query = query.where(func.coalesce(current_stage, "NOT_EXECUTED") == stage)
-    if bookmarked:
-        # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
-        query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
-    if opinion is not None:
-        # 상세·카드의 최신 의견과 같은 순서(버전, 그다음 저장 시각)로 마지막 행을 본다.
-        current_opinion = (
-            select(ReviewOpinion.opinion)
-            .where(ReviewOpinion.opp_id == EvaluationRun.opp_id)
-            .order_by(ReviewOpinion.version.desc(), ReviewOpinion.recorded_at.desc())
-            .limit(1)
-            .scalar_subquery()
-        )
-        query = query.where(
-            current_opinion.is_(None) if opinion == "NONE" else current_opinion == opinion
-        )
-    for filter_function in list_filters:
-        query = filter_function(session, query, request)
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = []
-    for original in session.scalars(query):
-        current = latest_confirmed_evaluation(session, original.opp_id)
-        opportunity = session.get(Opportunity, original.opp_id)
-        customer = session.get(Customer, opportunity.customer_id) if opportunity else None
+    originals = list(session.scalars(query))
+    # 최신 평가·기회·고객을 회사마다 따로 묻지 않고 한 번씩 모아 읽는다(#686).
+    opp_ids = [original.opp_id for original in originals]
+    currents = latest_confirmed_evaluations(session, opp_ids)
+    opportunities_by_id = {
+        row.opp_id: row
+        for row in session.scalars(select(Opportunity).where(Opportunity.opp_id.in_(opp_ids)))
+    }
+    customer_ids = {row.customer_id for row in opportunities_by_id.values()}
+    customers_by_id = {
+        row.customer_id: row
+        for row in session.scalars(select(Customer).where(Customer.customer_id.in_(customer_ids)))
+    }
+    for original in originals:
+        current = currents.get(original.opp_id)
+        opportunity = opportunities_by_id.get(original.opp_id)
+        customer = customers_by_id.get(opportunity.customer_id) if opportunity else None
         if current is None or opportunity is None or customer is None:
             raise RunFailedError("목록의 기회·고객·평가 연결을 확인해 주세요.")
         rows.append((original, current, opportunity, customer))
     rows.sort(key=lambda row: candidate_order(row[0], row[1], row[3], full_batch_id))
+    distances = None
+    if distance_requested:
+        distances = customer_distances(
+            session,
+            [row[3] for row in rows],
+            {row[3].customer_id: row[2].opp_id for row in rows},
+            runtime.app_settings,
+            live=False,
+        )
+        if max_distance_km is not None:
+            rows = [
+                row
+                for row in rows
+                if (km := distances[row[3].customer_id]) is not None and km <= max_distance_km
+            ]
+            total = len(rows)
+        if sort == "distance":
+            # Python의 안정 정렬로 같은 거리와 미확인끼리는 기존 추천 순을 지킨다.
+            rows.sort(
+                key=lambda row: (
+                    distances[row[3].customer_id] is None,
+                    distances[row[3].customer_id] or 0,
+                )
+            )
+    # 근거 상태 묶음(#610·#675): 추천 순으로 세운 자리 번호를 마지막 정렬 키로 넘긴다.
+    placements = _contact_placements(
+        session,
+        rows,
+        codes_by_opportunity=codes_by_opportunity,
+        processes=[(row.code, process_display_name(row.name)) for row in processes],
+    )
+    bucket_counts = Counter(placements[row[2].opp_id].bucket for row in rows)
+    bucket_ranks: dict[str, int] = {}
+    if sort == "contact":
+        rows.sort(key=lambda row: placements[row[2].opp_id].order_key)
+        # 카드 번호는 묶음 안 순서다(묶음마다 1부터).
+        seen: Counter[str] = Counter()
+        for row in rows:
+            name = placements[row[2].opp_id].bucket
+            seen[name] += 1
+            bucket_ranks[row[2].opp_id] = seen[name]
+    if sort == "recent":
+        # 들어온 시각이 최신인 회사를 앞에 두고, 시각이 없는(사례 파일) 회사는 뒤에 둔다.
+        # 추천 순으로 먼저 정렬해 두었으므로 같은 시각끼리는 그 순서가 유지된다(안정 정렬).
+        rows.sort(key=lambda row: recent_order(row[3]))
     start = (page - 1) * page_size
+    visible_rows = rows[start : start + page_size]
+    if distances is None:
+        distances = customer_distances(
+            session,
+            [row[3] for row in visible_rows],
+            {row[3].customer_id: row[2].opp_id for row in visible_rows},
+            runtime.app_settings,
+            live=False,
+        )
+    # 검토사항 줄에 쓸 구체적인 말(#659): 보이는 카드의 평가 기록을 모아 한 번에 읽는다.
+    check_points = card_check_points(session, [row[1] for row in visible_rows])
     cards = []
     for position, (original, current, opportunity, customer) in enumerate(
-        rows[start : start + page_size], start=start + 1
+        visible_rows, start=start + 1
     ):
         outcome = latest_outcome(session, opportunity.opp_id)
+        linked = codes_by_opportunity.get(opportunity.opp_id, set())
+        confirmed = confirmed_by_opportunity.get(opportunity.opp_id, set())
+        process_codes = [row.code for row in processes if row.code in linked]
+        # 확정된 공정만(#659). 같은 공정에 확정 행과 AI 제안 행이 함께 있으면 확정으로 본다.
+        confirmed_codes = [code for code in process_codes if code in confirmed]
         cards.append(
             OpportunityCard(
+                distance_km=distances[customer.customer_id],
                 **discovery_fields(customer),
                 ingest_batch_id=customer.ingest_batch_id,
                 ingested_at=customer.ingested_at,
                 is_new_in_latest_batch=bool(
                     progress and customer.ingest_batch_id == progress.batch_id
                 ),
-                score_state=_score_state(current),
+                research_state=research_state(
+                    customer, progress, scored=current.score_s is not None
+                ),
+                score_state=_score_state(
+                    current, ai_pending=has_ai_pending_inputs(session, opportunity.opp_id)
+                ),
                 relation_status=customer.relation_status,
                 region=_address_region(customer.address),
                 industries=customer.industries or [],
                 contact_count=contact_counts(session, opportunity.opp_id).total,
-                process_codes=[
-                    row.code
-                    for row in processes
-                    if row.code in codes_by_opportunity.get(opportunity.opp_id, set())
-                ],
+                sales_step=sales_step_state(
+                    session, opportunity.opp_id, status=outcome.status if outcome else None
+                ).code,
+                process_codes=process_codes,
+                confirmed_process_codes=confirmed_codes,
+                proposed_process_count=len(process_codes) - len(confirmed_codes),
+                check_points=check_points[current.eval_id].check_points,
+                core_evidence_gaps=check_points[current.eval_id].core_evidence_gaps,
+                check_kinds=check_points[current.eval_id].check_kinds,
                 opp_id=opportunity.opp_id,
-                rank=position
+                bucket=placements[opportunity.opp_id].bucket,
+                bucket_basis=placements[opportunity.opp_id].basis,
+                rank_adjust=placements[opportunity.opp_id].adjust,
+                rank=bucket_ranks[opportunity.opp_id]
+                if sort == "contact"
+                else position
                 if (
                     process is not None
                     or industry is not None
                     or region is not None
                     or ingest_batch is not None
+                    or sort in {"recent", "distance"}
                     or original.batch_id != full_batch_id
                     or (customer.ingest_batch_id is not None and current.score_s is None)
                 )
@@ -725,7 +1066,10 @@ def list_opportunities(
                 score_s=current.score_s,
                 score_display=current.score_display,
                 reason=current.reason,
-                blocker=Blocker(text=current.blocker_text, blocks_approval=current.blocks_approval),
+                blocker=Blocker(
+                    text=shown_blocker_text(current.blocker_text),
+                    blocks_approval=current.blocks_approval,
+                ),
                 next_action=current.next_action,
                 records=CardRecords(
                     opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),
@@ -762,5 +1106,7 @@ def list_opportunities(
             industry_counts=industry_counts,
             region_counts=region_counts,
             not_evaluated_count=not_evaluated,
+            bucket_counts=BucketCounts(**{name.lower(): bucket_counts[name] for name in BUCKETS}),
+            bookmarked_count=bookmarked_count,
         ),
     )

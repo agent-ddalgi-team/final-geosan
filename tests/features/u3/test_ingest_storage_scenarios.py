@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.commands.cost import run_cost
 from geosan.config.app_settings import load_app_settings, sync_app_settings
-from geosan.config.errors import AppError, RunFailedError
+from geosan.config.errors import RunFailedError
 from geosan.evidence.transfer import (
     TransferLog,
     finish_search,
@@ -145,18 +145,23 @@ def safe_failure_record(caplog):
     assert records[0].exc_info is None
 
 
-@when("회차 호출의 사용량을 확정하지 않은 채 홈페이지 검색을 요청한다", target_fixture="failure")
+@when("회차 호출의 사용량을 확정하지 않은 채 홈페이지 검색을 요청한다")
 def unconfirmed(batch):
     reserve_candidate_judgment(batch, True)
-    with pytest.raises(AppError) as error:
-        reserve_search("opp-scenario", True, None)
-    return error.value
+    ticket = reserve_search("opp-scenario", True, None)
+    finish_search(ticket, 1000, 200, 1, None)
 
 
-@then("사용량 미확정 오류를 알리고 검색 호출 수를 늘리지 않는다")
-def blocked(failure):
-    assert failure.kind == "USAGE_UNCONFIRMED"
+@then("홈페이지 검색 사용량과 회차 추정 비용을 함께 계산한다")
+def estimated():
     with session_scope() as session:
         rows = session.scalars(select(TransferLog)).all()
-        assert sum(row.call_count for row in rows) == 1
-        assert next(row for row in rows if row.purpose == "EXTERNAL_SEARCH").call_count == 0
+        assert sum(row.call_count for row in rows) == 2
+        assert next(row for row in rows if row.purpose == "EXTERNAL_SEARCH").cost_usd == Decimal(
+            "0.014"
+        )
+        assert next(row for row in rows if row.purpose == "EXTERNAL_AI").cost_usd is None
+    output = []
+    assert run_cost(None, output.append) == 2
+    assert any("추정 비용 $0.100000" in line for line in output)
+    assert any("한도 계산 비용 $0.114000" in line for line in output)

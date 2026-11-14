@@ -9,7 +9,9 @@ API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정
 
 from __future__ import annotations
 
+import os
 import socket
+import time
 from pathlib import Path
 
 import typer
@@ -41,10 +43,61 @@ def _run_server(port: int, host: str = HOST) -> None:
     import uvicorn
 
     from geosan.api.app import configure_logging, create_app
+    from geosan.workflows.flow_ingest import run_ingest
 
     configure_logging()
     # geosan 로거가 JSON 한 줄 로그를 맡으므로 uvicorn의 기본 로그 설정은 끈다(NFR10.1).
-    uvicorn.run(create_app(), host=host, port=port, log_config=None, access_log=False)
+    uvicorn.run(
+        create_app(ingest_runner=run_ingest),
+        host=host,
+        port=port,
+        log_config=None,
+        access_log=False,
+    )
+
+
+def _warm_location_index() -> None:
+    """좌표 조회를 켰고 위치 CSV가 있으면 색인을 한 번 만들어 둔다. 실패해도 서버는 띄운다."""
+    from geosan.config.app_settings import read_app_settings
+    from geosan.config.errors import AppError
+    from geosan.opportunity.location_csv import location_index
+    from geosan.storage.session import session_scope
+
+    with session_scope() as session:
+        settings = read_app_settings(session)
+    if settings is None or not settings.geocoding.enabled:
+        return
+    files = settings.geocoding.location_csv_files
+    if not files:
+        return
+    started = time.monotonic()
+    try:
+        location_index(files)
+    except AppError as error:
+        # 파일이 없으면 거리 기능만 안 된다. 숨기지 않고 알리되 목록·상세는 계속 쓰게 한다.
+        typer.echo(f"경고: {error.message} 거리 계산 전에 설정의 위치 CSV 경로를 확인해 주세요.")
+        return
+    typer.echo(f"위치 CSV {len(files)}개를 미리 읽었습니다 ({time.monotonic() - started:.1f}초).")
+
+
+DEMO_DB_FILE_NAME = "geosan-demo.db"
+"""발표 시연용 DB의 약속된 파일 이름(#274). 이름을 바꿔도 DB 안 시연 표시로 알아본다."""
+
+
+def _is_deploy_setting(host: str) -> bool:
+    """배포 설정인가: 바깥에서 들어오는 주소로 듣거나 배포용 비밀번호가 있는 환경(계약 C8)."""
+    return host == "0.0.0.0" or bool(os.environ.get("GEOSAN_PASSWORD"))
+
+
+def _is_demo_db(db_path: Path) -> bool:
+    """시연용 DB인가: 파일 이름이 geosan-demo.db이거나 앱 설정 사본에 시연 표시가 있다."""
+    from geosan.config.app_settings import is_demo_database
+    from geosan.storage.session import session_scope
+
+    if db_path.name == DEMO_DB_FILE_NAME:
+        return True
+    with session_scope(db_path) as session:
+        return is_demo_database(session)
 
 
 def run_serve(port: int, host: str = HOST) -> int:
@@ -69,6 +122,15 @@ def run_serve(port: int, host: str = HOST) -> int:
         typer.echo("먼저 `geosan init-db`를 실행해 주세요.")
         return EXIT_INPUT_ERROR
 
+    # 2-1) 시연용 DB는 배포 설정에서 시작하지 않는다(#274, 계약 C8). 로컬에서는 그대로 쓴다.
+    if _is_deploy_setting(host) and _is_demo_db(db_path):
+        typer.echo("시연용 DB는 배포 환경에서 쓸 수 없습니다.")
+        typer.echo(
+            f"배포 설정(--host 0.0.0.0 또는 GEOSAN_PASSWORD)에서는 {db_path.name}로 서버를 "
+            "시작하지 않습니다. GEOSAN_DB_PATH를 실제 DB로 바꿔 주세요."
+        )
+        return EXIT_RUN_FAILED
+
     # 3) 화면 빌드 결과가 없으면 API만 띄운다는 것을 알린다(실패는 아니다).
     screen = "API + 화면" if (WEB_DIST / "index.html").exists() else "API만"
     if screen == "API만":
@@ -81,6 +143,10 @@ def run_serve(port: int, host: str = HOST) -> int:
     if port_in_use(port, host):
         typer.echo(f"포트 {port}이 사용 중입니다. --port로 바꾸세요.")
         return EXIT_RUN_FAILED
+
+    # 5) 위치 CSV 색인을 미리 읽는다(#664). 받은 CSV 3개(64만 줄)는 처음 읽는 데 10초가 넘어
+    #    서버를 켠 뒤 첫 가까운 순 요청이 요청 제한(10초)에 걸려 실패했다.
+    _warm_location_index()
 
     typer.echo(f"서버 시작: http://{host}:{port} ({screen}, {db_path.name}). 중지는 Ctrl+C.")
     # 켜져 있는 동안 DB 옆에 실행 중 표식을 둔다. restore가 이것을 보고 복원을 거부한다(#214).

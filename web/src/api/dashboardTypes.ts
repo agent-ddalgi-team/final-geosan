@@ -1,11 +1,12 @@
 // 대시보드 응답 타입 — 계약 C1 `GET /dashboard` 모양 그대로(필드 이름 camelCase).
 // 건수는 약속 v3(2026-11-06 PM 결정 #356)로 바뀌었다: 관심으로 고른 회사만 세고, 화면은 두 구역으로 보인다.
+// 약속 v4(2026-11-10 PM 결정 #536): 검토 대상 제외로 저장한 회사는 관심 기업에서 빠져 NOT_TARGET 칸이 없어졌다.
 // types.ts(경계 파일)는 건드리지 않고 U7 전용 타입을 이 파일에 둔다.
 
 /**
- * 건수 칸의 이름표 10개.
- * - "관심 기업" 구역: BOOKMARKED(관심 기업 전체) · NO_OPINION(의견 전) · NEED_CHECK(추가 확인 필요) · NOT_TARGET(제외)
- * - "영업 진행" 구역: NOT_CONTACTED(검토 권고를 받았고 아직 접촉 전) · IN_CONTACT · QUOTE_SAMPLE · ON_HOLD · DONE(성사·거절)
+ * 건수 칸의 이름표 9개.
+ * - "관심 기업" 구역: BOOKMARKED(관심 기업 전체) · NO_OPINION(의견 전) · NEED_CHECK(검토 중)
+ * - "영업 진행" 구역: NOT_CONTACTED(영업 대상으로 정했고 아직 접촉 전) · IN_CONTACT · QUOTE_SAMPLE · ON_HOLD · DONE(성사·거절)
  * - SCHEDULE_DUE(이번 주 일정)는 예전 그대로다.
  * BOOKMARKED를 누르면 /opportunities?bookmarked=true, 나머지는 /opportunities?filter=<이름표>.
  */
@@ -13,7 +14,6 @@ export type DashboardCountKey =
   | 'BOOKMARKED'
   | 'NO_OPINION'
   | 'NEED_CHECK'
-  | 'NOT_TARGET'
   | 'NOT_CONTACTED'
   | 'IN_CONTACT'
   | 'QUOTE_SAMPLE'
@@ -68,6 +68,25 @@ export interface DashboardBreakdown {
   byIndustry: IndustryBreakdownItem[];
 }
 
+/** "오늘 확인할 것" 줄의 종류(#679). 서버가 뒤에 값을 늘릴 수 있어(#677) 화면은 모르는 값을 보이지 않는다. */
+export type TodayCheckKind = 'SCHEDULE_TODAY' | 'SCHEDULE_OVERDUE' | 'CHECK_LEFT';
+
+export interface TodayCheckItem {
+  oppId: string;
+  customerName: string;
+  /** 일정 줄만 날짜(YYYY-MM-DD)와 일정 한 줄이 있다. */
+  dueAt: string | null;
+  note: string | null;
+}
+
+export interface TodayCheckRow {
+  kind: TodayCheckKind | (string & {});
+  count: number;
+  items: TodayCheckItem[];
+  /** 있으면 누를 때 /opportunities?filter=<값> 목록으로, 없으면 줄 아래에 작은 목록을 편다. */
+  listFilter: string | null;
+}
+
 export interface Dashboard {
   counts: DashboardCounts;
   schedule: DashboardScheduleItem[];
@@ -75,4 +94,6 @@ export interface Dashboard {
   asOf: string;
   /** 없으면 화면은 공정·산업군 막대 줄을 숨긴다(실제 집계 전 거산 전달본에 가짜 숫자가 보이면 안 됨). */
   breakdown?: DashboardBreakdown | null;
+  /** 맨 위 "오늘 확인할 것" 줄 목록(#679). 0건인 줄은 오지 않는다. 옛 서버면 칸이 없다. */
+  todayChecks?: TodayCheckRow[];
 }

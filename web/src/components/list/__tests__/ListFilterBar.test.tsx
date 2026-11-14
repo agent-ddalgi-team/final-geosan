@@ -1,7 +1,7 @@
 // 목록 머리(#210 → #361): 공정 선택란(9종·0곳 포함) / 지역·산업 선택지와 "전체" / 공정 선택란 숨김 /
 // 공정을 고르기 전(#368 → #383, 2026-11-07 PM 결정): 맨 위 "전체(공정별로 묶음)"가 골라져 보이고 지역·산업 선택란도 보인다 /
 // 주소에서 온 값 유지 / 회사 이름 검색 칸과 결과 줄·[검색 지우기] / 정렬("가까운 순"은 준비 중).
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ListFilterBar from '../ListFilterBar';
 import type { ListFilterBarProps } from '../ListFilterBar';
@@ -27,9 +27,13 @@ function renderBar(overrides: Partial<ListFilterBarProps> = {}) {
     onIndustry: vi.fn(),
     onSearch: vi.fn(),
     onClearSearch: vi.fn(),
+    onSort: vi.fn(),
+    onFlat: vi.fn(),
   };
   render(
     <ListFilterBar
+      sort="rank"
+      showFlat
       processCounts={PROCESSES}
       showProcess
       process="ZINC_PLATING"
@@ -160,11 +164,17 @@ describe('ListFilterBar', () => {
       expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
     });
 
-    it('공정 선택란이 없는 보기(관심 기업·대시보드 칸)에서는 공정이 없어도 지역·산업 선택란이 보인다', () => {
+    it('공정 선택란이 없는 보기(대시보드 칸)에서는 공정이 없어도 지역·산업 선택란이 보인다', () => {
       renderBar({ showProcess: false, process: null });
       expect(screen.queryByTestId('list-process-select')).not.toBeInTheDocument();
       expect(screen.getByTestId('list-region-select')).toBeInTheDocument();
       expect(screen.getByTestId('list-industry-select')).toBeInTheDocument();
+    });
+
+    it('묶지 않는 보기(관심 기업, #516)에서는 공정 선택란 맨 위가 "전체"다', () => {
+      renderBar({ processGrouped: false, process: null });
+      expect(optionTexts('list-process-select')[0]).toBe(listFilters.all);
+      expect(optionTexts('list-process-select')).toHaveLength(PROCESSES.length + 1);
     });
   });
 
@@ -249,28 +259,104 @@ describe('ListFilterBar', () => {
     });
   });
 
-  describe('정렬 (#361)', () => {
-    it('"추천 순"이 골라져 있고 "가까운 순 (준비 중)"은 고를 수 없게 표시된다', () => {
+  describe('거리 범위 (#666)', () => {
+    it('서버 설정 선택지로 "30km 이내" 등을 보이고, 고르면 그 숫자를, "전체"를 고르면 null을 알린다', async () => {
+      const user = userEvent.setup();
+      const onMaxDistance = vi.fn();
+      renderBar({ distancePresets: [30, 50, 100], maxDistanceKm: null, onMaxDistance });
+      const select = screen.getByTestId('list-distance-select');
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((o) => o.textContent),
+      ).toEqual(['전체', '30km 이내', '50km 이내', '100km 이내']);
+      await user.selectOptions(select, '50');
+      expect(onMaxDistance).toHaveBeenLastCalledWith(50);
+      cleanup();
+      renderBar({ distancePresets: [30, 50, 100], maxDistanceKm: 50, onMaxDistance });
+      expect(screen.getByTestId('list-distance-select')).toHaveValue('50');
+      await user.selectOptions(screen.getByTestId('list-distance-select'), '');
+      expect(onMaxDistance).toHaveBeenLastCalledWith(null);
+    });
+
+    it('선택지가 없거나(옛 서버) 검색 중이면 거리 선택란을 그리지 않는다', () => {
+      renderBar();
+      expect(screen.queryByTestId('list-distance-select')).not.toBeInTheDocument();
+      cleanup();
+      renderBar({ distancePresets: [30], query: '코파스' });
+      expect(screen.queryByTestId('list-distance-select')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('정렬 (#361 · #516)', () => {
+    it('"추천 순"이 골라져 있고, "최근 들어온 순"과 "가까운 순"(#666)은 고를 수 있다', () => {
       renderBar();
       const group = screen.getByRole('group', { name: listSearch.sortLabel });
       const buttons = within(group).getAllByRole('button');
       expect(buttons.map((button) => button.textContent)).toEqual([
         '추천 순',
-        '가까운 순 (준비 중)',
+        '최근 들어온 순',
+        '가까운 순',
+        '전체 보기',
       ]);
       expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
       expect(buttons[1]).toHaveAttribute('aria-pressed', 'false');
-      expect(buttons[1]).toHaveAttribute('aria-disabled', 'true');
+      expect(buttons[1]).not.toHaveAttribute('aria-disabled');
+      expect(buttons[2]).toHaveAttribute('aria-pressed', 'false');
+      expect(buttons[2]).not.toHaveAttribute('aria-disabled');
+      expect(buttons[3]).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('"가까운 순 (준비 중)"을 눌러도 아무것도 알리지 않고 "추천 순"이 그대로 골라져 있다', async () => {
+    it('"전체 보기"를 누르면 켜기를 알리고, 켜져 있을 때 누르면 끄기를 알린다(#516)', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar();
+      await user.click(screen.getByTestId('list-view-all'));
+      expect(handlers.onFlat).toHaveBeenCalledWith(true);
+      expect(handlers.onSort).not.toHaveBeenCalled();
+    });
+
+    it('전체 보기가 켜져 있으면 눌린 모양이고, 평소 목록이 아닌 보기(showFlat=false)에는 단추가 없다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar({ flat: true });
+      expect(screen.getByTestId('list-view-all')).toHaveAttribute('aria-pressed', 'true');
+      await user.click(screen.getByTestId('list-view-all'));
+      expect(handlers.onFlat).toHaveBeenCalledWith(false);
+      cleanup();
+      renderBar({ showFlat: false });
+      expect(screen.queryByTestId('list-view-all')).not.toBeInTheDocument();
+      expect(screen.getByTestId('list-sort-recent')).toBeInTheDocument();
+    });
+
+    it('"최근 들어온 순"을 누르면 recent를 알리고, 이미 골라진 정렬을 다시 눌러도 알리지 않는다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar();
+      await user.click(screen.getByTestId('list-sort-recent'));
+      expect(handlers.onSort).toHaveBeenCalledTimes(1);
+      expect(handlers.onSort).toHaveBeenCalledWith('recent');
+      await user.click(screen.getByTestId('list-sort-rank'));
+      expect(handlers.onSort).toHaveBeenCalledTimes(1);
+    });
+
+    it('주소의 정렬이 recent면 "최근 들어온 순"이 골라져 보이고 "추천 순"을 누르면 rank를 알린다', async () => {
+      const user = userEvent.setup();
+      const handlers = renderBar({ sort: 'recent' });
+      expect(screen.getByTestId('list-sort-recent')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'false');
+      await user.click(screen.getByTestId('list-sort-rank'));
+      expect(handlers.onSort).toHaveBeenCalledWith('rank');
+    });
+
+    it('"가까운 순"을 누르면 distance를 알리고, 골라져 있으면 눌린 모양이며 다시 눌러도 알리지 않는다(#666)', async () => {
       const user = userEvent.setup();
       const handlers = renderBar();
       await user.click(screen.getByTestId('list-sort-distance'));
-      await user.click(screen.getByTestId('list-sort-rank'));
-      for (const handler of Object.values(handlers)) expect(handler).not.toHaveBeenCalled();
-      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'false');
+      expect(handlers.onSort).toHaveBeenCalledWith('distance');
+      cleanup();
+      const again = renderBar({ sort: 'distance' });
+      expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'false');
+      await user.click(screen.getByTestId('list-sort-distance'));
+      expect(again.onSort).not.toHaveBeenCalled();
     });
 
     it('정렬 묶음은 검색 중에도, 공정 선택란이 없는 보기에서도 보인다', () => {

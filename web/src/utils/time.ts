@@ -52,6 +52,15 @@ export function daysAgo(iso: string | null | undefined, now: Date = new Date()):
   return diff < 0 ? null : diff;
 }
 
+/**
+ * "2026-11-08" — 지금(`now`)의 한국 날짜. 접촉 날짜는 오늘(한국 시간)까지만 고를 수 있어(약속 C1, #433)
+ * 브라우저 시간대와 상관없이 한국 날짜로 읽는다. 시각은 인자로 받아 시험이 현재 시각에 기대지 않게 한다.
+ */
+export function todayKst(now: Date = new Date()): string {
+  const p = kstParts(now.toISOString(), { year: 'numeric', month: '2-digit', day: '2-digit' });
+  return p ? `${p.year}-${p.month}-${p.day}` : '';
+}
+
 /** "09:05" — "저장됨 HH:MM"에 쓴다. */
 export function formatHourMinute(iso: string | Date | null | undefined): string | null {
   if (!iso) return null;

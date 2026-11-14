@@ -26,12 +26,11 @@ from tests.unit.u1.test_snapshot_ledger import _write
 
 TODAY = date(2026, 11, 5)
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=KST)
-# 계약 C1(#356)의 건수 키 10개.
+# 계약 C1(#356)의 건수 키 9개. 검토 대상 제외 칸은 #536(계약 v4)에서 없앴다.
 COUNT_KEYS = (
     "BOOKMARKED",
     "NO_OPINION",
     "NEED_CHECK",
-    "NOT_TARGET",
     "NOT_CONTACTED",
     "IN_CONTACT",
     "QUOTE_SAMPLE",
@@ -39,8 +38,8 @@ COUNT_KEYS = (
     "DONE",
     "SCHEDULE_DUE",
 )
-# 관심 기업 하나가 꼭 하나에만 드는 여덟 칸(합 = BOOKMARKED).
-BOARD_KEYS = COUNT_KEYS[1:9]
+# 관심 기업 하나가 꼭 하나에만 드는 일곱 칸(합 = BOOKMARKED).
+BOARD_KEYS = COUNT_KEYS[1:8]
 ZERO_COUNTS = dict.fromkeys(COUNT_KEYS, 0)
 
 
@@ -254,9 +253,11 @@ def test_stage_only_save_keeps_earlier_schedule_in_dashboard(dashboard_env):
     assert [(row.opp_id, row.due_at) for row in data.schedule] == [(a, date(2026, 11, 8))]
 
 
-def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
+def test_recent_activity_shows_only_my_records_newest_first(dashboard_env, monkeypatch):
     """Given 메모·단계·접촉·일정·의견 기록 / When 조회 / Then 내 기록만 종류별 한 줄, 최신순."""
     client, (a, b, *_rest) = dashboard_env
+    # 집계와 저장 검증에 같은 시험 날짜를 쓴다. 단독 실행 때도 미래 날짜로 오인하지 않는다.
+    monkeypatch.setattr("geosan.api.routes.records.today_in_seoul", lambda: TODAY)
     mine = {"X-Staff-Key": "park-lee"}
     eval_id = next(
         row["evalId"]
@@ -295,7 +296,7 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env):
     )
     rows = build().recent_activity
     assert [(row.kind, row.summary) for row in rows] == [
-        ("OPINION", "검토 의견: 검토 권고"),
+        ("OPINION", "검토 의견: 영업 대상"),
         ("SCHEDULE", "다음 일정: 11/12 방문"),
         ("CONTACT_ATTEMPT", "전화 시도, 부재"),
         ("STAGE", "미접촉 → 접촉"),
@@ -363,7 +364,19 @@ def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):
     staff = client.get("/api/v1/dashboard", headers={"X-Staff-Key": "park-lee"})
     assert staff.status_code == 200
     body = staff.json()
-    assert set(body["data"]) == {"counts", "schedule", "recentActivity", "asOf", "breakdown"}
+    # 약속에 "오늘 확인할 것" 칸(todayChecks)이 더해졌다(#679).
+    assert set(body["data"]) == {
+        "counts",
+        "schedule",
+        "recentActivity",
+        "asOf",
+        "breakdown",
+        "todayChecks",
+    }
+    # 2000년 일정은 놓친 일정 한 줄이다.
+    assert [(row["kind"], row["count"]) for row in body["data"]["todayChecks"]] == [
+        ("SCHEDULE_OVERDUE", 1)
+    ]
     assert set(body["data"]["counts"]) == set(COUNT_KEYS)
     assert body["data"]["counts"] == {
         **ZERO_COUNTS,

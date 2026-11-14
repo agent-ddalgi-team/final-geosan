@@ -11,6 +11,7 @@ from geosan.config.app_settings import load_app_settings, sync_app_settings
 from geosan.opportunity.importer import import_case
 from geosan.storage.session import session_scope
 from geosan.workflows import flow_evaluate
+from tests import factories
 from tests.unit.u1 import test_review_set as support
 
 review_db = support.review_db
@@ -18,8 +19,11 @@ scenarios("u4/review_set.feature")
 
 
 @given("소개서 검수 대기 110건과 공개 기업 18곳이 평가되어 있다")
-def public_data(bare_db, examples_dir, monkeypatch):
+def public_data(bare_db, examples_dir, monkeypatch, tmp_path):
     from geosan.commands import review_set
+
+    # 아래 Then이 거래 확인 전 대기 상태를 보므로 거래 관계 확인을 켠 설정을 쓴다(#567).
+    factories.register_relation_check(tmp_path, "BLOCK")
 
     monkeypatch.setattr(review_set, "today_in_seoul", lambda: support.REVIEW_DATE)
     monkeypatch.setattr(flow_evaluate, "today_in_seoul", lambda: support.REVIEW_DATE)

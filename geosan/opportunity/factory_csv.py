@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -86,6 +87,81 @@ class FactoryCsvResult:
 def _region_name(value: str) -> str:
     value = value.strip()
     return _REGION_NAMES.get(value, value)
+
+
+def address_region(address: str) -> str:
+    """주소 첫 칸의 시·도 약칭. 예: "충청남도 천안시 ..." → "충남"."""
+    parts = address.split()
+    return _region_name(parts[0].rstrip(",")) if parts else ""
+
+
+_POSTCODE = re.compile(r"^\(\d{5}\)\s*")
+
+
+def without_postcode(address: str) -> str:
+    """주소 앞에 붙은 "(31246)" 같은 우편번호를 뗀다. 웹 페이지의 주소에 자주 붙어 온다."""
+    return _POSTCODE.sub("", address.strip())
+
+
+_DISTRICT = re.compile(r"^([가-힣]{2,}?)[시군구]")
+
+
+def address_district(address: str | None) -> tuple[str, str] | None:
+    """주소의 (시·도 약칭, 시·군 이름 줄기). 견주는 데만 쓴다. 시·군을 모르면 None.
+
+    예: "충남 천안시 동남구 …"·"(31246) 충청남도 천안시서북구 …" → ("충남", "천안").
+    세종처럼 시·도 아래 시·군이 없는 곳은 ("세종", "").
+    """
+    parts = without_postcode(address or "").split()
+    if not parts:
+        return None
+    region = _region_name(parts[0].rstrip(","))
+    if region == "세종":
+        return region, ""
+    if len(parts) < 2:
+        return None
+    found = _DISTRICT.match(parts[1])
+    return region, found.group(1) if found else parts[1]
+
+
+# 후보 찾기에서 시·군으로도 고를 수 있는 시·도(PM 결정 2026-11-09, #521).
+CITY_PARENTS = {
+    city: "충남"
+    for city in (
+        "천안시",
+        "아산시",
+        "당진시",
+        "서산시",
+        "공주시",
+        "보령시",
+        "논산시",
+        "계룡시",
+        "금산군",
+        "부여군",
+        "서천군",
+        "청양군",
+        "홍성군",
+        "예산군",
+        "태안군",
+    )
+}
+
+
+def parent_regions(regions: Sequence[str]) -> list[str]:
+    """고른 지역을 저장 단위(시·도)로 푼다. 예: ["천안시", "서산시", "대전"] → ["충남", "대전"]."""
+    return list(dict.fromkeys(CITY_PARENTS.get(region, region) for region in regions))
+
+
+def address_city(address: str) -> str | None:
+    """주소 둘째 칸의 시·군 이름. "천안시서북구"도 천안시로 본다. 목록에 없으면 None."""
+    parts = address.split()
+    token = parts[1].rstrip(",") if len(parts) > 1 else ""
+    return next((city for city in CITY_PARENTS if token.startswith(city)), None)
+
+
+def row_in_selected_regions(region: str, address: str, selected: Sequence[str]) -> bool:
+    """시·도를 통째로 골랐으면 그 시·도 전부, 시·군을 골랐으면 그 시·군 행만 맞다."""
+    return region in selected or address_city(address) in selected
 
 
 def _decode(path: Path) -> tuple[str, str]:

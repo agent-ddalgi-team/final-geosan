@@ -1,4 +1,4 @@
-# 뼈대 기간 최소 CI (인프라 설계 cicd-pipeline.md 2장). PR마다 파이썬·화면 두 작업을 병렬로 돌린다.
+# 뼈대 기간 최소 CI (인프라 설계 cicd-pipeline.md 2장). PR마다 파이썬(네 묶음)·화면 작업을 병렬로 돌린다.
 # 약속 파일 자동 비교·취약점 검사·develop·main 보호 규칙·배포는 3.7 CI 파이프라인 단계에서 더한다.
 name: check
 
@@ -11,10 +11,13 @@ permissions:
   contents: read
 
 jobs:
-  python:
-    name: 검사 — 파이썬 (Ruff · pytest · 뼈대 검증)
+  # 파이썬 검사는 네 묶음으로 나눠 동시에 돌린다(2026-11-14 PM 결정: 한 번에 45분 넘게 걸려 PR마다 기다림이 길었다).
+  #   모양 · 단위 테스트 세 묶음 · 시나리오. 커버리지 80% 하한은 세 묶음의 결과를 합쳐서 한 번만 본다(하한은 그대로).
+  #   맨 끝의 "검사 — 파이썬" 작업이 전부 통과했을 때만 초록이 된다(이름은 전과 같다).
+  python-lint:
+    name: 파이썬 › 모양 (비밀 검사 · Ruff)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -37,13 +40,95 @@ jobs:
           ruff format --check .
           ruff check .
 
-      - name: 단위 테스트 + 커버리지 80% 하한
-        run: python -m pytest tests/unit -q --cov=geosan --cov-report=term-missing --cov-fail-under=80
+  python-unit:
+    name: 파이썬 › 단위 테스트 (${{ matrix.shard.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - { name: u1, paths: tests/unit/u1 }
+          - { name: u3, paths: tests/unit/u3 }
+          - { name: u2-u7-u8, paths: tests/unit/u2 tests/unit/u7 tests/unit/u8 }
+    steps:
+      - uses: actions/checkout@v4
 
-      # 한시적: 세 트랙(규칙·투입/API·화면)이 다 합쳐지기 전에는 시나리오가 실패하는 것이 정상이다.
-      # Step 28에서 continue-on-error를 제거한다.
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: 의존성 설치(잠금 파일)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock -e .
+
+      # 묶음마다 커버리지 자료만 남긴다. 한 묶음만으로는 80%가 안 되므로 여기서는 하한을 보지 않고(--cov-fail-under=0),
+      # 80% 하한은 아래 python-coverage가 세 묶음을 합쳐서 본다(하한 자체는 그대로다).
+      - name: 단위 테스트 (${{ matrix.shard.name }})
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.shard.name }}
+        run: python -m pytest ${{ matrix.shard.paths }} -q --cov=geosan --cov-report= --cov-fail-under=0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.shard.name }}
+          path: .coverage.${{ matrix.shard.name }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  python-coverage:
+    name: 파이썬 › 커버리지 80% 하한 (세 묶음 합침)
+    needs: python-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: 의존성 설치(잠금 파일)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock -e .
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: 커버리지 합치기 + 80% 하한
+        run: |
+          python -m coverage combine
+          python -m coverage report --show-missing --fail-under=80
+
+  python-features:
+    name: 파이썬 › 시나리오 · 뼈대 검증
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: 의존성 설치(잠금 파일)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock -e .
+
+      # 시나리오는 필수다(#527, PM 결정 2026-11-10). 실패하면 빨간 X가 난다.
       - name: 시나리오 테스트 (tests/features)
-        continue-on-error: true
         run: python -m pytest tests/features -q --no-cov
 
       # 한시적: verify-case는 Step 19·27에서 완성된다. Step 28에서 continue-on-error를 제거한다.
@@ -57,6 +142,26 @@ jobs:
           python -m geosan import-capability examples/capability-geosan.json
           python -m geosan import-case examples/case-apjeong.json
           python -m geosan verify-case examples/case-apjeong.json
+
+  # 위 네 가지가 모두 통과했을 때만 초록. 하나라도 실패·취소면 빨강(건너뜀도 실패로 본다).
+  python:
+    name: 검사 — 파이썬 (Ruff · pytest · 뼈대 검증)
+    needs: [python-lint, python-unit, python-coverage, python-features]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 파이썬 검사 네 가지 결과 모으기
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "결과: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "파이썬 검사 가운데 통과하지 못한 것이 있습니다: $r"
+              exit 1
+            fi
+          done
 
   web:
     name: 검사 — 화면 (ESLint · Prettier · Vitest · Vite build)

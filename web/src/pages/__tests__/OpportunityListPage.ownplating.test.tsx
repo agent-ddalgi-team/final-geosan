@@ -15,7 +15,13 @@ vi.mock('../../api/client', async (importOriginal) => ({
 }));
 
 const mockedGet = vi.mocked(getOpportunities);
-const apjeong = listFixture.data[0] as unknown as OpportunityCard;
+// 점수는 "근거 있음" 묶음 카드에만 보인다(#675). 사례 파일 18곳은 근거가 3건 이상이라 그 묶음에 든다.
+// 가짜 응답의 A정밀은 거래 중이라 "끝난 회사" 묶음이므로, 여기서는 근거 있음 묶음의 카드로 바꿔 쓴다.
+const apjeong = {
+  ...listFixture.data[0],
+  bucket: 'EVIDENCE_READY',
+  bucketBasis: 'EVIDENCE_ENOUGH',
+} as unknown as OpportunityCard;
 
 function card(oppId: string, rank: number, extra: Partial<OpportunityCard> = {}): OpportunityCard {
   return { ...apjeong, oppId, rank, title: `시험 회사 ${oppId}`, ...extra };
@@ -138,7 +144,7 @@ describe('카드 · 표면처리를 직접 하는 회사일 수 있음 (#319)', 
     expect(within(cards[2]).queryByTestId('card-own-plating-tag')).not.toBeInTheDocument();
   });
 
-  it('후보 찾기 표시(고른 이유·점수 전·이번에 들어옴)와 한 카드에 함께 보일 수 있다', async () => {
+  it('후보 찾기 표시(고른 이유·점수 전·들어온 날짜)와 한 카드에 함께 보일 수 있다', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([
         card('a', 1, {
@@ -157,7 +163,7 @@ describe('카드 · 표면처리를 직접 하는 회사일 수 있음 (#319)', 
     expect(view.getByTestId('card-own-plating-tag')).toBeInTheDocument();
     expect(view.getByTestId('card-own-plating-basis')).toHaveTextContent('도금 가공');
     expect(view.getByTestId('card-pick-reason')).toHaveTextContent('볼트·너트를 만듦');
-    expect(view.getByTestId('card-new-in-batch-tag')).toHaveTextContent('이번에 들어옴 · 11/20');
+    expect(view.getByTestId('card-ingested-tag')).toHaveTextContent('11/20 들어옴');
     expect(view.getByTestId('card-score')).toHaveTextContent(candidateSearch.beforeScore);
   });
 });

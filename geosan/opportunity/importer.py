@@ -16,6 +16,7 @@ from geosan.config.loader import load_document
 from geosan.config.paths import normalize_input_path
 from geosan.config.registry import load_runtime_config
 from geosan.config.schemas import CaseFile
+from geosan.evaluation.call_inputs import apply_call_signal_inputs
 from geosan.evaluation.inputs import store_inputs, supersede_inputs
 from geosan.evidence.queries import store_evidence, supersede_evidence
 from geosan.opportunity.models import (
@@ -153,6 +154,9 @@ def _store(
         session.add(customer)
     values = model.customer.model_dump(mode="json")
     file_homepage_url = values.pop("homepage_url")
+    if customer.address != model.customer.address:
+        # 새 주소에 예전 좌표를 붙여 거리 표시하는 일을 막는다.
+        customer.lat = customer.lng = customer.geocoded_at = customer.geocode_source = None
     values.update(
         normalized_name=normalize_name(model.customer.name),
         normalized_address=normalize_address(model.customer.address),
@@ -308,6 +312,8 @@ def _store(
         signal_ids=[row.signal_id for row in signals],
         requested_by=requested_by,
     )
+    # #685: 재투입으로 항목 입력을 새로 적었으니, 살아 있는 통화 신호가 있으면 그 값을 다시 넣는다.
+    apply_call_signal_inputs(session, opp_id, rule_config, entered_by=requested_by)
     store_research(
         session,
         opp_id,

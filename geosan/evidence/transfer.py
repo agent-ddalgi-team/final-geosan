@@ -74,6 +74,35 @@ class SearchTicket:
     llm: LlmSettings
 
 
+def accounted_cost(row: TransferLog, llm: LlmSettings) -> Decimal:
+    """실제 비용이 없을 때만 추정한다. 원본을 채우지 않아 나중에 실제 값으로 정산할 수 있다."""
+    if not row.call_count:
+        return Decimal(0)
+    if row.cost_usd is not None:
+        return row.cost_usd
+    return Decimal(str(llm.unconfirmed_call_cost_usd)) * row.call_count
+
+
+def month_usage(session, llm: LlmSettings, *, now: datetime | None = None) -> tuple[int, Decimal]:
+    """이번 달(한국 시간) 외부 호출 수와 한도 계산 비용. 예약 검사(_reserve)와 같은 기준이다.
+
+    사용량을 못 받은 호출은 accounted_cost로 추정해 더한다. 읽기만 하고 아무것도 저장하지 않는다.
+    """
+    local = (now or utcnow()).astimezone(KST)
+    month_start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
+    rows = session.scalars(
+        select(TransferLog).where(
+            TransferLog.occurred_at >= month_start,
+            TransferLog.purpose.in_(["EXTERNAL_SEARCH", "EXTERNAL_AI"]),
+            TransferLog.call_count > 0,
+        )
+    ).all()
+    return (
+        sum(row.call_count for row in rows),
+        sum((accounted_cost(row, llm) for row in rows), Decimal(0)),
+    )
+
+
 def record_search_rejection(
     opp_id: str, reason: str, db_path: Path | str | None, *, purpose: str = "EXTERNAL_SEARCH"
 ) -> None:
@@ -101,6 +130,10 @@ def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -
 def reserve_extraction(
     opp_id: str, key_present: bool, db_path: Path | str | None, requested_by: str
 ) -> SearchTicket:
+    # #690: 관심 자동 조사는 호출 행의 요청자를 따로 남겨 하루 비용을 셀 수 있게 한다.
+    context = current_research.get()
+    if context is not None and context.transfer_requester:
+        requested_by = context.transfer_requester
     return _reserve(opp_id, key_present, db_path, "EXTERNAL_AI", requested_by)
 
 
@@ -117,6 +150,15 @@ def reserve_candidate_judgment(
     return _reserve(None, key_present, db_path, "EXTERNAL_AI", "SYSTEM", batch_id=batch_id)
 
 
+def reserve_candidate_search(
+    batch_id: str, key_present: bool, db_path: Path | str | None = None
+) -> SearchTicket:
+    """C4·C9: 후보 웹 검색의 하루 한도는 별도, 월 호출·비용(미확정은 추정)은 공유한다."""
+    if not isinstance(batch_id, str) or not batch_id.strip():
+        raise InputError("후보 찾기 회차 번호를 확인해 주세요.")
+    return _reserve(None, key_present, db_path, "EXTERNAL_SEARCH", "SYSTEM", batch_id=batch_id)
+
+
 def _reserve(
     opp_id: str | None,
     key_present: bool,
@@ -125,8 +167,12 @@ def _reserve(
     requested_by: str,
     *,
     batch_id: str | None = None,
+    record_kind: str | None = None,
 ) -> SearchTicket:
-    """검사와 호출 수 증가를 같은 쓰기 잠금에서 처리한다. HTTP 중에는 잠금을 잡지 않는다."""
+    """검사와 호출 수 증가를 같은 쓰기 잠금에서 처리한다. HTTP 중에는 잠금을 잡지 않는다.
+
+    record_kind(#680)는 공개 글이 아닌 종류(영업 기록 글)의 호출을 같은 한도로 셀 때만 준다.
+    """
     now = utcnow()
     local = now.astimezone(KST)
     month_start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
@@ -158,14 +204,26 @@ def _reserve(
         daily_calls = sum(
             row.call_count
             for row in rows
-            if row.kind == "WEB_SEARCH" and row.occurred_at >= day_start
+            if row.kind == "WEB_SEARCH"
+            and row.occurred_at >= day_start
+            and (row.batch_id is not None) == (batch_id is not None)
         )
-        cost = sum((row.cost_usd or Decimal(0) for row in rows), Decimal(0))
+        cost = sum((accounted_cost(row, llm) for row in rows), Decimal(0))
         is_search = purpose == "EXTERNAL_SEARCH"
+        search_enabled = (
+            settings.candidate_web_search.enabled
+            if batch_id
+            else settings.homepage_discovery.enabled
+        )
+        daily_limit = (
+            settings.candidate_web_search.daily_search_limit
+            if batch_id
+            else settings.homepage_discovery.daily_call_limit
+        )
         minimum_search_cost = (
             Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000 if is_search else Decimal(0)
         )
-        if (is_search and not settings.homepage_discovery.enabled) or llm.mode != "EXTERNAL":
+        if (is_search and not search_enabled) or llm.mode != "EXTERNAL":
             error = configuration_error()
         elif not key_present:
             error = configuration_error()
@@ -180,7 +238,7 @@ def _reserve(
             <= 0
         ):
             error = configuration_error()
-        elif is_search and daily_calls >= settings.homepage_discovery.daily_call_limit:
+        elif is_search and daily_calls >= daily_limit:
             error = AppError(
                 "오늘 검색 한도 초과",
                 "다음 날 다시 조사해 주세요.",
@@ -193,13 +251,6 @@ def _reserve(
                 "다음 달 다시 조사해 주세요.",
                 status=503,
                 kind="LLM_LIMIT",
-            )
-        elif any(row.cost_usd is None for row in rows):
-            error = AppError(
-                "AI 사용 기록에 문제가 있어 조사를 멈췄습니다",
-                "문의 번호와 함께 운영자에게 알려 주세요",
-                status=503,
-                kind="USAGE_UNCONFIRMED",
             )
         elif cost + minimum_search_cost >= Decimal(str(llm.monthly_cost_limit_usd)):
             error = AppError(
@@ -216,10 +267,10 @@ def _reserve(
                 opp_id=opp_id,
                 batch_id=batch_id,
                 purpose=purpose,
-                kind="WEB_SEARCH" if is_search else "PUBLIC_TEXT",
+                kind=record_kind or ("WEB_SEARCH" if is_search else "PUBLIC_TEXT"),
                 mode=llm.mode,
                 model=llm.model,
-                security_grade="PUBLIC",
+                security_grade="EXTERNAL_AI_OK" if record_kind else "PUBLIC",
                 decision="REJECTED" if error else "ALLOWED",
                 reject_reason=error.message if error else None,
                 call_count=0 if error else 1,

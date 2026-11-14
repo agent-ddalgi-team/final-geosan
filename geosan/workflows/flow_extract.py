@@ -13,16 +13,29 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError, InputError, RunFailedError
-from geosan.evidence.contacts import extract_main_phone
-from geosan.evidence.extraction import extract_evidence
-from geosan.evidence.public_items import approve_page, check_opportunity
-from geosan.evidence.reader import MAX_BYTES, Page, fetch, remaining, validate_url
+from geosan.config.registry import load_runtime_config
+from geosan.evaluation.call_inputs import call_item_codes
+from geosan.evaluation.proposals import store_item_proposals, store_process_link_proposals
+from geosan.evaluation.snapshot import _capability_snapshot
+from geosan.evidence.contacts import extract_main_phone, scrub_contacts
+from geosan.evidence.extraction import Extraction, extract_evidence
+from geosan.evidence.homepage import unofficial_page_kind
+from geosan.evidence.public_items import approve_pages, check_opportunity
+from geosan.evidence.reader import (
+    MAX_BYTES,
+    Page,
+    fetch,
+    fetch_more,
+    remaining,
+    validate_url,
+)
 from geosan.evidence.research_context import current_research
 from geosan.evidence.store import store_extraction
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.opportunity.queries import store_company_research
 from geosan.questions.models import ConfirmationQuestion
 from geosan.questions.store import upsert_question
+from geosan.rules.codes import Certainty
 from geosan.rules.models import QuestionCandidate
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import evaluate_in_session
@@ -61,20 +74,70 @@ def run_extract(
                 customer.main_phone_confirmed_at,
             )
             customer_id = customer.customer_id
+            # #511: 저장된 주소가 공식 홈페이지가 아닌 공개 페이지(확인 필요)인가.
+            # 붙여넣은 본문도 그 페이지의 글이므로 같은 상한을 적용한다.
+            unofficial_page = (
+                unofficial_page_kind(
+                    customer.homepage_status, customer.homepage_source, customer.homepage_reason
+                )
+                is not None
+            )
             url = validate_url(url or customer.homepage_url or "")
+            # #286: 점수 8항목(규칙 설정)과 활성 묶음 공정 코드를 AI에 알려 제안을 받는다.
+            # #685: 통화에서 확인한 신호로 채우는 항목(구매·외주 의향, 관심)은 AI에 묻지 않는다.
+            rule_config = load_runtime_config(session).rule_config
+            call_items = call_item_codes(rule_config)
+            item_catalog = [
+                {
+                    "code": item.item_code,
+                    "label": item.label,
+                    "steps": list(item.match_rate_steps),
+                }
+                for item in rule_config.new_profile_items
+                if item.item_code not in call_items
+            ]
+            process_codes = sorted(
+                row.code
+                for row in _capability_snapshot(session, opportunity.dataset_kind).processes
+            )
         if pasted_text is not None:
             if not pasted_text.strip() or len(pasted_text.encode("utf-8")) > MAX_BYTES:
                 raise InputError("붙여넣을 공개 본문의 길이를 확인해 주세요.")
-            page = Page(url, pasted_text)
+            pages = [Page(url, pasted_text)]
         else:
-            page = fetch(url, deadline)
-        phone, phone_url = extract_main_phone(
-            page.text, page.url, settings.main_phone.allowed_prefixes
-        )
-        with approve_page(opp_id, page) as approved_ids:
-            result = extract_evidence(
-                approved_ids, opp_id, deadline=deadline, requested_by=requested_by
+            # #557: 첫 화면과 이름이 맞는 같은 사이트 안쪽 페이지를 읽어 AI는 한 번만 부른다.
+            discovery = settings.homepage_discovery
+            first = fetch(url, deadline)
+            pages = [
+                first,
+                *fetch_more(
+                    first,
+                    deadline,
+                    # #511: 공개 페이지는 그 1장만 읽는다(같은 주소의 남의 글로 넘어가지 않게).
+                    extra_pages=0 if unofficial_page else discovery.extra_pages,
+                    hints=discovery.extra_page_hints,
+                    max_chars=discovery.extra_page_max_chars,
+                ),
+            ]
+        phone, phone_url = None, None
+        # #511: 공개 페이지의 번호는 회사 대표번호인지 알 수 없어 뽑지 않는다.
+        for page in [] if unofficial_page else pages:
+            phone, phone_url = extract_main_phone(
+                page.text, page.url, settings.main_phone.allowed_prefixes
             )
+            if phone:
+                break
+        with approve_pages(opp_id, pages) as approved_ids:
+            result = extract_evidence(
+                approved_ids,
+                opp_id,
+                deadline=deadline,
+                requested_by=requested_by,
+                item_catalog=item_catalog,
+                process_codes=process_codes,
+            )
+        if unofficial_page:
+            result = cap_to_weak(result)
         remaining(deadline)
         with session_scope() as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
@@ -99,7 +162,30 @@ def run_extract(
                 phone=phone,
                 phone_source_url=phone_url,
             )
-            evidence = store_extraction(session, opportunity, result, page.url, requested_by)
+            evidence = store_extraction(
+                session,
+                opportunity,
+                result,
+                pages[0].url,
+                requested_by,
+                source_for=_source_finder(pages),
+            )
+            # #286: 점수 입력·공정 연결 제안을 AI·확인 전으로 저장한 뒤 재평가한다(사람 값 우선).
+            proposal_count = store_item_proposals(
+                session,
+                opportunity,
+                result,
+                evidence,
+                rule_config=rule_config,
+                requested_by=requested_by,
+            )
+            link_count = store_process_link_proposals(
+                session,
+                opportunity,
+                result,
+                allowed_codes=set(process_codes),
+                requested_by=requested_by,
+            )
             evaluated = evaluate_in_session(session, [opp_id], requested_by)
             if not evaluated.new_eval_ids:
                 raise RunFailedError("평가할 입력이 없어 조사 결과를 저장하지 않았습니다.")
@@ -129,7 +215,10 @@ def run_extract(
                 )
                 question_count += 1
             remaining(deadline)
-        evaluated.summary = f"근거 {len(evidence)}건·질문 {question_count}건 저장, 재평가 완료"
+        evaluated.summary = (
+            f"근거 {len(evidence)}건·질문 {question_count}건·점수 제안 {proposal_count}건·"
+            f"공정 제안 {link_count}건 저장, 재평가 완료"
+        )
         evaluated.counts = {
             "evidenceCount": len(evidence),
             "requirementCandidateCount": len(result.requirement_candidates),
@@ -144,3 +233,38 @@ def run_extract(
         )
         logger.error("근거 추출 실패: ref=%s type=%s", error.ref, type(exc).__name__)
         return FlowResult.failed(error)
+
+
+def cap_to_weak(result: Extraction) -> Extraction:
+    """공식이 아닌 공개 페이지에서 온 근거·점수 제안의 확실도를 약한 추정까지만 둔다 (#511, C9).
+
+    확인·강한 추정으로 온 값만 약한 추정으로 낮춘다. 미확인은 그대로다. 점수 규칙은 건드리지 않는다.
+    """
+    strong = {"CONFIRMED", "STRONG"}
+    return result.model_copy(
+        update={
+            "evidence": [
+                item.model_copy(update={"certainty_proposed": Certainty.WEAK})
+                if item.certainty_proposed in strong
+                else item
+                for item in result.evidence
+            ],
+            "item_input_proposals": [
+                item.model_copy(update={"certainty_proposed": "WEAK"})
+                for item in result.item_input_proposals
+            ],
+        }
+    )
+
+
+def _source_finder(pages: list[Page]):
+    """인용문이 그대로 들어 있는 페이지 주소를 돌려준다. 못 찾으면 첫 화면 주소(#557).
+
+    AI에는 연락처를 지운 본문이 갔으므로 같은 방식으로 지운 본문에서 찾는다.
+    """
+    cleaned = [(page.url, scrub_contacts(page.text)[0]) for page in pages]
+
+    def source_for(quote: str) -> str:
+        return next((url for url, text in cleaned if quote and quote in text), pages[0].url)
+
+    return source_for

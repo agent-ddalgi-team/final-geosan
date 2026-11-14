@@ -10,8 +10,11 @@ import type {
   ConfigUi,
   Envelope,
   ErrorBody,
+  IndustriesResponse,
+  IngestPreview,
   IngestRequest,
   IngestResponse,
+  MonthSpend,
   NoteRequest,
   NoteResponse,
   OpinionRequest,
@@ -20,16 +23,20 @@ import type {
   OpportunityDetail,
   OutcomeRequest,
   OutcomeResponse,
+  PeersResponse,
   HomepageRequest,
   HomepageResponse,
   MainPhoneConfirmRequest,
   MainPhoneConfirmResponse,
+  RecordCancelRequest,
+  RecordCancelResponse,
   RelationRequest,
   RelationResponse,
   ReplyRequest,
   ReplyResponse,
   ReviewCheckRequest,
   ReviewCheckResponse,
+  SalesQuestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -158,12 +165,16 @@ export interface ListFilters {
   filter?: string | null;
   /** `true`면 관심으로 켜 둔 회사만("관심 기업" 목록, #356). 안 주면 거르지 않는다. */
   bookmarked?: string | null;
+  /** `true`면 관심으로 켜 둔 회사를 뺀다(평소 목록, #675). 안 주면 빼지 않는다. */
+  hideBookmarked?: string | null;
   /** 최신 검토 의견으로 거르기(#356): WORTH_REVIEW·NEED_CHECK·NOT_TARGET, NONE은 의견이 없는 회사("기타"). */
   opinion?: string | null;
   /** 회사·기회·산업군 검색어. */
   q?: string | null;
-  /** 후보 가져오기 회차(#316). `latest`면 마지막 수집 회차에 들어온 회사만("이번 수집만"). 안 주면 전체. */
-  batch?: string | null;
+  /** 정렬(#516). `recent`면 들어온 시각 최신 순("최근 들어온 순"), `distance`면 가까운 순(#666). 안 주면 추천 순. */
+  sort?: string | null;
+  /** 이 거리(km) 안의 회사만(#666). 값은 `/config/ui`의 distanceFilterPresetsKm 가운데 하나. */
+  maxDistanceKm?: string | null;
 }
 
 export function getOpportunities(
@@ -210,6 +221,11 @@ export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
     body,
     staffKey,
   });
+}
+
+/** 꼬리 질문 묶음(#607). 질문 파일을 그대로 받는다. 외부 호출·저장 없음. */
+export function getSalesQuestions() {
+  return request<SalesQuestions>('/sales-questions');
 }
 
 /** 영업 단계·접촉 시도·다음 일정 저장(U5). 저장할 때마다 새 행이 쌓인다. */
@@ -282,6 +298,18 @@ export function postRelation(oppId: string, body: RelationRequest, staffKey: str
 }
 
 /**
+ * 상세 산업군 칩의 [확정]·[고치기] 저장(#646, 계약 C1 `POST /opportunities/{oppId}/industries`).
+ * 설정 산업군 목록 안 값만·최대 3개. 다시 평가하지 않고 활동 이력에 한 줄이 남는다. 목록 밖 값은 400.
+ */
+export function postIndustries(oppId: string, industries: string[], staffKey: string) {
+  return request<IndustriesResponse>(`/opportunities/${encodeURIComponent(oppId)}/industries`, {
+    method: 'POST',
+    body: { industries },
+    staffKey,
+  });
+}
+
+/**
  * 새 후보 가져오기(#316, 계약 C1 `POST /ingest`). 회차를 만든 직후 바로 응답하고 찾기는 서버 뒤에서 이어진다.
  * 이미 가져오는 중이면 409 INGEST_RUNNING, 소스 읽기 실패는 503, 설정 밖 값은 400, 보기 전용은 403이다.
  */
@@ -290,10 +318,51 @@ export function postIngest(body: IngestRequest, staffKey: string) {
 }
 
 /** 활동 이력(U5). 서버가 시각 순으로 준다. 한도 기본 20, 최대 100. */
+/**
+ * 고른 조건의 맞는 공장 수(#549, 계약 C1 `GET /ingest/preview`). 외부 호출 없이 저장된 판단만 센다.
+ * 조건 값은 POST /ingest와 같고, 설정 밖 값은 400이다.
+ */
+export function getIngestPreview(body: IngestRequest, signal?: AbortSignal) {
+  const query = new URLSearchParams();
+  body.processCodes.forEach((code) => query.append('processCodes', code));
+  (body.regions ?? []).forEach((region) => query.append('regions', region));
+  (body.industries ?? []).forEach((industry) => query.append('industries', industry));
+  return request<IngestPreview>(`/ingest/preview?${query.toString()}`, { signal });
+}
+
+/** 이번 달 AI 사용액(#549). 조건 없이 부른 `GET /ingest/preview`의 month만 쓴다(새 경로 없음, 0원). */
+export function getMonthSpend(signal?: AbortSignal) {
+  return request<MonthSpend>('/ingest/preview', { signal });
+}
+
 export function getActivity(oppId: string, limit = 50, signal?: AbortSignal) {
   return request<ActivityItem[]>(
     `/opportunities/${encodeURIComponent(oppId)}/activity?limit=${limit}`,
     { signal },
+  );
+}
+
+/**
+ * 비슷한 회사 참고(#269, 계약 C1 `GET /opportunities/{oppId}/peers`). 같은 공정·산업군 다른 회사 최대 5곳과 요약.
+ * 읽기라 담당자 키 없이도(보기 전용 포함) 볼 수 있다. 메모 글이 들어 있어 영업 메모와 같은 취급이다.
+ */
+export function getPeers(oppId: string, signal?: AbortSignal) {
+  return request<PeersResponse>(`/opportunities/${encodeURIComponent(oppId)}/peers`, { signal });
+}
+
+/**
+ * 기록 취소 [잘못 입력](#254, 계약 C1 `POST /records/{recordId}/cancel`). 행은 지우지 않고 취소 표시만 남긴다.
+ * 본인 기록이 아니면 403, 그 기회에 없는 기록이면 404, 이미 취소됐으면 409, 이유가 200자를 넘으면 400이다.
+ */
+export function postRecordCancel(
+  oppId: string,
+  recordId: string,
+  body: RecordCancelRequest,
+  staffKey: string,
+) {
+  return request<RecordCancelResponse>(
+    `/opportunities/${encodeURIComponent(oppId)}/records/${encodeURIComponent(recordId)}/cancel`,
+    { method: 'POST', body, staffKey },
   );
 }
 
@@ -347,6 +416,7 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
     }));
     const query = new URLSearchParams(search);
     const bookmarkedOnly = query.get('bookmarked') === 'true';
+    const hideBookmarked = query.get('hideBookmarked') === 'true';
     // 목록 머리(#361) 흉내: 가짜 카드에는 공정 칸이 없어서, 곳 수가 0인 공정을 고르면 빈 목록을 돌려주는 것으로 대신한다.
     // 검색어(`q`)는 카드 제목에 그 글자가 든 회사만 남긴다. 지역·산업 같은 다른 조건은 거르지 않는다.
     const process = query.get('process');
@@ -358,9 +428,14 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       (card) =>
         !emptyProcess &&
         (!bookmarkedOnly || card.records.bookmark?.active === true) &&
+        (!hideBookmarked || card.records.bookmark?.active !== true) &&
         (!q || card.title.includes(q)),
     );
-    return { data, meta: { ...envelope.meta, total: data.length } } as unknown as Envelope<T>;
+    const bookmarkedCount = cards.filter((card) => card.records.bookmark?.active === true).length;
+    return {
+      data,
+      meta: { ...envelope.meta, total: data.length, bookmarkedCount },
+    } as unknown as Envelope<T>;
   }
   if (route === '/dashboard') {
     return (await import('../test/fixtures/dashboard.json')).default as unknown as Envelope<T>;
@@ -506,6 +581,34 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       meta: { updatedAt: now, reevaluated: true },
     } as unknown as Envelope<T>;
   }
+  if (route === '/ingest/preview') {
+    const month = { usedUsd: 3.2, limitUsd: 20, usedCalls: 180, limitCalls: 1000 };
+    // 조건 없이 부르면 이번 달 사용액만 돌려준다([다시 조사]·[붙여넣고 조사]용).
+    if (!search) return { data: { month }, meta: { updatedAt: null } } as unknown as Envelope<T>;
+    // 가짜 모드: 고른 조건과 상관없이 같은 숫자를 돌려준다(화면 모양 확인용).
+    const data: IngestPreview = {
+      matchedCount: 1518,
+      fitCounts: { HIGH: 134, MEDIUM: 1382, LOW: 2 },
+      registeredCount: 100,
+      addableCount: 1418,
+      addableHighCount: 34,
+      unjudgedCount: 0,
+      addCount: 50,
+      estimate: {
+        judgeRows: 0,
+        judgeCalls: 0,
+        judgeUsd: 0,
+        researchCount: 50,
+        researchCalls: 100,
+        researchUsd: 2,
+        webSearchUsd: 0,
+        totalUsd: 2,
+      },
+      month,
+      blocked: null,
+    };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
+  }
   if (route === '/ingest' && options.method === 'POST') {
     if (!options.staffKey || options.staffKey === 'viewer') {
       const err = (await import('../test/fixtures/error-403.json')).default;
@@ -520,6 +623,26 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
         skippedCount: 0,
       },
       meta: { updatedAt: new Date().toISOString() },
+    } as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/peers$/.test(route)) {
+    return (await import('../test/fixtures/peers.json')).default as unknown as Envelope<T>;
+  }
+  if (/^\/opportunities\/[^/]+\/records\/[^/]+\/cancel$/.test(route) && options.method === 'POST') {
+    if (!options.staffKey || options.staffKey === 'viewer') {
+      const err = (await import('../test/fixtures/error-403.json')).default;
+      throw new ApiError(403, err.error as ErrorBody);
+    }
+    const now = new Date().toISOString();
+    const recordId = decodeURIComponent(route.split('/')[4] ?? '');
+    return {
+      data: {
+        recordId,
+        recordKind: recordId.startsWith('outcome') ? 'OUTCOME' : 'NOTE',
+        cancelledBy: options.staffKey,
+        cancelledAt: now,
+      },
+      meta: { updatedAt: now },
     } as unknown as Envelope<T>;
   }
   if (/^\/opportunities\/[^/]+\/activity$/.test(route)) {

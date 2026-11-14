@@ -21,6 +21,8 @@ SIGNAL_KINDS = {
     ItemCode.SIG_HIRE: SignalKind.HIRING,
 }
 SCORED_STATES = {ItemState.CONFIRMED, ItemState.STRONG, ItemState.WEAK}
+# 시점 항목의 일치도 단계 이름은 신호의 관련성에서 온다(BR4.4).
+RELATION_STEPS = {"DIRECT": "직접 관련", "INDIRECT": "간접 관련"}
 
 
 def round_half_up(value: Decimal | float | int | str, places: int = 0) -> Decimal:
@@ -36,19 +38,27 @@ def score_product(weight: int, match_rate: float, certainty: float, decay: float
     return int(round_half_up(product))
 
 
+def call_signal_kind(item_code: str, data: EvaluationInput) -> str | None:
+    """이 항목이 쓰는 통화 신호 종류. 설정 `callSignals`에 없으면 None (#685)."""
+    return next(
+        (rule.signal_kind for rule in data.rule_config.call_signals if rule.item_code == item_code),
+        None,
+    )
+
+
 def linked_signals(item: ItemInput, data: EvaluationInput) -> list[SignalInput]:
-    """현재 항목에 연결된 같은 종류의 신호만 사용한다 (BR4.4)."""
+    """현재 항목에 연결된 같은 종류의 신호만 사용한다 (BR4.4).
+
+    #685: 같은 종류 신호가 없을 때만 설정이 짝지은 통화 신호를 쓴다(사례 파일의 공고 값 우선).
+    """
     by_id = {signal.signal_id: signal for signal in data.signals}
     if missing := set(item.signal_ids) - by_id.keys():
         raise ValueError(f"입력에 없는 신호 참조: {sorted(missing)}")
-    return sorted(
-        (
-            by_id[key]
-            for key in set(item.signal_ids)
-            if by_id[key].signal_kind == SIGNAL_KINDS[item.item_code]
-        ),
-        key=lambda signal: signal.signal_id,
-    )
+    linked = [by_id[key] for key in set(item.signal_ids)]
+    chosen = [s for s in linked if s.signal_kind == SIGNAL_KINDS[item.item_code]]
+    if not chosen and (call_kind := call_signal_kind(item.item_code, data)) is not None:
+        chosen = [s for s in linked if s.signal_kind == call_kind]
+    return sorted(chosen, key=lambda signal: signal.signal_id)
 
 
 def representative_signal(signals: list[SignalInput], base_date: date) -> SignalInput | None:
@@ -72,8 +82,11 @@ def representative_signal(signals: list[SignalInput], base_date: date) -> Signal
 def signal_decay(
     signal: SignalInput, config: ProfileItemConfig, data: EvaluationInput
 ) -> float | None:
-    """날짜 미확인을 0점과 구분하며 감쇠값은 설정에서 읽는다 (BR4.4)."""
-    if config.decay == "BID_EXCEPTION":
+    """날짜 미확인을 0점과 구분하며 감쇠값은 설정에서 읽는다 (BR4.4).
+
+    #685: 통화 신호는 항목의 예외 감쇠(공고 마감·채용 종료)가 아니라 통화 날짜 기준 일반 감쇠다.
+    """
+    if config.decay == "BID_EXCEPTION" and signal.signal_kind == SignalKind.BID:
         if signal.deadline_at is None:
             return None
         return float(
@@ -84,7 +97,11 @@ def signal_decay(
         )
     if signal.occurred_at is None or signal.occurred_at > data.base_date:
         return None
-    if config.decay == "HIRE" and signal.progress_status in {"CLOSED", "DONE"}:
+    if (
+        config.decay == "HIRE"
+        and signal.signal_kind == SignalKind.HIRING
+        and signal.progress_status in {"CLOSED", "DONE"}
+    ):
         return 0.0
     days = (data.base_date - signal.occurred_at).days
     for step in data.rule_config.general_decay:
@@ -156,7 +173,7 @@ def _calculate_item(
             else:
                 decay = signal_decay(signal, config, data)
                 rate = config.match_rate_steps[
-                    "직접 관련" if signal.relation == "DIRECT" else "간접 관련"
+                    RELATION_STEPS["DIRECT" if signal.relation == "DIRECT" else "INDIRECT"]
                 ]
                 if decay is None:
                     state, reason = ItemState.UNAVAILABLE, "발생일·마감을 모르거나 예정 사건입니다"

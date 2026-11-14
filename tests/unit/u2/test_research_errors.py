@@ -113,7 +113,7 @@ def test_provider_failure_kind_preserves_retry_and_accounting(
 
 @pytest.mark.parametrize("purpose", ["search", "extract"])
 @pytest.mark.parametrize("failure", [TimeoutError("test-only-placeholder"), ValueError("bad JSON")])
-def test_failed_response_then_blocked_usage_scenario(extract_env, monkeypatch, purpose, failure):
+def test_failed_response_can_be_repeated_within_budget(extract_env, monkeypatch, purpose, failure):
     # Given: 공개 회사와 외부 호출 설정, 아직 결과가 저장되지 않은 상태.
     case, transport = extract_env
     if purpose == "search":
@@ -127,14 +127,14 @@ def test_failed_response_then_blocked_usage_scenario(extract_env, monkeypatch, p
         invoke(case, purpose)
     with pytest.raises(AppError) as second:
         invoke(case, purpose)
-    # Then: 첫 실패는 재시도 종류, 다음 요청은 운영자 확인 종류이며 추가 전송·저장은 없다.
+    # Then: 두 요청 모두 재시도 가능한 실패이며 실패한 내용을 저장하지 않는다(#538 PM 결정).
     assert_error(first.value, "LLM_FAILED")
-    assert_error(second.value, "USAGE_UNCONFIRMED", USAGE_MESSAGE)
-    transport.assert_called_once()
+    assert_error(second.value, "LLM_FAILED")
+    assert transport.call_count == 2
     assert extraction_support.counts() == before
     assert [(row.call_count, row.cost_usd) for row in search_support.logs()] == [
         (1, None),
-        (0, None),
+        (1, None),
     ]
 
 

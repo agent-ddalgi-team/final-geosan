@@ -1,19 +1,23 @@
-// 대시보드(S4): 건수 두 구역("관심 기업" → "영업 진행") · 일정 정렬 · 최근 기록 · 검색 · 공정/산업군 막대 · 다섯 상태.
+// 대시보드(S4): 오늘 확인할 것 · 건수 두 구역("관심 기업" → "영업 진행") · 일정 정렬 · 최근 기록 · 검색 · 배치 · 다섯 상태.
+// 공정/산업군 막대는 영업 분석 화면으로 옮겼다(#679). 막대 검사는 SalesAnalysisPage.test.tsx에 있다.
 // getDashboard는 가짜로 바꾼 확인이며 실제 서버(집계 API) 연결 확인이 아니다.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import DashboardPage from '../DashboardPage';
 import { getDashboard } from '../../api/dashboard';
-import type { Dashboard } from '../../api/dashboardTypes';
+import type { Dashboard, TodayCheckRow } from '../../api/dashboardTypes';
 import { ApiError } from '../../api/client';
 import type { Envelope } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import { sortSchedule } from '../../components/dashboard/ScheduleList';
+import { filterName } from '../../components/list/ListViewBar';
 import { dashboardTexts, states } from '../../labels/ko';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
+// 지도 칸(#641)은 DashboardMap.test.tsx에서 따로 본다. 여기서는 응답이 오지 않게 막아 둔다.
+vi.mock('../../api/dashboardMap', () => ({ getDashboardMap: vi.fn(() => new Promise(() => {})) }));
 
 const mockedGet = vi.mocked(getDashboard);
 const fixtureData = dashboardFixture.data as unknown as Dashboard;
@@ -95,7 +99,7 @@ describe('DashboardPage', () => {
         .map((heading) => heading.textContent);
       expect(titles).toEqual([
         '관심 기업',
-        '영업 진행 관심 기업 가운데 검토 권고를 받은 뒤의 진행',
+        '영업 진행 관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
       ]);
       expect(screen.getByTestId('dashboard-progress-hint')).toHaveTextContent(
         dashboardTexts.progressSectionHint,
@@ -114,12 +118,12 @@ describe('DashboardPage', () => {
       await screen.findByTestId('dashboard-counts');
       const bookmarkCells: Array<[string, string]> = [
         ['관심 기업 12곳', '/opportunities?bookmarked=true'],
-        ['의견 전 3곳', '/opportunities?filter=NO_OPINION'],
-        ['추가 확인 필요 2곳', '/opportunities?filter=NEED_CHECK'],
-        ['제외 1곳', '/opportunities?filter=NOT_TARGET'],
+        ['의견 전 4곳', '/opportunities?filter=NO_OPINION'],
+        ['검토 중 2곳', '/opportunities?filter=NEED_CHECK'],
       ];
+      // 제외로 저장한 회사는 관심 기업에서 빠져(#536) "제외" 칸이 없다.
       const progressCells: Array<[string, string]> = [
-        ['미접촉 2곳 (검토 권고 · 접촉 전)', '/opportunities?filter=NOT_CONTACTED'],
+        ['영업 대상 · 접촉 전 2곳 (아직 연락하지 않은 곳)', '/opportunities?filter=NOT_CONTACTED'],
         ['접촉 중 2곳', '/opportunities?filter=IN_CONTACT'],
         ['견적·샘플 1곳', '/opportunities?filter=QUOTE_SAMPLE'],
         ['보류 0곳', '/opportunities?filter=ON_HOLD'],
@@ -138,7 +142,7 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveStyle({
         boxSizing: 'border-box',
       });
-      // "미접촉" 칸에는 작은 풀이가 붙는다.
+      // "영업 대상 · 접촉 전" 칸에는 작은 풀이가 붙는다.
       expect(screen.getByTestId('dashboard-count-NOT_CONTACTED-hint')).toHaveTextContent(
         dashboardTexts.notContactedHint,
       );
@@ -200,12 +204,12 @@ describe('DashboardPage', () => {
       expect(screen.queryByTestId('dashboard-count-NOT_CONTACTED')).not.toBeInTheDocument();
       expect(screen.queryByTestId('dashboard-count-BOOKMARKED')).not.toBeInTheDocument();
       expect(screen.getByTestId('dashboard-counts')).not.toHaveTextContent('0곳');
-      // 뜻이 그대로인 이번 주 일정과 아래 일정·최근 기록은 계속 보인다.
+      // 뜻이 그대로인 이번 주 일정과 아래 일정 달력·최근 기록은 계속 보인다.
       expect(screen.getByTestId('dashboard-count-SCHEDULE_DUE')).toHaveAttribute(
         'aria-label',
         '이번 주 일정 3건',
       );
-      expect(screen.getAllByTestId('dashboard-schedule-item')).toHaveLength(4);
+      expect(screen.getByTestId('dashboard-calendar')).toBeInTheDocument();
     });
 
     it('새 모양인데 일부 칸만 빠져 있으면 그 칸만 빼고 나머지는 보인다', async () => {
@@ -225,17 +229,45 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('일정은 기한 지남이 맨 위, 그다음 날짜순으로 보이고 지남 표시가 붙는다', async () => {
-    mockedGet.mockResolvedValueOnce(reply(fixtureData));
-    renderPage();
-    const items = await screen.findAllByTestId('dashboard-schedule-item');
-    expect(items.map((item) => item.textContent)).toEqual([
-      '지남10/30 D테크(가상) 방문 일정 다시 잡기',
-      '지남11/1 A정밀 견적 보내기',
-      '11/4 B금속(가상) 공정 확인 질문 보내기',
-      '11/6 C산업(가상) 샘플 결과 확인 전화',
-    ]);
-    expect(screen.getAllByTestId('dashboard-schedule-overdue')).toHaveLength(2);
+  describe('일정 달력과 날짜 팝업 (일정 목록 자리를 달력이 맡는다)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('일정이 있는 날을 누르면 작은 창에 회사·건·내용이 보이고, 기한 지남에는 지남 표시가 붙는다', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderPage();
+      expect(await screen.findByTestId('dashboard-calendar-title')).toHaveTextContent(
+        '2026년 11월',
+      );
+      // 11/1(A정밀 견적 보내기)은 기한이 지났다.
+      await userEvent.click(screen.getByTestId('dashboard-calendar-day-2026-11-01'));
+      const popover = screen.getByTestId('dashboard-calendar-popover');
+      expect(popover).toHaveAttribute('aria-modal', 'false');
+      expect(popover).toHaveTextContent('A정밀');
+      expect(popover).toHaveTextContent('견적 보내기');
+      expect(screen.getByTestId('dashboard-schedule-overdue')).toBeInTheDocument();
+      expect(
+        within(popover).getByRole('link', { name: dashboardTexts.popoverDetail }),
+      ).toHaveAttribute('href', '/opportunities/opp-1');
+      // 다른 날을 누르면 그 날 내용으로 바뀌고, [닫기]를 누르면 닫힌다.
+      await userEvent.click(screen.getByTestId('dashboard-calendar-day-2026-11-06'));
+      expect(screen.getByTestId('dashboard-calendar-popover')).toHaveTextContent('C산업(가상)');
+      expect(screen.queryByTestId('dashboard-schedule-overdue')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByTestId('dashboard-calendar-popover-close'));
+      expect(screen.queryByTestId('dashboard-calendar-popover')).not.toBeInTheDocument();
+    });
+
+    it('일정이 있는 칸과 달리 일정이 없는 날은 눌러도 팝업이 열리지 않는다', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderPage();
+      await userEvent.click(await screen.findByTestId('dashboard-calendar-day-2026-11-05'));
+      expect(screen.queryByTestId('dashboard-calendar-popover')).not.toBeInTheDocument();
+    });
   });
 
   it('sortSchedule은 원본 배열을 바꾸지 않고 지남 → 날짜 순으로 돌려준다', () => {
@@ -250,7 +282,7 @@ describe('DashboardPage', () => {
     mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, schedule: [] }));
     renderPage();
     expect(await screen.findByTestId('dashboard-schedule-empty')).toHaveTextContent(
-      dashboardTexts.scheduleEmpty,
+      dashboardTexts.calendarEmpty,
     );
   });
 
@@ -425,80 +457,174 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('공정·산업군 막대', () => {
-    it('breakdown이 없으면 막대 줄을 숨긴다(실제 집계 전 전달본에 가짜 숫자가 보이면 안 된다)', async () => {
-      const { breakdown: _breakdown, ...withoutBreakdown } = fixtureData;
-      void _breakdown;
-      mockedGet.mockResolvedValueOnce(reply(withoutBreakdown));
+  describe('공정·산업군 막대는 영업 분석 화면으로 옮겼다 (#679)', () => {
+    it('서버가 막대 값을 줘도 대시보드에는 막대도, 막대 자리 안내도 보이지 않는다', async () => {
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
       await screen.findByTestId('dashboard-counts');
+      expect(fixtureData.breakdown?.basis.total).toBe(8);
       expect(screen.queryByTestId('dashboard-breakdown')).not.toBeInTheDocument();
       expect(screen.queryByTestId('dashboard-by-process')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('dashboard-by-industry')).not.toBeInTheDocument();
       expect(screen.queryByTestId('dashboard-breakdown-empty')).not.toBeInTheDocument();
+      expect(screen.queryByText(dashboardTexts.breakdownProcessTitle)).not.toBeInTheDocument();
+      expect(screen.queryByText(dashboardTexts.breakdownIndustryTitle)).not.toBeInTheDocument();
     });
+  });
 
-    it('공정 9종은 0곳도 모두 보이고 "3곳 (38%)" 형식으로 개수와 비율을 글자로 보인다', async () => {
+  describe('배치 (#679): 오늘 확인할 것 → 일정 달력 → 건수 칸 → 최근 내 기록 → 지도', () => {
+    it('검색은 맨 위 그대로이고, 구역이 약속한 순서로 놓인다', async () => {
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
-      const process = await screen.findByTestId('dashboard-by-process');
-      expect(screen.getByTestId('dashboard-breakdown-basis')).toHaveTextContent(
-        dashboardTexts.breakdownBasis(8),
+      await screen.findByTestId('dashboard-counts');
+      const order = [
+        screen.getByTestId('dashboard-search-input'),
+        screen.getByTestId('dashboard-today'),
+        screen.getByTestId('dashboard-calendar-section'),
+        screen.getByTestId('dashboard-counts'),
+        screen.getByTestId('dashboard-recent-section'),
+        screen.getByTestId('dashboard-map-section'),
+      ];
+      for (let index = 1; index < order.length; index += 1) {
+        expect(
+          order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    });
+  });
+
+  describe('오늘 확인할 것 (#679)', () => {
+    const rows: TodayCheckRow[] = [
+      {
+        kind: 'SCHEDULE_TODAY',
+        count: 3,
+        items: [
+          { oppId: 'opp-1', customerName: '가상정밀', dueAt: '2026-11-13', note: '견적' },
+          { oppId: 'opp-2', customerName: '가상금속', dueAt: '2026-11-13', note: '방문' },
+          { oppId: 'opp-3', customerName: '가상산업', dueAt: '2026-11-13', note: '' },
+        ],
+        listFilter: null,
+      },
+      {
+        kind: 'SCHEDULE_OVERDUE',
+        count: 1,
+        items: [{ oppId: 'opp-4', customerName: '가상테크', dueAt: '2026-11-10', note: '전화' }],
+        listFilter: null,
+      },
+      {
+        kind: 'CHECK_LEFT',
+        count: 2,
+        items: [
+          { oppId: 'opp-5', customerName: '가상도금', dueAt: null, note: null },
+          { oppId: 'opp-6', customerName: '가상기계', dueAt: null, note: null },
+        ],
+        listFilter: 'CHECK_LEFT',
+      },
+    ];
+
+    it('줄마다 이름·건수와 한 줄 설명(앞 2건 + "외 n")을 서버가 준 순서로 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
+      renderPage();
+      const today = await screen.findByTestId('dashboard-today');
+      expect(within(today).getByRole('heading', { level: 2 })).toHaveTextContent(
+        dashboardTexts.todayTitle,
       );
-      const rows = within(process).getAllByTestId('dashboard-by-process-row');
-      expect(rows).toHaveLength(9);
-      expect(rows[0]).toHaveTextContent('아연도금(전기아연도금)');
-      expect(rows[0]).toHaveTextContent('3곳 (38%)');
-      expect(rows[2]).toHaveTextContent('알카리 흑착(흑색산화피막)');
-      expect(rows[2]).toHaveTextContent('0곳 (0%)');
+      expect(
+        within(today)
+          .getAllByTestId('dashboard-today-row')
+          .map((row) => row.textContent),
+      ).toEqual([
+        '오늘 일정 3건가상정밀 견적 · 가상금속 방문 외 1',
+        '놓친 일정 1건가상테크 전화',
+        '확인할 것이 남은 관심 회사 2곳가상도금 · 가상기계',
+      ]);
+      expect(screen.queryByTestId('dashboard-today-empty')).not.toBeInTheDocument();
     });
 
-    it('산업군 막대는 AI 제안이 섞였을 때 "AI 제안 포함"을 알리고 미확정도 센다', async () => {
-      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    it('일정 줄을 누르면 줄 아래에 회사 상세로 가는 작은 목록이 펴지고, 다시 누르면 접힌다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
       renderPage();
-      const industry = await screen.findByTestId('dashboard-by-industry');
-      expect(within(industry).getByTestId('dashboard-by-industry-proposed')).toHaveTextContent(
-        dashboardTexts.breakdownProposed,
-      );
-      const rows = within(industry).getAllByTestId('dashboard-by-industry-row');
-      expect(rows.at(-1)).toHaveTextContent('미확정');
-      expect(rows.at(-1)).toHaveTextContent('4곳 (50%)');
+      const toggle = await screen.findByTestId('dashboard-today-toggle-SCHEDULE_TODAY');
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByTestId('dashboard-today-items-SCHEDULE_TODAY')).not.toBeInTheDocument();
+      await userEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      const items = within(
+        screen.getByTestId('dashboard-today-items-SCHEDULE_TODAY'),
+      ).getAllByTestId('dashboard-today-item');
+      expect(items.map((item) => item.textContent)).toEqual([
+        '11/13 가상정밀 견적',
+        '11/13 가상금속 방문',
+        '11/13 가상산업',
+      ]);
+      expect(items[0]).toHaveAttribute('href', '/opportunities/opp-1');
+      // 다른 일정 줄을 누르면 그 줄이 펴지고 앞 줄은 접힌다.
+      await userEvent.click(screen.getByTestId('dashboard-today-toggle-SCHEDULE_OVERDUE'));
+      expect(screen.queryByTestId('dashboard-today-items-SCHEDULE_TODAY')).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('dashboard-today-items-SCHEDULE_OVERDUE')).getByTestId(
+          'dashboard-today-item',
+        ),
+      ).toHaveAttribute('href', '/opportunities/opp-4');
+      await userEvent.click(screen.getByTestId('dashboard-today-toggle-SCHEDULE_OVERDUE'));
+      expect(
+        screen.queryByTestId('dashboard-today-items-SCHEDULE_OVERDUE'),
+      ).not.toBeInTheDocument();
     });
 
-    it('AI 제안이 하나도 없으면 "AI 제안 포함"을 보이지 않는다', async () => {
-      const noProposed: Dashboard = {
-        ...fixtureData,
-        breakdown: {
-          ...fixtureData.breakdown!,
-          byIndustry: fixtureData.breakdown!.byIndustry.map((item) => ({
-            ...item,
-            includesProposed: false,
-          })),
-        },
-      };
-      mockedGet.mockResolvedValueOnce(reply(noProposed));
+    it('"확인할 것이 남은 관심 회사" 줄을 누르면 그 회사들만 걸러진 목록으로 간다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
       renderPage();
-      await screen.findByTestId('dashboard-by-industry');
-      expect(screen.queryByTestId('dashboard-by-industry-proposed')).not.toBeInTheDocument();
+      const link = await screen.findByTestId('dashboard-today-link-CHECK_LEFT');
+      expect(link).toHaveAttribute('href', '/opportunities?filter=CHECK_LEFT');
+      await userEvent.click(link);
+      expect(await screen.findByTestId('location')).toHaveTextContent(
+        '/opportunities?filter=CHECK_LEFT',
+      );
     });
 
-    it('대시보드 대상이 0곳이면 막대 대신 안내와 [추천 목록 가기]를 보인다', async () => {
-      const empty: Dashboard = {
-        ...fixtureData,
-        breakdown: { basis: { statuses: [], total: 0 }, byProcess: [], byIndustry: [] },
-      };
-      mockedGet.mockResolvedValueOnce(reply(empty));
+    it('걸러 본 목록의 머리에는 코드 이름이 아니라 줄 이름이 보인다', () => {
+      expect(filterName('CHECK_LEFT')).toBe(dashboardTexts.todayRowNames.CHECK_LEFT);
+    });
+
+    it('줄이 하나도 없으면 "오늘 확인할 것이 없습니다" 한 줄만 보인다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: [] }));
       renderPage();
-      expect(await screen.findByTestId('dashboard-breakdown-empty')).toHaveTextContent(
-        dashboardTexts.breakdownEmptyText,
+      expect(await screen.findByTestId('dashboard-today-empty')).toHaveTextContent(
+        dashboardTexts.todayEmpty,
       );
-      expect(screen.queryByTestId('dashboard-by-process')).not.toBeInTheDocument();
-      expect(screen.getByTestId('dashboard-breakdown-empty-link')).toHaveAttribute(
-        'href',
-        '/opportunities',
+      expect(screen.queryByTestId('dashboard-today-row')).not.toBeInTheDocument();
+    });
+
+    it('0건인 줄과 이름표에 없는 종류의 줄은 보이지 않는다', async () => {
+      const mixed: TodayCheckRow[] = [
+        { kind: 'SCHEDULE_TODAY', count: 0, items: [], listFilter: null },
+        { kind: 'LATER_KIND', count: 4, items: [], listFilter: null },
+        rows[1],
+      ];
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: mixed }));
+      renderPage();
+      const today = await screen.findByTestId('dashboard-today');
+      expect(within(today).getAllByTestId('dashboard-today-row')).toHaveLength(1);
+      expect(within(today).getByTestId('dashboard-today-count-SCHEDULE_OVERDUE')).toHaveTextContent(
+        '놓친 일정 1건',
       );
-      expect(screen.getByTestId('dashboard-breakdown-empty-link')).toHaveTextContent(
-        dashboardTexts.breakdownEmptyAction,
-      );
+    });
+
+    it('영업 비서 자리(#680)는 지금 비어 있다: 빈 상자도 안내 문구도 없다', async () => {
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
+      renderPage();
+      await screen.findByTestId('dashboard-today');
+      expect(screen.queryByTestId('dashboard-today-assistant')).not.toBeInTheDocument();
+    });
+
+    it('서버가 옛 모양(줄 목록 칸 없음)이면 구역을 지어내지 않는다', async () => {
+      const { todayChecks: _todayChecks, ...old } = fixtureData;
+      void _todayChecks;
+      mockedGet.mockResolvedValueOnce(reply(old));
+      renderPage();
+      await screen.findByTestId('dashboard-counts');
+      expect(screen.queryByTestId('dashboard-today')).not.toBeInTheDocument();
     });
   });
 });

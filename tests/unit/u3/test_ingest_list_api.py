@@ -187,3 +187,38 @@ def test_candidate_in_full_evaluation_is_not_duplicated(api_env, tmp_path):
     assert run_evaluation(opp_ids=[candidate]).ok
     rows = listed(client)["data"]
     assert len(rows) == 2 and sum(row["oppId"] == candidate for row in rows) == 1
+
+
+def test_recent_sort_puts_latest_ingested_first_and_case_files_last(api_env, tmp_path):
+    """Given 사례 파일 1곳 + 수집 회사 / When sort=recent / Then 최신 순, 사례 파일은 뒤."""
+    client, original_id, _ = api_env
+    save_batch("find-old", started_at=NOW - timedelta(days=1))
+    old = add_candidate(tmp_path, "old", batch_id="find-old", offset=-86400)
+    save_batch()
+    # 같은 회차(같은 시각)끼리는 추천 순(적합도 → 들어온 순서)을 그대로 지킨다.
+    medium = add_candidate(tmp_path, "medium", fit="MEDIUM", offset=5)
+    high = add_candidate(tmp_path, "high", offset=5)
+    newest = add_candidate(tmp_path, "newest", fit="LOW", offset=60)
+    body = listed(client, sort="recent")
+    assert [card["oppId"] for card in body["data"]] == [newest, high, medium, old, original_id]
+    assert [card["rank"] for card in body["data"]] == [1, 2, 3, 4, 5]
+    # 추천 순(기본)은 그대로다: 사례 파일 회사가 먼저, 수집 회사는 적합도 → 들어온 순서(기존 규칙).
+    assert [card["oppId"] for card in listed(client)["data"]] == [
+        original_id,
+        old,
+        high,
+        medium,
+        newest,
+    ]
+    # 묶음 보기가 쓰는 공정 조건과 함께 써도 같은 순서다.
+    assert [card["oppId"] for card in listed(client, sort="recent", process="ANODIZING")["data"]][
+        :2
+    ] == [newest, high]
+
+
+def test_unconnected_sort_is_rejected(api_env):
+    client, _, _ = api_env
+    response = client.get(PATH, params={"sort": "unknown"})
+    assert response.status_code == 400
+    assert "정렬" in response.json()["error"]["message"]
+    assert listed(client, sort="rank")["meta"]["total"] == 1

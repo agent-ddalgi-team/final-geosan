@@ -61,13 +61,11 @@ def test_batch_reference_and_requester_survive_usage_and_cost_command(ingest_bat
 
 
 @pytest.mark.parametrize("reserve", [reserve_search, reserve_extraction])
-def test_unknown_batch_usage_blocks_other_purposes(ingest_batch, reserve):
+def test_unknown_batch_usage_allows_other_purposes_within_budget(ingest_batch, reserve):
     reserve_candidate_judgment(ingest_batch, True)
     args = ("opp-test", True, None) + (("park-lee",) if reserve == reserve_extraction else ())
-    with pytest.raises(AppError) as error:
-        reserve(*args)
-    assert error.value.kind == "USAGE_UNCONFIRMED"
-    assert [row.call_count for row in logs()] == [1, 0]
+    reserve(*args)
+    assert [row.call_count for row in logs()] == [1, 1]
     assert run_cost(None, lambda _: None) == 2
 
 
@@ -145,7 +143,8 @@ def test_manual_reconciliation_preserves_batch_and_unblocks(ingest_batch):
     assert reserve_candidate_judgment(ingest_batch, True).log_id != ticket.log_id
 
 
-def test_concurrent_reservations_cannot_bypass_pending_usage(ingest_batch):
+def test_concurrent_reservations_include_pending_estimates_at_limit(ingest_batch):
+    settings(monthlyCostLimitUsd=0.1)
     barrier = Barrier(2)
 
     def reserve():
@@ -158,7 +157,5 @@ def test_concurrent_reservations_cannot_bypass_pending_usage(ingest_batch):
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: reserve(), range(2)))
     assert sum(isinstance(value, AppError) for value in results) == 1
-    assert (
-        next(value for value in results if isinstance(value, AppError)).kind == "USAGE_UNCONFIRMED"
-    )
+    assert next(value for value in results if isinstance(value, AppError)).kind == "LLM_LIMIT"
     assert sorted(row.call_count for row in logs()) == [0, 1]

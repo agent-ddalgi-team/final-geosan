@@ -28,19 +28,56 @@ cd web && npm ci && cd ..
 
 | 할 일 | 명령 |
 |---|---|
-| 처음 설치·실행 | `geosan init-db` → `geosan check-config examples/rule-config.yaml examples/app-settings.yaml` → `geosan serve` |
+| 처음 설치·실행 | `geosan init-db` → `geosan check-config examples/rule-config.yaml examples/app-settings.yaml` → 아래 소스 이용 확인 2회 → `geosan serve`. 공장등록 조회를 끈 환경은 조회 소스 확인을 생략합니다. |
 | 활성 거산 값 묶음 변경 | `geosan dataset-set COMPANY_CONFIRMED` → `geosan evaluate`. 선택 가능한 묶음은 `VIRTUAL_REVIEWED`, `BROCHURE`, `COMPANY_CONFIRMED`입니다. 인자 없이 `geosan check-config`를 실행하면 현재 묶음을 확인할 수 있습니다. |
 | 소개서 전체 확인·재평가 | 활성 묶음이 `BROCHURE`일 때 `geosan review-set --all REVIEWED --by 거산 --basis "10/29 방문, 영업 담당자 전체 확인"`. 원본을 남기고 `COMPANY_CONFIRMED` 묶음을 만들어 검수 대기 값만 확인 완료로 바꾼 뒤, 활성 묶음 전환과 전체 재평가를 함께 저장합니다. 재평가 실패 시 모두 취소하며, 확인 묶음이 이미 있으면 덮어쓰지 않습니다. `--no-evaluate`를 붙이면 재평가는 생략하므로 이어서 `geosan evaluate`를 실행해야 목록이 채워집니다. |
 | 개별 값 확인·재확인 | `geosan review-set <대상 종류> <ID> REVIEWED --by <검수자> --basis <확인 근거>`. 대상 종류는 `PROCESS`(공정), `CAPABILITY`(세부 역량), `QUALIFICATION`(자격), `FIELD`(실적·범위)이며 현재 활성 묶음의 값만 받습니다. 검수 완료 값을 다시 확인해야 하면 상태에 `RECHECK`를 넣습니다. 이력 저장과 전체 재평가를 함께 실행하며 검수자·근거에 연락처는 넣지 않습니다. |
 | 가상 사례 투입·평가·확인 | `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`(가상 묶음으로 바꿈; 기본 파일은 시연용 소개서 묶음) → `geosan import-capability examples/capability-geosan.json` → `geosan import-case examples/case-apjeong.json` → `geosan evaluate` → `geosan verify-case examples/case-apjeong.json` |
 | 실제 기업 사례 파일 검사(저장 없음, DB 불필요) | `geosan check-case <파일.json>` |
-| 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·입력/출력 토큰·비용을 합산합니다. 미확정 비용이 있으면 종료 코드 2입니다. |
-| 홈페이지 없는 사례 일괄 조사 | `geosan research` 또는 `geosan research --missing-homepage`. 현재 묶음의 공개된 실제 신규 사례를 검색·본문 읽기·근거 추출·재평가합니다. `--limit 5`로 최대 건수를 정하고, `--all`은 기존 주소도 다시 읽습니다. |
-| 미확정 AI 사용 기록 정리 | `geosan transfer-unblock`은 조회만 합니다. 제공사에서 기록별 사용량을 확인한 뒤 모든 정산 인자를 넣습니다. 필요한 계정·서버 권한과 실행 순서는 [막힌 기록 푸는 법](docs/transfer-unblock-guide.md)을 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
+| 월별 AI 사용량 확인 | `geosan cost` 또는 `geosan cost --month 2026-11`. 검색과 추출의 호출·토큰·확인된 비용·추정 비용·한도 계산 비용을 보여 줍니다. 미확정 비용이 있으면 종료 코드 2이며, 호출은 추정 비용을 더한 월 한도 안에서 계속할 수 있습니다. |
+| 조사 안 된 사례 일괄 조사 | `geosan research`. 현재 묶음의 공개된 실제 신규 사례 가운데 홈페이지가 없는 회사와, 주소는 있는데 아직 조사가 안 된 회사(조사 날짜 없음·근거 0건)를 검색·본문 읽기·근거 추출·재평가합니다(#690). 주소가 있는 회사는 홈페이지를 다시 찾지 않고 그 주소로 읽습니다. `--missing-homepage`를 붙이면 홈페이지 없는 회사만, `--limit 5`로 최대 건수를 정하고, `--all`은 이미 조사된 회사도 다시 읽습니다. |
+| 공공자료에서 새 후보 찾기 | 승인된 소스와 `ingestion.factoryCsvPath`·`aiPick`·외부 AI 설정을 준비한 뒤 `geosan ingest kicox-factory-csv --process ZINC_PLATING --region 충남`을 실행합니다. `--industry`, `--max`, `--rejudge`를 선택할 수 있습니다. 파일명 끝 또는 바로 위 폴더의 기준일(YYYYMMDD)을 읽고, 선택한 새 회사만 등록·재평가·조사합니다. |
+| 공공 소스 이용·저장 확인 | `geosan source-confirm <소스ID> --by <담당자 키> [--terms <약관 주소>] [--on YYYY-MM-DD]`. 소스는 `kicox-factory-csv`(공장현황 파일)·`kicox-production-api`(공장등록 조회)·`factoryon-xlsx`(팩토리온 공장조회)·`nier-water-csv`(수질 명단) 네 개이고, 뒤 두 개는 약관 주소 기본값이 없어 `--terms`를 꼭 넣습니다. 이름·허용 용도·저장 범위와 확인자·확인일을 기록합니다. 기존 기록은 덮어쓰지 않습니다. |
+| 목록 회사에 공장 정보·수질 명단 붙이기 | `geosan source-load factoryon-xlsx <지역별 .xlsx>...` 또는 `geosan source-load nier-water-csv <수질 명단 .csv>`. 파일 이름에 기준일(YYYYMMDD)이 있어야 하고, 넣은 뒤 목록 회사에 원자재·종업원 수(추정)·공장 규모와 표면처리 표시를 다시 붙입니다. AI 비용 없음(#573). Numbers 파일은 CSV로 내보내 넣습니다. |
+| 미확정 AI 사용 기록 정리(선택) | `geosan transfer-unblock`은 조회만 합니다. 필요할 때 제공사에서 기록별 사용량을 확인해 정산하면 추정 대신 실제 비용을 씁니다. 필요한 계정·서버 권한과 실행 순서는 [사용량 정산 안내](docs/transfer-unblock-guide.md)를 따릅니다. 기존 DB는 먼저 백업 후 `geosan init-db`로 갱신합니다. |
 | 약속 파일 생성(사람이 명시적으로만) | `geosan export-contracts` |
 | 시연 자료 출력(예비 경로, DB·화면 불필요) | `geosan demo-report --capability examples/capability-geosan-brochure.json --cases <사례 폴더> --out <결과 폴더> [--base-date 2026-10-27]` (실제 기업은 소개서 묶음 파일, A정밀 가상 사례는 `examples/capability-geosan.json`) → 순위표(`ranking.csv`·`ranking.html`), 기업별 근거(`companies/`), 사실표(`facts/`). 모든 파일 머리에 "시연용 초안·거산 확인 전" |
+| 발표 시연용 DB에 가상 영업 기록 넣기(#274) | `geosan seed-demo-records [examples/demo-records.yaml]`. 시연 표시가 있는 DB에서만 동작하고 실제 DB에서는 거부합니다. 이미 기록이 있는 회사는 건너뜁니다. 순서는 아래 "발표 시연용 DB" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 | 백업·되돌리기 | `geosan backup [--to <폴더>]`(서버 켜진 채로 가능, 기본 `backups/`) → 문제가 생기면 서버를 멈추고 `geosan restore <백업 파일>`(확인 질문 1회, 지금 DB는 자동 보관) → `geosan init-db` → `geosan serve`. 절차는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) |
+
+**처음 설치할 때 소스 이용 확인(#489)** — `init-db`·`check-config` 다음, `serve` 전에 운영자가 자료의 이용·저장 조건을 확인하고 아래 명령을 실행합니다.
+
+```bash
+geosan source-confirm kicox-factory-csv --by choi-pm
+geosan source-confirm kicox-production-api --by choi-pm
+```
+
+`--by`에는 설정에 등록된 기록 담당자 키를 넣습니다. 보기 전용·모르는 담당자는 거부합니다.
+`--on`을 생략하면 서울 기준 오늘이며, 미래 날짜는 거부합니다. 공장등록 조회를 끈 환경에서는 두 번째 명령을 생략합니다.
+약관 주소 기본값은 [공장현황 파일 자료 페이지](https://www.data.go.kr/data/15105482/fileData.do)와 [공장등록 조회 자료 페이지](https://www.data.go.kr/data/15087611/openapi.do)입니다. 두 자료 모두 이용허락범위 제한 없음으로 PM이 확인했습니다(2026-11-09, #489). 다른 확인 주소는 `--terms`로 지정합니다.
+`init-db`와 마찬가지로 실제 DB 볼륨이 붙은 실행 환경 안에서 실행해야 합니다. 다른 PC의 DB에 기록해도 서버 DB에는 반영되지 않습니다.
+이 명령은 외부 사이트에 접속하거나 이용 조건을 자동으로 확인하지 않습니다. API 키도 필요하지 않습니다.
+
+**발표 시연용 DB(#274, PM 결정 2026-11-04)** — 가상 회사 6곳(성사 3·거절 3)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
+
+```bash
+export GEOSAN_DB_PATH=./data/geosan-demo.db      # 윈도우 PowerShell: $env:GEOSAN_DB_PATH = "./data/geosan-demo.db"
+geosan init-db
+geosan check-config examples/rule-config.yaml examples/app-settings-demo.yaml   # 띠 "시연용 · 가상 자료" + 시연 표시
+geosan import-capability examples/capability-geosan.json
+geosan import-case examples/case-apjeong.json
+geosan import-case examples/demo/case-demo-b-metal.json
+geosan import-case examples/demo/case-demo-c-industry.json
+geosan import-case examples/demo/case-demo-d-tech.json
+geosan import-case examples/demo/case-demo-e-machining.json
+geosan import-case examples/demo/case-demo-f-valve.json
+geosan evaluate
+geosan seed-demo-records                          # 가상 영업 기록: 성사 3곳·거절 3곳(가격·납기·기존 거래처)
+geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
+```
+
+거산 전달·배포 환경에서는 이 DB를 쓰지 않습니다. 배포 설정(`--host 0.0.0.0` 또는 `GEOSAN_PASSWORD`가 있는 환경)에서 DB 파일 이름이 `geosan-demo.db`이거나 DB 안에 시연 표시(`brand.demo`)가 있으면 `geosan serve`가 "시연용 DB는 배포 환경에서 쓸 수 없습니다"를 내고 종료 코드 2로 멈춥니다. 시연 DB에는 시연용 설정만 등록할 수 있어 파일 이름을 바꿔도 표시가 남습니다. 외부 AI·웹 검색·홈페이지 조사는 시연용 설정에서 모두 꺼져 있습니다.
 
 검수 전환은 거래 관계나 필수 요구의 확인 상태를 바꾸지 않습니다. 기존 점수 표시 약속에 따라
 확인 묶음에서도 필수조건 확인 필요·운영 준비 중인 카드는 `--`로 보입니다.
@@ -65,7 +102,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 `geosan research`는 `homepageDiscovery.autoResearch: true`와 외부 AI 설정을 등록한 뒤 실행합니다.
 가상 사례·내부 자료·재접촉·다른 묶음은 대상에서 제외합니다. 기존 주소는 보존하고 그 주소로 추출합니다.
 검색부터 저장까지 한 사례의 전체 한도는 60초이며, 홈페이지를 못 찾으면 추출을 건너뜁니다.
-사이트 읽기 실패는 다음 사례로 이어 가지만 호출·비용 한도, 사용량 미확정, 설정 오류는 전체를 멈추고 남은 건수를 알립니다.
+사이트 읽기·AI 응답 실패는 그 회사만 실패로 두고 다음 사례로 이어 갑니다. 사용량이 없으면 추정 비용을 월 한도에 더하며, 호출·비용 한도와 설정 오류일 때는 전체를 멈추고 남은 건수를 알립니다.
 회사별 새 근거 수·이번 호출 비용을 표시하며, 미확정 비용은 0원으로 확정하지 않습니다.
 실행 실패가 있으면 종료 코드 2, 잘못된 옵션·자동 조사 꺼짐은 1입니다. 못 찾음은 별도 집계합니다.
 `geosan import-case <file.json>`도 저장을 마친 뒤 같은 설정에 따라 **투입한 한 곳만** 바로 조사합니다.
@@ -133,10 +170,33 @@ API 서버도 성공·오류 응답 모두에 `Cache-Control: no-store`와 `x-ve
 5. CSV와 DB는 Git에 올리지 않습니다. 다시 받을 수 있는 공개 CSV는 백업 대상에서 제외하고, DB 백업은 #214 절차를 따릅니다. 원본 배치 확인을 위해 전체 후보 찾기나 유료 AI 호출을 실행하지 않습니다.
 
 단지 조회 설정은 `ingestion.complexList`에 둡니다(#390, PM 결정 #393).
-`enabled` 기본값은 `false`, `cacheDays`는 `7`, `extraNames`는 빈 목록입니다.
+`enabled` 기본값은 `false`, `cacheDays`는 `15`(PM 결정 #405, 처음 7에서 올림), `extraNames`는 빈 목록입니다.
 운영자가 값을 바꾸면 위의 `geosan check-config`로 등록합니다. 예전 설정에서 이 칸을
-생략해도 같은 기본값을 씁니다. 현재는 응답 처리·설정·호출 한도 검사 부품까지 구현됐고,
-설정을 켜도 실제 단지 조회·7일 결과 보관·후보 찾기 전체 실행은 후속 연결이 필요합니다.
+생략해도 같은 기본값을 씁니다. 단지 조회 내부 함수는 실제 HTTPS 호출·쪽 넘김·주소로 지역
+거르기·파일 원문 우선 결합까지 연결돼 있습니다(#404). 실행 중 회차와 소스 이용 확인이
+필요하며, 요청·재시도마다 하루 1,000회 한도를 검사합니다. 실패하면 받은 데까지의 행과
+미완료 사유를 돌려주므로 호출자는 회차 요약에 이 사유를 반영해야 합니다.
+조회 키는 실행 프로세스의 `DATA_GO_KR_SERVICE_KEY` 환경변수로 전달합니다. `.env`는
+자동으로 읽지 않으며, 키를 설정 파일이나 저장소에 넣지 않습니다.
+**조회 결과의 15일 보관·재사용도 내부 함수에 연결돼 있습니다(#437).** 파일 행을 먼저
+저장한 뒤 `collect_complex_rows` → `store_complex_rows` 순서로 부릅니다. 모든 지역의 공개
+행과 조회별 행 번호를 보관하고, 돌려줄 때만 이번 회차의 선택 지역으로 거릅니다.
+같은 단지의 성공 기록이 보관 기간 안에 있으면 외부 요청 없이 재사용합니다. 성공한 빈 결과도
+재사용하지만 일부 실패·만료·행 번호 누락은 다시 조회합니다. 같은 회사는 파일 원문을 우선하며,
+재사용할 때 보관 기간을 늘리지 않습니다. 보관 일수는 위 `cacheDays` 설정을 따릅니다.
+화면의 [찾기]·전체 실행 연결도 후속 작업입니다.
+
+AI 후보 판단 내부 연결은 `ingestion.aiPick`에서 설정합니다(#425). 기본은 꺼짐(`enabled: false`),
+한 번에 100행(`rowsPerCall`), 지시문은 저장소 기준 `examples/prompts/candidate-pick.md`
+(`promptFile`)입니다. PM이 승인한 지시문을 바꿀 때는 파일의 버전·날짜도 함께 바꿉니다.
+`surfaceTreatmentIndustryNames`는 PM이 정할 업종명 규칙 목록이며 아직 빈 목록입니다.
+실제 호출에는 기존 `llm.mode: EXTERNAL`·허용 모델·단가·월 한도와 실행 프로세스의
+`OPENAI_API_KEY`가 필요합니다. 설정 변경은 기존 `geosan check-config`로 등록합니다.
+`pick_candidates`는 행 번호만 받고 공개 본문을 직접 읽습니다. 전체 공정·산업으로 한 번
+판단하므로 선택 조건만 바꾸면 다시 부르지 않고, 생산품·업종명 또는 지시문·허용 목록·입력
+칸이 바뀌면 다시 판단합니다. 사용량을 모르는 호출은 기존 비용 정리 절차 전까지 다음 호출을
+막습니다. 전체 실행·회사 등록은 #427·#426에서 이어가며, 500행 실측과 전체 파일 AI 호출은
+PM의 표본·비용 결정 뒤에 진행합니다.
 
 ## 3. 검사 (PR 전에 꼭)
 
@@ -208,3 +268,30 @@ scripts/                check.sh · check-secrets.sh (맥·리눅스) · check.p
 **먼저 볼 곳: [`docs/map/`](docs/map/README.md)** — 지금 기준의 전체 기획과 현황을 그림과 쉬운 말로 정리한 지도입니다(기능 지도 · 구조 지도 · 기획 변경 기록). 아래 설계 문서는 그 지도의 근거 자료입니다.
 
 `aidlc/spaces/default/intents/261019-geosan-sales-agent/` 아래에 있습니다. 구현 전에 자기 모듈의 기능 설계(`construction/u1-skeleton/functional-design/`의 `rules.md`·`entities.md`·`functional-spec.md`)와 계약(`inception/contract-design/contract-summary.md`)을 읽습니다. 코드 생성 계획과 단위 테스트 지침은 `construction/u1-skeleton/code-generation/`에 있습니다.
+
+## 6. 회사 좌표와 거리 (#222)
+
+`geosan geocode --missing-only`는 활성 묶음의 공개 실제 회사를 대상으로 이미 저장된 좌표를 재사용합니다. 대상은 목록과 같이 최신 확정 평가의 묶음으로 고릅니다(회사 원본 표시가 소개서로 남아 있어도 포함, #664).
+없는 좌표는 **위치 CSV → 행안부 주소검색 후 같은 CSV 대조 → 좌표제공 API → 네이버 Geocoding** 순서로 확인합니다.
+가상·비공개·연락처가 섞인 주소는 외부에 보내지 않습니다. 다른 건물·복수 위치·빈 좌표는 임의로 확정하지 않습니다.
+
+- 앱 설정 `geocoding.locationCsvFiles`에 위치정보요약DB CSV 파일 목록, `locationCsvBaseDate`에 자료 기준일을 넣습니다. 상대 경로는 프로그램을 실행하는 폴더 기준입니다.
+- `geosan serve`는 좌표 조회가 켜져 있으면 시작할 때 위치 CSV를 미리 읽습니다(대전·세종·충남 3개 기준 10초 남짓). 파일이 없으면 경고를 보이고 서버는 띄웁니다(#664).
+- 외부 조회는 `geocoding.enabled`로 켜며 `dailyCallLimit`의 초기값은 10,000회입니다. 행안부·네이버·재시도를 모두 합산합니다. 조회 오류는 미확인과 구분해 실패로 보고합니다.
+- 행안부 키는 `JUSO_SEARCH_KEY`·`JUSO_COORD_KEY` 환경변수에만 둡니다. 좌표계 변환과 거리 계산에는 별도 API가 필요 없습니다.
+- 네이버는 `naverFallbackEnabled`와 서버 환경변수 `NCP_MAPS_KEY_ID`·`NCP_MAPS_KEY`가 준비됐을 때 사용합니다. 받은 결과는 해당 요청의 실시간 지도·거리 표시용이며 DB·파일·공용 캐시에 저장하지 않습니다. 명령의 실시간 확인 건수도 저장 건수와 구분됩니다.
+- 거산 기준 주소·위도·경도는 `geosan.address`·`lat`·`lng`입니다. 기준 좌표가 없으면 거리 값은 비어 있습니다. 회사 좌표가 있어도 점수와 기본 추천 순위는 바뀌지 않습니다.
+
+공공좌표는 DB에 출처·확인시각과 함께 저장하며 카드·상세 응답의 `distanceKm`에서 직선거리를 제공합니다.
+키 교체는 서버 환경변수만 바꾸고 서버를 다시 실행합니다. 브라우저 사용자마다 등록하지 않습니다.
+API 서버와 지도 화면은 별도 작업이며, 가까운 순·거리 필터 화면 및 대시보드 지도는 해당 담당 작업에서 연결합니다.
+
+목록 서버는 `sort=distance`(가까운 순)와 `maxDistanceKm`(설정 `distanceFilterPresetsKm` 안의 값)을 지원합니다(#658).
+기존 조건을 통과한 전체 회사의 거리를 확인한 뒤 거리 조건·정렬을 적용하고 페이지를 나눕니다.
+거리 미확인은 가까운 순의 마지막에 두고, 거리 범위를 고르면 제외합니다. 같은 거리는 기존 추천 순입니다.
+목록과 대시보드 지도는 저장된 공공좌표만 쓰고 외부 조회를 하지 않습니다(#686). 위치를 모르는 회사는 거리 미확인으로 두고, 네이버 실시간 보완은 회사 한 곳의 자세히 보기와 `geosan geocode`에서만 합니다. 새로 들어온 회사의 위치는 `geosan geocode --missing-only`로 채웁니다. 거리 조건의 엑셀 내보내기는 지원하지 않습니다.
+기준 좌표가 없으면 거리 정렬·필터는 오류로 알리고, 기존 추천 목록은 계속 열립니다.
+
+지도 데이터는 `GET /api/v1/dashboard/map`에서 읽습니다(#642). 기존 접속 보호를 거치며, 관심 켠 실제 공개 회사 가운데 관심·진행·올해 성공만 포함합니다. 거산 기준점·설정 반경·점·거리·좌표 없는 회사 수를 반환합니다. 저장된 공공좌표만 쓰며(#686) 응답은 캐시하지 않습니다. 거산 기준 좌표가 없으면 오류로 알립니다. 지도 그림은 #641 화면 작업에서 연결합니다.
+
+대시보드 지도 바탕은 네이버 지도입니다(#671). `web/.env`에 `VITE_NCP_MAPS_CLIENT_ID=<Client ID>`를 적고 `npm --prefix web run build`로 화면을 다시 만듭니다. 네이버 클라우드 콘솔의 Maps 애플리케이션에서 **Dynamic Map**을 켜고 **Web 서비스 URL**에 접속 주소(예: `http://127.0.0.1:8000`)를 등록해야 합니다. 키가 없거나 인증에 실패하면 원과 점의 상대 위치만 보이는 자리표시로 돌아갑니다. 지도에는 좌표·원 반지름만 넘기고 회사 이름·단계·거리는 우리 말풍선으로만 그립니다.

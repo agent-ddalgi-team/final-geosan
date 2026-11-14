@@ -289,7 +289,7 @@ def test_manual_cost_keeps_original_month_and_does_not_refund_call_limits(search
 
 
 @pytest.mark.parametrize("failed_purpose", ["search", "extract"])
-def test_confirmed_usage_unblocks_search_and_extraction_without_resending_old_call(
+def test_optional_reconciliation_preserves_retry_calls_and_replaces_estimate(
     extract_env, search_env, fixed_clock, monkeypatch, failed_purpose
 ):
     case, extraction_transport = extract_env
@@ -308,17 +308,18 @@ def test_confirmed_usage_unblocks_search_and_extraction_without_resending_old_ca
     assert pending.cost_usd is None and pending.call_count == 1
     failed_transport.assert_called_once()
 
-    with pytest.raises(AppError) as blocked_search:
-        find_case_homepage(case.opp_id)
-    blocked_extract = run_extract(case.opp_id, extraction_support.URL)
-    assert not blocked_extract.ok
-    for error in (blocked_search.value, blocked_extract.error):
-        assert error.kind == "USAGE_UNCONFIRMED"
-        assert error.message == "AI 사용 기록에 문제가 있어 조사를 멈췄습니다"
-        assert error.next_action == "문의 번호와 함께 운영자에게 알려 주세요"
-        assert error.ref
+    failed_transport.side_effect = lambda *_: (
+        search_support.provider_reply()
+        if failed_purpose == "search"
+        else extraction_support.reply()
+    )
+    assert find_case_homepage(case.opp_id).url == "https://example.org/"
+    assert run_extract(case.opp_id, extraction_support.URL).ok
+    cost = CliRunner().invoke(app, ["cost", "--month", "2026-11"])
+    assert cost.exit_code == 2 and "추정 비용 $0.100000" in cost.output
+    assert "한도 계산 비용 $0.118000" in cost.output
     sent_before = (search_env[1].call_count, extraction_transport.call_count)
-    assert sum(sent_before) == 1
+    assert sum(sent_before) == 3
 
     for module in (transfer, reconciliation, transfer_unblock):
         monkeypatch.setattr(module, "utcnow", lambda: NOW + timedelta(minutes=20))
@@ -334,6 +335,9 @@ def test_confirmed_usage_unblocks_search_and_extraction_without_resending_old_ca
     assert (search_env[1].call_count, extraction_transport.call_count) == sent_before
     settled = read(pending.transfer_log_id)
     assert settled["call_count"] == 1 and settled["reconciled_by"] == "choi-pm"
+    cost = CliRunner().invoke(app, ["cost", "--month", "2026-11"])
+    assert cost.exit_code == 0 and "추정 비용" not in cost.output
+    assert "한도 계산 비용 $0.032000" in cost.output
 
     failed_transport.side_effect = lambda *_: (
         search_support.provider_reply()
@@ -375,8 +379,8 @@ def test_old_database_upgrade_preserves_transfer_values(tmp_path, previous_revis
             ),
         )
         before = connection.execute("SELECT * FROM tg_transfer_log").fetchone()
-    assert upgrade_to_head(path) == ["rec_008"]
-    assert upgrade_to_head(path) == ["rec_008"]
+    assert upgrade_to_head(path) == ["src_006"]
+    assert upgrade_to_head(path) == ["src_006"]
     with sqlite3.connect(path) as connection:
         after = connection.execute("SELECT * FROM tg_transfer_log").fetchone()
     # 옛 값은 그대로이고 뒤에 새 칸 셋(정산 시각·처리자, #327의 회차 번호)만 빈 값으로 붙는다.
@@ -412,7 +416,7 @@ def test_reconciliation_migration_preserves_question_reply_in_both_directions(tm
         if target == "q_002":
             command.downgrade(alembic_config(path), target)
         else:
-            assert upgrade_to_head(path) == ["rec_008"]
+            assert upgrade_to_head(path) == ["src_006"]
         with sqlite3.connect(path) as connection:
             assert connection.execute("SELECT * FROM q_question").fetchone() == before
 

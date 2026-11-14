@@ -201,7 +201,19 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
             )
         )
 
-    from geosan.api.routes import config, dashboard, homepage, opportunities, records, session
+    from geosan.api.routes import (
+        assistant,
+        config,
+        dashboard,
+        export,
+        homepage,
+        industries,
+        opportunities,
+        peers,
+        records,
+        sales_analysis,
+        session,
+    )
 
     for router in (
         config.router,
@@ -210,6 +222,11 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         session.router,
         dashboard.router,
         homepage.router,
+        export.router,
+        sales_analysis.router,
+        peers.router,
+        industries.router,
+        assistant.router,
     ):
         app.include_router(router, prefix="/api/v1")
     # 실제 찾기는 회차 번호 하나를 받는 함수로 연결한다. 연결 전에는 회차를 만들지 않는다.

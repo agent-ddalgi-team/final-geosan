@@ -40,10 +40,18 @@ class Note(CommonColumns, Base):
         String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
     )
     staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    # #450·C6: 기록할 때 본 평가. 옛 기록·번호 없는 요청은 비워 둔다.
+    eval_id: Mapped[str | None] = mapped_column(String(40))
     text: Mapped[str] = mapped_column(Text, nullable=False)
     kind: Mapped[str] = mapped_column(
         String(16), nullable=False, default="MEMO", server_default="MEMO"
     )
+    # #259·C6: 검토사항 자료 줄 번호(예 GAP:REQ:req-3). 줄에 붙이지 않은 메모·옛 행은 비워 둔다.
+    item_id: Mapped[str | None] = mapped_column(String(64))
+    # #253·C6: 잘못 입력으로 표시(취소)한 시각·담당자·이유. 행은 지우지 않고 이 세 칸만 채운다.
+    cancelled_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    cancelled_by: Mapped[str | None] = mapped_column(String(32))
+    cancel_reason: Mapped[str | None] = mapped_column(String(200))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
@@ -57,18 +65,41 @@ class Outcome(CommonColumns, Base):
         String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False
     )
     status: Mapped[str] = mapped_column(String(40), nullable=False)
+    eval_id: Mapped[str | None] = mapped_column(String(40))
     reply_received: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     next_schedule_at: Mapped[date | None] = mapped_column(Date)
     next_schedule_note: Mapped[str | None] = mapped_column(Text)
     reason: Mapped[str | None] = mapped_column(Text)
     # #250 PM 계약 C6: 이전 기록은 그대로 두고 거절 행에만 코드값을 더한다.
     lost_reason_code: Mapped[str | None] = mapped_column(String(32))
+    # #531·C6: 접촉 때 AI 판단이 맞았나. 2차 되먹임 재료. 옛 기록·안 고른 기록은 비워 둔다.
+    judgment_check: Mapped[str | None] = mapped_column(String(16))
     memo: Mapped[str | None] = mapped_column(Text)
     action_id: Mapped[str | None] = mapped_column(String(40))
     method: Mapped[str | None] = mapped_column(String(16))
     result: Mapped[str | None] = mapped_column(String(16))
     attempted_at: Mapped[date | None] = mapped_column(Date)
+    # #607·C6: [단계 고치기]로 담당자가 정한 세부 단계(SalesStep). 옛 행·안 고친 행은 비워 둔다.
+    step_override: Mapped[str | None] = mapped_column(String(24))
+    # #253·C6: 잘못 입력으로 표시(취소)한 시각·담당자·이유. 행은 지우지 않고 이 세 칸만 채운다.
+    cancelled_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    cancelled_by: Mapped[str | None] = mapped_column(String(32))
+    cancel_reason: Mapped[str | None] = mapped_column(String(200))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class OutcomeAnswer(CommonColumns, Base):
+    """#607·C6: 접촉 기록의 꼬리 질문 답(코드). 답마다 새 행이며 수정·삭제하지 않는다."""
+
+    __tablename__ = "rec_outcome_answer"
+
+    answer_row_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    outcome_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("rec_outcome.outcome_id"), nullable=False, index=True
+    )
+    opp_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    question_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    answer_id: Mapped[str] = mapped_column(String(40), nullable=False)
 
 
 class ReviewCheck(CommonColumns, Base):

@@ -47,7 +47,7 @@ describe('putBookmark (실제 요청 모양)', () => {
   it('끄기가 거부되면(422) 서버의 문구·다음 할 일·종류를 그대로 담은 오류를 던진다', async () => {
     const error = {
       message: '기록이 있는 회사는 관심에서 뺄 수 없습니다',
-      nextAction: "빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요",
+      nextAction: "빼려면 검토 의견을 '제외'로 저장해 주세요",
       ref: 'r-1',
       kind: 'BOOKMARK_HAS_RECORDS',
     };
@@ -109,7 +109,7 @@ describe('가짜 모드의 관심 흐름', () => {
     expect((refused as ApiError).body).toMatchObject({
       kind: 'BOOKMARK_HAS_RECORDS',
       message: '기록이 있는 회사는 관심에서 뺄 수 없습니다',
-      nextAction: "빼려면 검토 의견을 '검토 대상 제외'로 저장해 주세요",
+      nextAction: "빼려면 검토 의견을 '제외'로 저장해 주세요",
     });
 
     await postOpinion('opp-opinion', { opinion: 'WORTH_REVIEW', evalId: 'eval-1' }, 'park-lee');

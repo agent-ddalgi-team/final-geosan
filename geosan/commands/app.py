@@ -1,4 +1,4 @@
-"""`geosan` 명령줄 앱 (Typer). 계약 C8의 명령 9개 + `db merge-heads`.
+"""`geosan` 명령줄 앱 (Typer). 계약 C8의 운영 명령과 `db merge-heads`.
 
 명령 본문은 명령별 파일(`init_db.py`, `evaluate.py`, `verify_case.py`, `export_contracts.py`, …)에
 있다. 앞으로 새 명령을 먼저 등록만 할 때는 `not_implemented_yet`으로 오류를 숨기지 않고
@@ -29,6 +29,73 @@ app = typer.Typer(
     add_completion=False,
     rich_markup_mode=None,
 )
+
+
+@app.command("geocode")
+def geocode(
+    missing_only: bool = typer.Option(
+        False, "--missing-only", help="기존 공공좌표는 다시 조회하지 않습니다."
+    ),
+) -> None:
+    """위치자료와 API로 실제 회사 좌표를 확인하고 공공좌표만 저장합니다."""
+    from geosan.commands.geocode import run_geocode
+
+    raise typer.Exit(run_geocode(missing_only))
+
+
+@app.command("source-confirm")
+def source_confirm(
+    source_id: str = typer.Argument(
+        ...,
+        help="kicox-factory-csv, kicox-production-api, factoryon-xlsx, nier-water-csv 중 하나",
+    ),
+    staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),
+    terms: str | None = typer.Option(None, "--terms", help="운영자가 확인한 소스 약관 주소"),
+    on: str | None = typer.Option(None, "--on", help="확인일 YYYY-MM-DD, 기본은 서울 오늘"),
+) -> None:
+    """공공 소스의 이용·저장 확인을 기록합니다. 기존 기록은 덮어쓰지 않습니다."""
+    from geosan.commands.source_confirm import run_source_confirm
+
+    raise typer.Exit(code=run_source_confirm(source_id, staff_key=staff_key, terms=terms, on=on))
+
+
+@app.command("source-load")
+def source_load(
+    source_id: str = typer.Argument(..., help="factoryon-xlsx 또는 nier-water-csv"),
+    files: list[Path] = typer.Argument(..., help="불러올 파일. 이름에 기준일 YYYYMMDD가 있어야 함"),
+) -> None:
+    """팩토리온 공장조회·수질 명단을 넣고 목록 회사에 공장 정보·표면처리 표시를 붙입니다."""
+    from geosan.commands.source_load import run_source_load
+
+    raise typer.Exit(code=run_source_load(source_id, files))
+
+
+@app.command("ingest")
+def ingest(
+    source_id: str = typer.Argument(..., help="공개 공장현황 소스 kicox-factory-csv"),
+    process: list[str] = typer.Option(..., "--process", help="찾을 공정 코드, 여러 번 지정 가능"),
+    region: list[str] | None = typer.Option(None, "--region", help="찾을 지역, 생략하면 설정 전체"),
+    industry: list[str] | None = typer.Option(None, "--industry", help="찾을 산업, 생략하면 전체"),
+    maximum: int | None = typer.Option(None, "--max", help="등록 후보 최대 건수, 설정 상한 이내"),
+    rejudge: bool = typer.Option(
+        False, "--rejudge", help="저장한 판단을 무시하고 다시 판단, 비용 발생"
+    ),
+):
+    """공개 공장 자료에서 후보를 찾고 등록·재평가·신규 회사 조사를 이어서 실행합니다."""
+    from geosan.commands.ingest import run_ingest_command
+
+    raise typer.Exit(
+        code=run_ingest_command(
+            source_id,
+            processes=process,
+            regions=region or [],
+            industries=industry or [],
+            maximum=maximum,
+            rejudge=rejudge,
+        )
+    )
+
+
 db_app = typer.Typer(
     name="db",
     help="데이터베이스 마이그레이션 보조 명령.",
@@ -255,7 +322,10 @@ def research(
         None, "--limit", metavar="N", help="이번 최대 사례 수, 1 이상"
     ),
 ) -> None:
-    """공개 신규 사례를 검색·추출·재평가합니다. 기본은 홈페이지 없는 실제 사례만입니다."""
+    """공개 신규 사례를 검색·추출·재평가합니다.
+
+    기본은 홈페이지가 없거나, 주소는 있는데 아직 조사가 안 된 실제 사례입니다.
+    """
     from geosan.commands.research import run_research
 
     raise typer.Exit(code=run_research(missing_homepage, all_companies, limit))
@@ -307,6 +377,22 @@ def demo_report(
     from geosan.commands.demo_report import run_demo_report
 
     raise typer.Exit(code=run_demo_report(capability, cases, out, base_date))
+
+
+@app.command("seed-demo-records")
+def seed_demo_records(
+    file: Path | None = typer.Argument(
+        None, help="가상 영업 기록 파일(YAML). 기본 examples/demo-records.yaml"
+    ),
+) -> None:
+    """발표 시연용 DB에 가상 회사의 영업 기록(성사·거절)을 넣습니다.
+
+    시연 표시가 있는 DB에서만 동작합니다. 실제 DB에는 넣지 않습니다(종료 코드 1).
+    이미 영업 기록이 있는 회사는 건너뜁니다(#274, 계약 C8).
+    """
+    from geosan.commands.seed_demo_records import run_seed_demo_records
+
+    raise typer.Exit(code=run_seed_demo_records(file))
 
 
 @db_app.command("merge-heads")

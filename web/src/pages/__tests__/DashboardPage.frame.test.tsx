@@ -9,6 +9,9 @@ import { STAFF_STORAGE_KEY } from '../../components/frame/FrameContext';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 import configFixture from '../../test/fixtures/config-ui.json';
 
+// 지도 칸(#641)은 이 시험의 관심사가 아니다. 응답을 오지 않게 막아 두어 요청 횟수 확인에 끼어들지 않게 한다.
+vi.mock('../../api/dashboardMap', () => ({ getDashboardMap: vi.fn(() => new Promise(() => {})) }));
+
 const STAFF = [
   { key: 'park-lee', displayName: '영업 담당' },
   { key: 'kim-gwajang', displayName: '검수 담당' },

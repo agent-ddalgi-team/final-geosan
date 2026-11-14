@@ -7,12 +7,13 @@ DB 사본은 `cfg_app_setting`(키-값)이며 API·평가 흐름은 `registry.lo
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,7 +21,13 @@ from geosan.config.errors import FieldError, InputError
 from geosan.config.loader import LoadedDocument, join_path, load_document
 from geosan.config.schemas import STAFF_KEY_PATTERN, FileModel
 from geosan.config.validators import format_field_error, pydantic_errors_to_fields
-from geosan.rules.codes import VIEWER_STAFF_KEY, DatasetKind
+from geosan.rules.codes import (
+    VIEWER_STAFF_KEY,
+    ClassificationCode,
+    DatasetKind,
+    FitLevel,
+    LostReasonCode,
+)
 
 SECRET_KEY_NAMES: frozenset[str] = frozenset(
     {"password", "passwd", "apikey", "api_key", "token", "secret", "accesskey", "access_key"}
@@ -37,15 +44,118 @@ class ComplexListSettings(FileModel):
     """C7: 단지 조회 설정. PM 승인 기본값(#393·#394), 실제 조회 연결은 U3에서 한다."""
 
     enabled: bool = Field(default=False, strict=True)
-    cache_days: int = Field(default=7, ge=1, strict=True)
+    cache_days: int = Field(default=15, ge=1, strict=True)
     extra_names: list[str] = Field(default_factory=list)
+
+
+DEFAULT_PICK_EXCLUDE_KEYWORDS = (
+    "운송",
+    "물류",
+    "택배",
+    "창고업",
+    "도매",
+    "소매",
+    "무역",
+    "소프트웨어",
+    "정보서비스",
+    "통신서비스",
+    "식품",
+    "음료",
+    "제과",
+    "제빵",
+    "섬유",
+    "의류",
+    "봉제",
+    "출판",
+    "광고",
+    "교육",
+    "컨설팅",
+    "부동산",
+    "건설업",
+    "토목",
+    "시공",
+    "음식점",
+    "숙박",
+)
+
+
+class AiPickSettings(FileModel):
+    """C7: #425·#430 PM 승인. 묶음 기본값은 20행(#491, 100행은 60초 한도를 넘김).
+
+    model: 후보 고르기에만 쓸 모델(llm.allowedModels 안). 비우면 llm.model.
+    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작)가 없으면
+    AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감). 기준 버전에 포함된다.
+    """
+
+    enabled: bool = Field(default=False, strict=True)
+    rows_per_call: int = Field(default=20, ge=1, strict=True)
+    prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
+    surface_treatment_industry_names: list[str] = Field(default_factory=list)
+    # 팩토리온 업종번호(표준산업분류 5자리)가 여기 있으면 표면처리 표시(#573). 값은 PM이 정한다.
+    surface_treatment_industry_codes: list[str] = Field(default_factory=list)
+    model: str | None = Field(default=None, min_length=1)
+    exclude_keywords: list[str] = Field(default_factory=lambda: list(DEFAULT_PICK_EXCLUDE_KEYWORDS))
+
+    @field_validator("surface_treatment_industry_codes")
+    @classmethod
+    def _industry_codes(cls, value: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"[0-9]{5}", code) for code in value):
+            raise ValueError("업종번호는 숫자 5자리로 적어 주세요. 예: 25922")
+        return value
+
+
+class CandidateWebSearchSettings(FileModel):
+    """C7·#314 11/9 PM 승인: 꺼짐, 하루 20회, 15일 보관. 도메인은 설정에서 읽는다."""
+
+    enabled: bool = Field(default=False, strict=True)
+    daily_search_limit: int = Field(default=20, ge=0, strict=True)
+    cache_days: int = Field(default=15, ge=1, strict=True)
+    # #706 PM 결정 2026-11-13: 실제 검색 비교로 정한 값. 옛 설정에는 없어 기본값으로 읽는다.
+    searches_per_run: int = Field(default=3, ge=1, le=5, strict=True)
+    timeout_seconds: int = Field(default=90, ge=20, le=180, strict=True)
+    blocked_domains: list[str] = Field(default_factory=list, max_length=100)
+
+    @field_validator("blocked_domains")
+    @classmethod
+    def check_domains(cls, values: list[str]) -> list[str]:
+        domains = []
+        for value in values:
+            if not re.fullmatch(
+                r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}", value
+            ):
+                raise ValueError("막는 사이트에는 주소 전체 대신 도메인 이름만 적어 주세요.")
+            domains.append(value.lower())
+        if len(set(domains)) != len(domains):
+            raise ValueError("막는 사이트 목록에 같은 도메인이 두 번 있습니다.")
+        return domains
+
+    @model_validator(mode="after")
+    def enabled_needs_domains(self):
+        if self.enabled and not self.blocked_domains:
+            raise ValueError("웹 후보 검색을 켜려면 막는 사이트 목록을 먼저 적어 주세요.")
+        return self
+
+
+class CostEstimateSettings(FileModel):
+    """C7 #549: 누르기 전 예상 금액·잠금 계산에만 쓰는 단가. 실제 한도 검사는 전송 기록으로 한다.
+
+    값은 PM이 실측을 보고 고친다. 네 칸 모두 0보다 커야 한다.
+    """
+
+    judge_usd_per_row: float = Field(gt=0, strict=True, allow_inf_nan=False)
+    research_usd_per_company: float = Field(gt=0, strict=True, allow_inf_nan=False)
+    research_calls_per_company: int = Field(gt=0, strict=True)
+    web_search_usd_per_batch: float = Field(gt=0, strict=True, allow_inf_nan=False)
 
 
 class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
     max_candidates: int = Field(ge=1)
+    cost_estimate: CostEstimateSettings
+    factory_csv_path: str = ""
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
+    ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
 
 
 class LlmSettings(FileModel):
@@ -61,7 +171,10 @@ class LlmSettings(FileModel):
         default=0, ge=0, strict=True, allow_inf_nan=False
     )
     monthly_cost_limit_usd: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
+    unconfirmed_call_cost_usd: float = Field(gt=0, strict=True, allow_inf_nan=False)
     cost_alert_ratio: float = Field(default=0.5, ge=0, le=1, strict=True, allow_inf_nan=False)
+    # #680: 영업 기록 글(연락처·이름을 지운 것)을 외부 AI로 보내도 되는지. 칸이 없으면 꺼짐.
+    sales_records_enabled: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def check_allowed_model(self) -> LlmSettings:
@@ -76,6 +189,38 @@ class HomepageDiscoverySettings(FileModel):
     min_confidence: float = Field(default=0.7, ge=0, le=1, strict=True, allow_inf_nan=False)
     auto_research: bool = Field(default=False, strict=True)
     daily_call_limit: int = Field(default=200, ge=0, strict=True)
+    # 계약 C7 #557: 첫 화면 말고 더 읽는 같은 사이트 페이지. 기본값은 PM 승인값(2026-11-11)이며
+    # 이 키가 없는 예전 설정 파일도 읽히게 둔다. 0이면 첫 화면만 읽는다.
+    extra_pages: int = Field(default=3, ge=0, le=10, strict=True)
+    extra_page_hints: list[str] = Field(
+        default_factory=lambda: [
+            "회사소개",
+            "회사 소개",
+            "인사말",
+            "연혁",
+            "제품",
+            "사업",
+            "설비",
+            "인증",
+            "실적",
+            "납품",
+            "about",
+            "company",
+            "product",
+            "business",
+            "history",
+            "facility",
+        ]
+    )
+    extra_page_max_chars: int = Field(default=6000, ge=500, strict=True)
+
+    @field_validator("extra_page_hints")
+    @classmethod
+    def _hints_are_words(cls, value: list[str]) -> list[str]:
+        cleaned = [hint.strip() for hint in value]
+        if any(not hint for hint in cleaned):
+            raise ValueError("빈 말은 넣을 수 없습니다.")
+        return cleaned
 
 
 class BrandSettings(FileModel):
@@ -83,6 +228,8 @@ class BrandSettings(FileModel):
     brand_name: str = Field(min_length=1)
     color_primary: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
     demo_label: str | None = None
+    # #274: 시연용 DB 표시. 시연용 설정 파일에만 true로 적는다(배포 설정에서는 서버 시작 거부).
+    demo: bool = Field(default=False, strict=True)
 
 
 class AccessProtectionSettings(FileModel):
@@ -94,10 +241,111 @@ class RecordsSettings(FileModel):
 
     approval_enabled: bool = False
     note_max_length: int = Field(default=200, ge=1)
+    # #253: false면 본인이 저장한 기록만 잘못 입력으로 표시할 수 있다.
+    cancel_by_any_staff: bool = False
+    # #607: 꼬리 질문 파일 위치(저장소 기준 상대 경로)와 접촉 기록 한 줄 메모 상한.
+    sales_questions_file: str = Field(default="examples/sales-questions.yaml", min_length=1)
+    memo_line_max_length: int = Field(default=100, ge=1, le=200)
+    # #691: 기록 남기기 칸에서 한 통화에 보이는 통화 내용 질문 수. 넘는 질문은 화면이 접어 둔다.
+    questions_per_contact: int = Field(default=6, ge=1, le=20)
 
 
 class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
+    # #690: 관심을 켜서 저절로 도는 조사가 하루에 쓸 수 있는 AI 비용(달러).
+    # 0이면 꺼짐(묶음이 없는 파일의 기본).
+    auto_on_bookmark_daily_cost_usd: float = Field(
+        default=0, ge=0, strict=True, allow_inf_nan=False
+    )
+    # #677: 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에 다시 조사를 제안한다.
+    # 0이면 제안하지 않음(묶음이 없는 파일의 기본). 제안만 하고 저절로 조사하지 않는다.
+    suggest_again_after_days: int = Field(default=0, ge=0, strict=True)
+    # #511: 공식 홈페이지를 못 찾았을 때 회사가 직접 운영하는 공개 페이지 1개를 "확인 필요"로
+    # 받을지. 기본 꺼짐(묶음·칸이 없는 파일도 꺼짐). PM이 켠다.
+    allow_unofficial_page: bool = Field(default=False, strict=True)
+
+
+XLSX_DOWNLOAD_LOG_READY = False
+"""엑셀을 내려받을 때 "누가 언제 몇 건"을 남기는 기록 1행(C4 TransferLog)이 만들어졌는가.
+
+아직 없다(#217, PM 결정 2026-11-13). 그 기록을 만드는 PR에서만 True로 바꾼다.
+False인 동안에는 `export.xlsxEnabled: true`인 설정을 받아들이지 않는다.
+"""
+
+XLSX_ENABLE_BLOCKED_MESSAGE = (
+    "엑셀 내려받기는 아직 켤 수 없습니다. 누가 언제 내려받았는지 남기는 기록을 "
+    "만들기 전에는 켤 수 없으니 false로 두어 주세요."
+)
+
+
+def xlsx_download_log_ready() -> bool:
+    """내려받은 기록이 준비됐는지 묻는 한 곳. 설정 검사가 이 함수만 본다."""
+    return XLSX_DOWNLOAD_LOG_READY
+
+
+class ExportSettings(FileModel):
+    """계약 C7 `export`(#217, PM 결정 2026-11-13). 엑셀 내려받기는 만들어 두고 꺼 둔다."""
+
+    # false면 내려받기 창구(GET /export/xlsx)가 막히고 화면 단추도 보이지 않는다.
+    xlsx_enabled: bool = Field(default=False, strict=True)
+
+    @field_validator("xlsx_enabled")
+    @classmethod
+    def enabling_needs_download_log(cls, value: bool) -> bool:
+        """설정 파일 읽기·check-config 등록·DB 사본 읽기가 모두 이 검사를 거친다."""
+        if value and not xlsx_download_log_ready():
+            raise ValueError(XLSX_ENABLE_BLOCKED_MESSAGE)
+        return value
+
+
+class SalesAnalysisSettings(FileModel):
+    """계약 C7 `salesAnalysis`(#608). 기준 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+
+    # 표본(접촉한 곳 수)이 이 값보다 적으면 비율을 내지 않는다.
+    min_sample_for_ratio: int = Field(ge=1, strict=True)
+    # 성사·거절은 결과 기록이 이 일수 안인 것만 센다.
+    closed_window_days: int = Field(ge=1, strict=True)
+
+
+class AssistantSettings(FileModel):
+    """계약 C7 `assistant`(#680 영업 비서). 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩).
+
+    켜고 끄는 스위치는 여기 없다 — `llm.salesRecordsEnabled`(와 `llm.mode`)가 스위치다.
+    """
+
+    # 하루(한국 날짜)에 질문에 답하기·통화 준비를 합쳐 외부 AI를 부를 수 있는 횟수.
+    daily_question_limit: int = Field(ge=1, strict=True)
+    question_max_length: int = Field(ge=1, strict=True)
+    # 조회 글에 싣는 회사 수 상한. 넘으면 관심 회사를 먼저 싣는다.
+    max_companies: int = Field(ge=1, strict=True)
+    max_output_tokens: int = Field(ge=1, strict=True)
+
+
+class ContactAdjustSettings(FileModel):
+    """계약 C7 `contactList.adjust`(#610). 같은 공정·산업군의 성사·거절로 순서를 조정하는 기준."""
+
+    window_days: int = Field(ge=1, strict=True)
+    # 표본(성사 + 센 거절)이 이 값보다 적으면 조정하지 않는다.
+    min_closed_count: int = Field(ge=1, strict=True)
+    won_per_step: int = Field(ge=1, strict=True)
+    max_up: int = Field(ge=0, strict=True)
+    lost_per_step: int = Field(ge=1, strict=True)
+    max_down: int = Field(ge=0, strict=True)
+    lost_reasons_counted: list[LostReasonCode]
+
+
+class ContactListSettings(FileModel):
+    """계약 C7 `contactList`(#610, 근거 상태 묶음 #675). 기준은 코드에 두지 않는다(규칙 ⑩)."""
+
+    # 살아 있는 근거가 이 수 이상이면 "근거 있음" 묶음(#675). 이 키가 생기기 전의 설정에는 없어서
+    # None을 받고, DB 사본을 읽을 때 예시 파일 값으로 채운다. 채워지지 않았으면 목록이 알린다.
+    evidence_ready_min: int | None = Field(default=None, ge=1, strict=True)
+    # 아래 두 키는 세 묶음(#610) 때 쓰던 값이다. 더는 쓰지 않고 옛 설정이 깨지지 않게 읽기만 한다.
+    now_classifications: list[ClassificationCode] | None = None
+    unscored_high_fit_to_now: bool | None = Field(default=None, strict=True)
+    # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
+    null_fit_level_as: FitLevel
+    adjust: ContactAdjustSettings
 
 
 class MainPhoneSettings(FileModel):
@@ -122,6 +370,48 @@ class ListFilterSettings(FileModel):
     region_presets: list[RegionPreset] = Field(default_factory=list)
 
 
+class DashboardSettings(FileModel):
+    """계약 C7 `dashboard`(2026-11-03 PM 결정). 이 칸이 없는 옛 설정 파일·DB 사본도 읽는다."""
+
+    # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
+    count_proposed_industries: bool = True
+
+
+class GeosanLocationSettings(FileModel):
+    """거리의 기준점(C7 #222). 좌표가 준비되기 전에는 거리 값을 내지 않는다."""
+
+    address: str = "충청남도 천안시 서북구 성거읍 봉주로 303-1"
+    lat: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    lng: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def coordinate_pair(self):
+        if (self.lat is None) != (self.lng is None):
+            raise ValueError("거산의 위도·경도는 함께 넣거나 함께 비워 주세요.")
+        return self
+
+
+class GeocodingSettings(FileModel):
+    """2026-11-13 확인: CSV 우선, 외부 조회 1만 회, 네이버는 실시간 전용."""
+
+    provider: Literal["JUSO"] = "JUSO"
+    enabled: bool = Field(default=False, strict=True)
+    daily_call_limit: int = Field(default=10000, ge=1, strict=True)
+    location_csv_files: list[str] = Field(default_factory=list)
+    location_csv_base_date: date | None = None
+    naver_fallback_enabled: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def source_settings(self):
+        if any(not name.strip() for name in self.location_csv_files):
+            raise ValueError("위치 CSV 경로는 빈칸으로 넣을 수 없습니다.")
+        if self.location_csv_files and self.location_csv_base_date is None:
+            raise ValueError("위치 CSV를 쓰려면 자료 기준일을 넣어 주세요.")
+        if self.naver_fallback_enabled and not self.enabled:
+            raise ValueError("네이버 실시간 보완은 좌표 조회를 켠 뒤 사용해 주세요.")
+        return self
+
+
 class AppSettings(FileModel):
     """앱 설정 한 벌(C7 AppSettings). 더하는 변경(2026-10-21 PM 확인): brand.demoLabel."""
 
@@ -130,13 +420,30 @@ class AppSettings(FileModel):
     ingestion: IngestionSettings
     llm: LlmSettings
     homepage_discovery: HomepageDiscoverySettings
+    candidate_web_search: CandidateWebSearchSettings = Field(
+        default_factory=CandidateWebSearchSettings
+    )
     brand: BrandSettings
     access_protection: AccessProtectionSettings
     records: RecordsSettings = Field(default_factory=RecordsSettings)
     research: ResearchSettings = Field(default_factory=ResearchSettings)
+    # #608: 이 칸이 없는 옛 설정 파일도 읽는다. DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    sales_analysis: SalesAnalysisSettings | None = None
+    # #680: 위와 같은 방식(영업 비서 기준 숫자).
+    assistant: AssistantSettings | None = None
+    # #610: 위와 같은 방식. 옛 설정에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    contact_list: ContactListSettings | None = None
+    # #217: 이 칸이 없는 옛 설정 파일은 꺼짐으로 읽는다. DB 사본에 없으면 예시 파일 값으로 채운다.
+    export: ExportSettings = Field(default_factory=ExportSettings)
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
+    dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+    geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
+    geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
+    distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
+    # 대시보드 지도 "같이 들를 곳" 반경(km, #673 PM 결정 2026-11-13).
+    visit_group_radius_km: float = Field(default=5, gt=0, le=50)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
@@ -144,6 +451,29 @@ class AppSettings(FileModel):
     def is_recording_staff(self, key: str | None) -> bool:
         """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3)."""
         return bool(key) and key in self.staff_keys() and key != VIEWER_STAFF_KEY
+
+    @model_validator(mode="after")
+    def check_pick_model(self) -> AppSettings:
+        pick_model = self.ingestion.ai_pick.model
+        if (
+            pick_model is not None
+            and self.llm.allowed_models
+            and pick_model not in self.llm.allowed_models
+        ):
+            raise ValueError(
+                "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def unofficial_page_needs_blocked_domains(self) -> AppSettings:
+        # #511: 채용·유료 기업 정보 사이트를 버릴 목록 없이는 공개 페이지 받기를 켤 수 없다.
+        if self.research.allow_unofficial_page and not self.candidate_web_search.blocked_domains:
+            raise ValueError(
+                "research.allowUnofficialPage를 켜려면 candidateWebSearch.blockedDomains에 "
+                "막는 사이트 목록을 먼저 적어 주세요."
+            )
+        return self
 
 
 @dataclass
@@ -281,7 +611,109 @@ def read_app_settings(session: Session) -> AppSettings | None:
     data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
     if not data:
         return None
-    return AppSettings.model_validate(data)
+    return AppSettings.model_validate(
+        _fill_added_contact_list_keys(
+            _fill_added_research_keys(
+                _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+            )
+        )
+    )
+
+
+ADDED_LLM_KEYS = ("unconfirmedCallCostUsd",)
+"""#538 뒤에 생긴 필수 llm 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다(#591)."""
+
+
+def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 llm 칸만 예시 파일 값으로 채운 새 dict. 다른 칸은 그대로 둔다."""
+    llm = data.get("llm")
+    if not isinstance(llm, dict):
+        return data
+    missing = [key for key in ADDED_LLM_KEYS if key not in llm]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).llm.model_dump(by_alias=True)
+    filled = {**llm, **{key: defaults[key] for key in missing}}
+    return {**data, "llm": filled}
+
+
+ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant")
+"""#608·#610·#217·#680 뒤에 생긴 묶음. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 없거나 비어 있는 묶음만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    missing = [key for key in ADDED_SECTIONS if data.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
+    return {**data, **{key: defaults[key] for key in missing}}
+
+
+ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)
+"""#675 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_contact_list_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 없거나 비어 있는 contactList 칸만 예시 파일 값으로 채운 새 dict(#591 방식)."""
+    contact_list = data.get("contactList")
+    if not isinstance(contact_list, dict):
+        return data
+    missing = [key for key in ADDED_CONTACT_LIST_KEYS if contact_list.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).contact_list.model_dump(by_alias=True)
+    filled = {**contact_list, **{key: defaults[key] for key in missing}}
+    return {**data, "contactList": filled}
+
+
+ADDED_INGESTION_KEYS = ("costEstimate",)
+"""#549 뒤에 생긴 필수 ingestion 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 ingestion 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    ingestion = data.get("ingestion")
+    if not isinstance(ingestion, dict):
+        return data
+    missing = [key for key in ADDED_INGESTION_KEYS if key not in ingestion]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
+    filled = {**ingestion, **{key: defaults[key] for key in missing}}
+    return {**data, "ingestion": filled}
+
+
+ADDED_RESEARCH_KEYS = (
+    "autoOnBookmarkDailyCostUsd",
+    "suggestAgainAfterDays",
+    "allowUnofficialPage",
+)
+"""#690·#677·#511 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_research_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 research 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    research = data.get("research")
+    if not isinstance(research, dict):
+        return data
+    missing = [key for key in ADDED_RESEARCH_KEYS if key not in research]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).research.model_dump(by_alias=True)
+    filled = {**research, **{key: defaults[key] for key in missing}}
+    return {**data, "research": filled}
+
+
+def is_demo_database(session: Session) -> bool:
+    """이 DB의 앱 설정 사본에 시연 표시(brand.demo)가 있는가(#274). 사본이 없으면 False.
+
+    다른 설정 칸이 옛 모양이어도 판단이 흔들리지 않게 brand 행 하나만 읽는다.
+    """
+    from geosan.config.models import AppSetting
+
+    row = session.get(AppSetting, "brand")
+    return isinstance(row.value if row else None, dict) and row.value.get("demo") is True
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"

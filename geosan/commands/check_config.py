@@ -11,7 +11,11 @@ from pathlib import Path
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
-from geosan.config.app_settings import check_app_settings_file, read_app_settings
+from geosan.config.app_settings import (
+    check_app_settings_file,
+    is_demo_database,
+    read_app_settings,
+)
 from geosan.config.errors import AppError
 from geosan.config.paths import normalize_input_path
 from geosan.config.registry import (
@@ -20,6 +24,11 @@ from geosan.config.registry import (
     register_config_files,
 )
 from geosan.config.rule_config import check_rule_config_file
+from geosan.config.sales_questions import (
+    call_signal_errors,
+    check_sales_questions_file,
+    questions_path,
+)
 from geosan.config.validators import format_field_error
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
@@ -55,6 +64,20 @@ def run_check_config(
         for error in app_result.errors:
             typer.echo(f"오류 [{app_path.name}]: {format_field_error(error)}")
         errors += len(app_result.errors)
+        # #607: 설정이 가리키는 꼬리 질문 파일도 함께 검사한다(인자는 그대로).
+        if app_result.settings is not None:
+            questions_file = questions_path(app_result.settings.records.sales_questions_file)
+            questions_result = check_sales_questions_file(questions_file)
+            for error in questions_result.errors:
+                typer.echo(f"오류 [{questions_file.name}]: {format_field_error(error)}")
+            errors += len(questions_result.errors)
+            # #685: 통화 신호 대응표의 질문·보기 id가 꼬리 질문 파일에 실제로 있는지 본다.
+            if rule_result.config is not None and questions_result.questions is not None:
+                for error in call_signal_errors(
+                    rule_result.config, questions_result.questions, rule_result.document
+                ):
+                    typer.echo(f"오류 [{rule_path.name}]: {format_field_error(error)}")
+                    errors += 1
     except AppError as exc:
         for error in exc.fields:
             typer.echo(f"오류: {format_field_error(error)}")
@@ -101,6 +124,14 @@ def run_check_config(
         return EXIT_OK
     try:
         with session_scope(db_path) as session:
+            # #274: 시연 표시를 지우는 등록은 받지 않는다(지우면 serve의 배포 차단이 풀린다).
+            if is_demo_database(session) and not app_result.settings.brand.demo:
+                typer.echo("오류: 시연용 DB에는 시연용 설정만 등록할 수 있습니다.")
+                typer.echo(
+                    f"{db_path.name}에는 시연 표시가 있습니다. 실제 설정은 GEOSAN_DB_PATH를 "
+                    "실제 DB로 바꾼 뒤 등록해 주세요."
+                )
+                return EXIT_INPUT_ERROR
             runtime = register_config_files(session, rule_path, app_path)
             registered = f"{runtime.rule_version.rule_version} ({runtime.rule_version.status})"
     except AppError as exc:

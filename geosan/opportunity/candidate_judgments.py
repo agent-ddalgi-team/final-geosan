@@ -11,11 +11,35 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Literal
 
-from pydantic import ConfigDict, Field, TypeAdapter, field_validator
+from pydantic import ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 from geosan.config.errors import AppError, InputError
 from geosan.config.schemas import FileModel
 from geosan.evidence.contacts import scrub_contacts
+
+CANDIDATE_INPUT_FIELDS = (
+    "rowId",
+    "companyName",
+    "complexName",
+    "product",
+    "industryName",
+    "address",
+    "rawMaterials",
+)
+
+
+def candidate_product_hash(
+    product: str | None, industry_name: str | None, raw_materials: str | None = None
+) -> str:
+    """판단 메모의 지문은 생산품과 업종명을 함께 묶는다(#425 PM 결정).
+
+    원본 표의 생산품 무결성 해시와 구별한다. 원본·조회 캐시의 기존 행 번호는 바꾸지 않는다.
+    팩토리온 원자재가 붙은 행은 원자재도 묶어 원자재만 바뀌어도 다시 판단한다(#570).
+    원자재가 없으면 예전과 같은 두 값 지문이다.
+    """
+    values = [product, industry_name] + ([raw_materials] if raw_materials is not None else [])
+    value = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 class CandidateJudgment(FileModel):
@@ -27,7 +51,7 @@ class CandidateJudgment(FileModel):
     is_manufacturer: bool
     process_codes: list[str]
     industries: list[str]
-    reason: str = Field(min_length=1)
+    reason: str
     fit_level: Literal["HIGH", "MEDIUM", "LOW"]
     own_plating_line_suspected: bool
     own_plating_line_basis: str | None
@@ -35,9 +59,16 @@ class CandidateJudgment(FileModel):
     @field_validator("reason")
     @classmethod
     def reason_without_contacts(cls, value: str) -> str:
-        if not value.strip() or scrub_contacts(value)[1]:
-            raise ValueError("고른 이유가 비어 있거나 연락처가 있습니다.")
+        if scrub_contacts(value)[1]:
+            raise ValueError("고른 이유에 연락처가 있습니다.")
         return value
+
+    @model_validator(mode="after")
+    def manufacturer_needs_reason(self) -> CandidateJudgment:
+        """제조업이면 이유가 있어야 한다. 아니면 빈 이유로 짧게 답해도 된다(pick-v2, #491)."""
+        if self.is_manufacturer and not self.reason.strip():
+            raise ValueError("제조업 판단에는 고른 이유가 있어야 합니다.")
+        return self
 
     @field_validator("own_plating_line_basis")
     @classmethod
@@ -114,6 +145,7 @@ def parse_candidate_judgments(
                 or len(set(judgment.industries)) != len(judgment.industries)
                 or not set(judgment.process_codes) <= allowed_processes
                 or not set(judgment.industries) <= allowed_industries
+                or len(judgment.industries) > 3
             ):
                 raise ValueError("AI 판단이 허용 목록과 맞지 않습니다.")
         return tuple(by_id[row_id] for row_id in row_ids)
@@ -149,16 +181,26 @@ def select_candidates(
     )
 
 
+def rank_candidates(judgments: Sequence[CandidateJudgment]) -> list[CandidateJudgment]:
+    """적합도 상 → 중 → 하, 표면처리 직접 표시는 뒤로(목록의 점수 전 순서와 같다, #528)."""
+    order = ("HIGH", "MEDIUM", "LOW")
+    return sorted(
+        judgments,
+        key=lambda item: (item.own_plating_line_suspected, order.index(item.fit_level)),
+    )
+
+
 def candidate_criteria_version(
     *,
     process_catalog: Mapping[str, str],
     industry_catalog: Sequence[str],
     prompt: str,
+    input_fields: Sequence[str] = CANDIDATE_INPUT_FIELDS,
 ) -> str:
-    """판단 재사용용 기준 지문(C6). 생산품 해시는 FactoryRow.product_hash를 따로 비교한다.
+    """판단 재사용용 기준 지문(C6). 생산품·업종명의 판단 지문은 별도로 비교한다.
 
     목록 순서만 바뀐 것은 같은 기준이다. 전체 공정 코드·이름, 전체 산업 목록 또는
-    실제 사용하는 지시문이 바뀌면 다른 기준이다. 선택 공정·산업은 판단 뒤 거르기에만
+    실제 사용하는 지시문·입력 칸 목록이 바뀌면 다른 기준이다. 선택 공정·산업은 판단 뒤 거르기에만
     쓰므로 기준에 넣지 않는다(#221 PM 결정). 지역은 AI 판단 전 주소 필터로 처리한다.
     이 값만으로 DB의 저장된 판단이 최신이라고 확정하거나 다시 판단 요청을 생략하지 않는다.
     """
@@ -170,6 +212,7 @@ def candidate_criteria_version(
             "processCatalog": dict(process_catalog),
             "industryCatalog": sorted(allowed_industries),
             "prompt": prompt,
+            "inputFields": list(_labels(input_fields, required=True)),
         },
         sort_keys=True,
         ensure_ascii=False,
