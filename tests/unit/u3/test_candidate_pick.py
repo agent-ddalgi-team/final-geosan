@@ -456,6 +456,69 @@ def test_manufacturing_hint_keeps_row_for_ai_despite_keyword():
     assert pick.rule_excluded({"product": "볼트", "industryName": "도매업"}, ("도매",)) is True
 
 
+@pytest.mark.parametrize(
+    ("product", "keyword"),
+    [
+        ("물류 자동화 설비", "물류"),
+        ("식품오염 검사기", "식품"),
+        ("고속무선전송장치, 원격교육 솔루션", "교육"),
+        ("멀티터치테이블, 교육용기자재", "교육"),
+        ("반도체 물류이송장치", "물류"),
+    ],
+)
+def test_equipment_makers_go_to_ai_despite_keyword(product, keyword):
+    """#221: 장비를 만드는 회사는 제외 키워드가 있어도 AI 판단을 받는다(공개 표본 5곳의 모양)."""
+    assert pick.rule_excluded({"product": product, "industryName": None}, (keyword,)) is False
+
+
+def test_logistics_service_without_equipment_is_still_excluded():
+    """#221: 장비 낌새가 없는 서비스는 지금처럼 AI에 보내지 않는다."""
+    assert pick.rule_excluded({"product": "물류 서비스", "industryName": None}, ("물류",)) is True
+    assert pick.rule_excluded({"product": "교육 컨설팅", "industryName": None}, ("교육",)) is True
+
+
+def test_old_rule_judgment_is_redone_by_ai_when_hints_widen(pick_context, monkeypatch):
+    """Given 옛 규칙으로 '제조업 아님'이 저장된 행 / When 제조 낌새가 넓어져 더는 안 걸림
+    / Then 그 행만 AI가 판단하고, 그다음 찾기에서는 그 AI 판단을 다시 쓴다(#221).
+
+    가상 행의 생산품("운송 서비스")은 그대로 두고, 낌새 목록을 바꿔 "규칙이 넓어진 것"을 흉내 낸다.
+    """
+    context = pick_context
+    equipment = context["ids"][1]
+    setting(
+        "ingestion",
+        aiPick={
+            "enabled": True,
+            "rowsPerCall": 1,
+            "promptFile": str(context["prompt"]),
+            "excludeKeywords": ["운송"],
+        },
+    )
+    fake(context, monkeypatch)
+    first = run(context)
+    assert first[1].is_manufacturer is False
+    assert [json.loads(call["input"])[0]["rowId"] for call in context["calls"]] == [
+        context["ids"][0]
+    ]
+    context["calls"].clear()
+    monkeypatch.setattr(pick, "_MANUFACTURING_HINTS", (*pick._MANUFACTURING_HINTS, "서비스"))
+    run(context)
+    assert [json.loads(call["input"])[0]["rowId"] for call in context["calls"]] == [equipment]
+    with session_scope() as session:
+        models = [
+            row.model
+            for row in session.scalars(
+                select(CandidateJudgment)
+                .where(CandidateJudgment.row_id == equipment)
+                .order_by(CandidateJudgment.judged_at)
+            )
+        ]
+    assert models[0] == pick.RULE_MODEL and models[-1] != pick.RULE_MODEL
+    context["calls"].clear()
+    run(context)
+    assert context["calls"] == []
+
+
 def test_pick_model_override_is_used_for_the_call(pick_context, monkeypatch):
     """#491: aiPick.model을 두면 후보 고르기만 그 모델로 부르고 저장 기록에도 남는다."""
     context = pick_context
