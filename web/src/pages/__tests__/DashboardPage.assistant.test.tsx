@@ -97,6 +97,7 @@ describe('대시보드 › 오늘 정리 (#743)', () => {
         generatedAt: '2026-11-14T00:00:00Z',
         reused: false,
       },
+      meta: {},
     });
     renderPage(ON);
     const brief = await screen.findByTestId('assistant-daily');

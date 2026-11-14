@@ -42,7 +42,7 @@ describe('대시보드 › 오늘 확인할 것 › 오늘 정리 (#743)', () =>
   beforeEach(() => mockedDaily.mockReset());
 
   it('쓰는 동안 안내 한 줄, 받으면 글·"AI가 쓴 글 · 확인 필요"·근거 회사 링크가 보인다', async () => {
-    mockedDaily.mockResolvedValue({ data: brief });
+    mockedDaily.mockResolvedValue({ data: brief, meta: {} });
     renderDaily();
     expect(screen.getByTestId('assistant-daily-loading')).toHaveTextContent(texts.dailyLoading);
     const box = await screen.findByTestId('assistant-daily');
