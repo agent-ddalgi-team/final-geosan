@@ -1141,6 +1141,8 @@ export default function RecordsArea({
                 value={scheduleAt}
                 onChange={setScheduleAt}
                 from={todayKst()}
+                // 지난 날짜는 못 고른다(꼬리 질문 쪽과 같은 규칙, PM 세션 결정 2026-11-14 #740).
+                min={todayKst()}
                 disabled={disabled}
                 label={recordsArea.scheduleDate}
                 testId="records-schedule-quick"

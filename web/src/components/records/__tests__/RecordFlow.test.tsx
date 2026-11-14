@@ -25,9 +25,6 @@ import type { FrameValue } from '../../frame/FrameContext';
 import { todayKst } from '../../../utils/time';
 import { addDays, pickCalendarDate } from '../../../test/pickCalendarDate';
 
-// 펼쳐진 달력(antd)을 누르는 시험은 화면 그리기가 무거워 PC가 바쁠 때 기본 5초를 넘길 수 있다(#740).
-vi.setConfig({ testTimeout: 20_000 });
-
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   postOutcome: vi.fn(),
@@ -499,6 +496,21 @@ describe('통화 없이 일정만 잡기 (#691)', () => {
     for (const key of ['method', 'result', 'attemptedAt', 'answers']) {
       expect(body).not.toHaveProperty(key);
     }
+  });
+
+  // #740(PM 세션 결정 2026-11-14): 전에는 이 칸의 "다른 날짜"로 지난 날짜도 넣을 수 있었다. 이제 꼬리 질문과 같이 막는다.
+  it('일정만 잡기 달력에서도 오늘보다 앞 날짜는 눌리지 않고 이전 달로 넘어가지 않는다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2099-11-10T03:00:00Z') });
+    const user = userEvent.setup();
+    renderArea();
+    await user.click(screen.getByTestId('records-schedule-toggle'));
+    const past = screen.getByTestId('records-schedule-quick-day-2099-11-09');
+    expect(past).toBeDisabled();
+    await user.click(past);
+    expect(past).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('records-schedule-quick-prev')).toBeDisabled();
+    expect(screen.getByTestId('records-schedule-quick-day-2099-11-10')).toBeEnabled();
+    expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
   });
 
   it('채워진 내용은 고쳐 쓸 수 있고, 날짜를 안 고르면 저장할 수 없다', async () => {
