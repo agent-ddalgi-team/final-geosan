@@ -314,3 +314,66 @@ def test_daily_brief_changes_nothing_but_transfer_log(daily_env):
     before = row_counts()
     assert daily(client).status_code == 200
     assert row_counts() == before
+
+
+# ---------------------------------------------------------------------------
+# PM 결정 2026-11-14 후속: 일정 질문의 지시문, 뒤로 간 단계 이동 빼기
+# ---------------------------------------------------------------------------
+
+
+def test_schedule_question_instructions_ask_to_add_missed_schedule_and_visits(daily_env):
+    """Given 오늘 일정 없음 / When "이번 주 방문 어디야?" / Then 지시문·조회 자료에 재료."""
+    client, ids, fake = daily_env
+    seed(client, ids)
+    assert ask(client, "이번 주 방문 어디야?").status_code == 200
+    (payload,) = fake.payloads
+    instructions = payload["instructions"]
+    assert "오늘 일정이 없으면 '오늘 일정은 없음'이라고 쓰고" in instructions
+    assert "놓친 일정과 같이 들를 곳만 짧게 덧붙인다" in instructions
+    # 지어내지 않는다는 원칙은 그대로다.
+    assert "지어내지 않는다" in instructions
+    sent = payload["input"]
+    assert "놓친 일정: " in sent and "오늘: 없음" in sent
+    assert "가상 anchor(진행 중) → 가상 near 1.1km(관심)" in sent
+
+
+def test_daily_brief_leaves_out_backward_stage_moves(daily_env):
+    """Given 접촉 → 미접촉 → 다시 접촉 / When 오늘 정리 / Then 앞으로 간 이동 한 번만 싣는다."""
+    client, ids, fake = daily_env
+    seed(client, ids)
+    record(client, ids["anchor"], {"status": "NOT_EXECUTED"})
+    record(client, ids["anchor"], {"status": "IN_PROGRESS"})
+    assert daily(client).status_code == 200
+    sent = fake.payloads[0]["input"]
+    assert sent.count("| 가상 anchor | 미접촉 → 접촉") == 1
+    assert "접촉 → 미접촉" not in sent
+    assert "| 가상 hold | 미접촉 → 보류" in sent  # 보류로 바뀐 것은 싣는다.
+
+
+def test_daily_brief_leaves_out_moves_from_cancelled_records(daily_env):
+    """Given 견적·샘플 기록을 잘못 입력으로 취소 / When 오늘 정리 / Then 그 이동도 되돌림도 없다."""
+    from sqlalchemy import select
+
+    from geosan.records.models import Outcome
+
+    client, ids, fake = daily_env
+    seed(client, ids)
+    record(client, ids["near"], {"status": "IN_PROGRESS"})
+    record(client, ids["near"], {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})
+    with session_scope() as session:
+        outcome_id = session.scalar(
+            select(Outcome.outcome_id).where(
+                Outcome.opp_id == ids["near"],
+                Outcome.status == "SAMPLE_OR_REGISTRATION_APPROVED",
+            )
+        )
+    response = client.post(
+        f"/api/v1/opportunities/{ids['near']}/records/{outcome_id}/cancel",
+        json={"reason": "가상 취소"},
+        headers=STAFF,
+    )
+    assert response.status_code == 200, response.text
+    assert daily(client).status_code == 200
+    sent = fake.payloads[0]["input"]
+    assert "| 가상 near | 미접촉 → 접촉" in sent
+    assert "견적·샘플" not in sent and "→ 미접촉" not in sent

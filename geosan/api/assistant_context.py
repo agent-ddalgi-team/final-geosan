@@ -435,12 +435,22 @@ def build_ask_context(
     )
 
 
+# 앞으로 가는 순서(#743 PM 결정): 미접촉 → 접촉 → 견적·샘플. 보류·성사·거절은 이 줄 밖이다.
+_FORWARD_ORDER = {_NO_STAGE: 0, "IN_PROGRESS": 1, "SAMPLE_OR_REGISTRATION_APPROVED": 2}
+
+
 def _stage_moves(
     session: Session, opp_ids: Sequence[str], since: date
 ) -> list[tuple[date, str, str, str]]:
-    """큰 단계가 바뀐 기록(취소한 기록 제외)을 저장 순서대로 본다. 코드값·날짜만 읽는다."""
+    """큰 단계가 앞으로 간 기록(취소한 기록 제외)을 저장 순서대로 본다. 코드값·날짜만 읽는다.
+
+    뒤로 간 이동은 싣지 않는다(PM 결정 2026-11-14): 앞으로 가는 줄(미접촉 → 접촉 → 견적·샘플)에서
+    그 회사가 이미 이른 단계 이하로 가는 이동(예: 접촉 → 미접촉, 그 뒤 다시 접촉)은 빼고, 보류·성사·
+    거절로 바뀐 것은 싣는다. 잘못 입력으로 취소한 기록은 처음부터 보지 않는다.
+    """
     moves = []
     previous: dict[str, str] = {}
+    reached: dict[str, int] = {}
     for opp_id, status, attempted_at, created_at in session.execute(
         select(Outcome.opp_id, Outcome.status, Outcome.attempted_at, Outcome.created_at)
         .where(Outcome.opp_id.in_(opp_ids), Outcome.cancelled_at.is_(None))
@@ -448,8 +458,15 @@ def _stage_moves(
     ):
         before = previous.get(opp_id, _NO_STAGE)
         previous[opp_id] = status
+        if status == before:
+            continue
+        rank = _FORWARD_ORDER.get(status)
+        if rank is not None:
+            if rank <= reached.get(opp_id, 0):
+                continue  # 뒤로 갔거나 이미 이른 단계로 되돌아온 것
+            reached[opp_id] = rank
         day = attempted_at or created_at.astimezone(KST).date()
-        if status != before and day >= since:
+        if day >= since:
             moves.append((day, opp_id, before, status))
     return sorted(moves)
 
