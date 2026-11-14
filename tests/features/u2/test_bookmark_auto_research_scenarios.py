@@ -130,6 +130,20 @@ def limit_almost_used(env):
     spend_today(env, "0.4999")
 
 
+@given("하루 금액이 조사 한 곳 예상 비용과 같고 방금 다른 회사의 관심 자동 조사가 시작됐다")
+def another_company_just_started(env):
+    """#719: 아직 AI 호출 행이 없는 시작 표시 1행(다른 회사). 실제 비용은 아직 0이다."""
+    from geosan.config.app_settings import read_app_settings
+
+    with session_scope() as session:
+        estimate = read_app_settings(session).ingestion.cost_estimate.research_usd_per_company
+        opportunity = session.get(Opportunity, env[1].opp_id)
+        row = auto_research._marker(opportunity, reject_reason=None)
+        row.opp_id = new_id("opp")
+        session.add(row)
+    set_limit(estimate)
+
+
 @given("관심 자동 조사 하루 금액 설정이 0이다")
 def limit_zero(env):
     set_limit(0)

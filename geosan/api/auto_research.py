@@ -7,7 +7,8 @@
 - 스위치: 설정 `homepageDiscovery.autoResearch`가 꺼져 있으면 돌지 않는다(#719).
 - 하루 금액: 설정 `research.autoOnBookmarkDailyCostUsd`(0이면 꺼짐). 관심 자동 조사가 남긴
   AI 호출 행(요청자 auto-bookmark)의 오늘 비용 합이 설정보다 적을 때만 새 조사를 시작한다.
-  비용은 호출 뒤에야 찍히므로 마지막 한 곳(동시에 시작된 곳 포함)만큼은 넘을 수 있다.
+  비용은 호출 뒤에야 찍히므로 방금 시작한 조사는 예상 비용으로 함께 센다(#719). 실제 비용이
+  예상보다 큰 만큼만 넘을 수 있다.
 - "조사 중" 표시: 이 프로세스의 메모리에만 둔다. 서버가 다시 켜지면 사라지고, 그 뒤 화면은
   저장된 값으로 정한 상태(읽기 실패 등)를 보인다.
 """
@@ -18,12 +19,12 @@ import logging
 import time
 from contextlib import contextmanager
 from contextvars import ContextVar
-from datetime import UTC
+from datetime import UTC, timedelta
 from decimal import Decimal
 from threading import Lock
 
 from fastapi import BackgroundTasks
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
@@ -140,7 +141,10 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
     )
     if has_evidence is not None or is_running(opp_id):
         return
-    if spent_today(session, settings.llm) >= limit:
+    pending = _pending_starts(session)
+    if any(row.opp_id == opp_id for row in pending):
+        return
+    if used_today(session, settings, pending=pending) >= limit:
         session.add(_marker(opportunity, reject_reason=LIMIT_REASON))
         return
     session.add(_marker(opportunity, reject_reason=None))
@@ -159,6 +163,52 @@ def spent_today(session: Session, llm) -> Decimal:
         )
     ).all()
     return sum((accounted_cost(row, llm) for row in rows), Decimal(0))
+
+
+def _pending_starts(session: Session) -> list[TransferLog]:
+    """방금 시작해 아직 끝나지 않은 관심 자동 조사의 시작 표시 행(#719).
+
+    조사 한 곳 최대 시간("조사 중" 표시와 같은 시간) 안에 남았고, 그 뒤 그 회사의 AI 호출 행이나
+    거부 행이 아직 없는 것만이다. 서버가 꺼져 끝나지 못한 조사는 시간이 지나면 빠진다.
+    """
+    since = max(_day_start(), utcnow() - timedelta(seconds=_RUNNING_SECONDS))
+    starts = session.scalars(
+        select(TransferLog).where(
+            TransferLog.requested_by == AUTO_REQUESTER,
+            TransferLog.purpose == "EXTERNAL_AI",
+            TransferLog.decision == "ALLOWED",
+            TransferLog.call_count == 0,
+            TransferLog.occurred_at >= since,
+        )
+    ).all()
+    return [
+        row
+        for row in starts
+        if session.scalar(
+            select(TransferLog.transfer_log_id)
+            .where(
+                TransferLog.opp_id == row.opp_id,
+                TransferLog.purpose == "EXTERNAL_AI",
+                TransferLog.transfer_log_id != row.transfer_log_id,
+                TransferLog.occurred_at >= row.occurred_at,
+                or_(TransferLog.call_count > 0, TransferLog.decision == "REJECTED"),
+            )
+            .limit(1)
+        )
+        is None
+    ]
+
+
+def used_today(session: Session, settings, *, pending: list[TransferLog] | None = None) -> Decimal:
+    """하루 금액과 견줄 값: 오늘 쓴 금액 + 방금 시작한 조사 1곳마다 예상 비용(#719).
+
+    비용은 AI 호출이 끝나야 찍혀서, 연달아 관심을 켜면 모두 "아직 0원"으로 보여 한꺼번에
+    시작됐다. 예상 비용은 후보 찾기 예상 금액과 같은 설정(회사 1곳 조사 실측 평균)을 쓴다.
+    """
+    if pending is None:
+        pending = _pending_starts(session)
+    estimate = Decimal(str(settings.ingestion.cost_estimate.research_usd_per_company))
+    return spent_today(session, settings.llm) + estimate * len(pending)
 
 
 def run_auto_research(opp_id: str) -> None:

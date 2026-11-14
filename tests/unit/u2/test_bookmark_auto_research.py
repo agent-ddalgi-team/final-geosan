@@ -325,3 +325,70 @@ def test_queue_does_nothing_outside_a_request(found_company):
         auto_research.queue_on_bookmark(session, session.get(Opportunity, found_company.opp_id))
     assert _logs(found_company.opp_id) == []
     assert not auto_research.is_running(found_company.opp_id)
+
+
+# ---------- #719: 방금 시작한 조사도 하루 금액에 예상 비용으로 센다 ----------
+
+
+def _start_marker(session, opportunity, *, opp_id=None, seconds_ago=0):
+    from datetime import timedelta
+
+    row = auto_research._marker(opportunity, reject_reason=None)
+    row.opp_id = opp_id or opportunity.opp_id
+    row.occurred_at = row.occurred_at - timedelta(seconds=seconds_ago)
+    session.add(row)
+    return row
+
+
+def _spent(session):
+    return auto_research.used_today(session, read_app_settings(session))
+
+
+def test_just_started_research_counts_as_the_estimated_cost(found_company):
+    """Given 시작 표시만 있고 AI 호출 행이 아직 없는 조사 2곳 / Then 예상 비용 2곳만큼 센다."""
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        settings = read_app_settings(session)
+        estimate = Decimal(str(settings.ingestion.cost_estimate.research_usd_per_company))
+        _start_marker(session, opportunity, opp_id="opp-719-a")
+        _start_marker(session, opportunity, opp_id="opp-719-b")
+        session.flush()
+        assert _spent(session) == estimate * 2
+
+
+def test_started_research_is_not_counted_twice_once_its_call_row_exists(found_company):
+    """Given 시작 표시 뒤 그 회사의 AI 호출 행이 생김 / Then 실제 비용만 센다(예상 비용은 뺀다)."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        marker = _start_marker(session, opportunity, seconds_ago=5)
+        call = auto_research._marker(opportunity, reject_reason=None)
+        call.call_count, call.cost_usd = 1, Decimal("0.03")
+        call.occurred_at = marker.occurred_at + timedelta(seconds=3)
+        session.add(call)
+        session.flush()
+        assert _spent(session) == Decimal("0.03")
+
+
+def test_started_research_that_ended_with_a_rejection_is_not_counted(found_company):
+    """Given 시작 표시 뒤 읽기 실패 거부 행 / Then 끝난 조사라 예상 비용을 세지 않는다."""
+    with session_scope() as session:
+        _start_marker(session, session.get(Opportunity, found_company.opp_id), seconds_ago=5)
+    record_search_rejection(
+        found_company.opp_id, "자동 조사 중단 · 가짜 이유", None, purpose="EXTERNAL_AI"
+    )
+    with session_scope() as session:
+        assert _spent(session) == 0
+
+
+def test_start_marker_older_than_one_research_is_not_counted(found_company):
+    """Given 조사 한 곳 최대 시간보다 오래된 시작 표시 / Then 세지 않는다(서버가 꺼졌던 경우)."""
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        _start_marker(session, opportunity, seconds_ago=auto_research._RUNNING_SECONDS + 5)
+        session.flush()
+        assert _spent(session) == 0
