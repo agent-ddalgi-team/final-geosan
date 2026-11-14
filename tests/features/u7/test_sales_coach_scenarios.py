@@ -41,12 +41,13 @@ def only_scrubbed_copy(context):
 
 @then(
     "견적 요청은 AI가 채우고 맡길 공정은 제안으로만 오며 빠진 필수 질문은 "
-    "외주처 바꿀 생각·답이 왔나·방문·샘플 요청이다"
+    "통화 전 단계의 외주처 바꿀 생각뿐이다"
 )
 def filled_and_missing(context):
     fills = {item["questionId"]: item["fill"] for item in context["data"]["answers"]}
     assert fills == {"QUOTE_REQUEST": "AI", "NEXT_ACTION": "AI", "CONFIRM_PROCESS": "SUGGEST"}
-    assert context["data"]["missingRequired"] == ["SWITCH_INTENT", "REPLY", "VISIT_OR_SAMPLE"]
+    # (바뀜 #742 PM 결정) 이번 메모로 넘어간 자료·견적 단계의 질문은 묻지 않는다.
+    assert context["data"]["missingRequired"] == ["SWITCH_INTENT"]
 
 
 @then("피드백은 이전 기록의 날짜를 짚은 줄만 남고 금액·할인·연락처가 든 줄은 없다")

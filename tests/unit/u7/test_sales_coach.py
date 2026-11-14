@@ -182,9 +182,10 @@ def test_answer_is_checked_and_missing_required_is_computed_by_rule(coach_env):
         },
     ]
     assert data["nextSchedule"] == {"actionId": "RECONTACT", "date": day(3)}
-    # 수요 확인 → 자료·견적: 외주처 바꿀 생각(사람이 고름)·답이 왔나·방문·샘플 요청이 빠졌다.
+    # 수요 확인 → 자료·견적. 빠진 필수 질문은 통화 전 단계(수요 확인)와 접촉마다 묻는 것만이다
+    # (바뀜 #742 PM 결정: 이번 메모로 넘어간 단계의 "답이 왔나"·"방문·샘플"은 묻지 않는다).
     assert (data["stepBefore"], data["stepAfter"]) == ("DEMAND_CONFIRMED", "MATERIAL_QUOTE")
-    assert data["missingRequired"] == ["SWITCH_INTENT", "REPLY", "VISIT_OR_SAMPLE"]
+    assert data["missingRequired"] == ["SWITCH_INTENT"]
     assert data["aiGenerated"] is True
     assert data["removedNames"] == 1
 
@@ -329,6 +330,40 @@ def test_saved_answers_keep_who_filled_them(coach_env):
     assert filled["NEXT_ACTION"] == "STAFF" and filled["WHO_TALKED"] == "STAFF"
 
 
+def test_answer_changed_from_ai_is_kept_as_ai_changed(coach_env):
+    """Given AI가 채운 답을 [고치기]에서 바꿈 / When 저장 / Then AI_CHANGED로 남는다."""
+    client, opp_ids, _fake = coach_env
+    record(
+        client,
+        opp_ids[0],
+        {
+            "status": "IN_PROGRESS",
+            "method": "CALL",
+            "result": "REACHED",
+            "answers": [
+                {"questionId": "QUOTE_REQUEST", "answerId": "MATERIAL", "filledBy": "AI_CHANGED"}
+            ],
+        },
+    )
+    with session_scope() as session:
+        filled = session.scalar(
+            select(OutcomeAnswer.filled_by).where(
+                OutcomeAnswer.opp_id == opp_ids[0], OutcomeAnswer.question_id == "QUOTE_REQUEST"
+            )
+        )
+    assert filled == "AI_CHANGED"
+
+
+def test_missing_required_is_capped_by_setting(coach_env):
+    """Given 설정 상한 1 / When 빠진 필수 질문이 둘 / Then 질문 파일 순서로 하나만 온다."""
+    client, opp_ids, fake = coach_env
+    support.change_assistant(coachMaxRequiredQuestions=1)
+    fake.answer = reading(answers=[("QUOTE_REQUEST", ["QUOTE"], "견적 요청함")])
+    data = coach(client, opp_ids[0]).json()["data"]
+    # 상한이 없으면 외주처 바꿀 생각 · 다음 할 일 두 개다.
+    assert data["missingRequired"] == ["SWITCH_INTENT"]
+
+
 def test_unknown_filled_by_is_rejected(coach_env):
     client, opp_ids, _fake = coach_env
     response = client.post(
@@ -402,21 +437,28 @@ def questions() -> SalesQuestions:
     [
         # 첫 통화: 누구와 이야기했나 + 다음 할 일
         ("NOT_REACHED", {}, {}, ["WHO_TALKED", "NEXT_ACTION"]),
-        # 담당 부서와 연결 → 연결됨의 필수(지금 도금 방식)도 묻는다. 꼬리 질문은 아직 안 보임
+        # 담당 부서와 연결 → 연결됨으로 넘어가도 그 단계 질문은 이번에 묻지 않는다(바뀜 #742)
         (
             "NOT_REACHED",
             {},
             {"WHO_TALKED": ["RIGHT_PERSON"], "NEXT_ACTION": ["RECONTACT"]},
-            ["PLATING_NOW"],
+            [],
         ),
         # 직접 함 → 맡길 공정 있나가 보인다
         ("REACHED", {}, {"PLATING_NOW": ["IN_HOUSE"]}, ["NEED_PROCESS", "NEXT_ACTION"]),
-        # 있음(→ 수요 확인) → 맡길 공정·자료·견적 요청. 외주처 바꿀 생각은 안 보임(직접 함)
+        # 있음(→ 수요 확인) → 연결됨의 맡길 공정만. 수요 확인 단계 질문은 묻지 않는다(바뀜 #742)
         (
             "REACHED",
             {"PLATING_NOW": ["IN_HOUSE"]},
             {"NEED_PROCESS": ["YES"], "NEXT_ACTION": ["QUOTE"]},
-            ["CONFIRM_PROCESS", "QUOTE_REQUEST"],
+            ["CONFIRM_PROCESS"],
+        ),
+        # 실측 사진의 경우: 샘플을 요청만 받았는데 "샘플 결과는?"을 묻지 않는다(#742 PM 결정)
+        (
+            "DEMAND_CONFIRMED",
+            {"PLATING_NOW": ["OUTSOURCED"]},
+            {"SENT_ITEM": ["QUOTE"], "REPLY": ["CAME"], "VISIT_OR_SAMPLE": ["SAMPLE"]},
+            ["SWITCH_INTENT", "QUOTE_REQUEST", "NEXT_ACTION"],
         ),
         # 끝 → 어떻게 끝났나, 거절 → 거절 이유(접촉마다, 이번 답만 본다)
         ("VISIT_SAMPLE", {}, {"SAMPLE_RESULT": ["PASS"], "NEXT_ACTION": ["END"]}, ["CLOSE_RESULT"]),
@@ -430,6 +472,16 @@ def questions() -> SalesQuestions:
 )
 def test_missing_required_follows_the_question_file(questions, before, prior, now, expected):
     assert missing_required(questions, prior, now, SalesStep(before)) == expected
+
+
+def test_missing_required_keeps_file_order_up_to_the_limit(questions):
+    prior = {"PLATING_NOW": ["OUTSOURCED"]}
+    now = {"VISIT_OR_SAMPLE": ["SAMPLE"]}
+    before = SalesStep.DEMAND_CONFIRMED
+    assert missing_required(questions, prior, now, before, limit=2) == [
+        "SWITCH_INTENT",
+        "QUOTE_REQUEST",
+    ]
 
 
 def test_step_after_only_moves_forward(questions):

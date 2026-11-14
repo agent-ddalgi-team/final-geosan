@@ -874,7 +874,8 @@ class OutcomeAnswerInput(_RequestModel):
     question_id: str = Field(min_length=1, max_length=40)
     answer_id: str = Field(min_length=1, max_length=40)
     # #742: 누가 채웠나. 영업 코치가 채운 답을 그대로 저장하면 AI_CONFIRMED, 빠지면 STAFF.
-    filled_by: Literal["STAFF", "AI_CONFIRMED"] | None = None
+    # AI_CHANGED: AI가 채운 답을 [고치기]에서 다른 보기로 바꿔 저장(PM 결정 2026-11-14).
+    filled_by: Literal["STAFF", "AI_CONFIRMED", "AI_CHANGED"] | None = None
 
 
 class OutcomeRequest(_RequestModel):

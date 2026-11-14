@@ -155,11 +155,11 @@ def step_after(
     return step
 
 
-def _counts_at(question: SalesQuestion, before: SalesStep, after: SalesStep) -> bool:
-    """이 질문이 이번 접촉에서 지나간 세부 단계의 질문인가. choices 질문은 답할 때까지 묻는다."""
+def _counts_at(question: SalesQuestion, before: SalesStep) -> bool:
+    """이번 접촉 전 세부 단계의 질문인가. choices 질문은 그 단계부터 답할 때까지 묻는다."""
     if question.choices:
-        return _index(question.step) <= _index(after)
-    return _index(before) <= _index(question.step) <= _index(after)
+        return _index(question.step) <= _index(before)
+    return question.step == before
 
 
 def missing_required(
@@ -167,22 +167,23 @@ def missing_required(
     prior: Mapping[str, Sequence[str]],
     now: Mapping[str, Sequence[str]],
     before: SalesStep,
+    limit: int | None = None,
 ) -> list[str]:
-    """빠진 필수 질문(계약 C7 "빠진 필수 질문 규칙"). 질문 파일 순서대로.
+    """빠진 필수 질문(계약 C7 "빠진 필수 질문 규칙"). 질문 파일 순서대로, limit개까지.
 
-    이번 접촉 전 세부 단계부터 이번 답으로 간 세부 단계까지, 각 단계의 required 질문 가운데 보이고
-    (showWhen) requiredWhen이 맞는 것에서 이미 답한 것(이전 답 + 이번 답)을 뺀다. 모든 단계 질문은
-    이번 답만 본다(접촉마다 묻는다).
+    이번 접촉 전 세부 단계(통화 전 "확인사항"의 단계)의 required 질문과 접촉마다 묻는 required
+    질문 가운데 보이고(showWhen) requiredWhen이 맞는 것에서 이미 답한 것(이전 답 + 이번 답)을 뺀다.
+    이번 메모로 넘어간 단계의 질문은 묻지 않는다(#742 PM 결정 2026-11-14: 샘플을 요청만 받았는데
+    "샘플 결과는?"을 묻지 않게). 모든 단계 질문은 이번 답만 본다(접촉마다 묻는다).
     """
     merged = {**prior, **now}
-    after = step_after(questions, before, now)
-    missing = []
+    missing: list[str] = []
     for question in questions.questions:
         if not question.required:
             continue
         if question.step == ALL_STEPS:
             basis: Mapping[str, Sequence[str]] = now
-        elif _counts_at(question, before, after):
+        elif _counts_at(question, before):
             basis = merged
         else:
             continue
@@ -194,7 +195,7 @@ def missing_required(
         if rule and rule.required_when and not _met(rule.required_when.answers, merged):
             continue
         missing.append(question.id)
-    return missing
+    return missing if limit is None else missing[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +456,9 @@ def _clean_line(plan: CoachPlan, text: str) -> str | None:
     return line
 
 
-def check_coaching(plan: CoachPlan, reading: CoachReading) -> CheckedCoaching:
+def check_coaching(
+    plan: CoachPlan, reading: CoachReading, max_required: int | None = None
+) -> CheckedCoaching:
     """AI가 준 답·일정·피드백·요약을 검증하고 빠진 필수 질문을 규칙으로 계산한다."""
     kept: list[CheckedAnswer] = []
     seen: set[str] = set()
@@ -480,6 +483,8 @@ def check_coaching(plan: CoachPlan, reading: CoachReading) -> CheckedCoaching:
         next_schedule=schedule,
         feedback=feedback,
         summary=summary,
-        missing_required=missing_required(plan.questions, plan.prior, now, plan.step_before),
+        missing_required=missing_required(
+            plan.questions, plan.prior, now, plan.step_before, max_required
+        ),
         step_after=step_after(plan.questions, plan.step_before, now),
     )

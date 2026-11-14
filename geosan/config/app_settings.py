@@ -324,6 +324,8 @@ class AssistantSettings(FileModel):
     # 함께 싣는 이전 메모·남긴 피드백 수 상한(각각 최근 것부터).
     coach_daily_limit: int = Field(ge=1, strict=True)
     coach_prior_memo_limit: int = Field(ge=1, strict=True)
+    # #742 확인 화면에 묻는 빠진 필수 질문 수 상한(질문 파일 순서로 앞에서부터).
+    coach_max_required_questions: int = Field(ge=1, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -687,7 +689,7 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, **{key: defaults[key] for key in missing}}
 
 
-ADDED_ASSISTANT_KEYS = ("coachDailyLimit", "coachPriorMemoLimit")
+ADDED_ASSISTANT_KEYS = ("coachDailyLimit", "coachPriorMemoLimit", "coachMaxRequiredQuestions")
 """#742 뒤에 생긴 assistant 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 

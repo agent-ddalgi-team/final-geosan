@@ -53,7 +53,7 @@ class CoachResult(_ApiModel):
     next_schedule: CoachScheduleView | None = None
     feedback: list[str]
     summary: str
-    # 규칙으로 계산한 빠진 필수 질문(AI 아님). 질문 파일 순서.
+    # 규칙으로 계산한 빠진 필수 질문(AI 아님). 질문 파일 순서, 설정 상한까지.
     missing_required: list[str]
     step_before: SalesStep
     step_after: SalesStep
@@ -126,7 +126,7 @@ def coach(
         max_output_tokens=settings.max_output_tokens,
         requested_by=staff,
     )
-    checked = check_coaching(plan, reading)
+    checked = check_coaching(plan, reading, settings.coach_max_required_questions)
     schedule = checked.next_schedule
     return Envelope[CoachResult](
         data=CoachResult(
