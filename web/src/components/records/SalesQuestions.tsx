@@ -18,7 +18,7 @@ import {
   salesStepLabels,
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
-import { ChoiceQuestionField, confirmedLabels } from './ChoiceQuestion';
+import { ChoiceQuestionField, confirmedLabels, confirmedLineText } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
 
@@ -320,7 +320,7 @@ export function SalesQuestionFields({
                 style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
               >
                 <span data-testid={`sales-choice-confirmed-${question.questionId}`}>
-                  {salesChoiceTexts.confirmedLine(confirmed.join(', '))}
+                  {confirmedLineText(question, marks, confirmed)}
                 </span>
                 <Button
                   size="small"

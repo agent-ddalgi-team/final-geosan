@@ -1,6 +1,6 @@
 // #652 꼬리 질문의 공정·산업 확인: 여러 개 고르기, AI 제안·확정 표시, 저장 전 미리 알림, 보내는 답.
 // 서버 호출(getSalesQuestions·postOutcome)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import {
@@ -384,6 +384,23 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
       ],
     });
     await waitFor(() => expect(onCompanyConfirmed).toHaveBeenCalledTimes(1));
+  });
+
+  // #719: 아무도 확정하지 않은 사례 파일 값을 "확정됨"이라고 하지 않는다.
+  it('산업이 사례 파일 값이면 "사례 파일 값: …"으로, 담당자가 확정했으면 "확정됨: …"으로 보인다', async () => {
+    const user = userEvent.setup();
+    renderArea(MIXED);
+    await openQuestions(user);
+    const caseFile = screen.getByTestId('sales-choice-confirmed-CONFIRM_INDUSTRY');
+    expect(caseFile).toHaveTextContent(/^사례 파일 값: 방위산업$/);
+    expect(screen.getByTestId('sales-choice-change-CONFIRM_INDUSTRY')).toHaveTextContent('바꾸기');
+    cleanup();
+
+    renderArea({ ...MIXED, industriesSource: 'STAFF' });
+    await openQuestions(user);
+    expect(screen.getByTestId('sales-choice-confirmed-CONFIRM_INDUSTRY')).toHaveTextContent(
+      /^확정됨: 방위산업$/,
+    );
   });
 
   it('"맞음"을 고른 뒤 다른 공정을 고르면 "맞음"이 풀린다', async () => {

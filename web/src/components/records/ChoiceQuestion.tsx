@@ -65,6 +65,22 @@ export function confirmedLabels(question: SalesQuestion, marks: ChoiceMarks | nu
     .map((option) => option.label);
 }
 
+/**
+ * 이미 값이 있는 질문의 한 줄(#691·#719). 산업이 사례 파일 값이면 아무도 확정한 것이 아니므로
+ * "사례 파일 값: 기계·설비", 그 밖(담당자가 확정한 산업·확정된 공정 연결)은 "확정됨: 아연도금"이다.
+ * 공정 연결은 상세 응답에 출처가 오지 않아 사례 파일 값인지 가를 수 없다.
+ */
+export function confirmedLineText(
+  question: SalesQuestion,
+  marks: ChoiceMarks | null,
+  names: string[],
+): string {
+  const joined = names.join(', ');
+  return question.choices === 'INDUSTRY' && marks?.industriesSource === 'CASE_FILE'
+    ? texts.caseFileLine(joined)
+    : texts.confirmedLine(joined);
+}
+
 /** 고른 값으로 저장하면 빠질 AI 공정 제안 수. */
 function droppedProposals(ids: string[], marks: ChoiceMarks | null): number {
   return Object.entries(marks?.process ?? {}).filter(

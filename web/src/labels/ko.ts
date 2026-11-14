@@ -964,6 +964,8 @@ export const salesChoiceTexts = {
     `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
   /** 이미 확정된 값이 있으면 질문 대신 이 한 줄(#691). "확정됨: 아연도금" + [바꾸기] */
   confirmedLine: (names: string) => `확정됨: ${names}`,
+  /** 산업이 아무도 확정하지 않은 사례 파일 값일 때의 한 줄(#719). "사례 파일 값: 기계·설비" + [바꾸기] */
+  caseFileLine: (names: string) => `사례 파일 값: ${names}`,
   change: '바꾸기',
   changeClose: '그대로 두기',
 } as const;
@@ -1868,7 +1870,12 @@ export const industryChips = {
   save: '저장',
   cancel: '취소',
   groupLabel: '이 회사의 산업군 고르기',
+  /** AI 제안일 때의 안내([확정]·[고치기]가 둘 다 보인다). */
   hint: '맞으면 [확정], 다르면 [고치기]로 고릅니다. 확정한 값으로 영업 분석을 셉니다.',
+  /** 이미 사람이 확인한 값(사례 파일·담당자 확정)일 때의 안내(#719). [고치기]만 보인다. */
+  hintConfirmed: '다르면 [고치기]로 바꿉니다.',
+  /** 산업군 값이 없을 때의 안내(#719). [고치기]만 보인다. */
+  hintNone: '[고치기]로 산업군을 고릅니다.',
   editHint: (max: number) => `산업군은 ${max}개까지 고를 수 있습니다.`,
   pickStaffFirst: '담당자를 고르면 바꿀 수 있습니다.',
   noOptions: '산업군 목록을 불러오지 못해 고칠 수 없습니다.',
