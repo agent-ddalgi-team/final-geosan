@@ -4,9 +4,11 @@
 홈페이지 주소가 있고 아직 조사 전인 회사만, 응답을 보낸 뒤 서버 백그라운드로 한 번 조사한다
 (후보 찾기 뒤 자동 조사와 같은 FastAPI BackgroundTasks). 새 표·일꾼은 없다.
 
+- 스위치: 설정 `homepageDiscovery.autoResearch`가 꺼져 있으면 돌지 않는다(#719).
 - 하루 금액: 설정 `research.autoOnBookmarkDailyCostUsd`(0이면 꺼짐). 관심 자동 조사가 남긴
   AI 호출 행(요청자 auto-bookmark)의 오늘 비용 합이 설정보다 적을 때만 새 조사를 시작한다.
-  비용은 호출 뒤에야 찍히므로 마지막 한 곳(동시에 시작된 곳 포함)만큼은 넘을 수 있다.
+  비용은 호출 뒤에야 찍히므로 방금 시작한 조사는 예상 비용으로 함께 센다(#719). 실제 비용이
+  예상보다 큰 만큼만 넘을 수 있다.
 - "조사 중" 표시: 이 프로세스의 메모리에만 둔다. 서버가 다시 켜지면 사라지고, 그 뒤 화면은
   저장된 값으로 정한 상태(읽기 실패 등)를 보인다.
 """
@@ -15,34 +17,56 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import contextmanager
 from contextvars import ContextVar
-from datetime import UTC
+from datetime import UTC, timedelta
 from decimal import Decimal
 from threading import Lock
 
 from fastapi import BackgroundTasks
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
+from geosan.config.errors import AppError, RunFailedError
 from geosan.evidence.models import Evidence
-from geosan.evidence.transfer import KST, TransferLog, accounted_cost
+from geosan.evidence.transfer import (
+    KST,
+    MONTHLY_LIMIT_REASONS,
+    TransferLog,
+    accounted_cost,
+    record_search_rejection,
+)
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.base import new_id, utcnow
+from geosan.storage.session import session_scope
 from geosan.workflows.research import research_one
 
 logger = logging.getLogger("geosan")
 
 AUTO_REQUESTER = "auto-bookmark"
 LIMIT_REASON = "관심 자동 조사 하루 금액 한도 초과"
+FAILURE_REASON = "자동 조사 중단 · 조사를 끝내지 못했습니다"
 
-# 조사 한 곳의 60초 한도에 여유를 더한 시간. 응답이 실패해 조사가 시작되지 못해도
-# "조사 중" 표시가 이 시간 뒤에는 저절로 풀린다. 영업 규칙이 아니라 표시용 시간이다.
+# 조사 한 곳의 60초 한도에 여유를 더한 시간. 조사가 끝맺지 못해도(서버가 꺼짐 등)
+# "조사 중" 표시와 "방금 시작한 조사" 셈이 이 시간 뒤에는 저절로 풀린다. 영업 규칙이 아니다.
 _RUNNING_SECONDS = 90
 
 _tasks: ContextVar[BackgroundTasks | None] = ContextVar("geosan_auto_research", default=None)
+# #719: 이번 저장으로 영업이 끝나는(성사·거절·보류) 요청은 관심이 켜져도 조사를 예약하지 않는다.
+_paused: ContextVar[bool] = ContextVar("geosan_auto_research_paused", default=False)
 _started: dict[str, float] = {}
 _lock = Lock()
+
+
+@contextmanager
+def no_auto_research(paused: bool = True):
+    """이 안에서 관심이 켜져도 조사를 예약하지 않는다(기록도 남기지 않는다)."""
+    token = _paused.set(paused)
+    try:
+        yield
+    finally:
+        _paused.reset(token)
 
 
 async def attach_background(background_tasks: BackgroundTasks) -> None:
@@ -100,7 +124,13 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
     tasks = _tasks.get()
     if tasks is None or opportunity.is_virtual or opportunity.purpose != "NEW_PROPOSAL":
         return
+    if _paused.get():
+        return
     settings = runtime_for(session).app_settings
+    # #719: 자동 조사 스위치(후보 찾기 뒤·`geosan research`와 같은 스위치)가 꺼져 있으면
+    # 하루 금액이 0일 때처럼 흔적 없이 넘어간다.
+    if not settings.homepage_discovery.auto_research:
+        return
     limit = Decimal(str(settings.research.auto_on_bookmark_daily_cost_usd))
     if limit <= 0:
         return
@@ -120,12 +150,13 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
     )
     if has_evidence is not None or is_running(opp_id):
         return
-    if spent_today(session, settings.llm) >= limit:
+    pending = _pending_starts(session)
+    if any(row.opp_id == opp_id for row in pending):
+        return
+    if used_today(session, settings, pending=pending) >= limit:
         session.add(_marker(opportunity, reject_reason=LIMIT_REASON))
         return
     session.add(_marker(opportunity, reject_reason=None))
-    with _lock:
-        _started[opp_id] = time.monotonic()
     tasks.add_task(run_auto_research, opp_id)
 
 
@@ -141,28 +172,154 @@ def spent_today(session: Session, llm) -> Decimal:
     return sum((accounted_cost(row, llm) for row in rows), Decimal(0))
 
 
-def run_auto_research(opp_id: str) -> None:
-    """응답 뒤 한 번 실행. 실패는 숨기지 않는다: 읽기 실패는 전송 기록에, 나머지는 로그에 남는다."""
-    try:
-        result = research_one(opp_id, find_homepage=False, transfer_requester=AUTO_REQUESTER)
-        if result.error is not None:
-            logger.warning(
-                "bookmark.research_failed", extra={"oppId": opp_id, "ref": result.error.ref}
+def _pending_starts(session: Session) -> list[TransferLog]:
+    """방금 시작해 아직 끝나지 않은 관심 자동 조사의 시작 표시 행(#719).
+
+    조사 한 곳 최대 시간("조사 중" 표시와 같은 시간) 안에 남았고, 그 뒤 그 회사의 AI 호출 행이나
+    거부 행이 아직 없는 것만이다. 서버가 꺼져 끝나지 못한 조사는 시간이 지나면 빠진다.
+    """
+    since = max(_day_start(), utcnow() - timedelta(seconds=_RUNNING_SECONDS))
+    starts = session.scalars(
+        select(TransferLog).where(
+            TransferLog.requested_by == AUTO_REQUESTER,
+            TransferLog.purpose == "EXTERNAL_AI",
+            TransferLog.decision == "ALLOWED",
+            TransferLog.call_count == 0,
+            TransferLog.occurred_at >= since,
+        )
+    ).all()
+    return [
+        row
+        for row in starts
+        if session.scalar(
+            select(TransferLog.transfer_log_id)
+            .where(
+                TransferLog.opp_id == row.opp_id,
+                TransferLog.purpose == "EXTERNAL_AI",
+                TransferLog.transfer_log_id != row.transfer_log_id,
+                TransferLog.occurred_at >= row.occurred_at,
+                or_(TransferLog.call_count > 0, TransferLog.decision == "REJECTED"),
             )
+            .limit(1)
+        )
+        is None
+    ]
+
+
+def used_today(session: Session, settings, *, pending: list[TransferLog] | None = None) -> Decimal:
+    """하루 금액과 견줄 값: 오늘 쓴 금액 + 방금 시작한 조사 1곳마다 예상 비용(#719).
+
+    비용은 AI 호출이 끝나야 찍혀서, 연달아 관심을 켜면 모두 "아직 0원"으로 보여 한꺼번에
+    시작됐다. 예상 비용은 후보 찾기 예상 금액과 같은 설정(회사 1곳 조사 실측 평균)을 쓴다.
+    """
+    if pending is None:
+        pending = _pending_starts(session)
+    estimate = Decimal(str(settings.ingestion.cost_estimate.research_usd_per_company))
+    return spent_today(session, settings.llm) + estimate * len(pending)
+
+
+def run_auto_research(opp_id: str) -> None:
+    """응답 뒤(관심 저장이 확정된 뒤) 한 번 실행. 실패는 숨기지 않는다.
+
+    어떤 이유로 실패하든 전송 기록에 거부 1행이 남는다(#719). "조사 중" 표시는 여기서 켠다:
+    저장이 되돌려진 요청은 이 함수가 불리지 않으므로 표시만 남는 일이 없다.
+    """
+    started_at = utcnow()
+    with _lock:
+        _started[opp_id] = time.monotonic()
+    try:
+        try:
+            error = research_one(
+                opp_id, find_homepage=False, transfer_requester=AUTO_REQUESTER
+            ).error
+        except Exception as raised:
+            # 예외 글에는 본문·주소가 섞일 수 있어 종류만 로그에 남긴다.
+            error = RunFailedError("회사 조사를 완료하지 못했습니다.")
+            logger.error(
+                "bookmark.research_crashed",
+                extra={"oppId": opp_id, "ref": error.ref, "type": type(raised).__name__},
+            )
+        if error is not None:
+            logger.warning("bookmark.research_failed", extra={"oppId": opp_id, "ref": error.ref})
+            _record_failure(opp_id, error, started_at)
     finally:
         with _lock:
             _started.pop(opp_id, None)
 
 
-def limit_skipped(session: Session, opp_ids: list[str]) -> bool:
-    """이 회사의 마지막 관심 자동 조사 표시가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED)."""
+def _record_failure(opp_id: str, error: AppError, started_at) -> None:
+    """실패 이유 1행. 이 조사가 이미 거부 행(읽기 실패·한도 거부)을 남겼으면 더하지 않는다.
+
+    이유 글에는 정해진 문구와 오류 종류만 넣는다(본문·주소·연락처·예외 원문 없음).
+    """
+    try:
+        with session_scope() as session:
+            recorded = session.scalar(
+                select(TransferLog.transfer_log_id)
+                .where(
+                    TransferLog.opp_id == opp_id,
+                    TransferLog.purpose == "EXTERNAL_AI",
+                    TransferLog.decision == "REJECTED",
+                    TransferLog.occurred_at >= started_at,
+                )
+                .limit(1)
+            )
+        if recorded is None:
+            record_search_rejection(
+                opp_id,
+                f"{FAILURE_REASON} ({error.kind or 'RUN_FAILED'})",
+                None,
+                purpose="EXTERNAL_AI",
+            )
+    except Exception as record_error:
+        logger.error(
+            "bookmark.research_failure_not_recorded",
+            extra={"oppId": opp_id, "ref": error.ref, "type": type(record_error).__name__},
+        )
+
+
+def _latest_attempt(session: Session, opp_ids: list[str]):
+    """이 회사의 마지막 조사 시도 기록(전송 기록의 AI 용도 행) 1행. 없으면 None."""
     if not opp_ids:
-        return False
-    # 그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 "한도로 건너뜀"이 아니다.
-    latest = session.execute(
-        select(TransferLog.reject_reason, TransferLog.requested_by)
+        return None
+    return session.execute(
+        select(
+            TransferLog.reject_reason,
+            TransferLog.requested_by,
+            TransferLog.decision,
+            TransferLog.call_count,
+            TransferLog.occurred_at,
+        )
         .where(TransferLog.opp_id.in_(opp_ids), TransferLog.purpose == "EXTERNAL_AI")
         .order_by(TransferLog.occurred_at.desc(), TransferLog.transfer_log_id.desc())
         .limit(1)
     ).one_or_none()
-    return latest is not None and tuple(latest) == (LIMIT_REASON, AUTO_REQUESTER)
+
+
+def just_started(session: Session, opp_ids: list[str]) -> bool:
+    """관심 저장이 방금 조사를 예약했고 아직 끝나지 않았는가(researchState RUNNING, #719).
+
+    서버 메모리의 "조사 중" 표시는 조사가 실제로 시작될 때 켜진다. 저장 직후 화면이 상세를
+    다시 읽는 사이에는 저장된 시작 표시 행(마지막 기록이 그 행이고 최대 시간 안)으로 안다.
+    """
+    latest = _latest_attempt(session, opp_ids)
+    return (
+        latest is not None
+        and (latest.requested_by, latest.decision, latest.call_count)
+        == (AUTO_REQUESTER, "ALLOWED", 0)
+        and latest.occurred_at >= utcnow() - timedelta(seconds=_RUNNING_SECONDS)
+    )
+
+
+def limit_skipped(session: Session, opp_ids: list[str]) -> bool:
+    """이 회사의 마지막 조사 시도가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED).
+
+    관심 자동 조사의 하루 금액 한도, 그리고 월 한도 거부(#719: 예전에는 "읽기 실패"로 보였다).
+    그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 "한도로 건너뜀"이 아니다.
+    """
+    latest = _latest_attempt(session, opp_ids)
+    if latest is None or latest.decision != "REJECTED":
+        return False
+    if latest.reject_reason in MONTHLY_LIMIT_REASONS:
+        return True
+    return (latest.reject_reason, latest.requested_by) == (LIMIT_REASON, AUTO_REQUESTER)

@@ -48,7 +48,7 @@ export default function HomepageControls({
   onReload,
   suggestDays = null,
 }: HomepageControlsProps) {
-  const { staffKey, canRecord } = useFrame();
+  const { staffKey, canRecord, config } = useFrame();
   const [busy, setBusy] = useState<Busy>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -63,7 +63,10 @@ export default function HomepageControls({
   const locked = error?.kind ? LOCKING_KINDS.has(error.kind) : false;
   const stale = error?.kind === 'STALE_VALUE';
   const disabled = !canRecord || busy !== null;
-  const researchDisabled = disabled || locked;
+  // #719: 서버가 조사용 AI가 꺼져 있다고 알려 주면 누르기 전에 잠근다(눌러도 설정 오류만 나온다).
+  // 값을 안 주는 옛 응답이거나 설정을 아직 못 읽었으면 지금처럼 눌리게 둔다.
+  const aiOff = config?.research?.aiEnabled === false;
+  const researchDisabled = disabled || locked || aiOff;
 
   async function send(body: HomepageRequest, kind: Exclude<Busy, null>) {
     if (!staffKey) return;
@@ -130,6 +133,11 @@ export default function HomepageControls({
         >
           {homepageControls.rerunButton}
         </Button>
+        {aiOff ? (
+          <span style={secondary} data-testid="homepage-ai-off">
+            {homepageControls.aiOff}
+          </span>
+        ) : null}
         {canRecord ? <MonthSpendLine /> : null}
         {!canRecord ? (
           <span style={secondary} data-testid="homepage-pick-staff">

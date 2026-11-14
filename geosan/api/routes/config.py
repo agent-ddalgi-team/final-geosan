@@ -1,5 +1,7 @@
 """화면에 필요한 공개 설정만 돌려준다. 내부 설정 파일 경로는 응답하지 않는다."""
 
+import os
+
 from fastapi import APIRouter
 from sqlalchemy import func, select
 
@@ -8,6 +10,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, Meta
 from geosan.capability.models import Process
 from geosan.config.models import AppSetting
+from geosan.evidence.transfer import ai_call_configured
 
 router = APIRouter()
 
@@ -36,6 +39,12 @@ def config_ui(session: SessionDep):
                 else None,
             },
             distance_filter_presets_km=settings.distance_filter_presets_km,
+            # #719: 켜짐/꺼짐만 준다. 키는 있는지만 보고 값은 읽어 두지 않는다.
+            research={
+                "aiEnabled": ai_call_configured(
+                    settings.llm, bool(os.environ.get("OPENAI_API_KEY", "").strip())
+                )
+            },
             ingest_options={
                 "processes": [
                     {"code": row.code, "name": row.name}

@@ -272,8 +272,39 @@ def test_company_skipped_by_the_daily_cost_shows_limit_skipped(found_company):
 
 
 def test_other_rejection_of_an_automatic_call_is_not_limit_skipped(found_company):
-    """Given 자동 조사의 AI 호출이 다른 이유(월 한도 등)로 거부 / Then LIMIT_SKIPPED가 아니다."""
-    _skip(found_company, "이번 달 비용 한도 초과")
+    """Given 자동 조사가 한도가 아닌 이유(설정 미완료 등)로 거부 / Then LIMIT_SKIPPED가 아니다.
+
+    (바뀜 #719) 예전에는 월 한도 거부도 여기서 "읽기 실패"로 고정했다. 월 한도는 아래 검사로 옮겼다.
+    """
+    _skip(found_company, "가짜 거부 이유(한도 아님)")
+    assert _state(found_company) == "READ_FAILED"
+
+
+@pytest.mark.parametrize("reason", ["이번 달 비용 한도 초과", "이번 달 호출 한도 초과"])
+@pytest.mark.parametrize("requester", ["auto-bookmark", "system", "park-lee"])
+def test_monthly_limit_rejection_shows_limit_not_read_failure(found_company, reason, requester):
+    """Given 조사가 월 한도로 거부됨 / Then "읽기 실패"가 아니라 한도로 조사 안 함 (#719)."""
+    from geosan.evidence import transfer
+
+    assert reason in transfer.MONTHLY_LIMIT_REASONS
+    with session_scope() as session:
+        row = auto_research._marker(
+            session.get(Opportunity, found_company.opp_id), reject_reason=reason
+        )
+        row.requested_by = requester
+        session.add(row)
+    assert _state(found_company) == "LIMIT_SKIPPED"
+
+
+def test_daily_limit_reason_from_another_requester_is_not_limit_skipped(found_company):
+    """하루 금액 한도 문구는 관심 자동 조사가 남긴 행일 때만 한도로 본다(그대로)."""
+    with session_scope() as session:
+        row = auto_research._marker(
+            session.get(Opportunity, found_company.opp_id),
+            reject_reason=auto_research.LIMIT_REASON,
+        )
+        row.requested_by = "system"
+        session.add(row)
     assert _state(found_company) == "READ_FAILED"
 
 
@@ -325,3 +356,298 @@ def test_queue_does_nothing_outside_a_request(found_company):
         auto_research.queue_on_bookmark(session, session.get(Opportunity, found_company.opp_id))
     assert _logs(found_company.opp_id) == []
     assert not auto_research.is_running(found_company.opp_id)
+
+
+# ---------- #719: 방금 시작한 조사도 하루 금액에 예상 비용으로 센다 ----------
+
+
+def _start_marker(session, opportunity, *, opp_id=None, seconds_ago=0):
+    from datetime import timedelta
+
+    row = auto_research._marker(opportunity, reject_reason=None)
+    row.opp_id = opp_id or opportunity.opp_id
+    row.occurred_at = row.occurred_at - timedelta(seconds=seconds_ago)
+    session.add(row)
+    return row
+
+
+def _spent(session):
+    return auto_research.used_today(session, read_app_settings(session))
+
+
+def test_just_started_research_counts_as_the_estimated_cost(found_company):
+    """Given 시작 표시만 있고 AI 호출 행이 아직 없는 조사 2곳 / Then 예상 비용 2곳만큼 센다."""
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        settings = read_app_settings(session)
+        estimate = Decimal(str(settings.ingestion.cost_estimate.research_usd_per_company))
+        _start_marker(session, opportunity, opp_id="opp-719-a")
+        _start_marker(session, opportunity, opp_id="opp-719-b")
+        session.flush()
+        assert _spent(session) == estimate * 2
+
+
+def test_started_research_is_not_counted_twice_once_its_call_row_exists(found_company):
+    """Given 시작 표시 뒤 그 회사의 AI 호출 행이 생김 / Then 실제 비용만 센다(예상 비용은 뺀다)."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        marker = _start_marker(session, opportunity, seconds_ago=5)
+        call = auto_research._marker(opportunity, reject_reason=None)
+        call.call_count, call.cost_usd = 1, Decimal("0.03")
+        call.occurred_at = marker.occurred_at + timedelta(seconds=3)
+        session.add(call)
+        session.flush()
+        assert _spent(session) == Decimal("0.03")
+
+
+def test_started_research_that_ended_with_a_rejection_is_not_counted(found_company):
+    """Given 시작 표시 뒤 읽기 실패 거부 행 / Then 끝난 조사라 예상 비용을 세지 않는다."""
+    with session_scope() as session:
+        _start_marker(session, session.get(Opportunity, found_company.opp_id), seconds_ago=5)
+    record_search_rejection(
+        found_company.opp_id, "자동 조사 중단 · 가짜 이유", None, purpose="EXTERNAL_AI"
+    )
+    with session_scope() as session:
+        assert _spent(session) == 0
+
+
+def test_start_marker_older_than_one_research_is_not_counted(found_company):
+    """Given 조사 한 곳 최대 시간보다 오래된 시작 표시 / Then 세지 않는다(서버가 꺼졌던 경우)."""
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, found_company.opp_id)
+        _start_marker(session, opportunity, seconds_ago=auto_research._RUNNING_SECONDS + 5)
+        session.flush()
+        assert _spent(session) == 0
+
+
+# ---------- #719: 관심 자동 조사는 어떤 이유로 실패해도 이유 1행을 남긴다 ----------
+
+SECRET = "가짜 본문 https://example.org/private 010-1234-5678 hong@example.org"
+
+
+def _drop_evidence(case):
+    """조사 전 모양: 살아 있는 근거 0건."""
+    from sqlalchemy import update
+
+    from geosan.evidence.models import Evidence
+    from geosan.storage.base import utcnow
+
+    with session_scope() as session:
+        session.execute(
+            update(Evidence).where(Evidence.opp_id == case.opp_id).values(superseded_at=utcnow())
+        )
+
+
+def _fail_with(monkeypatch, error, *, before=None):
+    def fake(opp_id, **_):
+        if before is not None:
+            before(opp_id)
+        if isinstance(error, Exception) and not isinstance(error, AppError):
+            raise error
+        return research.ResearchResult(error=error)
+
+    monkeypatch.setattr(auto_research, "research_one", fake)
+
+
+@pytest.mark.parametrize(
+    "error,label",
+    [
+        (AppError(SECRET, "다시 조사해 주세요.", status=503, kind="LLM_FAILED"), "LLM_FAILED"),
+        (
+            AppError(SECRET, "현재 기회를 확인해 주세요.", status=409, kind="STALE_VALUE"),
+            "STALE_VALUE",
+        ),
+        (research.RunFailedError(SECRET), "RUN_FAILED"),
+        (RuntimeError(SECRET), "RUN_FAILED"),
+    ],
+)
+def test_any_failure_of_bookmark_research_leaves_one_reason_row(
+    found_company, monkeypatch, error, label
+):
+    """Given 읽기 실패가 아닌 실패 / Then 정해진 문구와 오류 종류만 든 거부 1행이 남는다."""
+    _fail_with(monkeypatch, error)
+    auto_research.run_auto_research(found_company.opp_id)
+    assert _logs(found_company.opp_id) == [
+        ("system", "REJECTED", f"자동 조사 중단 · 조사를 끝내지 못했습니다 ({label})", 0)
+    ]
+    assert not auto_research.is_running(found_company.opp_id)
+
+
+def test_failure_already_recorded_by_the_research_is_not_recorded_twice(found_company, monkeypatch):
+    """Given 조사가 이미 거부 행(읽기 실패·월 한도)을 남김 / Then 한 행을 더 쓰지 않는다."""
+    error = AppError(
+        "홈페이지를 읽을 수 없습니다. (그 밖)", "나중에", status=502, kind="UNREACHABLE"
+    )
+    _fail_with(
+        monkeypatch,
+        error,
+        before=lambda opp_id: record_search_rejection(
+            opp_id,
+            "자동 조사 중단 · 홈페이지를 읽을 수 없습니다. (그 밖)",
+            None,
+            purpose="EXTERNAL_AI",
+        ),
+    )
+    auto_research.run_auto_research(found_company.opp_id)
+    assert [row[2] for row in _logs(found_company.opp_id)] == [
+        "자동 조사 중단 · 홈페이지를 읽을 수 없습니다. (그 밖)"
+    ]
+
+
+def test_successful_bookmark_research_leaves_no_reason_row(found_company, monkeypatch):
+    monkeypatch.setattr(auto_research, "research_one", lambda *_, **__: research.ResearchResult())
+    auto_research.run_auto_research(found_company.opp_id)
+    assert _logs(found_company.opp_id) == []
+
+
+def test_running_mark_is_set_only_when_the_research_really_starts(found_company, monkeypatch):
+    """Given 관심 저장이 조사를 예약한 뒤 저장이 되돌려짐 / Then "조사 중" 표시가 남지 않는다.
+
+    표시는 응답 뒤 조사가 실제로 시작될 때 켜지고 끝나면 꺼진다.
+    """
+    from fastapi import BackgroundTasks
+
+    _drop_evidence(found_company)
+    tasks = BackgroundTasks()
+    token = auto_research._tasks.set(tasks)
+    try:
+        with session_scope() as session:
+            auto_research.queue_on_bookmark(session, session.get(Opportunity, found_company.opp_id))
+            session.rollback()
+    finally:
+        auto_research._tasks.reset(token)
+    assert len(tasks.tasks) == 1
+    assert not auto_research.is_running(found_company.opp_id)
+    seen = []
+    monkeypatch.setattr(
+        auto_research,
+        "research_one",
+        lambda opp_id, **_: (
+            seen.append(auto_research.is_running(opp_id)) or research.ResearchResult()
+        ),
+    )
+    auto_research.run_auto_research(found_company.opp_id)
+    assert seen == [True]
+    assert not auto_research.is_running(found_company.opp_id)
+
+
+# ---------- #719 품질 검토: 안전장치마다 그 줄을 지우면 실패하는 검사 ----------
+
+
+def _queue(case):
+    """요청 안에서 관심이 켜진 것처럼 예약 함수를 부른다. 예약된 조사 수를 돌려준다."""
+    from fastapi import BackgroundTasks
+
+    tasks = BackgroundTasks()
+    token = auto_research._tasks.set(tasks)
+    try:
+        with session_scope() as session:
+            auto_research.queue_on_bookmark(session, session.get(Opportunity, case.opp_id))
+    finally:
+        auto_research._tasks.reset(token)
+    return len(tasks.tasks)
+
+
+@pytest.fixture
+def unresearched(found_company):
+    """관심을 켜면 조사가 예약되는 모양(실제 자료 · 공개 등급 · 홈페이지 있음 · 근거 0건)."""
+    _drop_evidence(found_company)
+    return found_company
+
+
+def test_ready_company_is_queued_once_with_a_start_row(unresearched):
+    """아래 검사들의 기준: 조건을 다 갖춘 회사는 예약되고 시작 표시 1행이 남는다."""
+    assert _queue(unresearched) == 1
+    assert _logs(unresearched.opp_id) == [("auto-bookmark", "ALLOWED", None, 0)]
+
+
+def test_virtual_company_is_never_queued(unresearched):
+    """Given 가상 회사 / When 관심이 켜짐 / Then 조사도 기록도 없다(가상 자료는 밖으로 안 나감)."""
+    with session_scope() as session:
+        session.get(Opportunity, unresearched.opp_id).is_virtual = True
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_opportunity_that_is_not_a_new_proposal_is_never_queued(unresearched):
+    """Given 신규 제안이 아닌 건(재접촉) / Then 조사도 기록도 없다."""
+    with session_scope() as session:
+        session.get(Opportunity, unresearched.opp_id).purpose = "REORDER_CHECK"
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_company_that_is_not_public_grade_is_never_queued(unresearched):
+    """Given 공개 등급이 아닌 회사 / Then 조사도 기록도 없다."""
+    with session_scope() as session:
+        session.get(Customer, unresearched.customer_id).security_grade = "INTERNAL_ONLY"
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_yesterdays_spend_does_not_count_against_today(unresearched):
+    """Given 어제(한국 시간 자정 전) 하루 금액을 넘게 씀 / Then 오늘은 0원이고 조사가 예약된다."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, unresearched.opp_id)
+        row = auto_research._marker(opportunity, reject_reason=None)
+        row.opp_id, row.call_count, row.cost_usd = "opp-719-yesterday", 1, Decimal("50")
+        row.occurred_at = auto_research._day_start() - timedelta(minutes=1)
+        session.add(row)
+        session.flush()
+        assert auto_research.spent_today(session, read_app_settings(session).llm) == 0
+    assert _queue(unresearched) == 1
+
+
+def test_same_company_is_not_queued_twice_while_its_research_is_pending(unresearched):
+    """Given 예약만 되고 아직 끝나지 않은 조사 / When 관심을 껐다 켜 다시 예약 / Then 1번만."""
+    assert _queue(unresearched) == 1
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == [("auto-bookmark", "ALLOWED", None, 0)]
+
+
+def test_company_whose_research_is_running_is_not_queued_again(unresearched):
+    """Given 이 서버에서 조사가 도는 중(시작 표시는 오래돼 안 보임) / Then 다시 예약하지 않는다."""
+    auto_research._started[unresearched.opp_id] = time.monotonic()
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+# ---------- #719: 관심 저장 직후 다시 읽은 화면에도 "조사 중"이 보인다 ----------
+
+
+def test_company_with_a_fresh_start_row_is_running_before_the_task_starts(found_company):
+    """Given 관심 저장이 남긴 시작 표시만 있고 조사는 아직 안 시작됨 / Then 조사 상태는 조사 중.
+
+    서버 메모리의 표시는 조사가 실제로 시작될 때 켜지므로, 저장 직후 화면이 상세를 다시 읽는
+    그 짧은 사이에는 저장된 시작 표시로 "조사 중"을 알아본다.
+    """
+    with session_scope() as session:
+        _start_marker(session, session.get(Opportunity, found_company.opp_id))
+    assert not auto_research.is_running(found_company.opp_id)
+    assert _state(found_company) == "RUNNING"
+
+
+def test_old_or_finished_start_row_is_not_running(found_company):
+    """Given 시작 표시가 오래됐거나 그 뒤 실패 기록이 있음 / Then 조사 중이 아니다."""
+    with session_scope() as session:
+        _start_marker(
+            session,
+            session.get(Opportunity, found_company.opp_id),
+            seconds_ago=auto_research._RUNNING_SECONDS + 5,
+        )
+    assert _state(found_company) == "READ_FAILED"
+    with session_scope() as session:
+        _start_marker(session, session.get(Opportunity, found_company.opp_id), seconds_ago=3)
+    assert _state(found_company) == "RUNNING"
+    record_search_rejection(
+        found_company.opp_id, "자동 조사 중단 · 가짜 이유", None, purpose="EXTERNAL_AI"
+    )
+    assert _state(found_company) == "READ_FAILED"

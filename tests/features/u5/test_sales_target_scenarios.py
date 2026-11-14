@@ -6,7 +6,7 @@
 from pytest_bdd import given, parsers, scenarios, then, when
 from sqlalchemy import select
 
-from geosan.records.models import ReviewOpinion
+from geosan.records.models import Outcome, ReviewOpinion
 from geosan.storage.session import session_scope
 from tests.unit.u1.test_sales_questions import contact
 from tests.unit.u7 import test_dashboard as dashboard
@@ -135,3 +135,38 @@ def bookmark_only_counts(context):
     assert now == {**dashboard.ZERO_COUNTS, "BOOKMARKED": 1, "NO_OPINION": 1}
     assert all(now[key] == 0 for key in PROGRESS_KEYS)
     assert opinion_rows(context["opp_id"]) == []
+
+
+# ---------- #719: 접촉을 취소한 뒤의 관심 ----------
+
+
+@when("그 통화를 잘못 입력으로 취소한다")
+def cancel_the_call(context):
+    client, opp_id = context["client"], context["opp_id"]
+    with session_scope() as session:
+        outcome_id = session.scalar(
+            select(Outcome.outcome_id)
+            .where(Outcome.opp_id == opp_id)
+            .order_by(Outcome.version.desc())
+        )
+    response = client.post(
+        f"{URL}/{opp_id}/records/{outcome_id}/cancel",
+        json={"reason": "다른 회사에 잘못 저장"},
+        headers={"X-Staff-Key": "kim-gwajang"},
+    )
+    assert response.status_code == 200, response.text
+
+
+@then("첫 회사의 관심을 끌 수 있다")
+def bookmark_can_be_turned_off(context):
+    response = set_bookmark(context["client"], context["opp_id"], False)
+    assert response.status_code == 200, response.text
+    assert detail(context)["bookmark"]["active"] is False
+
+
+@then("첫 회사의 관심은 기록이 있어 끌 수 없다")
+def bookmark_stays_on(context):
+    response = set_bookmark(context["client"], context["opp_id"], False)
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["kind"] == "BOOKMARK_HAS_RECORDS"
+    assert detail(context)["bookmark"]["active"] is True

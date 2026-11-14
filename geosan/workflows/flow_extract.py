@@ -19,7 +19,7 @@ from geosan.evaluation.proposals import store_item_proposals, store_process_link
 from geosan.evaluation.snapshot import _capability_snapshot
 from geosan.evidence.contacts import extract_main_phone, scrub_contacts
 from geosan.evidence.extraction import Extraction, extract_evidence
-from geosan.evidence.homepage import unofficial_page_kind
+from geosan.evidence.homepage import protected_page_kind
 from geosan.evidence.public_items import approve_pages, check_opportunity
 from geosan.evidence.reader import (
     MAX_BYTES,
@@ -74,10 +74,11 @@ def run_extract(
                 customer.main_phone_confirmed_at,
             )
             customer_id = customer.customer_id
-            # #511: 저장된 주소가 공식 홈페이지가 아닌 공개 페이지(확인 필요)인가.
+            # #511: 저장된 주소가 공식 홈페이지가 아닌 공개 페이지인가.
             # 붙여넣은 본문도 그 페이지의 글이므로 같은 상한을 적용한다.
+            # #719: 담당자가 [맞음]으로 확인한 뒤에도 주소를 고쳐 넣기 전까지는 그대로다.
             unofficial_page = (
-                unofficial_page_kind(
+                protected_page_kind(
                     customer.homepage_status, customer.homepage_source, customer.homepage_reason
                 )
                 is not None

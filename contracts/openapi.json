@@ -779,6 +779,9 @@
           "records": {
             "$ref": "#/components/schemas/RecordsUi"
           },
+          "research": {
+            "$ref": "#/components/schemas/ResearchUi"
+          },
           "ruleVersion": {
             "title": "Ruleversion",
             "type": "string"
@@ -802,7 +805,8 @@
           "ingestOptions",
           "export",
           "assistant",
-          "distanceFilterPresetsKm"
+          "distanceFilterPresetsKm",
+          "research"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -5660,6 +5664,20 @@
           "reason"
         ],
         "title": "RequirementCheckView",
+        "type": "object"
+      },
+      "ResearchUi": {
+        "properties": {
+          "aiEnabled": {
+            "description": "조사용 AI(근거 추출)를 지금 부를 수 있는 설정인지. false면 화면이 [다시 조사]를 잠근다(#719). 모드·모델·키 같은 낱값은 싣지 않는다",
+            "title": "Aienabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "aiEnabled"
+        ],
+        "title": "ResearchUi",
         "type": "object"
       },
       "ReviewCheckRequest": {

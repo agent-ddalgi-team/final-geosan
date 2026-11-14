@@ -106,6 +106,7 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     ['NOT_FOUND', '점수 전 · 조사 중단'],
     ['READ_FAILED', '점수 전 · 조사 중단'],
     ['NOT_TRIED', '점수 전 · 조사 중단'],
+    ['LIMIT_SKIPPED', '점수 전 · 조사 중단'],
   ] as const)('조사 상태 %s면 카드에는 "%s"만 보인다(이유는 상세, #596)', async (state, text) => {
     mockedGet.mockResolvedValueOnce(reply([{ ...found, researchState: state }]));
     renderPage();

@@ -429,7 +429,8 @@ describe('OpportunityDetailPage', () => {
   });
 
   it('주소가 없으면 지도 링크를 보이지 않는다', async () => {
-    mockedGet.mockResolvedValueOnce(reply(base));
+    // 가짜 응답에 주소가 채워져(#719, 명세의 필수 칸) 주소 없는 경우는 여기서 빈 글로 만든다.
+    mockedGet.mockResolvedValueOnce(reply({ ...base, header: { ...base.header, address: '' } }));
     renderPage();
     await screen.findByTestId('opportunity-detail');
     expect(screen.queryByTestId('detail-map-links')).not.toBeInTheDocument();
@@ -515,6 +516,7 @@ describe('OpportunityDetailPage', () => {
     ['NOT_FOUND', '조사 중단 · 홈페이지 못 찾음'],
     ['READ_FAILED', '조사 중단 · 홈페이지 읽기 실패'],
     ['NOT_TRIED', '조사 중단 · 조사 안 됨'],
+    ['LIMIT_SKIPPED', '조사 중단 · 자동 조사 한도로 조사 안 함'],
   ] as const)('조사 상태 %s면 점수 줄 옆에 "%s"가 보인다 (#596)', async (state, text) => {
     mockedGet.mockResolvedValueOnce(
       reply({ ...base, header: { ...base.header, researchState: state } }),
@@ -877,9 +879,17 @@ describe('OpportunityDetailPage', () => {
       expect(button).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('[관심]을 누르면 켜기 요청을 보내고 머리 단추가 바뀌며, 상세를 통째로 다시 부르지 않고 활동 이력만 새로 읽는다', async () => {
+    it('[관심]을 켜면 켜기 요청을 보내고 머리 단추가 바뀌며, 상세를 조용히 다시 읽어 조사 상태를 보인다 (#719)', async () => {
+      // (바뀜 #719) 예전에는 "상세를 다시 부르지 않는다"였다. 관심을 켜면 조사가 저절로 시작되므로(#690)
+      // 머리의 조사 상태가 바로 보이게 한 번 다시 읽는다. 화면을 비우지 않는다(조용히).
       const user = userEvent.setup();
       mockedGet.mockResolvedValueOnce(reply(withBookmark(null)));
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...withBookmark(bookmarked),
+          header: { ...base.header, researchState: 'RUNNING' },
+        }),
+      );
       mockedBookmark.mockResolvedValueOnce({ data: bookmarked, meta: {} });
       renderPage();
       const button = await screen.findByTestId('bookmark-button');
@@ -895,8 +905,25 @@ describe('OpportunityDetailPage', () => {
       await waitFor(() =>
         expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'true'),
       );
-      expect(mockedGet).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+      expect(await screen.findByTestId('detail-research-state')).toHaveTextContent('조사 중');
+      // 다시 읽는 동안에도 화면은 그대로다(단추가 사라졌다 나타나지 않는다).
+      expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'true');
       await waitFor(() => expect(mockedActivity).toHaveBeenCalledTimes(2));
+    });
+
+    it('[관심 기업]을 눌러 끄면 상세를 다시 읽지 않는다 (#719)', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValueOnce(reply(withBookmark(bookmarked)));
+      mockedBookmark.mockResolvedValueOnce({ data: { ...bookmarked, active: false }, meta: {} });
+      renderPage();
+      const button = await screen.findByTestId('bookmark-button');
+      expect(button).toHaveAttribute('aria-pressed', 'true');
+      await user.click(button);
+      await waitFor(() =>
+        expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false'),
+      );
+      expect(mockedGet).toHaveBeenCalledTimes(1);
     });
 
     it('영업 기록을 저장하면 관심 값만 서버에서 다시 읽어 머리 단추를 "관심 기업"으로 맞춘다 (자동 관심)', async () => {

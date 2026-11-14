@@ -38,6 +38,18 @@ export function formatMonthDay(value: string | null | undefined): string | null 
 }
 
 /**
+ * "2023-01-02" — 연도까지 보이는 날짜(#719, 회사별 보고서). 여러 해에 걸친 자료가 한 장에 섞여
+ * 월/일만으로는 언제인지 알 수 없는 곳에 쓴다. 날짜만 있는 값(YYYY-MM-DD)은 그대로,
+ * 시각이 붙은 값은 한국 시각 날짜로 읽는다. 읽을 수 없는 값이면 null.
+ */
+export function formatDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const p = kstParts(value, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  return p ? `${p.year}-${p.month}-${p.day}` : null;
+}
+
+/**
  * 지금(`now`) 기준으로 `iso`가 며칠 전인지(한국 날짜 기준 일수). 오늘이면 0, 미래이거나 읽을 수 없으면 null.
  * "조사 11/5 (3일 전)"의 괄호 안에 쓴다. 시각은 인자로 받아 시험이 현재 시각에 기대지 않게 한다.
  */

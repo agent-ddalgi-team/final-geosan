@@ -13,6 +13,11 @@ from geosan.config.app_settings import (
 )
 from geosan.config.models import AppSetting
 from geosan.storage.session import session_scope
+from tests.unit.u1 import test_homepage_api as support
+
+search_env = support.search_env
+extract_env = support.extract_env
+homepage_env = support.homepage_env
 
 EXAMPLES = Path(__file__).resolve().parents[3] / "examples"
 
@@ -65,3 +70,35 @@ def test_old_database_copy_without_the_key_reads_the_example_value(tmp_db, app_s
     assert research.stale_after_days == 45
     assert research.auto_on_bookmark_daily_cost_usd == 0.5
     assert research.suggest_again_after_days == 30
+
+
+# ---------- #719 품질 검토: 딱 30일 경계 ----------
+
+
+@pytest.mark.parametrize("seconds_over,expected", [(-1, False), (0, False), (1, True)])
+def test_suggestion_starts_only_after_the_exact_day_count(
+    homepage_env, monkeypatch, seconds_over, expected
+):
+    """Given 조사한 지 딱 30일 / Then 아직 제안하지 않는다. 30일을 1초라도 넘으면 제안한다."""
+    from datetime import UTC, datetime, timedelta
+
+    from geosan.api.routes import opportunities
+    from geosan.opportunity.models import Customer
+
+    client, case, _ = homepage_env
+    now = datetime(2026, 11, 14, 3, 0, tzinfo=UTC)
+    with session_scope() as session:
+        days = read_app_settings(session).research.suggest_again_after_days
+        customer = session.get(Customer, case.customer_id)
+        customer.researched_at = now - timedelta(days=days, seconds=seconds_over)
+        customer.research_source = "AI"
+    assert days == 30
+    saved = client.put(
+        f"/api/v1/opportunities/{case.opp_id}/bookmark",
+        json={"active": True},
+        headers={"X-Staff-Key": "park-lee"},
+    )
+    assert saved.status_code == 200, saved.text
+    monkeypatch.setattr(opportunities, "utcnow", lambda: now)
+    header = client.get(f"/api/v1/opportunities/{case.opp_id}").json()["data"]["header"]
+    assert header["researchSuggestAgain"] is expected

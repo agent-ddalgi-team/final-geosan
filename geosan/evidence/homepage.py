@@ -51,12 +51,27 @@ UNSAFE_PAGE_REASON = "주소에 사람 이름·연락처 꼴이 있어 쓰지 �
 def unofficial_page_kind(status: str | None, source: str | None, reason: str | None) -> str | None:
     """저장된 홈페이지가 '확인 필요'인 공개 페이지(공식 아님)면 그 종류, 아니면 None (#511).
 
-    담당자가 [맞음]·주소 고치기로 확정하면(CONFIRMED·STAFF) 더는 공개 페이지로 보지 않는다.
+    화면 표시용이다: 담당자가 [맞음]·주소 고치기로 확정하면(CONFIRMED·STAFF) 값이 없다.
+    근거 조사의 보호는 확인 뒤에도 이어진다(`protected_page_kind`, #719).
     """
     if status != "NEEDS_CONFIRMATION" or source != "AI" or not reason:
         return None
     marked = _UNOFFICIAL_MARK.match(reason)
     return marked[1] if marked else None
+
+
+def protected_page_kind(status: str | None, source: str | None, reason: str | None) -> str | None:
+    """근거 조사가 "1장만 · 번호 안 뽑음 · 약한 추정까지"로 다룰 공개 페이지의 종류 (#719).
+
+    확인 필요일 때와, 담당자가 [맞음]으로 확인한 뒤에도 우리 표시가 이유 글에 남아 있을 때다.
+    [맞음]은 "이 페이지가 그 회사 것이 맞다"는 뜻일 뿐 공식 홈페이지가 됐다는 뜻이 아니다
+    (블로그·SNS·쇼핑몰은 같은 호스트에 남의 글이 있다). 담당자가 주소를 고쳐 넣으면 이유 글이
+    비워져 None이 된다.
+    """
+    if (status, source) == ("CONFIRMED", "STAFF") and reason:
+        marked = _UNOFFICIAL_MARK.match(reason)
+        return marked[1] if marked else None
+    return unofficial_page_kind(status, source, reason)
 
 
 def _blocked_host(url: str, blocked_domains: list[str]) -> bool:
