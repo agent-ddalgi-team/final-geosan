@@ -285,6 +285,8 @@ def daily(
                 generated_at=utcnow(),
                 reused=False,
             )
+            for old in [item for item in store if item[1] != today]:
+                del store[old]  # 지난 날의 정리는 다시 쓰지 않으므로 메모리에서 뺀다.
             store[key] = saved
             brief = saved
         else:
