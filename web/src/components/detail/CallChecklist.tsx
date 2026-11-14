@@ -23,6 +23,7 @@ import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
 import { useFrame } from '../frame/FrameContext';
 import { linkifyMemo } from '../review/GapMemoEditor';
+import { choiceMarksOf, confirmedLabels } from '../records/ChoiceQuestion';
 import { isGapLine, isProposal, reviewGroupOf } from '../review/ReviewArea';
 import DetailSection from './DetailSection';
 import { detailCheckWordsOf } from './DetailGlance';
@@ -94,10 +95,14 @@ export function callLinesOf(
     });
   }
   const seen = new Set(lines.map((row) => row.text));
+  const marks = choiceMarksOf(detail);
   for (const id of detail.salesStep?.openQuestions ?? []) {
     const question = questions?.questions.find((row) => row.questionId === id);
     // 모든 단계 질문과 접촉 자체에 대한 질문(누가 먼저 연락했나 #691)은 통화에서 물을 말이 아니다.
     if (!question || question.step === 'ALL' || seen.has(question.text)) continue;
+    // #730: 공정·산업 확인 질문은 꼬리 질문에 답이 없어도(사례 파일·상세 칩·AI 제안 확정으로 정해진 경우)
+    // 이미 확정된 값이 있으면 묻지 않는다. 기록 남기기의 꼬리 질문이 "공정: 아연도금" 줄을 보이는 것과 같은 판단이다.
+    if (question.choices && confirmedLabels(question, marks).length > 0) continue;
     seen.add(question.text);
     lines.push({ key: `open:${id}`, text: question.text });
   }
