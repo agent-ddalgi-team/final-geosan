@@ -34,7 +34,7 @@ def _with_past_schedule(dashboard_env):
 
 
 def test_contact_after_a_past_schedule_does_not_carry_it(dashboard_env):
-    """Given 이틀 전 일정이 남은 회사 / When 새 일정 없이 통화를 남김 / Then 지난 일정이 비워진다."""
+    """Given 이틀 전 일정이 남은 회사 / When 새 일정 없이 통화를 남김 / Then 일정이 비워진다."""
     client, opp_id, _ = _with_past_schedule(dashboard_env)
     _post(client, opp_id, contact())
     assert _schedule(client, opp_id) == (None, None)
