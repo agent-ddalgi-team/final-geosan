@@ -115,14 +115,36 @@ def test_today_and_overdue_rows_come_from_the_calendar_schedule(today_env):
     assert rows["SCHEDULE_TODAY"]["count"] == 2 and rows["SCHEDULE_OVERDUE"]["count"] == 1
 
 
-def test_closed_deal_schedule_is_not_a_today_row(today_env):
-    """Given 오늘 일정이 남은 채 성사로 끝난 영업 / When 대시보드 / Then 달력처럼 뺀다."""
+def test_closing_without_a_new_date_leaves_no_today_row(today_env):
+    """Given 오늘 일정이 남은 영업 / When 날짜 없이 성사로 마무리 / Then 일정이 비워진다.
+
+    (바뀜 2026-11-14 #720 — PM 결정) 전에는 "끝난 영업의 일정은 대시보드에서 뺀다"(#279)로 막았다.
+    #719부터 끝나는 저장이 남은 일정을 비우므로, 이 경우는 일정 자체가 없어 빠진다.
+    """
     client, ids = today_env
     record(client, ids["a"], {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-05"})
     assert "SCHEDULE_TODAY" in rows_of(dashboard_data(client))
-    record(client, ids["a"], {"status": "WON", "nextScheduleAt": "2026-11-05"})
+    record(client, ids["a"], {"status": "WON"})
     data = dashboard_data(client)
     assert data["schedule"] == [] and data["todayChecks"] == []
+
+
+def test_schedule_set_on_a_closed_deal_shows_on_the_dashboard(today_env):
+    """Given 거절로 끝난 영업 / When 일부러 오늘 일정을 잡음 / Then 대시보드에 보인다.
+
+    (바뀜 2026-11-14 #720 — PM 결정) 끝난 뒤 일부러 잡은 일정(예: 반년 뒤 다시 연락)은
+    놓치면 안 된다.
+    """
+    client, ids = today_env
+    record(client, ids["a"], {"status": "LOST", "lostReasonCode": "PRICE", "reason": "가상 사유"})
+    record(
+        client,
+        ids["a"],
+        {"status": "LOST", "lostReasonCode": "PRICE", "nextScheduleAt": "2026-11-05"},
+    )
+    data = dashboard_data(client)
+    assert [item["oppId"] for item in data["schedule"]] == [ids["a"]]
+    assert "SCHEDULE_TODAY" in rows_of(data)
 
 
 def test_check_left_counts_only_bookmarked_companies(today_env):
