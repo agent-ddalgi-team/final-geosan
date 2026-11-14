@@ -92,6 +92,7 @@ def test_map_contract_reads_config_and_excludes_sensitive_fields(map_env):
     assert response.status_code == 200
     body = response.json()["data"]
     # visitRadiusKm·visitGroups는 #673(PM 결정 2026-11-13)에서 더한 칸이다.
+    # visitWidenBelowCount는 #743(PM 결정 2026-11-14, 5km 안 5곳 미만이면 10km)에서 더한 칸이다.
     assert set(body) == {
         "center",
         "ringsKm",
@@ -100,6 +101,7 @@ def test_map_contract_reads_config_and_excludes_sensitive_fields(map_env):
         "asOf",
         "visitRadiusKm",
         "visitGroups",
+        "visitWidenBelowCount",
     }
     assert body["center"] == {"lat": 38.0, "lng": 127.5}
     assert body["ringsKm"] == [25, 60, 120]

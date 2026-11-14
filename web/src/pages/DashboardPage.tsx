@@ -14,6 +14,8 @@ import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import AssistantAsk from '../components/assistant/AssistantAsk';
+import AssistantDaily from '../components/assistant/AssistantDaily';
+import { assistantConfigOf } from '../api/assistant';
 import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -43,13 +45,15 @@ const sectionStyle = {
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
 
 export default function DashboardPage() {
-  const { setBannerMeta, staffKey, canRecord } = useFrame();
+  const { config, setBannerMeta, staffKey, canRecord } = useFrame();
   const navigate = useNavigate();
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [query, setQuery] = useState('');
   // "최근 내 기록"은 고른 담당자 것이다. 기록할 수 없는 계정(보기 전용·담당자 미선택)은 키를 보내지 않는다(#216 후속).
   const recordKey = canRecord ? staffKey : null;
+  // 오늘 정리(#743)는 영업 기록 스위치가 켜져 있고 담당자를 골랐을 때만 부른다(꺼져 있으면 호출 0).
+  const dailyKey = assistantConfigOf(config)?.enabled === true ? recordKey : null;
   const requestKey = `${reload}:${recordKey ?? ''}`;
 
   useEffect(() => {
@@ -117,7 +121,12 @@ export default function DashboardPage() {
         </form>
 
         {/* 위에서부터: 오늘 확인할 것 → 일정 달력 → 영업 진행(건수 칸) → 최근 내 기록 → 지도 (#679). */}
-        {data ? <TodayChecks rows={data.todayChecks} /> : null}
+        {data ? (
+          <TodayChecks
+            rows={data.todayChecks}
+            assistantSummary={dailyKey ? <AssistantDaily staffKey={dailyKey} /> : null}
+          />
+        ) : null}
         {/* 영업 비서 질문 칸(#680). 설정이 꺼져 있으면 안내 한 줄, 설정을 못 읽었으면 아무것도 없다. */}
         {data ? <AssistantAsk /> : null}
 
