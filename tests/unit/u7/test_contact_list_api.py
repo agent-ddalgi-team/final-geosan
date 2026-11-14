@@ -578,6 +578,8 @@ def test_forbidden_evidence_is_not_counted_as_evidence(contact_env):
     """
     client, opp_ids = contact_env
     forbidden_only, normal = opp_ids[0], opp_ids[1]
+    for opp_id in (forbidden_only, normal):
+        make_passed(opp_id)
     keep_evidence(forbidden_only, 3)
     keep_evidence(normal, 3)
     with session_scope() as session:
@@ -588,5 +590,9 @@ def test_forbidden_evidence_is_not_counted_as_evidence(contact_env):
         ):
             row.security_grade = "FORBIDDEN"
     cards = cards_by_id(client, sort="contact")
-    assert cards[normal]["bucket"] == "EVIDENCE_READY"
-    assert cards[forbidden_only]["bucket"] != "EVIDENCE_READY"
+    assert (cards[normal]["bucket"], cards[normal]["bucketBasis"]) == (
+        "EVIDENCE_READY",
+        "EVIDENCE_ENOUGH",
+    )
+    # 셀 수 있는 근거가 0건이고 홈페이지 찾기 기록도 없으니 "조사 전"이다.
+    assert cards[forbidden_only]["bucket"] == "NOT_RESEARCHED"
