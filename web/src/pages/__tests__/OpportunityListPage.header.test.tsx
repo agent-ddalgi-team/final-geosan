@@ -741,6 +741,27 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await waitFor(() => expect(locationText()).toBe('/opportunities?view=all'));
     });
 
+    it('Given 검색 중 / When 검색 칸을 비우고 Enter / Then [검색 지우기]와 같이 검색이 풀린다 (#719 후속)', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?view=all&q=코파스');
+      await screen.findByTestId('opportunity-card');
+      await user.clear(screen.getByTestId('list-search-input'));
+      await user.type(screen.getByTestId('list-search-input'), '{Enter}');
+      await waitFor(() => expect(locationText()).toBe('/opportunities?view=all'));
+    });
+
+    it('Given 검색 중이 아님 / When 빈 칸으로 Enter / Then 아무 일도 없다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?view=all');
+      await screen.findByTestId('opportunity-card');
+      const calls = mockedGet.mock.calls.length;
+      await user.type(screen.getByTestId('list-search-input'), '{Enter}');
+      expect(locationText()).toBe('/opportunities?view=all');
+      expect(mockedGet.mock.calls.length).toBe(calls);
+    });
+
     it('검색 중에는 공정·지역·산업 선택란이 숨는다', async () => {
       const user = userEvent.setup();
       mockedGet.mockResolvedValue(reply([apjeong], MENU));

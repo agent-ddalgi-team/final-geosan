@@ -8,6 +8,7 @@
 // 서버가 돌려주는 쉬운 말은 그대로 보인다.
 import { useEffect, useState } from 'react';
 import { Button, Input, Radio, Typography } from 'antd';
+import { assistantConfigOf } from '../../api/assistant';
 import { ApiError, getSalesQuestions, postNote, postOutcome } from '../../api/client';
 import type {
   ContactMethod,
@@ -28,6 +29,7 @@ import {
   judgmentCheckLabels,
   errorTexts,
   lostReasonLabels,
+  memoReadTexts,
   noteKindLabels,
   outcomeStatusLabels,
   recordsArea,
@@ -36,6 +38,8 @@ import {
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
+import MemoRead from '../assistant/MemoRead';
+import type { MemoTarget } from '../assistant/MemoRead';
 import { useFrame } from '../frame/FrameContext';
 import { choiceAnswerIds } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
@@ -205,6 +209,9 @@ export default function RecordsArea({
   const [attemptedAt, setAttemptedAt] = useState(todayKst());
   const [dateError, setDateError] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  // 방금 저장한 메모(#720). 영업 기록 스위치가 켜져 있으면 그 아래에 [AI가 메모 읽기 💰]가 보인다.
+  const [memoTarget, setMemoTarget] = useState<MemoTarget | null>(null);
+  const aiReadsMemo = assistantConfigOf(config)?.enabled === true;
   // #607 꼬리 질문: 이번 접촉에서 고른 답과 한 줄 메모. 저장하면 비운다.
   const [questions, setQuestions] = useState<SalesQuestions | null>(null);
   const [questionsFailed, setQuestionsFailed] = useState(false);
@@ -297,6 +304,7 @@ export default function RecordsArea({
       setScheduleNote(saved.nextScheduleNote ?? '');
       onOutcomeSaved?.(saved);
       onRecorded?.();
+      if (body.memo) setMemoTarget({ recordKind: 'OUTCOME', savedAt: saved.updatedAt });
       succeed(block, saved.updatedAt);
       return true;
     } catch (caught) {
@@ -318,6 +326,15 @@ export default function RecordsArea({
       ...(outcome?.nextScheduleAt ? { nextScheduleAt: outcome.nextScheduleAt } : {}),
       ...(outcome?.nextScheduleNote ? { nextScheduleNote: outcome.nextScheduleNote } : {}),
     };
+  }
+
+  /**
+   * 이번 저장으로 성사·거절로 "끝나는지"(#719 후속). 끝나는 저장이면 있던 일정을 다시 싣지 않는다 —
+   * 실어 보내면 서버가 "보내온 일정"으로 받아 그대로 남겨, 끝난 회사에 옛 일정이 보였다.
+   * 이미 같은 단계로 끝나 있던 회사(거절 뒤 이유만 고침)는 끝나는 저장이 아니므로 그대로 싣는다.
+   */
+  function endsSale(next: OutcomeStatus): boolean {
+    return (next === 'WON' || next === 'LOST') && currentStatus !== next;
   }
 
   /** 이미 거절인 채로 일정·접촉만 저장해도 서버가 거절 이유를 요구하므로 현재 이유를 같이 보낸다. */
@@ -446,9 +463,12 @@ export default function RecordsArea({
       ...(answers.length > 0 ? { answers } : {}),
       ...(memo ? { memo } : {}),
       // 날짜를 넣었으면 새 일정(날짜 + 고른 할 일의 쉬운 말), 안 넣었으면 있던 일정을 그대로 싣는다.
+      // 성사·거절로 끝나는 저장이면 있던 일정은 싣지 않는다(서버가 비운다, #719).
       ...(nextAction && plannedDate !== ''
         ? { nextScheduleAt: plannedDate, nextScheduleNote: nextAction.label }
-        : keepSchedule()),
+        : endsSale(status)
+          ? {}
+          : keepSchedule()),
       ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),
       ...(restore ? { restoreExcluded: true } : {}),
     });
@@ -502,6 +522,8 @@ export default function RecordsArea({
       );
       setNoteText('');
       onRecorded?.();
+      if (noteKind === 'MEMO')
+        setMemoTarget({ recordKind: 'NOTE', recordId: envelope.data.noteId });
       succeed('note', envelope.data.updatedAt);
     } catch (caught) {
       // 입력한 글은 그대로 둔다.
@@ -520,7 +542,7 @@ export default function RecordsArea({
       status: stage,
       ...(stage === 'LOST' && lostCode ? { lostReasonCode: lostCode } : {}),
       ...(stage === 'LOST' && reason !== '' ? { reason } : {}),
-      ...keepSchedule(),
+      ...(endsSale(stage) ? {} : keepSchedule()),
     });
     if (ok) {
       setSavedLostReason(stage === 'LOST' ? reason : '');
@@ -688,7 +710,8 @@ export default function RecordsArea({
               data-testid="records-note-input"
             />
             <span style={hintStyle}>
-              {recordsArea.noteHint}{' '}
+              {aiReadsMemo ? memoReadTexts.noteHintAi : recordsArea.noteHint}{' '}
+              {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
               <span data-testid="records-note-counter">
                 {recordsArea.noteCounter(noteText.length, noteMax)}
               </span>
@@ -787,7 +810,8 @@ export default function RecordsArea({
               data-testid="records-contact-memo"
             />
             <span style={hintStyle}>
-              {salesQuestionTexts.memoHint}{' '}
+              {aiReadsMemo ? memoReadTexts.memoLineHintAi : salesQuestionTexts.memoHint}{' '}
+              {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
               {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
             </span>
           </>
@@ -867,6 +891,29 @@ export default function RecordsArea({
         ) : (
           blockMessage('note')
         )}
+        {/* 방금 저장한 메모 줄 아래에만 보인다(#720). 스위치가 꺼져 있으면 아무것도 보이지 않는다. */}
+        <MemoRead
+          key={memoTarget ? JSON.stringify(memoTarget) : 'none'}
+          oppId={oppId}
+          target={memoTarget}
+          outcome={outcome}
+          processQuestionId={
+            questions?.questions.find((question) => question.choices === 'PROCESS')?.questionId ??
+            null
+          }
+          onApplied={(kind, saved) => {
+            if (saved) {
+              setOutcome(saved);
+              setScheduleAt(saved.nextScheduleAt ?? '');
+              setScheduleNote(saved.nextScheduleNote ?? '');
+              onOutcomeSaved?.(saved);
+            }
+            onRecorded?.();
+            // 공정·산업이 바뀌면 점수·검토사항도 바뀌므로 상세 전체를 조용히 다시 읽는다.
+            if (kind === 'NEXT_SCHEDULE') onSalesStepChanged?.();
+            else (onCompanyConfirmed ?? onSalesStepChanged)?.();
+          }}
+        />
         {/* 제외한 회사에 접촉을 남기려 할 때만: 창 없이 이 자리에서 한 번 묻는다(#697). */}
         {method && excluded && askExcluded ? (
           <div

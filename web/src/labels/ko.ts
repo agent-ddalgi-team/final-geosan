@@ -1911,3 +1911,39 @@ export const assistantTexts = {
   callPrepHint: '이 회사의 기록과 비슷한 회사의 결과로 먼저 물어볼 것을 정리합니다.',
   callPrepFailed: '통화 준비를 받지 못했습니다.',
 } as const;
+
+/**
+ * 메모 읽기(#720, PM 결정 2026-11-14): 메모를 저장하면 AI가 읽고 정리해 "제안"으로 보인다.
+ * 이름은 이 PC 안에만 남고 AI에는 직함과 내용만 간다. 담당자가 [반영]을 눌러야 값이 바뀐다.
+ */
+export const memoReadTexts = {
+  /** 메모 칸 아래 안내(PM 결정 문구). 뒤 문장은 영업 기록 스위치가 켜져 있을 때만 붙인다. */
+  nameHint: '사람은 직함과 함께 적어 주세요(예: 김 과장).',
+  nameHintAi: '사람은 직함과 함께 적어 주세요(예: 김 과장). 이름은 AI로 보내지 않습니다.',
+  /** 스위치가 켜져 있을 때 메모 칸 안내의 앞부분("이 메모는 외부로 나가지 않습니다"를 뺀 것). */
+  noteHintAi: '메모는 덧붙이기만 되고 고치거나 지울 수 없습니다.',
+  memoLineHintAi: '질문에 없는 이야기만 짧게 적어 주세요.',
+  button: 'AI가 메모 읽기 💰',
+  buttonHint:
+    '방금 저장한 메모에서 이름·전화를 지운 사본만 AI에 보냅니다. 저절로 바뀌는 것은 없습니다.',
+  reading: 'AI가 메모를 읽는 중입니다…',
+  failed: '메모를 읽지 못했습니다.',
+  notFound: '방금 저장한 기록을 찾지 못했습니다. 화면을 새로 고쳐 주세요.',
+  title: 'AI가 메모에서 읽은 것 · 확인 전',
+  noProposals: '바꿀 것은 읽지 못했습니다.',
+  /** "이름 1개 · 연락처 1개를 지우고 보냈습니다." 지운 것이 없으면 보이지 않는다. */
+  removed: (names: number, contacts: number) =>
+    `${[names > 0 ? `이름 ${names}개` : '', contacts > 0 ? `연락처 ${contacts}개` : '']
+      .filter((part) => part)
+      .join(' · ')}를 지우고 보냈습니다.`,
+  kindLabel: { PROCESS: '공정', INDUSTRY: '산업', NEXT_SCHEDULE: '다음 일정' } as const,
+  /** "아연도금 → 니켈도금". 지금 값이 없으면 새 값만. */
+  change: (before: string, after: string) => (before ? `${before} → ${after}` : after),
+  /** "(메모: '니켈도금으로 바꾸고 싶다고 함')" */
+  quote: (text: string) => `(메모: '${text}')`,
+  apply: '반영',
+  applied: '반영됨 ✓',
+  applyFailed: '반영하지 못했습니다.',
+  /** 꼬리 질문 파일에 공정 확인 질문이 없어 기존 저장 창구로 반영할 수 없을 때. */
+  cannotApply: '이 화면에서 반영할 수 없습니다.',
+} as const;
