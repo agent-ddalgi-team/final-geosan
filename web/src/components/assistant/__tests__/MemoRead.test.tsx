@@ -205,7 +205,11 @@ describe('[AI가 메모 읽기 💰] 단추 (#720)', () => {
   it('실패하면 서버 문장을 그대로 보인다', async () => {
     const user = userEvent.setup();
     mockedRead.mockRejectedValue(
-      new ApiError(422, { message: '영업 기록을 외부 AI로 보내는 설정이 꺼져 있습니다.' }),
+      new ApiError(422, {
+        message: '영업 기록을 외부 AI로 보내는 설정이 꺼져 있습니다.',
+        nextAction: '',
+        ref: 'test',
+      }),
     );
     renderMemoRead();
     await user.click(screen.getByTestId('memo-read-button'));
@@ -322,7 +326,9 @@ describe('제안 [반영]은 기존 저장 창구를 부른다 (#720)', () => {
   it('반영이 실패하면 서버 문장을 보이고 그 줄은 [반영]으로 남는다', async () => {
     const user = userEvent.setup();
     const onApplied = renderMemoRead();
-    mockedOutcome.mockRejectedValue(new ApiError(500, { message: '다시 평가하지 못했습니다.' }));
+    mockedOutcome.mockRejectedValue(
+      new ApiError(500, { message: '다시 평가하지 못했습니다.', nextAction: '', ref: 'test' }),
+    );
     await open(user);
     await user.click(screen.getByTestId('memo-read-apply-PROCESS'));
     await waitFor(() =>
