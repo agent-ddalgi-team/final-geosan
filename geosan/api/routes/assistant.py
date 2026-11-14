@@ -264,7 +264,7 @@ def daily(
             if not context.companies:
                 raise AppError(
                     "오늘 정리할 일정·단계 이동·보류 회사가 없습니다.",
-                    "접촉 기록이나 일정을 남기면 다음 날부터 정리합니다.",
+                    "접촉 기록이나 일정을 남긴 뒤 대시보드를 다시 열어 주세요.",
                     status=422,
                     kind="ASSISTANT_NO_RECORDS",
                 )
