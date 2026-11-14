@@ -32,7 +32,7 @@ ingestion:
     judgeUsdPerRow: 0.002          # 공장 1행 AI 판단(실측 1행 약 $0.0015~0.0018)
     researchUsdPerCompany: 0.04    # 회사 1곳 자동 조사(실측 117곳 평균 $0.038)
     researchCallsPerCompany: 2     # 회사 1곳 조사의 호출 수(실측 평균 1.15회)
-    webSearchUsdPerBatch: 0.04     # 후보 웹 검색 1회(실측 $0.0405)
+    webSearchUsdPerBatch: 0.11     # 후보 웹 검색 1회(검색 3번 기준. 실측 1번 $0.04 · 3번 약 $0.10, #706)
   # 기준일 YYYYMMDD가 파일명 끝 또는 바로 위 폴더에 있어야 한다. CSV는 Git에 올리지 않는다.
   factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
   aiPick:
@@ -168,6 +168,8 @@ candidateWebSearch:
   enabled: false
   dailySearchLimit: 20
   cacheDays: 15
+  searchesPerRun: 3      # 한 번 요청에서 AI가 검색하는 횟수(#706: 1번 2곳, 3번 5~10곳)
+  timeoutSeconds: 90     # 응답 대기(실측 3번 29~35초)
   blockedDomains:
     - saramin.co.kr
     - jobkorea.co.kr
@@ -181,6 +183,9 @@ candidateWebSearch:
     - cretop.com
     - kreditjob.com
     - thevc.kr
+    # 무료 기업 정보 모음 사이트(PM 결정 2026-11-14, #706): 남이 모아 만든 회사 소개라 출처로 쓰지 않는다.
+    - allcompany.co.kr
+    - bizno.net
 
 # 산업군 초안: 거산 확인 뒤 설정에서 조정 (2026-11-03 PM 승인)
 industries:

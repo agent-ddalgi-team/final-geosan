@@ -32,7 +32,7 @@ def ready(tmp_db, app_settings_path, monkeypatch):
 def public_source(context, monkeypatch):
     context["source_url"] = "https://www.data.go.kr/data/15105482/fileData.do"
 
-    def search(body, key):
+    def search(body, key, timeout):
         context["calls"]["search"].append(body)
         return response([candidate(sourceUrl=context["source_url"])])
 

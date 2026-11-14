@@ -153,6 +153,8 @@
         "enabled": { "type": "boolean", "default": false },
         "dailySearchLimit": { "type": "integer", "minimum": 0, "default": 20 },
         "cacheDays": { "type": "integer", "minimum": 1, "default": 15 },
+        "searchesPerRun": { "type": "integer", "minimum": 1, "maximum": 5, "default": 3, "description": "한 번 요청에서 AI가 웹 검색 도구를 쓸 수 있는 횟수(#706 2026-11-13 PM 결정)." },
+        "timeoutSeconds": { "type": "integer", "minimum": 20, "maximum": 180, "default": 90, "description": "웹 검색 응답을 기다리는 시간(초)." },
         "blockedDomains": {
           "type": "array", "maxItems": 100, "uniqueItems": true, "default": [],
           "items": { "type": "string", "pattern": "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$" }
@@ -310,7 +312,7 @@
             "judgeUsdPerRow": { "type": "number", "exclusiveMinimum": 0, "description": "공장 1행 AI 판단 금액. 초기 0.002." },
             "researchUsdPerCompany": { "type": "number", "exclusiveMinimum": 0, "description": "회사 1곳 자동 조사 금액. 초기 0.04." },
             "researchCallsPerCompany": { "type": "integer", "exclusiveMinimum": 0, "description": "회사 1곳 조사의 호출 수. 초기 2." },
-            "webSearchUsdPerBatch": { "type": "number", "exclusiveMinimum": 0, "description": "후보 웹 검색 1회 금액. 초기 0.04." }
+            "webSearchUsdPerBatch": { "type": "number", "exclusiveMinimum": 0, "description": "후보 웹 검색 1회 금액. 초기 0.11(검색 3번 기준, #706)." }
           }
         },
         "factoryCsvPath": { "type": "string", "default": "", "description": "공장현황 CSV 경로. 비어 있으면 후보 찾기를 실행할 수 없다. 파일명 또는 바로 위 폴더에 기준일 YYYYMMDD가 있어야 한다(PM #427)." },

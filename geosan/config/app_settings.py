@@ -110,6 +110,9 @@ class CandidateWebSearchSettings(FileModel):
     enabled: bool = Field(default=False, strict=True)
     daily_search_limit: int = Field(default=20, ge=0, strict=True)
     cache_days: int = Field(default=15, ge=1, strict=True)
+    # #706 PM 결정 2026-11-13: 실제 검색 비교로 정한 값. 옛 설정에는 없어 기본값으로 읽는다.
+    searches_per_run: int = Field(default=3, ge=1, le=5, strict=True)
+    timeout_seconds: int = Field(default=90, ge=20, le=180, strict=True)
     blocked_domains: list[str] = Field(default_factory=list, max_length=100)
 
     @field_validator("blocked_domains")

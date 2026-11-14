@@ -55,3 +55,22 @@ def fails(context, monkeypatch):
 def failed(context):
     assert context["result"].registry_status is None
     assert context["result"].skipped_reason == "SOURCE_ERROR" and len(logs()) == 2
+
+
+@when("시·군까지만 적힌 웹 후보를 같은 시의 같은 이름 공장 한 곳과 대조한다")
+def same_city(context, monkeypatch):
+    """#706 PM 결정 2026-11-13: 실제 검색은 "충남 아산시"처럼 시·군까지만 주는 일이 많다."""
+    responses(monkeypatch, xml([MATCH]))
+    context["result"] = lookup_candidate_registry(BATCH, candidate(address="충청남도 아산시"))
+
+
+@then("그 공장으로 등록을 확인한다")
+def same_city_found(context):
+    result = context["result"]
+    assert result.registry_status == "FOUND" and result.matched_row.factory_manage_no == MATCH[2]
+
+
+@when("웹 후보를 다른 시에 있는 같은 이름의 공장과 대조한다")
+def other_city(context, monkeypatch):
+    responses(monkeypatch, xml([(MATCH[0], "충남 천안시 가상로 1", "F9")]))
+    context["result"] = lookup_candidate_registry(BATCH, candidate())
