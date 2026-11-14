@@ -112,7 +112,7 @@ def reevaluated_and_logged(context):
     assert context["meta"]["reevaluated"] is True
     assert support.detail(client, opp_id)["evalId"] != context["eval_id"]
     activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
-    lines = [row["summary"] for row in activity if row["kind"] == "NOTE"]
+    lines = [row["summary"] for row in activity if row["kind"] == "CHANGE"]  # #731
     assert lines == [
         "꼬리 질문으로 공정 확정 · 아연도금(전기아연도금) · AI 제안 2개 뺌"
         " / 꼬리 질문으로 산업 확정 · 반도체"
@@ -166,7 +166,7 @@ def changed_once_and_logged(context):
     assert support.evaluation_count(opp_id) == context["evaluations"] + 1
     assert support.detail(client, opp_id)["evalId"] != context["eval_id"]
     activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
-    lines = [row["summary"] for row in activity if row["kind"] == "NOTE"]
+    lines = [row["summary"] for row in activity if row["kind"] == "CHANGE"]  # #731
     assert lines == ["공정 변경 · 아노다이징 → 크로메이트 · AI 제안 1개 뺌"]
 
 

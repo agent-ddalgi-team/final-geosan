@@ -48,7 +48,8 @@ def test_record_codes_match_the_published_contract():
         "EVIDENCE_GRADE_CONFIRMED",
         "NOTE",
     ]
-    assert list(NoteKind) == ["MEMO", "RESEARCH", "REPLY"]
+    # #731 PM 결정 2026-11-14: 프로그램 기록(변경 기록) 값을 끝에 더했다.
+    assert list(NoteKind) == ["MEMO", "RESEARCH", "REPLY", "CHANGE"]
     # 약속 요약 C0·C1과 #497 PM 승인대로 AI 점수·공정 제안 두 종류를 포함한다.
     assert list(ReviewItemKind) == [
         "QUESTION",

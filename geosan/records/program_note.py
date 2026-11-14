@@ -1,7 +1,9 @@
-"""프로그램이 활동 이력에 남기는 메모 한 줄 (#725).
+"""프로그램이 활동 이력에 남기는 변경 기록 한 줄 (#725, #731).
 
 공정·산업 확정, AI 제안 확정·물리침처럼 저장이 무엇을 바꿨는지 프로그램이 문장 한 줄로 남긴다.
-메모 표(`rec_note`)에 새 행으로 넣고, 버전은 그 회사 메모의 마지막 번호 다음이다.
+메모 표(`rec_note`)에 종류 변경 기록(CHANGE, PM 결정 2026-11-14 #731)인 새 행으로 넣고, 버전은
+그 회사 메모의 마지막 번호 다음이다. 이 줄은 잘못 입력으로 표시할 수 없다. 전에 메모 종류로
+저장된 옛 줄은 그대로 둔다.
 작성자는 저장한 담당자다. 쓰기 잠금과 flush는 부르는 창구가 맡는다.
 """
 
@@ -15,6 +17,10 @@ from sqlalchemy.orm import Session
 
 from geosan.records.models import Note
 from geosan.storage.base import new_id
+
+# 코드표 NoteKind.CHANGE와 같은 값. 이 부품은 규칙 부품을 가져오지 않으므로
+# (부품 의존 허용표) 글자로 둔다.
+CHANGE_KIND = "CHANGE"
 
 
 class _Owner(Protocol):
@@ -34,14 +40,14 @@ def add_program_note(
     now: datetime,
     eval_id: str | None = None,
 ) -> Note:
-    """종류가 메모(MEMO)인 한 줄을 새 행으로 더한다(session.add까지만)."""
+    """종류가 변경 기록(CHANGE)인 한 줄을 새 행으로 더한다(session.add까지만)."""
     opp_id = opportunity.opp_id
     version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
     row = Note(
         note_id=new_id("note"),
         opp_id=opp_id,
         staff_key=staff,
-        kind="MEMO",
+        kind=CHANGE_KIND,
         text=text,
         eval_id=eval_id,
         version=version + 1,

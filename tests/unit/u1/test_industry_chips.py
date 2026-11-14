@@ -25,7 +25,8 @@ def save(client, opp_id, industries, staff="park-lee", **extra):
 
 def note_lines(client, opp_id):
     activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
-    return [row["summary"] for row in activity if row["kind"] == "NOTE"]
+    # #731 PM 결정 2026-11-14: 프로그램이 남긴 줄은 메모(NOTE)가 아니라 변경 기록(CHANGE)이다.
+    return [row["summary"] for row in activity if row["kind"] == "CHANGE"]
 
 
 def settings_industries():
@@ -48,7 +49,7 @@ def test_saved_order_follows_settings_and_note_is_virtual_memo(confirm_env):
     assert note_lines(client, opp_id) == [f"상세에서 산업 확정 · {order[0]}, {order[3]}"]
     with session_scope() as session:
         note = session.scalars(select(Note).where(Note.opp_id == opp_id)).one()
-        assert (note.kind, note.staff_key, note.is_virtual) == ("MEMO", "park-lee", True)
+        assert (note.kind, note.staff_key, note.is_virtual) == ("CHANGE", "park-lee", True)
         # 산업군 확정은 관심(찜)을 자동으로 켜지 않는다.
         assert not list(session.scalars(select(Bookmark).where(Bookmark.opp_id == opp_id)))
 
