@@ -727,7 +727,6 @@ def list_opportunities(
     request: Request,
     response: Response,
     session: SessionDep,
-    background_tasks: BackgroundTasks,
     tab: str = "new",
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
@@ -744,6 +743,8 @@ def list_opportunities(
     max_distance_km: Annotated[
         float | None, Query(alias="maxDistanceKm", gt=0, allow_inf_nan=False)
     ] = None,
+    # #744: 응답 뒤 조사 대기 줄을 돌릴 때 쓴다. 엑셀 내려받기가 직접 부를 때는 없다.
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -776,7 +777,8 @@ def list_opportunities(
             status=503,
         )
     # #744: 이 서버가 오늘 처음 받는 목록 읽기면 응답 뒤 조사 대기 줄을 이어서 돌린다.
-    continue_queue_today(session, background_tasks)
+    if background_tasks is not None:
+        continue_queue_today(session, background_tasks)
     # 실시간 보완 결과와 그 결과로 정한 순서·거리 조건을 캐시에 남기지 않는다.
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
