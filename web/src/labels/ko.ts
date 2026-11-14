@@ -1829,7 +1829,7 @@ export const companyReport = {
   evidence: {
     none: '저장된 근거가 없습니다 · 확인 필요',
     source: '출처',
-    /** "10/18" 앞에 붙는 말. */
+    /** "2026-10-18" 앞에 붙는 말. 보고서의 날짜는 연도까지 적는다(#719). */
     date: (date: string) => `자료 날짜 ${date}`,
   },
   questions: {
@@ -1837,7 +1837,7 @@ export const companyReport = {
     knownNone: '아직 들은 답이 없습니다.',
     askTitle: '방문·통화 때 물을 것',
     askNone: '지금 물을 것이 없습니다.',
-    /** 직접 적은 답 글은 싣지 않고 답한 날만 적는다. "답 적음 · 11/6 (글은 상세 화면에서)" */
+    /** 직접 적은 답 글은 싣지 않고 답한 날만 적는다. "답 적음 · 2026-11-06 (글은 상세 화면에서)" */
     answered: (date: string | null) => `답 적음${date ? ` · ${date}` : ''} (글은 상세 화면에서)`,
     /** "아직 값이 없는 점수 항목: 소재와 보유 공정 일치 · 납품실적" */
     missingScores: (labels: readonly string[]) => labels.join(' · '),
@@ -1853,6 +1853,8 @@ export const companyReport = {
     nextSchedule: '다음 일정',
     none: '없음',
     stepNone: '없음',
+    /** "수요 확인 (2026-11-12부터)" — 보고서는 연도까지 적는다(#719). */
+    stepSince: (label: string, since: string | null) => (since ? `${label} (${since}부터)` : label),
   },
 } as const;
 

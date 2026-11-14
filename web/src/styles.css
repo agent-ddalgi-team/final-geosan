@@ -58,6 +58,8 @@ body {
   background: #ffffff;
   font-size: 14px;
   line-height: 1.5;
+  /* 한글은 낱말 사이에서만 줄을 바꾼다("확인 필/요"처럼 낱말 중간에서 꺾이지 않게, #719). */
+  word-break: keep-all;
 }
 
 .report-page h1 {
@@ -130,6 +132,17 @@ body {
   border-collapse: collapse;
 }
 
+.report-table th,
+.report-table td {
+  padding: 4px 8px;
+}
+
+/* 배점·점수·상태처럼 좁은 칸: 내용만큼만 차지하고 글자 중간에서 줄이 꺾이지 않는다(#719). */
+.report-nowrap {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .report-list {
   margin: 0;
   padding-left: 20px;
@@ -144,7 +157,7 @@ body {
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
   }
 
   html,
@@ -156,10 +169,41 @@ body {
     display: none !important;
   }
 
+  /* 근거 3건 안팎의 회사가 A4 한 쪽에 들어가게 글자·줄 간격·여백을 줄인다(#719). 글자는 9pt 아래로 내리지 않는다. */
   .report-page {
     max-width: none;
     padding: 0;
+    font-size: 9.5pt;
+    line-height: 1.35;
+  }
+
+  .report-page h1 {
+    margin-top: 4px;
+    font-size: 13pt;
+  }
+
+  .report-page h2 {
+    margin-bottom: 3px;
     font-size: 11pt;
+  }
+
+  .report-page h3 {
+    margin: 4px 0 2px;
+    font-size: 9.5pt;
+  }
+
+  .report-section {
+    margin-top: 8px;
+  }
+
+  .report-rows,
+  .report-list {
+    gap: 0;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 2px 6px;
   }
 
   .report-page a {
@@ -167,9 +211,16 @@ body {
     text-decoration: none;
   }
 
+  /* 넘치는 회사는 두 쪽이 된다. 그때도 구역·표의 줄·목록 한 줄이 쪽 경계에서 잘리지 않고, 제목만 앞 쪽에 남지 않는다. */
   .report-section,
   .report-table tr,
+  .report-row,
   .report-list li {
     break-inside: avoid;
+  }
+
+  .report-page h2,
+  .report-page h3 {
+    break-after: avoid;
   }
 }

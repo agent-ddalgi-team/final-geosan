@@ -142,7 +142,9 @@ describe('CompanyReportPage', () => {
     expect(screen.getAllByTestId('report-evidence')[0]).toHaveTextContent('나라장터 공고 (가상)');
 
     // 꼬리 질문 답: 보기의 쉬운 말과 날짜
-    expect(screen.getByTestId('report-known')).toHaveTextContent('지금 도금은? 외주 줌 · 11/12');
+    expect(screen.getByTestId('report-known')).toHaveTextContent(
+      '지금 도금은? 외주 줌 · 2026-11-12',
+    );
     // 물을 것: 후속 조치, 아직 답 없는 꼬리 질문, 사례 파일에 적어 둔 확인 질문
     const ask = screen.getByTestId('report-ask-list');
     expect(ask).toHaveTextContent('응모 전 피막 두께 요구 확인');
@@ -150,10 +152,57 @@ describe('CompanyReportPage', () => {
     expect(ask).toHaveTextContent('당진 공장에서 직접 생산합니까? (사례 파일)');
 
     expect(screen.getByTestId('report-stage')).toHaveTextContent('접촉');
-    expect(screen.getByTestId('report-step')).toHaveTextContent('수요 확인 (11/12부터)');
+    expect(screen.getByTestId('report-step')).toHaveTextContent('수요 확인 (2026-11-12부터)');
     expect(screen.getByTestId('report-contacts')).toHaveTextContent('접촉 3회 (전화 2 · 방문 1)');
-    expect(screen.getByTestId('report-last-contact')).toHaveTextContent('11/12');
+    expect(screen.getByTestId('report-last-contact')).toHaveTextContent('2026-11-12');
     expect(screen.getByTestId('report-next-schedule')).toHaveTextContent('2026-11-20');
+  });
+
+  // #719: 2023년 공지가 "자료 날짜 1/2"로만 보여 언제 자료인지 알 수 없었다. 보고서의 날짜는 연도까지 보인다.
+  it('Given 여러 해에 걸친 날짜 When 보고서를 열면 Then 근거·답·접촉 날짜가 모두 연도까지 보인다', async () => {
+    const detail = detailWithSecrets();
+    mockedGet.mockResolvedValue(
+      reply({
+        ...detail,
+        evidence: detail.evidence.map((row, index) =>
+          index === 0 ? { ...row, occurredAt: '2023-01-02' } : row,
+        ),
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('company-report');
+    expect(screen.getAllByTestId('report-evidence')[0]).toHaveTextContent('자료 날짜 2023-01-02');
+    expect(screen.getByTestId('report-known')).toHaveTextContent(
+      '지금 도금은? 외주 줌 · 2026-11-12',
+    );
+    expect(screen.getByTestId('report-step')).toHaveTextContent('수요 확인 (2026-11-12부터)');
+    expect(screen.getByTestId('report-last-contact')).toHaveTextContent(/^.*2026-11-12$/);
+    expect(screen.getAllByTestId('report-ask-answered')[0]).toHaveTextContent(
+      '답 적음 · 2026-11-06',
+    );
+  });
+
+  // #719: 인쇄하면 점수 표의 좁은 칸이 글자 중간에서 꺾였다("배/점", "강한 추/정", "자료 미/확보").
+  // 화면 테스트는 칸에 붙는 클래스만 본다(테스트 환경은 CSS를 읽지 않는다). 인쇄 규칙은 src/styles.css의
+  // .report-nowrap과 @media print에 있고, 실제 인쇄 모양은 이 테스트로 확인하지 못한다.
+  it('Given 점수 표 When 보고서를 열면 Then 배점·점수·상태 칸은 줄이 꺾이지 않는 칸으로 표시된다', async () => {
+    mockedGet.mockResolvedValue(reply(detailWithSecrets()));
+    renderPage();
+    const table = await screen.findByTestId('report-scores-table');
+    const head = within(table).getAllByRole('columnheader');
+    expect(head.map((cell) => cell.textContent)).toEqual(['항목', '배점', '점수', '상태']);
+    expect(head.map((cell) => cell.classList.contains('report-nowrap'))).toEqual([
+      false,
+      true,
+      true,
+      true,
+    ]);
+    const row = within(table).getAllByTestId('report-score-row')[0];
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.classList.contains('report-nowrap')),
+    ).toEqual([true, true, true]);
   });
 
   it('Given 값이 없는 점수 항목과 빈 기본 정보 When 보고서를 열면 Then 그 칸은 "확인 필요"이고 물을 것에 모인다', async () => {
@@ -281,7 +330,9 @@ describe('CompanyReportPage', () => {
       expect(JSON.stringify(reportModelOf(detail, true, questionFile))).not.toContain(secret);
     }
     // 답이 적힌 질문은 글 없이 답한 날만 보인다.
-    expect(screen.getAllByTestId('report-ask-answered')[0]).toHaveTextContent('답 적음 · 11/6');
+    expect(screen.getAllByTestId('report-ask-answered')[0]).toHaveTextContent(
+      '답 적음 · 2026-11-06',
+    );
   });
 
   it('Given 상세를 불러오지 못함 When 보고서를 열면 Then 빈 보고서가 아니라 오류 안내와 [다시 시도]가 보인다', async () => {
