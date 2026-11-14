@@ -364,3 +364,35 @@ describe('성사·거절로 끝나는 저장은 있던 일정을 다시 싣지 �
     expect(body).toMatchObject({ nextScheduleAt: '2026-11-25', nextScheduleNote: '방문' });
   });
 });
+
+describe('통화를 남기면 지난 일정은 넘기지 않는다 (PM 결정 2026-11-14)', () => {
+  beforeEach(() => {
+    vi.mocked(postOutcome).mockReset();
+    vi.mocked(getSalesQuestions).mockResolvedValue({ data: QUESTIONS, meta: {} });
+  });
+
+  it('Given 이미 지난 일정 / When 새 일정 없이 통화를 남김 / Then 요청에 옛 일정이 없다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postOutcome).mockResolvedValueOnce(reply('IN_PROGRESS'));
+    renderArea('IN_PROGRESS', { nextScheduleAt: '2020-01-02', nextScheduleNote: '다시 연락' });
+    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    const body = vi.mocked(postOutcome).mock.calls[0][1];
+    expect(body).not.toHaveProperty('nextScheduleAt');
+    expect(body).not.toHaveProperty('nextScheduleNote');
+  });
+
+  it('Given 앞으로의 일정 / When 새 일정 없이 통화를 남김 / Then 그 일정을 그대로 싣는다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postOutcome).mockResolvedValueOnce(reply('IN_PROGRESS'));
+    renderArea('IN_PROGRESS', { nextScheduleAt: '2099-12-30', nextScheduleNote: '방문' });
+    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    const body = vi.mocked(postOutcome).mock.calls[0][1];
+    expect(body).toMatchObject({ nextScheduleAt: '2099-12-30', nextScheduleNote: '방문' });
+  });
+});
