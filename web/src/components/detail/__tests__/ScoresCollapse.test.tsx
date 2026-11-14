@@ -47,7 +47,7 @@ describe('상세 점수표 다섯 묶음(#611)', () => {
       expect.stringContaining('표면처리가 필요한 제품·부품 생산 근거'),
       expect.stringContaining('처리 목적·성능 태그 일치'),
     ]);
-    expect(labelsOf('OUTSOURCE')).toEqual([expect.stringContaining('입찰·협력사 모집·구매 공고')]);
+    expect(labelsOf('OUTSOURCE')).toEqual([expect.stringContaining('구매·외주 의향')]);
     expect(labelsOf('DISTANCE')).toEqual([]);
     expect(labelsOf('FIT')).toEqual([
       expect.stringContaining('소재와 보유 공정 일치'),
@@ -56,7 +56,7 @@ describe('상세 점수표 다섯 묶음(#611)', () => {
     expect(labelsOf('TIMING')).toEqual([
       expect.stringContaining('공장 증설·신규 생산라인'),
       expect.stringContaining('신규 수주·제품 출시·사업 확대'),
-      expect.stringContaining('관련 직무 채용'),
+      expect.stringContaining('관심'),
     ]);
   });
 
@@ -121,7 +121,7 @@ describe('상세 점수표 다섯 묶음(#611)', () => {
       '신호 없음',
     ]);
     // 값이 없는 칸은 전처럼 "--"와 "자료 미확보"로 보인다.
-    expect(cellsOf('관련 직무 채용')).toEqual(['5', '--', '--', '--', '--', '자료 미확보']);
+    expect(cellsOf('관심')).toEqual(['5', '--', '--', '--', '--', '자료 미확보']);
   });
 
   it('Given 대응표에 없는 항목 코드가 섞여 옴 When 점수표를 펼치면 Then 그 항목은 사라지지 않고 맨 아래 "그 밖" 묶음에 보인다', () => {

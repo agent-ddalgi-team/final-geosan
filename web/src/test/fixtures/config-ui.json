@@ -53,6 +53,14 @@
         "기타"
       ]
     },
+    "records": {
+      "approvalEnabled": false,
+      "noteMaxLength": 200,
+      "cancelByAnyStaff": false,
+      "questionsPerContact": 6
+    },
+    "export": { "xlsxEnabled": false },
+    "distanceFilterPresetsKm": [30, 50, 100],
     "activeDatasetKind": "VIRTUAL_REVIEWED",
     "accessProtectionEnabled": false,
     "ruleVersion": "v0.17-a"

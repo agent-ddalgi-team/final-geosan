@@ -429,7 +429,8 @@ describe('OpportunityDetailPage', () => {
   });
 
   it('주소가 없으면 지도 링크를 보이지 않는다', async () => {
-    mockedGet.mockResolvedValueOnce(reply(base));
+    // 가짜 응답에 주소가 채워져(#719, 명세의 필수 칸) 주소 없는 경우는 여기서 빈 글로 만든다.
+    mockedGet.mockResolvedValueOnce(reply({ ...base, header: { ...base.header, address: '' } }));
     renderPage();
     await screen.findByTestId('opportunity-detail');
     expect(screen.queryByTestId('detail-map-links')).not.toBeInTheDocument();
