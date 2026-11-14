@@ -1084,6 +1084,10 @@
           "visitRadiusKm": {
             "title": "Visitradiuskm",
             "type": "number"
+          },
+          "visitWidenBelowCount": {
+            "title": "Visitwidenbelowcount",
+            "type": "integer"
           }
         },
         "required": [
@@ -1093,6 +1097,7 @@
           "missingCoordinates",
           "asOf",
           "visitRadiusKm",
+          "visitWidenBelowCount",
           "visitGroups"
         ],
         "title": "DashboardMap",
@@ -6880,10 +6885,15 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "radiusKm": {
+            "title": "Radiuskm",
+            "type": "number"
           }
         },
         "required": [
           "oppId",
+          "radiusKm",
           "nearby"
         ],
         "title": "VisitGroup",

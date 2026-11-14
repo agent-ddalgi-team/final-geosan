@@ -445,6 +445,11 @@ class AppSettings(FileModel):
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
     # 대시보드 지도 "같이 들를 곳" 반경(km, #673 PM 결정 2026-11-13).
     visit_group_radius_km: float = Field(default=5, gt=0, le=50)
+    # 방문할 회사 기준 위 반경 안 관심 기업이 이 수 미만이면 그 회사만 넓힌 반경까지 본다
+    # (#743 PM 결정 2026-11-14).
+    visit_group_widen_below_count: int = Field(default=5, ge=1, le=50, strict=True)
+    # 넓힌 반경(km). 위 반경보다 크지 않으면 넓히지 않는다(#743 PM 결정 2026-11-14).
+    visit_group_wide_radius_km: float = Field(default=10, gt=0, le=50)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]

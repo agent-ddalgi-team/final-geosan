@@ -333,8 +333,9 @@ def _visit_lines(
 ) -> tuple[list[str], list[str]]:
     """같이 들를 곳(#743): 대시보드 지도 "같이 들를 곳"(#673)과 같은 계산을 글로 바꾼다.
 
-    반경은 설정 `visitGroupRadiusKm`, 중심은 진행 중·관심 회사, 근처는 관심 기업만이다(지도의
-    함수를 그대로 부른다). 거리는 프로그램이 잰 직선거리다 — AI는 문장만 쓴다. 싣는 것은 회사
+    반경은 설정 `visitGroupRadiusKm`(그 안 관심 기업이 기준 곳 수 미만이면 그 회사만 넓힌 반경,
+    #743), 중심은 진행 중·관심 회사, 근처는 관심 기업만이다(지도의 함수를 그대로 부르고, 줄마다
+    쓴 반경을 싣는다). 거리는 프로그램이 잰 직선거리다 — AI는 문장만 쓴다. 싣는 것은 회사
     이름·거리·지도 묶음 이름·다음 일정 날짜뿐이고 주소·좌표는 싣지 않는다. 조회 글에 실린 회사만
     쓴다. until이 있으면 다음 일정이 그날 이하인 중심 회사만 싣는다(오늘 정리).
     """
@@ -350,21 +351,31 @@ def _visit_lines(
         due = anchor.next_schedule
         if until is not None and (due is None or due > until):
             continue
-        picked.append((due is None, due or date.max, anchor.name, anchor, nearby))
+        picked.append((due is None, due or date.max, anchor.name, anchor, nearby, group))
     picked.sort(key=lambda item: item[:3])
+    base = settings.visit_group_radius_km
+    below = settings.visit_group_widen_below_count
     lines = [
-        f"같이 들를 곳: 방문할 회사(진행 중·관심) 근처 {settings.visit_group_radius_km:g}km 안의 "
-        "관심 기업. 거리는 그 회사에서 잰 직선거리"
+        f"같이 들를 곳: 방문할 회사(진행 중·관심) 근처 {base:g}km 안의 관심 기업"
+        f"({base:g}km 안이 {below}곳 미만인 회사는 "
+        f"{settings.visit_group_wide_radius_km:g}km 안까지). "
+        "거리는 그 회사에서 잰 직선거리. 줄 끝 괄호는 그 줄에 쓴 반경"
     ]
     opp_ids = []
-    for _, _, _, anchor, nearby in picked:
+    for _, _, _, anchor, nearby, group in picked:
         day = _day_label(anchor.next_schedule) if anchor.next_schedule else "일정 없음"
         near = ", ".join(
             f"{by_id[row['opp_id']].name} {row['distance_km']}km({MAP_GROUP_LABELS[row['group']]})"
             for row in nearby
         )
         group_label = MAP_GROUP_LABELS[group_of[anchor.opp_id]]
-        lines.append(f"- {day} {anchor.name}({group_label}) → {near}")
+        radius = group["radius_km"]
+        scope = (
+            f"{radius:g}km 안 · {base:g}km 안이 {below}곳 미만"
+            if radius > base
+            else f"{radius:g}km 안"
+        )
+        lines.append(f"- {day} {anchor.name}({group_label}) → {near} ({scope})")
         opp_ids += [anchor.opp_id, *(row["opp_id"] for row in nearby)]
     if not picked:
         lines.append(_NONE)
