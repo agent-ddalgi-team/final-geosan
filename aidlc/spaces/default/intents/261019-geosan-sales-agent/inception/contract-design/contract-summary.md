@@ -18,7 +18,7 @@
 | C6 | U1이 만든 공유 SQLite 스키마 (뒤 단위가 자기 테이블 추가) | 모든 단위 | 공유 데이터(테이블 접두사로 소유, 교차 참조는 ID만) | 각 테이블의 소유 부품 |
 | C7 | 사람(PM·운영자·거산 담당자)이 넣는 파일 | OperatorCommands(U1·U4·U10), ConfigRegistry | 파일 형식(가상 사례 JSON, 거산 역량 JSON, 규칙 설정 YAML, 앱 설정 YAML) + 예시 파일 | OperatorCommands·ConfigRegistry (U1, U10) |
 | C8 | U1 OperatorCommands (U3·U4·U8·U10이 명령 추가) | 사람(운영자, 운영 안내서) | 명령줄(명령 이름·인자·출력 형식) | OperatorCommands (U1) |
-| C9 | External: 외부 LLM API, 기업 홈페이지, 산단공·공장등록·수질·나라장터 | EvidenceExtraction(U2), SourceIngestion(U3·U9) | 우리가 소비하는 바깥 서비스를 가두는 어댑터 인터페이스 | EvidenceExtraction·SourceIngestion |
+| C9 | External: 외부 LLM API, 기업 홈페이지, 산단공·공장등록·수질·나라장터(나라장터 입찰공고는 연결하지 않기로 함, PM 결정 2026-11-13) | EvidenceExtraction(U2), SourceIngestion(U3·U9) | 우리가 소비하는 바깥 서비스를 가두는 어댑터 인터페이스 | EvidenceExtraction·SourceIngestion |
 | C0 | 공통 코드표(모든 계약이 가리킴) | C1·C3·C6·C7 | 열거값 한 곳 정의 | RuleEngine(분류)·각 소유 부품 |
 
 ## 2. 계약 주인과 바꾸는 규칙 (Q2)
@@ -1103,6 +1103,7 @@ HomepageReader:
   # (추가 2026-11-11 PM 결정 #557) fetchSite(url) -> { pages: [{ url, text }] }: 첫 화면을 fetch로 읽은 뒤, 첫 화면 링크 가운데 같은 사이트(호스트가 같고 www. 차이만 허용) 주소이면서 링크 글자나 주소에 extraPageHints 말이 있는 것을 처음 나온 순서대로 extraPages장까지 더 읽는다. 장마다 robots·약관 차단 검사를 그대로 하고, 막히거나 못 읽은 안쪽 페이지는 건너뛴다(첫 화면이 실패할 때만 조사 실패). 안쪽 페이지 본문은 extraPageMaxChars에서 자른다. 전체 60초 한도는 첫 화면과 같이 쓴다
   # 근거 추출(LlmAdapter)에는 페이지마다 공개 본문 항목 하나로 넘겨 AI를 **한 번만** 부른다(대표번호 뽑기 → 연락처 지우기 순서는 페이지마다 그대로). 근거의 출처 주소(ev_evidence.sourceRef)는 인용문이 그대로 들어 있는 페이지 주소를 코드가 찾아 붙인다(못 찾으면 첫 화면 주소)
 ExternalSourceApi (공장등록·나라장터):
+  # (덧붙임 2026-11-14 #722 — PM 결정 2026-11-13) 나라장터 입찰공고는 연결하지 않기로 했다. 이름은 다시 연결하게 될 때의 범위로 남긴다
   timeout: 30s, retry: 1, dailyLimitGuard: 1000 (공장등록)
   contractRow: SourceContract 필수
   # (추가 2026-11-05 저녁 PM 반영, 후보 찾기 1차 #221) 공장등록 조회 3종 중 **회사명 조회만** 쓴다(AI가 고른 회사의 업종명·주생산품·홈페이지·회사 전화번호 채우기). 산업단지명 조회는 목록에 쓰지 않는다 — 산업단지 밖 공장을 못 잡음(2026-11-05 확인: 사례 파일 18곳 중 5곳만 나옴). **(바뀜 2026-11-06 PM 결정 #323: 파일은 그대로 두고 산업단지명 조회를 목록에 더한다 — 바로 아래 줄)** 응답은 항상 XML, 한 번에 1000건까지 읽힘. 인증키는 환경 변수 DATA_GO_KR_SERVICE_KEY로만. 대표자 이름·팩스번호 열은 읽는 단계에서 버린다(저장·로그·전송 없음, CON-11). 조회에 안 나오는 회사는 지우지 않고 "등록 자료에서 안 보임"으로만 표시

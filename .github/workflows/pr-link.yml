@@ -88,7 +88,7 @@ jobs:
             exit 0
           fi
           body="$marker
-          **마일스톤을 골라 주세요** (자동 알림). 오른쪽 Milestone에서 \`뼈대(10/28)\` / \`10월 말 부분 시연\` / \`11/15 거산 전달\` 중 하나를 고르면 이 댓글은 사라집니다. 마일스톤이 없는 이슈에 연결한 PR은 검사에서 빨간 X가 납니다."
+          **마일스톤을 골라 주세요** (자동 알림). 오른쪽 Milestone에서 \`12/11 최종 발표까지\`를 고르면 이 댓글은 사라집니다. 마일스톤이 없는 이슈에 연결한 PR은 검사에서 빨간 X가 납니다."
           if [[ -z "$id" ]]; then
             gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -f body="$body" >/dev/null
           fi
