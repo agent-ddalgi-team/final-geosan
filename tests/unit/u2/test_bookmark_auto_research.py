@@ -272,8 +272,39 @@ def test_company_skipped_by_the_daily_cost_shows_limit_skipped(found_company):
 
 
 def test_other_rejection_of_an_automatic_call_is_not_limit_skipped(found_company):
-    """Given 자동 조사의 AI 호출이 다른 이유(월 한도 등)로 거부 / Then LIMIT_SKIPPED가 아니다."""
-    _skip(found_company, "이번 달 비용 한도 초과")
+    """Given 자동 조사가 한도가 아닌 이유(설정 미완료 등)로 거부 / Then LIMIT_SKIPPED가 아니다.
+
+    (바뀜 #719) 예전에는 월 한도 거부도 여기서 "읽기 실패"로 고정했다. 월 한도는 아래 검사로 옮겼다.
+    """
+    _skip(found_company, "가짜 거부 이유(한도 아님)")
+    assert _state(found_company) == "READ_FAILED"
+
+
+@pytest.mark.parametrize("reason", ["이번 달 비용 한도 초과", "이번 달 호출 한도 초과"])
+@pytest.mark.parametrize("requester", ["auto-bookmark", "system", "park-lee"])
+def test_monthly_limit_rejection_shows_limit_not_read_failure(found_company, reason, requester):
+    """Given 조사가 월 한도로 거부됨 / Then "읽기 실패"가 아니라 한도로 조사 안 함 (#719)."""
+    from geosan.evidence import transfer
+
+    assert reason in transfer.MONTHLY_LIMIT_REASONS
+    with session_scope() as session:
+        row = auto_research._marker(
+            session.get(Opportunity, found_company.opp_id), reject_reason=reason
+        )
+        row.requested_by = requester
+        session.add(row)
+    assert _state(found_company) == "LIMIT_SKIPPED"
+
+
+def test_daily_limit_reason_from_another_requester_is_not_limit_skipped(found_company):
+    """하루 금액 한도 문구는 관심 자동 조사가 남긴 행일 때만 한도로 본다(그대로)."""
+    with session_scope() as session:
+        row = auto_research._marker(
+            session.get(Opportunity, found_company.opp_id),
+            reject_reason=auto_research.LIMIT_REASON,
+        )
+        row.requested_by = "system"
+        session.add(row)
     assert _state(found_company) == "READ_FAILED"
 
 

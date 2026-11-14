@@ -23,6 +23,12 @@ from geosan.storage.session import session_scope
 KST = timezone(timedelta(hours=9))
 
 
+# 월 한도 거부 행의 이유 글. 조사 상태(한도로 조사 안 함)가 이 글로 알아본다(#719).
+MONTHLY_CALL_LIMIT_REASON = "이번 달 호출 한도 초과"
+MONTHLY_COST_LIMIT_REASON = "이번 달 비용 한도 초과"
+MONTHLY_LIMIT_REASONS = (MONTHLY_CALL_LIMIT_REASON, MONTHLY_COST_LIMIT_REASON)
+
+
 def configuration_error() -> AppError:
     """C4: 담당자가 재시도로 해결할 수 없는 조사 설정 오류."""
     return AppError(
@@ -243,14 +249,14 @@ def _reserve(
             )
         elif sum(row.call_count for row in rows) >= llm.monthly_call_limit:
             error = AppError(
-                "이번 달 호출 한도 초과",
+                MONTHLY_CALL_LIMIT_REASON,
                 "다음 달 다시 조사해 주세요.",
                 status=503,
                 kind="LLM_LIMIT",
             )
         elif cost + minimum_search_cost >= Decimal(str(llm.monthly_cost_limit_usd)):
             error = AppError(
-                "이번 달 비용 한도 초과",
+                MONTHLY_COST_LIMIT_REASON,
                 "다음 달 다시 조사해 주세요.",
                 status=503,
                 kind="LLM_LIMIT",

@@ -30,7 +30,13 @@ from sqlalchemy.orm import Session
 from geosan.api.deps import runtime_for
 from geosan.config.errors import AppError, RunFailedError
 from geosan.evidence.models import Evidence
-from geosan.evidence.transfer import KST, TransferLog, accounted_cost, record_search_rejection
+from geosan.evidence.transfer import (
+    KST,
+    MONTHLY_LIMIT_REASONS,
+    TransferLog,
+    accounted_cost,
+    record_search_rejection,
+)
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
@@ -273,14 +279,21 @@ def _record_failure(opp_id: str, error: AppError, started_at) -> None:
 
 
 def limit_skipped(session: Session, opp_ids: list[str]) -> bool:
-    """이 회사의 마지막 관심 자동 조사 표시가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED)."""
+    """이 회사의 마지막 조사 시도가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED).
+
+    관심 자동 조사의 하루 금액 한도, 그리고 월 한도 거부(#719: 예전에는 "읽기 실패"로 보였다).
+    """
     if not opp_ids:
         return False
     # 그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 "한도로 건너뜀"이 아니다.
     latest = session.execute(
-        select(TransferLog.reject_reason, TransferLog.requested_by)
+        select(TransferLog.reject_reason, TransferLog.requested_by, TransferLog.decision)
         .where(TransferLog.opp_id.in_(opp_ids), TransferLog.purpose == "EXTERNAL_AI")
         .order_by(TransferLog.occurred_at.desc(), TransferLog.transfer_log_id.desc())
         .limit(1)
     ).one_or_none()
-    return latest is not None and tuple(latest) == (LIMIT_REASON, AUTO_REQUESTER)
+    if latest is None or latest.decision != "REJECTED":
+        return False
+    if latest.reject_reason in MONTHLY_LIMIT_REASONS:
+        return True
+    return (latest.reject_reason, latest.requested_by) == (LIMIT_REASON, AUTO_REQUESTER)
