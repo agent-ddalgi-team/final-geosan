@@ -159,10 +159,12 @@ export default function HeaderSection({
             <StatusTag tone={header.researchState === 'RUNNING' ? 'neutral' : 'wait'}>
               {header.researchState === 'RUNNING'
                 ? candidateSearch.researchRunning
-                : `${candidateSearch.researchStopped} · ${labelFor(
-                    candidateSearch.researchStopReason,
-                    header.researchState,
-                  )}`}
+                : header.researchState === 'NOT_TRIED'
+                  ? candidateSearch.researchNotYet
+                  : `${candidateSearch.researchStopped} · ${labelFor(
+                      candidateSearch.researchStopReason,
+                      header.researchState,
+                    )}`}
             </StatusTag>
           </span>
         ) : null}

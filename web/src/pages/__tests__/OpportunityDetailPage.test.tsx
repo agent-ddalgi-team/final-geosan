@@ -515,7 +515,7 @@ describe('OpportunityDetailPage', () => {
     ['NO_SCORE_EVIDENCE', '조사 중단 · 점수 근거 없음'],
     ['NOT_FOUND', '조사 중단 · 홈페이지 못 찾음'],
     ['READ_FAILED', '조사 중단 · 홈페이지 읽기 실패'],
-    ['NOT_TRIED', '조사 중단 · 조사 안 됨'],
+    ['NOT_TRIED', '조사 전 · 생산품으로만 판단'], // #744
     ['LIMIT_SKIPPED', '조사 중단 · 자동 조사 한도로 조사 안 함'],
   ] as const)('조사 상태 %s면 점수 줄 옆에 "%s"가 보인다 (#596)', async (state, text) => {
     mockedGet.mockResolvedValueOnce(
