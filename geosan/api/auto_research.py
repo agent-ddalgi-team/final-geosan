@@ -278,20 +278,46 @@ def _record_failure(opp_id: str, error: AppError, started_at) -> None:
         )
 
 
-def limit_skipped(session: Session, opp_ids: list[str]) -> bool:
-    """이 회사의 마지막 조사 시도가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED).
-
-    관심 자동 조사의 하루 금액 한도, 그리고 월 한도 거부(#719: 예전에는 "읽기 실패"로 보였다).
-    """
+def _latest_attempt(session: Session, opp_ids: list[str]):
+    """이 회사의 마지막 조사 시도 기록(전송 기록의 AI 용도 행) 1행. 없으면 None."""
     if not opp_ids:
-        return False
-    # 그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 "한도로 건너뜀"이 아니다.
-    latest = session.execute(
-        select(TransferLog.reject_reason, TransferLog.requested_by, TransferLog.decision)
+        return None
+    return session.execute(
+        select(
+            TransferLog.reject_reason,
+            TransferLog.requested_by,
+            TransferLog.decision,
+            TransferLog.call_count,
+            TransferLog.occurred_at,
+        )
         .where(TransferLog.opp_id.in_(opp_ids), TransferLog.purpose == "EXTERNAL_AI")
         .order_by(TransferLog.occurred_at.desc(), TransferLog.transfer_log_id.desc())
         .limit(1)
     ).one_or_none()
+
+
+def just_started(session: Session, opp_ids: list[str]) -> bool:
+    """관심 저장이 방금 조사를 예약했고 아직 끝나지 않았는가(researchState RUNNING, #719).
+
+    서버 메모리의 "조사 중" 표시는 조사가 실제로 시작될 때 켜진다. 저장 직후 화면이 상세를
+    다시 읽는 사이에는 저장된 시작 표시 행(마지막 기록이 그 행이고 최대 시간 안)으로 안다.
+    """
+    latest = _latest_attempt(session, opp_ids)
+    return (
+        latest is not None
+        and (latest.requested_by, latest.decision, latest.call_count)
+        == (AUTO_REQUESTER, "ALLOWED", 0)
+        and latest.occurred_at >= utcnow() - timedelta(seconds=_RUNNING_SECONDS)
+    )
+
+
+def limit_skipped(session: Session, opp_ids: list[str]) -> bool:
+    """이 회사의 마지막 조사 시도가 "한도로 건너뜀"인가(researchState LIMIT_SKIPPED).
+
+    관심 자동 조사의 하루 금액 한도, 그리고 월 한도 거부(#719: 예전에는 "읽기 실패"로 보였다).
+    그 뒤에 다른 조사(AI 호출·읽기 실패 기록)가 있었으면 더는 "한도로 건너뜀"이 아니다.
+    """
+    latest = _latest_attempt(session, opp_ids)
     if latest is None or latest.decision != "REJECTED":
         return False
     if latest.reject_reason in MONTHLY_LIMIT_REASONS:

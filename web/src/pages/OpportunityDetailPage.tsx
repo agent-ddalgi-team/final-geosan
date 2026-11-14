@@ -262,6 +262,9 @@ export default function OpportunityDetailPage() {
             onBookmarkChanged={(next) => {
               bookmarkState.change(next);
               setTimelineVersion((n) => n + 1);
+              // 관심을 켜면 조사가 저절로 시작될 수 있다(#690). 머리의 조사 상태("조사 중" 등)가
+              // 바로 보이게 상세를 조용히 다시 읽는다(#719). 끌 때는 바뀌는 것이 없어 읽지 않는다.
+              if (next?.active) reloadQuietly();
             }}
             salesStep={salesStep}
             outcome={outcome}

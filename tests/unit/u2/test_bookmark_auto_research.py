@@ -618,3 +618,36 @@ def test_company_whose_research_is_running_is_not_queued_again(unresearched):
     auto_research._started[unresearched.opp_id] = time.monotonic()
     assert _queue(unresearched) == 0
     assert _logs(unresearched.opp_id) == []
+
+
+# ---------- #719: 관심 저장 직후 다시 읽은 화면에도 "조사 중"이 보인다 ----------
+
+
+def test_company_with_a_fresh_start_row_is_running_before_the_task_starts(found_company):
+    """Given 관심 저장이 남긴 시작 표시만 있고 조사는 아직 안 시작됨 / Then 조사 상태는 조사 중.
+
+    서버 메모리의 표시는 조사가 실제로 시작될 때 켜지므로, 저장 직후 화면이 상세를 다시 읽는
+    그 짧은 사이에는 저장된 시작 표시로 "조사 중"을 알아본다.
+    """
+    with session_scope() as session:
+        _start_marker(session, session.get(Opportunity, found_company.opp_id))
+    assert not auto_research.is_running(found_company.opp_id)
+    assert _state(found_company) == "RUNNING"
+
+
+def test_old_or_finished_start_row_is_not_running(found_company):
+    """Given 시작 표시가 오래됐거나 그 뒤 실패 기록이 있음 / Then 조사 중이 아니다."""
+    with session_scope() as session:
+        _start_marker(
+            session,
+            session.get(Opportunity, found_company.opp_id),
+            seconds_ago=auto_research._RUNNING_SECONDS + 5,
+        )
+    assert _state(found_company) == "READ_FAILED"
+    with session_scope() as session:
+        _start_marker(session, session.get(Opportunity, found_company.opp_id), seconds_ago=3)
+    assert _state(found_company) == "RUNNING"
+    record_search_rejection(
+        found_company.opp_id, "자동 조사 중단 · 가짜 이유", None, purpose="EXTERNAL_AI"
+    )
+    assert _state(found_company) == "READ_FAILED"
