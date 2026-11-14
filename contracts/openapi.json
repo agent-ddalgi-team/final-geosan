@@ -352,25 +352,35 @@
         "type": "object"
       },
       "BucketCounts": {
-        "description": "목록의 묶음별 건수(#610). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다.",
+        "description": "목록의 묶음별 건수(#610·#675). 키는 계약 C0 `contactBucket`의 대문자 코드 그대로다.",
         "properties": {
-          "CHECK": {
-            "title": "Check",
+          "CLOSED": {
+            "title": "Closed",
             "type": "integer"
           },
-          "LATER": {
-            "title": "Later",
+          "EVIDENCE_READY": {
+            "title": "Evidence Ready",
             "type": "integer"
           },
-          "NOW": {
-            "title": "Now",
+          "EVIDENCE_SOME": {
+            "title": "Evidence Some",
+            "type": "integer"
+          },
+          "NOT_RESEARCHED": {
+            "title": "Not Researched",
+            "type": "integer"
+          },
+          "NO_HOMEPAGE": {
+            "title": "No Homepage",
             "type": "integer"
           }
         },
         "required": [
-          "NOW",
-          "CHECK",
-          "LATER"
+          "EVIDENCE_READY",
+          "EVIDENCE_SOME",
+          "NO_HOMEPAGE",
+          "NOT_RESEARCHED",
+          "CLOSED"
         ],
         "title": "BucketCounts",
         "type": "object"
@@ -3009,6 +3019,18 @@
       "Meta": {
         "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
         "properties": {
+          "bookmarkedCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "목록 대상 안에서 관심으로 켜 둔 기회 수(#675). 다른 거르기 조건과 무관하다. 목록 머리 '관심 기업 ○곳' 링크용",
+            "title": "Bookmarkedcount"
+          },
           "bucketCounts": {
             "anyOf": [
               {
@@ -3455,31 +3477,29 @@
             "$ref": "#/components/schemas/Blocker"
           },
           "bucket": {
-            "description": "지금 연락할 곳 / 확인 필요 / 나중",
+            "description": "근거 있음 / 근거 조금 / 홈페이지 없음 / 조사 전 / 끝난 회사",
             "enum": [
-              "NOW",
-              "CHECK",
-              "LATER"
+              "EVIDENCE_READY",
+              "EVIDENCE_SOME",
+              "NO_HOMEPAGE",
+              "NOT_RESEARCHED",
+              "CLOSED"
             ],
             "title": "Bucket",
             "type": "string"
           },
           "bucketBasis": {
-            "description": "그 묶음에 든 이유 하나(카드 꼬리표)",
+            "description": "그 묶음에 든 이유 하나",
             "enum": [
               "EXCLUDED_OPINION",
               "REQUIRED_FAILED",
               "EXISTING_CUSTOMER",
               "CLOSED_OR_HOLD",
-              "IN_PROGRESS",
-              "NEED_CHECK_OPINION",
-              "REQUIRED_PENDING",
-              "OWN_PLATING",
-              "NOT_EVALUATED_HIGH_FIT",
-              "NOT_EVALUATED_LOWER_FIT",
-              "EVIDENCE_RECHECK",
-              "REQUIRED_PASSED",
-              "MONITOR"
+              "EVIDENCE_ENOUGH",
+              "EVIDENCE_FEW",
+              "HOMEPAGE_ONLY",
+              "HOMEPAGE_NOT_FOUND",
+              "RESEARCH_NOT_RUN"
             ],
             "title": "Bucketbasis",
             "type": "string"
@@ -3702,7 +3722,7 @@
                 "type": "null"
               }
             ],
-            "description": "같은 공정·산업군의 최근 성사·거절로 정한 조정. 표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
+            "description": "같은 공정·산업군의 최근 성사·거절로 정한 조정. '근거 있음' 묶음 카드에만 준다(#675). 표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
           },
           "reason": {
             "title": "Reason",
@@ -6583,6 +6603,22 @@
           },
           {
             "in": "query",
+            "name": "hideBookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hidebookmarked"
+            }
+          },
+          {
+            "in": "query",
             "name": "opinion",
             "required": false,
             "schema": {
@@ -6914,6 +6950,22 @@
                 }
               ],
               "title": "Bookmarked"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hideBookmarked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hidebookmarked"
             }
           },
           {

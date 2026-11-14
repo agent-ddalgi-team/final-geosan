@@ -530,6 +530,13 @@ export const bookmarkList = {
   /** 주소의 조건 값이 대시보드 칸 이름표에 없을 때 대신 보이는 말. */
   filterUnknown: '대시보드에서 고른 조건',
   clearFilter: '거르기 풀기',
+  /** 평소 목록 머리(#675): 관심으로 고른 회사는 목록에서 빠져 있다. 누르면 관심 기업 보기로 간다. 예: "관심 기업 3곳" */
+  countLink: (count: number) => `관심 기업 ${count}곳`,
+  /** 평소 목록 머리의 스위치(#675). 켜면 관심으로 고른 회사도 섞어 보인다. */
+  withBookmarked: '관심 기업도 함께 보기',
+  /** 평소 목록에서 [관심]을 눌러 그 카드가 목록에서 빠졌을 때의 안내와 링크. */
+  moved: '관심 기업으로 옮겼습니다',
+  movedLink: '관심 기업 보기',
 } as const;
 
 /** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 제외로 저장한 회사만 모아 본다. */
@@ -1521,19 +1528,37 @@ export const salesAnalysisTexts = {
   openCompanyLabel: (name: string) => `${name} 상세 보기`,
 } as const;
 
-// 추천 목록의 세 묶음(#610). 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
-const contactBucketTitles = { NOW: '지금 연락할 곳', CHECK: '확인 필요', LATER: '나중' } as const;
+// 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
+// 근거 상태 묶음(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사.
+// 세 묶음(#610)의 NOW·CHECK·LATER와 옛 이유 값은 서버가 더는 내보내지 않지만 글자는 남겨 둔다.
+const contactBucketTitles = {
+  EVIDENCE_READY: '근거 있음',
+  EVIDENCE_SOME: '근거 조금',
+  NO_HOMEPAGE: '홈페이지 없음',
+  NOT_RESEARCHED: '조사 전',
+  CLOSED: '끝난 회사',
+  NOW: '지금 연락할 곳',
+  CHECK: '확인 필요',
+  LATER: '나중',
+} as const;
 export const contactBuckets = {
   titles: contactBucketTitles,
-  /** 묶음이 바뀌는 자리의 제목. 예: "지금 연락할 곳 9곳" */
+  /** 묶음이 바뀌는 자리의 제목. 예: "근거 있음 30곳" */
   title: (bucket: keyof typeof contactBucketTitles, count: number) =>
     `${contactBucketTitles[bucket]} ${count}곳`,
-  /** 카드 꼬리표: 그 묶음에 든 이유. */
+  /** 카드 꼬리표: 공정 적합도 하나(#675). 끝난 회사가 아닌 카드에 보인다. 적합도가 없으면 안 보인다. */
+  fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
+  /** 그 묶음에 든 이유. 카드에는 끝난 회사의 이유(앞 네 줄)만 꼬리표로 보인다. */
   basis: {
     EXCLUDED_OPINION: '제외',
     REQUIRED_FAILED: '필수조건 탈락',
     EXISTING_CUSTOMER: '거래 중',
     CLOSED_OR_HOLD: '성사·거절·보류',
+    EVIDENCE_ENOUGH: '근거 충분',
+    EVIDENCE_FEW: '근거 적음',
+    HOMEPAGE_ONLY: '홈페이지만 확인',
+    HOMEPAGE_NOT_FOUND: '홈페이지 못 찾음',
+    RESEARCH_NOT_RUN: '조사 전',
     IN_PROGRESS: '접촉 진행 중',
     NEED_CHECK_OPINION: '검토 중',
     REQUIRED_PENDING: '필수조건 확인 전',

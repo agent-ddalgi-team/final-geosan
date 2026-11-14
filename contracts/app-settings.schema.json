@@ -207,22 +207,23 @@
     "contactList": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["nowClassifications", "unscoredHighFitToNow", "nullFitLevelAs", "adjust"],
-      "description": "추천 목록 세 묶음(C1 sort=contact·카드 bucket·rankAdjust, #610) 기준. 이 묶음이 없는 옛 설정은 예시 파일(examples/app-settings.yaml) 값으로 읽는다. 부록 F 점수·분류·기존 순위는 바꾸지 않는다.",
+      "required": ["nullFitLevelAs", "adjust"],
+      "description": "추천 목록 묶음(C1 sort=contact·카드 bucket·rankAdjust, #610) 기준. 묶음은 근거 상태로 바뀌었다(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사. 이 묶음이 없는 옛 설정은 예시 파일(examples/app-settings.yaml) 값으로 읽는다. 부록 F 점수·분류·기존 순위는 바꾸지 않는다.",
       "properties": {
         "_설명": { "type": "string" },
+        "evidenceReadyMin": { "type": ["integer", "null"], "minimum": 1, "description": "살아 있는 근거(교체되지 않았고 처리 금지가 아닌 근거)가 이 수 이상이면 \"근거 있음\" 묶음(#675). 초기값 3. 이 키가 없는 옛 설정은 예시 파일 값으로 읽는다" },
         "nowClassifications": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": { "type": "string", "enum": ["FILTER_EXCLUDED", "FILTER_PENDING", "OPS_PENDING", "NOT_EVALUATED", "CONTACT_URGENT", "CONTACT_PLANNED", "CONTACT_REVIEW", "RESEARCH", "CONDITIONAL_WAIT", "WATCH", "LOW"] },
-          "description": "막는 조건이 없을 때 \"지금 연락할 곳\"에 드는 분류. 초기값 CONTACT_URGENT, CONTACT_PLANNED, RESEARCH, CONDITIONAL_WAIT. 필수 탈락·제외 의견·거래 중인 회사는 이 값과 무관하게 들지 않는다"
+          "description": "더는 쓰지 않음(#675). 세 묶음(#610) 때 \"지금 연락할 곳\"에 드는 분류였다. 옛 설정이 깨지지 않게 읽기만 한다"
         },
-        "unscoredHighFitToNow": { "type": "boolean", "description": "true면 평가 전 + 적합도 상 회사를 \"지금 연락할 곳\"에 넣는다. 초기값 false(확인 필요에 둔다)" },
+        "unscoredHighFitToNow": { "type": ["boolean", "null"], "description": "더는 쓰지 않음(#675). 세 묶음(#610) 때 평가 전 + 적합도 상 회사를 \"지금 연락할 곳\"에 넣는 스위치였다. 옛 설정이 깨지지 않게 읽기만 한다" },
         "nullFitLevelAs": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"], "description": "적합도가 없는 회사(사례 파일로 넣은 회사)를 묶음 안 순서에서 어느 적합도로 볼지. 초기값 HIGH" },
         "adjust": {
           "type": "object",
           "additionalProperties": false,
           "required": ["windowDays", "minClosedCount", "wonPerStep", "maxUp", "lostPerStep", "maxDown", "lostReasonsCounted"],
-          "description": "같은 공정·산업군의 최근 성사·거절로 묶음 안 순서를 올리거나 내리는 기준. 묶음을 넘지 않는다.",
+          "description": "같은 공정·산업군의 최근 성사·거절로 \"근거 있음\" 묶음 안 순서를 올리거나 내리는 기준(#675부터 그 묶음에서만). 묶음을 넘지 않는다.",
           "properties": {
             "_설명": { "type": "string" },
             "windowDays": { "type": "integer", "minimum": 1, "description": "결과 기록이 이 일수 안인 성사·거절만 센다. 초기값 365" },

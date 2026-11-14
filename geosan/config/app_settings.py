@@ -314,12 +314,14 @@ class ContactAdjustSettings(FileModel):
 
 
 class ContactListSettings(FileModel):
-    """계약 C7 `contactList`(#610). 기준은 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+    """계약 C7 `contactList`(#610, 근거 상태 묶음 #675). 기준은 코드에 두지 않는다(규칙 ⑩)."""
 
-    # 막는 조건이 없을 때 "지금 연락할 곳"에 드는 분류.
-    now_classifications: list[ClassificationCode]
-    # true면 평가 전 + 적합도 상 회사를 "지금 연락할 곳"에 넣는다.
-    unscored_high_fit_to_now: bool = Field(strict=True)
+    # 살아 있는 근거가 이 수 이상이면 "근거 있음" 묶음(#675). 이 키가 생기기 전의 설정에는 없어서
+    # None을 받고, DB 사본을 읽을 때 예시 파일 값으로 채운다. 채워지지 않았으면 목록이 알린다.
+    evidence_ready_min: int | None = Field(default=None, ge=1, strict=True)
+    # 아래 두 키는 세 묶음(#610) 때 쓰던 값이다. 더는 쓰지 않고 옛 설정이 깨지지 않게 읽기만 한다.
+    now_classifications: list[ClassificationCode] | None = None
+    unscored_high_fit_to_now: bool | None = Field(default=None, strict=True)
     # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
     null_fit_level_as: FitLevel
     adjust: ContactAdjustSettings
@@ -587,8 +589,10 @@ def read_app_settings(session: Session) -> AppSettings | None:
     if not data:
         return None
     return AppSettings.model_validate(
-        _fill_added_research_keys(
-            _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+        _fill_added_contact_list_keys(
+            _fill_added_research_keys(
+                _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+            )
         )
     )
 
@@ -621,6 +625,23 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
         return data
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
     return {**data, **{key: defaults[key] for key in missing}}
+
+
+ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)
+"""#675 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_contact_list_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 없거나 비어 있는 contactList 칸만 예시 파일 값으로 채운 새 dict(#591 방식)."""
+    contact_list = data.get("contactList")
+    if not isinstance(contact_list, dict):
+        return data
+    missing = [key for key in ADDED_CONTACT_LIST_KEYS if contact_list.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).contact_list.model_dump(by_alias=True)
+    filled = {**contact_list, **{key: defaults[key] for key in missing}}
+    return {**data, "contactList": filled}
 
 
 ADDED_INGESTION_KEYS = ("costEstimate",)
