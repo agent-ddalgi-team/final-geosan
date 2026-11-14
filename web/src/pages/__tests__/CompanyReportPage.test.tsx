@@ -390,3 +390,122 @@ describe('CompanyReportPage', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('CompanyReportPage — 다음 일정과 물을 것 (#730)', () => {
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedQuestions.mockReset();
+  });
+
+  function withSchedule(date: string): OpportunityDetail {
+    const detail = detailWithSecrets();
+    return {
+      ...detail,
+      records: {
+        ...detail.records,
+        outcome: { ...detail.records.outcome!, nextScheduleAt: date, nextScheduleNote: null },
+      },
+    };
+  }
+
+  it('Given 마지막 접촉 뒤에도 남은 지난 날짜의 일정 When 보고서를 열면 Then "놓친 일정 2020-01-02"처럼 지난 것임이 보인다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withSchedule('2020-01-02')));
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('놓친 일정 2020-01-02');
+    expect(row).not.toHaveTextContent('다음 연락');
+  });
+
+  it('Given 앞으로의 일정(할 일 글은 싣지 않음) When 보고서를 열면 Then 날짜만 덩그러니가 아니라 "2099-12-31 다음 연락"으로 보인다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withSchedule('2099-12-31')));
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('2099-12-31 다음 연락');
+    expect(row).not.toHaveTextContent('놓친 일정');
+  });
+
+  it('Given 일정의 할 일 글이 있어도 When 보고서를 열면 Then 글은 싣지 않고 "다음 연락"으로 적는다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    const detail = detailWithSecrets();
+    mockedGet.mockResolvedValue(
+      reply({
+        ...detail,
+        records: {
+          ...detail.records,
+          outcome: { ...detail.records.outcome!, nextScheduleAt: '2099-12-31' },
+        },
+      }),
+    );
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('2099-12-31 다음 연락');
+    expect(row).not.toHaveTextContent(SCHEDULE_NOTE);
+  });
+
+  const choiceFile: SalesQuestions = {
+    version: 1,
+    steps: [],
+    questions: [
+      {
+        questionId: 'CONFIRM_PROCESS',
+        text: '어떤 공정을 맡길 수 있나요?',
+        step: 'REACHED',
+        choices: 'PROCESS',
+        answers: [{ answerId: 'ANODIZING', label: '아노다이징' }],
+      },
+      {
+        questionId: 'CONFIRM_INDUSTRY',
+        text: '어느 산업인가요?',
+        step: 'REACHED',
+        choices: 'INDUSTRY',
+        answers: [{ answerId: '기계·설비', label: '기계·설비' }],
+      },
+      ...questionFile.questions,
+    ],
+  };
+
+  function withChoices(industriesSource: 'CASE_FILE' | 'STAFF' | 'AI'): OpportunityDetail {
+    const detail = detailWithSecrets();
+    return {
+      ...detail,
+      header: { ...detail.header, industries: ['기계·설비'], industriesSource },
+      records: {
+        ...detail.records,
+        salesStep: {
+          ...detail.records.salesStep!,
+          openQuestions: ['CONFIRM_PROCESS', 'CONFIRM_INDUSTRY', 'switch'],
+        },
+      },
+    };
+  }
+
+  it('Given 공정·산업이 이미 확정된 회사(서버는 꼬리 질문을 아직 답 없는 것으로 줌) When 보고서를 열면 Then 물을 것에 공정·산업 질문이 없다', async () => {
+    mockedQuestions.mockResolvedValue({ data: choiceFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withChoices('CASE_FILE')));
+    renderPage();
+
+    const ask = await screen.findByTestId('report-ask-list');
+    expect(ask).not.toHaveTextContent('어떤 공정을 맡길 수 있나요?');
+    expect(ask).not.toHaveTextContent('어느 산업인가요?');
+    // 다른 아직 답 없는 꼬리 질문은 그대로 남는다.
+    expect(ask).toHaveTextContent('외주처를 바꿀 생각이 있나요?');
+  });
+
+  it('Given 산업이 AI 제안뿐인 회사 When 보고서를 열면 Then 산업 질문은 한 번만 남고, 확정된 공정 질문은 없다', async () => {
+    mockedQuestions.mockResolvedValue({ data: choiceFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withChoices('AI')));
+    renderPage();
+
+    const ask = await screen.findByTestId('report-ask-list');
+    const lines = within(ask)
+      .getAllByTestId('report-ask')
+      .map((el) => el.textContent ?? '');
+    expect(lines.filter((line) => line.includes('어느 산업인가요?'))).toHaveLength(1);
+    expect(ask).not.toHaveTextContent('어떤 공정을 맡길 수 있나요?');
+  });
+});

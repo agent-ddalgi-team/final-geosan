@@ -328,7 +328,11 @@ function Sales({ sales }: { sales: ReportModel['sales'] }) {
         {formatDate(sales.lastContactAt) ?? labels.none}
       </Row>
       <Row label={labels.nextSchedule} testId="report-next-schedule">
-        {sales.nextScheduleAt ?? labels.none}
+        {sales.nextScheduleAt === null
+          ? labels.none
+          : sales.nextScheduleMissed
+            ? labels.nextScheduleMissed(sales.nextScheduleAt)
+            : labels.nextScheduleUpcoming(sales.nextScheduleAt)}
       </Row>
     </dl>
   );

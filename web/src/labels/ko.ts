@@ -1858,6 +1858,12 @@ export const companyReport = {
     contacts: '접촉',
     lastContact: '마지막 접촉',
     nextSchedule: '다음 일정',
+    /**
+     * (#730) 일정 칸의 값. 할 일 글은 싣지 않으므로(#565) 날짜 뒤에 쉬운 말을 붙인다: "2026-11-20 다음 연락".
+     * 오늘보다 앞선 날짜면 "놓친 일정 2026-11-12"(대시보드 "놓친 일정"과 같은 말).
+     */
+    nextScheduleUpcoming: (date: string) => `${date} 다음 연락`,
+    nextScheduleMissed: (date: string) => `놓친 일정 ${date}`,
     none: '없음',
     stepNone: '없음',
     /** "수요 확인 (2026-11-12부터)" — 보고서는 연도까지 적는다(#719). */
