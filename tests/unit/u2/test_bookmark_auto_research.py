@@ -503,3 +503,87 @@ def test_running_mark_is_set_only_when_the_research_really_starts(found_company,
     auto_research.run_auto_research(found_company.opp_id)
     assert seen == [True]
     assert not auto_research.is_running(found_company.opp_id)
+
+
+# ---------- #719 품질 검토: 안전장치마다 그 줄을 지우면 실패하는 검사 ----------
+
+
+def _queue(case):
+    """요청 안에서 관심이 켜진 것처럼 예약 함수를 부른다. 예약된 조사 수를 돌려준다."""
+    from fastapi import BackgroundTasks
+
+    tasks = BackgroundTasks()
+    token = auto_research._tasks.set(tasks)
+    try:
+        with session_scope() as session:
+            auto_research.queue_on_bookmark(session, session.get(Opportunity, case.opp_id))
+    finally:
+        auto_research._tasks.reset(token)
+    return len(tasks.tasks)
+
+
+@pytest.fixture
+def unresearched(found_company):
+    """관심을 켜면 조사가 예약되는 모양(실제 자료 · 공개 등급 · 홈페이지 있음 · 근거 0건)."""
+    _drop_evidence(found_company)
+    return found_company
+
+
+def test_ready_company_is_queued_once_with_a_start_row(unresearched):
+    """아래 검사들의 기준: 조건을 다 갖춘 회사는 예약되고 시작 표시 1행이 남는다."""
+    assert _queue(unresearched) == 1
+    assert _logs(unresearched.opp_id) == [("auto-bookmark", "ALLOWED", None, 0)]
+
+
+def test_virtual_company_is_never_queued(unresearched):
+    """Given 가상 회사 / When 관심이 켜짐 / Then 조사도 기록도 없다(가상 자료는 밖으로 안 나감)."""
+    with session_scope() as session:
+        session.get(Opportunity, unresearched.opp_id).is_virtual = True
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_opportunity_that_is_not_a_new_proposal_is_never_queued(unresearched):
+    """Given 신규 제안이 아닌 건(재접촉) / Then 조사도 기록도 없다."""
+    with session_scope() as session:
+        session.get(Opportunity, unresearched.opp_id).purpose = "REORDER_CHECK"
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_company_that_is_not_public_grade_is_never_queued(unresearched):
+    """Given 공개 등급이 아닌 회사 / Then 조사도 기록도 없다."""
+    with session_scope() as session:
+        session.get(Customer, unresearched.customer_id).security_grade = "INTERNAL_ONLY"
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_yesterdays_spend_does_not_count_against_today(unresearched):
+    """Given 어제(한국 시간 자정 전) 하루 금액을 넘게 씀 / Then 오늘은 0원이고 조사가 예약된다."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    with session_scope() as session:
+        opportunity = session.get(Opportunity, unresearched.opp_id)
+        row = auto_research._marker(opportunity, reject_reason=None)
+        row.opp_id, row.call_count, row.cost_usd = "opp-719-yesterday", 1, Decimal("50")
+        row.occurred_at = auto_research._day_start() - timedelta(minutes=1)
+        session.add(row)
+        session.flush()
+        assert auto_research.spent_today(session, read_app_settings(session).llm) == 0
+    assert _queue(unresearched) == 1
+
+
+def test_same_company_is_not_queued_twice_while_its_research_is_pending(unresearched):
+    """Given 예약만 되고 아직 끝나지 않은 조사 / When 관심을 껐다 켜 다시 예약 / Then 1번만."""
+    assert _queue(unresearched) == 1
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == [("auto-bookmark", "ALLOWED", None, 0)]
+
+
+def test_company_whose_research_is_running_is_not_queued_again(unresearched):
+    """Given 이 서버에서 조사가 도는 중(시작 표시는 오래돼 안 보임) / Then 다시 예약하지 않는다."""
+    auto_research._started[unresearched.opp_id] = time.monotonic()
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
