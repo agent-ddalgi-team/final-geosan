@@ -1293,6 +1293,10 @@ def activity(
             summary += f" · 다음 일정 {row.next_schedule_at} {row.next_schedule_note or ''}"
         if row.reason:
             summary += f" · {row.reason}"
+        # #737: 그때 쓴 한 줄 메모를 맨 끝에 붙인다.
+        # 잘못 입력으로 표시한 행은 메모 글을 보내지 않는다.
+        if row.memo and row.memo.strip() and row.cancelled_at is None:
+            summary += f" · 메모: {row.memo.strip()}"
         items.append(
             ActivityItem(
                 at=row.created_at,
