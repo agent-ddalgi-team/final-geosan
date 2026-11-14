@@ -1,6 +1,7 @@
 """#652: 꼬리 질문 답으로 그 회사의 공정·산업군을 확정한다.
 
 공정은 검토사항의 [확정](#497)과 같은 방식으로 저장한다(AI 행은 이력으로 남기고 담당자 행을 만든다).
+#720: 답에 실린 공정 목록이 확정 공정 전체다 — 안 고른 확정 공정은 이력으로 남기고 뺀다.
 재평가와 활동 이력 저장은 창구(`routes/records.py`)가 같은 트랜잭션 안에서 잇는다.
 """
 
@@ -40,11 +41,16 @@ def confirm_processes(
     staff: str,
     now: datetime,
 ) -> ConfirmResult:
-    """고른 공정을 확정하고, 안 고른 AI 제안은 이력으로만 남겨 이 회사에서 뺀다.
+    """고른 공정을 확정하고, 안 고른 AI 제안과 안 고른 확정 공정은 이력으로만 남겨 뺀다.
 
-    이미 확정된 연결(사례 파일·담당자)은 고르지 않아도 그대로 둔다. 지우는 행은 없다.
+    (바뀜 2026-11-14 #720 — PM 결정: 통화에서 공정을 바꿀 수 있게) 답에 실린 공정 목록이 그 회사의
+    확정 공정 전체를 뜻한다. 목록에 없는 확정 연결(사례 파일·담당자)은 살아 있는 연결에서 빠지고
+    행은 이력(superseded)으로 남는다. 지우는 행은 없다. 빈 목록이면 아무것도 바꾸지 않는다
+    (확정 공정을 0개로 만들지 않는다).
     """
     chosen = set(codes)
+    if not chosen:
+        return ConfirmResult(None, False)
     rows = list(
         session.scalars(
             select(OppProcessLink)
@@ -60,6 +66,11 @@ def confirm_processes(
     changed = False
     dropped = 0
     for row in rows:
+        if row.state == "CONFIRMED" and row.process_code not in chosen:
+            # #720: 안 고른 확정 공정은 이력으로만 남긴다(AI 제안을 뺄 때와 같은 방식).
+            row.superseded_at = now
+            changed = True
+            continue
         if row.source != AI_PROPOSED or row.state != "PENDING":
             continue
         changed = True
@@ -68,7 +79,9 @@ def confirm_processes(
         else:
             row.superseded_at = now
             dropped += 1
-    linked = {row.process_code for row in rows}
+    linked = {
+        row.process_code for row in rows if row.superseded_at is None or row.source == AI_PROPOSED
+    }
     for code in codes:
         if code in linked:
             continue
@@ -91,10 +104,10 @@ def confirm_processes(
         )
     if not changed:
         return ConfirmResult(None, False)
-    confirmed_after = confirmed_before | chosen
+    confirmed_after = chosen
     if confirmed_before and confirmed_after != confirmed_before:
-        # 확인된 값이 있던 회사에서 값이 달라졌다. 꼬리 질문은 안 고른 확정 공정을 빼지 않으므로
-        # 옛 값은 새 값에도 남는다(있는 그대로 적는다).
+        # 확인된 값이 있던 회사에서 값이 달라졌다. 안 고른 확정 공정은 빠지므로(#720) 새 값에는
+        # 고른 것만 남는다("아연도금 → 니켈도금").
         summary = (
             f"공정 변경 · {_names(confirmed_before, names)} → {_names(confirmed_after, names)}"
         )

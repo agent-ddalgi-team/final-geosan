@@ -11,11 +11,13 @@ from sqlalchemy import select
 
 from geosan.api.app import create_app
 from geosan.api.routes import records
+from geosan.api.sales_confirm import confirm_processes
 from geosan.capability.importer import import_capability
+from geosan.evaluation.models import EvaluationRun
 from geosan.opportunity.importer import import_case
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink, Requirement
 from geosan.records.models import Note, Outcome, OutcomeAnswer
-from geosan.storage.base import new_id
+from geosan.storage.base import new_id, utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
 from geosan.workflows.models import FlowResult
@@ -63,6 +65,23 @@ def links(opp_id):
 def all_link_rows(opp_id):
     with session_scope() as session:
         rows = session.scalars(select(OppProcessLink).where(OppProcessLink.opp_id == opp_id))
+        return len(list(rows))
+
+
+def superseded_codes(opp_id):
+    """이력으로만 남은 공정 연결을 {(공정 코드, 출처)}로."""
+    with session_scope() as session:
+        rows = session.scalars(
+            select(OppProcessLink).where(
+                OppProcessLink.opp_id == opp_id, OppProcessLink.superseded_at.is_not(None)
+            )
+        )
+        return {(row.process_code, row.source) for row in rows}
+
+
+def evaluation_count(opp_id):
+    with session_scope() as session:
+        rows = session.scalars(select(EvaluationRun).where(EvaluationRun.opp_id == opp_id))
         return len(list(rows))
 
 
@@ -341,17 +360,89 @@ def test_first_confirmation_of_ai_industries_keeps_the_old_sentence(confirm_env)
 def test_adding_a_process_to_a_company_with_a_confirmed_one_is_recorded_as_a_change(
     confirm_env,
 ):
-    """Given 확정 공정 1개 + AI 제안 2개 / When 다른 공정을 고름 / Then "공정 변경 · 옛 → 새".
+    """Given 확정 공정 1개 + AI 제안 2개 / When 확정 공정도 함께 고름 / Then 둘 다 남는다.
 
-    꼬리 질문은 안 고른 확정 공정을 빼지 않으므로(#652) 옛 값이 새 값에도 남는다.
+    (바뀜 2026-11-14 #720) 예전에는 안 고른 확정 공정도 남았다. 이제 남기려면 함께 골라야 한다.
     """
     client, _, mixed = confirm_env
-    _answer(client, mixed, processes=["ZINC_PLATING"])
+    _answer(client, mixed, processes=["ZINC_PLATING", "ANODIZING"])
     assert links(mixed)["ANODIZING"][:2] == ("CASE_FILE", "CONFIRMED")
     assert links(mixed)["ZINC_PLATING"][:2] == ("STAFF", "CONFIRMED")
     assert _notes(mixed) == [
         "공정 변경 · 아노다이징 → 아연도금(전기아연도금), 아노다이징 · AI 제안 1개 뺌"
     ]
+
+
+# ---------- #720(PM 결정 2026-11-14): 통화에서 공정을 바꿀 수 있다 ----------
+
+
+def test_leaving_out_a_confirmed_process_replaces_it_and_keeps_the_row_as_history(confirm_env):
+    """Given 사례 파일 확정 공정 A + AI 제안 2개 / When B만 고름 / Then B만 남고 A는 이력으로."""
+    client, _, mixed = confirm_env
+    rows, evaluations = all_link_rows(mixed), evaluation_count(mixed)
+    response = support.post(
+        client, mixed, "outcomes", questions.contact(answers=picks(["ZINC_PLATING"]))
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["meta"]["reevaluated"] is True
+    assert links(mixed) == {"ZINC_PLATING": ("STAFF", "CONFIRMED", "park-lee")}
+    assert ("ANODIZING", "CASE_FILE") in superseded_codes(mixed)
+    assert all_link_rows(mixed) == rows + 1
+    assert evaluation_count(mixed) == evaluations + 1
+    assert _notes(mixed) == ["공정 변경 · 아노다이징 → 아연도금(전기아연도금) · AI 제안 1개 뺌"]
+    data = detail(client, mixed)
+    assert [row["processCode"] for row in data["processLinks"]] == ["ZINC_PLATING"]
+    known = [row["answerId"] for row in data["records"]["salesStep"]["known"]]
+    assert known == ["ZINC_PLATING"]
+
+
+def test_a_staff_confirmed_process_can_be_replaced_too(confirm_env):
+    """Given 담당자가 확정한 공정 A / When 다음 통화에서 B만 고름 / Then B만 남는다."""
+    client, ai_only, _ = confirm_env
+    _answer(client, ai_only, processes=["ZINC_PLATING"])
+    _answer(client, ai_only, processes=["CHROMATE"])
+    assert links(ai_only) == {"CHROMATE": ("STAFF", "CONFIRMED", "park-lee")}
+    assert ("ZINC_PLATING", "STAFF") in superseded_codes(ai_only)
+    assert _notes(ai_only)[-1] == "공정 변경 · 아연도금(전기아연도금) → 크로메이트"
+    # 되돌리면 옛 행을 되살리지 않고 새 확정 행을 만든다(이력은 그대로 쌓인다).
+    _answer(client, ai_only, processes=["ZINC_PLATING"])
+    assert links(ai_only) == {"ZINC_PLATING": ("STAFF", "CONFIRMED", "park-lee")}
+    assert _notes(ai_only)[-1] == "공정 변경 · 크로메이트 → 아연도금(전기아연도금)"
+
+
+def test_an_empty_process_list_changes_nothing(confirm_env):
+    """Given 확정 공정이 있는 회사 / When 공정을 안 고름 / Then 확정 공정은 그대로다(0개 안 됨)."""
+    client, _, mixed = confirm_env
+    with session_scope() as session:
+        result = confirm_processes(
+            session, session.get(Opportunity, mixed), [], {}, staff="park-lee", now=utcnow()
+        )
+    assert (result.summary, result.links_changed) == (None, False)
+    assert links(mixed)["ANODIZING"][:2] == ("CASE_FILE", "CONFIRMED")
+    _answer(client, mixed, industry=["반도체"])
+    assert links(mixed)["ANODIZING"][:2] == ("CASE_FILE", "CONFIRMED")
+
+
+def test_failed_reevaluation_cancels_the_process_change(confirm_env, monkeypatch):
+    """Given 다시 평가가 실패 / When 확정 공정을 바꿈 / Then 접촉 기록까지 취소, 공정은 그대로."""
+    client, _, mixed = confirm_env
+    before = links(mixed)
+    failing_evaluation(monkeypatch)
+    response = support.post(
+        client, mixed, "outcomes", questions.contact(answers=picks(["ZINC_PLATING"]))
+    )
+    assert response.status_code == 500
+    assert links(mixed) == before and outcome_count(mixed) == 0
+
+
+def test_importing_the_case_file_again_brings_its_processes_back(confirm_env, tmp_path):
+    """한계(약속에 적음): 사례 파일을 다시 넣으면 통화에서 바꾼 공정이 사례 파일 값으로 돌아간다."""
+    client, _, mixed = confirm_env
+    _answer(client, mixed, processes=["ZINC_PLATING"])
+    case = factories.apjeong_renamed_customer("case-confirm-2", "B금속(가상)")
+    assert import_case(_write(tmp_path, "b-again.json", case)).opp_id == mixed
+    assert set(links(mixed)) == {"ANODIZING"}
+    assert links(mixed)["ANODIZING"][:2] == ("CASE_FILE", "CONFIRMED")
 
 
 def test_dropping_only_ai_proposals_keeps_the_old_sentence(confirm_env):

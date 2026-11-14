@@ -151,12 +151,17 @@ describe('보낼 답과 저장 전 미리 알림 (#652)', () => {
     );
   });
 
-  it('이미 확정된 공정은 새로 고른 공정과 함께 보내고, 혼자서는 보내지 않는다', () => {
+  // (바뀜 2026-11-14 #720) 고른 값이 그 회사의 공정 전체다. 확정된 공정을 저절로 끼워 보내지 않는다.
+  it('건드리지 않으면 보내지 않고, 고른 공정만 보낸다(확정된 공정도 골라야 남는다)', () => {
     const marks: ChoiceMarks = { ...AI_ONLY, process: { ANODIZING: 'CONFIRMED', CHROMATE: 'AI' } };
     expect(choiceAnswerIds(PROCESS, [], marks)).toEqual([]);
     expect(choicePreview(PROCESS, [], marks)).toBeNull();
-    expect(choiceAnswerIds(PROCESS, ['PASSIVATION'], marks)).toEqual(['ANODIZING', 'PASSIVATION']);
-    expect(choicePreview(PROCESS, ['PASSIVATION'], marks)).toBe(
+    expect(choiceAnswerIds(PROCESS, ['PASSIVATION'], marks)).toEqual(['PASSIVATION']);
+    expect(choiceAnswerIds(PROCESS, ['PASSIVATION', 'ANODIZING'], marks)).toEqual([
+      'ANODIZING',
+      'PASSIVATION',
+    ]);
+    expect(choicePreview(PROCESS, ['PASSIVATION', 'ANODIZING'], marks)).toBe(
       "저장하면 이 회사의 공정이 '아노다이징, 부동태'(으)로 확정되고 다른 AI 제안 1개는 빠집니다.",
     );
   });
@@ -270,7 +275,8 @@ describe('접촉 기록에서 공정·산업을 확인한다 (#652)', () => {
     expect(onCompanyConfirmed).not.toHaveBeenCalled();
   });
 
-  it('이미 확정된 공정은 고른 채로 잠겨 있고, 산업군은 3개까지만 고를 수 있다', async () => {
+  // (바뀜 2026-11-14 #720) 예전에는 확정된 공정이 잠겨 있었다. 이제 빼고 다른 것을 고를 수 있다.
+  it('이미 확정된 공정은 고른 채로 보이지만 잠겨 있지 않고, 산업군은 3개까지만 고를 수 있다', async () => {
     const user = userEvent.setup();
     renderArea({
       process: { ANODIZING: 'CONFIRMED', CHROMATE: 'AI' },
@@ -280,8 +286,8 @@ describe('접촉 기록에서 공정·산업을 확인한다 (#652)', () => {
     const process = await openQuestions(user);
     // [바꾸기] 없이 바로 보인다(#719). 지금 값은 고른 채로 있다.
     expect(box('CONFIRM_PROCESS', 'ANODIZING')).toBeChecked();
-    expect(box('CONFIRM_PROCESS', 'ANODIZING')).toBeDisabled();
-    expect(process).toHaveTextContent('이미 확정된 공정은 그대로 둡니다.');
+    expect(box('CONFIRM_PROCESS', 'ANODIZING')).not.toBeDisabled();
+    expect(process).not.toHaveTextContent('이미 확정된 공정은 그대로 둡니다.');
     expect(box('CONFIRM_INDUSTRY', '방위산업')).toBeChecked();
     for (const name of ['반도체', '자동차 부품']) {
       await user.click(box('CONFIRM_INDUSTRY', name));
@@ -394,7 +400,7 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
     const onCompanyConfirmed = vi.fn();
     renderArea(MIXED, { onCompanyConfirmed });
     await openQuestions(user);
-    // 공정: 확정된 연결은 그대로 두고 더한다(서버가 확정된 연결을 빼지 않는다).
+    // 공정: 확정된 값을 그대로 두고 하나를 더한다(둘 다 답으로 간다).
     await user.click(box('CONFIRM_PROCESS', 'CHROMATE'));
     expect(screen.getByTestId('sales-choice-changed-CONFIRM_PROCESS')).toHaveTextContent(
       /^변경됨: 아노다이징 → 아노다이징, 크로메이트$/,
@@ -425,6 +431,55 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
       ],
     });
     await waitFor(() => expect(onCompanyConfirmed).toHaveBeenCalledTimes(1));
+  });
+
+  // #720 (PM 결정 2026-11-14): 통화에서 공정을 바꿀 수 있다.
+  it('확정된 공정을 빼고 다른 공정을 고르면 "변경됨: 아노다이징 → 크로메이트"이고 새 공정만 답으로 간다', async () => {
+    const user = userEvent.setup();
+    const onCompanyConfirmed = vi.fn();
+    renderArea(MIXED, { onCompanyConfirmed });
+    await openQuestions(user);
+    await user.click(box('CONFIRM_PROCESS', 'ANODIZING'));
+    expect(box('CONFIRM_PROCESS', 'ANODIZING')).not.toBeChecked();
+    // 모두 빼면 산업과 같은 안내가 보인다.
+    expect(screen.getByTestId('sales-choice-changed-CONFIRM_PROCESS')).toHaveTextContent(
+      '하나 이상 골라야 바뀝니다',
+    );
+    await user.click(box('CONFIRM_PROCESS', 'CHROMATE'));
+    expect(screen.getByTestId('sales-choice-changed-CONFIRM_PROCESS')).toHaveTextContent(
+      /^변경됨: 아노다이징 → 크로메이트$/,
+    );
+    expect(screen.getByTestId('sales-choice-confirmed-CONFIRM_PROCESS')).toHaveTextContent(
+      /^공정: 아노다이징$/,
+    );
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(postOutcome).mock.calls[0][1]).toMatchObject({
+      answers: [{ questionId: 'CONFIRM_PROCESS', answerId: 'CHROMATE' }],
+    });
+    await waitFor(() => expect(onCompanyConfirmed).toHaveBeenCalledTimes(1));
+  });
+
+  it('확정된 공정을 모두 빼고 저장하면 공정 답을 보내지 않는다(지금 값 그대로)', async () => {
+    const user = userEvent.setup();
+    renderArea(MIXED);
+    await openQuestions(user);
+    await user.click(box('CONFIRM_PROCESS', 'ANODIZING'));
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(postOutcome).mock.calls[0][1]).not.toHaveProperty('answers');
+  });
+
+  it('뺐던 확정 공정을 다시 고르면 "건드리지 않음"으로 돌아가 답을 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    renderArea(MIXED);
+    await openQuestions(user);
+    await user.click(box('CONFIRM_PROCESS', 'ANODIZING'));
+    await user.click(box('CONFIRM_PROCESS', 'ANODIZING'));
+    expect(screen.queryByTestId('sales-choice-changed-CONFIRM_PROCESS')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('records-contact-save-button'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(postOutcome).mock.calls[0][1]).not.toHaveProperty('answers');
   });
 
   it('여러 개 고르는 질문은 지금 값에 더하면 "변경됨: 방위산업 → 방위산업, 자동차 부품"이고 둘 다 답으로 간다', async () => {
