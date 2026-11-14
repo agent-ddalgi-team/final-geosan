@@ -135,6 +135,14 @@ def limit_zero(env):
     set_limit(0)
 
 
+@given("자동 조사 스위치가 꺼져 있다")
+def auto_research_off(env):
+    """#719: 후보 찾기 뒤·`geosan research`의 자동 조사를 끄는 기존 스위치."""
+    with session_scope() as session:
+        row = session.get(AppSetting, "homepageDiscovery")
+        row.value = {**row.value, "autoResearch": False}
+
+
 @given("그 홈페이지는 인증서 문제로 읽을 수 없다")
 def bad_certificate(env, monkeypatch):
     def get(url, _):

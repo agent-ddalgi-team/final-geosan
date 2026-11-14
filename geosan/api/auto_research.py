@@ -4,6 +4,7 @@
 홈페이지 주소가 있고 아직 조사 전인 회사만, 응답을 보낸 뒤 서버 백그라운드로 한 번 조사한다
 (후보 찾기 뒤 자동 조사와 같은 FastAPI BackgroundTasks). 새 표·일꾼은 없다.
 
+- 스위치: 설정 `homepageDiscovery.autoResearch`가 꺼져 있으면 돌지 않는다(#719).
 - 하루 금액: 설정 `research.autoOnBookmarkDailyCostUsd`(0이면 꺼짐). 관심 자동 조사가 남긴
   AI 호출 행(요청자 auto-bookmark)의 오늘 비용 합이 설정보다 적을 때만 새 조사를 시작한다.
   비용은 호출 뒤에야 찍히므로 마지막 한 곳(동시에 시작된 곳 포함)만큼은 넘을 수 있다.
@@ -101,6 +102,10 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
     if tasks is None or opportunity.is_virtual or opportunity.purpose != "NEW_PROPOSAL":
         return
     settings = runtime_for(session).app_settings
+    # #719: 자동 조사 스위치(후보 찾기 뒤·`geosan research`와 같은 스위치)가 꺼져 있으면
+    # 하루 금액이 0일 때처럼 흔적 없이 넘어간다.
+    if not settings.homepage_discovery.auto_research:
+        return
     limit = Decimal(str(settings.research.auto_on_bookmark_daily_cost_usd))
     if limit <= 0:
         return
