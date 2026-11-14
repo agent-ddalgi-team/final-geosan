@@ -5,13 +5,20 @@ API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정
 앱 설정 사본(활성 묶음 등)은 바꾸지 않는다. 등록은 `check-config`의 몫이다(이슈 #91).
 기본은 `127.0.0.1`, PM의 Railway 배포 지시에 따라 명시적으로 `0.0.0.0`도 받는다.
 포트가 사용 중이면 "포트 N이 사용 중입니다. --port로 바꾸세요"를 내고 종료 코드 2로 끝낸다(NFR7.3).
+
+#736: 바깥에 여는 주소(내 PC 주소가 아님)인데 접속 보호가 꺼져 있으면, 또는 보호를 켰는데 비밀번호
+환경 변수가 없으면 시작하지 않는다. 꺼지라는 신호(SIGTERM)도 Ctrl+C처럼 받아 실행 중 표식을 지운다.
 """
 
 from __future__ import annotations
 
 import os
+import signal
 import socket
+import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import typer
@@ -105,6 +112,81 @@ def _is_demo_db(db_path: Path) -> bool:
         return is_demo_database(session)
 
 
+def _is_public_host(host: str) -> bool:
+    """바깥에서 접속되는 주소로 듣는가. 내 PC 주소(127.0.0.1·localhost·::1)가 아니면 모두 바깥."""
+    return host not in LOCAL_HOSTS
+
+
+def _access_protection_enabled(db_path: Path) -> bool:
+    """서버가 실제로 쓸 접속 보호 값. DB의 앱 설정 사본을 읽고, 사본이 없으면 서버와 같이
+    예시 설정 파일(`examples/app-settings.yaml`) 값을 쓴다(registry의 대체 동작과 같음)."""
+    from geosan.config.app_settings import (
+        DEFAULT_APP_SETTINGS_PATH,
+        load_app_settings,
+        read_app_settings,
+    )
+    from geosan.storage.session import session_scope
+
+    with session_scope(db_path) as session:
+        settings = read_app_settings(session)
+    if settings is None:
+        settings = load_app_settings(DEFAULT_APP_SETTINGS_PATH)
+    return settings.access_protection.enabled
+
+
+def _password_configured() -> bool:
+    """로그인 검사와 같은 기준: 비어 있거나 빈칸뿐이면 없는 것으로 본다(access_policy)."""
+    return bool(os.environ.get("GEOSAN_PASSWORD", "").strip())
+
+
+def _access_problem(db_path: Path, host: str) -> list[str] | None:
+    """접속 보호 때문에 시작하면 안 되는 이유(쉬운 말 줄들). 문제없으면 None (#736, 계약 C8)."""
+    try:
+        protected = _access_protection_enabled(db_path)
+    except Exception as exc:  # 사본이 깨졌으면 보호 여부를 모른다. 숨기지 않고 거부한다.
+        return [
+            f"오류: DB의 앱 설정 사본을 읽지 못해 서버를 시작하지 않습니다 ({type(exc).__name__}).",
+            "`geosan check-config <규칙 설정> <앱 설정>`으로 설정을 다시 등록한 뒤 시작해 주세요.",
+        ]
+    if not protected and _is_public_host(host):
+        return [
+            "접속 보호가 꺼져 있어 배포 환경에서 서버를 시작하지 않습니다.",
+            f"--host {host}로 열면 비밀번호 없이 누구나 목록을 볼 수 있습니다. 앱 설정의 "
+            "accessProtection.enabled를 true로 바꾼 파일을 `geosan check-config <규칙 설정> "
+            "<앱 설정>`으로 등록하고, 비밀번호는 환경 변수 GEOSAN_PASSWORD에 넣은 뒤 다시 "
+            "시작해 주세요. 내 PC에서만 쓸 때는 --host 없이(127.0.0.1) 시작하면 됩니다.",
+        ]
+    if protected and not _password_configured():
+        return [
+            "접속 보호가 켜져 있는데 비밀번호(GEOSAN_PASSWORD)가 없어 서버를 시작하지 않습니다.",
+            "이대로 띄우면 아무도 로그인할 수 없습니다. 서버 환경 변수 GEOSAN_PASSWORD에 "
+            "공용 비밀번호를 넣고 다시 시작해 주세요.",
+        ]
+    return None
+
+
+@contextmanager
+def _sigterm_as_stop_request() -> Iterator[None]:
+    """서버가 도는 동안 SIGTERM(배포 서비스가 끄는 신호)을 Ctrl+C 같은 멈춤 요청으로 받는다.
+
+    uvicorn은 신호를 받아 정리한 뒤 원래 처리로 되돌리고 같은 신호를 다시 일으킨다. 원래 처리가
+    기본값이면 프로세스가 그 자리에서 죽어 실행 중 표식이 남았다(#736 예행연습). 여기서 받아
+    KeyboardInterrupt로 바꾸면 run_serve의 정리(표식 지우기)가 반드시 돈다. 끝나면 원래대로 돌린다.
+    """
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _stop(_signum: int, _frame: object) -> None:
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGTERM, _stop)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous if previous is not None else signal.SIG_DFL)
+
+
 def run_serve(port: int, host: str = HOST) -> int:
     if host not in (HOST, "0.0.0.0"):
         typer.echo("오류: 듣는 주소는 127.0.0.1 또는 0.0.0.0으로 지정해 주세요.")
@@ -136,7 +218,16 @@ def run_serve(port: int, host: str = HOST) -> int:
         )
         return EXIT_RUN_FAILED
 
-    # 2-2) 코드 버전(평가 기록에 적는 값)을 알 수 없으면 시작 줄에 한 번 알린다(#719).
+    # 2-2) 접속 보호(#736, 계약 C8). 시연 DB 차단과 같은 자리에서 시작 전에 거부한다.
+    #      바깥 주소인데 보호가 꺼져 있으면, 또는 보호를 켰는데 비밀번호가 없으면 띄우지 않는다.
+    #      내 PC 주소(127.0.0.1)에서 보호가 꺼진 것은 지금처럼 허용한다.
+    problem = _access_problem(db_path, host)
+    if problem is not None:
+        for line in problem:
+            typer.echo(line)
+        return EXIT_RUN_FAILED
+
+    # 2-3) 코드 버전(평가 기록에 적는 값)을 알 수 없으면 시작 줄에 한 번 알린다(#719).
     #      평가는 그대로 저장되고 버전 칸에 "커밋 번호 없음" 표시가 남는다.
     from geosan.workflows.flow_evaluate import CODE_VERSION_ENV_NAMES, resolve_code_version
 
@@ -173,7 +264,8 @@ def run_serve(port: int, host: str = HOST) -> int:
     # 켜져 있는 동안 DB 옆에 실행 중 표식을 둔다. restore가 이것을 보고 복원을 거부한다(#214).
     write_marker(db_path, port, host)
     try:
-        _run_server(port, host)
+        with _sigterm_as_stop_request():
+            _run_server(port, host)
     except KeyboardInterrupt:
         pass
     except Exception as exc:  # 어떤 실패든 숨기지 않고 종류만 보인다(본문·스택은 로그에만)
