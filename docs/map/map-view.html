@@ -90,7 +90,7 @@ body.present .mermaid svg{max-width:none;width:100%}
 <body>
 <header>
   <h1>거산 영업 비서 지도</h1>
-  <p>거산케미칼 AI 영업지원 2차 · 지도 문서 네 벌(기능·구조·기획 변경·데이터)의 그림을 한 화면에 모았습니다. 기준일 2026-11-13, <code>develop</code> 줄기.</p>
+  <p>거산케미칼 AI 영업지원 2차 · 지도 문서 네 벌(기능·구조·기획 변경·데이터)의 그림을 한 화면에 모았습니다. 기준일 2026-11-14, <code>develop</code> 줄기.</p>
 </header>
 <div class="topbar">
   <nav aria-label="지도 고르기">
@@ -114,15 +114,15 @@ body.present .mermaid svg{max-width:none;width:100%}
     <h2 id="h-core">이 서비스의 핵심 — 쓸수록 거산에 맞게 순위·근거가 맞춰진다</h2>
     <p class="lead">공개 자료로 한 번 뽑은 순위를 보여 주고 끝나는 도구가 아닙니다. 담당자가 <strong>기록을 남길수록</strong> 그 기록이 순위와 근거에 되돌아와 <strong>거산의 영업 방식에 맞춰 가는 영업 비서</strong>가 목표입니다. (PM 결정 2026-11-08)</p>
     <div class="fig"><div class="mermaid" data-src="mm-core"></div></div>
-    <p class="caption">순위를 보고 → 연락하고 기록을 남기면 → 그 기록이 세 갈래로 순위에 돌아옵니다. 1차(지금)는 기록 남기기와 "그때 본 평가 번호" 남기기까지, 세 갈래 되먹임은 2차입니다.</p>
+    <p class="caption">순위를 보고 → 연락하고 기록을 남기면 → 그 기록이 세 갈래로 순위에 돌아옵니다. 지금은 기록 남기기와 "그때 본 평가 번호" 남기기까지 됐고, 세 갈래 되먹임은 아직 시작 전입니다.</p>
     <h3>되먹임 3단계 — 통계 학습이 아니라 설명할 수 있는 규칙으로</h3>
     <table>
       <thead><tr><th>단계</th><th>무엇이 되나</th><th>예문</th><th>시기</th></tr></thead>
       <tbody>
         <tr><td>재료</td><td>접촉·영업 단계·메모를 저장할 때 그때 보고 있던 평가 번호를 같이 남긴다</td><td>"3위를 보고 전화했고 결과는 부재"</td><td><span class="chip wip">⏳ 1차 · #450 #451</span></td></tr>
-        <tr><td>① 같은 회사 반영</td><td>그 회사의 기록이 그 회사의 순위·근거에 바로 반영된다</td><td>"거절(단가) 기록이 있어 순위를 내렸습니다"</td><td><span class="chip next">📅 2차</span></td></tr>
-        <tr><td>② 비슷한 회사로 번짐</td><td>같은 공정·산업군·지역 회사의 기록이 비슷한 회사의 순위·근거에 참고로 들어간다</td><td>"비슷한 회사 3곳이 견적까지 간 산업군입니다"</td><td><span class="chip next">📅 2차 · #268 #269</span></td></tr>
-        <tr><td>③ 선호가 가중치로</td><td>담당자가 반복해서 고른 것을 점수 가중치 제안으로 바꾸고, 사람이 승인해야 적용된다</td><td>"최근 20건 중 15건이 천안 인근이라 거리 가중치를 올릴까요?"</td><td><span class="chip next">📅 2차</span></td></tr>
+        <tr><td>① 같은 회사 반영</td><td>그 회사의 기록이 그 회사의 순위·근거에 바로 반영된다</td><td>"거절(단가) 기록이 있어 순위를 내렸습니다"</td><td><span class="chip next">📅 예정</span></td></tr>
+        <tr><td>② 비슷한 회사로 번짐</td><td>같은 공정·산업군·지역 회사의 기록이 비슷한 회사의 순위·근거에 참고로 들어간다</td><td>"비슷한 회사 3곳이 견적까지 간 산업군입니다"</td><td><span class="chip next">📅 예정 · #268 #269 #610</span></td></tr>
+        <tr><td>③ 선호가 가중치로</td><td>담당자가 반복해서 고른 것을 점수 가중치 제안으로 바꾸고, 사람이 승인해야 적용된다</td><td>"최근 20건 중 15건이 천안 인근이라 거리 가중치를 올릴까요?"</td><td><span class="chip next">📅 예정</span></td></tr>
       </tbody>
     </table>
     <h3>발표에서 재는 법</h3>
@@ -138,11 +138,11 @@ body.present .mermaid svg{max-width:none;width:100%}
     <h2 id="h-data">어떤 자료를 넣어 무엇이 나오고, 그것이 어디로 가나</h2>
     <p class="lead">사람이 넣는 파일 네 가지와 공공·공개 자료 세 가지가 단계를 지나며 <strong>점수·분류·순위</strong>가 되고, 담당자 기록이 그 위에 쌓입니다.</p>
     <div class="fig"><div class="mermaid" data-src="mm-data"></div></div>
-    <p class="caption">화살표 위 글이 "앞 단계의 출력 = 다음 단계의 입력"입니다. ⏳는 만드는 중, 📅는 2차.</p>
+    <p class="caption">화살표 위 글이 "앞 단계의 출력 = 다음 단계의 입력"입니다. ⏳는 만드는 중, 📅는 예정(아직 시작 전).</p>
     <h3>출력이 입력이 되는 고리 세 개</h3>
     <ol class="steps">
       <li><strong>③·⑤ → ⑥</strong> 사람이 적은 사례 파일과 AI가 뽑은 근거가 같은 모양의 근거·요구·8항목 입력으로 합쳐져 평가에 들어갑니다. AI가 뽑은 것은 "AI 제안·확인 전"으로 구분됩니다.</li>
-      <li><strong>⑥ → ⑦ → ⑧ → ⑥</strong> 평가 결과를 보고 담당자가 기록하면, 지금은 거래 관계만 되돌아가고 2차에는 기록 전부가 규칙으로 되돌아갑니다.</li>
+      <li><strong>⑥ → ⑦ → ⑧ → ⑥</strong> 평가 결과를 보고 담당자가 기록하면, 지금은 거래 관계만 되돌아가고, 되먹임이 만들어지면 기록 전부가 규칙으로 되돌아갑니다.</li>
       <li><strong>D8·D9 → ③′ → ④⑤⑥</strong> 공공 자료에서 찾은 회사도 사례 파일로 넣은 회사와 같은 길(홈페이지 찾기 → 근거 뽑기 → 평가)을 탑니다. 사람이 8항목을 적지 않았으므로 "점수 전"입니다.</li>
     </ol>
     <h3>가지고 진행한 자료 13개</h3>
@@ -200,26 +200,27 @@ body.present .mermaid svg{max-width:none;width:100%}
   <div class="card">
     <h2 id="h-progress">지금 어디까지 왔나</h2>
     <div class="chips">
-      <span class="chip ok">✅ 됨 66</span><span class="chip wip">⏳ 진행 중 6</span><span class="chip next">📅 2차 예정 15</span><span class="chip hold">⏸ 보류 5</span><span class="chip">기능 92줄 · 2026-11-13</span>
+      <span class="chip ok">✅ 됨 69</span><span class="chip wip">⏳ 진행 중 3</span><span class="chip next">📅 예정 6</span><span class="chip hold">⏸ 보류 16</span><span class="chip">기능 94줄 · 2026-11-14</span>
     </div>
     <div class="grid2">
       <div>
         <div class="fig"><div class="mermaid" data-src="mm-pie"></div></div>
-        <p class="caption">"됨"은 화면과 서버가 모두 <code>develop</code>에 합쳐졌다는 뜻입니다. 거산이 접속하는 주소에 올리는 일은 진행 중입니다(#213).</p>
+        <p class="caption">"됨"은 화면과 서버가 모두 <code>develop</code>에 합쳐졌다는 뜻입니다. 거산이 접속하는 주소에 올리는 일은 만들 것이 어느 정도 된 뒤에 합니다(#213).</p>
       </div>
       <div>
         <table>
           <thead><tr><th>묶음</th><th>쉬운 말</th><th>지금 위치</th></tr></thead>
           <tbody>
             <tr><td>U1 뼈대</td><td>가상 사례 1건이 넣기 → 평가 → 화면 → 의견 저장까지</td><td><span class="chip ok">✅</span></td></tr>
-            <tr><td>U2 AI 조사</td><td>홈페이지를 찾아 읽고 근거와 질문을 뽑는다</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
-            <tr><td>U3 후보 찾기</td><td>담당자가 고른 조건으로 공공자료에서 후보를 찾는다</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
-            <tr><td>U4 거산 확인 창구</td><td>거산 값을 "확인 완료"로 바꾼다</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
-            <tr><td>U5 담당자 기록</td><td>접촉·메모·영업 단계·일정</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
+            <tr><td>U2 AI 조사</td><td>홈페이지를 찾아 읽고 근거와 질문을 뽑는다</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U3 후보 찾기</td><td>담당자가 고른 조건으로 공공자료에서 후보를 찾는다. 웹에서 찾는 갈래는 만드는 중</td><td><span class="chip wip">⏳ 진행 중</span></td></tr>
+            <tr><td>U4 거산 확인 창구</td><td>거산 값을 "확인 완료"로 바꾼다. 배포 DB에서는 배포 때</td><td><span class="chip next">📅 예정</span></td></tr>
+            <tr><td>U5 담당자 기록</td><td>접촉·메모·영업 단계·일정</td><td><span class="chip ok">✅</span></td></tr>
             <tr><td>U6 재접촉</td><td>예전 거래처를 다시 영업</td><td><span class="chip hold">⏸ 보류</span></td></tr>
-            <tr><td>U7 대시보드</td><td>건수·일정·최근 기록</td><td><span class="chip ok">✅ 1차 몫</span></td></tr>
-            <tr><td>U8 접속·배포</td><td>비밀번호, 올리기, 백업</td><td><span class="chip wip">⏳ 1차</span></td></tr>
-            <tr><td>U10 운영 인계</td><td>안내서·전달 메일</td><td><span class="chip wip">⏳ 일부 1차</span></td></tr>
+            <tr><td>U7 대시보드</td><td>건수·일정·최근 기록</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U8 접속·배포</td><td>비밀번호, 올리기, 백업</td><td><span class="chip next">📅 예정</span></td></tr>
+            <tr><td>U10 운영 인계</td><td>안내서·전달 메일</td><td><span class="chip next">📅 예정</span></td></tr>
+            <tr><td>영업 비서</td><td>질문에 답하고 통화를 준비한다</td><td><span class="chip wip">⏳ 진행 중</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -238,7 +239,7 @@ body.present .mermaid svg{max-width:none;width:100%}
   <div class="card">
     <h2 id="h-timeline">기획이 바뀐 큰 줄기</h2>
     <div class="fig"><div class="mermaid" data-src="mm-changes"></div></div>
-    <p class="caption">10/19 처음 범위 → 10/21 부분 시연 추가 → 10/29 거산 방문 → 11/3 되는 순서대로 전달 → 11/4 답 적기·거래 관계 → 11/5 후보 찾기를 1차로.</p>
+    <p class="caption">10/19 처음 범위 → 10/21 부분 시연 추가 → 10/29 거산 방문 → 11/3 되는 순서대로 전달 → 11/4 답 적기·거래 관계 → 11/5 후보 찾기를 1차로 → 11/13 1차/2차 구분을 없앰.</p>
   </div>
   <div class="card">
     <h2>자료로 본 진행</h2>
@@ -308,7 +309,7 @@ flowchart TB
     S6 -->|"E·P·S·R · 분류 · 순위 · 질문"| S7["⑦ 화면<br/>대시보드 · 목록 · 상세"]
     S7 --> S8["⑧ 담당자 기록<br/>의견 · 메모 · 접촉 · 단계 · 일정<br/>+ 그때 본 평가 번호"]
     S8 -->|"거래 관계 바꿈"| S6
-    S8 -.->|"되먹임 ①②③ 📅 2차"| S6
+    S8 -.->|"되먹임 ①②③ 📅 예정"| S6
     S10["⑩ 거산 확인 전환<br/>review-set"] -->|"묶음 바꿈 → 전체 재평가"| S6
     S6 --> S11["⑪ 내보내기<br/>순위표 · 백업"]
 </script>
@@ -341,35 +342,36 @@ flowchart LR
 </script>
 <script type="text/plain" id="mm-pie">
 pie showData
-    title 기능 92줄의 상태 (2026-11-13)
-    "됨" : 66
-    "진행 중" : 6
-    "2차 예정" : 15
-    "보류" : 5
+    title 기능 94줄의 상태 (2026-11-14)
+    "됨" : 69
+    "진행 중" : 3
+    "예정" : 6
+    "보류" : 16
 </script>
 <script type="text/plain" id="mm-units">
 flowchart TB
     subgraph DONE["✅ 끝남"]
         U1["U1 뼈대<br/>가상 사례 1건이<br/>처음부터 끝까지 돈다"]
-        U2["U2<br/>AI 조사<br/>1차 몫"]
-        U5["U5<br/>담당자 기록<br/>1차 몫"]
-        U7["U7<br/>대시보드<br/>1차 몫"]
+        U2["U2<br/>AI 조사"]
+        U5["U5<br/>담당자 기록"]
+        U7["U7<br/>대시보드<br/>지도 · 영업 분석"]
     end
-    subgraph NOW["⏳ 1차 진행 중 — 되는 순서대로 거산에 전달"]
-        U3["U3<br/>조건을 골라<br/>후보 찾기"]
-        U4["U4<br/>거산 소개서 내용을<br/>'거산이 확인함'으로 바꾸기"]
+    subgraph NOW["⏳ 진행 중"]
+        U3["U3<br/>조건을 골라 후보 찾기<br/>웹에서 찾는 갈래"]
+        X1["새로 더함<br/>영업 비서"]
     end
-    subgraph NEXT["📅 2차 — 11/17 이후"]
+    subgraph NEXT["📅 예정"]
         X0["U3 나머지<br/>매달 자동 수집"]
-        U8["U8<br/>접속 · 배포<br/>2차가 어느 정도 된 뒤"]
+        U4["U4<br/>배포 DB에서 거산 값을<br/>'거산이 확인함'으로"]
+        U8["U8<br/>접속 · 배포<br/>만들 것이 어느 정도 된 뒤"]
         U10["U10<br/>전달 준비<br/>배포 때"]
-        X1["U4 나머지<br/>질문 목록 화면"]
-        X2["U5 나머지<br/>접촉 승인 · 기록 취소"]
-        X3["U7 나머지<br/>엑셀 · 지도 · 막대"]
-        X4["새로 더함<br/>영업 전략 · 비슷한 회사"]
+        X2["되먹임<br/>기록이 순위로 돌아옴"]
     end
-    subgraph HOLD["⏸ 보류"]
-        U6["U6<br/>재접촉"]
+    subgraph HOLD["⏸ 보류 · 하지 않음"]
+        U6["U6<br/>재접촉 · 거래 관계 입력"]
+        X3["접촉 승인<br/>질문 목록 화면"]
+        X4["나라장터 공고<br/>채용 공고"]
+        X5["엑셀 내려받기<br/>만들어 두고 꺼 둠"]
     end
     subgraph ASK["❓ 확인 필요"]
         U9["U9<br/>자료 출처 늘리기"]
@@ -388,6 +390,7 @@ timeline
     11월 3일 : 마감 대신 되는 순서대로 전달 : 기록과 대시보드를 맨 앞으로 : 재접촉은 보류
     11월 4일 : 답 적기와 거래 관계 입력 추가 : 2차 기능 정리
     11월 5일 : 후보 수집을 자동으로 바꿈 : 후보 찾기를 1차로 당김 : 후보 찾기에 웹 검색 허용 : 지도 문서 시작
+    11월 13일 : 1차와 2차 구분을 없앰 : 목록을 근거 상태 묶음으로 : 나라장터와 채용 공고는 연결하지 않음 : 재접촉 관리는 하지 않음
 </script>
 <script type="text/plain" id="mm-datatime">
 timeline
@@ -398,7 +401,7 @@ timeline
     10/29 방문 → 11/4 : 거산이 소개서 전체 확인 → review-set으로 시연 DB 110건을 거산 확인 완료 묶음으로, 18곳 재평가
     11/3~11/7 AI 조사 : 회사명 · 주소 → 홈페이지(D10) → 근거 · 질문 · 회사 요약 · 대표번호 (18곳)
     11/5~ 후보 찾기 : D8 공장현황 파일 220,705행 + D9 단지 조회 → 지역 거르기 · AI 판단 (만드는 중)
-    11/8~ 되먹임 준비 : 기록에 그때 본 평가 번호 → 2차 되먹임 ①②③의 재료
+    11/8~ 되먹임 준비 : 기록에 그때 본 평가 번호 → 되먹임 ①②③의 재료
     11/9~11/12 후보 등록과 보조 자료 : 공공자료에서 찾은 161곳 등록 · D14 팩토리온 18,798행 + D15 수질 명단 147곳을 목록 회사에 붙임
 </script>
 <script type="text/plain" id="mm-structure">
