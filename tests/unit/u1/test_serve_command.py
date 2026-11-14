@@ -34,8 +34,21 @@ def test_serve_starts_on_loopback_with_given_port(tmp_db: Path, monkeypatch) -> 
     assert "http://127.0.0.1:18765" in out and "서버를 종료했습니다" in out
 
 
-def test_serve_deployment_host_reaches_probe_and_server(tmp_db, monkeypatch):
-    """Given 배포 주소·포트 / When serve 실행 / Then 검사와 실행에 같은 주소를 쓴다."""
+def test_serve_deployment_host_reaches_probe_and_server(tmp_db, tmp_path, monkeypatch):
+    """Given 배포 주소·포트(보호 켬, #736) / When serve / Then 검사와 실행에 같은 주소를 쓴다."""
+    # #736: 배포 주소는 접속 보호 켬 + 비밀번호가 있어야 시작한다. 가상 설정에서 보호만 켠다.
+    from tests.conftest import EXAMPLES_DIR
+
+    protected = tmp_path / "app-settings-protected.yaml"
+    protected.write_text(
+        (EXAMPLES_DIR / "app-settings-virtual.yaml")
+        .read_text(encoding="utf-8")
+        .replace("accessProtection:\n  enabled: false", "accessProtection:\n  enabled: true"),
+        encoding="utf-8",
+    )
+    code, out = _run("check-config", str(EXAMPLES_DIR / "rule-config.yaml"), str(protected))
+    assert code == 0, out
+    monkeypatch.setenv("GEOSAN_PASSWORD", "virtual-test-only-passphrase")
     calls = []
     monkeypatch.setattr(
         serve_module, "port_in_use", lambda port, host: calls.append(("probe", host, port)) or False

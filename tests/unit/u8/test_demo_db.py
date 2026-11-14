@@ -297,8 +297,18 @@ def test_demo_settings_can_be_registered_again(demo_db):
         assert is_demo_database(session)
 
 
-def test_deploy_setting_with_normal_db_still_starts(tmp_db, monkeypatch):
-    """Given 시연 표시 없는 DB / When 배포 주소·비밀번호로 시작 / Then 전처럼 시작된다."""
+def test_deploy_setting_with_normal_db_still_starts(tmp_db, tmp_path, monkeypatch):
+    """Given 시연 표시 없는 DB(보호 켬, #736) / When 배포 주소·비밀번호로 시작 / Then 시작된다."""
+    # #736: 배포 주소는 접속 보호가 켜진 설정이어야 시작한다. 가상 설정에서 보호만 켜 등록한다.
+    protected = tmp_path / "app-settings-protected.yaml"
+    protected.write_text(
+        VIRTUAL_SETTINGS.read_text(encoding="utf-8").replace(
+            "accessProtection:\n  enabled: false", "accessProtection:\n  enabled: true"
+        ),
+        encoding="utf-8",
+    )
+    code, out = run("check-config", EXAMPLES_DIR / "rule-config.yaml", protected)
+    assert code == 0, out
     started = []
     monkeypatch.setattr(serve_module, "_run_server", lambda port, host: started.append(host))
     monkeypatch.setattr(serve_module, "port_in_use", lambda port, host: False)

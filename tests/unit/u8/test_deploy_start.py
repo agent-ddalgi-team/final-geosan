@@ -18,6 +18,7 @@ import pytest
 from typer.testing import CliRunner
 
 from geosan.commands import serve as serve_module
+from geosan.commands import serving_marker
 from geosan.commands.app import app
 from tests.conftest import EXAMPLES_DIR
 
@@ -95,3 +96,75 @@ def test_init_db_twice_keeps_data_and_changes_nothing(tmp_path, monkeypatch):
         assert connection.execute("SELECT text FROM t_virtual_note").fetchall() == [("가상 메모",)]
     finally:
         connection.close()
+
+
+# ---------------------------------------------------------------- 3. 접속 보호 검사
+
+
+def test_deploy_host_refuses_when_access_protection_is_off(tmp_db, started, monkeypatch):
+    """Given 보호 꺼진 설정·비밀번호 있음 / When 0.0.0.0으로 시작 / Then 거부(종료 코드 2)."""
+    monkeypatch.setenv("GEOSAN_PASSWORD", FAKE_PASSWORD)
+    code, out = _run("serve", "--host", "0.0.0.0", "--port", "8670")
+    assert code == 2, out
+    assert "접속 보호가 꺼져 있어 배포 환경에서 서버를 시작하지 않습니다" in out
+    assert "accessProtection.enabled" in out and "check-config" in out
+    assert started == []
+    assert not serving_marker.marker_path(tmp_db).exists()
+
+
+def test_deploy_host_refuses_on_fresh_db_without_settings_copy(bare_db, started, monkeypatch):
+    """Given init-db만 한 빈 볼륨 DB(예시 설정 = 보호 꺼짐) / When 0.0.0.0 / Then 거부."""
+    monkeypatch.setenv("GEOSAN_PASSWORD", FAKE_PASSWORD)
+    code, out = _run("serve", "--host", "0.0.0.0", "--port", "8670")
+    assert code == 2, out
+    assert "접속 보호가 꺼져 있어" in out
+    assert started == []
+
+
+def test_this_pc_still_starts_without_protection(tmp_db, started, monkeypatch):
+    """Given 보호 꺼진 설정·비밀번호 없음 / When 127.0.0.1(팀 노트북) / Then 지금처럼 뜬다."""
+    monkeypatch.delenv("GEOSAN_PASSWORD", raising=False)
+    code, out = _run("serve", "--port", "8670")
+    assert code == 0, out
+    assert started == ["127.0.0.1"]
+    assert "접속 보호" not in out
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1"])
+@pytest.mark.parametrize("password", [None, "", "   "])
+def test_protection_on_without_password_refuses(
+    tmp_db, tmp_path, started, monkeypatch, host, password
+):
+    """Given 보호 켬·비밀번호 없음(빈 값 포함) / When 시작 / Then 로그인 500 대신 시작 거부."""
+    _register_protection_on(tmp_path)
+    if password is None:
+        monkeypatch.delenv("GEOSAN_PASSWORD", raising=False)
+    else:
+        monkeypatch.setenv("GEOSAN_PASSWORD", password)
+    code, out = _run("serve", "--host", host, "--port", "8670")
+    assert code == 2, out
+    assert "비밀번호(GEOSAN_PASSWORD)가 없어 서버를 시작하지 않습니다" in out
+    assert started == []
+
+
+def test_protection_on_with_password_starts_on_deploy_host(tmp_db, tmp_path, started, monkeypatch):
+    """Given 보호 켬·비밀번호 있음 / When 0.0.0.0으로 시작 / Then 뜬다."""
+    _register_protection_on(tmp_path)
+    monkeypatch.setenv("GEOSAN_PASSWORD", FAKE_PASSWORD)
+    code, out = _run("serve", "--host", "0.0.0.0", "--port", "8670")
+    assert code == 0, out
+    assert started == ["0.0.0.0"]
+
+
+def test_unreadable_settings_copy_refuses_with_plain_message(tmp_db, started, monkeypatch):
+    """Given DB의 앱 설정 사본을 읽지 못함 / When 시작 / Then 숨기지 않고 거부(종료 코드 2)."""
+    from geosan.config import app_settings
+
+    def _broken(session):
+        raise ValueError("가상 읽기 오류")
+
+    monkeypatch.setattr(app_settings, "read_app_settings", _broken)
+    code, out = _run("serve", "--host", "0.0.0.0", "--port", "8670")
+    assert code == 2, out
+    assert "앱 설정 사본을 읽지 못해" in out
+    assert started == []
