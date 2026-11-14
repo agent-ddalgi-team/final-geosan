@@ -363,8 +363,8 @@ export function SalesQuestionFields({
                   ) : null}
                 </div>
               )}
-              {/* 끝이 아닌 할 일을 고르면 날짜를 이어서 묻는다(#683). 날짜는 눌러 여는 달력 대신 바로 고르게
-                펼쳐 보이고, 없으면 [없음]으로 지나간다(#691). 비워 두면 일정은 그대로다. */}
+              {/* 끝이 아닌 할 일을 고르면 날짜를 이어서 묻는다(#683). 날짜는 처음부터 펼쳐진 달력 하나에서
+                고르고, 없으면 [없음]으로 지나간다(#691·#740). 비워 두면 일정은 그대로다. */}
               {nextAction?.questionId === question.questionId ? (
                 <div
                   data-testid="sales-next-date-field"
@@ -375,12 +375,11 @@ export function SalesQuestionFields({
                     value={nextDate}
                     onChange={(value) => onNextDate?.(value)}
                     from={nextDateMin ?? ''}
-                    inputMin={nextDateMin}
+                    min={nextDateMin}
                     none={nextNone}
                     onNone={onNextNone}
                     disabled={disabled}
                     label={salesQuestionTexts.nextDateLabel}
-                    inputTestId="sales-next-date"
                     testId="sales-next-quick"
                   />
                   <Typography.Text

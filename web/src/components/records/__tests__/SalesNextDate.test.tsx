@@ -5,6 +5,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import { nextActionPick, visibleQuestions } from '../SalesQuestions';
+import { quickDateLabel } from '../QuickDate';
+import { pickCalendarDate } from '../../../test/pickCalendarDate';
 import { getSalesQuestions, postOutcome } from '../../../api/client';
 import type { OutcomeRecord, SalesQuestions, SalesStepView } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
@@ -76,8 +78,21 @@ const frame: FrameValue = {
 };
 
 // 오늘보다 뒤인 날짜와 지난 날짜. 시험이 오늘 날짜에 기대지 않게 멀리 잡는다.
+// #740부터 날짜는 펼쳐진 달력에서 고르므로, 시험 속 오늘을 2099-09-15(한국 시간)로 둬
+// 달력을 두세 달만 넘기면 닿게 한다. 날짜 계산만 바꾸고 다른 시계는 그대로다.
 const FUTURE = '2099-11-20';
-const PAST = '2020-01-01';
+const PAST = '2099-09-14';
+const TEST_NOW = new Date('2099-09-15T03:00:00Z');
+// 펼쳐진 달력(antd)을 누르는 시험은 화면 그리기가 무거워 PC가 바쁠 때 기본 5초를 넘길 수 있다.
+vi.setConfig({ testTimeout: 20_000 });
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: TEST_NOW });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function outcome(partial: Partial<OutcomeRecord> = {}): OutcomeRecord {
   return {
@@ -152,23 +167,27 @@ describe('꼬리 질문에서 다음 일정까지 잡는다 (#683)', () => {
     vi.mocked(getSalesQuestions).mockResolvedValue({ data: QUESTIONS, meta: {} });
   });
 
-  it('할 일을 고르면 "언제 할까요?" 날짜 칸이 그 질문 바로 아래에 보이고, 고르기 전과 "끝"에서는 없다', async () => {
+  it('할 일을 고르면 "언제 할까요?" 달력이 그 질문 바로 아래에 펼쳐져 보이고, 고르기 전과 "끝"에서는 없다', async () => {
     const user = userEvent.setup();
     renderArea();
     await startCall(user);
     await screen.findByTestId('sales-question-NEXT_ACTION');
-    expect(screen.queryByTestId('sales-next-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sales-next-quick')).not.toBeInTheDocument();
 
     await pick(user, 'NEXT_ACTION', '견적');
     const question = screen.getByTestId('sales-question-NEXT_ACTION');
     expect(within(question).getByTestId('sales-next-date-field')).toHaveTextContent('언제 할까요?');
-    expect(within(question).getByTestId('sales-next-date')).toHaveAttribute('type', 'date');
+    // 눌러 여는 칸이 아니라 이번 달 달력이 처음부터 펼쳐져 있다(#740).
+    expect(within(question).getByTestId('sales-next-quick')).toHaveAttribute(
+      'data-month',
+      '2099-09',
+    );
     // 날짜는 선택 사항이라 비워 둬도 저장 단추는 켜져 있고, 미리 알림은 없다.
     expect(screen.getByTestId('records-contact-save-button')).toBeEnabled();
     expect(screen.queryByTestId('records-next-date-preview')).not.toBeInTheDocument();
 
     await pick(user, 'NEXT_ACTION', '끝');
-    expect(screen.queryByTestId('sales-next-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sales-next-quick')).not.toBeInTheDocument();
     expect(screen.getByTestId('sales-question-CLOSE_RESULT')).toBeInTheDocument();
   });
 
@@ -177,7 +196,7 @@ describe('꼬리 질문에서 다음 일정까지 잡는다 (#683)', () => {
     renderArea();
     await startCall(user);
     await pick(user, 'NEXT_ACTION', '견적');
-    fireEvent.change(screen.getByTestId('sales-next-date'), { target: { value: FUTURE } });
+    await pickCalendarDate(user, 'sales-next-quick', FUTURE);
     expect(screen.getByTestId('records-next-date-preview')).toHaveTextContent(
       '저장하면 다음 일정이 11/20 견적(으)로 잡힙니다.',
     );
@@ -196,7 +215,7 @@ describe('꼬리 질문에서 다음 일정까지 잡는다 (#683)', () => {
     );
     await startCall(user);
     await pick(user, 'NEXT_ACTION', '견적');
-    fireEvent.change(screen.getByTestId('sales-next-date'), { target: { value: FUTURE } });
+    await pickCalendarDate(user, 'sales-next-quick', FUTURE);
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     const [, body] = vi.mocked(postOutcome).mock.calls[0];
@@ -259,7 +278,7 @@ describe('꼬리 질문에서 다음 일정까지 잡는다 (#683)', () => {
     renderArea(outcome({ nextScheduleAt: '2099-10-01', nextScheduleNote: '자료 회신 확인' }));
     await startCall(user);
     await pick(user, 'NEXT_ACTION', '견적');
-    fireEvent.change(screen.getByTestId('sales-next-date'), { target: { value: FUTURE } });
+    await pickCalendarDate(user, 'sales-next-quick', FUTURE);
     await pick(user, 'NEXT_ACTION', '끝');
     expect(screen.queryByTestId('records-next-date-preview')).not.toBeInTheDocument();
     await pick(user, 'CLOSE_RESULT', '보류 · 나중에 다시');
@@ -272,17 +291,19 @@ describe('꼬리 질문에서 다음 일정까지 잡는다 (#683)', () => {
     });
   });
 
-  it('지난 날짜를 넣으면 안내가 보이고 저장 단추가 꺼진다', async () => {
+  // #740: 날짜를 적어 넣는 칸이 없어져 지난 날짜는 달력에서 아예 골라지지 않는다(전에는 넣으면 안내가 떴다).
+  it('지난 날짜는 달력에서 눌러도 골라지지 않고, 미리 알림 없이 저장 단추는 그대로 켜져 있다', async () => {
     const user = userEvent.setup();
     renderArea();
     await startCall(user);
     await pick(user, 'NEXT_ACTION', '견적');
-    fireEvent.change(screen.getByTestId('sales-next-date'), { target: { value: PAST } });
-    expect(screen.getByTestId('records-next-date-error')).toHaveTextContent(
-      '다음 일정은 오늘이나 그 뒤 날짜로 넣어 주세요.',
-    );
+    const past = screen.getByTestId(`sales-next-quick-day-${PAST}`);
+    expect(past).toBeDisabled();
+    await user.click(past);
+    expect(past).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByTestId('records-next-date-error')).not.toBeInTheDocument();
     expect(screen.queryByTestId('records-next-date-preview')).not.toBeInTheDocument();
-    expect(screen.getByTestId('records-contact-save-button')).toBeDisabled();
+    expect(screen.getByTestId('records-contact-save-button')).toBeEnabled();
     expect(postOutcome).not.toHaveBeenCalled();
   });
 
@@ -291,7 +312,7 @@ describe('꼬리 질문에서 다음 일정까지 잡는다 (#683)', () => {
     renderArea();
     await startCall(user, '부재');
     expect(screen.queryByTestId('sales-questions')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('sales-next-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sales-next-quick')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-schedule-toggle')).toBeInTheDocument();
   });
 });
@@ -311,7 +332,7 @@ describe('따로 있는 "다음 일정" 칸은 접어 둔다 (#683)', () => {
     expect(toggle).toHaveTextContent('일정만 바꾸기');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     for (const id of [
-      'records-schedule-date',
+      'records-schedule-quick',
       'records-schedule-note',
       'records-schedule-save-button',
     ]) {
@@ -332,12 +353,13 @@ describe('따로 있는 "다음 일정" 칸은 접어 둔다 (#683)', () => {
     await user.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-toggle')).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('records-schedule-toggle')).toHaveTextContent('접기');
-    expect(screen.getByTestId('records-schedule-date')).toHaveValue(FUTURE);
+    expect(screen.getByTestId('records-schedule-quick')).toHaveAttribute('data-month', '2099-11');
+    expect(screen.getByTestId('records-schedule-quick-picked')).toHaveTextContent(
+      `고른 날짜: ${quickDateLabel(FUTURE)}`,
+    );
     expect(screen.getByTestId('records-schedule-note')).toHaveValue('견적');
 
-    fireEvent.change(screen.getByTestId('records-schedule-date'), {
-      target: { value: '2099-12-05' },
-    });
+    await pickCalendarDate(user, 'records-schedule-quick', '2099-12-05');
     fireEvent.change(screen.getByTestId('records-schedule-note'), {
       target: { value: '견적 회신 확인' },
     });
@@ -358,7 +380,7 @@ describe('따로 있는 "다음 일정" 칸은 접어 둔다 (#683)', () => {
 
     // 다시 누르면 접힌다.
     await user.click(screen.getByTestId('records-schedule-toggle'));
-    expect(screen.queryByTestId('records-schedule-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('records-schedule-quick')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-schedule-toggle')).toHaveTextContent('일정만 바꾸기');
   });
 
@@ -368,7 +390,7 @@ describe('따로 있는 "다음 일정" 칸은 접어 둔다 (#683)', () => {
     renderArea();
     await startCall(user);
     await pick(user, 'NEXT_ACTION', '다시 연락');
-    fireEvent.change(screen.getByTestId('sales-next-date'), { target: { value: FUTURE } });
+    await pickCalendarDate(user, 'sales-next-quick', FUTURE);
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() =>
       expect(screen.getByTestId('records-schedule-current')).toHaveTextContent(
@@ -376,7 +398,10 @@ describe('따로 있는 "다음 일정" 칸은 접어 둔다 (#683)', () => {
       ),
     );
     await user.click(screen.getByTestId('records-schedule-toggle'));
-    expect(screen.getByTestId('records-schedule-date')).toHaveValue(FUTURE);
+    expect(screen.getByTestId('records-schedule-quick')).toHaveAttribute('data-month', '2099-11');
+    expect(screen.getByTestId('records-schedule-quick-picked')).toHaveTextContent(
+      `고른 날짜: ${quickDateLabel(FUTURE)}`,
+    );
     expect(screen.getByTestId('records-schedule-note')).toHaveValue('다시 연락');
   });
 });

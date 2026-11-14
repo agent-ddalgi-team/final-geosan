@@ -1,12 +1,12 @@
 // #691(PM 결정 2026-11-13) 통화 기록을 덜 누르고 덜 오르내리게:
 // 저장 단추는 맨 끝, 종류 기본 "전화", "누가 먼저 연락했나"는 종류 옆에 기본 "우리가",
-// 날짜는 바로 고르고 [없음]으로 지나가기, 통화 없이 일정만 잡기, 확정된 공정·산업은 한 줄, 거절이면 바로 마무리.
+// 날짜는 펼쳐진 달력에서 바로 고르고 [없음]으로 지나가기(#740에서 2주 단추 → 달력 하나), 통화 없이 일정만 잡기, 확정된 공정·산업은 한 줄, 거절이면 바로 마무리.
 // 서버 호출(getSalesQuestions·postOutcome)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import type { ChoiceMarks } from '../ChoiceQuestion';
-import { quickDateLabel, quickDates } from '../QuickDate';
+import { quickDateLabel } from '../QuickDate';
 import {
   SalesStepSummary,
   closingRouteOf,
@@ -23,6 +23,10 @@ import type {
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
 import { todayKst } from '../../../utils/time';
+import { addDays, pickCalendarDate } from '../../../test/pickCalendarDate';
+
+// 펼쳐진 달력(antd)을 누르는 시험은 화면 그리기가 무거워 PC가 바쁠 때 기본 5초를 넘길 수 있다(#740).
+vi.setConfig({ testTimeout: 20_000 });
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -238,13 +242,9 @@ describe('질문 파일에서 읽는 것 (#691)', () => {
     expect(screen.getByTestId('sales-step-unknown')).not.toHaveTextContent('누가 먼저');
   });
 
-  it('가까운 날짜 줄은 오늘부터 2주이고 "11/20(금)"처럼 요일을 붙인다', () => {
-    const dates = quickDates('2026-11-13');
-    expect(dates).toHaveLength(14);
-    expect([dates[0], dates[13]]).toEqual(['2026-11-13', '2026-11-26']);
-    expect(quickDates('2026-12-25', 10).at(-1)).toBe('2027-01-03');
+  // #740: 2주 날짜 단추를 없애 "2주를 센다"는 확인은 뺐다. 요일 붙이기는 고른 날짜 글에 그대로 쓴다.
+  it('고른 날짜 글은 "11/20(금)"처럼 요일을 붙인다', () => {
     expect(quickDateLabel('2026-11-20')).toBe('11/20(금)');
-    expect(quickDates('')).toEqual([]);
   });
 });
 
@@ -356,41 +356,66 @@ describe('누가 먼저 연락했나 (#691)', () => {
   });
 });
 
-describe('다음 일정: 날짜를 바로 고르고 [없음]으로 지나가기 (#691)', () => {
-  it('"다음 할 일"을 고르면 오늘부터 2주가 단추로 펼쳐져 있고, 하나를 누르면 그 날짜로 일정이 실린다', async () => {
+describe('다음 일정: 펼쳐진 달력에서 바로 고르고 [없음]으로 지나가기 (#691·#740)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('"다음 할 일"을 고르면 이번 달 달력이 펼쳐져 있고, 날짜를 누르면 그 날짜로 일정이 실린다', async () => {
     const user = userEvent.setup();
     renderArea();
     await setResult(user, '연결됨');
     await pick(user, 'NEXT_ACTION', '견적');
     const today = todayKst();
-    const days = quickDates(today);
+    const day = addDays(today, 7);
     const field = screen.getByTestId('sales-next-date-field');
-    expect(within(field).getAllByRole('button', { pressed: false })).toHaveLength(15); // 14일 + [없음]
-    expect(screen.getByTestId(`sales-next-quick-day-${today}`)).toHaveTextContent('오늘');
-    // 달력을 눌러 열지 않고 한 번에 고른다.
-    await user.click(screen.getByTestId(`sales-next-quick-day-${days[7]}`));
-    expect(screen.getByTestId(`sales-next-quick-day-${days[7]}`)).toHaveAttribute(
+    // 달력을 눌러 열지 않아도 이번 달이 펼쳐져 있고, 2주 단추·"다른 날짜" 칸은 없다.
+    expect(screen.getByTestId('sales-next-quick')).toHaveAttribute('data-month', today.slice(0, 7));
+    expect(screen.getByTestId(`sales-next-quick-day-${today}`)).toHaveAccessibleName(/오늘$/);
+    expect(within(field).queryByText('다른 날짜')).not.toBeInTheDocument();
+    await pickCalendarDate(user, 'sales-next-quick', day);
+    expect(screen.getByTestId(`sales-next-quick-day-${day}`)).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(screen.getByTestId('sales-next-date')).toHaveValue(days[7]);
+    expect(screen.getByTestId('sales-next-quick-picked')).toHaveTextContent(
+      `고른 날짜: ${quickDateLabel(day)}`,
+    );
     expect(screen.getByTestId('records-next-date-preview')).toHaveTextContent(
       '견적(으)로 잡힙니다',
     );
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
-    expect(sentBody()).toMatchObject({ nextScheduleAt: days[7], nextScheduleNote: '견적' });
+    expect(sentBody()).toMatchObject({ nextScheduleAt: day, nextScheduleNote: '견적' });
   });
 
-  it('2주 밖의 날짜는 "다른 날짜" 칸에서 고른다', async () => {
+  it('다음 달 날짜는 달력의 [다음 달]로 넘겨 고른다', async () => {
+    // 오늘을 2099-10-20(한국 시간)으로 둔다. 날짜 계산만 바꾸고 다른 시계는 그대로다.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2099-10-20T03:00:00Z') });
     const user = userEvent.setup();
     renderArea();
     await setResult(user, '연결됨');
     await pick(user, 'NEXT_ACTION', '견적');
-    fireEvent.change(screen.getByTestId('sales-next-date'), { target: { value: '2099-11-20' } });
+    await user.click(screen.getByTestId('sales-next-quick-next'));
+    await user.click(screen.getByTestId('sales-next-quick-day-2099-11-20'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     expect(sentBody()).toMatchObject({ nextScheduleAt: '2099-11-20', nextScheduleNote: '견적' });
+  });
+
+  it('오늘보다 앞 날짜는 달력에서 눌러도 골라지지 않는다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2099-10-20T03:00:00Z') });
+    const user = userEvent.setup();
+    renderArea();
+    await setResult(user, '연결됨');
+    await pick(user, 'NEXT_ACTION', '견적');
+    const past = screen.getByTestId('sales-next-quick-day-2099-10-19');
+    expect(past).toBeDisabled();
+    await user.click(past);
+    expect(past).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByTestId('records-next-date-preview')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sales-next-quick-prev')).toBeDisabled();
+    expect(screen.getByTestId('sales-next-quick-day-2099-10-20')).toBeEnabled();
   });
 
   it('[없음]을 누르면 고른 날짜가 비고 "다음 일정은 잡지 않습니다"라고 알리며 일정 없이 저장된다', async () => {
@@ -398,15 +423,15 @@ describe('다음 일정: 날짜를 바로 고르고 [없음]으로 지나가기 
     renderArea();
     await setResult(user, '연결됨');
     await pick(user, 'NEXT_ACTION', '견적');
-    const day = quickDates(todayKst())[3];
-    await user.click(screen.getByTestId(`sales-next-quick-day-${day}`));
+    const day = addDays(todayKst(), 3);
+    await pickCalendarDate(user, 'sales-next-quick', day);
     await user.click(screen.getByTestId('sales-next-quick-none'));
     expect(screen.getByTestId('sales-next-quick-none')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId(`sales-next-quick-day-${day}`)).toHaveAttribute(
       'aria-pressed',
       'false',
     );
-    expect(screen.getByTestId('sales-next-date')).toHaveValue('');
+    expect(screen.getByTestId('sales-next-quick-picked')).not.toHaveTextContent('고른 날짜');
     expect(screen.queryByTestId('records-next-date-preview')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-next-none-preview')).toHaveTextContent(
       /^다음 일정은 잡지 않습니다\.$/,
@@ -437,8 +462,8 @@ describe('다음 일정: 날짜를 바로 고르고 [없음]으로 지나가기 
     await setResult(user, '연결됨');
     await pick(user, 'NEXT_ACTION', '견적');
     await user.click(screen.getByTestId('sales-next-quick-none'));
-    const day = quickDates(todayKst())[1];
-    await user.click(screen.getByTestId(`sales-next-quick-day-${day}`));
+    const day = addDays(todayKst(), 1);
+    await pickCalendarDate(user, 'sales-next-quick', day);
     expect(screen.getByTestId('sales-next-quick-none')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByTestId('records-next-none-preview')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-next-date-preview')).toBeInTheDocument();
@@ -446,6 +471,10 @@ describe('다음 일정: 날짜를 바로 고르고 [없음]으로 지나가기 
 });
 
 describe('통화 없이 일정만 잡기 (#691)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('[일정 잡기]를 열면 종류와 날짜를 고르고, 종류의 쉬운 말이 내용으로 채워져 접촉 없이 일정만 저장된다', async () => {
     const user = userEvent.setup();
     renderArea();
@@ -456,8 +485,8 @@ describe('통화 없이 일정만 잡기 (#691)', () => {
     expect(kinds).toEqual(['방문', '전화', '메일', '자료 보내기', '견적', '다시 연락']);
     await user.click(screen.getByRole('button', { name: '방문' }));
     expect(screen.getByTestId('records-schedule-note')).toHaveValue('방문');
-    const day = quickDates(todayKst())[5];
-    await user.click(screen.getByTestId(`records-schedule-quick-day-${day}`));
+    const day = addDays(todayKst(), 5);
+    await pickCalendarDate(user, 'records-schedule-quick', day);
     await user.click(screen.getByTestId('records-schedule-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     const body = sentBody();
@@ -473,6 +502,8 @@ describe('통화 없이 일정만 잡기 (#691)', () => {
   });
 
   it('채워진 내용은 고쳐 쓸 수 있고, 날짜를 안 고르면 저장할 수 없다', async () => {
+    // 오늘을 2099-11-01(한국 시간)으로 둬 달력이 2099년 11월을 펼치게 한다. 날짜 계산만 바꾼다.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2099-11-01T03:00:00Z') });
     const user = userEvent.setup();
     renderArea();
     await user.click(screen.getByTestId('records-schedule-toggle'));
@@ -481,9 +512,7 @@ describe('통화 없이 일정만 잡기 (#691)', () => {
     fireEvent.change(screen.getByTestId('records-schedule-note'), {
       target: { value: '방문 · 샘플 들고 감' },
     });
-    fireEvent.change(screen.getByTestId('records-schedule-date'), {
-      target: { value: '2099-11-20' },
-    });
+    await pickCalendarDate(user, 'records-schedule-quick', '2099-11-20');
     await user.click(screen.getByTestId('records-schedule-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     expect(sentBody()).toMatchObject({
@@ -596,8 +625,8 @@ describe('접촉 결과가 "거절"이면 바로 마무리 (#691)', () => {
       '거절이지만 끝이 아니라면 다음 할 일과 날짜를 골라 주세요.',
     );
     await pick(user, 'NEXT_ACTION', '다시 연락');
-    const day = quickDates(todayKst())[6];
-    await user.click(screen.getByTestId(`sales-next-quick-day-${day}`));
+    const day = addDays(todayKst(), 6);
+    await pickCalendarDate(user, 'sales-next-quick', day);
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     expect(sentBody()).toMatchObject({

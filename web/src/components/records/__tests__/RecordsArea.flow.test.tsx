@@ -143,7 +143,7 @@ describe('기록 구역 · 영업 단계 칸은 접어 둔다 (#674, PM 지시 2
     // 기록 남기기는 그대로 펼쳐져 있다. 다음 일정 칸은 #683부터 한 줄로 접혀 있다.
     expect(screen.getByTestId('records-kind')).toBeInTheDocument();
     expect(screen.getByTestId('records-schedule-toggle')).toBeInTheDocument();
-    expect(screen.queryByTestId('records-schedule-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('records-schedule-quick')).not.toBeInTheDocument();
   });
 
   it('[단계 고치기]를 누르면 그 자리에서 펼쳐져 단계를 저장할 수 있고, 다시 누르면 접힌다', async () => {

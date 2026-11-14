@@ -1158,7 +1158,6 @@ export default function RecordsArea({
                 from={todayKst()}
                 disabled={disabled}
                 label={recordsArea.scheduleDate}
-                inputTestId="records-schedule-date"
                 testId="records-schedule-quick"
               />
               <div style={rowStyle}>
