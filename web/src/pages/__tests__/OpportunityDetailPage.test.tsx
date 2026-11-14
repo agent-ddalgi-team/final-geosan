@@ -491,7 +491,7 @@ describe('OpportunityDetailPage', () => {
     const score = await screen.findByTestId('detail-score');
     expect(score).toHaveAttribute('data-score-state', 'PENDING');
     expect(screen.getByTestId('detail-score-ai-proposal-tag')).toHaveTextContent(
-      'AI 제안 · 확인 전',
+      '근거로 낸 점수 · 확인 전',
     );
     expect(screen.queryByTestId('detail-score-pending-tag')).not.toBeInTheDocument();
   });

@@ -290,7 +290,7 @@ describe('OpportunityListPage', () => {
       'PENDING',
     );
     expect(within(cards[1]).getByTestId('card-score-ai-proposal-tag')).toHaveTextContent(
-      'AI 제안 · 확인 전',
+      '근거로 낸 점수 · 확인 전',
     );
     expect(within(cards[1]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
     // 확정된 카드에는 어느 꼬리표도 없다.

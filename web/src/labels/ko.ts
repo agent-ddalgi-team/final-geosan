@@ -360,8 +360,11 @@ export const cardRows = {
 export const scoreTags = {
   pending: '거래 확인 전',
   existing: '기존 거래처',
-  /** AI가 제안한 값으로 계산된 점수(#498, 계약 C1 #286). 사람이 확정하기 전까지 흐리게 보인다. */
-  aiProposal: 'AI 제안 · 확인 전',
+  /**
+   * AI가 조사 근거로 낸 값으로 계산된 점수(#498, 계약 C1 #286). 사람이 확정하기 전까지 흐리게 보인다.
+   * (바뀜 #744, PM 결정 2026-11-14) "AI 제안 · 확인 전" → "근거로 낸 점수 · 확인 전". 글자만 바꿨다.
+   */
+  aiProposal: '근거로 낸 점수 · 확인 전',
 } as const;
 
 /** 상세 제목 아래 회사 홈페이지 링크 글(#175, 용어 #202). 홍보관(블로그) 주소도 있어 "기업 소개 페이지"로 쓴다. */
@@ -1786,7 +1789,8 @@ export const detailReport = {
     summary: (scoreText: string, total: number, withEvidence: number) =>
       `${scoreText} · ${total}항목 중 ${withEvidence}항목 근거 있음`,
     before: '점수 전',
-    proposalsTitle: 'AI 점수 입력 제안',
+    /** (바뀜 #744) "AI 점수 입력 제안" → "근거로 낸 점수 단계". 글자만 바꿨다. */
+    proposalsTitle: '근거로 낸 점수 단계',
     proposalsHint:
       '맞으면 [확정], 다르면 [고치기]로 단계를 고릅니다. 저장하면 점수를 다시 계산합니다.',
   },
