@@ -25,6 +25,8 @@ EXIT_INPUT_ERROR = 1
 EXIT_RUN_FAILED = 2
 
 HOST = "127.0.0.1"
+# 이 PC 안에서만 접속되는 주소. 여기에 없는 주소는 배포(바깥 접속)로 본다.
+LOCAL_HOSTS = frozenset({HOST, "localhost", "::1"})
 WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 
 
@@ -85,8 +87,11 @@ DEMO_DB_FILE_NAME = "geosan-demo.db"
 
 
 def _is_deploy_setting(host: str) -> bool:
-    """배포 설정인가: 바깥에서 들어오는 주소로 듣거나 배포용 비밀번호가 있는 환경(계약 C8)."""
-    return host == "0.0.0.0" or bool(os.environ.get("GEOSAN_PASSWORD"))
+    """배포 설정인가: 바깥에서 들어오는 주소로 듣거나 배포용 비밀번호가 있는 환경(계약 C8).
+
+    #719: 내 PC 주소가 아니면 모두 배포로 본다(`::`·사내 주소도 바깥에서 접속된다).
+    """
+    return host not in LOCAL_HOSTS or bool(os.environ.get("GEOSAN_PASSWORD"))
 
 
 def _is_demo_db(db_path: Path) -> bool:
