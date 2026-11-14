@@ -4,7 +4,7 @@
 
 - 시연 표시(앱 설정 사본 `brand.demo`)가 있는 DB에서만 동작한다. 실제 DB에 가상 기록이 섞이지
   않게 하는 잠금이다. 표시가 없으면 아무것도 넣지 않고 종료 코드 1.
-- 기록은 표에 직접 쓰지 않고 화면이 쓰는 저장 함수(`save_outcome`)를 부른다. 그래서 큰 단계·
+- 기록은 표에 직접 쓰지 않고 화면 창구와 같은 저장 본체(`record_outcome`)를 부른다. 그래서 큰 단계·
   세부 단계·관심·통화 신호·재평가가 화면에서 넣은 것과 같게 따라온다.
 - 회사 하나가 한 트랜잭션이다. 이미 영업 기록이 있는 회사는 건너뛰므로 두 번 실행해도 늘지 않는다.
 - 기록 내용은 코드가 아니라 `examples/demo-records.yaml`(계약 C7)에 있다. 연락처 패턴이 있으면 거부.
@@ -24,7 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
-from geosan.api.routes.records import latest_outcome, save_outcome
+from geosan.api.routes.records import latest_outcome, record_outcome
 from geosan.api.schemas import OutcomeAnswerInput, OutcomeRequest
 from geosan.config.app_settings import is_demo_database
 from geosan.config.errors import AppError, FieldError
@@ -149,8 +149,8 @@ def _seed_company(db_path: Path, opp_id: str, company: DemoCompany, staff: str) 
                     for item in contact.answers
                 ],
             )
-            # 화면이 부르는 저장 함수 그대로. 답이 틀리거나 재평가가 실패하면 이 회사만 취소된다.
-            status = save_outcome(opp_id, body, session, staff).data.status
+            # 화면 창구와 같은 저장 본체. 답이 틀리거나 재평가가 실패하면 이 회사만 취소된다.
+            status = record_outcome(session, opp_id, body, staff).row.status
         return str(status)
 
 

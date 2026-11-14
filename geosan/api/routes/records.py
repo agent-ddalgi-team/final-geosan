@@ -3,6 +3,7 @@
 관심(찜) 켜고 끄기와 자동 관심도 여기에 둔다(#356).
 """
 
+from dataclasses import dataclass
 from datetime import date
 from typing import Annotated
 
@@ -17,11 +18,10 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.proposal_review import confirm_proposal, dismiss_proposal, proposal_review_items
 from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
 from geosan.api.sales_step import (
-    AnswerRow,
-    RecordRow,
     SalesStepState,
     compute_sales_step,
     stage_for,
+    step_rows,
 )
 from geosan.api.schemas import (
     REVIEW_TEXT_MAX_LENGTH,
@@ -90,6 +90,7 @@ from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
+from geosan.records.live import live_outcomes_with_answers
 from geosan.records.models import (
     Bookmark,
     Note,
@@ -98,6 +99,7 @@ from geosan.records.models import (
     ReviewCheck,
     ReviewOpinion,
 )
+from geosan.records.program_note import add_program_note
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
@@ -445,22 +447,7 @@ def save_review_check(
         result = evaluate_in_session(session, [opp_id], staff)
         if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
             raise RunFailedError("AI 제안을 재평가하지 못해 저장을 취소했습니다.")
-        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
-        session.add(
-            Note(
-                note_id=new_id("note"),
-                opp_id=opp_id,
-                staff_key=staff,
-                kind="MEMO",
-                text=summary,
-                eval_id=body.eval_id,
-                version=version + 1,
-                created_at=now,
-                created_by=staff,
-                dataset_kind=opportunity.dataset_kind,
-                is_virtual=opportunity.is_virtual,
-            )
-        )
+        add_program_note(session, opportunity, summary, staff=staff, now=now, eval_id=body.eval_id)
     row = ReviewCheck(
         review_check_id=new_id("rcheck"),
         opp_id=opp_id,
@@ -848,34 +835,10 @@ def sales_step_state(
     questions: SalesQuestions | None = None,
 ) -> SalesStepState:
     """#607 기록에서 세부 단계를 매번 계산한다(저장하지 않음)."""
-    rows = [
-        RecordRow(
-            outcome_id=row.outcome_id,
-            method=row.method,
-            attempted_at=row.attempted_at,
-            created_at=row.created_at,
-            created_by=row.created_by,
-            step_override=row.step_override,
-        )
-        for row in session.scalars(
-            select(Outcome)
-            .where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None))
-            .order_by(Outcome.version)
-        )
-    ]
+    # 취소한 접촉과 거기 달린 답은 계산에서 뺀다(#253·#607).
+    rows, answers = step_rows(*live_outcomes_with_answers(session, opp_id))
     if not rows:
         return SalesStepState()
-    # 취소한 접촉에 달린 답은 계산에서 뺀다(#253·#607).
-    live_ids = {row.outcome_id for row in rows}
-    answers = [
-        AnswerRow(row.outcome_id, row.question_id, row.answer_id)
-        for row in session.scalars(
-            select(OutcomeAnswer)
-            .where(OutcomeAnswer.opp_id == opp_id)
-            .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
-        )
-        if row.outcome_id in live_ids
-    ]
     questions = questions or sales_questions(session)
     labels = choice_catalog(session) if any(q.choices for q in questions.questions) else None
     return compute_sales_step(rows, answers, questions, status, labels)
@@ -904,13 +867,21 @@ def outcome_view(row: Outcome | None) -> dict | None:
     }
 
 
-@router.post("/opportunities/{oppId}/outcomes", response_model=OutcomeEnvelope)
-def save_outcome(
-    opp_id: Annotated[str, Path(alias="oppId")],
-    body: OutcomeRequest,
-    session: SessionDep,
-    staff: StaffDep,
-):
+@dataclass(frozen=True)
+class SavedOutcome:
+    """접촉 저장 본체의 결과: 새 행, 저장 전 현재 행, 다시 평가했는지."""
+
+    row: Outcome
+    previous: Outcome | None
+    reevaluated: bool
+
+
+def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: str) -> SavedOutcome:
+    """영업 기록(접촉·단계) 저장 본체. 창구와 운영 명령(`seed-demo-records`)이 함께 부른다.
+
+    검사 → 쓰기 잠금 → 의견·관심 → 저장 → 통화 신호 → 공정·산업 확정 → 재평가 → 큰 단계 순이다.
+    한 트랜잭션 안에서 돌고, 어디서든 실패하면 부른 쪽의 트랜잭션과 함께 전부 취소된다.
+    """
     fields = scan_contacts(
         {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
     )
@@ -1045,6 +1016,21 @@ def save_outcome(
         step = sales_step_state(session, opp_id, status=None, questions=questions).code
         row.status = stage_for(row.status, row.method, step)
         session.flush()
+    return SavedOutcome(row=row, previous=previous, reevaluated=reevaluated)
+
+
+@router.post("/opportunities/{oppId}/outcomes", response_model=OutcomeEnvelope)
+def save_outcome(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: OutcomeRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 창구는 저장 본체(`record_outcome`)를 부르고 응답만 만든다. 함수 설명 글은 명세(OpenAPI)에
+    # 실리므로 주석으로 둔다. 응답 뒤 자동 조사 예약(#690)은 이 창구 요청에만 걸린다
+    # (`attach_background`). 운영 명령이 본체를 부르면 예약할 곳이 없어 조사는 돌지 않는다.
+    saved = record_outcome(session, opp_id, body, staff)
+    row, previous = saved.row, saved.previous
     previous_value = None
     if previous and previous.version > (body.expected_version or 0):
         previous_value = outcome_view(previous)
@@ -1057,7 +1043,7 @@ def save_outcome(
             has_virtual_data=row.is_virtual,
             dataset_kind=row.dataset_kind,
             previous_value=previous_value,
-            **({"reevaluated": True} if reevaluated else {}),
+            **({"reevaluated": True} if saved.reevaluated else {}),
         ),
     )
 
@@ -1131,21 +1117,8 @@ def _confirm_choices(
         )
     summaries = [result.summary for result in results if result.summary]
     if summaries:
-        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
-        session.add(
-            Note(
-                note_id=new_id("note"),
-                opp_id=opp_id,
-                staff_key=staff,
-                kind="MEMO",
-                text=" / ".join(summaries),
-                eval_id=eval_id,
-                version=version + 1,
-                created_at=now,
-                created_by=staff,
-                dataset_kind=opportunity.dataset_kind,
-                is_virtual=opportunity.is_virtual,
-            )
+        add_program_note(
+            session, opportunity, " / ".join(summaries), staff=staff, now=now, eval_id=eval_id
         )
         session.flush()
     return reevaluated

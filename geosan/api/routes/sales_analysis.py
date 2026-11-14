@@ -9,13 +9,12 @@ from datetime import date, datetime
 
 from fastapi import APIRouter
 from pydantic import Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import sales_questions, sales_step_state
-from geosan.api.sales_step import AnswerRow, RecordRow, compute_sales_step
+from geosan.api.sales_step import compute_sales_step, step_rows
 from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel
 from geosan.config.errors import RunFailedError
 from geosan.config.sales_questions import KST, STEP_ORDER
@@ -25,7 +24,7 @@ from geosan.dashboard.sales_analysis import (
     load_process_proposal_hit,
     process_display_name,
 )
-from geosan.records.models import Outcome, OutcomeAnswer
+from geosan.records.live import live_outcomes_with_answers
 from geosan.rules.codes import DatasetKind, LostReasonCode, OutcomeStatus, SalesStep
 from geosan.storage.base import utcnow
 
@@ -167,31 +166,7 @@ def _steps_after(session: Session, opp_id: str) -> dict[str, str | None]:
     `reaches`와 [단계 고치기]가 그대로 따라온다. 지금 성사·거절이어도 그때의 단계를 보려고
     큰 단계(status)는 넘기지 않는다. 취소된 기록과 거기 달린 답은 뺀다(#253).
     """
-    rows = [
-        RecordRow(
-            outcome_id=row.outcome_id,
-            method=row.method,
-            attempted_at=row.attempted_at,
-            created_at=row.created_at,
-            created_by=row.created_by,
-            step_override=row.step_override,
-        )
-        for row in session.scalars(
-            select(Outcome)
-            .where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None))
-            .order_by(Outcome.version)
-        )
-    ]
-    live_ids = {row.outcome_id for row in rows}
-    answers = [
-        AnswerRow(row.outcome_id, row.question_id, row.answer_id)
-        for row in session.scalars(
-            select(OutcomeAnswer)
-            .where(OutcomeAnswer.opp_id == opp_id)
-            .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
-        )
-        if row.outcome_id in live_ids
-    ]
+    rows, answers = step_rows(*live_outcomes_with_answers(session, opp_id))
     questions = sales_questions(session)
     steps: dict[str, str | None] = {}
     for index, row in enumerate(rows):
