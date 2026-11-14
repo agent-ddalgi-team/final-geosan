@@ -98,6 +98,7 @@ from geosan.records.models import (
     ReviewCheck,
     ReviewOpinion,
 )
+from geosan.records.program_note import add_program_note
 from geosan.rules.codes import ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
@@ -445,22 +446,7 @@ def save_review_check(
         result = evaluate_in_session(session, [opp_id], staff)
         if not result.ok or result.affected_opp_ids != [opp_id] or len(result.new_eval_ids) != 1:
             raise RunFailedError("AI 제안을 재평가하지 못해 저장을 취소했습니다.")
-        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
-        session.add(
-            Note(
-                note_id=new_id("note"),
-                opp_id=opp_id,
-                staff_key=staff,
-                kind="MEMO",
-                text=summary,
-                eval_id=body.eval_id,
-                version=version + 1,
-                created_at=now,
-                created_by=staff,
-                dataset_kind=opportunity.dataset_kind,
-                is_virtual=opportunity.is_virtual,
-            )
-        )
+        add_program_note(session, opportunity, summary, staff=staff, now=now, eval_id=body.eval_id)
     row = ReviewCheck(
         review_check_id=new_id("rcheck"),
         opp_id=opp_id,
@@ -1107,21 +1093,8 @@ def _confirm_choices(
         )
     summaries = [result.summary for result in results if result.summary]
     if summaries:
-        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
-        session.add(
-            Note(
-                note_id=new_id("note"),
-                opp_id=opp_id,
-                staff_key=staff,
-                kind="MEMO",
-                text=" / ".join(summaries),
-                eval_id=eval_id,
-                version=version + 1,
-                created_at=now,
-                created_by=staff,
-                dataset_kind=opportunity.dataset_kind,
-                is_virtual=opportunity.is_virtual,
-            )
+        add_program_note(
+            session, opportunity, " / ".join(summaries), staff=staff, now=now, eval_id=eval_id
         )
         session.flush()
     return reevaluated

@@ -9,15 +9,14 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Path
 from pydantic import Field
-from sqlalchemy import func, select
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.errors import FieldError, InputError, NotFoundError
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.records.models import Note
-from geosan.storage.base import new_id, utcnow
+from geosan.records.program_note import add_program_note
+from geosan.storage.base import utcnow
 
 router = APIRouter()
 
@@ -95,21 +94,7 @@ def save_industries(
     else:
         summary = _clear(customer)
     if summary:
-        version = session.scalar(select(func.max(Note.version)).where(Note.opp_id == opp_id)) or 0
-        session.add(
-            Note(
-                note_id=new_id("note"),
-                opp_id=opp_id,
-                staff_key=staff,
-                kind="MEMO",
-                text=summary,
-                version=version + 1,
-                created_at=now,
-                created_by=staff,
-                dataset_kind=opportunity.dataset_kind,
-                is_virtual=opportunity.is_virtual,
-            )
-        )
+        add_program_note(session, opportunity, summary, staff=staff, now=now)
     session.flush()
     return Envelope[IndustriesResponse](
         data=IndustriesResponse(
