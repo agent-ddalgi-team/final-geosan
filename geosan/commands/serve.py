@@ -7,14 +7,18 @@ API와 화면(`web/dist` 정적 파일)을 한 프로세스로 띄운다. 설정
 포트가 사용 중이면 "포트 N이 사용 중입니다. --port로 바꾸세요"를 내고 종료 코드 2로 끝낸다(NFR7.3).
 
 #736: 바깥에 여는 주소(내 PC 주소가 아님)인데 접속 보호가 꺼져 있으면, 또는 보호를 켰는데 비밀번호
-환경 변수가 없으면 시작하지 않는다.
+환경 변수가 없으면 시작하지 않는다. 꺼지라는 신호(SIGTERM)도 Ctrl+C처럼 받아 실행 중 표식을 지운다.
 """
 
 from __future__ import annotations
 
 import os
+import signal
 import socket
+import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import typer
@@ -161,6 +165,28 @@ def _access_problem(db_path: Path, host: str) -> list[str] | None:
     return None
 
 
+@contextmanager
+def _sigterm_as_stop_request() -> Iterator[None]:
+    """서버가 도는 동안 SIGTERM(배포 서비스가 끄는 신호)을 Ctrl+C 같은 멈춤 요청으로 받는다.
+
+    uvicorn은 신호를 받아 정리한 뒤 원래 처리로 되돌리고 같은 신호를 다시 일으킨다. 원래 처리가
+    기본값이면 프로세스가 그 자리에서 죽어 실행 중 표식이 남았다(#736 예행연습). 여기서 받아
+    KeyboardInterrupt로 바꾸면 run_serve의 정리(표식 지우기)가 반드시 돈다. 끝나면 원래대로 돌린다.
+    """
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _stop(_signum: int, _frame: object) -> None:
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGTERM, _stop)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous if previous is not None else signal.SIG_DFL)
+
+
 def run_serve(port: int, host: str = HOST) -> int:
     if host not in (HOST, "0.0.0.0"):
         typer.echo("오류: 듣는 주소는 127.0.0.1 또는 0.0.0.0으로 지정해 주세요.")
@@ -238,7 +264,8 @@ def run_serve(port: int, host: str = HOST) -> int:
     # 켜져 있는 동안 DB 옆에 실행 중 표식을 둔다. restore가 이것을 보고 복원을 거부한다(#214).
     write_marker(db_path, port, host)
     try:
-        _run_server(port, host)
+        with _sigterm_as_stop_request():
+            _run_server(port, host)
     except KeyboardInterrupt:
         pass
     except Exception as exc:  # 어떤 실패든 숨기지 않고 종류만 보인다(본문·스택은 로그에만)

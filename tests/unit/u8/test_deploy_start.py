@@ -11,7 +11,13 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
+import socket
 import sqlite3
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -168,3 +174,151 @@ def test_unreadable_settings_copy_refuses_with_plain_message(tmp_db, started, mo
     assert code == 2, out
     assert "앱 설정 사본을 읽지 못해" in out
     assert started == []
+
+
+# ---------------------------------------------------------------- 4. 꺼질 때 표식
+
+
+def _free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGTERM은 Windows에 없다")
+def test_real_server_removes_marker_on_sigterm(tmp_path):
+    """Given 실제 uvicorn 서버 / When SIGTERM(배포 서비스가 끌 때) / Then 표식을 지우고 끝난다.
+
+    uvicorn은 신호를 받아 정리한 뒤 같은 신호를 다시 일으킨다. 그 신호가 기본 처리로 가면
+    프로세스가 바로 죽어 표식이 남았다(#736 예행연습).
+    """
+    db = tmp_path / "geosan.db"
+    env = {**os.environ, "GEOSAN_DB_PATH": str(db)}
+    env.pop("GEOSAN_PASSWORD", None)
+    subprocess.run(
+        [sys.executable, "-m", "geosan", "init-db"],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+    )
+    port = _free_port()
+    process = subprocess.Popen(
+        [sys.executable, "-m", "geosan", "serve", "--port", str(port)],
+        cwd=REPO_ROOT,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    try:
+        marker = serving_marker.marker_path(db)
+        deadline = time.monotonic() + 60
+        listening = False
+        while time.monotonic() < deadline and process.poll() is None:
+            if marker.exists():
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                    listening = probe.connect_ex(("127.0.0.1", port)) == 0
+                if listening:
+                    break
+            time.sleep(0.2)
+        assert listening, "서버가 제때 뜨지 않았다"
+        process.send_signal(signal.SIGTERM)
+        output, _ = process.communicate(timeout=30)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+    text = output.decode("utf-8", errors="replace")
+    assert process.returncode == 0, text
+    assert "서버를 종료했습니다" in text
+    assert not marker.exists()
+
+
+def test_signal_during_server_run_still_cleans_marker(tmp_db, monkeypatch):
+    """Given 서버 함수가 도는 중 SIGTERM / When serve / Then 정상 종료(0)이고 표식이 없다."""
+    if sys.platform == "win32":
+        return
+
+    def _receive_sigterm(port: int, host: str) -> None:
+        assert serving_marker.marker_path(tmp_db).exists()
+        signal.raise_signal(signal.SIGTERM)
+
+    before = signal.getsignal(signal.SIGTERM)
+    monkeypatch.setattr(serve_module, "_run_server", _receive_sigterm)
+    code, out = _run("serve", "--port", "8670")
+    assert code == 0, out
+    assert not serving_marker.marker_path(tmp_db).exists()
+    # 끝나면 원래 신호 처리로 돌려 둔다(테스트 프로세스에 흔적을 남기지 않음).
+    assert signal.getsignal(signal.SIGTERM) == before
+
+
+def _write_pid1_marker(db: Path) -> None:
+    serving_marker.marker_path(db).write_text(
+        '{"pid": 1, "port": 8080, "host": "0.0.0.0"}', encoding="utf-8"
+    )
+
+
+def test_pid1_marker_is_stale_when_container_pid1_is_not_a_server(tmp_path, monkeypatch):
+    """Given pid 1 표식·지금 pid 1은 점검용 sleep / When 켜진 서버 확인 / Then 없음(표식 지움)."""
+    db = tmp_path / "geosan.db"
+    _write_pid1_marker(db)
+    monkeypatch.setattr(serving_marker, "process_command_line", lambda pid: ["sleep", "infinity"])
+    assert serving_marker.running_server(db) is None
+    assert not serving_marker.marker_path(db).exists()
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["/app/.geosan-venv/bin/python", "/app/.geosan-venv/bin/geosan", "serve", "--port", "1"],
+        ["python", "-m", "geosan", "serve", "--host", "0.0.0.0"],
+    ],
+)
+def test_pid1_marker_blocks_when_pid1_is_a_running_server(tmp_path, monkeypatch, argv):
+    """Given pid 1 표식·pid 1이 geosan serve / When 켜진 서버 확인 / Then 켜져 있다(복원 거부)."""
+    db = tmp_path / "geosan.db"
+    _write_pid1_marker(db)
+    monkeypatch.setattr(serving_marker, "process_command_line", lambda pid: argv)
+    assert serving_marker.running_server(db) is not None
+    assert serving_marker.marker_path(db).exists()
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [None, ["/bin/sh", "-c", "geosan init-db && exec geosan serve --host 0.0.0.0"]],
+)
+def test_pid1_marker_stays_safe_when_unknown_or_shell(tmp_path, monkeypatch, argv):
+    """Given pid 1 명령줄을 모름 / 아직 serve로 바뀌기 전 셸 / Then 안전하게 켜져 있다고 본다."""
+    db = tmp_path / "geosan.db"
+    _write_pid1_marker(db)
+    monkeypatch.setattr(serving_marker, "process_command_line", lambda pid: argv)
+    assert serving_marker.running_server(db) is not None
+
+
+def test_pid1_marker_does_not_block_restore_in_maintenance_mode(tmp_db, tmp_path, monkeypatch):
+    """Given 점검 모드(pid 1 = sleep)·남은 pid 1 표식 / When restore(y) / Then 복원된다."""
+    from geosan.storage.engine import dispose_engines
+
+    code, out = _run("backup", "--to", tmp_path / "bk")
+    assert code == 0, out
+    backup_file = next((tmp_path / "bk").glob("geosan-*.db"))
+    _write_pid1_marker(tmp_db)
+    monkeypatch.setattr(serving_marker, "process_command_line", lambda pid: ["sleep", "infinity"])
+    dispose_engines()
+    code, out = _run("restore", backup_file, input_text="y\n")
+    assert code == 0, out
+    assert "복원 완료" in out
+    assert not serving_marker.marker_path(tmp_db).exists()
+
+
+def test_process_command_line_reads_linux_proc_only(monkeypatch, tmp_path):
+    """Given /proc 없음 / When 명령줄 조회 / Then 모름(None). /proc가 있으면 내용을 나눈다."""
+    monkeypatch.setattr(serving_marker, "PROC_ROOT", tmp_path / "no-proc")
+    assert serving_marker.process_command_line(1) is None
+    proc = tmp_path / "proc"
+    (proc / "1").mkdir(parents=True)
+    (proc / "1" / "cmdline").write_bytes(b"sleep\x00infinity\x00")
+    monkeypatch.setattr(serving_marker, "PROC_ROOT", proc)
+    assert serving_marker.process_command_line(1) == ["sleep", "infinity"]
+    (proc / "1" / "cmdline").write_bytes(b"")
+    assert serving_marker.process_command_line(1) is None
