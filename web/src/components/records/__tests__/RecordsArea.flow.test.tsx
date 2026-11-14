@@ -74,20 +74,19 @@ describe('기록 구역 · ① 안내와 번호 (#433)', () => {
     mockedNote.mockReset();
   });
 
-  it('연결됐으면 AI 판단이 맞았나를 골라 함께 저장하고, 부재면 묻지 않는다(#531)', async () => {
+  // #740(PM 결정 2026-11-14): "AI 판단이 맞았나(맞음·다름·모름)" 고르기를 화면에서 뺐다. 판단이 맞았는지는
+  // 꼬리 질문 답(공정·산업 "변경됨")과 메모로 알 수 있고, 고르는 것 자체가 일이었다(전에는 연결됨이면 보였다, #531).
+  it('연결됨이어도 "AI 판단이 맞았나" 고르기는 없고, 요청에 그 값을 싣지 않는다(#740)', async () => {
     const user = userEvent.setup();
     renderArea({ outcome: outcome('IN_PROGRESS') });
     await user.selectOptions(screen.getByTestId('records-kind'), '방문');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
-    expect(screen.queryByTestId('records-judgment-check')).not.toBeInTheDocument();
     await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
-    await user.selectOptions(screen.getByTestId('records-judgment-check'), '맞음');
+    expect(screen.queryByTestId('records-judgment-check')).not.toBeInTheDocument();
+    expect(screen.queryByText('AI 판단이 맞았나')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalled());
-    expect(mockedOutcome.mock.calls[0][1]).toMatchObject({
-      result: 'REACHED',
-      judgmentCheck: 'MATCHED',
-    });
+    expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ result: 'REACHED' });
+    expect(mockedOutcome.mock.calls[0][1]).not.toHaveProperty('judgmentCheck');
   });
 
   it('AI 판단을 고르지 않아도 접촉은 저장된다(#531)', async () => {
