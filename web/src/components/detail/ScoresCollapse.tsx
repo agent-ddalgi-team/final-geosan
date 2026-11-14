@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Statistic } from 'antd';
-import type { Scores } from '../../api/types';
+import type { ScoreItemView, Scores } from '../../api/types';
 import { colors, spacing, typography } from '../../theme/tokens';
 import {
   datasetKindLabels,
@@ -11,9 +11,11 @@ import {
   detailSections,
   labelFor,
   scoreDetails,
+  scoreGroups,
   scoreStateLabels,
 } from '../../labels/ko';
 import { formatMonthDayTime } from '../../utils/time';
+import { groupScoreItems, subtotalsMatchTotal } from './scoreGroups';
 
 function percent(value: number | null | undefined): string {
   return value === null || value === undefined ? '--' : `${Math.round(value * 100)}%`;
@@ -28,8 +30,32 @@ const cell = {
 // 숫자·상태 칸은 짧아서 칸이 좁아지면 "미확보"가 세로로 꺾인다. 한 줄로 둔다.
 const shortCell = { ...cell, whiteSpace: 'nowrap' } as const;
 
+/** 항목 한 줄. 묶어 보일 때도 줄의 칸·글자는 전과 같다. */
+function ItemRow({ item }: { item: ScoreItemView }) {
+  return (
+    <tr data-testid="score-item-row">
+      <th scope="row" style={{ ...cell, fontWeight: 400 }}>
+        {item.label}
+        {item.factJudged ? (
+          <div style={{ color: colors.textSecondary }}>{item.factJudged}</div>
+        ) : null}
+      </th>
+      <td style={shortCell}>{item.weight}</td>
+      <td style={shortCell}>{percent(item.matchRate)}</td>
+      <td style={shortCell}>{percent(item.certainty)}</td>
+      <td style={shortCell}>{percent(item.decay)}</td>
+      <td style={shortCell}>{item.score ?? '--'}</td>
+      <td style={shortCell}>{labelFor(scoreStateLabels, item.state)}</td>
+    </tr>
+  );
+}
+
 function Details({ scores }: { scores: Scores }) {
   const columns = scoreDetails.itemColumns;
+  const columnCount = Object.keys(columns).length;
+  // 다섯 묶음으로 묶어 보이기만 한다(#611). 소계는 합이 서버 총점과 같을 때만 붙인다.
+  const { grouped, groups } = groupScoreItems(scores.items);
+  const showSubtotals = grouped && subtotalsMatchTotal(groups, scores.E);
   const evaluated = formatMonthDayTime(scores.evaluatedAt);
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -67,24 +93,42 @@ function Details({ scores }: { scores: Scores }) {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {scores.items.map((item) => (
-              <tr key={item.itemCode} data-testid="score-item-row">
-                <th scope="row" style={{ ...cell, fontWeight: 400 }}>
-                  {item.label}
-                  {item.factJudged ? (
-                    <div style={{ color: colors.textSecondary }}>{item.factJudged}</div>
-                  ) : null}
-                </th>
-                <td style={shortCell}>{item.weight}</td>
-                <td style={shortCell}>{percent(item.matchRate)}</td>
-                <td style={shortCell}>{percent(item.certainty)}</td>
-                <td style={shortCell}>{percent(item.decay)}</td>
-                <td style={shortCell}>{item.score ?? '--'}</td>
-                <td style={shortCell}>{labelFor(scoreStateLabels, item.state)}</td>
-              </tr>
-            ))}
-          </tbody>
+          {grouped ? (
+            groups.map((group) => (
+              <tbody key={group.key} data-testid={`score-group-${group.key}`}>
+                <tr data-testid="score-group-row">
+                  <th
+                    scope="rowgroup"
+                    colSpan={columnCount}
+                    style={{ ...cell, background: colors.bgLayout, fontWeight: 600 }}
+                  >
+                    {showSubtotals && group.items.length > 0
+                      ? scoreGroups.head(scoreGroups.titles[group.key], group.score, group.weight)
+                      : scoreGroups.titles[group.key]}
+                  </th>
+                </tr>
+                {group.items.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={columnCount}
+                      data-testid="score-group-note"
+                      style={{ ...cell, color: colors.textSecondary }}
+                    >
+                      {group.key === 'DISTANCE' ? scoreGroups.distanceNote : scoreGroups.emptyNote}
+                    </td>
+                  </tr>
+                ) : (
+                  group.items.map((item) => <ItemRow key={item.itemCode} item={item} />)
+                )}
+              </tbody>
+            ))
+          ) : (
+            <tbody>
+              {scores.items.map((item) => (
+                <ItemRow key={item.itemCode} item={item} />
+              ))}
+            </tbody>
+          )}
         </table>
       </div>
       <div data-testid="score-footer" style={{ color: colors.textSecondary }}>

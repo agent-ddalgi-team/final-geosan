@@ -206,6 +206,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         dashboard,
         export,
         homepage,
+        industries,
         opportunities,
         peers,
         records,
@@ -223,6 +224,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         export.router,
         sales_analysis.router,
         peers.router,
+        industries.router,
     ):
         app.include_router(router, prefix="/api/v1")
     # 실제 찾기는 회차 번호 하나를 받는 함수로 연결한다. 연결 전에는 회차를 만들지 않는다.

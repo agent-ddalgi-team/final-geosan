@@ -38,7 +38,7 @@ function lineKey(item: ActivityItem): string {
 }
 
 /**
- * 줄의 내용. 검토 의견 줄은 서버가 의견 코드("NEED_CHECK")를 그대로 주므로 쉬운 말("추가 확인 필요")로 바꾼다(#691).
+ * 줄의 내용. 검토 의견 줄은 서버가 의견 코드("NEED_CHECK")를 그대로 주므로 쉬운 말("검토 중")로 바꾼다(#691).
  * 대응표에 없는 값이면 받은 글 그대로 보인다.
  */
 export function summaryText(item: ActivityItem): string {

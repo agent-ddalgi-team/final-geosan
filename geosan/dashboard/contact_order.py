@@ -1,13 +1,15 @@
-"""추천 목록의 세 묶음과 묶음 안 순서 (계약 C1 `sort=contact`·카드 `bucket`·`rankAdjust`, #610).
+"""추천 목록의 근거 상태 묶음과 묶음 안 순서 (계약 C1 `sort=contact`·카드 `bucket`·`rankAdjust`).
 
-"지금 연락할 곳 / 확인 필요 / 나중" 묶음, 그 묶음에 든 이유, 영업 결과로 올리거나 내리는 조정
-단계를 계산한다. 모두 받은 값만 쓰는 순수 함수다. 저장하지 않고 목록을 읽을 때마다 계산한다.
+"근거 있음 / 근거 조금 / 홈페이지 없음 / 조사 전 / 끝난 회사" 묶음(#675, PM 결정 2026-11-13 —
+#610의 "지금 연락할 곳 / 확인 필요 / 나중"을 바꿈), 그 묶음에 든 이유, 영업 결과로 올리거나 내리는
+조정 단계(#610)를 계산한다. 모두 받은 값만 쓰는 순수 함수다. 저장하지 않고 목록을 읽을 때마다
+계산한다.
 
 바꾸지 않는 것: 부록 F 점수(E·P·S·R)·분류·기존 순위(original_rank)·기본 정렬(`sort=rank`).
-필수 판정도 건너뛰지 않는다: 필수 탈락·제외 의견·거래 중인 회사는 설정과 무관하게
-"지금 연락할 곳"에 들지 않는다.
+필수 판정도 건너뛰지 않는다: 필수 탈락·제외 의견·거래 중·성사·거절·보류인 회사는 근거가 많아도
+맨 아래 "끝난 회사" 묶음이다.
 
-기준 숫자와 분류 목록은 앱 설정 `contactList`에서 받아 온다(규칙 ⑩). 성사·거절은 영업 분석표
+기준 숫자는 앱 설정 `contactList`에서 받아 온다(규칙 ⑩). 성사·거절은 영업 분석표
 (`sales_analysis.py`)와 같은 함수로 세어 두 화면의 숫자가 서로 맞는다.
 """
 
@@ -19,36 +21,34 @@ from datetime import date, datetime, timedelta, tzinfo
 
 from geosan.dashboard.sales_analysis import STATUS_WON, CompanyRecords, summarize_company
 
-NOW = "NOW"
-CHECK = "CHECK"
-LATER = "LATER"
-BUCKETS: tuple[str, ...] = (NOW, CHECK, LATER)
+EVIDENCE_READY = "EVIDENCE_READY"
+EVIDENCE_SOME = "EVIDENCE_SOME"
+NO_HOMEPAGE = "NO_HOMEPAGE"
+NOT_RESEARCHED = "NOT_RESEARCHED"
+CLOSED = "CLOSED"
+# 적은 순서가 목록의 큰 순서다. 끝난 회사가 맨 아래.
+BUCKETS: tuple[str, ...] = (EVIDENCE_READY, EVIDENCE_SOME, NO_HOMEPAGE, NOT_RESEARCHED, CLOSED)
 
+# 끝난 회사의 이유(#610의 "나중" 앞 네 줄 그대로).
 EXCLUDED_OPINION = "EXCLUDED_OPINION"
 REQUIRED_FAILED = "REQUIRED_FAILED"
 EXISTING_CUSTOMER = "EXISTING_CUSTOMER"
 CLOSED_OR_HOLD = "CLOSED_OR_HOLD"
-IN_PROGRESS = "IN_PROGRESS"
-NEED_CHECK_OPINION = "NEED_CHECK_OPINION"
-REQUIRED_PENDING = "REQUIRED_PENDING"
-OWN_PLATING = "OWN_PLATING"
-NOT_EVALUATED_HIGH_FIT = "NOT_EVALUATED_HIGH_FIT"
-NOT_EVALUATED_LOWER_FIT = "NOT_EVALUATED_LOWER_FIT"
-EVIDENCE_RECHECK = "EVIDENCE_RECHECK"
-REQUIRED_PASSED = "REQUIRED_PASSED"
-MONITOR = "MONITOR"
+# 근거 상태의 이유(#675).
+EVIDENCE_ENOUGH = "EVIDENCE_ENOUGH"
+EVIDENCE_FEW = "EVIDENCE_FEW"
+HOMEPAGE_ONLY = "HOMEPAGE_ONLY"
+HOMEPAGE_NOT_FOUND = "HOMEPAGE_NOT_FOUND"
+RESEARCH_NOT_RUN = "RESEARCH_NOT_RUN"
 
 _OPINION_EXCLUDED = "NOT_TARGET"
-_OPINION_NEED_CHECK = "NEED_CHECK"
 # 계약 C0의 코드값. 이 부품은 규칙·설정 부품을 가져오지 않아서(`queries.py`와 같은 방식) 글자 그대로
 # 적는다. 코드표 전체가 필요한 것(거절 이유 순서)과 시간대는 창구가 인자로 넘긴다.
 _STAGES_CLOSED_OR_HOLD = frozenset({"WON", "LOST", "ON_HOLD"})
-_STAGES_IN_PROGRESS = frozenset({"IN_PROGRESS", "SAMPLE_OR_REGISTRATION_APPROVED"})
 _CLASS_FILTER_EXCLUDED = "FILTER_EXCLUDED"
-_CLASS_NOT_EVALUATED = "NOT_EVALUATED"
 _CLASS_CONTACT_REVIEW = "CONTACT_REVIEW"
-_PENDING_CLASSES = frozenset({"FILTER_PENDING", "OPS_PENDING"})
 _RELATION_EXISTING = "EXISTING_CONFIRMED"
+_HOMEPAGE_NOT_FOUND = "NOT_FOUND"
 _FIT_HIGH = "HIGH"
 # 부록 F의 접촉 분류 순서(지금 바로 → 계획 → 확인 후 → 그 밖). 규칙 엔진의 정렬 묶음과 같은 순서.
 _CONTACT_CLASS_ORDER = {"CONTACT_URGENT": 0, "CONTACT_PLANNED": 1, _CLASS_CONTACT_REVIEW: 2}
@@ -69,51 +69,34 @@ class CompanyState:
     classification_code: str
     relation_status: str
     outcome_status: str | None  # 최신 영업 단계
-    scored: bool  # 점수가 있는가(평가 전이면 False)
     fit_level: str | None
-    own_plating: bool  # 표면처리를 직접 하는 회사일 수 있음
-    core_evidence_recheck: bool
-    blocks_approval: bool
+    evidence_count: int  # 살아 있는 근거 수(교체되지 않았고 처리 금지가 아닌 것)
+    homepage_url: str | None
+    homepage_status: str | None  # 홈페이지 찾기 결과. 아직 안 찾았으면 None
 
 
-def is_unevaluated(state: CompanyState) -> bool:
-    return not state.scored or state.classification_code == _CLASS_NOT_EVALUATED
+def assign_bucket(state: CompanyState, *, evidence_ready_min: int) -> tuple[str, str]:
+    """(묶음, 그 묶음에 든 이유). 위에서부터 처음 맞는 줄 하나로 정한다.
 
-
-def assign_bucket(
-    state: CompanyState,
-    *,
-    now_classifications: Collection[str],
-    unscored_high_fit_to_now: bool,
-) -> tuple[str, str]:
-    """(묶음, 그 묶음에 든 이유). 위에서부터 처음 맞는 줄 하나로 정한다."""
+    앞의 네 줄(끝난 회사)은 근거 수를 보지 않는다. 필수 판정을 근거 수로 건너뛰지 않기 위해서다.
+    """
     if state.opinion == _OPINION_EXCLUDED:
-        return LATER, EXCLUDED_OPINION
+        return CLOSED, EXCLUDED_OPINION
     if state.classification_code == _CLASS_FILTER_EXCLUDED:
-        return LATER, REQUIRED_FAILED
+        return CLOSED, REQUIRED_FAILED
     if state.relation_status == _RELATION_EXISTING:
-        return LATER, EXISTING_CUSTOMER
+        return CLOSED, EXISTING_CUSTOMER
     if state.outcome_status in _STAGES_CLOSED_OR_HOLD:
-        return LATER, CLOSED_OR_HOLD
-    if state.outcome_status in _STAGES_IN_PROGRESS:
-        return NOW, IN_PROGRESS
-    if state.opinion == _OPINION_NEED_CHECK:
-        return CHECK, NEED_CHECK_OPINION
-    if state.classification_code in _PENDING_CLASSES:
-        return CHECK, REQUIRED_PENDING
-    if is_unevaluated(state):
-        if state.own_plating:
-            return CHECK, OWN_PLATING
-        if state.fit_level == _FIT_HIGH:
-            return (NOW if unscored_high_fit_to_now else CHECK), NOT_EVALUATED_HIGH_FIT
-        return LATER, NOT_EVALUATED_LOWER_FIT
-    if state.core_evidence_recheck or state.classification_code == _CLASS_CONTACT_REVIEW:
-        return CHECK, EVIDENCE_RECHECK
-    if state.own_plating:
-        return CHECK, OWN_PLATING
-    if not state.blocks_approval and state.classification_code in now_classifications:
-        return NOW, REQUIRED_PASSED
-    return LATER, MONITOR
+        return CLOSED, CLOSED_OR_HOLD
+    if state.evidence_count >= evidence_ready_min:
+        return EVIDENCE_READY, EVIDENCE_ENOUGH
+    if state.evidence_count > 0:
+        return EVIDENCE_SOME, EVIDENCE_FEW
+    if state.homepage_status == _HOMEPAGE_NOT_FOUND:
+        return NO_HOMEPAGE, HOMEPAGE_NOT_FOUND
+    if state.homepage_url:
+        return EVIDENCE_SOME, HOMEPAGE_ONLY
+    return NOT_RESEARCHED, RESEARCH_NOT_RUN
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +234,6 @@ def adjustment_for(
 def contact_order_key(
     *,
     bucket: str,
-    basis: str,
     state: CompanyState,
     null_fit_level_as: str,
     level: int,
@@ -262,16 +244,19 @@ def contact_order_key(
 ) -> tuple:
     """`sort=contact`의 정렬 키. 작은 값이 앞이다.
 
-    묶음 → (평가 전 + 표면처리 직접 표시는 묶음 맨 뒤) → 접촉 분류 → 공정 적합도 → 조정 단계 →
-    시점 신호(유효 기한 가까운 순 → 시점 조건 충족 수 → T 점수) → 지금 순서(`base_position`).
+    묶음 → 공정 적합도(상 → 중 → 하, 없으면 설정 값) → 지금 순서(`base_position`).
+    "근거 있음" 묶음만 적합도와 지금 순서 사이에 접촉 분류 → 조정 단계 → 시점 신호(유효 기한
+    가까운 순 → 시점 조건 충족 수 → T 점수)를 더 본다. 다른 묶음은 점수를 매길 근거가 모자라
+    점수·분류·영업 결과 조정으로 순서를 가르지 않는다(#675).
     마지막 키가 추천 순의 자리 번호라 같은 입력이면 늘 같은 순서가 나온다.
     """
-    fit = state.fit_level or null_fit_level_as
+    fit = _FIT_ORDER[state.fit_level or null_fit_level_as]
+    if bucket != EVIDENCE_READY:
+        return (BUCKETS.index(bucket), fit, 0, 0, date.max, 0, 0, base_position)
     return (
         BUCKETS.index(bucket),
-        basis == OWN_PLATING and is_unevaluated(state),
+        fit,
         _CONTACT_CLASS_ORDER.get(state.classification_code, _OTHER_CLASS_ORDER),
-        _FIT_ORDER[fit],
         -level,
         valid_until or date.max,
         -timing_met_count,

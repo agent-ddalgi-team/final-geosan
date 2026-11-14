@@ -226,6 +226,8 @@ class BrandSettings(FileModel):
     brand_name: str = Field(min_length=1)
     color_primary: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
     demo_label: str | None = None
+    # #274: 시연용 DB 표시. 시연용 설정 파일에만 true로 적는다(배포 설정에서는 서버 시작 거부).
+    demo: bool = Field(default=False, strict=True)
 
 
 class AccessProtectionSettings(FileModel):
@@ -248,6 +250,17 @@ class RecordsSettings(FileModel):
 
 class ResearchSettings(FileModel):
     stale_after_days: int = Field(default=90, ge=1)
+    # #690: 관심을 켜서 저절로 도는 조사가 하루에 쓸 수 있는 AI 비용(달러).
+    # 0이면 꺼짐(묶음이 없는 파일의 기본).
+    auto_on_bookmark_daily_cost_usd: float = Field(
+        default=0, ge=0, strict=True, allow_inf_nan=False
+    )
+    # #677: 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에 다시 조사를 제안한다.
+    # 0이면 제안하지 않음(묶음이 없는 파일의 기본). 제안만 하고 저절로 조사하지 않는다.
+    suggest_again_after_days: int = Field(default=0, ge=0, strict=True)
+    # #511: 공식 홈페이지를 못 찾았을 때 회사가 직접 운영하는 공개 페이지 1개를 "확인 필요"로
+    # 받을지. 기본 꺼짐(묶음·칸이 없는 파일도 꺼짐). PM이 켠다.
+    allow_unofficial_page: bool = Field(default=False, strict=True)
 
 
 XLSX_DOWNLOAD_LOG_READY = False
@@ -306,12 +319,14 @@ class ContactAdjustSettings(FileModel):
 
 
 class ContactListSettings(FileModel):
-    """계약 C7 `contactList`(#610). 기준은 코드에 두지 않아 기본값이 없다(규칙 ⑩)."""
+    """계약 C7 `contactList`(#610, 근거 상태 묶음 #675). 기준은 코드에 두지 않는다(규칙 ⑩)."""
 
-    # 막는 조건이 없을 때 "지금 연락할 곳"에 드는 분류.
-    now_classifications: list[ClassificationCode]
-    # true면 평가 전 + 적합도 상 회사를 "지금 연락할 곳"에 넣는다.
-    unscored_high_fit_to_now: bool = Field(strict=True)
+    # 살아 있는 근거가 이 수 이상이면 "근거 있음" 묶음(#675). 이 키가 생기기 전의 설정에는 없어서
+    # None을 받고, DB 사본을 읽을 때 예시 파일 값으로 채운다. 채워지지 않았으면 목록이 알린다.
+    evidence_ready_min: int | None = Field(default=None, ge=1, strict=True)
+    # 아래 두 키는 세 묶음(#610) 때 쓰던 값이다. 더는 쓰지 않고 옛 설정이 깨지지 않게 읽기만 한다.
+    now_classifications: list[ClassificationCode] | None = None
+    unscored_high_fit_to_now: bool | None = Field(default=None, strict=True)
     # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
     null_fit_level_as: FitLevel
     adjust: ContactAdjustSettings
@@ -429,6 +444,16 @@ class AppSettings(FileModel):
         ):
             raise ValueError(
                 "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def unofficial_page_needs_blocked_domains(self) -> AppSettings:
+        # #511: 채용·유료 기업 정보 사이트를 버릴 목록 없이는 공개 페이지 받기를 켤 수 없다.
+        if self.research.allow_unofficial_page and not self.candidate_web_search.blocked_domains:
+            raise ValueError(
+                "research.allowUnofficialPage를 켜려면 candidateWebSearch.blockedDomains에 "
+                "막는 사이트 목록을 먼저 적어 주세요."
             )
         return self
 
@@ -569,7 +594,11 @@ def read_app_settings(session: Session) -> AppSettings | None:
     if not data:
         return None
     return AppSettings.model_validate(
-        _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+        _fill_added_contact_list_keys(
+            _fill_added_research_keys(
+                _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+            )
+        )
     )
 
 
@@ -603,6 +632,23 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, **{key: defaults[key] for key in missing}}
 
 
+ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)
+"""#675 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_contact_list_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 없거나 비어 있는 contactList 칸만 예시 파일 값으로 채운 새 dict(#591 방식)."""
+    contact_list = data.get("contactList")
+    if not isinstance(contact_list, dict):
+        return data
+    missing = [key for key in ADDED_CONTACT_LIST_KEYS if contact_list.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).contact_list.model_dump(by_alias=True)
+    filled = {**contact_list, **{key: defaults[key] for key in missing}}
+    return {**data, "contactList": filled}
+
+
 ADDED_INGESTION_KEYS = ("costEstimate",)
 """#549 뒤에 생긴 필수 ingestion 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
@@ -618,6 +664,38 @@ def _fill_added_ingestion_keys(data: dict[str, Any]) -> dict[str, Any]:
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).ingestion.model_dump(by_alias=True)
     filled = {**ingestion, **{key: defaults[key] for key in missing}}
     return {**data, "ingestion": filled}
+
+
+ADDED_RESEARCH_KEYS = (
+    "autoOnBookmarkDailyCostUsd",
+    "suggestAgainAfterDays",
+    "allowUnofficialPage",
+)
+"""#690·#677·#511 뒤에 생긴 research 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_research_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 research 칸만 예시 파일 값으로 채운 새 dict(#591과 같은 방식)."""
+    research = data.get("research")
+    if not isinstance(research, dict):
+        return data
+    missing = [key for key in ADDED_RESEARCH_KEYS if key not in research]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).research.model_dump(by_alias=True)
+    filled = {**research, **{key: defaults[key] for key in missing}}
+    return {**data, "research": filled}
+
+
+def is_demo_database(session: Session) -> bool:
+    """이 DB의 앱 설정 사본에 시연 표시(brand.demo)가 있는가(#274). 사본이 없으면 False.
+
+    다른 설정 칸이 옛 모양이어도 판단이 흔들리지 않게 brand 행 하나만 읽는다.
+    """
+    from geosan.config.models import AppSetting
+
+    row = session.get(AppSetting, "brand")
+    return isinstance(row.value if row else None, dict) and row.value.get("demo") is True
 
 
 DEFAULT_APP_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "examples" / "app-settings.yaml"

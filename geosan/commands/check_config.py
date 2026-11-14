@@ -11,7 +11,11 @@ from pathlib import Path
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
-from geosan.config.app_settings import check_app_settings_file, read_app_settings
+from geosan.config.app_settings import (
+    check_app_settings_file,
+    is_demo_database,
+    read_app_settings,
+)
 from geosan.config.errors import AppError
 from geosan.config.paths import normalize_input_path
 from geosan.config.registry import (
@@ -120,6 +124,14 @@ def run_check_config(
         return EXIT_OK
     try:
         with session_scope(db_path) as session:
+            # #274: 시연 표시를 지우는 등록은 받지 않는다(지우면 serve의 배포 차단이 풀린다).
+            if is_demo_database(session) and not app_result.settings.brand.demo:
+                typer.echo("오류: 시연용 DB에는 시연용 설정만 등록할 수 있습니다.")
+                typer.echo(
+                    f"{db_path.name}에는 시연 표시가 있습니다. 실제 설정은 GEOSAN_DB_PATH를 "
+                    "실제 DB로 바꾼 뒤 등록해 주세요."
+                )
+                return EXIT_INPUT_ERROR
             runtime = register_config_files(session, rule_path, app_path)
             registered = f"{runtime.rule_version.rule_version} ({runtime.rule_version.status})"
     except AppError as exc:

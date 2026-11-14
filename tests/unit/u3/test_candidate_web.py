@@ -225,7 +225,13 @@ def test_settings_defaults_and_unsafe_domains(app_settings_path):
         config.daily_search_limit,
         config.cache_days,
         len(config.blocked_domains),
-    ) == (False, 20, 15, 12)
+    ) == (False, 20, 15, 14)
+    # 무료 기업 정보 모음 사이트 두 곳도 막는다(PM 결정 2026-11-14, #706).
+    assert {"allcompany.co.kr", "bizno.net"} <= set(config.blocked_domains)
+    # 채용·유료 기업 정보 사이트는 그대로 막혀 있다(목록에서 빼지 않았다).
+    assert {"saramin.co.kr", "jobkorea.co.kr", "nicebizinfo.com", "thevc.kr"} <= set(
+        config.blocked_domains
+    )
     for values in [
         {"enabled": True},
         {"dailySearchLimit": True},

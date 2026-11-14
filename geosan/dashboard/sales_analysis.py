@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, tzinfo
 from decimal import ROUND_HALF_UP, Decimal
@@ -21,6 +21,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from geosan.evaluation.inputs import AI_PROPOSED
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Outcome
@@ -44,6 +45,8 @@ NO_PROCESS_NAME = "공정 확인 전"
 NO_INDUSTRY_NAME = "산업 확인 전"
 # 확정된 값만 센다(#652): 공정 연결은 state CONFIRMED(사례 파일·담당자), 산업군은 아래 출처만.
 LINK_CONFIRMED = "CONFIRMED"
+# (#678) 담당자가 확정한 공정 연결의 출처 값(꼬리 질문 확정 #652 · 검토사항 [확정] #497).
+LINK_SOURCE_STAFF = "STAFF"
 CONFIRMED_INDUSTRY_SOURCES = frozenset({"CASE_FILE", "STAFF"})
 _VIRTUAL_DATASET_KIND = "VIRTUAL_REVIEWED"
 
@@ -63,6 +66,8 @@ class RecordLine:
     attempted_at: date | None
     created_at: datetime
     lost_reason_code: str | None
+    # (#684) 이 행을 저장한 뒤의 세부 단계. 창구가 상세·카드와 같은 계산으로 넘긴다(없으면 None).
+    step_after: str | None = None
 
 
 @dataclass(frozen=True)
@@ -131,6 +136,8 @@ class GroupStats:
 class IndustryRow:
     industry: str
     stats: GroupStats
+    # (#684) 이 줄의 회사 가운데 같은 공정 아래 다른 산업군 줄에도 든 회사 수.
+    overlap_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -139,6 +146,22 @@ class ProcessRow:
     process_name: str
     stats: GroupStats
     by_industry: list[IndustryRow]
+    # (#684) 이 줄의 회사 가운데 다른 공정 줄에도 든 회사 수.
+    overlap_count: int = 0
+
+
+@dataclass(frozen=True)
+class StepRow:
+    """(#684) 세부 단계 한 줄: 그 단계에 머무는 동안의 접촉과, 그 단계에 이르기까지의 접촉."""
+
+    step: str
+    contacted_count: int
+    contact_count: int
+    contact_reach: ContactReach
+    reach_ratios: ReachRatios | None
+    reached_count: int
+    contacts_to_reach: int
+    avg_contacts_to_reach: float | None
 
 
 @dataclass(frozen=True)
@@ -183,6 +206,9 @@ class SalesAnalysis:
     basis: Basis
     by_process: list[ProcessRow]
     companies: list[CompanyRow]
+    # (#684) 회사를 한 번씩만 센 합계와 단계별 접촉.
+    total: GroupStats
+    by_sales_step: list[StepRow]
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +359,15 @@ def _industry_rows(
         members = [row for row in rows if name in row.industries]
         if members:
             result.append(
-                IndustryRow(name, group_stats(members, min_sample_for_ratio, lost_reason_order))
+                IndustryRow(
+                    name,
+                    group_stats(members, min_sample_for_ratio, lost_reason_order),
+                    overlap_count=sum(
+                        1
+                        for row in members
+                        if sum(1 for other in industries if other in row.industries) > 1
+                    ),
+                )
             )
     unknown = [row for row in rows if not any(name in industries for name in row.industries)]
     if unknown:
@@ -343,6 +377,84 @@ def _industry_rows(
             )
         )
     return result
+
+
+def step_rows(
+    companies: Sequence[CompanyRecords], step_order: Sequence[str], min_sample_for_ratio: int
+) -> list[StepRow]:
+    """(#684) 세부 단계마다 그 단계에 머무는 동안의 접촉과 그 단계에 이르기까지의 접촉 수.
+
+    회사마다 기록 행을 저장 순서로 읽는다. 접촉 시도 행은 그 행을 저장하기 직전의 세부
+    단계(첫 접촉은 `step_order`의 첫 단계 = 연결 전)에서 일어난 접촉으로 센다. 행을 저장한 뒤의
+    단계(`step_after`)가 그 회사가 아직 이른 적 없는 단계면 그 행까지의 누적 접촉 수가
+    "이르기까지"다. 건너뛴 단계는 이른 것으로 세지 않는다. 고친 단계는 창구가 넘긴 값에 이미
+    들어 있다.
+    """
+    if not step_order:
+        return []
+    first = step_order[0]
+    tried = {step: Counter() for step in step_order}
+    reached = {step: Counter() for step in step_order}
+    companies_at: dict[str, set[str]] = {step: set() for step in step_order}
+    to_reach: dict[str, list[int]] = {step: [] for step in step_order}
+    for company in companies:
+        current: str | None = None
+        seen = {first}
+        contacts = 0
+        for line in company.lines:
+            if line.step_after is not None and line.step_after not in tried:
+                raise ValueError(
+                    f"모르는 세부 단계 값이라 단계별 접촉에 셀 수 없습니다: {line.step_after!r}"
+                )
+            if line.method in CONTACT_METHODS:
+                contacts += 1
+                before = current or first
+                tried[before][line.method] += 1
+                if line.result == RESULT_REACHED:
+                    reached[before][line.method] += 1
+                companies_at[before].add(company.opp_id)
+            current = line.step_after
+            if current is not None and current not in seen and contacts > 0:
+                seen.add(current)
+                to_reach[current].append(contacts)
+    rows = []
+    for step in step_order:
+        contact_count = sum(tried[step].values())
+        arrived = to_reach[step]
+        if contact_count == 0 and not arrived:
+            continue
+        reach = ContactReach(
+            **{
+                method.lower(): ReachCount(reached=reached[step][method], tried=tried[step][method])
+                for method in CONTACT_METHODS
+            }
+        )
+        contacted = len(companies_at[step])
+        rows.append(
+            StepRow(
+                step=step,
+                contacted_count=contacted,
+                contact_count=contact_count,
+                contact_reach=reach,
+                reach_ratios=(
+                    ReachRatios(
+                        call=_ratio(reach.call.reached, reach.call.tried),
+                        email=_ratio(reach.email.reached, reach.email.tried),
+                        visit=_ratio(reach.visit.reached, reach.visit.tried),
+                    )
+                    if contacted >= min_sample_for_ratio and contacted > 0
+                    else None
+                ),
+                reached_count=len(arrived),
+                contacts_to_reach=sum(arrived),
+                avg_contacts_to_reach=(
+                    _rounded(Decimal(sum(arrived)) / Decimal(len(arrived)), "0.1")
+                    if arrived and len(arrived) >= min_sample_for_ratio
+                    else None
+                ),
+            )
+        )
+    return rows
 
 
 def build_sales_analysis(
@@ -355,8 +467,12 @@ def build_sales_analysis(
     now: datetime,
     tz: tzinfo,
     lost_reason_order: Sequence[str],
+    step_order: Sequence[str] = (),
 ) -> SalesAnalysis:
     """공정별·회사별 표를 계산한다. 시각은 직접 읽지 않고 `now`를 받는다(NFR12).
+
+    `step_order`는 세부 단계 코드표 순서로 창구가 넘긴다(#684 단계별 접촉). 비우면 그 표를 내지
+    않는다. 합계(`total`)는 표에 든 회사를 공정·산업군과 상관없이 한 번씩만 센다.
 
     `processes`는 역량 파일 순서의 (코드, 이름), `industries`는 설정 순서다. 한 회사가
     공정·산업군이 여러 개면 각각 세므로 줄의 합이 회사 수보다 클 수 있다. 영업 분석표는
@@ -365,6 +481,7 @@ def build_sales_analysis(
     today = now.astimezone(tz).date()
     oldest_closed = now - timedelta(days=closed_window_days)
     rows: list[CompanyRow] = []
+    counted: list[CompanyRecords] = []
     older_closed = 0
     for company in companies:
         row = summarize_company(company, today, tz=tz)
@@ -373,6 +490,7 @@ def build_sales_analysis(
         if row.closed_at is not None and row.closed_at < oldest_closed:
             older_closed += 1
             continue
+        counted.append(company)
         # 카드와 같이 역량 파일 순서로 보이고, 역량 파일에 없는 공정 코드는 싣지 않는다.
         ordered = [code for code, _ in processes if code in row.process_codes]
         rows.append(replace(row, process_codes=ordered))
@@ -391,6 +509,7 @@ def build_sales_analysis(
                     by_industry=_industry_rows(
                         members, industries, min_sample_for_ratio, lost_reason_order
                     ),
+                    overlap_count=sum(1 for row in members if len(row.process_codes) > 1),
                 )
             )
     unlinked = [row for row in rows if not row.process_codes]
@@ -415,12 +534,90 @@ def build_sales_analysis(
         ),
         by_process=by_process,
         companies=rows,
+        total=group_stats(rows, min_sample_for_ratio, lost_reason_order),
+        by_sales_step=step_rows(counted, step_order, min_sample_for_ratio),
     )
 
 
 # ---------------------------------------------------------------------------
 # DB 읽기
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProposalHit:
+    """(#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수."""
+
+    confirmed_count: int
+    hit_count: int
+    ratio: float | None
+
+
+def proposal_hit(confirmed_count: int, hit_count: int, min_sample_for_ratio: int) -> ProposalHit:
+    """표본이 기준보다 적으면 비율 없이 건수만 낸다."""
+    enough = confirmed_count >= min_sample_for_ratio and confirmed_count > 0
+    return ProposalHit(
+        confirmed_count=confirmed_count,
+        hit_count=hit_count,
+        ratio=_ratio(hit_count, confirmed_count) if enough else None,
+    )
+
+
+def load_process_proposal_hit(
+    session: Session, *, dataset_kind: str, min_sample_for_ratio: int
+) -> ProposalHit:
+    """(#678) 담당자가 확정한 공정이 AI 제안 안에 있었는지를 회사 수로 센다. 저장·AI 호출 없음.
+
+    대상은 추천 목록과 같다(활성 묶음, 최신 확정 평가가 있는 기회). 접촉 기록은 보지 않는다.
+    담당자 확정 = 지금 살아 있는 공정 연결 가운데 출처가 담당자이고 확정인 행. AI 제안 = 같은
+    기회·같은 공정 코드의 AI 행으로, 담당자 행보다 먼저 만들어진 것(확정하면서 이력이 된 행 포함).
+    한 회사가 확정한 공정이 모두 AI 제안 안에 있었을 때만 적중으로 센다. AI가 공정을 하나도
+    제안하지 않은 회사(담당자 확정보다 먼저 만들어진 AI 행이 없음)는 세지 않는다 — "제안이
+    틀렸다"와 "제안이 없었다"는 다른 경우다(PM 결정 2026-11-13).
+    """
+    virtual = dataset_kind == _VIRTUAL_DATASET_KIND
+    rows = session.execute(
+        select(
+            OppProcessLink.opp_id,
+            OppProcessLink.process_code,
+            OppProcessLink.source,
+            OppProcessLink.state,
+            OppProcessLink.superseded_at,
+            OppProcessLink.created_at,
+        )
+        .join(Opportunity, OppProcessLink.opp_id == Opportunity.opp_id)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(
+            Opportunity.is_virtual.is_(virtual),
+            Customer.is_virtual.is_(virtual),
+            OppProcessLink.source.in_([LINK_SOURCE_STAFF, AI_PROPOSED]),
+        )
+    ).all()
+    confirmed: dict[str, dict[str, datetime]] = {}
+    proposed: dict[tuple[str, str], datetime] = {}
+    for opp_id, code, source, state, superseded_at, created_at in rows:
+        if source == AI_PROPOSED:
+            key = (opp_id, code)
+            proposed[key] = min(proposed.get(key, created_at), created_at)
+        elif state == LINK_CONFIRMED and superseded_at is None:
+            confirmed.setdefault(opp_id, {})[code] = created_at
+    first_proposal: dict[str, datetime] = {}
+    for (opp_id, _code), created_at in proposed.items():
+        first_proposal[opp_id] = min(first_proposal.get(opp_id, created_at), created_at)
+    confirmed_count = hit_count = 0
+    for opp_id, codes in confirmed.items():
+        if opp_id not in first_proposal or first_proposal[opp_id] > max(codes.values()):
+            continue
+        evaluation = latest_confirmed_evaluation(session, opp_id)
+        if evaluation is None or evaluation.dataset_kind != dataset_kind:
+            continue
+        confirmed_count += 1
+        if all(
+            (opp_id, code) in proposed and proposed[(opp_id, code)] <= confirmed_at
+            for code, confirmed_at in codes.items()
+        ):
+            hit_count += 1
+    return proposal_hit(confirmed_count, hit_count, min_sample_for_ratio)
 
 
 def process_display_name(name: str) -> str:
@@ -453,6 +650,7 @@ def load_company_records(
     dataset_kind: str,
     sales_step_of: Callable[[str, str], str | None],
     confirmed_only: bool = False,
+    steps_after_of: Callable[[str], Mapping[str, str | None]] | None = None,
 ) -> list[CompanyRecords]:
     """접촉 시도가 있는 회사의 기록을 계산용 값으로 읽는다.
 
@@ -462,14 +660,19 @@ def load_company_records(
 
     `confirmed_only`가 True면 확정된 공정 연결(사례 파일·담당자)과 확정된 산업군(사례 파일·담당자)만
     싣는다(#652 영업 분석표). False면 전처럼 AI 제안까지 싣는다(세 묶음 순서 조정 #610이 쓰는 값).
+
+    `steps_after_of(opp_id)`는 {기록 행 id: 그 행을 저장한 뒤의 세부 단계}로, 창구가 상세·카드와
+    같은 계산으로 넘긴다(#684 단계별 접촉). 넘기지 않으면 행마다의 단계를 싣지 않는다.
     """
     grouped: dict[str, tuple[str, list[str], list[RecordLine]]] = {}
+    outcome_ids: dict[str, list[str]] = {}
     for outcome, name, industries, industries_source in session.execute(
         _live_outcomes(dataset_kind == _VIRTUAL_DATASET_KIND)
     ):
         if confirmed_only and industries_source not in CONFIRMED_INDUSTRY_SOURCES:
             industries = []
         _, _, lines = grouped.setdefault(outcome.opp_id, (name, list(industries or []), []))
+        outcome_ids.setdefault(outcome.opp_id, []).append(outcome.outcome_id)
         lines.append(
             RecordLine(
                 status=outcome.status,
@@ -500,6 +703,15 @@ def load_company_records(
             links = links.where(OppProcessLink.state == LINK_CONFIRMED)
         for opp_id, code in session.execute(links.distinct()):
             codes.setdefault(opp_id, set()).add(code)
+    if steps_after_of is not None:
+        for opp_id in targets:
+            steps = steps_after_of(opp_id)
+            lines = grouped[opp_id][2]
+            # 행마다 계산한 단계가 빠져 있으면 조용히 "연결 전"으로 세지 않고 알린다.
+            lines[:] = [
+                replace(line, step_after=steps[outcome_id])
+                for line, outcome_id in zip(lines, outcome_ids[opp_id], strict=True)
+            ]
     return [
         CompanyRecords(
             opp_id=opp_id,

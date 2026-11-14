@@ -1,0 +1,193 @@
+# 앱 설정 파일 (AppSettings, 계약 C7) — 발표 시연용 DB 전용 사본 (#274, PM 결정 2026-11-04)
+#
+# 시연 DB(`GEOSAN_DB_PATH=./data/geosan-demo.db`)에만 등록한다. 가상 묶음이고 외부 AI·웹 검색·홈페이지 검색은 모두 꺼져 있다.
+# `brand.demo: true`가 "이 DB는 시연용"이라는 표시다. 이 표시가 있는 DB는 배포 설정(`--host 0.0.0.0` 또는
+# GEOSAN_PASSWORD가 있는 환경)에서 `geosan serve`가 시작되지 않고, `geosan seed-demo-records`는 이 표시가 있는 DB에만 가상 기록을 넣는다.
+# 거산 전달·배포 환경에는 이 파일을 등록하지 않는다. 만드는 순서는 README "발표 시연용 DB".
+# 나머지 값은 `examples/app-settings-virtual.yaml`과 같다. 그 파일을 고치면 이 파일도 같이 고친다.
+#
+# 비밀번호·API 키는 여기 적지 않는다. 형식 설명서: contracts/app-settings.schema.json. 모르는 키는 오류, `_설명` 키는 무시된다.
+
+# 담당자 목록. key는 영문·숫자·하이픈(C0 staffKey), displayName은 화면에 보이는 이름.
+# 표시 이름은 `examples/app-settings.yaml`과 같은 역할 이름이다(PM 결정 2026-10-24, 이슈 #104). 두 파일을 같이 고친다.
+# 예약 키 viewer(보기 전용)는 기록 요청이 거부된다(BR9.3).
+staff:
+  - { key: park-lee, displayName: "영업 담당" }
+  - { key: kim-gwajang, displayName: "검수 담당(품질·기술)" }
+  - { key: choi-pm, displayName: "운영 담당" }
+  - { key: viewer, displayName: "보기 전용(대표·상무)" }
+
+# 평가·조회가 읽는 거산 값 묶음 (FR4.14): VIRTUAL_REVIEWED(가상 검수) / BROCHURE(소개서, 검수 대기) / COMPANY_CONFIRMED(거산 확인 완료)
+# 이 파일은 가상 검수 묶음(A정밀)용이다. `geosan check-config examples/rule-config.yaml examples/app-settings-virtual.yaml`로 등록한다.
+activeDatasetKind: VIRTUAL_REVIEWED
+
+# 수집 범위 (U3에서 쓴다, FR9.1 기본값). U1은 읽기만 한다.
+ingestion:
+  # "충남"은 충남 전체, 시·군을 고르면 그 시·군만 AI가 판단한다(PM 결정 2026-11-09, #521).
+  regions: ["충남", "천안시", "아산시", "당진시", "서산시", "공주시", "보령시", "논산시", "계룡시", "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군", "대전", "세종"]
+  productKeywords: ["금속가공", "기계부품", "전자부품", "금형"]
+  maxCandidates: 50
+  # 누르기 전 예상 금액·잠금 계산에만 쓰는 단가(#549). 실제 한도 검사는 전송 기록으로 한다. PM이 실측을 보고 고친다.
+  costEstimate:
+    judgeUsdPerRow: 0.002          # 공장 1행 AI 판단(실측 1행 약 $0.0015~0.0018)
+    researchUsdPerCompany: 0.04    # 회사 1곳 자동 조사(실측 117곳 평균 $0.038)
+    researchCallsPerCompany: 2     # 회사 1곳 조사의 호출 수(실측 평균 1.15회)
+    webSearchUsdPerBatch: 0.11     # 후보 웹 검색 1회(검색 3번 기준. 실측 1번 $0.04 · 3번 약 $0.10, #706)
+  # 가상 검사에서도 실제 파일 경로를 지정한다. 외부 AI는 기본으로 꺼져 있다.
+  factoryCsvPath: data/sources/kicox-factory-csv/20251231/한국산업단지공단_전국등록공장현황_등록공장현황자료_20251231.csv
+  aiPick:
+    enabled: false
+    rowsPerCall: 20  # 100행은 60초 한도를 넘김(PM #491, 2026-11-09)
+    promptFile: examples/prompts/candidate-pick.md
+    surfaceTreatmentIndustryNames: []  # 업종명 규칙의 값은 PM이 정한 뒤 넣는다.
+    surfaceTreatmentIndustryCodes: ["25922", "25923"]  # 팩토리온 업종번호: 도금업·도장 및 기타 피막처리업(PM 승인 #573). 열처리 25921·절삭가공 25924는 넣지 않는다
+    model: null  # 후보 고르기만 다른 모델로(예: gpt-6-luna). 비우면 llm.model. 모델 비교용(PM #491)
+    excludeKeywords: [운송, 물류, 택배, 창고업, 도매, 소매, 무역, 소프트웨어, 정보서비스, 통신서비스, 식품, 음료, 제과, 제빵, 섬유, 의류, 봉제, 출판, 광고, 교육, 컨설팅, 부동산, 건설업, 토목, 시공, 음식점, 숙박]  # 제조 낌새(제조·생산·가공·부품·제작) 없이 이 말만 있으면 AI에 안 보냄
+  complexList:
+    _설명: "단지 조회 연결 준비. 기본은 꺼짐, 보관 일수는 PM 결정 15일(#405, 처음 7일 #393). 실제 조회·보관 실행은 후속 연결."
+    enabled: false
+    cacheDays: 15
+    extraNames: []
+
+# 외부 LLM (U2에서 쓴다). U1은 NONE이며 외부 호출 코드가 없다.
+llm:
+  mode: NONE
+  model: null
+  _설명: "monthlyCallLimit·costPerThousandTokens 값은 설계에 없음 — PM 확인 필요(U2 진입 전). 0은 '아직 정하지 않음'."
+  monthlyCallLimit: 0
+  unconfirmedCallCostUsd: 0.10  # 사용량을 못 받은 호출의 추정 비용(#538).
+  costPerThousandTokens: 0
+
+# 가상 사례는 홈페이지 검색을 끈다. 기존 두 칸만 있는 설정도 그대로 읽을 수 있다.
+homepageDiscovery:
+  enabled: false
+  termsConfirmed: false
+
+# 브랜드. 로고·강조색은 자료가 오면 여기만 바꾼다(FR6.8). 초기값은 상세 화면 설계의 팀 제안.
+# demoLabel: 띠에 함께 보이는 문구. 부분 시연에서는 "부분 시연·거산 확인 전"으로 둔다(BR10.4). 없으면 null.
+# demoLabel: 띠에 함께 보이는 문구. 시연 DB에서는 "시연용 · 가상 자료"(#274).
+# demo: 시연용 DB 표시. true면 배포 설정에서 서버가 시작되지 않는다.
+brand:
+  logoUrl: null
+  brandName: "거산 영업지원"
+  colorPrimary: "#1F5FBF"
+  demoLabel: "시연용 · 가상 자료"
+  demo: true
+
+# 영업 분석표(#608, 계약 C7). 숫자는 PM이 정한다(#229와 같은 기준, 거산 사용 뒤 재조정).
+salesAnalysis:
+  minSampleForRatio: 10   # 표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 "표본 n건"만 보인다.
+  closedWindowDays: 365   # 성사·거절은 결과 기록이 이 일수 안인 것만 센다(최근 12개월).
+
+# 추천 목록 세 묶음(#610, 계약 C7): 지금 연락할 곳 / 확인 필요 / 나중. 숫자는 PM이 정한다(거산 사용 뒤 재조정).
+# 부록 F 점수·분류·기존 순위는 바꾸지 않는다. 묶음과 묶음 안 순서만 목록을 읽을 때 계산한다.
+contactList:
+  # 근거 상태 묶음(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사.
+  evidenceReadyMin: 3           # 살아 있는 근거가 이 수 이상이면 "근거 있음" 묶음. 거산이 써 본 뒤 다시 정한다.
+  # 아래 두 키는 세 묶음(#610) 때 쓰던 값이다. 더는 쓰지 않는다(#675). 옛 설정이 깨지지 않게 읽기만 한다.
+  nowClassifications: [CONTACT_URGENT, CONTACT_PLANNED, RESEARCH, CONDITIONAL_WAIT]
+  unscoredHighFitToNow: false
+  nullFitLevelAs: HIGH          # 적합도가 없는 회사(사례 파일로 넣은 회사)를 묶음 안 순서에서 어느 적합도로 볼지.
+  # 같은 공정·산업군의 최근 성사·거절로 "근거 있음" 묶음 안 순서를 올리거나 내리는 기준.
+  adjust:
+    windowDays: 365        # 결과 기록이 이 일수 안인 성사·거절만 센다(최근 12개월).
+    minClosedCount: 5      # 표본(성사 + 센 거절)이 이보다 적으면 조정하지 않는다.
+    wonPerStep: 2          # 성사 이 수마다 한 단계 위로.
+    maxUp: 2               # 위로는 최대 이 단계까지.
+    lostPerStep: 3         # 센 거절 이 수마다 한 단계 아래로.
+    maxDown: 1             # 아래로는 최대 이 단계까지.
+    lostReasonsCounted: [NO_DEMAND, QUALITY_CERT]   # 이 이유의 거절만 센다(수요 없음, 품질·인증 요건).
+
+# 엑셀 내려받기 (#217, 계약 C7 export, PM 결정 2026-11-13). 만들어 두고 꺼 둔다.
+# false면 [영업 후보 목록]의 [엑셀 내려받기] 단추가 보이지 않고 내려받기 창구도 막힌다.
+# 거산이 필요하다고 하면 true로 바꾼다. 켜기 전에 "누가 언제 내려받았는지" 기록부터 만든다(약속 C4).
+# 그 기록이 만들어지기 전에는 true로 적으면 설정 검사(check-config)가 거부한다.
+export:
+  xlsxEnabled: false
+
+# 관심 자동 조사 (#690, 계약 C7 research, PM 결정 2026-11-13).
+# [관심]을 켠 회사가 홈페이지 주소는 있는데 아직 조사 전이면 조사가 저절로 돈다.
+# autoOnBookmarkDailyCostUsd는 그렇게 저절로 도는 조사가 하루(한국 시간)에 쓸 수 있는 AI 비용(달러)이다.
+# 오늘 쓴 금액이 이 값보다 적을 때만 새 조사를 시작한다(마지막 한 곳만큼은 넘을 수 있다). 0이면 이 기능이 꺼진다.
+# 월 비용·호출 한도(llm)는 따로 그대로 적용된다.
+research:
+  autoOnBookmarkDailyCostUsd: 1.0
+  # 다시 조사 제안 (#677, PM 결정 2026-11-13). AI가 조사한 지 이 일수보다 오래 지난 관심 회사의 상세에
+  # "조사한 지 n일 · 새 정보가 있을 수 있어요"를 [다시 조사] 단추 옆에 보인다. 알리기만 하고 저절로 조사하지 않는다.
+  # 0이면 제안하지 않는다.
+  suggestAgainAfterDays: 30
+  # 공식 홈페이지가 없는 회사의 공개 페이지 (#511, PM 결정 2026-11-09). 기본 꺼짐 — PM이 켠다.
+  # true면 홈페이지 찾기가 공식 홈페이지를 못 찾았을 때 같은 한 번의 검색 결과에서 회사가 직접 운영하는
+  # 블로그·SNS·쇼핑몰이나 공공·지자체 페이지 1개를 "확인 필요"로 저장하고, 거기서는 약한 근거만 뽑는다.
+  # 채용·유료 기업 정보 사이트는 아래 candidateWebSearch.blockedDomains 목록으로 버린다(목록이 비면 켤 수 없다).
+  allowUnofficialPage: false
+
+# 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
+accessProtection:
+  enabled: false
+
+listFilters:
+  regionPresets:
+    - label: "충남"  # PM 결정 2026-11-09(#517): "천안 인근"은 모호해 충남 시·군 전체 묶음으로. 시·군 선택지는 자동으로 따로 보인다.
+      cities: ["천안시", "아산시", "당진시", "서산시", "공주시", "보령시", "논산시", "계룡시", "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군"]
+
+# 대시보드 산업군 막대: AI가 제안한 산업군도 세고 "AI 제안 포함"을 보인다 (계약 C7, 2026-11-03 PM 결정).
+# false면 사람이 확인한 산업군만 센다.
+dashboard:
+  countProposedIndustries: true
+
+# 후보 웹 검색: #314 PM 승인 2026-11-09. 가상 검사에서도 기본은 꺼 둔다.
+candidateWebSearch:
+  enabled: false
+  dailySearchLimit: 20
+  cacheDays: 15
+  searchesPerRun: 3      # 한 번 요청에서 AI가 검색하는 횟수(#706: 1번 2곳, 3번 5~10곳)
+  timeoutSeconds: 90     # 응답 대기(실측 3번 29~35초)
+  blockedDomains:
+    - saramin.co.kr
+    - jobkorea.co.kr
+    - wanted.co.kr
+    - incruit.com
+    - work24.go.kr
+    - work.go.kr
+    - jobplanet.co.kr
+    - catch.co.kr
+    - nicebizinfo.com
+    - cretop.com
+    - kreditjob.com
+    - thevc.kr
+    # 무료 기업 정보 모음 사이트(PM 결정 2026-11-14, #706): 남이 모아 만든 회사 소개라 출처로 쓰지 않는다.
+    - allcompany.co.kr
+    - bizno.net
+
+# 산업군 초안: 거산 확인 뒤 설정에서 조정 (2026-11-03 PM 승인)
+industries:
+  - 방위산업
+  - 반도체
+  - 반도체 장비
+  - 자동차 부품
+  - 항공우주
+  - 밸브·유체기기
+  - 조선·해양
+  - 전기·전자
+  - 기계·설비
+  - 기타
+
+# 2026-11-13 확인 #222: 공공좌표만 저장, 네이버는 한 요청에서만 사용. 키는 환경 변수.
+geosan:
+  address: "충청남도 천안시 서북구 성거읍 봉주로 303-1"
+  lat: null
+  lng: null
+geocoding:
+  provider: JUSO
+  enabled: false
+  dailyCallLimit: 10000
+  locationCsvFiles: []
+  locationCsvBaseDate: null
+  naverFallbackEnabled: false
+distanceFilterPresetsKm: [30, 50, 100]
+# 대시보드 지도 "같이 들를 곳": 방문할 회사(진행 중·관심) 근처 이 거리(km) 안의 후보를 묶는다(#673).
+visitGroupRadiusKm: 5
+records:
+  _설명: "기록 남기기 칸에서 한 통화에 보이는 통화 내용 질문 수(#691, PM 결정 2026-11-13). 넘는 질문은 '다음 통화에서 물을 것 n개 · [지금 더 묻기]'로 접힌다. 누가 먼저 연락했나·공정·산업 확인·다음 할 일은 세지 않는다."
+  questionsPerContact: 6

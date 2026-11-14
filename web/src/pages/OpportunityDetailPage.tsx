@@ -3,6 +3,7 @@
 //   → 2. 통화에서 확인할 것(읽기 전용) → 3. 점수 자세히 보기(접힘, 안에 AI 점수 입력 제안 [확정]·[고치기]).
 // 아래(적는 곳): 검토 의견 → 기록 남기기(접촉·꼬리 질문·한 줄 메모·다음 일정) → 활동 이력 → 비슷한 회사 참고(#269).
 // 읽는 곳의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이다. 서버 창구는 그대로 두고 화면에서만 부르지 않는다.
+// 예외(#677): 확정한 공정과 다른 AI 공정 제안이 있을 때만 "한눈에" 공정 줄 아래에 [확정 값 유지]·[○○도 추가]가 보인다.
 // 머리의 [기록 남기기](#691)는 적는 곳의 "기록 남기기" 칸으로 내려가는 이동 단추다(저장하지 않는다).
 // 머리의 [관심] 단추(#357): 검토 의견·메모·영업 기록을 저장하면 서버가 관심을 켜므로, 그 저장 뒤에 관심 값만 조용히 다시 읽는다.
 import { useCallback, useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ import type {
   ContactCount,
   ContactMethod,
   Meta,
+  OpinionRecord,
   OpportunityDetail,
   OutcomeRecord,
   SalesQuestions,
@@ -24,6 +26,7 @@ import CallChecklist, { callCheckCountOf } from '../components/detail/CallCheckl
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
 import HeaderSection from '../components/detail/HeaderSection';
+import IndustryChips from '../components/detail/IndustryChips';
 import ReasonsSection from '../components/detail/ReasonsSection';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import WhyThisCompany from '../components/detail/WhyThisCompany';
@@ -33,6 +36,7 @@ import PeersArea from '../components/peers/PeersArea';
 import ActivityTimeline from '../components/records/ActivityTimeline';
 import { choiceMarksOf } from '../components/records/ChoiceQuestion';
 import RecordsArea, { recordsEntryInputId } from '../components/records/RecordsArea';
+import ReportLink from '../components/report/ReportLink';
 import ReviewArea from '../components/review/ReviewArea';
 import { detailReport, frame, opinionArea, peersArea, recordsArea, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
@@ -107,6 +111,7 @@ export default function OpportunityDetailPage() {
     data: OpportunityDetail;
     step: SalesStepView | null;
     lastContactAt: string | null;
+    opinion: OpinionRecord | null;
   } | null>(null);
   const salesStep = fresh && fresh.data === data ? fresh.step : (data?.records.salesStep ?? null);
   const onSalesStepChanged = () => {
@@ -118,12 +123,28 @@ export default function OpportunityDetailPage() {
           data,
           step: envelope.data.records.salesStep ?? null,
           lastContactAt: envelope.data.records.lastContactAt ?? null,
+          opinion: envelope.data.records.opinion ?? null,
         }),
       )
       .catch(() => {
         // 못 받으면 지난 요약을 그대로 둔다. 저장은 이미 끝났고 다음에 상세를 열면 새 값이 보인다.
       });
   };
+
+  // 검토 의견(#697): 접촉을 남기면 서버가 같은 저장 안에서 의견을 "영업 대상"으로 정할 수 있다.
+  // 접촉 저장 뒤 조용히 다시 받은 의견이 있으면 그것을, 없으면 처음 받은 의견을 쓴다.
+  const serverOpinion =
+    fresh && fresh.data === data ? fresh.opinion : (data?.records.opinion ?? null);
+  // 의견 칸에서 방금 저장한 의견. 서버에서 받은 것보다 새 것일 때만 쓴다.
+  const [savedOpinion, setSavedOpinion] = useState<{
+    data: OpportunityDetail;
+    record: OpinionRecord;
+  } | null>(null);
+  const localOpinion = savedOpinion && savedOpinion.data === data ? savedOpinion.record : null;
+  const opinionNow =
+    localOpinion && localOpinion.version > (serverOpinion?.version ?? 0)
+      ? localOpinion
+      : serverOpinion;
 
   // 영업 단계·다음 일정을 저장하면 맨 위 진행 막대(끝 칸 "거절·보류·성사", 다음 일정 줄)도 그 값으로 바꾼다.
   const [savedOutcome, setSavedOutcome] = useState<{
@@ -249,6 +270,7 @@ export default function OpportunityDetailPage() {
             ownerName={ownerName}
             classificationOverrides={config?.classificationLabels}
           />
+          <ReportLink oppId={oppId} />
           <DetailGlance
             header={data.header}
             processLinks={data.processLinks}
@@ -257,6 +279,15 @@ export default function OpportunityDetailPage() {
             requirements={data.requirements}
             contactCount={contactCount}
             lastContactAt={lastContactAt}
+            processChoice={{
+              oppId,
+              evalId: data.evalId,
+              // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
+              onSaved: () => {
+                setReload((n) => n + 1);
+                setTimelineVersion((n) => n + 1);
+              },
+            }}
             callCheckCount={
               data.reviewItems !== undefined
                 ? callCheckCountOf(
@@ -344,14 +375,28 @@ export default function OpportunityDetailPage() {
             <span>{detailReport.writeDivider}</span>
             <span aria-hidden="true" style={{ flex: 1, height: 1, background: colors.border }} />
           </div>
+          {/* 산업군 칩(#646): AI 제안을 [확정]·[고치기]. 저장하면 상세와 활동 이력을 새로 불러온다. */}
+          <IndustryChips
+            key={`${oppId}:industries`}
+            oppId={oppId}
+            header={data.header}
+            onSaved={() => {
+              setReload((n) => n + 1);
+              setTimelineVersion((n) => n + 1);
+            }}
+          />
           <DetailSection id="detail-opinion" title={opinionArea.groupLabel}>
             {data.evalId ? (
               <OpinionArea
-                key={`${oppId}:${data.evalId}`}
+                // 접촉 저장이 의견을 바꿨으면(#697) 서버 의견의 버전이 달라져 새 값으로 다시 그린다.
+                key={`${oppId}:${data.evalId}:${serverOpinion?.version ?? 0}`}
                 oppId={oppId}
                 evalId={data.evalId}
-                record={data.records.opinion ?? null}
-                onSaved={() => void bookmarkState.sync()}
+                record={opinionNow}
+                onSaved={(record) => {
+                  setSavedOpinion({ data, record });
+                  void bookmarkState.sync();
+                }}
               />
             ) : (
               <p style={{ margin: 0 }}>{states.notEvaluatedYet}</p>
@@ -369,6 +414,7 @@ export default function OpportunityDetailPage() {
               choiceMarks={choiceMarksOf(data)}
               // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
               onCompanyConfirmed={reloadQuietly}
+              excluded={opinionNow?.opinion === 'NOT_TARGET'}
               onContactRecorded={onContactRecorded}
               onRecorded={() => {
                 setTimelineVersion((n) => n + 1);

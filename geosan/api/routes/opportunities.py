@@ -65,10 +65,12 @@ from geosan.api.schemas import (
     ScoreState,
 )
 from geosan.capability.queries import get_process
+from geosan.config.app_settings import ResearchSettings
 from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
 from geosan.config.sales_questions import KST
 from geosan.dashboard.contact_order import (
     BUCKETS,
+    EVIDENCE_READY,
     AdjustRule,
     CompanyState,
     adjustment_for,
@@ -96,6 +98,7 @@ from geosan.evaluation.models import (
     ReadinessCheck,
     RequirementCheck,
 )
+from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.factory_csv import address_city
@@ -103,7 +106,7 @@ from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Outcome, ReviewOpinion
-from geosan.rules.codes import LostReasonCode, ProcessCode
+from geosan.rules.codes import LostReasonCode, ProcessCode, SecurityGrade
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -189,6 +192,21 @@ def _score_state(run: EvaluationRun | None, *, ai_pending: bool = False) -> Scor
     return "CONFIRMED"
 
 
+def _suggest_research_again(context: DetailContext, research: ResearchSettings) -> bool:
+    """#677: AI가 조사한 지 설정 일수보다 오래 지난 관심 회사에만 다시 조사를 제안한다.
+
+    알리기만 한다. 조사는 담당자가 [다시 조사]를 누를 때만 돈다. 설정이 0이면 제안하지 않는다.
+    """
+    customer = context.customer
+    days = research.suggest_again_after_days
+    if days <= 0 or customer.researched_at is None or customer.research_source != "AI":
+        return False
+    if utcnow() - customer.researched_at <= timedelta(days=days):
+        return False
+    bookmark = latest_bookmark(context.session, context.opportunity.opp_id)
+    return bookmark is not None and bookmark.active
+
+
 def _header(context: DetailContext) -> dict:
     distances = customer_distances(
         context.session,
@@ -228,6 +246,7 @@ def _header(context: DetailContext) -> dict:
                 customer.researched_at is not None
                 and utcnow() - customer.researched_at > timedelta(days=research.stale_after_days)
             ),
+            research_suggest_again=_suggest_research_again(context, research),
             title=f"{customer.name} · {opportunity.item}",
             customer_name=customer.name,
             opportunity_item=opportunity.item,
@@ -245,6 +264,9 @@ def _header(context: DetailContext) -> dict:
             homepage_status=customer.homepage_status,
             homepage_confidence=customer.homepage_confidence,
             homepage_source=customer.homepage_source,
+            homepage_page_kind=unofficial_page_kind(
+                customer.homepage_status, customer.homepage_source, customer.homepage_reason
+            ),
             **discovery_fields(customer),
         )
     }
@@ -570,7 +592,7 @@ def _address_region(address: str | None) -> str | None:
 
 @dataclass(frozen=True)
 class _Placement:
-    """카드 한 장의 묶음·이유·조정과 `sort=contact` 정렬 키(#610)."""
+    """카드 한 장의 묶음·이유·조정과 `sort=contact` 정렬 키(#610, 근거 상태 묶음 #675)."""
 
     bucket: str
     basis: str
@@ -585,20 +607,32 @@ def _contact_placements(
     codes_by_opportunity: dict[str, set[str]],
     processes: list[tuple[str, str]],
 ) -> dict[str, _Placement]:
-    """추천 순으로 세운 `rows`의 회사마다 세 묶음 자리를 계산한다(계약 C1, #610).
+    """추천 순으로 세운 `rows`의 회사마다 근거 상태 묶음 자리를 계산한다(계약 C1, #610·#675).
 
-    최신 검토 의견·영업 단계·성사/거절 기록은 요청당 한 번씩만 읽는다(회사마다 읽지 않는다).
-    점수·분류·기존 순위는 읽기만 하고 아무것도 저장하지 않는다.
+    최신 검토 의견·영업 단계·성사/거절 기록·근거 수는 요청당 한 번씩만 읽는다(회사마다 읽지
+    않는다). 점수·분류·기존 순위는 읽기만 하고 아무것도 저장하지 않는다.
     """
     if not rows:
         return {}
     runtime = runtime_for(session)
     settings = runtime.app_settings.contact_list
-    if settings is None:
+    if settings is None or settings.evidence_ready_min is None:
         # 기준을 코드에서 지어내지 않는다(규칙 ⑩). 설정이 없으면 목록을 내지 않고 알린다.
         raise RunFailedError(
-            "추천 목록 묶음 기준(contactList)이 설정에 없습니다. 앱 설정 파일을 확인해 주세요."
+            "추천 목록 묶음 기준(contactList.evidenceReadyMin)이 설정에 없습니다. "
+            "앱 설정 파일을 확인해 주세요."
         )
+    # 살아 있는 근거 수(#675): 상세 화면 근거 목록(list_evidence)과 같은 기준으로 한 번에 센다.
+    evidence_counts = dict(
+        session.execute(
+            select(Evidence.opp_id, func.count())
+            .where(
+                Evidence.superseded_at.is_(None),
+                Evidence.security_grade != SecurityGrade.FORBIDDEN.value,
+            )
+            .group_by(Evidence.opp_id)
+        ).all()
+    )
     # 카드·상세의 최신 값과 같은 순서로 읽어 마지막 행이 남게 한다.
     opinions = dict(
         session.execute(
@@ -643,26 +677,26 @@ def _contact_placements(
             classification_code=current.classification_code,
             relation_status=customer.relation_status,
             outcome_status=stages.get(opportunity.opp_id),
-            scored=current.score_s is not None,
             fit_level=customer.fit_level,
-            own_plating=bool(customer.own_plating_line_suspected),
-            core_evidence_recheck=current.core_evidence_recheck_flag,
-            blocks_approval=current.blocks_approval,
+            evidence_count=evidence_counts.get(opportunity.opp_id, 0),
+            homepage_url=customer.homepage_url,
+            homepage_status=customer.homepage_status,
         )
-        bucket, basis = assign_bucket(
-            state,
-            now_classifications=settings.now_classifications,
-            unscored_high_fit_to_now=settings.unscored_high_fit_to_now,
-        )
-        found = adjustment_for(
-            opportunity.opp_id,
-            codes_by_opportunity.get(opportunity.opp_id, set()),
-            customer.industries or [],
-            results,
-            rule=rule,
-            processes=processes,
-            industry_order=runtime.app_settings.industries,
-            lost_reason_order=lost_reason_order,
+        bucket, basis = assign_bucket(state, evidence_ready_min=settings.evidence_ready_min)
+        # 영업 결과 조정은 점수를 매길 근거가 있는 "근거 있음" 묶음 안에서만 쓴다(#675).
+        found = (
+            adjustment_for(
+                opportunity.opp_id,
+                codes_by_opportunity.get(opportunity.opp_id, set()),
+                customer.industries or [],
+                results,
+                rule=rule,
+                processes=processes,
+                industry_order=runtime.app_settings.industries,
+                lost_reason_order=lost_reason_order,
+            )
+            if bucket == EVIDENCE_READY
+            else None
         )
         timing = current.timing_requirements
         placements[opportunity.opp_id] = _Placement(
@@ -671,7 +705,6 @@ def _contact_placements(
             adjust=RankAdjust.model_validate(found, from_attributes=True) if found else None,
             order_key=contact_order_key(
                 bucket=bucket,
-                basis=basis,
                 state=state,
                 null_fit_level_as=settings.null_fit_level_as,
                 level=found.level if found else 0,
@@ -698,6 +731,7 @@ def list_opportunities(
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=50)] = 20,
     stage: OutcomeStatus | None = None,
     bookmarked: bool | None = None,
+    hide_bookmarked: Annotated[bool | None, Query(alias="hideBookmarked")] = None,
     opinion: OpinionFilter | None = None,
     process: ProcessCode | None = None,
     industry: str | None = None,
@@ -716,8 +750,11 @@ def list_opportunities(
     params = request.query_params
     if tab != "new" or ("filter" in params and params["filter"] not in supported_filters):
         raise InputError("이 목록의 추가 필터는 아직 연결되지 않았습니다.")
+    if bookmarked and hide_bookmarked:
+        raise InputError("관심 기업만 보기와 관심 기업 빼기는 함께 고를 수 없습니다.")
     # 정렬(#516): rank = 추천 순(기본), recent = 들어온 시각 최신 순.
-    # contact(#610) = 세 묶음 순(지금 연락할 곳 → 확인 필요 → 나중). rank의 뜻은 그대로다.
+    # contact(#610·#675) = 근거 상태 묶음 순(근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 →
+    # 끝난 회사). rank의 뜻은 그대로다.
     # distance(#658)는 페이지를 나누기 전 전체 대상의 거리를 사용한다.
     if sort not in ("rank", "recent", "contact", "distance"):
         raise InputError(
@@ -750,6 +787,12 @@ def list_opportunities(
         )
     )
     all_population = select(query.subquery().c.opp_id)
+    # 목록 머리 "관심 기업 ○곳"(#675): 다른 거르기 조건과 무관하게 목록 대상 안의 관심 기업 수.
+    bookmarked_count = session.scalar(
+        select(func.count()).select_from(
+            query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids())).subquery()
+        )
+    )
     if ingest_batch is not None:
         selected_batch = ingest_batch
         if ingest_batch == "latest":
@@ -765,6 +808,10 @@ def list_opportunities(
         # 관심으로 켜 둔 기회만(#356). false·없음은 거르지 않는다.
         # 선택지(공정·지역·산업) 건수도 관심 기업 안에서 세도록 건수 계산보다 먼저 건다(#516).
         query = query.where(EvaluationRun.opp_id.in_(bookmarked_opp_ids()))
+    if hide_bookmarked:
+        # 관심으로 고른 회사를 뺀다(#675). 공정·지역·산업 곳 수와 묶음별 곳 수도 뺀 뒤에 세도록
+        # 관심 기업 보기와 같은 자리(건수 계산보다 먼저)에서 건다.
+        query = query.where(EvaluationRun.opp_id.not_in(bookmarked_opp_ids()))
     population = select(query.subquery().c.opp_id)
     # 재투입으로 교체된 연결은 빼고, 같은 기회·공정은 한 번만 센다.
     # 확정 여부(#659)도 같은 조회 한 번으로 모아 읽는다. 카드마다 다시 읽지 않는다.
@@ -925,7 +972,7 @@ def list_opportunities(
                     distances[row[3].customer_id] or 0,
                 )
             )
-    # 세 묶음(#610): 추천 순으로 세운 자리 번호를 마지막 정렬 키로 넘긴다.
+    # 근거 상태 묶음(#610·#675): 추천 순으로 세운 자리 번호를 마지막 정렬 키로 넘긴다.
     placements = _contact_placements(
         session,
         rows,
@@ -1060,5 +1107,6 @@ def list_opportunities(
             region_counts=region_counts,
             not_evaluated_count=not_evaluated,
             bucket_counts=BucketCounts(**{name.lower(): bucket_counts[name] for name in BUCKETS}),
+            bookmarked_count=bookmarked_count,
         ),
     )
