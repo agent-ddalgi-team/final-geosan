@@ -43,6 +43,24 @@ class AnswerRow:
     answer_id: str
 
 
+def step_rows(outcomes: Iterable, answers: Iterable) -> tuple[list[RecordRow], list[AnswerRow]]:
+    """(#725) 저장된 기록 행·답 행을 계산용 행으로 옮긴다. 순서는 받은 그대로다."""
+    return (
+        [
+            RecordRow(
+                outcome_id=row.outcome_id,
+                method=row.method,
+                attempted_at=row.attempted_at,
+                created_at=row.created_at,
+                created_by=row.created_by,
+                step_override=row.step_override,
+            )
+            for row in outcomes
+        ],
+        [AnswerRow(row.outcome_id, row.question_id, row.answer_id) for row in answers],
+    )
+
+
 @dataclass
 class KnownAnswer:
     question_id: str

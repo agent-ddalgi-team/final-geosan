@@ -17,11 +17,10 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.proposal_review import confirm_proposal, dismiss_proposal, proposal_review_items
 from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
 from geosan.api.sales_step import (
-    AnswerRow,
-    RecordRow,
     SalesStepState,
     compute_sales_step,
     stage_for,
+    step_rows,
 )
 from geosan.api.schemas import (
     REVIEW_TEXT_MAX_LENGTH,
@@ -90,6 +89,7 @@ from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
+from geosan.records.live import live_outcomes_with_answers
 from geosan.records.models import (
     Bookmark,
     Note,
@@ -848,34 +848,10 @@ def sales_step_state(
     questions: SalesQuestions | None = None,
 ) -> SalesStepState:
     """#607 기록에서 세부 단계를 매번 계산한다(저장하지 않음)."""
-    rows = [
-        RecordRow(
-            outcome_id=row.outcome_id,
-            method=row.method,
-            attempted_at=row.attempted_at,
-            created_at=row.created_at,
-            created_by=row.created_by,
-            step_override=row.step_override,
-        )
-        for row in session.scalars(
-            select(Outcome)
-            .where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None))
-            .order_by(Outcome.version)
-        )
-    ]
+    # 취소한 접촉과 거기 달린 답은 계산에서 뺀다(#253·#607).
+    rows, answers = step_rows(*live_outcomes_with_answers(session, opp_id))
     if not rows:
         return SalesStepState()
-    # 취소한 접촉에 달린 답은 계산에서 뺀다(#253·#607).
-    live_ids = {row.outcome_id for row in rows}
-    answers = [
-        AnswerRow(row.outcome_id, row.question_id, row.answer_id)
-        for row in session.scalars(
-            select(OutcomeAnswer)
-            .where(OutcomeAnswer.opp_id == opp_id)
-            .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
-        )
-        if row.outcome_id in live_ids
-    ]
     questions = questions or sales_questions(session)
     labels = choice_catalog(session) if any(q.choices for q in questions.questions) else None
     return compute_sales_step(rows, answers, questions, status, labels)
