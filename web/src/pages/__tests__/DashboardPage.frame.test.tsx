@@ -81,9 +81,13 @@ function renderApp() {
   );
 }
 
+// 누르는 사이의 기다림을 없앤다(대시보드가 커져 이 시험이 혼자서도 20초를 넘겼다, #719).
+// 누르는 순서와 확인하는 것은 그대로다.
+const user = userEvent.setup({ delay: null });
+
 async function pickStaff(name: string) {
-  await userEvent.click(screen.getByRole('combobox'));
-  await userEvent.click(await screen.findByTitle(name));
+  await user.click(screen.getByRole('combobox'));
+  await user.click(await screen.findByTitle(name));
 }
 
 describe('대시보드 + 공통 틀: 담당자 선택칸을 누르면 최근 내 기록이 바뀐다 (#216 후속)', () => {
