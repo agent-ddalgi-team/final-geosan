@@ -927,6 +927,13 @@ export const salesQuestionTexts = {
   nextDateOther: '다른 날짜',
   nextDateNone: '없음',
   nextDateListLabel: '가까운 날짜',
+  /** 펼쳐진 일정 달력(#740, PM 지시 2026-11-14): 달력 하나 + [없음]. 위의 2주·다른 날짜 글자는 더 쓰지 않는다. */
+  calendarMonth: (year: number, month: number) => `${year}년 ${month}월`,
+  calendarPrev: '이전 달',
+  calendarNext: '다음 달',
+  /** "고른 날짜: 11/20(금)" */
+  calendarPicked: (date: string) => `고른 날짜: ${date}`,
+  calendarPickHint: '달력에서 날짜를 누르세요.',
   /** 요일 한 글자(일요일부터). "11/20(금)" */
   weekdays: ['일', '월', '화', '수', '목', '금', '토'],
   nextDateNonePreview: '다음 일정은 잡지 않습니다.',
