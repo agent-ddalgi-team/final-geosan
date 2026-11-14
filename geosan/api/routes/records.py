@@ -961,7 +961,15 @@ def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: s
     # 이미 같은 단계로 끝나 있던 회사(예: 거절 뒤 이유만 고치는 저장)는 "끝나는 저장"이 아니므로,
     # 끝난 뒤에 일부러 잡아 둔 일정을 지우지 않는다.
     ends_now = status in _ENDED_STAGES and not (previous and previous.status == status)
-    if not ends_now:
+    # (PM 결정 2026-11-14) 통화·메일·방문을 남기면 이미 지난 일정은 넘기지 않는다. 그 날짜 뒤에
+    # 연락했으니 놓친 일정이 아니다. 접촉 없이 단계만 고치는 저장은 "놓친 일정"으로 남긴다.
+    past_after_contact = bool(
+        body.method
+        and previous
+        and previous.next_schedule_at
+        and previous.next_schedule_at < today_in_seoul()
+    )
+    if not ends_now and not past_after_contact:
         for name in ("next_schedule_at", "next_schedule_note"):
             if previous and name not in body.model_fields_set:
                 values[name] = getattr(previous, name)
