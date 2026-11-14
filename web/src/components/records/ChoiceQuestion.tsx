@@ -10,7 +10,12 @@ import { typography } from '../../theme/tokens';
 export const UNKNOWN_CHOICE = '__UNKNOWN__';
 /** "지금 확정된 것이 맞음"을 고른 상태. 서버로는 이미 확정된 값들을 답으로 보낸다. */
 export const KEEP_CHOICE = '__KEEP__';
-const SPECIAL = [UNKNOWN_CHOICE, KEEP_CHOICE];
+/**
+ * 지금 값을 모두 뺀 상태(#719, 산업처럼 지금 값을 뺄 수 있는 질문). 하나도 안 고른 채로는 바꿀 수 없어
+ * 서버로는 보내지 않는다. 빈 배열은 "건드리지 않음"이라 이 표시로 구분한다.
+ */
+export const CLEARED_CHOICE = '__CLEARED__';
+const SPECIAL = [UNKNOWN_CHOICE, KEEP_CHOICE, CLEARED_CHOICE];
 /** 회사 산업군은 3개까지(약속 C6). 서버도 같은 수로 거부한다. */
 export const MAX_INDUSTRIES = 3;
 
@@ -66,19 +71,14 @@ export function confirmedLabels(question: SalesQuestion, marks: ChoiceMarks | nu
 }
 
 /**
- * 이미 값이 있는 질문의 한 줄(#691·#719). 산업이 사례 파일 값이면 아무도 확정한 것이 아니므로
- * "사례 파일 값: 기계·설비", 그 밖(담당자가 확정한 산업·확정된 공정 연결)은 "확정됨: 아연도금"이다.
- * 공정 연결은 상세 응답에 출처가 오지 않아 사례 파일 값인지 가를 수 없다.
+ * 이미 확인된 값이 있는 질문의 한 줄(#719, PM 결정 2026-11-14): "공정: 아연도금", "산업: 기계·설비".
+ * 출처("확정됨"·"사례 파일 값")는 이 줄에 적지 않는다.
  */
-export function confirmedLineText(
-  question: SalesQuestion,
-  marks: ChoiceMarks | null,
-  names: string[],
-): string {
-  const joined = names.join(', ');
-  return question.choices === 'INDUSTRY' && marks?.industriesSource === 'CASE_FILE'
-    ? texts.caseFileLine(joined)
-    : texts.confirmedLine(joined);
+export function currentLineText(question: SalesQuestion, names: string[]): string {
+  return texts.currentLine(
+    question.choices === 'INDUSTRY' ? 'INDUSTRY' : 'PROCESS',
+    names.join(', '),
+  );
 }
 
 /** 고른 값으로 저장하면 빠질 AI 공정 제안 수. */
@@ -98,6 +98,9 @@ function tagOf(question: SalesQuestion, id: string, marks: ChoiceMarks | null): 
   if (marks.industriesSource === 'AI') return texts.aiTag;
   return marks.industriesSource === 'CASE_FILE' ? texts.caseFileTag : texts.staffTag;
 }
+
+const labelsOf = (question: SalesQuestion, ids: string[]) =>
+  question.answers.filter((option) => ids.includes(option.answerId)).map((option) => option.label);
 
 /**
  * 서버로 보낼 값. 담당자가 새로 고른 것이 없거나 "아직 모름"이면 빈 배열(답을 보내지 않는다).
@@ -155,20 +158,34 @@ export function ChoiceQuestionField({
   const locked = lockedValues(question, marks);
   const unknown = picked.includes(UNKNOWN_CHOICE);
   const confirmed = confirmedValues(question, marks);
+  // 이미 확인된 값이 있는 질문(#719): [바꾸기] 없이 지금 값이 고른 채로 보이고 바로 고친다.
+  // 건드리지 않았으면 picked는 빈 배열이고(답을 보내지 않는다), 다르게 고른 때에만 값이 담긴다.
+  const inPlace = confirmed.length > 0;
+  // 산업은 지금 값을 뺄 수 있다. 건드리기 전에는 지금 값이 고른 것으로 보인다(공정의 지금 값은 잠겨 있다).
+  const base = inPlace && question.choices === 'INDUSTRY' && picked.length === 0 ? confirmed : [];
+  const chosen = [...base, ...picked.filter((id) => !SPECIAL.includes(id))];
   // 이 회사에 붙어 있는 값(AI 제안·확정)을 먼저, 나머지는 목록 순서대로.
   const options = [
     ...question.answers.filter((option) => tagOf(question, option.answerId, marks)),
     ...question.answers.filter((option) => !tagOf(question, option.answerId, marks)),
   ];
-  const full =
-    question.choices === 'INDUSTRY' &&
-    picked.filter((id) => !SPECIAL.includes(id)).length >= MAX_INDUSTRIES;
+  const full = question.choices === 'INDUSTRY' && chosen.length >= MAX_INDUSTRIES;
   const preview = choicePreview(question, picked, marks);
+  // 저장하면 갈 답. 지금 값과 다를 때만 값이 있다(같으면 picked를 비워 두므로 빈 배열).
+  const changedIds = inPlace ? choiceAnswerIds(question, picked, marks) : [];
   const hint = { fontSize: typography.fontSizeSecondary } as const;
 
   function toggle(id: string, checked: boolean) {
-    const rest = picked.filter((item) => item !== id && !SPECIAL.includes(item));
-    onChange(checked ? [...rest, id] : rest);
+    const rest = chosen.filter((item) => item !== id);
+    const next = checked ? [...rest, id] : rest;
+    if (inPlace && question.choices === 'INDUSTRY') {
+      // 지금 값과 같아지면 "건드리지 않음"으로 되돌리고, 하나도 안 남으면 그 상태를 따로 표시한다.
+      const same =
+        next.length === confirmed.length && next.every((item) => confirmed.includes(item));
+      onChange(same ? [] : next.length === 0 ? [CLEARED_CHOICE] : next);
+      return;
+    }
+    onChange(next);
   }
 
   return (
@@ -180,8 +197,10 @@ export function ChoiceQuestionField({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', alignItems: 'center' }}>
         {options.map((option) => {
           const isLocked = locked.includes(option.answerId);
-          const checked = isLocked || picked.includes(option.answerId);
-          const tag = tagOf(question, option.answerId, marks);
+          const checked = isLocked || chosen.includes(option.answerId);
+          // 확인된 값이 있는 질문에서는 출처 표시("확정됨"·"사례 파일")를 붙이지 않는다. AI 제안 표시만 남는다.
+          const mark = tagOf(question, option.answerId, marks);
+          const tag = inPlace && mark !== texts.aiTag ? null : mark;
           return (
             <Checkbox
               key={option.answerId}
@@ -199,37 +218,38 @@ export function ChoiceQuestionField({
             </Checkbox>
           );
         })}
-        {confirmed.length > 0 ? (
+        {inPlace ? null : (
           <Checkbox
-            checked={picked.includes(KEEP_CHOICE)}
+            checked={unknown}
             disabled={disabled}
-            onChange={(event) => onChange(event.target.checked ? [KEEP_CHOICE] : [])}
-            data-testid={`sales-choice-${question.questionId}-keep`}
+            onChange={(event) => onChange(event.target.checked ? [UNKNOWN_CHOICE] : [])}
+            data-testid={`sales-choice-${question.questionId}-unknown`}
           >
-            {texts.keep}
+            {texts.unknown}
           </Checkbox>
-        ) : null}
-        <Checkbox
-          checked={unknown}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.checked ? [UNKNOWN_CHOICE] : [])}
-          data-testid={`sales-choice-${question.questionId}-unknown`}
-        >
-          {texts.unknown}
-        </Checkbox>
+        )}
       </div>
       <Typography.Text type="secondary" style={hint}>
-        {texts.hint}
+        {inPlace ? texts.inPlaceHint : texts.hint}
         {locked.length > 0 ? ` ${texts.lockedHint}` : ''}
-        {confirmed.length > 0
-          ? ` ${
-              question.choices === 'PROCESS'
-                ? texts.keepProcessHint(droppedProposals(confirmed, marks))
-                : texts.keepIndustryHint
-            }`
-          : ''}
         {question.choices === 'INDUSTRY' ? ` ${texts.industryMax(MAX_INDUSTRIES)}` : ''}
       </Typography.Text>
+      {changedIds.length > 0 ? (
+        <span role="status" data-testid={`sales-choice-changed-${question.questionId}`}>
+          {texts.changedLine(
+            labelsOf(question, confirmed).join(', '),
+            labelsOf(question, changedIds).join(', '),
+          )}
+        </span>
+      ) : picked.includes(CLEARED_CHOICE) ? (
+        <span
+          role="status"
+          style={hint}
+          data-testid={`sales-choice-changed-${question.questionId}`}
+        >
+          {texts.clearedHint}
+        </span>
+      ) : null}
       {preview ? (
         <span
           role="status"

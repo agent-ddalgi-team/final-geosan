@@ -500,18 +500,16 @@ describe('이미 확정된 공정·산업은 다시 묻지 않는다 (#691)', ()
     industriesSource: null,
   };
 
-  it('질문 대신 "확정됨: 아연도금 [바꾸기]" 한 줄이 보이고, 누르지 않고 저장하면 그 질문의 답을 보내지 않는다', async () => {
+  // #719 (PM 결정 2026-11-14): [바꾸기] 단계를 없앴다. "공정: 아연도금" 줄과 지금 값이 고른 채로 보인다.
+  it('"공정: 아연도금" 한 줄과 지금 값이 고른 채로 보이고, 건드리지 않고 저장하면 그 질문의 답을 보내지 않는다', async () => {
     const user = userEvent.setup();
     const onCompanyConfirmed = vi.fn();
     renderArea({ choiceMarks: CONFIRMED, onCompanyConfirmed });
     await setResult(user, '연결됨');
     const line = await screen.findByTestId('sales-choice-confirmed-CONFIRM_PROCESS');
-    expect(line).toHaveTextContent(/^확정됨: 아연도금$/);
-    expect(screen.getByTestId('sales-choice-change-CONFIRM_PROCESS')).toHaveTextContent('바꾸기');
-    // 고르기(체크 상자)는 펼쳐지지 않았다.
-    expect(
-      screen.queryByTestId('sales-choice-CONFIRM_PROCESS-ZINC_PLATING'),
-    ).not.toBeInTheDocument();
+    expect(line).toHaveTextContent(/^공정: 아연도금$/);
+    expect(screen.queryByTestId('sales-choice-change-CONFIRM_PROCESS')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sales-choice-CONFIRM_PROCESS-ZINC_PLATING')).toBeChecked();
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     // 누가 먼저 연락했나만 실린다. 공정 답이 없으니 남은 AI 제안은 그대로다.
@@ -519,17 +517,16 @@ describe('이미 확정된 공정·산업은 다시 묻지 않는다 (#691)', ()
     expect(onCompanyConfirmed).not.toHaveBeenCalled();
   });
 
-  it('[바꾸기]를 누르면 지금의 고르기가 펼쳐지고, [그대로 두기]로 다시 한 줄이 된다', async () => {
+  it('다른 공정을 한 번 누르면 "변경됨"이 보이고, 다시 눌러 되돌리면 답을 보내지 않는다', async () => {
     const user = userEvent.setup();
     renderArea({ choiceMarks: CONFIRMED });
     await setResult(user, '연결됨');
-    await user.click(await screen.findByTestId('sales-choice-change-CONFIRM_PROCESS'));
-    expect(screen.getByTestId('sales-choice-CONFIRM_PROCESS-ZINC_PLATING')).toBeChecked();
-    await user.click(screen.getByTestId('sales-choice-CONFIRM_PROCESS-ANODIZING'));
-    expect(screen.getByTestId('sales-choice-preview-CONFIRM_PROCESS')).toHaveTextContent(
-      "'아연도금, 아노다이징'(으)로 확정",
+    await user.click(await screen.findByTestId('sales-choice-CONFIRM_PROCESS-ANODIZING'));
+    expect(screen.getByTestId('sales-choice-changed-CONFIRM_PROCESS')).toHaveTextContent(
+      /^변경됨: 아연도금 → 아연도금, 아노다이징$/,
     );
-    await user.click(screen.getByTestId('sales-choice-keep-CONFIRM_PROCESS'));
+    await user.click(screen.getByTestId('sales-choice-CONFIRM_PROCESS-ANODIZING'));
+    expect(screen.queryByTestId('sales-choice-changed-CONFIRM_PROCESS')).not.toBeInTheDocument();
     expect(screen.getByTestId('sales-choice-confirmed-CONFIRM_PROCESS')).toBeInTheDocument();
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));

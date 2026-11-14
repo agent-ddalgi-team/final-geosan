@@ -962,12 +962,17 @@ export const salesChoiceTexts = {
       : `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남습니다.`,
   keepIndustryPreview: (names: string) =>
     `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
-  /** 이미 확정된 값이 있으면 질문 대신 이 한 줄(#691). "확정됨: 아연도금" + [바꾸기] */
-  confirmedLine: (names: string) => `확정됨: ${names}`,
-  /** 산업이 아무도 확정하지 않은 사례 파일 값일 때의 한 줄(#719). "사례 파일 값: 기계·설비" + [바꾸기] */
-  caseFileLine: (names: string) => `사례 파일 값: ${names}`,
-  change: '바꾸기',
-  changeClose: '그대로 두기',
+  /**
+   * 이미 확인된 값이 있는 질문의 한 줄(#719, PM 결정 2026-11-14로 #691의 "확정됨: … [바꾸기]"를 바꿈).
+   * "공정: 아연도금", "산업: 기계·설비". 그 아래에 지금 값이 고른 채로 보이고 바로 고친다.
+   */
+  currentLine: (kind: 'PROCESS' | 'INDUSTRY', names: string) =>
+    `${kind === 'PROCESS' ? '공정' : '산업'}: ${names}`,
+  /** 지금 값과 다르게 골랐을 때 그 자리에 보인다(저장 전). "변경됨: 방위산업 → 방위산업, 자동차 부품" */
+  changedLine: (before: string, after: string) => `변경됨: ${before} → ${after}`,
+  inPlaceHint: '다르면 여기서 바로 고칩니다. 그대로 두고 저장하면 바뀌지 않습니다.',
+  /** 지금 값을 모두 뺐을 때. 하나도 안 고른 채로는 바뀌지 않는다. */
+  clearedHint: '하나 이상 골라야 바뀝니다. 이대로 저장하면 지금 값 그대로입니다.',
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
