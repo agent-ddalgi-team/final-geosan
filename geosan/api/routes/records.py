@@ -7,10 +7,10 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query
-from sqlalchemy import func, literal_column, select
+from sqlalchemy import func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
-from geosan.api.auto_research import attach_background, queue_on_bookmark
+from geosan.api.auto_research import attach_background, no_auto_research, queue_on_bookmark
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
@@ -78,6 +78,7 @@ from geosan.config.errors import (
 )
 from geosan.config.sales_questions import (
     ALL_STEPS,
+    CLOSED_STAGES,
     KST,
     SalesQuestions,
     load_sales_questions,
@@ -120,6 +121,10 @@ CONTACT_RESTORES_TARGET_MEMO = "접촉 기록을 남기며 제외에서 영업 �
 # 접촉을 남기면 저절로 영업 대상이 되는 지금 의견: 의견 없음·검토 중.
 # 제외는 확인을 받았을 때만 바꾼다.
 _CONTACT_PROMOTES_FROM = (None, "NEED_CHECK")
+# 영업이 끝난 큰 단계(성사·거절). 대시보드 일정이 빼는 기준(dashboard CLOSED_STATUSES)과 같다.
+_ENDED_STAGES = ("WON", "LOST")
+# 접촉 저장이 저절로 더한 의견 행을 알아보는 표시(의견 표에 출처 열이 없어 메모 문장으로 가린다).
+_CONTACT_OPINION_MEMOS = (CONTACT_SETS_TARGET_MEMO, CONTACT_RESTORES_TARGET_MEMO)
 
 
 # 자료 조사 메모를 붙일 수 있는 검토사항 줄(자료 못 찾음·자료 부족)과 활동 이력에 붙이는 꼬리표.
@@ -619,11 +624,19 @@ def ensure_bookmarked(session: Session, opportunity: Opportunity, staff: str) ->
 
 
 def _has_sales_records(session: Session, opp_id: str) -> bool:
-    """메모·영업 기록·검토 의견 행이 있는지. 잘못 입력으로 표시한 행은 세지 않는다(#253)."""
+    """메모·영업 기록·검토 의견 행이 있는지. 잘못 입력으로 표시한 행은 세지 않는다(#253).
+
+    #719: 접촉 저장이 저절로 더한 "영업 대상" 의견 행(정해진 메모 문장)은 세지 않는다.
+    그 접촉이 살아 있으면 접촉 행이 기록으로 세어지고, 접촉을 취소했으면 사람이 남긴 기록이
+    아니므로 관심을 끌 수 있어야 한다. 의견 표에는 취소 표시 열이 없어 의견 행은 그대로 둔다.
+    """
     queries = [
         select(Note.opp_id).where(Note.opp_id == opp_id, Note.cancelled_at.is_(None)),
         select(Outcome.opp_id).where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None)),
-        select(ReviewOpinion.opp_id).where(ReviewOpinion.opp_id == opp_id),
+        select(ReviewOpinion.opp_id).where(
+            ReviewOpinion.opp_id == opp_id,
+            or_(ReviewOpinion.memo.is_(None), ReviewOpinion.memo.not_in(_CONTACT_OPINION_MEMOS)),
+        ),
     ]
     return any(session.scalar(query.limit(1)) is not None for query in queries)
 
@@ -967,12 +980,20 @@ def save_outcome(
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
-    for name in ("next_schedule_at", "next_schedule_note"):
-        if previous and name not in body.model_fields_set:
-            values[name] = getattr(previous, name)
+    # #719: 다만 이번 저장으로 성사·거절이 되면 이어받지 않는다(끝난 회사에 옛 일정이 남지 않게).
+    # 보류는 나중에 다시 연락하려는 것일 수 있어 그대로 이어받는다.
+    # 이미 같은 단계로 끝나 있던 회사(예: 거절 뒤 이유만 고치는 저장)는 "끝나는 저장"이 아니므로,
+    # 끝난 뒤에 일부러 잡아 둔 일정을 지우지 않는다.
+    ends_now = status in _ENDED_STAGES and not (previous and previous.status == status)
+    if not ends_now:
+        for name in ("next_schedule_at", "next_schedule_note"):
+            if previous and name not in body.model_fields_set:
+                values[name] = getattr(previous, name)
     # #697: 접촉을 남기면 같은 저장 안에서 검토 의견이 영업 대상으로 정해진다(관심도 여기서 켠다).
-    _set_target_by_contact(session, opportunity, staff, body)
-    ensure_bookmarked(session, opportunity, staff)
+    # #719: 이번 저장으로 성사·거절·보류가 되면 관심이 켜져도 조사를 예약하지 않는다(비용만 나간다).
+    with no_auto_research(status in CLOSED_STAGES):
+        _set_target_by_contact(session, opportunity, staff, body)
+        ensure_bookmarked(session, opportunity, staff)
     values.pop("answers", None)
     values.pop("restore_excluded", None)
     # 버전은 취소한 행까지 센 마지막 번호 다음이다(취소해도 행과 번호는 남는다).

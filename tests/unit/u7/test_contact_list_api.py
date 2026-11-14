@@ -569,3 +569,30 @@ def test_adjust_numbers_are_read_from_settings(contact_env):
         row = session.get(AppSetting, "contactList")
         row.value = {**row.value, "adjust": {**row.value["adjust"], "minClosedCount": 3}}
     assert cards_by_id(client)[second]["rankAdjust"]["level"] == 1
+
+
+def test_forbidden_evidence_is_not_counted_as_evidence(contact_env):
+    """Given 근거가 "처리 금지" 3건뿐인 회사 / Then "근거 있음" 묶음에 들지 않는다 (#719 품질 검토).
+
+    처리 금지 근거는 상세 화면 근거 목록에도 보이지 않는다. 묶음도 같은 기준으로 센다.
+    """
+    client, opp_ids = contact_env
+    forbidden_only, normal = opp_ids[0], opp_ids[1]
+    for opp_id in (forbidden_only, normal):
+        make_passed(opp_id)
+    keep_evidence(forbidden_only, 3)
+    keep_evidence(normal, 3)
+    with session_scope() as session:
+        for row in session.scalars(
+            select(Evidence).where(
+                Evidence.opp_id == forbidden_only, Evidence.superseded_at.is_(None)
+            )
+        ):
+            row.security_grade = "FORBIDDEN"
+    cards = cards_by_id(client, sort="contact")
+    assert (cards[normal]["bucket"], cards[normal]["bucketBasis"]) == (
+        "EVIDENCE_READY",
+        "EVIDENCE_ENOUGH",
+    )
+    # 셀 수 있는 근거가 0건이고 홈페이지 찾기 기록도 없으니 "조사 전"이다.
+    assert cards[forbidden_only]["bucket"] == "NOT_RESEARCHED"

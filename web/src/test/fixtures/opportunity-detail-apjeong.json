@@ -4,6 +4,9 @@
       "title": "A정밀 · 밸브 바디 아노다이징",
       "customerName": "A정밀",
       "opportunityItem": "밸브 바디 아노다이징",
+      "address": "충청남도 천안시 서북구 가상로 1 (가상)",
+      "relationConfirmedAt": null,
+      "relationConfirmedBy": null,
       "relationStatus": "EXISTING_CONFIRMED",
       "relationNote": "기존 (2024년 아연도금 견적)",
       "purpose": "NEW_PROPOSAL",
@@ -199,7 +202,7 @@
         },
         {
           "itemCode": "SIG_BID",
-          "label": "입찰·협력사 모집·구매 공고",
+          "label": "구매·외주 의향",
           "state": "CONFIRMED",
           "weight": 7,
           "matchRate": 1.0,
@@ -210,7 +213,7 @@
         },
         {
           "itemCode": "SIG_HIRE",
-          "label": "관련 직무 채용",
+          "label": "관심",
           "state": "UNAVAILABLE",
           "weight": 5,
           "matchRate": null,

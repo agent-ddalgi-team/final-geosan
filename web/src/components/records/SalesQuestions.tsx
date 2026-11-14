@@ -11,14 +11,9 @@ import type {
   SalesStep,
   SalesStepView,
 } from '../../api/types';
-import {
-  outcomeStatusLabels,
-  salesChoiceTexts,
-  salesQuestionTexts,
-  salesStepLabels,
-} from '../../labels/ko';
+import { outcomeStatusLabels, salesQuestionTexts, salesStepLabels } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
-import { ChoiceQuestionField, confirmedLabels } from './ChoiceQuestion';
+import { ChoiceQuestionField, confirmedLabels, currentLineText } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
 
@@ -277,8 +272,6 @@ export function SalesQuestionFields({
 }: SalesQuestionFieldsProps) {
   // [지금 더 묻기]를 눌렀는지(#691). 저장하면 묶음이 새로 그려져 다시 접힌다.
   const [askMore, setAskMore] = useState(false);
-  // 이미 확정된 공정·산업은 다시 묻지 않고 한 줄로 보인다(#691). [바꾸기]를 누른 질문만 펼친다.
-  const [changing, setChanging] = useState<string[]>([]);
   const all = visibleQuestions(questions, step, picked, allOnly);
   const unhidden = all.filter((question) => !hideQuestionIds.includes(question.questionId));
   const folded = askMore ? [] : foldedQuestionIds(unhidden, picked, limit);
@@ -310,58 +303,29 @@ export function SalesQuestionFields({
       <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
         {shown.map((question) => {
           const confirmed = question.choices ? confirmedLabels(question, marks) : [];
-          const isChanging = changing.includes(question.questionId);
-          if (confirmed.length > 0 && !isChanging) {
-            // 누르지 않고 저장하면 이 질문의 답을 보내지 않는다(남은 AI 제안은 그대로, #652 규칙).
-            return (
-              <div
-                key={question.questionId}
-                data-testid={`sales-question-${question.questionId}`}
-                style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
-              >
-                <span data-testid={`sales-choice-confirmed-${question.questionId}`}>
-                  {salesChoiceTexts.confirmedLine(confirmed.join(', '))}
-                </span>
-                <Button
-                  size="small"
-                  disabled={disabled}
-                  aria-label={`${question.text} ${salesChoiceTexts.change}`}
-                  onClick={() => setChanging((ids) => [...ids, question.questionId])}
-                  data-testid={`sales-choice-change-${question.questionId}`}
-                >
-                  {salesChoiceTexts.change}
-                </Button>
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: typography.fontSizeSecondary }}
-                >
-                  {question.text}
-                </Typography.Text>
-              </div>
-            );
-          }
           return (
             <div key={question.questionId} data-testid={`sales-question-${question.questionId}`}>
               <div
                 id={`sales-question-label-${question.questionId}`}
                 style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}
               >
-                <span>{question.text}</span>
                 {confirmed.length > 0 ? (
-                  <Button
-                    size="small"
-                    type="link"
-                    disabled={disabled}
-                    onClick={() => {
-                      onPickMany?.(question.questionId, []);
-                      setChanging((ids) => ids.filter((id) => id !== question.questionId));
-                    }}
-                    data-testid={`sales-choice-keep-${question.questionId}`}
-                    style={{ padding: 0, height: 'auto' }}
-                  >
-                    {salesChoiceTexts.changeClose}
-                  </Button>
-                ) : null}
+                  // 이미 확인된 값이 있으면 "공정: 아연도금" 한 줄을 먼저 보이고, 그 아래에서 바로 고친다
+                  // (#719, PM 결정 2026-11-14: [바꾸기] 단계 없음). 건드리지 않고 저장하면 답을 보내지 않는다.
+                  <>
+                    <span data-testid={`sales-choice-confirmed-${question.questionId}`}>
+                      {currentLineText(question, confirmed)}
+                    </span>
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: typography.fontSizeSecondary }}
+                    >
+                      {question.text}
+                    </Typography.Text>
+                  </>
+                ) : (
+                  <span>{question.text}</span>
+                )}
               </div>
               {question.choices ? (
                 <ChoiceQuestionField

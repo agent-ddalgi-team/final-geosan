@@ -240,6 +240,13 @@ class ExportUi(_ApiModel):
     xlsx_enabled: bool = Field(description="false면 화면이 [엑셀 내려받기] 단추를 숨긴다(#217)")
 
 
+class ResearchUi(_ApiModel):
+    ai_enabled: bool = Field(
+        description="조사용 AI(근거 추출)를 지금 부를 수 있는 설정인지. false면 화면이 "
+        "[다시 조사]를 잠근다(#719). 모드·모델·키 같은 낱값은 싣지 않는다"
+    )
+
+
 class AssistantUi(_ApiModel):
     """영업 비서(#680) 화면 설정. enabled가 false면 질문 칸 대신 안내 한 줄, [통화 준비]는 숨김."""
 
@@ -274,6 +281,7 @@ class ConfigUi(_ApiModel):
     distance_filter_presets_km: list[float] = Field(
         description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
     )
+    research: ResearchUi
 
 
 # ---------------------------------------------------------------------------

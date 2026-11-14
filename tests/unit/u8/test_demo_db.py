@@ -302,3 +302,32 @@ def test_deploy_setting_with_normal_db_still_starts(tmp_db, monkeypatch):
     assert result.exit_code == 0, result.output
     assert started == ["0.0.0.0"]
     assert "시연용 DB" not in result.output
+
+
+# ---------- #719 품질 검토: 내 PC 주소가 아니면 배포로 본다 ----------
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.168.0.10", "10.0.0.5", "example.org", ""])
+def test_any_host_that_is_not_this_pc_counts_as_deploy(monkeypatch, host):
+    """Given 비밀번호 없는 환경 / When 내 PC 주소가 아닌 주소로 들음 / Then 배포 설정으로 본다."""
+    monkeypatch.delenv("GEOSAN_PASSWORD", raising=False)
+    assert serve_module._is_deploy_setting(host)
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1"])
+def test_this_pc_addresses_are_not_deploy_without_a_password(monkeypatch, host):
+    monkeypatch.delenv("GEOSAN_PASSWORD", raising=False)
+    assert not serve_module._is_deploy_setting(host)
+    monkeypatch.setenv("GEOSAN_PASSWORD", "virtual-test-value")
+    assert serve_module._is_deploy_setting(host)
+
+
+@pytest.mark.parametrize("host", ["::", "192.168.0.10", "localhost", "::1"])
+def test_serve_still_accepts_only_the_two_listed_hosts(tmp_db, monkeypatch, host):
+    """듣는 주소는 약속대로 127.0.0.1·0.0.0.0만 받는다. 다른 주소는 시작 전에 종료 코드 1."""
+    started = []
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: started.append(host))
+    monkeypatch.setattr(serve_module, "port_in_use", lambda port, host: False)
+    result = CliRunner().invoke(app, ["serve", "--host", host, "--port", "18775"])
+    assert result.exit_code == 1, result.output
+    assert "127.0.0.1 또는 0.0.0.0" in result.output and started == []

@@ -23,6 +23,12 @@ from geosan.storage.session import session_scope
 KST = timezone(timedelta(hours=9))
 
 
+# 월 한도 거부 행의 이유 글. 조사 상태(한도로 조사 안 함)가 이 글로 알아본다(#719).
+MONTHLY_CALL_LIMIT_REASON = "이번 달 호출 한도 초과"
+MONTHLY_COST_LIMIT_REASON = "이번 달 비용 한도 초과"
+MONTHLY_LIMIT_REASONS = (MONTHLY_CALL_LIMIT_REASON, MONTHLY_COST_LIMIT_REASON)
+
+
 def configuration_error() -> AppError:
     """C4: 담당자가 재시도로 해결할 수 없는 조사 설정 오류."""
     return AppError(
@@ -81,6 +87,21 @@ def accounted_cost(row: TransferLog, llm: LlmSettings) -> Decimal:
     if row.cost_usd is not None:
         return row.cost_usd
     return Decimal(str(llm.unconfirmed_call_cost_usd)) * row.call_count
+
+
+def ai_call_configured(llm: LlmSettings, key_present: bool) -> bool:
+    """외부 AI를 부를 수 있는 설정인가. 호출 예약(_reserve)과 화면 설정 응답이 같이 쓴다(#719).
+
+    바깥 모드이고, 키가 있고, 모델이 허용 목록에 있고, 입력·출력 단가가 0보다 클 때만 True.
+    한도(월·하루)는 보지 않는다.
+    """
+    return (
+        llm.mode == "EXTERNAL"
+        and key_present
+        and bool(llm.model)
+        and llm.model in llm.allowed_models
+        and min(llm.input_cost_per_million_tokens, llm.output_cost_per_million_tokens) > 0
+    )
 
 
 def month_usage(session, llm: LlmSettings, *, now: datetime | None = None) -> tuple[int, Decimal]:
@@ -223,20 +244,9 @@ def _reserve(
         minimum_search_cost = (
             Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000 if is_search else Decimal(0)
         )
-        if (is_search and not search_enabled) or llm.mode != "EXTERNAL":
+        if is_search and (not search_enabled or llm.web_search_cost_per_thousand_calls <= 0):
             error = configuration_error()
-        elif not key_present:
-            error = configuration_error()
-        elif (
-            not llm.model
-            or llm.model not in llm.allowed_models
-            or min(
-                llm.input_cost_per_million_tokens,
-                llm.output_cost_per_million_tokens,
-                llm.web_search_cost_per_thousand_calls if is_search else 1,
-            )
-            <= 0
-        ):
+        elif not ai_call_configured(llm, key_present):
             error = configuration_error()
         elif is_search and daily_calls >= daily_limit:
             error = AppError(
@@ -247,14 +257,14 @@ def _reserve(
             )
         elif sum(row.call_count for row in rows) >= llm.monthly_call_limit:
             error = AppError(
-                "이번 달 호출 한도 초과",
+                MONTHLY_CALL_LIMIT_REASON,
                 "다음 달 다시 조사해 주세요.",
                 status=503,
                 kind="LLM_LIMIT",
             )
         elif cost + minimum_search_cost >= Decimal(str(llm.monthly_cost_limit_usd)):
             error = AppError(
-                "이번 달 비용 한도 초과",
+                MONTHLY_COST_LIMIT_REASON,
                 "다음 달 다시 조사해 주세요.",
                 status=503,
                 kind="LLM_LIMIT",

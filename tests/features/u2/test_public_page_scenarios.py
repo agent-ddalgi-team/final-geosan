@@ -288,9 +288,45 @@ def official_untouched(env):
     assert _customer(env).main_phone == "041-555-1234"
 
 
-@then("새로 저장된 AI 근거와 점수 제안은 강한 추정이다")
-def strong_after_confirmation(env):
-    assert "STRONG" in {row.certainty_proposed for row in _ai_evidence(env)}
-    assert proposal_support.inputs(env["case"].opp_id)["NEW_PRODUCT"].state == "STRONG"
+@then("다시 조사도 그 페이지 1장만 읽었고 대표번호는 저장되지 않았다")
+def still_one_page_no_phone(env):
+    # 첫 조사와 다시 조사, 두 번 모두 블로그 주소 1장만 읽는다.
+    assert [call.args[0] for call in env["fetch"].call_args_list] == [BLOG_URL, BLOG_URL]
+    assert [call.kwargs["extra_pages"] for call in env["more"].call_args_list] == [0, 0]
+    assert _customer(env).main_phone is None
+
+
+@then("새로 저장된 AI 근거와 점수 제안도 약한 추정 이하다")
+def weak_after_confirmation(env):
+    """#719: [맞음]은 "이 페이지가 그 회사 것"이라는 뜻일 뿐 공식 홈페이지가 된 것이 아니다."""
+    evidence = _ai_evidence(env)
+    assert evidence and {row.certainty_proposed for row in evidence} <= {"WEAK", "UNKNOWN"}
+    rows = proposal_support.inputs(env["case"].opp_id)
+    assert not {row.state for row in rows.values()} & {"STRONG", "CONFIRMED"}
     customer = _customer(env)
     assert customer.homepage_status == "CONFIRMED" and customer.homepage_source == "STAFF"
+    assert customer.homepage_reason.startswith("[공식 아님:BLOG] ")
+
+
+@when("담당자가 주소를 공식 홈페이지 주소로 고쳐 넣는다")
+def replace_with_official_address(env):
+    path = f"/api/v1/opportunities/{env['case'].opp_id}/homepage"
+    with TestClient(create_app()) as client:
+        saved = client.post(path, json={"url": OFFICIAL_URL}, headers={"X-Staff-Key": "park-lee"})
+        assert saved.status_code == 200, saved.text
+
+
+@then("이유 글의 공식 아님 표시가 사라진다")
+def mark_removed(env):
+    customer = _customer(env)
+    assert customer.homepage_url == OFFICIAL_URL and customer.homepage_status == "CONFIRMED"
+    assert customer.homepage_reason is None
+    assert _header(env).get("homepagePageKind") is None
+
+
+@then("강한 추정 근거와 점수 제안이 저장되고 안쪽 페이지 읽기와 대표번호도 돌아온다")
+def protection_released(env):
+    assert "STRONG" in {row.certainty_proposed for row in _ai_evidence(env)}
+    assert proposal_support.inputs(env["case"].opp_id)["NEW_PRODUCT"].state == "STRONG"
+    assert env["more"].call_args.kwargs["extra_pages"] == env["extra_pages"] > 0
+    assert _customer(env).main_phone == "041-555-1234"

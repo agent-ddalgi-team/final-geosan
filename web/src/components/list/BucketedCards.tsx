@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { ContactBucket, Meta, OpportunityCard as CardData } from '../../api/types';
 import { contactBuckets } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { shownInBucket } from './bucketRemainder';
 
 export interface BucketedCardsProps {
   items: CardData[];
@@ -13,6 +14,11 @@ export interface BucketedCardsProps {
   bucketCounts?: Meta['bucketCounts'];
   /** 묶음 제목을 보일지. 추천 순일 때만 참이다(최근 들어온 순은 묶음 순서가 아니다). */
   showBuckets: boolean;
+  /**
+   * 이 줄이 전체의 일부만 실은 것인지(공정별 묶음 보기의 50곳 상한, #719). 참이면 카드가 일부만 실린 묶음의
+   * 제목에 "(22곳만 보임)"을 덧붙인다. 쪽을 넘겨 다 볼 수 있는 목록(공정 하나·전체 보기)에는 쓰지 않는다.
+   */
+  truncated?: boolean;
   renderCard: (card: CardData) => ReactNode;
 }
 
@@ -20,10 +26,17 @@ export default function BucketedCards({
   items,
   bucketCounts,
   showBuckets,
+  truncated = false,
   renderCard,
 }: BucketedCardsProps) {
-  const countOf = (bucket: ContactBucket) =>
-    bucketCounts?.[bucket] ?? items.filter((card) => card.bucket === bucket).length;
+  const countOf = (bucket: ContactBucket) => bucketCounts?.[bucket] ?? shownInBucket(items, bucket);
+  const titleOf = (bucket: ContactBucket) => {
+    const count = countOf(bucket);
+    const shown = shownInBucket(items, bucket);
+    return truncated && shown < count
+      ? contactBuckets.titlePartial(bucket, count, shown)
+      : contactBuckets.title(bucket, count);
+  };
   return (
     <ol
       data-testid="opportunity-list"
@@ -52,7 +65,7 @@ export default function BucketedCards({
                   color: colors.textSecondary,
                 }}
               >
-                {contactBuckets.title(bucket, countOf(bucket))}
+                {titleOf(bucket)}
               </h3>
             </li>
           ) : null,

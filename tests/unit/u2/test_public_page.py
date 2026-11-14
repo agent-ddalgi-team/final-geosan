@@ -337,3 +337,40 @@ def test_official_homepage_keeps_strong_evidence(extract_env):
     result = flow_extract.run_extract(case.opp_id, support.URL)
     assert result.ok, result.error
     assert _certainties(case) == {"STRONG"}
+
+
+# ---------- #719: [맞음]으로 확인한 뒤에도 표시가 남아 있으면 보호를 유지한다 ----------
+
+
+@pytest.mark.parametrize(
+    "status,source,reason,expected",
+    [
+        ("NEEDS_CONFIRMATION", "AI", "[공식 아님:SHOP] 스토어", "SHOP"),
+        ("CONFIRMED", "STAFF", "[공식 아님:SHOP] 스토어", "SHOP"),  # [맞음]으로 확인한 공개 페이지
+        ("CONFIRMED", "STAFF", None, None),  # 담당자가 주소를 고쳐 넣음(이유 글이 비워짐)
+        ("CONFIRMED", "STAFF", "확신도가 낮은 공식 홈페이지", None),
+        ("AI_FOUND", "AI", "[공식 아님:BLOG] 글", None),
+        ("NOT_FOUND", "AI", "[공식 아님:BLOG] 글", None),
+    ],
+)
+def test_protection_stays_after_staff_confirms_the_page(status, source, reason, expected):
+    from geosan.evidence.homepage import protected_page_kind
+
+    assert protected_page_kind(status, source, reason) == expected
+
+
+def test_confirmed_public_page_is_still_capped_and_phone_is_not_taken(extract_env):
+    """Given [맞음]으로 확인한 블로그 주소 / When 다시 조사 / Then 약한 추정까지, 번호 없음."""
+    case, _ = extract_env
+    _mark_unofficial(case, support.URL)
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        customer.homepage_status, customer.homepage_source = "CONFIRMED", "STAFF"
+        customer.main_phone = None
+    result = flow_extract.run_extract(
+        case.opp_id, pasted_text="대표전화 041-555-1234\n" + support.BODY
+    )
+    assert result.ok, result.error
+    assert _certainties(case) == {"WEAK"}
+    with session_scope() as session:
+        assert session.get(Customer, case.customer_id).main_phone is None

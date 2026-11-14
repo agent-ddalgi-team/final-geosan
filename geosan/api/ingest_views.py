@@ -6,7 +6,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 
-from geosan.api.auto_research import any_running, is_running, limit_skipped
+from geosan.api.auto_research import any_running, is_running, just_started, limit_skipped
 from geosan.api.schemas import FactoryProfile, LatestIngest
 from geosan.config.app_settings import (
     DEFAULT_APP_SETTINGS_PATH,
@@ -100,6 +100,9 @@ def research_state(
     if customer.homepage_url:
         # #690: 관심 자동 조사가 하루 금액 설정 때문에 돌지 않았으면 읽기 실패와 나눠 보인다.
         session = _session_of(customer)
+        # #719: 관심 저장이 방금 예약한 조사는 서버가 시작하기 전이어도 "조사 중"이다.
+        if session is not None and just_started(session, _opp_ids(customer)):
+            return "RUNNING"
         if session is not None and limit_skipped(session, _opp_ids(customer)):
             return "LIMIT_SKIPPED"
         return "READ_FAILED"

@@ -55,6 +55,8 @@ def confirm_processes(
             .order_by(OppProcessLink.link_id)
         )
     )
+    # #719: 저장 전에 확인된 공정(사례 파일·담당자 확정)이 있었는지. 문장을 고르는 데만 쓴다.
+    confirmed_before = {row.process_code for row in rows if row.state == "CONFIRMED"}
     changed = False
     dropped = 0
     for row in rows:
@@ -89,10 +91,25 @@ def confirm_processes(
         )
     if not changed:
         return ConfirmResult(None, False)
-    summary = "꼬리 질문으로 공정 확정 · " + ", ".join(names.get(code, code) for code in codes)
+    confirmed_after = confirmed_before | chosen
+    if confirmed_before and confirmed_after != confirmed_before:
+        # 확인된 값이 있던 회사에서 값이 달라졌다. 꼬리 질문은 안 고른 확정 공정을 빼지 않으므로
+        # 옛 값은 새 값에도 남는다(있는 그대로 적는다).
+        summary = (
+            f"공정 변경 · {_names(confirmed_before, names)} → {_names(confirmed_after, names)}"
+        )
+    else:
+        summary = "꼬리 질문으로 공정 확정 · " + ", ".join(names.get(code, code) for code in codes)
     if dropped:
         summary += f" · AI 제안 {dropped}개 뺌"
     return ConfirmResult(summary, True)
+
+
+def _names(codes: set[str], names: Mapping[str, str]) -> str:
+    """공정 이름을 공정 목록 순서로 잇는다(목록에 없는 코드는 코드 그대로 뒤에)."""
+    ordered = [code for code in names if code in codes]
+    ordered += sorted(codes - set(ordered))
+    return ", ".join(names.get(code, code) for code in ordered)
 
 
 def confirm_industries(
@@ -103,7 +120,12 @@ def confirm_industries(
     values = list(industries)
     if list(customer.industries or []) == values and customer.industries_source == STAFF:
         return ConfirmResult(None, False)
+    # #719: 저장 전에 확인된 산업(사례 파일·담당자 확정)이 있었고 값이 달라지면 "변경"으로 적는다.
+    before = list(customer.industries or [])
+    was_confirmed = bool(before) and customer.industries_source != AI_PROPOSED
     customer.industries = values
     customer.industries_source = STAFF
     customer.industries_confirmed_at = now
+    if was_confirmed and before != values:
+        return ConfirmResult(f"산업 변경 · {', '.join(before)} → {', '.join(values)}", False)
     return ConfirmResult("꼬리 질문으로 산업 확정 · " + ", ".join(values), False)

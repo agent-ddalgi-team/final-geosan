@@ -1,6 +1,6 @@
 // 상세 우측 상단 [다시 조사](#210, #596): 본문 붙여넣기와 실패 종류별 모양. [맞음]·[고치기]는 #596에서 없앴다.
 // 서버 호출(postHomepage)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import HomepageControls from '../HomepageControls';
 import { ApiError, postHomepage } from '../../../api/client';
@@ -54,6 +54,43 @@ function apiError(status: number, kind: string, message = '서버 안내', ref =
 describe('HomepageControls', () => {
   beforeEach(() => {
     mockedPost.mockReset();
+  });
+
+  describe('조사용 AI가 꺼져 있을 때 (#719, PM 결정 2026-11-14)', () => {
+    const withAi = (aiEnabled: boolean | undefined) =>
+      frameValue({
+        config: {
+          staff: [],
+          brand: { brandName: '가상', demoLabel: null },
+          classificationLabels: {},
+          ...(aiEnabled === undefined ? {} : { research: { aiEnabled } }),
+        } as unknown as FrameValue['config'],
+      });
+
+    it('서버가 꺼짐이라고 하면 [다시 조사]를 잠그고 옆에 이유를 글자로 보인다', async () => {
+      const user = userEvent.setup();
+      renderControls(withAi(false));
+      const button = screen.getByTestId('homepage-rerun-button');
+      expect(button).toBeDisabled();
+      expect(screen.getByTestId('homepage-ai-off')).toHaveTextContent('AI 조사가 꺼져 있습니다');
+      await user.click(button);
+      expect(mockedPost).not.toHaveBeenCalled();
+    });
+
+    it('켜짐이면 지금처럼 눌리고 안내가 없다', () => {
+      renderControls(withAi(true));
+      expect(screen.getByTestId('homepage-rerun-button')).toBeEnabled();
+      expect(screen.queryByTestId('homepage-ai-off')).not.toBeInTheDocument();
+    });
+
+    it('서버가 이 값을 안 주면(옛 응답·설정을 아직 못 읽음) 지금처럼 눌린다', () => {
+      renderControls(withAi(undefined));
+      expect(screen.getByTestId('homepage-rerun-button')).toBeEnabled();
+      expect(screen.queryByTestId('homepage-ai-off')).not.toBeInTheDocument();
+      cleanup();
+      renderControls(frameValue({ config: null }));
+      expect(screen.getByTestId('homepage-rerun-button')).toBeEnabled();
+    });
   });
 
   it('[다시 조사] 하나만 보이고 [맞음]·[고치기]·주소 칸은 없다', () => {

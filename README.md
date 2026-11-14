@@ -77,7 +77,7 @@ geosan seed-demo-records                          # 가상 영업 기록: 성사
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
-거산 전달·배포 환경에서는 이 DB를 쓰지 않습니다. 배포 설정(`--host 0.0.0.0` 또는 `GEOSAN_PASSWORD`가 있는 환경)에서 DB 파일 이름이 `geosan-demo.db`이거나 DB 안에 시연 표시(`brand.demo`)가 있으면 `geosan serve`가 "시연용 DB는 배포 환경에서 쓸 수 없습니다"를 내고 종료 코드 2로 멈춥니다. 시연 DB에는 시연용 설정만 등록할 수 있어 파일 이름을 바꿔도 표시가 남습니다. 외부 AI·웹 검색·홈페이지 조사는 시연용 설정에서 모두 꺼져 있습니다.
+거산 전달·배포 환경에서는 이 DB를 쓰지 않습니다. 배포 설정(`--host 0.0.0.0` 또는 `GEOSAN_PASSWORD`가 있는 환경)에서 DB 파일 이름이 `geosan-demo.db`이거나 DB 안에 시연 표시(`brand.demo`)가 있으면 `geosan serve`가 "시연용 DB는 배포 환경에서 쓸 수 없습니다"를 내고 종료 코드 2로 멈춥니다. 시연 DB에는 시연용 설정만 등록할 수 있어 파일 이름을 바꿔도 표시가 남습니다. 반대로 회사가 이미 들어 있는 DB(시연 표시 없음)에는 시연용 설정이 등록되지 않습니다(`GEOSAN_DB_PATH`를 빠뜨렸을 때 실제 DB에 시연 표시가 붙는 것을 막음, #719). 외부 AI·웹 검색·홈페이지 조사는 시연용 설정에서 모두 꺼져 있습니다.
 
 검수 전환은 거래 관계나 필수 요구의 확인 상태를 바꾸지 않습니다. 기존 점수 표시 약속에 따라
 확인 묶음에서도 필수조건 확인 필요·운영 준비 중인 카드는 `--`로 보입니다.
@@ -123,6 +123,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 현재는 배포 준비 단계이며 로그인 서버 PR #225는 반영됐습니다. PM 계정 연결·Railway 주소 발급 뒤 실제 배포를 검증합니다. `GEOSAN_PASSWORD`만 설정하지 말고 아래 접속 보호 설정도 등록해야 합니다. 기존 `scripts/build.py`는 로컬 통합 실행·예비용으로 유지합니다.
 
 - Railway: 저장소 루트, 배포 가지 `main`, 서비스 1개와 영구 볼륨 `/data`. 환경 변수 `GEOSAN_DB_PATH=/data/geosan.db`, `GEOSAN_PASSWORD`, `OPENAI_API_KEY`는 서비스 설정에만 넣습니다. `PORT`는 Railway가 제공하며 `railway.json`의 시작 명령이 `--port`로 전달합니다. 로컬 `geosan serve`는 `PORT`를 자동으로 읽지 않습니다.
+- 코드 버전(#719): 평가 기록에는 어느 코드로 계산했는지 `0.1.0+<커밋 번호>`로 적습니다. 커밋 번호는 환경 변수 `GEOSAN_CODE_VERSION` → `RAILWAY_GIT_COMMIT_SHA` → git 정보 순서로 찾고, 모두 없으면 `0.1.0+nogit`로 적은 채 평가는 그대로 저장합니다(서버 시작 줄에 경고 한 줄). 배포 서버에 git 정보가 없으면 `GEOSAN_CODE_VERSION`에 배포한 커밋 번호(영문·숫자·`.`·`_`·`-` 40자 이내)를 넣어 주세요. Railway가 `RAILWAY_GIT_COMMIT_SHA`를 실제로 주는지는 배포 때 확인합니다.
 - Python 의존성 설치는 저장소 루트에서 `pip install -r requirements.lock -e .`를 사용합니다. 화면 빌드는 Railway에서 필요하지 않습니다.
 - 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전에는 같은 자리에서 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
 - 이후 `geosan check-config examples/rule-config.yaml examples/app-settings.yaml`로 설정을 등록합니다. 공개 배포 전 운영용 앱 설정의 `accessProtection.enabled`를 켜고 검증해야 합니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.

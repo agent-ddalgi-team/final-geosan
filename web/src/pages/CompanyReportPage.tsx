@@ -2,6 +2,7 @@
 // 상세가 이미 부르는 응답 둘(상세 GET /opportunities/{id}, 꼬리 질문 파일 GET /sales-questions)만 읽는다.
 // 저장된 값만 쓰고 AI를 다시 부르지 않으며, 값이 없는 칸은 지어내지 않고 "확인 필요"로 둔다.
 // 영업 메모·대표번호·직접 적은 답 글은 싣지 않는다: 화면은 reportModelOf가 고른 값만 그린다.
+// 날짜는 모두 연도까지 적는다(#719): 여러 해에 걸친 자료가 한 장에 섞여 "1/2"만으로는 언제인지 알 수 없다.
 // 메뉴·담당자 고르기가 있는 공통 틀 없이 그려서 인쇄에 그대로 맞고, 단추·링크 줄은 인쇄할 때 숨긴다(.no-print).
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -22,21 +23,24 @@ import {
   outcomeStatusLabels,
   recordsArea,
   reviewItemSourceLabels,
-  salesQuestionTexts,
   salesStepLabels,
   scoreStateLabels,
 } from '../labels/ko';
-import { colors, typography } from '../theme/tokens';
-import { formatMonthDay, todayKst } from '../utils/time';
+import { colors } from '../theme/tokens';
+import { formatDate, todayKst } from '../utils/time';
 
 const texts = companyReport;
-const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
+// 흐린 글자. 크기는 보고서 본문(.report-page, 화면 14px)을 따른다. 크기를 여기서 px로 정하면
+// 인쇄할 때 본문만 작아지고 흐린 글자는 그대로 남아 줄이 높아진다(#719).
+const secondary = { color: colors.textSecondary } as const;
+// 칸 안쪽 여백은 styles.css(.report-table)가 정한다. 인쇄할 때 더 촘촘하게 줄이려는 것이다(#719).
 const cell = {
-  padding: '4px 8px',
   textAlign: 'left',
   verticalAlign: 'top',
   borderBottom: `1px solid ${colors.borderSecondary}`,
 } as const;
+/** 배점·점수·상태처럼 좁은 칸. 글자 중간에서 줄이 꺾이지 않게 한다(#719 "배/점", "강한 추/정"). */
+const NARROW = 'report-nowrap';
 
 interface Loaded {
   key: string;
@@ -187,7 +191,12 @@ function ScoreTable({ scores }: { scores: ReportModel['scores'] }) {
       <thead>
         <tr>
           {Object.values(columns).map((name) => (
-            <th key={name} scope="col" style={cell}>
+            <th
+              key={name}
+              scope="col"
+              style={cell}
+              className={name === columns.label ? undefined : NARROW}
+            >
               {name}
             </th>
           ))}
@@ -201,11 +210,15 @@ function ScoreTable({ scores }: { scores: ReportModel['scores'] }) {
               {row.fact ? <span style={secondary}> — {row.fact}</span> : null}
               {row.aiProposed ? <Mark testId="report-ai-mark">{texts.aiProposal}</Mark> : null}
             </th>
-            <td style={cell}>{row.weight}</td>
-            <td style={cell} data-testid="report-score-value">
+            <td style={cell} className={NARROW}>
+              {row.weight}
+            </td>
+            <td style={cell} className={NARROW} data-testid="report-score-value">
               {row.score === null ? <NeedCheck /> : row.score}
             </td>
-            <td style={cell}>{labelFor(scoreStateLabels, row.state)}</td>
+            <td style={cell} className={NARROW}>
+              {labelFor(scoreStateLabels, row.state)}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -218,7 +231,7 @@ function EvidenceList({ evidence }: { evidence: ReportModel['evidence'] }) {
   return (
     <ol className="report-list" data-testid="report-evidence-list">
       {evidence.map((row) => {
-        const date = formatMonthDay(row.occurredAt);
+        const date = formatDate(row.occurredAt);
         return (
           <li key={row.id} data-testid="report-evidence">
             <span>“{row.quote}”</span>
@@ -257,9 +270,7 @@ function Questions({ known, ask }: Pick<ReportModel, 'known' | 'ask'>) {
           {known.map((row) => (
             <li key={row.questionId} data-testid="report-known">
               {row.question} <strong>{row.answers.join(', ')}</strong>
-              {formatMonthDay(row.at) ? (
-                <span style={secondary}> · {formatMonthDay(row.at)}</span>
-              ) : null}
+              {formatDate(row.at) ? <span style={secondary}> · {formatDate(row.at)}</span> : null}
             </li>
           ))}
         </ul>
@@ -279,7 +290,7 @@ function Questions({ known, ask }: Pick<ReportModel, 'known' | 'ask'>) {
               {row.answered ? (
                 <span data-testid="report-ask-answered" style={secondary}>
                   {' '}
-                  · {labels.answered(formatMonthDay(row.answeredAt))}
+                  · {labels.answered(formatDate(row.answeredAt))}
                 </span>
               ) : null}
             </li>
@@ -300,7 +311,7 @@ function Sales({ sales }: { sales: ReportModel['sales'] }) {
       </Row>
       <Row label={labels.step} testId="report-step">
         {sales.step
-          ? salesQuestionTexts.stepSince(salesStepLabels[sales.step], sales.stepSince)
+          ? labels.stepSince(salesStepLabels[sales.step], formatDate(sales.stepSince))
           : labels.stepNone}
       </Row>
       {sales.lostReasonCode ? (
@@ -314,7 +325,7 @@ function Sales({ sales }: { sales: ReportModel['sales'] }) {
           : recordsArea.contactCount(0, 0, 0, 0)}
       </Row>
       <Row label={labels.lastContact} testId="report-last-contact">
-        {formatMonthDay(sales.lastContactAt) ?? labels.none}
+        {formatDate(sales.lastContactAt) ?? labels.none}
       </Row>
       <Row label={labels.nextSchedule} testId="report-next-schedule">
         {sales.nextScheduleAt ?? labels.none}

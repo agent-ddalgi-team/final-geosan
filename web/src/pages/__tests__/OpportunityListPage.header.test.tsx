@@ -691,13 +691,54 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await screen.findByTestId('opportunity-card');
       await searchFor(user, '코파스');
       await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, q: '코파스' }));
-      expect(locationParams()).toEqual({ q: '코파스' });
-      expect(locationText()).toBe(`/opportunities?q=${encodeURIComponent('코파스')}`);
+      // 주소에는 고른 조건이 그대로 남고 검색어가 더해진다(#719). 서버에는 검색어만 간다.
+      expect(locationParams()).toEqual({
+        process: 'ANODIZING',
+        region: '아산시',
+        industry: '자동차 부품',
+        q: '코파스',
+      });
       const line = await screen.findByTestId('list-search-line');
       expect(line).toHaveTextContent('전체 후보에서 찾은 결과');
       expect(screen.getByTestId('list-search-query')).toHaveTextContent(/^코파스$/);
       // 검색 칸은 검색 중에도 보이고 지금 검색어가 들어 있다.
       expect(screen.getByTestId('list-search-input')).toHaveValue('코파스');
+    });
+
+    // #719: 검색해도 지금 보기·조건을 정하는 주소 값은 남는다(서버에는 여전히 검색어만 간다).
+    it.each([
+      ['전체 보기', '/opportunities?view=all', { view: 'all' }],
+      ['관심 기업 보기', '/opportunities?bookmarked=true', { bookmarked: 'true' }],
+      ['제외한 회사 보기', '/opportunities?excluded=true', { excluded: 'true' }],
+      [
+        '정렬·거리·함께 보기',
+        '/opportunities?process=ANODIZING&sort=distance&maxDistanceKm=50&withBookmarked=true',
+        { process: 'ANODIZING', sort: 'distance', maxDistanceKm: '50', withBookmarked: 'true' },
+      ],
+    ])('%s에서 검색해도 주소의 보기·조건 값이 빠지지 않는다', async (_name, url, kept) => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage(url, { distanceFilterPresetsKm: [30, 50, 100] } as unknown as ConfigUi);
+      await screen.findByTestId('opportunity-card');
+      await searchFor(user, '코파스');
+      await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, q: '코파스' }));
+      expect(locationParams()).toEqual({ ...kept, q: '코파스' });
+      // 다른 이름으로 다시 검색해도 그대로다.
+      await searchFor(user, '명화금속');
+      await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, q: '명화금속' }));
+      expect(locationParams()).toEqual({ ...kept, q: '명화금속' });
+      await user.click(screen.getByTestId('list-search-clear'));
+      await waitFor(() => expect(locationParams()).toEqual(kept));
+    });
+
+    it('검색 주소를 새로 열어(직전 주소를 모름) [검색 지우기]를 눌러도 주소에 남은 보기로 돌아간다', async () => {
+      const user = userEvent.setup();
+      mockedGet.mockResolvedValue(reply([apjeong], MENU));
+      renderPage('/opportunities?view=all&q=코파스');
+      await screen.findByTestId('opportunity-card');
+      expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, q: '코파스' });
+      await user.click(screen.getByTestId('list-search-clear'));
+      await waitFor(() => expect(locationText()).toBe('/opportunities?view=all'));
     });
 
     it('검색 중에는 공정·지역·산업 선택란이 숨는다', async () => {
@@ -776,7 +817,7 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(screen.getByTestId('list-process-select')).toBeInTheDocument();
       await searchFor(user, '코파스');
       await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, q: '코파스' }));
-      expect(locationParams()).toEqual({ q: '코파스' });
+      expect(locationParams()).toEqual({ bookmarked: 'true', opinion: 'NEED_CHECK', q: '코파스' });
       expect(screen.queryByTestId('list-bookmarked-view')).not.toBeInTheDocument();
       await user.click(screen.getByTestId('list-search-clear'));
       await waitFor(() =>
