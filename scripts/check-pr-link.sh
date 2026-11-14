@@ -81,7 +81,7 @@ for n in $closes; do
   fi
 
   if [[ -z "$ms_num" ]]; then
-    bad "#$n 에 마일스톤이 없습니다. 이슈 오른쪽에서 '뼈대(10/28)' / '10월 말 부분 시연' / '11/15 거산 전달' 중 하나를 골라 주세요."
+    bad "#$n 에 마일스톤이 없습니다. 이슈 오른쪽에서 '12/11 최종 발표까지'를 골라 주세요."
   else
     ok "#$n 마일스톤: $ms_title"
     if [[ -z "$issue_milestone" ]]; then
