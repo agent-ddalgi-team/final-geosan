@@ -292,3 +292,78 @@ def test_cancelling_the_contact_reopens_the_question_but_keeps_the_confirmation(
 
 def failing_evaluation(monkeypatch):
     monkeypatch.setattr(records, "evaluate_in_session", lambda *_: FlowResult(ok=False))
+
+
+# ---------- #719(PM 결정 2026-11-14): 확인된 값을 바꾼 저장은 "변경"으로 남긴다 ----------
+
+
+def _notes(opp_id):
+    with session_scope() as session:
+        rows = session.scalars(select(Note).where(Note.opp_id == opp_id).order_by(Note.version))
+        return [row.text for row in rows]
+
+
+def _answer(client, opp_id, **chosen):
+    response = support.post(client, opp_id, "outcomes", questions.contact(answers=picks(**chosen)))
+    assert response.status_code == 200, response.text
+
+
+def test_changing_a_confirmed_industry_is_recorded_as_a_change(confirm_env):
+    """Given 담당자가 확정한 산업 / When 다른 산업을 골라 저장 / Then "산업 변경 · 옛 → 새"."""
+    client, ai_only, _ = confirm_env
+    _answer(client, ai_only, industry=["방위산업", "기계·설비"])
+    _answer(client, ai_only, industry=["기계·설비"])
+    assert _notes(ai_only) == [
+        "꼬리 질문으로 산업 확정 · 방위산업, 기계·설비",
+        "산업 변경 · 방위산업, 기계·설비 → 기계·설비",
+    ]
+    assert industries(ai_only) == (["기계·설비"], "STAFF", True)
+
+
+def test_changing_a_case_file_industry_is_recorded_as_a_change(confirm_env):
+    """Given 사례 파일에서 온 산업(확인된 값) / When 다른 산업을 고름 / Then 변경으로 남는다."""
+    client, _, mixed = confirm_env
+    with session_scope() as session:
+        customer = session.get(Customer, session.get(Opportunity, mixed).customer_id)
+        customer.industries, customer.industries_source = ["방위산업"], "CASE_FILE"
+    _answer(client, mixed, industry=["반도체"])
+    assert _notes(mixed)[-1] == "산업 변경 · 방위산업 → 반도체"
+    assert industries(mixed) == (["반도체"], "STAFF", True)
+
+
+def test_first_confirmation_of_ai_industries_keeps_the_old_sentence(confirm_env):
+    """Given AI가 제안한 산업뿐 / When 처음 확정 / Then 지금 문장 그대로(변경이 아니다)."""
+    client, ai_only, _ = confirm_env
+    _answer(client, ai_only, industry=["방위산업"])
+    assert _notes(ai_only) == ["꼬리 질문으로 산업 확정 · 방위산업"]
+
+
+def test_adding_a_process_to_a_company_with_a_confirmed_one_is_recorded_as_a_change(
+    confirm_env,
+):
+    """Given 확정 공정 1개 + AI 제안 2개 / When 다른 공정을 고름 / Then "공정 변경 · 옛 → 새".
+
+    꼬리 질문은 안 고른 확정 공정을 빼지 않으므로(#652) 옛 값이 새 값에도 남는다.
+    """
+    client, _, mixed = confirm_env
+    _answer(client, mixed, processes=["ZINC_PLATING"])
+    assert links(mixed)["ANODIZING"][:2] == ("CASE_FILE", "CONFIRMED")
+    assert links(mixed)["ZINC_PLATING"][:2] == ("STAFF", "CONFIRMED")
+    assert _notes(mixed) == [
+        "공정 변경 · 아노다이징 → 아연도금(전기아연도금), 아노다이징 · AI 제안 1개 뺌"
+    ]
+
+
+def test_dropping_only_ai_proposals_keeps_the_old_sentence(confirm_env):
+    """Given 확정 공정 1개 + AI 제안 2개 / When 확정된 공정만 다시 고름 / Then 변경이 아니다."""
+    client, _, mixed = confirm_env
+    _answer(client, mixed, processes=["ANODIZING"])
+    assert _notes(mixed) == ["꼬리 질문으로 공정 확정 · 아노다이징 · AI 제안 2개 뺌"]
+
+
+def test_first_confirmation_of_ai_processes_keeps_the_old_sentence(confirm_env):
+    """Given AI 제안뿐인 회사 / When 처음 확정 / Then 지금 문장 그대로."""
+    client, ai_only, _ = confirm_env
+    _answer(client, ai_only, processes=["ZINC_PLATING"])
+    assert len(_notes(ai_only)) == 1
+    assert _notes(ai_only)[0].startswith("꼬리 질문으로 공정 확정 · 아연도금(전기아연도금)")
