@@ -6,7 +6,8 @@
 //   묶음 안 번호는 그 공정 안 순위 그대로이고, 서로 다른 공정을 한 줄 순위로 섞지 않는다. 지역·산업은 묶음 보기에서도 고를 수 있다.
 //   마지막으로 본 선택(공정 하나 또는 묶음 보기)은 이 브라우저가 기억해, 공정 없이 열면 그것으로 연다. 프로그램이 공정을 대신 고르지 않는다.
 // 대시보드 건수로 넘어온 목록은 공정 선택란 없이 전체(공정 섞임)이다. 재접촉 탭은 뒤 단위라 만들지 않는다.
-// 검색(#361): 주소가 `?q=검색어`이면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
+// 검색(#361): 주소에 `q=검색어`가 있으면 고른 조건과 상관없이 전체 후보에서 찾는다(서버에는 검색어만 보낸다).
+//   검색해도 주소의 다른 값(view=all·bookmarked 등)은 지우지 않는다(#719). 검색 중에는 읽지 않을 뿐이다.
 //   [검색 지우기]는 검색하기 직전의 주소로 돌아간다. 직전 주소는 주소 기록(history state)에 실어 새로 고침해도 남는다.
 // 정렬(#361·#516·#610·#675): "추천 순"(기본, 서버로 `sort=contact` = 근거 상태 묶음 순)과 "최근 들어온 순"(`?sort=recent`).
 //   추천 순에서는 묶음이 바뀌는 자리에 "근거 있음 30곳"·"근거 조금 25곳"·"홈페이지 없음 81곳"·"조사 전 44곳"·"끝난 회사 ○곳"
@@ -39,12 +40,14 @@ import {
   storeLastProcess,
 } from '../components/list/lastProcess';
 import BucketedCards from '../components/list/BucketedCards';
+import { bucketRest } from '../components/list/bucketRemainder';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import { withoutMoved } from '../components/list/movedToBookmarks';
 import OpportunityCard from '../components/list/OpportunityCard';
-import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
+import { useProcessGroups } from '../components/list/useProcessGroups';
 import {
   bookmarkList,
+  contactBuckets,
   excludedList,
   listFilters,
   listSearch,
@@ -333,26 +336,31 @@ export default function OpportunityListPage() {
     [setParams],
   );
 
-  // 검색: 주소를 `?q=검색어` 하나로 바꾼다. 돌아갈 주소는 검색하기 직전 것을 기억하고,
+  // 검색: 주소에 `q=검색어`를 더한다. 지금 보기·조건을 정하는 값(view·bookmarked·sort 등)은 주소에 그대로 둔다(#719).
+  // 검색 중에는 그 값들을 읽지 않으므로 서버에는 여전히 검색어만 간다. 돌아갈 주소는 검색하기 직전 것을 기억하고,
   // 검색 중에 다른 이름으로 다시 검색하면 처음 검색하기 전의 주소를 그대로 넘긴다.
   const search = useCallback(
     (text: string) => {
       if (text === q) return;
       const back = searching ? searchReturn : location.search;
       setParams(
-        new URLSearchParams({ q: text }),
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('q', text);
+          return next;
+        },
         back === null ? undefined : { state: { [SEARCH_RETURN_KEY]: back } },
       );
     },
     [q, searching, searchReturn, location.search, setParams],
   );
 
-  // [검색 지우기]: 검색하기 직전의 주소로 돌아간다. 모르면 조건 없는 목록으로 간다.
+  // [검색 지우기]: 검색하기 직전의 주소로 돌아간다. 모르면 지금 주소에서 검색어만 뺀다.
   const clearSearch = useCallback(() => {
-    const next = new URLSearchParams(searchReturn ?? '');
+    const next = new URLSearchParams(searchReturn ?? location.search);
     next.delete('q');
     setParams(next);
-  }, [searchReturn, setParams]);
+  }, [searchReturn, location.search, setParams]);
 
   const processNames = useMemo(
     () =>
@@ -590,6 +598,15 @@ export default function OpportunityListPage() {
               const groupItems = groupShown.items;
               if (group?.items !== undefined && groupItems.length === 0) return null;
               const groupTotal = groupShown.total;
+              // 한 공정은 50곳까지만 실린다. 덜 실렸으면 묶음 제목의 곳 수(공정 전체)와 카드 수가 달라
+              // 몇 곳만 보이는지와 안 보인 묶음을 알린다(#719).
+              const groupTruncated = groupTotal > groupItems.length;
+              const groupRest =
+                groupTruncated && sort === 'rank'
+                  ? bucketRest(groupItems, groupShown.bucketCounts).map((rest) =>
+                      contactBuckets.title(rest.bucket, rest.count),
+                    )
+                  : [];
               return (
                 <section
                   key={code}
@@ -621,6 +638,7 @@ export default function OpportunityListPage() {
                       items={groupItems}
                       bucketCounts={groupShown.bucketCounts}
                       showBuckets={sort === 'rank'}
+                      truncated={groupTruncated}
                       renderCard={(card) => (
                         <OpportunityCard
                           card={card}
@@ -631,8 +649,18 @@ export default function OpportunityListPage() {
                         />
                       )}
                     />
-                    {groupTotal > GROUP_PAGE_SIZE ? (
-                      <p style={{ marginTop: spacing.cardGap, marginBottom: 0 }}>
+                    {groupTruncated ? (
+                      <p
+                        data-testid="process-group-truncated"
+                        style={{
+                          marginTop: spacing.cardGap,
+                          marginBottom: 0,
+                          color: colors.textSecondary,
+                          fontSize: typography.fontSizeSecondary,
+                        }}
+                      >
+                        {listFilters.groupTruncated(groupTotal, groupItems.length, groupRest)}
+                        {' — '}
                         <Link to={onlyProcessHref(code)} data-testid="process-group-more">
                           {listFilters.onlyThisProcess}
                         </Link>

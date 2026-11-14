@@ -22,6 +22,7 @@ def _context(client, opp_id):
         "opp_id": opp_id,
         "eval_id": support.detail(client, opp_id)["evalId"],
         "link_rows": support.all_link_rows(opp_id),
+        "evaluations": support.evaluation_count(opp_id),
     }
 
 
@@ -111,7 +112,7 @@ def reevaluated_and_logged(context):
     assert context["meta"]["reevaluated"] is True
     assert support.detail(client, opp_id)["evalId"] != context["eval_id"]
     activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
-    lines = [row["summary"] for row in activity if row["kind"] == "NOTE"]
+    lines = [row["summary"] for row in activity if row["kind"] == "CHANGE"]  # #731
     assert lines == [
         "꼬리 질문으로 공정 확정 · 아연도금(전기아연도금) · AI 제안 2개 뺌"
         " / 꼬리 질문으로 산업 확정 · 반도체"
@@ -139,6 +140,58 @@ def known_and_closed(context):
 def pick_chromate(context):
     body = questions.contact(answers=support.picks(["CHROMATE"]))
     questions.save(context["client"], context["opp_id"], body)
+
+
+@then(
+    "확정 공정은 크로메이트만 남고 아노다이징은 지워지지 않고 이력으로만 남으며 "
+    "아연도금 제안은 빠진다"
+)
+def replaced_by_chromate(context):
+    opp_id = context["opp_id"]
+    assert support.links(opp_id) == {"CHROMATE": ("STAFF", "CONFIRMED", "park-lee")}
+    # 지운 행은 없다: 사례 파일 행·AI 행 2개는 이력으로 남고 담당자 확정 행 하나가 더해졌다.
+    assert support.all_link_rows(opp_id) == context["link_rows"] + 1
+    assert support.superseded_codes(opp_id) == {
+        ("ANODIZING", "CASE_FILE"),
+        ("CHROMATE", "AI"),
+        ("ZINC_PLATING", "AI"),
+    }
+    detail = support.detail(context["client"], opp_id)
+    assert [row["processCode"] for row in detail["processLinks"]] == ["CHROMATE"]
+
+
+@then('다시 평가는 한 번이고 활동 이력에 "공정 변경 · 아노다이징 → 크로메이트" 한 줄이 남는다')
+def changed_once_and_logged(context):
+    client, opp_id = context["client"], context["opp_id"]
+    assert support.evaluation_count(opp_id) == context["evaluations"] + 1
+    assert support.detail(client, opp_id)["evalId"] != context["eval_id"]
+    activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
+    lines = [row["summary"] for row in activity if row["kind"] == "CHANGE"]  # #731
+    assert lines == ["공정 변경 · 아노다이징 → 크로메이트 · AI 제안 1개 뺌"]
+
+
+@then("영업 분석에는 크로메이트 줄에만 1곳으로 나온다")
+def only_chromate_row(context):
+    groups = _groups(context)
+    assert {name: sum(rows.values()) for name, rows in groups.items()} == {"크로메이트": 1}
+
+
+@when('연결된 접촉에서 공정 "아노다이징"과 "크로메이트"를 골라 저장하면')
+def pick_both(context):
+    body = questions.contact(answers=support.picks(["ANODIZING", "CHROMATE"]))
+    questions.save(context["client"], context["opp_id"], body)
+
+
+@then("확정 공정과 AI 제안은 그대로이고 다시 평가하지 않는다")
+def mixed_untouched(context):
+    opp_id = context["opp_id"]
+    assert support.links(opp_id) == {
+        "ANODIZING": ("CASE_FILE", "CONFIRMED", None),
+        "ZINC_PLATING": ("AI", "PENDING", None),
+        "CHROMATE": ("AI", "PENDING", None),
+    }
+    assert support.all_link_rows(opp_id) == context["link_rows"]
+    assert support.evaluation_count(opp_id) == context["evaluations"]
 
 
 @then("아노다이징은 사례 파일 확정 그대로이고 크로메이트는 담당자 확정이며 아연도금 제안은 빠진다")

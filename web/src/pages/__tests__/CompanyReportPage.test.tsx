@@ -142,7 +142,9 @@ describe('CompanyReportPage', () => {
     expect(screen.getAllByTestId('report-evidence')[0]).toHaveTextContent('나라장터 공고 (가상)');
 
     // 꼬리 질문 답: 보기의 쉬운 말과 날짜
-    expect(screen.getByTestId('report-known')).toHaveTextContent('지금 도금은? 외주 줌 · 11/12');
+    expect(screen.getByTestId('report-known')).toHaveTextContent(
+      '지금 도금은? 외주 줌 · 2026-11-12',
+    );
     // 물을 것: 후속 조치, 아직 답 없는 꼬리 질문, 사례 파일에 적어 둔 확인 질문
     const ask = screen.getByTestId('report-ask-list');
     expect(ask).toHaveTextContent('응모 전 피막 두께 요구 확인');
@@ -150,10 +152,57 @@ describe('CompanyReportPage', () => {
     expect(ask).toHaveTextContent('당진 공장에서 직접 생산합니까? (사례 파일)');
 
     expect(screen.getByTestId('report-stage')).toHaveTextContent('접촉');
-    expect(screen.getByTestId('report-step')).toHaveTextContent('수요 확인 (11/12부터)');
+    expect(screen.getByTestId('report-step')).toHaveTextContent('수요 확인 (2026-11-12부터)');
     expect(screen.getByTestId('report-contacts')).toHaveTextContent('접촉 3회 (전화 2 · 방문 1)');
-    expect(screen.getByTestId('report-last-contact')).toHaveTextContent('11/12');
+    expect(screen.getByTestId('report-last-contact')).toHaveTextContent('2026-11-12');
     expect(screen.getByTestId('report-next-schedule')).toHaveTextContent('2026-11-20');
+  });
+
+  // #719: 2023년 공지가 "자료 날짜 1/2"로만 보여 언제 자료인지 알 수 없었다. 보고서의 날짜는 연도까지 보인다.
+  it('Given 여러 해에 걸친 날짜 When 보고서를 열면 Then 근거·답·접촉 날짜가 모두 연도까지 보인다', async () => {
+    const detail = detailWithSecrets();
+    mockedGet.mockResolvedValue(
+      reply({
+        ...detail,
+        evidence: detail.evidence.map((row, index) =>
+          index === 0 ? { ...row, occurredAt: '2023-01-02' } : row,
+        ),
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('company-report');
+    expect(screen.getAllByTestId('report-evidence')[0]).toHaveTextContent('자료 날짜 2023-01-02');
+    expect(screen.getByTestId('report-known')).toHaveTextContent(
+      '지금 도금은? 외주 줌 · 2026-11-12',
+    );
+    expect(screen.getByTestId('report-step')).toHaveTextContent('수요 확인 (2026-11-12부터)');
+    expect(screen.getByTestId('report-last-contact')).toHaveTextContent(/^.*2026-11-12$/);
+    expect(screen.getAllByTestId('report-ask-answered')[0]).toHaveTextContent(
+      '답 적음 · 2026-11-06',
+    );
+  });
+
+  // #719: 인쇄하면 점수 표의 좁은 칸이 글자 중간에서 꺾였다("배/점", "강한 추/정", "자료 미/확보").
+  // 화면 테스트는 칸에 붙는 클래스만 본다(테스트 환경은 CSS를 읽지 않는다). 인쇄 규칙은 src/styles.css의
+  // .report-nowrap과 @media print에 있고, 실제 인쇄 모양은 이 테스트로 확인하지 못한다.
+  it('Given 점수 표 When 보고서를 열면 Then 배점·점수·상태 칸은 줄이 꺾이지 않는 칸으로 표시된다', async () => {
+    mockedGet.mockResolvedValue(reply(detailWithSecrets()));
+    renderPage();
+    const table = await screen.findByTestId('report-scores-table');
+    const head = within(table).getAllByRole('columnheader');
+    expect(head.map((cell) => cell.textContent)).toEqual(['항목', '배점', '점수', '상태']);
+    expect(head.map((cell) => cell.classList.contains('report-nowrap'))).toEqual([
+      false,
+      true,
+      true,
+      true,
+    ]);
+    const row = within(table).getAllByTestId('report-score-row')[0];
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.classList.contains('report-nowrap')),
+    ).toEqual([true, true, true]);
   });
 
   it('Given 값이 없는 점수 항목과 빈 기본 정보 When 보고서를 열면 Then 그 칸은 "확인 필요"이고 물을 것에 모인다', async () => {
@@ -281,7 +330,9 @@ describe('CompanyReportPage', () => {
       expect(JSON.stringify(reportModelOf(detail, true, questionFile))).not.toContain(secret);
     }
     // 답이 적힌 질문은 글 없이 답한 날만 보인다.
-    expect(screen.getAllByTestId('report-ask-answered')[0]).toHaveTextContent('답 적음 · 11/6');
+    expect(screen.getAllByTestId('report-ask-answered')[0]).toHaveTextContent(
+      '답 적음 · 2026-11-06',
+    );
   });
 
   it('Given 상세를 불러오지 못함 When 보고서를 열면 Then 빈 보고서가 아니라 오류 안내와 [다시 시도]가 보인다', async () => {
@@ -337,5 +388,124 @@ describe('CompanyReportPage', () => {
     await userEvent.click(screen.getByTestId('report-back-link'));
     expect(await screen.findByText('상세 화면')).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('CompanyReportPage — 다음 일정과 물을 것 (#730)', () => {
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedQuestions.mockReset();
+  });
+
+  function withSchedule(date: string): OpportunityDetail {
+    const detail = detailWithSecrets();
+    return {
+      ...detail,
+      records: {
+        ...detail.records,
+        outcome: { ...detail.records.outcome!, nextScheduleAt: date, nextScheduleNote: null },
+      },
+    };
+  }
+
+  it('Given 마지막 접촉 뒤에도 남은 지난 날짜의 일정 When 보고서를 열면 Then "놓친 일정 2020-01-02"처럼 지난 것임이 보인다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withSchedule('2020-01-02')));
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('놓친 일정 2020-01-02');
+    expect(row).not.toHaveTextContent('다음 연락');
+  });
+
+  it('Given 앞으로의 일정(할 일 글은 싣지 않음) When 보고서를 열면 Then 날짜만 덩그러니가 아니라 "2099-12-31 다음 연락"으로 보인다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withSchedule('2099-12-31')));
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('2099-12-31 다음 연락');
+    expect(row).not.toHaveTextContent('놓친 일정');
+  });
+
+  it('Given 일정의 할 일 글이 있어도 When 보고서를 열면 Then 글은 싣지 않고 "다음 연락"으로 적는다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    const detail = detailWithSecrets();
+    mockedGet.mockResolvedValue(
+      reply({
+        ...detail,
+        records: {
+          ...detail.records,
+          outcome: { ...detail.records.outcome!, nextScheduleAt: '2099-12-31' },
+        },
+      }),
+    );
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('2099-12-31 다음 연락');
+    expect(row).not.toHaveTextContent(SCHEDULE_NOTE);
+  });
+
+  const choiceFile: SalesQuestions = {
+    version: 1,
+    steps: [],
+    questions: [
+      {
+        questionId: 'CONFIRM_PROCESS',
+        text: '어떤 공정을 맡길 수 있나요?',
+        step: 'REACHED',
+        choices: 'PROCESS',
+        answers: [{ answerId: 'ANODIZING', label: '아노다이징' }],
+      },
+      {
+        questionId: 'CONFIRM_INDUSTRY',
+        text: '어느 산업인가요?',
+        step: 'REACHED',
+        choices: 'INDUSTRY',
+        answers: [{ answerId: '기계·설비', label: '기계·설비' }],
+      },
+      ...questionFile.questions,
+    ],
+  };
+
+  function withChoices(industriesSource: 'CASE_FILE' | 'STAFF' | 'AI'): OpportunityDetail {
+    const detail = detailWithSecrets();
+    return {
+      ...detail,
+      header: { ...detail.header, industries: ['기계·설비'], industriesSource },
+      records: {
+        ...detail.records,
+        salesStep: {
+          ...detail.records.salesStep!,
+          openQuestions: ['CONFIRM_PROCESS', 'CONFIRM_INDUSTRY', 'switch'],
+        },
+      },
+    };
+  }
+
+  it('Given 공정·산업이 이미 확정된 회사(서버는 꼬리 질문을 아직 답 없는 것으로 줌) When 보고서를 열면 Then 물을 것에 공정·산업 질문이 없다', async () => {
+    mockedQuestions.mockResolvedValue({ data: choiceFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withChoices('CASE_FILE')));
+    renderPage();
+
+    const ask = await screen.findByTestId('report-ask-list');
+    expect(ask).not.toHaveTextContent('어떤 공정을 맡길 수 있나요?');
+    expect(ask).not.toHaveTextContent('어느 산업인가요?');
+    // 다른 아직 답 없는 꼬리 질문은 그대로 남는다.
+    expect(ask).toHaveTextContent('외주처를 바꿀 생각이 있나요?');
+  });
+
+  it('Given 산업이 AI 제안뿐인 회사 When 보고서를 열면 Then 산업 질문은 한 번만 남고, 확정된 공정 질문은 없다', async () => {
+    mockedQuestions.mockResolvedValue({ data: choiceFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withChoices('AI')));
+    renderPage();
+
+    const ask = await screen.findByTestId('report-ask-list');
+    const lines = within(ask)
+      .getAllByTestId('report-ask')
+      .map((el) => el.textContent ?? '');
+    expect(lines.filter((line) => line.includes('어느 산업인가요?'))).toHaveLength(1);
+    expect(ask).not.toHaveTextContent('어떤 공정을 맡길 수 있나요?');
   });
 });

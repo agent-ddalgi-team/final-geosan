@@ -51,3 +51,43 @@ export function postCallPrep(oppId: string, staffKey: string) {
     { method: 'POST', staffKey, timeoutMs: ASSISTANT_TIMEOUT_MS },
   );
 }
+
+// ---------- 메모 읽기(#720, 계약 C1 `POST /opportunities/{oppId}/assistant/memo-read`) ----------
+// 서버가 메모 글 하나를 사람 이름·전화·이메일을 지운 사본으로 AI에 보내 한 줄 요약과 변경 제안을 받는다.
+// 읽기 전용이다: 제안은 저장되지 않고, 담당자가 [반영]을 누르면 화면이 기존 저장 창구를 부른다.
+
+export type MemoProposalKind = 'PROCESS' | 'INDUSTRY' | 'NEXT_SCHEDULE';
+
+export interface MemoProposal {
+  kind: MemoProposalKind;
+  /** PROCESS = 공정 코드(확정 공정 전체가 될 값), INDUSTRY = 산업군 이름, NEXT_SCHEDULE = 다음 할 일 보기 id 하나. */
+  values: string[];
+  /** 지금 값의 이름(없으면 빈 배열). NEXT_SCHEDULE은 "11/20 견적" 꼴. */
+  before: string[];
+  /** 새 값의 이름. NEXT_SCHEDULE은 할 일 이름 하나. */
+  after: string[];
+  /** NEXT_SCHEDULE의 날짜(YYYY-MM-DD). 다른 종류는 null. */
+  date: string | null;
+  /** 근거가 된 메모 구절(이름·연락처를 지운 사본에서 그대로 딴 것). */
+  quote: string;
+}
+
+export interface MemoReadAnswer {
+  summary: string;
+  proposals: MemoProposal[];
+  aiGenerated: true;
+  removedNames: number;
+  removedContacts: number;
+}
+
+export function postMemoRead(
+  oppId: string,
+  recordKind: 'NOTE' | 'OUTCOME',
+  recordId: string,
+  staffKey: string,
+) {
+  return request<MemoReadAnswer>(
+    `/opportunities/${encodeURIComponent(oppId)}/assistant/memo-read`,
+    { method: 'POST', body: { recordKind, recordId }, staffKey, timeoutMs: ASSISTANT_TIMEOUT_MS },
+  );
+}

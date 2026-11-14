@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.config.app_settings import (
@@ -30,6 +31,7 @@ from geosan.config.sales_questions import (
     questions_path,
 )
 from geosan.config.validators import format_field_error
+from geosan.opportunity.models import Customer
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
 
@@ -131,6 +133,19 @@ def run_check_config(
                     f"{db_path.name}에는 시연 표시가 있습니다. 실제 설정은 GEOSAN_DB_PATH를 "
                     "실제 DB로 바꾼 뒤 등록해 주세요."
                 )
+                return EXIT_INPUT_ERROR
+            # #719: 시연 표시는 한번 붙으면 명령으로 뗄 수 없다. 회사가 든 DB(실제 자료)에는
+            # 붙이지 않는다. 새로 만든 DB와 이미 시연 표시가 있는 DB만 받는다.
+            if (
+                app_result.settings.brand.demo
+                and not is_demo_database(session)
+                and session.scalar(select(Customer.customer_id).limit(1)) is not None
+            ):
+                typer.echo(
+                    "오류: 시연용 설정은 새로 만든 DB에만 등록할 수 있습니다. "
+                    "GEOSAN_DB_PATH가 시연 DB를 가리키는지 확인해 주세요."
+                )
+                typer.echo(f"{db_path.name}에는 이미 회사가 들어 있어 등록하지 않았습니다.")
                 return EXIT_INPUT_ERROR
             runtime = register_config_files(session, rule_path, app_path)
             registered = f"{runtime.rule_version.rule_version} ({runtime.rule_version.status})"

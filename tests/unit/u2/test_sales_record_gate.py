@@ -14,6 +14,7 @@ from geosan.evidence.sales_record_gate import (
     ScrubbedRecordText,
     reserve_sales_records,
     scrub_sales_record,
+    scrub_sales_records,
 )
 from geosan.evidence.transfer import finish_search, month_usage
 from geosan.storage.session import session_scope
@@ -119,3 +120,65 @@ def test_unknown_company_is_not_logged_or_sent(search_env):
     with pytest.raises(NotFoundError):
         reserve_sales_records("opp-missing", _clean(), True, None, "park-lee")
     assert support.logs() == []
+
+
+# ---------------------------------------------------------------------------
+# #720: 회사 단위로 지운 글 묶음과 문의 재검사
+# ---------------------------------------------------------------------------
+
+COMPANY_MEMOS = [
+    "김철수 과장과 통화. 010-0000-0000",
+    "철수가 수요일에 샘플 보내기로. 홍길동 동석",
+    "한일 대표번호로 전화. 전기아연도금 문의",
+]
+
+
+def test_company_bundle_removes_known_names_and_keeps_stored_text_alone():
+    before = list(COMPANY_MEMOS)
+    items = scrub_sales_records(COMPANY_MEMOS, ["한일정공", "전기아연도금"])
+    assert COMPANY_MEMOS == before
+    assert [item.text for item in items] == [
+        "[이름] 과장과 통화. [연락처 제거]",
+        "[이름]가 수요일에 샘플 보내기로. [이름] 동석",
+        "한일 대표번호로 전화. 전기아연도금 문의",
+    ]
+    assert [(item.removed_contacts, item.removed_names) for item in items] == [
+        (1, 1),
+        (0, 2),
+        (0, 0),
+    ]
+    assert "철수" not in repr(items[0])
+
+
+def test_company_bundle_passes_the_gate(search_env):
+    support.change_setting("llm", salesRecordsEnabled=True)
+    items = scrub_sales_records(COMPANY_MEMOS, ["한일정공", "전기아연도금"])
+    reserve_sales_records(search_env[0].opp_id, items, True, None, "park-lee")
+    (row,) = support.logs()
+    assert (row.kind, row.decision, row.call_count) == ("SALES_RECORD", "ALLOWED", 1)
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ScrubbedRecordText("철수가 다시 전화함", 0, 0),  # 알아 둔 이름이 남은 글(지우기 전 글)
+        ScrubbedRecordText("홍길동이 검토 중", 0, 0, True),  # 넉넉한 규칙에 걸리는 글
+        ScrubbedRecordText("김철수 통화함", 0, 0, True),
+    ],
+)
+def test_gate_rejects_a_bundle_where_a_known_or_name_like_word_is_left(search_env, extra):
+    support.change_setting("llm", salesRecordsEnabled=True)
+    items = [*scrub_sales_records(COMPANY_MEMOS), extra]
+    with pytest.raises(AppError) as caught:
+        reserve_sales_records(search_env[0].opp_id, items, True, None, "park-lee")
+    assert caught.value.status == 422
+    (row,) = support.logs()
+    assert (row.kind, row.decision, row.call_count) == ("SALES_RECORD", "REJECTED", 0)
+
+
+def test_single_text_scrub_still_passes_the_gate_as_before(search_env):
+    support.change_setting("llm", salesRecordsEnabled=True)
+    # 영업 비서가 쓰는 길(글 하나씩)은 그대로다: 넉넉한 규칙으로 다시 검사하지 않는다.
+    item = scrub_sales_record("홍길동이 검토 중")
+    assert (item.text, item.wide) == ("홍길동이 검토 중", False)
+    reserve_sales_records(search_env[0].opp_id, [item], True, None, "park-lee")

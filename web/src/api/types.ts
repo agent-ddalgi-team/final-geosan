@@ -309,7 +309,14 @@ export interface ExportConfig {
   xlsxEnabled: boolean;
 }
 
+/** 조사 설정(C1 `/config/ui` research, 더하는 변경 #719). 서버가 아직 안 주면 없음 = 켜진 것으로 본다. */
+export interface ResearchConfig {
+  /** false면 상세 [다시 조사]를 잠그고 "AI 조사가 꺼져 있습니다"를 보인다. */
+  aiEnabled: boolean;
+}
+
 export interface ConfigUi {
+  research?: ResearchConfig;
   records?: RecordsConfig;
   ingestOptions?: IngestOptionsConfig;
   export?: ExportConfig;
@@ -944,7 +951,9 @@ export type ActivityKind =
   | 'EVIDENCE_GRADE_CONFIRMED'
   | 'RELATION_CONFIRMED'
   | 'NOTE'
-  | 'RECORD_CANCELLED';
+  | 'RECORD_CANCELLED'
+  /** #731 프로그램이 남긴 변경 기록(공정·산업 확정, AI 제안 확정·물리침). recordId가 없어 취소할 수 없다. */
+  | 'CHANGE';
 
 /** 취소할 수 있는 저장 행의 종류(C1 ActivityItem.recordKind). NOTE = 메모·자료 조사·답 이력, OUTCOME = 접촉·단계·일정. */
 export type RecordKind = 'NOTE' | 'OUTCOME';

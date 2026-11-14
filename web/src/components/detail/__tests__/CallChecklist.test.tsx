@@ -259,6 +259,36 @@ describe('CallChecklist (#674)', () => {
     expect(screen.getByTestId('call-empty')).toHaveTextContent('지금 확인할 것이 없습니다.');
   });
 
+  it('공정·산업이 이미 확정됐으면 서버가 꼬리 질문을 아직 답 없는 것으로 줘도 "어떤 공정·어느 산업" 줄이 없다 (#730)', () => {
+    const withOptions: SalesQuestions = {
+      ...questions,
+      questions: questions.questions.map((question) =>
+        question.choices === 'PROCESS'
+          ? { ...question, answers: [{ answerId: 'ZINC_PLATING', label: '아연도금' }] }
+          : question.choices === 'INDUSTRY'
+            ? { ...question, answers: [{ answerId: '기계·설비', label: '기계·설비' }] }
+            : question,
+      ),
+    };
+    render(
+      <CallChecklist
+        header={{ ...header, industriesSource: 'CASE_FILE' }}
+        reasons={{ reason: '이유', nextAction: '', questions: [] }}
+        processLinks={[{ ...pendingLink, appliedMaterial: 'FE', result: 'PASS' }]}
+        reviewItems={[]}
+        requirements={[]}
+        salesStep={{
+          ...salesStep,
+          openQuestions: ['CONFIRM_PROCESS', 'CONFIRM_INDUSTRY', 'SWITCH_INTENT'],
+        }}
+        questions={withOptions}
+      />,
+    );
+    expect(screen.getAllByTestId('call-line').map((el) => el.textContent)).toEqual([
+      '외주처를 바꿀 생각이 있나요?',
+    ]);
+  });
+
   it('후속 조치 문장에서 "자료 미확보: …" 조각만 뺀다', () => {
     expect(nextActionWithoutMissing('A 확인 · 자료 미확보: 공고·채용')).toBe('A 확인');
     expect(nextActionWithoutMissing('자료 미확보: 소재')).toBeNull();

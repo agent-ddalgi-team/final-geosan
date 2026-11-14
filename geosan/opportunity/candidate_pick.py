@@ -43,6 +43,7 @@ from geosan.opportunity.judgment_store import (
     public_row_content_hash,
     save_candidate_judgments,
 )
+from geosan.opportunity.source_models import CandidateJudgment as StoredJudgment
 from geosan.opportunity.source_models import shares_public_source
 from geosan.storage.session import session_scope
 
@@ -154,7 +155,24 @@ def _criteria_context(session, settings):
     )
 
 
-_MANUFACTURING_HINTS = ("제조", "생산", "가공", "부품", "제작")
+# 제조 낌새: 이 말이 있으면 제외 키워드가 있어도 AI 판단을 받는다(#491).
+# (더함 2026-11-14 #221 — PM 결정) 장비를 만드는 회사가 "교육·식품·물류" 같은 말 때문에 빠지지 않게
+# 장치·장비·기기·기계·설비·금형·검사기·기자재를 더한다. 예: "물류 자동화 설비", "식품오염 검사기".
+_MANUFACTURING_HINTS = (
+    "제조",
+    "생산",
+    "가공",
+    "부품",
+    "제작",
+    "장치",
+    "장비",
+    "기기",
+    "기계",
+    "설비",
+    "금형",
+    "검사기",
+    "기자재",
+)
 
 
 def rule_excluded(item, keywords) -> bool:
@@ -376,6 +394,32 @@ def _call(plan, context, db_path):
     raise AssertionError("후보 판단 재시도 횟수")
 
 
+def _rule_judgments_to_redo(plan, items, keywords, db_path) -> set[str]:
+    """재사용할 판단 가운데 코드가 거른 것('제조업 아님')인데 지금 규칙으로는 안 걸리는 행."""
+    pending = set(plan.pending_row_ids)
+    previous = {
+        row.previous_judgment_id: row.row_id
+        for row in plan.rows
+        if row.row_id not in pending and row.previous_judgment_id
+    }
+    if not previous:
+        return set()
+    with session_scope(db_path) as session:
+        rule_ids = set(
+            session.scalars(
+                select(StoredJudgment.judgment_id).where(
+                    StoredJudgment.judgment_id.in_(previous),
+                    StoredJudgment.model == RULE_MODEL,
+                )
+            )
+        )
+    return {
+        previous[judgment_id]
+        for judgment_id in rule_ids
+        if not rule_excluded(items[previous[judgment_id]], keywords)
+    }
+
+
 def pick_candidates(
     batch_id: str, row_ids, *, db_path: Path | str | None = None, source_kind="FACTORY"
 ) -> list[CandidateJudgment]:
@@ -396,6 +440,20 @@ def pick_candidates(
         results = {row.row_id: row for row in plan.reused}
         # #491: 명백히 제조업이 아닌 행은 AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다.
         keywords = tuple(context.config.exclude_keywords)
+        # #221: 코드가 거른 옛 판단은 지금 규칙으로 다시 본다. 제조 낌새가 늘어 더는 걸리지 않으면
+        # AI 판단을 받는다. AI가 내린 판단은 그대로 재사용한다(판단 기준 버전은 바꾸지 않음).
+        revived = _rule_judgments_to_redo(plan, items, keywords, db_path)
+        if revived:
+            plan = replace(
+                plan,
+                pending_row_ids=tuple(
+                    row_id
+                    for row_id in ids
+                    if row_id in revived or row_id in set(plan.pending_row_ids)
+                ),
+            )
+            for row_id in revived:
+                results.pop(row_id, None)
         excluded = [
             row_id for row_id in plan.pending_row_ids if rule_excluded(items[row_id], keywords)
         ]

@@ -11,6 +11,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from geosan.commands import serve as serve_module
@@ -19,7 +20,11 @@ from geosan.commands.seed_demo_records import (
     DEFAULT_DEMO_RECORDS_PATH,
     check_demo_records_file,
 )
-from geosan.config.app_settings import is_demo_database, load_app_settings
+from geosan.config.app_settings import (
+    check_app_settings_file,
+    is_demo_database,
+    load_app_settings,
+)
 from geosan.config.file_checks import check_case_file
 from geosan.config.loader import load_document
 from geosan.config.sales_questions import check_sales_questions_file
@@ -302,3 +307,91 @@ def test_deploy_setting_with_normal_db_still_starts(tmp_db, monkeypatch):
     assert result.exit_code == 0, result.output
     assert started == ["0.0.0.0"]
     assert "시연용 DB" not in result.output
+
+
+# ---------- #719 품질 검토: 내 PC 주소가 아니면 배포로 본다 ----------
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.168.0.10", "10.0.0.5", "example.org", ""])
+def test_any_host_that_is_not_this_pc_counts_as_deploy(monkeypatch, host):
+    """Given 비밀번호 없는 환경 / When 내 PC 주소가 아닌 주소로 들음 / Then 배포 설정으로 본다."""
+    monkeypatch.delenv("GEOSAN_PASSWORD", raising=False)
+    assert serve_module._is_deploy_setting(host)
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1"])
+def test_this_pc_addresses_are_not_deploy_without_a_password(monkeypatch, host):
+    monkeypatch.delenv("GEOSAN_PASSWORD", raising=False)
+    assert not serve_module._is_deploy_setting(host)
+    monkeypatch.setenv("GEOSAN_PASSWORD", "virtual-test-value")
+    assert serve_module._is_deploy_setting(host)
+
+
+@pytest.mark.parametrize("host", ["::", "192.168.0.10", "localhost", "::1"])
+def test_serve_still_accepts_only_the_two_listed_hosts(tmp_db, monkeypatch, host):
+    """듣는 주소는 약속대로 127.0.0.1·0.0.0.0만 받는다. 다른 주소는 시작 전에 종료 코드 1."""
+    started = []
+    monkeypatch.setattr(serve_module, "_run_server", lambda port, host: started.append(host))
+    monkeypatch.setattr(serve_module, "port_in_use", lambda port, host: False)
+    result = CliRunner().invoke(app, ["serve", "--host", host, "--port", "18775"])
+    assert result.exit_code == 1, result.output
+    assert "127.0.0.1 또는 0.0.0.0" in result.output and started == []
+
+
+# ---------- #720: 시연용 설정에서는 외부 AI와 검색을 켤 수 없다 ----------
+
+
+def _demo_settings_with(tmp_path, edit):
+    data = yaml.safe_load(DEMO_SETTINGS.read_text(encoding="utf-8"))
+    edit(data)
+    path = tmp_path / "demo-edited.yaml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def _external_ai(data):
+    real = yaml.safe_load((EXAMPLES_DIR / "app-settings.yaml").read_text(encoding="utf-8"))
+    data["llm"] = {**real["llm"], "mode": "EXTERNAL", "salesRecordsEnabled": False}
+
+
+@pytest.mark.parametrize(
+    ("edit", "expected"),
+    [
+        (_external_ai, "llm.mode"),
+        (lambda data: data["llm"].update(salesRecordsEnabled=True), "llm.salesRecordsEnabled"),
+        (lambda data: data["homepageDiscovery"].update(enabled=True), "homepageDiscovery.enabled"),
+        (
+            lambda data: data["homepageDiscovery"].update(autoResearch=True),
+            "homepageDiscovery.autoResearch",
+        ),
+        (
+            lambda data: data["candidateWebSearch"].update(enabled=True),
+            "candidateWebSearch.enabled",
+        ),
+    ],
+)
+def test_demo_settings_cannot_turn_on_outside_ai_or_search(tmp_path, edit, expected):
+    """Given 시연 표시가 있는 설정 / When 외부 AI·검색을 켬 / Then check-config가 거부한다."""
+    path = _demo_settings_with(tmp_path, edit)
+    check = check_app_settings_file(path)
+    assert not check.ok
+    assert [(error.path, error.message) for error in check.errors] == [
+        (expected, "시연용 설정에서는 외부 AI와 검색을 켤 수 없습니다")
+    ]
+    code, out = run("check-config", EXAMPLES_DIR / "rule-config.yaml", path)
+    assert code == 1 and "시연용 설정에서는 외부 AI와 검색을 켤 수 없습니다" in out
+
+
+def test_same_switches_are_fine_without_the_demo_mark(tmp_path):
+    """Given 시연 표시가 없는 설정 / When 같은 스위치를 켬 / Then 이 검사에는 걸리지 않는다."""
+
+    def edit(data):
+        data["brand"].update(demo=False, demoLabel=None)
+        data["llm"].update(salesRecordsEnabled=True)
+        data["candidateWebSearch"].update(enabled=True)
+
+    assert check_app_settings_file(_demo_settings_with(tmp_path, edit)).ok
+
+
+def test_shipped_demo_settings_pass_the_check():
+    assert check_app_settings_file(DEMO_SETTINGS).ok

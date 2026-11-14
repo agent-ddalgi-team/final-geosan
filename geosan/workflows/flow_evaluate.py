@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import logging
+import os
+import re
 import subprocess
 from collections import Counter
 from contextlib import nullcontext
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -82,16 +85,60 @@ def resolve_base_date(explicit: date | None, opportunities: list[Opportunity]) -
     return today_in_seoul()
 
 
+# 배포 서비스가 커밋 번호를 알려 주는 환경 변수 이름. 앞의 것이 먼저다(#719).
+# GEOSAN_CODE_VERSION은 우리 이름(운영자가 직접 정함), 뒤는 Railway가 준다고 알려진 이름이다.
+CODE_VERSION_ENV_NAMES = ("GEOSAN_CODE_VERSION", "RAILWAY_GIT_COMMIT_SHA")
+# 평가 기록의 버전 칸(80자)에 "패키지 버전+값"이 들어가도록 값의 길이를 묶는다.
+CODE_VERSION_MAX_LENGTH = 40
+_CODE_VERSION_VALUE = re.compile(rf"[0-9A-Za-z._-]{{1,{CODE_VERSION_MAX_LENGTH}}}")
+# 커밋 번호를 알 수 없을 때 버전 값에 붙는 표시. 숨기지 않고 값에 드러낸다.
+NO_COMMIT_MARK = "nogit"
+
+
+@dataclass(frozen=True)
+class CodeVersion:
+    """평가 기록에 적을 코드 버전과 그 값을 어디서 얻었는지(ENV·GIT·FALLBACK)."""
+
+    value: str
+    source: str
+    refused: list[str] = field(default_factory=list)
+
+
+def resolve_code_version() -> CodeVersion:
+    """코드 버전을 ① 환경 변수 ② git 정보 ③ 패키지 버전 + "커밋 번호 없음" 순서로 구한다(#719).
+
+    git 정보가 없는 환경(저장소 사본·배포 서버)에서도 평가는 저장돼야 한다. 버전을 모르는 채로
+    저장하되 그 사실이 값(`0.1.0+nogit`)에 남는다. 환경 변수 값이 영문·숫자·`.`·`_`·`-` 40자
+    이내가 아니면(공백·줄바꿈·너무 긴 값) 그 값은 쓰지 않고 `refused`에 이름만 남긴다.
+    """
+    refused: list[str] = []
+    for name in CODE_VERSION_ENV_NAMES:
+        raw = os.environ.get(name, "").strip()
+        if not raw:
+            continue
+        if _CODE_VERSION_VALUE.fullmatch(raw):
+            return CodeVersion(f"{__version__}+{raw}", "ENV", refused)
+        refused.append(name)
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parents[2],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        commit = result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        # git 명령이 없거나 git 정보가 없는 폴더다. 아래 대체 값으로 적는다.
+        commit = ""
+    if commit and _CODE_VERSION_VALUE.fullmatch(commit):
+        return CodeVersion(f"{__version__}+{commit}", "GIT", refused)
+    return CodeVersion(f"{__version__}+{NO_COMMIT_MARK}", "FALLBACK", refused)
+
+
 def code_version() -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "--short", "HEAD"],
-        cwd=Path(__file__).resolve().parents[2],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    return f"{__version__}+{result.stdout.strip()}"
+    return resolve_code_version().value
 
 
 def validate_output(snapshot: Snapshot, output: EvaluationOutput) -> None:

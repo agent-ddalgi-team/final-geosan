@@ -15,6 +15,7 @@ import type {
 import { companyReport } from '../../labels/ko';
 import { scoreText } from '../common/scoreDisplay';
 import { splitSourceRef, type SourcePart } from '../common/sourceUrl';
+import { formatDate, todayKst } from '../../utils/time';
 import { callLinesOf } from '../detail/CallChecklist';
 import { processStateOf } from '../detail/DetailGlance';
 import { isProposal, reviewGroupOf } from '../review/ReviewArea';
@@ -94,6 +95,8 @@ export interface ReportModel {
     lastContactAt: string | null;
     /** 날짜만. 할 일 글은 싣지 않는다. */
     nextScheduleAt: string | null;
+    /** (#730) 일정 날짜가 오늘보다 앞선가(놓친 일정). 일정이 없으면 false. */
+    nextScheduleMissed: boolean;
   };
 }
 
@@ -109,11 +112,13 @@ function text(value: string | null | undefined): string | null {
 /**
  * 상세 응답(과 꼬리 질문 파일)에서 보고서 모델을 만든다. 질문 파일을 못 받았으면 null을 넘긴다
  * (그때는 아직 답이 없는 꼬리 질문 줄이 빠지고, 화면이 빠졌다고 알린다).
+ * today("2026-11-14")는 놓친 일정을 가리는 기준이다. 시험이 현재 날짜에 기대지 않게 받을 수 있다.
  */
 export function reportModelOf(
   detail: OpportunityDetail,
   hasVirtualData: boolean,
   questions: SalesQuestions | null,
+  today: string = todayKst(),
 ): ReportModel {
   const { header, records } = detail;
   const reviewItems = detail.reviewItems ?? [];
@@ -247,6 +252,7 @@ export function reportModelOf(
     });
   }
 
+  const nextScheduleAt = formatDate(records.outcome?.nextScheduleAt);
   return {
     title: header.title,
     isVirtual: header.isVirtual || hasVirtualData,
@@ -269,7 +275,10 @@ export function reportModelOf(
       stepSince: records.salesStep?.since ?? null,
       contactCount: records.contactCount ?? null,
       lastContactAt: records.lastContactAt ?? null,
-      nextScheduleAt: records.outcome?.nextScheduleAt ?? null,
+      nextScheduleAt,
+      // 영업 기록은 다음 일정을 새로 넣지 않으면 앞 기록의 일정을 이어받는다. 그래서 그 날짜 뒤에 접촉했어도
+      // 지난 일정이 남을 수 있다(#730 코파스: 마지막 접촉 11/13, 일정 11/12). 지난 것임을 보이게 한다.
+      nextScheduleMissed: nextScheduleAt !== null && today !== '' && nextScheduleAt < today,
     },
   };
 }

@@ -44,6 +44,8 @@ NOTE_SUMMARIES = {
     "MEMO": "메모를 남김",
     "REPLY": "질문 답을 기록함",
     "RESEARCH": "자료 조사를 기록함",
+    # #731 프로그램이 남긴 변경 기록(공정·산업 확정, AI 제안 확정·물리침)
+    "CHANGE": "변경 기록을 남김",
 }
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}
@@ -328,7 +330,9 @@ def schedule_due_outcomes(today: date, population=None):
         .join(newest, and_(Outcome.opp_id == newest.c.opp_id, Outcome.version == newest.c.version))
         .where(
             Outcome.next_schedule_at.is_not(None),
-            Outcome.status.notin_(CLOSED_STATUSES),
+            # (바뀜 2026-11-14 #720 — PM 결정) 끝난 영업이라도 남아 있는 일정은 보인다.
+            # 끝나는 저장은 남은 일정을 비우므로(#719), 남아 있는 것은 끝난 뒤 일부러 잡은
+            # 일정이다(#279의 제외를 풂).
             Outcome.next_schedule_at <= today + timedelta(days=SCHEDULE_WINDOW_DAYS),
         )
     )

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from geosan.evaluation.ledger import latest_confirmed_evaluation
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Note, Outcome
+from geosan.records.program_note import CHANGE_KIND
 
 # 계약 C1의 값: 보여 주는 회사 수 상한, 거절 이유 상위 개수, 메모 한 줄 길이.
 MAX_COMPANIES = 5
@@ -217,6 +218,7 @@ def load_peer_candidates(
     codes = process_codes_of(session, opp_ids)
     outcomes: dict[str, list[Outcome]] = {}
     notes: dict[str, Note] = {}
+    changed_at: dict[str, datetime] = {}
     if opp_ids:
         for row in session.scalars(
             select(Outcome)
@@ -229,13 +231,18 @@ def load_peer_candidates(
             .where(Note.opp_id.in_(opp_ids), Note.cancelled_at.is_(None))
             .order_by(Note.opp_id, Note.version)
         ):
-            notes[row.opp_id] = row
+            if row.kind == CHANGE_KIND:
+                # #731: 변경 기록은 마지막 메모가 아니다. 최근 기록 시각에만 지금처럼 센다.
+                changed_at[row.opp_id] = row.created_at
+            else:
+                notes[row.opp_id] = row
     candidates = []
     for opp_id, name, industries in listed:
         lines = outcomes.get(opp_id, [])
         latest = lines[-1] if lines else None
         note = notes.get(opp_id)
         stamps = [row.created_at for row in lines] + ([note.created_at] if note else [])
+        stamps += [changed_at[opp_id]] if opp_id in changed_at else []
         candidates.append(
             PeerRecords(
                 opp_id=opp_id,

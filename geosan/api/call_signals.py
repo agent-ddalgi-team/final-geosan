@@ -12,7 +12,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from geosan.api.sales_step import contact_day
@@ -24,7 +23,7 @@ from geosan.evaluation.call_inputs import (
     live_call_signals,
 )
 from geosan.opportunity.models import Opportunity, Signal
-from geosan.records.models import Outcome, OutcomeAnswer
+from geosan.records.live import live_outcomes_with_answers
 from geosan.rules.models import CallSignalRule, RuleConfig
 from geosan.storage.base import new_id, utcnow
 
@@ -47,24 +46,9 @@ class WantedSignal:
 
 def latest_answers(session: Session, opp_id: str) -> dict[str, CallAnswer]:
     """질문마다 가장 최근 접촉의 답. 취소된 기록(#253)의 답은 뺀다."""
-    outcomes = list(
-        session.scalars(
-            select(Outcome)
-            .where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None))
-            .order_by(Outcome.version)
-        )
-    )
+    outcomes, answers = live_outcomes_with_answers(session, opp_id)
     order = {row.outcome_id: index for index, row in enumerate(outcomes)}
     days = {row.outcome_id: contact_day(row) for row in outcomes}
-    answers = [
-        row
-        for row in session.scalars(
-            select(OutcomeAnswer)
-            .where(OutcomeAnswer.opp_id == opp_id)
-            .order_by(OutcomeAnswer.created_at, OutcomeAnswer.answer_row_id)
-        )
-        if row.outcome_id in order
-    ]
     answers.sort(key=lambda row: order[row.outcome_id])
     latest: dict[str, CallAnswer] = {}
     for row in answers:

@@ -2,7 +2,8 @@
 
 영업 기록 글(메모·한 줄 메모·자유 답)은 아래를 모두 지나야 외부 AI로 나갈 수 있다.
   ① 영업 기록 전용 스위치(`llm.salesRecordsEnabled`)가 켜져 있다
-  ② 전화·이메일·사람 이름 지우기를 거쳤다(문에서 한 번 더 검사한다)
+  ② 전화·이메일·사람 이름 지우기를 거쳤다(문에서 한 번 더 검사한다). 회사 단위로 지운 글
+     (scrub_sales_records, #720)은 넉넉한 규칙과 알아 둔 이름으로 다시 검사한다
   ③ 전송 기록 1행과 월 호출·비용 한도(다른 AI 호출과 같은 한도)
 하나라도 걸리면 전체 거부이고 거부 기록이 남는다(걸러서 다시 보내지 않는다).
 
@@ -11,8 +12,8 @@
 어떤 외부 호출에도 나가지 못한다.
 """
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
 
@@ -24,7 +25,13 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError, NotFoundError
-from geosan.evidence.contacts import scrub_contacts, scrub_person_names
+from geosan.evidence.contacts import (
+    collect_person_names,
+    has_known_person_name,
+    scrub_contacts,
+    scrub_person_names,
+    scrub_person_names_wide,
+)
 from geosan.evidence.transfer import KST, SearchTicket, TransferLog, _reserve
 from geosan.opportunity.models import Opportunity
 from geosan.storage.base import new_id, utcnow
@@ -37,11 +44,18 @@ NOT_SCRUBBED_MESSAGE = "연락처·사람 이름 지우기를 거치지 않은 �
 
 @dataclass(frozen=True, slots=True)
 class ScrubbedRecordText:
-    """지우기를 거친 영업 기록 글 하나. scrub_sales_record로만 만든다."""
+    """지우기를 거친 영업 기록 글 하나. scrub_sales_record·scrub_sales_records로만 만든다.
+
+    known_names(같은 회사 글에서 알아 둔 이름)는 문이 다시 검사할 때만 쓴다. 저장하지 않고 밖으로
+    보내지 않으며, 기록·오류 글에 찍히지 않게 repr에서 뺀다.
+    """
 
     text: str
     removed_contacts: int
     removed_names: int
+    wide: bool = False
+    known_names: frozenset[str] = field(default=frozenset(), repr=False)
+    keep_words: frozenset[str] = field(default=frozenset(), repr=False)
 
 
 def scrub_sales_record(text: str) -> ScrubbedRecordText:
@@ -54,11 +68,35 @@ def scrub_sales_record(text: str) -> ScrubbedRecordText:
     return ScrubbedRecordText(text, contacts, names)
 
 
-def _is_clean(item: object) -> bool:
+def scrub_sales_records(
+    texts: Sequence[str], keep_words: Iterable[str] = ()
+) -> list[ScrubbedRecordText]:
+    """한 회사의 글 묶음(메모 여러 개)을 한꺼번에 지운다(#720). 저장된 글은 바꾸지 않는다(사본만).
+
+    전화·이메일을 먼저 지우고, 묶음에서 직함·호칭과 함께 나온 이름을 모아 그 이름과 성을 뗀 이름을
+    직함 없이 나와도 지운다. 이름처럼 보이는 낱말도 넉넉하게 지운다(scrub_person_names_wide 설명).
+    keep_words에는 공정·산업·지역·회사 이름처럼 프로그램이 아는 이름을 넘긴다(지우지 않는다).
+    """
+    keep = frozenset(keep_words)
+    cleaned = [scrub_contacts(text) for text in texts]
+    known = collect_person_names([text for text, _ in cleaned], keep)
+    items = []
+    for text, contacts in cleaned:
+        text, names = scrub_person_names_wide(text, known, keep)
+        items.append(ScrubbedRecordText(text, contacts, names, True, known, keep))
+    return items
+
+
+def _is_clean(item: object, known: frozenset[str]) -> bool:
+    """지우기를 거친 글인지 다시 검사한다. known은 같은 묶음의 글들이 알아 둔 이름 전부."""
     if not isinstance(item, ScrubbedRecordText) or not isinstance(item.text, str):
         return False
-    again = scrub_sales_record(item.text)
-    return again.removed_contacts == 0 and again.removed_names == 0
+    if scrub_contacts(item.text)[1] or has_known_person_name(item.text, known, item.keep_words):
+        return False
+    if item.wide:
+        # 넉넉한 규칙은 keep_words로 지킨 낱말만 빼고 scrub_person_names가 지우는 것을 모두 지운다.
+        return scrub_person_names_wide(item.text, known, item.keep_words)[1] == 0
+    return scrub_person_names(item.text)[1] == 0
 
 
 def _reject(opp_id: str, reason: str, requested_by: str, db_path: Path | str | None) -> None:
@@ -105,7 +143,10 @@ def reserve_sales_records(
             status=422,
             kind="SALES_RECORDS_DISABLED",
         )
-    if not texts or not all(_is_clean(item) for item in texts):
+    known = frozenset().union(
+        *(item.known_names for item in texts if isinstance(item, ScrubbedRecordText))
+    )
+    if not texts or not all(_is_clean(item, known) for item in texts):
         _reject(opp_id, NOT_SCRUBBED_MESSAGE, requested_by, db_path)
         raise AppError(NOT_SCRUBBED_MESSAGE, "전송 기록을 확인해 주세요.", status=422)
     return _reserve(

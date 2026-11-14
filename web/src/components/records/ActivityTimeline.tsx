@@ -109,9 +109,13 @@ export default function ActivityTimeline({
     return config?.staff.find((entry) => entry.key === actor)?.displayName ?? actor;
   }
 
-  /** 내 기록(설정이 허용하면 모든 기록)이고 아직 취소되지 않은 저장 행 줄에만 단추를 둔다. */
+  /**
+   * 내 기록(설정이 허용하면 모든 기록)이고 아직 취소되지 않은 저장 행 줄에만 단추를 둔다.
+   * 프로그램이 남긴 변경 기록(#731)은 서버가 번호를 주지 않지만, 실려 와도 단추를 두지 않는다.
+   */
   function canCancel(item: ActivityItem): boolean {
-    if (!item.recordId || item.cancelled || item.kind === 'RECORD_CANCELLED') return false;
+    if (!item.recordId || item.cancelled) return false;
+    if (item.kind === 'RECORD_CANCELLED' || item.kind === 'CHANGE') return false;
     if (!canRecord || !staffKey) return false;
     return item.actor === staffKey || config?.records?.cancelByAnyStaff === true;
   }

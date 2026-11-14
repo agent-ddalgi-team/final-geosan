@@ -83,8 +83,9 @@ class AiPickSettings(FileModel):
     """C7: #425·#430 PM 승인. 묶음 기본값은 20행(#491, 100행은 60초 한도를 넘김).
 
     model: 후보 고르기에만 쓸 모델(llm.allowedModels 안). 비우면 llm.model.
-    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작)가 없으면
-    AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감). 기준 버전에 포함된다.
+    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작·장치·장비·
+    설비 등, #221)가 없으면 AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감).
+    기준 버전에 포함된다.
     """
 
     enabled: bool = Field(default=False, strict=True)
@@ -541,9 +542,34 @@ def check_app_settings_file(path: Path | str) -> AppSettingsCheck:
                 )
             )
         seen.setdefault(entry.key, index)
+    errors.extend(
+        FieldError(path=path_text, message=DEMO_OUTSIDE_MESSAGE, line=document.line_of(path_text))
+        for path_text in demo_outside_switches(settings)
+    )
     if errors:
         return AppSettingsCheck(document=document, settings=None, errors=errors)
     return AppSettingsCheck(document=document, settings=settings, errors=[])
+
+
+DEMO_OUTSIDE_MESSAGE = "시연용 설정에서는 외부 AI와 검색을 켤 수 없습니다"
+
+
+def demo_outside_switches(settings: AppSettings) -> list[str]:
+    """시연 표시(brand.demo)가 있는 설정에서 켜져 있으면 안 되는 스위치의 경로(#720).
+
+    시연 DB는 가상 자료로 발표 때 보여 주는 것이라 외부 AI·웹 검색·자동 조사로 비용이 나가거나
+    글이 밖으로 나가면 안 된다. 시연 표시가 없으면 빈 목록이다.
+    """
+    if not settings.brand.demo:
+        return []
+    switches = {
+        "llm.mode": settings.llm.mode != "NONE",
+        "llm.salesRecordsEnabled": settings.llm.sales_records_enabled,
+        "homepageDiscovery.enabled": settings.homepage_discovery.enabled,
+        "homepageDiscovery.autoResearch": settings.homepage_discovery.auto_research,
+        "candidateWebSearch.enabled": settings.candidate_web_search.enabled,
+    }
+    return [path_text for path_text, on in switches.items() if on]
 
 
 def load_app_settings(path: Path | str) -> AppSettings:

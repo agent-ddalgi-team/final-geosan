@@ -779,6 +779,9 @@
           "records": {
             "$ref": "#/components/schemas/RecordsUi"
           },
+          "research": {
+            "$ref": "#/components/schemas/ResearchUi"
+          },
           "ruleVersion": {
             "title": "Ruleversion",
             "type": "string"
@@ -802,7 +805,8 @@
           "ingestOptions",
           "export",
           "assistant",
-          "distanceFilterPresetsKm"
+          "distanceFilterPresetsKm",
+          "research"
         ],
         "title": "ConfigUi",
         "type": "object"
@@ -1764,6 +1768,21 @@
           "data"
         ],
         "title": "Envelope[MainPhoneConfirmResponse]",
+        "type": "object"
+      },
+      "Envelope_MemoReadAnswer_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemoReadAnswer"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[MemoReadAnswer]",
         "type": "object"
       },
       "Envelope_NoteResponse_": {
@@ -3280,6 +3299,126 @@
           "distanceKm"
         ],
         "title": "MapPoint",
+        "type": "object"
+      },
+      "MemoProposalView": {
+        "properties": {
+          "after": {
+            "items": {
+              "type": "string"
+            },
+            "title": "After",
+            "type": "array"
+          },
+          "before": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Before",
+            "type": "array"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS",
+              "INDUSTRY",
+              "NEXT_SCHEDULE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "values",
+          "before",
+          "after",
+          "quote"
+        ],
+        "title": "MemoProposalView",
+        "type": "object"
+      },
+      "MemoReadAnswer": {
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/MemoProposalView"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "removedContacts": {
+            "title": "Removedcontacts",
+            "type": "integer"
+          },
+          "removedNames": {
+            "title": "Removednames",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "proposals",
+          "removedNames",
+          "removedContacts"
+        ],
+        "title": "MemoReadAnswer",
+        "type": "object"
+      },
+      "MemoReadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "recordId": {
+            "minLength": 1,
+            "title": "Recordid",
+            "type": "string"
+          },
+          "recordKind": {
+            "enum": [
+              "NOTE",
+              "OUTCOME"
+            ],
+            "title": "Recordkind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordKind",
+          "recordId"
+        ],
+        "title": "MemoReadRequest",
         "type": "object"
       },
       "Meta": {
@@ -5662,6 +5801,20 @@
         "title": "RequirementCheckView",
         "type": "object"
       },
+      "ResearchUi": {
+        "properties": {
+          "aiEnabled": {
+            "description": "조사용 AI(근거 추출)를 지금 부를 수 있는 설정인지. false면 화면이 [다시 조사]를 잠근다(#719). 모드·모델·키 같은 낱값은 싣지 않는다",
+            "title": "Aienabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "aiEnabled"
+        ],
+        "title": "ResearchUi",
+        "type": "object"
+      },
       "ReviewCheckRequest": {
         "additionalProperties": false,
         "properties": {
@@ -7590,6 +7743,72 @@
           }
         },
         "summary": "Call Prep"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/assistant/memo-read": {
+      "post": {
+        "description": "방금 저장한 메모 글 하나를 이름·연락처 지운 사본으로 보내 요약과 변경 제안을 받는다(#720).\n\n읽기 전용이다. 제안은 저장하지 않고, 담당자가 화면에서 누르면 기존 저장 창구가 반영한다.",
+        "operationId": "memo_read_api_v1_opportunities__oppId__assistant_memo_read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoReadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MemoReadAnswer_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memo Read"
       }
     },
     "/api/v1/opportunities/{oppId}/bookmark": {

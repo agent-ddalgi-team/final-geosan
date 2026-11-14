@@ -130,9 +130,44 @@ def limit_almost_used(env):
     spend_today(env, "0.4999")
 
 
+@given("하루 금액이 조사 한 곳 예상 비용과 같고 방금 다른 회사의 관심 자동 조사가 시작됐다")
+def another_company_just_started(env):
+    """#719: 아직 AI 호출 행이 없는 시작 표시 1행(다른 회사). 실제 비용은 아직 0이다."""
+    from geosan.config.app_settings import read_app_settings
+
+    with session_scope() as session:
+        estimate = read_app_settings(session).ingestion.cost_estimate.research_usd_per_company
+        opportunity = session.get(Opportunity, env[1].opp_id)
+        row = auto_research._marker(opportunity, reject_reason=None)
+        row.opp_id = new_id("opp")
+        session.add(row)
+    set_limit(estimate)
+
+
 @given("관심 자동 조사 하루 금액 설정이 0이다")
 def limit_zero(env):
     set_limit(0)
+
+
+@given("자동 조사 스위치가 꺼져 있다")
+def auto_research_off(env):
+    """#719: 후보 찾기 뒤·`geosan research`의 자동 조사를 끄는 기존 스위치."""
+    with session_scope() as session:
+        row = session.get(AppSetting, "homepageDiscovery")
+        row.value = {**row.value, "autoResearch": False}
+
+
+@given("AI가 형식에 맞지 않는 응답을 준다")
+def malformed_ai_reply(env):
+    env[2].side_effect = lambda *_: {"가짜": "형식에 맞지 않는 응답"}
+
+
+@then("관심은 저장되고 근거는 붙지 않는다")
+def saved_without_evidence(env, response):
+    _, case, _ = env
+    assert response.status_code == 200, response.text
+    assert bookmark_is_on(case) and live_evidence(case) == 0
+    assert not auto_research.is_running(case.opp_id)
 
 
 @given("그 홈페이지는 인증서 문제로 읽을 수 없다")
@@ -158,6 +193,51 @@ def note_saved(env):
     return client.post(
         f"/api/v1/opportunities/{case.opp_id}/notes", json={"text": "가상 메모"}, headers=STAFF
     )
+
+
+CLOSING = {
+    "거절": {"status": "LOST", "lostReasonCode": "PRICE"},
+    "보류": {"status": "ON_HOLD"},
+}
+
+
+def save_call(env, **extra):
+    client, case, _ = env
+    body = {"status": "IN_PROGRESS", "method": "CALL", "result": "REACHED", **extra}
+    return client.post(f"/api/v1/opportunities/{case.opp_id}/outcomes", json=body, headers=STAFF)
+
+
+@when(
+    parsers.parse('담당자가 그 회사의 첫 통화를 "{stage}"로 마무리해 저장한다'),
+    target_fixture="response",
+)
+def closing_call(env, stage):
+    return save_call(env, **CLOSING[stage])
+
+
+@when("담당자가 그 회사에 진행 중인 통화를 저장한다", target_fixture="response")
+def open_call(env):
+    return save_call(env)
+
+
+@given("그 회사는 통화 없이 거절 단계로 저장된 뒤 관심이 꺼져 있다")
+def closed_without_bookmark(env):
+    """단계만 바꾼 저장도 관심을 켜므로, 준비 단계에서 관심 행을 꺼진 값으로 되돌려 둔다."""
+    client, case, transport = env
+    set_limit(0)
+    response = client.post(
+        f"/api/v1/opportunities/{case.opp_id}/outcomes",
+        json={"status": "LOST", "lostReasonCode": "PRICE"},
+        headers=STAFF,
+    )
+    assert response.status_code == 200, response.text
+    with session_scope() as session:
+        row = session.scalar(
+            select(Bookmark).where(Bookmark.opp_id == case.opp_id).order_by(Bookmark.version.desc())
+        )
+        row.active = False
+    set_limit(1.0)
+    assert transport.call_count == 0
 
 
 def bookmark_is_on(case):

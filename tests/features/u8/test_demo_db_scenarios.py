@@ -218,3 +218,34 @@ def mark_kept(ctx, message):
     assert message in ctx["out"]
     with session_scope(ctx["db"]) as session:
         assert is_demo_database(session)
+
+
+# ---------- #719: 시연용 설정은 새 DB나 이미 시연 표시가 있는 DB에만 ----------
+
+
+@when("시연용 설정 파일을 등록한다")
+def register_demo_settings(ctx):
+    ctx["code"], ctx["out"] = run("check-config", RULE_CONFIG, DEMO_SETTINGS)
+
+
+@then(parsers.parse('"{message}"로 거부되고 시연 표시가 붙지 않는다'))
+def mark_not_added(ctx, message):
+    assert ctx["code"] == 1, ctx["out"]
+    assert message in ctx["out"]
+    with session_scope(ctx["db"]) as session:
+        assert not is_demo_database(session)
+
+
+@then("원래 설정은 그대로 다시 등록된다")
+def plain_settings_still_register(ctx):
+    code, out = run("check-config", RULE_CONFIG, VIRTUAL_SETTINGS)
+    assert code == 0, out
+    with session_scope(ctx["db"]) as session:
+        assert not is_demo_database(session)
+
+
+@then("등록되고 시연 표시가 남아 있다")
+def demo_settings_registered_again(ctx):
+    assert ctx["code"] == 0, ctx["out"]
+    with session_scope(ctx["db"]) as session:
+        assert is_demo_database(session)

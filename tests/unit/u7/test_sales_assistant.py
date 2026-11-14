@@ -482,3 +482,22 @@ def test_call_prep_unknown_company_is_404(assistant_env):
     client, _opp_ids, fake = assistant_env
     assert call_prep(client, "opp-missing").status_code == 404
     assert fake.payloads == [] and logs() == []
+
+
+def test_ask_instructions_tell_not_to_append_unrelated_companies(assistant_env):
+    """Given 질문 / When 답을 받음 / Then 지시문에 "관계없는 회사를 덧붙이지 않는다"가 있다(#720).
+
+    지시문만으로 막는 것이라 AI가 늘 따르는지는 여기서 확인하지 못한다. 근거 회사 계산은 그대로다.
+    """
+    client, opp_ids, fake = assistant_env
+    seed(client, opp_ids)
+    a_name, b_name = names(opp_ids[:2])
+    fake.answer = f"기록에 없음. 참고로 {b_name}은 메일로 연결됨."
+    response = ask(client, "샘플을 보낸 회사는?")
+    assert response.status_code == 200, response.text
+    instructions = fake.payloads[0]["instructions"]
+    assert "질문과 관계없는 회사를 덧붙이지 않는다." in instructions
+    assert "기록에 없으면 없다고만 답하고 다른 회사를 예로 들지 않는다." in instructions
+    # sources 계산은 바꾸지 않았다: 답 글에 이름이 나온 회사는 지금처럼 근거로 달린다.
+    assert response.json()["data"]["sources"] == [{"oppId": opp_ids[1], "name": b_name}]
+    assert a_name not in fake.answer
