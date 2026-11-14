@@ -167,8 +167,12 @@ def _reserve(
     requested_by: str,
     *,
     batch_id: str | None = None,
+    record_kind: str | None = None,
 ) -> SearchTicket:
-    """검사와 호출 수 증가를 같은 쓰기 잠금에서 처리한다. HTTP 중에는 잠금을 잡지 않는다."""
+    """검사와 호출 수 증가를 같은 쓰기 잠금에서 처리한다. HTTP 중에는 잠금을 잡지 않는다.
+
+    record_kind(#680)는 공개 글이 아닌 종류(영업 기록 글)의 호출을 같은 한도로 셀 때만 준다.
+    """
     now = utcnow()
     local = now.astimezone(KST)
     month_start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
@@ -263,10 +267,10 @@ def _reserve(
                 opp_id=opp_id,
                 batch_id=batch_id,
                 purpose=purpose,
-                kind="WEB_SEARCH" if is_search else "PUBLIC_TEXT",
+                kind=record_kind or ("WEB_SEARCH" if is_search else "PUBLIC_TEXT"),
                 mode=llm.mode,
                 model=llm.model,
-                security_grade="PUBLIC",
+                security_grade="EXTERNAL_AI_OK" if record_kind else "PUBLIC",
                 decision="REJECTED" if error else "ALLOWED",
                 reject_reason=error.message if error else None,
                 call_count=0 if error else 1,

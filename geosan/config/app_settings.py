@@ -110,6 +110,9 @@ class CandidateWebSearchSettings(FileModel):
     enabled: bool = Field(default=False, strict=True)
     daily_search_limit: int = Field(default=20, ge=0, strict=True)
     cache_days: int = Field(default=15, ge=1, strict=True)
+    # #706 PM 결정 2026-11-13: 실제 검색 비교로 정한 값. 옛 설정에는 없어 기본값으로 읽는다.
+    searches_per_run: int = Field(default=3, ge=1, le=5, strict=True)
+    timeout_seconds: int = Field(default=90, ge=20, le=180, strict=True)
     blocked_domains: list[str] = Field(default_factory=list, max_length=100)
 
     @field_validator("blocked_domains")
@@ -170,6 +173,8 @@ class LlmSettings(FileModel):
     monthly_cost_limit_usd: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
     unconfirmed_call_cost_usd: float = Field(gt=0, strict=True, allow_inf_nan=False)
     cost_alert_ratio: float = Field(default=0.5, ge=0, le=1, strict=True, allow_inf_nan=False)
+    # #680: 영업 기록 글(연락처·이름을 지운 것)을 외부 AI로 보내도 되는지. 칸이 없으면 꺼짐.
+    sales_records_enabled: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def check_allowed_model(self) -> LlmSettings:
@@ -302,6 +307,20 @@ class SalesAnalysisSettings(FileModel):
     closed_window_days: int = Field(ge=1, strict=True)
 
 
+class AssistantSettings(FileModel):
+    """계약 C7 `assistant`(#680 영업 비서). 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩).
+
+    켜고 끄는 스위치는 여기 없다 — `llm.salesRecordsEnabled`(와 `llm.mode`)가 스위치다.
+    """
+
+    # 하루(한국 날짜)에 질문에 답하기·통화 준비를 합쳐 외부 AI를 부를 수 있는 횟수.
+    daily_question_limit: int = Field(ge=1, strict=True)
+    question_max_length: int = Field(ge=1, strict=True)
+    # 조회 글에 싣는 회사 수 상한. 넘으면 관심 회사를 먼저 싣는다.
+    max_companies: int = Field(ge=1, strict=True)
+    max_output_tokens: int = Field(ge=1, strict=True)
+
+
 class ContactAdjustSettings(FileModel):
     """계약 C7 `contactList.adjust`(#610). 같은 공정·산업군의 성사·거절로 순서를 조정하는 기준."""
 
@@ -410,6 +429,8 @@ class AppSettings(FileModel):
     research: ResearchSettings = Field(default_factory=ResearchSettings)
     # #608: 이 칸이 없는 옛 설정 파일도 읽는다. DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     sales_analysis: SalesAnalysisSettings | None = None
+    # #680: 위와 같은 방식(영업 비서 기준 숫자).
+    assistant: AssistantSettings | None = None
     # #610: 위와 같은 방식. 옛 설정에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     contact_list: ContactListSettings | None = None
     # #217: 이 칸이 없는 옛 설정 파일은 꺼짐으로 읽는다. DB 사본에 없으면 예시 파일 값으로 채운다.
@@ -616,8 +637,8 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis", "contactList", "export")
-"""#608·#610·#217 뒤에 생긴 묶음. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant")
+"""#608·#610·#217·#680 뒤에 생긴 묶음. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:

@@ -33,11 +33,11 @@ class _Usage(BaseModel):
     output_tokens: int = Field(ge=0)
 
 
-def _post_response(body: dict, api_key: str) -> dict:
+def _post_response(body: dict, api_key: str, timeout_seconds: float = TIMEOUT_SECONDS) -> dict:
     """고정된 HTTPS 주소로 한 번 보낸다. 다른 주소로의 이동은 따라가지 않는다."""
-    deadline = time.monotonic() + TIMEOUT_SECONDS
+    deadline = time.monotonic() + timeout_seconds
     context = current_research.get()
-    timeout = TIMEOUT_SECONDS
+    timeout = timeout_seconds
     if context is not None:
         deadline = min(deadline, context.deadline)
         timeout = min(timeout, remaining(context.deadline))
@@ -69,7 +69,7 @@ def _post_response(body: dict, api_key: str) -> dict:
         while True:
             request_remaining()
             if connection.sock:
-                connection.sock.settimeout(min(TIMEOUT_SECONDS, request_remaining()))
+                connection.sock.settimeout(min(timeout_seconds, request_remaining()))
             chunk = response.read1(65536)
             request_remaining()
             if not chunk:
@@ -161,27 +161,32 @@ def _search_count(response: dict) -> int:
     return sum(item["action"]["type"] == "search" for item in searches)
 
 
-def _extra_searches_ignored_at_limit(response: dict, searches: list[dict]) -> bool:
-    """제공사가 한 번 검색을 끝내고 상한으로 처리하지 않은 추가 시도만 구분한다.
+def _extra_searches_ignored_at_limit(
+    response: dict, searches: list[dict], *, limit: int = MAX_TOOL_CALLS
+) -> bool:
+    """제공사가 허용한 횟수만큼 검색을 끝내고 상한으로 처리하지 않은 추가 시도만 구분한다.
 
-    Responses의 max_tool_calls 이후 시도는 무시된다. 실제 응답은 그 항목을 searching으로
-    남기므로, 한도·확정 사용량·첫 검색 완료가 모두 일치할 때만 추가 항목을 제외한다.
+    Responses의 max_tool_calls 이후 시도는 무시된다. 실제 응답은 그 항목 하나를 맨 뒤에
+    searching으로 남기므로, 한도·확정 사용량·앞선 검색 완료가 모두 일치할 때만 제외한다.
     """
-    limit = response.get("max_tool_calls")
+    sent = response.get("max_tool_calls")
     count = response.get("tool_usage", {}).get("web_search", {}).get("num_requests")
     return (
-        type(limit) is int
-        and limit == MAX_TOOL_CALLS
+        type(sent) is int
+        and sent == limit
         and type(count) is int
-        and count == MAX_TOOL_CALLS
+        and count == limit
         and response.get("error") is None
         and response.get("incomplete_details") is None
-        and searches[0]["status"] == "completed"
-        and searches[0]["action"]["type"] == "search"
+        and len(searches) > limit
+        and all(
+            item["status"] == "completed" and item["action"]["type"] == "search"
+            for item in searches[:limit]
+        )
         and all(
             item["status"] == "searching"
             and item["action"]["type"] in {"search", "open_page", "find_in_page"}
-            for item in searches[1:]
+            for item in searches[limit:]
         )
     )
 

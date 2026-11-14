@@ -23,7 +23,6 @@ from geosan.config.app_settings import (
 )
 from geosan.config.errors import AppError, InputError, NotFoundError
 from geosan.evidence.openai_search import (
-    MAX_TOOL_CALLS,
     _HttpError,
     _post_response,
     _search_count,
@@ -53,6 +52,8 @@ class SearchContext:
     cache_days: int
     criteria_hash: str
     prompt: str
+    searches_per_run: int
+    timeout_seconds: int
 
 
 @dataclass(frozen=True)
@@ -139,6 +140,7 @@ def load_search_context(batch_id: str, db_path=None, *, session=None, batch=None
             blocked,
             prompt,
             model,
+            config.searches_per_run,
         ],
         ensure_ascii=False,
         separators=(",", ":"),
@@ -153,6 +155,8 @@ def load_search_context(batch_id: str, db_path=None, *, session=None, batch=None
         config.cache_days,
         hashlib.sha256(fingerprint.encode()).hexdigest(),
         prompt,
+        config.searches_per_run,
+        config.timeout_seconds,
     )
 
 
@@ -171,7 +175,7 @@ def _request(context, model):
             {"type": "web_search", "filters": {"blocked_domains": list(context.blocked_domains)}}
         ],
         "include": ["web_search_call.action.sources"],
-        "max_tool_calls": MAX_TOOL_CALLS,
+        "max_tool_calls": context.searches_per_run,
         "tool_choice": "required",
         "instructions": prompt,
         "input": json.dumps(conditions, ensure_ascii=False),
@@ -216,7 +220,9 @@ def search_candidates(batch_id: str, *, db_path=None) -> CandidateSearchResult:
                 return result(skipped="DAILY_LIMIT")
             raise
         try:
-            response = _post_response(_request(context, ticket.llm.model), api_key)
+            response = _post_response(
+                _request(context, ticket.llm.model), api_key, context.timeout_seconds
+            )
         except _HttpError as error:
             if error.status in (400, 401, 403, 404, 429):
                 finish_search(ticket, 0, 0, 0, db_path)
@@ -238,7 +244,10 @@ def search_candidates(batch_id: str, *, db_path=None) -> CandidateSearchResult:
         finish_search(ticket, usage.input_tokens, usage.output_tokens, count, db_path)
         try:
             candidates, dropped = parse_search_results(
-                response, context.blocked_domains, context.maximum
+                response,
+                context.blocked_domains,
+                context.maximum,
+                searches_per_run=context.searches_per_run,
             )
         except (KeyError, TypeError, ValueError, AttributeError):
             raise _failure() from None

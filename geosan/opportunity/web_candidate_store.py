@@ -20,7 +20,12 @@ from geosan.opportunity.candidate_web_results import (
     safe_public_text,
     source_url,
 )
-from geosan.opportunity.factory_csv import _region_name, parent_regions, row_in_selected_regions
+from geosan.opportunity.factory_csv import (
+    _region_name,
+    parent_regions,
+    row_in_selected_regions,
+    without_postcode,
+)
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.source_models import (
@@ -275,6 +280,9 @@ def save_web_search(
 def address_in_regions(address: str | None, regions) -> bool:
     """주소가 고른 지역(시·군 포함) 안인지 본다. 주소가 없으면 판정하지 않고 통과시킨다."""
     if not address or not address.strip():
+        return True
+    address = without_postcode(address)
+    if not address:
         return True
     region = _region_name(address.split()[0])
     return region in parent_regions(regions) and row_in_selected_regions(region, address, regions)

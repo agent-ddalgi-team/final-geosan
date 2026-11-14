@@ -1864,3 +1864,24 @@ export const industryChips = {
   noOptions: '산업군 목록을 불러오지 못해 고칠 수 없습니다.',
   saveFailed: '산업군을 저장하지 못했습니다.',
 } as const;
+
+/** 영업 비서(#680): 대시보드 질문 칸과 상세 [통화 준비]. 💰 = 돈이 드는 단추. */
+export const assistantTexts = {
+  askLabel: '영업 기록에 대해 물어보기',
+  askPlaceholder: '예: 가격 때문에 거절된 회사는? / 이번 주에 연락할 회사는?',
+  askButton: '묻기 💰',
+  askHint: '단계·접촉 날짜·거절 이유·고른 답만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
+  asking: 'AI가 답을 쓰는 중입니다…',
+  askFailed: '답을 받지 못했습니다.',
+  /** 영업 기록 전용 스위치나 전체 AI 스위치가 꺼져 있을 때 질문 칸 대신 보이는 한 줄. */
+  disabled: '영업 기록을 AI에 보내는 설정이 꺼져 있습니다.',
+  pickStaffFirst: '담당자를 고르면 쓸 수 있습니다.',
+  aiMark: 'AI가 쓴 답 · 확인 필요',
+  sourcesLabel: '근거 회사:',
+  sourcesNone: '근거로 든 회사가 없습니다.',
+  /** "12곳 가운데 10곳만 보았습니다" */
+  partial: (total: number, included: number) => `${total}곳 가운데 ${included}곳만 보았습니다.`,
+  callPrepButton: '통화 준비 💰',
+  callPrepHint: '이 회사의 기록과 비슷한 회사의 결과로 먼저 물어볼 것을 정리합니다.',
+  callPrepFailed: '통화 준비를 받지 못했습니다.',
+} as const;

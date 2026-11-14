@@ -65,7 +65,9 @@ class WebSearchCandidate:
     snippet: str | None
 
 
-def parse_search_results(response: dict, blocked_domains: tuple[str, ...], maximum: int):
+def parse_search_results(
+    response: dict, blocked_domains: tuple[str, ...], maximum: int, *, searches_per_run: int = 1
+):
     """잘못된 응답은 실패, 출처·개인정보 위반 행은 제외로 구분한다."""
     if (
         response.get("status") != "completed"
@@ -82,7 +84,7 @@ def parse_search_results(response: dict, blocked_domains: tuple[str, ...], maxim
         )
         or (
             any(item["status"] != "completed" for item in searches)
-            and not _extra_searches_ignored_at_limit(response, searches)
+            and not _extra_searches_ignored_at_limit(response, searches, limit=searches_per_run)
         )
     ):
         raise ValueError("검색 미완료")

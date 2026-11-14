@@ -22,6 +22,7 @@ import type {
 } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
+import CallPrep from '../components/assistant/CallPrep';
 import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
@@ -403,6 +404,8 @@ export default function OpportunityDetailPage() {
             )}
           </DetailSection>
           <DetailSection id="detail-records" title={recordsArea.title}>
+            {/* [통화 준비 💰](#680): 전화 기록을 적기 바로 전에 누른다. 스위치가 꺼져 있으면 보이지 않는다. */}
+            <CallPrep key={`${oppId}:call-prep`} oppId={oppId} />
             <RecordsArea
               key={`${oppId}:records`}
               oppId={oppId}

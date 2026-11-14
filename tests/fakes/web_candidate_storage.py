@@ -29,7 +29,7 @@ def setup_web_storage(path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
     calls = {"search": [], "pick": []}
 
-    def search(body, key):
+    def search(body, key, timeout):
         calls["search"].append(body)
         return response()
 
