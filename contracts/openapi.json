@@ -867,6 +867,51 @@
         "title": "ContactReach",
         "type": "object"
       },
+      "DailyBrief": {
+        "description": "오늘 정리(#743). reused=True면 오늘 이미 쓴 글을 다시 준 것이다(AI를 부르지 않음).",
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "reused": {
+            "title": "Reused",
+            "type": "boolean"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "sources",
+          "day",
+          "generatedAt",
+          "reused"
+        ],
+        "title": "DailyBrief",
+        "type": "object"
+      },
       "Dashboard": {
         "properties": {
           "asOf": {
@@ -1648,6 +1693,21 @@
           "data"
         ],
         "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_DailyBrief_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DailyBrief"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DailyBrief]",
         "type": "object"
       },
       "Envelope_DashboardMap_": {
@@ -6936,6 +6996,53 @@
           }
         },
         "summary": "Ask"
+      }
+    },
+    "/api/v1/assistant/daily": {
+      "get": {
+        "description": "오늘 정리: 일정·같이 들를 곳·단계 이동·막힌 회사를 하루(한국 날짜) 한 번만 AI가 정리한다.\n\n같은 날 다시 부르면 기억해 둔 글을 준다(호출·전송 기록 없음, 한도도 세지 않음). 스위치가 꺼져\n있으면 기억해 둔 글도 주지 않고 문으로 보내 거부한다. 실패한 답은 기억하지 않는다.",
+        "operationId": "daily_api_v1_assistant_daily_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DailyBrief_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Daily"
       }
     },
     "/api/v1/config/ui": {
