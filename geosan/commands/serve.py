@@ -136,6 +136,22 @@ def run_serve(port: int, host: str = HOST) -> int:
         )
         return EXIT_RUN_FAILED
 
+    # 2-2) 코드 버전(평가 기록에 적는 값)을 알 수 없으면 시작 줄에 한 번 알린다(#719).
+    #      평가는 그대로 저장되고 버전 칸에 "커밋 번호 없음" 표시가 남는다.
+    from geosan.workflows.flow_evaluate import CODE_VERSION_ENV_NAMES, resolve_code_version
+
+    version = resolve_code_version()
+    if version.refused:
+        typer.echo(
+            f"경고: 환경 변수 {', '.join(version.refused)}의 값은 코드 버전으로 쓸 수 없어 "
+            "건너뜁니다(영문·숫자·.·_·- 40자 이내)."
+        )
+    if version.source == "FALLBACK":
+        typer.echo(
+            f"경고: 코드 버전을 알 수 없어 패키지 버전으로 적습니다({version.value}). "
+            f"배포 환경 변수 {CODE_VERSION_ENV_NAMES[0]}을 정하면 정확해집니다."
+        )
+
     # 3) 화면 빌드 결과가 없으면 API만 띄운다는 것을 알린다(실패는 아니다).
     screen = "API + 화면" if (WEB_DIST / "index.html").exists() else "API만"
     if screen == "API만":

@@ -123,6 +123,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 현재는 배포 준비 단계이며 로그인 서버 PR #225는 반영됐습니다. PM 계정 연결·Railway 주소 발급 뒤 실제 배포를 검증합니다. `GEOSAN_PASSWORD`만 설정하지 말고 아래 접속 보호 설정도 등록해야 합니다. 기존 `scripts/build.py`는 로컬 통합 실행·예비용으로 유지합니다.
 
 - Railway: 저장소 루트, 배포 가지 `main`, 서비스 1개와 영구 볼륨 `/data`. 환경 변수 `GEOSAN_DB_PATH=/data/geosan.db`, `GEOSAN_PASSWORD`, `OPENAI_API_KEY`는 서비스 설정에만 넣습니다. `PORT`는 Railway가 제공하며 `railway.json`의 시작 명령이 `--port`로 전달합니다. 로컬 `geosan serve`는 `PORT`를 자동으로 읽지 않습니다.
+- 코드 버전(#719): 평가 기록에는 어느 코드로 계산했는지 `0.1.0+<커밋 번호>`로 적습니다. 커밋 번호는 환경 변수 `GEOSAN_CODE_VERSION` → `RAILWAY_GIT_COMMIT_SHA` → git 정보 순서로 찾고, 모두 없으면 `0.1.0+nogit`로 적은 채 평가는 그대로 저장합니다(서버 시작 줄에 경고 한 줄). 배포 서버에 git 정보가 없으면 `GEOSAN_CODE_VERSION`에 배포한 커밋 번호(영문·숫자·`.`·`_`·`-` 40자 이내)를 넣어 주세요. Railway가 `RAILWAY_GIT_COMMIT_SHA`를 실제로 주는지는 배포 때 확인합니다.
 - Python 의존성 설치는 저장소 루트에서 `pip install -r requirements.lock -e .`를 사용합니다. 화면 빌드는 Railway에서 필요하지 않습니다.
 - 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전에는 같은 자리에서 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
 - 이후 `geosan check-config examples/rule-config.yaml examples/app-settings.yaml`로 설정을 등록합니다. 공개 배포 전 운영용 앱 설정의 `accessProtection.enabled`를 켜고 검증해야 합니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
