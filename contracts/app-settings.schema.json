@@ -195,6 +195,19 @@
         "closedWindowDays": { "type": "integer", "minimum": 1, "description": "성사·거절은 결과 기록이 이 일수 안인 것만 센다. 초기값 365" }
       }
     },
+    "assistant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dailyQuestionLimit", "questionMaxLength", "maxCompanies", "maxOutputTokens"],
+      "description": "영업 비서(C1 /assistant/ask · /opportunities/{oppId}/assistant/call-prep, #680, PM 결정 2026-11-14) 기준 숫자. 켜고 끄는 스위치는 llm.salesRecordsEnabled다. 이 묶음이 없는 옛 설정 파일도 읽고, 옛 DB 사본은 예시 파일(examples/app-settings.yaml) 값으로 읽는다.",
+      "properties": {
+        "_설명": { "type": "string" },
+        "dailyQuestionLimit": { "type": "integer", "minimum": 1, "description": "하루(한국 날짜)에 질문에 답하기와 통화 준비를 합쳐 외부 AI를 부를 수 있는 횟수. 넘으면 503 kind ASSISTANT_LIMIT. 초기값 30" },
+        "questionMaxLength": { "type": "integer", "minimum": 1, "description": "질문 글자 수 상한. 초기값 300" },
+        "maxCompanies": { "type": "integer", "minimum": 1, "description": "조회 글에 싣는 회사 수 상한. 넘으면 관심 회사를 먼저 싣고 화면이 \"○곳 가운데 ○곳만 보았습니다\"를 보인다. 초기값 60" },
+        "maxOutputTokens": { "type": "integer", "minimum": 1, "description": "답 한 번의 출력 토큰 상한. 초기값 3000" }
+      }
+    },
     "export": {
       "type": "object",
       "additionalProperties": false,
@@ -344,6 +357,7 @@
         "webSearchCostPerThousandCalls": { "type": "number", "minimum": 0, "default": 0 },
         "monthlyCostLimitUsd": { "type": "number", "minimum": 0, "default": 0 },
         "costAlertRatio": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "salesRecordsEnabled": { "type": "boolean", "default": false, "description": "(추가 2026-11-14 #680) 영업 기록 전용 스위치. 영업 기록 글(전화·이메일·사람 이름을 지운 것)을 외부 AI로 보내도 되는지. 꺼져 있으면 하나도 나가지 않는다." },
         "monthlyCallLimit": { "type": "integer", "minimum": 0 },
         "costPerThousandTokens": { "type": "number", "minimum": 0 }
       }

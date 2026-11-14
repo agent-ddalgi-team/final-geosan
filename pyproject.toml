@@ -22,6 +22,8 @@ dependencies = [
   "certifi>=2024.2",
   # 팩토리온 공장조회 엑셀(.xlsx) 읽기(#573).
   "openpyxl>=3.1",
+  # 서울 시간대 자료. Windows에는 운영체제 시간대 자료가 없어 서버 시작이 멈춘다(#655). 다른 운영체제는 설치하지 않는다.
+  "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]

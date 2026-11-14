@@ -13,6 +13,7 @@ import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
+import AssistantAsk from '../components/assistant/AssistantAsk';
 import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -117,6 +118,8 @@ export default function DashboardPage() {
 
         {/* 위에서부터: 오늘 확인할 것 → 일정 달력 → 영업 진행(건수 칸) → 최근 내 기록 → 지도 (#679). */}
         {data ? <TodayChecks rows={data.todayChecks} /> : null}
+        {/* 영업 비서 질문 칸(#680). 설정이 꺼져 있으면 안내 한 줄, 설정을 못 읽었으면 아무것도 없다. */}
+        {data ? <AssistantAsk /> : null}
 
         <section
           aria-labelledby="dashboard-calendar-title"
