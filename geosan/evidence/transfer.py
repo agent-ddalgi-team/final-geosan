@@ -145,7 +145,10 @@ def record_search_rejection(
 
 
 def reserve_search(opp_id: str, key_present: bool, db_path: Path | str | None) -> SearchTicket:
-    return _reserve(opp_id, key_present, db_path, "EXTERNAL_SEARCH", "system")
+    # #744: 자동 조사 대기 줄의 홈페이지 찾기 검색도 요청자를 남겨 하루 금액에 센다.
+    context = current_research.get()
+    requested_by = context.transfer_requester if context and context.transfer_requester else None
+    return _reserve(opp_id, key_present, db_path, "EXTERNAL_SEARCH", requested_by or "system")
 
 
 def reserve_extraction(

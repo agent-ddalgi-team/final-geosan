@@ -31,7 +31,9 @@ describe('ScoreLine 꼬리표 (#498)', () => {
 
   it('확정 전이고 분류가 확인 대기가 아니면 AI 제안으로 계산된 점수라 "AI 제안 · 확인 전"이다', () => {
     renderLine('PENDING', 'CONTACT_URGENT');
-    expect(screen.getByTestId('line-ai-proposal-tag')).toHaveTextContent('AI 제안 · 확인 전');
+    expect(screen.getByTestId('line-ai-proposal-tag')).toHaveTextContent(
+      '근거로 낸 점수 · 확인 전',
+    );
     expect(screen.queryByTestId('line-pending-tag')).not.toBeInTheDocument();
   });
 

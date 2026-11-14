@@ -289,7 +289,9 @@ export default function OpportunityCard({
                   {' · '}
                   {card.researchState === 'RUNNING'
                     ? candidateSearch.researchRunning
-                    : candidateSearch.researchStopped}
+                    : card.researchState === 'NOT_TRIED'
+                      ? candidateSearch.researchNotYet
+                      : candidateSearch.researchStopped}
                 </span>
               ) : null}
             </span>

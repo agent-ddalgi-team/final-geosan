@@ -33,6 +33,7 @@ from geosan.workflows.ingest_conditions import IngestRequest, validate_ingest_co
 from geosan.workflows.ingest_sources import store_dated_factory_csv
 from geosan.workflows.ingest_web import run_web_branch
 from geosan.workflows.research import STOP_KINDS, research_one
+from geosan.workflows.research_queue import run_queue
 
 logger = logging.getLogger(__name__)
 
@@ -288,21 +289,17 @@ def run_ingest(batch_id: str) -> None:
             current.finished_at = utcnow()
         stage = "새 후보 홈페이지 조사"
         if settings.homepage_discovery.auto_research and not batch.is_virtual:
-            # 자동 조사는 두 갈래의 회사가 모두 들어온 뒤에 한 줄로 돈다.
-            for opp_id in [*affected, *web_affected]:
-                result = research_one(opp_id)
-                if result.error is not None and result.error.kind in STOP_KINDS:
-                    raise RunFailedError("새 후보 홈페이지 조사를 완료하지 못했습니다.")
-                if result.error is not None:
-                    # 약속 C1: 실패는 그 회사만 남기고 다음 회사로 넘어간다(#528).
-                    logger.warning(
-                        "ingest.research_skipped",
-                        extra={"batchId": batch_id, "oppId": opp_id, "kind": result.error.kind},
-                    )
-                with session_scope() as session:
-                    current = session.get(IngestBatch, batch_id)
-                    current.research_done_count += 1
-                    current.finished_at = utcnow()
+            # 자동 조사는 두 갈래의 회사가 모두 들어온 뒤에 한 줄로 돈다. #744: 새 회사 가운데
+            # 적합도 상 → 중 순으로, 관심 자동 조사와 같은 하루 금액 안에서만 조사한다.
+            # 남은 회사는 "조사 전"으로 두고 다음 날 첫 목록 읽기 뒤 이어서 조사한다(api).
+            # 약속 C1: 실패는 그 회사만 남기고 다음 회사로 넘어간다(#528, 줄이 기록).
+            run = run_queue(
+                lambda opp_id: research_one(opp_id),
+                opp_ids=[*affected, *web_affected],
+                progress_batch_id=batch_id,
+            )
+            if run.error is not None and run.error.kind in STOP_KINDS:
+                raise RunFailedError("새 후보 홈페이지 조사를 완료하지 못했습니다.")
         if web_error is not None:
             stage = "웹 후보 검색"
             raise web_error
