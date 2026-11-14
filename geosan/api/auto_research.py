@@ -28,19 +28,22 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
+from geosan.config.errors import AppError, RunFailedError
 from geosan.evidence.models import Evidence
-from geosan.evidence.transfer import KST, TransferLog, accounted_cost
+from geosan.evidence.transfer import KST, TransferLog, accounted_cost, record_search_rejection
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.base import new_id, utcnow
+from geosan.storage.session import session_scope
 from geosan.workflows.research import research_one
 
 logger = logging.getLogger("geosan")
 
 AUTO_REQUESTER = "auto-bookmark"
 LIMIT_REASON = "관심 자동 조사 하루 금액 한도 초과"
+FAILURE_REASON = "자동 조사 중단 · 조사를 끝내지 못했습니다"
 
-# 조사 한 곳의 60초 한도에 여유를 더한 시간. 응답이 실패해 조사가 시작되지 못해도
-# "조사 중" 표시가 이 시간 뒤에는 저절로 풀린다. 영업 규칙이 아니라 표시용 시간이다.
+# 조사 한 곳의 60초 한도에 여유를 더한 시간. 조사가 끝맺지 못해도(서버가 꺼짐 등)
+# "조사 중" 표시와 "방금 시작한 조사" 셈이 이 시간 뒤에는 저절로 풀린다. 영업 규칙이 아니다.
 _RUNNING_SECONDS = 90
 
 _tasks: ContextVar[BackgroundTasks | None] = ContextVar("geosan_auto_research", default=None)
@@ -148,8 +151,6 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
         session.add(_marker(opportunity, reject_reason=LIMIT_REASON))
         return
     session.add(_marker(opportunity, reject_reason=None))
-    with _lock:
-        _started[opp_id] = time.monotonic()
     tasks.add_task(run_auto_research, opp_id)
 
 
@@ -212,16 +213,63 @@ def used_today(session: Session, settings, *, pending: list[TransferLog] | None 
 
 
 def run_auto_research(opp_id: str) -> None:
-    """응답 뒤 한 번 실행. 실패는 숨기지 않는다: 읽기 실패는 전송 기록에, 나머지는 로그에 남는다."""
+    """응답 뒤(관심 저장이 확정된 뒤) 한 번 실행. 실패는 숨기지 않는다.
+
+    어떤 이유로 실패하든 전송 기록에 거부 1행이 남는다(#719). "조사 중" 표시는 여기서 켠다:
+    저장이 되돌려진 요청은 이 함수가 불리지 않으므로 표시만 남는 일이 없다.
+    """
+    started_at = utcnow()
+    with _lock:
+        _started[opp_id] = time.monotonic()
     try:
-        result = research_one(opp_id, find_homepage=False, transfer_requester=AUTO_REQUESTER)
-        if result.error is not None:
-            logger.warning(
-                "bookmark.research_failed", extra={"oppId": opp_id, "ref": result.error.ref}
+        try:
+            error = research_one(
+                opp_id, find_homepage=False, transfer_requester=AUTO_REQUESTER
+            ).error
+        except Exception as raised:
+            # 예외 글에는 본문·주소가 섞일 수 있어 종류만 로그에 남긴다.
+            error = RunFailedError("회사 조사를 완료하지 못했습니다.")
+            logger.error(
+                "bookmark.research_crashed",
+                extra={"oppId": opp_id, "ref": error.ref, "type": type(raised).__name__},
             )
+        if error is not None:
+            logger.warning("bookmark.research_failed", extra={"oppId": opp_id, "ref": error.ref})
+            _record_failure(opp_id, error, started_at)
     finally:
         with _lock:
             _started.pop(opp_id, None)
+
+
+def _record_failure(opp_id: str, error: AppError, started_at) -> None:
+    """실패 이유 1행. 이 조사가 이미 거부 행(읽기 실패·한도 거부)을 남겼으면 더하지 않는다.
+
+    이유 글에는 정해진 문구와 오류 종류만 넣는다(본문·주소·연락처·예외 원문 없음).
+    """
+    try:
+        with session_scope() as session:
+            recorded = session.scalar(
+                select(TransferLog.transfer_log_id)
+                .where(
+                    TransferLog.opp_id == opp_id,
+                    TransferLog.purpose == "EXTERNAL_AI",
+                    TransferLog.decision == "REJECTED",
+                    TransferLog.occurred_at >= started_at,
+                )
+                .limit(1)
+            )
+        if recorded is None:
+            record_search_rejection(
+                opp_id,
+                f"{FAILURE_REASON} ({error.kind or 'RUN_FAILED'})",
+                None,
+                purpose="EXTERNAL_AI",
+            )
+    except Exception as record_error:
+        logger.error(
+            "bookmark.research_failure_not_recorded",
+            extra={"oppId": opp_id, "ref": error.ref, "type": type(record_error).__name__},
+        )
 
 
 def limit_skipped(session: Session, opp_ids: list[str]) -> bool:

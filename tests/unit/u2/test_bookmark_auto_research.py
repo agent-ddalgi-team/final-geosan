@@ -392,3 +392,114 @@ def test_start_marker_older_than_one_research_is_not_counted(found_company):
         _start_marker(session, opportunity, seconds_ago=auto_research._RUNNING_SECONDS + 5)
         session.flush()
         assert _spent(session) == 0
+
+
+# ---------- #719: 관심 자동 조사는 어떤 이유로 실패해도 이유 1행을 남긴다 ----------
+
+SECRET = "가짜 본문 https://example.org/private 010-1234-5678 hong@example.org"
+
+
+def _drop_evidence(case):
+    """조사 전 모양: 살아 있는 근거 0건."""
+    from sqlalchemy import update
+
+    from geosan.evidence.models import Evidence
+    from geosan.storage.base import utcnow
+
+    with session_scope() as session:
+        session.execute(
+            update(Evidence).where(Evidence.opp_id == case.opp_id).values(superseded_at=utcnow())
+        )
+
+
+def _fail_with(monkeypatch, error, *, before=None):
+    def fake(opp_id, **_):
+        if before is not None:
+            before(opp_id)
+        if isinstance(error, Exception) and not isinstance(error, AppError):
+            raise error
+        return research.ResearchResult(error=error)
+
+    monkeypatch.setattr(auto_research, "research_one", fake)
+
+
+@pytest.mark.parametrize(
+    "error,label",
+    [
+        (AppError(SECRET, "다시 조사해 주세요.", status=503, kind="LLM_FAILED"), "LLM_FAILED"),
+        (
+            AppError(SECRET, "현재 기회를 확인해 주세요.", status=409, kind="STALE_VALUE"),
+            "STALE_VALUE",
+        ),
+        (research.RunFailedError(SECRET), "RUN_FAILED"),
+        (RuntimeError(SECRET), "RUN_FAILED"),
+    ],
+)
+def test_any_failure_of_bookmark_research_leaves_one_reason_row(
+    found_company, monkeypatch, error, label
+):
+    """Given 읽기 실패가 아닌 실패 / Then 정해진 문구와 오류 종류만 든 거부 1행이 남는다."""
+    _fail_with(monkeypatch, error)
+    auto_research.run_auto_research(found_company.opp_id)
+    assert _logs(found_company.opp_id) == [
+        ("system", "REJECTED", f"자동 조사 중단 · 조사를 끝내지 못했습니다 ({label})", 0)
+    ]
+    assert not auto_research.is_running(found_company.opp_id)
+
+
+def test_failure_already_recorded_by_the_research_is_not_recorded_twice(found_company, monkeypatch):
+    """Given 조사가 이미 거부 행(읽기 실패·월 한도)을 남김 / Then 한 행을 더 쓰지 않는다."""
+    error = AppError(
+        "홈페이지를 읽을 수 없습니다. (그 밖)", "나중에", status=502, kind="UNREACHABLE"
+    )
+    _fail_with(
+        monkeypatch,
+        error,
+        before=lambda opp_id: record_search_rejection(
+            opp_id,
+            "자동 조사 중단 · 홈페이지를 읽을 수 없습니다. (그 밖)",
+            None,
+            purpose="EXTERNAL_AI",
+        ),
+    )
+    auto_research.run_auto_research(found_company.opp_id)
+    assert [row[2] for row in _logs(found_company.opp_id)] == [
+        "자동 조사 중단 · 홈페이지를 읽을 수 없습니다. (그 밖)"
+    ]
+
+
+def test_successful_bookmark_research_leaves_no_reason_row(found_company, monkeypatch):
+    monkeypatch.setattr(auto_research, "research_one", lambda *_, **__: research.ResearchResult())
+    auto_research.run_auto_research(found_company.opp_id)
+    assert _logs(found_company.opp_id) == []
+
+
+def test_running_mark_is_set_only_when_the_research_really_starts(found_company, monkeypatch):
+    """Given 관심 저장이 조사를 예약한 뒤 저장이 되돌려짐 / Then "조사 중" 표시가 남지 않는다.
+
+    표시는 응답 뒤 조사가 실제로 시작될 때 켜지고 끝나면 꺼진다.
+    """
+    from fastapi import BackgroundTasks
+
+    _drop_evidence(found_company)
+    tasks = BackgroundTasks()
+    token = auto_research._tasks.set(tasks)
+    try:
+        with session_scope() as session:
+            auto_research.queue_on_bookmark(session, session.get(Opportunity, found_company.opp_id))
+            session.rollback()
+    finally:
+        auto_research._tasks.reset(token)
+    assert len(tasks.tasks) == 1
+    assert not auto_research.is_running(found_company.opp_id)
+    seen = []
+    monkeypatch.setattr(
+        auto_research,
+        "research_one",
+        lambda opp_id, **_: (
+            seen.append(auto_research.is_running(opp_id)) or research.ResearchResult()
+        ),
+    )
+    auto_research.run_auto_research(found_company.opp_id)
+    assert seen == [True]
+    assert not auto_research.is_running(found_company.opp_id)

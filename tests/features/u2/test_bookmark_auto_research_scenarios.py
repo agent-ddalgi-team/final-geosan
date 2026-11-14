@@ -157,6 +157,19 @@ def auto_research_off(env):
         row.value = {**row.value, "autoResearch": False}
 
 
+@given("AI가 형식에 맞지 않는 응답을 준다")
+def malformed_ai_reply(env):
+    env[2].side_effect = lambda *_: {"가짜": "형식에 맞지 않는 응답"}
+
+
+@then("관심은 저장되고 근거는 붙지 않는다")
+def saved_without_evidence(env, response):
+    _, case, _ = env
+    assert response.status_code == 200, response.text
+    assert bookmark_is_on(case) and live_evidence(case) == 0
+    assert not auto_research.is_running(case.opp_id)
+
+
 @given("그 홈페이지는 인증서 문제로 읽을 수 없다")
 def bad_certificate(env, monkeypatch):
     def get(url, _):
