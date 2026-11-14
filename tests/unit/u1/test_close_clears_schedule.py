@@ -67,3 +67,29 @@ def test_earlier_rows_keep_their_schedule_and_cancelling_the_close_brings_it_bac
     cancelled = client.post(f"{URL}/{opp_id}/records/{closing_id}/cancel", json={}, headers=MINE)
     assert cancelled.status_code == 200, cancelled.text
     assert _schedule(client, opp_id) == (due, "다시 연락")
+
+
+def test_schedule_set_after_the_sale_ended_survives_a_later_reason_fix(dashboard_env):
+    """Given 거절로 끝난 뒤 일부러 잡은 일정 / When 거절 이유만 고쳐 저장 / Then 일정이 남는다.
+
+    이미 거절인 회사에 거절 행을 한 번 더 남기는 것은 "끝나는 저장"이 아니다.
+    """
+    client, opp_id, _ = _with_schedule(dashboard_env)
+    lost = {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 첫 설명"}
+    _post(client, opp_id, lost)
+    assert _schedule(client, opp_id) == (None, None)
+    later = (today_in_seoul() + timedelta(days=30)).isoformat()
+    _post(client, opp_id, {"status": "LOST", "lostReasonCode": "OTHER", "nextScheduleAt": later})
+    assert _schedule(client, opp_id)[0] == later
+    _post(client, opp_id, {**lost, "reason": "가상 고친 설명"})
+    assert _schedule(client, opp_id)[0] == later
+
+
+def test_moving_from_one_ended_stage_to_another_clears_the_schedule(dashboard_env):
+    """Given 거절 뒤 잡은 일정 / When 성사로 바뀌는 저장 / Then 일정이 비워진다(다시 끝남)."""
+    client, opp_id, _ = _with_schedule(dashboard_env)
+    _post(client, opp_id, {"status": "LOST", "lostReasonCode": "OTHER", "reason": "가상 설명"})
+    later = (today_in_seoul() + timedelta(days=30)).isoformat()
+    _post(client, opp_id, {"status": "LOST", "lostReasonCode": "OTHER", "nextScheduleAt": later})
+    _post(client, opp_id, {"status": "WON"})
+    assert _schedule(client, opp_id) == (None, None)
