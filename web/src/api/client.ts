@@ -10,6 +10,7 @@ import type {
   ConfigUi,
   Envelope,
   ErrorBody,
+  IndustriesResponse,
   IngestPreview,
   IngestRequest,
   IngestResponse,
@@ -292,6 +293,18 @@ export function postRelation(oppId: string, body: RelationRequest, staffKey: str
   return request<RelationResponse>(`/opportunities/${encodeURIComponent(oppId)}/relation`, {
     method: 'POST',
     body,
+    staffKey,
+  });
+}
+
+/**
+ * 상세 산업군 칩의 [확정]·[고치기] 저장(#646, 계약 C1 `POST /opportunities/{oppId}/industries`).
+ * 설정 산업군 목록 안 값만·최대 3개. 다시 평가하지 않고 활동 이력에 한 줄이 남는다. 목록 밖 값은 400.
+ */
+export function postIndustries(oppId: string, industries: string[], staffKey: string) {
+  return request<IndustriesResponse>(`/opportunities/${encodeURIComponent(oppId)}/industries`, {
+    method: 'POST',
+    body: { industries },
     staffKey,
   });
 }
