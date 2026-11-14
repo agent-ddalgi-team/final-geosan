@@ -354,16 +354,8 @@ def build_call_prep_context(session: Session, opp_id: str, today: date) -> Assis
     비슷한 회사의 마지막 메모 글과 확정 전 공정·산업 값은 싣지 않는다. 회사가 없으면 404다.
     """
     result = peers_view(opp_id, session).data  # 기회가 없으면 여기서 404
-    (company,) = _load_companies(session, [opp_id])
+    company = _own_company(session, opp_id)
     steps = _step_labels(session)
-    if company.status != _NO_STAGE or company.contacts:
-        code = sales_step_state(session, opp_id, status=company.status).code
-        company.step = code.value if code is not None else None
-    company.bookmarked = opp_id in set(
-        session.scalars(
-            dashboard_population(runtime_for(session).app_settings.active_dataset_kind.value)
-        )
-    )
     summary = result.summary
     lines = [f"오늘: {_day_label(today)}", "", "[조회 1. 이 회사 요약]", _TABLE_HEAD]
     lines.append(_table_line(company, steps))
@@ -422,6 +414,41 @@ def build_call_prep_context(session: Session, opp_id: str, today: date) -> Assis
         companies=tuple(refs),
         total_companies=len(refs),
         used_queries=(QUERY_COMPANY_SUMMARY, QUERY_PEERS),
+    )
+
+
+def _own_company(session: Session, opp_id: str) -> _Company:
+    """회사 하나의 고른 값(세부 단계·관심 여부 포함). 통화 준비와 메모 읽기가 함께 쓴다."""
+    (company,) = _load_companies(session, [opp_id])
+    if company.status != _NO_STAGE or company.contacts:
+        code = sales_step_state(session, opp_id, status=company.status).code
+        company.step = code.value if code is not None else None
+    company.bookmarked = opp_id in set(
+        session.scalars(
+            dashboard_population(runtime_for(session).app_settings.active_dataset_kind.value)
+        )
+    )
+    return company
+
+
+def build_memo_read_context(session: Session, opp_id: str, today: date) -> AssistantContext:
+    """메모 읽기(#720)에 함께 싣는 글: 오늘 날짜와 이 회사의 고른 값 한 줄.
+
+    통화 준비의 표 한 줄과 같은 칸이다. 접촉 날짜별 줄·고른 답·자유 글은 싣지 않는다.
+    """
+    company = _own_company(session, opp_id)
+    lines = [
+        f"오늘: {_day_label(today)}",
+        "",
+        "[이 회사의 지금 값]",
+        _TABLE_HEAD,
+        _table_line(company, _step_labels(session)),
+    ]
+    return AssistantContext(
+        text="\n".join(lines),
+        companies=(CompanyRef(company.opp_id, company.name),),
+        total_companies=1,
+        used_queries=(QUERY_COMPANY_SUMMARY,),
     )
 
 

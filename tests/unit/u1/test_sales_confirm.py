@@ -458,3 +458,47 @@ def test_first_confirmation_of_ai_processes_keeps_the_old_sentence(confirm_env):
     _answer(client, ai_only, processes=["ZINC_PLATING"])
     assert len(_notes(ai_only)) == 1
     assert _notes(ai_only)[0].startswith("꼬리 질문으로 공정 확정 · 아연도금(전기아연도금)")
+
+
+# ---------- #720: 공정 확인 답만 실린 요청은 접촉이 없어도 받는다(메모 읽기 [반영]) ----------
+
+
+def test_process_answers_alone_are_accepted_without_a_contact(confirm_env):
+    """Given 확정 공정 A / When 접촉 없이 공정 답 B만 보냄 / Then B로 바뀌고 접촉은 안 는다."""
+    client, _, mixed = confirm_env
+    body = {
+        "status": "NOT_EXECUTED",
+        "answers": [{"questionId": PROCESS, "answerId": "ZINC_PLATING"}],
+    }
+    response = support.post(client, mixed, "outcomes", body)
+    assert response.status_code == 200, response.text
+    assert response.json()["meta"]["reevaluated"] is True
+    assert links(mixed) == {"ZINC_PLATING": ("STAFF", "CONFIRMED", "park-lee")}
+    assert _notes(mixed) == ["공정 변경 · 아노다이징 → 아연도금(전기아연도금) · AI 제안 1개 뺌"]
+    data = detail(client, mixed)
+    assert data["records"]["contactCount"]["total"] == 0
+    assert data["records"]["outcome"]["status"] == "NOT_EXECUTED"
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        [(PROCESS, "ZINC_PLATING"), (INDUSTRY, "반도체")],
+        [(INDUSTRY, "반도체")],
+        [(PROCESS, "ZINC_PLATING"), ("WHO_TALKED", "RIGHT_PERSON")],
+    ],
+)
+def test_other_answers_still_need_a_connected_contact(confirm_env, answers):
+    """Given 접촉 없는 요청 / When 공정 확인 말고 다른 답이 섞임 / Then 지금처럼 거부한다."""
+    client, _, mixed = confirm_env
+    before = links(mixed)
+    body = {
+        "status": "NOT_EXECUTED",
+        "answers": [{"questionId": q, "answerId": a} for q, a in answers],
+    }
+    response = support.post(client, mixed, "outcomes", body)
+    assert response.status_code == 400
+    assert response.json()["error"]["fields"] == [
+        {"path": "answers", "message": "연결된 접촉에서만 답을 고를 수 있습니다."}
+    ]
+    assert links(mixed) == before and outcome_count(mixed) == 0

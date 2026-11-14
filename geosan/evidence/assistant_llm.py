@@ -11,8 +11,10 @@ import http.client
 import os
 import time
 from collections.abc import Sequence
+from typing import Literal
 
 from geosan.config.errors import AppError
+from geosan.config.schemas import FileModel
 from geosan.evidence.extraction import _post
 from geosan.evidence.openai_search import _HttpError, _Usage
 from geosan.evidence.reader import remaining
@@ -31,6 +33,22 @@ def _failed(message: str) -> AppError:
     return AppError(message, "잠시 뒤 다시 물어봐 주세요.", status=503, kind="LLM_FAILED")
 
 
+class MemoProposal(FileModel):
+    """메모 읽기(#720)에서 AI가 주는 변경 제안 하나. 값이 목록에 있는지는 창구가 검증한다."""
+
+    kind: Literal["PROCESS", "INDUSTRY", "NEXT_SCHEDULE"]
+    values: list[str]
+    date: str | None
+    quote: str
+
+
+class MemoReading(FileModel):
+    """메모 읽기(#720)의 구조화된 응답: 한 줄 요약과 변경 제안 0개 이상."""
+
+    summary: str
+    proposals: list[MemoProposal]
+
+
 def ask_sales_assistant(
     opp_id: str,
     texts: Sequence[ScrubbedRecordText],
@@ -46,6 +64,61 @@ def ask_sales_assistant(
     (회사마다 표시 1행). 걸리면 문이 거부 기록을 남기고 오류를 내며 아무것도 보내지 않는다.
     돌려주는 답은 전화·이메일·사람 이름 지우기를 한 번 더 거친 글이다.
     """
+    answer = _request(
+        opp_id,
+        texts,
+        {"instructions": instructions, "max_output_tokens": max_output_tokens},
+        requested_by,
+        also_opp_ids,
+    )
+    return scrub_sales_record(answer).text
+
+
+def read_sales_memo(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    *,
+    instructions: str,
+    max_output_tokens: int,
+    requested_by: str,
+) -> MemoReading:
+    """지우기를 거친 메모 사본을 한 번 보내 정해진 모양(요약 + 변경 제안)으로 받는다(#720).
+
+    문(스위치·지우기 재검사·전송 기록·월 한도)은 ask_sales_assistant와 같다. 모양이 맞지 않으면
+    실패로 알린다(빈 결과로 넘기지 않는다). 값 검증과 글 지우기는 호출자(창구)가 한다.
+    """
+    answer = _request(
+        opp_id,
+        texts,
+        {
+            "instructions": instructions,
+            "max_output_tokens": max_output_tokens,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "sales_memo_reading",
+                    "strict": True,
+                    "schema": MemoReading.model_json_schema(by_alias=True),
+                }
+            },
+        },
+        requested_by,
+        (),
+    )
+    try:
+        return MemoReading.model_validate_json(answer)
+    except ValueError:
+        raise _failed("AI 답의 형식이 맞지 않습니다.") from None
+
+
+def _request(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    options: dict,
+    requested_by: str,
+    also_opp_ids: Sequence[str],
+) -> str:
+    """문을 거쳐 한 번만 부르고 답 글(지우기 전)을 돌려준다. 재시도는 없다."""
     deadline = time.monotonic() + TIMEOUT_SECONDS
     key = os.environ.get("OPENAI_API_KEY", "").strip()
     ticket = reserve_sales_records(opp_id, texts, bool(key), None, requested_by)
@@ -53,9 +126,8 @@ def ask_sales_assistant(
     payload = {
         "model": ticket.llm.model,
         "store": False,
-        "instructions": instructions,
         "input": "\n\n".join(item.text for item in texts),
-        "max_output_tokens": max_output_tokens,
+        **options,
     }
     try:
         response = _post(payload, key, deadline)
@@ -87,4 +159,4 @@ def ask_sales_assistant(
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise _failed("AI 답을 끝까지 받지 못했습니다.") from None
-    return scrub_sales_record(answer).text
+    return answer

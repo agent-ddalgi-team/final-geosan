@@ -1,11 +1,14 @@
 """영업 비서 경로(2차, #680). 계약 C1 `/assistant/ask`·`/opportunities/{oppId}/assistant/call-prep`.
 
+#720: `/opportunities/{oppId}/assistant/memo-read`(메모 읽기)만 자유 글 하나를 지운 사본으로 보낸다.
+
 AI는 DB를 읽지 않는다. 프로그램이 만든 정해진 조회 글(`api/assistant_context.py`)만 보내고 답 글을
 받는다. 읽기 전용이다: 영업 기록·평가·회사 값은 하나도 바꾸지 않고 전송 기록만 남긴다. 메모 글 같은
 자유 글은 싣지 않고 고른 값만 싣는다(계약 C4). 영업 기록 전용 스위치(`llm.salesRecordsEnabled`)가
 꺼져 있으면 아무것도 나가지 않는다. 근거 회사 링크(sources)는 AI가 아니라 프로그램이 만든다.
 """
 
+import datetime
 from contextlib import contextmanager
 from typing import Annotated, Literal
 
@@ -19,12 +22,13 @@ from geosan.api.assistant_context import (
     named_sources,
 )
 from geosan.api.deps import get_session, require_staff, runtime_for
+from geosan.api.memo_read import build_memo_read, check_reading
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.app_settings import AssistantSettings
 from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.config.sales_questions import KST
 from geosan.config.validators import find_contact
-from geosan.evidence.assistant_llm import ask_sales_assistant
+from geosan.evidence.assistant_llm import ask_sales_assistant, read_sales_memo
 from geosan.evidence.sales_record_gate import sales_record_calls_today, scrub_sales_record
 from geosan.opportunity.models import Opportunity
 from geosan.storage.base import utcnow
@@ -72,6 +76,31 @@ class AskAnswer(CallPrepAnswer):
     # 조회 글에 실은 회사 수와 대상 회사 전체 수. 다르면 화면이 "○곳 가운데 ○곳만"을 보인다.
     companies_included: int
     companies_total: int
+
+
+class MemoReadRequest(_RequestModel):
+    # 활동 이력 줄의 recordKind·recordId와 같은 값.
+    record_kind: Literal["NOTE", "OUTCOME"]
+    record_id: str = Field(min_length=1, strict=True)
+
+
+class MemoProposalView(_ApiModel):
+    kind: Literal["PROCESS", "INDUSTRY", "NEXT_SCHEDULE"]
+    # PROCESS = 공정 코드, INDUSTRY = 산업군 이름, NEXT_SCHEDULE = 다음 할 일 보기 id 하나.
+    values: list[str]
+    before: list[str]
+    after: list[str]
+    date: datetime.date | None = None
+    # 근거가 된 메모 구절(이름·연락처를 지운 사본에서 그대로 딴 것).
+    quote: str
+
+
+class MemoReadAnswer(_ApiModel):
+    summary: str
+    proposals: list[MemoProposalView]
+    ai_generated: Literal[True] = True
+    removed_names: int
+    removed_contacts: int
 
 
 def _settings(session) -> AssistantSettings:
@@ -193,6 +222,60 @@ def call_prep(
             answer=answer,
             sources=[AssistantSource(opp_id=item.opp_id, name=item.name) for item in sources],
             used_queries=list(context.used_queries),
+        ),
+        meta=meta,
+    )
+
+
+@router.post("/opportunities/{oppId}/assistant/memo-read", response_model=Envelope[MemoReadAnswer])
+def memo_read(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: MemoReadRequest,
+    request: Request,
+    staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
+):
+    """방금 저장한 메모 글 하나를 이름·연락처 지운 사본으로 보내 요약과 변경 제안을 받는다(#720).
+
+    읽기 전용이다. 제안은 저장하지 않고, 담당자가 화면에서 누르면 기존 저장 창구가 반영한다.
+    """
+    with contextmanager(get_session)(request) as session:
+        staff = require_staff(session, staff_key)
+        settings = _settings(session)
+        plan = build_memo_read(
+            session, opp_id, body.record_kind, body.record_id, utcnow().astimezone(KST).date()
+        )
+        opportunity = session.get(Opportunity, opp_id)
+        meta = Meta(
+            updated_at=utcnow(),
+            dataset_kind=opportunity.dataset_kind,
+            has_virtual_data=opportunity.is_virtual,
+        )
+    _check_daily_limit(settings)
+    # 문이 스위치·지우기 재검사·월 한도로 거부하면 여기서 오류가 난다(아무것도 보내지 않는다).
+    reading = read_sales_memo(
+        opp_id,
+        plan.texts,
+        instructions=plan.instructions,
+        max_output_tokens=settings.max_output_tokens,
+        requested_by=staff,
+    )
+    summary, proposals = check_reading(plan, reading)
+    return Envelope[MemoReadAnswer](
+        data=MemoReadAnswer(
+            summary=summary,
+            proposals=[
+                MemoProposalView(
+                    kind=item.kind,
+                    values=item.values,
+                    before=item.before,
+                    after=item.after,
+                    date=item.date,
+                    quote=item.quote,
+                )
+                for item in proposals
+            ],
+            removed_names=plan.memo.removed_names,
+            removed_contacts=plan.memo.removed_contacts,
         ),
         meta=meta,
     )

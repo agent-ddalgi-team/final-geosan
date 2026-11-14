@@ -771,7 +771,12 @@ def _answer_errors(
 ) -> list[FieldError]:
     if not body.answers or questions is None:
         return []
-    if body.method is None or body.result not in ("REACHED", "DECLINED"):
+    process_only = body.method is None and all(
+        (found := questions.question(answer.question_id)) is not None and found.choices == "PROCESS"
+        for answer in body.answers
+    )
+    # #720: 공정 확인 답만 실린 요청은 접촉이 없어도 받는다(메모 읽기 제안의 [반영]).
+    if not process_only and (body.method is None or body.result not in ("REACHED", "DECLINED")):
         # #691: 부재 접촉에는 기본 보기가 있는 질문(누가 먼저 연락했나)의 답만 받는다.
         about_contact = (questions.question(answer.question_id) for answer in body.answers)
         if (
