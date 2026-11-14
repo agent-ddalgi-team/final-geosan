@@ -396,3 +396,29 @@ def test_eighteen_case_files_have_no_ai_proposal_rows(bare_db):
                 not item["itemId"].startswith(("II:", "PL:")) for item in data["reviewItems"]
             )
             assert all(row["proposed_by"] == "FILE" for row in input_values(case.opp_id).values())
+
+
+def test_score_proposal_cannot_be_dropped_even_with_a_confirmed_process(proposal_env):
+    """Given 확정 공정이 있는 회사의 AI 점수 제안 / When 해제 / Then 400, 바뀐 것 없음 (#719).
+
+    [확정 값 유지](#677)는 공정 제안(PL 줄)에만 있다. 점수 제안(II 줄)은 확정·고치기만 된다.
+    """
+    client, target, _ = proposal_env
+    with session_scope() as session:
+        states = {
+            row.state
+            for row in session.scalars(
+                select(OppProcessLink).where(
+                    OppProcessLink.opp_id == target, OppProcessLink.superseded_at.is_(None)
+                )
+            )
+        }
+    assert "CONFIRMED" in states
+    before = input_values(target)
+    response = post(client, target, "II:" + ITEM, checked=False)
+    assert response.status_code == 400, response.text
+    assert response.json()["error"]["message"] == "AI 제안은 확정 또는 고치기만 할 수 있습니다."
+    assert input_values(target) == before
+    with session_scope() as session:
+        assert session.scalars(select(Note).where(Note.opp_id == target)).all() == []
+        assert session.scalars(select(ReviewCheck).where(ReviewCheck.opp_id == target)).all() == []
