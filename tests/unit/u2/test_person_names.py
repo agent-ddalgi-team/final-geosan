@@ -2,7 +2,15 @@
 
 import pytest
 
-from geosan.evidence.contacts import NAME_MARK, PERSON_TITLES, scrub_person_names
+from geosan.evidence.contacts import (
+    NAME_MARK,
+    PERSON_TITLES,
+    collect_person_names,
+    has_known_person_name,
+    scrub_person_names,
+    scrub_person_names_in_texts,
+    scrub_person_names_wide,
+)
 
 REMOVED = [
     ("김철수 과장과 통화", "[이름] 과장과 통화"),
@@ -95,3 +103,147 @@ def test_every_title_keeps_the_title_and_drops_the_name():
 
 def test_existing_mark_is_not_counted_again():
     assert scrub_person_names("[이름] 과장과 통화") == ("[이름] 과장과 통화", 0)
+
+
+# ---------------------------------------------------------------------------
+# #720: 넉넉하게 지우기 + 회사 단위로 알아 둔 이름 지우기
+# ---------------------------------------------------------------------------
+
+WIDE_REMOVED = [
+    ("홍길동이 전화함", "[이름]이 전화함"),
+    ("홍길동 부재", "[이름] 부재"),
+    ("강민호라는 분이 새로 옴", "[이름]라는 분이 새로 옴"),
+    ("철수 씨가 받음", "[이름] 씨가 받음"),
+    ("길동님께 자료 보냄", "[이름] 님께 자료 보냄"),
+    ("Kim 과장과 통화", "[이름] 과장과 통화"),
+    ("James 님이 승인", "[이름] 님이 승인"),
+    ("Mr. Park에게 보냄", "Mr. [이름]에게 보냄"),
+    ("이상민 과장이 품질 담당", "[이름] 과장이 품질 담당"),
+    ("조성민이 연락 주기로", "[이름]이 연락 주기로"),
+]
+
+WIDE_KEPT = [
+    "조건은 그대로, 장비는 신규로",
+    "이상은 없다고 함",
+    "성수기라 물량이 많음",
+    "정수기 부품용 니켈도금 문의",
+    "안정성 자료도 같이",
+    "최우선으로 처리",
+    "유효기간이 지나서 갱신 중",
+    "지원 사업 신청 중",
+    "설계실 팀장과 통화",
+    "QC 팀장이 SUS304 소재 문의",
+    "Excel로 보냄",
+    "주임은 휴가",
+    "관계자님 사모님 고객님",
+    "요즘 날씨가 추움",
+]
+
+# 넉넉하게 지워도 남는 것. 고쳐지면 이 표를 WIDE_REMOVED로 옮긴다.
+WIDE_MISSED = [
+    "김 씨가 받음",
+    "허준이 전화함",
+    "철수가 받음",
+    "David가 구매 담당",
+    "탁재훈이 도면 보냄",
+    "kim 과장과 통화",
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), REMOVED + WIDE_REMOVED)
+def test_wide_removes_what_the_narrow_one_does_and_more(text, expected):
+    assert scrub_person_names_wide(text) == (expected, 1)
+
+
+@pytest.mark.parametrize("text", KEPT + WIDE_KEPT)
+def test_wide_keeps_ordinary_words(text):
+    assert scrub_person_names_wide(text) == (text, 0)
+
+
+@pytest.mark.parametrize("text", WIDE_MISSED)
+def test_wide_known_limits(text):
+    assert scrub_person_names_wide(text) == (text, 0)
+
+
+def test_narrow_function_is_unchanged_by_the_wide_word_list():
+    # 넓힌 예외 목록("이동")이 예전 함수에 섞이면 "이동욱 과장"을 덜 지우게 된다.
+    assert scrub_person_names("이동욱 과장") == ("[이름] 과장", 1)
+    assert scrub_person_names_wide("이동욱 과장") == ("[이름] 과장", 1)
+    assert scrub_person_names_wide("이동중 연락") == ("이동중 연락", 0)
+
+
+def test_name_seen_with_a_title_is_removed_everywhere_in_the_company_texts():
+    texts = [
+        "김철수 과장과 통화",
+        "김철수 통화함. 김철수가 도면 보냄",
+        "철수 씨가 실무. 철수한테 양식 받음. 철수가 회신",
+        "철수 통화함",
+    ]
+    assert scrub_person_names_in_texts(texts) == [
+        "[이름] 과장과 통화",
+        "[이름] 통화함. [이름]가 도면 보냄",
+        "[이름] 씨가 실무. [이름]한테 양식 받음. [이름]가 회신",
+        "철수 통화함",  # 한계: 두 글자 이름은 조사·호칭이 붙었을 때만 지운다
+    ]
+
+
+def test_given_name_that_is_a_common_word_needs_a_title_or_calling_form():
+    texts = [
+        "김정수 차장 면담. 정수 처리 설비 도입",
+        "정수가 폐수보다 비쌈. 정수 씨와 통화",
+        "박지원 대리가 실무. 기술 지원이 필요. 지원이가 회신. 지원 대리 부재",
+    ]
+    assert scrub_person_names_in_texts(texts) == [
+        "[이름] 차장 면담. 정수 처리 설비 도입",
+        "정수가 폐수보다 비쌈. [이름] 씨와 통화",
+        "[이름] 대리가 실무. 기술 지원이 필요. [이름]이가 회신. [이름] 대리 부재",
+    ]
+
+
+def test_name_found_without_a_title_also_teaches_the_given_name():
+    assert scrub_person_names_in_texts(["홍길동 부재", "길동이가 품질 담당"]) == [
+        "[이름] 부재",
+        "[이름]이가 품질 담당",
+    ]
+
+
+def test_english_name_seen_with_a_title_is_removed_everywhere():
+    assert scrub_person_names_in_texts(["James 님이 승인", "James가 사본 요청"]) == [
+        "[이름] 님이 승인",
+        "[이름]가 사본 요청",
+    ]
+
+
+def test_keep_words_protect_company_region_and_process_names():
+    keep = ["한일정공", "경기 양평군", "전기아연도금"]
+    text = "한일 대표와 미팅. 양평 공장장 면담. 전기아연도금 문의"
+    assert scrub_person_names_wide(text)[1] == 2
+    assert scrub_person_names_wide(text, (), keep) == (text, 0)
+    assert scrub_person_names_in_texts([text, "한일이 먼저 연락"], keep) == [
+        text,
+        "한일이 먼저 연락",
+    ]
+    assert collect_person_names([text], keep) == frozenset()
+
+
+def test_names_are_collected_only_from_real_name_shapes():
+    texts = ["김철수 과장, 남궁민수 팀장, 박 대리, 김○○ 주임", "구매 과장이 받음"]
+    assert collect_person_names(texts) == {"김철수", "철수", "남궁민수", "민수"}
+
+
+def test_wide_scrub_is_stable_when_run_again():
+    texts = [
+        "김철수 과장과 홍길동 동석",
+        "철수가 영희님께 전달. Kim 과장 부재",
+        "홍길동, 김영희 과장",
+    ]
+    known = collect_person_names(texts)
+    for text in scrub_person_names_in_texts(texts):
+        assert scrub_person_names_wide(text, known) == (text, 0)
+        assert not has_known_person_name(text, known)
+
+
+def test_known_name_left_in_a_text_is_detected():
+    assert has_known_person_name("철수가 회신", {"철수"})
+    assert has_known_person_name("김철수 통화함", {"김철수"})
+    assert not has_known_person_name("정수 처리 설비", {"정수"})
