@@ -167,7 +167,16 @@ export default function IndustryChips({ oppId, header, onSaved }: IndustryChipsP
         </div>
       ) : (
         <span style={secondary} data-testid="industry-chips-hint">
-          {!canRecord ? texts.pickStaffFirst : options.length === 0 ? texts.noOptions : texts.hint}
+          {!canRecord
+            ? texts.pickStaffFirst
+            : options.length === 0
+              ? texts.noOptions
+              : // 안내는 지금 보이는 단추와 맞춘다(#719): 값 없음·확인된 값에는 [확정] 단추가 없다.
+                industries.length === 0
+                ? texts.hintNone
+                : confirmed
+                  ? texts.hintConfirmed
+                  : texts.hint}
         </span>
       )}
       {error ? (

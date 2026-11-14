@@ -466,6 +466,13 @@ export const listFilters = {
   flatNote: '공정 상관없이 한 줄로 보는 중 · 순위 번호 없음',
   /** 한 공정이 묶음 상한(50곳)을 넘을 때 묶음 끝의 링크(#383). 그 공정 하나를 고른 보기로 간다. */
   onlyThisProcess: '이 공정만 보기',
+  /**
+   * 한 공정이 다 실리지 않았을 때 묶음 끝의 안내(#719). 뒤에 "— 이 공정만 보기" 링크가 붙는다.
+   * 예: "이 공정은 150곳 가운데 50곳만 보입니다. 나머지: 홈페이지 없음 99곳 · 끝난 회사 1곳"
+   * rest는 안 보인 묶음 이름과 곳 수("홈페이지 없음 99곳")이고, 비어 있으면 "나머지"를 적지 않는다.
+   */
+  groupTruncated: (total: number, shown: number, rest: readonly string[]) =>
+    `이 공정은 ${total}곳 가운데 ${shown}곳만 보입니다.${rest.length > 0 ? ` 나머지: ${rest.join(' · ')}` : ''}`,
   /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
   /** 조건을 걸었는데 0건일 때. */
@@ -957,10 +964,17 @@ export const salesChoiceTexts = {
       : `저장하면 확정된 공정 '${names}'이(가) 맞는 것으로 남습니다.`,
   keepIndustryPreview: (names: string) =>
     `저장하면 확정된 산업 '${names}'이(가) 맞는 것으로 남습니다.`,
-  /** 이미 확정된 값이 있으면 질문 대신 이 한 줄(#691). "확정됨: 아연도금" + [바꾸기] */
-  confirmedLine: (names: string) => `확정됨: ${names}`,
-  change: '바꾸기',
-  changeClose: '그대로 두기',
+  /**
+   * 이미 확인된 값이 있는 질문의 한 줄(#719, PM 결정 2026-11-14로 #691의 "확정됨: … [바꾸기]"를 바꿈).
+   * "공정: 아연도금", "산업: 기계·설비". 그 아래에 지금 값이 고른 채로 보이고 바로 고친다.
+   */
+  currentLine: (kind: 'PROCESS' | 'INDUSTRY', names: string) =>
+    `${kind === 'PROCESS' ? '공정' : '산업'}: ${names}`,
+  /** 지금 값과 다르게 골랐을 때 그 자리에 보인다(저장 전). "변경됨: 방위산업 → 방위산업, 자동차 부품" */
+  changedLine: (before: string, after: string) => `변경됨: ${before} → ${after}`,
+  inPlaceHint: '다르면 여기서 바로 고칩니다. 그대로 두고 저장하면 바뀌지 않습니다.',
+  /** 지금 값을 모두 뺐을 때. 하나도 안 고른 채로는 바뀌지 않는다. */
+  clearedHint: '하나 이상 골라야 바뀝니다. 이대로 저장하면 지금 값 그대로입니다.',
 } as const;
 
 export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
@@ -1569,6 +1583,9 @@ export const contactBuckets = {
   /** 묶음이 바뀌는 자리의 제목. 예: "근거 있음 30곳" */
   title: (bucket: keyof typeof contactBucketTitles, count: number) =>
     `${contactBucketTitles[bucket]} ${count}곳`,
+  /** 카드가 일부만 실린 묶음의 제목(#719, 공정별 묶음 보기). 예: "홈페이지 없음 35곳 (22곳만 보임)" */
+  titlePartial: (bucket: keyof typeof contactBucketTitles, count: number, shown: number) =>
+    `${contactBucketTitles[bucket]} ${count}곳 (${shown}곳만 보임)`,
   /** 카드 꼬리표: 공정 적합도 하나(#675). 끝난 회사가 아닌 카드에 보인다. 적합도가 없으면 안 보인다. */
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
   /** 그 묶음에 든 이유. 카드에는 끝난 회사의 이유(앞 네 줄)만 꼬리표로 보인다. */
@@ -1819,7 +1836,7 @@ export const companyReport = {
   evidence: {
     none: '저장된 근거가 없습니다 · 확인 필요',
     source: '출처',
-    /** "10/18" 앞에 붙는 말. */
+    /** "2026-10-18" 앞에 붙는 말. 보고서의 날짜는 연도까지 적는다(#719). */
     date: (date: string) => `자료 날짜 ${date}`,
   },
   questions: {
@@ -1827,7 +1844,7 @@ export const companyReport = {
     knownNone: '아직 들은 답이 없습니다.',
     askTitle: '방문·통화 때 물을 것',
     askNone: '지금 물을 것이 없습니다.',
-    /** 직접 적은 답 글은 싣지 않고 답한 날만 적는다. "답 적음 · 11/6 (글은 상세 화면에서)" */
+    /** 직접 적은 답 글은 싣지 않고 답한 날만 적는다. "답 적음 · 2026-11-06 (글은 상세 화면에서)" */
     answered: (date: string | null) => `답 적음${date ? ` · ${date}` : ''} (글은 상세 화면에서)`,
     /** "아직 값이 없는 점수 항목: 소재와 보유 공정 일치 · 납품실적" */
     missingScores: (labels: readonly string[]) => labels.join(' · '),
@@ -1843,6 +1860,8 @@ export const companyReport = {
     nextSchedule: '다음 일정',
     none: '없음',
     stepNone: '없음',
+    /** "수요 확인 (2026-11-12부터)" — 보고서는 연도까지 적는다(#719). */
+    stepSince: (label: string, since: string | null) => (since ? `${label} (${since}부터)` : label),
   },
 } as const;
 
@@ -1860,7 +1879,12 @@ export const industryChips = {
   save: '저장',
   cancel: '취소',
   groupLabel: '이 회사의 산업군 고르기',
+  /** AI 제안일 때의 안내([확정]·[고치기]가 둘 다 보인다). */
   hint: '맞으면 [확정], 다르면 [고치기]로 고릅니다. 확정한 값으로 영업 분석을 셉니다.',
+  /** 이미 사람이 확인한 값(사례 파일·담당자 확정)일 때의 안내(#719). [고치기]만 보인다. */
+  hintConfirmed: '다르면 [고치기]로 바꿉니다.',
+  /** 산업군 값이 없을 때의 안내(#719). [고치기]만 보인다. */
+  hintNone: '[고치기]로 산업군을 고릅니다.',
   editHint: (max: number) => `산업군은 ${max}개까지 고를 수 있습니다.`,
   pickStaffFirst: '담당자를 고르면 바꿀 수 있습니다.',
   noOptions: '산업군 목록을 불러오지 못해 고칠 수 없습니다.',

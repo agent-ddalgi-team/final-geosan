@@ -171,6 +171,31 @@ describe('상세 산업군 칩 (#646)', () => {
     expect(screen.getByTestId('industry-edit-button')).toBeEnabled();
   });
 
+  // #719: 안내 글이 지금 보이는 단추와 맞아야 한다. [확정]이 없는 회사에 "맞으면 [확정]"이라고 하지 않는다.
+  it.each([
+    ['AI 제안', { industries: ['자동차 부품'], source: 'AI' }, industryChips.hint, true],
+    [
+      '사례 파일 값',
+      { industries: ['기계·설비'], source: 'CASE_FILE' },
+      '다르면 [고치기]로 바꿉니다.',
+      false,
+    ],
+    [
+      '담당자 확정',
+      { industries: ['기계·설비'], source: 'STAFF' },
+      '다르면 [고치기]로 바꿉니다.',
+      false,
+    ],
+    ['값 없음', { industries: [], source: null }, '[고치기]로 산업군을 고릅니다.', false],
+  ] as const)('안내 글은 상태(%s)에 보이는 단추와 맞는다', (_name, props, hint, hasConfirm) => {
+    renderChips({ industries: [...props.industries], source: props.source });
+    const text = screen.getByTestId('industry-chips-hint').textContent ?? '';
+    expect(text).toBe(hint);
+    // 안내에 [확정]이 적혀 있으면 [확정] 단추가 실제로 있어야 한다.
+    expect(text.includes('[확정]')).toBe(hasConfirm);
+    expect(screen.queryByTestId('industry-confirm-button') !== null).toBe(hasConfirm);
+  });
+
   it('담당자를 고르기 전·보기 전용이면 단추가 잠기고 안내가 보인다', async () => {
     const user = userEvent.setup();
     renderChips({ value: frameValue({ staffKey: null, canRecord: false }) });
