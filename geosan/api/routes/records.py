@@ -7,7 +7,7 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query
-from sqlalchemy import func, literal_column, select
+from sqlalchemy import func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
 from geosan.api.auto_research import attach_background, queue_on_bookmark
@@ -120,6 +120,8 @@ CONTACT_RESTORES_TARGET_MEMO = "접촉 기록을 남기며 제외에서 영업 �
 # 접촉을 남기면 저절로 영업 대상이 되는 지금 의견: 의견 없음·검토 중.
 # 제외는 확인을 받았을 때만 바꾼다.
 _CONTACT_PROMOTES_FROM = (None, "NEED_CHECK")
+# 접촉 저장이 저절로 더한 의견 행을 알아보는 표시(의견 표에 출처 열이 없어 메모 문장으로 가린다).
+_CONTACT_OPINION_MEMOS = (CONTACT_SETS_TARGET_MEMO, CONTACT_RESTORES_TARGET_MEMO)
 
 
 # 자료 조사 메모를 붙일 수 있는 검토사항 줄(자료 못 찾음·자료 부족)과 활동 이력에 붙이는 꼬리표.
@@ -619,11 +621,19 @@ def ensure_bookmarked(session: Session, opportunity: Opportunity, staff: str) ->
 
 
 def _has_sales_records(session: Session, opp_id: str) -> bool:
-    """메모·영업 기록·검토 의견 행이 있는지. 잘못 입력으로 표시한 행은 세지 않는다(#253)."""
+    """메모·영업 기록·검토 의견 행이 있는지. 잘못 입력으로 표시한 행은 세지 않는다(#253).
+
+    #719: 접촉 저장이 저절로 더한 "영업 대상" 의견 행(정해진 메모 문장)은 세지 않는다.
+    그 접촉이 살아 있으면 접촉 행이 기록으로 세어지고, 접촉을 취소했으면 사람이 남긴 기록이
+    아니므로 관심을 끌 수 있어야 한다. 의견 표에는 취소 표시 열이 없어 의견 행은 그대로 둔다.
+    """
     queries = [
         select(Note.opp_id).where(Note.opp_id == opp_id, Note.cancelled_at.is_(None)),
         select(Outcome.opp_id).where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None)),
-        select(ReviewOpinion.opp_id).where(ReviewOpinion.opp_id == opp_id),
+        select(ReviewOpinion.opp_id).where(
+            ReviewOpinion.opp_id == opp_id,
+            or_(ReviewOpinion.memo.is_(None), ReviewOpinion.memo.not_in(_CONTACT_OPINION_MEMOS)),
+        ),
     ]
     return any(session.scalar(query.limit(1)) is not None for query in queries)
 
