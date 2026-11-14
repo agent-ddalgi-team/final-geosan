@@ -1924,6 +1924,11 @@ export const assistantTexts = {
   callPrepButton: '통화 준비 💰',
   callPrepHint: '이 회사의 기록과 비슷한 회사의 결과로 먼저 물어볼 것을 정리합니다.',
   callPrepFailed: '통화 준비를 받지 못했습니다.',
+  /** 오늘 정리(#743): "오늘 확인할 것" 칸 맨 위. 하루 한 번 AI가 쓴다. */
+  dailyTitle: '오늘 정리',
+  dailyMark: 'AI가 쓴 글 · 확인 필요',
+  dailyLoading: 'AI가 오늘 정리를 쓰는 중입니다…',
+  dailyFailed: '오늘 정리를 받지 못했습니다.',
 } as const;
 
 /**
