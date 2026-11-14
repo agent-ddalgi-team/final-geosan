@@ -20,6 +20,10 @@ current_research: ContextVar[ResearchContext | None] = ContextVar("research", de
 @contextmanager
 def research_context(transfer_requester: str | None = None):
     # C8·#218: 검색부터 저장·재평가까지 회사 한 곳 전체 60초.
+    # #744: 요청자를 주지 않으면 바깥 문맥(자동 조사 대기 줄)의 요청자를 그대로 잇는다.
+    if transfer_requester is None:
+        outer = current_research.get()
+        transfer_requester = outer.transfer_requester if outer is not None else None
     context = ResearchContext(time.monotonic() + 60, transfer_requester=transfer_requester)
     token = current_research.set(context)
     try:

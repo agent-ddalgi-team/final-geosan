@@ -8,10 +8,11 @@ from datetime import timedelta
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Path, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from geosan.api.auto_research import continue_queue_today
 from geosan.api.check_points import card_check_points, shown_blocker_text
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.ingest_views import (
@@ -742,6 +743,8 @@ def list_opportunities(
     max_distance_km: Annotated[
         float | None, Query(alias="maxDistanceKm", gt=0, allow_inf_nan=False)
     ] = None,
+    # #744: 응답 뒤 조사 대기 줄을 돌릴 때 쓴다. 엑셀 내려받기가 직접 부를 때는 없다.
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -773,6 +776,9 @@ def list_opportunities(
             "운영 담당자가 거산의 기준 좌표를 등록한 뒤 다시 열어 주세요.",
             status=503,
         )
+    # #744: 이 서버가 오늘 처음 받는 목록 읽기면 응답 뒤 조사 대기 줄을 이어서 돌린다.
+    if background_tasks is not None:
+        continue_queue_today(session, background_tasks)
     # 실시간 보완 결과와 그 결과로 정한 순서·거리 조건을 캐시에 남기지 않는다.
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
