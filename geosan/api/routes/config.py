@@ -26,6 +26,15 @@ def config_ui(session: SessionDep):
             rule_version=runtime.rule_config.version,
             records=settings.records.model_dump(),
             export=settings.export.model_dump(),
+            # #680: 기준 묶음이 없으면 꺼짐으로 보인다(숫자를 지어내지 않는다).
+            assistant={
+                "enabled": settings.assistant is not None
+                and settings.llm.sales_records_enabled
+                and settings.llm.mode == "EXTERNAL",
+                "question_max_length": settings.assistant.question_max_length
+                if settings.assistant
+                else None,
+            },
             distance_filter_presets_km=settings.distance_filter_presets_km,
             ingest_options={
                 "processes": [
