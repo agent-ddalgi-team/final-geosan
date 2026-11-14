@@ -100,7 +100,7 @@ from geosan.records.models import (
     ReviewOpinion,
 )
 from geosan.records.program_note import add_program_note
-from geosan.rules.codes import ReviewItemKind, ReviewItemSource
+from geosan.rules.codes import NoteKind, ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
 
@@ -1239,6 +1239,13 @@ def activity(
             summary = f"자료 조사 · {line} · {row.text}" if line else f"자료 조사 · {row.text}"
         else:
             summary = row.text
+        if row.kind == NoteKind.CHANGE:
+            # #731: 프로그램이 남긴 변경 기록. 잘못 입력으로 표시할 수 없으니
+            # 저장 행 번호를 주지 않는다.
+            items.append(
+                ActivityItem(at=row.created_at, actor=row.staff_key, kind="CHANGE", summary=summary)
+            )
+            continue
         items.append(
             ActivityItem(
                 at=row.created_at,
@@ -1455,6 +1462,12 @@ def cancel_record(
     row = session.get(model, record_id) if record_id.startswith(("outcome", "note")) else None
     if row is None or row.opp_id != opp_id:
         raise NotFoundError("이 기회에 그 기록이 없습니다.")
+    if kind == "NOTE" and row.kind == NoteKind.CHANGE:
+        # #731: 프로그램이 남긴 변경 기록은 대상이 아니다. 활동 이력도 그 번호를 주지 않는다.
+        raise NotFoundError(
+            "잘못 입력으로 표시할 수 있는 기록이 아닙니다.",
+            "공정·산업을 되돌리려면 그 값을 다시 고쳐 주세요.",
+        )
     if row.cancelled_at is not None:
         raise AppError(
             message="이미 잘못 입력으로 표시된 기록입니다",

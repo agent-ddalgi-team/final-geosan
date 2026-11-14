@@ -477,3 +477,53 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     expect(screen.getByTestId('timeline-cancel-reason')).toHaveAttribute('maxlength', '200');
   });
 });
+
+// ---------- 변경 기록 (#731, PM 결정 2026-11-14). 서버 호출(getActivity)은 가짜로 바꾼 확인이다. ----------
+
+const changeLine: ActivityItem = {
+  at: '2026-11-06T13:00:00+09:00',
+  actor: 'park-lee',
+  kind: 'CHANGE',
+  summary: '공정 변경 · 아노다이징 → 아연도금(전기아연도금)',
+  recordId: null,
+  recordKind: null,
+  cancelled: false,
+};
+
+describe('ActivityTimeline — 변경 기록', () => {
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedCancel.mockReset();
+  });
+
+  it('프로그램이 남긴 줄은 "변경 기록"으로 보이고 [잘못 입력] 단추가 없다', async () => {
+    mockedGet.mockResolvedValueOnce(reply([myNote, changeLine]));
+    renderTimeline(0, { config: cancelConfig });
+    const rows = await screen.findAllByTestId('timeline-item');
+    const changeRow = rows.find((row) => row.textContent?.includes(changeLine.summary));
+    expect(changeRow).toBeDefined();
+    expect(within(changeRow!).getByTestId('timeline-kind')).toHaveTextContent('변경 기록');
+    expect(within(changeRow!).queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    // 담당자 메모 줄에는 그대로 단추가 있다.
+    expect(screen.getAllByTestId('timeline-cancel-open')).toHaveLength(1);
+  });
+
+  it('응답에 번호가 실려 와도 변경 기록 줄에는 단추를 두지 않는다', async () => {
+    mockedGet.mockResolvedValueOnce(
+      reply([{ ...changeLine, recordId: 'note-9', recordKind: 'NOTE' }]),
+    );
+    renderTimeline(0, { config: cancelConfig });
+    await screen.findByTestId('timeline-item');
+    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+  });
+
+  it('변경 기록은 "사실" 묶음(파랑)에 든다', async () => {
+    mockedGet.mockResolvedValueOnce(reply([changeLine, note]));
+    renderTimeline();
+    await screen.findAllByTestId('timeline-item');
+    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FACT }));
+    const rows = screen.getAllByTestId('timeline-item');
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByTestId('timeline-kind')).toHaveAttribute('data-tone', 'ask');
+  });
+});
