@@ -23,11 +23,11 @@ SAMPLES = yaml.safe_load(
     (Path(__file__).parent / "data" / "memo_name_samples.yaml").read_text(encoding="utf-8")
 )
 
-# 2026-11-14 측정값. 더 좋아지면 숫자를 내리고, 나빠지면 테스트가 실패한다.
+# 2026-11-14 측정값(같은 날 드문 성씨를 더한 뒤 다시 잼: 새 방식 6 → 4, 예전 방식 38 → 37). 더 좋아지면 숫자를 내리고, 나빠지면 테스트가 실패한다.
 MEMO_COUNT = 64
 NAME_COUNT = 59
-OLD_LEFT = 38  # 예전 방식(글 하나씩 scrub_person_names)으로 남은 이름
-NEW_LEFT_MAX = 6  # 새 방식(회사 묶음 scrub_person_names_in_texts)으로 남은 이름
+OLD_LEFT = 37  # 예전 방식(글 하나씩 scrub_person_names)으로 남은 이름
+NEW_LEFT_MAX = 4  # 새 방식(회사 묶음 scrub_person_names_in_texts)으로 남은 이름
 NEW_WRONG_MAX = 0  # 새 방식이 지운 핵심 낱말
 PLAIN_CHANGED_MAX = 0  # 이름 없는 문장 가운데 한 글자라도 바뀐 문장
 
@@ -37,8 +37,6 @@ KNOWN_LEFT = {
     ("외자 이름(직함 없는 첫 등장)", "김구"),
     ("성 뗀 이름+조사", "선영"),  # "성민과 선영 둘 다" — 뒤 이름에 조사가 없다
     ("성 뗀 이름(조사 없음)", "민호"),
-    ("앞말+이름(목록에 없는 성씨)", "표예린"),
-    ("직함 없음(목록에 없는 성씨)", "탁재훈"),
 }
 
 

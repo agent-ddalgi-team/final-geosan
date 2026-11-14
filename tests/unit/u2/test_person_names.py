@@ -120,6 +120,7 @@ WIDE_REMOVED = [
     ("Mr. Park에게 보냄", "Mr. [이름]에게 보냄"),
     ("이상민 과장이 품질 담당", "[이름] 과장이 품질 담당"),
     ("조성민이 연락 주기로", "[이름]이 연락 주기로"),
+    ("탁재훈이 도면 보냄", "[이름]이 도면 보냄"),
 ]
 
 WIDE_KEPT = [
@@ -145,7 +146,6 @@ WIDE_MISSED = [
     "허준이 전화함",
     "철수가 받음",
     "David가 구매 담당",
-    "탁재훈이 도면 보냄",
     "kim 과장과 통화",
 ]
 
@@ -247,3 +247,41 @@ def test_known_name_left_in_a_text_is_detected():
     assert has_known_person_name("철수가 회신", {"철수"})
     assert has_known_person_name("김철수 통화함", {"김철수"})
     assert not has_known_person_name("정수 처리 설비", {"정수"})
+
+
+# 드문 성씨(#720 PM 결정 2026-11-14). 예전 함수(영업 비서가 쓰는 길)도 이만큼 더 지운다.
+RARE_SURNAME_REMOVED = [
+    ("표예린 과장과 통화", "[이름] 과장과 통화"),
+    ("구매 담당 표예린", "구매 담당 [이름]"),
+    ("탁재훈 대리가 회신", "[이름] 대리가 회신"),
+    ("금 부장이 결재", "[이름] 부장이 결재"),
+    ("봉준호 팀장", "[이름] 팀장"),
+    ("옥 대리님 부재", "[이름] 대리님 부재"),
+    ("왕 사장과 면담", "[이름] 사장과 면담"),
+]
+
+RARE_SURNAME_KEPT = [
+    "금형 팀장이 회신",
+    "금속 가공 대표 업체",
+    "표면처리 팀장과 통화",
+    "표준 과장급 미팅",
+    "피막 두께 문의",
+    "반품 담당 부재",
+    "모든 팀장이 참석",
+    "반기 대표 회의",
+    "태양 전지 부품 문의",
+    "금요일 오후 방문",
+    "편의상 대리점 경유",
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), RARE_SURNAME_REMOVED)
+def test_rare_surnames_are_removed_by_both_ways(text, expected):
+    assert scrub_person_names(text) == (expected, 1)
+    assert scrub_person_names_wide(text) == (expected, 1)
+
+
+@pytest.mark.parametrize("text", RARE_SURNAME_KEPT)
+def test_words_starting_with_a_rare_surname_letter_are_kept(text):
+    assert scrub_person_names(text) == (text, 0)
+    assert scrub_person_names_wide(text) == (text, 0)
