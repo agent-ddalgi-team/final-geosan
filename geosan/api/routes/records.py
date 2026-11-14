@@ -3,6 +3,7 @@
 관심(찜) 켜고 끄기와 자동 관심도 여기에 둔다(#356).
 """
 
+from dataclasses import dataclass
 from datetime import date
 from typing import Annotated
 
@@ -866,13 +867,21 @@ def outcome_view(row: Outcome | None) -> dict | None:
     }
 
 
-@router.post("/opportunities/{oppId}/outcomes", response_model=OutcomeEnvelope)
-def save_outcome(
-    opp_id: Annotated[str, Path(alias="oppId")],
-    body: OutcomeRequest,
-    session: SessionDep,
-    staff: StaffDep,
-):
+@dataclass(frozen=True)
+class SavedOutcome:
+    """접촉 저장 본체의 결과: 새 행, 저장 전 현재 행, 다시 평가했는지."""
+
+    row: Outcome
+    previous: Outcome | None
+    reevaluated: bool
+
+
+def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: str) -> SavedOutcome:
+    """영업 기록(접촉·단계) 저장 본체. 창구와 운영 명령(`seed-demo-records`)이 함께 부른다.
+
+    검사 → 쓰기 잠금 → 의견·관심 → 저장 → 통화 신호 → 공정·산업 확정 → 재평가 → 큰 단계 순이다.
+    한 트랜잭션 안에서 돌고, 어디서든 실패하면 부른 쪽의 트랜잭션과 함께 전부 취소된다.
+    """
     fields = scan_contacts(
         {"reason": body.reason, "memo": body.memo, "nextScheduleNote": body.next_schedule_note}
     )
@@ -1007,6 +1016,21 @@ def save_outcome(
         step = sales_step_state(session, opp_id, status=None, questions=questions).code
         row.status = stage_for(row.status, row.method, step)
         session.flush()
+    return SavedOutcome(row=row, previous=previous, reevaluated=reevaluated)
+
+
+@router.post("/opportunities/{oppId}/outcomes", response_model=OutcomeEnvelope)
+def save_outcome(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: OutcomeRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 창구는 저장 본체(`record_outcome`)를 부르고 응답만 만든다. 함수 설명 글은 명세(OpenAPI)에
+    # 실리므로 주석으로 둔다. 응답 뒤 자동 조사 예약(#690)은 이 창구 요청에만 걸린다
+    # (`attach_background`). 운영 명령이 본체를 부르면 예약할 곳이 없어 조사는 돌지 않는다.
+    saved = record_outcome(session, opp_id, body, staff)
+    row, previous = saved.row, saved.previous
     previous_value = None
     if previous and previous.version > (body.expected_version or 0):
         previous_value = outcome_view(previous)
@@ -1019,7 +1043,7 @@ def save_outcome(
             has_virtual_data=row.is_virtual,
             dataset_kind=row.dataset_kind,
             previous_value=previous_value,
-            **({"reevaluated": True} if reevaluated else {}),
+            **({"reevaluated": True} if saved.reevaluated else {}),
         ),
     )
 
