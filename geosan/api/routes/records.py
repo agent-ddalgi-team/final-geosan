@@ -121,6 +121,8 @@ CONTACT_RESTORES_TARGET_MEMO = "접촉 기록을 남기며 제외에서 영업 �
 # 접촉을 남기면 저절로 영업 대상이 되는 지금 의견: 의견 없음·검토 중.
 # 제외는 확인을 받았을 때만 바꾼다.
 _CONTACT_PROMOTES_FROM = (None, "NEED_CHECK")
+# 영업이 끝난 큰 단계(성사·거절). 대시보드 일정이 빼는 기준(dashboard CLOSED_STATUSES)과 같다.
+_ENDED_STAGES = ("WON", "LOST")
 # 접촉 저장이 저절로 더한 의견 행을 알아보는 표시(의견 표에 출처 열이 없어 메모 문장으로 가린다).
 _CONTACT_OPINION_MEMOS = (CONTACT_SETS_TARGET_MEMO, CONTACT_RESTORES_TARGET_MEMO)
 
@@ -978,9 +980,12 @@ def save_outcome(
     if fields:
         raise InputError("영업 기록의 항목을 확인해 주세요.", fields=fields)
     # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
-    for name in ("next_schedule_at", "next_schedule_note"):
-        if previous and name not in body.model_fields_set:
-            values[name] = getattr(previous, name)
+    # #719: 다만 이번 저장으로 성사·거절이 되면 이어받지 않는다(끝난 회사에 옛 일정이 남지 않게).
+    # 보류는 나중에 다시 연락하려는 것일 수 있어 그대로 이어받는다.
+    if status not in _ENDED_STAGES:
+        for name in ("next_schedule_at", "next_schedule_note"):
+            if previous and name not in body.model_fields_set:
+                values[name] = getattr(previous, name)
     # #697: 접촉을 남기면 같은 저장 안에서 검토 의견이 영업 대상으로 정해진다(관심도 여기서 켠다).
     # #719: 이번 저장으로 성사·거절·보류가 되면 관심이 켜져도 조사를 예약하지 않는다(비용만 나간다).
     with no_auto_research(status in CLOSED_STAGES):
