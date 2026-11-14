@@ -184,12 +184,17 @@ function NativeSelect({
   );
 }
 
-/** 답 하나를 누가 채웠나(#742): 코치가 채운 답 그대로면 AI_CONFIRMED, 고르거나 고친 답은 STAFF. */
+/**
+ * 답 하나를 누가 채웠나(#742): 코치가 채운 답 그대로면 AI_CONFIRMED, 코치가 채운 질문을 다른 보기로
+ * 바꿨으면 AI_CHANGED(PM 결정 2026-11-14), 코치가 채우지 않은 질문을 고른 답은 STAFF.
+ */
 function filledByOf(
   answer: { questionId: string; answerId: string },
   aiFilled: Record<string, string[]>,
 ): AnswerFilledBy {
-  return (aiFilled[answer.questionId] ?? []).includes(answer.answerId) ? 'AI_CONFIRMED' : 'STAFF';
+  const original = aiFilled[answer.questionId];
+  if (!original) return 'STAFF';
+  return original.includes(answer.answerId) ? 'AI_CONFIRMED' : 'AI_CHANGED';
 }
 
 export default function RecordsArea({

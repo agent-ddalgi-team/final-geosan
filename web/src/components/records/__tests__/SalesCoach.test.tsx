@@ -332,7 +332,7 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(onRecorded).toHaveBeenCalled();
   });
 
-  it('[고치기]는 AI 답이 골라진 지금 양식을 열고, 고친 답만 담당자 답으로 저장한다', async () => {
+  it('[고치기]는 AI 답이 골라진 지금 양식을 열고, 바꾼 AI 답은 AI_CHANGED로 저장한다', async () => {
     const user = userEvent.setup();
     renderArea();
     const review = await reachAndSend(user);
@@ -343,10 +343,11 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalled());
     const answers = vi.mocked(postOutcome).mock.calls[0][1].answers ?? [];
+    // AI가 채운 답을 다른 보기로 바꾸면 AI_CHANGED(바뀜 #742 PM 결정 2026-11-14, 전에는 STAFF).
     expect(answers).toContainEqual({
       questionId: 'PLATING_NOW',
       answerId: 'IN_HOUSE',
-      filledBy: 'STAFF',
+      filledBy: 'AI_CHANGED',
     });
     expect(answers).toContainEqual({
       questionId: 'NEXT_ACTION',

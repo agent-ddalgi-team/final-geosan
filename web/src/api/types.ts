@@ -858,8 +858,8 @@ export interface OutcomeRequest {
   restoreExcluded?: boolean;
 }
 
-/** 꼬리 질문 답을 누가 채웠나(#742, C0 answerFilledBy). */
-export type AnswerFilledBy = 'STAFF' | 'AI_CONFIRMED';
+/** 꼬리 질문 답을 누가 채웠나(#742, C0 answerFilledBy). AI_CHANGED = AI가 채운 답을 [고치기]에서 바꿈. */
+export type AnswerFilledBy = 'STAFF' | 'AI_CONFIRMED' | 'AI_CHANGED';
 
 export interface OutcomeResponse extends RecordMeta {
   status: OutcomeStatus;
