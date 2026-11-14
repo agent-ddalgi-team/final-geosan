@@ -83,8 +83,9 @@ class AiPickSettings(FileModel):
     """C7: #425·#430 PM 승인. 묶음 기본값은 20행(#491, 100행은 60초 한도를 넘김).
 
     model: 후보 고르기에만 쓸 모델(llm.allowedModels 안). 비우면 llm.model.
-    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작)가 없으면
-    AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감). 기준 버전에 포함된다.
+    excludeKeywords: 생산품·업종명에 이 말이 있고 제조 낌새(제조·생산·가공·부품·제작·장치·장비·
+    설비 등, #221)가 없으면 AI에 보내지 않고 코드가 '제조업 아님'으로 기록한다(#491 비용 절감).
+    기준 버전에 포함된다.
     """
 
     enabled: bool = Field(default=False, strict=True)
