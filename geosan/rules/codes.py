@@ -299,6 +299,10 @@ class NoteKind(StrEnum):
     MEMO = "MEMO"
     RESEARCH = "RESEARCH"
     REPLY = "REPLY"  # #248 PM 승인: 답 저장 이력 전용, 메모 요청에서는 받지 않는다.
+    # #731 PM 결정 2026-11-14: 프로그램이 남기는 한 줄(공정·산업 확정, AI 제안 확정·물리침).
+    # 활동 이력에서 "변경 기록"으로 보이고 잘못 입력으로 표시할 수 없다.
+    # 메모 요청에서는 받지 않는다.
+    CHANGE = "CHANGE"
 
 
 class ReviewItemKind(StrEnum):

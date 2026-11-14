@@ -100,7 +100,7 @@ from geosan.records.models import (
     ReviewOpinion,
 )
 from geosan.records.program_note import add_program_note
-from geosan.rules.codes import ReviewItemKind, ReviewItemSource
+from geosan.rules.codes import NoteKind, ReviewItemKind, ReviewItemSource
 from geosan.storage.base import new_id, utcnow
 from geosan.workflows.flow_evaluate import evaluate_in_session, today_in_seoul
 
@@ -961,7 +961,16 @@ def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: s
     # 이미 같은 단계로 끝나 있던 회사(예: 거절 뒤 이유만 고치는 저장)는 "끝나는 저장"이 아니므로,
     # 끝난 뒤에 일부러 잡아 둔 일정을 지우지 않는다.
     ends_now = status in _ENDED_STAGES and not (previous and previous.status == status)
-    if not ends_now:
+    # (PM 결정 2026-11-14 #733) 통화·메일·방문을 그 일정 날짜나 그 뒤에 했으면 일정은 넘기지 않는다.
+    # 일정대로 연락했으니 놓친 일정이 아니다. 일정 전 날짜의 접촉, 접촉 없이 단계만 고치는 저장은
+    # 지금처럼 넘긴다(지난 일정이면 대시보드 "놓친 일정"으로 남는다).
+    past_after_contact = bool(
+        body.method
+        and previous
+        and previous.next_schedule_at
+        and previous.next_schedule_at <= (body.attempted_at or today_in_seoul())
+    )
+    if not ends_now and not past_after_contact:
         for name in ("next_schedule_at", "next_schedule_note"):
             if previous and name not in body.model_fields_set:
                 values[name] = getattr(previous, name)
@@ -1230,6 +1239,13 @@ def activity(
             summary = f"자료 조사 · {line} · {row.text}" if line else f"자료 조사 · {row.text}"
         else:
             summary = row.text
+        if row.kind == NoteKind.CHANGE:
+            # #731: 프로그램이 남긴 변경 기록. 잘못 입력으로 표시할 수 없으니
+            # 저장 행 번호를 주지 않는다.
+            items.append(
+                ActivityItem(at=row.created_at, actor=row.staff_key, kind="CHANGE", summary=summary)
+            )
+            continue
         items.append(
             ActivityItem(
                 at=row.created_at,
@@ -1446,6 +1462,12 @@ def cancel_record(
     row = session.get(model, record_id) if record_id.startswith(("outcome", "note")) else None
     if row is None or row.opp_id != opp_id:
         raise NotFoundError("이 기회에 그 기록이 없습니다.")
+    if kind == "NOTE" and row.kind == NoteKind.CHANGE:
+        # #731: 프로그램이 남긴 변경 기록은 대상이 아니다. 활동 이력도 그 번호를 주지 않는다.
+        raise NotFoundError(
+            "잘못 입력으로 표시할 수 있는 기록이 아닙니다.",
+            "공정·산업을 되돌리려면 그 값을 다시 고쳐 주세요.",
+        )
     if row.cancelled_at is not None:
         raise AppError(
             message="이미 잘못 입력으로 표시된 기록입니다",

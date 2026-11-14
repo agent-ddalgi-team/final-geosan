@@ -951,7 +951,9 @@ export type ActivityKind =
   | 'EVIDENCE_GRADE_CONFIRMED'
   | 'RELATION_CONFIRMED'
   | 'NOTE'
-  | 'RECORD_CANCELLED';
+  | 'RECORD_CANCELLED'
+  /** #731 프로그램이 남긴 변경 기록(공정·산업 확정, AI 제안 확정·물리침). recordId가 없어 취소할 수 없다. */
+  | 'CHANGE';
 
 /** 취소할 수 있는 저장 행의 종류(C1 ActivityItem.recordKind). NOTE = 메모·자료 조사·답 이력, OUTCOME = 접촉·단계·일정. */
 export type RecordKind = 'NOTE' | 'OUTCOME';

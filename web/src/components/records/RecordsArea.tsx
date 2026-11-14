@@ -321,6 +321,15 @@ export default function RecordsArea({
     }
   }
 
+  /**
+   * 접촉 날짜가 지금 일정 날짜와 같거나 뒤인가. 일정대로 연락했으니 그 일정은 넘기지 않는다
+   * (PM 결정 2026-11-14 #733, 서버와 같은 규칙).
+   */
+  function pastSchedule(): boolean {
+    const contactedOn = attemptedAt || todayKst();
+    return Boolean(outcome?.nextScheduleAt && outcome.nextScheduleAt <= contactedOn);
+  }
+
   function keepSchedule(): Pick<OutcomeRequest, 'nextScheduleAt' | 'nextScheduleNote'> {
     return {
       ...(outcome?.nextScheduleAt ? { nextScheduleAt: outcome.nextScheduleAt } : {}),
@@ -464,9 +473,10 @@ export default function RecordsArea({
       ...(memo ? { memo } : {}),
       // 날짜를 넣었으면 새 일정(날짜 + 고른 할 일의 쉬운 말), 안 넣었으면 있던 일정을 그대로 싣는다.
       // 성사·거절로 끝나는 저장이면 있던 일정은 싣지 않는다(서버가 비운다, #719).
+      // 일정 날짜나 그 뒤에 연락했으면 그 일정도 싣지 않는다: 놓친 일정이 아니다(#733).
       ...(nextAction && plannedDate !== ''
         ? { nextScheduleAt: plannedDate, nextScheduleNote: nextAction.label }
-        : endsSale(status)
+        : endsSale(status) || pastSchedule()
           ? {}
           : keepSchedule()),
       ...(closing ? closingReason : status === 'LOST' ? keepLostReason() : {}),

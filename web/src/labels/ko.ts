@@ -1360,6 +1360,7 @@ export const activityKindLabels: Record<ActivityKind, string> = {
   RELATION_CONFIRMED: '거래 관계',
   NOTE: '메모',
   RECORD_CANCELLED: '기록 취소',
+  CHANGE: '변경 기록',
 };
 
 /** 상세 머리 지도 링크 글자. */
