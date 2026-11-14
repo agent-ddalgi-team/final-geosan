@@ -25,6 +25,8 @@ export interface DashboardMap {
   asOf: string;
   /** "같이 들를 곳" 반경(km, #673). 설정 `visitGroupRadiusKm`, 보통 5. 옛 응답에는 없다. */
   visitRadiusKm?: number;
+  /** 기본 반경 안 관심 기업이 이 수 미만이면 그 회사만 넓힌 반경까지 본다(#743, 설정 `visitGroupWidenBelowCount`, 보통 5). 옛 응답에는 없다. */
+  visitWidenBelowCount?: number;
   /** 방문할 회사(진행 중·관심)마다 반경 안 후보 묶음. 진행 중 먼저, 그다음 관심(#673). */
   visitGroups?: DashboardVisitGroup[];
 }
@@ -42,5 +44,7 @@ export interface DashboardVisitNearby {
 export interface DashboardVisitGroup {
   /** 묶음 중심 회사. points 가운데 진행 중·관심 회사의 oppId. */
   oppId: string;
+  /** 이 회사에 쓴 반경(km, #743). 기본 반경보다 크면 넓힌 것이다(보통 10). 옛 응답에는 없다. */
+  radiusKm?: number;
   nearby: DashboardVisitNearby[];
 }

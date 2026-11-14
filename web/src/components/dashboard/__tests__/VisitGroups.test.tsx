@@ -188,3 +188,56 @@ describe('같이 들를 곳(#673)', () => {
     expect(within(callout).getByRole('link')).toHaveAttribute('href', '/opportunities/opp-near-1');
   });
 });
+
+describe('같이 들를 곳 › 5km 안 5곳 미만이면 10km (#743)', () => {
+  // 서버가 첫 묶음을 10km로 넓혀 보냈다고 가정한다(5km 안이 5곳 미만).
+  const widened: MapData = {
+    ...data,
+    visitGroups: data.visitGroups?.map((group, index) =>
+      index === 0 ? { ...group, radiusKm: 10 } : group,
+    ),
+  };
+
+  it('넓힌 줄에만 "(10km 안 · 5km 안이 5곳 미만)"이 붙는다', () => {
+    renderMap(widened);
+    const rows = screen.getAllByTestId('dashboard-visit-row');
+    expect(rows[0]).toHaveTextContent(`${t.visitNearbyCount(2)} ${t.visitWidened(10, 5, 5)}`);
+    expect(rows[0]).toHaveTextContent('근처 2곳 (10km 안 · 5km 안이 5곳 미만)');
+    expect(within(rows[1]).queryByTestId('dashboard-visit-widened')).not.toBeInTheDocument();
+  });
+
+  it('넓힌 묶음을 펼치면 지도 원도 10km로 그린다', async () => {
+    const user = userEvent.setup();
+    const calls: { kind: string; args: unknown[] }[] = [];
+    class Base {
+      constructor(...args: unknown[]) {
+        calls.push({ kind: this.constructor.name, args });
+      }
+    }
+    window.naver = {
+      maps: {
+        Map: class Map extends Base {
+          fitBounds = (...args: unknown[]) => calls.push({ kind: 'fitBounds', args });
+          destroy = () => {};
+        },
+        LatLng: class LatLng extends Base {
+          lat = () => 0;
+        },
+        Point: class Point extends Base {},
+        Circle: class Circle extends Base {
+          getBounds = () => ({});
+        },
+        Marker: class Marker extends Base {},
+        Event: { addListener: () => undefined },
+      } as never,
+    };
+    renderMap(widened, 'test-key');
+    await screen.findByTestId('dashboard-naver-map');
+    await waitFor(() => expect(calls.some((c) => c.kind === 'fitBounds')).toBe(true));
+    calls.length = 0;
+    await user.click(screen.getAllByTestId('dashboard-visit-row')[0]);
+    await waitFor(() => expect(calls.some((c) => c.kind === 'fitBounds')).toBe(true));
+    const circles = calls.filter((c) => c.kind === 'Circle');
+    expect(circles.map((c) => (c.args[0] as { radius: number }).radius)).toContain(10000);
+  });
+});

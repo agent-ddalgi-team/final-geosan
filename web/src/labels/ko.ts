@@ -307,6 +307,9 @@ export const dashboardMapTexts = {
     `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
   /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
   visitNearbyCount: (count: number) => `근처 ${count}곳`,
+  /** 넓힌 줄(#743, PM 결정 2026-11-14): "(10km 안 · 5km 안이 5곳 미만)". */
+  visitWidened: (radiusKm: number, baseKm: number, below: number) =>
+    `(${radiusKm}km 안 · ${baseKm}km 안이 ${below}곳 미만)`,
   /** 근처 회사 줄: "1.8km · 관심". */
   visitNearbyDistance: (km: number) => `${km}km`,
   /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
