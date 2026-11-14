@@ -10,10 +10,6 @@ import { recordsArea, salesQuestionTexts } from '../../../labels/ko';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
 
-// #740부터 "다음 할 일"에 펼쳐진 달력(antd)이 그려진다. 한 번 그려지면 같은 파일의 뒤 시험도 화면 계산이 무거워져
-// PC가 바쁠 때 기본 5초를 넘길 수 있다(혼자 돌리면 1초 안팎). 확인하는 내용은 그대로다.
-vi.setConfig({ testTimeout: 30_000 });
-
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   postOutcome: vi.fn(),

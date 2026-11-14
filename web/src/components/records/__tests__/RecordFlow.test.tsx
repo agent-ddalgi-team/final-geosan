@@ -26,7 +26,7 @@ import { todayKst } from '../../../utils/time';
 import { addDays, pickCalendarDate } from '../../../test/pickCalendarDate';
 
 // 펼쳐진 달력(antd)을 누르는 시험은 화면 그리기가 무거워 PC가 바쁠 때 기본 5초를 넘길 수 있다(#740).
-vi.setConfig({ testTimeout: 30_000 });
+vi.setConfig({ testTimeout: 20_000 });
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
