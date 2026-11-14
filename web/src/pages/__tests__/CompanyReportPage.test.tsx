@@ -391,10 +391,60 @@ describe('CompanyReportPage', () => {
   });
 });
 
-describe('CompanyReportPage — 물을 것 (#730)', () => {
+describe('CompanyReportPage — 다음 일정과 물을 것 (#730)', () => {
   beforeEach(() => {
     mockedGet.mockReset();
     mockedQuestions.mockReset();
+  });
+
+  function withSchedule(date: string): OpportunityDetail {
+    const detail = detailWithSecrets();
+    return {
+      ...detail,
+      records: {
+        ...detail.records,
+        outcome: { ...detail.records.outcome!, nextScheduleAt: date, nextScheduleNote: null },
+      },
+    };
+  }
+
+  it('Given 마지막 접촉 뒤에도 남은 지난 날짜의 일정 When 보고서를 열면 Then "놓친 일정 2020-01-02"처럼 지난 것임이 보인다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withSchedule('2020-01-02')));
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('놓친 일정 2020-01-02');
+    expect(row).not.toHaveTextContent('다음 연락');
+  });
+
+  it('Given 앞으로의 일정(할 일 글은 싣지 않음) When 보고서를 열면 Then 날짜만 덩그러니가 아니라 "2099-12-31 다음 연락"으로 보인다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    mockedGet.mockResolvedValue(reply(withSchedule('2099-12-31')));
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('2099-12-31 다음 연락');
+    expect(row).not.toHaveTextContent('놓친 일정');
+  });
+
+  it('Given 일정의 할 일 글이 있어도 When 보고서를 열면 Then 글은 싣지 않고 "다음 연락"으로 적는다', async () => {
+    mockedQuestions.mockResolvedValue({ data: questionFile, meta: {} });
+    const detail = detailWithSecrets();
+    mockedGet.mockResolvedValue(
+      reply({
+        ...detail,
+        records: {
+          ...detail.records,
+          outcome: { ...detail.records.outcome!, nextScheduleAt: '2099-12-31' },
+        },
+      }),
+    );
+    renderPage();
+
+    const row = await screen.findByTestId('report-next-schedule');
+    expect(row).toHaveTextContent('2099-12-31 다음 연락');
+    expect(row).not.toHaveTextContent(SCHEDULE_NOTE);
   });
 
   const choiceFile: SalesQuestions = {
