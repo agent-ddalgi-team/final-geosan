@@ -982,7 +982,10 @@ def save_outcome(
     # 단계만 바꾸는 요청은 이미 잡아 둔 다음 일정을 지우지 않는다.
     # #719: 다만 이번 저장으로 성사·거절이 되면 이어받지 않는다(끝난 회사에 옛 일정이 남지 않게).
     # 보류는 나중에 다시 연락하려는 것일 수 있어 그대로 이어받는다.
-    if status not in _ENDED_STAGES:
+    # 이미 같은 단계로 끝나 있던 회사(예: 거절 뒤 이유만 고치는 저장)는 "끝나는 저장"이 아니므로,
+    # 끝난 뒤에 일부러 잡아 둔 일정을 지우지 않는다.
+    ends_now = status in _ENDED_STAGES and not (previous and previous.status == status)
+    if not ends_now:
         for name in ("next_schedule_at", "next_schedule_note"):
             if previous and name not in body.model_fields_set:
                 values[name] = getattr(previous, name)
