@@ -139,7 +139,8 @@ def proposal_kept_as_history(context):
 def activity_line(context, text):
     url = f"/api/v1/opportunities/{context['opp_id']}/activity"
     rows = context["client"].get(url).json()["data"]
-    lines = [row for row in rows if row["kind"] == "NOTE" and text in row["summary"]]
+    # #731: 프로그램이 남긴 줄은 변경 기록(CHANGE)이다.
+    lines = [row for row in rows if row["kind"] == "CHANGE" and text in row["summary"]]
     assert len(lines) == 1
     assert lines[0]["actor"] == STAFF
 
