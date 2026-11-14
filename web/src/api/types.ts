@@ -309,7 +309,14 @@ export interface ExportConfig {
   xlsxEnabled: boolean;
 }
 
+/** 조사 설정(C1 `/config/ui` research, 더하는 변경 #719). 서버가 아직 안 주면 없음 = 켜진 것으로 본다. */
+export interface ResearchConfig {
+  /** false면 상세 [다시 조사]를 잠그고 "AI 조사가 꺼져 있습니다"를 보인다. */
+  aiEnabled: boolean;
+}
+
 export interface ConfigUi {
+  research?: ResearchConfig;
   records?: RecordsConfig;
   ingestOptions?: IngestOptionsConfig;
   export?: ExportConfig;

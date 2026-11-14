@@ -745,6 +745,8 @@ export const homepageControls = {
   /** 못 눌러서 잠긴 이유(한도 초과·설정 전). 서버 안내 문구 아래에 작게 보인다. */
   locked: '이 조사는 지금 다시 누를 수 없습니다.',
   pickStaffFirst: '담당자를 고르면 누를 수 있습니다.',
+  /** #719: 서버 설정에서 조사용 AI가 꺼져 있다(`/config/ui` research.aiEnabled false). 단추 옆에 글자로 보인다. */
+  aiOff: 'AI 조사가 꺼져 있습니다',
   reload: '새로 불러오기',
   /** 문의 번호(서버 ref). 작게 보인다. */
   ref: (ref: string) => `문의 번호 ${ref}`,

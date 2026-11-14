@@ -89,6 +89,21 @@ def accounted_cost(row: TransferLog, llm: LlmSettings) -> Decimal:
     return Decimal(str(llm.unconfirmed_call_cost_usd)) * row.call_count
 
 
+def ai_call_configured(llm: LlmSettings, key_present: bool) -> bool:
+    """외부 AI를 부를 수 있는 설정인가. 호출 예약(_reserve)과 화면 설정 응답이 같이 쓴다(#719).
+
+    바깥 모드이고, 키가 있고, 모델이 허용 목록에 있고, 입력·출력 단가가 0보다 클 때만 True.
+    한도(월·하루)는 보지 않는다.
+    """
+    return (
+        llm.mode == "EXTERNAL"
+        and key_present
+        and bool(llm.model)
+        and llm.model in llm.allowed_models
+        and min(llm.input_cost_per_million_tokens, llm.output_cost_per_million_tokens) > 0
+    )
+
+
 def month_usage(session, llm: LlmSettings, *, now: datetime | None = None) -> tuple[int, Decimal]:
     """이번 달(한국 시간) 외부 호출 수와 한도 계산 비용. 예약 검사(_reserve)와 같은 기준이다.
 
@@ -225,20 +240,9 @@ def _reserve(
         minimum_search_cost = (
             Decimal(str(llm.web_search_cost_per_thousand_calls)) / 1000 if is_search else Decimal(0)
         )
-        if (is_search and not search_enabled) or llm.mode != "EXTERNAL":
+        if is_search and (not search_enabled or llm.web_search_cost_per_thousand_calls <= 0):
             error = configuration_error()
-        elif not key_present:
-            error = configuration_error()
-        elif (
-            not llm.model
-            or llm.model not in llm.allowed_models
-            or min(
-                llm.input_cost_per_million_tokens,
-                llm.output_cost_per_million_tokens,
-                llm.web_search_cost_per_thousand_calls if is_search else 1,
-            )
-            <= 0
-        ):
+        elif not ai_call_configured(llm, key_present):
             error = configuration_error()
         elif is_search and daily_calls >= daily_limit:
             error = AppError(

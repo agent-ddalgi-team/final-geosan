@@ -61,6 +61,7 @@
     },
     "export": { "xlsxEnabled": false },
     "distanceFilterPresetsKm": [30, 50, 100],
+    "research": { "aiEnabled": true },
     "activeDatasetKind": "VIRTUAL_REVIEWED",
     "accessProtectionEnabled": false,
     "ruleVersion": "v0.17-a"
