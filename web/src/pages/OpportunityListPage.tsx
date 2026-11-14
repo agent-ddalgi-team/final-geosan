@@ -39,12 +39,14 @@ import {
   storeLastProcess,
 } from '../components/list/lastProcess';
 import BucketedCards from '../components/list/BucketedCards';
+import { bucketRest } from '../components/list/bucketRemainder';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import { withoutMoved } from '../components/list/movedToBookmarks';
 import OpportunityCard from '../components/list/OpportunityCard';
-import { GROUP_PAGE_SIZE, useProcessGroups } from '../components/list/useProcessGroups';
+import { useProcessGroups } from '../components/list/useProcessGroups';
 import {
   bookmarkList,
+  contactBuckets,
   excludedList,
   listFilters,
   listSearch,
@@ -590,6 +592,15 @@ export default function OpportunityListPage() {
               const groupItems = groupShown.items;
               if (group?.items !== undefined && groupItems.length === 0) return null;
               const groupTotal = groupShown.total;
+              // 한 공정은 50곳까지만 실린다. 덜 실렸으면 묶음 제목의 곳 수(공정 전체)와 카드 수가 달라
+              // 몇 곳만 보이는지와 안 보인 묶음을 알린다(#719).
+              const groupTruncated = groupTotal > groupItems.length;
+              const groupRest =
+                groupTruncated && sort === 'rank'
+                  ? bucketRest(groupItems, groupShown.bucketCounts).map((rest) =>
+                      contactBuckets.title(rest.bucket, rest.count),
+                    )
+                  : [];
               return (
                 <section
                   key={code}
@@ -621,6 +632,7 @@ export default function OpportunityListPage() {
                       items={groupItems}
                       bucketCounts={groupShown.bucketCounts}
                       showBuckets={sort === 'rank'}
+                      truncated={groupTruncated}
                       renderCard={(card) => (
                         <OpportunityCard
                           card={card}
@@ -631,8 +643,18 @@ export default function OpportunityListPage() {
                         />
                       )}
                     />
-                    {groupTotal > GROUP_PAGE_SIZE ? (
-                      <p style={{ marginTop: spacing.cardGap, marginBottom: 0 }}>
+                    {groupTruncated ? (
+                      <p
+                        data-testid="process-group-truncated"
+                        style={{
+                          marginTop: spacing.cardGap,
+                          marginBottom: 0,
+                          color: colors.textSecondary,
+                          fontSize: typography.fontSizeSecondary,
+                        }}
+                      >
+                        {listFilters.groupTruncated(groupTotal, groupItems.length, groupRest)}
+                        {' — '}
                         <Link to={onlyProcessHref(code)} data-testid="process-group-more">
                           {listFilters.onlyThisProcess}
                         </Link>

@@ -466,6 +466,13 @@ export const listFilters = {
   flatNote: '공정 상관없이 한 줄로 보는 중 · 순위 번호 없음',
   /** 한 공정이 묶음 상한(50곳)을 넘을 때 묶음 끝의 링크(#383). 그 공정 하나를 고른 보기로 간다. */
   onlyThisProcess: '이 공정만 보기',
+  /**
+   * 한 공정이 다 실리지 않았을 때 묶음 끝의 안내(#719). 뒤에 "— 이 공정만 보기" 링크가 붙는다.
+   * 예: "이 공정은 150곳 가운데 50곳만 보입니다. 나머지: 홈페이지 없음 99곳 · 끝난 회사 1곳"
+   * rest는 안 보인 묶음 이름과 곳 수("홈페이지 없음 99곳")이고, 비어 있으면 "나머지"를 적지 않는다.
+   */
+  groupTruncated: (total: number, shown: number, rest: readonly string[]) =>
+    `이 공정은 ${total}곳 가운데 ${shown}곳만 보입니다.${rest.length > 0 ? ` 나머지: ${rest.join(' · ')}` : ''}`,
   /** "천안 인근 8", "크롬 도금 0" */
   option: (name: string, count: number) => `${name} ${count}`,
   /** 조건을 걸었는데 0건일 때. */
@@ -1567,6 +1574,9 @@ export const contactBuckets = {
   /** 묶음이 바뀌는 자리의 제목. 예: "근거 있음 30곳" */
   title: (bucket: keyof typeof contactBucketTitles, count: number) =>
     `${contactBucketTitles[bucket]} ${count}곳`,
+  /** 카드가 일부만 실린 묶음의 제목(#719, 공정별 묶음 보기). 예: "홈페이지 없음 35곳 (22곳만 보임)" */
+  titlePartial: (bucket: keyof typeof contactBucketTitles, count: number, shown: number) =>
+    `${contactBucketTitles[bucket]} ${count}곳 (${shown}곳만 보임)`,
   /** 카드 꼬리표: 공정 적합도 하나(#675). 끝난 회사가 아닌 카드에 보인다. 적합도가 없으면 안 보인다. */
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
   /** 그 묶음에 든 이유. 카드에는 끝난 회사의 이유(앞 네 줄)만 꼬리표로 보인다. */
