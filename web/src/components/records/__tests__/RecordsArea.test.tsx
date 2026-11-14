@@ -26,7 +26,7 @@ const EVAL = 'eval-1';
 // 기대 날짜(2026-11-10·2026-12-01)가 늘 같은 달·다음 달에 있게 한다. 날짜 계산만 바꾼다.
 const CALENDAR_NOW = new Date('2026-11-05T03:00:00Z');
 // 펼쳐진 달력(antd)을 누르는 시험은 화면 그리기가 무거워 PC가 바쁠 때 기본 5초를 넘길 수 있다.
-vi.setConfig({ testTimeout: 20_000 });
+vi.setConfig({ testTimeout: 30_000 });
 
 afterEach(() => {
   vi.useRealTimers();

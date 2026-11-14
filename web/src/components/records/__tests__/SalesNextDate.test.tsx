@@ -84,7 +84,7 @@ const FUTURE = '2099-11-20';
 const PAST = '2099-09-14';
 const TEST_NOW = new Date('2099-09-15T03:00:00Z');
 // 펼쳐진 달력(antd)을 누르는 시험은 화면 그리기가 무거워 PC가 바쁠 때 기본 5초를 넘길 수 있다.
-vi.setConfig({ testTimeout: 20_000 });
+vi.setConfig({ testTimeout: 30_000 });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'], now: TEST_NOW });
