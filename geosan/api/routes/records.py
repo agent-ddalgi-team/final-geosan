@@ -616,9 +616,12 @@ def _has_sales_records(session: Session, opp_id: str) -> bool:
     #719: 접촉 저장이 저절로 더한 "영업 대상" 의견 행(정해진 메모 문장)은 세지 않는다.
     그 접촉이 살아 있으면 접촉 행이 기록으로 세어지고, 접촉을 취소했으면 사람이 남긴 기록이
     아니므로 관심을 끌 수 있어야 한다. 의견 표에는 취소 표시 열이 없어 의견 행은 그대로 둔다.
+    #737: 프로그램이 남긴 변경 기록(kind CHANGE)은 담당자가 남긴 기록이 아니라 세지 않는다.
     """
     queries = [
-        select(Note.opp_id).where(Note.opp_id == opp_id, Note.cancelled_at.is_(None)),
+        select(Note.opp_id).where(
+            Note.opp_id == opp_id, Note.cancelled_at.is_(None), Note.kind != NoteKind.CHANGE
+        ),
         select(Outcome.opp_id).where(Outcome.opp_id == opp_id, Outcome.cancelled_at.is_(None)),
         select(ReviewOpinion.opp_id).where(
             ReviewOpinion.opp_id == opp_id,
