@@ -130,3 +130,22 @@ def test_radius_setting_is_bounded(value):
 def read_example():
     with open(DEFAULT_APP_SETTINGS_PATH, encoding="utf-8") as stream:
         return {key: value for key, value in yaml.safe_load(stream).items() if key != "_설명"}
+
+
+def test_ask_context_table_carries_distance_from_geosan_without_coordinates(visit_env):
+    """Given 거산 공장 (37.9, 127.5)·관심 기업 좌표 / When 영업 비서 조회 글(#764)
+    / Then 회사 표 끝 칸에 목록 카드와 같은 "거산에서 거리"(anchor 11.1km), 좌표 없는 회사는 "모름",
+    표 앞에 "거산(거산케미칼, 우리 회사 공장)" 한 줄. 좌표·주소는 싣지 않는다."""
+    from datetime import date
+
+    from geosan.api.assistant_context import build_ask_context
+
+    with session_scope() as session:
+        text = build_ask_context(session, date(2026, 11, 16), 60).text
+    rows = {line.split(" | ")[0]: line for line in text.splitlines() if " | " in line}
+    assert rows["가상 anchor"].endswith("| 11.1km")
+    assert rows["가상 near"].endswith("| 12.2km")
+    assert rows["가상 nocoord"].endswith("| 모름")
+    assert "회사 | 확정 공정" in text and text.count("| 거산에서 거리") >= 1
+    assert "거산(거산케미칼, 우리 회사 공장)" in text
+    assert "127.5" not in text and "38.01" not in text and "37.9" not in text

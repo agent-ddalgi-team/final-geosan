@@ -105,4 +105,38 @@ describe('DashboardCalendar', () => {
     expect(screen.queryAllByRole('button', { name: /일정 \d+건/ })).toHaveLength(0);
     expect(screen.getByTestId('dashboard-schedule-empty')).toBeInTheDocument();
   });
+
+  it('일정이 있는 날만 상태 색을 칠한다: 기한 지남·오늘·7일 안·그 뒤, 일정 없는 날은 흐린 칸(#758)', () => {
+    renderCalendar([
+      item('2026-11-04', true, 'a'),
+      item('2026-11-11', false, 'b'),
+      item('2026-11-17', false, 'c'),
+      item('2026-11-18', false, 'd'),
+      item('2026-11-25', false, 'e'),
+    ]);
+    const tone = (d: string) =>
+      screen.getByTestId(`dashboard-calendar-day-2026-11-${d}`).getAttribute('data-tone');
+    expect(tone('04')).toBe('overdue');
+    expect(tone('11')).toBe('today');
+    expect(tone('17')).toBe('soon');
+    expect(tone('18')).toBe('later');
+    expect(tone('25')).toBe('later');
+    expect(tone('05')).toBe('none');
+    const empty = screen.getByTestId('dashboard-calendar-day-2026-11-05');
+    const filled = screen.getByTestId('dashboard-calendar-day-2026-11-18');
+    expect(Number(empty.style.opacity)).toBeLessThan(1);
+    expect(empty.style.background).not.toBe(filled.style.background);
+  });
+
+  it('칸에는 두 자리 날짜와 "N건"을 한글·숫자로만 보이고, 아래에 색 설명 줄이 있다(#758)', () => {
+    renderCalendar();
+    const day4 = screen.getByTestId('dashboard-calendar-day-2026-11-04');
+    expect(day4).toHaveTextContent('2건');
+    expect(day4).toHaveTextContent('04');
+    expect(screen.getByTestId('dashboard-calendar-day-2026-11-05')).toHaveTextContent(/^05$/);
+    expect(screen.getByTestId('dashboard-calendar-legend')).toHaveTextContent(
+      '기한 지남오늘7일 안그 뒤',
+    );
+    expect(screen.getByTestId('dashboard-calendar').textContent).not.toMatch(/[A-Za-z]/);
+  });
 });
