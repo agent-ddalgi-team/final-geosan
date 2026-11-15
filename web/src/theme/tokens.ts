@@ -15,6 +15,20 @@ export const colors = {
   error: '#B42318',
 } as const;
 
+/**
+ * 왼쪽 메뉴(#767): 어두운 세로 칸. 글자 대비 — 보통 글자 #B7BCC3 / 바탕 #1C1E21 약 9:1,
+ * 묶음 이름 #8A9099 약 5.6:1. 지금 화면 칸은 조금 밝은 바탕 + 흰 글자.
+ */
+export const sidebarTheme = {
+  bg: '#1C1E21',
+  fg: '#B7BCC3',
+  fgActive: '#FFFFFF',
+  group: '#8A9099',
+  activeBg: '#2C2F34',
+  activeBorder: '#3A3E44',
+  divider: '#2E3136',
+} as const;
+
 /** 상태 색 6가지 조합(배경 연함 + 글자 진함, 대비 4.5:1 이상). 색은 보조 신호이고 글자가 항상 함께 있다. */
 export const statusPalette = {
   ok: { bg: '#E3F3E8', fg: '#145A32' },

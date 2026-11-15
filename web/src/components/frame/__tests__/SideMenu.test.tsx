@@ -1,4 +1,5 @@
-// #762 왼쪽 메뉴: 네 줄(이모지 + 이름), 접으면 아이콘만(이름은 aria-label·title), 접은 상태 기억, 좁은 기기는 접힌 채로.
+// #762 왼쪽 메뉴: 네 줄(그림 + 이름), 접으면 아이콘만(이름은 aria-label·title·이름표), 접은 상태 기억, 좁은 기기는 접힌 채로.
+// #767(PM 2026-11-16): 이모지 대신 내용에 맞는 선 그림 아이콘(SVG, data-icon)이라 글자에는 한글 이름만 있다.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -15,19 +16,20 @@ function renderMenu(path = '/', narrowDevice = false) {
 
 beforeEach(() => window.localStorage.clear());
 
-it('네 줄이 순서대로 이모지와 이름으로 보이고 각 화면 주소를 가리킨다', () => {
+it('네 줄이 순서대로 그림과 이름으로 보이고 각 화면 주소를 가리킨다', () => {
   renderMenu();
   const links = [
-    ['nav-dashboard-link', '📊', frame.menuDashboard, '/'],
-    ['nav-opportunities-link', '🔍', '신규 거래처 찾기', '/opportunities'],
-    ['nav-bookmarks-link', '⭐', '관심 기업', '/bookmarks'],
-    ['nav-sales-analysis-link', '📈', frame.menuSalesAnalysis, '/sales-analysis'],
+    ['nav-dashboard-link', 'dashboard', frame.menuDashboard, '/'],
+    ['nav-opportunities-link', 'find', '신규 거래처 찾기', '/opportunities'],
+    ['nav-bookmarks-link', 'bookmarks', '관심 기업', '/bookmarks'],
+    ['nav-sales-analysis-link', 'sales-analysis', frame.menuSalesAnalysis, '/sales-analysis'],
   ] as const;
   const items = screen.getAllByRole('link');
   expect(items.map((item) => item.getAttribute('data-testid'))).toEqual(links.map((l) => l[0]));
   for (const [testId, icon, label, href] of links) {
     const link = screen.getByTestId(testId);
-    expect(link).toHaveTextContent(`${icon}${label}`);
+    expect(link).toHaveTextContent(new RegExp(`^${label}$`));
+    expect(link.querySelector('svg')).toHaveAttribute('data-icon', icon);
     expect(link).toHaveAttribute('href', href);
   }
 });
@@ -47,7 +49,10 @@ it('[‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
   expect(toggle).toHaveAttribute('aria-label', frame.sidebarExpand);
   const bookmarks = screen.getByTestId('nav-bookmarks-link');
-  expect(bookmarks).toHaveTextContent(/^⭐$/);
+  // 글자 칸 대신 그림 + 손 올림 이름표(aria-hidden)만 있다.
+  expect(bookmarks.querySelector('svg')).toHaveAttribute('data-icon', 'bookmarks');
+  expect(bookmarks.querySelector('.side-nav-tip')).toHaveTextContent('관심 기업');
+  expect(bookmarks.querySelector('.side-nav-tip')).toHaveAttribute('aria-hidden', 'true');
   expect(bookmarks).toHaveAttribute('aria-label', '관심 기업');
   expect(bookmarks).toHaveAttribute('title', '관심 기업');
   expect(screen.getByRole('link', { name: '관심 기업' })).toBe(bookmarks);
@@ -56,7 +61,8 @@ it('[‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으
   renderMenu();
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
   await user.click(screen.getByTestId('side-menu-toggle'));
-  expect(screen.getByTestId('nav-bookmarks-link')).toHaveTextContent('⭐관심 기업');
+  expect(screen.getByTestId('nav-bookmarks-link')).toHaveTextContent(/^관심 기업$/);
+  expect(screen.getByTestId('nav-bookmarks-link').querySelector('.side-nav-tip')).toBeNull();
   expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('false');
 });
 
@@ -67,4 +73,12 @@ it('좁은 기기는 처음부터 접힌 채로 열고, 기억한 값이 있으�
   window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false');
   renderMenu('/', true);
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
+});
+
+it('메뉴 안 글자는 한글뿐이고(영어·이모지 없음), 묶음 이름 "영업"이 보인다', () => {
+  renderMenu();
+  const text = screen.getByTestId('side-menu').textContent ?? '';
+  expect(text).toContain('영업');
+  expect(text).not.toMatch(/[A-Za-z]/);
+  expect(text).not.toMatch(/\p{Extended_Pictographic}/u);
 });
