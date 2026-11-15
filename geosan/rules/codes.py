@@ -310,6 +310,9 @@ class NoteKind(StrEnum):
     # (한 행, 줄바꿈으로 이음).
     # 상세 "영업 코치 · 통화 전" 칸과 회사 보고서 "영업 방향"에 보이고 다음 코칭의 입력이 된다.
     CALL_PREP = "CALL_PREP"
+    # #771 PM 결정 2026-11-15·16: 전달 사항. 담당자가 아닌 직원도 받는 사람 한 명에게 남기고,
+    # 받는 사람이 [확인했어요]를 누른다. 보고서에 바로 싣지 않는다(코치 정리를 거쳐서만).
+    HANDOFF = "HANDOFF"
 
 
 class ReviewItemKind(StrEnum):

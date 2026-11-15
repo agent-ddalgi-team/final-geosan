@@ -133,6 +133,7 @@ export default function DashboardPage() {
           <TodayChecks
             rows={data.todayChecks}
             assistantSummary={dailyKey ? <AssistantDaily staffKey={dailyKey} /> : null}
+            onChanged={retry}
           />
         ) : null}
         {/* 영업 비서 질문 칸(#680). 설정이 꺼져 있으면 안내 한 줄, 설정을 못 읽었으면 아무것도 없다. */}

@@ -227,6 +227,14 @@ export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
   });
 }
 
+/** #771 전달 사항 확인: 받는 사람만. 두 번 눌러도 같은 값. */
+export function confirmHandoff(noteId: string, staffKey: string) {
+  return request<{ noteId: string; confirmedAt: string; confirmedBy: string }>(
+    `/notes/${encodeURIComponent(noteId)}/confirm`,
+    { method: 'POST', staffKey },
+  );
+}
+
 /** 꼬리 질문 묶음(#607). 질문 파일을 그대로 받는다. 외부 호출·저장 없음. */
 export function getSalesQuestions() {
   return request<SalesQuestions>('/sales-questions');
@@ -235,6 +243,22 @@ export function getSalesQuestions() {
 /** 영업 단계·접촉 시도·다음 일정 저장(U5). 저장할 때마다 새 행이 쌓인다. */
 export function postOutcome(oppId: string, body: OutcomeRequest, staffKey: string) {
   return request<OutcomeResponse>(`/opportunities/${encodeURIComponent(oppId)}/outcomes`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+export interface ScheduleResolveBody {
+  action: 'DONE' | 'DROPPED' | 'MOVED';
+  expectedVersion: number;
+  /** MOVED일 때만. 오늘이나 그 뒤(YYYY-MM-DD). */
+  nextScheduleAt?: string;
+}
+
+/** #766 지난 일정 정리: 완료·지우기·날짜 옮기기. 일정만 바꾼 새 기록과 변경 기록 한 줄이 남는다. */
+export function resolveSchedule(oppId: string, body: ScheduleResolveBody, staffKey: string) {
+  return request<OutcomeResponse>(`/opportunities/${encodeURIComponent(oppId)}/schedule/resolve`, {
     method: 'POST',
     body,
     staffKey,

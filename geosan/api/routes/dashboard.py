@@ -17,8 +17,10 @@ from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
     TODAY_CHECK_LEFT,
+    WON_KEY,
     BreakdownSource,
     bookmarked_opp_ids,
+    bookmarked_won_ids,
     build_dashboard,
     classify_bookmarked,
     dashboard_population,
@@ -132,6 +134,8 @@ class DashboardCounts(_ApiModel):
     on_hold: int = Field(alias="ON_HOLD")
     done: int = Field(alias="DONE")
     schedule_due: int = Field(alias="SCHEDULE_DUE")
+    # #766: 관심 기업 가운데 최신 단계 성사. DONE의 일부라 칸 합계에는 넣지 않는다.
+    won: int = Field(alias="WON")
 
 
 class ScheduleItem(_ApiModel):
@@ -188,12 +192,14 @@ class TodayCheckItem(_ApiModel):
     customer_name: str
     due_at: date | None = None
     note: str | None = None
+    # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
+    outcome_version: int | None = None
 
 
 class TodayCheckRow(_ApiModel):
     """맨 위 "오늘 확인할 것"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677)."""
 
-    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT"]
+    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT", "HANDOFF_FOR_ME"]
     count: int
     items: list[TodayCheckItem]
     # 누르면 열 목록의 `?filter=` 값. null이면 화면이 줄 아래에 작은 목록을 편다.
@@ -241,6 +247,13 @@ def bookmark_board_list_filter(session, query, request: Request):
     return query.where(EvaluationRun.opp_id.in_(opp_ids))
 
 
+def won_list_filter(session, query, request: Request):
+    """목록 `?filter=WON`: 대시보드 "영업 진행" 띠의 "성사" 칸과 같은 계산(#766)."""
+    if request.query_params.get("filter") != WON_KEY:
+        return query
+    return query.where(EvaluationRun.opp_id.in_(bookmarked_won_ids(session)))
+
+
 def _catalog_codes(session, dataset_kind) -> frozenset[str]:
     return frozenset(row.code for row in load_process_catalog(session, dataset_kind))
 
@@ -259,7 +272,13 @@ def check_left_list_filter(session, query, request: Request):
 supported_filters.add(SCHEDULE_DUE_FILTER)
 supported_filters.update(BOARD_FILTERS)
 supported_filters.add(TODAY_CHECK_LEFT)
-for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter, check_left_list_filter):
+supported_filters.add(WON_KEY)
+for _list_filter in (
+    schedule_due_list_filter,
+    bookmark_board_list_filter,
+    check_left_list_filter,
+    won_list_filter,
+):
     if _list_filter not in list_filters:
         list_filters.append(_list_filter)
 
@@ -303,6 +322,7 @@ def dashboard(
             count_proposed_industries=runtime.app_settings.dashboard.count_proposed_industries,
         ),
         check_left_opp_ids=check_left,
+        staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
     )
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),

@@ -1339,6 +1339,10 @@
           "SCHEDULE_DUE": {
             "title": "Schedule Due",
             "type": "integer"
+          },
+          "WON": {
+            "title": "Won",
+            "type": "integer"
           }
         },
         "required": [
@@ -1350,7 +1354,8 @@
           "QUOTE_SAMPLE",
           "ON_HOLD",
           "DONE",
-          "SCHEDULE_DUE"
+          "SCHEDULE_DUE",
+          "WON"
         ],
         "title": "DashboardCounts",
         "type": "object"
@@ -1914,6 +1919,13 @@
           "contactCount": {
             "$ref": "#/components/schemas/ContactCount"
           },
+          "handoffs": {
+            "items": {
+              "$ref": "#/components/schemas/HandoffNote"
+            },
+            "title": "Handoffs",
+            "type": "array"
+          },
           "lastContactAt": {
             "anyOf": [
               {
@@ -2084,6 +2096,21 @@
           "data"
         ],
         "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
+      "Envelope_HandoffConfirmResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HandoffConfirmResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[HandoffConfirmResponse]",
         "type": "object"
       },
       "Envelope_HomepageConfirmation_": {
@@ -2650,6 +2677,88 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HandoffConfirmResponse": {
+        "properties": {
+          "confirmedAt": {
+            "format": "date-time",
+            "title": "Confirmedat",
+            "type": "string"
+          },
+          "confirmedBy": {
+            "title": "Confirmedby",
+            "type": "string"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "confirmedAt",
+          "confirmedBy"
+        ],
+        "title": "HandoffConfirmResponse",
+        "type": "object"
+      },
+      "HandoffNote": {
+        "description": "#771 전달 사항 한 행(rec_note kind HANDOFF). 상세 맨 위 노란 칸·포스트잇이 쓴다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "confirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedat"
+          },
+          "confirmedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedby"
+          },
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "text",
+          "from",
+          "to",
+          "at"
+        ],
+        "title": "HandoffNote",
         "type": "object"
       },
       "HomepageConfirmation": {
@@ -4047,7 +4156,8 @@
               "MEMO",
               "RESEARCH",
               "ADVICE",
-              "CALL_PREP"
+              "CALL_PREP",
+              "HANDOFF"
             ],
             "title": "Kind",
             "type": "string"
@@ -4067,6 +4177,18 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "toStaffKey": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tostaffkey"
           }
         },
         "required": [
@@ -6933,6 +7055,44 @@
         "title": "ScheduleItem",
         "type": "object"
       },
+      "ScheduleResolveRequest": {
+        "additionalProperties": false,
+        "description": "#766 대시보드 \"지난 일정 — 했나요?\"의 세 단추(계약 C1 /schedule/resolve).",
+        "properties": {
+          "action": {
+            "enum": [
+              "DONE",
+              "DROPPED",
+              "MOVED"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 0.0,
+            "title": "Expectedversion",
+            "type": "integer"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          }
+        },
+        "required": [
+          "action",
+          "expectedVersion"
+        ],
+        "title": "ScheduleResolveRequest",
+        "type": "object"
+      },
       "ScoreItemView": {
         "properties": {
           "certainty": {
@@ -7252,6 +7412,17 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "outcomeVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomeversion"
           }
         },
         "required": [
@@ -7279,7 +7450,8 @@
             "enum": [
               "SCHEDULE_TODAY",
               "SCHEDULE_OVERDUE",
-              "CHECK_LEFT"
+              "CHECK_LEFT",
+              "HANDOFF_FOR_ME"
             ],
             "title": "Kind",
             "type": "string"
@@ -7938,6 +8110,61 @@
           }
         },
         "summary": "Ingest Preview"
+      }
+    },
+    "/api/v1/notes/{noteId}/confirm": {
+      "post": {
+        "operationId": "confirm_handoff_api_v1_notes__noteId__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "noteId",
+            "required": true,
+            "schema": {
+              "title": "Noteid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_HandoffConfirmResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Handoff"
       }
     },
     "/api/v1/opportunities": {
@@ -9182,6 +9409,71 @@
           }
         },
         "summary": "Save Review Check"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/schedule/resolve": {
+      "post": {
+        "operationId": "resolve_schedule_api_v1_opportunities__oppId__schedule_resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Schedule"
       }
     },
     "/api/v1/questions/{questionId}/reply": {
