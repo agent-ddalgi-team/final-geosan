@@ -17,8 +17,10 @@ from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
     TODAY_CHECK_LEFT,
+    WON_KEY,
     BreakdownSource,
     bookmarked_opp_ids,
+    bookmarked_won_ids,
     build_dashboard,
     classify_bookmarked,
     dashboard_population,
@@ -132,6 +134,8 @@ class DashboardCounts(_ApiModel):
     on_hold: int = Field(alias="ON_HOLD")
     done: int = Field(alias="DONE")
     schedule_due: int = Field(alias="SCHEDULE_DUE")
+    # #766: 관심 기업 가운데 최신 단계 성사. DONE의 일부라 칸 합계에는 넣지 않는다.
+    won: int = Field(alias="WON")
 
 
 class ScheduleItem(_ApiModel):
@@ -241,6 +245,13 @@ def bookmark_board_list_filter(session, query, request: Request):
     return query.where(EvaluationRun.opp_id.in_(opp_ids))
 
 
+def won_list_filter(session, query, request: Request):
+    """목록 `?filter=WON`: 대시보드 "영업 진행" 띠의 "성사" 칸과 같은 계산(#766)."""
+    if request.query_params.get("filter") != WON_KEY:
+        return query
+    return query.where(EvaluationRun.opp_id.in_(bookmarked_won_ids(session)))
+
+
 def _catalog_codes(session, dataset_kind) -> frozenset[str]:
     return frozenset(row.code for row in load_process_catalog(session, dataset_kind))
 
@@ -259,7 +270,13 @@ def check_left_list_filter(session, query, request: Request):
 supported_filters.add(SCHEDULE_DUE_FILTER)
 supported_filters.update(BOARD_FILTERS)
 supported_filters.add(TODAY_CHECK_LEFT)
-for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter, check_left_list_filter):
+supported_filters.add(WON_KEY)
+for _list_filter in (
+    schedule_due_list_filter,
+    bookmark_board_list_filter,
+    check_left_list_filter,
+    won_list_filter,
+):
     if _list_filter not in list_filters:
         list_filters.append(_list_filter)
 

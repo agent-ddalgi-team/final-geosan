@@ -5,9 +5,10 @@
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Query
+from pydantic import Field
 from sqlalchemy import func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
@@ -69,6 +70,7 @@ from geosan.api.schemas import (
     SalesQuestionView,
     SalesShowWhen,
     SalesStepEntry,
+    _RequestModel,
 )
 from geosan.config.errors import (
     AppError,
@@ -1059,6 +1061,99 @@ def save_outcome(
             has_virtual_data=row.is_virtual,
             dataset_kind=row.dataset_kind,
             previous_value=previous_value,
+            **({"reevaluated": True} if saved.reevaluated else {}),
+        ),
+    )
+
+
+class ScheduleResolveRequest(_RequestModel):
+    """#766 대시보드 "지난 일정 — 했나요?"의 세 단추(계약 C1 /schedule/resolve)."""
+
+    action: Literal["DONE", "DROPPED", "MOVED"]
+    next_schedule_at: date | None = None
+    expected_version: int = Field(ge=0)
+
+
+_WEEKDAYS = "월화수목금토일"
+_RESOLVE_WORDS = {"DONE": "완료로 정리", "DROPPED": "필요 없어 지움"}
+
+
+def _day_label(day: date) -> str:
+    return f"{day.month}/{day.day}({_WEEKDAYS[day.weekday()]})"
+
+
+@router.post("/opportunities/{oppId}/schedule/resolve", response_model=OutcomeEnvelope)
+def resolve_schedule(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: ScheduleResolveRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 최신 영업 기록의 단계·이유는 그대로 두고 일정만 바꾼 새 기록 한 행을 접촉 저장과 같은 본체로
+    # 남긴다(상세 [일정 잡기]와 같은 저장). 같은 트랜잭션에 변경 기록 한 줄을 더한다.
+    # 외부 호출 없음.
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("일정을 정리할 기회가 없습니다.")
+    previous = latest_outcome(session, opp_id)
+    if previous is None or previous.next_schedule_at is None:
+        raise InputError(
+            "정리할 다음 일정이 없습니다.", "화면을 새로 고쳐 지금 일정을 확인해 주세요."
+        )
+    if previous.version != body.expected_version:
+        raise AppError(
+            message="그 사이 이 회사에 다른 기록이 저장됐습니다",
+            next_action="화면을 새로 고쳐 지금 일정을 확인해 주세요",
+            status=409,
+        )
+    if body.action == "MOVED":
+        if body.next_schedule_at is None or body.next_schedule_at < today_in_seoul():
+            raise InputError(
+                "옮길 날짜를 확인해 주세요.",
+                fields=[
+                    FieldError(path="nextScheduleAt", message="오늘이나 그 뒤 날짜를 골라 주세요.")
+                ],
+            )
+    elif body.next_schedule_at is not None:
+        raise InputError(
+            "완료·지우기에는 날짜를 넣지 않습니다.",
+            fields=[FieldError(path="nextScheduleAt", message="날짜는 옮길 때만 넣어 주세요.")],
+        )
+    moved = body.action == "MOVED"
+    # 거절 회사는 거절 코드·이유를 그대로 잇는다. 그 밖의 단계는 그 칸을 아예 보내지 않는다
+    # (보낸 칸으로 치면 "거절 단계에서만 이유 코드" 검사에 걸린다).
+    lost = (
+        {"lost_reason_code": previous.lost_reason_code, "reason": previous.reason}
+        if previous.status == "LOST"
+        else {}
+    )
+    request = OutcomeRequest(
+        status=previous.status,
+        **lost,
+        next_schedule_at=body.next_schedule_at if moved else None,
+        next_schedule_note=previous.next_schedule_note if moved else None,
+        action_id=previous.action_id if moved else None,
+        expected_version=previous.version,
+    )
+    old_day = previous.next_schedule_at
+    note = previous.next_schedule_note
+    what = f"{_day_label(old_day)} 일정" + (f"({note})" if note else "")
+    word = f"{_day_label(body.next_schedule_at)}로 옮김" if moved else _RESOLVE_WORDS[body.action]
+    saved = record_outcome(session, opp_id, request, staff)
+    row = saved.row
+    add_program_note(session, opportunity, f"{what} — {word}", staff=staff, now=row.created_at)
+    session.flush()
+    return OutcomeEnvelope(
+        data=OutcomeResponse(
+            status=row.status, version=row.version, updated_by=staff, updated_at=row.created_at
+        ),
+        meta=Meta(
+            updated_at=row.created_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
             **({"reevaluated": True} if saved.reevaluated else {}),
         ),
     )
