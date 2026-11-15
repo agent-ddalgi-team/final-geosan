@@ -9,6 +9,8 @@ import type { ConfigUi, Meta } from '../../api/types';
 import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import AssistantAsk from '../assistant/AssistantAsk';
+import CoachDock from './CoachDock';
 import SideMenu from './SideMenu';
 import StatusBanner from './StatusBanner';
 import {
@@ -31,9 +33,15 @@ export interface AppFrameProps {
   /** 페이지의 h1 (페이지마다 하나). */
   title: string;
   children?: ReactNode;
+  /**
+   * 오른쪽 "💬 영업 코치" 칸(#773). assistant = 여러 회사를 보는 질문 칸(대시보드·목록·관심 기업·영업 분석),
+   * page = 페이지가 자기 내용을 넣는 빈 자리(기업 상세: 전달 사항·통화 전·기록 남기기). 없으면 칸이 없다.
+   */
+  dock?: 'assistant' | 'page' | null;
 }
 
-export default function AppFrame({ title, children }: AppFrameProps) {
+export default function AppFrame({ title, children, dock = null }: AppFrameProps) {
+  const [dockSlot, setDockSlot] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<ConfigUi | null>(null);
   const [configMeta, setConfigMeta] = useState<Meta | null>(null);
   const [configFailed, setConfigFailed] = useState(false);
@@ -81,9 +89,16 @@ export default function AppFrame({ title, children }: AppFrameProps) {
         : staffKey !== null && staffKey !== VIEWER_KEY,
       setBannerMeta: setPageMeta,
       setPageTitle,
+      dockSlot: dock === 'page' ? dockSlot : null,
     }),
-    [config, staffKey, setStaffKey, currentStaff],
+    [config, staffKey, setStaffKey, currentStaff, dock, dockSlot],
   );
+  const dockBody =
+    dock === 'assistant' ? (
+      <AssistantAsk />
+    ) : dock === 'page' ? (
+      <div ref={setDockSlot} data-testid="coach-dock-slot" />
+    ) : null;
 
   return (
     <FrameContext.Provider value={value}>
@@ -189,7 +204,11 @@ export default function AppFrame({ title, children }: AppFrameProps) {
               {pageTitle ?? title}
             </Typography.Title>
             {children}
+            {dockBody && narrowDevice ? <CoachDock narrowDevice>{dockBody}</CoachDock> : null}
           </main>
+          {dockBody && !narrowDevice ? (
+            <CoachDock narrowDevice={false}>{dockBody}</CoachDock>
+          ) : null}
         </div>
       </ConfigProvider>
     </FrameContext.Provider>

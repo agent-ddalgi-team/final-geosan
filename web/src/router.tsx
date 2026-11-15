@@ -21,7 +21,7 @@ function ListRoute() {
     return <Navigate to={`${BOOKMARKS_PATH}${query ? `?${query}` : ''}`} replace />;
   }
   return (
-    <AppFrame title={frame.pageTitleList}>
+    <AppFrame title={frame.pageTitleList} dock="assistant">
       <OpportunityListPage />
     </AppFrame>
   );
@@ -33,7 +33,7 @@ export default function AppRoutes() {
       <Route
         path="/"
         element={
-          <AppFrame title={frame.pageTitleDashboard}>
+          <AppFrame title={frame.pageTitleDashboard} dock="assistant">
             <DashboardPage />
           </AppFrame>
         }
@@ -42,7 +42,7 @@ export default function AppRoutes() {
       <Route
         path={BOOKMARKS_PATH}
         element={
-          <AppFrame title={frame.pageTitleBookmarks}>
+          <AppFrame title={frame.pageTitleBookmarks} dock="assistant">
             <OpportunityListPage view="bookmarks" />
           </AppFrame>
         }
@@ -50,7 +50,7 @@ export default function AppRoutes() {
       <Route
         path="/opportunities/:oppId"
         element={
-          <AppFrame title={frame.pageTitleDetail}>
+          <AppFrame title={frame.pageTitleDetail} dock="page">
             <OpportunityDetailPage />
           </AppFrame>
         }
@@ -59,7 +59,7 @@ export default function AppRoutes() {
       <Route
         path="/sales-analysis"
         element={
-          <AppFrame title={frame.pageTitleSalesAnalysis}>
+          <AppFrame title={frame.pageTitleSalesAnalysis} dock="assistant">
             <SalesAnalysisPage />
           </AppFrame>
         }
