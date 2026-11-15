@@ -1,6 +1,6 @@
 // 영업 분석표 읽기(계약 C1 `GET /sales-analysis`, #608). 필드 이름은 계약 모양 그대로(camelCase).
 // client.ts·types.ts(경계 파일)는 고치지 않고 request만 가져다 쓴다. 읽기 전용이라 담당자 키를 보내지 않는다.
-// 가짜 응답 모드(VITE_USE_FIXTURES=1)에는 이 경로의 고정값이 없어 화면이 "불러오지 못함"을 보인다.
+// 가짜 응답 모드(VITE_USE_FIXTURES=1)에서는 src/test/fixtures/sales-analysis.json(가상 18곳, #760)을 돌려준다.
 import { request } from './client';
 import type { Envelope } from './types';
 
@@ -90,6 +90,9 @@ export interface SalesAnalysis {
     closedWindowDays: number;
     companyCount: number;
     olderClosedExcluded: number;
+    /** (#760) 기간 모드에서 실제로 쓴 양끝(YYYY-MM-DD). 기간을 고르지 않았거나 옛 서버면 없음·null. */
+    from?: string | null;
+    to?: string | null;
   };
   byProcess: ProcessAnalysisRow[];
   companies: CompanyAnalysisRow[];
@@ -101,6 +104,19 @@ export interface SalesAnalysis {
   aiProposalHit: { process: ProposalHit };
 }
 
-export function getSalesAnalysis(signal?: AbortSignal): Promise<Envelope<SalesAnalysis>> {
-  return request<SalesAnalysis>('/sales-analysis', { signal });
+/** (#760) 분석 기간(한국 날짜 YYYY-MM-DD). 둘 다 null이면 기간 없이 전처럼 센다. */
+export interface AnalysisPeriod {
+  from: string | null;
+  to: string | null;
+}
+
+export function getSalesAnalysis(
+  signal?: AbortSignal,
+  period?: AnalysisPeriod | null,
+): Promise<Envelope<SalesAnalysis>> {
+  const query = new URLSearchParams();
+  if (period?.from) query.set('from', period.from);
+  if (period?.to) query.set('to', period.to);
+  const search = query.toString();
+  return request<SalesAnalysis>(`/sales-analysis${search ? `?${search}` : ''}`, { signal });
 }

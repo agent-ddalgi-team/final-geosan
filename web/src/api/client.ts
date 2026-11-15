@@ -440,6 +440,21 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
   if (route === '/dashboard') {
     return (await import('../test/fixtures/dashboard.json')).default as unknown as Envelope<T>;
   }
+  // 영업 분석(#760): 서버 없이 그래프를 볼 수 있게 가상 18곳 응답을 돌려준다. 기간은 기준 칸에 그대로 비춰 줄 뿐
+  // 숫자를 기간으로 다시 세지는 않는다(세는 법은 서버 몫이고 서버 시험이 확인한다).
+  if (route === '/sales-analysis') {
+    const envelope = (await import('../test/fixtures/sales-analysis.json')).default as unknown as {
+      data: { basis: Record<string, unknown> };
+      meta: Record<string, unknown>;
+    };
+    const query = new URLSearchParams(search);
+    const from = query.get('from');
+    const to = query.get('to') ?? (from ? new Date().toISOString().slice(0, 10) : null);
+    return {
+      data: { ...envelope.data, basis: { ...envelope.data.basis, from, to } },
+      meta: envelope.meta,
+    } as unknown as Envelope<T>;
+  }
   if (/^\/opportunities\/[^/]+\/opinions$/.test(route) && options.method === 'POST') {
     if (!options.staffKey || options.staffKey === 'viewer') {
       const err = (await import('../test/fixtures/error-403.json')).default;
