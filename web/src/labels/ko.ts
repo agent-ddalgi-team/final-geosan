@@ -186,6 +186,9 @@ export const frame = {
   pageTitleDashboard: '대시보드',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
+  /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
+  currentStaff: (name: string) => `${name} 님`,
+  logout: '로그아웃',
 } as const;
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */

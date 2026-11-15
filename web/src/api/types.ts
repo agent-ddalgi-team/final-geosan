@@ -278,6 +278,14 @@ export interface StaffEntry {
   displayName: string;
 }
 
+/** 계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null. */
+export interface CurrentStaff {
+  key: string;
+  displayName: string | null;
+  canRecord: boolean;
+  setupRequired: boolean;
+}
+
 export interface Brand {
   logoUrl: string | null;
   brandName: string;
@@ -328,6 +336,8 @@ export interface ConfigUi {
   ruleVersion: string;
   /** 목록 거리 범위 선택지(km, #666). 설정 distanceFilterPresetsKm 그대로. 옛 응답에는 없다. */
   distanceFilterPresetsKm?: number[];
+  /** 계정 방식에서 지금 로그인한 사람(#754). 공용 방식·옛 응답이면 null 또는 없음. */
+  currentStaff?: CurrentStaff | null;
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
