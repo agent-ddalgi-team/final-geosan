@@ -148,7 +148,9 @@ def test_first_login_sets_name_and_password_before_recording(env):
     assert saved.json()["data"]["displayName"] == "영업 김"
     data = me(client)
     assert data["currentStaff"]["canRecord"] is True
-    assert data["staff"] == [{"key": "sales-1", "displayName": "영업 김"}]
+    # 계정이 먼저, 계정 전 기록의 담당자(설정 staff)는 이름만 보이도록 뒤에 남는다.
+    assert data["staff"][0] == {"key": "sales-1", "displayName": "영업 김"}
+    assert {"key": "park-lee", "displayName": "영업 담당"} in data["staff"]
     # 새 비밀번호로만 다시 들어올 수 있다.
     assert login(client, "sales-1", temp).status_code == 401
     assert login(client, "sales-1", NEW_PASSWORD).status_code == 200
@@ -189,6 +191,13 @@ def test_records_carry_the_logged_in_person_and_other_keys_are_refused(env):
     setup(client, temp)
     assert save_opinion(env, {"X-Staff-Key": "sales-2"}).status_code == 403
     assert save_opinion(env, {"X-Staff-Key": "park-lee"}).status_code == 403
+    with session_scope() as session:
+        runtime = deps.with_account_staff(
+            deps.load_runtime_config(session), list(session.scalars(select(StaffAccount)))
+        )
+        # 설정에만 있는 옛 담당자 키는 이름만 남고 기록할 수 없다.
+        assert not runtime.app_settings.is_recording_staff("park-lee")
+        assert runtime.app_settings.is_recording_staff("sales-1")
     response = save_opinion(env)
     assert response.status_code == 200, response.text
     with session_scope() as session:

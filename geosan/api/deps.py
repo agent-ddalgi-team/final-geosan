@@ -31,16 +31,26 @@ def runtime_for(session: Session) -> RuntimeConfig:
 
 
 def with_account_staff(runtime: RuntimeConfig, accounts: list[StaffAccount]) -> RuntimeConfig:
-    """담당자 목록을 계정 목록으로 바꾼 실행 설정. 표시 이름이 없으면 아이디를 보인다."""
+    """담당자 목록을 계정 목록으로 바꾼 실행 설정. 표시 이름이 없으면 아이디를 보인다.
+
+    계정을 만들기 전에 남은 기록의 담당자(앱 설정 staff)는 이름만 보이도록 목록 뒤에 두고,
+    기록할 수 없는 키로 표시한다(그 이름으로 새 기록을 남길 수 없음).
+    """
+    keys = {row.staff_key for row in accounts}
+    earlier = [entry for entry in runtime.app_settings.staff if entry.key not in keys]
     settings = runtime.app_settings.model_copy(
         update={
             "staff": [
                 StaffEntry(key=row.staff_key, display_name=row.display_name or row.staff_key)
                 for row in accounts
             ]
+            + earlier
         }
     )
-    settings.set_viewer_keys(row.staff_key for row in accounts if row.role == "VIEWER")
+    settings.set_viewer_keys(
+        [row.staff_key for row in accounts if row.role == "VIEWER"]
+        + [entry.key for entry in earlier]
+    )
     return replace(runtime, app_settings=settings)
 
 
