@@ -438,7 +438,7 @@ export interface SalesQuestions {
 export type JudgmentCheck = 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
 /** ADVICE = 남긴 피드백(#742): 영업 코치 피드백 가운데 [보고서에 남기기]로 고른 한 줄. 종류 고르기 칸에는 없다. */
 /** CALL_PREP = 다음 통화 준비(#750): 영업 코치가 같은 호출에서 준 물어볼 것(줄바꿈으로 이은 한 행). 종류 고르기 칸에는 없다. */
-export type NoteKind = 'MEMO' | 'RESEARCH' | 'ADVICE' | 'CALL_PREP';
+export type NoteKind = 'MEMO' | 'RESEARCH' | 'ADVICE' | 'CALL_PREP' | 'HANDOFF';
 
 export interface OutcomeRecord extends RecordMeta {
   status?: OutcomeStatus | null;
@@ -734,6 +734,19 @@ export interface DetailRecords {
   advice?: AdviceLine[];
   /** (#750) 가장 최근 다음 통화 준비(rec_note kind CALL_PREP). 상세 "통화 전" 칸과 보고서 "영업 방향"이 싣는다. */
   callPrep?: CallPrepNote | null;
+  /** #771 전달 사항(확인 전이 먼저, 최근 것부터 최대 10개). 옛 응답에는 없다. */
+  handoffs?: HandoffNote[];
+}
+
+/** #771 전달 사항 한 행. from·to는 담당자 키(화면은 담당자 목록 이름으로 바꿔 보인다). */
+export interface HandoffNote {
+  noteId: string;
+  text: string;
+  from: string;
+  to: string;
+  at: string;
+  confirmedAt: string | null;
+  confirmedBy: string | null;
 }
 
 /** (#750) 다음 통화 준비 한 행. lines는 서버가 줄바꿈으로 나눈 줄. */
@@ -843,6 +856,8 @@ export type BookmarkResponse = BookmarkRecord;
 export interface NoteRequest {
   text: string;
   kind?: NoteKind;
+  /** #771 전달 사항(kind HANDOFF)일 때만: 받는 사람 담당자 키. */
+  toStaffKey?: string;
   evalId?: string | null;
   /**
    * 검토사항 자료 줄 번호(#259·#260, 더하는 변경 2026-11-12). 있으면 kind는 RESEARCH여야 하고(아니면 400),

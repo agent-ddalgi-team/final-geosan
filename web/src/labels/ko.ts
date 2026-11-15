@@ -225,6 +225,7 @@ export const dashboardTexts = {
     NEED_CHECK: '곳',
     ON_HOLD: '곳',
     DONE: '곳',
+    WON: '곳',
   },
   /** 칸 이름. 목록 머리의 "무엇으로 걸렀는지"도 같은 말을 쓴다. */
   countNames: {
@@ -237,6 +238,7 @@ export const dashboardTexts = {
     NEED_CHECK: '검토 중',
     ON_HOLD: '보류',
     DONE: '완료',
+    WON: '성사',
     /** "오늘 확인할 것" 줄을 누르고 넘어온 목록의 이름(#679). 건수 칸은 아니다. */
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
   },
@@ -247,18 +249,49 @@ export const dashboardTexts = {
     SCHEDULE_TODAY: '오늘 일정',
     SCHEDULE_OVERDUE: '놓친 일정',
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
+    HANDOFF_FOR_ME: '나에게 온 전달 사항',
   },
   todayRowUnits: {
     SCHEDULE_TODAY: '건',
     SCHEDULE_OVERDUE: '건',
     CHECK_LEFT: '곳',
+    HANDOFF_FOR_ME: '곳',
   },
   /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
   todayMore: (count: number) => `외 ${count}`,
+  /** #766(PM 결정 2026-11-16): 주제별 묶음 제목·아이콘과 지난 일정 단추. */
+  todayGroupTitles: {
+    SCHEDULE_OVERDUE: '지난 일정 — 했나요?',
+    SCHEDULE_TODAY: '오늘 일정',
+    CHECK_LEFT: '확인할 것이 남은 관심 기업',
+    HANDOFF_FOR_ME: '나에게 온 전달 사항',
+  },
+  todayRowIcons: {
+    SCHEDULE_OVERDUE: '🔴',
+    SCHEDULE_TODAY: '📅',
+    CHECK_LEFT: '🔍',
+    HANDOFF_FOR_ME: '📬',
+  },
+  todaySeeAll: '모두 보기',
+  todayMoreButton: (count: number) => `더 보기 ${count}곳`,
+  todayResolveDone: '완료',
+  todayResolveMove: '날짜 바꾸기',
+  todayResolveDrop: '필요 없어요',
+  todayResolveNewDate: '새 날짜',
+  todayResolveMoveSave: '옮기기',
+  todayResolveFailed: '정리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
   bookmarkSectionTitle: '관심 기업',
   progressSectionTitle: '영업 진행',
   progressSectionHint: '관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
+  /** #766(PM 결정 2026-11-16): 상세(#763)와 같은 4칸 띠의 칸 이름. 보류는 띠 아래 작은 숫자. */
+  progressBandNames: {
+    NOT_CONTACTED: '미접촉',
+    IN_CONTACT: '접촉',
+    QUOTE_SAMPLE: '견적·샘플',
+    WON: '성사',
+  },
+  progressOnHold: (n: number) => `보류 ${n}곳`,
   /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
   notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
@@ -2066,4 +2099,22 @@ export const coachTexts = {
   editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
   adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
+} as const;
+
+/** #771 전달 사항(PM 결정 2026-11-15·16): 다른 직원이 회사 건으로 남기는 말, 받는 사람이 확인한다. */
+export const handoffTexts = {
+  title: '전달 사항',
+  open: '전달 사항 남기기',
+  textLabel: '전할 말',
+  textPlaceholder: '예: 기술팀 확인 — 도금 두께 요구는 우리 설비로 가능',
+  toLabel: '받는 사람',
+  send: '전달하기',
+  cancel: '닫기',
+  confirm: '확인했어요',
+  confirmed: '확인함',
+  /** "검수 담당 → 영업 담당 · 11/16" */
+  line: (from: string, to: string, day: string) => `${from} → ${to} · ${day}`,
+  waiting: (n: number) => `확인 전 ${n}건`,
+  saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;

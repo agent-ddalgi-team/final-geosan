@@ -25,6 +25,8 @@ CHANGE_KIND = "CHANGE"
 ADVICE_KIND = "ADVICE"
 # #750 코드표 NoteKind.CALL_PREP(다음 통화 준비)와 같은 값. 같은 이유로 글자로 둔다.
 CALL_PREP_KIND = "CALL_PREP"
+# #771 코드표 NoteKind.HANDOFF(전달 사항)와 같은 값.
+HANDOFF_KIND = "HANDOFF"
 
 
 class _Owner(Protocol):
