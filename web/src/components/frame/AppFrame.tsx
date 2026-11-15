@@ -1,8 +1,7 @@
-// 공통 틀(mockups 2장): 건너뛰기 링크 → header(로고·브랜드명·메뉴·담당자 Select) → 알림 띠 → main(h1 + 본문).
+// 공통 틀(mockups 2장): 건너뛰기 링크 → header(로고·브랜드명·담당자) → 알림 띠 → 왼쪽 메뉴(#762) + main(h1 + 본문).
 // 설정(/config/ui)을 한 번 읽어 담당자 목록·brand로 화면 기본값을 덮어쓰고, 띠에 보일 값은 페이지가 setBannerMeta로 알린다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
 import { Button, ConfigProvider, Select, Typography } from 'antd';
 import { getConfigUi } from '../../api/client';
 import { logout } from '../../api/session';
@@ -10,6 +9,7 @@ import type { ConfigUi, Meta } from '../../api/types';
 import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import SideMenu from './SideMenu';
 import StatusBanner from './StatusBanner';
 import {
   FrameContext,
@@ -68,6 +68,7 @@ export default function AppFrame({ title, children }: AppFrameProps) {
   }, []);
 
   const brand = config?.brand ?? defaultBrand;
+  const narrowDevice = isNarrowDevice();
   const bannerMeta = pageMeta ?? configMeta;
 
   const value = useMemo<FrameValue>(
@@ -125,38 +126,7 @@ export default function AppFrame({ title, children }: AppFrameProps) {
                 {brand.brandName}
               </span>
             </div>
-            <nav aria-label={frame.navLabel} style={{ flex: 1 }}>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', gap: 16 }}>
-                <li>
-                  <NavLink
-                    to="/"
-                    end
-                    data-testid="nav-dashboard-link"
-                    style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
-                  >
-                    {frame.menuDashboard}
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink
-                    to="/opportunities"
-                    data-testid="nav-opportunities-link"
-                    style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
-                  >
-                    {frame.menuOpportunities}
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink
-                    to="/sales-analysis"
-                    data-testid="nav-sales-analysis-link"
-                    style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
-                  >
-                    {frame.menuSalesAnalysis}
-                  </NavLink>
-                </li>
-              </ul>
-            </nav>
+            <span style={{ flex: 1 }} />
             {currentStaff ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span data-testid="current-staff">
@@ -200,18 +170,27 @@ export default function AppFrame({ title, children }: AppFrameProps) {
           demoLabel={brand.demoLabel}
           updatedAt={bannerMeta?.updatedAt}
           reevaluated={pageMeta?.reevaluated}
-          narrowScreen={isNarrowDevice()}
+          narrowScreen={narrowDevice}
         />
-        <main
-          id="main"
-          tabIndex={-1}
-          style={{ maxWidth: spacing.contentMaxWidth, margin: '0 auto', padding: '24px' }}
-        >
-          <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
-            {pageTitle ?? title}
-          </Typography.Title>
-          {children}
-        </main>
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          <SideMenu narrowDevice={narrowDevice} />
+          <main
+            id="main"
+            tabIndex={-1}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              maxWidth: spacing.contentMaxWidth,
+              margin: '0 auto',
+              padding: '24px',
+            }}
+          >
+            <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
+              {pageTitle ?? title}
+            </Typography.Title>
+            {children}
+          </main>
+        </div>
       </ConfigProvider>
     </FrameContext.Provider>
   );
