@@ -2,6 +2,9 @@
 """PR 전에 로컬에서 CI와 같은 검사를 같은 순서로 돌린다 — 맥·윈도우 공통판.
 
 scripts/check.sh(맥·리눅스 bash)와 단계·순서가 같다. 둘 중 하나를 바꾸면 다른 쪽도 같이 맞춘다.
+한 단계가 실패해도 멈추지 않고 끝까지 돈 뒤, 맨 끝에 실패한 단계를 모아 보여 주고
+종료 코드 1로 끝난다(#782, PM 결정 2026-11-16). 기준(커버리지 80% 하한·시나리오 필수)은
+그대로이고 멈추는 자리만 끝으로 옮겼다.
 비밀·DB 파일 검사는 scripts/check-secrets.sh와 같은 규칙을 파이썬으로 옮긴 것이다.
 
 사용 (저장소 어디서 실행해도 된다):
@@ -23,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,10 +49,29 @@ def find_npm() -> str:
     return npm
 
 
+class CheckFailed(Exception):
+    """비밀·DB 파일 검사처럼 명령이 아닌 검사가 실패했다."""
+
+
 def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
-    """명령 하나를 돌리고 실패하면 그 자리에서 멈춘다(bash의 set -e와 같다)."""
+    """명령 하나를 돌리고 실패하면 CalledProcessError를 낸다(단계가 받아 실패로 적는다)."""
     print("$", " ".join(cmd), flush=True)
     subprocess.run(cmd, cwd=ROOT, env=env, check=True)
+
+
+def step(failed: list[str], name: str, *actions: Callable[[], None]) -> None:
+    """단계 하나. 안의 일을 모두 돌리고(앞이 실패해도 뒤를 돌림) 하나라도 실패하면
+    이름을 failed에 적어 두고 다음 단계로 간다(check.sh의 step과 같다)."""
+    print(f"== {name}", flush=True)
+    ok = True
+    for action in actions:
+        try:
+            action()
+        except (subprocess.CalledProcessError, CheckFailed):
+            ok = False
+    if not ok:
+        failed.append(name)
+        print(f"   (실패: {name} — 다음 단계는 계속 돌립니다)", flush=True)
 
 
 def run_allowed_to_fail(
@@ -129,40 +152,48 @@ def check_secrets() -> None:
         status = 1
 
     if status != 0:
-        raise SystemExit(status)
+        raise CheckFailed("비밀·DB 파일 검사 실패")
     print("비밀·DB 파일 검사 통과")
 
 
 # ---------- 파이썬 ----------
 
 
-def run_python() -> None:
+def run_python(failed: list[str]) -> None:
     py = find_python()
 
-    print("== [1/5] 비밀·DB 파일 검사")
-    check_secrets()
+    step(failed, "[1/5] 비밀·DB 파일 검사", check_secrets)
 
-    print("== [2/5] 코드 모양 (ruff format --check, ruff check)")
-    run([py, "-m", "ruff", "format", "--check", "."])
-    run([py, "-m", "ruff", "check", "."])
-
-    print("== [3/5] 단위 테스트 + 커버리지 80% 하한")
-    run(
-        [
-            py,
-            "-m",
-            "pytest",
-            "tests/unit",
-            "-q",
-            "--cov=geosan",
-            "--cov-report=term-missing",
-            "--cov-fail-under=80",
-        ]
+    step(
+        failed,
+        "[2/5] 코드 모양 (ruff format --check, ruff check)",
+        lambda: run([py, "-m", "ruff", "format", "--check", "."]),
+        lambda: run([py, "-m", "ruff", "check", "."]),
     )
 
-    # 시나리오는 필수다(#527, PM 결정 2026-11-10). 실패하면 여기서 멈춘다.
-    print("== [4/5] 시나리오 테스트 (필수)")
-    run([py, "-m", "pytest", "tests/features", "-q", "--no-cov"])
+    step(
+        failed,
+        "[3/5] 단위 테스트 + 커버리지 80% 하한",
+        lambda: run(
+            [
+                py,
+                "-m",
+                "pytest",
+                "tests/unit",
+                "-q",
+                "--cov=geosan",
+                "--cov-report=term-missing",
+                "--cov-fail-under=80",
+            ]
+        ),
+    )
+
+    # 시나리오는 필수다(#527, PM 결정 2026-11-10). 실패하면 검사 전체가 실패로 끝난다.
+    step(
+        failed,
+        "[4/5] 시나리오 테스트 (필수)",
+        lambda: run([py, "-m", "pytest", "tests/features", "-q", "--no-cov"]),
+    )
 
     print("== [5/5] 뼈대 검증 (임시 DB, Step 19·27 전에는 실패가 정상 — Step 28에서 필수로 바꿈)")
     tmpdb = os.path.join(tempfile.mkdtemp(), "geosan-check.db")
@@ -190,21 +221,25 @@ def run_python() -> None:
 # ---------- 화면 ----------
 
 
-def run_web() -> None:
+def run_web(failed: list[str]) -> None:
     npm = find_npm()
 
-    print("== [web 1/4] 코드 모양 (ESLint, Prettier)")
-    run([npm, "--prefix", "web", "run", "lint"])
-    run([npm, "--prefix", "web", "run", "format:check"])
+    step(
+        failed,
+        "[web 1/4] 코드 모양 (ESLint, Prettier)",
+        lambda: run([npm, "--prefix", "web", "run", "lint"]),
+        lambda: run([npm, "--prefix", "web", "run", "format:check"]),
+    )
 
-    print("== [web 2/4] 화면 테스트 (Vitest)")
-    run([npm, "--prefix", "web", "test"])
+    step(failed, "[web 2/4] 화면 테스트 (Vitest)", lambda: run([npm, "--prefix", "web", "test"]))
 
-    print("== [web 3/4] 타입 검사 + 빌드 (tsc -b, vite build)")
-    run([npm, "--prefix", "web", "run", "build"])
+    step(
+        failed,
+        "[web 3/4] 타입 검사 + 빌드 (tsc -b, vite build)",
+        lambda: run([npm, "--prefix", "web", "run", "build"]),
+    )
 
-    print("== [web 4/4] 비밀·DB 파일 검사")
-    check_secrets()
+    step(failed, "[web 4/4] 비밀·DB 파일 검사", check_secrets)
 
 
 def main(argv: list[str]) -> int:
@@ -212,20 +247,22 @@ def main(argv: list[str]) -> int:
     # 윈도우(CP949)에서도 모든 하위 명령이 파일·출력을 UTF-8로 다루게 한다(2026-10-22, 이슈 #33).
     os.environ.setdefault("PYTHONUTF8", "1")
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-    try:
-        if target == "python":
-            run_python()
-        elif target == "web":
-            run_web()
-        elif target == "all":
-            run_python()
-            run_web()
-        else:
-            print("사용법: python scripts/check.py [python|web]")
-            return 1
-    except subprocess.CalledProcessError as exc:
-        print(f"검사 실패: 위 명령이 종료 코드 {exc.returncode}로 끝났습니다.")
-        return exc.returncode or 1
+    failed: list[str] = []
+    if target == "python":
+        run_python(failed)
+    elif target == "web":
+        run_web(failed)
+    elif target == "all":
+        run_python(failed)
+        run_web(failed)
+    else:
+        print("사용법: python scripts/check.py [python|web]")
+        return 1
+    if failed:
+        print("검사 실패: 아래 단계가 실패했습니다. 위에서 각 단계의 오류를 확인하세요.")
+        for name in failed:
+            print(f"  - {name}")
+        return 1
     print("검사 끝")
     return 0
 
