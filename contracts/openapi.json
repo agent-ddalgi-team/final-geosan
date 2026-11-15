@@ -571,6 +571,39 @@
         "title": "CallPrepAnswer",
         "type": "object"
       },
+      "CallPrepNote": {
+        "description": "#750 가장 최근 다음 통화 준비(rec_note kind CALL_PREP) 한 행. 글을 줄바꿈으로 나눈 줄.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "lines",
+          "at",
+          "by"
+        ],
+        "title": "CallPrepNote",
+        "type": "object"
+      },
       "CardOutcome": {
         "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
         "properties": {
@@ -763,6 +796,13 @@
             "title": "Missingrequired",
             "type": "array"
           },
+          "nextCall": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Nextcall",
+            "type": "array"
+          },
           "nextSchedule": {
             "anyOf": [
               {
@@ -795,6 +835,7 @@
         "required": [
           "answers",
           "feedback",
+          "nextCall",
           "summary",
           "missingRequired",
           "stepBefore",
@@ -1783,6 +1824,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/BookmarkRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "callPrep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallPrepNote"
               },
               {
                 "type": "null"
@@ -3924,7 +3975,8 @@
             "enum": [
               "MEMO",
               "RESEARCH",
-              "ADVICE"
+              "ADVICE",
+              "CALL_PREP"
             ],
             "title": "Kind",
             "type": "string"

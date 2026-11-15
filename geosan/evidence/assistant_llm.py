@@ -67,11 +67,15 @@ class CoachSchedule(FileModel):
 
 
 class CoachReading(FileModel):
-    """영업 코치(#742)의 구조화된 응답: 답 채우기·다음 일정·피드백 1~3줄·요약 한 줄."""
+    """영업 코치(#742)의 구조화된 응답: 답 채우기·다음 일정·피드백 1~3줄·요약 한 줄.
+
+    #750: 같은 호출에서 다음 통화에 물어볼 것 0~3줄(next_call)도 받는다.
+    """
 
     answers: list[CoachAnswer]
     next_schedule: CoachSchedule
     feedback: list[str]
+    next_call: list[str]
     summary: str
 
 

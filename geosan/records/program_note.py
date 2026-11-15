@@ -23,6 +23,8 @@ from geosan.storage.base import new_id
 CHANGE_KIND = "CHANGE"
 # #742 코드표 NoteKind.ADVICE(남긴 피드백)와 같은 값. 같은 이유로 글자로 둔다.
 ADVICE_KIND = "ADVICE"
+# #750 코드표 NoteKind.CALL_PREP(다음 통화 준비)와 같은 값. 같은 이유로 글자로 둔다.
+CALL_PREP_KIND = "CALL_PREP"
 
 
 class _Owner(Protocol):

@@ -1271,11 +1271,18 @@ def activity(
         if row.kind == NoteKind.ADVICE and row.cancelled_at is None:
             # #742: 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄.
             summary = f"남긴 피드백 · {row.text}"
+        if row.kind == NoteKind.CALL_PREP and row.cancelled_at is None:
+            # #750: 영업 코치가 준 다음 통화에 물어볼 것. 줄 종류는 남긴 피드백과 같다.
+            summary = "다음 통화 준비 · " + " · ".join(
+                line.strip() for line in row.text.split("\n") if line.strip()
+            )
         items.append(
             ActivityItem(
                 at=row.created_at,
                 actor=row.staff_key,
-                kind={"REPLY": "REPLY", "ADVICE": "ADVICE"}.get(row.kind, "NOTE"),
+                kind={"REPLY": "REPLY", "ADVICE": "ADVICE", "CALL_PREP": "ADVICE"}.get(
+                    row.kind, "NOTE"
+                ),
                 summary=summary,
                 record_id=row.note_id,
                 record_kind="NOTE",
@@ -1412,12 +1419,17 @@ def save_note(
             fields=[FieldError(path="text", message=f"{limit}자 이내로 적어 주세요.")],
         )
     blank = not body.text.strip()
-    if body.kind == NoteKind.ADVICE and (blank or scan_contacts({"text": body.text})):
+    advice_like = body.kind in (NoteKind.ADVICE, NoteKind.CALL_PREP)
+    if advice_like and (blank or scan_contacts({"text": body.text})):
         # #742: 남긴 피드백은 회사 보고서로 나가는 글이라 메모와 달리 연락처를 막는다.
+        # #750: 다음 통화 준비도 보고서로 나가는 글이라 같은 검사를 한다.
         message = "빈 글이나 전화·이메일이 있는 글은 남길 수 없습니다."
-        raise InputError(
-            "남길 피드백을 확인해 주세요.", fields=[FieldError(path="text", message=message)]
+        title = (
+            "남길 피드백을 확인해 주세요."
+            if body.kind == NoteKind.ADVICE
+            else "남길 통화 준비를 확인해 주세요."
         )
+        raise InputError(title, fields=[FieldError(path="text", message=message)])
     opportunity = session.get(Opportunity, opp_id)
     if opportunity is None:
         raise NotFoundError("메모를 남길 기회가 없습니다.")

@@ -38,7 +38,9 @@ def day(offset):
     return (utcnow().astimezone(KST).date() + timedelta(days=offset)).isoformat()
 
 
-def reading(answers=(), action=None, date=None, feedback=(), summary="견적 요청을 받음"):
+def reading(
+    answers=(), action=None, date=None, feedback=(), summary="견적 요청을 받음", next_call=()
+):
     return json.dumps(
         {
             "answers": [
@@ -47,6 +49,7 @@ def reading(answers=(), action=None, date=None, feedback=(), summary="견적 요
             ],
             "nextSchedule": {"actionId": action, "date": date},
             "feedback": list(feedback),
+            "nextCall": list(next_call),
             "summary": summary,
         },
         ensure_ascii=False,
@@ -103,6 +106,15 @@ FULL_READING = reading(
         "단가를 10% 낮춰 제안해 보세요.",
         "[이름] 과장에게 010-1234-5678로 다시 걸어 보세요.",
         "납기를 다음 주로 확정해 드리세요.",
+    ],
+    # #750: 다음 통화에 물어볼 것. 연락처·금액이 든 줄은 버리고 3줄까지만 받는다.
+    next_call=[
+        "견적에 넣을 수량과 도금 두께를 물어보세요.",
+        "김철수 과장에게 010-1234-5678로 확인하세요.",
+        "단가를 10% 낮춰 드릴 수 있다고 말하세요.",
+        "소개서에서 궁금한 공정이 있는지 물어보세요.",
+        "방문 날짜를 정할 수 있는지 물어보세요.",
+        "샘플이 필요한지 물어보세요.",
     ],
     summary="김철수 과장이 견적을 요청함",
 )
@@ -196,6 +208,22 @@ def test_feedback_with_money_discount_delivery_promise_or_contact_is_dropped(coa
     data = coach(client, opp_ids[0]).json()["data"]
     assert data["feedback"] == ["10/21 메모의 납기 걱정에 아직 답을 못 줬어요."]
     assert data["summary"] == "[이름] 과장이 견적을 요청함"
+
+
+def test_next_call_lines_come_in_the_same_call_and_are_checked(coach_env):
+    """Given 연락처·금액이 섞인 다음 통화 줄 6개 / When 코치 한 번 / Then 걸러 3줄까지, 호출 1번."""
+    client, opp_ids, fake = coach_env
+    data = coach(client, opp_ids[0]).json()["data"]
+    assert data["nextCall"] == [
+        "견적에 넣을 수량과 도금 두께를 물어보세요.",
+        "소개서에서 궁금한 공정이 있는지 물어보세요.",
+        "방문 날짜를 정할 수 있는지 물어보세요.",
+    ]
+    assert len(fake.payloads) == 1
+    assert "[다음 통화] nextCall" in fake.payloads[0]["instructions"]
+    # 정해진 모양에 nextCall이 들어 있다(엄격 모드는 모든 칸이 필수).
+    schema = fake.payloads[0]["text"]["format"]["schema"]
+    assert "nextCall" in schema["required"]
 
 
 def test_switch_off_sends_nothing(coach_env):
@@ -406,18 +434,53 @@ def test_kept_feedback_shows_in_activity_detail_and_next_coaching(coach_env):
     assert line not in fake.payloads[-1]["input"]
 
 
+@pytest.mark.parametrize("kind", ["ADVICE", "CALL_PREP"])
 @pytest.mark.parametrize("text", ["담당 010-0000-0000로 다시", "kim@example.com 회신 확인", "  "])
-def test_feedback_with_contact_or_blank_cannot_be_kept(coach_env, text):
+def test_feedback_with_contact_or_blank_cannot_be_kept(coach_env, text, kind):
     client, opp_ids, _fake = coach_env
     response = client.post(
         f"/api/v1/opportunities/{opp_ids[0]}/notes",
-        json={"text": text, "kind": "ADVICE"},
+        json={"text": text, "kind": kind},
         headers=STAFF,
     )
     assert response.status_code == 400, response.text
     with session_scope() as session:
         kinds = session.scalars(select(Note.kind).where(Note.opp_id == opp_ids[0])).all()
-    assert "ADVICE" not in kinds
+    assert kind not in kinds
+
+
+def test_saved_call_prep_shows_in_detail_activity_and_next_coaching(coach_env):
+    """Given 다음 통화 준비 두 번 저장 / When 상세·이력·다음 코칭 / Then 가장 최근 것(#750)."""
+    client, opp_ids, fake = coach_env
+    opp_id = opp_ids[0]
+    note(client, opp_id, "샘플이 필요한지 물어보세요.", kind="CALL_PREP")
+    lines = ["견적에 넣을 수량을 물어보세요.", "방문 날짜를 정할 수 있는지 물어보세요."]
+    prep_id = note(client, opp_id, "\n".join(lines), kind="CALL_PREP")
+    detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    prep = detail["records"]["callPrep"]
+    assert (prep["noteId"], prep["lines"], prep["by"]) == (prep_id, lines, "park-lee")
+    # 남긴 피드백 목록에는 섞이지 않는다.
+    assert detail["records"]["advice"] == []
+    items = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
+    summaries = [row["summary"] for row in items if row["kind"] == "ADVICE"]
+    assert f"다음 통화 준비 · {lines[0]} · {lines[1]}" in summaries
+    coach(client, opp_id)
+    sent = fake.payloads[-1]["input"]
+    assert "[지난 통화 준비]" in sent and lines[1] in sent
+    assert "샘플이 필요한지" not in sent  # 가장 최근 한 행만 싣는다
+    # 잘못 입력으로 표시하면 그 앞 것이 보인다.
+    cancelled = client.post(
+        f"/api/v1/opportunities/{opp_id}/records/{prep_id}/cancel", json={}, headers=STAFF
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    assert detail["records"]["callPrep"]["lines"] == ["샘플이 필요한지 물어보세요."]
+
+
+def test_detail_without_call_prep_is_null(coach_env):
+    client, opp_ids, _fake = coach_env
+    detail = client.get(f"/api/v1/opportunities/{opp_ids[1]}").json()["data"]
+    assert detail["records"]["callPrep"] is None
 
 
 # ---------------------------------------------------------------------------

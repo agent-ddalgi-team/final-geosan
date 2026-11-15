@@ -3,6 +3,7 @@
 영업 비서 창구(`routes/assistant.py`)와 따로 둔다. 보낼 글 만들기·받은 답 검증·빠진 필수 질문
 규칙은 `api/coach.py` 한 곳에 있다. 읽기 전용이다: 아무 값도 저장하지 않고 전송 기록만 남긴다.
 저장은 담당자가 확인 화면에서 [이대로 저장]을 누를 때 화면이 기존 `/outcomes`·`/notes`를 부른다.
+#750: 같은 호출이 다음 통화에 물어볼 것도 주어, 상세의 [통화 준비 💰]를 따로 부르지 않는다.
 """
 
 import datetime
@@ -52,6 +53,9 @@ class CoachResult(_ApiModel):
     answers: list[CoachAnswerView]
     next_schedule: CoachScheduleView | None = None
     feedback: list[str]
+    # #750: 같은 호출에서 받은 다음 통화에 물어볼 것(0~3줄).
+    # [이대로 저장] 때 화면이 CALL_PREP로 남긴다.
+    next_call: list[str]
     summary: str
     # 규칙으로 계산한 빠진 필수 질문(AI 아님). 질문 파일 순서, 설정 상한까지.
     missing_required: list[str]
@@ -143,6 +147,7 @@ def coach(
             if schedule
             else None,
             feedback=checked.feedback,
+            next_call=checked.next_call,
             summary=checked.summary,
             missing_required=checked.missing_required,
             step_before=plan.step_before,
