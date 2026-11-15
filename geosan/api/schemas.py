@@ -719,6 +719,15 @@ class AdviceLine(_ApiModel):
     by: str
 
 
+class CallPrepNote(_ApiModel):
+    """#750 가장 최근 다음 통화 준비(rec_note kind CALL_PREP) 한 행. 글을 줄바꿈으로 나눈 줄."""
+
+    note_id: str
+    lines: list[str]
+    at: datetime
+    by: str
+
+
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
     sales_step: SalesStepView = Field(default_factory=SalesStepView)
@@ -730,6 +739,8 @@ class DetailRecords(_ApiModel):
     outcome: dict[str, Any] | None = None
     # #742: 취소하지 않은 남긴 피드백, 최근 것부터.
     advice: list[AdviceLine] = Field(default_factory=list)
+    # #750: 취소하지 않은 가장 최근 다음 통화 준비. 없으면 None.
+    call_prep: CallPrepNote | None = None
 
 
 class ReviewItemNote(_ApiModel):
@@ -834,8 +845,9 @@ class OpinionResponse(OpinionRecord):
 
 # 화면·테스트가 참고할 수 있는 응답 유형 별칭
 class NoteRequest(_RequestModel):
-    # #742: ADVICE = 영업 코치 피드백 가운데 [보고서에 남기기]로 고른 한 줄.
-    kind: Literal["MEMO", "RESEARCH", "ADVICE"] = "MEMO"
+    # #742: ADVICE = 영업 코치 피드백 한 줄(#750부터 [이대로 저장] 때 모두 남김).
+    # #750: CALL_PREP = 영업 코치가 준 다음 통화에 물어볼 것(줄바꿈으로 이은 한 행).
+    kind: Literal["MEMO", "RESEARCH", "ADVICE", "CALL_PREP"] = "MEMO"
     text: str
     eval_id: str | None = None
     # #259: 검토사항 자료 줄 번호. 없으면 지금과 같은 일반 메모.

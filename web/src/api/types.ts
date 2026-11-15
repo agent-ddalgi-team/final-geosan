@@ -427,7 +427,8 @@ export interface SalesQuestions {
 }
 export type JudgmentCheck = 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
 /** ADVICE = 남긴 피드백(#742): 영업 코치 피드백 가운데 [보고서에 남기기]로 고른 한 줄. 종류 고르기 칸에는 없다. */
-export type NoteKind = 'MEMO' | 'RESEARCH' | 'ADVICE';
+/** CALL_PREP = 다음 통화 준비(#750): 영업 코치가 같은 호출에서 준 물어볼 것(줄바꿈으로 이은 한 행). 종류 고르기 칸에는 없다. */
+export type NoteKind = 'MEMO' | 'RESEARCH' | 'ADVICE' | 'CALL_PREP';
 
 export interface OutcomeRecord extends RecordMeta {
   status?: OutcomeStatus | null;
@@ -721,6 +722,16 @@ export interface DetailRecords {
   salesStep?: SalesStepView | null;
   /** 남긴 피드백(#742, rec_note kind ADVICE), 최근 것부터. 회사 보고서 "영업 방향"이 이 값만 싣는다. */
   advice?: AdviceLine[];
+  /** (#750) 가장 최근 다음 통화 준비(rec_note kind CALL_PREP). 상세 "통화 전" 칸과 보고서 "영업 방향"이 싣는다. */
+  callPrep?: CallPrepNote | null;
+}
+
+/** (#750) 다음 통화 준비 한 행. lines는 서버가 줄바꿈으로 나눈 줄. */
+export interface CallPrepNote {
+  noteId: string;
+  lines: string[];
+  at: string;
+  by: string;
 }
 
 export interface AdviceLine {

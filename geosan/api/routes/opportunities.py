@@ -41,6 +41,7 @@ from geosan.api.schemas import (
     ApprovalEligibility,
     Blocker,
     BucketCounts,
+    CallPrepNote,
     CardOutcome,
     CardRecords,
     DetailHeader,
@@ -516,6 +517,7 @@ def _records(context: DetailContext) -> dict:
             approval=None,
             outcome=outcome_view(outcome),
             advice=_advice_lines(context.session, context.opportunity.opp_id),
+            call_prep=_call_prep_note(context.session, context.opportunity.opp_id),
         )
     }
 
@@ -535,6 +537,24 @@ def _advice_lines(session: Session, opp_id: str) -> list[AdviceLine]:
         AdviceLine(note_id=row.note_id, text=row.text, at=row.created_at, by=row.staff_key)
         for row in rows
     ]
+
+
+def _call_prep_note(session: Session, opp_id: str) -> CallPrepNote | None:
+    """#750 취소하지 않은 가장 최근 다음 통화 준비(rec_note kind CALL_PREP). 없으면 None."""
+    row = session.scalars(
+        select(Note)
+        .where(
+            Note.opp_id == opp_id,
+            Note.kind == NoteKind.CALL_PREP,
+            Note.cancelled_at.is_(None),
+        )
+        .order_by(Note.version.desc())
+        .limit(1)
+    ).first()
+    if row is None:
+        return None
+    lines = [line.strip() for line in row.text.split("\n") if line.strip()]
+    return CallPrepNote(note_id=row.note_id, lines=lines, at=row.created_at, by=row.staff_key)
 
 
 detail_sections: list[Callable] = [

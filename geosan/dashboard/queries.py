@@ -48,6 +48,8 @@ NOTE_SUMMARIES = {
     "CHANGE": "변경 기록을 남김",
     # #742 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄
     "ADVICE": "피드백을 남김",
+    # #750 영업 코치가 같은 호출에서 준 다음 통화에 물어볼 것
+    "CALL_PREP": "통화 준비를 남김",
 }
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}

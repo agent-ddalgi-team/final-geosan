@@ -1,7 +1,7 @@
 // 영업 코치(#742, PM 결정 2026-11-14): 상세 › 기록 남기기의 "확인사항"과 [보내기] 뒤 확인 화면.
 // 확인사항은 규칙이다(AI 아님, 0원): 질문 파일의 coach.required로 지금 세부 단계에서 확인할 것의 짧은 말을 보인다.
 // 확인 화면은 AI가 채운 답("AI가 채움"), AI 제안(미리 고르지 않음, [이대로 고르기]), 빠진 필수 질문(단추),
-// 피드백 줄마다 [보고서에 남기기]/[넘기기], 그리고 [이대로 저장]/[고치기]를 보인다.
+// 코치 피드백·다음 통화에 물어볼 것(#750, 고르지 않고 저장 때 모두 남김), 그리고 [이대로 저장]/[고치기]를 보인다.
 // 아무것도 저절로 저장하지 않는다. [이대로 저장]을 눌러야 부모(기록 칸)가 기존 저장 창구를 부른다.
 import { useState } from 'react';
 import { Button, Typography } from 'antd';
@@ -112,8 +112,10 @@ export interface CoachSelection {
   aiFilled: Record<string, string[]>;
   /** 다음 일정 날짜(YYYY-MM-DD). 없으면 빈 값. */
   nextDate: string;
-  /** [보고서에 남기기]를 누른 피드백 줄. */
+  /** 저장 때 남길 피드백 줄(#750부터 코치가 준 줄 모두). */
   advice: string[];
+  /** (#750) 저장 때 다음 통화 준비로 남길 줄. */
+  nextCall: string[];
 }
 
 function labelOf(question: SalesQuestion | undefined, answerId: string): string {
@@ -142,10 +144,9 @@ export function CoachReview({
   const suggested = result.answers.filter(
     (item) => item.fill === 'SUGGEST' && byId.has(item.questionId),
   );
-  // 담당자가 고른 것: 제안을 받아들임 / 빠진 필수 질문의 답 / 피드백 남기기·넘기기.
+  // 담당자가 고른 것: 제안을 받아들임 / 빠진 필수 질문의 답. 피드백·다음 통화는 고르지 않는다(#750).
   const [taken, setTaken] = useState<Record<string, boolean>>({});
   const [answered, setAnswered] = useState<Record<string, string[]>>({});
-  const [advice, setAdvice] = useState<Record<number, 'KEEP' | 'SKIP'>>({});
 
   const aiFilled: Record<string, string[]> = {};
   for (const item of filled) aiFilled[item.questionId] = item.answerIds;
@@ -195,7 +196,8 @@ export function CoachReview({
     many,
     aiFilled,
     nextDate: scheduleMatches && schedule?.date ? schedule.date : '',
-    advice: result.feedback.filter((_, index) => advice[index] === 'KEEP'),
+    advice: result.feedback,
+    nextCall: result.nextCall ?? [],
   };
 
   const stepAfter = coachStepAfter(questions, result.stepBefore, chosen);
@@ -359,37 +361,36 @@ export function CoachReview({
         {result.feedback.length === 0 ? (
           <span style={secondary}>{texts.feedbackNone}</span>
         ) : (
-          result.feedback.map((line, index) => (
-            <div key={line} style={rowStyle} data-testid="coach-feedback-line">
-              <span>{line}</span>
-              <Button
-                size="small"
-                type={advice[index] === 'KEEP' ? 'primary' : 'default'}
-                aria-pressed={advice[index] === 'KEEP'}
-                disabled={disabled}
-                onClick={() =>
-                  setAdvice((previous) => ({
-                    ...previous,
-                    // 한 번 더 누르면 남기기를 거둔다(넘김으로 둔다).
-                    [index]: previous[index] === 'KEEP' ? 'SKIP' : 'KEEP',
-                  }))
-                }
-                data-testid="coach-feedback-keep"
-              >
-                {advice[index] === 'KEEP' ? texts.kept : texts.keep}
-              </Button>
-              <Button
-                size="small"
-                type="text"
-                aria-pressed={advice[index] === 'SKIP'}
-                disabled={disabled}
-                onClick={() => setAdvice((previous) => ({ ...previous, [index]: 'SKIP' }))}
-                data-testid="coach-feedback-skip"
-              >
-                {advice[index] === 'SKIP' ? texts.skipped : texts.skip}
-              </Button>
-            </div>
-          ))
+          <>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {result.feedback.map((line) => (
+                <li key={line} data-testid="coach-feedback-line">
+                  {line}
+                </li>
+              ))}
+            </ul>
+            <span style={secondary} data-testid="coach-feedback-saved">
+              {texts.feedbackSaved}
+            </span>
+          </>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gap: 4 }} data-testid="coach-next-call">
+        <Typography.Text>{texts.nextCallTitle}</Typography.Text>
+        {selection.nextCall.length === 0 ? (
+          <span style={secondary}>{texts.nextCallNone}</span>
+        ) : (
+          <>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {selection.nextCall.map((line) => (
+                <li key={line} data-testid="coach-next-call-line">
+                  {line}
+                </li>
+              ))}
+            </ul>
+            <span style={secondary}>{texts.nextCallSaved}</span>
+          </>
         )}
       </div>
 

@@ -1844,7 +1844,10 @@ export const companyReport = {
   /** (#742) 영업 코치 피드백 가운데 담당자가 [보고서에 남기기]로 고른 줄만 싣는다(메모는 싣지 않는다). */
   direction: {
     none: '남긴 피드백이 없습니다.',
-    mark: 'AI 피드백 · 담당자가 고름',
+    mark: 'AI 코치 피드백 · 담당자가 확인하고 저장',
+    /** (#750) "다음 통화에 물어볼 것 (2026-11-15)" */
+    nextCall: (at: string | null) =>
+      at ? `다음 통화에 물어볼 것 (${at})` : '다음 통화에 물어볼 것',
   },
   glance: {
     name: '회사',
@@ -1943,9 +1946,6 @@ export const assistantTexts = {
   sourcesNone: '근거로 든 회사가 없습니다.',
   /** "12곳 가운데 10곳만 보았습니다" */
   partial: (total: number, included: number) => `${total}곳 가운데 ${included}곳만 보았습니다.`,
-  callPrepButton: '통화 준비 💰',
-  callPrepHint: '이 회사의 기록과 비슷한 회사의 결과로 먼저 물어볼 것을 정리합니다.',
-  callPrepFailed: '통화 준비를 받지 못했습니다.',
   /** 오늘 정리(#743): "오늘 확인할 것" 칸 맨 위. 하루 한 번 AI가 쓴다. */
   dailyTitle: '오늘 정리',
   dailyMark: 'AI가 쓴 글 · 확인 필요',
@@ -2027,10 +2027,14 @@ export const coachTexts = {
   stepSame: (step: string) => `단계: ${step} 그대로`,
   feedbackTitle: '코치 피드백',
   feedbackNone: '이번에는 짚을 것이 없습니다.',
-  keep: '보고서에 남기기',
-  skip: '넘기기',
-  kept: '보고서에 남김 ✓',
-  skipped: '넘김',
+  /** (#750) 피드백은 고르지 않고 [이대로 저장] 때 모두 남는다. */
+  feedbackSaved: '저장하면 회사 보고서 "영업 방향"에 남습니다.',
+  nextCallTitle: '다음 통화에 물어볼 것',
+  nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
+  nextCallSaved: '저장하면 다음 통화 전 칸과 보고서에 보입니다.',
+  /** (#750) 상세 "기록 남기기" 맨 위 통화 전 칸: "11/15 통화 뒤 코치 정리" */
+  prepTitle: (date: string) => `${date} 통화 뒤 코치 정리 · 다음 통화에 물어볼 것`,
+  prepNone: '통화 뒤 메모를 [보내기 💰] 하면 다음 통화에 물어볼 것이 여기에 정리됩니다.',
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2040,4 +2044,5 @@ export const coachTexts = {
   edit: '고치기',
   editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
   adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
+  prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
 } as const;

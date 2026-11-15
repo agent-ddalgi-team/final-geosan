@@ -1,4 +1,4 @@
-// 회사별 보고서의 "영업 방향"(#742): 메모 가운데 남긴 피드백(영업 코치 피드백을 담당자가 고른 줄)만 싣는다.
+// 회사별 보고서의 "영업 방향"(#742): 메모 가운데 남긴 피드백과(#750) 가장 최근 다음 통화 준비만 싣는다.
 // 서버 호출(getOpportunityDetail·getSalesQuestions)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -64,9 +64,35 @@ describe('회사별 보고서 › 6. 영업 방향 (#742)', () => {
     expect(section).not.toHaveTextContent('park-lee');
   });
 
+  it('(#750) 가장 최근 다음 통화 준비가 남긴 피드백 아래 "다음 통화에 물어볼 것"으로 실린다', async () => {
+    const base = detailWithAdvice();
+    const lines = ['외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?'];
+    vi.mocked(getOpportunityDetail).mockResolvedValue({
+      data: {
+        ...base,
+        records: {
+          ...base.records,
+          callPrep: { noteId: 'note-4', lines, at: '2026-11-15T10:00:00+09:00', by: 'park-lee' },
+        },
+      },
+      meta: {},
+    });
+    vi.mocked(getSalesQuestions).mockRejectedValue(new Error('질문 파일 없음'));
+    renderReport();
+    const section = await screen.findByTestId('report-direction-section');
+    expect(section).toHaveTextContent(companyReport.direction.nextCall('2026-11-15'));
+    expect(
+      within(within(section).getByTestId('report-next-call'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(lines);
+    expect(section).not.toHaveTextContent('park-lee');
+  });
+
   it('남긴 피드백이 없으면(옛 응답 포함) "없습니다" 한 줄이다', () => {
     const model = reportModelOf(fixture, false, null, '2026-11-14');
     expect(model.direction).toEqual([]);
+    expect(model.nextCall).toBeNull();
     vi.mocked(getOpportunityDetail).mockResolvedValue({ data: fixture, meta: {} });
     vi.mocked(getSalesQuestions).mockRejectedValue(new Error('질문 파일 없음'));
     renderReport();

@@ -69,12 +69,8 @@ export function getAssistantDaily(staffKey: string, signal?: AbortSignal) {
   });
 }
 
-export function postCallPrep(oppId: string, staffKey: string) {
-  return request<AssistantAnswer>(
-    `/opportunities/${encodeURIComponent(oppId)}/assistant/call-prep`,
-    { method: 'POST', staffKey, timeoutMs: ASSISTANT_TIMEOUT_MS },
-  );
-}
+// (#750) 상세의 [통화 준비 💰]는 화면에서 뺐다. 영업 코치가 [보내기] 한 번에 다음 통화 준비도 주고,
+// 저장한 것을 상세가 records.callPrep으로 받는다. 서버의 call-prep 창구는 그대로 둔다(약속 C1).
 
 // ---------- 메모 읽기(#720, 계약 C1 `POST /opportunities/{oppId}/assistant/memo-read`) ----------
 // 서버가 메모 글 하나를 사람 이름·전화·이메일을 지운 사본으로 AI에 보내 한 줄 요약과 변경 제안을 받는다.

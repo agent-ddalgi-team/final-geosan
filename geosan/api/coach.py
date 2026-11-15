@@ -46,6 +46,7 @@ from geosan.rules.codes import NoteKind, SalesStep
 
 NEXT_ACTION_QUESTION = "NEXT_ACTION"
 MAX_FEEDBACK_LINES = 3  # 계약 C1: 피드백 0~3줄
+MAX_NEXT_CALL_LINES = 3  # 계약 C1(#750): 다음 통화에 물어볼 것 0~3줄
 _SPACES = re.compile(r"\s+")
 # 피드백에서 버리는 줄(계약 C1·CON-23): 금액, 할인·가격 깎기 제안, 납기 확정·약속 제안.
 _FORBIDDEN_FEEDBACK = (
@@ -83,6 +84,11 @@ _INSTRUCTIONS = (
     "기록이 없으면 이번 메모에서 빠진 것이나 다음에 확인할 것을 구체적으로 짚는다. '꾸준히 "
     "연락하세요'·'관계를 유지하세요'·'좋은 진전입니다' 같은 뻔한 말과 '~기준을 확인하세요' 같은 "
     "틀에 박힌 마무리는 쓰지 않는다. 한 줄 60자 안팎.\n"
+    "[다음 통화] nextCall은 다음 통화에서 물어볼 것 0~3줄. 이번 메모·이전 기록·지난 통화 "
+    "준비를 보고 아직 확인하지 못한 것만, 상대에게 바로 물을 수 있는 짧은 질문으로 쓴다(예: "
+    "'도금 외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?'). 이번 메모에서 이미 답을 "
+    "들은 것은 쓰지 않는다. 피드백 줄을 그대로 되풀이하지 않는다. 물을 것이 없으면 빈 목록. "
+    "한 줄 40자 안팎.\n"
     "[요약] summary는 이번 메모를 한국어 한 줄(40자 안팎)로.\n"
     "[금지] 단가·견적 금액·할인을 묻거나 제안하지 않는다(금액·숫자 제시 금지). 납기 날짜를 "
     "정하거나 약속하자고 제안하지 않는다. 사람 이름·전화·이메일은 쓰지 않는다. '[이름]'·'[연락처 "
@@ -123,6 +129,7 @@ class CheckedCoaching:
     answers: list[CheckedAnswer]
     next_schedule: tuple[str, date | None] | None
     feedback: list[str]
+    next_call: list[str]
     summary: str
     missing_required: list[str]
     step_after: SalesStep
@@ -293,6 +300,23 @@ def _advice(session: Session, opp_id: str) -> list[tuple[date, str]]:
     ]
 
 
+def _last_call_prep(session: Session, opp_id: str) -> tuple[date, list[str]] | None:
+    """#750 가장 최근 다음 통화 준비(kind CALL_PREP) 한 행의 날짜와 줄. 없으면 None."""
+    row = session.scalars(
+        select(Note)
+        .where(
+            Note.opp_id == opp_id,
+            Note.kind == NoteKind.CALL_PREP,
+            Note.cancelled_at.is_(None),
+        )
+        .order_by(Note.version.desc())
+        .limit(1)
+    ).first()
+    if row is None:
+        return None
+    return _day(row.created_at), [line.strip() for line in row.text.split("\n") if line.strip()]
+
+
 def build_coach(
     session: Session, opp_id: str, memo: str, today: date, prior_limit: int
 ) -> CoachPlan:
@@ -309,6 +333,7 @@ def build_coach(
     prior, answer_lines = _prior_answers(session, opp_id)
     memos = _memos(session, opp_id)
     advice = _advice(session, opp_id)
+    last_prep = _last_call_prep(session, opp_id)
     labels = {entry.code: entry.label for entry in questions.steps}
     company = build_memo_read_context(session, opp_id, today)
     context_lines = [
@@ -323,6 +348,9 @@ def build_coach(
         "",
         "[남긴 피드백]",
         *([f"{_md(day)}: {text}" for day, text in advice[-prior_limit:]] or ["없음"]),
+        "",
+        "[지난 통화 준비]",
+        *([f"{_md(last_prep[0])}: {line}" for line in last_prep[1]] if last_prep else ["없음"]),
     ]
     # 프로그램이 아는 이름은 사람 이름으로 보지 않는다: 공정·산업·회사 이름·주소·질문과 보기 글.
     keep = [
@@ -484,6 +512,9 @@ def check_coaching(
     feedback = [
         line for line in (_clean_line(plan, text) for text in reading.feedback) if line is not None
     ][:MAX_FEEDBACK_LINES]
+    next_call = [
+        line for line in (_clean_line(plan, text) for text in reading.next_call) if line is not None
+    ][:MAX_NEXT_CALL_LINES]
     summary, _ = scrub_contacts(reading.summary.strip())
     summary, _ = scrub_person_names_wide(summary, plan.memo.known_names, plan.memo.keep_words)
     # 빠진 필수 질문은 AI가 채운 답만 답한 것으로 친다(제안은 담당자가 눌러야 답이다).
@@ -492,6 +523,7 @@ def check_coaching(
         answers=kept,
         next_schedule=schedule,
         feedback=feedback,
+        next_call=next_call,
         summary=summary,
         missing_required=missing_required(
             plan.questions, plan.prior, now, plan.step_before, max_required
