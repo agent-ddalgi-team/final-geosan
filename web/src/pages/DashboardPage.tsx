@@ -20,7 +20,7 @@ import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
-import { colors, spacing, typography } from '../theme/tokens';
+import { calendarPalette, colors, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
 
 interface Result {
@@ -43,6 +43,14 @@ const sectionStyle = {
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
+// 일정 달력 구역은 어두운 판(#758). 색은 theme/tokens의 calendarPalette.
+const calendarSectionStyle = {
+  ...sectionStyle,
+  background: calendarPalette.panel,
+  border: `1px solid ${calendarPalette.panelBorder}`,
+  borderRadius: 20,
+} as const;
+const calendarTitleStyle = { ...cardTitleStyle, color: calendarPalette.title } as const;
 
 export default function DashboardPage() {
   const { config, setBannerMeta, staffKey, canRecord } = useFrame();
@@ -133,9 +141,9 @@ export default function DashboardPage() {
         <section
           aria-labelledby="dashboard-calendar-title"
           data-testid="dashboard-calendar-section"
-          style={sectionStyle}
+          style={calendarSectionStyle}
         >
-          <h2 id="dashboard-calendar-title" style={cardTitleStyle}>
+          <h2 id="dashboard-calendar-title" style={calendarTitleStyle}>
             {dashboardTexts.calendarTitle}
           </h2>
           <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />
