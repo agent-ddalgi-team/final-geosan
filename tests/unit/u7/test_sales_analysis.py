@@ -759,7 +759,8 @@ def test_api_tables_match_saved_records_and_viewer_can_read(dashboard_env):
     assert won["outcomeStatus"] == "WON" and won["salesStep"] is None
     assert won["outcomeAt"] is not None and won["daysToOutcome"] >= 0
     assert companies[b]["lostReasonCode"] == "INCUMBENT_SUPPLIER"
-    assert companies[c]["salesStep"] == "NOT_REACHED" and companies[c]["outcomeAt"] is None
+    # #748 PM 결정(2026-11-15): 결과 "연결됨" 접촉 한 번이면 답이 없어도 세부 단계 "연결됨"이다.
+    assert companies[c]["salesStep"] == "REACHED" and companies[c]["outcomeAt"] is None
     # 상세의 접촉 수·카드의 세부 단계와 같은 값이다.
     detail = client.get(f"/api/v1/opportunities/{a}").json()["data"]
     assert detail["records"]["contactCount"] == won["contactCount"]
