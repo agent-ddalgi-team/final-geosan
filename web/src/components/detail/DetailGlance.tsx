@@ -25,7 +25,7 @@ import {
   materialLabels,
   recordsArea,
 } from '../../labels/ko';
-import { colors, spacing, statusPalette, typography } from '../../theme/tokens';
+import { colors, detailTheme, spacing, statusPalette, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { daysAgo, formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
@@ -123,10 +123,27 @@ function Row({ label, testId, children }: { label: string; testId: string; child
   return (
     <div
       data-testid={testId}
-      style={{ display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr)', gap: 12 }}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '120px minmax(0, 1fr)',
+        borderTop: `1px solid ${detailTheme.border}`,
+      }}
     >
-      <dt style={{ fontWeight: 600 }}>{label}</dt>
-      <dd style={{ margin: 0, display: 'grid', gap: 4 }}>{children}</dd>
+      {/* #759: 칸 나눔 표처럼 이름표 칸은 옅은 바탕, 값 칸은 흰 바탕. */}
+      <dt
+        style={{
+          fontWeight: 600,
+          color: colors.textSecondary,
+          fontSize: typography.fontSizeSecondary,
+          background: detailTheme.cellBg,
+          padding: '10px 14px',
+        }}
+      >
+        {label}
+      </dt>
+      <dd style={{ margin: 0, display: 'grid', gap: 4, padding: '10px 14px', minWidth: 0 }}>
+        {children}
+      </dd>
     </div>
   );
 }
@@ -322,9 +339,9 @@ export default function DetailGlance({
         display: 'grid',
         gap: 12,
         padding: spacing.cardPadding,
-        background: colors.bgLayout,
-        border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 8,
+        background: colors.bgContainer,
+        border: `1px solid ${detailTheme.border}`,
+        borderRadius: detailTheme.radius,
       }}
     >
       <h2
@@ -333,7 +350,16 @@ export default function DetailGlance({
       >
         {texts.title}
       </h2>
-      <dl style={{ margin: 0, display: 'grid', gap: 12 }}>
+      <dl
+        style={{
+          margin: 0,
+          display: 'grid',
+          border: `1px solid ${detailTheme.border}`,
+          borderTop: 0,
+          borderRadius: detailTheme.radius,
+          overflow: 'hidden',
+        }}
+      >
         <Row label={texts.company} testId="glance-company">
           <div style={line} data-testid={summary ? 'company-summary-line' : 'glance-factory-intro'}>
             {summary ? (
