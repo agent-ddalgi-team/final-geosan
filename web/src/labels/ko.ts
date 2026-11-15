@@ -1668,6 +1668,10 @@ export const detailReport = {
   progress: {
     title: '영업 단계',
     won: '성사',
+    /** 큰 단계 띠(#759): 거절로 끝난 회사의 마지막 칸. "거절 (가격)" — 이유가 없으면 "거절" */
+    bandLost: (reason: string | null) => `거절${reason ? ` (${reason})` : ''}`,
+    /** 큰 단계 띠를 읽어 주는 글: "큰 단계: 접촉" */
+    bandAria: (label: string) => (label ? `큰 단계: ${label}` : '큰 단계'),
     /** "지금 (11/12부터)" */
     now: (since: string | null) => (since ? `지금 (${since}부터)` : '지금'),
     noContact: '아직 접촉 기록이 없습니다',

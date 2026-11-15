@@ -409,7 +409,11 @@ export default function OpportunityDetailPage() {
               <p style={{ margin: 0 }}>{states.notEvaluatedYet}</p>
             )}
           </DetailSection>
-          <DetailSection id="detail-records" title={recordsArea.title}>
+          <DetailSection
+            id="detail-records"
+            title={recordsArea.title}
+            count={contactCount?.total ?? null}
+          >
             {/* 통화 전 칸(#750): 지난 통화 뒤 코치가 정리한 다음 통화에 물어볼 것. AI를 부르지 않는다. */}
             <CallPrep
               key={`${oppId}:call-prep`}
