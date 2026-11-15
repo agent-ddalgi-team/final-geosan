@@ -405,7 +405,7 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
       }
       const link = screen.getByTestId('list-bookmarked-count-link');
       expect(link).toHaveTextContent('관심 기업 3곳');
-      expect(link).toHaveAttribute('href', '/opportunities?bookmarked=true');
+      expect(link).toHaveAttribute('href', '/bookmarks');
       expect(screen.getByTestId('list-with-bookmarked')).toHaveAttribute('aria-checked', 'false');
       expect(screen.getByText('관심 기업도 함께 보기')).toBeInTheDocument();
       expect(screen.queryByTestId('list-moved-notice')).not.toBeInTheDocument();
@@ -487,10 +487,7 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     expect(screen.getByTestId('list-bookmarked-count-link')).toHaveTextContent('관심 기업 4곳');
     const notice = screen.getByTestId('list-moved-notice');
     expect(notice).toHaveTextContent('관심 기업으로 옮겼습니다 · 관심 기업 보기');
-    expect(within(notice).getByTestId('list-moved-link')).toHaveAttribute(
-      'href',
-      '/opportunities?bookmarked=true',
-    );
+    expect(within(notice).getByTestId('list-moved-link')).toHaveAttribute('href', '/bookmarks');
     // 목록을 다시 부르지는 않는다(서버 응답 한 번).
     expect(mockedGet).toHaveBeenCalledTimes(1);
   });
