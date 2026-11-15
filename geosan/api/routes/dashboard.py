@@ -192,6 +192,8 @@ class TodayCheckItem(_ApiModel):
     customer_name: str
     due_at: date | None = None
     note: str | None = None
+    # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
+    outcome_version: int | None = None
 
 
 class TodayCheckRow(_ApiModel):

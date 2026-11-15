@@ -176,6 +176,8 @@ class ScheduleItem:
     note: str
     overdue: bool
     staff_key: str
+    # #766: 이 일정이 실린 최신 영업 기록 번호. "지난 일정" 단추가 expectedVersion으로 보낸다.
+    outcome_version: int = 0
 
 
 @dataclass(frozen=True)
@@ -200,6 +202,8 @@ class TodayCheckItem:
     # 일정 줄만 날짜와 일정 한 줄이 있다. 메모 글·연락처는 싣지 않는다.
     due_at: date | None = None
     note: str | None = None
+    # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
+    outcome_version: int | None = None
 
 
 @dataclass(frozen=True)
@@ -383,6 +387,7 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
             note=row.next_schedule_note or "",
             overdue=row.next_schedule_at < today,
             staff_key=row.created_by,
+            outcome_version=row.version,
         )
         # 기한 지남이 맨 위, 그다음 날짜순(기한이 지난 날짜가 더 이르므로 날짜순이면 같은 결과다).
         for row in sorted(due, key=lambda r: (r.next_schedule_at, r.opp_id))
@@ -409,7 +414,9 @@ def build_today_checks(
             kind=kind,
             count=len(picked),
             items=[
-                TodayCheckItem(row.opp_id, row.customer_name, row.due_at, row.note)
+                TodayCheckItem(
+                    row.opp_id, row.customer_name, row.due_at, row.note, row.outcome_version
+                )
                 for row in picked
             ],
         )
