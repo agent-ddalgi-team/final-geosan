@@ -4,7 +4,7 @@ import AnalysisCharts, { countTicks } from '../AnalysisCharts';
 import { SAMPLE, sampleStats } from '../../../test/analysisSample';
 
 describe('AnalysisCharts', () => {
-  it('숫자 칸 4개: 접촉한 회사(성사율), 진행 중(보류), 성사(평균 접촉), 거절(가장 많은 이유)', () => {
+  it('숫자 칸 5개: 접촉한 회사(성사율), 진행 중(보류), 완료(성사·거절), 성사(평균 접촉), 거절(가장 많은 이유)', () => {
     render(<AnalysisCharts data={SAMPLE} />);
     expect(screen.getByTestId('kpi-contacted-value')).toHaveTextContent('12');
     expect(screen.getByTestId('kpi-contacted-sub')).toHaveTextContent('성사율 17%');
@@ -13,6 +13,9 @@ describe('AnalysisCharts', () => {
     expect(screen.getByTestId('kpi-won-sub')).toHaveTextContent('성사까지 평균 3.5번 접촉');
     expect(screen.getByTestId('kpi-lost-value')).toHaveTextContent('3');
     expect(screen.getByTestId('kpi-lost-sub')).toHaveTextContent('가장 많은 이유: 가격 2곳');
+    // 완료 = 성사 2 + 거절 3(대시보드에서 옮겨 온 숫자).
+    expect(screen.getByTestId('kpi-done-value')).toHaveTextContent('5');
+    expect(screen.getByTestId('kpi-done-sub')).toHaveTextContent('성사 2곳 · 거절 3곳');
   });
 
   it('표본이 기준보다 적으면 비율을 지어내지 않고 "표본 n곳"만 보인다', () => {

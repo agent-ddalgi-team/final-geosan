@@ -143,7 +143,7 @@ export function KpiTiles({ total, minSample }: { total: AnalysisStats; minSample
       data-testid="analysis-kpis"
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
         gap: 16,
       }}
     >
@@ -163,6 +163,13 @@ export function KpiTiles({ total, minSample }: { total: AnalysisStats; minSample
         label={texts.kpiInProgress}
         value={total.inProgressCount}
         sub={total.onHoldCount > 0 ? texts.kpiHold(total.onHoldCount) : texts.kpiInProgressNote}
+      />
+      {/* 완료(#766 PM 결정 2026-11-16: 대시보드의 "완료" 칸을 여기로 옮김) = 성사 + 거절. 서버 숫자를 더하기만 한다. */}
+      <Tile
+        testId="kpi-done"
+        label={texts.kpiDone}
+        value={total.wonCount + total.lostCount}
+        sub={texts.kpiDoneSub(total.wonCount, total.lostCount)}
       />
       <Tile
         testId="kpi-won"

@@ -1630,6 +1630,9 @@ export const analysisCharts = {
   kpiInProgress: '진행 중',
   kpiWon: '성사',
   kpiLost: '거절',
+  /** 완료 = 성사·거절로 끝난 곳(대시보드에서 옮겨 옴, 2026-11-16) */
+  kpiDone: '완료',
+  kpiDoneSub: (won: number, lost: number) => `성사 ${won}곳 · 거절 ${lost}곳`,
   unitCompany: '곳',
   kpiHold: (count: number) => `보류 ${count}곳`,
   kpiWonRatio: (percent: number) => `성사율 ${percent}%`,
