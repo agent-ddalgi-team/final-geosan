@@ -47,6 +47,7 @@ from geosan.api.schemas import (
     DetailHeader,
     DetailRecords,
     EvidenceView,
+    HandoffNote,
     IndustryCount,
     KnownSalesAnswer,
     Meta,
@@ -518,6 +519,7 @@ def _records(context: DetailContext) -> dict:
             outcome=outcome_view(outcome),
             advice=_advice_lines(context.session, context.opportunity.opp_id),
             call_prep=_call_prep_note(context.session, context.opportunity.opp_id),
+            handoffs=handoff_notes(context.session, context.opportunity.opp_id),
         )
     }
 
@@ -555,6 +557,37 @@ def _call_prep_note(session: Session, opp_id: str) -> CallPrepNote | None:
         return None
     lines = [line.strip() for line in row.text.split("\n") if line.strip()]
     return CallPrepNote(note_id=row.note_id, lines=lines, at=row.created_at, by=row.staff_key)
+
+
+HANDOFF_LIMIT = 10
+
+
+def handoff_notes(session: Session, opp_id: str) -> list[HandoffNote]:
+    """#771 취소하지 않은 전달 사항. 확인 전이 먼저, 그 안에서 최근 것부터 최대 10개."""
+    rows = list(
+        session.scalars(
+            select(Note)
+            .where(
+                Note.opp_id == opp_id,
+                Note.kind == NoteKind.HANDOFF,
+                Note.cancelled_at.is_(None),
+            )
+            .order_by(Note.version.desc())
+        )
+    )
+    rows.sort(key=lambda row: row.confirmed_at is not None)
+    return [
+        HandoffNote(
+            note_id=row.note_id,
+            text=row.text,
+            from_=row.staff_key,
+            to=row.to_staff_key or "",
+            at=row.created_at,
+            confirmed_at=row.confirmed_at,
+            confirmed_by=row.confirmed_by,
+        )
+        for row in rows[:HANDOFF_LIMIT]
+    ]
 
 
 detail_sections: list[Callable] = [

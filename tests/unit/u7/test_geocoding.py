@@ -357,7 +357,7 @@ def test_coordinate_migration_preserves_existing_company(public_company):
     from geosan.storage.migrate import alembic_config, upgrade_to_head
 
     command.downgrade(alembic_config(public_company), "opp_009")
-    assert upgrade_to_head(public_company) == ["web_002"]
+    assert upgrade_to_head(public_company) == ["rec_016"]
     with session_scope() as session:
         customer = session.get(Customer, "cust-geocode")
         assert customer.address == ADDRESS and customer.name == "시험공장"
@@ -392,8 +392,8 @@ def test_merge_preserves_coordinates_and_record_cancellation_from_either_branch(
         for table in ["opp_customer", "opp_opportunity", "rec_note"]:
             columns = [row[1] for row in connection.execute(f"PRAGMA table_info({table})")]
             snapshots[table] = (columns, connection.execute(f"SELECT * FROM {table}").fetchall())
-    assert upgrade_to_head(db) == ["web_002"]
-    assert upgrade_to_head(db) == ["web_002"]
+    assert upgrade_to_head(db) == ["rec_016"]
+    assert upgrade_to_head(db) == ["rec_016"]
     with sqlite3.connect(db) as connection:
         for table, (columns, rows) in snapshots.items():
             selected = ",".join(columns)
