@@ -1161,6 +1161,100 @@ def resolve_schedule(
     )
 
 
+def _ro(word: str) -> str:
+    """'로'/'으로' 가르기: 끝 글자에 받침이 있으면(ㄹ 받침은 빼고) '으로'."""
+    last = word[-1:] or " "
+    code = ord(last) - 0xAC00
+    if not 0 <= code < 11172:
+        return "로"
+    final = code % 28
+    return "로" if final in (0, 8) else "으로"
+
+
+class ScheduleSetRequest(_RequestModel):
+    """#774 영업 코치 답 아래 할 일 제안의 [넣기](계약 C1 /schedule)."""
+
+    next_schedule_at: date
+    action_id: str = Field(min_length=1, max_length=40, strict=True)
+    # 그 회사 최신 영업 기록 버전. 기록이 없으면 0.
+    expected_version: int = Field(ge=0)
+
+
+@router.post("/opportunities/{oppId}/schedule", response_model=OutcomeEnvelope)
+def set_schedule(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: ScheduleSetRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 영업 코치가 권한 일정을 담당자가 [넣기]로 고를 때만 저장한다(AI가 직접 저장하지 않는다).
+    # 최신 영업 기록의 단계·이유는 그대로 두고(기록이 없으면 미접촉) 다음 일정과 할 일만 바꾼 새
+    # 기록 한 행을 /schedule/resolve와 같은 본체로 남기고, 같은 트랜잭션에 변경 기록 한 줄을 더한다.
+    # 외부 호출 없음.
+    from geosan.api.memo_read import _next_actions  # memo_read가 이 파일을 읽으므로 여기서 부른다.
+
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("일정을 넣을 기회가 없습니다.")
+    previous = latest_outcome(session, opp_id)
+    if (previous.version if previous else 0) != body.expected_version:
+        raise AppError(
+            message="그 사이 이 회사에 다른 기록이 저장됐습니다",
+            next_action="다시 물어보거나 상세에서 지금 일정을 확인해 주세요",
+            status=409,
+        )
+    actions = _next_actions(session)
+    fields = []
+    if body.next_schedule_at < today_in_seoul():
+        fields.append(
+            FieldError(path="nextScheduleAt", message="오늘이나 그 뒤 날짜를 골라 주세요.")
+        )
+    if body.action_id not in actions:
+        fields.append(FieldError(path="actionId", message="다음 할 일 보기에 없는 값입니다."))
+    if fields:
+        raise InputError("넣을 일정을 확인해 주세요.", fields=fields)
+    label = actions[body.action_id]
+    status = previous.status if previous else "NOT_EXECUTED"
+    lost = (
+        {"lost_reason_code": previous.lost_reason_code, "reason": previous.reason}
+        if previous and previous.status == "LOST"
+        else {}
+    )
+    request = OutcomeRequest(
+        status=status,
+        **lost,
+        next_schedule_at=body.next_schedule_at,
+        next_schedule_note=label,
+        expected_version=previous.version if previous else None,
+    )
+    new_day = f"{_day_label(body.next_schedule_at)} {label}"
+    old_day = previous.next_schedule_at if previous else None
+    if old_day is not None:
+        old_note = previous.next_schedule_note
+        what = f"{_day_label(old_day)} 일정" + (f"({old_note})" if old_note else "")
+        text = f"{what} → {new_day}{_ro(label)} 바꿈 · 영업 코치 제안"
+    else:
+        text = f"{new_day} 일정 잡음 · 영업 코치 제안"
+    saved = record_outcome(session, opp_id, request, staff)
+    row = saved.row
+    add_program_note(session, opportunity, text, staff=staff, now=row.created_at)
+    session.flush()
+    return OutcomeEnvelope(
+        data=OutcomeResponse(
+            status=row.status, version=row.version, updated_by=staff, updated_at=row.created_at
+        ),
+        meta=Meta(
+            updated_at=row.created_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
+            **({"reevaluated": True} if saved.reevaluated else {}),
+        ),
+    )
+
+
 def _sync_call_signals(session: Session, opportunity: Opportunity, staff: str) -> bool:
     """#685 통화에서 확인한 신호를 지금 답에 맞춘다. 점수 입력이 바뀌었으면 True."""
     return sync_call_signals(

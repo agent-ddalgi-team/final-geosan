@@ -239,6 +239,13 @@
             "title": "Sources",
             "type": "array"
           },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/AskSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
           "usedQueries": {
             "items": {
               "enum": [
@@ -247,7 +254,8 @@
                 "SALES_ANALYSIS",
                 "SCHEDULE",
                 "LOST_REASONS",
-                "PEERS"
+                "PEERS",
+                "CANDIDATES"
               ],
               "type": "string"
             },
@@ -260,7 +268,8 @@
           "sources",
           "usedQueries",
           "companiesIncluded",
-          "companiesTotal"
+          "companiesTotal",
+          "suggestions"
         ],
         "title": "AskAnswer",
         "type": "object"
@@ -268,6 +277,23 @@
       "AskRequest": {
         "additionalProperties": false,
         "properties": {
+          "page": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DASHBOARD",
+                  "LIST",
+                  "BOOKMARKS",
+                  "ANALYSIS"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
           "question": {
             "title": "Question",
             "type": "string"
@@ -277,6 +303,69 @@
           "question"
         ],
         "title": "AskRequest",
+        "type": "object"
+      },
+      "AskSuggestion": {
+        "description": "#774 답 아래 할 일 제안 하나. 프로그램이 검증한 값이고, [넣기] 전에는 저장되지 않는다.",
+        "properties": {
+          "actionId": {
+            "title": "Actionid",
+            "type": "string"
+          },
+          "actionLabel": {
+            "title": "Actionlabel",
+            "type": "string"
+          },
+          "currentScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentscheduleat"
+          },
+          "currentScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentschedulenote"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeVersion": {
+            "title": "Outcomeversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "actionId",
+          "actionLabel",
+          "date",
+          "outcomeVersion"
+        ],
+        "title": "AskSuggestion",
         "type": "object"
       },
       "AssistantSource": {
@@ -7069,6 +7158,35 @@
         "title": "ScheduleResolveRequest",
         "type": "object"
       },
+      "ScheduleSetRequest": {
+        "additionalProperties": false,
+        "description": "#774 영업 코치 답 아래 할 일 제안의 [넣기](계약 C1 /schedule).",
+        "properties": {
+          "actionId": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Actionid",
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 0.0,
+            "title": "Expectedversion",
+            "type": "integer"
+          },
+          "nextScheduleAt": {
+            "format": "date",
+            "title": "Nextscheduleat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextScheduleAt",
+          "actionId",
+          "expectedVersion"
+        ],
+        "title": "ScheduleSetRequest",
+        "type": "object"
+      },
       "ScoreItemView": {
         "properties": {
           "certainty": {
@@ -9385,6 +9503,71 @@
           }
         },
         "summary": "Save Review Check"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/schedule": {
+      "post": {
+        "operationId": "set_schedule_api_v1_opportunities__oppId__schedule_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Schedule"
       }
     },
     "/api/v1/opportunities/{oppId}/schedule/resolve": {

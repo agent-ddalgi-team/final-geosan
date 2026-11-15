@@ -79,6 +79,64 @@ class CoachReading(FileModel):
     summary: str
 
 
+class AskSuggestion(FileModel):
+    """질문에 답하기(#774)에서 AI가 답과 함께 준 할 일 제안 하나. 값 검증은 창구가 한다."""
+
+    company: str
+    action_id: str
+    date: str
+
+
+class AskReading(FileModel):
+    """질문에 답하기(#774)의 구조화된 응답: 답 글과 할 일 제안 0개 이상."""
+
+    answer: str
+    suggestions: list[AskSuggestion]
+
+
+def ask_with_suggestions(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    *,
+    instructions: str,
+    max_output_tokens: int,
+    requested_by: str,
+    also_opp_ids: Sequence[str] = (),
+) -> AskReading:
+    """질문에 답하기(#774): 한 번 보내 답 글과 할 일 제안을 정해진 모양으로 받는다.
+
+    문(스위치·지우기 재검사·전송 기록·월 한도)은 ask_sales_assistant와 같다. 모양이 맞지 않으면
+    실패로 알린다(빈 결과로 넘기지 않는다). 답 글은 지우기를 한 번 더 거쳐 돌려주고, 제안 값
+    검증은 호출자(창구)가 한다.
+    """
+    answer = _request(
+        opp_id,
+        texts,
+        {
+            "instructions": instructions,
+            "max_output_tokens": max_output_tokens,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "sales_ask_answer",
+                    "strict": True,
+                    "schema": AskReading.model_json_schema(by_alias=True),
+                }
+            },
+        },
+        requested_by,
+        also_opp_ids,
+    )
+    try:
+        reading = AskReading.model_validate_json(answer)
+    except ValueError:
+        raise _failed("AI 답의 형식이 맞지 않습니다.") from None
+    text = scrub_sales_record(reading.answer).text.strip()
+    if not text:
+        raise _failed("AI 답을 끝까지 받지 못했습니다.")
+    return reading.model_copy(update={"answer": text})
+
+
 def ask_sales_assistant(
     opp_id: str,
     texts: Sequence[ScrubbedRecordText],
