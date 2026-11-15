@@ -2283,6 +2283,21 @@
         "title": "Envelope[MemoReadAnswer]",
         "type": "object"
       },
+      "Envelope_MenuBadges_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MenuBadges"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[MenuBadges]",
+        "type": "object"
+      },
       "Envelope_NoteResponse_": {
         "properties": {
           "data": {
@@ -3999,6 +4014,30 @@
           "recordId"
         ],
         "title": "MemoReadRequest",
+        "type": "object"
+      },
+      "MenuBadges": {
+        "description": "📊 대시보드 · 🔍 신규 거래처 찾기 · ⭐ 관심 기업 숫자(곳 수).",
+        "properties": {
+          "bookmarks": {
+            "title": "Bookmarks",
+            "type": "integer"
+          },
+          "dashboard": {
+            "title": "Dashboard",
+            "type": "integer"
+          },
+          "list": {
+            "title": "List",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dashboard",
+          "list",
+          "bookmarks"
+        ],
+        "title": "MenuBadges",
         "type": "object"
       },
       "Meta": {
@@ -8204,6 +8243,86 @@
           }
         },
         "summary": "Ingest Preview"
+      }
+    },
+    "/api/v1/menu-badges": {
+      "get": {
+        "operationId": "menu_badges_api_v1_menu_badges_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "listSince",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Listsince"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookmarksSince",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bookmarkssince"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MenuBadges_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Menu Badges"
       }
     },
     "/api/v1/notes/{noteId}/confirm": {
