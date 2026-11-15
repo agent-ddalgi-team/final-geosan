@@ -19,7 +19,9 @@ export type DashboardCountKey =
   | 'QUOTE_SAMPLE'
   | 'ON_HOLD'
   | 'DONE'
-  | 'SCHEDULE_DUE';
+  | 'SCHEDULE_DUE'
+  /** #766: 관심 기업 가운데 최신 단계 성사(DONE의 일부). "영업 진행" 띠의 마지막 칸. */
+  | 'WON';
 
 /** 서버가 아직 옛 모양을 주면 새 이름표가 없을 수 있다. 화면은 없는 칸을 0으로 지어내지 않고 뺀다. */
 export type DashboardCounts = Partial<Record<DashboardCountKey, number>>;
@@ -77,6 +79,8 @@ export interface TodayCheckItem {
   /** 일정 줄만 날짜(YYYY-MM-DD)와 일정 한 줄이 있다. */
   dueAt: string | null;
   note: string | null;
+  /** #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion). */
+  outcomeVersion?: number | null;
 }
 
 export interface TodayCheckRow {

@@ -1,27 +1,21 @@
 // 건수 두 구역(#357, 2026-11-06 PM 결정): 대시보드는 관심으로 고른 회사만 센다.
 //  ① "관심 기업": 관심 기업 전체(큰 칸) / 의견 전 / 검토 중
 //     (제외로 저장한 회사는 관심 기업에서 빠져 칸이 없다, #536)
-//  ② "영업 진행": 영업 대상 · 접촉 전 / 접촉 중 / 견적·샘플 / 보류 / 완료 + 이번 주 일정
+//  ② "영업 진행": #766(PM 결정 2026-11-16)부터 상세(#763)와 같은 4칸 띠 미접촉 · 접촉 · 견적·샘플 · 성사,
+//     띠 아래 "보류 n곳". "이번 주 일정"(달력·오늘 확인할 것과 같음)과 "완료"(영업 분석 #760)는 대시보드에서 뺐다.
 // 칸을 누르면 그 조건으로 걸러진 추천 목록으로 간다(관심 기업은 /bookmarks 화면(#762), 나머지는 ?filter=<칸 이름표>).
 // 서버가 주지 않은 칸은 0으로 지어내지 않고 뺀다. 옛 집계(관심 기업 건수가 없음)면 두 구역 대신 안내를 보인다.
 import { Link } from 'react-router-dom';
 import type { DashboardCountKey, DashboardCounts } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 
 /** ① "관심 기업" 구역의 칸 순서. 맨 앞 BOOKMARKED가 큰 칸이다. */
 export const BOOKMARK_ORDER: DashboardCountKey[] = ['BOOKMARKED', 'NO_OPINION', 'NEED_CHECK'];
 
-/** ② "영업 진행" 구역의 칸 순서. 이번 주 일정은 진행 단계 뒤에 둔다. */
-export const PROGRESS_ORDER: DashboardCountKey[] = [
-  'NOT_CONTACTED',
-  'IN_CONTACT',
-  'QUOTE_SAMPLE',
-  'ON_HOLD',
-  'DONE',
-  'SCHEDULE_DUE',
-];
+/** ② "영업 진행" 4칸 띠의 순서(#766). */
+export const PROGRESS_ORDER = ['NOT_CONTACTED', 'IN_CONTACT', 'QUOTE_SAMPLE', 'WON'] as const;
 
 /** 칸 → 이동할 목록 주소(계약 C1: 관심 기업은 /bookmarks 화면(#762), 나머지 칸은 ?filter=<이름표>). */
 export function countTarget(key: DashboardCountKey): string {
@@ -145,7 +139,10 @@ export default function CountCards({ counts }: { counts: DashboardCounts }) {
   }
 
   const bookmarkCells = present(counts, BOOKMARK_ORDER);
-  const progressCells = present(counts, PROGRESS_ORDER);
+  const progressCells = present(counts, [...PROGRESS_ORDER]) as {
+    key: (typeof PROGRESS_ORDER)[number];
+    value: number;
+  }[];
 
   return (
     <div data-testid="dashboard-counts" style={{ display: 'grid', gap: spacing.sectionGap }}>
@@ -192,16 +189,59 @@ export default function CountCards({ counts }: { counts: DashboardCounts }) {
               {dashboardTexts.progressSectionHint}
             </small>
           </h2>
-          <ul aria-label={dashboardTexts.progressSectionTitle} style={listStyle}>
-            {progressCells.map((cell) => (
-              <CountCell
-                key={cell.key}
-                countKey={cell.key}
-                value={cell.value}
-                hint={cell.key === 'NOT_CONTACTED' ? dashboardTexts.notContactedHint : undefined}
-              />
-            ))}
-          </ul>
+          <ol
+            aria-label={dashboardTexts.progressSectionTitle}
+            data-testid="dashboard-progress-band"
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'grid',
+              gridTemplateColumns: `repeat(${progressCells.length}, 1fr)`,
+              gap: 2,
+            }}
+          >
+            {progressCells.map((cell) => {
+              const name = dashboardTexts.progressBandNames[cell.key];
+              const unit = dashboardTexts.countUnits[cell.key];
+              return (
+                <li key={cell.key}>
+                  <Link
+                    to={countTarget(cell.key)}
+                    data-testid={`dashboard-count-${cell.key}`}
+                    aria-label={`${name} ${cell.value}${unit}`}
+                    style={{
+                      display: 'grid',
+                      gap: 2,
+                      justifyItems: 'center',
+                      padding: '12px 8px',
+                      background: cell.value > 0 ? detailTheme.accentSoft : detailTheme.bandTodo,
+                      borderRadius: detailTheme.radius,
+                      color: colors.text,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: typography.fontSizeSecondary }}>{name}</span>
+                    <span style={{ fontSize: typography.fontSizeH1, fontWeight: 700 }}>
+                      {cell.value}
+                      <span style={{ fontSize: typography.fontSizeSecondary, fontWeight: 400 }}>
+                        {unit}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+          {typeof counts.ON_HOLD === 'number' && counts.ON_HOLD > 0 ? (
+            <Link
+              to={countTarget('ON_HOLD')}
+              data-testid="dashboard-count-ON_HOLD"
+              style={{ ...smallStyle, justifySelf: 'start' }}
+            >
+              {dashboardTexts.progressOnHold(counts.ON_HOLD)}
+            </Link>
+          ) : null}
         </section>
       ) : null}
     </div>
