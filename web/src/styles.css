@@ -14,6 +14,40 @@ body {
   color: #1f2329;
 }
 
+/* 접은 왼쪽 메뉴에서 그림에 손을 올리거나 키보드로 오면 오른쪽에 이름표가 뜬다(#767). */
+.side-nav-tip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translate(-4px, -50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1c1e21;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+  z-index: 60;
+}
+
+.side-nav-link:hover .side-nav-tip,
+.side-nav-link:focus-visible .side-nav-tip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-nav-tip {
+    transition: none;
+  }
+}
+
 /* 초점선: 강조색 2px 실선, 바깥 2px 간격. outline: none 금지. */
 :focus-visible {
   outline: 2px solid #1f5fbf;

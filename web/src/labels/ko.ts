@@ -190,7 +190,8 @@ export const frame = {
   /** 왼쪽 메뉴(#762): 관심 기업 화면과 메뉴 아이콘. 접으면 아이콘만 보인다. */
   menuBookmarks: '관심 기업',
   pageTitleBookmarks: '관심 기업',
-  menuIcons: { dashboard: '📊', opportunities: '🔍', bookmarks: '⭐', salesAnalysis: '📈' },
+  /** 왼쪽 메뉴 묶음 이름(#767). 그림은 SideMenu의 선 그림 아이콘(이모지 대신). */
+  navGroupSales: '영업',
   sidebarCollapse: '메뉴 접기',
   sidebarExpand: '메뉴 펴기',
   /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
