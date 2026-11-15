@@ -45,6 +45,7 @@ def with_account_staff(runtime: RuntimeConfig, accounts: list[StaffAccount]) -> 
 
 
 SETUP_REQUIRED = "STAFF_SETUP_REQUIRED"
+LOGIN_KIND = "STAFF_LOGIN_REQUIRED"
 
 
 def get_session(request: Request) -> Iterator[Session]:
@@ -55,6 +56,14 @@ def get_session(request: Request) -> Iterator[Session]:
             fingerprint = token_fingerprint(request.cookies.get(COOKIE_NAME, ""))
             access = session.get(AccessSession, fingerprint) if fingerprint else None
             if access is None or not session_is_active(access.expires_at, now=utcnow()):
+                if accounts_mode(session, True):
+                    # 화면이 아이디 칸을 보이도록 계정 방식임을 알린다(#754).
+                    raise AppError(
+                        "접속 확인이 필요합니다.",
+                        "아이디와 비밀번호를 입력해 주세요.",
+                        status=401,
+                        kind=LOGIN_KIND,
+                    )
                 raise AppError("접속 확인이 필요합니다.", "비밀번호를 입력해 주세요.", status=401)
             access.last_seen_at = utcnow()
             if accounts_mode(session, True):
@@ -62,7 +71,10 @@ def get_session(request: Request) -> Iterator[Session]:
                 account = find_active(session, access.staff_key)
                 if account is None:
                     raise AppError(
-                        "접속 확인이 필요합니다.", "아이디와 비밀번호를 입력해 주세요.", status=401
+                        "접속 확인이 필요합니다.",
+                        "아이디와 비밀번호를 입력해 주세요.",
+                        status=401,
+                        kind=LOGIN_KIND,
                     )
                 session.info["staff_account"] = account
                 runtime = with_account_staff(runtime, active_accounts(session))

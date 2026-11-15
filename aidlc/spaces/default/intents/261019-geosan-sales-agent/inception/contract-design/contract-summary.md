@@ -298,7 +298,7 @@ paths:
       summary: 공용 비밀번호로 세션 만들기 (U8, 접속 보호 켜진 환경)
       requestBody: { content: { application/json: { schema: { type: object, properties: { password: { type: string } } } } } }
       responses: { '200': { description: 세션 쿠키 발급(HttpOnly·Secure·SameSite=Lax, 12시간) }, '401': { description: 비밀번호가 맞지 않습니다 }, '429': { description: '5회 연속 실패, retryAfterSeconds 30' } }
-      # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 계정 방식이면 본문에 staffKey(아이디)가 필수다: { staffKey, password }. 아이디가 없거나 막힌 계정이거나 비밀번호가 틀리면 모두 같은 401 "아이디나 비밀번호가 맞지 않습니다."(어느 쪽이 틀렸는지 알려 주지 않음). 5회 연속 실패 30초 429는 지금처럼 한 줄로 센다. 발급한 세션 행에 staffKey를 적는다. 공용 방식에서 staffKey를 보내면 무시한다
+      # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 계정 방식이면 본문에 staffKey(아이디)가 필수다: { staffKey, password }. 아이디가 없거나 막힌 계정이거나 비밀번호가 틀리면 모두 같은 401 "아이디나 비밀번호가 맞지 않습니다."(어느 쪽이 틀렸는지 알려 주지 않음). 5회 연속 실패 30초 429는 지금처럼 한 줄로 센다. 발급한 세션 행에 staffKey를 적는다. 공용 방식에서 staffKey를 보내면 무시한다. 계정 방식에서 세션이 없거나 끝났거나 계정 없는 세션이면 업무 API의 401에 kind STAFF_LOGIN_REQUIRED를 붙여 화면이 아이디 칸을 보이게 한다(공용 방식의 401은 kind 없음 그대로)
   /session/profile:   # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 계정 방식에서 지금 로그인한 사람의 표시 이름·비밀번호 정하기(첫 로그인 설정과 나중에 바꾸기가 같은 경로)
     post: { requestBody: { displayName: string(1~20자, 앞뒤 공백 제거, 전화·이메일 꼴이면 400), currentPassword: string, newPassword: string(8~72자, 지금 비밀번호와 달라야 함) }, responses: { 200: "currentStaff와 같은 모양", 400: 입력 오류, 401: 세션 없음 또는 지금 비밀번호 틀림, 404: 공용 방식 } }   # 비밀번호는 원문을 저장하지 않고 scrypt 해시만 저장. 성공하면 setupRequired false
   /session/logout:    # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 지금 세션 행을 지우고 쿠키를 지운다. 세션이 없어도 200(두 번 눌러도 같음)

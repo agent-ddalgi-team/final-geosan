@@ -113,7 +113,9 @@ def test_with_an_account_login_needs_id_and_old_shared_sessions_end(env):
     assert client.post("/api/v1/session", json={"password": SHARED}).status_code == 200
     assert client.get("/api/v1/config/ui").status_code == 200
     temp = add("sales-1")
-    assert client.get("/api/v1/config/ui").status_code == 401
+    expired = client.get("/api/v1/config/ui")
+    assert expired.status_code == 401
+    assert expired.json()["error"]["kind"] == "STAFF_LOGIN_REQUIRED"
     shared = client.post("/api/v1/session", json={"password": SHARED})
     assert shared.status_code == 401
     assert shared.json()["error"]["message"] == "아이디나 비밀번호가 맞지 않습니다."
@@ -236,7 +238,9 @@ def test_logout_removes_the_session(env):
     login(client, "sales-1", temp)
     assert client.post("/api/v1/session/logout").status_code == 200
     assert client.post("/api/v1/session/logout").status_code == 200
-    assert client.get("/api/v1/config/ui").status_code == 401
+    signed_out = client.get("/api/v1/config/ui")
+    assert signed_out.status_code == 401
+    assert signed_out.json()["error"]["kind"] == "STAFF_LOGIN_REQUIRED"
     with session_scope() as session:
         count = select(func.count()).select_from(AccessSession)
         assert session.scalar(count.where(AccessSession.staff_key == "sales-1")) == 0
