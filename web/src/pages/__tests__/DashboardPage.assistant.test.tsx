@@ -55,20 +55,11 @@ describe('대시보드 › 영업 비서 질문 칸 (#680)', () => {
     mockedDaily.mockReturnValue(new Promise(() => {}));
   });
 
-  it('스위치가 켜져 있으면 질문 칸이 "오늘 확인할 것" 아래, 일정 달력 위에 보인다', async () => {
+  it('#773: 질문 칸은 대시보드 본문이 아니라 오른쪽 "💬 영업 코치" 칸(AppFrame dock)에 있다', async () => {
     renderPage({ assistant: { enabled: true, questionMaxLength: 300 } } as unknown as ConfigUi);
-    const ask = await screen.findByTestId('assistant-ask');
-    expect(after(screen.getByTestId('dashboard-today'), ask)).toBe(true);
-    expect(after(ask, screen.getByTestId('dashboard-calendar-section'))).toBe(true);
-    expect(screen.getByTestId('assistant-ask-button')).toHaveTextContent(assistantTexts.askButton);
-  });
-
-  it('스위치가 꺼져 있으면 같은 자리에 안내 한 줄만 보인다', async () => {
-    renderPage({ assistant: { enabled: false, questionMaxLength: 300 } } as unknown as ConfigUi);
-    const line = await screen.findByTestId('assistant-disabled');
-    expect(line).toHaveTextContent(assistantTexts.disabled);
-    expect(after(screen.getByTestId('dashboard-today'), line)).toBe(true);
-    expect(screen.queryByTestId('assistant-question-input')).not.toBeInTheDocument();
+    await screen.findByTestId('dashboard-today');
+    expect(screen.queryByTestId('assistant-ask')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-disabled')).not.toBeInTheDocument();
   });
 
   it('서버가 설정 값을 안 주면(옛 서버) 질문 칸도 안내도 없다', async () => {
