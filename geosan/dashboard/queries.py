@@ -64,6 +64,9 @@ OPINION_LABELS = {
 # 계약 C1(#356, #536): 관심 기업 전체 칸과, 관심 기업 하나가 꼭 하나에만 드는 일곱 칸.
 # 검토 대상 제외로 저장한 회사는 관심 기업이 아니므로 칸이 없다(#536).
 BOOKMARKED_KEY = "BOOKMARKED"
+# #766(PM 결정 2026-11-16): "영업 진행" 4칸 띠의 "성사" 칸.
+# DONE(성사·거절)의 일부라 칸 합계에 넣지 않는다.
+WON_KEY = "WON"
 BOARD_KEYS = (
     "NO_OPINION",
     "NEED_CHECK",
@@ -161,6 +164,7 @@ class DashboardCounts:
     on_hold: int
     done: int
     schedule_due: int
+    won: int = 0
 
 
 @dataclass(frozen=True)
@@ -172,6 +176,8 @@ class ScheduleItem:
     note: str
     overdue: bool
     staff_key: str
+    # #766: 이 일정이 실린 최신 영업 기록 번호. "지난 일정" 단추가 expectedVersion으로 보낸다.
+    outcome_version: int = 0
 
 
 @dataclass(frozen=True)
@@ -196,6 +202,8 @@ class TodayCheckItem:
     # 일정 줄만 날짜와 일정 한 줄이 있다. 메모 글·연락처는 싣지 않는다.
     due_at: date | None = None
     note: str | None = None
+    # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
+    outcome_version: int | None = None
 
 
 @dataclass(frozen=True)
@@ -290,6 +298,17 @@ def board_key(opinion: str | None, stage: str | None) -> str:
     return _OPINION_BOARD_KEYS[opinion]
 
 
+def bookmarked_won_ids(session: Session, population=None) -> list[str]:
+    """관심 기업 가운데 최신 영업 단계가 성사(WON)인 기회(#766).
+
+    대시보드 칸과 목록 거르기가 같이 쓴다.
+    """
+    bookmarked = bookmarked_opp_ids(population)
+    return sorted(
+        row.opp_id for row in _latest_outcomes(session, bookmarked) if row.status == "WON"
+    )
+
+
 def classify_bookmarked(session: Session, population=None) -> dict[str, str]:
     """관심으로 켜 둔 기회마다 드는 칸 이름. 관심이 아닌 기회는 결과에 없다.
 
@@ -368,6 +387,7 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
             note=row.next_schedule_note or "",
             overdue=row.next_schedule_at < today,
             staff_key=row.created_by,
+            outcome_version=row.version,
         )
         # 기한 지남이 맨 위, 그다음 날짜순(기한이 지난 날짜가 더 이르므로 날짜순이면 같은 결과다).
         for row in sorted(due, key=lambda r: (r.next_schedule_at, r.opp_id))
@@ -394,7 +414,9 @@ def build_today_checks(
             kind=kind,
             count=len(picked),
             items=[
-                TodayCheckItem(row.opp_id, row.customer_name, row.due_at, row.note)
+                TodayCheckItem(
+                    row.opp_id, row.customer_name, row.due_at, row.note, row.outcome_version
+                )
                 for row in picked
             ],
         )
@@ -510,12 +532,13 @@ def _recent_activity(
     ]
 
 
-def _counts(classified: dict[str, str], schedule_due: int) -> DashboardCounts:
-    """칸별 건수. 일곱 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다."""
+def _counts(classified: dict[str, str], schedule_due: int, won: int = 0) -> DashboardCounts:
+    """칸별 건수. 일곱 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다. 성사(WON)는 DONE의 일부."""
     tally = Counter(classified.values())
     return DashboardCounts(
         bookmarked=len(classified),
         schedule_due=schedule_due,
+        won=won,
         **{key.lower(): tally[key] for key in BOARD_KEYS},
     )
 
@@ -705,7 +728,7 @@ def build_dashboard(
     # 관심으로 켜 둔 기회만 센다. 관심이 아닌 기회는 어느 칸에도 들지 않는다(#356).
     classified = classify_bookmarked(session, population)
     schedule, due_count = _schedule(session, population, today)
-    counts = _counts(classified, due_count)
+    counts = _counts(classified, due_count, len(bookmarked_won_ids(session, population)))
     has_virtual = bool(
         session.scalar(
             select(func.count())

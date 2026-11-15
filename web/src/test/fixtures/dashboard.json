@@ -9,7 +9,8 @@
       "QUOTE_SAMPLE": 1,
       "ON_HOLD": 0,
       "DONE": 1,
-      "SCHEDULE_DUE": 3
+      "SCHEDULE_DUE": 3,
+      "WON": 1
     },
     "schedule": [
       {

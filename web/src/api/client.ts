@@ -241,6 +241,22 @@ export function postOutcome(oppId: string, body: OutcomeRequest, staffKey: strin
   });
 }
 
+export interface ScheduleResolveBody {
+  action: 'DONE' | 'DROPPED' | 'MOVED';
+  expectedVersion: number;
+  /** MOVED일 때만. 오늘이나 그 뒤(YYYY-MM-DD). */
+  nextScheduleAt?: string;
+}
+
+/** #766 지난 일정 정리: 완료·지우기·날짜 옮기기. 일정만 바꾼 새 기록과 변경 기록 한 줄이 남는다. */
+export function resolveSchedule(oppId: string, body: ScheduleResolveBody, staffKey: string) {
+  return request<OutcomeResponse>(`/opportunities/${encodeURIComponent(oppId)}/schedule/resolve`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
 /** 검토사항 체크·해제(U5). 해제도 새 행이 쌓인다. */
 export function postReviewCheck(
   oppId: string,

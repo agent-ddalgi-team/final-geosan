@@ -100,6 +100,8 @@ def test_each_bookmarked_company_falls_in_exactly_one_column(board_env):
         **{key: len(found) for key, found in expected.items()},
         "BOOKMARKED": 8,
         "SCHEDULE_DUE": 0,
+        # 성사(#766)는 DONE의 일부: 성사로 끝난 ids[7] 한 곳.
+        "WON": 1,
     }
     assert counts == counts_of(build())
     assert sum(counts[key] for key in BOARD_KEYS) == counts["BOOKMARKED"]

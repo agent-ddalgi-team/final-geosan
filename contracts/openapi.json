@@ -1315,6 +1315,10 @@
           "SCHEDULE_DUE": {
             "title": "Schedule Due",
             "type": "integer"
+          },
+          "WON": {
+            "title": "Won",
+            "type": "integer"
           }
         },
         "required": [
@@ -1326,7 +1330,8 @@
           "QUOTE_SAMPLE",
           "ON_HOLD",
           "DONE",
-          "SCHEDULE_DUE"
+          "SCHEDULE_DUE",
+          "WON"
         ],
         "title": "DashboardCounts",
         "type": "object"
@@ -6909,6 +6914,44 @@
         "title": "ScheduleItem",
         "type": "object"
       },
+      "ScheduleResolveRequest": {
+        "additionalProperties": false,
+        "description": "#766 대시보드 \"지난 일정 — 했나요?\"의 세 단추(계약 C1 /schedule/resolve).",
+        "properties": {
+          "action": {
+            "enum": [
+              "DONE",
+              "DROPPED",
+              "MOVED"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 0.0,
+            "title": "Expectedversion",
+            "type": "integer"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          }
+        },
+        "required": [
+          "action",
+          "expectedVersion"
+        ],
+        "title": "ScheduleResolveRequest",
+        "type": "object"
+      },
       "ScoreItemView": {
         "properties": {
           "certainty": {
@@ -7228,6 +7271,17 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "outcomeVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomeversion"
           }
         },
         "required": [
@@ -9158,6 +9212,71 @@
           }
         },
         "summary": "Save Review Check"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/schedule/resolve": {
+      "post": {
+        "operationId": "resolve_schedule_api_v1_opportunities__oppId__schedule_resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Schedule"
       }
     },
     "/api/v1/questions/{questionId}/reply": {

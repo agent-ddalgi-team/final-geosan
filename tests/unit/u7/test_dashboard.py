@@ -26,7 +26,8 @@ from tests.unit.u1.test_snapshot_ledger import _write
 
 TODAY = date(2026, 11, 5)
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=KST)
-# 계약 C1(#356)의 건수 키 9개. 검토 대상 제외 칸은 #536(계약 v4)에서 없앴다.
+# 계약 C1(#356)의 건수 키 9개 + 성사(WON, #766 — DONE의 일부라 칸 합계 밖). 검토 대상 제외 칸은
+# #536(계약 v4)에서 없앴다.
 COUNT_KEYS = (
     "BOOKMARKED",
     "NO_OPINION",
@@ -37,6 +38,7 @@ COUNT_KEYS = (
     "ON_HOLD",
     "DONE",
     "SCHEDULE_DUE",
+    "WON",
 )
 # 관심 기업 하나가 꼭 하나에만 드는 일곱 칸(합 = BOOKMARKED).
 BOARD_KEYS = COUNT_KEYS[1:8]
