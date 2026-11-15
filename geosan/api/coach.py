@@ -25,6 +25,7 @@ from geosan.api.deps import runtime_for
 from geosan.api.memo_read import _next_actions
 from geosan.api.routes.records import choice_catalog, sales_questions, sales_step_state
 from geosan.api.sales_confirm import MAX_INDUSTRIES
+from geosan.api.sales_step import REACHED_STEP, reached_by_result
 from geosan.config.errors import NotFoundError
 from geosan.config.sales_questions import (
     ALL_STEPS,
@@ -71,7 +72,9 @@ _INSTRUCTIONS = (
     "[다음 일정] nextSchedule.actionId는 아래 다음 할 일 보기 id 중 하나(메모에 다음 할 일이 "
     "없으면 null). date는 '다음에 할 일'의 날짜만 YYYY-MM-DD로 적는다. 납품·납기 날짜는 넣지 "
     "않는다. 요일만 있으면 '오늘' 뒤 가장 가까운 그 요일, '담주·다음주 X요일'은 다음 주의 그 "
-    "요일. 알 수 없으면 null. 날짜를 넣으면 actionId도 반드시 넣는다.\n"
+    "요일. 알 수 없으면 null. 날짜를 넣으면 actionId도 반드시 넣는다. 만나자·식사하자·밥 "
+    "먹자·들르겠다·와 달라처럼 만나기로 한 말이 있으면 방문에 해당하는 보기를 actionId로 쓰고, "
+    "'다음 할 일은?' 질문에도 그 보기를 채운다(만날 날짜가 없으면 date는 null).\n"
     "[피드백] feedback은 1~3줄. 첫 줄에는 가장 중요한 아직 풀리지 않은 건을 쓴다. 각 줄은 이 "
     "회사의 이전 기록(날짜 'M/D'와 내용)을 짚어 아직 답을 못 받은 것, 바뀐 것, 다음 통화에서 "
     "확인할 것을 말한다. 예: '10/28에 물어본 납기에 아직 답을 못 줬어요. 다음 통화 전에 공정팀 "
@@ -142,8 +145,14 @@ def _index(step: SalesStep) -> int:
 def step_after(
     questions: SalesQuestions, before: SalesStep, now: Mapping[str, Sequence[str]]
 ) -> SalesStep:
-    """이번 답의 reaches로 앞으로만 간 세부 단계."""
+    """이번 답의 reaches로 앞으로만 간 세부 단계.
+
+    (#748) 코치는 결과 "연결됨" 접촉에만 쓰므로, 연결 전 질문에 "다른 부서"·"안내만"을
+    고르지 않았으면 "연결됨"까지는 간다(상세 세부 단계 계산과 같은 규칙).
+    """
     step = before
+    if _index(REACHED_STEP) > _index(step) and reached_by_result(questions, now):
+        step = REACHED_STEP
     for question_id, answer_ids in now.items():
         question = questions.question(question_id)
         if question is None or question.choices:

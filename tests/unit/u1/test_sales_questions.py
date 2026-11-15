@@ -65,6 +65,42 @@ def test_contacts_without_new_facts_stay_in_the_same_step(records_env):
     assert card_of(client, opp_id)["salesStep"] == "NOT_REACHED"
 
 
+def test_reached_contact_moves_to_reached_without_who_talked(records_env):
+    """(#748) Given 부재 한 번 뒤 '연결됨' 통화(누구와 이야기했나 답 없음) / When 저장
+    / Then 세부 단계가 그 통화 날짜부터 '연결됨'이고 연결됨 단계 질문이 열린다."""
+    client, opp_id = records_env
+    save(client, opp_id, contact(result="ABSENT", attemptedAt="2026-10-15"))
+    assert step_of(client, opp_id)["code"] == "NOT_REACHED"
+    save(client, opp_id, contact(answers=[("NEXT_ACTION", "VISIT")]))
+    step = step_of(client, opp_id)
+    assert (step["code"], step["since"]) == ("REACHED", "2026-10-20")
+    assert "PLATING_NOW" in step["openQuestions"]
+    assert "WHO_TALKED" not in step["openQuestions"]
+    assert card_of(client, opp_id)["salesStep"] == "REACHED"
+
+
+@pytest.mark.parametrize("answer", ["OTHER_DEPT", "GUIDE_ONLY"])
+def test_reached_contact_with_wrong_person_stays_not_reached(records_env, answer):
+    """(#748) '연결됨'이어도 '다른 부서'·'안내만'을 고른 통화는 '연결 전' 그대로."""
+    client, opp_id = records_env
+    save(client, opp_id, contact(answers=[("WHO_TALKED", answer)]))
+    assert step_of(client, opp_id)["code"] == "NOT_REACHED"
+    # 다음 통화가 '연결됨'이고 다른 답이 없으면 그때 '연결됨'이 된다.
+    save(client, opp_id, contact(attemptedAt="2026-10-22"))
+    step = step_of(client, opp_id)
+    assert (step["code"], step["since"]) == ("REACHED", "2026-10-22")
+
+
+def test_reached_contact_does_not_undo_a_later_step(records_env):
+    """(#748) 이미 '수요 확인'이면 '연결됨' 통화가 뒤로 돌리지 않는다(앞으로만)."""
+    client, opp_id = records_env
+    save(client, opp_id, contact(answers=[("WHO_TALKED", "RIGHT_PERSON")]))
+    save(client, opp_id, contact(answers=[("PLATING_NOW", "OUTSOURCED")], attemptedAt="2026-10-21"))
+    save(client, opp_id, contact(attemptedAt="2026-10-22"))
+    step = step_of(client, opp_id)
+    assert (step["code"], step["since"]) == ("DEMAND_CONFIRMED", "2026-10-21")
+
+
 def test_answer_moves_the_step_forward_and_shows_the_tail_question(records_env):
     """Given 연결 / When '외주 줌'을 고름 / Then '수요 확인'이 되고 '바꿀 생각?' 꼬리가 열린다."""
     client, opp_id = records_env

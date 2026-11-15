@@ -19,7 +19,7 @@ from geosan.config.sales_questions import (
     STEP_STAGE,
     SalesQuestions,
 )
-from geosan.rules.codes import OutcomeStatus, SalesStep
+from geosan.rules.codes import ContactResult, OutcomeStatus, SalesStep
 
 # ---------------------------------------------------------------------------
 
@@ -34,6 +34,8 @@ class RecordRow:
     created_at: datetime
     created_by: str
     step_override: str | None
+    # (#748) 접촉 결과. REACHED면 세부 단계가 "연결됨"까지 간다(reached_by_result).
+    result: str | None = None
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,7 @@ def step_rows(outcomes: Iterable, answers: Iterable) -> tuple[list[RecordRow], l
                 created_at=row.created_at,
                 created_by=row.created_by,
                 step_override=row.step_override,
+                result=row.result,
             )
             for row in outcomes
         ],
@@ -90,6 +93,27 @@ contact_day = _day
 
 def _later(step: SalesStep, current: SalesStep | None) -> bool:
     return current is None or STEP_ORDER.index(step) > STEP_ORDER.index(current)
+
+
+FIRST_STEP = STEP_ORDER[0]
+REACHED_STEP = STEP_ORDER[1]
+
+
+def reached_by_result(questions: SalesQuestions, picked: Mapping[str, Sequence[str]]) -> bool:
+    """(#748) 결과 "연결됨" 접촉이 세부 단계를 "연결됨"까지 옮기나.
+
+    그 접촉에서 맨 앞 단계(연결 전) 질문에 reaches 없는 보기("다른 부서"·"안내만")를 골랐으면
+    옮기지 않는다.
+    """
+    for question_id, answer_ids in picked.items():
+        question = questions.question(question_id)
+        if question is None or question.choices or question.step != FIRST_STEP:
+            continue
+        for answer_id in answer_ids:
+            option = question.option(answer_id)
+            if option is not None and not option.reaches:
+                return False
+    return True
 
 
 def _asked_at(question, step: SalesStep | None) -> bool:
@@ -136,6 +160,16 @@ def compute_sales_step(
             option = question.option(answer.answer_id) if question else None
             if option and option.reaches and _later(option.reaches, step):
                 step, state.since, state.overridden = option.reaches, _day(row), False
+        if (
+            row.method
+            and row.result == ContactResult.REACHED
+            and _later(REACHED_STEP, step)
+            and reached_by_result(
+                questions,
+                {key: [item.answer_id for item in found] for key, found in in_this_row.items()},
+            )
+        ):
+            step, state.since, state.overridden = REACHED_STEP, _day(row), False
     order = {question.id: index for index, question in enumerate(questions.questions)}
     for question_id, (chosen_answers, row) in sorted(
         latest.items(), key=lambda item: order.get(item[0], len(order))
