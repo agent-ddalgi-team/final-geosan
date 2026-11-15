@@ -118,12 +118,16 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
   }
   if (!response.ok) {
-    if (response.status === 401 && path !== '/session') {
-      window.dispatchEvent(new Event(SESSION_REQUIRED_EVENT));
-    }
     const body = isErrorResponse(json)
       ? json.error
       : localErrorBody(errorTexts.network, `HTTP_${response.status}`);
+    // 로그인·이름 정하기 창구의 401은 그 칸의 오류다(#754: 지금 비밀번호 틀림). 세션 만료로 보지 않는다.
+    if (response.status === 401 && !path.startsWith('/session')) {
+      // 계정 방식이면 kind STAFF_LOGIN_REQUIRED가 붙어 접속 화면이 아이디 칸을 보인다(#754).
+      window.dispatchEvent(
+        new CustomEvent(SESSION_REQUIRED_EVENT, { detail: { kind: body.kind ?? null } }),
+      );
+    }
     throw new ApiError(response.status, body);
   }
   if (!isEnvelope<T>(json)) {

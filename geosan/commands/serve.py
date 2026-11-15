@@ -139,6 +139,15 @@ def _password_configured() -> bool:
     return bool(os.environ.get("GEOSAN_PASSWORD", "").strip())
 
 
+def _has_staff_accounts(db_path: Path) -> bool:
+    """막지 않은 담당자 계정이 있는가(#754). 있으면 공용 비밀번호 없이도 로그인할 수 있다."""
+    from geosan.api.staff_accounts import accounts_mode
+    from geosan.storage.session import session_scope
+
+    with session_scope(db_path) as session:
+        return accounts_mode(session, True)
+
+
 def _access_problem(db_path: Path, host: str) -> list[str] | None:
     """접속 보호 때문에 시작하면 안 되는 이유(쉬운 말 줄들). 문제없으면 None (#736, 계약 C8)."""
     try:
@@ -156,11 +165,12 @@ def _access_problem(db_path: Path, host: str) -> list[str] | None:
             "<앱 설정>`으로 등록하고, 비밀번호는 환경 변수 GEOSAN_PASSWORD에 넣은 뒤 다시 "
             "시작해 주세요. 내 PC에서만 쓸 때는 --host 없이(127.0.0.1) 시작하면 됩니다.",
         ]
-    if protected and not _password_configured():
+    if protected and not _password_configured() and not _has_staff_accounts(db_path):
         return [
             "접속 보호가 켜져 있는데 비밀번호(GEOSAN_PASSWORD)가 없어 서버를 시작하지 않습니다.",
             "이대로 띄우면 아무도 로그인할 수 없습니다. 서버 환경 변수 GEOSAN_PASSWORD에 "
-            "공용 비밀번호를 넣고 다시 시작해 주세요.",
+            "공용 비밀번호를 넣거나 `geosan staff-add <아이디>`로 담당자 계정을 만든 뒤 "
+            "다시 시작해 주세요.",
         ]
     return None
 

@@ -5,7 +5,7 @@ import os
 from fastapi import APIRouter
 from sqlalchemy import func, select
 
-from geosan.api.deps import SessionDep, runtime_for
+from geosan.api.deps import SessionDep, current_account, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, Meta
 from geosan.capability.models import Process
@@ -13,6 +13,16 @@ from geosan.config.models import AppSetting
 from geosan.evidence.transfer import ai_call_configured
 
 router = APIRouter()
+
+
+def _current_staff(session):
+    """계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 None."""
+    account = current_account(session)
+    if account is None:
+        return None
+    from geosan.api.routes.session import current_staff_of
+
+    return current_staff_of(account)
 
 
 @router.get("/config/ui", response_model=ConfigUiEnvelope, response_model_exclude_unset=True)
@@ -53,6 +63,7 @@ def config_ui(session: SessionDep):
                 "regions": settings.ingestion.regions,
                 "industries": settings.industries,
             },
+            current_staff=_current_staff(session),
         ),
         meta=Meta(
             updated_at=session.scalar(select(func.max(AppSetting.updated_at))),

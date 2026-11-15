@@ -44,6 +44,28 @@ export const spacing = {
   headerHeight: 64,
 } as const;
 
+/**
+ * 기업 상세 톤(#759): 흰 바탕 + 얇은 회색 테두리 + 덜 둥근 모서리, 색은 포인트(지금 단계·숫자 꼬리표)에만.
+ * 연두 포인트 위 글자는 진한 글자(colors.text)로 대비 4.5:1 이상.
+ */
+export const detailTheme = {
+  border: '#E2E2E0',
+  radius: 4,
+  /** 칸 나눔 정보(머리 정보 칸 등)의 옅은 바탕. */
+  cellBg: '#F7F7F5',
+  /** 포인트: 지금 큰 단계 띠, 지나온 점, 숫자 꼬리표. */
+  accent: '#E3EC6A',
+  /** 지나온 큰 단계 띠. */
+  accentSoft: '#F4F7CF',
+  /** 아직인 큰 단계 띠. */
+  bandTodo: '#F1F1EF',
+  /** 지나온 단계를 잇는 선. */
+  lineDone: '#3C4650',
+  lineTodo: '#DCDCDA',
+  /** 지금 세부 단계 점의 테두리. */
+  ringCurrent: '#BDBDBB',
+} as const;
+
 /** Ant Design ConfigProvider에 넘기는 테마. */
 export const antdTheme: ThemeConfig = {
   token: {

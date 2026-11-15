@@ -2,12 +2,13 @@
 //  ① "관심 기업": 관심 기업 전체(큰 칸) / 의견 전 / 검토 중
 //     (제외로 저장한 회사는 관심 기업에서 빠져 칸이 없다, #536)
 //  ② "영업 진행": 영업 대상 · 접촉 전 / 접촉 중 / 견적·샘플 / 보류 / 완료 + 이번 주 일정
-// 칸을 누르면 그 조건으로 걸러진 추천 목록으로 간다(관심 기업은 ?bookmarked=true, 나머지는 ?filter=<칸 이름표>).
+// 칸을 누르면 그 조건으로 걸러진 추천 목록으로 간다(관심 기업은 /bookmarks 화면(#762), 나머지는 ?filter=<칸 이름표>).
 // 서버가 주지 않은 칸은 0으로 지어내지 않고 뺀다. 옛 집계(관심 기업 건수가 없음)면 두 구역 대신 안내를 보인다.
 import { Link } from 'react-router-dom';
 import type { DashboardCountKey, DashboardCounts } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 
 /** ① "관심 기업" 구역의 칸 순서. 맨 앞 BOOKMARKED가 큰 칸이다. */
 export const BOOKMARK_ORDER: DashboardCountKey[] = ['BOOKMARKED', 'NO_OPINION', 'NEED_CHECK'];
@@ -22,9 +23,9 @@ export const PROGRESS_ORDER: DashboardCountKey[] = [
   'SCHEDULE_DUE',
 ];
 
-/** 칸 → 이동할 목록 주소(계약 C1: 관심 기업은 ?bookmarked=true, 나머지 칸은 ?filter=<이름표>). */
+/** 칸 → 이동할 목록 주소(계약 C1: 관심 기업은 /bookmarks 화면(#762), 나머지 칸은 ?filter=<이름표>). */
 export function countTarget(key: DashboardCountKey): string {
-  return key === 'BOOKMARKED' ? '/opportunities?bookmarked=true' : `/opportunities?filter=${key}`;
+  return key === 'BOOKMARKED' ? BOOKMARKS_PATH : `${LIST_PATH}?filter=${key}`;
 }
 
 const listStyle = {
