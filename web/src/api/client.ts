@@ -227,6 +227,14 @@ export function postNote(oppId: string, body: NoteRequest, staffKey: string) {
   });
 }
 
+/** #771 전달 사항 확인: 받는 사람만. 두 번 눌러도 같은 값. */
+export function confirmHandoff(noteId: string, staffKey: string) {
+  return request<{ noteId: string; confirmedAt: string; confirmedBy: string }>(
+    `/notes/${encodeURIComponent(noteId)}/confirm`,
+    { method: 'POST', staffKey },
+  );
+}
+
 /** 꼬리 질문 묶음(#607). 질문 파일을 그대로 받는다. 외부 호출·저장 없음. */
 export function getSalesQuestions() {
   return request<SalesQuestions>('/sales-questions');

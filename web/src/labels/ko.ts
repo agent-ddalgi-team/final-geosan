@@ -248,11 +248,13 @@ export const dashboardTexts = {
     SCHEDULE_TODAY: '오늘 일정',
     SCHEDULE_OVERDUE: '놓친 일정',
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
+    HANDOFF_FOR_ME: '나에게 온 전달 사항',
   },
   todayRowUnits: {
     SCHEDULE_TODAY: '건',
     SCHEDULE_OVERDUE: '건',
     CHECK_LEFT: '곳',
+    HANDOFF_FOR_ME: '곳',
   },
   /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
   todayMore: (count: number) => `외 ${count}`,
@@ -261,8 +263,14 @@ export const dashboardTexts = {
     SCHEDULE_OVERDUE: '지난 일정 — 했나요?',
     SCHEDULE_TODAY: '오늘 일정',
     CHECK_LEFT: '확인할 것이 남은 관심 기업',
+    HANDOFF_FOR_ME: '나에게 온 전달 사항',
   },
-  todayRowIcons: { SCHEDULE_OVERDUE: '🔴', SCHEDULE_TODAY: '📅', CHECK_LEFT: '🔍' },
+  todayRowIcons: {
+    SCHEDULE_OVERDUE: '🔴',
+    SCHEDULE_TODAY: '📅',
+    CHECK_LEFT: '🔍',
+    HANDOFF_FOR_ME: '📬',
+  },
   todaySeeAll: '모두 보기',
   todayMoreButton: (count: number) => `더 보기 ${count}곳`,
   todayResolveDone: '완료',
@@ -2090,4 +2098,22 @@ export const coachTexts = {
   editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
   adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
+} as const;
+
+/** #771 전달 사항(PM 결정 2026-11-15·16): 다른 직원이 회사 건으로 남기는 말, 받는 사람이 확인한다. */
+export const handoffTexts = {
+  title: '전달 사항',
+  open: '전달 사항 남기기',
+  textLabel: '전할 말',
+  textPlaceholder: '예: 기술팀 확인 — 도금 두께 요구는 우리 설비로 가능',
+  toLabel: '받는 사람',
+  send: '전달하기',
+  cancel: '닫기',
+  confirm: '확인했어요',
+  confirmed: '확인함',
+  /** "검수 담당 → 영업 담당 · 11/16" */
+  line: (from: string, to: string, day: string) => `${from} → ${to} · ${day}`,
+  waiting: (n: number) => `확인 전 ${n}건`,
+  saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;

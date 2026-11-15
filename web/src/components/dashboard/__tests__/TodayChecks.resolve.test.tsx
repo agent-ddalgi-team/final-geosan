@@ -105,3 +105,30 @@ it('기록 번호가 없는 옛 응답이면 단추를 보이지 않는다', () 
   renderChecks(overdue(null));
   expect(screen.queryByTestId('dashboard-today-done')).not.toBeInTheDocument();
 });
+
+it('#771 나에게 온 전달 사항은 지난 일정 다음 묶음으로, 회사·보낸 사람·날짜만 보인다', () => {
+  renderChecks([
+    {
+      kind: 'CHECK_LEFT',
+      count: 1,
+      items: [{ oppId: 'opp-5', customerName: '가상도금', dueAt: null, note: null }],
+      listFilter: 'CHECK_LEFT',
+    },
+    {
+      kind: 'HANDOFF_FOR_ME',
+      count: 1,
+      items: [{ oppId: 'opp-6', customerName: '가상정밀', dueAt: null, note: '김 과장 · 11/16' }],
+      listFilter: null,
+    },
+    ...overdue(),
+  ]);
+  const titles = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
+  expect(titles).toEqual([
+    '🔴지난 일정 — 했나요? 1건',
+    '📬나에게 온 전달 사항 1곳',
+    '🔍확인할 것이 남은 관심 기업 1곳모두 보기',
+  ]);
+  expect(screen.getByTestId('dashboard-today-items-HANDOFF_FOR_ME')).toHaveTextContent(
+    '가상정밀김 과장 · 11/16',
+  );
+});
