@@ -129,9 +129,11 @@ export default function AssistantAnswerBox({ answer }: { answer: AssistantAnswer
   const { companiesIncluded: included, companiesTotal: total } = answer;
   const partial = included !== undefined && total !== undefined && included < total;
   const [open, setOpen] = useState(false);
-  const lines = answer.answer.split('\n');
+  // 답 끝의 빈 줄은 줄 수에 넣지 않는다(4줄 답에 [더 보기]가 붙지 않게).
+  const full = answer.answer.trimEnd();
+  const lines = full.split('\n');
   const long = lines.length > SHOWN_LINES;
-  const shown = long && !open ? lines.slice(0, SHOWN_LINES).join('\n') : answer.answer;
+  const shown = long && !open ? lines.slice(0, SHOWN_LINES).join('\n') : full;
   const suggestions = answer.suggestions ?? [];
   return (
     <div

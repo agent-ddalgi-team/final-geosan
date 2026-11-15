@@ -115,8 +115,8 @@ describe('긴 답은 접어서 보인다', () => {
     expect(screen.getByTestId('assistant-answer-more')).toHaveTextContent(texts.answerLess);
   });
 
-  it('5줄 이하면 [더 보기]가 없다', () => {
-    renderWith(<AssistantAnswerBox answer={answerWith()} />);
+  it('5줄 이하면 [더 보기]가 없다(답 끝의 빈 줄은 세지 않는다)', () => {
+    renderWith(<AssistantAnswerBox answer={answerWith({ answer: '1줄\n2줄\n\n4줄\n5줄\n' })} />);
     expect(screen.queryByTestId('assistant-answer-more')).not.toBeInTheDocument();
   });
 });
