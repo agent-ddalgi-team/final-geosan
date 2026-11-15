@@ -25,14 +25,20 @@ from geosan.api.assistant_context import (
     named_sources,
 )
 from geosan.api.deps import get_session, require_staff, runtime_for
-from geosan.api.memo_read import build_memo_read, check_reading
+from geosan.api.memo_read import _next_actions, build_memo_read, check_reading
+from geosan.api.routes.records import latest_outcome
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.app_settings import AssistantSettings
 from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.config.sales_questions import KST
 from geosan.config.validators import find_contact
 from geosan.dashboard.queries import SCHEDULE_WINDOW_DAYS
-from geosan.evidence.assistant_llm import ask_sales_assistant, read_sales_memo
+from geosan.evidence.assistant_llm import (
+    AskReading,
+    ask_sales_assistant,
+    ask_with_suggestions,
+    read_sales_memo,
+)
 from geosan.evidence.sales_record_gate import sales_record_calls_today, scrub_sales_record
 from geosan.opportunity.models import Opportunity
 from geosan.storage.base import utcnow
@@ -56,6 +62,18 @@ ASK_INSTRUCTIONS = (
     "오늘·이번 주 일정이나 방문을 묻는데 오늘 일정이 없으면 '오늘 일정은 없음'이라고 쓰고, "
     "조회 결과에 있는 놓친 일정과 같이 들를 곳만 짧게 덧붙인다(없으면 덧붙이지 않는다)."
 )
+# #774: 같은 한 번의 호출에서 답 글(answer)과 할 일 제안(suggestions)을 정해진 모양으로 받는다.
+# 제안은 저장하지 않는다 — 담당자가 [넣기]를 눌러야 /schedule로 저장된다.
+MAX_SUGGESTIONS = 3
+ASK_SUGGESTION_INSTRUCTIONS = (
+    "답 글은 answer에 쓴다. 근거는 '조회 1' 같은 번호로 쓰지 않고 무엇을 봤는지(접촉 기록·일정·"
+    "후보 표 등) 쉬운 말로 쓴다. "
+    "답에서 어떤 회사에 날짜가 있는 할 일(방문·통화 등)을 권하거나 담당자가 "
+    "일정을 넣어 달라고 하면, suggestions에 그 회사 이름(조회 결과에 적힌 그대로)·할 일 보기 "
+    "id(아래 목록에서 하나)·날짜(YYYY-MM-DD, 오늘이나 그 뒤)를 넣는다. "
+    f"최대 {MAX_SUGGESTIONS}개. 날짜를 정할 수 없거나 권할 할 일이 없으면 빈 목록으로 둔다. "
+    "suggestions에 넣은 할 일은 answer에도 적는다. 할 일 보기: "
+)
 CALL_PREP_INSTRUCTIONS = (
     _COMMON_INSTRUCTIONS
     + "'이 회사 요약'의 회사에 이번에 전화할 때 무엇부터 확인하면 좋을지 한두 문장으로 말하고, "
@@ -73,6 +91,8 @@ DAILY_INSTRUCTIONS = (
 
 class AskRequest(_RequestModel):
     question: str = Field(strict=True)
+    # #774 오른쪽 영업 코치 칸이 놓인 화면. 빠지면 지금과 같다. LIST면 후보 표를 더 싣는다.
+    page: Literal["DASHBOARD", "LIST", "BOOKMARKS", "ANALYSIS"] | None = None
 
 
 class AssistantSource(_ApiModel):
@@ -92,10 +112,37 @@ class CallPrepAnswer(_ApiModel):
     ]
 
 
+class AskSuggestion(_ApiModel):
+    """#774 답 아래 할 일 제안 하나. 프로그램이 검증한 값이고, [넣기] 전에는 저장되지 않는다."""
+
+    opp_id: str
+    name: str
+    action_id: str
+    action_label: str
+    date: datetime.date
+    # 그 회사의 지금 다음 일정. 있으면 화면이 "○ → ○로 바꿀까요?"를 묻는다.
+    current_schedule_at: datetime.date | None = None
+    current_schedule_note: str | None = None
+    # 최신 영업 기록 번호(기록이 없으면 0). [넣기] 때 그대로 보낸다.
+    outcome_version: int
+
+
 class AskAnswer(CallPrepAnswer):
+    used_queries: list[
+        Literal[
+            "COMPANY_LIST",
+            "COMPANY_SUMMARY",
+            "SALES_ANALYSIS",
+            "SCHEDULE",
+            "LOST_REASONS",
+            "PEERS",
+            "CANDIDATES",
+        ]
+    ]
     # 조회 글에 실은 회사 수와 대상 회사 전체 수. 다르면 화면이 "○곳 가운데 ○곳만"을 보인다.
     companies_included: int
     companies_total: int
+    suggestions: list[AskSuggestion]
 
 
 class DailyBrief(_ApiModel):
@@ -157,8 +204,46 @@ def _check_daily_limit(settings: AssistantSettings) -> None:
 def _sources(answer: str, context: AssistantContext) -> list[AssistantSource]:
     return [
         AssistantSource(opp_id=company.opp_id, name=company.name)
-        for company in named_sources(answer, context.companies)
+        for company in named_sources(answer, context.all_companies)
     ]
+
+
+def _suggestions(
+    session, reading: AskReading, context: AssistantContext, actions: dict[str, str], today
+) -> list[AskSuggestion]:
+    """AI 제안을 검증한다: 조회에 실린 회사 이름과 정확히 같고(같은 이름이 둘이면 버림), 할 일
+    보기가 목록에 있고, 날짜가 오늘이나 그 뒤인 것만. 같은 회사는 앞의 하나만 남긴다."""
+    by_name: dict[str, list] = {}
+    for company in context.all_companies:
+        by_name.setdefault(company.name, []).append(company)
+    kept: list[AskSuggestion] = []
+    for item in reading.suggestions:
+        found = by_name.get(item.company.strip(), [])
+        if len(found) != 1 or item.action_id not in actions:
+            continue
+        company = found[0]
+        try:
+            day = datetime.date.fromisoformat(item.date.strip())
+        except ValueError:
+            continue
+        if day < today or any(row.opp_id == company.opp_id for row in kept):
+            continue
+        previous = latest_outcome(session, company.opp_id)
+        kept.append(
+            AskSuggestion(
+                opp_id=company.opp_id,
+                name=company.name,
+                action_id=item.action_id,
+                action_label=actions[item.action_id],
+                date=day,
+                current_schedule_at=previous.next_schedule_at if previous else None,
+                current_schedule_note=previous.next_schedule_note if previous else None,
+                outcome_version=previous.version if previous else 0,
+            )
+        )
+        if len(kept) == MAX_SUGGESTIONS:
+            break
+    return kept
 
 
 @router.post("/assistant/ask", response_model=Envelope[AskAnswer])
@@ -182,10 +267,10 @@ def ask(
             raise InputError("질문에 전화번호나 이메일을 적지 말아 주세요.")
         dataset_kind = runtime_for(session).app_settings.active_dataset_kind
         now = utcnow()
-        context = build_ask_context(
-            session, now.astimezone(KST).date(), settings.max_companies, now=now
-        )
-    if not context.companies:
+        today = now.astimezone(KST).date()
+        context = build_ask_context(session, today, settings.max_companies, now=now, page=body.page)
+        actions = _next_actions(session)
+    if not context.all_companies:
         raise AppError(
             "아직 관심 회사나 접촉 기록이 없어 답할 자료가 없습니다.",
             "회사를 관심으로 켜거나 접촉 기록을 남긴 뒤 다시 물어봐 주세요.",
@@ -193,25 +278,32 @@ def ask(
             kind="ASSISTANT_NO_RECORDS",
         )
     _check_daily_limit(settings)
-    first, *rest = context.companies
-    answer = ask_sales_assistant(
+    first, *rest = context.all_companies
+    action_list = "; ".join(f"{key}={label}" for key, label in actions.items())
+    reading = ask_with_suggestions(
         first.opp_id,
         [
             scrub_sales_record(f"조회 결과:\n{context.text}"),
             scrub_sales_record(f"질문: {question}"),
         ],
-        instructions=ASK_INSTRUCTIONS,
+        instructions=ASK_INSTRUCTIONS
+        + " "
+        + ASK_SUGGESTION_INSTRUCTIONS
+        + (action_list or "없음(suggestions는 비워 둔다)"),
         max_output_tokens=settings.max_output_tokens,
         requested_by=staff,
         also_opp_ids=[company.opp_id for company in rest],
     )
+    with contextmanager(get_session)(request) as session:
+        suggestions = _suggestions(session, reading, context, actions, today)
     return Envelope[AskAnswer](
         data=AskAnswer(
-            answer=answer,
-            sources=_sources(answer, context),
+            answer=reading.answer,
+            sources=_sources(reading.answer, context),
             used_queries=list(context.used_queries),
             companies_included=len(context.companies),
             companies_total=context.total_companies,
+            suggestions=suggestions,
         ),
         meta=Meta(
             updated_at=utcnow(),

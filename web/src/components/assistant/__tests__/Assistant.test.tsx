@@ -82,7 +82,8 @@ describe('AssistantAsk (대시보드 질문 칸)', () => {
     expect(screen.getByTestId('assistant-ask-button')).toBeDisabled(); // 빈 질문은 못 보낸다.
     await user.type(screen.getByTestId('assistant-question-input'), ' 가격 때문에 거절된 회사는? ');
     await user.click(screen.getByTestId('assistant-ask-button'));
-    expect(mockedAsk).toHaveBeenCalledWith('가격 때문에 거절된 회사는?', 'park-lee');
+    // #774: 지금 화면도 함께 보낸다(이 시험은 대시보드 주소 "/").
+    expect(mockedAsk).toHaveBeenCalledWith('가격 때문에 거절된 회사는?', 'park-lee', 'DASHBOARD');
     const box = await screen.findByTestId('assistant-answer');
     expect(within(box).getByTestId('assistant-answer-text')).toHaveTextContent(answer.answer);
     expect(within(box).getByTestId('assistant-ai-mark')).toHaveTextContent(texts.aiMark);

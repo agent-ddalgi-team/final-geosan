@@ -2,21 +2,35 @@
 // 예: "가격 때문에 거절된 회사는?" → 답 글 + "AI가 쓴 답 · 확인 필요" + 근거 회사 링크.
 // 서버는 메모 글 없이 고른 값(단계·접촉 날짜·거절 이유·고른 답·일정 날짜)만 AI에 보낸다. 아무 값도 바꾸지 않는다.
 // 설정을 아직 못 읽었거나 서버가 값을 안 주면 아무것도 보이지 않고, 스위치가 꺼져 있으면 칸 대신 안내 한 줄만 보인다.
+// #774: 지금 화면(대시보드·신규 거래처 찾기·관심 기업·영업 분석)을 함께 보낸다. 신규 거래처 찾기에서는
+// 서버가 아직 연락 안 한 후보 표(지역·적합도·거리)도 싣는다.
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button, Input } from 'antd';
 import { assistantConfigOf, postAssistantAsk } from '../../api/assistant';
-import type { AssistantAnswer } from '../../api/assistant';
+import type { AssistantAnswer, AssistantPage } from '../../api/assistant';
 import { ApiError } from '../../api/client';
 import { assistantTexts as texts, errorTexts } from '../../labels/ko';
+import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 import AssistantAnswerBox from './AssistantAnswerBox';
 
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 
+/** 주소로 지금 화면을 고른다. 모르는 화면이면 null(서버는 지금처럼 답한다). */
+export function assistantPageOf(pathname: string): AssistantPage | null {
+  if (pathname === '/') return 'DASHBOARD';
+  if (pathname === LIST_PATH) return 'LIST';
+  if (pathname === BOOKMARKS_PATH) return 'BOOKMARKS';
+  if (pathname === '/sales-analysis') return 'ANALYSIS';
+  return null;
+}
+
 export default function AssistantAsk() {
   const { config, staffKey, canRecord } = useFrame();
+  const page = assistantPageOf(useLocation().pathname);
   const settings = assistantConfigOf(config);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
@@ -40,7 +54,7 @@ export default function AssistantAsk() {
     setError(null);
     setAnswer(null);
     try {
-      const envelope = await postAssistantAsk(text, staffKey);
+      const envelope = await postAssistantAsk(text, staffKey, page);
       setAnswer(envelope.data);
     } catch (caught) {
       const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
@@ -65,7 +79,7 @@ export default function AssistantAsk() {
           data-testid="assistant-question-input"
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder={texts.askPlaceholder}
+          placeholder={page === 'LIST' ? texts.askPlaceholderList : texts.askPlaceholder}
           maxLength={settings.questionMaxLength ?? undefined}
           disabled={!canRecord || asking}
           allowClear
@@ -80,7 +94,7 @@ export default function AssistantAsk() {
         </Button>
       </form>
       <span data-testid="assistant-ask-hint" style={secondary}>
-        {canRecord ? texts.askHint : texts.pickStaffFirst}
+        {canRecord ? (page === 'LIST' ? texts.askHintList : texts.askHint) : texts.pickStaffFirst}
       </span>
       {asking ? (
         <span data-testid="assistant-asking" role="status" style={secondary}>
