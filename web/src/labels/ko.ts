@@ -193,6 +193,10 @@ export const frame = {
   /** 왼쪽 메뉴 묶음 이름(#767). 그림은 SideMenu의 선 그림 아이콘(이모지 대신). */
   navGroupSales: '영업',
   sidebarCollapse: '메뉴 접기',
+  /** 오른쪽 영업 코치 칸(#773). */
+  coachDockTitle: '영업 코치',
+  coachDockCollapse: '영업 코치 접기',
+  coachDockExpand: '영업 코치 펴기',
   sidebarExpand: '메뉴 펴기',
   /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
   currentStaff: (name: string) => `${name} 님`,
@@ -1110,6 +1114,8 @@ export const outcomeStatusTone: Record<string, StatusTone> = {
 
 /** 상세 하단 "기록" 영역(U5): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정. */
 export const recordsArea = {
+  /** #773: 넓은 화면에서 기록 남기기가 오른쪽 칸에 있을 때 이 자리의 안내. */
+  inDock: '기록 남기기·전달 사항은 오른쪽 💬 영업 코치 칸에 있습니다.',
   title: '기록',
   /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
   entryTitle: '기록 남기기',

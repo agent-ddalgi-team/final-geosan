@@ -13,7 +13,6 @@ import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
-import AssistantAsk from '../components/assistant/AssistantAsk';
 import AssistantDaily from '../components/assistant/AssistantDaily';
 import { assistantConfigOf } from '../api/assistant';
 import TodayChecks from '../components/dashboard/TodayChecks';
@@ -136,8 +135,7 @@ export default function DashboardPage() {
             onChanged={retry}
           />
         ) : null}
-        {/* 영업 비서 질문 칸(#680). 설정이 꺼져 있으면 안내 한 줄, 설정을 못 읽었으면 아무것도 없다. */}
-        {data ? <AssistantAsk /> : null}
+        {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "💬 영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
         <section
           aria-labelledby="dashboard-calendar-title"

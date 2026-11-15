@@ -17,6 +17,11 @@ export interface FrameValue {
   setBannerMeta: (meta: Meta | null) => void;
   /** 페이지가 h1을 자기 내용으로 바꾼다(상세: 기업·기회 이름). null이면 기본 제목으로 돌아간다. */
   setPageTitle: (title: string | null) => void;
+  /**
+   * 오른쪽 영업 코치 칸(#773)에 페이지가 자기 내용을 넣을 자리(dock="page"일 때만).
+   * 없으면(테스트·좁은 화면 밖) 페이지는 자기 자리에 그대로 그린다.
+   */
+  dockSlot?: HTMLElement | null;
 }
 
 export const FrameContext = createContext<FrameValue>({
