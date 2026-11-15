@@ -24,6 +24,7 @@ import type {
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
 import CallPrep from '../components/assistant/CallPrep';
+import HandoffBox from '../components/records/HandoffBox';
 import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
@@ -414,6 +415,18 @@ export default function OpportunityDetailPage() {
             title={recordsArea.title}
             count={contactCount?.total ?? null}
           >
+            {/* 전달 사항(#771): 다른 직원이 남긴 말을 포스트잇으로, 받는 사람에게 [확인했어요]. */}
+            <HandoffBox
+              key={`${oppId}:handoff`}
+              oppId={oppId}
+              evalId={data.evalId}
+              handoffs={data.records.handoffs ?? []}
+              lastActor={data.records.outcome?.updatedBy ?? null}
+              onChanged={() => {
+                reloadQuietly();
+                setTimelineVersion((n) => n + 1);
+              }}
+            />
             {/* 통화 전 칸(#750): 지난 통화 뒤 코치가 정리한 다음 통화에 물어볼 것. AI를 부르지 않는다. */}
             <CallPrep
               key={`${oppId}:call-prep`}

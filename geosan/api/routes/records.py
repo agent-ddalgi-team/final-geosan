@@ -5,9 +5,10 @@
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Query
+from pydantic import Field
 from sqlalchemy import func, literal_column, or_, select
 from sqlalchemy.orm import Session
 
@@ -32,6 +33,8 @@ from geosan.api.schemas import (
     BookmarkRequest,
     BookmarkResponse,
     ContactCount,
+    Envelope,
+    HandoffConfirmResponse,
     MainPhoneConfirmEnvelope,
     MainPhoneConfirmRequest,
     MainPhoneConfirmResponse,
@@ -69,6 +72,7 @@ from geosan.api.schemas import (
     SalesQuestionView,
     SalesShowWhen,
     SalesStepEntry,
+    _RequestModel,
 )
 from geosan.config.errors import (
     AppError,
@@ -1064,6 +1068,99 @@ def save_outcome(
     )
 
 
+class ScheduleResolveRequest(_RequestModel):
+    """#766 대시보드 "지난 일정 — 했나요?"의 세 단추(계약 C1 /schedule/resolve)."""
+
+    action: Literal["DONE", "DROPPED", "MOVED"]
+    next_schedule_at: date | None = None
+    expected_version: int = Field(ge=0)
+
+
+_WEEKDAYS = "월화수목금토일"
+_RESOLVE_WORDS = {"DONE": "완료로 정리", "DROPPED": "필요 없어 지움"}
+
+
+def _day_label(day: date) -> str:
+    return f"{day.month}/{day.day}({_WEEKDAYS[day.weekday()]})"
+
+
+@router.post("/opportunities/{oppId}/schedule/resolve", response_model=OutcomeEnvelope)
+def resolve_schedule(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: ScheduleResolveRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # 최신 영업 기록의 단계·이유는 그대로 두고 일정만 바꾼 새 기록 한 행을 접촉 저장과 같은 본체로
+    # 남긴다(상세 [일정 잡기]와 같은 저장). 같은 트랜잭션에 변경 기록 한 줄을 더한다.
+    # 외부 호출 없음.
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    opportunity = session.get(Opportunity, opp_id)
+    if opportunity is None:
+        raise NotFoundError("일정을 정리할 기회가 없습니다.")
+    previous = latest_outcome(session, opp_id)
+    if previous is None or previous.next_schedule_at is None:
+        raise InputError(
+            "정리할 다음 일정이 없습니다.", "화면을 새로 고쳐 지금 일정을 확인해 주세요."
+        )
+    if previous.version != body.expected_version:
+        raise AppError(
+            message="그 사이 이 회사에 다른 기록이 저장됐습니다",
+            next_action="화면을 새로 고쳐 지금 일정을 확인해 주세요",
+            status=409,
+        )
+    if body.action == "MOVED":
+        if body.next_schedule_at is None or body.next_schedule_at < today_in_seoul():
+            raise InputError(
+                "옮길 날짜를 확인해 주세요.",
+                fields=[
+                    FieldError(path="nextScheduleAt", message="오늘이나 그 뒤 날짜를 골라 주세요.")
+                ],
+            )
+    elif body.next_schedule_at is not None:
+        raise InputError(
+            "완료·지우기에는 날짜를 넣지 않습니다.",
+            fields=[FieldError(path="nextScheduleAt", message="날짜는 옮길 때만 넣어 주세요.")],
+        )
+    moved = body.action == "MOVED"
+    # 거절 회사는 거절 코드·이유를 그대로 잇는다. 그 밖의 단계는 그 칸을 아예 보내지 않는다
+    # (보낸 칸으로 치면 "거절 단계에서만 이유 코드" 검사에 걸린다).
+    lost = (
+        {"lost_reason_code": previous.lost_reason_code, "reason": previous.reason}
+        if previous.status == "LOST"
+        else {}
+    )
+    request = OutcomeRequest(
+        status=previous.status,
+        **lost,
+        next_schedule_at=body.next_schedule_at if moved else None,
+        next_schedule_note=previous.next_schedule_note if moved else None,
+        action_id=previous.action_id if moved else None,
+        expected_version=previous.version,
+    )
+    old_day = previous.next_schedule_at
+    note = previous.next_schedule_note
+    what = f"{_day_label(old_day)} 일정" + (f"({note})" if note else "")
+    word = f"{_day_label(body.next_schedule_at)}로 옮김" if moved else _RESOLVE_WORDS[body.action]
+    saved = record_outcome(session, opp_id, request, staff)
+    row = saved.row
+    add_program_note(session, opportunity, f"{what} — {word}", staff=staff, now=row.created_at)
+    session.flush()
+    return OutcomeEnvelope(
+        data=OutcomeResponse(
+            status=row.status, version=row.version, updated_by=staff, updated_at=row.created_at
+        ),
+        meta=Meta(
+            updated_at=row.created_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
+            **({"reevaluated": True} if saved.reevaluated else {}),
+        ),
+    )
+
+
 def _sync_call_signals(session: Session, opportunity: Opportunity, staff: str) -> bool:
     """#685 통화에서 확인한 신호를 지금 답에 맞춘다. 점수 입력이 바뀌었으면 True."""
     return sync_call_signals(
@@ -1271,6 +1368,14 @@ def activity(
         if row.kind == NoteKind.ADVICE and row.cancelled_at is None:
             # #742: 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄.
             summary = f"남긴 피드백 · {row.text}"
+        if row.kind == NoteKind.HANDOFF and row.cancelled_at is None:
+            # #771: 전달 사항. 받는 사람 표시 이름을 앞에 붙이고, 확인했으면 꼬리를 단다.
+            names = {
+                entry.key: entry.display_name for entry in runtime_for(session).app_settings.staff
+            }
+            to = names.get(row.to_staff_key or "", row.to_staff_key or "")
+            done = " (확인함)" if row.confirmed_at else ""
+            summary = f"전달 사항 → {to} · {row.text}{done}"
         if row.kind == NoteKind.CALL_PREP and row.cancelled_at is None:
             # #750: 영업 코치가 준 다음 통화에 물어볼 것. 줄 종류는 남긴 피드백과 같다.
             summary = "다음 통화 준비 · " + " · ".join(
@@ -1419,6 +1524,32 @@ def save_note(
             fields=[FieldError(path="text", message=f"{limit}자 이내로 적어 주세요.")],
         )
     blank = not body.text.strip()
+    settings = runtime_for(session).app_settings
+    if body.kind == NoteKind.HANDOFF:
+        # #771: 받는 사람은 기록 담당자 목록의 다른 사람 한 명(자기 자신·보기 전용은 안 됨).
+        if blank:
+            raise InputError(
+                "전할 말을 적어 주세요.",
+                fields=[FieldError(path="text", message="빈 글은 남길 수 없습니다.")],
+            )
+        if (
+            not body.to_staff_key
+            or body.to_staff_key == staff
+            or not settings.is_recording_staff(body.to_staff_key)
+        ):
+            raise InputError(
+                "받는 사람을 확인해 주세요.",
+                fields=[
+                    FieldError(
+                        path="toStaffKey", message="나 말고 기록 담당자 한 명을 골라 주세요."
+                    )
+                ],
+            )
+    elif body.to_staff_key is not None:
+        raise InputError(
+            "받는 사람은 전달 사항에만 넣습니다.",
+            fields=[FieldError(path="toStaffKey", message="전달 사항일 때만 골라 주세요.")],
+        )
     advice_like = body.kind in (NoteKind.ADVICE, NoteKind.CALL_PREP)
     if advice_like and (blank or scan_contacts({"text": body.text})):
         # #742: 남긴 피드백은 회사 보고서로 나가는 글이라 메모와 달리 연락처를 막는다.
@@ -1463,6 +1594,7 @@ def save_note(
         eval_id=body.eval_id,
         kind=body.kind,
         item_id=body.item_id,
+        to_staff_key=body.to_staff_key if body.kind == NoteKind.HANDOFF else None,
         version=previous.version + 1 if previous else 1,
         created_at=now,
         created_by=staff,
@@ -1476,6 +1608,39 @@ def save_note(
             note_id=row.note_id, version=row.version, updated_by=staff, updated_at=now
         ),
         meta=Meta(updated_at=now, has_virtual_data=row.is_virtual, dataset_kind=row.dataset_kind),
+    )
+
+
+@router.post("/notes/{noteId}/confirm", response_model=Envelope[HandoffConfirmResponse])
+def confirm_handoff(
+    note_id: Annotated[str, Path(alias="noteId")],
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # #771: 받는 사람만 [확인했어요]를 누른다. 이미 확인했으면 같은 값으로 200(두 번 눌러도 같음).
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    row = session.get(Note, note_id)
+    if row is None or row.kind != NoteKind.HANDOFF or row.cancelled_at is not None:
+        raise NotFoundError("확인할 전달 사항이 없습니다.", "화면을 새로 고쳐 주세요.")
+    if row.to_staff_key != staff:
+        raise ForbiddenError(
+            "받는 사람만 확인할 수 있습니다.", "전달 사항을 받은 담당자가 눌러 주세요."
+        )
+    if row.confirmed_at is None:
+        row.confirmed_at = utcnow()
+        row.confirmed_by = staff
+        session.flush()
+    return Envelope[HandoffConfirmResponse](
+        data=HandoffConfirmResponse(
+            note_id=row.note_id, confirmed_at=row.confirmed_at, confirmed_by=row.confirmed_by
+        ),
+        meta=Meta(
+            updated_at=row.confirmed_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
+        ),
     )
 
 

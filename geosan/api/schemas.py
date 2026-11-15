@@ -740,6 +740,24 @@ class CallPrepNote(_ApiModel):
     by: str
 
 
+class HandoffNote(_ApiModel):
+    """#771 전달 사항 한 행(rec_note kind HANDOFF). 상세 맨 위 노란 칸·포스트잇이 쓴다."""
+
+    note_id: str
+    text: str
+    from_: str = Field(alias="from")
+    to: str
+    at: datetime
+    confirmed_at: datetime | None = None
+    confirmed_by: str | None = None
+
+
+class HandoffConfirmResponse(_ApiModel):
+    note_id: str
+    confirmed_at: datetime
+    confirmed_by: str
+
+
 class DetailRecords(_ApiModel):
     contact_count: ContactCount = Field(default_factory=ContactCount)
     sales_step: SalesStepView = Field(default_factory=SalesStepView)
@@ -753,6 +771,8 @@ class DetailRecords(_ApiModel):
     advice: list[AdviceLine] = Field(default_factory=list)
     # #750: 취소하지 않은 가장 최근 다음 통화 준비. 없으면 None.
     call_prep: CallPrepNote | None = None
+    # #771: 전달 사항(확인 전이 먼저, 최근 것부터 최대 10개).
+    handoffs: list[HandoffNote] = Field(default_factory=list)
 
 
 class ReviewItemNote(_ApiModel):
@@ -859,8 +879,10 @@ class OpinionResponse(OpinionRecord):
 class NoteRequest(_RequestModel):
     # #742: ADVICE = 영업 코치 피드백 한 줄(#750부터 [이대로 저장] 때 모두 남김).
     # #750: CALL_PREP = 영업 코치가 준 다음 통화에 물어볼 것(줄바꿈으로 이은 한 행).
-    kind: Literal["MEMO", "RESEARCH", "ADVICE", "CALL_PREP"] = "MEMO"
+    # #771: HANDOFF = 전달 사항(받는 사람 toStaffKey 필수).
+    kind: Literal["MEMO", "RESEARCH", "ADVICE", "CALL_PREP", "HANDOFF"] = "MEMO"
     text: str
+    to_staff_key: str | None = Field(default=None, max_length=64)
     eval_id: str | None = None
     # #259: 검토사항 자료 줄 번호. 없으면 지금과 같은 일반 메모.
     item_id: str | None = None

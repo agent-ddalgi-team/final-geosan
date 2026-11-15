@@ -89,6 +89,9 @@ _INSTRUCTIONS = (
     "'도금 외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?'). 이번 메모에서 이미 답을 "
     "들은 것은 쓰지 않는다. 피드백 줄을 그대로 되풀이하지 않는다. 물을 것이 없으면 빈 목록. "
     "한 줄 40자 안팎.\n"
+    "[전달 사항] 아래 [전달 사항]은 다른 직원이 이 회사 건으로 남긴 말이다. '확인 전' 줄이 있으면 "
+    "feedback 첫 줄에서 그 내용을 짚어 담당자가 놓치지 않게 한다(예: '동료 전달: 도금 두께는 "
+    "가능하다고 해요. 다음 통화 때 알려 줄까요?'). 다음 통화에 물어볼 것에도 반영해도 된다.\n"
     "[요약] summary는 이번 메모를 한국어 한 줄(40자 안팎)로.\n"
     "[금지] 단가·견적 금액·할인을 묻거나 제안하지 않는다(금액·숫자 제시 금지). 납기 날짜를 "
     "정하거나 약속하자고 제안하지 않는다. 사람 이름·전화·이메일은 쓰지 않는다. '[이름]'·'[연락처 "
@@ -284,6 +287,26 @@ def _memos(session: Session, opp_id: str) -> list[tuple[date, str]]:
     return [(day, text) for day, _, text in rows]
 
 
+def _handoffs(session: Session, opp_id: str) -> list[tuple[date, str, bool]]:
+    """#771 전달 사항(kind HANDOFF), 오래된 것부터 (날짜, 글, 확인했나).
+
+    보낸·받는 사람은 싣지 않는다.
+    """
+    return [
+        (_day(row.created_at), row.text, row.confirmed_at is not None)
+        for row in session.scalars(
+            select(Note)
+            .where(
+                Note.opp_id == opp_id,
+                Note.kind == NoteKind.HANDOFF,
+                Note.cancelled_at.is_(None),
+            )
+            .order_by(Note.version)
+        )
+        if row.text and row.text.strip()
+    ]
+
+
 def _advice(session: Session, opp_id: str) -> list[tuple[date, str]]:
     """남긴 피드백(kind ADVICE), 오래된 것부터."""
     return [
@@ -334,6 +357,7 @@ def build_coach(
     memos = _memos(session, opp_id)
     advice = _advice(session, opp_id)
     last_prep = _last_call_prep(session, opp_id)
+    handoffs = _handoffs(session, opp_id)
     labels = {entry.code: entry.label for entry in questions.steps}
     company = build_memo_read_context(session, opp_id, today)
     context_lines = [
@@ -351,6 +375,15 @@ def build_coach(
         "",
         "[지난 통화 준비]",
         *([f"{_md(last_prep[0])}: {line}" for line in last_prep[1]] if last_prep else ["없음"]),
+        "",
+        "[전달 사항]",
+        *(
+            [
+                f"{_md(day)} 동료 전달({'확인함' if done else '확인 전'}): {text}"
+                for day, text, done in handoffs[-prior_limit:]
+            ]
+            or ["없음"]
+        ),
     ]
     # 프로그램이 아는 이름은 사람 이름으로 보지 않는다: 공정·산업·회사 이름·주소·질문과 보기 글.
     keep = [
