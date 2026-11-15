@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
+from geosan.api.routes.opportunities import list_evaluations
 from geosan.api.routes.peers import peers as peers_view
 from geosan.api.routes.records import (
     LOST_REASON_LABELS,
@@ -38,13 +39,15 @@ from geosan.dashboard.queries import (
     RESULT_LABELS,
     SCHEDULE_WINDOW_DAYS,
     STAGE_LABELS,
+    bookmarked_opp_ids,
     dashboard_population,
     schedule_due_outcomes,
 )
 from geosan.dashboard.sales_analysis import CONFIRMED_INDUSTRY_SOURCES, LINK_CONFIRMED
+from geosan.opportunity.factory_csv import address_region, without_postcode
 from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
-from geosan.records.models import Outcome, OutcomeAnswer
+from geosan.records.models import Outcome, OutcomeAnswer, ReviewOpinion
 from geosan.storage.base import utcnow
 
 QUERY_COMPANY_LIST = "COMPANY_LIST"
@@ -53,6 +56,9 @@ QUERY_SALES_ANALYSIS = "SALES_ANALYSIS"
 QUERY_SCHEDULE = "SCHEDULE"
 QUERY_LOST_REASONS = "LOST_REASONS"
 QUERY_PEERS = "PEERS"
+QUERY_CANDIDATES = "CANDIDATES"
+# 오른쪽 영업 코치 칸이 놓인 화면(#774). LIST(신규 거래처 찾기)일 때만 후보 표를 더 싣는다.
+PAGE_LIST = "LIST"
 
 _NONE = "없음"
 _NO_STAGE = "NOT_EXECUTED"
@@ -79,6 +85,15 @@ class AssistantContext:
     companies: tuple[CompanyRef, ...]
     total_companies: int
     used_queries: tuple[str, ...]
+    # #774 신규 거래처 찾기의 "아직 연락 안 한 후보" 표에 실린 회사.
+    # companies(본 회사 수를 세는 목록)와 따로 둔다.
+    candidates: tuple[CompanyRef, ...] = ()
+
+    @property
+    def all_companies(self) -> tuple[CompanyRef, ...]:
+        """조회 글에 실린 회사 전부(근거 링크·전송 기록·할 일 제안은 이 안에서만 고른다)."""
+        seen = {company.opp_id for company in self.companies}
+        return self.companies + tuple(c for c in self.candidates if c.opp_id not in seen)
 
 
 @dataclass
@@ -405,10 +420,122 @@ def _visit_lines(
     return lines, opp_ids
 
 
+_FIT_LABELS = {"HIGH": "상", "MEDIUM": "중", "LOW": "하"}
+_FIT_ORDER = ("HIGH", "MEDIUM", "LOW")
+
+
+def _region(address: str | None) -> str:
+    """주소 앞의 시·도 약칭과 시·군 이름만(예 "충남 아산시"). 그 뒤 주소는 싣지 않는다."""
+    parts = without_postcode(address or "").split()
+    if not parts:
+        return "모름"
+    region = address_region(parts[0])
+    if region == "세종" or len(parts) < 2:
+        return region or "모름"
+    return f"{region} {parts[1]}"
+
+
+def _candidate_lines(session: Session, limit: int) -> tuple[list[str], list[CompanyRef]]:
+    """조회 6(#774): 신규 거래처 찾기 목록 가운데 아직 연락 안 한 후보.
+
+    대상은 목록과 같다(`list_evaluations`). 접촉 기록(통화·메일·방문, 취소 제외)이 있거나 최신
+    검토 의견이 대상 아님(NOT_TARGET)인 회사는 뺀다. 싣는 것은 회사 이름·지역(시·도·시·군)·공정
+    적합도·공정 이름(확정 전 AI 제안 포함)·관심 여부·거산에서 거리뿐이다. 점수·주소 전체·좌표·
+    대표번호·홈페이지 글·고른 이유 글은 싣지 않는다. 적합도 높은 순 → 가까운 순 → 이름순으로
+    limit곳까지.
+    """
+    dataset_kind = runtime_for(session).app_settings.active_dataset_kind.value
+    _, evaluations = list_evaluations(session, dataset_kind)
+    population = select(evaluations.subquery().c.opp_id)
+    contacted = select(Outcome.opp_id).where(
+        Outcome.opp_id.in_(population),
+        Outcome.cancelled_at.is_(None),
+        Outcome.method.is_not(None),
+    )
+    opinions: dict[str, str] = {}
+    for opp_id, opinion in session.execute(
+        select(ReviewOpinion.opp_id, ReviewOpinion.opinion)
+        .where(ReviewOpinion.opp_id.in_(population))
+        .order_by(ReviewOpinion.opp_id, ReviewOpinion.version, ReviewOpinion.recorded_at)
+    ):
+        opinions[opp_id] = opinion  # 마지막 행이 지금 의견이다.
+    customers: dict[str, Customer] = {}
+    for opp_id, customer in session.execute(
+        select(Opportunity.opp_id, Customer)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(Opportunity.opp_id.in_(population), Opportunity.opp_id.not_in(contacted))
+    ):
+        if opinions.get(opp_id) != "NOT_TARGET":
+            customers[opp_id] = customer
+    distances = customer_distances(
+        session,
+        list(customers.values()),
+        {customer.customer_id: opp_id for opp_id, customer in customers.items()},
+        runtime_for(session).app_settings,
+        live=False,
+    )
+
+    def order(opp_id: str):
+        customer = customers[opp_id]
+        fit = customer.fit_level
+        distance = distances.get(customer.customer_id)
+        return (
+            _FIT_ORDER.index(fit) if fit in _FIT_ORDER else len(_FIT_ORDER),
+            distance is None,
+            distance or 0.0,
+            customer.name,
+            opp_id,
+        )
+
+    picked = sorted(customers, key=order)[:limit]
+    catalog = choice_catalog(session)
+    processes: dict[str, set[str]] = {}
+    for opp_id, code in session.execute(
+        select(OppProcessLink.opp_id, OppProcessLink.process_code).where(
+            OppProcessLink.opp_id.in_(picked), OppProcessLink.superseded_at.is_(None)
+        )
+    ):
+        if code in catalog["PROCESS"]:
+            processes.setdefault(opp_id, set()).add(catalog["PROCESS"][code])
+    bookmarked = set(session.scalars(bookmarked_opp_ids())) & set(picked)
+    lines = [
+        "[조회 6. 아직 연락 안 한 후보] 신규 거래처 찾기 목록에서 접촉 기록이 없고 제외하지 않은 "
+        f"{len(customers)}곳 가운데 {len(picked)}곳"
+        "(공정 적합도 높은 순, 그다음 거산에서 가까운 순)",
+        "회사 | 지역 | 공정 적합도 | 공정(AI 제안 포함) | 관심 | 거산에서 거리",
+    ]
+    for opp_id in picked:
+        customer = customers[opp_id]
+        distance = distances.get(customer.customer_id)
+        lines.append(
+            " | ".join(
+                [
+                    customer.name,
+                    _region(customer.address or customer.normalized_address),
+                    _FIT_LABELS.get(customer.fit_level or "", "모름"),
+                    _names(sorted(processes.get(opp_id, ()))),
+                    "관심" if opp_id in bookmarked else "관심 아님",
+                    f"{distance:g}km" if distance is not None else "모름",
+                ]
+            )
+        )
+    if not picked:
+        lines.append(_NONE)
+    return lines, [CompanyRef(opp_id, customers[opp_id].name) for opp_id in picked]
+
+
 def build_ask_context(
-    session: Session, today: date, max_companies: int, now: datetime | None = None
+    session: Session,
+    today: date,
+    max_companies: int,
+    now: datetime | None = None,
+    page: str | None = None,
 ) -> AssistantContext:
-    """질문에 답하기용 조회 5개. 대상은 활성 묶음뿐이다(영업 분석·대시보드와 같은 기준)."""
+    """질문에 답하기용 조회 5개. 대상은 활성 묶음뿐이다(영업 분석·대시보드와 같은 기준).
+
+    #774: 오른쪽 영업 코치 칸이 신규 거래처 찾기(page LIST)에 놓였으면 조회 6(아직 연락 안 한
+    후보)을 더한다. 후보 수 상한도 같은 max_companies다(새 설정 없음).
+    """
     selection = _select_companies(session, max_companies)
     analysis, ordered, companies = selection.analysis, selection.ordered, selection.companies
     steps = selection.steps
@@ -455,17 +582,25 @@ def build_ask_context(
     if not lost:
         lines.append(_NONE)
 
+    used = (
+        QUERY_COMPANY_LIST,
+        QUERY_COMPANY_SUMMARY,
+        QUERY_SALES_ANALYSIS,
+        QUERY_SCHEDULE,
+        QUERY_LOST_REASONS,
+    )
+    candidates: list[CompanyRef] = []
+    if page == PAGE_LIST:
+        candidate_lines, candidates = _candidate_lines(session, max_companies)
+        lines += ["", *candidate_lines]
+        used += (QUERY_CANDIDATES,)
+
     return AssistantContext(
         text="\n".join(lines),
         companies=tuple(CompanyRef(company.opp_id, company.name) for company in companies),
         total_companies=len(ordered),
-        used_queries=(
-            QUERY_COMPANY_LIST,
-            QUERY_COMPANY_SUMMARY,
-            QUERY_SALES_ANALYSIS,
-            QUERY_SCHEDULE,
-            QUERY_LOST_REASONS,
-        ),
+        used_queries=used,
+        candidates=tuple(candidates),
     )
 
 

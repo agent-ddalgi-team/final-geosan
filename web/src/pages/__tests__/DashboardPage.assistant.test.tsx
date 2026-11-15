@@ -1,10 +1,10 @@
 // 대시보드의 영업 비서 질문 칸 자리(#680): "오늘 확인할 것" 바로 아래, 일정 달력 위.
 // getDashboard는 가짜로 바꾼 확인이며 실제 서버·실제 AI 연결 확인이 아니다.
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../DashboardPage';
 import { getDashboard } from '../../api/dashboard';
-import { getAssistantDaily } from '../../api/assistant';
+import { getAssistantDaily, SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
 import type { Dashboard } from '../../api/dashboardTypes';
 import type { ConfigUi } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
@@ -114,5 +114,24 @@ describe('대시보드 › 오늘 정리 (#743)', () => {
     await screen.findByTestId('dashboard-today');
     expect(screen.queryByTestId('dashboard-today-assistant')).not.toBeInTheDocument();
     expect(mockedDaily).not.toHaveBeenCalled();
+  });
+});
+
+describe('대시보드 › 영업 코치 [넣기] 뒤 (#774)', () => {
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedDaily.mockReset();
+    mockedDaily.mockReturnValue(new Promise(() => {}));
+  });
+
+  it('오른쪽 칸에서 일정을 넣었다는 알림이 오면 대시보드를 다시 읽는다', async () => {
+    renderPage({ assistant: { enabled: false, questionMaxLength: 300 } } as unknown as ConfigUi);
+    await screen.findByTestId('dashboard-today');
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SCHEDULE_CHANGED_EVENT, { detail: 'opp-1' }));
+    });
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+    expect(await screen.findByTestId('dashboard-today')).toBeInTheDocument();
   });
 });
