@@ -71,7 +71,12 @@ export interface DashboardBreakdown {
 }
 
 /** "오늘 확인할 것" 줄의 종류(#679). 서버가 뒤에 값을 늘릴 수 있어(#677) 화면은 모르는 값을 보이지 않는다. */
-export type TodayCheckKind = 'SCHEDULE_TODAY' | 'SCHEDULE_OVERDUE' | 'CHECK_LEFT';
+export type TodayCheckKind =
+  | 'SCHEDULE_TODAY'
+  | 'SCHEDULE_OVERDUE'
+  | 'CHECK_LEFT'
+  /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
+  | 'HANDOFF_FOR_ME';
 
 export interface TodayCheckItem {
   oppId: string;

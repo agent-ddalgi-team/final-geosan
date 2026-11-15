@@ -33,6 +33,8 @@ from geosan.api.schemas import (
     BookmarkRequest,
     BookmarkResponse,
     ContactCount,
+    Envelope,
+    HandoffConfirmResponse,
     MainPhoneConfirmEnvelope,
     MainPhoneConfirmRequest,
     MainPhoneConfirmResponse,
@@ -1366,6 +1368,14 @@ def activity(
         if row.kind == NoteKind.ADVICE and row.cancelled_at is None:
             # #742: 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄.
             summary = f"남긴 피드백 · {row.text}"
+        if row.kind == NoteKind.HANDOFF and row.cancelled_at is None:
+            # #771: 전달 사항. 받는 사람 표시 이름을 앞에 붙이고, 확인했으면 꼬리를 단다.
+            names = {
+                entry.key: entry.display_name for entry in runtime_for(session).app_settings.staff
+            }
+            to = names.get(row.to_staff_key or "", row.to_staff_key or "")
+            done = " (확인함)" if row.confirmed_at else ""
+            summary = f"전달 사항 → {to} · {row.text}{done}"
         if row.kind == NoteKind.CALL_PREP and row.cancelled_at is None:
             # #750: 영업 코치가 준 다음 통화에 물어볼 것. 줄 종류는 남긴 피드백과 같다.
             summary = "다음 통화 준비 · " + " · ".join(
@@ -1514,6 +1524,32 @@ def save_note(
             fields=[FieldError(path="text", message=f"{limit}자 이내로 적어 주세요.")],
         )
     blank = not body.text.strip()
+    settings = runtime_for(session).app_settings
+    if body.kind == NoteKind.HANDOFF:
+        # #771: 받는 사람은 기록 담당자 목록의 다른 사람 한 명(자기 자신·보기 전용은 안 됨).
+        if blank:
+            raise InputError(
+                "전할 말을 적어 주세요.",
+                fields=[FieldError(path="text", message="빈 글은 남길 수 없습니다.")],
+            )
+        if (
+            not body.to_staff_key
+            or body.to_staff_key == staff
+            or not settings.is_recording_staff(body.to_staff_key)
+        ):
+            raise InputError(
+                "받는 사람을 확인해 주세요.",
+                fields=[
+                    FieldError(
+                        path="toStaffKey", message="나 말고 기록 담당자 한 명을 골라 주세요."
+                    )
+                ],
+            )
+    elif body.to_staff_key is not None:
+        raise InputError(
+            "받는 사람은 전달 사항에만 넣습니다.",
+            fields=[FieldError(path="toStaffKey", message="전달 사항일 때만 골라 주세요.")],
+        )
     advice_like = body.kind in (NoteKind.ADVICE, NoteKind.CALL_PREP)
     if advice_like and (blank or scan_contacts({"text": body.text})):
         # #742: 남긴 피드백은 회사 보고서로 나가는 글이라 메모와 달리 연락처를 막는다.
@@ -1558,6 +1594,7 @@ def save_note(
         eval_id=body.eval_id,
         kind=body.kind,
         item_id=body.item_id,
+        to_staff_key=body.to_staff_key if body.kind == NoteKind.HANDOFF else None,
         version=previous.version + 1 if previous else 1,
         created_at=now,
         created_by=staff,
@@ -1571,6 +1608,39 @@ def save_note(
             note_id=row.note_id, version=row.version, updated_by=staff, updated_at=now
         ),
         meta=Meta(updated_at=now, has_virtual_data=row.is_virtual, dataset_kind=row.dataset_kind),
+    )
+
+
+@router.post("/notes/{noteId}/confirm", response_model=Envelope[HandoffConfirmResponse])
+def confirm_handoff(
+    note_id: Annotated[str, Path(alias="noteId")],
+    session: SessionDep,
+    staff: StaffDep,
+):
+    # #771: 받는 사람만 [확인했어요]를 누른다. 이미 확인했으면 같은 값으로 200(두 번 눌러도 같음).
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    row = session.get(Note, note_id)
+    if row is None or row.kind != NoteKind.HANDOFF or row.cancelled_at is not None:
+        raise NotFoundError("확인할 전달 사항이 없습니다.", "화면을 새로 고쳐 주세요.")
+    if row.to_staff_key != staff:
+        raise ForbiddenError(
+            "받는 사람만 확인할 수 있습니다.", "전달 사항을 받은 담당자가 눌러 주세요."
+        )
+    if row.confirmed_at is None:
+        row.confirmed_at = utcnow()
+        row.confirmed_by = staff
+        session.flush()
+    return Envelope[HandoffConfirmResponse](
+        data=HandoffConfirmResponse(
+            note_id=row.note_id, confirmed_at=row.confirmed_at, confirmed_by=row.confirmed_by
+        ),
+        meta=Meta(
+            updated_at=row.confirmed_at,
+            has_virtual_data=row.is_virtual,
+            dataset_kind=row.dataset_kind,
+        ),
     )
 
 

@@ -199,7 +199,7 @@ class TodayCheckItem(_ApiModel):
 class TodayCheckRow(_ApiModel):
     """맨 위 "오늘 확인할 것"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677)."""
 
-    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT"]
+    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT", "HANDOFF_FOR_ME"]
     count: int
     items: list[TodayCheckItem]
     # 누르면 열 목록의 `?filter=` 값. null이면 화면이 줄 아래에 작은 목록을 편다.
@@ -322,6 +322,7 @@ def dashboard(
             count_proposed_industries=runtime.app_settings.dashboard.count_proposed_industries,
         ),
         check_left_opp_ids=check_left,
+        staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
     )
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),

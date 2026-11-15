@@ -19,7 +19,12 @@ import { useFrame } from '../frame/FrameContext';
 
 const SHOWN = 5;
 /** 묶음 순서: 지난 일정(정리할 것)이 맨 위. */
-const ORDER: TodayCheckKind[] = ['SCHEDULE_OVERDUE', 'SCHEDULE_TODAY', 'CHECK_LEFT'];
+const ORDER: TodayCheckKind[] = [
+  'SCHEDULE_OVERDUE',
+  'HANDOFF_FOR_ME',
+  'SCHEDULE_TODAY',
+  'CHECK_LEFT',
+];
 const WEEKDAYS = '일월화수목금토';
 
 function isKnownKind(kind: string): kind is TodayCheckKind {

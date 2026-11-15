@@ -12,10 +12,11 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -50,6 +51,7 @@ NOTE_SUMMARIES = {
     "ADVICE": "피드백을 남김",
     # #750 영업 코치가 같은 호출에서 준 다음 통화에 물어볼 것
     "CALL_PREP": "통화 준비를 남김",
+    "HANDOFF": "전달 사항을 남김",
 }
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}
@@ -193,6 +195,9 @@ class RecentActivityItem:
 TODAY_SCHEDULE_TODAY = "SCHEDULE_TODAY"
 TODAY_SCHEDULE_OVERDUE = "SCHEDULE_OVERDUE"
 TODAY_CHECK_LEFT = "CHECK_LEFT"
+# #771: 지금 담당자에게 온 확인 전 전달 사항이 있는 회사.
+TODAY_HANDOFF_FOR_ME = "HANDOFF_FOR_ME"
+_KST = ZoneInfo("Asia/Seoul")
 
 
 @dataclass(frozen=True)
@@ -395,11 +400,42 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
     return items, len(items)
 
 
+def _handoff_row(
+    session: Session, population, staff_key: str, staff_names: Mapping[str, str]
+) -> TodayCheckRow:
+    """#771 나에게 온 확인 전 전달 사항. 회사마다 한 줄, 글은 싣지 않고 보낸 사람·날짜만."""
+    rows = session.execute(
+        select(Note.opp_id, Note.staff_key, Note.created_at, Customer.name)
+        .join(Opportunity, Note.opp_id == Opportunity.opp_id)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(
+            Note.kind == "HANDOFF",
+            Note.to_staff_key == staff_key,
+            Note.confirmed_at.is_(None),
+            Note.cancelled_at.is_(None),
+            Note.opp_id.in_(population),
+        )
+        .order_by(Note.created_at.desc(), Note.note_id)
+    ).all()
+    seen: dict[str, TodayCheckItem] = {}
+    for opp_id, sender, created_at, name in rows:
+        if opp_id in seen:
+            continue
+        day = created_at.astimezone(_KST).date()
+        note = f"{staff_names.get(sender, sender)} · {day.month}/{day.day}"
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note)
+    return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(seen), items=list(seen.values()))
+
+
 def build_today_checks(
     session: Session,
     schedule: list[ScheduleItem],
     today: date,
     check_left_opp_ids: Sequence[str] | None = None,
+    *,
+    population=None,
+    staff_key: str | None = None,
+    staff_names: Mapping[str, str] | None = None,
 ) -> list[TodayCheckRow]:
     """맨 위 "오늘 확인할 것" 줄 목록(#679). AI 없이 저장된 값으로만 만든다.
 
@@ -425,6 +461,8 @@ def build_today_checks(
         schedule_row(TODAY_SCHEDULE_TODAY, [row for row in schedule if row.due_at == today]),
         schedule_row(TODAY_SCHEDULE_OVERDUE, [row for row in schedule if row.overdue]),
     ]
+    if staff_key and population is not None:
+        rows.append(_handoff_row(session, population, staff_key, staff_names or {}))
     if check_left_opp_ids:
         names = session.execute(
             select(Opportunity.opp_id, Customer.name)
@@ -716,6 +754,7 @@ def build_dashboard(
     now: datetime,
     breakdown_source: BreakdownSource | None = None,
     check_left_opp_ids: Sequence[str] | None = None,
+    staff_names: Mapping[str, str] | None = None,
 ) -> DashboardResult:
     """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
 
@@ -746,7 +785,15 @@ def build_dashboard(
             recent_activity=_recent_activity(session, population, staff_key),
             as_of=now,
             breakdown=breakdown,
-            today_checks=build_today_checks(session, schedule, today, check_left_opp_ids),
+            today_checks=build_today_checks(
+                session,
+                schedule,
+                today,
+                check_left_opp_ids,
+                population=population,
+                staff_key=staff_key,
+                staff_names=staff_names,
+            ),
         ),
         has_virtual,
     )
