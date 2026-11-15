@@ -181,6 +181,21 @@ def restore(
     raise typer.Exit(code=run_restore(backup_file))
 
 
+@app.command("copy-without-records")
+def copy_without_records(
+    to: Path = typer.Option(
+        ..., "--to", help="만들 배포용 DB 파일. 이미 있으면 거부(덮어쓰지 않음)"
+    ),
+) -> None:
+    """배포용 DB를 만듭니다: 지금 DB를 복사하고 사본에서 시험 영업 기록·전송 기록만 지웁니다.
+
+    원본은 바꾸지 않습니다. 회사·조사 근거·후보 판단은 그대로 옮깁니다(계약 C8, #753).
+    """
+    from geosan.commands.copy_without_records import run_copy_without_records
+
+    raise typer.Exit(code=run_copy_without_records(to))
+
+
 @app.command("staff-add")
 def staff_add(
     staff_key: str = typer.Argument(
