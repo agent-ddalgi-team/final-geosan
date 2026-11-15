@@ -130,6 +130,7 @@ def test_copy_clears_only_records_and_leaves_the_source_untouched(recorded, tmp_
         assert after[key] == before[key], key
     assert "접촉 결과: 1건" in result.output
     assert "질문 목록의 담당자 답: 1건" in result.output
+    assert "담당자 계정: 0건" in result.output
     assert "다시 평가한 회사 2곳" in result.output
 
 

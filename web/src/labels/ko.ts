@@ -173,12 +173,13 @@ export const opinionArea = {
 /** 공통 틀 문구. */
 export const frame = {
   skipToContent: '본문으로 건너뛰기',
-  menuOpportunities: '영업 후보 목록',
+  // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
+  menuOpportunities: '신규 거래처 찾기',
   staffSelectLabel: '담당자',
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
-  pageTitleList: '영업 후보 목록',
+  pageTitleList: '신규 거래처 찾기',
   pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
@@ -186,6 +187,15 @@ export const frame = {
   pageTitleDashboard: '대시보드',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
+  /** 왼쪽 메뉴(#762): 관심 기업 화면과 메뉴 아이콘. 접으면 아이콘만 보인다. */
+  menuBookmarks: '관심 기업',
+  pageTitleBookmarks: '관심 기업',
+  menuIcons: { dashboard: '📊', opportunities: '🔍', bookmarks: '⭐', salesAnalysis: '📈' },
+  sidebarCollapse: '메뉴 접기',
+  sidebarExpand: '메뉴 펴기',
+  /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
+  currentStaff: (name: string) => `${name} 님`,
+  logout: '로그아웃',
 } as const;
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
@@ -276,7 +286,7 @@ export const dashboardTexts = {
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
   breakdownEmptyAction: '추천 목록 가기',
   loadError: '대시보드를 불러오지 못했습니다.',
-  goToList: '영업 후보 목록으로 이동',
+  goToList: '신규 거래처 찾기로 이동',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -1539,7 +1549,7 @@ export const salesAnalysisTexts = {
   unconfirmed: '확인 전',
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
-  emptyAction: '영업 후보 목록으로',
+  emptyAction: '신규 거래처 찾기로',
   /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
   breakdownTitle: '관심 기업 분포',
   breakdownNote:
@@ -1674,6 +1684,10 @@ export const detailReport = {
   progress: {
     title: '영업 단계',
     won: '성사',
+    /** 큰 단계 띠(#759): 거절로 끝난 회사의 마지막 칸. "거절 (가격)" — 이유가 없으면 "거절" */
+    bandLost: (reason: string | null) => `거절${reason ? ` (${reason})` : ''}`,
+    /** 큰 단계 띠를 읽어 주는 글: "큰 단계: 접촉" */
+    bandAria: (label: string) => (label ? `큰 단계: ${label}` : '큰 단계'),
     /** "지금 (11/12부터)" */
     now: (since: string | null) => (since ? `지금 (${since}부터)` : '지금'),
     noContact: '아직 접촉 기록이 없습니다',

@@ -27,7 +27,7 @@ export function filterName(filter: string): string {
 }
 
 export interface ListViewBarProps {
-  /** 관심 기업 보기인가(주소 `bookmarked=true`). */
+  /** 관심 기업 화면인가(#762: 왼쪽 메뉴의 따로 된 화면 `/bookmarks`). */
   bookmarked: boolean;
   /** 제외한 회사 보기인가(주소 `excluded=true`, #536). 관심 기업 보기와 함께 켜지지 않는다. */
   excluded: boolean;
@@ -35,9 +35,7 @@ export interface ListViewBarProps {
   opinion: OpinionFilter | null;
   /** 주소의 `filter=` 값(대시보드 칸 이름표). 없으면 null. */
   filter: string | null;
-  /** [관심 기업만 보기]를 눌렀을 때. 끄는 단추는 없다(위쪽 메뉴로 전체 목록에 돌아간다). */
-  onBookmarked: (on: boolean) => void;
-  /** [제외한 회사 보기]를 눌렀을 때. 끄는 단추는 없다(위쪽 메뉴로 전체 목록에 돌아간다). */
+  /** [제외한 회사 보기]를 눌렀을 때. 끄는 단추는 없다(왼쪽 메뉴로 전체 목록에 돌아간다). */
   onExcluded: (on: boolean) => void;
   onOpinion: (opinion: OpinionFilter | null) => void;
   onClearFilter: () => void;
@@ -63,7 +61,6 @@ export default function ListViewBar({
   excluded,
   opinion,
   filter,
-  onBookmarked,
   onExcluded,
   onOpinion,
   onClearFilter,
@@ -124,10 +121,8 @@ export default function ListViewBar({
           </span>
         </div>
       ) : (
+        // [관심 기업만 보기] 단추는 왼쪽 메뉴 "관심 기업"으로 옮겼다(#762, PM 2026-11-16).
         <div style={rowStyle}>
-          <Button onClick={() => onBookmarked(true)} data-testid="list-bookmarked-on">
-            {bookmarkList.showOnly}
-          </Button>
           <Button onClick={() => onExcluded(true)} data-testid="list-excluded-on">
             {excludedList.showOnly}
           </Button>

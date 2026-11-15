@@ -1000,6 +1000,17 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "currentStaff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentStaff"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 null"
+          },
           "distanceFilterPresetsKm": {
             "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
             "items": {
@@ -1103,6 +1114,42 @@
           "VISIT"
         ],
         "title": "ContactReach",
+        "type": "object"
+      },
+      "CurrentStaff": {
+        "description": "계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null.",
+        "properties": {
+          "canRecord": {
+            "title": "Canrecord",
+            "type": "boolean"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "setupRequired": {
+            "title": "Setuprequired",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "displayName",
+          "canRecord",
+          "setupRequired"
+        ],
+        "title": "CurrentStaff",
         "type": "object"
       },
       "DailyBrief": {
@@ -5476,6 +5523,33 @@
         "title": "ProcessRow",
         "type": "object"
       },
+      "ProfileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "maxLength": 200,
+            "title": "Currentpassword",
+            "type": "string"
+          },
+          "displayName": {
+            "maxLength": 60,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "newPassword": {
+            "maxLength": 200,
+            "title": "Newpassword",
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName",
+          "currentPassword",
+          "newPassword"
+        ],
+        "title": "ProfileRequest",
+        "type": "object"
+      },
       "ProposalHit": {
         "description": "(#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수.",
         "properties": {
@@ -7013,6 +7087,18 @@
           "password": {
             "title": "Password",
             "type": "string"
+          },
+          "staffKey": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffkey"
           }
         },
         "required": [
@@ -9211,6 +9297,60 @@
           }
         },
         "summary": "Create Session"
+      }
+    },
+    "/api/v1/session/logout": {
+      "post": {
+        "description": "지금 세션 행을 지우고 쿠키를 지운다. 세션이 없어도 200(두 번 눌러도 같음).",
+        "operationId": "logout_api_v1_session_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout"
+      }
+    },
+    "/api/v1/session/profile": {
+      "post": {
+        "description": "지금 로그인한 사람의 표시 이름·비밀번호를 정한다(첫 로그인 설정과 나중에 바꾸기).",
+        "operationId": "save_profile_api_v1_session_profile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Profile"
       }
     }
   }

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Header, Request, Response
 from pydantic import Field
 
 from geosan.api.check_points import check_left_opp_ids
-from geosan.api.deps import SessionDep, runtime_for
+from geosan.api.deps import SessionDep, current_account, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
@@ -264,6 +264,14 @@ for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter, check
         list_filters.append(_list_filter)
 
 
+def _my_staff_key(session, runtime, staff_key):
+    """최근 내 기록의 담당자. 계정 방식(#754)이면 로그인한 사람, 보기 전용이면 None."""
+    account = current_account(session)
+    if account is not None:
+        staff_key = account.staff_key
+    return staff_key if runtime.app_settings.is_recording_staff(staff_key) else None
+
+
 @router.get("/dashboard", response_model=DashboardEnvelope)
 def dashboard(
     session: SessionDep,
@@ -286,7 +294,7 @@ def dashboard(
     result = build_dashboard(
         session,
         dataset_kind=dataset_kind.value,
-        staff_key=staff_key if runtime.app_settings.is_recording_staff(staff_key) else None,
+        staff_key=_my_staff_key(session, runtime, staff_key),
         today=now.astimezone(KST).date(),
         now=now,
         breakdown_source=BreakdownSource(

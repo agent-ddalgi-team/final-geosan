@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SessionGate from '../SessionGate';
 import { ApiError, getConfigUi, SESSION_REQUIRED_EVENT } from '../../../api/client';
-import { createSession } from '../../../api/session';
+import { createSession, saveProfile } from '../../../api/session';
 import fixture from '../../../test/fixtures/config-ui.json';
 import type { ConfigUi, Envelope } from '../../../api/types';
 
@@ -9,7 +9,11 @@ vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
   getConfigUi: vi.fn(),
 }));
-vi.mock('../../../api/session', () => ({ createSession: vi.fn() }));
+vi.mock('../../../api/session', () => ({
+  createSession: vi.fn(),
+  saveProfile: vi.fn(),
+  STAFF_LOGIN_KIND: 'STAFF_LOGIN_REQUIRED',
+}));
 const config = vi.mocked(getConfigUi);
 const login = vi.mocked(createSession);
 const allowed = fixture as unknown as Envelope<ConfigUi>;
@@ -186,4 +190,119 @@ it('Given 서버 오류 When 접속 확인 실패 Then 성공으로 처리하지
   expect(screen.queryByText('보호된 업무 화면')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
   expect(await screen.findByText('보호된 업무 화면')).toBeInTheDocument();
+});
+
+// ---------- #754 계정 방식 ----------
+
+const accountDenied = () =>
+  new ApiError(401, {
+    message: '접속 확인이 필요합니다.',
+    nextAction: '아이디와 비밀번호를 입력해 주세요.',
+    ref: 'test',
+    kind: 'STAFF_LOGIN_REQUIRED',
+  });
+
+function withStaff(current: ConfigUi['currentStaff']): Envelope<ConfigUi> {
+  return { ...allowed, data: { ...allowed.data, currentStaff: current } };
+}
+
+it('Given 계정 방식 401 When 접속 화면 Then 아이디 칸이 보이고 아이디·비밀번호로 로그인한다', async () => {
+  config
+    .mockRejectedValueOnce(accountDenied())
+    .mockResolvedValueOnce(
+      withStaff({ key: 'sales-1', displayName: '영업 김', canRecord: true, setupRequired: false }),
+    );
+  login.mockResolvedValueOnce({ data: null, meta: {} });
+  renderGate();
+  const id = await screen.findByLabelText('아이디');
+  expect(screen.getByText('안내받은 아이디와 비밀번호를 입력해 주세요.')).toBeInTheDocument();
+  fireEvent.change(id, { target: { value: ' sales-1 ' } });
+  fireEvent.change(screen.getByLabelText('비밀번호'), { target: { value: 'test-only-pass' } });
+  fireEvent.click(screen.getByRole('button', { name: '접속' }));
+  expect(await screen.findByText('보호된 업무 화면')).toBeInTheDocument();
+  expect(login).toHaveBeenCalledWith('test-only-pass', 'sales-1');
+  expect(localStorage.length).toBe(0);
+});
+
+it('Given 공용 방식 401 When 접속 화면 Then 아이디 칸이 없다', async () => {
+  config.mockRejectedValueOnce(denied());
+  renderGate();
+  await screen.findByLabelText('비밀번호');
+  expect(screen.queryByLabelText('아이디')).not.toBeInTheDocument();
+});
+
+it('Given 첫 로그인(임시 비밀번호) When 이름·새 비밀번호를 정한다 Then 저장 뒤 업무 화면을 연다', async () => {
+  config
+    .mockResolvedValueOnce(
+      withStaff({ key: 'sales-1', displayName: null, canRecord: false, setupRequired: true }),
+    )
+    .mockResolvedValueOnce(
+      withStaff({ key: 'sales-1', displayName: '영업 김', canRecord: true, setupRequired: false }),
+    );
+  vi.mocked(saveProfile).mockResolvedValueOnce({
+    data: { key: 'sales-1', displayName: '영업 김', canRecord: true, setupRequired: false },
+    meta: {},
+  });
+  renderGate();
+  expect(await screen.findByTestId('profile-setup')).toBeInTheDocument();
+  expect(screen.queryByText('보호된 업무 화면')).not.toBeInTheDocument();
+  const save = screen.getByRole('button', { name: '저장하고 시작' });
+  fireEvent.change(screen.getByLabelText('화면에 보일 이름'), { target: { value: ' 영업 김 ' } });
+  fireEvent.change(screen.getByLabelText('받은 임시 비밀번호'), { target: { value: 'temp-pass' } });
+  fireEvent.change(screen.getByLabelText('새 비밀번호 (8자 이상)'), {
+    target: { value: 'new-pass-1' },
+  });
+  fireEvent.change(screen.getByLabelText('새 비밀번호 한 번 더'), {
+    target: { value: 'new-pass-2' },
+  });
+  expect(screen.getByText('새 비밀번호 두 칸이 다릅니다.')).toBeInTheDocument();
+  expect(save).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('새 비밀번호 한 번 더'), {
+    target: { value: 'new-pass-1' },
+  });
+  fireEvent.click(save);
+  expect(await screen.findByText('보호된 업무 화면')).toBeInTheDocument();
+  expect(saveProfile).toHaveBeenCalledWith({
+    displayName: '영업 김',
+    currentPassword: 'temp-pass',
+    newPassword: 'new-pass-1',
+  });
+});
+
+it('Given 첫 로그인 When 서버가 이름을 거부 Then 이유를 보이고 업무 화면을 열지 않는다', async () => {
+  config.mockResolvedValueOnce(
+    withStaff({ key: 'sales-1', displayName: null, canRecord: false, setupRequired: true }),
+  );
+  vi.mocked(saveProfile).mockRejectedValueOnce(
+    new ApiError(400, {
+      message: '이름에 전화번호·이메일은 넣을 수 없습니다.',
+      nextAction: '이름이나 부르는 말만 적어 주세요. 예: 영업 김',
+      ref: 'test',
+    }),
+  );
+  renderGate();
+  await screen.findByTestId('profile-setup');
+  fireEvent.change(screen.getByLabelText('화면에 보일 이름'), { target: { value: '김 010' } });
+  fireEvent.change(screen.getByLabelText('받은 임시 비밀번호'), { target: { value: 'temp-pass' } });
+  fireEvent.change(screen.getByLabelText('새 비밀번호 (8자 이상)'), {
+    target: { value: 'new-pass-1' },
+  });
+  fireEvent.change(screen.getByLabelText('새 비밀번호 한 번 더'), {
+    target: { value: 'new-pass-1' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '저장하고 시작' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('전화번호·이메일');
+  expect(screen.queryByText('보호된 업무 화면')).not.toBeInTheDocument();
+});
+
+it('Given 계정 방식 사용 중 When 세션 만료(kind STAFF_LOGIN_REQUIRED) Then 아이디 칸이 있는 접속 화면', async () => {
+  config.mockResolvedValueOnce(allowed);
+  renderGate();
+  await screen.findByText('보호된 업무 화면');
+  act(() =>
+    window.dispatchEvent(
+      new CustomEvent(SESSION_REQUIRED_EVENT, { detail: { kind: 'STAFF_LOGIN_REQUIRED' } }),
+    ),
+  );
+  expect(await screen.findByLabelText('아이디')).toBeInTheDocument();
 });

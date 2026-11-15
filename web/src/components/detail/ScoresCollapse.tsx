@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Statistic } from 'antd';
 import type { ScoreItemView, Scores } from '../../api/types';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
 import {
   datasetKindLabels,
   detailReport,
@@ -181,8 +181,8 @@ export default function ScoresCollapse({
   const summary = scoreSummaryText(scores, scoreDisplay);
   const sectionStyle = {
     background: colors.bgContainer,
-    border: `1px solid ${colors.borderSecondary}`,
-    borderRadius: 8,
+    border: `1px solid ${detailTheme.border}`,
+    borderRadius: detailTheme.radius,
     padding: spacing.cardPadding,
     display: 'grid',
     gap: 12,
