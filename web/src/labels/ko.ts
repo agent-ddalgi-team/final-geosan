@@ -2087,6 +2087,24 @@ export const assistantTexts = {
   dailyMark: 'AI가 쓴 글 · 확인 필요',
   dailyLoading: 'AI가 오늘 정리를 쓰는 중입니다…',
   dailyFailed: '오늘 정리를 받지 못했습니다.',
+  /** 신규 거래처 찾기(#774)에서는 아직 연락 안 한 후보 표도 함께 보낸다. */
+  askPlaceholderList: '예: 아산 아연도금 적합도 상·중 가운데 가까운 곳은?',
+  askHintList:
+    '단계·접촉 날짜·고른 답과, 아직 연락 안 한 후보의 지역·적합도·거리만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
+  /** 긴 답은 앞 몇 줄만 보이고 [더 보기]로 편다(#774). */
+  answerMore: '더 보기',
+  answerLess: '접기',
+  /** 답 아래 할 일 제안(#774). AI가 저장하지 않고 담당자가 [넣기]를 눌러야 일정에 들어간다. */
+  suggestionsTitle: '할 일 제안',
+  suggestionsHint: '[넣기]를 누르면 그 회사 다음 일정으로 저장됩니다.',
+  putIn: '넣기',
+  putDone: '넣었어요',
+  putSame: '이미 같은 일정이 있어요',
+  /** "11/20(금) 통화 → 11/18(화) 방문으로 바꿀까요?" (to에 붙는 조사는 화면이 고른다) */
+  putConfirm: (from: string, toWithParticle: string) => `${from} → ${toWithParticle} 바꿀까요?`,
+  putChange: '바꾸기',
+  putKeep: '그대로 두기',
+  putFailed: '일정을 넣지 못했습니다.',
 } as const;
 
 /**

@@ -14,7 +14,7 @@ import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import AssistantDaily from '../components/assistant/AssistantDaily';
-import { assistantConfigOf } from '../api/assistant';
+import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
 import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -88,6 +88,12 @@ export default function DashboardPage() {
   }, [meta, setBannerMeta]);
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
+
+  // #774: 오른쪽 영업 코치 칸에서 [넣기]로 일정이 바뀌면 오늘 확인할 것·달력을 다시 읽는다.
+  useEffect(() => {
+    window.addEventListener(SCHEDULE_CHANGED_EVENT, retry);
+    return () => window.removeEventListener(SCHEDULE_CHANGED_EVENT, retry);
+  }, [retry]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();

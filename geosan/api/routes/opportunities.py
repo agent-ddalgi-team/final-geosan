@@ -792,6 +792,23 @@ def _contact_placements(
     return placements
 
 
+def list_evaluations(session: Session, dataset_kind: str):
+    """목록 대상 평가: 마지막 전체 회차 + 그 뒤 모은 평가. (마지막 전체 회차, 평가 조회)를 준다.
+
+    목록과 영업 코치의 "아직 연락 안 한 후보" 표(#774)가 같은 대상을 쓰도록 한 곳에 둔다.
+    """
+    batch = latest_full_batch(session, dataset_kind=dataset_kind)
+    full_batch_id = batch.batch_id if batch else None
+    added_eval_ids = collected_evaluations(session, dataset_kind, full_batch_id)
+    query = select(EvaluationRun).where(
+        or_(
+            EvaluationRun.batch_id == full_batch_id if batch else False,
+            EvaluationRun.eval_id.in_(added_eval_ids),
+        )
+    )
+    return batch, query
+
+
 @router.get(
     "/opportunities", response_model=OpportunityListEnvelope, response_model_exclude_unset=True
 )
@@ -854,16 +871,9 @@ def list_opportunities(
     # 실시간 보완 결과와 그 결과로 정한 순서·거리 조건을 캐시에 남기지 않는다.
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
-    batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
+    batch, query = list_evaluations(session, dataset_kind.value)
     full_batch_id = batch.batch_id if batch else None
-    added_eval_ids = collected_evaluations(session, dataset_kind.value, full_batch_id)
-    query = select(EvaluationRun).where(
-        or_(
-            EvaluationRun.batch_id == full_batch_id if batch else False,
-            EvaluationRun.eval_id.in_(added_eval_ids),
-        )
-    )
     all_population = select(query.subquery().c.opp_id)
     # 목록 머리 "관심 기업 ○곳"(#675): 다른 거르기 조건과 무관하게 목록 대상 안의 관심 기업 수.
     bookmarked_count = session.scalar(
