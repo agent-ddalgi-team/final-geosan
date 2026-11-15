@@ -69,14 +69,15 @@ def _records(tmp_path: Path, edit) -> Path:
 
 def test_demo_example_files_have_no_contacts():
     """Given 시연용 예시 파일 전부 / When 연락처 검사 / Then 0건."""
-    assert len(DEMO_CASES) == 5
+    # (바뀜 2026-11-15 #765 — PM 결정) 가상 사례 5곳 → 17곳(A정밀은 examples/ 바로 아래)
+    assert len(DEMO_CASES) == 17
     for path in DEMO_FILES:
         document = load_document(path)
         assert scan_contacts(document.data, document=document) == [], path.name
 
 
 def test_demo_cases_are_virtual_and_named_as_virtual():
-    """Given 새 가상 사례 5곳 / When 읽기 / Then 가상 묶음·가상 이름, 사례 검사 통과."""
+    """Given 새 가상 사례 17곳 / When 읽기 / Then 가상 묶음·가상 이름, 사례 검사 통과."""
     names = []
     for path in DEMO_CASES:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -87,7 +88,7 @@ def test_demo_cases_are_virtual_and_named_as_virtual():
         assert "expected" not in data
         assert check_case_file(path).errors == [], path.name
         names.append(data["customer"]["name"])
-    assert len(set(names)) == 5
+    assert len(set(names)) == 17
 
 
 def test_demo_files_do_not_mention_real_companies():
@@ -149,7 +150,7 @@ def test_schema_file_lists_demo_mark():
 
 
 def test_example_records_file_matches_cases_and_questions():
-    """Given 예시 가상 기록 파일 / When 검사 / Then 가상 사례 6곳과 같고 답 id가 유효."""
+    """Given 예시 가상 기록 파일 / When 검사 / Then 가상 사례 18곳과 같고 답 id가 유효(#765)."""
     check = check_demo_records_file(DEFAULT_DEMO_RECORDS_PATH)
     assert check.errors == [] and check.records is not None
     case_ids = {json.loads(path.read_text("utf-8"))["caseId"] for path in CASE_FILES}
@@ -249,8 +250,9 @@ def test_seed_rolls_back_company_with_wrong_answer(demo_db, tmp_path):
     assert code == 1 and "demo-b-metal" in out and "앞 회사 1곳은 저장됨" in out
     assert outcome_count(demo_db) == 3  # A정밀 3건만. B금속의 앞 접촉 2건은 남지 않는다.
     code, out = run("seed-demo-records")
-    assert code == 0 and "넣은 회사 5곳(성사 2·거절 3)" in out and "건너뛴 회사 1곳" in out
-    assert outcome_count(demo_db) == 15
+    # (바뀜 2026-11-15 #765 — PM 결정: 시연 DB 6곳 → 18곳) A정밀을 건너뛰고 17곳: 성사 3·거절 5.
+    assert code == 0 and "넣은 회사 17곳(성사 3·거절 5)" in out and "건너뛴 회사 1곳" in out
+    assert outcome_count(demo_db) == 41
 
 
 def test_seed_goes_through_the_normal_save_path(demo_db):
@@ -260,7 +262,8 @@ def test_seed_goes_through_the_normal_save_path(demo_db):
     connection = sqlite3.connect(str(demo_db))
     try:
         count = lambda sql: connection.execute(sql).fetchone()[0]  # noqa: E731
-        assert count("SELECT count(DISTINCT opp_id) FROM rec_bookmark WHERE active = 1") == 6
+        # (#765) 접촉을 남긴 18곳 모두 관심으로 켜진다.
+        assert count("SELECT count(DISTINCT opp_id) FROM rec_bookmark WHERE active = 1") == 18
         assert count("SELECT count(*) FROM rec_outcome_answer") > 40
         assert count("SELECT count(*) FROM rec_outcome WHERE is_virtual = 0") == 0
         assert count("SELECT count(*) FROM rec_outcome WHERE attempted_at IS NULL") == 0
@@ -271,7 +274,13 @@ def test_seed_goes_through_the_normal_save_path(demo_db):
         lost = connection.execute(
             "SELECT lost_reason_code FROM rec_outcome WHERE status = 'LOST' ORDER BY 1"
         ).fetchall()
-        assert [row[0] for row in lost] == ["INCUMBENT_SUPPLIER", "LEAD_TIME", "PRICE"]
+        assert [row[0] for row in lost] == [
+            "INCUMBENT_SUPPLIER",
+            "LEAD_TIME",
+            "LEAD_TIME",
+            "PRICE",
+            "PRICE",
+        ]
     finally:
         connection.close()
 
