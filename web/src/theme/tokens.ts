@@ -26,7 +26,6 @@ export const sidebarTheme = {
   group: '#8A9099',
   activeBg: '#2C2F34',
   activeBorder: '#3A3E44',
-  divider: '#2E3136',
 } as const;
 
 /** 상태 색 6가지 조합(배경 연함 + 글자 진함, 대비 4.5:1 이상). 색은 보조 신호이고 글자가 항상 함께 있다. */
