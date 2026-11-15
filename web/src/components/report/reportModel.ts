@@ -4,6 +4,7 @@
 // 거래 관계 메모(relationNote), 담당자 이름·키(by·owner). 새 값을 실으려면 이 파일에 칸을 더해야만 화면에 나온다.
 // 예외 하나(#742): 메모 종류 가운데 "남긴 피드백"(records.advice — 영업 코치 피드백을 담당자가 고른 줄)만
 // "영업 방향"에 싣는다. 글과 날짜만 싣고 담당자 키는 싣지 않는다.
+// (#750) 같은 칸에 가장 최근 다음 통화 준비(records.callPrep — 영업 코치가 쓴 물어볼 것)도 싣는다. 줄과 날짜만.
 import type {
   ContactCount,
   FitLevel,
@@ -102,6 +103,8 @@ export interface ReportModel {
   };
   /** (#742) 영업 방향: 남긴 피드백(최근 것부터). 글과 날짜만. */
   direction: { text: string; at: string | null }[];
+  /** (#750) 가장 최근 다음 통화 준비. 없으면 null. */
+  nextCall: { lines: string[]; at: string | null } | null;
 }
 
 function httpUrl(value: string | null | undefined): string | null {
@@ -288,5 +291,9 @@ export function reportModelOf(
       text: line.text,
       at: formatDate(line.at),
     })),
+    nextCall:
+      records.callPrep && records.callPrep.lines.length > 0
+        ? { lines: records.callPrep.lines, at: formatDate(records.callPrep.at) }
+        : null,
   };
 }

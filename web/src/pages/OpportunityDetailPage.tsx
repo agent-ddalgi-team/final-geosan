@@ -11,6 +11,7 @@ import { Button } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError, getOpportunityDetail, getSalesQuestions } from '../api/client';
 import type {
+  CallPrepNote,
   ContactCount,
   ContactMethod,
   Meta,
@@ -113,6 +114,7 @@ export default function OpportunityDetailPage() {
     step: SalesStepView | null;
     lastContactAt: string | null;
     opinion: OpinionRecord | null;
+    callPrep: CallPrepNote | null;
   } | null>(null);
   const salesStep = fresh && fresh.data === data ? fresh.step : (data?.records.salesStep ?? null);
   const onSalesStepChanged = () => {
@@ -125,6 +127,7 @@ export default function OpportunityDetailPage() {
           step: envelope.data.records.salesStep ?? null,
           lastContactAt: envelope.data.records.lastContactAt ?? null,
           opinion: envelope.data.records.opinion ?? null,
+          callPrep: envelope.data.records.callPrep ?? null,
         }),
       )
       .catch(() => {
@@ -407,8 +410,11 @@ export default function OpportunityDetailPage() {
             )}
           </DetailSection>
           <DetailSection id="detail-records" title={recordsArea.title}>
-            {/* [통화 준비 💰](#680): 전화 기록을 적기 바로 전에 누른다. 스위치가 꺼져 있으면 보이지 않는다. */}
-            <CallPrep key={`${oppId}:call-prep`} oppId={oppId} />
+            {/* 통화 전 칸(#750): 지난 통화 뒤 코치가 정리한 다음 통화에 물어볼 것. AI를 부르지 않는다. */}
+            <CallPrep
+              key={`${oppId}:call-prep`}
+              prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
+            />
             <RecordsArea
               key={`${oppId}:records`}
               oppId={oppId}

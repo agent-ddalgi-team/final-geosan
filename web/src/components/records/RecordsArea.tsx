@@ -9,7 +9,7 @@
 // 영업 코치(#742, PM 결정 2026-11-14): 영업 기록 스위치가 켜져 있고 결과가 "연결됨"이면 꼬리 질문 대신
 // "확인사항"과 메모 칸, [보내기 💰]가 보인다. AI가 정리한 것을 확인 화면에서 보고 [이대로 저장]을 눌러야
 // 저장되고(기존 /outcomes, 답마다 누가 채웠는지), [고치기]는 AI 답이 골라진 지금 양식을 연다.
-// 고른 피드백 줄은 저장 뒤 /notes kind ADVICE로 남는다. [AI가 메모 읽기]는 코치로 합쳐 이 칸에서 뺐다.
+// 코치 피드백 줄은 저장 뒤 /notes kind ADVICE로, 다음 통화에 물어볼 것은 kind CALL_PREP 한 행으로 남는다(#750). [AI가 메모 읽기]는 코치로 합쳐 이 칸에서 뺐다.
 import { useEffect, useState } from 'react';
 import { Button, Input, Radio, Typography } from 'antd';
 import { assistantConfigOf } from '../../api/assistant';
@@ -236,6 +236,8 @@ export default function RecordsArea({
   const [coachEditing, setCoachEditing] = useState(false);
   const [aiFilled, setAiFilled] = useState<Record<string, string[]> | null>(null);
   const [adviceKeep, setAdviceKeep] = useState<string[]>([]);
+  // (#750) [고치기]로 양식을 연 뒤 저장해도 코치가 준 다음 통화 준비를 남긴다.
+  const [nextCallKeep, setNextCallKeep] = useState<string[]>([]);
   // 제외한 회사에 [이대로 저장]을 눌러 "영업 대상으로 되돌릴까요?"를 묻는 동안 기다리는 코치 저장(#697).
   const [pendingCoach, setPendingCoach] = useState<CoachSelection | null>(null);
   // #607 꼬리 질문: 이번 접촉에서 고른 답과 한 줄 메모. 저장하면 비운다.
@@ -429,6 +431,7 @@ export default function RecordsArea({
     setCoachEditing(false);
     setAiFilled(null);
     setAdviceKeep([]);
+    setNextCallKeep([]);
     setPendingCoach(null);
   }
 
@@ -530,12 +533,17 @@ export default function RecordsArea({
       if (closing) {
         setSavedLostReason(closing.lostReasonCode === 'OTHER' ? memo : '');
       }
-      await afterContactSaved(method, choiceAnswers.length > 0, adviceKeep);
+      await afterContactSaved(method, choiceAnswers.length > 0, adviceKeep, nextCallKeep);
     }
   }
 
-  /** 접촉 저장 뒤 칸을 비우고, 고른 피드백을 남기고(#742), 상세에 알린다. */
-  async function afterContactSaved(saved: ContactMethod, confirmed: boolean, advice: string[]) {
+  /** 접촉 저장 뒤 칸을 비우고, 코치 피드백(#742)과 다음 통화 준비(#750)를 남기고, 상세에 알린다. */
+  async function afterContactSaved(
+    saved: ContactMethod,
+    confirmed: boolean,
+    advice: string[],
+    nextCall: string[],
+  ) {
     setAskExcluded(false);
     onContactRecorded?.(saved);
     setResult(null);
@@ -548,12 +556,13 @@ export default function RecordsArea({
     setDeclineChoice(null);
     clearCoach();
     if (advice.length > 0) await keepAdvice(advice);
+    if (nextCall.length > 0) await keepCallPrep(nextCall);
     // 공정·산업을 확정했으면 점수·검토사항도 바뀌므로 상세 전체를 다시 불러오게 알린다(#652).
     if (confirmed && onCompanyConfirmed) onCompanyConfirmed();
     else onSalesStepChanged?.();
   }
 
-  /** [보고서에 남기기]로 고른 피드백 줄을 메모 종류 ADVICE로 남긴다(#742). 실패하면 한 줄로 알린다. */
+  /** 코치 피드백 줄을 메모 종류 ADVICE로 남긴다(#742, #750부터 모두). 실패하면 한 줄로 알린다. */
   async function keepAdvice(lines: string[]) {
     if (!staffKey) return;
     try {
@@ -564,6 +573,19 @@ export default function RecordsArea({
     } catch (caught) {
       const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
       setMessage({ block: 'contact', text: `${coachTexts.adviceFailed} (${detail})`, error: true });
+    }
+  }
+
+  /** (#750) 다음 통화에 물어볼 것을 메모 종류 CALL_PREP 한 행(줄바꿈으로 이음)으로 남긴다. */
+  async function keepCallPrep(lines: string[]) {
+    if (!staffKey) return;
+    try {
+      const text = lines.join('\n');
+      await postNote(oppId, { text, kind: 'CALL_PREP', ...(evalId ? { evalId } : {}) }, staffKey);
+      onRecorded?.();
+    } catch (caught) {
+      const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
+      setMessage({ block: 'contact', text: `${coachTexts.prepFailed} (${detail})`, error: true });
     }
   }
 
@@ -654,7 +676,7 @@ export default function RecordsArea({
       const confirmed = questions.questions.some(
         (question) => question.choices && (selection.many[question.questionId] ?? []).length > 0,
       );
-      await afterContactSaved(method, confirmed, selection.advice);
+      await afterContactSaved(method, confirmed, selection.advice, selection.nextCall);
     }
   }
 
@@ -673,6 +695,7 @@ export default function RecordsArea({
     setNextDate(selection.nextDate);
     setAiFilled(selection.aiFilled);
     setAdviceKeep(selection.advice);
+    setNextCallKeep(selection.nextCall);
     setCoachResult(null);
     setCoachEditing(true);
   }

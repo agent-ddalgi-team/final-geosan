@@ -167,6 +167,7 @@ const RESULT: CoachResult = {
   ],
   nextSchedule: { actionId: 'RECONTACT', date: LATER },
   feedback: ['10/28에 물어본 납기에 아직 답을 못 줬어요.', '샘플 요청이 있었는지 확인해 보세요.'],
+  nextCall: ['외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?'],
   summary: '외주 중, 금요일 다시 연락',
   missingRequired: ['SWITCH_INTENT'],
   stepBefore: 'REACHED',
@@ -322,6 +323,16 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     );
     expect(within(review).getByTestId('coach-missing-SWITCH_INTENT')).toBeInTheDocument();
     expect(within(review).getAllByTestId('coach-feedback-line')).toHaveLength(2);
+    // (#750) 피드백은 고르지 않는다. 다음 통화에 물어볼 것이 같은 화면에 보인다.
+    expect(within(review).queryByRole('button', { name: /보고서에 남기기/ })).toBeNull();
+    expect(within(review).getByTestId('coach-feedback-saved')).toHaveTextContent(
+      coachTexts.feedbackSaved,
+    );
+    expect(
+      within(review)
+        .getAllByTestId('coach-next-call-line')
+        .map((item) => item.textContent),
+    ).toEqual(['외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?']);
     // (#748) 저장하면 갈 단계: 연결됨 + "외주 줌" → 수요 확인.
     expect(within(review).getByTestId('coach-step')).toHaveTextContent(
       '단계: 연결됨 → 수요 확인 (저장하면)',
@@ -333,7 +344,7 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(screen.getByTestId('records-contact-memo')).toBeDisabled();
   });
 
-  it('[이대로 저장]은 기존 접촉 저장 창구에 답마다 누가 채웠는지 싣고, 고른 피드백만 남긴다', async () => {
+  it('[이대로 저장]은 답마다 누가 채웠는지 싣고, 피드백 모두와 다음 통화 준비를 남긴다 (#750)', async () => {
     const user = userEvent.setup();
     const onRecorded = vi.fn();
     renderArea(true, { onRecorded });
@@ -342,10 +353,8 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     await user.click(
       within(within(review).getByTestId('coach-missing-SWITCH_INTENT')).getByText('있음'),
     );
-    await user.click(within(review).getAllByTestId('coach-feedback-keep')[0]);
-    await user.click(within(review).getAllByTestId('coach-feedback-skip')[1]);
     await user.click(within(review).getByTestId('coach-save'));
-    await waitFor(() => expect(postNote).toHaveBeenCalled());
+    await waitFor(() => expect(postNote).toHaveBeenCalledTimes(3));
     const body = vi.mocked(postOutcome).mock.calls[0][1];
     expect(body).toMatchObject({
       status: 'IN_PROGRESS',
@@ -362,12 +371,11 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
       { questionId: 'SWITCH_INTENT', answerId: 'YES', filledBy: 'STAFF' },
       { questionId: 'NEXT_ACTION', answerId: 'RECONTACT', filledBy: 'AI_CONFIRMED' },
     ]);
-    expect(postNote).toHaveBeenCalledTimes(1);
-    expect(postNote).toHaveBeenCalledWith(
-      'opp-1',
+    expect(vi.mocked(postNote).mock.calls.map((call) => call[1])).toEqual([
       { text: '10/28에 물어본 납기에 아직 답을 못 줬어요.', kind: 'ADVICE' },
-      'park-lee',
-    );
+      { text: '샘플 요청이 있었는지 확인해 보세요.', kind: 'ADVICE' },
+      { text: '외주처는 어디인가요?\n방문 날짜를 정할 수 있을까요?', kind: 'CALL_PREP' },
+    ]);
     await waitFor(() => expect(screen.queryByTestId('coach-review')).not.toBeInTheDocument());
     expect(onRecorded).toHaveBeenCalled();
   });
@@ -394,6 +402,34 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
       answerId: 'RECONTACT',
       filledBy: 'AI_CONFIRMED',
     });
+    // (#750) [고치기] 뒤 저장해도 코치가 준 피드백과 다음 통화 준비가 남는다.
+    await waitFor(() =>
+      expect(vi.mocked(postNote).mock.calls.map((call) => call[1].kind)).toEqual([
+        'ADVICE',
+        'ADVICE',
+        'CALL_PREP',
+      ]),
+    );
+  });
+
+  it('(#750) 다음 통화에 물어볼 것이 없으면 통화 준비는 남기지 않는다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postCoach).mockResolvedValueOnce({
+      data: { ...RESULT, feedback: [], nextCall: [] },
+      meta: {},
+    });
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).getByTestId('coach-next-call')).toHaveTextContent(
+      coachTexts.nextCallNone,
+    );
+    await user.click(
+      within(within(review).getByTestId('coach-missing-SWITCH_INTENT')).getByText('있음'),
+    );
+    await user.click(within(review).getByTestId('coach-save'));
+    await waitFor(() => expect(postOutcome).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByTestId('coach-review')).not.toBeInTheDocument());
+    expect(postNote).not.toHaveBeenCalled();
   });
 
   it('스위치가 꺼져 있으면 코치는 보이지 않고 지금 양식 그대로다(외부 AI를 부르지 않는다)', async () => {

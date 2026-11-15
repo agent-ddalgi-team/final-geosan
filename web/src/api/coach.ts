@@ -22,6 +22,8 @@ export interface CoachResult {
   nextSchedule: { actionId: string; date: string | null } | null;
   /** 지난 기록을 짚는 피드백 0~3줄. */
   feedback: string[];
+  /** (#750) 같은 호출에서 받은 다음 통화에 물어볼 것 0~3줄. [이대로 저장] 때 CALL_PREP로 남긴다. */
+  nextCall: string[];
   summary: string;
   /** 규칙으로 계산한 빠진 필수 질문(AI 아님). 질문 파일 순서. */
   missingRequired: string[];
