@@ -192,8 +192,9 @@ def create_ingest_router(run_batch: Callable[[str], None] | None) -> APIRouter:
         staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
     ):
         with contextmanager(get_session)(request) as session:
+            # 계정 방식(#754)이면 로그인한 사람으로 정한다. 공용 방식이면 지금처럼 고른 담당자.
+            staff_key = require_staff(session, staff_key)
             if run_batch is None:
-                require_staff(session, staff_key)
                 raise AppError(
                     "후보 찾기 실행 연결이 아직 준비되지 않았습니다.",
                     "연결이 준비된 뒤 다시 시도해 주세요.",

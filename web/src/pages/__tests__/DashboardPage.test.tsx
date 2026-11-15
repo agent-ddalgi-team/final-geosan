@@ -117,7 +117,7 @@ describe('DashboardPage', () => {
       renderPage();
       await screen.findByTestId('dashboard-counts');
       const bookmarkCells: Array<[string, string]> = [
-        ['관심 기업 12곳', '/opportunities?bookmarked=true'],
+        ['관심 기업 12곳', '/bookmarks'],
         ['의견 전 4곳', '/opportunities?filter=NO_OPINION'],
         ['검토 중 2곳', '/opportunities?filter=NEED_CHECK'],
       ];
@@ -152,7 +152,7 @@ describe('DashboardPage', () => {
     });
 
     it.each([
-      ['BOOKMARKED', '/opportunities?bookmarked=true'],
+      ['BOOKMARKED', '/bookmarks'],
       ['NOT_CONTACTED', '/opportunities?filter=NOT_CONTACTED'],
       ['SCHEDULE_DUE', '/opportunities?filter=SCHEDULE_DUE'],
     ])('%s 칸을 누르면 %s 로 이동한다', async (key, url) => {
