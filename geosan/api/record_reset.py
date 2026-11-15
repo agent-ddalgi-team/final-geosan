@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import runtime_for
-from geosan.api.models import AccessSession
+from geosan.api.models import AccessSession, StaffAccount
 from geosan.config.errors import AppError
 from geosan.evidence.models import Evidence
 from geosan.evidence.transfer import TransferLog
@@ -44,6 +44,8 @@ CLEARED = (
     ("거래 관계 입력 이력", RelationHistory),
     ("외부 전송 기록(AI 사용액)", TransferLog),
     ("접속 기록", AccessSession),
+    # #754: 담당자 계정은 환경마다 따로 만든다(이 PC의 시험 계정을 배포 서버로 옮기지 않음).
+    ("담당자 계정", StaffAccount),
 )
 
 

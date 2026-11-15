@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ConfigProvider, Select, Typography } from 'antd';
+import { Button, ConfigProvider, Select, Typography } from 'antd';
 import { getConfigUi } from '../../api/client';
+import { logout } from '../../api/session';
 import type { ConfigUi, Meta } from '../../api/types';
 import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
@@ -54,9 +55,12 @@ export default function AppFrame({ title, children }: AppFrameProps) {
   }, []);
 
   const staff = config?.staff ?? [];
-  // 기억해 둔 키가 설정 목록에 없으면 고른 것으로 치지 않는다.
-  const staffKey =
+  // 계정 방식(#754)이면 로그인한 사람이 담당자다. 공용 방식이면 고른 담당자(기억해 둔 키가
+  // 설정 목록에 없으면 고른 것으로 치지 않는다).
+  const currentStaff = config?.currentStaff ?? null;
+  const pickedKey =
     rawStaffKey && staff.some((entry) => entry.key === rawStaffKey) ? rawStaffKey : null;
+  const staffKey = currentStaff ? currentStaff.key : pickedKey;
 
   const setStaffKey = useCallback((key: string | null) => {
     setRawStaffKey(key);
@@ -71,11 +75,13 @@ export default function AppFrame({ title, children }: AppFrameProps) {
       config,
       staffKey,
       setStaffKey,
-      canRecord: staffKey !== null && staffKey !== VIEWER_KEY,
+      canRecord: currentStaff
+        ? currentStaff.canRecord
+        : staffKey !== null && staffKey !== VIEWER_KEY,
       setBannerMeta: setPageMeta,
       setPageTitle,
     }),
-    [config, staffKey, setStaffKey],
+    [config, staffKey, setStaffKey, currentStaff],
   );
 
   return (
@@ -151,19 +157,36 @@ export default function AppFrame({ title, children }: AppFrameProps) {
                 </li>
               </ul>
             </nav>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label htmlFor="staff-select">{frame.staffSelectLabel}</label>
-              <Select
-                id="staff-select"
-                data-testid="staff-select"
-                style={{ minWidth: 160 }}
-                placeholder={frame.staffPlaceholder}
-                value={staffKey ?? undefined}
-                onChange={(key: string) => setStaffKey(key)}
-                options={staff.map((entry) => ({ value: entry.key, label: entry.displayName }))}
-                disabled={staff.length === 0}
-              />
-            </div>
+            {currentStaff ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span data-testid="current-staff">
+                  {frame.currentStaff(currentStaff.displayName ?? currentStaff.key)}
+                </span>
+                <Button
+                  size="small"
+                  data-testid="logout-button"
+                  onClick={() => {
+                    void logout().finally(() => window.location.reload());
+                  }}
+                >
+                  {frame.logout}
+                </Button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label htmlFor="staff-select">{frame.staffSelectLabel}</label>
+                <Select
+                  id="staff-select"
+                  data-testid="staff-select"
+                  style={{ minWidth: 160 }}
+                  placeholder={frame.staffPlaceholder}
+                  value={staffKey ?? undefined}
+                  onChange={(key: string) => setStaffKey(key)}
+                  options={staff.map((entry) => ({ value: entry.key, label: entry.displayName }))}
+                  disabled={staff.length === 0}
+                />
+              </div>
+            )}
           </div>
           {configFailed ? (
             <Typography.Text type="danger" data-testid="staff-load-failed">
