@@ -181,6 +181,52 @@ def restore(
     raise typer.Exit(code=run_restore(backup_file))
 
 
+@app.command("staff-add")
+def staff_add(
+    staff_key: str = typer.Argument(
+        ..., help="아이디. 영어 소문자·숫자·하이픈 32자 이내, 예: sales-1"
+    ),
+    viewer: bool = typer.Option(False, "--viewer", help="보기 전용 계정(기록 단추가 막힘)"),
+) -> None:
+    """담당자 계정을 만들고 임시 비밀번호를 한 번 보여 줍니다(#754, 계약 C8).
+
+    담당자가 첫 로그인 때 화면에 보일 이름과 새 비밀번호를 정합니다.
+    """
+    from geosan.commands.staff import run_staff_add
+
+    raise typer.Exit(code=run_staff_add(staff_key, viewer))
+
+
+@app.command("staff-reset")
+def staff_reset(staff_key: str = typer.Argument(..., help="비밀번호를 잊은 계정의 아이디")) -> None:
+    """새 임시 비밀번호를 만들고 그 계정의 접속을 끊습니다(이름은 그대로, #754)."""
+    from geosan.commands.staff import run_staff_reset
+
+    raise typer.Exit(code=run_staff_reset(staff_key))
+
+
+@app.command("staff-list")
+def staff_list() -> None:
+    """담당자 계정 목록: 아이디·역할·이름·첫 로그인 설정 여부·막힘(#754).
+
+    비밀번호는 보이지 않습니다.
+    """
+    from geosan.commands.staff import run_staff_list
+
+    raise typer.Exit(code=run_staff_list())
+
+
+@app.command("staff-disable")
+def staff_disable(
+    staff_key: str = typer.Argument(..., help="막을(또는 다시 열) 계정의 아이디"),
+    enable: bool = typer.Option(False, "--enable", help="막은 계정을 다시 엽니다"),
+) -> None:
+    """계정을 막거나(접속도 끊음) 다시 엽니다. 지난 기록의 담당자 값은 그대로입니다(#754)."""
+    from geosan.commands.staff import run_staff_disable
+
+    raise typer.Exit(code=run_staff_disable(staff_key, enable))
+
+
 @app.command("check-config")
 def check_config(
     rule_config: Path | None = typer.Argument(None, help="규칙 설정 파일(rule-config.yaml)"),
