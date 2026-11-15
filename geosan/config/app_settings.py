@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError, field_validator, model_validator
+from pydantic import Field, PrivateAttr, ValidationError, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -424,6 +424,8 @@ class AppSettings(FileModel):
 
     staff: list[StaffEntry] = Field(min_length=1)
     active_dataset_kind: DatasetKind
+    # 계정 방식(#754)의 보기 전용 계정 키. 파일 칸이 아니다(실행 중에만 채움).
+    _viewer_keys: frozenset[str] = PrivateAttr(default_factory=frozenset)
     ingestion: IngestionSettings
     llm: LlmSettings
     homepage_discovery: HomepageDiscoverySettings
@@ -461,8 +463,20 @@ class AppSettings(FileModel):
         return [entry.key for entry in self.staff]
 
     def is_recording_staff(self, key: str | None) -> bool:
-        """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3)."""
-        return bool(key) and key in self.staff_keys() and key != VIEWER_STAFF_KEY
+        """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3).
+
+        계정 방식(#754)에서는 보기 전용 계정의 키도 기록할 수 없는 키다.
+        """
+        return (
+            bool(key)
+            and key in self.staff_keys()
+            and key != VIEWER_STAFF_KEY
+            and key not in self._viewer_keys
+        )
+
+    def set_viewer_keys(self, keys) -> None:
+        """계정 방식의 보기 전용 계정 키(#754). 설정 파일 칸이 아니라 실행 중에만 쓴다."""
+        self._viewer_keys = frozenset(keys)
 
     @model_validator(mode="after")
     def check_pick_model(self) -> AppSettings:

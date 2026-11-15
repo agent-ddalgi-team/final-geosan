@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from geosan.api.access_policy import FailureState, decide_access, session_expires_at
 from geosan.api.models import AccessSession
+from geosan.api.staff_accounts import find_active, password_ok
 from geosan.config.registry import RuntimeConfig
 from geosan.storage.base import utcnow
 
@@ -21,15 +22,34 @@ def token_fingerprint(token: str) -> str | None:
     return hashlib.sha256(token.encode("ascii")).hexdigest()
 
 
-def attempt_login(session: Session, runtime: RuntimeConfig, password: str):
-    """호출자가 BEGIN IMMEDIATE로 잠근 트랜잭션 안에서 호출한다."""
+def attempt_login(
+    session: Session,
+    runtime: RuntimeConfig,
+    password: str,
+    *,
+    accounts: bool = False,
+    staff_key: str | None = None,
+):
+    """호출자가 BEGIN IMMEDIATE로 잠근 트랜잭션 안에서 호출한다.
+
+    accounts면(#754 계정 방식) 그 아이디의 계정 해시와 비교한다. 없는 아이디·막힌 계정도
+    틀린 비밀번호와 똑같이 실패로 센다(어느 쪽이 틀렸는지 알려 주지 않음).
+    """
     now = utcnow()
     throttle = session.get(AccessSession, FAILURE_ROW_ID)
     state = FailureState(
         failures=throttle.failure_count if throttle else 0,
         blocked_until=throttle.blocked_until if throttle else None,
     )
-    decision = decide_access(password, state, now=now, protection_enabled=True)
+    account = find_active(session, staff_key) if accounts else None
+    if accounts:
+
+        def matches(submitted: str) -> bool:
+            return account is not None and password_ok(submitted, account.password_hash)
+
+        decision = decide_access(password, state, now=now, protection_enabled=True, matches=matches)
+    else:
+        decision = decide_access(password, state, now=now, protection_enabled=True)
     if throttle is None:
         throttle = AccessSession(
             session_id=FAILURE_ROW_ID, expires_at=now, last_seen_at=now, created_at=now
@@ -49,6 +69,7 @@ def attempt_login(session: Session, runtime: RuntimeConfig, password: str):
             created_at=now,
             expires_at=session_expires_at(now),
             last_seen_at=now,
+            staff_key=account.staff_key if account is not None else None,
             dataset_kind=runtime.app_settings.active_dataset_kind,
             is_virtual=runtime.app_settings.active_dataset_kind.startswith("VIRTUAL"),
         )

@@ -267,6 +267,15 @@ class IngestOptions(_ApiModel):
     industries: list[str]
 
 
+class CurrentStaff(_ApiModel):
+    """계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null."""
+
+    key: str
+    display_name: str | None
+    can_record: bool
+    setup_required: bool
+
+
 class ConfigUi(_ApiModel):
     staff: list[StaffEntry]
     brand: Brand
@@ -282,6 +291,9 @@ class ConfigUi(_ApiModel):
         description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
     )
     research: ResearchUi
+    current_staff: CurrentStaff | None = Field(
+        default=None, description="계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 null"
+    )
 
 
 # ---------------------------------------------------------------------------

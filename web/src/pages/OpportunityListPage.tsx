@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Pagination, Switch } from 'antd';
 import { getOpportunities } from '../api/client';
+import { BOOKMARKS_PATH } from '../paths';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -77,7 +78,10 @@ interface Result {
   error?: unknown;
 }
 
-export default function OpportunityListPage() {
+/** 같은 화면을 두 메뉴가 쓴다(#762): 신규 거래처 찾기(all)와 관심 기업(bookmarks). */
+export type ListView = 'all' | 'bookmarks';
+
+export default function OpportunityListPage({ view = 'all' }: { view?: ListView }) {
   const { config, setBannerMeta } = useFrame();
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -100,8 +104,10 @@ export default function OpportunityListPage() {
   const distancePresets = config?.distanceFilterPresetsKm ?? [];
   const distanceParam = Number(condition('maxDistanceKm'));
   const maxDistanceKm = distancePresets.includes(distanceParam) ? distanceParam : null;
-  // "관심 기업" 보기(#357)는 주소 `?bookmarked=true`로만 남긴다. 다른 값은 평소 목록으로 읽는다.
-  const bookmarked = condition('bookmarked') === 'true';
+  // "관심 기업"(#357)은 #762부터 왼쪽 메뉴의 따로 된 화면(`/bookmarks`)이다. 옛 주소 `?bookmarked=true`는
+  // 경로에서 새 화면으로 옮겨 준다(router.tsx). 검색 중에도 관심 기업 화면이면 관심 기업 안에서 찾는다.
+  // 이 화면을 바로 그린 예전 주소(`?bookmarked=true`)도 같은 보기로 읽는다. 검색 중에는 지금처럼 전체에서 찾는다.
+  const bookmarked = (view === 'bookmarks' && !searching) || condition('bookmarked') === 'true';
   // "제외한 회사" 보기(#536)는 주소 `?excluded=true`로만 남긴다. 관심 기업 보기와 같이 켜지면 관심 기업 보기를 따른다.
   const excluded = !bookmarked && condition('excluded') === 'true';
   // 검토 의견 거르기는 관심 기업 보기에서만 쓴다(거르기 단추가 그 보기에만 있다). 표에 없는 값은 "전체 보기"로 읽는다.
@@ -436,32 +442,24 @@ export default function OpportunityListPage() {
   // 목록 머리 "관심 기업 ○곳"(#675): 서버가 센 수에 방금 옮긴 회사를 더한다.
   const bookmarkedCount =
     typeof menu?.bookmarkedCount === 'number' ? menu.bookmarkedCount + movedIds.size : null;
-  const bookmarkedHref = `${location.pathname}?bookmarked=true`;
+  const bookmarkedHref = BOOKMARKS_PATH;
 
   return (
     <>
-      {ingestOptions ? (
+      {/* 새 회사 찾기(공정·지역 조건 칸)는 신규 거래처 찾기에만 둔다(#762). */}
+      {ingestOptions && !bookmarked ? (
         <IngestForm
           options={ingestOptions}
           running={ingestRunning}
           onStarted={() => void refreshIngest()}
         />
       ) : null}
-      {latestIngest ? <IngestSummary ingest={latestIngest} /> : null}
+      {latestIngest && !bookmarked ? <IngestSummary ingest={latestIngest} /> : null}
       <ListViewBar
         bookmarked={bookmarked}
         excluded={excluded}
         opinion={opinion}
         filter={filter}
-        // 관심 기업 보기는 "전체"에서 시작하므로 켤 때 공정 조건을 뺀다(그 안에서 다시 고를 수 있다, #516).
-        // 끌 때는 의견 거르기도 같이 뺀다.
-        onBookmarked={(on) =>
-          update(
-            on
-              ? { bookmarked: 'true', excluded: null, process: null }
-              : { bookmarked: null, opinion: null },
-          )
-        }
         // 제외한 회사 보기(#536)도 "전체"에서 시작한다. 관심 기업 보기의 의견 거르기는 같이 뺀다.
         onExcluded={(on) =>
           update(

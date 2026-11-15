@@ -15,7 +15,7 @@ import {
   LAST_PROCESS_STORAGE_KEY,
 } from '../../components/list/lastProcess';
 import { GROUP_PAGE_SIZE } from '../../components/list/useProcessGroups';
-import { bookmarkList, listFilters, listSearch, states } from '../../labels/ko';
+import { listFilters, listSearch, states } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -918,17 +918,11 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(screen.queryByTestId('list-bookmarked-view')).not.toBeInTheDocument();
     });
 
-    it('검색 중에 [관심 기업만 보기]를 누르면 검색에서 나와 관심 기업 보기로 간다', async () => {
-      const user = userEvent.setup();
+    it('검색 중에도 [관심 기업만 보기] 단추는 없다(#762: 왼쪽 메뉴 "관심 기업"으로 간다)', async () => {
       mockedGet.mockResolvedValue(reply([apjeong], MENU));
       renderPage('/opportunities?q=A정밀');
       await screen.findByTestId('opportunity-card');
-      expect(screen.getByTestId('list-bookmarked-on')).toHaveTextContent(bookmarkList.showOnly);
-      await user.click(screen.getByTestId('list-bookmarked-on'));
-      await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, bookmarked: 'true' }));
-      expect(locationText()).toBe('/opportunities?bookmarked=true');
-      expect(screen.queryByTestId('list-search-line')).not.toBeInTheDocument();
-      expect(screen.getByTestId('list-search-input')).toHaveValue('');
+      expect(screen.queryByTestId('list-bookmarked-on')).not.toBeInTheDocument();
     });
 
     it('목록을 불러오지 못했을 때도 검색 칸은 보인다', async () => {
