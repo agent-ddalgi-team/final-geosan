@@ -3,12 +3,16 @@
 // 뜨고, 화면 읽기 도구는 aria-label로 그대로 읽는다). 접은 상태는 브라우저에 기억하고, 좁은 기기는 처음부터 접힌 채로 연다.
 // #767(PM 요청 2026-11-15·결정 2026-11-16): 참고 그림처럼 어두운 칸 + 내용에 맞는 선 그림 아이콘(이모지 대신, 글자는
 // 한글·숫자만). 그림은 그림 파일 없이 SVG로 그린다. 색은 theme/tokens의 sidebarTheme만 쓴다.
+// #770(PM 결정 2026-11-16): 새로 생긴 것 숫자 꼬리표. 펼치면 이름 뒤, 접으면 그림 오른쪽 위 모서리. 0이면 안 그린다.
+// 영업 분석에는 숫자가 없다. 숫자를 못 읽으면 꼬리표 없이 메뉴만 보인다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import type { MenuBadges } from '../../api/menuBadges';
 import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 import { sidebarTheme, typography } from '../../theme/tokens';
+import { useMenuBadges } from './useMenuBadges';
 
 export const SIDEBAR_STORAGE_KEY = 'geosan.sidebarCollapsed';
 const WIDE = 220;
@@ -92,13 +96,23 @@ const PanelIcon = ({ collapsed }: { collapsed: boolean }) => (
   </Icon>
 );
 
-const ITEMS = [
+type BadgeKey = keyof MenuBadges;
+
+const ITEMS: {
+  to: string;
+  end: boolean;
+  icon: ReactNode;
+  label: string;
+  testId: string;
+  badge: BadgeKey | null;
+}[] = [
   {
     to: '/',
     end: true,
     icon: <DashboardIcon />,
     label: frame.menuDashboard,
     testId: 'nav-dashboard-link',
+    badge: 'dashboard',
   },
   {
     to: LIST_PATH,
@@ -106,6 +120,7 @@ const ITEMS = [
     icon: <FindIcon />,
     label: frame.menuOpportunities,
     testId: 'nav-opportunities-link',
+    badge: 'list',
   },
   {
     to: BOOKMARKS_PATH,
@@ -113,6 +128,7 @@ const ITEMS = [
     icon: <StarIcon />,
     label: frame.menuBookmarks,
     testId: 'nav-bookmarks-link',
+    badge: 'bookmarks',
   },
   {
     to: '/sales-analysis',
@@ -120,8 +136,56 @@ const ITEMS = [
     icon: <AnalysisIcon />,
     label: frame.menuSalesAnalysis,
     testId: 'nav-sales-analysis-link',
+    badge: null,
   },
 ];
+
+/**
+ * 숫자 꼬리표(#770). 99를 넘으면 "99+". 뜻("새 후보 12곳")은 손을 올리면(title) 보이고,
+ * 화면 읽기 도구는 링크 이름(aria-label)으로 읽으므로 꼬리표 자체는 aria-hidden.
+ */
+function Badge({
+  count,
+  meaning,
+  collapsed,
+  testId,
+}: {
+  count: number;
+  meaning: string;
+  collapsed: boolean;
+  testId: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid={testId}
+      title={meaning}
+      style={{
+        minWidth: 18,
+        height: 18,
+        padding: '0 5px',
+        boxSizing: 'border-box',
+        borderRadius: 9,
+        background: sidebarTheme.badgeBg,
+        color: sidebarTheme.badgeFg,
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: '18px',
+        textAlign: 'center',
+        ...(collapsed
+          ? {
+              position: 'absolute',
+              top: -7,
+              right: -10,
+              boxShadow: `0 0 0 2px ${sidebarTheme.bg}`,
+            }
+          : { marginLeft: 'auto' }),
+      }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
 
 /** 접은 상태에서만 보이는 이름표(손 올림·키보드 초점). 읽는 이름은 aria-label이 맡아 여기는 aria-hidden. */
 function Tip({ children }: { children: ReactNode }) {
@@ -134,6 +198,8 @@ function Tip({ children }: { children: ReactNode }) {
 
 export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
   const [collapsed, setCollapsed] = useState(() => readCollapsed(narrowDevice));
+  const { pathname } = useLocation();
+  const badges = useMenuBadges(pathname);
   const toggle = () => {
     const next = !collapsed;
     setCollapsed(next);
@@ -204,34 +270,49 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
           flex: 1,
         }}
       >
-        {ITEMS.map((item) => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              end={item.end}
-              data-testid={item.testId}
-              className="side-nav-link"
-              aria-label={collapsed ? item.label : undefined}
-              title={collapsed ? item.label : undefined}
-              style={({ isActive }) => ({
-                ...rowStyle,
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? sidebarTheme.fgActive : sidebarTheme.fg,
-                background: isActive ? sidebarTheme.activeBg : 'transparent',
-                boxShadow: isActive ? `inset 0 0 0 1px ${sidebarTheme.activeBorder}` : 'none',
-              })}
-            >
-              {/* 그림 자리: #770 숫자 꼬리표가 접힌 상태에서 그림 모서리에 얹힐 수 있게 기준 틀로 둔다. */}
-              <span
-                data-testid={`${item.testId}-icon`}
-                style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}
+        {ITEMS.map((item) => {
+          const count = item.badge && badges ? badges[item.badge] : 0;
+          const meaning = item.badge && count > 0 ? frame.menuBadge[item.badge](count) : null;
+          const name = meaning ? `${item.label}, ${meaning}` : item.label;
+          const badge = meaning ? (
+            <Badge
+              count={count}
+              meaning={meaning}
+              collapsed={collapsed}
+              testId={`${item.testId}-badge`}
+            />
+          ) : null;
+          return (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                data-testid={item.testId}
+                className="side-nav-link"
+                aria-label={collapsed || meaning ? name : undefined}
+                title={collapsed ? name : undefined}
+                style={({ isActive }) => ({
+                  ...rowStyle,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? sidebarTheme.fgActive : sidebarTheme.fg,
+                  background: isActive ? sidebarTheme.activeBg : 'transparent',
+                  boxShadow: isActive ? `inset 0 0 0 1px ${sidebarTheme.activeBorder}` : 'none',
+                })}
               >
-                {item.icon}
-              </span>
-              {collapsed ? <Tip>{item.label}</Tip> : <span>{item.label}</span>}
-            </NavLink>
-          </li>
-        ))}
+                {/* 그림 자리: #770 숫자 꼬리표가 접힌 상태에서 그림 모서리에 얹힌다. */}
+                <span
+                  data-testid={`${item.testId}-icon`}
+                  style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}
+                >
+                  {item.icon}
+                  {collapsed ? badge : null}
+                </span>
+                {collapsed ? <Tip>{name}</Tip> : <span>{item.label}</span>}
+                {collapsed ? null : badge}
+              </NavLink>
+            </li>
+          );
+        })}
       </ul>
       <div style={{ borderTop: `1px solid ${sidebarTheme.divider}`, paddingTop: 12 }}>
         <button

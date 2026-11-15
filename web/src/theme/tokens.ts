@@ -27,6 +27,9 @@ export const sidebarTheme = {
   activeBg: '#2C2F34',
   activeBorder: '#3A3E44',
   divider: '#2E3136',
+  /** 메뉴 숫자 꼬리표(#770): 빨간 칸 + 흰 글자(대비 약 4.8:1). 접힌 그림 위에서는 바탕색 테두리로 띄운다. */
+  badgeBg: '#D92D20',
+  badgeFg: '#FFFFFF',
 } as const;
 
 /** 상태 색 6가지 조합(배경 연함 + 글자 진함, 대비 4.5:1 이상). 색은 보조 신호이고 글자가 항상 함께 있다. */
