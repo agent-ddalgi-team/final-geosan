@@ -5,6 +5,8 @@
 """
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +16,7 @@ from geosan.api.app import create_app
 from geosan.config.registry import load_runtime_config
 from geosan.evidence.transfer import TransferLog
 from geosan.opportunity import candidate_pick as pick
+from geosan.opportunity import ingest_preview as preview
 from geosan.opportunity.ingest_preview import preview_counts
 from geosan.opportunity.queries import normalize_address, normalize_name
 from geosan.opportunity.source_models import CandidateJudgment, SourceFactoryRow
@@ -195,3 +198,111 @@ def test_api_returns_counts_without_staff_key_and_rejects_bad_conditions(judged)
         outside = client.get(PATH, params={"processCodes": "ZINC_PLATING", "regions": "부산"})
         assert outside.status_code == 400
         assert outside.json()["error"]["fields"][0]["path"] == "regions[0]"
+
+
+def _count_reads(monkeypatch):
+    """지역 바탕을 실제로 읽은 횟수를 센다(#752)."""
+    reads = []
+    real = preview._read_region_base
+
+    def counted(*args, **kwargs):
+        reads.append(args[1])
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(preview, "_read_region_base", counted)
+    return reads
+
+
+def test_changing_process_or_industry_reuses_the_region_read(judged, monkeypatch):
+    """Given 판단이 저장된 충남 / When 공정·산업만 바꿔 여러 번 센다(#752)
+    / Then 공장 행·판단은 한 번만 읽고 숫자는 처음부터 센 것과 같다.
+    지역을 바꾸면 그 지역만 새로 읽는다."""
+    preview.clear_region_cache()
+    reads = _count_reads(monkeypatch)
+    assert counts().matched_count == 1
+    assert counts(process_codes=("ANODIZING",)).matched_count == 0
+    assert counts(industries=("자동차 부품",)).matched_count == 1
+    assert counts(process_codes=("ZINC_PLATING", "ANODIZING")).matched_count == 1
+    assert len(reads) == 1
+    assert counts(regions=("아산시",)).matched_count == 1
+    assert len(reads) == 2
+
+
+def test_new_judgments_or_registered_company_are_seen_after_a_remembered_count(
+    pick_context, monkeypatch
+):
+    """Given 판단 전에 한 번 센 충남(판단 전 2)
+    / When 실제 흐름이 판단을 저장하고, 같은 회사가 목록에 들어온다
+    / Then 다음 셈은 지역을 다시 읽어 맞는 공장 1 · 판단 전 0, 이어서 들어온 곳 1로 바로 바뀐다."""
+    preview.clear_region_cache()
+    reads = _count_reads(monkeypatch)
+    assert counts().unjudged_count == 2
+
+    def post(payload, key, deadline):
+        rows = json.loads(payload["input"])
+        return envelope(json.dumps([_answer(row) for row in rows], ensure_ascii=False))
+
+    monkeypatch.setattr(pick, "_post", post)
+    pick.pick_candidates(pick_context["batch"], pick_context["ids"])
+    after = counts()
+    assert (after.matched_count, after.unjudged_count, after.addable_count) == (1, 0, 1)
+    assert len(reads) == 2
+    with session_scope() as session:
+        con = session.connection().connection.driver_connection
+        _insert_filled(
+            con,
+            "opp_customer",
+            customer_id="cust-bolt",
+            name="가상볼트",
+            normalized_name=normalize_name("가상볼트"),
+            normalized_address=normalize_address("충남 아산시 가상길 1"),
+            is_virtual=1,
+        )
+    registered = counts()
+    assert (registered.registered_count, registered.addable_count) == (1, 0)
+    # 목록에 들어온 회사는 매번 새로 세므로 지역을 다시 읽지 않는다.
+    assert len(reads) == 2
+
+
+def test_changed_prompt_rereads_the_region(judged, monkeypatch):
+    """Given 기억한 충남 셈 / When 판단 지시문이 바뀐다(판단 기준 지문이 바뀜)
+    / Then 다시 읽어 저장된 판단을 쓰지 않는다(판단 전 2)."""
+    preview.clear_region_cache()
+    reads = _count_reads(monkeypatch)
+    assert counts().unjudged_count == 0
+    judged["prompt"].write_text("가상 검사: 바뀐 지시문", encoding="utf-8")
+    assert counts().unjudged_count == 2
+    assert len(reads) == 2
+
+
+def _bare_count():
+    """설정 등록 없이 맞는 공장 수만 센다(동시 요청 시험용)."""
+    with session_scope() as session:
+        return preview_counts(
+            session,
+            process_codes=["ZINC_PLATING"],
+            regions=["충남"],
+            industries=[],
+            max_candidates=50,
+            dataset_kind="VIRTUAL_REVIEWED",
+        ).matched_count
+
+
+def test_requests_at_the_same_time_read_the_region_once(judged, monkeypatch):
+    """Given 아직 기억이 없는 충남 / When 같은 조건의 셈 네 개가 동시에 들어온다(#752 쌓임)
+    / Then 지역은 한 번만 읽고 넷 모두 같은 숫자를 받는다."""
+    counts()  # 설정 등록은 먼저 한 번(동시 등록은 이 시험의 대상이 아니다)
+    preview.clear_region_cache()
+    reads = []
+    real = preview._read_region_base
+
+    def slow(*args, **kwargs):
+        reads.append(args[1])
+        time.sleep(0.2)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(preview, "_read_region_base", slow)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda _: _bare_count(), range(4)))
+    assert results == [1, 1, 1, 1]
+    assert len(reads) == 1
