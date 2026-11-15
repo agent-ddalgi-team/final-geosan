@@ -233,3 +233,78 @@ def no_hit_ratio(context):
 @then("산업 적중 칸은 없다")
 def no_industry_hit(context):
     assert set(context["body"]["data"]["aiProposalHit"]) == {"process"}
+
+
+# ---------------------------------------------------------------------------
+# #760 기간을 골라 보기. 접촉 날짜(attemptedAt)를 지난 날로 적어 기간 안팎을 만든다.
+# ---------------------------------------------------------------------------
+
+
+@given(
+    "한 곳은 9월 10일 부재·10월 17일 연결·10월 20일 방문 뒤 오늘 성사, 한 곳은 8월 1일 메일만, "
+    "한 곳은 10월 18일 전화를 남겼다"
+)
+def period_records(context):
+    client, (a, b, c, _d) = context["client"], context["opp_ids"]
+    support.record(client, a, support.contact("ABSENT", day="2026-09-10"))
+    support.record(client, a, support.contact("REACHED", day="2026-10-17"))
+    support.record(client, a, support.contact("REACHED", method="VISIT", day="2026-10-20"))
+    support.record(client, a, {"status": "WON"})
+    support.record(client, b, support.contact("ABSENT", method="EMAIL", day="2026-08-01"))
+    support.record(client, c, support.contact("REACHED", day="2026-10-18"))
+    context["won_opp"] = a
+
+
+def _open_period(context, query):
+    response = context["client"].get(f"/api/v1/sales-analysis{query}", headers=support.VIEWER)
+    context["response"] = response
+    if response.status_code == 200:
+        context["body"] = response.json()
+
+
+@when("보기 전용 계정이 10월 1일부터 10월 31일까지로 영업 분석표를 연다")
+def open_october(context):
+    _open_period(context, "?from=2026-10-01&to=2026-10-31")
+    assert context["response"].status_code == 200, context["response"].text
+
+
+@when("보기 전용 계정이 11월 30일부터 11월 1일까지로 영업 분석표를 연다")
+def open_reversed(context):
+    _open_period(context, "?from=2026-11-30&to=2026-11-01")
+
+
+@then("표에는 10월에 접촉한 2곳만 있고 기준 칸에 그 기간이 실린다")
+def october_companies(context):
+    data = context["body"]["data"]
+    assert data["basis"]["companyCount"] == 2 and len(data["companies"]) == 2
+    assert (data["basis"]["from"], data["basis"]["to"]) == ("2026-10-01", "2026-10-31")
+    assert data["total"]["contactedCount"] == 2
+    assert data["total"]["contactReach"]["EMAIL"]["tried"] == 0
+
+
+@then("성사한 회사는 10월 안 접촉 2번만 세고 10월 끝 기준으로 진행 중이다")
+def october_won_company(context):
+    data = context["body"]["data"]
+    row = next(item for item in data["companies"] if item["oppId"] == context["won_opp"])
+    assert row["contactCount"] == {"total": 2, "call": 1, "email": 0, "visit": 1}
+    assert (row["firstContactAt"], row["lastContactAt"]) == ("2026-10-17", "2026-10-20")
+    assert row["outcomeStatus"] == "IN_PROGRESS" and row["outcomeAt"] is None
+    assert (data["total"]["inProgressCount"], data["total"]["wonCount"]) == (2, 0)
+
+
+@then("기간을 비우면 지금처럼 3곳이 모두 보이고 기준 칸의 기간은 비어 있다")
+def no_period(context):
+    _open_period(context, "")
+    data = context["body"]["data"]
+    assert data["basis"]["companyCount"] == 3
+    assert (data["basis"]["from"], data["basis"]["to"]) == (None, None)
+    assert data["total"]["wonCount"] == 1
+
+
+@then("시작일과 끝일 칸에 오류가 붙어 거부된다")
+def reversed_rejected(context):
+    response = context["response"]
+    assert response.status_code == 400, response.text
+    error = response.json()["error"]
+    assert "시작일이 끝일보다 뒤" in error["message"]
+    assert {field["path"] for field in error["fields"]} == {"from", "to"}

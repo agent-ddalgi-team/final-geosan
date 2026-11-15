@@ -1,0 +1,945 @@
+{
+  "_설명": "화면 개발용 가짜 영업 분석 응답(#760). VITE_USE_FIXTURES=1 일 때만 쓴다. 회사·숫자 모두 가상이며 거산 실제 기록이 아니다. 만든 법: 가상 회사 18곳 목록에서 합계를 계산(단계별 접촉 줄만 손으로 맞춤).",
+  "data": {
+    "asOf": "2026-11-15T09:00:00+09:00",
+    "basis": {
+      "minSampleForRatio": 10,
+      "closedWindowDays": 365,
+      "companyCount": 18,
+      "olderClosedExcluded": 1,
+      "from": null,
+      "to": null
+    },
+    "byProcess": [
+      {
+        "processCode": "ZINC_PLATING",
+        "processName": "아연도금",
+        "overlapCount": 0,
+        "byIndustry": [
+          {
+            "industry": "자동차 부품",
+            "overlapCount": 0,
+            "contactedCount": 6,
+            "inProgressCount": 2,
+            "onHoldCount": 0,
+            "wonCount": 2,
+            "lostCount": 2,
+            "avgContactsToWon": 4.5,
+            "contactReach": {
+              "CALL": {
+                "reached": 8,
+                "tried": 15
+              },
+              "EMAIL": {
+                "reached": 1,
+                "tried": 2
+              },
+              "VISIT": {
+                "reached": 2,
+                "tried": 2
+              }
+            },
+            "lostReasons": [
+              {
+                "code": "PRICE",
+                "count": 2
+              }
+            ],
+            "ratios": null
+          }
+        ],
+        "contactedCount": 6,
+        "inProgressCount": 2,
+        "onHoldCount": 0,
+        "wonCount": 2,
+        "lostCount": 2,
+        "avgContactsToWon": 4.5,
+        "contactReach": {
+          "CALL": {
+            "reached": 8,
+            "tried": 15
+          },
+          "EMAIL": {
+            "reached": 1,
+            "tried": 2
+          },
+          "VISIT": {
+            "reached": 2,
+            "tried": 2
+          }
+        },
+        "lostReasons": [
+          {
+            "code": "PRICE",
+            "count": 2
+          }
+        ],
+        "ratios": null
+      },
+      {
+        "processCode": "ANODIZING",
+        "processName": "아노다이징",
+        "overlapCount": 1,
+        "byIndustry": [
+          {
+            "industry": "방위산업",
+            "overlapCount": 0,
+            "contactedCount": 4,
+            "inProgressCount": 2,
+            "onHoldCount": 0,
+            "wonCount": 1,
+            "lostCount": 1,
+            "avgContactsToWon": 4.0,
+            "contactReach": {
+              "CALL": {
+                "reached": 7,
+                "tried": 8
+              },
+              "EMAIL": {
+                "reached": 3,
+                "tried": 4
+              },
+              "VISIT": {
+                "reached": 4,
+                "tried": 4
+              }
+            },
+            "lostReasons": [
+              {
+                "code": "LEAD_TIME",
+                "count": 1
+              }
+            ],
+            "ratios": null
+          }
+        ],
+        "contactedCount": 4,
+        "inProgressCount": 2,
+        "onHoldCount": 0,
+        "wonCount": 1,
+        "lostCount": 1,
+        "avgContactsToWon": 4.0,
+        "contactReach": {
+          "CALL": {
+            "reached": 7,
+            "tried": 8
+          },
+          "EMAIL": {
+            "reached": 3,
+            "tried": 4
+          },
+          "VISIT": {
+            "reached": 4,
+            "tried": 4
+          }
+        },
+        "lostReasons": [
+          {
+            "code": "LEAD_TIME",
+            "count": 1
+          }
+        ],
+        "ratios": null
+      },
+      {
+        "processCode": "ELECTROLESS_NICKEL",
+        "processName": "무전해니켈",
+        "overlapCount": 0,
+        "byIndustry": [
+          {
+            "industry": "반도체",
+            "overlapCount": 0,
+            "contactedCount": 3,
+            "inProgressCount": 1,
+            "onHoldCount": 2,
+            "wonCount": 0,
+            "lostCount": 0,
+            "avgContactsToWon": null,
+            "contactReach": {
+              "CALL": {
+                "reached": 3,
+                "tried": 5
+              },
+              "EMAIL": {
+                "reached": 0,
+                "tried": 2
+              },
+              "VISIT": {
+                "reached": 0,
+                "tried": 0
+              }
+            },
+            "lostReasons": [],
+            "ratios": null
+          }
+        ],
+        "contactedCount": 3,
+        "inProgressCount": 1,
+        "onHoldCount": 2,
+        "wonCount": 0,
+        "lostCount": 0,
+        "avgContactsToWon": null,
+        "contactReach": {
+          "CALL": {
+            "reached": 3,
+            "tried": 5
+          },
+          "EMAIL": {
+            "reached": 0,
+            "tried": 2
+          },
+          "VISIT": {
+            "reached": 0,
+            "tried": 0
+          }
+        },
+        "lostReasons": [],
+        "ratios": null
+      },
+      {
+        "processCode": "PASSIVATION",
+        "processName": "부동태",
+        "overlapCount": 0,
+        "byIndustry": [
+          {
+            "industry": "반도체",
+            "overlapCount": 0,
+            "contactedCount": 3,
+            "inProgressCount": 2,
+            "onHoldCount": 0,
+            "wonCount": 0,
+            "lostCount": 1,
+            "avgContactsToWon": null,
+            "contactReach": {
+              "CALL": {
+                "reached": 3,
+                "tried": 4
+              },
+              "EMAIL": {
+                "reached": 0,
+                "tried": 2
+              },
+              "VISIT": {
+                "reached": 0,
+                "tried": 0
+              }
+            },
+            "lostReasons": [
+              {
+                "code": "INCUMBENT_SUPPLIER",
+                "count": 1
+              }
+            ],
+            "ratios": null
+          }
+        ],
+        "contactedCount": 3,
+        "inProgressCount": 2,
+        "onHoldCount": 0,
+        "wonCount": 0,
+        "lostCount": 1,
+        "avgContactsToWon": null,
+        "contactReach": {
+          "CALL": {
+            "reached": 3,
+            "tried": 4
+          },
+          "EMAIL": {
+            "reached": 0,
+            "tried": 2
+          },
+          "VISIT": {
+            "reached": 0,
+            "tried": 0
+          }
+        },
+        "lostReasons": [
+          {
+            "code": "INCUMBENT_SUPPLIER",
+            "count": 1
+          }
+        ],
+        "ratios": null
+      },
+      {
+        "processCode": "CHROMATE",
+        "processName": "크로메이트",
+        "overlapCount": 1,
+        "byIndustry": [
+          {
+            "industry": "방위산업",
+            "overlapCount": 0,
+            "contactedCount": 1,
+            "inProgressCount": 0,
+            "onHoldCount": 0,
+            "wonCount": 1,
+            "lostCount": 0,
+            "avgContactsToWon": 4.0,
+            "contactReach": {
+              "CALL": {
+                "reached": 2,
+                "tried": 2
+              },
+              "EMAIL": {
+                "reached": 1,
+                "tried": 1
+              },
+              "VISIT": {
+                "reached": 1,
+                "tried": 1
+              }
+            },
+            "lostReasons": [],
+            "ratios": null
+          },
+          {
+            "industry": "자동차 부품",
+            "overlapCount": 0,
+            "contactedCount": 1,
+            "inProgressCount": 1,
+            "onHoldCount": 0,
+            "wonCount": 0,
+            "lostCount": 0,
+            "avgContactsToWon": null,
+            "contactReach": {
+              "CALL": {
+                "reached": 2,
+                "tried": 3
+              },
+              "EMAIL": {
+                "reached": 0,
+                "tried": 1
+              },
+              "VISIT": {
+                "reached": 0,
+                "tried": 0
+              }
+            },
+            "lostReasons": [],
+            "ratios": null
+          }
+        ],
+        "contactedCount": 2,
+        "inProgressCount": 1,
+        "onHoldCount": 0,
+        "wonCount": 1,
+        "lostCount": 0,
+        "avgContactsToWon": 4.0,
+        "contactReach": {
+          "CALL": {
+            "reached": 4,
+            "tried": 5
+          },
+          "EMAIL": {
+            "reached": 1,
+            "tried": 2
+          },
+          "VISIT": {
+            "reached": 1,
+            "tried": 1
+          }
+        },
+        "lostReasons": [],
+        "ratios": null
+      },
+      {
+        "processCode": null,
+        "processName": "공정 확인 전",
+        "overlapCount": 0,
+        "byIndustry": [
+          {
+            "industry": "산업 확인 전",
+            "overlapCount": 0,
+            "contactedCount": 1,
+            "inProgressCount": 1,
+            "onHoldCount": 0,
+            "wonCount": 0,
+            "lostCount": 0,
+            "avgContactsToWon": null,
+            "contactReach": {
+              "CALL": {
+                "reached": 0,
+                "tried": 1
+              },
+              "EMAIL": {
+                "reached": 0,
+                "tried": 0
+              },
+              "VISIT": {
+                "reached": 0,
+                "tried": 0
+              }
+            },
+            "lostReasons": [],
+            "ratios": null
+          }
+        ],
+        "contactedCount": 1,
+        "inProgressCount": 1,
+        "onHoldCount": 0,
+        "wonCount": 0,
+        "lostCount": 0,
+        "avgContactsToWon": null,
+        "contactReach": {
+          "CALL": {
+            "reached": 0,
+            "tried": 1
+          },
+          "EMAIL": {
+            "reached": 0,
+            "tried": 0
+          },
+          "VISIT": {
+            "reached": 0,
+            "tried": 0
+          }
+        },
+        "lostReasons": [],
+        "ratios": null
+      }
+    ],
+    "companies": [
+      {
+        "oppId": "opp-fixture-01",
+        "name": "누리산업(가상)",
+        "processCodes": ["ANODIZING"],
+        "industries": ["방위산업"],
+        "contactCount": {
+          "total": 4,
+          "call": 2,
+          "email": 1,
+          "visit": 1
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "MATERIAL_QUOTE",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-09-09",
+        "lastContactAt": "2026-11-14",
+        "daysSinceFirstContact": 67,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-02",
+        "name": "차오름(가상)",
+        "processCodes": ["CHROMATE"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 4,
+          "call": 3,
+          "email": 1,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "DEMAND_CONFIRMED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-09-18",
+        "lastContactAt": "2026-11-13",
+        "daysSinceFirstContact": 58,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-03",
+        "name": "가온테크(가상)",
+        "processCodes": [],
+        "industries": [],
+        "contactCount": {
+          "total": 1,
+          "call": 1,
+          "email": 0,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "NOT_REACHED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-11-12",
+        "lastContactAt": "2026-11-12",
+        "daysSinceFirstContact": 3,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-04",
+        "name": "다온산업(가상)",
+        "processCodes": ["ANODIZING"],
+        "industries": ["방위산업"],
+        "contactCount": {
+          "total": 5,
+          "call": 2,
+          "email": 2,
+          "visit": 1
+        },
+        "outcomeStatus": "SAMPLE_OR_REGISTRATION_APPROVED",
+        "salesStep": "MATERIAL_QUOTE",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-08-11",
+        "lastContactAt": "2026-11-12",
+        "daysSinceFirstContact": 96,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-05",
+        "name": "이음부품(가상)",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 2,
+          "call": 2,
+          "email": 0,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "NOT_REACHED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-11-03",
+        "lastContactAt": "2026-11-11",
+        "daysSinceFirstContact": 12,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-06",
+        "name": "나래금속(가상)",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 3,
+          "call": 3,
+          "email": 0,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "DEMAND_CONFIRMED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-09-02",
+        "lastContactAt": "2026-11-10",
+        "daysSinceFirstContact": 74,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-07",
+        "name": "한빛기계(가상)",
+        "processCodes": ["PASSIVATION"],
+        "industries": ["반도체"],
+        "contactCount": {
+          "total": 2,
+          "call": 1,
+          "email": 1,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "REACHED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-10-27",
+        "lastContactAt": "2026-11-09",
+        "daysSinceFirstContact": 19,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-08",
+        "name": "새봄정공(가상)",
+        "processCodes": ["ELECTROLESS_NICKEL"],
+        "industries": ["반도체"],
+        "contactCount": {
+          "total": 2,
+          "call": 2,
+          "email": 0,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "REACHED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-10-20",
+        "lastContactAt": "2026-11-06",
+        "daysSinceFirstContact": 26,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-09",
+        "name": "소망밸브(가상)",
+        "processCodes": ["PASSIVATION"],
+        "industries": ["반도체"],
+        "contactCount": {
+          "total": 2,
+          "call": 2,
+          "email": 0,
+          "visit": 0
+        },
+        "outcomeStatus": "IN_PROGRESS",
+        "salesStep": "REACHED",
+        "lostReasonCode": null,
+        "firstContactAt": "2026-10-14",
+        "lastContactAt": "2026-11-05",
+        "daysSinceFirstContact": 32,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-10",
+        "name": "미래정공(가상)",
+        "processCodes": ["ELECTROLESS_NICKEL"],
+        "industries": ["반도체"],
+        "contactCount": {
+          "total": 2,
+          "call": 1,
+          "email": 1,
+          "visit": 0
+        },
+        "outcomeStatus": "ON_HOLD",
+        "salesStep": null,
+        "lostReasonCode": null,
+        "firstContactAt": "2026-10-06",
+        "lastContactAt": "2026-10-30",
+        "daysSinceFirstContact": 40,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-11",
+        "name": "가상정밀(가상)",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 5,
+          "call": 3,
+          "email": 1,
+          "visit": 1
+        },
+        "outcomeStatus": "WON",
+        "salesStep": null,
+        "lostReasonCode": null,
+        "firstContactAt": "2026-08-20",
+        "lastContactAt": "2026-10-28",
+        "daysSinceFirstContact": 87,
+        "outcomeAt": "2026-10-30",
+        "daysToOutcome": 71
+      },
+      {
+        "oppId": "opp-fixture-12",
+        "name": "두레금속(가상)",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 2,
+          "call": 2,
+          "email": 0,
+          "visit": 0
+        },
+        "outcomeStatus": "LOST",
+        "salesStep": null,
+        "lostReasonCode": "PRICE",
+        "firstContactAt": "2026-10-01",
+        "lastContactAt": "2026-10-24",
+        "daysSinceFirstContact": 45,
+        "outcomeAt": "2026-10-24",
+        "daysToOutcome": 23
+      },
+      {
+        "oppId": "opp-fixture-13",
+        "name": "마루기공(가상)",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 3,
+          "call": 2,
+          "email": 1,
+          "visit": 0
+        },
+        "outcomeStatus": "LOST",
+        "salesStep": null,
+        "lostReasonCode": "PRICE",
+        "firstContactAt": "2026-09-14",
+        "lastContactAt": "2026-10-21",
+        "daysSinceFirstContact": 62,
+        "outcomeAt": "2026-10-22",
+        "daysToOutcome": 38
+      },
+      {
+        "oppId": "opp-fixture-14",
+        "name": "바른밸브(가상)",
+        "processCodes": ["PASSIVATION"],
+        "industries": ["반도체"],
+        "contactCount": {
+          "total": 2,
+          "call": 1,
+          "email": 1,
+          "visit": 0
+        },
+        "outcomeStatus": "LOST",
+        "salesStep": null,
+        "lostReasonCode": "INCUMBENT_SUPPLIER",
+        "firstContactAt": "2026-09-30",
+        "lastContactAt": "2026-10-15",
+        "daysSinceFirstContact": 46,
+        "outcomeAt": "2026-10-15",
+        "daysToOutcome": 15
+      },
+      {
+        "oppId": "opp-fixture-15",
+        "name": "자연금속(가상)",
+        "processCodes": ["ANODIZING"],
+        "industries": ["방위산업"],
+        "contactCount": {
+          "total": 3,
+          "call": 2,
+          "email": 0,
+          "visit": 1
+        },
+        "outcomeStatus": "LOST",
+        "salesStep": null,
+        "lostReasonCode": "LEAD_TIME",
+        "firstContactAt": "2026-08-25",
+        "lastContactAt": "2026-10-11",
+        "daysSinceFirstContact": 82,
+        "outcomeAt": "2026-10-13",
+        "daysToOutcome": 49
+      },
+      {
+        "oppId": "opp-fixture-16",
+        "name": "아람전자(가상)",
+        "processCodes": ["ELECTROLESS_NICKEL"],
+        "industries": ["반도체"],
+        "contactCount": {
+          "total": 3,
+          "call": 2,
+          "email": 1,
+          "visit": 0
+        },
+        "outcomeStatus": "ON_HOLD",
+        "salesStep": null,
+        "lostReasonCode": null,
+        "firstContactAt": "2026-09-05",
+        "lastContactAt": "2026-10-09",
+        "daysSinceFirstContact": 71,
+        "outcomeAt": null,
+        "daysToOutcome": null
+      },
+      {
+        "oppId": "opp-fixture-17",
+        "name": "라온테크(가상)",
+        "processCodes": ["ANODIZING", "CHROMATE"],
+        "industries": ["방위산업"],
+        "contactCount": {
+          "total": 4,
+          "call": 2,
+          "email": 1,
+          "visit": 1
+        },
+        "outcomeStatus": "WON",
+        "salesStep": null,
+        "lostReasonCode": null,
+        "firstContactAt": "2026-07-28",
+        "lastContactAt": "2026-10-02",
+        "daysSinceFirstContact": 110,
+        "outcomeAt": "2026-10-06",
+        "daysToOutcome": 70
+      },
+      {
+        "oppId": "opp-fixture-18",
+        "name": "하늘정밀(가상)",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "contactCount": {
+          "total": 4,
+          "call": 3,
+          "email": 0,
+          "visit": 1
+        },
+        "outcomeStatus": "WON",
+        "salesStep": null,
+        "lostReasonCode": null,
+        "firstContactAt": "2026-07-15",
+        "lastContactAt": "2026-09-26",
+        "daysSinceFirstContact": 123,
+        "outcomeAt": "2026-09-29",
+        "daysToOutcome": 76
+      }
+    ],
+    "total": {
+      "contactedCount": 18,
+      "inProgressCount": 9,
+      "onHoldCount": 2,
+      "wonCount": 3,
+      "lostCount": 4,
+      "avgContactsToWon": 4.3,
+      "contactReach": {
+        "CALL": {
+          "reached": 23,
+          "tried": 36
+        },
+        "EMAIL": {
+          "reached": 4,
+          "tried": 11
+        },
+        "VISIT": {
+          "reached": 6,
+          "tried": 6
+        }
+      },
+      "lostReasons": [
+        {
+          "code": "PRICE",
+          "count": 2
+        },
+        {
+          "code": "LEAD_TIME",
+          "count": 1
+        },
+        {
+          "code": "INCUMBENT_SUPPLIER",
+          "count": 1
+        }
+      ],
+      "ratios": {
+        "won": 0.17,
+        "reach": {
+          "CALL": 0.64,
+          "EMAIL": 0.36,
+          "VISIT": 1.0
+        }
+      }
+    },
+    "bySalesStep": [
+      {
+        "step": "NOT_REACHED",
+        "contactedCount": 18,
+        "contactCount": 21,
+        "contactReach": {
+          "CALL": {
+            "reached": 9,
+            "tried": 17
+          },
+          "EMAIL": {
+            "reached": 1,
+            "tried": 4
+          },
+          "VISIT": {
+            "reached": 0,
+            "tried": 0
+          }
+        },
+        "reachRatios": {
+          "CALL": 0.53,
+          "EMAIL": 0.25,
+          "VISIT": null
+        },
+        "reachedCount": 0,
+        "contactsToReach": 0,
+        "avgContactsToReach": null
+      },
+      {
+        "step": "REACHED",
+        "contactedCount": 13,
+        "contactCount": 15,
+        "contactReach": {
+          "CALL": {
+            "reached": 7,
+            "tried": 10
+          },
+          "EMAIL": {
+            "reached": 2,
+            "tried": 4
+          },
+          "VISIT": {
+            "reached": 1,
+            "tried": 1
+          }
+        },
+        "reachRatios": {
+          "CALL": 0.7,
+          "EMAIL": 0.5,
+          "VISIT": 1.0
+        },
+        "reachedCount": 15,
+        "contactsToReach": 27,
+        "avgContactsToReach": 1.8
+      },
+      {
+        "step": "DEMAND_CONFIRMED",
+        "contactedCount": 9,
+        "contactCount": 10,
+        "contactReach": {
+          "CALL": {
+            "reached": 5,
+            "tried": 6
+          },
+          "EMAIL": {
+            "reached": 1,
+            "tried": 2
+          },
+          "VISIT": {
+            "reached": 2,
+            "tried": 2
+          }
+        },
+        "reachRatios": null,
+        "reachedCount": 9,
+        "contactsToReach": 26,
+        "avgContactsToReach": null
+      },
+      {
+        "step": "MATERIAL_QUOTE",
+        "contactedCount": 6,
+        "contactCount": 7,
+        "contactReach": {
+          "CALL": {
+            "reached": 3,
+            "tried": 3
+          },
+          "EMAIL": {
+            "reached": 2,
+            "tried": 2
+          },
+          "VISIT": {
+            "reached": 2,
+            "tried": 2
+          }
+        },
+        "reachRatios": null,
+        "reachedCount": 6,
+        "contactsToReach": 24,
+        "avgContactsToReach": null
+      },
+      {
+        "step": "VISIT_SAMPLE",
+        "contactedCount": 3,
+        "contactCount": 3,
+        "contactReach": {
+          "CALL": {
+            "reached": 1,
+            "tried": 1
+          },
+          "EMAIL": {
+            "reached": 0,
+            "tried": 0
+          },
+          "VISIT": {
+            "reached": 2,
+            "tried": 2
+          }
+        },
+        "reachRatios": null,
+        "reachedCount": 3,
+        "contactsToReach": 15,
+        "avgContactsToReach": null
+      }
+    ],
+    "aiProposalHit": {
+      "process": {
+        "confirmedCount": 11,
+        "hitCount": 8,
+        "ratio": 0.73
+      }
+    }
+  },
+  "meta": {
+    "updatedAt": "2026-11-15T09:00:00+09:00",
+    "datasetKind": "VIRTUAL_REVIEWED",
+    "hasVirtualData": true
+  }
+}

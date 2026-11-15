@@ -2,27 +2,33 @@
 // 읽기 전용이라 보기 전용 담당자도 본다. 영업 기록에서 나온 내부 참고 화면이라 엑셀·AI로 내보내는 단추를 두지 않는다.
 // 가상 묶음이면 응답 meta를 띠에 알려 "가상" 표시가 보인다.
 // 맨 위 "관심 기업 분포"(#679, PM 결정 2026-11-13)는 대시보드에서 옮겨 온 공정별·산업군별 막대다.
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+// #760(PM 2026-11-15): 오른쪽 위 기간 선택("2026년 9월 1일 ~ 11월 15일")으로 고른 기간 안 접촉만 센다. 기간은
+// 주소(?from=&to=)에 남아 새로 고쳐도 그대로다. 표 위에 숫자 칸 4개와 막대·도넛 그래프를 둔다.
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
 import type { DashboardBreakdown } from '../api/dashboardTypes';
 import { getSalesAnalysis } from '../api/salesAnalysis';
-import type { SalesAnalysis } from '../api/salesAnalysis';
+import type { AnalysisPeriod, SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
+import AnalysisCharts from '../components/analysis/AnalysisCharts';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
 import ProcessAnalysisTable from '../components/analysis/ProcessAnalysisTable';
+import PeriodPicker from '../components/analysis/PeriodPicker';
 import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
 import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { peersArea, salesAnalysisTexts as texts } from '../labels/ko';
+import { analysisCharts, peersArea, salesAnalysisTexts as texts } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
 interface Result {
   /** 어떤 요청의 결과인지(다시 시도 횟수). */
   key: number;
+  /** 어떤 기간의 결과인지("from~to"). */
+  period: string;
   data?: SalesAnalysis;
   meta?: Meta;
   error?: unknown;
@@ -43,25 +49,49 @@ const secondary = {
   fontSize: typography.fontSizeSecondary,
 } as const;
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
 export default function SalesAnalysisPage() {
   const { setBannerMeta } = useFrame();
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
+  // 기간은 주소에 둔다. 모양이 틀린 값은 버린다(서버에 보내지 않는다).
+  const [params, setParams] = useSearchParams();
+  const rawFrom = params.get('from');
+  const rawTo = params.get('to');
+  const period = useMemo<AnalysisPeriod>(
+    () => ({
+      from: rawFrom && DAY.test(rawFrom) ? rawFrom : null,
+      to: rawTo && DAY.test(rawTo) ? rawTo : null,
+    }),
+    [rawFrom, rawTo],
+  );
+  const periodKey = `${period.from ?? ''}~${period.to ?? ''}`;
+  const changePeriod = (next: AnalysisPeriod) => {
+    const nextParams = new URLSearchParams(params);
+    for (const key of ['from', 'to'] as const) {
+      if (next[key]) nextParams.set(key, next[key] as string);
+      else nextParams.delete(key);
+    }
+    setParams(nextParams, { replace: true });
+  };
 
   useEffect(() => {
     const controller = new AbortController();
-    getSalesAnalysis(controller.signal)
+    getSalesAnalysis(controller.signal, period)
       .then((envelope) => {
         if (controller.signal.aborted) return;
-        setResult({ key: reload, data: envelope.data, meta: envelope.meta });
+        setResult({ key: reload, period: periodKey, data: envelope.data, meta: envelope.meta });
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setResult({ key: reload, error });
+        if (!controller.signal.aborted) setResult({ key: reload, period: periodKey, error });
       });
     return () => controller.abort();
-  }, [reload]);
+    // periodKey가 period를 대신한다(같은 기간이면 다시 부르지 않는다).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reload, periodKey]);
 
-  const current = result?.key === reload ? result : null;
+  const current = result?.key === reload && result.period === periodKey ? result : null;
   const meta = current?.meta ?? null;
 
   useEffect(() => {
@@ -94,10 +124,23 @@ export default function SalesAnalysisPage() {
   const retry = useCallback(() => setReload((n) => n + 1), []);
 
   const data = current?.data;
+  // "관심 기업 분포"(#679)는 기간과 상관없는 막대라 그래프 아래로 내렸다(#760, 숫자 칸·그래프를 맨 위에).
+  const breakdownSection = (
+    <InterestBreakdown
+      breakdown={currentBreakdown?.value}
+      failed={currentBreakdown?.failed === true}
+    />
+  );
   let state: 'loading' | 'error' | 'empty' | 'ready' = 'ready';
   if (!current) state = 'loading';
   else if (current.error) state = 'error';
   else if (!data || data.companies.length === 0) state = 'empty';
+
+  // 기간 모드면 서버가 실제로 쓴 양끝으로 기준 줄을 쓴다(옛 서버면 기간 칸이 없어 전처럼).
+  const periodMode = Boolean(data && (data.basis.from || data.basis.to));
+  const usedRange = data
+    ? analysisCharts.periodRange(data.basis.from ?? null, data.basis.to ?? null)
+    : '';
 
   // AI 제안 적중(#678): 담당자가 공정을 확정한 회사가 없으면 줄을 숨긴다.
   const hitText = data ? proposalHitText(data.aiProposalHit.process) : null;
@@ -108,13 +151,20 @@ export default function SalesAnalysisPage() {
 
   return (
     <div style={{ display: 'grid', gap: spacing.cardGap }}>
-      <p data-testid="analysis-internal-note" style={secondary}>
-        {peersArea.internalNote} · {texts.intro}
-      </p>
-      <InterestBreakdown
-        breakdown={currentBreakdown?.value}
-        failed={currentBreakdown?.failed === true}
-      />
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <p data-testid="analysis-internal-note" style={{ ...secondary, flex: '1 1 320px' }}>
+          {peersArea.internalNote} · {texts.intro}
+        </p>
+        <PeriodPicker value={period} onChange={changePeriod} />
+      </div>
       <FiveStates
         data-testid="analysis"
         state={state}
@@ -132,15 +182,30 @@ export default function SalesAnalysisPage() {
           <div style={{ display: 'grid', gap: spacing.sectionGap }}>
             <div style={{ display: 'grid', gap: 4 }}>
               <p data-testid="analysis-basis" style={secondary}>
-                {texts.basis(
-                  formatMonthDayTime(data.asOf),
-                  data.basis.companyCount,
-                  data.basis.closedWindowDays,
-                )}
+                {periodMode
+                  ? analysisCharts.basisPeriod(
+                      formatMonthDayTime(data.asOf),
+                      usedRange,
+                      data.basis.companyCount,
+                    )
+                  : texts.basis(
+                      formatMonthDayTime(data.asOf),
+                      data.basis.companyCount,
+                      data.basis.closedWindowDays,
+                    )}
                 {data.basis.olderClosedExcluded > 0
-                  ? ` · ${texts.olderExcluded(data.basis.olderClosedExcluded)}`
+                  ? ` · ${
+                      periodMode
+                        ? analysisCharts.olderExcludedPeriod(data.basis.olderClosedExcluded)
+                        : texts.olderExcluded(data.basis.olderClosedExcluded)
+                    }`
                   : ''}
               </p>
+              {periodMode ? (
+                <p data-testid="analysis-period-rule" style={secondary}>
+                  {analysisCharts.periodRule}
+                </p>
+              ) : null}
               <p data-testid="analysis-count-rule" style={secondary}>
                 {texts.countRuleConfirmed(data.basis.minSampleForRatio)}
               </p>
@@ -150,6 +215,11 @@ export default function SalesAnalysisPage() {
                 </p>
               ) : null}
             </div>
+            <AnalysisCharts data={data} />
+            {breakdownSection}
+            <h2 data-testid="analysis-tables-title" style={{ ...titleStyle, marginBottom: -16 }}>
+              {analysisCharts.tablesTitle}
+            </h2>
             <section aria-labelledby="analysis-process-title" style={sectionStyle}>
               <h2 id="analysis-process-title" style={titleStyle}>
                 {texts.processTitle}
@@ -179,6 +249,8 @@ export default function SalesAnalysisPage() {
           </div>
         ) : null}
       </FiveStates>
+      {/* 분석표가 아직 없거나 못 읽었어도 관심 기업 분포는 따로 보인다. */}
+      {state === 'ready' ? null : breakdownSection}
     </div>
   );
 }

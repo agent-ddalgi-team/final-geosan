@@ -116,3 +116,18 @@ export const antdTheme: ThemeConfig = {
     controlHeight: 40,
   },
 };
+
+/**
+ * 영업 분석 그래프 색(#760). dataviz 기본 범주 색 1~4번(파랑 · 주황 · 청록 · 노랑) 순서 그대로 —
+ * 검사 도구(validate_palette)로 색맹 구분을 확인한 순서다. 색은 보조 신호이고 범례·값 글자가 함께 있다.
+ */
+export const chartPalette = {
+  series: ['#2A78D6', '#EB6834', '#1BAF7A', '#EDA100'],
+  grid: '#E9EAEC',
+  track: '#F1F2F4',
+  /** 숫자 칸 하나를 강조할 때의 진한 바탕(참고 그림의 진한 초록 칸). 흰 글자 대비 4.5:1 이상. */
+  highlightBg: '#1F3A30',
+  highlightFg: '#FFFFFF',
+  highlightAccent: '#B9E36B',
+  cardRadius: 16,
+} as const;
