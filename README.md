@@ -45,6 +45,7 @@ cd web && npm ci && cd ..
 | 발표 시연용 DB에 가상 영업 기록 넣기(#274) | `geosan seed-demo-records [examples/demo-records.yaml]`. 시연 표시가 있는 DB에서만 동작하고 실제 DB에서는 거부합니다. 이미 기록이 있는 회사는 건너뜁니다. 순서는 아래 "발표 시연용 DB" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 | 백업·되돌리기 | `geosan backup [--to <폴더>]`(서버 켜진 채로 가능, 기본 `backups/`) → 문제가 생기면 서버를 멈추고 `geosan restore <백업 파일>`(확인 질문 1회, 지금 DB는 자동 보관) → `geosan init-db` → `geosan serve`. 절차는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) |
+| 배포용 DB 만들기(#753) | 이 PC에서 `geosan copy-without-records --to <새 파일>`. 지금 DB를 새 파일로 복사하고 사본에서 시험으로 남긴 영업 기록(메모·접촉·관심·의견·거래 관계 입력·질문 답)과 AI 전송 기록만 지웁니다. 회사·조사 근거·후보 판단은 그대로라 조사 비용을 다시 쓰지 않고, 사본의 이번 달 AI 사용액은 $0에서 시작합니다. 원본은 바뀌지 않습니다. 이미 있는 파일·시연용 DB는 거부합니다. 순서는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) 6장 |
 
 **처음 설치할 때 소스 이용 확인(#489)** — `init-db`·`check-config` 다음, `serve` 전에 운영자가 자료의 이용·저장 조건을 확인하고 아래 명령을 실행합니다.
 
@@ -131,6 +132,8 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 - 코드 버전(#719): 평가 기록에는 어느 코드로 계산했는지 `0.1.0+<커밋 번호>`로 적습니다. 커밋 번호는 환경 변수 `GEOSAN_CODE_VERSION` → `RAILWAY_GIT_COMMIT_SHA` → git 정보 순서로 찾고, 모두 없으면 `0.1.0+nogit`로 적은 채 평가는 그대로 저장합니다(서버 시작 줄에 경고 한 줄). 배포 서버에 git 정보가 없으면 `GEOSAN_CODE_VERSION`에 배포한 커밋 번호(영문·숫자·`.`·`_`·`-` 40자 이내)를 넣어 주세요. Railway가 `RAILWAY_GIT_COMMIT_SHA`를 실제로 주는지는 배포 때 확인합니다.
 - 화면 빌드는 Railway에서 필요하지 않습니다. `init-db`는 시작 명령이 **볼륨이 붙은 실행 환경 안에서** 돌리므로 빌드 단계에서 따로 실행하지 않습니다. 새 버전을 올리기 전에는 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
 - Vercel: Root Directory `web`, 배포 가지 `main`, 설치 `npm ci`, 빌드 `npm run build`, 출력 `dist`, 환경 변수 `VITE_USE_FIXTURES=0`과 대시보드 지도용 `VITE_NCP_MAPS_CLIENT_ID=<Client ID>`(비밀 아님, #671). 네이버 클라우드 콘솔 Maps 애플리케이션의 **Web 서비스 URL**에 Vercel 배포 주소(예: `https://<프로젝트>.vercel.app`)를 더해야 배포 화면에서 지도가 뜹니다. 서버 비밀번호·API 키를 Vercel의 `VITE_` 변수에 넣지 않습니다.
+
+**배포 서버 DB 준비 (#753, PM 결정 2026-11-15).** 배포 서버는 이 PC와 다른 DB 파일(`/data/geosan.db`)을 씁니다. 빈 DB로 시작하면 후보 찾기·조사를 다시 돌려야 해 AI 비용이 다시 들므로, 이 PC에서 `geosan copy-without-records --to <새 파일>`로 시험 기록만 비운 사본을 만들어 볼륨의 `/data/geosan.db` 자리에 둡니다. 사본을 볼륨에 올리는 방법(Railway 도구)은 첫 배포 때 계정에서 확인합니다(#213). 올린 뒤 아래 순서로 보호 켠 설정을 등록합니다.
 
 **첫 배포 순서 — 보호 켠 설정 등록 (#736).** 저장소의 앱 설정 예시 3개는 모두 보호 꺼짐이고, 운영용 설정 파일은 따로 두지 않습니다. 볼륨 안에 예시에서 보호만 켠 사본을 만들어 기존 `check-config`로 등록합니다. 시작 명령 그대로 첫 배포를 하면 보호 꺼짐으로 멈춰 다시 켜기를 반복하고 접속할 수 없으므로, 처음 한 번은 점검용 시작 명령으로 띄웁니다.
 
