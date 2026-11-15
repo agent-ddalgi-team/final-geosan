@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
 import type { ChoiceMarks } from '../ChoiceQuestion';
-import { coachChecklist } from '../SalesCoach';
+import { coachChecklist, coachStepAfter } from '../SalesCoach';
 import { getSalesQuestions, postNote, postOutcome } from '../../../api/client';
 import { postCoach } from '../../../api/coach';
 import type { CoachResult } from '../../../api/coach';
@@ -248,6 +248,41 @@ describe('확인사항 (규칙, AI 아님)', () => {
   });
 });
 
+describe('코치 확인 화면의 단계 (#748, 규칙)', () => {
+  const WITH_FIRST: SalesQuestions = {
+    ...QUESTIONS,
+    questions: [
+      {
+        questionId: 'WHO_TALKED',
+        text: '누구와 이야기했나요?',
+        step: 'NOT_REACHED',
+        coach: { fill: 'AI', required: true, keyword: '통화 상대' },
+        answers: [
+          { answerId: 'RIGHT_PERSON', label: '담당 부서', reaches: 'REACHED' },
+          { answerId: 'OTHER_DEPT', label: '다른 부서' },
+          { answerId: 'GUIDE_ONLY', label: '안내만' },
+        ],
+      },
+      ...QUESTIONS.questions,
+    ],
+  };
+
+  it('"연결됨" 접촉은 답이 없어도 연결됨까지, 다른 부서·안내만이면 그대로다', () => {
+    expect(coachStepAfter(WITH_FIRST, 'NOT_REACHED', {})).toBe('REACHED');
+    expect(coachStepAfter(WITH_FIRST, 'NOT_REACHED', { WHO_TALKED: ['OTHER_DEPT'] })).toBe(
+      'NOT_REACHED',
+    );
+    expect(coachStepAfter(WITH_FIRST, 'NOT_REACHED', { WHO_TALKED: ['GUIDE_ONLY'] })).toBe(
+      'NOT_REACHED',
+    );
+    expect(coachStepAfter(WITH_FIRST, 'NOT_REACHED', { PLATING_NOW: ['OUTSOURCED'] })).toBe(
+      'DEMAND_CONFIRMED',
+    );
+    // 앞으로만 간다.
+    expect(coachStepAfter(WITH_FIRST, 'DEMAND_CONFIRMED', {})).toBe('DEMAND_CONFIRMED');
+  });
+});
+
 describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
   it('스위치가 켜져 있고 "연결됨"이면 꼬리 질문 대신 확인사항·메모·[보내기]가 보인다', async () => {
     const user = userEvent.setup();
@@ -287,6 +322,11 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     );
     expect(within(review).getByTestId('coach-missing-SWITCH_INTENT')).toBeInTheDocument();
     expect(within(review).getAllByTestId('coach-feedback-line')).toHaveLength(2);
+    // (#748) 저장하면 갈 단계: 연결됨 + "외주 줌" → 수요 확인.
+    expect(within(review).getByTestId('coach-step')).toHaveTextContent(
+      '단계: 연결됨 → 수요 확인 (저장하면)',
+    );
+    expect(within(review).getByText(coachTexts.missingHint)).toBeInTheDocument();
     expect(postOutcome).not.toHaveBeenCalled();
     expect(postNote).not.toHaveBeenCalled();
     // 받은 정리와 저장할 메모가 어긋나지 않게 메모는 잠긴다.

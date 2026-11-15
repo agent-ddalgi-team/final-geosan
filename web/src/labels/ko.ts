@@ -2020,6 +2020,11 @@ export const coachTexts = {
   suggestUndo: '빼기',
   missingTitle: '빠진 필수 질문',
   missingNone: '빠진 필수 질문이 없습니다.',
+  /** (#748) 빠진 필수 질문 제목 아래 한 줄. */
+  missingHint: '답하면 단계가 바뀔 수 있어요.',
+  /** (#748) "단계: 연결 전 → 연결됨 (저장하면)" */
+  stepMove: (before: string, after: string) => `단계: ${before} → ${after} (저장하면)`,
+  stepSame: (step: string) => `단계: ${step} 그대로`,
   feedbackTitle: '코치 피드백',
   feedbackNone: '이번에는 짚을 것이 없습니다.',
   keep: '보고서에 남기기',

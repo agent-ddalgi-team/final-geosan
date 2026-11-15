@@ -26,6 +26,39 @@ function order(step: SalesStep): number {
 }
 
 /**
+ * (#748) 이 "연결됨" 접촉을 저장하면 갈 세부 단계. 서버 계산과 같은 규칙:
+ * 연결 전 질문에 단계를 올리지 않는 보기("다른 부서"·"안내만")를 고르지 않았으면 "연결됨"까지,
+ * 그리고 고른 보기의 reaches로 앞으로만 간다.
+ */
+export function coachStepAfter(
+  questions: SalesQuestions,
+  before: SalesStep,
+  chosen: Record<string, string[]>,
+): SalesStep {
+  const first = STEP_ORDER[0];
+  const reached = STEP_ORDER[1];
+  let step = before;
+  const held = questions.questions.some(
+    (question) =>
+      question.step === first &&
+      !question.choices &&
+      (chosen[question.questionId] ?? []).some((answerId) => {
+        const option = question.answers.find((item) => item.answerId === answerId);
+        return option !== undefined && !option.reaches;
+      }),
+  );
+  if (!held && order(reached) > order(step)) step = reached;
+  for (const question of questions.questions) {
+    if (question.choices) continue;
+    for (const answerId of chosen[question.questionId] ?? []) {
+      const option = question.answers.find((item) => item.answerId === answerId);
+      if (option?.reaches && order(option.reaches) > order(step)) step = option.reaches;
+    }
+  }
+  return step;
+}
+
+/**
  * 확인사항(규칙, AI 아님): 지금 세부 단계의 필수 질문 가운데 아직 답이 없고 보이는(showWhen) 것,
  * requiredWhen이 맞는 것, 그리고 접촉마다 묻는 필수 질문(조건 없는 것)의 짧은 말. 질문 파일 순서.
  */
@@ -165,6 +198,10 @@ export function CoachReview({
     advice: result.feedback.filter((_, index) => advice[index] === 'KEEP'),
   };
 
+  const stepAfter = coachStepAfter(questions, result.stepBefore, chosen);
+  const stepLabel = (code: SalesStep) =>
+    questions.steps.find((item) => item.code === code)?.label ?? code;
+
   function pickMissing(question: SalesQuestion, answerId: string) {
     setAnswered((previous) => {
       const current = previous[question.questionId] ?? [];
@@ -199,6 +236,11 @@ export function CoachReview({
       {result.summary ? (
         <span data-testid="coach-summary">{texts.summary(result.summary)}</span>
       ) : null}
+      <span data-testid="coach-step">
+        {stepAfter === result.stepBefore
+          ? texts.stepSame(stepLabel(result.stepBefore))
+          : texts.stepMove(stepLabel(result.stepBefore), stepLabel(stepAfter))}
+      </span>
       {result.removedNames + result.removedContacts > 0 ? (
         <span style={secondary} data-testid="coach-removed">
           {memoReadTexts.removed(result.removedNames, result.removedContacts)}
@@ -279,6 +321,7 @@ export function CoachReview({
 
       <div style={{ display: 'grid', gap: 4 }} data-testid="coach-missing">
         <Typography.Text>{texts.missingTitle}</Typography.Text>
+        {missing.length > 0 ? <span style={secondary}>{texts.missingHint}</span> : null}
         {missing.length === 0 ? (
           <span style={secondary}>{texts.missingNone}</span>
         ) : (
