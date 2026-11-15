@@ -60,7 +60,7 @@ geosan source-confirm kicox-production-api --by choi-pm
 `init-db`와 마찬가지로 실제 DB 볼륨이 붙은 실행 환경 안에서 실행해야 합니다. 다른 PC의 DB에 기록해도 서버 DB에는 반영되지 않습니다.
 이 명령은 외부 사이트에 접속하거나 이용 조건을 자동으로 확인하지 않습니다. API 키도 필요하지 않습니다.
 
-**발표 시연용 DB(#274, PM 결정 2026-11-04)** — 가상 회사 6곳(성사 3·거절 3)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
+**발표 시연용 DB(#274, PM 결정 2026-11-04; #765에서 18곳으로 늘림, 2026-11-15)** — 가상 회사 18곳(성사 4·거절 5·보류 2·진행 중 7, 접촉은 1~150일 전)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
 
 ```bash
 export GEOSAN_DB_PATH=./data/geosan-demo.db      # 윈도우 PowerShell: $env:GEOSAN_DB_PATH = "./data/geosan-demo.db"
@@ -73,8 +73,20 @@ geosan import-case examples/demo/case-demo-c-industry.json
 geosan import-case examples/demo/case-demo-d-tech.json
 geosan import-case examples/demo/case-demo-e-machining.json
 geosan import-case examples/demo/case-demo-f-valve.json
+geosan import-case examples/demo/case-demo-g-precision.json
+geosan import-case examples/demo/case-demo-h-industry.json
+geosan import-case examples/demo/case-demo-i-tech.json
+geosan import-case examples/demo/case-demo-j-metal.json
+geosan import-case examples/demo/case-demo-k-machine.json
+geosan import-case examples/demo/case-demo-l-electronics.json
+geosan import-case examples/demo/case-demo-m-precision.json
+geosan import-case examples/demo/case-demo-n-valve.json
+geosan import-case examples/demo/case-demo-o-parts.json
+geosan import-case examples/demo/case-demo-p-tech.json
+geosan import-case examples/demo/case-demo-q-industry.json
+geosan import-case examples/demo/case-demo-r-metal.json
 geosan evaluate
-geosan seed-demo-records                          # 가상 영업 기록: 성사 3곳·거절 3곳(가격·납기·기존 거래처)
+geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
