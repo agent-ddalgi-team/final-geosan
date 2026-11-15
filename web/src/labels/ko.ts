@@ -1643,6 +1643,83 @@ export const salesAnalysisTexts = {
   openCompanyLabel: (name: string) => `${name} 상세 보기`,
 } as const;
 
+/** 영업 분석 그래프·기간 선택(#760, PM 요청 2026-11-15). 숫자는 서버 값 그대로이고 글자만 여기 둔다. */
+export const analysisCharts = {
+  pageTitle: '영업 분석',
+  /** 기간 선택 칸 */
+  periodLabel: '분석 기간',
+  periodAll: '전체 기간',
+  /** "2026년 9월 1일 ~ 11월 15일" — 해가 같으면 끝 날짜의 해를 뺀다. */
+  periodRange: (from: string | null, to: string | null) => {
+    const part = (iso: string, withYear: boolean) => {
+      const [y, m, d] = iso.split('-').map(Number);
+      return withYear ? `${y}년 ${m}월 ${d}일` : `${m}월 ${d}일`;
+    };
+    if (!from && !to) return '전체 기간';
+    if (!from) return `처음 ~ ${part(to as string, true)}`;
+    if (!to) return `${part(from, true)} ~ 오늘`;
+    return `${part(from, true)} ~ ${part(to, from.slice(0, 4) !== to.slice(0, 4))}`;
+  },
+  presets: {
+    ALL: '전체',
+    DAYS_30: '최근 30일',
+    MONTHS_3: '최근 3개월',
+    THIS_MONTH: '이번 달',
+    THIS_YEAR: '올해',
+  },
+  periodFrom: '시작일',
+  periodTo: '끝일',
+  periodApply: '적용',
+  periodClose: '닫기',
+  periodInvalid: '시작일이 끝일보다 뒤입니다.',
+  /** 기간 모드의 기준 줄 */
+  basisPeriod: (asOf: string | null, range: string, companyCount: number) =>
+    [asOf ? `${asOf} 기준` : null, `${range} 안에 접촉한 회사 ${companyCount}곳`]
+      .filter(Boolean)
+      .join(' · '),
+  periodRule:
+    '기간 안의 접촉만 세고, 큰 단계는 기간 끝 날 기준입니다. 기간 전에 이미 성사·거절로 끝난 회사는 빠집니다.',
+  olderExcludedPeriod: (count: number) => `기간 전에 성사·거절로 끝난 ${count}곳은 빠졌습니다.`,
+  /** 숫자 칸 */
+  kpiContacted: '접촉한 회사',
+  kpiInProgress: '진행 중',
+  kpiWon: '성사',
+  kpiLost: '거절',
+  /** 완료 = 성사·거절로 끝난 곳(대시보드에서 옮겨 옴, 2026-11-16) */
+  kpiDone: '완료',
+  kpiDoneSub: (won: number, lost: number) => `성사 ${won}곳 · 거절 ${lost}곳`,
+  unitCompany: '곳',
+  kpiHold: (count: number) => `보류 ${count}곳`,
+  kpiWonRatio: (percent: number) => `성사율 ${percent}%`,
+  kpiSample: (count: number, min: number) => `표본 ${count}곳 · 비율은 ${min}곳부터`,
+  kpiAvgToWon: (avg: number) => `성사까지 평균 ${avg}번 접촉`,
+  kpiLostTop: (reason: string, count: number) => `가장 많은 이유: ${reason} ${count}곳`,
+  kpiInProgressNote: '아직 끝나지 않은 회사',
+  /** 그래프 */
+  processChartTitle: '공정별 접촉·성사',
+  seriesContacted: '접촉한 회사',
+  seriesWon: '성사',
+  donutTitle: '결과 나눔',
+  donutCenter: '접촉한 회사',
+  donutInProgress: '진행 중',
+  donutHold: '보류',
+  donutWon: '성사',
+  donutLost: '거절',
+  stepChartTitle: '세부 단계별 접촉',
+  /** "이른 회사 3곳" */
+  stepReached: (count: number) => `이른 회사 ${count}곳`,
+  methodChartTitle: '연락 방법별 연결',
+  /** "연결 2 / 시도 5" */
+  methodValue: (reached: number, tried: number) => `연결 ${reached} / 시도 ${tried}`,
+  lostChartTitle: '거절 이유',
+  chartEmpty: '아직 셀 기록이 없습니다.',
+  /** 막대에 손을 올리면 보이는 글 */
+  barTip: (label: string, series: string, value: number) => `${label} · ${series} ${value}곳`,
+  countTip: (label: string, value: number, unit: string) => `${label} ${value}${unit}`,
+  unitTimes: '번',
+  tablesTitle: '자세한 표',
+} as const;
+
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
 // 근거 상태 묶음(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사.
 // 세 묶음(#610)의 NOW·CHECK·LATER와 옛 이유 값은 서버가 더는 내보내지 않지만 글자는 남겨 둔다.
