@@ -205,6 +205,12 @@ export const dashboardTexts = {
   calendarHint: '일정이 있는 날을 누르면 내용이 보입니다.',
   popoverClose: '닫기',
   popoverDetail: '상세 보기',
+  calendarLegendLabel: '색 설명',
+  calendarToneOverdue: '기한 지남',
+  calendarToneToday: '오늘',
+  calendarToneSoon: '7일 안',
+  calendarToneLater: '그 뒤',
+  calendarCount: (count: number) => `${count}건`,
   searchLabel: '회사 이름 검색',
   searchPlaceholder: '회사 이름을 입력하세요',
   searchButton: '검색',
@@ -1678,6 +1684,10 @@ export const detailReport = {
   progress: {
     title: '영업 단계',
     won: '성사',
+    /** 큰 단계 띠(#759): 거절로 끝난 회사의 마지막 칸. "거절 (가격)" — 이유가 없으면 "거절" */
+    bandLost: (reason: string | null) => `거절${reason ? ` (${reason})` : ''}`,
+    /** 큰 단계 띠를 읽어 주는 글: "큰 단계: 접촉" */
+    bandAria: (label: string) => (label ? `큰 단계: ${label}` : '큰 단계'),
     /** "지금 (11/12부터)" */
     now: (since: string | null) => (since ? `지금 (${since}부터)` : '지금'),
     noContact: '아직 접촉 기록이 없습니다',

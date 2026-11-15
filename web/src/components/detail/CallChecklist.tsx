@@ -226,7 +226,11 @@ export default function CallChecklist({
   const listStyle = { margin: 0, paddingLeft: 20, display: 'grid', gap: 8 } as const;
 
   return (
-    <DetailSection id="detail-review" title={detailSections.callChecklist}>
+    <DetailSection
+      id="detail-review"
+      title={detailSections.callChecklist}
+      count={lines.length + askRows.length}
+    >
       <span style={secondary} data-testid="call-hint">
         {texts.hint}
       </span>
