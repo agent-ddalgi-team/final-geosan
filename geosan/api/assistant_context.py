@@ -42,6 +42,7 @@ from geosan.dashboard.queries import (
     schedule_due_outcomes,
 )
 from geosan.dashboard.sales_analysis import CONFIRMED_INDUSTRY_SOURCES, LINK_CONFIRMED
+from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Outcome, OutcomeAnswer
 from geosan.storage.base import utcnow
@@ -95,6 +96,8 @@ class _Company:
     next_schedule: date | None = None
     contacts: list[tuple[date, str, str]] = field(default_factory=list)  # 날짜·방법·결과
     answers: list[tuple[date, str, str]] = field(default_factory=list)  # 날짜·질문 글·보기 이름
+    # 거산 공장에서 직선거리(km, #764). 프로그램이 저장된 공공좌표로 잰 값, 없으면 None.
+    distance_km: float | None = None
 
 
 def _day_label(day: date) -> str:
@@ -117,13 +120,26 @@ def _load_companies(session: Session, opp_ids: Sequence[str], analysis_rows=()) 
     questions = sales_questions(session)
     analysed = {row.opp_id: row for row in analysis_rows}
     companies: dict[str, _Company] = {}
-    for opp_id, name, industries, source in session.execute(
-        select(Opportunity.opp_id, Customer.name, Customer.industries, Customer.industries_source)
+    customers: dict[str, Customer] = {}
+    for opp_id, customer in session.execute(
+        select(Opportunity.opp_id, Customer)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
         .where(Opportunity.opp_id.in_(opp_ids))
     ):
-        confirmed = list(industries or []) if source in CONFIRMED_INDUSTRY_SOURCES else []
-        companies[opp_id] = _Company(opp_id, name, [], confirmed)
+        source = customer.industries_source
+        confirmed = list(customer.industries or []) if source in CONFIRMED_INDUSTRY_SOURCES else []
+        companies[opp_id] = _Company(opp_id, customer.name, [], confirmed)
+        customers[opp_id] = customer
+    # #764: 목록 카드와 같은 "거산에서 거리". 저장된 좌표만 쓰고 외부 조회는 하지 않는다.
+    distances = customer_distances(
+        session,
+        list(customers.values()),
+        {customer.customer_id: opp_id for opp_id, customer in customers.items()},
+        runtime_for(session).app_settings,
+        live=False,
+    )
+    for opp_id, customer in customers.items():
+        companies[opp_id].distance_km = distances.get(customer.customer_id)
     codes: dict[str, set[str]] = {}
     for opp_id, code in session.execute(
         select(OppProcessLink.opp_id, OppProcessLink.process_code)
@@ -230,13 +246,20 @@ def _table_line(company: _Company, steps: dict[str, str]) -> str:
             last.isoformat() if last else _NONE,
             LOST_REASON_LABELS.get(company.lost_reason, _NONE) if company.lost_reason else _NONE,
             company.next_schedule.isoformat() if company.next_schedule else _NONE,
+            f"{company.distance_km:g}km" if company.distance_km is not None else "모름",
         ]
     )
 
 
+# #764: 표 머리 앞에 거리 칸이 무엇인지 한 줄로 알린다("거산케미칼"로 물어도 알아듣게).
+_DISTANCE_NOTE = (
+    "거산에서 거리: 거산(거산케미칼, 우리 회사 공장)에서 그 회사까지 프로그램이 잰 직선거리. "
+    "좌표가 없는 회사는 모름"
+)
 _TABLE_HEAD = (
+    _DISTANCE_NOTE + "\n"
     "회사 | 확정 공정 | 확정 산업 | 관심 | 큰 단계 | 세부 단계 | 접촉 횟수 | 마지막 접촉 | "
-    "거절 이유 | 다음 일정"
+    "거절 이유 | 다음 일정 | 거산에서 거리"
 )
 
 
