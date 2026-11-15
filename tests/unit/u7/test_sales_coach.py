@@ -493,6 +493,23 @@ def test_step_after_only_moves_forward(questions):
     )
 
 
+def test_step_after_reaches_reached_for_a_connected_call(questions):
+    """(#748) 코치는 '연결됨' 접촉에만 쓰므로 답이 없어도 '연결됨'까지 간다.
+
+    다른 부서·안내만을 고르면 그대로다."""
+    assert step_after(questions, SalesStep.NOT_REACHED, {}) == SalesStep.REACHED
+    assert step_after(questions, SalesStep.NOT_REACHED, {"NEXT_ACTION": ["VISIT"]}) == (
+        SalesStep.REACHED
+    )
+    for held in ("OTHER_DEPT", "GUIDE_ONLY"):
+        assert step_after(questions, SalesStep.NOT_REACHED, {"WHO_TALKED": [held]}) == (
+            SalesStep.NOT_REACHED
+        )
+    assert step_after(questions, SalesStep.NOT_REACHED, {"PLATING_NOW": ["OUTSOURCED"]}) == (
+        SalesStep.DEMAND_CONFIRMED
+    )
+
+
 def _questions_with(tmp_path, coach_line, question_id="NEED_PROCESS"):
     source = (EXAMPLES_DIR / "sales-questions.yaml").read_text(encoding="utf-8")
     lines = source.split("\n")
