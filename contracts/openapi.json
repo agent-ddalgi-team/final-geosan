@@ -159,6 +159,18 @@
             "title": "Companycount",
             "type": "integer"
           },
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
           "minSampleForRatio": {
             "title": "Minsampleforratio",
             "type": "integer"
@@ -166,6 +178,18 @@
           "olderClosedExcluded": {
             "title": "Olderclosedexcluded",
             "type": "integer"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
           }
         },
         "required": [
@@ -9141,8 +9165,42 @@
     },
     "/api/v1/sales-analysis": {
       "get": {
-        "description": "공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.",
+        "description": "공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.\n\n(#760) `from`·`to`(한국 날짜)를 하나라도 주면 그 기간 안 접촉으로 센다. 둘 다 없으면 전과 같다.",
         "operationId": "sales_analysis_api_v1_sales_analysis_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -9153,6 +9211,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Sales Analysis"
