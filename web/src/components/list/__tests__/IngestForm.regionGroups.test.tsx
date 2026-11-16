@@ -103,8 +103,7 @@ it('자료 기준이 빈 목록이면 "아직 넣은 공공자료가 없습니�
 });
 
 it('옛 응답(권역·자료 기준 칸 없음)이면 지금처럼 시·군 칸만 펼쳐 보이고 자료 기준 줄은 없다', () => {
-  const { regionGroups: _groups, dataBasis: _basis, ...old } = OPTIONS;
-  renderForm(old);
+  renderForm({ processes: OPTIONS.processes, regions: OPTIONS.regions, industries: [] });
   expect(screen.queryByTestId('ingest-region-group')).not.toBeInTheDocument();
   expect(screen.queryByTestId('ingest-region-direct')).not.toBeInTheDocument();
   expect(screen.getByTestId('ingest-region')).toBeInTheDocument();
