@@ -188,6 +188,7 @@ def run_extract(
                 session.get(Customer, customer_id),
                 result.fit_review.fit_level,
                 result.fit_review.reason,
+                result.fit_review.downgrade_basis,
             )
             evidence = store_extraction(
                 session,

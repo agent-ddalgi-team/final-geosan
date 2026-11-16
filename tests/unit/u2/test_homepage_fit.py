@@ -42,9 +42,16 @@ def found_company(case, *, fit_level="MEDIUM", homepage=True):
         session.get(Opportunity, case.opp_id).card_reason = PICK
 
 
-def ai_says(transport, fit_level, reason="볼트를 직접 생산", quote="정밀 볼트를 생산합니다."):
+def ai_says(
+    transport, fit_level, reason="볼트를 직접 생산", quote="정밀 볼트를 생산합니다.", basis=None
+):
     data = support.answer()
-    data["fitReview"] = {"fitLevel": fit_level, "reason": reason, "quote": quote}
+    data["fitReview"] = {
+        "fitLevel": fit_level,
+        "reason": reason,
+        "quote": quote,
+        "downgradeBasis": basis,
+    }
     transport.side_effect = lambda *_: support.reply(data)
 
 
@@ -71,10 +78,11 @@ def sent_instructions(transport):
 )
 def test_homepage_fit_moves_to_card_with_reason_and_first_level(extract_env, before, after):
     """Given 생산품 기준 적합도 회사 / When 조사가 홈페이지로 다시 판단
-    / Then 적합도·이유가 홈페이지 기준으로 바뀌고 처음 적합도가 남는다."""
+    / Then 적합도·이유가 홈페이지 기준으로 바뀌고 처음 적합도가 남는다.
+    (#810: 내려갈 때는 반대 근거 종류가 함께 와야 옮긴다 — 여기서는 조립만 하는 회사.)"""
     case, transport = extract_env
     found_company(case, fit_level=before)
-    ai_says(transport, after)
+    ai_says(transport, after, basis="ASSEMBLY_ONLY" if after == "LOW" else None)
     result = flow_extract.run_extract(case.opp_id, URL)
     assert result.ok, result.error
     customer, opportunity = company(case)
@@ -110,12 +118,83 @@ def test_second_research_keeps_first_product_level(extract_env):
     found_company(case, fit_level="MEDIUM")
     ai_says(transport, "HIGH")
     assert flow_extract.run_extract(case.opp_id, URL).ok
-    ai_says(transport, "LOW", reason="부품을 사 와 조립", quote="납품 전 검사가 필요합니다.")
+    ai_says(
+        transport,
+        "LOW",
+        reason="부품을 사 와 조립",
+        quote="납품 전 검사가 필요합니다.",
+        basis="ASSEMBLY_ONLY",
+    )
     assert flow_extract.run_extract(case.opp_id, URL).ok
     customer, opportunity = company(case)
     assert (customer.fit_level, customer.previous_fit_level) == ("LOW", "MEDIUM")
     assert customer.pick_reason == "홈페이지 기준 · 부품을 사 와 조립"
     assert opportunity.card_reason == customer.pick_reason
+
+
+# ---------- #810 '적혀 있지 않음'만으로는 내리지 않는다 ----------
+
+
+@pytest.mark.parametrize(("before", "after"), [("HIGH", "MEDIUM"), ("MEDIUM", "LOW")])
+def test_lower_fit_without_counter_evidence_keeps_product_fit(extract_env, before, after):
+    """Given 생산품 기준 적합도 회사 / When AI가 반대 근거 종류 없이 낮게 판단
+    ('도금을 명시하지 않음' 같은 이유) / Then 그 판단만 버리고 적합도·이유·카드 문장은 그대로."""
+    case, transport = extract_env
+    found_company(case, fit_level=before)
+    ai_says(transport, after, reason="도금 공정은 명시하지 않음", quote="정밀 볼트를 생산합니다.")
+    assert flow_extract.run_extract(case.opp_id, URL).ok
+    customer, opportunity = company(case)
+    assert (customer.fit_level, customer.fit_basis, customer.previous_fit_level) == (
+        before,
+        None,
+        None,
+    )
+    assert customer.pick_reason == PICK and opportunity.card_reason == PICK
+
+
+@pytest.mark.parametrize("basis", ["NON_MANUFACTURER", "ASSEMBLY_ONLY", "OWN_PLATING"])
+def test_lower_fit_with_counter_evidence_moves(extract_env, basis):
+    """Given 상 회사 / When AI가 반대 근거 종류와 함께 낮게 판단 / Then 홈페이지 기준으로 내린다."""
+    case, transport = extract_env
+    found_company(case, fit_level="HIGH")
+    ai_says(transport, "LOW", reason="설계 용역 위주", basis=basis)
+    assert flow_extract.run_extract(case.opp_id, URL).ok
+    customer, _ = company(case)
+    assert (customer.fit_level, customer.fit_basis, customer.previous_fit_level) == (
+        "LOW",
+        "HOMEPAGE",
+        "HIGH",
+    )
+
+
+def test_homepage_raised_fit_can_return_to_product_level_without_basis(extract_env):
+    """Given 홈페이지로 상까지 올라간 회사(생산품 기준 중) / When 다시 조사에서 근거 없이 중
+    / Then 생산품 기준(중)보다 낮지 않으니 옮긴다. 중보다 낮은 하는 근거 없이 버린다."""
+    case, transport = extract_env
+    found_company(case, fit_level="MEDIUM")
+    ai_says(transport, "HIGH")
+    assert flow_extract.run_extract(case.opp_id, URL).ok
+    ai_says(transport, "MEDIUM", reason="부품 생산은 넓게 적힘")
+    assert flow_extract.run_extract(case.opp_id, URL).ok
+    customer, _ = company(case)
+    assert (customer.fit_level, customer.previous_fit_level) == ("MEDIUM", "MEDIUM")
+    ai_says(transport, "LOW", reason="도금 공정은 명시하지 않음")
+    assert flow_extract.run_extract(case.opp_id, URL).ok
+    customer, _ = company(case)
+    assert customer.fit_level == "MEDIUM"
+    assert customer.pick_reason == "홈페이지 기준 · 부품 생산은 넓게 적힘"
+
+
+def test_fit_instructions_forbid_lowering_on_absence(extract_env):
+    """지시문이 '적혀 있지 않다는 이유만으로는 내리지 않는다'와 반대 근거 종류를 말한다."""
+    case, transport = extract_env
+    found_company(case)
+    ai_says(transport, None, reason="", quote=None)
+    assert flow_extract.run_extract(case.opp_id, URL).ok
+    sent = sent_instructions(transport)
+    assert "적혀 있지 않다는 이유만으로는" in sent
+    for kind in ("NON_MANUFACTURER", "ASSEMBLY_ONLY", "OWN_PLATING"):
+        assert kind in sent
 
 
 def test_hand_written_card_sentence_is_kept(extract_env):
@@ -150,9 +229,14 @@ def test_ai_sends_fit_schema_field(extract_env):
     assert "fitReview" in schema["required"]
 
 
-def _extraction(fit_level, reason, quote):
+def _extraction(fit_level, reason, quote, basis=None):
     data = support.answer()
-    data["fitReview"] = {"fitLevel": fit_level, "reason": reason, "quote": quote}
+    data["fitReview"] = {
+        "fitLevel": fit_level,
+        "reason": reason,
+        "quote": quote,
+        "downgradeBasis": basis,
+    }
     return Extraction.model_validate(data)
 
 
@@ -164,7 +248,9 @@ def _extraction(fit_level, reason, quote):
 def test_unbacked_fit_is_dropped_without_failing_research(reason, quote):
     """인용이 본문에 없거나 이유가 비면 그 판단만 버린다(조사 전체는 실패시키지 않음)."""
     checked = _checked_fit(_extraction("HIGH", reason, quote), BODY)
-    assert checked.fit_review == FitReview(fit_level=None, reason="", quote=None)
+    assert checked.fit_review == FitReview(
+        fit_level=None, reason="", quote=None, downgrade_basis=None
+    )
 
 
 def test_backed_fit_is_kept():
