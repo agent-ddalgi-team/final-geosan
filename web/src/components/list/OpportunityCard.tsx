@@ -29,6 +29,10 @@ import {
 import { colors, spacing, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { formatMonthDay } from '../../utils/time';
+
+/** #793: 적합도 높낮이(오름·내림 화살표 계산에만 쓴다). */
+const FIT_RANK = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
+
 export interface OpportunityCardProps {
   card: CardData;
   /** 서버 앱 설정(/config/ui)의 분류 문구. 있으면 기본 대응표보다 먼저 쓴다. */
@@ -139,7 +143,17 @@ export default function OpportunityCard({
   // 끝난 회사만 끝난 이유("거래 중"·"성사·거절·보류"·"제외"·"필수조건 탈락")를 그 자리에 보인다.
   const closed = card.bucket === 'CLOSED';
   const closedBasis = closed && card.bucketBasis ? contactBuckets.basis[card.bucketBasis] : null;
-  const fitTag = !closed && card.bucket && card.fitLevel ? contactBuckets.fit[card.fitLevel] : null;
+  // #793: 홈페이지로 다시 정해 처음(생산품 기준)보다 오르거나 내렸으면 화살표를 붙인다("적합도 상 ↑").
+  const fitMove =
+    card.fitBasis === 'HOMEPAGE' && card.fitLevel && card.previousFitLevel
+      ? FIT_RANK[card.fitLevel] - FIT_RANK[card.previousFitLevel]
+      : 0;
+  const fitTag =
+    !closed && card.bucket && card.fitLevel
+      ? fitMove !== 0
+        ? contactBuckets.fitMoved(contactBuckets.fit[card.fitLevel], fitMove > 0)
+        : contactBuckets.fit[card.fitLevel]
+      : null;
   // 점수와 "순서 조정" 줄은 점수를 매길 근거가 있는 "근거 있음" 묶음 카드에만 보인다.
   // 서버가 묶음 칸을 주지 않으면(옛 응답) 지금처럼 보인다.
   const evidenceReady = card.bucket === undefined || card.bucket === 'EVIDENCE_READY';

@@ -765,6 +765,13 @@ export const companyGlance = {
   why: '왜 이 회사',
   aiJudgment: 'AI 판단',
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
+  /** #793: 처음 적합도를 짧게 보일 때. */
+  fitShort: { HIGH: '상', MEDIUM: '중', LOW: '하' },
+  /** #793 근거 상태 줄: "적합도 상 (홈페이지 기준 · 처음엔 생산품 기준 중)", 같으면 "적합도 상 (홈페이지 기준)". */
+  fitFromHomepage: (fit: string, previous: string | null) =>
+    previous ? `${fit} (홈페이지 기준 · 처음엔 생산품 기준 ${previous})` : `${fit} (홈페이지 기준)`,
+  /** #793 홈페이지 줄: 조사가 홈페이지를 닫힌 것으로 봤을 때. */
+  homepageClosed: (reason: string) => `홈페이지가 닫혀 있습니다(${reason})`,
 } as const;
 
 /** 팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 종업원 수는 실제와 많이 달라 화면에 보이지 않는다(#635). */
@@ -1804,6 +1811,8 @@ export const contactBuckets = {
     `${contactBucketTitles[bucket]} ${count}곳 (${shown}곳만 보임)`,
   /** 카드 꼬리표: 공정 적합도 하나(#675). 끝난 회사가 아닌 카드에 보인다. 적합도가 없으면 안 보인다. */
   fit: { HIGH: '적합도 상', MEDIUM: '적합도 중', LOW: '적합도 하' },
+  /** #793: 홈페이지로 다시 정해 처음(생산품 기준)보다 오르거나 내렸을 때 꼬리표 뒤에 붙는 화살표. 예: "적합도 상 ↑" */
+  fitMoved: (fit: string, up: boolean) => `${fit} ${up ? '↑' : '↓'}`,
   /** 그 묶음에 든 이유. 카드에는 끝난 회사의 이유(앞 네 줄)만 꼬리표로 보인다. */
   basis: {
     EXCLUDED_OPINION: '제외',
@@ -1948,6 +1957,8 @@ export const detailReport = {
     evidenceCount: (count: number) => (count > 0 ? `근거 ${count}건` : '근거 없음'),
     homepageFound: '홈페이지 있음',
     homepageNotFound: '홈페이지 못 찾음',
+    /** #793: 조사가 홈페이지를 닫힌 것으로 봤을 때. 예: "홈페이지 닫힘 (호스팅 만료)" */
+    homepageClosed: (reason: string) => `홈페이지 닫힘 (${reason})`,
     homepageNone: '홈페이지 없음',
     researchRunning: '조사 중',
     /** 낱말(공정·소재·근거 부족) 뒤에 이름 그대로 보이는 조건 앞 3개 + "외 n개". 카드 "확인할 것" 줄과 같은 조립이다. */

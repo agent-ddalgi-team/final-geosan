@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 STOP_KINDS = {"LLM_LIMIT", "SEARCH_LIMIT", "USAGE_UNCONFIRMED", "LLM_NOT_CONFIGURED"}
 # 홈페이지를 못 읽었거나 시간이 넘어 멈춘 오류. 읽기에서 멈추면 전송 기록이 없어서
 # 이유를 거부 1행으로 남긴다(#690).
-READ_FAILURE_KINDS = {"UNREACHABLE", "ROBOTS_DISALLOW", "TERMS_DISALLOW", "TIMEOUT"}
+# #793: 닫힌 홈페이지(SITE_CLOSED)도 읽기 실패로 이유를 남긴다.
+READ_FAILURE_KINDS = {"UNREACHABLE", "ROBOTS_DISALLOW", "TERMS_DISALLOW", "TIMEOUT", "SITE_CLOSED"}
 
 
 @dataclass
