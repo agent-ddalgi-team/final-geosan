@@ -200,10 +200,12 @@ industries:
   - 기타
 
 # 2026-11-13 확인 #222: 공공좌표만 저장, 네이버는 한 요청에서만 사용. 키는 환경 변수.
+# 시연 지도용 거산 공장 위치(#811, PM 결정 2026-11-16): 성거읍 일대 대략 위치(소수 둘째 자리). 정확한 값이
+# 필요하면 PM이 지도에서 읽어 바꾼다. 가상 설정(app-settings-virtual.yaml)과 다른 칸은 brand와 이 두 값뿐이다.
 geosan:
   address: "충청남도 천안시 서북구 성거읍 봉주로 303-1"
-  lat: null
-  lng: null
+  lat: 36.87
+  lng: 127.19
 geocoding:
   provider: JUSO
   enabled: false

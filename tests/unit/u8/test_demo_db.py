@@ -133,10 +133,14 @@ def test_demo_settings_keep_outside_calls_off_and_mark_demo():
     assert not settings.homepage_discovery.enabled and not settings.homepage_discovery.auto_research
     assert not settings.candidate_web_search.enabled and not settings.ingestion.ai_pick.enabled
     assert not settings.geocoding.enabled and not settings.access_protection.enabled
-    # 시연용 설정은 가상 설정과 brand 두 칸만 다르다(한쪽만 고쳐 어긋나는 것을 막는다).
+    # 시연용 설정은 가상 설정과 brand 두 칸, 거산 공장 좌표(시연 지도용, #811 PM 결정 2026-11-16)만
+    # 다르다(한쪽만 고쳐 어긋나는 것을 막는다).
     demo = settings.model_dump()
     virtual = load_app_settings(VIRTUAL_SETTINGS).model_dump()
+    assert virtual["geosan"]["lat"] is None and virtual["geosan"]["lng"] is None
+    assert (demo["geosan"]["lat"], demo["geosan"]["lng"]) == (36.87, 127.19)
     demo["brand"].update(demo_label=None, demo=False)
+    demo["geosan"].update(lat=None, lng=None)
     assert demo == virtual
 
 
@@ -228,6 +232,16 @@ def test_example_records_file_matches_cases_and_questions():
         (lambda d: d["companies"][0]["contacts"][0].update(nextInDays=-1), "nextInDays"),
         (lambda d: d["companies"][0]["contacts"][0].update(nextInDays="3"), "nextInDays"),
         (lambda d: d["companies"][0]["contacts"][0].update(nextNote="(가상) 확인"), "nextNote"),
+        # (#811) 가상 위치: 숫자만, 범위 안, 위도·경도 둘 다, 모르는 키 거부
+        (lambda d: d["companies"][0].update(location={"lat": "36.8", "lng": 127.1}), "lat"),
+        (lambda d: d["companies"][0].update(location={"lat": 91, "lng": 127.1}), "lat"),
+        (lambda d: d["companies"][0].update(location={"lat": 36.8, "lng": 181}), "lng"),
+        (lambda d: d["companies"][0].update(location={"lat": 36.8}), "lng"),
+        (lambda d: d["companies"][0].update(location={"lat": True, "lng": 127.1}), "lat"),
+        (
+            lambda d: d["companies"][0].update(location={"lat": 36.8, "lng": 127.1, "x": 1}),
+            "x",
+        ),
     ],
 )
 def test_records_file_errors(tmp_path, edit, expected):
