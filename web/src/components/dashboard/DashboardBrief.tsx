@@ -3,7 +3,7 @@
 // 숫자는 "오늘 확인할 것" 줄(todayChecks)과 건수(counts)를 그대로 쓴다. 서버는 0건인 줄을 보내지 않으므로
 // 줄이 없으면 0이다. 새 계산·새 API 없음.
 import type { ReactNode } from 'react';
-import type { DashboardCounts, TodayCheckRow } from '../../api/dashboardTypes';
+import type { Dashboard, DashboardCounts, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 import CountCards from './CountCards';
@@ -28,10 +28,16 @@ function countOf(rows: TodayCheckRow[] | undefined, kind: TodayCheckRow['kind'])
 export default function DashboardBrief({
   rows,
   counts,
+  companies,
+  today: todayDate,
   assistantSummary = null,
 }: {
   rows: TodayCheckRow[] | undefined;
   counts: DashboardCounts;
+  /** #800: 진행 띠 칸별 회사. 있으면 칸을 눌러 편다. */
+  companies?: Dashboard['progressCompanies'];
+  /** 오늘(YYYY-MM-DD, 한국). */
+  today?: string;
   /** AI 오늘 정리(#743). 스위치가 꺼져 있거나 담당자를 안 골랐으면 넘기지 않는다. */
   assistantSummary?: ReactNode;
 }) {
@@ -75,7 +81,7 @@ export default function DashboardBrief({
           </div>
         ) : null}
         <div data-testid="dashboard-brief-progress" style={{ flex: '3 1 360px', minWidth: 0 }}>
-          <CountCards counts={counts} part="progress" />
+          <CountCards counts={counts} part="progress" companies={companies} today={todayDate} />
         </div>
       </div>
     </section>

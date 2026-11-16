@@ -305,6 +305,20 @@ export const dashboardTexts = {
     WON: '성사',
   },
   progressOnHold: (n: number) => `보류 ${n}곳`,
+  /** #800: 띠 칸을 누르면 그 단계 회사가 펴진다. */
+  progressOpenHint: '칸을 누르면 그 단계 회사가 펴집니다',
+  progressOnHoldName: '보류',
+  progressListTitle: (stage: string, n: number) => `${stage} ${n}곳`,
+  progressListEmpty: '이 단계 회사가 없습니다.',
+  progressListLink: '목록에서 보기 →',
+  progressLastContact: (daysAgo: number) =>
+    daysAgo <= 0 ? '오늘 접촉' : `마지막 접촉 ${daysAgo}일 전`,
+  progressNoContact: '아직 접촉 전',
+  progressNext: (day: string, note: string | null) =>
+    note ? `다음 ${day} ${note}` : `다음 ${day}`,
+  progressNoSchedule: '일정 없음',
+  progressStalled: '⚠ 멈춘 회사',
+  progressMore: (n: number) => `${n}곳 더 보기`,
   /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
   notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
