@@ -11,6 +11,7 @@ import { frame } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 import AssistantAsk from '../assistant/AssistantAsk';
 import CoachDock from './CoachDock';
+import type { DockScreen } from './CoachDock';
 import SideMenu from './SideMenu';
 import StatusBanner from './StatusBanner';
 import {
@@ -38,9 +39,11 @@ export interface AppFrameProps {
    * page = 페이지가 자기 내용을 넣는 빈 자리(기업 상세: 전달 사항·통화 전·기록 남기기). 없으면 칸이 없다.
    */
   dock?: 'assistant' | 'page' | null;
+  /** 코치 칸의 화면 종류(#795): 화면마다 기본 펼침·접힘과 기억이 다르다. 없으면 기본 펼침. */
+  dockScreen?: DockScreen;
 }
 
-export default function AppFrame({ title, children, dock = null }: AppFrameProps) {
+export default function AppFrame({ title, children, dock = null, dockScreen }: AppFrameProps) {
   const [dockSlot, setDockSlot] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<ConfigUi | null>(null);
   const [configMeta, setConfigMeta] = useState<Meta | null>(null);
@@ -204,10 +207,16 @@ export default function AppFrame({ title, children, dock = null }: AppFrameProps
               {pageTitle ?? title}
             </Typography.Title>
             {children}
-            {dockBody && narrowDevice ? <CoachDock narrowDevice>{dockBody}</CoachDock> : null}
+            {dockBody && narrowDevice ? (
+              <CoachDock narrowDevice screen={dockScreen}>
+                {dockBody}
+              </CoachDock>
+            ) : null}
           </main>
           {dockBody && !narrowDevice ? (
-            <CoachDock narrowDevice={false}>{dockBody}</CoachDock>
+            <CoachDock key={dockScreen ?? 'DETAIL'} narrowDevice={false} screen={dockScreen}>
+              {dockBody}
+            </CoachDock>
           ) : null}
         </div>
       </ConfigProvider>
