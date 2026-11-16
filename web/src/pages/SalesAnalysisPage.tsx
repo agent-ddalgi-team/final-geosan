@@ -14,6 +14,7 @@ import { getSalesAnalysis } from '../api/salesAnalysis';
 import type { AnalysisPeriod, SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
+import SalesPatterns from '../components/analysis/SalesPatterns';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
 import ProcessAnalysisTable from '../components/analysis/ProcessAnalysisTable';
@@ -218,6 +219,8 @@ export default function SalesAnalysisPage() {
               ) : null}
             </div>
             <AnalysisCharts data={data} />
+            {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값. */}
+            <SalesPatterns period={period} reloadKey={reload} processNames={processNames} />
             <details data-testid="analysis-tables" style={{ display: 'grid' }}>
               <summary
                 data-testid="analysis-tables-toggle"

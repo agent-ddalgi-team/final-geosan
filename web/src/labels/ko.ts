@@ -1741,6 +1741,75 @@ export const salesAnalysisTexts = {
 } as const;
 
 /** 영업 분석 그래프·기간 선택(#760, PM 요청 2026-11-15). 숫자는 서버 값 그대로이고 글자만 여기 둔다. */
+/** #802 1단계: 영업 분석 아래 "쓸수록 좋아지는 분석" 구역(AI 없이 저장된 기록만 센다). */
+export const salesPatternsTexts = {
+  title: '기록에서 배우기',
+  intro: 'AI 없이 저장된 영업 기록만 셉니다. 표본이 적은 줄은 회색 "판단 보류"로 둡니다.',
+  loadError: '패턴을 불러오지 못했습니다. 위 그림과 표는 그대로 볼 수 있습니다.',
+  /** "패턴 판단에 쓸 수 있는 기록 18곳 / 필요 30곳" */
+  enough: (usable: number, needed: number) =>
+    `패턴 판단에 쓸 수 있는 기록 ${usable}곳 / 필요 ${needed}곳`,
+  notEnough: '아직 기록이 적어 결론을 내지 않습니다. 숫자는 참고로만 보세요.',
+  failureTitle: '실패에서 배우기',
+  /** "거절·보류 7곳 (보류 2곳)" */
+  failureCount: (count: number, onHold: number) => `거절·보류 ${count}곳 (보류 ${onHold}곳)`,
+  whereDropped: '어디까지 가서 멈췄나',
+  noStep: '연결 전',
+  why: '왜 — 거절 이유',
+  stepAnswers: '멈춘 단계에서 들은 답',
+  signalsTitle: '실패 전 신호 — 성사한 회사와 견주기',
+  signalsNote: '신호가 있던 회사 가운데 실패 쪽 몫과 성사 쪽 몫입니다.',
+  signalNames: {
+    CALL_ONLY: '전화만·방문 없음',
+    LONG_GAP: '접촉 사이 긴 공백',
+  } as Record<string, string>,
+  /** "관심 정도는? = 낮음·없음" */
+  answerSignal: (question: string, answers: string) => `${question} = ${answers}`,
+  /** "실패 4곳 중 3곳 (75%)" */
+  failedSide: (n: number, total: number, ratio: number | null) =>
+    `실패 ${total}곳 중 ${n}곳${ratio === null ? '' : ` (${Math.round(ratio * 100)}%)`}`,
+  wonSide: (n: number, total: number, ratio: number | null) =>
+    `성사 ${total}곳 중 ${n}곳${ratio === null ? '' : ` (${Math.round(ratio * 100)}%)`}`,
+  judgedLater: '판단 보류',
+  successTitle: '성공 패턴',
+  /** "성사 3곳 · 평균 4.3번 접촉" */
+  successCount: (count: number, avg: number | null) =>
+    `성사 ${count}곳${avg === null ? '' : ` · 평균 ${avg}번 접촉`}`,
+  /** "처음 방문: 성사 2.0번째 접촉 · 실패 없음" */
+  firstVisit: (won: number | null, failed: number | null) =>
+    `처음 방문한 접촉 순번 — 성사 ${won ?? '방문 없음'}${won === null ? '' : '번째'} · 실패 ${
+      failed ?? '방문 없음'
+    }${failed === null ? '' : '번째'}`,
+  combosTitle: '잘 되는 조합 (공정 × 산업 × 권역)',
+  comboUnknown: '확인 전',
+  /** "접촉 5 · 성사 2 (40%)" */
+  comboLine: (contacted: number, won: number, ratio: number | null) =>
+    `접촉 ${contacted} · 성사 ${won}${ratio === null ? ' · 판단 보류' : ` (${Math.round(ratio * 100)}%)`}`,
+  fillTitle: '기록 충분도 — 꼬리 질문 답 채움률',
+  /** "12번 물을 자리 중 9번 답함" */
+  fillLine: (answered: number, eligible: number) => `${eligible}번 물을 자리 중 ${answered}번 답함`,
+  hintsTitle: '질문지 다듬기 제안',
+  hintsBadge: '제안 · 승인 전',
+  hintsNote: '반영은 PM·거산이 질문 파일에서 정합니다. 자동으로 바뀌지 않습니다.',
+  hintsEmpty: '지금은 다듬을 신호가 없습니다.',
+  hintKinds: {
+    /** "한 답(보통)이 92% — 갈림이 없어 문구를 바꿔 볼 만합니다" */
+    SAME_ANSWER: (answer: string, share: number | null) =>
+      `한 답(${answer})이 ${share === null ? '' : Math.round(share * 100)}% — 갈림이 없어 문구를 바꿔 볼 만합니다`,
+    UNKNOWN_MANY: (share: number | null) =>
+      `답 없음·모름이 ${share === null ? '' : Math.round(share * 100)}% — 통화에서 묻기 어려운 질문입니다`,
+    SPLITS_OUTCOME: (answer: string, high: number | null, low: number | null) =>
+      `답(${answer})에 따라 성사율이 ${high === null ? '' : Math.round(high * 100)}% vs ${
+        low === null ? '' : Math.round(low * 100)
+      }%로 갈립니다 — 앞 단계 필수로 올려 볼 만합니다`,
+  },
+  coachTitle: '영업 코치 제안의 효과',
+  /** "코치 제안으로 넣은 일정 4건 → 그 뒤 진전 2건 (회사 3곳)" */
+  coachLine: (applied: number, progressed: number, companies: number) =>
+    `코치 제안으로 넣은 일정 ${applied}건 → 그 뒤 단계가 앞으로 가거나 성사 ${progressed}건 (회사 ${companies}곳)`,
+  coachEmpty: '아직 영업 코치 제안으로 넣은 일정이 없습니다.',
+} as const;
+
 export const analysisCharts = {
   pageTitle: '영업 분석',
   /** 기간 선택 칸 */
