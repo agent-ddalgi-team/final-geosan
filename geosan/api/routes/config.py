@@ -68,7 +68,7 @@ def config_ui(session: SessionDep):
                 "data_basis": data_basis(session, settings.active_dataset_kind),
             },
             current_staff=_current_staff(session),
-            operations_staff_keys=settings.operations.staff_keys,
+            operations_staff_keys=settings.operations_staff_keys(),
         ),
         meta=Meta(
             updated_at=session.scalar(select(func.max(AppSetting.updated_at))),

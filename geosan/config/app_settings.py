@@ -417,8 +417,9 @@ class OperationsSettings(FileModel):
     알림 사용률 기준은 새 칸 없이 llm.costAlertRatio를 쓴다.
     """
 
-    # 운영 관리 화면·운영 알림을 받는 담당자 키. 설정 staff 안에 있어야 한다.
-    # 빈 목록이면 아무도 아님.
+    # 운영 관리 화면·운영 알림을 받는 담당자 키. 빈 목록이면 아무도 아님.
+    # 담당자 목록(staff)에 없는 키는 무시한다(운영 담당 아님). 담당자 목록을 바꿔도 설정 전체가
+    # 거부되지 않게 하려는 것이다(#799, 옛 DB 사본은 예시 값 choi-pm으로 채운다).
     staff_keys: list[str] = Field(default_factory=list)
     # 공장현황 파일 갱신 권장 주기(일). 파일 기준일 + 이 일수가 지나면 운영 담당에게 알린다.
     factory_csv_refresh_days: int = Field(default=180, ge=1, le=3650, strict=True)
@@ -504,6 +505,11 @@ class AppSettings(FileModel):
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
 
+    def operations_staff_keys(self) -> list[str]:
+        """#799 운영 담당 키 가운데 담당자 목록에 있는 것만(없는 키는 무시)."""
+        staff = set(self.staff_keys())
+        return [key for key in self.operations.staff_keys if key in staff]
+
     def is_recording_staff(self, key: str | None) -> bool:
         """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3).
 
@@ -530,17 +536,6 @@ class AppSettings(FileModel):
         ):
             raise ValueError(
                 "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
-            )
-        return self
-
-    @model_validator(mode="after")
-    def operations_staff_are_staff(self) -> AppSettings:
-        # #799: 운영 담당은 담당자 목록 안의 키만(오타로 아무도 못 보는 일을 막는다).
-        unknown = [key for key in self.operations.staff_keys if key not in self.staff_keys()]
-        if unknown:
-            raise ValueError(
-                "operations.staffKeys에 담당자 목록(staff)에 없는 키가 있습니다: "
-                + ", ".join(unknown)
             )
         return self
 

@@ -16,7 +16,6 @@ from geosan.api.routes import dashboard as dashboard_route
 from geosan.api.routes import operations as operations_route
 from geosan.config.app_settings import (
     DEFAULT_APP_SETTINGS_PATH,
-    AppSettings,
     load_app_settings,
     read_app_settings,
     sync_app_settings,
@@ -227,12 +226,22 @@ def test_config_ui_tells_who_sees_the_menu(ops_env):
     assert ops_env.get("/api/v1/config/ui").json()["data"]["operationsStaffKeys"] == ["choi-pm"]
 
 
-def test_operations_staff_must_be_staff():
-    """Given 담당자 목록에 없는 키 / When 설정 읽기 / Then 거부(오타로 아무도 못 보는 일을 막음)."""
-    data = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
-    data["operations"]["staffKeys"] = ["nobody"]
-    with pytest.raises(ValueError, match="operations.staffKeys"):
-        AppSettings.model_validate(data)
+def test_operations_key_not_in_staff_is_ignored_not_rejected(ops_env):
+    """Given 담당자 목록을 바꿔 운영 담당 키(choi-pm)가 목록에서 빠짐
+    / When 설정 읽기·화면 설정·운영 관리
+    / Then 설정 전체는 그대로 읽히고, 그 키는 운영 담당이 아니다(메뉴 없음·403).
+
+    처음엔 설정을 거부했으나 담당자 목록만 바꿔도 앱 전체가 막혀(#799 검사) 무시하는 쪽으로 바꿨다.
+    """
+    with session_scope() as session:
+        row = session.get(AppSetting, "staff")
+        row.value = [entry for entry in row.value if entry["key"] != "choi-pm"]
+    with session_scope() as session:
+        settings = read_app_settings(session)
+    assert settings.operations.staff_keys == ["choi-pm"]
+    assert settings.operations_staff_keys() == []
+    assert ops_env.get("/api/v1/config/ui").json()["data"]["operationsStaffKeys"] == []
+    assert operations(ops_env, SALES).status_code == 403
 
 
 def test_example_settings_hold_the_pm_numbers():
