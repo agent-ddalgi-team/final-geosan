@@ -5728,6 +5728,13 @@
             "title": "Answered",
             "type": "integer"
           },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerCount"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
           "eligible": {
             "title": "Eligible",
             "type": "integer"
@@ -5750,6 +5757,28 @@
           "step": {
             "title": "Step",
             "type": "string"
+          },
+          "topShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topshare"
+          },
+          "unknownShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unknownshare"
           }
         },
         "required": [
@@ -5757,35 +5786,95 @@
           "step",
           "eligible",
           "answered",
-          "ratio"
+          "ratio",
+          "answers",
+          "unknownShare",
+          "topShare"
         ],
         "title": "PatternAnswerFill",
         "type": "object"
       },
+      "PatternAnswerRow": {
+        "properties": {
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "inProgress": {
+            "title": "Inprogress",
+            "type": "integer"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "questionId",
+          "answerId",
+          "won",
+          "failed",
+          "inProgress",
+          "wonRatio",
+          "judged"
+        ],
+        "title": "PatternAnswerRow",
+        "type": "object"
+      },
       "PatternBasis": {
         "properties": {
-          "enough": {
-            "title": "Enough",
-            "type": "boolean"
+          "closedCount": {
+            "title": "Closedcount",
+            "type": "integer"
           },
           "minSampleForRatio": {
             "title": "Minsampleforratio",
             "type": "integer"
           },
-          "neededCount": {
-            "title": "Neededcount",
-            "type": "integer"
+          "overallWonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overallwonratio"
           },
-          "usableCount": {
-            "title": "Usablecount",
+          "wonCount": {
+            "title": "Woncount",
             "type": "integer"
           }
         },
         "required": [
           "minSampleForRatio",
-          "usableCount",
-          "neededCount",
-          "enough"
+          "closedCount",
+          "wonCount",
+          "overallWonRatio"
         ],
         "title": "PatternBasis",
         "type": "object"
@@ -5906,6 +5995,63 @@
         "title": "PatternCombo",
         "type": "object"
       },
+      "PatternContactRow": {
+        "properties": {
+          "bucket": {
+            "enum": [
+              "ZERO",
+              "ONE",
+              "TWO",
+              "THREE",
+              "FOUR_PLUS"
+            ],
+            "title": "Bucket",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "inProgress": {
+            "title": "Inprogress",
+            "type": "integer"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "visited": {
+            "title": "Visited",
+            "type": "boolean"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "visited",
+          "bucket",
+          "won",
+          "failed",
+          "inProgress",
+          "wonRatio",
+          "judged"
+        ],
+        "title": "PatternContactRow",
+        "type": "object"
+      },
       "PatternFailure": {
         "properties": {
           "byStep": {
@@ -5948,6 +6094,58 @@
         "title": "PatternFailure",
         "type": "object"
       },
+      "PatternGapRow": {
+        "properties": {
+          "bucket": {
+            "enum": [
+              "WITHIN_WEEK",
+              "WITHIN_TWO_WEEKS",
+              "WITHIN_MONTH",
+              "OVER_MONTH",
+              "SINGLE_CONTACT"
+            ],
+            "title": "Bucket",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "inProgress": {
+            "title": "Inprogress",
+            "type": "integer"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "bucket",
+          "won",
+          "failed",
+          "inProgress",
+          "wonRatio",
+          "judged"
+        ],
+        "title": "PatternGapRow",
+        "type": "object"
+      },
       "PatternHint": {
         "properties": {
           "answerId": {
@@ -5964,8 +6162,7 @@
           "kind": {
             "enum": [
               "SAME_ANSWER",
-              "UNKNOWN_MANY",
-              "SPLITS_OUTCOME"
+              "UNKNOWN_MANY"
             ],
             "title": "Kind",
             "type": "string"
@@ -5984,28 +6181,6 @@
               }
             ],
             "title": "Share"
-          },
-          "wonRatioHigh": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wonratiohigh"
-          },
-          "wonRatioLow": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wonratiolow"
           }
         },
         "required": [
@@ -6015,42 +6190,63 @@
         "title": "PatternHint",
         "type": "object"
       },
-      "PatternSignal": {
+      "PatternStandout": {
         "properties": {
-          "answerIds": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Answerids",
-            "type": "array"
-          },
-          "code": {
-            "enum": [
-              "CALL_ONLY",
-              "LONG_GAP",
-              "ANSWER"
-            ],
-            "title": "Code",
-            "type": "string"
-          },
-          "failed": {
-            "title": "Failed",
-            "type": "integer"
-          },
-          "failedShare": {
+          "answerId": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Failedshare"
+            "title": "Answerid"
           },
-          "judged": {
-            "title": "Judged",
-            "type": "boolean"
+          "bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bucket"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "number"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "overallWonRatio": {
+            "title": "Overallwonratio",
+            "type": "number"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
           },
           "questionId": {
             "anyOf": [
@@ -6063,38 +6259,56 @@
             ],
             "title": "Questionid"
           },
-          "withSignal": {
-            "title": "Withsignal",
-            "type": "integer"
-          },
-          "won": {
-            "title": "Won",
-            "type": "integer"
-          },
-          "wonShare": {
+          "region": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Wonshare"
+            "title": "Region"
+          },
+          "table": {
+            "enum": [
+              "CONTACTS_BEFORE_VISIT",
+              "LONGEST_GAP",
+              "ANSWER",
+              "COMBO"
+            ],
+            "title": "Table",
+            "type": "string"
+          },
+          "visited": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visited"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "title": "Wonratio",
+            "type": "number"
           }
         },
         "required": [
-          "code",
-          "questionId",
-          "answerIds",
-          "withSignal",
-          "failed",
+          "table",
           "won",
-          "failedShare",
-          "wonShare",
-          "judged"
+          "failed",
+          "wonRatio",
+          "overallWonRatio",
+          "diff"
         ],
-        "title": "PatternSignal",
+        "title": "PatternStandout",
         "type": "object"
       },
       "PatternStepAnswers": {
@@ -7871,6 +8085,13 @@
             "title": "Answerfill",
             "type": "array"
           },
+          "answerOutcomes": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerRow"
+            },
+            "title": "Answeroutcomes",
+            "type": "array"
+          },
           "asOf": {
             "format": "date-time",
             "title": "Asof",
@@ -7889,8 +8110,22 @@
             "title": "Combos",
             "type": "array"
           },
+          "contactsBeforeVisit": {
+            "items": {
+              "$ref": "#/components/schemas/PatternContactRow"
+            },
+            "title": "Contactsbeforevisit",
+            "type": "array"
+          },
           "failure": {
             "$ref": "#/components/schemas/PatternFailure"
+          },
+          "longestGap": {
+            "items": {
+              "$ref": "#/components/schemas/PatternGapRow"
+            },
+            "title": "Longestgap",
+            "type": "array"
           },
           "questionnaireHints": {
             "items": {
@@ -7899,11 +8134,11 @@
             "title": "Questionnairehints",
             "type": "array"
           },
-          "signals": {
+          "standouts": {
             "items": {
-              "$ref": "#/components/schemas/PatternSignal"
+              "$ref": "#/components/schemas/PatternStandout"
             },
-            "title": "Signals",
+            "title": "Standouts",
             "type": "array"
           },
           "success": {
@@ -7915,8 +8150,11 @@
           "basis",
           "failure",
           "success",
-          "signals",
+          "contactsBeforeVisit",
+          "longestGap",
+          "answerOutcomes",
           "combos",
+          "standouts",
           "answerFill",
           "questionnaireHints",
           "coachEffect"
@@ -11241,7 +11479,7 @@
     },
     "/api/v1/sales-analysis/patterns": {
       "get": {
-        "description": "#802 1단계: 실패·성공 패턴. 영업 분석표와 같은 대상·기간 규칙으로 저장된 기록만 센다.",
+        "description": "#802·#820: 기록을 펼쳐 센다(기준 숫자 없음, 표본 기준은 salesAnalysis 하나).\n\n영업 분석표와 같은 대상·기간 규칙.",
         "operationId": "sales_patterns_api_v1_sales_analysis_patterns_get",
         "parameters": [
           {
