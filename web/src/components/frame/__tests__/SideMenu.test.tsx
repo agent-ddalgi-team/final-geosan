@@ -83,6 +83,14 @@ it('[‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으
   expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('false');
 });
 
+it('[메뉴 접기]는 메뉴 줄보다 위에 있다(머리 띠 아래에서 시작해도 첫 화면에서 보이게, #767)', () => {
+  renderMenu();
+  const toggle = screen.getByTestId('side-menu-toggle');
+  const first = screen.getByTestId('nav-dashboard-link');
+  expect(toggle.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(toggle).toHaveAttribute('aria-label', frame.sidebarCollapse);
+});
+
 it('좁은 기기는 처음부터 접힌 채로 열고, 기억한 값이 있으면 그 값을 따른다', () => {
   const view = renderMenu('/', true);
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');

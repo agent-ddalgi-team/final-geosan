@@ -26,7 +26,6 @@ export const sidebarTheme = {
   group: '#8A9099',
   activeBg: '#2C2F34',
   activeBorder: '#3A3E44',
-  divider: '#2E3136',
   /** 메뉴 숫자 꼬리표(#770): 빨간 칸 + 흰 글자(대비 약 4.8:1). 접힌 그림 위에서는 바탕색 테두리로 띄운다. */
   badgeBg: '#D92D20',
   badgeFg: '#FFFFFF',

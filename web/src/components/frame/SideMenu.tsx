@@ -1,5 +1,5 @@
 // 왼쪽 메뉴(#762, PM 결정 2026-11-16): 대시보드 · 신규 거래처 찾기 · 관심 기업 · 영업 분석.
-// [메뉴 접기]로 접고 펼치며, 접으면 그림(아이콘)만 남는다(이름은 마우스를 올리거나 키보드로 오면 오른쪽 이름표로
+// 맨 위 [메뉴 접기]로 접고 펼치며, 접으면 그림(아이콘)만 남는다(이름은 마우스를 올리거나 키보드로 오면 오른쪽 이름표로
 // 뜨고, 화면 읽기 도구는 aria-label로 그대로 읽는다). 접은 상태는 브라우저에 기억하고, 좁은 기기는 처음부터 접힌 채로 연다.
 // #767(PM 요청 2026-11-15·결정 2026-11-16): 참고 그림처럼 어두운 칸 + 내용에 맞는 선 그림 아이콘(이모지 대신, 글자는
 // 한글·숫자만). 그림은 그림 파일 없이 SVG로 그린다. 색은 theme/tokens의 sidebarTheme만 쓴다.
@@ -245,19 +245,51 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
         zIndex: 5,
       }}
     >
+      {/* 맨 위 줄: 묶음 이름 + [메뉴 접기]. 메뉴 칸이 머리 띠 아래에서 시작해 아래쪽 단추는 첫 화면에서 가려지므로 위에 둔다. */}
       <div
-        aria-hidden="true"
         style={{
-          fontSize: 12,
-          color: sidebarTheme.group,
-          padding: '0 10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 8,
           marginBottom: 8,
-          height: 18,
-          letterSpacing: '0.04em',
-          visibility: collapsed ? 'hidden' : 'visible',
+          paddingLeft: collapsed ? 0 : 10,
         }}
       >
-        {frame.navGroupSales}
+        {collapsed ? null : (
+          <span
+            aria-hidden="true"
+            style={{ fontSize: 12, color: sidebarTheme.group, letterSpacing: '0.04em' }}
+          >
+            {frame.navGroupSales}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
+          title={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
+          data-testid="side-menu-toggle"
+          className="side-nav-link"
+          style={{
+            position: 'relative',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            padding: 0,
+            border: 0,
+            borderRadius: 10,
+            background: 'transparent',
+            color: sidebarTheme.fg,
+            cursor: 'pointer',
+          }}
+        >
+          <PanelIcon collapsed={collapsed} />
+          {collapsed ? <Tip>{frame.sidebarExpand}</Tip> : null}
+        </button>
       </div>
       <ul
         style={{
@@ -314,29 +346,6 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
           );
         })}
       </ul>
-      <div style={{ borderTop: `1px solid ${sidebarTheme.divider}`, paddingTop: 12 }}>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
-          title={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
-          data-testid="side-menu-toggle"
-          className="side-nav-link"
-          style={{
-            ...rowStyle,
-            width: '100%',
-            border: 0,
-            background: 'transparent',
-            color: sidebarTheme.fg,
-            font: 'inherit',
-            cursor: 'pointer',
-          }}
-        >
-          <PanelIcon collapsed={collapsed} />
-          {collapsed ? <Tip>{frame.sidebarExpand}</Tip> : <span>{frame.sidebarCollapse}</span>}
-        </button>
-      </div>
     </nav>
   );
 }

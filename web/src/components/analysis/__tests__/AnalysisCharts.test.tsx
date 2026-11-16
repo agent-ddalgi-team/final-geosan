@@ -18,6 +18,15 @@ describe('AnalysisCharts', () => {
     expect(screen.getByTestId('kpi-done-sub')).toHaveTextContent('성사 2곳 · 거절 3곳');
   });
 
+  it('숫자 칸은 왼쪽 큰 칸 + 오른쪽 2×2로 놓여, 본문이 좁아도 거절 칸만 아래로 떨어지지 않는다', () => {
+    render(<AnalysisCharts data={SAMPLE} />);
+    expect(screen.getByTestId('analysis-kpis').style.gridTemplateColumns).toBe(
+      'minmax(0, 1.2fr) repeat(2, minmax(0, 1fr))',
+    );
+    expect(screen.getByTestId('kpi-contacted').style.gridRow).toBe('span 2');
+    expect(screen.getByTestId('kpi-lost').style.gridRow).toBe('');
+  });
+
   it('표본이 기준보다 적으면 비율을 지어내지 않고 "표본 n곳"만 보인다', () => {
     render(
       <AnalysisCharts
