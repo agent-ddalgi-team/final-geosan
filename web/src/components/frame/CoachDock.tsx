@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { frame } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, detailTheme, typography } from '../../theme/tokens';
 
 export const DOCK_STORAGE_KEY = 'geosan.coachDockCollapsed';
 const WIDTH = 380;
@@ -67,13 +67,17 @@ export default function CoachDock({
         width: collapsed ? 56 : WIDTH,
         flexShrink: 0,
         position: 'sticky',
-        top: 0,
+        top: 12,
         alignSelf: 'flex-start',
-        maxHeight: '100vh',
+        maxHeight: 'calc(100vh - 24px)',
         overflowY: collapsed ? 'hidden' : 'auto',
         boxSizing: 'border-box',
-        borderLeft: `1px solid ${colors.borderSecondary}`,
-        background: colors.bgContainer,
+        // #803: 본문과 같은 흰 바탕이라 경계가 안 보였다. 옅은 연두 판 + 그림자로 떠 있는 판처럼.
+        border: `1px solid ${detailTheme.accent}`,
+        borderRadius: 12,
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+        margin: '12px 12px 12px 0',
+        background: detailTheme.accentSoft,
         padding: collapsed ? '12px 8px' : '12px 16px 24px',
       }}
     >

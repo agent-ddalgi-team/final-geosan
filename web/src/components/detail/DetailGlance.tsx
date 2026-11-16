@@ -11,6 +11,7 @@ import type {
   ProcessLinkView,
   RequirementCheckView,
   ReviewItem,
+  ScoreItemView,
 } from '../../api/types';
 import {
   cardRows,
@@ -19,6 +20,7 @@ import {
   detailReport,
   factoryProfileLabels,
   filterStateLabels,
+  glanceVisual,
   homepageLinkLabel,
   labelFor,
   mapLinkLabels,
@@ -214,6 +216,83 @@ export interface DetailGlanceProps {
    * 이 상자에서 단추가 있는 곳은 그 줄뿐이다.
    */
   processChoice?: { oppId: string; evalId: string | null; onSaved: () => void };
+  /** #803: 산업 칸 안에 바로 놓는 [확정]·[고치기] 칩(전에는 아래 "회사 소개 · 산업군" 카드). 없으면 글로만 보인다. */
+  industryEditor?: ReactNode;
+  /** #803: 근거 상태 막대(점수 8항목 가운데 근거가 붙은 항목 수). 없으면 막대를 그리지 않는다. */
+  scoreItems?: ScoreItemView[];
+}
+
+/** #803 근거 상태 막대: 근거가 붙은 항목 수를 길이로. */
+function EvidenceBar({ items }: { items: ScoreItemView[] }) {
+  const total = items.length;
+  if (total === 0) return null;
+  const withEvidence = items.filter((item) => (item.evidenceIds ?? []).length > 0).length;
+  const percent = Math.round((withEvidence / total) * 100);
+  return (
+    <div
+      data-testid="glance-evidence-bar"
+      style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}
+    >
+      <span
+        role="img"
+        aria-label={glanceVisual.evidenceBar(withEvidence, total)}
+        style={{
+          position: 'relative',
+          width: 140,
+          height: 8,
+          borderRadius: 999,
+          background: detailTheme.bandTodo,
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: `${percent}%`,
+            background: detailTheme.accent,
+          }}
+        />
+      </span>
+      <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
+        {glanceVisual.evidenceBar(withEvidence, total)}
+      </span>
+    </div>
+  );
+}
+
+/** #803 거리 그림: 거산 ●───── 8.2km ─────● 이 회사 (좌표 없이 숫자만으로 그린다). */
+function DistanceLine({ km }: { km: number }) {
+  const dot = {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: detailTheme.lineDone,
+    flexShrink: 0,
+  } as const;
+  const bar = { flex: 1, height: 2, background: detailTheme.lineTodo, minWidth: 16 } as const;
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="glance-distance-line"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        maxWidth: 320,
+        color: colors.textSecondary,
+        fontSize: typography.fontSizeSecondary,
+      }}
+    >
+      <span>{glanceVisual.hq}</span>
+      <span style={dot} />
+      <span style={bar} />
+      <span>{`${km.toFixed(1)}km`}</span>
+      <span style={bar} />
+      <span style={dot} />
+      <span>{glanceVisual.company}</span>
+    </span>
+  );
 }
 
 export default function DetailGlance({
@@ -227,6 +306,8 @@ export default function DetailGlance({
   callCheckCount = 0,
   now,
   processChoice,
+  industryEditor,
+  scoreItems,
 }: DetailGlanceProps) {
   const { config } = useFrame();
 
@@ -397,6 +478,7 @@ export default function DetailGlance({
               {address && distance !== null ? (
                 <strong data-testid="detail-distance">{companySummary.distance(distance)}</strong>
               ) : null}
+              {address && distance !== null ? <DistanceLine km={distance} /> : null}
               {factoryLine && header.factoryProfile ? (
                 <span style={secondary}>
                   (
@@ -556,7 +638,9 @@ export default function DetailGlance({
             )}
           </FitLine>
           <FitLine label={texts.industry} testId="glance-fit-industry">
-            {industries.length > 0 ? (
+            {industryEditor ? (
+              industryEditor
+            ) : industries.length > 0 ? (
               <>
                 {industries.join(', ')}{' '}
                 {industryConfirmed ? (
@@ -585,6 +669,7 @@ export default function DetailGlance({
               </StatusTag>
             ) : null}
           </div>
+          {scoreItems ? <EvidenceBar items={scoreItems} /> : null}
         </Row>
 
         <Row label={texts.check} testId="glance-check">

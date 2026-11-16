@@ -5,7 +5,8 @@ import { companyReport } from '../../labels/ko';
 
 export default function ReportLink({ oppId }: { oppId: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+    // #803: 상세 머리 단추 줄 끝에 붙는다(전에는 머리 아래 따로 한 줄).
+    <div style={{ display: 'flex', justifyContent: 'flex-end', alignSelf: 'center' }}>
       <Link
         to={`/opportunities/${encodeURIComponent(oppId)}/report`}
         target="_blank"

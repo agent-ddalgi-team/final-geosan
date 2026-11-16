@@ -65,20 +65,16 @@ describe('상세 › 산업군 칩 (#646)', () => {
     mockedPeers.mockRejectedValue(new Error('이 시험에서는 비슷한 회사를 보지 않는다'));
   });
 
-  it('칩은 구분 줄 아래 적는 곳의 맨 앞(검토 의견 위)에 있고, 읽는 곳 "한눈에"의 산업 줄은 그대로다', async () => {
+  // #803(PM 결정 2026-11-16): 따로 있던 "회사 소개 · 산업군" 카드를 없애고 "한눈에"의 산업 칸 안에서 바로 고친다.
+  it('칩은 "한눈에"의 산업 칸 안에 있고 따로 카드·제목이 없다', async () => {
     mockedGet.mockResolvedValue(reply('AI'));
     renderPage();
     const section = await screen.findByTestId('detail-industries');
-    const divider = screen.getByTestId('detail-write-divider');
-    const opinion = screen.getByTestId('detail-opinion');
-    expect(
-      divider.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      section.compareDocumentPosition(opinion) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    const industryLine = screen.getByTestId('glance-fit-industry');
+    expect(industryLine.contains(section)).toBe(true);
+    expect(within(section).queryByRole('heading')).not.toBeInTheDocument();
     expect(within(section).getByTestId('industry-chip')).toHaveTextContent('자동차 부품 (AI 제안)');
-    expect(screen.getByTestId('glance-fit-industry')).toHaveTextContent('자동차 부품');
+    expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
   });
 
   it('[확정]을 누르면 저장한 뒤 상세와 활동 이력을 새로 불러오고 칩이 초록 ✓로 바뀐다', async () => {
