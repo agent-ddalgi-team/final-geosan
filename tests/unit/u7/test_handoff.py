@@ -97,9 +97,10 @@ def test_only_the_recipient_confirms_and_twice_is_the_same(dashboard_env):
     assert client.post("/api/v1/notes/note-none/confirm", headers=SALES).status_code == 404
 
 
-def test_dashboard_shows_handoffs_for_me_without_the_text(dashboard_env):
+def test_dashboard_shows_handoffs_for_me_with_text_preview(dashboard_env):
     """Given 영업 담당에게 온 확인 전 전달 두 건(두 회사) / When 대시보드
-    / Then 영업 담당에게만 "나에게 온 전달 사항" 2곳(보낸 사람·날짜, 글 없음), 확인하면 빠진다."""
+    / Then 영업 담당에게만 "나에게 온 전달 사항" 2곳. 보낸 사람·날짜 줄(note)과 전달 글
+    앞부분(text, #794 PM 지시 2026-11-16)이 따로 보이고, 확인하면 빠진다."""
     client, opp_ids = dashboard_env
     first = handoff(client, opp_ids[0]).json()["data"]["noteId"]
     handoff(client, opp_ids[1], text="가상 전달 둘")
@@ -108,9 +109,30 @@ def test_dashboard_shows_handoffs_for_me_without_the_text(dashboard_env):
     for item in mine["items"]:
         assert item["note"].startswith("검수 담당(품질·기술) · ")
         assert "가상 전달" not in item["note"]
+    texts = {item["oppId"]: item["text"] for item in mine["items"]}
+    assert texts == {
+        opp_ids[0]: "가상 전달: 도금 두께 요구는 우리 설비로 가능",
+        opp_ids[1]: "가상 전달 둘",
+    }
     assert "HANDOFF_FOR_ME" not in today_rows(client, TECH)
     client.post(f"/api/v1/notes/{first}/confirm", headers=SALES)
     assert today_rows(client, SALES)["HANDOFF_FOR_ME"]["count"] == 1
+
+
+def test_dashboard_handoff_text_is_cut_and_latest_per_company(dashboard_env):
+    """Given 같은 회사에 전달 두 건, 나중 것은 줄바꿈이 있는 긴 글 / When 대시보드
+    / Then 회사 한 줄에 나중 글 앞 80자 + "…"(줄바꿈은 빈칸), 다른 줄의 text는 비어 있다."""
+    client, opp_ids = dashboard_env
+    handoff(client, opp_ids[0], text="가상 전달 먼저")
+    long_text = "가상 첫 줄\n" + "가" * 100
+    handoff(client, opp_ids[0], text=long_text)
+    rows = today_rows(client, SALES)
+    item = rows["HANDOFF_FOR_ME"]["items"][0]
+    assert rows["HANDOFF_FOR_ME"]["count"] == 1
+    assert item["text"] == ("가상 첫 줄 " + "가" * 100)[:80] + "…"
+    for kind, row in rows.items():
+        if kind != "HANDOFF_FOR_ME":
+            assert all(entry.get("text") is None for entry in row["items"])
 
 
 def test_coach_reads_handoffs_as_colleague_notes_without_names(dashboard_env):

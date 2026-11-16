@@ -83,6 +83,32 @@ def test_same_name_in_the_same_city_is_found_even_when_address_text_differs(
     assert not result.needs_confirmation
 
 
+def _select_regions(*regions):
+    with session_scope() as session:
+        batch = session.get(IngestBatch, BATCH)
+        batch.criteria = {**batch.criteria, "regions": list(regions)}
+
+
+@pytest.mark.parametrize("regions", [("아산시",), ("천안시", "아산시")])
+def test_choosing_a_city_still_finds_the_same_name_in_that_city(ready, monkeypatch, regions):
+    """#789: 시·군을 고르면 등록 행의 시·도("충남")가 고른 지역("아산시")에 없다고 보아
+    같은 이름·같은 시·군 등록 행도 확인하지 못했다. 고른 시·군을 다른 곳과 같은 도우미로 본다."""
+    _select_regions(*regions)
+    responses(monkeypatch, xml([MATCH, (MATCH[0], "충남 천안시 가상로 1", "F2")]))
+    result = registry.lookup_candidate_registry(BATCH, candidate(address="충남 아산시 다른로 9"))
+    assert result.registry_status == "FOUND" and result.matched_row.factory_manage_no == MATCH[2]
+    assert not result.needs_confirmation
+
+
+def test_choosing_a_city_does_not_confirm_the_same_name_in_another_city(ready, monkeypatch):
+    """#789: 시·군을 골라도 같은 이름이 다른 시·군에만 등록돼 있으면 지금처럼 넣지 않는다."""
+    _select_regions("아산시")
+    responses(monkeypatch, xml([(MATCH[0], "충남 천안시 가상로 1", "F2")]))
+    result = registry.lookup_candidate_registry(BATCH, candidate(address="충남 아산시 다른로 9"))
+    assert result.registry_status is None and result.matched_row is None
+    assert result.needs_confirmation
+
+
 def test_two_factories_in_one_city_are_told_apart_only_by_the_full_address(ready, monkeypatch):
     rows = [MATCH, (MATCH[0], "충남 아산시 가상로 7", "F2")]
     responses(monkeypatch, xml(rows))
