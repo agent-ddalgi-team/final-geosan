@@ -1,4 +1,7 @@
-// 대시보드(S4, 첫 화면): 회사 이름 검색 · 오늘 확인할 것 · 일정 달력 · 건수 두 구역("관심 기업" → "영업 진행") · 최근 내 기록 · 지도.
+// 대시보드(S4, 첫 화면). #795(PM 결정 2026-11-16)부터 "오늘 할 일과 방문 나가기 전 정리" 순서다:
+//   맨 위 날짜 + 작은 회사 검색 → ① 오늘 브리핑(AI 오늘 정리 · 📅 일정 · 📬 전달 사항 · 📈 영업 진행 띠)
+//   → ② 오늘 할 일(오늘 확인할 것 묶음) | ③ 작은 달력 → ④ 방문 준비(오늘·이번 주 일정 회사 + 보고서 · 거리 화살표) | 지도
+//   → ⑤ 더 보기(접힘: 관심 기업 건수 · 최근 내 기록). 넓으면 두 칸, 오른쪽 코치 칸이 있는 노트북 폭에서는 위아래.
 // 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v3, #216·#356)에서 온다. 관심으로 고른 회사만 센다.
 // 공정·산업군 막대는 영업 분석 화면으로 옮겼다(#679, PM 결정 2026-11-13). 대시보드는 오늘 할 일과 진행을 한눈에 보는 곳이다.
 // 검색은 /opportunities?q=이름 으로 이동한다(계약: 검색은 목록의 q 조건). 목록이 q를 읽는 것은 서버 연결 뒤다.
@@ -10,12 +13,14 @@ import { getDashboard } from '../api/dashboard';
 import type { Dashboard } from '../api/dashboardTypes';
 import type { Meta } from '../api/types';
 import CountCards from '../components/dashboard/CountCards';
+import DashboardBrief from '../components/dashboard/DashboardBrief';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
+import VisitPrep from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import AssistantDaily from '../components/assistant/AssistantDaily';
 import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
-import TodayChecks from '../components/dashboard/TodayChecks';
+import TodayChecks, { dayLabel } from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
@@ -95,6 +100,8 @@ export default function DashboardPage() {
     return () => window.removeEventListener(SCHEDULE_CHANGED_EVENT, retry);
   }, [retry]);
 
+  const today = todayKst();
+
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
     const text = query.trim();
@@ -116,58 +123,102 @@ export default function DashboardPage() {
       onRetry={retry}
     >
       <div style={{ display: 'grid', gap: spacing.sectionGap }}>
-        <form role="search" onSubmit={submitSearch} style={{ display: 'flex', gap: 8 }}>
-          <label htmlFor="dashboard-search" style={{ position: 'absolute', left: -9999 }}>
-            {dashboardTexts.searchLabel}
-          </label>
-          <Input
-            id="dashboard-search"
-            data-testid="dashboard-search-input"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={dashboardTexts.searchPlaceholder}
-            allowClear
-          />
-          <Button type="primary" htmlType="submit" data-testid="dashboard-search-button">
-            {dashboardTexts.searchButton}
-          </Button>
-        </form>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <strong data-testid="dashboard-date" style={{ fontSize: typography.fontSizeCardTitle }}>
+            {dashboardTexts.todayDate(dayLabel(today))}
+          </strong>
+          {/* #795: 회사 찾기는 가끔 쓰므로 오른쪽 위에 작게. 동작은 그대로(/opportunities?q=이름). */}
+          <form
+            role="search"
+            onSubmit={submitSearch}
+            style={{ display: 'flex', gap: 6, width: 260, maxWidth: '100%' }}
+          >
+            <label htmlFor="dashboard-search" style={{ position: 'absolute', left: -9999 }}>
+              {dashboardTexts.searchLabel}
+            </label>
+            <Input
+              id="dashboard-search"
+              size="small"
+              data-testid="dashboard-search-input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={dashboardTexts.searchPlaceholder}
+              allowClear
+            />
+            <Button
+              size="small"
+              type="primary"
+              htmlType="submit"
+              data-testid="dashboard-search-button"
+            >
+              {dashboardTexts.searchButton}
+            </Button>
+          </form>
+        </div>
 
-        {/* 위에서부터: 오늘 확인할 것 → 일정 달력 → 영업 진행(건수 칸) → 최근 내 기록 → 지도 (#679). */}
+        {/* ① 오늘 브리핑 */}
         {data ? (
-          <TodayChecks
+          <DashboardBrief
             rows={data.todayChecks}
+            counts={data.counts}
             assistantSummary={dailyKey ? <AssistantDaily staffKey={dailyKey} /> : null}
-            onChanged={retry}
           />
         ) : null}
         {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "💬 영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
-        <section
-          aria-labelledby="dashboard-calendar-title"
-          data-testid="dashboard-calendar-section"
-          style={calendarSectionStyle}
+        {/* ② 오늘 할 일 | ③ 작은 달력. 둘 합이 본문 폭보다 넓으면(노트북 + 코치 칸) 위아래로. */}
+        <div
+          style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.cardGap, alignItems: 'start' }}
         >
-          <h2 id="dashboard-calendar-title" style={calendarTitleStyle}>
-            {dashboardTexts.calendarTitle}
-          </h2>
-          <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />
-        </section>
+          <div style={{ flex: '2 1 560px', minWidth: 0 }}>
+            {data ? <TodayChecks rows={data.todayChecks} onChanged={retry} /> : null}
+          </div>
+          <section
+            aria-labelledby="dashboard-calendar-title"
+            data-testid="dashboard-calendar-section"
+            style={{ ...calendarSectionStyle, flex: '1 1 340px', minWidth: 0, padding: 16 }}
+          >
+            <h2 id="dashboard-calendar-title" style={calendarTitleStyle}>
+              {dashboardTexts.calendarTitle}
+            </h2>
+            <DashboardCalendar items={data?.schedule ?? []} today={today} compact />
+          </section>
+        </div>
 
-        {data ? <CountCards counts={data.counts} /> : null}
+        {/* ④ 방문 준비 + 지도(같은 지도 응답으로 거리 화살표를 그린다) */}
+        <DashboardMapSection
+          title={dashboardTexts.prepTitle}
+          hint={dashboardTexts.prepHint}
+          aside={(map) => <VisitPrep items={data?.schedule ?? []} today={today} map={map} />}
+        />
 
-        <section
-          aria-labelledby="dashboard-recent-title"
-          data-testid="dashboard-recent-section"
-          style={sectionStyle}
-        >
-          <h2 id="dashboard-recent-title" style={cardTitleStyle}>
-            {dashboardTexts.recentTitle}
-          </h2>
-          <RecentActivityList items={data?.recentActivity ?? []} />
-        </section>
-
-        <DashboardMapSection />
+        {/* ⑤ 더 보기: 날마다 보지 않는 것은 접어 둔다(지우지 않음). */}
+        <details data-testid="dashboard-more" style={sectionStyle}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+            {dashboardTexts.moreTitle}
+          </summary>
+          <div style={{ display: 'grid', gap: spacing.sectionGap, marginTop: 12 }}>
+            {data ? <CountCards counts={data.counts} part="bookmark" /> : null}
+            <section
+              aria-labelledby="dashboard-recent-title"
+              data-testid="dashboard-recent-section"
+              style={{ display: 'grid', gap: 12 }}
+            >
+              <h2 id="dashboard-recent-title" style={cardTitleStyle}>
+                {dashboardTexts.recentTitle}
+              </h2>
+              <RecentActivityList items={data?.recentActivity ?? []} />
+            </section>
+          </div>
+        </details>
       </div>
     </FiveStates>
   );
