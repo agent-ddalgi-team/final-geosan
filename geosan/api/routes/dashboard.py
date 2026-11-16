@@ -186,7 +186,8 @@ class DashboardBreakdown(_ApiModel):
 
 
 class TodayCheckItem(_ApiModel):
-    """회사 이름·날짜·일정 한 줄만. 메모 글·연락처·대표번호는 이 모델에 없다."""
+    """회사 이름·날짜·일정 한 줄. 연락처·대표번호는 이 모델에 없다. 메모 글은 "나에게 온 전달
+    사항" 줄의 text(받는 사람 본인에게, 앞 80자)뿐이다(#794)."""
 
     opp_id: str
     customer_name: str
@@ -194,6 +195,8 @@ class TodayCheckItem(_ApiModel):
     note: str | None = None
     # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
     outcome_version: int | None = None
+    # #794: HANDOFF_FOR_ME 줄만. 가장 최근 확인 전 전달 글 앞 80자(넘으면 "…"). 다른 줄은 null.
+    text: str | None = None
 
 
 class TodayCheckRow(_ApiModel):

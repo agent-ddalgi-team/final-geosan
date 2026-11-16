@@ -132,3 +132,26 @@ it('#771 나에게 온 전달 사항은 지난 일정 다음 묶음으로, 회�
     '가상정밀김 과장 · 11/16',
   );
 });
+
+it('#794 나에게 온 전달 사항은 회사 줄 아래에 전달 글 앞부분이 보이고, 글이 없으면 줄도 없다', () => {
+  renderChecks([
+    {
+      kind: 'HANDOFF_FOR_ME',
+      count: 2,
+      items: [
+        {
+          oppId: 'opp-6',
+          customerName: '가상정밀',
+          dueAt: null,
+          note: '김 과장 · 11/16',
+          text: '가상 전달: 도금 두께 요구는 우리 설비로 가능',
+        },
+        { oppId: 'opp-7', customerName: '가상금속', dueAt: null, note: '김 과장 · 11/15' },
+      ],
+      listFilter: null,
+    },
+  ]);
+  const texts = screen.getAllByTestId('dashboard-today-text');
+  expect(texts).toHaveLength(1);
+  expect(texts[0]).toHaveTextContent('가상 전달: 도금 두께 요구는 우리 설비로 가능');
+});

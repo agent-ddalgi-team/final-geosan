@@ -1,5 +1,6 @@
 // 전달 사항(#771, PM 결정 2026-11-15·16, #756 하위): 담당자가 아닌 직원도 회사 건으로 받는 사람 한 명에게 남긴다.
-// 상세 "기록 남기기" 맨 위에 포스트잇처럼 붙는다: 확인 전은 노랑, 확인한 것은 옅게. 받는 사람에게만 [확인했어요].
+// 상세 "기록 남기기" 맨 위에 포스트잇처럼 붙는다: 확인 전은 노랑, 확인한 것은 옅게. 받는 사람에게만 [확인했어요],
+// 다른 사람에게는 "박 이사 확인 전"(#794).
 // [전달 사항 남기기]를 누르면 글 칸과 받는 사람(기본: 그 회사에 마지막으로 기록을 남긴 사람)이 펴진다.
 // 전달 사항 글은 회사 보고서에 바로 싣지 않는다. 영업 코치가 "동료 전달"로 읽고 짚어 준다.
 import { useState } from 'react';
@@ -197,7 +198,15 @@ export default function HandoffBox({
                   >
                     {handoffTexts.confirm}
                   </Button>
-                ) : null}
+                ) : (
+                  // #794: 보낸 사람·다른 직원도 받는 사람이 아직 안 봤는지 안다.
+                  <span
+                    data-testid="handoff-waiting-for"
+                    style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
+                  >
+                    {handoffTexts.waitingFor(nameOf(row.to))}
+                  </span>
+                )}
               </li>
             );
           })}

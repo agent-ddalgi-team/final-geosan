@@ -7537,7 +7537,7 @@
         "type": "object"
       },
       "TodayCheckItem": {
-        "description": "회사 이름·날짜·일정 한 줄만. 메모 글·연락처·대표번호는 이 모델에 없다.",
+        "description": "회사 이름·날짜·일정 한 줄. 연락처·대표번호는 이 모델에 없다. 메모 글은 \"나에게 온 전달\n사항\" 줄의 text(받는 사람 본인에게, 앞 80자)뿐이다(#794).",
         "properties": {
           "customerName": {
             "title": "Customername",
@@ -7580,6 +7580,17 @@
               }
             ],
             "title": "Outcomeversion"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
           }
         },
         "required": [

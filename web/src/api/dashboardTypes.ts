@@ -86,6 +86,8 @@ export interface TodayCheckItem {
   note: string | null;
   /** #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion). */
   outcomeVersion?: number | null;
+  /** #794: "나에게 온 전달 사항" 줄만. 가장 최근 확인 전 전달 글 앞 80자(넘으면 "…"). */
+  text?: string | null;
 }
 
 export interface TodayCheckRow {
