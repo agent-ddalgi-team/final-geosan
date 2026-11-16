@@ -2349,3 +2349,39 @@ export const handoffTexts = {
   saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
   needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;
+
+/**
+ * #798(PM 지시 2026-11-16): 신규 거래처 찾기 다시 짜기 — 새 후보 찾기 접기, 지역 권역, 조건 더 보기, 자료 기준,
+ * 카드 의견 고르기 칸.
+ */
+export const listSimple = {
+  /** 접힌 새 후보 찾기 칸의 제목. 펴면 공정·권역·산업과 예상 금액이 보인다. */
+  ingestPanelTitle: '＋ 새 후보 찾기 💰',
+  ingestPanelHint: '필요할 때 펴서 씁니다 · AI 비용이 듭니다',
+  /** 목록 머리 [조건 더 보기]. n은 지금 걸려 있는 더 보기 안 조건 수(0이면 숫자 없음). */
+  moreConditions: (active: number) => (active > 0 ? `조건 더 보기 (${active})` : '조건 더 보기'),
+  /** 지역 선택란 묶음 제목. */
+  regionPresetGroup: '권역',
+  regionCityGroup: '시·군 직접 고르기',
+  /** 새 후보 찾기 지역 칸. */
+  regionGroupLabel: '지역(권역)',
+  regionGroupHint: '여러 권역을 함께 고를 수 있습니다',
+  regionDirect: '시·군 직접 고르기',
+  /** "천안·아산 (천안시·아산시)" */
+  regionGroupOption: (label: string, regions: readonly string[]) =>
+    `${label} (${regions.join('·')})`,
+  /** 자료 기준 줄 제목과 종류 이름. */
+  dataBasisTitle: '자료 기준',
+  dataBasisKinds: {
+    FACTORY_FILE: '산단공 공장현황 파일',
+    FACTORY_LOOKUP: '공장조회(팩토리온)',
+    WATER_LIST: '수질 유해물질 업체 명단',
+    AI_JUDGMENT: '마지막 AI 판단',
+  } as Record<string, string>,
+  /** "산단공 공장현황 파일 2025-12-31" */
+  dataBasisItem: (name: string, asOf: string) => `${name} ${asOf}`,
+  dataBasisNone: '아직 넣은 공공자료가 없습니다',
+  /** 카드 의견 고르기 칸. */
+  opinionSelectLabel: '의견',
+  opinionSelectPlaceholder: '고르기',
+} as const;

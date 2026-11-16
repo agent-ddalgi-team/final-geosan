@@ -36,16 +36,20 @@ def test_zero_candidates_still_give_all_processes_and_configured_choices(options
     with session_scope() as session:
         assert session.scalar(select(Opportunity)) is None
         row = session.get(AppSetting, "ingestion")
-        row.value = row.value | {"regions": ["세종", "충남"]}
+        # #798: 권역 묶음은 regions 안의 값이어야 하므로 regions를 바꾸는 이 시험은 묶음을 비운다.
+        row.value = row.value | {"regions": ["세종", "충남"], "regionGroups": []}
         session.get(AppSetting, "industries").value = ["반도체", "자동차 부품"]
     actual = options(client)
     assert actual == {
         "processes": [{"code": p["code"], "name": p["name"]} for p in capability["processes"]],
         "regions": ["세종", "충남"],
         "industries": ["반도체", "자동차 부품"],
+        # #798: 권역 묶음 설정이 없으면 빈 목록, 저장된 공공자료·판단이 없으면 자료 기준도 빈 목록.
+        "regionGroups": [],
+        "dataBasis": [],
     }
     assert len(actual["processes"]) == 9
-    assert set(actual) == {"processes", "regions", "industries"}
+    assert set(actual) == {"processes", "regions", "industries", "regionGroups", "dataBasis"}
     assert all(set(p) == {"code", "name"} for p in actual["processes"])
 
 
@@ -80,7 +84,7 @@ def test_empty_configured_choices_are_not_replaced_with_invented_values(options_
     client, _ = options_env
     with session_scope() as session:
         row = session.get(AppSetting, "ingestion")
-        row.value = row.value | {"regions": []}
+        row.value = row.value | {"regions": [], "regionGroups": []}
         session.get(AppSetting, "industries").value = []
     actual = options(client)
     assert actual["regions"] == actual["industries"] == []

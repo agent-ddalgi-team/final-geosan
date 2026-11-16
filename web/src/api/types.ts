@@ -234,6 +234,8 @@ export interface ProcessCount {
 export interface RegionCount {
   region: string;
   count: number;
+  /** #798: 설정 권역 묶음이면 true, 주소에서 뽑은 시·군이면 false. 옛 응답에는 없다. */
+  preset?: boolean;
 }
 export interface IndustryCount {
   industry: string;
@@ -311,6 +313,24 @@ export interface IngestOptionsConfig {
   processes: { code: string; name: string }[];
   regions: string[];
   industries: string[];
+  /** #798: 새 후보 찾기 권역 묶음(설정 ingestion.regionGroups). 옛 응답에는 없다. */
+  regionGroups?: IngestRegionGroup[];
+  /** #798: "자료 기준" 줄. 자료가 없는 종류는 오지 않는다. 옛 응답에는 없다. */
+  dataBasis?: DataBasisItem[];
+}
+
+/** #798 권역 하나. regions는 IngestOptionsConfig.regions 안의 값이다. */
+export interface IngestRegionGroup {
+  label: string;
+  regions: string[];
+}
+
+export type DataBasisKind = 'FACTORY_FILE' | 'FACTORY_LOOKUP' | 'WATER_LIST' | 'AI_JUDGMENT';
+
+/** #798 "자료 기준" 줄 하나. asOf는 YYYY-MM-DD. */
+export interface DataBasisItem {
+  kind: DataBasisKind;
+  asOf: string;
 }
 
 /** 내보내기 스위치(C7 export, 더하는 변경 #217). 서버가 아직 안 주면 없음 = 꺼짐으로 본다. */

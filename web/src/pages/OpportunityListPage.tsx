@@ -22,7 +22,7 @@
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Pagination, Switch } from 'antd';
+import { Button, Pagination, Switch } from 'antd';
 import { getOpportunities } from '../api/client';
 import { BOOKMARKS_PATH } from '../paths';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
@@ -52,6 +52,7 @@ import {
   excludedList,
   listFilters,
   listSearch,
+  listSimple,
   pagination,
   states,
 } from '../labels/ko';
@@ -451,15 +452,6 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
 
   return (
     <>
-      {/* 새 회사 찾기(공정·지역 조건 칸)는 신규 거래처 찾기에만 둔다(#762). */}
-      {ingestOptions && !bookmarked ? (
-        <IngestForm
-          options={ingestOptions}
-          running={ingestRunning}
-          onStarted={() => void refreshIngest()}
-        />
-      ) : null}
-      {latestIngest && !bookmarked ? <IngestSummary ingest={latestIngest} /> : null}
       <ListViewBar
         bookmarked={bookmarked}
         excluded={excluded}
@@ -475,6 +467,8 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
         }
         onOpinion={(value) => update({ opinion: value })}
         onClearFilter={() => update({ filter: null })}
+        // #798: 평소 목록에서는 [제외한 회사 보기]를 [조건 더 보기] 안으로 옮긴다.
+        showExcludedButton={!processMode}
       />
       {/* 검색 칸은 서버 응답 전에도(불러오지 못했을 때도) 쓸 수 있게 머리를 항상 그린다. 선택지는 응답이 오면 채워진다. */}
       <ListFilterBar
@@ -514,6 +508,31 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           storeLastProcess(on ? FLAT_VIEW_CHOICE : GROUPED_VIEW_CHOICE);
           update(on ? { view: 'all', process: null } : { view: null });
         }}
+        // #798(PM 지시 2026-11-16): 자주 안 쓰는 보기 조건은 [조건 더 보기] 안에 둔다.
+        moreExtra={
+          processMode ? (
+            <>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Switch
+                  size="small"
+                  checked={withBookmarked}
+                  onChange={(on) => update({ withBookmarked: on ? 'true' : null })}
+                  data-testid="list-with-bookmarked"
+                />
+                <span>{bookmarkList.withBookmarked}</span>
+              </label>
+              <Button
+                onClick={() =>
+                  update({ excluded: 'true', bookmarked: null, opinion: null, process: null })
+                }
+                data-testid="list-excluded-on"
+              >
+                {excludedList.showOnly}
+              </Button>
+            </>
+          ) : undefined
+        }
+        moreExtraActive={processMode && withBookmarked ? 1 : 0}
       />
       {processMode ? (
         // 평소 목록 머리(#675): 관심으로 고른 회사는 빠져 있다. 몇 곳인지와 함께 보는 스위치를 보인다.
@@ -533,15 +552,6 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
               {bookmarkList.countLink(bookmarkedCount)}
             </Link>
           ) : null}
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <Switch
-              size="small"
-              checked={withBookmarked}
-              onChange={(on) => update({ withBookmarked: on ? 'true' : null })}
-              data-testid="list-with-bookmarked"
-            />
-            <span>{bookmarkList.withBookmarked}</span>
-          </label>
           {movedNoticeKey === filterKey ? (
             <span role="status" data-testid="list-moved-notice">
               {bookmarkList.moved} ·{' '}
@@ -551,6 +561,39 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
             </span>
           ) : null}
         </div>
+      ) : null}
+      {/* 새 후보 찾기(#762에서 신규 거래처 찾기에만 둠)는 #798부터 접어 두고 필요할 때 편다(PM 지시 2026-11-16).
+          접혀 있어도 머리에 마지막 찾기 결과 한 줄이 보인다. */}
+      {(ingestOptions || latestIngest) && !bookmarked ? (
+        <details
+          data-testid="ingest-panel"
+          style={{
+            border: `1px solid ${colors.borderSecondary}`,
+            borderRadius: 8,
+            padding: '8px 12px',
+            marginBottom: spacing.cardGap,
+          }}
+        >
+          <summary
+            data-testid="ingest-panel-toggle"
+            style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 12 }}
+          >
+            <strong>{listSimple.ingestPanelTitle}</strong>
+            <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
+              {listSimple.ingestPanelHint}
+            </span>
+            {latestIngest ? <IngestSummary ingest={latestIngest} inline /> : null}
+          </summary>
+          {ingestOptions ? (
+            <div style={{ marginTop: 12 }}>
+              <IngestForm
+                options={ingestOptions}
+                running={ingestRunning}
+                onStarted={() => void refreshIngest()}
+              />
+            </div>
+          ) : null}
+        </details>
       ) : null}
       <FiveStates
         state={state}

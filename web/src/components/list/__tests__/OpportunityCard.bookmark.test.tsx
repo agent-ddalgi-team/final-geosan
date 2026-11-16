@@ -122,7 +122,8 @@ describe('OpportunityCard [관심]', () => {
     mockedDetail.mockResolvedValueOnce(detailReply(bookmark({ updatedBy: 'park-lee' })));
     render(tree(withBookmark(null)));
     expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false');
-    await user.click(screen.getByTestId('opinion-worth-review-button'));
+    // #798: 카드의 검토 의견은 단추 셋 대신 고르기 칸 하나다.
+    await user.selectOptions(screen.getByTestId('opinion-select'), 'WORTH_REVIEW');
     await waitFor(() =>
       expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'true'),
     );
@@ -145,7 +146,7 @@ describe('OpportunityCard [관심]', () => {
     });
     mockedDetail.mockRejectedValueOnce(new Error('boom'));
     render(tree(withBookmark(null)));
-    await user.click(screen.getByTestId('opinion-need-check-button'));
+    await user.selectOptions(screen.getByTestId('opinion-select'), 'NEED_CHECK');
     await waitFor(() => expect(mockedDetail).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId('opinion-saved-text')).toHaveTextContent('저장됨');
     expect(screen.getByTestId('bookmark-button')).toHaveAttribute('aria-pressed', 'false');
