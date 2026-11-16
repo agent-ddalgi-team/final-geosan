@@ -24,6 +24,7 @@ from geosan.evidence.public_items import approve_pages, check_opportunity
 from geosan.evidence.reader import (
     MAX_BYTES,
     Page,
+    SiteClosedError,
     fetch,
     fetch_more,
     remaining,
@@ -32,7 +33,11 @@ from geosan.evidence.reader import (
 from geosan.evidence.research_context import current_research
 from geosan.evidence.store import store_extraction
 from geosan.opportunity.models import Customer, Opportunity
-from geosan.opportunity.queries import store_company_research
+from geosan.opportunity.queries import (
+    apply_homepage_fit,
+    mark_homepage_closed,
+    store_company_research,
+)
 from geosan.questions.models import ConfirmationQuestion
 from geosan.questions.store import upsert_question
 from geosan.rules.codes import Certainty
@@ -74,6 +79,9 @@ def run_extract(
                 customer.main_phone_confirmed_at,
             )
             customer_id = customer.customer_id
+            # #793: 후보 찾기로 들어와 적합도가 있는 회사만 홈페이지로 적합도를 다시 본다.
+            review_fit = customer.ingest_batch_id is not None and customer.fit_level is not None
+            stored_url = customer.homepage_url
             # #511: 저장된 주소가 공식 홈페이지가 아닌 공개 페이지인가.
             # 붙여넣은 본문도 그 페이지의 글이므로 같은 상한을 적용한다.
             # #719: 담당자가 [맞음]으로 확인한 뒤에도 주소를 고쳐 넣기 전까지는 그대로다.
@@ -108,7 +116,17 @@ def run_extract(
         else:
             # #557: 첫 화면과 이름이 맞는 같은 사이트 안쪽 페이지를 읽어 AI는 한 번만 부른다.
             discovery = settings.homepage_discovery
-            first = fetch(url, deadline)
+            try:
+                first = fetch(url, deadline)
+            except SiteClosedError as closed:
+                # #793: 닫힌 홈페이지는 '홈페이지 못 찾음'으로 바꿔 둔다(담당자 확정 주소는 그대로).
+                if stored_url and validate_url(stored_url) == url:
+                    with session_scope() as session:
+                        session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+                        mark_homepage_closed(
+                            session, customer_id, expected=expected, reason=closed.reason
+                        )
+                raise
             pages = [
                 first,
                 *fetch_more(
@@ -136,6 +154,7 @@ def run_extract(
                 requested_by=requested_by,
                 item_catalog=item_catalog,
                 process_codes=process_codes,
+                review_fit=review_fit,
             )
         if unofficial_page:
             result = cap_to_weak(result)
@@ -162,6 +181,13 @@ def run_extract(
                 highlights=result.company_summary.highlights,
                 phone=phone,
                 phone_source_url=phone_url,
+            )
+            # #793: 홈페이지로 다시 본 적합도를 재평가 전에 옮긴다(평가 전 카드 문장이 따라온다).
+            apply_homepage_fit(
+                session,
+                session.get(Customer, customer_id),
+                result.fit_review.fit_level,
+                result.fit_review.reason,
             )
             evidence = store_extraction(
                 session,

@@ -145,6 +145,9 @@ def discovery_fields(customer: Customer) -> dict:
             )
         },
         "factory_profile": factory_profile(customer),
+        # #793: 적합도 기준. 옛 회사(열이 비어 있음)는 생산품 기준이다.
+        "fit_basis": (customer.fit_basis or "PRODUCT") if customer.fit_level else None,
+        "previous_fit_level": customer.previous_fit_level,
     }
 
 
