@@ -66,7 +66,7 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 
 **가상환경 켜기**: `.venv\Scripts\Activate.ps1`. "이 시스템에서 스크립트를 실행할 수 없으므로…" 오류가 나면 한 번만 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`를 하고 다시 한다. 켜지 않고 쓰려면 매번 `.venv\Scripts\python …`으로 부른다.
 
-**검사 명령**: 맥의 `bash scripts/check.sh`와 같은 단계·같은 순서를 파이썬판으로 돌린다.
+**검사 명령**: 맥의 `bash scripts/check.sh`와 같은 단계·같은 순서를 파이썬판으로 돌린다. 한 단계가 실패해도 끝까지 돌고, 맨 끝에 실패한 단계 이름을 모아 보여 준다(#782).
 
 ```powershell
 .venv\Scripts\python scripts\check.py            # 파이썬 + 화면 전부

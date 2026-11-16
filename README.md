@@ -266,6 +266,9 @@ bash scripts/check.sh web        # ESLint·Prettier → Vitest → tsc·Vite 빌
 .venv\Scripts\python scripts\check.py web        # 화면만
 ```
 
+한 단계가 실패해도 멈추지 않고 끝까지 돈 뒤, 맨 끝에 "검사 실패: 아래 단계가 실패했습니다"와
+실패한 단계 이름을 모아 보여 주고 종료 코드 1로 끝납니다(#782). 모두 통과하면 "검사 끝"입니다.
+
 낱개 명령(단위 테스트 지침 2장):
 
 ```bash
