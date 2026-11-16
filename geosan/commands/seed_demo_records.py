@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Literal
 
 import typer
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -60,6 +60,16 @@ class DemoContact(FileModel):
     memo: str | None = None
     reason: str | None = None
     answers: list[DemoAnswer] = Field(default_factory=list)
+    # (#790) 다음 일정: 넣는 날 기준 며칠 뒤(0 = 오늘)와 할 일 한 줄. 화면의 다음 일정 칸과 같다.
+    # 저장 규칙이 "오늘이나 그 뒤"라 지난 날짜는 못 적는다. 둘 다 선택이고 할 일만 적을 수는 없다.
+    next_in_days: int | None = Field(default=None, ge=0, strict=True)
+    next_note: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def _note_needs_day(self) -> DemoContact:
+        if self.next_note is not None and self.next_in_days is None:
+            raise ValueError("nextNote는 nextInDays와 함께 적어 주세요")
+        return self
 
 
 class DemoCompany(FileModel):
@@ -142,6 +152,12 @@ def _seed_company(db_path: Path, opp_id: str, company: DemoCompany, staff: str) 
                 method=contact.method,
                 result=contact.result,
                 attempted_at=today - timedelta(days=contact.days_ago),
+                next_schedule_at=(
+                    None
+                    if contact.next_in_days is None
+                    else today + timedelta(days=contact.next_in_days)
+                ),
+                next_schedule_note=contact.next_note,
                 memo=contact.memo,
                 reason=contact.reason,
                 answers=[

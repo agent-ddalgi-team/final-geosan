@@ -4,6 +4,7 @@
 // 모양(#758): 어두운 판 위 둥근 칸. 일정이 있는 날만 상태 색을 칠하고(기한 지남 = 갈색, 오늘 = 금색, 7일 안 = 연노랑,
 // 그 뒤 = 연두) 왼쪽 위에 "N건", 왼쪽 아래에 두 자리 날짜("04")를 둔다. 일정 없는 날은 흐리게. 글자는 한글과 숫자만.
 // 색은 theme/tokens의 calendarPalette만 쓴다.
+// #795: 대시보드는 compact로 작게 그린다(칸 높이·글자만 줄이고 날짜 누르면 팝업 등 동작은 같다).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
@@ -53,6 +54,8 @@ interface Props {
   items: DashboardScheduleItem[];
   /** 오늘 날짜(YYYY-MM-DD, 한국 기준). 비어 있으면 오늘 표시를 하지 않는다. */
   today: string;
+  /** #795: 작게(칸 높이 36px, 작은 글자). 동작은 같다. */
+  compact?: boolean;
 }
 
 interface Open {
@@ -61,7 +64,7 @@ interface Open {
   top: number;
 }
 
-export default function DashboardCalendar({ items, today }: Props) {
+export default function DashboardCalendar({ items, today, compact = false }: Props) {
   const base = /^(\d{4})-(\d{2})-\d{2}$/.exec(today);
   const startYear = base ? Number(base[1]) : new Date().getFullYear();
   const startMonth = base ? Number(base[2]) - 1 : new Date().getMonth();
@@ -108,9 +111,9 @@ export default function DashboardCalendar({ items, today }: Props) {
     background: calendarPalette.navBg,
     color: calendarPalette.navFg,
     borderRadius: '50%',
-    width: 40,
-    height: 40,
-    fontSize: 20,
+    width: compact ? 28 : 40,
+    height: compact ? 28 : 40,
+    fontSize: compact ? 16 : 20,
     lineHeight: 1,
     cursor: 'pointer',
     flex: 'none',
@@ -120,7 +123,9 @@ export default function DashboardCalendar({ items, today }: Props) {
 
   return (
     <div ref={wrapRef} data-testid="dashboard-calendar" style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 8 : 12 }}
+      >
         <button
           type="button"
           aria-label="지난달"
@@ -136,7 +141,7 @@ export default function DashboardCalendar({ items, today }: Props) {
             flex: 1,
             textAlign: 'center',
             color: calendarPalette.title,
-            fontSize: 28,
+            fontSize: compact ? 18 : 28,
             fontWeight: 500,
             lineHeight: 1.2,
           }}
@@ -184,8 +189,8 @@ export default function DashboardCalendar({ items, today }: Props) {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-          gridTemplateRows: `repeat(${rows}, minmax(68px, 1fr))`,
-          gap: 6,
+          gridTemplateRows: `repeat(${rows}, minmax(${compact ? 36 : 68}px, 1fr))`,
+          gap: compact ? 4 : 6,
         }}
       >
         {Array.from({ length: rows * 7 }, (_, i) => {
@@ -202,7 +207,7 @@ export default function DashboardCalendar({ items, today }: Props) {
             position: 'relative',
             boxSizing: 'border-box',
             minWidth: 0,
-            borderRadius: 12,
+            borderRadius: compact ? 8 : 12,
             border: 0,
             boxShadow: isToday ? `inset 0 0 0 2px ${calendarPalette.todayRing}` : 'none',
             outline: isSelected ? `3px solid ${calendarPalette.todayRing}` : 'none',
@@ -218,9 +223,9 @@ export default function DashboardCalendar({ items, today }: Props) {
             <span
               style={{
                 position: 'absolute',
-                left: 8,
-                bottom: 6,
-                fontSize: 15,
+                left: compact ? 4 : 8,
+                bottom: compact ? 2 : 6,
+                fontSize: compact ? 11 : 15,
                 fontWeight: palette || isToday ? 600 : 400,
                 color: isToday && !palette ? calendarPalette.todayRing : undefined,
               }}
@@ -270,16 +275,16 @@ export default function DashboardCalendar({ items, today }: Props) {
                 aria-hidden="true"
                 style={{
                   position: 'absolute',
-                  left: 6,
-                  top: 6,
-                  maxWidth: 'calc(100% - 12px)',
+                  left: compact ? 3 : 6,
+                  top: compact ? 3 : 6,
+                  maxWidth: compact ? 'calc(100% - 6px)' : 'calc(100% - 12px)',
                   boxSizing: 'border-box',
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
                   borderRadius: 999,
-                  padding: '1px 7px',
+                  padding: compact ? '0 4px' : '1px 7px',
                   background: palette.badge,
-                  fontSize: 12,
+                  fontSize: compact ? 10 : 12,
                   fontWeight: 600,
                 }}
               >

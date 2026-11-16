@@ -73,6 +73,26 @@ export interface CompanyAnalysisRow {
   daysSinceFirstContact: number;
   outcomeAt: string | null;
   daysToOutcome: number | null;
+  /**
+   * (#801) 기록으로 이른 가장 먼 세부 단계. 성사·거절·보류 회사도 값이 있다(salesStep은 끝난 회사면 null).
+   * 옛 서버·가짜 응답에는 없을 수 있어 선택 칸이다. 없으면 화면은 salesStep으로 대신한다.
+   */
+  furthestStep?: string | null;
+  /** (#801) 취소 안 한 기록 행(저장 순서). 없으면 화면은 첫·마지막 접촉 두 점만 그린다. */
+  timeline?: TimelineEvent[];
+}
+
+/** (#801) 회사별 타임라인의 기록 행 하나. 코드값·날짜만(메모 글 없음). */
+export interface TimelineEvent {
+  /** 접촉 날짜(없으면 저장한 날, 한국 날짜 YYYY-MM-DD). */
+  at: string;
+  /** 접촉 없이 답·단계만 적은 행은 null. */
+  method: ContactMethodCode | null;
+  result: string | null;
+  /** 그 행을 저장한 뒤의 세부 단계. */
+  stepAfter: string | null;
+  /** 그 행의 큰 단계. */
+  status: string;
 }
 
 /** (#678) 담당자가 확정한 회사 수와 그 가운데 AI 제안 안에서 고른 회사 수. */

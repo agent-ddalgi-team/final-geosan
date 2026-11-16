@@ -413,6 +413,12 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
   // 관심 기업 보기에서 공정을 골라 0곳이면 "관심 기업 없음"이 아니라 조건을 바꿔 보라는 문구다(#516).
   // 제외한 회사 보기도 같다(#536).
   const bookmarkedByProcess = (bookmarked || excluded) && process !== null;
+  // 목록 머리 "관심 기업 ○곳"(#675): 서버가 센 수에 방금 옮긴 회사를 더한다.
+  const bookmarkedCount =
+    typeof menu?.bookmarkedCount === 'number' ? menu.bookmarkedCount + movedIds.size : null;
+  // 평소 목록은 관심 기업을 빼고 보이므로(#675), 모두 관심으로 옮겨 비었으면 "후보 없음"이 아니라
+  // 빠진 수와 스위치를 알린다(#787). 시연 DB는 18곳이 모두 관심 기업이라 첫 목록이 이렇게 빈다.
+  const allMovedToBookmarks = hideBookmarked && bookmarkedCount !== null && bookmarkedCount > 0;
   const emptyText = searching
     ? listSearch.empty
     : processIsEmpty
@@ -425,7 +431,9 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
             ? bookmarkList.empty
             : excluded
               ? excludedList.empty
-              : states.listEmpty;
+              : allMovedToBookmarks
+                ? bookmarkList.emptyAllBookmarked(bookmarkedCount)
+                : states.listEmpty;
   const latestIngest = menu?.latestIngest ?? null;
   // 묶음 머리에 끼우는 고른 조건 이름(지역·산업). 값이 곧 화면 이름이다.
   const groupConditions = [region, industry].filter((value): value is string => Boolean(value));
@@ -440,9 +448,6 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
     if (withBookmarked) next.set('withBookmarked', 'true');
     return `${location.pathname}?${next.toString()}`;
   };
-  // 목록 머리 "관심 기업 ○곳"(#675): 서버가 센 수에 방금 옮긴 회사를 더한다.
-  const bookmarkedCount =
-    typeof menu?.bookmarkedCount === 'number' ? menu.bookmarkedCount + movedIds.size : null;
   const bookmarkedHref = BOOKMARKS_PATH;
 
   return (

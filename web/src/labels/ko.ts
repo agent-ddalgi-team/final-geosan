@@ -307,9 +307,9 @@ export const dashboardTexts = {
   progressOnHold: (n: number) => `보류 ${n}곳`,
   /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
   notContactedHint: '아직 연락하지 않은 곳',
-  /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
+  /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 신규 거래처 찾기로 가는 링크다(#787: 메뉴 이름 바뀜 #762). */
   bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
-  bookmarkEmptyLink: '추천 목록',
+  bookmarkEmptyLink: '신규 거래처 찾기',
   bookmarkEmptyTail: '에서 [관심]을 눌러 담아 보세요',
   /** 서버가 아직 옛 집계를 줄 때. 뜻이 달라진 숫자를 새 칸에 넣어 보이지 않는다. */
   countsOutdated:
@@ -331,9 +331,30 @@ export const dashboardTexts = {
   breakdownBasis: (total: number) => `대시보드 대상 ${total}곳`,
   breakdownProposed: 'AI 제안 포함',
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
-  breakdownEmptyAction: '추천 목록 가기',
+  breakdownEmptyAction: '신규 거래처 찾기로 이동',
   loadError: '대시보드를 불러오지 못했습니다.',
   goToList: '신규 거래처 찾기로 이동',
+  // #795(PM 결정 2026-11-16): 오늘 할 일·방문 준비 중심 배치.
+  /** 맨 위 날짜 줄. "11/16(월) 오늘" */
+  todayDate: (day: string) => `${day} 오늘`,
+  briefTitle: '오늘 브리핑',
+  briefScheduleTitle: '일정',
+  /** "지난 1 · 오늘 2" */
+  briefScheduleCounts: (overdue: number, today: number) => `지난 ${overdue} · 오늘 ${today}`,
+  briefScheduleNone: '오늘 일정 없음',
+  briefHandoffTitle: '전달 사항',
+  briefHandoffCount: (n: number) => `확인 전 ${n}곳`,
+  prepTitle: '방문 준비',
+  prepHint: '오늘·이번 주 일정 회사 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
+  prepEmpty: '오늘부터 7일 안에 잡힌 일정이 없습니다.',
+  prepToday: '오늘',
+  prepDetail: '상세',
+  prepHq: '거산',
+  /** "같이 들를 곳 2곳" */
+  prepNearby: (n: number) => `같이 들를 곳 ${n}곳`,
+  /** 거리 화살표 위 글자. "8.2km" */
+  prepKm: (km: number) => `${km.toFixed(1)}km`,
+  moreTitle: '더 보기 · 관심 기업 건수 · 최근 내 기록',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -355,7 +376,7 @@ export const dashboardMapTexts = {
   close: '닫기',
   missingCoordinates: (count: number) => `좌표 없는 회사 ${count}곳`,
   emptyText: '관심 표시한 회사가 아직 없어요.',
-  emptyAction: '추천 목록 가기',
+  emptyAction: '신규 거래처 찾기로 이동',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
   /** 네이버 지도(#671)를 불러오는 동안. */
@@ -611,6 +632,12 @@ export const bookmarkList = {
   /** 평소 목록 머리의 스위치(#675). 켜면 관심으로 고른 회사도 섞어 보인다. */
   withBookmarked: '관심 기업도 함께 보기',
   /** 평소 목록에서 [관심]을 눌러 그 카드가 목록에서 빠졌을 때의 안내와 링크. */
+  /**
+   * 평소 목록이 빈 까닭이 "관심 기업으로 모두 옮겨서"일 때(#787). 후보가 없다는 말 대신 빠진 수와 스위치를 알린다.
+   * 예: "관심 기업으로 옮긴 18곳은 이 목록에서 빠져 있습니다. 위의 [관심 기업도 함께 보기]를 켜면 함께 보입니다."
+   */
+  emptyAllBookmarked: (count: number) =>
+    `관심 기업으로 옮긴 ${count}곳은 이 목록에서 빠져 있습니다. 위의 [관심 기업도 함께 보기]를 켜면 함께 보입니다.`,
   moved: '관심 기업으로 옮겼습니다',
   movedLink: '관심 기업 보기',
 } as const;
@@ -1735,6 +1762,51 @@ export const analysisCharts = {
   countTip: (label: string, value: number, unit: string) => `${label} ${value}${unit}`,
   unitTimes: '번',
   tablesTitle: '자세한 표',
+  /**
+   * #801(PM 지시 2026-11-16) 그림 위주 영업 분석: 깔때기 · 거절 이유 · 공정 × 산업 칸 · 회사별 타임라인.
+   * 위의 숫자 칸·도넛·공정 막대 글은 그림이 바뀌어 쓰지 않지만 대응표는 더하기만 하므로 남겨 둔다.
+   */
+  funnelTitle: '어디서 빠지나',
+  funnelStages: {
+    CONTACTED: '접촉',
+    REACHED: '연결',
+    DEMAND: '수요 확인',
+    QUOTE: '견적·샘플',
+    WON: '성사',
+  },
+  /** 단계 사이 화살표 글: "67% 넘어감" — 표본이 기준보다 적으면 비율 대신 "표본 적음" */
+  funnelPass: (percent: number) => `${percent}% 넘어감`,
+  funnelSmall: '표본 적음',
+  /** "여기서 멈춤 4곳 · 거절 2(가격 1 · 납기 1) · 보류 1 · 진행 중 1" */
+  funnelStopped: (count: number) => `여기서 멈춤 ${count}곳`,
+  funnelLost: (count: number, reasons: string) =>
+    reasons ? `거절 ${count}(${reasons})` : `거절 ${count}`,
+  funnelHold: (count: number) => `보류 ${count}`,
+  funnelOpen: (count: number) => `진행 중 ${count}`,
+  funnelNote:
+    '회사마다 기록으로 이른 가장 먼 단계로 셉니다. 거절·보류로 끝난 회사는 그때 머문 단계에서 멈춘 것으로 봅니다.',
+  gridTitle: '어느 조합에서 잘 되나',
+  /** 칸 글 두 줄: "3곳" / "성사 1" */
+  gridContacted: (contacted: number) => `${contacted}곳`,
+  gridWon: (won: number) => `성사 ${won}`,
+  gridRate: (percent: number) => `성사율 ${percent}%`,
+  gridCorner: '공정 ↓ · 산업 →',
+  gridNote: (min: number) =>
+    `회색 칸은 접촉한 회사가 ${min}곳보다 적어 성사율을 보지 않습니다. 한 회사가 공정·산업이 여럿이면 칸마다 셉니다.`,
+  gridTip: (process: string, industry: string, contacted: number, won: number) =>
+    `${process} × ${industry} · 접촉 ${contacted}곳 · 성사 ${won}곳`,
+  timelineTitle: '회사별로 어디서 멈췄나',
+  timelineReached: '연결됨',
+  timelineNotReached: '연결 안 됨',
+  timelineStep: '단계가 올라간 날',
+  /** 점에 손을 올리면: "10/20 전화 · 부재" */
+  timelineTip: (day: string, method: string | null, result: string | null, step: string | null) =>
+    [day, method, result, step ? `→ ${step}` : null].filter(Boolean).join(' · '),
+  timelineMore: (count: number) => `모두 보기 (${count}곳)`,
+  timelineLess: '접기',
+  timelineBefore: '흐린 점은 고른 기간 앞의 기록입니다.',
+  /** 표 접기 */
+  tablesToggle: '표로 보기',
 } as const;
 
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
