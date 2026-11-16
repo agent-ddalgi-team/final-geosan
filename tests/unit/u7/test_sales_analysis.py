@@ -986,6 +986,9 @@ def test_api_never_returns_memo_text_staff_or_contacts(dashboard_env):
         "daysSinceFirstContact",
         "outcomeAt",
         "daysToOutcome",
+        # (#801, 약속 C1에 더함) 코드값·날짜만 싣는 두 칸. 글이 없는 것은 위 secret 검사가 본다.
+        "furthestStep",
+        "timeline",
     }
 
 
@@ -1055,3 +1058,114 @@ def test_api_needs_the_access_session_when_protection_is_on(dashboard_env, monke
         session.get(AppSetting, "accessProtection").value = {"enabled": True}
     with TestClient(create_app()) as fresh:
         assert fresh.get("/api/v1/sales-analysis").status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# (#801) 깔때기·타임라인 그림용 칸: 가장 먼 세부 단계와 기록 행 줄
+# ---------------------------------------------------------------------------
+
+
+def test_furthest_step_stays_after_a_lost_result_and_a_backward_correction():
+    """Given 연결 → 수요 확인 → [단계 고치기] 연결됨 → 거절 / When 계산
+    Then 지금 세부 단계는 비지만 가장 먼 단계는 수요 확인이다."""
+    companies = [
+        company(
+            "가상거절",
+            [
+                call("ABSENT", day=date(2026, 10, 1), after="NOT_REACHED"),
+                call(day=date(2026, 10, 3), after="REACHED"),
+                call(day=date(2026, 10, 8), method="EMAIL", after="DEMAND_CONFIRMED"),
+                line(status="IN_PROGRESS", after="REACHED"),  # 뒤로 고침
+                line(status="LOST", reason="PRICE", after=None),
+            ],
+            step=None,
+        ),
+        company("가상연결전", [call("ABSENT", day=date(2026, 10, 2), after="NOT_REACHED")]),
+    ]
+    rows = {row.name: row for row in analyse(companies).companies}
+    lost = rows["가상거절"]
+    assert lost.sales_step is None and lost.outcome_status == "LOST"
+    assert lost.furthest_step == "DEMAND_CONFIRMED"
+    assert rows["가상연결전"].furthest_step == "NOT_REACHED"
+
+
+def test_furthest_step_is_none_without_step_values_and_ignores_unknown_codes():
+    """Given 단계 값이 없는 행만 / When 계산 / Then 가장 먼 단계는 None(지어내지 않는다)."""
+    rows = analyse([company("가상", [call(), line(status="WON")])]).companies
+    assert rows[0].furthest_step is None
+
+
+def test_timeline_lists_every_record_line_in_saved_order_with_codes_only():
+    """Given 전화(부재) · 방문(연결) · 접촉 없이 답만 적은 행 · 성사 / When 계산
+    Then 행마다 날짜·방법·결과·뒤 단계·큰 단계 한 줄, 접촉 아닌 행은 방법·결과가 빈다."""
+    won_at = datetime(2026, 11, 10, 15, 0, tzinfo=KST)
+    rows = analyse(
+        [
+            company(
+                "가상정밀",
+                [
+                    call("ABSENT", day=date(2026, 10, 20), after="NOT_REACHED"),
+                    call(day=date(2026, 10, 22), method="VISIT", after="REACHED"),
+                    line(result="REACHED", day=date(2026, 10, 25), after="MATERIAL_QUOTE"),
+                    line(status="WON", at=won_at),
+                ],
+            )
+        ]
+    ).companies
+    events = [
+        (event.at, event.method, event.result, event.step_after, event.status)
+        for event in rows[0].timeline
+    ]
+    assert events == [
+        (date(2026, 10, 20), "CALL", "ABSENT", "NOT_REACHED", "IN_PROGRESS"),
+        (date(2026, 10, 22), "VISIT", "REACHED", "REACHED", "IN_PROGRESS"),
+        (date(2026, 10, 25), None, None, "MATERIAL_QUOTE", "IN_PROGRESS"),
+        (date(2026, 11, 10), None, None, None, "WON"),
+    ]
+    assert rows[0].furthest_step == "MATERIAL_QUOTE"
+
+
+def test_period_timeline_keeps_lines_before_the_start_but_not_after_the_end():
+    """Given 9월 연결 · 10월 수요 확인 · 11월 견적 / When 10월
+    Then 타임라인은 9·10월 행(시작일 앞도 실음), 가장 먼 단계는 끝일까지의 수요 확인."""
+    companies = [
+        company(
+            "가",
+            [
+                call(day=date(2026, 9, 10), after="REACHED"),
+                call(day=date(2026, 10, 5), after="DEMAND_CONFIRMED"),
+                call(day=date(2026, 11, 2), after="MATERIAL_QUOTE"),
+            ],
+        )
+    ]
+    row = analyse_period(companies, *OCT).companies[0]
+    assert [event.at for event in row.timeline] == [date(2026, 9, 10), date(2026, 10, 5)]
+    assert row.furthest_step == "DEMAND_CONFIRMED"
+
+
+def test_api_company_rows_carry_furthest_step_and_timeline_without_text(dashboard_env):
+    """Given 연결 → 수요 확인 답 → 거절(메모 있음) / When 조회
+    Then 회사 줄에 가장 먼 단계 수요 확인과 행 줄(코드값·날짜만, 메모 글 없음)."""
+    client, (a, *_rest) = dashboard_env
+    record(client, a, contact("ABSENT", day="2026-10-15", memo="가상 메모 부재"))
+    record(
+        client,
+        a,
+        contact(
+            day="2026-10-16",
+            answers=answers(("WHO_TALKED", "RIGHT_PERSON"), ("PLATING_NOW", "OUTSOURCED")),
+        ),
+    )
+    record(client, a, {"status": "LOST", "lostReasonCode": "PRICE", "memo": "가상 메모 가격"})
+    row = next(item for item in analysis(client)["data"]["companies"] if item["oppId"] == a)
+    assert row["salesStep"] is None and row["outcomeStatus"] == "LOST"
+    assert row["furthestStep"] == "DEMAND_CONFIRMED"
+    assert [(e["method"], e["result"], e["stepAfter"], e["status"]) for e in row["timeline"]] == [
+        ("CALL", "ABSENT", "NOT_REACHED", "IN_PROGRESS"),
+        ("CALL", "REACHED", "DEMAND_CONFIRMED", "IN_PROGRESS"),
+        # 거절 행에도 그때의 세부 단계가 남는다(큰 단계는 넘기지 않고 계산, #684와 같음).
+        (None, None, "DEMAND_CONFIRMED", "LOST"),
+    ]
+    assert [e["at"] for e in row["timeline"]][:2] == ["2026-10-15", "2026-10-16"]
+    assert all(set(e) == {"at", "method", "result", "stepAfter", "status"} for e in row["timeline"])
+    assert "가상 메모" not in str(row)

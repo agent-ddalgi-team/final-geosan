@@ -33,6 +33,14 @@ const listStyle = {
   gap: spacing.cardGap,
 } as const;
 
+/**
+ * "관심 기업" 구역 칸 틀(#787): 큰 칸 2 : 나머지 1씩으로 늘 한 줄에 둔다.
+ * 예전 `auto-fit` + 큰 칸 두 칸 차지는 노트북 폭(영업 코치 칸이 열린 1280)에서 "검토 중"만 다음 줄로 떨어졌다.
+ */
+export function bookmarkGrid(count: number): string {
+  return count <= 1 ? 'minmax(0, 1fr)' : `minmax(0, 2fr) repeat(${count - 1}, minmax(0, 1fr))`;
+}
+
 const sectionStyle = { display: 'grid', gap: 12, alignContent: 'start' } as const;
 // "영업 진행" 구역은 흰 카드 하나로 묶는다.
 const cardSectionStyle = {
@@ -53,7 +61,7 @@ const smallStyle = {
 interface CellProps {
   countKey: DashboardCountKey;
   value: number;
-  /** 구역의 대표 칸("관심 기업 N곳")이면 두 칸 너비에 굵은 테두리로 크게 보인다. */
+  /** 구역의 대표 칸("관심 기업 N곳")이면 굵은 이름으로 보인다. 넓이는 구역의 칸 틀(`bookmarkGrid`)이 정한다. */
   large?: boolean;
   /** 칸 이름 아래 작은 풀이. */
   hint?: string;
@@ -63,7 +71,7 @@ function CountCell({ countKey, value, large = false, hint }: CellProps) {
   const name = dashboardTexts.countNames[countKey];
   const unit = dashboardTexts.countUnits[countKey];
   return (
-    <li style={large ? { gridColumn: 'span 2' } : undefined}>
+    <li style={{ minWidth: 0 }}>
       <Link
         to={countTarget(countKey)}
         data-testid={`dashboard-count-${countKey}`}
@@ -163,7 +171,11 @@ export default function CountCards({ counts, part = 'all' }: CountCardsProps) {
       <h2 id="dashboard-bookmark-title" style={titleStyle}>
         {dashboardTexts.bookmarkSectionTitle}
       </h2>
-      <ul aria-labelledby="dashboard-bookmark-title" style={listStyle}>
+      <ul
+        aria-labelledby="dashboard-bookmark-title"
+        data-testid="dashboard-bookmark-cells"
+        style={{ ...listStyle, gridTemplateColumns: bookmarkGrid(bookmarkCells.length) }}
+      >
         {bookmarkCells.map((cell) => (
           <CountCell
             key={cell.key}
