@@ -387,6 +387,19 @@ class DashboardSettings(FileModel):
     stalled_after_days: int = Field(default=14, ge=1, le=365, strict=True)
 
 
+class OperationsSettings(FileModel):
+    """#799(PM 결정 2026-11-16): 운영 관리 화면·대시보드 알림.
+
+    알림 사용률 기준은 새 칸 없이 llm.costAlertRatio를 쓴다.
+    """
+
+    # 운영 관리 화면·운영 알림을 받는 담당자 키. 설정 staff 안에 있어야 한다.
+    # 빈 목록이면 아무도 아님.
+    staff_keys: list[str] = Field(default_factory=list)
+    # 공장현황 파일 갱신 권장 주기(일). 파일 기준일 + 이 일수가 지나면 운영 담당에게 알린다.
+    factory_csv_refresh_days: int = Field(default=180, ge=1, le=3650, strict=True)
+
+
 class GeosanLocationSettings(FileModel):
     """거리의 기준점(C7 #222). 좌표가 준비되기 전에는 거리 값을 내지 않는다."""
 
@@ -451,6 +464,8 @@ class AppSettings(FileModel):
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+    # #799: 옛 설정 파일·DB 사본에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    operations: OperationsSettings = Field(default_factory=OperationsSettings)
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
     geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
@@ -491,6 +506,17 @@ class AppSettings(FileModel):
         ):
             raise ValueError(
                 "ingestion.aiPick.model은 llm.allowedModels 목록에 있는 이름이어야 합니다."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def operations_staff_are_staff(self) -> AppSettings:
+        # #799: 운영 담당은 담당자 목록 안의 키만(오타로 아무도 못 보는 일을 막는다).
+        unknown = [key for key in self.operations.staff_keys if key not in self.staff_keys()]
+        if unknown:
+            raise ValueError(
+                "operations.staffKeys에 담당자 목록(staff)에 없는 키가 있습니다: "
+                + ", ".join(unknown)
             )
         return self
 
@@ -693,8 +719,11 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant")
-"""#608·#610·#217·#680 뒤에 생긴 묶음. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant", "operations")
+"""#608·#610·#217·#680·#799 뒤에 생긴 묶음.
+
+그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다.
+"""
 
 
 def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:

@@ -150,6 +150,14 @@ dashboard:
   # 영업 진행 띠의 "⚠ 멈춘 회사": 다음 일정 없이 마지막 접촉 뒤 이 일수 이상(#800, PM 확인 2026-11-16).
   stalledAfterDays: 14
 
+# 운영 관리 화면(왼쪽 메뉴 맨 아래)과 대시보드 운영 알림(#799, PM 결정 2026-11-16).
+# staffKeys에 든 담당자만 화면을 보고 "AI 사용 n%"·"자료 갱신할 때" 알림을 받는다.
+# factoryCsvRefreshDays: 공장현황 파일 기준일에서 이 일수가 지나면 갱신하라고 알린다.
+# 알림 사용률 기준은 아래 llm.costAlertRatio(0.8 = 80%)를 함께 쓴다.
+operations:
+  staffKeys: [choi-pm]
+  factoryCsvRefreshDays: 180
+
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 가상 검사에서도 기본은 꺼 둔다.
 candidateWebSearch:
   enabled: false
