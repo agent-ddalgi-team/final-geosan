@@ -78,6 +78,9 @@ class FitReview(FileModel):
     fit_level: Literal["HIGH", "MEDIUM", "LOW"] | None
     reason: str = Field(max_length=80)
     quote: str | None
+    # #810: 생산품 기준보다 낮게 볼 때의 반대 근거 종류. 없으면 서버가 그 낮춤을 옮기지 않는다
+    # (홈페이지에 도금을 안 적어 둔 것은 필요 없다는 근거가 아니다). 엄격 형식이라 늘 온다.
+    downgrade_basis: Literal["NON_MANUFACTURER", "ASSEMBLY_ONLY", "OWN_PLATING"] | None
 
 
 class Extraction(FileModel):
@@ -157,7 +160,7 @@ def _proposal_instructions(item_catalog: list[dict] | None, process_codes: list[
 def _fit_instructions(review_fit: bool) -> str:
     """적합도 다시 보기 지시문(#793). 후보 고르기의 fitLevel 기준을 본문 근거로 다시 적용한다."""
     if not review_fit:
-        return "fitReview는 fitLevel null, reason 빈 글, quote null로 둔다. "
+        return "fitReview는 fitLevel null, reason 빈 글, quote null, downgradeBasis null로 둔다. "
     return (
         "적합도 다시 보기(fitReview): 이 회사가 거산의 표면처리(도금·피막) 외주가 필요할 만한 "
         "제조업체인지 본문으로 다시 판단한다. HIGH: 표면처리를 거의 반드시 거치는 금속 부품"
@@ -166,6 +169,13 @@ def _fit_instructions(review_fit: bool) -> str:
         "서비스·유통 위주라 표면처리 수요가 낮다. 판단할 문장이 본문에 없으면 fitLevel null, "
         "reason 빈 글, quote null. 있으면 reason은 담당자가 카드에서 읽을 한 문장(40자 안팎, "
         "본문 사실만), quote는 판단에 쓴 본문 문장 그대로. "
+        "중요: 작은 회사 홈페이지는 도금·표면처리 공정이나 직접 제조 범위를 거의 적지 않는다. "
+        "도금·표면처리·직접 제조가 적혀 있지 않다는 이유만으로는 적합도를 낮추지 않는다. "
+        "낮추려면 반대 근거 문장이 본문에 있어야 하고 그 종류를 downgradeBasis에 적는다: "
+        "NON_MANUFACTURER(제조가 아닌 서비스·용역·유통 회사), ASSEMBLY_ONLY(부품을 사 와 "
+        "조립·판매만 함), OWN_PLATING(자체 도금·표면처리 라인이 있음). 반대 근거가 없으면 "
+        "낮추지 말고 생산품 정보로 본 수준을 유지하거나 판단할 문장이 없으면 null로 둔다. "
+        "낮추지 않을 때 downgradeBasis는 null. "
     )
 
 
@@ -178,7 +188,9 @@ def _checked_fit(result: Extraction, source: str) -> Extraction:
         return result
     logger.warning("적합도 다시 보기 버림: 인용이 본문에 없거나 이유가 비었음")
     return result.model_copy(
-        update={"fit_review": FitReview(fit_level=None, reason="", quote=None)}
+        update={
+            "fit_review": FitReview(fit_level=None, reason="", quote=None, downgrade_basis=None)
+        }
     )
 
 
@@ -314,7 +326,11 @@ def extract_evidence(
             _check_proposals(result, source, item_catalog, process_codes)
             if not review_fit:
                 return result.model_copy(
-                    update={"fit_review": FitReview(fit_level=None, reason="", quote=None)}
+                    update={
+                        "fit_review": FitReview(
+                            fit_level=None, reason="", quote=None, downgrade_basis=None
+                        )
+                    }
                 )
             return _checked_fit(result, source)
         except (KeyError, TypeError, ValueError):
