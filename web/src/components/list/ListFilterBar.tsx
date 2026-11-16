@@ -9,13 +9,16 @@
 //  - 거리 선택란(#666)은 서버 설정의 선택지(30·50·100km)로 그 거리 안의 회사만 남긴다(주소 `?maxDistanceKm=50`).
 //  - 정렬 줄 마지막 "전체 보기"(#516, PM 지시 2026-11-09)는 평소 목록에서만 보이고, 누르면 공정별 묶음을 풀어
 //    모든 회사를 한 줄로 본다(주소 `?view=all`). 다시 누르면 묶음 보기로 돌아간다.
+// #798(PM 지시 2026-11-16): 앞줄은 공정·지역·정렬과 오른쪽 검색만 두고, 산업·거리·"전체 보기"·부모가 넘긴 것
+//   (제외한 회사 보기·관심 기업도 함께 보기)은 접힌 [조건 더 보기] 안에 둔다. 걸린 조건이 있으면 펴진 채 연다.
+//   지역 선택란은 서버가 preset으로 알려 준 권역과 시·군 직접 고르기를 묶음(optgroup)으로 나눈다.
 // 선택과 검색어는 부모가 주소(`?process=&region=&industry=`, `?q=`)에 남기고, 이 부품은 고른 값을 알리기만 한다.
 // 선택지 옆 숫자는 서버가 준 건수다. 지역·산업은 건수가 0인 선택지를 서버가 빼서 주고, 공정은 0곳도 함께 준다.
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Button } from 'antd';
 import type { IndustryCount, ProcessCount, RegionCount } from '../../api/types';
-import { listFilters, listSearch } from '../../labels/ko';
+import { listFilters, listSearch, listSimple } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 
 /** 목록 정렬(#516). rank = 추천 순(기본), recent = 들어온 시각 최신 순. */
@@ -57,6 +60,10 @@ export interface ListFilterBarProps {
   flat?: boolean;
   /** "전체 보기"를 누르면 켜고 끄기를 알린다. */
   onFlat?: (on: boolean) => void;
+  /** #798 [조건 더 보기] 안에 함께 둘 것(부모가 넘김. 예: 제외한 회사 보기, 관심 기업도 함께 보기). */
+  moreExtra?: ReactNode;
+  /** #798 [조건 더 보기] 안의 부모 몫 조건 가운데 지금 켜진 수(예: 관심 기업도 함께 보기 켬 = 1). */
+  moreExtraActive?: number;
 }
 
 const controlStyle = {
@@ -96,8 +103,11 @@ interface FilterSelectProps {
   id: string;
   label: string;
   value: string | null;
-  /** value는 서버에 보내는 값, name은 화면에 보이는 이름. count가 음수면 건수 없이 이름만 보인다(거리). */
-  items: { value: string; name: string; count: number }[];
+  /**
+   * value는 서버에 보내는 값, name은 화면에 보이는 이름. count가 음수면 건수 없이 이름만 보인다(거리).
+   * preset이 하나라도 정해져 있으면 권역(true)과 시·군 직접 고르기(false) 묶음으로 나눠 보인다(#798).
+   */
+  items: { value: string; name: string; count: number; preset?: boolean }[];
   /** 맨 앞 "전체" 선택지의 글자(지역·산업은 "전체", 공정은 "전체(공정별로 묶음)"). 값은 빈 글자다. */
   allLabel: string;
   /** true면 고른 값이 선택지에 없을 때 0건으로 함께 보여 고른 값이 사라지지 않게 한다(지역·산업). */
@@ -122,6 +132,13 @@ function FilterSelect({
     keepUnknown && value && !known ? [...items, { value, name: value, count: 0 }] : items;
   // 공정 선택란은 고른 값이 선택지에 없으면 맨 위 "전체(공정별로 묶음)"가 골라진 것으로 보인다.
   const current = known || (keepUnknown && value) ? value : '';
+  // #798: 서버가 권역 표시를 준 지역 선택지만 묶음으로 나눈다. 옛 응답(칸 없음)은 지금처럼 한 목록.
+  const grouped = items.some((item) => item.preset === true);
+  const renderOption = (item: { value: string; name: string; count: number }) => (
+    <option key={item.value} value={item.value}>
+      {item.count < 0 ? item.name : listFilters.option(item.name, item.count)}
+    </option>
+  );
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <label htmlFor={id} style={labelStyle}>
@@ -135,11 +152,18 @@ function FilterSelect({
         data-testid={testId}
       >
         <option value="">{allLabel}</option>
-        {shown.map((item) => (
-          <option key={item.value} value={item.value}>
-            {item.count < 0 ? item.name : listFilters.option(item.name, item.count)}
-          </option>
-        ))}
+        {grouped ? (
+          <>
+            <optgroup label={listSimple.regionPresetGroup}>
+              {shown.filter((item) => item.preset === true).map(renderOption)}
+            </optgroup>
+            <optgroup label={listSimple.regionCityGroup}>
+              {shown.filter((item) => item.preset !== true).map(renderOption)}
+            </optgroup>
+          </>
+        ) : (
+          shown.map(renderOption)
+        )}
       </select>
     </span>
   );
@@ -219,15 +243,26 @@ export default function ListFilterBar({
   distancePresets = [],
   maxDistanceKm = null,
   onMaxDistance,
+  moreExtra,
+  moreExtraActive = 0,
 }: ListFilterBarProps) {
   const searching = query !== null;
   const hasProcess = !searching && showProcess && processCounts.length > 0;
   // 지역·산업 선택란은 공정을 고르기 전(묶음 보기)에도 보인다(#383). 곳 수는 부모가 준 응답의 것이다.
   const hasSelects =
     !searching && (regionCounts.length > 0 || industryCounts.length > 0 || region || industry);
+  const hasDistance = !searching && distancePresets.length > 0;
+  // #798: [조건 더 보기] 안에서 지금 걸려 있는 것. 하나라도 있으면 펴진 채 연다(걸린 조건을 숨기지 않는다).
+  const moreActive =
+    (hasSelects && industry ? 1 : 0) +
+    (hasDistance && maxDistanceKm !== null ? 1 : 0) +
+    (showFlat && flat ? 1 : 0) +
+    moreExtraActive;
+  const [moreOpen, setMoreOpen] = useState(moreActive > 0);
+  const hasMore = !searching && (hasSelects || hasDistance || showFlat || moreExtra !== undefined);
   return (
     <div data-testid="list-filter-bar" style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
-      <div style={rowStyle}>
+      <div data-testid="list-filter-main" style={rowStyle}>
         {hasProcess ? (
           <FilterSelect
             id="list-process-select"
@@ -251,64 +286,27 @@ export default function ListFilterBar({
           />
         ) : null}
         {hasSelects ? (
-          <>
-            <FilterSelect
-              id="list-region-select"
-              label={listFilters.regionLabel}
-              value={region}
-              items={regionCounts.map((item) => ({
-                value: item.region,
-                name: item.region,
-                count: item.count,
-              }))}
-              allLabel={listFilters.all}
-              keepUnknown
-              onChange={onRegion}
-              testId="list-region-select"
-            />
-            <FilterSelect
-              id="list-industry-select"
-              label={listFilters.industryLabel}
-              value={industry}
-              items={industryCounts.map((item) => ({
-                value: item.industry,
-                name: item.industry,
-                count: item.count,
-              }))}
-              allLabel={listFilters.all}
-              keepUnknown
-              onChange={onIndustry}
-              testId="list-industry-select"
-            />
-          </>
-        ) : null}
-        {!searching && distancePresets.length > 0 ? (
           <FilterSelect
-            id="list-distance-select"
-            label={listFilters.distanceLabel}
-            value={maxDistanceKm === null ? null : String(maxDistanceKm)}
-            items={distancePresets.map((km) => ({
-              value: String(km),
-              name: listFilters.distanceWithin(km),
-              count: -1,
+            id="list-region-select"
+            label={listFilters.regionLabel}
+            value={region}
+            items={regionCounts.map((item) => ({
+              value: item.region,
+              name: item.region,
+              count: item.count,
+              preset: item.preset,
             }))}
             allLabel={listFilters.all}
-            keepUnknown={false}
-            onChange={(value) => onMaxDistance?.(value === null ? null : Number(value))}
-            testId="list-distance-select"
+            keepUnknown
+            onChange={onRegion}
+            testId="list-region-select"
           />
         ) : null}
-        <SearchBox
-          key={query ?? ''}
-          initial={query ?? ''}
-          onSearch={onSearch}
-          onClear={onClearSearch}
-        />
         <div
           role="group"
           aria-label={listSearch.sortLabel}
           data-testid="list-sort"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
         >
           <span aria-hidden="true" style={labelStyle}>
             {listSearch.sortLabel}
@@ -346,19 +344,77 @@ export default function ListFilterBar({
           >
             {listSearch.sortDistance}
           </button>
-          {showFlat ? (
-            <button
-              type="button"
-              aria-pressed={flat}
-              onClick={() => onFlat?.(!flat)}
-              style={{ ...sortStyle(flat), marginLeft: 8, cursor: 'pointer' }}
-              data-testid="list-view-all"
-            >
-              {listSearch.viewAll}
-            </button>
-          ) : null}
+        </div>
+        {/* 회사 이름 검색은 오른쪽 끝에 작게(#798). */}
+        <div style={{ marginLeft: 'auto' }}>
+          <SearchBox
+            key={query ?? ''}
+            initial={query ?? ''}
+            onSearch={onSearch}
+            onClear={onClearSearch}
+          />
         </div>
       </div>
+      {hasMore ? (
+        <details
+          data-testid="list-more"
+          open={moreOpen}
+          onToggle={(event) => setMoreOpen(event.currentTarget.open)}
+        >
+          <summary
+            data-testid="list-more-toggle"
+            style={{ cursor: 'pointer', ...labelStyle, width: 'fit-content' }}
+          >
+            {listSimple.moreConditions(moreActive)}
+          </summary>
+          <div style={{ ...rowStyle, marginTop: 12 }}>
+            {hasSelects ? (
+              <FilterSelect
+                id="list-industry-select"
+                label={listFilters.industryLabel}
+                value={industry}
+                items={industryCounts.map((item) => ({
+                  value: item.industry,
+                  name: item.industry,
+                  count: item.count,
+                }))}
+                allLabel={listFilters.all}
+                keepUnknown
+                onChange={onIndustry}
+                testId="list-industry-select"
+              />
+            ) : null}
+            {hasDistance ? (
+              <FilterSelect
+                id="list-distance-select"
+                label={listFilters.distanceLabel}
+                value={maxDistanceKm === null ? null : String(maxDistanceKm)}
+                items={distancePresets.map((km) => ({
+                  value: String(km),
+                  name: listFilters.distanceWithin(km),
+                  count: -1,
+                }))}
+                allLabel={listFilters.all}
+                keepUnknown={false}
+                onChange={(value) => onMaxDistance?.(value === null ? null : Number(value))}
+                testId="list-distance-select"
+              />
+            ) : null}
+            {showFlat ? (
+              <button
+                type="button"
+                aria-pressed={flat}
+                onClick={() => onFlat?.(!flat)}
+                style={{ ...sortStyle(flat), cursor: 'pointer' }}
+                data-testid="list-view-all"
+              >
+                {listSearch.viewAll}
+              </button>
+            ) : null}
+            {moreExtra}
+          </div>
+        </details>
+      ) : null}
       {searching ? (
         <div data-testid="list-search-line" style={{ ...rowStyle, gap: 12 }}>
           <span>

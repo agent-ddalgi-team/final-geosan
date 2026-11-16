@@ -222,6 +222,117 @@ class TodayCheckRow:
     list_filter: str | None = None
 
 
+# #800(PM 결정 2026-11-16): 영업 진행 띠의 칸(브리핑 순서) + 띠 아래 "보류".
+# 칸 숫자와 같은 분류를 쓴다.
+PROGRESS_BAND_KEYS = ("NOT_CONTACTED", "IN_CONTACT", "QUOTE_SAMPLE", WON_KEY, "ON_HOLD")
+# "멈춘 회사"를 보는 칸. 미접촉(접촉 없음)·성사·보류는 멈춤이 아니다.
+_STALL_BANDS = ("IN_CONTACT", "QUOTE_SAMPLE")
+
+
+@dataclass(frozen=True)
+class ProgressCompany:
+    """진행 띠 칸을 눌렀을 때 펴지는 회사 한 줄. 메모·연락처는 없다."""
+
+    opp_id: str
+    customer_name: str
+    last_contact_at: date | None
+    next_schedule_at: date | None
+    # 최신 영업 기록의 일정 한 줄(schedule.note와 같은 값). 메모 글이 아니다.
+    next_schedule_note: str | None
+    stalled: bool
+
+
+def stalled_company(
+    band: str, last_contact: date | None, next_schedule: date | None, today: date, days: int
+) -> bool:
+    """멈춘 회사(#800): 접촉·견적 칸이고, 다음 일정이 없고, 마지막 접촉 뒤 `days`일 이상."""
+    return (
+        band in _STALL_BANDS
+        and next_schedule is None
+        and last_contact is not None
+        and (today - last_contact).days >= days
+    )
+
+
+def _last_contacts(session: Session, opp_ids: list[str]) -> dict[str, date]:
+    """기회마다 취소하지 않은 접촉 시도 행의 접촉 날짜 가운데 가장 늦은 날."""
+    if not opp_ids:
+        return {}
+    return dict(
+        session.execute(
+            select(Outcome.opp_id, func.max(Outcome.attempted_at))
+            .where(
+                Outcome.opp_id.in_(opp_ids),
+                Outcome.cancelled_at.is_(None),
+                Outcome.method.is_not(None),
+                Outcome.attempted_at.is_not(None),
+            )
+            .group_by(Outcome.opp_id)
+        ).all()
+    )
+
+
+def build_progress_companies(
+    session: Session,
+    population,
+    classified: Mapping[str, str],
+    won_ids: Sequence[str],
+    today: date,
+    stalled_after_days: int,
+) -> dict[str, list[ProgressCompany]]:
+    """진행 띠 칸마다 회사 목록.
+
+    칸은 건수와 같은 분류(`classified`, 성사는 `won_ids`)라 숫자와 늘 같다.
+
+    순서: 멈춘 회사 → 다음 일정 가까운 순 → 마지막 접촉 오래된 순 → 이름.
+    """
+    bands: dict[str, list[str]] = {key: [] for key in PROGRESS_BAND_KEYS}
+    for opp_id, key in classified.items():
+        if key in bands:
+            bands[key].append(opp_id)
+    bands[WON_KEY] = list(won_ids)
+    every = sorted({opp_id for ids in bands.values() for opp_id in ids})
+    if not every:
+        return {key: [] for key in PROGRESS_BAND_KEYS}
+    names = dict(
+        session.execute(
+            select(Opportunity.opp_id, Customer.name)
+            .join(Customer, Opportunity.customer_id == Customer.customer_id)
+            .where(Opportunity.opp_id.in_(every))
+        ).all()
+    )
+    latest = {row.opp_id: row for row in _latest_outcomes(session, population)}
+    contacts = _last_contacts(session, every)
+    result: dict[str, list[ProgressCompany]] = {}
+    for key, ids in bands.items():
+        rows = []
+        for opp_id in ids:
+            outcome = latest.get(opp_id)
+            schedule = outcome.next_schedule_at if outcome else None
+            last = contacts.get(opp_id)
+            rows.append(
+                ProgressCompany(
+                    opp_id=opp_id,
+                    customer_name=names[opp_id],
+                    last_contact_at=last,
+                    next_schedule_at=schedule,
+                    next_schedule_note=(outcome.next_schedule_note or None) if schedule else None,
+                    stalled=stalled_company(key, last, schedule, today, stalled_after_days),
+                )
+            )
+        rows.sort(
+            key=lambda row: (
+                not row.stalled,
+                row.next_schedule_at or date.max,
+                row.last_contact_at or date.max,
+                row.customer_name,
+                row.opp_id,
+            )
+        )
+        result[key] = rows
+    return result
+
+
 @dataclass(frozen=True)
 class Dashboard:
     counts: DashboardCounts
@@ -232,6 +343,8 @@ class Dashboard:
     breakdown: Breakdown | None = None
     # 맨 위 "오늘 확인할 것" 줄 목록(#679). 0건인 줄은 없다.
     today_checks: list[TodayCheckRow] = field(default_factory=list)
+    # #800: 영업 진행 띠 칸별 회사(칸 숫자와 같은 분류). 옛 호출은 빈 값.
+    progress_companies: dict[str, list[ProgressCompany]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -828,6 +941,7 @@ def build_dashboard(
     breakdown_source: BreakdownSource | None = None,
     check_left_opp_ids: Sequence[str] | None = None,
     staff_names: Mapping[str, str] | None = None,
+    stalled_after_days: int = 14,
 ) -> DashboardResult:
     """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
 
@@ -840,7 +954,8 @@ def build_dashboard(
     # 관심으로 켜 둔 기회만 센다. 관심이 아닌 기회는 어느 칸에도 들지 않는다(#356).
     classified = classify_bookmarked(session, population)
     schedule, due_count = _schedule(session, population, today)
-    counts = _counts(classified, due_count, len(bookmarked_won_ids(session, population)))
+    won_ids = bookmarked_won_ids(session, population)
+    counts = _counts(classified, due_count, len(won_ids))
     has_virtual = bool(
         session.scalar(
             select(func.count())
@@ -866,6 +981,9 @@ def build_dashboard(
                 population=population,
                 staff_key=staff_key,
                 staff_names=staff_names,
+            ),
+            progress_companies=build_progress_companies(
+                session, population, classified, won_ids, today, stalled_after_days
             ),
         ),
         has_virtual,

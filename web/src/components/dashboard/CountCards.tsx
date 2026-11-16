@@ -7,11 +7,22 @@
 // 서버가 주지 않은 칸은 0으로 지어내지 않고 뺀다. 옛 집계(관심 기업 건수가 없음)면 두 구역 대신 안내를 보인다.
 // #795(PM 결정 2026-11-16): 대시보드는 "영업 진행" 띠를 맨 위 "오늘 브리핑"에(part="progress"),
 // "관심 기업" 칸을 맨 아래 "더 보기"에(part="bookmark") 따로 놓는다. 띠 칸 사이에 → 를 그려 흐름으로 읽힌다.
+// #800(PM 결정 2026-11-16): 서버가 칸별 회사(progressCompanies)를 주면 띠 칸·"보류 n곳"은 목록으로 가는 대신
+// 그 단계 회사를 띠 아래에 편다(다시 누르면 접힘). 펴진 목록 끝 [목록에서 보기 →]가 예전 링크다.
+// 옛 서버라 회사 목록이 없으면 지금처럼 칸이 목록 링크다.
+import { useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { DashboardCountKey, DashboardCounts } from '../../api/dashboardTypes';
+import type {
+  DashboardCountKey,
+  DashboardCounts,
+  Dashboard,
+  ProgressBandKey,
+} from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
+import ProgressCompanyList from './ProgressCompanyList';
 
 /** ① "관심 기업" 구역의 칸 순서. 맨 앞 BOOKMARKED가 큰 칸이다. */
 export const BOOKMARK_ORDER: DashboardCountKey[] = ['BOOKMARKED', 'NO_OPINION', 'NEED_CHECK'];
@@ -128,9 +139,72 @@ export interface CountCardsProps {
   counts: DashboardCounts;
   /** all = 두 구역 함께(예전), progress = "영업 진행" 띠만, bookmark = "관심 기업" 칸만(#795). */
   part?: 'all' | 'progress' | 'bookmark';
+  /** #800: 칸별 회사. 있으면 띠 칸을 눌러 그 단계 회사를 편다. 없으면(옛 서버) 칸이 목록 링크다. */
+  companies?: Dashboard['progressCompanies'];
+  /** 오늘(YYYY-MM-DD). "마지막 접촉 n일 전"을 셀 때 쓴다. 안 주면 이 기기의 오늘. */
+  today?: string;
 }
 
-export default function CountCards({ counts, part = 'all' }: CountCardsProps) {
+function localToday(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** #800 칸을 펴고 접는 단추. 회사 목록이 없으면 지금처럼 목록 링크. */
+function BandCell({
+  countKey,
+  label,
+  style,
+  open,
+  onToggle,
+  children,
+}: {
+  countKey: ProgressBandKey;
+  label: string;
+  style: CSSProperties;
+  /** 회사 목록이 없으면 undefined(링크로 그림). */
+  open: boolean | undefined;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  if (open === undefined) {
+    return (
+      <Link
+        to={countTarget(countKey)}
+        data-testid={`dashboard-count-${countKey}`}
+        aria-label={label}
+        style={style}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-testid={`dashboard-count-${countKey}`}
+      aria-label={label}
+      aria-expanded={open}
+      aria-controls="dashboard-progress-companies"
+      onClick={onToggle}
+      style={{
+        ...style,
+        width: '100%',
+        border: open ? `2px solid ${detailTheme.accent}` : '2px solid transparent',
+        cursor: 'pointer',
+        font: 'inherit',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function CountCards({ counts, part = 'all', companies, today }: CountCardsProps) {
+  const [openBand, setOpenBand] = useState<ProgressBandKey | null>(null);
+  const toggle = (key: ProgressBandKey) => setOpenBand((now) => (now === key ? null : key));
+  const openOf = (key: ProgressBandKey) => (companies ? openBand === key : undefined);
   // 옛 집계에는 관심 기업 건수가 없다. 그때의 미접촉·접촉 중 숫자는 뜻이 달라(전체 회사 기준) 새 칸에 넣지 않는다.
   if (typeof counts.BOOKMARKED !== 'number') {
     // 띠만 그리는 자리(#795)에서는 안내를 두 번 보이지 않는다. 안내는 bookmark·all 쪽에만.
@@ -240,10 +314,11 @@ export default function CountCards({ counts, part = 'all' }: CountCardsProps) {
                 </li>
               ) : null,
               <li key={cell.key} style={{ flex: '1 1 0', minWidth: 0 }}>
-                <Link
-                  to={countTarget(cell.key)}
-                  data-testid={`dashboard-count-${cell.key}`}
-                  aria-label={`${name} ${cell.value}${unit}`}
+                <BandCell
+                  countKey={cell.key}
+                  label={`${name} ${cell.value}${unit}`}
+                  open={openOf(cell.key)}
+                  onToggle={() => toggle(cell.key)}
                   style={{
                     display: 'grid',
                     gap: 2,
@@ -262,19 +337,42 @@ export default function CountCards({ counts, part = 'all' }: CountCardsProps) {
                       {unit}
                     </span>
                   </span>
-                </Link>
+                </BandCell>
               </li>,
             ];
           })}
         </ol>
         {typeof counts.ON_HOLD === 'number' && counts.ON_HOLD > 0 ? (
-          <Link
-            to={countTarget('ON_HOLD')}
-            data-testid="dashboard-count-ON_HOLD"
-            style={{ ...smallStyle, justifySelf: 'start' }}
+          <BandCell
+            countKey="ON_HOLD"
+            label={dashboardTexts.progressOnHold(counts.ON_HOLD)}
+            open={openOf('ON_HOLD')}
+            onToggle={() => toggle('ON_HOLD')}
+            style={{
+              ...smallStyle,
+              justifySelf: 'start',
+              background: 'none',
+              padding: 0,
+              ...(companies ? { width: 'auto', textDecoration: 'underline' } : {}),
+            }}
           >
             {dashboardTexts.progressOnHold(counts.ON_HOLD)}
-          </Link>
+          </BandCell>
+        ) : null}
+        {companies ? (
+          openBand ? (
+            <ProgressCompanyList
+              key={openBand}
+              band={openBand}
+              rows={companies[openBand] ?? []}
+              today={today ?? localToday()}
+              listHref={countTarget(openBand)}
+            />
+          ) : (
+            <small data-testid="dashboard-progress-open-hint" style={smallStyle}>
+              {dashboardTexts.progressOpenHint}
+            </small>
+          )
         ) : null}
       </section>
     ) : null;

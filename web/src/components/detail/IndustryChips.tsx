@@ -4,6 +4,7 @@
 // 저장하면 서버가 꼬리 질문의 산업 확정(#652)과 같은 칸에 적고 활동 이력에 한 줄을 남긴다. 다시 평가하지 않는다.
 // 적는 것이라 구분 줄 아래(적는 곳)에 둔다. 모달 없이 인라인이고, 담당자를 고르기 전·보기 전용은 단추가 잠긴다.
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Checkbox, Space } from 'antd';
 import { ApiError, postIndustries } from '../../api/client';
 import type { OpportunityDetail } from '../../api/types';
@@ -18,11 +19,21 @@ export interface IndustryChipsProps {
   header: Pick<OpportunityDetail['header'], 'industries' | 'industriesSource'>;
   /** 저장이 끝나면 부른다. 상세 화면이 상세와 활동 이력을 새로 불러온다. */
   onSaved: () => void;
+  /**
+   * #803: "한눈에"의 산업 칸 안에 바로 놓일 때 true. 따로 카드·제목 없이 칩과 [고치기]만 보이고,
+   * "담당자를 고르면" 안내는 머리가 한 번 보이므로 뺀다.
+   */
+  bare?: boolean;
 }
 
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 
-export default function IndustryChips({ oppId, header, onSaved }: IndustryChipsProps) {
+export default function IndustryChips({
+  oppId,
+  header,
+  onSaved,
+  bare = false,
+}: IndustryChipsProps) {
   const { staffKey, canRecord, config } = useFrame();
   const industries = header.industries ?? [];
   const source = header.industriesSource ?? null;
@@ -58,8 +69,8 @@ export default function IndustryChips({ oppId, header, onSaved }: IndustryChipsP
     }
   }
 
-  return (
-    <DetailSection id="detail-industries" title={texts.title}>
+  const body: ReactNode = (
+    <>
       <div
         data-testid="industry-chips"
         style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
@@ -165,7 +176,7 @@ export default function IndustryChips({ oppId, header, onSaved }: IndustryChipsP
             </Button>
           </Space>
         </div>
-      ) : (
+      ) : bare && !canRecord ? null : (
         <span style={secondary} data-testid="industry-chips-hint">
           {!canRecord
             ? texts.pickStaffFirst
@@ -184,6 +195,16 @@ export default function IndustryChips({ oppId, header, onSaved }: IndustryChipsP
           {error}
         </span>
       ) : null}
+    </>
+  );
+  // 카드 틀을 부품으로 만들지 않고 그대로 고른다(렌더마다 새 부품이 되면 안의 입력이 다시 만들어진다).
+  return bare ? (
+    <div data-testid="detail-industries" style={{ display: 'grid', gap: 6 }}>
+      {body}
+    </div>
+  ) : (
+    <DetailSection id="detail-industries" title={texts.title}>
+      {body}
     </DetailSection>
   );
 }

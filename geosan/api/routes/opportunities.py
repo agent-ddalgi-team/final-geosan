@@ -45,6 +45,8 @@ from geosan.api.schemas import (
     CardOutcome,
     CardRecords,
     DetailHeader,
+    DetailMap,
+    DetailMapPoint,
     DetailRecords,
     EvidenceView,
     HandoffNote,
@@ -106,7 +108,7 @@ from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
 from geosan.opportunity.factory_csv import address_city
-from geosan.opportunity.geo_store import customer_distances
+from geosan.opportunity.geo_store import customer_distances, stored_point
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.opportunity.queries import closed_homepage_reason
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
@@ -210,6 +212,24 @@ def _suggest_research_again(context: DetailContext, research: ResearchSettings) 
         return False
     bookmark = latest_bookmark(context.session, context.opportunity.opp_id)
     return bookmark is not None and bookmark.active
+
+
+def _map(context: DetailContext) -> dict:
+    """#803 상세 작은 지도: 설정 거산 좌표와 저장된 공공좌표만.
+
+    네이버 실시간 보완 좌표는 싣지 않는다(#222). 좌표가 하나라도 없거나 가상 사례·공개 등급이
+    아닌 회사면 null이다(`stored_point`가 같은 규칙으로 거른다).
+    """
+    settings = runtime_for(context.session).app_settings
+    point = None if context.opportunity.is_virtual else stored_point(context.customer)
+    if point is None or settings.geosan.lat is None or settings.geosan.lng is None:
+        return {"map": None}
+    return {
+        "map": DetailMap(
+            center=DetailMapPoint(lat=settings.geosan.lat, lng=settings.geosan.lng),
+            company=DetailMapPoint(lat=point.lat, lng=point.lng),
+        )
+    }
 
 
 def _header(context: DetailContext) -> dict:
@@ -602,6 +622,7 @@ detail_sections: list[Callable] = [
     _evidence,
     _scores,
     _records,
+    _map,
 ]
 
 
@@ -982,11 +1003,11 @@ def list_opportunities(
     )
     presets = runtime.app_settings.list_filters.region_presets
     region_counts = [
-        RegionCount(region=preset.label, count=count)
+        RegionCount(region=preset.label, count=count, preset=True)
         for preset in presets
         if (count := sum(city_counts[city] for city in set(preset.cities))) > 0
     ] + [
-        RegionCount(region=city, count=count)
+        RegionCount(region=city, count=count, preset=False)
         for city, count in sorted(city_counts.items(), key=lambda item: (-item[1], item[0]))
     ]
     selected_cities = next(

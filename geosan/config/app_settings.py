@@ -149,6 +149,13 @@ class CostEstimateSettings(FileModel):
     web_search_usd_per_batch: float = Field(gt=0, strict=True, allow_inf_nan=False)
 
 
+class RegionGroup(FileModel):
+    """C7 #798: 새 후보 찾기의 권역 묶음 하나(예: 천안·아산 = 천안시·아산시)."""
+
+    label: str = Field(min_length=1)
+    regions: list[str] = Field(min_length=1)
+
+
 class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
@@ -157,6 +164,23 @@ class IngestionSettings(FileModel):
     factory_csv_path: str = ""
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
     ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
+    # #798(PM 지시 2026-11-16): 권역 묶음. 칸이 없는 옛 설정은 빈 목록(권역 없이 시·군만 보임).
+    region_groups: list[RegionGroup] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_region_groups(self) -> IngestionSettings:
+        labels = [group.label for group in self.region_groups]
+        if len(labels) != len(set(labels)):
+            raise ValueError("regionGroups의 label은 서로 달라야 합니다.")
+        unknown = sorted(
+            {region for group in self.region_groups for region in group.regions} - set(self.regions)
+        )
+        if unknown:
+            raise ValueError(
+                "regionGroups의 regions는 ingestion.regions 안의 값이어야 합니다: "
+                + ", ".join(unknown)
+            )
+        return self
 
 
 class LlmSettings(FileModel):
@@ -411,6 +435,9 @@ class DashboardSettings(FileModel):
 
     # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
     count_proposed_industries: bool = True
+    # #800(PM 결정 2026-11-16): 영업 진행 띠의 "멈춘 회사" 기준 일수. 다음 일정 없이 마지막 접촉 뒤
+    # 이 일수 이상이면 멈춤. 옛 설정 파일·DB 사본에는 없어서 PM이 확인한 값 14로 읽는다.
+    stalled_after_days: int = Field(default=14, ge=1, le=365, strict=True)
 
 
 class GeosanLocationSettings(FileModel):
