@@ -14,7 +14,6 @@ import {
   candidateSearch,
   cardRows,
   classificationLabels,
-  factoryProfileLabels,
   classificationTone,
   contactBuckets,
   frame,
@@ -27,7 +26,6 @@ import {
   ownPlatingLine,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
-import { factoryProfileText } from '../../utils/factoryProfile';
 import { formatMonthDay } from '../../utils/time';
 export interface OpportunityCardProps {
   card: CardData;
@@ -131,7 +129,6 @@ export default function OpportunityCard({
   const ingestedOn = formatMonthDay(card.ingestedAt);
   // 표면처리를 직접 하는 회사일 수 있음(#319): 서버가 참으로 준 회사에만 꼬리표를 붙인다. 회사를 빼거나 순서를 바꾸지 않는다.
   // 근거 한 줄은 표시가 참일 때만 보이고, 없으면 꼬리표만 보인다.
-  const factoryLine = factoryProfileText(card.factoryProfile);
   const ownPlating = card.ownPlatingLineSuspected === true;
   const ownPlatingBasis =
     ownPlating && card.ownPlatingLineBasis?.trim() ? card.ownPlatingLineBasis : null;
@@ -321,11 +318,7 @@ export default function OpportunityCard({
             <span data-testid="card-pick-reason">{pickReason}</span>
           </Row>
         ) : null}
-        {factoryLine ? (
-          <Row label={factoryProfileLabels.row} title={factoryLine}>
-            <span data-testid="card-factory-profile">{factoryLine}</span>
-          </Row>
-        ) : null}
+        {/* 공장 정보 줄(업종·원자재·규모)은 카드에서 빼고 상세 "한눈에"에서 본다(#798, PM 지시 2026-11-16). */}
         {reasonSameAsPick ? null : (
           <Row label={cardRows.reason} title={card.reason}>
             <span data-testid="card-reason">{card.reason}</span>
@@ -351,6 +344,8 @@ export default function OpportunityCard({
             evalId={card.evalId}
             record={card.records.opinion ?? null}
             onSaved={() => void bookmarkState.sync()}
+            // #798: 카드는 단추 셋 대신 고르기 칸 하나로 줄인다.
+            variant="select"
           />
           <div
             style={{

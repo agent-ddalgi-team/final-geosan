@@ -1,4 +1,5 @@
 // 카드 "공장 정보" 줄(#573): 팩토리온 공장조회에서 붙인 원자재·공장 규모. 종업원 수는 보이지 않는다(#635).
+// #798(PM 지시 2026-11-16): 카드를 3줄로 줄이며 공장 정보 줄은 카드에서 빼고 상세 "한눈에"에서만 본다.
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -49,7 +50,7 @@ describe('카드 · 공장 정보 줄 (#573)', () => {
     mockedGet.mockReset();
   });
 
-  it('원자재·규모를 한 줄로 보이고 종업원 수는 보이지 않는다(#635)', async () => {
+  it('원자재·규모가 있어도 카드에는 공장 정보 줄이 없다(#798 — 상세 "한눈에"에서 본다)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([
         card('a', 1, {
@@ -64,8 +65,9 @@ describe('카드 · 공장 정보 줄 (#573)', () => {
     );
     renderPage();
     const view = within(await screen.findByTestId('opportunity-card'));
-    expect(view.getByText(factoryProfileLabels.row)).toBeInTheDocument();
-    expect(view.getByTestId('card-factory-profile')).toHaveTextContent('원자재 강판, SUS · 소기업');
+    expect(view.queryByText(factoryProfileLabels.row)).not.toBeInTheDocument();
+    expect(view.queryByTestId('card-factory-profile')).not.toBeInTheDocument();
+    expect(view.queryByText(/원자재 강판, SUS/)).not.toBeInTheDocument();
   });
 
   it('종업원 수만 있는 공장은 보일 값이 없어 줄을 그리지 않는다(#635)', async () => {
