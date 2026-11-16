@@ -1534,6 +1534,32 @@
         "title": "DashboardMap",
         "type": "object"
       },
+      "DataBasisItem": {
+        "description": "#798 \"자료 기준\" 줄 하나. 자료가 없는 종류는 싣지 않는다.",
+        "properties": {
+          "asOf": {
+            "format": "date",
+            "title": "Asof",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "FACTORY_FILE",
+              "FACTORY_LOOKUP",
+              "WATER_LIST",
+              "AI_JUDGMENT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "asOf"
+        ],
+        "title": "DataBasisItem",
+        "type": "object"
+      },
       "DatasetKind": {
         "enum": [
           "VIRTUAL_REVIEWED",
@@ -3393,6 +3419,13 @@
       },
       "IngestOptions": {
         "properties": {
+          "dataBasis": {
+            "items": {
+              "$ref": "#/components/schemas/DataBasisItem"
+            },
+            "title": "Databasis",
+            "type": "array"
+          },
           "industries": {
             "items": {
               "type": "string"
@@ -3405,6 +3438,13 @@
               "$ref": "#/components/schemas/IngestProcessOption"
             },
             "title": "Processes",
+            "type": "array"
+          },
+          "regionGroups": {
+            "items": {
+              "$ref": "#/components/schemas/IngestRegionGroup"
+            },
+            "title": "Regiongroups",
             "type": "array"
           },
           "regions": {
@@ -3568,6 +3608,28 @@
           "name"
         ],
         "title": "IngestProcessOption",
+        "type": "object"
+      },
+      "IngestRegionGroup": {
+        "description": "#798 새 후보 찾기 권역 하나. regions는 ingestOptions.regions 안의 값이다.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "regions"
+        ],
+        "title": "IngestRegionGroup",
         "type": "object"
       },
       "IngestRequest": {
@@ -6460,6 +6522,11 @@
           "count": {
             "title": "Count",
             "type": "integer"
+          },
+          "preset": {
+            "default": false,
+            "title": "Preset",
+            "type": "boolean"
           },
           "region": {
             "title": "Region",

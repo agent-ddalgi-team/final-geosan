@@ -8,6 +8,8 @@ import { colors, typography } from '../../theme/tokens';
 
 export interface IngestSummaryProps {
   ingest: LatestIngest;
+  /** #798: 접힌 새 후보 찾기 칸 머리 안에 한 줄로 넣을 때(아래 여백 없음). */
+  inline?: boolean;
 }
 
 /** 건수 칸을 보이는 글자 조각으로 바꾼다. 서버가 안 준 칸(없음·null)은 뺀다. */
@@ -53,7 +55,7 @@ export function skippedNotices(ingest: LatestIngest): string[] {
   return notices;
 }
 
-export default function IngestSummary({ ingest }: IngestSummaryProps) {
+export default function IngestSummary({ ingest, inline = false }: IngestSummaryProps) {
   const parts = summaryParts(ingest);
   const notices = skippedNotices(ingest);
   const failed = ingest.status === 'FAILED';
@@ -67,7 +69,7 @@ export default function IngestSummary({ ingest }: IngestSummaryProps) {
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: 12,
-        marginBottom: 16,
+        marginBottom: inline ? 0 : 16,
       }}
     >
       <div

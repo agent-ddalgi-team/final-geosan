@@ -23,11 +23,20 @@ def open_bookmarked(world):
     world["seen"] = support.facets(world["client"], bookmarked="true")
 
 
-@then("목록은 3곳이고 지역 곳 수는 충남 2, 천안시 2, 대전광역시 1이다")
+@then(
+    "목록은 3곳이고 지역 곳 수는 천안·아산 2, 세종·대전·공주 1, 충남 2, 천안시 2, 대전광역시 1이다"
+)
 def three_companies(world):
     total, regions, _ = world["seen"]
     assert total == 3
-    assert regions == {"충남": 2, "천안시": 2, "대전광역시": 1}
+    assert regions == {
+        # #798(PM 지시 2026-11-16): 권역 묶음 줄이 선택지에 함께 온다.
+        "천안·아산": 2,
+        "세종·대전·공주": 1,
+        "충남": 2,
+        "천안시": 2,
+        "대전광역시": 1,
+    }
 
 
 @when("천안 1곳의 의견을 추가 확인 필요로 저장하고 그 의견으로 거른다")
@@ -36,11 +45,11 @@ def filter_by_opinion(world):
     world["seen"] = support.facets(world["client"], bookmarked="true", opinion="NEED_CHECK")
 
 
-@then("목록은 1곳이고 지역 곳 수는 충남 1, 천안시 1이다")
+@then("목록은 1곳이고 지역 곳 수는 천안·아산 1, 충남 1, 천안시 1이다")
 def one_company(world):
     total, regions, industries = world["seen"]
     assert total == 1
-    assert regions == {"충남": 1, "천안시": 1}
+    assert regions == {"천안·아산": 1, "충남": 1, "천안시": 1}
     assert industries == {"반도체": 1}
 
 

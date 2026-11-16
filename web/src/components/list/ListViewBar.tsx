@@ -39,6 +39,11 @@ export interface ListViewBarProps {
   onExcluded: (on: boolean) => void;
   onOpinion: (opinion: OpinionFilter | null) => void;
   onClearFilter: () => void;
+  /**
+   * #798: false면 평소 목록의 [제외한 회사 보기] 단추를 그리지 않는다(부모가 [조건 더 보기] 안에 둔다).
+   * 그릴 것이 없으면 줄 자체를 그리지 않는다.
+   */
+  showExcludedButton?: boolean;
 }
 
 const toggleStyle = (selected: boolean) =>
@@ -64,7 +69,9 @@ export default function ListViewBar({
   onExcluded,
   onOpinion,
   onClearFilter,
+  showExcludedButton = true,
 }: ListViewBarProps) {
+  if (!bookmarked && !excluded && !showExcludedButton && !filter) return null;
   const choices: { value: OpinionFilter | null; label: string; testId: string }[] = [
     { value: null, label: bookmarkList.opinionFilters.ALL, testId: 'list-opinion-ALL' },
     ...OPINION_FILTERS.map((value) => ({
@@ -120,14 +127,14 @@ export default function ListViewBar({
             {excludedList.hint}
           </span>
         </div>
-      ) : (
+      ) : showExcludedButton ? (
         // [관심 기업만 보기] 단추는 왼쪽 메뉴 "관심 기업"으로 옮겼다(#762, PM 2026-11-16).
         <div style={rowStyle}>
           <Button onClick={() => onExcluded(true)} data-testid="list-excluded-on">
             {excludedList.showOnly}
           </Button>
         </div>
-      )}
+      ) : null}
       {filter ? (
         <div data-testid="list-filter-line" style={rowStyle}>
           <span>

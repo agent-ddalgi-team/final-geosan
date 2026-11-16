@@ -293,18 +293,19 @@ describe('ListFilterBar', () => {
       renderBar();
       const group = screen.getByRole('group', { name: listSearch.sortLabel });
       const buttons = within(group).getAllByRole('button');
+      // #798(PM 지시 2026-11-16): "전체 보기"는 정렬 줄에서 [조건 더 보기] 안으로 옮겼다.
       expect(buttons.map((button) => button.textContent)).toEqual([
         '추천 순',
         '최근 들어온 순',
         '가까운 순',
-        '전체 보기',
       ]);
       expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
       expect(buttons[1]).toHaveAttribute('aria-pressed', 'false');
       expect(buttons[1]).not.toHaveAttribute('aria-disabled');
       expect(buttons[2]).toHaveAttribute('aria-pressed', 'false');
       expect(buttons[2]).not.toHaveAttribute('aria-disabled');
-      expect(buttons[3]).toHaveAttribute('aria-pressed', 'false');
+      const viewAll = within(screen.getByTestId('list-more')).getByTestId('list-view-all');
+      expect(viewAll).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('"전체 보기"를 누르면 켜기를 알리고, 켜져 있을 때 누르면 끄기를 알린다(#516)', async () => {
