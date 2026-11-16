@@ -220,6 +220,8 @@ class TodayCheckRow:
     items: list[TodayCheckItem]
     # 누르면 열 목록의 `?filter=` 값. 없으면 화면이 줄 아래에 작은 목록을 편다.
     list_filter: str | None = None
+    # #799: 운영 알림 줄(AI_USAGE_ALERT·AI_LIMIT_REACHED·DATA_REFRESH_DUE)만. 다른 줄은 None.
+    alert: object | None = None
 
 
 # #800(PM 결정 2026-11-16): 영업 진행 띠의 칸(브리핑 순서) + 띠 아래 "보류".

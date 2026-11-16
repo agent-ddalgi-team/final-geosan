@@ -187,6 +187,9 @@ export const frame = {
   pageTitleDashboard: '대시보드',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
+  /** #799: 운영 담당(설정 operations.staffKeys)에게만 보이는 메뉴. */
+  menuOperations: '운영 관리',
+  pageTitleOperations: '운영 관리',
   /** 왼쪽 메뉴(#762): 관심 기업 화면과 메뉴 아이콘. 접으면 아이콘만 보인다. */
   menuBookmarks: '관심 기업',
   pageTitleBookmarks: '관심 기업',
@@ -214,6 +217,12 @@ export const frame = {
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
 export const dashboardTexts = {
+  /** #799 운영 알림 줄(오늘 확인할 것 맨 앞). */
+  alertAiUsage: (percent: number, used: string, limit: string) =>
+    `AI 사용 ${percent}% (${used}/${limit})`,
+  alertAiLimit: '이번 달 AI 한도에 닿아 조사·코치가 멈췄습니다',
+  alertDataRefresh: (asOf: string) => `공장현황 자료(${asOf} 기준) 갱신할 때가 지났습니다`,
+  alertOperationsLink: '운영 관리 →',
   calendarTitle: '일정 달력',
   calendarEmpty: '잡아 둔 일정이 아직 없어요.',
   calendarHint: '일정이 있는 날을 누르면 내용이 보입니다.',
@@ -2431,6 +2440,42 @@ export const handoffTexts = {
   waitingFor: (to: string) => `${to} 확인 전`,
   saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
   needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
+} as const;
+
+/** #799 운영 관리 화면(운영 담당만). 보기 전용: 자료 갱신은 운영 명령으로 하고 여기서는 안내만. */
+export const operationsTexts = {
+  loadError: '운영 관리 화면을 불러오지 못했습니다.',
+  forbidden: '운영 관리 화면은 운영 담당만 볼 수 있습니다.',
+  usageTitle: (month: string) => `AI 사용액 · ${month}`,
+  usageTotal: (used: string, limit: string, percent: number) =>
+    `${used} / 한도 ${limit} (${percent}%)`,
+  usageCalls: (calls: number, limit: number) => `호출 ${calls} / ${limit}회`,
+  usageAlertLine: (percent: number) => `${percent}%가 넘으면 대시보드에 알림`,
+  groupNames: {
+    RESEARCH: '회사 조사·후보 판단',
+    WEB_SEARCH: '웹 검색(홈페이지 찾기)',
+    SALES: '영업 기록·영업 코치',
+    OTHER: '그 밖',
+  },
+  groupLine: (calls: number) => `${calls}회`,
+  dailyTitle: '날짜별',
+  autoResearchToday: (used: string, limit: string | null) =>
+    limit ? `오늘 자동 조사 ${used} / 하루 ${limit}` : `오늘 자동 조사 ${used} · 자동 조사 꺼짐`,
+  sourcesTitle: '자료 현황',
+  sourceNames: {
+    FACTORY_FILE: '산단공 등록공장현황 파일',
+    FACTORY_REGISTRY: '공장등록 조회(산단공)',
+    FACTORY_PROFILE: '팩토리온 공장조회',
+    WATER_LIST: '수질유해물질 업체 명단',
+    AI_JUDGMENT: 'AI 후보 판단',
+  },
+  sourceHead: ['자료', '기준일', '넣은 날', '행 수', '다음 갱신 권장'],
+  overdue: '지남',
+  none: '—',
+  refreshHowTo:
+    '갱신은 지금 운영 명령으로 합니다(운영 안내서 "자료 갱신" 절). 이 화면에는 실행 단추가 없습니다.',
+  blockedTitle: '최근 막힌 전송 10건',
+  blockedEmpty: '막힌 전송이 없습니다.',
 } as const;
 
 /** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */

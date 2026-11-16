@@ -212,7 +212,9 @@ def test_today_rows_never_carry_memo_text(today_env):
     data = dashboard_data(client)
     assert "줄에 실리면 안 되는 가상 메모" not in str(data["todayChecks"])
     for row in data["todayChecks"]:
-        assert set(row) == {"kind", "count", "items", "listFilter"}
+        # #799(PM 확인 2026-11-16, 약속에 더한 칸): 운영 알림 줄만 alert가 차고 다른 줄은 비어 있다.
+        assert set(row) == {"kind", "count", "items", "listFilter", "alert"}
+        assert row["alert"] is None
         for item in row["items"]:
             # #766: 기록 번호(숫자)가 더해졌다. #794(PM 확인 2026-11-16): 전달 사항 줄에만 글 앞부분
             # text가 생겼고 다른 줄은 늘 비어 있다. 일반 메모 글은 어느 줄에도 실리지 않는다.

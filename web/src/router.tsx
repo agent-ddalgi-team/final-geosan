@@ -1,6 +1,7 @@
 // 경로: `/` 대시보드(첫 화면), `/opportunities` 신규 거래처 찾기(#762 전 이름 "영업 후보 목록"),
 // `/bookmarks` 관심 기업(#762), `/opportunities/:oppId` 근거 상세, `/sales-analysis` 영업 분석(#608),
-// `/opportunities/:oppId/report` 회사별 보고서(#565, 인쇄용이라 메뉴가 있는 공통 틀 없이 그린다).
+// `/opportunities/:oppId/report` 회사별 보고서(#565, 인쇄용이라 메뉴가 있는 공통 틀 없이 그린다),
+// `/operations` 운영 관리(#799, 운영 담당만 — 권한은 서버가 판단, 영업 코치 칸 없음).
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import AppFrame from './components/frame/AppFrame';
 import { frame } from './labels/ko';
@@ -8,6 +9,7 @@ import CompanyReportPage from './pages/CompanyReportPage';
 import DashboardPage from './pages/DashboardPage';
 import OpportunityDetailPage from './pages/OpportunityDetailPage';
 import OpportunityListPage from './pages/OpportunityListPage';
+import OperationsPage from './pages/OperationsPage';
 import SalesAnalysisPage from './pages/SalesAnalysisPage';
 import { BOOKMARKS_PATH, LIST_PATH } from './paths';
 
@@ -61,6 +63,14 @@ export default function AppRoutes() {
         element={
           <AppFrame title={frame.pageTitleSalesAnalysis} dock="assistant" dockScreen="ANALYSIS">
             <SalesAnalysisPage />
+          </AppFrame>
+        }
+      />
+      <Route
+        path="/operations"
+        element={
+          <AppFrame title={frame.pageTitleOperations}>
+            <OperationsPage />
           </AppFrame>
         }
       />
