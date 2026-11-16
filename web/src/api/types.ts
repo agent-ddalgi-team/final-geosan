@@ -340,6 +340,8 @@ export interface ConfigUi {
   distanceFilterPresetsKm?: number[];
   /** 계정 방식에서 지금 로그인한 사람(#754). 공용 방식·옛 응답이면 null 또는 없음. */
   currentStaff?: CurrentStaff | null;
+  /** #799: 운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys). 옛 서버면 없다. */
+  operationsStaffKeys?: string[];
 }
 
 // ---------- GET /opportunities (S1 카드) ----------

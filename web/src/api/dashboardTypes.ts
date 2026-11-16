@@ -78,6 +78,18 @@ export type TodayCheckKind =
   /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
   | 'HANDOFF_FOR_ME';
 
+/** #799 운영 알림 줄 종류(회사 줄이 없고 alert에 숫자). 사용률·자료 갱신은 운영 담당에게만. */
+export type TodayAlertKind = 'AI_USAGE_ALERT' | 'AI_LIMIT_REACHED' | 'DATA_REFRESH_DUE';
+
+/** #799 운영 알림 줄의 숫자. */
+export interface TodayAlert {
+  usedUsd: number | null;
+  limitUsd: number | null;
+  percent: number | null;
+  asOf: string | null;
+  dueAt: string | null;
+}
+
 export interface TodayCheckItem {
   oppId: string;
   customerName: string;
@@ -96,6 +108,8 @@ export interface TodayCheckRow {
   items: TodayCheckItem[];
   /** 있으면 누를 때 /opportunities?filter=<값> 목록으로, 없으면 줄 아래에 작은 목록을 편다. */
   listFilter: string | null;
+  /** #799: 운영 알림 줄만. 다른 줄은 null(옛 서버면 없음). */
+  alert?: TodayAlert | null;
 }
 
 export interface Dashboard {
