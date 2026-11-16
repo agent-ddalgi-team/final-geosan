@@ -108,7 +108,7 @@ def is_operations_staff(settings: AppSettings, staff_key: str | None) -> bool:
     return (
         staff_key is not None
         and settings.is_recording_staff(staff_key)
-        and staff_key in settings.operations.staff_keys
+        and staff_key in settings.operations_staff_keys()
     )
 
 

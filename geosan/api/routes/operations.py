@@ -9,9 +9,9 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Header
 
 from geosan.api.deps import SessionDep, current_account, runtime_for
+from geosan.api.operations import build_operations, is_operations_staff
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.config.errors import ForbiddenError
-from geosan.dashboard.operations import build_operations, is_operations_staff
 from geosan.storage.base import utcnow
 
 router = APIRouter()

@@ -8,12 +8,12 @@ from pydantic import Field
 
 from geosan.api.check_points import check_left_opp_ids
 from geosan.api.deps import SessionDep, current_account, runtime_for
+from geosan.api.operations import operation_alerts
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.config.errors import AppError
 from geosan.dashboard.map_points import build_map_points, build_visit_groups
-from geosan.dashboard.operations import operation_alerts
 from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
