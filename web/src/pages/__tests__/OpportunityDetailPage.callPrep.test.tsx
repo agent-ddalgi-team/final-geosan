@@ -56,12 +56,12 @@ function renderPage(config: ConfigUi | null, callPrep: typeof PREP | null = PREP
 }
 
 describe('상세 › 영업 코치 · 통화 전 (#750)', () => {
-  it('구분 줄 아래 "기록 남기기" 구역의 기록 칸 위에 지난 통화 뒤 정리가 보이고, [통화 준비] 단추는 없다', async () => {
+  // #803: 구분 줄을 없앴다. 지난 통화 뒤 정리는 영업 코치 "① 통화 전" 맨 위, 기록 칸 위에 있다.
+  it('"기록" 구역의 ① 통화 전 맨 위, 기록 칸 위에 지난 통화 뒤 정리가 보이고, [통화 준비] 단추는 없다', async () => {
     renderPage(configWith(true));
     const records = await screen.findByTestId('detail-records');
     const prep = within(records).getByTestId('call-prep');
-    const divider = screen.getByTestId('detail-write-divider');
-    expect(divider.compareDocumentPosition(prep) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
     expect(
       prep.compareDocumentPosition(within(records).getByTestId('records-area')) &
         Node.DOCUMENT_POSITION_FOLLOWING,

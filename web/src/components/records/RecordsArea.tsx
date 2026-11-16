@@ -103,6 +103,8 @@ export interface RecordsAreaProps {
    * 한 번 묻는다: 영업 대상으로 되돌리고 저장할지, 제외인 채로 저장할지.
    */
   excluded?: boolean;
+  /** #803 오른쪽 영업 코치 판 안에 놓일 때 true: 맨 위 요약을 줄인다(세부 단계·아직 모르는 것은 다른 곳과 같아 뺌). */
+  inCoach?: boolean;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
@@ -209,6 +211,7 @@ export default function RecordsArea({
   choiceMarks = null,
   onCompanyConfirmed,
   excluded = false,
+  inCoach = false,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -824,7 +827,12 @@ export default function RecordsArea({
         {recordsArea.flowGuide}
       </Typography.Text>
 
-      <SalesStepSummary step={salesStep} status={currentStatus} questions={questions} />
+      <SalesStepSummary
+        step={salesStep}
+        status={currentStatus}
+        questions={questions}
+        compact={inCoach}
+      />
 
       <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
         <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
