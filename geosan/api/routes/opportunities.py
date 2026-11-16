@@ -108,6 +108,7 @@ from geosan.evidence.queries import list_evidence
 from geosan.opportunity.factory_csv import address_city
 from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
+from geosan.opportunity.queries import closed_homepage_reason
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
 from geosan.records.models import Note, Outcome, ReviewOpinion
 from geosan.rules.codes import LostReasonCode, NoteKind, ProcessCode, SecurityGrade
@@ -270,6 +271,9 @@ def _header(context: DetailContext) -> dict:
             homepage_source=customer.homepage_source,
             homepage_page_kind=unofficial_page_kind(
                 customer.homepage_status, customer.homepage_source, customer.homepage_reason
+            ),
+            homepage_closed_reason=closed_homepage_reason(
+                customer.homepage_status, customer.homepage_reason
             ),
             **discovery_fields(customer),
         )

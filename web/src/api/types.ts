@@ -38,6 +38,8 @@ export type SourceGrade = 'A' | 'B' | 'C' | 'D';
 
 /** 후보 찾기의 공정 적합도(C0 fitLevel). */
 export type FitLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+/** 적합도를 무엇으로 정했나(C0 fitBasis, #793). */
+export type FitBasis = 'PRODUCT' | 'HOMEPAGE';
 export type Opinion = 'WORTH_REVIEW' | 'NEED_CHECK' | 'NOT_TARGET';
 export type QuestionStatus = 'WAITING' | 'REQUESTED' | 'REPLIED' | 'APPLIED';
 export type QuestionTargetKind =
@@ -520,6 +522,10 @@ export interface OpportunityCard {
   pickReason?: string | null;
   /** 후보 찾기 때 저장한 공정 적합도(C1 카드 fitLevel). 카드 꼬리표 "적합도 상"에 쓴다(#675). 사례 파일 회사는 없음. */
   fitLevel?: FitLevel | null;
+  /** 적합도를 무엇으로 정했나(#793): PRODUCT = 생산품, HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null. */
+  fitBasis?: FitBasis | null;
+  /** 홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 카드 꼬리표 화살표(↑↓)에 쓴다. */
+  previousFitLevel?: FitLevel | null;
   /** 마지막 수집 회차에 들어온 회사면 true → 꼬리표 "이번에 들어옴". */
   isNewInLatestBatch?: boolean;
   /** 이 회사가 들어온 시각(ISO). 꼬리표 날짜에 쓴다. 사례 파일 회사는 null. */
@@ -625,6 +631,11 @@ export interface DetailHeader {
   /** 후보 찾기 때 저장한 AI 판단(C1 header, #316·#563): 적합도와 고른 이유. 사례 파일 회사는 없음. */
   fitLevel?: FitLevel | null;
   pickReason?: string | null;
+  /** 적합도 기준과 처음 적합도(#793). "한눈에" 근거 상태 줄 "적합도 상 (홈페이지 기준 · 처음엔 생산품 기준 중)". */
+  fitBasis?: FitBasis | null;
+  previousFitLevel?: FitLevel | null;
+  /** 조사가 홈페이지를 닫힌 것으로 본 이유("호스팅 만료"·"빈 페이지", #793). 이때 homepageStatus는 NOT_FOUND. */
+  homepageClosedReason?: string | null;
   /** 이 회사를 찾은 경로와 그 출처 주소(웹 검색으로 찾았을 때만 주소가 있다). */
   discoverySource?: string | null;
   discoverySourceUrl?: string | null;

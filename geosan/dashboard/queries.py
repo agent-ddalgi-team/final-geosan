@@ -209,6 +209,8 @@ class TodayCheckItem:
     note: str | None = None
     # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
     outcome_version: int | None = None
+    # #794: "나에게 온 전달 사항" 줄만. 가장 최근 확인 전 전달 글의 앞부분(받는 사람 화면 전용).
+    text: str | None = None
 
 
 @dataclass(frozen=True)
@@ -400,12 +402,26 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
     return items, len(items)
 
 
+HANDOFF_PREVIEW_CHARS = 80
+
+
+def _handoff_preview(text: str | None) -> str | None:
+    """#794 대시보드 한 줄용: 줄바꿈을 빈칸으로 모으고 앞 80자, 넘으면 끝에 "…"."""
+    flat = " ".join((text or "").split())
+    if not flat:
+        return None
+    if len(flat) <= HANDOFF_PREVIEW_CHARS:
+        return flat
+    return flat[:HANDOFF_PREVIEW_CHARS] + "…"
+
+
 def _handoff_row(
     session: Session, population, staff_key: str, staff_names: Mapping[str, str]
 ) -> TodayCheckRow:
-    """#771 나에게 온 확인 전 전달 사항. 회사마다 한 줄, 글은 싣지 않고 보낸 사람·날짜만."""
+    """#771 나에게 온 확인 전 전달 사항. 회사마다 한 줄(가장 최근 전달), 보낸 사람·날짜와
+    #794 전달 글 앞부분. 받는 사람 본인 화면에만 가므로 메모 화면 규칙(C4) 그대로다."""
     rows = session.execute(
-        select(Note.opp_id, Note.staff_key, Note.created_at, Customer.name)
+        select(Note.opp_id, Note.staff_key, Note.created_at, Customer.name, Note.text)
         .join(Opportunity, Note.opp_id == Opportunity.opp_id)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
         .where(
@@ -418,12 +434,12 @@ def _handoff_row(
         .order_by(Note.created_at.desc(), Note.note_id)
     ).all()
     seen: dict[str, TodayCheckItem] = {}
-    for opp_id, sender, created_at, name in rows:
+    for opp_id, sender, created_at, name, text in rows:
         if opp_id in seen:
             continue
         day = created_at.astimezone(_KST).date()
         note = f"{staff_names.get(sender, sender)} · {day.month}/{day.day}"
-        seen[opp_id] = TodayCheckItem(opp_id, name, None, note)
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
     return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(seen), items=list(seen.values()))
 
 

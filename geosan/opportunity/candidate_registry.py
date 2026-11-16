@@ -24,7 +24,11 @@ from geosan.opportunity.complex_rows import (
     combine_factory_rows,
     parse_complex_page,
 )
-from geosan.opportunity.factory_csv import _region_name, address_district
+from geosan.opportunity.factory_csv import (
+    _region_name,
+    address_district,
+    row_in_selected_regions,
+)
 from geosan.opportunity.ingest_errors import storage_failure
 from geosan.opportunity.queries import normalize_address, normalize_name
 from geosan.opportunity.source_models import SourceContract
@@ -80,12 +84,16 @@ def _result(candidate, context, rows, raw_count, pages_read, reason):
         return RegistryLookupResult(rows, raw_count, pages_read, registry_status="NOT_FOUND")
     # #706 PM 결정 2026-11-13: 이름과 시·군이 같은 등록 행이 고른 지역 안에 하나면 확인됨.
     # 같은 시·군에 둘 이상이면 전체 주소가 똑같은 한 곳만 인정하고, 가릴 수 없으면 넘긴다.
+    # 고른 지역은 시·도("충남")일 수도 시·군("천안시", #521)일 수도 있다. 등록 행의 region은
+    # 시·도라서 시·군을 고르면 늘 빠졌다(#789). 다른 곳과 같은 도우미로 본다.
     district = address_district(candidate.address)
-    regions = {_region_name(region) for region in context.regions}
+    selected = [_region_name(region) for region in context.regions]
     nearby = [
         row
         for row in named
-        if district and address_district(row.address) == district and row.region in regions
+        if district
+        and address_district(row.address) == district
+        and row_in_selected_regions(row.region, row.address, selected)
     ]
     address = normalize_address(candidate.address)
     exact = [row for row in nearby if normalize_address(row.address) == address]
