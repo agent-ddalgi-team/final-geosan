@@ -235,6 +235,61 @@ def test_local_http_reads_utf8_and_identifies_itself(monkeypatch):
         thread.join()
 
 
+@pytest.mark.parametrize(
+    ("url", "port", "host_header"),
+    [
+        ("https://example.org/products", 443, "example.org"),
+        ("http://example.org/products", 80, "example.org"),
+        ("http://example.org:443/products", 443, "example.org:443"),
+    ],
+    ids=["https 기본 포트", "http 기본 포트", "http인데 443"],
+)
+def test_host_header_has_no_default_port(monkeypatch, url, port, host_header):
+    """#810: HTTPS 첫 화면을 읽을 때 Host 머리에 ':443'을 붙이면 국내 호스팅 일부가 다른
+    사이트로 보내거나(404) 깨진 주소로 넘긴다. 기본 포트면 이름만, 따로 적은 포트만 붙인다."""
+    seen = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.append(self.headers.get("Host"))
+            body = "<p>공개 제품 볼트</p>".encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    connect = socket.create_connection
+    monkeypatch.setattr(reader, "_public_address", lambda *_: "93.184.215.14")
+
+    def local(address, timeout):
+        assert address == ("93.184.215.14", port)
+        return connect(server.server_address, timeout=timeout)
+
+    # 시험에서는 TLS 없이 같은 요청 머리를 본다(인증서 확인 코드는 그대로 불린다).
+    class PlainContext:
+        def wrap_socket(self, raw, server_hostname):
+            assert server_hostname == "example.org"
+            return raw
+
+    monkeypatch.setattr(socket, "create_connection", local)
+    monkeypatch.setattr(reader.ssl, "create_default_context", lambda **_: PlainContext())
+    try:
+        status, _, body = reader._get(url, time.monotonic() + 60)
+        assert status == 200 and "볼트" in body
+        assert seen == [host_header]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
 def test_deadline_prevents_reading():
     with pytest.raises(AppError, match="60초"):
         reader.remaining(time.monotonic() - 1)

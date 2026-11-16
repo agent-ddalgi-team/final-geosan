@@ -143,8 +143,14 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
         )
         timer = interrupt_at(connection.sock, request_deadline)
         path = urlunsplit(("", "", parts.path, parts.query, ""))
+        # #810: HTTPConnection은 기본 포트를 80으로 알아 HTTPS에서 Host에 ":443"을 붙인다.
+        # 국내 호스팅 일부가 그 Host를 다른 사이트로 보내(404·깨진 이동) 기본 포트면 이름만 쓴다.
+        default_port = 443 if parts.scheme == "https" else 80
+        host_header = host if port == default_port else f"{host}:{port}"
         connection.request(
-            "GET", path, headers={"User-Agent": AGENT, "Accept-Encoding": "identity"}
+            "GET",
+            path,
+            headers={"Host": host_header, "User-Agent": AGENT, "Accept-Encoding": "identity"},
         )
         response = connection.getresponse()
         headers = {key.lower(): value for key, value in response.getheaders()}
