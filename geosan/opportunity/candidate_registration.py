@@ -41,7 +41,7 @@ from geosan.opportunity.models import (
     Opportunity,
     OppProcessLink,
 )
-from geosan.opportunity.queries import normalize_address, normalize_name
+from geosan.opportunity.queries import FIT_BASIS_HOMEPAGE, normalize_address, normalize_name
 from geosan.opportunity.source_models import (
     SourceContract,
     SourceFactoryRow,
@@ -152,12 +152,15 @@ def refresh_registered_candidates(
                 .order_by(Opportunity.opp_id)
             )
         )
+        opp_ids.extend(opportunity.opp_id for opportunity in opportunities)
+        # #793: 홈페이지로 다시 정한 적합도는 생산품 판단이 덮지 않는다.
+        if customer.fit_basis == FIT_BASIS_HOMEPAGE:
+            continue
         for opportunity in opportunities:
             if opportunity.card_reason == customer.pick_reason:
                 opportunity.card_reason = judgment.reason
         customer.pick_reason = judgment.reason
         customer.fit_level = judgment.fit_level
-        opp_ids.extend(opportunity.opp_id for opportunity in opportunities)
     session.flush()
     return opp_ids
 

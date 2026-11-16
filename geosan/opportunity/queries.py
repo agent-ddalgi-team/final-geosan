@@ -167,6 +167,79 @@ def store_company_research(
     session.flush()
 
 
+# #793: 홈페이지로 다시 정한 적합도의 기준 값과 이유 앞머리(C1 fitBasis·pickReason).
+FIT_BASIS_HOMEPAGE = "HOMEPAGE"
+HOMEPAGE_FIT_PREFIX = "홈페이지 기준 · "
+# #793: 닫힌 홈페이지 표시. 새 열 없이 homepage_reason 글 맨 앞에 우리 코드만 붙인다.
+CLOSED_HOMEPAGE_MARK = "[닫힘] "
+
+
+def apply_homepage_fit(
+    session: Session, customer: Customer, fit_level: str | None, reason: str
+) -> bool:
+    """조사가 홈페이지로 다시 본 적합도를 회사 카드에 옮긴다(C1 #793). 옮겼으면 True.
+
+    후보 찾기로 들어와 적합도가 있는 회사만 바꾼다(사례 파일 회사는 그대로). AI가 판단할
+    문장을 못 찾았으면(fit_level None) 그대로다. 처음 생산품 기준 적합도는 한 번만 남긴다.
+    기회 카드 문장은 옛 추천 이유와 같을 때만 같이 바꾼다(#615와 같은 규칙, 손으로 고친 문장 보존).
+    """
+    if customer.ingest_batch_id is None or customer.fit_level is None or fit_level is None:
+        return False
+    new_reason = f"{HOMEPAGE_FIT_PREFIX}{reason.strip()}"
+    for opportunity in session.scalars(
+        select(Opportunity).where(Opportunity.customer_id == customer.customer_id)
+    ):
+        if opportunity.card_reason == customer.pick_reason:
+            opportunity.card_reason = new_reason
+    if customer.fit_basis != FIT_BASIS_HOMEPAGE:
+        customer.previous_fit_level = customer.fit_level
+    customer.fit_level = fit_level
+    customer.pick_reason = new_reason
+    customer.fit_basis = FIT_BASIS_HOMEPAGE
+    session.flush()
+    return True
+
+
+def mark_homepage_closed(session: Session, customer_id: str, *, expected: tuple, reason: str):
+    """닫힌 홈페이지(#793)를 '홈페이지 못 찾음'으로 바꾼다. 담당자가 확정한 주소는 그대로 둔다.
+
+    이전 주소는 이유 글에 남기고 주소를 비워, 다음 [다시 조사]가 홈페이지 찾기부터 하게 한다.
+    조사하는 동안 회사 값이 바뀌었으면 아무것도 바꾸지 않는다. 바꿨으면 True.
+    """
+    customer = session.get(Customer, customer_id)
+    if customer is None or customer.homepage_status == "CONFIRMED":
+        return False
+    current = (
+        customer.name,
+        customer.address,
+        customer.normalized_address,
+        customer.homepage_url,
+        customer.homepage_status,
+        customer.homepage_fetched_at,
+        customer.researched_at,
+        customer.main_phone,
+        customer.main_phone_confirmed_at,
+    )
+    if current != expected:
+        return False
+    previous = customer.homepage_url or "없음"
+    customer.homepage_reason = f"{CLOSED_HOMEPAGE_MARK}{reason} · 이전 주소 {previous}"
+    customer.homepage_url = None
+    customer.homepage_status = "NOT_FOUND"
+    customer.homepage_source = "AI"
+    customer.homepage_confidence = None
+    customer.homepage_fetched_at = utcnow()
+    session.flush()
+    return True
+
+
+def closed_homepage_reason(status: str | None, reason: str | None) -> str | None:
+    """닫힌 홈페이지로 본 이유("호스팅 만료"·"빈 페이지"), 아니면 None(C1 #793)."""
+    if status != "NOT_FOUND" or not reason or not reason.startswith(CLOSED_HOMEPAGE_MARK):
+        return None
+    return reason[len(CLOSED_HOMEPAGE_MARK) :].split(" · ", 1)[0] or None
+
+
 def normalize_name(value: str) -> str:
     value = unicodedata.normalize("NFKC", value).casefold()
     return re.sub(r"\s+", "", value.replace("(주)", ""))

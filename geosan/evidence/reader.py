@@ -28,6 +28,37 @@ _EXTRA_PAGE_RESERVE_SECONDS = 30
 _DENIAL = re.compile(
     r"noai|noindex|자동\s*(?:수집|크롤링).*금지|(?:scraping|crawling).*prohibited", re.I
 )
+# #793: 호스팅 업체의 "서비스 만료" 안내 주소(예: 카페24 serviceExpire). 다른 사이트로 가는
+# 이동의 주소에 이 글자가 있으면 회사가 홈페이지를 닫은 것으로 본다(영업 규칙 숫자가 아님).
+_EXPIRED_PLACE = re.compile(r"expir", re.I)
+# 닫힌 홈페이지 이유 글(C1 homepageClosedReason). 화면에 그대로 보인다.
+CLOSED_HOSTING_EXPIRED = "호스팅 만료"
+CLOSED_EMPTY_PAGE = "빈 페이지"
+
+
+@dataclass
+class SiteClosedError(AppError):
+    """홈페이지가 닫혀 있음(#793, 오류 kind SITE_CLOSED). reason은 호스팅 만료 / 빈 페이지."""
+
+    reason: str = CLOSED_EMPTY_PAGE
+
+
+def _site_closed(reason: str) -> SiteClosedError:
+    return SiteClosedError(
+        f"홈페이지가 닫혀 있습니다({reason}).",
+        "주소를 확인하거나 나중에 다시 조사해 주세요.",
+        status=422,
+        kind="SITE_CLOSED",
+        reason=reason,
+    )
+
+
+def _hosting_expired(from_url: str, to_url: str) -> bool:
+    """다른 사이트의 '서비스 만료' 안내 주소로 가는 이동인가(#793)."""
+    parts = urlsplit(to_url)
+    return not _same_site(from_url, to_url) and bool(
+        _EXPIRED_PLACE.search(f"{parts.path}?{parts.query}")
+    )
 
 
 def remaining(deadline: float) -> float:
@@ -178,20 +209,24 @@ def _read(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
     )
 
 
-def _read_robots(url: str, deadline: float) -> tuple[int, str]:
+def _read_robots(url: str, deadline: float) -> tuple[int, str, bool]:
     """robots.txt를 읽는다. 표준(RFC 9309)대로 이동은 5번까지 따라간다(#556).
 
     http→https 이동이나 "없는 페이지" 화면으로 보내는 호스팅이 흔하다. 예전에는 이동을 금지로 읽어
     막지 않은 회사도 "자동으로 읽을 수 없는 홈페이지"가 됐다. 끝까지 이동하면 읽지 않는다.
+    세 번째 값은 이동 중에 다른 사이트의 '서비스 만료' 안내로 갔는지다(#793).
     """
+    expired = False
     for _ in range(6):
         status, headers, body = _read(url, deadline)
         if status not in (301, 302, 303, 307, 308) or not headers.get("location"):
             # "없는 페이지" 화면이 200으로 와도 규칙 줄이 없으니 허용으로 읽힌다.
             # 형식과 상관없이 규칙은 그대로 읽는다.
-            return status, body
-        url = validate_url(urljoin(url, headers["location"]))
-    return 508, ""
+            return status, body, expired
+        target = validate_url(urljoin(url, headers["location"]))
+        expired = expired or _hosting_expired(url, target)
+        url = target
+    return 508, "", expired
 
 
 def _robots_missing(status: int) -> bool:
@@ -392,7 +427,7 @@ def _fetch(url: str, deadline: float, *, site_url: str | None = None) -> Page:
             break
         parts = urlsplit(url)
         robots_url = urlunsplit((parts.scheme, parts.netloc, "/robots.txt", "", ""))
-        status, robots = _read_robots(robots_url, deadline)
+        status, robots, hosting_expired = _read_robots(robots_url, deadline)
         parser = RobotFileParser()
         parser.parse(robots.splitlines() if status == 200 else [])
         if not (status == 200 or _robots_missing(status)) or (
@@ -418,12 +453,18 @@ def _fetch(url: str, deadline: float, *, site_url: str | None = None) -> Page:
             target = _linked_url(url, headers["location"])
             if target is None:
                 break
+            # #793: 만료 안내 페이지의 글을 회사 본문으로 읽지 않는다.
+            if _hosting_expired(url, target):
+                raise _site_closed(CLOSED_HOSTING_EXPIRED)
             url = target
             continue
         if status != 200 or not any(
             kind in headers.get("content-type", "") for kind in ("text/html", "text/plain")
         ):
             break
+        # #793: 정상 응답인데 받은 본문 자체가 비었으면 닫힌 홈페이지다(글 없는 화면과 구분).
+        if not body.strip():
+            raise _site_closed(CLOSED_HOSTING_EXPIRED if hosting_expired else CLOSED_EMPTY_PAGE)
         parser_html = _Text()
         parser_html.feed(body)
         parser_html.close()

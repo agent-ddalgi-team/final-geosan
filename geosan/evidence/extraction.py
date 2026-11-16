@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import logging
 import os
 from datetime import date
 from typing import Literal
@@ -18,6 +19,8 @@ from geosan.evidence.public_items import approved_items
 from geosan.evidence.reader import interrupt_at, remaining
 from geosan.evidence.transfer import configuration_error, finish_search, reserve_extraction
 from geosan.rules.codes import Certainty, EvidenceSubject, ItemCode, SourceGrade
+
+logger = logging.getLogger(__name__)
 
 
 class ProposedEvidence(FileModel):
@@ -66,6 +69,17 @@ class ProposedProcessLink(FileModel):
     quote: str = Field(min_length=1)
 
 
+class FitReview(FileModel):
+    """홈페이지 본문으로 다시 본 공정 적합도(C9 fitReview, #793).
+
+    판단 기준은 후보 고르기(pick_candidates)의 fitLevel과 같다. 판단할 문장이 없으면 fitLevel null.
+    """
+
+    fit_level: Literal["HIGH", "MEDIUM", "LOW"] | None
+    reason: str = Field(max_length=80)
+    quote: str | None
+
+
 class Extraction(FileModel):
     evidence: list[ProposedEvidence] = Field(max_length=3)
     questions: list[ProposedQuestion] = Field(max_length=1)
@@ -73,6 +87,7 @@ class Extraction(FileModel):
     company_summary: CompanySummary
     item_input_proposals: list[ProposedItemInput] = Field(max_length=8)
     process_link_proposals: list[ProposedProcessLink] = Field(max_length=3)
+    fit_review: FitReview
 
     @model_validator(mode="after")
     def no_contacts(self) -> Extraction:
@@ -139,6 +154,34 @@ def _proposal_instructions(item_catalog: list[dict] | None, process_codes: list[
     )
 
 
+def _fit_instructions(review_fit: bool) -> str:
+    """적합도 다시 보기 지시문(#793). 후보 고르기의 fitLevel 기준을 본문 근거로 다시 적용한다."""
+    if not review_fit:
+        return "fitReview는 fitLevel null, reason 빈 글, quote null로 둔다. "
+    return (
+        "적합도 다시 보기(fitReview): 이 회사가 거산의 표면처리(도금·피막) 외주가 필요할 만한 "
+        "제조업체인지 본문으로 다시 판단한다. HIGH: 표면처리를 거의 반드시 거치는 금속 부품"
+        "(볼트·너트·브라켓·샤프트·알루미늄 가공품·금형 부품 등)을 직접 만든다는 문장이 있다. "
+        "MEDIUM: 가능성은 있으나 본문이 넓거나 불확실하다. LOW: 부품을 사 와 조립·판매하거나 "
+        "서비스·유통 위주라 표면처리 수요가 낮다. 판단할 문장이 본문에 없으면 fitLevel null, "
+        "reason 빈 글, quote null. 있으면 reason은 담당자가 카드에서 읽을 한 문장(40자 안팎, "
+        "본문 사실만), quote는 판단에 쓴 본문 문장 그대로. "
+    )
+
+
+def _checked_fit(result: Extraction, source: str) -> Extraction:
+    """적합도 판단이 본문 인용과 맞지 않으면 그 판단만 버린다(C9 #793, 조사 전체는 그대로)."""
+    review = result.fit_review
+    if review.fit_level is None or (
+        review.quote and review.quote in source and review.reason.strip()
+    ):
+        return result
+    logger.warning("적합도 다시 보기 버림: 인용이 본문에 없거나 이유가 비었음")
+    return result.model_copy(
+        update={"fit_review": FitReview(fit_level=None, reason="", quote=None)}
+    )
+
+
 def _check_proposals(
     result: Extraction,
     source: str,
@@ -178,11 +221,12 @@ def extract_evidence(
     requested_by: str = "system",
     item_catalog: list[dict] | None = None,
     process_codes: list[str] | None = None,
+    review_fit: bool = False,
 ) -> Extraction:
     """근거·질문·요구 후보·회사 요약에 더해 점수 입력·공정 연결 제안(#286)을 받는다.
 
     item_catalog: [{code, label, steps}] 점수 8항목(규칙 설정). process_codes: 활성 묶음 공정 코드.
-    둘을 주지 않으면 제안은 빈 배열로 받는다.
+    둘을 주지 않으면 제안은 빈 배열로 받는다. review_fit이면 적합도도 다시 본다(#793).
     """
     items = approved_items(approved_item_ids, opp_id)
     source = "\n\n".join(item.text for item in items)
@@ -204,6 +248,7 @@ def extract_evidence(
                 "전화번호·이메일은 출력하지 않는다. "
                 "산업군을 제안하지 않는다. 질문 대상은 OPPORTUNITY다. "
                 + _proposal_instructions(item_catalog, process_codes)
+                + _fit_instructions(review_fit)
             ),
             "input": source,
             "text": {
@@ -267,7 +312,11 @@ def extract_evidence(
             ):
                 raise ValueError
             _check_proposals(result, source, item_catalog, process_codes)
-            return result
+            if not review_fit:
+                return result.model_copy(
+                    update={"fit_review": FitReview(fit_level=None, reason="", quote=None)}
+                )
+            return _checked_fit(result, source)
         except (KeyError, TypeError, ValueError):
             raise AppError(
                 "AI 근거가 본문과 맞지 않거나 형식이 잘못됐습니다.",
