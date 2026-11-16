@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import ipaddress
+import logging
 import re
 import socket
 import ssl
@@ -18,6 +19,8 @@ import certifi
 
 from geosan.config.errors import AppError
 from geosan.evidence.contacts import scrub_contacts
+
+logger = logging.getLogger(__name__)
 
 AGENT = "GeosanResearch/1.0"
 # 메모리·전송 방어용 크기. 영업 규칙이나 점수 기준이 아니다.
@@ -183,6 +186,10 @@ def _get(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
         raw.close()
 
 
+class CertificateError(AppError):
+    """https 인증서 검증 실패로만 못 읽음(#810). 화면 안내·kind는 다른 읽기 실패와 같다."""
+
+
 def _failure_reason(error: Exception) -> str:
     """읽기 실패를 네 가지로 나눈다(#690). 인증서 검증은 끄지 않고 이유만 구분해 남긴다."""
     if isinstance(error, ssl.SSLCertVerificationError):
@@ -207,7 +214,8 @@ def _read(url: str, deadline: float) -> tuple[int, dict[str, str], str]:
                 break
         remaining(deadline)
     remaining(deadline)
-    raise AppError(
+    error_type = CertificateError if reason == "인증서 문제" else AppError
+    raise error_type(
         f"홈페이지를 읽을 수 없습니다. ({reason})",
         "공개 본문을 직접 붙여넣어 주세요.",
         status=422,
@@ -351,9 +359,36 @@ class Page:
     links: tuple[tuple[str, str], ...] = ()
 
 
-def fetch(url: str, deadline: float) -> Page:
-    """차단 신호·robots 실패는 붙여넣기로 안내하며 원문은 로그에 남기지 않는다."""
-    return _fetch(url, deadline)
+def fetch(url: str, deadline: float, *, http_fallback: bool = False) -> Page:
+    """차단 신호·robots 실패는 붙여넣기로 안내하며 원문은 로그에 남기지 않는다.
+
+    http_fallback(#810): https가 인증서 검증 오류로만 실패하면 같은 호스트·경로의 http로 한 번만
+    다시 읽는다. robots는 http 쪽 것을 지키고, http가 다시 https로 넘기면 그 https는 그대로
+    검증한다(실패하면 실패). 다른 오류는 다시 읽지 않는다.
+    돌려준 Page.url이 http면 그렇게 읽은 것이다.
+    """
+    try:
+        return _fetch(url, deadline)
+    except CertificateError:
+        plain = http_fallback_url(url) if http_fallback else None
+        if plain is None:
+            raise
+        logger.info("인증서 오류로 http 주소를 한 번 다시 읽음")
+        return _fetch(plain, deadline)
+
+
+def http_fallback_url(url: str) -> str | None:
+    """https 주소의 같은 호스트·경로 http 주소(#810). https가 아니면 None."""
+    parts = urlsplit(url)
+    if parts.scheme != "https":
+        return None
+    netloc = parts.hostname if parts.port == 443 else parts.netloc
+    return urlunsplit(("http", netloc, parts.path, parts.query, ""))
+
+
+def read_insecurely(requested_url: str, page_url: str) -> bool:
+    """https로 요청했는데 http 페이지로 읽었는가(#810 화면·요약 표시용)."""
+    return requested_url.startswith("https://") and page_url.startswith("http://")
 
 
 def fetch_site(
@@ -363,9 +398,10 @@ def fetch_site(
     extra_pages: int,
     hints: list[str],
     max_chars: int,
+    http_fallback: bool = False,
 ) -> list[Page]:
     """첫 화면과 이름이 맞는 같은 사이트 안쪽 페이지를 읽는다(계약 C9 fetchSite, #557)."""
-    first = fetch(url, deadline)
+    first = fetch(url, deadline, http_fallback=http_fallback)
     return [
         first,
         *fetch_more(first, deadline, extra_pages=extra_pages, hints=hints, max_chars=max_chars),
