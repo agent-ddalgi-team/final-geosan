@@ -26,7 +26,14 @@ from geosan.dashboard.sales_analysis import (
     process_display_name,
 )
 from geosan.records.live import live_outcomes_with_answers
-from geosan.rules.codes import DatasetKind, LostReasonCode, OutcomeStatus, SalesStep
+from geosan.rules.codes import (
+    ContactMethod,
+    ContactResult,
+    DatasetKind,
+    LostReasonCode,
+    OutcomeStatus,
+    SalesStep,
+)
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -104,6 +111,16 @@ class StepRow(_ApiModel):
     avg_contacts_to_reach: float | None
 
 
+class TimelineEvent(_ApiModel):
+    """(#801) 회사별 타임라인의 기록 행 하나(취소 안 한 행, 저장 순서). 코드값·날짜만."""
+
+    at: date
+    method: ContactMethod | None
+    result: ContactResult | None
+    step_after: SalesStep | None
+    status: OutcomeStatus
+
+
 class CompanyRow(_ApiModel):
     opp_id: str
     name: str
@@ -118,6 +135,9 @@ class CompanyRow(_ApiModel):
     days_since_first_contact: int
     outcome_at: date | None
     days_to_outcome: int | None
+    # (#801) 기록으로 이른 가장 먼 세부 단계(성사·거절·보류 회사도 값이 있다)와 기록 행 줄.
+    furthest_step: SalesStep | None
+    timeline: list[TimelineEvent]
 
 
 class AnalysisBasis(_ApiModel):

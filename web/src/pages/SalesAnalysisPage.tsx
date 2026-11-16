@@ -3,7 +3,9 @@
 // 가상 묶음이면 응답 meta를 띠에 알려 "가상" 표시가 보인다.
 // 맨 위 "관심 기업 분포"(#679, PM 결정 2026-11-13)는 대시보드에서 옮겨 온 공정별·산업군별 막대다.
 // #760(PM 2026-11-15): 오른쪽 위 기간 선택("2026년 9월 1일 ~ 11월 15일")으로 고른 기간 안 접촉만 센다. 기간은
-// 주소(?from=&to=)에 남아 새로 고쳐도 그대로다. 표 위에 숫자 칸 4개와 막대·도넛 그래프를 둔다.
+// 주소(?from=&to=)에 남아 새로 고쳐도 그대로다.
+// #801(PM 지시 2026-11-16): 겹치는 숫자 칸 대신 네 그림(깔때기·거절 이유·공정 × 산업·회사별 타임라인)을 맨 위에 두고,
+// 표와 관심 기업 분포는 [표로 보기]에 접어 둔다(기본 닫힘). 지금 상태 숫자(진행 중·보류)는 대시보드 몫이다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
@@ -216,36 +218,54 @@ export default function SalesAnalysisPage() {
               ) : null}
             </div>
             <AnalysisCharts data={data} />
-            {breakdownSection}
-            <h2 data-testid="analysis-tables-title" style={{ ...titleStyle, marginBottom: -16 }}>
-              {analysisCharts.tablesTitle}
-            </h2>
-            <section aria-labelledby="analysis-process-title" style={sectionStyle}>
-              <h2 id="analysis-process-title" style={titleStyle}>
-                {texts.processTitle}
-              </h2>
-              <ProcessAnalysisTable rows={data.byProcess} total={data.total} />
-              <p data-testid="analysis-sum-note" style={secondary}>
-                {texts.sumNote}
-              </p>
-            </section>
-            {data.bySalesStep.length > 0 ? (
-              <section aria-labelledby="analysis-step-title" style={sectionStyle}>
-                <h2 id="analysis-step-title" style={titleStyle}>
-                  {texts.stepTitle}
+            <details data-testid="analysis-tables" style={{ display: 'grid' }}>
+              <summary
+                data-testid="analysis-tables-toggle"
+                style={{
+                  cursor: 'pointer',
+                  fontSize: typography.fontSizeCardTitle,
+                  fontWeight: 600,
+                }}
+              >
+                {analysisCharts.tablesToggle}
+              </summary>
+              <div style={{ display: 'grid', gap: spacing.sectionGap, marginTop: 16 }}>
+                {/* 관심 기업 분포(#679)는 기간과 상관없는 막대라 표 묶음 맨 위에 둔다. */}
+                {breakdownSection}
+                <h2
+                  data-testid="analysis-tables-title"
+                  style={{ ...titleStyle, marginBottom: -16 }}
+                >
+                  {analysisCharts.tablesTitle}
                 </h2>
-                <StepAnalysisTable rows={data.bySalesStep} />
-                <p data-testid="analysis-step-note" style={secondary}>
-                  {texts.stepNote}
-                </p>
-              </section>
-            ) : null}
-            <section aria-labelledby="analysis-company-title" style={sectionStyle}>
-              <h2 id="analysis-company-title" style={titleStyle}>
-                {texts.companyTitle}
-              </h2>
-              <CompanyAnalysisTable rows={data.companies} processNames={processNames} />
-            </section>
+                <section aria-labelledby="analysis-process-title" style={sectionStyle}>
+                  <h2 id="analysis-process-title" style={titleStyle}>
+                    {texts.processTitle}
+                  </h2>
+                  <ProcessAnalysisTable rows={data.byProcess} total={data.total} />
+                  <p data-testid="analysis-sum-note" style={secondary}>
+                    {texts.sumNote}
+                  </p>
+                </section>
+                {data.bySalesStep.length > 0 ? (
+                  <section aria-labelledby="analysis-step-title" style={sectionStyle}>
+                    <h2 id="analysis-step-title" style={titleStyle}>
+                      {texts.stepTitle}
+                    </h2>
+                    <StepAnalysisTable rows={data.bySalesStep} />
+                    <p data-testid="analysis-step-note" style={secondary}>
+                      {texts.stepNote}
+                    </p>
+                  </section>
+                ) : null}
+                <section aria-labelledby="analysis-company-title" style={sectionStyle}>
+                  <h2 id="analysis-company-title" style={titleStyle}>
+                    {texts.companyTitle}
+                  </h2>
+                  <CompanyAnalysisTable rows={data.companies} processNames={processNames} />
+                </section>
+              </div>
+            </details>
           </div>
         ) : null}
       </FiveStates>

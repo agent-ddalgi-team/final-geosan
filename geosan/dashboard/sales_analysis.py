@@ -173,6 +173,17 @@ class ContactCount:
 
 
 @dataclass(frozen=True)
+class TimelineEvent:
+    """(#801) 회사별 타임라인의 기록 행 하나. 코드값·날짜만 싣는다(메모 글·답 글 없음)."""
+
+    at: date
+    method: str | None
+    result: str | None
+    step_after: str | None
+    status: str
+
+
+@dataclass(frozen=True)
 class CompanyRow:
     opp_id: str
     name: str
@@ -190,6 +201,9 @@ class CompanyRow:
     # 표에 싣지 않고 묶음 집계에만 쓰는 값.
     reach: ContactReach
     closed_at: datetime | None
+    # (#801) 깔때기·타임라인 그림용. 기록으로 이른 가장 먼 세부 단계(끝난 회사도)와 기록 행 줄.
+    furthest_step: str | None = None
+    timeline: tuple[TimelineEvent, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -243,6 +257,31 @@ def _closed_since(lines: Sequence[RecordLine]) -> datetime | None:
             status = line.status
             since = line.created_at if line.status in CLOSED_STATUSES else None
     return since
+
+
+def furthest_step(lines: Sequence[RecordLine], step_order: Sequence[str]) -> str | None:
+    """(#801) 행마다 저장한 뒤의 세부 단계 가운데 코드표 순서로 가장 뒤의 것. 없으면 None.
+
+    지금 세부 단계(`sales_step`)는 성사·거절·보류면 비지만, 이 값은 그 회사가 어디까지 갔는지
+    남긴다. [단계 고치기]로 뒤로 고쳐도 이미 이른 단계는 남는다(깔때기는 "이른 적 있는가"를 센다).
+    """
+    rank = {step: index for index, step in enumerate(step_order)}
+    reached = [line.step_after for line in lines if line.step_after in rank]
+    return max(reached, key=rank.__getitem__) if reached else None
+
+
+def timeline_events(lines: Sequence[RecordLine], tz: tzinfo) -> tuple[TimelineEvent, ...]:
+    """(#801) 기록 행을 저장 순서대로 타임라인 줄로. 접촉이 아닌 행은 방법·결과가 None이다."""
+    return tuple(
+        TimelineEvent(
+            at=_contact_day(line, tz),
+            method=line.method if line.method in CONTACT_METHODS else None,
+            result=line.result if line.method in CONTACT_METHODS else None,
+            step_after=line.step_after,
+            status=line.status,
+        )
+        for line in lines
+    )
 
 
 def summarize_company(company: CompanyRecords, today: date, *, tz: tzinfo) -> CompanyRow | None:
@@ -524,6 +563,7 @@ def build_sales_analysis(
                 older_closed += 1
                 continue
             counted.append(company)
+            journey = company.lines
         else:
             # 끝일까지의 행만 보고(그때의 큰 단계), 기간 밖 접촉 행은 접촉으로 세지 않는다.
             # 행의 날짜는 접촉 날짜(없으면 저장한 날): 지난 접촉을 나중에 적어도 접촉 날짜로 든다.
@@ -549,9 +589,17 @@ def build_sales_analysis(
                 older_closed += 1
                 continue
             counted.append(replace(company, lines=until))
+            journey = until
         # 카드와 같이 역량 파일 순서로 보이고, 역량 파일에 없는 공정 코드는 싣지 않는다.
         ordered = [code for code, _ in processes if code in row.process_codes]
-        rows.append(replace(row, process_codes=ordered))
+        rows.append(
+            replace(
+                row,
+                process_codes=ordered,
+                furthest_step=furthest_step(journey, step_order),
+                timeline=timeline_events(journey, tz),
+            )
+        )
     rows.sort(key=lambda row: row.name)
     rows.sort(key=lambda row: row.last_contact_at, reverse=True)
 
