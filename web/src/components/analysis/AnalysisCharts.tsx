@@ -84,7 +84,7 @@ function Legend({ items }: { items: { label: string; color: string }[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 숫자 칸 4개
+// 숫자 칸 5개: 왼쪽 큰 칸(접촉한 회사) + 오른쪽 2×2. 오른쪽 영업 코치 칸이 있어 본문이 좁아도 한 칸만 아래로 떨어지지 않게(#760·#773).
 // ---------------------------------------------------------------------------
 
 function Tile({
@@ -106,6 +106,8 @@ function Tile({
       style={{
         ...cardStyle,
         gap: 8,
+        minWidth: 0,
+        gridRow: highlight ? 'span 2' : undefined,
         background: highlight ? chartPalette.highlightBg : colors.bgContainer,
         color: highlight ? chartPalette.highlightFg : colors.text,
         borderColor: highlight ? chartPalette.highlightBg : colors.borderSecondary,
@@ -143,7 +145,7 @@ export function KpiTiles({ total, minSample }: { total: AnalysisStats; minSample
       data-testid="analysis-kpis"
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gridTemplateColumns: 'minmax(0, 1.2fr) repeat(2, minmax(0, 1fr))',
         gap: 16,
       }}
     >
