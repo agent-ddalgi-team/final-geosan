@@ -11,6 +11,7 @@ import { ApiError } from '../../api/client';
 import type { Envelope } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import { sortSchedule } from '../../components/dashboard/ScheduleList';
+import { bookmarkGrid } from '../../components/dashboard/CountCards';
 import { filterName } from '../../components/list/ListViewBar';
 import { dashboardTexts, states } from '../../labels/ko';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
@@ -137,6 +138,10 @@ describe('DashboardPage', () => {
       expect(read('dashboard-section-progress')).toEqual(progressCells);
       // 맨 앞 큰 칸은 관심 기업 전체다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveTextContent('관심 기업12곳');
+      // #787: 세 칸은 큰 칸 2 : 1 : 1로 늘 한 줄이다(노트북 폭에서 "검토 중"만 다음 줄로 떨어지지 않게).
+      expect(screen.getByTestId('dashboard-bookmark-cells').style.gridTemplateColumns).toBe(
+        'minmax(0, 2fr) repeat(2, minmax(0, 1fr))',
+      );
       // 칸 높이에 안쪽 여백이 더해져 아래 구역 제목과 겹치지 않게, 여백을 높이 안에 넣는다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveStyle({
         boxSizing: 'border-box',
@@ -268,6 +273,12 @@ describe('DashboardPage', () => {
       await userEvent.click(await screen.findByTestId('dashboard-calendar-day-2026-11-05'));
       expect(screen.queryByTestId('dashboard-calendar-popover')).not.toBeInTheDocument();
     });
+  });
+
+  it('bookmarkGrid: 칸이 하나면 한 칸 전체, 둘 이상이면 맨 앞만 2배 (#787)', () => {
+    expect(bookmarkGrid(1)).toBe('minmax(0, 1fr)');
+    expect(bookmarkGrid(2)).toBe('minmax(0, 2fr) repeat(1, minmax(0, 1fr))');
+    expect(bookmarkGrid(3)).toBe('minmax(0, 2fr) repeat(2, minmax(0, 1fr))');
   });
 
   it('sortSchedule은 원본 배열을 바꾸지 않고 지남 → 날짜 순으로 돌려준다', () => {
