@@ -69,6 +69,10 @@ class Customer(CommonColumns, Base):
     registry_status: Mapped[str | None] = mapped_column(String(16))
     fit_level: Mapped[str | None] = mapped_column(String(8))
     pick_reason: Mapped[str | None] = mapped_column(Text)
+    # #793: 적합도를 무엇으로 정했나(null = 생산품 기준 PRODUCT, HOMEPAGE = 조사가 읽은 홈페이지)와
+    # 홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도.
+    fit_basis: Mapped[str | None] = mapped_column(String(16))
+    previous_fit_level: Mapped[str | None] = mapped_column(String(8))
     own_plating_line_suspected: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("0")
     )

@@ -461,6 +461,17 @@ class OpportunityCard(_ApiModel):
         default=None, description="AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
     )
     pick_reason: str | None = Field(default=None, description="AI가 고른 이유 한 줄")
+    fit_basis: Literal["PRODUCT", "HOMEPAGE"] | None = Field(
+        default=None,
+        description=(
+            "적합도를 무엇으로 정했나(#793): PRODUCT = 공장 등록 생산품, "
+            "HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null"
+        ),
+    )
+    previous_fit_level: FitLevel | None = Field(
+        default=None,
+        description="홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 아니면 null",
+    )
     own_plating_line_suspected: bool = Field(
         default=False,
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
@@ -522,6 +533,13 @@ class DetailHeader(_ApiModel):
             "이때 homepageStatus는 NEEDS_CONFIRMATION (C1, #511)"
         ),
     )
+    homepage_closed_reason: str | None = Field(
+        default=None,
+        description=(
+            "조사가 홈페이지를 닫힌 것으로 본 이유('호스팅 만료'·'빈 페이지'). "
+            "이때 homepageStatus는 NOT_FOUND (C1, #793)"
+        ),
+    )
     # 후보 찾기(#221, C1 "카드·상세에 더하는 칸"). 카드와 같은 이름·뜻.
     discovery_source: DiscoverySource = Field(
         default=DiscoverySource.CASE_FILE, description="회사가 목록에 들어온 길 (C1, #342)"
@@ -534,6 +552,17 @@ class DetailHeader(_ApiModel):
         default=None, description="AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
     )
     pick_reason: str | None = Field(default=None, description="AI가 고른 이유 한 줄")
+    fit_basis: Literal["PRODUCT", "HOMEPAGE"] | None = Field(
+        default=None,
+        description=(
+            "적합도를 무엇으로 정했나(#793): PRODUCT = 공장 등록 생산품, "
+            "HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null"
+        ),
+    )
+    previous_fit_level: FitLevel | None = Field(
+        default=None,
+        description="홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 아니면 null",
+    )
     own_plating_line_suspected: bool = Field(
         default=False,
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
