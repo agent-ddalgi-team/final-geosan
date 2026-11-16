@@ -267,7 +267,9 @@ export default function DetailGlance({
     header.researchState === 'RUNNING'
       ? texts.researchRunning
       : header.homepageStatus === 'NOT_FOUND'
-        ? texts.homepageNotFound
+        ? header.homepageClosedReason
+          ? texts.homepageClosed(header.homepageClosedReason)
+          : texts.homepageNotFound
         : isHttpUrl(header.homepageUrl)
           ? texts.homepageFound
           : researched
@@ -300,7 +302,17 @@ export default function DetailGlance({
   const evidenceParts = [
     texts.evidenceCount(evidence.length),
     homepageText,
-    header.fitLevel ? companyGlance.fit[header.fitLevel] : null,
+    header.fitLevel
+      ? header.fitBasis === 'HOMEPAGE'
+        ? // #793: 홈페이지로 다시 정한 적합도는 기준과 처음(생산품 기준) 값을 함께 보인다.
+          companyGlance.fitFromHomepage(
+            companyGlance.fit[header.fitLevel],
+            header.previousFitLevel && header.previousFitLevel !== header.fitLevel
+              ? companyGlance.fitShort[header.previousFitLevel]
+              : null,
+          )
+        : companyGlance.fit[header.fitLevel]
+      : null,
     researchedText,
   ].filter((part): part is string => part !== null);
 
@@ -429,6 +441,11 @@ export default function DetailGlance({
                     {unofficialText}
                   </span>
                 ) : null}
+              </span>
+            ) : header.homepageStatus === 'NOT_FOUND' && header.homepageClosedReason ? (
+              // #793: 조사가 홈페이지를 닫힌 것으로 봤다. 닫힌 사이트의 옛 근거 주소 대신 이유를 보인다.
+              <span style={secondary} data-testid="glance-homepage-closed">
+                {companyGlance.homepageClosed(header.homepageClosedReason)}
               </span>
             ) : link ? (
               <span data-testid="glance-fallback-link" data-kind={link.kind}>

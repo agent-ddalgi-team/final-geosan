@@ -1574,6 +1574,22 @@
             ],
             "description": "팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null"
           },
+          "fitBasis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PRODUCT",
+                  "HOMEPAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "적합도를 무엇으로 정했나(#793): PRODUCT = 공장 등록 생산품, HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null",
+            "title": "Fitbasis"
+          },
           "fitLevel": {
             "anyOf": [
               {
@@ -1592,6 +1608,18 @@
             "maxItems": 3,
             "title": "Highlights",
             "type": "array"
+          },
+          "homepageClosedReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "조사가 홈페이지를 닫힌 것으로 본 이유('호스팅 만료'·'빈 페이지'). 이때 homepageStatus는 NOT_FOUND (C1, #793)",
+            "title": "Homepageclosedreason"
           },
           "homepageConfidence": {
             "anyOf": [
@@ -1800,6 +1828,17 @@
             ],
             "description": "AI가 고른 이유 한 줄",
             "title": "Pickreason"
+          },
+          "previousFitLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 아니면 null"
           },
           "purpose": {
             "$ref": "#/components/schemas/Purpose"
@@ -4663,6 +4702,22 @@
             ],
             "description": "팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null"
           },
+          "fitBasis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PRODUCT",
+                  "HOMEPAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "적합도를 무엇으로 정했나(#793): PRODUCT = 공장 등록 생산품, HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null",
+            "title": "Fitbasis"
+          },
           "fitLevel": {
             "anyOf": [
               {
@@ -4758,6 +4813,17 @@
             ],
             "description": "AI가 고른 이유 한 줄",
             "title": "Pickreason"
+          },
+          "previousFitLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 아니면 null"
           },
           "processCodes": {
             "items": {

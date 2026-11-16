@@ -475,3 +475,25 @@ def test_refresh_prefers_file_row_when_file_and_lookup_rows_match(registration_c
         session.add(public_row("row-api", source_id=API))
     refresh(judgment("row-api", reason="조회 행 판단", fitLevel="LOW"), judgment(**NEWER))
     assert rows(Customer)[0].pick_reason == NEWER["reason"]
+
+
+def test_refresh_does_not_overwrite_fit_decided_from_homepage(registration_context):
+    """#793: Given 조사가 홈페이지로 적합도를 다시 정한 회사 / When 생산품으로 다시 판단해 옮김
+    / Then 적합도·이유·카드 문장은 홈페이지 기준 그대로이고 기회 번호는 지금처럼 돌려준다."""
+    register()
+    with session_scope() as session:
+        customer = session.scalars(select(Customer)).one()
+        customer.fit_level, customer.fit_basis = "HIGH", "HOMEPAGE"
+        customer.previous_fit_level = "MEDIUM"
+        customer.pick_reason = "홈페이지 기준 · 브라켓을 직접 가공"
+        session.scalars(select(Opportunity)).one().card_reason = customer.pick_reason
+    (opportunity,) = rows(Opportunity)
+    assert refresh(judgment(**NEWER)) == [opportunity.opp_id]
+    (customer,) = rows(Customer)
+    assert (customer.fit_level, customer.fit_basis, customer.previous_fit_level) == (
+        "HIGH",
+        "HOMEPAGE",
+        "MEDIUM",
+    )
+    assert customer.pick_reason == "홈페이지 기준 · 브라켓을 직접 가공"
+    assert rows(Opportunity)[0].card_reason == "홈페이지 기준 · 브라켓을 직접 가공"
