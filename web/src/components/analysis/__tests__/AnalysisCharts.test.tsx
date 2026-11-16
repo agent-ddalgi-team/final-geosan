@@ -1,6 +1,6 @@
 // 영업 분석 그래프(#760): 숫자 칸·막대·도넛·가로 막대가 서버 숫자 그대로 보이는지 글자로 확인한다(색은 보지 않는다).
 import { render, screen, within } from '@testing-library/react';
-import AnalysisCharts, { countTicks } from '../AnalysisCharts';
+import AnalysisCharts, { countTicks, processLabelLines } from '../AnalysisCharts';
 import { SAMPLE, sampleStats } from '../../../test/analysisSample';
 
 describe('AnalysisCharts', () => {
@@ -25,6 +25,43 @@ describe('AnalysisCharts', () => {
     );
     expect(screen.getByTestId('kpi-contacted').style.gridRow).toBe('span 2');
     expect(screen.getByTestId('kpi-lost').style.gridRow).toBe('');
+  });
+
+  it('공정 이름: 괄호 앞은 첫째 줄, 괄호 부분은 둘째 줄이고 들어가는 글자 수를 넘을 때만 자른다 (#787)', () => {
+    expect(processLabelLines('아연도금(전기아연도금)', 12)).toEqual(['아연도금', '(전기아연도금)']);
+    expect(processLabelLines('알카리 흑착(흑색산화피막)', 12)).toEqual([
+      '알카리 흑착',
+      '(흑색산화피막)',
+    ]);
+    expect(processLabelLines('부동태', 12)).toEqual(['부동태']);
+    // 공정이 많아 묶음이 좁으면 그 줄만 자른다.
+    expect(processLabelLines('아연도금(전기아연도금)', 5)).toEqual(['아연도금', '(전기아…']);
+  });
+
+  it('공정이 둘이면 이름을 자르지 않고 그대로 보인다 (#787)', () => {
+    render(
+      <AnalysisCharts
+        data={{
+          ...SAMPLE,
+          byProcess: SAMPLE.byProcess.map((row, i) =>
+            i === 0 ? { ...row, processName: '아연도금(전기아연도금)' } : row,
+          ),
+        }}
+      />,
+    );
+    const labels = within(screen.getByTestId('chart-process'))
+      .getAllByTestId('chart-process-label')
+      .map((el) => el.firstChild?.textContent);
+    expect(labels).toEqual(['아연도금', '(전기아연도금)', '아노다이징']);
+  });
+
+  it('아래 카드 셋은 줄바꿈 칸에 놓여, 두 칸 폭이면 혼자 남은 카드가 줄 전체를 쓴다 (#787)', () => {
+    render(<AnalysisCharts data={SAMPLE} />);
+    const row = screen.getByTestId('analysis-bar-cards');
+    expect(row.style.flexWrap).toBe('wrap');
+    const cells = Array.from(row.children) as HTMLElement[];
+    expect(cells).toHaveLength(3);
+    cells.forEach((cell) => expect(cell.style.flex).toBe('1 1 280px'));
   });
 
   it('표본이 기준보다 적으면 비율을 지어내지 않고 "표본 n곳"만 보인다', () => {

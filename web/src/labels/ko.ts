@@ -307,9 +307,9 @@ export const dashboardTexts = {
   progressOnHold: (n: number) => `보류 ${n}곳`,
   /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
   notContactedHint: '아직 연락하지 않은 곳',
-  /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
+  /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 신규 거래처 찾기로 가는 링크다(#787: 메뉴 이름 바뀜 #762). */
   bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
-  bookmarkEmptyLink: '추천 목록',
+  bookmarkEmptyLink: '신규 거래처 찾기',
   bookmarkEmptyTail: '에서 [관심]을 눌러 담아 보세요',
   /** 서버가 아직 옛 집계를 줄 때. 뜻이 달라진 숫자를 새 칸에 넣어 보이지 않는다. */
   countsOutdated:
@@ -331,7 +331,7 @@ export const dashboardTexts = {
   breakdownBasis: (total: number) => `대시보드 대상 ${total}곳`,
   breakdownProposed: 'AI 제안 포함',
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
-  breakdownEmptyAction: '추천 목록 가기',
+  breakdownEmptyAction: '신규 거래처 찾기로 이동',
   loadError: '대시보드를 불러오지 못했습니다.',
   goToList: '신규 거래처 찾기로 이동',
   // #795(PM 결정 2026-11-16): 오늘 할 일·방문 준비 중심 배치.
@@ -376,7 +376,7 @@ export const dashboardMapTexts = {
   close: '닫기',
   missingCoordinates: (count: number) => `좌표 없는 회사 ${count}곳`,
   emptyText: '관심 표시한 회사가 아직 없어요.',
-  emptyAction: '추천 목록 가기',
+  emptyAction: '신규 거래처 찾기로 이동',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
   /** 네이버 지도(#671)를 불러오는 동안. */
@@ -632,6 +632,12 @@ export const bookmarkList = {
   /** 평소 목록 머리의 스위치(#675). 켜면 관심으로 고른 회사도 섞어 보인다. */
   withBookmarked: '관심 기업도 함께 보기',
   /** 평소 목록에서 [관심]을 눌러 그 카드가 목록에서 빠졌을 때의 안내와 링크. */
+  /**
+   * 평소 목록이 빈 까닭이 "관심 기업으로 모두 옮겨서"일 때(#787). 후보가 없다는 말 대신 빠진 수와 스위치를 알린다.
+   * 예: "관심 기업으로 옮긴 18곳은 이 목록에서 빠져 있습니다. 위의 [관심 기업도 함께 보기]를 켜면 함께 보입니다."
+   */
+  emptyAllBookmarked: (count: number) =>
+    `관심 기업으로 옮긴 ${count}곳은 이 목록에서 빠져 있습니다. 위의 [관심 기업도 함께 보기]를 켜면 함께 보입니다.`,
   moved: '관심 기업으로 옮겼습니다',
   movedLink: '관심 기업 보기',
 } as const;
