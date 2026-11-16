@@ -865,6 +865,22 @@ class ReviewCheckResponse(_ApiModel):
     checked_at: datetime
 
 
+class DetailMapPoint(_ApiModel):
+    """#803 상세 작은 지도의 점. 대시보드 지도(center·lat·lng)와 같은 이름."""
+
+    lat: float
+    lng: float
+
+
+class DetailMap(_ApiModel):
+    """#803 상세 "한눈에" 작은 지도. 좌표만 싣는다(이름·주소·대표번호·메모 없음)."""
+
+    center: DetailMapPoint = Field(description="설정 geosan 좌표(대시보드 지도와 같은 값)")
+    company: DetailMapPoint = Field(
+        description="저장된 공공좌표(CSV·JUSO·MANUAL). 네이버 실시간 보완 좌표는 싣지 않는다(#222)"
+    )
+
+
 class OpportunityDetail(_ApiModel):
     """근거 상세 S2. 영역별 구성 함수(detail_sections)가 순서대로 조립한다 (BR10.5)."""
 
@@ -883,6 +899,10 @@ class OpportunityDetail(_ApiModel):
     eval_id: str | None = None
     previous_eval_id: str | None = None
     reevaluated: bool = False
+    map: DetailMap | None = Field(
+        default=None,
+        description="#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null",
+    )
 
 
 # ---------------------------------------------------------------------------
