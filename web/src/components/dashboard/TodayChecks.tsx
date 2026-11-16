@@ -2,6 +2,7 @@
 // #766(PM 결정 2026-11-16): 읽기 쉽게 주제별 묶음으로 나눠 제목·아이콘·회사별 한 줄로 보인다(예전에는 "앞 2건 + 외 n").
 //   🔴 지난 일정 — 했나요?  회사 · 날짜 · 일정 한 줄 + [완료] [날짜 바꾸기] [필요 없어요]
 //   📅 오늘 일정            회사 · 일정 한 줄
+//   📬 나에게 온 전달 사항   회사 · 보낸 사람 · 날짜, 그 아래 전달 글 앞부분(#794)
 //   🔍 확인할 것이 남은 관심 기업  회사 이름(누르면 상세), 묶음 끝 [모두 보기]는 걸러진 목록
 // 지난 일정 단추는 기록 담당자에게만 보이고, 누르면 서버가 일정만 바꾼 새 기록과 변경 기록 한 줄을 남긴다
 // (/schedule/resolve). 어느 단추든 끝나면 대시보드를 다시 읽어 그 줄이 빠진다.
@@ -164,6 +165,15 @@ function PlainItem({ item }: { item: TodayCheckItem }) {
       {item.note || item.dueAt ? (
         <span style={{ ...secondary, marginLeft: 8 }}>
           {[item.note].filter(Boolean).join(' · ')}
+        </span>
+      ) : null}
+      {item.text ? (
+        // #794: 전달 사항 글 앞부분. 받는 사람 본인 화면에만 온다.
+        <span
+          data-testid="dashboard-today-text"
+          style={{ display: 'block', fontSize: typography.fontSizeSecondary, marginTop: 2 }}
+        >
+          {item.text}
         </span>
       ) : null}
     </li>
