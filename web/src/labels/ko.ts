@@ -2313,3 +2313,8 @@ export const handoffTexts = {
   saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
   needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;
+
+/** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */
+export const sourceUrlTexts = {
+  insecure: ' (암호화 없는 주소로 읽음)',
+} as const;
