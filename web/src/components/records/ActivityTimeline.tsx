@@ -17,7 +17,7 @@ import {
   opinionLabels,
   timelineArea,
 } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, detailTheme, typography } from '../../theme/tokens';
 import StatusTag from '../common/StatusTag';
 import { ACTIVITY_GROUPS, activityGroupTone, groupOf } from './activityGroups';
 import type { ActivityGroup } from './activityGroups';
@@ -46,6 +46,46 @@ export function summaryText(item: ActivityItem): string {
     return labelFor(opinionLabels, item.summary);
   }
   return item.summary;
+}
+
+/** #803: 처음에 보이는 묶음 수. 나머지는 [더 보기 n건]으로 편다. */
+export const TIMELINE_SHOWN = 5;
+
+/** #803 세로 타임라인 점 안 그림: 전화 📞 · 방문 🚶 · 메일 ✉ · 메모 📝 · 의견·관심 ⭐ · 단계 📈 · 그 밖 •. */
+export function timelineIcon(item: ActivityItem): string {
+  if (item.kind === 'CONTACT_ATTEMPT') {
+    if (item.summary.includes('방문')) return '🚶';
+    if (item.summary.includes('메일')) return '✉';
+    return '📞';
+  }
+  if (item.kind === 'NOTE' || item.kind === 'REPLY') return '📝';
+  if (item.kind === 'OPINION' || item.kind === 'BOOKMARK') return '⭐';
+  if (item.kind === 'OUTCOME') return '📈';
+  if (item.kind === 'ADVICE') return '💬';
+  return '•';
+}
+
+/**
+ * #803: 같은 시각(분까지)·같은 사람의 줄을 한 묶음으로. 접촉을 저장하면 "접촉 시도"와 "영업 단계" 줄이 같은 시각에
+ * 둘 생겨 쌍으로 보였다. 줄 하나하나(잘못 입력 단추 포함)는 그대로 두고 시각·사람만 한 번 보인다.
+ */
+export function groupSameMoment(items: ActivityItem[]): ActivityItem[][] {
+  const blocks: ActivityItem[][] = [];
+  for (const item of items) {
+    const last = blocks[blocks.length - 1];
+    const head = last?.[0];
+    if (
+      head &&
+      head.actor === item.actor &&
+      formatMonthDayTime(head.at) !== null &&
+      formatMonthDayTime(head.at) === formatMonthDayTime(item.at)
+    ) {
+      last.push(item);
+    } else {
+      blocks.push([item]);
+    }
+  }
+  return blocks;
 }
 
 /** 최근 순(시각이 늦은 것이 위). 같은 시각이면 서버가 준 순서를 뒤집어 늦게 쌓인 것이 위로 온다. */
@@ -88,6 +128,7 @@ export default function ActivityTimeline({
   const [cancelError, setCancelError] = useState<{ key: string; text: string } | null>(null);
   /** 고른 묶음. null이면 전체. 기업이 바뀌면 부르는 쪽이 key로 새로 만들어 전체로 돌아간다. */
   const [group, setGroup] = useState<ActivityGroup | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -158,6 +199,12 @@ export default function ActivityTimeline({
 
   const visible =
     items === null ? null : items.filter((item) => group === null || groupOf(item.kind) === group);
+  // #803: 같은 시각 줄을 묶고, 처음에는 최근 5묶음만 보인다.
+  const blocks = visible === null ? [] : groupSameMoment(visible);
+  const shownBlocks = showAll ? blocks : blocks.slice(0, TIMELINE_SHOWN);
+  const hiddenBlocks = blocks.length - shownBlocks.length;
+  const hiddenItems = blocks.slice(TIMELINE_SHOWN).reduce((sum, block) => sum + block.length, 0);
+  const itemIndex = new Map((visible ?? []).map((item, index) => [item, index]));
   const groupChoices: { value: ActivityGroup | null; label: string }[] = [
     { value: null, label: timelineArea.groupAll },
     ...ACTIVITY_GROUPS.map((value) => ({ value, label: activityGroupLabels[value] })),
@@ -221,113 +268,173 @@ export default function ActivityTimeline({
         </span>
       ) : null}
       {visible !== null && visible.length > 0 ? (
-        <ol
-          aria-label={timelineArea.listLabel}
-          style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}
-        >
-          {visible.map((item, index) => {
-            const key = lineKey(item);
-            const cancelOpen = cancelingKey === key && canCancel(item);
-            return (
+        <>
+          <ol
+            aria-label={timelineArea.listLabel}
+            style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
+          >
+            {shownBlocks.map((block, blockIndex) => (
               <li
-                key={`${item.at}-${index}`}
-                data-testid="timeline-item"
-                data-cancelled={item.cancelled === true ? 'true' : undefined}
-                style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
+                key={`${block[0].at}-${blockIndex}`}
+                data-testid="timeline-block"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '28px minmax(0, 1fr)',
+                  columnGap: 8,
+                }}
               >
-                <span data-testid="timeline-time" style={secondary}>
-                  {formatMonthDayTime(item.at) ?? ''}
-                </span>
-                <span data-testid="timeline-actor">{actorName(item.actor)}</span>
-                <StatusTag tone={activityGroupTone[groupOf(item.kind)]} data-testid="timeline-kind">
-                  {labelFor(activityKindLabels, item.kind)}
-                </StatusTag>
+                {/* #803 세로 타임라인: 왼쪽 점(그림)과 아래로 이어지는 선. */}
                 <span
-                  data-testid="timeline-summary"
-                  style={
-                    item.cancelled === true
-                      ? { textDecoration: 'line-through', color: colors.textSecondary }
-                      : undefined
-                  }
+                  aria-hidden="true"
+                  style={{ display: 'grid', justifyItems: 'center', gridTemplateRows: 'auto 1fr' }}
                 >
-                  {summaryText(item)}
-                </span>
-                {item.cancelled === true ? (
-                  <span data-testid="timeline-cancelled-note" style={secondary}>
-                    {timelineArea.cancelledNote(
-                      item.cancelledBy ? actorName(item.cancelledBy) : '',
-                      formatMonthDayTime(item.cancelledAt)?.slice(0, 5) ?? '',
-                    )}
-                  </span>
-                ) : null}
-                {canCancel(item) && !cancelOpen ? (
-                  <Button
-                    size="small"
-                    type="link"
-                    onClick={() => openCancel(item)}
-                    aria-label={timelineArea.cancelButtonLabel(summaryText(item))}
-                    data-testid="timeline-cancel-open"
-                    style={{ padding: 0, height: 'auto' }}
-                  >
-                    {timelineArea.cancelButton}
-                  </Button>
-                ) : null}
-                {cancelOpen ? (
-                  <div
-                    data-testid="timeline-cancel-form"
+                  <span
+                    data-testid="timeline-icon"
                     style={{
-                      flexBasis: '100%',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 8,
-                      alignItems: 'center',
+                      width: 24,
+                      height: 24,
+                      borderRadius: 999,
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontSize: 12,
+                      background: detailTheme.accentSoft,
+                      border: `1px solid ${detailTheme.accent}`,
                     }}
                   >
-                    <label htmlFor={`cancel-reason-${index}`} style={secondary}>
-                      {timelineArea.cancelPrompt}
-                    </label>
-                    <Input
-                      id={`cancel-reason-${index}`}
-                      value={reason}
-                      maxLength={timelineArea.cancelReasonMaxLength}
-                      aria-label={timelineArea.cancelReasonLabel}
-                      onChange={(event) => setReason(event.target.value)}
-                      disabled={cancelBusy}
-                      style={{ maxWidth: 320 }}
-                      data-testid="timeline-cancel-reason"
-                    />
-                    <Button
-                      size="small"
-                      type="primary"
-                      loading={cancelBusy}
-                      onClick={() => void confirmCancel(item)}
-                      data-testid="timeline-cancel-confirm"
-                    >
-                      {timelineArea.cancelConfirm}
-                    </Button>
-                    <Button
-                      size="small"
-                      onClick={closeCancel}
-                      disabled={cancelBusy}
-                      data-testid="timeline-cancel-close"
-                    >
-                      {timelineArea.cancelClose}
-                    </Button>
-                  </div>
-                ) : null}
-                {cancelError?.key === key ? (
-                  <div
-                    role="alert"
-                    data-testid="timeline-cancel-error"
-                    style={{ flexBasis: '100%', color: colors.error }}
-                  >
-                    {cancelError.text}
-                  </div>
-                ) : null}
+                    {timelineIcon(block[0])}
+                  </span>
+                  {blockIndex < shownBlocks.length - 1 ? (
+                    <span style={{ width: 2, background: detailTheme.lineTodo, minHeight: 8 }} />
+                  ) : null}
+                </span>
+                <div style={{ display: 'grid', gap: 2, paddingBottom: 10 }}>
+                  {block.map((item, inner) => {
+                    const index = itemIndex.get(item) ?? inner;
+                    const key = lineKey(item);
+                    const cancelOpen = cancelingKey === key && canCancel(item);
+                    const first = inner === 0;
+                    return (
+                      <div
+                        key={`${item.at}-${index}`}
+                        data-testid="timeline-item"
+                        data-cancelled={item.cancelled === true ? 'true' : undefined}
+                        style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
+                      >
+                        {first ? (
+                          <>
+                            <span data-testid="timeline-time" style={secondary}>
+                              {formatMonthDayTime(item.at) ?? ''}
+                            </span>
+                            <span data-testid="timeline-actor">{actorName(item.actor)}</span>
+                          </>
+                        ) : null}
+                        <StatusTag
+                          tone={activityGroupTone[groupOf(item.kind)]}
+                          data-testid="timeline-kind"
+                        >
+                          {labelFor(activityKindLabels, item.kind)}
+                        </StatusTag>
+                        <span
+                          data-testid="timeline-summary"
+                          style={
+                            item.cancelled === true
+                              ? { textDecoration: 'line-through', color: colors.textSecondary }
+                              : undefined
+                          }
+                        >
+                          {summaryText(item)}
+                        </span>
+                        {item.cancelled === true ? (
+                          <span data-testid="timeline-cancelled-note" style={secondary}>
+                            {timelineArea.cancelledNote(
+                              item.cancelledBy ? actorName(item.cancelledBy) : '',
+                              formatMonthDayTime(item.cancelledAt)?.slice(0, 5) ?? '',
+                            )}
+                          </span>
+                        ) : null}
+                        {canCancel(item) && !cancelOpen ? (
+                          <Button
+                            size="small"
+                            type="link"
+                            onClick={() => openCancel(item)}
+                            aria-label={timelineArea.cancelButtonLabel(summaryText(item))}
+                            data-testid="timeline-cancel-open"
+                            style={{ padding: 0, height: 'auto' }}
+                          >
+                            {timelineArea.cancelButton}
+                          </Button>
+                        ) : null}
+                        {cancelOpen ? (
+                          <div
+                            data-testid="timeline-cancel-form"
+                            style={{
+                              flexBasis: '100%',
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 8,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <label htmlFor={`cancel-reason-${index}`} style={secondary}>
+                              {timelineArea.cancelPrompt}
+                            </label>
+                            <Input
+                              id={`cancel-reason-${index}`}
+                              value={reason}
+                              maxLength={timelineArea.cancelReasonMaxLength}
+                              aria-label={timelineArea.cancelReasonLabel}
+                              onChange={(event) => setReason(event.target.value)}
+                              disabled={cancelBusy}
+                              style={{ maxWidth: 320 }}
+                              data-testid="timeline-cancel-reason"
+                            />
+                            <Button
+                              size="small"
+                              type="primary"
+                              loading={cancelBusy}
+                              onClick={() => void confirmCancel(item)}
+                              data-testid="timeline-cancel-confirm"
+                            >
+                              {timelineArea.cancelConfirm}
+                            </Button>
+                            <Button
+                              size="small"
+                              onClick={closeCancel}
+                              disabled={cancelBusy}
+                              data-testid="timeline-cancel-close"
+                            >
+                              {timelineArea.cancelClose}
+                            </Button>
+                          </div>
+                        ) : null}
+                        {cancelError?.key === key ? (
+                          <div
+                            role="alert"
+                            data-testid="timeline-cancel-error"
+                            style={{ flexBasis: '100%', color: colors.error }}
+                          >
+                            {cancelError.text}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
               </li>
-            );
-          })}
-        </ol>
+            ))}
+          </ol>
+          {hiddenBlocks > 0 || showAll ? (
+            <Button
+              type="link"
+              size="small"
+              onClick={() => setShowAll((open) => !open)}
+              data-testid="timeline-more"
+              style={{ paddingLeft: 36 }}
+            >
+              {showAll ? timelineArea.showLess : timelineArea.showMore(hiddenItems)}
+            </Button>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

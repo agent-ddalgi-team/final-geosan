@@ -1387,6 +1387,9 @@ export const reviewArea = {
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
 export const timelineArea = {
+  /** #803: 최근 5묶음 아래 [더 보기 8건]. */
+  showMore: (n: number) => `더 보기 ${n}건`,
+  showLess: '접기',
   title: '활동 이력',
   empty: '아직 기록이 없습니다.',
   loadFailed: '활동 이력을 불러오지 못했습니다.',
