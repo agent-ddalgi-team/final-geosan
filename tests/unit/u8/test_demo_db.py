@@ -31,6 +31,7 @@ from geosan.config.sales_questions import check_sales_questions_file
 from geosan.config.validators import scan_contacts
 from geosan.storage.engine import dispose_engines
 from geosan.storage.session import session_scope
+from geosan.workflows.flow_evaluate import today_in_seoul
 from tests.conftest import EXAMPLES_DIR
 from tests.features.u8.test_demo_db_scenarios import (
     CASE_FILES,
@@ -91,6 +92,25 @@ def test_demo_cases_are_virtual_and_named_as_virtual():
     assert len(set(names)) == 17
 
 
+def test_demo_cases_have_their_own_card_reason():
+    """Given 가상 사례 17곳 / When 카드 추천 이유 / Then 회사마다 다른 문장, 80자 안(#790).
+
+    없으면 카드가 "확인 후 연락 검토: 현재 평가점수 70, 조사 항목 배점 합계 100" 같은
+    기계 문장이 된다.
+    """
+    reasons = []
+    for path in DEMO_CASES:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        reason = data["opportunity"].get("cardReason")
+        assert reason and reason.endswith("(가상 홈페이지·소식)"), path.name
+        assert len(reason.removesuffix(" (가상 홈페이지·소식)")) <= 80, path.name
+        # 그 회사의 품목 이름(공정 앞 부분)이 문장에 들어 있다.
+        assert data["opportunity"]["item"].split()[-2] in reason, path.name
+        assert check_case_file(path).warnings == [], path.name
+        reasons.append(reason)
+    assert len(set(reasons)) == 17
+
+
 def test_demo_files_do_not_mention_real_companies():
     """Given 실제 기업 사례 18곳의 이름 / When 시연용 파일에서 찾기 / Then 0건."""
     real_names = set()
@@ -149,6 +169,32 @@ def test_schema_file_lists_demo_mark():
 # ---------------------------------------------------------------------------
 
 
+def test_example_records_file_gives_in_progress_companies_a_next_schedule():
+    """Given 예시 가상 기록 파일 / When 다음 일정 / Then 진행 중 7곳 마지막 접촉에만(#790).
+
+    대시보드 달력·"오늘 확인할 것"이 시연에서 비지 않게 한다. 끝난 회사(성사·거절·보류)에는 없다.
+    """
+    records = check_demo_records_file(DEFAULT_DEMO_RECORDS_PATH).records
+    assert records is not None
+    scheduled = {}
+    for company in records.companies:
+        closing = any(
+            answer.question_id == "CLOSE_RESULT"
+            for contact in company.contacts
+            for answer in contact.answers
+        )
+        *earlier, last = company.contacts
+        assert all(contact.next_in_days is None for contact in earlier), company.case_id
+        if closing:
+            assert last.next_in_days is None, company.case_id
+        else:
+            assert last.next_in_days is not None and last.next_note, company.case_id
+            assert last.next_note.startswith("(가상)")
+            scheduled[company.case_id] = last.next_in_days
+    assert len(scheduled) == 7
+    assert sorted(scheduled.values()) == [0, 0, 1, 2, 4, 7, 10]
+
+
 def test_example_records_file_matches_cases_and_questions():
     """Given 예시 가상 기록 파일 / When 검사 / Then 가상 사례 18곳과 같고 답 id가 유효(#765)."""
     check = check_demo_records_file(DEFAULT_DEMO_RECORDS_PATH)
@@ -179,6 +225,9 @@ def test_example_records_file_matches_cases_and_questions():
         (lambda d: d["companies"].append(d["companies"][0]), "두 번"),
         (lambda d: d["companies"][0]["contacts"][0].update(memo="문의 010-1234-5678"), "연락처"),
         (lambda d: d.update(companies=[]), "companies"),
+        (lambda d: d["companies"][0]["contacts"][0].update(nextInDays=-1), "nextInDays"),
+        (lambda d: d["companies"][0]["contacts"][0].update(nextInDays="3"), "nextInDays"),
+        (lambda d: d["companies"][0]["contacts"][0].update(nextNote="(가상) 확인"), "nextNote"),
     ],
 )
 def test_records_file_errors(tmp_path, edit, expected):
@@ -271,6 +320,16 @@ def test_seed_goes_through_the_normal_save_path(demo_db):
             count("SELECT count(*) FROM rec_outcome WHERE status = 'WON' AND reason IS NOT NULL")
             == 0
         )
+        # (#790) 진행 중 7곳은 마지막 접촉에 다음 일정이 들어가 대시보드 달력에 보인다. 오늘은 2곳.
+        today = today_in_seoul()
+        upcoming = connection.execute(
+            "SELECT o.next_schedule_at, o.next_schedule_note FROM rec_outcome o "
+            "WHERE o.next_schedule_at IS NOT NULL AND o.version = ("
+            " SELECT max(version) FROM rec_outcome WHERE opp_id = o.opp_id)"
+        ).fetchall()
+        assert len(upcoming) == 7
+        assert sum(1 for day, _ in upcoming if day == today.isoformat()) == 2
+        assert all(note.startswith("(가상)") for _, note in upcoming)
         lost = connection.execute(
             "SELECT lost_reason_code FROM rec_outcome WHERE status = 'LOST' ORDER BY 1"
         ).fetchall()
