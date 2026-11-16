@@ -1,13 +1,15 @@
 // 의견 영역(S3, BR9.1·BR9.4·BR10.6): 목록 카드와 상세 맨 아래에서 같은 부품을 쓴다.
 // 버튼 하나를 누르면 즉시 저장(검토할 만함·추가 확인), '대상 아님'은 사유 칸이 인라인으로 펼쳐진다(모달 없음).
 // 저장되면 "저장됨 HH:MM"이 3초 보였다가 "의견: … (수정)"으로 남고, 실패하면 입력을 유지한다.
+// #798(PM 지시 2026-11-16): 목록 카드는 variant="select"로 단추 셋 대신 고르기 칸 하나를 쓴다. 저장 규칙은 같다
+// (영업 대상·검토 중은 바로 저장, 제외는 이유를 꼭 적어야 저장).
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Alert, Button, Input, Space, Typography } from 'antd';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { ApiError, postOpinion } from '../../api/client';
 import type { Meta, Opinion, OpinionRecord } from '../../api/types';
-import { errorTexts, opinionArea, opinionLabels } from '../../labels/ko';
+import { errorTexts, listSimple, opinionArea, opinionLabels } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
@@ -29,6 +31,8 @@ export interface OpinionAreaProps {
   /** 서버가 가진 현재 의견(없으면 null). 처음 보일 때만 쓴다. */
   record?: OpinionRecord | null;
   onSaved?: (record: OpinionRecord, meta: Meta) => void;
+  /** "buttons"(기본, 상세)는 단추 셋, "select"(목록 카드, #798)는 고르기 칸 하나. */
+  variant?: 'buttons' | 'select';
 }
 
 function previousText(previous: Record<string, unknown>): string {
@@ -36,7 +40,14 @@ function previousText(previous: Record<string, unknown>): string {
   return typeof value === 'string' && value in opinionLabels ? opinionLabels[value as Opinion] : '';
 }
 
-export default function OpinionArea({ oppId, evalId, record: initial, onSaved }: OpinionAreaProps) {
+export default function OpinionArea({
+  oppId,
+  evalId,
+  record: initial,
+  onSaved,
+  variant = 'buttons',
+}: OpinionAreaProps) {
+  const selectMode = variant === 'select';
   const { staffKey, canRecord } = useFrame();
   const [record, setRecord] = useState<OpinionRecord | null>(initial ?? null);
   const [editing, setEditing] = useState(false);
@@ -60,7 +71,7 @@ export default function OpinionArea({ oppId, evalId, record: initial, onSaved }:
   }, [reasonOpen]);
 
   const saving = savingOpinion !== null;
-  const showButtons = !record?.opinion || editing || savedAt !== null;
+  const showButtons = selectMode || !record?.opinion || editing || savedAt !== null;
   const trimmedReason = reason.trim();
 
   async function save(opinion: Opinion, reasonText?: string) {
@@ -121,9 +132,51 @@ export default function OpinionArea({ oppId, evalId, record: initial, onSaved }:
 
   const reasonError = reasonOpen && trimmedReason === '' ? opinionArea.reasonRequired : null;
 
+  // 고르기 칸에 보일 값: 제외 이유를 적는 동안은 "제외", 아니면 저장된 의견.
+  const selectValue = reasonOpen ? 'NOT_TARGET' : (record?.opinion ?? '');
+
   return (
     <div data-testid="opinion-area" style={{ display: 'grid', gap: 8 }}>
-      {showButtons ? (
+      {selectMode ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <label
+            htmlFor={`opinion-select-${oppId}`}
+            style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+          >
+            {listSimple.opinionSelectLabel}
+          </label>
+          <select
+            id={`opinion-select-${oppId}`}
+            value={selectValue}
+            disabled={!canRecord || saving}
+            onChange={(event) => {
+              const value = event.target.value as Opinion | '';
+              if (value) onPick(value);
+            }}
+            data-testid="opinion-select"
+            style={{ minHeight: 32, padding: '0 8px', borderRadius: 8, font: 'inherit' }}
+          >
+            <option value="" disabled>
+              {listSimple.opinionSelectPlaceholder}
+            </option>
+            {BUTTONS.map(({ value }) => (
+              <option key={value} value={value}>
+                {opinionLabels[value]}
+              </option>
+            ))}
+          </select>
+          {!canRecord ? (
+            <Typography.Text data-testid="opinion-pick-staff-text" type="secondary">
+              {opinionArea.pickStaffFirst}
+            </Typography.Text>
+          ) : null}
+          {record?.opinion === 'NOT_TARGET' && record.reason && !reasonOpen ? (
+            <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
+              {opinionArea.reasonLabel}: {record.reason}
+            </span>
+          ) : null}
+        </span>
+      ) : showButtons ? (
         <Space wrap size={8} role="group" aria-label={opinionArea.groupLabel}>
           {BUTTONS.map(({ value, testId }) => {
             const pressed = record?.opinion === value;

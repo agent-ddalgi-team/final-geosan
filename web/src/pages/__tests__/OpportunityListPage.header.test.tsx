@@ -15,7 +15,7 @@ import {
   LAST_PROCESS_STORAGE_KEY,
 } from '../../components/list/lastProcess';
 import { GROUP_PAGE_SIZE } from '../../components/list/useProcessGroups';
-import { listFilters, listSearch, states } from '../../labels/ko';
+import { bookmarkList, listFilters, listSearch, states } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -382,6 +382,38 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       expect(mockedGet).toHaveBeenCalledTimes(1);
       expect(locationText()).toBe('/opportunities');
       expect((screen.getByTestId('list-process-select') as HTMLSelectElement).value).toBe('');
+    });
+
+    it('Given 회사를 모두 관심 기업으로 옮겨 평소 목록이 빔 / When 목록을 연다 / Then "후보 없음" 대신 빠진 수와 스위치를 알린다 (#787)', async () => {
+      const allEmpty = NINE.map((item) => ({ ...item, count: 0 }));
+      mockedGet.mockResolvedValue(
+        reply([], { processCounts: allEmpty, total: 0, bookmarkedCount: 18 }),
+      );
+      renderPage();
+      expect(await screen.findByText(bookmarkList.emptyAllBookmarked(18))).toBeInTheDocument();
+      expect(screen.queryByText(states.listEmpty)).not.toBeInTheDocument();
+      expect(bookmarkList.emptyAllBookmarked(18)).toBe(
+        '관심 기업으로 옮긴 18곳은 이 목록에서 빠져 있습니다. 위의 [관심 기업도 함께 보기]를 켜면 함께 보입니다.',
+      );
+    });
+
+    it('Given 관심 기업도 함께 보기를 켬 / When 그래도 빈 목록 / Then 관심 기업 안내가 아니라 원래 빈 안내다 (#787)', async () => {
+      const allEmpty = NINE.map((item) => ({ ...item, count: 0 }));
+      mockedGet.mockResolvedValue(
+        reply([], { processCounts: allEmpty, total: 0, bookmarkedCount: 18 }),
+      );
+      renderPage('/opportunities?withBookmarked=true');
+      expect(await screen.findByText(states.listEmpty)).toBeInTheDocument();
+      expect(screen.queryByText(bookmarkList.emptyAllBookmarked(18))).not.toBeInTheDocument();
+    });
+
+    it('Given 관심 기업이 0곳 / When 빈 목록 / Then 원래 빈 안내다 (#787)', async () => {
+      const allEmpty = NINE.map((item) => ({ ...item, count: 0 }));
+      mockedGet.mockResolvedValue(
+        reply([], { processCounts: allEmpty, total: 0, bookmarkedCount: 0 }),
+      );
+      renderPage();
+      expect(await screen.findByText(states.listEmpty)).toBeInTheDocument();
     });
 
     it('묶음 요청 하나가 실패하면 그 묶음 자리에만 실패 안내와 [다시 시도]가 보이고, 나머지 묶음은 보인다', async () => {

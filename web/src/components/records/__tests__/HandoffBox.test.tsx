@@ -80,9 +80,13 @@ it('받는 사람에게만 [확인했어요]가 보이고, 누르면 확인을 �
   await waitFor(() => expect(onChanged).toHaveBeenCalled());
 });
 
-it('받는 사람이 아니면 [확인했어요]가 없다', () => {
+it('받는 사람이 아니면 [확인했어요] 대신 "받는 사람 확인 전"이 보인다(#794)', () => {
   renderBox('kim-gwajang');
   expect(screen.queryByTestId('handoff-confirm')).not.toBeInTheDocument();
+  const notes = screen.getAllByTestId('handoff-note');
+  expect(notes[0]).toHaveTextContent('박 이사 확인 전');
+  expect(notes[1]).toHaveTextContent('✓ 확인함');
+  expect(notes[1]).not.toHaveTextContent('확인 전');
 });
 
 it('[전달 사항 남기기]: 받는 사람 기본값은 마지막으로 기록한 사람, 글을 쓰고 [전달하기]', async () => {

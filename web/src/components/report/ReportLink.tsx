@@ -3,19 +3,28 @@
 import { Link } from 'react-router-dom';
 import { companyReport } from '../../labels/ko';
 
-export default function ReportLink({ oppId }: { oppId: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-      <Link
-        to={`/opportunities/${encodeURIComponent(oppId)}/report`}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={companyReport.linkHint}
-        data-testid="detail-report-link"
-        style={{ textDecoration: 'underline' }}
-      >
-        {companyReport.link} ↗
-      </Link>
-    </div>
+// #795: 대시보드 "방문 준비" 줄에서도 같은 링크를 쓴다(inline이면 오른쪽 정렬 칸 없이 링크만).
+export default function ReportLink({
+  oppId,
+  inline = false,
+  testId = 'detail-report-link',
+}: {
+  oppId: string;
+  inline?: boolean;
+  testId?: string;
+}) {
+  const link = (
+    <Link
+      to={`/opportunities/${encodeURIComponent(oppId)}/report`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={companyReport.linkHint}
+      data-testid={testId}
+      style={{ textDecoration: 'underline' }}
+    >
+      {companyReport.link} ↗
+    </Link>
   );
+  if (inline) return link;
+  return <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{link}</div>;
 }

@@ -82,6 +82,8 @@ class IndustryCount(_ApiModel):
 class RegionCount(_ApiModel):
     region: str
     count: int
+    # #798: 설정 listFilters.regionPresets 묶음(권역)이면 true, 주소에서 뽑은 시·군이면 false.
+    preset: bool = False
 
 
 class IngestCriteria(_ApiModel):
@@ -261,10 +263,28 @@ class IngestProcessOption(_ApiModel):
     name: str
 
 
+class IngestRegionGroup(_ApiModel):
+    """#798 새 후보 찾기 권역 하나. regions는 ingestOptions.regions 안의 값이다."""
+
+    label: str
+    regions: list[str]
+
+
+class DataBasisItem(_ApiModel):
+    """#798 "자료 기준" 줄 하나. 자료가 없는 종류는 싣지 않는다."""
+
+    kind: Literal["FACTORY_FILE", "FACTORY_LOOKUP", "WATER_LIST", "AI_JUDGMENT"]
+    as_of: date
+
+
 class IngestOptions(_ApiModel):
     processes: list[IngestProcessOption]
     regions: list[str]
     industries: list[str]
+    # #798: 설정 ingestion.regionGroups 그대로. 없으면 빈 배열.
+    region_groups: list[IngestRegionGroup] = Field(default_factory=list)
+    # #798: 새 후보 찾기 안 "자료 기준" 줄(저장된 행의 날짜만, 외부 호출 없음).
+    data_basis: list[DataBasisItem] = Field(default_factory=list)
 
 
 class CurrentStaff(_ApiModel):
@@ -461,6 +481,17 @@ class OpportunityCard(_ApiModel):
         default=None, description="AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
     )
     pick_reason: str | None = Field(default=None, description="AI가 고른 이유 한 줄")
+    fit_basis: Literal["PRODUCT", "HOMEPAGE"] | None = Field(
+        default=None,
+        description=(
+            "적합도를 무엇으로 정했나(#793): PRODUCT = 공장 등록 생산품, "
+            "HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null"
+        ),
+    )
+    previous_fit_level: FitLevel | None = Field(
+        default=None,
+        description="홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 아니면 null",
+    )
     own_plating_line_suspected: bool = Field(
         default=False,
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
@@ -522,6 +553,13 @@ class DetailHeader(_ApiModel):
             "이때 homepageStatus는 NEEDS_CONFIRMATION (C1, #511)"
         ),
     )
+    homepage_closed_reason: str | None = Field(
+        default=None,
+        description=(
+            "조사가 홈페이지를 닫힌 것으로 본 이유('호스팅 만료'·'빈 페이지'). "
+            "이때 homepageStatus는 NOT_FOUND (C1, #793)"
+        ),
+    )
     # 후보 찾기(#221, C1 "카드·상세에 더하는 칸"). 카드와 같은 이름·뜻.
     discovery_source: DiscoverySource = Field(
         default=DiscoverySource.CASE_FILE, description="회사가 목록에 들어온 길 (C1, #342)"
@@ -534,6 +572,17 @@ class DetailHeader(_ApiModel):
         default=None, description="AI가 본 공정 적합도. 점수 전 회사의 순서에만 쓴다"
     )
     pick_reason: str | None = Field(default=None, description="AI가 고른 이유 한 줄")
+    fit_basis: Literal["PRODUCT", "HOMEPAGE"] | None = Field(
+        default=None,
+        description=(
+            "적합도를 무엇으로 정했나(#793): PRODUCT = 공장 등록 생산품, "
+            "HOMEPAGE = 조사가 읽은 홈페이지. 적합도가 없으면 null"
+        ),
+    )
+    previous_fit_level: FitLevel | None = Field(
+        default=None,
+        description="홈페이지로 처음 다시 정하기 직전의 생산품 기준 적합도(#793). 아니면 null",
+    )
     own_plating_line_suspected: bool = Field(
         default=False,
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
