@@ -5,7 +5,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { getMenuBadges } from '../../../api/menuBadges';
-import SideMenu, { SIDEBAR_STORAGE_KEY } from '../SideMenu';
+import SideMenu, {
+  SIDEBAR_DETAIL_STORAGE_KEY,
+  SIDEBAR_STORAGE_KEY,
+  isDetailPath,
+} from '../SideMenu';
 import { frame } from '../../../labels/ko';
 
 vi.mock('../../../api/menuBadges', async (importOriginal) => ({
@@ -166,4 +170,20 @@ describe('새로 생긴 것 숫자 꼬리표 (#770)', () => {
     const [seen] = mockedBadges.mock.calls[0];
     expect(seen.list).not.toBeNull();
   });
+});
+
+it('기업 상세에서는 처음에 접혀 있고, 펴면 상세 기억에만 남아 다른 화면의 기억은 그대로다 (#803)', async () => {
+  const user = userEvent.setup();
+  window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false');
+  const view = renderMenu('/opportunities/opp-1');
+  expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
+  await user.click(screen.getByTestId('side-menu-toggle'));
+  expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
+  expect(window.localStorage.getItem(SIDEBAR_DETAIL_STORAGE_KEY)).toBe('false');
+  expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('false');
+  view.unmount();
+  renderMenu('/opportunities');
+  expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
+  expect(isDetailPath('/opportunities/opp-1/report')).toBe(false);
+  expect(isDetailPath('/opportunities')).toBe(false);
 });

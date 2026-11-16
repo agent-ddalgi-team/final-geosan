@@ -177,3 +177,18 @@ describe('상세 점수표 다섯 묶음(#611)', () => {
     ]);
   });
 });
+
+describe('점수 묶음 막대(#803)', () => {
+  it('Given A정밀 점수 When 점수표를 펼치면 Then 표 위에 배점이 있는 묶음마다 "점수/배점" 막대가 ①부터 보이고, 배점 없는 ③ 가까운가는 막대가 없다', () => {
+    renderOpen(apjeong);
+    const bars = screen.getAllByTestId('score-group-bar');
+    const { groups } = groupScoreItems(apjeong.items);
+    const weighted = groups.filter((group) => group.weight > 0);
+    expect(bars).toHaveLength(weighted.length);
+    expect(bars[0]).toHaveTextContent(scoreGroups.titles.PROCESS);
+    expect(bars[0]).toHaveTextContent(`${weighted[0].score}/${weighted[0].weight}`);
+    expect(screen.getByTestId('score-group-bars')).not.toHaveTextContent(
+      scoreGroups.titles.DISTANCE,
+    );
+  });
+});

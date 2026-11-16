@@ -2067,6 +2067,44 @@
         "title": "DetailHeader",
         "type": "object"
       },
+      "DetailMap": {
+        "description": "#803 상세 \"한눈에\" 작은 지도. 좌표만 싣는다(이름·주소·대표번호·메모 없음).",
+        "properties": {
+          "center": {
+            "$ref": "#/components/schemas/DetailMapPoint",
+            "description": "설정 geosan 좌표(대시보드 지도와 같은 값)"
+          },
+          "company": {
+            "$ref": "#/components/schemas/DetailMapPoint",
+            "description": "저장된 공공좌표(CSV·JUSO·MANUAL). 네이버 실시간 보완 좌표는 싣지 않는다(#222)"
+          }
+        },
+        "required": [
+          "center",
+          "company"
+        ],
+        "title": "DetailMap",
+        "type": "object"
+      },
+      "DetailMapPoint": {
+        "description": "#803 상세 작은 지도의 점. 대시보드 지도(center·lat·lng)와 같은 이름.",
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "DetailMapPoint",
+        "type": "object"
+      },
       "DetailRecords": {
         "properties": {
           "advice": {
@@ -5133,6 +5171,17 @@
             "default": false,
             "title": "Homepageneedsconfirm",
             "type": "boolean"
+          },
+          "map": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailMap"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null"
           },
           "previousEvalId": {
             "anyOf": [
