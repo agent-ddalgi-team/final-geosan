@@ -39,7 +39,11 @@ def facet_env(board_env):  # noqa: F811
 
 
 def facets(client, **params):
-    """목록을 불러 (목록 곳 수, 지역 곳 수, 산업 곳 수)를 돌려준다."""
+    """목록을 불러 (목록 곳 수, 지역 곳 수, 산업 곳 수)를 돌려준다.
+
+    지역에는 설정의 묶음 줄(충남, #798 권역 "천안·아산"·"세종·대전·공주")이
+    시·군 줄과 함께 온다(0곳 묶음은 없음).
+    """
     response = client.get(URL, params={"pageSize": 50, **params})
     assert response.status_code == 200, response.text
     meta = response.json()["meta"]
@@ -55,7 +59,7 @@ def test_unfiltered_list_counts_every_company(facet_env):
     client, _ = facet_env
     assert facets(client) == (
         10,
-        {"충남": 7, "천안시": 7, "대전광역시": 3},
+        {"천안·아산": 7, "세종·대전·공주": 3, "충남": 7, "천안시": 7, "대전광역시": 3},
         {"반도체": 3, "자동차 부품": 3},
     )
 
@@ -67,7 +71,7 @@ def test_bookmarked_three_never_counts_more_than_three(facet_env):
         assert set_bookmark(client, opp_id, True).status_code == 200
     total, regions, industries = facets(client, bookmarked="true")
     assert total == 3
-    assert regions == {"충남": 2, "천안시": 2, "대전광역시": 1}
+    assert regions == {"천안·아산": 2, "세종·대전·공주": 1, "충남": 2, "천안시": 2, "대전광역시": 1}
     assert industries == {"반도체": 2, "자동차 부품": 1}
     # 의견으로 더 걸러 목록이 0곳이 되면 선택지도 비어야 한다(전에는 관심 3곳 숫자가 그대로).
     assert facets(client, bookmarked="true", opinion="NOT_TARGET") == (0, {}, {})
@@ -81,13 +85,13 @@ def test_opinion_filter_counts_inside_the_filtered_list(facet_env):
     give_opinion(client, ids[6], "WORTH_REVIEW")
     assert facets(client, opinion="NEED_CHECK") == (
         2,
-        {"충남": 1, "천안시": 1, "대전광역시": 1},
+        {"천안·아산": 1, "세종·대전·공주": 1, "충남": 1, "천안시": 1, "대전광역시": 1},
         {"반도체": 1, "자동차 부품": 1},
     )
     # 의견을 아직 고르지 않은 7곳: 천안 5(반도체 2), 대전 2.
     assert facets(client, opinion="NONE") == (
         7,
-        {"충남": 5, "천안시": 5, "대전광역시": 2},
+        {"천안·아산": 5, "세종·대전·공주": 2, "충남": 5, "천안시": 5, "대전광역시": 2},
         {"반도체": 2, "자동차 부품": 2},
     )
 
@@ -96,7 +100,11 @@ def test_stage_filter_counts_inside_the_filtered_list(facet_env):
     """Given 진행 중 1곳(대전) / When stage 목록 / Then 지역은 대전 1곳뿐, 0곳인 선택지는 없다."""
     client, ids = facet_env
     record(client, ids[4], {"status": "IN_PROGRESS"})
-    assert facets(client, stage="IN_PROGRESS") == (1, {"대전광역시": 1}, {"자동차 부품": 1})
+    assert facets(client, stage="IN_PROGRESS") == (
+        1,
+        {"세종·대전·공주": 1, "대전광역시": 1},
+        {"자동차 부품": 1},
+    )
 
 
 def test_dashboard_column_filter_counts_inside_the_filtered_list(facet_env):
@@ -105,11 +113,19 @@ def test_dashboard_column_filter_counts_inside_the_filtered_list(facet_env):
     give_opinion(client, ids[0], "NEED_CHECK")
     assert set_bookmark(client, ids[3], True).status_code == 200
     assert set_bookmark(client, ids[4], True).status_code == 200
-    assert facets(client, filter="NEED_CHECK") == (1, {"충남": 1, "천안시": 1}, {"반도체": 1})
-    assert facets(client, filter="NO_OPINION") == (2, {"대전광역시": 2}, {"자동차 부품": 2})
+    assert facets(client, filter="NEED_CHECK") == (
+        1,
+        {"천안·아산": 1, "충남": 1, "천안시": 1},
+        {"반도체": 1},
+    )
+    assert facets(client, filter="NO_OPINION") == (
+        2,
+        {"세종·대전·공주": 2, "대전광역시": 2},
+        {"자동차 부품": 2},
+    )
     assert facets(client, filter="BOOKMARKED") == (
         3,
-        {"충남": 1, "천안시": 1, "대전광역시": 2},
+        {"천안·아산": 1, "세종·대전·공주": 2, "충남": 1, "천안시": 1, "대전광역시": 2},
         {"반도체": 1, "자동차 부품": 2},
     )
     # 아무도 없는 칸은 목록도 선택지도 비어 있다.
