@@ -209,6 +209,19 @@ class TodayCheckRow(_ApiModel):
     list_filter: str | None = None
 
 
+class ProgressCompany(_ApiModel):
+    """#800 영업 진행 띠 칸을 눌렀을 때 펴지는 회사 한 줄. 메모·연락처·대표번호는 없다."""
+
+    opp_id: str
+    customer_name: str
+    last_contact_at: date | None
+    next_schedule_at: date | None
+    # 최신 영업 기록의 일정 한 줄(schedule.note와 같은 값). 메모 글이 아니다.
+    next_schedule_note: str | None
+    # 접촉·견적 칸이고 다음 일정 없이 마지막 접촉 뒤 설정 dashboard.stalledAfterDays일 이상.
+    stalled: bool
+
+
 class Dashboard(_ApiModel):
     counts: DashboardCounts
     schedule: list[ScheduleItem]
@@ -218,6 +231,9 @@ class Dashboard(_ApiModel):
     breakdown: DashboardBreakdown | None = None
     # 0건인 줄은 없다. 모두 0건이면 빈 배열이다.
     today_checks: list[TodayCheckRow] = Field(default_factory=list)
+    # #800: 칸 이름(NOT_CONTACTED·IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 회사.
+    # 목록 길이는 counts의 그 칸 숫자와 같다.
+    progress_companies: dict[str, list[ProgressCompany]] = Field(default_factory=dict)
 
 
 DashboardEnvelope = Envelope[Dashboard]
@@ -326,6 +342,7 @@ def dashboard(
         ),
         check_left_opp_ids=check_left,
         staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
+        stalled_after_days=runtime.app_settings.dashboard.stalled_after_days,
     )
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),
