@@ -26,7 +26,8 @@
     "item": "유압 부품 무전해니켈",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": "park-lee"
+    "owner": "park-lee",
+    "cardReason": "알루미늄 유압 부품에 내식성·내마모성이 필요하고 가공동을 증축해 무전해니켈 수요가 있다 (가상 홈페이지·소식)"
   },
   "discoveryPaths": [
     {

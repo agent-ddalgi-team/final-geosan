@@ -26,7 +26,8 @@
     "item": "기계 체결 부품 아연도금",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": "park-lee"
+    "owner": "park-lee",
+    "cardReason": "철강 기계 체결 부품에 내식성이 필요하고 가공 설비를 늘려 아연도금 외주 물량이 생길 수 있다 (가상 홈페이지·소식)"
   },
   "discoveryPaths": [
     {
