@@ -78,7 +78,8 @@ describe('대시보드 › 오늘 정리 (#743)', () => {
     mockedDaily.mockReset();
   });
 
-  it('스위치가 켜져 있으면 "오늘 확인할 것" 제목 아래·줄 목록 위에 AI가 쓴 오늘 정리가 보인다', async () => {
+  it('스위치가 켜져 있으면 맨 위 "오늘 브리핑" 제목 아래·주제별 칸과 줄 목록 위에 AI가 쓴 오늘 정리가 보인다', async () => {
+    // 예전(#743)에는 "오늘 확인할 것" 안에 있었다. PM 결정 2026-11-16(#795)으로 브리핑 구역 맨 위로 옮겼다.
     mockedDaily.mockResolvedValue({
       data: {
         summary: '- 화 11/18 A정밀 방문 → 근처 1.5km B금속(관심)도 들르세요',
@@ -92,8 +93,8 @@ describe('대시보드 › 오늘 정리 (#743)', () => {
     });
     renderPage(ON);
     const brief = await screen.findByTestId('assistant-daily');
-    const today = screen.getByTestId('dashboard-today');
-    expect(today).toContainElement(brief);
+    expect(screen.getByTestId('dashboard-brief')).toContainElement(brief);
+    expect(after(brief, screen.getByTestId('dashboard-brief-schedule'))).toBe(true);
     expect(brief).toHaveTextContent('B금속(관심)');
     expect(brief).toHaveTextContent(assistantTexts.dailyMark);
     const firstRow = screen.getAllByTestId('dashboard-today-row')[0];
