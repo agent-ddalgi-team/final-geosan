@@ -370,6 +370,8 @@ export default function OpportunityDetailPage() {
             contactCount={contactCount}
             lastContactAt={lastContactAt}
             scoreItems={data.scores?.items}
+            // #803: 작은 지도(좌표가 없거나 가상 사례면 서버가 null을 준다).
+            map={data.map ?? null}
             // #803: 산업은 "한눈에" 산업 칸에서 바로 [확정]·[고치기](전에는 아래 따로 카드).
             industryEditor={
               <IndustryChips

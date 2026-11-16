@@ -525,6 +525,11 @@ export const coachSteps = {
   knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
 } as const;
 
+/** #803 상세 작은 지도. */
+export const detailMiniMap = {
+  openLabel: '네이버 지도에서 크게 보기 (새 창)',
+} as const;
+
 /** #803 "한눈에" 그림 줄. */
 export const glanceVisual = {
   /** 근거 상태 막대 옆 글: "점수 근거 7/8항목" */
