@@ -1734,6 +1734,51 @@ export const analysisCharts = {
   countTip: (label: string, value: number, unit: string) => `${label} ${value}${unit}`,
   unitTimes: '번',
   tablesTitle: '자세한 표',
+  /**
+   * #801(PM 지시 2026-11-16) 그림 위주 영업 분석: 깔때기 · 거절 이유 · 공정 × 산업 칸 · 회사별 타임라인.
+   * 위의 숫자 칸·도넛·공정 막대 글은 그림이 바뀌어 쓰지 않지만 대응표는 더하기만 하므로 남겨 둔다.
+   */
+  funnelTitle: '어디서 빠지나',
+  funnelStages: {
+    CONTACTED: '접촉',
+    REACHED: '연결',
+    DEMAND: '수요 확인',
+    QUOTE: '견적·샘플',
+    WON: '성사',
+  },
+  /** 단계 사이 화살표 글: "67% 넘어감" — 표본이 기준보다 적으면 비율 대신 "표본 적음" */
+  funnelPass: (percent: number) => `${percent}% 넘어감`,
+  funnelSmall: '표본 적음',
+  /** "여기서 멈춤 4곳 · 거절 2(가격 1 · 납기 1) · 보류 1 · 진행 중 1" */
+  funnelStopped: (count: number) => `여기서 멈춤 ${count}곳`,
+  funnelLost: (count: number, reasons: string) =>
+    reasons ? `거절 ${count}(${reasons})` : `거절 ${count}`,
+  funnelHold: (count: number) => `보류 ${count}`,
+  funnelOpen: (count: number) => `진행 중 ${count}`,
+  funnelNote:
+    '회사마다 기록으로 이른 가장 먼 단계로 셉니다. 거절·보류로 끝난 회사는 그때 머문 단계에서 멈춘 것으로 봅니다.',
+  gridTitle: '어느 조합에서 잘 되나',
+  /** 칸 글 두 줄: "3곳" / "성사 1" */
+  gridContacted: (contacted: number) => `${contacted}곳`,
+  gridWon: (won: number) => `성사 ${won}`,
+  gridRate: (percent: number) => `성사율 ${percent}%`,
+  gridCorner: '공정 ↓ · 산업 →',
+  gridNote: (min: number) =>
+    `회색 칸은 접촉한 회사가 ${min}곳보다 적어 성사율을 보지 않습니다. 한 회사가 공정·산업이 여럿이면 칸마다 셉니다.`,
+  gridTip: (process: string, industry: string, contacted: number, won: number) =>
+    `${process} × ${industry} · 접촉 ${contacted}곳 · 성사 ${won}곳`,
+  timelineTitle: '회사별로 어디서 멈췄나',
+  timelineReached: '연결됨',
+  timelineNotReached: '연결 안 됨',
+  timelineStep: '단계가 올라간 날',
+  /** 점에 손을 올리면: "10/20 전화 · 부재" */
+  timelineTip: (day: string, method: string | null, result: string | null, step: string | null) =>
+    [day, method, result, step ? `→ ${step}` : null].filter(Boolean).join(' · '),
+  timelineMore: (count: number) => `모두 보기 (${count}곳)`,
+  timelineLess: '접기',
+  timelineBefore: '흐린 점은 고른 기간 앞의 기록입니다.',
+  /** 표 접기 */
+  tablesToggle: '표로 보기',
 } as const;
 
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
