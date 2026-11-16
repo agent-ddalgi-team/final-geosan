@@ -1009,6 +1009,16 @@
             "title": "Firstcontactat",
             "type": "string"
           },
+          "furthestStep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "industries": {
             "items": {
               "type": "string"
@@ -1070,6 +1080,13 @@
                 "type": "null"
               }
             ]
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEvent"
+            },
+            "title": "Timeline",
+            "type": "array"
           }
         },
         "required": [
@@ -1085,7 +1102,9 @@
           "lastContactAt",
           "daysSinceFirstContact",
           "outcomeAt",
-          "daysToOutcome"
+          "daysToOutcome",
+          "furthestStep",
+          "timeline"
         ],
         "title": "CompanyRow",
         "type": "object"
@@ -1228,6 +1247,15 @@
         ],
         "title": "ContactReach",
         "type": "object"
+      },
+      "ContactResult": {
+        "enum": [
+          "REACHED",
+          "ABSENT",
+          "DECLINED"
+        ],
+        "title": "ContactResult",
+        "type": "string"
       },
       "CurrentStaff": {
         "description": "계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null.",
@@ -7649,6 +7677,58 @@
           "avgContactsToReach"
         ],
         "title": "StepRow",
+        "type": "object"
+      },
+      "TimelineEvent": {
+        "description": "(#801) 회사별 타임라인의 기록 행 하나(취소 안 한 행, 저장 순서). 코드값·날짜만.",
+        "properties": {
+          "at": {
+            "format": "date",
+            "title": "At",
+            "type": "string"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/OutcomeStatus"
+          },
+          "stepAfter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "at",
+          "method",
+          "result",
+          "stepAfter",
+          "status"
+        ],
+        "title": "TimelineEvent",
         "type": "object"
       },
       "TodayCheckItem": {

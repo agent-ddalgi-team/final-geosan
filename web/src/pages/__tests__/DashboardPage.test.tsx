@@ -11,6 +11,7 @@ import { ApiError } from '../../api/client';
 import type { Envelope } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import { sortSchedule } from '../../components/dashboard/ScheduleList';
+import { bookmarkGrid } from '../../components/dashboard/CountCards';
 import { filterName } from '../../components/list/ListViewBar';
 import { dashboardTexts, states } from '../../labels/ko';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
@@ -90,25 +91,32 @@ describe('DashboardPage', () => {
   });
 
   describe('건수 두 구역 (#357: 관심으로 고른 회사만 센다)', () => {
-    it('"관심 기업" 구역이 먼저, "영업 진행" 구역이 그 아래에 제목과 함께 보인다', async () => {
+    it('#795: "영업 진행" 띠는 맨 위 오늘 브리핑에, "관심 기업" 칸은 맨 아래 접힌 "더 보기"에 제목과 함께 보인다', async () => {
+      // 예전(#357·#766)에는 관심 기업 → 영업 진행 순이었다. PM 결정 2026-11-16(#795)으로 대시보드가
+      // "오늘 할 일·방문 준비" 중심이 되어, 진행 띠는 브리핑으로 올리고 관심 기업 건수는 접어 둔다.
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
       const counts = await screen.findByTestId('dashboard-counts');
-      const titles = within(counts)
-        .getAllByRole('heading', { level: 2 })
-        .map((heading) => heading.textContent);
-      expect(titles).toEqual([
-        '관심 기업',
+      expect(
+        within(counts)
+          .getAllByRole('heading', { level: 2 })
+          .map((heading) => heading.textContent),
+      ).toEqual(['관심 기업']);
+      const progress = screen.getByTestId('dashboard-section-progress');
+      expect(within(progress).getByRole('heading', { level: 2 })).toHaveTextContent(
         '영업 진행 관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
-      ]);
+      );
       expect(screen.getByTestId('dashboard-progress-hint')).toHaveTextContent(
         dashboardTexts.progressSectionHint,
       );
-      const bookmark = screen.getByTestId('dashboard-section-bookmark');
-      const progress = screen.getByTestId('dashboard-section-progress');
-      // 문서 순서로 관심 기업 구역이 영업 진행 구역보다 앞이다.
+      expect(screen.getByTestId('dashboard-brief')).toContainElement(progress);
+      const more = screen.getByTestId('dashboard-more');
+      expect(more).toContainElement(screen.getByTestId('dashboard-section-bookmark'));
+      expect(more).not.toHaveAttribute('open');
+      // 띠 칸 사이 화살표: 4칸이면 3개.
+      expect(within(progress).getAllByTestId('dashboard-progress-arrow')).toHaveLength(3);
       expect(
-        bookmark.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING,
+        progress.compareDocumentPosition(counts) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
 
@@ -137,6 +145,10 @@ describe('DashboardPage', () => {
       expect(read('dashboard-section-progress')).toEqual(progressCells);
       // 맨 앞 큰 칸은 관심 기업 전체다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveTextContent('관심 기업12곳');
+      // #787: 세 칸은 큰 칸 2 : 1 : 1로 늘 한 줄이다(노트북 폭에서 "검토 중"만 다음 줄로 떨어지지 않게).
+      expect(screen.getByTestId('dashboard-bookmark-cells').style.gridTemplateColumns).toBe(
+        'minmax(0, 2fr) repeat(2, minmax(0, 1fr))',
+      );
       // 칸 높이에 안쪽 여백이 더해져 아래 구역 제목과 겹치지 않게, 여백을 높이 안에 넣는다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveStyle({
         boxSizing: 'border-box',
@@ -159,7 +171,7 @@ describe('DashboardPage', () => {
       expect(await screen.findByTestId('location')).toHaveTextContent(url);
     });
 
-    it('관심 기업이 0곳이면 구역 아래에 추천 목록으로 가는 안내 한 줄이 보인다', async () => {
+    it('관심 기업이 0곳이면 구역 아래에 신규 거래처 찾기로 가는 안내 한 줄이 보인다(메뉴 이름, #787)', async () => {
       const zero = Object.fromEntries(
         Object.keys(fixtureData.counts).map((key) => [key, 0]),
       ) as Dashboard['counts'];
@@ -167,13 +179,13 @@ describe('DashboardPage', () => {
       renderPage();
       const notice = await screen.findByTestId('dashboard-bookmark-empty');
       expect(notice).toHaveTextContent(
-        '아직 관심으로 고른 회사가 없습니다. 추천 목록에서 [관심]을 눌러 담아 보세요',
+        '아직 관심으로 고른 회사가 없습니다. 신규 거래처 찾기에서 [관심]을 눌러 담아 보세요',
       );
       expect(within(screen.getByTestId('dashboard-section-bookmark')).getByText(/아직 관심/)).toBe(
         notice,
       );
       const link = screen.getByTestId('dashboard-bookmark-empty-link');
-      expect(link).toHaveTextContent(/^추천 목록$/);
+      expect(link).toHaveTextContent(/^신규 거래처 찾기$/);
       expect(link).toHaveAttribute('href', '/opportunities');
       // 0곳도 서버가 준 숫자이므로 칸은 그대로 보인다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveAttribute(
@@ -268,6 +280,12 @@ describe('DashboardPage', () => {
       await userEvent.click(await screen.findByTestId('dashboard-calendar-day-2026-11-05'));
       expect(screen.queryByTestId('dashboard-calendar-popover')).not.toBeInTheDocument();
     });
+  });
+
+  it('bookmarkGrid: 칸이 하나면 한 칸 전체, 둘 이상이면 맨 앞만 2배 (#787)', () => {
+    expect(bookmarkGrid(1)).toBe('minmax(0, 1fr)');
+    expect(bookmarkGrid(2)).toBe('minmax(0, 2fr) repeat(1, minmax(0, 1fr))');
+    expect(bookmarkGrid(3)).toBe('minmax(0, 2fr) repeat(2, minmax(0, 1fr))');
   });
 
   it('sortSchedule은 원본 배열을 바꾸지 않고 지남 → 날짜 순으로 돌려준다', () => {
@@ -472,19 +490,28 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('배치 (#679): 오늘 확인할 것 → 일정 달력 → 건수 칸 → 최근 내 기록 → 지도', () => {
-    it('검색은 맨 위 그대로이고, 구역이 약속한 순서로 놓인다', async () => {
+  describe('배치 (#795): 날짜·작은 검색 → 오늘 브리핑 → 오늘 할 일 → 작은 달력 → 방문 준비·지도 → 더 보기', () => {
+    it('구역이 약속한 순서로 놓이고, 관심 기업 건수·최근 내 기록은 접힌 "더 보기" 안에 있다', async () => {
+      // 예전(#679) 순서는 검색 → 오늘 확인할 것 → 큰 달력 → 건수 → 최근 기록 → 지도였다.
+      // PM 결정 2026-11-16(#795): 대시보드는 오늘 할 일과 방문 나가기 전 정리용이라 순서를 바꿨다.
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
       await screen.findByTestId('dashboard-counts');
       const order = [
+        screen.getByTestId('dashboard-date'),
         screen.getByTestId('dashboard-search-input'),
+        screen.getByTestId('dashboard-brief'),
         screen.getByTestId('dashboard-today'),
         screen.getByTestId('dashboard-calendar-section'),
-        screen.getByTestId('dashboard-counts'),
-        screen.getByTestId('dashboard-recent-section'),
         screen.getByTestId('dashboard-map-section'),
+        screen.getByTestId('dashboard-more'),
       ];
+      const more = screen.getByTestId('dashboard-more');
+      expect(more).toContainElement(screen.getByTestId('dashboard-counts'));
+      expect(more).toContainElement(screen.getByTestId('dashboard-recent-section'));
+      expect(screen.getByTestId('dashboard-map-section')).toHaveTextContent(
+        dashboardTexts.prepTitle,
+      );
       for (let index = 1; index < order.length; index += 1) {
         expect(
           order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING,

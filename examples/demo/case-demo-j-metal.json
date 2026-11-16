@@ -26,7 +26,8 @@
     "item": "배관 이음쇠 부동태",
     "project": null,
     "purpose": "NEW_PROPOSAL",
-    "owner": "park-lee"
+    "owner": "park-lee",
+    "cardReason": "스테인리스 배관 이음쇠에 내식성이 필요하고 조립동을 증설해 부동태 처리 물량이 늘 수 있다 (가상 홈페이지·소식)"
   },
   "discoveryPaths": [
     {

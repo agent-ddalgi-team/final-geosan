@@ -3,6 +3,7 @@ _설명: >-
   회사·메모·이유는 모두 지어낸 것이며 가상·거산 실제 사양 아님. 실제 회사·사람 이름과 연락처는 적지 않는다(적으면 거부된다).
   caseId는 가상 사례 파일(examples/case-apjeong.json, examples/demo/case-demo-*.json)의 caseId다.
   daysAgo는 "넣는 날 기준 며칠 전 접촉인지"다. 날짜를 박아 두지 않아 언제 넣어도 최근 12개월 안에 든다.
+  nextInDays·nextNote(#790)는 그 접촉에서 잡은 다음 일정이다. 넣는 날 기준 며칠 뒤(0 = 오늘)와 할 일 한 줄. 진행 중 7곳의 마지막 접촉에만 적어 대시보드 달력·"오늘 확인할 것"에 줄이 생기게 한다. 시연 DB를 발표 전날 만들면 오늘 일정은 "지난 일정 — 했나요?"로 보인다.
   answers의 questionId·answerId는 꼬리 질문 파일(examples/sales-questions.yaml)의 id다.
   성사·거절은 따로 적지 않는다. 마지막 접촉의 마무리 답(NEXT_ACTION END → CLOSE_RESULT → LOST_REASON)으로 정해진다.
   시연 표시(brand.demo)가 있는 DB에만 들어가고, 이미 영업 기록이 있는 회사는 건너뛴다.
@@ -167,6 +168,8 @@ companies:
         result: ABSENT
         memo: "(가상) 부재"
       - daysAgo: 18
+        nextInDays: 0
+        nextNote: "(가상) 소개서 받아 보셨는지 확인 전화"
         method: CALL
         result: REACHED
         memo: "(가상) 클립 도금을 외주로 맡기는 중. 소개 자료를 보내 달라고 함"
@@ -211,6 +214,8 @@ companies:
         result: ABSENT
         memo: "(가상) 부재"
       - daysAgo: 12
+        nextInDays: 0
+        nextNote: "(가상) 담당 부서에 다시 연결"
         method: CALL
         result: REACHED
         memo: "(가상) 담당 부서와 통화. 지금 도금 방식은 확인해 보고 알려 주겠다고 함"
@@ -262,6 +267,8 @@ companies:
         result: ABSENT
         memo: "(가상) 부재"
       - daysAgo: 3
+        nextInDays: 1
+        nextNote: "(가상) 부재였던 담당 부서에 다시 전화"
         method: EMAIL
         result: ABSENT
         memo: "(가상) 소개 메일을 보냄, 답 기다림"
@@ -286,6 +293,8 @@ companies:
           - { questionId: REPLY, answerId: NOT_YET }
           - { questionId: NEXT_ACTION, answerId: RECONTACT }
       - daysAgo: 14
+        nextInDays: 7
+        nextNote: "(가상) 견적 검토 결과 회신 확인"
         method: CALL
         result: ABSENT
         memo: "(가상) 검토 결과를 물으려 했으나 부재"
@@ -296,6 +305,8 @@ companies:
         result: ABSENT
         memo: "(가상) 소개 메일을 보냈으나 답 없음"
       - daysAgo: 8
+        nextInDays: 2
+        nextNote: "(가상) 시험 성적서가 필요한지 확인"
         method: CALL
         result: REACHED
         memo: "(가상) 지금은 직접 처리한다고 함. 물량이 늘면 다시 이야기하기로"
@@ -353,6 +364,8 @@ companies:
         result: ABSENT
         memo: "(가상) 부재"
       - daysAgo: 20
+        nextInDays: 4
+        nextNote: "(가상) 보낸 자료 보고 견적 문의할지 확인"
         method: CALL
         result: REACHED
         memo: "(가상) 유압 부품 도금 외주처를 찾는 중이라고 함"
@@ -368,6 +381,8 @@ companies:
         result: ABSENT
         memo: "(가상) 부재"
       - daysAgo: 2
+        nextInDays: 10
+        nextNote: "(가상) 첫 통화 다시 시도"
         method: CALL
         result: ABSENT
         memo: "(가상) 다시 걸었으나 부재"

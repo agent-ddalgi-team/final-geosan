@@ -87,7 +87,7 @@ geosan import-case examples/demo/case-demo-p-tech.json
 geosan import-case examples/demo/case-demo-q-industry.json
 geosan import-case examples/demo/case-demo-r-metal.json
 geosan evaluate
-geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7
+geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7(그중 다음 일정 7곳: 오늘 2곳 · 1~10일 뒤 5곳, #790)
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
