@@ -1,6 +1,7 @@
 """robots·약관 차단·내부망 차단과 실제 로컬 HTTP 응답 읽기를 검사한다."""
 
 import socket
+import ssl
 import time
 from email.message import Message
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -235,6 +236,161 @@ def test_local_http_reads_utf8_and_identifies_itself(monkeypatch):
         thread.join()
 
 
+@pytest.mark.parametrize(
+    ("url", "port", "host_header"),
+    [
+        ("https://example.org/products", 443, "example.org"),
+        ("http://example.org/products", 80, "example.org"),
+        ("http://example.org:443/products", 443, "example.org:443"),
+    ],
+    ids=["https 기본 포트", "http 기본 포트", "http인데 443"],
+)
+def test_host_header_has_no_default_port(monkeypatch, url, port, host_header):
+    """#810: HTTPS 첫 화면을 읽을 때 Host 머리에 ':443'을 붙이면 국내 호스팅 일부가 다른
+    사이트로 보내거나(404) 깨진 주소로 넘긴다. 기본 포트면 이름만, 따로 적은 포트만 붙인다."""
+    seen = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.append(self.headers.get("Host"))
+            body = "<p>공개 제품 볼트</p>".encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    connect = socket.create_connection
+    monkeypatch.setattr(reader, "_public_address", lambda *_: "93.184.215.14")
+
+    def local(address, timeout):
+        assert address == ("93.184.215.14", port)
+        return connect(server.server_address, timeout=timeout)
+
+    # 시험에서는 TLS 없이 같은 요청 머리를 본다(인증서 확인 코드는 그대로 불린다).
+    class PlainContext:
+        def wrap_socket(self, raw, server_hostname):
+            assert server_hostname == "example.org"
+            return raw
+
+    monkeypatch.setattr(socket, "create_connection", local)
+    monkeypatch.setattr(reader.ssl, "create_default_context", lambda **_: PlainContext())
+    try:
+        status, _, body = reader._get(url, time.monotonic() + 60)
+        assert status == 200 and "볼트" in body
+        assert seen == [host_header]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+# ---------- #810 인증서 오류 홈페이지만 http로 한 번 다시 읽기 ----------
+
+HTTP_BODY = "<p>공개 제품 볼트</p>"
+
+
+def _fallback_get(calls, *, https_error, http_moves_to=None):
+    """https는 주어진 오류로 실패하고, http는 robots 없음 + 본문(또는 이동)을 돌려주는 가짜."""
+
+    def get(url, _deadline):
+        calls.append(url)
+        if url.startswith("https://"):
+            raise https_error
+        if url.endswith("/robots.txt"):
+            return 404, {}, ""
+        if http_moves_to:
+            return 301, {"location": http_moves_to}, ""
+        return 200, {"content-type": "text/html; charset=utf-8"}, HTTP_BODY
+
+    return get
+
+
+def test_cert_error_reads_same_page_over_http_once(monkeypatch):
+    """Given https 인증서가 자체 서명 / When 스위치 켜고 읽기
+    / Then 같은 호스트·경로의 http로 한 번 읽고(robots도 http 쪽) 페이지 주소가 http로 남는다."""
+    calls = []
+    error = ssl.SSLCertVerificationError("self-signed certificate")
+    monkeypatch.setattr(reader, "_get", _fallback_get(calls, https_error=error))
+    page = reader.fetch(
+        "https://www.example.org/company", time.monotonic() + 60, http_fallback=True
+    )
+    assert page.url == "http://www.example.org/company"
+    assert "볼트" in page.text
+    assert calls == [
+        "https://www.example.org/robots.txt",
+        "https://www.example.org/robots.txt",
+        "http://www.example.org/robots.txt",
+        "http://www.example.org/company",
+    ]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        socket.gaierror("name not known"),
+        ConnectionRefusedError("refused"),
+        TimeoutError("timeout"),
+    ],
+    ids=["주소 못 찾음", "연결 거부", "시간 초과"],
+)
+def test_other_errors_are_not_retried_over_http(monkeypatch, error):
+    calls = []
+    monkeypatch.setattr(reader, "_get", _fallback_get(calls, https_error=error))
+    with pytest.raises(AppError) as raised:
+        reader.fetch("https://www.example.org/", time.monotonic() + 60, http_fallback=True)
+    assert raised.value.kind == "UNREACHABLE"
+    assert not any(url.startswith("http://") for url in calls)
+
+
+def test_switch_off_keeps_cert_error(monkeypatch):
+    calls = []
+    error = ssl.SSLCertVerificationError("certificate has expired")
+    monkeypatch.setattr(reader, "_get", _fallback_get(calls, https_error=error))
+    with pytest.raises(AppError, match="인증서 문제"):
+        reader.fetch("https://www.example.org/", time.monotonic() + 60)
+    assert not any(url.startswith("http://") for url in calls)
+
+
+def test_http_moving_back_to_https_keeps_verification(monkeypatch):
+    """Given http가 다시 https로 넘김
+    / Then 그 https도 검증하고 실패하면 실패(두 번 다시 읽지 않음)."""
+    calls = []
+    error = ssl.SSLCertVerificationError("self-signed certificate")
+    monkeypatch.setattr(
+        reader,
+        "_get",
+        _fallback_get(calls, https_error=error, http_moves_to="https://www.example.org/company"),
+    )
+    with pytest.raises(AppError, match="인증서 문제"):
+        reader.fetch("https://www.example.org/company", time.monotonic() + 60, http_fallback=True)
+    assert sum(url == "http://www.example.org/company" for url in calls) == 1
+
+
+def test_http_fallback_respects_http_robots(monkeypatch):
+    calls = []
+
+    def get(url, _deadline):
+        calls.append(url)
+        if url.startswith("https://"):
+            raise ssl.SSLCertVerificationError("self-signed certificate")
+        if url.endswith("/robots.txt"):
+            return 200, {}, "User-agent: *\nDisallow: /"
+        return 200, {"content-type": "text/html"}, HTTP_BODY
+
+    monkeypatch.setattr(reader, "_get", get)
+    with pytest.raises(AppError) as raised:
+        reader.fetch("https://www.example.org/", time.monotonic() + 60, http_fallback=True)
+    assert raised.value.kind == "ROBOTS_DISALLOW"
+    assert "http://www.example.org/" not in calls
+
+
 def test_deadline_prevents_reading():
     with pytest.raises(AppError, match="60초"):
         reader.remaining(time.monotonic() - 1)
@@ -457,3 +613,41 @@ def test_https_uses_certifi_bundle_and_keeps_verification(monkeypatch):
     with pytest.raises(Stop):
         reader._get("https://example.org/", time.monotonic() + 60)
     assert seen == {"cafile": reader.certifi.where()}
+
+
+# ---------- #810 스위치 ----------
+
+
+def _settings_with(tmp_path, change):
+    import yaml
+
+    from geosan.config.app_settings import load_app_settings
+
+    examples = __import__("pathlib").Path(__file__).resolve().parents[3] / "examples"
+    data = yaml.safe_load((examples / "app-settings.yaml").read_text(encoding="utf-8"))
+    change(data)
+    path = tmp_path / "settings.yaml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    return load_app_settings(path)
+
+
+@pytest.mark.parametrize(
+    "name", ["app-settings.yaml", "app-settings-demo.yaml", "app-settings-virtual.yaml"]
+)
+def test_http_fallback_switch_is_on_in_examples(name):
+    from geosan.config.app_settings import load_app_settings
+
+    examples = __import__("pathlib").Path(__file__).resolve().parents[3] / "examples"
+    assert load_app_settings(examples / name).research.http_fallback_on_cert_error is True
+
+
+def test_old_settings_without_switch_read_as_on(tmp_path):
+    settings = _settings_with(tmp_path, lambda d: d["research"].pop("httpFallbackOnCertError"))
+    assert settings.research.http_fallback_on_cert_error is True
+
+
+def test_switch_can_be_turned_off(tmp_path):
+    settings = _settings_with(
+        tmp_path, lambda d: d["research"].update(httpFallbackOnCertError=False)
+    )
+    assert settings.research.http_fallback_on_cert_error is False

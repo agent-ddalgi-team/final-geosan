@@ -288,6 +288,9 @@ class ResearchSettings(FileModel):
     # #511: 공식 홈페이지를 못 찾았을 때 회사가 직접 운영하는 공개 페이지 1개를 "확인 필요"로
     # 받을지. 기본 꺼짐(묶음·칸이 없는 파일도 꺼짐). PM이 켠다.
     allow_unofficial_page: bool = Field(default=False, strict=True)
+    # #810(PM 결정 2026-11-16): https 첫 화면이 인증서 검증 오류로만 실패하면 같은 주소의 http로
+    # 한 번 다시 읽는다. 인증서 확인은 끄지 않는다. 칸이 없는 옛 설정도 켜진 것으로 읽는다.
+    http_fallback_on_cert_error: bool = Field(default=True, strict=True)
 
 
 XLSX_DOWNLOAD_LOG_READY = False

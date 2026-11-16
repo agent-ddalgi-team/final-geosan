@@ -174,16 +174,34 @@ HOMEPAGE_FIT_PREFIX = "홈페이지 기준 · "
 CLOSED_HOMEPAGE_MARK = "[닫힘] "
 
 
+# #810: 적합도 높낮이(생산품 기준보다 낮은지 견줄 때만 쓴다).
+_FIT_RANK = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
+
+
 def apply_homepage_fit(
-    session: Session, customer: Customer, fit_level: str | None, reason: str
+    session: Session,
+    customer: Customer,
+    fit_level: str | None,
+    reason: str,
+    downgrade_basis: str | None = None,
 ) -> bool:
     """조사가 홈페이지로 다시 본 적합도를 회사 카드에 옮긴다(C1 #793). 옮겼으면 True.
 
     후보 찾기로 들어와 적합도가 있는 회사만 바꾼다(사례 파일 회사는 그대로). AI가 판단할
-    문장을 못 찾았으면(fit_level None) 그대로다. 처음 생산품 기준 적합도는 한 번만 남긴다.
+    문장을 못 찾았으면(fit_level None) 그대로다. 생산품 기준보다 낮은 판단은 반대 근거 종류
+    (downgrade_basis)가 있을 때만 옮긴다(#810). 처음 생산품 기준 적합도는 한 번만 남긴다.
     기회 카드 문장은 옛 추천 이유와 같을 때만 같이 바꾼다(#615와 같은 규칙, 손으로 고친 문장 보존).
     """
     if customer.ingest_batch_id is None or customer.fit_level is None or fit_level is None:
+        return False
+    # #810: 생산품 기준(처음 적합도가 있으면 그 값)보다 낮은 판단은 반대 근거 종류가 있을 때만
+    # 옮긴다. 홈페이지에 도금을 안 적어 둔 것만으로 내려가지 않게 한다.
+    product_level = (
+        customer.previous_fit_level
+        if customer.fit_basis == FIT_BASIS_HOMEPAGE and customer.previous_fit_level
+        else customer.fit_level
+    )
+    if downgrade_basis is None and _FIT_RANK.get(fit_level, 0) < _FIT_RANK.get(product_level, 0):
         return False
     new_reason = f"{HOMEPAGE_FIT_PREFIX}{reason.strip()}"
     for opportunity in session.scalars(

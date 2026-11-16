@@ -2364,6 +2364,11 @@ export const handoffTexts = {
   needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;
 
+/** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */
+export const sourceUrlTexts = {
+  insecure: ' (암호화 없는 주소로 읽음)',
+} as const;
+
 /**
  * #798(PM 지시 2026-11-16): 신규 거래처 찾기 다시 짜기 — 새 후보 찾기 접기, 지역 권역, 조건 더 보기, 자료 기준,
  * 카드 의견 고르기 칸.

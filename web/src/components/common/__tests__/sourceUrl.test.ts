@@ -8,9 +8,11 @@ describe('splitSourceRef', () => {
   });
 
   it('글 뒤의 주소만 주소 조각으로 나눈다', () => {
+    // #810(PM 결정 2026-11-16): http 출처 뒤에는 "(암호화 없는 주소로 읽음)" 글 조각이 붙는다.
     expect(splitSourceRef('코파스 홈페이지 http://kofas.com/productK/')).toEqual([
       { text: '코파스 홈페이지 ' },
       { text: 'http://kofas.com/productK/', href: 'http://kofas.com/productK/' },
+      { text: ' (암호화 없는 주소로 읽음)' },
     ]);
   });
 

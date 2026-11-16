@@ -40,7 +40,7 @@ def answer():
         "companySummary": {"line": "정밀 볼트 생산 기업", "highlights": ["자동차용 부품 가공"]},
         "itemInputProposals": [],
         "processLinkProposals": [],
-        "fitReview": {"fitLevel": None, "reason": "", "quote": None},
+        "fitReview": {"fitLevel": None, "reason": "", "quote": None, "downgradeBasis": None},
     }
 
 
@@ -370,3 +370,58 @@ def test_expired_deadline_rolls_back_but_keeps_usage(extract_env, monkeypatch):
     )
     result = flow_extract.run_extract(case.opp_id, URL)
     assert not result.ok and counts() == before and support.logs()[0].cost_usd > 0
+
+
+# ---------- #810 인증서 오류 홈페이지 http로 한 번 다시 읽기 (조사 흐름) ----------
+
+
+def _cert_error_fetch(calls):
+    from geosan.evidence.reader import CertificateError
+
+    def fetch(url, deadline):
+        calls.append(url)
+        if url.startswith("https://"):
+            raise CertificateError(
+                "홈페이지를 읽을 수 없습니다. (인증서 문제)",
+                "공개 본문을 직접 붙여넣어 주세요.",
+                status=422,
+                kind="UNREACHABLE",
+            )
+        return Page(url, BODY)
+
+    return fetch
+
+
+def test_cert_error_research_reads_http_and_marks_it(extract_env, monkeypatch):
+    """Given https 인증서 오류 홈페이지 / When 조사 / Then http 주소로 한 번 읽고
+    근거 출처 주소가 http로 남으며 조사 요약 끝에 '암호화 없는 주소로 읽음'이 붙는다."""
+    case, _transport = extract_env
+    calls = []
+    monkeypatch.setattr(flow_extract, "fetch", _cert_error_fetch(calls))
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert result.ok, result.error
+    assert calls == [URL, "http://example.org/company"]
+    assert result.summary.endswith(" · 암호화 없는 주소로 읽음")
+    with session_scope() as session:
+        refs = [
+            row.source_ref
+            for row in session.scalars(select(Evidence).where(Evidence.is_llm_proposed.is_(True)))
+        ]
+    assert refs and all("http://example.org/company" in ref for ref in refs)
+
+
+def test_cert_error_research_with_switch_off_fails(extract_env, monkeypatch):
+    case, transport = extract_env
+    calls = []
+    monkeypatch.setattr(flow_extract, "fetch", _cert_error_fetch(calls))
+    original = flow_extract.read_app_settings
+
+    def settings_off(session):
+        settings = original(session)
+        settings.research.http_fallback_on_cert_error = False
+        return settings
+
+    monkeypatch.setattr(flow_extract, "read_app_settings", settings_off)
+    result = flow_extract.run_extract(case.opp_id, URL)
+    assert not result.ok and result.error.kind == "UNREACHABLE"
+    assert calls == [URL] and transport.call_count == 0
