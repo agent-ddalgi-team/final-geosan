@@ -262,3 +262,65 @@ def demo_settings_registered_again(ctx):
     assert ctx["code"] == 0, ctx["out"]
     with session_scope(ctx["db"]) as session:
         assert is_demo_database(session)
+
+
+# ---------- #811: 시연 DB에서만 가상 회사에 가상 위치 ----------
+
+
+def _coordinates(db_path: Path) -> list[tuple[float | None, float | None, str | None]]:
+    connection = sqlite3.connect(str(db_path))
+    try:
+        return connection.execute(
+            "SELECT lat, lng, geocode_source FROM opp_customer WHERE is_virtual = 1"
+        ).fetchall()
+    finally:
+        connection.close()
+
+
+@then(parsers.parse('가상 회사 18곳에 가상 위치가 저장되고 출력에 "{text}"이 보인다'))
+def demo_locations_saved(ctx, text):
+    assert ctx["code"] == 0, ctx["out"]
+    assert text in ctx["out"]
+    rows = _coordinates(ctx["db"])
+    assert len(rows) == 18
+    assert all(
+        source == "DEMO" and lat is not None and lng is not None for lat, lng, source in rows
+    )
+
+
+@then('대시보드 지도에 성사 4곳·진행 중 7곳이 점으로 보이고 이름마다 "가상"이 들어 있다')
+def demo_map_points(ctx):
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/dashboard/map", headers=STAFF)
+        ctx["cards"] = client.get("/api/v1/opportunities").json()["data"]
+    assert response.status_code == 200, response.text
+    ctx["map"] = response.json()["data"]
+    groups = [point["group"] for point in ctx["map"]["points"]]
+    assert sorted(groups) == ["IN_PROGRESS"] * 7 + ["WON_THIS_YEAR"] * 4
+    assert ctx["map"]["missingCoordinates"] == 0
+    assert all("가상" in point["customerName"] for point in ctx["map"]["points"])
+    assert all(isinstance(point["distanceKm"], float) for point in ctx["map"]["points"])
+
+
+@then("진행 중 7곳마다 같이 들를 곳 묶음이 있고 거리는 숫자다")
+def demo_visit_groups(ctx):
+    in_progress = {p["oppId"] for p in ctx["map"]["points"] if p["group"] == "IN_PROGRESS"}
+    groups = ctx["map"]["visitGroups"]
+    assert {group["oppId"] for group in groups} == in_progress
+    for group in groups:
+        assert group["nearby"], group
+        assert all(isinstance(row["distanceKm"], float) for row in group["nearby"])
+
+
+@then("목록 카드 18곳 모두 거산에서 거리가 있다")
+def demo_card_distances(ctx):
+    assert len(ctx["cards"]) == 18
+    assert all(isinstance(card["distanceKm"], float) for card in ctx["cards"])
+
+
+@then("가상 회사에 좌표가 하나도 없다")
+def no_demo_locations(ctx):
+    assert ctx["code"] == 1, ctx["out"]
+    rows = _coordinates(ctx["db"])
+    assert len(rows) == 18
+    assert all(row == (None, None, None) for row in rows)
