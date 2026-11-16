@@ -64,6 +64,7 @@ def config_ui(session: SessionDep):
                 "industries": settings.industries,
             },
             current_staff=_current_staff(session),
+            operations_staff_keys=settings.operations.staff_keys,
         ),
         meta=Meta(
             updated_at=session.scalar(select(func.max(AppSetting.updated_at))),
