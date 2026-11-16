@@ -334,6 +334,27 @@ export const dashboardTexts = {
   breakdownEmptyAction: '추천 목록 가기',
   loadError: '대시보드를 불러오지 못했습니다.',
   goToList: '신규 거래처 찾기로 이동',
+  // #795(PM 결정 2026-11-16): 오늘 할 일·방문 준비 중심 배치.
+  /** 맨 위 날짜 줄. "11/16(월) 오늘" */
+  todayDate: (day: string) => `${day} 오늘`,
+  briefTitle: '오늘 브리핑',
+  briefScheduleTitle: '일정',
+  /** "지난 1 · 오늘 2" */
+  briefScheduleCounts: (overdue: number, today: number) => `지난 ${overdue} · 오늘 ${today}`,
+  briefScheduleNone: '오늘 일정 없음',
+  briefHandoffTitle: '전달 사항',
+  briefHandoffCount: (n: number) => `확인 전 ${n}곳`,
+  prepTitle: '방문 준비',
+  prepHint: '오늘·이번 주 일정 회사 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
+  prepEmpty: '오늘부터 7일 안에 잡힌 일정이 없습니다.',
+  prepToday: '오늘',
+  prepDetail: '상세',
+  prepHq: '거산',
+  /** "같이 들를 곳 2곳" */
+  prepNearby: (n: number) => `같이 들를 곳 ${n}곳`,
+  /** 거리 화살표 위 글자. "8.2km" */
+  prepKm: (km: number) => `${km.toFixed(1)}km`,
+  moreTitle: '더 보기 · 관심 기업 건수 · 최근 내 기록',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
