@@ -206,7 +206,7 @@ operations:
 
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 실행 흐름 연결 전에는 꺼 둔다.
 candidateWebSearch:
-  enabled: true          # PM 결정 2026-11-17(#314·#823): 켜 두고 배포 뒤 2~4주 데이터로 계속 쓸지 정한다
+  enabled: false         # 실제로 켜는 것은 실제 DB 설정에서(PM 결정 2026-11-17 #314·#823). 예시·시험 기본은 끔
   dailySearchLimit: 20
   cacheDays: 15
   searchesPerRun: 3      # 한 번 요청에서 AI가 검색하는 횟수(#706: 1번 2곳, 3번 5~10곳)
