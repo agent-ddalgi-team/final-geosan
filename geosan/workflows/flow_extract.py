@@ -23,10 +23,13 @@ from geosan.evidence.homepage import protected_page_kind
 from geosan.evidence.public_items import approve_pages, check_opportunity
 from geosan.evidence.reader import (
     MAX_BYTES,
+    CertificateError,
     Page,
     SiteClosedError,
     fetch,
     fetch_more,
+    http_fallback_url,
+    read_insecurely,
     remaining,
     validate_url,
 )
@@ -117,7 +120,20 @@ def run_extract(
             # #557: 첫 화면과 이름이 맞는 같은 사이트 안쪽 페이지를 읽어 AI는 한 번만 부른다.
             discovery = settings.homepage_discovery
             try:
-                first = fetch(url, deadline)
+                try:
+                    first = fetch(url, deadline)
+                except CertificateError:
+                    # #810: https 인증서 검증 오류로만 못 읽으면
+                    # 같은 주소의 http로 한 번 다시 읽는다
+                    # (설정 스위치, 인증서 확인은 끄지 않음 — http가 https로 넘기면 그대로 검증).
+                    plain = (
+                        http_fallback_url(url)
+                        if settings.research.http_fallback_on_cert_error
+                        else None
+                    )
+                    if plain is None:
+                        raise
+                    first = fetch(plain, deadline)
             except SiteClosedError as closed:
                 # #793: 닫힌 홈페이지는 '홈페이지 못 찾음'으로 바꿔 둔다(담당자 확정 주소는 그대로).
                 if stored_url and validate_url(stored_url) == url:
@@ -188,6 +204,7 @@ def run_extract(
                 session.get(Customer, customer_id),
                 result.fit_review.fit_level,
                 result.fit_review.reason,
+                result.fit_review.downgrade_basis,
             )
             evidence = store_extraction(
                 session,
@@ -246,6 +263,9 @@ def run_extract(
             f"근거 {len(evidence)}건·질문 {question_count}건·점수 제안 {proposal_count}건·"
             f"공정 제안 {link_count}건 저장, 재평가 완료"
         )
+        if read_insecurely(url, pages[0].url):
+            # #810: 인증서 오류로 http로 읽었으면 조사 결과에 남긴다(근거 출처 주소도 http로 남음).
+            evaluated.summary += " · 암호화 없는 주소로 읽음"
         evaluated.counts = {
             "evidenceCount": len(evidence),
             "requirementCandidateCount": len(result.requirement_candidates),

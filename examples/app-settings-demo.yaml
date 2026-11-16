@@ -142,6 +142,9 @@ research:
   # 공식 홈페이지가 없는 회사의 공개 페이지 찾기(#511)는 보류한다(#744, PM 결정 2026-11-14:
   # 효과 없음 — 실측 8곳 중 0곳). 키는 옛 설정과 맞추려고 남겨 두고 켜지 않는다.
   allowUnofficialPage: false
+  # #810(PM 결정 2026-11-16): https 인증서 오류(자체 서명·기한 만료)로만 못 읽으면 같은 주소의 http로 한 번 다시 읽는다.
+  # 인증서 확인은 끄지 않는다. 그렇게 읽은 근거는 출처가 http로 남고 화면에 "암호화 없는 주소로 읽음"이 붙는다.
+  httpFallbackOnCertError: true
 
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:
