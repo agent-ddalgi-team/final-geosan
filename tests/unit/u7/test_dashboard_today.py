@@ -214,8 +214,10 @@ def test_today_rows_never_carry_memo_text(today_env):
     for row in data["todayChecks"]:
         assert set(row) == {"kind", "count", "items", "listFilter"}
         for item in row["items"]:
-            # #766: 기록 번호(숫자) 하나만 더해졌다. 메모 글 칸은 여전히 없다.
-            assert set(item) == {"oppId", "customerName", "dueAt", "note", "outcomeVersion"}
+            # #766: 기록 번호(숫자)가 더해졌다. #794(PM 확인 2026-11-16): 전달 사항 줄에만 글 앞부분
+            # text가 생겼고 다른 줄은 늘 비어 있다. 일반 메모 글은 어느 줄에도 실리지 않는다.
+            assert set(item) == {"oppId", "customerName", "dueAt", "note", "outcomeVersion", "text"}
+            assert item["text"] is None
 
 
 def test_dashboard_part_builds_schedule_rows_without_check_left(today_env):
