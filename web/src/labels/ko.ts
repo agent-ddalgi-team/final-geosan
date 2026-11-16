@@ -2236,6 +2236,8 @@ export const handoffTexts = {
   /** "검수 담당 → 영업 담당 · 11/16" */
   line: (from: string, to: string, day: string) => `${from} → ${to} · ${day}`,
   waiting: (n: number) => `확인 전 ${n}건`,
+  /** #794: 받는 사람이 아닌 사람에게 보이는 상태. "박 이사 확인 전" */
+  waitingFor: (to: string) => `${to} 확인 전`,
   saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
   needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;

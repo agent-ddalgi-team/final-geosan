@@ -63,6 +63,8 @@ def schedule_items(env, body):
             "dueAt": "2026-11-05",
             "note": "견적",
             "outcomeVersion": 1,
+            # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
+            "text": None,
         },
         {
             "oppId": ids["b"],
@@ -70,6 +72,8 @@ def schedule_items(env, body):
             "dueAt": "2026-11-05",
             "note": "방문",
             "outcomeVersion": 1,
+            # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
+            "text": None,
         },
     ]
     assert overdue_row["items"] == [
@@ -79,6 +83,8 @@ def schedule_items(env, body):
             "dueAt": "2026-11-01",
             "note": "",
             "outcomeVersion": 1,
+            # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
+            "text": None,
         }
     ]
 
@@ -96,6 +102,8 @@ def check_left_list(env, body):
             "dueAt": None,
             "note": None,
             "outcomeVersion": None,
+            # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
+            "text": None,
         }
     ]
     listed = client.get("/api/v1/opportunities", params={"filter": row["listFilter"]}).json()
