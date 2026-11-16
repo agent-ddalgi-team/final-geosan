@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, true
 from sqlalchemy.orm import Session
 
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
@@ -743,6 +743,63 @@ def dashboard_population(dataset_kind: str):
         )
     )
     return population
+
+
+# 왼쪽 메뉴 📊 숫자(#770)에 넣는 "오늘 확인할 것" 줄. "확인할 것이 남은 관심 기업"은 넣지 않는다.
+MENU_BADGE_TODAY_KINDS = (TODAY_SCHEDULE_OVERDUE, TODAY_SCHEDULE_TODAY, TODAY_HANDOFF_FOR_ME)
+
+
+def today_badge_count(
+    session: Session, *, dataset_kind: str, staff_key: str | None, today: date
+) -> int:
+    """왼쪽 메뉴 📊 숫자(#770): 오늘 확인할 것의 지난 일정 + 오늘 일정 + 나에게 온 전달 사항 곳 수.
+
+    대시보드 줄과 같은 계산(`_schedule`·`build_today_checks`)을 그대로 불러 숫자가 어긋나지 않는다.
+    """
+    population = dashboard_population(dataset_kind)
+    schedule, _due = _schedule(session, population, today)
+    rows = build_today_checks(
+        session, schedule, today, None, population=population, staff_key=staff_key
+    )
+    return sum(row.count for row in rows if row.kind in MENU_BADGE_TODAY_KINDS)
+
+
+def bookmark_news_count(
+    session: Session, *, dataset_kind: str, staff_key: str | None, since: datetime
+) -> int:
+    """왼쪽 메뉴 ⭐ 숫자(#770): since 뒤에 다른 사람이 기록·메모를 남겼거나 조사 결과가 새로 붙은
+    관심 기업 수. staff_key가 없으면(보기 전용) 누가 남겼든 센다. 곳 수만 돌려준다."""
+    population = dashboard_population(dataset_kind)
+    outcome_by = Outcome.created_by != staff_key if staff_key else true()
+    note_by = Note.staff_key != staff_key if staff_key else true()
+    changed: set[str] = set(
+        session.scalars(
+            select(Outcome.opp_id).where(
+                Outcome.opp_id.in_(population),
+                Outcome.cancelled_at.is_(None),
+                Outcome.created_at > since,
+                outcome_by,
+            )
+        )
+    )
+    changed.update(
+        session.scalars(
+            select(Note.opp_id).where(
+                Note.opp_id.in_(population),
+                Note.cancelled_at.is_(None),
+                Note.created_at > since,
+                note_by,
+            )
+        )
+    )
+    changed.update(
+        session.scalars(
+            select(Opportunity.opp_id)
+            .join(Customer, Opportunity.customer_id == Customer.customer_id)
+            .where(Opportunity.opp_id.in_(population), Customer.researched_at > since)
+        )
+    )
+    return len(changed)
 
 
 def build_dashboard(

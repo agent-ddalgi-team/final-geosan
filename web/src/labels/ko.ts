@@ -198,6 +198,15 @@ export const frame = {
   coachDockCollapse: '영업 코치 접기',
   coachDockExpand: '영업 코치 펴기',
   sidebarExpand: '메뉴 펴기',
+  /**
+   * 왼쪽 메뉴 숫자 꼬리표의 뜻(#770). 손을 올리면 보이고 화면 읽기 도구가 읽는다.
+   * 대시보드는 지난 일정 + 오늘 일정 + 나에게 온 전달 사항, 나머지 둘은 마지막으로 연 뒤 새로 생긴 곳.
+   */
+  menuBadge: {
+    dashboard: (n: number) => `오늘 확인할 것 ${n}곳`,
+    list: (n: number) => `새 후보 ${n}곳`,
+    bookmarks: (n: number) => `새 소식 ${n}곳`,
+  },
   /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
   currentStaff: (name: string) => `${name} 님`,
   logout: '로그아웃',

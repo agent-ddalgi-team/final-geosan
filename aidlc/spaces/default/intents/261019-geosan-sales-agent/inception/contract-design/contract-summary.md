@@ -546,6 +546,12 @@ paths:
       summary: 활동 요약 (U7, P2)
       parameters: [ { name: period, in: query, schema: { type: string, enum: [WEEK, MONTH, CUSTOM] } }, { name: from, in: query, schema: { type: string, format: date } }, { name: to, in: query, schema: { type: string, format: date } } ]
       responses: { '200': { description: Envelope } }
+  /menu-badges:   # (추가 2026-11-16 #770 — PM 결정 2026-11-16, 세는 기준은 이슈 본문 추천안대로)
+    get:
+      summary: 왼쪽 메뉴 "새로 생긴 것" 숫자. 곳 수만 돌려준다(회사 이름·글·기록 내용 없음). 읽기 전용, AI 호출 없음. 보기 전용·담당자 키 없음도 읽을 수 있다(접속 보호가 켜져 있으면 401이 먼저). 계정 방식이면 로그인한 사람, 공용 방식이면 X-Staff-Key가 "나"다(기록 담당자가 아니면 "나" 없음)
+      parameters: [ { name: listSince, in: query, schema: { type: string, format: date-time }, description: '신규 거래처 찾기를 마지막으로 연 시각(시간대 포함). 브라우저가 기억해 보낸다. 없으면 list는 0' }, { name: bookmarksSince, in: query, schema: { type: string, format: date-time }, description: '관심 기업 화면을 마지막으로 연 시각. 없으면 bookmarks는 0' } ]
+      responses: { '200': { description: 'Envelope({ dashboard: integer, list: integer, bookmarks: integer })' }, '400': { description: 시간대 없는 시각 } }
+      #   dashboard = `/dashboard` todayChecks의 지난 일정(SCHEDULE_OVERDUE) + 오늘 일정(SCHEDULE_TODAY) + 나에게 온 전달 사항(HANDOFF_FOR_ME) 줄의 곳 수 합(같은 계산을 그대로 부른다 — "확인할 것이 남은 관심 기업"은 넣지 않음). 화면을 열어도 남은 일이면 그대로. list = 신규 거래처 찾기 목록과 같은 대상(활성 묶음의 마지막 전체 회차 + 그 뒤 모은 평가) 가운데 후보로 들어온 시각(opp_customer.ingested_at)이 listSince 뒤인 곳 수. bookmarks = 관심 기업(대시보드와 같은 대상) 가운데 bookmarksSince 뒤에 "나"가 아닌 사람이 영업 기록(rec_outcome, 취소 제외)이나 메모(rec_note, 취소 제외 — 전달 사항·변경 기록 포함)를 남겼거나 조사 결과가 새로 붙은(opp_customer.researched_at) 곳 수("나"가 없으면 누구든). 영업 분석은 숫자 없음. "마지막으로 연 시각"은 서버에 저장하지 않는다(새 표·열 없음) — 화면이 브라우저에 담당자별로 기억한다
   /export/xlsx:
     get:
       summary: 엑셀 출력 (U7, P1 사용자 지시). TransferGuard OUTPUT_EXPORT 검사 뒤, 가상·내부용 표시 포함. 거부면 전체 중단
@@ -1309,6 +1315,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C1·C4·C6 | (2026-11-16, PM 결정 — 전달 사항을 따로 두고 받는 사람이 확인, 코치가 짚기 #771 · #756) (추가 2026-11-16 #771 — PM 결정 2026-11-15·16, #756 하위) 메모 종류 HANDOFF, rec_note 열 toStaffKey·confirmedAt·confirmedBy(더하는 마이그레이션), `POST /notes`의 toStaffKey, `POST /notes/{noteId}/confirm`, 상세 records.handoffs, todayChecks 줄 HANDOFF_FOR_ME, 코치 보낼 글 [전달 사항]. 더하는 변경 | #771 · #756 |
 | C1 | (2026-11-16, PM 결정 — 영업 코치 답 아래 [넣기], 화면에 맞는 자료 #774 · #756) (추가 2026-11-16 #774 — PM 결정 2026-11-16, #756 셋째 조각) `/assistant/ask` 요청 page·조회 CANDIDATES(신규 거래처 찾기에서만)·응답 suggestions, 새 경로 `POST /opportunities/{oppId}/schedule`. 새 설정 없음(후보 수 상한은 assistant.maxCompanies). 더하는 변경 | #774 · #756 |
 | C1 | (2026-11-16, PM 결정 2026-11-15 — 영업 분석을 고른 기간으로 보기, 기준은 기간 안 접촉 #760) (추가 2026-11-16 #760 — PM 결정 2026-11-15) `GET /sales-analysis`에 선택 질의 `from`·`to`(한국 날짜), 응답 `basis.from`·`basis.to`. 둘 다 비우면 지금과 같다. 세는 법은 C1 `/sales-analysis`의 #760 줄. 더하는 변경만 | #760 |
+| C1 | (2026-11-16, PM 결정 — 왼쪽 메뉴에 새로 생긴 것 숫자 #770) (추가 2026-11-16 #770 — PM 결정 2026-11-16) 새 경로 `GET /menu-badges`(listSince·bookmarksSince → dashboard·list·bookmarks 곳 수). 새 표·열·설정 없음(마지막으로 연 시각은 브라우저가 기억). 더하는 변경 | #770 |
 
 ## 6. 전달 계획·뒤 단계로 넘기는 것
 
