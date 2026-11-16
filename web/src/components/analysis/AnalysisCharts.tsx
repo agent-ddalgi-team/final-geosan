@@ -205,6 +205,17 @@ export function countTicks(value: number): number[] {
   return Array.from({ length: max / step + 1 }, (_, i) => i * step);
 }
 
+/**
+ * 막대 아래 공정 이름 줄(#787). 괄호 앞은 첫째 줄, 괄호 부분은 둘째 줄에 작게 둔다.
+ * 줄마다 `maxChars`를 넘을 때만 잘라 "…"를 붙인다. 전에는 늘 6글자에서 잘라 "아연도금(전…"이 됐다.
+ * 예: "아연도금(전기아연도금)" → ["아연도금", "(전기아연도금)"]
+ */
+export function processLabelLines(name: string, maxChars: number): string[] {
+  const fit = (text: string) => (text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text);
+  const match = /^(.+?)\s*(\(.+\))$/.exec(name);
+  return match ? [fit(match[1]), fit(match[2])] : [fit(name)];
+}
+
 export function ProcessBars({ rows }: { rows: SalesAnalysis['byProcess'] }) {
   const series = [
     { key: 'contacted', label: texts.seriesContacted, color: BLUE },
@@ -220,6 +231,8 @@ export function ProcessBars({ rows }: { rows: SalesAnalysis['byProcess'] }) {
   const width = left + Math.max(rows.length, 1) * groupWidth + 8;
   const y = (v: number) => top + height - (v / max) * height;
   const bar = 16;
+  // 한 묶음 너비에 들어가는 글자 수(12px 글자 하나 ≈ 12). 공정이 적으면 이름을 자르지 않는다(#787).
+  const labelChars = Math.max(3, Math.floor(groupWidth / 12));
   return (
     <ChartCard
       id="chart-process"
@@ -298,18 +311,20 @@ export function ProcessBars({ rows }: { rows: SalesAnalysis['byProcess'] }) {
                       </g>
                     );
                   })}
-                  <text
-                    x={cx}
-                    y={top + height + 20}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fill={colors.text}
-                  >
-                    {row.processName.length > 6
-                      ? `${row.processName.slice(0, 6)}…`
-                      : row.processName}
-                    <title>{row.processName}</title>
-                  </text>
+                  {processLabelLines(row.processName, labelChars).map((line, k) => (
+                    <text
+                      key={k}
+                      x={cx}
+                      y={top + height + 20 + k * 16}
+                      textAnchor="middle"
+                      fontSize={k === 0 ? '12' : '11'}
+                      fill={k === 0 ? colors.text : colors.textSecondary}
+                      data-testid="chart-process-label"
+                    >
+                      {line}
+                      <title>{row.processName}</title>
+                    </text>
+                  ))}
                 </g>
               );
             })}
@@ -593,16 +608,17 @@ export default function AnalysisCharts({ data }: { data: SalesAnalysis }) {
           <OutcomeDonut total={data.total} />
         </div>
       </div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
-          gap: 16,
-        }}
-      >
-        <StepBars rows={data.bySalesStep} />
-        <MethodBars total={data.total} />
-        <LostReasonBars total={data.total} />
+      {/* 세 카드: 넓으면 한 줄에 셋, 두 칸이면 혼자 남는 카드가 줄 전체를 쓴다(#787, 전에는 왼쪽 반만 차고 오른쪽이 비었음). */}
+      <div data-testid="analysis-bar-cards" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+        {[
+          <StepBars key="step" rows={data.bySalesStep} />,
+          <MethodBars key="method" total={data.total} />,
+          <LostReasonBars key="lost" total={data.total} />,
+        ].map((card) => (
+          <div key={card.key} style={{ flex: '1 1 280px', minWidth: 0, display: 'grid' }}>
+            {card}
+          </div>
+        ))}
       </div>
     </div>
   );
