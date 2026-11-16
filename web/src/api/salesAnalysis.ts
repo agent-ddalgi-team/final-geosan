@@ -140,3 +140,99 @@ export function getSalesAnalysis(
   const search = query.toString();
   return request<SalesAnalysis>(`/sales-analysis${search ? `?${search}` : ''}`, { signal });
 }
+
+// ---------------------------------------------------------------------------
+// #802 1단계: 패턴 세기(계약 C1 `GET /sales-analysis/patterns`). AI 없음, 저장된 기록만 센다.
+// 응답에는 코드값·건수·비율만 있고 회사 이름·메모 글·답 글은 없다.
+// ---------------------------------------------------------------------------
+
+export interface PatternStepCount {
+  /** 기록으로 이른 가장 먼 세부 단계. null이면 "연결 전"(단계 기록 없음). */
+  step: string | null;
+  count: number;
+}
+
+export interface PatternSignal {
+  code: 'CALL_ONLY' | 'LONG_GAP' | 'ANSWER';
+  questionId: string | null;
+  answerIds: string[];
+  /** 끝난 회사(성사·거절·보류) 가운데 이 신호가 있던 곳. */
+  withSignal: number;
+  failed: number;
+  won: number;
+  /** failed ÷ 실패 회사 수, won ÷ 성사 회사 수. 나눌 수가 0이면 null. */
+  failedShare: number | null;
+  wonShare: number | null;
+  /** false면 표본 기준 밑이라 "판단 보류"(회색). */
+  judged: boolean;
+}
+
+export interface PatternCombo {
+  processCode: string | null;
+  industry: string | null;
+  region: string | null;
+  contacted: number;
+  won: number;
+  lost: number;
+  onHold: number;
+  /** 표본 기준 밑이면 null. */
+  wonRatio: number | null;
+}
+
+export interface PatternAnswerFill {
+  questionId: string;
+  step: string;
+  eligible: number;
+  answered: number;
+  ratio: number | null;
+}
+
+export interface PatternHint {
+  questionId: string;
+  kind: 'SAME_ANSWER' | 'UNKNOWN_MANY' | 'SPLITS_OUTCOME';
+  answerId: string | null;
+  share: number | null;
+  wonRatioHigh: number | null;
+  wonRatioLow: number | null;
+}
+
+export interface SalesPatterns {
+  asOf: string;
+  basis: { minSampleForRatio: number; usableCount: number; neededCount: number; enough: boolean };
+  failure: {
+    count: number;
+    onHoldCount: number;
+    byStep: PatternStepCount[];
+    lostReasons: { code: string; count: number }[];
+    stepAnswers: {
+      step: string;
+      questionId: string;
+      answers: { answerId: string; count: number }[];
+    }[];
+  };
+  success: {
+    count: number;
+    byStep: PatternStepCount[];
+    avgContactsToWon: number | null;
+    avgFirstVisitIndex: number | null;
+    failedAvgFirstVisitIndex: number | null;
+  };
+  signals: PatternSignal[];
+  combos: PatternCombo[];
+  answerFill: PatternAnswerFill[];
+  questionnaireHints: PatternHint[];
+  coachEffect: { applied: number; progressed: number; companies: number };
+}
+
+export function getSalesPatterns(
+  signal?: AbortSignal,
+  period?: AnalysisPeriod | null,
+): Promise<Envelope<SalesPatterns>> {
+  const query = new URLSearchParams();
+  if (period?.from) query.set('from', period.from);
+  if (period?.to) query.set('to', period.to);
+  const search = query.toString();
+  return request<SalesPatterns>(`/sales-analysis/patterns${search ? `?${search}` : ''}`, {
+    signal,
+  });
+}
