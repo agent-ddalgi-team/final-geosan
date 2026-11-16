@@ -28,9 +28,22 @@ def map_group(status, won_at, now, *, tz):
     return None
 
 
+def map_name(customer) -> str:
+    """지도 점 이름. 가상 회사는 이름에 "가상"이 없으면 "(가상)"을 붙인다(CON-10, #811)."""
+    if customer.is_virtual and "가상" not in customer.name:
+        return f"{customer.name}(가상)"
+    return customer.name
+
+
 def build_map_points(session, settings, now, *, tz):
-    if settings.active_dataset_kind.value == "VIRTUAL_REVIEWED":
+    virtual = settings.active_dataset_kind.value == "VIRTUAL_REVIEWED"
+    # 가상 묶음은 시연 표시 DB에서만 지도에 그린다(#811, PM 결정 2026-11-16).
+    # 좌표는 가상 위치(DEMO)뿐이다.
+    if virtual and not settings.brand.demo:
         return [], 0
+    real_only = (
+        [] if virtual else [Opportunity.is_virtual.is_(False), Customer.is_virtual.is_(False)]
+    )
     population = dashboard_population(settings.active_dataset_kind.value)
     outcomes = _latest_outcomes(session, population)
     stages = {row.opp_id: row.status for row in outcomes}
@@ -40,8 +53,7 @@ def build_map_points(session, settings, now, *, tz):
         .join(Customer, Customer.customer_id == Opportunity.customer_id)
         .where(
             Opportunity.opp_id.in_(population),
-            Opportunity.is_virtual.is_(False),
-            Customer.is_virtual.is_(False),
+            *real_only,
             Customer.security_grade == "PUBLIC",
         )
         .order_by(Opportunity.opp_id)
@@ -73,7 +85,7 @@ def build_map_points(session, settings, now, *, tz):
         points.append(
             dict(
                 opp_id=opportunity.opp_id,
-                customer_name=customer.name,
+                customer_name=map_name(customer),
                 lat=point.lat,
                 lng=point.lng,
                 group=group,

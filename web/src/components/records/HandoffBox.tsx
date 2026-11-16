@@ -89,10 +89,13 @@ export default function HandoffBox({
     }
   }
 
+  // #803: 전달 사항이 없고 남길 수도 없으면(담당자 고르기 전·보기 전용) 빈 제목만 남던 자리를 비운다.
+  if (handoffs.length === 0 && !canRecord) return null;
+
   return (
     <div data-testid="handoff-box" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <strong>{handoffTexts.title}</strong>
+        {handoffs.length > 0 ? <strong>{handoffTexts.title}</strong> : null}
         {waiting > 0 ? (
           <span data-testid="handoff-waiting" style={{ color: colors.textSecondary }}>
             {handoffTexts.waiting(waiting)}

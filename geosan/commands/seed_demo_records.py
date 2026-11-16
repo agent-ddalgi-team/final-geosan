@@ -8,6 +8,8 @@
   세부 단계·관심·통화 신호·재평가가 화면에서 넣은 것과 같게 따라온다.
 - 회사 하나가 한 트랜잭션이다. 이미 영업 기록이 있는 회사는 건너뛰므로 두 번 실행해도 늘지 않는다.
 - 기록 내용은 코드가 아니라 `examples/demo-records.yaml`(계약 C7)에 있다. 연락처 패턴이 있으면 거부.
+- (#811) 회사에 `location`이 있으면 그 가상 위치를 좌표 출처 DEMO로 저장한다. 시연 지도·거리용이고,
+  이미 영업 기록이 있어 건너뛴 회사도 위치는 채운다.
 """
 
 from __future__ import annotations
@@ -33,7 +35,8 @@ from geosan.config.paths import normalize_input_path
 from geosan.config.registry import REPO_ROOT
 from geosan.config.schemas import STAFF_KEY_PATTERN, FileModel
 from geosan.config.validators import format_field_error, pydantic_errors_to_fields, scan_contacts
-from geosan.opportunity.models import Opportunity
+from geosan.opportunity.geo_store import store_demo_coordinate
+from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import today_in_seoul
@@ -72,9 +75,17 @@ class DemoContact(FileModel):
         return self
 
 
+class DemoLocation(FileModel):
+    """(#811) 가상 위치. 실제 주소에서 읽은 값이 아니라 지어낸 위치다(소수 둘째 자리로 뭉툭하게)."""
+
+    lat: float = Field(ge=-90, le=90, strict=True)
+    lng: float = Field(ge=-180, le=180, strict=True)
+
+
 class DemoCompany(FileModel):
     case_id: str = Field(min_length=1)
     contacts: list[DemoContact] = Field(min_length=1)
+    location: DemoLocation | None = None
 
 
 class DemoRecords(FileModel):
@@ -170,6 +181,14 @@ def _seed_company(db_path: Path, opp_id: str, company: DemoCompany, staff: str) 
         return str(status)
 
 
+def _place_company(db_path: Path, opp_id: str, location: DemoLocation) -> None:
+    """회사 한 곳의 가상 위치를 한 트랜잭션으로 저장한다(#811). 같은 값이면 그대로 둔다."""
+    with session_scope(db_path) as session:
+        opportunity = session.get(Opportunity, opp_id)
+        customer = session.get(Customer, opportunity.customer_id)
+        store_demo_coordinate(customer, location.lat, location.lng)
+
+
 def run_seed_demo_records(file: Path | None) -> int:
     try:
         path = normalize_input_path(file or DEFAULT_DEMO_RECORDS_PATH)
@@ -210,10 +229,13 @@ def run_seed_demo_records(file: Path | None) -> int:
             typer.echo("아무것도 넣지 않았습니다.")
             return EXIT_INPUT_ERROR
 
-        seeded = skipped = 0
+        seeded = skipped = placed = 0
         closed = dict.fromkeys(STATUS_LABELS, 0)
         for company in records.companies:
             try:
+                if company.location is not None:
+                    _place_company(db_path, targets[company.case_id], company.location)
+                    placed += 1
                 status = _seed_company(
                     db_path, targets[company.case_id], company, records.staff_key
                 )
@@ -241,7 +263,7 @@ def run_seed_demo_records(file: Path | None) -> int:
         return EXIT_RUN_FAILED
     typer.echo(
         f"가상 영업 기록 넣기 완료 ({db_path.name}): 넣은 회사 {seeded}곳"
-        f"(성사 {closed['WON']}·거절 {closed['LOST']}), 건너뛴 회사 {skipped}곳. "
-        "가상·거산 실제 사양 아님."
+        f"(성사 {closed['WON']}·거절 {closed['LOST']}), 건너뛴 회사 {skipped}곳, "
+        f"가상 위치 {placed}곳. 가상·거산 실제 사양 아님."
     )
     return EXIT_OK

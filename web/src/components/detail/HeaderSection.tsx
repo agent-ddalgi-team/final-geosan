@@ -3,6 +3,7 @@
 // 홈페이지·대표번호·공장 정보·산업·접촉 횟수는 바로 아래 "한눈에" 상자(`DetailGlance.tsx`)로 모았다.
 // 거래 관계 입력(`RelationControl`)과 점수 옆 "거래 확인 전" 표시는 뺐다(재접촉 관리를 하지 않는다). "기존 거래처" 표시는 남는다.
 // 분류 꼬리표 "필수조건 확인 필요"·"핵심 근거 재확인 필요"·"평가 전"은 카드(#659)와 같게 보이지 않는다.
+import type { ReactNode } from 'react';
 import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type {
@@ -13,6 +14,7 @@ import type {
   SalesStepView,
 } from '../../api/types';
 import BookmarkButton from '../common/BookmarkButton';
+import { useFrame } from '../frame/FrameContext';
 import StatusTag from '../common/StatusTag';
 import ScoreLine from '../common/ScoreLine';
 import HomepageControls from './HomepageControls';
@@ -51,6 +53,10 @@ export interface HeaderSectionProps {
   /** 담당자 키를 이름으로 바꾼 값. 모르면 담당 줄을 보이지 않는다. */
   ownerName?: string | null;
   classificationOverrides?: Record<string, string>;
+  /** #803: 단추 줄 끝에 붙는 [보고서 ↗] 링크. */
+  reportLink?: ReactNode;
+  /** #803: 꼬리표 줄에 붙는 검토 의견("의견: 영업 대상 (수정)"). 전에는 아래 따로 카드였다. */
+  opinion?: ReactNode;
 }
 
 /** 머리에 꼬리표로 보이지 않는 분류(#659 카드와 같다). 무엇을 확인할지는 "한눈에"의 "확인할 것"이 말한다. */
@@ -69,8 +75,11 @@ export default function HeaderSection({
   questions = null,
   ownerName,
   classificationOverrides,
+  reportLink = null,
+  opinion = null,
 }: HeaderSectionProps) {
   const navigate = useNavigate();
+  const { canRecord } = useFrame();
   const classification = labelFor(
     classificationLabels,
     header.classificationCode,
@@ -123,10 +132,34 @@ export default function HeaderSection({
               {recordsArea.goRecord} <span aria-hidden="true">↓</span>
             </Button>
           ) : null}
-          <BookmarkButton oppId={oppId} bookmark={bookmark} onChanged={onBookmarkChanged} />
-          <HomepageControls oppId={oppId} onReload={onReload} suggestDays={suggestDays} />
+          <BookmarkButton
+            oppId={oppId}
+            bookmark={bookmark}
+            onChanged={onBookmarkChanged}
+            hideStaffHint
+          />
+          <HomepageControls
+            oppId={oppId}
+            onReload={onReload}
+            suggestDays={suggestDays}
+            hideStaffHint
+          />
+          {reportLink}
         </div>
       </div>
+      {!canRecord ? (
+        // #803: 전에는 [관심]·[다시 조사] 옆에 같은 안내가 두 번 붙었다.
+        <span
+          data-testid="detail-pick-staff"
+          style={{
+            color: colors.textSecondary,
+            fontSize: typography.fontSizeSecondary,
+            justifySelf: 'end',
+          }}
+        >
+          {detailHeader.pickStaffOnce}
+        </span>
+      ) : null}
       <SalesProgressBar
         salesStep={salesStep}
         outcome={outcome}
@@ -181,6 +214,7 @@ export default function HeaderSection({
             {ownPlatingLine.tag}
           </StatusTag>
         ) : null}
+        {opinion}
       </div>
       {/* #759: 대응·담당은 칸 나눔 정보로(이름표는 작게 위, 값은 굵게 아래). 읽는 글은 "대응: 영업"처럼 그대로. */}
       <dl
@@ -208,8 +242,8 @@ export default function HeaderSection({
             style={{
               display: 'grid',
               gap: 2,
-              padding: '10px 16px',
-              minWidth: 120,
+              padding: '6px 12px',
+              minWidth: 96,
               borderLeft: index === 0 ? 0 : `1px solid ${detailTheme.border}`,
             }}
           >

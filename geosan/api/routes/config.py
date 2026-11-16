@@ -11,6 +11,7 @@ from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, Meta
 from geosan.capability.models import Process
 from geosan.config.models import AppSetting
 from geosan.evidence.transfer import ai_call_configured
+from geosan.opportunity.data_basis import data_basis
 
 router = APIRouter()
 
@@ -62,6 +63,9 @@ def config_ui(session: SessionDep):
                 ],
                 "regions": settings.ingestion.regions,
                 "industries": settings.industries,
+                # #798: 권역 묶음과 "자료 기준" 줄.
+                "region_groups": [group.model_dump() for group in settings.ingestion.region_groups],
+                "data_basis": data_basis(session, settings.active_dataset_kind),
             },
             current_staff=_current_staff(session),
             operations_staff_keys=settings.operations.staff_keys,

@@ -3,14 +3,17 @@
 // 모두 상세 응답에 이미 있는 값이고 읽기만 한다(단추·입력 없음. 링크는 새 창).
 // 예외 하나(#677): 확정한 공정과 다른 AI 공정 제안이 있으면 공정 줄 아래에 [확정 값 유지]·[○○도 추가]가 보인다.
 // 값이 없는 줄은 줄째 빼거나 "확인 전"·"아직 조사 전"으로 적는다.
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type {
   ContactCount,
   DetailHeader,
+  DetailMap,
   EvidenceView,
   ProcessLinkView,
   RequirementCheckView,
   ReviewItem,
+  ScoreItemView,
 } from '../../api/types';
 import {
   cardRows,
@@ -19,6 +22,7 @@ import {
   detailReport,
   factoryProfileLabels,
   filterStateLabels,
+  glanceVisual,
   homepageLinkLabel,
   labelFor,
   mapLinkLabels,
@@ -34,6 +38,7 @@ import { useFrame } from '../frame/FrameContext';
 import { choiceMarksOf } from '../records/ChoiceQuestion';
 import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
 import { pickGlanceLink } from './CompanyGlance';
+import DetailMiniMap from './DetailMiniMap';
 import ProcessDifference from './ProcessDifference';
 import type { ProcessProposal } from './ProcessDifference';
 
@@ -214,6 +219,87 @@ export interface DetailGlanceProps {
    * 이 상자에서 단추가 있는 곳은 그 줄뿐이다.
    */
   processChoice?: { oppId: string; evalId: string | null; onSaved: () => void };
+  /** #803: 산업 칸 안에 바로 놓는 [확정]·[고치기] 칩(전에는 아래 "회사 소개 · 산업군" 카드). 없으면 글로만 보인다. */
+  industryEditor?: ReactNode;
+  /** #803: 근거 상태 막대(점수 8항목 가운데 근거가 붙은 항목 수). 없으면 막대를 그리지 않는다. */
+  scoreItems?: ScoreItemView[];
+  /** #803: 작은 지도 좌표(서버 detail.map). 없거나 지도를 못 그리면 거리 그림으로 대신한다. */
+  map?: DetailMap | null;
+  /** 시험용 지도 화면 키. 넘기지 않으면 환경 변수 값을 쓴다. */
+  mapClientId?: string;
+}
+
+/** #803 근거 상태 막대: 근거가 붙은 항목 수를 길이로. */
+function EvidenceBar({ items }: { items: ScoreItemView[] }) {
+  const total = items.length;
+  if (total === 0) return null;
+  const withEvidence = items.filter((item) => (item.evidenceIds ?? []).length > 0).length;
+  const percent = Math.round((withEvidence / total) * 100);
+  return (
+    <div
+      data-testid="glance-evidence-bar"
+      style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}
+    >
+      <span
+        role="img"
+        aria-label={glanceVisual.evidenceBar(withEvidence, total)}
+        style={{
+          position: 'relative',
+          width: 140,
+          height: 8,
+          borderRadius: 999,
+          background: detailTheme.bandTodo,
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: `${percent}%`,
+            background: detailTheme.accent,
+          }}
+        />
+      </span>
+      <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
+        {glanceVisual.evidenceBar(withEvidence, total)}
+      </span>
+    </div>
+  );
+}
+
+/** #803 거리 그림: 거산 ●───── 8.2km ─────● 이 회사 (좌표 없이 숫자만으로 그린다). */
+function DistanceLine({ km }: { km: number }) {
+  const dot = {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: detailTheme.lineDone,
+    flexShrink: 0,
+  } as const;
+  const bar = { flex: 1, height: 2, background: detailTheme.lineTodo, minWidth: 16 } as const;
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="glance-distance-line"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        maxWidth: 320,
+        color: colors.textSecondary,
+        fontSize: typography.fontSizeSecondary,
+      }}
+    >
+      <span>{glanceVisual.hq}</span>
+      <span style={dot} />
+      <span style={bar} />
+      <span>{`${km.toFixed(1)}km`}</span>
+      <span style={bar} />
+      <span style={dot} />
+      <span>{glanceVisual.company}</span>
+    </span>
+  );
 }
 
 export default function DetailGlance({
@@ -227,8 +313,14 @@ export default function DetailGlance({
   callCheckCount = 0,
   now,
   processChoice,
+  industryEditor,
+  scoreItems,
+  map = null,
+  mapClientId,
 }: DetailGlanceProps) {
   const { config } = useFrame();
+  // #803: 지도를 못 그리면(키 없음·인증 실패) 거리 그림으로 돌아간다.
+  const [mapFailed, setMapFailed] = useState(false);
 
   // ── 어떤 회사
   const summary = header.summaryLine?.trim() || null;
@@ -373,143 +465,173 @@ export default function DetailGlance({
         }}
       >
         <Row label={texts.company} testId="glance-company">
-          <div style={line} data-testid={summary ? 'company-summary-line' : 'glance-factory-intro'}>
-            {summary ? (
-              <>
-                <span>{summary}</span>
-                {isAi ? <StatusTag tone="ask">{companySummary.aiSuggestion}</StatusTag> : null}
-              </>
-            ) : factoryIntro ? (
-              <>
-                <span>{factoryIntro}</span>
-                <span style={secondary}>({companyGlance.factoryBasis})</span>
-              </>
-            ) : (
-              <span style={secondary} data-testid="glance-not-researched">
-                {texts.notResearched}
-              </span>
-            )}
-          </div>
-          {address || factoryLine ? (
-            <div style={line} data-testid="glance-factory-profile">
-              <span>{[address, factoryLine].filter((part) => part).join(' · ')}</span>
-              {/* 주소와 나란히 거산 본사까지의 직선거리(#666, PM 요청: 주소와 같이 보고 비교). 계산한 숫자라 확인 표시는 없다. */}
-              {address && distance !== null ? (
-                <strong data-testid="detail-distance">{companySummary.distance(distance)}</strong>
-              ) : null}
-              {factoryLine && header.factoryProfile ? (
-                <span style={secondary}>
-                  (
-                  {factoryProfileLabels.basis(formatMonthDay(header.factoryProfile.fileDate) ?? '')}
-                  )
-                </span>
-              ) : null}
-              {mapLinks ? (
-                <span data-testid="detail-map-links" style={{ display: 'inline-flex', gap: 12 }}>
-                  <a
-                    href={mapLinks.naver}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: 'underline' }}
-                    data-testid="detail-map-naver"
-                  >
-                    {mapLinkLabels.naver} ↗
-                  </a>
-                  <a
-                    href={mapLinks.kakao}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: 'underline' }}
-                    data-testid="detail-map-kakao"
-                  >
-                    {mapLinkLabels.kakao} ↗
-                  </a>
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-          <div style={line} data-testid="glance-homepage">
-            <span style={secondary}>{companyGlance.homepage}</span>
-            {link?.kind === 'homepage' ? (
-              <span data-testid="detail-homepage">
-                <ExternalLink url={link.url}>
-                  {homepageLinkLabel} ↗ {link.url}
-                </ExternalLink>
-                {unofficialText ? (
-                  <span style={secondary} data-testid="glance-homepage-unofficial">
-                    {' '}
-                    {unofficialText}
+          <div
+            data-testid="glance-company-layout"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}
+          >
+            <div style={{ flex: '1 1 260px', minWidth: 0, display: 'grid', gap: 8 }}>
+              <div
+                style={line}
+                data-testid={summary ? 'company-summary-line' : 'glance-factory-intro'}
+              >
+                {summary ? (
+                  <>
+                    <span>{summary}</span>
+                    {isAi ? <StatusTag tone="ask">{companySummary.aiSuggestion}</StatusTag> : null}
+                  </>
+                ) : factoryIntro ? (
+                  <>
+                    <span>{factoryIntro}</span>
+                    <span style={secondary}>({companyGlance.factoryBasis})</span>
+                  </>
+                ) : (
+                  <span style={secondary} data-testid="glance-not-researched">
+                    {texts.notResearched}
                   </span>
-                ) : null}
-              </span>
-            ) : header.homepageStatus === 'NOT_FOUND' && header.homepageClosedReason ? (
-              // #793: 조사가 홈페이지를 닫힌 것으로 봤다. 닫힌 사이트의 옛 근거 주소 대신 이유를 보인다.
-              <span style={secondary} data-testid="glance-homepage-closed">
-                {companyGlance.homepageClosed(header.homepageClosedReason)}
-              </span>
-            ) : link ? (
-              <span data-testid="glance-fallback-link" data-kind={link.kind}>
-                <ExternalLink url={link.url}>
-                  {link.kind === 'search' ? companyGlance.searchPage : companyGlance.evidencePage} ↗{' '}
-                  {link.url}
-                </ExternalLink>
-              </span>
-            ) : (
-              <span style={secondary} data-testid="glance-no-homepage">
-                {researched || header.homepageStatus === 'NOT_FOUND'
-                  ? companyGlance.noHomepage
-                  : texts.notResearched}
-              </span>
-            )}
-          </div>
-          {phone ? (
-            <div style={line} data-testid="company-phone">
-              <span style={secondary}>{texts.phone}</span>
-              {telHref ? (
-                <a href={telHref} data-testid="company-phone-link">
-                  {phone}
-                </a>
-              ) : (
-                <span>{phone}</span>
-              )}
-              {phoneSourceUrl ? (
-                <span style={secondary}>
-                  {companySummary.phoneSource}:{' '}
-                  <a
-                    href={phoneSourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="company-phone-source"
-                  >
-                    {companySummary.phoneSourceHomepage} ↗
-                  </a>
-                </span>
-              ) : header.mainPhoneSource === 'CSV' ? (
-                <span style={secondary} data-testid="company-phone-source">
-                  {companySummary.phoneSource}: {companySummary.phoneSourceCsv}
-                </span>
+                )}
+              </div>
+              {address || factoryLine ? (
+                <div style={line} data-testid="glance-factory-profile">
+                  <span>{[address, factoryLine].filter((part) => part).join(' · ')}</span>
+                  {/* 주소와 나란히 거산 본사까지의 직선거리(#666, PM 요청: 주소와 같이 보고 비교). 계산한 숫자라 확인 표시는 없다. */}
+                  {address && distance !== null ? (
+                    <strong data-testid="detail-distance">
+                      {companySummary.distance(distance)}
+                    </strong>
+                  ) : null}
+                  {address && distance !== null && (!map || mapFailed) ? (
+                    <DistanceLine km={distance} />
+                  ) : null}
+                  {factoryLine && header.factoryProfile ? (
+                    <span style={secondary}>
+                      (
+                      {factoryProfileLabels.basis(
+                        formatMonthDay(header.factoryProfile.fileDate) ?? '',
+                      )}
+                      )
+                    </span>
+                  ) : null}
+                  {mapLinks ? (
+                    <span
+                      data-testid="detail-map-links"
+                      style={{ display: 'inline-flex', gap: 12 }}
+                    >
+                      <a
+                        href={mapLinks.naver}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'underline' }}
+                        data-testid="detail-map-naver"
+                      >
+                        {mapLinkLabels.naver} ↗
+                      </a>
+                      <a
+                        href={mapLinks.kakao}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'underline' }}
+                        data-testid="detail-map-kakao"
+                      >
+                        {mapLinkLabels.kakao} ↗
+                      </a>
+                    </span>
+                  ) : null}
+                </div>
               ) : null}
-              <span style={secondary} data-testid="company-phone-status">
-                {header.mainPhoneConfirmedAt
-                  ? companySummary.phoneConfirmed(
-                      formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
-                      phoneConfirmedName,
-                    )
-                  : companySummary.phoneUnconfirmed}
-              </span>
+              <div style={line} data-testid="glance-homepage">
+                <span style={secondary}>{companyGlance.homepage}</span>
+                {link?.kind === 'homepage' ? (
+                  <span data-testid="detail-homepage">
+                    <ExternalLink url={link.url}>
+                      {homepageLinkLabel} ↗ {link.url}
+                    </ExternalLink>
+                    {unofficialText ? (
+                      <span style={secondary} data-testid="glance-homepage-unofficial">
+                        {' '}
+                        {unofficialText}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : header.homepageStatus === 'NOT_FOUND' && header.homepageClosedReason ? (
+                  // #793: 조사가 홈페이지를 닫힌 것으로 봤다. 닫힌 사이트의 옛 근거 주소 대신 이유를 보인다.
+                  <span style={secondary} data-testid="glance-homepage-closed">
+                    {companyGlance.homepageClosed(header.homepageClosedReason)}
+                  </span>
+                ) : link ? (
+                  <span data-testid="glance-fallback-link" data-kind={link.kind}>
+                    <ExternalLink url={link.url}>
+                      {link.kind === 'search'
+                        ? companyGlance.searchPage
+                        : companyGlance.evidencePage}{' '}
+                      ↗ {link.url}
+                    </ExternalLink>
+                  </span>
+                ) : (
+                  <span style={secondary} data-testid="glance-no-homepage">
+                    {researched || header.homepageStatus === 'NOT_FOUND'
+                      ? companyGlance.noHomepage
+                      : texts.notResearched}
+                  </span>
+                )}
+              </div>
+              {phone ? (
+                <div style={line} data-testid="company-phone">
+                  <span style={secondary}>{texts.phone}</span>
+                  {telHref ? (
+                    <a href={telHref} data-testid="company-phone-link">
+                      {phone}
+                    </a>
+                  ) : (
+                    <span>{phone}</span>
+                  )}
+                  {phoneSourceUrl ? (
+                    <span style={secondary}>
+                      {companySummary.phoneSource}:{' '}
+                      <a
+                        href={phoneSourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="company-phone-source"
+                      >
+                        {companySummary.phoneSourceHomepage} ↗
+                      </a>
+                    </span>
+                  ) : header.mainPhoneSource === 'CSV' ? (
+                    <span style={secondary} data-testid="company-phone-source">
+                      {companySummary.phoneSource}: {companySummary.phoneSourceCsv}
+                    </span>
+                  ) : null}
+                  <span style={secondary} data-testid="company-phone-status">
+                    {header.mainPhoneConfirmedAt
+                      ? companySummary.phoneConfirmed(
+                          formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
+                          phoneConfirmedName,
+                        )
+                      : companySummary.phoneUnconfirmed}
+                  </span>
+                </div>
+              ) : null}
+              {highlights.length > 0 ? (
+                <div style={line} data-testid="company-highlights">
+                  <span style={secondary}>{texts.highlights}</span>
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {highlights.map((text) => (
+                      <li key={text}>{text}</li>
+                    ))}
+                  </ul>
+                  {isAi ? <StatusTag tone="ask">{companySummary.aiSuggestion}</StatusTag> : null}
+                </div>
+              ) : null}
             </div>
-          ) : null}
-          {highlights.length > 0 ? (
-            <div style={line} data-testid="company-highlights">
-              <span style={secondary}>{texts.highlights}</span>
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {highlights.map((text) => (
-                  <li key={text}>{text}</li>
-                ))}
-              </ul>
-              {isAi ? <StatusTag tone="ask">{companySummary.aiSuggestion}</StatusTag> : null}
-            </div>
-          ) : null}
+            {map && !mapFailed ? (
+              <DetailMiniMap
+                map={map}
+                href={mapLinks?.naver ?? null}
+                onUnavailable={() => setMapFailed(true)}
+                {...(mapClientId !== undefined ? { clientId: mapClientId } : {})}
+              />
+            ) : null}
+          </div>
         </Row>
 
         <Row label={texts.fit} testId="glance-fit">
@@ -556,7 +678,9 @@ export default function DetailGlance({
             )}
           </FitLine>
           <FitLine label={texts.industry} testId="glance-fit-industry">
-            {industries.length > 0 ? (
+            {industryEditor ? (
+              industryEditor
+            ) : industries.length > 0 ? (
               <>
                 {industries.join(', ')}{' '}
                 {industryConfirmed ? (
@@ -585,6 +709,7 @@ export default function DetailGlance({
               </StatusTag>
             ) : null}
           </div>
+          {scoreItems ? <EvidenceBar items={scoreItems} /> : null}
         </Row>
 
         <Row label={texts.check} testId="glance-check">

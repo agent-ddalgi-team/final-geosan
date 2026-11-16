@@ -1632,6 +1632,32 @@
         "title": "DashboardMap",
         "type": "object"
       },
+      "DataBasisItem": {
+        "description": "#798 \"자료 기준\" 줄 하나. 자료가 없는 종류는 싣지 않는다.",
+        "properties": {
+          "asOf": {
+            "format": "date",
+            "title": "Asof",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "FACTORY_FILE",
+              "FACTORY_LOOKUP",
+              "WATER_LIST",
+              "AI_JUDGMENT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "asOf"
+        ],
+        "title": "DataBasisItem",
+        "type": "object"
+      },
       "DatasetKind": {
         "enum": [
           "VIRTUAL_REVIEWED",
@@ -2127,6 +2153,44 @@
           "datasetKind"
         ],
         "title": "DetailHeader",
+        "type": "object"
+      },
+      "DetailMap": {
+        "description": "#803 상세 \"한눈에\" 작은 지도. 좌표만 싣는다(이름·주소·대표번호·메모 없음).",
+        "properties": {
+          "center": {
+            "$ref": "#/components/schemas/DetailMapPoint",
+            "description": "설정 geosan 좌표(대시보드 지도와 같은 값)"
+          },
+          "company": {
+            "$ref": "#/components/schemas/DetailMapPoint",
+            "description": "저장된 공공좌표(CSV·JUSO·MANUAL). 네이버 실시간 보완 좌표는 싣지 않는다(#222)"
+          }
+        },
+        "required": [
+          "center",
+          "company"
+        ],
+        "title": "DetailMap",
+        "type": "object"
+      },
+      "DetailMapPoint": {
+        "description": "#803 상세 작은 지도의 점. 대시보드 지도(center·lat·lng)와 같은 이름.",
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "DetailMapPoint",
         "type": "object"
       },
       "DetailRecords": {
@@ -3506,6 +3570,13 @@
       },
       "IngestOptions": {
         "properties": {
+          "dataBasis": {
+            "items": {
+              "$ref": "#/components/schemas/DataBasisItem"
+            },
+            "title": "Databasis",
+            "type": "array"
+          },
           "industries": {
             "items": {
               "type": "string"
@@ -3518,6 +3589,13 @@
               "$ref": "#/components/schemas/IngestProcessOption"
             },
             "title": "Processes",
+            "type": "array"
+          },
+          "regionGroups": {
+            "items": {
+              "$ref": "#/components/schemas/IngestRegionGroup"
+            },
+            "title": "Regiongroups",
             "type": "array"
           },
           "regions": {
@@ -3681,6 +3759,28 @@
           "name"
         ],
         "title": "IngestProcessOption",
+        "type": "object"
+      },
+      "IngestRegionGroup": {
+        "description": "#798 새 후보 찾기 권역 하나. regions는 ingestOptions.regions 안의 값이다.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "regions"
+        ],
+        "title": "IngestRegionGroup",
         "type": "object"
       },
       "IngestRequest": {
@@ -5203,6 +5303,17 @@
             "title": "Homepageneedsconfirm",
             "type": "boolean"
           },
+          "map": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailMap"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null"
+          },
           "previousEvalId": {
             "anyOf": [
               {
@@ -6663,6 +6774,11 @@
           "count": {
             "title": "Count",
             "type": "integer"
+          },
+          "preset": {
+            "default": false,
+            "title": "Preset",
+            "type": "boolean"
           },
           "region": {
             "title": "Region",

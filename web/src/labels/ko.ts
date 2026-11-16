@@ -556,6 +556,31 @@ export const detailHeader = {
   relation: '고객 관계',
   purpose: '대응',
   owner: '담당',
+  /** #803: 머리 단추들 아래 한 번만 보이는 안내(전에는 단추마다 붙었다). */
+  pickStaffOnce: '담당자를 고르면 관심·다시 조사·기록을 할 수 있습니다.',
+} as const;
+
+/** #803 오른쪽 영업 코치 판의 칸 제목: 일하는 순서대로 ① 통화 전 → ② 기록 남기기·코치 답. */
+export const coachSteps = {
+  before: '① 통화 전 — 물어볼 것',
+  beforeHint: '들은 답은 아래 ② 기록 남기기의 꼬리 질문과 메모에 적습니다.',
+  record: '② 기록 남기기 → 코치 답',
+  /** "알아낸 것"을 접은 묶음 제목. */
+  knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
+} as const;
+
+/** #803 상세 작은 지도. */
+export const detailMiniMap = {
+  openLabel: '네이버 지도에서 크게 보기 (새 창)',
+} as const;
+
+/** #803 "한눈에" 그림 줄. */
+export const glanceVisual = {
+  /** 근거 상태 막대 옆 글: "점수 근거 7/8항목" */
+  evidenceBar: (withEvidence: number, total: number) => `점수 근거 ${withEvidence}/${total}항목`,
+  /** 거리 그림 양 끝 이름. */
+  hq: '거산',
+  company: '이 회사',
 } as const;
 
 /**
@@ -1417,6 +1442,9 @@ export const reviewArea = {
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
 export const timelineArea = {
+  /** #803: 최근 5묶음 아래 [더 보기 8건]. */
+  showMore: (n: number) => `더 보기 ${n}건`,
+  showLess: '접기',
   title: '활동 이력',
   empty: '아직 기록이 없습니다.',
   loadFailed: '활동 이력을 불러오지 못했습니다.',
@@ -1456,6 +1484,8 @@ export const peersArea = {
   retry: '다시 불러오기',
   empty: '같은 공정·산업군의 다른 회사가 아직 없습니다.',
   listLabel: '비슷한 회사 목록',
+  /** #803: 요약 한 줄 아래 접힌 회사 줄 "회사 5곳 보기". */
+  foldList: (n: number) => `회사 ${n}곳 보기`,
   /** 요약 줄 묶음 사이 구분 "같은 공정 4곳 · 산업군 2곳 | 접촉 1 · 거절 1(가격) | 전화 연결 3/5". */
   summaryDivider: ' | ',
   summaryCounts: (processCount: number, industryCount: number) =>
@@ -2026,6 +2056,12 @@ export const detailReport = {
     noEvidenceYet:
       '아직 조사한 근거 자료가 없습니다. [다시 조사]를 누르면 홈페이지를 찾아 근거를 뽑습니다.',
     evidenceListLabel: (line: string) => `근거 자료: ${line}`,
+    /** #803 근거 표: 줄 오른쪽 접힌 근거 "근거 3건". */
+    evidenceCount: (n: number) => `근거 ${n}건`,
+    /** #803 근거 표: 그 줄 근거 가운데 가장 높은 출처 등급 "등급 B". */
+    bestGrade: (grade: string) => `등급 ${grade}`,
+    /** #803: 바로 위 근거와 출처가 같으면 주소를 다시 쓰지 않는다. */
+    sameSource: '같은 출처',
   },
   /** "2. 통화에서 확인할 것" — 읽기만 한다. 적는 것은 아래 "기록 남기기"에서. */
   call: {
@@ -2371,4 +2407,40 @@ export const operationsTexts = {
     '갱신은 지금 운영 명령으로 합니다(운영 안내서 "자료 갱신" 절). 이 화면에는 실행 단추가 없습니다.',
   blockedTitle: '최근 막힌 전송 10건',
   blockedEmpty: '막힌 전송이 없습니다.',
+} as const;
+
+/**
+ * #798(PM 지시 2026-11-16): 신규 거래처 찾기 다시 짜기 — 새 후보 찾기 접기, 지역 권역, 조건 더 보기, 자료 기준,
+ * 카드 의견 고르기 칸.
+ */
+export const listSimple = {
+  /** 접힌 새 후보 찾기 칸의 제목. 펴면 공정·권역·산업과 예상 금액이 보인다. */
+  ingestPanelTitle: '＋ 새 후보 찾기 💰',
+  ingestPanelHint: '필요할 때 펴서 씁니다 · AI 비용이 듭니다',
+  /** 목록 머리 [조건 더 보기]. n은 지금 걸려 있는 더 보기 안 조건 수(0이면 숫자 없음). */
+  moreConditions: (active: number) => (active > 0 ? `조건 더 보기 (${active})` : '조건 더 보기'),
+  /** 지역 선택란 묶음 제목. */
+  regionPresetGroup: '권역',
+  regionCityGroup: '시·군 직접 고르기',
+  /** 새 후보 찾기 지역 칸. */
+  regionGroupLabel: '지역(권역)',
+  regionGroupHint: '여러 권역을 함께 고를 수 있습니다',
+  regionDirect: '시·군 직접 고르기',
+  /** "천안·아산 (천안시·아산시)" */
+  regionGroupOption: (label: string, regions: readonly string[]) =>
+    `${label} (${regions.join('·')})`,
+  /** 자료 기준 줄 제목과 종류 이름. */
+  dataBasisTitle: '자료 기준',
+  dataBasisKinds: {
+    FACTORY_FILE: '산단공 공장현황 파일',
+    FACTORY_LOOKUP: '공장조회(팩토리온)',
+    WATER_LIST: '수질 유해물질 업체 명단',
+    AI_JUDGMENT: '마지막 AI 판단',
+  } as Record<string, string>,
+  /** "산단공 공장현황 파일 2025-12-31" */
+  dataBasisItem: (name: string, asOf: string) => `${name} ${asOf}`,
+  dataBasisNone: '아직 넣은 공공자료가 없습니다',
+  /** 카드 의견 고르기 칸. */
+  opinionSelectLabel: '의견',
+  opinionSelectPlaceholder: '고르기',
 } as const;

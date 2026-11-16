@@ -82,6 +82,8 @@ class IndustryCount(_ApiModel):
 class RegionCount(_ApiModel):
     region: str
     count: int
+    # #798: 설정 listFilters.regionPresets 묶음(권역)이면 true, 주소에서 뽑은 시·군이면 false.
+    preset: bool = False
 
 
 class IngestCriteria(_ApiModel):
@@ -261,10 +263,28 @@ class IngestProcessOption(_ApiModel):
     name: str
 
 
+class IngestRegionGroup(_ApiModel):
+    """#798 새 후보 찾기 권역 하나. regions는 ingestOptions.regions 안의 값이다."""
+
+    label: str
+    regions: list[str]
+
+
+class DataBasisItem(_ApiModel):
+    """#798 "자료 기준" 줄 하나. 자료가 없는 종류는 싣지 않는다."""
+
+    kind: Literal["FACTORY_FILE", "FACTORY_LOOKUP", "WATER_LIST", "AI_JUDGMENT"]
+    as_of: date
+
+
 class IngestOptions(_ApiModel):
     processes: list[IngestProcessOption]
     regions: list[str]
     industries: list[str]
+    # #798: 설정 ingestion.regionGroups 그대로. 없으면 빈 배열.
+    region_groups: list[IngestRegionGroup] = Field(default_factory=list)
+    # #798: 새 후보 찾기 안 "자료 기준" 줄(저장된 행의 날짜만, 외부 호출 없음).
+    data_basis: list[DataBasisItem] = Field(default_factory=list)
 
 
 class CurrentStaff(_ApiModel):
@@ -872,6 +892,22 @@ class ReviewCheckResponse(_ApiModel):
     checked_at: datetime
 
 
+class DetailMapPoint(_ApiModel):
+    """#803 상세 작은 지도의 점. 대시보드 지도(center·lat·lng)와 같은 이름."""
+
+    lat: float
+    lng: float
+
+
+class DetailMap(_ApiModel):
+    """#803 상세 "한눈에" 작은 지도. 좌표만 싣는다(이름·주소·대표번호·메모 없음)."""
+
+    center: DetailMapPoint = Field(description="설정 geosan 좌표(대시보드 지도와 같은 값)")
+    company: DetailMapPoint = Field(
+        description="저장된 공공좌표(CSV·JUSO·MANUAL). 네이버 실시간 보완 좌표는 싣지 않는다(#222)"
+    )
+
+
 class OpportunityDetail(_ApiModel):
     """근거 상세 S2. 영역별 구성 함수(detail_sections)가 순서대로 조립한다 (BR10.5)."""
 
@@ -890,6 +926,10 @@ class OpportunityDetail(_ApiModel):
     eval_id: str | None = None
     previous_eval_id: str | None = None
     reevaluated: bool = False
+    map: DetailMap | None = Field(
+        default=None,
+        description="#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null",
+    )
 
 
 # ---------------------------------------------------------------------------
