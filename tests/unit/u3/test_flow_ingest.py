@@ -350,6 +350,8 @@ def _brochure_runtime():
         settings.ingestion.factory_csv_path = ingestion["factoryCsvPath"]
         settings.ingestion.ai_pick.enabled = True
         settings.llm.mode = "EXTERNAL"
+        # 예시 설정은 웹 갈래가 켜져 있다(#823). 이 묶음은 공공자료 갈래만 보므로 끈다.
+        settings.candidate_web_search.enabled = False
         sync_app_settings(session, settings)
 
 
