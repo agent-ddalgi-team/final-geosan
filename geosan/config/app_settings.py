@@ -406,6 +406,9 @@ class DashboardSettings(FileModel):
 
     # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
     count_proposed_industries: bool = True
+    # #800(PM 결정 2026-11-16): 영업 진행 띠의 "멈춘 회사" 기준 일수. 다음 일정 없이 마지막 접촉 뒤
+    # 이 일수 이상이면 멈춤. 옛 설정 파일·DB 사본에는 없어서 PM이 확인한 값 14로 읽는다.
+    stalled_after_days: int = Field(default=14, ge=1, le=365, strict=True)
 
 
 class GeosanLocationSettings(FileModel):

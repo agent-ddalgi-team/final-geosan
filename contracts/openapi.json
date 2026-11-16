@@ -1358,6 +1358,16 @@
           "counts": {
             "$ref": "#/components/schemas/DashboardCounts"
           },
+          "progressCompanies": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/ProgressCompany"
+              },
+              "type": "array"
+            },
+            "title": "Progresscompanies",
+            "type": "object"
+          },
           "recentActivity": {
             "items": {
               "$ref": "#/components/schemas/RecentActivityItem"
@@ -6027,6 +6037,68 @@
           "newPassword"
         ],
         "title": "ProfileRequest",
+        "type": "object"
+      },
+      "ProgressCompany": {
+        "description": "#800 영업 진행 띠 칸을 눌렀을 때 펴지는 회사 한 줄. 메모·연락처·대표번호는 없다.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactat"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          },
+          "nextScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextschedulenote"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "stalled": {
+            "title": "Stalled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "customerName",
+          "lastContactAt",
+          "nextScheduleAt",
+          "nextScheduleNote",
+          "stalled"
+        ],
+        "title": "ProgressCompany",
         "type": "object"
       },
       "ProposalHit": {

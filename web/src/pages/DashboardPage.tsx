@@ -169,6 +169,8 @@ export default function DashboardPage() {
           <DashboardBrief
             rows={data.todayChecks}
             counts={data.counts}
+            companies={data.progressCompanies}
+            today={todayKst()}
             assistantSummary={dailyKey ? <AssistantDaily staffKey={dailyKey} /> : null}
           />
         ) : null}
