@@ -530,7 +530,7 @@ describe('영업 분석 화면 (#608)', () => {
       expect(screen.queryByTestId('analysis-by-industry-proposed')).not.toBeInTheDocument();
     });
 
-    it('대상이 0곳이면 막대 대신 안내와 [추천 목록 가기]를 보인다', async () => {
+    it('대상이 0곳이면 막대 대신 안내와 [신규 거래처 찾기로 이동]을 보인다(메뉴 이름, #787)', async () => {
       installFetch(
         ANALYSIS,
         {},
@@ -543,6 +543,7 @@ describe('영업 분석 화면 (#608)', () => {
       expect(screen.queryByTestId('analysis-by-process')).not.toBeInTheDocument();
       const link = screen.getByTestId('analysis-breakdown-empty-link');
       expect(link).toHaveAttribute('href', '/opportunities');
+      expect(link).toHaveTextContent('신규 거래처 찾기로 이동');
       expect(link).toHaveTextContent(dashboardTexts.breakdownEmptyAction);
     });
 
