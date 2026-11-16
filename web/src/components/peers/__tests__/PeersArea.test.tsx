@@ -124,6 +124,22 @@ describe('PeersArea', () => {
     expect(screen.getAllByTestId('peers-summary')).toHaveLength(1);
   });
 
+  it('foldList면 요약 한 줄 아래 회사 줄이 "회사 2곳 보기"로 접혀 있다 (#803)', async () => {
+    mockedPeers.mockResolvedValueOnce(
+      reply({
+        summary,
+        companies: [company(), company({ oppId: 'opp-peer-2', name: '명화금속' })],
+      }),
+    );
+    render(frame(<PeersArea oppId="opp-1" foldList />));
+    const fold = await screen.findByTestId('peers-fold');
+    expect(fold.tagName).toBe('DETAILS');
+    expect(fold).not.toHaveAttribute('open');
+    expect(within(fold).getByText(peersArea.foldList(2))).toBeInTheDocument();
+    expect(within(fold).getAllByTestId('peer-company')).toHaveLength(2);
+    expect(screen.getByTestId('peers-summary')).toBeInTheDocument();
+  });
+
   it('한 줄에 공정 이름·산업군·단계·마지막 접촉·메모와 담당자 이름이 보인다', async () => {
     mockedPeers.mockResolvedValueOnce(reply({ summary, companies: [company()] }));
     render(frame(<PeersArea oppId="opp-1" />));

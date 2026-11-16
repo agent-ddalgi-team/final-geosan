@@ -11,7 +11,12 @@ import type {
   SalesStep,
   SalesStepView,
 } from '../../api/types';
-import { outcomeStatusLabels, salesQuestionTexts, salesStepLabels } from '../../labels/ko';
+import {
+  coachSteps,
+  outcomeStatusLabels,
+  salesQuestionTexts,
+  salesStepLabels,
+} from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { ChoiceQuestionField, confirmedLabels, currentLineText } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
@@ -432,10 +437,20 @@ export interface SalesStepSummaryProps {
   step: SalesStepView | null;
   status: OutcomeStatus | null;
   questions: SalesQuestions | null;
+  /**
+   * #803 영업 코치 판 안: 지금 세부 단계는 머리 단계 띠와 같고, 아직 모르는 것은 "① 통화 전 — 물어볼 것"과
+   * 같아서 빼고, 알아낸 것은 "지금까지 들은 답 n개"로 접는다.
+   */
+  compact?: boolean;
 }
 
 /** 기록 구역 맨 위 요약: 지금 세부 단계 · 알아낸 것 · 아직 모르는 것. */
-export function SalesStepSummary({ step, status, questions }: SalesStepSummaryProps) {
+export function SalesStepSummary({
+  step,
+  status,
+  questions,
+  compact = false,
+}: SalesStepSummaryProps) {
   const hint = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
   let current: string;
   if (step?.code) {
@@ -453,6 +468,19 @@ export function SalesStepSummary({ step, status, questions }: SalesStepSummaryPr
   // 접촉 자체에 대한 답("누가 먼저 연락했나요?" #691)은 회사에 대해 알아낸 것이 아니라서 뺀다.
   const aboutContact = new Set(contactQuestionsOf(questions).map((item) => item.questionId));
   const known = (step?.known ?? []).filter((item) => !aboutContact.has(item.questionId));
+  if (compact) {
+    if (known.length === 0) return null;
+    return (
+      <details data-testid="sales-step-summary">
+        <summary style={{ cursor: 'pointer' }} data-testid="sales-step-known-fold">
+          {coachSteps.knownFold(known.length)}
+        </summary>
+        <span data-testid="sales-step-known" style={hint}>
+          {knownLines(known).join(' · ')}
+        </span>
+      </details>
+    );
+  }
   return (
     <div data-testid="sales-step-summary" style={{ display: 'grid', gap: 4 }}>
       <span>

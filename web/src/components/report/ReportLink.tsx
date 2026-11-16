@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { companyReport } from '../../labels/ko';
 
 // #795: 대시보드 "방문 준비" 줄에서도 같은 링크를 쓴다(inline이면 오른쪽 정렬 칸 없이 링크만).
+// #803: 상세에서는 머리 단추 줄 끝에 붙는다(전에는 머리 아래 따로 한 줄).
 export default function ReportLink({
   oppId,
   inline = false,
@@ -26,5 +27,7 @@ export default function ReportLink({
     </Link>
   );
   if (inline) return link;
-  return <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{link}</div>;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', alignSelf: 'center' }}>{link}</div>
+  );
 }

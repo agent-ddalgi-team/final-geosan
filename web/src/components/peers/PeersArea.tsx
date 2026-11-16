@@ -13,9 +13,11 @@ import { usePeerNames } from './usePeerNames';
 
 export interface PeersAreaProps {
   oppId: string;
+  /** #803: 요약 한 줄만 보이고 회사 줄은 "회사 5곳 보기"로 접는다. */
+  foldList?: boolean;
 }
 
-export default function PeersArea({ oppId }: PeersAreaProps) {
+export default function PeersArea({ oppId, foldList = false }: PeersAreaProps) {
   const { processNames, personName } = usePeerNames();
   const [retry, setRetry] = useState(0);
   const [peers, setPeers] = useState<PeersResponse | null>(null);
@@ -39,6 +41,23 @@ export default function PeersArea({ oppId }: PeersAreaProps) {
     fontSize: typography.fontSizeSecondary,
   } as const;
   const summaryText = peers ? peersSummaryText(peers.summary) : '';
+
+  const list =
+    peers !== null ? (
+      <ul
+        aria-label={peersArea.listLabel}
+        style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}
+      >
+        {peers.companies.map((company) => (
+          <PeerCompanyLine
+            key={company.oppId}
+            company={company}
+            processNames={processNames}
+            personName={personName}
+          />
+        ))}
+      </ul>
+    ) : null;
 
   return (
     <div data-testid="peers-area" style={{ display: 'grid', gap: 8 }}>
@@ -68,19 +87,16 @@ export default function PeersArea({ oppId }: PeersAreaProps) {
               {summaryText}
             </span>
           ) : null}
-          <ul
-            aria-label={peersArea.listLabel}
-            style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}
-          >
-            {peers.companies.map((company) => (
-              <PeerCompanyLine
-                key={company.oppId}
-                company={company}
-                processNames={processNames}
-                personName={personName}
-              />
-            ))}
-          </ul>
+          {foldList ? (
+            <details data-testid="peers-fold">
+              <summary style={{ cursor: 'pointer', ...secondary }}>
+                {peersArea.foldList(peers.companies.length)}
+              </summary>
+              {list}
+            </details>
+          ) : (
+            list
+          )}
         </>
       ) : null}
     </div>

@@ -239,7 +239,9 @@ def test_bookmarked_list_counts_choices_inside_bookmarks_only(board_env):
         >= 1
     )
     assert all(row["count"] in (0, 1) for row in mine["processCounts"])
-    assert sum(row["count"] for row in mine["regionCounts"]) <= 2  # 묶음 이름 + 시·군 각 1곳
+    # 시·군 1곳 + 묶음 줄(충남, #798 권역) 각 1곳. 관심 1곳이 시·군 줄에서 두 번 세지지 않는다.
+    assert sum(row["count"] for row in mine["regionCounts"] if not row.get("preset")) <= 1
+    assert sum(row["count"] for row in mine["regionCounts"]) <= 3
     # 공정을 함께 고르면 관심 기업 안에서 그 공정만 남는다.
     code = next(row["processCode"] for row in mine["processCounts"] if row["count"] == 1)
     assert listed_ids(client, bookmarked="true", process=code) == {ids[0]}

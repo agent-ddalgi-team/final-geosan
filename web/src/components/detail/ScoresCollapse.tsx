@@ -50,6 +50,62 @@ function ItemRow({ item }: { item: ScoreItemView }) {
   );
 }
 
+/** #803: 다섯 묶음을 막대로 먼저 보인다("① 공정이 맞나 30/35 ███▊"). 숫자 표는 그 아래 그대로. */
+function GroupBars({ groups }: { groups: ReturnType<typeof groupScoreItems>['groups'] }) {
+  const rows = groups.filter((group) => group.weight > 0);
+  if (rows.length === 0) return null;
+  return (
+    <ul
+      data-testid="score-group-bars"
+      style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}
+    >
+      {rows.map((group) => {
+        const ratio = Math.max(0, Math.min(1, group.score / group.weight));
+        return (
+          <li
+            key={group.key}
+            data-testid="score-group-bar"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(120px, 160px) 1fr auto',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: typography.fontSizeSecondary,
+            }}
+          >
+            <span>{scoreGroups.titles[group.key]}</span>
+            <span
+              role="img"
+              aria-label={scoreGroups.head(
+                scoreGroups.titles[group.key],
+                group.score,
+                group.weight,
+              )}
+              style={{
+                position: 'relative',
+                height: 10,
+                borderRadius: 999,
+                background: detailTheme.bandTodo,
+                overflow: 'hidden',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: `${Math.round(ratio * 100)}%`,
+                  background: detailTheme.accent,
+                }}
+              />
+            </span>
+            <span style={{ whiteSpace: 'nowrap' }}>{`${group.score}/${group.weight}`}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Details({ scores }: { scores: Scores }) {
   const columns = scoreDetails.itemColumns;
   const columnCount = Object.keys(columns).length;
@@ -59,6 +115,7 @@ function Details({ scores }: { scores: Scores }) {
   const evaluated = formatMonthDayTime(scores.evaluatedAt);
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      {grouped ? <GroupBars groups={groups} /> : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32 }}>
         <Statistic title={scoreDetails.E} value={scores.E} data-testid="score-e" />
         <Statistic title={scoreDetails.P} value={scores.P} data-testid="score-p" />

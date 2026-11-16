@@ -32,6 +32,9 @@ export interface NaverMapsApi {
   Circle: new (options: Record<string, unknown>) => NaverCircle;
   Marker: new (options: Record<string, unknown>) => unknown;
   Event: { addListener: (target: unknown, name: string, handler: () => void) => unknown };
+  /** #803 상세 작은 지도: 거산과 회사 두 점을 잇는 선, 두 점을 담는 범위. 대시보드 지도는 쓰지 않는다. */
+  Polyline?: new (options: Record<string, unknown>) => unknown;
+  LatLngBounds?: new (southWest: NaverLatLng, northEast: NaverLatLng) => NaverBounds;
 }
 
 declare global {

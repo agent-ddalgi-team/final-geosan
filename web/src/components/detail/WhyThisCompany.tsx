@@ -64,8 +64,25 @@ function CertaintyText({ certainty }: { certainty: EvidenceView['certainty'] }) 
   return <span>{text}</span>;
 }
 
-/** 근거 한 건: "인용" — 출처 이름 ↗ · 출처 등급 B · 확인 */
-function EvidenceQuote({ item }: { item: EvidenceView }) {
+/** 같은 줄 안에서 인용·출처가 같은 근거는 한 번만 보인다(#803 — 같은 인용이 두 번씩 보였다). */
+export function dedupeEvidence(items: EvidenceView[]): EvidenceView[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.quote}\u0000${item.sourceRef}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** 그 줄 근거 가운데 가장 높은 출처 등급(A가 가장 높다). 없으면 null. */
+export function bestGradeOf(items: EvidenceView[]): string | null {
+  const grades = items.map((item) => item.sourceGrade).filter((grade) => Boolean(grade));
+  return grades.length > 0 ? [...grades].sort()[0] : null;
+}
+
+/** 근거 한 건: "인용" — 출처 이름 ↗ · 출처 등급 B · 확인. 바로 위 근거와 출처가 같으면 "같은 출처"만. */
+function EvidenceQuote({ item, sameSource = false }: { item: EvidenceView; sameSource?: boolean }) {
   return (
     <li data-testid="evidence-item" style={{ display: 'grid', gap: 2 }}>
       <blockquote style={{ margin: 0, ...secondary }}>“{item.quote}”</blockquote>
@@ -74,22 +91,24 @@ function EvidenceQuote({ item }: { item: EvidenceView }) {
       >
         <span aria-hidden="true">—</span>
         <span data-testid="evidence-source">
-          {splitSourceRef(item.sourceRef).map((part, index) =>
-            part.href ? (
-              <a
-                key={index}
-                href={part.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ textDecoration: 'underline' }}
-              >
-                {part.text}
-                <span aria-hidden="true"> ↗</span>
-              </a>
-            ) : (
-              <span key={index}>{part.text}</span>
-            ),
-          )}
+          {sameSource
+            ? texts.sameSource
+            : splitSourceRef(item.sourceRef).map((part, index) =>
+                part.href ? (
+                  <a
+                    key={index}
+                    href={part.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: 'underline' }}
+                  >
+                    {part.text}
+                    <span aria-hidden="true"> ↗</span>
+                  </a>
+                ) : (
+                  <span key={index}>{part.text}</span>
+                ),
+              )}
         </span>
         {item.occurredAt ? <span>{item.occurredAt}</span> : null}
         <span>
@@ -153,37 +172,80 @@ export default function WhyThisCompany({
       {lines.length > 0 ? (
         <ul
           data-testid="detail-reason-lines"
-          style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 12 }}
+          style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
         >
-          {lines.map((row) => (
-            <li key={row.key} data-testid="detail-reason-line">
-              <span data-testid="detail-reason-text">
-                {row.link ? (
-                  <>
-                    {row.link.before}
-                    <a
-                      href={row.link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ textDecoration: 'underline' }}
-                    >
-                      {row.link.label}
-                    </a>
-                    {row.link.after}
-                  </>
-                ) : (
-                  row.text
-                )}
-              </span>
-              {row.evidence.length > 0 ? (
-                <ul aria-label={texts.evidenceListLabel(row.text)} style={quoteList}>
-                  {row.evidence.map((item) => (
-                    <EvidenceQuote key={item.evidenceId} item={item} />
-                  ))}
-                </ul>
-              ) : null}
-            </li>
-          ))}
+          {lines.map((row) => {
+            const quotes = dedupeEvidence(row.evidence);
+            const grade = bestGradeOf(quotes);
+            const colon = row.text.indexOf(': ');
+            return (
+              <li
+                key={row.key}
+                data-testid="detail-reason-line"
+                style={{
+                  display: 'grid',
+                  gap: 4,
+                  padding: '8px 0',
+                  borderTop: `1px solid ${colors.borderSecondary}`,
+                }}
+              >
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    gap: 12,
+                    alignItems: 'baseline',
+                  }}
+                >
+                  <span data-testid="detail-reason-text">
+                    {row.link ? (
+                      <>
+                        {row.link.before}
+                        <a
+                          href={row.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'underline' }}
+                        >
+                          {row.link.label}
+                        </a>
+                        {row.link.after}
+                      </>
+                    ) : colon > 0 ? (
+                      <>
+                        <strong>{row.text.slice(0, colon)}</strong>
+                        {row.text.slice(colon)}
+                      </>
+                    ) : (
+                      row.text
+                    )}
+                  </span>
+                  {grade ? (
+                    <span style={secondary} data-testid="detail-reason-grade">
+                      {texts.bestGrade(grade)}
+                    </span>
+                  ) : null}
+                </div>
+                {quotes.length > 0 ? (
+                  // #803: 인용·출처는 접어 두고 "근거 3건"을 눌러 편다(화면 길이의 절반이 인용 줄이었다).
+                  <details data-testid="detail-reason-evidence">
+                    <summary style={{ cursor: 'pointer', ...secondary }}>
+                      {texts.evidenceCount(quotes.length)}
+                    </summary>
+                    <ul aria-label={texts.evidenceListLabel(row.text)} style={quoteList}>
+                      {quotes.map((item, index) => (
+                        <EvidenceQuote
+                          key={item.evidenceId}
+                          item={item}
+                          sameSource={index > 0 && quotes[index - 1].sourceRef === item.sourceRef}
+                        />
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
       {others.length > 0 ? (

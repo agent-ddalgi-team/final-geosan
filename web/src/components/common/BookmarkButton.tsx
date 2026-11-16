@@ -16,13 +16,20 @@ export interface BookmarkButtonProps {
   bookmark: BookmarkRecord | null;
   /** 켜거나 끄는 저장이 끝나면 서버가 돌려준 값을 알린다. */
   onChanged: (bookmark: BookmarkRecord) => void;
+  /** #803: 상세 머리처럼 "담당자를 고르면" 안내를 부모가 한 번만 보일 때 true. */
+  hideStaffHint?: boolean;
 }
 
 /** 서버가 끄기를 거부했을 때는 두 문장(이유, 다음 할 일)을 그대로, 그 밖의 실패는 한 줄로 보인다. */
 type Problem =
   { refused: true; message: string; nextAction: string } | { refused: false; text: string };
 
-export default function BookmarkButton({ oppId, bookmark, onChanged }: BookmarkButtonProps) {
+export default function BookmarkButton({
+  oppId,
+  bookmark,
+  onChanged,
+  hideStaffHint = false,
+}: BookmarkButtonProps) {
   const { staffKey, canRecord } = useFrame();
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -71,7 +78,7 @@ export default function BookmarkButton({ oppId, bookmark, onChanged }: BookmarkB
       >
         {active ? bookmarkTexts.on : bookmarkTexts.off}
       </Button>
-      {!canRecord ? (
+      {!canRecord && !hideStaffHint ? (
         <span
           data-testid="bookmark-pick-staff-text"
           style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}

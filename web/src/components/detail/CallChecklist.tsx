@@ -133,6 +133,9 @@ export interface CallChecklistProps {
   scoreItems?: ScoreItemView[];
   /** 서버 질문 파일. 못 받았으면 null(화면 문구로 대신한다). */
   questions: SalesQuestions | null;
+  /** #803: 오른쪽 영업 코치 판의 "① 통화 전 — 물어볼 것"으로 놓일 때의 제목·안내. 없으면 전과 같다. */
+  title?: string;
+  hint?: string;
 }
 
 export default function CallChecklist({
@@ -144,6 +147,8 @@ export default function CallChecklist({
   salesStep,
   scoreItems = [],
   questions,
+  title,
+  hint,
 }: CallChecklistProps) {
   const { config } = useFrame();
   const [gapOpen, setGapOpen] = useState(false);
@@ -228,11 +233,11 @@ export default function CallChecklist({
   return (
     <DetailSection
       id="detail-review"
-      title={detailSections.callChecklist}
+      title={title ?? detailSections.callChecklist}
       count={lines.length + askRows.length}
     >
       <span style={secondary} data-testid="call-hint">
-        {texts.hint}
+        {hint ?? texts.hint}
       </span>
       {empty ? (
         <p data-testid="call-empty" style={{ margin: 0 }}>
