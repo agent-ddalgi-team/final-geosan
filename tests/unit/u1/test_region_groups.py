@@ -38,7 +38,7 @@ GROUPS = {
 
 @pytest.mark.parametrize("filename", EXAMPLES)
 def test_examples_have_four_region_groups_inside_configured_regions(filename):
-    """Given 예시 설정 / When 읽기 / Then 권역 4개가 PM 지시 순서로 있고 모두 regions 안의 값이다."""
+    """Given 예시 설정 / When 읽기 / Then 권역 4개가 PM 지시 순서로, 모두 regions 안의 값이다."""
     settings = load_app_settings(Path("examples") / filename)
     groups = {group.label: group.regions for group in settings.ingestion.region_groups}
     assert groups == GROUPS
