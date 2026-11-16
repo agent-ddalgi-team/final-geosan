@@ -7,8 +7,10 @@ U1은 담당자 의견(ReviewOpinion)만 둔다. 담기·승인·결과(U5)는 �
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from geosan.storage.base import Base, CommonColumns, UtcDateTime
@@ -142,3 +144,23 @@ class ReviewOpinion(CommonColumns, Base):
         String(40), ForeignKey("rec_review_opinion.opinion_id")
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class AnalysisFeedback(CommonColumns, Base):
+    """AI 분석 피드백 저장본(#824, 계약 C6). 받을 때마다 새 행이고 덮어쓰지 않는다.
+
+    응답은 숫자 표만 보고 AI가 쓴 글(근거 숫자 포함)과 프로그램이 센 앞 기간 비교다. 회사 이름·
+    메모 글·연락처는 없다. 읽을 때는 같은 묶음·같은 기간의 가장 최근 행을 쓴다.
+    """
+
+    __tablename__ = "rec_analysis_feedback"
+
+    feedback_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    period_from: Mapped[date | None] = mapped_column(Date)
+    period_to: Mapped[date | None] = mapped_column(Date)
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    model: Mapped[str | None] = mapped_column(String(80))
+    response: Mapped[Any] = mapped_column(JSON, nullable=False)
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
+    transfer_log_id: Mapped[str | None] = mapped_column(String(40))

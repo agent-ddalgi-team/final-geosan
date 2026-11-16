@@ -40,7 +40,9 @@ from geosan.storage.session import session_scope
 SALES_RECORD_KIND = "SALES_RECORD"
 # #742 영업 코치가 보낸 영업 기록 글. 문은 SALES_RECORD와 같고 하루 한도만 따로 센다.
 SALES_COACH_KIND = "SALES_COACH"
-RECORD_KINDS = (SALES_RECORD_KIND, SALES_COACH_KIND)
+# #824 영업 분석 피드백이 보낸 숫자 표 글. 문은 SALES_RECORD와 같고 하루 한도만 따로 센다.
+SALES_ANALYSIS_KIND = "SALES_ANALYSIS"
+RECORD_KINDS = (SALES_RECORD_KIND, SALES_COACH_KIND, SALES_ANALYSIS_KIND)
 DISABLED_MESSAGE = "영업 기록을 외부 AI로 보내는 설정이 꺼져 있습니다."
 NOT_SCRUBBED_MESSAGE = "연락처·사람 이름 지우기를 거치지 않은 영업 기록 글이 있습니다."
 
