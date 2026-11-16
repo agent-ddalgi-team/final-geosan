@@ -438,6 +438,67 @@
         "title": "AssistantUi",
         "type": "object"
       },
+      "AutoResearchToday": {
+        "properties": {
+          "limitUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limitusd"
+          },
+          "usedUsd": {
+            "title": "Usedusd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "usedUsd",
+          "limitUsd"
+        ],
+        "title": "AutoResearchToday",
+        "type": "object"
+      },
+      "BlockedTransfer": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "occurredAt",
+          "purpose",
+          "kind",
+          "reason"
+        ],
+        "title": "BlockedTransfer",
+        "type": "object"
+      },
       "Blocker": {
         "properties": {
           "blocksApproval": {
@@ -1157,6 +1218,14 @@
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
+          "operationsStaffKeys": {
+            "description": "운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys, #799). 화면은 지금 담당자가 이 안에 있을 때만 메뉴를 보인다. 권한은 서버가 판단한다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Operationsstaffkeys",
+            "type": "array"
+          },
           "records": {
             "$ref": "#/components/schemas/RecordsUi"
           },
@@ -1336,6 +1405,25 @@
           "reused"
         ],
         "title": "DailyBrief",
+        "type": "object"
+      },
+      "DailyCost": {
+        "properties": {
+          "costUsd": {
+            "title": "Costusd",
+            "type": "number"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "costUsd"
+        ],
+        "title": "DailyCost",
         "type": "object"
       },
       "Dashboard": {
@@ -2476,6 +2564,21 @@
           "data"
         ],
         "title": "Envelope[NoteResponse]",
+        "type": "object"
+      },
+      "Envelope_Operations_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Operations"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[Operations]",
         "type": "object"
       },
       "Envelope_OpinionResponse_": {
@@ -4530,6 +4633,34 @@
           "noteId"
         ],
         "title": "NoteResponse",
+        "type": "object"
+      },
+      "Operations": {
+        "properties": {
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/BlockedTransfer"
+            },
+            "title": "Blocked",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatus"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        },
+        "required": [
+          "usage",
+          "sources",
+          "blocked"
+        ],
+        "title": "Operations",
         "type": "object"
       },
       "Opinion": {
@@ -7740,6 +7871,75 @@
         "title": "SourceGrade",
         "type": "string"
       },
+      "SourceStatus": {
+        "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
+          "loadedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loadedat"
+          },
+          "refreshDueAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshdueat"
+          },
+          "refreshOverdue": {
+            "title": "Refreshoverdue",
+            "type": "boolean"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "FACTORY_FILE",
+              "FACTORY_REGISTRY",
+              "FACTORY_PROFILE",
+              "WATER_LIST",
+              "AI_JUDGMENT"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "asOf",
+          "loadedAt",
+          "rows",
+          "refreshDueAt",
+          "refreshOverdue"
+        ],
+        "title": "SourceStatus",
+        "type": "object"
+      },
       "StaffEntry": {
         "properties": {
           "displayName": {
@@ -7870,6 +8070,70 @@
         "title": "TimelineEvent",
         "type": "object"
       },
+      "TodayAlert": {
+        "description": "#799 운영 알림 줄의 숫자. AI 줄은 사용액·한도·%, 자료 갱신 줄은 기준일·권장일.",
+        "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "limitUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limitusd"
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "usedUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usedusd"
+          }
+        },
+        "title": "TodayAlert",
+        "type": "object"
+      },
       "TodayCheckItem": {
         "description": "회사 이름·날짜·일정 한 줄. 연락처·대표번호는 이 모델에 없다. 메모 글은 \"나에게 온 전달\n사항\" 줄의 text(받는 사람 본인에게, 앞 80자)뿐이다(#794).",
         "properties": {
@@ -7937,6 +8201,16 @@
       "TodayCheckRow": {
         "description": "맨 위 \"오늘 확인할 것\"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677).",
         "properties": {
+          "alert": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayAlert"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "count": {
             "title": "Count",
             "type": "integer"
@@ -7953,7 +8227,10 @@
               "SCHEDULE_TODAY",
               "SCHEDULE_OVERDUE",
               "CHECK_LEFT",
-              "HANDOFF_FOR_ME"
+              "HANDOFF_FOR_ME",
+              "AI_USAGE_ALERT",
+              "AI_LIMIT_REACHED",
+              "DATA_REFRESH_DUE"
             ],
             "title": "Kind",
             "type": "string"
@@ -7976,6 +8253,94 @@
           "items"
         ],
         "title": "TodayCheckRow",
+        "type": "object"
+      },
+      "Usage": {
+        "description": "이번 달(한국 시간). 비용은 `geosan cost`·호출 예약과 같은 한도 계산 비용.",
+        "properties": {
+          "alertRatio": {
+            "title": "Alertratio",
+            "type": "number"
+          },
+          "autoResearchToday": {
+            "$ref": "#/components/schemas/AutoResearchToday"
+          },
+          "callLimit": {
+            "title": "Calllimit",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "costLimitUsd": {
+            "title": "Costlimitusd",
+            "type": "number"
+          },
+          "costUsd": {
+            "title": "Costusd",
+            "type": "number"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyCost"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/UsageGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "calls",
+          "callLimit",
+          "costUsd",
+          "costLimitUsd",
+          "alertRatio",
+          "groups",
+          "daily",
+          "autoResearchToday"
+        ],
+        "title": "Usage",
+        "type": "object"
+      },
+      "UsageGroup": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "costUsd": {
+            "title": "Costusd",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "RESEARCH",
+              "WEB_SEARCH",
+              "SALES",
+              "OTHER"
+            ],
+            "title": "Group",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "calls",
+          "costUsd"
+        ],
+        "title": "UsageGroup",
         "type": "object"
       },
       "ValidationError": {
@@ -8747,6 +9112,53 @@
           }
         },
         "summary": "Confirm Handoff"
+      }
+    },
+    "/api/v1/operations": {
+      "get": {
+        "description": "운영 관리 화면. 운영 담당이 아니면(보기 전용·키 없음 포함) 403.",
+        "operationId": "operations_api_v1_operations_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Operations_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Operations"
       }
     },
     "/api/v1/opportunities": {

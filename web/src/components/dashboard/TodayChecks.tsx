@@ -4,6 +4,7 @@
 //   📅 오늘 일정            회사 · 일정 한 줄
 //   📬 나에게 온 전달 사항   회사 · 보낸 사람 · 날짜, 그 아래 전달 글 앞부분(#794)
 //   🔍 확인할 것이 남은 관심 기업  회사 이름(누르면 상세), 묶음 끝 [모두 보기]는 걸러진 목록
+// #799: 맨 앞에 운영 알림 줄(⛔ 한도 도달 — 모든 담당자 / ⚠ AI 사용 n% · 📂 자료 갱신 — 운영 담당)과 [운영 관리 →].
 // 지난 일정 단추는 기록 담당자에게만 보이고, 누르면 서버가 일정만 바꾼 새 기록과 변경 기록 한 줄을 남긴다
 // (/schedule/resolve). 어느 단추든 끝나면 대시보드를 다시 읽어 그 줄이 빠진다.
 // 묶음이 길면 앞 5곳만 보이고 [더 보기]로 편다. 0건인 묶음은 서버가 보내지 않는다.
@@ -261,6 +262,58 @@ export interface TodayChecksProps {
   onChanged?: () => void;
 }
 
+/** #799 운영 알림 줄. 회사 줄이 아니라 한 줄 문장과 [운영 관리 →]. */
+const ALERT_KINDS = ['AI_LIMIT_REACHED', 'AI_USAGE_ALERT', 'DATA_REFRESH_DUE'] as const;
+
+function alertText(row: TodayCheckRow): string | null {
+  const alert = row.alert;
+  if (row.kind === 'AI_LIMIT_REACHED') return dashboardTexts.alertAiLimit;
+  if (!alert) return null;
+  if (row.kind === 'AI_USAGE_ALERT' && alert.percent !== null) {
+    const money = (value: number | null) => (value === null ? '?' : `$${value.toFixed(2)}`);
+    return dashboardTexts.alertAiUsage(alert.percent, money(alert.usedUsd), money(alert.limitUsd));
+  }
+  if (row.kind === 'DATA_REFRESH_DUE' && alert.asOf) {
+    return dashboardTexts.alertDataRefresh(alert.asOf);
+  }
+  return null;
+}
+
+function AlertLine({ row }: { row: TodayCheckRow }) {
+  const { config, staffKey } = useFrame();
+  const text = alertText(row);
+  if (!text) return null;
+  const operations = Boolean(staffKey && config?.operationsStaffKeys?.includes(staffKey));
+  const icon =
+    row.kind === 'DATA_REFRESH_DUE' ? '📂' : row.kind === 'AI_LIMIT_REACHED' ? '⛔' : '⚠';
+  return (
+    <li
+      data-testid={`dashboard-today-alert-${row.kind}`}
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        alignItems: 'baseline',
+        padding: '6px 0',
+        color: row.kind === 'AI_LIMIT_REACHED' ? colors.error : colors.text,
+        fontWeight: 600,
+      }}
+    >
+      <span aria-hidden="true">{icon}</span>
+      <span>{text}</span>
+      {operations ? (
+        <Link
+          to="/operations"
+          data-testid={`dashboard-today-alert-link-${row.kind}`}
+          style={{ fontWeight: 400, fontSize: typography.fontSizeSecondary }}
+        >
+          {dashboardTexts.alertOperationsLink}
+        </Link>
+      ) : null}
+    </li>
+  );
+}
+
 export default function TodayChecks({
   rows,
   assistantSummary = null,
@@ -269,6 +322,7 @@ export default function TodayChecks({
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
   const ordered = ORDER.flatMap((kind) => known.filter((row) => row.kind === kind));
+  const alerts = ALERT_KINDS.flatMap((kind) => rows.filter((row) => row.kind === kind));
   return (
     <section
       aria-labelledby="dashboard-today-title"
@@ -288,7 +342,17 @@ export default function TodayChecks({
       {assistantSummary ? (
         <div data-testid="dashboard-today-assistant">{assistantSummary}</div>
       ) : null}
-      {ordered.length === 0 ? (
+      {alerts.length > 0 ? (
+        <ul
+          data-testid="dashboard-today-alerts"
+          style={{ listStyle: 'none', margin: 0, padding: 0 }}
+        >
+          {alerts.map((row) => (
+            <AlertLine key={row.kind} row={row} />
+          ))}
+        </ul>
+      ) : null}
+      {ordered.length === 0 && alerts.length === 0 ? (
         <p data-testid="dashboard-today-empty" style={{ margin: 0, color: colors.textSecondary }}>
           {dashboardTexts.todayEmpty}
         </p>

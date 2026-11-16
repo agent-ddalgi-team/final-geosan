@@ -314,6 +314,13 @@ class ConfigUi(_ApiModel):
     current_staff: CurrentStaff | None = Field(
         default=None, description="계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 null"
     )
+    operations_staff_keys: list[str] = Field(
+        default_factory=list,
+        description=(
+            "운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys, #799). "
+            "화면은 지금 담당자가 이 안에 있을 때만 메뉴를 보인다. 권한은 서버가 판단한다"
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

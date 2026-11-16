@@ -67,7 +67,7 @@ llm:
   webSearchCostPerThousandCalls: 10.0
   monthlyCostLimitUsd: 20
   unconfirmedCallCostUsd: 0.10  # 사용량을 못 받은 호출의 추정 비용(#538).
-  costAlertRatio: 0.5
+  costAlertRatio: 0.8   # #799(PM 결정 2026-11-16): 이번 달 비용이 한도의 80%면 대시보드에서 운영 담당에게 알림(`geosan cost` 알림 문장도 같은 기준)
   # 영업 기록 전용 스위치(#680, PM 결정 2026-11-13 #681). 영업 기록 글(메모·한 줄 메모·질문 답)을
   # 전화·이메일·사람 이름을 지운 뒤 외부 AI로 보내도 되는지 정한다. false면 하나도 나가지 않는다.
   salesRecordsEnabled: false
@@ -182,6 +182,14 @@ dashboard:
   countProposedIndustries: true
   # 영업 진행 띠의 "⚠ 멈춘 회사": 다음 일정 없이 마지막 접촉 뒤 이 일수 이상(#800, PM 확인 2026-11-16).
   stalledAfterDays: 14
+
+# 운영 관리 화면(왼쪽 메뉴 맨 아래)과 대시보드 운영 알림(#799, PM 결정 2026-11-16).
+# staffKeys에 든 담당자만 화면을 보고 "AI 사용 n%"·"자료 갱신할 때" 알림을 받는다.
+# factoryCsvRefreshDays: 공장현황 파일 기준일에서 이 일수가 지나면 갱신하라고 알린다.
+# 알림 사용률 기준은 아래 llm.costAlertRatio(0.8 = 80%)를 함께 쓴다.
+operations:
+  staffKeys: [choi-pm]
+  factoryCsvRefreshDays: 180
 
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 실행 흐름 연결 전에는 꺼 둔다.
 candidateWebSearch:
