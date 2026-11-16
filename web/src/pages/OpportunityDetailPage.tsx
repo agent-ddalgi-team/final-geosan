@@ -7,10 +7,12 @@
 // 머리의 [기록 남기기](#691)는 적는 곳의 "기록 남기기" 칸으로 내려가는 이동 단추다(저장하지 않는다).
 // 머리의 [관심] 단추(#357): 검토 의견·메모·영업 기록을 저장하면 서버가 관심을 켜므로, 그 저장 뒤에 관심 값만 조용히 다시 읽는다.
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError, getOpportunityDetail, getSalesQuestions } from '../api/client';
 import type {
+  CallPrepNote,
   ContactCount,
   ContactMethod,
   Meta,
@@ -23,6 +25,7 @@ import type {
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
 import CallPrep from '../components/assistant/CallPrep';
+import HandoffBox from '../components/records/HandoffBox';
 import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
@@ -55,7 +58,7 @@ interface Result {
 export default function OpportunityDetailPage() {
   const { oppId = '' } = useParams();
   const navigate = useNavigate();
-  const { config, setBannerMeta, setPageTitle } = useFrame();
+  const { config, setBannerMeta, setPageTitle, dockSlot } = useFrame();
   const [reload, setReload] = useState(0);
   // 기록을 저장할 때마다 올라가서 타임라인이 새로 불러온다.
   const [timelineVersion, setTimelineVersion] = useState(0);
@@ -113,6 +116,7 @@ export default function OpportunityDetailPage() {
     step: SalesStepView | null;
     lastContactAt: string | null;
     opinion: OpinionRecord | null;
+    callPrep: CallPrepNote | null;
   } | null>(null);
   const salesStep = fresh && fresh.data === data ? fresh.step : (data?.records.salesStep ?? null);
   const onSalesStepChanged = () => {
@@ -125,6 +129,7 @@ export default function OpportunityDetailPage() {
           step: envelope.data.records.salesStep ?? null,
           lastContactAt: envelope.data.records.lastContactAt ?? null,
           opinion: envelope.data.records.opinion ?? null,
+          callPrep: envelope.data.records.callPrep ?? null,
         }),
       )
       .catch(() => {
@@ -227,6 +232,47 @@ export default function OpportunityDetailPage() {
   // 마지막 접촉 날짜: 기록 구역에서 접촉을 저장하면 그 뒤에 조용히 다시 받은 값으로 바뀐다.
   const lastContactAt =
     fresh && fresh.data === data ? fresh.lastContactAt : (data?.records.lastContactAt ?? null);
+
+  // 전달 사항·통화 전·기록 남기기(#771·#750·#742). #773부터 넓은 화면은 오른쪽 영업 코치 칸으로 보낸다.
+  const recordInput = !data ? null : (
+    <>
+      {/* 전달 사항(#771): 다른 직원이 남긴 말을 포스트잇으로, 받는 사람에게 [확인했어요]. */}
+      <HandoffBox
+        key={`${oppId}:handoff`}
+        oppId={oppId}
+        evalId={data.evalId}
+        handoffs={data.records.handoffs ?? []}
+        lastActor={data.records.outcome?.updatedBy ?? null}
+        onChanged={() => {
+          reloadQuietly();
+          setTimelineVersion((n) => n + 1);
+        }}
+      />
+      {/* 통화 전 칸(#750): 지난 통화 뒤 코치가 정리한 다음 통화에 물어볼 것. AI를 부르지 않는다. */}
+      <CallPrep
+        key={`${oppId}:call-prep`}
+        prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
+      />
+      <RecordsArea
+        key={`${oppId}:records`}
+        oppId={oppId}
+        evalId={data.evalId}
+        outcome={data.records.outcome ?? null}
+        salesStep={salesStep}
+        onSalesStepChanged={onSalesStepChanged}
+        onOutcomeSaved={(saved) => setSavedOutcome({ data, outcome: saved })}
+        choiceMarks={choiceMarksOf(data)}
+        // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
+        onCompanyConfirmed={reloadQuietly}
+        excluded={opinionNow?.opinion === 'NOT_TARGET'}
+        onContactRecorded={onContactRecorded}
+        onRecorded={() => {
+          setTimelineVersion((n) => n + 1);
+          void bookmarkState.sync();
+        }}
+      />
+    </>
+  );
 
   return (
     <FiveStates
@@ -406,27 +452,22 @@ export default function OpportunityDetailPage() {
               <p style={{ margin: 0 }}>{states.notEvaluatedYet}</p>
             )}
           </DetailSection>
-          <DetailSection id="detail-records" title={recordsArea.title}>
-            {/* [통화 준비 💰](#680): 전화 기록을 적기 바로 전에 누른다. 스위치가 꺼져 있으면 보이지 않는다. */}
-            <CallPrep key={`${oppId}:call-prep`} oppId={oppId} />
-            <RecordsArea
-              key={`${oppId}:records`}
-              oppId={oppId}
-              evalId={data.evalId}
-              outcome={data.records.outcome ?? null}
-              salesStep={salesStep}
-              onSalesStepChanged={onSalesStepChanged}
-              onOutcomeSaved={(saved) => setSavedOutcome({ data, outcome: saved })}
-              choiceMarks={choiceMarksOf(data)}
-              // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
-              onCompanyConfirmed={reloadQuietly}
-              excluded={opinionNow?.opinion === 'NOT_TARGET'}
-              onContactRecorded={onContactRecorded}
-              onRecorded={() => {
-                setTimelineVersion((n) => n + 1);
-                void bookmarkState.sync();
-              }}
-            />
+          <DetailSection
+            id="detail-records"
+            title={recordsArea.title}
+            count={contactCount?.total ?? null}
+          >
+            {/* #773: 넓은 화면에서는 기록 남기기가 오른쪽 "💬 영업 코치" 칸에 있다(아래 createPortal). */}
+            {dockSlot ? (
+              <p
+                data-testid="records-in-dock"
+                style={{ margin: '0 0 12px', color: colors.textSecondary }}
+              >
+                {recordsArea.inDock}
+              </p>
+            ) : (
+              recordInput
+            )}
             <ActivityTimeline
               key={`${oppId}:timeline`}
               oppId={oppId}
@@ -438,6 +479,9 @@ export default function OpportunityDetailPage() {
               }}
             />
           </DetailSection>
+          {dockSlot
+            ? createPortal(<div data-testid="records-dock-content">{recordInput}</div>, dockSlot)
+            : null}
           <DetailSection id="detail-peers" title={peersArea.title}>
             <PeersArea key={`${oppId}:peers`} oppId={oppId} />
           </DetailSection>

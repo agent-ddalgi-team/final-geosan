@@ -15,6 +15,22 @@ export const colors = {
   error: '#B42318',
 } as const;
 
+/**
+ * 왼쪽 메뉴(#767): 어두운 세로 칸. 글자 대비 — 보통 글자 #B7BCC3 / 바탕 #1C1E21 약 9:1,
+ * 묶음 이름 #8A9099 약 5.6:1. 지금 화면 칸은 조금 밝은 바탕 + 흰 글자.
+ */
+export const sidebarTheme = {
+  bg: '#1C1E21',
+  fg: '#B7BCC3',
+  fgActive: '#FFFFFF',
+  group: '#8A9099',
+  activeBg: '#2C2F34',
+  activeBorder: '#3A3E44',
+  /** 메뉴 숫자 꼬리표(#770): 빨간 칸 + 흰 글자(대비 약 4.8:1). 접힌 그림 위에서는 바탕색 테두리로 띄운다. */
+  badgeBg: '#D92D20',
+  badgeFg: '#FFFFFF',
+} as const;
+
 /** 상태 색 6가지 조합(배경 연함 + 글자 진함, 대비 4.5:1 이상). 색은 보조 신호이고 글자가 항상 함께 있다. */
 export const statusPalette = {
   ok: { bg: '#E3F3E8', fg: '#145A32' },
@@ -26,6 +42,38 @@ export const statusPalette = {
 } as const;
 
 export type StatusTone = keyof typeof statusPalette;
+
+/**
+ * 대시보드 일정 달력 색(#758). 어두운 판 위에 둥근 칸을 두고, 일정이 있는 날만 상태별 색을 칠한다.
+ * 일정 없는 날은 흐린 칸·흐린 글자. 색은 보조 신호이고 칸 안 "N건"과 아래 색 설명 줄이 함께 있다.
+ */
+export const calendarPalette = {
+  panel: '#1E2023',
+  panelBorder: '#2C2F34',
+  title: '#F2F3F5',
+  textSecondary: '#A3A9B1',
+  weekday: '#8A9099',
+  navBg: '#2F3236',
+  navFg: '#E8E9EB',
+  emptyBg: '#26292D',
+  emptyFg: '#6B7078',
+  todayRing: '#E8E9EB',
+  popoverBg: '#2A2D31',
+  popoverBorder: '#3A3E43',
+  link: '#9EC5FF',
+  tones: {
+    /** 기한 지난 일정이 있는 날. */
+    overdue: { bg: '#4A3A34', fg: '#F3D9CF', badge: 'rgba(255, 255, 255, 0.14)' },
+    /** 오늘 일정. */
+    today: { bg: '#D9C792', fg: '#2E2716', badge: 'rgba(0, 0, 0, 0.12)' },
+    /** 7일 안 예정. */
+    soon: { bg: '#EAE8C9', fg: '#2F2E1C', badge: 'rgba(0, 0, 0, 0.1)' },
+    /** 그 뒤 예정. */
+    later: { bg: '#CFE4CB', fg: '#1E3A1D', badge: 'rgba(0, 0, 0, 0.1)' },
+  },
+} as const;
+
+export type CalendarTone = keyof typeof calendarPalette.tones;
 
 export const typography = {
   fontFamily: "'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif",
@@ -42,6 +90,28 @@ export const spacing = {
   sectionGap: 32,
   contentMaxWidth: 1200,
   headerHeight: 64,
+} as const;
+
+/**
+ * 기업 상세 톤(#759): 흰 바탕 + 얇은 회색 테두리 + 덜 둥근 모서리, 색은 포인트(지금 단계·숫자 꼬리표)에만.
+ * 연두 포인트 위 글자는 진한 글자(colors.text)로 대비 4.5:1 이상.
+ */
+export const detailTheme = {
+  border: '#E2E2E0',
+  radius: 4,
+  /** 칸 나눔 정보(머리 정보 칸 등)의 옅은 바탕. */
+  cellBg: '#F7F7F5',
+  /** 포인트: 지금 큰 단계 띠, 지나온 점, 숫자 꼬리표. */
+  accent: '#E3EC6A',
+  /** 지나온 큰 단계 띠. */
+  accentSoft: '#F4F7CF',
+  /** 아직인 큰 단계 띠. */
+  bandTodo: '#F1F1EF',
+  /** 지나온 단계를 잇는 선. */
+  lineDone: '#3C4650',
+  lineTodo: '#DCDCDA',
+  /** 지금 세부 단계 점의 테두리. */
+  ringCurrent: '#BDBDBB',
 } as const;
 
 /** Ant Design ConfigProvider에 넘기는 테마. */
@@ -62,3 +132,18 @@ export const antdTheme: ThemeConfig = {
     controlHeight: 40,
   },
 };
+
+/**
+ * 영업 분석 그래프 색(#760). dataviz 기본 범주 색 1~4번(파랑 · 주황 · 청록 · 노랑) 순서 그대로 —
+ * 검사 도구(validate_palette)로 색맹 구분을 확인한 순서다. 색은 보조 신호이고 범례·값 글자가 함께 있다.
+ */
+export const chartPalette = {
+  series: ['#2A78D6', '#EB6834', '#1BAF7A', '#EDA100'],
+  grid: '#E9EAEC',
+  track: '#F1F2F4',
+  /** 숫자 칸 하나를 강조할 때의 진한 바탕(참고 그림의 진한 초록 칸). 흰 글자 대비 4.5:1 이상. */
+  highlightBg: '#1F3A30',
+  highlightFg: '#FFFFFF',
+  highlightAccent: '#B9E36B',
+  cardRadius: 16,
+} as const;

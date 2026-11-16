@@ -1,60 +1,241 @@
 // 대시보드 맨 위 "오늘 확인할 것"(#679, PM 결정 2026-11-13). 서버가 저장된 값으로 센 줄 목록을 그대로 보인다(AI 없음).
-// 줄마다 "이름 n건"과 한 줄 설명(앞 2건 + "외 n"). 0건인 줄은 서버가 보내지 않고, 줄이 하나도 없으면 안내 한 줄.
-// 일정 줄은 누르면 줄 아래에 회사 상세로 가는 작은 목록이 펴지고, 걸러 볼 값이 있는 줄은 그 회사들만 걸러진 목록으로 간다.
-// 줄 종류는 뒤에 늘어난다(#677 "다시 조사할 때"·"AI와 다른 값"). 이름표에 없는 종류는 보이지 않는다.
+// #766(PM 결정 2026-11-16): 읽기 쉽게 주제별 묶음으로 나눠 제목·아이콘·회사별 한 줄로 보인다(예전에는 "앞 2건 + 외 n").
+//   🔴 지난 일정 — 했나요?  회사 · 날짜 · 일정 한 줄 + [완료] [날짜 바꾸기] [필요 없어요]
+//   📅 오늘 일정            회사 · 일정 한 줄
+//   🔍 확인할 것이 남은 관심 기업  회사 이름(누르면 상세), 묶음 끝 [모두 보기]는 걸러진 목록
+// 지난 일정 단추는 기록 담당자에게만 보이고, 누르면 서버가 일정만 바꾼 새 기록과 변경 기록 한 줄을 남긴다
+// (/schedule/resolve). 어느 단추든 끝나면 대시보드를 다시 읽어 그 줄이 빠진다.
+// 묶음이 길면 앞 5곳만 보이고 [더 보기]로 편다. 0건인 묶음은 서버가 보내지 않는다.
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from 'antd';
+import { ApiError, resolveSchedule } from '../../api/client';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
+import { LIST_PATH } from '../../paths';
 import { colors, typography } from '../../theme/tokens';
-import { formatMonthDay } from '../../utils/time';
+import { useFrame } from '../frame/FrameContext';
 
-const SHOWN_IN_LINE = 2;
+const SHOWN = 5;
+/** 묶음 순서: 지난 일정(정리할 것)이 맨 위. */
+const ORDER: TodayCheckKind[] = [
+  'SCHEDULE_OVERDUE',
+  'HANDOFF_FOR_ME',
+  'SCHEDULE_TODAY',
+  'CHECK_LEFT',
+];
+const WEEKDAYS = '일월화수목금토';
 
 function isKnownKind(kind: string): kind is TodayCheckKind {
   return kind in dashboardTexts.todayRowNames;
 }
 
-function itemText(item: TodayCheckItem): string {
-  return [item.customerName, item.note].filter(Boolean).join(' ');
+/** "11/13(목)". 날짜 글이 아니면 그대로. */
+export function dayLabel(value: string | null): string {
+  if (!value) return '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return `${day.getMonth() + 1}/${day.getDate()}(${WEEKDAYS[day.getDay()]})`;
 }
 
-/** "A정밀 견적 · B금속 방문 외 1": 앞 2건만 적는다. 남은 수는 건수에서 뺀다. */
-export function todayRowSummary(row: TodayCheckRow): string {
-  const shown = row.items.slice(0, SHOWN_IN_LINE).map(itemText).join(' · ');
-  const rest = row.count - Math.min(row.items.length, SHOWN_IN_LINE);
-  return rest > 0 ? `${shown} ${dashboardTexts.todayMore(rest)}`.trim() : shown;
+function todayIso(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-const rowStyle = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'baseline',
-  gap: 8,
-  width: '100%',
-  padding: '8px 0',
-  border: 0,
-  background: 'none',
-  font: 'inherit',
-  color: colors.text,
-  textAlign: 'left',
-  cursor: 'pointer',
-} as const;
+const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 
-function RowText({ row, kind }: { row: TodayCheckRow; kind: TodayCheckKind }) {
+function itemKey(item: TodayCheckItem): string {
+  return `${item.oppId}-${item.dueAt ?? ''}-${item.note ?? ''}`;
+}
+
+/** 지난 일정 한 줄: 회사·날짜·일정 + 세 단추. */
+function OverdueItem({ item, onChanged }: { item: TodayCheckItem; onChanged: () => void }) {
+  const { staffKey, canRecord } = useFrame();
+  const [moving, setMoving] = useState(false);
+  const [date, setDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const version = item.outcomeVersion;
+  const usable = canRecord && staffKey !== null && typeof version === 'number';
+
+  async function send(action: 'DONE' | 'DROPPED' | 'MOVED') {
+    if (!usable || busy) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      await resolveSchedule(
+        item.oppId,
+        {
+          action,
+          expectedVersion: version,
+          ...(action === 'MOVED' ? { nextScheduleAt: date } : {}),
+        },
+        staffKey,
+      );
+      onChanged();
+    } catch (error) {
+      setMessage(
+        error instanceof ApiError
+          ? `${error.body.message} ${error.body.nextAction}`
+          : dashboardTexts.todayResolveFailed,
+      );
+      setBusy(false);
+    }
+  }
+
   return (
-    <>
-      <strong data-testid={`dashboard-today-count-${kind}`}>
-        {dashboardTexts.todayRowNames[kind]} {row.count}
-        {dashboardTexts.todayRowUnits[kind]}
-      </strong>
-      <span
-        data-testid={`dashboard-today-summary-${kind}`}
-        style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
-      >
-        {todayRowSummary(row)}
+    <li data-testid="dashboard-today-item" style={{ display: 'grid', gap: 6, padding: '6px 0' }}>
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
+        <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`}>{item.customerName}</Link>
+        <span style={secondary}>
+          {[dayLabel(item.dueAt), item.note].filter(Boolean).join(' · ')}
+        </span>
       </span>
-    </>
+      {usable ? (
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => void send('DONE')}
+            data-testid="dashboard-today-done"
+          >
+            {dashboardTexts.todayResolveDone}
+          </Button>
+          <Button
+            size="small"
+            disabled={busy}
+            aria-expanded={moving}
+            onClick={() => setMoving((open) => !open)}
+            data-testid="dashboard-today-move"
+          >
+            {dashboardTexts.todayResolveMove}
+          </Button>
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => void send('DROPPED')}
+            data-testid="dashboard-today-drop"
+          >
+            {dashboardTexts.todayResolveDrop}
+          </Button>
+        </span>
+      ) : null}
+      {usable && moving ? (
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <label htmlFor={`today-move-${item.oppId}`} style={secondary}>
+            {dashboardTexts.todayResolveNewDate}
+          </label>
+          <input
+            id={`today-move-${item.oppId}`}
+            type="date"
+            min={todayIso()}
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            data-testid="dashboard-today-move-date"
+          />
+          <Button
+            size="small"
+            type="primary"
+            disabled={busy || !date || date < todayIso()}
+            onClick={() => void send('MOVED')}
+            data-testid="dashboard-today-move-save"
+          >
+            {dashboardTexts.todayResolveMoveSave}
+          </Button>
+        </span>
+      ) : null}
+      {message ? (
+        <span role="alert" style={{ color: colors.error, fontSize: typography.fontSizeSecondary }}>
+          {message}
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+function PlainItem({ item }: { item: TodayCheckItem }) {
+  return (
+    <li data-testid="dashboard-today-item" style={{ padding: '4px 0' }}>
+      <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`}>{item.customerName}</Link>
+      {item.note || item.dueAt ? (
+        <span style={{ ...secondary, marginLeft: 8 }}>
+          {[item.note].filter(Boolean).join(' · ')}
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+function Group({
+  row,
+  kind,
+  onChanged,
+}: {
+  row: TodayCheckRow;
+  kind: TodayCheckKind;
+  onChanged: () => void;
+}) {
+  const [all, setAll] = useState(false);
+  const items = all ? row.items : row.items.slice(0, SHOWN);
+  const hidden = row.items.length - items.length;
+  return (
+    <li
+      data-testid="dashboard-today-row"
+      style={{ borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }}
+    >
+      <h3
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          gap: 8,
+          margin: 0,
+          fontSize: typography.fontSize,
+        }}
+      >
+        <span aria-hidden="true">{dashboardTexts.todayRowIcons[kind]}</span>
+        <strong data-testid={`dashboard-today-count-${kind}`}>
+          {dashboardTexts.todayGroupTitles[kind]} {row.count}
+          {dashboardTexts.todayRowUnits[kind]}
+        </strong>
+        {row.listFilter ? (
+          <Link
+            to={`${LIST_PATH}?filter=${encodeURIComponent(row.listFilter)}`}
+            data-testid={`dashboard-today-link-${kind}`}
+            style={{ fontSize: typography.fontSizeSecondary, fontWeight: 400 }}
+          >
+            {dashboardTexts.todaySeeAll}
+          </Link>
+        ) : null}
+      </h3>
+      <ul
+        data-testid={`dashboard-today-items-${kind}`}
+        style={{ listStyle: 'none', margin: '4px 0 0', padding: '0 0 0 28px' }}
+      >
+        {items.map((item) =>
+          kind === 'SCHEDULE_OVERDUE' ? (
+            <OverdueItem key={itemKey(item)} item={item} onChanged={onChanged} />
+          ) : (
+            <PlainItem key={itemKey(item)} item={item} />
+          ),
+        )}
+      </ul>
+      {hidden > 0 ? (
+        <Button
+          type="link"
+          size="small"
+          onClick={() => setAll(true)}
+          data-testid={`dashboard-today-more-${kind}`}
+          style={{ paddingLeft: 28 }}
+        >
+          {dashboardTexts.todayMoreButton(hidden)}
+        </Button>
+      ) : null}
+    </li>
   );
 }
 
@@ -62,16 +243,22 @@ export interface TodayChecksProps {
   /** 서버의 줄 목록. 옛 서버라 칸이 없으면(undefined) 구역을 그리지 않는다. */
   rows: TodayCheckRow[] | undefined;
   /**
-   * 영업 비서(#680)가 한두 문장으로 정리해 줄 자리. 지금은 아무도 넘기지 않아 아무것도 보이지 않는다
-   * (빈 상자·안내 문구 없음). 영업 비서가 생기면 이 값만 채우면 줄 목록 위에 보인다.
+   * 영업 비서의 오늘 정리(#743) 자리: 제목 바로 아래, 줄 목록 위. 대시보드는 스위치가 켜져 있고 담당자를
+   * 골랐을 때만 넘긴다. 넘기지 않으면 아무것도 보이지 않는다(빈 상자·안내 문구 없음).
    */
-  assistantSummary?: string | null;
+  assistantSummary?: ReactNode;
+  /** 지난 일정 단추로 정리한 뒤 대시보드를 다시 읽는다(#766). */
+  onChanged?: () => void;
 }
 
-export default function TodayChecks({ rows, assistantSummary = null }: TodayChecksProps) {
-  const [openKind, setOpenKind] = useState<string | null>(null);
+export default function TodayChecks({
+  rows,
+  assistantSummary = null,
+  onChanged = () => {},
+}: TodayChecksProps) {
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
+  const ordered = ORDER.flatMap((kind) => known.filter((row) => row.kind === kind));
   return (
     <section
       aria-labelledby="dashboard-today-title"
@@ -89,76 +276,22 @@ export default function TodayChecks({ rows, assistantSummary = null }: TodayChec
         {dashboardTexts.todayTitle}
       </h2>
       {assistantSummary ? (
-        <p data-testid="dashboard-today-assistant" style={{ margin: 0 }}>
-          {assistantSummary}
-        </p>
+        <div data-testid="dashboard-today-assistant">{assistantSummary}</div>
       ) : null}
-      {known.length === 0 ? (
+      {ordered.length === 0 ? (
         <p data-testid="dashboard-today-empty" style={{ margin: 0, color: colors.textSecondary }}>
           {dashboardTexts.todayEmpty}
         </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {known.map((row) => {
-            const kind = row.kind as TodayCheckKind;
-            const open = openKind === kind;
-            return (
-              <li
-                key={kind}
-                data-testid="dashboard-today-row"
-                style={{ borderTop: `1px solid ${colors.borderSecondary}` }}
-              >
-                {row.listFilter ? (
-                  <Link
-                    to={`/opportunities?filter=${encodeURIComponent(row.listFilter)}`}
-                    data-testid={`dashboard-today-link-${kind}`}
-                    style={{ ...rowStyle, textDecoration: 'none' }}
-                  >
-                    <RowText row={row} kind={kind} />
-                  </Link>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      aria-controls={`dashboard-today-items-${kind}`}
-                      onClick={() => setOpenKind(open ? null : kind)}
-                      data-testid={`dashboard-today-toggle-${kind}`}
-                      style={rowStyle}
-                    >
-                      <RowText row={row} kind={kind} />
-                    </button>
-                    {open ? (
-                      <ol
-                        id={`dashboard-today-items-${kind}`}
-                        data-testid={`dashboard-today-items-${kind}`}
-                        style={{
-                          listStyle: 'none',
-                          margin: 0,
-                          padding: '0 0 12px',
-                          display: 'grid',
-                          gap: 6,
-                        }}
-                      >
-                        {row.items.map((item) => (
-                          <li key={`${item.oppId}-${item.dueAt ?? ''}-${item.note ?? ''}`}>
-                            <Link
-                              to={`/opportunities/${encodeURIComponent(item.oppId)}`}
-                              data-testid="dashboard-today-item"
-                            >
-                              {[formatMonthDay(item.dueAt), itemText(item)]
-                                .filter(Boolean)
-                                .join(' ')}
-                            </Link>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : null}
-                  </>
-                )}
-              </li>
-            );
-          })}
+          {ordered.map((row) => (
+            <Group
+              key={row.kind}
+              row={row}
+              kind={row.kind as TodayCheckKind}
+              onChanged={onChanged}
+            />
+          ))}
         </ul>
       )}
     </section>

@@ -278,6 +278,14 @@ export interface StaffEntry {
   displayName: string;
 }
 
+/** 계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null. */
+export interface CurrentStaff {
+  key: string;
+  displayName: string | null;
+  canRecord: boolean;
+  setupRequired: boolean;
+}
+
 export interface Brand {
   logoUrl: string | null;
   brandName: string;
@@ -328,6 +336,8 @@ export interface ConfigUi {
   ruleVersion: string;
   /** 목록 거리 범위 선택지(km, #666). 설정 distanceFilterPresetsKm 그대로. 옛 응답에는 없다. */
   distanceFilterPresetsKm?: number[];
+  /** 계정 방식에서 지금 로그인한 사람(#754). 공용 방식·옛 응답이면 null 또는 없음. */
+  currentStaff?: CurrentStaff | null;
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
@@ -402,6 +412,21 @@ export interface SalesQuestion {
    */
   choices?: 'PROCESS' | 'INDUSTRY' | null;
   answers: SalesAnswerOption[];
+  /** 영업 코치가 이 질문을 다루는 방식·필수 여부(#742, 질문 파일 coach 칸). 없으면 null. */
+  coach?: SalesCoachRule | null;
+}
+
+/** 영업 코치가 질문을 다루는 방식(#742, C0 coachFill): AI가 채움 / AI가 제안하고 사람이 확정 / 사람이 고름. */
+export type CoachFill = 'AI' | 'SUGGEST' | 'STAFF';
+
+export interface SalesCoachRule {
+  fill: CoachFill;
+  /** 그 세부 단계의 필수 질문(step ALL이면 접촉마다). */
+  required: boolean;
+  /** 앞 답이 이 보기 중 하나일 때만 필수. */
+  requiredWhen?: { answers: Record<string, string[]> } | null;
+  /** 기록 칸 위 "확인사항"에 보이는 짧은 말. */
+  keyword?: string | null;
 }
 
 /** GET /sales-questions(#607). 질문 파일 그대로. */
@@ -411,7 +436,9 @@ export interface SalesQuestions {
   questions: SalesQuestion[];
 }
 export type JudgmentCheck = 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
-export type NoteKind = 'MEMO' | 'RESEARCH';
+/** ADVICE = 남긴 피드백(#742): 영업 코치 피드백 가운데 [보고서에 남기기]로 고른 한 줄. 종류 고르기 칸에는 없다. */
+/** CALL_PREP = 다음 통화 준비(#750): 영업 코치가 같은 호출에서 준 물어볼 것(줄바꿈으로 이은 한 행). 종류 고르기 칸에는 없다. */
+export type NoteKind = 'MEMO' | 'RESEARCH' | 'ADVICE' | 'CALL_PREP' | 'HANDOFF';
 
 export interface OutcomeRecord extends RecordMeta {
   status?: OutcomeStatus | null;
@@ -703,6 +730,38 @@ export interface DetailRecords {
   lastContactAt?: string | null;
   /** 세부 단계·알아낸 것·아직 모르는 질문(#607). 옛 응답이면 없다. */
   salesStep?: SalesStepView | null;
+  /** 남긴 피드백(#742, rec_note kind ADVICE), 최근 것부터. 회사 보고서 "영업 방향"이 이 값만 싣는다. */
+  advice?: AdviceLine[];
+  /** (#750) 가장 최근 다음 통화 준비(rec_note kind CALL_PREP). 상세 "통화 전" 칸과 보고서 "영업 방향"이 싣는다. */
+  callPrep?: CallPrepNote | null;
+  /** #771 전달 사항(확인 전이 먼저, 최근 것부터 최대 10개). 옛 응답에는 없다. */
+  handoffs?: HandoffNote[];
+}
+
+/** #771 전달 사항 한 행. from·to는 담당자 키(화면은 담당자 목록 이름으로 바꿔 보인다). */
+export interface HandoffNote {
+  noteId: string;
+  text: string;
+  from: string;
+  to: string;
+  at: string;
+  confirmedAt: string | null;
+  confirmedBy: string | null;
+}
+
+/** (#750) 다음 통화 준비 한 행. lines는 서버가 줄바꿈으로 나눈 줄. */
+export interface CallPrepNote {
+  noteId: string;
+  lines: string[];
+  at: string;
+  by: string;
+}
+
+export interface AdviceLine {
+  noteId: string;
+  text: string;
+  at: string;
+  by: string;
 }
 
 /** 검토사항 한 줄(C1 reviewItems, 더하는 변경 2026-11-03 밤). 목록은 평가 결과에서 파생되고 체크 상태만 저장된다. */
@@ -797,6 +856,8 @@ export type BookmarkResponse = BookmarkRecord;
 export interface NoteRequest {
   text: string;
   kind?: NoteKind;
+  /** #771 전달 사항(kind HANDOFF)일 때만: 받는 사람 담당자 키. */
+  toStaffKey?: string;
   evalId?: string | null;
   /**
    * 검토사항 자료 줄 번호(#259·#260, 더하는 변경 2026-11-12). 있으면 kind는 RESEARCH여야 하고(아니면 400),
@@ -825,13 +886,16 @@ export interface OutcomeRequest {
   judgmentCheck?: JudgmentCheck;
   /** 한 줄 메모(#607). 설정 records.memoLineMaxLength(초기 100자)까지. */
   memo?: string;
-  /** 꼬리 질문 답(#607). 연결된 접촉에서만 보낸다. */
-  answers?: { questionId: string; answerId: string }[];
+  /** 꼬리 질문 답(#607). 연결된 접촉에서만 보낸다. filledBy(#742): 영업 코치가 채운 답을 그대로 저장하면 AI_CONFIRMED. */
+  answers?: { questionId: string; answerId: string; filledBy?: AnswerFilledBy }[];
   /** [단계 고치기](#607). */
   stepOverride?: SalesStep;
   /** 제외한 회사에 접촉을 남기면서 검토 의견을 영업 대상으로 되돌릴지(#697). 접촉 기록에서만 보낸다. */
   restoreExcluded?: boolean;
 }
+
+/** 꼬리 질문 답을 누가 채웠나(#742, C0 answerFilledBy). AI_CHANGED = AI가 채운 답을 [고치기]에서 바꿈. */
+export type AnswerFilledBy = 'STAFF' | 'AI_CONFIRMED' | 'AI_CHANGED';
 
 export interface OutcomeResponse extends RecordMeta {
   status: OutcomeStatus;
@@ -953,7 +1017,9 @@ export type ActivityKind =
   | 'NOTE'
   | 'RECORD_CANCELLED'
   /** #731 프로그램이 남긴 변경 기록(공정·산업 확정, AI 제안 확정·물리침). recordId가 없어 취소할 수 없다. */
-  | 'CHANGE';
+  | 'CHANGE'
+  /** #742 남긴 피드백(영업 코치 피드백 가운데 보고서에 남긴 줄). 잘못 입력으로 표시할 수 있다. */
+  | 'ADVICE';
 
 /** 취소할 수 있는 저장 행의 종류(C1 ActivityItem.recordKind). NOTE = 메모·자료 조사·답 이력, OUTCOME = 접촉·단계·일정. */
 export type RecordKind = 'NOTE' | 'OUTCOME';

@@ -1,5 +1,5 @@
 _설명: >-
-  발표 시연용 DB에 넣는 가상 영업 기록(#274, 약속 C7). `geosan seed-demo-records`가 읽는다.
+  발표 시연용 DB에 넣는 가상 영업 기록(#274, 약속 C7; #765에서 18곳으로 늘림). `geosan seed-demo-records`가 읽는다.
   회사·메모·이유는 모두 지어낸 것이며 가상·거산 실제 사양 아님. 실제 회사·사람 이름과 연락처는 적지 않는다(적으면 거부된다).
   caseId는 가상 사례 파일(examples/case-apjeong.json, examples/demo/case-demo-*.json)의 caseId다.
   daysAgo는 "넣는 날 기준 며칠 전 접촉인지"다. 날짜를 박아 두지 않아 언제 넣어도 최근 12개월 안에 든다.
@@ -159,3 +159,215 @@ companies:
           - { questionId: NEXT_ACTION, answerId: END }
           - { questionId: CLOSE_RESULT, answerId: LOST }
           - { questionId: LOST_REASON, answerId: INCUMBENT_SUPPLIER }
+  # ── #765 (PM 결정 2026-11-15): 영업 분석 기간 선택·그래프 시연용으로 12곳을 더한다. 1~150일 전으로 퍼뜨린다 ──
+  - caseId: demo-g-precision   # G정공(가상) · 아연도금 · 진행 중(수요 확인)
+    contacts:
+      - daysAgo: 25
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 18
+        method: CALL
+        result: REACHED
+        memo: "(가상) 클립 도금을 외주로 맡기는 중. 소개 자료를 보내 달라고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+  - caseId: demo-h-industry   # H산업(가상) · 아노다이징 · 성사
+    contacts:
+      - daysAgo: 150
+        method: CALL
+        result: REACHED
+        memo: "(가상) 전자 케이스 아노다이징 외주처를 바꾸려 한다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+      - daysAgo: 138
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 견적을 보내고 샘플 요청을 받음"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 110
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 샘플 합격, 첫 발주를 받음"
+        answers:
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-i-tech   # I테크(가상) · 무전해니켈 · 진행 중(연결됨)
+    contacts:
+      - daysAgo: 16
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 12
+        method: CALL
+        result: REACHED
+        memo: "(가상) 담당 부서와 통화. 지금 도금 방식은 확인해 보고 알려 주겠다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: UNKNOWN }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+  - caseId: demo-j-metal   # J금속(가상) · 부동태 · 거절(납기)
+    contacts:
+      - daysAgo: 95
+        method: CALL
+        result: REACHED
+        memo: "(가상) 이음쇠 부동태는 외주. 급한 물량이 많다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: LOW }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 80
+        method: CALL
+        result: REACHED
+        memo: "(가상) 납기 조건을 다시 확인"
+        reason: "(가상) 요구 납기가 짧아 맞추기 어렵다고 서로 확인"
+        answers:
+          - { questionId: SWITCH_INTENT, answerId: NOT_NOW }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: LEAD_TIME }
+  - caseId: demo-k-machine   # K기계(가상) · 아연도금 · 보류
+    contacts:
+      - daysAgo: 60
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일에 답 없음"
+      - daysAgo: 45
+        method: CALL
+        result: REACHED
+        memo: "(가상) 내년 설비 계획이 정해지면 다시 이야기하자고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: ON_HOLD }
+  - caseId: demo-l-electronics   # L전자(가상) · 아노다이징 · 진행 중(연결 전)
+    contacts:
+      - daysAgo: 5
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 3
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일을 보냄, 답 기다림"
+  - caseId: demo-m-precision   # M정밀(가상) · 무전해니켈 · 진행 중(자료·견적)
+    contacts:
+      - daysAgo: 40
+        method: CALL
+        result: REACHED
+        memo: "(가상) 정밀 축 도금 외주처를 더 찾는 중. 자료를 요청함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: QUOTE_REQUEST, answerId: MATERIAL }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+      - daysAgo: 28
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 소개서를 보냄"
+        answers:
+          - { questionId: SENT_ITEM, answerId: BROCHURE }
+          - { questionId: REPLY, answerId: NOT_YET }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 14
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 검토 결과를 물으려 했으나 부재"
+  - caseId: demo-n-valve   # N밸브(가상) · 부동태 · 진행 중(연결됨)
+    contacts:
+      - daysAgo: 11
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일을 보냈으나 답 없음"
+      - daysAgo: 8
+        method: CALL
+        result: REACHED
+        memo: "(가상) 지금은 직접 처리한다고 함. 물량이 늘면 다시 이야기하기로"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: IN_HOUSE }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+  - caseId: demo-o-parts   # O부품(가상) · 아연도금 · 거절(가격)
+    contacts:
+      - daysAgo: 70
+        method: CALL
+        result: REACHED
+        memo: "(가상) 볼트 도금 견적을 받아 보고 싶다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: INTEREST_DRIVER, answerId: PRICE }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+      - daysAgo: 55
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 견적 검토 결과를 받음"
+        reason: "(가상) 지금 외주 단가보다 높다는 답"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: PRICE }
+  - caseId: demo-p-tech   # P테크(가상) · 아노다이징 · 보류
+    contacts:
+      - daysAgo: 100
+        method: CALL
+        result: REACHED
+        memo: "(가상) 프레임 아노다이징은 외주. 당장은 바꿀 생각이 없다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: LOW }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 88
+        method: CALL
+        result: REACHED
+        memo: "(가상) 새 제품이 나오면 다시 연락하기로 함"
+        answers:
+          - { questionId: SWITCH_INTENT, answerId: NOT_NOW }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: ON_HOLD }
+  - caseId: demo-q-industry   # Q산업(가상) · 무전해니켈 · 진행 중(수요 확인)
+    contacts:
+      - daysAgo: 33
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 20
+        method: CALL
+        result: REACHED
+        memo: "(가상) 유압 부품 도금 외주처를 찾는 중이라고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+  - caseId: demo-r-metal   # R금속(가상) · 아연도금 · 진행 중(연결 전)
+    contacts:
+      - daysAgo: 6
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 2
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 다시 걸었으나 부재"

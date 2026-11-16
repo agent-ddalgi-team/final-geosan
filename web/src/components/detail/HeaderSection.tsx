@@ -29,7 +29,7 @@ import {
   purposeLabels,
   recordsArea,
 } from '../../labels/ko';
-import { colors } from '../../theme/tokens';
+import { colors, detailTheme, typography } from '../../theme/tokens';
 import { daysAgo } from '../../utils/time';
 
 export interface HeaderSectionProps {
@@ -159,10 +159,12 @@ export default function HeaderSection({
             <StatusTag tone={header.researchState === 'RUNNING' ? 'neutral' : 'wait'}>
               {header.researchState === 'RUNNING'
                 ? candidateSearch.researchRunning
-                : `${candidateSearch.researchStopped} · ${labelFor(
-                    candidateSearch.researchStopReason,
-                    header.researchState,
-                  )}`}
+                : header.researchState === 'NOT_TRIED'
+                  ? candidateSearch.researchNotYet
+                  : `${candidateSearch.researchStopped} · ${labelFor(
+                      candidateSearch.researchStopReason,
+                      header.researchState,
+                    )}`}
             </StatusTag>
           </span>
         ) : null}
@@ -179,20 +181,45 @@ export default function HeaderSection({
             {ownPlatingLine.tag}
           </StatusTag>
         ) : null}
-        <span
-          data-testid="detail-meta"
-          style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 16, color: colors.textSecondary }}
-        >
-          <span>
-            {detailHeader.purpose}: {labelFor(purposeLabels, header.purpose)}
-          </span>
-          {ownerName ? (
-            <span>
-              {detailHeader.owner}: {ownerName}
-            </span>
-          ) : null}
-        </span>
       </div>
+      {/* #759: 대응·담당은 칸 나눔 정보로(이름표는 작게 위, 값은 굵게 아래). 읽는 글은 "대응: 영업"처럼 그대로. */}
+      <dl
+        data-testid="detail-meta"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          margin: 0,
+          border: `1px solid ${detailTheme.border}`,
+          borderRadius: detailTheme.radius,
+          width: 'fit-content',
+          maxWidth: '100%',
+        }}
+      >
+        {[
+          {
+            key: 'purpose',
+            label: detailHeader.purpose,
+            value: labelFor(purposeLabels, header.purpose),
+          },
+          ...(ownerName ? [{ key: 'owner', label: detailHeader.owner, value: ownerName }] : []),
+        ].map((cell, index) => (
+          <div
+            key={cell.key}
+            style={{
+              display: 'grid',
+              gap: 2,
+              padding: '10px 16px',
+              minWidth: 120,
+              borderLeft: index === 0 ? 0 : `1px solid ${detailTheme.border}`,
+            }}
+          >
+            <dt style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
+              {cell.label}
+            </dt>
+            <dd style={{ margin: 0, fontWeight: 600 }}>{cell.value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

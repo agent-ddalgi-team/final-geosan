@@ -19,6 +19,8 @@ from geosan.evidence.extraction import _post
 from geosan.evidence.openai_search import _HttpError, _Usage
 from geosan.evidence.reader import remaining
 from geosan.evidence.sales_record_gate import (
+    SALES_COACH_KIND,
+    SALES_RECORD_KIND,
     ScrubbedRecordText,
     mark_sales_record_companies,
     reserve_sales_records,
@@ -47,6 +49,92 @@ class MemoReading(FileModel):
 
     summary: str
     proposals: list[MemoProposal]
+
+
+class CoachAnswer(FileModel):
+    """영업 코치(#742)에서 AI가 채운 꼬리 질문 답 하나. 질문·보기가 있는지는 창구가 검증한다."""
+
+    question_id: str
+    answer_ids: list[str]
+    quote: str
+
+
+class CoachSchedule(FileModel):
+    """영업 코치가 읽은 다음 일정. actionId는 "다음 할 일은?"의 보기 id."""
+
+    action_id: str | None
+    date: str | None
+
+
+class CoachReading(FileModel):
+    """영업 코치(#742)의 구조화된 응답: 답 채우기·다음 일정·피드백 1~3줄·요약 한 줄.
+
+    #750: 같은 호출에서 다음 통화에 물어볼 것 0~3줄(next_call)도 받는다.
+    """
+
+    answers: list[CoachAnswer]
+    next_schedule: CoachSchedule
+    feedback: list[str]
+    next_call: list[str]
+    summary: str
+
+
+class AskSuggestion(FileModel):
+    """질문에 답하기(#774)에서 AI가 답과 함께 준 할 일 제안 하나. 값 검증은 창구가 한다."""
+
+    company: str
+    action_id: str
+    date: str
+
+
+class AskReading(FileModel):
+    """질문에 답하기(#774)의 구조화된 응답: 답 글과 할 일 제안 0개 이상."""
+
+    answer: str
+    suggestions: list[AskSuggestion]
+
+
+def ask_with_suggestions(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    *,
+    instructions: str,
+    max_output_tokens: int,
+    requested_by: str,
+    also_opp_ids: Sequence[str] = (),
+) -> AskReading:
+    """질문에 답하기(#774): 한 번 보내 답 글과 할 일 제안을 정해진 모양으로 받는다.
+
+    문(스위치·지우기 재검사·전송 기록·월 한도)은 ask_sales_assistant와 같다. 모양이 맞지 않으면
+    실패로 알린다(빈 결과로 넘기지 않는다). 답 글은 지우기를 한 번 더 거쳐 돌려주고, 제안 값
+    검증은 호출자(창구)가 한다.
+    """
+    answer = _request(
+        opp_id,
+        texts,
+        {
+            "instructions": instructions,
+            "max_output_tokens": max_output_tokens,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "sales_ask_answer",
+                    "strict": True,
+                    "schema": AskReading.model_json_schema(by_alias=True),
+                }
+            },
+        },
+        requested_by,
+        also_opp_ids,
+    )
+    try:
+        reading = AskReading.model_validate_json(answer)
+    except ValueError:
+        raise _failed("AI 답의 형식이 맞지 않습니다.") from None
+    text = scrub_sales_record(reading.answer).text.strip()
+    if not text:
+        raise _failed("AI 답을 끝까지 받지 못했습니다.")
+    return reading.model_copy(update={"answer": text})
 
 
 def ask_sales_assistant(
@@ -111,17 +199,58 @@ def read_sales_memo(
         raise _failed("AI 답의 형식이 맞지 않습니다.") from None
 
 
+def coach_sales_memo(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    *,
+    instructions: str,
+    max_output_tokens: int,
+    requested_by: str,
+) -> CoachReading:
+    """지우기를 거친 메모·이전 기록 사본을 한 번 보내 정해진 모양으로 받는다(#742 영업 코치).
+
+    문(스위치·지우기 재검사·전송 기록·월 한도)은 다른 영업 기록 글과 같고, 전송 기록 종류만
+    SALES_COACH다(하루 한도를 따로 센다). 모양이 맞지 않으면 실패로 알린다(빈 결과로 넘기지
+    않는다). 값 검증과 글 지우기는 호출자(창구)가 한다.
+    """
+    answer = _request(
+        opp_id,
+        texts,
+        {
+            "instructions": instructions,
+            "max_output_tokens": max_output_tokens,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "sales_coach_reading",
+                    "strict": True,
+                    "schema": CoachReading.model_json_schema(by_alias=True),
+                }
+            },
+        },
+        requested_by,
+        (),
+        record_kind=SALES_COACH_KIND,
+    )
+    try:
+        return CoachReading.model_validate_json(answer)
+    except ValueError:
+        raise _failed("AI 답의 형식이 맞지 않습니다.") from None
+
+
 def _request(
     opp_id: str,
     texts: Sequence[ScrubbedRecordText],
     options: dict,
     requested_by: str,
     also_opp_ids: Sequence[str],
+    *,
+    record_kind: str = SALES_RECORD_KIND,
 ) -> str:
     """문을 거쳐 한 번만 부르고 답 글(지우기 전)을 돌려준다. 재시도는 없다."""
     deadline = time.monotonic() + TIMEOUT_SECONDS
     key = os.environ.get("OPENAI_API_KEY", "").strip()
-    ticket = reserve_sales_records(opp_id, texts, bool(key), None, requested_by)
+    ticket = reserve_sales_records(opp_id, texts, bool(key), None, requested_by, record_kind)
     mark_sales_record_companies(also_opp_ids, ticket, requested_by, None)
     payload = {
         "model": ticket.llm.model,

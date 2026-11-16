@@ -1,6 +1,7 @@
 """영업 비서 경로(2차, #680). 계약 C1 `/assistant/ask`·`/opportunities/{oppId}/assistant/call-prep`.
 
 #720: `/opportunities/{oppId}/assistant/memo-read`(메모 읽기)만 자유 글 하나를 지운 사본으로 보낸다.
+#743: `/assistant/daily`(오늘 정리)는 하루 한 번만 AI를 부르고 같은 날은 기억해 둔 글을 준다.
 
 AI는 DB를 읽지 않는다. 프로그램이 만든 정해진 조회 글(`api/assistant_context.py`)만 보내고 답 글을
 받는다. 읽기 전용이다: 영업 기록·평가·회사 값은 하나도 바꾸지 않고 전송 기록만 남긴다. 메모 글 같은
@@ -9,6 +10,7 @@ AI는 DB를 읽지 않는다. 프로그램이 만든 정해진 조회 글(`api/a
 """
 
 import datetime
+import threading
 from contextlib import contextmanager
 from typing import Annotated, Literal
 
@@ -19,16 +21,24 @@ from geosan.api.assistant_context import (
     AssistantContext,
     build_ask_context,
     build_call_prep_context,
+    build_daily_context,
     named_sources,
 )
 from geosan.api.deps import get_session, require_staff, runtime_for
-from geosan.api.memo_read import build_memo_read, check_reading
+from geosan.api.memo_read import _next_actions, build_memo_read, check_reading
+from geosan.api.routes.records import latest_outcome
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.app_settings import AssistantSettings
 from geosan.config.errors import AppError, InputError, RunFailedError
 from geosan.config.sales_questions import KST
 from geosan.config.validators import find_contact
-from geosan.evidence.assistant_llm import ask_sales_assistant, read_sales_memo
+from geosan.dashboard.queries import SCHEDULE_WINDOW_DAYS
+from geosan.evidence.assistant_llm import (
+    AskReading,
+    ask_sales_assistant,
+    ask_with_suggestions,
+    read_sales_memo,
+)
 from geosan.evidence.sales_record_gate import sales_record_calls_today, scrub_sales_record
 from geosan.opportunity.models import Opportunity
 from geosan.storage.base import utcnow
@@ -47,17 +57,42 @@ ASK_INSTRUCTIONS = (
     _COMMON_INSTRUCTIONS + "근거가 된 기록(날짜·단계·고른 답)을 함께 적는다. "
     # #720: 기록에 없는 것을 물었을 때 관계없는 회사가 답 끝에 붙어 근거 링크로 달리던 것.
     "질문과 관계없는 회사를 덧붙이지 않는다. "
-    "기록에 없으면 없다고만 답하고 다른 회사를 예로 들지 않는다."
+    "기록에 없으면 없다고만 답하고 다른 회사를 예로 들지 않는다. "
+    # #743: 일정 질문에 오늘 일정이 없을 때 조회에 있는 놓친 일정·같이 들를 곳을 짧게 덧붙인다.
+    "오늘·이번 주 일정이나 방문을 묻는데 오늘 일정이 없으면 '오늘 일정은 없음'이라고 쓰고, "
+    "조회 결과에 있는 놓친 일정과 같이 들를 곳만 짧게 덧붙인다(없으면 덧붙이지 않는다)."
+)
+# #774: 같은 한 번의 호출에서 답 글(answer)과 할 일 제안(suggestions)을 정해진 모양으로 받는다.
+# 제안은 저장하지 않는다 — 담당자가 [넣기]를 눌러야 /schedule로 저장된다.
+MAX_SUGGESTIONS = 3
+ASK_SUGGESTION_INSTRUCTIONS = (
+    "답 글은 answer에 쓴다. 근거는 '조회 1' 같은 번호로 쓰지 않고 무엇을 봤는지(접촉 기록·일정·"
+    "후보 표 등) 쉬운 말로 쓴다. "
+    "답에서 어떤 회사에 날짜가 있는 할 일(방문·통화 등)을 권하거나 담당자가 "
+    "일정을 넣어 달라고 하면, suggestions에 그 회사 이름(조회 결과에 적힌 그대로)·할 일 보기 "
+    "id(아래 목록에서 하나)·날짜(YYYY-MM-DD, 오늘이나 그 뒤)를 넣는다. "
+    f"최대 {MAX_SUGGESTIONS}개. 날짜를 정할 수 없거나 권할 할 일이 없으면 빈 목록으로 둔다. "
+    "suggestions에 넣은 할 일은 answer에도 적는다. 할 일 보기: "
 )
 CALL_PREP_INSTRUCTIONS = (
     _COMMON_INSTRUCTIONS
     + "'이 회사 요약'의 회사에 이번에 전화할 때 무엇부터 확인하면 좋을지 한두 문장으로 말하고, "
     "그 아래에 물어볼 것 2~3개를 '- '로 시작하는 줄로 적는다. 비슷한 회사의 결과는 참고로만 쓴다."
 )
+# #743 오늘 정리. 같이 들를 곳의 거리는 프로그램이 잰 값이다(AI는 문장만 쓴다).
+DAILY_INSTRUCTIONS = (
+    _COMMON_INSTRUCTIONS
+    + "담당자가 아침에 읽을 '오늘 정리'를 '- '로 시작하는 짧은 줄 몇 개로 쓴다. "
+    f"오늘 일정, 놓친 일정, 이번 주 일정과 같이 들를 곳, 지난 {SCHEDULE_WINDOW_DAYS}일 단계 이동, "
+    "막힌 회사 순서로 쓴다. 조회 결과가 '없음'인 항목은 쓰지 않는다. "
+    "같이 들를 곳은 조회 결과에 적힌 거리 그대로 적는다."
+)
 
 
 class AskRequest(_RequestModel):
     question: str = Field(strict=True)
+    # #774 오른쪽 영업 코치 칸이 놓인 화면. 빠지면 지금과 같다. LIST면 후보 표를 더 싣는다.
+    page: Literal["DASHBOARD", "LIST", "BOOKMARKS", "ANALYSIS"] | None = None
 
 
 class AssistantSource(_ApiModel):
@@ -77,10 +112,48 @@ class CallPrepAnswer(_ApiModel):
     ]
 
 
+class AskSuggestion(_ApiModel):
+    """#774 답 아래 할 일 제안 하나. 프로그램이 검증한 값이고, [넣기] 전에는 저장되지 않는다."""
+
+    opp_id: str
+    name: str
+    action_id: str
+    action_label: str
+    date: datetime.date
+    # 그 회사의 지금 다음 일정. 있으면 화면이 "○ → ○로 바꿀까요?"를 묻는다.
+    current_schedule_at: datetime.date | None = None
+    current_schedule_note: str | None = None
+    # 최신 영업 기록 번호(기록이 없으면 0). [넣기] 때 그대로 보낸다.
+    outcome_version: int
+
+
 class AskAnswer(CallPrepAnswer):
+    used_queries: list[
+        Literal[
+            "COMPANY_LIST",
+            "COMPANY_SUMMARY",
+            "SALES_ANALYSIS",
+            "SCHEDULE",
+            "LOST_REASONS",
+            "PEERS",
+            "CANDIDATES",
+        ]
+    ]
     # 조회 글에 실은 회사 수와 대상 회사 전체 수. 다르면 화면이 "○곳 가운데 ○곳만"을 보인다.
     companies_included: int
     companies_total: int
+    suggestions: list[AskSuggestion]
+
+
+class DailyBrief(_ApiModel):
+    """오늘 정리(#743). reused=True면 오늘 이미 쓴 글을 다시 준 것이다(AI를 부르지 않음)."""
+
+    summary: str
+    sources: list[AssistantSource]
+    ai_generated: Literal[True] = True
+    day: datetime.date
+    generated_at: datetime.datetime
+    reused: bool
 
 
 class MemoReadRequest(_RequestModel):
@@ -131,8 +204,46 @@ def _check_daily_limit(settings: AssistantSettings) -> None:
 def _sources(answer: str, context: AssistantContext) -> list[AssistantSource]:
     return [
         AssistantSource(opp_id=company.opp_id, name=company.name)
-        for company in named_sources(answer, context.companies)
+        for company in named_sources(answer, context.all_companies)
     ]
+
+
+def _suggestions(
+    session, reading: AskReading, context: AssistantContext, actions: dict[str, str], today
+) -> list[AskSuggestion]:
+    """AI 제안을 검증한다: 조회에 실린 회사 이름과 정확히 같고(같은 이름이 둘이면 버림), 할 일
+    보기가 목록에 있고, 날짜가 오늘이나 그 뒤인 것만. 같은 회사는 앞의 하나만 남긴다."""
+    by_name: dict[str, list] = {}
+    for company in context.all_companies:
+        by_name.setdefault(company.name, []).append(company)
+    kept: list[AskSuggestion] = []
+    for item in reading.suggestions:
+        found = by_name.get(item.company.strip(), [])
+        if len(found) != 1 or item.action_id not in actions:
+            continue
+        company = found[0]
+        try:
+            day = datetime.date.fromisoformat(item.date.strip())
+        except ValueError:
+            continue
+        if day < today or any(row.opp_id == company.opp_id for row in kept):
+            continue
+        previous = latest_outcome(session, company.opp_id)
+        kept.append(
+            AskSuggestion(
+                opp_id=company.opp_id,
+                name=company.name,
+                action_id=item.action_id,
+                action_label=actions[item.action_id],
+                date=day,
+                current_schedule_at=previous.next_schedule_at if previous else None,
+                current_schedule_note=previous.next_schedule_note if previous else None,
+                outcome_version=previous.version if previous else 0,
+            )
+        )
+        if len(kept) == MAX_SUGGESTIONS:
+            break
+    return kept
 
 
 @router.post("/assistant/ask", response_model=Envelope[AskAnswer])
@@ -155,10 +266,11 @@ def ask(
         if find_contact(question):
             raise InputError("질문에 전화번호나 이메일을 적지 말아 주세요.")
         dataset_kind = runtime_for(session).app_settings.active_dataset_kind
-        context = build_ask_context(
-            session, utcnow().astimezone(KST).date(), settings.max_companies
-        )
-    if not context.companies:
+        now = utcnow()
+        today = now.astimezone(KST).date()
+        context = build_ask_context(session, today, settings.max_companies, now=now, page=body.page)
+        actions = _next_actions(session)
+    if not context.all_companies:
         raise AppError(
             "아직 관심 회사나 접촉 기록이 없어 답할 자료가 없습니다.",
             "회사를 관심으로 켜거나 접촉 기록을 남긴 뒤 다시 물어봐 주세요.",
@@ -166,28 +278,118 @@ def ask(
             kind="ASSISTANT_NO_RECORDS",
         )
     _check_daily_limit(settings)
-    first, *rest = context.companies
-    answer = ask_sales_assistant(
+    first, *rest = context.all_companies
+    action_list = "; ".join(f"{key}={label}" for key, label in actions.items())
+    reading = ask_with_suggestions(
         first.opp_id,
         [
             scrub_sales_record(f"조회 결과:\n{context.text}"),
             scrub_sales_record(f"질문: {question}"),
         ],
-        instructions=ASK_INSTRUCTIONS,
+        instructions=ASK_INSTRUCTIONS
+        + " "
+        + ASK_SUGGESTION_INSTRUCTIONS
+        + (action_list or "없음(suggestions는 비워 둔다)"),
         max_output_tokens=settings.max_output_tokens,
         requested_by=staff,
         also_opp_ids=[company.opp_id for company in rest],
     )
+    with contextmanager(get_session)(request) as session:
+        suggestions = _suggestions(session, reading, context, actions, today)
     return Envelope[AskAnswer](
         data=AskAnswer(
-            answer=answer,
-            sources=_sources(answer, context),
+            answer=reading.answer,
+            sources=_sources(reading.answer, context),
             used_queries=list(context.used_queries),
             companies_included=len(context.companies),
             companies_total=context.total_companies,
+            suggestions=suggestions,
         ),
         meta=Meta(
             updated_at=utcnow(),
+            dataset_kind=dataset_kind,
+            has_virtual_data=dataset_kind.value == "VIRTUAL_REVIEWED",
+        ),
+    )
+
+
+# 오늘 정리 기억(#743): 서버가 켜져 있는 동안만 앱 상태(app.state)에 둔다. 새 DB 표를 만들지 않는다
+# (PM 결정 2026-11-14 — 표가 필요하면 PM 확인 먼저). 서버를 다시 켜면 그날 한 번 더 부른다.
+# 잠금은 동시에 열린 두 화면이 AI를 두 번 부르지 않게 한다.
+_DAILY_LOCK = threading.Lock()
+
+
+def _daily_store(request: Request) -> dict:
+    store = getattr(request.app.state, "assistant_daily", None)
+    if store is None:
+        store = request.app.state.assistant_daily = {}
+    return store
+
+
+@router.get("/assistant/daily", response_model=Envelope[DailyBrief])
+def daily(
+    request: Request,
+    staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
+):
+    """오늘 정리: 일정·같이 들를 곳·단계 이동·막힌 회사를 하루(한국 날짜) 한 번만 AI가 정리한다.
+
+    같은 날 다시 부르면 기억해 둔 글을 준다(호출·전송 기록 없음, 한도도 세지 않음). 스위치가 꺼져
+    있으면 기억해 둔 글도 주지 않고 문으로 보내 거부한다. 실패한 답은 기억하지 않는다.
+    """
+    with _DAILY_LOCK:
+        with contextmanager(get_session)(request) as session:
+            staff = require_staff(session, staff_key)
+            settings = _settings(session)
+            app_settings = runtime_for(session).app_settings
+            dataset_kind = app_settings.active_dataset_kind
+            switched_on = (
+                app_settings.llm.sales_records_enabled and app_settings.llm.mode == "EXTERNAL"
+            )
+            now = utcnow()
+            today = now.astimezone(KST).date()
+            key = (dataset_kind.value, today)
+            store = _daily_store(request)
+            saved = store.get(key) if switched_on else None
+            context = (
+                None
+                if saved is not None
+                else build_daily_context(session, today, now, settings.max_companies)
+            )
+        if saved is None:
+            if not context.companies:
+                raise AppError(
+                    "오늘 정리할 일정·단계 이동·보류 회사가 없습니다.",
+                    "접촉 기록이나 일정을 남긴 뒤 대시보드를 다시 열어 주세요.",
+                    status=422,
+                    kind="ASSISTANT_NO_RECORDS",
+                )
+            _check_daily_limit(settings)
+            first, *rest = context.companies
+            summary = ask_sales_assistant(
+                first.opp_id,
+                [scrub_sales_record(f"조회 결과:\n{context.text}")],
+                instructions=DAILY_INSTRUCTIONS,
+                max_output_tokens=settings.max_output_tokens,
+                requested_by=staff,
+                also_opp_ids=[company.opp_id for company in rest],
+            )
+            saved = DailyBrief(
+                summary=summary,
+                sources=_sources(summary, context),
+                day=today,
+                generated_at=utcnow(),
+                reused=False,
+            )
+            for old in [item for item in store if item[1] != today]:
+                del store[old]  # 지난 날의 정리는 다시 쓰지 않으므로 메모리에서 뺀다.
+            store[key] = saved
+            brief = saved
+        else:
+            brief = saved.model_copy(update={"reused": True})
+    return Envelope[DailyBrief](
+        data=brief,
+        meta=Meta(
+            updated_at=brief.generated_at,
             dataset_kind=dataset_kind,
             has_virtual_data=dataset_kind.value == "VIRTUAL_REVIEWED",
         ),

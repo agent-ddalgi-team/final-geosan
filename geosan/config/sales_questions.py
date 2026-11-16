@@ -61,6 +61,23 @@ class ShowWhen(FileModel):
     answers: dict[str, list[str]] = Field(min_length=1)
 
 
+# #742 영업 코치가 그 질문을 다루는 방식: AI가 채움 / AI가 제안하고 사람이 확정 / 사람이 고름.
+COACH_FILL_AI = "AI"
+COACH_FILL_SUGGEST = "SUGGEST"
+COACH_FILL_STAFF = "STAFF"
+
+
+class CoachRule(FileModel):
+    """#742 영업 코치 칸. 단계별 필수 질문 목록도 여기 둔다(코드에 적지 않는다)."""
+
+    fill: Literal["AI", "SUGGEST", "STAFF"] = COACH_FILL_STAFF
+    required: bool = False
+    # 앞 답이 이 중 하나일 때만 필수(예: CONFIRM_PROCESS는 NEED_PROCESS가 YES일 때만).
+    required_when: ShowWhen | None = None
+    # 상세 기록 칸 위 "확인사항"에 보이는 짧은 말.
+    keyword: str | None = Field(default=None, min_length=1, max_length=20)
+
+
 class SalesQuestion(FileModel):
     id: str = Field(pattern=_ID)
     step: SalesStep | Literal["ALL"]
@@ -70,6 +87,16 @@ class SalesQuestion(FileModel):
     answers: list[AnswerOption] = Field(default_factory=list, max_length=8)
     # #652: PROCESS = 거산 공정 목록, INDUSTRY = 설정 산업군. 여러 개를 고르는 질문이다.
     choices: Literal["PROCESS", "INDUSTRY"] | None = None
+    # #742: 영업 코치가 이 질문을 다루는 방식과 필수 여부. 없으면 사람이 고르고 필수 아님.
+    coach: CoachRule | None = None
+
+    @property
+    def coach_fill(self) -> str:
+        return self.coach.fill if self.coach else COACH_FILL_STAFF
+
+    @property
+    def required(self) -> bool:
+        return bool(self.coach and self.coach.required)
 
     def option(self, answer_id: str) -> AnswerOption | None:
         return next((item for item in self.answers if item.id == answer_id), None)
@@ -142,7 +169,37 @@ class SalesQuestions(FileModel):
                     )
         self._closing_meaning()
         self._default_meaning()
+        self._coach_meaning(by_id)
         return self
+
+    def _coach_meaning(self, by_id: dict[str, SalesQuestion]) -> None:
+        """#742 영업 코치 칸(coach)의 어긋남을 거부한다."""
+        for question in self.questions:
+            rule = question.coach
+            if rule is None:
+                continue
+            if question.choices and rule.fill == COACH_FILL_AI:
+                raise ValueError(
+                    f"choices 질문 '{question.id}'의 coach.fill은 SUGGEST나 STAFF만 쓸 수 있습니다"
+                )
+            if rule.required_when is None:
+                continue
+            if not rule.required:
+                raise ValueError(
+                    f"질문 '{question.id}'의 coach.requiredWhen은 required: true일 때만 씁니다"
+                )
+            for target, answer_ids in rule.required_when.answers.items():
+                found = by_id.get(target)
+                if target == question.id or found is None or found.choices:
+                    raise ValueError(
+                        f"질문 '{question.id}'의 coach.requiredWhen이 쓸 수 없는 질문 "
+                        f"'{target}'을 가리킵니다"
+                    )
+                if not answer_ids or any(found.option(item) is None for item in answer_ids):
+                    raise ValueError(
+                        f"질문 '{question.id}'의 coach.requiredWhen에 "
+                        f"'{target}'에 없는 보기가 있습니다"
+                    )
 
     def _default_meaning(self) -> None:
         """#691 기본 보기 칸(default)의 어긋남을 거부한다."""

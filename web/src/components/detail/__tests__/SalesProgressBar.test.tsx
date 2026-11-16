@@ -78,7 +78,8 @@ describe('SalesProgressBar', () => {
     expect(steps.map((el) => el.textContent)).toEqual([
       '✓연결 전',
       '✓연결됨',
-      '●수요 확인▲ 지금 (11/12부터)',
+      // #759: 지금 점은 흰 가운데 + 회색 고리 모양이라 점 안 글자(●)가 없다. 지금 단계는 aria-current와 "지금" 글로 알린다.
+      '수요 확인▲ 지금 (11/12부터)',
       '자료·견적',
       '방문·샘플',
     ]);
@@ -184,5 +185,79 @@ describe('SalesProgressBar', () => {
     expect(progress.reachedIndex).toBe(-1);
     expect(progress.end).toBe('lost');
     expect(progress.noContact).toBe(false);
+  });
+
+  describe('큰 단계 띠 (#759)', () => {
+    const bandStates = () =>
+      screen.getAllByTestId('sales-progress-band').map((el) => el.getAttribute('data-state'));
+    const bandTexts = () =>
+      screen.getAllByTestId('sales-progress-band').map((el) => el.textContent);
+
+    it('진행 중이면 서버의 큰 단계가 지금 칸이고 앞 칸은 지나온 칸, 읽어 주는 글도 있다', () => {
+      render(
+        <SalesProgressBar
+          salesStep={step({ code: 'DEMAND_CONFIRMED', since: '2026-11-12' })}
+          outcome={outcome({ status: 'IN_PROGRESS' })}
+          contactTotal={2}
+          questions={questions}
+        />,
+      );
+      expect(bandTexts()).toEqual(['미접촉', '접촉', '견적·샘플', '성사']);
+      expect(bandStates()).toEqual(['done', 'current', 'todo', 'todo']);
+      expect(screen.getByTestId('sales-progress-bands')).toHaveAccessibleName('큰 단계: 접촉');
+    });
+
+    it('큰 단계가 없으면 세부 단계로 짐작한다: 자료·견적부터는 견적·샘플, 접촉 기록이 없으면 미접촉', () => {
+      const { unmount } = render(
+        <SalesProgressBar
+          salesStep={step({ code: 'MATERIAL_QUOTE' })}
+          outcome={null}
+          contactTotal={3}
+          questions={questions}
+        />,
+      );
+      expect(bandStates()).toEqual(['done', 'done', 'current', 'todo']);
+      unmount();
+      render(
+        <SalesProgressBar salesStep={null} outcome={null} contactTotal={0} questions={questions} />,
+      );
+      expect(bandStates()).toEqual(['current', 'todo', 'todo', 'todo']);
+    });
+
+    it('거절이면 마지막 칸이 "거절 (가격)"이 되고 멈춘 곳까지만 지나온 칸이다', () => {
+      render(
+        <SalesProgressBar
+          salesStep={step({ known })}
+          outcome={outcome({ status: 'LOST', lostReasonCode: 'PRICE' })}
+          contactTotal={2}
+          questions={questions}
+        />,
+      );
+      expect(bandStates()).toEqual(['done', 'done', 'todo', 'lost']);
+      expect(bandTexts()[3]).toBe('거절 (가격)');
+    });
+
+    it('보류면 마지막 칸이 "보류", 성사면 모든 칸을 지나 성사 칸이 지금 칸이다', () => {
+      const { unmount } = render(
+        <SalesProgressBar
+          salesStep={null}
+          outcome={outcome({ status: 'ON_HOLD' })}
+          contactTotal={1}
+          questions={questions}
+        />,
+      );
+      expect(bandStates()).toEqual(['done', 'done', 'todo', 'hold']);
+      expect(bandTexts()[3]).toBe('보류');
+      unmount();
+      render(
+        <SalesProgressBar
+          salesStep={null}
+          outcome={outcome({ status: 'WON' })}
+          contactTotal={3}
+          questions={questions}
+        />,
+      );
+      expect(bandStates()).toEqual(['done', 'done', 'done', 'current']);
+    });
   });
 });

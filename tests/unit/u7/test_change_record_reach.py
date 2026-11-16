@@ -77,3 +77,33 @@ def test_memo_read_refuses_change_records_and_sends_nothing(assistant_env):
     response = memo.memo_read(client, opp_ids[0], note_id)
     assert response.status_code == 400
     assert fake.payloads == [] and support.logs() == []
+
+
+# ---------- #737: 관심 끄기에서 변경 기록은 기록으로 세지 않는다 (PM 결정 2026-11-14) ----------
+
+
+def set_bookmark(client, opp_id, active):
+    return client.put(
+        f"/api/v1/opportunities/{opp_id}/bookmark", json={"active": active}, headers=STAFF
+    )
+
+
+def test_bookmark_can_be_turned_off_with_only_change_records(dashboard_env):
+    """Given 관심을 켠 회사에 변경 기록만 / When 관심 끄기 / Then 200으로 꺼진다."""
+    client, (a, *_rest) = dashboard_env
+    assert set_bookmark(client, a, True).status_code == 200
+    add_change(a)
+    add_change(a, "변경 · 산업 확정(가상)", later=30)
+    response = set_bookmark(client, a, False)
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["active"] is False
+
+
+def test_bookmark_off_is_still_refused_when_staff_note_exists(dashboard_env):
+    """Given 변경 기록 + 담당자 메모 / When 관심 끄기 / Then 지금처럼 422 BOOKMARK_HAS_RECORDS."""
+    client, (a, *_rest) = dashboard_env
+    peers.note(client, a, "가상 메모 한 줄")
+    add_change(a, later=30)
+    response = set_bookmark(client, a, False)
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["kind"] == "BOOKMARK_HAS_RECORDS"

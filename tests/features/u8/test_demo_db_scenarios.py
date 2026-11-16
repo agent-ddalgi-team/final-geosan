@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -72,14 +73,14 @@ def ctx(tmp_path, monkeypatch):
         dispose_engines()
 
 
-@given("안내서 순서대로 만든 시연 DB에 가상 회사 6곳이 평가되어 있다")
+@given("안내서 순서대로 만든 시연 DB에 가상 회사 18곳이 평가되어 있다")
 def demo_db(ctx):
     # 파일 이름은 일부러 geosan-demo.db가 아니다. DB 안 시연 표시만으로 알아보는지 본다.
     ctx["db"] = build_db(ctx["tmp"] / "renamed.db", ctx["monkeypatch"], DEMO_SETTINGS)
-    assert len(CASE_FILES) == 6
+    assert len(CASE_FILES) == 18
 
 
-@given("시연 표시가 없는 설정으로 등록한 DB에 가상 회사 6곳이 평가되어 있다")
+@given("시연 표시가 없는 설정으로 등록한 DB에 가상 회사 18곳이 평가되어 있다")
 def plain_db(ctx):
     ctx["db"] = build_db(ctx["tmp"] / "geosan.db", ctx["monkeypatch"], VIRTUAL_SETTINGS)
 
@@ -127,11 +128,13 @@ def register_plain_settings(ctx):
 
 
 @then(
-    "영업 분석표에 성사 3곳과 거절 3곳이 보이고 거절 이유는 가격·납기·기존 거래처 유지 각 1건이다"
+    "영업 분석표에 성사 4곳·거절 5곳·보류 2곳·진행 중 7곳이 보이고 "
+    "거절 이유는 가격 2·납기 2·기존 거래처 유지 1건이다"
 )
 def won_and_lost(ctx):
+    # (바뀜 2026-11-15 #765 — PM 결정: 시연 DB 6곳 → 18곳. 전에는 성사 3·거절 3이었다)
     assert ctx["code"] == 0, ctx["out"]
-    assert "넣은 회사 6곳(성사 3·거절 3)" in ctx["out"]
+    assert "넣은 회사 18곳(성사 4·거절 5)" in ctx["out"]
     with TestClient(create_app()) as client:
         ctx["client_data"] = {
             "analysis": client.get("/api/v1/sales-analysis", headers=STAFF).json()["data"],
@@ -140,33 +143,42 @@ def won_and_lost(ctx):
             "cards": client.get("/api/v1/opportunities").json()["data"],
         }
     companies = ctx["client_data"]["analysis"]["companies"]
-    assert len(companies) == 6
-    assert sorted(row["outcomeStatus"] for row in companies) == ["LOST"] * 3 + ["WON"] * 3
+    assert len(companies) == 18
+    statuses = sorted(row["outcomeStatus"] for row in companies)
+    assert statuses.count("WON") == 4 and statuses.count("LOST") == 5
+    assert statuses.count("ON_HOLD") == 2
+    # 진행 중은 분석표가 세는 대로(부재만 남긴 곳은 큰 단계가 미접촉으로 남지만 진행 중으로 센다).
+    assert ctx["client_data"]["analysis"]["total"]["inProgressCount"] == 7
     reasons = sorted(row["lostReasonCode"] for row in companies if row["outcomeStatus"] == "LOST")
-    assert reasons == ["INCUMBENT_SUPPLIER", "LEAD_TIME", "PRICE"]
+    assert reasons == ["INCUMBENT_SUPPLIER", "LEAD_TIME", "LEAD_TIME", "PRICE", "PRICE"]
+    # 접촉은 1~150일 전으로 퍼져 있어 기간을 고르면 숫자가 달라진다(#760).
+    first = min(row["firstContactAt"] for row in companies)
+    last = max(row["lastContactAt"] for row in companies)
+    assert (date.fromisoformat(last) - date.fromisoformat(first)).days >= 120
     # 성사한 곳은 접촉 2~3회, 접촉 날짜는 모두 최근 12개월 안(오늘 이전)이다.
     assert all(
         2 <= row["contactCount"]["total"] <= 3 for row in companies if row["outcomeStatus"] == "WON"
     )
     by_process = ctx["client_data"]["analysis"]["byProcess"]
-    assert sum(row["wonCount"] for row in by_process) == 3
-    assert sum(row["lostCount"] for row in by_process) == 3
+    assert sum(row["wonCount"] for row in by_process) == 4
+    assert sum(row["lostCount"] for row in by_process) == 5
 
 
-@then("표본이 기준보다 적어 비율 없이 건수만 온다")
+@then("전체는 표본이 기준 이상이라 성사율이 오고, 표본이 적은 공정 줄은 건수만 온다")
 def counts_only(ctx):
     analysis = ctx["client_data"]["analysis"]
-    assert analysis["basis"]["companyCount"] == 6 < analysis["basis"]["minSampleForRatio"]
+    minimum = analysis["basis"]["minSampleForRatio"]
+    assert analysis["basis"]["companyCount"] == 18 >= minimum
     assert analysis["basis"]["olderClosedExcluded"] == 0
-    assert all(row["ratios"] is None for row in analysis["byProcess"])
-    assert all(
-        item["ratios"] is None for row in analysis["byProcess"] for item in row["byIndustry"]
-    )
+    assert analysis["total"]["ratios"]["won"] == 0.22  # 4 ÷ 18, 소수 2자리
+    for row in analysis["byProcess"]:
+        assert (row["ratios"] is None) == (row["contactedCount"] < minimum), row["processName"]
 
 
-@then(parsers.parse('대시보드 완료 칸은 6곳이고 화면 띠 문구는 "{label}"다'))
+@then(parsers.parse('대시보드 완료 칸은 성사·거절 9곳이고 화면 띠 문구는 "{label}"다'))
 def dashboard_and_banner(ctx, label):
-    assert ctx["client_data"]["dashboard"]["counts"]["DONE"] == 6
+    # 완료 = 성사·거절로 끝난 곳(#765에서 성사 4 + 거절 5. 전에는 6곳 모두 끝난 회사라 6).
+    assert ctx["client_data"]["dashboard"]["counts"]["DONE"] == 9
     brand = ctx["client_data"]["ui"]["brand"]
     assert brand["demoLabel"] == label
     # 시연 표시 자체는 화면 응답에 내보내지 않는다(약속 C7).
@@ -176,7 +188,7 @@ def dashboard_and_banner(ctx, label):
 @then("목록의 회사는 모두 가상 표시가 켜져 있다")
 def all_virtual(ctx):
     cards = ctx["client_data"]["cards"]
-    assert len(cards) == 6 and all(card["isVirtual"] for card in cards)
+    assert len(cards) == 18 and all(card["isVirtual"] for card in cards)
     connection = sqlite3.connect(str(ctx["db"]))
     try:
         real = connection.execute("SELECT count(*) FROM opp_customer WHERE is_virtual = 0")
@@ -185,11 +197,12 @@ def all_virtual(ctx):
         connection.close()
 
 
-@then("두 번째 실행은 6곳을 모두 건너뛰고 영업 기록 수가 그대로다")
+@then("두 번째 실행은 18곳을 모두 건너뛰고 영업 기록 수가 그대로다")
 def unchanged(ctx):
     assert ctx["code"] == 0, ctx["out"]
-    assert "넣은 회사 0곳" in ctx["out"] and "건너뛴 회사 6곳" in ctx["out"]
-    assert outcome_count(ctx["db"]) == ctx["count_after_first"] == 15
+    assert "넣은 회사 0곳" in ctx["out"] and "건너뛴 회사 18곳" in ctx["out"]
+    # 접촉 한 번이 기록 한 행이다: 처음 6곳 15행 + 더한 12곳 26행(#765).
+    assert outcome_count(ctx["db"]) == ctx["count_after_first"] == 41
 
 
 @then(parsers.parse('"{message}"로 거부되고 영업 기록은 0건이다'))

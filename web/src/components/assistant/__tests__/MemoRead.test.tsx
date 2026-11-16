@@ -395,17 +395,15 @@ describe('기록 남기기 › 메모 칸 (#720)', () => {
     expect(off).not.toHaveTextContent('이름은 AI로 보내지 않습니다');
   });
 
-  it('메모를 저장하면 그 아래에 [AI가 메모 읽기 💰]가 보이고, 누르기 전에는 부르지 않는다', async () => {
+  // (바뀜 #742, PM 결정 2026-11-14) [AI가 메모 읽기]는 영업 코치(접촉 메모 [보내기])로 합쳐 기록 칸에서 뺐다.
+  // 예전 기대: 메모를 저장하면 그 아래에 [AI가 메모 읽기 💰]가 보인다. 지금: 스위치가 켜져 있어도 보이지 않는다.
+  it('메모를 저장해도 [AI가 메모 읽기 💰]는 기록 칸에 보이지 않는다(영업 코치로 합침, #742)', async () => {
     const user = userEvent.setup();
     wrap(<RecordsArea oppId="opp-1" outcome={IN_PROGRESS} />, ON);
-    expect(screen.queryByTestId('memo-read')).not.toBeInTheDocument();
     await saveMemo(user);
-    await waitFor(() => expect(screen.getByTestId('memo-read-button')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('records-note-saved')).toBeInTheDocument());
+    expect(screen.queryByTestId('memo-read')).not.toBeInTheDocument();
     expect(mockedRead).not.toHaveBeenCalled();
-    await user.click(screen.getByTestId('memo-read-button'));
-    await waitFor(() =>
-      expect(mockedRead).toHaveBeenCalledWith('opp-1', 'NOTE', 'note-7', 'park-lee'),
-    );
   });
 
   it('스위치가 꺼져 있으면 메모를 저장해도 단추가 보이지 않는다', async () => {

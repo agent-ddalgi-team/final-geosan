@@ -106,6 +106,36 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AdviceLine": {
+        "description": "#742 남긴 피드백 한 줄(rec_note kind ADVICE). 회사 보고서 \"영업 방향\"이 이 값만 싣는다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "text",
+          "at",
+          "by"
+        ],
+        "title": "AdviceLine",
+        "type": "object"
+      },
       "AiProposalHit": {
         "description": "(#678) 지금은 공정만 센다. 산업군은 확정 전 AI 제안이 저장에 남지 않아 셀 수 없다.",
         "properties": {
@@ -129,6 +159,18 @@
             "title": "Companycount",
             "type": "integer"
           },
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
           "minSampleForRatio": {
             "title": "Minsampleforratio",
             "type": "integer"
@@ -136,6 +178,18 @@
           "olderClosedExcluded": {
             "title": "Olderclosedexcluded",
             "type": "integer"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
           }
         },
         "required": [
@@ -209,6 +263,13 @@
             "title": "Sources",
             "type": "array"
           },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/AskSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
           "usedQueries": {
             "items": {
               "enum": [
@@ -217,7 +278,8 @@
                 "SALES_ANALYSIS",
                 "SCHEDULE",
                 "LOST_REASONS",
-                "PEERS"
+                "PEERS",
+                "CANDIDATES"
               ],
               "type": "string"
             },
@@ -230,7 +292,8 @@
           "sources",
           "usedQueries",
           "companiesIncluded",
-          "companiesTotal"
+          "companiesTotal",
+          "suggestions"
         ],
         "title": "AskAnswer",
         "type": "object"
@@ -238,6 +301,23 @@
       "AskRequest": {
         "additionalProperties": false,
         "properties": {
+          "page": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DASHBOARD",
+                  "LIST",
+                  "BOOKMARKS",
+                  "ANALYSIS"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
           "question": {
             "title": "Question",
             "type": "string"
@@ -247,6 +327,69 @@
           "question"
         ],
         "title": "AskRequest",
+        "type": "object"
+      },
+      "AskSuggestion": {
+        "description": "#774 답 아래 할 일 제안 하나. 프로그램이 검증한 값이고, [넣기] 전에는 저장되지 않는다.",
+        "properties": {
+          "actionId": {
+            "title": "Actionid",
+            "type": "string"
+          },
+          "actionLabel": {
+            "title": "Actionlabel",
+            "type": "string"
+          },
+          "currentScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentscheduleat"
+          },
+          "currentScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentschedulenote"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeVersion": {
+            "title": "Outcomeversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "actionId",
+          "actionLabel",
+          "date",
+          "outcomeVersion"
+        ],
+        "title": "AskSuggestion",
         "type": "object"
       },
       "AssistantSource": {
@@ -541,6 +684,39 @@
         "title": "CallPrepAnswer",
         "type": "object"
       },
+      "CallPrepNote": {
+        "description": "#750 가장 최근 다음 통화 준비(rec_note kind CALL_PREP) 한 행. 글을 줄바꿈으로 나눈 줄.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "lines",
+          "at",
+          "by"
+        ],
+        "title": "CallPrepNote",
+        "type": "object"
+      },
       "CardOutcome": {
         "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
         "properties": {
@@ -632,6 +808,181 @@
         ],
         "title": "ClassificationCode",
         "type": "string"
+      },
+      "CoachAnswerView": {
+        "properties": {
+          "answerIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Answerids",
+            "type": "array"
+          },
+          "fill": {
+            "enum": [
+              "AI",
+              "SUGGEST"
+            ],
+            "title": "Fill",
+            "type": "string"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "answerIds",
+          "quote",
+          "fill"
+        ],
+        "title": "CoachAnswerView",
+        "type": "object"
+      },
+      "CoachRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attemptedat"
+          },
+          "memo": {
+            "title": "Memo",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "CALL",
+              "EMAIL",
+              "VISIT"
+            ],
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memo",
+          "method"
+        ],
+        "title": "CoachRequest",
+        "type": "object"
+      },
+      "CoachResult": {
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/CoachAnswerView"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "feedback": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Feedback",
+            "type": "array"
+          },
+          "missingRequired": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missingrequired",
+            "type": "array"
+          },
+          "nextCall": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Nextcall",
+            "type": "array"
+          },
+          "nextSchedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachScheduleView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "removedContacts": {
+            "title": "Removedcontacts",
+            "type": "integer"
+          },
+          "removedNames": {
+            "title": "Removednames",
+            "type": "integer"
+          },
+          "stepAfter": {
+            "$ref": "#/components/schemas/SalesStep"
+          },
+          "stepBefore": {
+            "$ref": "#/components/schemas/SalesStep"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answers",
+          "feedback",
+          "nextCall",
+          "summary",
+          "missingRequired",
+          "stepBefore",
+          "stepAfter",
+          "removedNames",
+          "removedContacts"
+        ],
+        "title": "CoachResult",
+        "type": "object"
+      },
+      "CoachScheduleView": {
+        "properties": {
+          "actionId": {
+            "title": "Actionid",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          }
+        },
+        "required": [
+          "actionId"
+        ],
+        "title": "CoachScheduleView",
+        "type": "object"
       },
       "CompanyRow": {
         "properties": {
@@ -762,6 +1113,17 @@
             "title": "Classificationlabels",
             "type": "object"
           },
+          "currentStaff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentStaff"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 null"
+          },
           "distanceFilterPresetsKm": {
             "description": "목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)",
             "items": {
@@ -865,6 +1227,87 @@
           "VISIT"
         ],
         "title": "ContactReach",
+        "type": "object"
+      },
+      "CurrentStaff": {
+        "description": "계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null.",
+        "properties": {
+          "canRecord": {
+            "title": "Canrecord",
+            "type": "boolean"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "setupRequired": {
+            "title": "Setuprequired",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "displayName",
+          "canRecord",
+          "setupRequired"
+        ],
+        "title": "CurrentStaff",
+        "type": "object"
+      },
+      "DailyBrief": {
+        "description": "오늘 정리(#743). reused=True면 오늘 이미 쓴 글을 다시 준 것이다(AI를 부르지 않음).",
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "reused": {
+            "title": "Reused",
+            "type": "boolean"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "sources",
+          "day",
+          "generatedAt",
+          "reused"
+        ],
+        "title": "DailyBrief",
         "type": "object"
       },
       "Dashboard": {
@@ -985,6 +1428,10 @@
           "SCHEDULE_DUE": {
             "title": "Schedule Due",
             "type": "integer"
+          },
+          "WON": {
+            "title": "Won",
+            "type": "integer"
           }
         },
         "required": [
@@ -996,7 +1443,8 @@
           "QUOTE_SAMPLE",
           "ON_HOLD",
           "DONE",
-          "SCHEDULE_DUE"
+          "SCHEDULE_DUE",
+          "WON"
         ],
         "title": "DashboardCounts",
         "type": "object"
@@ -1039,6 +1487,10 @@
           "visitRadiusKm": {
             "title": "Visitradiuskm",
             "type": "number"
+          },
+          "visitWidenBelowCount": {
+            "title": "Visitwidenbelowcount",
+            "type": "integer"
           }
         },
         "required": [
@@ -1048,6 +1500,7 @@
           "missingCoordinates",
           "asOf",
           "visitRadiusKm",
+          "visitWidenBelowCount",
           "visitGroups"
         ],
         "title": "DashboardMap",
@@ -1513,6 +1966,13 @@
       },
       "DetailRecords": {
         "properties": {
+          "advice": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceLine"
+            },
+            "title": "Advice",
+            "type": "array"
+          },
           "approval": {
             "anyOf": [
               {
@@ -1535,8 +1995,25 @@
               }
             ]
           },
+          "callPrep": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallPrepNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "contactCount": {
             "$ref": "#/components/schemas/ContactCount"
+          },
+          "handoffs": {
+            "items": {
+              "$ref": "#/components/schemas/HandoffNote"
+            },
+            "title": "Handoffs",
+            "type": "array"
           },
           "lastContactAt": {
             "anyOf": [
@@ -1635,6 +2112,21 @@
         "title": "Envelope[CallPrepAnswer]",
         "type": "object"
       },
+      "Envelope_CoachResult_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CoachResult"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CoachResult]",
+        "type": "object"
+      },
       "Envelope_ConfigUi_": {
         "properties": {
           "data": {
@@ -1648,6 +2140,21 @@
           "data"
         ],
         "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_DailyBrief_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DailyBrief"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DailyBrief]",
         "type": "object"
       },
       "Envelope_DashboardMap_": {
@@ -1678,6 +2185,21 @@
           "data"
         ],
         "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
+      "Envelope_HandoffConfirmResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HandoffConfirmResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[HandoffConfirmResponse]",
         "type": "object"
       },
       "Envelope_HomepageConfirmation_": {
@@ -1783,6 +2305,21 @@
           "data"
         ],
         "title": "Envelope[MemoReadAnswer]",
+        "type": "object"
+      },
+      "Envelope_MenuBadges_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MenuBadges"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[MenuBadges]",
         "type": "object"
       },
       "Envelope_NoteResponse_": {
@@ -2244,6 +2781,88 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HandoffConfirmResponse": {
+        "properties": {
+          "confirmedAt": {
+            "format": "date-time",
+            "title": "Confirmedat",
+            "type": "string"
+          },
+          "confirmedBy": {
+            "title": "Confirmedby",
+            "type": "string"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "confirmedAt",
+          "confirmedBy"
+        ],
+        "title": "HandoffConfirmResponse",
+        "type": "object"
+      },
+      "HandoffNote": {
+        "description": "#771 전달 사항 한 행(rec_note kind HANDOFF). 상세 맨 위 노란 칸·포스트잇이 쓴다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "confirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedat"
+          },
+          "confirmedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedby"
+          },
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "text",
+          "from",
+          "to",
+          "at"
+        ],
+        "title": "HandoffNote",
         "type": "object"
       },
       "HomepageConfirmation": {
@@ -3421,6 +4040,30 @@
         "title": "MemoReadRequest",
         "type": "object"
       },
+      "MenuBadges": {
+        "description": "📊 대시보드 · 🔍 신규 거래처 찾기 · ⭐ 관심 기업 숫자(곳 수).",
+        "properties": {
+          "bookmarks": {
+            "title": "Bookmarks",
+            "type": "integer"
+          },
+          "dashboard": {
+            "title": "Dashboard",
+            "type": "integer"
+          },
+          "list": {
+            "title": "List",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dashboard",
+          "list",
+          "bookmarks"
+        ],
+        "title": "MenuBadges",
+        "type": "object"
+      },
       "Meta": {
         "description": "성공 응답 meta. 목록·상세·기록이 공통으로 쓴다.",
         "properties": {
@@ -3639,7 +4282,10 @@
             "default": "MEMO",
             "enum": [
               "MEMO",
-              "RESEARCH"
+              "RESEARCH",
+              "ADVICE",
+              "CALL_PREP",
+              "HANDOFF"
             ],
             "title": "Kind",
             "type": "string"
@@ -3659,6 +4305,18 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "toStaffKey": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tostaffkey"
           }
         },
         "required": [
@@ -4410,6 +5068,22 @@
             "title": "Answerid",
             "type": "string"
           },
+          "filledBy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "STAFF",
+                  "AI_CONFIRMED",
+                  "AI_CHANGED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filledby"
+          },
           "questionId": {
             "maxLength": 40,
             "minLength": 1,
@@ -5121,6 +5795,33 @@
           "overlapCount"
         ],
         "title": "ProcessRow",
+        "type": "object"
+      },
+      "ProfileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "maxLength": 200,
+            "title": "Currentpassword",
+            "type": "string"
+          },
+          "displayName": {
+            "maxLength": 60,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "newPassword": {
+            "maxLength": 200,
+            "title": "Newpassword",
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName",
+          "currentPassword",
+          "newPassword"
+        ],
+        "title": "ProfileRequest",
         "type": "object"
       },
       "ProposalHit": {
@@ -6170,6 +6871,70 @@
         "title": "SalesAnswerOption",
         "type": "object"
       },
+      "SalesCoachRequiredWhen": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Answers",
+            "type": "object"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "title": "SalesCoachRequiredWhen",
+        "type": "object"
+      },
+      "SalesCoachView": {
+        "description": "#742 질문 파일의 coach 칸 그대로(영업 코치가 그 질문을 다루는 방식·필수 여부·확인사항 말).",
+        "properties": {
+          "fill": {
+            "enum": [
+              "AI",
+              "SUGGEST",
+              "STAFF"
+            ],
+            "title": "Fill",
+            "type": "string"
+          },
+          "keyword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keyword"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "requiredWhen": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesCoachRequiredWhen"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fill",
+          "required"
+        ],
+        "title": "SalesCoachView",
+        "type": "object"
+      },
       "SalesQuestionView": {
         "properties": {
           "answers": {
@@ -6193,6 +6958,16 @@
               }
             ],
             "title": "Choices"
+          },
+          "coach": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesCoachView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "questionId": {
             "title": "Questionid",
@@ -6408,6 +7183,73 @@
         "title": "ScheduleItem",
         "type": "object"
       },
+      "ScheduleResolveRequest": {
+        "additionalProperties": false,
+        "description": "#766 대시보드 \"지난 일정 — 했나요?\"의 세 단추(계약 C1 /schedule/resolve).",
+        "properties": {
+          "action": {
+            "enum": [
+              "DONE",
+              "DROPPED",
+              "MOVED"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 0.0,
+            "title": "Expectedversion",
+            "type": "integer"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          }
+        },
+        "required": [
+          "action",
+          "expectedVersion"
+        ],
+        "title": "ScheduleResolveRequest",
+        "type": "object"
+      },
+      "ScheduleSetRequest": {
+        "additionalProperties": false,
+        "description": "#774 영업 코치 답 아래 할 일 제안의 [넣기](계약 C1 /schedule).",
+        "properties": {
+          "actionId": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Actionid",
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 0.0,
+            "title": "Expectedversion",
+            "type": "integer"
+          },
+          "nextScheduleAt": {
+            "format": "date",
+            "title": "Nextscheduleat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextScheduleAt",
+          "actionId",
+          "expectedVersion"
+        ],
+        "title": "ScheduleSetRequest",
+        "type": "object"
+      },
       "ScoreItemView": {
         "properties": {
           "certainty": {
@@ -6586,6 +7428,18 @@
           "password": {
             "title": "Password",
             "type": "string"
+          },
+          "staffKey": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffkey"
           }
         },
         "required": [
@@ -6715,6 +7569,17 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "outcomeVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomeversion"
           }
         },
         "required": [
@@ -6742,7 +7607,8 @@
             "enum": [
               "SCHEDULE_TODAY",
               "SCHEDULE_OVERDUE",
-              "CHECK_LEFT"
+              "CHECK_LEFT",
+              "HANDOFF_FOR_ME"
             ],
             "title": "Kind",
             "type": "string"
@@ -6820,10 +7686,15 @@
           "oppId": {
             "title": "Oppid",
             "type": "string"
+          },
+          "radiusKm": {
+            "title": "Radiuskm",
+            "type": "number"
           }
         },
         "required": [
           "oppId",
+          "radiusKm",
           "nearby"
         ],
         "title": "VisitGroup",
@@ -6936,6 +7807,53 @@
           }
         },
         "summary": "Ask"
+      }
+    },
+    "/api/v1/assistant/daily": {
+      "get": {
+        "description": "오늘 정리: 일정·같이 들를 곳·단계 이동·막힌 회사를 하루(한국 날짜) 한 번만 AI가 정리한다.\n\n같은 날 다시 부르면 기억해 둔 글을 준다(호출·전송 기록 없음, 한도도 세지 않음). 스위치가 꺼져\n있으면 기억해 둔 글도 주지 않고 문으로 보내 거부한다. 실패한 답은 기억하지 않는다.",
+        "operationId": "daily_api_v1_assistant_daily_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DailyBrief_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Daily"
       }
     },
     "/api/v1/config/ui": {
@@ -7351,6 +8269,141 @@
         "summary": "Ingest Preview"
       }
     },
+    "/api/v1/menu-badges": {
+      "get": {
+        "operationId": "menu_badges_api_v1_menu_badges_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "listSince",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Listsince"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookmarksSince",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bookmarkssince"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MenuBadges_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Menu Badges"
+      }
+    },
+    "/api/v1/notes/{noteId}/confirm": {
+      "post": {
+        "operationId": "confirm_handoff_api_v1_notes__noteId__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "noteId",
+            "required": true,
+            "schema": {
+              "title": "Noteid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_HandoffConfirmResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Handoff"
+      }
+    },
     "/api/v1/opportunities": {
       "get": {
         "operationId": "list_opportunities_api_v1_opportunities_get",
@@ -7743,6 +8796,72 @@
           }
         },
         "summary": "Call Prep"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/assistant/coach": {
+      "post": {
+        "description": "저장 전 접촉 메모 하나와 그 회사의 이전 기록을 지운 사본으로 보내 코칭을 받는다(#742).\n\n읽기 전용이다. 답은 저장하지 않고, 담당자가 [이대로 저장]을 누르면 기존 저장 창구가 반영한다.",
+        "operationId": "coach_api_v1_opportunities__oppId__assistant_coach_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoachRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CoachResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Coach"
       }
     },
     "/api/v1/opportunities/{oppId}/assistant/memo-read": {
@@ -8529,6 +9648,136 @@
         "summary": "Save Review Check"
       }
     },
+    "/api/v1/opportunities/{oppId}/schedule": {
+      "post": {
+        "operationId": "set_schedule_api_v1_opportunities__oppId__schedule_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Schedule"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/schedule/resolve": {
+      "post": {
+        "operationId": "resolve_schedule_api_v1_opportunities__oppId__schedule_resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OutcomeResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Schedule"
+      }
+    },
     "/api/v1/questions/{questionId}/reply": {
       "post": {
         "operationId": "save_question_reply_api_v1_questions__questionId__reply_post",
@@ -8596,8 +9845,42 @@
     },
     "/api/v1/sales-analysis": {
       "get": {
-        "description": "공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.",
+        "description": "공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.\n\n(#760) `from`·`to`(한국 날짜)를 하나라도 주면 그 기간 안 접촉으로 센다. 둘 다 없으면 전과 같다.",
         "operationId": "sales_analysis_api_v1_sales_analysis_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -8608,6 +9891,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Sales Analysis"
@@ -8666,6 +9959,60 @@
           }
         },
         "summary": "Create Session"
+      }
+    },
+    "/api/v1/session/logout": {
+      "post": {
+        "description": "지금 세션 행을 지우고 쿠키를 지운다. 세션이 없어도 200(두 번 눌러도 같음).",
+        "operationId": "logout_api_v1_session_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout"
+      }
+    },
+    "/api/v1/session/profile": {
+      "post": {
+        "description": "지금 로그인한 사람의 표시 이름·비밀번호를 정한다(첫 로그인 설정과 나중에 바꾸기).",
+        "operationId": "save_profile_api_v1_session_profile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Profile"
       }
     }
   }

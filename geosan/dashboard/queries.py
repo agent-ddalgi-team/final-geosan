@@ -12,12 +12,13 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, true
 from sqlalchemy.orm import Session
 
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
@@ -46,6 +47,11 @@ NOTE_SUMMARIES = {
     "RESEARCH": "자료 조사를 기록함",
     # #731 프로그램이 남긴 변경 기록(공정·산업 확정, AI 제안 확정·물리침)
     "CHANGE": "변경 기록을 남김",
+    # #742 영업 코치 피드백 가운데 담당자가 보고서에 남긴 줄
+    "ADVICE": "피드백을 남김",
+    # #750 영업 코치가 같은 호출에서 준 다음 통화에 물어볼 것
+    "CALL_PREP": "통화 준비를 남김",
+    "HANDOFF": "전달 사항을 남김",
 }
 METHOD_LABELS = {"CALL": "전화", "EMAIL": "메일", "VISIT": "방문"}
 RESULT_LABELS = {"REACHED": "연결됨", "ABSENT": "부재", "DECLINED": "거절"}
@@ -60,6 +66,9 @@ OPINION_LABELS = {
 # 계약 C1(#356, #536): 관심 기업 전체 칸과, 관심 기업 하나가 꼭 하나에만 드는 일곱 칸.
 # 검토 대상 제외로 저장한 회사는 관심 기업이 아니므로 칸이 없다(#536).
 BOOKMARKED_KEY = "BOOKMARKED"
+# #766(PM 결정 2026-11-16): "영업 진행" 4칸 띠의 "성사" 칸.
+# DONE(성사·거절)의 일부라 칸 합계에 넣지 않는다.
+WON_KEY = "WON"
 BOARD_KEYS = (
     "NO_OPINION",
     "NEED_CHECK",
@@ -157,6 +166,7 @@ class DashboardCounts:
     on_hold: int
     done: int
     schedule_due: int
+    won: int = 0
 
 
 @dataclass(frozen=True)
@@ -168,6 +178,8 @@ class ScheduleItem:
     note: str
     overdue: bool
     staff_key: str
+    # #766: 이 일정이 실린 최신 영업 기록 번호. "지난 일정" 단추가 expectedVersion으로 보낸다.
+    outcome_version: int = 0
 
 
 @dataclass(frozen=True)
@@ -183,6 +195,9 @@ class RecentActivityItem:
 TODAY_SCHEDULE_TODAY = "SCHEDULE_TODAY"
 TODAY_SCHEDULE_OVERDUE = "SCHEDULE_OVERDUE"
 TODAY_CHECK_LEFT = "CHECK_LEFT"
+# #771: 지금 담당자에게 온 확인 전 전달 사항이 있는 회사.
+TODAY_HANDOFF_FOR_ME = "HANDOFF_FOR_ME"
+_KST = ZoneInfo("Asia/Seoul")
 
 
 @dataclass(frozen=True)
@@ -192,6 +207,8 @@ class TodayCheckItem:
     # 일정 줄만 날짜와 일정 한 줄이 있다. 메모 글·연락처는 싣지 않는다.
     due_at: date | None = None
     note: str | None = None
+    # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
+    outcome_version: int | None = None
 
 
 @dataclass(frozen=True)
@@ -286,6 +303,17 @@ def board_key(opinion: str | None, stage: str | None) -> str:
     return _OPINION_BOARD_KEYS[opinion]
 
 
+def bookmarked_won_ids(session: Session, population=None) -> list[str]:
+    """관심 기업 가운데 최신 영업 단계가 성사(WON)인 기회(#766).
+
+    대시보드 칸과 목록 거르기가 같이 쓴다.
+    """
+    bookmarked = bookmarked_opp_ids(population)
+    return sorted(
+        row.opp_id for row in _latest_outcomes(session, bookmarked) if row.status == "WON"
+    )
+
+
 def classify_bookmarked(session: Session, population=None) -> dict[str, str]:
     """관심으로 켜 둔 기회마다 드는 칸 이름. 관심이 아닌 기회는 결과에 없다.
 
@@ -364,6 +392,7 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
             note=row.next_schedule_note or "",
             overdue=row.next_schedule_at < today,
             staff_key=row.created_by,
+            outcome_version=row.version,
         )
         # 기한 지남이 맨 위, 그다음 날짜순(기한이 지난 날짜가 더 이르므로 날짜순이면 같은 결과다).
         for row in sorted(due, key=lambda r: (r.next_schedule_at, r.opp_id))
@@ -371,11 +400,42 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
     return items, len(items)
 
 
+def _handoff_row(
+    session: Session, population, staff_key: str, staff_names: Mapping[str, str]
+) -> TodayCheckRow:
+    """#771 나에게 온 확인 전 전달 사항. 회사마다 한 줄, 글은 싣지 않고 보낸 사람·날짜만."""
+    rows = session.execute(
+        select(Note.opp_id, Note.staff_key, Note.created_at, Customer.name)
+        .join(Opportunity, Note.opp_id == Opportunity.opp_id)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(
+            Note.kind == "HANDOFF",
+            Note.to_staff_key == staff_key,
+            Note.confirmed_at.is_(None),
+            Note.cancelled_at.is_(None),
+            Note.opp_id.in_(population),
+        )
+        .order_by(Note.created_at.desc(), Note.note_id)
+    ).all()
+    seen: dict[str, TodayCheckItem] = {}
+    for opp_id, sender, created_at, name in rows:
+        if opp_id in seen:
+            continue
+        day = created_at.astimezone(_KST).date()
+        note = f"{staff_names.get(sender, sender)} · {day.month}/{day.day}"
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note)
+    return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(seen), items=list(seen.values()))
+
+
 def build_today_checks(
     session: Session,
     schedule: list[ScheduleItem],
     today: date,
     check_left_opp_ids: Sequence[str] | None = None,
+    *,
+    population=None,
+    staff_key: str | None = None,
+    staff_names: Mapping[str, str] | None = None,
 ) -> list[TodayCheckRow]:
     """맨 위 "오늘 확인할 것" 줄 목록(#679). AI 없이 저장된 값으로만 만든다.
 
@@ -390,7 +450,9 @@ def build_today_checks(
             kind=kind,
             count=len(picked),
             items=[
-                TodayCheckItem(row.opp_id, row.customer_name, row.due_at, row.note)
+                TodayCheckItem(
+                    row.opp_id, row.customer_name, row.due_at, row.note, row.outcome_version
+                )
                 for row in picked
             ],
         )
@@ -399,6 +461,8 @@ def build_today_checks(
         schedule_row(TODAY_SCHEDULE_TODAY, [row for row in schedule if row.due_at == today]),
         schedule_row(TODAY_SCHEDULE_OVERDUE, [row for row in schedule if row.overdue]),
     ]
+    if staff_key and population is not None:
+        rows.append(_handoff_row(session, population, staff_key, staff_names or {}))
     if check_left_opp_ids:
         names = session.execute(
             select(Opportunity.opp_id, Customer.name)
@@ -506,12 +570,13 @@ def _recent_activity(
     ]
 
 
-def _counts(classified: dict[str, str], schedule_due: int) -> DashboardCounts:
-    """칸별 건수. 일곱 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다."""
+def _counts(classified: dict[str, str], schedule_due: int, won: int = 0) -> DashboardCounts:
+    """칸별 건수. 일곱 칸의 합은 언제나 관심 기업 수(BOOKMARKED)와 같다. 성사(WON)는 DONE의 일부."""
     tally = Counter(classified.values())
     return DashboardCounts(
         bookmarked=len(classified),
         schedule_due=schedule_due,
+        won=won,
         **{key.lower(): tally[key] for key in BOARD_KEYS},
     )
 
@@ -680,6 +745,63 @@ def dashboard_population(dataset_kind: str):
     return population
 
 
+# 왼쪽 메뉴 📊 숫자(#770)에 넣는 "오늘 확인할 것" 줄. "확인할 것이 남은 관심 기업"은 넣지 않는다.
+MENU_BADGE_TODAY_KINDS = (TODAY_SCHEDULE_OVERDUE, TODAY_SCHEDULE_TODAY, TODAY_HANDOFF_FOR_ME)
+
+
+def today_badge_count(
+    session: Session, *, dataset_kind: str, staff_key: str | None, today: date
+) -> int:
+    """왼쪽 메뉴 📊 숫자(#770): 오늘 확인할 것의 지난 일정 + 오늘 일정 + 나에게 온 전달 사항 곳 수.
+
+    대시보드 줄과 같은 계산(`_schedule`·`build_today_checks`)을 그대로 불러 숫자가 어긋나지 않는다.
+    """
+    population = dashboard_population(dataset_kind)
+    schedule, _due = _schedule(session, population, today)
+    rows = build_today_checks(
+        session, schedule, today, None, population=population, staff_key=staff_key
+    )
+    return sum(row.count for row in rows if row.kind in MENU_BADGE_TODAY_KINDS)
+
+
+def bookmark_news_count(
+    session: Session, *, dataset_kind: str, staff_key: str | None, since: datetime
+) -> int:
+    """왼쪽 메뉴 ⭐ 숫자(#770): since 뒤에 다른 사람이 기록·메모를 남겼거나 조사 결과가 새로 붙은
+    관심 기업 수. staff_key가 없으면(보기 전용) 누가 남겼든 센다. 곳 수만 돌려준다."""
+    population = dashboard_population(dataset_kind)
+    outcome_by = Outcome.created_by != staff_key if staff_key else true()
+    note_by = Note.staff_key != staff_key if staff_key else true()
+    changed: set[str] = set(
+        session.scalars(
+            select(Outcome.opp_id).where(
+                Outcome.opp_id.in_(population),
+                Outcome.cancelled_at.is_(None),
+                Outcome.created_at > since,
+                outcome_by,
+            )
+        )
+    )
+    changed.update(
+        session.scalars(
+            select(Note.opp_id).where(
+                Note.opp_id.in_(population),
+                Note.cancelled_at.is_(None),
+                Note.created_at > since,
+                note_by,
+            )
+        )
+    )
+    changed.update(
+        session.scalars(
+            select(Opportunity.opp_id)
+            .join(Customer, Opportunity.customer_id == Customer.customer_id)
+            .where(Opportunity.opp_id.in_(population), Customer.researched_at > since)
+        )
+    )
+    return len(changed)
+
+
 def build_dashboard(
     session: Session,
     *,
@@ -689,6 +811,7 @@ def build_dashboard(
     now: datetime,
     breakdown_source: BreakdownSource | None = None,
     check_left_opp_ids: Sequence[str] | None = None,
+    staff_names: Mapping[str, str] | None = None,
 ) -> DashboardResult:
     """오늘(`today`, 한국 날짜)과 지금(`now`)을 받아 계산한다. 시각을 직접 읽지 않는다(NFR12).
 
@@ -701,7 +824,7 @@ def build_dashboard(
     # 관심으로 켜 둔 기회만 센다. 관심이 아닌 기회는 어느 칸에도 들지 않는다(#356).
     classified = classify_bookmarked(session, population)
     schedule, due_count = _schedule(session, population, today)
-    counts = _counts(classified, due_count)
+    counts = _counts(classified, due_count, len(bookmarked_won_ids(session, population)))
     has_virtual = bool(
         session.scalar(
             select(func.count())
@@ -719,7 +842,15 @@ def build_dashboard(
             recent_activity=_recent_activity(session, population, staff_key),
             as_of=now,
             breakdown=breakdown,
-            today_checks=build_today_checks(session, schedule, today, check_left_opp_ids),
+            today_checks=build_today_checks(
+                session,
+                schedule,
+                today,
+                check_left_opp_ids,
+                population=population,
+                staff_key=staff_key,
+                staff_names=staff_names,
+            ),
         ),
         has_virtual,
     )

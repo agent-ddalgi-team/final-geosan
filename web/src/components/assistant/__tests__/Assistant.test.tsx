@@ -1,13 +1,13 @@
-// 영업 비서 화면 부품(#680): 대시보드 질문 칸과 상세 [통화 준비].
+// 영업 비서 화면 부품(#680): 대시보드 질문 칸과 상세 통화 전 칸(#750부터 저장된 코치 정리만 보인다).
 // 요청 함수는 가짜로 바꾼 확인이며 실제 서버·실제 AI 연결 확인이 아니다.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { postAssistantAsk, postCallPrep } from '../../../api/assistant';
+import { postAssistantAsk } from '../../../api/assistant';
 import type { AssistantAnswer } from '../../../api/assistant';
 import { ApiError } from '../../../api/client';
-import type { ConfigUi } from '../../../api/types';
-import { assistantTexts as texts } from '../../../labels/ko';
+import type { CallPrepNote, ConfigUi } from '../../../api/types';
+import { assistantTexts as texts, coachTexts } from '../../../labels/ko';
 import { FrameContext } from '../../frame/FrameContext';
 import AssistantAsk from '../AssistantAsk';
 import CallPrep from '../CallPrep';
@@ -15,11 +15,9 @@ import CallPrep from '../CallPrep';
 vi.mock('../../../api/assistant', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/assistant')>()),
   postAssistantAsk: vi.fn(),
-  postCallPrep: vi.fn(),
 }));
 
 const mockedAsk = vi.mocked(postAssistantAsk);
-const mockedPrep = vi.mocked(postCallPrep);
 
 const ON = { assistant: { enabled: true, questionMaxLength: 300 } } as unknown as ConfigUi;
 const OFF = { assistant: { enabled: false, questionMaxLength: 300 } } as unknown as ConfigUi;
@@ -61,7 +59,6 @@ function renderWith(
 describe('AssistantAsk (대시보드 질문 칸)', () => {
   beforeEach(() => {
     mockedAsk.mockReset();
-    mockedPrep.mockReset();
   });
 
   it('설정을 못 읽었거나 서버가 값을 안 주면 아무것도 보이지 않는다', () => {
@@ -85,7 +82,8 @@ describe('AssistantAsk (대시보드 질문 칸)', () => {
     expect(screen.getByTestId('assistant-ask-button')).toBeDisabled(); // 빈 질문은 못 보낸다.
     await user.type(screen.getByTestId('assistant-question-input'), ' 가격 때문에 거절된 회사는? ');
     await user.click(screen.getByTestId('assistant-ask-button'));
-    expect(mockedAsk).toHaveBeenCalledWith('가격 때문에 거절된 회사는?', 'park-lee');
+    // #774: 지금 화면도 함께 보낸다(이 시험은 대시보드 주소 "/").
+    expect(mockedAsk).toHaveBeenCalledWith('가격 때문에 거절된 회사는?', 'park-lee', 'DASHBOARD');
     const box = await screen.findByTestId('assistant-answer');
     expect(within(box).getByTestId('assistant-answer-text')).toHaveTextContent(answer.answer);
     expect(within(box).getByTestId('assistant-ai-mark')).toHaveTextContent(texts.aiMark);
@@ -139,51 +137,35 @@ describe('AssistantAsk (대시보드 질문 칸)', () => {
   });
 });
 
-describe('CallPrep (상세 통화 준비)', () => {
-  beforeEach(() => {
-    mockedAsk.mockReset();
-    mockedPrep.mockReset();
+describe('CallPrep (상세 "영업 코치 · 통화 전" 칸, #750)', () => {
+  const PREP: CallPrepNote = {
+    noteId: 'note-5',
+    lines: ['외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?'],
+    at: '2026-11-15T10:00:00+09:00',
+    by: 'park-lee',
+  };
+
+  it('지난 통화 뒤 코치가 정리한 물어볼 것을 AI를 부르지 않고 보인다. [통화 준비] 단추는 없다', () => {
+    renderWith(<CallPrep prep={PREP} />, ON);
+    expect(screen.getByTestId('call-prep-date')).toHaveTextContent(coachTexts.prepTitle('11/15'));
+    expect(
+      within(screen.getByTestId('call-prep-lines'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(PREP.lines);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(mockedAsk).not.toHaveBeenCalled();
   });
 
-  it('스위치가 꺼져 있거나 설정을 못 읽었으면 단추가 없다', () => {
-    const off = renderWith(<CallPrep oppId="opp-1" />, OFF);
-    expect(off.container).toBeEmptyDOMElement();
-    const none = renderWith(<CallPrep oppId="opp-1" />, null);
-    expect(none.container).toBeEmptyDOMElement();
-  });
-
-  it('[통화 준비 💰]를 누르면 한두 문장과 물어볼 것이 단추 아래에 펴진다', async () => {
-    const user = userEvent.setup();
-    const prep: AssistantAnswer = {
-      answer: '지금 도금을 외주로 주는지부터 확인해 보세요.\n- 외주처를 바꿀 생각이 있나요?',
-      sources: [{ oppId: 'opp-1', name: 'A정밀' }],
-      aiGenerated: true,
-      usedQueries: ['COMPANY_SUMMARY', 'PEERS'],
-    };
-    mockedPrep.mockResolvedValueOnce({ data: prep, meta: {} });
-    renderWith(<CallPrep oppId="opp-1" />, ON);
-    const button = screen.getByTestId('call-prep-button');
-    expect(button).toHaveTextContent(texts.callPrepButton);
-    await user.click(button);
-    expect(mockedPrep).toHaveBeenCalledWith('opp-1', 'park-lee');
-    const box = await screen.findByTestId('assistant-answer');
-    expect(within(box).getByTestId('assistant-answer-text')).toHaveTextContent(
-      '외주처를 바꿀 생각이 있나요?',
-    );
-    expect(within(box).getByTestId('assistant-ai-mark')).toBeInTheDocument();
-    expect(within(box).queryByTestId('assistant-partial')).not.toBeInTheDocument();
-  });
-
-  it('실패하면 오류 한 줄을 보이고, 보기 전용이면 단추가 잠긴다', async () => {
-    const user = userEvent.setup();
-    mockedPrep.mockRejectedValueOnce(new Error('network'));
-    const view = renderWith(<CallPrep oppId="opp-1" />, ON);
-    await user.click(screen.getByTestId('call-prep-button'));
-    await waitFor(() =>
-      expect(screen.getByTestId('call-prep-error')).toHaveTextContent(texts.callPrepFailed),
-    );
+  it('정리가 없으면 [보내기]로 정리된다는 안내 한 줄, 스위치가 꺼져 있으면 아무것도 없다', () => {
+    const view = renderWith(<CallPrep prep={null} />, ON);
+    expect(screen.getByTestId('call-prep-none')).toHaveTextContent(coachTexts.prepNone);
     view.unmount();
-    renderWith(<CallPrep oppId="opp-1" />, ON, { staffKey: null, canRecord: false });
-    expect(screen.getByTestId('call-prep-button')).toBeDisabled();
+    const off = renderWith(<CallPrep prep={null} />, OFF);
+    expect(off.container).toBeEmptyDOMElement();
+    off.unmount();
+    // 스위치를 꺼도 이미 남긴 정리는 보인다(저장된 글일 뿐, AI를 부르지 않는다).
+    renderWith(<CallPrep prep={PREP} />, null);
+    expect(screen.getByTestId('call-prep-lines')).toBeInTheDocument();
   });
 });

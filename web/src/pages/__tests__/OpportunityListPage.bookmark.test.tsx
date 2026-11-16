@@ -5,7 +5,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import OpportunityListPage, { PAGE_SIZE } from '../OpportunityListPage';
+import OpportunityListPage, { PAGE_SIZE, type ListView } from '../OpportunityListPage';
 import { getOpportunities } from '../../api/client';
 import type { Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
@@ -49,7 +49,7 @@ function LocationProbe() {
   return <p data-testid="location">{`${location.pathname}${location.search}`}</p>;
 }
 
-function renderPage(initial = '/opportunities') {
+function renderPage(initial = '/opportunities', view: ListView = 'all') {
   return render(
     <MemoryRouter initialEntries={[initial]}>
       <FrameContext.Provider
@@ -62,7 +62,7 @@ function renderPage(initial = '/opportunities') {
           setPageTitle: () => {},
         }}
       >
-        <OpportunityListPage />
+        <OpportunityListPage view={view} />
         <LocationProbe />
       </FrameContext.Provider>
     </MemoryRouter>,
@@ -78,11 +78,11 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     mockedGet.mockReset();
   });
 
-  it('평소 목록 머리에는 [관심 기업만 보기]·[제외한 회사 보기] 단추가 있고, 관심·의견 조건은 서버에 보내지 않는다', async () => {
+  it('평소 목록(신규 거래처 찾기) 머리에는 [제외한 회사 보기]만 있고 [관심 기업만 보기]는 왼쪽 메뉴로 옮겼다(#762), 관심·의견 조건은 서버에 보내지 않는다', async () => {
     mockedGet.mockResolvedValue(reply([apjeong]));
     renderPage();
     await screen.findByTestId('opportunity-card');
-    expect(screen.getByTestId('list-bookmarked-on')).toHaveTextContent(bookmarkList.showOnly);
+    expect(screen.queryByTestId('list-bookmarked-on')).not.toBeInTheDocument();
     expect(screen.getByTestId('list-excluded-on')).toHaveTextContent(excludedList.showOnly);
     expect(screen.queryByTestId('list-bookmarked-view')).not.toBeInTheDocument();
     expect(screen.queryByTestId('list-excluded-view')).not.toBeInTheDocument();
@@ -90,15 +90,14 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(mockedGet.mock.calls[0][3]).toEqual(HOME_FILTERS);
   });
 
-  it('[관심 기업만 보기]를 누르면 주소에 남기고 관심 기업만 다시 불러오며, 공정은 "전체"에서 시작한다', async () => {
-    const user = userEvent.setup();
+  it('관심 기업 화면(/bookmarks, #762)은 관심 기업만 불러오고 주소에 bookmarked를 남기지 않으며, 공정은 "전체"에서 시작한다', async () => {
     mockedGet.mockResolvedValue(reply([apjeong], { processCounts: TABS }));
-    renderPage('/opportunities?process=ANODIZING');
+    renderPage('/bookmarks', 'bookmarks');
     await screen.findByTestId('opportunity-card');
-    expect(screen.getByTestId('list-process-select')).toBeInTheDocument();
-    await user.click(screen.getByTestId('list-bookmarked-on'));
     await waitFor(() => expect(lastFilters()).toEqual({ ...NO_FILTERS, bookmarked: 'true' }));
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/opportunities\?bookmarked=true$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/bookmarks$/);
+    // 새 회사 찾기 조건 칸은 신규 거래처 찾기에만 있다.
+    expect(screen.queryByTestId('ingest-form')).not.toBeInTheDocument();
     expect(screen.getByTestId('list-bookmarked-title')).toHaveTextContent(/^관심 기업$/);
     // 관심 기업 보기에도 공정 선택란이 있고(#516), 묶지 않으므로 맨 위는 "전체"다.
     const select = screen.getByTestId('list-process-select') as HTMLSelectElement;

@@ -6,14 +6,20 @@
 // 메모는 덧붙이기만 되고, 단계·일정은 저장할 때마다 새 행이 쌓인다(서버 규칙 Q5). 수정·삭제 단추는 두지 않는다.
 // 상대 회사 담당자 연락처를 메모에 적어도 막지 않는다(PM 결정 2026-11-03: 내부 메모장). 글자 수 초과 등
 // 서버가 돌려주는 쉬운 말은 그대로 보인다.
+// 영업 코치(#742, PM 결정 2026-11-14): 영업 기록 스위치가 켜져 있고 결과가 "연결됨"이면 꼬리 질문 대신
+// "확인사항"과 메모 칸, [보내기 💰]가 보인다. AI가 정리한 것을 확인 화면에서 보고 [이대로 저장]을 눌러야
+// 저장되고(기존 /outcomes, 답마다 누가 채웠는지), [고치기]는 AI 답이 골라진 지금 양식을 연다.
+// 코치 피드백 줄은 저장 뒤 /notes kind ADVICE로, 다음 통화에 물어볼 것은 kind CALL_PREP 한 행으로 남는다(#750). [AI가 메모 읽기]는 코치로 합쳐 이 칸에서 뺐다.
 import { useEffect, useState } from 'react';
 import { Button, Input, Radio, Typography } from 'antd';
 import { assistantConfigOf } from '../../api/assistant';
 import { ApiError, getSalesQuestions, postNote, postOutcome } from '../../api/client';
+import { postCoach } from '../../api/coach';
+import type { CoachResult } from '../../api/coach';
 import type {
+  AnswerFilledBy,
   ContactMethod,
   ContactResult,
-  JudgmentCheck,
   LostReasonCode,
   NoteKind,
   OutcomeRecord,
@@ -24,9 +30,9 @@ import type {
   SalesStepView,
 } from '../../api/types';
 import {
+  coachTexts,
   contactMethodLabels,
   contactResultLabels,
-  judgmentCheckLabels,
   errorTexts,
   lostReasonLabels,
   memoReadTexts,
@@ -38,12 +44,12 @@ import {
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
-import MemoRead from '../assistant/MemoRead';
-import type { MemoTarget } from '../assistant/MemoRead';
 import { useFrame } from '../frame/FrameContext';
 import { choiceAnswerIds } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
+import { CoachChecklist, CoachReview } from './SalesCoach';
+import type { CoachSelection } from './SalesCoach';
 import {
   STEP_ORDER,
   SalesQuestionFields,
@@ -178,6 +184,19 @@ function NativeSelect({
   );
 }
 
+/**
+ * 답 하나를 누가 채웠나(#742): 코치가 채운 답 그대로면 AI_CONFIRMED, 코치가 채운 질문을 다른 보기로
+ * 바꿨으면 AI_CHANGED(PM 결정 2026-11-14), 코치가 채우지 않은 질문을 고른 답은 STAFF.
+ */
+function filledByOf(
+  answer: { questionId: string; answerId: string },
+  aiFilled: Record<string, string[]>,
+): AnswerFilledBy {
+  const original = aiFilled[answer.questionId];
+  if (!original) return 'STAFF';
+  return original.includes(answer.answerId) ? 'AI_CONFIRMED' : 'AI_CHANGED';
+}
+
 export default function RecordsArea({
   oppId,
   evalId,
@@ -204,14 +223,23 @@ export default function RecordsArea({
   // 통화 기록이 가장 잦아 "전화"로 시작한다(#691). 메모만 적을 때는 종류에서 "메모"를 고른다.
   const [recordKind, setRecordKind] = useState<RecordKind>('CALL');
   const [result, setResult] = useState<ContactResult | null>(null);
-  const [judgmentCheck, setJudgmentCheck] = useState<JudgmentCheck | null>(null);
   // 접촉 날짜는 오늘(한국 시간)까지만 고른다. 서버가 그 뒤 날짜를 400으로 돌려주면 그 문장을 날짜 칸 아래에 보인다.
   const [attemptedAt, setAttemptedAt] = useState(todayKst());
   const [dateError, setDateError] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
-  // 방금 저장한 메모(#720). 영업 기록 스위치가 켜져 있으면 그 아래에 [AI가 메모 읽기 💰]가 보인다.
-  const [memoTarget, setMemoTarget] = useState<MemoTarget | null>(null);
+  // 영업 기록 스위치가 켜져 있으면 연결된 접촉은 영업 코치로 적는다(#742).
   const aiReadsMemo = assistantConfigOf(config)?.enabled === true;
+  // 영업 코치(#742): 받은 정리, 보내는 중, 오류, [고치기]로 지금 양식을 연 상태, AI가 채운 답, 남길 피드백.
+  const [coachResult, setCoachResult] = useState<CoachResult | null>(null);
+  const [coachSending, setCoachSending] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
+  const [coachEditing, setCoachEditing] = useState(false);
+  const [aiFilled, setAiFilled] = useState<Record<string, string[]> | null>(null);
+  const [adviceKeep, setAdviceKeep] = useState<string[]>([]);
+  // (#750) [고치기]로 양식을 연 뒤 저장해도 코치가 준 다음 통화 준비를 남긴다.
+  const [nextCallKeep, setNextCallKeep] = useState<string[]>([]);
+  // 제외한 회사에 [이대로 저장]을 눌러 "영업 대상으로 되돌릴까요?"를 묻는 동안 기다리는 코치 저장(#697).
+  const [pendingCoach, setPendingCoach] = useState<CoachSelection | null>(null);
   // #607 꼬리 질문: 이번 접촉에서 고른 답과 한 줄 메모. 저장하면 비운다.
   const [questions, setQuestions] = useState<SalesQuestions | null>(null);
   const [questionsFailed, setQuestionsFailed] = useState(false);
@@ -304,7 +332,6 @@ export default function RecordsArea({
       setScheduleNote(saved.nextScheduleNote ?? '');
       onOutcomeSaved?.(saved);
       onRecorded?.();
-      if (body.memo) setMemoTarget({ recordKind: 'OUTCOME', savedAt: saved.updatedAt });
       succeed(block, saved.updatedAt);
       return true;
     } catch (caught) {
@@ -394,7 +421,23 @@ export default function RecordsArea({
     // 결과가 바뀌면 "어떻게 할까요?"와 그 선택이 대신 실은 답을 비운다.
     setDeclineChoice(null);
     setPicked(clearRoutePicks);
+    // 받아 둔 코치 정리도 비운다(#742). 다른 결과의 접촉에 실리지 않게.
+    clearCoach();
   }
+
+  function clearCoach() {
+    setCoachResult(null);
+    setCoachError(null);
+    setCoachEditing(false);
+    setAiFilled(null);
+    setAdviceKeep([]);
+    setNextCallKeep([]);
+    setPendingCoach(null);
+  }
+
+  // 영업 코치(#742): 스위치가 켜져 있고 "연결됨"이면 꼬리 질문 대신 확인사항·메모·[보내기]. [고치기]면 지금 양식.
+  const coachMode =
+    aiReadsMemo && method !== null && result === 'REACHED' && questions !== null && !coachEditing;
 
   // 꼬리 질문은 통화가 된 접촉에서만 보인다. "거절"이면 "다음 할 일"과 마무리 질문만(#643).
   const shownQuestions =
@@ -439,7 +482,7 @@ export default function RecordsArea({
           (answerId) => ({ questionId: question.questionId, answerId }),
         ),
       );
-    const answers = [
+    const formAnswers = [
       // 누가 먼저 연락했나(#691): 접촉(전화·메일·방문)마다, 부재여도 보낸다.
       ...contactQuestions
         .filter((question) => contactAnswers[question.questionId])
@@ -455,6 +498,10 @@ export default function RecordsArea({
         })),
       ...choiceAnswers,
     ];
+    // 코치 답을 [고치기]로 연 양식이면 답마다 누가 채웠는지 싣는다(#742): AI 답 그대로면 AI_CONFIRMED.
+    const answers = aiFilled
+      ? formAnswers.map((answer) => ({ ...answer, filledBy: filledByOf(answer, aiFilled) }))
+      : formAnswers;
     const memo = memoLine.trim();
     const closingReason: Pick<OutcomeRequest, 'lostReasonCode' | 'reason'> = closing?.lostReasonCode
       ? {
@@ -468,7 +515,7 @@ export default function RecordsArea({
       method,
       result,
       attemptedAt,
-      ...(spokeToCompany && judgmentCheck ? { judgmentCheck } : {}),
+      // "AI 판단이 맞았나"는 더 묻지 않는다(#740, PM 결정 2026-11-14). 서버의 그 칸은 그대로 두고 요청에 싣지 않는다.
       ...(answers.length > 0 ? { answers } : {}),
       ...(memo ? { memo } : {}),
       // 날짜를 넣었으면 새 일정(날짜 + 고른 할 일의 쉬운 말), 안 넣었으면 있던 일정을 그대로 싣는다.
@@ -483,24 +530,180 @@ export default function RecordsArea({
       ...(restore ? { restoreExcluded: true } : {}),
     });
     if (ok) {
-      setAskExcluded(false);
       if (closing) {
         setSavedLostReason(closing.lostReasonCode === 'OTHER' ? memo : '');
       }
-      onContactRecorded?.(method);
-      setResult(null);
-      setJudgmentCheck(null);
-      setPicked({});
-      setPickedMany({});
-      setMemoLine('');
-      setNextDate('');
-      setNextNone(false);
-      setContactPicks({});
-      setDeclineChoice(null);
-      // 공정·산업을 확정했으면 점수·검토사항도 바뀌므로 상세 전체를 다시 불러오게 알린다(#652).
-      if (choiceAnswers.length > 0 && onCompanyConfirmed) onCompanyConfirmed();
-      else onSalesStepChanged?.();
+      await afterContactSaved(method, choiceAnswers.length > 0, adviceKeep, nextCallKeep);
     }
+  }
+
+  /** 접촉 저장 뒤 칸을 비우고, 코치 피드백(#742)과 다음 통화 준비(#750)를 남기고, 상세에 알린다. */
+  async function afterContactSaved(
+    saved: ContactMethod,
+    confirmed: boolean,
+    advice: string[],
+    nextCall: string[],
+  ) {
+    setAskExcluded(false);
+    onContactRecorded?.(saved);
+    setResult(null);
+    setPicked({});
+    setPickedMany({});
+    setMemoLine('');
+    setNextDate('');
+    setNextNone(false);
+    setContactPicks({});
+    setDeclineChoice(null);
+    clearCoach();
+    if (advice.length > 0) await keepAdvice(advice);
+    if (nextCall.length > 0) await keepCallPrep(nextCall);
+    // 공정·산업을 확정했으면 점수·검토사항도 바뀌므로 상세 전체를 다시 불러오게 알린다(#652).
+    if (confirmed && onCompanyConfirmed) onCompanyConfirmed();
+    else onSalesStepChanged?.();
+  }
+
+  /** 코치 피드백 줄을 메모 종류 ADVICE로 남긴다(#742, #750부터 모두). 실패하면 한 줄로 알린다. */
+  async function keepAdvice(lines: string[]) {
+    if (!staffKey) return;
+    try {
+      for (const text of lines) {
+        await postNote(oppId, { text, kind: 'ADVICE', ...(evalId ? { evalId } : {}) }, staffKey);
+      }
+      onRecorded?.();
+    } catch (caught) {
+      const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
+      setMessage({ block: 'contact', text: `${coachTexts.adviceFailed} (${detail})`, error: true });
+    }
+  }
+
+  /** (#750) 다음 통화에 물어볼 것을 메모 종류 CALL_PREP 한 행(줄바꿈으로 이음)으로 남긴다. */
+  async function keepCallPrep(lines: string[]) {
+    if (!staffKey) return;
+    try {
+      const text = lines.join('\n');
+      await postNote(oppId, { text, kind: 'CALL_PREP', ...(evalId ? { evalId } : {}) }, staffKey);
+      onRecorded?.();
+    } catch (caught) {
+      const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
+      setMessage({ block: 'contact', text: `${coachTexts.prepFailed} (${detail})`, error: true });
+    }
+  }
+
+  /** [보내기 💰](#742): 저장 전 메모를 코치에 보내 정리·빠진 필수 질문·피드백을 받는다. 저장은 하지 않는다. */
+  async function onSendCoach() {
+    const memo = memoLine.trim();
+    if (!staffKey || !method || memo === '' || coachSending) return;
+    setCoachSending(true);
+    setCoachError(null);
+    try {
+      const envelope = await postCoach(
+        oppId,
+        { memo, method, ...(attemptedAt ? { attemptedAt } : {}) },
+        staffKey,
+      );
+      setCoachResult(envelope.data);
+    } catch (caught) {
+      const detail = caught instanceof ApiError ? caught.body.message : errorTexts.network;
+      setCoachError(`${coachTexts.failed} (${detail})`);
+    } finally {
+      setCoachSending(false);
+    }
+  }
+
+  /** [이대로 저장](#742): 확인 화면에서 고른 그대로 기존 접촉 저장 창구를 부른다. 답마다 누가 채웠는지 싣는다. */
+  async function onCoachSave(selection: CoachSelection, restore?: boolean) {
+    if (!method || !result || !questions) return;
+    if (excluded && restore === undefined) {
+      setPendingCoach(selection);
+      setAskExcluded(true);
+      return;
+    }
+    const single = selection.single;
+    const closingNow = closingPick(questions.questions, single);
+    if (closingNow?.status === 'LOST' && closingNow.lostReasonCode === null) return;
+    const contactIds = new Set(contactQuestions.map((question) => question.questionId));
+    const picks = [
+      ...contactQuestions.map((question) => ({
+        questionId: question.questionId,
+        answerId: single[question.questionId] ?? contactAnswers[question.questionId],
+      })),
+      ...questions.questions
+        .filter((question) => !contactIds.has(question.questionId))
+        .flatMap((question) =>
+          question.choices
+            ? (selection.many[question.questionId] ?? []).map((answerId) => ({
+                questionId: question.questionId,
+                answerId,
+              }))
+            : single[question.questionId]
+              ? [{ questionId: question.questionId, answerId: single[question.questionId] }]
+              : [],
+        ),
+    ].filter((answer) => Boolean(answer.answerId));
+    const answers = picks.map((answer) => ({
+      ...answer,
+      filledBy: filledByOf(answer, selection.aiFilled),
+    }));
+    const memo = memoLine.trim();
+    const status: OutcomeStatus = closingNow?.status ?? currentStatus ?? 'NOT_EXECUTED';
+    const action = nextActionPick(questions, questions.questions, single);
+    const planned =
+      action && !closingNow && selection.nextDate >= todayKst() ? selection.nextDate : '';
+    const ok = await saveOutcome('contact', {
+      status,
+      method,
+      result,
+      attemptedAt,
+      ...(answers.length > 0 ? { answers } : {}),
+      ...(memo ? { memo } : {}),
+      ...(action && planned !== ''
+        ? { nextScheduleAt: planned, nextScheduleNote: action.label }
+        : endsSale(status) || pastSchedule()
+          ? {}
+          : keepSchedule()),
+      ...(closingNow?.lostReasonCode
+        ? {
+            lostReasonCode: closingNow.lostReasonCode,
+            ...(closingNow.lostReasonCode === 'OTHER' ? { reason: memo } : {}),
+          }
+        : status === 'LOST'
+          ? keepLostReason()
+          : {}),
+      ...(restore ? { restoreExcluded: true } : {}),
+    });
+    if (ok) {
+      if (closingNow) setSavedLostReason(closingNow.lostReasonCode === 'OTHER' ? memo : '');
+      const confirmed = questions.questions.some(
+        (question) => question.choices && (selection.many[question.questionId] ?? []).length > 0,
+      );
+      await afterContactSaved(method, confirmed, selection.advice, selection.nextCall);
+    }
+  }
+
+  /** [고치기](#742): AI 답이 골라진 채로 지금 양식을 연다. 저장할 때 AI 답 그대로인 것만 AI_CONFIRMED. */
+  function onCoachEdit(selection: CoachSelection) {
+    const contactIds = new Set(contactQuestions.map((question) => question.questionId));
+    const formPicks: Record<string, string> = {};
+    const contactNext: Record<string, string> = {};
+    for (const [questionId, answerId] of Object.entries(selection.single)) {
+      if (contactIds.has(questionId)) contactNext[questionId] = answerId;
+      else formPicks[questionId] = answerId;
+    }
+    setPicked(formPicks);
+    setContactPicks((previous) => ({ ...previous, ...contactNext }));
+    setPickedMany(selection.many);
+    setNextDate(selection.nextDate);
+    setAiFilled(selection.aiFilled);
+    setAdviceKeep(selection.advice);
+    setNextCallKeep(selection.nextCall);
+    setCoachResult(null);
+    setCoachEditing(true);
+  }
+
+  /** 제외한 회사에 저장할 때 "영업 대상으로 되돌릴까요?"의 답(#697). 코치 저장이 기다리고 있으면 그것을 저장한다. */
+  function onExcludedAnswer(restore: boolean) {
+    if (pendingCoach) void onCoachSave(pendingCoach, restore);
+    else void onSaveContact(restore);
   }
 
   /** [단계 고치기](#607): 세부 단계를 담당자가 정한다. 큰 단계·일정은 그대로 싣는다. */
@@ -532,8 +735,6 @@ export default function RecordsArea({
       );
       setNoteText('');
       onRecorded?.();
-      if (noteKind === 'MEMO')
-        setMemoTarget({ recordKind: 'NOTE', recordId: envelope.data.noteId });
       succeed('note', envelope.data.updatedAt);
     } catch (caught) {
       // 입력한 글은 그대로 둔다.
@@ -637,7 +838,10 @@ export default function RecordsArea({
               value: kind,
               label: recordKindLabel(kind),
             }))}
-            onChange={(value) => setRecordKind((value as RecordKind | null) ?? 'CALL')}
+            onChange={(value) => {
+              setRecordKind((value as RecordKind | null) ?? 'CALL');
+              clearCoach();
+            }}
             disabled={disabled}
             testId="records-kind"
             id={recordsEntryInputId(oppId)}
@@ -678,17 +882,6 @@ export default function RecordsArea({
                 disabled={disabled}
                 testId="records-contact-result"
               />
-              {spokeToCompany ? (
-                <NativeSelect
-                  label={recordsArea.judgmentCheck}
-                  placeholder={`${recordsArea.judgmentCheck} ${recordsArea.selectPlaceholder}`}
-                  value={judgmentCheck}
-                  options={options(judgmentCheckLabels)}
-                  onChange={(value) => setJudgmentCheck(value as JudgmentCheck | null)}
-                  disabled={disabled}
-                  testId="records-judgment-check"
-                />
-              ) : null}
               <Input
                 type="date"
                 aria-label={recordsArea.contactDate}
@@ -758,7 +951,7 @@ export default function RecordsArea({
             />
           </div>
         ) : null}
-        {method && spokeToCompany && questions ? (
+        {method && spokeToCompany && questions && !coachMode ? (
           <SalesQuestionFields
             questions={questions}
             step={salesStep}
@@ -810,17 +1003,23 @@ export default function RecordsArea({
         ) : null}
         {method && result ? (
           <>
+            {coachMode ? <CoachChecklist questions={questions} step={salesStep} /> : null}
             <Input
-              aria-label={salesQuestionTexts.memoLabel}
-              placeholder={salesQuestionTexts.memoLabel}
+              aria-label={coachMode ? coachTexts.memoLabel : salesQuestionTexts.memoLabel}
+              placeholder={coachMode ? coachTexts.memoPlaceholder : salesQuestionTexts.memoLabel}
               value={memoLine}
               maxLength={MEMO_LINE_MAX_LENGTH}
               onChange={(event) => setMemoLine(event.target.value)}
-              disabled={disabled}
+              // 정리를 받은 뒤에는 메모를 고정한다(받은 정리와 저장할 메모가 어긋나지 않게). 바꾸려면 [고치기].
+              disabled={disabled || coachResult !== null || coachSending}
               data-testid="records-contact-memo"
             />
             <span style={hintStyle}>
-              {aiReadsMemo ? memoReadTexts.memoLineHintAi : salesQuestionTexts.memoHint}{' '}
+              {coachMode
+                ? coachTexts.sendHint
+                : aiReadsMemo
+                  ? memoReadTexts.memoLineHintAi
+                  : salesQuestionTexts.memoHint}{' '}
               {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
               {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
             </span>
@@ -878,7 +1077,49 @@ export default function RecordsArea({
         ) : null}
         {/* 저장 단추는 꼬리 질문·날짜·한 줄 메모 아래 맨 끝에 둔다(#691): 다 답한 뒤 위로 올라가지 않는다.
             저장 알림("저장됨 21:15")도 이 자리에 남는다. */}
-        {method ? (
+        {method && coachMode && coachResult && questions ? (
+          <>
+            <CoachReview
+              questions={questions}
+              result={coachResult}
+              disabled={disabled}
+              saving={busy === 'contact'}
+              onSave={(selection) => void onCoachSave(selection)}
+              onEdit={onCoachEdit}
+            />
+            {blockMessage('contact')}
+          </>
+        ) : method && coachMode ? (
+          <div style={rowStyle}>
+            <Button
+              type="primary"
+              disabled={disabled || attemptedAt === '' || memoLine.trim() === ''}
+              loading={coachSending}
+              onClick={() => void onSendCoach()}
+              data-testid="coach-send"
+            >
+              {coachTexts.send}
+            </Button>
+            <Button
+              disabled={disabled || coachSending}
+              onClick={() => setCoachEditing(true)}
+              data-testid="coach-direct"
+            >
+              {coachTexts.direct}
+            </Button>
+            {coachSending ? (
+              <span aria-live="polite" style={hintStyle}>
+                {coachTexts.sending}
+              </span>
+            ) : null}
+            {coachError ? (
+              <span role="alert" data-testid="coach-error" style={{ color: colors.error }}>
+                {coachError}
+              </span>
+            ) : null}
+            {blockMessage('contact')}
+          </div>
+        ) : method ? (
           <div style={rowStyle}>
             <Button
               type="primary"
@@ -901,29 +1142,6 @@ export default function RecordsArea({
         ) : (
           blockMessage('note')
         )}
-        {/* 방금 저장한 메모 줄 아래에만 보인다(#720). 스위치가 꺼져 있으면 아무것도 보이지 않는다. */}
-        <MemoRead
-          key={memoTarget ? JSON.stringify(memoTarget) : 'none'}
-          oppId={oppId}
-          target={memoTarget}
-          outcome={outcome}
-          processQuestionId={
-            questions?.questions.find((question) => question.choices === 'PROCESS')?.questionId ??
-            null
-          }
-          onApplied={(kind, saved) => {
-            if (saved) {
-              setOutcome(saved);
-              setScheduleAt(saved.nextScheduleAt ?? '');
-              setScheduleNote(saved.nextScheduleNote ?? '');
-              onOutcomeSaved?.(saved);
-            }
-            onRecorded?.();
-            // 공정·산업이 바뀌면 점수·검토사항도 바뀌므로 상세 전체를 조용히 다시 읽는다.
-            if (kind === 'NEXT_SCHEDULE') onSalesStepChanged?.();
-            else (onCompanyConfirmed ?? onSalesStepChanged)?.();
-          }}
-        />
         {/* 제외한 회사에 접촉을 남기려 할 때만: 창 없이 이 자리에서 한 번 묻는다(#697). */}
         {method && excluded && askExcluded ? (
           <div
@@ -936,14 +1154,14 @@ export default function RecordsArea({
             <Button
               type="primary"
               disabled={disabled}
-              onClick={() => void onSaveContact(true)}
+              onClick={() => onExcludedAnswer(true)}
               data-testid="records-excluded-restore-button"
             >
               {recordsArea.excludedRestoreSave}
             </Button>
             <Button
               disabled={disabled}
-              onClick={() => void onSaveContact(false)}
+              onClick={() => onExcludedAnswer(false)}
               data-testid="records-excluded-keep-button"
             >
               {recordsArea.excludedKeepSave}
@@ -1156,9 +1374,10 @@ export default function RecordsArea({
                 value={scheduleAt}
                 onChange={setScheduleAt}
                 from={todayKst()}
+                // 지난 날짜는 못 고른다(꼬리 질문 쪽과 같은 규칙, PM 세션 결정 2026-11-14 #740).
+                min={todayKst()}
                 disabled={disabled}
                 label={recordsArea.scheduleDate}
-                inputTestId="records-schedule-date"
                 testId="records-schedule-quick"
               />
               <div style={rowStyle}>

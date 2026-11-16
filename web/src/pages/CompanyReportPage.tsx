@@ -338,6 +338,50 @@ function Sales({ sales }: { sales: ReportModel['sales'] }) {
   );
 }
 
+/** (#742) 영업 방향: 남긴 코치 피드백 줄. (#750) 그 아래 가장 최근 다음 통화에 물어볼 것. */
+function Direction({
+  lines,
+  nextCall,
+}: {
+  lines: ReportModel['direction'];
+  nextCall: ReportModel['nextCall'];
+}) {
+  const next = nextCall ? (
+    <>
+      <p style={{ margin: '8px 0 0' }}>{texts.direction.nextCall(nextCall.at)}</p>
+      <ul data-testid="report-next-call">
+        {nextCall.lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </>
+  ) : null;
+  if (lines.length === 0) {
+    return (
+      <>
+        <p style={secondary} data-testid="report-direction-none">
+          {texts.direction.none}
+        </p>
+        {next}
+      </>
+    );
+  }
+  return (
+    <>
+      <p style={secondary}>{texts.direction.mark}</p>
+      <ul data-testid="report-direction">
+        {lines.map((line, index) => (
+          <li key={`${line.at ?? ''}-${index}`}>
+            {line.at ? `${line.at} · ` : ''}
+            {line.text}
+          </li>
+        ))}
+      </ul>
+      {next}
+    </>
+  );
+}
+
 export default function CompanyReportPage() {
   const { oppId = '' } = useParams();
   const [reload, setReload] = useState(0);
@@ -433,6 +477,9 @@ export default function CompanyReportPage() {
             </Section>
             <Section id="report-sales" title={texts.sections.sales}>
               <Sales sales={model.sales} />
+            </Section>
+            <Section id="report-direction-section" title={texts.sections.direction}>
+              <Direction lines={model.direction} nextCall={model.nextCall} />
             </Section>
           </article>
         ) : null}

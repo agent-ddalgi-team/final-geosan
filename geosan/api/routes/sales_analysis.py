@@ -6,8 +6,9 @@
 """
 
 from datetime import date, datetime
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import Field
 from sqlalchemy.orm import Session
 
@@ -16,7 +17,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import sales_questions, sales_step_state
 from geosan.api.sales_step import compute_sales_step, step_rows
 from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel
-from geosan.config.errors import RunFailedError
+from geosan.config.errors import FieldError, InputError, RunFailedError
 from geosan.config.sales_questions import KST, STEP_ORDER
 from geosan.dashboard.sales_analysis import (
     build_sales_analysis,
@@ -124,6 +125,9 @@ class AnalysisBasis(_ApiModel):
     closed_window_days: int
     company_count: int
     older_closed_excluded: int
+    # (#760) 기간 모드에서 실제로 쓴 양끝. 기간 모드가 아니면 둘 다 null.
+    period_from: date | None = Field(default=None, alias="from")
+    period_to: date | None = Field(default=None, alias="to")
 
 
 class ProposalHit(_ApiModel):
@@ -175,9 +179,40 @@ def _steps_after(session: Session, opp_id: str) -> dict[str, str | None]:
     return steps
 
 
+def _period_day(value: str | None, field: str) -> date | None:
+    """(#760) 기간 질의 한 칸을 한국 날짜로. 비었으면 None, 모양이 틀리면 칸 이름을 붙여 400."""
+    if value is None or value.strip() == "":
+        return None
+    try:
+        return date.fromisoformat(value.strip())
+    except ValueError:
+        raise InputError(
+            "기간 날짜는 2026-11-15처럼 적어 주세요.",
+            fields=[FieldError(path=field, message="날짜 모양이 아닙니다.")],
+        ) from None
+
+
 @router.get("/sales-analysis", response_model=SalesAnalysisEnvelope)
-def sales_analysis(session: SessionDep):
-    """공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다."""
+def sales_analysis(
+    session: SessionDep,
+    period_from: Annotated[str | None, Query(alias="from")] = None,
+    period_to: Annotated[str | None, Query(alias="to")] = None,
+):
+    """공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.
+
+    (#760) `from`·`to`(한국 날짜)를 하나라도 주면 그 기간 안 접촉으로 센다. 둘 다 없으면 전과 같다.
+    """
+    day_from = _period_day(period_from, "from")
+    day_to = _period_day(period_to, "to")
+    if day_from is not None and day_to is not None and day_from > day_to:
+        raise InputError(
+            "기간의 시작일이 끝일보다 뒤입니다.",
+            fields=[
+                FieldError(path="from", message="끝일보다 앞이어야 합니다."),
+                FieldError(path="to", message="시작일보다 뒤여야 합니다."),
+            ],
+        )
+    period = None if day_from is None and day_to is None else (day_from, day_to)
     runtime = runtime_for(session)
     settings = runtime.app_settings.sales_analysis
     if settings is None:
@@ -210,6 +245,7 @@ def sales_analysis(session: SessionDep):
         tz=KST,
         lost_reason_order=[code.value for code in LostReasonCode],
         step_order=[step.value for step in STEP_ORDER],
+        period=period,
     )
     data = SalesAnalysis(
         as_of=result.as_of,

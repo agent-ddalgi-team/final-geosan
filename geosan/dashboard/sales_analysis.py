@@ -198,6 +198,9 @@ class Basis:
     closed_window_days: int
     company_count: int
     older_closed_excluded: int
+    # (#760) 기간 모드에서 실제로 쓴 양끝(한국 날짜). 기간 모드가 아니면 둘 다 None.
+    period_from: date | None = None
+    period_to: date | None = None
 
 
 @dataclass(frozen=True)
@@ -380,7 +383,11 @@ def _industry_rows(
 
 
 def step_rows(
-    companies: Sequence[CompanyRecords], step_order: Sequence[str], min_sample_for_ratio: int
+    companies: Sequence[CompanyRecords],
+    step_order: Sequence[str],
+    min_sample_for_ratio: int,
+    *,
+    counted: Callable[[RecordLine], bool] | None = None,
 ) -> list[StepRow]:
     """(#684) 세부 단계마다 그 단계에 머무는 동안의 접촉과 그 단계에 이르기까지의 접촉 수.
 
@@ -389,6 +396,9 @@ def step_rows(
     단계(`step_after`)가 그 회사가 아직 이른 적 없는 단계면 그 행까지의 누적 접촉 수가
     "이르기까지"다. 건너뛴 단계는 이른 것으로 세지 않는다. 고친 단계는 창구가 넘긴 값에 이미
     들어 있다.
+
+    (#760) `counted`를 주면(기간 모드) 그 조건을 채우는 접촉 행만 "머무는 동안의 접촉"으로 세고,
+    "이르기까지"도 그런 행으로 처음 이른 단계만 센다. 누적 접촉 수에는 세지 않는 앞 접촉도 넣는다.
     """
     if not step_order:
         return []
@@ -406,17 +416,20 @@ def step_rows(
                 raise ValueError(
                     f"모르는 세부 단계 값이라 단계별 접촉에 셀 수 없습니다: {line.step_after!r}"
                 )
+            in_count = counted is None or counted(line)
             if line.method in CONTACT_METHODS:
                 contacts += 1
-                before = current or first
-                tried[before][line.method] += 1
-                if line.result == RESULT_REACHED:
-                    reached[before][line.method] += 1
-                companies_at[before].add(company.opp_id)
+                if in_count:
+                    before = current or first
+                    tried[before][line.method] += 1
+                    if line.result == RESULT_REACHED:
+                        reached[before][line.method] += 1
+                    companies_at[before].add(company.opp_id)
             current = line.step_after
             if current is not None and current not in seen and contacts > 0:
                 seen.add(current)
-                to_reach[current].append(contacts)
+                if in_count:
+                    to_reach[current].append(contacts)
     rows = []
     for step in step_order:
         contact_count = sum(tried[step].values())
@@ -468,6 +481,7 @@ def build_sales_analysis(
     tz: tzinfo,
     lost_reason_order: Sequence[str],
     step_order: Sequence[str] = (),
+    period: tuple[date | None, date | None] | None = None,
 ) -> SalesAnalysis:
     """공정별·회사별 표를 계산한다. 시각은 직접 읽지 않고 `now`를 받는다(NFR12).
 
@@ -477,20 +491,64 @@ def build_sales_analysis(
     `processes`는 역량 파일 순서의 (코드, 이름), `industries`는 설정 순서다. 한 회사가
     공정·산업군이 여러 개면 각각 세므로 줄의 합이 회사 수보다 클 수 있다. 영업 분석표는
     확정된 공정·산업군만 넘겨받으므로(#652) 확인 전 회사는 "확인 전" 한 줄에만 들어간다.
+
+    (#760) `period`(시작일, 끝일 — 한국 날짜, 양끝 포함, 어느 한쪽은 None 가능)를 주면 기간 모드다.
+    기간 안 접촉이 있는 회사만 세고, 접촉 숫자는 기간 안 접촉만, 큰 단계는 끝일까지 저장된 행으로
+    정한다. 끝일까지 성사·거절이고 결과로 바뀐 날이 시작일보다 앞이면 뺀다(closedWindowDays 대신).
     """
     today = now.astimezone(tz).date()
     oldest_closed = now - timedelta(days=closed_window_days)
+    period_from: date | None = None
+    period_to: date | None = None
+    if period is not None:
+        period_from = period[0]
+        period_to = period[1] or today
+        if period_from is not None and period_from > period_to:
+            raise ValueError("기간의 시작일이 끝일보다 뒤입니다.")
+
+    def in_period(line: RecordLine) -> bool:
+        if line.method not in CONTACT_METHODS or period_to is None:
+            return False
+        day = _contact_day(line, tz)
+        return (period_from is None or day >= period_from) and day <= period_to
+
     rows: list[CompanyRow] = []
     counted: list[CompanyRecords] = []
     older_closed = 0
     for company in companies:
-        row = summarize_company(company, today, tz=tz)
-        if row is None:
-            continue
-        if row.closed_at is not None and row.closed_at < oldest_closed:
-            older_closed += 1
-            continue
-        counted.append(company)
+        if period_to is None:
+            row = summarize_company(company, today, tz=tz)
+            if row is None:
+                continue
+            if row.closed_at is not None and row.closed_at < oldest_closed:
+                older_closed += 1
+                continue
+            counted.append(company)
+        else:
+            # 끝일까지의 행만 보고(그때의 큰 단계), 기간 밖 접촉 행은 접촉으로 세지 않는다.
+            # 행의 날짜는 접촉 날짜(없으면 저장한 날): 지난 접촉을 나중에 적어도 접촉 날짜로 든다.
+            until = tuple(line for line in company.lines if _contact_day(line, tz) <= period_to)
+            if not any(in_period(line) for line in until):
+                continue
+            only_period = tuple(
+                line
+                if line.method not in CONTACT_METHODS or in_period(line)
+                else replace(line, method=None)
+                for line in until
+            )
+            row = summarize_company(
+                replace(company, lines=only_period), min(today, period_to), tz=tz
+            )
+            if row is None:
+                continue
+            if (
+                row.closed_at is not None
+                and period_from is not None
+                and row.closed_at.astimezone(tz).date() < period_from
+            ):
+                older_closed += 1
+                continue
+            counted.append(replace(company, lines=until))
         # 카드와 같이 역량 파일 순서로 보이고, 역량 파일에 없는 공정 코드는 싣지 않는다.
         ordered = [code for code, _ in processes if code in row.process_codes]
         rows.append(replace(row, process_codes=ordered))
@@ -531,11 +589,18 @@ def build_sales_analysis(
             closed_window_days=closed_window_days,
             company_count=len(rows),
             older_closed_excluded=older_closed,
+            period_from=period_from,
+            period_to=period_to,
         ),
         by_process=by_process,
         companies=rows,
         total=group_stats(rows, min_sample_for_ratio, lost_reason_order),
-        by_sales_step=step_rows(counted, step_order, min_sample_for_ratio),
+        by_sales_step=step_rows(
+            counted,
+            step_order,
+            min_sample_for_ratio,
+            counted=in_period if period_to is not None else None,
+        ),
     )
 
 

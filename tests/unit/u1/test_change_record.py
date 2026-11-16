@@ -40,9 +40,12 @@ def change_id(opp_id):
 
 
 def test_code_table_has_the_change_kind():
-    """Given 코드표 / When 메모 종류를 읽음 / Then 약속대로 CHANGE가 끝에 더해져 있다."""
+    """Given 코드표 / When 메모 종류를 읽음 / Then 약속대로 CHANGE가 더해져 있다."""
     assert NoteKind.CHANGE == "CHANGE"
-    assert list(NoteKind)[-1] == "CHANGE"
+    # #742에서 남긴 피드백 ADVICE가 그 뒤에 더해졌다(약속 요약 C0 noteKind). CHANGE는 그 바로 앞.
+    # #750에서 다음 통화 준비 CALL_PREP가 맨 끝에 더해졌다(약속 요약 C0 noteKind).
+    # #771에서 전달 사항 HANDOFF가 맨 끝에 더해졌다.
+    assert list(NoteKind)[-4:] == ["CHANGE", "ADVICE", "CALL_PREP", "HANDOFF"]
     # 기록 부품은 규칙 부품을 가져오지 않아 같은 값을 글자로 둔다. 두 값이 같아야 한다.
     assert CHANGE_KIND == NoteKind.CHANGE
 

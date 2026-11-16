@@ -455,6 +455,118 @@ def test_unknown_stage_value_is_an_error_not_a_silent_bucket():
 
 
 # ---------------------------------------------------------------------------
+# (#760) 기간 모드
+# ---------------------------------------------------------------------------
+
+
+def analyse_period(companies, start, end, **kwargs):
+    return build_sales_analysis(
+        companies,
+        processes=PROCESSES,
+        industries=INDUSTRIES,
+        min_sample_for_ratio=kwargs.get("min_sample", 10),
+        closed_window_days=kwargs.get("window", 365),
+        now=NOW,
+        tz=KST,
+        lost_reason_order=LOST_REASON_ORDER,
+        step_order=STEP_ORDER,
+        period=(start, end),
+    )
+
+
+OCT = (date(2026, 10, 1), date(2026, 10, 31))
+
+
+def test_period_counts_only_contacts_inside_and_skips_companies_without_one():
+    """Given 9월·10월 접촉 회사, 8월만 접촉한 회사 / When 10월
+    Then 10월 접촉만 세고 8월 회사는 빠진다."""
+    companies = [
+        company("가", [call("ABSENT", day=date(2026, 9, 10)), call(day=date(2026, 10, 5))]),
+        company("나", [call(day=date(2026, 8, 1), method="EMAIL")]),
+    ]
+    result = analyse_period(companies, *OCT)
+    assert [row.name for row in result.companies] == ["가"]
+    row = result.companies[0]
+    assert row.contact_count.total == 1 and row.first_contact_at == date(2026, 10, 5)
+    assert row.days_since_first_contact == 26  # 10/31 − 10/5 (오늘 11/13이 아니라 끝일 기준)
+    assert (result.basis.period_from, result.basis.period_to) == OCT
+    assert result.basis.older_closed_excluded == 0
+
+
+def test_period_stage_is_the_one_at_the_end_day():
+    """Given 10월 접촉 뒤 11/10 성사 / When 10월 / Then 10월 끝엔 진행 중, 11월까지면 성사."""
+    won_at = datetime(2026, 11, 10, 9, 0, tzinfo=KST)
+    companies = [company("가", [call(day=date(2026, 10, 5)), line(status="WON", at=won_at)])]
+    assert analyse_period(companies, *OCT).companies[0].outcome_status == "IN_PROGRESS"
+    november = analyse_period(companies, date(2026, 10, 1), date(2026, 11, 30))
+    assert november.companies[0].outcome_status == "WON"
+    assert november.total.won_count == 1
+
+
+def test_period_leaves_out_results_closed_before_the_start_and_ignores_the_window():
+    """Given 9월에 거절된 뒤 10월에 다시 접촉한 회사 / When 10월
+    Then 거절 회사는 빼고 건수로 남긴다. closedWindowDays(1일)로는 빼지 않는다."""
+    lost_at = datetime(2026, 9, 20, 9, 0, tzinfo=KST)
+    companies = [
+        company(
+            "거절",
+            [
+                call(day=date(2026, 9, 1)),
+                line(status="LOST", reason="PRICE", at=lost_at),
+                call(day=date(2026, 10, 3), status="LOST"),
+            ],
+        ),
+        company("진행", [call(day=date(2026, 10, 3))]),
+    ]
+    result = analyse_period(companies, *OCT, window=1)
+    assert [row.name for row in result.companies] == ["진행"]
+    assert result.basis.older_closed_excluded == 1
+
+
+def test_period_open_ends_default_to_the_start_and_today():
+    """Given 접촉 하나 / When 시작일만·끝일만
+    Then 비운 쪽은 처음부터·오늘까지, 시작일 > 끝일은 오류."""
+    companies = [company("가", [call(day=date(2026, 10, 5))])]
+    only_start = analyse_period(companies, date(2026, 10, 1), None)
+    assert (only_start.basis.period_from, only_start.basis.period_to) == (
+        date(2026, 10, 1),
+        NOW.date(),
+    )
+    only_end = analyse_period(companies, None, date(2026, 10, 4))
+    assert only_end.companies == [] and only_end.basis.period_from is None
+    with pytest.raises(ValueError, match="시작일이 끝일보다 뒤"):
+        analyse_period(companies, date(2026, 10, 9), date(2026, 10, 1))
+
+
+def test_period_step_rows_count_inside_contacts_but_keep_the_real_running_total():
+    """Given 9월 부재 2번, 10월 연결로 연결됨 / When 10월 / Then 연결 전 단계 접촉은 10월 1번,
+    연결됨에 이르기까지는 실제 누적 3번."""
+    companies = [
+        company(
+            "가",
+            [
+                call("ABSENT", day=date(2026, 9, 1), after="NOT_REACHED"),
+                call("ABSENT", day=date(2026, 9, 2), after="NOT_REACHED"),
+                call(day=date(2026, 10, 2), after="REACHED"),
+            ],
+        )
+    ]
+    steps = steps_of(analyse_period(companies, *OCT))
+    assert steps["NOT_REACHED"].contact_count == 1
+    assert (steps["REACHED"].reached_count, steps["REACHED"].contacts_to_reach) == (1, 3)
+    before = steps_of(analyse_period(companies, date(2026, 9, 1), date(2026, 9, 30)))
+    assert before["NOT_REACHED"].contact_count == 2 and "REACHED" not in before
+
+
+def test_period_rejects_a_bad_date_shape_with_the_field_name(dashboard_env):
+    client, _opp_ids = dashboard_env
+    response = client.get("/api/v1/sales-analysis?from=2026-13-01", headers=VIEWER)
+    assert response.status_code == 400, response.text
+    error = response.json()["error"]
+    assert [field["path"] for field in error["fields"]] == ["from"]
+
+
+# ---------------------------------------------------------------------------
 # 실제 임시 DB + 실제 API
 # ---------------------------------------------------------------------------
 
@@ -703,6 +815,9 @@ def test_api_is_empty_before_any_contact(dashboard_env):
         "closedWindowDays": 365,
         "companyCount": 0,
         "olderClosedExcluded": 0,
+        # (#760) 기간을 고르지 않으면 기간 양끝은 비어 있다(더하는 변경).
+        "from": None,
+        "to": None,
     }
     assert body["meta"]["hasVirtualData"] is False
 
@@ -759,7 +874,8 @@ def test_api_tables_match_saved_records_and_viewer_can_read(dashboard_env):
     assert won["outcomeStatus"] == "WON" and won["salesStep"] is None
     assert won["outcomeAt"] is not None and won["daysToOutcome"] >= 0
     assert companies[b]["lostReasonCode"] == "INCUMBENT_SUPPLIER"
-    assert companies[c]["salesStep"] == "NOT_REACHED" and companies[c]["outcomeAt"] is None
+    # #748 PM 결정(2026-11-15): 결과 "연결됨" 접촉 한 번이면 답이 없어도 세부 단계 "연결됨"이다.
+    assert companies[c]["salesStep"] == "REACHED" and companies[c]["outcomeAt"] is None
     # 상세의 접촉 수·카드의 세부 단계와 같은 값이다.
     detail = client.get(f"/api/v1/opportunities/{a}").json()["data"]
     assert detail["records"]["contactCount"] == won["contactCount"]

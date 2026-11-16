@@ -1,5 +1,5 @@
 // 활동 이력 종류를 뜻이 같은 3묶음으로 나눈다(#389, PM 결정 2026-11-07).
-//  - SALES    영업 활동: 접촉 시도 · 영업 단계 · 메모 · 답 기록 · 기록 취소 (가장 자주 쌓이는 줄, 회색)
+//  - SALES    영업 활동: 접촉 시도 · 영업 단계 · 메모 · 답 기록 · 기록 취소 · 남긴 피드백(#742) (가장 자주 쌓이는 줄, 회색)
 //  - FACT     사실 입력: 거래 관계 · 근거 등급 확인 · 변경 기록 (점수에 들어가는 확인한 사실, 파랑)
 //             변경 기록(#731)은 공정·산업 확정, AI 제안 확정·물리침을 프로그램이 남긴 줄이다.
 //  - FEEDBACK 프로그램 판단에 대한 피드백: 의견 · 분류 · 승인 · 관심 (노랑)
@@ -16,6 +16,7 @@ export const activityGroupOf: Record<ActivityKind, ActivityGroup> = {
   NOTE: 'SALES',
   REPLY: 'SALES',
   RECORD_CANCELLED: 'SALES',
+  ADVICE: 'SALES',
   RELATION_CONFIRMED: 'FACT',
   EVIDENCE_GRADE_CONFIRMED: 'FACT',
   CHANGE: 'FACT',

@@ -8,6 +8,9 @@ _설명: >-
   choices 질문은 step에 적은 세부 단계부터, 답이 생길 때까지 그 뒤 단계에서도 계속 보인다(step: ALL은 쓸 수 없다).
   default: true가 있는 보기는 화면이 미리 골라 둔다(#691). 그런 질문은 통화 내용이 아니라 접촉 자체에 대한 질문이라
   접촉 종류·결과 줄 옆에 보이고 부재 접촉에도 남는다. step은 ALL, showWhen·reaches·closes·lostReason은 쓸 수 없다.
+  coach(#742)는 영업 코치가 그 질문을 어떻게 다루는지다. fill: AI(AI가 채움) · SUGGEST(AI가 제안하고 사람이 확정, 미리 골라 두지 않음)
+  · STAFF(사람이 고름, AI가 채우지 않음, 없으면 이것). required: true는 그 세부 단계의 필수 질문이고(step: ALL은 접촉마다),
+  requiredWhen이 있으면 앞 답이 그 보기일 때만 필수다. keyword는 기록 칸 위 "확인사항"에 보이는 짧은 말이다(PM 승인 2026-11-14).
   문구는 거산 확인(#275) 전 초안이다. 가상·거산 실제 사양 아님.
 version: 1
 steps:
@@ -21,6 +24,7 @@ questions:
   - id: WHO_TALKED
     step: NOT_REACHED
     text: 누구와 이야기했나요?
+    coach: { fill: AI, required: true, keyword: 통화 상대 }
     answers:
       - { id: RIGHT_PERSON, label: 담당 부서, reaches: REACHED }
       - { id: OTHER_DEPT, label: 다른 부서 }
@@ -29,6 +33,7 @@ questions:
   - id: PLATING_NOW
     step: REACHED
     text: 지금 도금은 어떻게 하나요?
+    coach: { fill: AI, required: true, keyword: 지금 도금 방식 }
     answers:
       - { id: IN_HOUSE, label: 직접 함 }
       - { id: OUTSOURCED, label: 외주 줌, reaches: DEMAND_CONFIRMED }
@@ -36,6 +41,7 @@ questions:
   - id: NEED_PROCESS
     step: REACHED
     text: 거산이 맡을 수 있는 공정이 있나요?
+    coach: { fill: SUGGEST, required: true, keyword: 맡길 공정 있나 }
     showWhen: { answers: { PLATING_NOW: [IN_HOUSE] } }
     answers:
       - { id: YES, label: 있음, reaches: DEMAND_CONFIRMED }
@@ -44,6 +50,7 @@ questions:
   - id: INTEREST
     step: REACHED
     text: 관심 정도는?
+    coach: { fill: STAFF }
     answers:
       - { id: HIGH, label: 높음 }
       - { id: MEDIUM, label: 보통 }
@@ -53,15 +60,18 @@ questions:
   - id: CONFIRM_PROCESS
     step: REACHED
     text: 어떤 공정을 맡길 수 있나요?
+    coach: { fill: SUGGEST, required: true, requiredWhen: { answers: { NEED_PROCESS: [YES] } }, keyword: 맡길 공정 }
     choices: PROCESS
   - id: CONFIRM_INDUSTRY
     step: REACHED
     text: 어느 산업인가요?
+    coach: { fill: SUGGEST }
     choices: INDUSTRY
   # ③ 수요 확인
   - id: SWITCH_INTENT
     step: DEMAND_CONFIRMED
     text: 외주처를 바꿀 생각이 있나요?
+    coach: { fill: STAFF, required: true, keyword: 외주처 바꿀 생각 }
     showWhen: { answers: { PLATING_NOW: [OUTSOURCED] } }
     answers:
       - { id: YES, label: 있음 }
@@ -70,6 +80,7 @@ questions:
   - id: INTEREST_DRIVER
     step: DEMAND_CONFIRMED
     text: 무엇이 있으면 관심이 커지나요?
+    coach: { fill: STAFF }
     answers:
       - { id: PRICE, label: 단가 }
       - { id: LEAD_TIME, label: 납기 }
@@ -79,6 +90,7 @@ questions:
   - id: QUOTE_REQUEST
     step: DEMAND_CONFIRMED
     text: 자료나 견적 요청이 있었나요?
+    coach: { fill: AI, required: true, keyword: 자료·견적 요청 }
     answers:
       - { id: QUOTE, label: 견적 요청, reaches: MATERIAL_QUOTE }
       - { id: MATERIAL, label: 자료 요청, reaches: MATERIAL_QUOTE }
@@ -87,6 +99,7 @@ questions:
   - id: SENT_ITEM
     step: MATERIAL_QUOTE
     text: 무엇을 보냈나요?
+    coach: { fill: AI }
     answers:
       - { id: BROCHURE, label: 회사소개서 }
       - { id: CERTIFICATE, label: 인증서 }
@@ -95,6 +108,7 @@ questions:
   - id: REPLY
     step: MATERIAL_QUOTE
     text: 답이 왔나요?
+    coach: { fill: AI, required: true, keyword: 답이 왔나 }
     answers:
       - { id: CAME, label: 왔음 }
       - { id: NOT_YET, label: 아직 }
@@ -102,6 +116,7 @@ questions:
   - id: VISIT_OR_SAMPLE
     step: MATERIAL_QUOTE
     text: 방문이나 샘플 요청이 있었나요?
+    coach: { fill: AI, required: true, keyword: 방문·샘플 요청 }
     answers:
       - { id: VISIT, label: 방문 요청, reaches: VISIT_SAMPLE }
       - { id: SAMPLE, label: 샘플 요청, reaches: VISIT_SAMPLE }
@@ -110,6 +125,7 @@ questions:
   - id: SAMPLE_RESULT
     step: VISIT_SAMPLE
     text: 샘플 결과는?
+    coach: { fill: AI, required: true, keyword: 샘플 결과 }
     answers:
       - { id: PASS, label: 합격 }
       - { id: FAIL, label: 불합격 }
@@ -119,6 +135,7 @@ questions:
   - id: WHO_FIRST
     step: ALL
     text: 누가 먼저 연락했나요?
+    coach: { fill: AI }
     answers:
       - { id: OURS, label: 우리가, default: true }
       - { id: THEIRS, label: 상대가 }
@@ -126,6 +143,7 @@ questions:
   - id: NEXT_ACTION
     step: ALL
     text: 다음 할 일은?
+    coach: { fill: AI, required: true, keyword: 다음 할 일 }
     answers:
       - { id: SEND_MATERIAL, label: 자료 보내기 }
       - { id: QUOTE, label: 견적 }
@@ -136,6 +154,7 @@ questions:
   - id: CLOSE_RESULT
     step: ALL
     text: 어떻게 끝났나요?
+    coach: { fill: SUGGEST, required: true, keyword: 끝난 결과 }
     showWhen: { answers: { NEXT_ACTION: [END] } }
     answers:
       - { id: WON, label: 성사, closes: WON }
@@ -144,6 +163,7 @@ questions:
   - id: LOST_REASON
     step: ALL
     text: 거절 이유는?
+    coach: { fill: SUGGEST, required: true, keyword: 거절 이유 }
     showWhen: { answers: { CLOSE_RESULT: [LOST] } }
     answers:
       - { id: PRICE, label: 가격, lostReason: PRICE }

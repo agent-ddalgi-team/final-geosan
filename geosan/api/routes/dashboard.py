@@ -7,7 +7,7 @@ from fastapi import APIRouter, Header, Request, Response
 from pydantic import Field
 
 from geosan.api.check_points import check_left_opp_ids
-from geosan.api.deps import SessionDep, runtime_for
+from geosan.api.deps import SessionDep, current_account, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
@@ -17,8 +17,10 @@ from geosan.dashboard.queries import (
     BOARD_KEYS,
     BOOKMARKED_KEY,
     TODAY_CHECK_LEFT,
+    WON_KEY,
     BreakdownSource,
     bookmarked_opp_ids,
+    bookmarked_won_ids,
     build_dashboard,
     classify_bookmarked,
     dashboard_population,
@@ -56,6 +58,8 @@ class VisitGroup(_ApiModel):
     """방문할 회사(points 가운데 진행 중·관심) 하나와 그 반경 안의 근처 회사(가까운 순)."""
 
     opp_id: str
+    # 이 회사에 쓴 반경(km). 기본 반경 안이 기준 곳 수 미만이면 넓힌 반경이다(#743).
+    radius_km: float
     nearby: list[VisitNearby]
 
 
@@ -66,6 +70,8 @@ class DashboardMap(_ApiModel):
     missing_coordinates: int
     as_of: datetime
     visit_radius_km: float
+    # 기본 반경 안 관심 기업이 이 수 미만이면 그 회사만 넓힌다(설정, #743).
+    visit_widen_below_count: int
     visit_groups: list[VisitGroup]
 
 
@@ -95,6 +101,7 @@ def dashboard_map(response: Response, session: SessionDep):
             missing_coordinates=missing,
             as_of=now,
             visit_radius_km=settings.visit_group_radius_km,
+            visit_widen_below_count=settings.visit_group_widen_below_count,
             visit_groups=[VisitGroup.model_validate(group) for group in visit_groups],
         ),
         meta=Meta(
@@ -127,6 +134,8 @@ class DashboardCounts(_ApiModel):
     on_hold: int = Field(alias="ON_HOLD")
     done: int = Field(alias="DONE")
     schedule_due: int = Field(alias="SCHEDULE_DUE")
+    # #766: 관심 기업 가운데 최신 단계 성사. DONE의 일부라 칸 합계에는 넣지 않는다.
+    won: int = Field(alias="WON")
 
 
 class ScheduleItem(_ApiModel):
@@ -183,12 +192,14 @@ class TodayCheckItem(_ApiModel):
     customer_name: str
     due_at: date | None = None
     note: str | None = None
+    # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
+    outcome_version: int | None = None
 
 
 class TodayCheckRow(_ApiModel):
     """맨 위 "오늘 확인할 것"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677)."""
 
-    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT"]
+    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT", "HANDOFF_FOR_ME"]
     count: int
     items: list[TodayCheckItem]
     # 누르면 열 목록의 `?filter=` 값. null이면 화면이 줄 아래에 작은 목록을 편다.
@@ -236,6 +247,13 @@ def bookmark_board_list_filter(session, query, request: Request):
     return query.where(EvaluationRun.opp_id.in_(opp_ids))
 
 
+def won_list_filter(session, query, request: Request):
+    """목록 `?filter=WON`: 대시보드 "영업 진행" 띠의 "성사" 칸과 같은 계산(#766)."""
+    if request.query_params.get("filter") != WON_KEY:
+        return query
+    return query.where(EvaluationRun.opp_id.in_(bookmarked_won_ids(session)))
+
+
 def _catalog_codes(session, dataset_kind) -> frozenset[str]:
     return frozenset(row.code for row in load_process_catalog(session, dataset_kind))
 
@@ -254,9 +272,23 @@ def check_left_list_filter(session, query, request: Request):
 supported_filters.add(SCHEDULE_DUE_FILTER)
 supported_filters.update(BOARD_FILTERS)
 supported_filters.add(TODAY_CHECK_LEFT)
-for _list_filter in (schedule_due_list_filter, bookmark_board_list_filter, check_left_list_filter):
+supported_filters.add(WON_KEY)
+for _list_filter in (
+    schedule_due_list_filter,
+    bookmark_board_list_filter,
+    check_left_list_filter,
+    won_list_filter,
+):
     if _list_filter not in list_filters:
         list_filters.append(_list_filter)
+
+
+def _my_staff_key(session, runtime, staff_key):
+    """최근 내 기록의 담당자. 계정 방식(#754)이면 로그인한 사람, 보기 전용이면 None."""
+    account = current_account(session)
+    if account is not None:
+        staff_key = account.staff_key
+    return staff_key if runtime.app_settings.is_recording_staff(staff_key) else None
 
 
 @router.get("/dashboard", response_model=DashboardEnvelope)
@@ -281,7 +313,7 @@ def dashboard(
     result = build_dashboard(
         session,
         dataset_kind=dataset_kind.value,
-        staff_key=staff_key if runtime.app_settings.is_recording_staff(staff_key) else None,
+        staff_key=_my_staff_key(session, runtime, staff_key),
         today=now.astimezone(KST).date(),
         now=now,
         breakdown_source=BreakdownSource(
@@ -290,6 +322,7 @@ def dashboard(
             count_proposed_industries=runtime.app_settings.dashboard.count_proposed_industries,
         ),
         check_left_opp_ids=check_left,
+        staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
     )
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),

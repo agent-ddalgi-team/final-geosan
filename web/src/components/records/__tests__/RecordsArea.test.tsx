@@ -8,6 +8,8 @@ import type { OutcomeResponse } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
 import { recordsArea } from '../../../labels/ko';
+import { todayKst } from '../../../utils/time';
+import { pickCalendarDate } from '../../../test/pickCalendarDate';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -20,6 +22,13 @@ const mockedNote = vi.mocked(postNote);
 const mockedOutcome = vi.mocked(postOutcome);
 const OPP = 'opp-1';
 const EVAL = 'eval-1';
+// #740: 다음 일정 날짜는 펼쳐진 달력에서 고른다. 그 시험은 오늘을 2026-11-05(한국 시간)로 둬
+// 기대 날짜(2026-11-10·2026-12-01)가 늘 같은 달·다음 달에 있게 한다. 날짜 계산만 바꾼다.
+const CALENDAR_NOW = new Date('2026-11-05T03:00:00Z');
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function frameValue(overrides: Partial<FrameValue> = {}): FrameValue {
   return {
@@ -466,6 +475,7 @@ describe('RecordsArea', () => {
   });
 
   it('이미 거절인 채로 다음 일정을 저장하면 거절 이유 코드를 함께 보낸다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: CALENDAR_NOW });
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'LOST', lostReasonCode: 'PRICE' }));
     renderArea(frameValue(), {
@@ -479,9 +489,7 @@ describe('RecordsArea', () => {
     });
     // 다음 일정 칸은 기본으로 접혀 있다(#683).
     fireEvent.click(screen.getByTestId('records-schedule-toggle'));
-    fireEvent.change(screen.getByTestId('records-schedule-date'), {
-      target: { value: '2026-12-01' },
-    });
+    await pickCalendarDate(user, 'records-schedule-quick', '2026-12-01');
     await user.click(screen.getByTestId('records-schedule-save-button'));
     await waitFor(() =>
       expect(mockedOutcome).toHaveBeenCalledWith(
@@ -521,6 +529,7 @@ describe('RecordsArea', () => {
   });
 
   it('다음 일정을 저장하면 날짜·할 일과 현재 단계가 함께 간다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: CALENDAR_NOW });
     const user = userEvent.setup();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
     renderArea(frameValue(), {
@@ -534,9 +543,7 @@ describe('RecordsArea', () => {
     // 다음 일정 칸은 기본으로 접혀 있다(#683).
     fireEvent.click(screen.getByTestId('records-schedule-toggle'));
     expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
-    fireEvent.change(screen.getByTestId('records-schedule-date'), {
-      target: { value: '2026-11-10' },
-    });
+    await pickCalendarDate(user, 'records-schedule-quick', '2026-11-10');
     fireEvent.change(screen.getByTestId('records-schedule-note'), {
       target: { value: '견적 회신 확인' },
     });
@@ -567,7 +574,8 @@ describe('RecordsArea', () => {
     expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
     // 다음 일정 칸은 기본으로 접혀 있다(#683). 펼쳐 볼 수는 있어도 입력은 막혀 있다.
     fireEvent.click(screen.getByTestId('records-schedule-toggle'));
-    expect(screen.getByTestId('records-schedule-date')).toBeDisabled();
+    expect(screen.getByTestId(`records-schedule-quick-day-${todayKst()}`)).toBeDisabled();
+    expect(screen.getByTestId('records-schedule-quick-next')).toBeDisabled();
     expect(screen.getByTestId('records-schedule-save-button')).toBeDisabled();
     expect(mockedNote).not.toHaveBeenCalled();
   });

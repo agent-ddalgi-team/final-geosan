@@ -9,6 +9,7 @@ from __future__ import annotations
 import hmac
 import math
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -54,9 +55,18 @@ def password_matches(submitted: str) -> bool:
 
 
 def decide_access(
-    submitted: str, state: FailureState, *, now: datetime, protection_enabled: bool
+    submitted: str,
+    state: FailureState,
+    *,
+    now: datetime,
+    protection_enabled: bool,
+    matches: Callable[[str], bool] = password_matches,
 ) -> AccessDecision:
-    """상태를 바꾸지 않고 다음 상태를 반환한다. 저장·차단은 호출자가 맡는다."""
+    """상태를 바꾸지 않고 다음 상태를 반환한다. 저장·차단은 호출자가 맡는다.
+
+    matches는 비밀번호가 맞는지 보는 함수다. 기본은 공용 비밀번호, 계정 방식(#754)이면
+    그 계정의 해시와 비교하는 함수를 넘긴다. 실패 횟수·대기는 어느 쪽이든 같은 한 줄로 센다.
+    """
     now = _utc(now)
     if not protection_enabled:
         return AccessDecision(allowed=True, state=state)
@@ -67,7 +77,7 @@ def decide_access(
                 allowed=False, state=state, retry_after_seconds=math.ceil(remaining)
             )
         state = FailureState()
-    if password_matches(submitted):
+    if matches(submitted):
         return AccessDecision(allowed=True, state=FailureState())
     failures = state.failures + 1
     if failures == FAILURE_LIMIT:

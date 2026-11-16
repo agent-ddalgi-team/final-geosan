@@ -19,7 +19,9 @@ export type DashboardCountKey =
   | 'QUOTE_SAMPLE'
   | 'ON_HOLD'
   | 'DONE'
-  | 'SCHEDULE_DUE';
+  | 'SCHEDULE_DUE'
+  /** #766: 관심 기업 가운데 최신 단계 성사(DONE의 일부). "영업 진행" 띠의 마지막 칸. */
+  | 'WON';
 
 /** 서버가 아직 옛 모양을 주면 새 이름표가 없을 수 있다. 화면은 없는 칸을 0으로 지어내지 않고 뺀다. */
 export type DashboardCounts = Partial<Record<DashboardCountKey, number>>;
@@ -69,7 +71,12 @@ export interface DashboardBreakdown {
 }
 
 /** "오늘 확인할 것" 줄의 종류(#679). 서버가 뒤에 값을 늘릴 수 있어(#677) 화면은 모르는 값을 보이지 않는다. */
-export type TodayCheckKind = 'SCHEDULE_TODAY' | 'SCHEDULE_OVERDUE' | 'CHECK_LEFT';
+export type TodayCheckKind =
+  | 'SCHEDULE_TODAY'
+  | 'SCHEDULE_OVERDUE'
+  | 'CHECK_LEFT'
+  /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
+  | 'HANDOFF_FOR_ME';
 
 export interface TodayCheckItem {
   oppId: string;
@@ -77,6 +84,8 @@ export interface TodayCheckItem {
   /** 일정 줄만 날짜(YYYY-MM-DD)와 일정 한 줄이 있다. */
   dueAt: string | null;
   note: string | null;
+  /** #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion). */
+  outcomeVersion?: number | null;
 }
 
 export interface TodayCheckRow {

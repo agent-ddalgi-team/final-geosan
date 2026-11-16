@@ -4,6 +4,7 @@
 가상 사례만 쓴다(거산 실제 사양 아님). 준비 자료의 사람 이름·전화·이메일은 모두 지어낸 것이다.
 """
 
+import json
 from datetime import timedelta
 
 import pytest
@@ -60,10 +61,21 @@ class FakeAI:
     def __init__(self):
         self.payloads = []
         self.answer = "가상 답입니다."
+        # #774: 질문에 답하기는 답 글과 할 일 제안을 정해진 모양(JSON)으로 받는다.
+        self.suggestions = []
+        self.raw = None  # 정해 두면 모양과 상관없이 이 글을 그대로 돌려준다(형식 오류 시험).
         self.status = "completed"
 
     def __call__(self, payload, key, deadline):
         self.payloads.append(payload)
+        text = self.answer
+        shape = payload.get("text", {}).get("format", {}).get("name")
+        if shape == "sales_ask_answer":
+            text = json.dumps(
+                {"answer": self.answer, "suggestions": self.suggestions}, ensure_ascii=False
+            )
+        if self.raw is not None:
+            text = self.raw
         return {
             "status": self.status,
             "usage": {"input_tokens": 1000, "output_tokens": 200},
@@ -71,7 +83,7 @@ class FakeAI:
                 {
                     "type": "message",
                     "status": "completed",
-                    "content": [{"type": "output_text", "text": self.answer}],
+                    "content": [{"type": "output_text", "text": text}],
                 }
             ],
         }

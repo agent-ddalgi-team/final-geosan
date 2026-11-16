@@ -45,6 +45,8 @@ cd web && npm ci && cd ..
 | 발표 시연용 DB에 가상 영업 기록 넣기(#274) | `geosan seed-demo-records [examples/demo-records.yaml]`. 시연 표시가 있는 DB에서만 동작하고 실제 DB에서는 거부합니다. 이미 기록이 있는 회사는 건너뜁니다. 순서는 아래 "발표 시연용 DB" |
 | 마이그레이션 머리 합치기 | `geosan db merge-heads` |
 | 백업·되돌리기 | `geosan backup [--to <폴더>]`(서버 켜진 채로 가능, 기본 `backups/`) → 문제가 생기면 서버를 멈추고 `geosan restore <백업 파일>`(확인 질문 1회, 지금 DB는 자동 보관) → `geosan init-db` → `geosan serve`. 절차는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) |
+| 배포용 DB 만들기(#753) | 이 PC에서 `geosan copy-without-records --to <새 파일>`. 지금 DB를 새 파일로 복사하고 사본에서 시험으로 남긴 영업 기록(메모·접촉·관심·의견·거래 관계 입력·질문 답)과 AI 전송 기록만 지웁니다. 회사·조사 근거·후보 판단은 그대로라 조사 비용을 다시 쓰지 않고, 사본의 이번 달 AI 사용액은 $0에서 시작합니다. 원본은 바뀌지 않습니다. 이미 있는 파일·시연용 DB는 거부합니다. 순서는 [백업·되돌리기 한 쪽](docs/backup-restore-guide.md) 6장 |
+| 담당자 계정(#754) | `geosan staff-add <아이디> [--viewer]` → 출력의 임시 비밀번호를 담당자에게 직접 전달(메일·이슈에 적지 않기) → 담당자가 첫 로그인 때 화면에 보일 이름과 새 비밀번호를 정합니다. 잊으면 `geosan staff-reset <아이디>`, 퇴사 등은 `geosan staff-disable <아이디>`, 목록은 `geosan staff-list`. 계정이 하나라도 있으면 접속 보호가 켜진 서버는 사람마다 아이디·비밀번호로 로그인하고 기록에는 로그인한 사람이 남습니다. 계정이 없으면 지금처럼 공용 비밀번호입니다 |
 
 **처음 설치할 때 소스 이용 확인(#489)** — `init-db`·`check-config` 다음, `serve` 전에 운영자가 자료의 이용·저장 조건을 확인하고 아래 명령을 실행합니다.
 
@@ -59,7 +61,7 @@ geosan source-confirm kicox-production-api --by choi-pm
 `init-db`와 마찬가지로 실제 DB 볼륨이 붙은 실행 환경 안에서 실행해야 합니다. 다른 PC의 DB에 기록해도 서버 DB에는 반영되지 않습니다.
 이 명령은 외부 사이트에 접속하거나 이용 조건을 자동으로 확인하지 않습니다. API 키도 필요하지 않습니다.
 
-**발표 시연용 DB(#274, PM 결정 2026-11-04)** — 가상 회사 6곳(성사 3·거절 3)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
+**발표 시연용 DB(#274, PM 결정 2026-11-04; #765에서 18곳으로 늘림, 2026-11-15)** — 가상 회사 18곳(성사 4·거절 5·보류 2·진행 중 7, 접촉은 1~150일 전)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
 
 ```bash
 export GEOSAN_DB_PATH=./data/geosan-demo.db      # 윈도우 PowerShell: $env:GEOSAN_DB_PATH = "./data/geosan-demo.db"
@@ -72,8 +74,20 @@ geosan import-case examples/demo/case-demo-c-industry.json
 geosan import-case examples/demo/case-demo-d-tech.json
 geosan import-case examples/demo/case-demo-e-machining.json
 geosan import-case examples/demo/case-demo-f-valve.json
+geosan import-case examples/demo/case-demo-g-precision.json
+geosan import-case examples/demo/case-demo-h-industry.json
+geosan import-case examples/demo/case-demo-i-tech.json
+geosan import-case examples/demo/case-demo-j-metal.json
+geosan import-case examples/demo/case-demo-k-machine.json
+geosan import-case examples/demo/case-demo-l-electronics.json
+geosan import-case examples/demo/case-demo-m-precision.json
+geosan import-case examples/demo/case-demo-n-valve.json
+geosan import-case examples/demo/case-demo-o-parts.json
+geosan import-case examples/demo/case-demo-p-tech.json
+geosan import-case examples/demo/case-demo-q-industry.json
+geosan import-case examples/demo/case-demo-r-metal.json
 geosan evaluate
-geosan seed-demo-records                          # 가상 영업 기록: 성사 3곳·거절 3곳(가격·납기·기존 거래처)
+geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
@@ -106,6 +120,8 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 회사별 새 근거 수·이번 호출 비용을 표시하며, 미확정 비용은 0원으로 확정하지 않습니다.
 실행 실패가 있으면 종료 코드 2, 잘못된 옵션·자동 조사 꺼짐은 1입니다. 못 찾음은 별도 집계합니다.
 `geosan import-case <file.json>`도 저장을 마친 뒤 같은 설정에 따라 **투입한 한 곳만** 바로 조사합니다.
+화면의 [영업 후보로 더하기]·`geosan ingest`로 들어온 새 회사는 적합도 상 → 중 순으로 줄을 세워 조사합니다(#744). 적합도 하·표면처리를 직접 하는 회사 표시·끝난 회사는 조사하지 않습니다.
+이 자동 조사는 관심 자동 조사와 같은 하루 금액(`research.autoOnBookmarkDailyCostUsd`)을 함께 쓰고, 다 쓰면 남은 회사를 "조사 전"으로 두었다가 서버가 다음 날 처음 받는 목록 읽기 뒤에 이어서 조사합니다.
 자동 조사가 꺼져 있거나 가상·비공개·재접촉·다른 묶음이면 저장만 합니다(종료 코드 0).
 재투입도 한 번 조사하며 저장된 홈페이지 주소를 재사용합니다. 이전 근거·평가 이력은 보존합니다.
 조사가 실패하면 사례 저장은 유지하고 실패 이유와 종료 코드 2를 알립니다. 파일을 다시 넣을 필요는 없습니다.
@@ -114,7 +130,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 화면 API 담당자는 `FlowResult.ok`와 PM이 확정한 `counts`(근거 전체·요구 후보·질문 수)로 성공을 표시해야 합니다.
 
 뼈대 기본 틀(Part A) 시점에는 명령 이름만 등록되어 있고 본문은 "아직 구현되지 않았습니다(담당, Step)"를 내고 종료 코드 2로 끝납니다.
-서버는 기본 `127.0.0.1:8000`에서 듣습니다. 배포할 때만 `--host 0.0.0.0 --port <포트>`를 지정합니다. 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
+서버는 기본 `127.0.0.1:8000`에서 듣습니다. 배포할 때만 `--host 0.0.0.0 --port <포트>`를 지정합니다. 이때는 접속 보호가 켜진 설정이 등록돼 있고 `GEOSAN_PASSWORD`가 있어야 시작합니다(#736, 아래 배포 절). 환경 변수는 `GEOSAN_DB_PATH`(기본 `./data/geosan.db`)와 접속 보호용 `GEOSAN_PASSWORD`이며 `.env.example`을 참고합니다.
 
 로컬 예비 통합 빌드는 `python scripts/build.py`로 실행합니다. 잠금 파일대로 화면 의존성을 설치하고 `VITE_USE_FIXTURES=0`으로 빌드하며, 실패하면 중단합니다. 성공하면 기존 `geosan serve`가 화면과 API를 함께 제공합니다.
 
@@ -123,11 +139,39 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 현재는 배포 준비 단계이며 로그인 서버 PR #225는 반영됐습니다. PM 계정 연결·Railway 주소 발급 뒤 실제 배포를 검증합니다. `GEOSAN_PASSWORD`만 설정하지 말고 아래 접속 보호 설정도 등록해야 합니다. 기존 `scripts/build.py`는 로컬 통합 실행·예비용으로 유지합니다.
 
 - Railway: 저장소 루트, 배포 가지 `main`, 서비스 1개와 영구 볼륨 `/data`. 환경 변수 `GEOSAN_DB_PATH=/data/geosan.db`, `GEOSAN_PASSWORD`, `OPENAI_API_KEY`는 서비스 설정에만 넣습니다. `PORT`는 Railway가 제공하며 `railway.json`의 시작 명령이 `--port`로 전달합니다. 로컬 `geosan serve`는 `PORT`를 자동으로 읽지 않습니다.
+- ⚠️ `railway.json`이 읽히는지 먼저 확인합니다(#736). Railway 공식 문서(2026-11-14 확인)에 따르면 `railway.json` 방식(Config as Code)은 더 쓰지 않는 방식이 되어 **새 서비스는 이 파일을 쓸 수 없고**, 이미 쓰던 서비스도 **2026-12-01부터 읽지 않습니다**. 새로 만드는 서비스라면 아래 설치(빌드) 명령과 시작 명령을 Railway 서비스 설정 화면의 빌드 명령·시작 명령 칸에 **같은 글자 그대로** 넣습니다. `railway.json`은 그 두 명령의 기준 기록으로 둡니다.
+- 설치(빌드) 명령: `python -m venv .geosan-venv && .geosan-venv/bin/pip install -r requirements.lock -e .` — 잠금 파일(`requirements.lock`) 그대로 설치하고, **편집 설치(`-e .`)가 꼭 필요합니다.** 코드가 예시 설정(`examples/`)·마이그레이션(`migrations/`, `alembic.ini`)·화면 빌드(`web/dist`)를 패키지 위치 기준으로 저장소 폴더에서 찾기 때문에, 일반 설치(`pip install .`)로는 `init-db`가 "alembic.ini를 찾을 수 없습니다"로 멈춥니다. 따로 만든 가상환경(`.geosan-venv`)에 설치하는 이유: Railway 기본 빌더(Railpack)는 `requirements.txt`가 없으면 의존성을 설치하지 않고, 빌드 단계에서 프로젝트 폴더 밖에 설치한 것은 실행 이미지에 남지 않습니다(Railpack 문서·소스 기준, 실제 Railway 빌드는 계정 연결 뒤 확인). 이름이 `.venv`·`venv`인 폴더는 빌더가 실행 이미지에서 빼므로 다른 이름을 씁니다.
+- 시작 명령: `/bin/sh -c 'PATH="$PWD/.geosan-venv/bin:$PATH"; geosan init-db && exec geosan serve --host 0.0.0.0 --port "${PORT:?Railway PORT is required}"'` — 시작할 때마다 DB를 먼저 준비합니다. 빈 볼륨이면 새로 만들고, 이미 최신이면 "이미 최신입니다 … 바뀐 것 없음"으로 아무것도 바꾸지 않습니다. 접속 보호가 꺼진 설정이면 `serve`가 "접속 보호가 꺼져 있어 배포 환경에서 서버를 시작하지 않습니다"로, 보호를 켰는데 `GEOSAN_PASSWORD`가 없으면 "비밀번호(GEOSAN_PASSWORD)가 없어 서버를 시작하지 않습니다"로 멈춥니다(종료 코드 2). 그래서 첫 배포는 아래 순서로 보호 켠 설정을 먼저 등록합니다.
 - 코드 버전(#719): 평가 기록에는 어느 코드로 계산했는지 `0.1.0+<커밋 번호>`로 적습니다. 커밋 번호는 환경 변수 `GEOSAN_CODE_VERSION` → `RAILWAY_GIT_COMMIT_SHA` → git 정보 순서로 찾고, 모두 없으면 `0.1.0+nogit`로 적은 채 평가는 그대로 저장합니다(서버 시작 줄에 경고 한 줄). 배포 서버에 git 정보가 없으면 `GEOSAN_CODE_VERSION`에 배포한 커밋 번호(영문·숫자·`.`·`_`·`-` 40자 이내)를 넣어 주세요. Railway가 `RAILWAY_GIT_COMMIT_SHA`를 실제로 주는지는 배포 때 확인합니다.
-- Python 의존성 설치는 저장소 루트에서 `pip install -r requirements.lock -e .`를 사용합니다. 화면 빌드는 Railway에서 필요하지 않습니다.
-- 첫 실행·갱신 시에는 **볼륨이 마운트된 실행 환경 안에서** `geosan init-db`를 실행합니다. 이미 있는 DB에는 필요한 마이그레이션만 적용합니다. 볼륨이 없는 빌드 단계에서 실행하지 않습니다. 기존 DB 갱신 전에는 같은 자리에서 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
-- 이후 `geosan check-config examples/rule-config.yaml examples/app-settings.yaml`로 설정을 등록합니다. 공개 배포 전 운영용 앱 설정의 `accessProtection.enabled`를 켜고 검증해야 합니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
-- Vercel: Root Directory `web`, 배포 가지 `main`, 설치 `npm ci`, 빌드 `npm run build`, 출력 `dist`, 환경 변수 `VITE_USE_FIXTURES=0`. 서버 비밀번호·API 키를 Vercel의 `VITE_` 변수에 넣지 않습니다.
+- 화면 빌드는 Railway에서 필요하지 않습니다. `init-db`는 시작 명령이 **볼륨이 붙은 실행 환경 안에서** 돌리므로 빌드 단계에서 따로 실행하지 않습니다. 새 버전을 올리기 전에는 `geosan backup --to /data/backups`로 백업합니다([백업·되돌리기 한 쪽](docs/backup-restore-guide.md), #214).
+- Vercel: Root Directory `web`, 배포 가지 `main`, 설치 `npm ci`, 빌드 `npm run build`, 출력 `dist`, 환경 변수 `VITE_USE_FIXTURES=0`과 대시보드 지도용 `VITE_NCP_MAPS_CLIENT_ID=<Client ID>`(비밀 아님, #671). 네이버 클라우드 콘솔 Maps 애플리케이션의 **Web 서비스 URL**에 Vercel 배포 주소(예: `https://<프로젝트>.vercel.app`)를 더해야 배포 화면에서 지도가 뜹니다. 서버 비밀번호·API 키를 Vercel의 `VITE_` 변수에 넣지 않습니다.
+
+**배포 서버 DB 준비 (#753, PM 결정 2026-11-15).** 배포 서버는 이 PC와 다른 DB 파일(`/data/geosan.db`)을 씁니다. 빈 DB로 시작하면 후보 찾기·조사를 다시 돌려야 해 AI 비용이 다시 들므로, 이 PC에서 `geosan copy-without-records --to <새 파일>`로 시험 기록만 비운 사본을 만들어 볼륨의 `/data/geosan.db` 자리에 둡니다. 사본을 볼륨에 올리는 방법(Railway 도구)은 첫 배포 때 계정에서 확인합니다(#213). 올린 뒤 아래 순서로 보호 켠 설정을 등록합니다.
+
+**담당자 계정 (#754, PM 결정 2026-11-15).** 배포 서버에서는 사람마다 계정을 만듭니다. 보호 켠 설정을 등록한 뒤(아래 순서) 같은 자리에서 `geosan staff-add sales-1`처럼 사람 수만큼 만들고, 대표·상무처럼 보기만 할 사람은 `--viewer`를 붙입니다. 계정이 있으면 `GEOSAN_PASSWORD` 없이도 서버가 시작하고, 공용 비밀번호로는 들어올 수 없습니다. 화면에 보일 이름(실명 등)은 PM이 정하지 않고 각자 첫 로그인 때 적으며, 저장소 파일·외부 AI·이슈로는 나가지 않습니다.
+
+**첫 배포 순서 — 보호 켠 설정 등록 (#736).** 저장소의 앱 설정 예시 3개는 모두 보호 꺼짐이고, 운영용 설정 파일은 따로 두지 않습니다. 볼륨 안에 예시에서 보호만 켠 사본을 만들어 기존 `check-config`로 등록합니다. 시작 명령 그대로 첫 배포를 하면 보호 꺼짐으로 멈춰 다시 켜기를 반복하고 접속할 수 없으므로, 처음 한 번은 점검용 시작 명령으로 띄웁니다.
+
+1. Railway 서비스 설정의 시작 명령을 잠시 점검용 `/bin/sh -c 'sleep infinity'`로 바꾸고 배포합니다(서버는 뜨지 않고 컨테이너만 켜져 있습니다).
+2. 내 PC에서 `railway ssh`로 그 서비스에 접속합니다(Railway에 SSH 키 등록 필요).
+3. 접속한 창에서 저장소 폴더로 가서(Railpack 기본은 `/app`, 다르면 `railway.json`이 있는 폴더) 다음을 실행합니다.
+
+   ```sh
+   cd /app && PATH="$PWD/.geosan-venv/bin:$PATH"
+   echo "$GEOSAN_DB_PATH"   # /data/geosan.db가 나와야 합니다. 비어 있으면 export GEOSAN_DB_PATH=/data/geosan.db
+   geosan init-db
+   python - <<'EOF'
+   from pathlib import Path
+   text = Path("examples/app-settings.yaml").read_text(encoding="utf-8")
+   old, new = "accessProtection:\n  enabled: false", "accessProtection:\n  enabled: true"
+   assert text.count(old) == 1, "보호 칸을 찾지 못했습니다. 예시 파일을 확인해 주세요."
+   Path("/data/app-settings.yaml").write_text(text.replace(old, new), encoding="utf-8")
+   EOF
+   geosan check-config examples/rule-config.yaml /data/app-settings.yaml
+   ```
+
+   "검사 통과. 규칙 버전 … 등록, 앱 설정 사본 갱신"이 나오면 됩니다. 공공 소스 이용 확인(`geosan source-confirm …`)도 이 자리에서 합니다. 사본은 볼륨(`/data`)에 두어 재배포 뒤에도 남깁니다. 다른 설정 값을 바꿀 때도 이 사본을 고쳐 같은 명령으로 다시 등록합니다.
+4. 시작 명령을 위 원래 명령으로 되돌리고 다시 배포합니다. 로그에 "서버 시작: http://0.0.0.0:…"이 보이고, 화면을 열면 비밀번호 칸이 먼저 나오면 됩니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
 
 Railway 공개 HTTPS 주소는 아직 없습니다. 사용자 확인대로 실제 `web/vercel.json`은 주소가 나온 뒤 다음 예시의 `RAILWAY_HOST`를 바꾸어 추가합니다. 이 예시를 그대로 배포하지 않습니다. API 규칙을 먼저 두고, 화면 경로 fallback에서 API를 제외해 API 오류가 HTML 성공 응답으로 바뀌지 않도록 합니다.
 
@@ -149,7 +193,7 @@ Railway 공개 HTTPS 주소는 아직 없습니다. 사용자 확인대로 실�
 API 서버도 성공·오류 응답 모두에 `Cache-Control: no-store`와 `x-vercel-enable-rewrite-caching: 0`을 보냅니다. 실제 연결 후 로그인 쿠키·상세 주소 직접 열기·메모 저장 직후 새로고침 반영·재배포 후 DB 보존을 확인합니다. PR 미리보기가 운영 DB에 기록을 쓰지 않도록 연결 대상을 PM과 확인합니다.
 
 공식 안내: [Vercel 외부 응답 캐시](https://vercel.com/changelog/vercels-cdn-now-respects-cache-control-headers-from-external-origins-by-default), [Railway 시작 명령](https://docs.railway.com/deployments/start-command).
-접속 보호(#213): `geosan init-db`로 세션 테이블을 준비한 뒤, 사용하는 앱 설정의 `accessProtection.enabled`를 `true`로 바꾸고 기존 `geosan check-config` 명령으로 등록합니다. 비밀번호는 서버 환경 변수 `GEOSAN_PASSWORD`에만 넣습니다. 환경 변수가 없거나 비어 있으면 로그인이 실패하며 API는 열리지 않습니다. `.env`는 자동으로 읽지 않습니다.
+접속 보호(#213): `geosan init-db`로 세션 테이블을 준비한 뒤, 사용하는 앱 설정의 `accessProtection.enabled`를 `true`로 바꾸고 기존 `geosan check-config` 명령으로 등록합니다. 비밀번호는 서버 환경 변수 `GEOSAN_PASSWORD`에만 넣습니다. 보호를 켰는데 환경 변수가 없거나 비어 있으면 `geosan serve`가 시작하지 않습니다(#736. 전에는 서버가 뜬 뒤 로그인이 "저장하지 못했습니다"로 실패했습니다). 반대로 `--host 0.0.0.0`인데 보호가 꺼져 있어도 시작하지 않습니다. 내 PC(`127.0.0.1`)에서는 보호를 끈 채로 지금처럼 뜹니다. `.env`는 자동으로 읽지 않습니다.
 
 화면에서 공용 비밀번호를 입력하면 12시간짜리 `HttpOnly; Secure; SameSite=Lax` 쿠키가 발급됩니다. 보호가 켜진 환경은 HTTPS가 필요합니다. 로컬 HTTP 시연은 기존 끄기 설정을 사용합니다. API를 사용해도 세션 만료 시각은 연장되지 않습니다. 로그인 실패 횟수는 공용 비밀번호 전체에 대해 DB에서 세며 5회 실패하면 모두 30초 동안 기다립니다. 새로고침·서버 재시작으로 이 횟수를 초기화하지 않습니다. 실제 Vercel·Railway 연결은 별도 PR에서 진행합니다.
 
@@ -221,6 +265,9 @@ bash scripts/check.sh web        # ESLint·Prettier → Vitest → tsc·Vite 빌
 .venv\Scripts\python scripts\check.py python     # 파이썬만
 .venv\Scripts\python scripts\check.py web        # 화면만
 ```
+
+한 단계가 실패해도 멈추지 않고 끝까지 돈 뒤, 맨 끝에 "검사 실패: 아래 단계가 실패했습니다"와
+실패한 단계 이름을 모아 보여 주고 종료 코드 1로 끝납니다(#782). 모두 통과하면 "검사 끝"입니다.
 
 낱개 명령(단위 테스트 지침 2장):
 

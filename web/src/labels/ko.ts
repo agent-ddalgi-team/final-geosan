@@ -173,12 +173,13 @@ export const opinionArea = {
 /** 공통 틀 문구. */
 export const frame = {
   skipToContent: '본문으로 건너뛰기',
-  menuOpportunities: '영업 후보 목록',
+  // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
+  menuOpportunities: '신규 거래처 찾기',
   staffSelectLabel: '담당자',
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
-  pageTitleList: '영업 후보 목록',
+  pageTitleList: '신규 거래처 찾기',
   pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
@@ -186,6 +187,29 @@ export const frame = {
   pageTitleDashboard: '대시보드',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
+  /** 왼쪽 메뉴(#762): 관심 기업 화면과 메뉴 아이콘. 접으면 아이콘만 보인다. */
+  menuBookmarks: '관심 기업',
+  pageTitleBookmarks: '관심 기업',
+  /** 왼쪽 메뉴 묶음 이름(#767). 그림은 SideMenu의 선 그림 아이콘(이모지 대신). */
+  navGroupSales: '영업',
+  sidebarCollapse: '메뉴 접기',
+  /** 오른쪽 영업 코치 칸(#773). */
+  coachDockTitle: '영업 코치',
+  coachDockCollapse: '영업 코치 접기',
+  coachDockExpand: '영업 코치 펴기',
+  sidebarExpand: '메뉴 펴기',
+  /**
+   * 왼쪽 메뉴 숫자 꼬리표의 뜻(#770). 손을 올리면 보이고 화면 읽기 도구가 읽는다.
+   * 대시보드는 지난 일정 + 오늘 일정 + 나에게 온 전달 사항, 나머지 둘은 마지막으로 연 뒤 새로 생긴 곳.
+   */
+  menuBadge: {
+    dashboard: (n: number) => `오늘 확인할 것 ${n}곳`,
+    list: (n: number) => `새 후보 ${n}곳`,
+    bookmarks: (n: number) => `새 소식 ${n}곳`,
+  },
+  /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
+  currentStaff: (name: string) => `${name} 님`,
+  logout: '로그아웃',
 } as const;
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
@@ -195,6 +219,12 @@ export const dashboardTexts = {
   calendarHint: '일정이 있는 날을 누르면 내용이 보입니다.',
   popoverClose: '닫기',
   popoverDetail: '상세 보기',
+  calendarLegendLabel: '색 설명',
+  calendarToneOverdue: '기한 지남',
+  calendarToneToday: '오늘',
+  calendarToneSoon: '7일 안',
+  calendarToneLater: '그 뒤',
+  calendarCount: (count: number) => `${count}건`,
   searchLabel: '회사 이름 검색',
   searchPlaceholder: '회사 이름을 입력하세요',
   searchButton: '검색',
@@ -208,6 +238,7 @@ export const dashboardTexts = {
     NEED_CHECK: '곳',
     ON_HOLD: '곳',
     DONE: '곳',
+    WON: '곳',
   },
   /** 칸 이름. 목록 머리의 "무엇으로 걸렀는지"도 같은 말을 쓴다. */
   countNames: {
@@ -220,6 +251,7 @@ export const dashboardTexts = {
     NEED_CHECK: '검토 중',
     ON_HOLD: '보류',
     DONE: '완료',
+    WON: '성사',
     /** "오늘 확인할 것" 줄을 누르고 넘어온 목록의 이름(#679). 건수 칸은 아니다. */
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
   },
@@ -230,18 +262,49 @@ export const dashboardTexts = {
     SCHEDULE_TODAY: '오늘 일정',
     SCHEDULE_OVERDUE: '놓친 일정',
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
+    HANDOFF_FOR_ME: '나에게 온 전달 사항',
   },
   todayRowUnits: {
     SCHEDULE_TODAY: '건',
     SCHEDULE_OVERDUE: '건',
     CHECK_LEFT: '곳',
+    HANDOFF_FOR_ME: '곳',
   },
   /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
   todayMore: (count: number) => `외 ${count}`,
+  /** #766(PM 결정 2026-11-16): 주제별 묶음 제목·아이콘과 지난 일정 단추. */
+  todayGroupTitles: {
+    SCHEDULE_OVERDUE: '지난 일정 — 했나요?',
+    SCHEDULE_TODAY: '오늘 일정',
+    CHECK_LEFT: '확인할 것이 남은 관심 기업',
+    HANDOFF_FOR_ME: '나에게 온 전달 사항',
+  },
+  todayRowIcons: {
+    SCHEDULE_OVERDUE: '🔴',
+    SCHEDULE_TODAY: '📅',
+    CHECK_LEFT: '🔍',
+    HANDOFF_FOR_ME: '📬',
+  },
+  todaySeeAll: '모두 보기',
+  todayMoreButton: (count: number) => `더 보기 ${count}곳`,
+  todayResolveDone: '완료',
+  todayResolveMove: '날짜 바꾸기',
+  todayResolveDrop: '필요 없어요',
+  todayResolveNewDate: '새 날짜',
+  todayResolveMoveSave: '옮기기',
+  todayResolveFailed: '정리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   /** 두 구역(#357, 2026-11-06 PM 결정): 관심으로 고른 회사만 센다. */
   bookmarkSectionTitle: '관심 기업',
   progressSectionTitle: '영업 진행',
   progressSectionHint: '관심 기업 가운데 영업 대상으로 정한 뒤의 진행',
+  /** #766(PM 결정 2026-11-16): 상세(#763)와 같은 4칸 띠의 칸 이름. 보류는 띠 아래 작은 숫자. */
+  progressBandNames: {
+    NOT_CONTACTED: '미접촉',
+    IN_CONTACT: '접촉',
+    QUOTE_SAMPLE: '견적·샘플',
+    WON: '성사',
+  },
+  progressOnHold: (n: number) => `보류 ${n}곳`,
   /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
   notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 추천 목록으로 가는 링크다. */
@@ -270,7 +333,7 @@ export const dashboardTexts = {
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
   breakdownEmptyAction: '추천 목록 가기',
   loadError: '대시보드를 불러오지 못했습니다.',
-  goToList: '영업 후보 목록으로 이동',
+  goToList: '신규 거래처 찾기로 이동',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -307,6 +370,9 @@ export const dashboardMapTexts = {
     `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
   /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
   visitNearbyCount: (count: number) => `근처 ${count}곳`,
+  /** 넓힌 줄(#743, PM 결정 2026-11-14): "(10km 안 · 5km 안이 5곳 미만)". */
+  visitWidened: (radiusKm: number, baseKm: number, below: number) =>
+    `(${radiusKm}km 안 · ${baseKm}km 안이 ${below}곳 미만)`,
   /** 근처 회사 줄: "1.8km · 관심". */
   visitNearbyDistance: (km: number) => `${km}km`,
   /** 근처 후보 말풍선: "코파스 주식회사에서 1.5km". */
@@ -360,8 +426,11 @@ export const cardRows = {
 export const scoreTags = {
   pending: '거래 확인 전',
   existing: '기존 거래처',
-  /** AI가 제안한 값으로 계산된 점수(#498, 계약 C1 #286). 사람이 확정하기 전까지 흐리게 보인다. */
-  aiProposal: 'AI 제안 · 확인 전',
+  /**
+   * AI가 조사 근거로 낸 값으로 계산된 점수(#498, 계약 C1 #286). 사람이 확정하기 전까지 흐리게 보인다.
+   * (바뀜 #744, PM 결정 2026-11-14) "AI 제안 · 확인 전" → "근거로 낸 점수 · 확인 전". 글자만 바꿨다.
+   */
+  aiProposal: '근거로 낸 점수 · 확인 전',
 } as const;
 
 /** 상세 제목 아래 회사 홈페이지 링크 글(#175, 용어 #202). 홍보관(블로그) 주소도 있어 "기업 소개 페이지"로 쓴다. */
@@ -560,9 +629,17 @@ export const candidateSearch = {
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
-  /** 카드 "점수 전" 옆 조사 상태(#596): RUNNING이면 "조사 중", 나머지는 모두 "조사 중단". */
+  /**
+   * 카드 "점수 전" 옆 조사 상태(#596): RUNNING이면 "조사 중", NOT_TRIED면 "조사 전 · 생산품으로만 판단"(#744),
+   * 나머지는 모두 "조사 중단".
+   */
   researchRunning: '조사 중',
   researchStopped: '조사 중단',
+  /**
+   * #744(PM 결정 2026-11-14): 아직 조사하지 않은 회사(서버 NOT_TRIED). 자동 조사 대기 줄에서 차례를 기다리거나
+   * 적합도 하라서 자동 조사를 하지 않는 회사다. AI가 생산품 한 줄로만 고른 상태라는 뜻. 카드·상세 머리에 같은 글자.
+   */
+  researchNotYet: '조사 전 · 생산품으로만 판단',
   /** 상세 점수 줄 옆 "조사 중단 · 이유"의 이유(#596). 서버 researchState 코드 → 쉬운 말. */
   researchStopReason: {
     NO_SCORE_EVIDENCE: '점수 근거 없음',
@@ -916,6 +993,13 @@ export const salesQuestionTexts = {
   nextDateOther: '다른 날짜',
   nextDateNone: '없음',
   nextDateListLabel: '가까운 날짜',
+  /** 펼쳐진 일정 달력(#740, PM 지시 2026-11-14): 달력 하나 + [없음]. 위의 2주·다른 날짜 글자는 더 쓰지 않는다. */
+  calendarMonth: (year: number, month: number) => `${year}년 ${month}월`,
+  calendarPrev: '이전 달',
+  calendarNext: '다음 달',
+  /** "고른 날짜: 11/20(금)" */
+  calendarPicked: (date: string) => `고른 날짜: ${date}`,
+  calendarPickHint: '달력에서 날짜를 누르세요.',
   /** 요일 한 글자(일요일부터). "11/20(금)" */
   weekdays: ['일', '월', '화', '수', '목', '금', '토'],
   nextDateNonePreview: '다음 일정은 잡지 않습니다.',
@@ -1039,6 +1123,8 @@ export const outcomeStatusTone: Record<string, StatusTone> = {
 
 /** 상세 하단 "기록" 영역(U5): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정. */
 export const recordsArea = {
+  /** #773: 넓은 화면에서 기록 남기기가 오른쪽 칸에 있을 때 이 자리의 안내. */
+  inDock: '기록 남기기·전달 사항은 오른쪽 💬 영업 코치 칸에 있습니다.',
   title: '기록',
   /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
   entryTitle: '기록 남기기',
@@ -1361,6 +1447,7 @@ export const activityKindLabels: Record<ActivityKind, string> = {
   NOTE: '메모',
   RECORD_CANCELLED: '기록 취소',
   CHANGE: '변경 기록',
+  ADVICE: '남긴 피드백',
 };
 
 /** 상세 머리 지도 링크 글자. */
@@ -1511,7 +1598,7 @@ export const salesAnalysisTexts = {
   unconfirmed: '확인 전',
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
-  emptyAction: '영업 후보 목록으로',
+  emptyAction: '신규 거래처 찾기로',
   /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
   breakdownTitle: '관심 기업 분포',
   breakdownNote:
@@ -1564,6 +1651,83 @@ export const salesAnalysisTexts = {
   outcomeAfter: (days: number, stage: string, date: string | null) =>
     `첫 접촉 뒤 ${days}일 만에 ${stage}${date ? ` (${date})` : ''}`,
   openCompanyLabel: (name: string) => `${name} 상세 보기`,
+} as const;
+
+/** 영업 분석 그래프·기간 선택(#760, PM 요청 2026-11-15). 숫자는 서버 값 그대로이고 글자만 여기 둔다. */
+export const analysisCharts = {
+  pageTitle: '영업 분석',
+  /** 기간 선택 칸 */
+  periodLabel: '분석 기간',
+  periodAll: '전체 기간',
+  /** "2026년 9월 1일 ~ 11월 15일" — 해가 같으면 끝 날짜의 해를 뺀다. */
+  periodRange: (from: string | null, to: string | null) => {
+    const part = (iso: string, withYear: boolean) => {
+      const [y, m, d] = iso.split('-').map(Number);
+      return withYear ? `${y}년 ${m}월 ${d}일` : `${m}월 ${d}일`;
+    };
+    if (!from && !to) return '전체 기간';
+    if (!from) return `처음 ~ ${part(to as string, true)}`;
+    if (!to) return `${part(from, true)} ~ 오늘`;
+    return `${part(from, true)} ~ ${part(to, from.slice(0, 4) !== to.slice(0, 4))}`;
+  },
+  presets: {
+    ALL: '전체',
+    DAYS_30: '최근 30일',
+    MONTHS_3: '최근 3개월',
+    THIS_MONTH: '이번 달',
+    THIS_YEAR: '올해',
+  },
+  periodFrom: '시작일',
+  periodTo: '끝일',
+  periodApply: '적용',
+  periodClose: '닫기',
+  periodInvalid: '시작일이 끝일보다 뒤입니다.',
+  /** 기간 모드의 기준 줄 */
+  basisPeriod: (asOf: string | null, range: string, companyCount: number) =>
+    [asOf ? `${asOf} 기준` : null, `${range} 안에 접촉한 회사 ${companyCount}곳`]
+      .filter(Boolean)
+      .join(' · '),
+  periodRule:
+    '기간 안의 접촉만 세고, 큰 단계는 기간 끝 날 기준입니다. 기간 전에 이미 성사·거절로 끝난 회사는 빠집니다.',
+  olderExcludedPeriod: (count: number) => `기간 전에 성사·거절로 끝난 ${count}곳은 빠졌습니다.`,
+  /** 숫자 칸 */
+  kpiContacted: '접촉한 회사',
+  kpiInProgress: '진행 중',
+  kpiWon: '성사',
+  kpiLost: '거절',
+  /** 완료 = 성사·거절로 끝난 곳(대시보드에서 옮겨 옴, 2026-11-16) */
+  kpiDone: '완료',
+  kpiDoneSub: (won: number, lost: number) => `성사 ${won}곳 · 거절 ${lost}곳`,
+  unitCompany: '곳',
+  kpiHold: (count: number) => `보류 ${count}곳`,
+  kpiWonRatio: (percent: number) => `성사율 ${percent}%`,
+  kpiSample: (count: number, min: number) => `표본 ${count}곳 · 비율은 ${min}곳부터`,
+  kpiAvgToWon: (avg: number) => `성사까지 평균 ${avg}번 접촉`,
+  kpiLostTop: (reason: string, count: number) => `가장 많은 이유: ${reason} ${count}곳`,
+  kpiInProgressNote: '아직 끝나지 않은 회사',
+  /** 그래프 */
+  processChartTitle: '공정별 접촉·성사',
+  seriesContacted: '접촉한 회사',
+  seriesWon: '성사',
+  donutTitle: '결과 나눔',
+  donutCenter: '접촉한 회사',
+  donutInProgress: '진행 중',
+  donutHold: '보류',
+  donutWon: '성사',
+  donutLost: '거절',
+  stepChartTitle: '세부 단계별 접촉',
+  /** "이른 회사 3곳" */
+  stepReached: (count: number) => `이른 회사 ${count}곳`,
+  methodChartTitle: '연락 방법별 연결',
+  /** "연결 2 / 시도 5" */
+  methodValue: (reached: number, tried: number) => `연결 ${reached} / 시도 ${tried}`,
+  lostChartTitle: '거절 이유',
+  chartEmpty: '아직 셀 기록이 없습니다.',
+  /** 막대에 손을 올리면 보이는 글 */
+  barTip: (label: string, series: string, value: number) => `${label} · ${series} ${value}곳`,
+  countTip: (label: string, value: number, unit: string) => `${label} ${value}${unit}`,
+  unitTimes: '번',
+  tablesTitle: '자세한 표',
 } as const;
 
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
@@ -1646,6 +1810,10 @@ export const detailReport = {
   progress: {
     title: '영업 단계',
     won: '성사',
+    /** 큰 단계 띠(#759): 거절로 끝난 회사의 마지막 칸. "거절 (가격)" — 이유가 없으면 "거절" */
+    bandLost: (reason: string | null) => `거절${reason ? ` (${reason})` : ''}`,
+    /** 큰 단계 띠를 읽어 주는 글: "큰 단계: 접촉" */
+    bandAria: (label: string) => (label ? `큰 단계: ${label}` : '큰 단계'),
     /** "지금 (11/12부터)" */
     now: (since: string | null) => (since ? `지금 (${since}부터)` : '지금'),
     noContact: '아직 접촉 기록이 없습니다',
@@ -1778,7 +1946,8 @@ export const detailReport = {
     summary: (scoreText: string, total: number, withEvidence: number) =>
       `${scoreText} · ${total}항목 중 ${withEvidence}항목 근거 있음`,
     before: '점수 전',
-    proposalsTitle: 'AI 점수 입력 제안',
+    /** (바뀜 #744) "AI 점수 입력 제안" → "근거로 낸 점수 단계". 글자만 바꿨다. */
+    proposalsTitle: '근거로 낸 점수 단계',
     proposalsHint:
       '맞으면 [확정], 다르면 [고치기]로 단계를 고릅니다. 저장하면 점수를 다시 계산합니다.',
   },
@@ -1816,6 +1985,15 @@ export const companyReport = {
     evidence: '3. 근거',
     questions: '4. 확인 질문과 지금까지의 답',
     sales: '5. 영업 단계와 다음 일정',
+    direction: '6. 영업 방향',
+  },
+  /** (#742) 영업 코치 피드백 가운데 담당자가 [보고서에 남기기]로 고른 줄만 싣는다(메모는 싣지 않는다). */
+  direction: {
+    none: '남긴 피드백이 없습니다.',
+    mark: 'AI 코치 피드백 · 담당자가 확인하고 저장',
+    /** (#750) "다음 통화에 물어볼 것 (2026-11-15)" */
+    nextCall: (at: string | null) =>
+      at ? `다음 통화에 물어볼 것 (${at})` : '다음 통화에 물어볼 것',
   },
   glance: {
     name: '회사',
@@ -1914,9 +2092,29 @@ export const assistantTexts = {
   sourcesNone: '근거로 든 회사가 없습니다.',
   /** "12곳 가운데 10곳만 보았습니다" */
   partial: (total: number, included: number) => `${total}곳 가운데 ${included}곳만 보았습니다.`,
-  callPrepButton: '통화 준비 💰',
-  callPrepHint: '이 회사의 기록과 비슷한 회사의 결과로 먼저 물어볼 것을 정리합니다.',
-  callPrepFailed: '통화 준비를 받지 못했습니다.',
+  /** 오늘 정리(#743): "오늘 확인할 것" 칸 맨 위. 하루 한 번 AI가 쓴다. */
+  dailyTitle: '오늘 정리',
+  dailyMark: 'AI가 쓴 글 · 확인 필요',
+  dailyLoading: 'AI가 오늘 정리를 쓰는 중입니다…',
+  dailyFailed: '오늘 정리를 받지 못했습니다.',
+  /** 신규 거래처 찾기(#774)에서는 아직 연락 안 한 후보 표도 함께 보낸다. */
+  askPlaceholderList: '예: 아산 아연도금 적합도 상·중 가운데 가까운 곳은?',
+  askHintList:
+    '단계·접촉 날짜·고른 답과, 아직 연락 안 한 후보의 지역·적합도·거리만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
+  /** 긴 답은 앞 몇 줄만 보이고 [더 보기]로 편다(#774). */
+  answerMore: '더 보기',
+  answerLess: '접기',
+  /** 답 아래 할 일 제안(#774). AI가 저장하지 않고 담당자가 [넣기]를 눌러야 일정에 들어간다. */
+  suggestionsTitle: '할 일 제안',
+  suggestionsHint: '[넣기]를 누르면 그 회사 다음 일정으로 저장됩니다.',
+  putIn: '넣기',
+  putDone: '넣었어요',
+  putSame: '이미 같은 일정이 있어요',
+  /** "11/20(금) 통화 → 11/18(화) 방문으로 바꿀까요?" (to에 붙는 조사는 화면이 고른다) */
+  putConfirm: (from: string, toWithParticle: string) => `${from} → ${toWithParticle} 바꿀까요?`,
+  putChange: '바꾸기',
+  putKeep: '그대로 두기',
+  putFailed: '일정을 넣지 못했습니다.',
 } as const;
 
 /**
@@ -1953,4 +2151,80 @@ export const memoReadTexts = {
   applyFailed: '반영하지 못했습니다.',
   /** 꼬리 질문 파일에 공정 확인 질문이 없어 기존 저장 창구로 반영할 수 없을 때. */
   cannotApply: '이 화면에서 반영할 수 없습니다.',
+} as const;
+
+/**
+ * 영업 코치(#742, PM 결정 2026-11-14): 기록 칸 위 "확인사항", 메모 [보내기] → 정리·빠진 필수 질문·피드백 확인,
+ * [이대로 저장]·[고치기]. 이름은 이 PC 안에만 남고 AI에는 직함과 내용만 간다. 사람이 저장을 눌러야 저장된다.
+ */
+export const coachTexts = {
+  /** 상세 "기록 남기기" 맨 위 통화 전 칸(기존 [통화 준비]를 코치로 옮김). */
+  beforeCallTitle: '영업 코치 · 통화 전',
+  checklistLabel: '확인사항',
+  /** "확인사항: 통화 상대 · 다음 할 일" */
+  checklist: (keywords: readonly string[]) => `확인사항: ${keywords.join(' · ')}`,
+  memoLabel: '통화 메모',
+  memoPlaceholder:
+    '예: 생산관리팀 김 과장 통화. 아연도금 외주 줌. 소개서 보내기로, 금요일 다시 전화',
+  send: '보내기 💰',
+  sendHint:
+    '메모에서 이름·전화를 지운 사본과 이 회사의 지난 기록만 AI에 보냅니다. 저장은 확인한 뒤에 합니다.',
+  direct: '직접 고르기',
+  sending: 'AI가 메모를 정리하는 중입니다…',
+  failed: '코치 답을 받지 못했습니다.',
+  title: 'AI가 정리한 것 · 확인 전',
+  summary: (text: string) => `요약: ${text}`,
+  filledTitle: 'AI가 채운 답',
+  filledMark: 'AI가 채움',
+  noFilled: '메모에서 채운 답이 없습니다.',
+  suggestTitle: 'AI 제안 · 눌러야 들어갑니다',
+  suggestMark: 'AI 제안',
+  suggestPick: '이대로 고르기',
+  suggestPicked: '고름 ✓',
+  suggestUndo: '빼기',
+  missingTitle: '빠진 필수 질문',
+  missingNone: '빠진 필수 질문이 없습니다.',
+  /** (#748) 빠진 필수 질문 제목 아래 한 줄. */
+  missingHint: '답하면 단계가 바뀔 수 있어요.',
+  /** (#748) "단계: 연결 전 → 연결됨 (저장하면)" */
+  stepMove: (before: string, after: string) => `단계: ${before} → ${after} (저장하면)`,
+  stepSame: (step: string) => `단계: ${step} 그대로`,
+  feedbackTitle: '코치 피드백',
+  feedbackNone: '이번에는 짚을 것이 없습니다.',
+  /** (#750) 피드백은 고르지 않고 [이대로 저장] 때 모두 남는다. */
+  feedbackSaved: '저장하면 회사 보고서 "영업 방향"에 남습니다.',
+  nextCallTitle: '다음 통화에 물어볼 것',
+  nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
+  nextCallSaved: '저장하면 다음 통화 전 칸과 보고서에 보입니다.',
+  /** (#750) 상세 "기록 남기기" 맨 위 통화 전 칸: "11/15 통화 뒤 코치 정리" */
+  prepTitle: (date: string) => `${date} 통화 뒤 코치 정리 · 다음 통화에 물어볼 것`,
+  prepNone: '통화 뒤 메모를 [보내기 💰] 하면 다음 통화에 물어볼 것이 여기에 정리됩니다.',
+  /** "(메모: '견적 요청함')" */
+  quote: (text: string) => `(메모: '${text}')`,
+  /** "다음 일정: 11/21 다시 연락" */
+  schedule: (date: string, label: string) => `다음 일정: ${date} ${label}`,
+  scheduleNoDate: (label: string) => `다음 할 일: ${label} (날짜는 메모에 없음)`,
+  save: '이대로 저장',
+  edit: '고치기',
+  editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
+  adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
+  prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
+} as const;
+
+/** #771 전달 사항(PM 결정 2026-11-15·16): 다른 직원이 회사 건으로 남기는 말, 받는 사람이 확인한다. */
+export const handoffTexts = {
+  title: '전달 사항',
+  open: '전달 사항 남기기',
+  textLabel: '전할 말',
+  textPlaceholder: '예: 기술팀 확인 — 도금 두께 요구는 우리 설비로 가능',
+  toLabel: '받는 사람',
+  send: '전달하기',
+  cancel: '닫기',
+  confirm: '확인했어요',
+  confirmed: '확인함',
+  /** "검수 담당 → 영업 담당 · 11/16" */
+  line: (from: string, to: string, day: string) => `${from} → ${to} · ${day}`,
+  waiting: (n: number) => `확인 전 ${n}건`,
+  saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
 } as const;

@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError, field_validator, model_validator
+from pydantic import Field, PrivateAttr, ValidationError, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -320,6 +320,12 @@ class AssistantSettings(FileModel):
     # 조회 글에 싣는 회사 수 상한. 넘으면 관심 회사를 먼저 싣는다.
     max_companies: int = Field(ge=1, strict=True)
     max_output_tokens: int = Field(ge=1, strict=True)
+    # #742 영업 코치: 하루(한국 날짜) 호출 상한(전체 회사 합계, 위 질문 한도와 따로 센다)과
+    # 함께 싣는 이전 메모·남긴 피드백 수 상한(각각 최근 것부터).
+    coach_daily_limit: int = Field(ge=1, strict=True)
+    coach_prior_memo_limit: int = Field(ge=1, strict=True)
+    # #742 확인 화면에 묻는 빠진 필수 질문 수 상한(질문 파일 순서로 앞에서부터).
+    coach_max_required_questions: int = Field(ge=1, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -418,6 +424,8 @@ class AppSettings(FileModel):
 
     staff: list[StaffEntry] = Field(min_length=1)
     active_dataset_kind: DatasetKind
+    # 계정 방식(#754)의 보기 전용 계정 키. 파일 칸이 아니다(실행 중에만 채움).
+    _viewer_keys: frozenset[str] = PrivateAttr(default_factory=frozenset)
     ingestion: IngestionSettings
     llm: LlmSettings
     homepage_discovery: HomepageDiscoverySettings
@@ -445,13 +453,30 @@ class AppSettings(FileModel):
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
     # 대시보드 지도 "같이 들를 곳" 반경(km, #673 PM 결정 2026-11-13).
     visit_group_radius_km: float = Field(default=5, gt=0, le=50)
+    # 방문할 회사 기준 위 반경 안 관심 기업이 이 수 미만이면 그 회사만 넓힌 반경까지 본다
+    # (#743 PM 결정 2026-11-14).
+    visit_group_widen_below_count: int = Field(default=5, ge=1, le=50, strict=True)
+    # 넓힌 반경(km). 위 반경보다 크지 않으면 넓히지 않는다(#743 PM 결정 2026-11-14).
+    visit_group_wide_radius_km: float = Field(default=10, gt=0, le=50)
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
 
     def is_recording_staff(self, key: str | None) -> bool:
-        """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3)."""
-        return bool(key) and key in self.staff_keys() and key != VIEWER_STAFF_KEY
+        """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3).
+
+        계정 방식(#754)에서는 보기 전용 계정의 키도 기록할 수 없는 키다.
+        """
+        return (
+            bool(key)
+            and key in self.staff_keys()
+            and key != VIEWER_STAFF_KEY
+            and key not in self._viewer_keys
+        )
+
+    def set_viewer_keys(self, keys) -> None:
+        """계정 방식의 보기 전용 계정 키(#754). 설정 파일 칸이 아니라 실행 중에만 쓴다."""
+        self._viewer_keys = frozenset(keys)
 
     @model_validator(mode="after")
     def check_pick_model(self) -> AppSettings:
@@ -640,7 +665,9 @@ def read_app_settings(session: Session) -> AppSettings | None:
     return AppSettings.model_validate(
         _fill_added_contact_list_keys(
             _fill_added_research_keys(
-                _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+                _fill_added_assistant_keys(
+                    _fill_added_sections(_fill_added_ingestion_keys(_fill_added_llm_keys(data)))
+                )
             )
         )
     )
@@ -674,6 +701,23 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
         return data
     defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).model_dump(by_alias=True, mode="json")
     return {**data, **{key: defaults[key] for key in missing}}
+
+
+ADDED_ASSISTANT_KEYS = ("coachDailyLimit", "coachPriorMemoLimit", "coachMaxRequiredQuestions")
+"""#742 뒤에 생긴 assistant 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+
+
+def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """옛 DB 사본에 빠진 assistant 칸만 예시 파일 값으로 채운 새 dict(#591 방식)."""
+    assistant = data.get("assistant")
+    if not isinstance(assistant, dict):
+        return data
+    missing = [key for key in ADDED_ASSISTANT_KEYS if assistant.get(key) is None]
+    if not missing:
+        return data
+    defaults = load_app_settings(DEFAULT_APP_SETTINGS_PATH).assistant.model_dump(by_alias=True)
+    filled = {**assistant, **{key: defaults[key] for key in missing}}
+    return {**data, "assistant": filled}
 
 
 ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)

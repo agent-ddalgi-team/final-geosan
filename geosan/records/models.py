@@ -53,6 +53,11 @@ class Note(CommonColumns, Base):
     cancelled_by: Mapped[str | None] = mapped_column(String(32))
     cancel_reason: Mapped[str | None] = mapped_column(String(200))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+    # #771·C6: 전달 사항(HANDOFF)의 받는 사람과, 받는 사람이 확인한 시각·사람.
+    # 다른 종류는 비워 둔다.
+    to_staff_key: Mapped[str | None] = mapped_column(String(64))
+    confirmed_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    confirmed_by: Mapped[str | None] = mapped_column(String(64))
 
 
 class Outcome(CommonColumns, Base):
@@ -100,6 +105,9 @@ class OutcomeAnswer(CommonColumns, Base):
     opp_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     question_id: Mapped[str] = mapped_column(String(40), nullable=False)
     answer_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    # #742·C6: 누가 채웠나(STAFF 담당자가 고름 / AI_CONFIRMED 영업 코치가 채우고 그대로 저장).
+    # 옛 행은 비워 둔다.
+    filled_by: Mapped[str | None] = mapped_column(String(16))
 
 
 class ReviewCheck(CommonColumns, Base):

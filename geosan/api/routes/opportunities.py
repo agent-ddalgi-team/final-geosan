@@ -8,10 +8,11 @@ from datetime import timedelta
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Path, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Path, Query, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from geosan.api.auto_research import continue_queue_today
 from geosan.api.check_points import card_check_points, shown_blocker_text
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.ingest_views import (
@@ -36,14 +37,17 @@ from geosan.api.routes.records import (
     sales_step_state,
 )
 from geosan.api.schemas import (
+    AdviceLine,
     ApprovalEligibility,
     Blocker,
     BucketCounts,
+    CallPrepNote,
     CardOutcome,
     CardRecords,
     DetailHeader,
     DetailRecords,
     EvidenceView,
+    HandoffNote,
     IndustryCount,
     KnownSalesAnswer,
     Meta,
@@ -105,8 +109,8 @@ from geosan.opportunity.factory_csv import address_city
 from geosan.opportunity.geo_store import customer_distances
 from geosan.opportunity.models import Customer, Interaction, Opportunity, OppProcessLink
 from geosan.questions.models import ConfirmationQuestion, QuestionOpportunityLink
-from geosan.records.models import Outcome, ReviewOpinion
-from geosan.rules.codes import LostReasonCode, ProcessCode, SecurityGrade
+from geosan.records.models import Note, Outcome, ReviewOpinion
+from geosan.rules.codes import LostReasonCode, NoteKind, ProcessCode, SecurityGrade
 from geosan.storage.base import utcnow
 
 router = APIRouter()
@@ -513,8 +517,77 @@ def _records(context: DetailContext) -> dict:
             bookmark=bookmark_view(latest_bookmark(context.session, context.opportunity.opp_id)),
             approval=None,
             outcome=outcome_view(outcome),
+            advice=_advice_lines(context.session, context.opportunity.opp_id),
+            call_prep=_call_prep_note(context.session, context.opportunity.opp_id),
+            handoffs=handoff_notes(context.session, context.opportunity.opp_id),
         )
     }
+
+
+def _advice_lines(session: Session, opp_id: str) -> list[AdviceLine]:
+    """#742 취소하지 않은 남긴 피드백(rec_note kind ADVICE), 최근 것부터."""
+    rows = session.scalars(
+        select(Note)
+        .where(
+            Note.opp_id == opp_id,
+            Note.kind == NoteKind.ADVICE,
+            Note.cancelled_at.is_(None),
+        )
+        .order_by(Note.version.desc())
+    )
+    return [
+        AdviceLine(note_id=row.note_id, text=row.text, at=row.created_at, by=row.staff_key)
+        for row in rows
+    ]
+
+
+def _call_prep_note(session: Session, opp_id: str) -> CallPrepNote | None:
+    """#750 취소하지 않은 가장 최근 다음 통화 준비(rec_note kind CALL_PREP). 없으면 None."""
+    row = session.scalars(
+        select(Note)
+        .where(
+            Note.opp_id == opp_id,
+            Note.kind == NoteKind.CALL_PREP,
+            Note.cancelled_at.is_(None),
+        )
+        .order_by(Note.version.desc())
+        .limit(1)
+    ).first()
+    if row is None:
+        return None
+    lines = [line.strip() for line in row.text.split("\n") if line.strip()]
+    return CallPrepNote(note_id=row.note_id, lines=lines, at=row.created_at, by=row.staff_key)
+
+
+HANDOFF_LIMIT = 10
+
+
+def handoff_notes(session: Session, opp_id: str) -> list[HandoffNote]:
+    """#771 취소하지 않은 전달 사항. 확인 전이 먼저, 그 안에서 최근 것부터 최대 10개."""
+    rows = list(
+        session.scalars(
+            select(Note)
+            .where(
+                Note.opp_id == opp_id,
+                Note.kind == NoteKind.HANDOFF,
+                Note.cancelled_at.is_(None),
+            )
+            .order_by(Note.version.desc())
+        )
+    )
+    rows.sort(key=lambda row: row.confirmed_at is not None)
+    return [
+        HandoffNote(
+            note_id=row.note_id,
+            text=row.text,
+            from_=row.staff_key,
+            to=row.to_staff_key or "",
+            at=row.created_at,
+            confirmed_at=row.confirmed_at,
+            confirmed_by=row.confirmed_by,
+        )
+        for row in rows[:HANDOFF_LIMIT]
+    ]
 
 
 detail_sections: list[Callable] = [
@@ -719,6 +792,23 @@ def _contact_placements(
     return placements
 
 
+def list_evaluations(session: Session, dataset_kind: str):
+    """목록 대상 평가: 마지막 전체 회차 + 그 뒤 모은 평가. (마지막 전체 회차, 평가 조회)를 준다.
+
+    목록과 영업 코치의 "아직 연락 안 한 후보" 표(#774)가 같은 대상을 쓰도록 한 곳에 둔다.
+    """
+    batch = latest_full_batch(session, dataset_kind=dataset_kind)
+    full_batch_id = batch.batch_id if batch else None
+    added_eval_ids = collected_evaluations(session, dataset_kind, full_batch_id)
+    query = select(EvaluationRun).where(
+        or_(
+            EvaluationRun.batch_id == full_batch_id if batch else False,
+            EvaluationRun.eval_id.in_(added_eval_ids),
+        )
+    )
+    return batch, query
+
+
 @router.get(
     "/opportunities", response_model=OpportunityListEnvelope, response_model_exclude_unset=True
 )
@@ -742,6 +832,8 @@ def list_opportunities(
     max_distance_km: Annotated[
         float | None, Query(alias="maxDistanceKm", gt=0, allow_inf_nan=False)
     ] = None,
+    # #744: 응답 뒤 조사 대기 줄을 돌릴 때 쓴다. 엑셀 내려받기가 직접 부를 때는 없다.
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
 ):
     runtime = runtime_for(session)
     dataset_kind = runtime.app_settings.active_dataset_kind
@@ -773,19 +865,15 @@ def list_opportunities(
             "운영 담당자가 거산의 기준 좌표를 등록한 뒤 다시 열어 주세요.",
             status=503,
         )
+    # #744: 이 서버가 오늘 처음 받는 목록 읽기면 응답 뒤 조사 대기 줄을 이어서 돌린다.
+    if background_tasks is not None:
+        continue_queue_today(session, background_tasks)
     # 실시간 보완 결과와 그 결과로 정한 순서·거리 조건을 캐시에 남기지 않는다.
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
-    batch = latest_full_batch(session, dataset_kind=dataset_kind.value)
     progress = latest_ingest(session, dataset_kind.value)
+    batch, query = list_evaluations(session, dataset_kind.value)
     full_batch_id = batch.batch_id if batch else None
-    added_eval_ids = collected_evaluations(session, dataset_kind.value, full_batch_id)
-    query = select(EvaluationRun).where(
-        or_(
-            EvaluationRun.batch_id == full_batch_id if batch else False,
-            EvaluationRun.eval_id.in_(added_eval_ids),
-        )
-    )
     all_population = select(query.subquery().c.opp_id)
     # 목록 머리 "관심 기업 ○곳"(#675): 다른 거르기 조건과 무관하게 목록 대상 안의 관심 기업 수.
     bookmarked_count = session.scalar(

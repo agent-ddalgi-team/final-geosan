@@ -21,6 +21,12 @@ from geosan.storage.base import new_id
 # 코드표 NoteKind.CHANGE와 같은 값. 이 부품은 규칙 부품을 가져오지 않으므로
 # (부품 의존 허용표) 글자로 둔다.
 CHANGE_KIND = "CHANGE"
+# #742 코드표 NoteKind.ADVICE(남긴 피드백)와 같은 값. 같은 이유로 글자로 둔다.
+ADVICE_KIND = "ADVICE"
+# #750 코드표 NoteKind.CALL_PREP(다음 통화 준비)와 같은 값. 같은 이유로 글자로 둔다.
+CALL_PREP_KIND = "CALL_PREP"
+# #771 코드표 NoteKind.HANDOFF(전달 사항)와 같은 값.
+HANDOFF_KIND = "HANDOFF"
 
 
 class _Owner(Protocol):

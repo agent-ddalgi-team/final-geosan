@@ -98,7 +98,8 @@ export default function DashboardMap({
     if (!group || !anchor || visitRadius === undefined) return null;
     return {
       center: { lat: anchor.lat, lng: anchor.lng },
-      radiusKm: visitRadius,
+      // 넓힌 묶음(#743)은 그 반경으로 원을 그린다. 옛 응답은 기본 반경.
+      radiusKm: group.radiusKm ?? visitRadius,
       nearby: group.nearby.map((row) => ({ oppId: row.oppId, lat: row.lat, lng: row.lng })),
     };
   }, [visitGroups, visitOpen, visitRadius, data.points]);
@@ -354,6 +355,7 @@ export default function DashboardMap({
           groups={visitGroups}
           points={data.points}
           radiusKm={visitRadius}
+          widenBelowCount={data.visitWidenBelowCount}
           open={visitOpen}
           onToggle={setVisitOpen}
           groupColors={GROUP_COLOR}

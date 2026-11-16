@@ -13,12 +13,13 @@ import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
-import AssistantAsk from '../components/assistant/AssistantAsk';
+import AssistantDaily from '../components/assistant/AssistantDaily';
+import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
 import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
-import { colors, spacing, typography } from '../theme/tokens';
+import { calendarPalette, colors, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
 
 interface Result {
@@ -41,15 +42,25 @@ const sectionStyle = {
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
+// 일정 달력 구역은 어두운 판(#758). 색은 theme/tokens의 calendarPalette.
+const calendarSectionStyle = {
+  ...sectionStyle,
+  background: calendarPalette.panel,
+  border: `1px solid ${calendarPalette.panelBorder}`,
+  borderRadius: 20,
+} as const;
+const calendarTitleStyle = { ...cardTitleStyle, color: calendarPalette.title } as const;
 
 export default function DashboardPage() {
-  const { setBannerMeta, staffKey, canRecord } = useFrame();
+  const { config, setBannerMeta, staffKey, canRecord } = useFrame();
   const navigate = useNavigate();
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [query, setQuery] = useState('');
   // "최근 내 기록"은 고른 담당자 것이다. 기록할 수 없는 계정(보기 전용·담당자 미선택)은 키를 보내지 않는다(#216 후속).
   const recordKey = canRecord ? staffKey : null;
+  // 오늘 정리(#743)는 영업 기록 스위치가 켜져 있고 담당자를 골랐을 때만 부른다(꺼져 있으면 호출 0).
+  const dailyKey = assistantConfigOf(config)?.enabled === true ? recordKey : null;
   const requestKey = `${reload}:${recordKey ?? ''}`;
 
   useEffect(() => {
@@ -77,6 +88,12 @@ export default function DashboardPage() {
   }, [meta, setBannerMeta]);
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
+
+  // #774: 오른쪽 영업 코치 칸에서 [넣기]로 일정이 바뀌면 오늘 확인할 것·달력을 다시 읽는다.
+  useEffect(() => {
+    window.addEventListener(SCHEDULE_CHANGED_EVENT, retry);
+    return () => window.removeEventListener(SCHEDULE_CHANGED_EVENT, retry);
+  }, [retry]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -117,16 +134,21 @@ export default function DashboardPage() {
         </form>
 
         {/* 위에서부터: 오늘 확인할 것 → 일정 달력 → 영업 진행(건수 칸) → 최근 내 기록 → 지도 (#679). */}
-        {data ? <TodayChecks rows={data.todayChecks} /> : null}
-        {/* 영업 비서 질문 칸(#680). 설정이 꺼져 있으면 안내 한 줄, 설정을 못 읽었으면 아무것도 없다. */}
-        {data ? <AssistantAsk /> : null}
+        {data ? (
+          <TodayChecks
+            rows={data.todayChecks}
+            assistantSummary={dailyKey ? <AssistantDaily staffKey={dailyKey} /> : null}
+            onChanged={retry}
+          />
+        ) : null}
+        {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "💬 영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
         <section
           aria-labelledby="dashboard-calendar-title"
           data-testid="dashboard-calendar-section"
-          style={sectionStyle}
+          style={calendarSectionStyle}
         >
-          <h2 id="dashboard-calendar-title" style={cardTitleStyle}>
+          <h2 id="dashboard-calendar-title" style={calendarTitleStyle}>
             {dashboardTexts.calendarTitle}
           </h2>
           <DashboardCalendar items={data?.schedule ?? []} today={todayKst()} />

@@ -117,18 +117,17 @@ describe('DashboardPage', () => {
       renderPage();
       await screen.findByTestId('dashboard-counts');
       const bookmarkCells: Array<[string, string]> = [
-        ['관심 기업 12곳', '/opportunities?bookmarked=true'],
+        ['관심 기업 12곳', '/bookmarks'],
         ['의견 전 4곳', '/opportunities?filter=NO_OPINION'],
         ['검토 중 2곳', '/opportunities?filter=NEED_CHECK'],
       ];
       // 제외로 저장한 회사는 관심 기업에서 빠져(#536) "제외" 칸이 없다.
+      // #766: "영업 진행"은 상세와 같은 4칸 띠. 보류 0곳은 띠 아래에 보이지 않고, 이번 주 일정·완료 칸은 없다.
       const progressCells: Array<[string, string]> = [
-        ['영업 대상 · 접촉 전 2곳 (아직 연락하지 않은 곳)', '/opportunities?filter=NOT_CONTACTED'],
-        ['접촉 중 2곳', '/opportunities?filter=IN_CONTACT'],
+        ['미접촉 2곳', '/opportunities?filter=NOT_CONTACTED'],
+        ['접촉 2곳', '/opportunities?filter=IN_CONTACT'],
         ['견적·샘플 1곳', '/opportunities?filter=QUOTE_SAMPLE'],
-        ['보류 0곳', '/opportunities?filter=ON_HOLD'],
-        ['완료 1곳', '/opportunities?filter=DONE'],
-        ['이번 주 일정 3건', '/opportunities?filter=SCHEDULE_DUE'],
+        ['성사 1곳', '/opportunities?filter=WON'],
       ];
       const read = (testId: string) =>
         within(screen.getByTestId(testId))
@@ -142,19 +141,17 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveStyle({
         boxSizing: 'border-box',
       });
-      // "영업 대상 · 접촉 전" 칸에는 작은 풀이가 붙는다.
-      expect(screen.getByTestId('dashboard-count-NOT_CONTACTED-hint')).toHaveTextContent(
-        dashboardTexts.notContactedHint,
-      );
+      expect(screen.queryByTestId('dashboard-count-DONE')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('dashboard-count-SCHEDULE_DUE')).not.toBeInTheDocument();
       // 관심 기업이 있으면 "아직 없습니다" 안내는 보이지 않는다.
       expect(screen.queryByTestId('dashboard-bookmark-empty')).not.toBeInTheDocument();
       expect(screen.queryByTestId('dashboard-counts-outdated')).not.toBeInTheDocument();
     });
 
     it.each([
-      ['BOOKMARKED', '/opportunities?bookmarked=true'],
+      ['BOOKMARKED', '/bookmarks'],
       ['NOT_CONTACTED', '/opportunities?filter=NOT_CONTACTED'],
-      ['SCHEDULE_DUE', '/opportunities?filter=SCHEDULE_DUE'],
+      ['WON', '/opportunities?filter=WON'],
     ])('%s 칸을 누르면 %s 로 이동한다', async (key, url) => {
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
@@ -212,19 +209,22 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-calendar')).toBeInTheDocument();
     });
 
-    it('새 모양인데 일부 칸만 빠져 있으면 그 칸만 빼고 나머지는 보인다', async () => {
-      const { DONE: _done, ...partial } = fixtureData.counts;
-      void _done;
-      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, counts: partial }));
+    it('새 모양인데 일부 칸만 빠져 있으면(옛 서버라 WON 없음) 그 칸만 빼고 나머지는 보이며, 보류가 있으면 띠 아래 한 줄', async () => {
+      const { WON: _won, ...partial } = fixtureData.counts;
+      void _won;
+      mockedGet.mockResolvedValueOnce(
+        reply({ ...fixtureData, counts: { ...partial, ON_HOLD: 2 } }),
+      );
       renderPage();
       await screen.findByTestId('dashboard-counts');
-      expect(screen.queryByTestId('dashboard-count-DONE')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('dashboard-count-WON')).not.toBeInTheDocument();
       expect(
-        within(screen.getByTestId('dashboard-section-progress')).getAllByRole('link'),
-      ).toHaveLength(5);
+        within(screen.getByTestId('dashboard-progress-band')).getAllByRole('link'),
+      ).toHaveLength(3);
+      expect(screen.getByTestId('dashboard-count-ON_HOLD')).toHaveTextContent('보류 2곳');
       expect(screen.getByTestId('dashboard-count-ON_HOLD')).toHaveAttribute(
-        'aria-label',
-        '보류 0곳',
+        'href',
+        '/opportunities?filter=ON_HOLD',
       );
     });
   });
@@ -522,54 +522,56 @@ describe('DashboardPage', () => {
       },
     ];
 
-    it('줄마다 이름·건수와 한 줄 설명(앞 2건 + "외 n")을 서버가 준 순서로 보인다', async () => {
+    it('주제별 묶음(지난 일정 → 오늘 일정 → 확인할 것이 남은 관심 기업)으로 아이콘·제목·회사별 한 줄을 보인다(#766)', async () => {
       mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
       renderPage();
       const today = await screen.findByTestId('dashboard-today');
       expect(within(today).getByRole('heading', { level: 2 })).toHaveTextContent(
         dashboardTexts.todayTitle,
       );
+      const groups = within(today).getAllByTestId('dashboard-today-row');
       expect(
-        within(today)
-          .getAllByTestId('dashboard-today-row')
-          .map((row) => row.textContent),
+        groups.map((group) => within(group).getByRole('heading', { level: 3 }).textContent),
       ).toEqual([
-        '오늘 일정 3건가상정밀 견적 · 가상금속 방문 외 1',
-        '놓친 일정 1건가상테크 전화',
-        '확인할 것이 남은 관심 회사 2곳가상도금 · 가상기계',
+        '🔴지난 일정 — 했나요? 1건',
+        '📅오늘 일정 3건',
+        '🔍확인할 것이 남은 관심 기업 2곳모두 보기',
       ]);
+      const todayItems = within(screen.getByTestId('dashboard-today-items-SCHEDULE_TODAY'))
+        .getAllByTestId('dashboard-today-item')
+        .map((item) => item.textContent);
+      expect(todayItems).toEqual(['가상정밀견적', '가상금속방문', '가상산업']);
+      const overdue = within(
+        screen.getByTestId('dashboard-today-items-SCHEDULE_OVERDUE'),
+      ).getByTestId('dashboard-today-item');
+      expect(overdue).toHaveTextContent('가상테크11/10(화) · 전화');
+      expect(within(overdue).getByRole('link', { name: '가상테크' })).toHaveAttribute(
+        'href',
+        '/opportunities/opp-4',
+      );
       expect(screen.queryByTestId('dashboard-today-empty')).not.toBeInTheDocument();
     });
 
-    it('일정 줄을 누르면 줄 아래에 회사 상세로 가는 작은 목록이 펴지고, 다시 누르면 접힌다', async () => {
-      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
+    it('묶음이 5곳을 넘으면 앞 5곳만 보이고 [더 보기 n곳]으로 편다', async () => {
+      const many: TodayCheckRow[] = [
+        {
+          kind: 'SCHEDULE_TODAY',
+          count: 7,
+          items: Array.from({ length: 7 }, (_, i) => ({
+            oppId: `opp-m${i}`,
+            customerName: `가상${i}`,
+            dueAt: '2026-11-13',
+            note: '',
+          })),
+          listFilter: null,
+        },
+      ];
+      mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: many }));
       renderPage();
-      const toggle = await screen.findByTestId('dashboard-today-toggle-SCHEDULE_TODAY');
-      expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      expect(screen.queryByTestId('dashboard-today-items-SCHEDULE_TODAY')).not.toBeInTheDocument();
-      await userEvent.click(toggle);
-      expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      const items = within(
-        screen.getByTestId('dashboard-today-items-SCHEDULE_TODAY'),
-      ).getAllByTestId('dashboard-today-item');
-      expect(items.map((item) => item.textContent)).toEqual([
-        '11/13 가상정밀 견적',
-        '11/13 가상금속 방문',
-        '11/13 가상산업',
-      ]);
-      expect(items[0]).toHaveAttribute('href', '/opportunities/opp-1');
-      // 다른 일정 줄을 누르면 그 줄이 펴지고 앞 줄은 접힌다.
-      await userEvent.click(screen.getByTestId('dashboard-today-toggle-SCHEDULE_OVERDUE'));
-      expect(screen.queryByTestId('dashboard-today-items-SCHEDULE_TODAY')).not.toBeInTheDocument();
-      expect(
-        within(screen.getByTestId('dashboard-today-items-SCHEDULE_OVERDUE')).getByTestId(
-          'dashboard-today-item',
-        ),
-      ).toHaveAttribute('href', '/opportunities/opp-4');
-      await userEvent.click(screen.getByTestId('dashboard-today-toggle-SCHEDULE_OVERDUE'));
-      expect(
-        screen.queryByTestId('dashboard-today-items-SCHEDULE_OVERDUE'),
-      ).not.toBeInTheDocument();
+      const list = await screen.findByTestId('dashboard-today-items-SCHEDULE_TODAY');
+      expect(within(list).getAllByTestId('dashboard-today-item')).toHaveLength(5);
+      await userEvent.click(screen.getByTestId('dashboard-today-more-SCHEDULE_TODAY'));
+      expect(within(list).getAllByTestId('dashboard-today-item')).toHaveLength(7);
     });
 
     it('"확인할 것이 남은 관심 회사" 줄을 누르면 그 회사들만 걸러진 목록으로 간다', async () => {
@@ -607,7 +609,7 @@ describe('DashboardPage', () => {
       const today = await screen.findByTestId('dashboard-today');
       expect(within(today).getAllByTestId('dashboard-today-row')).toHaveLength(1);
       expect(within(today).getByTestId('dashboard-today-count-SCHEDULE_OVERDUE')).toHaveTextContent(
-        '놓친 일정 1건',
+        '지난 일정 — 했나요? 1건',
       );
     });
 

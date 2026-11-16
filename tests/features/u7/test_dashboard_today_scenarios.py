@@ -53,12 +53,33 @@ def schedule_items(env, body):
     _, ids = env
     today_row, overdue_row, _ = body["todayChecks"]
     assert today_row["listFilter"] is None and overdue_row["listFilter"] is None
+    # #766(PM 결정 2026-11-16, 약속에 더한 칸): 일정 줄에는 지난 일정 정리 단추가 보낼
+    # 최신 영업 기록 번호(outcomeVersion)도 실린다. 메모 글은 여전히 싣지 않는다
+    # (칸이 이것뿐인지 그대로 본다).
     assert today_row["items"] == [
-        {"oppId": ids["a"], "customerName": "A정밀", "dueAt": "2026-11-05", "note": "견적"},
-        {"oppId": ids["b"], "customerName": "B금속(가상)", "dueAt": "2026-11-05", "note": "방문"},
+        {
+            "oppId": ids["a"],
+            "customerName": "A정밀",
+            "dueAt": "2026-11-05",
+            "note": "견적",
+            "outcomeVersion": 1,
+        },
+        {
+            "oppId": ids["b"],
+            "customerName": "B금속(가상)",
+            "dueAt": "2026-11-05",
+            "note": "방문",
+            "outcomeVersion": 1,
+        },
     ]
     assert overdue_row["items"] == [
-        {"oppId": ids["c"], "customerName": "C산업(가상)", "dueAt": "2026-11-01", "note": ""}
+        {
+            "oppId": ids["c"],
+            "customerName": "C산업(가상)",
+            "dueAt": "2026-11-01",
+            "note": "",
+            "outcomeVersion": 1,
+        }
     ]
 
 
@@ -67,8 +88,15 @@ def check_left_list(env, body):
     client, ids = env
     row = body["todayChecks"][2]
     assert row["listFilter"] == "CHECK_LEFT"
+    # #766: 일정 줄이 아니므로 기록 번호(outcomeVersion)는 비어 있다.
     assert row["items"] == [
-        {"oppId": ids["weak"], "customerName": "D테크(가상)", "dueAt": None, "note": None}
+        {
+            "oppId": ids["weak"],
+            "customerName": "D테크(가상)",
+            "dueAt": None,
+            "note": None,
+            "outcomeVersion": None,
+        }
     ]
     listed = client.get("/api/v1/opportunities", params={"filter": row["listFilter"]}).json()
     assert listed["meta"]["total"] == row["count"]
