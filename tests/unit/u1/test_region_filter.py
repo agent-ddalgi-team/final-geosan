@@ -87,10 +87,12 @@ def test_region_counts_follow_process_and_runtime_presets(region_env):
             ]
         }
     counts = client.get("/api/v1/opportunities").json()["meta"]["regionCounts"]
+    # #798: 설정 묶음(권역) 줄에는 preset true, 주소에서 뽑은 시·군 줄에는 false가 붙는다.
     assert counts[:2] == [
-        {"region": "가상 중부", "count": 2},
-        {"region": "천안 인근", "count": 2},
+        {"region": "가상 중부", "count": 2, "preset": True},
+        {"region": "천안 인근", "count": 2, "preset": True},
     ]
+    assert all(row["preset"] is False for row in counts[2:])
     assert {row["region"] for row in counts[2:]} == {
         "천안시",
         "아산시",
@@ -100,8 +102,8 @@ def test_region_counts_follow_process_and_runtime_presets(region_env):
     selected = client.get("/api/v1/opportunities?process=ZINC_PLATING").json()
     assert [row["oppId"] for row in selected["data"]] == ids[1:2]
     assert selected["meta"]["regionCounts"] == [
-        {"region": "천안 인근", "count": 1},
-        {"region": "아산시", "count": 1},
+        {"region": "천안 인근", "count": 1, "preset": True},
+        {"region": "아산시", "count": 1, "preset": False},
     ]
 
 

@@ -978,11 +978,11 @@ def list_opportunities(
     )
     presets = runtime.app_settings.list_filters.region_presets
     region_counts = [
-        RegionCount(region=preset.label, count=count)
+        RegionCount(region=preset.label, count=count, preset=True)
         for preset in presets
         if (count := sum(city_counts[city] for city in set(preset.cities))) > 0
     ] + [
-        RegionCount(region=city, count=count)
+        RegionCount(region=city, count=count, preset=False)
         for city, count in sorted(city_counts.items(), key=lambda item: (-item[1], item[0]))
     ]
     selected_cities = next(
