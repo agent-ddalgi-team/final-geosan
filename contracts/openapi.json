@@ -2539,6 +2539,21 @@
         "title": "Envelope[SalesAnalysis]",
         "type": "object"
       },
+      "Envelope_SalesPatternsData_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SalesPatternsData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[SalesPatternsData]",
+        "type": "object"
+      },
       "Envelope_SalesQuestionsView_": {
         "properties": {
           "data": {
@@ -5437,6 +5452,505 @@
         "title": "OutcomeStatus",
         "type": "string"
       },
+      "PatternAnswerCount": {
+        "properties": {
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answerId",
+          "count"
+        ],
+        "title": "PatternAnswerCount",
+        "type": "object"
+      },
+      "PatternAnswerFill": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "step",
+          "eligible",
+          "answered",
+          "ratio"
+        ],
+        "title": "PatternAnswerFill",
+        "type": "object"
+      },
+      "PatternBasis": {
+        "properties": {
+          "enough": {
+            "title": "Enough",
+            "type": "boolean"
+          },
+          "minSampleForRatio": {
+            "title": "Minsampleforratio",
+            "type": "integer"
+          },
+          "neededCount": {
+            "title": "Neededcount",
+            "type": "integer"
+          },
+          "usableCount": {
+            "title": "Usablecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "minSampleForRatio",
+          "usableCount",
+          "neededCount",
+          "enough"
+        ],
+        "title": "PatternBasis",
+        "type": "object"
+      },
+      "PatternCoachEffect": {
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "integer"
+          },
+          "companies": {
+            "title": "Companies",
+            "type": "integer"
+          },
+          "progressed": {
+            "title": "Progressed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "applied",
+          "progressed",
+          "companies"
+        ],
+        "title": "PatternCoachEffect",
+        "type": "object"
+      },
+      "PatternCodeCount": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/LostReasonCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "PatternCodeCount",
+        "type": "object"
+      },
+      "PatternCombo": {
+        "properties": {
+          "contacted": {
+            "title": "Contacted",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "onHold": {
+            "title": "Onhold",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "processCode",
+          "industry",
+          "region",
+          "contacted",
+          "won",
+          "lost",
+          "onHold",
+          "wonRatio"
+        ],
+        "title": "PatternCombo",
+        "type": "object"
+      },
+      "PatternFailure": {
+        "properties": {
+          "byStep": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStepCount"
+            },
+            "title": "Bystep",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "lostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/PatternCodeCount"
+            },
+            "title": "Lostreasons",
+            "type": "array"
+          },
+          "onHoldCount": {
+            "title": "Onholdcount",
+            "type": "integer"
+          },
+          "stepAnswers": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStepAnswers"
+            },
+            "title": "Stepanswers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "onHoldCount",
+          "byStep",
+          "lostReasons",
+          "stepAnswers"
+        ],
+        "title": "PatternFailure",
+        "type": "object"
+      },
+      "PatternHint": {
+        "properties": {
+          "answerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answerid"
+          },
+          "kind": {
+            "enum": [
+              "SAME_ANSWER",
+              "UNKNOWN_MANY",
+              "SPLITS_OUTCOME"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "wonRatioHigh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratiohigh"
+          },
+          "wonRatioLow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratiolow"
+          }
+        },
+        "required": [
+          "questionId",
+          "kind"
+        ],
+        "title": "PatternHint",
+        "type": "object"
+      },
+      "PatternSignal": {
+        "properties": {
+          "answerIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Answerids",
+            "type": "array"
+          },
+          "code": {
+            "enum": [
+              "CALL_ONLY",
+              "LONG_GAP",
+              "ANSWER"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failedShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failedshare"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "questionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionid"
+          },
+          "withSignal": {
+            "title": "Withsignal",
+            "type": "integer"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonshare"
+          }
+        },
+        "required": [
+          "code",
+          "questionId",
+          "answerIds",
+          "withSignal",
+          "failed",
+          "won",
+          "failedShare",
+          "wonShare",
+          "judged"
+        ],
+        "title": "PatternSignal",
+        "type": "object"
+      },
+      "PatternStepAnswers": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerCount"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "step": {
+            "$ref": "#/components/schemas/SalesStep"
+          }
+        },
+        "required": [
+          "step",
+          "questionId",
+          "answers"
+        ],
+        "title": "PatternStepAnswers",
+        "type": "object"
+      },
+      "PatternStepCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "step",
+          "count"
+        ],
+        "title": "PatternStepCount",
+        "type": "object"
+      },
+      "PatternSuccess": {
+        "properties": {
+          "avgContactsToWon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstowon"
+          },
+          "avgFirstVisitIndex": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgfirstvisitindex"
+          },
+          "byStep": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStepCount"
+            },
+            "title": "Bystep",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "failedAvgFirstVisitIndex": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failedavgfirstvisitindex"
+          }
+        },
+        "required": [
+          "count",
+          "byStep",
+          "avgContactsToWon",
+          "avgFirstVisitIndex",
+          "failedAvgFirstVisitIndex"
+        ],
+        "title": "PatternSuccess",
+        "type": "object"
+      },
       "PeerCompany": {
         "properties": {
           "industries": {
@@ -7027,6 +7541,68 @@
           "required"
         ],
         "title": "SalesCoachView",
+        "type": "object"
+      },
+      "SalesPatternsData": {
+        "properties": {
+          "answerFill": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerFill"
+            },
+            "title": "Answerfill",
+            "type": "array"
+          },
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/PatternBasis"
+          },
+          "coachEffect": {
+            "$ref": "#/components/schemas/PatternCoachEffect"
+          },
+          "combos": {
+            "items": {
+              "$ref": "#/components/schemas/PatternCombo"
+            },
+            "title": "Combos",
+            "type": "array"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/PatternFailure"
+          },
+          "questionnaireHints": {
+            "items": {
+              "$ref": "#/components/schemas/PatternHint"
+            },
+            "title": "Questionnairehints",
+            "type": "array"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/PatternSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "success": {
+            "$ref": "#/components/schemas/PatternSuccess"
+          }
+        },
+        "required": [
+          "asOf",
+          "basis",
+          "failure",
+          "success",
+          "signals",
+          "combos",
+          "answerFill",
+          "questionnaireHints",
+          "coachEffect"
+        ],
+        "title": "SalesPatternsData",
         "type": "object"
       },
       "SalesQuestionView": {
@@ -10061,6 +10637,69 @@
           }
         },
         "summary": "Sales Analysis"
+      }
+    },
+    "/api/v1/sales-analysis/patterns": {
+      "get": {
+        "description": "#802 1단계: 실패·성공 패턴. 영업 분석표와 같은 대상·기간 규칙으로 저장된 기록만 센다.",
+        "operationId": "sales_patterns_api_v1_sales_analysis_patterns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SalesPatternsData_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sales Patterns"
       }
     },
     "/api/v1/sales-questions": {
