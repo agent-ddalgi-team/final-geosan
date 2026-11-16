@@ -7,8 +7,13 @@
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { ApiError, getIngestPreview, postIngest } from '../../api/client';
-import type { IngestPreview, IngestRequest } from '../../api/types';
-import { candidateSearch, errorTexts, monthSpend } from '../../labels/ko';
+import type {
+  DataBasisItem,
+  IngestPreview,
+  IngestRegionGroup,
+  IngestRequest,
+} from '../../api/types';
+import { candidateSearch, errorTexts, listSimple, monthSpend } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 
@@ -17,6 +22,22 @@ export interface IngestOptions {
   processes: { code: string; name: string }[];
   regions: string[];
   industries: string[];
+  /** #798 권역 묶음(설정 ingestion.regionGroups). 없거나 비면 지금처럼 시·군 칸만 보인다. */
+  regionGroups?: IngestRegionGroup[];
+  /** #798 "자료 기준" 줄. 칸이 없으면(옛 응답) 줄을 그리지 않는다. */
+  dataBasis?: DataBasisItem[];
+}
+
+/** 고른 권역들의 시·군과 직접 고른 시·군을 합친다(겹침 없이). 순서는 requestBody가 선택지 순서로 맞춘다. */
+function pickedRegions(
+  groups: IngestRegionGroup[],
+  pickedGroups: string[],
+  direct: string[],
+): string[] {
+  const fromGroups = groups
+    .filter((group) => pickedGroups.includes(group.label))
+    .flatMap((group) => group.regions);
+  return [...new Set([...fromGroups, ...direct])];
 }
 
 export interface IngestFormProps {
@@ -119,7 +140,13 @@ function CheckGroup({ legend, hint, items, selected, onToggle, testId }: CheckGr
 export default function IngestForm({ options, running, onStarted }: IngestFormProps) {
   const { staffKey, canRecord } = useFrame();
   const [processes, setProcesses] = useState<string[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
+  const regionGroups = options.regionGroups ?? [];
+  // #798: 권역이 있으면 첫 권역(예시 설정 "천안·아산")을 골라 둔 채 연다. 거산이 천안에 있어서다.
+  const [groups, setGroups] = useState<string[]>(() =>
+    regionGroups.length > 0 ? [regionGroups[0].label] : [],
+  );
+  const [directRegions, setRegions] = useState<string[]>([]);
+  const regions = pickedRegions(regionGroups, groups, directRegions);
   const [industries, setIndustries] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -227,6 +254,25 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
       }}
       style={{ display: 'grid', gap: 12, marginBottom: 16 }}
     >
+      {options.dataBasis !== undefined ? (
+        // #798: 어떤 공공자료 날짜로 찾는지. 서버가 저장된 행의 날짜만 준다(지어내지 않음).
+        <p
+          data-testid="ingest-data-basis"
+          style={{ margin: 0, color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+        >
+          {[
+            listSimple.dataBasisTitle,
+            ...(options.dataBasis.length > 0
+              ? options.dataBasis.map((item) =>
+                  listSimple.dataBasisItem(
+                    listSimple.dataBasisKinds[item.kind] ?? item.kind,
+                    item.asOf,
+                  ),
+                )
+              : [listSimple.dataBasisNone]),
+          ].join(' · ')}
+        </p>
+      ) : null}
       <CheckGroup
         legend={candidateSearch.processLabel}
         hint={candidateSearch.processHint}
@@ -235,12 +281,44 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
         onToggle={(value) => setProcesses((prev) => toggled(prev, value))}
         testId="ingest-process"
       />
-      {options.regions.length > 0 ? (
+      {regionGroups.length > 0 ? (
+        <>
+          <CheckGroup
+            legend={listSimple.regionGroupLabel}
+            hint={listSimple.regionGroupHint}
+            items={regionGroups.map((group) => ({
+              value: group.label,
+              label: listSimple.regionGroupOption(group.label, group.regions),
+            }))}
+            selected={groups}
+            onToggle={(value) => setGroups((prev) => toggled(prev, value))}
+            testId="ingest-region-group"
+          />
+          {options.regions.length > 0 ? (
+            // 시·군 하나만 골라야 할 때. 평소에는 접어 둔다(#798).
+            <details data-testid="ingest-region-direct">
+              <summary style={{ cursor: 'pointer', fontSize: typography.fontSizeSecondary }}>
+                {listSimple.regionDirect}
+              </summary>
+              <div style={{ marginTop: 8 }}>
+                <CheckGroup
+                  legend={candidateSearch.regionLabel}
+                  hint={candidateSearch.regionHint}
+                  items={options.regions.map((r) => ({ value: r, label: r }))}
+                  selected={directRegions}
+                  onToggle={(value) => setRegions((prev) => toggled(prev, value))}
+                  testId="ingest-region"
+                />
+              </div>
+            </details>
+          ) : null}
+        </>
+      ) : options.regions.length > 0 ? (
         <CheckGroup
           legend={candidateSearch.regionLabel}
           hint={candidateSearch.regionHint}
           items={options.regions.map((r) => ({ value: r, label: r }))}
-          selected={regions}
+          selected={directRegions}
           onToggle={(value) => setRegions((prev) => toggled(prev, value))}
           testId="ingest-region"
         />

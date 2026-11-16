@@ -7,11 +7,13 @@ _설명: >-
   answers의 questionId·answerId는 꼬리 질문 파일(examples/sales-questions.yaml)의 id다.
   성사·거절은 따로 적지 않는다. 마지막 접촉의 마무리 답(NEXT_ACTION END → CLOSE_RESULT → LOST_REASON)으로 정해진다.
   시연 표시(brand.demo)가 있는 DB에만 들어가고, 이미 영업 기록이 있는 회사는 건너뛴다.
+  location(#811)은 시연 지도·거리용 가상 위치다. 실제 주소에서 읽은 값이 아니라 천안·아산 일대에 지어낸 점이며 소수 둘째 자리로 뭉툭하게 적는다. 좌표 출처 "가상 위치"(DEMO)로 저장되고 시연 표시 DB에서만 지도에 보인다. 영업 기록이 이미 있어 건너뛴 회사도 위치는 채운다.
 version: 1
 staffKey: park-lee
 companies:
   # ── 성사 3곳: 접촉 2~3회, 견적·샘플을 거쳐 성사 ──
   - caseId: apjeong-valve-anodizing   # A정밀 · 아노다이징
+    location: { lat: 36.84, lng: 127.16 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 75
         method: CALL
@@ -43,6 +45,7 @@ companies:
           - { questionId: NEXT_ACTION, answerId: END }
           - { questionId: CLOSE_RESULT, answerId: WON }
   - caseId: demo-b-metal   # B금속(가상) · 아연도금
+    location: { lat: 36.85, lng: 127.17 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 120
         method: CALL
@@ -71,6 +74,7 @@ companies:
           - { questionId: NEXT_ACTION, answerId: END }
           - { questionId: CLOSE_RESULT, answerId: WON }
   - caseId: demo-c-industry   # C산업(가상) · 무전해니켈
+    location: { lat: 36.83, lng: 127.15 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 200
         method: CALL
@@ -96,6 +100,7 @@ companies:
           - { questionId: CLOSE_RESULT, answerId: WON }
   # ── 거절 3곳: 이유는 가격 · 납기 · 기존 거래처 유지 각 1곳 ──
   - caseId: demo-d-tech   # D테크(가상) · 아노다이징 · 거절(가격)
+    location: { lat: 36.80, lng: 127.13 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 40
         method: CALL
@@ -124,6 +129,7 @@ companies:
           - { questionId: CLOSE_RESULT, answerId: LOST }
           - { questionId: LOST_REASON, answerId: PRICE }
   - caseId: demo-e-machining   # E기공(가상) · 아연도금 · 거절(납기)
+    location: { lat: 36.88, lng: 127.15 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 28
         method: CALL
@@ -146,6 +152,7 @@ companies:
           - { questionId: CLOSE_RESULT, answerId: LOST }
           - { questionId: LOST_REASON, answerId: LEAD_TIME }
   - caseId: demo-f-valve   # F밸브(가상) · 부동태 · 거절(기존 거래처 유지)
+    location: { lat: 36.79, lng: 127.03 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 20
         method: EMAIL
@@ -162,6 +169,7 @@ companies:
           - { questionId: LOST_REASON, answerId: INCUMBENT_SUPPLIER }
   # ── #765 (PM 결정 2026-11-15): 영업 분석 기간 선택·그래프 시연용으로 12곳을 더한다. 1~150일 전으로 퍼뜨린다 ──
   - caseId: demo-g-precision   # G정공(가상) · 아연도금 · 진행 중(수요 확인)
+    location: { lat: 36.86, lng: 127.16 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 25
         method: CALL
@@ -179,6 +187,7 @@ companies:
           - { questionId: INTEREST, answerId: MEDIUM }
           - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
   - caseId: demo-h-industry   # H산업(가상) · 아노다이징 · 성사
+    location: { lat: 36.89, lng: 127.14 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 150
         method: CALL
@@ -208,6 +217,7 @@ companies:
           - { questionId: NEXT_ACTION, answerId: END }
           - { questionId: CLOSE_RESULT, answerId: WON }
   - caseId: demo-i-tech   # I테크(가상) · 무전해니켈 · 진행 중(연결됨)
+    location: { lat: 36.84, lng: 127.18 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 16
         method: CALL
@@ -224,6 +234,7 @@ companies:
           - { questionId: PLATING_NOW, answerId: UNKNOWN }
           - { questionId: NEXT_ACTION, answerId: RECONTACT }
   - caseId: demo-j-metal   # J금속(가상) · 부동태 · 거절(납기)
+    location: { lat: 36.77, lng: 127.01 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 95
         method: CALL
@@ -245,6 +256,7 @@ companies:
           - { questionId: CLOSE_RESULT, answerId: LOST }
           - { questionId: LOST_REASON, answerId: LEAD_TIME }
   - caseId: demo-k-machine   # K기계(가상) · 아연도금 · 보류
+    location: { lat: 36.90, lng: 127.16 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 60
         method: EMAIL
@@ -261,6 +273,7 @@ companies:
           - { questionId: NEXT_ACTION, answerId: END }
           - { questionId: CLOSE_RESULT, answerId: ON_HOLD }
   - caseId: demo-l-electronics   # L전자(가상) · 아노다이징 · 진행 중(연결 전)
+    location: { lat: 36.78, lng: 127.04 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 5
         method: CALL
@@ -273,6 +286,7 @@ companies:
         result: ABSENT
         memo: "(가상) 소개 메일을 보냄, 답 기다림"
   - caseId: demo-m-precision   # M정밀(가상) · 무전해니켈 · 진행 중(자료·견적)
+    location: { lat: 36.88, lng: 127.13 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 40
         method: CALL
@@ -299,6 +313,7 @@ companies:
         result: ABSENT
         memo: "(가상) 검토 결과를 물으려 했으나 부재"
   - caseId: demo-n-valve   # N밸브(가상) · 부동태 · 진행 중(연결됨)
+    location: { lat: 36.80, lng: 127.05 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 11
         method: EMAIL
@@ -315,6 +330,7 @@ companies:
           - { questionId: PLATING_NOW, answerId: IN_HOUSE }
           - { questionId: NEXT_ACTION, answerId: RECONTACT }
   - caseId: demo-o-parts   # O부품(가상) · 아연도금 · 거절(가격)
+    location: { lat: 36.82, lng: 127.12 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 70
         method: CALL
@@ -339,6 +355,7 @@ companies:
           - { questionId: CLOSE_RESULT, answerId: LOST }
           - { questionId: LOST_REASON, answerId: PRICE }
   - caseId: demo-p-tech   # P테크(가상) · 아노다이징 · 보류
+    location: { lat: 36.91, lng: 127.12 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 100
         method: CALL
@@ -358,6 +375,7 @@ companies:
           - { questionId: NEXT_ACTION, answerId: END }
           - { questionId: CLOSE_RESULT, answerId: ON_HOLD }
   - caseId: demo-q-industry   # Q산업(가상) · 무전해니켈 · 진행 중(수요 확인)
+    location: { lat: 36.85, lng: 127.14 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 33
         method: CALL
@@ -375,6 +393,7 @@ companies:
           - { questionId: INTEREST, answerId: MEDIUM }
           - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
   - caseId: demo-r-metal   # R금속(가상) · 아연도금 · 진행 중(연결 전)
+    location: { lat: 36.77, lng: 127.03 }   # 가상 위치(#811)
     contacts:
       - daysAgo: 6
         method: CALL

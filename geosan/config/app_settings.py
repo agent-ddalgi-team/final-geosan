@@ -149,6 +149,13 @@ class CostEstimateSettings(FileModel):
     web_search_usd_per_batch: float = Field(gt=0, strict=True, allow_inf_nan=False)
 
 
+class RegionGroup(FileModel):
+    """C7 #798: 새 후보 찾기의 권역 묶음 하나(예: 천안·아산 = 천안시·아산시)."""
+
+    label: str = Field(min_length=1)
+    regions: list[str] = Field(min_length=1)
+
+
 class IngestionSettings(FileModel):
     regions: list[str] = Field(default_factory=list)
     product_keywords: list[str] = Field(default_factory=list)
@@ -157,6 +164,23 @@ class IngestionSettings(FileModel):
     factory_csv_path: str = ""
     complex_list: ComplexListSettings = Field(default_factory=ComplexListSettings)
     ai_pick: AiPickSettings = Field(default_factory=AiPickSettings)
+    # #798(PM 지시 2026-11-16): 권역 묶음. 칸이 없는 옛 설정은 빈 목록(권역 없이 시·군만 보임).
+    region_groups: list[RegionGroup] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_region_groups(self) -> IngestionSettings:
+        labels = [group.label for group in self.region_groups]
+        if len(labels) != len(set(labels)):
+            raise ValueError("regionGroups의 label은 서로 달라야 합니다.")
+        unknown = sorted(
+            {region for group in self.region_groups for region in group.regions} - set(self.regions)
+        )
+        if unknown:
+            raise ValueError(
+                "regionGroups의 regions는 ingestion.regions 안의 값이어야 합니다: "
+                + ", ".join(unknown)
+            )
+        return self
 
 
 class LlmSettings(FileModel):

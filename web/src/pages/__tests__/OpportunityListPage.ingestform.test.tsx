@@ -100,6 +100,31 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     expect(await screen.findByTestId('opportunity-card')).toBeInTheDocument();
   });
 
+  it('#798 Given 신규 거래처 찾기 / When 열기 / Then 새 후보 찾기는 접힌 칸 안에 있고, 머리에 마지막 찾기 결과 한 줄이 보인다', async () => {
+    mockedOptions.mockReturnValue(OPTIONS);
+    mockedGet.mockResolvedValue(
+      reply([apjeong], {
+        batchId: 'b1',
+        status: 'DONE',
+        scannedCount: 500,
+        pickedCount: 20,
+        researchDoneCount: 3,
+      }),
+    );
+    renderPage();
+    const panel = await screen.findByTestId('ingest-panel');
+    expect(panel.tagName).toBe('DETAILS');
+    expect(panel).not.toHaveAttribute('open');
+    expect(within(panel).getByTestId('ingest-form')).toBeInTheDocument();
+    const toggle = within(panel).getByTestId('ingest-panel-toggle');
+    expect(toggle).toHaveTextContent('새 후보 찾기 💰');
+    expect(await within(toggle).findByTestId('ingest-summary')).toHaveTextContent('500');
+    // 자주 안 쓰는 보기 조건은 접힌 [조건 더 보기] 안에 있다.
+    const more = screen.getByTestId('list-more');
+    expect(within(more).getByTestId('list-excluded-on')).toBeInTheDocument();
+    expect(within(more).getByTestId('list-with-bookmarked')).toBeInTheDocument();
+  });
+
   it('누르면 요청을 보내고, 진행만 다시 읽어 머리 요약이 "가져오는 중"으로 바뀐다(목록은 그대로)', async () => {
     const user = userEvent.setup();
     mockedOptions.mockReturnValue(OPTIONS);

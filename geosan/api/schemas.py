@@ -82,6 +82,8 @@ class IndustryCount(_ApiModel):
 class RegionCount(_ApiModel):
     region: str
     count: int
+    # #798: 설정 listFilters.regionPresets 묶음(권역)이면 true, 주소에서 뽑은 시·군이면 false.
+    preset: bool = False
 
 
 class IngestCriteria(_ApiModel):
@@ -261,10 +263,28 @@ class IngestProcessOption(_ApiModel):
     name: str
 
 
+class IngestRegionGroup(_ApiModel):
+    """#798 새 후보 찾기 권역 하나. regions는 ingestOptions.regions 안의 값이다."""
+
+    label: str
+    regions: list[str]
+
+
+class DataBasisItem(_ApiModel):
+    """#798 "자료 기준" 줄 하나. 자료가 없는 종류는 싣지 않는다."""
+
+    kind: Literal["FACTORY_FILE", "FACTORY_LOOKUP", "WATER_LIST", "AI_JUDGMENT"]
+    as_of: date
+
+
 class IngestOptions(_ApiModel):
     processes: list[IngestProcessOption]
     regions: list[str]
     industries: list[str]
+    # #798: 설정 ingestion.regionGroups 그대로. 없으면 빈 배열.
+    region_groups: list[IngestRegionGroup] = Field(default_factory=list)
+    # #798: 새 후보 찾기 안 "자료 기준" 줄(저장된 행의 날짜만, 외부 호출 없음).
+    data_basis: list[DataBasisItem] = Field(default_factory=list)
 
 
 class CurrentStaff(_ApiModel):
