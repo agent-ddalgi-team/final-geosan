@@ -1931,6 +1931,12 @@ export const detailReport = {
     noEvidenceYet:
       '아직 조사한 근거 자료가 없습니다. [다시 조사]를 누르면 홈페이지를 찾아 근거를 뽑습니다.',
     evidenceListLabel: (line: string) => `근거 자료: ${line}`,
+    /** #803 근거 표: 줄 오른쪽 접힌 근거 "근거 3건". */
+    evidenceCount: (n: number) => `근거 ${n}건`,
+    /** #803 근거 표: 그 줄 근거 가운데 가장 높은 출처 등급 "등급 B". */
+    bestGrade: (grade: string) => `등급 ${grade}`,
+    /** #803: 바로 위 근거와 출처가 같으면 주소를 다시 쓰지 않는다. */
+    sameSource: '같은 출처',
   },
   /** "2. 통화에서 확인할 것" — 읽기만 한다. 적는 것은 아래 "기록 남기기"에서. */
   call: {
