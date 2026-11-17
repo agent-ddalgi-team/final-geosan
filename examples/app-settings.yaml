@@ -193,11 +193,12 @@ operations:
 
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 실행 흐름 연결 전에는 꺼 둔다.
 candidateWebSearch:
-  enabled: false
+  enabled: false         # 실제로 켜는 것은 실제 DB 설정에서(PM 결정 2026-11-17 #314·#823). 예시·시험 기본은 끔
   dailySearchLimit: 20
   cacheDays: 15
   searchesPerRun: 3      # 한 번 요청에서 AI가 검색하는 횟수(#706: 1번 2곳, 3번 5~10곳)
   timeoutSeconds: 90     # 응답 대기(실측 3번 29~35초)
+  reservedSlots: 5       # 한 회차 최대 건수 가운데 웹 후보 몫(덜 나오면 공공자료로 채움, PM 결정 2026-11-17 #823)
   blockedDomains:
     - saramin.co.kr
     - jobkorea.co.kr

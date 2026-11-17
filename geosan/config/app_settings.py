@@ -114,6 +114,10 @@ class CandidateWebSearchSettings(FileModel):
     # #706 PM 결정 2026-11-13: 실제 검색 비교로 정한 값. 옛 설정에는 없어 기본값으로 읽는다.
     searches_per_run: int = Field(default=3, ge=1, le=5, strict=True)
     timeout_seconds: int = Field(default=90, ge=20, le=180, strict=True)
+    # #823(PM 결정 2026-11-17 #314): 웹 갈래가 켜져 있을 때 회차 최대 건수 가운데 웹 후보를 위해
+    # 비워 두는 자리 수. 덜 나오면 남은 자리는 공공자료 다음 순서로 채운다.
+    # 옛 설정에는 없어 0으로 읽는다.
+    reserved_slots: int = Field(default=0, ge=0, strict=True)
     blocked_domains: list[str] = Field(default_factory=list, max_length=100)
 
     @field_validator("blocked_domains")
