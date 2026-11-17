@@ -1,12 +1,13 @@
-"""#802 1단계: 영업 분석 패턴 세기(순수 계산). AI·외부 호출·DB 없음. 가상 값만 쓴다."""
+"""#802·#820: 영업 분석 패턴 펼쳐 보기(순수 계산). AI·외부 호출·DB 없음. 가상 값만 쓴다.
 
-from datetime import date
+기준 숫자 없이 펼친 표와, 표본 기준(minSampleForRatio) 하나로 고르는 "눈에 띔"을 본다.
+"""
+
+from datetime import date, timedelta
 
 from geosan.dashboard.sales_patterns import (
-    AnswerSignal,
     PatternCompany,
     PatternLine,
-    PatternSettings,
     QuestionInfo,
     build_sales_patterns,
 )
@@ -21,22 +22,6 @@ QUESTIONS = [
     QuestionInfo("WHO_INITIATED", "ALL"),
     QuestionInfo("CONFIRM_PROCESS", "REACHED", choices=True),
 ]
-
-
-def settings(min_sample=10, **extra):
-    values = dict(
-        min_sample_for_ratio=min_sample,
-        call_only_min_calls=3,
-        gap_days=14,
-        answer_signals=(AnswerSignal("INTEREST", ("LOW", "NONE")),),
-        min_records_for_patterns=30,
-        same_answer_ratio=0.8,
-        unknown_ratio=0.5,
-        split_diff=0.3,
-        split_min_group=3,
-    )
-    values.update(extra)
-    return PatternSettings(**values)
 
 
 def contact(day, method="CALL", result="REACHED", before="REACHED", after="REACHED", answers=()):
@@ -85,7 +70,7 @@ def build(companies, **kwargs):
         questions=QUESTIONS,
         step_order=STEPS,
         lost_reason_order=LOST_ORDER,
-        settings=kwargs.pop("settings", settings()),
+        min_sample_for_ratio=kwargs.pop("min_sample", 10),
         **kwargs,
     )
 
@@ -134,38 +119,8 @@ def test_failure_counts_lost_and_on_hold_and_where_they_dropped():
         ("LEAD_TIME", 1),
     ]
     assert result.success.count == 1
-    assert result.basis.usable_count == 4 and result.basis.enough is False
-
-
-def test_call_only_signal_needs_enough_calls_and_no_visit():
-    """Given 전화만 3번 뒤 거절, 전화 뒤 방문해 성사 / When 신호
-    / Then 전화만 신호는 거절 쪽 1곳."""
-    result = build([three_calls("a"), visit_won("b")])
-    row = next(s for s in result.signals if s.code == "CALL_ONLY")
-    assert (row.with_signal, row.failed, row.won) == (1, 1, 0)
-    assert (row.failed_share, row.won_share) == (1.0, 0.0)
-    assert row.judged is False  # 표본 10곳 밑이면 판단 보류
-
-
-def test_signal_is_judged_once_the_sample_is_enough():
-    """Given 같은 신호의 거절 회사 2곳·표본 기준 2 / When 신호 / Then 판단함."""
-    result = build([three_calls("a"), three_calls("b")], settings=settings(min_sample=2))
-    row = next(s for s in result.signals if s.code == "CALL_ONLY")
-    assert row.with_signal == 2 and row.judged is True
-
-
-def test_long_gap_and_answer_signals_use_the_last_answer():
-    """Given 접촉 사이 20일 공백 + 관심 '보통'에서 '낮음'으로 바꾼 회사 / When 신호
-    / Then 공백 신호와 관심 낮음 신호가 모두 잡힌다(마지막 답 기준)."""
-    lines = [
-        contact(D, answers=[("INTEREST", "MEDIUM")]),
-        contact(date(2026, 11, 21), answers=[("INTEREST", "LOW")]),
-        close(D, "LOST"),
-    ]
-    result = build([company("a", "LOST", lines, reason="NO_DEMAND")])
-    codes = {(s.code, s.question_id): s.with_signal for s in result.signals}
-    assert codes[("LONG_GAP", None)] == 1
-    assert codes[("ANSWER", "INTEREST")] == 1
+    assert (result.basis.closed_count, result.basis.won_count) == (4, 1)
+    assert result.basis.overall_won_ratio is None  # 끝난 회사 4곳 < 표본 기준 10
 
 
 def test_failed_step_answers_show_the_answers_of_the_step_where_they_stopped():
@@ -225,8 +180,9 @@ def test_answer_fill_keeps_only_contacts_in_the_period():
 
 
 def test_questionnaire_hints_same_answer_and_unknown_many():
-    """Given 연결 10번 모두 관심 '보통', 지금 도금은 10번 중 6번 '모름'·4번 빈칸 / When 신호
-    / Then 관심은 늘 같은 답, 지금 도금은 모름이 많음."""
+    """Given 연결 10번 모두 관심 '보통', 지금 도금은 10번 중 6번 '모름'·4번 빈칸 / When 센다
+    / Then 비율 기준 없이 몰림이 가장 큰 질문(관심)과 모름이 가장 많은 질문(지금 도금) 하나씩,
+    답 분포·몫은 값 그대로."""
     lines = [
         contact(
             date(2026, 11, day),
@@ -239,31 +195,18 @@ def test_questionnaire_hints_same_answer_and_unknown_many():
     same = hints[("INTEREST", "SAME_ANSWER")]
     assert (same.answer_id, same.share) == ("MEDIUM", 1.0)
     assert hints[("PLATING_NOW", "UNKNOWN_MANY")].share == 1.0
+    assert len(result.questionnaire_hints) == 2
+    fill = {row.question_id: row for row in result.answer_fill}
+    assert [(a.answer_id, a.count) for a in fill["PLATING_NOW"].answers] == [("UNKNOWN", 6)]
+    assert (fill["PLATING_NOW"].unknown_share, fill["PLATING_NOW"].top_share) == (1.0, 1.0)
+    assert fill["CONFIRM_PROCESS"].top_share is None  # 보기를 회사 값에서 가져오는 질문
 
 
-def test_split_outcome_hint_needs_groups_big_enough():
-    """Given 관심 '높음' 5곳 중 성사 4, '낮음' 5곳 중 성사 1 / When 신호 / Then 결과를 가르는 질문.
-    묶음이 기준(3곳)보다 작으면 비교하지 않는다."""
-
-    def one(opp_id, interest, status):
-        return company(
-            opp_id,
-            status,
-            [contact(D, answers=[("INTEREST", interest)]), close(D, status)],
-            reason="PRICE" if status == "LOST" else None,
-        )
-
-    companies = [one(f"h{i}", "HIGH", "WON" if i < 4 else "LOST") for i in range(5)] + [
-        one(f"l{i}", "LOW", "WON" if i < 1 else "LOST") for i in range(5)
-    ]
-    hint = next(
-        h
-        for h in build(companies).questionnaire_hints
-        if h.kind == "SPLITS_OUTCOME" and h.question_id == "INTEREST"
-    )
-    assert (hint.answer_id, hint.won_ratio_high, hint.won_ratio_low) == ("HIGH", 0.8, 0.2)
-    small = build(companies, settings=settings(split_min_group=6)).questionnaire_hints
-    assert not [h for h in small if h.kind == "SPLITS_OUTCOME"]
+def test_questionnaire_hints_need_the_sample_but_no_ratio_threshold():
+    """Given 관심을 9번만 물음(표본 기준 10 밑) / When 센다 / Then 손볼 만함 표시 없음."""
+    lines = [contact(date(2026, 11, d), answers=[("INTEREST", "MEDIUM")]) for d in range(1, 10)]
+    result = build([company("a", "IN_PROGRESS", lines)])
+    assert [h for h in result.questionnaire_hints if h.kind == "SAME_ANSWER"] == []
 
 
 def test_combos_hide_ratio_below_sample_and_sort_by_wins():
@@ -275,8 +218,8 @@ def test_combos_hide_ratio_below_sample_and_sort_by_wins():
     assert (row.process_code, row.industry, row.region) == ("ZINC", "자동차 부품", "천안·아산")
     assert (row.contacted, row.won, row.lost) == (2, 1, 1)
     assert row.won_ratio is None
-    enough = build([visit_won("a"), three_calls("b")], settings=settings(min_sample=2))
-    assert enough.combos[0].won_ratio == 0.5
+    enough = build([visit_won("a"), three_calls("b")], min_sample=2)
+    assert enough.combos[0].won_ratio == 0.5  # 성사 ÷ 끝난 회사
 
 
 def test_coach_effect_counts_progress_after_the_suggested_day():
@@ -300,5 +243,117 @@ def test_empty_input_gives_zero_counts_not_errors():
     """Given 기록 없음 / When 센다 / Then 모두 0이고 비율은 없다(지어내지 않음)."""
     result = build([])
     assert result.failure.count == 0 and result.success.count == 0
-    assert all(s.failed_share is None and s.won_share is None for s in result.signals)
+    assert result.basis.overall_won_ratio is None
+    assert result.contacts_before_visit == [] and result.longest_gap == []
+    assert result.answer_outcomes == [] and result.standouts == []
     assert result.combos == [] and result.questionnaire_hints == []
+
+
+def test_contacts_before_visit_spread_without_a_threshold():
+    """Given 바로 방문해 성사, 2번째 접촉에서 방문해 성사, 전화만 3번 거절, 전화만 5번 보류
+    / When 센다 / Then 방문한 회사는 방문 전 접촉 0·1번 칸,
+    방문 없는 회사는 모든 접촉 3·4번 이상 칸."""
+    first_visit = company(
+        "a", "WON", [contact(D, method="VISIT"), close(D, "WON")], furthest="VISIT_SAMPLE"
+    )
+    five = company(
+        "d",
+        "ON_HOLD",
+        [contact(date(2026, 11, d)) for d in range(1, 6)] + [close(D, "ON_HOLD")],
+    )
+    result = build([first_visit, visit_won("b"), three_calls("c"), five])
+    rows = {
+        (r.visited, r.bucket): (r.won, r.failed, r.in_progress)
+        for r in result.contacts_before_visit
+    }
+    assert rows == {
+        (True, "ZERO"): (1, 0, 0),
+        (True, "ONE"): (1, 0, 0),
+        (False, "THREE"): (0, 1, 0),
+        (False, "FOUR_PLUS"): (0, 1, 0),
+    }
+    assert all(r.won_ratio is None and r.judged is False for r in result.contacts_before_visit)
+
+
+def test_longest_gap_buckets_are_for_display_only():
+    """Given 접촉 한 번, 사이 3일, 사이 10일, 사이 20일, 사이 40일 / When 센다
+    / Then 가장 긴 간격으로 칸을 나눈다(보기용 구간)."""
+
+    def gap(opp_id, days):
+        return company(
+            opp_id, "IN_PROGRESS", [contact(date(2026, 10, 1) + timedelta(d)) for d in days]
+        )
+
+    result = build(
+        [gap("a", [0]), gap("b", [0, 3]), gap("c", [0, 10]), gap("d", [0, 20]), gap("e", [0, 40])]
+    )
+    assert [r.bucket for r in result.longest_gap] == [
+        "WITHIN_WEEK",
+        "WITHIN_TWO_WEEKS",
+        "WITHIN_MONTH",
+        "OVER_MONTH",
+        "SINGLE_CONTACT",
+    ]
+    assert all(r.in_progress == 1 for r in result.longest_gap)
+
+
+def test_answer_outcomes_use_every_question_and_the_last_answer():
+    """Given 관심 '보통'→'낮음'으로 바꾼 뒤 거절한 회사와 관심 '높음'에서 성사한 회사 / When 센다
+    / Then 미리 정한 답 목록 없이 모든 질문의 답별 성사·실패(회사마다 마지막 답)."""
+    lowered = company(
+        "a",
+        "LOST",
+        [
+            contact(D, answers=[("INTEREST", "MEDIUM")]),
+            contact(date(2026, 11, 2), answers=[("INTEREST", "LOW"), ("PLATING_NOW", "IN_HOUSE")]),
+            close(D, "LOST"),
+        ],
+        reason="NO_DEMAND",
+    )
+    high = company("b", "WON", [contact(D, answers=[("INTEREST", "HIGH")]), close(D, "WON")])
+    rows = {
+        (r.question_id, r.answer_id): (r.won, r.failed)
+        for r in build([lowered, high]).answer_outcomes
+    }
+    assert rows == {
+        ("PLATING_NOW", "IN_HOUSE"): (0, 1),
+        ("INTEREST", "HIGH"): (1, 0),
+        ("INTEREST", "LOW"): (0, 1),
+    }
+
+
+def _closed(opp_id, status, visit_first):
+    lines = (
+        [contact(D, method="VISIT")] if visit_first else [contact(D), contact(date(2026, 11, 9))]
+    )
+    return company(
+        opp_id, status, lines + [close(D, status)], reason="PRICE" if status == "LOST" else None
+    )
+
+
+def test_standouts_need_the_sample_on_both_sides_and_show_the_biggest_gaps():
+    """Given 표본 기준 2, 바로 방문한 회사 3곳 모두 성사·전화만 2번 한 회사 3곳 모두 거절
+    / When 센다 / Then 전체 성사율 0.5와 차이가 큰 두 칸이 눈에 띔(±0.5), 결론이 아니라 표시만."""
+    companies = [_closed(f"v{i}", "WON", True) for i in range(3)] + [
+        _closed(f"c{i}", "LOST", False) for i in range(3)
+    ]
+    result = build(companies, min_sample=2)
+    assert result.basis.overall_won_ratio == 0.5
+    contact_standouts = [s for s in result.standouts if s.table == "CONTACTS_BEFORE_VISIT"]
+    assert {(s.visited, s.bucket, s.diff) for s in contact_standouts} == {
+        (True, "ZERO", 0.5),
+        (False, "TWO", -0.5),
+    }
+    assert len(result.standouts) <= 3
+    assert all(abs(s.diff) == 0.5 for s in result.standouts)
+
+
+def test_no_standout_when_one_side_is_below_the_sample():
+    """Given 표본 기준 10, 끝난 회사 6곳 / When 센다
+    / Then 칸과 나머지가 둘 다 기준을 넘는 칸이 없어 눈에 띔이 없고, 표는 회색(판단 보류)."""
+    companies = [_closed(f"v{i}", "WON", True) for i in range(3)] + [
+        _closed(f"c{i}", "LOST", False) for i in range(3)
+    ]
+    result = build(companies)
+    assert result.standouts == []
+    assert all(not r.judged for r in result.contacts_before_visit)

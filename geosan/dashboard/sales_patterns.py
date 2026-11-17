@@ -1,18 +1,24 @@
-"""영업 분석 패턴 세기 1단계 (계약 C1 `GET /sales-analysis/patterns`, 이슈 #802).
+"""영업 분석 패턴 세기 (계약 C1 `GET /sales-analysis/patterns`, 이슈 #802 · #820).
 
-"쓸수록 좋아지는 분석"의 첫 단계다. 담당자가 남긴 영업 기록·꼬리 질문 답·영업 코치 [넣기] 변경
-기록만 센다. AI·외부 호출·저장 없음. 계산(`build_sales_patterns`)은 받은 값만 쓰는 순수 함수이고,
-DB 읽기는 창구(`api/routes/sales_analysis.py`)가 한다. 기준 숫자는 설정 `salesPatterns`에서 받는다
-(규칙 ⑩). 응답에 나갈 값은 코드·건수·비율뿐이다. 메모 글·답 글·회사 이름·주소는 싣지 않는다.
+"쓸수록 좋아지는 분석"에서 **보여 주기**를 맡는다(PM 결정 2026-11-17 "섞어 쓰기"). 담당자가 남긴
+영업 기록·꼬리 질문 답·영업 코치 [넣기] 변경 기록만 센다. AI·외부 호출·저장 없음.
+계산(`build_sales_patterns`)은 받은 값만 쓰는 순수 함수이고, DB 읽기는
+창구(`api/routes/sales_analysis.py`)가 한다.
 
-실패 = 거절(LOST) + 보류(ON_HOLD), 성공 = 성사(WON). 진행 중인 회사는 신호 비교에 넣지 않는다.
-표본이 기준(`salesAnalysis.minSampleForRatio`)보다 적으면 비율을 내지 않거나 "판단 보류"로 둔다.
+미리 정한 신호·기준 숫자는 두지 않는다. 방문 전 접촉 횟수별·접촉 간격별·꼬리 질문 답별·조합별로
+성사·실패를 **펼쳐서** 보이고, 표본 기준은 이미 PM이 정한 `salesAnalysis.minSampleForRatio`
+하나만 쓴다. 그 기준을 넘는 칸 가운데 전체 성사율과 차이가 큰 칸만 "눈에 띔"으로 표시한다 —
+결론이 아니라 사람이 볼 곳이다. 패턴을 "확인할 패턴"으로 올리고 다음 기간에 검증하는 일(③·④)은
+기록이 쌓인 뒤 따로 한다.
+
+실패 = 거절(LOST) + 보류(ON_HOLD), 성공 = 성사(WON). 진행 중인 회사는 건수만 보이고 비율에는
+넣지 않는다. 응답에 나갈 값은 코드·건수·비율뿐이다. 메모 글·답 글·회사 이름·주소는 싣지 않는다.
 """
 
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -23,21 +29,31 @@ STATUS_LOST = "LOST"
 STATUS_ON_HOLD = "ON_HOLD"
 FAILED_STATUSES = frozenset({STATUS_LOST, STATUS_ON_HOLD})
 CLOSED_STATUSES = FAILED_STATUSES | {STATUS_WON}
-METHOD_CALL = "CALL"
 METHOD_VISIT = "VISIT"
 CONTACT_METHODS = frozenset({"CALL", "EMAIL", "VISIT"})
 RESULT_REACHED = "REACHED"
 STEP_ALL = "ALL"
 # 질문 파일에서 "모름" 보기의 id(질문 파일 약속 C7의 관례). 규칙 숫자가 아니라 코드값이다.
 ANSWER_UNKNOWN = "UNKNOWN"
-SIGNAL_CALL_ONLY = "CALL_ONLY"
-SIGNAL_LONG_GAP = "LONG_GAP"
-SIGNAL_ANSWER = "ANSWER"
 HINT_SAME_ANSWER = "SAME_ANSWER"
 HINT_UNKNOWN_MANY = "UNKNOWN_MANY"
-HINT_SPLITS_OUTCOME = "SPLITS_OUTCOME"
 # 잘 되는 조합은 화면 한 칸에 보일 만큼만 싣는다(줄 수 상한, 계약 C1 "최대 20줄").
 COMBO_LIMIT = 20
+# "눈에 띔"은 화면에 보여 주는 개수다. 판단 기준이 아니다(기준은 minSampleForRatio 하나).
+STANDOUT_LIMIT = 3
+
+# 방문 전 접촉 횟수 칸(보기용 구간 — 판단 기준이 아니다). 4번 이상은 한 칸.
+CONTACT_BUCKETS = ("ZERO", "ONE", "TWO", "THREE", "FOUR_PLUS")
+# 접촉 사이 가장 긴 간격 칸(보기용 구간 — 판단 기준이 아니다): 1주 안 · 2주 안 · 한 달 안 · 그 이상.
+GAP_BUCKET_DAYS = ((7, "WITHIN_WEEK"), (14, "WITHIN_TWO_WEEKS"), (30, "WITHIN_MONTH"))
+GAP_OVER = "OVER_MONTH"
+GAP_SINGLE = "SINGLE_CONTACT"
+GAP_BUCKETS = (*(name for _, name in GAP_BUCKET_DAYS), GAP_OVER, GAP_SINGLE)
+
+TABLE_CONTACTS = "CONTACTS_BEFORE_VISIT"
+TABLE_GAP = "LONGEST_GAP"
+TABLE_ANSWER = "ANSWER"
+TABLE_COMBO = "COMBO"
 
 
 # ---------------------------------------------------------------------------
@@ -80,29 +96,10 @@ class QuestionInfo:
 
     question_id: str
     step: str
-    # 보기를 회사 값에서 가져오는 질문(PROCESS·INDUSTRY)이면 True. 답 쏠림 신호는 내지 않는다.
+    # 보기를 회사 값에서 가져오는 질문(PROCESS·INDUSTRY)이면 True. 답별 표·몰림 표시는 내지 않는다.
     choices: bool = False
     # 앞 답이 이 중 하나일 때만 보이는 질문(showWhen). {질문 id: [답 id]}
     show_when: Mapping[str, Sequence[str]] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class AnswerSignal:
-    question_id: str
-    answer_ids: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class PatternSettings:
-    min_sample_for_ratio: int
-    call_only_min_calls: int
-    gap_days: int
-    answer_signals: tuple[AnswerSignal, ...]
-    min_records_for_patterns: int
-    same_answer_ratio: float
-    unknown_ratio: float
-    split_diff: float
-    split_min_group: int
 
 
 # ---------------------------------------------------------------------------
@@ -154,15 +151,39 @@ class SuccessPart:
 
 
 @dataclass(frozen=True)
-class SignalRow:
-    code: str
-    question_id: str | None
-    answer_ids: list[str]
-    with_signal: int
-    failed: int
+class ContactRow:
+    """방문 전 접촉 횟수 칸 하나. 방문이 없는 회사는 모든 접촉 수로 칸을 정한다."""
+
+    visited: bool
+    bucket: str
     won: int
-    failed_share: float | None
-    won_share: float | None
+    failed: int
+    in_progress: int
+    # 끝난 회사(성사·실패)가 표본 기준 이상일 때만 성사 ÷ 끝난 회사.
+    won_ratio: float | None
+    judged: bool
+
+
+@dataclass(frozen=True)
+class GapRow:
+    bucket: str
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
+    judged: bool
+
+
+@dataclass(frozen=True)
+class AnswerRow:
+    """꼬리 질문 하나의 답 하나(회사마다 그 질문의 마지막 답)."""
+
+    question_id: str
+    answer_id: str
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
     judged: bool
 
 
@@ -175,7 +196,27 @@ class ComboRow:
     won: int
     lost: int
     on_hold: int
+    # 끝난 회사(성사·거절·보류)가 표본 기준 이상일 때만. 성사 ÷ 끝난 회사.
     won_ratio: float | None
+
+
+@dataclass(frozen=True)
+class Standout:
+    """눈에 띔 · 결론 아님 · 사람 확인 전. 칸을 가리키는 열쇠 + 그 칸과 전체의 성사율."""
+
+    table: str
+    won: int
+    failed: int
+    won_ratio: float
+    overall_won_ratio: float
+    diff: float
+    visited: bool | None = None
+    bucket: str | None = None
+    question_id: str | None = None
+    answer_id: str | None = None
+    process_code: str | None = None
+    industry: str | None = None
+    region: str | None = None
 
 
 @dataclass(frozen=True)
@@ -185,6 +226,12 @@ class AnswerFill:
     eligible: int
     answered: int
     ratio: float | None
+    # 기간 안 답의 분포(많은 순). 답 글은 없다.
+    answers: list[AnswerCount] = field(default_factory=list)
+    # (물을 자리인데 답 없음 + 답 "모름") ÷ 물을 자리. 물을 자리가 0이면 None.
+    unknown_share: float | None = None
+    # 가장 많은 답의 몫(보기를 회사 값에서 가져오는 질문은 None).
+    top_share: float | None = None
 
 
 @dataclass(frozen=True)
@@ -193,8 +240,6 @@ class QuestionnaireHint:
     kind: str
     answer_id: str | None = None
     share: float | None = None
-    won_ratio_high: float | None = None
-    won_ratio_low: float | None = None
 
 
 @dataclass(frozen=True)
@@ -207,9 +252,10 @@ class CoachEffect:
 @dataclass(frozen=True)
 class PatternBasis:
     min_sample_for_ratio: int
-    usable_count: int
-    needed_count: int
-    enough: bool
+    closed_count: int
+    won_count: int
+    # 끝난 회사가 표본 기준 이상일 때만 성사 ÷ 끝난 회사. "눈에 띔"이 견주는 값이다.
+    overall_won_ratio: float | None
 
 
 @dataclass(frozen=True)
@@ -217,8 +263,11 @@ class SalesPatterns:
     basis: PatternBasis
     failure: FailurePart
     success: SuccessPart
-    signals: list[SignalRow]
+    contacts_before_visit: list[ContactRow]
+    longest_gap: list[GapRow]
+    answer_outcomes: list[AnswerRow]
     combos: list[ComboRow]
+    standouts: list[Standout]
     answer_fill: list[AnswerFill]
     questionnaire_hints: list[QuestionnaireHint]
     coach_effect: CoachEffect
@@ -256,31 +305,43 @@ def last_answers(company: PatternCompany) -> dict[str, str]:
     return answers
 
 
-def company_signals(company: PatternCompany, settings: PatternSettings) -> set[tuple]:
-    """회사에 있던 신호 열쇠들. (코드, 질문 id 또는 None, 답 id 묶음)."""
-    found: set[tuple] = set()
-    contacts = _contacts(company)
-    methods = Counter(line.method for line in contacts)
-    if methods[METHOD_CALL] >= settings.call_only_min_calls and methods[METHOD_VISIT] == 0:
-        found.add((SIGNAL_CALL_ONLY, None, ()))
-    days = sorted(line.day for line in contacts)
-    if any(
-        (later - earlier).days > settings.gap_days
-        for earlier, later in zip(days, days[1:], strict=False)
-    ):
-        found.add((SIGNAL_LONG_GAP, None, ()))
-    answers = last_answers(company)
-    for signal in settings.answer_signals:
-        if answers.get(signal.question_id) in signal.answer_ids:
-            found.add((SIGNAL_ANSWER, signal.question_id, signal.answer_ids))
-    return found
-
-
 def _first_visit_index(company: PatternCompany) -> int | None:
     for index, line in enumerate(_contacts(company), start=1):
         if line.method == METHOD_VISIT:
             return index
     return None
+
+
+def contact_bucket(company: PatternCompany) -> tuple[bool, str]:
+    """(방문했나, 방문 전 접촉 횟수 칸). 방문이 없으면 모든 접촉 수로 칸을 정한다."""
+    first_visit = _first_visit_index(company)
+    count = len(_contacts(company)) if first_visit is None else first_visit - 1
+    return first_visit is not None, CONTACT_BUCKETS[min(count, len(CONTACT_BUCKETS) - 1)]
+
+
+def gap_bucket(company: PatternCompany) -> str:
+    """이어진 두 접촉 사이 가장 긴 간격의 칸(보기용 구간). 접촉이 한 번뿐이면 SINGLE_CONTACT."""
+    days = sorted(line.day for line in _contacts(company))
+    if len(days) < 2:
+        return GAP_SINGLE
+    longest = max((later - earlier).days for earlier, later in zip(days, days[1:], strict=False))
+    for limit, name in GAP_BUCKET_DAYS:
+        if longest <= limit:
+            return name
+    return GAP_OVER
+
+
+def _outcome_counts(companies: Sequence[PatternCompany], min_sample: int) -> dict:
+    won = sum(c.outcome_status == STATUS_WON for c in companies)
+    failed = sum(c.outcome_status in FAILED_STATUSES for c in companies)
+    closed = won + failed
+    return {
+        "won": won,
+        "failed": failed,
+        "in_progress": len(companies) - closed,
+        "won_ratio": ratio(won, closed) if closed >= min_sample else None,
+        "judged": closed >= min_sample,
+    }
 
 
 def _step_counts(companies: Sequence[PatternCompany], step_order: Sequence[str]) -> list[StepCount]:
@@ -307,8 +368,8 @@ def answer_fill(
     questions: Sequence[QuestionInfo],
     step_order: Sequence[str],
     period: tuple[date | None, date | None] | None,
-) -> tuple[list[AnswerFill], dict[str, Counter]]:
-    """질문별 답 채움률과, 기간 안 답의 답별 건수.
+) -> list[AnswerFill]:
+    """질문별 답 채움률·답 분포·모름 몫·한 답 몰림(기준 숫자 없이 값 그대로).
 
     물을 자리(eligible): 단계가 ALL인 질문은 모든 접촉, 나머지는 그 단계에 있을 때 연결된 접촉.
     PROCESS·INDUSTRY 질문은 그 단계부터 답이 생길 때까지 뒤 단계에서도 묻는다(질문 파일 규칙).
@@ -345,75 +406,65 @@ def answer_fill(
                         answered[question.question_id] += 1
                         answer_counts[question.question_id][line_answers[question.question_id]] += 1
             so_far.update(line_answers)
-    rows = [
-        AnswerFill(
-            question_id=question.question_id,
-            step=question.step,
-            eligible=eligible[question.question_id],
-            answered=answered[question.question_id],
-            ratio=ratio(answered[question.question_id], eligible[question.question_id]),
+    rows: list[AnswerFill] = []
+    for question in questions:
+        qid = question.question_id
+        counts = answer_counts[qid]
+        top = counts.most_common(1)[0][1] if counts else 0
+        rows.append(
+            AnswerFill(
+                question_id=qid,
+                step=question.step,
+                eligible=eligible[qid],
+                answered=answered[qid],
+                ratio=ratio(answered[qid], eligible[qid]),
+                answers=[
+                    AnswerCount(answer_id=a, count=n)
+                    for a, n in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+                ],
+                unknown_share=ratio(
+                    eligible[qid] - answered[qid] + counts[ANSWER_UNKNOWN], eligible[qid]
+                ),
+                top_share=None if question.choices else ratio(top, sum(counts.values())),
+            )
         )
-        for question in questions
-    ]
-    return rows, answer_counts
+    return rows
 
 
 def questionnaire_hints(
-    questions: Sequence[QuestionInfo],
-    fill: Sequence[AnswerFill],
-    answer_counts: Mapping[str, Counter],
-    closed: Sequence[PatternCompany],
-    settings: PatternSettings,
+    questions: Sequence[QuestionInfo], fill: Sequence[AnswerFill], min_sample: int
 ) -> list[QuestionnaireHint]:
-    """질문지 다듬기 신호(제안 목록). 반영은 사람이 질문 파일에서 한다."""
-    by_id = {row.question_id: row for row in fill}
+    """손볼 만한 질문 표시(제안 · 승인 전). 비율 기준 없이,
+    표본 기준을 넘는 질문 가운데 가장 큰 것 하나씩.
+
+    - 한 답 몰림이 가장 큰 질문(답한 수 ≥ 표본 기준, 보기를 회사 값에서 가져오는 질문 제외)
+    - 답 없음·모름 몫이 가장 큰 질문(물을 자리 ≥ 표본 기준, 몫이 0보다 클 때)
+    """
+    order = {q.question_id: i for i, q in enumerate(questions)}
+    choices = {q.question_id for q in questions if q.choices}
     hints: list[QuestionnaireHint] = []
-    last = {company.opp_id: last_answers(company) for company in closed}
-    for question in questions:
-        row = by_id[question.question_id]
-        counts = answer_counts.get(question.question_id, Counter())
-        total = sum(counts.values())
-        if not question.choices and total >= settings.min_sample_for_ratio:
-            top, top_count = counts.most_common(1)[0]
-            share = ratio(top_count, total)
-            if share is not None and share >= settings.same_answer_ratio:
-                hints.append(QuestionnaireHint(question.question_id, HINT_SAME_ANSWER, top, share))
-        if row.eligible >= settings.min_sample_for_ratio:
-            missing = row.eligible - row.answered + counts[ANSWER_UNKNOWN]
-            share = ratio(missing, row.eligible)
-            if share is not None and share >= settings.unknown_ratio:
-                hints.append(
-                    QuestionnaireHint(question.question_id, HINT_UNKNOWN_MANY, None, share)
-                )
-        if question.choices:
-            continue
-        groups: dict[str, list[bool]] = {}
-        for company in closed:
-            answer = last[company.opp_id].get(question.question_id)
-            if answer is not None:
-                groups.setdefault(answer, []).append(company.outcome_status == STATUS_WON)
-        if sum(len(values) for values in groups.values()) < settings.min_sample_for_ratio:
-            continue
-        rates = {
-            answer: ratio(sum(values), len(values))
-            for answer, values in groups.items()
-            if len(values) >= settings.split_min_group
-        }
-        if len(rates) < 2:
-            continue
-        high = max(rates, key=lambda key: (rates[key], key))
-        low = min(rates, key=lambda key: (rates[key], key))
-        if rates[high] - rates[low] >= settings.split_diff:
-            hints.append(
-                QuestionnaireHint(
-                    question.question_id,
-                    HINT_SPLITS_OUTCOME,
-                    high,
-                    None,
-                    won_ratio_high=rates[high],
-                    won_ratio_low=rates[low],
-                )
+    same = [
+        row
+        for row in fill
+        if row.question_id not in choices
+        and row.answered >= min_sample
+        and row.top_share is not None
+    ]
+    if same:
+        row = max(same, key=lambda r: (r.top_share, -order[r.question_id]))
+        hints.append(
+            QuestionnaireHint(
+                row.question_id, HINT_SAME_ANSWER, row.answers[0].answer_id, row.top_share
             )
+        )
+    unknown = [
+        row
+        for row in fill
+        if row.eligible >= min_sample and row.unknown_share is not None and row.unknown_share > 0
+    ]
+    if unknown:
+        row = max(unknown, key=lambda r: (r.unknown_share, -order[r.question_id]))
+        hints.append(QuestionnaireHint(row.question_id, HINT_UNKNOWN_MANY, None, row.unknown_share))
     return hints
 
 
@@ -437,21 +488,61 @@ def coach_effect(companies: Sequence[PatternCompany], step_order: Sequence[str])
     return CoachEffect(applied=applied, progressed=progressed, companies=with_coach)
 
 
-def build_sales_patterns(
-    companies: Sequence[PatternCompany],
-    *,
-    questions: Sequence[QuestionInfo],
+def _group(
+    companies: Sequence[PatternCompany], key: Callable[[PatternCompany], object]
+) -> dict[object, list[PatternCompany]]:
+    groups: dict[object, list[PatternCompany]] = {}
+    for company in companies:
+        groups.setdefault(key(company), []).append(company)
+    return groups
+
+
+def standouts(
+    cells: Sequence[tuple[dict, int, int]],
+    closed_total: int,
+    overall: float | None,
+    min_sample: int,
+) -> list[Standout]:
+    """눈에 띔: 그 칸의 끝난 회사와 나머지 끝난 회사가 둘 다 표본 기준 이상인 칸 가운데
+    전체 성사율과의 차이가 0이 아닌 칸을 차이 큰 순으로 STANDOUT_LIMIT개까지.
+
+    `cells`는 (칸 열쇠, 성사 수, 실패 수). 결론이 아니다 — 사람이 볼 곳을 가리킬 뿐이다.
+    """
+    if overall is None:
+        return []
+    found: list[tuple[float, int, Standout]] = []
+    for index, (key, won, failed) in enumerate(cells):
+        closed = won + failed
+        if closed < min_sample or closed_total - closed < min_sample:
+            continue
+        cell_ratio = ratio(won, closed)
+        diff = round(cell_ratio - overall, 2)
+        if diff == 0:
+            continue
+        found.append(
+            (
+                -abs(diff),
+                index,
+                Standout(
+                    won=won,
+                    failed=failed,
+                    won_ratio=cell_ratio,
+                    overall_won_ratio=overall,
+                    diff=diff,
+                    **key,
+                ),
+            )
+        )
+    found.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in found[:STANDOUT_LIMIT]]
+
+
+def _failure_part(
+    failed: Sequence[PatternCompany],
+    answer_questions: Sequence[QuestionInfo],
     step_order: Sequence[str],
     lost_reason_order: Sequence[str],
-    settings: PatternSettings,
-    period: tuple[date | None, date | None] | None = None,
-) -> SalesPatterns:
-    """실패·성공 패턴을 센다. `companies`는 영업 분석표에 든 회사(같은 대상·기간 규칙)다."""
-    failed = [c for c in companies if c.outcome_status in FAILED_STATUSES]
-    won = [c for c in companies if c.outcome_status == STATUS_WON]
-    closed = failed + won
-    question_steps = {q.question_id: q.step for q in questions if not q.choices}
-
+) -> FailurePart:
     reason_rank = {code: index for index, code in enumerate(lost_reason_order)}
     reasons = Counter(
         c.lost_reason_code for c in failed if c.outcome_status == STATUS_LOST and c.lost_reason_code
@@ -461,24 +552,26 @@ def build_sales_patterns(
         here = [c for c in failed if c.furthest_step == step]
         if not here:
             continue
-        for question_id, question_step in question_steps.items():
-            if question_step != step:
+        for question in answer_questions:
+            if question.step != step:
                 continue
             counts = Counter(
-                answer for c in here if (answer := last_answers(c).get(question_id)) is not None
+                answer
+                for c in here
+                if (answer := last_answers(c).get(question.question_id)) is not None
             )
             if counts:
                 step_answers.append(
                     StepAnswers(
                         step=step,
-                        question_id=question_id,
+                        question_id=question.question_id,
                         answers=[
                             AnswerCount(answer_id=a, count=n)
                             for a, n in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
                         ],
                     )
                 )
-    failure = FailurePart(
+    return FailurePart(
         count=len(failed),
         on_hold_count=sum(c.outcome_status == STATUS_ON_HOLD for c in failed),
         by_step=_step_counts(failed, step_order),
@@ -490,6 +583,25 @@ def build_sales_patterns(
         ],
         step_answers=step_answers,
     )
+
+
+def build_sales_patterns(
+    companies: Sequence[PatternCompany],
+    *,
+    questions: Sequence[QuestionInfo],
+    step_order: Sequence[str],
+    lost_reason_order: Sequence[str],
+    min_sample_for_ratio: int,
+    period: tuple[date | None, date | None] | None = None,
+) -> SalesPatterns:
+    """기록을 펼쳐 센다. `companies`는 영업 분석표에 든 회사(같은 대상·기간 규칙)다."""
+    min_sample = min_sample_for_ratio
+    failed = [c for c in companies if c.outcome_status in FAILED_STATUSES]
+    won = [c for c in companies if c.outcome_status == STATUS_WON]
+    closed_total = len(failed) + len(won)
+    overall = ratio(len(won), closed_total) if closed_total >= min_sample else None
+    answer_questions = [q for q in questions if not q.choices]
+
     success = SuccessPart(
         count=len(won),
         by_step=_step_counts(won, step_order),
@@ -502,28 +614,47 @@ def build_sales_patterns(
         ),
     )
 
-    keys: list[tuple] = [(SIGNAL_CALL_ONLY, None, ()), (SIGNAL_LONG_GAP, None, ())] + [
-        (SIGNAL_ANSWER, s.question_id, s.answer_ids) for s in settings.answer_signals
-    ]
-    found = {c.opp_id: company_signals(c, settings) for c in closed}
-    signals: list[SignalRow] = []
-    for key in keys:
-        holders = [c for c in closed if key in found[c.opp_id]]
-        failed_n = sum(c.outcome_status in FAILED_STATUSES for c in holders)
-        won_n = sum(c.outcome_status == STATUS_WON for c in holders)
-        signals.append(
-            SignalRow(
-                code=key[0],
-                question_id=key[1],
-                answer_ids=list(key[2]),
-                with_signal=len(holders),
-                failed=failed_n,
-                won=won_n,
-                failed_share=ratio(failed_n, len(failed)),
-                won_share=ratio(won_n, len(won)),
-                judged=len(holders) >= settings.min_sample_for_ratio,
-            )
+    cells: list[tuple[dict, int, int]] = []
+
+    by_contacts = _group(companies, contact_bucket)
+    contact_rows: list[ContactRow] = []
+    for visited in (True, False):
+        for bucket in CONTACT_BUCKETS:
+            group = by_contacts.get((visited, bucket), [])
+            if not group:
+                continue
+            row = ContactRow(visited=visited, bucket=bucket, **_outcome_counts(group, min_sample))
+            contact_rows.append(row)
+            key = {"table": TABLE_CONTACTS, "visited": visited, "bucket": bucket}
+            cells.append((key, row.won, row.failed))
+
+    by_gap = _group(companies, gap_bucket)
+    gap_rows: list[GapRow] = []
+    for bucket in GAP_BUCKETS:
+        group = by_gap.get(bucket, [])
+        if not group:
+            continue
+        row = GapRow(bucket=bucket, **_outcome_counts(group, min_sample))
+        gap_rows.append(row)
+        cells.append(({"table": TABLE_GAP, "bucket": bucket}, row.won, row.failed))
+
+    answers_by_company = {c.opp_id: last_answers(c) for c in companies}
+    answer_rows: list[AnswerRow] = []
+    for question in answer_questions:
+        qid = question.question_id
+        groups = _group(
+            [c for c in companies if qid in answers_by_company[c.opp_id]],
+            lambda c, qid=qid: answers_by_company[c.opp_id][qid],
         )
+        for answer_id in sorted(groups, key=lambda a: (-len(groups[a]), str(a))):
+            row = AnswerRow(
+                question_id=qid,
+                answer_id=str(answer_id),
+                **_outcome_counts(groups[answer_id], min_sample),
+            )
+            answer_rows.append(row)
+            key = {"table": TABLE_ANSWER, "question_id": qid, "answer_id": row.answer_id}
+            cells.append((key, row.won, row.failed))
 
     combo_counts: dict[tuple, Counter] = {}
     for company in companies:
@@ -533,23 +664,29 @@ def build_sales_patterns(
             bucket = combo_counts.setdefault(key, Counter())
             bucket["contacted"] += 1
             bucket[company.outcome_status] += 1
-    combos = [
-        ComboRow(
-            process_code=key[0],
-            industry=key[1],
-            region=key[2],
-            contacted=bucket["contacted"],
-            won=bucket[STATUS_WON],
-            lost=bucket[STATUS_LOST],
-            on_hold=bucket[STATUS_ON_HOLD],
-            won_ratio=(
-                ratio(bucket[STATUS_WON], bucket["contacted"])
-                if bucket["contacted"] >= settings.min_sample_for_ratio
-                else None
-            ),
+    combos: list[ComboRow] = []
+    for key, bucket in combo_counts.items():
+        failed_n = bucket[STATUS_LOST] + bucket[STATUS_ON_HOLD]
+        closed_n = bucket[STATUS_WON] + failed_n
+        combos.append(
+            ComboRow(
+                process_code=key[0],
+                industry=key[1],
+                region=key[2],
+                contacted=bucket["contacted"],
+                won=bucket[STATUS_WON],
+                lost=bucket[STATUS_LOST],
+                on_hold=bucket[STATUS_ON_HOLD],
+                won_ratio=ratio(bucket[STATUS_WON], closed_n) if closed_n >= min_sample else None,
+            )
         )
-        for key, bucket in combo_counts.items()
-    ]
+        combo_key = {
+            "table": TABLE_COMBO,
+            "process_code": key[0],
+            "industry": key[1],
+            "region": key[2],
+        }
+        cells.append((combo_key, bucket[STATUS_WON], failed_n))
     combos.sort(
         key=lambda row: (
             -row.won,
@@ -560,20 +697,22 @@ def build_sales_patterns(
         )
     )
 
-    fill, answer_counts = answer_fill(companies, questions, step_order, period)
-    hints = questionnaire_hints(questions, fill, answer_counts, closed, settings)
+    fill = answer_fill(companies, questions, step_order, period)
     return SalesPatterns(
         basis=PatternBasis(
-            min_sample_for_ratio=settings.min_sample_for_ratio,
-            usable_count=len(closed),
-            needed_count=settings.min_records_for_patterns,
-            enough=len(closed) >= settings.min_records_for_patterns,
+            min_sample_for_ratio=min_sample,
+            closed_count=closed_total,
+            won_count=len(won),
+            overall_won_ratio=overall,
         ),
-        failure=failure,
+        failure=_failure_part(failed, answer_questions, step_order, lost_reason_order),
         success=success,
-        signals=signals,
+        contacts_before_visit=contact_rows,
+        longest_gap=gap_rows,
+        answer_outcomes=answer_rows,
         combos=combos[:COMBO_LIMIT],
+        standouts=standouts(cells, closed_total, overall, min_sample),
         answer_fill=fill,
-        questionnaire_hints=hints,
+        questionnaire_hints=questionnaire_hints(questions, fill, min_sample),
         coach_effect=coach_effect(companies, step_order),
     )
