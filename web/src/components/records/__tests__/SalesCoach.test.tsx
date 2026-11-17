@@ -490,6 +490,25 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
 
 // #847(사용자 피드백 2026-11-17 "글이 너무 많아 무슨 내용인지 모르겠다"): 영업 코치 칸의 안내 문장·겹치는 제목을 줄였다.
 describe('영업 코치 칸 글 줄이기 (#847)', () => {
+  it('Given 오른쪽 영업 코치 칸 When 결과를 고르기 전 Then 메모 칸이 바로 보인다', async () => {
+    renderArea(true, { inCoach: true });
+    expect(await screen.findByTestId('records-contact-memo')).toBeInTheDocument();
+    expect(screen.getByTestId('records-contact-memo-hint')).toHaveTextContent(coachTexts.sendHint);
+  });
+
+  it('Given 왼쪽 영업 단계 아래 자리(sideSlot) When 기록 칸을 그리면 Then 들은 답·단계 고치기·다음 일정은 그 자리에 그려진다', async () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    renderArea(true, { inCoach: true, sideSlot: slot });
+    const side = await within(slot).findByTestId('records-side');
+    expect(within(side).getByTestId('records-stage-fix')).toBeInTheDocument();
+    expect(within(side).getByTestId('records-schedule-fix')).toBeInTheDocument();
+    const area = screen.getByTestId('records-area');
+    expect(within(area).queryByTestId('records-stage-fix')).not.toBeInTheDocument();
+    expect(within(area).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
+    slot.remove();
+  });
+
   it('Given 오른쪽 영업 코치 칸 When 기록 칸을 열면 Then 머리 안내 줄이 없고 "기록 남기기" 제목은 화면에서만 숨는다', async () => {
     renderArea(true, { inCoach: true });
     expect(screen.queryByTestId('records-flow-guide')).not.toBeInTheDocument();

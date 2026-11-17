@@ -560,10 +560,13 @@ export const detailHeader = {
   pickStaffOnce: '담당자를 고르면 관심·다시 조사·기록을 할 수 있습니다.',
 } as const;
 
-/** #803 오른쪽 영업 코치 판의 칸 제목: 일하는 순서대로 ① 통화 전 → ② 통화 뒤. #847: 칸 안내 문장은 뺐다. */
+/**
+ * #803 오른쪽 영업 코치 판의 칸 제목. #847(PM 결정 2026-11-17): "확인사항"(이전 맥락에 맞춰 물을 것, 주제별 체크)과
+ * "대화 기록"(이번 통화 메모·결과). 확정된 것(들은 답·단계·다음 일정)은 왼쪽 영업 단계 아래로 옮겼다.
+ */
 export const coachSteps = {
-  before: '① 통화 전 — 물어볼 것',
-  record: '② 통화 뒤 — 기록 남기기',
+  before: '확인사항',
+  record: '대화 기록',
   /** "알아낸 것"을 접은 묶음 제목. */
   knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
 } as const;
@@ -2138,7 +2141,8 @@ export const detailReport = {
       `${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
     checkNone: '지금 확인할 것 없음',
     /** 낱말은 없는데 아래 "2. 통화에서 확인할 것"에 줄이 있을 때(#691). */
-    checkCallCount: (count: number) => `통화에서 확인할 것 ${count}가지 (아래 2번)`,
+    /** #847: 오른쪽 영업 코치 칸 "확인사항"과 같은 줄 수. */
+    checkCallCount: (count: number) => `확인사항 ${count}가지`,
     /** "마지막 접촉 11/12" */
     lastContact: (date: string) => `마지막 접촉 ${date}`,
     phone: '대표번호',
@@ -2179,6 +2183,21 @@ export const detailReport = {
     gapHead: (count: number, open: boolean) =>
       `${open ? '▾' : '▸'} 아직 근거·자료가 없는 항목 ${count}개 ${open ? '접기' : '보기'}`,
     gapListLabel: '근거·자료가 없는 항목 목록',
+    /**
+     * #847(PM 결정 2026-11-17): 오른쪽 영업 코치 칸의 "확인사항". 주제 4묶음으로 나누고 줄마다 짧은 요약 + 체크칸.
+     * 체크는 통화 중 화면에서만(저장 안 함, 새로고침하면 풀림).
+     */
+    groups: {
+      prep: '지난 통화에서 이어서',
+      company: '회사 확인',
+      demand: '수요·진행',
+      geosan: '거산 쪽 확인',
+    },
+    /** "지난 통화에서 이어서 · 11/15" */
+    prepGroup: (date: string) => `지난 통화에서 이어서 · ${date}`,
+    /** 줄 요약(질문 파일에 짧은 말이 없을 때): 공정·소재·산업 확인 줄. */
+    short: { process: '맡길 공정', material: '부품 소재', industry: '어느 산업인지' },
+    checkLabel: (text: string) => `확인: ${text}`,
   },
   /** "3. 점수 자세히 보기" 제목 줄 요약과 그 안으로 옮긴 AI 점수 입력 제안. */
   scores: {
@@ -2429,8 +2448,6 @@ export const coachTexts = {
   feedbackNone: '이번에는 짚을 것이 없습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
-  /** (#750) 상세 "기록 남기기" 맨 위 통화 전 칸: "11/15 통화 뒤 코치 정리" */
-  prepTitle: (date: string) => `${date} 통화 뒤 코치 정리 · 다음 통화에 물어볼 것`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2439,7 +2456,7 @@ export const coachTexts = {
   save: '이대로 저장',
   edit: '고치기',
   /** #847: 피드백·물어볼 것이 어디에 남는지 저장 단추 위 한 줄로(전에는 칸마다 한 줄씩, [고치기] 안내까지 세 줄). */
-  savedWhere: '저장하면 피드백은 회사 보고서에, 물어볼 것은 다음 통화 전 칸에 남습니다.',
+  savedWhere: '저장하면 피드백은 회사 보고서에, 물어볼 것은 다음 확인사항에 남습니다.',
   adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
 } as const;

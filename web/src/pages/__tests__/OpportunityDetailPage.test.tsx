@@ -174,13 +174,18 @@ describe('OpportunityDetailPage', () => {
     expect(headings).not.toContain(detailSections.evidence);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
     const review = screen.getByTestId('detail-review');
-    const rows = within(review).getAllByTestId('review-item');
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('확인 질문 1');
+    const items = within(review).getAllByTestId('review-item');
+    expect(items).toHaveLength(2);
+    // #847: 확인사항은 주제별로 묶여 순서가 바뀔 수 있어 글로 찾는다.
+    const asked = items.find((row) => row.textContent?.includes('확인 질문 1')) as HTMLElement;
+    const done = items.find((row) => row !== asked) as HTMLElement;
+    const rows = [asked, done];
     // 이미 저장돼 있던 확인 표시는 그 줄 아래에 읽기 전용으로 보인다.
     expect(within(rows[1]).getByTestId('review-checked-by')).toHaveTextContent('✓ 확인함');
-    // 읽는 곳에는 체크·[답 적기]·[메모 적기]·[붙여넣고 조사]·진행 수가 없다.
-    expect(within(review).queryByRole('checkbox')).not.toBeInTheDocument();
+    // #847(PM 결정 2026-11-17): 확인사항은 통화 중 체크칸이 있다. 이미 확인 표시가 저장된 줄은 체크된 채로 시작한다.
+    expect(within(rows[1]).getByRole('checkbox')).toBeChecked();
+    expect(within(rows[0]).getByRole('checkbox')).not.toBeChecked();
+    // [답 적기]·[메모 적기]·[붙여넣고 조사]·진행 수는 없다.
     expect(within(review).queryByTestId('review-progress')).not.toBeInTheDocument();
     for (const id of ['review-reply-button', 'review-memo-button', 'review-paste-button']) {
       expect(screen.queryByTestId(id)).not.toBeInTheDocument();
