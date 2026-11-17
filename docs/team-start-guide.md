@@ -72,6 +72,7 @@ git stash pop              #    (1에서 stash 했을 때만) 보관한 변경�
 .venv\Scripts\python scripts\check.py            # 파이썬 + 화면 전부
 .venv\Scripts\python scripts\check.py python     # 파이썬만
 .venv\Scripts\python scripts\check.py web        # 화면만
+.venv\Scripts\python scripts\check.py fast       # PR 전 빠른 검사(#830): 바뀐 단위 시험만, 전체·커버리지는 CI
 ```
 
 ## 2-2. 공장현황 원본 파일 받기 — 실제 전국 자료로 돌려 볼 때만 (2026-11-06 추가)
