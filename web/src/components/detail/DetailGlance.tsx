@@ -39,6 +39,8 @@ import { choiceMarksOf } from '../records/ChoiceQuestion';
 import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
 import { pickGlanceLink } from './CompanyGlance';
 import DetailMiniMap from './DetailMiniMap';
+import ProcessFix from './ProcessFix';
+import type { ProcessOption } from './ProcessFix';
 import ProcessDifference from './ProcessDifference';
 import type { ProcessProposal } from './ProcessDifference';
 
@@ -218,7 +220,13 @@ export interface DetailGlanceProps {
    * 공정 줄 아래 "AI는 다르게 봄"에서 고를 때 쓰는 값(#677). 넘기지 않으면 그 줄을 그리지 않는다.
    * 이 상자에서 단추가 있는 곳은 그 줄뿐이다.
    */
-  processChoice?: { oppId: string; evalId: string | null; onSaved: () => void };
+  processChoice?: {
+    oppId: string;
+    evalId: string | null;
+    onSaved: () => void;
+    /** #847: 공정 줄 [고치기]의 보기(거산 공정 목록). 없으면 [고치기]를 보이지 않는다. */
+    options?: ProcessOption[];
+  };
   /** #803: 산업 칸 안에 바로 놓는 [확정]·[고치기] 칩(전에는 아래 "회사 소개 · 산업군" 카드). 없으면 글로만 보인다. */
   industryEditor?: ReactNode;
   /** #803: 근거 상태 막대(점수 8항목 가운데 근거가 붙은 항목 수). 없으면 막대를 그리지 않는다. */
@@ -653,6 +661,14 @@ export default function DetailGlance({
             ) : (
               texts.pending
             )}
+            {processChoice?.options ? (
+              <ProcessFix
+                oppId={processChoice.oppId}
+                current={confirmed.map((row) => row.processCode)}
+                options={processChoice.options}
+                onSaved={processChoice.onSaved}
+              />
+            ) : null}
           </FitLine>
           {showDifference && processChoice ? (
             <ProcessDifference

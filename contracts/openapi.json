@@ -12,6 +12,18 @@
             "title": "At",
             "type": "string"
           },
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attemptedat"
+          },
           "cancelled": {
             "default": false,
             "title": "Cancelled",
@@ -51,9 +63,87 @@
             ],
             "title": "Evalid"
           },
+          "firstMover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstmover"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "lostReasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lostreasoncode"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          },
+          "nextScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextschedulenote"
+          },
+          "noteKind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notekind"
           },
           "previousValue": {
             "anyOf": [
@@ -92,9 +182,42 @@
             ],
             "title": "Recordkind"
           },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
           "summary": {
             "title": "Summary",
             "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
           }
         },
         "required": [
@@ -199,6 +322,131 @@
           "olderClosedExcluded"
         ],
         "title": "AnalysisBasis",
+        "type": "object"
+      },
+      "AnalysisFeedbackView": {
+        "properties": {
+          "aiGenerated": {
+            "const": true,
+            "default": true,
+            "title": "Aigenerated",
+            "type": "boolean"
+          },
+          "comparedToPrevious": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackCompared"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costusd"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/FeedbackFailure"
+          },
+          "feedbackId": {
+            "title": "Feedbackid",
+            "type": "string"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "generatedBy": {
+            "title": "Generatedby",
+            "type": "string"
+          },
+          "heldBack": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Heldback",
+            "type": "array"
+          },
+          "inputHash": {
+            "title": "Inputhash",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "next": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Next",
+            "type": "array"
+          },
+          "periodFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodfrom"
+          },
+          "periodTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodto"
+          },
+          "promptVersion": {
+            "title": "Promptversion",
+            "type": "string"
+          },
+          "success": {
+            "$ref": "#/components/schemas/FeedbackSuccess"
+          }
+        },
+        "required": [
+          "feedbackId",
+          "periodFrom",
+          "periodTo",
+          "generatedAt",
+          "generatedBy",
+          "model",
+          "promptVersion",
+          "inputHash",
+          "costUsd",
+          "failure",
+          "success",
+          "next",
+          "heldBack",
+          "comparedToPrevious"
+        ],
+        "title": "AnalysisFeedbackView",
         "type": "object"
       },
       "ApprovalEligibility": {
@@ -2416,6 +2664,36 @@
         "title": "Envelope[Dashboard]",
         "type": "object"
       },
+      "Envelope_FeedbackResult_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeedbackResult"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[FeedbackResult]",
+        "type": "object"
+      },
+      "Envelope_FeedbackState_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeedbackState"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[FeedbackState]",
+        "type": "object"
+      },
       "Envelope_HandoffConfirmResponse_": {
         "properties": {
           "data": {
@@ -2639,6 +2917,21 @@
           "data"
         ],
         "title": "Envelope[Peers]",
+        "type": "object"
+      },
+      "Envelope_ProcessesResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProcessesResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ProcessesResponse]",
         "type": "object"
       },
       "Envelope_QuestionReplyResponse_": {
@@ -2912,6 +3205,247 @@
           "fileDate"
         ],
         "title": "FactoryProfile",
+        "type": "object"
+      },
+      "FeedbackClaim": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "evidence"
+        ],
+        "title": "FeedbackClaim",
+        "type": "object"
+      },
+      "FeedbackCompareRow": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "integer"
+          },
+          "key": {
+            "enum": [
+              "CONTACTED",
+              "WON",
+              "LOST",
+              "ON_HOLD",
+              "IN_PROGRESS"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "previous": {
+            "title": "Previous",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "current",
+          "previous"
+        ],
+        "title": "FeedbackCompareRow",
+        "type": "object"
+      },
+      "FeedbackCompared": {
+        "properties": {
+          "previousFrom": {
+            "format": "date",
+            "title": "Previousfrom",
+            "type": "string"
+          },
+          "previousTo": {
+            "format": "date",
+            "title": "Previousto",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackCompareRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "previousFrom",
+          "previousTo",
+          "rows"
+        ],
+        "title": "FeedbackCompared",
+        "type": "object"
+      },
+      "FeedbackFailure": {
+        "properties": {
+          "next": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Next",
+            "type": "array"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "vsSuccess": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Vssuccess",
+            "type": "array"
+          },
+          "where": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Where",
+            "type": "array"
+          },
+          "why": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Why",
+            "type": "array"
+          }
+        },
+        "required": [
+          "where",
+          "why",
+          "signals",
+          "vsSuccess",
+          "next"
+        ],
+        "title": "FeedbackFailure",
+        "type": "object"
+      },
+      "FeedbackRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "refresh": {
+            "default": false,
+            "title": "Refresh",
+            "type": "boolean"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "title": "FeedbackRequest",
+        "type": "object"
+      },
+      "FeedbackResult": {
+        "properties": {
+          "feedback": {
+            "$ref": "#/components/schemas/AnalysisFeedbackView"
+          },
+          "reused": {
+            "title": "Reused",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "feedback",
+          "reused"
+        ],
+        "title": "FeedbackResult",
+        "type": "object"
+      },
+      "FeedbackState": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisFeedbackView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "switchOn": {
+            "title": "Switchon",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "feedback",
+          "current",
+          "switchOn"
+        ],
+        "title": "FeedbackState",
+        "type": "object"
+      },
+      "FeedbackSuccess": {
+        "properties": {
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "where": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Where",
+            "type": "array"
+          },
+          "why": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Why",
+            "type": "array"
+          }
+        },
+        "required": [
+          "where",
+          "why",
+          "signals"
+        ],
+        "title": "FeedbackSuccess",
         "type": "object"
       },
       "FilterState": {
@@ -6869,6 +7403,41 @@
           "overlapCount"
         ],
         "title": "ProcessRow",
+        "type": "object"
+      },
+      "ProcessesRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "processCodes": {
+            "description": "거산 공정 목록 안 공정 코드, 1개 이상. 이 목록이 그 회사의 확정 공정 전체",
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCodes"
+        ],
+        "title": "ProcessesRequest",
+        "type": "object"
+      },
+      "ProcessesResponse": {
+        "properties": {
+          "processCodes": {
+            "description": "저장 뒤 확정 공정(거산 공정 목록 순서)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCodes"
+        ],
+        "title": "ProcessesResponse",
         "type": "object"
       },
       "ProfileRequest": {
@@ -11005,6 +11574,71 @@
         "summary": "Peers"
       }
     },
+    "/api/v1/opportunities/{oppId}/processes": {
+      "post": {
+        "operationId": "save_processes_api_v1_opportunities__oppId__processes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ProcessesResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Processes"
+      }
+    },
     "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {
       "post": {
         "description": "잘못 저장한 메모·영업 기록을 \"잘못 입력\"으로 표시한다(#253, PM 결정 2026-11-04 A안).\n\n행은 지우지 않고 취소한 사람·시각·이유만 그 행에 남긴다. 재평가는 하지 않는다.\n예외(#685): 접촉 기록을 취소해 통화에서 확인한 신호가 바뀌면 같은 저장 안에서 다시 평가한다.",
@@ -11475,6 +12109,124 @@
           }
         },
         "summary": "Sales Analysis"
+      }
+    },
+    "/api/v1/sales-analysis/feedback": {
+      "get": {
+        "description": "#824 저장본 읽기. AI·외부 호출 없음. current = 지금 기록으로 만든 입력과 같은지.",
+        "operationId": "sales_feedback_api_v1_sales_analysis_feedback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FeedbackState_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sales Feedback"
+      },
+      "post": {
+        "description": "#824 [분석 받기 💰]. 숫자 표 글만 영업 기록 문(SALES_ANALYSIS)을 거쳐 한 번 보내고 저장한다.\n\n같은 기간·같은 입력의 저장본이 있으면 refresh가 아닌 한 AI를 부르지 않는다. 세션은 AI를 기다리는\n동안 붙들지 않는다(영업 비서와 같은 방식).",
+        "operationId": "request_sales_feedback_api_v1_sales_analysis_feedback_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FeedbackResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Sales Feedback"
       }
     },
     "/api/v1/sales-analysis/patterns": {

@@ -2,7 +2,7 @@
 // 화면이 맨 위로 튀지 않고 "저장됨"과 고른 종류가 남는 것, "한눈에 › 확인할 것"과 "2. 통화에서 확인할 것"이 같은 기준인 것.
 // 서버 호출은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다. 실제 스크롤 위치는 이 시험 환경(jsdom)에 없어서
 // "화면을 비우지 않고 같은 자리의 부품을 그대로 둔다"로 확인한다.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import OpportunityDetailPage from '../OpportunityDetailPage';
@@ -194,7 +194,7 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     expect(screen.getByTestId('records-kind')).toHaveValue('CALL');
   });
 
-  it('"한눈에 › 확인할 것"은 낱말이 없어도 아래 "2. 통화에서 확인할 것"에 줄이 있으면 그 수를 적는다', async () => {
+  it('"한눈에 › 확인할 것"은 낱말이 없어도 확인사항에 줄이 있으면 그 수를 적는다 (#691, #847 이름 바뀜)', async () => {
     // 확인이 필요한 요구가 없어 낱말(공정·소재·근거 부족)은 없지만, 아래 목록에는 후속 조치·산업·질문 줄이 있다.
     mockedGet.mockResolvedValue(
       reply({
@@ -204,11 +204,10 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     );
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const lines = screen.getByTestId('call-list').children.length;
+    // #847: 확인사항은 주제별 묶음 + 줄마다 체크칸이라 체크칸 수가 줄 수다.
+    const lines = within(screen.getByTestId('detail-review')).getAllByRole('checkbox').length;
     expect(lines).toBeGreaterThan(0);
-    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(
-      `통화에서 확인할 것 ${lines}가지 (아래 2번)`,
-    );
+    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(`확인사항 ${lines}가지`);
     expect(screen.getByTestId('glance-check-text')).not.toHaveTextContent('지금 확인할 것 없음');
   });
 });

@@ -315,9 +315,7 @@ describe('DetailGlance (#674)', () => {
         now={NOW}
       />,
     );
-    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(
-      /^통화에서 확인할 것 2가지 \(아래 2번\)$/,
-    );
+    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(/^확인사항 2가지$/);
     rerender(
       <DetailGlance
         header={header}

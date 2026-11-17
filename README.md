@@ -61,7 +61,7 @@ geosan source-confirm kicox-production-api --by choi-pm
 `init-db`와 마찬가지로 실제 DB 볼륨이 붙은 실행 환경 안에서 실행해야 합니다. 다른 PC의 DB에 기록해도 서버 DB에는 반영되지 않습니다.
 이 명령은 외부 사이트에 접속하거나 이용 조건을 자동으로 확인하지 않습니다. API 키도 필요하지 않습니다.
 
-**발표 시연용 DB(#274, PM 결정 2026-11-04; #765에서 18곳으로 늘림, 2026-11-15)** — 가상 회사 18곳(성사 4·거절 5·보류 2·진행 중 7, 접촉은 1~150일 전)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
+**발표 시연용 DB(#274, PM 결정 2026-11-04; #765에서 18곳, #826에서 36곳으로 늘림, 2026-11-17)** — 가상 회사 36곳(성사 9·거절 11·보류 4·진행 중 12, 그중 일정 없이 멈춘 회사 2곳)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
 
 ```bash
 export GEOSAN_DB_PATH=./data/geosan-demo.db      # 윈도우 PowerShell: $env:GEOSAN_DB_PATH = "./data/geosan-demo.db"
@@ -69,6 +69,16 @@ geosan init-db
 geosan check-config examples/rule-config.yaml examples/app-settings-demo.yaml   # 띠 "시연용 · 가상 자료" + 시연 표시
 geosan import-capability examples/capability-geosan.json
 geosan import-case examples/case-apjeong.json
+geosan import-case examples/demo/case-demo-aa-precision.json
+geosan import-case examples/demo/case-demo-ab-tech.json
+geosan import-case examples/demo/case-demo-ac-metal.json
+geosan import-case examples/demo/case-demo-ad-industry.json
+geosan import-case examples/demo/case-demo-ae-precision.json
+geosan import-case examples/demo/case-demo-af-machining.json
+geosan import-case examples/demo/case-demo-ag-electronics.json
+geosan import-case examples/demo/case-demo-ah-metal.json
+geosan import-case examples/demo/case-demo-ak-tech.json
+geosan import-case examples/demo/case-demo-al-parts.json
 geosan import-case examples/demo/case-demo-b-metal.json
 geosan import-case examples/demo/case-demo-c-industry.json
 geosan import-case examples/demo/case-demo-d-tech.json
@@ -86,8 +96,16 @@ geosan import-case examples/demo/case-demo-o-parts.json
 geosan import-case examples/demo/case-demo-p-tech.json
 geosan import-case examples/demo/case-demo-q-industry.json
 geosan import-case examples/demo/case-demo-r-metal.json
+geosan import-case examples/demo/case-demo-s-precision.json
+geosan import-case examples/demo/case-demo-t-metal.json
+geosan import-case examples/demo/case-demo-u-tech.json
+geosan import-case examples/demo/case-demo-v-machining.json
+geosan import-case examples/demo/case-demo-w-industry.json
+geosan import-case examples/demo/case-demo-x-parts.json
+geosan import-case examples/demo/case-demo-y-electronics.json
+geosan import-case examples/demo/case-demo-z-machine.json
 geosan evaluate
-geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7(그중 다음 일정 7곳: 오늘 2곳 · 1~10일 뒤 5곳, #790) · 가상 위치 18곳(시연 지도·거리용, #811)
+geosan seed-demo-records                          # 가상 영업 기록: 36곳(성사 9·거절 11·보류 4·진행 중 12, 멈춘 회사 2곳) · 가상 위치 36곳(시연 지도·거리용, #811·#826)
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
@@ -152,6 +170,8 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
 
 **첫 배포 순서 — 보호 켠 설정 등록 (#736).** 저장소의 앱 설정 예시 3개는 모두 보호 꺼짐이고, 운영용 설정 파일은 따로 두지 않습니다. 볼륨 안에 예시에서 보호만 켠 사본을 만들어 기존 `check-config`로 등록합니다. 시작 명령 그대로 첫 배포를 하면 보호 꺼짐으로 멈춰 다시 켜기를 반복하고 접속할 수 없으므로, 처음 한 번은 점검용 시작 명령으로 띄웁니다.
 
+⚠️ 아래 3번처럼 예시 설정(`examples/app-settings.yaml`)에서 보호만 켜면 예시 값 그대로 AI 꺼짐(`llm.mode: NONE`)·소개서 묶음(`BROCHURE`)·거산 좌표 없음으로 등록됩니다(2026-11-17 예행연습). 실제 배포는 이 PC에서 쓰던 값에 보호를 켠 배포용 설정 파일을 PM이 볼륨 `/data/app-settings.yaml`로 올리고 3번의 `check-config`만 그 파일로 실행합니다. 이 파일은 저장소에 올리지 않습니다.
+
 1. Railway 서비스 설정의 시작 명령을 잠시 점검용 `/bin/sh -c 'sleep infinity'`로 바꾸고 배포합니다(서버는 뜨지 않고 컨테이너만 켜져 있습니다).
 2. 내 PC에서 `railway ssh`로 그 서비스에 접속합니다(Railway에 SSH 키 등록 필요).
 3. 접속한 창에서 저장소 폴더로 가서(Railpack 기본은 `/app`, 다르면 `railway.json`이 있는 폴더) 다음을 실행합니다.
@@ -173,7 +193,7 @@ HTTP 429는 한 번만 재시도하고 매번 횟수를 따로 셉니다.
    "검사 통과. 규칙 버전 … 등록, 앱 설정 사본 갱신"이 나오면 됩니다. 공공 소스 이용 확인(`geosan source-confirm …`)도 이 자리에서 합니다. 사본은 볼륨(`/data`)에 두어 재배포 뒤에도 남깁니다. 다른 설정 값을 바꿀 때도 이 사본을 고쳐 같은 명령으로 다시 등록합니다.
 4. 시작 명령을 위 원래 명령으로 되돌리고 다시 배포합니다. 로그에 "서버 시작: http://0.0.0.0:…"이 보이고, 화면을 열면 비밀번호 칸이 먼저 나오면 됩니다. 실제 사례 투입·평가는 PM과 확인한 뒤 별도로 진행합니다.
 
-Railway 공개 HTTPS 주소는 아직 없습니다. 사용자 확인대로 실제 `web/vercel.json`은 주소가 나온 뒤 다음 예시의 `RAILWAY_HOST`를 바꾸어 추가합니다. 이 예시를 그대로 배포하지 않습니다. API 규칙을 먼저 두고, 화면 경로 fallback에서 API를 제외해 API 오류가 HTML 성공 응답으로 바뀌지 않도록 합니다.
+Railway 공개 HTTPS 주소는 `https://geosan-server-production.up.railway.app`입니다(2026-11-17 발급). 실제 연결 파일은 `web/vercel.json`에 이 주소로 넣어 두었습니다(아래는 같은 모양의 예시). 주소가 바뀌면 그 파일의 주소만 고칩니다. API 규칙을 먼저 두고, 화면 경로 fallback에서 API를 제외해 API 오류가 HTML 성공 응답으로 바뀌지 않도록 합니다.
 
 ```json
 {

@@ -14,6 +14,7 @@ import { getSalesAnalysis } from '../api/salesAnalysis';
 import type { AnalysisPeriod, SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
+import AnalysisFeedbackCard from '../components/analysis/AnalysisFeedbackCard';
 import SalesPatterns from '../components/analysis/SalesPatterns';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
@@ -23,7 +24,7 @@ import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
 import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { analysisCharts, peersArea, salesAnalysisTexts as texts } from '../labels/ko';
+import { analysisCharts, salesAnalysisTexts as texts } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
@@ -164,7 +165,7 @@ export default function SalesAnalysisPage() {
         }}
       >
         <p data-testid="analysis-internal-note" style={{ ...secondary, flex: '1 1 320px' }}>
-          {peersArea.internalNote} · {texts.intro}
+          {texts.badge} · {texts.intro}
         </p>
         <PeriodPicker value={period} onChange={changePeriod} />
       </div>
@@ -218,6 +219,8 @@ export default function SalesAnalysisPage() {
                 </p>
               ) : null}
             </div>
+            {/* #824: AI 분석 피드백(실패 먼저, 근거 숫자). 💰 단추로만 부르고 기간마다 저장본을 먼저 읽는다. */}
+            <AnalysisFeedbackCard period={period} reloadKey={reload} />
             <AnalysisCharts data={data} />
             {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값. */}
             <SalesPatterns period={period} reloadKey={reload} processNames={processNames} />

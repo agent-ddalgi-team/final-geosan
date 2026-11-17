@@ -137,7 +137,8 @@ describe('OpportunityDetailPage', () => {
             kind: 'QUESTION',
             source: 'AI',
             text: '확인 질문 1',
-            targetLabel: '거산',
+            // #847: 거산에 대한 질문은 확인사항에 넣지 않는다(왼쪽 공정 [고치기]로). 이 시험은 상대 회사 질문으로 본다.
+            targetLabel: '상대 회사',
             checked: false,
           },
           {
@@ -166,17 +167,26 @@ describe('OpportunityDetailPage', () => {
     ]);
     expect(headings).not.toContain(detailSections.callChecklist);
     expect(headings).toContain(coachSteps.before);
+    // #847: 영업 코치 "① 통화 전" 칸에는 안내 문장 줄이 없다.
+    expect(
+      within(screen.getByTestId('detail-review')).queryByTestId('call-hint'),
+    ).not.toBeInTheDocument();
     expect(within(screen.getByTestId('detail-records')).getByTestId('detail-review')).toBeTruthy();
     expect(headings).not.toContain(detailSections.evidence);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
     const review = screen.getByTestId('detail-review');
-    const rows = within(review).getAllByTestId('review-item');
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('확인 질문 1');
+    const items = within(review).getAllByTestId('review-item');
+    expect(items).toHaveLength(2);
+    // #847: 확인사항은 주제별로 묶여 순서가 바뀔 수 있어 글로 찾는다.
+    const asked = items.find((row) => row.textContent?.includes('확인 질문 1')) as HTMLElement;
+    const done = items.find((row) => row !== asked) as HTMLElement;
+    const rows = [asked, done];
     // 이미 저장돼 있던 확인 표시는 그 줄 아래에 읽기 전용으로 보인다.
     expect(within(rows[1]).getByTestId('review-checked-by')).toHaveTextContent('✓ 확인함');
-    // 읽는 곳에는 체크·[답 적기]·[메모 적기]·[붙여넣고 조사]·진행 수가 없다.
-    expect(within(review).queryByRole('checkbox')).not.toBeInTheDocument();
+    // #847(PM 결정 2026-11-17): 확인사항은 통화 중 체크칸이 있다. 이미 확인 표시가 저장된 줄은 체크된 채로 시작한다.
+    expect(within(rows[1]).getByRole('checkbox')).toBeChecked();
+    expect(within(rows[0]).getByRole('checkbox')).not.toBeChecked();
+    // [답 적기]·[메모 적기]·[붙여넣고 조사]·진행 수는 없다.
     expect(within(review).queryByTestId('review-progress')).not.toBeInTheDocument();
     for (const id of ['review-reply-button', 'review-memo-button', 'review-paste-button']) {
       expect(screen.queryByTestId(id)).not.toBeInTheDocument();
@@ -203,15 +213,19 @@ describe('OpportunityDetailPage', () => {
     await screen.findByTestId('opportunity-detail');
     const user = userEvent.setup();
     const review = screen.getByTestId('detail-review');
-    // 질문 2줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
-    expect(within(review).getAllByTestId('review-item')).toHaveLength(2);
+    // 질문 줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
+    // #847(PM 결정 2026-11-17): 거산에 대한 질문은 확인사항에 없다(상대 회사 질문 1줄만).
+    expect(within(review).getAllByTestId('review-item')).toHaveLength(1);
+    expect(review).not.toHaveTextContent(
+      (fixtureData.reviewItems ?? []).find((item) => item.targetLabel === '거산')?.text ?? '없음',
+    );
     const fold = within(review).getByTestId('review-fold-toggle-gap');
     expect(fold).toHaveTextContent('아직 근거·자료가 없는 항목 1개 보기');
     expect(fold).toHaveAttribute('aria-expanded', 'false');
     await user.click(fold);
     const rows = within(review).getAllByTestId('review-item');
-    expect(rows).toHaveLength(3);
-    expect(rows[2]).toHaveTextContent('홈페이지를 찾지 못함');
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent('홈페이지를 찾지 못함');
     expect(within(rows[0]).getByTestId('review-reply')).toHaveTextContent(
       '답: 2024년에 KS 인증 받았다고 함',
     );
@@ -623,7 +637,9 @@ describe('OpportunityDetailPage', () => {
       '접촉 3회 (전화 2 · 방문 1)',
     );
     const activityCallsBefore = mockedActivity.mock.calls.length;
-    await user.click(await screen.findByTestId('timeline-cancel-open'));
+    // #849: [잘못 입력]은 ··· 메뉴 안에 있다.
+    await user.click(await screen.findByTestId('timeline-menu-open'));
+    await user.click(screen.getByTestId('timeline-cancel-open'));
     await user.click(screen.getByTestId('timeline-cancel-confirm'));
     expect(mockedCancel).toHaveBeenCalledWith('opp-1', 'outcome-7', {}, 'park-lee');
     await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));

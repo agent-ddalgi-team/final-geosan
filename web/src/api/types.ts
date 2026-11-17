@@ -1029,6 +1029,12 @@ export interface RelationResponse {
 
 // ---------- POST /opportunities/{oppId}/industries (상세 산업군 칩, #646) ----------
 
+/** #847 상세 "한눈에 › 공정" [고치기] 저장 응답(C1 `POST /opportunities/{oppId}/processes`). */
+export interface ProcessesResponse {
+  /** 저장 뒤 확정 공정 코드(거산 공정 목록 순서). */
+  processCodes: string[];
+}
+
 export interface IndustriesResponse {
   industries: string[];
   /** STAFF = 담당자 확정. 빈 배열로 되돌렸으면 null. */
@@ -1090,6 +1096,24 @@ export interface ActivityItem {
   cancelled?: boolean;
   cancelledBy?: string | null;
   cancelledAt?: string | null;
+  /**
+   * #849: 영업 기록 줄(recordKind OUTCOME)에만 오는 값. 화면이 흐름 줄·접촉 카드를 글 쪼개기 없이 나눈다.
+   * 옛 응답이나 다른 줄은 비어 있고, 그때 화면은 summary 글을 그대로 보인다.
+   */
+  status?: OutcomeStatus | null;
+  method?: 'CALL' | 'EMAIL' | 'VISIT' | null;
+  result?: 'REACHED' | 'ABSENT' | 'DECLINED' | null;
+  attemptedAt?: string | null;
+  nextScheduleAt?: string | null;
+  nextScheduleNote?: string | null;
+  lostReasonCode?: string | null;
+  /** 먼저 연락한 쪽 보기 이름(예: "상대가"). 기본 보기면 null. */
+  firstMover?: string | null;
+  /** 그때 쓴 한 줄 메모. 잘못 입력 행은 null. */
+  memo?: string | null;
+  /** #849: 메모 줄(recordKind NOTE)에만 오는 저장 종류와 앞머리 없는 글. 잘못 입력 행의 text는 null. */
+  noteKind?: string | null;
+  text?: string | null;
 }
 
 // ---------- POST /opportunities/{oppId}/records/{recordId}/cancel (기록 취소 [잘못 입력], 2026-11-12) ----------

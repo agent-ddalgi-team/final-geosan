@@ -169,6 +169,18 @@ def test_answer_fill_counts_only_where_the_question_is_asked():
     assert fill["WHO_TALKED"].eligible == 0  # 부재라 연결 전 질문을 묻지 않았다
 
 
+def test_answer_fill_counts_questions_of_steps_reached_in_the_same_call():
+    """Given 연결 전에서 시작해 같은 통화에서 연결됨으로 올라간 접촉 하나에서 관심을 답함
+    / When 채움률 / Then 관심(연결됨 단계)은 물을 자리 1·답함 1 — 실제 화면도 같은 통화에서
+    다음 단계 질문을 묻는다(#840). 연결 전 질문(누구와)도 물을 자리 1."""
+    lines = [
+        contact(D, before="NOT_REACHED", after="REACHED", answers=[("INTEREST", "HIGH")]),
+    ]
+    fill = {row.question_id: row for row in build([company("a", "IN_PROGRESS", lines)]).answer_fill}
+    assert (fill["INTEREST"].eligible, fill["INTEREST"].answered) == (1, 1)
+    assert fill["WHO_TALKED"].eligible == 1
+
+
 def test_answer_fill_keeps_only_contacts_in_the_period():
     """Given 기간 밖 접촉 1번과 안 1번 / When 기간을 주고 센다 / Then 기간 안 접촉만 대상."""
     lines = [contact(date(2026, 10, 1)), contact(date(2026, 11, 2))]

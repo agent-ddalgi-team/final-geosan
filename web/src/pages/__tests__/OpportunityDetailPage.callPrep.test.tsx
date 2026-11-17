@@ -55,24 +55,28 @@ function renderPage(config: ConfigUi | null, callPrep: typeof PREP | null = PREP
   );
 }
 
-describe('상세 › 영업 코치 · 통화 전 (#750)', () => {
-  // #803: 구분 줄을 없앴다. 지난 통화 뒤 정리는 영업 코치 "① 통화 전" 맨 위, 기록 칸 위에 있다.
-  it('"기록" 구역의 ① 통화 전 맨 위, 기록 칸 위에 지난 통화 뒤 정리가 보이고, [통화 준비] 단추는 없다', async () => {
+describe('상세 › 확인사항 › 지난 통화에서 이어서 (#750 → #847)', () => {
+  // #847(PM 결정 2026-11-17): 지난 통화 뒤 코치 정리는 따로 칸이 아니라 확인사항 맨 위 묶음이다(기록 칸 위).
+  it('확인사항 맨 위 "지난 통화에서 이어서 · 11/15" 묶음에 코치가 정리한 물어볼 것이 체크칸과 함께 보이고, [통화 준비] 단추는 없다', async () => {
     renderPage(configWith(true));
     const records = await screen.findByTestId('detail-records');
-    const prep = within(records).getByTestId('call-prep');
+    const group = within(records).getByTestId('check-group-prep');
     expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
     expect(
-      prep.compareDocumentPosition(within(records).getByTestId('records-area')) &
+      group.compareDocumentPosition(within(records).getByTestId('records-area')) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(within(prep).getByTestId('call-prep-lines')).toHaveTextContent('외주처는 어디인가요?');
+    expect(within(group).getByTestId('check-group-title')).toHaveTextContent(
+      '지난 통화에서 이어서 · 11/15',
+    );
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(2);
+    expect(group).toHaveTextContent('외주처는 어디인가요?');
     expect(screen.queryByTestId('call-prep-button')).not.toBeInTheDocument();
   });
 
-  it('스위치가 꺼져 있고 남긴 정리가 없으면 칸이 보이지 않는다', async () => {
+  it('남긴 정리가 없으면 그 묶음이 보이지 않는다', async () => {
     renderPage(configWith(false), null);
     await screen.findByTestId('detail-records');
-    expect(screen.queryByTestId('call-prep')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('check-group-prep')).not.toBeInTheDocument();
   });
 });

@@ -276,3 +276,83 @@ export function getSalesPatterns(
     signal,
   });
 }
+
+// ---------------------------------------------------------------------------
+// #824: AI 분석 피드백(계약 C1 `GET`·`POST /sales-analysis/feedback`). 숫자 표만 외부 AI에 보내고
+// 실패를 먼저(어디서 → 왜 → 실패 전 신호 → 성공과 다른 점 → 다음엔), 성공, 다음 할 일을 근거 숫자와
+// 받는다. 기간마다 저장하고, 같은 기간·같은 기록이면 다시 부르지 않는다(💰 단추로만 부른다).
+// ---------------------------------------------------------------------------
+
+export interface FeedbackClaim {
+  text: string;
+  /** 표의 숫자를 그대로 옮긴 근거(1개 이상). */
+  evidence: string[];
+}
+
+export interface AnalysisFeedback {
+  feedbackId: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  generatedAt: string;
+  generatedBy: string;
+  model: string | null;
+  promptVersion: string;
+  inputHash: string;
+  costUsd: number | null;
+  failure: {
+    where: FeedbackClaim[];
+    why: FeedbackClaim[];
+    signals: FeedbackClaim[];
+    vsSuccess: FeedbackClaim[];
+    next: FeedbackClaim[];
+  };
+  success: { where: FeedbackClaim[]; why: FeedbackClaim[]; signals: FeedbackClaim[] };
+  next: FeedbackClaim[];
+  heldBack: string[];
+  /** 프로그램이 센 앞 기간 비교(AI가 만들지 않음). 기간이 없으면 null. */
+  comparedToPrevious: {
+    previousFrom: string;
+    previousTo: string;
+    rows: {
+      key: 'CONTACTED' | 'WON' | 'LOST' | 'ON_HOLD' | 'IN_PROGRESS';
+      current: number;
+      previous: number;
+    }[];
+  } | null;
+  aiGenerated: true;
+}
+
+export interface FeedbackState {
+  feedback: AnalysisFeedback | null;
+  /** 저장본이 지금 기록으로 만든 입력과 같으면 true. */
+  current: boolean;
+  /** 영업 기록을 외부 AI로 보내는 스위치가 켜져 있고 AI 설정이 EXTERNAL이면 true. */
+  switchOn: boolean;
+}
+
+export function getSalesFeedback(
+  signal?: AbortSignal,
+  period?: AnalysisPeriod | null,
+): Promise<Envelope<FeedbackState>> {
+  const query = new URLSearchParams();
+  if (period?.from) query.set('from', period.from);
+  if (period?.to) query.set('to', period.to);
+  const search = query.toString();
+  return request<FeedbackState>(`/sales-analysis/feedback${search ? `?${search}` : ''}`, {
+    signal,
+  });
+}
+
+export function requestSalesFeedback(
+  period: AnalysisPeriod | null,
+  refresh: boolean,
+  staffKey: string,
+): Promise<Envelope<{ feedback: AnalysisFeedback; reused: boolean }>> {
+  return request<{ feedback: AnalysisFeedback; reused: boolean }>('/sales-analysis/feedback', {
+    method: 'POST',
+    body: { from: period?.from ?? null, to: period?.to ?? null, refresh },
+    staffKey,
+    // AI가 답하는 동안 기다린다(서버 한도 60초).
+    timeoutMs: 70_000,
+  });
+}

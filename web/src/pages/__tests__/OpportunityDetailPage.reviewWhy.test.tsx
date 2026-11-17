@@ -91,7 +91,8 @@ describe('상세 › "한눈에"의 공정 줄 (전에는 검토사항 맨 위 "
     // "확인할 것"과 "통화에서 확인할 것"이 공정을 말한다.
     expect(within(glance).getByTestId('glance-check-text')).toHaveTextContent('공정');
     const review = screen.getByTestId('detail-review');
-    expect(within(review).getByText('공정 —')).toBeInTheDocument();
+    // #847: 확인사항 "회사 확인" 묶음의 짧은 요약 "맡길 공정".
+    expect(within(review).getByTestId('check-group-company')).toHaveTextContent('맡길 공정');
     expect(review).not.toHaveTextContent('AI 공정 연결 제안');
     expect(screen.queryByTestId('review-proposal-confirm')).not.toBeInTheDocument();
   });

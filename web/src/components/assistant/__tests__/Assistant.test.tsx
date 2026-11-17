@@ -6,11 +6,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { postAssistantAsk } from '../../../api/assistant';
 import type { AssistantAnswer } from '../../../api/assistant';
 import { ApiError } from '../../../api/client';
-import type { CallPrepNote, ConfigUi } from '../../../api/types';
-import { assistantTexts as texts, coachTexts } from '../../../labels/ko';
+import type { ConfigUi } from '../../../api/types';
+import { assistantTexts as texts } from '../../../labels/ko';
 import { FrameContext } from '../../frame/FrameContext';
 import AssistantAsk from '../AssistantAsk';
-import CallPrep from '../CallPrep';
 
 vi.mock('../../../api/assistant', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/assistant')>()),
@@ -134,38 +133,5 @@ describe('AssistantAsk (대시보드 질문 칸)', () => {
     expect(screen.getByTestId('assistant-ask-button')).toBeDisabled();
     expect(screen.getByTestId('assistant-ask-hint')).toHaveTextContent(texts.pickStaffFirst);
     expect(mockedAsk).not.toHaveBeenCalled();
-  });
-});
-
-describe('CallPrep (상세 "영업 코치 · 통화 전" 칸, #750)', () => {
-  const PREP: CallPrepNote = {
-    noteId: 'note-5',
-    lines: ['외주처는 어디인가요?', '방문 날짜를 정할 수 있을까요?'],
-    at: '2026-11-15T10:00:00+09:00',
-    by: 'park-lee',
-  };
-
-  it('지난 통화 뒤 코치가 정리한 물어볼 것을 AI를 부르지 않고 보인다. [통화 준비] 단추는 없다', () => {
-    renderWith(<CallPrep prep={PREP} />, ON);
-    expect(screen.getByTestId('call-prep-date')).toHaveTextContent(coachTexts.prepTitle('11/15'));
-    expect(
-      within(screen.getByTestId('call-prep-lines'))
-        .getAllByRole('listitem')
-        .map((item) => item.textContent),
-    ).toEqual(PREP.lines);
-    expect(screen.queryByRole('button')).toBeNull();
-    expect(mockedAsk).not.toHaveBeenCalled();
-  });
-
-  it('정리가 없으면 [보내기]로 정리된다는 안내 한 줄, 스위치가 꺼져 있으면 아무것도 없다', () => {
-    const view = renderWith(<CallPrep prep={null} />, ON);
-    expect(screen.getByTestId('call-prep-none')).toHaveTextContent(coachTexts.prepNone);
-    view.unmount();
-    const off = renderWith(<CallPrep prep={null} />, OFF);
-    expect(off.container).toBeEmptyDOMElement();
-    off.unmount();
-    // 스위치를 꺼도 이미 남긴 정리는 보인다(저장된 글일 뿐, AI를 부르지 않는다).
-    renderWith(<CallPrep prep={PREP} />, null);
-    expect(screen.getByTestId('call-prep-lines')).toBeInTheDocument();
   });
 });

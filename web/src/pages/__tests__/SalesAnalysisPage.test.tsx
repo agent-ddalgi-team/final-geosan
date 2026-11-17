@@ -7,13 +7,7 @@ import SalesAnalysisPage from '../SalesAnalysisPage';
 import AppFrame from '../../components/frame/AppFrame';
 import type { DashboardBreakdown } from '../../api/dashboardTypes';
 import type { AnalysisStats, SalesAnalysis } from '../../api/salesAnalysis';
-import {
-  banner,
-  dashboardTexts,
-  frame,
-  peersArea,
-  salesAnalysisTexts as texts,
-} from '../../labels/ko';
+import { banner, dashboardTexts, frame, salesAnalysisTexts as texts } from '../../labels/ko';
 import configFixture from '../../test/fixtures/config-ui.json';
 
 function stats(overrides: Partial<AnalysisStats> = {}): AnalysisStats {
@@ -226,7 +220,7 @@ describe('영업 분석 화면 (#608)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('메뉴에 [영업 분석]이 있고 지금 보는 화면으로 표시되며, 내부 참고 문구가 보인다', async () => {
+  it('메뉴에 [영업 분석]이 있고 지금 보는 화면으로 표시되며, 내부 참고 문구와 AI로 보내는 때가 보인다', async () => {
     installFetch(ANALYSIS);
     renderPage();
     const link = screen.getByTestId('nav-sales-analysis-link');
@@ -234,7 +228,13 @@ describe('영업 분석 화면 (#608)', () => {
     expect(link).toHaveAttribute('href', '/sales-analysis');
     expect(link).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('영업 분석');
-    expect(screen.getByTestId('analysis-internal-note')).toHaveTextContent(peersArea.internalNote);
+    // #845(PM 결정 #821): [분석 받기] 뒤로 "밖으로 안 나감"·"AI는 쓰지 않습니다"는 사실과 달라 쓰지 않는다.
+    const note = screen.getByTestId('analysis-internal-note');
+    expect(note).toHaveTextContent('내부 참고 · 고객 제출용 아님');
+    expect(note).toHaveTextContent('[분석 받기]를 누를 때만 숫자 표를 외부 AI에 보냅니다');
+    expect(note).toHaveTextContent('회사 이름·연락처는 보내지 않습니다');
+    expect(note).not.toHaveTextContent('밖으로 안 나감');
+    expect(note).not.toHaveTextContent('AI는 쓰지 않습니다');
     await screen.findByTestId('analysis-process-table');
   });
 
@@ -413,7 +413,7 @@ describe('영업 분석 화면 (#608)', () => {
     const rows = within(table).getAllByTestId('analysis-company-row');
     expect(rows).toHaveLength(3);
     expect(rows[0]).toHaveTextContent(
-      '가상정밀아연도금자동차 부품전화 3 · 방문 1성사10/2011/524일첫 접촉 뒤 21일 만에 성사 (11/10)',
+      '가상정밀아연도금자동차 부품전화 3 · 대면 1성사10/2011/524일첫 접촉 뒤 21일 만에 성사 (11/10)',
     );
     expect(rows[1]).toHaveTextContent('거절 · 기존 거래처 유지');
     expect(rows[1]).toHaveTextContent('첫 접촉 뒤 6일 만에 거절 (10/27)');

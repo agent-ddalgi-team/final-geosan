@@ -1492,6 +1492,10 @@ def activity(
                 cancelled=row.cancelled_at is not None,
                 cancelled_by=row.cancelled_by,
                 cancelled_at=row.cancelled_at,
+                # #849: 남긴 피드백과 다음 통화 준비는 줄 종류가 같아(ADVICE) 저장 종류로 가른다.
+                # 글은 앞머리 없이 그대로 싣고, 잘못 입력 행은 summary처럼 싣지 않는다.
+                note_kind=row.kind,
+                text=row.text if row.cancelled_at is None else None,
             )
         )
     # #691: 접촉 줄 끝에 먼저 연락한 쪽을 붙인다.
@@ -1552,6 +1556,21 @@ def activity(
                 cancelled=row.cancelled_at is not None,
                 cancelled_by=row.cancelled_by,
                 cancelled_at=row.cancelled_at,
+                # #849: summary 글에 든 값을 따로도 싣는다(화면이 흐름 줄·카드로 나눔).
+                # 메모는 summary와 같은 규칙(잘못 입력 행은 비움).
+                status=row.status,
+                method=row.method,
+                result=row.result,
+                attempted_at=row.attempted_at,
+                next_schedule_at=row.next_schedule_at,
+                next_schedule_note=row.next_schedule_note,
+                lost_reason_code=row.lost_reason_code,
+                first_mover=first_mover.get(row.outcome_id),
+                memo=(
+                    row.memo.strip()
+                    if row.memo and row.memo.strip() and row.cancelled_at is None
+                    else None
+                ),
             )
         )
     # 취소한 행위도 한 줄로 보인다. 누가 언제 취소했는지가 기록이다.
