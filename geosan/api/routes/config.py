@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from geosan.api.deps import SessionDep, current_account, runtime_for
 from geosan.api.process_catalog import load_process_catalog
-from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, Meta
+from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, HandoffTeamView, Meta
 from geosan.capability.models import Process
 from geosan.config.models import AppSetting
 from geosan.evidence.transfer import ai_call_configured
@@ -69,6 +69,16 @@ def config_ui(session: SessionDep):
             },
             current_staff=_current_staff(session),
             operations_staff_keys=settings.operations_staff_keys(),
+            # #853: 받을 사람이 있는 역할 묶음만.
+            handoff_teams=[
+                HandoffTeamView(
+                    key=team.key,
+                    label=team.label,
+                    staff_keys=settings.handoff_team_members(team.key),
+                )
+                for team in settings.handoff_teams
+                if settings.handoff_team_members(team.key)
+            ],
         ),
         meta=Meta(
             updated_at=session.scalar(select(func.max(AppSetting.updated_at))),

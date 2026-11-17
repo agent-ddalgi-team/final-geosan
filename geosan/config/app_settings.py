@@ -432,6 +432,19 @@ class OperationsSettings(FileModel):
     factory_csv_refresh_days: int = Field(default=180, ge=1, le=3650, strict=True)
 
 
+class HandoffTeam(FileModel):
+    """#853(PM 결정 2026-11-17): 전달 사항을 사람 대신 역할로 받는 묶음(예: 영업 = 영업 계정 둘).
+
+    묶음에 보내면 묶음 안 기록 담당자 모두가 보고, 한 사람이 [확인했어요]를 누르면 끝난다.
+    담당자 목록(staff)에 없는 키·보기 전용 키는 무시한다(운영 담당 staffKeys와 같은 규칙).
+    """
+
+    # 코드표 값처럼 영문 대문자(예: SALES). 화면에는 label을 보인다.
+    key: str = Field(pattern=r"^[A-Z][A-Z0-9_]{0,31}$")
+    label: str = Field(min_length=1, max_length=40)
+    staff_keys: list[str] = Field(default_factory=list)
+
+
 class GeosanLocationSettings(FileModel):
     """거리의 기준점(C7 #222). 좌표가 준비되기 전에는 거리 값을 내지 않는다."""
 
@@ -498,6 +511,8 @@ class AppSettings(FileModel):
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
     # #799: 옛 설정 파일·DB 사본에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     operations: OperationsSettings = Field(default_factory=OperationsSettings)
+    # #853: 전달 사항 받는 역할 묶음. 빈 목록이면 화면은 지금처럼 사람별로 고른다.
+    handoff_teams: list[HandoffTeam] = Field(default_factory=list)
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
     geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
@@ -517,6 +532,25 @@ class AppSettings(FileModel):
         staff = set(self.staff_keys())
         return [key for key in self.operations.staff_keys if key in staff]
 
+    def handoff_team(self, key: str | None) -> HandoffTeam | None:
+        """#853 역할 묶음 하나(없으면 None)."""
+        return next((team for team in self.handoff_teams if team.key == key), None)
+
+    def handoff_team_members(self, key: str | None) -> list[str]:
+        """#853 그 묶음에서 실제로 받을 수 있는 키(담당자 목록에 있고 기록할 수 있는 사람)만."""
+        team = self.handoff_team(key)
+        if team is None:
+            return []
+        return [member for member in team.staff_keys if self.is_recording_staff(member)]
+
+    def handoff_teams_of(self, staff_key: str | None) -> list[str]:
+        """#853 이 담당자가 속한 묶음 키들."""
+        return [
+            team.key
+            for team in self.handoff_teams
+            if staff_key in self.handoff_team_members(team.key)
+        ]
+
     def is_recording_staff(self, key: str | None) -> bool:
         """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3).
 
@@ -532,6 +566,15 @@ class AppSettings(FileModel):
     def set_viewer_keys(self, keys) -> None:
         """계정 방식의 보기 전용 계정 키(#754). 설정 파일 칸이 아니라 실행 중에만 쓴다."""
         self._viewer_keys = frozenset(keys)
+
+    @model_validator(mode="after")
+    def check_handoff_teams(self) -> AppSettings:
+        """#853 역할 묶음 키는 겹치지 않아야 한다(받는 사람을 하나로 정할 수 없으므로)."""
+        keys = [team.key for team in self.handoff_teams]
+        repeated = sorted({key for key in keys if keys.count(key) > 1})
+        if repeated:
+            raise ValueError(f"handoffTeams의 key가 겹칩니다: {', '.join(repeated)}")
+        return self
 
     @model_validator(mode="after")
     def check_pick_model(self) -> AppSettings:
