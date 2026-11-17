@@ -24,7 +24,7 @@ import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
 import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { analysisCharts, peersArea, salesAnalysisTexts as texts } from '../labels/ko';
+import { analysisCharts, salesAnalysisTexts as texts } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
@@ -165,7 +165,7 @@ export default function SalesAnalysisPage() {
         }}
       >
         <p data-testid="analysis-internal-note" style={{ ...secondary, flex: '1 1 320px' }}>
-          {peersArea.internalNote} · {texts.intro}
+          {texts.badge} · {texts.intro}
         </p>
         <PeriodPicker value={period} onChange={changePeriod} />
       </div>
