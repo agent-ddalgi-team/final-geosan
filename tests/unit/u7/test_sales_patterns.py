@@ -357,3 +357,43 @@ def test_no_standout_when_one_side_is_below_the_sample():
     result = build(companies)
     assert result.standouts == []
     assert all(not r.judged for r in result.contacts_before_visit)
+
+
+def test_outcome_questions_are_left_out_of_answer_tables_and_standouts():
+    """Given 결과를 묻는 질문(CLOSE_RESULT: 성사·거절)에 답한 끝난 회사 24곳 / When 센다
+    / Then 그 질문은 답별 표와 '눈에 띔'에 없다 — 결과 자체라 "거절로 답한 회사는 성사 0"처럼
+    순환한다(#820 후속, PM 2026-11-17). 다른 질문(관심)은 그대로 센다."""
+    questions = [*QUESTIONS, QuestionInfo("CLOSE_RESULT", "ALL", decides_outcome=True)]
+    companies = []
+    for i in range(12):
+        companies.append(
+            company(
+                f"w{i}",
+                "WON",
+                [
+                    contact(D, answers=[("CLOSE_RESULT", "WON"), ("INTEREST", "HIGH")]),
+                    close(D, "WON"),
+                ],
+            )
+        )
+        companies.append(
+            company(
+                f"l{i}",
+                "LOST",
+                [
+                    contact(D, answers=[("CLOSE_RESULT", "LOST"), ("INTEREST", "LOW")]),
+                    close(D, "LOST"),
+                ],
+                reason="PRICE",
+            )
+        )
+    result = build_sales_patterns(
+        companies,
+        questions=questions,
+        step_order=STEPS,
+        lost_reason_order=LOST_ORDER,
+        min_sample_for_ratio=10,
+    )
+    assert all(r.question_id != "CLOSE_RESULT" for r in result.answer_outcomes)
+    assert all(getattr(s, "question_id", None) != "CLOSE_RESULT" for s in result.standouts)
+    assert any(r.question_id == "INTEREST" for r in result.answer_outcomes)

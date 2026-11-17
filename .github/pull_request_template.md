@@ -17,7 +17,7 @@
 
 ## 검사
 <!-- 실제로 돌린 명령 하나와 결과 한 줄. mock으로만 본 것이 있으면 적는다 -->
-- [ ] `bash scripts/check.sh` (윈도우 `python scripts/check.py`) 통과:
+- [ ] `bash scripts/check.sh fast` (윈도우 `python scripts/check.py fast`) 통과 — 전체 단위 시험·커버리지는 CI 초록 확인(큰 변경은 `bash scripts/check.sh` 전체):
 - [ ] 실제 연결(임시 DB·브라우저)까지 본 것 / mock으로만 본 것:
 
 ## 약속(계약) 파일을 바꿨나요?
