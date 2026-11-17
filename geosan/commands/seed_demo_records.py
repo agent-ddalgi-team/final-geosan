@@ -76,7 +76,8 @@ class DemoContact(FileModel):
         # "(가상)"이 붙어 있어 글에도 붙이면 "G정공(가상) (가상) 소개서…"처럼 두 번 보인다.
         if self.next_note is not None and "(가상)" in self.next_note:
             raise ValueError(
-                "nextNote에는 (가상)을 붙이지 않습니다. 회사 이름에 이미 붙어 있어 화면에 두 번 보입니다"
+                "nextNote에는 (가상)을 붙이지 않습니다. "
+                "회사 이름에 이미 붙어 있어 화면에 두 번 보입니다"
             )
         return self
 

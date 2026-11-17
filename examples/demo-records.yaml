@@ -748,6 +748,10 @@ companies:
   - caseId: demo-ag-electronics   # AG전자(가상) · 아노다이징
     location: { lat: 36.63, lng: 127.25 }   # 가상 위치(#811)
     contacts:
+      - daysAgo: 41
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일에 답 없음"
       - daysAgo: 35
         method: CALL
         result: REACHED
@@ -760,6 +764,10 @@ companies:
   - caseId: demo-ah-metal   # AH금속(가상) · 부동태
     location: { lat: 36.88, lng: 127.21 }   # 가상 위치(#811)
     contacts:
+      - daysAgo: 13
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
       - daysAgo: 9
         nextInDays: 3
         nextNote: "성적서 보내고 회신 확인"
@@ -793,6 +801,10 @@ companies:
   - caseId: demo-al-parts   # AL부품(가상) · 아연도금
     location: { lat: 36.84, lng: 127.24 }   # 가상 위치(#811)
     contacts:
+      - daysAgo: 9
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
       - daysAgo: 4
         nextInDays: 12
         nextNote: "첫 통화 다시 시도"

@@ -27,7 +27,7 @@
     "project": null,
     "purpose": "NEW_PROPOSAL",
     "owner": "park-lee",
-    "cardReason": "스테인리스 밸브 부품에 내식성이 필요하고 밸브 조립동을 증설해 부동태 처리 수요가 있다 (가상 홈페이지·소식)"
+    "cardReason": "펌프 부품 부동태를 직접 처리하고 기존 거래처와 계약이 있다 (가상 홈페이지·소식)"
   },
   "discoveryPaths": [
     {
@@ -63,7 +63,7 @@
       "certainty": "CONFIRMED",
       "isLlmProposed": false,
       "subject": "PRODUCT",
-      "quote": "스테인리스 밸브 부품 생산 (가상 홈페이지)",
+      "quote": "펌프 부품 생산 (가상 홈페이지)",
       "sourceRef": "AA정공 홈페이지 제품 소개 (가상)",
       "occurredAt": null,
       "securityGrade": "PUBLIC",
@@ -109,7 +109,7 @@
       "matchRate": 1.0,
       "certainty": "CONFIRMED",
       "state": "CONFIRMED",
-      "factJudged": "표면처리가 필요한 스테인리스 밸브 부품 생산 (해당, 확인) — 가상",
+      "factJudged": "표면처리가 필요한 펌프 부품 생산 (해당, 확인) — 가상",
       "evidenceRefs": [
         0
       ],
