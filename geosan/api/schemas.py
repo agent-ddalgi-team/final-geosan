@@ -296,6 +296,14 @@ class CurrentStaff(_ApiModel):
     setup_required: bool
 
 
+class HandoffTeamView(_ApiModel):
+    """#853 전달 사항 받는 역할 묶음 하나(설정 handoffTeams)."""
+
+    key: str
+    label: str
+    staff_keys: list[str]
+
+
 class ConfigUi(_ApiModel):
     staff: list[StaffEntry]
     brand: Brand
@@ -319,6 +327,13 @@ class ConfigUi(_ApiModel):
         description=(
             "운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys, #799). "
             "화면은 지금 담당자가 이 안에 있을 때만 메뉴를 보인다. 권한은 서버가 판단한다"
+        ),
+    )
+    handoff_teams: list[HandoffTeamView] = Field(
+        default_factory=list,
+        description=(
+            "전달 사항을 받는 역할 묶음(설정 handoffTeams, #853). staffKeys는 실제로 받을 수 있는 "
+            "기록 담당자만. 받을 사람이 없는 묶음은 빼고 보낸다. 비어 있으면 화면은 사람별로 고른다"
         ),
     )
 
@@ -802,7 +817,9 @@ class HandoffNote(_ApiModel):
     note_id: str
     text: str
     from_: str = Field(alias="from")
+    # 받는 사람 키. 역할 묶음으로 보낸 전달 사항(#853)이면 빈 글자이고 to_team이 채워진다.
     to: str
+    to_team: str | None = None
     at: datetime
     confirmed_at: datetime | None = None
     confirmed_by: str | None = None
@@ -959,6 +976,8 @@ class NoteRequest(_RequestModel):
     kind: Literal["MEMO", "RESEARCH", "ADVICE", "CALL_PREP", "HANDOFF"] = "MEMO"
     text: str
     to_staff_key: str | None = Field(default=None, max_length=64)
+    # #853: 사람 대신 역할 묶음(설정 handoffTeams의 key)으로 보낼 때. toStaffKey와 둘 중 하나만.
+    to_team: str | None = Field(default=None, max_length=32)
     eval_id: str | None = None
     # #259: 검토사항 자료 줄 번호. 없으면 지금과 같은 일반 메모.
     item_id: str | None = None

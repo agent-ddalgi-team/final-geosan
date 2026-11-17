@@ -26,7 +26,6 @@ import type {
   OutcomeRecord,
   OutcomeRequest,
   OutcomeStatus,
-  SalesQuestion,
   SalesQuestions,
   SalesStep,
   SalesStepView,
@@ -143,27 +142,12 @@ export function recordsEntryInputId(oppId: string): string {
 
 const RECORD_KIND_ORDER: RecordKind[] = ['CALL', 'EMAIL', 'VISIT', 'MEMO'];
 
+/** #853 메모 받는 사람 칸에서 역할 묶음 값의 머리(사람 키와 섞이지 않게). */
+const TEAM_PREFIX = 'team:';
+
 function recordKindLabel(kind: RecordKind): string {
   if (kind === 'MEMO') return noteKindLabels.MEMO;
   return contactMethodLabels[kind];
-}
-
-/**
- * #847(PM 결정 2026-11-17): 종류와 "누가 먼저 연락했나요?"를 한 칸으로.
- * "전화 · 발신 / 전화 · 수신 / 메일 · 발신 / 메일 · 수신 / 대면 · 외근 / 대면 · 내방 / 메모".
- * 값은 기본 보기(우리가)면 종류 그대로("CALL"), 다른 보기면 "CALL:THEIRS". 질문 파일이 없으면 종류만.
- */
-function kindOptionsOf(direction: SalesQuestion | null): { value: string; label: string }[] {
-  const defaultId = direction?.answers.find((option) => option.default)?.answerId;
-  return RECORD_KIND_ORDER.flatMap((kind) => {
-    if (kind === 'MEMO' || !direction) return [{ value: kind, label: recordKindLabel(kind) }];
-    return direction.answers.map((option) => ({
-      value: option.answerId === defaultId ? kind : `${kind}:${option.answerId}`,
-      label: `${recordKindLabel(kind)} · ${
-        salesQuestionTexts.contactDirectionLabels[kind]?.[option.answerId] ?? option.label
-      }`,
-    }));
-  });
 }
 
 /** 접촉 날짜가 오늘(한국 시간)보다 뒤라서 서버가 돌려보낸 오류의 칸 이름(약속 C1, #433). */
@@ -325,9 +309,15 @@ export default function RecordsArea({
   const noteKind: NoteKind = 'MEMO';
   // #847: 메모에 받는 사람을 고르면 전달 사항(HANDOFF)으로 남는다. 안 고르면 그냥 메모.
   const [noteTo, setNoteTo] = useState<string | null>(null);
-  const noteTargets = (config?.staff ?? []).filter(
-    (entry) => entry.key !== staffKey && entry.key !== VIEWER_KEY,
-  );
+  // #853(PM 결정 2026-11-17): 역할 묶음(영업·검수·운영)이 설정돼 있으면 사람 대신 묶음으로 고른다.
+  // 묶음 값은 "team:SALES"처럼 앞에 team:을 붙여 사람 키와 섞이지 않게 한다. 나 말고 받을 사람이 없는 묶음은 뺀다.
+  const teamTargets = (config?.handoffTeams ?? [])
+    .filter((team) => team.staffKeys.some((key) => key !== staffKey))
+    .map((team) => ({ key: `${TEAM_PREFIX}${team.key}`, displayName: team.label }));
+  const noteTargets =
+    teamTargets.length > 0
+      ? teamTargets
+      : (config?.staff ?? []).filter((entry) => entry.key !== staffKey && entry.key !== VIEWER_KEY);
 
   const [stage, setStage] = useState<OutcomeStatus | null>(null);
   const [lostReason, setLostReason] = useState('');
@@ -437,7 +427,7 @@ export default function RecordsArea({
   // 접촉마다 남기는 답(누가 먼저 연락했나): 기본 보기가 골라져 있고 부재 접촉에도 보낸다(#691).
   const contactQuestions = contactQuestionsOf(questions);
   const contactAnswers = { ...contactDefaults(questions), ...contactPicks };
-  // #847: 첫 접촉 질문("누가 먼저 연락했나요?")은 종류 칸에 합친다(발신/수신, 외근/내방).
+  // #853: 첫 접촉 질문("누가 먼저 연락했나요?")은 종류 옆 단추로 고른다(발신/수신, 외근/내방).
   const direction = contactQuestions[0] ?? null;
   const directionDefault = direction?.answers.find((option) => option.default)?.answerId;
 
@@ -782,9 +772,16 @@ export default function RecordsArea({
     try {
       const envelope = await postNote(
         oppId,
-        noteTo
-          ? { text, kind: 'HANDOFF', toStaffKey: noteTo, ...(evalId ? { evalId } : {}) }
-          : { text, kind: noteKind, ...(evalId ? { evalId } : {}) },
+        noteTo?.startsWith(TEAM_PREFIX)
+          ? {
+              text,
+              kind: 'HANDOFF',
+              toTeam: noteTo.slice(TEAM_PREFIX.length),
+              ...(evalId ? { evalId } : {}),
+            }
+          : noteTo
+            ? { text, kind: 'HANDOFF', toStaffKey: noteTo, ...(evalId ? { evalId } : {}) }
+            : { text, kind: noteKind, ...(evalId ? { evalId } : {}) },
         staffKey,
       );
       setNoteText('');
@@ -1151,27 +1148,42 @@ export default function RecordsArea({
         <div style={rowStyle}>
           <NativeSelect
             label={recordsArea.entryKind}
-            value={
-              method && direction && contactAnswers[direction.questionId] !== directionDefault
-                ? `${method}:${contactAnswers[direction.questionId]}`
-                : recordKind
-            }
-            options={kindOptionsOf(direction)}
+            value={recordKind}
+            options={RECORD_KIND_ORDER.map((kind) => ({
+              value: kind,
+              label: recordKindLabel(kind),
+            }))}
             onChange={(value) => {
-              const [kind, answerId] = (value ?? 'CALL').split(':');
-              setRecordKind(kind as RecordKind);
-              if (direction && directionDefault) {
-                setContactPicks((previous) => ({
-                  ...previous,
-                  [direction.questionId]: answerId ?? directionDefault,
-                }));
-              }
+              setRecordKind((value as RecordKind | null) ?? 'CALL');
               clearCoach();
             }}
             disabled={disabled}
             testId="records-kind"
             id={recordsEntryInputId(oppId)}
           />
+          {method && direction ? (
+            // #853(PM 결정 2026-11-17): "누가 먼저 연락했나요?"는 종류 옆 단추 두 개(발신 | 수신, 대면은 외근 | 내방).
+            // 기본 "발신"이 골라져 있어 보통은 누르지 않는다. 메모면 보이지 않는다.
+            <Radio.Group
+              aria-label={direction.text}
+              optionType="button"
+              value={contactAnswers[direction.questionId] ?? directionDefault}
+              disabled={disabled}
+              onChange={(event) =>
+                setContactPicks((previous) => ({
+                  ...previous,
+                  [direction.questionId]: event.target.value as string,
+                }))
+              }
+              options={direction.answers.map((option) => ({
+                value: option.answerId,
+                label:
+                  salesQuestionTexts.contactDirectionLabels[method]?.[option.answerId] ??
+                  option.label,
+              }))}
+              data-testid="records-direction"
+            />
+          ) : null}
           {method ? (
             <>
               {/* 누가 먼저 연락했나(#691): 기본 "우리가"가 골라져 있어 대부분 누를 필요가 없다. 방문은 "우리가 감 / 상대가 옴". */}

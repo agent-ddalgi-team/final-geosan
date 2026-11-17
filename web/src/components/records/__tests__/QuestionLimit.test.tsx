@@ -233,8 +233,8 @@ describe('꼬리 질문은 한 통화에 설정한 수까지만 (#691)', () => {
     // 세지 않는 것은 늘 보인다: 공정 확인, 다음 할 일, 종류 옆 "누가 먼저".
     expect(screen.getByTestId('sales-question-CONFIRM_PROCESS')).toBeInTheDocument();
     expect(screen.getByTestId('sales-question-NEXT_ACTION')).toBeInTheDocument();
-    // #847: "누가 먼저 연락했나요?"는 종류 칸에 합쳐져 따로 칸이 없다(세는 수에도 안 들어간다).
-    expect(screen.getByRole('option', { name: '전화 · 수신' })).toBeInTheDocument();
+    // #853: "누가 먼저 연락했나요?"는 종류 옆 단추로 고른다(세는 수에는 안 들어간다).
+    expect(screen.getByTestId('records-direction')).toBeInTheDocument();
     // 접는 한 줄은 묶음 맨 끝에 있다.
     expect(before(screen.getByTestId('sales-question-NEXT_ACTION'), more)).toBe(true);
   });

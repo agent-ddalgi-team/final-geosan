@@ -362,6 +362,8 @@ export interface ConfigUi {
   currentStaff?: CurrentStaff | null;
   /** #799: 운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys). 옛 서버면 없다. */
   operationsStaffKeys?: string[];
+  /** #853 전달 사항 받는 역할 묶음(받을 사람이 있는 것만). 옛 응답·설정이 없으면 비어 있다(사람별로 고름). */
+  handoffTeams?: HandoffTeam[];
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
@@ -772,11 +774,20 @@ export interface DetailRecords {
 }
 
 /** #771 전달 사항 한 행. from·to는 담당자 키(화면은 담당자 목록 이름으로 바꿔 보인다). */
+/** #853 전달 사항 받는 역할 묶음 하나. */
+export interface HandoffTeam {
+  key: string;
+  label: string;
+  staffKeys: string[];
+}
+
 export interface HandoffNote {
   noteId: string;
   text: string;
   from: string;
   to: string;
+  /** #853 역할 묶음(설정 handoffTeams의 key)으로 보낸 전달 사항이면 그 key, 이때 to는 빈 글자. 옛 응답에는 없다. */
+  toTeam?: string | null;
   at: string;
   confirmedAt: string | null;
   confirmedBy: string | null;
@@ -906,6 +917,8 @@ export interface NoteRequest {
   kind?: NoteKind;
   /** #771 전달 사항(kind HANDOFF)일 때만: 받는 사람 담당자 키. */
   toStaffKey?: string;
+  /** #853 사람 대신 역할 묶음으로 보낼 때(toStaffKey와 둘 중 하나). */
+  toTeam?: string;
   evalId?: string | null;
   /**
    * 검토사항 자료 줄 번호(#259·#260, 더하는 변경 2026-11-12). 있으면 kind는 RESEARCH여야 하고(아니면 400),

@@ -131,6 +131,62 @@ describe('RecordsArea', () => {
     expect(screen.getByTestId('records-note-save-button')).toHaveTextContent(recordsArea.noteSave);
   });
 
+  // #853(PM 결정 2026-11-17): 역할 묶음이 설정돼 있으면 받는 사람은 "영업 / 검수 / 운영"이고 묶음으로 보낸다.
+  it('Given 역할 묶음 설정 When 메모 받는 사람에서 "영업"을 고르고 저장하면 Then toTeam SALES로 보낸다', async () => {
+    const user = userEvent.setup();
+    mockedNote.mockResolvedValueOnce({
+      data: {
+        version: 1,
+        updatedBy: 'kim-gwajang',
+        updatedAt: '2026-11-04T01:12:00Z',
+        noteId: 'n-4',
+      },
+      meta: {},
+    });
+    renderArea(
+      frameValue({
+        staffKey: 'kim-gwajang',
+        config: {
+          records: { approvalEnabled: false, noteMaxLength: 200 },
+          staff: [
+            { key: 'park-lee', displayName: '영업 담당' },
+            { key: 'lee-sales', displayName: '영업 담당 2' },
+            { key: 'kim-gwajang', displayName: '검수 담당' },
+          ],
+          handoffTeams: [
+            { key: 'SALES', label: '영업', staffKeys: ['park-lee', 'lee-sales'] },
+            // 나뿐인 묶음은 받는 사람 목록에 없다.
+            { key: 'QUALITY', label: '검수(품질·기술)', staffKeys: ['kim-gwajang'] },
+          ],
+          brand: { logoUrl: null, brandName: '', colorPrimary: '', demoLabel: null },
+          classificationLabels: {},
+          activeDatasetKind: 'BROCHURE',
+          accessProtectionEnabled: false,
+          ruleVersion: 'v',
+        },
+      }),
+    );
+    await pick(user, 'records-kind', '메모');
+    const to = screen.getByTestId('records-note-to');
+    expect(
+      within(to)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([recordsArea.noteToNone, '영업']);
+    fireEvent.change(screen.getByTestId('records-note-input'), {
+      target: { value: '도금 두께 요구는 설비로 가능' },
+    });
+    await pick(user, 'records-note-to', '영업');
+    await user.click(screen.getByTestId('records-note-save-button'));
+    await waitFor(() =>
+      expect(mockedNote).toHaveBeenCalledWith(
+        OPP,
+        { text: '도금 두께 요구는 설비로 가능', kind: 'HANDOFF', toTeam: 'SALES', evalId: EVAL },
+        'kim-gwajang',
+      ),
+    );
+  });
+
   // #847(PM 결정 2026-11-17): 위쪽 [전달 사항 남기기]를 없애고 메모에 "받는 사람"을 둔다.
   it('Given 메모 When 받는 사람을 고르고 저장하면 Then 전달 사항(HANDOFF)으로 남고 상세를 다시 읽게 알린다', async () => {
     const user = userEvent.setup();
