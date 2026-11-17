@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, Input } from 'antd';
-import { ApiError, getActivity, postRecordCancel } from '../../api/client';
+import { ApiError, getActivity, getSalesQuestions, postRecordCancel } from '../../api/client';
 import type { ActivityItem } from '../../api/types';
 import {
   activityKindLabels,
@@ -21,6 +21,7 @@ import {
   lostReasonLabels,
   opinionLabels,
   outcomeStatusLabels,
+  salesQuestionTexts,
   timelineArea,
   timelineLayers,
 } from '../../labels/ko';
@@ -31,6 +32,8 @@ import {
   TIMELINE_LAYERS,
   adviceText,
   arrangeBlock,
+  displayBlocks,
+  displayDay,
   flowChanges,
   inLayer,
   isStructuredAdvice,
@@ -40,6 +43,7 @@ import {
 import type { FlowChange, TimelineLayer } from './activityLayers';
 import { formatMonthDay, formatMonthDayTime, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
+import { contactQuestionsOf } from './SalesQuestions';
 
 export interface ActivityTimelineProps {
   oppId: string;
@@ -69,7 +73,7 @@ export function summaryText(item: ActivityItem): string {
 
 /** #849 날짜 구분선. 예: "11월 17일 (화) · 오늘". */
 export function dateLabel(iso: string, now: Date = new Date()): string {
-  const day = kstDay(iso);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : kstDay(iso);
   if (!day) return '';
   const [year, month, date] = day.split('-').map(Number);
   const weekday = timelineLayers.weekdays[new Date(Date.UTC(year, month - 1, date)).getUTCDay()];
@@ -185,6 +189,28 @@ export default function ActivityTimeline({
   const [showAll, setShowAll] = useState(false);
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [failed, setFailed] = useState(false);
+  /**
+   * #849(PM 결정 2026-11-17): "먼저 연락한 쪽" 칩은 기록 칸(#847)과 같은 말("수신"·"내방")을 쓴다.
+   * 서버는 보기 이름("상대가")을 주므로 질문 파일에서 그 이름의 보기 코드를 찾아 대응표 값을 쓴다.
+   * 질문 파일을 못 받으면 서버가 준 이름으로 "상대가 먼저"를 보인다.
+   */
+  const [directionIds, setDirectionIds] = useState<Map<string, string> | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getSalesQuestions()
+      .then((envelope) => {
+        const direction = contactQuestionsOf(envelope.data)[0];
+        if (!alive || !direction) return;
+        setDirectionIds(
+          new Map(direction.answers.map((option) => [option.label, option.answerId])),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -256,7 +282,8 @@ export default function ActivityTimeline({
   const changes = flowChanges(items ?? []);
   const visible = items === null ? null : items.filter((item) => inLayer(item, layer, changes));
   // #803: 같은 시각 줄을 묶고, 처음에는 최근 5묶음만 보인다.
-  const blocks = visible === null ? [] : groupSameMoment(visible);
+  // #849: 접촉 줄은 실제 접촉한 날 아래로, AI 피드백은 저장 묶음대로 접촉 카드 안에(카드를 따라간다).
+  const { blocks, nested: nestedAdvice } = displayBlocks(visible ?? [], groupSameMoment);
   const shownBlocks = showAll ? blocks : blocks.slice(0, TIMELINE_SHOWN);
   const hiddenBlocks = blocks.length - shownBlocks.length;
   const hiddenItems = blocks.slice(TIMELINE_SHOWN).reduce((sum, block) => sum + block.length, 0);
@@ -264,7 +291,7 @@ export default function ActivityTimeline({
   // #849 날짜 구분선: 보이는 묶음을 한국 날짜별로 나눈다(최근 날짜가 위).
   const days: { day: string; blocks: ActivityItem[][] }[] = [];
   for (const block of shownBlocks) {
-    const day = kstDay(block[0].at) ?? '';
+    const day = displayDay(block[0]) ?? '';
     const last = days[days.length - 1];
     if (last && last.day === day) last.blocks.push(block);
     else days.push({ day, blocks: [block] });
@@ -412,6 +439,16 @@ export default function ActivityTimeline({
     );
   }
 
+  /** 먼저 연락한 쪽 칩. 우리가 먼저(기본 보기)면 서버가 비워 보내 칩이 없다. */
+  function firstMoverChip(item: ActivityItem): string | null {
+    if (!item.firstMover) return null;
+    const answerId = directionIds?.get(item.firstMover);
+    const label = answerId
+      ? salesQuestionTexts.contactDirectionLabels[item.method ?? '']?.[answerId]
+      : undefined;
+    return label ?? timelineLayers.firstMoverChip(item.firstMover, item.method === 'VISIT');
+  }
+
   /** 영업 기록 줄: 흐름 줄(바뀐 때만, 접촉 없는 단계 기록은 늘) + 접촉 카드(흐름만 볼 때는 숨김). */
   function outcomeLine(item: ActivityItem, nested: ActivityItem[], index: number): ReactNode {
     const change = changes.get(item);
@@ -420,8 +457,7 @@ export default function ActivityTimeline({
     const showCard = contact && layer !== 'FLOW';
     const key = lineKey(item);
     const aiOpen = openAi.has(key);
-    const visit = item.method === 'VISIT';
-    const attempted = item.attemptedAt && item.attemptedAt !== kstDay(item.at);
+    const chip = firstMoverChip(item);
     return (
       <>
         {showFlow ? (
@@ -465,14 +501,9 @@ export default function ActivityTimeline({
                   item.result ? labelFor(contactResultLabels, item.result) : null,
                 )}
               </strong>
-              {attempted ? (
-                <span style={secondary}>
-                  {timelineLayers.attemptedOn(formatMonthDay(item.attemptedAt) ?? '')}
-                </span>
-              ) : null}
-              {item.firstMover ? (
+              {chip ? (
                 <StatusTag tone="neutral" data-testid="timeline-chip">
-                  {timelineLayers.firstMoverChip(item.firstMover, visit)}
+                  {chip}
                 </StatusTag>
               ) : null}
               {cancelledNote(item)}
@@ -621,14 +652,16 @@ export default function ActivityTimeline({
                   marginBottom: 4,
                 }}
               >
-                {dateLabel(day.blocks[0][0].at)}
+                {dateLabel(day.day)}
               </div>
               <ol
-                aria-label={`${timelineArea.listLabel} · ${dateLabel(day.blocks[0][0].at)}`}
+                aria-label={`${timelineArea.listLabel} · ${dateLabel(day.day)}`}
                 style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
               >
                 {day.blocks.map((block, blockIndex) => {
-                  const { lines, nested } = arrangeBlock(block);
+                  const { lines } = arrangeBlock(block);
+                  // 접촉한 날 아래로 옮긴 줄이면 저장한 때를 날짜와 함께 보인다(예: "11/17 22:54 저장").
+                  const moved = displayDay(block[0]) !== kstDay(block[0].at);
                   return (
                     <li
                       key={`${block[0].at}-${blockIndex}`}
@@ -672,7 +705,9 @@ export default function ActivityTimeline({
                       <div style={{ display: 'grid', gap: 4, paddingBottom: 10 }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <span data-testid="timeline-time" style={secondary}>
-                            {formatHourMinuteOf(block[0].at)}
+                            {moved
+                              ? timelineLayers.savedAt(formatMonthDayTime(block[0].at) ?? '')
+                              : formatHourMinuteOf(block[0].at)}
                           </span>
                           <span data-testid="timeline-actor">{actorName(block[0].actor)}</span>
                         </div>
@@ -697,7 +732,7 @@ export default function ActivityTimeline({
                               }
                             >
                               {structuredOutcome
-                                ? outcomeLine(item, nested.get(item) ?? [], index)
+                                ? outcomeLine(item, nestedAdvice.get(item) ?? [], index)
                                 : structuredAdvice
                                   ? adviceLine(item, 'timeline-ai', index)
                                   : plainLine(item, index)}
