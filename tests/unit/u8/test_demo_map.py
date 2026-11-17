@@ -108,17 +108,17 @@ def test_map_name_marks_virtual_once():
 
 
 def test_example_records_give_every_company_a_blunt_virtual_location():
-    """Given 예시 가상 기록 파일 / When 읽기 / Then 18곳 모두 천안·아산 일대 가상 위치.
+    """Given 예시 가상 기록 파일 / When 읽기 / Then 36곳 모두 천안·아산 일대 가상 위치(#826).
 
     값은 소수 둘째 자리로 뭉툭하게 적는다.
     """
     records = check_demo_records_file(DEFAULT_DEMO_RECORDS_PATH).records
     locations = [company.location for company in records.companies]
-    assert len(locations) == 18 and all(locations)
+    assert len(locations) == 36 and all(locations)
     for location in locations:
         assert 36.6 <= location.lat <= 37.0 and 126.9 <= location.lng <= 127.3
         assert round(location.lat, 2) == location.lat and round(location.lng, 2) == location.lng
-    assert len({(loc.lat, loc.lng) for loc in locations}) == 18
+    assert len({(loc.lat, loc.lng) for loc in locations}) == 36
 
 
 def test_records_file_without_location_is_still_fine(tmp_path):
@@ -155,7 +155,7 @@ def test_seed_twice_keeps_locations_and_fills_skipped_companies(seeded_demo_db):
             customer.lat = customer.lng = customer.geocode_source = None
     code, out = run("seed-demo-records")
     assert code == 0, out
-    assert "건너뛴 회사 18곳" in out and "가상 위치 18곳" in out
+    assert "건너뛴 회사 36곳" in out and "가상 위치 36곳" in out
     with session_scope(seeded_demo_db) as session:
         sources = {c.geocode_source for c in session.scalars(select(Customer))}
     assert sources == {DEMO_SOURCE}
@@ -170,7 +170,7 @@ def test_map_stays_empty_for_virtual_data_without_demo_mark(seeded_demo_db):
     with session_scope(seeded_demo_db) as session:
         now = datetime.now(UTC)
         points, missing = build_map_points(session, settings, now, tz=KST)
-        assert len(points) == 11 and missing == 0
+        assert len(points) == 21 and missing == 0  # (#826) 성사 9 + 진행 중 12
         plain = settings.model_copy(
             update={"brand": settings.brand.model_copy(update={"demo": False})}
         )
