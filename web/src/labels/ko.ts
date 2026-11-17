@@ -2545,3 +2545,45 @@ export const listSimple = {
   opinionSelectLabel: '의견',
   opinionSelectPlaceholder: '고르기',
 } as const;
+
+/** #824 영업 분석 맨 위 "AI 분석 피드백" 카드. AI가 쓴 글이라 늘 "확인 필요"를 붙인다. */
+export const analysisFeedbackTexts = {
+  title: 'AI 분석 피드백',
+  aiTag: 'AI가 쓴 글 · 확인 필요',
+  intro:
+    '이 기간의 숫자 표만 AI에 보내 왜 성공·실패했는지와 다음 할 일을 받습니다(회사 이름·메모는 보내지 않음).',
+  request: '분석 받기 💰',
+  refresh: '다시 받기 💰',
+  stale: '기록이 바뀌었습니다',
+  loading: 'AI가 분석을 쓰는 중입니다…',
+  switchOff: '영업 기록을 AI에 보내는 설정이 꺼져 있습니다.',
+  needStaff: '담당자를 고르면 분석을 받을 수 있습니다.',
+  empty: '아직 받은 분석이 없습니다.',
+  failureTitle: '❌ 왜 실패했나',
+  successTitle: '✅ 왜 성공했나',
+  nextTitle: '➡ 다음엔',
+  heldBackTitle: '판단 보류',
+  parts: {
+    where: '어디서',
+    why: '왜',
+    signals: '실패 전 신호',
+    vsSuccess: '성공과 다른 점',
+    next: '다음엔',
+  } as Record<string, string>,
+  successParts: { where: '어디까지', why: '결정적이었던 것', signals: '공통 신호' } as Record<
+    string,
+    string
+  >,
+  evidence: (items: readonly string[]) => `근거: ${items.join(' · ')}`,
+  compareTitle: (from: string, to: string) => `앞 기간(${from} ~ ${to}) 대비`,
+  compareKeys: {
+    CONTACTED: '접촉',
+    WON: '성사',
+    LOST: '거절',
+    ON_HOLD: '보류',
+    IN_PROGRESS: '진행 중',
+  } as Record<string, string>,
+  generated: (day: string, cost: string | null) =>
+    cost ? `받은 날 ${day} · 비용 ${cost}` : `받은 날 ${day}`,
+  failed: '분석을 받지 못했습니다.',
+} as const;

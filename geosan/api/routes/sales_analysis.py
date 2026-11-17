@@ -5,16 +5,18 @@
 이름만 있고 메모 글·사람 이름·연락처는 없다.
 """
 
-from dataclasses import asdict
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Header, Query, Request
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from geosan.api.deps import SessionDep, runtime_for
+from geosan.api import analysis_feedback as feedback
+from geosan.api.deps import SessionDep, get_session, require_staff, runtime_for
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import _address_region
 from geosan.api.routes.records import (
@@ -23,9 +25,10 @@ from geosan.api.routes.records import (
     sales_step_state,
 )
 from geosan.api.sales_step import compute_sales_step, step_rows
-from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel
-from geosan.config.errors import FieldError, InputError, RunFailedError
+from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel, _RequestModel
+from geosan.config.errors import AppError, FieldError, InputError, RunFailedError
 from geosan.config.sales_questions import KST, STEP_ORDER
+from geosan.config.validators import find_contact
 from geosan.dashboard.sales_analysis import (
     build_sales_analysis,
     load_company_records,
@@ -38,9 +41,16 @@ from geosan.dashboard.sales_patterns import (
     QuestionInfo,
     build_sales_patterns,
 )
+from geosan.evidence.assistant_llm import analyze_sales
+from geosan.evidence.sales_record_gate import (
+    SALES_ANALYSIS_KIND,
+    sales_record_calls_today,
+    scrub_sales_record,
+)
+from geosan.evidence.transfer import TransferLog
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.records.live import live_outcomes_with_answers
-from geosan.records.models import Note
+from geosan.records.models import AnalysisFeedback, Note
 from geosan.records.program_note import CHANGE_KIND
 from geosan.rules.codes import (
     ContactMethod,
@@ -50,7 +60,7 @@ from geosan.rules.codes import (
     OutcomeStatus,
     SalesStep,
 )
-from geosan.storage.base import utcnow
+from geosan.storage.base import new_id, utcnow
 
 router = APIRouter()
 
@@ -548,24 +558,13 @@ def _pattern_company(session: Session, row, presets, first_step: str) -> Pattern
     )
 
 
-@router.get("/sales-analysis/patterns", response_model=SalesPatternsEnvelope)
-def sales_patterns(
-    session: SessionDep,
-    period_from: Annotated[str | None, Query(alias="from")] = None,
-    period_to: Annotated[str | None, Query(alias="to")] = None,
-):
-    """#802·#820: 기록을 펼쳐 센다(기준 숫자 없음, 표본 기준은 salesAnalysis 하나).
-
-    영업 분석표와 같은 대상·기간 규칙.
-    """
-    period, runtime, settings, dataset_kind, now, _companies, result = _analysis_inputs(
-        session, period_from, period_to
-    )
+def _patterns_from(session: Session, runtime, settings, period, result):
+    """#820 펼친 표 계산(패턴 경로와 AI 분석 피드백 #824가 함께 쓴다)."""
     questions = sales_questions(session)
     first_step = STEP_ORDER[0].value
     presets = runtime.app_settings.list_filters.region_presets
     companies = [_pattern_company(session, row, presets, first_step) for row in result.companies]
-    patterns = build_sales_patterns(
+    return build_sales_patterns(
         companies,
         questions=[
             QuestionInfo(
@@ -584,6 +583,22 @@ def sales_patterns(
         min_sample_for_ratio=settings.min_sample_for_ratio,
         period=(result.basis.period_from, result.basis.period_to) if period is not None else None,
     )
+
+
+@router.get("/sales-analysis/patterns", response_model=SalesPatternsEnvelope)
+def sales_patterns(
+    session: SessionDep,
+    period_from: Annotated[str | None, Query(alias="from")] = None,
+    period_to: Annotated[str | None, Query(alias="to")] = None,
+):
+    """#802·#820: 기록을 펼쳐 센다(기준 숫자 없음, 표본 기준은 salesAnalysis 하나).
+
+    영업 분석표와 같은 대상·기간 규칙.
+    """
+    period, runtime, settings, dataset_kind, now, _companies, result = _analysis_inputs(
+        session, period_from, period_to
+    )
+    patterns = _patterns_from(session, runtime, settings, period, result)
     data = SalesPatternsData.model_validate(
         {"as_of": result.as_of, **asdict(patterns)}, from_attributes=False
     )
@@ -595,4 +610,280 @@ def sales_patterns(
             has_virtual_data=bool(result.companies)
             and dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# #824: AI 분석 피드백 (GET·POST /sales-analysis/feedback). 숫자 표만 외부 AI로 보낸다.
+# ---------------------------------------------------------------------------
+
+
+class FeedbackClaim(_ApiModel):
+    text: str
+    evidence: list[str]
+
+
+class FeedbackFailure(_ApiModel):
+    where: list[FeedbackClaim]
+    why: list[FeedbackClaim]
+    signals: list[FeedbackClaim]
+    vs_success: list[FeedbackClaim]
+    next: list[FeedbackClaim]
+
+
+class FeedbackSuccess(_ApiModel):
+    where: list[FeedbackClaim]
+    why: list[FeedbackClaim]
+    signals: list[FeedbackClaim]
+
+
+class FeedbackCompareRow(_ApiModel):
+    key: Literal["CONTACTED", "WON", "LOST", "ON_HOLD", "IN_PROGRESS"]
+    current: int
+    previous: int
+
+
+class FeedbackCompared(_ApiModel):
+    previous_from: date
+    previous_to: date
+    rows: list[FeedbackCompareRow]
+
+
+class AnalysisFeedbackView(_ApiModel):
+    feedback_id: str
+    period_from: date | None
+    period_to: date | None
+    generated_at: datetime
+    generated_by: str
+    model: str | None
+    prompt_version: str
+    input_hash: str
+    cost_usd: float | None
+    failure: FeedbackFailure
+    success: FeedbackSuccess
+    next: list[FeedbackClaim]
+    held_back: list[str]
+    compared_to_previous: FeedbackCompared | None
+    ai_generated: Literal[True] = True
+
+
+class FeedbackState(_ApiModel):
+    feedback: AnalysisFeedbackView | None
+    current: bool
+    switch_on: bool
+
+
+class FeedbackResult(_ApiModel):
+    feedback: AnalysisFeedbackView
+    reused: bool
+
+
+class FeedbackRequest(_RequestModel):
+    period_from: date | None = Field(default=None, alias="from")
+    period_to: date | None = Field(default=None, alias="to")
+    refresh: bool = False
+
+
+@dataclass(frozen=True)
+class _FeedbackInputs:
+    period: tuple[date | None, date | None] | None
+    dataset_kind: object
+    text: str
+    input_hash: str
+    instructions: str
+    prompt_version: str
+    opp_ids: list[str]
+    compared: dict | None
+    switch_on: bool
+    assistant: object
+    now: datetime
+
+
+def _feedback_inputs(
+    session: Session, period_from: str | None, period_to: str | None
+) -> _FeedbackInputs:
+    period, runtime, settings, dataset_kind, now, _companies, result = _analysis_inputs(
+        session, period_from, period_to
+    )
+    patterns = _patterns_from(session, runtime, settings, period, result)
+    labels = feedback.Labels.from_questions(sales_questions(session))
+    previous = None
+    span = feedback.previous_period(*period) if period is not None else None
+    if span is not None:
+        *_, previous_result = _analysis_inputs(session, span[0].isoformat(), span[1].isoformat())
+        previous = (span, feedback.totals(previous_result))
+    instructions, version = feedback.load_prompt()
+    text = feedback.build_input_text(
+        period=period, patterns=patterns, result=result, labels=labels, previous=previous
+    )
+    llm = runtime.app_settings.llm
+    return _FeedbackInputs(
+        period=period,
+        dataset_kind=dataset_kind,
+        text=text,
+        input_hash=feedback.input_hash(text, version),
+        instructions=instructions,
+        prompt_version=version,
+        opp_ids=[row.opp_id for row in result.companies],
+        compared=feedback.compared(feedback.totals(result), previous),
+        switch_on=bool(llm.sales_records_enabled and llm.mode == "EXTERNAL"),
+        assistant=runtime.app_settings.assistant,
+        now=now,
+    )
+
+
+def _saved_feedback(session: Session, inputs: _FeedbackInputs) -> AnalysisFeedback | None:
+    period_from, period_to = inputs.period if inputs.period is not None else (None, None)
+    query = select(AnalysisFeedback).where(
+        AnalysisFeedback.dataset_kind == inputs.dataset_kind.value,
+        AnalysisFeedback.period_from.is_(None)
+        if period_from is None
+        else AnalysisFeedback.period_from == period_from,
+        AnalysisFeedback.period_to.is_(None)
+        if period_to is None
+        else AnalysisFeedback.period_to == period_to,
+    )
+    return session.scalars(
+        query.order_by(AnalysisFeedback.created_at.desc(), AnalysisFeedback.feedback_id.desc())
+    ).first()
+
+
+def _feedback_view(row: AnalysisFeedback) -> AnalysisFeedbackView:
+    return AnalysisFeedbackView.model_validate(
+        {
+            **row.response,
+            "feedbackId": row.feedback_id,
+            "periodFrom": row.period_from,
+            "periodTo": row.period_to,
+            "generatedAt": row.created_at,
+            "generatedBy": row.created_by,
+            "model": row.model,
+            "promptVersion": row.prompt_version,
+            "inputHash": row.input_hash,
+            "costUsd": float(row.cost_usd) if row.cost_usd is not None else None,
+        }
+    )
+
+
+def _feedback_meta(inputs: _FeedbackInputs) -> Meta:
+    return Meta(
+        updated_at=inputs.now,
+        dataset_kind=inputs.dataset_kind,
+        has_virtual_data=inputs.dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
+    )
+
+
+@router.get("/sales-analysis/feedback", response_model=Envelope[FeedbackState])
+def sales_feedback(
+    session: SessionDep,
+    period_from: Annotated[str | None, Query(alias="from")] = None,
+    period_to: Annotated[str | None, Query(alias="to")] = None,
+):
+    """#824 저장본 읽기. AI·외부 호출 없음. current = 지금 기록으로 만든 입력과 같은지."""
+    inputs = _feedback_inputs(session, period_from, period_to)
+    row = _saved_feedback(session, inputs)
+    return Envelope[FeedbackState](
+        data=FeedbackState(
+            feedback=_feedback_view(row) if row is not None else None,
+            current=row is not None and row.input_hash == inputs.input_hash,
+            switch_on=inputs.switch_on,
+        ),
+        meta=_feedback_meta(inputs),
+    )
+
+
+@router.post("/sales-analysis/feedback", response_model=Envelope[FeedbackResult])
+def request_sales_feedback(
+    body: FeedbackRequest,
+    request: Request,
+    staff_key: Annotated[str | None, Header(alias="X-Staff-Key")] = None,
+):
+    """#824 [분석 받기 💰]. 숫자 표 글만 영업 기록 문(SALES_ANALYSIS)을 거쳐 한 번 보내고 저장한다.
+
+    같은 기간·같은 입력의 저장본이 있으면 refresh가 아닌 한 AI를 부르지 않는다. 세션은 AI를 기다리는
+    동안 붙들지 않는다(영업 비서와 같은 방식).
+    """
+    period_from = body.period_from.isoformat() if body.period_from else None
+    period_to = body.period_to.isoformat() if body.period_to else None
+    with contextmanager(get_session)(request) as session:
+        staff = require_staff(session, staff_key)
+        inputs = _feedback_inputs(session, period_from, period_to)
+        row = _saved_feedback(session, inputs)
+        if row is not None and row.input_hash == inputs.input_hash and not body.refresh:
+            return Envelope[FeedbackResult](
+                data=FeedbackResult(feedback=_feedback_view(row), reused=True),
+                meta=_feedback_meta(inputs),
+            )
+    if inputs.assistant is None:
+        # 한도 숫자를 코드에서 지어내지 않는다(규칙 ⑩).
+        raise RunFailedError(
+            "영업 비서 기준(assistant)이 설정에 없습니다. 앱 설정 파일을 확인해 주세요."
+        )
+    if not inputs.opp_ids:
+        raise AppError(
+            "이 기간에 접촉 기록이 없어 분석할 자료가 없습니다.",
+            "기간을 넓히거나 접촉 기록을 남긴 뒤 다시 받아 주세요.",
+            status=422,
+            kind="ASSISTANT_NO_RECORDS",
+        )
+    # 숫자 표 글이지만 질문 파일 문구가 섞인다. 전화·이메일 모양이 하나라도 있으면 보내지 않는다.
+    if find_contact(inputs.text):
+        raise AppError(
+            "보낼 분석 글에 연락처 모양이 있어 보내지 않았습니다.",
+            "질문 파일 문구에 전화·이메일이 들어 있지 않은지 확인해 주세요.",
+            status=422,
+            kind="CONTACT_IN_INPUT",
+        )
+    if (
+        sales_record_calls_today(record_kind=SALES_ANALYSIS_KIND)
+        >= inputs.assistant.daily_question_limit
+    ):
+        raise AppError(
+            "오늘 분석 받기 한도를 넘었습니다.",
+            "내일 다시 받아 주세요.",
+            status=503,
+            kind="ASSISTANT_LIMIT",
+        )
+    answer, ticket = analyze_sales(
+        inputs.opp_ids[0],
+        [scrub_sales_record(inputs.text)],
+        instructions=inputs.instructions,
+        max_output_tokens=inputs.assistant.max_output_tokens,
+        requested_by=staff,
+        schema_name=feedback.SCHEMA_NAME,
+        schema=feedback.feedback_schema(),
+    )
+    try:
+        reading = feedback.FeedbackReading.model_validate_json(answer)
+    except ValueError:
+        raise AppError(
+            "AI 분석 답의 형식이 맞지 않습니다.",
+            "잠시 뒤 다시 받아 주세요.",
+            status=503,
+            kind="LLM_FAILED",
+        ) from None
+    response = {**feedback.clean_reading(reading), "comparedToPrevious": inputs.compared}
+    period_from_day, period_to_day = inputs.period if inputs.period is not None else (None, None)
+    with contextmanager(get_session)(request) as session:
+        log = session.get(TransferLog, ticket.log_id)
+        saved = AnalysisFeedback(
+            feedback_id=new_id("feedback"),
+            period_from=period_from_day,
+            period_to=period_to_day,
+            input_hash=inputs.input_hash,
+            prompt_version=inputs.prompt_version,
+            model=ticket.llm.model,
+            response=response,
+            cost_usd=log.cost_usd if log is not None else None,
+            transfer_log_id=ticket.log_id,
+            created_by=staff,
+            dataset_kind=inputs.dataset_kind.value,
+            is_virtual=inputs.dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
+        )
+        session.add(saved)
+        session.flush()
+        view = _feedback_view(saved)
+    return Envelope[FeedbackResult](
+        data=FeedbackResult(feedback=view, reused=False),
+        meta=_feedback_meta(inputs),
     )

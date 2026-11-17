@@ -19,6 +19,7 @@ from geosan.evidence.extraction import _post
 from geosan.evidence.openai_search import _HttpError, _Usage
 from geosan.evidence.reader import remaining
 from geosan.evidence.sales_record_gate import (
+    SALES_ANALYSIS_KIND,
     SALES_COACH_KIND,
     SALES_RECORD_KIND,
     ScrubbedRecordText,
@@ -26,7 +27,7 @@ from geosan.evidence.sales_record_gate import (
     reserve_sales_records,
     scrub_sales_record,
 )
-from geosan.evidence.transfer import configuration_error, finish_search
+from geosan.evidence.transfer import SearchTicket, configuration_error, finish_search
 
 TIMEOUT_SECONDS = 60  # C9 LLMAdapter 전체 호출 한도
 
@@ -238,6 +239,43 @@ def coach_sales_memo(
         raise _failed("AI 답의 형식이 맞지 않습니다.") from None
 
 
+def analyze_sales(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    *,
+    instructions: str,
+    max_output_tokens: int,
+    requested_by: str,
+    schema_name: str,
+    schema: dict,
+) -> tuple[str, SearchTicket]:
+    """영업 분석 피드백(#824): 숫자 표 글 묶음을 한 번 보내 정해진 모양의 답 글(JSON)을 받는다.
+
+    문(스위치·지우기 재검사·전송 기록·월 한도)은 다른 영업 기록 글과 같고 전송 종류만
+    SALES_ANALYSIS다(하루 한도를 따로 센다). 호출 1행은 opp_id 한 곳에만 단다(회사별 값이 아니라
+    건수만 보내므로 다른 회사 표시 행은 달지 않는다). 모양 검증·저장은 호출자(창구)가 한다.
+    """
+    return _request_with_ticket(
+        opp_id,
+        texts,
+        {
+            "instructions": instructions,
+            "max_output_tokens": max_output_tokens,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": schema,
+                }
+            },
+        },
+        requested_by,
+        (),
+        record_kind=SALES_ANALYSIS_KIND,
+    )
+
+
 def _request(
     opp_id: str,
     texts: Sequence[ScrubbedRecordText],
@@ -248,6 +286,21 @@ def _request(
     record_kind: str = SALES_RECORD_KIND,
 ) -> str:
     """문을 거쳐 한 번만 부르고 답 글(지우기 전)을 돌려준다. 재시도는 없다."""
+    return _request_with_ticket(
+        opp_id, texts, options, requested_by, also_opp_ids, record_kind=record_kind
+    )[0]
+
+
+def _request_with_ticket(
+    opp_id: str,
+    texts: Sequence[ScrubbedRecordText],
+    options: dict,
+    requested_by: str,
+    also_opp_ids: Sequence[str],
+    *,
+    record_kind: str = SALES_RECORD_KIND,
+) -> tuple[str, SearchTicket]:
+    """_request와 같고, 전송 기록 표(모델·비용을 읽을 행)도 함께 돌려준다(#824)."""
     deadline = time.monotonic() + TIMEOUT_SECONDS
     key = os.environ.get("OPENAI_API_KEY", "").strip()
     ticket = reserve_sales_records(opp_id, texts, bool(key), None, requested_by, record_kind)
@@ -288,4 +341,4 @@ def _request(
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise _failed("AI 답을 끝까지 받지 못했습니다.") from None
-    return answer
+    return answer, ticket
