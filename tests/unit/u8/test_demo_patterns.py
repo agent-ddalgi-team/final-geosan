@@ -65,3 +65,15 @@ def test_demo_db_today_lines_show_virtual_mark_once(demo_db):  # noqa: F811
     ]
     assert lines
     assert all(line.count("(가상)") <= 1 for line in lines), lines
+
+
+def test_demo_db_answer_fill_counts_same_call_steps_and_default_answer(demo_db):  # noqa: F811
+    """Given 시연 DB / When 영업 분석 답 채움률
+    / Then "누가 먼저 연락했나요?"는 모든 접촉에 기본 답이 있고(화면처럼),
+    관심 정도는 같은 통화에서 연결됨으로 올라가며 답한 접촉도 센다(#840, 전에는 0번 답함)."""
+    patterns, _ = _seeded(demo_db)
+    fill = {row["questionId"]: row for row in patterns["answerFill"]}
+    assert fill["WHO_FIRST"]["eligible"] > 0
+    assert fill["WHO_FIRST"]["answered"] == fill["WHO_FIRST"]["eligible"]
+    assert fill["INTEREST"]["answered"] > 0
+    assert fill["INTEREST"]["answered"] <= fill["INTEREST"]["eligible"]
