@@ -571,6 +571,16 @@ export const coachSteps = {
   knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
 } as const;
 
+/** #847 상세 "한눈에 › 공정" 옆 [고치기](PM 결정 2026-11-17: 거산 쪽 확인 질문 대신 나중에 고친다). */
+export const processFixTexts = {
+  edit: '고치기',
+  save: '저장',
+  cancel: '취소',
+  groupLabel: '이 회사의 공정 고르기',
+  hint: '고른 공정이 이 회사의 공정 전체입니다. 저장하면 점수를 다시 계산합니다.',
+  saveFailed: '공정을 저장하지 못했습니다.',
+} as const;
+
 /** #803 상세 작은 지도. */
 export const detailMiniMap = {
   openLabel: '네이버 지도에서 크게 보기 (새 창)',
@@ -2434,6 +2444,8 @@ export const coachTexts = {
   send: '보내기 💰',
   /** #847: 메모 칸 아래 안내를 한 줄로(전에는 두 문장 + 이름 안내 두 문장). AI로 나간다는 사실은 남긴다. */
   sendHint: '사람은 직함으로(예: 김 과장) · 이름·전화는 지운 뒤 AI에 보냅니다.',
+  /** #847: 영업 코치 칸의 메모(접촉 아님) 안내 한 줄. 고칠 수 없다는 것과 이름이 AI로 안 간다는 것만. */
+  noteHint: '고치거나 지울 수 없어요 · 사람은 직함으로(예: 김 과장), 이름은 AI로 보내지 않습니다.',
   direct: '직접 고르기',
   sending: 'AI가 메모를 정리하는 중입니다…',
   failed: '코치 답을 받지 못했습니다.',

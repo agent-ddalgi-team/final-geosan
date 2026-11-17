@@ -396,6 +396,10 @@ export default function OpportunityDetailPage() {
             processChoice={{
               oppId,
               evalId: data.evalId,
+              // #847: 공정 줄 [고치기]의 보기는 질문 파일의 공정 고르기 보기(거산 공정 목록)를 쓴다.
+              options: salesQuestions?.questions
+                .find((question) => question.choices === 'PROCESS')
+                ?.answers.map((answer) => ({ code: answer.answerId, name: answer.label })),
               // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
               onSaved: () => {
                 setReload((n) => n + 1);

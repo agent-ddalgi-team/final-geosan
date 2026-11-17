@@ -1238,9 +1238,16 @@ export default function RecordsArea({
               disabled={disabled}
               data-testid="records-note-input"
             />
-            <span style={hintStyle}>
-              {aiReadsMemo ? memoReadTexts.noteHintAi : recordsArea.noteHint}{' '}
-              {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
+            <span style={hintStyle} data-testid="records-note-hint">
+              {inCoach && aiReadsMemo ? (
+                // #847: 영업 코치 칸에서는 메모 안내도 한 줄로.
+                coachTexts.noteHint
+              ) : (
+                <>
+                  {aiReadsMemo ? memoReadTexts.noteHintAi : recordsArea.noteHint}{' '}
+                  {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}
+                </>
+              )}{' '}
               <span data-testid="records-note-counter">
                 {recordsArea.noteCounter(noteText.length, noteMax)}
               </span>

@@ -496,6 +496,15 @@ describe('영업 코치 칸 글 줄이기 (#847)', () => {
     expect(screen.getByTestId('records-contact-memo-hint')).toHaveTextContent(coachTexts.sendHint);
   });
 
+  it('Given 영업 코치 칸 When 종류에서 메모를 고르면 Then 메모 안내도 한 줄이다', async () => {
+    const user = userEvent.setup();
+    renderArea(true, { inCoach: true });
+    await user.selectOptions(await screen.findByTestId('records-kind'), '메모');
+    const hint = screen.getByTestId('records-note-hint');
+    expect(hint).toHaveTextContent(coachTexts.noteHint);
+    expect(hint).not.toHaveTextContent('덧붙이기만 되고');
+  });
+
   it('Given 왼쪽 영업 단계 아래 자리(sideSlot) When 기록 칸을 그리면 Then 들은 답·단계 고치기·다음 일정은 그 자리에 그려진다', async () => {
     const slot = document.createElement('div');
     document.body.appendChild(slot);
