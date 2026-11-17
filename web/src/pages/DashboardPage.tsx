@@ -56,7 +56,7 @@ const calendarSectionStyle = {
 } as const;
 const calendarTitleStyle = { ...cardTitleStyle, color: calendarPalette.title } as const;
 /** #825: 작은 달력 최대 폭(화면 모양값, 규칙 숫자 아님). 아래로 내려가도 줄 전체로 늘어나지 않는다. */
-export const CALENDAR_MAX_WIDTH = 360;
+export const CALENDAR_MAX_WIDTH = 340;
 
 export default function DashboardPage() {
   const { config, setBannerMeta, staffKey, canRecord } = useFrame();
@@ -179,12 +179,12 @@ export default function DashboardPage() {
         {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "💬 영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
         {/* ② 오늘 할 일 | ③ 작은 달력. 둘 합이 본문 폭보다 넓으면(좁은 화면) 위아래로.
-            #825: 노트북 폭(본문 약 760px)에서도 옆에 놓이게 할 일 기본 폭을 줄이고,
-            달력은 늘어나지 않게(최대 360px) 해서 아래로 내려가도 작은 점 달력 그대로 보인다. */}
+            #825: 노트북 폭(본문 약 700px)에서도 옆에 놓이게 할 일 340px + 달력 320px로 줄이고,
+            달력은 늘어나지 않게(최대 340px) 해서 아래로 내려가도 작은 점 달력 그대로 보인다. */}
         <div
           style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.cardGap, alignItems: 'start' }}
         >
-          <div style={{ flex: '1 1 380px', minWidth: 0 }}>
+          <div style={{ flex: '1 1 340px', minWidth: 0 }}>
             {data ? <TodayChecks rows={data.todayChecks} onChanged={retry} /> : null}
           </div>
           <section
@@ -192,7 +192,7 @@ export default function DashboardPage() {
             data-testid="dashboard-calendar-section"
             style={{
               ...calendarSectionStyle,
-              flex: '0 1 340px',
+              flex: '0 1 320px',
               minWidth: 0,
               maxWidth: CALENDAR_MAX_WIDTH,
               padding: 16,

@@ -659,16 +659,16 @@ describe('DashboardPage', () => {
 });
 
 describe('대시보드 › 작은 달력 크기(#825)', () => {
-  it('달력 구역은 늘어나지 않고(최대 360px) 할 일 칸과 한 줄에 놓일 수 있는 기본 폭이다', async () => {
+  it('달력 구역은 늘어나지 않고(최대 340px) 할 일 칸과 한 줄에 놓일 수 있는 기본 폭이다', async () => {
     mockedGet.mockResolvedValueOnce(reply(fixtureData));
     renderPage();
     await screen.findByTestId('dashboard-counts');
     const calendar = screen.getByTestId('dashboard-calendar-section');
     // 노트북 폭에서 아래로 내려가도 줄 전체(예: 712px)로 늘어나지 않게: grow 0, 최대 폭 고정.
-    expect(calendar.style.flex).toBe('0 1 340px');
+    expect(calendar.style.flex).toBe('0 1 320px');
     expect(calendar.style.maxWidth).toBe(`${CALENDAR_MAX_WIDTH}px`);
-    // 할 일 칸 기본 폭 + 달력 기본 폭이 노트북 본문(약 760px) 안에 들어간다.
+    // 할 일 칸 기본 폭 + 달력 기본 폭이 노트북 본문(약 700px) 안에 들어간다.
     const todo = screen.getByTestId('dashboard-today').parentElement as HTMLElement;
-    expect(todo.style.flex).toBe('1 1 380px');
+    expect(todo.style.flex).toBe('1 1 340px');
   });
 });
