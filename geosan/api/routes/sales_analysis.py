@@ -572,6 +572,9 @@ def _patterns_from(session: Session, runtime, settings, period, result):
                 step=question.step if isinstance(question.step, str) else question.step.value,
                 choices=question.choices is not None,
                 show_when=dict(question.show_when.answers) if question.show_when else {},
+                decides_outcome=any(
+                    answer.closes or answer.lost_reason for answer in question.answers
+                ),
             )
             for question in questions.questions
         ],
