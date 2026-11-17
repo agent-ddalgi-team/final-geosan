@@ -19,14 +19,14 @@ def _config() -> dict:
 
 
 def test_api_rule_comes_first_and_points_to_railway_https():
-    """Given vercel.json / When 첫 번째 넘기기 규칙을 읽음 / Then /api 전체를 Railway https 주소로 넘긴다."""
+    """Given vercel.json / When 첫 넘기기 규칙을 읽음 / Then /api 전체를 Railway https로 넘긴다."""
     first = _config()["rewrites"][0]
     assert first["source"] == "/api/:path*"
     assert first["destination"] == f"https://{RAILWAY_HOST}/api/:path*"
 
 
 def test_screen_fallback_excludes_api_paths():
-    """Given 화면 되돌리기 규칙 / When API·화면 주소를 맞춰 봄 / Then 화면 주소만 index.html로 간다."""
+    """Given 화면 되돌리기 규칙 / When API·화면 주소를 맞춰 봄 / Then 화면 주소만 index.html로."""
     rewrites = _config()["rewrites"]
     assert len(rewrites) == 2
     fallback = rewrites[1]
@@ -41,7 +41,7 @@ def test_screen_fallback_excludes_api_paths():
 
 
 def test_api_responses_are_not_cached_by_vercel():
-    """Given vercel.json / When /api 머리말을 읽음 / Then 넘긴 응답을 Vercel이 저장하지 않게 한다."""
+    """Given vercel.json / When /api 머리말을 읽음 / Then 넘긴 응답을 Vercel이 저장하지 않는다."""
     headers = _config()["headers"]
     api = [h for h in headers if h["source"] == "/api/:path*"]
     assert api, "/api 머리말 규칙이 없습니다"
@@ -50,5 +50,5 @@ def test_api_responses_are_not_cached_by_vercel():
 
 
 def test_no_placeholder_host_left():
-    """Given vercel.json / When 글자를 훑음 / Then README 예시의 RAILWAY_HOST 자리표시가 남지 않았다."""
+    """Given vercel.json / When 글자를 훑음 / Then README 예시의 자리표시가 남지 않았다."""
     assert "RAILWAY_HOST" not in VERCEL_JSON.read_text(encoding="utf-8")
