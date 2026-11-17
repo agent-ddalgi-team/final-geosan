@@ -100,6 +100,9 @@ class QuestionInfo:
     choices: bool = False
     # 앞 답이 이 중 하나일 때만 보이는 질문(showWhen). {질문 id: [답 id]}
     show_when: Mapping[str, Sequence[str]] = field(default_factory=dict)
+    # 답이 영업을 끝내거나(closes: 성사·거절·보류) 거절 이유가 되는 질문(#820 후속, PM 2026-11-17).
+    # 그 답이 결과 자체라 답별 표·'눈에 띔'에 넣으면 "거절로 답한 회사는 성사 0"처럼 순환한다.
+    decides_outcome: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -641,6 +644,8 @@ def build_sales_patterns(
     answers_by_company = {c.opp_id: last_answers(c) for c in companies}
     answer_rows: list[AnswerRow] = []
     for question in answer_questions:
+        if question.decides_outcome:
+            continue  # 결과 자체인 질문은 결과를 설명하는 칸이 될 수 없다(순환)
         qid = question.question_id
         groups = _group(
             [c for c in companies if qid in answers_by_company[c.opp_id]],
