@@ -2,8 +2,11 @@
 // #766(PM 결정 2026-11-16): 읽기 쉽게 주제별 묶음으로 나눠 제목·아이콘·회사별 한 줄로 보인다(예전에는 "앞 2건 + 외 n").
 //   🔴 지난 일정 — 했나요?  회사 · 날짜 · 일정 한 줄 + [완료] [날짜 바꾸기] [필요 없어요]
 //   📅 오늘 일정            회사 · 일정 한 줄
-//   📬 나에게 온 전달 사항   회사 · 보낸 사람 · 날짜, 그 아래 전달 글 앞부분(#794)
+//   📬 나에게 온 전달 사항   회사 · 보낸 사람 · 날짜, 그 아래 전달 글 앞부분(#794), 오른쪽 [확인](#854)
 //   🔍 확인할 것이 남은 관심 기업  회사 이름(누르면 상세), 묶음 끝 [모두 보기]는 걸러진 목록
+//   📤 내가 보낸 전달 사항 · 확인 전  회사 · 받는 사람 · 날짜, 그 아래 글 앞부분(#854, 보낸 사람 본인에게만)
+// #854(PM 결정 2026-11-17): 전달 사항 [확인]은 그 회사에서 나에게 온 확인 전 전달 사항을 모두 확인하고
+//   (기존 확인 저장을 번호마다), 대시보드와 왼쪽 메뉴 숫자를 다시 읽는다. 보기 전용에게는 단추가 없다.
 // #799: 맨 앞에 운영 알림 줄(⛔ 한도 도달 — 모든 담당자 / ⚠ AI 사용 n% · 📂 자료 갱신 — 운영 담당)과 [운영 관리 →].
 // 지난 일정 단추는 기록 담당자에게만 보이고, 누르면 서버가 일정만 바꾼 새 기록과 변경 기록 한 줄을 남긴다
 // (/schedule/resolve). 어느 단추든 끝나면 대시보드를 다시 읽어 그 줄이 빠진다.
@@ -12,7 +15,8 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from 'antd';
-import { ApiError, resolveSchedule } from '../../api/client';
+import { SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
+import { ApiError, confirmHandoff, resolveSchedule } from '../../api/client';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { LIST_PATH } from '../../paths';
@@ -26,6 +30,7 @@ const ORDER: TodayCheckKind[] = [
   'HANDOFF_FOR_ME',
   'SCHEDULE_TODAY',
   'CHECK_LEFT',
+  'HANDOFF_FROM_ME',
 ];
 const WEEKDAYS = '일월화수목금토';
 
@@ -159,17 +164,18 @@ function OverdueItem({ item, onChanged }: { item: TodayCheckItem; onChanged: () 
   );
 }
 
-function PlainItem({ item }: { item: TodayCheckItem }) {
+function PlainItem({ item, action = null }: { item: TodayCheckItem; action?: ReactNode }) {
   return (
     <li data-testid="dashboard-today-item" style={{ padding: '4px 0' }}>
-      <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`}>{item.customerName}</Link>
-      {item.note || item.dueAt ? (
-        <span style={{ ...secondary, marginLeft: 8 }}>
-          {[item.note].filter(Boolean).join(' · ')}
-        </span>
-      ) : null}
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
+        <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`}>{item.customerName}</Link>
+        {item.note || item.dueAt ? (
+          <span style={secondary}>{[item.note].filter(Boolean).join(' · ')}</span>
+        ) : null}
+        {action}
+      </span>
       {item.text ? (
-        // #794: 전달 사항 글 앞부분. 받는 사람 본인 화면에만 온다.
+        // #794: 전달 사항 글 앞부분. 받는 사람(#854: 보낸 것 줄은 보낸 사람) 본인 화면에만 온다.
         <span
           data-testid="dashboard-today-text"
           style={{ display: 'block', fontSize: typography.fontSizeSecondary, marginTop: 2 }}
@@ -178,6 +184,65 @@ function PlainItem({ item }: { item: TodayCheckItem }) {
         </span>
       ) : null}
     </li>
+  );
+}
+
+/** #854 나에게 온 전달 사항 한 줄: 회사·보낸 사람·날짜·글 앞부분 + 오른쪽 [확인]. */
+function HandoffItem({ item }: { item: TodayCheckItem }) {
+  const { staffKey, canRecord } = useFrame();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const ids = item.noteIds ?? [];
+  const usable = canRecord && staffKey !== null && ids.length > 0;
+
+  async function confirm() {
+    if (!usable || busy || staffKey === null) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      // 확인은 두 번 눌러도 같은 값이라, 중간에 실패해도 다시 누르면 남은 것만 바뀐다.
+      for (const noteId of ids) await confirmHandoff(noteId, staffKey);
+      // 대시보드(줄이 빠짐)와 왼쪽 메뉴 숫자를 함께 다시 읽는다.
+      window.dispatchEvent(new CustomEvent(SCHEDULE_CHANGED_EVENT, { detail: item.oppId }));
+    } catch (error) {
+      setMessage(
+        error instanceof ApiError
+          ? `${error.body.message} ${error.body.nextAction}`
+          : dashboardTexts.todayHandoffConfirmFailed,
+      );
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <PlainItem
+        item={item}
+        action={
+          usable ? (
+            <Button
+              size="small"
+              disabled={busy}
+              onClick={() => void confirm()}
+              aria-label={dashboardTexts.todayHandoffConfirmLabel(item.customerName)}
+              data-testid="dashboard-today-handoff-confirm"
+              style={{ marginLeft: 'auto' }}
+            >
+              {dashboardTexts.todayHandoffConfirm}
+            </Button>
+          ) : null
+        }
+      />
+      {message ? (
+        <li
+          role="alert"
+          style={{ color: colors.error, fontSize: typography.fontSizeSecondary }}
+          data-testid="dashboard-today-handoff-error"
+        >
+          {message}
+        </li>
+      ) : null}
+    </>
   );
 }
 
@@ -230,6 +295,8 @@ function Group({
         {items.map((item) =>
           kind === 'SCHEDULE_OVERDUE' ? (
             <OverdueItem key={itemKey(item)} item={item} onChanged={onChanged} />
+          ) : kind === 'HANDOFF_FOR_ME' ? (
+            <HandoffItem key={itemKey(item)} item={item} />
           ) : (
             <PlainItem key={itemKey(item)} item={item} />
           ),
