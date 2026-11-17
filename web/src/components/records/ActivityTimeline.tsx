@@ -279,11 +279,13 @@ export default function ActivityTimeline({
     const key = lineKey(item);
     if (!canCancel(item) || cancelingKey === key) return null;
     const open = menuKey === key;
+    // 다음 통화 준비는 꼬리표("남긴 피드백")와 앞머리가 달라 summaryText로는 안 빠진다 → 앞머리 없는 글.
+    const label = isStructuredAdvice(item) ? adviceText(item) : summaryText(item);
     return (
       <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 'auto' }}>
         <button
           type="button"
-          aria-label={timelineLayers.menuLabel(summaryText(item))}
+          aria-label={timelineLayers.menuLabel(label)}
           aria-haspopup="true"
           aria-expanded={open}
           onClick={() => setMenuKey(open ? null : key)}
@@ -307,7 +309,7 @@ export default function ActivityTimeline({
           <Button
             size="small"
             onClick={() => openCancel(item)}
-            aria-label={timelineArea.cancelButtonLabel(summaryText(item))}
+            aria-label={timelineArea.cancelButtonLabel(label)}
             data-testid="timeline-cancel-open"
           >
             {timelineArea.cancelButton}

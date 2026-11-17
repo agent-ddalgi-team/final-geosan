@@ -143,6 +143,11 @@ describe('활동 이력 3층(#849)', () => {
       '납기 걱정에 답을 아직 못 줬어요(가상).',
     ]);
     expect(within(nested[0]).getByTestId('timeline-kind')).toHaveTextContent('다음 통화 준비');
+    // 메뉴 이름에도 앞머리("다음 통화 준비 · ")가 겹치지 않는다.
+    expect(within(nested[0]).getByTestId('timeline-menu-open')).toHaveAttribute(
+      'aria-label',
+      timelineLayers.menuLabel('샘플이 필요한지 물어보세요. · 담당 부서를 확인하세요.'),
+    );
     // 따로 한 줄로는 보이지 않는다(원인 → 결과 순서, 한 곳에만).
     expect(screen.queryByTestId('timeline-ai')).not.toBeInTheDocument();
   });
