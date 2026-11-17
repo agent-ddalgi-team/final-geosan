@@ -41,7 +41,7 @@ const fromMe: TodayCheckRow = {
       oppId: 'opp-9',
       customerName: '가상금속',
       dueAt: null,
-      note: '영업 담당 · 11/17',
+      note: '→ 영업 · 11/17',
       text: '가상 전달: 다음 방문 때 견적 담당자도',
       noteIds: null,
     },
@@ -124,7 +124,7 @@ it('내가 보낸 전달 사항은 📤 묶음으로 회사·받는 사람·날�
     'href',
     '/opportunities/opp-9',
   );
-  expect(group).toHaveTextContent('영업 담당 · 11/17');
+  expect(group).toHaveTextContent('→ 영업 · 11/17');
   expect(group).toHaveTextContent('가상 전달: 다음 방문 때 견적 담당자도');
   expect(within(group).queryByTestId('dashboard-today-handoff-confirm')).not.toBeInTheDocument();
   // 보낸 것은 맨 아래(내 할 일이 아님): 나에게 온 전달 사항이 먼저 보인다.
