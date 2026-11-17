@@ -374,7 +374,8 @@ def answer_fill(
 ) -> list[AnswerFill]:
     """질문별 답 채움률·답 분포·모름 몫·한 답 몰림(기준 숫자 없이 값 그대로).
 
-    물을 자리(eligible): 단계가 ALL인 질문은 모든 접촉, 나머지는 그 단계에 있을 때 연결된 접촉.
+    물을 자리(eligible): 단계가 ALL인 질문은 모든 접촉, 나머지는 연결된 접촉 가운데 그 통화에서
+    거친 단계(접촉 전 단계 ~ 접촉 뒤 단계)에 그 질문의 단계가 든 접촉(#840).
     PROCESS·INDUSTRY 질문은 그 단계부터 답이 생길 때까지 뒤 단계에서도 묻는다(질문 파일 규칙).
     앞 답 조건(showWhen)이 있는 질문은 조건이 채워진 뒤에만 센다.
     """
@@ -399,6 +400,18 @@ def answer_fill(
                             and line.step_before in rank
                             and question.step in rank
                             and rank[line.step_before] >= rank[question.step]
+                        )
+                    elif (
+                        line.step_before in rank
+                        and line.step_after in rank
+                        and question.step in rank
+                    ):
+                        # #840: 같은 통화에서 거친 단계(전 ~ 후)의 질문은 그 통화에서 물었다
+                        # (연결되면 화면이 다음 단계 질문을 바로 보인다, 꼬리 질문 reaches).
+                        asked = (
+                            rank[line.step_before]
+                            <= rank[question.step]
+                            <= max(rank[line.step_before], rank[line.step_after])
                         )
                     else:
                         asked = line.step_before == question.step
