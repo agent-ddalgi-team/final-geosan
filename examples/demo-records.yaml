@@ -177,7 +177,7 @@ companies:
         memo: "(가상) 부재"
       - daysAgo: 18
         nextInDays: 0
-        nextNote: "(가상) 소개서 받아 보셨는지 확인 전화"
+        nextNote: "소개서 받아 보셨는지 확인 전화"
         method: CALL
         result: REACHED
         memo: "(가상) 클립 도금을 외주로 맡기는 중. 소개 자료를 보내 달라고 함"
@@ -225,7 +225,7 @@ companies:
         memo: "(가상) 부재"
       - daysAgo: 12
         nextInDays: 0
-        nextNote: "(가상) 담당 부서에 다시 연결"
+        nextNote: "담당 부서에 다시 연결"
         method: CALL
         result: REACHED
         memo: "(가상) 담당 부서와 통화. 지금 도금 방식은 확인해 보고 알려 주겠다고 함"
@@ -281,7 +281,7 @@ companies:
         memo: "(가상) 부재"
       - daysAgo: 3
         nextInDays: 1
-        nextNote: "(가상) 부재였던 담당 부서에 다시 전화"
+        nextNote: "부재였던 담당 부서에 다시 전화"
         method: EMAIL
         result: ABSENT
         memo: "(가상) 소개 메일을 보냄, 답 기다림"
@@ -308,7 +308,7 @@ companies:
           - { questionId: NEXT_ACTION, answerId: RECONTACT }
       - daysAgo: 14
         nextInDays: 7
-        nextNote: "(가상) 견적 검토 결과 회신 확인"
+        nextNote: "견적 검토 결과 회신 확인"
         method: CALL
         result: ABSENT
         memo: "(가상) 검토 결과를 물으려 했으나 부재"
@@ -321,7 +321,7 @@ companies:
         memo: "(가상) 소개 메일을 보냈으나 답 없음"
       - daysAgo: 8
         nextInDays: 2
-        nextNote: "(가상) 시험 성적서가 필요한지 확인"
+        nextNote: "시험 성적서가 필요한지 확인"
         method: CALL
         result: REACHED
         memo: "(가상) 지금은 직접 처리한다고 함. 물량이 늘면 다시 이야기하기로"
@@ -383,7 +383,7 @@ companies:
         memo: "(가상) 부재"
       - daysAgo: 20
         nextInDays: 4
-        nextNote: "(가상) 보낸 자료 보고 견적 문의할지 확인"
+        nextNote: "보낸 자료 보고 견적 문의할지 확인"
         method: CALL
         result: REACHED
         memo: "(가상) 유압 부품 도금 외주처를 찾는 중이라고 함"
@@ -401,7 +401,401 @@ companies:
         memo: "(가상) 부재"
       - daysAgo: 2
         nextInDays: 10
-        nextNote: "(가상) 첫 통화 다시 시도"
+        nextNote: "첫 통화 다시 시도"
         method: CALL
         result: ABSENT
         memo: "(가상) 다시 걸었으나 부재"
+  # ── #826(2026-11-17): 발표용으로 18곳 더함 — 성사 5 · 거절 6 · 보류 2 · 진행 중 5(일정 없이 멈춘 2곳) ──
+  - caseId: demo-s-precision   # S정밀(가상) · 아연도금
+    location: { lat: 36.81, lng: 127.19 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 70
+        method: CALL
+        result: REACHED
+        memo: "(가상) 시트 브라켓 도금 외주처를 한 곳 더 찾는다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 48
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 방문해 샘플을 맡김. 합격 뒤 첫 발주"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-t-metal   # T금속(가상) · 아노다이징
+    location: { lat: 36.79, lng: 127.08 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 95
+        method: CALL
+        result: REACHED
+        memo: "(가상) 방열판 아노다이징 색 편차 때문에 외주처를 바꾸려 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: SWITCH_INTENT, answerId: YES }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 80
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 샘플 색 맞춤 확인. 정기 물량을 맡기로 함"
+        answers:
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-u-tech   # U테크(가상) · 무전해니켈
+    location: { lat: 36.87, lng: 127.20 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 130
+        method: CALL
+        result: REACHED
+        memo: "(가상) 이송 부품 도금 외주. 인증서를 먼저 요청"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: INTEREST_DRIVER, answerId: CERTIFICATION }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 111
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 인증서를 들고 방문, 샘플 합격"
+        answers:
+          - { questionId: SENT_ITEM, answerId: CERTIFICATE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-v-machining   # V기공(가상) · 아연도금
+    location: { lat: 36.62, lng: 127.29 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 66
+        method: CALL
+        result: REACHED
+        memo: "(가상) 체결 부품 도금을 외주로 맡김"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: QUOTE_REQUEST, answerId: MATERIAL }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+      - daysAgo: 52
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 소개서를 보낸 뒤 견적 요청"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 30
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 방문해 샘플 합격, 첫 발주"
+        answers:
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-w-industry   # W산업(가상) · 부동태
+    location: { lat: 36.76, lng: 127.06 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 140
+        method: CALL
+        result: REACHED
+        memo: "(가상) 커플링 부동태 외주 중. 가격을 먼저 보고 싶다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: INTEREST_DRIVER, answerId: PRICE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+      - daysAgo: 120
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 견적을 보내고 회신을 받음"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 98
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 방문 뒤 샘플 합격"
+        answers:
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: SAMPLE }
+          - { questionId: SAMPLE_RESULT, answerId: PASS }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: WON }
+  - caseId: demo-x-parts   # X부품(가상) · 아연도금
+    location: { lat: 36.92, lng: 126.95 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 58
+        method: CALL
+        result: REACHED
+        memo: "(가상) 브라켓 도금 외주. 단가가 중요하다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: INTEREST_DRIVER, answerId: PRICE }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+      - daysAgo: 44
+        method: EMAIL
+        result: REACHED
+        memo: "(가상) 견적 회신"
+        answers:
+          - { questionId: SENT_ITEM, answerId: QUOTE }
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 31
+        method: CALL
+        result: REACHED
+        memo: "(가상) 지금 외주 단가보다 높다고 함"
+        reason: "(가상) 지금 단가보다 높음"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: PRICE }
+  - caseId: demo-y-electronics   # Y전자(가상) · 아노다이징
+    location: { lat: 36.66, lng: 127.24 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 77
+        method: CALL
+        result: REACHED
+        memo: "(가상) 케이스 아노다이징 외주처를 비교 중"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: NEXT_ACTION, answerId: VISIT }
+      - daysAgo: 63
+        method: VISIT
+        result: REACHED
+        memo: "(가상) 방문했으나 가격 차이가 커서 보류 없이 거절"
+        reason: "(가상) 가격 차이"
+        answers:
+          - { questionId: REPLY, answerId: CAME }
+          - { questionId: VISIT_OR_SAMPLE, answerId: VISIT }
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: PRICE }
+  - caseId: demo-z-machine   # Z기계(가상) · 아연도금
+    location: { lat: 36.82, lng: 127.22 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 90
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 85
+        method: CALL
+        result: REACHED
+        memo: "(가상) 하우징 도금은 사내 라인에서 직접 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: IN_HOUSE }
+          - { questionId: NEED_PROCESS, answerId: NO }
+          - { questionId: INTEREST, answerId: LOW }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 60
+        method: CALL
+        result: REACHED
+        memo: "(가상) 외주 계획이 없다고 다시 확인"
+        reason: "(가상) 외주 수요 없음"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: NO_DEMAND }
+  - caseId: demo-aa-precision   # AA정공(가상) · 부동태
+    location: { lat: 36.64, lng: 127.27 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 110
+        method: CALL
+        result: REACHED
+        memo: "(가상) 펌프 부품 부동태를 직접 처리"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: IN_HOUSE }
+          - { questionId: NEED_PROCESS, answerId: NO }
+          - { questionId: INTEREST, answerId: NONE }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 95
+        method: CALL
+        result: REACHED
+        memo: "(가상) 기존 거래처와 계약이 남아 있다고 함"
+        reason: "(가상) 기존 거래처 계약"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: INCUMBENT_SUPPLIER }
+  - caseId: demo-ab-tech   # AB테크(가상) · 무전해니켈
+    location: { lat: 36.78, lng: 127.10 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 50
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일에 답 없음"
+      - daysAgo: 42
+        method: CALL
+        result: REACHED
+        memo: "(가상) 챔버 부품 도금은 직접 하고 급한 물량만 외주"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: IN_HOUSE }
+          - { questionId: NEED_PROCESS, answerId: NO }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: INTEREST_DRIVER, answerId: LEAD_TIME }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 27
+        method: CALL
+        result: REACHED
+        memo: "(가상) 요청 납기를 맞추기 어렵다고 서로 확인"
+        reason: "(가상) 납기"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: LEAD_TIME }
+  - caseId: demo-ac-metal   # AC금속(가상) · 아연도금
+    location: { lat: 36.83, lng: 127.21 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 36
+        method: CALL
+        result: REACHED
+        memo: "(가상) 클램프 도금 외주. 관심은 낮음"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: LOW }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 29
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 19
+        method: CALL
+        result: REACHED
+        memo: "(가상) 단가 차이로 진행하지 않기로"
+        reason: "(가상) 단가"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: LOST }
+          - { questionId: LOST_REASON, answerId: PRICE }
+  - caseId: demo-ad-industry   # AD산업(가상) · 아노다이징
+    location: { lat: 36.68, lng: 127.22 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 100
+        method: CALL
+        result: REACHED
+        memo: "(가상) 로봇 커버 아노다이징 외주. 내년 모델 일정에 맞춰 보자고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+      - daysAgo: 70
+        method: CALL
+        result: REACHED
+        memo: "(가상) 모델 일정이 미뤄져 내년에 다시"
+        answers:
+          - { questionId: NEXT_ACTION, answerId: END }
+          - { questionId: CLOSE_RESULT, answerId: ON_HOLD }
+  - caseId: demo-ae-precision   # AE정밀(가상) · 무전해니켈
+    location: { lat: 36.86, lng: 127.23 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 46
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일에 답 없음"
+      - daysAgo: 38
+        method: CALL
+        result: REACHED
+        memo: "(가상) 금형 핀 도금은 외주. 설비 이전 뒤 다시 이야기"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: CLOSE_RESULT, answerId: ON_HOLD }
+          - { questionId: NEXT_ACTION, answerId: END }
+  - caseId: demo-af-machining   # AF기공(가상) · 아연도금
+    location: { lat: 36.75, lng: 127.09 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 30
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
+      - daysAgo: 22
+        method: CALL
+        result: REACHED
+        memo: "(가상) 선반 부품 도금 외주. 자료를 받아 보겠다고 함"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: NEXT_ACTION, answerId: RECONTACT }
+  - caseId: demo-ag-electronics   # AG전자(가상) · 아노다이징
+    location: { lat: 36.63, lng: 127.25 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 35
+        method: CALL
+        result: REACHED
+        memo: "(가상) 패널 아노다이징 외주처 검토 중"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+  - caseId: demo-ah-metal   # AH금속(가상) · 부동태
+    location: { lat: 36.88, lng: 127.21 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 9
+        nextInDays: 3
+        nextNote: "성적서 보내고 회신 확인"
+        method: CALL
+        result: REACHED
+        memo: "(가상) 위생 배관 부동태 외주. 성적서가 필요"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: MEDIUM }
+          - { questionId: NEXT_ACTION, answerId: SEND_MATERIAL }
+  - caseId: demo-ak-tech   # AK테크(가상) · 무전해니켈
+    location: { lat: 36.74, lng: 127.07 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 14
+        method: EMAIL
+        result: ABSENT
+        memo: "(가상) 소개 메일에 답 없음"
+      - daysAgo: 7
+        nextInDays: 6
+        nextNote: "견적 보내기"
+        method: CALL
+        result: REACHED
+        memo: "(가상) 진공 밸브 부품 도금 외주처를 찾는 중"
+        answers:
+          - { questionId: WHO_TALKED, answerId: RIGHT_PERSON }
+          - { questionId: PLATING_NOW, answerId: OUTSOURCED }
+          - { questionId: INTEREST, answerId: HIGH }
+          - { questionId: QUOTE_REQUEST, answerId: QUOTE }
+          - { questionId: NEXT_ACTION, answerId: QUOTE }
+  - caseId: demo-al-parts   # AL부품(가상) · 아연도금
+    location: { lat: 36.84, lng: 127.24 }   # 가상 위치(#811)
+    contacts:
+      - daysAgo: 4
+        nextInDays: 12
+        nextNote: "첫 통화 다시 시도"
+        method: CALL
+        result: ABSENT
+        memo: "(가상) 부재"
