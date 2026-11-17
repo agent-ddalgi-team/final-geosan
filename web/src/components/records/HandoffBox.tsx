@@ -40,6 +40,17 @@ export default function HandoffBox({
   const { config, staffKey, canRecord } = useFrame();
   const staff = config?.staff ?? [];
   const nameOf = (key: string) => staff.find((entry) => entry.key === key)?.displayName ?? key;
+  // #853: 역할 묶음으로 보낸 전달 사항은 묶음 이름(예: 영업)으로 보이고, 묶음 안 누구나(보낸 사람 빼고) 확인한다.
+  const teams = config?.handoffTeams ?? [];
+  const toName = (row: HandoffNote) =>
+    row.toTeam
+      ? (teams.find((team) => team.key === row.toTeam)?.label ?? row.toTeam)
+      : nameOf(row.to);
+  const isMine = (row: HandoffNote) =>
+    row.to === staffKey ||
+    (Boolean(row.toTeam) &&
+      row.from !== staffKey &&
+      (teams.find((team) => team.key === row.toTeam)?.staffKeys ?? []).includes(staffKey ?? ''));
   const others = staff.filter((entry) => entry.key !== staffKey && entry.key !== VIEWER_KEY);
   const defaultTo =
     lastActor && lastActor !== staffKey && others.some((entry) => entry.key === lastActor)
@@ -190,7 +201,7 @@ export default function HandoffBox({
                 <span style={{ fontSize: typography.fontSizeSecondary }}>
                   {handoffTexts.line(
                     nameOf(row.from),
-                    nameOf(row.to),
+                    toName(row),
                     formatMonthDay(row.at) ?? row.at,
                   )}
                 </span>
@@ -199,7 +210,7 @@ export default function HandoffBox({
                   <span style={{ fontSize: typography.fontSizeSecondary }}>
                     ✓ {handoffTexts.confirmed}
                   </span>
-                ) : row.to === staffKey && canRecord ? (
+                ) : isMine(row) && canRecord ? (
                   <Button
                     size="small"
                     disabled={busy}
@@ -215,7 +226,7 @@ export default function HandoffBox({
                     data-testid="handoff-waiting-for"
                     style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
                   >
-                    {handoffTexts.waitingFor(nameOf(row.to))}
+                    {handoffTexts.waitingFor(toName(row))}
                   </span>
                 )}
               </li>

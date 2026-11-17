@@ -369,6 +369,12 @@ def dashboard(
         ),
         check_left_opp_ids=check_left,
         staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
+        # #853: 내가 속한 전달 역할 묶음(예: 영업)으로 온 전달 사항도 "나에게 온 전달 사항"에.
+        staff_teams=runtime.app_settings.handoff_teams_of(
+            _my_staff_key(session, runtime, staff_key)
+        ),
+        # #854: "내가 보낸 전달 사항" 줄의 받는 쪽이 역할 묶음이면 그 이름(예: 영업).
+        team_names={team.key: team.label for team in runtime.app_settings.handoff_teams},
         stalled_after_days=runtime.app_settings.dashboard.stalled_after_days,
     )
     # #799: 운영 알림 줄을 맨 앞에 둔다(메뉴 숫자 #770은 곳 수라 이 줄을 세지 않는다).

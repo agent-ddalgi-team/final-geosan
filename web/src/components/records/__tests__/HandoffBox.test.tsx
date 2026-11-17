@@ -110,3 +110,54 @@ it('보기 전용이면 남기기·확인 단추가 없다', () => {
   expect(screen.queryByTestId('handoff-open')).not.toBeInTheDocument();
   expect(screen.queryByTestId('handoff-confirm')).not.toBeInTheDocument();
 });
+
+// #853(PM 결정 2026-11-17): 역할 묶음(영업·검수·운영)으로 보낸 전달 사항.
+describe('역할 묶음으로 받은 전달 사항 (#853)', () => {
+  const teamConfig: ConfigUi = {
+    ...config,
+    staff: [...config.staff, { key: 'lee-sales', displayName: '영업 담당 2' }],
+    handoffTeams: [
+      { key: 'SALES', label: '영업', staffKeys: ['park-lee', 'lee-sales'] },
+      { key: 'QUALITY', label: '검수(품질·기술)', staffKeys: ['kim-gwajang'] },
+    ],
+  };
+  const teamRow: HandoffNote = {
+    noteId: 'note-9',
+    text: '가상 전달: 도금 두께 가능',
+    from: 'kim-gwajang',
+    to: '',
+    toTeam: 'SALES',
+    at: '2026-11-17T01:00:00Z',
+    confirmedAt: null,
+    confirmedBy: null,
+  };
+
+  function renderTeam(staffKey: string) {
+    render(
+      <FrameContext.Provider
+        value={{
+          config: teamConfig,
+          staffKey,
+          setStaffKey: () => {},
+          canRecord: true,
+          setBannerMeta: () => {},
+          setPageTitle: () => {},
+        }}
+      >
+        <HandoffBox oppId="opp-1" handoffs={[teamRow]} listOnly onChanged={vi.fn()} />
+      </FrameContext.Provider>,
+    );
+  }
+
+  it('Given "영업"으로 온 전달 When 영업 담당 2가 열면 Then 받는 이름은 "영업"이고 [확인했어요]가 있다', () => {
+    renderTeam('lee-sales');
+    expect(screen.getByTestId('handoff-note')).toHaveTextContent('김 과장 → 영업');
+    expect(screen.getByTestId('handoff-confirm')).toBeInTheDocument();
+  });
+
+  it('Given "영업"으로 온 전달 When 보낸 검수 담당이 열면 Then [확인했어요] 대신 "영업 확인 전"', () => {
+    renderTeam('kim-gwajang');
+    expect(screen.queryByTestId('handoff-confirm')).not.toBeInTheDocument();
+    expect(screen.getByTestId('handoff-waiting-for')).toHaveTextContent('영업 확인 전');
+  });
+});

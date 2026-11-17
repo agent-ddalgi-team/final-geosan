@@ -58,6 +58,9 @@ class Note(CommonColumns, Base):
     # #771·C6: 전달 사항(HANDOFF)의 받는 사람과, 받는 사람이 확인한 시각·사람.
     # 다른 종류는 비워 둔다.
     to_staff_key: Mapped[str | None] = mapped_column(String(64))
+    # #853·C6: 사람 대신 역할 묶음(설정 handoffTeams의 key)으로 보낸 전달 사항.
+    # 이때 to_staff_key는 비운다.
+    to_team: Mapped[str | None] = mapped_column(String(32))
     confirmed_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
     confirmed_by: Mapped[str | None] = mapped_column(String(64))
 

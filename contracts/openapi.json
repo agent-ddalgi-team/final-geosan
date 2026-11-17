@@ -1463,6 +1463,14 @@
           "export": {
             "$ref": "#/components/schemas/ExportUi"
           },
+          "handoffTeams": {
+            "description": "전달 사항을 받는 역할 묶음(설정 handoffTeams, #853). staffKeys는 실제로 받을 수 있는 기록 담당자만. 받을 사람이 없는 묶음은 빼고 보낸다. 비어 있으면 화면은 사람별로 고른다",
+            "items": {
+              "$ref": "#/components/schemas/HandoffTeamView"
+            },
+            "title": "Handoffteams",
+            "type": "array"
+          },
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
@@ -3646,6 +3654,17 @@
           "to": {
             "title": "To",
             "type": "string"
+          },
+          "toTeam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toteam"
           }
         },
         "required": [
@@ -3656,6 +3675,33 @@
           "at"
         ],
         "title": "HandoffNote",
+        "type": "object"
+      },
+      "HandoffTeamView": {
+        "description": "#853 전달 사항 받는 역할 묶음 하나(설정 handoffTeams).",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "staffKeys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Staffkeys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "staffKeys"
+        ],
+        "title": "HandoffTeamView",
         "type": "object"
       },
       "HomepageConfirmation": {
@@ -5146,6 +5192,18 @@
               }
             ],
             "title": "Tostaffkey"
+          },
+          "toTeam": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toteam"
           }
         },
         "required": [

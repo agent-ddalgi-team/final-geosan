@@ -189,7 +189,8 @@ def test_sent_handoffs_show_only_to_the_sender_until_confirmed(dashboard_env):
     by_opp = {item["oppId"]: item for item in sent["items"]}
     assert by_opp[opp_ids[1]]["text"] == "가상 전달 둘 줄바꿈"
     for item in sent["items"]:
-        assert item["note"].startswith("영업 담당 · ")
+        # #854: 받는 쪽임을 보이게 "→ "를 붙인다(#853 역할 묶음이면 역할 이름).
+        assert item["note"].startswith("→ 영업 담당 · ")
         assert item["noteIds"] is None
     for headers in (SALES, OPS, VIEWER):
         assert "HANDOFF_FROM_ME" not in today_rows(client, headers)
