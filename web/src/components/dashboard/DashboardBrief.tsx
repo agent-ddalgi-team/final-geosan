@@ -44,6 +44,8 @@ export default function DashboardBrief({
   const overdue = countOf(rows, 'SCHEDULE_OVERDUE');
   const today = countOf(rows, 'SCHEDULE_TODAY');
   const handoff = countOf(rows, 'HANDOFF_FOR_ME');
+  // #854: 내가 보냈는데 받는 사람이 아직 확인하지 않은 것. 보낸 사람 본인에게만 온다.
+  const sent = countOf(rows, 'HANDOFF_FROM_ME');
   return (
     <section
       aria-labelledby="dashboard-brief-title"
@@ -71,13 +73,25 @@ export default function DashboardBrief({
             {overdue + today > 0 ? t.briefScheduleCounts(overdue, today) : t.briefScheduleNone}
           </span>
         </div>
-        {handoff > 0 ? (
+        {handoff + sent > 0 ? (
           <div data-testid="dashboard-brief-handoff" style={{ ...card, flex: '1 1 160px' }}>
             <h3 style={cardTitle}>
               <span aria-hidden="true">📬 </span>
               {t.briefHandoffTitle}
             </h3>
-            <span style={big}>{t.briefHandoffCount(handoff)}</span>
+            {handoff > 0 ? (
+              <span style={big} data-testid="dashboard-brief-handoff-received">
+                {t.briefHandoffReceived(handoff)}
+              </span>
+            ) : null}
+            {sent > 0 ? (
+              <span
+                style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
+                data-testid="dashboard-brief-handoff-sent"
+              >
+                {t.briefHandoffSent(sent)}
+              </span>
+            ) : null}
           </div>
         ) : null}
         <div data-testid="dashboard-brief-progress" style={{ flex: '3 1 360px', minWidth: 0 }}>

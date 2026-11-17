@@ -76,7 +76,9 @@ export type TodayCheckKind =
   | 'SCHEDULE_OVERDUE'
   | 'CHECK_LEFT'
   /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
-  | 'HANDOFF_FOR_ME';
+  | 'HANDOFF_FOR_ME'
+  /** #854 내가 보냈는데 받는 사람이 아직 확인하지 않은 전달 사항. note는 "받는 사람 · M/D". */
+  | 'HANDOFF_FROM_ME';
 
 /** #799 운영 알림 줄 종류(회사 줄이 없고 alert에 숫자). 사용률·자료 갱신은 운영 담당에게만. */
 export type TodayAlertKind = 'AI_USAGE_ALERT' | 'AI_LIMIT_REACHED' | 'DATA_REFRESH_DUE';
@@ -98,8 +100,10 @@ export interface TodayCheckItem {
   note: string | null;
   /** #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion). */
   outcomeVersion?: number | null;
-  /** #794: "나에게 온 전달 사항" 줄만. 가장 최근 확인 전 전달 글 앞 80자(넘으면 "…"). */
+  /** #794: "나에게 온 전달 사항" 줄만. 가장 최근 확인 전 전달 글 앞 80자(넘으면 "…"). #854: 보낸 것 줄도. */
   text?: string | null;
+  /** #854: "나에게 온 전달 사항" 줄만. 그 회사에서 나에게 온 확인 전 전달 사항 번호(최신 먼저). 옛 서버면 없음. */
+  noteIds?: string[] | null;
 }
 
 export interface TodayCheckRow {

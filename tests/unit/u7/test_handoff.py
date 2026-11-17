@@ -150,3 +150,68 @@ def test_coach_reads_handoffs_as_colleague_notes_without_names(dashboard_env):
     assert "동료 전달(확인 전): 가상 전달: 도금 두께 가능" in text
     for word in ("kim-gwajang", "park-lee", "검수 담당", "영업 담당"):
         assert word not in text
+
+
+OPS = {"X-Staff-Key": "choi-pm"}
+VIEWER = {"X-Staff-Key": "viewer"}
+
+
+def test_handoff_row_carries_every_unconfirmed_note_id_and_confirming_them_clears_it(
+    dashboard_env,
+):
+    """#854 Given 같은 회사에 영업 담당에게 온 전달 두 건 / When 대시보드
+    / Then 회사 한 줄에 확인할 번호 두 개(최신 먼저), 둘 다 확인하면 줄이 빠진다.
+    다른 줄의 번호 칸은 비어 있다."""
+    client, opp_ids = dashboard_env
+    first = handoff(client, opp_ids[0], text="가상 전달 먼저").json()["data"]["noteId"]
+    second = handoff(client, opp_ids[0], text="가상 전달 나중").json()["data"]["noteId"]
+    rows = today_rows(client, SALES)
+    item = rows["HANDOFF_FOR_ME"]["items"][0]
+    assert item["noteIds"] == [second, first]
+    for kind, row in rows.items():
+        if kind != "HANDOFF_FOR_ME":
+            assert all(entry.get("noteIds") is None for entry in row["items"])
+    for note_id in item["noteIds"]:
+        assert client.post(f"/api/v1/notes/{note_id}/confirm", headers=SALES).status_code == 200
+    assert "HANDOFF_FOR_ME" not in today_rows(client, SALES)
+
+
+def test_sent_handoffs_show_only_to_the_sender_until_confirmed(dashboard_env):
+    """#854 Given 검수 담당이 영업 담당에게 두 회사로 전달 / When 대시보드
+    / Then 검수 담당에게만 "내가 보낸 전달 사항" 2곳(받는 사람 · 날짜, 글 앞부분),
+    받는 사람·다른 담당자·보기 전용에게는 없고, 받는 사람이 확인하면 그 회사가 빠진다."""
+    client, opp_ids = dashboard_env
+    first = handoff(client, opp_ids[0]).json()["data"]["noteId"]
+    handoff(client, opp_ids[1], text="가상 전달 둘\n줄바꿈")
+    sent = today_rows(client, TECH)["HANDOFF_FROM_ME"]
+    assert sent["count"] == 2
+    assert sent["listFilter"] is None
+    by_opp = {item["oppId"]: item for item in sent["items"]}
+    assert by_opp[opp_ids[1]]["text"] == "가상 전달 둘 줄바꿈"
+    for item in sent["items"]:
+        # #854: 받는 쪽임을 보이게 "→ "를 붙인다(#853 역할 묶음이면 역할 이름).
+        assert item["note"].startswith("→ 영업 담당 · ")
+        assert item["noteIds"] is None
+    for headers in (SALES, OPS, VIEWER):
+        assert "HANDOFF_FROM_ME" not in today_rows(client, headers)
+    client.post(f"/api/v1/notes/{first}/confirm", headers=SALES)
+    sent = today_rows(client, TECH)["HANDOFF_FROM_ME"]
+    assert [item["oppId"] for item in sent["items"]] == [opp_ids[1]]
+
+
+def test_cancelled_sent_handoff_is_not_shown_and_menu_number_ignores_sent(dashboard_env):
+    """#854 Given 검수 담당이 보낸 전달을 잘못 입력으로 표시 / When 대시보드
+    / Then 보낸 쪽·받는 쪽 모두 줄이 없다. 보낸 전달 사항은 메뉴 📊 숫자에 세지 않는다."""
+    client, opp_ids = dashboard_env
+    cancelled = handoff(client, opp_ids[0]).json()["data"]["noteId"]
+    response = client.post(
+        f"/api/v1/opportunities/{opp_ids[0]}/records/{cancelled}/cancel", json={}, headers=TECH
+    )
+    assert response.status_code == 200, response.text
+    assert "HANDOFF_FROM_ME" not in today_rows(client, TECH)
+    assert "HANDOFF_FOR_ME" not in today_rows(client, SALES)
+    handoff(client, opp_ids[1])
+    assert today_rows(client, TECH)["HANDOFF_FROM_ME"]["count"] == 1
+    badges = client.get("/api/v1/menu-badges", headers=TECH)
+    assert badges.status_code == 200, badges.text
+    assert badges.json()["data"]["dashboard"] == 0
