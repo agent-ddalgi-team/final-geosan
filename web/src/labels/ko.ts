@@ -1517,9 +1517,9 @@ export const timelineLayers = {
   /** 접촉 카드 제목. 예: "전화 연결됨". */
   contactTitle: (method: string, result: string | null) =>
     result ? `${method} ${result}` : method,
-  /** 접촉한 날이 저장한 날과 다를 때 제목 옆 작은 글. */
-  attemptedOn: (day: string) => `${day} 접촉`,
-  /** 칩. 예: "상대가 먼저". 방문이면 "상대가 옴". */
+  /** 접촉한 날 아래로 옮긴 묶음의 머리 시각. 예: "11/17 22:54 저장". */
+  savedAt: (when: string) => `${when} 저장`,
+  /** 칩 예비 말(질문 파일을 못 받았을 때). 보통은 기록 칸과 같은 "수신"·"내방"(#847). */
   firstMoverChip: (who: string, visit: boolean) => (visit ? `${who} 옴` : `${who} 먼저`),
   aiTag: 'AI 피드백',
   callPrepTag: '다음 통화 준비',

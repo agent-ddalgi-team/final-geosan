@@ -3,7 +3,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import ActivityTimeline, { dateLabel, summaryText } from '../ActivityTimeline';
 import { flowChanges } from '../activityLayers';
-import { getActivity, postRecordCancel } from '../../../api/client';
+import { getActivity, getSalesQuestions, postRecordCancel } from '../../../api/client';
 import type { ActivityItem, ConfigUi, Envelope } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import { contactMethodLabels, timelineArea, timelineLayers } from '../../../labels/ko';
@@ -11,11 +11,32 @@ import { contactMethodLabels, timelineArea, timelineLayers } from '../../../labe
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
   getActivity: vi.fn(),
+  getSalesQuestions: vi.fn(),
   postRecordCancel: vi.fn(),
 }));
 
 const mockedGet = vi.mocked(getActivity);
 const mockedCancel = vi.mocked(postRecordCancel);
+const mockedQuestions = vi.mocked(getSalesQuestions);
+/** 질문 파일의 접촉 질문(보기 코드 OURS 기본 · THEIRS). 서버는 보기 이름("상대가")을 준다. */
+const QUESTIONS = {
+  data: {
+    version: 1,
+    steps: [],
+    questions: [
+      {
+        questionId: 'WHO_FIRST',
+        text: '누가 먼저 연락했나요?',
+        step: 'ALL',
+        answers: [
+          { answerId: 'OURS', label: '우리가', default: true },
+          { answerId: 'THEIRS', label: '상대가' },
+        ],
+      },
+    ],
+  },
+  meta: { updatedAt: '2026-11-17T14:30:00+09:00' },
+} as unknown as Awaited<ReturnType<typeof getSalesQuestions>>;
 const config = { staff: [{ key: 'park-lee', displayName: '박 이사' }] } as unknown as ConfigUi;
 
 function contact(at: string, extra: Partial<ActivityItem> = {}): ActivityItem {
@@ -92,6 +113,8 @@ describe('활동 이력 3층(#849)', () => {
   beforeEach(() => {
     mockedGet.mockReset();
     mockedCancel.mockReset();
+    mockedQuestions.mockReset();
+    mockedQuestions.mockResolvedValue(QUESTIONS);
   });
 
   it('Given 같은 단계 접촉 두 번과 단계가 바뀐 접촉 When 보면 Then 흐름 줄은 단계가 바뀐 때만 보이고 접촉은 모두 카드다', async () => {
@@ -107,7 +130,8 @@ describe('활동 이력 3층(#849)', () => {
     expect(within(cards[1]).getByTestId('timeline-card-memo')).toHaveTextContent(
       '샘플 이야기(가상)',
     );
-    expect(within(cards[1]).getByTestId('timeline-chip')).toHaveTextContent('상대가 먼저');
+    // #849(PM 결정 2026-11-17): 기록 칸(#847)과 같은 말. 전화를 상대가 먼저 → "수신".
+    expect(await within(cards[1]).findByTestId('timeline-chip')).toHaveTextContent('수신');
   });
 
   it('Given 흐름만 고름 When 보면 Then 단계가 바뀐 줄만 흐름 줄로 보이고 카드는 숨는다', async () => {
@@ -190,6 +214,72 @@ describe('활동 이력 3층(#849)', () => {
     const changes = flowChanges([later, cancelled, first]);
     expect(changes.has(cancelled)).toBe(false);
     expect(changes.get(later)?.from).toBe('IN_PROGRESS');
+  });
+
+  it('Given 10/30 접촉을 11/17에 저장(AI 피드백 함께) When 보면 Then "10월 30일" 구분선 아래 카드, 피드백은 그 카드 안, 머리에 저장 시각', async () => {
+    const saved = '2026-11-17T22:54:00+09:00';
+    const late = contact(saved, {
+      attemptedAt: '2026-10-30',
+      method: 'VISIT',
+      firstMover: '상대가',
+    });
+    const memo: ActivityItem = {
+      at: '2026-11-17T09:00:00+09:00',
+      actor: 'park-lee',
+      kind: 'NOTE',
+      summary: '오늘 적은 메모(가상)',
+      recordId: 'note-today',
+      recordKind: 'NOTE',
+      noteKind: 'MEMO',
+      text: '오늘 적은 메모(가상)',
+    };
+    mockedGet.mockResolvedValueOnce(
+      reply([late, advice(saved, '샘플 날짜를 받아 두세요(가상).'), memo]),
+    );
+    renderTimeline();
+    const card = await screen.findByTestId('timeline-card');
+    const days = screen.getAllByTestId('timeline-day');
+    expect(days.map((day) => within(day).getByTestId('timeline-date').textContent)).toEqual([
+      expect.stringContaining('11월 17일 (화)'),
+      '10월 30일 (금)',
+    ]);
+    // 메모는 저장한 날(11/17) 아래, 접촉 카드는 접촉한 날(10/30) 아래.
+    expect(within(days[0]).getByTestId('timeline-summary')).toHaveTextContent(
+      '오늘 적은 메모(가상)',
+    );
+    expect(days[1]).toContainElement(card);
+    expect(within(days[1]).getByTestId('timeline-time')).toHaveTextContent('11/17 22:54 저장');
+    // AI 피드백은 저장 묶음대로 그 카드 안에 따라온다(11/17 아래 따로 줄 없음).
+    fireEvent.click(within(card).getByTestId('timeline-ai-toggle'));
+    expect(within(card).getByTestId('timeline-ai-nested')).toHaveTextContent(
+      '샘플 날짜를 받아 두세요(가상).',
+    );
+    expect(screen.queryByTestId('timeline-ai')).not.toBeInTheDocument();
+    // 대면을 상대가 먼저 → "내방".
+    expect(await within(card).findByTestId('timeline-chip')).toHaveTextContent('내방');
+  });
+
+  it('Given 늦게 저장한 옛 접촉 When 흐름을 셈 Then 저장 순서가 아니라 접촉한 날 순서로 이전 → 새 단계를 정한다', () => {
+    const sample = contact('2026-11-12T10:00:00+09:00', {
+      status: 'SAMPLE_OR_REGISTRATION_APPROVED',
+      attemptedAt: '2026-11-12',
+    });
+    // 10/30 통화를 11/17에야 적음: 접촉한 날로는 견적·샘플보다 앞이다.
+    const lateCall = contact('2026-11-17T09:00:00+09:00', { attemptedAt: '2026-10-30' });
+    const changes = flowChanges([lateCall, sample]);
+    expect(changes.get(lateCall)).toMatchObject({ from: 'NOT_EXECUTED', to: 'IN_PROGRESS' });
+    expect(changes.get(sample)).toMatchObject({
+      from: 'IN_PROGRESS',
+      to: 'SAMPLE_OR_REGISTRATION_APPROVED',
+    });
+  });
+
+  it('질문 파일을 못 받으면 칩은 서버가 준 보기 이름으로 "상대가 먼저"를 보인다', async () => {
+    mockedQuestions.mockReset();
+    mockedQuestions.mockRejectedValue(new Error('offline'));
+    mockedGet.mockResolvedValueOnce(reply([same]));
+    renderTimeline();
+    expect(await screen.findByTestId('timeline-chip')).toHaveTextContent('상대가 먼저');
   });
 
   it('날짜 구분선은 "11월 17일 (화) · 오늘", 하루 전은 "어제"를 붙인다', () => {
