@@ -1,6 +1,7 @@
-// #802 1단계 "기록에서 배우기": 서버가 센 값을 그대로 보이는지, 실패를 먼저 두는지,
-// 표본 밑은 "판단 보류", 질문지 다듬기는 "제안 · 승인 전"인지 본다. 숫자·이름은 모두 가상이다.
-import { render, screen, waitFor, within } from '@testing-library/react';
+// #802·#820 "기록에서 배우기": 서버가 센 값을 기준 숫자 없이 그대로 펼쳐 보이는지, 답 채움률을 맨 위에,
+// 눈에 띔은 "결론 아님 · 사람 확인 전", 표본 밑은 회색 "표본 부족", 질문지는 "손볼 만함 · 승인 전"인지 본다.
+// 숫자·이름은 모두 가상이다.
+import { render, screen, within } from '@testing-library/react';
 import SalesPatterns from '../SalesPatterns';
 import { getSalesPatterns } from '../../../api/salesAnalysis';
 import type { SalesPatterns as Patterns } from '../../../api/salesAnalysis';
@@ -16,14 +17,14 @@ vi.mock('../../../api/client', async (original) => ({
 }));
 
 const SAMPLE: Patterns = {
-  asOf: '2026-11-16T10:00:00Z',
-  basis: { minSampleForRatio: 10, usableCount: 12, neededCount: 30, enough: false },
+  asOf: '2026-11-17T10:00:00Z',
+  basis: { minSampleForRatio: 10, closedCount: 24, wonCount: 6, overallWonRatio: 0.25 },
   failure: {
-    count: 9,
+    count: 18,
     onHoldCount: 2,
     byStep: [
       { step: null, count: 1 },
-      { step: 'MATERIAL_QUOTE', count: 8 },
+      { step: 'MATERIAL_QUOTE', count: 17 },
     ],
     lostReasons: [
       { code: 'PRICE', count: 3 },
@@ -38,34 +39,37 @@ const SAMPLE: Patterns = {
     ],
   },
   success: {
-    count: 3,
-    byStep: [{ step: 'VISIT_SAMPLE', count: 3 }],
+    count: 6,
+    byStep: [{ step: 'VISIT_SAMPLE', count: 6 }],
     avgContactsToWon: 4.3,
     avgFirstVisitIndex: 2,
     failedAvgFirstVisitIndex: null,
   },
-  signals: [
+  contactsBeforeVisit: [
+    { visited: true, bucket: 'ONE', won: 5, failed: 5, inProgress: 1, wonRatio: 0.5, judged: true },
     {
-      code: 'CALL_ONLY',
-      questionId: null,
-      answerIds: [],
-      withSignal: 4,
-      failed: 4,
+      visited: false,
+      bucket: 'THREE',
       won: 0,
-      failedShare: 0.44,
-      wonShare: 0,
+      failed: 3,
+      inProgress: 0,
+      wonRatio: null,
       judged: false,
     },
+  ],
+  longestGap: [
+    { bucket: 'WITHIN_WEEK', won: 4, failed: 6, inProgress: 0, wonRatio: 0.4, judged: true },
+    { bucket: 'SINGLE_CONTACT', won: 0, failed: 1, inProgress: 2, wonRatio: null, judged: false },
+  ],
+  answerOutcomes: [
     {
-      code: 'ANSWER',
       questionId: 'INTEREST',
-      answerIds: ['LOW', 'NONE'],
-      withSignal: 10,
-      failed: 8,
-      won: 2,
-      failedShare: 0.89,
-      wonShare: 0.67,
-      judged: true,
+      answerId: 'LOW',
+      won: 0,
+      failed: 2,
+      inProgress: 0,
+      wonRatio: null,
+      judged: false,
     },
   ],
   combos: [
@@ -76,23 +80,51 @@ const SAMPLE: Patterns = {
       contacted: 5,
       won: 2,
       lost: 2,
-      onHold: 1,
+      onHold: 0,
       wonRatio: null,
     },
   ],
-  answerFill: [
-    { questionId: 'PLATING_NOW', step: 'REACHED', eligible: 12, answered: 9, ratio: 0.75 },
-    { questionId: 'NEED_PROCESS', step: 'REACHED', eligible: 0, answered: 0, ratio: null },
+  standouts: [
+    {
+      table: 'CONTACTS_BEFORE_VISIT',
+      won: 5,
+      failed: 5,
+      wonRatio: 0.5,
+      overallWonRatio: 0.25,
+      diff: 0.25,
+      visited: true,
+      bucket: 'ONE',
+      questionId: null,
+      answerId: null,
+      processCode: null,
+      industry: null,
+      region: null,
+    },
   ],
-  questionnaireHints: [
+  answerFill: [
     {
       questionId: 'INTEREST',
-      kind: 'SAME_ANSWER',
-      answerId: 'MEDIUM',
-      share: 0.92,
-      wonRatioHigh: null,
-      wonRatioLow: null,
+      step: 'REACHED',
+      eligible: 12,
+      answered: 9,
+      ratio: 0.75,
+      answers: [{ answerId: 'MEDIUM', count: 8 }],
+      unknownShare: 0.25,
+      topShare: 0.89,
     },
+    {
+      questionId: 'PLATING_NOW',
+      step: 'REACHED',
+      eligible: 0,
+      answered: 0,
+      ratio: null,
+      answers: [],
+      unknownShare: null,
+      topShare: null,
+    },
+  ],
+  questionnaireHints: [
+    { questionId: 'INTEREST', kind: 'SAME_ANSWER', answerId: 'MEDIUM', share: 0.89 },
   ],
   coachEffect: { applied: 4, progressed: 2, companies: 3 },
 };
@@ -136,80 +168,95 @@ beforeEach(() => {
   vi.mocked(getSalesQuestions).mockResolvedValue({ data: QUESTIONS, meta: {} } as never);
 });
 
-it('실패에서 배우기를 먼저, 그다음 성공·조합·충분도·제안·코치 순서로 보인다', async () => {
+it('답 채움률을 맨 위에, 그다음 눈에 띔·실패에서 배우기·펼친 표 순서로 보인다', async () => {
   vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: SAMPLE, meta: {} } as never);
   renderPatterns();
-  const section = await screen.findByTestId('patterns');
-  const ids = Array.from(section.querySelectorAll('section[data-testid]')).map((node) =>
-    node.getAttribute('data-testid'),
-  );
-  expect(ids).toEqual([
+  await screen.findByTestId('patterns');
+  const order = [
+    'patterns-fill',
+    'patterns-standouts',
     'patterns-failure',
+    'patterns-contacts',
+    'patterns-gap',
+    'patterns-answers',
     'patterns-success',
     'patterns-combos',
-    'patterns-fill',
     'patterns-hints',
     'patterns-coach',
-  ]);
+  ].map((id) => screen.getByTestId(id));
+  for (let i = 1; i < order.length; i += 1) {
+    expect(
+      order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  }
   expect(screen.getByTestId('patterns-basis')).toHaveTextContent(
-    '패턴 판단에 쓸 수 있는 기록 12곳 / 필요 30곳 · 아직 기록이 적어',
+    '끝난 회사 24곳(성사 6곳) · 전체 성사율 25% · 표본 기준 10곳',
   );
-  expect(screen.getByTestId('patterns-failure-count')).toHaveTextContent(
-    '거절·보류 9곳 (보류 2곳)',
+  expect(screen.getAllByTestId('patterns-fill-row')).toHaveLength(1); // 물을 자리 0인 질문은 뺀다
+});
+
+it('눈에 띔은 "결론 아님 · 사람 확인 전"이고 칸 이름·전체와의 차이를 보인다', async () => {
+  vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: SAMPLE, meta: {} } as never);
+  renderPatterns();
+  expect(await screen.findByTestId('patterns-standouts-badge')).toHaveTextContent(
+    '결론 아님 · 사람 확인 전',
   );
-  const reasons = screen.getAllByTestId('patterns-failure-reason');
-  expect(reasons[0]).toHaveTextContent('가격');
-  expect(reasons[0]).toHaveTextContent('3곳');
-  expect(screen.getAllByTestId('patterns-failure-step')[0]).toHaveTextContent('연결 전');
-  await waitFor(() =>
-    expect(screen.getByTestId('patterns-step-answers')).toHaveTextContent(
-      '연결됨 · 지금 도금은 어떻게 하나요? — 직접 함 2',
-    ),
+  expect(screen.getByTestId('patterns-standout')).toHaveTextContent(
+    '방문 전 접촉 횟수별 · 방문함 1번 — 성사율 50% (전체 25%보다 +25%p) · 성사 5 · 실패 5',
   );
 });
 
-it('표본 밑 신호는 "판단 보류"로 흐리게, 판단한 신호는 실패·성사 몫을 함께 보인다', async () => {
+it('펼친 표는 기준 숫자 없이 칸마다 성사·실패를 보이고 표본 밑은 회색 "표본 부족"', async () => {
   vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: SAMPLE, meta: {} } as never);
   renderPatterns();
-  const signals = await screen.findAllByTestId('patterns-signal');
-  expect(signals[0]).toHaveAttribute('data-judged', 'false');
-  expect(signals[0]).toHaveTextContent('전화만·방문 없음 · 판단 보류');
-  expect(signals[1]).toHaveAttribute('data-judged', 'true');
-  await waitFor(() => expect(signals[1]).toHaveTextContent('관심 정도는? = 낮음·없음'));
-  expect(signals[1]).toHaveTextContent('실패 9곳 중 8곳 (89%)');
-  expect(signals[1]).toHaveTextContent('성사 3곳 중 2곳 (67%)');
+  const rows = await screen.findAllByTestId('patterns-contact-row');
+  expect(rows[0]).toHaveAttribute('data-judged', 'true');
+  expect(rows[0]).toHaveTextContent('방문함 · 1번');
+  expect(rows[0]).toHaveTextContent('성사 5 · 실패 5 · 진행 1 · 성사율 50%');
+  expect(rows[1]).toHaveAttribute('data-judged', 'false');
+  expect(rows[1]).toHaveTextContent('방문 없음 · 3번');
+  expect(rows[1]).toHaveTextContent('표본 부족');
+  expect(screen.getAllByTestId('patterns-gap-row')[1]).toHaveTextContent('접촉 한 번');
+  const answers = within(screen.getByTestId('patterns-answers'));
+  expect(answers.getByText('관심 정도는?')).toBeInTheDocument();
+  expect(answers.getByTestId('patterns-answer-row')).toHaveTextContent('낮음');
 });
 
-it('조합은 공정 이름 × 산업 × 권역, 표본 밑이면 판단 보류. 물을 자리 0인 질문은 채움률에서 뺀다', async () => {
+it('질문지 다듬기는 "손볼 만함 · 승인 전", 조합은 표본 밑이면 "표본 부족", 코치 효과는 한 줄', async () => {
   vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: SAMPLE, meta: {} } as never);
   renderPatterns();
-  expect(await screen.findByTestId('patterns-combo')).toHaveTextContent(
-    '아연도금(전기아연도금) × 자동차 부품 × 천안·아산 — 접촉 5 · 성사 2 · 판단 보류',
+  expect(await screen.findByTestId('patterns-hints-badge')).toHaveTextContent(
+    '손볼 만함 · 승인 전',
   );
-  const fill = screen.getAllByTestId('patterns-fill-row');
-  expect(fill).toHaveLength(1);
-  expect(fill[0]).toHaveTextContent('12번 물을 자리 중 9번 답함');
-  expect(screen.getByTestId('patterns-success-count')).toHaveTextContent(
-    '성사 3곳 · 평균 4.3번 접촉',
+  expect(screen.getByTestId('patterns-hint')).toHaveTextContent(
+    '관심 정도는? — 한 답(보통)이 89% — 갈림이 가장 적은 질문',
   );
-  expect(screen.getByTestId('patterns-first-visit')).toHaveTextContent(
-    '처음 방문한 접촉 순번 — 성사 2번째 · 실패 방문 없음',
-  );
-});
-
-it('질문지 다듬기는 "제안 · 승인 전"이고 코치 제안 효과를 한 줄로 보인다', async () => {
-  vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: SAMPLE, meta: {} } as never);
-  renderPatterns();
-  const hints = await screen.findByTestId('patterns-hints');
-  expect(within(hints).getByTestId('patterns-hints-badge')).toHaveTextContent('제안 · 승인 전');
-  await waitFor(() =>
-    expect(within(hints).getByTestId('patterns-hint')).toHaveTextContent(
-      '관심 정도는? — 한 답(보통)이 92%',
-    ),
+  expect(screen.getByTestId('patterns-combo')).toHaveTextContent(
+    '아연도금(전기아연도금) × 자동차 부품 × 천안·아산 — 접촉 5 · 성사 2 · 표본 부족',
   );
   expect(screen.getByTestId('patterns-coach-line')).toHaveTextContent(
-    '코치 제안으로 넣은 일정 4건 → 그 뒤 단계가 앞으로 가거나 성사 2건 (회사 3곳)',
+    '코치 제안으로 넣은 일정 4건',
   );
+});
+
+it('기록이 없으면 눈에 띔 대신 안내, 전체 성사율 없이 "결론을 내지 않습니다"', async () => {
+  const empty: Patterns = {
+    ...SAMPLE,
+    basis: { minSampleForRatio: 10, closedCount: 0, wonCount: 0, overallWonRatio: null },
+    contactsBeforeVisit: [],
+    longestGap: [],
+    answerOutcomes: [],
+    combos: [],
+    standouts: [],
+    questionnaireHints: [],
+  };
+  vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: empty, meta: {} } as never);
+  renderPatterns();
+  expect(await screen.findByTestId('patterns-standouts-empty')).toHaveTextContent(
+    '표본 기준을 넘는 칸이 아직 없습니다',
+  );
+  expect(screen.getByTestId('patterns-basis')).toHaveTextContent('결론을 내지 않습니다');
+  expect(screen.getByTestId('patterns-basis')).not.toHaveTextContent('전체 성사율');
 });
 
 it('질문 파일을 못 읽어도 코드로 보이고, 패턴을 못 읽으면 안내만 보인다', async () => {

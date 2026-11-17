@@ -1169,3 +1169,16 @@ def test_api_company_rows_carry_furthest_step_and_timeline_without_text(dashboar
     assert [e["at"] for e in row["timeline"]][:2] == ["2026-10-15", "2026-10-16"]
     assert all(set(e) == {"at", "method", "result", "stepAfter", "status"} for e in row["timeline"])
     assert "가상 메모" not in str(row)
+
+
+def test_db_copy_with_the_retired_sales_patterns_key_is_still_read(dashboard_env):
+    """Given #820 전 DB 사본에 없앤 설정 칸 salesPatterns가 남아 있음 / When 설정·패턴 조회
+    / Then 모르는 키로 거부하지 않고 건너뛰며, 패턴은 표본 기준(salesAnalysis) 하나로 센다."""
+    client, _ = dashboard_env
+    with session_scope() as session:
+        session.add(AppSetting(setting_key="salesPatterns", value={"callOnlyMinCalls": 3}))
+    with session_scope() as session:
+        assert read_app_settings(session) is not None
+    response = client.get("/api/v1/sales-analysis/patterns", headers=VIEWER)
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["basis"]["minSampleForRatio"] == 10

@@ -24,7 +24,6 @@ from geosan.api.routes.records import (
 )
 from geosan.api.sales_step import compute_sales_step, step_rows
 from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel
-from geosan.config.app_settings import DEFAULT_APP_SETTINGS_PATH, load_app_settings
 from geosan.config.errors import FieldError, InputError, RunFailedError
 from geosan.config.sales_questions import KST, STEP_ORDER
 from geosan.dashboard.sales_analysis import (
@@ -34,10 +33,8 @@ from geosan.dashboard.sales_analysis import (
     process_display_name,
 )
 from geosan.dashboard.sales_patterns import (
-    AnswerSignal,
     PatternCompany,
     PatternLine,
-    PatternSettings,
     QuestionInfo,
     build_sales_patterns,
 )
@@ -344,15 +341,15 @@ def sales_analysis(
 
 
 # ---------------------------------------------------------------------------
-# #802 1단계: 패턴 세기 (GET /sales-analysis/patterns). AI·외부 호출·저장 없음.
+# #802·#820: 패턴 펼쳐 보기 (GET /sales-analysis/patterns). AI·외부 호출·저장 없음.
 # ---------------------------------------------------------------------------
 
 
 class PatternBasis(_ApiModel):
     min_sample_for_ratio: int
-    usable_count: int
-    needed_count: int
-    enough: bool
+    closed_count: int
+    won_count: int
+    overall_won_ratio: float | None
 
 
 class PatternStepCount(_ApiModel):
@@ -392,15 +389,34 @@ class PatternSuccess(_ApiModel):
     failed_avg_first_visit_index: float | None
 
 
-class PatternSignal(_ApiModel):
-    code: Literal["CALL_ONLY", "LONG_GAP", "ANSWER"]
-    question_id: str | None
-    answer_ids: list[str]
-    with_signal: int
-    failed: int
+class PatternContactRow(_ApiModel):
+    visited: bool
+    bucket: Literal["ZERO", "ONE", "TWO", "THREE", "FOUR_PLUS"]
     won: int
-    failed_share: float | None
-    won_share: float | None
+    failed: int
+    in_progress: int
+    won_ratio: float | None
+    judged: bool
+
+
+class PatternGapRow(_ApiModel):
+    bucket: Literal[
+        "WITHIN_WEEK", "WITHIN_TWO_WEEKS", "WITHIN_MONTH", "OVER_MONTH", "SINGLE_CONTACT"
+    ]
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
+    judged: bool
+
+
+class PatternAnswerRow(_ApiModel):
+    question_id: str
+    answer_id: str
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
     judged: bool
 
 
@@ -415,21 +431,38 @@ class PatternCombo(_ApiModel):
     won_ratio: float | None
 
 
+class PatternStandout(_ApiModel):
+    table: Literal["CONTACTS_BEFORE_VISIT", "LONGEST_GAP", "ANSWER", "COMBO"]
+    won: int
+    failed: int
+    won_ratio: float
+    overall_won_ratio: float
+    diff: float
+    visited: bool | None = None
+    bucket: str | None = None
+    question_id: str | None = None
+    answer_id: str | None = None
+    process_code: str | None = None
+    industry: str | None = None
+    region: str | None = None
+
+
 class PatternAnswerFill(_ApiModel):
     question_id: str
     step: str
     eligible: int
     answered: int
     ratio: float | None
+    answers: list[PatternAnswerCount]
+    unknown_share: float | None
+    top_share: float | None
 
 
 class PatternHint(_ApiModel):
     question_id: str
-    kind: Literal["SAME_ANSWER", "UNKNOWN_MANY", "SPLITS_OUTCOME"]
+    kind: Literal["SAME_ANSWER", "UNKNOWN_MANY"]
     answer_id: str | None = None
     share: float | None = None
-    won_ratio_high: float | None = None
-    won_ratio_low: float | None = None
 
 
 class PatternCoachEffect(_ApiModel):
@@ -443,38 +476,17 @@ class SalesPatternsData(_ApiModel):
     basis: PatternBasis
     failure: PatternFailure
     success: PatternSuccess
-    signals: list[PatternSignal]
+    contacts_before_visit: list[PatternContactRow]
+    longest_gap: list[PatternGapRow]
+    answer_outcomes: list[PatternAnswerRow]
     combos: list[PatternCombo]
+    standouts: list[PatternStandout]
     answer_fill: list[PatternAnswerFill]
     questionnaire_hints: list[PatternHint]
     coach_effect: PatternCoachEffect
 
 
 SalesPatternsEnvelope = Envelope[SalesPatternsData]
-
-
-def _pattern_settings(session: Session, runtime, min_sample_for_ratio: int) -> PatternSettings:
-    """설정 salesPatterns. DB 설정에 칸이 없으면(옛 사본) 예시 설정 파일 값을 쓴다(계약 C7)."""
-    found = runtime.app_settings.sales_patterns
-    if found is None:
-        found = load_app_settings(DEFAULT_APP_SETTINGS_PATH).sales_patterns
-    if found is None:
-        raise RunFailedError(
-            "영업 분석 패턴 기준(salesPatterns)이 설정에 없습니다. 앱 설정 파일을 확인해 주세요."
-        )
-    return PatternSettings(
-        min_sample_for_ratio=min_sample_for_ratio,
-        call_only_min_calls=found.call_only_min_calls,
-        gap_days=found.gap_days,
-        answer_signals=tuple(
-            AnswerSignal(item.question_id, tuple(item.answer_ids)) for item in found.answer_signals
-        ),
-        min_records_for_patterns=found.min_records_for_patterns,
-        same_answer_ratio=found.same_answer_ratio,
-        unknown_ratio=found.unknown_ratio,
-        split_diff=found.split_diff,
-        split_min_group=found.split_min_group,
-    )
 
 
 def _region_label(address: str | None, presets) -> str | None:
@@ -542,11 +554,13 @@ def sales_patterns(
     period_from: Annotated[str | None, Query(alias="from")] = None,
     period_to: Annotated[str | None, Query(alias="to")] = None,
 ):
-    """#802 1단계: 실패·성공 패턴. 영업 분석표와 같은 대상·기간 규칙으로 저장된 기록만 센다."""
+    """#802·#820: 기록을 펼쳐 센다(기준 숫자 없음, 표본 기준은 salesAnalysis 하나).
+
+    영업 분석표와 같은 대상·기간 규칙.
+    """
     period, runtime, settings, dataset_kind, now, _companies, result = _analysis_inputs(
         session, period_from, period_to
     )
-    pattern_settings = _pattern_settings(session, runtime, settings.min_sample_for_ratio)
     questions = sales_questions(session)
     first_step = STEP_ORDER[0].value
     presets = runtime.app_settings.list_filters.region_presets
@@ -559,12 +573,15 @@ def sales_patterns(
                 step=question.step if isinstance(question.step, str) else question.step.value,
                 choices=question.choices is not None,
                 show_when=dict(question.show_when.answers) if question.show_when else {},
+                decides_outcome=any(
+                    answer.closes or answer.lost_reason for answer in question.answers
+                ),
             )
             for question in questions.questions
         ],
         step_order=[step.value for step in STEP_ORDER],
         lost_reason_order=[code.value for code in LostReasonCode],
-        settings=pattern_settings,
+        min_sample_for_ratio=settings.min_sample_for_ratio,
         period=(result.basis.period_from, result.basis.period_to) if period is not None else None,
     )
     data = SalesPatternsData.model_validate(

@@ -88,19 +88,6 @@ salesAnalysis:
   minSampleForRatio: 10   # 표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 "표본 n건"만 보인다.
   closedWindowDays: 365   # 성사·거절은 결과 기록이 이 일수 안인 것만 센다(최근 12개월).
 
-# 영업 분석 패턴 세기(#802 1단계, 계약 C7). 팀 제안 초기값 · PM 확인 전. AI 없이 저장된 기록만 센다.
-salesPatterns:
-  callOnlyMinCalls: 3        # 전화 3번 이상·방문 0번이면 "전화만·방문 없음" 신호
-  gapDays: 14                # 이어진 두 접촉 사이가 14일을 넘으면 "공백" 신호
-  answerSignals:             # 회사의 그 질문 마지막 답이 이 중 하나면 신호(질문 파일 id 그대로)
-    - { questionId: INTEREST, answerIds: [LOW, NONE] }
-    - { questionId: PLATING_NOW, answerIds: [IN_HOUSE] }
-  minRecordsForPatterns: 30  # 끝난 회사(성사·거절·보류)가 30곳은 돼야 "패턴 판단에 충분"
-  sameAnswerRatio: 0.8       # 한 답이 80% 이상이면 "늘 같은 답" 질문지 신호
-  unknownRatio: 0.5          # 답 없음·모름이 50% 이상이면 "모름이 많음" 신호
-  splitDiff: 0.3             # 답에 따라 성사율이 30%p 이상 갈리면 "결과를 가르는 질문" 신호
-  splitMinGroup: 3           # 그 비교에 쓰는 답 묶음은 3곳 이상만
-
 # 영업 비서(#680, 계약 C7, PM 결정 2026-11-14): 질문에 답하기·통화 준비. 숫자는 PM이 정한다.
 # 켜고 끄는 스위치는 위 llm.salesRecordsEnabled다. 메모 글은 보내지 않고 고른 값만 보낸다.
 assistant:

@@ -339,35 +339,6 @@ class SalesAnalysisSettings(FileModel):
     closed_window_days: int = Field(ge=1, strict=True)
 
 
-class AnswerSignalSettings(FileModel):
-    """#802 실패·성공 신호로 셀 꼬리 질문 답 하나(질문 id + 그 질문의 답 id들)."""
-
-    question_id: str = Field(min_length=1)
-    answer_ids: list[str] = Field(min_length=1)
-
-
-class SalesPatternsSettings(FileModel):
-    """계약 C7 `salesPatterns`(#802 1단계). 패턴 세기 기준 숫자.
-
-    코드에 기본값을 두지 않는다(규칙 ⑩).
-
-    칸이 없는 옛 설정·DB 사본이면 창구가 예시 설정 파일 값을 쓴다.
-    """
-
-    # 전화 접촉이 이 번 이상이고 방문이 없으면 "전화만 n번·방문 없음" 신호.
-    call_only_min_calls: int = Field(ge=1, strict=True)
-    # 이어진 두 접촉 사이가 이 일수를 넘으면 "공백" 신호.
-    gap_days: int = Field(ge=1, strict=True)
-    answer_signals: list[AnswerSignalSettings] = Field(default_factory=list)
-    # 끝난 회사(성사·거절·보류)가 이 곳 수 이상이어야 "패턴 판단에 충분".
-    min_records_for_patterns: int = Field(ge=1, strict=True)
-    # 질문지 신호 기준(0~1 비율).
-    same_answer_ratio: float = Field(gt=0, le=1)
-    unknown_ratio: float = Field(gt=0, le=1)
-    split_diff: float = Field(gt=0, le=1)
-    split_min_group: int = Field(ge=1, strict=True)
-
-
 class AssistantSettings(FileModel):
     """계약 C7 `assistant`(#680 영업 비서). 숫자는 코드에 두지 않아 기본값이 없다(규칙 ⑩).
 
@@ -515,8 +486,6 @@ class AppSettings(FileModel):
     research: ResearchSettings = Field(default_factory=ResearchSettings)
     # #608: 이 칸이 없는 옛 설정 파일도 읽는다. DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     sales_analysis: SalesAnalysisSettings | None = None
-    # #802 1단계: 영업 분석 패턴 세기 기준. 없으면 창구가 예시 설정 파일 값을 쓴다.
-    sales_patterns: SalesPatternsSettings | None = None
     # #680: 위와 같은 방식(영업 비서 기준 숫자).
     assistant: AssistantSettings | None = None
     # #610: 위와 같은 방식. 옛 설정에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
@@ -700,6 +669,9 @@ def load_app_settings(path: Path | str) -> AppSettings:
 # ---------------------------------------------------------------------------
 
 SOURCE_FILE_KEY = "sourceFile"
+# 없앤 설정 칸. 옛 DB 사본에 남아 있어도 "모르는 키"로 거부하지 않고 건너뛴다.
+# salesPatterns: #820(PM 결정 2026-11-17)에서 패턴 기준 숫자를 없앴다.
+RETIRED_KEYS = frozenset({"salesPatterns"})
 """설정을 어느 파일에서 읽었는지 적어 두는 행의 키."""
 
 
@@ -745,7 +717,11 @@ def read_app_settings(session: Session) -> AppSettings | None:
     from geosan.config.models import AppSetting
 
     rows = session.scalars(select(AppSetting)).all()
-    data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
+    data = {
+        row.setting_key: row.value
+        for row in rows
+        if row.setting_key != SOURCE_FILE_KEY and row.setting_key not in RETIRED_KEYS
+    }
     if not data:
         return None
     return AppSettings.model_validate(

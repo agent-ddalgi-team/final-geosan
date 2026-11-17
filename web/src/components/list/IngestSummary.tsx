@@ -1,10 +1,12 @@
 // 추천 목록 머리의 후보 수집 요약(#316, 결정 2026-11-05): 마지막 수집 회차의 진행·결과 한 줄.
+// #825: 이름은 "지난 새 후보 찾기"(옛 "영업 후보 더하기"), 실패는 "11/14 찾기 실패 · …"처럼 날짜를 붙인다.
 // 서버가 준 meta.latestIngest를 그대로 보이고 화면에서 건수를 계산해 지어내지 않는다. 건수를 모르는 칸은 뺀다.
 // "이번 수집만 / 전체" 전환은 없앴다(#516, 2026-11-09): 같은 조건을 다시 돌리면 비어 버려서, 대신 목록 머리 정렬의
 // "최근 들어온 순"으로 새로 들어온 회사를 위로 올린다.
 import type { LatestIngest } from '../../api/types';
 import { candidateSearch } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
+import { formatMonthDay } from '../../utils/time';
 
 export interface IngestSummaryProps {
   ingest: LatestIngest;
@@ -36,7 +38,9 @@ export function summaryParts(ingest: LatestIngest): string[] {
  */
 export function failureText(ingest: LatestIngest): string {
   const reason = typeof ingest.failureReason === 'string' ? ingest.failureReason.trim() : '';
-  return reason || candidateSearch.failed;
+  // #825: 지난 회차 실패는 날짜를 앞에 붙여 "지금 문제"가 아니라 지난 일로 읽히게 한다.
+  const day = formatMonthDay(ingest.finishedAt ?? ingest.startedAt ?? null);
+  return candidateSearch.failedOn(day, reason || candidateSearch.failed);
 }
 
 /** 한도 등으로 건너뛴 일을 쉬운 말 문장으로 바꾼다. 서버가 안 준 칸과 모르는 코드는 뺀다. */
