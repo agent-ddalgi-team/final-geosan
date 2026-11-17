@@ -51,7 +51,7 @@ export interface FlowChange {
 }
 
 /**
- * 영업 기록 줄 가운데 단계나 다음 일정이 바로 앞(시간상) 기록과 달라진 줄. items는 최근 순이다.
+ * 영업 기록 줄 가운데 단계나 다음 일정이 바로 앞(접촉한 날 기준) 기록과 달라진 줄. items는 저장 최근 순이다.
  * 잘못 입력으로 표시된 줄은 흐름에서 빼고 건너뛴다(단계도 그 줄 전으로 되돌아갔다).
  * 처음 기록은 "미접촉"에서 시작한 것으로 본다.
  */
@@ -59,7 +59,13 @@ export function flowChanges(items: ActivityItem[]): Map<ActivityItem, FlowChange
   const changes = new Map<ActivityItem, FlowChange>();
   let previousStatus: OutcomeStatus = 'NOT_EXECUTED';
   let previousSchedule: string | null = null;
-  for (const item of [...items].reverse()) {
+  // #849(PM 결정 2026-11-17): 흐름은 실제 접촉한 날 순서로 센다(같은 날이면 저장 순서).
+  const chronological = [...items]
+    .reverse()
+    .map((item, index) => ({ item, index, day: displayDay(item) ?? '' }))
+    .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.index - b.index))
+    .map((entry) => entry.item);
+  for (const item of chronological) {
     if (!isStructuredOutcome(item) || item.cancelled === true || item.status == null) continue;
     const schedule = item.nextScheduleAt ?? null;
     const statusChanged = item.status !== previousStatus;
@@ -133,4 +139,53 @@ export function kstDay(iso: string): string | null {
     day: '2-digit',
   }).format(date);
   return parts;
+}
+
+/**
+ * #849(PM 결정 2026-11-17) 날짜 구분선·정렬에 쓰는 날. 영업 기록 줄은 실제 접촉한 날(attemptedAt, 없으면 저장한 날),
+ * 메모·AI 피드백·사실 줄은 저장한 날 그대로.
+ */
+export function displayDay(item: ActivityItem): string | null {
+  if (isStructuredOutcome(item) && item.attemptedAt) return item.attemptedAt;
+  return kstDay(item.at);
+}
+
+/**
+ * 화면에 보일 순서와 묶음. items는 저장 최근 순(sortRecentFirst)이다.
+ *  1) AI 피드백을 같은 저장 묶음(같은 사람·같은 분 저장)의 접촉 카드에 붙인다 — 저장 시각 기준 그대로.
+ *  2) 남은 줄을 표시 날(displayDay) 최근 순으로 다시 늘어놓는다(같은 날이면 저장 순서 유지).
+ *  3) 같은 날·같은 사람·같은 분 저장끼리 한 묶음으로 보인다.
+ * 접촉 카드를 접촉한 날 아래로 옮겨도 그 카드에 붙은 AI 피드백은 카드 안에서 함께 간다.
+ */
+export function displayBlocks(
+  items: ActivityItem[],
+  sameMoment: (items: ActivityItem[]) => ActivityItem[][],
+): { blocks: ActivityItem[][]; nested: Map<ActivityItem, ActivityItem[]> } {
+  const nested = new Map<ActivityItem, ActivityItem[]>();
+  const attached = new Set<ActivityItem>();
+  for (const block of sameMoment(items)) {
+    for (const [host, advices] of arrangeBlock(block).nested) {
+      nested.set(host, advices);
+      advices.forEach((advice) => attached.add(advice));
+    }
+  }
+  const ordered = items
+    .filter((item) => !attached.has(item))
+    .map((item, index) => ({ item, index, day: displayDay(item) ?? '' }))
+    .sort((a, b) => (a.day > b.day ? -1 : a.day < b.day ? 1 : a.index - b.index))
+    .map((entry) => entry.item);
+  const blocks: ActivityItem[][] = [];
+  for (const block of sameMoment(ordered)) {
+    // 같은 분에 저장했어도 접촉한 날이 다르면 다른 날 아래로 나눈다.
+    let current: ActivityItem[] = [];
+    for (const item of block) {
+      if (current.length > 0 && displayDay(current[0]) !== displayDay(item)) {
+        blocks.push(current);
+        current = [];
+      }
+      current.push(item);
+    }
+    if (current.length > 0) blocks.push(current);
+  }
+  return { blocks, nested };
 }
