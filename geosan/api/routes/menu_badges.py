@@ -46,6 +46,7 @@ def menu_badges(
         dataset_kind=dataset_kind.value,
         staff_key=me,
         today=now.astimezone(KST).date(),
+        staff_teams=runtime.app_settings.handoff_teams_of(me),
     )
     new_candidates = 0
     if list_since is not None:

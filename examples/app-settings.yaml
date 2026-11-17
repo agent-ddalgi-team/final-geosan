@@ -187,6 +187,14 @@ dashboard:
 # staffKeys에 든 담당자만 화면을 보고 "AI 사용 n%"·"자료 갱신할 때" 알림을 받는다.
 # factoryCsvRefreshDays: 공장현황 파일 기준일에서 이 일수가 지나면 갱신하라고 알린다.
 # 알림 사용률 기준은 아래 llm.costAlertRatio(0.8 = 80%)를 함께 쓴다.
+# 전달 사항 받는 역할 묶음(#853, PM 결정 2026-11-17). 메모의 "받는 사람"에 사람 대신 이 묶음이 보인다.
+# 묶음으로 보내면 묶음 안 담당자 모두가 받고 한 사람이 [확인했어요]를 누르면 끝난다.
+# 담당자 목록(staff)에 없는 키·보기 전용 키는 무시한다. 비우면 사람별로 고른다.
+handoffTeams:
+  - { key: SALES, label: "영업", staffKeys: [park-lee] }
+  - { key: QUALITY, label: "검수(품질·기술)", staffKeys: [kim-gwajang] }
+  - { key: OPS, label: "운영", staffKeys: [choi-pm] }
+
 operations:
   staffKeys: [choi-pm]
   factoryCsvRefreshDays: 180
