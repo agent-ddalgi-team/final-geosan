@@ -26,7 +26,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import runtime_for
-from geosan.api.routes.records import latest_outcome, record_outcome
+from geosan.api.routes.records import latest_outcome, record_outcome, sales_questions
 from geosan.api.schemas import OutcomeAnswerInput, OutcomeRequest
 from geosan.config.app_settings import is_demo_database
 from geosan.config.errors import AppError, FieldError
@@ -164,6 +164,13 @@ def _seed_company(db_path: Path, opp_id: str, company: DemoCompany, staff: str) 
         if latest_outcome(session, opp_id) is not None:
             return None
         status = "IN_PROGRESS"
+        # #840: 화면은 "누가 먼저 연락했나요?" 같은 접촉 자체 질문의 기본 보기를 미리 골라 저장한다.
+        # 시연 기록 파일에 그 답이 없으면 같은 기본 답을 넣어 실제 기록과 같은 모양이 되게 한다.
+        defaults = {
+            question.id: next(item.id for item in question.answers if item.default)
+            for question in sales_questions(session).questions
+            if question.about_contact
+        }
         for contact in company.contacts:
             body = OutcomeRequest(
                 status=status,
@@ -181,6 +188,11 @@ def _seed_company(db_path: Path, opp_id: str, company: DemoCompany, staff: str) 
                 answers=[
                     OutcomeAnswerInput(question_id=item.question_id, answer_id=item.answer_id)
                     for item in contact.answers
+                ]
+                + [
+                    OutcomeAnswerInput(question_id=question_id, answer_id=answer_id)
+                    for question_id, answer_id in defaults.items()
+                    if question_id not in {item.question_id for item in contact.answers}
                 ],
             )
             # 화면 창구와 같은 저장 본체. 답이 틀리거나 재평가가 실패하면 이 회사만 취소된다.
