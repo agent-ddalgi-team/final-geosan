@@ -6,7 +6,7 @@ import { flowChanges } from '../activityLayers';
 import { getActivity, postRecordCancel } from '../../../api/client';
 import type { ActivityItem, ConfigUi, Envelope } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
-import { timelineArea, timelineLayers } from '../../../labels/ko';
+import { contactMethodLabels, timelineArea, timelineLayers } from '../../../labels/ko';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -103,7 +103,7 @@ describe('활동 이력 3층(#849)', () => {
     expect(flows).toEqual(['📈접촉 → 견적·샘플 · 다음 일정 11/18 방문', '📈미접촉 → 접촉']);
     // 카드 제목은 "무슨 일", 본문은 그때 쓴 메모, 속성은 칩.
     const titles = screen.getAllByTestId('timeline-card-title').map((el) => el.textContent);
-    expect(titles).toEqual(['방문 연결됨', '전화 연결됨', '전화 연결됨']);
+    expect(titles).toEqual([`${contactMethodLabels.VISIT} 연결됨`, '전화 연결됨', '전화 연결됨']);
     expect(within(cards[1]).getByTestId('timeline-card-memo')).toHaveTextContent(
       '샘플 이야기(가상)',
     );
