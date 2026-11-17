@@ -2796,6 +2796,21 @@
         "title": "Envelope[Peers]",
         "type": "object"
       },
+      "Envelope_ProcessesResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProcessesResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ProcessesResponse]",
+        "type": "object"
+      },
       "Envelope_QuestionReplyResponse_": {
         "properties": {
           "data": {
@@ -7267,6 +7282,41 @@
         "title": "ProcessRow",
         "type": "object"
       },
+      "ProcessesRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "processCodes": {
+            "description": "거산 공정 목록 안 공정 코드, 1개 이상. 이 목록이 그 회사의 확정 공정 전체",
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCodes"
+        ],
+        "title": "ProcessesRequest",
+        "type": "object"
+      },
+      "ProcessesResponse": {
+        "properties": {
+          "processCodes": {
+            "description": "저장 뒤 확정 공정(거산 공정 목록 순서)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "processCodes"
+        ],
+        "title": "ProcessesResponse",
+        "type": "object"
+      },
       "ProfileRequest": {
         "additionalProperties": false,
         "properties": {
@@ -11399,6 +11449,71 @@
           }
         },
         "summary": "Peers"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/processes": {
+      "post": {
+        "operationId": "save_processes_api_v1_opportunities__oppId__processes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ProcessesResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Processes"
       }
     },
     "/api/v1/opportunities/{oppId}/records/{recordId}/cancel": {

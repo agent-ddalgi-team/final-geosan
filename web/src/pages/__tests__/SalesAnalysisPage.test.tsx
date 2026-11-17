@@ -413,7 +413,7 @@ describe('영업 분석 화면 (#608)', () => {
     const rows = within(table).getAllByTestId('analysis-company-row');
     expect(rows).toHaveLength(3);
     expect(rows[0]).toHaveTextContent(
-      '가상정밀아연도금자동차 부품전화 3 · 방문 1성사10/2011/524일첫 접촉 뒤 21일 만에 성사 (11/10)',
+      '가상정밀아연도금자동차 부품전화 3 · 대면 1성사10/2011/524일첫 접촉 뒤 21일 만에 성사 (11/10)',
     );
     expect(rows[1]).toHaveTextContent('거절 · 기존 거래처 유지');
     expect(rows[1]).toHaveTextContent('첫 접촉 뒤 6일 만에 거절 (10/27)');

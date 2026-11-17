@@ -24,7 +24,6 @@ import type {
 } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
-import CallPrep from '../components/assistant/CallPrep';
 import HandoffBox from '../components/records/HandoffBox';
 import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
 import DetailGlance from '../components/detail/DetailGlance';
@@ -62,6 +61,8 @@ export default function OpportunityDetailPage() {
   const [reload, setReload] = useState(0);
   // 기록을 저장할 때마다 올라가서 타임라인이 새로 불러온다.
   const [timelineVersion, setTimelineVersion] = useState(0);
+  // #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)을 그릴 왼쪽 영업 단계 아래 자리.
+  const [stageSlot, setStageSlot] = useState<HTMLDivElement | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const requestKey = `${oppId}:${reload}`;
 
@@ -236,23 +237,7 @@ export default function OpportunityDetailPage() {
   // 전달 사항·통화 전·기록 남기기(#771·#750·#742). #773부터 넓은 화면은 오른쪽 영업 코치 칸으로 보낸다.
   const recordInput = !data ? null : (
     <>
-      {/* 전달 사항(#771): 다른 직원이 남긴 말을 포스트잇으로, 받는 사람에게 [확인했어요]. */}
-      <HandoffBox
-        key={`${oppId}:handoff`}
-        oppId={oppId}
-        evalId={data.evalId}
-        handoffs={data.records.handoffs ?? []}
-        lastActor={data.records.outcome?.updatedBy ?? null}
-        onChanged={() => {
-          reloadQuietly();
-          setTimelineVersion((n) => n + 1);
-        }}
-      />
-      {/* #803 ① 통화 전 — 물어볼 것: 코치가 지난 통화 뒤 정리한 것(#750) + 전의 "2. 통화에서 확인할 것"(왼쪽에서 옮김). */}
-      <CallPrep
-        key={`${oppId}:call-prep`}
-        prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
-      />
+      {/* #847 확인사항: 코치가 지난 통화 뒤 정리한 것(#750)과 전의 "통화에서 확인할 것"을 주제별로 묶어 통화 중 체크. */}
       {data.reviewItems !== undefined ? (
         <CallChecklist
           header={data.header}
@@ -264,10 +249,28 @@ export default function OpportunityDetailPage() {
           scoreItems={data.scores?.items}
           questions={salesQuestions}
           title={coachSteps.before}
-          hint={coachSteps.beforeHint}
+          grouped
+          // 접촉을 저장해 다음 통화 준비가 바뀌면 체크를 처음 값으로 되돌린다.
+          key={`${oppId}:checks:${(fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep)?.noteId ?? ''}`}
+          prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
+          // #847: 확인 전 전달 사항은 확인사항 맨 위에(남기는 것은 대화 기록의 메모 "받는 사람").
+          top={
+            <HandoffBox
+              key={`${oppId}:handoff`}
+              oppId={oppId}
+              evalId={data.evalId}
+              handoffs={data.records.handoffs ?? []}
+              lastActor={data.records.outcome?.updatedBy ?? null}
+              listOnly
+              onChanged={() => {
+                reloadQuietly();
+                setTimelineVersion((n) => n + 1);
+              }}
+            />
+          }
         />
       ) : null}
-      {/* #803 ② 기록 남기기 → 코치 답: [보내기] 뒤 코치 답은 이 칸 안에 펴진다. */}
+      {/* #847 대화 기록: 이번 통화 메모·결과. [보내기] 뒤 코치 답은 이 칸 안에 펴진다. */}
       <h3
         data-testid="coach-step-record"
         style={{ margin: '16px 0 8px', fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
@@ -287,6 +290,9 @@ export default function OpportunityDetailPage() {
         onCompanyConfirmed={reloadQuietly}
         excluded={opinionNow?.opinion === 'NOT_TARGET'}
         inCoach
+        // #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)은 넓은 화면에서 왼쪽 영업 단계 아래에.
+        sideSlot={dockSlot ? stageSlot : null}
+        onHandoffSent={reloadQuietly}
         onContactRecorded={onContactRecorded}
         onRecorded={() => {
           setTimelineVersion((n) => n + 1);
@@ -361,6 +367,8 @@ export default function OpportunityDetailPage() {
               ) : null
             }
           />
+          {/* #847: 넓은 화면에서는 오른쪽 기록 칸의 확정된 것이 이 자리(영업 단계 바로 아래)에 그려진다. */}
+          {dockSlot ? <div ref={setStageSlot} data-testid="detail-stage-slot" /> : null}
           <DetailGlance
             header={data.header}
             processLinks={data.processLinks}
@@ -388,6 +396,10 @@ export default function OpportunityDetailPage() {
             processChoice={{
               oppId,
               evalId: data.evalId,
+              // #847: 공정 줄 [고치기]의 보기는 질문 파일의 공정 고르기 보기(거산 공정 목록)를 쓴다.
+              options: salesQuestions?.questions
+                .find((question) => question.choices === 'PROCESS')
+                ?.answers.map((answer) => ({ code: answer.answerId, name: answer.label })),
               // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
               onSaved: () => {
                 setReload((n) => n + 1);
@@ -406,6 +418,8 @@ export default function OpportunityDetailPage() {
                       salesStep,
                     },
                     salesQuestions,
+                    // #847: 확인사항의 "지난 통화에서 이어서" 줄도 센다.
+                    (fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep) ?? null,
                   )
                 : 0
             }
