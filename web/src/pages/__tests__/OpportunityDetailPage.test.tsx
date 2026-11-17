@@ -166,6 +166,10 @@ describe('OpportunityDetailPage', () => {
     ]);
     expect(headings).not.toContain(detailSections.callChecklist);
     expect(headings).toContain(coachSteps.before);
+    // #847: 영업 코치 "① 통화 전" 칸에는 안내 문장 줄이 없다.
+    expect(
+      within(screen.getByTestId('detail-review')).queryByTestId('call-hint'),
+    ).not.toBeInTheDocument();
     expect(within(screen.getByTestId('detail-records')).getByTestId('detail-review')).toBeTruthy();
     expect(headings).not.toContain(detailSections.evidence);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();

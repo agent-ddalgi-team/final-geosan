@@ -560,11 +560,10 @@ export const detailHeader = {
   pickStaffOnce: '담당자를 고르면 관심·다시 조사·기록을 할 수 있습니다.',
 } as const;
 
-/** #803 오른쪽 영업 코치 판의 칸 제목: 일하는 순서대로 ① 통화 전 → ② 기록 남기기·코치 답. */
+/** #803 오른쪽 영업 코치 판의 칸 제목: 일하는 순서대로 ① 통화 전 → ② 통화 뒤. #847: 칸 안내 문장은 뺐다. */
 export const coachSteps = {
   before: '① 통화 전 — 물어볼 것',
-  beforeHint: '들은 답은 아래 ② 기록 남기기의 꼬리 질문과 메모에 적습니다.',
-  record: '② 기록 남기기 → 코치 답',
+  record: '② 통화 뒤 — 기록 남기기',
   /** "알아낸 것"을 접은 묶음 제목. */
   knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
 } as const;
@@ -2399,8 +2398,6 @@ export const memoReadTexts = {
  * [이대로 저장]·[고치기]. 이름은 이 PC 안에만 남고 AI에는 직함과 내용만 간다. 사람이 저장을 눌러야 저장된다.
  */
 export const coachTexts = {
-  /** 상세 "기록 남기기" 맨 위 통화 전 칸(기존 [통화 준비]를 코치로 옮김). */
-  beforeCallTitle: '영업 코치 · 통화 전',
   checklistLabel: '확인사항',
   /** "확인사항: 통화 상대 · 다음 할 일" */
   checklist: (keywords: readonly string[]) => `확인사항: ${keywords.join(' · ')}`,
@@ -2408,8 +2405,8 @@ export const coachTexts = {
   memoPlaceholder:
     '예: 생산관리팀 김 과장 통화. 아연도금 외주 줌. 소개서 보내기로, 금요일 다시 전화',
   send: '보내기 💰',
-  sendHint:
-    '메모에서 이름·전화를 지운 사본과 이 회사의 지난 기록만 AI에 보냅니다. 저장은 확인한 뒤에 합니다.',
+  /** #847: 메모 칸 아래 안내를 한 줄로(전에는 두 문장 + 이름 안내 두 문장). AI로 나간다는 사실은 남긴다. */
+  sendHint: '사람은 직함으로(예: 김 과장) · 이름·전화는 지운 뒤 AI에 보냅니다.',
   direct: '직접 고르기',
   sending: 'AI가 메모를 정리하는 중입니다…',
   failed: '코치 답을 받지 못했습니다.',
@@ -2425,21 +2422,15 @@ export const coachTexts = {
   suggestUndo: '빼기',
   missingTitle: '빠진 필수 질문',
   missingNone: '빠진 필수 질문이 없습니다.',
-  /** (#748) 빠진 필수 질문 제목 아래 한 줄. */
-  missingHint: '답하면 단계가 바뀔 수 있어요.',
   /** (#748) "단계: 연결 전 → 연결됨 (저장하면)" */
   stepMove: (before: string, after: string) => `단계: ${before} → ${after} (저장하면)`,
   stepSame: (step: string) => `단계: ${step} 그대로`,
   feedbackTitle: '코치 피드백',
   feedbackNone: '이번에는 짚을 것이 없습니다.',
-  /** (#750) 피드백은 고르지 않고 [이대로 저장] 때 모두 남는다. */
-  feedbackSaved: '저장하면 회사 보고서 "영업 방향"에 남습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
-  nextCallSaved: '저장하면 다음 통화 전 칸과 보고서에 보입니다.',
   /** (#750) 상세 "기록 남기기" 맨 위 통화 전 칸: "11/15 통화 뒤 코치 정리" */
   prepTitle: (date: string) => `${date} 통화 뒤 코치 정리 · 다음 통화에 물어볼 것`,
-  prepNone: '통화 뒤 메모를 [보내기 💰] 하면 다음 통화에 물어볼 것이 여기에 정리됩니다.',
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2447,7 +2438,8 @@ export const coachTexts = {
   scheduleNoDate: (label: string) => `다음 할 일: ${label} (날짜는 메모에 없음)`,
   save: '이대로 저장',
   edit: '고치기',
-  editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
+  /** #847: 피드백·물어볼 것이 어디에 남는지 저장 단추 위 한 줄로(전에는 칸마다 한 줄씩, [고치기] 안내까지 세 줄). */
+  savedWhere: '저장하면 피드백은 회사 보고서에, 물어볼 것은 다음 통화 전 칸에 남습니다.',
   adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
 } as const;

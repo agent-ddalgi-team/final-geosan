@@ -264,7 +264,8 @@ export default function OpportunityDetailPage() {
           scoreItems={data.scores?.items}
           questions={salesQuestions}
           title={coachSteps.before}
-          hint={coachSteps.beforeHint}
+          // #847: 영업 코치 칸에서는 칸 안내 문장을 뺀다.
+          hint={null}
         />
       ) : null}
       {/* #803 ② 기록 남기기 → 코치 답: [보내기] 뒤 코치 답은 이 칸 안에 펴진다. */}

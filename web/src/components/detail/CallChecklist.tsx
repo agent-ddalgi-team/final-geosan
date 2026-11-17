@@ -135,7 +135,8 @@ export interface CallChecklistProps {
   questions: SalesQuestions | null;
   /** #803: 오른쪽 영업 코치 판의 "① 통화 전 — 물어볼 것"으로 놓일 때의 제목·안내. 없으면 전과 같다. */
   title?: string;
-  hint?: string;
+  /** null이면 안내 줄을 보이지 않는다(#847, 영업 코치 칸). */
+  hint?: string | null;
 }
 
 export default function CallChecklist({
@@ -236,9 +237,11 @@ export default function CallChecklist({
       title={title ?? detailSections.callChecklist}
       count={lines.length + askRows.length}
     >
-      <span style={secondary} data-testid="call-hint">
-        {hint ?? texts.hint}
-      </span>
+      {hint === null ? null : (
+        <span style={secondary} data-testid="call-hint">
+          {hint ?? texts.hint}
+        </span>
+      )}
       {empty ? (
         <p data-testid="call-empty" style={{ margin: 0 }}>
           {texts.empty}

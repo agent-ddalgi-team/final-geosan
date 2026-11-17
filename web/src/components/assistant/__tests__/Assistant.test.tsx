@@ -157,9 +157,10 @@ describe('CallPrep (상세 "영업 코치 · 통화 전" 칸, #750)', () => {
     expect(mockedAsk).not.toHaveBeenCalled();
   });
 
-  it('정리가 없으면 [보내기]로 정리된다는 안내 한 줄, 스위치가 꺼져 있으면 아무것도 없다', () => {
+  // #847(PM 결정 2026-11-17): 정리가 없을 때 늘 보이던 "영업 코치 · 통화 전" 제목과 [보내기] 안내 줄을 뺐다.
+  it('정리가 없으면 스위치와 상관없이 아무것도 보이지 않는다(#847)', () => {
     const view = renderWith(<CallPrep prep={null} />, ON);
-    expect(screen.getByTestId('call-prep-none')).toHaveTextContent(coachTexts.prepNone);
+    expect(view.container).toBeEmptyDOMElement();
     view.unmount();
     const off = renderWith(<CallPrep prep={null} />, OFF);
     expect(off.container).toBeEmptyDOMElement();

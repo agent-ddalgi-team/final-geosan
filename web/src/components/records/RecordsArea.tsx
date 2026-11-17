@@ -62,6 +62,17 @@ import {
   visibleQuestions,
 } from './SalesQuestions';
 
+/** #847: 화면에는 안 보이고 읽어 주는 도구에만 남는 제목. */
+const screenReaderOnly = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+  margin: 0,
+} as const;
+
 export const DEFAULT_NOTE_MAX_LENGTH = 200;
 /** 접촉 기록 한 줄 메모 상한(#607, 설정 records.memoLineMaxLength 초기값). 넘으면 서버가 400. */
 export const MEMO_LINE_MAX_LENGTH = 100;
@@ -823,9 +834,12 @@ export default function RecordsArea({
         </Typography.Text>
       ) : null}
 
-      <Typography.Text type="secondary" data-testid="records-flow-guide">
-        {recordsArea.flowGuide}
-      </Typography.Text>
+      {/* #847: 영업 코치 칸에서는 위 "② 통화 뒤 — 기록 남기기" 제목이 같은 말을 해서 안내 줄을 뺀다. */}
+      {inCoach ? null : (
+        <Typography.Text type="secondary" data-testid="records-flow-guide">
+          {recordsArea.flowGuide}
+        </Typography.Text>
+      )}
 
       <SalesStepSummary
         step={salesStep}
@@ -835,7 +849,12 @@ export default function RecordsArea({
       />
 
       <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
-        <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
+        {/* #847: 영업 코치 칸에서는 "② 통화 뒤 — 기록 남기기"와 겹쳐 화면에서 숨긴다(읽어 주는 도구에는 남김). */}
+        <Typography.Title
+          level={3}
+          id={`records-entry-${oppId}`}
+          style={inCoach ? screenReaderOnly : { margin: 0 }}
+        >
           {recordsArea.entryTitle}
         </Typography.Title>
         <div style={rowStyle}>
@@ -1022,13 +1041,16 @@ export default function RecordsArea({
               disabled={disabled || coachResult !== null || coachSending}
               data-testid="records-contact-memo"
             />
-            <span style={hintStyle}>
-              {coachMode
-                ? coachTexts.sendHint
-                : aiReadsMemo
-                  ? memoReadTexts.memoLineHintAi
-                  : salesQuestionTexts.memoHint}{' '}
-              {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
+            <span style={hintStyle} data-testid="records-contact-memo-hint">
+              {coachMode ? (
+                // #847: 코치 메모 안내는 한 줄(직함으로 적기 · 이름·전화는 지운 뒤 AI로).
+                coachTexts.sendHint
+              ) : (
+                <>
+                  {aiReadsMemo ? memoReadTexts.memoLineHintAi : salesQuestionTexts.memoHint}{' '}
+                  {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}
+                </>
+              )}{' '}
               {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
             </span>
           </>

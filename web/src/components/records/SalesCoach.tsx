@@ -323,7 +323,6 @@ export function CoachReview({
 
       <div style={{ display: 'grid', gap: 4 }} data-testid="coach-missing">
         <Typography.Text>{texts.missingTitle}</Typography.Text>
-        {missing.length > 0 ? <span style={secondary}>{texts.missingHint}</span> : null}
         {missing.length === 0 ? (
           <span style={secondary}>{texts.missingNone}</span>
         ) : (
@@ -361,18 +360,13 @@ export function CoachReview({
         {result.feedback.length === 0 ? (
           <span style={secondary}>{texts.feedbackNone}</span>
         ) : (
-          <>
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {result.feedback.map((line) => (
-                <li key={line} data-testid="coach-feedback-line">
-                  {line}
-                </li>
-              ))}
-            </ul>
-            <span style={secondary} data-testid="coach-feedback-saved">
-              {texts.feedbackSaved}
-            </span>
-          </>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {result.feedback.map((line) => (
+              <li key={line} data-testid="coach-feedback-line">
+                {line}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -381,22 +375,24 @@ export function CoachReview({
         {selection.nextCall.length === 0 ? (
           <span style={secondary}>{texts.nextCallNone}</span>
         ) : (
-          <>
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {selection.nextCall.map((line) => (
-                <li key={line} data-testid="coach-next-call-line">
-                  {line}
-                </li>
-              ))}
-            </ul>
-            <span style={secondary}>{texts.nextCallSaved}</span>
-          </>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {selection.nextCall.map((line) => (
+              <li key={line} data-testid="coach-next-call-line">
+                {line}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
       {closingNeedsReason ? (
         <span data-testid="coach-close-blocked" style={{ color: colors.error }}>
           {salesQuestionTexts.closeNeedsReason}
+        </span>
+      ) : null}
+      {result.feedback.length > 0 || selection.nextCall.length > 0 ? (
+        <span style={secondary} data-testid="coach-saved-where">
+          {texts.savedWhere}
         </span>
       ) : null}
       <div style={rowStyle}>
@@ -412,7 +408,6 @@ export function CoachReview({
         <Button disabled={disabled} onClick={() => onEdit(selection)} data-testid="coach-edit">
           {texts.edit}
         </Button>
-        <span style={secondary}>{texts.editHint}</span>
       </div>
     </section>
   );
