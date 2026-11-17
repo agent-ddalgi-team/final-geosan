@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
@@ -197,6 +197,8 @@ TODAY_SCHEDULE_OVERDUE = "SCHEDULE_OVERDUE"
 TODAY_CHECK_LEFT = "CHECK_LEFT"
 # #771: 지금 담당자에게 온 확인 전 전달 사항이 있는 회사.
 TODAY_HANDOFF_FOR_ME = "HANDOFF_FOR_ME"
+# #854: 지금 담당자가 보냈는데 받는 사람이 아직 확인하지 않은 전달 사항이 있는 회사.
+TODAY_HANDOFF_FROM_ME = "HANDOFF_FROM_ME"
 _KST = ZoneInfo("Asia/Seoul")
 
 
@@ -210,7 +212,11 @@ class TodayCheckItem:
     # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
     outcome_version: int | None = None
     # #794: "나에게 온 전달 사항" 줄만. 가장 최근 확인 전 전달 글의 앞부분(받는 사람 화면 전용).
+    # #854: "내가 보낸 전달 사항" 줄도 같은 자르기로 보낸 글 앞부분(보낸 사람 화면 전용).
     text: str | None = None
+    # #854: "나에게 온 전달 사항" 줄만. 그 회사에서 나에게 온 확인 전 전달 사항 번호 전부
+    # (최신 먼저). 대시보드 [확인]이 번호마다 확인을 저장해 줄이 한 번에 빠지게 한다.
+    note_ids: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -536,7 +542,7 @@ def _handoff_row(
     """#771 나에게 온 확인 전 전달 사항. 회사마다 한 줄(가장 최근 전달), 보낸 사람·날짜와
     #794 전달 글 앞부분. 받는 사람 본인 화면에만 가므로 메모 화면 규칙(C4) 그대로다."""
     rows = session.execute(
-        select(Note.opp_id, Note.staff_key, Note.created_at, Customer.name, Note.text)
+        select(Note.note_id, Note.opp_id, Note.staff_key, Note.created_at, Customer.name, Note.text)
         .join(Opportunity, Note.opp_id == Opportunity.opp_id)
         .join(Customer, Opportunity.customer_id == Customer.customer_id)
         .where(
@@ -549,13 +555,44 @@ def _handoff_row(
         .order_by(Note.created_at.desc(), Note.note_id)
     ).all()
     seen: dict[str, TodayCheckItem] = {}
-    for opp_id, sender, created_at, name, text in rows:
+    ids: dict[str, list[str]] = {}
+    for note_id, opp_id, sender, created_at, name, text in rows:
+        ids.setdefault(opp_id, []).append(note_id)
         if opp_id in seen:
             continue
         day = created_at.astimezone(_KST).date()
         note = f"{staff_names.get(sender, sender)} · {day.month}/{day.day}"
         seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
-    return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(seen), items=list(seen.values()))
+    items = [replace(item, note_ids=tuple(ids[item.opp_id])) for item in seen.values()]
+    return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(items), items=items)
+
+
+def _handoff_from_me_row(
+    session: Session, population, staff_key: str, staff_names: Mapping[str, str]
+) -> TodayCheckRow:
+    """#854 내가 보냈는데 받는 사람이 아직 확인하지 않은 전달 사항. 회사마다 한 줄(가장 최근 전달),
+    받는 사람·날짜와 전달 글 앞부분. 보낸 사람 본인 화면에만 간다(메모 화면 규칙 C4 그대로)."""
+    rows = session.execute(
+        select(Note.opp_id, Note.to_staff_key, Note.created_at, Customer.name, Note.text)
+        .join(Opportunity, Note.opp_id == Opportunity.opp_id)
+        .join(Customer, Opportunity.customer_id == Customer.customer_id)
+        .where(
+            Note.kind == "HANDOFF",
+            Note.staff_key == staff_key,
+            Note.confirmed_at.is_(None),
+            Note.cancelled_at.is_(None),
+            Note.opp_id.in_(population),
+        )
+        .order_by(Note.created_at.desc(), Note.note_id)
+    ).all()
+    seen: dict[str, TodayCheckItem] = {}
+    for opp_id, receiver, created_at, name, text in rows:
+        if opp_id in seen:
+            continue
+        day = created_at.astimezone(_KST).date()
+        note = f"{staff_names.get(receiver or '', receiver or '')} · {day.month}/{day.day}"
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
+    return TodayCheckRow(kind=TODAY_HANDOFF_FROM_ME, count=len(seen), items=list(seen.values()))
 
 
 def build_today_checks(
@@ -594,6 +631,7 @@ def build_today_checks(
     ]
     if staff_key and population is not None:
         rows.append(_handoff_row(session, population, staff_key, staff_names or {}))
+        rows.append(_handoff_from_me_row(session, population, staff_key, staff_names or {}))
     if check_left_opp_ids:
         names = session.execute(
             select(Opportunity.opp_id, Customer.name)
