@@ -1064,6 +1064,21 @@ class ActivityItem(_ApiModel):
     cancelled: bool = False
     cancelled_by: str | None = None
     cancelled_at: datetime | None = None
+    # #849: 화면이 흐름 줄·내용 카드·AI 피드백을 글 쪼개기 없이 나누려고 싣는 값.
+    # 더하는 칸이고 DB는 그대로다.
+    # 영업 기록 줄(recordKind OUTCOME)만 아래 아홉 칸을 채우고, 그 밖의 줄은 null이다.
+    status: str | None = None
+    method: str | None = None
+    result: str | None = None
+    attempted_at: date | None = None
+    next_schedule_at: date | None = None
+    next_schedule_note: str | None = None
+    lost_reason_code: str | None = None
+    first_mover: str | None = None
+    memo: str | None = None
+    # 메모 줄(recordKind NOTE)만 채운다. text는 앞머리 없는 저장 글이고 잘못 입력 행은 null.
+    note_kind: str | None = None
+    text: str | None = None
 
 
 class RecordCancelRequest(_RequestModel):

@@ -10,7 +10,7 @@ import ActivityTimeline, {
 import { ApiError, getActivity, postRecordCancel } from '../../../api/client';
 import type { ActivityItem, ConfigUi, Envelope } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
-import { activityGroupLabels, timelineArea } from '../../../labels/ko';
+import { timelineArea, timelineLayers } from '../../../labels/ko';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -111,14 +111,22 @@ describe('ActivityTimeline', () => {
     renderTimeline();
     const rows = await screen.findAllByTestId('timeline-item');
     expect(rows).toHaveLength(3);
-    expect(within(rows[0]).getByTestId('timeline-time')).toHaveTextContent('11/06 14:20');
-    expect(within(rows[0]).getByTestId('timeline-actor')).toHaveTextContent('박 이사');
+    // #849: 날짜는 구분선에 한 번, 줄에는 시각만.
+    expect(screen.getAllByTestId('timeline-date')[0]).toHaveTextContent('11월 6일 (금)');
+    expect(within(rows[0].closest('li')!).getByTestId('timeline-time')).toHaveTextContent('14:20');
+    expect(within(rows[0].closest('li')!).getByTestId('timeline-actor')).toHaveTextContent(
+      '박 이사',
+    );
     expect(within(rows[0]).getByTestId('timeline-kind')).toHaveTextContent('접촉 시도');
     expect(within(rows[0]).getByTestId('timeline-summary')).toHaveTextContent(newer.summary);
     // 설정에 없는 키는 키 그대로, system은 "시스템".
-    expect(within(rows[1]).getByTestId('timeline-actor')).toHaveTextContent('unknown-key');
+    expect(within(rows[1].closest('li')!).getByTestId('timeline-actor')).toHaveTextContent(
+      'unknown-key',
+    );
     expect(within(rows[1]).getByTestId('timeline-kind')).toHaveTextContent('메모');
-    expect(within(rows[2]).getByTestId('timeline-actor')).toHaveTextContent(timelineArea.system);
+    expect(within(rows[2].closest('li')!).getByTestId('timeline-actor')).toHaveTextContent(
+      timelineArea.system,
+    );
     expect(mockedGet).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
   });
 
@@ -184,26 +192,32 @@ describe('ActivityTimeline', () => {
     expect(toneOf('분류')).toBe('wait');
   });
 
-  it('묶음 단추로 한 묶음만 보고 전체로 돌아온다. 기본은 전체', async () => {
+  it('거르기 단추 6개(#849)로 한 층만 보고 전체로 돌아온다. 기본은 전체', async () => {
     mockedGet.mockResolvedValueOnce(reply([newer, relation, opinion, older, note]));
     renderTimeline();
     expect(await screen.findAllByTestId('timeline-item')).toHaveLength(5);
     expect(screen.getByTestId('timeline-group-ALL')).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(screen.getByTestId('timeline-group-filter'))
+        .getAllByRole('button')
+        .map((el) => el.textContent),
+    ).toEqual(['전체', '흐름', '접촉', '메모', 'AI 피드백', '확인한 사실·의견']);
 
-    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FACT }));
-    expect(screen.getAllByTestId('timeline-item')).toHaveLength(1);
-    expect(screen.getByTestId('timeline-summary')).toHaveTextContent(relation.summary);
-
-    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.SALES }));
+    fireEvent.click(screen.getByRole('button', { name: timelineLayers.filters.FACT }));
     expect(screen.getAllByTestId('timeline-summary').map((el) => el.textContent)).toEqual([
-      newer.summary,
-      note.summary,
+      '영업 대상',
+      relation.summary,
+      older.summary,
     ]);
 
-    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FEEDBACK }));
+    fireEvent.click(screen.getByRole('button', { name: timelineLayers.filters.CONTACT }));
     expect(screen.getAllByTestId('timeline-summary').map((el) => el.textContent)).toEqual([
-      opinion.summary,
-      older.summary,
+      newer.summary,
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: timelineLayers.filters.MEMO }));
+    expect(screen.getAllByTestId('timeline-summary').map((el) => el.textContent)).toEqual([
+      note.summary,
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: timelineArea.groupAll }));
@@ -215,10 +229,10 @@ describe('ActivityTimeline', () => {
     mockedGet.mockResolvedValueOnce(reply([newer]));
     renderTimeline();
     await screen.findByTestId('timeline-item');
-    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FEEDBACK }));
+    fireEvent.click(screen.getByRole('button', { name: timelineLayers.filters.AI }));
     expect(screen.queryByTestId('timeline-item')).not.toBeInTheDocument();
     expect(screen.getByTestId('timeline-group-empty')).toHaveTextContent(
-      timelineArea.groupEmpty(activityGroupLabels.FEEDBACK),
+      timelineArea.groupEmpty(timelineLayers.filters.AI),
     );
   });
 
@@ -305,46 +319,54 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
       } as unknown as ConfigUi,
     });
     await screen.findAllByTestId('timeline-item');
-    const buttons = screen.getAllByTestId('timeline-cancel-open');
+    // #849: [잘못 입력]은 ··· 메뉴 안에 있다. 메뉴 단추는 내 기록 줄에만.
+    const buttons = screen.getAllByTestId('timeline-menu-open');
     expect(buttons.map((el) => el.getAttribute('aria-label'))).toEqual([
-      timelineArea.cancelButtonLabel(myOutcome.summary),
-      timelineArea.cancelButtonLabel(myNote.summary),
+      timelineLayers.menuLabel(myOutcome.summary),
+      timelineLayers.menuLabel(myNote.summary),
     ]);
+    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    fireEvent.click(buttons[1]);
+    expect(screen.getByTestId('timeline-cancel-open')).toHaveAttribute(
+      'aria-label',
+      timelineArea.cancelButtonLabel(myNote.summary),
+    );
   });
 
   it('설정이 남의 기록 취소를 허용하면 남의 줄에도 단추가 보인다', async () => {
     mockedGet.mockResolvedValueOnce(reply([myNote, othersNote]));
     renderTimeline(0, { config: cancelConfig });
     await screen.findAllByTestId('timeline-item');
-    expect(screen.getAllByTestId('timeline-cancel-open')).toHaveLength(2);
+    expect(screen.getAllByTestId('timeline-menu-open')).toHaveLength(2);
   });
 
   it('담당자를 고르지 않았거나 기록할 수 없으면 단추가 없다', async () => {
     mockedGet.mockResolvedValue(reply([myNote, myOutcome]));
     renderTimeline(0, { staffKey: null, canRecord: false });
     await screen.findAllByTestId('timeline-item');
-    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('timeline-menu-open')).not.toBeInTheDocument();
   });
 
   it('보기 전용 담당자는 자기 기록이 없으므로 단추가 없다', async () => {
     mockedGet.mockResolvedValue(reply([myNote]));
     renderTimeline(0, { staffKey: 'viewer', canRecord: false });
     await screen.findAllByTestId('timeline-item');
-    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('timeline-menu-open')).not.toBeInTheDocument();
   });
 
   it('[잘못 입력]을 누르면 줄 아래에 확인 한 줄이 열리고(모달 없음) [닫기]로 닫힌다', async () => {
     mockedGet.mockResolvedValueOnce(reply([myNote]));
     renderTimeline();
     await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByTestId('timeline-menu-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-open'));
     const form = screen.getByTestId('timeline-cancel-form');
     expect(form).toHaveTextContent(timelineArea.cancelPrompt);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('timeline-menu-open')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('timeline-cancel-close'));
     expect(screen.queryByTestId('timeline-cancel-form')).not.toBeInTheDocument();
-    expect(screen.getByTestId('timeline-cancel-open')).toBeInTheDocument();
+    expect(screen.getByTestId('timeline-menu-open')).toBeInTheDocument();
     expect(mockedCancel).not.toHaveBeenCalled();
   });
 
@@ -374,6 +396,7 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     });
     renderTimeline(0, { onCancelled });
     await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByTestId('timeline-menu-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-open'));
     fireEvent.change(screen.getByTestId('timeline-cancel-reason'), {
       target: { value: '다른 회사에 적음' },
@@ -407,6 +430,7 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     });
     renderTimeline();
     await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByTestId('timeline-menu-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-confirm'));
     await waitFor(() => expect(mockedCancel).toHaveBeenCalledTimes(1));
@@ -431,7 +455,7 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     expect(within(rows[1]).getByTestId('timeline-cancelled-note')).toHaveTextContent(
       '취소 · 박 이사 · 11/06',
     );
-    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('timeline-menu-open')).not.toBeInTheDocument();
   });
 
   it('남의 기록이라 서버가 403을 주면 서버 문구를 줄 아래에 보이고 확인 한 줄은 열려 있다', async () => {
@@ -445,6 +469,7 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     );
     renderTimeline(0, { config: cancelConfig });
     await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByTestId('timeline-menu-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-confirm'));
     const alert = await screen.findByTestId('timeline-cancel-error');
@@ -466,6 +491,7 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     );
     renderTimeline(0, { onCancelled });
     await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByTestId('timeline-menu-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-confirm'));
     expect(await screen.findByTestId('timeline-cancel-error')).toHaveTextContent(
@@ -478,6 +504,7 @@ describe('ActivityTimeline — 기록 취소 [잘못 입력]', () => {
     mockedGet.mockResolvedValueOnce(reply([myNote]));
     renderTimeline();
     await screen.findByTestId('timeline-item');
+    fireEvent.click(screen.getByTestId('timeline-menu-open'));
     fireEvent.click(screen.getByTestId('timeline-cancel-open'));
     expect(screen.getByTestId('timeline-cancel-reason')).toHaveAttribute('maxlength', '200');
   });
@@ -508,9 +535,9 @@ describe('ActivityTimeline — 변경 기록', () => {
     const changeRow = rows.find((row) => row.textContent?.includes(changeLine.summary));
     expect(changeRow).toBeDefined();
     expect(within(changeRow!).getByTestId('timeline-kind')).toHaveTextContent('변경 기록');
-    expect(within(changeRow!).queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
-    // 담당자 메모 줄에는 그대로 단추가 있다.
-    expect(screen.getAllByTestId('timeline-cancel-open')).toHaveLength(1);
+    expect(within(changeRow!).queryByTestId('timeline-menu-open')).not.toBeInTheDocument();
+    // 담당자 메모 줄에는 그대로 메뉴(그 안에 [잘못 입력])가 있다.
+    expect(screen.getAllByTestId('timeline-menu-open')).toHaveLength(1);
   });
 
   it('응답에 번호가 실려 와도 변경 기록 줄에는 단추를 두지 않는다', async () => {
@@ -519,14 +546,14 @@ describe('ActivityTimeline — 변경 기록', () => {
     );
     renderTimeline(0, { config: cancelConfig });
     await screen.findByTestId('timeline-item');
-    expect(screen.queryByTestId('timeline-cancel-open')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('timeline-menu-open')).not.toBeInTheDocument();
   });
 
-  it('변경 기록은 "사실" 묶음(파랑)에 든다', async () => {
+  it('변경 기록은 "확인한 사실·의견"(파랑)에 든다', async () => {
     mockedGet.mockResolvedValueOnce(reply([changeLine, note]));
     renderTimeline();
     await screen.findAllByTestId('timeline-item');
-    fireEvent.click(screen.getByRole('button', { name: activityGroupLabels.FACT }));
+    fireEvent.click(screen.getByRole('button', { name: timelineLayers.filters.FACT }));
     const rows = screen.getAllByTestId('timeline-item');
     expect(rows).toHaveLength(1);
     expect(within(rows[0]).getByTestId('timeline-kind')).toHaveAttribute('data-tone', 'ask');

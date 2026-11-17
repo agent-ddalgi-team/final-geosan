@@ -1497,6 +1497,46 @@ export const timelineArea = {
 } as const;
 
 /**
+ * #849 활동 이력 3층(흐름 줄 · 내용 카드 · AI 피드백). 저장은 그대로이고 화면에서만 나눈다.
+ * 거르기 단추 6개와 흐름 줄·카드·접힌 AI 피드백·날짜 구분선···· 메뉴 글.
+ */
+export const timelineLayers = {
+  filters: {
+    FLOW: '흐름',
+    CONTACT: '접촉',
+    MEMO: '메모',
+    AI: 'AI 피드백',
+    FACT: '확인한 사실·의견',
+  },
+  /** 흐름 줄. 예: "접촉 → 견적·샘플 · 다음 일정 11/18 방문". */
+  flowLine: (from: string | null, to: string, schedule: string | null) =>
+    [from ? `${from} → ${to}` : to, schedule ? `다음 일정 ${schedule}` : null]
+      .filter(Boolean)
+      .join(' · '),
+  flowLabel: '영업 흐름',
+  /** 접촉 카드 제목. 예: "전화 연결됨". */
+  contactTitle: (method: string, result: string | null) =>
+    result ? `${method} ${result}` : method,
+  /** 접촉한 날이 저장한 날과 다를 때 제목 옆 작은 글. */
+  attemptedOn: (day: string) => `${day} 접촉`,
+  /** 칩. 예: "상대가 먼저". 방문이면 "상대가 옴". */
+  firstMoverChip: (who: string, visit: boolean) => (visit ? `${who} 옴` : `${who} 먼저`),
+  aiTag: 'AI 피드백',
+  callPrepTag: '다음 통화 준비',
+  /** 접촉 카드 안 접힌 AI 피드백 단추. */
+  aiToggle: (n: number, open: boolean) => (open ? `AI 피드백 접기` : `AI 피드백 ${n}건 보기`),
+  /** 날짜 구분선. 예: "11월 17일 (화) · 오늘". */
+  dateLine: (month: number, day: number, weekday: string, relative: string | null) =>
+    `${month}월 ${day}일 (${weekday})${relative ? ` · ${relative}` : ''}`,
+  today: '오늘',
+  yesterday: '어제',
+  weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+  /** ··· 메뉴(잘못 입력이 들어 있다). */
+  menuButton: '···',
+  menuLabel: (summary: string) => `기록 메뉴 열기: ${summary}`,
+} as const;
+
+/**
  * 상세 "비슷한 회사 참고"(#269, PM 결정 2026-11-04 A안)와 영업 전략 영역의 "참고한 이력" 상자.
  * 같은 공정·산업군 다른 회사 최대 5곳의 영업 단계·거절 이유·마지막 접촉·최근 메모를 내부에서만 본다.
  */
