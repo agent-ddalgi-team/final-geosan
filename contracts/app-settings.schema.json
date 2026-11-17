@@ -169,6 +169,7 @@
         "cacheDays": { "type": "integer", "minimum": 1, "default": 15 },
         "searchesPerRun": { "type": "integer", "minimum": 1, "maximum": 5, "default": 3, "description": "한 번 요청에서 AI가 웹 검색 도구를 쓸 수 있는 횟수(#706 2026-11-13 PM 결정)." },
         "timeoutSeconds": { "type": "integer", "minimum": 20, "maximum": 180, "default": 90, "description": "웹 검색 응답을 기다리는 시간(초)." },
+        "reservedSlots": { "type": "integer", "minimum": 0, "default": 0, "description": "(추가 2026-11-17 #823 — PM 결정 2026-11-17 #314) 웹 갈래가 켜져 있을 때 한 회차 최대 건수 가운데 웹 후보를 위해 비워 두는 자리 수. 웹 후보가 덜 나오면 남은 자리는 공공자료 다음 순서로 채운다. 0이면 공공자료가 쓰고 남은 자리만." },
         "blockedDomains": {
           "type": "array", "maxItems": 100, "uniqueItems": true, "default": [],
           "items": { "type": "string", "pattern": "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$" }

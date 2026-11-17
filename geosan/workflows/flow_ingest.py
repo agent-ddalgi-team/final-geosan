@@ -248,8 +248,16 @@ def run_ingest(batch_id: str) -> None:
             registered = registered_row_ids(session, batch_id, matched) if matched else set()
         fresh = [item for item in matched if item.row_id not in registered]
         known = [item for item in matched if item.row_id in registered]
+        # #823(PM 결정 2026-11-17 #314): 웹 갈래가 켜져 있으면 웹 몫만큼 자리를 비워 두고, 웹 갈래가
+        # 끝난 뒤 남은 자리는 같은 순위의 다음 회사로 채운다(빈자리 없음, 새 AI 판단 없음).
+        web_config = settings.candidate_web_search
+        reserved = (
+            min(web_config.reserved_slots, prepared.max_candidates) if web_config.enabled else 0
+        )
+        ranked = rank_candidates(fresh)
+        public_limit = prepared.max_candidates - reserved
         # 이미 있는 회사도 넘겨야 건너뜀 건수가 그대로 남는다.
-        selected = [*rank_candidates(fresh)[: prepared.max_candidates], *known]
+        selected = [*ranked[:public_limit], *known]
         with session_scope() as session:
             _running(session, batch_id).picked_count = len(selected)
         stage = "후보 등록"
@@ -282,6 +290,22 @@ def run_ingest(batch_id: str) -> None:
             web_affected = added
         except Exception as error:
             web_error = error
+        backfilled: list[str] = []
+        if reserved:
+            stage = "남은 자리 채우기"
+            with session_scope() as session:
+                room = max(prepared.max_candidates - _running(session, batch_id).new_count, 0)
+            extra = ranked[public_limit : public_limit + room]
+            if extra:
+                with session_scope() as session:
+                    _running(session, batch_id).picked_count += len(extra)
+                backfilled = _register(batch_id, extra)
+                if backfilled:
+                    result = run_evaluation(opp_ids=backfilled, requested_by=batch.requested_by)
+                    if not result.ok:
+                        raise RunFailedError(
+                            "남은 자리에 채운 후보의 재평가를 완료하지 못했습니다."
+                        )
         with session_scope() as session:
             current = _running(session, batch_id)
             current.status = "DONE"
@@ -295,7 +319,7 @@ def run_ingest(batch_id: str) -> None:
             # 약속 C1: 실패는 그 회사만 남기고 다음 회사로 넘어간다(#528, 줄이 기록).
             run = run_queue(
                 lambda opp_id: research_one(opp_id),
-                opp_ids=[*affected, *web_affected],
+                opp_ids=[*affected, *web_affected, *backfilled],
                 progress_batch_id=batch_id,
             )
             if run.error is not None and run.error.kind in STOP_KINDS:
