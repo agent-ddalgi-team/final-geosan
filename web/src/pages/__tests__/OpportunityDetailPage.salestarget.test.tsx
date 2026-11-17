@@ -166,5 +166,6 @@ describe('상세 화면 · 접촉을 남기면 영업 대상 (#697)', () => {
     await pressSaveCall(user);
     expect(await screen.findByTestId('records-excluded-ask')).toBeInTheDocument();
     expect(mockedOutcome).not.toHaveBeenCalled();
-  });
+    // #835: 확인 내용은 그대로이고, PC가 바쁠 때 화면 전체를 그리는 데 5초를 넘겨 제한만 늘린다.
+  }, 15_000);
 });
