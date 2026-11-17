@@ -7,6 +7,20 @@
   "required": ["staff", "activeDatasetKind", "ingestion", "llm", "homepageDiscovery", "brand", "accessProtection"],
   "additionalProperties": false,
   "properties": {
+    "handoffTeams": {
+      "type": "array",
+      "description": "(추가 2026-11-17 #853) 전달 사항 받는 역할 묶음. 담당자 목록에 없거나 보기 전용인 키는 무시. 비우면 사람별로 보냄",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "label"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "staffKeys": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
     "geosan": {
       "type": "object",
       "additionalProperties": false,

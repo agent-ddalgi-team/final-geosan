@@ -272,12 +272,14 @@ export const dashboardTexts = {
     SCHEDULE_OVERDUE: '놓친 일정',
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
     HANDOFF_FOR_ME: '나에게 온 전달 사항',
+    HANDOFF_FROM_ME: '내가 보낸 전달 사항 · 확인 전',
   },
   todayRowUnits: {
     SCHEDULE_TODAY: '건',
     SCHEDULE_OVERDUE: '건',
     CHECK_LEFT: '곳',
     HANDOFF_FOR_ME: '곳',
+    HANDOFF_FROM_ME: '곳',
   },
   /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
   todayMore: (count: number) => `외 ${count}`,
@@ -287,13 +289,19 @@ export const dashboardTexts = {
     SCHEDULE_TODAY: '오늘 일정',
     CHECK_LEFT: '확인할 것이 남은 관심 기업',
     HANDOFF_FOR_ME: '나에게 온 전달 사항',
+    HANDOFF_FROM_ME: '내가 보낸 전달 사항 · 확인 전',
   },
   todayRowIcons: {
     SCHEDULE_OVERDUE: '🔴',
     SCHEDULE_TODAY: '📅',
     CHECK_LEFT: '🔍',
     HANDOFF_FOR_ME: '📬',
+    HANDOFF_FROM_ME: '📤',
   },
+  /** #854: 나에게 온 전달 사항 줄 오른쪽 [확인]. 그 회사에서 나에게 온 확인 전 전달 사항을 모두 확인한다. */
+  todayHandoffConfirm: '확인',
+  todayHandoffConfirmLabel: (company: string) => `${company} 전달 사항 확인`,
+  todayHandoffConfirmFailed: '확인하지 못했습니다. 잠시 뒤 다시 눌러 주세요.',
   todaySeeAll: '모두 보기',
   todayMoreButton: (count: number) => `더 보기 ${count}곳`,
   todayResolveDone: '완료',
@@ -367,6 +375,9 @@ export const dashboardTexts = {
   briefScheduleNone: '오늘 일정 없음',
   briefHandoffTitle: '전달 사항',
   briefHandoffCount: (n: number) => `확인 전 ${n}곳`,
+  /** #854: 브리핑 전달 사항 칸 두 줄. "받은 것 확인 전 2곳" · "보낸 것 확인 전 1곳" */
+  briefHandoffReceived: (n: number) => `받은 것 확인 전 ${n}곳`,
+  briefHandoffSent: (n: number) => `보낸 것 확인 전 ${n}곳`,
   prepTitle: '방문 준비',
   prepHint: '오늘·이번 주 일정 회사 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
   prepEmpty: '오늘부터 7일 안에 잡힌 일정이 없습니다.',
@@ -1494,6 +1505,46 @@ export const timelineArea = {
   /** 취소된 줄 아래 한 줄. 예: "취소 · 박 이사 · 11/06". */
   cancelledNote: (name: string, date: string) =>
     `취소 · ${[name, date].filter(Boolean).join(' · ')}`,
+} as const;
+
+/**
+ * #849 활동 이력 3층(흐름 줄 · 내용 카드 · AI 피드백). 저장은 그대로이고 화면에서만 나눈다.
+ * 거르기 단추 6개와 흐름 줄·카드·접힌 AI 피드백·날짜 구분선···· 메뉴 글.
+ */
+export const timelineLayers = {
+  filters: {
+    FLOW: '흐름',
+    CONTACT: '접촉',
+    MEMO: '메모',
+    AI: 'AI 피드백',
+    FACT: '확인한 사실·의견',
+  },
+  /** 흐름 줄. 예: "접촉 → 견적·샘플 · 다음 일정 11/18 방문". */
+  flowLine: (from: string | null, to: string, schedule: string | null) =>
+    [from ? `${from} → ${to}` : to, schedule ? `다음 일정 ${schedule}` : null]
+      .filter(Boolean)
+      .join(' · '),
+  flowLabel: '영업 흐름',
+  /** 접촉 카드 제목. 예: "전화 연결됨". */
+  contactTitle: (method: string, result: string | null) =>
+    result ? `${method} ${result}` : method,
+  /** 접촉한 날 아래로 옮긴 묶음의 머리 시각. 예: "11/17 22:54 저장". */
+  savedAt: (when: string) => `${when} 저장`,
+  /** 칩 예비 말(질문 파일을 못 받았을 때). 보통은 기록 칸과 같은 "수신"·"내방"(#847). */
+  firstMoverChip: (who: string, visit: boolean) => (visit ? `${who} 옴` : `${who} 먼저`),
+  aiTag: 'AI 피드백',
+  callPrepTag: '다음 통화 준비',
+  /** 접촉 카드 안 접힌 AI 피드백 단추. */
+  aiToggle: (n: number, open: boolean) => (open ? `AI 피드백 접기` : `AI 피드백 ${n}건 보기`),
+  /** 날짜 구분선. 예: "11월 17일 (화) · 오늘". */
+  dateLine: (month: number, day: number, weekday: string, relative: string | null) =>
+    `${month}월 ${day}일 (${weekday})${relative ? ` · ${relative}` : ''}`,
+  today: '오늘',
+  yesterday: '어제',
+  weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+  /** ··· 메뉴(잘못 입력이 들어 있다). */
+  menuButton: '···',
+  menuLabel: (summary: string) => `기록 메뉴 열기: ${summary}`,
 } as const;
 
 /**

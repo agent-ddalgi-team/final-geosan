@@ -637,7 +637,9 @@ describe('OpportunityDetailPage', () => {
       '접촉 3회 (전화 2 · 방문 1)',
     );
     const activityCallsBefore = mockedActivity.mock.calls.length;
-    await user.click(await screen.findByTestId('timeline-cancel-open'));
+    // #849: [잘못 입력]은 ··· 메뉴 안에 있다.
+    await user.click(await screen.findByTestId('timeline-menu-open'));
+    await user.click(screen.getByTestId('timeline-cancel-open'));
     await user.click(screen.getByTestId('timeline-cancel-confirm'));
     expect(mockedCancel).toHaveBeenCalledWith('opp-1', 'outcome-7', {}, 'park-lee');
     await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));

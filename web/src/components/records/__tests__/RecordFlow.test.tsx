@@ -274,30 +274,21 @@ describe('기록 남기기 칸 (#691)', () => {
   });
 });
 
-// #847(PM 결정 2026-11-17): "누가 먼저 연락했나요?"는 따로 고르는 칸이 아니라 종류 칸에 합쳤다.
-// "전화 · 발신 / 전화 · 수신 / 메일 · 발신 / 메일 · 수신 / 대면 · 외근 / 대면 · 내방 / 메모". 보내는 답은 전과 같다.
-const KIND_OPTIONS = [
-  '전화 · 발신',
-  '전화 · 수신',
-  '메일 · 발신',
-  '메일 · 수신',
-  '대면 · 외근',
-  '대면 · 내방',
-  '메모',
-];
-
-describe('누가 먼저 연락했나 — 종류 칸에 합침 (#691 → #847)', () => {
-  it('종류 칸 한 곳에서 고르고 기본 "전화 · 발신"이라 누르지 않아도 "우리가" 답이 실린다', async () => {
+// #853(PM 결정 2026-11-17, #847 화면 확인 뒤): 종류는 4개(전화·메일·대면·메모)만 두고,
+// "누가 먼저 연락했나요?"는 종류 옆 단추 두 개(발신 | 수신, 대면은 외근 | 내방)로 고른다. 보내는 답은 전과 같다.
+describe('누가 먼저 연락했나 — 종류 옆 단추 (#691 → #853)', () => {
+  it('종류는 4개, 방향 단추는 기본 "발신"이라 누르지 않아도 "우리가" 답이 실린다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    const direction = await screen.findByTestId('records-direction');
     const kind = screen.getByTestId('records-kind');
     expect(
       within(kind)
         .getAllByRole('option')
         .map((item) => item.textContent),
-    ).toEqual(KIND_OPTIONS);
-    expect(kind).toHaveValue('CALL');
+    ).toEqual(['전화', '메일', '대면', '메모']);
+    expect(within(direction).getByRole('radio', { name: '발신' })).toBeChecked();
+    expect(within(direction).getByRole('radio', { name: '수신' })).not.toBeChecked();
     expect(screen.queryByTestId('records-contact-question-WHO_FIRST')).not.toBeInTheDocument();
     await setResult(user, '연결됨');
     // 꼬리 질문 묶음에는 없다.
@@ -312,11 +303,11 @@ describe('누가 먼저 연락했나 — 종류 칸에 합침 (#691 → #847)', 
     });
   });
 
-  it('걸려 온 전화는 "전화 · 수신"을 고르면 "상대가"로 저장되고, 저장 뒤에는 다시 "전화 · 발신"으로 돌아온다', async () => {
+  it('걸려 온 전화는 [수신]을 누르면 "상대가"로 저장되고, 저장 뒤에는 다시 [발신]으로 돌아온다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
-    await user.selectOptions(screen.getByTestId('records-kind'), '전화 · 수신');
+    const direction = await screen.findByTestId('records-direction');
+    await user.click(within(direction).getByText('수신'));
     await setResult(user, '연결됨');
     await pick(user, 'PLATING_NOW', '직접 함');
     await user.click(screen.getByTestId('records-contact-save-button'));
@@ -326,13 +317,17 @@ describe('누가 먼저 연락했나 — 종류 칸에 합침 (#691 → #847)', 
       { questionId: 'WHO_FIRST', answerId: 'THEIRS' },
       { questionId: 'PLATING_NOW', answerId: 'IN_HOUSE' },
     ]);
-    await waitFor(() => expect(screen.getByTestId('records-kind')).toHaveValue('CALL'));
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('records-direction')).getByRole('radio', { name: '발신' }),
+      ).toBeChecked(),
+    );
   });
 
   it('부재로 끝난 접촉에도 이 답 하나는 실린다(다른 꼬리 질문은 없다)', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    await screen.findByTestId('records-direction');
     await setResult(user, '부재');
     expect(screen.queryByTestId('sales-questions')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('records-contact-save-button'));
@@ -341,12 +336,18 @@ describe('누가 먼저 연락했나 — 종류 칸에 합침 (#691 → #847)', 
     expect(sentBody().answers).toEqual([{ questionId: 'WHO_FIRST', answerId: 'OURS' }]);
   });
 
-  it('"대면 · 내방"은 방법 VISIT + "상대가"로 보낸다', async () => {
+  it('대면이면 단추가 [외근 | 내방]이고, [내방]은 방법 VISIT + "상대가"로 보낸다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '대면 · 내방' });
-    await user.selectOptions(screen.getByTestId('records-kind'), '대면 · 내방');
-    expect(screen.getByTestId('records-kind')).toHaveValue('VISIT:THEIRS');
+    await screen.findByTestId('records-direction');
+    await user.selectOptions(screen.getByTestId('records-kind'), '대면');
+    const direction = screen.getByTestId('records-direction');
+    expect(
+      within(direction)
+        .getAllByRole('radio')
+        .map((item) => item.closest('label')?.textContent),
+    ).toEqual(['외근', '내방']);
+    await user.click(within(direction).getByText('내방'));
     await setResult(user, '부재');
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
@@ -354,11 +355,12 @@ describe('누가 먼저 연락했나 — 종류 칸에 합침 (#691 → #847)', 
     expect(sentBody().answers).toEqual([{ questionId: 'WHO_FIRST', answerId: 'THEIRS' }]);
   });
 
-  it('"메모"를 고르면 결과·날짜 대신 글 칸이 나온다', async () => {
+  it('"메모"를 고르면 방향 단추·결과·날짜 대신 글 칸이 나온다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    await screen.findByTestId('records-direction');
     await user.selectOptions(screen.getByTestId('records-kind'), '메모');
+    expect(screen.queryByTestId('records-direction')).not.toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
   });
@@ -486,7 +488,7 @@ describe('통화 없이 일정만 잡기 (#691)', () => {
   it('[일정 잡기]를 열면 종류와 날짜를 고르고, 종류의 쉬운 말이 내용으로 채워져 접촉 없이 일정만 저장된다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    await screen.findByTestId('records-direction');
     await user.click(screen.getByTestId('records-schedule-toggle'));
     const kinds = screen.getAllByTestId('records-schedule-kind').map((item) => item.textContent);
     // 대면·전화·메일 + 질문 파일 "다음 할 일"의 끝이 아닌 보기. #847: "방문" → "대면".
@@ -601,7 +603,7 @@ describe('접촉 결과가 "거절"이면 바로 마무리 (#691)', () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('LOST'));
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    await screen.findByTestId('records-direction');
     await setResult(user, '거절');
     const decline = screen.getByTestId('records-decline');
     expect(decline).toHaveTextContent('어떻게 할까요?');
@@ -637,7 +639,7 @@ describe('접촉 결과가 "거절"이면 바로 마무리 (#691)', () => {
   it('"아직 끝 아님 · 다시 연락"이면 "끝"이 빠진 다음 할 일과 날짜를 묻고, 마무리 답은 보내지 않는다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    await screen.findByTestId('records-direction');
     await setResult(user, '거절');
     await user.click(
       within(screen.getByTestId('records-decline')).getByText('아직 끝 아님 · 다시 연락'),
@@ -667,7 +669,7 @@ describe('접촉 결과가 "거절"이면 바로 마무리 (#691)', () => {
   it('아무것도 고르지 않으면 "저장해도 단계는 바뀌지 않는다"고 저장 전에 알리고, 접촉만 저장된다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await screen.findByRole('option', { name: '전화 · 수신' });
+    await screen.findByTestId('records-direction');
     await setResult(user, '거절');
     expect(screen.getByTestId('records-decline-unpicked')).toHaveTextContent(
       '이대로 저장하면 접촉만 남고 영업 단계는 바뀌지 않습니다.',

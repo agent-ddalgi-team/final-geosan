@@ -1472,6 +1472,10 @@ def activity(
                 entry.key: entry.display_name for entry in runtime_for(session).app_settings.staff
             }
             to = names.get(row.to_staff_key or "", row.to_staff_key or "")
+            if row.to_team:
+                # #853: 역할 묶음으로 보낸 것은 묶음 이름(예: 영업). 설정에서 빠졌으면 키 그대로.
+                team = runtime_for(session).app_settings.handoff_team(row.to_team)
+                to = team.label if team else row.to_team
             done = " (확인함)" if row.confirmed_at else ""
             summary = f"전달 사항 → {to} · {row.text}{done}"
         if row.kind == NoteKind.CALL_PREP and row.cancelled_at is None:
@@ -1492,6 +1496,10 @@ def activity(
                 cancelled=row.cancelled_at is not None,
                 cancelled_by=row.cancelled_by,
                 cancelled_at=row.cancelled_at,
+                # #849: 남긴 피드백과 다음 통화 준비는 줄 종류가 같아(ADVICE) 저장 종류로 가른다.
+                # 글은 앞머리 없이 그대로 싣고, 잘못 입력 행은 summary처럼 싣지 않는다.
+                note_kind=row.kind,
+                text=row.text if row.cancelled_at is None else None,
             )
         )
     # #691: 접촉 줄 끝에 먼저 연락한 쪽을 붙인다.
@@ -1552,6 +1560,21 @@ def activity(
                 cancelled=row.cancelled_at is not None,
                 cancelled_by=row.cancelled_by,
                 cancelled_at=row.cancelled_at,
+                # #849: summary 글에 든 값을 따로도 싣는다(화면이 흐름 줄·카드로 나눔).
+                # 메모는 summary와 같은 규칙(잘못 입력 행은 비움).
+                status=row.status,
+                method=row.method,
+                result=row.result,
+                attempted_at=row.attempted_at,
+                next_schedule_at=row.next_schedule_at,
+                next_schedule_note=row.next_schedule_note,
+                lost_reason_code=row.lost_reason_code,
+                first_mover=first_mover.get(row.outcome_id),
+                memo=(
+                    row.memo.strip()
+                    if row.memo and row.memo.strip() and row.cancelled_at is None
+                    else None
+                ),
             )
         )
     # 취소한 행위도 한 줄로 보인다. 누가 언제 취소했는지가 기록이다.
@@ -1630,7 +1653,21 @@ def save_note(
                 "전할 말을 적어 주세요.",
                 fields=[FieldError(path="text", message="빈 글은 남길 수 없습니다.")],
             )
-        if (
+        if body.to_team is not None:
+            # #853: 역할 묶음(예: 영업)으로 보낸다. 사람과 묶음을 같이 고를 수 없고,
+            # 묶음에 나 말고 받을 사람이 한 명은 있어야 한다.
+            others = [m for m in settings.handoff_team_members(body.to_team) if m != staff]
+            if body.to_staff_key is not None or not others:
+                raise InputError(
+                    "받는 사람을 확인해 주세요.",
+                    fields=[
+                        FieldError(
+                            path="toTeam",
+                            message="받을 사람이 있는 역할 하나만 골라 주세요.",
+                        )
+                    ],
+                )
+        elif (
             not body.to_staff_key
             or body.to_staff_key == staff
             or not settings.is_recording_staff(body.to_staff_key)
@@ -1643,10 +1680,15 @@ def save_note(
                     )
                 ],
             )
-    elif body.to_staff_key is not None:
+    elif body.to_staff_key is not None or body.to_team is not None:
         raise InputError(
             "받는 사람은 전달 사항에만 넣습니다.",
-            fields=[FieldError(path="toStaffKey", message="전달 사항일 때만 골라 주세요.")],
+            fields=[
+                FieldError(
+                    path="toStaffKey" if body.to_staff_key is not None else "toTeam",
+                    message="전달 사항일 때만 골라 주세요.",
+                )
+            ],
         )
     advice_like = body.kind in (NoteKind.ADVICE, NoteKind.CALL_PREP)
     if advice_like and (blank or scan_contacts({"text": body.text})):
@@ -1693,6 +1735,7 @@ def save_note(
         kind=body.kind,
         item_id=body.item_id,
         to_staff_key=body.to_staff_key if body.kind == NoteKind.HANDOFF else None,
+        to_team=body.to_team if body.kind == NoteKind.HANDOFF else None,
         version=previous.version + 1 if previous else 1,
         created_at=now,
         created_by=staff,
@@ -1722,7 +1765,15 @@ def confirm_handoff(
     row = session.get(Note, note_id)
     if row is None or row.kind != NoteKind.HANDOFF or row.cancelled_at is not None:
         raise NotFoundError("확인할 전달 사항이 없습니다.", "화면을 새로 고쳐 주세요.")
-    if row.to_staff_key != staff:
+    # #853: 역할 묶음으로 받은 것은 묶음 안 누구나(보낸 사람 빼고) 확인할 수 있다.
+    # 한 명이 누르면 끝.
+    settings = runtime_for(session).app_settings
+    in_team = (
+        row.to_team is not None
+        and staff != row.staff_key
+        and staff in settings.handoff_team_members(row.to_team)
+    )
+    if row.to_staff_key != staff and not in_team:
         raise ForbiddenError(
             "받는 사람만 확인할 수 있습니다.", "전달 사항을 받은 담당자가 눌러 주세요."
         )

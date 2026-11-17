@@ -606,6 +606,7 @@ def handoff_notes(session: Session, opp_id: str) -> list[HandoffNote]:
             text=row.text,
             from_=row.staff_key,
             to=row.to_staff_key or "",
+            to_team=row.to_team,
             at=row.created_at,
             confirmed_at=row.confirmed_at,
             confirmed_by=row.confirmed_by,
