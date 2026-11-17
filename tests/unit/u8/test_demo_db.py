@@ -44,6 +44,8 @@ from tests.features.u8.test_demo_db_scenarios import (
 
 DEMO_CASES = sorted((EXAMPLES_DIR / "demo").glob("*.json"))
 DEMO_FILES = [DEMO_SETTINGS, DEFAULT_DEMO_RECORDS_PATH, *DEMO_CASES]
+# (#826) 일정 없이 마지막 접촉이 오래돼 "멈춘 회사"로 보이게 둔 시연 회사.
+STALLED_DEMO_CASES = {"demo-af-machining", "demo-ag-electronics"}
 
 
 @pytest.fixture
@@ -71,14 +73,14 @@ def _records(tmp_path: Path, edit) -> Path:
 def test_demo_example_files_have_no_contacts():
     """Given 시연용 예시 파일 전부 / When 연락처 검사 / Then 0건."""
     # (바뀜 2026-11-15 #765 — PM 결정) 가상 사례 5곳 → 17곳(A정밀은 examples/ 바로 아래)
-    assert len(DEMO_CASES) == 17
+    assert len(DEMO_CASES) == 35  # (#826) 17 → 35, 곳 수가 늘어 기대값을 바꿈
     for path in DEMO_FILES:
         document = load_document(path)
         assert scan_contacts(document.data, document=document) == [], path.name
 
 
 def test_demo_cases_are_virtual_and_named_as_virtual():
-    """Given 새 가상 사례 17곳 / When 읽기 / Then 가상 묶음·가상 이름, 사례 검사 통과."""
+    """Given 새 가상 사례 35곳 / When 읽기 / Then 가상 묶음·가상 이름, 사례 검사 통과."""
     names = []
     for path in DEMO_CASES:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -89,11 +91,11 @@ def test_demo_cases_are_virtual_and_named_as_virtual():
         assert "expected" not in data
         assert check_case_file(path).errors == [], path.name
         names.append(data["customer"]["name"])
-    assert len(set(names)) == 17
+    assert len(set(names)) == 35
 
 
 def test_demo_cases_have_their_own_card_reason():
-    """Given 가상 사례 17곳 / When 카드 추천 이유 / Then 회사마다 다른 문장, 80자 안(#790).
+    """Given 가상 사례 35곳 / When 카드 추천 이유 / Then 회사마다 다른 문장, 80자 안(#790).
 
     없으면 카드가 "확인 후 연락 검토: 현재 평가점수 70, 조사 항목 배점 합계 100" 같은
     기계 문장이 된다.
@@ -108,7 +110,7 @@ def test_demo_cases_have_their_own_card_reason():
         assert data["opportunity"]["item"].split()[-2] in reason, path.name
         assert check_case_file(path).warnings == [], path.name
         reasons.append(reason)
-    assert len(set(reasons)) == 17
+    assert len(set(reasons)) == 35
 
 
 def test_demo_files_do_not_mention_real_companies():
@@ -174,7 +176,8 @@ def test_schema_file_lists_demo_mark():
 
 
 def test_example_records_file_gives_in_progress_companies_a_next_schedule():
-    """Given 예시 가상 기록 파일 / When 다음 일정 / Then 진행 중 7곳 마지막 접촉에만(#790).
+    """Given 예시 가상 기록 파일 / When 다음 일정 / Then 일정이 있는 진행 중 10곳의
+    마지막 접촉에만(#790, #826).
 
     대시보드 달력·"오늘 확인할 것"이 시연에서 비지 않게 한다. 끝난 회사(성사·거절·보류)에는 없다.
     """
@@ -192,15 +195,22 @@ def test_example_records_file_gives_in_progress_companies_a_next_schedule():
         if closing:
             assert last.next_in_days is None, company.case_id
         else:
+            # (#826) 일정 없이 오래 멈춘 회사 2곳(멈춘 회사 시연용)은 다음 일정이 없다.
+            if company.case_id in STALLED_DEMO_CASES:
+                assert last.next_in_days is None, company.case_id
+                continue
             assert last.next_in_days is not None and last.next_note, company.case_id
-            assert last.next_note.startswith("(가상)")
+            # (바뀜 2026-11-17 #826) 회사 이름에 이미 "(가상)"이 있어
+            # 다음 일정 글에는 붙이지 않는다.
+            assert "(가상)" not in last.next_note, company.case_id
             scheduled[company.case_id] = last.next_in_days
-    assert len(scheduled) == 7
-    assert sorted(scheduled.values()) == [0, 0, 1, 2, 4, 7, 10]
+    assert len(scheduled) == 10
+    assert sorted(scheduled.values()) == [0, 0, 1, 2, 3, 4, 6, 7, 10, 12]
 
 
 def test_example_records_file_matches_cases_and_questions():
-    """Given 예시 가상 기록 파일 / When 검사 / Then 가상 사례 18곳과 같고 답 id가 유효(#765)."""
+    """Given 예시 가상 기록 파일 / When 검사
+    / Then 가상 사례 36곳과 같고 답 id가 유효(#765·#826)."""
     check = check_demo_records_file(DEFAULT_DEMO_RECORDS_PATH)
     assert check.errors == [] and check.records is not None
     case_ids = {json.loads(path.read_text("utf-8"))["caseId"] for path in CASE_FILES}
@@ -266,6 +276,23 @@ def test_seed_refuses_bad_file_before_touching_db(demo_db, tmp_path):
     assert outcome_count(demo_db) == 0
 
 
+def test_schedule_note_with_virtual_mark_is_refused(tmp_path):
+    """Given 다음 일정 글에 "(가상)" / When 파일 검사 / Then 거부(#826).
+
+    회사 이름에 이미 "(가상)"이 있어, 글에도 붙이면 대시보드 "오늘 일정"에
+    "G정공(가상) (가상) 소개서…"처럼 두 번 보였다.
+    """
+
+    def edit(data):
+        contact = data["companies"][6]["contacts"][-1]
+        assert contact.get("nextNote"), contact  # G정공(가상)의 다음 일정
+        contact["nextNote"] = "(가상) 소개서 받아 보셨는지 확인 전화"
+
+    check = check_demo_records_file(_records(tmp_path, edit))
+    assert check.records is None
+    assert any("(가상)을 붙이지 않습니다" in error.message for error in check.errors)
+
+
 def test_seed_refuses_when_database_is_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("GEOSAN_DB_PATH", str(tmp_path / "none.db"))
     code, out = run("seed-demo-records")
@@ -313,9 +340,9 @@ def test_seed_rolls_back_company_with_wrong_answer(demo_db, tmp_path):
     assert code == 1 and "demo-b-metal" in out and "앞 회사 1곳은 저장됨" in out
     assert outcome_count(demo_db) == 3  # A정밀 3건만. B금속의 앞 접촉 2건은 남지 않는다.
     code, out = run("seed-demo-records")
-    # (바뀜 2026-11-15 #765 — PM 결정: 시연 DB 6곳 → 18곳) A정밀을 건너뛰고 17곳: 성사 3·거절 5.
-    assert code == 0 and "넣은 회사 17곳(성사 3·거절 5)" in out and "건너뛴 회사 1곳" in out
-    assert outcome_count(demo_db) == 41
+    # (바뀜 2026-11-17 #826 — PM 결정: 18곳 → 36곳) A정밀을 건너뛰고 35곳: 성사 8·거절 11.
+    assert code == 0 and "넣은 회사 35곳(성사 8·거절 11)" in out and "건너뛴 회사 1곳" in out
+    assert outcome_count(demo_db) == 83
 
 
 def test_seed_goes_through_the_normal_save_path(demo_db):
@@ -325,8 +352,8 @@ def test_seed_goes_through_the_normal_save_path(demo_db):
     connection = sqlite3.connect(str(demo_db))
     try:
         count = lambda sql: connection.execute(sql).fetchone()[0]  # noqa: E731
-        # (#765) 접촉을 남긴 18곳 모두 관심으로 켜진다.
-        assert count("SELECT count(DISTINCT opp_id) FROM rec_bookmark WHERE active = 1") == 18
+        # (#765, #826) 접촉을 남긴 36곳 모두 관심으로 켜진다.
+        assert count("SELECT count(DISTINCT opp_id) FROM rec_bookmark WHERE active = 1") == 36
         assert count("SELECT count(*) FROM rec_outcome_answer") > 40
         assert count("SELECT count(*) FROM rec_outcome WHERE is_virtual = 0") == 0
         assert count("SELECT count(*) FROM rec_outcome WHERE attempted_at IS NULL") == 0
@@ -334,25 +361,30 @@ def test_seed_goes_through_the_normal_save_path(demo_db):
             count("SELECT count(*) FROM rec_outcome WHERE status = 'WON' AND reason IS NOT NULL")
             == 0
         )
-        # (#790) 진행 중 7곳은 마지막 접촉에 다음 일정이 들어가 대시보드 달력에 보인다. 오늘은 2곳.
+        # (#790, #826) 일정이 있는 진행 중 10곳은 마지막 접촉에 다음 일정이 들어가
+        # 대시보드 달력에 보인다. 오늘은 2곳.
         today = today_in_seoul()
         upcoming = connection.execute(
             "SELECT o.next_schedule_at, o.next_schedule_note FROM rec_outcome o "
             "WHERE o.next_schedule_at IS NOT NULL AND o.version = ("
             " SELECT max(version) FROM rec_outcome WHERE opp_id = o.opp_id)"
         ).fetchall()
-        assert len(upcoming) == 7
+        assert len(upcoming) == 10
         assert sum(1 for day, _ in upcoming if day == today.isoformat()) == 2
-        assert all(note.startswith("(가상)") for _, note in upcoming)
+        # (바뀜 2026-11-17 #826) 회사 이름에 이미 "(가상)"이 있어 일정 글에는 붙이지 않는다.
+        assert all("(가상)" not in note for _, note in upcoming)
         lost = connection.execute(
             "SELECT lost_reason_code FROM rec_outcome WHERE status = 'LOST' ORDER BY 1"
         ).fetchall()
+        # (바뀜 2026-11-17 #826 — 18곳 → 36곳) 거절 11곳.
         assert [row[0] for row in lost] == [
+            "INCUMBENT_SUPPLIER",
             "INCUMBENT_SUPPLIER",
             "LEAD_TIME",
             "LEAD_TIME",
-            "PRICE",
-            "PRICE",
+            "LEAD_TIME",
+            "NO_DEMAND",
+            *["PRICE"] * 5,
         ]
     finally:
         connection.close()
