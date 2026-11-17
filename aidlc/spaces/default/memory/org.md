@@ -6,25 +6,27 @@
 
 ## Way of Working
 
-We use **trunk-based development**. All work merges to `main` via
-short-lived feature branches (typically resolved within 1-2 days).
-Long-lived branches accumulate merge debt; we avoid them.
+We use **trunk-based development** with `develop` as the trunk (PM
+decision 2026-10-22). All work merges to `develop` via short-lived
+feature branches (typically resolved within 1-2 days). Long-lived
+branches accumulate merge debt; we avoid them. `main` is the demo /
+delivery line: only the PM moves `develop` into `main` via a pull
+request, and a merge into `main` deploys the demo environment.
 
-For Construction worktrees, the worktree base branch is `main` and the
-merge target is `main`.
+For Construction worktrees, the worktree base branch is `develop` and the
+merge target is `develop`.
 
-If our project requires multiple environments (staging, production), we
-still keep one trunk and gate releases via tags or environment-specific
-deployment configs — not via long-lived release branches.
+Beyond `develop` (trunk) and `main` (delivery line) we add no further
+long-lived branches: any other environment is gated via tags or
+environment-specific deployment configs.
 
-We **squash-merge** Bolt branches into `main`. Each Bolt becomes one
-commit on the trunk, named by the Bolt slug, with the full Bolt commit
-history preserved on the source branch until the worktree is discarded.
-
-Squash gives us a clean linear `main` history that maps 1:1 to
-delivery-planning's Bolt sequence. We accept the trade-off of losing
-intermediate commits on `main` because the audit log preserves the full
-event sequence anyway.
+We **merge-commit** Bolt branches into `develop` (PM decision
+2026-10-22; squash and rebase merging are disabled in the repository
+settings). A squash would make `develop` and `main` diverge on every
+round trip, so the same change would show up again in the next
+`develop` → `main` pull request. The merge commit keeps the Bolt
+boundary visible on the trunk while the intermediate commits stay in
+history; the audit log preserves the full event sequence anyway.
 
 ## Walking Skeleton
 

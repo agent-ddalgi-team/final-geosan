@@ -1,0 +1,87 @@
+"""화면에 필요한 공개 설정만 돌려준다. 내부 설정 파일 경로는 응답하지 않는다."""
+
+import os
+
+from fastapi import APIRouter
+from sqlalchemy import func, select
+
+from geosan.api.deps import SessionDep, current_account, runtime_for
+from geosan.api.process_catalog import load_process_catalog
+from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, Meta
+from geosan.capability.models import Process
+from geosan.config.models import AppSetting
+from geosan.evidence.transfer import ai_call_configured
+from geosan.opportunity.data_basis import data_basis
+
+router = APIRouter()
+
+
+def _current_staff(session):
+    """계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 None."""
+    account = current_account(session)
+    if account is None:
+        return None
+    from geosan.api.routes.session import current_staff_of
+
+    return current_staff_of(account)
+
+
+@router.get("/config/ui", response_model=ConfigUiEnvelope, response_model_exclude_unset=True)
+def config_ui(session: SessionDep):
+    runtime = runtime_for(session)
+    settings = runtime.app_settings
+    return ConfigUiEnvelope(
+        data=ConfigUi(
+            staff=[row.model_dump() for row in settings.staff],
+            brand=settings.brand.model_dump(),
+            classification_labels=runtime.rule_config.classification_labels,
+            active_dataset_kind=settings.active_dataset_kind,
+            access_protection_enabled=settings.access_protection.enabled,
+            rule_version=runtime.rule_config.version,
+            records=settings.records.model_dump(),
+            export=settings.export.model_dump(),
+            # #680: 기준 묶음이 없으면 꺼짐으로 보인다(숫자를 지어내지 않는다).
+            assistant={
+                "enabled": settings.assistant is not None
+                and settings.llm.sales_records_enabled
+                and settings.llm.mode == "EXTERNAL",
+                "question_max_length": settings.assistant.question_max_length
+                if settings.assistant
+                else None,
+            },
+            distance_filter_presets_km=settings.distance_filter_presets_km,
+            # #719: 켜짐/꺼짐만 준다. 키는 있는지만 보고 값은 읽어 두지 않는다.
+            research={
+                "aiEnabled": ai_call_configured(
+                    settings.llm, bool(os.environ.get("OPENAI_API_KEY", "").strip())
+                )
+            },
+            ingest_options={
+                "processes": [
+                    {"code": row.code, "name": row.name}
+                    for row in load_process_catalog(session, settings.active_dataset_kind)
+                ],
+                "regions": settings.ingestion.regions,
+                "industries": settings.industries,
+                # #798: 권역 묶음과 "자료 기준" 줄.
+                "region_groups": [group.model_dump() for group in settings.ingestion.region_groups],
+                "data_basis": data_basis(session, settings.active_dataset_kind),
+            },
+            current_staff=_current_staff(session),
+            operations_staff_keys=settings.operations_staff_keys(),
+        ),
+        meta=Meta(
+            updated_at=session.scalar(select(func.max(AppSetting.updated_at))),
+            has_virtual_data=bool(
+                session.scalar(
+                    select(Process.process_id)
+                    .where(
+                        Process.dataset_kind == settings.active_dataset_kind.value,
+                        Process.is_virtual.is_(True),
+                    )
+                    .limit(1)
+                )
+            ),
+            dataset_kind=settings.active_dataset_kind,
+        ),
+    )

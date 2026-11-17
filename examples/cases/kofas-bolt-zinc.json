@@ -1,0 +1,227 @@
+{
+  "caseId": "kofas-bolt-zinc",
+  "baseDate": null,
+  "description": "볼트·너트·와셔·핀 등 특수 볼트를 만드는 제조업체. 반도체 장비·자동화장비 부품에 쓰임 (거산 확인 전 실제 기업)",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "실제 기업 후보. 거산 확인 전이며 소개서 묶음(BROCHURE) 기준으로 평가한다.",
+    "홈페이지 제품 목록에 재질 선택과 도금 선택(아연 백색·천연색, 흑착 방청처리, 무전해니켈, 아노다이징 등) 항목이 있어 도금 수요가 직접 확인된다. 도금을 외주하는지 자체 처리하는지는 확인되지 않았다. 거산 확인 질문 후보.",
+    "다만 '코파스볼트 특징' 글은 고장력 렌치볼트에 니켈(NI) 도금과 흑착색을 쓴다고 설명하고, 아연도금은 제품 선택 항목에만 나온다. 아연도금 수요 근거는 제품 선택 항목뿐이고 특징 글은 니켈·흑착 중심이라 실제 수요가 아연도금보다 니켈도금·흑착색 쪽일 수 있다. PM 결정(2026-10-22): 시연 공정이 아연도금·아노다이징이므로 아연도금 후보로 두고, 니켈·흑착 기회는 시연 후에 다시 본다. 거산 확인 질문 후보: 아연도금 물량이 있습니까?",
+    "알루미늄(AL7076) 볼트와 아노다이징 선택 항목도 있어 아노다이징 후보로도 볼 수 있다. 이 파일은 아연도금 기회만 다룬다. 거산 확인 질문 후보: 아노다이징 물량도 있습니까? (PM 요청 2026-10-22)",
+    "연혁에서 읽은 증설 기록은 2017-12-12 '공장 확장 및 이전'뿐이라 오래되어 거의 반영되지 않는다. 주요거래처 페이지는 로고 이미지와 '약 500개 국내외 업체' 문구뿐이라 수주 신호로 보지 않았다.",
+    "홈페이지의 뉴스/공지 최신 글이 2021-03-02(사이트 개편 안내)로 오래되었다(확인일 2026-10-22).",
+    "홈페이지 주소 http://kofas.com/ 는 볼트 제조사다. kofas.co.kr 은 물류 자동화 회사로 다른 곳이다.",
+    "산업군은 '주로 납품하는 산업' 기준으로 PM이 적음(2026-11-04, #230). 근거: 홈페이지·카탈로그의 제품 용도·납품 산업."
+  ],
+  "customer": {
+    "name": "코파스 주식회사",
+    "bizNumber": "1238636654",
+    "address": "충청남도 아산시 음봉면 월산로 274-1",
+    "industries": ["반도체 장비"],
+    "identityBasis": "산단공 전국등록공장현황(2025-12-31 기준, 공공데이터포털 15105482) 등록 공장 + 공개 홈페이지 http://kofas.com/ 하단 사업자 정보와 천안공장 표기(충남 아산시 음봉면) 확인",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "볼트·너트 전기아연도금",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null,
+    "cardReason": "볼트·너트마다 도금 종류를 고를 수 있고 원재료가 철계(SCM435·S45C)라 아연도금과 맞음. 단 특징 글은 니켈·흑착 중심 (홈페이지)"
+  },
+  "discoveryPaths": [
+    { "pathKind": "PROCESS_DEMAND", "sourceId": "kicox-factory-csv", "originKey": "kicox-factory-csv-20251231-kofas-bolt", "discoveredAt": "2026-10-22" }
+  ],
+  "processLinks": [
+    { "processCode": "ZINC_PLATING", "appliedMaterial": "FE" }
+  ],
+  "requirements": [],
+  "signals": [
+    {
+      "signalKind": "EXPANSION",
+      "occurredAt": "2017-12-12",
+      "announcedAt": "2017-12-12",
+      "scheduledAt": null,
+      "deadlineAt": null,
+      "progressStatus": null,
+      "agreedWindow": null,
+      "certainty": "CONFIRMED",
+      "relation": "INDIRECT"
+    }
+  ],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "코파스 제작 볼트류 와샤, 링, 특수와샤 류 너트, 육각볼트 프로파일 부품류, PIN, ENSART, 기타류",
+      "sourceRef": "코파스 홈페이지 http://kofas.com/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "SCM 435(크롬-몰리브덴 강)",
+      "sourceRef": "코파스 홈페이지 제품 재질 선택 http://kofas.com/productK/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "MATERIAL",
+      "quote": "S 45C SUJ2(핀류 사용) SS400",
+      "sourceRef": "코파스 홈페이지 제품 재질 선택 http://kofas.com/productK/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "ZN-백색 KBN-무전해니켈(NI) ZN-천연색 흑착(방청처리)",
+      "sourceRef": "코파스 홈페이지 제품 도금 선택 http://kofas.com/productK/",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "OTHER",
+      "quote": "SEMES 품질보증서 SSQ",
+      "sourceRef": "코파스 홈페이지 인증현황 http://kofas.com/board/?boardid=auth",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PRODUCT",
+      "quote": "용도 및 특성 반도체 장비, 자동화장비 부품 주요 원재료 SCM435, SUS304, 플라스틱 및 특수 금속부품",
+      "sourceRef": "코파스 홈페이지 기업개요 http://kofas.com/sub01/01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "고장력 렌치볼트의 경우 NI도금을 한다.",
+      "sourceRef": "코파스 홈페이지 코파스볼트 특징 http://kofas.com/sub03/01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "PURPOSE",
+      "quote": "흑착색의 경우보다 녹이 덜 슨다",
+      "sourceRef": "코파스 홈페이지 코파스볼트 특징 http://kofas.com/sub03/01",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": false,
+      "subject": "SIGNAL",
+      "quote": "2017 12.12 코파스㈜ 공장 확장 및 이전",
+      "sourceRef": "코파스 홈페이지 연혁 http://kofas.com/sub01/03",
+      "occurredAt": "2017-12-12",
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": 1.0,
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "볼트·너트·와셔를 만들고 제품마다 도금 종류를 고르게 되어 있으며 도금과 방청 처리를 직접 설명함 — 표면처리가 필요한 부품 (해당 1.0, 확인). 아연도금은 제품 선택 항목에만 있고 특징 글은 니켈·흑착 중심임",
+      "summary": "볼트·너트·와셔를 만들고 제품마다 도금 종류를 고르게 되어 있어 표면처리가 필요한 부품입니다. 다만 아연도금은 선택 항목에만 있고 특징 글은 니켈·흑착 중심입니다. (홈페이지 제품 목록·코파스볼트 특징)",
+      "evidenceRefs": [0, 3, 6],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "주요 원재료 SCM435·S45C·SS400 등 철계 소재 — 아연도금 처리 소재(Fe)와 정확히 일치 (1.0, 확인). 스테인리스(SUS304)도 함께 쓰나 주 소재에 철계가 있음",
+      "summary": "주요 원재료가 SCM435·S45C·SS400 같은 철계라 아연도금 소재와 정확히 맞습니다. 스테인리스도 함께 씁니다. (홈페이지 제품 재질 선택 · 거산 소개서 아연도금 소재)",
+      "evidenceRefs": [1, 2, 5],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_BONUS",
+      "factJudged": "용도가 반도체 장비·자동화장비 부품이고(SEMES 품질보증서) 거산 소개서의 납품 산업(방위산업, 자동차 부품)과 맞지 않음 — 가점 없음",
+      "summary": "반도체·자동화 장비 부품이라 거산 소개서의 납품 산업(방산·자동차 부품)과 같지 않아 가점이 없습니다. (홈페이지 기업개요·인증현황 · 거산 소개서 납품 산업)",
+      "evidenceRefs": [4, 5],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "방청처리·도금으로 녹을 줄이는 것을 직접 설명 — 아연도금 태그 중 내식(CORROSION) 1개 일치 (0.5, 확인)",
+      "summary": "방청·도금으로 녹을 줄인다고 직접 설명해 내식 목적 하나가 맞습니다. (홈페이지 코파스볼트 특징 · 거산 소개서 아연도금 목적)",
+      "evidenceRefs": [3, 7],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        { "kind": "PROCESS", "processCode": "ZINC_PLATING" }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": "간접 관련",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "2017-12-12 공장 확장 및 이전 — 간접 관련 (0.5, 확인, 발생일이 오래되어 감쇠 큼)",
+      "summary": "2017년 12월 공장 확장·이전이 있으나 도금 수요와는 간접 관련이고 오래되어 점수에 거의 반영되지 않습니다. (홈페이지 연혁)",
+      "evidenceRefs": [8],
+      "signalRefs": [0],
+      "usedCapabilityRefs": []
+    },
+    { "itemCode": "SIG_ORDER", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "주요거래처는 '약 500개 국내외 업체' 문구와 로고뿐이고 날짜가 있는 신규 수주 글 없음 (확인일 2026-10-22)", "summary": "주요 거래처 페이지는 '약 500개 업체' 문구와 로고뿐이고 날짜가 있는 신규 수주 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_BID", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "뉴스/공지 게시판에 입찰·협력사 모집 글 없음 (확인일 2026-10-22)", "summary": "뉴스·공지 게시판에 입찰·협력사 모집 글이 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] },
+    { "itemCode": "SIG_HIRE", "matchRate": null, "certainty": null, "state": "NO_SIGNAL", "factJudged": "홈페이지에 채용 안내·공고 없음 (확인일 2026-10-22)", "summary": "홈페이지에 채용 안내·공고가 없어 신호 없음입니다. (홈페이지, 확인일 2026-10-22)", "evidenceRefs": [], "signalRefs": [], "usedCapabilityRefs": [] }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "아연도금 물량이 실제로 있는지, 도금을 외주하는지 확인"
+    ]
+  },
+  "expected": null
+}

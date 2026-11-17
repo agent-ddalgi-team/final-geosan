@@ -7,6 +7,7 @@
   `EvaluationInput.model_validate(json_dict)`로 읽고 `.model_dump(by_alias=True)`로 쓴다.
 - 더하는 변경(2026-10-21 PM 확인): `itemInputs`, `signals[].relation`·`scheduledAt`·`announcedAt`,
   `RuleConfig.otherGroupSort`.
+- 더하는 변경(2026-11-13 PM 결정, #685): `RuleConfig.callSignals`, 통화 신호 종류 2개.
 - `evaluate`·`rank`는 서명만 둔다. 본문은 Step 13(유동렬, `geosan/rules/engine.py`)에서 구현한다.
 """
 
@@ -147,6 +148,22 @@ class OtherGroupSort(_ContractModel):
     brochure: list[SortKeySpec]
 
 
+class CallSignalAnswer(_ContractModel):
+    """꼬리 질문의 답 하나가 통화 신호의 어느 세기인지 (#685)."""
+
+    question_id: str
+    answer_id: str
+    relation: SignalRelation
+
+
+class CallSignalRule(_ContractModel):
+    """점수 항목 하나를 채우는 통화 신호 종류와 답 대응표 (#685, PM 결정 2026-11-13)."""
+
+    item_code: str
+    signal_kind: Literal["CALL_INTENT", "CALL_INTEREST"]
+    answers: list[CallSignalAnswer] = Field(min_length=1)
+
+
 class RuleConfig(_ContractModel):
     """규칙 설정 파일 내용 + 버전·해시. 모든 수치는 기업 승인 전 가설(BR7.6)."""
 
@@ -164,6 +181,12 @@ class RuleConfig(_ContractModel):
     research_requirements: ResearchRequirementsConfig
     classification_labels: dict[str, str]
     other_group_sort: OtherGroupSort
+    existing_customer_placement: Literal["BOTTOM", "INLINE"] = "BOTTOM"
+    # BLOCK: 거래 관계 "확인 전"이면 필터 대기(BR3.10, S06). IGNORE: 신규 잠재고객만 찾으므로
+    # 확인 전을 대기 사유로 쓰지 않는다(PM 결정 2026-11-11, #567). 생략하면 BLOCK(이전 동작).
+    relation_check: Literal["BLOCK", "IGNORE"] = "BLOCK"
+    # 꼬리 질문 답 → 통화에서 확인한 신호 대응표(PM 결정 2026-11-13, #685). 생략하면 통화 신호 없음.
+    call_signals: list[CallSignalRule] = Field(default_factory=list)
     dataset_kinds: list[DatasetKind]
     rule_hash: str | None = Field(default=None, description="파일 내용 SHA-256. 로더가 채운다")
 
@@ -181,6 +204,11 @@ class OpportunityInput(_ContractModel):
     company_filter_status: FilterState
     has_linked_interaction: bool
     linked_interaction_kinds: list[InteractionKind] = Field(default_factory=list)
+    card_reason: str | None = Field(
+        default=None,
+        description="사례 파일 opportunity.cardReason. 있으면 카드 추천 이유로 그대로 쓴다 "
+        "(더하는 변경 2026-10-26, #139)",
+    )
 
 
 class ProcessLinkInput(_ContractModel):
@@ -262,6 +290,9 @@ class EvidenceInput(_ContractModel):
 class ProcessInput(_ContractModel):
     process_id: str
     code: str
+    # 역량 파일의 공정 이름 그대로(예: "아연도금(전기아연도금)"). 카드 막는 조건 문장에 쓴다.
+    # 더하는 변경(2026-10-27 PM, #161): 없으면 None, 기존 입력은 그대로 통과한다.
+    name: str | None = None
     material_codes: list[str]
     performance_tags: list[str]
     review_status: ReviewStatus
@@ -334,6 +365,13 @@ class ResearchReadinessInput(_ContractModel):
     question_can_change_class: bool
     estimated_hours: float | None = None
     max_hours: float | None = None
+    question_set: list[str] = Field(
+        default_factory=list,
+        description=(
+            "사례 파일 researchReadiness.questionSet 문장 그대로. "
+            "첫 항목이 카드 '다음 할 일'이 된다 (더하는 변경 2026-10-26, #139)"
+        ),
+    )
 
 
 class UsedCapabilityRef(_ContractModel):
@@ -353,6 +391,10 @@ class ItemInput(_ContractModel):
     )
     match_rate_step: str | None = None
     fact_judged: str | None = None
+    summary: str | None = Field(
+        default=None,
+        description="사례 파일 itemInputs[].summary 그대로 (더하는 변경 2026-10-26, #139)",
+    )
     evidence_ids: list[str] = Field(default_factory=list)
     signal_ids: list[str] = Field(default_factory=list)
     used_capability_refs: list[UsedCapabilityRef] = Field(default_factory=list)
@@ -414,6 +456,7 @@ class ItemJudgmentOutput(_ContractModel):
     decay: float | None = None
     score: int | None = Field(default=None, description="UNAVAILABLE만 null (BR4.5)")
     fact_judged: str | None = None
+    summary: str | None = None
     reasoning: str | None = None
     evidence_ids: list[str] = Field(default_factory=list)
     used_capability_ids: list[str] = Field(default_factory=list)
@@ -444,6 +487,7 @@ class DisplayFlags(_ContractModel):
 
 class SortKey(_ContractModel):
     group: SortGroup
+    relation_status: RelationStatus = RelationStatus.UNCONFIRMED
     valid_until: date | None = None
     E: int
     F: int
@@ -482,6 +526,7 @@ class EvaluationOutput(_ContractModel):
     timing: TimingRequirements
     research_ready: bool
     classification_code: ClassificationCode
+    score_state: Literal["CONFIRMED", "PENDING", "NONE"]
     display_flags: DisplayFlags
     sort_key: SortKey
     question_candidates: list[QuestionCandidate] = Field(default_factory=list)

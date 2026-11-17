@@ -12,7 +12,7 @@ from geosan.rules.models import evaluate
 
 
 def test_classification_table_has_eleven_codes_in_rule_order() -> None:
-    """11분기 코드표가 BR6.1 순서대로 있고 접촉 후보 3가지만 승인을 막지 않는다."""
+    """11분기와 접촉 후보 3종의 순서를 유지하고 어느 분류도 단독으로 승인을 막지 않는다."""
     entries = [classification_entry(code) for code in ClassificationCode]
     assert [entry.order for entry in entries] == list(range(1, 12))
     contact = [entry.code for entry in entries if entry.is_contact_candidate]
@@ -21,7 +21,7 @@ def test_classification_table_has_eleven_codes_in_rule_order() -> None:
         ClassificationCode.CONTACT_PLANNED,
         ClassificationCode.CONTACT_REVIEW,
     ]
-    assert all(not entry.blocks_approval for entry in entries if entry.is_contact_candidate)
+    assert all(not entry.blocks_approval for entry in entries)
 
 
 def test_apjeong_example_expected_values_match_fr10_1(apjeong_case_path, base_date: date) -> None:

@@ -1,0 +1,502 @@
+// 근거 상세(S2). 읽는 보고서처럼 위·아래 두 덩어리로 나눈다(#674, PM 결정 2026-11-13).
+// 위(읽는 곳): 머리(목록으로·[관심]·[다시 조사]·단계 진행 막대) → "한눈에" 상자 → 1. 왜 이 회사인가(추천 근거 + 인용·출처)
+//   → 2. 통화에서 확인할 것(읽기 전용) → 3. 점수 자세히 보기(접힘, 안에 AI 점수 입력 제안 [확정]·[고치기]).
+// 아래(적는 곳): 검토 의견 → 기록 남기기(접촉·꼬리 질문·한 줄 메모·다음 일정) → 활동 이력 → 비슷한 회사 참고(#269).
+// 읽는 곳의 단추는 [목록으로]·[관심]·[다시 조사]와 접힌 구역을 여는 단추뿐이다. 서버 창구는 그대로 두고 화면에서만 부르지 않는다.
+// 예외(#677): 확정한 공정과 다른 AI 공정 제안이 있을 때만 "한눈에" 공정 줄 아래에 [확정 값 유지]·[○○도 추가]가 보인다.
+// 머리의 [기록 남기기](#691)는 적는 곳의 "기록 남기기" 칸으로 내려가는 이동 단추다(저장하지 않는다).
+// 머리의 [관심] 단추(#357): 검토 의견·메모·영업 기록을 저장하면 서버가 관심을 켜므로, 그 저장 뒤에 관심 값만 조용히 다시 읽는다.
+import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Button } from 'antd';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ApiError, getOpportunityDetail, getSalesQuestions } from '../api/client';
+import type {
+  CallPrepNote,
+  ContactCount,
+  ContactMethod,
+  Meta,
+  OpinionRecord,
+  OpportunityDetail,
+  OutcomeRecord,
+  SalesQuestions,
+  SalesStepView,
+} from '../api/types';
+import FiveStates from '../components/common/FiveStates';
+import { useBookmark } from '../components/common/useBookmark';
+import HandoffBox from '../components/records/HandoffBox';
+import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
+import DetailGlance from '../components/detail/DetailGlance';
+import DetailSection from '../components/detail/DetailSection';
+import HeaderSection from '../components/detail/HeaderSection';
+import IndustryChips from '../components/detail/IndustryChips';
+import ReasonsSection from '../components/detail/ReasonsSection';
+import ScoresCollapse from '../components/detail/ScoresCollapse';
+import WhyThisCompany from '../components/detail/WhyThisCompany';
+import { useFrame } from '../components/frame/FrameContext';
+import OpinionArea from '../components/opinion/OpinionArea';
+import PeersArea from '../components/peers/PeersArea';
+import ActivityTimeline from '../components/records/ActivityTimeline';
+import { choiceMarksOf } from '../components/records/ChoiceQuestion';
+import RecordsArea, { recordsEntryInputId } from '../components/records/RecordsArea';
+import ReportLink from '../components/report/ReportLink';
+import ReviewArea from '../components/review/ReviewArea';
+import { coachSteps, detailReport, frame, peersArea, recordsArea, states } from '../labels/ko';
+import { colors, spacing, typography } from '../theme/tokens';
+
+/** "재평가됨" 띠가 보이는 시간(ms, interaction-spec 2.16). */
+export const REEVALUATED_BANNER_MS = 10_000;
+
+interface Result {
+  key: string;
+  data?: OpportunityDetail;
+  meta?: Meta;
+  error?: unknown;
+}
+
+export default function OpportunityDetailPage() {
+  const { oppId = '' } = useParams();
+  const navigate = useNavigate();
+  const { config, setBannerMeta, setPageTitle, dockSlot } = useFrame();
+  const [reload, setReload] = useState(0);
+  // 기록을 저장할 때마다 올라가서 타임라인이 새로 불러온다.
+  const [timelineVersion, setTimelineVersion] = useState(0);
+  // #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)을 그릴 왼쪽 영업 단계 아래 자리.
+  const [stageSlot, setStageSlot] = useState<HTMLDivElement | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  const requestKey = `${oppId}:${reload}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getOpportunityDetail(oppId, controller.signal)
+      .then((envelope) => setResult({ key: requestKey, data: envelope.data, meta: envelope.meta }))
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setResult({ key: requestKey, error });
+      });
+    return () => controller.abort();
+  }, [oppId, requestKey]);
+
+  // 꼬리 질문으로 공정·산업을 확정하면 상세 전체를 다시 받는다(#652). 그동안 화면을 비우면 맨 위로 튀고
+  // 기록 칸의 "저장됨" 알림과 고른 종류가 사라지므로, 이 다시 받기만은 지난 화면을 그대로 둔 채 조용히 한다(#691).
+  const [quietKey, setQuietKey] = useState<string | null>(null);
+  const reloadQuietly = () => {
+    setQuietKey(`${oppId}:${reload + 1}`);
+    setReload(reload + 1);
+  };
+  const stale =
+    quietKey === requestKey && result?.data && result.key.startsWith(`${oppId}:`) ? result : null;
+  const current = result?.key === requestKey ? result : stale;
+  const data = current?.data ?? null;
+  const meta = current?.meta ?? null;
+
+  // 접촉 횟수는 머리가 보인다. 기록 영역에서 접촉을 저장하면 서버 값에 1을 더해 바로 보이고,
+  // 상세를 새로 불러오면(다른 응답이 오면) 다시 서버 값을 쓴다.
+  const [counted, setCounted] = useState<{ data: OpportunityDetail; count: ContactCount } | null>(
+    null,
+  );
+  const contactCount =
+    counted && counted.data === data ? counted.count : (data?.records.contactCount ?? null);
+  const onContactRecorded = (method: ContactMethod) => {
+    if (!data) return;
+    const prev = contactCount ?? { total: 0, call: 0, email: 0, visit: 0 };
+    setCounted({
+      data,
+      count: {
+        total: prev.total + 1,
+        call: prev.call + (method === 'CALL' ? 1 : 0),
+        email: prev.email + (method === 'EMAIL' ? 1 : 0),
+        visit: prev.visit + (method === 'VISIT' ? 1 : 0),
+      },
+    });
+  };
+
+  // #607 세부 단계는 서버가 기록에서 계산한다. 접촉·단계 고치기를 저장하면 상세를 조용히 다시 받아
+  // 세부 단계만 바꾼다(화면 전체를 다시 그리지 않아 입력 중인 칸과 머리 접촉 횟수가 그대로다).
+  const [fresh, setFresh] = useState<{
+    data: OpportunityDetail;
+    step: SalesStepView | null;
+    lastContactAt: string | null;
+    opinion: OpinionRecord | null;
+    callPrep: CallPrepNote | null;
+  } | null>(null);
+  const salesStep = fresh && fresh.data === data ? fresh.step : (data?.records.salesStep ?? null);
+  const onSalesStepChanged = () => {
+    if (!data) return;
+    Promise.resolve()
+      .then(() => getOpportunityDetail(oppId))
+      .then((envelope) =>
+        setFresh({
+          data,
+          step: envelope.data.records.salesStep ?? null,
+          lastContactAt: envelope.data.records.lastContactAt ?? null,
+          opinion: envelope.data.records.opinion ?? null,
+          callPrep: envelope.data.records.callPrep ?? null,
+        }),
+      )
+      .catch(() => {
+        // 못 받으면 지난 요약을 그대로 둔다. 저장은 이미 끝났고 다음에 상세를 열면 새 값이 보인다.
+      });
+  };
+
+  // 검토 의견(#697): 접촉을 남기면 서버가 같은 저장 안에서 의견을 "영업 대상"으로 정할 수 있다.
+  // 접촉 저장 뒤 조용히 다시 받은 의견이 있으면 그것을, 없으면 처음 받은 의견을 쓴다.
+  const serverOpinion =
+    fresh && fresh.data === data ? fresh.opinion : (data?.records.opinion ?? null);
+  // 의견 칸에서 방금 저장한 의견. 서버에서 받은 것보다 새 것일 때만 쓴다.
+  const [savedOpinion, setSavedOpinion] = useState<{
+    data: OpportunityDetail;
+    record: OpinionRecord;
+  } | null>(null);
+  const localOpinion = savedOpinion && savedOpinion.data === data ? savedOpinion.record : null;
+  const opinionNow =
+    localOpinion && localOpinion.version > (serverOpinion?.version ?? 0)
+      ? localOpinion
+      : serverOpinion;
+
+  // 영업 단계·다음 일정을 저장하면 맨 위 진행 막대(끝 칸 "거절·보류·성사", 다음 일정 줄)도 그 값으로 바꾼다.
+  const [savedOutcome, setSavedOutcome] = useState<{
+    data: OpportunityDetail;
+    outcome: OutcomeRecord;
+  } | null>(null);
+  const outcome =
+    savedOutcome && savedOutcome.data === data
+      ? savedOutcome.outcome
+      : (data?.records.outcome ?? null);
+
+  const bookmarkState = useBookmark(oppId, data, data?.records.bookmark ?? null);
+
+  // 단계 진행 막대의 단계 이름·순서와 "통화에서 확인할 것"의 물을 말은 서버 질문 파일에서 온다.
+  // 못 받으면 코드표 순서·화면 문구로 대신한다(기록 구역은 지금처럼 스스로 불러온다).
+  const [salesQuestions, setSalesQuestions] = useState<SalesQuestions | null>(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.resolve()
+      .then(() => getSalesQuestions())
+      .then((envelope) => {
+        if (alive) setSalesQuestions(envelope.data);
+      })
+      .catch(() => {
+        // 질문 파일 없이도 막대와 목록은 그려진다. 기록 구역이 불러오기 실패를 따로 알린다.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // "점수 자세히 보기"의 펼침: 제안을 확정하면 상세를 다시 불러오는데, 그때도 펼친 채로 둔다. 다른 회사로 가면 접힌다.
+  const [scoresOpenFor, setScoresOpenFor] = useState<string | null>(null);
+
+  // 이름(h1)은 기업·기회 이름으로, 띠는 이 응답의 meta로(재평가됨은 10초만).
+  useEffect(() => {
+    if (!data) return undefined;
+    setPageTitle(data.header.title);
+    return () => setPageTitle(null);
+  }, [data, setPageTitle]);
+
+  useEffect(() => {
+    if (!meta || !data) return undefined;
+    setBannerMeta({ ...meta, reevaluated: data.reevaluated });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (data.reevaluated) {
+      timer = setTimeout(
+        () => setBannerMeta({ ...meta, reevaluated: false }),
+        REEVALUATED_BANNER_MS,
+      );
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+      setBannerMeta(null);
+    };
+  }, [data, meta, setBannerMeta]);
+
+  const retry = useCallback(() => setReload((n) => n + 1), []);
+  const goList = () => navigate('/opportunities');
+  /** 머리의 [기록 남기기]: 기록 칸으로 내려가 첫 입력(종류)에 초점을 둔다. 저장은 하지 않는다. */
+  const goRecord = () => {
+    const input = document.getElementById(recordsEntryInputId(oppId));
+    const target = input ?? document.getElementById('detail-records');
+    target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    input?.focus({ preventScroll: true });
+  };
+
+  const notFound = current?.error instanceof ApiError && current.error.status === 404;
+  let state: 'loading' | 'error' | 'empty' | 'ready' = 'ready';
+  if (!current) state = 'loading';
+  else if (notFound) state = 'empty';
+  else if (current.error) state = 'error';
+
+  const ownerName = config?.staff.find((entry) => entry.key === data?.header.owner)?.displayName;
+  // AI 점수 입력 제안 줄은 "점수 자세히 보기" 안에서 [확정]·[고치기]로 다룬다.
+  const itemProposals = (data?.reviewItems ?? []).filter(
+    (item) => item.kind === 'ITEM_INPUT_PROPOSAL',
+  );
+  // 마지막 접촉 날짜: 기록 구역에서 접촉을 저장하면 그 뒤에 조용히 다시 받은 값으로 바뀐다.
+  const lastContactAt =
+    fresh && fresh.data === data ? fresh.lastContactAt : (data?.records.lastContactAt ?? null);
+
+  // 전달 사항·통화 전·기록 남기기(#771·#750·#742). #773부터 넓은 화면은 오른쪽 영업 코치 칸으로 보낸다.
+  const recordInput = !data ? null : (
+    <>
+      {/* #847 확인사항: 코치가 지난 통화 뒤 정리한 것(#750)과 전의 "통화에서 확인할 것"을 주제별로 묶어 통화 중 체크. */}
+      {data.reviewItems !== undefined ? (
+        <CallChecklist
+          header={data.header}
+          reasons={data.reasons}
+          processLinks={data.processLinks}
+          reviewItems={data.reviewItems}
+          requirements={data.requirements}
+          salesStep={salesStep}
+          scoreItems={data.scores?.items}
+          questions={salesQuestions}
+          title={coachSteps.before}
+          grouped
+          // 접촉을 저장해 다음 통화 준비가 바뀌면 체크를 처음 값으로 되돌린다.
+          key={`${oppId}:checks:${(fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep)?.noteId ?? ''}`}
+          prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
+          // #847: 확인 전 전달 사항은 확인사항 맨 위에(남기는 것은 대화 기록의 메모 "받는 사람").
+          top={
+            <HandoffBox
+              key={`${oppId}:handoff`}
+              oppId={oppId}
+              evalId={data.evalId}
+              handoffs={data.records.handoffs ?? []}
+              lastActor={data.records.outcome?.updatedBy ?? null}
+              listOnly
+              onChanged={() => {
+                reloadQuietly();
+                setTimelineVersion((n) => n + 1);
+              }}
+            />
+          }
+        />
+      ) : null}
+      {/* #847 대화 기록: 이번 통화 메모·결과. [보내기] 뒤 코치 답은 이 칸 안에 펴진다. */}
+      <h3
+        data-testid="coach-step-record"
+        style={{ margin: '16px 0 8px', fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
+      >
+        {coachSteps.record}
+      </h3>
+      <RecordsArea
+        key={`${oppId}:records`}
+        oppId={oppId}
+        evalId={data.evalId}
+        outcome={data.records.outcome ?? null}
+        salesStep={salesStep}
+        onSalesStepChanged={onSalesStepChanged}
+        onOutcomeSaved={(saved) => setSavedOutcome({ data, outcome: saved })}
+        choiceMarks={choiceMarksOf(data)}
+        // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
+        onCompanyConfirmed={reloadQuietly}
+        excluded={opinionNow?.opinion === 'NOT_TARGET'}
+        inCoach
+        // #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)은 넓은 화면에서 왼쪽 영업 단계 아래에.
+        sideSlot={dockSlot ? stageSlot : null}
+        onHandoffSent={reloadQuietly}
+        onContactRecorded={onContactRecorded}
+        onRecorded={() => {
+          setTimelineVersion((n) => n + 1);
+          void bookmarkState.sync();
+        }}
+      />
+    </>
+  );
+
+  return (
+    <FiveStates
+      state={state}
+      emptyText={states.detailNotFound}
+      emptyAction={
+        <Button
+          type="primary"
+          href="/opportunities"
+          onClick={(event) => {
+            event.preventDefault();
+            goList();
+          }}
+          data-testid="not-found-back-button"
+        >
+          {frame.backToList}
+        </Button>
+      }
+      errorTitle={states.detailError}
+      error={current?.error}
+      onRetry={retry}
+    >
+      {data ? (
+        <div data-testid="opportunity-detail" style={{ display: 'grid', gap: spacing.cardGap }}>
+          <HeaderSection
+            oppId={oppId}
+            onReload={() => {
+              setReload((n) => n + 1);
+              setTimelineVersion((n) => n + 1);
+            }}
+            onGoRecord={goRecord}
+            header={data.header}
+            bookmark={bookmarkState.bookmark}
+            onBookmarkChanged={(next) => {
+              bookmarkState.change(next);
+              setTimelineVersion((n) => n + 1);
+              // 관심을 켜면 조사가 저절로 시작될 수 있다(#690). 머리의 조사 상태("조사 중" 등)가
+              // 바로 보이게 상세를 조용히 다시 읽는다(#719). 끌 때는 바뀌는 것이 없어 읽지 않는다.
+              if (next?.active) reloadQuietly();
+            }}
+            salesStep={salesStep}
+            outcome={outcome}
+            contactTotal={contactCount?.total ?? 0}
+            questions={salesQuestions}
+            ownerName={ownerName}
+            classificationOverrides={config?.classificationLabels}
+            reportLink={<ReportLink oppId={oppId} />}
+            // #803: 검토 의견은 따로 카드가 아니라 머리 꼬리표 줄에 "의견: 영업 대상 (수정)"으로.
+            opinion={
+              data.evalId ? (
+                <span data-testid="detail-opinion">
+                  <OpinionArea
+                    // 접촉 저장이 의견을 바꿨으면(#697) 서버 의견의 버전이 달라져 새 값으로 다시 그린다.
+                    key={`${oppId}:${data.evalId}:${serverOpinion?.version ?? 0}`}
+                    oppId={oppId}
+                    evalId={data.evalId}
+                    record={opinionNow}
+                    onSaved={(record) => {
+                      setSavedOpinion({ data, record });
+                      void bookmarkState.sync();
+                    }}
+                  />
+                </span>
+              ) : null
+            }
+          />
+          {/* #847: 넓은 화면에서는 오른쪽 기록 칸의 확정된 것이 이 자리(영업 단계 바로 아래)에 그려진다. */}
+          {dockSlot ? <div ref={setStageSlot} data-testid="detail-stage-slot" /> : null}
+          <DetailGlance
+            header={data.header}
+            processLinks={data.processLinks}
+            evidence={data.evidence}
+            reviewItems={data.reviewItems}
+            requirements={data.requirements}
+            contactCount={contactCount}
+            lastContactAt={lastContactAt}
+            scoreItems={data.scores?.items}
+            // #803: 작은 지도(좌표가 없거나 가상 사례면 서버가 null을 준다).
+            map={data.map ?? null}
+            // #803: 산업은 "한눈에" 산업 칸에서 바로 [확정]·[고치기](전에는 아래 따로 카드).
+            industryEditor={
+              <IndustryChips
+                key={`${oppId}:industries`}
+                oppId={oppId}
+                header={data.header}
+                bare
+                onSaved={() => {
+                  setReload((n) => n + 1);
+                  setTimelineVersion((n) => n + 1);
+                }}
+              />
+            }
+            processChoice={{
+              oppId,
+              evalId: data.evalId,
+              // #847: 공정 줄 [고치기]의 보기는 질문 파일의 공정 고르기 보기(거산 공정 목록)를 쓴다.
+              options: salesQuestions?.questions
+                .find((question) => question.choices === 'PROCESS')
+                ?.answers.map((answer) => ({ code: answer.answerId, name: answer.label })),
+              // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
+              onSaved: () => {
+                setReload((n) => n + 1);
+                setTimelineVersion((n) => n + 1);
+              },
+            }}
+            callCheckCount={
+              data.reviewItems !== undefined
+                ? callCheckCountOf(
+                    {
+                      header: data.header,
+                      reasons: data.reasons,
+                      processLinks: data.processLinks,
+                      reviewItems: data.reviewItems,
+                      requirements: data.requirements,
+                      salesStep,
+                    },
+                    salesQuestions,
+                    // #847: 확인사항의 "지난 통화에서 이어서" 줄도 센다.
+                    (fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep) ?? null,
+                  )
+                : 0
+            }
+          />
+          <WhyThisCompany
+            header={data.header}
+            reasons={data.reasons}
+            scoreItems={data.scores?.items}
+            evidence={data.evidence}
+          />
+          {/* #803: "통화에서 확인할 것"은 오른쪽 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다.
+              서버가 검토사항을 안 주는 옛 응답일 때만 후속 조치를 예전 부품으로 보인다. */}
+          {data.reviewItems === undefined ? (
+            <ReasonsSection reasons={data.reasons} onlyFollowUp />
+          ) : null}
+          {/* "고객이 요구하는 것과 거산의 준비 상태"·"공정 적합성 검토" 구역은 그리지 않는다(PM 결정 2026-11-13 #659).
+              서버 응답(requirements·processLinks)은 그대로 온다. 공정은 "한눈에"의 "거산과 맞는 점"에 적는다. */}
+          <ScoresCollapse
+            scores={data.scores}
+            scoreDisplay={data.header.scoreDisplay}
+            open={scoresOpenFor === oppId}
+            onOpenChange={(open) => setScoresOpenFor(open ? oppId : null)}
+          >
+            {itemProposals.length > 0 ? (
+              <div data-testid="score-proposals" style={{ display: 'grid', gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: typography.fontSize, fontWeight: 600 }}>
+                  {detailReport.scores.proposalsTitle}
+                </h3>
+                <span
+                  style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+                >
+                  {detailReport.scores.proposalsHint}
+                </span>
+                <ReviewArea
+                  key={`${oppId}:${data.evalId}:proposals`}
+                  oppId={oppId}
+                  evalId={data.evalId}
+                  items={itemProposals}
+                  proposalsOnly
+                  onProposalSaved={() => {
+                    // AI 제안을 확정·고치면 점수가 바뀌어 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#498).
+                    setReload((n) => n + 1);
+                    setTimelineVersion((n) => n + 1);
+                  }}
+                />
+              </div>
+            ) : null}
+          </ScoresCollapse>
+          {/* #803: "여기부터 적는 곳" 구분 줄·산업군 카드·검토 의견 카드는 없앴다(적는 곳은 오른쪽 영업 코치 판,
+              산업은 "한눈에", 의견은 머리 꼬리표 줄). */}
+          <DetailSection
+            id="detail-records"
+            title={recordsArea.title}
+            count={contactCount?.total ?? null}
+          >
+            {/* #773: 넓은 화면에서는 기록 남기기가 오른쪽 "💬 영업 코치" 칸에 있다(아래 createPortal). */}
+            {/* #803: 넓은 화면에서는 기록 남기기가 오른쪽 영업 코치 판에 있다(안내 문장은 뺐다). */}
+            {dockSlot ? null : recordInput}
+            <ActivityTimeline
+              key={`${oppId}:timeline`}
+              oppId={oppId}
+              refreshKey={timelineVersion}
+              onCancelled={() => {
+                // 취소하면 현재 단계·일정·접촉 횟수·카드 꼬리표가 이전 값으로 돌아가므로 상세를 다시 불러온다(#254).
+                // 활동 이력은 이 부품이 스스로 다시 불러온다.
+                setReload((n) => n + 1);
+              }}
+            />
+          </DetailSection>
+          {dockSlot
+            ? createPortal(<div data-testid="records-dock-content">{recordInput}</div>, dockSlot)
+            : null}
+          <DetailSection id="detail-peers" title={peersArea.title}>
+            <PeersArea key={`${oppId}:peers`} oppId={oppId} foldList />
+          </DetailSection>
+        </div>
+      ) : null}
+    </FiveStates>
+  );
+}

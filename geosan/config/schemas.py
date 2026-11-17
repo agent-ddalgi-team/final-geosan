@@ -50,6 +50,8 @@ from geosan.rules.codes import (
 STAFF_KEY_PATTERN = r"^[a-z0-9-]{1,32}$"
 CASE_ID_PATTERN = r"^[a-z0-9][a-z0-9-]*$"
 BIZ_NUMBER_PATTERN = r"^[0-9]{10}$"
+# 회사 홈페이지 주소: http·https만. 빈칸과 @(사람 계정·메일 주소)가 들어가면 거부한다(#332).
+HOMEPAGE_URL_PATTERN = r"^https?://[^\s@]+$"
 
 
 class FileModel(BaseModel):
@@ -70,9 +72,16 @@ def _require_timezone(value: datetime) -> datetime:
 
 
 class CaseCustomer(FileModel):
+    industries: list[str] = Field(default_factory=list, max_length=3)
     name: str = Field(min_length=1)
     biz_number: str | None = Field(default=None, pattern=BIZ_NUMBER_PATTERN)
     address: str | None = None
+    homepage_url: str | None = Field(
+        default=None,
+        pattern=HOMEPAGE_URL_PATTERN,
+        description="회사 공식 홈페이지 주소(선택). 투입하면 확정·사례 파일 출처로 저장. "
+        "더하는 변경 2026-11-06 PM, #190·#332",
+    )
     identity_basis: str | None = None
     relation_status: RelationStatus
     relation_confirmed_at: date | None = None
@@ -92,6 +101,11 @@ class CaseOpportunity(FileModel):
     project: str | None = None
     purpose: Purpose
     owner: str | None = Field(default=None, pattern=STAFF_KEY_PATTERN)
+    card_reason: str | None = Field(
+        default=None,
+        description="추천 목록 카드의 추천 이유 한 문장(출처 제외 80자 안 권장, 넘으면 경고). "
+        "작성자가 확인한 문장. 더하는 변경 2026-10-26 PM, #139",
+    )
 
 
 class CaseDiscoveryPath(FileModel):
@@ -168,6 +182,11 @@ class CaseItemInput(FileModel):
     certainty: Literal["CONFIRMED", "STRONG", "WEAK"] | None = None
     state: ItemState
     fact_judged: str | None = None
+    summary: str | None = Field(
+        default=None,
+        description="상세 화면용 쉬운 요약 1~2문장(원문 factJudged는 그대로 둠). "
+        "더하는 변경 2026-10-26 PM, #139",
+    )
     evidence_refs: list[int] = Field(default_factory=list)
     signal_refs: list[int] = Field(default_factory=list)
     used_capability_refs: list[CaseUsedCapabilityRef] = Field(default_factory=list)

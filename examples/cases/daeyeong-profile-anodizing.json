@@ -1,0 +1,229 @@
+{
+  "caseId": "daeyeong-profile-anodizing",
+  "baseDate": null,
+  "description": "[거산 확인 전·외관 목적 간접 근거] (주)대영프로파일 DF 3090 알루미늄 프로파일 아노다이징 적합성 확인",
+  "isVirtual": false,
+  "datasetKind": "BROCHURE",
+  "notes": [
+    "검토용 조사 초안이다. 제품·소재 직접 근거와 색상 사양에 따른 외관 목적 간접 근거를 확보했다. 처리 목적을 직접 확인한 최종 사례는 아니며, 파일 형식 검사 통과와 후보 선정 완료를 구분한다.",
+    "공개 자료 열람일: 2026-10-22. 원문 게시일은 확인되지 않아 evidence.occurredAt을 비웠다. 열람일을 발생일로 사용하지 않았다.",
+    "공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 에서 산업용 알루미늄 압출 형재를 안내하며, 공식 홈페이지 주소도 CSV와 일치한다.",
+    "공식 DF 3090 상세의 기술자료 이미지를 눈으로 확인했다. A6N01S-T5, Anodized, Color (색상) Silver, Black이 같은 표에 있다. 색상 선택을 근거로 외관 목적만 STRONG으로 추정했다. 내식·내마모 목적이나 처리 성능 수치는 추가하지 않았다.",
+    "공식 시설·장비 목록 https://www.alusys.com/bbs/board.php?bo_table=b401 은 확인했으나 자체 표면처리 여부나 외주 발주 여부를 확정하지 않았다. 홈페이지의 현재 제품 사양 갱신일과 실제 생산·판매 지속 여부도 별도 확인 사항이다.",
+    "PM PR #43이 합쳐진 develop c203978의 examples/capability-geosan-brochure.json에서 ANODIZING 소재 AL과 성능 태그 APPEARANCE를 대조했다. 소개서 검수 상태는 PENDING이며 합금·치수·요구 사양의 수탁 승인이 아니다.",
+    "최종 조사 묶음은 명화금속·스틸앙카 아연도금 2곳과 대영프로파일 아노다이징 1곳이다. 스틸앙카의 회사 제품군 근거와 당진 생산 사업장 미확인 사항은 별도로 검토한다.",
+    "미확보 항목 재확인일: 2026-10-24. 공식 연혁 https://www.alusys.com/bbs/board.php?bo_table=b103 과 사업분야 https://www.alusys.com/bbs/page.php?hid=p202, 작업사례 첫 목록 https://www.alusys.com/bbs/board.php?bo_table=b501 을 확인했다. 연혁의 조립동 신축공장 준공은 제목이 10. 11로 표시되어 있으며 게시물 등록일을 발생일로 쓰지 않았다. 작업사례는 전체 41건으로 표시되지만 개별 사례 전수조사는 하지 않았고 DF 3090의 납품 산업·신규 수주·발생일을 특정하지 못했다. NEW_RECORD·SIG_EXPAND·SIG_ORDER는 UNAVAILABLE을 유지한다.",
+    "2026-10-24 공식 공지사항 https://www.alusys.com/bbs/board.php?bo_table=b601 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b601&wr_id=1 의 본문을 직접 확인했다. 공지사항입니다.라는 안내 문구만 있고 입찰·협력사 모집·구매 내용은 없어 SIG_BID를 NO_SIGNAL로 판정했다. 공식 게시판에서 확인한 범위의 판정이며 외부 공고까지 없다는 뜻은 아니다.",
+    "2026-10-24 공식 채용정보 https://www.alusys.com/bbs/board.php?bo_table=b701 의 목록 한 페이지와 유일한 글 https://www.alusys.com/bbs/board.php?bo_table=b701&wr_id=1 의 본문을 직접 확인했다. 채용정보 게시판입니다.라는 안내 문구만 있고 실제 모집 직무·기간이 없어 SIG_HIRE를 NO_SIGNAL로 판정했다. 열람일이나 안내 글의 등록일을 채용 발생일로 쓰지 않았다.",
+    "산업군은 '주로 납품하는 산업' 기준으로 PM이 적음(2026-11-04, #230). 근거: 홈페이지·카탈로그의 제품 용도·납품 산업."
+  ],
+  "customer": {
+    "name": "(주)대영프로파일",
+    "bizNumber": null,
+    "address": "세종특별자치시 부강면 구들기길 18",
+    "industries": ["기계·설비"],
+    "identityBasis": "산단공 전국등록공장현황 2025-12-31 기준, 2026-09-23 갱신본 순번 67247의 상호·세종특별자치시 부강면 구들기길 18 주소를 공식 사업분야 https://www.alusys.com/bbs/page.php?hid=p202 하단의 상호·주소와 대조했다. CSV: https://www.data.go.kr/data/15105482/fileData.do; 확인일 2026-10-22. 현재 운영 여부와 자체 처리·외주 발주는 별도 확인 전이다.",
+    "relationStatus": "UNCONFIRMED",
+    "relationConfirmedAt": null,
+    "securityGrade": "PUBLIC"
+  },
+  "interactions": [],
+  "opportunity": {
+    "item": "알루미늄 프로파일 아노다이징",
+    "project": null,
+    "purpose": "NEW_PROPOSAL",
+    "owner": null,
+    "cardReason": "프로파일 DF 3090 제품 상세에 아노다이징 사양이 적혀 있고 소재 A6N01S-T5가 알루미늄이라 맞음. 자체 처리·외주는 확인 전 (홈페이지)"
+  },
+  "discoveryPaths": [
+    {
+      "pathKind": "PROCESS_DEMAND",
+      "sourceId": "kicox-factory-csv",
+      "originKey": "20251231:67247",
+      "discoveredAt": "2026-10-22"
+    }
+  ],
+  "processLinks": [
+    {
+      "processCode": "ANODIZING",
+      "appliedMaterial": "AL"
+    }
+  ],
+  "requirements": [],
+  "signals": [],
+  "evidence": [
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "PRODUCT",
+      "quote": "상품명 DF 3090 제조사 대영프로파일",
+      "sourceRef": "대영프로파일 홈페이지 DF 3090 제품 안내 https://www.alusys.com/shop/item.php?it_id=1640055222&ca_id=1010&page=1",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "MATERIAL",
+      "quote": "Material (재질) A6N01S-T5",
+      "sourceRef": "대영프로파일 홈페이지 DF 3090 기술자료 https://www.alusys.com/shop/item.php?it_id=1640055222&ca_id=1010&page=1",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "Surface Processing (표면처리) Anodized",
+      "sourceRef": "대영프로파일 홈페이지 DF 3090 기술자료 https://www.alusys.com/shop/item.php?it_id=1640055222&ca_id=1010&page=1",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "STRONG",
+      "isLlmProposed": true,
+      "subject": "PURPOSE",
+      "quote": "Color (색상) Silver, Black",
+      "sourceRef": "https://alusys.ivyro.net/data/editor/2112/6323ca20ebcca6e37700f794b1d8cc8d_1640055262_4827.jpg",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    },
+    {
+      "sourceGrade": "B",
+      "certainty": "CONFIRMED",
+      "isLlmProposed": true,
+      "subject": "OTHER",
+      "quote": "세종특별자치시 부강면 구들기길 18",
+      "sourceRef": "https://www.alusys.com/bbs/page.php?hid=p202",
+      "occurredAt": null,
+      "securityGrade": "PUBLIC",
+      "externalAiAllowed": true
+    }
+  ],
+  "itemInputs": [
+    {
+      "itemCode": "NEW_PRODUCT",
+      "matchRate": "해당",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 명시되어 있다. 외관 목적은 별도 NEW_PERF에서 간접 근거 STRONG으로 판단하며, 자체 처리·외주 발주는 미확인이다.",
+      "summary": "DF 3090 제품 상세에 대영프로파일 제조와 아노다이징 사양이 직접 적혀 있습니다. 자체 처리인지 외주 발주인지는 확인 전입니다. (홈페이지 DF 3090 제품 안내)",
+      "evidenceRefs": [
+        0,
+        2
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_MATERIAL",
+      "matchRate": "정확히 일치",
+      "certainty": "CONFIRMED",
+      "state": "CONFIRMED",
+      "factJudged": "공식 DF 3090 소재는 A6N01S-T5 알루미늄 합금이다. 실제 소개서 묶음 ANODIZING 소재 AL과 코드 범위를 대조했다. 구체적인 합금·질별·치수의 수탁 가능 여부는 거산 확인 전이다.",
+      "summary": "DF 3090 소재 A6N01S-T5 알루미늄 합금이 아노다이징 소재와 범위가 맞습니다. 구체적인 합금·질별·치수의 수탁 가능 여부는 확인 전입니다. (홈페이지 DF 3090 제품 안내 · 거산 소개서 아노다이징 소재)",
+      "evidenceRefs": [
+        1
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
+    },
+    {
+      "itemCode": "NEW_RECORD",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 산업용 프로파일 제품은 확인했으나 거산 소개서 ANODIZING의 방위산업·항공우주 실적과 대상 DF 3090의 동일 부품·동일 산업을 연결할 근거가 없다. 다음 할 일: DF 3090의 실제 적용 산업·부품 용도를 확인한 뒤 소개서 실적과 대조한다. 미확인을 불일치로 확정하지 않았다. 2026-10-24 공식 사업분야와 작업사례 첫 목록을 추가 확인했으나 대상 DF 3090의 납품 산업·적용 부품과 거산 실적의 일치 여부를 확정하지 못해 UNAVAILABLE을 유지한다.",
+      "summary": "산업용 프로파일 제품은 확인했으나 DF 3090의 적용 산업·부품과 거산 소개서의 납품 산업(방산·항공우주)을 연결할 근거가 없어 미확보입니다. (홈페이지 사업분야·작업사례, 확인일 2026-10-24)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "NEW_PERF",
+      "matchRate": "1개 일치",
+      "certainty": "STRONG",
+      "state": "STRONG",
+      "factJudged": "공식 DF 3090 기술자료 이미지에 Anodized와 Silver, Black 색상이 함께 명시된다. 외관 목적을 간접 근거 STRONG으로 추정하고 실제 소개서 ANODIZING의 APPEARANCE 한 태그와 대조했다. 직접 목적 설명·내식·내마모·외주 수요 확인은 아니다.",
+      "summary": "DF 3090 기술자료에 Anodized와 은색·검정 색상이 함께 적혀 있어 외관 목적을 간접 추정했습니다. 직접 목적 설명·내식·내마모·외주 수요 확인은 아닙니다. (홈페이지 DF 3090 기술자료 · 거산 소개서 아노다이징 목적, 추정)",
+      "evidenceRefs": [
+        2,
+        3
+      ],
+      "signalRefs": [],
+      "usedCapabilityRefs": [
+        {
+          "kind": "PROCESS",
+          "processCode": "ANODIZING"
+        }
+      ]
+    },
+    {
+      "itemCode": "SIG_EXPAND",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 2026-10-24 공식 연혁의 조립동 신축공장 준공 글(https://www.alusys.com/bbs/board.php?bo_table=b103&wr_id=17)을 확인했으나 제목은 10. 11이며 정확한 발생일과 DF 3090의 관련성이 미확인이다. 다음 할 일: 실제 발생일과 대상 제품 생산라인 관련성을 확인한다. 게시물 등록일을 발생일로 대신 쓰거나 신호가 없다고 단정하지 않고 UNAVAILABLE을 유지한다.",
+      "summary": "연혁에 조립동 신축공장 준공 글이 있으나 정확한 발생일과 DF 3090과의 관련성을 확인하지 못해 미확보입니다. (홈페이지 연혁, 확인일 2026-10-24)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_ORDER",
+      "matchRate": null,
+      "certainty": null,
+      "state": "UNAVAILABLE",
+      "factJudged": "이유: 2026-10-24 공식 사업분야·연혁·작업사례 첫 목록(전체 41건 표시)을 확인했으나 DF 3090에 연결되는 신규 수주·제품 출시·사업 확대의 실제 발생일을 특정하지 못했다. 다음 할 일: 대상 품목과 연결된 사례 본문·발생일을 추가 확인한다. 전체 사례를 조사해 신호가 없음을 확인한 것은 아니므로 UNAVAILABLE을 유지한다.",
+      "summary": "사업분야·연혁·작업사례(41건) 첫 목록을 봤으나 DF 3090에 연결되는 신규 수주·출시 발생일을 특정하지 못해 미확보입니다. (홈페이지 작업사례, 확인일 2026-10-24)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_BID",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-24 공식 게시판 https://www.alusys.com/bbs/board.php?bo_table=b601 의 전체 목록 한 페이지와 유일한 안내 글 본문을 확인했다. 공지사항입니다.라는 안내만 있고 실제 입찰·협력사 모집·구매 공고 내용은 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 자료 전반에 신호가 없다는 뜻은 아니다.",
+      "summary": "공지 게시판에 안내 글 하나뿐이고 입찰·협력사 모집·구매 공고가 없어 신호 없음입니다. (홈페이지 공지 게시판, 확인일 2026-10-24)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    },
+    {
+      "itemCode": "SIG_HIRE",
+      "matchRate": null,
+      "certainty": null,
+      "state": "NO_SIGNAL",
+      "factJudged": "2026-10-24 공식 게시판 https://www.alusys.com/bbs/board.php?bo_table=b701 의 전체 목록 한 페이지와 유일한 안내 글 본문을 확인했다. 채용정보 게시판입니다.라는 안내만 있고 실제 구매·품질·생산기술·표면처리 직무 채용 내용은 없어 확인한 공식 게시판 범위에서 NO_SIGNAL로 판정한다. 외부 자료 전반에 신호가 없다는 뜻은 아니다.",
+      "summary": "채용 게시판에 안내 글 하나뿐이고 관련 직무 채용 글이 없어 신호 없음입니다. (홈페이지 채용 게시판, 확인일 2026-10-24)",
+      "evidenceRefs": [],
+      "signalRefs": [],
+      "usedCapabilityRefs": []
+    }
+  ],
+  "readinessCheck": null,
+  "researchReadiness": {
+    "questionSet": [
+      "DF 3090의 현재 생산·판매 사양이 무엇인지, 아노다이징을 외주하는지 확인",
+      "DF 3090의 Silver, Black 색상 선택은 아노다이징 외관 사양을 뜻하는가?",
+      "아노다이징을 자체 설비에서 하는가, 외주로 처리하는가?",
+      "거산이 해당 합금·질별·치수와 요구 표면 사양을 처리할 수 있는가?"
+    ]
+  },
+  "expected": null
+}

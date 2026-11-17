@@ -10,12 +10,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
 from pydantic import ValidationError
 
+from geosan.config.app_settings import DEFAULT_APP_SETTINGS_PATH, load_app_settings
 from geosan.config.errors import FieldError, InputError
 from geosan.config.loader import LoadedDocument, load_document
 from geosan.config.rule_config import (
@@ -23,13 +25,20 @@ from geosan.config.rule_config import (
     load_rule_config,
     resolve_match_rate,
 )
-from geosan.config.schemas import CapabilityFile, CaseFile, CaseItemInput, CaseSignal
+from geosan.config.schemas import (
+    CapabilityFile,
+    CapabilityQualification,
+    CaseFile,
+    CaseItemInput,
+    CaseSignal,
+)
 from geosan.config.validators import (
     format_field_error,
     pydantic_errors_to_fields,
     scan_contacts,
 )
 from geosan.rules.codes import (
+    CALL_SIGNAL_KINDS,
     CapKind,
     ItemCode,
     ItemState,
@@ -183,6 +192,7 @@ def _capability_semantics(model: CapabilityFile, c: _Collector) -> None:
             and qual.valid_from > qual.valid_to
         ):
             c.error(f"{base}.validTo", "유효기간 끝(validTo)이 시작(validFrom)보다 앞입니다")
+        _check_status_dates_unique(qual, base, c)
         for scope_index, scope in enumerate(qual.scopes):
             scope_path = f"{base}.scopes[{scope_index}]"
             if scope.scope_kind == "PROCESS":
@@ -202,6 +212,43 @@ def _capability_semantics(model: CapabilityFile, c: _Collector) -> None:
                     f"{scope_path}.processCode",
                     f"scopeKind가 {scope.scope_kind}면 processCode는 null이어야 합니다",
                 )
+            if scope.scope_kind == "OPPORTUNITY":
+                c.error(
+                    f"{scope_path}.scopeKind",
+                    "역량 파일에서는 기회 범위(OPPORTUNITY) 자격을 받지 않습니다. 특정 기회에만 "
+                    "쓰는 자격은 뒤 단계(U4 검수 명령)에서 등록합니다 "
+                    "(PM 결정 2026-10-22, 이슈 #38). PROCESS 또는 CUSTOMER로 적어 주세요",
+                )
+            elif scope.scope_kind == "CUSTOMER" and not scope.customer_ref:
+                c.error(
+                    f"{scope_path}.customerRef",
+                    "scopeKind가 CUSTOMER면 customerRef(고객 상호명)를 꼭 적어야 합니다",
+                )
+
+
+def _check_status_dates_unique(qual: CapabilityQualification, base: str, c: _Collector) -> None:
+    """한 자격 안에서 발생일·확인일이 완전히 같은 상태 이력은 받지 않는다(이슈 #57).
+
+    두 이력의 날짜가 모두 같으면 어느 쪽이 최신인지 가릴 수 없어 판정이 저장 순서·ID에 따라
+    달라진다.
+    날짜가 비어 있는(null) 쌍도 같은 쌍이면 똑같이 거부한다(PM 결정 2026-10-24). 서로 다른 자격의
+    같은 날짜는 허용한다. 중복된 이력마다 "몇 번째 이력과 같은지"를 오류로 모은다.
+    """
+    seen: dict[tuple[date | None, date | None], int] = {}
+    for index, status in enumerate(qual.statuses):
+        key = (status.occurred_at, status.confirmed_at)
+        first = seen.get(key)
+        if first is None:
+            seen[key] = index
+            continue
+        occurred = status.occurred_at.isoformat() if status.occurred_at else "비어 있음"
+        confirmed = status.confirmed_at.isoformat() if status.confirmed_at else "비어 있음"
+        c.error(
+            f"{base}.statuses[{index}].occurredAt",
+            f"같은 자격의 발생일({occurred})·확인일({confirmed})이 {first + 1}번째 상태 이력과 "
+            "같습니다. 어느 이력이 최신인지 가릴 수 없어 저장하지 않습니다. 날짜와 상태를 확인해 "
+            "주세요 (이슈 #57)",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +260,8 @@ def check_case_file(
     path: Path | str,
     capability_path: Path | str | None = None,
     rule_config_path: Path | str | None = None,
+    *,
+    industries: list[str] | None = None,
 ) -> CheckReport:
     """사례 파일 검사(W2 1~2단계, BR2.9). 저장하지 않고 DB를 쓰지 않는다.
 
@@ -234,6 +283,26 @@ def check_case_file(
         return report
     report.errors.extend(scan_contacts(document.data, "", document))
     collector = _Collector(document, report)
+
+    if model.customer.industries:
+        try:
+            allowed = (
+                industries
+                if industries is not None
+                else load_app_settings(DEFAULT_APP_SETTINGS_PATH).industries
+            )
+        except InputError as exc:
+            report.errors.extend(exc.fields or [FieldError(path="", message=exc.message)])
+        else:
+            for index, industry in enumerate(model.customer.industries):
+                if industry not in allowed:
+                    report.errors.append(
+                        FieldError(
+                            path=f"customer.industries[{index}]",
+                            message="앱 설정 industries 목록 안의 산업군을 적어 주세요.",
+                            line=document.line_of(f"customer.industries[{index}]"),
+                        )
+                    )
 
     rule_config = _load_rule_config_for_check(rule_config_path, report)
     capability = _load_capability_for_check(capability_path, report)
@@ -303,6 +372,7 @@ def _case_semantics(
     _check_requirements(model, link_codes, c)
     _check_signals(model, c)
     _check_item_inputs(model, rule_config, capability, c)
+    _check_card_reason(model, c)
     _check_expected(model, c)
 
 
@@ -374,6 +444,13 @@ def _check_requirements(model: CaseFile, link_codes: set[str], c: _Collector) ->
 def _check_signals(model: CaseFile, c: _Collector) -> None:
     for index, signal in enumerate(model.signals):
         base = f"signals[{index}]"
+        if signal.signal_kind in CALL_SIGNAL_KINDS:
+            # #685: 통화 신호는 접촉 기록의 꼬리 질문 답에서 서버가 만든다(사례 파일로는 안 넣음).
+            c.error(
+                f"{base}.signalKind",
+                f"통화 신호({signal.signal_kind})는 사례 파일에 적을 수 없습니다. "
+                "접촉 기록의 꼬리 질문 답에서만 만들어집니다",
+            )
         if signal.signal_kind == SignalKind.BID and signal.deadline_at is None:
             c.warn(
                 f"{base}.deadlineAt",
@@ -389,6 +466,25 @@ def _check_signals(model: CaseFile, c: _Collector) -> None:
                 f"발생일이 기준일({model.base_date})보다 뒤라 예정 사건(미확보)으로 "
                 "처리됩니다 (BR4.4)",
             )
+
+
+CARD_REASON_MAX = 80
+
+
+def _check_card_reason(model: CaseFile, c: _Collector) -> None:
+    """카드 추천 이유는 출처 제외 80자 안(PM 결정 2026-10-26).
+
+    넘으면 경고만 하고 투입은 막지 않는다. 끝의 괄호(출처)는 글자 수에서 뺀다."""
+    text = model.opportunity.card_reason
+    if text is None:
+        return
+    body = re.sub(r"\s*\([^()]*\)\s*$", "", text.strip())
+    if len(body) > CARD_REASON_MAX:
+        c.warn(
+            "opportunity.cardReason",
+            f"카드 문장이 출처를 빼고 {len(body)}자입니다 "
+            f"({CARD_REASON_MAX}자 안이면 카드에서 두 줄 안에 들어갑니다)",
+        )
 
 
 def _check_item_inputs(

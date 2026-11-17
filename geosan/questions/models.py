@@ -29,6 +29,10 @@ class ConfirmationQuestion(CommonColumns, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="WAITING")
     source_eval_id: Mapped[str | None] = mapped_column(String(40))
     is_user_added: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # #248 PM 승인(2026-11-04): 최신 답은 여기, 이전 답은 연결 기회의 메모 이력에 보존한다.
+    reply_text: Mapped[str | None] = mapped_column(Text)
+    replied_at: Mapped[date | None] = mapped_column(Date)
+    replied_by: Mapped[str | None] = mapped_column(String(32))
 
 
 class QuestionOpportunityLink(CommonColumns, Base):

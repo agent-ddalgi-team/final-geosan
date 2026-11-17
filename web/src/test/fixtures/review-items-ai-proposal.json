@@ -1,0 +1,27 @@
+{
+  "_설명": "AI 제안 줄 가짜 응답(#498). 서버(#497)가 합쳐지기 전에 화면을 먼저 만들고 확인하기 위한 예다. 실제 서버 응답이 아니다. II:는 점수 입력 제안(stepOptions는 그 항목의 설정 단계 이름, rule-config NEW_MATERIAL의 matchRateSteps 순서), PL:은 공정 연결 제안(1차는 확정만).",
+  "reviewItems": [
+    {
+      "itemId": "II:NEW_MATERIAL",
+      "kind": "ITEM_INPUT_PROPOSAL",
+      "source": "AI",
+      "text": "AI 제안 · 소재와 보유 공정 일치 — 일부 가능(약한 추정) · 근거: '철 소재 볼트를 생산합니다'",
+      "targetLabel": null,
+      "checked": false,
+      "checkedBy": null,
+      "checkedAt": null,
+      "stepOptions": ["정확히 일치", "일부 가능"]
+    },
+    {
+      "itemId": "PL:ZINC_PLATING",
+      "kind": "PROCESS_LINK_PROPOSAL",
+      "source": "AI",
+      "text": "AI 제안 · 공정 연결 — 아연도금(전기아연도금) · 근거: '전기아연도금 사양이 적혀 있습니다'",
+      "targetLabel": null,
+      "checked": false,
+      "checkedBy": null,
+      "checkedAt": null,
+      "stepOptions": null
+    }
+  ]
+}

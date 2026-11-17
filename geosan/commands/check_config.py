@@ -9,8 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
-from geosan.config.app_settings import check_app_settings_file
+from geosan.config.app_settings import (
+    check_app_settings_file,
+    is_demo_database,
+    read_app_settings,
+)
 from geosan.config.errors import AppError
 from geosan.config.paths import normalize_input_path
 from geosan.config.registry import (
@@ -19,15 +25,29 @@ from geosan.config.registry import (
     register_config_files,
 )
 from geosan.config.rule_config import check_rule_config_file
+from geosan.config.sales_questions import (
+    call_signal_errors,
+    check_sales_questions_file,
+    questions_path,
+)
 from geosan.config.validators import format_field_error
+from geosan.opportunity.models import Customer
 from geosan.storage.engine import database_path
+from geosan.storage.session import session_scope
 
 EXIT_OK = 0
 EXIT_INPUT_ERROR = 1
 EXIT_RUN_FAILED = 2
 
 
-def run_check_config(rule_config: Path | None, app_settings: Path | None) -> int:
+def run_check_config(
+    rule_config: Path | None, app_settings: Path | None, *, register: bool = True
+) -> int:
+    """두 설정 파일을 검사한다. `register=False`면 DB가 있어도 등록·사본 갱신을 하지 않는다.
+
+    `serve`가 이 경로를 쓴다: 서버 시작은 파일 모양만 확인하고, 담당자가 `check-config`로
+    골라 둔 활성 묶음 같은 DB 사본 값은 그대로 둔다(이슈 #91).
+    """
     try:
         rule_path = normalize_input_path(rule_config or DEFAULT_RULE_CONFIG_PATH)
         app_path = normalize_input_path(app_settings or DEFAULT_APP_SETTINGS_PATH)
@@ -46,6 +66,20 @@ def run_check_config(rule_config: Path | None, app_settings: Path | None) -> int
         for error in app_result.errors:
             typer.echo(f"오류 [{app_path.name}]: {format_field_error(error)}")
         errors += len(app_result.errors)
+        # #607: 설정이 가리키는 꼬리 질문 파일도 함께 검사한다(인자는 그대로).
+        if app_result.settings is not None:
+            questions_file = questions_path(app_result.settings.records.sales_questions_file)
+            questions_result = check_sales_questions_file(questions_file)
+            for error in questions_result.errors:
+                typer.echo(f"오류 [{questions_file.name}]: {format_field_error(error)}")
+            errors += len(questions_result.errors)
+            # #685: 통화 신호 대응표의 질문·보기 id가 꼬리 질문 파일에 실제로 있는지 본다.
+            if rule_result.config is not None and questions_result.questions is not None:
+                for error in call_signal_errors(
+                    rule_result.config, questions_result.questions, rule_result.document
+                ):
+                    typer.echo(f"오류 [{rule_path.name}]: {format_field_error(error)}")
+                    errors += 1
     except AppError as exc:
         for error in exc.fields:
             typer.echo(f"오류: {format_field_error(error)}")
@@ -65,7 +99,7 @@ def run_check_config(rule_config: Path | None, app_settings: Path | None) -> int
     )
     typer.echo(
         f"앱 설정 {app_path.name}: 담당자 {len(app_result.settings.staff)}명, "
-        f"활성 묶음 {app_result.settings.active_dataset_kind}, "
+        f"파일의 묶음 {app_result.settings.active_dataset_kind}, "
         f"LLM {app_result.settings.llm.mode}"
     )
 
@@ -73,10 +107,46 @@ def run_check_config(rule_config: Path | None, app_settings: Path | None) -> int
     if not db_path.exists():
         typer.echo(f"검사 통과 (DB 없음: {db_path} — 버전 등록은 init-db 뒤 다시 실행하면 됩니다)")
         return EXIT_OK
+    if not register:
+        try:
+            with session_scope(db_path) as session:
+                settings = read_app_settings(session)
+        except (SQLAlchemyError, ValueError):
+            typer.echo("DB의 앱 설정 사본을 읽지 못했습니다. 데이터베이스 상태를 확인해 주세요.")
+            return EXIT_RUN_FAILED
+        if settings is None:
+            typer.echo(
+                "앱 설정 사본이 아직 없습니다. 첫 요청 때 examples/app-settings.yaml로 만듭니다."
+            )
+        else:
+            typer.echo(
+                f"활성 묶음 {settings.active_dataset_kind} (DB 사본 기준, 변경: geosan dataset-set)"
+            )
+        typer.echo("검사 통과 (파일 모양만 확인. DB의 규칙 버전·앱 설정 사본은 바꾸지 않았습니다)")
+        return EXIT_OK
     try:
-        from geosan.storage.session import session_scope
-
         with session_scope(db_path) as session:
+            # #274: 시연 표시를 지우는 등록은 받지 않는다(지우면 serve의 배포 차단이 풀린다).
+            if is_demo_database(session) and not app_result.settings.brand.demo:
+                typer.echo("오류: 시연용 DB에는 시연용 설정만 등록할 수 있습니다.")
+                typer.echo(
+                    f"{db_path.name}에는 시연 표시가 있습니다. 실제 설정은 GEOSAN_DB_PATH를 "
+                    "실제 DB로 바꾼 뒤 등록해 주세요."
+                )
+                return EXIT_INPUT_ERROR
+            # #719: 시연 표시는 한번 붙으면 명령으로 뗄 수 없다. 회사가 든 DB(실제 자료)에는
+            # 붙이지 않는다. 새로 만든 DB와 이미 시연 표시가 있는 DB만 받는다.
+            if (
+                app_result.settings.brand.demo
+                and not is_demo_database(session)
+                and session.scalar(select(Customer.customer_id).limit(1)) is not None
+            ):
+                typer.echo(
+                    "오류: 시연용 설정은 새로 만든 DB에만 등록할 수 있습니다. "
+                    "GEOSAN_DB_PATH가 시연 DB를 가리키는지 확인해 주세요."
+                )
+                typer.echo(f"{db_path.name}에는 이미 회사가 들어 있어 등록하지 않았습니다.")
+                return EXIT_INPUT_ERROR
             runtime = register_config_files(session, rule_path, app_path)
             registered = f"{runtime.rule_version.rule_version} ({runtime.rule_version.status})"
     except AppError as exc:

@@ -1,6 +1,14 @@
 """마이그레이션 실행 (계약 C6, 안정성 설계 6장): `init-db`와 `db merge-heads`의 바탕.
 
 Alembic 설정은 저장소 루트의 `alembic.ini`·`migrations/`를 쓴다(편집 설치 전제, README 설치 절).
+
+`alembic.ini`는 **영문(ASCII)만** 적는다. Alembic이 그 파일을 운영체제 기본 인코딩으로 읽어서
+한글 주석이 있으면 윈도우(CP949)에서 `init-db`가 깨진다(2026-10-22, 이슈 #33). 설명은 여기 둔다.
+- 보통은 `geosan init-db`·`geosan db merge-heads`가 이 설정을 코드로 읽어 쓴다.
+- 직접 쓸 때: `alembic revision -m "<설명>" --rev-id <접두사>_<번호>` (DB 경로는 GEOSAN_DB_PATH).
+- 파일 이름 = `<rev-id>_<설명>.py` (예: `rec_002_bookmark.py`). rev-id는 접두사_번호로 사람이
+  정한다.
+- `sqlalchemy.url`은 비워 둔다. `migrations/env.py`가 GEOSAN_DB_PATH에서 만든다.
 """
 
 from __future__ import annotations

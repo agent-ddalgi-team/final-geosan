@@ -1,0 +1,48 @@
+{
+  "data": {
+    "summary": {
+      "processCount": 4,
+      "industryCount": 2,
+      "stageCounts": { "IN_PROGRESS": 2, "LOST": 1, "NOT_EXECUTED": 2 },
+      "topLostReasons": [{ "code": "PRICE", "count": 1 }],
+      "contactReach": {
+        "CALL": { "reached": 3, "tried": 5 },
+        "EMAIL": { "reached": 0, "tried": 1 },
+        "VISIT": { "reached": 0, "tried": 0 }
+      }
+    },
+    "companies": [
+      {
+        "oppId": "opp-fixture-peer-1",
+        "name": "가상 코파스",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["자동차 부품"],
+        "outcomeStatus": "IN_PROGRESS",
+        "lostReasonCode": null,
+        "lastContactAt": "2026-11-06T14:20:00+09:00",
+        "lastContactMethod": "CALL",
+        "lastNote": {
+          "text": "납기 걱정, 샘플 먼저 요청",
+          "by": "park-lee",
+          "at": "2026-11-06T15:00:00+09:00"
+        },
+        "sameProcess": true,
+        "sameIndustry": true
+      },
+      {
+        "oppId": "opp-fixture-peer-2",
+        "name": "가상 명화금속",
+        "processCodes": ["ZINC_PLATING"],
+        "industries": ["건설 자재"],
+        "outcomeStatus": "LOST",
+        "lostReasonCode": "PRICE",
+        "lastContactAt": "2026-11-04T10:00:00+09:00",
+        "lastContactMethod": "EMAIL",
+        "lastNote": null,
+        "sameProcess": true,
+        "sameIndustry": false
+      }
+    ]
+  },
+  "meta": { "updatedAt": "2026-11-12T09:00:00+09:00" }
+}

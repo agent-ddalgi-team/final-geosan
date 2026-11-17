@@ -2,7 +2,7 @@
 
 이 문서는 AI 도구(Claude Code·Codex)에 그대로 붙여 넣어도 되게 썼습니다. 이슈 **#11**(화면 구현, 가짜 응답으로 먼저, Step 23·24)과 **#12**(실제 API 연결·한 덩어리 빌드, Step 25)의 일입니다. 공통 규칙은 `AGENTS.md`, 시작 절차는 `docs/team-start-guide.md`입니다.
 
-전제: 기본 틀(PR #1)이 `main`에 합쳐지면 바로 시작할 수 있다(서버 없이 가짜 응답으로 동작). PR 2(실제 연결)는 이강욱의 API PR(#10)이 합쳐진 뒤.
+전제: 기본 틀(PR #1)이 `develop`에 합쳐지면 바로 시작할 수 있다(서버 없이 가짜 응답으로 동작). PR 2(실제 연결)는 이강욱의 API PR(#10)이 합쳐진 뒤.
 
 ## 0. 한 줄 요약
 
@@ -87,7 +87,7 @@ PR 2 뒤: `python -m geosan serve`를 띄운 상태에서 `npm run dev`(프록�
 
 ## 6. PR 올리는 법
 
-1. `git switch main && git pull` → `git switch -c seonju/11-web-mock` (PR 2는 `seonju/12-web-connect`)
+1. `git switch develop && git pull` → `git switch -c seonju/11-web-mock` (PR 2는 `seonju/12-web-connect`)
 2. 부품 하나마다 쉬운 한국어 커밋(예: `추천 목록 카드 추가: 분류는 쉬운 말로, 막는 조건에 승인 막힘 여부 표시`).
 3. 3장 명령 통과 뒤에만 PR. PR 본문은 템플릿을 모두 채우고 `Closes #11`(PR 2는 `Closes #12`). "mock으로만 확인한 것"에 가짜 응답 범위를 적는다. 약속 파일을 바꿨나요? → "아니오".
-4. 이슈에 쉬운 말 요약 댓글, 보드 '리뷰 중'. PM 세션이 계약 C1 필드·대응표 밖 문구 없음·색 직접 지정 없음·`data-testid`·접근성 항목을 확인한 뒤 스쿼시 머지한다(Step 26).
+4. 이슈에 쉬운 말 요약 댓글, 보드 '리뷰 중'. PM 세션이 계약 C1 필드·대응표 밖 문구 없음·색 직접 지정 없음·`data-testid`·접근성 항목을 확인한 뒤 merge commit으로 `develop`에 합친다(Step 26).

@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from alembic import command
 from sqlalchemy import select, text
 from sqlalchemy.exc import StatementError
 
@@ -21,16 +22,73 @@ from geosan.storage.base import new_id, new_ulid
 from geosan.storage.engine import BUSY_TIMEOUT_MS, get_engine
 from geosan.storage.init_db import init_db
 from geosan.storage.metadata import TABLE_PREFIXES, table_names
-from geosan.storage.migrate import current_revisions, downgrade, script_heads, upgrade_to_head
+from geosan.storage.migrate import (
+    ALEMBIC_INI,
+    alembic_config,
+    current_revisions,
+    downgrade,
+    script_heads,
+    upgrade_to_head,
+)
 from geosan.storage.session import session_scope
 
 ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+
+
+@pytest.mark.parametrize("previous", ["rec_002", "web_001", "opp_004"])
+def test_upgrade_both_branches_preserves_existing_data(tmp_path: Path, previous: str) -> None:
+    """Given 뼈대·로그인·기록 DB / When 최신화 두 번 / Then 기존 행·로그인 실패 횟수를 보존한다."""
+    db = tmp_path / "previous.db"
+    command.upgrade(alembic_config(db), previous)
+    with sqlite3.connect(db) as connection:
+        connection.execute(
+            "INSERT INTO opp_customer (customer_id, name, normalized_name, normalized_address, "
+            "relation_status, company_filter_status, security_grade, created_at, created_by, "
+            "dataset_kind, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "cust-test",
+                "가상기업",
+                "가상기업",
+                "충남천안시가상로",
+                "UNCONFIRMED",
+                "PASS",
+                "PUBLIC",
+                "2026-11-03T00:00:00+00:00",
+                "test",
+                "VIRTUAL_REVIEWED",
+                1,
+            ),
+        )
+        if previous == "web_001":
+            connection.execute(
+                "INSERT INTO web_access_session (session_id, expires_at, last_seen_at, "
+                "failure_count, created_at, created_by, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("test-failure", "2026-11-04", "2026-11-03", 3, "2026-11-03", "test", 1),
+            )
+    assert upgrade_to_head(db) == ["rec_017"]
+    assert upgrade_to_head(db) == ["rec_017"]
+    with sqlite3.connect(db) as connection:
+        assert connection.execute(
+            "SELECT name, normalized_address, address FROM opp_customer WHERE customer_id=?",
+            ("cust-test",),
+        ).fetchone() == ("가상기업", "충남천안시가상로", None)
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        if previous == "web_001":
+            assert connection.execute(
+                "SELECT failure_count FROM web_access_session WHERE session_id=?", ("test-failure",)
+            ).fetchone() == (3,)
+    assert {"web_access_session", "rec_note", "rec_outcome"} <= set(_table_names(db))
 
 
 def _table_names(db_path: Path) -> list[str]:
     with sqlite3.connect(db_path) as con:
         rows = con.execute("select name from sqlite_master where type='table' order by name")
         return [r[0] for r in rows]
+
+
+def _column_names(db_path: Path, table: str) -> list[str]:
+    with sqlite3.connect(db_path) as con:
+        return [r[1] for r in con.execute(f"PRAGMA table_info({table})")]
 
 
 def test_connection_uses_wal_busy_timeout_and_foreign_keys(tmp_db: Path) -> None:
@@ -70,7 +128,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["rec_001"]
+    assert first == script_heads() == ["rec_017"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -78,32 +136,79 @@ def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
 
 
 def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path) -> None:
-    """downgrade 한 단계는 마지막 접두사(rec_) 테이블만 지우고, upgrade가 되돌린다."""
+    """병합 단계는 양쪽 표를 보존하고, 명시한 버전까지 되돌린 후 모두 복원한다."""
+    assert downgrade(tmp_db, "opp_006") == ["opp_006"]
+    assert "tg_transfer_log" not in _table_names(tmp_db)
+    assert "homepage_status" in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "rec_006") == ["rec_006"]
+    assert "homepage_status" not in _column_names(tmp_db, "opp_customer")
+    assert "rec_review_check" in _table_names(tmp_db)
+    assert downgrade(tmp_db, "opp_005") == ["opp_005"]
+    assert "rec_review_check" not in _table_names(tmp_db)
+    assert downgrade(tmp_db, "merge_001") == ["merge_001"]
+    assert "address" not in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "opp_004") == ["opp_004", "web_001"]
+    assert {"web_access_session", "rec_note", "rec_outcome"} <= set(_table_names(tmp_db))
+    assert downgrade(tmp_db, "rec_005") == ["rec_005", "web_001"]
+    assert "industries" not in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "opp_003") == ["opp_003", "web_001"]
+    assert "kind" not in _column_names(tmp_db, "rec_note")
+    assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
+    assert "main_phone_confirmed_at" not in _column_names(tmp_db, "opp_customer")
+    assert downgrade(tmp_db, "rec_003") == ["rec_003", "web_001"]
+    assert "rec_outcome" not in _table_names(tmp_db)
+    assert "rec_note" in _table_names(tmp_db)
+    assert downgrade(tmp_db, "opp_002") == ["opp_002", "web_001"]
+    assert "rec_note" not in _table_names(tmp_db)
+    assert downgrade(tmp_db, "rec_002") == ["rec_002"]
+    assert "summary_line" not in _column_names(tmp_db, "opp_customer")
+    assert "web_access_session" not in _table_names(tmp_db)
+    assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
+    assert downgrade(tmp_db, "-1") == ["rec_001"]
+    assert "card_reason" not in _column_names(tmp_db, "opp_opportunity")
+    assert "rec_review_opinion" in _table_names(tmp_db)
     assert downgrade(tmp_db, "-1") == ["q_001"]
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["rec_001"]
+    assert upgrade_to_head(tmp_db) == ["rec_017"]
+    assert "tg_transfer_log" in _table_names(tmp_db)
+    assert "homepage_status" in _column_names(tmp_db, "opp_customer")
+    assert "rec_review_check" in _table_names(tmp_db)
+    assert "address" in _column_names(tmp_db, "opp_customer")
+    assert {"rec_note", "rec_outcome"} <= set(_table_names(tmp_db))
+    assert "summary_line" in _column_names(tmp_db, "opp_customer")
+    assert "web_access_session" in _table_names(tmp_db)
     assert "rec_review_opinion" in _table_names(tmp_db)
+    assert "card_reason" in _column_names(tmp_db, "opp_opportunity")
+    assert "summary" in _column_names(tmp_db, "eval_item_judgment")
 
 
 def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
-    """접두사별 테이블 28개가 DB에 있고 모델 metadata와 이름이 같다(계약 C6 소유 규칙)."""
+    """표 49개가 DB·metadata에 일치한다(계약 C6).
+
+    후보 찾기 9개 #327, 관심 표 #356, 보조 자료 2개 #573, 담당자 계정 #754,
+    AI 분석 피드백 저장본 #824 포함.
+    """
     expected_counts = {
         "cfg_": 2,
         "cap_": 7,
-        "opp_": 7,
+        "opp_": 10,
+        "src_": 9,
         "ev_": 1,
         "eval_": 7,
         "q_": 3,
-        "rec_": 1,
+        "rec_": 7,  # #824 rec_analysis_feedback
+        "web_": 2,  # 접속 세션 + 담당자 계정(#754)
+        "tg_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    assert len(db_tables) == 28
-    for prefix in TABLE_PREFIXES:
+    assert len(db_tables) == 49  # #824 rec_analysis_feedback
+    prefixes = (*TABLE_PREFIXES, "web_")
+    for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix
-    assert all(any(name.startswith(p) for p in TABLE_PREFIXES) for name in db_tables)
+    assert all(any(name.startswith(p) for p in prefixes) for name in db_tables)
 
 
 def test_id_has_prefix_and_ulid_shape() -> None:
@@ -156,3 +261,12 @@ def test_datetime_keeps_timezone_and_rejects_naive(tmp_db: Path) -> None:
                     created_at=datetime(2026, 10, 19, 9, 0),
                 )
             )
+
+
+def test_alembic_ini_is_ascii_only() -> None:
+    """`alembic.ini`에 한글이 없다. Alembic이 운영체제 기본 인코딩으로 읽어 윈도우(CP949)에서
+    한글 주석이 있으면 init-db가 깨진다(이슈 #33). 설명은 migrate.py 머리글에 둔다."""
+    text = ALEMBIC_INI.read_bytes()
+    bad = [i + 1 for i, line in enumerate(text.splitlines()) if not line.isascii()]
+    assert bad == [], f"alembic.ini {bad}번째 줄에 영문이 아닌 글자가 있습니다"
+    text.decode("cp949")  # 윈도우 기본 인코딩으로도 읽힌다

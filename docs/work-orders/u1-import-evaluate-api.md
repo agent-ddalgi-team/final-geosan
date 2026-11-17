@@ -2,7 +2,7 @@
 
 이 문서는 AI 도구(Claude Code·Codex)에 그대로 붙여 넣어도 되게 썼습니다. 이슈 **#8**(투입, Step 16·17), **#9**(평가 흐름, Step 18), **#10**(명령·API, Step 19·20)의 일이며 단위 테스트(Step 21)는 각 PR에 함께 넣습니다. 공통 규칙은 `AGENTS.md`, 시작 절차는 `docs/team-start-guide.md`입니다.
 
-전제: PM 세션의 Part A-2(PR #2: 저장소 모델 `geosan/storage/`·각 부품 `models.py`·`migrations/`·설정 검사기 `geosan/config/`)가 `main`에 합쳐진 뒤 시작한다. 그 전에는 설계 문서 읽기와 `examples/case-template.json` 검토를 한다.
+전제: PM 세션의 Part A-2(PR #2: 저장소 모델 `geosan/storage/`·각 부품 `models.py`·`migrations/`·설정 검사기 `geosan/config/`)가 `develop`에 합쳐진 뒤 시작한다. 그 전에는 설계 문서 읽기와 `examples/case-template.json` 검토를 한다.
 
 ## 0. 한 줄 요약
 
@@ -54,7 +54,7 @@
 
 1. 읽기(5장). 특히 `functional-spec.md` W1~W7·W9와 `entities.md`, 계약 C1·C2·C6·C7·C8, 3장 오류 규칙.
 2. PR 1: `capability/importer.py`·`queries.py` → `opportunity/importer.py`·`queries.py` → `evidence/queries.py` → `questions/store.py` → `evaluation/inputs.py` 순으로 구현 → 단위 테스트 15개 → 검사 → PR.
-3. PR 2: `evaluation/snapshot.py` → `ledger.py` → `workflows/flow_evaluate.py`·`registry.py` 구현. 규칙 엔진이 아직 `main`에 없으면 `tests/fakes/fake_engine.py`로 돌리고, 합쳐지면 `from geosan.rules.engine import evaluate, rank`로 바꾼다(`geosan/rules/models.py`의 같은 이름 함수는 서명만 보여 주는 자리라 부르지 않는다) → 단위 테스트 14개 → PR.
+3. PR 2: `evaluation/snapshot.py` → `ledger.py` → `workflows/flow_evaluate.py`·`registry.py` 구현. 규칙 엔진이 아직 `develop`에 없으면 `tests/fakes/fake_engine.py`로 돌리고, 합쳐지면 `from geosan.rules.engine import evaluate, rank`로 바꾼다(`geosan/rules/models.py`의 같은 이름 함수는 서명만 보여 주는 자리라 부르지 않는다) → 단위 테스트 14개 → PR.
 4. PR 3: 명령 2개 파일(`import_capability.py`·`import_case.py`) → `api/app.py`·`deps.py`·`routes/*` 구현 → 단위 테스트(API 8개 + 명령 2~3개) → PR. `verify-case` 끝단 확인은 PM 세션이 `evaluate`·`verify-case`를 연결한 뒤 통합(Step 27)에서 한다.
 5. 각 PR 전에 `ruff format .`·`ruff check .`·단위 테스트 통과.
 
@@ -107,7 +107,7 @@ API(TestClient): `GET /api/v1/opportunities` → 카드 1건(rank 1, CONTACT_URG
 
 ## 6. PR 올리는 법
 
-1. `git switch main && git pull` → `git switch -c kangwook/8-import` (PR 2는 `kangwook/9-evaluate`, PR 3은 `kangwook/10-api-commands`)
+1. `git switch develop && git pull` → `git switch -c kangwook/8-import` (PR 2는 `kangwook/9-evaluate`, PR 3은 `kangwook/10-api-commands`)
 2. 기능 하나마다 쉬운 한국어 커밋(예: `A정밀 사례 투입 명령 추가: 연락처가 있으면 저장을 거부한다`).
 3. 3장 명령 통과 뒤에만 PR. PR 본문은 템플릿을 모두 채우고 `Closes #8`(또는 #9, #10). 약속 파일을 바꿨나요? → "아니오"(바꿔야 할 일이 생기면 먼저 PM).
-4. 이슈에 쉬운 말 요약 댓글, 보드 '리뷰 중'. PM 세션이 계약 C1·C2·C6·C7·C8 대조·접두사 소유·연락처 검사·경계 파일 미수정을 확인한 뒤 스쿼시 머지한다(Step 22).
+4. 이슈에 쉬운 말 요약 댓글, 보드 '리뷰 중'. PM 세션이 계약 C1·C2·C6·C7·C8 대조·접두사 소유·연락처 검사·경계 파일 미수정을 확인한 뒤 merge commit으로 `develop`에 합친다(Step 22).

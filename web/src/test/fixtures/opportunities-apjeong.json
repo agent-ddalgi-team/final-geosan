@@ -5,9 +5,11 @@
       "rank": 1,
       "title": "A정밀 · 밸브 바디 아노다이징",
       "classificationCode": "CONTACT_URGENT",
+      "scoreState": "CONFIRMED",
+      "relationStatus": "EXISTING_CONFIRMED",
       "coreEvidenceRecheck": false,
       "scoreS": 81.1,
-      "scoreDisplay": "81",
+      "scoreDisplay": "77점 · 7/8",
       "reason": "알루미늄 주물 아노다이징 외주 협력사 모집 공고, 마감 3주 뒤 (11/10)",
       "blocker": {
         "text": "없음 — 지금 단계 꼭 필요한 요구(ISO 9001) 통과",
@@ -21,7 +23,10 @@
       "recontact": null,
       "evalId": "eval-01HAPJEONG0000000000000001",
       "reevaluated": false,
-      "datasetKind": "VIRTUAL_REVIEWED"
+      "datasetKind": "VIRTUAL_REVIEWED",
+      "bucket": "CLOSED",
+      "bucketBasis": "EXISTING_CUSTOMER",
+      "rankAdjust": null
     }
   ],
   "meta": {
@@ -29,6 +34,24 @@
     "hasVirtualData": true,
     "datasetKind": "VIRTUAL_REVIEWED",
     "total": 1,
-    "notEvaluatedCount": 0
+    "notEvaluatedCount": 0,
+    "bucketCounts": {
+      "EVIDENCE_READY": 0,
+      "EVIDENCE_SOME": 0,
+      "NO_HOMEPAGE": 0,
+      "NOT_RESEARCHED": 0,
+      "CLOSED": 1
+    },
+    "processCounts": [
+      { "processCode": "ZINC_PLATING", "processName": "아연도금(전기아연도금)", "count": 0 },
+      { "processCode": "ANODIZING", "processName": "아노다이징", "count": 1 },
+      { "processCode": "BLACK_OXIDE", "processName": "흑착색(알카리흑착)", "count": 0 },
+      { "processCode": "CHROMATE", "processName": "크로메이트", "count": 0 },
+      { "processCode": "ELECTROPOLISHING", "processName": "전해연마", "count": 0 },
+      { "processCode": "CHROME_PLATING", "processName": "크롬도금", "count": 0 },
+      { "processCode": "ELECTROLESS_NICKEL", "processName": "무전해니켈", "count": 0 },
+      { "processCode": "PHOSPHATE_COATING", "processName": "인산염피막", "count": 0 },
+      { "processCode": "PASSIVATION", "processName": "부동태", "count": 0 }
+    ]
   }
 }

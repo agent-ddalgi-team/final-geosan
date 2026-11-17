@@ -1,0 +1,317 @@
+"""홈페이지 → 연락처 제거 → AI 근거 → 한 번의 저장·재평가(C2 흐름 ①)."""
+
+from __future__ import annotations
+
+import logging
+import time
+
+from sqlalchemy import select
+
+from geosan.config.app_settings import (
+    DEFAULT_APP_SETTINGS_PATH,
+    load_app_settings,
+    read_app_settings,
+)
+from geosan.config.errors import AppError, InputError, RunFailedError
+from geosan.config.registry import load_runtime_config
+from geosan.evaluation.call_inputs import call_item_codes
+from geosan.evaluation.proposals import store_item_proposals, store_process_link_proposals
+from geosan.evaluation.snapshot import _capability_snapshot
+from geosan.evidence.contacts import extract_main_phone, scrub_contacts
+from geosan.evidence.extraction import Extraction, extract_evidence
+from geosan.evidence.homepage import protected_page_kind
+from geosan.evidence.public_items import approve_pages, check_opportunity
+from geosan.evidence.reader import (
+    MAX_BYTES,
+    CertificateError,
+    Page,
+    SiteClosedError,
+    fetch,
+    fetch_more,
+    http_fallback_url,
+    read_insecurely,
+    remaining,
+    validate_url,
+)
+from geosan.evidence.research_context import current_research
+from geosan.evidence.store import store_extraction
+from geosan.opportunity.models import Customer, Opportunity
+from geosan.opportunity.queries import (
+    apply_homepage_fit,
+    mark_homepage_closed,
+    store_company_research,
+)
+from geosan.questions.models import ConfirmationQuestion
+from geosan.questions.store import upsert_question
+from geosan.rules.codes import Certainty
+from geosan.rules.models import QuestionCandidate
+from geosan.storage.session import session_scope
+from geosan.workflows.flow_evaluate import evaluate_in_session
+from geosan.workflows.models import FlowResult
+
+logger = logging.getLogger(__name__)
+
+
+def run_extract(
+    opp_id: str,
+    url: str | None = None,
+    pasted_text: str | None = None,
+    requested_by: str = "system",
+) -> FlowResult:
+    deadline = time.monotonic() + 60
+    context = current_research.get()
+    if context is not None:
+        deadline = min(deadline, context.deadline)
+    try:
+        if context is not None:
+            remaining(deadline)
+        check_opportunity(opp_id)
+        with session_scope() as session:
+            opportunity = session.get(Opportunity, opp_id)
+            customer = session.get(Customer, opportunity.customer_id)
+            settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
+            expected = (
+                customer.name,
+                customer.address,
+                customer.normalized_address,
+                customer.homepage_url,
+                customer.homepage_status,
+                customer.homepage_fetched_at,
+                customer.researched_at,
+                customer.main_phone,
+                customer.main_phone_confirmed_at,
+            )
+            customer_id = customer.customer_id
+            # #793: 후보 찾기로 들어와 적합도가 있는 회사만 홈페이지로 적합도를 다시 본다.
+            review_fit = customer.ingest_batch_id is not None and customer.fit_level is not None
+            stored_url = customer.homepage_url
+            # #511: 저장된 주소가 공식 홈페이지가 아닌 공개 페이지인가.
+            # 붙여넣은 본문도 그 페이지의 글이므로 같은 상한을 적용한다.
+            # #719: 담당자가 [맞음]으로 확인한 뒤에도 주소를 고쳐 넣기 전까지는 그대로다.
+            unofficial_page = (
+                protected_page_kind(
+                    customer.homepage_status, customer.homepage_source, customer.homepage_reason
+                )
+                is not None
+            )
+            url = validate_url(url or customer.homepage_url or "")
+            # #286: 점수 8항목(규칙 설정)과 활성 묶음 공정 코드를 AI에 알려 제안을 받는다.
+            # #685: 통화에서 확인한 신호로 채우는 항목(구매·외주 의향, 관심)은 AI에 묻지 않는다.
+            rule_config = load_runtime_config(session).rule_config
+            call_items = call_item_codes(rule_config)
+            item_catalog = [
+                {
+                    "code": item.item_code,
+                    "label": item.label,
+                    "steps": list(item.match_rate_steps),
+                }
+                for item in rule_config.new_profile_items
+                if item.item_code not in call_items
+            ]
+            process_codes = sorted(
+                row.code
+                for row in _capability_snapshot(session, opportunity.dataset_kind).processes
+            )
+        if pasted_text is not None:
+            if not pasted_text.strip() or len(pasted_text.encode("utf-8")) > MAX_BYTES:
+                raise InputError("붙여넣을 공개 본문의 길이를 확인해 주세요.")
+            pages = [Page(url, pasted_text)]
+        else:
+            # #557: 첫 화면과 이름이 맞는 같은 사이트 안쪽 페이지를 읽어 AI는 한 번만 부른다.
+            discovery = settings.homepage_discovery
+            try:
+                try:
+                    first = fetch(url, deadline)
+                except CertificateError:
+                    # #810: https 인증서 검증 오류로만 못 읽으면
+                    # 같은 주소의 http로 한 번 다시 읽는다
+                    # (설정 스위치, 인증서 확인은 끄지 않음 — http가 https로 넘기면 그대로 검증).
+                    plain = (
+                        http_fallback_url(url)
+                        if settings.research.http_fallback_on_cert_error
+                        else None
+                    )
+                    if plain is None:
+                        raise
+                    first = fetch(plain, deadline)
+            except SiteClosedError as closed:
+                # #793: 닫힌 홈페이지는 '홈페이지 못 찾음'으로 바꿔 둔다(담당자 확정 주소는 그대로).
+                if stored_url and validate_url(stored_url) == url:
+                    with session_scope() as session:
+                        session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+                        mark_homepage_closed(
+                            session, customer_id, expected=expected, reason=closed.reason
+                        )
+                raise
+            pages = [
+                first,
+                *fetch_more(
+                    first,
+                    deadline,
+                    # #511: 공개 페이지는 그 1장만 읽는다(같은 주소의 남의 글로 넘어가지 않게).
+                    extra_pages=0 if unofficial_page else discovery.extra_pages,
+                    hints=discovery.extra_page_hints,
+                    max_chars=discovery.extra_page_max_chars,
+                ),
+            ]
+        phone, phone_url = None, None
+        # #511: 공개 페이지의 번호는 회사 대표번호인지 알 수 없어 뽑지 않는다.
+        for page in [] if unofficial_page else pages:
+            phone, phone_url = extract_main_phone(
+                page.text, page.url, settings.main_phone.allowed_prefixes
+            )
+            if phone:
+                break
+        with approve_pages(opp_id, pages) as approved_ids:
+            result = extract_evidence(
+                approved_ids,
+                opp_id,
+                deadline=deadline,
+                requested_by=requested_by,
+                item_catalog=item_catalog,
+                process_codes=process_codes,
+                review_fit=review_fit,
+            )
+        if unofficial_page:
+            result = cap_to_weak(result)
+        remaining(deadline)
+        with session_scope() as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+            opportunity = session.get(Opportunity, opp_id)
+            if (
+                opportunity is None
+                or opportunity.customer_id != customer_id
+                or opportunity.purpose != "NEW_PROPOSAL"
+            ):
+                raise AppError(
+                    "조사하는 동안 기회가 바뀌었습니다.",
+                    "현재 기회를 확인해 주세요.",
+                    status=409,
+                    kind="STALE_VALUE",
+                )
+            store_company_research(
+                session,
+                customer_id,
+                expected=expected,
+                line=result.company_summary.line,
+                highlights=result.company_summary.highlights,
+                phone=phone,
+                phone_source_url=phone_url,
+            )
+            # #793: 홈페이지로 다시 본 적합도를 재평가 전에 옮긴다(평가 전 카드 문장이 따라온다).
+            apply_homepage_fit(
+                session,
+                session.get(Customer, customer_id),
+                result.fit_review.fit_level,
+                result.fit_review.reason,
+                result.fit_review.downgrade_basis,
+            )
+            evidence = store_extraction(
+                session,
+                opportunity,
+                result,
+                pages[0].url,
+                requested_by,
+                source_for=_source_finder(pages),
+            )
+            # #286: 점수 입력·공정 연결 제안을 AI·확인 전으로 저장한 뒤 재평가한다(사람 값 우선).
+            proposal_count = store_item_proposals(
+                session,
+                opportunity,
+                result,
+                evidence,
+                rule_config=rule_config,
+                requested_by=requested_by,
+            )
+            link_count = store_process_link_proposals(
+                session,
+                opportunity,
+                result,
+                allowed_codes=set(process_codes),
+                requested_by=requested_by,
+            )
+            evaluated = evaluate_in_session(session, [opp_id], requested_by)
+            if not evaluated.new_eval_ids:
+                raise RunFailedError("평가할 입력이 없어 조사 결과를 저장하지 않았습니다.")
+            question_count = 0
+            for question in result.questions:
+                existing = session.scalar(
+                    select(ConfirmationQuestion).where(
+                        ConfirmationQuestion.target_kind == question.target_kind,
+                        ConfirmationQuestion.target_id == opp_id,
+                    )
+                )
+                if existing and (existing.status != "WAITING" or existing.is_user_added):
+                    continue
+                upsert_question(
+                    session,
+                    QuestionCandidate(
+                        target_kind=question.target_kind,
+                        target_id=opp_id,
+                        text=question.text,
+                        effect_if_answered="공개 근거의 내용을 확인합니다.",
+                    ),
+                    opp_id,
+                    evaluated.new_eval_ids[0],
+                    dataset_kind=opportunity.dataset_kind,
+                    is_virtual=opportunity.is_virtual,
+                    requested_by=requested_by,
+                )
+                question_count += 1
+            remaining(deadline)
+        evaluated.summary = (
+            f"근거 {len(evidence)}건·질문 {question_count}건·점수 제안 {proposal_count}건·"
+            f"공정 제안 {link_count}건 저장, 재평가 완료"
+        )
+        if read_insecurely(url, pages[0].url):
+            # #810: 인증서 오류로 http로 읽었으면 조사 결과에 남긴다(근거 출처 주소도 http로 남음).
+            evaluated.summary += " · 암호화 없는 주소로 읽음"
+        evaluated.counts = {
+            "evidenceCount": len(evidence),
+            "requirementCandidateCount": len(result.requirement_candidates),
+            "questionCount": question_count,
+        }
+        return evaluated
+    except Exception as exc:
+        error = (
+            exc
+            if isinstance(exc, AppError)
+            else RunFailedError("홈페이지 조사 결과를 저장하지 못했습니다.")
+        )
+        logger.error("근거 추출 실패: ref=%s type=%s", error.ref, type(exc).__name__)
+        return FlowResult.failed(error)
+
+
+def cap_to_weak(result: Extraction) -> Extraction:
+    """공식이 아닌 공개 페이지에서 온 근거·점수 제안의 확실도를 약한 추정까지만 둔다 (#511, C9).
+
+    확인·강한 추정으로 온 값만 약한 추정으로 낮춘다. 미확인은 그대로다. 점수 규칙은 건드리지 않는다.
+    """
+    strong = {"CONFIRMED", "STRONG"}
+    return result.model_copy(
+        update={
+            "evidence": [
+                item.model_copy(update={"certainty_proposed": Certainty.WEAK})
+                if item.certainty_proposed in strong
+                else item
+                for item in result.evidence
+            ],
+            "item_input_proposals": [
+                item.model_copy(update={"certainty_proposed": "WEAK"})
+                for item in result.item_input_proposals
+            ],
+        }
+    )
+
+
+def _source_finder(pages: list[Page]):
+    """인용문이 그대로 들어 있는 페이지 주소를 돌려준다. 못 찾으면 첫 화면 주소(#557).
+
+    AI에는 연락처를 지운 본문이 갔으므로 같은 방식으로 지운 본문에서 찾는다.
+    """
+    cleaned = [(page.url, scrub_contacts(page.text)[0]) for page in pages]
+
+    def source_for(quote: str) -> str:
+        return next((url for url, text in cleaned if quote and quote in text), pages[0].url)
+
+    return source_for

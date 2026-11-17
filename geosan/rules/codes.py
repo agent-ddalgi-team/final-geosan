@@ -100,6 +100,12 @@ class SignalKind(StrEnum):
     HIRING = "HIRING"
     REORDER_CYCLE = "REORDER_CYCLE"
     NEXT_CONTACT = "NEXT_CONTACT"
+    # (추가 2026-11-13 #685) 통화에서 확인한 신호. 꼬리 질문 답에서 서버가 만들고 점수에만 쓴다.
+    CALL_INTENT = "CALL_INTENT"
+    CALL_INTEREST = "CALL_INTEREST"
+
+
+CALL_SIGNAL_KINDS = frozenset({SignalKind.CALL_INTENT, SignalKind.CALL_INTEREST})
 
 
 class SignalRelation(StrEnum):
@@ -227,6 +233,105 @@ class Opinion(StrEnum):
     NOT_TARGET = "NOT_TARGET"
 
 
+class OutcomeStatus(StrEnum):
+    NOT_EXECUTED = "NOT_EXECUTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    SAMPLE_OR_REGISTRATION_APPROVED = "SAMPLE_OR_REGISTRATION_APPROVED"
+    ON_HOLD = "ON_HOLD"
+    WON = "WON"
+    LOST = "LOST"
+
+
+class LostReasonCode(StrEnum):
+    """#250 PM 승인: 계약 C0의 거절 이유 코드 6종."""
+
+    PRICE = "PRICE"
+    LEAD_TIME = "LEAD_TIME"
+    INCUMBENT_SUPPLIER = "INCUMBENT_SUPPLIER"
+    NO_DEMAND = "NO_DEMAND"
+    QUALITY_CERT = "QUALITY_CERT"
+    OTHER = "OTHER"
+
+
+class ContactMethod(StrEnum):
+    CALL = "CALL"
+    EMAIL = "EMAIL"
+    VISIT = "VISIT"
+
+
+class ContactResult(StrEnum):
+    REACHED = "REACHED"
+    ABSENT = "ABSENT"
+    DECLINED = "DECLINED"
+
+
+class SalesStep(StrEnum):
+    """#607: 큰 단계(OutcomeStatus) 안의 세부 단계. 꼬리 질문 답으로 알아낸 사실로 정한다."""
+
+    NOT_REACHED = "NOT_REACHED"
+    REACHED = "REACHED"
+    DEMAND_CONFIRMED = "DEMAND_CONFIRMED"
+    MATERIAL_QUOTE = "MATERIAL_QUOTE"
+    VISIT_SAMPLE = "VISIT_SAMPLE"
+
+
+class JudgmentCheck(StrEnum):
+    """접촉해 보니 AI 판단이 맞았나(#531). 영업 성과와 별개다. 외주처가 있어도 사실이면 맞음."""
+
+    MATCHED = "MATCHED"
+    MISMATCHED = "MISMATCHED"
+    UNKNOWN = "UNKNOWN"
+
+
+class ActivityKind(StrEnum):
+    CLASSIFICATION = "CLASSIFICATION"
+    OPINION = "OPINION"
+    BOOKMARK = "BOOKMARK"
+    APPROVAL = "APPROVAL"
+    CONTACT_ATTEMPT = "CONTACT_ATTEMPT"
+    REPLY = "REPLY"
+    OUTCOME = "OUTCOME"
+    EVIDENCE_GRADE_CONFIRMED = "EVIDENCE_GRADE_CONFIRMED"
+    NOTE = "NOTE"
+
+
+class NoteKind(StrEnum):
+    MEMO = "MEMO"
+    RESEARCH = "RESEARCH"
+    REPLY = "REPLY"  # #248 PM 승인: 답 저장 이력 전용, 메모 요청에서는 받지 않는다.
+    # #731 PM 결정 2026-11-14: 프로그램이 남기는 한 줄(공정·산업 확정, AI 제안 확정·물리침).
+    # 활동 이력에서 "변경 기록"으로 보이고 잘못 입력으로 표시할 수 없다.
+    # 메모 요청에서는 받지 않는다.
+    CHANGE = "CHANGE"
+    # #742 PM 결정 2026-11-14: 영업 코치 피드백 가운데 담당자가 [보고서에 남기기]로 고른 한 줄.
+    # 활동 이력에서 "남긴 피드백"으로 보이고 회사 보고서 "영업 방향"에 실리는 유일한 메모 종류다.
+    ADVICE = "ADVICE"
+    # #750 PM 결정 2026-11-15: 영업 코치가 같은 호출에서 준 "다음 통화에 물어볼 것" 1~3줄
+    # (한 행, 줄바꿈으로 이음).
+    # 상세 "영업 코치 · 통화 전" 칸과 회사 보고서 "영업 방향"에 보이고 다음 코칭의 입력이 된다.
+    CALL_PREP = "CALL_PREP"
+    # #771 PM 결정 2026-11-15·16: 전달 사항. 담당자가 아닌 직원도 받는 사람 한 명에게 남기고,
+    # 받는 사람이 [확인했어요]를 누른다. 보고서에 바로 싣지 않는다(코치 정리를 거쳐서만).
+    HANDOFF = "HANDOFF"
+
+
+class ReviewItemKind(StrEnum):
+    QUESTION = "QUESTION"
+    DATA_NOT_FOUND = "DATA_NOT_FOUND"
+    DATA_INSUFFICIENT = "DATA_INSUFFICIENT"
+    ITEM_INPUT_PROPOSAL = "ITEM_INPUT_PROPOSAL"
+    PROCESS_LINK_PROPOSAL = "PROCESS_LINK_PROPOSAL"
+    # 더하는 변경(2026-11-06 PM 확인, #319·#359): 표면처리를 직접 하는 회사일 수 있음.
+    # 출처는 AI 또는 RULE. 자동으로 빼지 않고 담당자가 확인한다(FR9.3).
+    OWN_PLATING_LINE_SUSPECTED = "OWN_PLATING_LINE_SUSPECTED"
+
+
+class ReviewItemSource(StrEnum):
+    AI = "AI"
+    CASE_FILE = "CASE_FILE"
+    RULE = "RULE"
+
+
 class QuestionStatus(StrEnum):
     WAITING = "WAITING"
     REQUESTED = "REQUESTED"
@@ -282,6 +387,35 @@ class ProcessCode(StrEnum):
     PASSIVATION = "PASSIVATION"  # 부동태
 
 
+class DiscoverySource(StrEnum):
+    """회사가 목록에 들어온 길 (C0, 2026-11-05·11-06 PM 결정 #313·#323)."""
+
+    CASE_FILE = "CASE_FILE"  # 사례 파일로 넣은 회사
+    FACTORY_FILE = "FACTORY_FILE"  # 공장현황 파일에서 찾은 회사
+    FACTORY_API = "FACTORY_API"  # 파일에는 없고 공장등록 조회의 단지 입주 목록에만 있던 회사
+    WEB_SEARCH = "WEB_SEARCH"  # AI 웹 검색으로 찾은 회사
+
+
+class TransferPurpose(StrEnum):
+    """외부 호출 기록에 더하는 용도(C6·C9, 2026-11-07 PM 결정 #393)."""
+
+    PUBLIC_SOURCE = "PUBLIC_SOURCE"
+
+
+class TransferKind(StrEnum):
+    """공공 조회 종류(C6·C9, #393). 기존 AI 전송 코드는 그대로 쓴다."""
+
+    FACTORY_REGISTRY = "FACTORY_REGISTRY"
+
+
+class FitLevel(StrEnum):
+    """AI가 본 공정 적합도. 점수 전 회사를 줄 세우는 데만 쓴다 (C0, 2026-11-05 PM 결정 #313)."""
+
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+
+
 VIEWER_STAFF_KEY = "viewer"
 """예약 담당자 키(보기 전용). 기록 요청은 403 (BR9.3)."""
 
@@ -301,21 +435,21 @@ class ClassificationEntry:
 
 
 CLASSIFICATION_TABLE: tuple[ClassificationEntry, ...] = (
-    ClassificationEntry(ClassificationCode.FILTER_EXCLUDED, 1, "필터 제외", True, False),
+    ClassificationEntry(ClassificationCode.FILTER_EXCLUDED, 1, "필터 제외", False, False),
     ClassificationEntry(
-        ClassificationCode.FILTER_PENDING, 2, "필터 미확인(확인 대기)", True, False
+        ClassificationCode.FILTER_PENDING, 2, "필터 미확인(확인 대기)", False, False
     ),
-    ClassificationEntry(ClassificationCode.OPS_PENDING, 3, "운영 전제 미확정", True, False),
-    ClassificationEntry(ClassificationCode.NOT_EVALUATED, 4, "초기 평가 대기", True, False),
+    ClassificationEntry(ClassificationCode.OPS_PENDING, 3, "운영 전제 미확정", False, False),
+    ClassificationEntry(ClassificationCode.NOT_EVALUATED, 4, "초기 평가 대기", False, False),
     ClassificationEntry(ClassificationCode.CONTACT_URGENT, 5, "시점 우선 접촉", False, True),
     ClassificationEntry(ClassificationCode.CONTACT_PLANNED, 6, "계획형 접촉", False, True),
     ClassificationEntry(ClassificationCode.CONTACT_REVIEW, 7, "검토 후 접촉", False, True),
-    ClassificationEntry(ClassificationCode.RESEARCH, 8, "추가조사", True, False),
-    ClassificationEntry(ClassificationCode.CONDITIONAL_WAIT, 9, "조건부 대기", True, False),
-    ClassificationEntry(ClassificationCode.WATCH, 10, "관찰", True, False),
-    ClassificationEntry(ClassificationCode.LOW, 11, "후순위", True, False),
+    ClassificationEntry(ClassificationCode.RESEARCH, 8, "추가조사", False, False),
+    ClassificationEntry(ClassificationCode.CONDITIONAL_WAIT, 9, "조건부 대기", False, False),
+    ClassificationEntry(ClassificationCode.WATCH, 10, "관찰", False, False),
+    ClassificationEntry(ClassificationCode.LOW, 11, "후순위", False, False),
 )
-"""BR6.1 순서대로. blocksApproval: 접촉 후보 3가지만 승인을 막지 않는다(BR10.3)."""
+"""BR6.1 순서대로. 분류는 추천 강도 표시용이며 승인 가능 여부는 사실 조건으로 정한다(#211)."""
 
 CLASSIFICATION_BY_CODE: dict[ClassificationCode, ClassificationEntry] = {
     entry.code: entry for entry in CLASSIFICATION_TABLE
@@ -323,5 +457,5 @@ CLASSIFICATION_BY_CODE: dict[ClassificationCode, ClassificationEntry] = {
 
 
 def classification_entry(code: ClassificationCode | str) -> ClassificationEntry:
-    """코드표 한 줄을 돌려준다. 코드표 밖 값은 KeyError(조용히 넘기지 않는다)."""
+    """공통 코드표 한 줄을 돌려준다. 코드표 밖 값은 KeyError(조용히 넘기지 않는다) (BR6.3)."""
     return CLASSIFICATION_BY_CODE[ClassificationCode(code)]
