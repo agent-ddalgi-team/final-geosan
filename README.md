@@ -61,7 +61,7 @@ geosan source-confirm kicox-production-api --by choi-pm
 `init-db`와 마찬가지로 실제 DB 볼륨이 붙은 실행 환경 안에서 실행해야 합니다. 다른 PC의 DB에 기록해도 서버 DB에는 반영되지 않습니다.
 이 명령은 외부 사이트에 접속하거나 이용 조건을 자동으로 확인하지 않습니다. API 키도 필요하지 않습니다.
 
-**발표 시연용 DB(#274, PM 결정 2026-11-04; #765에서 18곳으로 늘림, 2026-11-15)** — 가상 회사 18곳(성사 4·거절 5·보류 2·진행 중 7, 접촉은 1~150일 전)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
+**발표 시연용 DB(#274, PM 결정 2026-11-04; #765에서 18곳, #826에서 36곳으로 늘림, 2026-11-17)** — 가상 회사 36곳(성사 9·거절 11·보류 4·진행 중 12, 그중 일정 없이 멈춘 회사 2곳)만 든 DB를 실제 DB와 **다른 파일**로 만듭니다. 실제 기업 사례 파일은 넣지 않습니다. `data/`는 Git에 올라가지 않습니다.
 
 ```bash
 export GEOSAN_DB_PATH=./data/geosan-demo.db      # 윈도우 PowerShell: $env:GEOSAN_DB_PATH = "./data/geosan-demo.db"
@@ -69,6 +69,16 @@ geosan init-db
 geosan check-config examples/rule-config.yaml examples/app-settings-demo.yaml   # 띠 "시연용 · 가상 자료" + 시연 표시
 geosan import-capability examples/capability-geosan.json
 geosan import-case examples/case-apjeong.json
+geosan import-case examples/demo/case-demo-aa-precision.json
+geosan import-case examples/demo/case-demo-ab-tech.json
+geosan import-case examples/demo/case-demo-ac-metal.json
+geosan import-case examples/demo/case-demo-ad-industry.json
+geosan import-case examples/demo/case-demo-ae-precision.json
+geosan import-case examples/demo/case-demo-af-machining.json
+geosan import-case examples/demo/case-demo-ag-electronics.json
+geosan import-case examples/demo/case-demo-ah-metal.json
+geosan import-case examples/demo/case-demo-ak-tech.json
+geosan import-case examples/demo/case-demo-al-parts.json
 geosan import-case examples/demo/case-demo-b-metal.json
 geosan import-case examples/demo/case-demo-c-industry.json
 geosan import-case examples/demo/case-demo-d-tech.json
@@ -86,8 +96,16 @@ geosan import-case examples/demo/case-demo-o-parts.json
 geosan import-case examples/demo/case-demo-p-tech.json
 geosan import-case examples/demo/case-demo-q-industry.json
 geosan import-case examples/demo/case-demo-r-metal.json
+geosan import-case examples/demo/case-demo-s-precision.json
+geosan import-case examples/demo/case-demo-t-metal.json
+geosan import-case examples/demo/case-demo-u-tech.json
+geosan import-case examples/demo/case-demo-v-machining.json
+geosan import-case examples/demo/case-demo-w-industry.json
+geosan import-case examples/demo/case-demo-x-parts.json
+geosan import-case examples/demo/case-demo-y-electronics.json
+geosan import-case examples/demo/case-demo-z-machine.json
 geosan evaluate
-geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7(그중 다음 일정 7곳: 오늘 2곳 · 1~10일 뒤 5곳, #790) · 가상 위치 18곳(시연 지도·거리용, #811)
+geosan seed-demo-records                          # 가상 영업 기록: 36곳(성사 9·거절 11·보류 4·진행 중 12, 멈춘 회사 2곳) · 가상 위치 36곳(시연 지도·거리용, #811·#826)
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
