@@ -325,8 +325,9 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(within(review).getAllByTestId('coach-feedback-line')).toHaveLength(2);
     // (#750) 피드백은 고르지 않는다. 다음 통화에 물어볼 것이 같은 화면에 보인다.
     expect(within(review).queryByRole('button', { name: /보고서에 남기기/ })).toBeNull();
-    expect(within(review).getByTestId('coach-feedback-saved')).toHaveTextContent(
-      coachTexts.feedbackSaved,
+    // #847: 피드백·물어볼 것이 어디에 남는지는 저장 단추 위 한 줄로 합쳤다.
+    expect(within(review).getByTestId('coach-saved-where')).toHaveTextContent(
+      coachTexts.savedWhere,
     );
     expect(
       within(review)
@@ -337,7 +338,6 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(within(review).getByTestId('coach-step')).toHaveTextContent(
       '단계: 연결됨 → 수요 확인 (저장하면)',
     );
-    expect(within(review).getByText(coachTexts.missingHint)).toBeInTheDocument();
     expect(postOutcome).not.toHaveBeenCalled();
     expect(postNote).not.toHaveBeenCalled();
     // 받은 정리와 저장할 메모가 어긋나지 않게 메모는 잠긴다.
@@ -423,6 +423,8 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(within(review).getByTestId('coach-next-call')).toHaveTextContent(
       coachTexts.nextCallNone,
     );
+    // #847: 남길 피드백·물어볼 것이 없으면 "저장하면 … 남습니다" 줄도 없다.
+    expect(within(review).queryByTestId('coach-saved-where')).not.toBeInTheDocument();
     await user.click(
       within(within(review).getByTestId('coach-missing-SWITCH_INTENT')).getByText('있음'),
     );
@@ -483,5 +485,66 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
       status: 'LOST',
       lostReasonCode: 'PRICE',
     });
+  });
+});
+
+// #847(사용자 피드백 2026-11-17 "글이 너무 많아 무슨 내용인지 모르겠다"): 영업 코치 칸의 안내 문장·겹치는 제목을 줄였다.
+describe('영업 코치 칸 글 줄이기 (#847)', () => {
+  it('Given 오른쪽 영업 코치 칸 When 결과를 고르기 전 Then 메모 칸이 바로 보인다', async () => {
+    renderArea(true, { inCoach: true });
+    expect(await screen.findByTestId('records-contact-memo')).toBeInTheDocument();
+    expect(screen.getByTestId('records-contact-memo-hint')).toHaveTextContent(coachTexts.sendHint);
+  });
+
+  it('Given 영업 코치 칸 When 종류에서 메모를 고르면 Then 메모 안내도 한 줄이다', async () => {
+    const user = userEvent.setup();
+    renderArea(true, { inCoach: true });
+    await user.selectOptions(await screen.findByTestId('records-kind'), '메모');
+    const hint = screen.getByTestId('records-note-hint');
+    expect(hint).toHaveTextContent(coachTexts.noteHint);
+    expect(hint).not.toHaveTextContent('덧붙이기만 되고');
+  });
+
+  it('Given 왼쪽 영업 단계 아래 자리(sideSlot) When 기록 칸을 그리면 Then 들은 답·단계 고치기·다음 일정은 그 자리에 그려진다', async () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    renderArea(true, { inCoach: true, sideSlot: slot });
+    const side = await within(slot).findByTestId('records-side');
+    expect(within(side).getByTestId('records-stage-fix')).toBeInTheDocument();
+    expect(within(side).getByTestId('records-schedule-fix')).toBeInTheDocument();
+    const area = screen.getByTestId('records-area');
+    expect(within(area).queryByTestId('records-stage-fix')).not.toBeInTheDocument();
+    expect(within(area).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
+    slot.remove();
+  });
+
+  it('Given 오른쪽 영업 코치 칸 When 기록 칸을 열면 Then 머리 안내 줄이 없고 "기록 남기기" 제목은 화면에서만 숨는다', async () => {
+    renderArea(true, { inCoach: true });
+    expect(screen.queryByTestId('records-flow-guide')).not.toBeInTheDocument();
+    // 읽어 주는 도구에는 제목이 남는다.
+    const heading = screen.getByRole('heading', { name: '기록 남기기' });
+    expect(heading).toHaveStyle({ position: 'absolute', overflow: 'hidden' });
+  });
+
+  it('Given 코치 메모 칸 When "연결됨"을 고르면 Then 메모 안내는 한 줄(직함 · AI로 보냄)과 글자 수뿐이다', async () => {
+    const user = userEvent.setup();
+    renderArea(true, { inCoach: true });
+    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    const hint = await screen.findByTestId('records-contact-memo-hint');
+    expect(hint).toHaveTextContent(coachTexts.sendHint);
+    // AI로 나간다는 사실은 남긴다(개인정보 안내를 없애지 않는다).
+    expect(hint).toHaveTextContent('AI에 보냅니다');
+    expect(hint).not.toHaveTextContent('저장은 확인한 뒤에 합니다');
+    expect(hint).not.toHaveTextContent('이름은 AI로 보내지 않습니다');
+  });
+
+  it('Given 코치 답 When [보내기] 뒤 Then 칸마다 붙던 안내와 [고치기] 안내 대신 저장 단추 위 한 줄만 보인다', async () => {
+    const user = userEvent.setup();
+    renderArea(true, { inCoach: true });
+    const review = await reachAndSend(user);
+    expect(within(review).getAllByTestId('coach-saved-where')).toHaveLength(1);
+    expect(review).not.toHaveTextContent('답하면 단계가 바뀔 수 있어요');
+    expect(review).not.toHaveTextContent('[고치기]를 누르면');
+    expect(review).not.toHaveTextContent('저장하면 다음 통화 전 칸과 보고서에 보입니다');
   });
 });

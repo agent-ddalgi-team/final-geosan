@@ -105,7 +105,8 @@ describe('RecordsArea', () => {
       within(kind)
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toEqual(['메모', '전화', '방문', '메일', '자료 조사']);
+      // #847(PM 결정 2026-11-17): "방문" → "대면", "자료 조사"는 "메모"로 합침. 질문 파일이 없으면 발신·수신 없이 종류만.
+    ).toEqual(['전화', '메일', '대면', '메모']);
     expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
     expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
     // 메모만 적는 흐름은 종류에서 "메모"를 고르면 그대로다.
@@ -115,48 +116,79 @@ describe('RecordsArea', () => {
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
   });
 
-  it('종류를 전화·방문·메일로 바꾸면 결과·날짜 입력이 나오고, 메모·자료 조사로 돌아오면 글 입력이 나온다', async () => {
+  it('종류를 전화·대면·메일로 바꾸면 결과·날짜 입력이 나오고, 메모로 돌아오면 글 입력이 나온다', async () => {
     const user = userEvent.setup();
     renderArea();
-    for (const label of ['전화', '방문', '메일']) {
+    for (const label of ['전화', '대면', '메일']) {
       await pick(user, 'records-kind', label);
       expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
       expect(screen.getByTestId('records-contact-date')).toBeInTheDocument();
       expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
     }
-    await pick(user, 'records-kind', '자료 조사');
+    await pick(user, 'records-kind', '메모');
     expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
-    expect(screen.getByTestId('records-note-save-button')).toHaveTextContent(
-      recordsArea.researchSave,
-    );
+    expect(screen.getByTestId('records-note-save-button')).toHaveTextContent(recordsArea.noteSave);
   });
 
-  it('자료 조사를 고르면 종류 RESEARCH로 메모를 저장하고 영업 결과는 저장하지 않는다', async () => {
+  // #847(PM 결정 2026-11-17): 위쪽 [전달 사항 남기기]를 없애고 메모에 "받는 사람"을 둔다.
+  it('Given 메모 When 받는 사람을 고르고 저장하면 Then 전달 사항(HANDOFF)으로 남고 상세를 다시 읽게 알린다', async () => {
     const user = userEvent.setup();
+    const onHandoffSent = vi.fn();
     mockedNote.mockResolvedValueOnce({
-      data: { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-04T01:12:00Z', noteId: 'n-2' },
+      data: { version: 1, updatedBy: 'park-lee', updatedAt: '2026-11-04T01:12:00Z', noteId: 'n-3' },
       meta: {},
     });
-    renderArea();
-    await pick(user, 'records-kind', '자료 조사');
+    renderArea(
+      frameValue({
+        config: {
+          records: { approvalEnabled: false, noteMaxLength: 200 },
+          staff: [
+            { key: 'park-lee', displayName: '박 담당' },
+            { key: 'kim-ceo', displayName: '김 이사' },
+          ],
+          brand: { logoUrl: null, brandName: '', colorPrimary: '', demoLabel: null },
+          classificationLabels: {},
+          activeDatasetKind: 'BROCHURE',
+          accessProtectionEnabled: false,
+          ruleVersion: 'v',
+        },
+      }),
+      { onHandoffSent },
+    );
+    await pick(user, 'records-kind', '메모');
+    const to = screen.getByTestId('records-note-to');
+    // 나 자신은 받는 사람이 될 수 없다.
+    expect(
+      within(to)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([recordsArea.noteToNone, '김 이사']);
     fireEvent.change(screen.getByTestId('records-note-input'), {
-      target: { value: '홈페이지에서 도금 설비 확인' },
+      target: { value: '도금 두께 요구는 설비로 가능한지 봐 주세요' },
     });
+    await pick(user, 'records-note-to', '김 이사');
+    expect(screen.getByTestId('records-note-save-button')).toHaveTextContent('전달하기');
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() =>
       expect(mockedNote).toHaveBeenCalledWith(
         OPP,
-        { text: '홈페이지에서 도금 설비 확인', kind: 'RESEARCH', evalId: EVAL },
+        {
+          text: '도금 두께 요구는 설비로 가능한지 봐 주세요',
+          kind: 'HANDOFF',
+          toStaffKey: 'kim-ceo',
+          evalId: EVAL,
+        },
         'park-lee',
       ),
     );
+    expect(onHandoffSent).toHaveBeenCalled();
     expect(mockedOutcome).not.toHaveBeenCalled();
   });
 
   it.each([
     ['전화', 'CALL'],
-    ['방문', 'VISIT'],
+    ['대면', 'VISIT'],
     ['메일', 'EMAIL'],
   ])('%s를 저장하면 방법 %s로 영업 결과가 가고, 접촉 저장을 알린다', async (label, code) => {
     const user = userEvent.setup();

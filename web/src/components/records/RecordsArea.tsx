@@ -10,6 +10,7 @@
 // "확인사항"과 메모 칸, [보내기 💰]가 보인다. AI가 정리한 것을 확인 화면에서 보고 [이대로 저장]을 눌러야
 // 저장되고(기존 /outcomes, 답마다 누가 채웠는지), [고치기]는 AI 답이 골라진 지금 양식을 연다.
 // 코치 피드백 줄은 저장 뒤 /notes kind ADVICE로, 다음 통화에 물어볼 것은 kind CALL_PREP 한 행으로 남는다(#750). [AI가 메모 읽기]는 코치로 합쳐 이 칸에서 뺐다.
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { Button, Input, Radio, Typography } from 'antd';
 import { assistantConfigOf } from '../../api/assistant';
@@ -25,6 +26,7 @@ import type {
   OutcomeRecord,
   OutcomeRequest,
   OutcomeStatus,
+  SalesQuestion,
   SalesQuestions,
   SalesStep,
   SalesStepView,
@@ -41,10 +43,11 @@ import {
   recordsArea,
   salesQuestionTexts,
   salesStepLabels,
+  handoffTexts,
 } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
-import { useFrame } from '../frame/FrameContext';
+import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 import { choiceAnswerIds } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
@@ -61,6 +64,17 @@ import {
   nextActionPick,
   visibleQuestions,
 } from './SalesQuestions';
+
+/** #847: 화면에는 안 보이고 읽어 주는 도구에만 남는 제목. */
+const screenReaderOnly = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+  margin: 0,
+} as const;
 
 export const DEFAULT_NOTE_MAX_LENGTH = 200;
 /** 접촉 기록 한 줄 메모 상한(#607, 설정 records.memoLineMaxLength 초기값). 넘으면 서버가 400. */
@@ -105,12 +119,19 @@ export interface RecordsAreaProps {
   excluded?: boolean;
   /** #803 오른쪽 영업 코치 판 안에 놓일 때 true: 맨 위 요약을 줄인다(세부 단계·아직 모르는 것은 다른 곳과 같아 뺌). */
   inCoach?: boolean;
+  /** #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)을 옮겨 그릴 왼쪽 자리. 없으면 이 칸 안에 그린다. */
+  sideSlot?: HTMLElement | null;
+  /** #847: 메모를 받는 사람에게 전달 사항으로 남긴 뒤(상세를 다시 읽게). */
+  onHandoffSent?: () => void;
 }
 
 type BlockKey = 'contact' | 'note' | 'stage' | 'schedule';
 
-/** 기록 종류 한 칸의 선택지. 전화·방문·메일은 접촉(영업 결과), 메모·자료 조사는 메모로 저장된다. */
-type RecordKind = 'MEMO' | 'CALL' | 'VISIT' | 'EMAIL' | 'RESEARCH';
+/**
+ * 기록 종류 한 칸의 선택지. 전화·대면·메일은 접촉(영업 결과), 메모는 메모로 저장된다.
+ * #847(PM 결정 2026-11-17): "자료 조사"는 "메모"로 합쳤다(예전 자료 조사 기록은 그대로 보인다).
+ */
+type RecordKind = 'MEMO' | 'CALL' | 'VISIT' | 'EMAIL';
 
 /** "어떻게 할까요?"에서 "아직 끝 아님 · 다시 연락"을 고른 상태(#691). 마무리 보기는 그 보기의 ID를 쓴다. */
 const DECLINE_CONTINUE = '__CONTINUE__';
@@ -120,11 +141,29 @@ export function recordsEntryInputId(oppId: string): string {
   return `records-kind-${oppId}`;
 }
 
-const RECORD_KIND_ORDER: RecordKind[] = ['MEMO', 'CALL', 'VISIT', 'EMAIL', 'RESEARCH'];
+const RECORD_KIND_ORDER: RecordKind[] = ['CALL', 'EMAIL', 'VISIT', 'MEMO'];
 
 function recordKindLabel(kind: RecordKind): string {
-  if (kind === 'MEMO' || kind === 'RESEARCH') return noteKindLabels[kind];
+  if (kind === 'MEMO') return noteKindLabels.MEMO;
   return contactMethodLabels[kind];
+}
+
+/**
+ * #847(PM 결정 2026-11-17): 종류와 "누가 먼저 연락했나요?"를 한 칸으로.
+ * "전화 · 발신 / 전화 · 수신 / 메일 · 발신 / 메일 · 수신 / 대면 · 외근 / 대면 · 내방 / 메모".
+ * 값은 기본 보기(우리가)면 종류 그대로("CALL"), 다른 보기면 "CALL:THEIRS". 질문 파일이 없으면 종류만.
+ */
+function kindOptionsOf(direction: SalesQuestion | null): { value: string; label: string }[] {
+  const defaultId = direction?.answers.find((option) => option.default)?.answerId;
+  return RECORD_KIND_ORDER.flatMap((kind) => {
+    if (kind === 'MEMO' || !direction) return [{ value: kind, label: recordKindLabel(kind) }];
+    return direction.answers.map((option) => ({
+      value: option.answerId === defaultId ? kind : `${kind}:${option.answerId}`,
+      label: `${recordKindLabel(kind)} · ${
+        salesQuestionTexts.contactDirectionLabels[kind]?.[option.answerId] ?? option.label
+      }`,
+    }));
+  });
 }
 
 /** 접촉 날짜가 오늘(한국 시간)보다 뒤라서 서버가 돌려보낸 오류의 칸 이름(약속 C1, #433). */
@@ -212,6 +251,8 @@ export default function RecordsArea({
   onCompanyConfirmed,
   excluded = false,
   inCoach = false,
+  sideSlot = null,
+  onHandoffSent,
 }: RecordsAreaProps) {
   const { config, staffKey, canRecord } = useFrame();
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
@@ -281,7 +322,12 @@ export default function RecordsArea({
 
   const method: ContactMethod | null =
     recordKind === 'CALL' || recordKind === 'VISIT' || recordKind === 'EMAIL' ? recordKind : null;
-  const noteKind: NoteKind = recordKind === 'RESEARCH' ? 'RESEARCH' : 'MEMO';
+  const noteKind: NoteKind = 'MEMO';
+  // #847: 메모에 받는 사람을 고르면 전달 사항(HANDOFF)으로 남는다. 안 고르면 그냥 메모.
+  const [noteTo, setNoteTo] = useState<string | null>(null);
+  const noteTargets = (config?.staff ?? []).filter(
+    (entry) => entry.key !== staffKey && entry.key !== VIEWER_KEY,
+  );
 
   const [stage, setStage] = useState<OutcomeStatus | null>(null);
   const [lostReason, setLostReason] = useState('');
@@ -391,6 +437,9 @@ export default function RecordsArea({
   // 접촉마다 남기는 답(누가 먼저 연락했나): 기본 보기가 골라져 있고 부재 접촉에도 보낸다(#691).
   const contactQuestions = contactQuestionsOf(questions);
   const contactAnswers = { ...contactDefaults(questions), ...contactPicks };
+  // #847: 첫 접촉 질문("누가 먼저 연락했나요?")은 종류 칸에 합친다(발신/수신, 외근/내방).
+  const direction = contactQuestions[0] ?? null;
+  const directionDefault = direction?.answers.find((option) => option.default)?.answerId;
 
   // 결과가 "거절"이면 "다음 할 일 → 끝 → 어떻게 끝났나요?"를 차례로 묻지 않고 한 번에 묻는다(#691).
   // 어느 질문·보기가 그 길인지는 질문 파일에서 찾는다. 못 찾으면 전처럼 질문을 차례로 보인다.
@@ -733,10 +782,17 @@ export default function RecordsArea({
     try {
       const envelope = await postNote(
         oppId,
-        { text, kind: noteKind, ...(evalId ? { evalId } : {}) },
+        noteTo
+          ? { text, kind: 'HANDOFF', toStaffKey: noteTo, ...(evalId ? { evalId } : {}) }
+          : { text, kind: noteKind, ...(evalId ? { evalId } : {}) },
         staffKey,
       );
       setNoteText('');
+      if (noteTo) {
+        setNoteTo(null);
+        // 전달 사항은 상세 응답에 실려 확인사항 맨 위에 보이므로 상세를 다시 읽는다.
+        onHandoffSent?.();
+      }
       onRecorded?.();
       succeed('note', envelope.data.updatedAt);
     } catch (caught) {
@@ -815,369 +871,18 @@ export default function RecordsArea({
     fontSize: typography.fontSizeSecondary,
   } as const;
 
-  return (
-    <div data-testid="records-area" style={{ display: 'grid', gap: 24 }}>
-      {!canRecord ? (
-        <Typography.Text type="secondary" data-testid="records-pick-staff-text">
-          {recordsArea.pickStaffFirst}
-        </Typography.Text>
-      ) : null}
-
-      <Typography.Text type="secondary" data-testid="records-flow-guide">
-        {recordsArea.flowGuide}
-      </Typography.Text>
-
-      <SalesStepSummary
-        step={salesStep}
-        status={currentStatus}
-        questions={questions}
-        compact={inCoach}
-      />
-
-      <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
-        <Typography.Title level={3} id={`records-entry-${oppId}`} style={{ margin: 0 }}>
-          {recordsArea.entryTitle}
-        </Typography.Title>
-        <div style={rowStyle}>
-          <NativeSelect
-            label={recordsArea.entryKind}
-            value={recordKind}
-            options={RECORD_KIND_ORDER.map((kind) => ({
-              value: kind,
-              label: recordKindLabel(kind),
-            }))}
-            onChange={(value) => {
-              setRecordKind((value as RecordKind | null) ?? 'CALL');
-              clearCoach();
-            }}
-            disabled={disabled}
-            testId="records-kind"
-            id={recordsEntryInputId(oppId)}
-          />
-          {method ? (
-            <>
-              {/* 누가 먼저 연락했나(#691): 기본 "우리가"가 골라져 있어 대부분 누를 필요가 없다. 방문은 "우리가 감 / 상대가 옴". */}
-              {contactQuestions.map((question) => (
-                <NativeSelect
-                  key={question.questionId}
-                  label={question.text}
-                  value={contactAnswers[question.questionId] ?? null}
-                  options={question.answers.map((option) => ({
-                    value: option.answerId,
-                    label:
-                      method === 'VISIT'
-                        ? (salesQuestionTexts.contactVisitLabels[option.answerId] ?? option.label)
-                        : option.label,
-                  }))}
-                  onChange={(value) =>
-                    setContactPicks((previous) => {
-                      const next = { ...previous };
-                      if (value === null) delete next[question.questionId];
-                      else next[question.questionId] = value;
-                      return next;
-                    })
-                  }
-                  disabled={disabled}
-                  testId={`records-contact-question-${question.questionId}`}
-                />
-              ))}
-              <NativeSelect
-                label={recordsArea.contactResult}
-                placeholder={`${recordsArea.contactResult} ${recordsArea.selectPlaceholder}`}
-                value={result}
-                options={options(contactResultLabels)}
-                onChange={(value) => onResultChange(value as ContactResult | null)}
-                disabled={disabled}
-                testId="records-contact-result"
-              />
-              <Input
-                type="date"
-                aria-label={recordsArea.contactDate}
-                aria-invalid={dateError ? 'true' : undefined}
-                aria-describedby={dateError ? `records-contact-date-error-${oppId}` : undefined}
-                style={{ width: 160 }}
-                value={attemptedAt}
-                max={todayKst()}
-                onChange={(event) => {
-                  setAttemptedAt(event.target.value);
-                  setDateError(null);
-                }}
-                disabled={disabled}
-                data-testid="records-contact-date"
-              />
-            </>
-          ) : null}
-        </div>
-        {method ? null : (
-          <>
-            <Input.TextArea
-              aria-label={recordsArea.noteLabel}
-              value={noteText}
-              rows={2}
-              autoSize={{ minRows: 2, maxRows: 6 }}
-              maxLength={noteMax}
-              onChange={(event) => setNoteText(event.target.value)}
-              disabled={disabled}
-              data-testid="records-note-input"
-            />
-            <span style={hintStyle}>
-              {aiReadsMemo ? memoReadTexts.noteHintAi : recordsArea.noteHint}{' '}
-              {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
-              <span data-testid="records-note-counter">
-                {recordsArea.noteCounter(noteText.length, noteMax)}
-              </span>
-            </span>
-            <div>
-              <Button
-                type="primary"
-                disabled={disabled || noteText.trim() === ''}
-                loading={busy === 'note'}
-                onClick={() => void onSaveNote()}
-                data-testid="records-note-save-button"
-              >
-                {noteKind === 'RESEARCH' ? recordsArea.researchSave : recordsArea.noteSave}
-              </Button>
-            </div>
-          </>
-        )}
-        {declineMode ? (
-          <div data-testid="records-decline" style={{ display: 'grid', gap: 4 }}>
-            <div id={`records-decline-label-${oppId}`}>{salesQuestionTexts.declineAsk}</div>
-            <Radio.Group
-              aria-labelledby={`records-decline-label-${oppId}`}
-              optionType="button"
-              value={declineChoice}
-              disabled={disabled}
-              onChange={(event) => onDeclineChoice(event.target.value as string)}
-              options={[
-                ...declineOptions.map((option) => ({
-                  value: option.answerId,
-                  label: salesQuestionTexts.declineCloseLabels[option.closes] ?? option.label,
-                })),
-                { value: DECLINE_CONTINUE, label: salesQuestionTexts.declineContinue },
-              ]}
-            />
-          </div>
-        ) : null}
-        {method && spokeToCompany && questions && !coachMode ? (
-          <SalesQuestionFields
-            questions={questions}
-            step={salesStep}
-            picked={picked}
-            allOnly={result === 'DECLINED'}
-            onPick={(questionId, answerId) =>
-              setPicked((previous) => {
-                const next = { ...previous };
-                if (answerId === null) delete next[questionId];
-                else next[questionId] = answerId;
-                return next;
-              })
-            }
-            pickedMany={pickedMany}
-            onPickMany={(questionId, values) =>
-              setPickedMany((previous) => ({ ...previous, [questionId]: values }))
-            }
-            marks={choiceMarks}
-            nextDate={nextDate}
-            onNextDate={setNextDate}
-            nextDateMin={todayKst()}
-            nextNone={nextNone}
-            onNextNone={setNextNone}
-            hideQuestionIds={
-              declineMode && route
-                ? declineChoice === DECLINE_CONTINUE
-                  ? [route.closingId]
-                  : [route.openerId, route.closingId]
-                : []
-            }
-            hideAnswerIds={
-              declineMode && route && declineChoice === DECLINE_CONTINUE
-                ? { [route.openerId]: route.endAnswerIds }
-                : {}
-            }
-            limit={config?.records?.questionsPerContact ?? null}
-            stepLine={
-              declineMode && declineChoice === DECLINE_CONTINUE
-                ? salesQuestionTexts.stepLineDeclinedContinue
-                : undefined
-            }
-            disabled={disabled}
-          />
-        ) : null}
-        {method && spokeToCompany && questionsFailed ? (
-          <span style={hintStyle} data-testid="sales-questions-failed">
-            {salesQuestionTexts.loadFailed}
-          </span>
-        ) : null}
-        {method && result ? (
-          <>
-            {coachMode ? <CoachChecklist questions={questions} step={salesStep} /> : null}
-            <Input
-              aria-label={coachMode ? coachTexts.memoLabel : salesQuestionTexts.memoLabel}
-              placeholder={coachMode ? coachTexts.memoPlaceholder : salesQuestionTexts.memoLabel}
-              value={memoLine}
-              maxLength={MEMO_LINE_MAX_LENGTH}
-              onChange={(event) => setMemoLine(event.target.value)}
-              // 정리를 받은 뒤에는 메모를 고정한다(받은 정리와 저장할 메모가 어긋나지 않게). 바꾸려면 [고치기].
-              disabled={disabled || coachResult !== null || coachSending}
-              data-testid="records-contact-memo"
-            />
-            <span style={hintStyle}>
-              {coachMode
-                ? coachTexts.sendHint
-                : aiReadsMemo
-                  ? memoReadTexts.memoLineHintAi
-                  : salesQuestionTexts.memoHint}{' '}
-              {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}{' '}
-              {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
-            </span>
-          </>
-        ) : null}
-        {closingLabel ? (
-          <span data-testid="records-close-preview" aria-live="polite">
-            {salesQuestionTexts.closePreview(closingLabel)}
-          </span>
-        ) : null}
-        {nextAction && plannedDate !== '' && !plannedDatePast ? (
-          <span data-testid="records-next-date-preview" aria-live="polite">
-            {salesQuestionTexts.nextDatePreview(
-              formatMonthDay(plannedDate) ?? plannedDate,
-              nextAction.label,
-            )}
-          </span>
-        ) : null}
-        {nextAction && !closing && nextNone ? (
-          <span data-testid="records-next-none-preview" aria-live="polite">
-            {outcome?.nextScheduleAt
-              ? salesQuestionTexts.nextDateNoneKeeps(
-                  formatMonthDay(outcome.nextScheduleAt) ?? outcome.nextScheduleAt,
-                  outcome.nextScheduleNote ?? '',
-                )
-              : salesQuestionTexts.nextDateNonePreview}
-          </span>
-        ) : null}
-        {declineMode && declineChoice === null ? (
-          <span data-testid="records-decline-unpicked" style={hintStyle}>
-            {salesQuestionTexts.declineUnpicked}
-          </span>
-        ) : null}
-        {plannedDatePast ? (
-          <span role="alert" data-testid="records-next-date-error" style={{ color: colors.error }}>
-            {salesQuestionTexts.nextDatePast}
-          </span>
-        ) : null}
-        {closingNeedsReason || closingNeedsMemo ? (
-          <span data-testid="records-close-blocked" style={{ color: colors.error }}>
-            {closingNeedsReason
-              ? salesQuestionTexts.closeNeedsReason
-              : salesQuestionTexts.closeOtherNeedsMemo}
-          </span>
-        ) : null}
-        {method && dateError ? (
-          <span
-            role="alert"
-            id={`records-contact-date-error-${oppId}`}
-            data-testid="records-contact-date-error"
-            style={{ color: colors.error }}
-          >
-            {dateError}
-          </span>
-        ) : null}
-        {/* 저장 단추는 꼬리 질문·날짜·한 줄 메모 아래 맨 끝에 둔다(#691): 다 답한 뒤 위로 올라가지 않는다.
-            저장 알림("저장됨 21:15")도 이 자리에 남는다. */}
-        {method && coachMode && coachResult && questions ? (
-          <>
-            <CoachReview
-              questions={questions}
-              result={coachResult}
-              disabled={disabled}
-              saving={busy === 'contact'}
-              onSave={(selection) => void onCoachSave(selection)}
-              onEdit={onCoachEdit}
-            />
-            {blockMessage('contact')}
-          </>
-        ) : method && coachMode ? (
-          <div style={rowStyle}>
-            <Button
-              type="primary"
-              disabled={disabled || attemptedAt === '' || memoLine.trim() === ''}
-              loading={coachSending}
-              onClick={() => void onSendCoach()}
-              data-testid="coach-send"
-            >
-              {coachTexts.send}
-            </Button>
-            <Button
-              disabled={disabled || coachSending}
-              onClick={() => setCoachEditing(true)}
-              data-testid="coach-direct"
-            >
-              {coachTexts.direct}
-            </Button>
-            {coachSending ? (
-              <span aria-live="polite" style={hintStyle}>
-                {coachTexts.sending}
-              </span>
-            ) : null}
-            {coachError ? (
-              <span role="alert" data-testid="coach-error" style={{ color: colors.error }}>
-                {coachError}
-              </span>
-            ) : null}
-            {blockMessage('contact')}
-          </div>
-        ) : method ? (
-          <div style={rowStyle}>
-            <Button
-              type="primary"
-              disabled={
-                disabled ||
-                !result ||
-                attemptedAt === '' ||
-                plannedDatePast ||
-                closingNeedsReason ||
-                closingNeedsMemo
-              }
-              loading={busy === 'contact'}
-              onClick={() => void onSaveContact()}
-              data-testid="records-contact-save-button"
-            >
-              {recordsArea.contactSave}
-            </Button>
-            {blockMessage('contact')}
-          </div>
-        ) : (
-          blockMessage('note')
-        )}
-        {/* 제외한 회사에 접촉을 남기려 할 때만: 창 없이 이 자리에서 한 번 묻는다(#697). */}
-        {method && excluded && askExcluded ? (
-          <div
-            role="group"
-            aria-label={recordsArea.excludedAsk}
-            data-testid="records-excluded-ask"
-            style={rowStyle}
-          >
-            <span role="status">{recordsArea.excludedAsk}</span>
-            <Button
-              type="primary"
-              disabled={disabled}
-              onClick={() => onExcludedAnswer(true)}
-              data-testid="records-excluded-restore-button"
-            >
-              {recordsArea.excludedRestoreSave}
-            </Button>
-            <Button
-              disabled={disabled}
-              onClick={() => onExcludedAnswer(false)}
-              data-testid="records-excluded-keep-button"
-            >
-              {recordsArea.excludedKeepSave}
-            </Button>
-          </div>
-        ) : null}
-      </section>
-
+  // #847(PM 결정 2026-11-17): 확정된 것(지금까지 들은 답 · 단계 고치기 · 다음 일정)은 왼쪽 보고서 쪽 영업 단계 아래로.
+  // sideSlot이 있으면(넓은 화면의 오른쪽 영업 코치 칸) 그 자리로 옮겨 그리고, 없으면 전처럼 이 칸 안에 그린다.
+  const confirmedSummary = (
+    <SalesStepSummary
+      step={salesStep}
+      status={currentStatus}
+      questions={questions}
+      compact={inCoach}
+    />
+  );
+  const confirmedFixes = (
+    <>
       {/* 영업 단계 칸은 기본으로 접어 둔다(#674, PM 지시 2026-11-13): 단계는 꼬리 질문 답으로 저절로 저장되고
           지금 단계는 상세 맨 위 진행 막대에 보인다. 잘못됐을 때만 이 한 줄에서 펼쳐 고친다(창 없음).
           큰 단계 고치기와 세부 단계 고치기(#607)가 같은 접힌 자리에 있다. */}
@@ -1414,6 +1119,423 @@ export default function RecordsArea({
           ) : null}
         </div>
       </section>
+    </>
+  );
+
+  return (
+    <div data-testid="records-area" style={{ display: 'grid', gap: 24 }}>
+      {!canRecord ? (
+        <Typography.Text type="secondary" data-testid="records-pick-staff-text">
+          {recordsArea.pickStaffFirst}
+        </Typography.Text>
+      ) : null}
+
+      {/* #847: 영업 코치 칸에서는 위 "② 통화 뒤 — 기록 남기기" 제목이 같은 말을 해서 안내 줄을 뺀다. */}
+      {inCoach ? null : (
+        <Typography.Text type="secondary" data-testid="records-flow-guide">
+          {recordsArea.flowGuide}
+        </Typography.Text>
+      )}
+
+      {sideSlot ? null : confirmedSummary}
+
+      <section aria-labelledby={`records-entry-${oppId}`} style={blockStyle}>
+        {/* #847: 영업 코치 칸에서는 "② 통화 뒤 — 기록 남기기"와 겹쳐 화면에서 숨긴다(읽어 주는 도구에는 남김). */}
+        <Typography.Title
+          level={3}
+          id={`records-entry-${oppId}`}
+          style={inCoach ? screenReaderOnly : { margin: 0 }}
+        >
+          {recordsArea.entryTitle}
+        </Typography.Title>
+        <div style={rowStyle}>
+          <NativeSelect
+            label={recordsArea.entryKind}
+            value={
+              method && direction && contactAnswers[direction.questionId] !== directionDefault
+                ? `${method}:${contactAnswers[direction.questionId]}`
+                : recordKind
+            }
+            options={kindOptionsOf(direction)}
+            onChange={(value) => {
+              const [kind, answerId] = (value ?? 'CALL').split(':');
+              setRecordKind(kind as RecordKind);
+              if (direction && directionDefault) {
+                setContactPicks((previous) => ({
+                  ...previous,
+                  [direction.questionId]: answerId ?? directionDefault,
+                }));
+              }
+              clearCoach();
+            }}
+            disabled={disabled}
+            testId="records-kind"
+            id={recordsEntryInputId(oppId)}
+          />
+          {method ? (
+            <>
+              {/* 누가 먼저 연락했나(#691): 기본 "우리가"가 골라져 있어 대부분 누를 필요가 없다. 방문은 "우리가 감 / 상대가 옴". */}
+              {contactQuestions.slice(direction ? 1 : 0).map((question) => (
+                <NativeSelect
+                  key={question.questionId}
+                  label={question.text}
+                  value={contactAnswers[question.questionId] ?? null}
+                  options={question.answers.map((option) => ({
+                    value: option.answerId,
+                    label:
+                      method === 'VISIT'
+                        ? (salesQuestionTexts.contactVisitLabels[option.answerId] ?? option.label)
+                        : option.label,
+                  }))}
+                  onChange={(value) =>
+                    setContactPicks((previous) => {
+                      const next = { ...previous };
+                      if (value === null) delete next[question.questionId];
+                      else next[question.questionId] = value;
+                      return next;
+                    })
+                  }
+                  disabled={disabled}
+                  testId={`records-contact-question-${question.questionId}`}
+                />
+              ))}
+              <NativeSelect
+                label={recordsArea.contactResult}
+                placeholder={`${recordsArea.contactResult} ${recordsArea.selectPlaceholder}`}
+                value={result}
+                options={options(contactResultLabels)}
+                onChange={(value) => onResultChange(value as ContactResult | null)}
+                disabled={disabled}
+                testId="records-contact-result"
+              />
+              <Input
+                type="date"
+                aria-label={recordsArea.contactDate}
+                aria-invalid={dateError ? 'true' : undefined}
+                aria-describedby={dateError ? `records-contact-date-error-${oppId}` : undefined}
+                style={{ width: 160 }}
+                value={attemptedAt}
+                max={todayKst()}
+                onChange={(event) => {
+                  setAttemptedAt(event.target.value);
+                  setDateError(null);
+                }}
+                disabled={disabled}
+                data-testid="records-contact-date"
+              />
+            </>
+          ) : null}
+        </div>
+        {method ? null : (
+          <>
+            <Input.TextArea
+              aria-label={recordsArea.noteLabel}
+              value={noteText}
+              rows={2}
+              autoSize={{ minRows: 2, maxRows: 6 }}
+              maxLength={noteMax}
+              onChange={(event) => setNoteText(event.target.value)}
+              disabled={disabled}
+              data-testid="records-note-input"
+            />
+            <span style={hintStyle} data-testid="records-note-hint">
+              {inCoach && aiReadsMemo ? (
+                // #847: 영업 코치 칸에서는 메모 안내도 한 줄로.
+                coachTexts.noteHint
+              ) : (
+                <>
+                  {aiReadsMemo ? memoReadTexts.noteHintAi : recordsArea.noteHint}{' '}
+                  {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}
+                </>
+              )}{' '}
+              <span data-testid="records-note-counter">
+                {recordsArea.noteCounter(noteText.length, noteMax)}
+              </span>
+            </span>
+            <div style={rowStyle}>
+              {/* #847: 받는 사람을 고르면 전달 사항(받는 사람이 [확인했어요])으로 남는다. */}
+              {noteTargets.length > 0 ? (
+                <NativeSelect
+                  label={handoffTexts.toLabel}
+                  placeholder={recordsArea.noteToNone}
+                  value={noteTo}
+                  options={noteTargets.map((entry) => ({
+                    value: entry.key,
+                    label: entry.displayName,
+                  }))}
+                  onChange={setNoteTo}
+                  disabled={disabled}
+                  testId="records-note-to"
+                />
+              ) : null}
+              <Button
+                type="primary"
+                disabled={disabled || noteText.trim() === ''}
+                loading={busy === 'note'}
+                onClick={() => void onSaveNote()}
+                data-testid="records-note-save-button"
+              >
+                {noteTo ? handoffTexts.send : recordsArea.noteSave}
+              </Button>
+            </div>
+          </>
+        )}
+        {declineMode ? (
+          <div data-testid="records-decline" style={{ display: 'grid', gap: 4 }}>
+            <div id={`records-decline-label-${oppId}`}>{salesQuestionTexts.declineAsk}</div>
+            <Radio.Group
+              aria-labelledby={`records-decline-label-${oppId}`}
+              optionType="button"
+              value={declineChoice}
+              disabled={disabled}
+              onChange={(event) => onDeclineChoice(event.target.value as string)}
+              options={[
+                ...declineOptions.map((option) => ({
+                  value: option.answerId,
+                  label: salesQuestionTexts.declineCloseLabels[option.closes] ?? option.label,
+                })),
+                { value: DECLINE_CONTINUE, label: salesQuestionTexts.declineContinue },
+              ]}
+            />
+          </div>
+        ) : null}
+        {method && spokeToCompany && questions && !coachMode ? (
+          <SalesQuestionFields
+            questions={questions}
+            step={salesStep}
+            picked={picked}
+            allOnly={result === 'DECLINED'}
+            onPick={(questionId, answerId) =>
+              setPicked((previous) => {
+                const next = { ...previous };
+                if (answerId === null) delete next[questionId];
+                else next[questionId] = answerId;
+                return next;
+              })
+            }
+            pickedMany={pickedMany}
+            onPickMany={(questionId, values) =>
+              setPickedMany((previous) => ({ ...previous, [questionId]: values }))
+            }
+            marks={choiceMarks}
+            nextDate={nextDate}
+            onNextDate={setNextDate}
+            nextDateMin={todayKst()}
+            nextNone={nextNone}
+            onNextNone={setNextNone}
+            hideQuestionIds={
+              declineMode && route
+                ? declineChoice === DECLINE_CONTINUE
+                  ? [route.closingId]
+                  : [route.openerId, route.closingId]
+                : []
+            }
+            hideAnswerIds={
+              declineMode && route && declineChoice === DECLINE_CONTINUE
+                ? { [route.openerId]: route.endAnswerIds }
+                : {}
+            }
+            limit={config?.records?.questionsPerContact ?? null}
+            stepLine={
+              declineMode && declineChoice === DECLINE_CONTINUE
+                ? salesQuestionTexts.stepLineDeclinedContinue
+                : undefined
+            }
+            disabled={disabled}
+          />
+        ) : null}
+        {method && spokeToCompany && questionsFailed ? (
+          <span style={hintStyle} data-testid="sales-questions-failed">
+            {salesQuestionTexts.loadFailed}
+          </span>
+        ) : null}
+        {/* #847: 영업 코치 칸에서는 결과를 고르기 전에도 메모 칸이 보인다(전에는 결과를 골라야 나타났다). */}
+        {method && (result || inCoach) ? (
+          <>
+            {coachMode ? <CoachChecklist questions={questions} step={salesStep} /> : null}
+            <Input
+              aria-label={
+                coachMode || inCoach ? coachTexts.memoLabel : salesQuestionTexts.memoLabel
+              }
+              placeholder={
+                coachMode || inCoach ? coachTexts.memoPlaceholder : salesQuestionTexts.memoLabel
+              }
+              value={memoLine}
+              maxLength={MEMO_LINE_MAX_LENGTH}
+              onChange={(event) => setMemoLine(event.target.value)}
+              // 정리를 받은 뒤에는 메모를 고정한다(받은 정리와 저장할 메모가 어긋나지 않게). 바꾸려면 [고치기].
+              disabled={disabled || coachResult !== null || coachSending}
+              data-testid="records-contact-memo"
+            />
+            <span style={hintStyle} data-testid="records-contact-memo-hint">
+              {coachMode || (inCoach && aiReadsMemo) ? (
+                // #847: 코치 메모 안내는 한 줄(직함으로 적기 · 이름·전화는 지운 뒤 AI로).
+                coachTexts.sendHint
+              ) : (
+                <>
+                  {aiReadsMemo ? memoReadTexts.memoLineHintAi : salesQuestionTexts.memoHint}{' '}
+                  {aiReadsMemo ? memoReadTexts.nameHintAi : memoReadTexts.nameHint}
+                </>
+              )}{' '}
+              {recordsArea.noteCounter(memoLine.length, MEMO_LINE_MAX_LENGTH)}
+            </span>
+          </>
+        ) : null}
+        {closingLabel ? (
+          <span data-testid="records-close-preview" aria-live="polite">
+            {salesQuestionTexts.closePreview(closingLabel)}
+          </span>
+        ) : null}
+        {nextAction && plannedDate !== '' && !plannedDatePast ? (
+          <span data-testid="records-next-date-preview" aria-live="polite">
+            {salesQuestionTexts.nextDatePreview(
+              formatMonthDay(plannedDate) ?? plannedDate,
+              nextAction.label,
+            )}
+          </span>
+        ) : null}
+        {nextAction && !closing && nextNone ? (
+          <span data-testid="records-next-none-preview" aria-live="polite">
+            {outcome?.nextScheduleAt
+              ? salesQuestionTexts.nextDateNoneKeeps(
+                  formatMonthDay(outcome.nextScheduleAt) ?? outcome.nextScheduleAt,
+                  outcome.nextScheduleNote ?? '',
+                )
+              : salesQuestionTexts.nextDateNonePreview}
+          </span>
+        ) : null}
+        {declineMode && declineChoice === null ? (
+          <span data-testid="records-decline-unpicked" style={hintStyle}>
+            {salesQuestionTexts.declineUnpicked}
+          </span>
+        ) : null}
+        {plannedDatePast ? (
+          <span role="alert" data-testid="records-next-date-error" style={{ color: colors.error }}>
+            {salesQuestionTexts.nextDatePast}
+          </span>
+        ) : null}
+        {closingNeedsReason || closingNeedsMemo ? (
+          <span data-testid="records-close-blocked" style={{ color: colors.error }}>
+            {closingNeedsReason
+              ? salesQuestionTexts.closeNeedsReason
+              : salesQuestionTexts.closeOtherNeedsMemo}
+          </span>
+        ) : null}
+        {method && dateError ? (
+          <span
+            role="alert"
+            id={`records-contact-date-error-${oppId}`}
+            data-testid="records-contact-date-error"
+            style={{ color: colors.error }}
+          >
+            {dateError}
+          </span>
+        ) : null}
+        {/* 저장 단추는 꼬리 질문·날짜·한 줄 메모 아래 맨 끝에 둔다(#691): 다 답한 뒤 위로 올라가지 않는다.
+            저장 알림("저장됨 21:15")도 이 자리에 남는다. */}
+        {method && coachMode && coachResult && questions ? (
+          <>
+            <CoachReview
+              questions={questions}
+              result={coachResult}
+              disabled={disabled}
+              saving={busy === 'contact'}
+              onSave={(selection) => void onCoachSave(selection)}
+              onEdit={onCoachEdit}
+            />
+            {blockMessage('contact')}
+          </>
+        ) : method && coachMode ? (
+          <div style={rowStyle}>
+            <Button
+              type="primary"
+              disabled={disabled || attemptedAt === '' || memoLine.trim() === ''}
+              loading={coachSending}
+              onClick={() => void onSendCoach()}
+              data-testid="coach-send"
+            >
+              {coachTexts.send}
+            </Button>
+            <Button
+              disabled={disabled || coachSending}
+              onClick={() => setCoachEditing(true)}
+              data-testid="coach-direct"
+            >
+              {coachTexts.direct}
+            </Button>
+            {coachSending ? (
+              <span aria-live="polite" style={hintStyle}>
+                {coachTexts.sending}
+              </span>
+            ) : null}
+            {coachError ? (
+              <span role="alert" data-testid="coach-error" style={{ color: colors.error }}>
+                {coachError}
+              </span>
+            ) : null}
+            {blockMessage('contact')}
+          </div>
+        ) : method ? (
+          <div style={rowStyle}>
+            <Button
+              type="primary"
+              disabled={
+                disabled ||
+                !result ||
+                attemptedAt === '' ||
+                plannedDatePast ||
+                closingNeedsReason ||
+                closingNeedsMemo
+              }
+              loading={busy === 'contact'}
+              onClick={() => void onSaveContact()}
+              data-testid="records-contact-save-button"
+            >
+              {recordsArea.contactSave}
+            </Button>
+            {blockMessage('contact')}
+          </div>
+        ) : (
+          blockMessage('note')
+        )}
+        {/* 제외한 회사에 접촉을 남기려 할 때만: 창 없이 이 자리에서 한 번 묻는다(#697). */}
+        {method && excluded && askExcluded ? (
+          <div
+            role="group"
+            aria-label={recordsArea.excludedAsk}
+            data-testid="records-excluded-ask"
+            style={rowStyle}
+          >
+            <span role="status">{recordsArea.excludedAsk}</span>
+            <Button
+              type="primary"
+              disabled={disabled}
+              onClick={() => onExcludedAnswer(true)}
+              data-testid="records-excluded-restore-button"
+            >
+              {recordsArea.excludedRestoreSave}
+            </Button>
+            <Button
+              disabled={disabled}
+              onClick={() => onExcludedAnswer(false)}
+              data-testid="records-excluded-keep-button"
+            >
+              {recordsArea.excludedKeepSave}
+            </Button>
+          </div>
+        ) : null}
+      </section>
+
+      {sideSlot ? null : confirmedFixes}
+      {sideSlot
+        ? createPortal(
+            <div data-testid="records-side" style={{ display: 'grid', gap: 12 }}>
+              {confirmedSummary}
+              {confirmedFixes}
+            </div>,
+            sideSlot,
+          )
+        : null}
     </div>
   );
 }

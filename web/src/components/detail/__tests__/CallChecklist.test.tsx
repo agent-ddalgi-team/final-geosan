@@ -10,7 +10,11 @@ import type {
   SalesStepView,
 } from '../../../api/types';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
-import CallChecklist, { callCheckCountOf, nextActionWithoutMissing } from '../CallChecklist';
+import CallChecklist, {
+  callCheckCountOf,
+  checkRowsOf,
+  nextActionWithoutMissing,
+} from '../CallChecklist';
 
 const header = {
   ...(detailFixture.data.header as unknown as DetailHeader),
@@ -336,5 +340,135 @@ describe('"한눈에 › 확인할 것"과 같은 기준 (#691)', () => {
         questions,
       ),
     ).toBe(0);
+  });
+});
+
+// #847(PM 결정 2026-11-17): 오른쪽 영업 코치 칸의 "확인사항". 주제 4묶음 + 줄마다 짧은 요약과 통화 중 체크칸(저장 안 함).
+describe('확인사항 주제별 묶음 (#847)', () => {
+  const geosanQuestion: ReviewItem = {
+    itemId: 'Q:q-2',
+    kind: 'QUESTION',
+    source: 'AI',
+    text: '전기아연도금의 적용 범위가 맞습니까?',
+    targetLabel: '거산',
+    checked: false,
+  };
+
+  function renderGrouped(items = [...reviewItems, geosanQuestion]) {
+    render(
+      <CallChecklist
+        header={header}
+        reasons={{
+          reason: '이유',
+          nextAction: '도금을 외주하는지 확인 · 자료 미확보: 납품실적·증설·공고·채용',
+          questions: [],
+        }}
+        processLinks={[pendingLink]}
+        reviewItems={items}
+        requirements={[]}
+        salesStep={salesStep}
+        questions={questions}
+        title="확인사항"
+        grouped
+        prep={{
+          noteId: 'note-5',
+          lines: ['외주처는 어디인가요?'],
+          at: '2026-11-15T10:00:00+09:00',
+          by: 'park-lee',
+        }}
+      />,
+    );
+  }
+
+  it('Given 지난 통화 정리·회사 값·꼬리 질문·검토 질문 When 확인사항을 열면 Then 주제 묶음 순서로, 굵은 머리말 없이 짧은 요약이 보인다', () => {
+    renderGrouped();
+    const titles = screen.getAllByTestId('check-group-title').map((el) => el.textContent);
+    expect(titles).toEqual(['지난 통화에서 이어서 · 11/15', '회사 확인', '수요·진행']);
+    const company = screen.getByTestId('check-group-company');
+    // 후속 조치 문장은 끝의 "확인"을 떼어 요약으로. "후속 조치 —" 머리말은 없다.
+    expect(company).toHaveTextContent('도금을 외주하는지');
+    expect(screen.getByRole('checkbox', { name: '확인: 도금을 외주하는지' })).toBeInTheDocument();
+    expect(company).not.toHaveTextContent('후속 조치');
+    expect(company).toHaveTextContent('맡길 공정');
+    expect(company).toHaveTextContent('부품 소재');
+    expect(company).toHaveTextContent('어느 산업인지');
+    // 상대 회사에 대한 검토 질문은 회사 확인. 거산에 대한 질문은 넣지 않는다(PM 결정 2: 왼쪽 공정 [고치기]로).
+    expect(company).toHaveTextContent('대상 부품의 요구 성능은 무엇인가요?');
+    expect(screen.getByTestId('check-group-demand')).toHaveTextContent(
+      '외주처를 바꿀 생각이 있나요?',
+    );
+    expect(screen.getByTestId('detail-review')).not.toHaveTextContent(
+      '전기아연도금의 적용 범위가 맞습니까?',
+    );
+    expect(screen.queryByTestId('review-tag')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('call-hint')).not.toBeInTheDocument();
+  });
+
+  it('Given 이미 확인 표시가 저장된 질문 When 열면 Then 체크된 채로 시작하고, 체크칸을 누르면 화면에서만 바뀌며 남은 수가 줄어든다', async () => {
+    const user = userEvent.setup();
+    renderGrouped();
+    const saved = screen.getByRole('checkbox', {
+      name: '확인: 대상 부품의 요구 성능은 무엇인가요?',
+    });
+    expect(saved).toBeChecked();
+    const total = screen.getAllByRole('checkbox').length;
+    expect(screen.getByTestId('detail-review-count')).toHaveTextContent(String(total - 1));
+    const sample = screen.getByRole('checkbox', { name: '확인: 맡길 공정' });
+    await user.click(sample);
+    expect(sample).toBeChecked();
+    expect(screen.getByTestId('detail-review-count')).toHaveTextContent(String(total - 2));
+    await user.click(sample);
+    expect(sample).not.toBeChecked();
+  });
+
+  it('Given 질문 파일에 짧은 말(keyword)이 있으면 When 꼬리 질문 줄을 만들 때 Then 질문 문장 대신 짧은 말을 쓴다', () => {
+    const withKeyword: SalesQuestions = {
+      ...questions,
+      questions: questions.questions.map((question) =>
+        question.questionId === 'SWITCH_INTENT'
+          ? { ...question, coach: { fill: 'STAFF', required: true, keyword: '외주처 바꿀 생각' } }
+          : question,
+      ),
+    };
+    render(
+      <CallChecklist
+        header={header}
+        reasons={{ reason: '이유', nextAction: '', questions: [] }}
+        processLinks={[pendingLink]}
+        reviewItems={[]}
+        requirements={[]}
+        salesStep={salesStep}
+        questions={withKeyword}
+        grouped
+      />,
+    );
+    expect(screen.getByTestId('check-group-demand')).toHaveTextContent('외주처 바꿀 생각');
+    expect(screen.getByTestId('check-group-demand')).not.toHaveTextContent('있나요?');
+    expect(screen.queryByTestId('check-group-prep')).not.toBeInTheDocument();
+  });
+});
+
+describe('확인사항 › 후속 조치 나누기 (#847)', () => {
+  it('Given "아연도금 물량이 실제로 있는지, 도금을 외주하는지 확인" When 확인사항을 만들면 Then 두 줄로 나뉘고 끝의 "확인"은 뗀다', () => {
+    const rows = checkRowsOf(
+      {
+        header: { ...header, classificationCode: 'CONTACT_URGENT', industriesSource: 'STAFF' },
+        reasons: {
+          reason: '이유',
+          nextAction: '아연도금 물량이 실제로 있는지, 도금을 외주하는지 확인',
+          questions: [],
+        },
+        processLinks: [{ ...pendingLink, appliedMaterial: 'AL_CASTING', result: 'PASS' }],
+        reviewItems: [],
+        requirements: [],
+        salesStep: null,
+      },
+      questions,
+      null,
+    );
+    expect(rows.map((row) => [row.group, row.label])).toEqual([
+      ['company', '아연도금 물량이 실제로 있는지'],
+      ['company', '도금을 외주하는지'],
+    ]);
   });
 });

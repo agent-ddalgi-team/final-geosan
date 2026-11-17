@@ -264,7 +264,7 @@ describe('AnalysisCharts › 회사별로 어디서 멈췄나(타임라인)', ()
     const dots = within(row).getAllByTestId('chart-timeline-dot');
     expect(dots.map((dot) => dot.getAttribute('title'))).toEqual([
       '9/20 · 전화 · 부재',
-      '10/2 · 방문 · 연결됨 · → 연결됨',
+      '10/2 · 대면 · 연결됨 · → 연결됨',
       '10/5 · → 수요 확인',
       '10/8 · 메일 · 연결됨',
     ]);

@@ -28,7 +28,8 @@ describe('labels', () => {
       '성사',
       '거절',
     ]);
-    expect(Object.values(contactMethodLabels)).toEqual(['전화', '메일', '방문']);
+    // #847(PM 결정 2026-11-17): "방문" → "대면".
+    expect(Object.values(contactMethodLabels)).toEqual(['전화', '메일', '대면']);
     expect(Object.values(contactResultLabels)).toEqual(['연결됨', '부재', '거절']);
     expect(Object.values(noteKindLabels)).toEqual(['메모', '자료 조사']);
     // 앞의 세 가지는 처음 약속한 그대로이고, 뒤는 약속 요약에 더해진 종류다(#319 2026-11-06 PM 결정 한 가지,

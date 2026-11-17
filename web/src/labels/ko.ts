@@ -560,13 +560,25 @@ export const detailHeader = {
   pickStaffOnce: '담당자를 고르면 관심·다시 조사·기록을 할 수 있습니다.',
 } as const;
 
-/** #803 오른쪽 영업 코치 판의 칸 제목: 일하는 순서대로 ① 통화 전 → ② 기록 남기기·코치 답. */
+/**
+ * #803 오른쪽 영업 코치 판의 칸 제목. #847(PM 결정 2026-11-17): "확인사항"(이전 맥락에 맞춰 물을 것, 주제별 체크)과
+ * "대화 기록"(이번 통화 메모·결과). 확정된 것(들은 답·단계·다음 일정)은 왼쪽 영업 단계 아래로 옮겼다.
+ */
 export const coachSteps = {
-  before: '① 통화 전 — 물어볼 것',
-  beforeHint: '들은 답은 아래 ② 기록 남기기의 꼬리 질문과 메모에 적습니다.',
-  record: '② 기록 남기기 → 코치 답',
+  before: '확인사항',
+  record: '대화 기록',
   /** "알아낸 것"을 접은 묶음 제목. */
   knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
+} as const;
+
+/** #847 상세 "한눈에 › 공정" 옆 [고치기](PM 결정 2026-11-17: 거산 쪽 확인 질문 대신 나중에 고친다). */
+export const processFixTexts = {
+  edit: '고치기',
+  save: '저장',
+  cancel: '취소',
+  groupLabel: '이 회사의 공정 고르기',
+  hint: '고른 공정이 이 회사의 공정 전체입니다. 저장하면 점수를 다시 계산합니다.',
+  saveFailed: '공정을 저장하지 못했습니다.',
 } as const;
 
 /** #803 상세 작은 지도. */
@@ -1101,7 +1113,13 @@ export const salesQuestionTexts = {
     '아직 고르지 않았습니다. 이대로 저장하면 접촉만 남고 영업 단계는 바뀌지 않습니다.',
   stepLineDeclinedContinue: '거절이지만 끝이 아니라면 다음 할 일과 날짜를 골라 주세요.',
   /** 방문일 때 "누가 먼저 연락했나요?" 보기의 다른 말(보기 코드로 찾는다). 없으면 질문 파일의 문구. */
-  contactVisitLabels: { OURS: '우리가 감', THEIRS: '상대가 옴' } as Record<string, string>,
+  contactVisitLabels: { OURS: '외근', THEIRS: '내방' } as Record<string, string>,
+  /** #847(PM 결정 2026-11-17): 종류 칸에 합친 "누가 먼저 연락했나요?". "전화 · 발신", "대면 · 내방". */
+  contactDirectionLabels: {
+    CALL: { OURS: '발신', THEIRS: '수신' },
+    EMAIL: { OURS: '발신', THEIRS: '수신' },
+    VISIT: { OURS: '외근', THEIRS: '내방' },
+  } as Record<string, Record<string, string>>,
 } as const;
 
 /** 꼬리 질문의 공정·산업 확인(#652): 여러 개를 고르면 그 회사의 공정·산업이 확정된다. */
@@ -1147,7 +1165,8 @@ export const salesChoiceTexts = {
   clearedHint: '하나 이상 골라야 바뀝니다. 이대로 저장하면 지금 값 그대로입니다.',
 } as const;
 
-export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
+/** #847(PM 결정 2026-11-17): "방문"을 "대면"으로(외근·내방은 종류 칸에서 고른다). */
+export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '대면' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
 /** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
 export const judgmentCheckLabels = {
@@ -1214,6 +1233,8 @@ export const recordsArea = {
   title: '기록',
   /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
   entryTitle: '기록 남기기',
+  /** #847: 메모 받는 사람 칸의 첫 보기(고르지 않으면 그냥 메모). */
+  noteToNone: '받는 사람 없음 (메모만)',
   entryKind: '종류',
   contactMethod: '방법',
   contactResult: '결과',
@@ -2179,7 +2200,8 @@ export const detailReport = {
       `${[...words, ...names.slice(0, 3)].join(' · ')}${names.length > 3 ? ` 외 ${names.length - 3}개` : ''}`,
     checkNone: '지금 확인할 것 없음',
     /** 낱말은 없는데 아래 "2. 통화에서 확인할 것"에 줄이 있을 때(#691). */
-    checkCallCount: (count: number) => `통화에서 확인할 것 ${count}가지 (아래 2번)`,
+    /** #847: 오른쪽 영업 코치 칸 "확인사항"과 같은 줄 수. */
+    checkCallCount: (count: number) => `확인사항 ${count}가지`,
     /** "마지막 접촉 11/12" */
     lastContact: (date: string) => `마지막 접촉 ${date}`,
     phone: '대표번호',
@@ -2220,6 +2242,20 @@ export const detailReport = {
     gapHead: (count: number, open: boolean) =>
       `${open ? '▾' : '▸'} 아직 근거·자료가 없는 항목 ${count}개 ${open ? '접기' : '보기'}`,
     gapListLabel: '근거·자료가 없는 항목 목록',
+    /**
+     * #847(PM 결정 2026-11-17): 오른쪽 영업 코치 칸의 "확인사항". 주제 4묶음으로 나누고 줄마다 짧은 요약 + 체크칸.
+     * 체크는 통화 중 화면에서만(저장 안 함, 새로고침하면 풀림).
+     */
+    groups: {
+      prep: '지난 통화에서 이어서',
+      company: '회사 확인',
+      demand: '수요·진행',
+    },
+    /** "지난 통화에서 이어서 · 11/15" */
+    prepGroup: (date: string) => `지난 통화에서 이어서 · ${date}`,
+    /** 줄 요약(질문 파일에 짧은 말이 없을 때): 공정·소재·산업 확인 줄. */
+    short: { process: '맡길 공정', material: '부품 소재', industry: '어느 산업인지' },
+    checkLabel: (text: string) => `확인: ${text}`,
   },
   /** "3. 점수 자세히 보기" 제목 줄 요약과 그 안으로 옮긴 AI 점수 입력 제안. */
   scores: {
@@ -2439,8 +2475,6 @@ export const memoReadTexts = {
  * [이대로 저장]·[고치기]. 이름은 이 PC 안에만 남고 AI에는 직함과 내용만 간다. 사람이 저장을 눌러야 저장된다.
  */
 export const coachTexts = {
-  /** 상세 "기록 남기기" 맨 위 통화 전 칸(기존 [통화 준비]를 코치로 옮김). */
-  beforeCallTitle: '영업 코치 · 통화 전',
   checklistLabel: '확인사항',
   /** "확인사항: 통화 상대 · 다음 할 일" */
   checklist: (keywords: readonly string[]) => `확인사항: ${keywords.join(' · ')}`,
@@ -2448,8 +2482,10 @@ export const coachTexts = {
   memoPlaceholder:
     '예: 생산관리팀 김 과장 통화. 아연도금 외주 줌. 소개서 보내기로, 금요일 다시 전화',
   send: '보내기 💰',
-  sendHint:
-    '메모에서 이름·전화를 지운 사본과 이 회사의 지난 기록만 AI에 보냅니다. 저장은 확인한 뒤에 합니다.',
+  /** #847: 메모 칸 아래 안내를 한 줄로(전에는 두 문장 + 이름 안내 두 문장). AI로 나간다는 사실은 남긴다. */
+  sendHint: '사람은 직함으로(예: 김 과장) · 이름·전화는 지운 뒤 AI에 보냅니다.',
+  /** #847: 영업 코치 칸의 메모(접촉 아님) 안내 한 줄. 고칠 수 없다는 것과 이름이 AI로 안 간다는 것만. */
+  noteHint: '고치거나 지울 수 없어요 · 사람은 직함으로(예: 김 과장), 이름은 AI로 보내지 않습니다.',
   direct: '직접 고르기',
   sending: 'AI가 메모를 정리하는 중입니다…',
   failed: '코치 답을 받지 못했습니다.',
@@ -2465,21 +2501,13 @@ export const coachTexts = {
   suggestUndo: '빼기',
   missingTitle: '빠진 필수 질문',
   missingNone: '빠진 필수 질문이 없습니다.',
-  /** (#748) 빠진 필수 질문 제목 아래 한 줄. */
-  missingHint: '답하면 단계가 바뀔 수 있어요.',
   /** (#748) "단계: 연결 전 → 연결됨 (저장하면)" */
   stepMove: (before: string, after: string) => `단계: ${before} → ${after} (저장하면)`,
   stepSame: (step: string) => `단계: ${step} 그대로`,
   feedbackTitle: '코치 피드백',
   feedbackNone: '이번에는 짚을 것이 없습니다.',
-  /** (#750) 피드백은 고르지 않고 [이대로 저장] 때 모두 남는다. */
-  feedbackSaved: '저장하면 회사 보고서 "영업 방향"에 남습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
-  nextCallSaved: '저장하면 다음 통화 전 칸과 보고서에 보입니다.',
-  /** (#750) 상세 "기록 남기기" 맨 위 통화 전 칸: "11/15 통화 뒤 코치 정리" */
-  prepTitle: (date: string) => `${date} 통화 뒤 코치 정리 · 다음 통화에 물어볼 것`,
-  prepNone: '통화 뒤 메모를 [보내기 💰] 하면 다음 통화에 물어볼 것이 여기에 정리됩니다.',
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2487,7 +2515,8 @@ export const coachTexts = {
   scheduleNoDate: (label: string) => `다음 할 일: ${label} (날짜는 메모에 없음)`,
   save: '이대로 저장',
   edit: '고치기',
-  editHint: '[고치기]를 누르면 AI가 채운 답이 골라진 채로 지금 양식이 열립니다.',
+  /** #847: 피드백·물어볼 것이 어디에 남는지 저장 단추 위 한 줄로(전에는 칸마다 한 줄씩, [고치기] 안내까지 세 줄). */
+  savedWhere: '저장하면 피드백은 회사 보고서에, 물어볼 것은 다음 확인사항에 남습니다.',
   adviceFailed: '접촉은 저장했지만 피드백을 남기지 못했습니다.',
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
 } as const;

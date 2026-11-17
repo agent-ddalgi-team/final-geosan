@@ -1029,6 +1029,12 @@ export interface RelationResponse {
 
 // ---------- POST /opportunities/{oppId}/industries (상세 산업군 칩, #646) ----------
 
+/** #847 상세 "한눈에 › 공정" [고치기] 저장 응답(C1 `POST /opportunities/{oppId}/processes`). */
+export interface ProcessesResponse {
+  /** 저장 뒤 확정 공정 코드(거산 공정 목록 순서). */
+  processCodes: string[];
+}
+
 export interface IndustriesResponse {
   industries: string[];
   /** STAFF = 담당자 확정. 빈 배열로 되돌렸으면 null. */
