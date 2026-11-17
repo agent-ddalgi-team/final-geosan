@@ -33,7 +33,7 @@ def team_env(dashboard_env):
             {"key": "BOSS", "label": "대표", "staffKeys": ["viewer", "nobody"]},
         ]
         if teams is None:
-            session.add(AppSetting(key="handoffTeams", value=value, updated_by="test"))
+            session.add(AppSetting(setting_key="handoffTeams", value=value, updated_by="test"))
         else:
             teams.value = value
     return dashboard_env
