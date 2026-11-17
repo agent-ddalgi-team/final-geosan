@@ -1,6 +1,7 @@
-// 영업 분석 아래 "기록에서 배우기"(#802 1단계, PM 지시 2026-11-16 "쓸수록 좋아지는 분석").
-// 서버가 저장된 영업 기록만으로 센 값(AI 없음)을 그림·표로 보인다. 실패에서 배우기를 먼저 둔다.
-// 표본이 기준보다 적은 신호·조합은 회색 "판단 보류"로 두고, 질문지 다듬기는 "제안 · 승인 전"이다.
+// 영업 분석 아래 "기록에서 배우기"(#802, #820 PM 결정 2026-11-17 "섞어 쓰기").
+// 서버가 저장된 영업 기록만으로 센 값(AI 없음)을 미리 정한 기준 없이 펼쳐 보인다. 맨 위는 지금 기록이 없어도
+// 쓸모 있는 "답 채움률", 그다음 "눈에 띔"(결론 아님 · 사람 확인 전), 실패에서 배우기, 펼친 표 순서다.
+// 끝난 회사가 표본 기준보다 적은 칸은 회색 "표본 부족"이고, 질문지 다듬기는 "손볼 만함 · 승인 전"이다.
 // 회사 이름·메모 글은 응답에 없다. 질문 문구·보기 이름은 질문 파일(GET /sales-questions)에서 읽고,
 // 못 읽으면 코드 그대로 보인다(숫자는 그대로).
 import { useEffect, useState } from 'react';
@@ -8,7 +9,8 @@ import type { ReactNode } from 'react';
 import { getSalesQuestions } from '../../api/client';
 import type {
   AnalysisPeriod,
-  PatternSignal,
+  PatternOutcomeCells,
+  PatternStandout,
   SalesPatterns as Patterns,
 } from '../../api/salesAnalysis';
 import { getSalesPatterns } from '../../api/salesAnalysis';
@@ -99,14 +101,65 @@ function stepText(step: string | null): string {
   return step === null ? texts.noStep : labelFor(salesStepLabels, step);
 }
 
-function signalName(signal: PatternSignal, questions: SalesQuestions | null): string {
-  if (signal.code !== 'ANSWER' || !signal.questionId) {
-    return texts.signalNames[signal.code] ?? signal.code;
+/** 펼친 표 한 줄. 표본 부족이면 회색. */
+function CellRow({
+  label,
+  row,
+  testId,
+}: {
+  label: string;
+  row: PatternOutcomeCells;
+  testId: string;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      data-judged={row.judged}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(90px, 30%) 1fr',
+        gap: 8,
+        color: row.judged ? colors.text : colors.textSecondary,
+      }}
+    >
+      <span style={{ overflowWrap: 'anywhere' }}>{label}</span>
+      <span style={{ display: 'grid', gap: 2 }}>
+        <span
+          aria-hidden="true"
+          style={{ display: 'flex', height: 10, borderRadius: 4, overflow: 'hidden' }}
+        >
+          <span style={{ flex: row.won, background: row.judged ? BLUE : GREY }} />
+          <span style={{ flex: row.failed, background: row.judged ? ORANGE : GREY }} />
+          <span style={{ flex: row.inProgress, background: colors.bgLayout }} />
+        </span>
+        <span style={secondary}>
+          {texts.cells(row.won, row.failed, row.inProgress, row.wonRatio)}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function standoutName(
+  item: PatternStandout,
+  questions: SalesQuestions | null,
+  processNames: Record<string, string>,
+): string {
+  if (item.table === 'CONTACTS_BEFORE_VISIT') {
+    const visited = item.visited ? texts.contactVisited : texts.contactNoVisit;
+    return `${texts.contactsTitle} · ${visited} ${texts.contactBuckets[item.bucket ?? ''] ?? item.bucket}`;
   }
-  const answers = signal.answerIds
-    .map((id) => answerText(questions, signal.questionId as string, id))
-    .join('·');
-  return texts.answerSignal(questionText(questions, signal.questionId), answers);
+  if (item.table === 'LONGEST_GAP') {
+    return `${texts.gapTitle} · ${texts.gapBuckets[item.bucket ?? ''] ?? item.bucket}`;
+  }
+  if (item.table === 'ANSWER' && item.questionId && item.answerId) {
+    return `${questionText(questions, item.questionId)} = ${answerText(questions, item.questionId, item.answerId)}`;
+  }
+  return [
+    item.processCode ? (processNames[item.processCode] ?? item.processCode) : texts.comboUnknown,
+    item.industry ?? texts.comboUnknown,
+    item.region ?? texts.comboUnknown,
+  ].join(' × ');
 }
 
 export interface SalesPatternsProps {
@@ -158,7 +211,12 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
   const current = state?.key === key ? state : null;
   if (!current) return null;
   // 옛 서버(패턴 경로 없음)나 모양이 다른 응답이면 숫자를 지어내지 않고 안내만 보인다.
-  if (current.failed || !current.data || !current.data.failure || !current.data.signals) {
+  if (
+    current.failed ||
+    !current.data ||
+    !current.data.failure ||
+    !current.data.contactsBeforeVisit
+  ) {
     return (
       <p data-testid="patterns-error" role="status" style={secondary}>
         {texts.loadError}
@@ -171,6 +229,8 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
   const maxStep = Math.max(0, ...failure.byStep.map((row) => row.count));
   const maxReason = Math.max(0, ...failure.lostReasons.map((row) => row.count));
   const maxFill = Math.max(0, ...data.answerFill.map((row) => row.eligible));
+  const basis = data.basis;
+  const answerQuestions = [...new Set(data.answerOutcomes.map((row) => row.questionId))];
 
   return (
     <section
@@ -184,10 +244,58 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
         </h2>
         <p style={secondary}>{texts.intro}</p>
         <p data-testid="patterns-basis" style={{ margin: 0 }}>
-          {texts.enough(data.basis.usableCount, data.basis.neededCount)}
-          {data.basis.enough ? '' : ` · ${texts.notEnough}`}
+          {texts.basis(
+            basis.closedCount,
+            basis.wonCount,
+            basis.overallWonRatio,
+            basis.minSampleForRatio,
+          )}
+          {basis.overallWonRatio === null ? ` · ${texts.notEnough}` : ''}
         </p>
       </div>
+
+      <Card id="patterns-fill" title={texts.fillTitle}>
+        <span style={secondary}>{texts.fillNote}</span>
+        {data.answerFill
+          .filter((row) => row.eligible > 0)
+          .map((row) => (
+            <Bar
+              key={row.questionId}
+              testId="patterns-fill-row"
+              label={questionText(questions, row.questionId)}
+              value={row.answered}
+              max={maxFill}
+              color={BLUE}
+              text={texts.fillLine(row.answered, row.eligible)}
+            />
+          ))}
+      </Card>
+
+      <Card id="patterns-standouts" title={texts.standoutsTitle}>
+        <span data-testid="patterns-standouts-badge" style={secondary}>
+          {texts.standoutsBadge} · {texts.standoutsNote}
+        </span>
+        {data.standouts.length === 0 ? (
+          <p data-testid="patterns-standouts-empty" style={secondary}>
+            {texts.standoutsEmpty}
+          </p>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
+            {data.standouts.map((item, index) => (
+              <li key={index} data-testid="patterns-standout">
+                <strong>{standoutName(item, questions, processNames)}</strong> —{' '}
+                {texts.standoutLine(
+                  item.wonRatio,
+                  item.overallWonRatio,
+                  item.diff,
+                  item.won,
+                  item.failed,
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card id="patterns-failure" title={texts.failureTitle}>
         <p data-testid="patterns-failure-count" style={{ margin: 0 }}>
@@ -240,37 +348,51 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
             ))}
           </div>
         ) : null}
-        <div style={{ display: 'grid', gap: 8 }}>
-          <strong>{texts.signalsTitle}</strong>
-          <span style={secondary}>{texts.signalsNote}</span>
-          {data.signals.map((signal) => (
-            <div
-              key={`${signal.code}-${signal.questionId ?? ''}`}
-              data-testid="patterns-signal"
-              data-judged={signal.judged}
-              style={{ display: 'grid', gap: 4, opacity: signal.judged ? 1 : 0.55 }}
-            >
-              <span>
-                {signalName(signal, questions)}
-                {signal.judged ? '' : ` · ${texts.judgedLater}`}
-              </span>
-              <Bar
-                label="실패 쪽"
-                value={signal.failedShare ?? 0}
-                max={1}
-                color={signal.judged ? ORANGE : GREY}
-                text={texts.failedSide(signal.failed, failure.count, signal.failedShare)}
-              />
-              <Bar
-                label="성사 쪽"
-                value={signal.wonShare ?? 0}
-                max={1}
-                color={signal.judged ? BLUE : GREY}
-                text={texts.wonSide(signal.won, success.count, signal.wonShare)}
-              />
-            </div>
-          ))}
-        </div>
+      </Card>
+
+      <Card id="patterns-contacts" title={texts.contactsTitle}>
+        <span style={secondary}>{texts.contactsNote}</span>
+        {data.contactsBeforeVisit.map((row) => (
+          <CellRow
+            key={`${row.visited}-${row.bucket}`}
+            testId="patterns-contact-row"
+            label={`${row.visited ? texts.contactVisited : texts.contactNoVisit} · ${
+              texts.contactBuckets[row.bucket] ?? row.bucket
+            }`}
+            row={row}
+          />
+        ))}
+      </Card>
+
+      <Card id="patterns-gap" title={texts.gapTitle}>
+        <span style={secondary}>{texts.gapNote}</span>
+        {data.longestGap.map((row) => (
+          <CellRow
+            key={row.bucket}
+            testId="patterns-gap-row"
+            label={texts.gapBuckets[row.bucket] ?? row.bucket}
+            row={row}
+          />
+        ))}
+      </Card>
+
+      <Card id="patterns-answers" title={texts.answersTitle}>
+        <span style={secondary}>{texts.answersNote}</span>
+        {answerQuestions.map((questionId) => (
+          <div key={questionId} style={{ display: 'grid', gap: 4 }}>
+            <strong>{questionText(questions, questionId)}</strong>
+            {data.answerOutcomes
+              .filter((row) => row.questionId === questionId)
+              .map((row) => (
+                <CellRow
+                  key={row.answerId}
+                  testId="patterns-answer-row"
+                  label={answerText(questions, questionId, row.answerId)}
+                  row={row}
+                />
+              ))}
+          </div>
+        ))}
       </Card>
 
       <Card id="patterns-success" title={texts.successTitle}>
@@ -307,22 +429,6 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
         )}
       </Card>
 
-      <Card id="patterns-fill" title={texts.fillTitle}>
-        {data.answerFill
-          .filter((row) => row.eligible > 0)
-          .map((row) => (
-            <Bar
-              key={row.questionId}
-              testId="patterns-fill-row"
-              label={questionText(questions, row.questionId)}
-              value={row.answered}
-              max={maxFill}
-              color={BLUE}
-              text={texts.fillLine(row.answered, row.eligible)}
-            />
-          ))}
-      </Card>
-
       <Card id="patterns-hints" title={texts.hintsTitle}>
         <span data-testid="patterns-hints-badge" style={secondary}>
           {texts.hintsBadge} · {texts.hintsNote}
@@ -332,15 +438,13 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
         ) : (
           <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
             {data.questionnaireHints.map((hint) => {
-              const answer = hint.answerId
-                ? answerText(questions, hint.questionId, hint.answerId)
-                : '';
               const detail =
                 hint.kind === 'SAME_ANSWER'
-                  ? texts.hintKinds.SAME_ANSWER(answer, hint.share)
-                  : hint.kind === 'UNKNOWN_MANY'
-                    ? texts.hintKinds.UNKNOWN_MANY(hint.share)
-                    : texts.hintKinds.SPLITS_OUTCOME(answer, hint.wonRatioHigh, hint.wonRatioLow);
+                  ? texts.hintKinds.SAME_ANSWER(
+                      hint.answerId ? answerText(questions, hint.questionId, hint.answerId) : '',
+                      hint.share,
+                    )
+                  : texts.hintKinds.UNKNOWN_MANY(hint.share);
               return (
                 <li key={`${hint.questionId}-${hint.kind}`} data-testid="patterns-hint">
                   {questionText(questions, hint.questionId)} — {detail}

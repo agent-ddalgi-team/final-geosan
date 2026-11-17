@@ -1,4 +1,7 @@
-"""#802 1단계: 실제 임시 DB·실제 API로 영업 분석 패턴 세기 시나리오를 확인한다.
+"""#802·#820: 실제 임시 DB·실제 API로 영업 분석 패턴(기준 숫자 없이 펼쳐 보기) 시나리오를 확인한다.
+
+"눈에 띔"이 실제로 골라지는 경우(표본 기준을 넘는 칸)는 회사가 20곳 넘게 필요해 순수 계산
+단위 시험(tests/unit/u7/test_sales_patterns.py)에서 본다.
 
 외부 AI 호출 없음.
 """
@@ -55,17 +58,20 @@ def open_bad_period(context, value):
     context["response"] = context["client"].get(URL, params={"from": value}, headers=support.VIEWER)
 
 
-@then("실패·성공은 0곳이고 쓸 수 있는 기록 0곳 / 필요 30곳으로 부족하다")
+@then("끝난 회사 0곳이고 전체 성사율은 없으며 펼친 표와 눈에 띔이 모두 비어 있다")
 def empty(context):
     data = context["data"]
     assert data["failure"]["count"] == 0 and data["success"]["count"] == 0
     assert data["basis"] == {
         "minSampleForRatio": 10,
-        "usableCount": 0,
-        "neededCount": 30,
-        "enough": False,
+        "closedCount": 0,
+        "wonCount": 0,
+        "overallWonRatio": None,
     }
-    assert data["combos"] == [] and data["questionnaireHints"] == []
+    for key in ("contactsBeforeVisit", "longestGap", "answerOutcomes", "combos", "standouts"):
+        assert data[key] == [], key
+    assert data["questionnaireHints"] == []
+    assert "signals" not in data  # 미리 정한 신호는 없앴다(#820)
 
 
 @then("실패는 2곳(보류 1곳)이고 거절 이유는 가격 1건이다")
@@ -75,26 +81,30 @@ def failure(context):
     assert part["lostReasons"] == [{"code": "PRICE", "count": 1}]
 
 
-def _signal(context, code, question=None):
-    return next(
-        row
-        for row in context["data"]["signals"]
-        if row["code"] == code and row["questionId"] == question
-    )
+@then(
+    "방문 없이 접촉 3번 칸에 실패 1곳, 방문 전 접촉 1번 칸에 성사 1곳이고 표본이 적어 판단 보류다"
+)
+def contact_rows(context):
+    rows = {(row["visited"], row["bucket"]): row for row in context["data"]["contactsBeforeVisit"]}
+    assert (rows[(False, "THREE")]["failed"], rows[(False, "THREE")]["won"]) == (1, 0)
+    assert (rows[(True, "ONE")]["won"], rows[(True, "ONE")]["failed"]) == (1, 0)
+    assert all(row["judged"] is False and row["wonRatio"] is None for row in rows.values())
 
 
-@then('"전화만·방문 없음" 신호는 실패 쪽 1곳이고 표본이 적어 판단 보류다')
-def call_only(context):
-    row = _signal(context, "CALL_ONLY")
-    assert (row["withSignal"], row["failed"], row["won"]) == (1, 1, 0)
-    assert row["failedShare"] == 0.5 and row["judged"] is False
-
-
-@then('"관심 낮음" 신호는 실패 쪽 1곳이다')
+@then('관심 "낮음" 답 칸에 실패 1곳이다')
 def interest_low(context):
-    row = _signal(context, "ANSWER", "INTEREST")
-    assert (row["withSignal"], row["failed"]) == (1, 1)
-    assert row["answerIds"] == ["LOW", "NONE"]
+    row = next(
+        r
+        for r in context["data"]["answerOutcomes"]
+        if r["questionId"] == "INTEREST" and r["answerId"] == "LOW"
+    )
+    assert (row["failed"], row["won"], row["judged"]) == (1, 0, False)
+
+
+@then("표본 기준을 넘는 칸이 없어 눈에 띄는 칸이 없다")
+def no_standouts(context):
+    assert context["data"]["standouts"] == []
+    assert context["data"]["basis"]["overallWonRatio"] is None
 
 
 @then("성사한 회사는 2번째 접촉에서 처음 방문했다")
