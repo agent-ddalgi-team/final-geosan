@@ -380,15 +380,10 @@ describe('확인사항 주제별 묶음 (#847)', () => {
     );
   }
 
-  it('Given 지난 통화 정리·회사 값·꼬리 질문·검토 질문 When 확인사항을 열면 Then 주제 4묶음 순서로, 굵은 머리말 없이 짧은 요약이 보인다', () => {
+  it('Given 지난 통화 정리·회사 값·꼬리 질문·검토 질문 When 확인사항을 열면 Then 주제 묶음 순서로, 굵은 머리말 없이 짧은 요약이 보인다', () => {
     renderGrouped();
     const titles = screen.getAllByTestId('check-group-title').map((el) => el.textContent);
-    expect(titles).toEqual([
-      '지난 통화에서 이어서 · 11/15',
-      '회사 확인',
-      '수요·진행',
-      '거산 쪽 확인',
-    ]);
+    expect(titles).toEqual(['지난 통화에서 이어서 · 11/15', '회사 확인', '수요·진행']);
     const company = screen.getByTestId('check-group-company');
     // 후속 조치 문장은 끝의 "확인"을 떼어 요약으로. "후속 조치 —" 머리말은 없다.
     expect(company).toHaveTextContent('도금을 외주하는지');
@@ -397,12 +392,12 @@ describe('확인사항 주제별 묶음 (#847)', () => {
     expect(company).toHaveTextContent('맡길 공정');
     expect(company).toHaveTextContent('부품 소재');
     expect(company).toHaveTextContent('어느 산업인지');
-    // 상대 회사에 대한 검토 질문은 회사 확인, 거산에 대한 질문은 거산 쪽 확인.
+    // 상대 회사에 대한 검토 질문은 회사 확인. 거산에 대한 질문은 넣지 않는다(PM 결정 2: 왼쪽 공정 [고치기]로).
     expect(company).toHaveTextContent('대상 부품의 요구 성능은 무엇인가요?');
     expect(screen.getByTestId('check-group-demand')).toHaveTextContent(
       '외주처를 바꿀 생각이 있나요?',
     );
-    expect(screen.getByTestId('check-group-geosan')).toHaveTextContent(
+    expect(screen.getByTestId('detail-review')).not.toHaveTextContent(
       '전기아연도금의 적용 범위가 맞습니까?',
     );
     expect(screen.queryByTestId('review-tag')).not.toBeInTheDocument();

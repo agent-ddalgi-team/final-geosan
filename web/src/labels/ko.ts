@@ -1103,7 +1103,13 @@ export const salesQuestionTexts = {
     '아직 고르지 않았습니다. 이대로 저장하면 접촉만 남고 영업 단계는 바뀌지 않습니다.',
   stepLineDeclinedContinue: '거절이지만 끝이 아니라면 다음 할 일과 날짜를 골라 주세요.',
   /** 방문일 때 "누가 먼저 연락했나요?" 보기의 다른 말(보기 코드로 찾는다). 없으면 질문 파일의 문구. */
-  contactVisitLabels: { OURS: '우리가 감', THEIRS: '상대가 옴' } as Record<string, string>,
+  contactVisitLabels: { OURS: '외근', THEIRS: '내방' } as Record<string, string>,
+  /** #847(PM 결정 2026-11-17): 종류 칸에 합친 "누가 먼저 연락했나요?". "전화 · 발신", "대면 · 내방". */
+  contactDirectionLabels: {
+    CALL: { OURS: '발신', THEIRS: '수신' },
+    EMAIL: { OURS: '발신', THEIRS: '수신' },
+    VISIT: { OURS: '외근', THEIRS: '내방' },
+  } as Record<string, Record<string, string>>,
 } as const;
 
 /** 꼬리 질문의 공정·산업 확인(#652): 여러 개를 고르면 그 회사의 공정·산업이 확정된다. */
@@ -1149,7 +1155,8 @@ export const salesChoiceTexts = {
   clearedHint: '하나 이상 골라야 바뀝니다. 이대로 저장하면 지금 값 그대로입니다.',
 } as const;
 
-export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '방문' } as const;
+/** #847(PM 결정 2026-11-17): "방문"을 "대면"으로(외근·내방은 종류 칸에서 고른다). */
+export const contactMethodLabels = { CALL: '전화', EMAIL: '메일', VISIT: '대면' } as const;
 export const contactResultLabels = { REACHED: '연결됨', ABSENT: '부재', DECLINED: '거절' } as const;
 /** 접촉 때 AI 판단이 맞았나(#531). 외주처가 있어 거절해도 사실이 맞으면 "맞음"이다. */
 export const judgmentCheckLabels = {
@@ -1216,6 +1223,8 @@ export const recordsArea = {
   title: '기록',
   /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
   entryTitle: '기록 남기기',
+  /** #847: 메모 받는 사람 칸의 첫 보기(고르지 않으면 그냥 메모). */
+  noteToNone: '받는 사람 없음 (메모만)',
   entryKind: '종류',
   contactMethod: '방법',
   contactResult: '결과',
@@ -2191,7 +2200,6 @@ export const detailReport = {
       prep: '지난 통화에서 이어서',
       company: '회사 확인',
       demand: '수요·진행',
-      geosan: '거산 쪽 확인',
     },
     /** "지난 통화에서 이어서 · 11/15" */
     prepGroup: (date: string) => `지난 통화에서 이어서 · ${date}`,

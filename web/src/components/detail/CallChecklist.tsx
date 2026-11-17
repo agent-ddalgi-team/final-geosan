@@ -6,6 +6,7 @@
 // "근거 없음" 줄은 접어 두고, 그 가운데 공고(SIG_BID)·채용(SIG_HIRE)은 연결하지 않는 자료라 보이지 않는다(기록이 달린 줄은 보인다).
 // AI 점수 입력 제안의 [확정]·[고치기]는 "3. 점수 자세히 보기" 안으로 옮겼다.
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Checkbox } from 'antd';
 import type {
   CallPrepNote,
@@ -123,8 +124,8 @@ export function callCheckCountOf(
 }
 
 /** #847 확인사항의 주제 묶음. */
-export type CheckGroup = 'prep' | 'company' | 'demand' | 'geosan';
-export const CHECK_GROUP_ORDER: CheckGroup[] = ['prep', 'company', 'demand', 'geosan'];
+export type CheckGroup = 'prep' | 'company' | 'demand';
+export const CHECK_GROUP_ORDER: CheckGroup[] = ['prep', 'company', 'demand'];
 
 /** #847 확인사항 한 줄: 짧은 요약 + 처음 체크 상태(이미 확인 표시가 저장된 검토 줄만 체크된 채로 시작). */
 export interface CheckRow {
@@ -143,9 +144,10 @@ function shortAction(part: string): string {
 }
 
 /**
- * #847(PM 결정 2026-11-17): 확인사항을 주제 4묶음으로. 규칙으로만 나눈다(AI 아님).
+ * #847(PM 결정 2026-11-17): 확인사항을 주제별로 묶는다. 규칙으로만 나눈다(AI 아님).
  * 지난 통화에서 이어서 = 코치가 지난 통화 뒤 정리한 물어볼 것 / 회사 확인 = 후속 조치·공정·소재·산업·상대 회사 질문 /
- * 수요·진행 = 지금 단계에서 아직 답이 없는 꼬리 질문(질문 파일의 짧은 말) / 거산 쪽 확인 = 거산에 대한 질문.
+ * 수요·진행 = 지금 단계에서 아직 답이 없는 꼬리 질문(질문 파일의 짧은 말).
+ * 거산에 대한 질문은 넣지 않는다(PM 결정 2: 통화에서 물을 것이 아니라 왼쪽 "한눈에 › 공정" [고치기]로 나중에 고친다).
  */
 export function checkRowsOf(
   detail: Parameters<typeof callLinesOf>[0],
@@ -201,10 +203,10 @@ export function checkRowsOf(
     }
   }
   for (const item of detail.reviewItems) {
-    if (isProposal(item) || reviewGroupOf(item) !== 'ask') continue;
+    if (isProposal(item) || reviewGroupOf(item) !== 'ask' || item.targetLabel === '거산') continue;
     rows.push({
       key: item.itemId,
-      group: item.targetLabel === '거산' ? 'geosan' : 'company',
+      group: 'company',
       label: item.text,
       item,
       checked: item.checked,
@@ -231,6 +233,8 @@ export interface CallChecklistProps {
   grouped?: boolean;
   /** #847 지난 통화 뒤 코치가 정리한 물어볼 것("지난 통화에서 이어서" 묶음). */
   prep?: CallPrepNote | null;
+  /** #847 확인사항 맨 위에 놓을 것(확인 전 전달 사항). */
+  top?: ReactNode;
 }
 
 export default function CallChecklist({
@@ -246,6 +250,7 @@ export default function CallChecklist({
   hint,
   grouped = false,
   prep = null,
+  top = null,
 }: CallChecklistProps) {
   const { config } = useFrame();
   const [gapOpen, setGapOpen] = useState(false);
@@ -348,6 +353,7 @@ export default function CallChecklist({
     const prepDate = prep ? (formatMonthDay(prep.at) ?? prep.at) : '';
     return (
       <DetailSection id="detail-review" title={title ?? texts.groups.company} count={remaining}>
+        {top}
         {rows.length === 0 ? (
           <p data-testid="call-empty" style={{ margin: 0 }}>
             {texts.empty}

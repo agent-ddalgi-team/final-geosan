@@ -137,7 +137,8 @@ describe('OpportunityDetailPage', () => {
             kind: 'QUESTION',
             source: 'AI',
             text: '확인 질문 1',
-            targetLabel: '거산',
+            // #847: 거산에 대한 질문은 확인사항에 넣지 않는다(왼쪽 공정 [고치기]로). 이 시험은 상대 회사 질문으로 본다.
+            targetLabel: '상대 회사',
             checked: false,
           },
           {
@@ -212,15 +213,19 @@ describe('OpportunityDetailPage', () => {
     await screen.findByTestId('opportunity-detail');
     const user = userEvent.setup();
     const review = screen.getByTestId('detail-review');
-    // 질문 2줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
-    expect(within(review).getAllByTestId('review-item')).toHaveLength(2);
+    // 질문 줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
+    // #847(PM 결정 2026-11-17): 거산에 대한 질문은 확인사항에 없다(상대 회사 질문 1줄만).
+    expect(within(review).getAllByTestId('review-item')).toHaveLength(1);
+    expect(review).not.toHaveTextContent(
+      (fixtureData.reviewItems ?? []).find((item) => item.targetLabel === '거산')?.text ?? '없음',
+    );
     const fold = within(review).getByTestId('review-fold-toggle-gap');
     expect(fold).toHaveTextContent('아직 근거·자료가 없는 항목 1개 보기');
     expect(fold).toHaveAttribute('aria-expanded', 'false');
     await user.click(fold);
     const rows = within(review).getAllByTestId('review-item');
-    expect(rows).toHaveLength(3);
-    expect(rows[2]).toHaveTextContent('홈페이지를 찾지 못함');
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent('홈페이지를 찾지 못함');
     expect(within(rows[0]).getByTestId('review-reply')).toHaveTextContent(
       '답: 2024년에 KS 인증 받았다고 함',
     );

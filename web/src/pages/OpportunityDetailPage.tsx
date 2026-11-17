@@ -237,18 +237,6 @@ export default function OpportunityDetailPage() {
   // 전달 사항·통화 전·기록 남기기(#771·#750·#742). #773부터 넓은 화면은 오른쪽 영업 코치 칸으로 보낸다.
   const recordInput = !data ? null : (
     <>
-      {/* 전달 사항(#771): 다른 직원이 남긴 말을 포스트잇으로, 받는 사람에게 [확인했어요]. */}
-      <HandoffBox
-        key={`${oppId}:handoff`}
-        oppId={oppId}
-        evalId={data.evalId}
-        handoffs={data.records.handoffs ?? []}
-        lastActor={data.records.outcome?.updatedBy ?? null}
-        onChanged={() => {
-          reloadQuietly();
-          setTimelineVersion((n) => n + 1);
-        }}
-      />
       {/* #847 확인사항: 코치가 지난 통화 뒤 정리한 것(#750)과 전의 "통화에서 확인할 것"을 주제별로 묶어 통화 중 체크. */}
       {data.reviewItems !== undefined ? (
         <CallChecklist
@@ -265,6 +253,21 @@ export default function OpportunityDetailPage() {
           // 접촉을 저장해 다음 통화 준비가 바뀌면 체크를 처음 값으로 되돌린다.
           key={`${oppId}:checks:${(fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep)?.noteId ?? ''}`}
           prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
+          // #847: 확인 전 전달 사항은 확인사항 맨 위에(남기는 것은 대화 기록의 메모 "받는 사람").
+          top={
+            <HandoffBox
+              key={`${oppId}:handoff`}
+              oppId={oppId}
+              evalId={data.evalId}
+              handoffs={data.records.handoffs ?? []}
+              lastActor={data.records.outcome?.updatedBy ?? null}
+              listOnly
+              onChanged={() => {
+                reloadQuietly();
+                setTimelineVersion((n) => n + 1);
+              }}
+            />
+          }
         />
       ) : null}
       {/* #847 대화 기록: 이번 통화 메모·결과. [보내기] 뒤 코치 답은 이 칸 안에 펴진다. */}
@@ -289,6 +292,7 @@ export default function OpportunityDetailPage() {
         inCoach
         // #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)은 넓은 화면에서 왼쪽 영업 단계 아래에.
         sideSlot={dockSlot ? stageSlot : null}
+        onHandoffSent={reloadQuietly}
         onContactRecorded={onContactRecorded}
         onRecorded={() => {
           setTimelineVersion((n) => n + 1);

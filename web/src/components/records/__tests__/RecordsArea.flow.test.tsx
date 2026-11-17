@@ -54,7 +54,7 @@ function renderArea(props: Partial<React.ComponentProps<typeof RecordsArea>> = {
 }
 
 async function saveContact(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByTestId('records-kind'), '방문');
+  await user.selectOptions(screen.getByTestId('records-kind'), '대면');
   await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
   await user.click(screen.getByTestId('records-contact-save-button'));
 }
@@ -79,7 +79,7 @@ describe('기록 구역 · ① 안내와 번호 (#433)', () => {
   it('연결됨이어도 "AI 판단이 맞았나" 고르기는 없고, 요청에 그 값을 싣지 않는다(#740)', async () => {
     const user = userEvent.setup();
     renderArea({ outcome: outcome('IN_PROGRESS') });
-    await user.selectOptions(screen.getByTestId('records-kind'), '방문');
+    await user.selectOptions(screen.getByTestId('records-kind'), '대면');
     await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
     expect(screen.queryByTestId('records-judgment-check')).not.toBeInTheDocument();
     expect(screen.queryByText('AI 판단이 맞았나')).not.toBeInTheDocument();
