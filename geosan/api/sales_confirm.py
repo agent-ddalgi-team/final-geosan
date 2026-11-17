@@ -40,8 +40,12 @@ def confirm_processes(
     *,
     staff: str,
     now: datetime,
+    first_prefix: str = "꼬리 질문으로 공정 확정 · ",
 ) -> ConfirmResult:
     """고른 공정을 확정하고, 안 고른 AI 제안과 안 고른 확정 공정은 이력으로만 남겨 뺀다.
+
+    `first_prefix`는 확인된 공정이 없던 회사에 처음 확정할 때 활동 이력 문장의 머리말이다
+    (#847 상세 [고치기]는 "상세에서 공정 확정 · ").
 
     (바뀜 2026-11-14 #720 — PM 결정: 통화에서 공정을 바꿀 수 있게) 답에 실린 공정 목록이 그 회사의
     확정 공정 전체를 뜻한다. 목록에 없는 확정 연결(사례 파일·담당자)은 살아 있는 연결에서 빠지고
@@ -112,7 +116,7 @@ def confirm_processes(
             f"공정 변경 · {_names(confirmed_before, names)} → {_names(confirmed_after, names)}"
         )
     else:
-        summary = "꼬리 질문으로 공정 확정 · " + ", ".join(names.get(code, code) for code in codes)
+        summary = first_prefix + ", ".join(names.get(code, code) for code in codes)
     if dropped:
         summary += f" · AI 제안 {dropped}개 뺌"
     return ConfirmResult(summary, True)
