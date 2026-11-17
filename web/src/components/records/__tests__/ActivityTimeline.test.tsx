@@ -1,7 +1,12 @@
 // 활동 타임라인: 최근 순, 시각·작성자·종류·내용, 빈 상태, 오류와 다시 불러오기, 저장 뒤 새로 불러오기.
 // 서버 호출(getActivity)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import ActivityTimeline, { sortRecentFirst, summaryText } from '../ActivityTimeline';
+import ActivityTimeline, {
+  groupSameMoment,
+  sortRecentFirst,
+  summaryText,
+  timelineIcon,
+} from '../ActivityTimeline';
 import { ApiError, getActivity, postRecordCancel } from '../../../api/client';
 import type { ActivityItem, ConfigUi, Envelope } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
@@ -525,5 +530,44 @@ describe('ActivityTimeline — 변경 기록', () => {
     const rows = screen.getAllByTestId('timeline-item');
     expect(rows).toHaveLength(1);
     expect(within(rows[0]).getByTestId('timeline-kind')).toHaveAttribute('data-tone', 'ask');
+  });
+});
+
+describe('세로 타임라인(#803)', () => {
+  it('Given 같은 시각·같은 사람의 접촉과 영업 단계 줄 When 보면 Then 한 묶음으로 시각·사람은 한 번만 보이고 줄은 둘 다 남는다', async () => {
+    const stage: ActivityItem = { ...newer, kind: 'OUTCOME', summary: '접촉 · 다음 일정 11/12' };
+    mockedGet.mockResolvedValueOnce(reply([older, stage, newer]));
+    renderTimeline();
+    const rows = await screen.findAllByTestId('timeline-item');
+    expect(rows).toHaveLength(3);
+    const blocks = screen.getAllByTestId('timeline-block');
+    expect(blocks).toHaveLength(2);
+    expect(within(blocks[0]).getAllByTestId('timeline-item')).toHaveLength(2);
+    expect(within(blocks[0]).getAllByTestId('timeline-time')).toHaveLength(1);
+    expect(within(blocks[0]).getByTestId('timeline-icon')).toHaveTextContent('📞');
+  });
+
+  it('Given 묶음이 여섯 개 When 보면 Then 최근 다섯 묶음만 보이고 [더 보기 1건]으로 나머지를 편다', async () => {
+    const six = [0, 1, 2, 3, 4, 5].map((n) => ({
+      ...note,
+      at: `2026-11-0${n + 1}T10:00:00+09:00`,
+      summary: `메모 ${n}`,
+    }));
+    mockedGet.mockResolvedValueOnce(reply(six));
+    renderTimeline();
+    expect(await screen.findAllByTestId('timeline-item')).toHaveLength(5);
+    const more = screen.getByTestId('timeline-more');
+    expect(more).toHaveTextContent(timelineArea.showMore(1));
+    fireEvent.click(more);
+    expect(screen.getAllByTestId('timeline-item')).toHaveLength(6);
+  });
+
+  it('그림은 전화·방문·메일·메모·의견을 나눈다', () => {
+    expect(timelineIcon({ ...newer, summary: '방문 · 연결됨' })).toBe('🚶');
+    expect(timelineIcon({ ...newer, summary: '메일 · 연결됨' })).toBe('✉');
+    expect(timelineIcon(newer)).toBe('📞');
+    expect(timelineIcon(note)).toBe('📝');
+    expect(timelineIcon(opinion)).toBe('⭐');
+    expect(groupSameMoment([newer, note])).toHaveLength(2);
   });
 });

@@ -142,6 +142,9 @@ research:
   # 공식 홈페이지가 없는 회사의 공개 페이지 찾기(#511)는 보류한다(#744, PM 결정 2026-11-14:
   # 효과 없음 — 실측 8곳 중 0곳). 키는 옛 설정과 맞추려고 남겨 두고 켜지 않는다.
   allowUnofficialPage: false
+  # #810(PM 결정 2026-11-16): https 인증서 오류(자체 서명·기한 만료)로만 못 읽으면 같은 주소의 http로 한 번 다시 읽는다.
+  # 인증서 확인은 끄지 않는다. 그렇게 읽은 근거는 출처가 http로 남고 화면에 "암호화 없는 주소로 읽음"이 붙는다.
+  httpFallbackOnCertError: true
 
 # 접속 보호 (U8). 뼈대 기간 로컬 실행에서는 끈다. 비밀번호 자체는 환경 변수 GEOSAN_PASSWORD.
 accessProtection:
@@ -161,14 +164,25 @@ listFilters:
 # false면 사람이 확인한 산업군만 센다.
 dashboard:
   countProposedIndustries: true
+  # 영업 진행 띠의 "⚠ 멈춘 회사": 다음 일정 없이 마지막 접촉 뒤 이 일수 이상(#800, PM 확인 2026-11-16).
+  stalledAfterDays: 14
+
+# 운영 관리 화면(왼쪽 메뉴 맨 아래)과 대시보드 운영 알림(#799, PM 결정 2026-11-16).
+# staffKeys에 든 담당자만 화면을 보고 "AI 사용 n%"·"자료 갱신할 때" 알림을 받는다.
+# factoryCsvRefreshDays: 공장현황 파일 기준일에서 이 일수가 지나면 갱신하라고 알린다.
+# 알림 사용률 기준은 아래 llm.costAlertRatio(0.8 = 80%)를 함께 쓴다.
+operations:
+  staffKeys: [choi-pm]
+  factoryCsvRefreshDays: 180
 
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 가상 검사에서도 기본은 꺼 둔다.
 candidateWebSearch:
-  enabled: false
+  enabled: false         # 시연용 설정은 외부 검색을 켤 수 없다(설정 검사 규칙)
   dailySearchLimit: 20
   cacheDays: 15
   searchesPerRun: 3      # 한 번 요청에서 AI가 검색하는 횟수(#706: 1번 2곳, 3번 5~10곳)
   timeoutSeconds: 90     # 응답 대기(실측 3번 29~35초)
+  reservedSlots: 5       # 한 회차 최대 건수 가운데 웹 후보 몫(덜 나오면 공공자료로 채움, PM 결정 2026-11-17 #823)
   blockedDomains:
     - saramin.co.kr
     - jobkorea.co.kr
@@ -200,10 +214,12 @@ industries:
   - 기타
 
 # 2026-11-13 확인 #222: 공공좌표만 저장, 네이버는 한 요청에서만 사용. 키는 환경 변수.
+# 시연 지도용 거산 공장 위치(#811, PM 결정 2026-11-16): 성거읍 일대 대략 위치(소수 둘째 자리). 정확한 값이
+# 필요하면 PM이 지도에서 읽어 바꾼다. 가상 설정(app-settings-virtual.yaml)과 다른 칸은 brand와 이 두 값뿐이다.
 geosan:
   address: "충청남도 천안시 서북구 성거읍 봉주로 303-1"
-  lat: null
-  lng: null
+  lat: 36.87
+  lng: 127.19
 geocoding:
   provider: JUSO
   enabled: false

@@ -187,6 +187,9 @@ export const frame = {
   pageTitleDashboard: '대시보드',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
+  /** #799: 운영 담당(설정 operations.staffKeys)에게만 보이는 메뉴. */
+  menuOperations: '운영 관리',
+  pageTitleOperations: '운영 관리',
   /** 왼쪽 메뉴(#762): 관심 기업 화면과 메뉴 아이콘. 접으면 아이콘만 보인다. */
   menuBookmarks: '관심 기업',
   pageTitleBookmarks: '관심 기업',
@@ -214,6 +217,12 @@ export const frame = {
 
 /** 대시보드(S4) 문구. 건수 두 구역("관심 기업"·"영업 진행")·일정·최근 기록·검색·공정/산업군 막대. */
 export const dashboardTexts = {
+  /** #799 운영 알림 줄(오늘 확인할 것 맨 앞). */
+  alertAiUsage: (percent: number, used: string, limit: string) =>
+    `AI 사용 ${percent}% (${used}/${limit})`,
+  alertAiLimit: '이번 달 AI 한도에 닿아 조사·코치가 멈췄습니다',
+  alertDataRefresh: (asOf: string) => `공장현황 자료(${asOf} 기준) 갱신할 때가 지났습니다`,
+  alertOperationsLink: '운영 관리 →',
   calendarTitle: '일정 달력',
   calendarEmpty: '잡아 둔 일정이 아직 없어요.',
   calendarHint: '일정이 있는 날을 누르면 내용이 보입니다.',
@@ -305,6 +314,20 @@ export const dashboardTexts = {
     WON: '성사',
   },
   progressOnHold: (n: number) => `보류 ${n}곳`,
+  /** #800: 띠 칸을 누르면 그 단계 회사가 펴진다. */
+  progressOpenHint: '칸을 누르면 그 단계 회사가 펴집니다',
+  progressOnHoldName: '보류',
+  progressListTitle: (stage: string, n: number) => `${stage} ${n}곳`,
+  progressListEmpty: '이 단계 회사가 없습니다.',
+  progressListLink: '목록에서 보기 →',
+  progressLastContact: (daysAgo: number) =>
+    daysAgo <= 0 ? '오늘 접촉' : `마지막 접촉 ${daysAgo}일 전`,
+  progressNoContact: '아직 접촉 전',
+  progressNext: (day: string, note: string | null) =>
+    note ? `다음 ${day} ${note}` : `다음 ${day}`,
+  progressNoSchedule: '일정 없음',
+  progressStalled: '⚠ 멈춘 회사',
+  progressMore: (n: number) => `${n}곳 더 보기`,
   /** "영업 대상 · 접촉 전" 칸의 작은 풀이: 영업하기로 정했고 아직 접촉하지 않은 곳(#697). */
   notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 신규 거래처 찾기로 가는 링크다(#787: 메뉴 이름 바뀜 #762). */
@@ -533,6 +556,31 @@ export const detailHeader = {
   relation: '고객 관계',
   purpose: '대응',
   owner: '담당',
+  /** #803: 머리 단추들 아래 한 번만 보이는 안내(전에는 단추마다 붙었다). */
+  pickStaffOnce: '담당자를 고르면 관심·다시 조사·기록을 할 수 있습니다.',
+} as const;
+
+/** #803 오른쪽 영업 코치 판의 칸 제목: 일하는 순서대로 ① 통화 전 → ② 기록 남기기·코치 답. */
+export const coachSteps = {
+  before: '① 통화 전 — 물어볼 것',
+  beforeHint: '들은 답은 아래 ② 기록 남기기의 꼬리 질문과 메모에 적습니다.',
+  record: '② 기록 남기기 → 코치 답',
+  /** "알아낸 것"을 접은 묶음 제목. */
+  knownFold: (n: number) => `지금까지 들은 답 ${n}개`,
+} as const;
+
+/** #803 상세 작은 지도. */
+export const detailMiniMap = {
+  openLabel: '네이버 지도에서 크게 보기 (새 창)',
+} as const;
+
+/** #803 "한눈에" 그림 줄. */
+export const glanceVisual = {
+  /** 근거 상태 막대 옆 글: "점수 근거 7/8항목" */
+  evidenceBar: (withEvidence: number, total: number) => `점수 근거 ${withEvidence}/${total}항목`,
+  /** 거리 그림 양 끝 이름. */
+  hq: '거산',
+  company: '이 회사',
 } as const;
 
 /**
@@ -679,9 +727,13 @@ export const candidateSearch = {
   /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
   ingestedOn: (date: string) => `${date} 들어옴`,
   /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */
-  summaryTitle: '영업 후보 더하기',
-  running: '지금 영업 후보로 더하는 중입니다',
-  failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
+  /** #825: 접힌 [＋ 새 후보 찾기] 칸과 같은 이름(#798). 옛 이름 "영업 후보 더하기"는 쓰지 않는다. */
+  summaryTitle: '지난 새 후보 찾기',
+  running: '지금 새 후보를 찾는 중입니다',
+  failed: '자료와 설정을 확인해 주세요',
+  /** #825: 지난 회차 실패는 날짜를 앞에 붙여 지난 일로 읽히게 한다. 예: "11/14 찾기 실패 · 자료와 설정을 확인해 주세요" */
+  failedOn: (day: string | null, reason: string) =>
+    day ? `${day} 찾기 실패 · ${reason}` : `찾기 실패 · ${reason}`,
   /**
    * 한도 등으로 건너뛴 일(#442). 문장은 약속 C1에 정해진 그대로다(웹 검색 #313, 단지 조회 #323).
    * 대응표에 없는 코드(DISABLED처럼 꺼 둔 것, 모르는 코드)는 안내하지 않는다.
@@ -698,7 +750,7 @@ export const candidateSearch = {
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
   /**
-   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [영업 후보로 더하기 💰]를 누른다. 모달 없이 인라인이다.
+   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 찾기 💰]를 누른다(#825, 옛 이름 [영업 후보로 더하기 💰]). 모달 없이 인라인이다.
    * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
    */
   formTitle: '영업 후보로 더할 공장 조건',
@@ -708,14 +760,14 @@ export const candidateSearch = {
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '영업 후보로 더하기 💰',
-  fetching: '더하는 중',
-  pickStaffFirst: '담당자를 고르면 더할 수 있습니다',
-  started: '더하기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
-  alreadyRunning: '지금 더하는 중입니다. 끝난 뒤에 다시 눌러 주세요',
+  fetchButton: '새 후보 찾기 💰',
+  fetching: '찾는 중',
+  pickStaffFirst: '담당자를 고르면 찾을 수 있습니다',
+  started: '찾기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
+  alreadyRunning: '지금 찾는 중입니다. 끝난 뒤에 다시 눌러 주세요',
   sourceFailed: '공개 자료를 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요',
   invalidCondition: '고른 조건을 서버가 받지 않았습니다',
-  startFailed: '영업 후보 더하기를 시작하지 못했습니다',
+  startFailed: '새 후보 찾기를 시작하지 못했습니다',
   /**
    * 맞는 공장 수 줄(#549 ①, 약속 C1 `GET /ingest/preview`). 조건을 고르면 서버가 저장된 AI 판단만 세서
    * 바로 보인다(외부 호출 없음, 0원). 예: "맞는 공장 1,518곳 (상 134 · 중 1,382 · 하 2) · 영업 후보로 들어온 곳 100곳"
@@ -1394,6 +1446,9 @@ export const reviewArea = {
 
 /** 상세 "기록" 아래 타임라인(U5): GET /activity를 최근 순으로. */
 export const timelineArea = {
+  /** #803: 최근 5묶음 아래 [더 보기 8건]. */
+  showMore: (n: number) => `더 보기 ${n}건`,
+  showLess: '접기',
   title: '활동 이력',
   empty: '아직 기록이 없습니다.',
   loadFailed: '활동 이력을 불러오지 못했습니다.',
@@ -1433,6 +1488,8 @@ export const peersArea = {
   retry: '다시 불러오기',
   empty: '같은 공정·산업군의 다른 회사가 아직 없습니다.',
   listLabel: '비슷한 회사 목록',
+  /** #803: 요약 한 줄 아래 접힌 회사 줄 "회사 5곳 보기". */
+  foldList: (n: number) => `회사 ${n}곳 보기`,
   /** 요약 줄 묶음 사이 구분 "같은 공정 4곳 · 산업군 2곳 | 접촉 1 · 거절 1(가격) | 전화 연결 3/5". */
   summaryDivider: ' | ',
   summaryCounts: (processCount: number, industryCount: number) =>
@@ -1685,6 +1742,98 @@ export const salesAnalysisTexts = {
   outcomeAfter: (days: number, stage: string, date: string | null) =>
     `첫 접촉 뒤 ${days}일 만에 ${stage}${date ? ` (${date})` : ''}`,
   openCompanyLabel: (name: string) => `${name} 상세 보기`,
+} as const;
+
+/** #802·#820: 영업 분석 아래 "기록에서 배우기" — 기준 숫자 없이 펼쳐 보이고, 결론은 사람이 확인한 것만. */
+export const salesPatternsTexts = {
+  title: '기록에서 배우기',
+  intro:
+    'AI 없이 저장된 영업 기록만 셉니다. 미리 정한 기준 없이 펼쳐 보이고, 끝난 회사가 표본 기준보다 적은 칸은 회색입니다.',
+  loadError: '패턴을 불러오지 못했습니다. 위 그림과 표는 그대로 볼 수 있습니다.',
+  /** "끝난 회사 12곳(성사 3곳) · 전체 성사율 25% · 표본 기준 10곳" */
+  basis: (closed: number, won: number, overall: number | null, min: number) =>
+    `끝난 회사 ${closed}곳(성사 ${won}곳)${
+      overall === null ? '' : ` · 전체 성사율 ${Math.round(overall * 100)}%`
+    } · 표본 기준 ${min}곳`,
+  notEnough: '아직 기록이 적어 결론을 내지 않습니다. 숫자는 참고로만 보세요.',
+  fillTitle: '기록 충분도 — 꼬리 질문 답 채움률',
+  fillNote: '지금부터 빈칸 없이 남기면 아래 표가 채워집니다.',
+  /** "12번 물을 자리 중 9번 답함" */
+  fillLine: (answered: number, eligible: number) => `${eligible}번 물을 자리 중 ${answered}번 답함`,
+  standoutsTitle: '눈에 띔',
+  standoutsBadge: '결론 아님 · 사람 확인 전',
+  standoutsNote:
+    '그 칸과 나머지가 둘 다 표본 기준을 넘는 칸 가운데 전체 성사율과 차이가 큰 칸입니다. 확인할 패턴으로 올리는 일은 기록이 쌓인 뒤에 합니다.',
+  standoutsEmpty: '표본 기준을 넘는 칸이 아직 없습니다.',
+  /** "성사율 75% (전체 40%보다 +35%p) · 성사 3 · 실패 1" */
+  standoutLine: (ratio: number, overall: number, diff: number, won: number, failed: number) =>
+    `성사율 ${Math.round(ratio * 100)}% (전체 ${Math.round(overall * 100)}%보다 ${
+      diff > 0 ? '+' : ''
+    }${Math.round(diff * 100)}%p) · 성사 ${won} · 실패 ${failed}`,
+  failureTitle: '실패에서 배우기',
+  /** "거절·보류 7곳 (보류 2곳)" */
+  failureCount: (count: number, onHold: number) => `거절·보류 ${count}곳 (보류 ${onHold}곳)`,
+  whereDropped: '어디까지 가서 멈췄나',
+  noStep: '연결 전',
+  why: '왜 — 거절 이유',
+  stepAnswers: '멈춘 단계에서 들은 답',
+  /** 펼친 표 한 줄: "성사 2 · 실패 3 · 진행 1 · 성사율 40%" 또는 "… · 표본 부족" */
+  cells: (won: number, failed: number, inProgress: number, ratio: number | null) =>
+    `성사 ${won} · 실패 ${failed}${inProgress ? ` · 진행 ${inProgress}` : ''}${
+      ratio === null ? ' · 표본 부족' : ` · 성사율 ${Math.round(ratio * 100)}%`
+    }`,
+  contactsTitle: '방문 전 접촉 횟수별',
+  contactsNote: '방문한 회사는 첫 방문 전까지, 방문이 없는 회사는 모든 접촉을 셉니다.',
+  contactVisited: '방문함',
+  contactNoVisit: '방문 없음',
+  contactBuckets: {
+    ZERO: '바로 방문',
+    ONE: '1번',
+    TWO: '2번',
+    THREE: '3번',
+    FOUR_PLUS: '4번 이상',
+  } as Record<string, string>,
+  gapTitle: '접촉 사이 가장 긴 간격별',
+  gapNote: '구간은 보기용입니다(판단 기준이 아님).',
+  gapBuckets: {
+    WITHIN_WEEK: '1주 안',
+    WITHIN_TWO_WEEKS: '2주 안',
+    WITHIN_MONTH: '한 달 안',
+    OVER_MONTH: '한 달 넘게',
+    SINGLE_CONTACT: '접촉 한 번',
+  } as Record<string, string>,
+  answersTitle: '꼬리 질문 답별',
+  answersNote: '회사마다 그 질문의 마지막 답으로 셉니다.',
+  successTitle: '성공 패턴',
+  /** "성사 3곳 · 평균 4.3번 접촉" */
+  successCount: (count: number, avg: number | null) =>
+    `성사 ${count}곳${avg === null ? '' : ` · 평균 ${avg}번 접촉`}`,
+  /** "처음 방문한 접촉 순번 — 성사 2번째 · 실패 방문 없음" */
+  firstVisit: (won: number | null, failed: number | null) =>
+    `처음 방문한 접촉 순번 — 성사 ${won ?? '방문 없음'}${won === null ? '' : '번째'} · 실패 ${
+      failed ?? '방문 없음'
+    }${failed === null ? '' : '번째'}`,
+  combosTitle: '조합별 (공정 × 산업 × 권역)',
+  comboUnknown: '확인 전',
+  /** "접촉 5 · 성사 2 (40%)" */
+  comboLine: (contacted: number, won: number, ratio: number | null) =>
+    `접촉 ${contacted} · 성사 ${won}${ratio === null ? ' · 표본 부족' : ` (${Math.round(ratio * 100)}%)`}`,
+  hintsTitle: '질문지 다듬기',
+  hintsBadge: '손볼 만함 · 승인 전',
+  hintsNote: '반영은 PM·거산이 질문 파일에서 정합니다. 자동으로 바뀌지 않습니다.',
+  hintsEmpty: '표본 기준을 넘는 질문이 아직 없습니다.',
+  hintKinds: {
+    /** "한 답(보통)이 92% — 갈림이 가장 적은 질문" */
+    SAME_ANSWER: (answer: string, share: number | null) =>
+      `한 답(${answer})이 ${share === null ? '' : Math.round(share * 100)}% — 갈림이 가장 적은 질문`,
+    UNKNOWN_MANY: (share: number | null) =>
+      `답 없음·모름이 ${share === null ? '' : Math.round(share * 100)}% — 모름이 가장 많은 질문`,
+  },
+  coachTitle: '영업 코치 제안의 효과',
+  /** "코치 제안으로 넣은 일정 4건 → 그 뒤 진전 2건 (회사 3곳)" */
+  coachLine: (applied: number, progressed: number, companies: number) =>
+    `코치 제안으로 넣은 일정 ${applied}건 → 그 뒤 단계가 앞으로 가거나 성사 ${progressed}건 (회사 ${companies}곳)`,
+  coachEmpty: '아직 영업 코치 제안으로 넣은 일정이 없습니다.',
 } as const;
 
 /** 영업 분석 그래프·기간 선택(#760, PM 요청 2026-11-15). 숫자는 서버 값 그대로이고 글자만 여기 둔다. */
@@ -2003,6 +2152,12 @@ export const detailReport = {
     noEvidenceYet:
       '아직 조사한 근거 자료가 없습니다. [다시 조사]를 누르면 홈페이지를 찾아 근거를 뽑습니다.',
     evidenceListLabel: (line: string) => `근거 자료: ${line}`,
+    /** #803 근거 표: 줄 오른쪽 접힌 근거 "근거 3건". */
+    evidenceCount: (n: number) => `근거 ${n}건`,
+    /** #803 근거 표: 그 줄 근거 가운데 가장 높은 출처 등급 "등급 B". */
+    bestGrade: (grade: string) => `등급 ${grade}`,
+    /** #803: 바로 위 근거와 출처가 같으면 주소를 다시 쓰지 않는다. */
+    sameSource: '같은 출처',
   },
   /** "2. 통화에서 확인할 것" — 읽기만 한다. 적는 것은 아래 "기록 남기기"에서. */
   call: {
@@ -2312,6 +2467,47 @@ export const handoffTexts = {
   waitingFor: (to: string) => `${to} 확인 전`,
   saveFailed: '전달 사항을 남기지 못했습니다. 잠시 후 다시 시도해 주세요.',
   needStaff: '담당자를 고르면 전달 사항을 남길 수 있습니다.',
+} as const;
+
+/** #799 운영 관리 화면(운영 담당만). 보기 전용: 자료 갱신은 운영 명령으로 하고 여기서는 안내만. */
+export const operationsTexts = {
+  loadError: '운영 관리 화면을 불러오지 못했습니다.',
+  forbidden: '운영 관리 화면은 운영 담당만 볼 수 있습니다.',
+  usageTitle: (month: string) => `AI 사용액 · ${month}`,
+  usageTotal: (used: string, limit: string, percent: number) =>
+    `${used} / 한도 ${limit} (${percent}%)`,
+  usageCalls: (calls: number, limit: number) => `호출 ${calls} / ${limit}회`,
+  usageAlertLine: (percent: number) => `${percent}%가 넘으면 대시보드에 알림`,
+  groupNames: {
+    RESEARCH: '회사 조사·후보 판단',
+    WEB_SEARCH: '웹 검색(홈페이지 찾기)',
+    SALES: '영업 기록·영업 코치',
+    OTHER: '그 밖',
+  },
+  groupLine: (calls: number) => `${calls}회`,
+  dailyTitle: '날짜별',
+  autoResearchToday: (used: string, limit: string | null) =>
+    limit ? `오늘 자동 조사 ${used} / 하루 ${limit}` : `오늘 자동 조사 ${used} · 자동 조사 꺼짐`,
+  sourcesTitle: '자료 현황',
+  sourceNames: {
+    FACTORY_FILE: '산단공 등록공장현황 파일',
+    FACTORY_REGISTRY: '공장등록 조회(산단공)',
+    FACTORY_PROFILE: '팩토리온 공장조회',
+    WATER_LIST: '수질유해물질 업체 명단',
+    AI_JUDGMENT: 'AI 후보 판단',
+  },
+  sourceHead: ['자료', '기준일', '넣은 날', '행 수', '다음 갱신 권장'],
+  overdue: '지남',
+  none: '—',
+  refreshHowTo:
+    '갱신은 지금 운영 명령으로 합니다(운영 안내서 "자료 갱신" 절). 이 화면에는 실행 단추가 없습니다.',
+  blockedTitle: '최근 막힌 전송 10건',
+  blockedEmpty: '막힌 전송이 없습니다.',
+} as const;
+
+/** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */
+export const sourceUrlTexts = {
+  insecure: ' (암호화 없는 주소로 읽음)',
 } as const;
 
 /**

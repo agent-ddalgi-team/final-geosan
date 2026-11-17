@@ -25,10 +25,39 @@ def store_public_coordinate(customer_id, expected_address, point, db_path=None):
         customer.geocoded_at = utcnow()
 
 
+# #811(PM 결정 2026-11-16): 시연용 가상 위치.
+# `seed-demo-records`가 시연 표시 DB의 가상 회사에만 쓴다.
+DEMO_SOURCE = "DEMO"
+
+
+def store_demo_coordinate(customer, lat, lng) -> bool:
+    """가상 회사에 시연용 가상 위치를 붙인다. 바꿨으면 True, 이미 같은 값이면 False.
+
+    실제 회사에는 쓰지 않는다(공공좌표 규칙 #222). 다른 출처 좌표가 이미 있으면 덮지 않는다.
+    시연 표시 DB인지는 부르는 쪽(`seed-demo-records`)이 먼저 확인한다.
+    """
+    if not customer.is_virtual:
+        raise InputError("가상 위치는 가상 회사에만 붙일 수 있습니다.")
+    if not valid_point(lat, lng):
+        raise InputError("가상 위치의 위도·경도가 올바르지 않습니다.")
+    if customer.geocode_source not in {None, DEMO_SOURCE}:
+        raise InputError("이미 다른 출처의 좌표가 있어 가상 위치로 바꾸지 않았습니다.")
+    if customer.geocode_source == DEMO_SOURCE and (customer.lat, customer.lng) == (lat, lng):
+        return False
+    customer.lat, customer.lng = lat, lng
+    customer.geocode_source = DEMO_SOURCE
+    customer.geocoded_at = utcnow()
+    return True
+
+
 def stored_point(customer):
-    if customer.is_virtual or customer.security_grade != "PUBLIC":
+    if customer.security_grade != "PUBLIC":
         return None
-    if customer.geocode_source not in {"CSV", "JUSO", "MANUAL"}:
+    if customer.is_virtual:
+        # 가상 회사는 시연용 가상 위치만 인정한다(#811). 실제 회사의 DEMO 값은 아래에서 무시된다.
+        if customer.geocode_source != DEMO_SOURCE:
+            return None
+    elif customer.geocode_source not in {"CSV", "JUSO", "MANUAL"}:
         return None
     if not valid_point(customer.lat, customer.lng):
         return None

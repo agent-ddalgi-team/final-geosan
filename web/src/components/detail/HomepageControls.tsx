@@ -39,6 +39,8 @@ export interface HomepageControlsProps {
    * 알리기만 한다. 누르기 전에는 조사하지 않는다. 제안이 없으면 null.
    */
   suggestDays?: number | null;
+  /** #803: 상세 머리가 "담당자를 고르면" 안내를 한 번만 보일 때 true. */
+  hideStaffHint?: boolean;
 }
 
 type Busy = 'research' | null;
@@ -47,6 +49,7 @@ export default function HomepageControls({
   oppId,
   onReload,
   suggestDays = null,
+  hideStaffHint = false,
 }: HomepageControlsProps) {
   const { staffKey, canRecord, config } = useFrame();
   const [busy, setBusy] = useState<Busy>(null);
@@ -139,7 +142,7 @@ export default function HomepageControls({
           </span>
         ) : null}
         {canRecord ? <MonthSpendLine /> : null}
-        {!canRecord ? (
+        {!canRecord && !hideStaffHint ? (
           <span style={secondary} data-testid="homepage-pick-staff">
             {homepageControls.pickStaffFirst}
           </span>

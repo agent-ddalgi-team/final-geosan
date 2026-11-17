@@ -12,9 +12,25 @@ import type { MenuBadges } from '../../api/menuBadges';
 import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 import { sidebarTheme, typography } from '../../theme/tokens';
+import { useFrame } from './FrameContext';
 import { useMenuBadges } from './useMenuBadges';
 
 export const SIDEBAR_STORAGE_KEY = 'geosan.sidebarCollapsed';
+/** #803: 기업 상세에서만 따로 기억한다(기본 접힘 — 본문이 왼쪽 메뉴와 영업 코치 판 사이에 끼어 좁았다). */
+export const SIDEBAR_DETAIL_STORAGE_KEY = 'geosan.sidebarCollapsed.detail';
+
+/** 기업 상세 주소(/opportunities/:id). 보고서(/report)·목록은 아니다. */
+export function isDetailPath(pathname: string): boolean {
+  return /^\/opportunities\/[^/]+\/?$/.test(pathname);
+}
+
+function readDetailCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_DETAIL_STORAGE_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
 const WIDE = 220;
 const NARROW = 72;
 
@@ -87,6 +103,15 @@ const AnalysisIcon = () => (
   </Icon>
 );
 
+/** 운영 관리(#799): 계기판 바늘(사용량·자료 상태를 보는 곳). */
+const OperationsIcon = () => (
+  <Icon name="operations">
+    <path d="M4.5 16.5a7.5 7.5 0 1 1 15 0" />
+    <path d="M12 16.5l3.5-4" />
+    <circle cx="12" cy="16.5" r="1.2" />
+  </Icon>
+);
+
 /** 접기·펼치기: 왼쪽 칸이 있는 창 + 화살표. */
 const PanelIcon = ({ collapsed }: { collapsed: boolean }) => (
   <Icon name={collapsed ? 'expand' : 'collapse'}>
@@ -139,6 +164,16 @@ const ITEMS: {
     badge: null,
   },
 ];
+
+/** #799 운영 관리: 설정 operations.staffKeys에 든 담당자에게만 맨 아래에 보인다(권한은 서버가 판단). */
+const OPERATIONS_ITEM: (typeof ITEMS)[number] = {
+  to: '/operations',
+  end: false,
+  icon: <OperationsIcon />,
+  label: frame.menuOperations,
+  testId: 'nav-operations-link',
+  badge: null,
+};
 
 /**
  * 숫자 꼬리표(#770). 99를 넘으면 "99+". 뜻("새 후보 12곳")은 손을 올리면(title) 보이고,
@@ -197,14 +232,24 @@ function Tip({ children }: { children: ReactNode }) {
 }
 
 export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
-  const [collapsed, setCollapsed] = useState(() => readCollapsed(narrowDevice));
+  const [generalCollapsed, setGeneralCollapsed] = useState(() => readCollapsed(narrowDevice));
+  const [detailCollapsed, setDetailCollapsed] = useState(readDetailCollapsed);
   const { pathname } = useLocation();
   const badges = useMenuBadges(pathname);
+  const { config, staffKey } = useFrame();
+  const operations = Boolean(staffKey && config?.operationsStaffKeys?.includes(staffKey));
+  const items = operations ? [...ITEMS, OPERATIONS_ITEM] : ITEMS;
+  // #803: 기업 상세는 따로 기억하고 처음에는 접혀 있다. 다른 화면의 기억과 섞지 않는다.
+  const onDetail = isDetailPath(pathname);
+  const collapsed = onDetail ? detailCollapsed : generalCollapsed;
   const toggle = () => {
     const next = !collapsed;
-    setCollapsed(next);
+    (onDetail ? setDetailCollapsed : setGeneralCollapsed)(next);
     try {
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+      window.localStorage.setItem(
+        onDetail ? SIDEBAR_DETAIL_STORAGE_KEY : SIDEBAR_STORAGE_KEY,
+        String(next),
+      );
     } catch {
       // 저장소를 못 써도 이번 화면에서는 바뀐 상태가 유지된다.
     }
@@ -302,7 +347,7 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
           flex: 1,
         }}
       >
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const count = item.badge && badges ? badges[item.badge] : 0;
           const meaning = item.badge && count > 0 ? frame.menuBadge[item.badge](count) : null;
           const name = meaning ? `${item.label}, ${meaning}` : item.label;

@@ -438,6 +438,67 @@
         "title": "AssistantUi",
         "type": "object"
       },
+      "AutoResearchToday": {
+        "properties": {
+          "limitUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limitusd"
+          },
+          "usedUsd": {
+            "title": "Usedusd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "usedUsd",
+          "limitUsd"
+        ],
+        "title": "AutoResearchToday",
+        "type": "object"
+      },
+      "BlockedTransfer": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "occurredAt",
+          "purpose",
+          "kind",
+          "reason"
+        ],
+        "title": "BlockedTransfer",
+        "type": "object"
+      },
       "Blocker": {
         "properties": {
           "blocksApproval": {
@@ -1157,6 +1218,14 @@
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
+          "operationsStaffKeys": {
+            "description": "운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys, #799). 화면은 지금 담당자가 이 안에 있을 때만 메뉴를 보인다. 권한은 서버가 판단한다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Operationsstaffkeys",
+            "type": "array"
+          },
           "records": {
             "$ref": "#/components/schemas/RecordsUi"
           },
@@ -1338,6 +1407,25 @@
         "title": "DailyBrief",
         "type": "object"
       },
+      "DailyCost": {
+        "properties": {
+          "costUsd": {
+            "title": "Costusd",
+            "type": "number"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "costUsd"
+        ],
+        "title": "DailyCost",
+        "type": "object"
+      },
       "Dashboard": {
         "properties": {
           "asOf": {
@@ -1357,6 +1445,16 @@
           },
           "counts": {
             "$ref": "#/components/schemas/DashboardCounts"
+          },
+          "progressCompanies": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/ProgressCompany"
+              },
+              "type": "array"
+            },
+            "title": "Progresscompanies",
+            "type": "object"
           },
           "recentActivity": {
             "items": {
@@ -2057,6 +2155,44 @@
         "title": "DetailHeader",
         "type": "object"
       },
+      "DetailMap": {
+        "description": "#803 상세 \"한눈에\" 작은 지도. 좌표만 싣는다(이름·주소·대표번호·메모 없음).",
+        "properties": {
+          "center": {
+            "$ref": "#/components/schemas/DetailMapPoint",
+            "description": "설정 geosan 좌표(대시보드 지도와 같은 값)"
+          },
+          "company": {
+            "$ref": "#/components/schemas/DetailMapPoint",
+            "description": "저장된 공공좌표(CSV·JUSO·MANUAL). 네이버 실시간 보완 좌표는 싣지 않는다(#222)"
+          }
+        },
+        "required": [
+          "center",
+          "company"
+        ],
+        "title": "DetailMap",
+        "type": "object"
+      },
+      "DetailMapPoint": {
+        "description": "#803 상세 작은 지도의 점. 대시보드 지도(center·lat·lng)와 같은 이름.",
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "DetailMapPoint",
+        "type": "object"
+      },
       "DetailRecords": {
         "properties": {
           "advice": {
@@ -2430,6 +2566,21 @@
         "title": "Envelope[NoteResponse]",
         "type": "object"
       },
+      "Envelope_Operations_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Operations"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[Operations]",
+        "type": "object"
+      },
       "Envelope_OpinionResponse_": {
         "properties": {
           "data": {
@@ -2563,6 +2714,21 @@
           "data"
         ],
         "title": "Envelope[SalesAnalysis]",
+        "type": "object"
+      },
+      "Envelope_SalesPatternsData_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SalesPatternsData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[SalesPatternsData]",
         "type": "object"
       },
       "Envelope_SalesQuestionsView_": {
@@ -4484,6 +4650,34 @@
         "title": "NoteResponse",
         "type": "object"
       },
+      "Operations": {
+        "properties": {
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/BlockedTransfer"
+            },
+            "title": "Blocked",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatus"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        },
+        "required": [
+          "usage",
+          "sources",
+          "blocked"
+        ],
+        "title": "Operations",
+        "type": "object"
+      },
       "Opinion": {
         "enum": [
           "WORTH_REVIEW",
@@ -5124,6 +5318,17 @@
             "title": "Homepageneedsconfirm",
             "type": "boolean"
           },
+          "map": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailMap"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null"
+          },
           "previousEvalId": {
             "anyOf": [
               {
@@ -5498,6 +5703,719 @@
         ],
         "title": "OutcomeStatus",
         "type": "string"
+      },
+      "PatternAnswerCount": {
+        "properties": {
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answerId",
+          "count"
+        ],
+        "title": "PatternAnswerCount",
+        "type": "object"
+      },
+      "PatternAnswerFill": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerCount"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          },
+          "topShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topshare"
+          },
+          "unknownShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unknownshare"
+          }
+        },
+        "required": [
+          "questionId",
+          "step",
+          "eligible",
+          "answered",
+          "ratio",
+          "answers",
+          "unknownShare",
+          "topShare"
+        ],
+        "title": "PatternAnswerFill",
+        "type": "object"
+      },
+      "PatternAnswerRow": {
+        "properties": {
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "inProgress": {
+            "title": "Inprogress",
+            "type": "integer"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "questionId",
+          "answerId",
+          "won",
+          "failed",
+          "inProgress",
+          "wonRatio",
+          "judged"
+        ],
+        "title": "PatternAnswerRow",
+        "type": "object"
+      },
+      "PatternBasis": {
+        "properties": {
+          "closedCount": {
+            "title": "Closedcount",
+            "type": "integer"
+          },
+          "minSampleForRatio": {
+            "title": "Minsampleforratio",
+            "type": "integer"
+          },
+          "overallWonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overallwonratio"
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "minSampleForRatio",
+          "closedCount",
+          "wonCount",
+          "overallWonRatio"
+        ],
+        "title": "PatternBasis",
+        "type": "object"
+      },
+      "PatternCoachEffect": {
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "integer"
+          },
+          "companies": {
+            "title": "Companies",
+            "type": "integer"
+          },
+          "progressed": {
+            "title": "Progressed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "applied",
+          "progressed",
+          "companies"
+        ],
+        "title": "PatternCoachEffect",
+        "type": "object"
+      },
+      "PatternCodeCount": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/LostReasonCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "PatternCodeCount",
+        "type": "object"
+      },
+      "PatternCombo": {
+        "properties": {
+          "contacted": {
+            "title": "Contacted",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "onHold": {
+            "title": "Onhold",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "processCode",
+          "industry",
+          "region",
+          "contacted",
+          "won",
+          "lost",
+          "onHold",
+          "wonRatio"
+        ],
+        "title": "PatternCombo",
+        "type": "object"
+      },
+      "PatternContactRow": {
+        "properties": {
+          "bucket": {
+            "enum": [
+              "ZERO",
+              "ONE",
+              "TWO",
+              "THREE",
+              "FOUR_PLUS"
+            ],
+            "title": "Bucket",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "inProgress": {
+            "title": "Inprogress",
+            "type": "integer"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "visited": {
+            "title": "Visited",
+            "type": "boolean"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "visited",
+          "bucket",
+          "won",
+          "failed",
+          "inProgress",
+          "wonRatio",
+          "judged"
+        ],
+        "title": "PatternContactRow",
+        "type": "object"
+      },
+      "PatternFailure": {
+        "properties": {
+          "byStep": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStepCount"
+            },
+            "title": "Bystep",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "lostReasons": {
+            "items": {
+              "$ref": "#/components/schemas/PatternCodeCount"
+            },
+            "title": "Lostreasons",
+            "type": "array"
+          },
+          "onHoldCount": {
+            "title": "Onholdcount",
+            "type": "integer"
+          },
+          "stepAnswers": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStepAnswers"
+            },
+            "title": "Stepanswers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "onHoldCount",
+          "byStep",
+          "lostReasons",
+          "stepAnswers"
+        ],
+        "title": "PatternFailure",
+        "type": "object"
+      },
+      "PatternGapRow": {
+        "properties": {
+          "bucket": {
+            "enum": [
+              "WITHIN_WEEK",
+              "WITHIN_TWO_WEEKS",
+              "WITHIN_MONTH",
+              "OVER_MONTH",
+              "SINGLE_CONTACT"
+            ],
+            "title": "Bucket",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "inProgress": {
+            "title": "Inprogress",
+            "type": "integer"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wonratio"
+          }
+        },
+        "required": [
+          "bucket",
+          "won",
+          "failed",
+          "inProgress",
+          "wonRatio",
+          "judged"
+        ],
+        "title": "PatternGapRow",
+        "type": "object"
+      },
+      "PatternHint": {
+        "properties": {
+          "answerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answerid"
+          },
+          "kind": {
+            "enum": [
+              "SAME_ANSWER",
+              "UNKNOWN_MANY"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          }
+        },
+        "required": [
+          "questionId",
+          "kind"
+        ],
+        "title": "PatternHint",
+        "type": "object"
+      },
+      "PatternStandout": {
+        "properties": {
+          "answerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answerid"
+          },
+          "bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bucket"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "number"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "overallWonRatio": {
+            "title": "Overallwonratio",
+            "type": "number"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "questionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionid"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "table": {
+            "enum": [
+              "CONTACTS_BEFORE_VISIT",
+              "LONGEST_GAP",
+              "ANSWER",
+              "COMBO"
+            ],
+            "title": "Table",
+            "type": "string"
+          },
+          "visited": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visited"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          },
+          "wonRatio": {
+            "title": "Wonratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "table",
+          "won",
+          "failed",
+          "wonRatio",
+          "overallWonRatio",
+          "diff"
+        ],
+        "title": "PatternStandout",
+        "type": "object"
+      },
+      "PatternStepAnswers": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerCount"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "questionId": {
+            "title": "Questionid",
+            "type": "string"
+          },
+          "step": {
+            "$ref": "#/components/schemas/SalesStep"
+          }
+        },
+        "required": [
+          "step",
+          "questionId",
+          "answers"
+        ],
+        "title": "PatternStepAnswers",
+        "type": "object"
+      },
+      "PatternStepCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SalesStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "step",
+          "count"
+        ],
+        "title": "PatternStepCount",
+        "type": "object"
+      },
+      "PatternSuccess": {
+        "properties": {
+          "avgContactsToWon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgcontactstowon"
+          },
+          "avgFirstVisitIndex": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avgfirstvisitindex"
+          },
+          "byStep": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStepCount"
+            },
+            "title": "Bystep",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "failedAvgFirstVisitIndex": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failedavgfirstvisitindex"
+          }
+        },
+        "required": [
+          "count",
+          "byStep",
+          "avgContactsToWon",
+          "avgFirstVisitIndex",
+          "failedAvgFirstVisitIndex"
+        ],
+        "title": "PatternSuccess",
+        "type": "object"
       },
       "PeerCompany": {
         "properties": {
@@ -5978,6 +6896,68 @@
           "newPassword"
         ],
         "title": "ProfileRequest",
+        "type": "object"
+      },
+      "ProgressCompany": {
+        "description": "#800 영업 진행 띠 칸을 눌렀을 때 펴지는 회사 한 줄. 메모·연락처·대표번호는 없다.",
+        "properties": {
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactat"
+          },
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscheduleat"
+          },
+          "nextScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextschedulenote"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "stalled": {
+            "title": "Stalled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "customerName",
+          "lastContactAt",
+          "nextScheduleAt",
+          "nextScheduleNote",
+          "stalled"
+        ],
+        "title": "ProgressCompany",
         "type": "object"
       },
       "ProposalHit": {
@@ -7096,6 +8076,92 @@
         "title": "SalesCoachView",
         "type": "object"
       },
+      "SalesPatternsData": {
+        "properties": {
+          "answerFill": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerFill"
+            },
+            "title": "Answerfill",
+            "type": "array"
+          },
+          "answerOutcomes": {
+            "items": {
+              "$ref": "#/components/schemas/PatternAnswerRow"
+            },
+            "title": "Answeroutcomes",
+            "type": "array"
+          },
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/PatternBasis"
+          },
+          "coachEffect": {
+            "$ref": "#/components/schemas/PatternCoachEffect"
+          },
+          "combos": {
+            "items": {
+              "$ref": "#/components/schemas/PatternCombo"
+            },
+            "title": "Combos",
+            "type": "array"
+          },
+          "contactsBeforeVisit": {
+            "items": {
+              "$ref": "#/components/schemas/PatternContactRow"
+            },
+            "title": "Contactsbeforevisit",
+            "type": "array"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/PatternFailure"
+          },
+          "longestGap": {
+            "items": {
+              "$ref": "#/components/schemas/PatternGapRow"
+            },
+            "title": "Longestgap",
+            "type": "array"
+          },
+          "questionnaireHints": {
+            "items": {
+              "$ref": "#/components/schemas/PatternHint"
+            },
+            "title": "Questionnairehints",
+            "type": "array"
+          },
+          "standouts": {
+            "items": {
+              "$ref": "#/components/schemas/PatternStandout"
+            },
+            "title": "Standouts",
+            "type": "array"
+          },
+          "success": {
+            "$ref": "#/components/schemas/PatternSuccess"
+          }
+        },
+        "required": [
+          "asOf",
+          "basis",
+          "failure",
+          "success",
+          "contactsBeforeVisit",
+          "longestGap",
+          "answerOutcomes",
+          "combos",
+          "standouts",
+          "answerFill",
+          "questionnaireHints",
+          "coachEffect"
+        ],
+        "title": "SalesPatternsData",
+        "type": "object"
+      },
       "SalesQuestionView": {
         "properties": {
           "answers": {
@@ -7619,6 +8685,75 @@
         "title": "SourceGrade",
         "type": "string"
       },
+      "SourceStatus": {
+        "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
+          "loadedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loadedat"
+          },
+          "refreshDueAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshdueat"
+          },
+          "refreshOverdue": {
+            "title": "Refreshoverdue",
+            "type": "boolean"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "FACTORY_FILE",
+              "FACTORY_REGISTRY",
+              "FACTORY_PROFILE",
+              "WATER_LIST",
+              "AI_JUDGMENT"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "asOf",
+          "loadedAt",
+          "rows",
+          "refreshDueAt",
+          "refreshOverdue"
+        ],
+        "title": "SourceStatus",
+        "type": "object"
+      },
       "StaffEntry": {
         "properties": {
           "displayName": {
@@ -7749,6 +8884,70 @@
         "title": "TimelineEvent",
         "type": "object"
       },
+      "TodayAlert": {
+        "description": "#799 운영 알림 줄의 숫자. AI 줄은 사용액·한도·%, 자료 갱신 줄은 기준일·권장일.",
+        "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dueat"
+          },
+          "limitUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limitusd"
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "usedUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usedusd"
+          }
+        },
+        "title": "TodayAlert",
+        "type": "object"
+      },
       "TodayCheckItem": {
         "description": "회사 이름·날짜·일정 한 줄. 연락처·대표번호는 이 모델에 없다. 메모 글은 \"나에게 온 전달\n사항\" 줄의 text(받는 사람 본인에게, 앞 80자)뿐이다(#794).",
         "properties": {
@@ -7816,6 +9015,16 @@
       "TodayCheckRow": {
         "description": "맨 위 \"오늘 확인할 것\"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677).",
         "properties": {
+          "alert": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayAlert"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "count": {
             "title": "Count",
             "type": "integer"
@@ -7832,7 +9041,10 @@
               "SCHEDULE_TODAY",
               "SCHEDULE_OVERDUE",
               "CHECK_LEFT",
-              "HANDOFF_FOR_ME"
+              "HANDOFF_FOR_ME",
+              "AI_USAGE_ALERT",
+              "AI_LIMIT_REACHED",
+              "DATA_REFRESH_DUE"
             ],
             "title": "Kind",
             "type": "string"
@@ -7855,6 +9067,94 @@
           "items"
         ],
         "title": "TodayCheckRow",
+        "type": "object"
+      },
+      "Usage": {
+        "description": "이번 달(한국 시간). 비용은 `geosan cost`·호출 예약과 같은 한도 계산 비용.",
+        "properties": {
+          "alertRatio": {
+            "title": "Alertratio",
+            "type": "number"
+          },
+          "autoResearchToday": {
+            "$ref": "#/components/schemas/AutoResearchToday"
+          },
+          "callLimit": {
+            "title": "Calllimit",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "costLimitUsd": {
+            "title": "Costlimitusd",
+            "type": "number"
+          },
+          "costUsd": {
+            "title": "Costusd",
+            "type": "number"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyCost"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/UsageGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "calls",
+          "callLimit",
+          "costUsd",
+          "costLimitUsd",
+          "alertRatio",
+          "groups",
+          "daily",
+          "autoResearchToday"
+        ],
+        "title": "Usage",
+        "type": "object"
+      },
+      "UsageGroup": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "costUsd": {
+            "title": "Costusd",
+            "type": "number"
+          },
+          "group": {
+            "enum": [
+              "RESEARCH",
+              "WEB_SEARCH",
+              "SALES",
+              "OTHER"
+            ],
+            "title": "Group",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "calls",
+          "costUsd"
+        ],
+        "title": "UsageGroup",
         "type": "object"
       },
       "ValidationError": {
@@ -8626,6 +9926,53 @@
           }
         },
         "summary": "Confirm Handoff"
+      }
+    },
+    "/api/v1/operations": {
+      "get": {
+        "description": "운영 관리 화면. 운영 담당이 아니면(보기 전용·키 없음 포함) 403.",
+        "operationId": "operations_api_v1_operations_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Operations_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Operations"
       }
     },
     "/api/v1/opportunities": {
@@ -10128,6 +11475,69 @@
           }
         },
         "summary": "Sales Analysis"
+      }
+    },
+    "/api/v1/sales-analysis/patterns": {
+      "get": {
+        "description": "#802·#820: 기록을 펼쳐 센다(기준 숫자 없음, 표본 기준은 salesAnalysis 하나).\n\n영업 분석표와 같은 대상·기간 규칙.",
+        "operationId": "sales_patterns_api_v1_sales_analysis_patterns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SalesPatternsData_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sales Patterns"
       }
     },
     "/api/v1/sales-questions": {

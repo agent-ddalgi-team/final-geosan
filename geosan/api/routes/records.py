@@ -701,6 +701,10 @@ def save_bookmark(
     )
 
 
+# #774 영업 코치 [넣기]로 잡은 일정의 변경 기록 끝말. #802 영업 분석이 이 끝말로 "코치 제안"을 센다.
+COACH_SUGGESTION_SUFFIX = " · 영업 코치 제안"
+
+
 def sales_questions(session: Session) -> SalesQuestions:
     """#607 꼬리 질문 파일. 한 요청 안에서는 한 번만 읽는다."""
     if "sales_questions" not in session.info:
@@ -1235,9 +1239,9 @@ def set_schedule(
     if old_day is not None:
         old_note = previous.next_schedule_note
         what = f"{_day_label(old_day)} 일정" + (f"({old_note})" if old_note else "")
-        text = f"{what} → {new_day}{_ro(label)} 바꿈 · 영업 코치 제안"
+        text = f"{what} → {new_day}{_ro(label)} 바꿈{COACH_SUGGESTION_SUFFIX}"
     else:
-        text = f"{new_day} 일정 잡음 · 영업 코치 제안"
+        text = f"{new_day} 일정 잡음{COACH_SUGGESTION_SUFFIX}"
     saved = record_outcome(session, opp_id, request, staff)
     row = saved.row
     add_program_note(session, opportunity, text, staff=staff, now=row.created_at)

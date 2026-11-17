@@ -360,6 +360,8 @@ export interface ConfigUi {
   distanceFilterPresetsKm?: number[];
   /** 계정 방식에서 지금 로그인한 사람(#754). 공용 방식·옛 응답이면 null 또는 없음. */
   currentStaff?: CurrentStaff | null;
+  /** #799: 운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys). 옛 서버면 없다. */
+  operationsStaffKeys?: string[];
 }
 
 // ---------- GET /opportunities (S1 카드) ----------
@@ -858,6 +860,21 @@ export interface OpportunityDetail {
   evalId: string | null;
   previousEvalId: string | null;
   reevaluated: boolean;
+  /**
+   * #803(PM 결정 2026-11-16) 상세 "한눈에" 작은 지도. center = 설정 거산 좌표, company = 저장된 공공좌표.
+   * 좌표가 없거나 가상 사례면 null. 옛 응답에는 없다.
+   */
+  map?: DetailMap | null;
+}
+
+export interface DetailMapPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface DetailMap {
+  center: DetailMapPoint;
+  company: DetailMapPoint;
 }
 
 // ---------- POST /opportunities/{oppId}/opinions (S3 의견) ----------

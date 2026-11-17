@@ -20,11 +20,10 @@ import {
 import type { BookmarkRecord, Envelope, OpportunityDetail, Question } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
+  coachSteps,
   detailReport,
   detailSections,
   frame,
-  industryChips,
-  opinionArea,
   peersArea,
   recordsArea,
   reviewArea,
@@ -157,14 +156,17 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    // 읽는 곳 순서(PM 결정 2026-11-13 #674): 한눈에 → 1. 왜 이 회사인가 → 2. 통화에서 확인할 것 → 3. 점수 자세히 보기.
-    // "근거 자료"는 따로 구역을 두지 않고 1번 안에 붙는다.
-    expect(headings.slice(0, 4)).toEqual([
+    // 읽는 곳 순서(PM 결정 2026-11-13 #674): 한눈에 → 1. 왜 이 회사인가 → 3. 점수 자세히 보기.
+    // #803(PM 결정 2026-11-16): "통화에서 확인할 것"은 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다
+    // (이 시험은 코치 판 자리 없이 그려 기록 구역 안에 놓인다). "근거 자료"는 따로 구역을 두지 않는다.
+    expect(headings.slice(0, 3)).toEqual([
       detailReport.glance.title,
       detailSections.reasons,
-      detailSections.callChecklist,
       expect.stringContaining(detailSections.scores),
     ]);
+    expect(headings).not.toContain(detailSections.callChecklist);
+    expect(headings).toContain(coachSteps.before);
+    expect(within(screen.getByTestId('detail-records')).getByTestId('detail-review')).toBeTruthy();
     expect(headings).not.toContain(detailSections.evidence);
     expect(screen.queryByTestId('detail-questions')).not.toBeInTheDocument();
     const review = screen.getByTestId('detail-review');
@@ -339,26 +341,24 @@ describe('OpportunityDetailPage', () => {
     const setPageTitle = renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    // #803(PM 결정 2026-11-16): 산업군 카드·검토 의견 카드·"여기부터 적는 곳" 구분 줄을 없앴다.
+    // 산업은 "한눈에" 산업 칸, 의견은 머리 꼬리표 줄, 통화에서 확인할 것은 기록(영업 코치) 칸 ①로.
+    // 이 응답(base)은 검토사항을 안 주는 옛 응답이라 후속 조치가 예전처럼 읽는 곳 2번 자리에 남는다.
     expect(headings).toEqual([
       detailReport.glance.title,
       detailSections.reasons,
       detailSections.callChecklist,
       expect.stringContaining(detailSections.scores),
-      // 적는 곳 맨 앞: 산업군 칩(#646).
-      industryChips.title,
-      opinionArea.groupLabel,
       recordsArea.title,
       peersArea.title,
     ]);
-    // 구분 줄 "여기부터 적는 곳"은 점수 구역과 검토 의견 사이에 있다.
-    const divider = screen.getByTestId('detail-write-divider');
-    expect(divider).toHaveTextContent(detailReport.writeDivider);
-    const after = (a: HTMLElement, b: HTMLElement) =>
-      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(after(screen.getByTestId('detail-scores'), divider)).toBe(true);
-    expect(after(divider, screen.getByTestId('detail-opinion'))).toBe(true);
+    expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
     const opinion = screen.getByTestId('detail-opinion');
+    expect(within(screen.getByTestId('detail-header')).getByTestId('detail-opinion')).toBe(opinion);
     expect(within(opinion).getByTestId('opinion-area')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('detail-glance')).getByTestId('detail-industries'),
+    ).toBeInTheDocument();
     // 맨 아래 기록 영역에 네 칸이 있다.
     const records = screen.getByTestId('detail-records');
     expect(within(records).getByTestId('records-area')).toBeInTheDocument();
@@ -770,9 +770,15 @@ describe('OpportunityDetailPage', () => {
       );
       renderPage();
       await screen.findByTestId('opportunity-detail');
-      const divider = screen.getByTestId('detail-write-divider');
+      // #803: 구분 줄이 없어져 기록 구역 앞까지를 읽는 곳으로 본다. 머리의 검토 의견과 "한눈에" 산업 칸의
+      // [확정]·[고치기]는 PM 결정(2026-11-16)으로 읽는 곳 안에 들어왔으므로 따로 뺀다.
+      const records = screen.getByTestId('detail-records');
+      const inlineEditors = ['detail-opinion', 'detail-industries'].map((id) =>
+        screen.getByTestId(id),
+      );
       const above = (el: HTMLElement) =>
-        Boolean(el.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING);
+        Boolean(el.compareDocumentPosition(records) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        !inlineEditors.some((editor) => editor.contains(el));
       const buttons = [...screen.getAllByRole('button'), ...screen.getAllByRole('link')]
         .filter(above)
         .filter((el) => el.tagName !== 'A' || el.getAttribute('target') !== '_blank')
@@ -786,23 +792,18 @@ describe('OpportunityDetailPage', () => {
           'detail-go-record-button',
           'detail-scores-toggle',
           'homepage-rerun-button',
-          'review-fold-toggle-gap',
         ].sort(),
       );
       for (const role of ['textbox', 'checkbox', 'combobox', 'radio']) {
         expect(screen.queryAllByRole(role).filter(above)).toHaveLength(0);
       }
-      // 적는 곳은 구분 줄 아래에 그대로 있다: 검토 의견 → 기록 남기기 → 활동 이력 → 비슷한 회사 참고.
-      const below = ['detail-opinion', 'detail-records', 'detail-peers'].map((id) =>
-        screen.getByTestId(id),
-      );
+      // 적는 곳: 기록(① 통화 전 → ② 기록 남기기 → 활동 이력) → 비슷한 회사 참고.
+      const below = ['detail-records', 'detail-peers'].map((id) => screen.getByTestId(id));
       for (const el of below) expect(above(el)).toBe(false);
-      expect(within(below[1]).getByTestId('records-area')).toBeInTheDocument();
+      expect(within(below[0]).getByTestId('records-area')).toBeInTheDocument();
+      expect(within(below[0]).getByTestId('review-fold-toggle-gap')).toBeInTheDocument();
       expect(
         below[0].compareDocumentPosition(below[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(
-        below[1].compareDocumentPosition(below[2]) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
 

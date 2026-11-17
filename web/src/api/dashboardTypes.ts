@@ -78,6 +78,18 @@ export type TodayCheckKind =
   /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
   | 'HANDOFF_FOR_ME';
 
+/** #799 운영 알림 줄 종류(회사 줄이 없고 alert에 숫자). 사용률·자료 갱신은 운영 담당에게만. */
+export type TodayAlertKind = 'AI_USAGE_ALERT' | 'AI_LIMIT_REACHED' | 'DATA_REFRESH_DUE';
+
+/** #799 운영 알림 줄의 숫자. */
+export interface TodayAlert {
+  usedUsd: number | null;
+  limitUsd: number | null;
+  percent: number | null;
+  asOf: string | null;
+  dueAt: string | null;
+}
+
 export interface TodayCheckItem {
   oppId: string;
   customerName: string;
@@ -96,6 +108,8 @@ export interface TodayCheckRow {
   items: TodayCheckItem[];
   /** 있으면 누를 때 /opportunities?filter=<값> 목록으로, 없으면 줄 아래에 작은 목록을 편다. */
   listFilter: string | null;
+  /** #799: 운영 알림 줄만. 다른 줄은 null(옛 서버면 없음). */
+  alert?: TodayAlert | null;
 }
 
 export interface Dashboard {
@@ -107,4 +121,22 @@ export interface Dashboard {
   breakdown?: DashboardBreakdown | null;
   /** 맨 위 "오늘 확인할 것" 줄 목록(#679). 0건인 줄은 오지 않는다. 옛 서버면 칸이 없다. */
   todayChecks?: TodayCheckRow[];
+  /** #800: 영업 진행 띠 칸(NOT_CONTACTED·IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 회사. 옛 서버면 칸이 없다. */
+  progressCompanies?: Partial<Record<ProgressBandKey, ProgressCompany[]>>;
+}
+
+/** #800 영업 진행 띠 칸 이름(브리핑 순서 + 띠 아래 보류). */
+export type ProgressBandKey = 'NOT_CONTACTED' | 'IN_CONTACT' | 'QUOTE_SAMPLE' | 'WON' | 'ON_HOLD';
+
+/** #800 진행 띠 칸을 눌렀을 때 펴지는 회사 한 줄. 메모·연락처는 없다. */
+export interface ProgressCompany {
+  oppId: string;
+  customerName: string;
+  /** 마지막 접촉 날짜(YYYY-MM-DD). 접촉 기록이 없으면 null. */
+  lastContactAt: string | null;
+  nextScheduleAt: string | null;
+  /** 다음 일정 한 줄(예: "방문"). 메모 글이 아니다. */
+  nextScheduleNote: string | null;
+  /** 접촉·견적 칸이고 다음 일정 없이 마지막 접촉 뒤 설정 일수(14일) 이상이면 true. */
+  stalled: boolean;
 }

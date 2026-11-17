@@ -140,3 +140,139 @@ export function getSalesAnalysis(
   const search = query.toString();
   return request<SalesAnalysis>(`/sales-analysis${search ? `?${search}` : ''}`, { signal });
 }
+
+// ---------------------------------------------------------------------------
+// #802·#820: 패턴 펼쳐 보기(계약 C1 `GET /sales-analysis/patterns`). AI 없음, 저장된 기록만 센다.
+// 미리 정한 신호·기준 숫자 없이 횟수별·간격별·답별로 펼치고, 표본 기준(minSampleForRatio) 하나로
+// "눈에 띔"을 고른다(결론 아님). 응답에는 코드값·건수·비율만 있고 회사 이름·메모 글·답 글은 없다.
+// ---------------------------------------------------------------------------
+
+export interface PatternStepCount {
+  /** 기록으로 이른 가장 먼 세부 단계. null이면 "연결 전"(단계 기록 없음). */
+  step: string | null;
+  count: number;
+}
+
+/** 펼친 표의 한 칸. 끝난 회사(성사+실패)가 표본 기준 밑이면 wonRatio null·judged false(회색). */
+export interface PatternOutcomeCells {
+  won: number;
+  failed: number;
+  inProgress: number;
+  wonRatio: number | null;
+  judged: boolean;
+}
+
+export type ContactBucket = 'ZERO' | 'ONE' | 'TWO' | 'THREE' | 'FOUR_PLUS';
+export type GapBucket =
+  'WITHIN_WEEK' | 'WITHIN_TWO_WEEKS' | 'WITHIN_MONTH' | 'OVER_MONTH' | 'SINGLE_CONTACT';
+
+export interface PatternContactRow extends PatternOutcomeCells {
+  /** 방문했나. 방문 없는 회사는 모든 접촉 수로 칸을 정한다. */
+  visited: boolean;
+  bucket: ContactBucket;
+}
+
+export interface PatternGapRow extends PatternOutcomeCells {
+  bucket: GapBucket;
+}
+
+export interface PatternAnswerRow extends PatternOutcomeCells {
+  questionId: string;
+  answerId: string;
+}
+
+export interface PatternCombo {
+  processCode: string | null;
+  industry: string | null;
+  region: string | null;
+  contacted: number;
+  won: number;
+  lost: number;
+  onHold: number;
+  /** 성사 ÷ 끝난 회사. 표본 기준 밑이면 null. */
+  wonRatio: number | null;
+}
+
+/** 눈에 띔 · 결론 아님 · 사람 확인 전. 칸을 가리키는 열쇠 + 그 칸과 전체의 성사율. */
+export interface PatternStandout {
+  table: 'CONTACTS_BEFORE_VISIT' | 'LONGEST_GAP' | 'ANSWER' | 'COMBO';
+  won: number;
+  failed: number;
+  wonRatio: number;
+  overallWonRatio: number;
+  diff: number;
+  visited: boolean | null;
+  bucket: string | null;
+  questionId: string | null;
+  answerId: string | null;
+  processCode: string | null;
+  industry: string | null;
+  region: string | null;
+}
+
+export interface PatternAnswerFill {
+  questionId: string;
+  step: string;
+  eligible: number;
+  answered: number;
+  ratio: number | null;
+  answers: { answerId: string; count: number }[];
+  unknownShare: number | null;
+  topShare: number | null;
+}
+
+export interface PatternHint {
+  questionId: string;
+  kind: 'SAME_ANSWER' | 'UNKNOWN_MANY';
+  answerId: string | null;
+  share: number | null;
+}
+
+export interface SalesPatterns {
+  asOf: string;
+  basis: {
+    minSampleForRatio: number;
+    closedCount: number;
+    wonCount: number;
+    overallWonRatio: number | null;
+  };
+  failure: {
+    count: number;
+    onHoldCount: number;
+    byStep: PatternStepCount[];
+    lostReasons: { code: string; count: number }[];
+    stepAnswers: {
+      step: string;
+      questionId: string;
+      answers: { answerId: string; count: number }[];
+    }[];
+  };
+  success: {
+    count: number;
+    byStep: PatternStepCount[];
+    avgContactsToWon: number | null;
+    avgFirstVisitIndex: number | null;
+    failedAvgFirstVisitIndex: number | null;
+  };
+  contactsBeforeVisit: PatternContactRow[];
+  longestGap: PatternGapRow[];
+  answerOutcomes: PatternAnswerRow[];
+  combos: PatternCombo[];
+  standouts: PatternStandout[];
+  answerFill: PatternAnswerFill[];
+  questionnaireHints: PatternHint[];
+  coachEffect: { applied: number; progressed: number; companies: number };
+}
+
+export function getSalesPatterns(
+  signal?: AbortSignal,
+  period?: AnalysisPeriod | null,
+): Promise<Envelope<SalesPatterns>> {
+  const query = new URLSearchParams();
+  if (period?.from) query.set('from', period.from);
+  if (period?.to) query.set('to', period.to);
+  const search = query.toString();
+  return request<SalesPatterns>(`/sales-analysis/patterns${search ? `?${search}` : ''}`, {
+    signal,
+  });
+}

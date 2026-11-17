@@ -11,12 +11,24 @@ extract_env = support.extract_env
 
 
 def test_cost_command_reports_both_tokens_and_alert(extract_env):
+    """비용 $0.004가 한도 $0.0045의 약 89% — 알림 기준(예시 설정 llm.costAlertRatio 0.8,
+    #799 PM 확인 2026-11-16)을 넘어 알림이 나온다."""
     case, _ = extract_env
-    search_support.change_setting("llm", monthlyCostLimitUsd=0.006)
+    search_support.change_setting("llm", monthlyCostLimitUsd=0.0045)
     assert run_extract(case.opp_id, support.URL).ok
     result = CliRunner().invoke(app, ["cost"])
     assert result.exit_code == 0 and "입력 1000·출력 200" in result.stdout
     assert "$0.004000" in result.stdout and "알림" in result.stdout
+
+
+def test_cost_command_has_no_alert_below_the_ratio(extract_env):
+    """비용 $0.004가 한도 $0.006의 약 67% — 알림 기준 80% 밑이라 알림이 없다(#799)."""
+    case, _ = extract_env
+    search_support.change_setting("llm", monthlyCostLimitUsd=0.006)
+    assert run_extract(case.opp_id, support.URL).ok
+    result = CliRunner().invoke(app, ["cost"])
+    assert result.exit_code == 0 and "$0.004000" in result.stdout
+    assert "알림" not in result.stdout
 
 
 @pytest.mark.parametrize("month", ["invalid", "2026-13", "2026-1"])

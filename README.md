@@ -87,7 +87,7 @@ geosan import-case examples/demo/case-demo-p-tech.json
 geosan import-case examples/demo/case-demo-q-industry.json
 geosan import-case examples/demo/case-demo-r-metal.json
 geosan evaluate
-geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7(그중 다음 일정 7곳: 오늘 2곳 · 1~10일 뒤 5곳, #790)
+geosan seed-demo-records                          # 가상 영업 기록: 성사 4·거절 5(가격·납기·기존 거래처)·보류 2·진행 중 7(그중 다음 일정 7곳: 오늘 2곳 · 1~10일 뒤 5곳, #790) · 가상 위치 18곳(시연 지도·거리용, #811)
 geosan serve                                      # 내 PC(127.0.0.1)에서만. 끝나면 GEOSAN_DB_PATH를 원래대로
 ```
 
@@ -256,6 +256,7 @@ DB 없이 기본 `examples/app-settings.yaml`의 선택지로 검사하며, 실�
 bash scripts/check.sh            # 파이썬 + 화면 전부 (CI와 같은 순서)
 bash scripts/check.sh python     # Ruff → 단위 테스트(커버리지 80% 하한) → 시나리오 → 뼈대 검증
 bash scripts/check.sh web        # ESLint·Prettier → Vitest → tsc·Vite 빌드
+bash scripts/check.sh fast [경로…] # PR 전 빠른 검사(#830): 바뀐 단위 시험만 + 시나리오·뼈대·화면 전부(전체·커버리지는 CI)
 ```
 
 윈도우(PowerShell)는 같은 검사를 파이썬판으로 돌립니다(단계·순서 동일):

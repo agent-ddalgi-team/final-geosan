@@ -229,6 +229,12 @@ def test_uncertain_or_out_of_region_companies_are_kept_out_with_a_reason(web_env
 
 
 def test_web_company_fills_only_the_room_left_by_the_public_branch(web_env):
+    # 웹 몫 0(옛 규칙): 공공자료가 쓰고 남은 자리만 웹 후보로.
+    # 웹 몫이 있을 때는 test_ingest_web_slots.
+    with session_scope() as session:
+        settings = read_app_settings(session)
+        settings.candidate_web_search.reserved_slots = 0
+        sync_app_settings(session, settings)
     batch = saved_after(new_batch(maximum=1))
     assert batch.new_count == 1 and set(customers()) == {"가상 볼트사"}
     assert web_rows() == {"가상 웹볼트사": ("FOUND", None)}

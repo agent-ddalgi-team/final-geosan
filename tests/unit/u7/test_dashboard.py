@@ -367,6 +367,7 @@ def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):
     assert staff.status_code == 200
     body = staff.json()
     # 약속에 "오늘 확인할 것" 칸(todayChecks)이 더해졌다(#679).
+    # #800(PM 결정 2026-11-16, 약속에 더한 칸): 진행 띠 칸별 회사(progressCompanies).
     assert set(body["data"]) == {
         "counts",
         "schedule",
@@ -374,6 +375,7 @@ def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):
         "asOf",
         "breakdown",
         "todayChecks",
+        "progressCompanies",
     }
     # 2000년 일정은 놓친 일정 한 줄이다.
     assert [(row["kind"], row["count"]) for row in body["data"]["todayChecks"]] == [

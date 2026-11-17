@@ -42,7 +42,7 @@ import { choiceMarksOf } from '../components/records/ChoiceQuestion';
 import RecordsArea, { recordsEntryInputId } from '../components/records/RecordsArea';
 import ReportLink from '../components/report/ReportLink';
 import ReviewArea from '../components/review/ReviewArea';
-import { detailReport, frame, opinionArea, peersArea, recordsArea, states } from '../labels/ko';
+import { coachSteps, detailReport, frame, peersArea, recordsArea, states } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 /** "재평가됨" 띠가 보이는 시간(ms, interaction-spec 2.16). */
@@ -248,11 +248,32 @@ export default function OpportunityDetailPage() {
           setTimelineVersion((n) => n + 1);
         }}
       />
-      {/* 통화 전 칸(#750): 지난 통화 뒤 코치가 정리한 다음 통화에 물어볼 것. AI를 부르지 않는다. */}
+      {/* #803 ① 통화 전 — 물어볼 것: 코치가 지난 통화 뒤 정리한 것(#750) + 전의 "2. 통화에서 확인할 것"(왼쪽에서 옮김). */}
       <CallPrep
         key={`${oppId}:call-prep`}
         prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
       />
+      {data.reviewItems !== undefined ? (
+        <CallChecklist
+          header={data.header}
+          reasons={data.reasons}
+          processLinks={data.processLinks}
+          reviewItems={data.reviewItems}
+          requirements={data.requirements}
+          salesStep={salesStep}
+          scoreItems={data.scores?.items}
+          questions={salesQuestions}
+          title={coachSteps.before}
+          hint={coachSteps.beforeHint}
+        />
+      ) : null}
+      {/* #803 ② 기록 남기기 → 코치 답: [보내기] 뒤 코치 답은 이 칸 안에 펴진다. */}
+      <h3
+        data-testid="coach-step-record"
+        style={{ margin: '16px 0 8px', fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
+      >
+        {coachSteps.record}
+      </h3>
       <RecordsArea
         key={`${oppId}:records`}
         oppId={oppId}
@@ -265,6 +286,7 @@ export default function OpportunityDetailPage() {
         // 꼬리 질문으로 공정·산업을 확정하면 다시 평가되므로 상세 전체를 새로 불러온다(#652).
         onCompanyConfirmed={reloadQuietly}
         excluded={opinionNow?.opinion === 'NOT_TARGET'}
+        inCoach
         onContactRecorded={onContactRecorded}
         onRecorded={() => {
           setTimelineVersion((n) => n + 1);
@@ -319,8 +341,26 @@ export default function OpportunityDetailPage() {
             questions={salesQuestions}
             ownerName={ownerName}
             classificationOverrides={config?.classificationLabels}
+            reportLink={<ReportLink oppId={oppId} />}
+            // #803: 검토 의견은 따로 카드가 아니라 머리 꼬리표 줄에 "의견: 영업 대상 (수정)"으로.
+            opinion={
+              data.evalId ? (
+                <span data-testid="detail-opinion">
+                  <OpinionArea
+                    // 접촉 저장이 의견을 바꿨으면(#697) 서버 의견의 버전이 달라져 새 값으로 다시 그린다.
+                    key={`${oppId}:${data.evalId}:${serverOpinion?.version ?? 0}`}
+                    oppId={oppId}
+                    evalId={data.evalId}
+                    record={opinionNow}
+                    onSaved={(record) => {
+                      setSavedOpinion({ data, record });
+                      void bookmarkState.sync();
+                    }}
+                  />
+                </span>
+              ) : null
+            }
           />
-          <ReportLink oppId={oppId} />
           <DetailGlance
             header={data.header}
             processLinks={data.processLinks}
@@ -329,6 +369,22 @@ export default function OpportunityDetailPage() {
             requirements={data.requirements}
             contactCount={contactCount}
             lastContactAt={lastContactAt}
+            scoreItems={data.scores?.items}
+            // #803: 작은 지도(좌표가 없거나 가상 사례면 서버가 null을 준다).
+            map={data.map ?? null}
+            // #803: 산업은 "한눈에" 산업 칸에서 바로 [확정]·[고치기](전에는 아래 따로 카드).
+            industryEditor={
+              <IndustryChips
+                key={`${oppId}:industries`}
+                oppId={oppId}
+                header={data.header}
+                bare
+                onSaved={() => {
+                  setReload((n) => n + 1);
+                  setTimelineVersion((n) => n + 1);
+                }}
+              />
+            }
             processChoice={{
               oppId,
               evalId: data.evalId,
@@ -360,21 +416,11 @@ export default function OpportunityDetailPage() {
             scoreItems={data.scores?.items}
             evidence={data.evidence}
           />
-          {data.reviewItems !== undefined ? (
-            <CallChecklist
-              header={data.header}
-              reasons={data.reasons}
-              processLinks={data.processLinks}
-              reviewItems={data.reviewItems}
-              requirements={data.requirements}
-              salesStep={salesStep}
-              scoreItems={data.scores?.items}
-              questions={salesQuestions}
-            />
-          ) : (
-            // 서버가 검토사항을 안 주는 옛 응답: 후속 조치와 거산 역량 확인사항을 예전 부품으로 보인다.
+          {/* #803: "통화에서 확인할 것"은 오른쪽 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다.
+              서버가 검토사항을 안 주는 옛 응답일 때만 후속 조치를 예전 부품으로 보인다. */}
+          {data.reviewItems === undefined ? (
             <ReasonsSection reasons={data.reasons} onlyFollowUp />
-          )}
+          ) : null}
           {/* "고객이 요구하는 것과 거산의 준비 상태"·"공정 적합성 검토" 구역은 그리지 않는다(PM 결정 2026-11-13 #659).
               서버 응답(requirements·processLinks)은 그대로 온다. 공정은 "한눈에"의 "거산과 맞는 점"에 적는다. */}
           <ScoresCollapse
@@ -408,66 +454,16 @@ export default function OpportunityDetailPage() {
               </div>
             ) : null}
           </ScoresCollapse>
-          <div
-            role="separator"
-            aria-label={detailReport.writeDivider}
-            data-testid="detail-write-divider"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginTop: spacing.cardGap,
-              color: colors.textSecondary,
-              fontSize: typography.fontSizeSecondary,
-            }}
-          >
-            <span aria-hidden="true" style={{ flex: 1, height: 1, background: colors.border }} />
-            <span>{detailReport.writeDivider}</span>
-            <span aria-hidden="true" style={{ flex: 1, height: 1, background: colors.border }} />
-          </div>
-          {/* 산업군 칩(#646): AI 제안을 [확정]·[고치기]. 저장하면 상세와 활동 이력을 새로 불러온다. */}
-          <IndustryChips
-            key={`${oppId}:industries`}
-            oppId={oppId}
-            header={data.header}
-            onSaved={() => {
-              setReload((n) => n + 1);
-              setTimelineVersion((n) => n + 1);
-            }}
-          />
-          <DetailSection id="detail-opinion" title={opinionArea.groupLabel}>
-            {data.evalId ? (
-              <OpinionArea
-                // 접촉 저장이 의견을 바꿨으면(#697) 서버 의견의 버전이 달라져 새 값으로 다시 그린다.
-                key={`${oppId}:${data.evalId}:${serverOpinion?.version ?? 0}`}
-                oppId={oppId}
-                evalId={data.evalId}
-                record={opinionNow}
-                onSaved={(record) => {
-                  setSavedOpinion({ data, record });
-                  void bookmarkState.sync();
-                }}
-              />
-            ) : (
-              <p style={{ margin: 0 }}>{states.notEvaluatedYet}</p>
-            )}
-          </DetailSection>
+          {/* #803: "여기부터 적는 곳" 구분 줄·산업군 카드·검토 의견 카드는 없앴다(적는 곳은 오른쪽 영업 코치 판,
+              산업은 "한눈에", 의견은 머리 꼬리표 줄). */}
           <DetailSection
             id="detail-records"
             title={recordsArea.title}
             count={contactCount?.total ?? null}
           >
             {/* #773: 넓은 화면에서는 기록 남기기가 오른쪽 "💬 영업 코치" 칸에 있다(아래 createPortal). */}
-            {dockSlot ? (
-              <p
-                data-testid="records-in-dock"
-                style={{ margin: '0 0 12px', color: colors.textSecondary }}
-              >
-                {recordsArea.inDock}
-              </p>
-            ) : (
-              recordInput
-            )}
+            {/* #803: 넓은 화면에서는 기록 남기기가 오른쪽 영업 코치 판에 있다(안내 문장은 뺐다). */}
+            {dockSlot ? null : recordInput}
             <ActivityTimeline
               key={`${oppId}:timeline`}
               oppId={oppId}
@@ -483,7 +479,7 @@ export default function OpportunityDetailPage() {
             ? createPortal(<div data-testid="records-dock-content">{recordInput}</div>, dockSlot)
             : null}
           <DetailSection id="detail-peers" title={peersArea.title}>
-            <PeersArea key={`${oppId}:peers`} oppId={oppId} />
+            <PeersArea key={`${oppId}:peers`} oppId={oppId} foldList />
           </DetailSection>
         </div>
       ) : null}

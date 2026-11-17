@@ -8,6 +8,7 @@ from pydantic import Field
 
 from geosan.api.check_points import check_left_opp_ids
 from geosan.api.deps import SessionDep, current_account, runtime_for
+from geosan.api.operations import operation_alerts
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
@@ -26,6 +27,7 @@ from geosan.dashboard.queries import (
     dashboard_population,
     schedule_due_opp_ids,
 )
+from geosan.dashboard.queries import TodayCheckRow as TodayCheckRowData
 from geosan.evaluation.models import EvaluationRun
 from geosan.evidence.transfer import KST
 from geosan.storage.base import utcnow
@@ -199,14 +201,47 @@ class TodayCheckItem(_ApiModel):
     text: str | None = None
 
 
+class TodayAlert(_ApiModel):
+    """#799 운영 알림 줄의 숫자. AI 줄은 사용액·한도·%, 자료 갱신 줄은 기준일·권장일."""
+
+    used_usd: float | None = None
+    limit_usd: float | None = None
+    percent: int | None = None
+    as_of: date | None = None
+    due_at: date | None = None
+
+
 class TodayCheckRow(_ApiModel):
     """맨 위 "오늘 확인할 것"의 한 줄(#679). kind 값은 뒤에 늘 수 있다(#677)."""
 
-    kind: Literal["SCHEDULE_TODAY", "SCHEDULE_OVERDUE", "CHECK_LEFT", "HANDOFF_FOR_ME"]
+    kind: Literal[
+        "SCHEDULE_TODAY",
+        "SCHEDULE_OVERDUE",
+        "CHECK_LEFT",
+        "HANDOFF_FOR_ME",
+        "AI_USAGE_ALERT",
+        "AI_LIMIT_REACHED",
+        "DATA_REFRESH_DUE",
+    ]
     count: int
     items: list[TodayCheckItem]
     # 누르면 열 목록의 `?filter=` 값. null이면 화면이 줄 아래에 작은 목록을 편다.
     list_filter: str | None = None
+    # #799: 운영 알림 세 줄(회사가 아니라 count 1·items 빈 배열)만. 다른 줄은 null.
+    alert: TodayAlert | None = None
+
+
+class ProgressCompany(_ApiModel):
+    """#800 영업 진행 띠 칸을 눌렀을 때 펴지는 회사 한 줄. 메모·연락처·대표번호는 없다."""
+
+    opp_id: str
+    customer_name: str
+    last_contact_at: date | None
+    next_schedule_at: date | None
+    # 최신 영업 기록의 일정 한 줄(schedule.note와 같은 값). 메모 글이 아니다.
+    next_schedule_note: str | None
+    # 접촉·견적 칸이고 다음 일정 없이 마지막 접촉 뒤 설정 dashboard.stalledAfterDays일 이상.
+    stalled: bool
 
 
 class Dashboard(_ApiModel):
@@ -218,6 +253,9 @@ class Dashboard(_ApiModel):
     breakdown: DashboardBreakdown | None = None
     # 0건인 줄은 없다. 모두 0건이면 빈 배열이다.
     today_checks: list[TodayCheckRow] = Field(default_factory=list)
+    # #800: 칸 이름(NOT_CONTACTED·IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 회사.
+    # 목록 길이는 counts의 그 칸 숫자와 같다.
+    progress_companies: dict[str, list[ProgressCompany]] = Field(default_factory=dict)
 
 
 DashboardEnvelope = Envelope[Dashboard]
@@ -326,7 +364,15 @@ def dashboard(
         ),
         check_left_opp_ids=check_left,
         staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
+        stalled_after_days=runtime.app_settings.dashboard.stalled_after_days,
     )
+    # #799: 운영 알림 줄을 맨 앞에 둔다(메뉴 숫자 #770은 곳 수라 이 줄을 세지 않는다).
+    alerts = operation_alerts(
+        session, runtime.app_settings, _my_staff_key(session, runtime, staff_key), now
+    )
+    result.data.today_checks[:0] = [
+        TodayCheckRowData(kind=alert.kind, count=1, items=[], alert=alert) for alert in alerts
+    ]
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),
         meta=Meta(

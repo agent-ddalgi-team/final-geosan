@@ -5,16 +5,23 @@
 이름만 있고 메모 글·사람 이름·연락처는 없다.
 """
 
+from dataclasses import asdict
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 from pydantic import Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from geosan.api.deps import SessionDep, runtime_for
 from geosan.api.process_catalog import load_process_catalog
-from geosan.api.routes.records import sales_questions, sales_step_state
+from geosan.api.routes.opportunities import _address_region
+from geosan.api.routes.records import (
+    COACH_SUGGESTION_SUFFIX,
+    sales_questions,
+    sales_step_state,
+)
 from geosan.api.sales_step import compute_sales_step, step_rows
 from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel
 from geosan.config.errors import FieldError, InputError, RunFailedError
@@ -25,7 +32,16 @@ from geosan.dashboard.sales_analysis import (
     load_process_proposal_hit,
     process_display_name,
 )
+from geosan.dashboard.sales_patterns import (
+    PatternCompany,
+    PatternLine,
+    QuestionInfo,
+    build_sales_patterns,
+)
+from geosan.opportunity.models import Customer, Opportunity
 from geosan.records.live import live_outcomes_with_answers
+from geosan.records.models import Note
+from geosan.records.program_note import CHANGE_KIND
 from geosan.rules.codes import (
     ContactMethod,
     ContactResult,
@@ -212,16 +228,8 @@ def _period_day(value: str | None, field: str) -> date | None:
         ) from None
 
 
-@router.get("/sales-analysis", response_model=SalesAnalysisEnvelope)
-def sales_analysis(
-    session: SessionDep,
-    period_from: Annotated[str | None, Query(alias="from")] = None,
-    period_to: Annotated[str | None, Query(alias="to")] = None,
-):
-    """공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.
-
-    (#760) `from`·`to`(한국 날짜)를 하나라도 주면 그 기간 안 접촉으로 센다. 둘 다 없으면 전과 같다.
-    """
+def _analysis_inputs(session: Session, period_from: str | None, period_to: str | None):
+    """영업 분석표와 패턴 세기(#802)가 함께 쓰는 입력: 기간·설정·회사 기록·분석표 결과."""
     day_from = _period_day(period_from, "from")
     day_to = _period_day(period_to, "to")
     if day_from is not None and day_to is not None and day_from > day_to:
@@ -267,6 +275,22 @@ def sales_analysis(
         step_order=[step.value for step in STEP_ORDER],
         period=period,
     )
+    return period, runtime, settings, dataset_kind, now, companies, result
+
+
+@router.get("/sales-analysis", response_model=SalesAnalysisEnvelope)
+def sales_analysis(
+    session: SessionDep,
+    period_from: Annotated[str | None, Query(alias="from")] = None,
+    period_to: Annotated[str | None, Query(alias="to")] = None,
+):
+    """공정별·회사별 영업 분석표. 영업 기록만으로 계산하며 저장하지 않는다.
+
+    (#760) `from`·`to`(한국 날짜)를 하나라도 주면 그 기간 안 접촉으로 센다. 둘 다 없으면 전과 같다.
+    """
+    period, runtime, settings, dataset_kind, now, companies, result = _analysis_inputs(
+        session, period_from, period_to
+    )
     data = SalesAnalysis(
         as_of=result.as_of,
         basis=AnalysisBasis.model_validate(result.basis, from_attributes=True),
@@ -306,6 +330,264 @@ def sales_analysis(
         ),
     )
     return SalesAnalysisEnvelope(
+        data=data,
+        meta=Meta(
+            updated_at=now,
+            dataset_kind=dataset_kind,
+            has_virtual_data=bool(result.companies)
+            and dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# #802·#820: 패턴 펼쳐 보기 (GET /sales-analysis/patterns). AI·외부 호출·저장 없음.
+# ---------------------------------------------------------------------------
+
+
+class PatternBasis(_ApiModel):
+    min_sample_for_ratio: int
+    closed_count: int
+    won_count: int
+    overall_won_ratio: float | None
+
+
+class PatternStepCount(_ApiModel):
+    step: SalesStep | None
+    count: int
+
+
+class PatternCodeCount(_ApiModel):
+    code: LostReasonCode
+    count: int
+
+
+class PatternAnswerCount(_ApiModel):
+    answer_id: str
+    count: int
+
+
+class PatternStepAnswers(_ApiModel):
+    step: SalesStep
+    question_id: str
+    answers: list[PatternAnswerCount]
+
+
+class PatternFailure(_ApiModel):
+    count: int
+    on_hold_count: int
+    by_step: list[PatternStepCount]
+    lost_reasons: list[PatternCodeCount]
+    step_answers: list[PatternStepAnswers]
+
+
+class PatternSuccess(_ApiModel):
+    count: int
+    by_step: list[PatternStepCount]
+    avg_contacts_to_won: float | None
+    avg_first_visit_index: float | None
+    failed_avg_first_visit_index: float | None
+
+
+class PatternContactRow(_ApiModel):
+    visited: bool
+    bucket: Literal["ZERO", "ONE", "TWO", "THREE", "FOUR_PLUS"]
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
+    judged: bool
+
+
+class PatternGapRow(_ApiModel):
+    bucket: Literal[
+        "WITHIN_WEEK", "WITHIN_TWO_WEEKS", "WITHIN_MONTH", "OVER_MONTH", "SINGLE_CONTACT"
+    ]
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
+    judged: bool
+
+
+class PatternAnswerRow(_ApiModel):
+    question_id: str
+    answer_id: str
+    won: int
+    failed: int
+    in_progress: int
+    won_ratio: float | None
+    judged: bool
+
+
+class PatternCombo(_ApiModel):
+    process_code: str | None
+    industry: str | None
+    region: str | None
+    contacted: int
+    won: int
+    lost: int
+    on_hold: int
+    won_ratio: float | None
+
+
+class PatternStandout(_ApiModel):
+    table: Literal["CONTACTS_BEFORE_VISIT", "LONGEST_GAP", "ANSWER", "COMBO"]
+    won: int
+    failed: int
+    won_ratio: float
+    overall_won_ratio: float
+    diff: float
+    visited: bool | None = None
+    bucket: str | None = None
+    question_id: str | None = None
+    answer_id: str | None = None
+    process_code: str | None = None
+    industry: str | None = None
+    region: str | None = None
+
+
+class PatternAnswerFill(_ApiModel):
+    question_id: str
+    step: str
+    eligible: int
+    answered: int
+    ratio: float | None
+    answers: list[PatternAnswerCount]
+    unknown_share: float | None
+    top_share: float | None
+
+
+class PatternHint(_ApiModel):
+    question_id: str
+    kind: Literal["SAME_ANSWER", "UNKNOWN_MANY"]
+    answer_id: str | None = None
+    share: float | None = None
+
+
+class PatternCoachEffect(_ApiModel):
+    applied: int
+    progressed: int
+    companies: int
+
+
+class SalesPatternsData(_ApiModel):
+    as_of: datetime
+    basis: PatternBasis
+    failure: PatternFailure
+    success: PatternSuccess
+    contacts_before_visit: list[PatternContactRow]
+    longest_gap: list[PatternGapRow]
+    answer_outcomes: list[PatternAnswerRow]
+    combos: list[PatternCombo]
+    standouts: list[PatternStandout]
+    answer_fill: list[PatternAnswerFill]
+    questionnaire_hints: list[PatternHint]
+    coach_effect: PatternCoachEffect
+
+
+SalesPatternsEnvelope = Envelope[SalesPatternsData]
+
+
+def _region_label(address: str | None, presets) -> str | None:
+    """권역 묶음(listFilters.regionPresets) 이름, 없으면 주소의 시·군, 주소가 없으면 None."""
+    city = _address_region(address)
+    if city is None:
+        return None
+    return next((preset.label for preset in presets if city in preset.cities), city)
+
+
+def _pattern_company(session: Session, row, presets, first_step: str) -> PatternCompany:
+    outcomes, answers = live_outcomes_with_answers(session, row.opp_id)
+    steps = _steps_after(session, row.opp_id)
+    by_outcome: dict[str, list[tuple[str, str]]] = {}
+    for answer in answers:
+        by_outcome.setdefault(answer.outcome_id, []).append((answer.question_id, answer.answer_id))
+    lines: list[PatternLine] = []
+    before: str | None = first_step
+    for outcome in outcomes:
+        after = steps.get(outcome.outcome_id)
+        lines.append(
+            PatternLine(
+                day=outcome.attempted_at or outcome.created_at.astimezone(KST).date(),
+                method=outcome.method,
+                result=outcome.result,
+                status=outcome.status,
+                step_before=before,
+                step_after=after,
+                answers=tuple(by_outcome.get(outcome.outcome_id, [])),
+            )
+        )
+        before = after or before
+    address = session.scalar(
+        select(Customer.address)
+        .join(Opportunity, Opportunity.customer_id == Customer.customer_id)
+        .where(Opportunity.opp_id == row.opp_id)
+    )
+    coach_days = tuple(
+        note.created_at.astimezone(KST).date()
+        for note in session.scalars(
+            select(Note).where(
+                Note.opp_id == row.opp_id,
+                Note.kind == CHANGE_KIND,
+                Note.cancelled_at.is_(None),
+                Note.text.endswith(COACH_SUGGESTION_SUFFIX),
+            )
+        )
+    )
+    return PatternCompany(
+        opp_id=row.opp_id,
+        outcome_status=row.outcome_status,
+        furthest_step=row.furthest_step,
+        process_codes=tuple(row.process_codes),
+        industries=tuple(row.industries),
+        region=_region_label(address, presets),
+        lost_reason_code=row.lost_reason_code,
+        lines=tuple(lines),
+        coach_days=coach_days,
+    )
+
+
+@router.get("/sales-analysis/patterns", response_model=SalesPatternsEnvelope)
+def sales_patterns(
+    session: SessionDep,
+    period_from: Annotated[str | None, Query(alias="from")] = None,
+    period_to: Annotated[str | None, Query(alias="to")] = None,
+):
+    """#802·#820: 기록을 펼쳐 센다(기준 숫자 없음, 표본 기준은 salesAnalysis 하나).
+
+    영업 분석표와 같은 대상·기간 규칙.
+    """
+    period, runtime, settings, dataset_kind, now, _companies, result = _analysis_inputs(
+        session, period_from, period_to
+    )
+    questions = sales_questions(session)
+    first_step = STEP_ORDER[0].value
+    presets = runtime.app_settings.list_filters.region_presets
+    companies = [_pattern_company(session, row, presets, first_step) for row in result.companies]
+    patterns = build_sales_patterns(
+        companies,
+        questions=[
+            QuestionInfo(
+                question_id=question.id,
+                step=question.step if isinstance(question.step, str) else question.step.value,
+                choices=question.choices is not None,
+                show_when=dict(question.show_when.answers) if question.show_when else {},
+                decides_outcome=any(
+                    answer.closes or answer.lost_reason for answer in question.answers
+                ),
+            )
+            for question in questions.questions
+        ],
+        step_order=[step.value for step in STEP_ORDER],
+        lost_reason_order=[code.value for code in LostReasonCode],
+        min_sample_for_ratio=settings.min_sample_for_ratio,
+        period=(result.basis.period_from, result.basis.period_to) if period is not None else None,
+    )
+    data = SalesPatternsData.model_validate(
+        {"as_of": result.as_of, **asdict(patterns)}, from_attributes=False
+    )
+    return SalesPatternsEnvelope(
         data=data,
         meta=Meta(
             updated_at=now,

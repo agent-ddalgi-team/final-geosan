@@ -114,6 +114,10 @@ class CandidateWebSearchSettings(FileModel):
     # #706 PM 결정 2026-11-13: 실제 검색 비교로 정한 값. 옛 설정에는 없어 기본값으로 읽는다.
     searches_per_run: int = Field(default=3, ge=1, le=5, strict=True)
     timeout_seconds: int = Field(default=90, ge=20, le=180, strict=True)
+    # #823(PM 결정 2026-11-17 #314): 웹 갈래가 켜져 있을 때 회차 최대 건수 가운데 웹 후보를 위해
+    # 비워 두는 자리 수. 덜 나오면 남은 자리는 공공자료 다음 순서로 채운다.
+    # 옛 설정에는 없어 0으로 읽는다.
+    reserved_slots: int = Field(default=0, ge=0, strict=True)
     blocked_domains: list[str] = Field(default_factory=list, max_length=100)
 
     @field_validator("blocked_domains")
@@ -288,6 +292,9 @@ class ResearchSettings(FileModel):
     # #511: 공식 홈페이지를 못 찾았을 때 회사가 직접 운영하는 공개 페이지 1개를 "확인 필요"로
     # 받을지. 기본 꺼짐(묶음·칸이 없는 파일도 꺼짐). PM이 켠다.
     allow_unofficial_page: bool = Field(default=False, strict=True)
+    # #810(PM 결정 2026-11-16): https 첫 화면이 인증서 검증 오류로만 실패하면 같은 주소의 http로
+    # 한 번 다시 읽는다. 인증서 확인은 끄지 않는다. 칸이 없는 옛 설정도 켜진 것으로 읽는다.
+    http_fallback_on_cert_error: bool = Field(default=True, strict=True)
 
 
 XLSX_DOWNLOAD_LOG_READY = False
@@ -406,6 +413,23 @@ class DashboardSettings(FileModel):
 
     # 산업군 막대에 AI 제안을 포함해 센다(막대 옆 "AI 제안 포함"). 끄면 사람이 확인한 값만.
     count_proposed_industries: bool = True
+    # #800(PM 결정 2026-11-16): 영업 진행 띠의 "멈춘 회사" 기준 일수. 다음 일정 없이 마지막 접촉 뒤
+    # 이 일수 이상이면 멈춤. 옛 설정 파일·DB 사본에는 없어서 PM이 확인한 값 14로 읽는다.
+    stalled_after_days: int = Field(default=14, ge=1, le=365, strict=True)
+
+
+class OperationsSettings(FileModel):
+    """#799(PM 결정 2026-11-16): 운영 관리 화면·대시보드 알림.
+
+    알림 사용률 기준은 새 칸 없이 llm.costAlertRatio를 쓴다.
+    """
+
+    # 운영 관리 화면·운영 알림을 받는 담당자 키. 빈 목록이면 아무도 아님.
+    # 담당자 목록(staff)에 없는 키는 무시한다(운영 담당 아님). 담당자 목록을 바꿔도 설정 전체가
+    # 거부되지 않게 하려는 것이다(#799, 옛 DB 사본은 예시 값 choi-pm으로 채운다).
+    staff_keys: list[str] = Field(default_factory=list)
+    # 공장현황 파일 갱신 권장 주기(일). 파일 기준일 + 이 일수가 지나면 운영 담당에게 알린다.
+    factory_csv_refresh_days: int = Field(default=180, ge=1, le=3650, strict=True)
 
 
 class GeosanLocationSettings(FileModel):
@@ -472,6 +496,8 @@ class AppSettings(FileModel):
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+    # #799: 옛 설정 파일·DB 사본에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
+    operations: OperationsSettings = Field(default_factory=OperationsSettings)
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
     geocoding: GeocodingSettings = Field(default_factory=GeocodingSettings)
     distance_filter_presets_km: list[float] = Field(default_factory=lambda: [30, 50, 100])
@@ -485,6 +511,11 @@ class AppSettings(FileModel):
 
     def staff_keys(self) -> list[str]:
         return [entry.key for entry in self.staff]
+
+    def operations_staff_keys(self) -> list[str]:
+        """#799 운영 담당 키 가운데 담당자 목록에 있는 것만(없는 키는 무시)."""
+        staff = set(self.staff_keys())
+        return [key for key in self.operations.staff_keys if key in staff]
 
     def is_recording_staff(self, key: str | None) -> bool:
         """기록 요청을 받을 수 있는 담당자 키인가(목록에 있고 viewer가 아님, BR9.3).
@@ -638,6 +669,9 @@ def load_app_settings(path: Path | str) -> AppSettings:
 # ---------------------------------------------------------------------------
 
 SOURCE_FILE_KEY = "sourceFile"
+# 없앤 설정 칸. 옛 DB 사본에 남아 있어도 "모르는 키"로 거부하지 않고 건너뛴다.
+# salesPatterns: #820(PM 결정 2026-11-17)에서 패턴 기준 숫자를 없앴다.
+RETIRED_KEYS = frozenset({"salesPatterns"})
 """설정을 어느 파일에서 읽었는지 적어 두는 행의 키."""
 
 
@@ -683,7 +717,11 @@ def read_app_settings(session: Session) -> AppSettings | None:
     from geosan.config.models import AppSetting
 
     rows = session.scalars(select(AppSetting)).all()
-    data = {row.setting_key: row.value for row in rows if row.setting_key != SOURCE_FILE_KEY}
+    data = {
+        row.setting_key: row.value
+        for row in rows
+        if row.setting_key != SOURCE_FILE_KEY and row.setting_key not in RETIRED_KEYS
+    }
     if not data:
         return None
     return AppSettings.model_validate(
@@ -714,8 +752,11 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant")
-"""#608·#610·#217·#680 뒤에 생긴 묶음. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant", "operations")
+"""#608·#610·#217·#680·#799 뒤에 생긴 묶음.
+
+그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다.
+"""
 
 
 def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:

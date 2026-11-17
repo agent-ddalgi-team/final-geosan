@@ -28,12 +28,30 @@ describe('수집 요약 · 실패 사유(#442)', () => {
     const failed = screen.getByTestId('ingest-failed');
     expect(failed).toHaveTextContent('오늘 웹 검색 한도에 걸려 일부만 찾았습니다.');
     expect(failed).not.toHaveTextContent(candidateSearch.failed);
+    // #825: 지난 일로 읽히게 "찾기 실패 · "가 앞에 붙는다(날짜를 모르면 날짜 없이).
+    expect(failed).toHaveTextContent('찾기 실패 · 오늘 웹 검색 한도에 걸려 일부만 찾았습니다.');
+  });
+
+  it('#825 끝난 시각이 있으면 날짜를 앞에 붙여 "11/14 찾기 실패 · …"로 보인다(옛 이름 없음)', () => {
+    show({
+      ...DONE,
+      status: 'FAILED',
+      finishedAt: '2026-11-14T06:00:00Z',
+      failureReason: 'AI 후보 판단을 마치지 못했습니다. 자료와 설정을 확인해 주세요.',
+    });
+    const summary = screen.getByTestId('ingest-summary');
+    expect(screen.getByTestId('ingest-failed')).toHaveTextContent(
+      '11/14 찾기 실패 · AI 후보 판단을 마치지 못했습니다.',
+    );
+    expect(summary).toHaveTextContent('지난 새 후보 찾기');
+    expect(summary).not.toHaveTextContent('영업 후보 더하기');
   });
 
   it('실패 사유가 없거나 비어 있거나 공백뿐이면 기존 고정 문구를 보인다', () => {
     for (const failureReason of [undefined, null, '', '   ']) {
+      // #825: 날짜를 모르면 "찾기 실패 · 자료와 설정을 확인해 주세요".
       expect(failureText({ ...DONE, status: 'FAILED', failureReason })).toBe(
-        candidateSearch.failed,
+        candidateSearch.failedOn(null, candidateSearch.failed),
       );
     }
   });
@@ -41,7 +59,7 @@ describe('수집 요약 · 실패 사유(#442)', () => {
   it('실패 사유는 앞뒤 공백을 떼고 보인다', () => {
     expect(
       failureText({ ...DONE, status: 'FAILED', failureReason: '  다시 시도해 주세요.  ' }),
-    ).toBe('다시 시도해 주세요.');
+    ).toBe(candidateSearch.failedOn(null, '다시 시도해 주세요.'));
   });
 });
 
