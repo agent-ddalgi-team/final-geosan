@@ -256,6 +256,7 @@ DB 없이 기본 `examples/app-settings.yaml`의 선택지로 검사하며, 실�
 bash scripts/check.sh            # 파이썬 + 화면 전부 (CI와 같은 순서)
 bash scripts/check.sh python     # Ruff → 단위 테스트(커버리지 80% 하한) → 시나리오 → 뼈대 검증
 bash scripts/check.sh web        # ESLint·Prettier → Vitest → tsc·Vite 빌드
+bash scripts/check.sh fast [경로…] # PR 전 빠른 검사(#830): 바뀐 단위 시험만 + 시나리오·뼈대·화면 전부(전체·커버리지는 CI)
 ```
 
 윈도우(PowerShell)는 같은 검사를 파이썬판으로 돌립니다(단계·순서 동일):

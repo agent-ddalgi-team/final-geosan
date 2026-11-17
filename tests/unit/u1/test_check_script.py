@@ -98,3 +98,31 @@ def test_skeleton_failure_is_still_allowed(fake_env, capsys):
     out = capsys.readouterr().out
     assert "뼈대 검증 실패: 통합 전까지 허용" in out
     assert out.rstrip().endswith("검사 끝")
+
+
+def test_fast_runs_only_changed_unit_tests_without_coverage(fake_env, capsys, monkeypatch):
+    """Given 이 가지에서 바뀐 단위 시험 1개 + 직접 적은 경로 1개 / When fast 검사(#830)
+    / Then 단위 시험은 그 두 파일만 커버리지 없이, 시나리오·화면은 전부 돌고 "빠른 검사 끝"."""
+    calls, _fail_when, _secrets = fake_env
+    monkeypatch.setattr(check, "changed_unit_tests", lambda: ["tests/unit/u7/test_a.py"])
+    assert check.main(["check.py", "fast", "tests/unit/u3/test_b.py"]) == 0
+    out = capsys.readouterr().out
+    commands = joined(calls)
+    unit = [c for c in commands if "pytest" in c and "tests/unit" in c]
+    assert unit == ["py -m pytest tests/unit/u3/test_b.py tests/unit/u7/test_a.py -q --no-cov"]
+    assert not any("--cov=geosan" in c for c in commands)
+    assert "py -m pytest tests/features -q --no-cov" in commands
+    assert "npm --prefix web test" in commands
+    assert "빠른 검사 끝" in out
+
+
+def test_fast_without_changed_unit_tests_skips_unit_step(fake_env, capsys, monkeypatch):
+    """Given 바뀐 단위 시험이 없음 / When fast 검사
+    / Then 단위 시험 명령 없이 안내만, 나머지는 돈다."""
+    calls, _fail_when, _secrets = fake_env
+    monkeypatch.setattr(check, "changed_unit_tests", lambda: [])
+    assert check.main(["check.py", "fast"]) == 0
+    out = capsys.readouterr().out
+    assert not any("tests/unit" in c for c in joined(calls))
+    assert "바뀐 단위 시험 파일이 없습니다" in out
+    assert "py -m pytest tests/features -q --no-cov" in joined(calls)
