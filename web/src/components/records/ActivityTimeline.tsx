@@ -5,23 +5,40 @@
 // 내 기록 줄에는 [잘못 입력]이 붙는다(#254, 2026-11-12): 누르면 줄 아래에 확인 한 줄이 열리고(모달 없음, 이유 200자 선택),
 // [표시]를 누르면 서버가 그 줄에 취소 표시만 남긴다(지우지 않음). 취소된 줄은 줄이 그어지고 "취소 · 박 이사 · 11/06"이 붙는다.
 // 남의 기록·이미 취소된 줄·취소 줄 자체에는 단추가 없다(설정으로 허용하면 남의 기록에도 보임). 취소하면 단계·횟수가 바뀌므로 부르는 쪽에 알린다.
+// #849(PM 결정 2026-11-17): 흐름 줄(단계·다음 일정이 바뀐 때만) · 접촉 카드 · AI 피드백(같은 묶음 접촉 카드 안에 접힘) 3층.
+// 날짜 구분선, 거르기 6개(전체·흐름·접촉·메모·AI 피드백·확인한 사실·의견), [잘못 입력]은 ··· 메뉴 안으로. 저장은 그대로다.
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Input } from 'antd';
 import { ApiError, getActivity, postRecordCancel } from '../../api/client';
 import type { ActivityItem } from '../../api/types';
 import {
-  activityGroupLabels,
   activityKindLabels,
+  contactMethodLabels,
+  contactResultLabels,
   errorTexts,
   labelFor,
+  lostReasonLabels,
   opinionLabels,
+  outcomeStatusLabels,
   timelineArea,
+  timelineLayers,
 } from '../../labels/ko';
 import { colors, detailTheme, typography } from '../../theme/tokens';
 import StatusTag from '../common/StatusTag';
-import { ACTIVITY_GROUPS, activityGroupTone, groupOf } from './activityGroups';
-import type { ActivityGroup } from './activityGroups';
-import { formatMonthDayTime } from '../../utils/time';
+import { activityGroupTone, groupOf } from './activityGroups';
+import {
+  TIMELINE_LAYERS,
+  adviceText,
+  arrangeBlock,
+  flowChanges,
+  inLayer,
+  isStructuredAdvice,
+  isStructuredOutcome,
+  kstDay,
+} from './activityLayers';
+import type { FlowChange, TimelineLayer } from './activityLayers';
+import { formatMonthDay, formatMonthDayTime, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
 export interface ActivityTimelineProps {
@@ -45,7 +62,37 @@ export function summaryText(item: ActivityItem): string {
   if (item.kind === 'OPINION' && item.summary in opinionLabels) {
     return labelFor(opinionLabels, item.summary);
   }
-  return item.summary;
+  // #849: 꼬리표와 같은 말이 글 앞에 또 붙어 오면 뺀다. 예: [남긴 피드백] "남긴 피드백 · …" → "…".
+  const tag = `${labelFor(activityKindLabels, item.kind)} · `;
+  return item.summary.startsWith(tag) ? item.summary.slice(tag.length) : item.summary;
+}
+
+/** #849 날짜 구분선. 예: "11월 17일 (화) · 오늘". */
+export function dateLabel(iso: string, now: Date = new Date()): string {
+  const day = kstDay(iso);
+  if (!day) return '';
+  const [year, month, date] = day.split('-').map(Number);
+  const weekday = timelineLayers.weekdays[new Date(Date.UTC(year, month - 1, date)).getUTCDay()];
+  const today = todayKst(now);
+  const yesterday = todayKst(new Date(now.getTime() - 86_400_000));
+  const relative =
+    day === today ? timelineLayers.today : day === yesterday ? timelineLayers.yesterday : null;
+  return timelineLayers.dateLine(month, date, weekday, relative);
+}
+
+/** #849 흐름 줄 글. 예: "접촉 → 견적·샘플 · 다음 일정 11/18 방문", 거절이면 "접촉 → 거절 · 가격". */
+export function flowText(item: ActivityItem, change: FlowChange | undefined): string {
+  const statusLabel = (status: string) => labelFor(outcomeStatusLabels, status);
+  let to = statusLabel(change?.to ?? item.status ?? '');
+  if (item.status === 'LOST' && item.lostReasonCode) {
+    to += ` · ${labelFor(lostReasonLabels, item.lostReasonCode)}`;
+  }
+  const scheduleAt = change ? change.schedule : (item.nextScheduleAt ?? null);
+  const note = change ? change.scheduleNote : (item.nextScheduleNote ?? null);
+  const schedule = scheduleAt
+    ? [formatMonthDay(scheduleAt), note?.trim()].filter(Boolean).join(' ')
+    : null;
+  return timelineLayers.flowLine(change?.from ? statusLabel(change.from) : null, to, schedule);
 }
 
 /** #803: 처음에 보이는 묶음 수. 나머지는 [더 보기 n건]으로 편다. */
@@ -54,6 +101,9 @@ export const TIMELINE_SHOWN = 5;
 /** #803 세로 타임라인 점 안 그림: 전화 📞 · 방문 🚶 · 메일 ✉ · 메모 📝 · 의견·관심 ⭐ · 단계 📈 · 그 밖 •. */
 export function timelineIcon(item: ActivityItem): string {
   if (item.kind === 'CONTACT_ATTEMPT') {
+    if (item.method === 'VISIT') return '🚶';
+    if (item.method === 'EMAIL') return '✉';
+    if (item.method === 'CALL') return '📞';
     if (item.summary.includes('방문')) return '🚶';
     if (item.summary.includes('메일')) return '✉';
     return '📞';
@@ -126,8 +176,12 @@ export default function ActivityTimeline({
   const [reason, setReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState<{ key: string; text: string } | null>(null);
-  /** 고른 묶음. null이면 전체. 기업이 바뀌면 부르는 쪽이 key로 새로 만들어 전체로 돌아간다. */
-  const [group, setGroup] = useState<ActivityGroup | null>(null);
+  /** #849 ··· 메뉴: 한 번에 한 줄만 연다. */
+  const [menuKey, setMenuKey] = useState<string | null>(null);
+  /** #849 접촉 카드 안 접힌 AI 피드백을 편 카드. */
+  const [openAi, setOpenAi] = useState<Set<string>>(() => new Set());
+  /** 고른 층. null이면 전체. 기업이 바뀌면 부르는 쪽이 key로 새로 만들어 전체로 돌아간다. */
+  const [layer, setLayer] = useState<TimelineLayer | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -163,6 +217,7 @@ export default function ActivityTimeline({
 
   function openCancel(item: ActivityItem) {
     setCancelingKey(lineKey(item));
+    setMenuKey(null);
     setReason('');
     setCancelError(null);
   }
@@ -196,19 +251,302 @@ export default function ActivityTimeline({
     color: colors.textSecondary,
     fontSize: typography.fontSizeSecondary,
   } as const;
+  const struck = { textDecoration: 'line-through', color: colors.textSecondary } as const;
 
-  const visible =
-    items === null ? null : items.filter((item) => group === null || groupOf(item.kind) === group);
+  const changes = flowChanges(items ?? []);
+  const visible = items === null ? null : items.filter((item) => inLayer(item, layer, changes));
   // #803: 같은 시각 줄을 묶고, 처음에는 최근 5묶음만 보인다.
   const blocks = visible === null ? [] : groupSameMoment(visible);
   const shownBlocks = showAll ? blocks : blocks.slice(0, TIMELINE_SHOWN);
   const hiddenBlocks = blocks.length - shownBlocks.length;
   const hiddenItems = blocks.slice(TIMELINE_SHOWN).reduce((sum, block) => sum + block.length, 0);
   const itemIndex = new Map((visible ?? []).map((item, index) => [item, index]));
-  const groupChoices: { value: ActivityGroup | null; label: string }[] = [
+  // #849 날짜 구분선: 보이는 묶음을 한국 날짜별로 나눈다(최근 날짜가 위).
+  const days: { day: string; blocks: ActivityItem[][] }[] = [];
+  for (const block of shownBlocks) {
+    const day = kstDay(block[0].at) ?? '';
+    const last = days[days.length - 1];
+    if (last && last.day === day) last.blocks.push(block);
+    else days.push({ day, blocks: [block] });
+  }
+  const layerChoices: { value: TimelineLayer | null; label: string }[] = [
     { value: null, label: timelineArea.groupAll },
-    ...ACTIVITY_GROUPS.map((value) => ({ value, label: activityGroupLabels[value] })),
+    ...TIMELINE_LAYERS.map((value) => ({ value, label: timelineLayers.filters[value] })),
   ];
+
+  /** ··· 메뉴와 그 안의 [잘못 입력]. 확인 한 줄이 열려 있으면 메뉴는 숨는다. */
+  function menu(item: ActivityItem): ReactNode {
+    const key = lineKey(item);
+    if (!canCancel(item) || cancelingKey === key) return null;
+    const open = menuKey === key;
+    return (
+      <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 'auto' }}>
+        <button
+          type="button"
+          aria-label={timelineLayers.menuLabel(summaryText(item))}
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={() => setMenuKey(open ? null : key)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setMenuKey(null);
+          }}
+          data-testid="timeline-menu-open"
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: colors.textSecondary,
+            cursor: 'pointer',
+            font: 'inherit',
+            padding: '0 4px',
+            minHeight: 24,
+          }}
+        >
+          {timelineLayers.menuButton}
+        </button>
+        {open ? (
+          <Button
+            size="small"
+            onClick={() => openCancel(item)}
+            aria-label={timelineArea.cancelButtonLabel(summaryText(item))}
+            data-testid="timeline-cancel-open"
+          >
+            {timelineArea.cancelButton}
+          </Button>
+        ) : null}
+      </span>
+    );
+  }
+
+  /** 줄 아래에 열리는 확인 한 줄과 오류(모달 없음, #254). */
+  function cancelArea(item: ActivityItem, index: number): ReactNode {
+    const key = lineKey(item);
+    const cancelOpen = cancelingKey === key && canCancel(item);
+    return (
+      <>
+        {cancelOpen ? (
+          <div
+            data-testid="timeline-cancel-form"
+            style={{
+              flexBasis: '100%',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              alignItems: 'center',
+            }}
+          >
+            <label htmlFor={`cancel-reason-${index}`} style={secondary}>
+              {timelineArea.cancelPrompt}
+            </label>
+            <Input
+              id={`cancel-reason-${index}`}
+              value={reason}
+              maxLength={timelineArea.cancelReasonMaxLength}
+              aria-label={timelineArea.cancelReasonLabel}
+              onChange={(event) => setReason(event.target.value)}
+              disabled={cancelBusy}
+              style={{ maxWidth: 320 }}
+              data-testid="timeline-cancel-reason"
+            />
+            <Button
+              size="small"
+              type="primary"
+              loading={cancelBusy}
+              onClick={() => void confirmCancel(item)}
+              data-testid="timeline-cancel-confirm"
+            >
+              {timelineArea.cancelConfirm}
+            </Button>
+            <Button
+              size="small"
+              onClick={closeCancel}
+              disabled={cancelBusy}
+              data-testid="timeline-cancel-close"
+            >
+              {timelineArea.cancelClose}
+            </Button>
+          </div>
+        ) : null}
+        {cancelError?.key === key ? (
+          <div
+            role="alert"
+            data-testid="timeline-cancel-error"
+            style={{ flexBasis: '100%', color: colors.error }}
+          >
+            {cancelError.text}
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  function cancelledNote(item: ActivityItem): ReactNode {
+    if (item.cancelled !== true) return null;
+    return (
+      <span data-testid="timeline-cancelled-note" style={secondary}>
+        {timelineArea.cancelledNote(
+          item.cancelledBy ? actorName(item.cancelledBy) : '',
+          formatMonthDayTime(item.cancelledAt)?.slice(0, 5) ?? '',
+        )}
+      </span>
+    );
+  }
+
+  /** AI 피드백 한 줄(카드 안이든 따로든): 💬 꼬리표 + 앞머리 없는 글. */
+  function adviceLine(item: ActivityItem, testId: string, index: number): ReactNode {
+    return (
+      <div key={lineKey(item)} data-testid={testId} style={{ display: 'grid', gap: 2 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <StatusTag tone="ask" data-testid="timeline-kind">
+            {`💬 ${item.noteKind === 'CALL_PREP' ? timelineLayers.callPrepTag : timelineLayers.aiTag}`}
+          </StatusTag>
+          <span data-testid="timeline-summary" style={item.cancelled === true ? struck : undefined}>
+            {adviceText(item)}
+          </span>
+          {cancelledNote(item)}
+          {menu(item)}
+        </div>
+        {cancelArea(item, index)}
+      </div>
+    );
+  }
+
+  /** 영업 기록 줄: 흐름 줄(바뀐 때만, 접촉 없는 단계 기록은 늘) + 접촉 카드(흐름만 볼 때는 숨김). */
+  function outcomeLine(item: ActivityItem, nested: ActivityItem[], index: number): ReactNode {
+    const change = changes.get(item);
+    const contact = item.method != null;
+    const showFlow = change !== undefined || !contact;
+    const showCard = contact && layer !== 'FLOW';
+    const key = lineKey(item);
+    const aiOpen = openAi.has(key);
+    const visit = item.method === 'VISIT';
+    const attempted = item.attemptedAt && item.attemptedAt !== kstDay(item.at);
+    return (
+      <>
+        {showFlow ? (
+          <div
+            data-testid="timeline-flow"
+            aria-label={timelineLayers.flowLabel}
+            style={{
+              ...secondary,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+              alignItems: 'center',
+              ...(item.cancelled === true && !contact ? struck : {}),
+            }}
+          >
+            <span aria-hidden="true">📈</span>
+            <span>{flowText(item, change)}</span>
+            {!contact ? cancelledNote(item) : null}
+            {!contact ? menu(item) : null}
+          </div>
+        ) : null}
+        {showCard ? (
+          <div
+            data-testid="timeline-card"
+            style={{
+              border: `1px solid ${colors.borderSecondary}`,
+              borderRadius: 8,
+              padding: '6px 10px',
+              background: colors.bgContainer,
+              display: 'grid',
+              gap: 4,
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              <strong
+                data-testid="timeline-card-title"
+                style={item.cancelled === true ? struck : undefined}
+              >
+                {timelineLayers.contactTitle(
+                  labelFor(contactMethodLabels, item.method ?? ''),
+                  item.result ? labelFor(contactResultLabels, item.result) : null,
+                )}
+              </strong>
+              {attempted ? (
+                <span style={secondary}>
+                  {timelineLayers.attemptedOn(formatMonthDay(item.attemptedAt) ?? '')}
+                </span>
+              ) : null}
+              {item.firstMover ? (
+                <StatusTag tone="neutral" data-testid="timeline-chip">
+                  {timelineLayers.firstMoverChip(item.firstMover, visit)}
+                </StatusTag>
+              ) : null}
+              {cancelledNote(item)}
+              {menu(item)}
+            </div>
+            {item.memo ? (
+              <div data-testid="timeline-card-memo" style={{ whiteSpace: 'pre-wrap' }}>
+                {item.memo}
+              </div>
+            ) : null}
+            {nested.length > 0 ? (
+              <div style={{ display: 'grid', gap: 4 }}>
+                <button
+                  type="button"
+                  aria-expanded={aiOpen}
+                  onClick={() =>
+                    setOpenAi((current) => {
+                      const next = new Set(current);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    })
+                  }
+                  data-testid="timeline-ai-toggle"
+                  style={{
+                    justifySelf: 'start',
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: colors.textSecondary,
+                    fontSize: typography.fontSizeSecondary,
+                  }}
+                >
+                  {`💬 ${timelineLayers.aiToggle(nested.length, aiOpen)}`}
+                </button>
+                {aiOpen ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: 4,
+                      paddingLeft: 12,
+                      borderLeft: `2px solid ${colors.borderSecondary}`,
+                    }}
+                  >
+                    {nested.map((advice, n) =>
+                      adviceLine(advice, 'timeline-ai-nested', index + n + 1),
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {cancelArea(item, index)}
+      </>
+    );
+  }
+
+  /** 그 밖의 줄(메모·사실·의견, 값이 없는 옛 응답): 꼬리표 + 글, 지금과 같다. */
+  function plainLine(item: ActivityItem, index: number): ReactNode {
+    return (
+      <>
+        <StatusTag tone={activityGroupTone[groupOf(item.kind)]} data-testid="timeline-kind">
+          {labelFor(activityKindLabels, item.kind)}
+        </StatusTag>
+        <span data-testid="timeline-summary" style={item.cancelled === true ? struck : undefined}>
+          {summaryText(item)}
+        </span>
+        {cancelledNote(item)}
+        {menu(item)}
+        {cancelArea(item, index)}
+      </>
+    );
+  }
 
   return (
     <section aria-labelledby={`timeline-${oppId}`} data-testid="activity-timeline">
@@ -243,15 +581,15 @@ export default function ActivityTimeline({
           data-testid="timeline-group-filter"
           style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}
         >
-          {groupChoices.map((choice) => {
-            const selected = choice.value === group;
+          {layerChoices.map((choice) => {
+            const selected = choice.value === layer;
             return (
               <button
                 key={choice.value ?? 'ALL'}
                 type="button"
                 aria-pressed={selected}
                 onClick={() => {
-                  if (!selected) setGroup(choice.value);
+                  if (!selected) setLayer(choice.value);
                 }}
                 style={groupButtonStyle(selected)}
                 data-testid={`timeline-group-${choice.value ?? 'ALL'}`}
@@ -264,165 +602,113 @@ export default function ActivityTimeline({
       ) : null}
       {visible !== null && items !== null && items.length > 0 && visible.length === 0 ? (
         <span data-testid="timeline-group-empty" style={secondary}>
-          {timelineArea.groupEmpty(group === null ? '' : activityGroupLabels[group])}
+          {timelineArea.groupEmpty(layer === null ? '' : timelineLayers.filters[layer])}
         </span>
       ) : null}
       {visible !== null && visible.length > 0 ? (
         <>
-          <ol
-            aria-label={timelineArea.listLabel}
-            style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
-          >
-            {shownBlocks.map((block, blockIndex) => (
-              <li
-                key={`${block[0].at}-${blockIndex}`}
-                data-testid="timeline-block"
+          {days.map((day) => (
+            <div key={day.day} data-testid="timeline-day" style={{ display: 'grid', gap: 4 }}>
+              <div
+                data-testid="timeline-date"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '28px minmax(0, 1fr)',
-                  columnGap: 8,
+                  ...secondary,
+                  fontWeight: 600,
+                  borderBottom: `1px solid ${colors.borderSecondary}`,
+                  paddingBottom: 2,
+                  marginBottom: 4,
                 }}
               >
-                {/* #803 세로 타임라인: 왼쪽 점(그림)과 아래로 이어지는 선. */}
-                <span
-                  aria-hidden="true"
-                  style={{ display: 'grid', justifyItems: 'center', gridTemplateRows: 'auto 1fr' }}
-                >
-                  <span
-                    data-testid="timeline-icon"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 999,
-                      display: 'grid',
-                      placeItems: 'center',
-                      fontSize: 12,
-                      background: detailTheme.accentSoft,
-                      border: `1px solid ${detailTheme.accent}`,
-                    }}
-                  >
-                    {timelineIcon(block[0])}
-                  </span>
-                  {blockIndex < shownBlocks.length - 1 ? (
-                    <span style={{ width: 2, background: detailTheme.lineTodo, minHeight: 8 }} />
-                  ) : null}
-                </span>
-                <div style={{ display: 'grid', gap: 2, paddingBottom: 10 }}>
-                  {block.map((item, inner) => {
-                    const index = itemIndex.get(item) ?? inner;
-                    const key = lineKey(item);
-                    const cancelOpen = cancelingKey === key && canCancel(item);
-                    const first = inner === 0;
-                    return (
-                      <div
-                        key={`${item.at}-${index}`}
-                        data-testid="timeline-item"
-                        data-cancelled={item.cancelled === true ? 'true' : undefined}
-                        style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
+                {dateLabel(day.blocks[0][0].at)}
+              </div>
+              <ol
+                aria-label={`${timelineArea.listLabel} · ${dateLabel(day.blocks[0][0].at)}`}
+                style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
+              >
+                {day.blocks.map((block, blockIndex) => {
+                  const { lines, nested } = arrangeBlock(block);
+                  return (
+                    <li
+                      key={`${block[0].at}-${blockIndex}`}
+                      data-testid="timeline-block"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '28px minmax(0, 1fr)',
+                        columnGap: 8,
+                      }}
+                    >
+                      {/* #803 세로 타임라인: 왼쪽 점(그림)과 아래로 이어지는 선. */}
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          display: 'grid',
+                          justifyItems: 'center',
+                          gridTemplateRows: 'auto 1fr',
+                        }}
                       >
-                        {first ? (
-                          <>
-                            <span data-testid="timeline-time" style={secondary}>
-                              {formatMonthDayTime(item.at) ?? ''}
-                            </span>
-                            <span data-testid="timeline-actor">{actorName(item.actor)}</span>
-                          </>
-                        ) : null}
-                        <StatusTag
-                          tone={activityGroupTone[groupOf(item.kind)]}
-                          data-testid="timeline-kind"
-                        >
-                          {labelFor(activityKindLabels, item.kind)}
-                        </StatusTag>
                         <span
-                          data-testid="timeline-summary"
-                          style={
-                            item.cancelled === true
-                              ? { textDecoration: 'line-through', color: colors.textSecondary }
-                              : undefined
-                          }
+                          data-testid="timeline-icon"
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 999,
+                            display: 'grid',
+                            placeItems: 'center',
+                            fontSize: 12,
+                            background: detailTheme.accentSoft,
+                            border: `1px solid ${detailTheme.accent}`,
+                          }}
                         >
-                          {summaryText(item)}
+                          {timelineIcon(lines[0] ?? block[0])}
                         </span>
-                        {item.cancelled === true ? (
-                          <span data-testid="timeline-cancelled-note" style={secondary}>
-                            {timelineArea.cancelledNote(
-                              item.cancelledBy ? actorName(item.cancelledBy) : '',
-                              formatMonthDayTime(item.cancelledAt)?.slice(0, 5) ?? '',
-                            )}
+                        {blockIndex < day.blocks.length - 1 ? (
+                          <span
+                            style={{ width: 2, background: detailTheme.lineTodo, minHeight: 8 }}
+                          />
+                        ) : null}
+                      </span>
+                      <div style={{ display: 'grid', gap: 4, paddingBottom: 10 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span data-testid="timeline-time" style={secondary}>
+                            {formatHourMinuteOf(block[0].at)}
                           </span>
-                        ) : null}
-                        {canCancel(item) && !cancelOpen ? (
-                          <Button
-                            size="small"
-                            type="link"
-                            onClick={() => openCancel(item)}
-                            aria-label={timelineArea.cancelButtonLabel(summaryText(item))}
-                            data-testid="timeline-cancel-open"
-                            style={{ padding: 0, height: 'auto' }}
-                          >
-                            {timelineArea.cancelButton}
-                          </Button>
-                        ) : null}
-                        {cancelOpen ? (
-                          <div
-                            data-testid="timeline-cancel-form"
-                            style={{
-                              flexBasis: '100%',
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: 8,
-                              alignItems: 'center',
-                            }}
-                          >
-                            <label htmlFor={`cancel-reason-${index}`} style={secondary}>
-                              {timelineArea.cancelPrompt}
-                            </label>
-                            <Input
-                              id={`cancel-reason-${index}`}
-                              value={reason}
-                              maxLength={timelineArea.cancelReasonMaxLength}
-                              aria-label={timelineArea.cancelReasonLabel}
-                              onChange={(event) => setReason(event.target.value)}
-                              disabled={cancelBusy}
-                              style={{ maxWidth: 320 }}
-                              data-testid="timeline-cancel-reason"
-                            />
-                            <Button
-                              size="small"
-                              type="primary"
-                              loading={cancelBusy}
-                              onClick={() => void confirmCancel(item)}
-                              data-testid="timeline-cancel-confirm"
+                          <span data-testid="timeline-actor">{actorName(block[0].actor)}</span>
+                        </div>
+                        {lines.map((item, inner) => {
+                          const index = itemIndex.get(item) ?? inner;
+                          const structuredOutcome = isStructuredOutcome(item);
+                          const structuredAdvice = isStructuredAdvice(item);
+                          return (
+                            <div
+                              key={`${item.at}-${index}`}
+                              data-testid="timeline-item"
+                              data-cancelled={item.cancelled === true ? 'true' : undefined}
+                              style={
+                                structuredOutcome || structuredAdvice
+                                  ? { display: 'grid', gap: 4 }
+                                  : {
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      gap: 8,
+                                      alignItems: 'center',
+                                    }
+                              }
                             >
-                              {timelineArea.cancelConfirm}
-                            </Button>
-                            <Button
-                              size="small"
-                              onClick={closeCancel}
-                              disabled={cancelBusy}
-                              data-testid="timeline-cancel-close"
-                            >
-                              {timelineArea.cancelClose}
-                            </Button>
-                          </div>
-                        ) : null}
-                        {cancelError?.key === key ? (
-                          <div
-                            role="alert"
-                            data-testid="timeline-cancel-error"
-                            style={{ flexBasis: '100%', color: colors.error }}
-                          >
-                            {cancelError.text}
-                          </div>
-                        ) : null}
+                              {structuredOutcome
+                                ? outcomeLine(item, nested.get(item) ?? [], index)
+                                : structuredAdvice
+                                  ? adviceLine(item, 'timeline-ai', index)
+                                  : plainLine(item, index)}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              </li>
-            ))}
-          </ol>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ))}
           {hiddenBlocks > 0 || showAll ? (
             <Button
               type="link"
@@ -438,4 +724,9 @@ export default function ActivityTimeline({
       ) : null}
     </section>
   );
+}
+
+/** 묶음 머리 시각. 날짜는 구분선이 보이므로 "14:20"만. 시각을 못 읽으면 빈칸. */
+function formatHourMinuteOf(iso: string): string {
+  return formatMonthDayTime(iso)?.slice(6) ?? '';
 }
