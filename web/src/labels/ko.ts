@@ -727,9 +727,13 @@ export const candidateSearch = {
   /** 들어온 날짜 꼬리표(#516): "11/9 들어옴". 회차가 아니라 날짜 기준이라 다시 돌려도 바뀌지 않는다. */
   ingestedOn: (date: string) => `${date} 들어옴`,
   /** 머리 수집 요약 줄(상태별). 건수를 모르는 칸은 뺀다. */
-  summaryTitle: '영업 후보 더하기',
-  running: '지금 영업 후보로 더하는 중입니다',
-  failed: '후보 가져오기에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
+  /** #825: 접힌 [＋ 새 후보 찾기] 칸과 같은 이름(#798). 옛 이름 "영업 후보 더하기"는 쓰지 않는다. */
+  summaryTitle: '지난 새 후보 찾기',
+  running: '지금 새 후보를 찾는 중입니다',
+  failed: '자료와 설정을 확인해 주세요',
+  /** #825: 지난 회차 실패는 날짜를 앞에 붙여 지난 일로 읽히게 한다. 예: "11/14 찾기 실패 · 자료와 설정을 확인해 주세요" */
+  failedOn: (day: string | null, reason: string) =>
+    day ? `${day} 찾기 실패 · ${reason}` : `찾기 실패 · ${reason}`,
   /**
    * 한도 등으로 건너뛴 일(#442). 문장은 약속 C1에 정해진 그대로다(웹 검색 #313, 단지 조회 #323).
    * 대응표에 없는 코드(DISABLED처럼 꺼 둔 것, 모르는 코드)는 안내하지 않는다.
@@ -746,7 +750,7 @@ export const candidateSearch = {
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
   /**
-   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [영업 후보로 더하기 💰]를 누른다. 모달 없이 인라인이다.
+   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 찾기 💰]를 누른다(#825, 옛 이름 [영업 후보로 더하기 💰]). 모달 없이 인라인이다.
    * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
    */
   formTitle: '영업 후보로 더할 공장 조건',
@@ -756,14 +760,14 @@ export const candidateSearch = {
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '영업 후보로 더하기 💰',
-  fetching: '더하는 중',
-  pickStaffFirst: '담당자를 고르면 더할 수 있습니다',
-  started: '더하기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
-  alreadyRunning: '지금 더하는 중입니다. 끝난 뒤에 다시 눌러 주세요',
+  fetchButton: '새 후보 찾기 💰',
+  fetching: '찾는 중',
+  pickStaffFirst: '담당자를 고르면 찾을 수 있습니다',
+  started: '찾기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
+  alreadyRunning: '지금 찾는 중입니다. 끝난 뒤에 다시 눌러 주세요',
   sourceFailed: '공개 자료를 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요',
   invalidCondition: '고른 조건을 서버가 받지 않았습니다',
-  startFailed: '영업 후보 더하기를 시작하지 못했습니다',
+  startFailed: '새 후보 찾기를 시작하지 못했습니다',
   /**
    * 맞는 공장 수 줄(#549 ①, 약속 C1 `GET /ingest/preview`). 조건을 고르면 서버가 저장된 AI 판단만 세서
    * 바로 보인다(외부 호출 없음, 0원). 예: "맞는 공장 1,518곳 (상 134 · 중 1,382 · 하 2) · 영업 후보로 들어온 곳 100곳"
