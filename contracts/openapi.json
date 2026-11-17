@@ -9605,6 +9605,20 @@
             ],
             "title": "Note"
           },
+          "noteIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Noteids"
+          },
           "oppId": {
             "title": "Oppid",
             "type": "string"
@@ -9669,6 +9683,7 @@
               "SCHEDULE_OVERDUE",
               "CHECK_LEFT",
               "HANDOFF_FOR_ME",
+              "HANDOFF_FROM_ME",
               "AI_USAGE_ALERT",
               "AI_LIMIT_REACHED",
               "DATA_REFRESH_DUE"

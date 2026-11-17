@@ -218,8 +218,19 @@ def test_today_rows_never_carry_memo_text(today_env):
         for item in row["items"]:
             # #766: 기록 번호(숫자)가 더해졌다. #794(PM 확인 2026-11-16): 전달 사항 줄에만 글 앞부분
             # text가 생겼고 다른 줄은 늘 비어 있다. 일반 메모 글은 어느 줄에도 실리지 않는다.
-            assert set(item) == {"oppId", "customerName", "dueAt", "note", "outcomeVersion", "text"}
+            # #854(PM 확인 2026-11-18, 약속에 더한 칸): 전달 사항 줄에만 확인용 번호 noteIds가 차고
+            # 다른 줄은 늘 비어 있다. 번호일 뿐 글이 아니다.
+            assert set(item) == {
+                "oppId",
+                "customerName",
+                "dueAt",
+                "note",
+                "outcomeVersion",
+                "text",
+                "noteIds",
+            }
             assert item["text"] is None
+            assert item["noteIds"] is None
 
 
 def test_dashboard_part_builds_schedule_rows_without_check_left(today_env):

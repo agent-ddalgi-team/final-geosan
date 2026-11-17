@@ -198,7 +198,11 @@ class TodayCheckItem(_ApiModel):
     # #766: 일정 줄만. 그 일정이 실린 최신 영업 기록 번호(지난 일정 단추의 expectedVersion).
     outcome_version: int | None = None
     # #794: HANDOFF_FOR_ME 줄만. 가장 최근 확인 전 전달 글 앞 80자(넘으면 "…"). 다른 줄은 null.
+    # #854: HANDOFF_FROM_ME 줄도 같은 자르기로 보낸 글 앞부분.
     text: str | None = None
+    # #854: HANDOFF_FOR_ME 줄만. 그 회사에서 나에게 온 확인 전 전달 사항 번호 전부(최신 먼저).
+    # 화면 [확인]이 번호마다 POST /notes/{noteId}/confirm을 부른다. 다른 줄은 null.
+    note_ids: list[str] | None = None
 
 
 class TodayAlert(_ApiModel):
@@ -219,6 +223,7 @@ class TodayCheckRow(_ApiModel):
         "SCHEDULE_OVERDUE",
         "CHECK_LEFT",
         "HANDOFF_FOR_ME",
+        "HANDOFF_FROM_ME",
         "AI_USAGE_ALERT",
         "AI_LIMIT_REACHED",
         "DATA_REFRESH_DUE",
@@ -368,6 +373,8 @@ def dashboard(
         staff_teams=runtime.app_settings.handoff_teams_of(
             _my_staff_key(session, runtime, staff_key)
         ),
+        # #854: "내가 보낸 전달 사항" 줄의 받는 쪽이 역할 묶음이면 그 이름(예: 영업).
+        team_names={team.key: team.label for team in runtime.app_settings.handoff_teams},
         stalled_after_days=runtime.app_settings.dashboard.stalled_after_days,
     )
     # #799: 운영 알림 줄을 맨 앞에 둔다(메뉴 숫자 #770은 곳 수라 이 줄을 세지 않는다).

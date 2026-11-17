@@ -65,6 +65,8 @@ def schedule_items(env, body):
             "outcomeVersion": 1,
             # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
             "text": None,
+            # #854(PM 확인 2026-11-17, 더한 칸): 확인할 전달 사항 번호도 비어 있다.
+            "noteIds": None,
         },
         {
             "oppId": ids["b"],
@@ -74,6 +76,8 @@ def schedule_items(env, body):
             "outcomeVersion": 1,
             # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
             "text": None,
+            # #854(PM 확인 2026-11-17, 더한 칸): 확인할 전달 사항 번호도 비어 있다.
+            "noteIds": None,
         },
     ]
     assert overdue_row["items"] == [
@@ -85,6 +89,8 @@ def schedule_items(env, body):
             "outcomeVersion": 1,
             # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
             "text": None,
+            # #854(PM 확인 2026-11-17, 더한 칸): 확인할 전달 사항 번호도 비어 있다.
+            "noteIds": None,
         }
     ]
 
@@ -104,6 +110,8 @@ def check_left_list(env, body):
             "outcomeVersion": None,
             # #794(PM 확인 2026-11-16): 전달 사항 줄이 아니면 글 앞부분 칸은 비어 있다.
             "text": None,
+            # #854(PM 확인 2026-11-17, 더한 칸): 확인할 전달 사항 번호도 비어 있다.
+            "noteIds": None,
         }
     ]
     listed = client.get("/api/v1/opportunities", params={"filter": row["listFilter"]}).json()
