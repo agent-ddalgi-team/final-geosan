@@ -11,6 +11,8 @@ scripts/check.sh(맥·리눅스 bash)와 단계·순서가 같다. 둘 중 하�
     python scripts/check.py            # 파이썬 + 화면 전부
     python scripts/check.py python     # 파이썬만
     python scripts/check.py web        # 화면만
+    python scripts/check.py fast [경로…]  # PR 전 빠른 검사(#830): 바뀐 단위 시험만
+                                            # (전체 단위 시험·커버리지는 CI)
 윈도우 PowerShell:
     .venv\\Scripts\\python scripts\\check.py python
 
@@ -218,6 +220,83 @@ def run_python(failed: list[str]) -> None:
     )
 
 
+def changed_unit_tests() -> list[str]:
+    """이 가지에서 바뀐(또는 아직 커밋 안 한) tests/unit 시험 파일(#830)."""
+
+    def git(*args: str) -> list[str]:
+        result = subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8")
+        return result.stdout.splitlines() if result.returncode == 0 else []
+
+    base = (
+        git("merge-base", "HEAD", "origin/develop") or git("merge-base", "HEAD", "develop") or [""]
+    )[0]
+    names = []
+    if base:
+        names += git("diff", "--name-only", base, "--", "tests/unit")
+    names += git("diff", "--name-only", "--", "tests/unit")
+    names += git("ls-files", "--others", "--exclude-standard", "--", "tests/unit")
+    picked = {
+        n
+        for n in names
+        if os.path.basename(n).startswith("test_") and n.endswith(".py") and os.path.isfile(n)
+    }
+    return sorted(picked)
+
+
+def run_python_fast(failed: list[str], extra: list[str]) -> None:
+    """PR 전 빠른 검사(#830, PM 결정 2026-11-17). check.sh fast와 단계·순서가 같다."""
+    py = find_python()
+
+    step(failed, "[1/5] 비밀·DB 파일 검사", check_secrets)
+
+    step(
+        failed,
+        "[2/5] 코드 모양 (ruff format --check, ruff check)",
+        lambda: run([py, "-m", "ruff", "format", "--check", "."]),
+        lambda: run([py, "-m", "ruff", "check", "."]),
+    )
+
+    tests = sorted(set(changed_unit_tests()) | set(extra))
+
+    def fast_unit() -> None:
+        if not tests:
+            print("   바뀐 단위 시험 파일이 없습니다 — 전체 단위 시험은 CI가 돕니다.")
+            return
+        for name in tests:
+            print(f"   · {name}")
+        run([py, "-m", "pytest", *tests, "-q", "--no-cov"])
+
+    step(failed, "[3/5] 바뀐 단위 시험만 (커버리지·전체는 CI)", fast_unit)
+
+    step(
+        failed,
+        "[4/5] 시나리오 테스트 (필수)",
+        lambda: run([py, "-m", "pytest", "tests/features", "-q", "--no-cov"]),
+    )
+
+    print("== [5/5] 뼈대 검증 (임시 DB, Step 19·27 전에는 실패가 정상 — Step 28에서 필수로 바꿈)")
+    tmpdb = os.path.join(tempfile.mkdtemp(), "geosan-check.db")
+    env = dict(os.environ, GEOSAN_DB_PATH=tmpdb)
+    run_allowed_to_fail(
+        [
+            [py, "-m", "geosan", "init-db"],
+            [
+                py,
+                "-m",
+                "geosan",
+                "check-config",
+                "examples/rule-config.yaml",
+                "examples/app-settings-virtual.yaml",
+            ],
+            [py, "-m", "geosan", "import-capability", "examples/capability-geosan.json"],
+            [py, "-m", "geosan", "import-case", "examples/case-apjeong.json"],
+            [py, "-m", "geosan", "verify-case", "examples/case-apjeong.json"],
+        ],
+        "뼈대 검증 실패: 통합 전까지 허용",
+        env=env,
+    )
+
+
 # ---------- 화면 ----------
 
 
@@ -255,15 +334,24 @@ def main(argv: list[str]) -> int:
     elif target == "all":
         run_python(failed)
         run_web(failed)
+    elif target == "fast":
+        run_python_fast(failed, argv[2:])
+        run_web(failed)
     else:
-        print("사용법: python scripts/check.py [python|web]")
+        print("사용법: python scripts/check.py [python|web|fast [시험 경로…]]")
         return 1
     if failed:
         print("검사 실패: 아래 단계가 실패했습니다. 위에서 각 단계의 오류를 확인하세요.")
         for name in failed:
             print(f"  - {name}")
         return 1
-    print("검사 끝")
+    if target == "fast":
+        print(
+            "빠른 검사 끝 — PR을 올리고 CI(전체 단위 시험·커버리지 80% 하한)가 "
+            "초록인지 확인한 뒤 합칩니다."
+        )
+    else:
+        print("검사 끝")
     return 0
 
 
