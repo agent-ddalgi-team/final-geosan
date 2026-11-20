@@ -25,7 +25,7 @@ from geosan.workflows import flow_ingest as flow
 from geosan.workflows.models import FlowResult
 from geosan.workflows.research import ResearchResult
 from tests import factories
-from tests.fakes.ingest_responses import FakeCandidateResponses
+from tests.fakes.ingest_responses import FakeCandidateResponses, fake_supply_tier
 from tests.unit.u1.test_snapshot_ledger import _write
 
 
@@ -96,6 +96,7 @@ def ingest_env(tmp_db, tmp_path, factory_file, monkeypatch):
     picker = FakeCandidateResponses()
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
     monkeypatch.setattr(candidate_pick, "_post", picker)
+    fake_supply_tier(monkeypatch)
     return SimpleNamespace(picker=picker, path=path)
 
 

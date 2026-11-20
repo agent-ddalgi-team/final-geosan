@@ -174,6 +174,33 @@ def reserve_candidate_judgment(
     return _reserve(None, key_present, db_path, "EXTERNAL_AI", "SYSTEM", batch_id=batch_id)
 
 
+def reserve_supply_tier(
+    requested_by: str,
+    key_present: bool,
+    db_path: Path | str | None = None,
+    *,
+    batch_id: str | None = None,
+    opp_id: str | None = None,
+) -> SearchTicket:
+    """공급망 위치 판단 호출을 예약한다(C4·C9, #860). 후보 판단과 같은 월 호출·비용 한도를 쓴다.
+
+    후보 찾기 중이면 그 회차(실행 중이어야 함)에 남긴다. 운영 명령처럼 회차가 없으면 묶음 첫
+    회사의 기회 번호로 남긴다(전송 기록은 회차나 기회 번호 하나가 꼭 있어야 한다).
+    """
+    if not isinstance(requested_by, str) or not requested_by.strip():
+        raise InputError("요청한 사람을 확인해 주세요.")
+    if batch_id is None and not opp_id:
+        raise InputError("전송 기록에 남길 회차나 기회 번호를 확인해 주세요.")
+    return _reserve(
+        None if batch_id else opp_id,
+        key_present,
+        db_path,
+        "EXTERNAL_AI",
+        requested_by,
+        batch_id=batch_id,
+    )
+
+
 def reserve_candidate_search(
     batch_id: str, key_present: bool, db_path: Path | str | None = None
 ) -> SearchTicket:

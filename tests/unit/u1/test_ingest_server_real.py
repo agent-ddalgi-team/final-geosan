@@ -19,6 +19,7 @@ from geosan.opportunity.models import IngestBatch
 from geosan.opportunity.source_models import SourceContract
 from geosan.storage.session import session_scope
 from tests import factories
+from tests.fakes.ingest_responses import fake_supply_tier
 from tests.unit.u1.test_snapshot_ledger import _write
 from tests.unit.u3.conftest import factory_file as factory_file
 
@@ -63,6 +64,7 @@ def test_server_runs_real_ingest_and_reports_terminal_state(
 
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
     monkeypatch.setattr(candidate_pick, "_post", response)
+    fake_supply_tier(monkeypatch)
     apps = []
     monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: apps.append(app))
     serve._run_server(18769)

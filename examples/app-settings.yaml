@@ -45,6 +45,7 @@ ingestion:
     enabled: false
     rowsPerCall: 20  # 100행은 60초 한도를 넘김(PM #491, 2026-11-09)
     promptFile: examples/prompts/candidate-pick.md
+    supplyTierPromptFile: examples/prompts/supply-tier.md  # 목록에 들어온 회사만 공급망 위치를 따로 판단(#860). 후보 고르기 기준 버전에 안 들어감
     surfaceTreatmentIndustryNames: []  # 업종명 규칙의 값은 PM이 정한 뒤 넣는다.
     surfaceTreatmentIndustryCodes: ["25922", "25923"]  # 팩토리온 업종번호: 도금업·도장 및 기타 피막처리업(PM 승인 #573). 열처리 25921·절삭가공 25924는 넣지 않는다
     model: null  # 후보 고르기만 다른 모델로(예: gpt-6-luna). 비우면 llm.model. 모델 비교용(PM #491)

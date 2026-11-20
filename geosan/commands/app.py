@@ -70,6 +70,16 @@ def source_load(
     raise typer.Exit(code=run_source_load(source_id, files))
 
 
+@app.command("supply-tier")
+def supply_tier(
+    staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),
+) -> None:
+    """후보 찾기로 들어왔고 공급망 위치가 빈 회사를 AI로 한 번에 판단합니다(#860, 비용 발생)."""
+    from geosan.commands.supply_tier import run_supply_tier
+
+    raise typer.Exit(code=run_supply_tier(staff_key))
+
+
 @app.command("ingest")
 def ingest(
     source_id: str = typer.Argument(..., help="공개 공장현황 소스 kicox-factory-csv"),
