@@ -101,8 +101,15 @@ def test_clean_reading_drops_claims_without_numbers_and_scrubs_contacts():
 
 def test_prompt_file_has_a_version_line_and_the_rules():
     text, version = feedback.load_prompt()
-    assert version.startswith("[지시문 버전] analysis-v1")
-    for rule in ("표본 부족(결론 금지)", "근거", "실패를 먼저", "사람 이름"):
+    assert version.startswith("[지시문 버전] analysis-v2")
+    for rule in (
+        "표본 부족(결론 금지)",
+        "근거",
+        "실패를 먼저",
+        "사람 이름",
+        "회사별 기록",
+        "회사 A1",
+    ):
         assert rule in text, rule
 
 
@@ -204,3 +211,88 @@ def test_get_without_saved_copy_says_so_and_shows_the_switch(env):
     state = client.get(URL, headers=support.VIEWER).json()["data"]
     assert state == {"feedback": None, "current": False, "switchOn": False}
     assert ai.payloads == []
+
+
+# ---------------------------------------------------------------------------
+# #802(PM 결정 2026-11-20): 회사별 기록(메모·사유·답)을 지워서 함께 보내고, 회사 이름은 되돌린다
+# ---------------------------------------------------------------------------
+
+
+def _note(opp_id, text, note_id="note-ctx"):
+    from geosan.records.models import Note
+
+    with session_scope() as session:
+        session.add(
+            Note(
+                note_id=note_id,
+                opp_id=opp_id,
+                staff_key="park-lee",
+                kind="MEMO",
+                text=text,
+                version=1,
+                created_by="park-lee",
+                dataset_kind="VIRTUAL_REVIEWED",
+                is_virtual=True,
+            )
+        )
+
+
+def _company_name(opp_id):
+    from geosan.opportunity.models import Customer, Opportunity
+
+    with session_scope() as session:
+        return session.get(Customer, session.get(Opportunity, opp_id).customer_id).name
+
+
+def test_company_records_go_with_names_swapped_and_contacts_removed(env):
+    """Given 거절한 회사의 메모에 전화·직함 붙은 이름·회사 이름 / When [AI 분석 받기]
+    / Then 회사별 기록이 함께 가고 회사 이름은 "회사 A1", 전화·이름은 지워져 있다."""
+    client, (a, b, *_), ai = env
+    name = _company_name(a)
+    support.record(client, b, support.contact("REACHED", memo="기존 거래처와 연간 단가 계약"))
+    # 영업 메모(rec_note)에는 담당자가 상대 연락처를 적을 수 있다(PM 결정 11/03). 보낼 때 지운다.
+    _note(a, f"{name} 김민수 과장 010-1234-5678 다음 달 계약 끝나면 다시 연락 달라고 함")
+    assert client.post(URL, json={}, headers=STAFF).status_code == 200
+    sent = ai.payloads[0]["input"]
+    assert feedback.CONTEXT_HEAD in sent and "[회사 A1]" in sent and "[회사 A2]" in sent
+    assert "기존 거래처와 연간 단가 계약" in sent and "결과: 거절(가격)" in sent
+    assert "다음 달 계약 끝나면 다시 연락" in sent
+    # 세부 단계는 질문 파일의 쉬운 말, 끝난 회사는 "끝남"(코드나 "없음"이 아니다).
+    assert "결과: 거절(가격) · 세부 단계: 끝남" in sent and "세부 단계: 연결됨" in sent
+    assert name not in sent and _company_name(b) not in sent
+    assert "010-1234-5678" not in sent and "김민수" not in sent
+    # 끝난 회사(거절)가 먼저 온다.
+    assert sent.index("[회사 A1]") < sent.index("결과: 거절(가격)") < sent.index("[회사 A2]")
+
+
+def test_answer_names_are_restored_on_screen(env):
+    """AI 답의 "회사 A1"은 저장·화면에서 원래 회사 이름으로 보인다."""
+    client, (a, *_), ai = env
+    reply = json.loads(json.dumps(GOOD, ensure_ascii=False))
+    reply["next"] = [
+        {"text": "회사 A1은 기존 거래처 계약 끝나는 때를 물어본다.", "evidence": ["회사 A1 · 거절"]}
+    ]
+    ai.raw = json.dumps(reply, ensure_ascii=False)
+    data = client.post(URL, json={}, headers=STAFF).json()["data"]["feedback"]
+    name = _company_name(a)
+    assert data["next"][0]["text"].startswith(name)
+    assert data["next"][0]["evidence"] == [f"{name} · 거절"]
+
+
+def test_every_sent_company_is_marked_in_the_transfer_log(env):
+    """보낸 회사마다 전송 기록이 남는다(회사별 기록을 보냈으므로)."""
+    from geosan.evidence.transfer import TransferLog
+
+    client, (a, b, *_), _ai = env
+    assert client.post(URL, json={}, headers=STAFF).status_code == 200
+    with session_scope() as session:
+        marked = set(session.scalars(select(TransferLog.opp_id)))
+    assert {a, b} <= marked
+
+
+def test_context_text_changes_the_saved_copy_to_stale(env):
+    """메모만 새로 적어도(숫자 표는 그대로) 저장본이 '지금 기록과 다름'이 된다."""
+    client, (a, *_), _ai = env
+    assert client.post(URL, json={}, headers=STAFF).status_code == 200
+    _note(a, "시험 메모: 샘플을 다음 달에 다시 보자고 함")
+    assert client.get(URL, headers=support.VIEWER).json()["data"]["current"] is False
