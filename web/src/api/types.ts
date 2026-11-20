@@ -391,6 +391,11 @@ export type LostReasonCode =
 export type ContactMethod = 'CALL' | 'EMAIL' | 'VISIT';
 export type ContactResult = 'REACHED' | 'ABSENT' | 'DECLINED';
 
+/** 공급망 위치 AI 추정(#860, C0 supplyTier). TIER2_3 = 2·3차 가공업체(영업 대상), TIER1 = 1차 완성품·조립 업체. */
+export type SupplyTier = 'TIER2_3' | 'TIER1' | 'UNKNOWN';
+/** 공급망 위치를 무엇으로 정했나(#860): 공장 자료 생산품으로 따로 판단 / 홈페이지 조사. */
+export type SupplyTierSource = 'PRODUCT' | 'HOMEPAGE';
+
 /** 큰 단계(접촉·견적·샘플) 안의 세부 단계(#607, C0 salesStep). 꼬리 질문 답으로 알아낸 사실로 정한다. */
 export type SalesStep =
   'NOT_REACHED' | 'REACHED' | 'DEMAND_CONFIRMED' | 'MATERIAL_QUOTE' | 'VISIT_SAMPLE';
@@ -542,6 +547,10 @@ export interface OpportunityCard {
   ownPlatingLineSuspected?: boolean;
   /** 그 표시의 근거 한 줄. 예: 생산품 "알루미늄 아노다이징". 없으면 꼬리표만 보인다. */
   ownPlatingLineBasis?: string | null;
+  /** 공급망 위치 AI 추정(#860). 2·3차·1차면 꼬리표가 붙고, 모름·없음이면 아무것도 안 보인다. */
+  supplyTier?: SupplyTier | null;
+  supplyTierBasis?: string | null;
+  supplyTierSource?: SupplyTierSource | null;
   /** 공장 등록 정보(#573). 맞는 공장이 없으면 null이고 줄을 그리지 않는다. */
   factoryProfile?: FactoryProfile | null;
   /** 점수 확인 상태(#263). 없으면(옛 응답) 지금처럼 보인다. */
@@ -630,6 +639,10 @@ export interface DetailHeader {
   homepageUrl?: string | null;
   /** 표면처리를 직접 하는 회사일 수 있음(#319, #364). 참이면 머리 이름 옆에 꼬리표만 보인다(근거 줄은 카드·검토사항에서). 없거나 거짓이면 아무것도 안 보인다. */
   ownPlatingLineSuspected?: boolean;
+  /** 공급망 위치 AI 추정과 근거·출처(#860). "한눈에"에 한 줄. 통화 답("도금 업체는 누가 정하나요?")이 있으면 답이 먼저. */
+  supplyTier?: SupplyTier | null;
+  supplyTierBasis?: string | null;
+  supplyTierSource?: SupplyTierSource | null;
   /** 회사 주소(C1 header.address). 지도 링크를 만드는 데만 쓴다. */
   address?: string | null;
   /** 후보 찾기 때 저장한 AI 판단(C1 header, #316·#563): 적합도와 고른 이유. 사례 파일 회사는 없음. */

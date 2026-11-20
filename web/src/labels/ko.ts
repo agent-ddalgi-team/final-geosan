@@ -1222,6 +1222,23 @@ export const ownPlatingLine = {
   /** 근거 줄 이름. 카드에 이미 있는 "추천 근거"와 헷갈리지 않게 "확인 근거"로 한다. 예: 확인 근거 | 생산품 "알루미늄 아노다이징" */
   basisLabel: '확인 근거',
 } as const;
+/**
+ * 공급망 위치(#860, PM 결정 2026-11-19). 거산은 도금 후처리 업체라 2·3차 가공업체가 영업 대상이고,
+ * 1차 완성품·조립 업체는 보통 가공·도금을 협력사에 맡긴다(거산 실무자 의견). 1차도 목록에서 빼지 않는다.
+ */
+export const supplyTierLabels = {
+  /** 카드 꼬리표. 예: "2·3차 가공 · AI 추정" */
+  tag: { TIER2_3: '2·3차 가공 · AI 추정', TIER1: '1차 완성품·조립 · AI 추정' },
+  /** "한눈에" 줄 이름과 값. 예: 공급망 위치  1차 완성품·조립 — 철도차량 완성품 조립 납품 (생산품 기준 AI 추정 · 확인 전) */
+  label: '공급망 위치',
+  value: { TIER2_3: '2·3차 가공업체', TIER1: '1차 완성품·조립 업체' },
+  hint: { TIER2_3: '', TIER1: '협력 가공사를 물어볼 곳' },
+  source: { PRODUCT: '생산품 기준 AI 추정 · 확인 전', HOMEPAGE: '홈페이지 기준 AI 추정 · 확인 전' },
+  /** 통화에서 들은 답("도금 업체는 누가 정하나요?")이 있으면 먼저. 예: 도금 업체: 발주처가 지정 · 통화 11/19 */
+  called: (answer: string, date: string) => `도금 업체: ${answer} · 통화 ${date}`,
+} as const;
+/** 공급망 위치 답을 받는 꼬리 질문 id(examples/sales-questions.yaml, id는 바꾸지 않는다). */
+export const PLATER_DECIDER_QUESTION_ID = 'PLATER_DECIDER';
 export const reviewItemSourceLabels = {
   AI: 'AI 조사',
   CASE_FILE: '사례 파일',
