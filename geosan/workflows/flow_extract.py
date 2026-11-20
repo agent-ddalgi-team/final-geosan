@@ -38,6 +38,7 @@ from geosan.evidence.store import store_extraction
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.opportunity.queries import (
     apply_homepage_fit,
+    apply_homepage_tier,
     mark_homepage_closed,
     store_company_research,
 )
@@ -205,6 +206,12 @@ def run_extract(
                 result.fit_review.fit_level,
                 result.fit_review.reason,
                 result.fit_review.downgrade_basis,
+            )
+            # #860: 홈페이지 문장으로 본 공급망 위치(문장이 없으면 그대로).
+            apply_homepage_tier(
+                session.get(Customer, customer_id),
+                result.fit_review.supply_tier,
+                result.fit_review.supply_tier_reason,
             )
             evidence = store_extraction(
                 session,
