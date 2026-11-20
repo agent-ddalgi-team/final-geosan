@@ -183,8 +183,9 @@ export const frame = {
   pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
-  menuDashboard: '대시보드',
-  pageTitleDashboard: '대시보드',
+  // #861(PM 2026-11-20): "대시보드" → "영업 홈". 숫자 모음이 아니라 오늘 할 일·방문 준비 중심인 첫 화면이라는 뜻.
+  menuDashboard: '영업 홈',
+  pageTitleDashboard: '영업 홈',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
   /** #799: 운영 담당(설정 operations.staffKeys)에게만 보이는 메뉴. */
@@ -359,11 +360,11 @@ export const dashboardTexts = {
   },
   breakdownProcessTitle: '공정별',
   breakdownIndustryTitle: '산업군별',
-  breakdownBasis: (total: number) => `대시보드 대상 ${total}곳`,
+  breakdownBasis: (total: number) => `관심·진행 중·최근 12개월 성사 ${total}곳 기준`,
   breakdownProposed: 'AI 제안 포함',
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
   breakdownEmptyAction: '신규 거래처 찾기로 이동',
-  loadError: '대시보드를 불러오지 못했습니다.',
+  loadError: '영업 홈을 불러오지 못했습니다.',
   goToList: '신규 거래처 찾기로 이동',
   // #795(PM 결정 2026-11-16): 오늘 할 일·방문 준비 중심 배치.
   /** 맨 위 날짜 줄. "11/16(월) 오늘" */
@@ -695,8 +696,8 @@ export const bookmarkList = {
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
   empty: '관심으로 고른 회사가 없습니다. 카드의 [관심]을 눌러 담아 보세요',
   filterPrefix: '거른 조건',
-  /** 주소의 조건 값이 대시보드 칸 이름표에 없을 때 대신 보이는 말. */
-  filterUnknown: '대시보드에서 고른 조건',
+  /** 주소의 조건 값이 영업 홈 칸 이름표에 없을 때 대신 보이는 말. */
+  filterUnknown: '영업 홈에서 고른 조건',
   clearFilter: '거르기 풀기',
   /** 평소 목록 머리(#675): 관심으로 고른 회사는 목록에서 빠져 있다. 누르면 관심 기업 보기로 간다. 예: "관심 기업 3곳" */
   countLink: (count: number) => `관심 기업 ${count}곳`,
@@ -2560,7 +2561,7 @@ export const operationsTexts = {
   usageTotal: (used: string, limit: string, percent: number) =>
     `${used} / 한도 ${limit} (${percent}%)`,
   usageCalls: (calls: number, limit: number) => `호출 ${calls} / ${limit}회`,
-  usageAlertLine: (percent: number) => `${percent}%가 넘으면 대시보드에 알림`,
+  usageAlertLine: (percent: number) => `${percent}%가 넘으면 영업 홈에 알림`,
   groupNames: {
     RESEARCH: '회사 조사·후보 판단',
     WEB_SEARCH: '웹 검색(홈페이지 찾기)',
