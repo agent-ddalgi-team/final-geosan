@@ -103,6 +103,7 @@ brand:
 salesAnalysis:
   minSampleForRatio: 10   # 표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 "표본 n건"만 보인다.
   closedWindowDays: 365   # 성사·거절은 결과 기록이 이 일수 안인 것만 센다(최근 12개월).
+  feedbackMaxOutputTokens: 8000  # [AI 분석 받기] 답 길이 상한(#802). 회사별 기록을 함께 읽어 답이 길다
 
 # 영업 비서(#680, 계약 C7, PM 결정 2026-11-14): 질문에 답하기·통화 준비. 숫자는 PM이 정한다.
 # 켜고 끄는 스위치는 위 llm.salesRecordsEnabled다. 메모 글은 보내지 않고 고른 값만 보낸다.

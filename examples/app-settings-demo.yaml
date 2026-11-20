@@ -1,6 +1,7 @@
 # 앱 설정 파일 (AppSettings, 계약 C7) — 발표 시연용 DB 전용 사본 (#274, PM 결정 2026-11-04)
 #
-# 시연 DB(`GEOSAN_DB_PATH=./data/geosan-demo.db`)에만 등록한다. 가상 묶음이고 외부 AI·웹 검색·홈페이지 검색은 모두 꺼져 있다.
+# 시연 DB(`GEOSAN_DB_PATH=./data/geosan-demo.db`)에만 등록한다. 가상 묶음이고 웹 검색·홈페이지 검색은 꺼져 있다.
+# 영업 기록 AI(분석 받기·영업 코치·영업 비서)는 단추를 누를 때만 쓰도록 켜 둔다(#802, PM 결정 2026-11-20).
 # `brand.demo: true`가 "이 DB는 시연용"이라는 표시다. 이 표시가 있는 DB는 배포 설정(`--host 0.0.0.0` 또는
 # GEOSAN_PASSWORD가 있는 환경)에서 `geosan serve`가 시작되지 않고, `geosan seed-demo-records`는 이 표시가 있는 DB에만 가상 기록을 넣는다.
 # 거산 전달·배포 환경에는 이 파일을 등록하지 않는다. 만드는 순서는 README "발표 시연용 DB".
@@ -55,17 +56,23 @@ ingestion:
     cacheDays: 15
     extraNames: []
 
-# 외부 LLM (U2에서 쓴다). U1은 NONE이며 외부 호출 코드가 없다.
+# 외부 LLM. #802(PM 결정 2026-11-20): 시연 DB에서도 [AI 분석 받기]·영업 코치·영업 비서를 보여 줄 수 있게
+# 영업 기록 AI만 켠다(시연 기록은 모두 가상). 웹 검색·홈페이지 검색은 아래에서 꺼 둔다(실제 인터넷을 씀).
+# 단추를 누를 때만 부르고 비용이 든다. 키(OPENAI_API_KEY)가 없으면 단추가 "설정 확인" 오류로 끝난다.
 llm:
-  mode: NONE
-  model: null
-  _설명: "monthlyCallLimit·costPerThousandTokens 값은 설계에 없음 — PM 확인 필요(U2 진입 전). 0은 '아직 정하지 않음'."
-  monthlyCallLimit: 0
+  mode: EXTERNAL
+  provider: OPENAI
+  model: gpt-6.1-sol
+  allowedModels: [gpt-6.1-sol, gpt-6-luna]
+  monthlyCallLimit: 200
+  inputCostPerMillionTokens: 2.0
+  outputCostPerMillionTokens: 10.0
+  webSearchCostPerThousandCalls: 10.0
+  monthlyCostLimitUsd: 5   # 시연 DB 전용 한도(발표 준비에 쓰는 만큼)
   unconfirmedCallCostUsd: 0.10  # 사용량을 못 받은 호출의 추정 비용(#538).
+  # 영업 기록 전용 스위치(#680, PM 결정 2026-11-13 #681). 시연 기록은 가상이라 켠다(#802).
+  salesRecordsEnabled: true
   costPerThousandTokens: 0
-  # 영업 기록 전용 스위치(#680, PM 결정 2026-11-13 #681). 영업 기록 글(메모·한 줄 메모·질문 답)을
-  # 전화·이메일·사람 이름을 지운 뒤 외부 AI로 보내도 되는지 정한다. false면 하나도 나가지 않는다.
-  salesRecordsEnabled: false
 
 # 가상 사례는 홈페이지 검색을 끈다. 기존 두 칸만 있는 설정도 그대로 읽을 수 있다.
 homepageDiscovery:
@@ -87,6 +94,7 @@ brand:
 salesAnalysis:
   minSampleForRatio: 10   # 표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 "표본 n건"만 보인다.
   closedWindowDays: 365   # 성사·거절은 결과 기록이 이 일수 안인 것만 센다(최근 12개월).
+  feedbackMaxOutputTokens: 8000  # [AI 분석 받기] 답 길이 상한(#802). 회사별 기록을 함께 읽어 답이 길다
 
 # 영업 비서(#680, 계약 C7, PM 결정 2026-11-14): 질문에 답하기·통화 준비. 숫자는 PM이 정한다.
 # 켜고 끄는 스위치는 위 llm.salesRecordsEnabled다. 메모 글은 보내지 않고 고른 값만 보낸다.

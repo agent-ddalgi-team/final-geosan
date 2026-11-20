@@ -248,12 +248,14 @@ def analyze_sales(
     requested_by: str,
     schema_name: str,
     schema: dict,
+    also_opp_ids: Sequence[str] = (),
 ) -> tuple[str, SearchTicket]:
     """영업 분석 피드백(#824): 숫자 표 글 묶음을 한 번 보내 정해진 모양의 답 글(JSON)을 받는다.
 
     문(스위치·지우기 재검사·전송 기록·월 한도)은 다른 영업 기록 글과 같고 전송 종류만
-    SALES_ANALYSIS다(하루 한도를 따로 센다). 호출 1행은 opp_id 한 곳에만 단다(회사별 값이 아니라
-    건수만 보내므로 다른 회사 표시 행은 달지 않는다). 모양 검증·저장은 호출자(창구)가 한다.
+    SALES_ANALYSIS다(하루 한도를 따로 센다). 호출 1행은 opp_id에 달고, #802(11/20)부터 회사별
+    맥락 글을 함께 보내므로 그 회사들(also_opp_ids)에도 보낸 표시 행을 단다. 모양 검증·저장은
+    호출자(창구)가 한다.
     """
     return _request_with_ticket(
         opp_id,
@@ -271,7 +273,7 @@ def analyze_sales(
             },
         },
         requested_by,
-        (),
+        [opp for opp in also_opp_ids if opp != opp_id],
         record_kind=SALES_ANALYSIS_KIND,
     )
 
