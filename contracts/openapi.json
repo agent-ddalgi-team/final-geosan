@@ -2388,6 +2388,45 @@
             ],
             "title": "Summaryline"
           },
+          "supplyTier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplyTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치 AI 추정(#860): TIER2_3 = 2·3차 가공업체, TIER1 = 1차 완성품·조립 업체, UNKNOWN = 판단 못 함. 판단 전이면 null. 목록에서 빼지 않는다"
+          },
+          "supplyTierBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치의 근거 한 줄",
+            "title": "Supplytierbasis"
+          },
+          "supplyTierSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PRODUCT",
+                  "HOMEPAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치를 무엇으로 정했나: PRODUCT = 공장 자료 생산품으로 따로 판단, HOMEPAGE = 조사가 읽은 홈페이지",
+            "title": "Supplytiersource"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -5851,6 +5890,45 @@
               }
             ],
             "title": "Stage"
+          },
+          "supplyTier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplyTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치 AI 추정(#860): TIER2_3 = 2·3차 가공업체, TIER1 = 1차 완성품·조립 업체, UNKNOWN = 판단 못 함. 판단 전이면 null. 목록에서 빼지 않는다"
+          },
+          "supplyTierBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치의 근거 한 줄",
+            "title": "Supplytierbasis"
+          },
+          "supplyTierSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PRODUCT",
+                  "HOMEPAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치를 무엇으로 정했나: PRODUCT = 공장 자료 생산품으로 따로 판단, HOMEPAGE = 조사가 읽은 홈페이지",
+            "title": "Supplytiersource"
           },
           "title": {
             "description": "기업 · 기회 이름",
@@ -9458,6 +9536,16 @@
         ],
         "title": "StepRow",
         "type": "object"
+      },
+      "SupplyTier": {
+        "description": "공급망 위치 AI 추정(C0, 2026-11-19 PM 결정 #860). 점수 전 회사 순서·꼬리표에만 쓴다.",
+        "enum": [
+          "TIER2_3",
+          "TIER1",
+          "UNKNOWN"
+        ],
+        "title": "SupplyTier",
+        "type": "string"
       },
       "TimelineEvent": {
         "description": "(#801) 회사별 타임라인의 기록 행 하나(취소 안 한 행, 저장 순서). 코드값·날짜만.",

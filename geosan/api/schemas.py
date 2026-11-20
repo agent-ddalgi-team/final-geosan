@@ -47,6 +47,7 @@ from geosan.rules.codes import (
     ReviewStatus,
     SalesStep,
     SourceGrade,
+    SupplyTier,
 )
 from geosan.rules.codes import (
     OutcomeStatus as SalesOutcomeStatus,
@@ -519,6 +520,21 @@ class OpportunityCard(_ApiModel):
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
     )
     own_plating_line_basis: str | None = Field(default=None, description="그 표시의 근거 한 줄")
+    supply_tier: SupplyTier | None = Field(
+        default=None,
+        description=(
+            "공급망 위치 AI 추정(#860): TIER2_3 = 2·3차 가공업체, TIER1 = 1차 완성품·조립 업체, "
+            "UNKNOWN = 판단 못 함. 판단 전이면 null. 목록에서 빼지 않는다"
+        ),
+    )
+    supply_tier_basis: str | None = Field(default=None, description="공급망 위치의 근거 한 줄")
+    supply_tier_source: Literal["PRODUCT", "HOMEPAGE"] | None = Field(
+        default=None,
+        description=(
+            "공급망 위치를 무엇으로 정했나: PRODUCT = 공장 자료 생산품으로 따로 판단, "
+            "HOMEPAGE = 조사가 읽은 홈페이지"
+        ),
+    )
     factory_profile: FactoryProfile | None = Field(
         default=None,
         description="팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null",
@@ -610,6 +626,21 @@ class DetailHeader(_ApiModel):
         description="표면처리를 직접 하는 회사일 수 있음 (#319). 자동으로 빼지 않는다",
     )
     own_plating_line_basis: str | None = Field(default=None, description="그 표시의 근거 한 줄")
+    supply_tier: SupplyTier | None = Field(
+        default=None,
+        description=(
+            "공급망 위치 AI 추정(#860): TIER2_3 = 2·3차 가공업체, TIER1 = 1차 완성품·조립 업체, "
+            "UNKNOWN = 판단 못 함. 판단 전이면 null. 목록에서 빼지 않는다"
+        ),
+    )
+    supply_tier_basis: str | None = Field(default=None, description="공급망 위치의 근거 한 줄")
+    supply_tier_source: Literal["PRODUCT", "HOMEPAGE"] | None = Field(
+        default=None,
+        description=(
+            "공급망 위치를 무엇으로 정했나: PRODUCT = 공장 자료 생산품으로 따로 판단, "
+            "HOMEPAGE = 조사가 읽은 홈페이지"
+        ),
+    )
     factory_profile: FactoryProfile | None = Field(
         default=None,
         description="팩토리온 공장조회에서 붙인 공장 등록 정보(#573). 맞는 공장이 없으면 null",
