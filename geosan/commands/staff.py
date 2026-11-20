@@ -1,4 +1,6 @@
-"""담당자 계정 명령 `staff-add`·`staff-reset`·`staff-list`·`staff-disable`·`staff-role` (#754·#862, 계약 C8).
+"""담당자 계정 명령 `staff-add`·`staff-reset`·`staff-list`·`staff-disable`·`staff-role`.
+
+#754·#862, 계약 C8.
 
 PM이 계정을 만들면 임시 비밀번호가 이 출력에 한 번만 보인다(DB에는 해시만). 담당자는 첫 로그인
 때 화면에 보일 이름과 새 비밀번호를 정한다. 계정이 하나라도 있으면 접속 보호가 켜진 서버는
@@ -111,6 +113,7 @@ def run_staff_role(staff_key: str, *, staff: bool, viewer: bool) -> int:
             typer.echo(f"{staff_key} 계정은 이미 {label} 계정입니다. 바꾼 것이 없습니다.")
             return
         typer.echo(f"{staff_key} 계정을 {label} 계정으로 바꿨습니다. 그 계정의 접속은 끊었습니다.")
-        typer.echo("아이디·비밀번호·화면 이름은 그대로입니다. 다시 로그인하면 바뀐 권한으로 보입니다.")
+        typer.echo("아이디·비밀번호·화면 이름은 그대로입니다.")
+        typer.echo("다시 로그인하면 바뀐 권한으로 보입니다.")
 
     return _run(action)

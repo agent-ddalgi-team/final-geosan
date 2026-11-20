@@ -219,7 +219,8 @@ def test_viewer_account_cannot_record(env):
 def test_staff_role_turns_a_viewer_into_a_recording_account_and_back(env):
     """#862 Given 첫 로그인을 마친 보기 전용 boss-1(기록 403)
     / When staff-role boss-1 --staff
-    / Then 그 세션은 끊기고(401), 같은 비밀번호로 다시 들어가면 이름은 그대로·설정 다시 안 함·기록 200.
+    / Then 그 세션은 끊기고(401), 같은 비밀번호로 다시 들어가면
+    이름은 그대로·설정 다시 안 함·기록 200.
     --viewer로 되돌리면 다시 기록 403."""
     client = env["client"]
     temp = add("boss-1", viewer=True)
