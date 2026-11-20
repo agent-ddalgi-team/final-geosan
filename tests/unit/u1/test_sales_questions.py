@@ -120,10 +120,12 @@ def test_answer_moves_the_step_forward_and_shows_the_tail_question(records_env):
         False,
     )
     # #652: 공정·산업 확인은 "연결됨"을 지나도 답할 때까지 열려 있다(질문 파일 순서라 앞에 온다).
-    assert step["openQuestions"][:4] == [
+    # #860: "외주 줌"이면 "도금 업체는 누가 정하나요?"도 열린다(질문 파일 순서).
+    assert step["openQuestions"][:5] == [
         "CONFIRM_PROCESS",
         "CONFIRM_INDUSTRY",
         "SWITCH_INTENT",
+        "PLATER_DECIDER",
         "INTEREST_DRIVER",
     ]
     assert [item["questionId"] for item in step["known"]] == ["WHO_TALKED", "PLATING_NOW"]

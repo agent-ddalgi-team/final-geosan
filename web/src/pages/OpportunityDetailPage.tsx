@@ -41,7 +41,15 @@ import { choiceMarksOf } from '../components/records/ChoiceQuestion';
 import RecordsArea, { recordsEntryInputId } from '../components/records/RecordsArea';
 import ReportLink from '../components/report/ReportLink';
 import ReviewArea from '../components/review/ReviewArea';
-import { coachSteps, detailReport, frame, peersArea, recordsArea, states } from '../labels/ko';
+import {
+  coachSteps,
+  detailReport,
+  frame,
+  peersArea,
+  PLATER_DECIDER_QUESTION_ID,
+  recordsArea,
+  states,
+} from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
 
 /** "재평가됨" 띠가 보이는 시간(ms, interaction-spec 2.16). */
@@ -380,6 +388,12 @@ export default function OpportunityDetailPage() {
             scoreItems={data.scores?.items}
             // #803: 작은 지도(좌표가 없거나 가상 사례면 서버가 null을 준다).
             map={data.map ?? null}
+            // #860: 통화에서 들은 "도금 업체는 누가 정하나요?" 답이 공급망 위치 줄에 먼저 보인다.
+            plateDecider={
+              (salesStep?.known ?? []).find(
+                (answer) => answer.questionId === PLATER_DECIDER_QUESTION_ID,
+              ) ?? null
+            }
             // #803: 산업은 "한눈에" 산업 칸에서 바로 [확정]·[고치기](전에는 아래 따로 카드).
             industryEditor={
               <IndustryChips

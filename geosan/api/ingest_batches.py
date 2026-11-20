@@ -78,3 +78,22 @@ def reserve_ingest_batch(
     session.add(batch)
     session.flush()
     return batch
+
+
+INTERRUPTED_REASON = "서버가 다시 시작되어 찾기가 중단됐습니다. 다시 눌러 주세요."
+
+
+def fail_interrupted_batches(session: Session) -> int:
+    """서버가 켜질 때 남은 '진행 중' 회차를 실패로 정리한다(#866). 정리한 수를 돌려준다.
+
+    후보 찾기는 서버 안 배경 작업으로만 돌아 서버가 다시 켜지면 이어지지 않는다. 남겨 두면
+    [새 후보 찾기]가 "지금 가져오는 중"으로 계속 잠긴다.
+    판단·등록이 끝난 회사와 비용 기록은 그대로다.
+    """
+    batches = list(session.scalars(select(IngestBatch).where(IngestBatch.status == "RUNNING")))
+    now = utcnow()
+    for batch in batches:
+        batch.status = "FAILED"
+        batch.failure_reason = INTERRUPTED_REASON
+        batch.finished_at = now
+    return len(batches)

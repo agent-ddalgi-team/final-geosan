@@ -31,7 +31,7 @@ from geosan.storage.session import session_scope
 from geosan.workflows import flow_ingest as flow
 from geosan.workflows import research_queue
 from geosan.workflows.research import ResearchResult
-from tests.fakes.ingest_responses import FakeCandidateResponses
+from tests.fakes.ingest_responses import FakeCandidateResponses, fake_supply_tier
 from tests.unit.u3.test_flow_ingest import new_batch, saved
 
 # 회사 이름 → (적합도, 표면처리를 직접 하는 회사 표시)
@@ -73,6 +73,7 @@ def queue_env(tmp_db, tmp_path, factory_file, monkeypatch):
         sync_app_settings(session, settings)
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic")
     monkeypatch.setattr(candidate_pick, "_post", FakeCandidateResponses())
+    fake_supply_tier(monkeypatch)
     original = flow.pick_candidates
 
     def pick(batch_id, row_ids, **kwargs):

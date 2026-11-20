@@ -40,7 +40,15 @@ def answer():
         "companySummary": {"line": "정밀 볼트 생산 기업", "highlights": ["자동차용 부품 가공"]},
         "itemInputProposals": [],
         "processLinkProposals": [],
-        "fitReview": {"fitLevel": None, "reason": "", "quote": None, "downgradeBasis": None},
+        "fitReview": {
+            "fitLevel": None,
+            "reason": "",
+            "quote": None,
+            "downgradeBasis": None,
+            "supplyTier": None,
+            "supplyTierReason": "",
+            "supplyTierQuote": None,
+        },
     }
 
 

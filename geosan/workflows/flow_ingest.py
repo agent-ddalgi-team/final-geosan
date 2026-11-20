@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from geosan.config.errors import InputError, NotFoundError, RunFailedError
+from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
 from geosan.config.registry import load_runtime_config
 from geosan.evaluation.models import EvaluationRun
 from geosan.evaluation.snapshot import _capability_snapshot
@@ -26,6 +26,7 @@ from geosan.opportunity.complex_store import store_complex_rows
 from geosan.opportunity.factory_csv import SOURCE_ID, parent_regions, row_in_selected_regions
 from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 from geosan.opportunity.source_models import SourceContract, SourceFactoryRow
+from geosan.opportunity.supply_tier import judge_supply_tiers
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
 from geosan.workflows.flow_evaluate import run_evaluation
@@ -198,6 +199,33 @@ def _refresh(batch_id, judgments):
         return stale
 
 
+def _judge_new_tiers(batch_id, requested_by):
+    """#860: 이번 회차로 들어온 회사 가운데 위치가 빈 곳만 공급망 위치를 묻는다(몇 센트).
+
+    PM 결정(2026-11-20): 실패해도 후보 찾기는 그대로 끝내고 위치는 "판단 전"으로 둔다.
+    실패는 전송 기록·로그에 남고, 운영 명령 `geosan supply-tier`가 남은 회사를 이어서 판단한다.
+    """
+    with session_scope() as session:
+        ids = list(
+            session.scalars(
+                select(Customer.customer_id).where(
+                    Customer.ingest_batch_id == batch_id, Customer.supply_tier.is_(None)
+                )
+            )
+        )
+    if not ids:
+        return
+    try:
+        judge_supply_tiers(ids, requested_by=requested_by, batch_id=batch_id)
+    except AppError as error:  # 후보 등록·평가는 이미 끝났다. 위치만 판단 전으로 남긴다.
+        logger.warning(
+            "공급망 위치 판단 실패(회차 %s, %d곳은 판단 전으로 남김): %s",
+            batch_id,
+            len(ids),
+            error.message,
+        )
+
+
 def _failed(batch_id, message):
     # 실패 기록 자체의 저장 실패는 숨기거나 저장 재시도하지 않는다.
     with session_scope() as session:
@@ -306,6 +334,8 @@ def run_ingest(batch_id: str) -> None:
                         raise RunFailedError(
                             "남은 자리에 채운 후보의 재평가를 완료하지 못했습니다."
                         )
+        stage = "새 회사 공급망 위치"
+        _judge_new_tiers(batch_id, batch.requested_by)
         with session_scope() as session:
             current = _running(session, batch_id)
             current.status = "DONE"

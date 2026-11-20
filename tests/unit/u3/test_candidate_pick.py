@@ -383,6 +383,8 @@ def test_old_settings_default_off_and_examples_match(app_settings_path):
             "enabled": False,
             "rowsPerCall": 20,
             "promptFile": "examples/prompts/candidate-pick.md",
+            # #860: 공급망 위치 지시문(옛 설정에는 없어 기본값).
+            "supplyTierPromptFile": "examples/prompts/supply-tier.md",
             "surfaceTreatmentIndustryNames": [],
             # #573 PM 승인: 예시 설정의 도금업·도장 및 기타 피막처리업 업종번호.
             "surfaceTreatmentIndustryCodes": ["25922", "25923"],
