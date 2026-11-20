@@ -1146,6 +1146,7 @@ geosan source-load <sourceId> <파일>...   # (추가 2026-11-11 PM 승인 #573)
   geosan staff-reset <staffKey>                # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 비밀번호를 잊었을 때 새 임시 비밀번호를 한 번 보이고 setupRequired true로(표시 이름은 그대로). 그 계정의 세션은 모두 끊는다. 없는 계정이면 종료 1
   geosan staff-list                            # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 계정 목록: 아이디·역할·표시 이름(없으면 "아직 안 적음")·첫 로그인 설정 여부·막힘 여부. 비밀번호·해시는 보이지 않음
   geosan staff-disable <staffKey> [--enable]   # (추가 2026-11-15 #754 — PM 결정 2026-11-15) 계정 막기(퇴사 등)·다시 열기. 막으면 그 계정의 세션을 모두 끊는다. 지난 기록의 담당자 값은 그대로
+  geosan staff-role <staffKey> --staff|--viewer   # (추가 2026-11-20 #862 — PM 결정 2026-11-20) 계정 종류 바꾸기(보기 전용 ↔ 담당자). 비밀번호·표시 이름·첫 로그인 설정 여부는 그대로이고, 바뀌면 그 계정의 세션을 모두 끊는다. 이미 그 종류면 바꾸지 않고 종료 0("바꾼 것이 없습니다"). 없는 계정, 둘 다 고르거나 아무것도 안 고르면 종료 1
   geosan geocode [--missing-only]                # (2026-11-13 이강욱 확인 #222) 활성 묶음의 공개 실제 회사에 CSV→행안부 검색·CSV→좌표 API→네이버 순서. 공공좌표만 저장하며 기존 좌표는 재사용. 네이버 결과는 이번 실행의 확인 건수로만 보고하고 저장하지 않는다. 저장·재사용·실시간 확인·미확인·실패 건수만 출력. 가상·비공개·주소 없음은 제외. 한도·통신·설정 실패는 종료 코드 2, 미확인은 오류 아님
   geosan db merge-heads                          # U1. 마이그레이션 머리가 둘일 때 합치기
   geosan cost [--month YYYY-MM]                  # U10. TransferGuard 집계 × 단가. (추가 2026-11-03) U2로 앞당김: OpenAI 호출 수·입력/출력 토큰·웹 검색 횟수·비용·상한($20, 1,000회) 대비 비율을 내고 50% 넘으면 "알림" 줄. 5곳 시험의 1곳당 비용 측정에 쓴다
@@ -1161,7 +1162,7 @@ guideTasks:   # 운영 안내서 작업별 명령 수(3개 이내, US9.4)
   검수 상태 전환: [review-set, evaluate(자동 포함)]                   # 1~2
   거산 값 묶음 전환: [dataset-set, evaluate]                          # 2
   백업·복원: [backup] / [restore, serve]                              # 1 / 2
-  담당자 계정: [staff-add, (임시 비밀번호 전달)] / [staff-reset] / [staff-list, staff-disable]   # 1 / 1 / 2 (추가 2026-11-15 #754 — PM 결정 2026-11-15)
+  담당자 계정: [staff-add, (임시 비밀번호 전달)] / [staff-reset] / [staff-list, staff-disable] / [staff-role]   # 1 / 1 / 2 / 1 (추가 2026-11-15 #754 — PM 결정 2026-11-15, staff-role 추가 2026-11-20 #862)
   비용 확인: [cost]                                                   # 1
   사용량 미확정 기록 정리: [transfer-unblock(조회), 제공사 확인, transfer-unblock(정산), cost]   # #218, PM 2026-11-04
   시연 자료 출력(예비 경로): [demo-report]                            # 1 (PM 승인 2026-10-21)
@@ -1360,6 +1361,7 @@ HiringSignalFinder:                       # (추가 2026-11-05 밤 PM 결정, �
 | C1·C4·C6 | (2026-11-15, PM 결정 — 영업 코치 한 번으로 피드백·다음 통화 준비·보고서까지 정리, 단추 줄이기 #750) (추가 2026-11-15 #750 — PM 결정 2026-11-15) 코치 응답에 `nextCall`(0~3줄), 메모 종류 CALL_PREP, 상세 `records.callPrep`을 더함. [이대로 저장]이 피드백 줄 모두(ADVICE)와 다음 통화 준비(CALL_PREP)를 저장하고, 피드백 고르기 단추와 상세 [통화 준비 💰] 단추는 화면에서 뺌(call-prep 창구는 그대로). 보고서 "영업 방향"에 다음 통화에 물어볼 것을 더함. 더하는 변경만 | #750 · #742 · #680 |
 | C8 | (2026-11-15, PM 결정 — 배포 서버 DB는 이 PC DB 사본에서 시험 영업 기록·전송 기록만 비워 만든다, 조사·판단 비용을 다시 쓰지 않으려고 #753) (추가 2026-11-15 #753 — PM 결정 2026-11-15) 운영 명령 `copy-without-records --to <파일>`과 안내서 작업 "배포용 DB 만들기"를 더함. DB 표·API 응답·설정 변경 없음. 더하는 변경만 | #753 · #213 |
 | C1·C6·C8 | (2026-11-15, PM 결정 — 사람마다 아이디·비밀번호로 로그인하고 기록에 로그인한 사람이 남게, 이름은 첫 로그인 때 각자 적음 #754) (추가 2026-11-15 #754 — PM 결정 2026-11-15) 계정 방식(계정이 하나라도 있을 때만): `POST /session` 본문 staffKey, 새 경로 `/session/profile`·`/session/logout`, `/config/ui` 응답 currentStaff, 기록 요청은 세션 계정으로만(다른 X-Staff-Key는 403, 설정 전 403 STAFF_SETUP_REQUIRED), 새 표 web_staff_account와 web_access_session.staffKey, 운영 명령 staff-add·staff-reset·staff-list·staff-disable. 계정이 없으면 지금 동작 그대로라 더하는 변경 | #754 · #213 |
+| C8 | (2026-11-20, PM 결정 — 대표 계정도 기록할 수 있게, 계정 종류를 바꾸는 명령이 없어서 #862) (추가 2026-11-20 #862 — PM 결정 2026-11-20) 운영 명령 `staff-role <staffKey> --staff|--viewer`와 안내서 작업 "담당자 계정"에 한 칸. 새 표·열·경로 없음, 더하는 변경 | #862 · #754 |
 | C1 | (2026-11-16, PM 결정 — 오늘 확인할 것 정리·지난 일정 묻기·영업 진행 4칸 띠 #766) (추가 2026-11-16 #766 — PM 결정 2026-11-16) 새 경로 `POST /opportunities/{oppId}/schedule/resolve`(DONE·DROPPED·MOVED, 변경 기록 한 줄), 대시보드 counts `WON`, 목록 `filter=WON`. 화면에서 "이번 주 일정"·"완료" 칸을 뺌(응답 값은 그대로). 더하는 변경 | #766 |
 | C1·C4·C6 | (2026-11-16, PM 결정 — 전달 사항을 따로 두고 받는 사람이 확인, 코치가 짚기 #771 · #756) (추가 2026-11-16 #771 — PM 결정 2026-11-15·16, #756 하위) 메모 종류 HANDOFF, rec_note 열 toStaffKey·confirmedAt·confirmedBy(더하는 마이그레이션), `POST /notes`의 toStaffKey, `POST /notes/{noteId}/confirm`, 상세 records.handoffs, todayChecks 줄 HANDOFF_FOR_ME, 코치 보낼 글 [전달 사항]. 더하는 변경 | #771 · #756 |
 | C1 | (2026-11-16, PM 결정 — 영업 코치 답 아래 [넣기], 화면에 맞는 자료 #774 · #756) (추가 2026-11-16 #774 — PM 결정 2026-11-16, #756 셋째 조각) `/assistant/ask` 요청 page·조회 CANDIDATES(신규 거래처 찾기에서만)·응답 suggestions, 새 경로 `POST /opportunities/{oppId}/schedule`. 새 설정 없음(후보 수 상한은 assistant.maxCompanies). 더하는 변경 | #774 · #756 |

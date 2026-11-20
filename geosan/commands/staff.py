@@ -1,4 +1,6 @@
-"""담당자 계정 명령 `staff-add`·`staff-reset`·`staff-list`·`staff-disable` (#754, 계약 C8).
+"""담당자 계정 명령 `staff-add`·`staff-reset`·`staff-list`·`staff-disable`·`staff-role`.
+
+#754·#862, 계약 C8.
 
 PM이 계정을 만들면 임시 비밀번호가 이 출력에 한 번만 보인다(DB에는 해시만). 담당자는 첫 로그인
 때 화면에 보일 이름과 새 비밀번호를 정한다. 계정이 하나라도 있으면 접속 보호가 켜진 서버는
@@ -12,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.api.models import StaffAccount
-from geosan.api.staff_accounts import add_account, reset_account, set_disabled
+from geosan.api.staff_accounts import add_account, reset_account, set_disabled, set_role
 from geosan.config.errors import AppError
 from geosan.storage.engine import database_path
 from geosan.storage.session import session_scope
@@ -94,5 +96,24 @@ def run_staff_disable(staff_key: str, enable: bool) -> int:
         else:
             typer.echo(f"{staff_key} 계정을 막았습니다. 그 계정의 접속은 모두 끊었습니다.")
             typer.echo("지난 기록의 담당자 값은 그대로 남습니다.")
+
+    return _run(action)
+
+
+def run_staff_role(staff_key: str, *, staff: bool, viewer: bool) -> int:
+    """#862 계정 종류 바꾸기. --staff와 --viewer 중 하나만 고른다."""
+    if staff == viewer:
+        typer.echo("오류: 바꿀 종류를 하나만 골라 주세요.")
+        typer.echo("기록할 수 있게: --staff / 보기만 하게: --viewer")
+        return EXIT_INPUT_ERROR
+    label = "보기 전용" if viewer else "담당자(기록 가능)"
+
+    def action(session):
+        if not set_role(session, staff_key, viewer=viewer):
+            typer.echo(f"{staff_key} 계정은 이미 {label} 계정입니다. 바꾼 것이 없습니다.")
+            return
+        typer.echo(f"{staff_key} 계정을 {label} 계정으로 바꿨습니다. 그 계정의 접속은 끊었습니다.")
+        typer.echo("아이디·비밀번호·화면 이름은 그대로입니다.")
+        typer.echo("다시 로그인하면 바뀐 권한으로 보입니다.")
 
     return _run(action)

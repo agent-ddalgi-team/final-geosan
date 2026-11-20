@@ -242,6 +242,18 @@ def staff_disable(
     raise typer.Exit(code=run_staff_disable(staff_key, enable))
 
 
+@app.command("staff-role")
+def staff_role(
+    staff_key: str = typer.Argument(..., help="종류를 바꿀 계정의 아이디"),
+    staff: bool = typer.Option(False, "--staff", help="담당자로(기록할 수 있음)"),
+    viewer: bool = typer.Option(False, "--viewer", help="보기 전용으로(기록 단추가 막힘)"),
+) -> None:
+    """계정 종류를 담당자 ↔ 보기 전용으로 바꿉니다(접속은 끊고 비밀번호·이름은 그대로, #862)."""
+    from geosan.commands.staff import run_staff_role
+
+    raise typer.Exit(code=run_staff_role(staff_key, staff=staff, viewer=viewer))
+
+
 @app.command("check-config")
 def check_config(
     rule_config: Path | None = typer.Argument(None, help="규칙 설정 파일(rule-config.yaml)"),
