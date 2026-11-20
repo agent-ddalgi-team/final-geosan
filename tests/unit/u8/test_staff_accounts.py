@@ -216,6 +216,71 @@ def test_viewer_account_cannot_record(env):
     assert save_opinion(env).status_code == 403
 
 
+def test_staff_role_turns_a_viewer_into_a_recording_account_and_back(env):
+    """#862 Given 첫 로그인을 마친 보기 전용 boss-1(기록 403)
+    / When staff-role boss-1 --staff
+    / Then 그 세션은 끊기고(401), 같은 비밀번호로 다시 들어가면
+    이름은 그대로·설정 다시 안 함·기록 200.
+    --viewer로 되돌리면 다시 기록 403."""
+    client = env["client"]
+    temp = add("boss-1", viewer=True)
+    login(client, "boss-1", temp)
+    assert setup(client, temp, name="대표").status_code == 200
+    assert save_opinion(env).status_code == 403
+
+    result = runner.invoke(app, ["staff-role", "boss-1", "--staff"])
+    assert result.exit_code == 0, result.output
+    assert "boss-1 계정을 담당자(기록 가능) 계정으로 바꿨습니다" in result.output
+    assert client.get("/api/v1/config/ui").status_code == 401
+    assert login(client, "boss-1", NEW_PASSWORD).status_code == 200
+    current = me(client)["currentStaff"]
+    assert current["displayName"] == "대표" and current["setupRequired"] is False
+    assert current["canRecord"] is True
+    assert save_opinion(env).status_code == 200
+    with session_scope() as session:
+        row = session.scalars(select(ReviewOpinion)).one()
+        assert (row.staff_name, row.created_by) == ("boss-1", "boss-1")
+    assert "boss-1 · 담당자 · 이름 대표" in runner.invoke(app, ["staff-list"]).output
+
+    back = runner.invoke(app, ["staff-role", "boss-1", "--viewer"])
+    assert back.exit_code == 0, back.output
+    assert login(client, "boss-1", NEW_PASSWORD).status_code == 200
+    assert me(client)["currentStaff"]["canRecord"] is False
+    assert save_opinion(env).status_code == 403
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["staff-role", "nobody", "--staff"],
+        ["staff-role", "boss-1"],
+        ["staff-role", "boss-1", "--staff", "--viewer"],
+    ],
+)
+def test_staff_role_refuses_unknown_account_or_unclear_choice(env, args):
+    """#862 Given 보기 전용 boss-1 / When 없는 계정이거나 종류를 안 고르거나 둘 다 고름
+    / Then 종료 1이고 계정은 그대로 보기 전용."""
+    add("boss-1", viewer=True)
+    result = runner.invoke(app, args)
+    assert result.exit_code == 1, result.output
+    assert "오류:" in result.output
+    with session_scope() as session:
+        assert session.get(StaffAccount, "boss-1").role == "VIEWER"
+
+
+def test_staff_role_to_the_same_kind_changes_nothing_and_keeps_the_session(env):
+    """#862 Given 로그인한 담당자 sales-1 / When staff-role sales-1 --staff(이미 담당자)
+    / Then 종료 0, "바꾼 것이 없습니다", 세션은 그대로라 화면이 계속 열린다."""
+    client = env["client"]
+    temp = add("sales-1")
+    login(client, "sales-1", temp)
+    setup(client, temp)
+    result = runner.invoke(app, ["staff-role", "sales-1", "--staff"])
+    assert result.exit_code == 0, result.output
+    assert "바꾼 것이 없습니다" in result.output
+    assert client.get("/api/v1/config/ui").status_code == 200
+
+
 def test_reset_and_disable_end_sessions(env):
     """Given 로그인한 sales-1 / When staff-reset
     / Then 그 세션은 401, 옛 비밀번호는 안 되고 새 임시 비밀번호로
