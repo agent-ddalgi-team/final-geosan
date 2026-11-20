@@ -78,6 +78,12 @@ class Customer(CommonColumns, Base):
     )
     own_plating_line_basis: Mapped[str | None] = mapped_column(Text)
     own_plating_line_source: Mapped[str | None] = mapped_column(String(16))
+    # #860: 공급망 위치(AI 추정). TIER2_3 = 2·3차 가공업체(거산의 영업 대상), TIER1 = 1차
+    # 완성품·조립 업체, UNKNOWN = 판단 못 함, null = 판단 전. 근거 한 줄과 출처
+    # (PRODUCT = 공장 자료 생산품으로 따로 판단, HOMEPAGE = 조사가 읽은 홈페이지).
+    supply_tier: Mapped[str | None] = mapped_column(String(16))
+    supply_tier_basis: Mapped[str | None] = mapped_column(Text)
+    supply_tier_source: Mapped[str | None] = mapped_column(String(16))
     # 팩토리온 공장조회에서 붙인 값(C6, #573). 종업원 수는 언제나 추정이다.
     factory_raw_materials: Mapped[str | None] = mapped_column(Text)
     factory_employee_count: Mapped[int | None] = mapped_column(Integer)

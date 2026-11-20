@@ -91,6 +91,9 @@ class AiPickSettings(FileModel):
     enabled: bool = Field(default=False, strict=True)
     rows_per_call: int = Field(default=20, ge=1, strict=True)
     prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
+    # #860: 목록에 들어온 회사의 공급망 위치를 따로 판단하는 지시문.
+    # 후보 고르기 기준 버전에 넣지 않는다(바꿔도 지역 재판단이 없음).
+    supply_tier_prompt_file: str = Field(default="examples/prompts/supply-tier.md", min_length=1)
     surface_treatment_industry_names: list[str] = Field(default_factory=list)
     # 팩토리온 업종번호(표준산업분류 5자리)가 여기 있으면 표면처리 표시(#573). 값은 PM이 정한다.
     surface_treatment_industry_codes: list[str] = Field(default_factory=list)

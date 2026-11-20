@@ -7,6 +7,7 @@ from geosan.config.app_settings import read_app_settings, sync_app_settings
 from geosan.opportunity import candidate_pick, candidate_web
 from geosan.opportunity.source_models import SourceContract
 from geosan.storage.session import session_scope
+from tests.fakes.ingest_responses import fake_supply_tier
 from tests.fakes.web_candidate_search import prepare, response
 
 
@@ -65,4 +66,5 @@ def setup_web_storage(path, monkeypatch):
 
     monkeypatch.setattr(candidate_web, "_post_response", search)
     monkeypatch.setattr(candidate_pick, "_post", pick)
+    fake_supply_tier(monkeypatch)
     return calls

@@ -51,6 +51,9 @@ def ai_says(
         "reason": reason,
         "quote": quote,
         "downgradeBasis": basis,
+        "supplyTier": None,
+        "supplyTierReason": "",
+        "supplyTierQuote": None,
     }
     transport.side_effect = lambda *_: support.reply(data)
 
@@ -236,6 +239,9 @@ def _extraction(fit_level, reason, quote, basis=None):
         "reason": reason,
         "quote": quote,
         "downgradeBasis": basis,
+        "supplyTier": None,
+        "supplyTierReason": "",
+        "supplyTierQuote": None,
     }
     return Extraction.model_validate(data)
 
@@ -249,7 +255,13 @@ def test_unbacked_fit_is_dropped_without_failing_research(reason, quote):
     """인용이 본문에 없거나 이유가 비면 그 판단만 버린다(조사 전체는 실패시키지 않음)."""
     checked = _checked_fit(_extraction("HIGH", reason, quote), BODY)
     assert checked.fit_review == FitReview(
-        fit_level=None, reason="", quote=None, downgrade_basis=None
+        fit_level=None,
+        reason="",
+        quote=None,
+        downgrade_basis=None,
+        supply_tier=None,
+        supply_tier_reason="",
+        supply_tier_quote=None,
     )
 
 

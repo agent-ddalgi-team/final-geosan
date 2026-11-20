@@ -77,6 +77,17 @@ questions:
       - { id: YES, label: 있음 }
       - { id: NOT_NOW, label: 지금은 없음 }
       - { id: UNKNOWN, label: 모름 }
+  # #860(PM 결정 2026-11-19): 1차 업체가 도금 업체를 정해 주면 이 회사는 도금처를 바꿀 수 없다.
+  # 답은 상세 "한눈에"의 공급망 위치 꼬리표보다 먼저 보인다. 점수에는 넣지 않는다.
+  - id: PLATER_DECIDER
+    step: DEMAND_CONFIRMED
+    text: 도금 업체는 누가 정하나요?
+    coach: { fill: AI, keyword: 도금 업체 정하는 곳 }
+    showWhen: { answers: { PLATING_NOW: [OUTSOURCED] } }
+    answers:
+      - { id: OURS, label: 우리가 정함 }
+      - { id: CLIENT, label: 발주처가 지정 }
+      - { id: UNKNOWN, label: 모름 }
   - id: INTEREST_DRIVER
     step: DEMAND_CONFIRMED
     text: 무엇이 있으면 관심이 커지나요?

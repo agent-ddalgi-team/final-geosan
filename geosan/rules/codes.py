@@ -416,6 +416,14 @@ class FitLevel(StrEnum):
     LOW = "LOW"
 
 
+class SupplyTier(StrEnum):
+    """공급망 위치 AI 추정(C0, 2026-11-19 PM 결정 #860). 점수 전 회사 순서·꼬리표에만 쓴다."""
+
+    TIER2_3 = "TIER2_3"
+    TIER1 = "TIER1"
+    UNKNOWN = "UNKNOWN"
+
+
 VIEWER_STAFF_KEY = "viewer"
 """예약 담당자 키(보기 전용). 기록 요청은 403 (BR9.3)."""
 

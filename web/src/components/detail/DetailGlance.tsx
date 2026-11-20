@@ -10,6 +10,7 @@ import type {
   DetailHeader,
   DetailMap,
   EvidenceView,
+  KnownSalesAnswer,
   ProcessLinkView,
   RequirementCheckView,
   ReviewItem,
@@ -28,6 +29,7 @@ import {
   mapLinkLabels,
   materialLabels,
   recordsArea,
+  supplyTierLabels,
 } from '../../labels/ko';
 import { colors, detailTheme, spacing, statusPalette, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
@@ -235,6 +237,46 @@ export interface DetailGlanceProps {
   map?: DetailMap | null;
   /** 시험용 지도 화면 키. 넘기지 않으면 환경 변수 값을 쓴다. */
   mapClientId?: string;
+  /** #860: 통화에서 들은 "도금 업체는 누가 정하나요?" 답. 있으면 공급망 위치 줄에서 AI 추정보다 먼저 보인다. */
+  plateDecider?: KnownSalesAnswer | null;
+}
+
+/** #860 공급망 위치 줄: 통화 답이 먼저, 그다음 AI 추정(2·3차·1차)과 근거·출처. 둘 다 없으면 그리지 않는다. */
+function SupplyTierLine({
+  header,
+  plateDecider,
+}: {
+  header: DetailHeader;
+  plateDecider?: KnownSalesAnswer | null;
+}) {
+  const tier =
+    header.supplyTier === 'TIER2_3' || header.supplyTier === 'TIER1' ? header.supplyTier : null;
+  if (!tier && !plateDecider) return null;
+  const hint = tier ? supplyTierLabels.hint[tier] : '';
+  return (
+    <div style={line} data-testid="glance-supply-tier">
+      <span style={secondary}>{supplyTierLabels.label}</span>
+      {plateDecider ? (
+        <strong data-testid="glance-supply-tier-call">
+          {supplyTierLabels.called(plateDecider.answer, formatMonthDay(plateDecider.at) ?? '')}
+        </strong>
+      ) : null}
+      {tier ? (
+        <span
+          data-testid="glance-supply-tier-ai"
+          data-tier={tier}
+          style={plateDecider ? secondary : undefined}
+        >
+          {[supplyTierLabels.value[tier], hint, header.supplyTierBasis?.trim()]
+            .filter((part) => part)
+            .join(' · ')}
+        </span>
+      ) : null}
+      {tier && header.supplyTierSource ? (
+        <span style={secondary}>({supplyTierLabels.source[header.supplyTierSource]})</span>
+      ) : null}
+    </div>
+  );
 }
 
 /** #803 근거 상태 막대: 근거가 붙은 항목 수를 길이로. */
@@ -325,6 +367,7 @@ export default function DetailGlance({
   scoreItems,
   map = null,
   mapClientId,
+  plateDecider = null,
 }: DetailGlanceProps) {
   const { config } = useFrame();
   // #803: 지도를 못 그리면(키 없음·인증 실패) 거리 그림으로 돌아간다.
@@ -546,6 +589,7 @@ export default function DetailGlance({
                   ) : null}
                 </div>
               ) : null}
+              <SupplyTierLine header={header} plateDecider={plateDecider} />
               <div style={line} data-testid="glance-homepage">
                 <span style={secondary}>{companyGlance.homepage}</span>
                 {link?.kind === 'homepage' ? (
