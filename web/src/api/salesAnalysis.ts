@@ -122,6 +122,16 @@ export interface SalesAnalysis {
   bySalesStep: StepAnalysisRow[];
   /** (#678) AI 제안 적중. 지금은 공정만 센다(산업군은 확정 전 AI 제안이 저장에 남지 않는다). */
   aiProposalHit: { process: ProposalHit };
+  /** (#802) 최근 12개월(오래된 달부터) 접촉·성사·거절 회사 수. 기간 선택과 상관없다. 옛 서버는 없음. */
+  monthly?: MonthTrendRow[];
+}
+
+export interface MonthTrendRow {
+  /** YYYY-MM */
+  month: string;
+  contacted: number;
+  won: number;
+  lost: number;
 }
 
 /** (#760) 분석 기간(한국 날짜 YYYY-MM-DD). 둘 다 null이면 기간 없이 전처럼 센다. */
