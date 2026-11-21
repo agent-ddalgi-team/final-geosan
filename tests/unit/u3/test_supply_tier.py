@@ -175,7 +175,7 @@ def test_sends_only_public_fields(tier_env):
     ]
     sent = json.dumps(call["payload"], ensure_ascii=False)
     assert "041-000-0000" not in sent and "가상길" not in sent
-    assert "tier-v1" in call["payload"]["instructions"]
+    assert "tier-v2" in call["payload"]["instructions"]
 
 
 def test_homepage_decided_company_is_not_asked_or_overwritten(tier_env):
@@ -377,3 +377,46 @@ def test_migration_adds_empty_tier_columns_and_keeps_rows(tmp_path):
         columns = {line[1] for line in con.execute("PRAGMA table_info(opp_customer)")}
         assert "supply_tier" not in columns
         assert con.execute("SELECT name FROM opp_customer").fetchone() == ("가상기업",)
+
+
+# ---------- #877: 지시문을 고친 뒤 다시 판단(--redo) ----------
+
+
+def test_redo_targets_product_judged_but_not_homepage(ingest_batch):
+    """Given 생산품으로 판단한 회사·홈페이지로 정한 회사·빈 회사 / When --redo 대상
+    / Then 홈페이지로 정한 회사만 빠진다."""
+    add_company(
+        "cust-bolt", supply_tier="TIER1", supply_tier_basis="조립", supply_tier_source="PRODUCT"
+    )
+    add_company(
+        "cust-train",
+        supply_tier="TIER1",
+        supply_tier_basis="홈페이지",
+        supply_tier_source="HOMEPAGE",
+    )
+    add_company("cust-misc")
+    add_company("cust-case", batch=None)
+    with session_scope() as session:
+        assert tier.customers_without_tier(session) == ["cust-misc"]
+        assert tier.customers_without_tier(session, redo=True) == ["cust-bolt", "cust-misc"]
+
+
+def test_command_redo_overwrites_product_judgment(tier_env, capsys):
+    from geosan.commands.supply_tier import run_supply_tier
+
+    add_company(
+        "cust-bolt", supply_tier="TIER1", supply_tier_basis="조립", supply_tier_source="PRODUCT"
+    )
+    assert run_supply_tier("park-lee") == 0
+    assert "판단할 것이 없습니다" in capsys.readouterr().out
+    assert run_supply_tier("park-lee", redo=True) == 0
+    assert (customer("cust-bolt").supply_tier, customer("cust-bolt").supply_tier_basis) == (
+        "TIER2_3",
+        "볼트·너트를 직접 가공",
+    )
+
+
+def test_tier_prompt_v2_sends_functional_parts_to_tier2_3():
+    text = (tier.REPO_ROOT / "examples/prompts/supply-tier.md").read_text(encoding="utf-8")
+    assert text.startswith("[지시문 버전] tier-v2")
+    assert "기능 부품" in text and "TIER2_3로 본다" in text and "창호·수배전반" in text
