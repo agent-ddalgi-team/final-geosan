@@ -73,11 +73,16 @@ def source_load(
 @app.command("supply-tier")
 def supply_tier(
     staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),
+    redo: bool = typer.Option(
+        False,
+        "--redo",
+        help="생산품으로 판단한 회사도 다시 판단(지시문을 고친 뒤, 비용 발생)",
+    ),
 ) -> None:
     """후보 찾기로 들어왔고 공급망 위치가 빈 회사를 AI로 한 번에 판단합니다(#860, 비용 발생)."""
     from geosan.commands.supply_tier import run_supply_tier
 
-    raise typer.Exit(code=run_supply_tier(staff_key))
+    raise typer.Exit(code=run_supply_tier(staff_key, redo=redo))
 
 
 @app.command("ingest")
