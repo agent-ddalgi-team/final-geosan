@@ -509,6 +509,63 @@ def step_rows(
     return rows
 
 
+TREND_MONTHS = 12
+"""#802 월별 추세에 보이는 달 수(이번 달 포함). 규칙 숫자가 아니라 그림 폭이다."""
+_CLOSED = ("WON", "LOST")
+
+
+@dataclass(frozen=True)
+class MonthRow:
+    """#802 월별 추세 한 달: 그달 접촉한 회사 수, 그달 성사·거절로 끝난 회사 수."""
+
+    month: str
+    contacted: int
+    won: int
+    lost: int
+
+
+def _local_day(line: RecordLine, tz: tzinfo) -> date:
+    return line.attempted_at or line.created_at.astimezone(tz).date()
+
+
+def monthly_trend(
+    companies: Sequence[CompanyRecords], *, now: datetime, tz: tzinfo, months: int = TREND_MONTHS
+) -> list[MonthRow]:
+    """최근 months달(이번 달 포함, 오래된 달부터)의 접촉·성사·거절 회사 수(#802, PM 지시 11/22).
+
+    접촉 = 그달에 접촉 시도(방법이 있는 행)가 하나라도 있는 회사(한 회사는 그달에 한 번만 센다).
+    성사·거절 = 마지막 상태가 성사·거절인 회사를 그 상태로 바뀐 날의 달에 센다.
+    기간 선택과 상관없다.
+    """
+    today = now.astimezone(tz).date()
+    keys: list[str] = []
+    year, month = today.year, today.month
+    for _ in range(months):
+        keys.append(f"{year:04d}-{month:02d}")
+        year, month = (year, month - 1) if month > 1 else (year - 1, 12)
+    keys.reverse()
+    contacted = dict.fromkeys(keys, 0)
+    won = dict.fromkeys(keys, 0)
+    lost = dict.fromkeys(keys, 0)
+    for company in companies:
+        seen: set[str] = set()
+        status: str | None = None
+        changed: date | None = None
+        for line in company.lines:
+            day = _local_day(line, tz)
+            if line.method:
+                seen.add(f"{day:%Y-%m}")
+            if line.status != status:
+                status, changed = line.status, day
+        for key in seen & set(keys):
+            contacted[key] += 1
+        if status in _CLOSED and changed is not None:
+            key = f"{changed:%Y-%m}"
+            if key in won:
+                (won if status == "WON" else lost)[key] += 1
+    return [MonthRow(key, contacted[key], won[key], lost[key]) for key in keys]
+
+
 def build_sales_analysis(
     companies: Sequence[CompanyRecords],
     *,
