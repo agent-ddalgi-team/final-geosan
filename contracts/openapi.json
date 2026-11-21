@@ -5146,6 +5146,35 @@
         "title": "Meta",
         "type": "object"
       },
+      "MonthTrendRow": {
+        "description": "#802 월별 추세 한 달(YYYY-MM).",
+        "properties": {
+          "contacted": {
+            "title": "Contacted",
+            "type": "integer"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "contacted",
+          "won",
+          "lost"
+        ],
+        "title": "MonthTrendRow",
+        "type": "object"
+      },
       "NeededStage": {
         "enum": [
           "NOW",
@@ -8640,6 +8669,13 @@
               "$ref": "#/components/schemas/CompanyRow"
             },
             "title": "Companies",
+            "type": "array"
+          },
+          "monthly": {
+            "items": {
+              "$ref": "#/components/schemas/MonthTrendRow"
+            },
+            "title": "Monthly",
             "type": "array"
           },
           "total": {
