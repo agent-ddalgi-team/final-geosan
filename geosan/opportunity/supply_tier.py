@@ -138,15 +138,21 @@ def _public_row(session, customer: Customer) -> tuple[dict, str] | None:
     return row, opportunity.opp_id
 
 
-def customers_without_tier(session) -> list[str]:
-    """후보 찾기로 들어왔고 공급망 위치가 아직 없는 회사(사례 파일 회사는 묻지 않는다)."""
-    return list(
-        session.scalars(
-            select(Customer.customer_id)
-            .where(Customer.ingest_batch_id.is_not(None), Customer.supply_tier.is_(None))
-            .order_by(Customer.customer_id)
+def customers_without_tier(session, *, redo: bool = False) -> list[str]:
+    """후보 찾기로 들어왔고 공급망 위치가 아직 없는 회사(사례 파일 회사는 묻지 않는다).
+
+    redo면(#877, 지시문을 고친 뒤) 생산품으로 판단한 회사도 다시 묻는다. 홈페이지 문장으로 정한
+    회사(출처 HOMEPAGE)는 다시 묻지 않는다.
+    """
+    query = select(Customer.customer_id).where(Customer.ingest_batch_id.is_not(None))
+    if redo:
+        query = query.where(
+            (Customer.supply_tier_source.is_(None))
+            | (Customer.supply_tier_source != SOURCE_HOMEPAGE)
         )
-    )
+    else:
+        query = query.where(Customer.supply_tier.is_(None))
+    return list(session.scalars(query.order_by(Customer.customer_id)))
 
 
 def _call(prompt, rows, model, key, *, requested_by, batch_id, opp_id, db_path):

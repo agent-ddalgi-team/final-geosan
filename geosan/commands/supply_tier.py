@@ -16,7 +16,7 @@ EXIT_OK = 0
 EXIT_RUN_FAILED = 2
 
 
-def run_supply_tier(staff_key: str) -> int:
+def run_supply_tier(staff_key: str, *, redo: bool = False) -> int:
     try:
         with session_scope() as session:
             settings = read_app_settings(session)
@@ -24,7 +24,7 @@ def run_supply_tier(staff_key: str) -> int:
                 raise InputError("앱 설정을 먼저 등록해 주세요.")
             if not settings.is_recording_staff(staff_key):
                 raise InputError("설정에 등록된 기록 담당자 키로 실행해 주세요.")
-            targets = customers_without_tier(session)
+            targets = customers_without_tier(session, redo=redo)
         if not targets:
             typer.echo("공급망 위치가 빈 회사가 없습니다. 판단할 것이 없습니다.")
             return EXIT_OK
