@@ -28,6 +28,8 @@ HELD_MARK = "표본 부족(결론 금지)"
 DROPPED_NOTE = "근거 숫자가 없어 뺀 주장 {count}개"
 _DIGIT = re.compile(r"\d")
 COMPARE_KEYS = ("CONTACTED", "WON", "LOST", "ON_HOLD", "IN_PROGRESS")
+# #802(11/20): 숫자 표 뒤에 붙는 회사별 맥락 글의 머리. 회사 이름은 "회사 A1"처럼 바꿔 보낸다.
+CONTEXT_HEAD = "회사별 기록 — 연락처를 뺀 사본, 회사 이름은 '회사 A1'처럼 바꿈, 끝난 회사가 먼저"
 
 
 # ---------------------------------------------------------------------------
@@ -337,4 +339,21 @@ def clean_reading(reading: FeedbackReading) -> dict:
         "success": success,
         "next": next_steps,
         "heldBack": held,
+    }
+
+
+def map_texts(cleaned: dict, convert) -> dict:
+    """다듬은 답의 모든 글(주장·근거·판단 보류)에 convert를 적용한 사본(#802 회사 이름 되돌리기)."""
+
+    def claims(items):
+        return [
+            {"text": convert(item["text"]), "evidence": [convert(e) for e in item["evidence"]]}
+            for item in items
+        ]
+
+    return {
+        "failure": {key: claims(value) for key, value in cleaned["failure"].items()},
+        "success": {key: claims(value) for key, value in cleaned["success"].items()},
+        "next": claims(cleaned["next"]),
+        "heldBack": [convert(item) for item in cleaned["heldBack"]],
     }

@@ -223,7 +223,12 @@ export default function SalesAnalysisPage() {
             <AnalysisFeedbackCard period={period} reloadKey={reload} />
             <AnalysisCharts data={data} />
             {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값. */}
-            <SalesPatterns period={period} reloadKey={reload} processNames={processNames} />
+            <SalesPatterns
+              period={period}
+              reloadKey={reload}
+              processNames={processNames}
+              total={data.total}
+            />
             <details data-testid="analysis-tables" style={{ display: 'grid' }}>
               <summary
                 data-testid="analysis-tables-toggle"

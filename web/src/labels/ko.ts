@@ -1728,7 +1728,7 @@ export const salesAnalysisTexts = {
   /** 맨 위 꼬리표(#845). "밖으로 안 나감"은 [분석 받기](#824, PM 결정 #821) 뒤로 맞지 않아 이 화면에서는 쓰지 않는다. */
   badge: '내부 참고 · 고객 제출용 아님',
   intro:
-    '아래 표는 담당자가 남긴 접촉·단계·거절 이유 기록만으로 계산합니다(AI 없음). [분석 받기]를 누를 때만 숫자 표를 외부 AI에 보냅니다. 회사 이름·연락처는 보내지 않습니다.',
+    '아래 표와 자동 요약은 담당자가 남긴 접촉·단계·거절 이유 기록만으로 계산합니다(AI 없음). [AI 분석 받기]를 누를 때만 숫자 표와 회사별 기록(메모·사유·답)을 외부 AI에 보냅니다. 전화·이메일·사람 이름은 지우고 회사 이름은 "회사 A1"처럼 바꿔 보냅니다.',
   /** "11/13 09:00 기준 · 접촉 기록이 있는 회사 3곳 · 성사·거절은 최근 365일 안의 것만" */
   basis: (asOf: string | null, companyCount: number, windowDays: number) =>
     [
@@ -1838,6 +1838,38 @@ export const salesAnalysisTexts = {
 } as const;
 
 /** #802·#820: 영업 분석 아래 "기록에서 배우기" — 기준 숫자 없이 펼쳐 보이고, 결론은 사람이 확인한 것만. */
+/**
+ * #802(PM 결정 2026-11-20) 영업 분석 "기록에서 배우기" 맨 위 자동 요약. 저장된 기록에서 센 숫자로
+ * 프로그램이 만든 문장이다(AI 없음, 무료). 결론이 아니라 한눈에 보는 요약이다.
+ */
+export const autoSummaryTexts = {
+  title: '자동 요약',
+  badge: 'AI 없음 · 무료 · 기록에서 센 숫자',
+  totals: (contacted: number, won: number, lost: number, onHold: number, inProgress: number) =>
+    `접촉 ${contacted}곳 · 성사 ${won} · 거절 ${lost} · 보류 ${onHold} · 진행 중 ${inProgress}`,
+  /** 예: "앞 기간(11/01~11/10) 대비 접촉 ↑3 · 성사 — · 거절 ↓1" */
+  compared: (range: string, parts: string[]) => `앞 기간(${range}) 대비 ${parts.join(' · ')}`,
+  compareNames: { contacted: '접촉', won: '성사', lost: '거절' } as Record<string, string>,
+  failedAt: (step: string, count: number, total: number) =>
+    `실패 ${total}곳 가운데 ${count}곳이 '${step}'에서 멈췄습니다.`,
+  topReason: (reason: string, count: number) => `가장 많은 거절 이유: ${reason} (${count}건)`,
+  success: (count: number, avg: number | null, firstVisit: number | null) =>
+    `성사 ${count}곳` +
+    (avg !== null ? `은 평균 ${avg}번 접촉했고` : '') +
+    (firstVisit !== null
+      ? ` 첫 방문은 평균 ${firstVisit}번째 접촉이었습니다.`
+      : avg !== null
+        ? '습니다.'
+        : '.'),
+  standout: (name: string, won: number, closed: number, overall: number) =>
+    `${name}: 성사 ${won}/${closed} (전체 ${Math.round(overall * 100)}%) · 눈에 띔, 결론 아님`,
+  lowFill: (question: string, answered: number, eligible: number) =>
+    `'${question}' 답이 ${eligible}번 물을 자리 중 ${answered}번만 채워졌습니다.`,
+  early: (closed: number, need: number) =>
+    `끝난 회사가 ${closed}곳이라 아직 결론은 이릅니다(표본 기준 ${need}곳).`,
+  empty: '이 기간에는 요약할 기록이 없습니다.',
+} as const;
+
 export const salesPatternsTexts = {
   title: '기록에서 배우기',
   intro:
@@ -2652,8 +2684,8 @@ export const analysisFeedbackTexts = {
   title: 'AI 분석 피드백',
   aiTag: 'AI가 쓴 글 · 확인 필요',
   intro:
-    '이 기간의 숫자 표만 AI에 보내 왜 성공·실패했는지와 다음 할 일을 받습니다(회사 이름·메모는 보내지 않음).',
-  request: '분석 받기 💰',
+    '숫자 표와 회사별 기록(영업 메모·거절·성사 사유·꼬리 질문 답)을 AI가 함께 읽고, 표만 봐서는 알기 어려운 실제 원인과 다음 영업 전략을 근거와 함께 씁니다. 전화·이메일·사람 이름은 지우고 회사 이름은 바꿔 보낸 뒤 화면에서 되돌립니다.',
+  request: 'AI 분석 받기 💰',
   refresh: '다시 받기 💰',
   stale: '기록이 바뀌었습니다',
   loading: 'AI가 분석을 쓰는 중입니다…',
