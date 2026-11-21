@@ -224,7 +224,8 @@
       "properties": {
         "_설명": { "type": "string" },
         "minSampleForRatio": { "type": "integer", "minimum": 1, "description": "표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 \"표본 n건\"만 보인다. 초기값 10" },
-        "closedWindowDays": { "type": "integer", "minimum": 1, "description": "성사·거절은 결과 기록이 이 일수 안인 것만 센다. 초기값 365" }
+        "closedWindowDays": { "type": "integer", "minimum": 1, "description": "성사·거절은 결과 기록이 이 일수 안인 것만 센다. 초기값 365" },
+        "feedbackMaxOutputTokens": { "type": "integer", "minimum": 1, "default": 8000, "description": "(추가 2026-11-20 #802) [AI 분석 받기] 답 한 번의 출력 토큰 상한. 회사별 기록을 함께 읽어 영업 비서 상한으로는 답이 끊겼다. 없으면 8000" }
       }
     },
     "assistant": {

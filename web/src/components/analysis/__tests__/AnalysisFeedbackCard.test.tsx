@@ -1,5 +1,5 @@
 // #824 "AI 분석 피드백" 카드: 저장본을 먼저 읽고(AI 호출 없음), 실패를 먼저 근거 숫자와 함께 보이며,
-// 스위치가 꺼져 있거나 보기 전용이면 단추가 잠기고, [분석 받기 💰]를 눌러야 받는다. 숫자는 가상이다.
+// 스위치가 꺼져 있거나 보기 전용이면 단추가 잠기고, [AI 분석 받기 💰]를 눌러야 받는다. 숫자는 가상이다.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AnalysisFeedbackCard from '../AnalysisFeedbackCard';
@@ -109,7 +109,7 @@ it('기록이 바뀌었으면 "기록이 바뀌었습니다"를 보인다', asyn
   expect(await screen.findByTestId('feedback-stale')).toHaveTextContent('기록이 바뀌었습니다');
 });
 
-it('[분석 받기 💰]를 누르면 받아서 보인다', async () => {
+it('[AI 분석 받기 💰]를 누르면 받아서 보인다', async () => {
   vi.mocked(getSalesFeedback).mockResolvedValueOnce(stateOf({}));
   vi.mocked(requestSalesFeedback).mockResolvedValueOnce({
     data: { feedback: FEEDBACK, reused: false },
@@ -118,7 +118,7 @@ it('[분석 받기 💰]를 누르면 받아서 보인다', async () => {
   renderCard();
   const button = await screen.findByTestId('feedback-request');
   await waitFor(() => expect(button).toBeEnabled());
-  expect(button).toHaveTextContent('분석 받기 💰');
+  expect(button).toHaveTextContent('AI 분석 받기 💰');
   await userEvent.click(button);
   expect(requestSalesFeedback).toHaveBeenCalledWith(PERIOD, false, 'park-lee');
   expect(await screen.findByTestId('feedback-failure')).toBeInTheDocument();

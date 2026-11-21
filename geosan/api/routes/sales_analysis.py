@@ -697,6 +697,9 @@ class _FeedbackInputs:
     switch_on: bool
     assistant: object
     now: datetime
+    # #802(PM 결정 11/20): 회사별 맥락 글(지운 사본)과 "회사 A1" → 이름 대응표.
+    context: object = None
+    feedback_max_output_tokens: int = 8000
 
 
 def _feedback_inputs(
@@ -717,6 +720,35 @@ def _feedback_inputs(
         period=period, patterns=patterns, result=result, labels=labels, previous=previous
     )
     llm = runtime.app_settings.llm
+    context = None
+    assistant = runtime.app_settings.assistant
+    if assistant is not None:
+        # 순환 가져오기를 피하려고 여기서 가져온다(영업 코치 부품이 이 창구를 거쳐 분석표를 읽음).
+        from geosan.api.analysis_context import build_company_context
+
+        processes = {
+            row.code: process_display_name(row.name)
+            for row in load_process_catalog(session, dataset_kind)
+        }
+        questions = sales_questions(session)
+        keep = [
+            *processes.values(),
+            *runtime.app_settings.industries,
+            *labels.steps.values(),
+            *labels.questions.values(),
+            *labels.answers.values(),
+            *(entry.label for entry in questions.steps),
+        ]
+        context = build_company_context(
+            session,
+            result.companies,
+            process_names=processes,
+            step_labels=labels.steps,
+            keep_words=keep,
+            max_companies=assistant.max_companies,
+            memo_limit=assistant.coach_prior_memo_limit,
+        )
+        text = "\n\n".join([text, feedback.CONTEXT_HEAD, *(item.text for item in context.items)])
     return _FeedbackInputs(
         period=period,
         dataset_kind=dataset_kind,
@@ -729,6 +761,8 @@ def _feedback_inputs(
         switch_on=bool(llm.sales_records_enabled and llm.mode == "EXTERNAL"),
         assistant=runtime.app_settings.assistant,
         now=now,
+        context=context,
+        feedback_max_output_tokens=settings.feedback_max_output_tokens,
     )
 
 
@@ -844,11 +878,18 @@ def request_sales_feedback(
             status=503,
             kind="ASSISTANT_LIMIT",
         )
+    tables = inputs.text.split("\n\n" + feedback.CONTEXT_HEAD, 1)[0]
+    context_items = list(inputs.context.items) if inputs.context is not None else []
     answer, ticket = analyze_sales(
         inputs.opp_ids[0],
-        [scrub_sales_record(inputs.text)],
+        [
+            scrub_sales_record(tables),
+            *([scrub_sales_record(feedback.CONTEXT_HEAD)] if context_items else []),
+            *context_items,
+        ],
+        also_opp_ids=inputs.context.opp_ids if inputs.context is not None else (),
         instructions=inputs.instructions,
-        max_output_tokens=inputs.assistant.max_output_tokens,
+        max_output_tokens=inputs.feedback_max_output_tokens,
         requested_by=staff,
         schema_name=feedback.SCHEMA_NAME,
         schema=feedback.feedback_schema(),
@@ -862,7 +903,11 @@ def request_sales_feedback(
             status=503,
             kind="LLM_FAILED",
         ) from None
-    response = {**feedback.clean_reading(reading), "comparedToPrevious": inputs.compared}
+    cleaned = feedback.clean_reading(reading)
+    if inputs.context is not None:
+        # 받은 글의 "회사 A3"을 원래 회사 이름으로 되돌려 저장한다(이름은 밖으로 보내지 않았다).
+        cleaned = feedback.map_texts(cleaned, inputs.context.restore)
+    response = {**cleaned, "comparedToPrevious": inputs.compared}
     period_from_day, period_to_day = inputs.period if inputs.period is not None else (None, None)
     with contextmanager(get_session)(request) as session:
         log = session.get(TransferLog, ticket.log_id)

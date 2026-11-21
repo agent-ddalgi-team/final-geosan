@@ -21,7 +21,8 @@ scenarios("u7/sales_feedback.feature")
 
 URL = "/api/v1/sales-analysis/feedback"
 STAFF = {"X-Staff-Key": "park-lee"}
-MEMO = "피드백에 나가면 안 되는 가상 한 줄 메모 홍길동"
+# #802(11/20): 메모는 회사별 기록으로 나가되 사람 이름은 지운다(직함 붙은 이름).
+MEMO = "가상 한 줄 메모 홍길동 과장 부재로 다시 연락"
 # 끝난 기록(거절·성사·보류)은 오늘 날짜로 저장되므로 기간 없이(전체) 본다. 앞 기간 비교는 단위 시험.
 PERIOD = {}
 
@@ -112,7 +113,7 @@ def refused(context):
     assert _logs() == [("SALES_ANALYSIS", "REJECTED", 0)]
 
 
-@then("AI에 보낸 글은 숫자 표이고 표본 부족 칸에 결론 금지가 붙어 있다")
+@then("AI에 보낸 글은 숫자 표로 시작하고 표본 부족 칸에 결론 금지가 붙어 있다")
 def sent_table(context):
     assert context["response"].status_code == 200, context["response"].text
     sent = context["fake"].payloads[0]["input"]
@@ -120,13 +121,15 @@ def sent_table(context):
     assert "표본 부족(결론 금지)" in sent
     assert "PRICE: 1건" in sent
     assert context["fake"].payloads[0]["store"] is False
-    assert _logs()[-1] == ("SALES_ANALYSIS", "ALLOWED", 1)
+    # 보낸 회사마다 표시 행(호출 수 0)이 더 붙으므로 호출 1행이 있는지만 본다.
+    assert ("SALES_ANALYSIS", "ALLOWED", 1) in _logs()
 
 
-@then("보낸 글에 회사 이름·메모 글·담당자 키가 없다")
+@then("보낸 글의 회사별 기록은 회사 이름이 바뀌고 메모에서 사람 이름이 지워졌으며 담당자 키가 없다")
 def nothing_private(context):
     sent = context["fake"].payloads[0]["input"]
-    for planted in [*context["names"], MEMO, "홍길동", "park-lee"]:
+    assert "[회사 A1]" in sent and "부재로 다시 연락" in sent
+    for planted in [*context["names"], "홍길동", "park-lee"]:
         assert planted not in sent, planted
 
 
