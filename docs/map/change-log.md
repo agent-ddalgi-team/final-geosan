@@ -287,6 +287,7 @@ timeline
 | 날짜 | 바뀐 것 |
 |---|---|
 | 11/14 | 연관된 일은 새 이슈를 만들지 않고 관련 이슈에 댓글로 적어 같은 PR에서 이어 함. 새 이슈는 기존 이슈 어디에도 안 맞거나 이슈가 이미 닫힌 뒤 나온 일일 때만 |
+| 11/22 | 역할을 실제에 맞춤: PM이 기획·분배·개발·품질·배포·문서 전체, 팀원은 11/13까지 모듈 개발. 합치기는 PM 세션 ([#881]) |
 | 11/13 | 1차/2차 구분을 없앰. 마일스톤은 "12/11 최종 발표까지" 하나(마감일 11/20 = 만들기를 끝내는 날). 우선순위 표시의 뜻을 바꿈: P0 지금 하는 중 / P1 다음 차례 / P2 결정·조건을 기다림 / P3 여유 |
 | 11/5 | 지도 문서를 `docs/map/`에서 관리 ([#293]). 우선순위 표시와 전달 차수를 짝 맞춤 |
 | 11/4 | 칸반 보드를 쓰지 않고 이슈 목록만 봄 ([#271]). 이슈 본문에 "왜 · 흐름" 5줄 |
@@ -480,3 +481,4 @@ timeline
 [#770]: https://github.com/agent-ddalgi-team/final-geosan/issues/770
 [#860]: https://github.com/agent-ddalgi-team/final-geosan/issues/860
 [#802]: https://github.com/agent-ddalgi-team/final-geosan/issues/802
+[#881]: https://github.com/agent-ddalgi-team/final-geosan/issues/881
