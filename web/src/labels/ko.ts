@@ -1842,6 +1842,18 @@ export const salesAnalysisTexts = {
  * #802(PM 결정 2026-11-20) 영업 분석 "기록에서 배우기" 맨 위 자동 요약. 저장된 기록에서 센 숫자로
  * 프로그램이 만든 문장이다(AI 없음, 무료). 결론이 아니라 한눈에 보는 요약이다.
  */
+/** #802(PM 지시 2026-11-22) 영업 분석 "월별 추세": 최근 12개월, 기간 선택과 상관없이 기록에서 센 회사 수. */
+export const monthlyTrendTexts = {
+  title: '월별 추세',
+  note: '최근 12개월 · 기간 선택과 상관없이 · 회사 수(AI 없음)',
+  legend: { contacted: '접촉', won: '성사', lost: '거절' },
+  /** 예: "11월: 접촉 5 · 성사 1 · 거절 2" */
+  row: (month: string, contacted: number, won: number, lost: number) =>
+    `${month}: 접촉 ${contacted} · 성사 ${won} · 거절 ${lost}`,
+  monthLabel: (yearMonth: string) => `${Number(yearMonth.slice(5))}월`,
+  empty: '최근 12개월에 접촉 기록이 없습니다.',
+} as const;
+
 export const autoSummaryTexts = {
   title: '자동 요약',
   badge: 'AI 없음 · 무료 · 기록에서 센 숫자',

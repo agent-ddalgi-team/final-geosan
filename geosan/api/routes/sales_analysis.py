@@ -33,6 +33,7 @@ from geosan.dashboard.sales_analysis import (
     build_sales_analysis,
     load_company_records,
     load_process_proposal_hit,
+    monthly_trend,
     process_display_name,
 )
 from geosan.dashboard.sales_patterns import (
@@ -184,6 +185,15 @@ class ProposalHit(_ApiModel):
     ratio: float | None
 
 
+class MonthTrendRow(_ApiModel):
+    """#802 월별 추세 한 달(YYYY-MM)."""
+
+    month: str
+    contacted: int
+    won: int
+    lost: int
+
+
 class AiProposalHit(_ApiModel):
     """(#678) 지금은 공정만 센다. 산업군은 확정 전 AI 제안이 저장에 남지 않아 셀 수 없다."""
 
@@ -200,6 +210,8 @@ class SalesAnalysis(_ApiModel):
     by_sales_step: list[StepRow]
     # (#678) AI 제안 적중.
     ai_proposal_hit: AiProposalHit
+    # (#802, 11/22) 최근 12개월 월별 접촉·성사·거절 회사 수. 기간 선택과 상관없다. 옛 서버는 없음.
+    monthly: list[MonthTrendRow] = Field(default_factory=list)
 
 
 SalesAnalysisEnvelope = Envelope[SalesAnalysis]
@@ -327,6 +339,10 @@ def sales_analysis(
         total=GroupStats.model_validate(result.total, from_attributes=True),
         by_sales_step=[
             StepRow.model_validate(row, from_attributes=True) for row in result.by_sales_step
+        ],
+        monthly=[
+            MonthTrendRow.model_validate(row, from_attributes=True)
+            for row in monthly_trend(companies, now=now, tz=KST)
         ],
         ai_proposal_hit=AiProposalHit(
             process=ProposalHit.model_validate(

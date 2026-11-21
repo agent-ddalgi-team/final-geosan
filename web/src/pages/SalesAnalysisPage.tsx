@@ -15,6 +15,7 @@ import type { AnalysisPeriod, SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
 import AnalysisFeedbackCard from '../components/analysis/AnalysisFeedbackCard';
+import MonthlyTrend from '../components/analysis/MonthlyTrend';
 import SalesPatterns from '../components/analysis/SalesPatterns';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
@@ -221,6 +222,8 @@ export default function SalesAnalysisPage() {
             </div>
             {/* #824: AI 분석 피드백(실패 먼저, 근거 숫자). 💰 단추로만 부르고 기간마다 저장본을 먼저 읽는다. */}
             <AnalysisFeedbackCard period={period} reloadKey={reload} />
+            {/* #802(11/22): 최근 12개월 월별 접촉·성사·거절(기간 선택과 상관없이). */}
+            <MonthlyTrend rows={data.monthly} />
             <AnalysisCharts data={data} />
             {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값. */}
             <SalesPatterns
