@@ -13,7 +13,7 @@ import { dashboardMapTexts as t } from '../../labels/ko';
 import NaverMapCanvas, { loadNaverMaps, onNaverMapsFailure } from './NaverMapCanvas';
 import VisitGroups from './VisitGroups';
 import type { NaverMapsApi } from './NaverMapCanvas';
-import { colors, spacing, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, spacing, statusPalette, typography } from '../../theme/tokens';
 
 const VIEW = 400;
 const CENTER = VIEW / 2;
@@ -202,7 +202,7 @@ export default function DashboardMap({
               maxWidth: 480,
               justifySelf: 'center',
               background: statusPalette.neutral.bg,
-              borderRadius: 12,
+              borderRadius: radius.lg,
             }}
           >
             {[...rings].reverse().map((km) => (
@@ -297,7 +297,7 @@ export default function DashboardMap({
           data-testid="dashboard-map-callout"
           style={{
             border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: 8,
+            borderRadius: radius.md,
             padding: spacing.cardGap,
             display: 'grid',
             gap: 4,

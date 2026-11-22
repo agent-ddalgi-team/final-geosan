@@ -15,7 +15,7 @@ import {
   outcomeStatusLabels,
   salesStepLabels,
 } from '../../labels/ko';
-import { chartPalette, colors, typography } from '../../theme/tokens';
+import { chartPalette, colors, radius, typography } from '../../theme/tokens';
 
 const [BLUE, ORANGE, AQUA] = chartPalette.series;
 const percent = (ratio: number) => Math.round(ratio * 100);
@@ -114,7 +114,7 @@ function HBars({
                   aria-hidden="true"
                   style={{
                     height: 12,
-                    borderRadius: 4,
+                    borderRadius: radius.sm,
                     background: chartPalette.track,
                     overflow: 'hidden',
                   }}
@@ -123,7 +123,7 @@ function HBars({
                     style={{
                       width: `${width}%`,
                       height: '100%',
-                      borderRadius: 4,
+                      borderRadius: radius.sm,
                       background: color,
                     }}
                   />
@@ -262,13 +262,13 @@ export function SalesFunnel({
                   <span style={{ fontWeight: 600 }}>{texts.funnelStages[stage.key]}</span>
                   <div
                     aria-hidden="true"
-                    style={{ height: 22, borderRadius: 4, background: chartPalette.track }}
+                    style={{ height: 22, borderRadius: radius.sm, background: chartPalette.track }}
                   >
                     <div
                       style={{
                         width: `${Math.max((stage.count / top) * 100, stage.count > 0 ? 2 : 0)}%`,
                         height: '100%',
-                        borderRadius: 4,
+                        borderRadius: radius.sm,
                         background: stage.key === 'WON' ? ORANGE : BLUE,
                       }}
                     />
@@ -696,7 +696,7 @@ function dotStyle(filled: boolean, step: boolean) {
     width: size,
     height: size,
     boxSizing: 'border-box' as const,
-    borderRadius: step ? 2 : '50%',
+    borderRadius: step ? radius.sm : '50%',
     border: `2px solid ${step ? ORANGE : BLUE}`,
     background: filled ? (step ? ORANGE : BLUE) : colors.bgContainer,
     flex: 'none',

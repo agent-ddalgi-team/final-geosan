@@ -56,7 +56,7 @@ import {
   pagination,
   states,
 } from '../labels/ko';
-import { colors, spacing, typography } from '../theme/tokens';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
 /** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
@@ -569,7 +569,7 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           data-testid="ingest-panel"
           style={{
             border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: 8,
+            borderRadius: radius.md,
             padding: '8px 12px',
             marginBottom: spacing.cardGap,
           }}

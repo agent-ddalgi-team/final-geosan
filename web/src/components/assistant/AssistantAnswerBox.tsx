@@ -10,7 +10,7 @@ import { postSchedule, SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
 import type { AssistantAnswer, AssistantSuggestion } from '../../api/assistant';
 import { ApiError } from '../../api/client';
 import { assistantTexts as texts, errorTexts } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 import { dayLabel } from '../dashboard/TodayChecks';
 import { useFrame } from '../frame/FrameContext';
 
@@ -152,7 +152,7 @@ export default function AssistantAnswerBox({ answer }: { answer: AssistantAnswer
         gap: 8,
         padding: 12,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
         background: colors.bgLayout,
       }}
     >
@@ -161,7 +161,7 @@ export default function AssistantAnswerBox({ answer }: { answer: AssistantAnswer
         style={{
           justifySelf: 'start',
           padding: '2px 8px',
-          borderRadius: 4,
+          borderRadius: radius.sm,
           background: statusPalette.wait.bg,
           color: statusPalette.wait.fg,
           fontSize: typography.fontSizeSecondary,

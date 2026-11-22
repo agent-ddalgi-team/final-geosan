@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Statistic } from 'antd';
 import type { ScoreItemView, Scores } from '../../api/types';
-import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, spacing, typography } from '../../theme/tokens';
 import {
   datasetKindLabels,
   detailReport,
@@ -84,7 +84,7 @@ function GroupBars({ groups }: { groups: ReturnType<typeof groupScoreItems>['gro
               style={{
                 position: 'relative',
                 height: 10,
-                borderRadius: 999,
+                borderRadius: radius.pill,
                 background: detailTheme.bandTodo,
                 overflow: 'hidden',
               }}

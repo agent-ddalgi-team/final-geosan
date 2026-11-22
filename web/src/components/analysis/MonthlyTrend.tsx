@@ -2,10 +2,10 @@
 // 달마다 막대 셋으로 보인다. 기간 선택과 상관없고 AI를 쓰지 않는다. 옛 서버(칸 없음)면 그리지 않는다.
 import type { MonthTrendRow } from '../../api/salesAnalysis';
 import { monthlyTrendTexts as t } from '../../labels/ko';
-import { chartPalette, colors, typography } from '../../theme/tokens';
+import { chartPalette, colors, radius, typography } from '../../theme/tokens';
 
 const [BLUE, ORANGE] = chartPalette.series;
-const GREY = colors.borderSecondary;
+const GREY = chartPalette.base;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 
 function Bar({ value, max, color }: { value: number; max: number; color: string }) {
@@ -13,7 +13,13 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   return (
     <span
       aria-hidden="true"
-      style={{ width: 8, height, minHeight: value > 0 ? 2 : 0, background: color, borderRadius: 2 }}
+      style={{
+        width: 8,
+        height,
+        minHeight: value > 0 ? 2 : 0,
+        background: color,
+        borderRadius: radius.sm,
+      }}
     />
   );
 }

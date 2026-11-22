@@ -7,7 +7,7 @@
 import { Button } from 'antd';
 import { useState } from 'react';
 import { salesQuestionTexts as texts } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { formatMonthDay, todayKst } from '../../utils/time';
 
 /** 한 장에 보이는 주 수. 달마다 높이가 달라지지 않게 늘 6주를 그린다. */
@@ -58,7 +58,7 @@ const chip = (selected: boolean, disabled: boolean) =>
   ({
     minHeight: 32,
     padding: '0 8px',
-    borderRadius: 8,
+    borderRadius: radius.md,
     border: `1px solid ${selected ? colors.text : colors.border}`,
     background: selected ? colors.text : colors.bgContainer,
     color: selected ? colors.bgContainer : colors.text,
@@ -78,7 +78,7 @@ const day = (selected: boolean, today: boolean, off: boolean) =>
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: radius.md,
     border: `1px solid ${selected || today ? colors.text : 'transparent'}`,
     background: selected ? colors.text : 'transparent',
     color: selected ? colors.bgContainer : off ? colors.textDimmed : colors.text,
@@ -157,7 +157,7 @@ export default function QuickDate({
         aria-label={label}
         style={{
           border: `1px solid ${colors.borderSecondary}`,
-          borderRadius: 8,
+          borderRadius: radius.md,
           padding: '4px 8px 8px',
           background: colors.bgContainer,
         }}

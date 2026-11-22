@@ -11,7 +11,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import type { MenuBadges } from '../../api/menuBadges';
 import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
-import { sidebarTheme, typography } from '../../theme/tokens';
+import { radius, sidebarTheme, typography } from '../../theme/tokens';
 import { useFrame } from './FrameContext';
 import { useMenuBadges } from './useMenuBadges';
 
@@ -200,7 +200,7 @@ function Badge({
         height: 18,
         padding: '0 5px',
         boxSizing: 'border-box',
-        borderRadius: 9,
+        borderRadius: radius.md,
         background: sidebarTheme.badgeBg,
         color: sidebarTheme.badgeFg,
         fontSize: 11,
@@ -262,7 +262,7 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
     gap: 12,
     minHeight: 44,
     padding: collapsed ? 0 : '0 12px',
-    borderRadius: 12,
+    borderRadius: radius.lg,
     whiteSpace: 'nowrap',
     fontSize: typography.fontSize,
     textDecoration: 'none',
@@ -326,7 +326,7 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
             height: 40,
             padding: 0,
             border: 0,
-            borderRadius: 10,
+            borderRadius: radius.md,
             background: 'transparent',
             color: sidebarTheme.fg,
             cursor: 'pointer',

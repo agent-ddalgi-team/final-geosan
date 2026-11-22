@@ -5,7 +5,7 @@
 export interface BrandConfig {
   logoUrl: string | null;
   brandName: string;
-  /** 강조색 1개. 초기값 #1F5FBF는 팀 제안(흰 바탕 대비 약 6.1:1). */
+  /** 강조색 1개(버튼·선택 표시). #898부터 먹색 #212121(흰 바탕 대비 약 16:1). 링크색은 서버 설정 brand.colorPrimary. */
   colorPrimary: string;
   /** 띠에 함께 보이는 문구(예: 부분 시연·거산 확인 전). 서버 설정 brand.demoLabel이 우선. */
   demoLabel: string | null;
@@ -16,6 +16,6 @@ const envColor = import.meta.env.VITE_BRAND_COLOR;
 export const brand: BrandConfig = {
   logoUrl: null,
   brandName: '거산 영업지원',
-  colorPrimary: envColor && /^#[0-9A-Fa-f]{6}$/.test(envColor) ? envColor : '#1F5FBF',
+  colorPrimary: envColor && /^#[0-9A-Fa-f]{6}$/.test(envColor) ? envColor : '#212121',
   demoLabel: null,
 };

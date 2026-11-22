@@ -10,7 +10,7 @@ import { ApiError } from '../api/client';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { operationsTexts as t } from '../labels/ko';
-import { colors, detailTheme, spacing, typography } from '../theme/tokens';
+import { colors, detailTheme, radius, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
 const section = {
@@ -18,7 +18,7 @@ const section = {
   gap: 12,
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
+  borderRadius: radius.lg,
   padding: spacing.cardPadding,
 } as const;
 const title = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
@@ -33,7 +33,12 @@ function Bar({ ratio, warn, testId }: { ratio: number; warn: boolean; testId: st
   return (
     <div
       aria-hidden="true"
-      style={{ height: 10, borderRadius: 5, background: detailTheme.bandTodo, overflow: 'hidden' }}
+      style={{
+        height: 10,
+        borderRadius: radius.sm,
+        background: detailTheme.bandTodo,
+        overflow: 'hidden',
+      }}
     >
       <div
         data-testid={testId}
@@ -102,7 +107,7 @@ function UsageSection({ usage }: { usage: Operations['usage'] }) {
                   maxWidth: 24,
                   height: `${maxDay > 0 ? Math.max(4, (row.costUsd / maxDay) * 64) : 4}px`,
                   background: detailTheme.accent,
-                  borderRadius: 3,
+                  borderRadius: radius.sm,
                 }}
               />
             ))}

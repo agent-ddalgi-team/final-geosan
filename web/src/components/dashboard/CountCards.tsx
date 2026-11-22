@@ -20,7 +20,7 @@ import type {
   ProgressBandKey,
 } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
-import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, spacing, typography } from '../../theme/tokens';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 import ProgressCompanyList from './ProgressCompanyList';
 
@@ -59,7 +59,7 @@ const cardSectionStyle = {
   boxSizing: 'border-box',
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
+  borderRadius: radius.lg,
   padding: spacing.cardPadding,
 } as const;
 const titleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
@@ -95,7 +95,7 @@ function CountCell({ countKey, value, large = false, hint }: CellProps) {
           padding: spacing.cardPadding,
           background: colors.bgContainer,
           border: `1px solid ${colors.borderSecondary}`,
-          borderRadius: 12,
+          borderRadius: radius.lg,
           color: colors.text,
           textDecoration: 'none',
         }}

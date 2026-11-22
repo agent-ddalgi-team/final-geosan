@@ -105,10 +105,17 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
 
   return (
     <FrameContext.Provider value={value}>
-      {/* Ant Design 기본 링크색·보조 글자색은 대비 4.5:1에 못 미쳐(axe), 토큰 값으로 맞춘다. */}
+      {/* Ant Design 기본 링크색·보조 글자색은 대비 4.5:1에 못 미쳐(axe), 토큰 값으로 맞춘다.
+          #898: 링크는 먹색 + 밑줄(참고 그림 톤). 서버 설정 brand.colorPrimary는 링크색으로 쓰지 않는다. */}
       <ConfigProvider
         theme={{
-          token: { colorLink: brand.colorPrimary, colorTextDescription: colors.textSecondary },
+          token: {
+            colorLink: colors.text,
+            colorLinkHover: colors.textSecondary,
+            colorLinkActive: colors.text,
+            linkDecoration: 'underline',
+            colorTextDescription: colors.textSecondary,
+          },
         }}
       >
         <a href="#main" className="skip-link" data-testid="skip-link">

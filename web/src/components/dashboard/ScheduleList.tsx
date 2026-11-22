@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 
 /** 기한 지남(overdue) 먼저, 같은 묶음 안에서는 날짜 빠른 순. 원본 배열은 바꾸지 않는다. */
@@ -39,7 +39,7 @@ export default function ScheduleList({ items }: { items: DashboardScheduleItem[]
                 style={{
                   background: statusPalette.no.bg,
                   color: statusPalette.no.fg,
-                  borderRadius: 4,
+                  borderRadius: radius.sm,
                   padding: '0 6px',
                   marginRight: 6,
                   fontSize: typography.fontSizeSecondary,

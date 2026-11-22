@@ -10,12 +10,12 @@ import { Button, Input, Select } from 'antd';
 import { ApiError, confirmHandoff, postNote } from '../../api/client';
 import type { HandoffNote } from '../../api/types';
 import { handoffTexts } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, tone, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 
-const POSTIT = '#FFF3B0';
-const POSTIT_DONE = '#F6F6F2';
+const POSTIT = tone.lemonSoft;
+const POSTIT_DONE = detailTheme.cellBg;
 
 export interface HandoffBoxProps {
   oppId: string;
@@ -189,8 +189,8 @@ export default function HandoffBox({
                 data-confirmed={done}
                 style={{
                   background: done ? POSTIT_DONE : POSTIT,
-                  border: `1px solid ${done ? colors.borderSecondary : '#E8D77A'}`,
-                  borderRadius: 4,
+                  border: `1px solid ${done ? colors.borderSecondary : tone.lemon}`,
+                  borderRadius: radius.sm,
                   padding: '8px 10px',
                   display: 'grid',
                   gap: 4,

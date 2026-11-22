@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import type { DashboardBreakdown } from '../../api/dashboardTypes';
 import BreakdownBars from '../dashboard/BreakdownBars';
 import { dashboardTexts, salesAnalysisTexts as texts } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, radius, spacing, typography } from '../../theme/tokens';
 
 const secondary = {
   margin: 0,
@@ -31,7 +31,7 @@ export default function InterestBreakdown({ breakdown, failed = false }: Interes
         gap: 12,
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 12,
+        borderRadius: radius.lg,
         padding: spacing.cardPadding,
       }}
     >

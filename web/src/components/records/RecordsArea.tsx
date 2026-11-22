@@ -44,7 +44,7 @@ import {
   salesStepLabels,
   handoffTexts,
 } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 import { choiceAnswerIds } from './ChoiceQuestion';
@@ -192,7 +192,7 @@ function NativeSelect({
         minHeight: 40,
         minWidth: 120,
         padding: '0 12px',
-        borderRadius: 8,
+        borderRadius: radius.md,
         border: `1px solid ${colors.border}`,
         background: colors.bgContainer,
         color: colors.text,

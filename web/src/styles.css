@@ -3,6 +3,7 @@ html,
 body {
   margin: 0;
   font-family:
+    'Urbanist Variable',
     'Pretendard Variable',
     Pretendard,
     -apple-system,
@@ -10,8 +11,52 @@ body {
     sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  background: #f5f6f8;
-  color: #1f2329;
+  background: #f2f3f3;
+  color: #212121;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 디자인 톤(#898): 화면 제목은 크고 가볍게(참고 그림 Heading), 표 숫자는 자리 맞춤. */
+h1 {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 링크(#898): 먹색 + 옅은 밑줄, 손을 올리면 밑줄이 진해진다. 색만으로 구분하지 않게 밑줄은 늘 보인다. */
+a {
+  color: #212121;
+  text-decoration: underline;
+  text-decoration-color: rgba(33, 33, 33, 0.4);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: #212121;
+  text-decoration-color: currentColor;
+}
+
+/* 부품 안에 따로 모양을 정하지 않은 기본 입력 칸·선택 칸·단추도 알약 모양으로 맞춘다(#898). */
+select,
+input[type='text'],
+input[type='search'],
+input[type='date'],
+input[type='number'],
+input:not([type]) {
+  border-radius: 999px;
+  font-family: inherit;
+}
+
+textarea {
+  border-radius: 16px;
+  font-family: inherit;
+}
+
+button {
+  font-family: inherit;
 }
 
 /* 접은 왼쪽 메뉴에서 그림에 손을 올리거나 키보드로 오면 오른쪽에 이름표가 뜬다(#767). */
@@ -22,7 +67,7 @@ body {
   transform: translate(-4px, -50%);
   padding: 6px 10px;
   border-radius: 8px;
-  background: #1c1e21;
+  background: #212121;
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
@@ -50,13 +95,13 @@ body {
 
 /* 초점선: 강조색 2px 실선, 바깥 2px 간격. outline: none 금지. */
 :focus-visible {
-  outline: 2px solid #1f5fbf;
+  outline: 2px solid #212121;
   outline-offset: 2px;
 }
 
 /* Ant Design Select는 안쪽 입력칸이 보이지 않아 위 초점선이 안 보이므로 겉틀에 같은 선을 준다. */
 .ant-select:has(:focus-visible) > .ant-select-selector {
-  outline: 2px solid #1f5fbf !important;
+  outline: 2px solid #212121 !important;
   outline-offset: 2px;
 }
 
@@ -104,7 +149,7 @@ body {
 .report-page h2 {
   margin: 0 0 6px;
   padding-bottom: 2px;
-  border-bottom: 1px solid #767f8c;
+  border-bottom: 1px solid #8c8c8c;
   font-size: 16px;
 }
 

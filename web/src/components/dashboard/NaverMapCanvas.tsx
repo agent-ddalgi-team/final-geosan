@@ -4,6 +4,7 @@
 // 검색·지오코딩·길찾기 모듈(submodules)은 불러오지 않는다.
 import { useEffect, useRef, useState } from 'react';
 import type { DashboardMapGroup, DashboardMapPoint } from '../../api/dashboardMapTypes';
+import { radius } from '../../theme/tokens';
 
 /* 쓰는 SDK 기능만 좁게 적은 모양. 실제 SDK는 window.naver.maps에 있다. */
 interface NaverLatLng {
@@ -261,7 +262,7 @@ export default function NaverMapCanvas({
       <div
         ref={box}
         data-testid="dashboard-naver-map"
-        style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden' }}
+        style={{ width: '100%', height: 420, borderRadius: radius.lg, overflow: 'hidden' }}
       />
       {hover && hoverName ? (
         <div
@@ -273,7 +274,7 @@ export default function NaverMapCanvas({
             top: hover.y - 14,
             transform: 'translate(-50%, -100%)',
             padding: '2px 8px',
-            borderRadius: 6,
+            borderRadius: radius.sm,
             background: 'rgba(0,0,0,0.78)',
             color: '#fff',
             fontSize: 13,

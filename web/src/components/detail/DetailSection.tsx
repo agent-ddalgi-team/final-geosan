@@ -3,7 +3,7 @@
 // 색은 숫자 꼬리표에만 쓴다. 숫자를 주지 않으면 꼬리표가 없다.
 import type { ReactNode } from 'react';
 import { Typography } from 'antd';
-import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, spacing, typography } from '../../theme/tokens';
 
 export interface DetailSectionProps {
   id: string;
@@ -48,7 +48,7 @@ export default function DetailSection({ id, title, count, children }: DetailSect
               height: 28,
               padding: '0 10px',
               boxSizing: 'border-box',
-              borderRadius: 999,
+              borderRadius: radius.pill,
               background: detailTheme.accent,
               color: colors.text,
               fontSize: typography.fontSizeSecondary,

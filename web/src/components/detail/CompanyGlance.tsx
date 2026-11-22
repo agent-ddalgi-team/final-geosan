@@ -9,7 +9,7 @@ import {
   factoryProfileLabels,
   homepageLinkLabel,
 } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, radius, spacing, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
@@ -75,7 +75,7 @@ export default function CompanyGlance({
         padding: spacing.cardPadding,
         background: colors.bgLayout,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
       }}
     >
       <div style={rowStyle} data-testid="glance-homepage">

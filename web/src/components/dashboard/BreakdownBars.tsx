@@ -1,7 +1,7 @@
 // 공정별·산업군별 막대. "3곳 (38%)"처럼 개수와 비율을 글자로 함께 보인다(색·길이만으로 전하지 않음).
 // 한 회사가 여러 공정·산업군이면 각각 세므로 비율의 합이 100%를 넘을 수 있다.
 import { dashboardTexts } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 
 export interface BreakdownRow {
   key: string;
@@ -65,13 +65,13 @@ export default function BreakdownBars({
             </div>
             <div
               aria-hidden="true"
-              style={{ background: colors.borderSecondary, borderRadius: 4, height: 8 }}
+              style={{ background: colors.borderSecondary, borderRadius: radius.sm, height: 8 }}
             >
               <div
                 style={{
                   width: `${Math.min(100, Math.round(row.ratio * 100))}%`,
                   height: 8,
-                  borderRadius: 4,
+                  borderRadius: radius.sm,
                   background: colors.border,
                 }}
               />
