@@ -32,6 +32,7 @@ def answer_for(ids):
         "cust-bolt": ("TIER2_3", "볼트·너트를 직접 가공"),
         "cust-train": ("TIER1", "철도차량 완성품 조립 납품"),
         "cust-misc": ("UNKNOWN", None),
+        "cust-case": ("TIER2_3", "직결나사를 직접 가공"),
     }
     return json.dumps(
         [{"customerId": cid, "supplyTier": table[cid][0], "basis": table[cid][1]} for cid in ids],
@@ -229,14 +230,15 @@ def test_switch_off_sends_nothing(tier_env):
     assert tier_env == []
 
 
-def test_targets_are_found_companies_without_tier(ingest_batch):
+def test_targets_are_companies_without_tier_including_case_files(ingest_batch):
+    """#886(PM 결정 2026-11-22): 사례 파일 회사도 판단 대상이다. 이미 판단한 회사는 빠진다."""
     add_company("cust-bolt")
     add_company(
         "cust-train", supply_tier="TIER1", supply_tier_basis="조립", supply_tier_source="PRODUCT"
     )
     add_company("cust-case", batch=None)
     with session_scope() as session:
-        assert tier.customers_without_tier(session) == ["cust-bolt"]
+        assert tier.customers_without_tier(session) == ["cust-bolt", "cust-case"]
 
 
 # ---------- 목록 순서·응답 칸 ----------
@@ -331,8 +333,9 @@ def test_command_judges_missing_companies_and_prints_counts_only(tier_env, capsy
     add_company("cust-case", batch=None)
     assert run_supply_tier("park-lee") == 0
     out = capsys.readouterr().out
-    assert "1곳 저장" in out and "가상볼트" not in out
-    assert customer("cust-case").supply_tier is None
+    assert "2곳 저장" in out and "가상볼트" not in out
+    # #886: 사례 파일 회사도 같은 판단으로 꼬리표가 붙는다.
+    assert customer("cust-case").supply_tier == "TIER2_3"
     with session_scope() as session:
         (log,) = session.scalars(select(TransferLog))
         assert (log.batch_id, log.opp_id) == (None, "opp-cust-bolt")
@@ -395,10 +398,14 @@ def test_redo_targets_product_judged_but_not_homepage(ingest_batch):
         supply_tier_source="HOMEPAGE",
     )
     add_company("cust-misc")
-    add_company("cust-case", batch=None)
+    add_company("cust-case", batch=None, supply_tier="TIER1", supply_tier_source="PRODUCT")
     with session_scope() as session:
         assert tier.customers_without_tier(session) == ["cust-misc"]
-        assert tier.customers_without_tier(session, redo=True) == ["cust-bolt", "cust-misc"]
+        assert tier.customers_without_tier(session, redo=True) == [
+            "cust-bolt",
+            "cust-case",
+            "cust-misc",
+        ]
 
 
 def test_command_redo_overwrites_product_judgment(tier_env, capsys):
