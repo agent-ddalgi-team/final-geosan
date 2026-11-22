@@ -186,7 +186,7 @@ def test_sends_only_public_fields(tier_env):
     ]
     sent = json.dumps(call["payload"], ensure_ascii=False)
     assert "041-000-0000" not in sent and "가상길" not in sent
-    assert "tier-v3" in call["payload"]["instructions"]
+    assert "tier-v4" in call["payload"]["instructions"]
 
 
 def test_homepage_decided_company_is_not_asked_or_overwritten(tier_env):
@@ -433,9 +433,11 @@ def test_command_redo_overwrites_product_judgment(tier_env, capsys):
     )
 
 
-def test_tier_prompt_v3_keeps_functional_parts_and_marks_unclear_as_unknown():
-    """#877 기능 부품은 2·3차, #890 분명하지 않으면(회사명과 생산품이 다른 단계) 모름 + 이유."""
+def test_tier_prompt_v4_keeps_functional_parts_and_marks_unclear_as_unknown():
+    """#877 기능 부품은 2·3차, #890 분명하지 않으면(회사명과 생산품이 다른 단계) 모름 + 이유,
+    #894 부품도 직접 가공하면 완제품도 만들어도 2·3차."""
     text = (tier.REPO_ROOT / "examples/prompts/supply-tier.md").read_text(encoding="utf-8")
-    assert text.startswith("[지시문 버전] tier-v3")
+    assert text.startswith("[지시문 버전] tier-v4")
     assert "기능 부품" in text and "TIER2_3로 본다" in text and "창호·수배전반" in text
     assert "억지로 정하지 않는다" in text and "왜 분명하지 않은지" in text
+    assert "완제품도 만듦" in text and "둘 다 보인다" not in text
