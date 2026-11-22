@@ -212,14 +212,13 @@ def compute_sales_step(
     return state
 
 
-def stage_for(status: str, method: str | None, step: SalesStep | None) -> str:
-    """큰 단계는 세부 단계를 따라 앞으로만 바뀐다. 보류·성사·거절은 그대로 둔다(C1 /outcomes)."""
-    if status == OutcomeStatus.NOT_EXECUTED and method:
-        status = OutcomeStatus.IN_PROGRESS
-    if (
-        step is not None
-        and STEP_STAGE[step] == OutcomeStatus.SAMPLE_OR_REGISTRATION_APPROVED
-        and status in (OutcomeStatus.NOT_EXECUTED, OutcomeStatus.IN_PROGRESS)
-    ):
-        status = OutcomeStatus.SAMPLE_OR_REGISTRATION_APPROVED
+def stage_for(status: str, step: SalesStep | None) -> str:
+    """미접촉·접촉인 회사의 큰 단계는 세부 단계를 따른다(C1 /outcomes).
+
+    (바뀜 2026-11-23 #899 — PM 결정) 연결 전 = 미접촉, 연결됨·수요 확인 = 접촉, 자료·견적 이상 = 견적·샘플.
+    그래서 연락만 하고 연결되지 않은 회사는 미접촉에 남는다. 견적·샘플은 세부 단계를 고쳐도 내려가지 않고,
+    보류·성사·거절은 담당자가 고른 그대로 둔다.
+    """
+    if step is not None and status in (OutcomeStatus.NOT_EXECUTED, OutcomeStatus.IN_PROGRESS):
+        status = STEP_STAGE[step]
     return str(status)

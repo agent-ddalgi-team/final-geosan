@@ -279,10 +279,11 @@ def test_recent_activity_shows_only_my_records_newest_first(dashboard_env, monke
             "attemptedAt": "2026-11-04",
         },
     )
+    # (바뀜 2026-11-23 #899) 부재 전화 뒤에는 연결 전이라 큰 단계가 미접촉이다. 화면처럼 지금 단계를 그대로 싣는다.
     record(
         client,
         a,
-        {"status": "IN_PROGRESS", "nextScheduleAt": "2026-11-12", "nextScheduleNote": "방문"},
+        {"status": "NOT_EXECUTED", "nextScheduleAt": "2026-11-12", "nextScheduleNote": "방문"},
     )
     client.post(
         f"/api/v1/opportunities/{a}/opinions",

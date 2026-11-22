@@ -113,12 +113,13 @@ def test_cancelled_contact_drops_count_answers_and_schedule(records_env):
     assert cancel(client, opp_id, newest_id).status_code == 200
     after = detail(client, opp_id)
     assert after["records"]["contactCount"]["call"] == 1
-    assert after["records"]["outcome"]["status"] == "IN_PROGRESS"
+    # (바뀜 2026-11-23 #899) 남은 접촉은 부재 한 번뿐 → 연결 전이라 큰 단계는 미접촉.
+    assert after["records"]["outcome"]["status"] == "NOT_EXECUTED"
     assert after["records"]["outcome"]["nextScheduleAt"] is None
     assert after["records"]["salesStep"]["code"] == "NOT_REACHED"
     assert after["scores"] == before["scores"] and after["evalId"] == before["evalId"]
     card = questions.card_of(client, opp_id)
-    assert card["records"]["outcome"]["status"] == "IN_PROGRESS"
+    assert card["records"]["outcome"]["status"] == "NOT_EXECUTED"
     assert card["contactCount"] == 1
     # 새 기록의 번호는 취소한 행 다음으로 이어진다(행과 번호는 남는다).
     saved = questions.save(client, opp_id, questions.contact(result="ABSENT"))

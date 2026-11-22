@@ -48,9 +48,10 @@ def absent_ours(context):
     context["saved"] = support.save(context["client"], context["opp_id"], body)
 
 
-@then('저장되고 세부 단계는 "연결 전"이며 그 접촉에 "우리가" 답이 남는다')
+@then('저장되고 세부 단계는 "연결 전"(큰 단계 미접촉)이며 그 접촉에 "우리가" 답이 남는다')
 def absent_kept(context):
-    assert context["saved"]["status"] == "IN_PROGRESS"
+    # (바뀜 2026-11-23 #899 — PM 결정) 연결 전이면 큰 단계는 미접촉.
+    assert context["saved"]["status"] == "NOT_EXECUTED"
     assert support.step_of(context["client"], context["opp_id"])["code"] == "NOT_REACHED"
     assert who_first_answers(context["opp_id"]) == ["OURS"]
 

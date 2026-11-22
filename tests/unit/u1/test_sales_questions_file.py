@@ -12,7 +12,7 @@ from geosan.config.sales_questions import check_sales_questions_file
 
 EXAMPLE = Path("examples/sales-questions.yaml")
 STEPS = """steps:
-  - { code: NOT_REACHED, label: 연결 전, stage: IN_PROGRESS }
+  - { code: NOT_REACHED, label: 연결 전, stage: NOT_EXECUTED }
   - { code: REACHED, label: 연결됨, stage: IN_PROGRESS }
   - { code: DEMAND_CONFIRMED, label: 수요 확인, stage: IN_PROGRESS }
   - { code: MATERIAL_QUOTE, label: 자료·견적, stage: SAMPLE_OR_REGISTRATION_APPROVED }
@@ -133,19 +133,27 @@ def test_override_without_contact_has_no_step():
 
 
 @pytest.mark.parametrize(
-    ("status", "method", "step", "expected"),
+    ("status", "step", "expected"),
     [
-        ("NOT_EXECUTED", "CALL", "NOT_REACHED", "IN_PROGRESS"),
-        ("NOT_EXECUTED", None, None, "NOT_EXECUTED"),
-        ("IN_PROGRESS", "CALL", "VISIT_SAMPLE", "SAMPLE_OR_REGISTRATION_APPROVED"),
-        ("SAMPLE_OR_REGISTRATION_APPROVED", "CALL", "REACHED", "SAMPLE_OR_REGISTRATION_APPROVED"),
-        ("ON_HOLD", "CALL", "VISIT_SAMPLE", "ON_HOLD"),
-        ("WON", "CALL", "VISIT_SAMPLE", "WON"),
-        ("LOST", "CALL", "MATERIAL_QUOTE", "LOST"),
+        # (바뀜 2026-11-23 #899 — PM 결정) 연결 전 = 미접촉: 연락만 하고 연결되지 않으면 미접촉에 남는다.
+        ("NOT_EXECUTED", "NOT_REACHED", "NOT_EXECUTED"),
+        ("NOT_EXECUTED", "REACHED", "IN_PROGRESS"),
+        ("NOT_EXECUTED", "DEMAND_CONFIRMED", "IN_PROGRESS"),
+        # [단계 고치기]로 연결 전으로 되돌리면 접촉에서 미접촉으로 돌아간다.
+        ("IN_PROGRESS", "NOT_REACHED", "NOT_EXECUTED"),
+        ("NOT_EXECUTED", None, "NOT_EXECUTED"),
+        ("IN_PROGRESS", "VISIT_SAMPLE", "SAMPLE_OR_REGISTRATION_APPROVED"),
+        ("NOT_EXECUTED", "MATERIAL_QUOTE", "SAMPLE_OR_REGISTRATION_APPROVED"),
+        # 견적·샘플은 세부 단계를 고쳐도 내려가지 않고, 보류·성사·거절은 그대로다.
+        ("SAMPLE_OR_REGISTRATION_APPROVED", "REACHED", "SAMPLE_OR_REGISTRATION_APPROVED"),
+        ("SAMPLE_OR_REGISTRATION_APPROVED", "NOT_REACHED", "SAMPLE_OR_REGISTRATION_APPROVED"),
+        ("ON_HOLD", "VISIT_SAMPLE", "ON_HOLD"),
+        ("WON", "VISIT_SAMPLE", "WON"),
+        ("LOST", "MATERIAL_QUOTE", "LOST"),
     ],
 )
-def test_big_stage_only_moves_forward(status, method, step, expected):
-    assert stage_for(status, method, step) == expected
+def test_big_stage_follows_step_for_open_companies(status, step, expected):
+    assert stage_for(status, step) == expected
 
 
 # --- #643: 마무리 답 칸 closes·lostReason 검사 ------------------------------------------
