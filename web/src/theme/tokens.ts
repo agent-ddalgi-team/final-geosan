@@ -200,3 +200,21 @@ export const chartPalette = {
   highlightAccent: tone.lemon,
   cardRadius: radius.xl,
 } as const;
+
+/**
+ * 분석 그림 카드(#898, PM 참고 그림 "Cost Breakdown"): 청회색 판 위에 연노랑 막대, 빈 부분은 반투명 흰 칸.
+ * 가장 중요한 숫자 하나는 오른쪽 위 말풍선(callout)에 크게, 카드 아래에는 그 그림을 읽은 요약 문장.
+ * 판 위 보조 글자 #3E4C50은 청회색 대비 약 6:1, 먹색은 약 10.9:1. 막대 색은 보조 신호이고 값 글자가 늘 함께 있다.
+ */
+export const chartTheme = {
+  cardBg: tone.mist,
+  text: tone.ink,
+  textSecondary: '#3E4C50',
+  track: 'rgba(255, 255, 255, 0.55)',
+  bar: tone.lemon,
+  barStrong: tone.ink,
+  barSoft: 'rgba(255, 255, 255, 0.9)',
+  line: 'rgba(33, 33, 33, 0.18)',
+  calloutBg: 'rgba(255, 255, 255, 0.72)',
+  summaryText: '#3A3A3A',
+} as const;

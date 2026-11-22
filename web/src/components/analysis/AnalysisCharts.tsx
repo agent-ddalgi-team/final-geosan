@@ -15,46 +15,44 @@ import {
   outcomeStatusLabels,
   salesStepLabels,
 } from '../../labels/ko';
-import { chartPalette, colors, radius, typography } from '../../theme/tokens';
+import { chartTheme, radius, typography } from '../../theme/tokens';
+import ChartFrame, { chartSecondary } from '../common/ChartFrame';
+import {
+  funnelReading,
+  gridReading,
+  lostReading,
+  timelineReading,
+  type ChartReading,
+} from './chartSummaries';
 
-const [BLUE, ORANGE, AQUA] = chartPalette.series;
 const percent = (ratio: number) => Math.round(ratio * 100);
-
-const cardStyle = {
-  background: colors.bgContainer,
-  border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: chartPalette.cardRadius,
-  padding: 20,
-  display: 'grid',
-  gap: 14,
-  alignContent: 'start',
-  minWidth: 0,
-} as const;
-const titleStyle = { margin: 0, fontSize: 18, fontWeight: 600 } as const;
-const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
+// #898: 청회색 판 위 그림. 막대는 연노랑, 성사·지금 같은 강조는 먹색, 빈 칸은 반투명 흰색.
+const secondary = chartSecondary;
 
 function ChartCard({
   id,
   title,
   legend,
+  reading,
   children,
 }: {
   id: string;
   title: string;
   legend?: ReactNode;
+  /** 판 아래 요약 문장과 말풍선(#898). */
+  reading?: ChartReading | null;
   children: ReactNode;
 }) {
   return (
-    <section aria-labelledby={`${id}-title`} data-testid={id} style={cardStyle}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-        {/* 제목은 줄지 않고, 좁으면 범례가 다음 줄로 내려간다. */}
-        <h2 id={`${id}-title`} style={{ ...titleStyle, flex: '1 0 auto' }}>
-          {title}
-        </h2>
-        {legend}
-      </div>
+    <ChartFrame
+      id={id}
+      title={title}
+      legend={legend}
+      callout={reading?.callout ?? null}
+      summary={reading?.summary ?? null}
+    >
       {children}
-    </section>
+    </ChartFrame>
   );
 }
 
@@ -78,15 +76,17 @@ function HBars({
   title,
   rows,
   color,
+  reading,
 }: {
   id: string;
   title: string;
   rows: HBarRow[];
   color: string;
+  reading?: ChartReading | null;
 }) {
   const max = Math.max(1, ...rows.map((row) => row.of ?? row.value));
   return (
-    <ChartCard id={id} title={title}>
+    <ChartCard id={id} title={title} reading={reading}>
       {rows.length === 0 ? (
         <p style={{ margin: 0, ...secondary }}>{texts.chartEmpty}</p>
       ) : (
@@ -106,16 +106,16 @@ function HBars({
                   }}
                 >
                   <span>
-                    {row.label} <strong style={{ color: colors.text }}>({row.text})</strong>
+                    {row.label} <strong style={{ color: chartTheme.text }}>({row.text})</strong>
                   </span>
                   {row.note ? <span style={secondary}>{row.note}</span> : null}
                 </div>
                 <div
                   aria-hidden="true"
                   style={{
-                    height: 12,
-                    borderRadius: radius.sm,
-                    background: chartPalette.track,
+                    height: 14,
+                    borderRadius: radius.pill,
+                    background: chartTheme.track,
                     overflow: 'hidden',
                   }}
                 >
@@ -123,7 +123,7 @@ function HBars({
                     style={{
                       width: `${width}%`,
                       height: '100%',
-                      borderRadius: radius.sm,
+                      borderRadius: radius.pill,
                       background: color,
                     }}
                   />
@@ -142,7 +142,8 @@ export function LostReasonBars({ total }: { total: AnalysisStats }) {
     <HBars
       id="chart-lost"
       title={texts.lostChartTitle}
-      color={ORANGE}
+      color={chartTheme.bar}
+      reading={lostReading(total)}
       rows={total.lostReasons.map((item) => ({
         key: item.code,
         label: labelFor(lostReasonLabels, item.code),
@@ -229,7 +230,11 @@ export function SalesFunnel({
   const stages = funnelStages(companies);
   const top = Math.max(stages[0].count, 1);
   return (
-    <ChartCard id="chart-funnel" title={texts.funnelTitle}>
+    <ChartCard
+      id="chart-funnel"
+      title={texts.funnelTitle}
+      reading={funnelReading(stages, minSample)}
+    >
       {stages[0].count === 0 ? (
         <p style={{ margin: 0, ...secondary }}>{texts.chartEmpty}</p>
       ) : (
@@ -262,14 +267,14 @@ export function SalesFunnel({
                   <span style={{ fontWeight: 600 }}>{texts.funnelStages[stage.key]}</span>
                   <div
                     aria-hidden="true"
-                    style={{ height: 22, borderRadius: radius.sm, background: chartPalette.track }}
+                    style={{ height: 24, borderRadius: radius.pill, background: chartTheme.track }}
                   >
                     <div
                       style={{
                         width: `${Math.max((stage.count / top) * 100, stage.count > 0 ? 2 : 0)}%`,
                         height: '100%',
-                        borderRadius: radius.sm,
-                        background: stage.key === 'WON' ? ORANGE : BLUE,
+                        borderRadius: radius.pill,
+                        background: stage.key === 'WON' ? chartTheme.barStrong : chartTheme.bar,
                       }}
                     />
                   </div>
@@ -331,7 +336,7 @@ export function ProcessIndustryGrid({
   );
   const cellStyle = {
     padding: '8px 6px',
-    borderBottom: `1px solid ${colors.borderSecondary}`,
+    borderBottom: `1px solid ${chartTheme.line}`,
     textAlign: 'left' as const,
     verticalAlign: 'middle' as const,
     whiteSpace: 'nowrap' as const,
@@ -339,7 +344,7 @@ export function ProcessIndustryGrid({
   // 공정·산업 이름은 길면 꺾고(좁은 폭에서 칸이 옆으로 넘치지 않게), 숫자 칸은 꺾지 않는다.
   const headStyle = { whiteSpace: 'normal' as const, minWidth: 64, maxWidth: 120 };
   return (
-    <ChartCard id="chart-grid" title={texts.gridTitle}>
+    <ChartCard id="chart-grid" title={texts.gridTitle} reading={gridReading(rows, minSample)}>
       {rows.length === 0 || industries.length === 0 ? (
         <p style={{ margin: 0, ...secondary }}>{texts.chartEmpty}</p>
       ) : (
@@ -391,7 +396,7 @@ export function ProcessIndustryGrid({
                           item.contactedCount,
                           item.wonCount,
                         )}
-                        style={{ ...cellStyle, background: small ? colors.bgLayout : undefined }}
+                        style={{ ...cellStyle, background: small ? chartTheme.track : undefined }}
                       >
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                           <span
@@ -401,7 +406,9 @@ export function ProcessIndustryGrid({
                               height: size,
                               borderRadius: '50%',
                               flex: 'none',
-                              background: small ? colors.border : AQUA,
+                              boxSizing: 'border-box',
+                              border: `1.5px solid ${chartTheme.barStrong}`,
+                              background: small ? chartTheme.barSoft : chartTheme.bar,
                             }}
                           />
                           <span style={{ display: 'grid' }}>
@@ -530,6 +537,7 @@ export function CompanyTimeline({
     <ChartCard
       id="chart-timeline"
       title={texts.timelineTitle}
+      reading={timelineReading(companies)}
       legend={
         <ul
           style={{
@@ -614,7 +622,7 @@ export function CompanyTimeline({
                         height: 2,
                         left: `${x(dots[0].at)}%`,
                         width: `${x(dots[dots.length - 1].at) - x(dots[0].at)}%`,
-                        background: chartPalette.grid,
+                        background: chartTheme.line,
                       }}
                     />
                   ) : null}
@@ -671,7 +679,8 @@ export function CompanyTimeline({
                 background: 'none',
                 border: 'none',
                 padding: 0,
-                color: BLUE,
+                color: chartTheme.text,
+                textDecoration: 'underline',
                 cursor: 'pointer',
                 font: 'inherit',
               }}
@@ -697,8 +706,8 @@ function dotStyle(filled: boolean, step: boolean) {
     height: size,
     boxSizing: 'border-box' as const,
     borderRadius: step ? radius.sm : '50%',
-    border: `2px solid ${step ? ORANGE : BLUE}`,
-    background: filled ? (step ? ORANGE : BLUE) : colors.bgContainer,
+    border: `2px solid ${chartTheme.barStrong}`,
+    background: step ? chartTheme.bar : filled ? chartTheme.barStrong : chartTheme.barSoft,
     flex: 'none',
   };
 }

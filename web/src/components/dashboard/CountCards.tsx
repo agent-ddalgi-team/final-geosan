@@ -19,8 +19,9 @@ import type {
   Dashboard,
   ProgressBandKey,
 } from '../../api/dashboardTypes';
-import { dashboardTexts } from '../../labels/ko';
+import { chartSummaryTexts, dashboardTexts } from '../../labels/ko';
 import { colors, detailTheme, radius, spacing, typography } from '../../theme/tokens';
+import { ChartSummary } from '../common/ChartFrame';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 import ProgressCompanyList from './ProgressCompanyList';
 
@@ -201,6 +202,21 @@ function BandCell({
   );
 }
 
+/** #898 띠 아래 요약 문장: 영업 대상 가운데 접촉 이상 진행한 곳 · 견적·샘플 · 성사 · 미접촉. */
+function progressSummary(counts: CountCardsProps['counts']): string | null {
+  const n = (key: string) => {
+    const value = (counts as Record<string, number | undefined>)[key];
+    return typeof value === 'number' ? value : 0;
+  };
+  const total = n('NOT_CONTACTED') + n('IN_CONTACT') + n('QUOTE_SAMPLE') + n('WON');
+  if (total === 0) return null;
+  const moved = n('IN_CONTACT') + n('QUOTE_SAMPLE') + n('WON');
+  const parts = [chartSummaryTexts.progressMoved(total, moved, n('QUOTE_SAMPLE'), n('WON'))];
+  if (n('NOT_CONTACTED') > 0)
+    parts.push(chartSummaryTexts.progressNotContacted(n('NOT_CONTACTED')));
+  return parts.join(' ');
+}
+
 export default function CountCards({ counts, part = 'all', companies, today }: CountCardsProps) {
   const [openBand, setOpenBand] = useState<ProgressBandKey | null>(null);
   const toggle = (key: ProgressBandKey) => setOpenBand((now) => (now === key ? null : key));
@@ -324,14 +340,17 @@ export default function CountCards({ counts, part = 'all', companies, today }: C
                     gap: 2,
                     justifyItems: 'center',
                     padding: '12px 8px',
-                    background: cell.value > 0 ? detailTheme.accentSoft : detailTheme.bandTodo,
+                    // #898: 회사가 있는 단계는 진한 연노랑으로 또렷하게, 빈 단계는 옅은 회색.
+                    background: cell.value > 0 ? detailTheme.accent : detailTheme.bandTodo,
                     borderRadius: detailTheme.radius,
                     color: colors.text,
                     textDecoration: 'none',
                   }}
                 >
                   <span style={{ fontSize: typography.fontSizeSecondary }}>{name}</span>
-                  <span style={{ fontSize: typography.fontSizeH1, fontWeight: 700 }}>
+                  <span
+                    style={{ fontSize: typography.fontSizeH1, fontWeight: 500, lineHeight: 1.3 }}
+                  >
                     {cell.value}
                     <span style={{ fontSize: typography.fontSizeSecondary, fontWeight: 400 }}>
                       {unit}
@@ -358,6 +377,12 @@ export default function CountCards({ counts, part = 'all', companies, today }: C
           >
             {dashboardTexts.progressOnHold(counts.ON_HOLD)}
           </BandCell>
+        ) : null}
+        {progressSummary(counts) ? (
+          <ChartSummary
+            text={progressSummary(counts) as string}
+            testId="dashboard-progress-summary"
+          />
         ) : null}
         {companies ? (
           openBand ? (
