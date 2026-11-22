@@ -246,7 +246,8 @@ describe('SalesProgressBar', () => {
           questions={questions}
         />,
       );
-      expect(bandStates()).toEqual(['done', 'done', 'todo', 'hold']);
+      // #898(PM 결정 2026-11-23 "연결 전은 미접촉"): 연결되지 않은 접촉만 있고 보류면 접촉 칸까지 가지 않았다.
+      expect(bandStates()).toEqual(['done', 'todo', 'todo', 'hold']);
       expect(bandTexts()[3]).toBe('보류');
       unmount();
       render(

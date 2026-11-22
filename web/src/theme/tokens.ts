@@ -232,3 +232,21 @@ export const mapPinPalette = {
 } as const;
 
 export type MapPinKind = keyof typeof mapPinPalette;
+
+/**
+ * 상세 영업 단계(#898, PM 2026-11-23 "연두와 비슷하게, 해당 부분은 진한 회색"): 지나온 칸·점 = 연두(점 안 검정 ✓),
+ * 지금 칸·점 = 진한 회색(칸 글자 흰색, 대비 약 10:1), 아직인 칸 = 옅은 회색, 아직인 점 = 흰 원 + 회색 테두리.
+ * 칸마다 테두리를 두고, 점 사이 선은 지나온 구간 진한 연두, 나머지 옅은 회색.
+ */
+export const progressTheme = {
+  done: '#E3EC6A',
+  doneFg: tone.ink,
+  doneLine: '#AEB83A',
+  current: '#3C4045',
+  currentFg: '#FFFFFF',
+  todo: '#F1F2F2',
+  todoBorder: '#B5B8B8',
+  line: '#D5D7D7',
+  bandBorder: '#C9CBCB',
+  bandBorderDone: '#C5CE4A',
+} as const;
