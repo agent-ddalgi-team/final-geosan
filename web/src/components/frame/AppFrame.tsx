@@ -78,7 +78,10 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
     storeStaffKey(key);
   }, []);
 
-  const brand = config?.brand ?? defaultBrand;
+  // 서버 설정에 로고가 없으면(null) 화면에 실린 거산 로고를 쓴다(#898).
+  const brand = config?.brand
+    ? { ...config.brand, logoUrl: config.brand.logoUrl ?? defaultBrand.logoUrl }
+    : defaultBrand;
   const narrowDevice = isNarrowDevice();
   const bannerMeta = pageMeta ?? configMeta;
 
@@ -142,7 +145,13 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {brand.logoUrl ? (
-                <img src={brand.logoUrl} alt="" height={32} data-testid="brand-logo" />
+                <img
+                  src={brand.logoUrl}
+                  alt=""
+                  height={40}
+                  data-testid="brand-logo"
+                  style={{ display: 'block' }}
+                />
               ) : null}
               <span
                 data-testid="brand-name"

@@ -35,13 +35,20 @@ function fakeSdk() {
         calls.push({ kind: 'Map', args });
       }
       fitBounds = (...args: unknown[]) => calls.push({ kind: 'fitBounds', args });
-      getProjection = () => ({ fromCoordToOffset: () => ({ x: 120, y: 80 }) });
+      // 모든 좌표가 같은 화면 위치로 온다고 두어, 핀이 모두 겹친 상태를 만든다(#898 펼치기 시험).
+      getProjection = () => ({
+        fromCoordToOffset: () => ({ x: 120, y: 80 }),
+        fromOffsetToCoord: (offset: { x: number; y: number }) => ({ spread: offset }),
+      });
       destroy = () => calls.push({ kind: 'destroy', args: [] });
     },
     LatLng,
     Point: class {
-      constructor(...args: unknown[]) {
-        calls.push({ kind: 'Point', args });
+      constructor(
+        public x: number,
+        public y: number,
+      ) {
+        calls.push({ kind: 'Point', args: [x, y] });
       }
     },
     Circle: class {
@@ -54,6 +61,7 @@ function fakeSdk() {
       constructor(...args: unknown[]) {
         calls.push({ kind: 'Marker', args });
       }
+      setPosition = (...args: unknown[]) => calls.push({ kind: 'setPosition', args });
     },
     Event: {
       addListener: (target: unknown, name: string, handler: () => void) => {
@@ -123,6 +131,28 @@ describe('네이버 지도 바탕(#671)', () => {
     }
     for (const word of Object.values(t.groups)) expect(sent).not.toContain(word);
     expect(screen.queryByTestId('dashboard-map-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('확대·이동이 끝나면(idle) 겹친 점을 서로 떨어진 자리로 옮기고, 본사 핀은 그대로 둔다 (#898)', async () => {
+    const sdk = fakeSdk();
+    window.naver = { maps: sdk.api as never };
+    renderMap('test-key');
+    await waitFor(() => expect(sdk.calls.some((c) => c.kind === 'fitBounds')).toBe(true));
+    const idle = sdk.listeners.find((l) => l.name === 'idle');
+    expect(idle).toBeDefined();
+    idle!.handler();
+    // 회사 핀 4개만 자리를 받는다(본사는 움직이지 않음). 모두 같은 화면 위치였으므로 서로 다른 자리로 펼쳐진다.
+    const moves = sdk.calls
+      .filter((c) => c.kind === 'setPosition')
+      .map((c) => (c.args[0] as { spread: { x: number; y: number } }).spread);
+    expect(moves).toHaveLength(4);
+    for (let i = 0; i < moves.length; i += 1) {
+      for (let j = i + 1; j < moves.length; j += 1) {
+        // 점 가운데 사이 16px(PIN_GAP) 이상 — 점 지름은 14px.
+        expect(Math.hypot(moves[i].x - moves[j].x, moves[i].y - moves[j].y)).toBeGreaterThan(15.5);
+      }
+      expect(Math.hypot(moves[i].x - 120, moves[i].y - 80)).toBeGreaterThan(15.5);
+    }
   });
 
   it('지도 점을 누르면 우리 말풍선에 회사 이름·단계·거리가 보인다', async () => {

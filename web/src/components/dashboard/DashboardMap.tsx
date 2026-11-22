@@ -13,17 +13,31 @@ import { dashboardMapTexts as t } from '../../labels/ko';
 import NaverMapCanvas, { loadNaverMaps, onNaverMapsFailure } from './NaverMapCanvas';
 import VisitGroups from './VisitGroups';
 import type { NaverMapsApi } from './NaverMapCanvas';
-import { colors, radius, spacing, statusPalette, typography } from '../../theme/tokens';
+import {
+  colors,
+  mapPinPalette,
+  radius,
+  spacing,
+  statusPalette,
+  typography,
+} from '../../theme/tokens';
+import { MapPinIcon, MapPinMark } from '../common/MapPin';
+import { spreadPins } from '../common/spreadPins';
 
 const VIEW = 400;
 const CENTER = VIEW / 2;
 const MAX_RADIUS = 180;
+// #898(PM 2026-11-23 "점 색으로만, 선은 안 보이게"): 그림 단위(400칸 기준) 점 지름과, 떨어뜨린 점 가운데 사이 거리.
+const SVG_PIN_SIZE = 11;
+const SVG_HQ_SIZE = 20;
+const SVG_PIN_GAP = 13;
 
 const GROUP_ORDER: DashboardMapGroup[] = ['INTERESTED', 'IN_PROGRESS', 'WON_THIS_YEAR'];
-const GROUP_COLOR: Record<DashboardMapGroup, string> = {
-  INTERESTED: statusPalette.ask.fg,
-  IN_PROGRESS: statusPalette.wait.fg,
-  WON_THIS_YEAR: statusPalette.ok.fg,
+/** 흰 바탕 글자용 묶음 색(#898 핀 색과 같은 계열, 대비 4.5:1 이상). "같이 들를 곳" 줄의 묶음 이름에 쓴다. */
+const GROUP_TEXT_COLOR: Record<DashboardMapGroup, string> = {
+  INTERESTED: mapPinPalette.INTERESTED.text,
+  IN_PROGRESS: mapPinPalette.IN_PROGRESS.text,
+  WON_THIS_YEAR: mapPinPalette.WON_THIS_YEAR.text,
 };
 
 /** 거산 본사 기준 동서·남북 거리(km)로 바꾼다(가까운 거리라 평면 근사로 충분하다). */
@@ -35,38 +49,6 @@ export function offsetKm(
   const y = (point.lat - center.lat) * 110.57;
   return { x, y };
 }
-
-function Shape({ group, x, y }: { group: DashboardMapGroup; x: number; y: number }) {
-  const fill = GROUP_COLOR[group];
-  if (group === 'IN_PROGRESS') {
-    // ◆
-    return (
-      <polygon
-        points={`${x},${y - 9} ${x + 9},${y} ${x},${y + 9} ${x - 9},${y}`}
-        fill={fill}
-        stroke="#fff"
-        strokeWidth={1.5}
-      />
-    );
-  }
-  if (group === 'WON_THIS_YEAR') {
-    // ★
-    const pts = Array.from({ length: 10 }, (_, i) => {
-      const r = i % 2 === 0 ? 11 : 4.6;
-      const a = (Math.PI / 5) * i - Math.PI / 2;
-      return `${x + r * Math.cos(a)},${y + r * Math.sin(a)}`;
-    }).join(' ');
-    return <polygon points={pts} fill={fill} stroke="#fff" strokeWidth={1.2} />;
-  }
-  // ●
-  return <circle cx={x} cy={y} r={8} fill={fill} stroke="#fff" strokeWidth={1.5} />;
-}
-
-const GLYPH: Record<DashboardMapGroup, string> = {
-  INTERESTED: '●',
-  IN_PROGRESS: '◆',
-  WON_THIS_YEAR: '★',
-};
 
 const srOnly = {
   position: 'absolute',
@@ -147,6 +129,21 @@ export default function DashboardMap({
   const rings = [...data.ringsKm].sort((a, b) => a - b);
   const maxKm = rings[rings.length - 1] ?? 100;
   const scale = MAX_RADIUS / maxKm;
+  // 그림 단위 위치. 가장 큰 원 밖에 있는 점은 가장자리에 붙여 그린다.
+  const truePos = data.points.map((p) => {
+    const off = offsetKm(data.center, p);
+    const dist = Math.hypot(off.x, off.y) || 1;
+    const k = Math.min(1, maxKm / dist) * scale;
+    return { x: CENTER + off.x * k, y: CENTER - off.y * k };
+  });
+  // #898: 겹친 점은 본사(가운데, 움직이지 않음) 둘레·서로 사이로 조금씩 떨어뜨려 하나씩 누를 수 있게 한다(잇는 선 없음).
+  // "거산 본사" 이름 자리(왼쪽·오른쪽 반)도 움직이지 않는 칸으로 넣어 핀이 이름을 가리지 않게 한다.
+  const fixedSpots = [
+    { x: CENTER, y: CENTER, fixed: true },
+    { x: CENTER - 14, y: CENTER + 18, fixed: true },
+    { x: CENTER + 14, y: CENTER + 18, fixed: true },
+  ];
+  const placed = spreadPins([...fixedSpots, ...truePos], SVG_PIN_GAP).slice(fixedSpots.length);
   const chosen = data.points.find((p) => p.oppId === selected) ?? null;
   // 지도 대상이 아닌 근처 후보(○)를 눌렀을 때: 펼친 "같이 들를 곳" 묶음에서 찾는다(#673).
   const openGroup = visitGroups?.find((row) => row.oppId === visitOpen) ?? null;
@@ -167,7 +164,6 @@ export default function DashboardMap({
             center={data.center}
             ringsKm={data.ringsKm}
             points={data.points}
-            colors={GROUP_COLOR}
             ringColor={colors.textSecondary}
             hqColor={colors.text}
             onSelect={setSelected}
@@ -226,19 +222,8 @@ export default function DashboardMap({
                 </text>
               </g>
             ))}
-            <g data-testid="dashboard-map-hq">
-              <rect x={CENTER - 8} y={CENTER - 8} width={16} height={16} fill={colors.text} />
-              <text x={CENTER} y={CENTER + 24} textAnchor="middle" fontSize={12} fill={colors.text}>
-                {t.hqLabel}
-              </text>
-            </g>
-            {data.points.map((p) => {
-              const off = offsetKm(data.center, p);
-              const dist = Math.hypot(off.x, off.y) || 1;
-              // 가장 큰 원 밖에 있는 점은 가장자리에 붙여 그린다.
-              const k = Math.min(1, maxKm / dist) * scale;
-              const x = CENTER + off.x * k;
-              const y = CENTER - off.y * k;
+            {data.points.map((p, index) => {
+              const { x, y } = placed[index];
               const groupName = t.groups[p.group];
               return (
                 <g
@@ -257,13 +242,30 @@ export default function DashboardMap({
                     }
                   }}
                 >
-                  <circle cx={x} cy={y} r={16} fill="transparent" />
-                  <Shape group={p.group} x={x} y={y} />
+                  {/* 누르기 쉬운 칸: 점보다 조금 크게(이웃 점과는 겹치지 않는 크기). */}
+                  <circle cx={x} cy={y} r={SVG_PIN_GAP / 2} fill="transparent" />
+                  <MapPinMark kind={p.group} x={x} y={y} size={SVG_PIN_SIZE} />
                   {/* 마우스를 올리면 회사 이름이 뜬다(#673). */}
                   <title>{p.customerName}</title>
                 </g>
               );
             })}
+            {/* #898: 본사 핀은 회사 핀에 가리지 않게 맨 위(마지막)에 그린다. */}
+            <g data-testid="dashboard-map-hq">
+              <MapPinMark kind="HQ" x={CENTER} y={CENTER} size={SVG_HQ_SIZE} />
+              <text
+                x={CENTER}
+                y={CENTER + 22}
+                textAnchor="middle"
+                fontSize={12}
+                fill={colors.text}
+                stroke="#fff"
+                strokeWidth={3}
+                paintOrder="stroke"
+              >
+                {t.hqLabel}
+              </text>
+            </g>
           </svg>
         </>
       )}
@@ -282,12 +284,18 @@ export default function DashboardMap({
       >
         {GROUP_ORDER.map((group) => (
           <li key={group} data-testid="dashboard-map-legend-item">
-            <span aria-hidden="true" style={{ color: GROUP_COLOR[group], marginRight: 4 }}>
-              {GLYPH[group]}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <MapPinIcon kind={group} />
+              {t.groups[group]} {data.points.filter((p) => p.group === group).length}곳
             </span>
-            {t.groups[group]} {data.points.filter((p) => p.group === group).length}곳
           </li>
         ))}
+        <li data-testid="dashboard-map-legend-hq">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <MapPinIcon kind="HQ" />
+            {t.hqLabel}
+          </span>
+        </li>
       </ul>
 
       {chosen || chosenNearby ? (
@@ -358,7 +366,7 @@ export default function DashboardMap({
           widenBelowCount={data.visitWidenBelowCount}
           open={visitOpen}
           onToggle={setVisitOpen}
-          groupColors={GROUP_COLOR}
+          groupColors={GROUP_TEXT_COLOR}
         />
       ) : null}
     </div>

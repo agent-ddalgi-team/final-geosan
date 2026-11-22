@@ -1,10 +1,12 @@
 // 대시보드 지도 바탕을 네이버클라우드 Maps 웹 지도(Dynamic Map)로 그린다(#671, PM 요청 2026-11-13).
 // 약속(계약 C4 screenMapRule): 지도 SDK에 넘기는 값은 좌표와 원의 중심·반지름뿐이다. 회사 이름·영업 단계·거리·메모는
-// SDK 함수 인자로 넘기지 않는다. 점 모양(●◆★)과 "30km" 같은 원 이름만 그림으로 넘기고, 회사 정보는 부모의 HTML 말풍선이 그린다.
+// SDK 함수 인자로 넘기지 않는다. 색 점과 본사 집 그림(#898)과 "30km" 같은 원 이름만 그림으로 넘기고, 회사 정보는 부모의 HTML 말풍선이 그린다.
 // 검색·지오코딩·길찾기 모듈(submodules)은 불러오지 않는다.
 import { useEffect, useRef, useState } from 'react';
 import type { DashboardMapGroup, DashboardMapPoint } from '../../api/dashboardMapTypes';
 import { radius } from '../../theme/tokens';
+import { pinHtml } from '../common/MapPin';
+import { spreadPins } from '../common/spreadPins';
 
 /* 쓰는 SDK 기능만 좁게 적은 모양. 실제 SDK는 window.naver.maps에 있다. */
 interface NaverLatLng {
@@ -21,7 +23,14 @@ interface NaverMapInstance {
   fitBounds: (bounds: NaverBounds) => void;
   destroy: () => void;
   /** 좌표 → 지도 상자 안 화면 위치(px). 마우스를 올린 점 위에 우리 이름표를 띄울 때 쓴다(#673). */
-  getProjection: () => { fromCoordToOffset: (latlng: NaverLatLng) => NaverOffset };
+  getProjection: () => {
+    fromCoordToOffset: (latlng: NaverLatLng) => NaverOffset;
+    /** 화면 위치(px) → 좌표. 겹친 핀을 펼친 자리에 놓을 때 쓴다(#898). */
+    fromOffsetToCoord: (offset: unknown) => NaverLatLng;
+  };
+}
+interface NaverMarker {
+  setPosition: (latlng: NaverLatLng) => void;
 }
 interface NaverCircle {
   getBounds: () => NaverBounds;
@@ -31,7 +40,7 @@ export interface NaverMapsApi {
   LatLng: new (lat: number, lng: number) => NaverLatLng;
   Point: new (x: number, y: number) => unknown;
   Circle: new (options: Record<string, unknown>) => NaverCircle;
-  Marker: new (options: Record<string, unknown>) => unknown;
+  Marker: new (options: Record<string, unknown>) => NaverMarker;
   Event: { addListener: (target: unknown, name: string, handler: () => void) => unknown };
   /** #803 상세 작은 지도: 거산과 회사 두 점을 잇는 선, 두 점을 담는 범위. 대시보드 지도는 쓰지 않는다. */
   Polyline?: new (options: Record<string, unknown>) => unknown;
@@ -103,16 +112,16 @@ export function resetNaverMapsLoader() {
   failureListeners.clear();
 }
 
-const GLYPH: Record<DashboardMapGroup, string> = {
-  INTERESTED: '●',
-  IN_PROGRESS: '◆',
-  WON_THIS_YEAR: '★',
-};
-
-/** 점 모양 그림. 회사 정보 없이 모양·색만 담는다. */
-export function pointIcon(group: DashboardMapGroup, color: string): string {
-  return `<div style="font-size:20px;line-height:20px;color:${color};text-shadow:0 0 2px #fff,0 0 2px #fff;cursor:pointer">${GLYPH[group]}</div>`;
+/** 점 모양 그림(#898: 작은 색 점 — 관심 빨강 · 진행 중 파랑 · 올해 성공 노랑). 회사 정보 없이 색만 담는다. */
+export function pointIcon(group: DashboardMapGroup): string {
+  return pinHtml(group, PIN_SIZE);
 }
+
+// #898(PM 2026-11-23 "핀이 너무 커", "점 색으로만"): 작은 점 + 겹치면 서로 떨어뜨리기(잇는 선 없음).
+// PIN_GAP은 떨어뜨린 점 가운데 사이 거리(px).
+const PIN_SIZE = 14;
+const HQ_PIN_SIZE = 24;
+const PIN_GAP = 16;
 
 /** "같이 들를 곳" 근처 회사 표시(○). 회사 정보 없이 모양만. */
 export const NEARBY_ICON =
@@ -123,7 +132,6 @@ export interface NaverMapCanvasProps {
   center: { lat: number; lng: number };
   ringsKm: number[];
   points: DashboardMapPoint[];
-  colors: Record<DashboardMapGroup, string>;
   ringColor: string;
   hqColor: string;
   /** 점을 누르면 그 기회 번호를 알린다. 말풍선은 부모가 그린다. */
@@ -144,7 +152,6 @@ export default function NaverMapCanvas({
   center,
   ringsKm,
   points,
-  colors,
   ringColor,
   hqColor,
   onSelect,
@@ -165,10 +172,12 @@ export default function NaverMapCanvas({
     const middle = new api.LatLng(center.lat, center.lng);
     const map = new api.Map(box.current, { center: middle, zoom: 9, scaleControl: true });
     // 점에 마우스를 올리면 이름표를, 내리면 지운다. 지도를 끌거나 확대하면 위치가 바뀌니 지운다.
+    // 펼친 핀은 실제 좌표와 조금 다른 자리에 있으므로 이름표는 지금 보이는 자리에 띄운다.
+    const shownAt = new Map<unknown, NaverLatLng>();
     const hoverable = (marker: unknown, oppId: string, position: NaverLatLng) => {
       api.Event.addListener(marker, 'click', () => select.current(oppId));
       api.Event.addListener(marker, 'mouseover', () => {
-        const offset = map.getProjection().fromCoordToOffset(position);
+        const offset = map.getProjection().fromCoordToOffset(shownAt.get(marker) ?? position);
         setHover({ oppId, x: offset.x, y: offset.y });
       });
       api.Event.addListener(marker, 'mouseout', () => setHover(null));
@@ -200,27 +209,51 @@ export default function NaverMapCanvas({
         },
       });
     }
-    new api.Marker({
+    const pins: { marker: NaverMarker; position: NaverLatLng; fixed: boolean }[] = [];
+    const hqMarker = new api.Marker({
       map,
       position: middle,
       clickable: false,
+      // #898: 본사 핀은 회사 핀 위에 보이게.
+      zIndex: 1000,
       icon: {
-        content: `<div style="width:14px;height:14px;background:${hqColor};border:2px solid #fff"></div>`,
-        anchor: new api.Point(9, 9),
+        content: pinHtml('HQ', HQ_PIN_SIZE),
+        anchor: new api.Point(HQ_PIN_SIZE / 2, HQ_PIN_SIZE / 2),
       },
     });
+    pins.push({ marker: hqMarker, position: middle, fixed: true });
     for (const point of points) {
       const position = new api.LatLng(point.lat, point.lng);
       const marker = new api.Marker({
         map,
         position,
         icon: {
-          content: pointIcon(point.group, colors[point.group]),
-          anchor: new api.Point(10, 10),
+          content: pointIcon(point.group),
+          anchor: new api.Point(PIN_SIZE / 2, PIN_SIZE / 2),
         },
       });
       hoverable(marker, point.oppId, position);
+      pins.push({ marker, position, fixed: false });
     }
+    // 확대·이동이 끝날 때마다(idle) 화면 위치로 겹친 핀을 펼친다. 좌표만 다룬다(회사 정보 없음).
+    const spread = () => {
+      const projection = map.getProjection();
+      const spots = pins.map((pin) => ({
+        ...projection.fromCoordToOffset(pin.position),
+        fixed: pin.fixed,
+      }));
+      const placed = spreadPins(spots, PIN_GAP);
+      pins.forEach((pin, i) => {
+        if (pin.fixed) return;
+        const moved = Math.hypot(placed[i].x - spots[i].x, placed[i].y - spots[i].y) > 0.5;
+        const at = moved
+          ? projection.fromOffsetToCoord(new api.Point(placed[i].x, placed[i].y))
+          : pin.position;
+        shownAt.set(pin.marker, at);
+        pin.marker.setPosition(at);
+      });
+    };
+    api.Event.addListener(map, 'idle', spread);
     if (focus) {
       const spot = new api.LatLng(focus.center.lat, focus.center.lng);
       const around = new api.Circle({
@@ -254,7 +287,7 @@ export default function NaverMapCanvas({
         // 정리 오류로 대시보드 전체가 멈추지 않게 여기서만 막는다. 실패 자체는 자리표시 안내 문구로 보인다.
       }
     };
-  }, [api, center.lat, center.lng, ringsKm, points, colors, ringColor, hqColor, focus]);
+  }, [api, center.lat, center.lng, ringsKm, points, ringColor, hqColor, focus]);
 
   const hoverName = hover ? (labelFor?.(hover.oppId) ?? null) : null;
   return (

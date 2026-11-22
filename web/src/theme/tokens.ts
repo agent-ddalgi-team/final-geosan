@@ -218,3 +218,17 @@ export const chartTheme = {
   calloutBg: 'rgba(255, 255, 255, 0.72)',
   summaryText: '#3A3A3A',
 } as const;
+
+/**
+ * 지도 핀(#898). PM 요청 2026-11-23: 회사는 작은 색 점(그림 없음), 거산 본사만 초록 핀 안 흰 집.
+ * 관심 = 빨강, 진행 중 = 파랑, 올해 성공 = 노랑. 점은 흰 테두리 + 그림자로 지도 위에서 보인다.
+ * icon은 본사 집 그림 색(핀 바탕 대비 4.4:1). text는 흰 바탕 글자용 진한 색(4.5:1 이상).
+ */
+export const mapPinPalette = {
+  INTERESTED: { bg: '#E5484D', icon: '#FFFFFF', text: '#B42318' },
+  IN_PROGRESS: { bg: '#1594C9', icon: '#FFFFFF', text: '#0B6A93' },
+  WON_THIS_YEAR: { bg: '#EDB100', icon: tone.ink, text: '#7A5A00' },
+  HQ: { bg: '#23885F', icon: '#FFFFFF', text: '#1B6B4A' },
+} as const;
+
+export type MapPinKind = keyof typeof mapPinPalette;
