@@ -116,18 +116,28 @@ def test_parse_keeps_sent_order_and_allows_unknown_without_basis():
     "row",
     [
         {"customerId": "a", "supplyTier": "TIER1", "basis": None},
-        {"customerId": "a", "supplyTier": "UNKNOWN", "basis": "근거가 있음"},
         {"customerId": "a", "supplyTier": "TIER2_3", "basis": "담당 010-1234-5678"},
         {"customerId": "a", "supplyTier": "TIER3", "basis": "모르는 값"},
         {"customerId": "a", "supplyTier": "TIER1", "basis": "조립", "extra": 1},
         {"customerId": "b", "supplyTier": "TIER1", "basis": "보내지 않은 회사"},
     ],
-    ids=["1차인데 근거 없음", "모름인데 근거", "연락처", "모르는 값", "모르는 칸", "다른 회사"],
+    ids=["1차인데 근거 없음", "연락처", "모르는 값", "모르는 칸", "다른 회사"],
 )
 def test_parse_rejects_whole_batch_on_any_mismatch(row):
     with pytest.raises(AppError) as error:
         tier.parse_supply_tiers(json.dumps([row], ensure_ascii=False), ["a"])
     assert error.value.kind == "LLM_FAILED"
+
+
+def test_unknown_may_say_why_it_is_unclear():
+    """#890(PM 결정 2026-11-22): 모름이면 왜 분명하지 않은지 한 줄을 적을 수 있다."""
+    row = {
+        "customerId": "a",
+        "supplyTier": "UNKNOWN",
+        "basis": "회사명은 변압기 완성품, 생산품은 변압기 부품",
+    }
+    (item,) = tier.parse_supply_tiers(json.dumps([row], ensure_ascii=False), ["a"])
+    assert (item.supply_tier, item.basis) == ("UNKNOWN", row["basis"])
 
 
 # ---------- 판단·저장 ----------
@@ -176,7 +186,7 @@ def test_sends_only_public_fields(tier_env):
     ]
     sent = json.dumps(call["payload"], ensure_ascii=False)
     assert "041-000-0000" not in sent and "가상길" not in sent
-    assert "tier-v2" in call["payload"]["instructions"]
+    assert "tier-v3" in call["payload"]["instructions"]
 
 
 def test_homepage_decided_company_is_not_asked_or_overwritten(tier_env):
@@ -423,7 +433,9 @@ def test_command_redo_overwrites_product_judgment(tier_env, capsys):
     )
 
 
-def test_tier_prompt_v2_sends_functional_parts_to_tier2_3():
+def test_tier_prompt_v3_keeps_functional_parts_and_marks_unclear_as_unknown():
+    """#877 기능 부품은 2·3차, #890 분명하지 않으면(회사명과 생산품이 다른 단계) 모름 + 이유."""
     text = (tier.REPO_ROOT / "examples/prompts/supply-tier.md").read_text(encoding="utf-8")
-    assert text.startswith("[지시문 버전] tier-v2")
+    assert text.startswith("[지시문 버전] tier-v3")
     assert "기능 부품" in text and "TIER2_3로 본다" in text and "창호·수배전반" in text
+    assert "억지로 정하지 않는다" in text and "왜 분명하지 않은지" in text

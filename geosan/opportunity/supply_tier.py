@@ -61,8 +61,9 @@ class SupplyTierJudgment(FileModel):
 
     @model_validator(mode="after")
     def tier_needs_basis(self) -> SupplyTierJudgment:
-        """2·3차·1차면 근거 한 줄이 있어야 하고, 모름이면 근거를 비운다."""
-        if (self.supply_tier == "UNKNOWN") != (self.basis is None):
+        """2·3차·1차면 근거 한 줄이 있어야 한다. 모름이면 왜 모르는지 한 줄을 적거나 비운다
+        (#890, PM 결정 2026-11-22: 분명하지 않은 회사는 검토사항으로, 그 이유를 화면에 보인다)."""
+        if self.supply_tier != "UNKNOWN" and self.basis is None:
             raise ValueError("공급망 위치와 근거가 맞지 않습니다.")
         return self
 
