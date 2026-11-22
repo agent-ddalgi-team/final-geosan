@@ -380,6 +380,26 @@
             "title": "Inputhash",
             "type": "string"
           },
+          "lookBack": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Lookback",
+            "type": "array"
+          },
+          "lookBackFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lookbackfrom"
+          },
           "model": {
             "anyOf": [
               {
@@ -428,6 +448,14 @@
           },
           "success": {
             "$ref": "#/components/schemas/FeedbackSuccess"
+          },
+          "suggestions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FeedbackSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
           }
         },
         "required": [
@@ -3493,6 +3521,69 @@
           "signals"
         ],
         "title": "FeedbackSuccess",
+        "type": "object"
+      },
+      "FeedbackSuggestion": {
+        "description": "#887 AI 분석의 다음 할 일 하나를 일정으로. 저장본의 회사·할 일·날짜에, 보일 때마다 그 회사의\n지금 일정·최신 기록 번호를 채운다(영업 코치 [넣기]와 같은 모양). [넣기]를 눌러야 저장된다.",
+        "properties": {
+          "actionId": {
+            "title": "Actionid",
+            "type": "string"
+          },
+          "actionLabel": {
+            "title": "Actionlabel",
+            "type": "string"
+          },
+          "currentScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentscheduleat"
+          },
+          "currentScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentschedulenote"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeVersion": {
+            "title": "Outcomeversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "actionId",
+          "actionLabel",
+          "date",
+          "outcomeVersion"
+        ],
+        "title": "FeedbackSuggestion",
         "type": "object"
       },
       "FilterState": {
@@ -9207,6 +9298,15 @@
           "nextScheduleAt": {
             "format": "date",
             "title": "Nextscheduleat",
+            "type": "string"
+          },
+          "source": {
+            "default": "COACH",
+            "enum": [
+              "COACH",
+              "ANALYSIS"
+            ],
+            "title": "Source",
             "type": "string"
           }
         },
