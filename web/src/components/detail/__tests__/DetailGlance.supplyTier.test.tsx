@@ -75,8 +75,34 @@ describe('DetailGlance 공급망 위치 줄 (#860)', () => {
     expect(screen.queryByTestId('glance-supply-tier-ai')).not.toBeInTheDocument();
   });
 
-  it.each([['UNKNOWN' as const], [null]])('%s이고 통화 답도 없으면 줄이 없다', (supplyTier) => {
-    renderWith({ supplyTier });
+  it('판단 전이고 통화 답도 없으면 줄이 없다', () => {
+    renderWith({ supplyTier: null });
     expect(screen.queryByTestId('glance-supply-tier')).not.toBeInTheDocument();
+  });
+
+  // #890(PM 결정 2026-11-22): 분명하지 않은(모름) 회사는 검토할 일로 보인다. 전에는 줄이 없었다.
+  it('모름이면 "확인 필요 · 이유 — 통화에서 확인"이 보인다', () => {
+    renderWith({
+      supplyTier: 'UNKNOWN',
+      supplyTierBasis: '회사명은 변압기 완제품, 생산품은 변압기 부품',
+      supplyTierSource: 'PRODUCT',
+    });
+    const line = screen.getByTestId('glance-supply-tier-unclear');
+    expect(line).toHaveTextContent('확인 필요 · 회사명은 변압기 완제품, 생산품은 변압기 부품');
+    expect(line).toHaveTextContent('통화에서 "도금 업체는 누가 정하나요?"로 확인');
+    expect(screen.queryByTestId('glance-supply-tier-ai')).not.toBeInTheDocument();
+  });
+
+  it('모름인데 이유가 없으면 기본 문장', () => {
+    renderWith({ supplyTier: 'UNKNOWN', supplyTierBasis: null });
+    expect(screen.getByTestId('glance-supply-tier-unclear')).toHaveTextContent(
+      '확인 필요 · 1차인지 2·3차인지 생산품만으로는 알 수 없음',
+    );
+  });
+
+  it('모름이어도 통화 답이 있으면 답만 보인다', () => {
+    renderWith({ supplyTier: 'UNKNOWN', supplyTierBasis: '애매함' }, called);
+    expect(screen.getByTestId('glance-supply-tier-call')).toBeInTheDocument();
+    expect(screen.queryByTestId('glance-supply-tier-unclear')).not.toBeInTheDocument();
   });
 });

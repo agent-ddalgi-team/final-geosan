@@ -101,6 +101,8 @@ export default function OpportunityCard({
     kindsUsable && checkKinds.includes('MATERIAL') ? cardRows.checkWords.material : null,
     // 평가 전 회사는 점수 항목이 아직 하나도 없어서 근거 부족이다.
     (card.coreEvidenceGaps ?? []).length > 0 || notEvaluated ? cardRows.checkWords.evidence : null,
+    // #890(PM 결정 2026-11-22): 1차인지 2·3차인지 분명하지 않으면(AI 판단 "모름") 검토사항에 넣는다.
+    card.supplyTier === 'UNKNOWN' ? cardRows.checkWords.supplyTier : null,
   ].filter((word) => word !== null);
   const checkNames = kindsUsable
     ? checkPoints.filter((_, index) => !['PROCESS', 'MATERIAL'].includes(checkKinds[index]))
