@@ -96,6 +96,7 @@ timeline
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
 |---|---|---|---|---|
+| 공급망 위치 꼬리표 대상 | 후보 찾기로 들어온 회사만(사례 파일 18곳은 판단 안 함) | 사례 파일 18곳도 같은 AI 판단으로 2·3차 / 1차 꼬리표 | PM: "18곳도 꼬리표 붙게 해줘" | ✅ PM 결정 2026-11-22 · [#886] |
 | 영업 분석 월별 추세 | 없음(앞 기간 비교는 자동 요약에만) | 최근 12개월 접촉·성사·거절 회사 수 막대 | #802 남은 항목, PM 지시 11/22 | ✅ [#802] |
 
 ### 2026-11-20
@@ -486,5 +487,6 @@ timeline
 [#774]: https://github.com/agent-ddalgi-team/final-geosan/issues/774
 [#770]: https://github.com/agent-ddalgi-team/final-geosan/issues/770
 [#860]: https://github.com/agent-ddalgi-team/final-geosan/issues/860
+[#886]: https://github.com/agent-ddalgi-team/final-geosan/issues/886
 [#802]: https://github.com/agent-ddalgi-team/final-geosan/issues/802
 [#881]: https://github.com/agent-ddalgi-team/final-geosan/issues/881
