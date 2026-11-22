@@ -96,6 +96,9 @@ timeline
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
 |---|---|---|---|---|
+| 영업 분석 [AI 분석 받기] 되먹임 | 누를 때마다 처음부터 새로 봄(지난 제안을 모름), 다음 할 일은 글로만 | 지난 분석 제안을 함께 보내 "지켰나 → 결과"를 돌아보고, 다음 할 일은 [넣기]로 바로 일정에 넣음(누를 때만 저장) | PM: "지금 구조에서 더 나아지는 방향" → 추천대로(11/22). 패턴 올리기·내리기 없이 고리를 잇는 방법 | ✅ PM 결정 2026-11-22 · [#887] |
+| 공급망 위치 "모름" | 화면에 아무것도 안 보임, AI는 웬만하면 둘 중 하나로 정함 | 회사명·생산품이 다른 단계를 가리키는 등 분명하지 않으면 모름 + 이유 한 줄, 카드 검토사항 "1차/2·3차"·상세 "확인 필요" | PM: "1차,2차,3차로 명확히 나오지 않는 것들은 검토사항에 넣어주면 되지" | ✅ PM 결정 2026-11-22 · [#890] |
+| 공급망 위치 꼬리표 대상 | 후보 찾기로 들어온 회사만(사례 파일 18곳은 판단 안 함) | 사례 파일 18곳도 같은 AI 판단으로 2·3차 / 1차 꼬리표 | PM: "18곳도 꼬리표 붙게 해줘" | ✅ PM 결정 2026-11-22 · [#886] |
 | 영업 분석 월별 추세 | 없음(앞 기간 비교는 자동 요약에만) | 최근 12개월 접촉·성사·거절 회사 수 막대 | #802 남은 항목, PM 지시 11/22 | ✅ [#802] |
 
 ### 2026-11-20
@@ -486,5 +489,8 @@ timeline
 [#774]: https://github.com/agent-ddalgi-team/final-geosan/issues/774
 [#770]: https://github.com/agent-ddalgi-team/final-geosan/issues/770
 [#860]: https://github.com/agent-ddalgi-team/final-geosan/issues/860
+[#886]: https://github.com/agent-ddalgi-team/final-geosan/issues/886
+[#887]: https://github.com/agent-ddalgi-team/final-geosan/issues/887
+[#890]: https://github.com/agent-ddalgi-team/final-geosan/issues/890
 [#802]: https://github.com/agent-ddalgi-team/final-geosan/issues/802
 [#881]: https://github.com/agent-ddalgi-team/final-geosan/issues/881

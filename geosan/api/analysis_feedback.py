@@ -20,7 +20,11 @@ from pathlib import Path
 
 from geosan.config.errors import AppError
 from geosan.config.schemas import FileModel
-from geosan.evidence.sales_record_gate import scrub_sales_record
+from geosan.evidence.sales_record_gate import (
+    ScrubbedRecordText,
+    scrub_sales_record,
+    scrub_sales_records,
+)
 
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "examples" / "prompts" / "sales-analysis.md"
 SCHEMA_NAME = "sales_analysis_feedback"
@@ -30,6 +34,13 @@ _DIGIT = re.compile(r"\d")
 COMPARE_KEYS = ("CONTACTED", "WON", "LOST", "ON_HOLD", "IN_PROGRESS")
 # #802(11/20): 숫자 표 뒤에 붙는 회사별 맥락 글의 머리. 회사 이름은 "회사 A1"처럼 바꿔 보낸다.
 CONTEXT_HEAD = "회사별 기록 — 연락처를 뺀 사본, 회사 이름은 '회사 A1'처럼 바꿈, 끝난 회사가 먼저"
+# #887(PM 결정 2026-11-22): 지난 분석의 제안을 이어 받아 "지켰나 → 결과"를 돌아본다.
+LOOK_BACK_HEAD = "지난 분석 제안 — 이 제안을 받은 뒤 회사별 기록에서 지켰는지와 결과를 본다"
+OUTSIDE_COMPANY = "이번 기간 밖 회사"
+# 할 일 제안의 날짜는 받은 날부터 며칠 뒤로 받는다(입력 글에 오늘 날짜를 넣지 않아 저장본이 날마다
+# 낡지 않게). 이 값은 규칙 숫자가 아니라 AI 답의 모양을 묶는 값이다(영업 코치 넣기와 같은 3개).
+MAX_SUGGESTIONS = 3
+MAX_SUGGESTION_DAYS = 30
 
 
 # ---------------------------------------------------------------------------
@@ -56,15 +67,44 @@ class SuccessReading(FileModel):
     signals: list[Claim]
 
 
+class SuggestionReading(FileModel):
+    """#887 다음 할 일 하나를 일정으로: 회사("회사 A3")·할 일 보기 id·며칠 뒤.
+
+    값 검증은 창구가 한다.
+    """
+
+    company: str
+    action_id: str
+    in_days: int
+
+
 class FeedbackReading(FileModel):
     failure: FailureReading
     success: SuccessReading
     next: list[Claim]
     held_back: list[str]
+    # #887: 옛 답(가짜 응답·저장본)에는 없으므로 기본값은 빈 목록. 보내는 스키마에서는 필수다.
+    look_back: list[Claim] = []
+    suggestions: list[SuggestionReading] = []
+
+
+def _all_required(node):
+    """strict JSON 스키마는 모든 칸이 required여야 한다. 기본값이 있는 칸도 required로 올린다."""
+    if isinstance(node, dict):
+        if node.get("type") == "object" and "properties" in node:
+            node["required"] = list(node["properties"])
+            for value in node["properties"].values():
+                value.pop("default", None)
+        for value in node.values():
+            _all_required(value)
+    elif isinstance(node, list):
+        for value in node:
+            _all_required(value)
+    return node
 
 
 def feedback_schema() -> dict:
-    return FeedbackReading.model_json_schema(by_alias=True)
+    return _all_required(FeedbackReading.model_json_schema(by_alias=True))
 
 
 def load_prompt(path: Path = PROMPT_PATH) -> tuple[str, str]:
@@ -324,6 +364,8 @@ def clean_reading(reading: FeedbackReading) -> dict:
         dropped += count
     next_steps, count = _clean_claims(reading.next)
     dropped += count
+    look_back, count = _clean_claims(reading.look_back)
+    dropped += count
     held = [scrub_sales_record(item).text.strip() for item in reading.held_back]
     held = [item for item in held if item]
     if dropped:
@@ -339,6 +381,7 @@ def clean_reading(reading: FeedbackReading) -> dict:
         "success": success,
         "next": next_steps,
         "heldBack": held,
+        "lookBack": look_back,
     }
 
 
@@ -356,4 +399,84 @@ def map_texts(cleaned: dict, convert) -> dict:
         "success": {key: claims(value) for key, value in cleaned["success"].items()},
         "next": claims(cleaned["next"]),
         "heldBack": [convert(item) for item in cleaned["heldBack"]],
+        "lookBack": claims(cleaned.get("lookBack", [])),
     }
+
+
+# ---------------------------------------------------------------------------
+# #887 지난 분석 제안 · 할 일 제안
+# ---------------------------------------------------------------------------
+
+
+def look_back_text(
+    response: dict,
+    *,
+    received_on: date,
+    period: tuple[date | None, date | None],
+    aliases: dict[str, str],
+    other_names: Sequence[str],
+    action_labels: dict[str, str],
+    suggestion_names: dict[str, str],
+    keep_words: Sequence[str] = (),
+) -> ScrubbedRecordText | None:
+    """저장한 지난 분석(response)의 다음 할 일·[넣기] 제안을 보낼 글로 만든다. 없으면 None.
+
+    저장본은 회사 이름을 되돌려 둔 글이라, 이번 회사별 기록에 있는 회사는 그 "회사 A3"으로,
+    이번 기간 밖 회사는 "이번 기간 밖 회사"로 바꾼다(회사 이름은 밖으로 보내지 않는다).
+    aliases = {이름: 회사 A3},
+    suggestion_names = {oppId: 이름}. 긴 이름부터 바꿔 한 이름이 다른 이름 안에 든 경우를 막는다.
+    """
+    names = sorted({*aliases, *other_names}, key=len, reverse=True)
+
+    def hide(text: str) -> str:
+        for name in names:
+            if name:
+                text = text.replace(name, aliases.get(name, OUTSIDE_COMPANY))
+        return text
+
+    lines: list[str] = []
+    for item in [*response.get("next", []), *response.get("failure", {}).get("next", [])]:
+        text = (item.get("text") or "").strip()
+        if text:
+            lines.append(f"- {hide(text)}")
+    for item in response.get("suggestions", []):
+        name = suggestion_names.get(item.get("oppId", ""))
+        label = action_labels.get(item.get("actionId", ""), item.get("actionId", ""))
+        if name and item.get("date"):
+            lines.append(f"- 일정 제안: {hide(name)} · {item['date']} {label}")
+    if not lines:
+        return None
+    start, end = period
+    span = "전체 기간" if start is None and end is None else f"{start or ''}~{end or ''}"
+    head = f"받은 날 {received_on.isoformat()} · 그때 본 기간 {span}"
+    # 회사별 기록과 같은 넉넉한 규칙으로 지운다(되돌린 글이라 한 번 더).
+    (scrubbed,) = scrub_sales_records(
+        ["\n".join([LOOK_BACK_HEAD, head, *lines])],
+        [*keep_words, *aliases.values(), OUTSIDE_COMPANY],
+    )
+    return scrubbed
+
+
+def checked_suggestions(
+    reading: FeedbackReading,
+    *,
+    alias_opp_ids: dict[str, str],
+    actions: dict[str, str],
+    today: date,
+) -> list[dict]:
+    """AI 일정 제안 검증: 회사가 이번 회사별 기록의 "회사 A3"이고, 할 일 보기가 목록에 있고,
+    며칠 뒤가 0~MAX_SUGGESTION_DAYS인 것만. 같은 회사는 앞의 하나만, 최대 MAX_SUGGESTIONS개."""
+    kept: list[dict] = []
+    for item in reading.suggestions:
+        opp_id = alias_opp_ids.get(item.company.strip())
+        if opp_id is None or item.action_id not in actions:
+            continue
+        if not 0 <= item.in_days <= MAX_SUGGESTION_DAYS:
+            continue
+        if any(row["oppId"] == opp_id for row in kept):
+            continue
+        day = today + timedelta(days=item.in_days)
+        kept.append({"oppId": opp_id, "actionId": item.action_id, "date": day.isoformat()})
+        if len(kept) == MAX_SUGGESTIONS:
+            break
+    return kept

@@ -47,4 +47,15 @@ describe('OpportunityCard 공급망 위치 꼬리표 (#860)', () => {
     renderCard({ supplyTier });
     expect(screen.queryByTestId('card-supply-tier-tag')).not.toBeInTheDocument();
   });
+
+  // #890(PM 결정 2026-11-22): 분명하지 않으면 꼬리표 대신 검토사항 줄에 "1차/2·3차".
+  it('모름이면 검토사항 줄에 "1차/2·3차"가 들어간다', () => {
+    renderCard({ supplyTier: 'UNKNOWN', supplyTierBasis: '회사명은 완제품, 생산품은 부품' });
+    expect(screen.getByText(/확인할 것: .*1차\/2·3차/)).toBeInTheDocument();
+  });
+
+  it('2·3차로 정해졌으면 검토사항 줄에 넣지 않는다', () => {
+    renderCard({ supplyTier: 'TIER2_3', supplyTierBasis: '볼트 가공' });
+    expect(screen.queryByText(/1차\/2·3차/)).not.toBeInTheDocument();
+  });
 });

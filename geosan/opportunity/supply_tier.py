@@ -61,8 +61,9 @@ class SupplyTierJudgment(FileModel):
 
     @model_validator(mode="after")
     def tier_needs_basis(self) -> SupplyTierJudgment:
-        """2·3차·1차면 근거 한 줄이 있어야 하고, 모름이면 근거를 비운다."""
-        if (self.supply_tier == "UNKNOWN") != (self.basis is None):
+        """2·3차·1차면 근거 한 줄이 있어야 한다. 모름이면 왜 모르는지 한 줄을 적거나 비운다
+        (#890, PM 결정 2026-11-22: 분명하지 않은 회사는 검토사항으로, 그 이유를 화면에 보인다)."""
+        if self.supply_tier != "UNKNOWN" and self.basis is None:
             raise ValueError("공급망 위치와 근거가 맞지 않습니다.")
         return self
 
@@ -139,12 +140,13 @@ def _public_row(session, customer: Customer) -> tuple[dict, str] | None:
 
 
 def customers_without_tier(session, *, redo: bool = False) -> list[str]:
-    """후보 찾기로 들어왔고 공급망 위치가 아직 없는 회사(사례 파일 회사는 묻지 않는다).
+    """공급망 위치가 아직 없는 목록 회사. 후보 찾기로 들어온 회사와 사례 파일 회사 모두다
+    (#886, PM 결정 2026-11-22 — 처음에는 사례 파일 회사를 묻지 않았다).
 
     redo면(#877, 지시문을 고친 뒤) 생산품으로 판단한 회사도 다시 묻는다. 홈페이지 문장으로 정한
     회사(출처 HOMEPAGE)는 다시 묻지 않는다.
     """
-    query = select(Customer.customer_id).where(Customer.ingest_batch_id.is_not(None))
+    query = select(Customer.customer_id)
     if redo:
         query = query.where(
             (Customer.supply_tier_source.is_(None))

@@ -21,6 +21,7 @@ from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.opportunities import _address_region
 from geosan.api.routes.records import (
     COACH_SUGGESTION_SUFFIX,
+    latest_outcome,
     sales_questions,
     sales_step_state,
 )
@@ -62,6 +63,7 @@ from geosan.rules.codes import (
     SalesStep,
 )
 from geosan.storage.base import new_id, utcnow
+from geosan.workflows.flow_evaluate import today_in_seoul
 
 router = APIRouter()
 
@@ -665,6 +667,20 @@ class FeedbackCompared(_ApiModel):
     rows: list[FeedbackCompareRow]
 
 
+class FeedbackSuggestion(_ApiModel):
+    """#887 AI 분석의 다음 할 일 하나를 일정으로. 저장본의 회사·할 일·날짜에, 보일 때마다 그 회사의
+    지금 일정·최신 기록 번호를 채운다(영업 코치 [넣기]와 같은 모양). [넣기]를 눌러야 저장된다."""
+
+    opp_id: str
+    name: str
+    action_id: str
+    action_label: str
+    date: date
+    current_schedule_at: date | None = None
+    current_schedule_note: str | None = None
+    outcome_version: int
+
+
 class AnalysisFeedbackView(_ApiModel):
     feedback_id: str
     period_from: date | None
@@ -680,6 +696,10 @@ class AnalysisFeedbackView(_ApiModel):
     next: list[FeedbackClaim]
     held_back: list[str]
     compared_to_previous: FeedbackCompared | None
+    # #887: 지난 분석 제안을 돌아본 주장, 그 지난 분석을 받은 날(없으면 null), 일정 제안 0~3개.
+    look_back: list[FeedbackClaim] = []
+    look_back_from: date | None = None
+    suggestions: list[FeedbackSuggestion] = []
     ai_generated: Literal[True] = True
 
 
@@ -716,6 +736,10 @@ class _FeedbackInputs:
     # #802(PM 결정 11/20): 회사별 맥락 글(지운 사본)과 "회사 A1" → 이름 대응표.
     context: object = None
     feedback_max_output_tokens: int = 8000
+    # #887: 지난 분석 제안 글(지운 사본)과 그 분석을 받은 날, 할 일 보기 {id: 이름}.
+    look_back: object = None
+    look_back_from: date | None = None
+    actions: dict | None = None
 
 
 def _feedback_inputs(
@@ -737,6 +761,7 @@ def _feedback_inputs(
     )
     llm = runtime.app_settings.llm
     context = None
+    keep: list[str] = []
     assistant = runtime.app_settings.assistant
     if assistant is not None:
         # 순환 가져오기를 피하려고 여기서 가져온다(영업 코치 부품이 이 창구를 거쳐 분석표를 읽음).
@@ -765,6 +790,15 @@ def _feedback_inputs(
             memo_limit=assistant.coach_prior_memo_limit,
         )
         text = "\n\n".join([text, feedback.CONTEXT_HEAD, *(item.text for item in context.items)])
+    from geosan.api.memo_read import _next_actions  # memo_read가 records를 읽으므로 여기서 부른다.
+
+    actions = _next_actions(session)
+    look_back, look_back_from = _look_back(session, period, dataset_kind, context, keep)
+    if look_back is not None:
+        text = "\n\n".join([text, look_back.text])
+    if actions:
+        action_list = "; ".join(f"{key}={label}" for key, label in actions.items())
+        instructions = f"{instructions}\n\n[할 일 보기] {action_list}"
     return _FeedbackInputs(
         period=period,
         dataset_kind=dataset_kind,
@@ -779,7 +813,57 @@ def _feedback_inputs(
         now=now,
         context=context,
         feedback_max_output_tokens=settings.feedback_max_output_tokens,
+        look_back=look_back,
+        look_back_from=look_back_from,
+        actions=actions,
     )
+
+
+def _look_back(session: Session, period, dataset_kind, context, keep_words):
+    """#887 지난 분석: 이번과 다른 기간으로 받은 저장본 가운데 가장 최근 것.
+
+    이번 기간 끝 날 뒤에 받은 것은 빼서 앞날의 제안으로 지난 기간을 보지 않는다.
+    제안이 없으면 (None, None).
+    """
+    period_from, period_to = period if period is not None else (None, None)
+    rows = session.scalars(
+        select(AnalysisFeedback)
+        .where(AnalysisFeedback.dataset_kind == dataset_kind.value)
+        .order_by(AnalysisFeedback.created_at.desc(), AnalysisFeedback.feedback_id.desc())
+    )
+    for row in rows:
+        if (row.period_from, row.period_to) == (period_from, period_to):
+            continue
+        received = row.created_at.astimezone(KST).date()
+        if period_to is not None and received > period_to:
+            continue
+        break
+    else:
+        return None, None
+    names = context.names if context is not None else {}
+    aliases = {name: alias for alias, name in names.items() if name}
+    other = [name for name in session.scalars(select(Customer.name)) if name]
+    opp_ids = [item.get("oppId") for item in row.response.get("suggestions", [])]
+    suggestion_names = dict(
+        session.execute(
+            select(Opportunity.opp_id, Customer.name)
+            .join(Customer, Customer.customer_id == Opportunity.customer_id)
+            .where(Opportunity.opp_id.in_([item for item in opp_ids if item]))
+        ).all()
+    )
+    from geosan.api.memo_read import _next_actions
+
+    text = feedback.look_back_text(
+        row.response,
+        received_on=received,
+        period=(row.period_from, row.period_to),
+        aliases=aliases,
+        other_names=other,
+        action_labels=_next_actions(session),
+        suggestion_names=suggestion_names,
+        keep_words=keep_words,
+    )
+    return (text, received) if text is not None else (None, None)
 
 
 def _saved_feedback(session: Session, inputs: _FeedbackInputs) -> AnalysisFeedback | None:
@@ -798,10 +882,47 @@ def _saved_feedback(session: Session, inputs: _FeedbackInputs) -> AnalysisFeedba
     ).first()
 
 
-def _feedback_view(row: AnalysisFeedback) -> AnalysisFeedbackView:
+def _view_suggestions(session: Session, stored: list[dict]) -> list[dict]:
+    """#887 저장한 일정 제안에 그 회사의 지금 일정·최신 기록 번호를 채운다.
+
+    날짜가 지났거나 회사·할 일 보기가 없어진 제안은 뺀다([넣기]가 거부될 것이라 보이지 않는다).
+    """
+    from geosan.api.memo_read import _next_actions
+
+    actions = _next_actions(session)
+    today = today_in_seoul()
+    kept = []
+    for item in stored:
+        opportunity = session.get(Opportunity, item.get("oppId", ""))
+        label = actions.get(item.get("actionId", ""))
+        try:
+            day = date.fromisoformat(item.get("date", ""))
+        except ValueError:
+            continue
+        if opportunity is None or label is None or day < today:
+            continue
+        customer = session.get(Customer, opportunity.customer_id)
+        previous = latest_outcome(session, opportunity.opp_id)
+        kept.append(
+            {
+                "oppId": opportunity.opp_id,
+                "name": customer.name if customer is not None else opportunity.opp_id,
+                "actionId": item["actionId"],
+                "actionLabel": label,
+                "date": day,
+                "currentScheduleAt": previous.next_schedule_at if previous else None,
+                "currentScheduleNote": previous.next_schedule_note if previous else None,
+                "outcomeVersion": previous.version if previous else 0,
+            }
+        )
+    return kept
+
+
+def _feedback_view(session: Session, row: AnalysisFeedback) -> AnalysisFeedbackView:
     return AnalysisFeedbackView.model_validate(
         {
             **row.response,
+            "suggestions": _view_suggestions(session, row.response.get("suggestions", [])),
             "feedbackId": row.feedback_id,
             "periodFrom": row.period_from,
             "periodTo": row.period_to,
@@ -834,7 +955,7 @@ def sales_feedback(
     row = _saved_feedback(session, inputs)
     return Envelope[FeedbackState](
         data=FeedbackState(
-            feedback=_feedback_view(row) if row is not None else None,
+            feedback=_feedback_view(session, row) if row is not None else None,
             current=row is not None and row.input_hash == inputs.input_hash,
             switch_on=inputs.switch_on,
         ),
@@ -861,7 +982,7 @@ def request_sales_feedback(
         row = _saved_feedback(session, inputs)
         if row is not None and row.input_hash == inputs.input_hash and not body.refresh:
             return Envelope[FeedbackResult](
-                data=FeedbackResult(feedback=_feedback_view(row), reused=True),
+                data=FeedbackResult(feedback=_feedback_view(session, row), reused=True),
                 meta=_feedback_meta(inputs),
             )
     if inputs.assistant is None:
@@ -902,6 +1023,7 @@ def request_sales_feedback(
             scrub_sales_record(tables),
             *([scrub_sales_record(feedback.CONTEXT_HEAD)] if context_items else []),
             *context_items,
+            *([inputs.look_back] if inputs.look_back is not None else []),
         ],
         also_opp_ids=inputs.context.opp_ids if inputs.context is not None else (),
         instructions=inputs.instructions,
@@ -923,7 +1045,27 @@ def request_sales_feedback(
     if inputs.context is not None:
         # 받은 글의 "회사 A3"을 원래 회사 이름으로 되돌려 저장한다(이름은 밖으로 보내지 않았다).
         cleaned = feedback.map_texts(cleaned, inputs.context.restore)
-    response = {**cleaned, "comparedToPrevious": inputs.compared}
+    from geosan.api.analysis_context import ALIAS_PREFIX
+
+    if inputs.look_back is None:
+        # 돌아볼 지난 제안을 보내지 않았으면 AI가 쓴 돌아보기도 버린다(지어낸 글).
+        cleaned = {**cleaned, "lookBack": []}
+    alias_opp_ids = (
+        {f"{ALIAS_PREFIX}{index}": opp for index, opp in enumerate(inputs.context.opp_ids, 1)}
+        if inputs.context is not None
+        else {}
+    )
+    response = {
+        **cleaned,
+        "comparedToPrevious": inputs.compared,
+        "lookBackFrom": inputs.look_back_from.isoformat() if inputs.look_back_from else None,
+        "suggestions": feedback.checked_suggestions(
+            reading,
+            alias_opp_ids=alias_opp_ids,
+            actions=inputs.actions or {},
+            today=today_in_seoul(),
+        ),
+    }
     period_from_day, period_to_day = inputs.period if inputs.period is not None else (None, None)
     with contextmanager(get_session)(request) as session:
         log = session.get(TransferLog, ticket.log_id)
@@ -943,7 +1085,7 @@ def request_sales_feedback(
         )
         session.add(saved)
         session.flush()
-        view = _feedback_view(saved)
+        view = _feedback_view(session, saved)
     return Envelope[FeedbackResult](
         data=FeedbackResult(feedback=view, reused=False),
         meta=_feedback_meta(inputs),
