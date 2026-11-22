@@ -77,6 +77,8 @@ export interface ScheduleSetBody {
   nextScheduleAt: string;
   actionId: string;
   expectedVersion: number;
+  /** #887 어디서 누른 [넣기]인가. 없으면 영업 코치. 영업 분석이면 기록 끝에 "영업 분석 제안". */
+  source?: 'COACH' | 'ANALYSIS';
 }
 
 export function postSchedule(oppId: string, body: ScheduleSetBody, staffKey: string) {

@@ -299,6 +299,8 @@ export interface FeedbackClaim {
   evidence: string[];
 }
 
+import type { AssistantSuggestion } from './assistant';
+
 export interface AnalysisFeedback {
   feedbackId: string;
   periodFrom: string | null;
@@ -329,6 +331,12 @@ export interface AnalysisFeedback {
       previous: number;
     }[];
   } | null;
+  /** #887 지난 분석 제안을 돌아본 주장. 옛 저장본·옛 서버에는 없다. */
+  lookBack?: FeedbackClaim[];
+  /** #887 돌아본 지난 분석을 받은 날(YYYY-MM-DD). 없으면 null. */
+  lookBackFrom?: string | null;
+  /** #887 다음 할 일을 일정으로 넣을 제안 0~3개(영업 코치 [넣기]와 같은 모양, 서버가 검증). */
+  suggestions?: AssistantSuggestion[];
   aiGenerated: true;
 }
 

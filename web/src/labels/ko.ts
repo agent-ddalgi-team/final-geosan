@@ -2708,6 +2708,12 @@ export const analysisFeedbackTexts = {
   successTitle: '✅ 왜 성공했나',
   nextTitle: '➡ 다음엔',
   heldBackTitle: '판단 보류',
+  /** #887 지난 분석 제안을 돌아본 묶음. */
+  lookBackTitle: '🔁 지난 제안 돌아보기',
+  lookBackFrom: (day: string) => `${day}에 받은 분석의 제안을 그 뒤 기록과 견줌`,
+  /** #887 다음 할 일을 일정으로. [넣기]를 눌러야 저장된다. */
+  suggestionsTitle: '일정으로 넣기',
+  suggestionsNote: '[넣기]를 눌러야 그 회사 다음 일정으로 저장됩니다.',
   parts: {
     where: '어디서',
     why: '왜',

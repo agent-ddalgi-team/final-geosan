@@ -101,7 +101,8 @@ def test_clean_reading_drops_claims_without_numbers_and_scrubs_contacts():
 
 def test_prompt_file_has_a_version_line_and_the_rules():
     text, version = feedback.load_prompt()
-    assert version.startswith("[지시문 버전] analysis-v2")
+    # #887(PM 결정 11/22): 지난 제안 돌아보기·일정 제안이 더해져 v3.
+    assert version.startswith("[지시문 버전] analysis-v3")
     for rule in (
         "표본 부족(결론 금지)",
         "근거",
@@ -109,6 +110,9 @@ def test_prompt_file_has_a_version_line_and_the_rules():
         "사람 이름",
         "회사별 기록",
         "회사 A1",
+        "지난 분석 제안",
+        "lookBack",
+        "suggestions",
     ):
         assert rule in text, rule
 
@@ -296,3 +300,193 @@ def test_context_text_changes_the_saved_copy_to_stale(env):
     assert client.post(URL, json={}, headers=STAFF).status_code == 200
     _note(a, "시험 메모: 샘플을 다음 달에 다시 보자고 함")
     assert client.get(URL, headers=support.VIEWER).json()["data"]["current"] is False
+
+
+# ---------------------------------------------------------------------------
+# #887(PM 결정 2026-11-22): 지난 제안 돌아보기 · 다음 할 일 [넣기]
+# ---------------------------------------------------------------------------
+
+
+def _saved_old_feedback(response, *, period_from=None, period_to=None, days_ago=3):
+    from geosan.storage.base import new_id
+
+    with session_scope() as session:
+        session.add(
+            AnalysisFeedback(
+                feedback_id=new_id("feedback"),
+                period_from=period_from,
+                period_to=period_to,
+                input_hash="old",
+                prompt_version="old",
+                model="fake",
+                response=response,
+                created_by="park-lee",
+                created_at=utcnow() - timedelta(days=days_ago),
+                dataset_kind="VIRTUAL_REVIEWED",
+                is_virtual=True,
+            )
+        )
+
+
+def _old_response(text, suggestions=()):
+    return {**GOOD, "next": [{"text": text, "evidence": ["1곳"]}], "suggestions": list(suggestions)}
+
+
+def test_look_back_text_hides_names_and_lists_advice():
+    """저장본의 회사 이름은 이번 기록의 "회사 A3"으로, 기간 밖 회사는 이름 없이 바꾼다."""
+    text = feedback.look_back_text(
+        _old_response(
+            "가상정밀은 견적 전에 물량을 먼저 묻고, 가상기계는 샘플을 보낸다.",
+            [{"oppId": "opp-1", "actionId": "VISIT", "date": "2026-11-25"}],
+        ),
+        received_on=date(2026, 11, 20),
+        period=(date(2026, 11, 1), date(2026, 11, 20)),
+        aliases={"가상정밀": "회사 A3"},
+        other_names=["가상정밀", "가상기계"],
+        action_labels={"VISIT": "방문"},
+        suggestion_names={"opp-1": "가상정밀"},
+    )
+    assert text is not None
+    body = text.text
+    assert feedback.LOOK_BACK_HEAD in body and "받은 날 2026-11-20" in body
+    assert "회사 A3은 견적 전에 물량을 먼저 묻고" in body
+    assert "이번 기간 밖 회사는 샘플을 보낸다" in body
+    assert "일정 제안: 회사 A3 · 2026-11-25 방문" in body
+    assert "가상정밀" not in body and "가상기계" not in body
+
+
+def test_look_back_text_is_none_without_advice():
+    empty = {**GOOD, "next": []}
+    assert (
+        feedback.look_back_text(
+            empty,
+            received_on=date(2026, 11, 20),
+            period=(None, None),
+            aliases={},
+            other_names=[],
+            action_labels={},
+            suggestion_names={},
+        )
+        is None
+    )
+
+
+def test_checked_suggestions_keep_only_known_company_action_and_days():
+    reading = feedback.FeedbackReading.model_validate(
+        {
+            **GOOD,
+            "suggestions": [
+                {"company": "회사 A1", "actionId": "VISIT", "inDays": 2},
+                {"company": "회사 A1", "actionId": "QUOTE", "inDays": 3},  # 같은 회사 두 번째
+                {"company": "회사 A9", "actionId": "VISIT", "inDays": 1},  # 기록에 없는 회사
+                {"company": "회사 A2", "actionId": "DANCE", "inDays": 1},  # 없는 할 일
+                {"company": "회사 A2", "actionId": "QUOTE", "inDays": 31},  # 너무 먼 날
+            ],
+        }
+    )
+    kept = feedback.checked_suggestions(
+        reading,
+        alias_opp_ids={"회사 A1": "opp-a", "회사 A2": "opp-b"},
+        actions={"VISIT": "방문", "QUOTE": "견적"},
+        today=date(2026, 11, 22),
+    )
+    assert kept == [{"oppId": "opp-a", "actionId": "VISIT", "date": "2026-11-24"}]
+
+
+def test_schema_sent_to_ai_requires_every_field():
+    schema = feedback.feedback_schema()
+    assert set(schema["required"]) >= {"lookBack", "suggestions", "next", "heldBack"}
+    assert "default" not in schema["properties"]["lookBack"]
+
+
+def test_previous_advice_goes_with_the_request_and_comes_back_as_look_back(env):
+    """Given 다른 기간으로 받은 지난 분석 / When [AI 분석 받기]
+    / Then 지난 제안이 회사 이름 없이 함께 가고,
+    돌아본 글은 원래 이름으로 보이며 받은 날이 붙는다.
+    """
+    client, (a, *_), ai = env
+    name = _company_name(a)
+    _saved_old_feedback(
+        _old_response(f"{name}에는 견적 전에 물량을 먼저 묻는다."),
+        period_from=date(2026, 1, 1),
+        period_to=date(2026, 1, 31),
+    )
+    reply = json.loads(json.dumps(GOOD, ensure_ascii=False))
+    reply["lookBack"] = [
+        {"text": "지난번 '물량 먼저' → 회사 A1은 그 뒤 거절(가격).", "evidence": ["회사 A1 · 1번"]}
+    ]
+    ai.raw = json.dumps(reply, ensure_ascii=False)
+    data = client.post(URL, json={}, headers=STAFF).json()["data"]["feedback"]
+    sent = ai.payloads[0]["input"]
+    assert feedback.LOOK_BACK_HEAD in sent and "회사 A1에는 견적 전에 물량을 먼저 묻는다" in sent
+    assert name not in sent
+    assert "[할 일 보기] " in ai.payloads[0]["instructions"]
+    assert data["lookBack"][0]["text"].startswith(f"지난번 '물량 먼저' → {name}은")
+    assert data["lookBackFrom"] == (utcnow().astimezone(KST) - timedelta(days=3)).date().isoformat()
+
+
+def test_without_previous_analysis_look_back_is_dropped(env):
+    """지난 분석이 없으면 보내지 않고, AI가 돌아보기를 지어내도 버린다."""
+    client, _ids, ai = env
+    reply = json.loads(json.dumps(GOOD, ensure_ascii=False))
+    reply["lookBack"] = [{"text": "지어낸 돌아보기", "evidence": ["1곳"]}]
+    ai.raw = json.dumps(reply, ensure_ascii=False)
+    data = client.post(URL, json={}, headers=STAFF).json()["data"]["feedback"]
+    assert feedback.LOOK_BACK_HEAD not in ai.payloads[0]["input"]
+    assert data["lookBack"] == [] and data["lookBackFrom"] is None
+
+
+def test_same_period_refresh_does_not_look_back_at_itself(env):
+    """같은 기간을 다시 받을 때는 자기 자신을 돌아보지 않는다.
+
+    저장본이 늘 '지금과 다름'이 되지 않게.
+    """
+    client, _ids, ai = env
+    assert client.post(URL, json={}, headers=STAFF).status_code == 200
+    assert client.get(URL, headers=support.VIEWER).json()["data"]["current"] is True
+    assert client.post(URL, json={"refresh": True}, headers=STAFF).status_code == 200
+    assert feedback.LOOK_BACK_HEAD not in ai.payloads[1]["input"]
+
+
+def test_suggestions_come_with_current_schedule_and_put_in_marks_the_source(env):
+    """Given AI 일정 제안 / Then 이름·할 일·날짜·지금 일정·기록 번호가 채워져 오고,
+    [넣기](source ANALYSIS)는 그 회사 다음 일정으로 저장되며 "영업 분석 제안"으로 적힌다."""
+    from geosan.records.models import Note
+
+    client, (a, *_), ai = env
+    reply = json.loads(json.dumps(GOOD, ensure_ascii=False))
+    reply["suggestions"] = [{"company": "회사 A1", "actionId": "VISIT", "inDays": 2}]
+    ai.raw = json.dumps(reply, ensure_ascii=False)
+    data = client.post(URL, json={}, headers=STAFF).json()["data"]["feedback"]
+    today = utcnow().astimezone(KST).date()
+    (item,) = data["suggestions"]
+    assert item["oppId"] == a and item["name"] == _company_name(a)
+    assert (item["actionId"], item["actionLabel"]) == ("VISIT", "방문")
+    assert item["date"] == (today + timedelta(days=2)).isoformat()
+    body = {
+        "nextScheduleAt": item["date"],
+        "actionId": "VISIT",
+        "expectedVersion": item["outcomeVersion"],
+        "source": "ANALYSIS",
+    }
+    saved = client.post(f"/api/v1/opportunities/{a}/schedule", json=body, headers=STAFF)
+    assert saved.status_code == 200, saved.text
+    with session_scope() as session:
+        texts = list(session.scalars(select(Note.text).where(Note.opp_id == a)))
+    assert any(text.endswith(" · 영업 분석 제안") for text in texts)
+    # 다시 보면 지금 일정이 그 제안으로 채워져 온다.
+    again = client.get(URL, headers=support.VIEWER).json()["data"]["feedback"]["suggestions"]
+    assert again[0]["currentScheduleAt"] == item["date"]
+
+
+def test_past_suggestions_are_not_shown(env):
+    client, (a, *_), _ai = env
+    _saved_old_feedback(
+        {
+            **GOOD,
+            "comparedToPrevious": None,
+            "suggestions": [{"oppId": a, "actionId": "VISIT", "date": "2020-01-01"}],
+        }
+    )
+    state = client.get(URL, headers=support.VIEWER).json()["data"]
+    assert state["feedback"]["suggestions"] == []
