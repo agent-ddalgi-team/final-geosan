@@ -251,7 +251,9 @@ function SupplyTierLine({
 }) {
   const tier =
     header.supplyTier === 'TIER2_3' || header.supplyTier === 'TIER1' ? header.supplyTier : null;
-  if (!tier && !plateDecider) return null;
+  // #890: AI가 "모름"으로 판단한 회사는 검토할 일로 보인다(통화 답이 있으면 그 답만).
+  const unclear = header.supplyTier === 'UNKNOWN' && !plateDecider;
+  if (!tier && !plateDecider && !unclear) return null;
   const hint = tier ? supplyTierLabels.hint[tier] : '';
   return (
     <div style={line} data-testid="glance-supply-tier">
@@ -270,6 +272,14 @@ function SupplyTierLine({
           {[supplyTierLabels.value[tier], hint, header.supplyTierBasis?.trim()]
             .filter((part) => part)
             .join(' · ')}
+        </span>
+      ) : null}
+      {unclear ? (
+        <span data-testid="glance-supply-tier-unclear">
+          <strong>{supplyTierLabels.unclear}</strong>
+          {' · '}
+          {header.supplyTierBasis?.trim() || supplyTierLabels.unclearDefault}
+          <span style={secondary}> — {supplyTierLabels.unclearAsk}</span>
         </span>
       ) : null}
       {tier && header.supplyTierSource ? (

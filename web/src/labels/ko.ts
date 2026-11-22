@@ -460,7 +460,7 @@ export const cardRows = {
    * 카드 검토사항 줄의 낱말(#659, PM 지시 2026-11-13): 긴 문장 대신 "확인할 것: 공정 · 소재 · 근거 부족"처럼 보인다.
    * 약한 추정뿐·근거 없음은 구분하지 않고 "근거 부족" 하나로 쓴다. 긴 문장은 상세 화면에서 읽는다.
    */
-  checkWords: { process: '공정', material: '소재', evidence: '근거 부족' },
+  checkWords: { process: '공정', material: '소재', evidence: '근거 부족', supplyTier: '1차/2·3차' },
   /**
    * 낱말(공정·소재·근거 부족)을 먼저 적고, 이름 그대로 보이는 조건(필수 요구 이름 등)은 앞 3개 + "외 n개".
    * 예: "확인할 것: 공정 · 소재 · 근거 부족", "확인할 것: 소재 · 방산 납품 자격 · RoHS · ISO 9001 외 1개"
@@ -1237,6 +1237,13 @@ export const supplyTierLabels = {
   source: { PRODUCT: '생산품 기준 AI 추정 · 확인 전', HOMEPAGE: '홈페이지 기준 AI 추정 · 확인 전' },
   /** 통화에서 들은 답("도금 업체는 누가 정하나요?")이 있으면 먼저. 예: 도금 업체: 발주처가 지정 · 통화 11/19 */
   called: (answer: string, date: string) => `도금 업체: ${answer} · 통화 ${date}`,
+  /**
+   * #890(PM 결정 2026-11-22) 1차인지 2·3차인지 분명하지 않은 회사(AI 판단 "모름"). 카드 검토사항 줄에 "1차/2·3차",
+   * 상세 "한눈에"에 이 줄. 예: 확인 필요 · 회사명은 변압기 완제품, 생산품은 변압기 부품 — 통화에서 "도금 업체는 누가 정하나요?"로 확인
+   */
+  unclear: '확인 필요',
+  unclearAsk: '통화에서 "도금 업체는 누가 정하나요?"로 확인',
+  unclearDefault: '1차인지 2·3차인지 생산품만으로는 알 수 없음',
 } as const;
 /** 공급망 위치 답을 받는 꼬리 질문 id(examples/sales-questions.yaml, id는 바꾸지 않는다). */
 export const PLATER_DECIDER_QUESTION_ID = 'PLATER_DECIDER';
