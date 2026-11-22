@@ -135,7 +135,8 @@ def test_override_without_contact_has_no_step():
 @pytest.mark.parametrize(
     ("status", "step", "expected"),
     [
-        # (바뀜 2026-11-23 #899 — PM 결정) 연결 전 = 미접촉: 연락만 하고 연결되지 않으면 미접촉에 남는다.
+        # (바뀜 2026-11-23 #899 — PM 결정) 연결 전 = 미접촉:
+        # 연락만 하고 연결되지 않으면 미접촉에 남는다.
         ("NOT_EXECUTED", "NOT_REACHED", "NOT_EXECUTED"),
         ("NOT_EXECUTED", "REACHED", "IN_PROGRESS"),
         ("NOT_EXECUTED", "DEMAND_CONFIRMED", "IN_PROGRESS"),
