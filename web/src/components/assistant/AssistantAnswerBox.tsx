@@ -32,7 +32,14 @@ function scheduleText(date: string | null, note: string | null): string {
 
 type PutState = 'idle' | 'confirm' | 'saving' | 'done';
 
-function SuggestionItem({ item }: { item: AssistantSuggestion }) {
+/** #887 영업 분석의 일정 제안도 같은 줄을 쓴다(source ANALYSIS). */
+export function SuggestionItem({
+  item,
+  source,
+}: {
+  item: AssistantSuggestion;
+  source?: 'COACH' | 'ANALYSIS';
+}) {
   const { staffKey, canRecord } = useFrame();
   const [state, setState] = useState<PutState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +61,7 @@ function SuggestionItem({ item }: { item: AssistantSuggestion }) {
           nextScheduleAt: item.date,
           actionId: item.actionId,
           expectedVersion: item.outcomeVersion,
+          ...(source ? { source } : {}),
         },
         staffKey,
       );

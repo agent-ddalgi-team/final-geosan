@@ -2,6 +2,8 @@
 // 숫자 표와 회사별 기록(메모·사유·답, 연락처 지운 사본, #802 11/20)을 외부 AI에 보내 실패를 먼저(어디서 → 왜 → 실패 전 신호 → 성공과 다른 점 → 다음엔), 성공,
 // 다음 할 일을 근거 숫자와 함께 받는다. 기간마다 저장본을 먼저 읽고(AI 호출 없음), [AI 분석 받기 💰]를
 // 눌러야 부른다. 영업 기록 스위치가 꺼져 있거나 담당자를 안 골랐거나 보기 전용이면 단추가 잠긴다.
+// #887: 지난 분석의 제안을 돌아본 "🔁 지난 제안 돌아보기"를 맨 위에, 다음 할 일의 일정 제안은 영업 코치와
+// 같은 [넣기] 줄로 보인다(누를 때만 저장, 기록 끝말 "· 영업 분석 제안").
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { ApiError } from '../../api/client';
@@ -14,6 +16,7 @@ import {
   type FeedbackState,
 } from '../../api/salesAnalysis';
 import { analysisFeedbackTexts as t } from '../../labels/ko';
+import { SuggestionItem } from '../assistant/AssistantAnswerBox';
 import { colors, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
@@ -186,6 +189,15 @@ export default function AnalysisFeedbackCard({ period, reloadKey = 0 }: Analysis
       ) : null}
       {feedback ? (
         <>
+          {(feedback.lookBack ?? []).length > 0 ? (
+            <section data-testid="feedback-look-back" style={{ display: 'grid', gap: 6 }}>
+              <h3 style={{ margin: 0, fontSize: typography.fontSize }}>{t.lookBackTitle}</h3>
+              {feedback.lookBackFrom ? (
+                <span style={secondary}>{t.lookBackFrom(feedback.lookBackFrom)}</span>
+              ) : null}
+              <Claims items={feedback.lookBack ?? []} testId="feedback-look-back-items" />
+            </section>
+          ) : null}
           <Part
             title={t.failureTitle}
             parts={feedback.failure}
@@ -202,6 +214,19 @@ export default function AnalysisFeedbackCard({ period, reloadKey = 0 }: Analysis
             <section style={{ display: 'grid', gap: 6 }}>
               <h3 style={{ margin: 0, fontSize: typography.fontSize }}>{t.nextTitle}</h3>
               <Claims items={feedback.next} testId="feedback-next" />
+            </section>
+          ) : null}
+          {(feedback.suggestions ?? []).length > 0 ? (
+            <section data-testid="feedback-suggestions" style={{ display: 'grid', gap: 6 }}>
+              <strong style={{ fontSize: typography.fontSizeSecondary }}>
+                {t.suggestionsTitle}
+              </strong>
+              <span style={secondary}>{t.suggestionsNote}</span>
+              <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6 }}>
+                {(feedback.suggestions ?? []).map((item) => (
+                  <SuggestionItem key={item.oppId} item={item} source="ANALYSIS" />
+                ))}
+              </ul>
             </section>
           ) : null}
           {feedback.heldBack.length > 0 ? (
