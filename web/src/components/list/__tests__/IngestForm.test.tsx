@@ -107,6 +107,7 @@ describe('IngestForm', () => {
     await user.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
     await user.click(screen.getByTestId('ingest-region-세종'));
     await user.click(screen.getByTestId('ingest-region-충남'));
+    await user.click(screen.getByText('산업으로 좁히기', { exact: false }));
     await user.click(screen.getByTestId('ingest-industry-자동차 부품'));
     await user.click(screen.getByTestId('ingest-industry-방위산업'));
     await user.click(screen.getByTestId('ingest-submit'));

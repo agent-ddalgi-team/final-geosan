@@ -17,7 +17,7 @@ import {
   salesQuestionTexts,
   salesStepLabels,
 } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { ChoiceQuestionField, confirmedLabels, currentLineText } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
@@ -289,7 +289,12 @@ export function SalesQuestionFields({
   return (
     <fieldset
       data-testid="sales-questions"
-      style={{ border: `1px solid ${colors.border}`, borderRadius: 8, padding: 12, margin: 0 }}
+      style={{
+        border: `1px solid ${colors.border}`,
+        borderRadius: radius.md,
+        padding: 12,
+        margin: 0,
+      }}
     >
       <legend style={{ padding: '0 4px' }}>{salesQuestionTexts.questionsTitle}</legend>
       {/* 왜 이 질문들이 나오는지 한 줄(#674): 질문은 세부 단계마다 다르고 "모든 단계" 질문은 늘 나온다. */}

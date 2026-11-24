@@ -33,6 +33,8 @@ function isNarrowDevice(): boolean {
 export interface AppFrameProps {
   /** 페이지의 h1 (페이지마다 하나). */
   title: string;
+  /** 본문이 제목과 화면 동작을 한 줄에 직접 배치할 때 사용한다. */
+  ownHeading?: boolean;
   children?: ReactNode;
   /**
    * 오른쪽 "💬 영업 코치" 칸(#773). assistant = 여러 회사를 보는 질문 칸(대시보드·목록·관심 기업·영업 분석),
@@ -43,7 +45,13 @@ export interface AppFrameProps {
   dockScreen?: DockScreen;
 }
 
-export default function AppFrame({ title, children, dock = null, dockScreen }: AppFrameProps) {
+export default function AppFrame({
+  title,
+  ownHeading = false,
+  children,
+  dock = null,
+  dockScreen,
+}: AppFrameProps) {
   const [dockSlot, setDockSlot] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<ConfigUi | null>(null);
   const [configMeta, setConfigMeta] = useState<Meta | null>(null);
@@ -78,7 +86,10 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
     storeStaffKey(key);
   }, []);
 
-  const brand = config?.brand ?? defaultBrand;
+  // 서버 설정에 로고가 없으면(null) 화면에 실린 거산 로고를 쓴다(#898).
+  const brand = config?.brand
+    ? { ...config.brand, logoUrl: config.brand.logoUrl ?? defaultBrand.logoUrl }
+    : defaultBrand;
   const narrowDevice = isNarrowDevice();
   const bannerMeta = pageMeta ?? configMeta;
 
@@ -105,10 +116,17 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
 
   return (
     <FrameContext.Provider value={value}>
-      {/* Ant Design 기본 링크색·보조 글자색은 대비 4.5:1에 못 미쳐(axe), 토큰 값으로 맞춘다. */}
+      {/* Ant Design 기본 링크색·보조 글자색은 대비 4.5:1에 못 미쳐(axe), 토큰 값으로 맞춘다.
+          #898: 링크는 먹색 + 밑줄(참고 그림 톤). 서버 설정 brand.colorPrimary는 링크색으로 쓰지 않는다. */}
       <ConfigProvider
         theme={{
-          token: { colorLink: brand.colorPrimary, colorTextDescription: colors.textSecondary },
+          token: {
+            colorLink: colors.text,
+            colorLinkHover: colors.textSecondary,
+            colorLinkActive: colors.text,
+            linkDecoration: 'underline',
+            colorTextDescription: colors.textSecondary,
+          },
         }}
       >
         <a href="#main" className="skip-link" data-testid="skip-link">
@@ -135,7 +153,13 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {brand.logoUrl ? (
-                <img src={brand.logoUrl} alt="" height={32} data-testid="brand-logo" />
+                <img
+                  src={brand.logoUrl}
+                  alt=""
+                  height={40}
+                  data-testid="brand-logo"
+                  style={{ display: 'block' }}
+                />
               ) : null}
               <span
                 data-testid="brand-name"
@@ -203,9 +227,11 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
               padding: '24px',
             }}
           >
-            <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
-              {pageTitle ?? title}
-            </Typography.Title>
+            {!ownHeading ? (
+              <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
+                {pageTitle ?? title}
+              </Typography.Title>
+            ) : null}
             {children}
             {dockBody && narrowDevice ? (
               <CoachDock narrowDevice screen={dockScreen}>

@@ -8,7 +8,7 @@ import { Button, Typography } from 'antd';
 import type { CoachResult } from '../../api/coach';
 import type { SalesQuestion, SalesQuestions, SalesStep, SalesStepView } from '../../api/types';
 import { coachTexts as texts, memoReadTexts, salesQuestionTexts } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { STEP_ORDER, closingPick, nextActionPick } from './SalesQuestions';
 
@@ -231,7 +231,7 @@ export function CoachReview({
         gap: 12,
         padding: 12,
         border: `1px solid ${colors.border}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
       }}
     >
       <Typography.Text strong>{texts.title}</Typography.Text>

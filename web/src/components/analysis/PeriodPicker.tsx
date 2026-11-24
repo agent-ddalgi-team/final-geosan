@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AnalysisPeriod } from '../../api/salesAnalysis';
 import { analysisCharts as texts } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { todayKst } from '../../utils/time';
 
 export type PresetKey = keyof typeof texts.presets;
@@ -77,7 +77,7 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
       border: `1px solid ${active ? colors.text : colors.borderSecondary}`,
       background: active ? colors.text : colors.bgContainer,
       color: active ? colors.bgContainer : colors.text,
-      borderRadius: 999,
+      borderRadius: radius.pill,
       padding: '4px 12px',
       fontSize: typography.fontSizeSecondary,
       cursor: 'pointer',
@@ -85,7 +85,7 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
   const dateInput = {
     font: 'inherit',
     border: `1px solid ${colors.border}`,
-    borderRadius: 8,
+    borderRadius: radius.md,
     padding: '6px 10px',
     color: colors.text,
     background: colors.bgContainer,
@@ -110,7 +110,7 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
           border: `1px solid ${colors.borderSecondary}`,
           background: colors.bgContainer,
           color: colors.text,
-          borderRadius: 999,
+          borderRadius: radius.pill,
           padding: '8px 18px',
           font: 'inherit',
           cursor: 'pointer',
@@ -156,7 +156,7 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
             boxSizing: 'border-box',
             background: colors.bgContainer,
             border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: 14,
+            borderRadius: radius.lg,
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.14)',
             padding: 14,
             display: 'grid',

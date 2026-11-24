@@ -1,8 +1,146 @@
 /* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다. */
+.prospect-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.prospect-form,
+.prospect-history {
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.prospect-form {
+  display: grid;
+  gap: 14px;
+}
+
+.prospect-history {
+  margin-top: 12px;
+}
+
+.prospect-check-group {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.prospect-check-group legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.prospect-check-group legend small {
+  margin-left: 4px;
+  color: #5b6470;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.prospect-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-testid='ingest-process'] .prospect-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.prospect-choices label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  gap: 7px;
+  padding: 5px 9px;
+  border: 1px solid #e3e6ea;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.prospect-choices label:has(input:checked) {
+  background: #e6effb;
+  border-color: #1a4f9c;
+}
+
+.prospect-choices input {
+  flex: none;
+  margin: 0;
+  accent-color: #1a4f9c;
+}
+
+.prospect-refinement,
+.prospect-form-footer {
+  border-top: 1px solid #e3e6ea;
+  padding-top: 10px;
+}
+
+.prospect-refinement summary,
+.prospect-history summary,
+.prospect-region-direct {
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.prospect-refinement summary span {
+  margin-left: 6px;
+  color: #5b6470;
+}
+
+.prospect-refinement[open] summary,
+.prospect-history[open] summary {
+  margin-bottom: 8px;
+}
+
+.prospect-refinement p,
+.prospect-form-help {
+  margin: 0;
+  color: #5b6470;
+  font-size: 14px;
+}
+
+.prospect-estimate {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  background: #f5f6f8;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.prospect-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prospect-form-help {
+  display: grid;
+  gap: 2px;
+}
+
+.prospect-form-footer button {
+  margin-left: auto;
+}
+
 html,
 body {
   margin: 0;
   font-family:
+    'Urbanist Variable',
     'Pretendard Variable',
     Pretendard,
     -apple-system,
@@ -10,8 +148,52 @@ body {
     sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  background: #f5f6f8;
-  color: #1f2329;
+  background: #f2f3f3;
+  color: #212121;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 디자인 톤(#898): 화면 제목은 크고 가볍게(참고 그림 Heading), 표 숫자는 자리 맞춤. */
+h1 {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 링크(#898): 먹색 + 옅은 밑줄, 손을 올리면 밑줄이 진해진다. 색만으로 구분하지 않게 밑줄은 늘 보인다. */
+a {
+  color: #212121;
+  text-decoration: underline;
+  text-decoration-color: rgba(33, 33, 33, 0.4);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: #212121;
+  text-decoration-color: currentColor;
+}
+
+/* 부품 안에 따로 모양을 정하지 않은 기본 입력 칸·선택 칸·단추도 알약 모양으로 맞춘다(#898). */
+select,
+input[type='text'],
+input[type='search'],
+input[type='date'],
+input[type='number'],
+input:not([type]) {
+  border-radius: 999px;
+  font-family: inherit;
+}
+
+textarea {
+  border-radius: 16px;
+  font-family: inherit;
+}
+
+button {
+  font-family: inherit;
 }
 
 /* 접은 왼쪽 메뉴에서 그림에 손을 올리거나 키보드로 오면 오른쪽에 이름표가 뜬다(#767). */
@@ -22,7 +204,7 @@ body {
   transform: translate(-4px, -50%);
   padding: 6px 10px;
   border-radius: 8px;
-  background: #1c1e21;
+  background: #212121;
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
@@ -50,13 +232,13 @@ body {
 
 /* 초점선: 강조색 2px 실선, 바깥 2px 간격. outline: none 금지. */
 :focus-visible {
-  outline: 2px solid #1f5fbf;
+  outline: 2px solid #212121;
   outline-offset: 2px;
 }
 
 /* Ant Design Select는 안쪽 입력칸이 보이지 않아 위 초점선이 안 보이므로 겉틀에 같은 선을 준다. */
 .ant-select:has(:focus-visible) > .ant-select-selector {
-  outline: 2px solid #1f5fbf !important;
+  outline: 2px solid #212121 !important;
   outline-offset: 2px;
 }
 
@@ -104,7 +286,7 @@ body {
 .report-page h2 {
   margin: 0 0 6px;
   padding-bottom: 2px;
-  border-bottom: 1px solid #767f8c;
+  border-bottom: 1px solid #8c8c8c;
   font-size: 16px;
 }
 

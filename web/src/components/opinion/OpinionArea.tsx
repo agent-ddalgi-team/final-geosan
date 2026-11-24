@@ -10,7 +10,7 @@ import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { ApiError, postOpinion } from '../../api/client';
 import type { Meta, Opinion, OpinionRecord } from '../../api/types';
 import { errorTexts, listSimple, opinionArea, opinionLabels } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { formatHourMinute } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
@@ -154,7 +154,7 @@ export default function OpinionArea({
               if (value) onPick(value);
             }}
             data-testid="opinion-select"
-            style={{ minHeight: 32, padding: '0 8px', borderRadius: 8, font: 'inherit' }}
+            style={{ minHeight: 32, padding: '0 8px', borderRadius: radius.md, font: 'inherit' }}
           >
             <option value="" disabled>
               {listSimple.opinionSelectPlaceholder}

@@ -23,7 +23,7 @@ function ListRoute() {
     return <Navigate to={`${BOOKMARKS_PATH}${query ? `?${query}` : ''}`} replace />;
   }
   return (
-    <AppFrame title={frame.pageTitleList} dock="assistant" dockScreen="LIST">
+    <AppFrame title={frame.pageTitleList} ownHeading dock="assistant" dockScreen="LIST">
       <OpportunityListPage />
     </AppFrame>
   );

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { frame } from '../../labels/ko';
-import { colors, detailTheme, typography } from '../../theme/tokens';
+import { colors, radius, tone, typography } from '../../theme/tokens';
 
 /** 코치 칸이 놓이는 화면 종류(#795). */
 export type DockScreen = 'DASHBOARD' | 'LIST' | 'BOOKMARKS' | 'DETAIL' | 'ANALYSIS';
@@ -43,7 +43,7 @@ const toggleStyle = {
   minWidth: 36,
   minHeight: 36,
   border: `1px solid ${colors.border}`,
-  borderRadius: 8,
+  borderRadius: radius.pill,
   background: colors.bgContainer,
   cursor: 'pointer',
   font: 'inherit',
@@ -96,12 +96,12 @@ export default function CoachDock({
         maxHeight: 'calc(100vh - 24px)',
         overflowY: collapsed ? 'hidden' : 'auto',
         boxSizing: 'border-box',
-        // #803: 본문과 같은 흰 바탕이라 경계가 안 보였다. 옅은 연두 판 + 그림자로 떠 있는 판처럼.
-        border: `1px solid ${detailTheme.accent}`,
-        borderRadius: 12,
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+        // #803: 본문과 같은 흰 바탕이라 경계가 안 보였다. #898: 옅은 청회색 판(참고 그림의 색 카드)으로 떠 있는 판처럼.
+        border: `1px solid ${tone.mist}`,
+        borderRadius: radius.xl,
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
         margin: '12px 12px 12px 0',
-        background: detailTheme.accentSoft,
+        background: tone.mistSoft,
         padding: collapsed ? '12px 8px' : '12px 16px 24px',
       }}
     >

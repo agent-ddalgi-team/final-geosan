@@ -41,7 +41,7 @@ it('네 줄이 순서대로 그림과 이름으로 보이고 각 화면 주소�
   renderMenu();
   const links = [
     ['nav-dashboard-link', 'dashboard', frame.menuDashboard, '/'],
-    ['nav-opportunities-link', 'find', '신규 거래처 찾기', '/opportunities'],
+    ['nav-opportunities-link', 'find', '거래처 후보', '/opportunities'],
     ['nav-bookmarks-link', 'bookmarks', '관심 기업', '/bookmarks'],
     ['nav-sales-analysis-link', 'sales-analysis', frame.menuSalesAnalysis, '/sales-analysis'],
   ] as const;
@@ -129,7 +129,7 @@ describe('새로 생긴 것 숫자 꼬리표 (#770)', () => {
         'nav-dashboard-link-badge',
       ),
     ).toBeNull();
-    expect(screen.getByRole('link', { name: '신규 거래처 찾기, 새 후보 12곳' })).toBe(
+    expect(screen.getByRole('link', { name: '거래처 후보, 새 후보 12곳' })).toBe(
       screen.getByTestId('nav-opportunities-link'),
     );
     expect(screen.getByTestId('nav-bookmarks-link')).not.toHaveAttribute('aria-label');

@@ -17,7 +17,7 @@ import {
 } from '../../api/salesAnalysis';
 import { analysisFeedbackTexts as t } from '../../labels/ko';
 import { SuggestionItem } from '../assistant/AssistantAnswerBox';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
@@ -26,7 +26,7 @@ const box = {
   gap: 12,
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
+  borderRadius: radius.lg,
   padding: '16px 20px',
 } as const;
 

@@ -11,7 +11,7 @@ import type { MemoProposal, MemoReadAnswer } from '../../api/assistant';
 import { ApiError, getActivity, postIndustries, postOutcome } from '../../api/client';
 import type { OutcomeRecord, OutcomeRequest } from '../../api/types';
 import { errorTexts, memoReadTexts as texts } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
@@ -178,7 +178,7 @@ export default function MemoRead({
             gap: 8,
             padding: 12,
             border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: 8,
+            borderRadius: radius.md,
             background: colors.bgLayout,
           }}
         >
@@ -187,7 +187,7 @@ export default function MemoRead({
             style={{
               justifySelf: 'start',
               padding: '2px 8px',
-              borderRadius: 4,
+              borderRadius: radius.sm,
               background: statusPalette.wait.bg,
               color: statusPalette.wait.fg,
               fontSize: typography.fontSizeSecondary,

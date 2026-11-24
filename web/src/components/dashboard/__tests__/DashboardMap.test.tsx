@@ -30,18 +30,30 @@ describe('DashboardMap', () => {
     expect(rings.map((r) => r.textContent)).toEqual(['100km', '50km', '30km']);
   });
 
-  it('점을 묶음별 모양으로 그리고 범례에 곳 수를 함께 적는다', () => {
+  it('회사는 묶음별 색 점으로만(그림 없이), 거산 본사만 집 모양으로 그리고 범례에 곳 수를 함께 적는다', () => {
+    // #898(PM 2026-11-23): 관심 빨강 · 진행 중 파랑 · 올해 성공 노랑 점, 본사만 집. 점을 잇는 선은 없다.
     renderMap(data);
     const points = screen.getAllByTestId('dashboard-map-point');
     expect(points).toHaveLength(4);
-    const shapeOf = (group: string) =>
-      points.find((p) => p.getAttribute('data-group') === group)!.firstElementChild!
-        .nextElementSibling!;
-    expect(shapeOf('INTERESTED').tagName).toBe('circle');
-    expect(shapeOf('IN_PROGRESS').tagName).toBe('polygon');
-    expect(shapeOf('WON_THIS_YEAR').tagName).toBe('polygon');
-    const items = screen.getAllByTestId('dashboard-map-legend-item').map((i) => i.textContent);
-    expect(items).toEqual(['●관심 2곳', '◆진행 중 1곳', '★올해 성공 1곳']);
+    for (const point of points) {
+      const pin = point.querySelector('[data-pin]')!;
+      expect(pin.getAttribute('data-pin')).toBe('dot');
+      expect(pin.getAttribute('data-kind')).toBe(point.getAttribute('data-group'));
+      expect(pin.querySelector('path')).toBeNull();
+      expect(point.querySelector('line')).toBeNull();
+    }
+    expect(screen.getByTestId('dashboard-map-hq').querySelector('[data-pin]')).toHaveAttribute(
+      'data-pin',
+      'house',
+    );
+    const items = screen.getAllByTestId('dashboard-map-legend-item');
+    expect(items.map((i) => i.textContent)).toEqual(['관심 2곳', '진행 중 1곳', '올해 성공 1곳']);
+    expect(items.map((i) => i.querySelector('[data-pin]')!.getAttribute('data-kind'))).toEqual([
+      'INTERESTED',
+      'IN_PROGRESS',
+      'WON_THIS_YEAR',
+    ]);
+    expect(screen.getByTestId('dashboard-map-legend-hq')).toHaveTextContent(t.hqLabel);
   });
 
   it('점을 누르면 이름·단계·거리와 [자세히 보기]가 든 말풍선이 열리고, 닫을 수 있다', async () => {
@@ -76,16 +88,14 @@ describe('DashboardMap', () => {
     expect(screen.getByTestId('dashboard-map-missing')).toHaveTextContent('좌표 없는 회사 2곳');
   });
 
-  it('대상이 0곳이면 안내와 [신규 거래처 찾기로 이동]을 보이고 지도는 그리지 않는다(메뉴 이름, #787)', () => {
+  it('대상이 0곳이면 안내와 [거래처 후보로 이동]을 보이고 지도는 그리지 않는다(메뉴 이름, #787)', () => {
     renderMap({ ...data, points: [], missingCoordinates: 0 });
     expect(screen.getByTestId('dashboard-map-empty')).toHaveTextContent(t.emptyText);
     expect(screen.getByTestId('dashboard-map-empty-link')).toHaveAttribute(
       'href',
       '/opportunities',
     );
-    expect(screen.getByTestId('dashboard-map-empty-link')).toHaveTextContent(
-      '신규 거래처 찾기로 이동',
-    );
+    expect(screen.getByTestId('dashboard-map-empty-link')).toHaveTextContent('거래처 후보로 이동');
     expect(screen.queryByTestId('dashboard-map')).not.toBeInTheDocument();
     expect(screen.queryByTestId('dashboard-map-missing')).not.toBeInTheDocument();
   });

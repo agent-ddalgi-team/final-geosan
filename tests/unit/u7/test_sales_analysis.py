@@ -1161,7 +1161,8 @@ def test_api_company_rows_carry_furthest_step_and_timeline_without_text(dashboar
     assert row["salesStep"] is None and row["outcomeStatus"] == "LOST"
     assert row["furthestStep"] == "DEMAND_CONFIRMED"
     assert [(e["method"], e["result"], e["stepAfter"], e["status"]) for e in row["timeline"]] == [
-        ("CALL", "ABSENT", "NOT_REACHED", "IN_PROGRESS"),
+        # (바뀜 2026-11-23 #899) 연결 전 = 미접촉.
+        ("CALL", "ABSENT", "NOT_REACHED", "NOT_EXECUTED"),
         ("CALL", "REACHED", "DEMAND_CONFIRMED", "IN_PROGRESS"),
         # 거절 행에도 그때의 세부 단계가 남는다(큰 단계는 넘기지 않고 계산, #684와 같음).
         (None, None, "DEMAND_CONFIRMED", "LOST"),
