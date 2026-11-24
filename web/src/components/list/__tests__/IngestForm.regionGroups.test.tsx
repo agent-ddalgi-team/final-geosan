@@ -88,10 +88,15 @@ it('Given 권역을 모두 끄면 / When 찾기 / Then 지역 없이 보내 설�
   expect(mockedPost.mock.calls[0][0]).toEqual({ processCodes: ['ZINC_PLATING'] });
 });
 
-it('자료 기준 줄에 종류 이름과 날짜가 보이고, 자료가 없으면 없다고 적는다', () => {
+it('자료 기준을 펼치면 종류 이름과 날짜가 보인다', async () => {
+  const user = userEvent.setup();
   renderForm();
+  const details = screen.getByText('자료 기준', { exact: true });
+  expect(screen.getByTestId('ingest-data-basis')).not.toBeVisible();
+  await user.click(details);
+  expect(screen.getByTestId('ingest-data-basis')).toBeVisible();
   expect(screen.getByTestId('ingest-data-basis')).toHaveTextContent(
-    '자료 기준 · 산단공 공장현황 파일 2025-12-31 · 마지막 AI 판단 2026-11-14',
+    '산단공 공장현황 파일 2025-12-31 · 마지막 AI 판단 2026-11-14',
   );
 });
 

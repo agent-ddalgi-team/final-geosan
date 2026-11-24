@@ -219,10 +219,12 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
   });
 
   it('끝났으면 "지금 더하는 중" 없이 건수만 보이고, 이름이 비슷한 회사가 있으면 "확인 필요"를 더한다', async () => {
+    const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(
       reply([found], { ...RUNNING, status: 'DONE', researchDoneCount: 12, mergeCandidateCount: 2 }),
     );
     renderPage();
+    await user.click(await screen.findByTestId('ingest-panel-toggle'));
     const summary = await screen.findByTestId('ingest-summary');
     expect(within(summary).queryByTestId('ingest-running')).not.toBeInTheDocument();
     expect(within(summary).getByTestId('ingest-counts')).toHaveTextContent(
@@ -231,8 +233,10 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
   });
 
   it('실패했으면 쉬운 말 안내만 보이고 건수는 보이지 않는다', async () => {
+    const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(reply([found], { ...RUNNING, status: 'FAILED' }));
     renderPage();
+    await user.click(await screen.findByTestId('ingest-panel-toggle'));
     const summary = await screen.findByTestId('ingest-summary');
     expect(within(summary).getByTestId('ingest-failed')).toHaveTextContent(candidateSearch.failed);
     expect(within(summary).queryByTestId('ingest-counts')).not.toBeInTheDocument();
@@ -240,8 +244,10 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
   });
 
   it('서버가 건수 칸을 안 주면 그 칸은 지어내지 않고 뺀다', async () => {
+    const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(reply([found], { batchId: 'b', status: 'DONE' }));
     renderPage();
+    await user.click(await screen.findByTestId('ingest-panel-toggle'));
     const summary = await screen.findByTestId('ingest-summary');
     expect(within(summary).queryByTestId('ingest-counts')).not.toBeInTheDocument();
     expect(summary).not.toHaveTextContent('0곳');

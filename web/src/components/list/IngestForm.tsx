@@ -1,7 +1,7 @@
-// 후보 가져오기 조건 칸(#316, 결정 2026-11-05): 공정(1개 이상)·지역·산업을 고르고 [새 후보 찾기 💰]를 누른다(#825에서 이름 바꿈).
+// 후보 발굴 조건 칸(#316): 공정(1개 이상)·지역·산업을 고르고 [발굴 시작]을 누른다.
 // 공정을 고르면 맞는 공장 수 줄이 바로 보인다(#549 ①, GET /ingest/preview — 저장된 판단만 세서 0원).
 // 그 아래 확인 줄에 누르기 전 예상 금액과 이번 달 사용액을 보이고, 한도를 넘으면 단추를 잠근다(#549 ②).
-// 선택지는 밖에서 넘겨받는다(설정 값이라 코드에 직접 쓰지 않는다). 모달 없이 인라인이다.
+// 선택지는 서버 설정에서 넘겨받는다.
 // 누르면 서버가 회차를 만든 직후 바로 응답하고(POST /ingest), 진행은 목록 머리 수집 요약이 서버에서 다시 읽어 보인다.
 // 보기 전용(viewer)이면 통째로 숨기고, 담당자를 고르기 전에는 잠근다. 이미 가져오는 중이면 잠근다.
 import { useEffect, useState } from 'react';
@@ -14,7 +14,7 @@ import type {
   IngestRequest,
 } from '../../api/types';
 import { candidateSearch, errorTexts, listSimple, monthSpend } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 
 /** 조건 칸의 선택지. 서버 설정(공정 목록·`ingestion.regions`·`industries`)에서 온 값이다. */
@@ -97,17 +97,9 @@ function toggled(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-const fieldsetStyle = { border: 0, margin: 0, padding: 0, minWidth: 0 } as const;
-const legendStyle = {
-  padding: 0,
-  marginBottom: 4,
-  color: colors.textSecondary,
-  fontSize: typography.fontSizeSecondary,
-} as const;
-
 interface CheckGroupProps {
   legend: string;
-  hint: string;
+  hint?: string;
   items: { value: string; label: string }[];
   selected: string[];
   onToggle: (value: string) => void;
@@ -116,20 +108,20 @@ interface CheckGroupProps {
 
 function CheckGroup({ legend, hint, items, selected, onToggle, testId }: CheckGroupProps) {
   return (
-    <fieldset style={fieldsetStyle} data-testid={testId}>
-      <legend style={legendStyle}>
-        {legend} <span style={{ color: colors.textDimmed }}>· {hint}</span>
+    <fieldset className="prospect-check-group" data-testid={testId}>
+      <legend>
+        {legend} {hint ? <small>{hint}</small> : null}
       </legend>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+      <div className="prospect-choices">
         {items.map((item) => (
-          <label key={item.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <label key={item.value}>
             <input
               type="checkbox"
               checked={selected.includes(item.value)}
               onChange={() => onToggle(item.value)}
               data-testid={`${testId}-${item.value}`}
             />
-            {item.label}
+            <span>{item.label}</span>
           </label>
         ))}
       </div>
@@ -252,30 +244,11 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
         event.preventDefault();
         void submit();
       }}
-      style={{ display: 'grid', gap: 12, marginBottom: 16 }}
+      className="prospect-form"
     >
-      {options.dataBasis !== undefined ? (
-        // #798: 어떤 공공자료 날짜로 찾는지. 서버가 저장된 행의 날짜만 준다(지어내지 않음).
-        <p
-          data-testid="ingest-data-basis"
-          style={{ margin: 0, color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
-        >
-          {[
-            listSimple.dataBasisTitle,
-            ...(options.dataBasis.length > 0
-              ? options.dataBasis.map((item) =>
-                  listSimple.dataBasisItem(
-                    listSimple.dataBasisKinds[item.kind] ?? item.kind,
-                    item.asOf,
-                  ),
-                )
-              : [listSimple.dataBasisNone]),
-          ].join(' · ')}
-        </p>
-      ) : null}
       <CheckGroup
         legend={candidateSearch.processLabel}
-        hint={candidateSearch.processHint}
+        hint={listSimple.ingestRequired}
         items={options.processes.map((p) => ({ value: p.code, label: p.name }))}
         selected={processes}
         onToggle={(value) => setProcesses((prev) => toggled(prev, value))}
@@ -297,9 +270,7 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
           {options.regions.length > 0 ? (
             // 시·군 하나만 골라야 할 때. 평소에는 접어 둔다(#798).
             <details data-testid="ingest-region-direct">
-              <summary style={{ cursor: 'pointer', fontSize: typography.fontSizeSecondary }}>
-                {listSimple.regionDirect}
-              </summary>
+              <summary className="prospect-region-direct">{listSimple.regionDirect}</summary>
               <div style={{ marginTop: 8 }}>
                 <CheckGroup
                   legend={candidateSearch.regionLabel}
@@ -316,7 +287,7 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
       ) : options.regions.length > 0 ? (
         <CheckGroup
           legend={candidateSearch.regionLabel}
-          hint={candidateSearch.regionHint}
+          hint={listSimple.ingestRegionDefault(options.regions)}
           items={options.regions.map((r) => ({ value: r, label: r }))}
           selected={directRegions}
           onToggle={(value) => setRegions((prev) => toggled(prev, value))}
@@ -324,21 +295,43 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
         />
       ) : null}
       {options.industries.length > 0 ? (
-        <CheckGroup
-          legend={candidateSearch.industryLabel}
-          hint={candidateSearch.industryHint}
-          items={options.industries.map((i) => ({ value: i, label: i }))}
-          selected={industries}
-          onToggle={(value) => setIndustries((prev) => toggled(prev, value))}
-          testId="ingest-industry"
-        />
+        <details className="prospect-refinement" data-testid="ingest-industry-disclosure">
+          <summary>
+            {listSimple.ingestIndustryRefine}{' '}
+            <span>
+              {industries.length
+                ? listSimple.ingestIndustrySelected(industries.length)
+                : listSimple.ingestIndustryAll}
+            </span>
+          </summary>
+          <CheckGroup
+            legend={candidateSearch.industryLabel}
+            items={options.industries.map((i) => ({ value: i, label: i }))}
+            selected={industries}
+            onToggle={(value) => setIndustries((prev) => toggled(prev, value))}
+            testId="ingest-industry"
+          />
+        </details>
+      ) : null}
+      {options.dataBasis !== undefined ? (
+        <details className="prospect-refinement">
+          <summary>{listSimple.dataBasisTitle}</summary>
+          <p data-testid="ingest-data-basis">
+            {options.dataBasis.length > 0
+              ? options.dataBasis
+                  .map((item) =>
+                    listSimple.dataBasisItem(
+                      listSimple.dataBasisKinds[item.kind] ?? item.kind,
+                      item.asOf,
+                    ),
+                  )
+                  .join(' · ')
+              : listSimple.dataBasisNone}
+          </p>
+        </details>
       ) : null}
       {preview.status !== 'idle' ? (
-        <div
-          role="status"
-          data-testid="ingest-preview"
-          style={{ display: 'grid', gap: 2, fontSize: typography.fontSizeSecondary }}
-        >
+        <div role="status" data-testid="ingest-preview" className="prospect-estimate">
           {preview.status === 'loading' ? (
             <span style={{ color: colors.textSecondary }}>{candidateSearch.previewLoading}</span>
           ) : preview.status === 'error' ? (
@@ -370,7 +363,11 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
           )}
         </div>
       ) : null}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+      <div className="prospect-form-footer">
+        <div className="prospect-form-help">
+          <span>{listSimple.ingestCostHint}</span>
+          {hint ? <span data-testid="ingest-hint">{hint}</span> : null}
+        </div>
         <Button
           htmlType="submit"
           type="primary"
@@ -380,24 +377,16 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
         >
           {submitting ? candidateSearch.fetching : candidateSearch.fetchButton}
         </Button>
-        {hint ? (
-          <span
-            data-testid="ingest-hint"
-            style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
-          >
-            {hint}
-          </span>
-        ) : null}
-        {notice ? (
-          <span
-            role={notice.kind === 'error' ? 'alert' : 'status'}
-            data-testid="ingest-notice"
-            style={{ color: notice.kind === 'error' ? colors.error : colors.textSecondary }}
-          >
-            {notice.text}
-          </span>
-        ) : null}
       </div>
+      {notice ? (
+        <span
+          role={notice.kind === 'error' ? 'alert' : 'status'}
+          data-testid="ingest-notice"
+          style={{ color: notice.kind === 'error' ? colors.error : colors.textSecondary }}
+        >
+          {notice.text}
+        </span>
+      ) : null}
     </form>
   );
 }
