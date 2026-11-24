@@ -14,7 +14,7 @@ _설명: >-
   문구는 거산 확인(#275) 전 초안이다. 가상·거산 실제 사양 아님.
 version: 1
 steps:
-  - { code: NOT_REACHED, label: 연결 전, stage: IN_PROGRESS }
+  - { code: NOT_REACHED, label: 연결 전, stage: NOT_EXECUTED }   # (바뀜 2026-11-23 #899) 연결 전 = 미접촉
   - { code: REACHED, label: 연결됨, stage: IN_PROGRESS }
   - { code: DEMAND_CONFIRMED, label: 수요 확인, stage: IN_PROGRESS }
   - { code: MATERIAL_QUOTE, label: 자료·견적, stage: SAMPLE_OR_REGISTRATION_APPROVED }

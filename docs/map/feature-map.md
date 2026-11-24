@@ -9,7 +9,7 @@
 최근 5줄만 둡니다. 전체 기록은 [기획 변경 기록](change-log.md)에 쌓습니다.
 
 - **11/24** 영업 홈 지도는 축소할 때 겹친 업체를 숫자로 묶고, 확대하면 개별 점과 공간이 있는 업체의 이름을 표시합니다. 업체를 고르면 오른쪽 방문 기준·거산에서의 거리·자세히 보기·주변 목록이 바뀝니다. 위쪽 방문 준비는 일정과 해당 업체의 거리 요약을 표시합니다. ([#900](https://github.com/agent-ddalgi-team/final-geosan/issues/900))
-
+- **11/23** 연락만 하고 아직 연결되지 않은 회사(세부 단계 "연결 전")는 큰 단계 "미접촉"입니다. 접촉은 통화가 연결된 뒤부터이고, 상세 영업 단계 띠와 영업 홈 "영업 진행" 곳 수가 같은 기준입니다 ([#899]).
 - **11/22** 부품·금형을 직접 가공하면서 완제품도 만드는 회사는 "2·3차 가공 · AI 추정"으로 봅니다(근거에 "완제품도 만듦"). 검토사항 "1차/2·3차"는 회사명과 생산품이 어긋나는 곳만 남습니다 ([#894]).
 - **11/24** 거래처 후보 화면 오른쪽 위에 [새 후보 발굴]을 뒀습니다. 공정·지역·산업을 고르고 자료 기준과 비용을 확인한 뒤 발굴을 시작합니다. 진행 중인 발굴은 목록에서도 확인할 수 있습니다. ([#902](https://github.com/agent-ddalgi-team/final-geosan/issues/902))
 
@@ -545,3 +545,4 @@ flowchart LR
 [#887]: https://github.com/agent-ddalgi-team/final-geosan/issues/887
 [#890]: https://github.com/agent-ddalgi-team/final-geosan/issues/890
 [#894]: https://github.com/agent-ddalgi-team/final-geosan/issues/894
+[#899]: https://github.com/agent-ddalgi-team/final-geosan/issues/899

@@ -360,10 +360,13 @@ def test_declined_contact_takes_all_step_answers_only(records_env):
 
 
 def test_declined_contact_without_a_closing_answer_keeps_the_stage(records_env):
-    """접촉 결과 '거절'만으로는 단계를 거절로 바꾸지 않는다(끝은 담당자가 고를 때만)."""
+    """접촉 결과 '거절'만으로는 단계를 거절로 바꾸지 않는다(끝은 담당자가 고를 때만).
+
+    (바뀜 2026-11-23 #899) 세부 단계가 연결 전에 머물므로 큰 단계는 미접촉이다.
+    """
     client, opp_id = records_env
     body = contact(result="DECLINED", answers=[("NEXT_ACTION", "RECONTACT")])
-    assert save(client, opp_id, body)["status"] == "IN_PROGRESS"
+    assert save(client, opp_id, body)["status"] == "NOT_EXECUTED"
     assert step_of(client, opp_id)["code"] == "NOT_REACHED"
 
 
