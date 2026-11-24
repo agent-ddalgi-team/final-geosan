@@ -92,15 +92,20 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     expect(screen.queryByTestId('ingest-form')).not.toBeInTheDocument();
   });
 
-  it('선택지가 있으면 조건 칸이 목록 위에 보인다', async () => {
+  it('선택지가 있으면 제목 옆 버튼이 보이고, 누르기 전에는 목록만 보인다', async () => {
     mockedOptions.mockReturnValue(OPTIONS);
     mockedGet.mockResolvedValue(reply([apjeong]));
     renderPage();
-    expect(await screen.findByTestId('ingest-form')).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: '거래처 후보', level: 1 });
+    const toggle = await screen.findByTestId('ingest-panel-toggle');
+    expect(heading.parentElement).toContainElement(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByTestId('opportunity-card')).toBeInTheDocument();
   });
 
-  it('#798 Given 신규 거래처 찾기 / When 열기 / Then 새 후보 찾기는 접힌 칸 안에 있고, 머리에 마지막 찾기 결과 한 줄이 보인다', async () => {
+  it('새 후보 발굴을 누르면 오른쪽 패널에서 조건과 이전 결과를 확인하고 닫을 수 있다', async () => {
+    const user = userEvent.setup();
     mockedOptions.mockReturnValue(OPTIONS);
     mockedGet.mockResolvedValue(
       reply([apjeong], {
@@ -112,13 +117,18 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
       }),
     );
     renderPage();
-    const panel = await screen.findByTestId('ingest-panel');
-    expect(panel.tagName).toBe('DETAILS');
-    expect(panel).not.toHaveAttribute('open');
-    expect(within(panel).getByTestId('ingest-form')).toBeInTheDocument();
-    const toggle = within(panel).getByTestId('ingest-panel-toggle');
-    expect(toggle).toHaveTextContent('새 후보 찾기 💰');
-    expect(await within(toggle).findByTestId('ingest-summary')).toHaveTextContent('500');
+    const toggle = await screen.findByRole('button', { name: '새 후보 발굴 💰' });
+    await user.click(toggle);
+    const panel = await screen.findByRole('dialog', { name: '새 후보 발굴' });
+    expect(within(panel).getByTestId('ingest-process')).toBeVisible();
+    expect(within(panel).getByTestId('ingest-region')).toBeVisible();
+    expect(within(panel).getByTestId('ingest-industry-disclosure')).not.toHaveAttribute('open');
+    await user.click(within(panel).getByText('산업으로 좁히기', { exact: false }));
+    expect(within(panel).getByRole('checkbox', { name: '방위산업' })).toBeVisible();
+    await user.click(within(panel).getByText('최근 발굴 결과'));
+    expect(await within(panel).findByTestId('ingest-summary')).toHaveTextContent('500');
+    await user.click(within(panel).getByRole('button', { name: /close/i }));
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
     // 자주 안 쓰는 보기 조건은 접힌 [조건 더 보기] 안에 있다.
     const more = screen.getByTestId('list-more');
     expect(within(more).getByTestId('list-excluded-on')).toBeInTheDocument();
@@ -139,6 +149,7 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     );
     renderPage();
     await screen.findByTestId('opportunity-card');
+    await user.click(screen.getByTestId('ingest-panel-toggle'));
     expect(screen.getByTestId('ingest-summary')).toHaveAttribute('data-status', 'DONE');
     started = true;
     await user.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
@@ -190,6 +201,7 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     );
     renderPage();
     await screen.findByTestId('opportunity-card');
+    act(() => screen.getByTestId('ingest-panel-toggle').click());
     const listCallsBefore = mockedGet.mock.calls.filter((c) => c[1] === 20).length;
     done = true;
     await act(async () => {
@@ -232,5 +244,6 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
     renderPage('viewer');
     await screen.findByTestId('opportunity-card');
     expect(screen.queryByTestId('ingest-form')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ingest-panel-toggle')).not.toBeInTheDocument();
   });
 });
