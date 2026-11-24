@@ -422,6 +422,9 @@ export const dashboardMapTexts = {
   pointList: '지도에 표시된 회사',
   /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
   visitTitle: '같이 들를 곳',
+  visitPickBase: '방문 기준으로 선택',
+  visitClusterIncludes: (name: string) => `${name} 포함`,
+  visitClusterMore: (count: number) => `외 ${count}곳`,
   visitHint: (km: number) =>
     `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
   /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
