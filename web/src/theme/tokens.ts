@@ -10,8 +10,11 @@ import { brand } from '../config/brand';
 export const tone = {
   ink: '#212121',
   paper: '#FDFEFF',
-  lemon: '#FCFD76',
-  lemonSoft: '#FDFEC4',
+  /** 포인트(PM 견본 2026-11-24 "쨍하지 않게, 밝은 노랑은 눈이 아파"): 연한 크림 연두. */
+  lemon: '#F3F5CA',
+  lemonSoft: '#F9FAE6',
+  /** 같은 색의 조금 진한 쪽: 청회색 판 위 막대·얇은 테두리처럼 바탕과 구분이 필요한 곳. */
+  lemonDeep: '#DCE09A',
   mist: '#C5D8DC',
   mistSoft: '#E5EEF0',
   lavender: '#D7D7F4',
@@ -58,7 +61,7 @@ export const sidebarTheme = {
 /** 상태 색 6가지 조합(배경 연함 + 글자 진함, 대비 4.5:1 이상). 색은 보조 신호이고 글자가 항상 함께 있다. */
 export const statusPalette = {
   ok: { bg: '#DCEBEE', fg: '#1C4A51' },
-  wait: { bg: '#FBFCA8', fg: '#4A4500' },
+  wait: { bg: tone.lemon, fg: '#4A4500' },
   ask: { bg: '#E4E4F8', fg: '#36368A' },
   no: { bg: '#FBE4E1', fg: '#8A1C1C' },
   recheck: { bg: '#FDE8D2', fg: '#7A3E00' },
@@ -131,6 +134,10 @@ export const detailTheme = {
   accent: tone.lemon,
   /** 지나온 큰 단계 띠. */
   accentSoft: tone.lemonSoft,
+  /** 포인트 색 테두리(흰 바탕에서도 보이게 조금 진하게). */
+  accentLine: tone.lemonDeep,
+  /** 회색 칸 위를 채우는 막대(점수·사용량)의 포인트 색. */
+  accentBar: tone.lemonDeep,
   /** 아직인 큰 단계 띠. */
   bandTodo: '#F1F2F2',
   /** 지나온 단계를 잇는 선. */
@@ -189,7 +196,7 @@ export const antdTheme: ThemeConfig = {
  * 막대는 둥근 알약 모양, 빈 부분은 옅은 칸(track)으로 보인다.
  */
 export const chartPalette = {
-  series: ['#8FB2B9', '#ABABE8', '#E6E84A', '#4A4A4A'],
+  series: ['#8FB2B9', '#ABABE8', tone.lemonDeep, '#4A4A4A'],
   /** 전체 건수(접촉 등) 막대: 색 계열 막대 뒤에 깔리는 옅은 회색이지만 흰 바탕에서 보이는 정도. */
   base: '#C9CBCB',
   grid: '#ECEDED',
@@ -211,7 +218,7 @@ export const chartTheme = {
   text: tone.ink,
   textSecondary: '#3E4C50',
   track: 'rgba(255, 255, 255, 0.55)',
-  bar: tone.lemon,
+  bar: tone.lemonDeep,
   barStrong: tone.ink,
   barSoft: 'rgba(255, 255, 255, 0.9)',
   line: 'rgba(33, 33, 33, 0.18)',
@@ -239,14 +246,15 @@ export type MapPinKind = keyof typeof mapPinPalette;
  * 칸마다 테두리를 두고, 점 사이 선은 지나온 구간 진한 연두, 나머지 옅은 회색.
  */
 export const progressTheme = {
-  done: '#E3EC6A',
+  // 11/24 PM "쨍하지 않게": 지나온 칸·점을 포인트 색(크림 연두)의 진한 쪽으로 차분하게.
+  done: tone.lemonDeep,
   doneFg: tone.ink,
-  doneLine: '#AEB83A',
+  doneLine: '#A9AE5E',
   current: '#3C4045',
   currentFg: '#FFFFFF',
   todo: '#F1F2F2',
   todoBorder: '#B5B8B8',
   line: '#D5D7D7',
   bandBorder: '#C9CBCB',
-  bandBorderDone: '#C5CE4A',
+  bandBorderDone: '#BFC37A',
 } as const;

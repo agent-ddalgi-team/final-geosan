@@ -192,7 +192,7 @@ function BandCell({
       style={{
         ...style,
         width: '100%',
-        border: open ? `2px solid ${detailTheme.accent}` : '2px solid transparent',
+        border: open ? `2px solid ${detailTheme.accentLine}` : '2px solid transparent',
         cursor: 'pointer',
         font: 'inherit',
       }}

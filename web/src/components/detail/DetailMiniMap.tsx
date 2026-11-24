@@ -18,7 +18,7 @@ export const MINI_MAP_HEIGHT = 160;
 // #898: 거산 본사는 대시보드 지도와 같은 초록 집 핀.
 const HQ_PIN_SIZE = 20;
 const HQ_ICON = pinHtml('HQ', HQ_PIN_SIZE);
-const COMPANY_ICON = `<div style="width:14px;height:14px;border-radius:50%;background:${detailTheme.accent};border:2px solid ${detailTheme.lineDone}"></div>`;
+const COMPANY_ICON = `<div style="width:14px;height:14px;border-radius:50%;background:${detailTheme.accentBar};border:2px solid ${detailTheme.lineDone}"></div>`;
 
 export interface DetailMiniMapProps {
   map: DetailMap;

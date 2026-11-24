@@ -691,7 +691,7 @@ export default function ActivityTimeline({
                             placeItems: 'center',
                             fontSize: 12,
                             background: detailTheme.accentSoft,
-                            border: `1px solid ${detailTheme.accent}`,
+                            border: `1px solid ${detailTheme.accentLine}`,
                           }}
                         >
                           {timelineIcon(lines[0] ?? block[0])}

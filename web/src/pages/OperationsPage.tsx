@@ -42,7 +42,7 @@ function Bar({ ratio, warn, testId }: { ratio: number; warn: boolean; testId: st
     >
       <div
         data-testid={testId}
-        style={{ width, height: '100%', background: warn ? colors.error : detailTheme.accent }}
+        style={{ width, height: '100%', background: warn ? colors.error : detailTheme.accentBar }}
       />
     </div>
   );
@@ -106,7 +106,7 @@ function UsageSection({ usage }: { usage: Operations['usage'] }) {
                   flex: '1 1 0',
                   maxWidth: 24,
                   height: `${maxDay > 0 ? Math.max(4, (row.costUsd / maxDay) * 64) : 4}px`,
-                  background: detailTheme.accent,
+                  background: detailTheme.accentBar,
                   borderRadius: radius.sm,
                 }}
               />

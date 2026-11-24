@@ -94,7 +94,7 @@ function GroupBars({ groups }: { groups: ReturnType<typeof groupScoreItems>['gro
                   position: 'absolute',
                   inset: 0,
                   width: `${Math.round(ratio * 100)}%`,
-                  background: detailTheme.accent,
+                  background: detailTheme.accentBar,
                 }}
               />
             </span>

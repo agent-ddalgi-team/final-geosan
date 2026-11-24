@@ -189,7 +189,7 @@ export default function HandoffBox({
                 data-confirmed={done}
                 style={{
                   background: done ? POSTIT_DONE : POSTIT,
-                  border: `1px solid ${done ? colors.borderSecondary : tone.lemon}`,
+                  border: `1px solid ${done ? colors.borderSecondary : tone.lemonDeep}`,
                   borderRadius: radius.sm,
                   padding: '8px 10px',
                   display: 'grid',

@@ -324,7 +324,7 @@ function EvidenceBar({ items }: { items: ScoreItemView[] }) {
             position: 'absolute',
             inset: 0,
             width: `${percent}%`,
-            background: detailTheme.accent,
+            background: detailTheme.accentBar,
           }}
         />
       </span>
