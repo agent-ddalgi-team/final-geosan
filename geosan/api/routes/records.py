@@ -1041,7 +1041,7 @@ def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: s
     # #607: 큰 단계는 같은 저장 안에서 세부 단계를 따라 앞으로만 바뀐다(보류·성사·거절은 그대로).
     if row.method or body.answers or body.step_override:
         step = sales_step_state(session, opp_id, status=None, questions=questions).code
-        row.status = stage_for(row.status, row.method, step)
+        row.status = stage_for(row.status, step)
         session.flush()
     return SavedOutcome(row=row, previous=previous, reevaluated=reevaluated)
 

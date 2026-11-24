@@ -298,7 +298,9 @@ def demo_locations_saved(ctx, text):
     )
 
 
-@then('대시보드 지도에 성사 9곳·진행 중 12곳이 점으로 보이고 이름마다 "가상"이 들어 있다')
+# (바뀜 2026-11-23 #899 — PM 결정 "연결 전은 미접촉")
+# 부재 전화만 있는 진행 중 3곳은 미접촉이 되어 관심 점으로 보인다.
+@then('대시보드 지도에 성사 9곳·진행 중 9곳·관심 3곳이 점으로 보이고 이름마다 "가상"이 들어 있다')
 def demo_map_points(ctx):
     with TestClient(create_app()) as client:
         response = client.get("/api/v1/dashboard/map", headers=STAFF)
@@ -306,15 +308,18 @@ def demo_map_points(ctx):
     assert response.status_code == 200, response.text
     ctx["map"] = response.json()["data"]
     groups = [point["group"] for point in ctx["map"]["points"]]
-    assert sorted(groups) == ["IN_PROGRESS"] * 12 + ["WON_THIS_YEAR"] * 9
+    assert sorted(groups) == ["INTERESTED"] * 3 + ["IN_PROGRESS"] * 9 + ["WON_THIS_YEAR"] * 9
     assert ctx["map"]["missingCoordinates"] == 0
     assert all("가상" in point["customerName"] for point in ctx["map"]["points"])
     assert all(isinstance(point["distanceKm"], float) for point in ctx["map"]["points"])
 
 
-@then("진행 중 12곳마다 같이 들를 곳 묶음이 있고 거리는 숫자다")
+@then("진행 중·관심 12곳마다 같이 들를 곳 묶음이 있고 거리는 숫자다")
 def demo_visit_groups(ctx):
-    in_progress = {p["oppId"] for p in ctx["map"]["points"] if p["group"] == "IN_PROGRESS"}
+    # 같이 들를 곳은 진행 중·관심 회사를 기준으로 묶는다(map_points VISIT_ANCHOR_GROUPS).
+    in_progress = {
+        p["oppId"] for p in ctx["map"]["points"] if p["group"] in ("IN_PROGRESS", "INTERESTED")
+    }
     groups = ctx["map"]["visitGroups"]
     assert {group["oppId"] for group in groups} == in_progress
     for group in groups:
