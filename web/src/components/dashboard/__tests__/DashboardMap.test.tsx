@@ -88,16 +88,14 @@ describe('DashboardMap', () => {
     expect(screen.getByTestId('dashboard-map-missing')).toHaveTextContent('좌표 없는 회사 2곳');
   });
 
-  it('대상이 0곳이면 안내와 [신규 거래처 찾기로 이동]을 보이고 지도는 그리지 않는다(메뉴 이름, #787)', () => {
+  it('대상이 0곳이면 안내와 [거래처 후보로 이동]을 보이고 지도는 그리지 않는다(메뉴 이름, #787)', () => {
     renderMap({ ...data, points: [], missingCoordinates: 0 });
     expect(screen.getByTestId('dashboard-map-empty')).toHaveTextContent(t.emptyText);
     expect(screen.getByTestId('dashboard-map-empty-link')).toHaveAttribute(
       'href',
       '/opportunities',
     );
-    expect(screen.getByTestId('dashboard-map-empty-link')).toHaveTextContent(
-      '신규 거래처 찾기로 이동',
-    );
+    expect(screen.getByTestId('dashboard-map-empty-link')).toHaveTextContent('거래처 후보로 이동');
     expect(screen.queryByTestId('dashboard-map')).not.toBeInTheDocument();
     expect(screen.queryByTestId('dashboard-map-missing')).not.toBeInTheDocument();
   });

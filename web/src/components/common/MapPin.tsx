@@ -25,10 +25,11 @@ function shapeSvg(kind: MapPinKind): string {
   return `<circle cx="16" cy="16" r="12.5" fill="${bg}" stroke="#fff" stroke-width="5"/>`;
 }
 
-/** 네이버 지도 표시용 HTML(지름 size px). 옅은 그림자로 지도 위에서 떠 보인다. */
-export function pinHtml(kind: MapPinKind, size: number): string {
+/** 네이버 지도 표시용 HTML(지름 size px). 옅은 그림자로 지도 위에서 떠 보인다. testId는 시험이 핀을 찾는 표시. */
+export function pinHtml(kind: MapPinKind, size: number, testId?: string): string {
+  const testAttr = testId ? ` data-testid="${testId}"` : '';
   return (
-    `<div data-pin="${pinShapeName(kind)}" style="width:${size}px;height:${size}px;cursor:pointer;` +
+    `<div${testAttr} data-pin="${pinShapeName(kind)}" style="width:${size}px;height:${size}px;cursor:pointer;` +
     `filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35))">` +
     `<svg width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true">` +
     shapeSvg(kind) +

@@ -174,12 +174,12 @@ export const opinionArea = {
 export const frame = {
   skipToContent: '본문으로 건너뛰기',
   // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
-  menuOpportunities: '신규 거래처 찾기',
+  menuOpportunities: '거래처 후보',
   staffSelectLabel: '담당자',
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
-  pageTitleList: '신규 거래처 찾기',
+  pageTitleList: '거래처 후보',
   pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
@@ -341,7 +341,7 @@ export const dashboardTexts = {
   notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 신규 거래처 찾기로 가는 링크다(#787: 메뉴 이름 바뀜 #762). */
   bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
-  bookmarkEmptyLink: '신규 거래처 찾기',
+  bookmarkEmptyLink: '거래처 후보',
   bookmarkEmptyTail: '에서 [관심]을 눌러 담아 보세요',
   /** 서버가 아직 옛 집계를 줄 때. 뜻이 달라진 숫자를 새 칸에 넣어 보이지 않는다. */
   countsOutdated:
@@ -363,9 +363,9 @@ export const dashboardTexts = {
   breakdownBasis: (total: number) => `관심·진행 중·최근 12개월 성사 ${total}곳 기준`,
   breakdownProposed: 'AI 제안 포함',
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
-  breakdownEmptyAction: '신규 거래처 찾기로 이동',
+  breakdownEmptyAction: '거래처 후보로 이동',
   loadError: '영업 홈을 불러오지 못했습니다.',
-  goToList: '신규 거래처 찾기로 이동',
+  goToList: '거래처 후보로 이동',
   // #795(PM 결정 2026-11-16): 오늘 할 일·방문 준비 중심 배치.
   /** 맨 위 날짜 줄. "11/16(월) 오늘" */
   todayDate: (day: string) => `${day} 오늘`,
@@ -411,7 +411,7 @@ export const dashboardMapTexts = {
   close: '닫기',
   missingCoordinates: (count: number) => `좌표 없는 회사 ${count}곳`,
   emptyText: '관심 표시한 회사가 아직 없어요.',
-  emptyAction: '신규 거래처 찾기로 이동',
+  emptyAction: '거래처 후보로 이동',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
   /** 네이버 지도(#671)를 불러오는 동안. */
@@ -422,6 +422,9 @@ export const dashboardMapTexts = {
   pointList: '지도에 표시된 회사',
   /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
   visitTitle: '같이 들를 곳',
+  visitPickBase: '방문 기준으로 선택',
+  visitClusterIncludes: (name: string) => `${name} 포함`,
+  visitClusterMore: (count: number) => `외 ${count}곳`,
   visitHint: (km: number) =>
     `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
   /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
@@ -774,7 +777,7 @@ export const candidateSearch = {
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
   /**
-   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 찾기 💰]를 누른다(#825, 옛 이름 [영업 후보로 더하기 💰]). 모달 없이 인라인이다.
+   * 조건 칸(#316): 담당자가 오른쪽 패널에서 공정·지역·산업을 고르고 [발굴 시작 💰]을 누른다.
    * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
    */
   formTitle: '영업 후보로 더할 공장 조건',
@@ -784,7 +787,7 @@ export const candidateSearch = {
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '새 후보 찾기 💰',
+  fetchButton: '발굴 시작 💰',
   fetching: '찾는 중',
   pickStaffFirst: '담당자를 고르면 찾을 수 있습니다',
   started: '찾기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
@@ -1789,7 +1792,7 @@ export const salesAnalysisTexts = {
   unconfirmed: '확인 전',
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
-  emptyAction: '신규 거래처 찾기로',
+  emptyAction: '거래처 후보로 이동',
   /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
   breakdownTitle: '관심 기업 분포',
   breakdownNote:
@@ -2667,9 +2670,15 @@ export const sourceUrlTexts = {
  * 카드 의견 고르기 칸.
  */
 export const listSimple = {
-  /** 접힌 새 후보 찾기 칸의 제목. 펴면 공정·권역·산업과 예상 금액이 보인다. */
-  ingestPanelTitle: '＋ 새 후보 찾기 💰',
-  ingestPanelHint: '필요할 때 펴서 씁니다 · AI 비용이 듭니다',
+  ingestPanelTitle: '새 후보 발굴',
+  ingestPanelButton: '새 후보 발굴 💰',
+  ingestCostHint: 'AI 탐색 시 비용이 발생할 수 있습니다.',
+  ingestHistory: '최근 발굴 결과',
+  ingestRequired: '필수',
+  ingestIndustryRefine: '산업으로 좁히기',
+  ingestIndustryAll: '전체 산업',
+  ingestIndustrySelected: (count: number) => `${count}개 선택`,
+  ingestRegionDefault: (regions: string[]) => `기본 지역 · ${regions.join(' · ')}`,
   /** 목록 머리 [조건 더 보기]. n은 지금 걸려 있는 더 보기 안 조건 수(0이면 숫자 없음). */
   moreConditions: (active: number) => (active > 0 ? `조건 더 보기 (${active})` : '조건 더 보기'),
   /** 지역 선택란 묶음 제목. */

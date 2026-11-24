@@ -22,12 +22,12 @@
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Button, Pagination, Switch } from 'antd';
+import { Button, Drawer, Pagination, Switch, Typography } from 'antd';
 import { getOpportunities } from '../api/client';
 import { BOOKMARKS_PATH } from '../paths';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
-import { useFrame } from '../components/frame/FrameContext';
+import { useFrame, VIEWER_KEY } from '../components/frame/FrameContext';
 import ExportButton from '../components/list/ExportButton';
 import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
@@ -50,13 +50,14 @@ import {
   bookmarkList,
   contactBuckets,
   excludedList,
+  frame,
   listFilters,
   listSearch,
   listSimple,
   pagination,
   states,
 } from '../labels/ko';
-import { colors, radius, spacing, typography } from '../theme/tokens';
+import { colors, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
 /** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
@@ -83,7 +84,8 @@ interface Result {
 export type ListView = 'all' | 'bookmarks';
 
 export default function OpportunityListPage({ view = 'all' }: { view?: ListView }) {
-  const { config, setBannerMeta } = useFrame();
+  const { config, setBannerMeta, staffKey } = useFrame();
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   // 검색어(#361). 빈 글자·공백만 있는 값은 검색이 아닌 것으로 읽는다.
@@ -449,9 +451,32 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
     return `${location.pathname}?${next.toString()}`;
   };
   const bookmarkedHref = BOOKMARKS_PATH;
+  const showDiscovery =
+    view === 'all' &&
+    !bookmarked &&
+    staffKey !== VIEWER_KEY &&
+    Boolean(ingestOptions || latestIngest);
 
   return (
     <>
+      {view === 'all' ? (
+        <header className="prospect-page-heading">
+          <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1, margin: 0 }}>
+            {frame.pageTitleList}
+          </Typography.Title>
+          {showDiscovery ? (
+            <Button
+              type="primary"
+              aria-haspopup="dialog"
+              aria-expanded={discoveryOpen}
+              onClick={() => setDiscoveryOpen(true)}
+              data-testid="ingest-panel-toggle"
+            >
+              {listSimple.ingestPanelButton}
+            </Button>
+          ) : null}
+        </header>
+      ) : null}
       <ListViewBar
         bookmarked={bookmarked}
         excluded={excluded}
@@ -562,38 +587,34 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           ) : null}
         </div>
       ) : null}
-      {/* 새 후보 찾기(#762에서 신규 거래처 찾기에만 둠)는 #798부터 접어 두고 필요할 때 편다(PM 지시 2026-11-16).
-          접혀 있어도 머리에 마지막 찾기 결과 한 줄이 보인다. */}
-      {(ingestOptions || latestIngest) && !bookmarked ? (
-        <details
-          data-testid="ingest-panel"
-          style={{
-            border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: radius.md,
-            padding: '8px 12px',
-            marginBottom: spacing.cardGap,
-          }}
+      {showDiscovery && latestIngest && ingestRunning && !discoveryOpen ? (
+        <IngestSummary ingest={latestIngest} />
+      ) : null}
+      {showDiscovery ? (
+        <Drawer
+          title={listSimple.ingestPanelTitle}
+          open={discoveryOpen}
+          onClose={() => setDiscoveryOpen(false)}
+          width="min(560px, 100%)"
+          styles={{ body: { background: colors.bgLayout } }}
+          rootClassName="prospect-discovery"
         >
-          <summary
-            data-testid="ingest-panel-toggle"
-            style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 12 }}
-          >
-            <strong>{listSimple.ingestPanelTitle}</strong>
-            <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
-              {listSimple.ingestPanelHint}
-            </span>
-            {latestIngest ? <IngestSummary ingest={latestIngest} inline /> : null}
-          </summary>
-          {ingestOptions ? (
-            <div style={{ marginTop: 12 }}>
+          <div data-testid="ingest-panel">
+            {ingestOptions ? (
               <IngestForm
                 options={ingestOptions}
                 running={ingestRunning}
                 onStarted={() => void refreshIngest()}
               />
-            </div>
-          ) : null}
-        </details>
+            ) : null}
+            {latestIngest ? (
+              <details className="prospect-history" open={ingestRunning || undefined}>
+                <summary>{listSimple.ingestHistory}</summary>
+                <IngestSummary ingest={latestIngest} inline />
+              </details>
+            ) : null}
+          </div>
+        </Drawer>
       ) : null}
       <FiveStates
         state={state}

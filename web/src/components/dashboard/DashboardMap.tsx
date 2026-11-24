@@ -8,10 +8,12 @@ import { Link } from 'react-router-dom';
 import type {
   DashboardMap as DashboardMapData,
   DashboardMapGroup,
+  DashboardMapPoint,
 } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
 import NaverMapCanvas, { loadNaverMaps, onNaverMapsFailure } from './NaverMapCanvas';
 import VisitGroups from './VisitGroups';
+import VisitMapCards, { MapClusterCards } from './VisitMapCards';
 import type { NaverMapsApi } from './NaverMapCanvas';
 import {
   colors,
@@ -62,18 +64,31 @@ const srOnly = {
 export default function DashboardMap({
   data,
   mapClientId = import.meta.env.VITE_NCP_MAPS_CLIENT_ID,
+  compact = false,
 }: {
   data: DashboardMapData;
   /** 네이버 지도 화면용 키(비밀 아님, 콘솔 허용 URL로 보호). 없으면 자리표시로 그린다. */
   mapClientId?: string;
+  compact?: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [cluster, setCluster] = useState<DashboardMapPoint[] | null>(null);
   const [naver, setNaver] = useState<NaverMapsApi | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [visitBase, setVisitBase] = useState<string | null>(null);
   // "같이 들를 곳"(#673)에서 펼친 묶음의 중심 회사.
   const [visitOpen, setVisitOpen] = useState<string | null>(null);
   const visitGroups = data.visitGroups;
   const visitRadius = data.visitRadiusKm;
+  const visitOptions = useMemo(() => {
+    const anchors = new Map(data.points.map((point) => [point.oppId, point]));
+    return (visitGroups ?? []).flatMap((group) => {
+      const anchor = anchors.get(group.oppId);
+      return anchor ? [{ group, anchor }] : [];
+    });
+  }, [data.points, visitGroups]);
+  const visitSelection =
+    visitOptions.find(({ anchor }) => anchor.oppId === visitBase) ?? visitOptions[0];
   const focus = useMemo(() => {
     const group = visitGroups?.find((row) => row.oppId === visitOpen);
     const anchor = data.points.find((point) => point.oppId === visitOpen);
@@ -154,9 +169,32 @@ export default function DashboardMap({
     data.points.find((p) => p.oppId === oppId)?.customerName ??
     openGroup?.nearby.find((row) => row.oppId === oppId)?.customerName ??
     null;
+  const canPickVisitBase = (oppId: string) =>
+    visitRadius !== undefined && visitOptions.some(({ anchor }) => anchor.oppId === oppId);
+  const choosePoint = (oppId: string) => {
+    setCluster(null);
+    if (compact && canPickVisitBase(oppId)) {
+      setVisitBase(oppId);
+      setSelected(null);
+      return;
+    }
+    setSelected(oppId);
+  };
+  const chooseCluster = (companies: DashboardMapPoint[]) => {
+    setSelected(null);
+    setCluster(companies);
+  };
+  const focusVisit = (oppId: string | null) => {
+    setSelected(null);
+    setVisitOpen(oppId);
+  };
+  const pickVisitBase = (oppId: string) => {
+    setVisitBase(oppId);
+    focusVisit(oppId);
+  };
 
-  return (
-    <div data-testid="dashboard-map" style={{ display: 'grid', gap: 12 }}>
+  const map = (
+    <div style={{ flex: '3 1 430px', minWidth: 0, display: 'grid', gap: 12 }}>
       {naver && !mapFailed ? (
         <>
           <NaverMapCanvas
@@ -166,7 +204,9 @@ export default function DashboardMap({
             points={data.points}
             ringColor={colors.textSecondary}
             hqColor={colors.text}
-            onSelect={setSelected}
+            onSelect={choosePoint}
+            onCluster={compact ? chooseCluster : undefined}
+            visitBaseId={compact ? visitSelection?.anchor.oppId : undefined}
             focus={focus}
             labelFor={labelFor}
           />
@@ -174,7 +214,7 @@ export default function DashboardMap({
           <ul aria-label={t.pointList} data-testid="dashboard-map-point-list" style={srOnly}>
             {data.points.map((p) => (
               <li key={p.oppId}>
-                <button type="button" onClick={() => setSelected(p.oppId)}>
+                <button type="button" onClick={() => choosePoint(p.oppId)}>
                   {t.pointAria(p.customerName, t.groups[p.group], p.distanceKm)}
                 </button>
               </li>
@@ -234,11 +274,11 @@ export default function DashboardMap({
                   tabIndex={0}
                   aria-label={t.pointAria(p.customerName, groupName, p.distanceKm)}
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setSelected(p.oppId)}
+                  onClick={() => choosePoint(p.oppId)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      setSelected(p.oppId);
+                      choosePoint(p.oppId);
                     }
                   }}
                 >
@@ -358,7 +398,7 @@ export default function DashboardMap({
         </p>
       ) : null}
 
-      {visitGroups && visitRadius !== undefined ? (
+      {!compact && visitGroups && visitRadius !== undefined ? (
         <VisitGroups
           groups={visitGroups}
           points={data.points}
@@ -368,6 +408,40 @@ export default function DashboardMap({
           onToggle={setVisitOpen}
           groupColors={GROUP_TEXT_COLOR}
         />
+      ) : null}
+    </div>
+  );
+  return (
+    <div
+      data-testid="dashboard-map"
+      style={
+        compact
+          ? { display: 'flex', flexWrap: 'wrap', alignItems: 'start', gap: spacing.cardGap }
+          : undefined
+      }
+    >
+      {map}
+      {compact && cluster ? (
+        <MapClusterCards
+          key={cluster.map((company) => company.oppId).join(',')}
+          companies={cluster}
+          canPickVisitBase={canPickVisitBase}
+          onPickVisitBase={choosePoint}
+          onClose={() => setCluster(null)}
+        />
+      ) : null}
+      {compact && visitGroups && visitRadius !== undefined ? (
+        <div style={{ flex: '1 1 235px', minWidth: 0 }} hidden={cluster !== null}>
+          <VisitMapCards
+            options={visitOptions}
+            current={visitSelection}
+            radiusKm={visitRadius}
+            widenBelowCount={data.visitWidenBelowCount}
+            onPick={pickVisitBase}
+            focused={visitOpen}
+            onFocus={focusVisit}
+          />
+        </div>
       ) : null}
     </div>
   );

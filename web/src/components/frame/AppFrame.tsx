@@ -33,6 +33,8 @@ function isNarrowDevice(): boolean {
 export interface AppFrameProps {
   /** 페이지의 h1 (페이지마다 하나). */
   title: string;
+  /** 본문이 제목과 화면 동작을 한 줄에 직접 배치할 때 사용한다. */
+  ownHeading?: boolean;
   children?: ReactNode;
   /**
    * 오른쪽 "💬 영업 코치" 칸(#773). assistant = 여러 회사를 보는 질문 칸(대시보드·목록·관심 기업·영업 분석),
@@ -43,7 +45,13 @@ export interface AppFrameProps {
   dockScreen?: DockScreen;
 }
 
-export default function AppFrame({ title, children, dock = null, dockScreen }: AppFrameProps) {
+export default function AppFrame({
+  title,
+  ownHeading = false,
+  children,
+  dock = null,
+  dockScreen,
+}: AppFrameProps) {
   const [dockSlot, setDockSlot] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<ConfigUi | null>(null);
   const [configMeta, setConfigMeta] = useState<Meta | null>(null);
@@ -219,9 +227,11 @@ export default function AppFrame({ title, children, dock = null, dockScreen }: A
               padding: '24px',
             }}
           >
-            <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
-              {pageTitle ?? title}
-            </Typography.Title>
+            {!ownHeading ? (
+              <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
+                {pageTitle ?? title}
+              </Typography.Title>
+            ) : null}
             {children}
             {dockBody && narrowDevice ? (
               <CoachDock narrowDevice screen={dockScreen}>
