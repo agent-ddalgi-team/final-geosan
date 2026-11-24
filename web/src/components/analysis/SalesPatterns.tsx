@@ -23,10 +23,10 @@ import {
   salesPatternsTexts as texts,
   salesStepLabels,
 } from '../../labels/ko';
-import { chartPalette, colors, typography } from '../../theme/tokens';
+import { chartPalette, colors, radius, typography } from '../../theme/tokens';
 
 const [BLUE, ORANGE] = chartPalette.series;
-const GREY = colors.borderSecondary;
+const GREY = chartPalette.base;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 const cardStyle = {
   background: colors.bgContainer,
@@ -74,14 +74,14 @@ function Bar({
       title={`${label}: ${text}`}
     >
       <span style={{ overflowWrap: 'anywhere' }}>{label}</span>
-      <span style={{ background: colors.bgLayout, borderRadius: 4, alignSelf: 'center' }}>
+      <span style={{ background: colors.bgLayout, borderRadius: radius.sm, alignSelf: 'center' }}>
         <span
           style={{
             display: 'block',
             height: 10,
             width: `${width}%`,
             background: color,
-            borderRadius: 4,
+            borderRadius: radius.sm,
           }}
         />
       </span>
@@ -128,7 +128,7 @@ function CellRow({
       <span style={{ display: 'grid', gap: 2 }}>
         <span
           aria-hidden="true"
-          style={{ display: 'flex', height: 10, borderRadius: 4, overflow: 'hidden' }}
+          style={{ display: 'flex', height: 10, borderRadius: radius.sm, overflow: 'hidden' }}
         >
           <span style={{ flex: row.won, background: row.judged ? BLUE : GREY }} />
           <span style={{ flex: row.failed, background: row.judged ? ORANGE : GREY }} />

@@ -2,18 +2,44 @@
 // 달마다 막대 셋으로 보인다. 기간 선택과 상관없고 AI를 쓰지 않는다. 옛 서버(칸 없음)면 그리지 않는다.
 import type { MonthTrendRow } from '../../api/salesAnalysis';
 import { monthlyTrendTexts as t } from '../../labels/ko';
-import { chartPalette, colors, typography } from '../../theme/tokens';
+import { chartTheme, radius } from '../../theme/tokens';
+import ChartFrame, { chartSecondary as secondary } from '../common/ChartFrame';
+import { monthlyReading } from './chartSummaries';
 
-const [BLUE, ORANGE] = chartPalette.series;
-const GREY = colors.borderSecondary;
-const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
+// #898: 청회색 판 위에 접촉은 흰 막대, 성사는 연노랑, 거절은 먹색.
+const CONTACTED = chartTheme.barSoft;
+const WON = chartTheme.bar;
+const LOST = chartTheme.barStrong;
 
-function Bar({ value, max, color }: { value: number; max: number; color: string }) {
-  const height = max > 0 ? Math.round((value / max) * 80) : 0;
+function Swatch({ color }: { color: string }) {
   return (
     <span
       aria-hidden="true"
-      style={{ width: 8, height, minHeight: value > 0 ? 2 : 0, background: color, borderRadius: 2 }}
+      style={{
+        display: 'inline-block',
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+        background: color,
+        marginRight: 4,
+        verticalAlign: 'middle',
+      }}
+    />
+  );
+}
+
+function Bar({ value, max, color }: { value: number; max: number; color: string }) {
+  const height = max > 0 ? Math.round((value / max) * 120) : 0;
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: 10,
+        height,
+        minHeight: value > 0 ? 4 : 0,
+        background: color,
+        borderRadius: radius.pill,
+      }}
     />
   );
 }
@@ -21,30 +47,25 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 export default function MonthlyTrend({ rows }: { rows?: MonthTrendRow[] }) {
   if (!rows || rows.length === 0) return null;
   const max = Math.max(0, ...rows.map((row) => Math.max(row.contacted, row.won, row.lost)));
+  const reading = max === 0 ? null : monthlyReading(rows);
   return (
-    <section
-      aria-labelledby="monthly-trend-title"
-      data-testid="monthly-trend"
-      style={{
-        background: colors.bgContainer,
-        border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: chartPalette.cardRadius,
-        padding: 20,
-        display: 'grid',
-        gap: 12,
-      }}
+    <ChartFrame
+      id="monthly-trend"
+      title={t.title}
+      callout={reading?.callout ?? null}
+      summary={reading?.summary ?? null}
+      legend={
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, ...secondary }}>
+          <span>{t.note}</span>
+          <span>
+            <Swatch color={CONTACTED} />
+            {t.legend.contacted} <Swatch color={WON} />
+            {t.legend.won} <Swatch color={LOST} />
+            {t.legend.lost}
+          </span>
+        </div>
+      }
     >
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8 }}>
-        <h2 id="monthly-trend-title" style={{ margin: 0, fontSize: typography.fontSizeCardTitle }}>
-          {t.title}
-        </h2>
-        <span style={secondary}>{t.note}</span>
-        <span style={secondary}>
-          <span style={{ color: GREY }}>■</span> {t.legend.contacted}{' '}
-          <span style={{ color: BLUE }}>■</span> {t.legend.won}{' '}
-          <span style={{ color: ORANGE }}>■</span> {t.legend.lost}
-        </span>
-      </div>
       {max === 0 ? (
         <p data-testid="monthly-trend-empty" style={{ ...secondary, margin: 0 }}>
           {t.empty}
@@ -69,16 +90,16 @@ export default function MonthlyTrend({ rows }: { rows?: MonthTrendRow[] }) {
               title={t.row(t.monthLabel(row.month), row.contacted, row.won, row.lost)}
               style={{ display: 'grid', justifyItems: 'center', gap: 4 }}
             >
-              <span style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 80 }}>
-                <Bar value={row.contacted} max={max} color={GREY} />
-                <Bar value={row.won} max={max} color={BLUE} />
-                <Bar value={row.lost} max={max} color={ORANGE} />
+              <span style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 120 }}>
+                <Bar value={row.contacted} max={max} color={CONTACTED} />
+                <Bar value={row.won} max={max} color={WON} />
+                <Bar value={row.lost} max={max} color={LOST} />
               </span>
               <span style={secondary}>{t.monthLabel(row.month)}</span>
             </li>
           ))}
         </ol>
       )}
-    </section>
+    </ChartFrame>
   );
 }

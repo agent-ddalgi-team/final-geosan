@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import type { DashboardMap } from '../../api/dashboardMapTypes';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
-import { colors, detailTheme, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, typography } from '../../theme/tokens';
 import ReportLink from '../report/ReportLink';
 import { dayLabel } from './TodayChecks';
 
@@ -38,7 +38,7 @@ export function prepItems(items: DashboardScheduleItem[], today: string): Dashbo
 const chip = {
   display: 'inline-block',
   padding: '1px 8px',
-  borderRadius: 999,
+  borderRadius: radius.pill,
   background: detailTheme.bandTodo,
   color: colors.text,
 } as const;

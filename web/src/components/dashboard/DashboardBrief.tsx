@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import type { Dashboard, DashboardCounts, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, radius, spacing, typography } from '../../theme/tokens';
 import CountCards from './CountCards';
 
 const card = {
@@ -15,7 +15,7 @@ const card = {
   alignContent: 'start',
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
+  borderRadius: radius.lg,
   padding: spacing.cardPadding,
 } as const;
 const cardTitle = { margin: 0, fontSize: typography.fontSize, fontWeight: 600 } as const;

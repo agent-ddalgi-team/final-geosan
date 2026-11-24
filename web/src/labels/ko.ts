@@ -2754,3 +2754,67 @@ export const analysisFeedbackTexts = {
     cost ? `받은 날 ${day} · 비용 ${cost}` : `받은 날 ${day}`,
   failed: '분석을 받지 못했습니다.',
 } as const;
+
+/**
+ * 그림 아래 요약 문장과 말풍선(#898, PM 요청 2026-11-22 "분석 그래프나 도식화 아래에 분석 요약 내용").
+ * 그림과 같은 값으로 화면이 만드는 문장이다(AI 없음). 표본이 기준보다 적으면 비율을 말하지 않는다.
+ */
+export const chartSummaryTexts = {
+  funnelReached: (contacted: number, stage: string, count: number) =>
+    `접촉한 ${contacted}곳 가운데 ${count}곳이 ${stage}까지 갔습니다.`,
+  funnelNoneReached: (contacted: number) => `접촉한 ${contacted}곳 모두 아직 연결 전입니다.`,
+  funnelWon: (count: number) => `성사는 ${count}곳입니다.`,
+  funnelNoWon: '아직 성사는 없습니다.',
+  funnelMostStopped: (stage: string, count: number) =>
+    `가장 많이 멈춘 단계는 ${stage}(${count}곳)입니다.`,
+  funnelPassRate: (percent: number) => `이 단계에서 다음으로 넘어간 비율은 ${percent}%입니다.`,
+  smallSample: (min: number) => `표본이 ${min}곳보다 적어 비율은 아직 보지 않습니다.`,
+  funnelCalloutLabel: (stage: string) => `${stage}에서 멈춤`,
+  lostTop: (total: number, reason: string, count: number) =>
+    `거절 ${total}곳 가운데 가장 많은 이유는 ${reason}(${count}곳)입니다.`,
+  gridMost: (process: string, industry: string, count: number) =>
+    `가장 많이 접촉한 조합은 ${process} × ${industry}(${count}곳)입니다.`,
+  gridTie: (count: number, ties: number, process: string, industry: string) =>
+    `${count}곳씩 접촉한 조합이 ${ties}개로 가장 많습니다(예: ${process} × ${industry}).`,
+  gridTieCalloutLabel: (ties: number) => `조합 ${ties}개가 같음`,
+  gridWon: (process: string, industry: string, count: number) =>
+    `성사가 가장 많이 나온 조합은 ${process} × ${industry}(${count}곳)입니다.`,
+  gridNoWon: '아직 성사가 나온 조합은 없습니다.',
+  /** 서버가 산업군 없는 회사를 모으는 칸 이름(geosan/dashboard/sales_analysis.py NO_INDUSTRY_NAME). */
+  unconfirmedIndustry: '산업 확인 전',
+  gridAllSmall: (min: number) =>
+    `모든 조합이 표본 ${min}곳 미만이라 성사율은 아직 견주지 않습니다.`,
+  gridCalloutLabel: (process: string, industry: string) => `${process} × ${industry}`,
+  timelineStatus: (total: number, open: number, won: number, lost: number, hold: number) =>
+    `회사 ${total}곳 가운데 진행 중 ${open}곳 · 성사 ${won}곳 · 거절 ${lost}곳 · 보류 ${hold}곳입니다.`,
+  timelineOpenStep: (step: string, count: number) =>
+    `진행 중인 회사는 ${step} 단계에 가장 많이 머물러 있습니다(${count}곳).`,
+  timelineCalloutLabel: '진행 중',
+  monthChange: (month: string, count: number, diff: number) =>
+    diff > 0
+      ? `${month} 접촉은 ${count}곳으로 지난달보다 ${diff}곳 늘었습니다.`
+      : diff < 0
+        ? `${month} 접촉은 ${count}곳으로 지난달보다 ${-diff}곳 줄었습니다.`
+        : `${month} 접촉은 ${count}곳으로 지난달과 같습니다.`,
+  monthPeak: (month: string, count: number) =>
+    `최근 12개월 가운데 접촉이 가장 많았던 달은 ${month}(${count}곳)입니다.`,
+  monthTotals: (won: number, lost: number) => `12개월 동안 성사 ${won}곳 · 거절 ${lost}곳입니다.`,
+  monthCalloutLabel: (month: string, diff: number) =>
+    diff === 0
+      ? `${month} 접촉 · 지난달과 같음`
+      : `${month} 접촉 · 지난달 ${diff > 0 ? '↗ +' : '↘ '}${diff}`,
+  breakdownTop: (
+    process: string,
+    pCount: number,
+    pPercent: number,
+    industry: string,
+    iCount: number,
+  ) =>
+    `공정은 ${process} ${pCount}곳(${pPercent}%), 산업군은 ${industry} ${iCount}곳으로 가장 많습니다.`,
+  breakdownProcessOnly: (process: string, pCount: number, pPercent: number) =>
+    `공정은 ${process} ${pCount}곳(${pPercent}%)으로 가장 많습니다.`,
+  breakdownSpread: (count: number) => `관심 기업이 ${count}개 공정에 나뉘어 있습니다.`,
+  progressMoved: (total: number, moved: number, quote: number, won: number) =>
+    `영업 대상 ${total}곳 가운데 ${moved}곳이 접촉 이상 진행했고, 견적·샘플 ${quote}곳 · 성사 ${won}곳입니다.`,
+  progressNotContacted: (count: number) => `아직 연락하지 않은 곳이 ${count}곳 있습니다.`,
+} as const;

@@ -24,7 +24,7 @@ import TodayChecks, { dayLabel } from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
-import { calendarPalette, colors, spacing, typography } from '../theme/tokens';
+import { calendarPalette, colors, radius, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
 
 interface Result {
@@ -43,7 +43,7 @@ const sectionStyle = {
   boxSizing: 'border-box',
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
+  borderRadius: radius.lg,
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
@@ -52,7 +52,7 @@ const calendarSectionStyle = {
   ...sectionStyle,
   background: calendarPalette.panel,
   border: `1px solid ${calendarPalette.panelBorder}`,
-  borderRadius: 20,
+  borderRadius: radius.xl,
 } as const;
 const calendarTitleStyle = { ...cardTitleStyle, color: calendarPalette.title } as const;
 /** #825: 작은 달력 최대 폭(화면 모양값, 규칙 숫자 아님). 아래로 내려가도 줄 전체로 늘어나지 않는다. */

@@ -31,7 +31,14 @@ import {
   recordsArea,
   supplyTierLabels,
 } from '../../labels/ko';
-import { colors, detailTheme, spacing, statusPalette, typography } from '../../theme/tokens';
+import {
+  colors,
+  detailTheme,
+  radius,
+  spacing,
+  statusPalette,
+  typography,
+} from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { daysAgo, formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
@@ -175,7 +182,7 @@ function FitMark({ kind, text }: { kind: 'confirmed' | 'ai'; text: string }) {
         alignItems: 'center',
         gap: 4,
         padding: '0 10px',
-        borderRadius: 999,
+        borderRadius: radius.pill,
         background: palette.bg,
         color: palette.fg,
         fontSize: typography.fontSizeSecondary,
@@ -307,7 +314,7 @@ function EvidenceBar({ items }: { items: ScoreItemView[] }) {
           position: 'relative',
           width: 140,
           height: 8,
-          borderRadius: 999,
+          borderRadius: radius.pill,
           background: detailTheme.bandTodo,
           overflow: 'hidden',
         }}
@@ -317,7 +324,7 @@ function EvidenceBar({ items }: { items: ScoreItemView[] }) {
             position: 'absolute',
             inset: 0,
             width: `${percent}%`,
-            background: detailTheme.accent,
+            background: detailTheme.accentBar,
           }}
         />
       </span>
@@ -333,7 +340,7 @@ function DistanceLine({ km }: { km: number }) {
   const dot = {
     width: 8,
     height: 8,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     background: detailTheme.lineDone,
     flexShrink: 0,
   } as const;

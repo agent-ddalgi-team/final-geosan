@@ -26,7 +26,7 @@ import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { analysisCharts, salesAnalysisTexts as texts } from '../labels/ko';
-import { colors, spacing, typography } from '../theme/tokens';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
 interface Result {
@@ -44,7 +44,7 @@ const sectionStyle = {
   gap: 12,
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
+  borderRadius: radius.lg,
   padding: spacing.cardPadding,
 } as const;
 const titleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;

@@ -9,7 +9,7 @@ import { getAssistantDaily } from '../../api/assistant';
 import type { DailyBrief } from '../../api/assistant';
 import { ApiError } from '../../api/client';
 import { assistantTexts as texts, errorTexts } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 const NOTHING_TO_SUMMARISE = 'ASSISTANT_NO_RECORDS';
@@ -69,7 +69,7 @@ export default function AssistantDaily({ staffKey }: { staffKey: string }) {
         gap: 6,
         padding: 12,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
         background: colors.bgLayout,
       }}
     >
@@ -79,7 +79,7 @@ export default function AssistantDaily({ staffKey }: { staffKey: string }) {
           data-testid="assistant-daily-mark"
           style={{
             padding: '2px 8px',
-            borderRadius: 4,
+            borderRadius: radius.sm,
             background: statusPalette.wait.bg,
             color: statusPalette.wait.fg,
             fontSize: typography.fontSizeSecondary,

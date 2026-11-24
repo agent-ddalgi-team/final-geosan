@@ -7,7 +7,7 @@ import type { DashboardMap as DashboardMapData } from '../../api/dashboardMapTyp
 import FiveStates from '../common/FiveStates';
 import DashboardMap from './DashboardMap';
 import { dashboardMapTexts } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { colors, radius, spacing, typography } from '../../theme/tokens';
 
 interface Result {
   key: number;
@@ -67,7 +67,7 @@ export default function DashboardMapSection({ title, hint, aside }: DashboardMap
         boxSizing: 'border-box',
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 12,
+        borderRadius: radius.lg,
         padding: spacing.cardPadding,
       }}
     >

@@ -9,7 +9,7 @@ import { Button, Checkbox, Space } from 'antd';
 import { ApiError, postIndustries } from '../../api/client';
 import type { OpportunityDetail } from '../../api/types';
 import { errorTexts, industryChips as texts } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 import { MAX_INDUSTRIES } from '../records/ChoiceQuestion';
 import DetailSection from './DetailSection';
@@ -90,7 +90,7 @@ export default function IndustryChips({
                 alignItems: 'center',
                 gap: 4,
                 padding: '0 10px',
-                borderRadius: 999,
+                borderRadius: radius.pill,
                 background: (confirmed ? statusPalette.ok : statusPalette.neutral).bg,
                 color: (confirmed ? statusPalette.ok : statusPalette.neutral).fg,
                 fontWeight: confirmed ? 600 : 400,

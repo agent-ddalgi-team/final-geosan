@@ -19,7 +19,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { Button } from 'antd';
 import type { IndustryCount, ProcessCount, RegionCount } from '../../api/types';
 import { listFilters, listSearch, listSimple } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 
 /** 목록 정렬(#516). rank = 추천 순(기본), recent = 들어온 시각 최신 순. */
 export type ListSort = 'rank' | 'recent' | 'distance';
@@ -69,7 +69,7 @@ export interface ListFilterBarProps {
 const controlStyle = {
   minHeight: 36,
   padding: '0 12px',
-  borderRadius: 8,
+  borderRadius: radius.md,
   border: `1px solid ${colors.border}`,
   background: colors.bgContainer,
   color: colors.text,
@@ -90,7 +90,7 @@ const sortStyle = (selected: boolean, enabled = true) =>
   ({
     minHeight: 36,
     padding: '0 14px',
-    borderRadius: 8,
+    borderRadius: radius.md,
     border: `1px solid ${selected ? colors.text : enabled ? colors.border : colors.borderSecondary}`,
     background: selected ? colors.text : colors.bgContainer,
     color: selected ? colors.bgContainer : enabled ? colors.text : colors.textDimmed,

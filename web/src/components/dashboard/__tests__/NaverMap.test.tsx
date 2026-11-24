@@ -46,15 +46,23 @@ function fakeSdk(
         }
       }
       fitBounds = (...args: unknown[]) => calls.push({ kind: 'fitBounds', args });
+      // 기본은 모든 좌표가 같은 화면 위치로 온다(핀이 모두 겹친 상태). 펼친 자리({spread})는 그 화면 위치로 되돌린다(#898).
       getProjection = () => ({
-        fromCoordToOffset: (point: LatLng) => project?.(point) ?? { x: 120, y: 80 },
+        fromCoordToOffset: (point: LatLng | { spread: { x: number; y: number } }) =>
+          'spread' in point ? point.spread : (project?.(point) ?? { x: 120, y: 80 }),
+        fromOffsetToCoord: (offset: { x: number; y: number }) => ({
+          spread: { x: offset.x, y: offset.y },
+        }),
       });
       destroy = () => calls.push({ kind: 'destroy', args: [] });
     },
     LatLng,
     Point: class {
-      constructor(...args: unknown[]) {
-        calls.push({ kind: 'Point', args });
+      constructor(
+        public x: number,
+        public y: number,
+      ) {
+        calls.push({ kind: 'Point', args: [x, y] });
       }
     },
     Circle: class {
@@ -73,6 +81,7 @@ function fakeSdk(
           mapElement?.append(content);
         }
       }
+      setPosition = (...args: unknown[]) => calls.push({ kind: 'setPosition', args });
       setMap = () => this.iconNode?.remove();
     },
     Event: {
@@ -146,6 +155,74 @@ describe('네이버 지도 바탕(#671)', () => {
     }
     for (const word of Object.values(t.groups)) expect(sent).not.toContain(word);
     expect(screen.queryByTestId('dashboard-map-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('확대·이동이 끝나면(idle) 겹친 점을 서로 떨어진 자리로 옮기고, 본사 핀은 그대로 둔다 (#898)', async () => {
+    const sdk = fakeSdk();
+    window.naver = { maps: sdk.api as never };
+    renderMap('test-key');
+    await waitFor(() => expect(sdk.calls.some((c) => c.kind === 'fitBounds')).toBe(true));
+    const idle = sdk.listeners.find((l) => l.name === 'idle');
+    expect(idle).toBeDefined();
+    idle!.handler();
+    // 회사 핀 4개만 자리를 받는다(본사는 움직이지 않음). 모두 같은 화면 위치였으므로 서로 다른 자리로 펼쳐진다.
+    const moves = sdk.calls
+      .filter((c) => c.kind === 'setPosition')
+      .map((c) => (c.args[0] as { spread: { x: number; y: number } }).spread);
+    expect(moves).toHaveLength(4);
+    for (let i = 0; i < moves.length; i += 1) {
+      for (let j = i + 1; j < moves.length; j += 1) {
+        // 점 가운데 사이 16px(PIN_GAP) 이상 — 점 지름은 14px.
+        expect(Math.hypot(moves[i].x - moves[j].x, moves[i].y - moves[j].y)).toBeGreaterThan(15.5);
+      }
+      expect(Math.hypot(moves[i].x - 120, moves[i].y - 80)).toBeGreaterThan(15.5);
+    }
+  });
+
+  it('영업 홈 지도: 한자리에 겹친 회사는 숫자로 묶고, 살짝 겹친 점은 벌려 하나씩 누르게 한다 (#898·#900)', async () => {
+    // Given: 회사 0·1은 거의 같은 자리(3px), 회사 2는 살짝 옆(12px), 회사 3은 멀리. 본사도 멀리.
+    const spots = [
+      { x: 300, y: 200 },
+      { x: 303, y: 201 },
+      { x: 312, y: 200 },
+      { x: 450, y: 320 },
+    ];
+    const sdk = fakeSdk(({ la, ln }) => {
+      const index = data.points.findIndex((point) => point.lat === la && point.lng === ln);
+      return index >= 0 ? spots[index] : { x: 60, y: 40 };
+    });
+    window.naver = { maps: sdk.api as never };
+    renderMap('test-key', true);
+    // When: 확대·이동이 끝난다(idle).
+    const cluster = await screen.findByTestId('dashboard-map-cluster');
+    act(() => sdk.listeners.filter(({ name }) => name === 'idle').forEach((l) => l.handler()));
+    // Then: 0·1만 숫자 2로 묶이고, 점은 2개(회사 2·3)가 따로 그려진다.
+    expect(cluster).toHaveTextContent('2');
+    const dots = sdk.calls.filter(
+      ({ kind, args: [options] }) =>
+        kind === 'Marker' &&
+        String((options as { icon?: { content?: unknown } }).icon?.content).includes(
+          'dashboard-map-pin',
+        ),
+    );
+    expect(dots).toHaveLength(2);
+    // 점은 작은 색 점(그림 없음)이고 본사만 집 모양이다.
+    expect(String((dots[0].args[0] as { icon: { content: string } }).icon.content)).toContain(
+      'data-pin="dot"',
+    );
+    // 숫자 풍선과 살짝 옆 점은 서로 떨어진 자리로 옮겨져, 겹치지 않고 따로 누를 수 있다.
+    const shown = sdk.calls
+      .filter(({ kind }) => kind === 'setPosition')
+      .slice(-3)
+      .map(({ args: [at] }) => {
+        const coord = at as { spread?: { x: number; y: number }; la?: number; ln?: number };
+        if (coord.spread) return coord.spread;
+        const index = data.points.findIndex((p) => p.lat === coord.la && p.lng === coord.ln);
+        return spots[index];
+      });
+    const [bubble, near, far] = shown;
+    expect(Math.hypot(bubble.x - near.x, bubble.y - near.y)).toBeGreaterThan(17.5);
+    expect(far).toEqual(spots[3]);
   });
 
   it('지도 점을 누르면 우리 말풍선에 회사 이름·단계·거리가 보인다', async () => {

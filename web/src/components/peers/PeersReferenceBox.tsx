@@ -4,7 +4,7 @@
 // 이 상자의 요약 건수를 초안 생성에 넣는 것은 #247 결정 뒤 별도 이슈다.
 import type { PeersResponse } from '../../api/types';
 import { peersArea } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import PeerCompanyLine from './PeerCompanyLine';
 import { peersSummaryText } from './peersText';
 import { usePeerNames } from './usePeerNames';
@@ -31,7 +31,7 @@ export default function PeersReferenceBox({ peers }: PeersReferenceBoxProps) {
         gap: 8,
         padding: 12,
         border: `1px solid ${colors.border}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
       }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>

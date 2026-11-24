@@ -1,11 +1,14 @@
 // 대시보드 지도 바탕을 네이버클라우드 Maps 웹 지도(Dynamic Map)로 그린다(#671, PM 요청 2026-11-13).
 // 약속(계약 C4 screenMapRule): 지도 SDK에 넘기는 값은 좌표와 원의 중심·반지름뿐이다. 회사 이름·영업 단계·거리·메모는
-// SDK 함수 인자로 넘기지 않는다. 점 모양(●◆★)과 "30km" 같은 원 이름만 그림으로 넘기고, 회사 정보는 부모의 HTML 말풍선이 그린다.
+// SDK 함수 인자로 넘기지 않는다. 색 점과 본사 집 그림(#898), 묶음 숫자, "30km" 같은 원 이름만 그림으로 넘기고,
+// 회사 정보는 부모의 HTML 말풍선이 그린다.
 // 검색·지오코딩·길찾기 모듈(submodules)은 불러오지 않는다.
 import { useEffect, useRef, useState } from 'react';
 import type { DashboardMapGroup, DashboardMapPoint } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette } from '../../theme/tokens';
+import { pinHtml } from '../common/MapPin';
+import { spreadPins, type PinSpot } from '../common/spreadPins';
 
 /* 쓰는 SDK 기능만 좁게 적은 모양. 실제 SDK는 window.naver.maps에 있다. */
 interface NaverLatLng {
@@ -26,13 +29,18 @@ interface NaverMapInstance {
   destroy: () => void;
   getCenter?: () => NaverLatLng;
   /** 좌표 → 지도 상자 안 화면 위치(px). 마우스를 올린 점 위에 우리 이름표를 띄울 때 쓴다(#673). */
-  getProjection: () => { fromCoordToOffset: (latlng: NaverLatLng) => NaverOffset };
+  getProjection: () => {
+    fromCoordToOffset: (latlng: NaverLatLng) => NaverOffset;
+    /** 화면 위치(px) → 좌표. 겹친 핀을 펼친 자리에 놓을 때 쓴다(#898). */
+    fromOffsetToCoord: (offset: unknown) => NaverLatLng;
+  };
 }
 interface NaverCircle {
   getBounds: () => NaverBounds;
 }
 interface NaverMarker {
   setMap?: (map: NaverMapInstance | null) => void;
+  setPosition: (latlng: NaverLatLng) => void;
 }
 export interface NaverMapsApi {
   Map: new (el: HTMLElement, options: Record<string, unknown>) => NaverMapInstance;
@@ -114,14 +122,13 @@ export function resetNaverMapsLoader() {
   failureListeners.clear();
 }
 
-const GLYPH: Record<DashboardMapGroup, string> = {
-  INTERESTED: '●',
-  IN_PROGRESS: '◆',
-  WON_THIS_YEAR: '★',
-};
-
-const OVERLAP_DISTANCE = 32;
-const CLUSTER_SIZE = 38;
+// #898(PM 2026-11-24 "섞기"): 한자리에 거의 그대로 겹친 회사(OVERLAP_DISTANCE px 안)는 숫자 풍선으로 묶고(#900),
+// 살짝만 겹친 점·풍선은 PIN_GAP 간격으로 살짝 벌려 하나씩 누를 수 있게 한다(잇는 선 없음).
+const OVERLAP_DISTANCE = 8;
+const CLUSTER_SIZE = 22;
+const PIN_SIZE = 14;
+const HQ_PIN_SIZE = 24;
+const PIN_GAP = 18;
 const KM_PER_LATITUDE_DEGREE = 110.57;
 const DETAIL_SCALE_PX_PER_KM = 50;
 const LABEL_HEIGHT = 22;
@@ -162,10 +169,12 @@ function companyNameLabels(overlay: MapOverlay, visitBaseId?: string) {
     : [];
   if (visitGroup) candidates.unshift(visitGroup);
 
-  const blocked: LabelBox[] = [{ left: hq.x - 10, top: hq.y - 11, width: 98, height: 22 }];
+  const blocked: LabelBox[] = [
+    { left: hq.x - HQ_PIN_SIZE / 2, top: hq.y - 12, width: 100, height: 24 },
+  ];
   for (const { x, y, companies } of visible) {
-    const radius = companies.length > 1 ? CLUSTER_SIZE / 2 : 10;
-    blocked.push({ left: x - radius, top: y - radius, width: radius * 2, height: radius * 2 });
+    const half = companies.length > 1 ? CLUSTER_SIZE / 2 : PIN_SIZE / 2 + 2;
+    blocked.push({ left: x - half, top: y - half, width: half * 2, height: half * 2 });
   }
 
   const labels = [];
@@ -178,7 +187,7 @@ function companyNameLabels(overlay: MapOverlay, visitBaseId?: string) {
     const text =
       companies.length > 1 ? t.visitClusterIncludes(company.customerName) : company.customerName;
     const labelWidth = Math.min(text.length * 12 + 12, isVisitBase ? 210 : 136, width - 8);
-    const gap = companies.length > 1 ? CLUSTER_SIZE / 2 + 5 : 14;
+    const gap = companies.length > 1 ? CLUSTER_SIZE / 2 + 5 : PIN_SIZE / 2 + 5;
     const top = y - LABEL_HEIGHT / 2;
     const centeredLeft = Math.max(4, Math.min(width - labelWidth - 4, x - labelWidth / 2));
     const placements = [
@@ -225,12 +234,13 @@ export function groupOverlappingCompanies(points: ProjectedCompany[]): Projected
   return groups;
 }
 
-/** 점 모양 그림. 회사 정보 없이 모양·색만 담는다. */
-export function pointIcon(group: DashboardMapGroup, color: string): string {
-  return `<div data-testid="dashboard-map-pin" style="font-size:20px;line-height:20px;color:${color};text-shadow:0 0 2px #fff,0 0 2px #fff;cursor:pointer">${GLYPH[group]}</div>`;
+/** 점 그림(#898: 작은 색 점 — 관심 빨강 · 진행 중 파랑 · 올해 성공 노랑). 회사 정보 없이 색만 담는다. */
+export function pointIcon(group: DashboardMapGroup): string {
+  return pinHtml(group, PIN_SIZE, 'dashboard-map-pin');
 }
 
-function clusterIcon(count: number, color: string): HTMLButtonElement {
+/** 묶음 숫자 풍선. 여러 단계가 섞일 수 있어 단계 색 대신 진한 색(핵심 강조)으로 그린다. */
+function clusterIcon(count: number): HTMLButtonElement {
   const icon = document.createElement('button');
   icon.type = 'button';
   icon.dataset.testid = 'dashboard-map-cluster';
@@ -244,9 +254,9 @@ function clusterIcon(count: number, color: string): HTMLButtonElement {
     border: `2px solid ${colors.bgContainer}`,
     borderRadius: '50%',
     color: colors.bgContainer,
-    background: color,
+    background: colors.text,
     boxShadow: '0 1px 4px #1f232947',
-    fontSize: `${typography.fontSizeSecondary}px`,
+    fontSize: '12px',
     fontWeight: '700',
     lineHeight: '1',
     cursor: 'pointer',
@@ -263,7 +273,6 @@ export interface NaverMapCanvasProps {
   center: { lat: number; lng: number };
   ringsKm: number[];
   points: DashboardMapPoint[];
-  colors: Record<DashboardMapGroup, string>;
   ringColor: string;
   hqColor: string;
   /** 점을 누르면 그 기회 번호를 알린다. 말풍선은 부모가 그린다. */
@@ -286,7 +295,6 @@ export default function NaverMapCanvas({
   center,
   ringsKm,
   points,
-  colors: groupColors,
   ringColor,
   hqColor,
   onSelect,
@@ -334,13 +342,17 @@ export default function NaverMapCanvas({
         return { x: x + shiftX, y: y + shiftY };
       };
     };
+    // 펼친 핀(#898)은 실제 좌표와 조금 다른 자리에 있으므로 이름표·업체명은 지금 보이는 자리에 띄운다.
+    const shownAt = new Map<unknown, NaverLatLng>();
     const showHover = (position: NaverLatLng, oppIds: string[], more = 0) =>
       setHover({ ...projectToContainer()(position), oppIds, more });
     const clearHover = () => setHover(null);
     // 점에 마우스를 올리면 이름표를, 내리면 지운다. 지도를 끌거나 확대하면 위치가 바뀌니 지운다.
     const hoverable = (marker: unknown, oppId: string, position: NaverLatLng) => {
       api.Event.addListener(marker, 'click', () => select.current(oppId));
-      api.Event.addListener(marker, 'mouseover', () => showHover(position, [oppId]));
+      api.Event.addListener(marker, 'mouseover', () =>
+        showHover(shownAt.get(marker) ?? position, [oppId]),
+      );
       api.Event.addListener(marker, 'mouseout', clearHover);
     };
     api.Event.addListener(map, 'dragstart', clearHover);
@@ -374,9 +386,11 @@ export default function NaverMapCanvas({
       map,
       position: middle,
       clickable: false,
+      // #898: 본사 핀(초록 원 안 흰 집)은 회사 핀 위에 보이게.
+      zIndex: 1000,
       icon: {
-        content: `<div style="width:14px;height:14px;background:${hqColor};border:2px solid #fff"></div>`,
-        anchor: new api.Point(9, 9),
+        content: pinHtml('HQ', HQ_PIN_SIZE),
+        anchor: new api.Point(HQ_PIN_SIZE / 2, HQ_PIN_SIZE / 2),
       },
     });
     const positions = points.map((point) => ({
@@ -388,15 +402,19 @@ export default function NaverMapCanvas({
         map,
         position,
         icon: {
-          content: pointIcon(point.group, groupColors[point.group]),
-          anchor: new api.Point(10, 10),
+          content: pointIcon(point.group),
+          anchor: new api.Point(PIN_SIZE / 2, PIN_SIZE / 2),
         },
       });
       hoverable(marker, point.oppId, position);
       return marker;
     };
+    // 지도에 올린 회사 점·묶음 풍선(키: 회사 번호를 이은 글자)과 그 실제 좌표.
+    const companyPins = new Map<string, { marker: NaverMarker; position: NaverLatLng }>();
     if (!compact) {
-      for (const { point, position } of positions) addCompanyPin(point, position);
+      for (const { point, position } of positions) {
+        companyPins.set(point.oppId, { marker: addCompanyPin(point, position), position });
+      }
     }
     if (focus) {
       const spot = new api.LatLng(focus.center.lat, focus.center.lng);
@@ -427,10 +445,33 @@ export default function NaverMapCanvas({
       map.fitBounds(outer.getBounds());
     }
 
+    // 확대·이동이 끝날 때(idle)마다 화면 위치로 겹친 점·풍선을 살짝 벌린다(#898). 본사와 본사 이름표 자리는
+    // 움직이지 않는 칸으로 두고 그 둘레로 옮긴다. 좌표만 다룬다(회사 정보 없음).
+    const spread = () => {
+      const projection = map.getProjection();
+      const hq = projection.fromCoordToOffset(middle);
+      const fixedSpots: PinSpot[] = [{ ...hq, fixed: true }];
+      if (compact) {
+        // 본사 오른쪽 "거산 본사" 이름표 자리.
+        for (const dx of [28, 46, 64]) fixedSpots.push({ x: hq.x + dx, y: hq.y, fixed: true });
+      }
+      const pins = [...companyPins.values()];
+      const spots = pins.map(({ position }) => projection.fromCoordToOffset(position));
+      const placed = spreadPins([...fixedSpots, ...spots], PIN_GAP).slice(fixedSpots.length);
+      pins.forEach(({ marker, position }, i) => {
+        const moved = Math.hypot(placed[i].x - spots[i].x, placed[i].y - spots[i].y) > 0.5;
+        const at = moved
+          ? projection.fromOffsetToCoord(new api.Point(placed[i].x, placed[i].y))
+          : position;
+        shownAt.set(marker, at);
+        marker.setPosition(at);
+      });
+    };
+
     // 방문 기준을 선택한 뒤에도 확대·축소가 끝날 때 겹치는 업체 점을 다시 묶는다.
-    const companyPins = new Map<string, NaverMarker>();
     const byId = new Map(positions.map(({ point, position }) => [point.oppId, position]));
-    let groups: ProjectedGroup[] = [];
+    let groups: (ProjectedGroup & { key: string })[] = [];
+    if (!compact) api.Event.addListener(map, 'idle', spread);
     if (compact) {
       const updateGroups = () => {
         const projection = map.getProjection();
@@ -439,20 +480,19 @@ export default function NaverMapCanvas({
             const { x, y } = projection.fromCoordToOffset(position);
             return { x, y, point };
           }),
-        );
+        ).map((group) => ({ ...group, key: group.companies.map(({ oppId }) => oppId).join(',') }));
         const keep = new Set<string>();
-        for (const { companies } of groups) {
-          const key = companies.map((point) => point.oppId).join(',');
+        for (const { companies, key } of groups) {
           keep.add(key);
           if (companyPins.has(key)) continue;
           const point = companies[0];
           const position = byId.get(point.oppId);
           if (!position) continue;
           if (companies.length === 1) {
-            companyPins.set(key, addCompanyPin(point, position));
+            companyPins.set(key, { marker: addCompanyPin(point, position), position });
             continue;
           }
-          const icon = clusterIcon(companies.length, groupColors.INTERESTED);
+          const icon = clusterIcon(companies.length);
           const marker = new api.Marker({
             map,
             position,
@@ -469,7 +509,7 @@ export default function NaverMapCanvas({
           };
           const preview = () =>
             showHover(
-              position,
+              shownAt.get(marker) ?? position,
               companies.slice(0, 2).map(({ oppId }) => oppId),
               companies.length - 2,
             );
@@ -483,16 +523,21 @@ export default function NaverMapCanvas({
             event.preventDefault();
             open();
           });
-          companyPins.set(key, marker);
+          companyPins.set(key, { marker, position });
         }
-        for (const [key, marker] of companyPins) {
+        for (const [key, { marker }] of companyPins) {
           if (keep.has(key)) continue;
           api.Event.clearInstanceListeners?.(marker);
           marker.setMap?.(null);
+          shownAt.delete(marker);
           companyPins.delete(key);
         }
       };
-      api.Event.addListener(map, 'idle', updateGroups);
+      // 묶은 뒤에 벌린다(같은 idle에서 차례로).
+      api.Event.addListener(map, 'idle', () => {
+        updateGroups();
+        spread();
+      });
       updateGroups();
     }
 
@@ -506,10 +551,11 @@ export default function NaverMapCanvas({
           width: element.clientWidth,
           height: element.clientHeight,
           hq,
-          groups: groups.map(({ companies }) => ({
-            ...project(byId.get(companies[0].oppId)!),
-            companies,
-          })),
+          groups: groups.map(({ companies, key }) => {
+            const pin = companyPins.get(key);
+            const at = (pin && shownAt.get(pin.marker)) ?? byId.get(companies[0].oppId)!;
+            return { ...project(at), companies };
+          }),
           // 이 지역에서 축척 1km가 약 50px 이상일 때 업체명까지 표시할 여유가 생긴다.
           showCompanyNames: Math.abs(project(north).y - hq.y) >= DETAIL_SCALE_PX_PER_KM,
         });
@@ -534,7 +580,7 @@ export default function NaverMapCanvas({
       setHover(null);
       setOverlay(null);
       try {
-        for (const marker of companyPins.values()) {
+        for (const { marker } of companyPins.values()) {
           api.Event.clearInstanceListeners?.(marker);
           marker.setMap?.(null);
         }
@@ -545,18 +591,7 @@ export default function NaverMapCanvas({
       }
     }
     return cleanup;
-  }, [
-    api,
-    center.lat,
-    center.lng,
-    ringsKm,
-    points,
-    groupColors,
-    ringColor,
-    hqColor,
-    focus,
-    compact,
-  ]);
+  }, [api, center.lat, center.lng, ringsKm, points, ringColor, hqColor, focus, compact]);
 
   const hqOffset = overlay?.hq;
   const labels = overlay ? companyNameLabels(overlay, visitBaseId) : [];
@@ -564,14 +599,14 @@ export default function NaverMapCanvas({
   const tooltipWidth = overlay?.width ? Math.min(260, overlay.width - 16) : 260;
   const belowMarker = hover ? hover.y < (hoverNames.length > 1 ? 85 : 36) : false;
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 12 }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: radius.lg }}>
       <div
         ref={box}
         data-testid="dashboard-naver-map"
         style={{
           width: '100%',
           height: compact ? 'clamp(420px, 52vw, 510px)' : 420,
-          borderRadius: 12,
+          borderRadius: radius.lg,
           overflow: 'hidden',
           isolation: 'isolate',
         }}
@@ -582,7 +617,7 @@ export default function NaverMapCanvas({
           style={{
             position: 'absolute',
             zIndex: 1,
-            left: hqOffset.x + 13,
+            left: hqOffset.x + HQ_PIN_SIZE / 2 + 4,
             top: hqOffset.y,
             transform: 'translateY(-50%)',
             borderRadius: 5,
@@ -644,7 +679,7 @@ export default function NaverMapCanvas({
             top: hover.y + (belowMarker ? 22 : -16),
             transform: belowMarker ? 'translateX(-50%)' : 'translate(-50%, -100%)',
             padding: '2px 8px',
-            borderRadius: 6,
+            borderRadius: radius.sm,
             background: 'rgba(0,0,0,0.78)',
             color: '#fff',
             fontSize: 13,

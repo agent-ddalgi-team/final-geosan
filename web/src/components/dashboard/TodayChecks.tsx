@@ -20,7 +20,7 @@ import { ApiError, confirmHandoff, resolveSchedule } from '../../api/client';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { LIST_PATH } from '../../paths';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
 const SHOWN = 5;
@@ -399,7 +399,7 @@ export default function TodayChecks({
         gap: 8,
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 12,
+        borderRadius: radius.lg,
         padding: '16px 20px',
       }}
     >
