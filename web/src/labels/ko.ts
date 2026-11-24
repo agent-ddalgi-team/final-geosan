@@ -774,7 +774,7 @@ export const candidateSearch = {
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
   /**
-   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 찾기 💰]를 누른다(#825, 옛 이름 [영업 후보로 더하기 💰]). 모달 없이 인라인이다.
+   * 조건 칸(#316): 담당자가 오른쪽 패널에서 공정·지역·산업을 고르고 [발굴 시작 💰]을 누른다.
    * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
    */
   formTitle: '영업 후보로 더할 공장 조건',
@@ -784,7 +784,7 @@ export const candidateSearch = {
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '발굴 시작',
+  fetchButton: '발굴 시작 💰',
   fetching: '찾는 중',
   pickStaffFirst: '담당자를 고르면 찾을 수 있습니다',
   started: '찾기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
@@ -2668,6 +2668,7 @@ export const sourceUrlTexts = {
  */
 export const listSimple = {
   ingestPanelTitle: '새 후보 발굴',
+  ingestPanelButton: '새 후보 발굴 💰',
   ingestCostHint: 'AI 탐색 시 비용이 발생할 수 있습니다.',
   ingestHistory: '최근 발굴 결과',
   ingestRequired: '필수',

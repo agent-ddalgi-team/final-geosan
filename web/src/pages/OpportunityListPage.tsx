@@ -467,13 +467,12 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           {showDiscovery ? (
             <Button
               type="primary"
-              icon={<span aria-hidden="true">+</span>}
               aria-haspopup="dialog"
               aria-expanded={discoveryOpen}
               onClick={() => setDiscoveryOpen(true)}
               data-testid="ingest-panel-toggle"
             >
-              {listSimple.ingestPanelTitle}
+              {listSimple.ingestPanelButton}
             </Button>
           ) : null}
         </header>

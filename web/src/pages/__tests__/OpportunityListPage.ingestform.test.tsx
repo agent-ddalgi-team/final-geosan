@@ -117,7 +117,7 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
       }),
     );
     renderPage();
-    const toggle = await screen.findByRole('button', { name: '새 후보 발굴' });
+    const toggle = await screen.findByRole('button', { name: '새 후보 발굴 💰' });
     await user.click(toggle);
     const panel = await screen.findByRole('dialog', { name: '새 후보 발굴' });
     expect(within(panel).getByTestId('ingest-process')).toBeVisible();
