@@ -1,4 +1,141 @@
 /* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다. */
+.prospect-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.prospect-form,
+.prospect-history {
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.prospect-form {
+  display: grid;
+  gap: 14px;
+}
+
+.prospect-history {
+  margin-top: 12px;
+}
+
+.prospect-check-group {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.prospect-check-group legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.prospect-check-group legend small {
+  margin-left: 4px;
+  color: #5b6470;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.prospect-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-testid='ingest-process'] .prospect-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.prospect-choices label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  gap: 7px;
+  padding: 5px 9px;
+  border: 1px solid #e3e6ea;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.prospect-choices label:has(input:checked) {
+  background: #e6effb;
+  border-color: #1a4f9c;
+}
+
+.prospect-choices input {
+  flex: none;
+  margin: 0;
+  accent-color: #1a4f9c;
+}
+
+.prospect-refinement,
+.prospect-form-footer {
+  border-top: 1px solid #e3e6ea;
+  padding-top: 10px;
+}
+
+.prospect-refinement summary,
+.prospect-history summary,
+.prospect-region-direct {
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.prospect-refinement summary span {
+  margin-left: 6px;
+  color: #5b6470;
+}
+
+.prospect-refinement[open] summary,
+.prospect-history[open] summary {
+  margin-bottom: 8px;
+}
+
+.prospect-refinement p,
+.prospect-form-help {
+  margin: 0;
+  color: #5b6470;
+  font-size: 14px;
+}
+
+.prospect-estimate {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  background: #f5f6f8;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.prospect-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prospect-form-help {
+  display: grid;
+  gap: 2px;
+}
+
+.prospect-form-footer button {
+  margin-left: auto;
+}
+
 html,
 body {
   margin: 0;

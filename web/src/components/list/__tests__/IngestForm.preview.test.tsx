@@ -80,7 +80,7 @@ beforeEach(() => {
 describe('IngestForm 맞는 공장 수 줄 (#549)', () => {
   it('단추 이름은 [새 후보 찾기 💰](#825, 옛 [영업 후보로 더하기 💰])이고, 공정을 고르기 전에는 숫자 줄도 요청도 없다', () => {
     renderForm();
-    expect(screen.getByTestId('ingest-submit')).toHaveTextContent('새 후보 찾기 💰');
+    expect(screen.getByTestId('ingest-submit')).toHaveTextContent('발굴 시작');
     expect(screen.queryByTestId('ingest-preview')).not.toBeInTheDocument();
     expect(mockedPreview).not.toHaveBeenCalled();
   });

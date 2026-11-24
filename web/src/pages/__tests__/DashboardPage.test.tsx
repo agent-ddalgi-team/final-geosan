@@ -171,7 +171,7 @@ describe('DashboardPage', () => {
       expect(await screen.findByTestId('location')).toHaveTextContent(url);
     });
 
-    it('관심 기업이 0곳이면 구역 아래에 신규 거래처 찾기로 가는 안내 한 줄이 보인다(메뉴 이름, #787)', async () => {
+    it('관심 기업이 0곳이면 구역 아래에 거래처 후보로 가는 안내 한 줄이 보인다(메뉴 이름, #787)', async () => {
       const zero = Object.fromEntries(
         Object.keys(fixtureData.counts).map((key) => [key, 0]),
       ) as Dashboard['counts'];
@@ -179,13 +179,13 @@ describe('DashboardPage', () => {
       renderPage();
       const notice = await screen.findByTestId('dashboard-bookmark-empty');
       expect(notice).toHaveTextContent(
-        '아직 관심으로 고른 회사가 없습니다. 신규 거래처 찾기에서 [관심]을 눌러 담아 보세요',
+        '아직 관심으로 고른 회사가 없습니다. 거래처 후보에서 [관심]을 눌러 담아 보세요',
       );
       expect(within(screen.getByTestId('dashboard-section-bookmark')).getByText(/아직 관심/)).toBe(
         notice,
       );
       const link = screen.getByTestId('dashboard-bookmark-empty-link');
-      expect(link).toHaveTextContent(/^신규 거래처 찾기$/);
+      expect(link).toHaveTextContent(/^거래처 후보$/);
       expect(link).toHaveAttribute('href', '/opportunities');
       // 0곳도 서버가 준 숫자이므로 칸은 그대로 보인다.
       expect(screen.getByTestId('dashboard-count-BOOKMARKED')).toHaveAttribute(
