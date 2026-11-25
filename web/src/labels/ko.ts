@@ -289,11 +289,12 @@ export const dashboardTexts = {
   todayMore: (count: number) => `외 ${count}`,
   /** #766(PM 결정 2026-11-16): 주제별 묶음 제목·아이콘과 지난 일정 단추. */
   todayGroupTitles: {
-    SCHEDULE_OVERDUE: '지난 일정 — 했나요?',
+    // #925(PM 요청 2026-11-25): 실무자가 바로 알아보게 핵심 말만.
+    SCHEDULE_OVERDUE: '지난 일정',
     SCHEDULE_TODAY: '오늘 일정',
-    CHECK_LEFT: '확인할 것이 남은 관심 기업',
-    HANDOFF_FOR_ME: '나에게 온 전달 사항',
-    HANDOFF_FROM_ME: '내가 보낸 전달 사항 · 확인 전',
+    CHECK_LEFT: '확인할 회사',
+    HANDOFF_FOR_ME: '받은 것',
+    HANDOFF_FROM_ME: '보낸 것 · 상대 확인 전',
   },
   todayRowIcons: {
     SCHEDULE_OVERDUE: '🔴',
@@ -403,16 +404,16 @@ export const dashboardTexts = {
   workEmpty: '지난 일정도 오늘 일정도 없습니다',
   handoffTitle: '전달 사항',
   handoffEmpty: '확인할 전달 사항이 없습니다',
-  aiDailyTitle: 'AI 오늘 정리',
+  aiDailyTitle: 'AI 요약',
   outTitle: '이번 주 방문·연락',
   outHint: '오늘부터 7일 일정 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
   tableTitle: '진행 중인 회사',
   tableHint: '회사마다 지금 단계 · 마지막 접촉 · 다음 일정. 오래 멈춘 회사는 노란 줄입니다',
   /** "6곳" */
   tableCount: (n: number) => `${n}곳`,
-  tableFilterAll: '전체 담당',
-  tableFilterMine: '내 회사만',
-  tableFilterStalled: '멈춘 회사만',
+  tableFilterAll: '전체',
+  tableFilterMine: '내 담당',
+  tableFilterStalled: '오래 연락 없는 회사',
   /** "보류만 보는 중" */
   tableStageOnly: (stage: string) => `${stage}만 보는 중`,
   tableStageClear: '모든 단계 보기',
@@ -426,13 +427,16 @@ export const dashboardTexts = {
   tableNoContact: '접촉 기록 없음',
   /** "오늘" · "어제" · "5일 전" */
   tableDaysAgo: (n: number) => (n <= 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`),
-  tableStalled: '⚠ 다음 일정 없음 · 멈춤',
+  tableStalled: '⚠ 다음 일정 없음',
   /** "지난 일정 11/21" */
   tableOverdue: (day: string) => `지난 일정 ${day}`,
   tableEmpty: '이 조건에 맞는 회사가 없습니다.',
   /** "모두 보기 (12곳)" */
   tableShowAll: (n: number) => `모두 보기 (${n}곳)`,
   tableShowLess: '접기',
+  // #925: 방문 목록은 오늘 할 일 아래, 지도 칸은 지도 | 같이 들를 곳만.
+  mapTitle: '지도',
+  mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -2640,6 +2644,8 @@ export const coachTexts = {
   /** "함께 본 성사 회사: B금속(아연도금), C산업(자동차 부품)" */
   similarBasis: (items: string[]) => `함께 본 성사 회사: ${items.join(', ')}`,
   similarOpen: (name: string) => `${name} 상세 새 창으로 열기`,
+  /** (#916) "찾아본 것: A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳 · 지난 영업 분석 2건(최근 것부터)" */
+  lookups: (labels: string[]) => `찾아본 것: ${labels.join(' · ')}`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */

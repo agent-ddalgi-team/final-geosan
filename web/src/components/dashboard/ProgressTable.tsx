@@ -161,9 +161,6 @@ export default function ProgressTable({
           {t.tableCount(every.length)}
         </small>
       </h2>
-      <p style={{ margin: 0, color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
-        {t.tableHint}
-      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
         {filters.map((key) => (
           <Button
