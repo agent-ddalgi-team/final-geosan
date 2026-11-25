@@ -92,6 +92,12 @@ timeline
 
 **읽는 법** — "원래"는 그 결정 전의 계획, "지금"은 결정 뒤의 계획입니다. 상태는 세 가지입니다: ✅ 결정됨 · 📝 초안(아직 결정 전) · ❓ 확인 필요.
 
+### 2026-11-25
+
+| 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
+|---|---|---|---|---|
+| 영업 코치가 보는 기록 | 그 회사 한 곳의 이전 메모·꼬리 질문 답·피드백·전달 사항만 | 거기에 공정·산업이 겹치는 성사 회사의 기록(설정 3곳까지, 이름은 "사례 S1"로 바꾸고 지운 사본)을 함께 보고 "비슷한 성사 사례에서" 0~2줄을 제안 | PM: "데이터가 쌓이면 메모와 성사된 거래 기록을 바탕으로 비슷한 거래처에 맞춰 코칭". 벡터 검색은 기록이 수십 건이라 안 씀. AI가 찾을 것을 고르는 에이전트는 다음 단계 | ✅ PM 결정 2026-11-25 · [#915] (다음 [#916]) |
+
 ### 2026-11-24
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
@@ -508,3 +514,5 @@ timeline
 [#881]: https://github.com/agent-ddalgi-team/final-geosan/issues/881
 [#898]: https://github.com/agent-ddalgi-team/final-geosan/issues/898
 [#899]: https://github.com/agent-ddalgi-team/final-geosan/issues/899
+[#915]: https://github.com/agent-ddalgi-team/final-geosan/issues/915
+[#916]: https://github.com/agent-ddalgi-team/final-geosan/issues/916

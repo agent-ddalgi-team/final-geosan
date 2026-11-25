@@ -364,6 +364,9 @@ class AssistantSettings(FileModel):
     coach_prior_memo_limit: int = Field(ge=1, strict=True)
     # #742 확인 화면에 묻는 빠진 필수 질문 수 상한(질문 파일 순서로 앞에서부터).
     coach_max_required_questions: int = Field(ge=1, strict=True)
+    # #915 영업 코치가 함께 보는 비슷한 성사 회사 수 상한(같은 공정·산업이 겹치는 성사 회사).
+    # 0이면 비슷한 사례를 싣지 않는다(지금과 같은 코치).
+    coach_similar_won_limit: int = Field(ge=0, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -818,8 +821,13 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, **{key: defaults[key] for key in missing}}
 
 
-ADDED_ASSISTANT_KEYS = ("coachDailyLimit", "coachPriorMemoLimit", "coachMaxRequiredQuestions")
-"""#742 뒤에 생긴 assistant 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_ASSISTANT_KEYS = (
+    "coachDailyLimit",
+    "coachPriorMemoLimit",
+    "coachMaxRequiredQuestions",
+    "coachSimilarWonLimit",
+)
+"""#742·#915 뒤에 생긴 assistant 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:
