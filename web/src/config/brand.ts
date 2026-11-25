@@ -4,15 +4,12 @@
 // 로고(#898, PM 2026-11-23): 거산케미칼 로고의 그림·영문 부분만(아래 한글 회사명은 뺌). 화면 묶음에 함께 실려
 // 배포 사이트·PC 서버 어디서나 보인다. 서버 설정 brand.logoUrl이 비어 있으면(null) 이 로고를 쓴다.
 import geosanLogo from '../assets/brand/geosan-logo.png';
-// 접속 화면 로고(#912): 한글 회사명까지 있는 가로형. 접속 전에는 서버 설정을 읽을 수 없어 화면 묶음의 그림만 쓴다.
-import geosanLogoFull from '../assets/brand/geosan-logo-full.png';
-import geosanBuilding from '../assets/brand/geosan-building.png';
+// 접속 화면의 어두운 바탕용: 흰 배경만 지우고 색은 진하게 둔 투명 로고(위 로고는 반투명이라 어두운 바탕에서 흐려진다).
+import geosanLogoClear from '../assets/brand/geosan-logo-clear.png';
 
 export interface BrandConfig {
   logoUrl: string | null;
   loginLogoUrl: string;
-  /** 접속 화면 오른쪽 칸의 거산 건물 사진(#912). */
-  loginPhotoUrl: string;
   brandName: string;
   /** 강조색 1개(버튼·선택 표시). #898부터 먹색 #212121(흰 바탕 대비 약 16:1). 링크도 먹색 + 밑줄(AppFrame). */
   colorPrimary: string;
@@ -24,8 +21,7 @@ const envColor = import.meta.env.VITE_BRAND_COLOR;
 
 export const brand: BrandConfig = {
   logoUrl: geosanLogo,
-  loginLogoUrl: geosanLogoFull,
-  loginPhotoUrl: geosanBuilding,
+  loginLogoUrl: geosanLogoClear,
   brandName: '거산 영업지원',
   colorPrimary: envColor && /^#[0-9A-Fa-f]{6}$/.test(envColor) ? envColor : '#212121',
   demoLabel: null,
