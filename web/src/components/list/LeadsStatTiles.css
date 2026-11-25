@@ -1,0 +1,65 @@
+/* 임시 화면(시연용): 참고 그림 모양의 숫자 카드 줄 + 카드 2열 배치. 기존 부품의 글자·단추는 건드리지 않는다. */
+.lst {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.lst-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.lst-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex: none;
+}
+.lst-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+.lst-num {
+  font-size: 22px;
+  font-weight: 700;
+}
+.lst-ready {
+  background: #d9f3e4;
+}
+.lst-some {
+  background: #dbe8ff;
+}
+.lst-none {
+  background: #ffe9cf;
+}
+.lst-before {
+  background: #e6e9ee;
+}
+.lst-closed {
+  background: #e8dcfa;
+}
+
+.leads-temp-layout [data-testid='opportunity-list'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.leads-temp-layout [data-testid='bucket-title'] {
+  grid-column: 1 / -1;
+}
+.leads-temp-layout [data-testid='opportunity-list'] > li > .ant-card {
+  border-radius: 16px;
+}
+
+@media (max-width: 1100px) {
+  .lst {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .leads-temp-layout [data-testid='opportunity-list'] {
+    grid-template-columns: 1fr;
+  }
+}

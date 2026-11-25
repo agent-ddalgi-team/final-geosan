@@ -31,6 +31,7 @@ import { useFrame, VIEWER_KEY } from '../components/frame/FrameContext';
 import ExportButton from '../components/list/ExportButton';
 import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
+import LeadsStatTiles from '../components/list/LeadsStatTiles';
 import { useIngestOptions } from '../components/list/useIngestOptions';
 import ListFilterBar from '../components/list/ListFilterBar';
 import type { ListSort } from '../components/list/ListFilterBar';
@@ -58,6 +59,7 @@ import {
   states,
 } from '../labels/ko';
 import { colors, spacing, typography } from '../theme/tokens';
+import './BookmarkTempTheme.css'; // 임시 예시 디자인(관심 기업 카드). 지우면 원래 모양이다.
 
 export const PAGE_SIZE = 20;
 /** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
@@ -458,7 +460,7 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
     Boolean(ingestOptions || latestIngest);
 
   return (
-    <>
+    <div className={view === 'all' ? 'leads-temp-layout' : undefined}>
       {view === 'all' ? (
         <header className="prospect-page-heading">
           <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1, margin: 0 }}>
@@ -477,6 +479,8 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           ) : null}
         </header>
       ) : null}
+      {/* 임시 화면(시연용): 참고 그림 모양의 숫자 카드 줄. 기존 내용은 그대로 두고 더한다. */}
+      {view === 'all' ? <LeadsStatTiles meta={meta ?? menu} /> : null}
       <ListViewBar
         bookmarked={bookmarked}
         excluded={excluded}
@@ -790,6 +794,6 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           </div>
         ) : null}
       </FiveStates>
-    </>
+    </div>
   );
 }
