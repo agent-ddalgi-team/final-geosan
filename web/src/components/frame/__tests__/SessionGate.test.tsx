@@ -37,10 +37,9 @@ function renderGate() {
   );
 }
 
-// ---------- #912 접속 화면 디자인 ----------
+// ---------- 접속 화면 디자인 ----------
 
-// 인사말은 두 줄(<br>)이라 한 줄로 이어 붙은 글자에서 찾는다.
-const greeting = /안녕하세요\.\s*거산케미칼 에이전트입니다\./;
+const subtitle = '영업의 다음 한 걸음을 함께합니다';
 
 it('Given 계정 방식 401 When 접속 화면 Then 두 칸에 안내 글이 있고 둘 다 넣어야 접속할 수 있다', async () => {
   config.mockRejectedValueOnce(
@@ -55,7 +54,6 @@ it('Given 계정 방식 401 When 접속 화면 Then 두 칸에 안내 글이 있
   const id = await screen.findByPlaceholderText('아이디를 입력하세요');
   const password = screen.getByPlaceholderText('비밀번호를 입력하세요');
   const submit = screen.getByRole('button', { name: '접속' });
-  expect(screen.getByText('영업지원 업무를 도와드립니다.')).toBeInTheDocument();
   expect(submit).toBeDisabled();
   fireEvent.change(id, { target: { value: 'sales-1' } });
   expect(submit).toBeDisabled();
@@ -63,30 +61,32 @@ it('Given 계정 방식 401 When 접속 화면 Then 두 칸에 안내 글이 있
   expect(submit).toBeEnabled();
 });
 
-it('Given 401 When 접속 화면 Then 회사 로고와 인사말을 입력 칸과 함께 보인다', async () => {
+it('Given 401 When 접속 화면 Then 회사 이름·로고·제목·내부용 표시·저작권 줄을 보인다', async () => {
   config.mockRejectedValueOnce(denied());
-  renderGate();
+  const view = renderGate();
   expect(await screen.findByLabelText('비밀번호')).toBeInTheDocument();
-  expect(screen.getByRole('img', { name: '(주)거산케미칼' }).getAttribute('src')).toMatch(
-    /geosan-logo-full/,
+  expect(screen.getByText('(주)거산케미칼')).toBeInTheDocument();
+  expect(view.container.querySelector('img.login-logo')?.getAttribute('src')).toMatch(
+    /geosan-logo/,
   );
-  expect(screen.getByText(greeting)).toBeInTheDocument();
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('거산 영업지원 접속');
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('거산 영업지원');
+  expect(screen.getByText(subtitle)).toBeInTheDocument();
+  expect(screen.getByText('내부용')).toBeInTheDocument();
+  expect(screen.getByRole('contentinfo')).toHaveTextContent('© (주)거산케미칼 · 영업지원 에이전트');
 });
 
-it('Given 접속 허용 When 업무 화면을 연다 Then 접속 화면의 로고와 인사말은 사라진다', async () => {
+it('Given 접속 허용 When 업무 화면을 연다 Then 접속 화면의 틀은 사라진다', async () => {
   config.mockResolvedValueOnce(allowed);
   renderGate();
   expect(await screen.findByText('보호된 업무 화면')).toBeInTheDocument();
-  expect(screen.queryByRole('img', { name: '(주)거산케미칼' })).not.toBeInTheDocument();
-  expect(screen.queryByText(greeting)).not.toBeInTheDocument();
+  expect(screen.queryByText(subtitle)).not.toBeInTheDocument();
 });
 
 it('Given 서버 오류 When 접속 확인 실패 Then 같은 틀 안에서 오류와 다시 시도를 보인다', async () => {
   config.mockRejectedValueOnce(new Error('offline'));
   renderGate();
   expect(await screen.findByRole('alert')).toHaveTextContent('연결하지 못했습니다');
-  expect(screen.getByText(greeting)).toBeInTheDocument();
+  expect(screen.getByText(subtitle)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
 });
 
@@ -268,7 +268,8 @@ it('Given 계정 방식 401 When 접속 화면 Then 아이디 칸이 보이고 �
   login.mockResolvedValueOnce({ data: null, meta: {} });
   renderGate();
   const id = await screen.findByLabelText('아이디');
-  expect(screen.getByText('안내받은 아이디와 비밀번호를 입력해 주세요.')).toBeInTheDocument();
+  // 화면 시안: 계정 방식에는 안내 문장을 두지 않는다(칸 이름과 안내 글이 대신한다).
+  expect(screen.queryByText('안내받은 아이디와 비밀번호를 입력해 주세요.')).not.toBeInTheDocument();
   fireEvent.change(id, { target: { value: ' sales-1 ' } });
   fireEvent.change(screen.getByLabelText('비밀번호'), { target: { value: 'test-only-pass' } });
   fireEvent.click(screen.getByRole('button', { name: '접속' }));

@@ -192,25 +192,39 @@ export const antdTheme: ThemeConfig = {
 };
 
 /**
- * 접속 화면(#912, 화면 담당 시안): 초록 강조, 모서리 12px 입력 칸, 건물 사진 위 흰 글자.
+ * 접속 화면(화면 담당 시안 login_mix): 짙은 남색 바탕 + 아래쪽 빛나는 곡선, 반투명 입력 상자, 라임색 접속 단추.
  * 이 색은 접속 화면에만 쓴다. 비활성 단추는 일부러 흐리게 둔다.
  */
 export const loginTheme = {
-  accent: '#2F9E5B',
-  accentHover: '#23804A',
-  focusRing: 'rgba(47, 158, 91, 0.25)',
-  inputBorder: '#D5D9DE',
-  disabledBg: '#ECEEF1',
-  disabledFg: '#A9AFB8',
-  photoText: '#FFFFFF',
-  photoBar: '#8FE0A8',
-  /** 밝은 하늘 위에서도 흰 글자가 읽히게 사진 위쪽에 얹는 옅은 그늘. */
-  photoShade: 'rgba(12, 28, 48, 0.62)',
-  controlHeight: 46,
-  inputRadius: 12,
-  formMaxWidth: 340,
-  titleSize: 30,
-  subtitleSize: 15,
+  bgTop: '#0F2048',
+  bgMiddle: '#132A5C',
+  bgLow: '#245089',
+  spotLeft: 'rgba(52, 88, 160, 0.55)',
+  spotRight: 'rgba(40, 78, 150, 0.5)',
+  planet: '#0B1632',
+  glowCore: 'rgba(205, 228, 255, 0.95)',
+  glowMiddle: 'rgba(95, 165, 232, 0.7)',
+  glowFar: 'rgba(50, 120, 200, 0.45)',
+  text: '#FFFFFF',
+  textSoft: 'rgba(255, 255, 255, 0.62)',
+  badgeBorder: 'rgba(160, 195, 245, 0.5)',
+  cardBg: 'rgba(255, 255, 255, 0.09)',
+  cardBorder: 'rgba(255, 255, 255, 0.18)',
+  cardShadow: 'rgba(3, 10, 30, 0.35)',
+  inputBg: '#FFFFFF',
+  accent: '#C8F03C',
+  accentHover: '#D6F766',
+  accentText: '#14275A',
+  focusRing: 'rgba(200, 240, 60, 0.45)',
+  disabledBg: 'rgba(200, 240, 60, 0.55)',
+  disabledFg: 'rgba(20, 39, 90, 0.85)',
+  cardWidth: 400,
+  cardRadius: 18,
+  inputHeight: 48,
+  buttonHeight: 50,
+  inputRadius: 10,
+  titleSize: 48,
+  subtitleSize: 34,
 } as const;
 
 /** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 모양을 덮는다. */
@@ -219,23 +233,27 @@ export const loginAntdTheme: ThemeConfig = {
   components: {
     ...antdTheme.components,
     Input: {
-      controlHeightLG: loginTheme.controlHeight,
+      controlHeightLG: loginTheme.inputHeight,
       borderRadiusLG: loginTheme.inputRadius,
-      lineWidth: 1.5,
-      colorBorder: loginTheme.inputBorder,
+      lineWidth: 2,
+      colorBgContainer: loginTheme.inputBg,
+      colorBorder: loginTheme.inputBg,
       hoverBorderColor: loginTheme.accent,
       activeBorderColor: loginTheme.accent,
       activeShadow: `0 0 0 3px ${loginTheme.focusRing}`,
     },
     Button: {
       ...antdTheme.components?.Button,
-      controlHeightLG: loginTheme.controlHeight,
+      controlHeightLG: loginTheme.buttonHeight,
+      borderRadiusLG: loginTheme.inputRadius,
+      fontWeight: 700,
       colorPrimary: loginTheme.accent,
       colorPrimaryHover: loginTheme.accentHover,
-      colorPrimaryActive: loginTheme.accentHover,
+      colorPrimaryActive: loginTheme.accent,
+      primaryColor: loginTheme.accentText,
       colorBgContainerDisabled: loginTheme.disabledBg,
       colorTextDisabled: loginTheme.disabledFg,
-      borderColorDisabled: loginTheme.disabledBg,
+      borderColorDisabled: 'transparent',
     },
   },
 };

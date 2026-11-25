@@ -136,11 +136,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
         )}
         {state === 'login' && (
           <form onSubmit={submit}>
-            <p>
-              {accounts
-                ? '안내받은 아이디와 비밀번호를 입력해 주세요.'
-                : '안내받은 공용 비밀번호를 입력해 주세요.'}
-            </p>
+            {!accounts && <p>안내받은 공용 비밀번호를 입력해 주세요.</p>}
             {accounts && (
               <>
                 <label htmlFor="access-staff-key">아이디</label>
@@ -181,7 +177,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
               loading={busy}
               disabled={seconds > 0 || !password || (accounts && !staffKey.trim())}
             >
-              접속
+              접속<span aria-hidden="true"> →</span>
             </Button>
           </form>
         )}
