@@ -115,7 +115,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
   if (state === 'ready') return children;
   return (
     <ConfigProvider theme={loginAntdTheme}>
-      <LoginLayout>
+      <LoginLayout showBadge={state !== 'checking'}>
         {state === 'checking' && <p role="status">접속 권한을 확인하고 있습니다.</p>}
         {state === 'error' && (
           <>

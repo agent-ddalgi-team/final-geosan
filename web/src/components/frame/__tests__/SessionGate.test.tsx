@@ -75,6 +75,19 @@ it('Given 401 When 접속 화면 Then 회사 이름·로고·제목·내부용 �
   expect(screen.getByRole('contentinfo')).toHaveTextContent('© (주)거산케미칼 · 영업지원 에이전트');
 });
 
+it('Given 세션 확인 중 When 아직 응답 전 Then "내부용" 표시는 보이지 않는다(업무 화면의 내부용 띠와 헷갈리지 않게)', async () => {
+  let resolve!: (value: Envelope<ConfigUi>) => void;
+  config.mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  renderGate();
+  expect(screen.getByRole('status')).toHaveTextContent('확인');
+  expect(screen.queryByText(/내부용/)).not.toBeInTheDocument();
+  await act(async () => resolve(allowed));
+});
+
 it('Given 접속 허용 When 업무 화면을 연다 Then 접속 화면의 틀은 사라진다', async () => {
   config.mockResolvedValueOnce(allowed);
   renderGate();

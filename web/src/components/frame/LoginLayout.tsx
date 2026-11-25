@@ -31,7 +31,14 @@ const pageVars = {
 } as CSSProperties;
 
 /** 접속 화면의 틀: 위에 로고와 "내부용", 가운데에 제목과 입력 상자, 아래에 저작권 줄. 접속 확인은 SessionGate가 맡는다. */
-export default function LoginLayout({ children }: { children: ReactNode }) {
+export default function LoginLayout({
+  children,
+  showBadge,
+}: {
+  children: ReactNode;
+  /** 접속 확인 중에는 숨긴다: 곧바로 열리는 업무 화면의 "내부용" 띠와 헷갈리지 않게 한다. */
+  showBadge: boolean;
+}) {
   return (
     <div className="login-page" style={pageVars}>
       <div className="login-planet" aria-hidden="true" />
@@ -41,7 +48,7 @@ export default function LoginLayout({ children }: { children: ReactNode }) {
           <img className="login-logo" src={brand.loginLogoUrl} alt="" />
           <span>{loginTexts.companyName}</span>
         </span>
-        <span className="login-badge">{loginTexts.internalBadge}</span>
+        {showBadge ? <span className="login-badge">{loginTexts.internalBadge}</span> : null}
       </header>
       <main className="login-main">
         <h1 className="login-title">{loginTexts.title}</h1>
