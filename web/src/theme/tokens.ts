@@ -179,7 +179,8 @@ export const antdTheme: ThemeConfig = {
       dangerShadow: 'none',
       fontWeight: 500,
     },
-    Select: { borderRadius: radius.pill, borderRadiusLG: radius.pill },
+    // 선택 칸은 알약, 열린 목록(borderRadiusLG)은 보통 둥근 상자. 목록까지 알약이면 말풍선처럼 부풀고 글자가 잘린다(#910).
+    Select: { borderRadius: radius.pill, borderRadiusLG: radius.md },
     DatePicker: { borderRadius: radius.pill },
     Segmented: { borderRadius: radius.pill, borderRadiusSM: radius.pill },
     Tag: { borderRadiusSM: radius.pill },
