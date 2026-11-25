@@ -2,9 +2,11 @@
 //   미접촉 12 → 접촉 5 → 견적·샘플 2 → 성사 1 · 보류 3
 // 숫자는 서버 집계(counts)를 그대로 쓰고, 서버가 주지 않은 칸은 0으로 지어내지 않고 뺀다.
 // 칩을 누르면 아래 "진행 중인 회사" 표가 그 단계로 걸러진다(다시 누르면 풀림). 예전 큰 띠(#766)를 대신한다.
+// #923(PM 요청 2026-11-25): 알약 대신 예전 "영업 진행" 칸 모양(이름 위·숫자 아래·칸 사이 →)을 작게.
+//   회사가 있는 칸은 연두, 없는 칸은 흰 바탕에 얇은 테두리. 보류는 띠 끝에 작은 글 단추 "보류 1곳".
 import type { DashboardCounts, ProgressBandKey } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, detailTheme, typography } from '../../theme/tokens';
 
 export const CHIP_ORDER = ['NOT_CONTACTED', 'IN_CONTACT', 'QUOTE_SAMPLE', 'WON'] as const;
 
@@ -36,32 +38,73 @@ export default function StageChips({
     >
       {bands.map((band, index) => {
         const on = selected === band;
-        const won = band === 'WON';
-        const hold = band === 'ON_HOLD';
+        const value = counts[band] ?? 0;
+        const label = `${stageName(band)} ${value}곳`;
+        if (band === 'ON_HOLD') {
+          return (
+            <span key={band} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span aria-hidden="true" style={{ color: colors.textSecondary }}>
+                ·
+              </span>
+              <button
+                type="button"
+                aria-pressed={on}
+                aria-label={label}
+                onClick={() => onSelect(on ? null : band)}
+                data-testid={`dashboard-stage-chip-${band}`}
+                style={{
+                  cursor: 'pointer',
+                  border: `2px solid ${on ? detailTheme.accentLine : 'transparent'}`,
+                  borderRadius: detailTheme.radius,
+                  background: 'none',
+                  padding: '2px 6px',
+                  fontSize: typography.fontSizeSecondary - 1,
+                  color: colors.textSecondary,
+                }}
+              >
+                {label}
+              </button>
+            </span>
+          );
+        }
         return (
           <span key={band} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {index > 0 ? (
-              <span aria-hidden="true" style={{ color: colors.textSecondary }}>
-                {hold ? '·' : '→'}
+              <span
+                aria-hidden="true"
+                data-testid="dashboard-stage-arrow"
+                style={{ color: colors.textSecondary, fontSize: 12 }}
+              >
+                →
               </span>
             ) : null}
             <button
               type="button"
               aria-pressed={on}
+              aria-label={label}
               onClick={() => onSelect(on ? null : band)}
               data-testid={`dashboard-stage-chip-${band}`}
               style={{
                 cursor: 'pointer',
-                border: `1px solid ${on ? colors.text : colors.borderSecondary}`,
-                borderRadius: 999,
-                padding: '2px 10px',
-                fontSize: typography.fontSizeSecondary,
-                background: won ? statusPalette.ok.bg : colors.bgContainer,
-                color: hold ? colors.textSecondary : won ? statusPalette.ok.fg : colors.text,
-                fontWeight: on ? 700 : 400,
+                display: 'grid',
+                justifyItems: 'center',
+                gap: 0,
+                minWidth: 64,
+                padding: '3px 10px',
+                border: `2px solid ${on ? detailTheme.accentLine : 'transparent'}`,
+                borderRadius: 10,
+                // 회사가 없는 칸은 흰 바탕 + 얇은 테두리(회색 바탕 위에서도 칸이 보이게).
+                background: value > 0 ? detailTheme.accent : colors.bgContainer,
+                boxShadow: value > 0 || on ? 'none' : `inset 0 0 0 1px ${colors.borderSecondary}`,
+                color: colors.text,
+                lineHeight: 1.25,
               }}
             >
-              {stageName(band)} <b>{counts[band]}</b>
+              <span style={{ fontSize: 11, color: colors.textSecondary }}>{stageName(band)}</span>
+              <span>
+                <b style={{ fontSize: 16 }}>{value}</b>
+                <span style={{ fontSize: 11, marginLeft: 1 }}>곳</span>
+              </span>
             </button>
           </span>
         );

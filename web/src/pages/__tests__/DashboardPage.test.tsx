@@ -104,11 +104,16 @@ describe('DashboardPage', () => {
       ).toEqual(['관심 기업']);
       expect(screen.queryByTestId('dashboard-section-progress')).not.toBeInTheDocument();
       const chips = screen.getByTestId('dashboard-stage-chips');
+      // #923: 예전 "영업 진행" 칸 모양을 작게(이름 위·숫자 아래, 칸 사이 →).
       expect(
         within(chips)
           .getAllByRole('button')
-          .map((chip) => chip.textContent),
-      ).toEqual(['미접촉 2', '접촉 2', '견적·샘플 1', '성사 1']);
+          .map((chip) => chip.getAttribute('aria-label')),
+      ).toEqual(['미접촉 2곳', '접촉 2곳', '견적·샘플 1곳', '성사 1곳']);
+      expect(within(chips).getAllByTestId('dashboard-stage-arrow')).toHaveLength(3);
+      expect(screen.getByTestId('dashboard-stage-chip-NOT_CONTACTED')).toHaveTextContent(
+        '미접촉2곳',
+      );
       // 날짜와 같은 줄(같은 부모)에 있다.
       expect(screen.getByTestId('dashboard-date').parentElement).toContainElement(chips);
       const more = screen.getByTestId('dashboard-more');
@@ -216,7 +221,7 @@ describe('DashboardPage', () => {
       const chips = await screen.findByTestId('dashboard-stage-chips');
       expect(screen.queryByTestId('dashboard-stage-chip-WON')).not.toBeInTheDocument();
       expect(within(chips).getAllByRole('button')).toHaveLength(4);
-      expect(screen.getByTestId('dashboard-stage-chip-ON_HOLD')).toHaveTextContent('보류 2');
+      expect(screen.getByTestId('dashboard-stage-chip-ON_HOLD')).toHaveTextContent('보류 2곳');
     });
   });
 
