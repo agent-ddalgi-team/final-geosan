@@ -1211,3 +1211,16 @@ export type ConfigUiEnvelope = Envelope<ConfigUi>;
 export type OpportunityListEnvelope = Envelope<OpportunityCard[]>;
 export type OpportunityDetailEnvelope = Envelope<OpportunityDetail>;
 export type OpinionEnvelope = Envelope<OpinionResponse>;
+
+/**
+ * #932 신규 거래처 찾기 "기존 고객과 닮은 조건"(C1 `GET /existing-customers/suggestions`).
+ * 확장 기능(설정 existingCustomers.enabled, 기본 꺼짐). 꺼져 있으면 enabled false, 목록은 모두 빈 값.
+ * 프로그램이 기존 고객 수를 센 것이라 AI·외부 전송이 없다. 점수·순위에는 쓰지 않는다.
+ */
+export interface CustomerSuggestions {
+  enabled: boolean;
+  total: number;
+  processes: { code: string; label: string; count: number }[];
+  industries: { name: string; count: number }[];
+  regions: { name: string; count: number }[];
+}
