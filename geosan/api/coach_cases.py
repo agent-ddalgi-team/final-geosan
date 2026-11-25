@@ -95,6 +95,16 @@ def pick_similar_won(
     session: Session, opp_id: str, limit: int
 ) -> list[tuple[str, str, tuple[str, ...], tuple[str, ...]]]:
     """(opp_id, 회사 이름, 겹친 공정 코드, 겹친 산업) 목록을 고르는 순서대로 limit개까지."""
+    return pick_similar(session, opp_id, limit, OutcomeStatus.WON)
+
+
+def pick_similar(
+    session: Session, opp_id: str, limit: int, status: OutcomeStatus
+) -> list[tuple[str, str, tuple[str, ...], tuple[str, ...]]]:
+    """지금 결과가 status(성사·거절)인 비슷한 회사를 pick_similar_won과 같은 순서로 고른다.
+
+    #927 MCP 서버의 "비슷한 거절 회사"가 성사와 같은 기준을 쓰려고 나눴다.
+    """
     if limit <= 0:
         return []
     opportunity = session.get(Opportunity, opp_id)
@@ -103,13 +113,13 @@ def pick_similar_won(
     industries = set(customer.industries or [])
     if not processes and not industries:
         return []
-    # 지금 값이 성사인 회사만 본다(같은 자료 묶음, 이 회사 제외).
+    # 지금 값이 그 결과(성사·거절)인 회사만 본다(같은 자료 묶음, 이 회사 제외).
     won_ids = set(
         session.scalars(
             select(Outcome.opp_id)
             .join(Opportunity, Opportunity.opp_id == Outcome.opp_id)
             .where(
-                Outcome.status == OutcomeStatus.WON,
+                Outcome.status == status,
                 Outcome.cancelled_at.is_(None),
                 Outcome.opp_id != opp_id,
                 Opportunity.dataset_kind == opportunity.dataset_kind,
@@ -119,7 +129,7 @@ def pick_similar_won(
     found = []
     for won_id in won_ids:
         latest = _latest_status(session, won_id)
-        if latest is None or latest.status != OutcomeStatus.WON:
+        if latest is None or latest.status != status:
             continue
         other = session.get(Customer, session.get(Opportunity, won_id).customer_id)
         shared_p = tuple(sorted(processes & _live_processes(session, won_id)))
