@@ -52,6 +52,9 @@ def test_each_band_lists_the_same_companies_as_its_count(today_env):  # noqa: F8
         "nextScheduleAt": "2026-11-18",
         "nextScheduleNote": "방문",
         "stalled": False,
+        "lastContactMethod": "CALL",
+        "lastContactStaffKey": "park-lee",
+        "lastContactStaffName": "영업 담당",
     }
     assert [row["oppId"] for row in companies["QUOTE_SAMPLE"]] == [ids["b"]]
     assert [row["oppId"] for row in companies["WON"]] == [ids["c"]]
@@ -90,6 +93,39 @@ def test_a_cancelled_contact_does_not_count_as_last_contact(today_env):  # noqa:
     assert response.status_code == 200, response.text
     row = dashboard_data(client)["progressCompanies"]["IN_CONTACT"][0]
     assert row["lastContactAt"] == "2026-10-16" and row["stalled"] is True
+
+
+def test_last_contact_shows_the_latest_method_and_who_recorded_it(today_env):  # noqa: F811
+    """#921 Given A정밀에 영업 담당이 전화(11/01), 검수 담당이 방문(11/03)을 적음 / 접촉 없는 회사
+    / When 대시보드 / Then A정밀 줄은 마지막 접촉 "방문 · 검수 담당",
+    접촉 없는 회사는 셋 다 비어 있다."""
+    client, ids = today_env
+    contact(client, ids["a"], "2026-11-01")
+    record(
+        client,
+        ids["a"],
+        {
+            "status": "IN_PROGRESS",
+            "method": "VISIT",
+            "result": "REACHED",
+            "attemptedAt": "2026-11-03",
+        },
+        staff="kim-gwajang",
+    )
+    record(client, ids["b"], {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})
+    companies = dashboard_data(client)["progressCompanies"]
+    a = companies["IN_CONTACT"][0]
+    assert (a["lastContactAt"], a["lastContactMethod"]) == ("2026-11-03", "VISIT")
+    assert (a["lastContactStaffKey"], a["lastContactStaffName"]) == (
+        "kim-gwajang",
+        "검수 담당(품질·기술)",
+    )
+    b = companies["QUOTE_SAMPLE"][0]
+    assert (b["lastContactMethod"], b["lastContactStaffKey"], b["lastContactStaffName"]) == (
+        None,
+        None,
+        None,
+    )
 
 
 def test_progress_rows_never_carry_memo_text(today_env):  # noqa: F811

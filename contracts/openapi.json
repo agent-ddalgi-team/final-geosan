@@ -7936,6 +7936,44 @@
             ],
             "title": "Lastcontactat"
           },
+          "lastContactMethod": {
+            "anyOf": [
+              {
+                "enum": [
+                  "CALL",
+                  "EMAIL",
+                  "VISIT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactmethod"
+          },
+          "lastContactStaffKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactstaffkey"
+          },
+          "lastContactStaffName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactstaffname"
+          },
           "nextScheduleAt": {
             "anyOf": [
               {

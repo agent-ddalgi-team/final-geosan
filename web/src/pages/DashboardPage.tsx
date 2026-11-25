@@ -1,10 +1,14 @@
-// 대시보드(S4, 첫 화면). #795(PM 결정 2026-11-16)부터 "오늘 할 일과 방문 나가기 전 정리" 순서다:
-//   맨 위 날짜 + 작은 회사 검색 → ① 오늘 브리핑(AI 오늘 정리 · 📅 일정 · 📬 전달 사항 · 📈 영업 진행 띠)
-//   → ② 오늘 할 일(오늘 확인할 것 묶음) | ③ 작은 달력 → ④ 방문 준비(오늘·이번 주 일정 회사 + 보고서 · 거리 화살표) | 지도
-//   → ⑤ 더 보기(접힘: 관심 기업 건수 · 최근 내 기록). 넓으면 두 칸, 오른쪽 코치 칸이 있는 노트북 폭에서는 위아래.
+// 대시보드(S4, 첫 화면). #921(PM 결정 2026-11-25)부터 "출근하면 · 외근 전 · 누가 봐도" 세 칸이다:
+//   맨 위 한 줄: 날짜 + 작은 영업 단계 칩(미접촉 → 접촉 → 견적·샘플 → 성사 · 보류) + 작은 회사 검색
+//   → ① 출근하면: 오늘 할 일(운영 알림 · 지난 일정 · 오늘 일정 · 확인할 것, AI 오늘 정리는 접어 둠)
+//                | 전달 사항(받은 것 · 보낸 것) + 한 달 달력
+//   → ② 외근 전: 이번 주 방문·연락(오늘부터 7일 + 보고서 · 거리 화살표) | 지도
+//   → ③ 누가 봐도: 진행 중인 회사 표(단계 · 담당 · 마지막 접촉 · 다음 일정, 멈춘 회사 노란 줄)
+//   → 더 보기(접힘: 관심 기업 건수 · 최근 내 기록).
+// 같은 일정을 여러 곳에 되풀이하지 않는다(예전 브리핑 숫자 칸·큰 진행 띠는 없앰, #795·#766을 대신함).
 // 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v3, #216·#356)에서 온다. 관심으로 고른 회사만 센다.
-// 공정·산업군 막대는 영업 분석 화면으로 옮겼다(#679, PM 결정 2026-11-13). 대시보드는 오늘 할 일과 진행을 한눈에 보는 곳이다.
-// 검색은 /opportunities?q=이름 으로 이동한다(계약: 검색은 목록의 q 조건). 목록이 q를 읽는 것은 서버 연결 뒤다.
+// 공정·산업군 막대는 영업 분석 화면으로 옮겼다(#679, PM 결정 2026-11-13).
+// 검색은 /opportunities?q=이름 으로 이동한다(계약: 검색은 목록의 q 조건).
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,9 +16,12 @@ import { Button, Input } from 'antd';
 import { getDashboard } from '../api/dashboard';
 import type { Dashboard } from '../api/dashboardTypes';
 import type { Meta } from '../api/types';
+import type { ProgressBandKey } from '../api/dashboardTypes';
 import CountCards from '../components/dashboard/CountCards';
-import DashboardBrief from '../components/dashboard/DashboardBrief';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
+import ProgressTable from '../components/dashboard/ProgressTable';
+import StageChips from '../components/dashboard/StageChips';
+import WhenBadge from '../components/dashboard/WhenBadge';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import VisitPrep from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
@@ -47,16 +54,13 @@ const sectionStyle = {
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
-// 일정 달력 구역은 어두운 판(#758). 색은 theme/tokens의 calendarPalette.
-const calendarSectionStyle = {
-  ...sectionStyle,
-  background: calendarPalette.panel,
-  border: `1px solid ${calendarPalette.panelBorder}`,
-  borderRadius: radius.xl,
+const calendarTitleStyle = {
+  fontSize: typography.fontSize,
+  margin: 0,
+  color: calendarPalette.title,
 } as const;
-const calendarTitleStyle = { ...cardTitleStyle, color: calendarPalette.title } as const;
-/** #825: 작은 달력 최대 폭(화면 모양값, 규칙 숫자 아님). 아래로 내려가도 줄 전체로 늘어나지 않는다. */
-export const CALENDAR_MAX_WIDTH = 340;
+/** #921: 오른쪽 칸(전달 사항 + 한 달 달력) 최대 폭(화면 모양값, 규칙 숫자 아님). */
+export const CALENDAR_MAX_WIDTH = 400;
 
 export default function DashboardPage() {
   const { config, setBannerMeta, staffKey, canRecord } = useFrame();
@@ -64,6 +68,8 @@ export default function DashboardPage() {
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [query, setQuery] = useState('');
+  // #921: 맨 위 단계 칩으로 고른 단계. "진행 중인 회사" 표가 그 단계로 걸러진다.
+  const [stage, setStage] = useState<ProgressBandKey | null>(null);
   // "최근 내 기록"은 고른 담당자 것이다. 기록할 수 없는 계정(보기 전용·담당자 미선택)은 키를 보내지 않는다(#216 후속).
   const recordKey = canRecord ? staffKey : null;
   // 오늘 정리(#743)는 영업 기록 스위치가 켜져 있고 담당자를 골랐을 때만 부른다(꺼져 있으면 호출 0).
@@ -130,18 +136,31 @@ export default function DashboardPage() {
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
-            justifyContent: 'space-between',
             gap: 12,
           }}
         >
           <strong data-testid="dashboard-date" style={{ fontSize: typography.fontSizeCardTitle }}>
             {dashboardTexts.todayDate(dayLabel(today))}
           </strong>
+          {data ? (
+            <StageChips
+              counts={data.counts}
+              selected={stage}
+              onSelect={(band) => {
+                setStage(band);
+                if (band) {
+                  document
+                    .getElementById('dashboard-progress-table')
+                    ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+            />
+          ) : null}
           {/* #795: 회사 찾기는 가끔 쓰므로 오른쪽 위에 작게. 동작은 그대로(/opportunities?q=이름). */}
           <form
             role="search"
             onSubmit={submitSearch}
-            style={{ display: 'flex', gap: 6, width: 260, maxWidth: '100%' }}
+            style={{ display: 'flex', gap: 6, width: 240, maxWidth: '100%', marginLeft: 'auto' }}
           >
             <label htmlFor="dashboard-search" style={{ position: 'absolute', left: -9999 }}>
               {dashboardTexts.searchLabel}
@@ -165,52 +184,82 @@ export default function DashboardPage() {
             </Button>
           </form>
         </div>
-
-        {/* ① 오늘 브리핑 */}
-        {data ? (
-          <DashboardBrief
-            rows={data.todayChecks}
-            counts={data.counts}
-            companies={data.progressCompanies}
-            today={todayKst()}
-            assistantSummary={dailyKey ? <AssistantDaily staffKey={dailyKey} /> : null}
-          />
-        ) : null}
         {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "💬 영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
-        {/* ② 오늘 할 일 | ③ 작은 달력. 둘 합이 본문 폭보다 넓으면(좁은 화면) 위아래로.
-            #825: 노트북 폭(본문 약 700px)에서도 옆에 놓이게 할 일 340px + 달력 320px로 줄이고,
-            달력은 늘어나지 않게(최대 340px) 해서 아래로 내려가도 작은 점 달력 그대로 보인다. */}
+        {/* ① 출근하면: 오늘 할 일 | 전달 사항 + 한 달 달력. 둘 합이 본문 폭보다 넓으면 위아래로. */}
         <div
           style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.cardGap, alignItems: 'start' }}
         >
-          <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-            {data ? <TodayChecks rows={data.todayChecks} onChanged={retry} /> : null}
+          <div style={{ flex: '3 1 360px', minWidth: 0 }}>
+            {data ? (
+              <TodayChecks
+                part="work"
+                badge={<WhenBadge tone="work">{dashboardTexts.whenWork}</WhenBadge>}
+                rows={data.todayChecks}
+                onChanged={retry}
+                assistantSummary={
+                  dailyKey ? (
+                    // #921: AI 오늘 정리는 접어 둔다. 눌러서 펴 본다(부르는 것은 화면이 열릴 때 한 번).
+                    <details data-testid="dashboard-ai-daily">
+                      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                        {dashboardTexts.aiDailyTitle}
+                      </summary>
+                      <AssistantDaily staffKey={dailyKey} />
+                    </details>
+                  ) : null
+                }
+              />
+            ) : null}
           </div>
-          <section
-            aria-labelledby="dashboard-calendar-title"
+          <div
             data-testid="dashboard-calendar-section"
-            style={{
-              ...calendarSectionStyle,
-              flex: '0 1 320px',
-              minWidth: 0,
-              maxWidth: CALENDAR_MAX_WIDTH,
-              padding: 16,
-            }}
+            style={{ flex: '2 1 300px', minWidth: 0, maxWidth: CALENDAR_MAX_WIDTH }}
           >
-            <h2 id="dashboard-calendar-title" style={calendarTitleStyle}>
-              {dashboardTexts.calendarTitle}
-            </h2>
-            <DashboardCalendar items={data?.schedule ?? []} today={today} compact />
-          </section>
+            {data ? (
+              <TodayChecks
+                part="handoff"
+                rows={data.todayChecks}
+                onChanged={retry}
+                footer={
+                  <section
+                    aria-labelledby="dashboard-calendar-title"
+                    style={{
+                      display: 'grid',
+                      gap: 8,
+                      borderTop: `1px solid ${colors.borderSecondary}`,
+                      paddingTop: 12,
+                    }}
+                  >
+                    <h3 id="dashboard-calendar-title" style={calendarTitleStyle}>
+                      {dashboardTexts.calendarTitle}
+                    </h3>
+                    <DashboardCalendar items={data.schedule ?? []} today={today} compact />
+                  </section>
+                }
+              />
+            ) : null}
+          </div>
         </div>
 
-        {/* ④ 방문 준비 + 지도(같은 지도 응답으로 거리 화살표를 그린다) */}
+        {/* ② 외근 전: 이번 주 방문·연락 + 지도(같은 지도 응답으로 거리 화살표를 그린다) */}
         <DashboardMapSection
-          title={dashboardTexts.prepTitle}
-          hint={dashboardTexts.prepHint}
+          badge={<WhenBadge tone="out">{dashboardTexts.whenOut}</WhenBadge>}
+          title={dashboardTexts.outTitle}
+          hint={dashboardTexts.outHint}
           aside={(map) => <VisitPrep items={data?.schedule ?? []} today={today} map={map} />}
         />
+
+        {/* ③ 누가 봐도: 진행 중인 회사 */}
+        {data ? (
+          <ProgressTable
+            badge={<WhenBadge tone="anyone">{dashboardTexts.whenAnyone}</WhenBadge>}
+            companies={data.progressCompanies}
+            today={today}
+            stage={stage}
+            onClearStage={() => setStage(null)}
+            staffKey={recordKey}
+          />
+        ) : null}
 
         {/* ⑤ 더 보기: 날마다 보지 않는 것은 접어 둔다(지우지 않음). */}
         <details data-testid="dashboard-more" style={sectionStyle}>
