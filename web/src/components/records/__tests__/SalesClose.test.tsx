@@ -351,8 +351,9 @@ describe('성사·거절로 끝나는 저장은 있던 일정을 다시 싣지 �
   it('Given 이미 거절로 끝난 뒤 일부러 잡은 일정 / When 통화를 한 번 더 남김(단계 그대로) / Then 그 일정을 그대로 싣는다', async () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('LOST'));
+    // 앞으로의 일정이어야 하므로 날짜가 지나도 깨지지 않게 먼 날짜를 쓴다(2026-11-25에 이 날짜가 '오늘'이 되어 깨졌음).
     renderArea('LOST', {
-      nextScheduleAt: '2026-11-25',
+      nextScheduleAt: '2099-12-30',
       nextScheduleNote: '방문',
       lostReasonCode: 'PRICE',
     });
@@ -361,7 +362,7 @@ describe('성사·거절로 끝나는 저장은 있던 일정을 다시 싣지 �
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
     const body = vi.mocked(postOutcome).mock.calls[0][1];
-    expect(body).toMatchObject({ nextScheduleAt: '2026-11-25', nextScheduleNote: '방문' });
+    expect(body).toMatchObject({ nextScheduleAt: '2099-12-30', nextScheduleNote: '방문' });
   });
 });
 

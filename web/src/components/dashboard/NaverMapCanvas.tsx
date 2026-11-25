@@ -125,6 +125,8 @@ export function resetNaverMapsLoader() {
 // #898(PM 2026-11-24 "섞기"): 한자리에 거의 그대로 겹친 회사(OVERLAP_DISTANCE px 안)는 숫자 풍선으로 묶고(#900),
 // 살짝만 겹친 점·풍선은 PIN_GAP 간격으로 살짝 벌려 하나씩 누를 수 있게 한다(잇는 선 없음).
 const OVERLAP_DISTANCE = 8;
+/** #929 영업 홈(compact) 지도 높이(화면 모양값, 규칙 숫자 아님). 같이 들를 곳 칸 높이와 맞춘다. */
+export const DASHBOARD_MAP_HEIGHT = 360;
 const CLUSTER_SIZE = 22;
 const PIN_SIZE = 14;
 const HQ_PIN_SIZE = 24;
@@ -605,7 +607,8 @@ export default function NaverMapCanvas({
         data-testid="dashboard-naver-map"
         style={{
           width: '100%',
-          height: compact ? 'clamp(420px, 52vw, 510px)' : 420,
+          // #929(PM 요청 2026-11-25): 영업 홈 지도는 옆 "같이 들를 곳"과 균형이 맞게 높이를 고정한다.
+          height: compact ? DASHBOARD_MAP_HEIGHT : 420,
           borderRadius: radius.lg,
           overflow: 'hidden',
           isolation: 'isolate',

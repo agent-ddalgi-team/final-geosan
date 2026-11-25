@@ -1,6 +1,7 @@
 // 대시보드의 영업 비서 질문 칸 자리(#680): "오늘 확인할 것" 바로 아래, 일정 달력 위.
 // getDashboard는 가짜로 바꾼 확인이며 실제 서버·실제 AI 연결 확인이 아니다.
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../DashboardPage';
 import { getDashboard } from '../../api/dashboard';
@@ -8,7 +9,7 @@ import { getAssistantDaily, SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
 import type { Dashboard } from '../../api/dashboardTypes';
 import type { ConfigUi } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
-import { assistantTexts } from '../../labels/ko';
+import { assistantTexts, dashboardTexts } from '../../labels/ko';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
@@ -78,8 +79,8 @@ describe('대시보드 › 오늘 정리 (#743)', () => {
     mockedDaily.mockReset();
   });
 
-  it('스위치가 켜져 있으면 맨 위 "오늘 브리핑" 제목 아래·주제별 칸과 줄 목록 위에 AI가 쓴 오늘 정리가 보인다', async () => {
-    // 예전(#743)에는 "오늘 확인할 것" 안에 있었다. PM 결정 2026-11-16(#795)으로 브리핑 구역 맨 위로 옮겼다.
+  it('스위치가 켜져 있으면 "오늘 할 일" 칸 제목 아래·줄 목록 위에 접힌 "AI 오늘 정리"가 있고, 펴면 AI가 쓴 글이 보인다', async () => {
+    // 예전(#795)에는 맨 위 "오늘 브리핑"에 펼쳐져 있었다. PM 결정 2026-11-25(#921): 오늘 할 일 칸 안에 접어 둔다.
     mockedDaily.mockResolvedValue({
       data: {
         summary: '- 화 11/18 A정밀 방문 → 근처 1.5km B금속(관심)도 들르세요',
@@ -93,8 +94,13 @@ describe('대시보드 › 오늘 정리 (#743)', () => {
     });
     renderPage(ON);
     const brief = await screen.findByTestId('assistant-daily');
-    expect(screen.getByTestId('dashboard-brief')).toContainElement(brief);
-    expect(after(brief, screen.getByTestId('dashboard-brief-schedule'))).toBe(true);
+    const folded = screen.getByTestId('dashboard-ai-daily');
+    expect(screen.getByTestId('dashboard-today')).toContainElement(folded);
+    expect(folded).toContainElement(brief);
+    expect(folded).not.toHaveAttribute('open');
+    expect(within(folded).getByText(dashboardTexts.aiDailyTitle)).toBeInTheDocument();
+    await userEvent.click(within(folded).getByText(dashboardTexts.aiDailyTitle));
+    expect(folded).toHaveAttribute('open');
     expect(brief).toHaveTextContent('B금속(관심)');
     expect(brief).toHaveTextContent(assistantTexts.dailyMark);
     const firstRow = screen.getAllByTestId('dashboard-today-row')[0];

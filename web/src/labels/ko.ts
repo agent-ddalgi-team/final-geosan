@@ -176,6 +176,9 @@ export const frame = {
   // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
   menuOpportunities: '거래처 후보',
   staffSelectLabel: '담당자',
+  // #926: 맨 위 줄의 글자 크기 고르기(화면 전체 비율). 이 브라우저에 기억한다.
+  fontScaleLabel: '글자 크기',
+  fontScaleOptions: { S: '작게', M: '보통', L: '크게', XL: '더 크게' },
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
@@ -286,11 +289,12 @@ export const dashboardTexts = {
   todayMore: (count: number) => `외 ${count}`,
   /** #766(PM 결정 2026-11-16): 주제별 묶음 제목·아이콘과 지난 일정 단추. */
   todayGroupTitles: {
-    SCHEDULE_OVERDUE: '지난 일정 — 했나요?',
+    // #925(PM 요청 2026-11-25): 실무자가 바로 알아보게 핵심 말만.
+    SCHEDULE_OVERDUE: '지난 일정',
     SCHEDULE_TODAY: '오늘 일정',
-    CHECK_LEFT: '확인할 것이 남은 관심 기업',
-    HANDOFF_FOR_ME: '나에게 온 전달 사항',
-    HANDOFF_FROM_ME: '내가 보낸 전달 사항 · 확인 전',
+    CHECK_LEFT: '확인할 회사',
+    HANDOFF_FOR_ME: '받은 것',
+    HANDOFF_FROM_ME: '보낸 것 · 상대 확인 전',
   },
   todayRowIcons: {
     SCHEDULE_OVERDUE: '🔴',
@@ -390,6 +394,59 @@ export const dashboardTexts = {
   /** 거리 화살표 위 글자. "8.2km" */
   prepKm: (km: number) => `${km.toFixed(1)}km`,
   moreTitle: '더 보기 · 관심 기업 건수 · 최근 내 기록',
+  // #921(PM 결정 2026-11-25): 영업 홈을 "출근하면 · 외근 전 · 누가 봐도" 세 칸으로.
+  whenWork: '출근하면',
+  whenOut: '외근 전',
+  whenAnyone: '누가 봐도',
+  stageChipsLabel: '영업 단계',
+  stageChipsHint: '누르면 아래 "진행 중인 회사" 표가 그 단계로 걸러집니다',
+  workTitle: '오늘 할 일',
+  workEmpty: '지난 일정도 오늘 일정도 없습니다',
+  handoffTitle: '전달 사항',
+  handoffEmpty: '확인할 전달 사항이 없습니다',
+  aiDailyTitle: 'AI 요약',
+  outTitle: '이번 주 방문·연락',
+  outHint: '오늘부터 7일 일정 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
+  tableTitle: '진행 중인 회사',
+  tableHint: '회사마다 지금 단계 · 마지막 접촉 · 다음 일정. 오래 멈춘 회사는 노란 줄입니다',
+  /** "6곳" */
+  tableCount: (n: number) => `${n}곳`,
+  tableFilterAll: '전체',
+  tableFilterMine: '내 담당',
+  tableFilterStalled: '오래 연락 없는 회사',
+  /** "보류만 보는 중" */
+  tableStageOnly: (stage: string) => `${stage}만 보는 중`,
+  tableStageClear: '모든 단계 보기',
+  tableColumns: {
+    company: '회사',
+    stage: '단계',
+    staff: '담당',
+    last: '마지막 접촉',
+    next: '다음 일정',
+  },
+  tableNoContact: '접촉 기록 없음',
+  /** "오늘" · "어제" · "5일 전" */
+  tableDaysAgo: (n: number) => (n <= 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`),
+  tableStalled: '⚠ 다음 일정 없음',
+  /** "지난 일정 11/21" */
+  tableOverdue: (day: string) => `지난 일정 ${day}`,
+  tableEmpty: '이 조건에 맞는 회사가 없습니다.',
+  /** "모두 보기 (12곳)" */
+  tableShowAll: (n: number) => `모두 보기 (${n}곳)`,
+  tableShowLess: '접기',
+  // #925: 방문 목록은 오늘 할 일 아래, 지도 칸은 지도 | 같이 들를 곳만.
+  mapTitle: '지도',
+  // #927(시안): 오늘 할 일 한 줄의 왼쪽 표시와 지난 일정 아래 작은 글.
+  /** #927 영업 홈 점 달력 머리. "11월 일정" */
+  calendarDotsTitle: (month: number) => `${month}월 일정`,
+  calendarDotHas: '일정 있음',
+  calendarDotOverdue: '지난 일정 미정리',
+  calendarThisWeek: '이번 주',
+  scheduleTagOverdue: '지난 일정',
+  scheduleTagToday: '오늘',
+  /** "11/21(금) 예정이었음" */
+  scheduleWasDue: (day: string) => `${day} 예정이었음`,
+  mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -2591,6 +2648,14 @@ export const coachTexts = {
   feedbackNone: '이번에는 짚을 것이 없습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
+  /** (#915) 비슷한 성사 회사의 기록을 근거로 한 제안. 보여 주기만 하고 저장하지 않는다. */
+  similarTitle: '비슷한 성사 사례에서',
+  similarNone: '이번에는 사례에서 따로 제안할 것이 없습니다.',
+  /** "함께 본 성사 회사: B금속(아연도금), C산업(자동차 부품)" */
+  similarBasis: (items: string[]) => `함께 본 성사 회사: ${items.join(', ')}`,
+  similarOpen: (name: string) => `${name} 상세 새 창으로 열기`,
+  /** (#916) "찾아본 것: A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳 · 지난 영업 분석 2건(최근 것부터)" */
+  lookups: (labels: string[]) => `찾아본 것: ${labels.join(' · ')}`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2755,6 +2820,26 @@ export const analysisFeedbackTexts = {
   failed: '분석을 받지 못했습니다.',
 } as const;
 
+/** #918 영업 분석 탭과 "지난 분석"(받을 때마다 저장된 AI 분석을 다시 보기, AI 호출 없음). */
+export const pastAnalysisTexts = {
+  tabNow: '분석',
+  tabPast: '지난 분석',
+  tabsLabel: '영업 분석 보기',
+  intro:
+    '[AI 분석 받기]로 받은 분석은 받을 때마다 저장됩니다. 줄을 누르면 그때 받은 내용이 그대로 열립니다. AI를 다시 부르지 않습니다.',
+  empty: '아직 받은 분석이 없습니다. [분석] 탭에서 [AI 분석 받기 💰]를 누르면 여기에 쌓입니다.',
+  loadError: '지난 분석을 불러오지 못했습니다.',
+  openError: '이 분석을 열지 못했습니다.',
+  allPeriod: '전체 기간',
+  /** "11/01 ~ 11/20" */
+  period: (from: string | null, to: string | null) => `${from ?? '처음'} ~ ${to ?? '오늘'}`,
+  /** "11/25 14:02 받음 · 기간 11/01 ~ 11/20 · 영업 담당 · 다음 할 일 3개" */
+  line: (when: string, period: string, by: string, nextCount: number) =>
+    `${when} 받음 · 기간 ${period} · ${by} · 다음 할 일 ${nextCount}개`,
+  noHeadline: '(다음 할 일 없음)',
+  loading: '여는 중…',
+} as const;
+
 /**
  * 그림 아래 요약 문장과 말풍선(#898, PM 요청 2026-11-22 "분석 그래프나 도식화 아래에 분석 요약 내용").
  * 그림과 같은 값으로 화면이 만드는 문장이다(AI 없음). 표본이 기준보다 적으면 비율을 말하지 않는다.
@@ -2817,4 +2902,15 @@ export const chartSummaryTexts = {
   progressMoved: (total: number, moved: number, quote: number, won: number) =>
     `영업 대상 ${total}곳 가운데 ${moved}곳이 접촉 이상 진행했고, 견적·샘플 ${quote}곳 · 성사 ${won}곳입니다.`,
   progressNotContacted: (count: number) => `아직 연락하지 않은 곳이 ${count}곳 있습니다.`,
+} as const;
+
+/** #912: 접속 화면(로그인) 틀의 문구. */
+export const loginTexts = {
+  title: '거산 영업지원',
+  subtitle: '영업의 다음 한 걸음을 함께합니다',
+  companyName: '(주)거산케미칼',
+  internalBadge: '내부용',
+  footer: '© (주)거산케미칼 · 영업지원 에이전트',
+  staffKeyPlaceholder: '아이디를 입력하세요',
+  passwordPlaceholder: '비밀번호를 입력하세요',
 } as const;

@@ -89,6 +89,69 @@ function Compared({ feedback }: { feedback: AnalysisFeedback }) {
   );
 }
 
+/** 받은 분석 본문(돌아보기·실패·성공·다음엔·일정 제안·뺀 것·비교·받은 날). #918 지난 분석도 같은 모양으로 보인다. */
+export function FeedbackBody({ feedback }: { feedback: AnalysisFeedback }) {
+  return (
+    <>
+      {(feedback.lookBack ?? []).length > 0 ? (
+        <section data-testid="feedback-look-back" style={{ display: 'grid', gap: 6 }}>
+          <h3 style={{ margin: 0, fontSize: typography.fontSize }}>{t.lookBackTitle}</h3>
+          {feedback.lookBackFrom ? (
+            <span style={secondary}>{t.lookBackFrom(feedback.lookBackFrom)}</span>
+          ) : null}
+          <Claims items={feedback.lookBack ?? []} testId="feedback-look-back-items" />
+        </section>
+      ) : null}
+      <Part
+        title={t.failureTitle}
+        parts={feedback.failure}
+        labels={t.parts}
+        testId="feedback-failure"
+      />
+      <Part
+        title={t.successTitle}
+        parts={feedback.success}
+        labels={t.successParts}
+        testId="feedback-success"
+      />
+      {feedback.next.length > 0 ? (
+        <section style={{ display: 'grid', gap: 6 }}>
+          <h3 style={{ margin: 0, fontSize: typography.fontSize }}>{t.nextTitle}</h3>
+          <Claims items={feedback.next} testId="feedback-next" />
+        </section>
+      ) : null}
+      {(feedback.suggestions ?? []).length > 0 ? (
+        <section data-testid="feedback-suggestions" style={{ display: 'grid', gap: 6 }}>
+          <strong style={{ fontSize: typography.fontSizeSecondary }}>{t.suggestionsTitle}</strong>
+          <span style={secondary}>{t.suggestionsNote}</span>
+          <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6 }}>
+            {(feedback.suggestions ?? []).map((item) => (
+              <SuggestionItem key={item.oppId} item={item} source="ANALYSIS" />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {feedback.heldBack.length > 0 ? (
+        <section data-testid="feedback-held-back" style={{ display: 'grid', gap: 4 }}>
+          <strong style={{ fontSize: typography.fontSizeSecondary }}>{t.heldBackTitle}</strong>
+          <ul style={{ ...secondary, margin: 0, paddingLeft: 18 }}>
+            {feedback.heldBack.map((item, index) => (
+              <li key={`held-${index}`}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      <Compared feedback={feedback} />
+      <p data-testid="feedback-generated" style={{ ...secondary, margin: 0 }}>
+        {t.generated(
+          feedback.generatedAt.slice(0, 10),
+          feedback.costUsd === null ? null : `$${feedback.costUsd.toFixed(4)}`,
+        )}
+      </p>
+    </>
+  );
+}
+
 export interface AnalysisFeedbackCardProps {
   period: AnalysisPeriod;
   /** 영업 분석을 다시 읽을 때 함께 다시 읽는다. */
@@ -188,65 +251,7 @@ export default function AnalysisFeedbackCard({ period, reloadKey = 0 }: Analysis
         </p>
       ) : null}
       {feedback ? (
-        <>
-          {(feedback.lookBack ?? []).length > 0 ? (
-            <section data-testid="feedback-look-back" style={{ display: 'grid', gap: 6 }}>
-              <h3 style={{ margin: 0, fontSize: typography.fontSize }}>{t.lookBackTitle}</h3>
-              {feedback.lookBackFrom ? (
-                <span style={secondary}>{t.lookBackFrom(feedback.lookBackFrom)}</span>
-              ) : null}
-              <Claims items={feedback.lookBack ?? []} testId="feedback-look-back-items" />
-            </section>
-          ) : null}
-          <Part
-            title={t.failureTitle}
-            parts={feedback.failure}
-            labels={t.parts}
-            testId="feedback-failure"
-          />
-          <Part
-            title={t.successTitle}
-            parts={feedback.success}
-            labels={t.successParts}
-            testId="feedback-success"
-          />
-          {feedback.next.length > 0 ? (
-            <section style={{ display: 'grid', gap: 6 }}>
-              <h3 style={{ margin: 0, fontSize: typography.fontSize }}>{t.nextTitle}</h3>
-              <Claims items={feedback.next} testId="feedback-next" />
-            </section>
-          ) : null}
-          {(feedback.suggestions ?? []).length > 0 ? (
-            <section data-testid="feedback-suggestions" style={{ display: 'grid', gap: 6 }}>
-              <strong style={{ fontSize: typography.fontSizeSecondary }}>
-                {t.suggestionsTitle}
-              </strong>
-              <span style={secondary}>{t.suggestionsNote}</span>
-              <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6 }}>
-                {(feedback.suggestions ?? []).map((item) => (
-                  <SuggestionItem key={item.oppId} item={item} source="ANALYSIS" />
-                ))}
-              </ul>
-            </section>
-          ) : null}
-          {feedback.heldBack.length > 0 ? (
-            <section data-testid="feedback-held-back" style={{ display: 'grid', gap: 4 }}>
-              <strong style={{ fontSize: typography.fontSizeSecondary }}>{t.heldBackTitle}</strong>
-              <ul style={{ ...secondary, margin: 0, paddingLeft: 18 }}>
-                {feedback.heldBack.map((item, index) => (
-                  <li key={`held-${index}`}>{item}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-          <Compared feedback={feedback} />
-          <p data-testid="feedback-generated" style={{ ...secondary, margin: 0 }}>
-            {t.generated(
-              feedback.generatedAt.slice(0, 10),
-              feedback.costUsd === null ? null : `$${feedback.costUsd.toFixed(4)}`,
-            )}
-          </p>
-        </>
+        <FeedbackBody feedback={feedback} />
       ) : state ? (
         <p style={{ ...secondary, margin: 0 }}>{t.empty}</p>
       ) : null}

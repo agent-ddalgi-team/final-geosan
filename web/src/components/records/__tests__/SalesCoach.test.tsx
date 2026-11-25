@@ -175,6 +175,9 @@ const RESULT: CoachResult = {
   aiGenerated: true,
   removedNames: 1,
   removedContacts: 0,
+  similarCases: [],
+  similarAdvice: [],
+  lookups: [],
 };
 
 function renderArea(enabled = true, props: Partial<React.ComponentProps<typeof RecordsArea>> = {}) {
@@ -489,6 +492,96 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
 });
 
 // #847(사용자 피드백 2026-11-17 "글이 너무 많아 무슨 내용인지 모르겠다"): 영업 코치 칸의 안내 문장·겹치는 제목을 줄였다.
+describe('(#915) 비슷한 성사 사례에서', () => {
+  const CASES = [
+    {
+      oppId: 'opp-won',
+      name: 'B금속(가상)',
+      sharedProcesses: ['아연도금'],
+      sharedIndustries: ['자동차 부품'],
+    },
+    { oppId: 'opp-won-2', name: 'C산업(가상)', sharedProcesses: [], sharedIndustries: [] },
+  ];
+
+  it('Given 함께 본 성사 회사와 제안 When [보내기] 뒤 Then 회사 이름은 새 창 링크, 함께 본 회사가 한 줄로 보이고 제안은 저장하지 않는다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postCoach).mockResolvedValueOnce({
+      data: {
+        ...RESULT,
+        similarCases: CASES,
+        similarAdvice: [
+          { oppId: 'opp-won', name: 'B금속(가상)', text: '샘플을 먼저 제안해 보세요.' },
+        ],
+      },
+      meta: {},
+    });
+    renderArea();
+    const review = await reachAndSend(user);
+    const line = within(review).getByTestId('coach-similar-line');
+    expect(line).toHaveTextContent('B금속(가상) · 샘플을 먼저 제안해 보세요.');
+    const link = within(line).getByRole('link', { name: coachTexts.similarOpen('B금속(가상)') });
+    expect(link).toHaveAttribute('href', '/opportunities/opp-won');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(within(review).getByTestId('coach-similar-basis')).toHaveTextContent(
+      '함께 본 성사 회사: B금속(가상)(아연도금, 자동차 부품), C산업(가상)',
+    );
+    await user.click(
+      within(within(review).getByTestId('coach-missing-SWITCH_INTENT')).getByText('있음'),
+    );
+    await user.click(within(review).getByTestId('coach-save'));
+    await waitFor(() => expect(postNote).toHaveBeenCalled());
+    // 남는 것은 코치 피드백(ADVICE)·다음 통화 준비뿐이다. 사례 제안 글은 어디에도 저장하지 않는다.
+    for (const call of vi.mocked(postNote).mock.calls) {
+      expect(JSON.stringify(call)).not.toContain('샘플을 먼저 제안해 보세요.');
+    }
+  });
+
+  it('Given 함께 본 회사는 있고 제안은 없음 When [보내기] 뒤 Then "따로 제안할 것이 없습니다"가 보인다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postCoach).mockResolvedValueOnce({
+      data: { ...RESULT, similarCases: CASES, similarAdvice: [] },
+      meta: {},
+    });
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).getByTestId('coach-similar')).toHaveTextContent(coachTexts.similarNone);
+    expect(within(review).queryByTestId('coach-similar-line')).toBeNull();
+  });
+
+  it('Given 함께 본 성사 회사가 없음 When [보내기] 뒤 Then 사례 칸은 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).queryByTestId('coach-similar')).toBeNull();
+  });
+
+  it('Given 코치가 도구로 찾아봄(#916) When [보내기] 뒤 Then "찾아본 것" 한 줄에 찾은 것이 차례로 보인다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postCoach).mockResolvedValueOnce({
+      data: {
+        ...RESULT,
+        lookups: [
+          { tool: 'similar_lost', label: 'A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳' },
+          { tool: 'past_analyses', label: '지난 영업 분석 2건(최근 것부터)' },
+        ],
+      },
+      meta: {},
+    });
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).getByTestId('coach-lookups')).toHaveTextContent(
+      '찾아본 것: A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳 · 지난 영업 분석 2건(최근 것부터)',
+    );
+  });
+
+  it('Given 찾아본 것이 없음 When [보내기] 뒤 Then "찾아본 것" 줄은 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).queryByTestId('coach-lookups')).toBeNull();
+  });
+});
+
 describe('영업 코치 칸 글 줄이기 (#847)', () => {
   it('Given 오른쪽 영업 코치 칸 When 결과를 고르기 전 Then 메모 칸이 바로 보인다', async () => {
     renderArea(true, { inCoach: true });

@@ -11,6 +11,7 @@ import { frame } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 import AssistantAsk from '../assistant/AssistantAsk';
 import CoachDock from './CoachDock';
+import FontScaleControl from './FontScaleControl';
 import type { DockScreen } from './CoachDock';
 import SideMenu from './SideMenu';
 import StatusBanner from './StatusBanner';
@@ -169,6 +170,8 @@ export default function AppFrame({
               </span>
             </div>
             <span style={{ flex: 1 }} />
+            {/* #926 글자 크기 고르기: 담당자 칸 왼쪽. */}
+            <FontScaleControl />
             {currentStaff ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span data-testid="current-staff">
@@ -191,6 +194,8 @@ export default function AppFrame({
                   id="staff-select"
                   data-testid="staff-select"
                   style={{ minWidth: 160 }}
+                  // 열린 목록은 가장 긴 이름에 맞춰 넓힌다(예: "보기 전용(대표·상무)", #910).
+                  popupMatchSelectWidth={false}
                   placeholder={frame.staffPlaceholder}
                   value={staffKey ?? undefined}
                   onChange={(key: string) => setStaffKey(key)}

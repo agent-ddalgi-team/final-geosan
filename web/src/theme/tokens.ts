@@ -71,6 +71,41 @@ export const statusPalette = {
 export type StatusTone = keyof typeof statusPalette;
 
 /**
+ * #929 영업 홈 시안 v3 색(PM 승인 2026-11-25): 파랑 계열 + 지난 일정 빨강 · 받은 전달 연노랑.
+ * 글자 위 색은 대비 4.5:1 이상인 진한 값(blueText·redText 등)을 쓴다. 흰 글자 바탕은 blueStrong.
+ */
+export const homePalette = {
+  blueBg: '#E6F4FF',
+  blueBorder: '#91CAFF',
+  blueText: '#0958D9',
+  blueStrong: '#0958D9',
+  redBg: '#FFF1F0',
+  redText: '#CF1322',
+  orangeBg: '#FFF7E6',
+  orangeText: '#AD4E00',
+  greenBg: '#F6FFED',
+  greenText: '#237804',
+  yellowBg: '#FFFBE6',
+  yellowBorder: '#FFE58F',
+  yellowText: '#7A5C00',
+  purpleBg: '#F9F0FF',
+  purpleText: '#531DAD',
+  teal: '#006D75',
+  line: '#D9D9D9',
+  muted: '#8C8C8C',
+} as const;
+
+/** #925 영업 홈 묶음 제목 앞 색 막대(PM 요청 2026-11-25). 글자가 늘 함께 있어 색은 보조 신호다. #929부터 v3 색. */
+export const groupMarkPalette = {
+  overdue: homePalette.redText,
+  overdueBg: homePalette.redBg,
+  today: homePalette.blueText,
+  todayBg: homePalette.blueBg,
+  received: homePalette.yellowText,
+  other: colors.border,
+} as const;
+
+/**
  * 대시보드 일정 달력 색(#758 → #898 밝은 톤). 흰 판 위에 둥근 칸을 두고, 일정이 있는 날만 상태별 색을 칠한다.
  * 일정 없는 날은 옅은 칸·흐린 글자. 색은 보조 신호이고 칸 안 "N건"과 아래 색 설명 줄이 함께 있다.
  */
@@ -179,7 +214,8 @@ export const antdTheme: ThemeConfig = {
       dangerShadow: 'none',
       fontWeight: 500,
     },
-    Select: { borderRadius: radius.pill, borderRadiusLG: radius.pill },
+    // 선택 칸은 알약, 열린 목록(borderRadiusLG)은 보통 둥근 상자. 목록까지 알약이면 말풍선처럼 부풀고 글자가 잘린다(#910).
+    Select: { borderRadius: radius.pill, borderRadiusLG: radius.md },
     DatePicker: { borderRadius: radius.pill },
     Segmented: { borderRadius: radius.pill, borderRadiusSM: radius.pill },
     Tag: { borderRadiusSM: radius.pill },
@@ -187,6 +223,73 @@ export const antdTheme: ThemeConfig = {
     Collapse: { borderRadiusLG: radius.lg },
     Alert: { borderRadiusLG: radius.lg },
     Typography: { fontWeightStrong: 600 },
+  },
+};
+
+/**
+ * 접속 화면(화면 담당 시안 login_mix): 짙은 남색 바탕 + 아래쪽 빛나는 곡선, 반투명 입력 상자, 라임색 접속 단추.
+ * 이 색은 접속 화면에만 쓴다. 비활성 단추는 일부러 흐리게 둔다.
+ */
+export const loginTheme = {
+  bgTop: '#0F2048',
+  bgMiddle: '#132A5C',
+  bgLow: '#245089',
+  spotLeft: 'rgba(52, 88, 160, 0.55)',
+  spotRight: 'rgba(40, 78, 150, 0.5)',
+  planet: '#0B1632',
+  glowCore: 'rgba(205, 228, 255, 0.95)',
+  glowMiddle: 'rgba(95, 165, 232, 0.7)',
+  glowFar: 'rgba(50, 120, 200, 0.45)',
+  text: '#FFFFFF',
+  textSoft: 'rgba(255, 255, 255, 0.62)',
+  badgeBorder: 'rgba(160, 195, 245, 0.5)',
+  cardBg: 'rgba(255, 255, 255, 0.09)',
+  cardBorder: 'rgba(255, 255, 255, 0.18)',
+  cardShadow: 'rgba(3, 10, 30, 0.35)',
+  inputBg: '#FFFFFF',
+  accent: '#C8F03C',
+  accentHover: '#D6F766',
+  accentText: '#14275A',
+  focusRing: 'rgba(200, 240, 60, 0.45)',
+  disabledBg: 'rgba(200, 240, 60, 0.55)',
+  disabledFg: 'rgba(20, 39, 90, 0.85)',
+  cardWidth: 400,
+  cardRadius: 18,
+  inputHeight: 48,
+  buttonHeight: 50,
+  inputRadius: 10,
+  titleSize: 48,
+  subtitleSize: 34,
+} as const;
+
+/** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 모양을 덮는다. */
+export const loginAntdTheme: ThemeConfig = {
+  ...antdTheme,
+  components: {
+    ...antdTheme.components,
+    Input: {
+      controlHeightLG: loginTheme.inputHeight,
+      borderRadiusLG: loginTheme.inputRadius,
+      lineWidth: 2,
+      colorBgContainer: loginTheme.inputBg,
+      colorBorder: loginTheme.inputBg,
+      hoverBorderColor: loginTheme.accent,
+      activeBorderColor: loginTheme.accent,
+      activeShadow: `0 0 0 3px ${loginTheme.focusRing}`,
+    },
+    Button: {
+      ...antdTheme.components?.Button,
+      controlHeightLG: loginTheme.buttonHeight,
+      borderRadiusLG: loginTheme.inputRadius,
+      fontWeight: 700,
+      colorPrimary: loginTheme.accent,
+      colorPrimaryHover: loginTheme.accentHover,
+      colorPrimaryActive: loginTheme.accent,
+      primaryColor: loginTheme.accentText,
+      colorBgContainerDisabled: loginTheme.disabledBg,
+      colorTextDisabled: loginTheme.disabledFg,
+      borderColorDisabled: 'transparent',
+    },
   },
 };
 

@@ -361,6 +361,39 @@ export function getSalesFeedback(
   });
 }
 
+/** (#918) 지난 분석 한 줄: 받을 때마다 저장된 AI 분석. 전체는 getPastFeedback으로 읽는다. */
+export interface FeedbackHistoryItem {
+  feedbackId: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  generatedAt: string;
+  generatedBy: string;
+  /** "➡ 다음엔" 첫 줄(없으면 실패 "왜" 첫 줄, 둘 다 없으면 빈 글). */
+  headline: string;
+  nextCount: number;
+  costUsd: number | null;
+}
+
+/** (#918) 지난 분석 목록. 지금 묶음에서 받은 것 전부, 최근 것부터. AI 호출 없음. */
+export function getFeedbackHistory(
+  signal?: AbortSignal,
+): Promise<Envelope<{ items: FeedbackHistoryItem[] }>> {
+  return request<{ items: FeedbackHistoryItem[] }>('/sales-analysis/feedback/history', {
+    signal,
+  });
+}
+
+/** (#918) 지난 분석 한 건(받았던 모양 그대로). */
+export function getPastFeedback(
+  feedbackId: string,
+  signal?: AbortSignal,
+): Promise<Envelope<AnalysisFeedback>> {
+  return request<AnalysisFeedback>(
+    `/sales-analysis/feedback/history/${encodeURIComponent(feedbackId)}`,
+    { signal },
+  );
+}
+
 export function requestSalesFeedback(
   period: AnalysisPeriod | null,
   refresh: boolean,

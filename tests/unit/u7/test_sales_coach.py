@@ -35,11 +35,21 @@ PLANTED = ("김철수", "철수", "홍길동", "010-0000-0000", "park-lee")
 
 
 def day(offset):
+    """한국 날짜 기준 오늘 + offset일.
+
+    #931: 시험이 도는 순간에 부른다(파일을 읽을 때 정해 두지 않는다).
+    """
     return (utcnow().astimezone(KST).date() + timedelta(days=offset)).isoformat()
 
 
 def reading(
-    answers=(), action=None, date=None, feedback=(), summary="견적 요청을 받음", next_call=()
+    answers=(),
+    action=None,
+    date=None,
+    feedback=(),
+    summary="견적 요청을 받음",
+    next_call=(),
+    similar=(),
 ):
     return json.dumps(
         {
@@ -51,6 +61,8 @@ def reading(
             "feedback": list(feedback),
             "nextCall": list(next_call),
             "summary": summary,
+            # #915 비슷한 성사 사례에서 온 제안: (사례 번호, 글).
+            "similarAdvice": [{"caseRef": ref, "text": text} for ref, text in similar],
         },
         ensure_ascii=False,
     )
@@ -84,47 +96,54 @@ def seed_first_contact(client, opp_id):
     note(client, opp_id, OLD_NOTE)
 
 
-FULL_READING = reading(
-    answers=[
-        ("QUOTE_REQUEST", ["QUOTE"], "견적 요청함"),
-        ("NEXT_ACTION", ["RECONTACT"], "금요일에 다시 전화"),
-        # 버릴 것: 사람이 고르는 질문, 없는 질문, 하나만 고르는 질문에 둘, 보기 밖, 이전과 같은 답
-        ("INTEREST", ["HIGH"], "견적 요청함"),
-        ("NO_SUCH_QUESTION", ["X"], "견적 요청함"),
-        ("REPLY", ["CAME", "NOT_YET"], "소개서 받아봤다고 함"),
-        ("SENT_ITEM", ["FAX"], "소개서 받아봤다고 함"),
-        ("PLATING_NOW", ["OUTSOURCED"], "소개서 받아봤다고 함"),
-        # 근거 구절이 메모에 없는 답도 버린다.
-        ("VISIT_OR_SAMPLE", ["SAMPLE"], "샘플 10개 보내 달라고 함"),
-        # 사람이 확정하는 질문은 제안으로만 온다.
-        ("CONFIRM_PROCESS", ["ZINC_PLATING"], "견적 요청함"),
-    ],
-    action="RECONTACT",
-    date=day(3),
-    feedback=[
-        "10/21 메모의 납기 걱정에 아직 답을 못 줬어요.",
-        "단가를 10% 낮춰 제안해 보세요.",
-        "[이름] 과장에게 010-1234-5678로 다시 걸어 보세요.",
-        "납기를 다음 주로 확정해 드리세요.",
-    ],
-    # #750: 다음 통화에 물어볼 것. 연락처·금액이 든 줄은 버리고 3줄까지만 받는다.
-    next_call=[
-        "견적에 넣을 수량과 도금 두께를 물어보세요.",
-        "김철수 과장에게 010-1234-5678로 확인하세요.",
-        "단가를 10% 낮춰 드릴 수 있다고 말하세요.",
-        "소개서에서 궁금한 공정이 있는지 물어보세요.",
-        "방문 날짜를 정할 수 있는지 물어보세요.",
-        "샘플이 필요한지 물어보세요.",
-    ],
-    summary="김철수 과장이 견적을 요청함",
-)
+def full_reading():
+    """코치 가짜 답 한 벌. #931: 날짜(3일 뒤)가 들어가므로 부를 때마다 새로 만든다.
+
+    예전에는 파일을 읽을 때 한 번 만들어 두어, CI가 한국 시각 자정을 넘겨 돌면 서버의 "오늘"과
+    하루가 어긋났다.
+    """
+    return reading(
+        answers=[
+            ("QUOTE_REQUEST", ["QUOTE"], "견적 요청함"),
+            ("NEXT_ACTION", ["RECONTACT"], "금요일에 다시 전화"),
+            # 버릴 것: 사람이 고르는 질문, 없는 질문, 하나만 고르는 질문에 둘,
+            # 보기 밖, 이전과 같은 답
+            ("INTEREST", ["HIGH"], "견적 요청함"),
+            ("NO_SUCH_QUESTION", ["X"], "견적 요청함"),
+            ("REPLY", ["CAME", "NOT_YET"], "소개서 받아봤다고 함"),
+            ("SENT_ITEM", ["FAX"], "소개서 받아봤다고 함"),
+            ("PLATING_NOW", ["OUTSOURCED"], "소개서 받아봤다고 함"),
+            # 근거 구절이 메모에 없는 답도 버린다.
+            ("VISIT_OR_SAMPLE", ["SAMPLE"], "샘플 10개 보내 달라고 함"),
+            # 사람이 확정하는 질문은 제안으로만 온다.
+            ("CONFIRM_PROCESS", ["ZINC_PLATING"], "견적 요청함"),
+        ],
+        action="RECONTACT",
+        date=day(3),
+        feedback=[
+            "10/21 메모의 납기 걱정에 아직 답을 못 줬어요.",
+            "단가를 10% 낮춰 제안해 보세요.",
+            "[이름] 과장에게 010-1234-5678로 다시 걸어 보세요.",
+            "납기를 다음 주로 확정해 드리세요.",
+        ],
+        # #750: 다음 통화에 물어볼 것. 연락처·금액이 든 줄은 버리고 3줄까지만 받는다.
+        next_call=[
+            "견적에 넣을 수량과 도금 두께를 물어보세요.",
+            "김철수 과장에게 010-1234-5678로 확인하세요.",
+            "단가를 10% 낮춰 드릴 수 있다고 말하세요.",
+            "소개서에서 궁금한 공정이 있는지 물어보세요.",
+            "방문 날짜를 정할 수 있는지 물어보세요.",
+            "샘플이 필요한지 물어보세요.",
+        ],
+        summary="김철수 과장이 견적을 요청함",
+    )
 
 
 @pytest.fixture
 def coach_env(assistant_env):
     client, opp_ids, fake = assistant_env
     seed_first_contact(client, opp_ids[0])
-    fake.answer = FULL_READING
+    fake.answer = full_reading()
     return client, opp_ids, fake
 
 
@@ -253,17 +272,18 @@ def test_daily_limit_is_counted_apart_from_the_assistant(coach_env):
 
 
 @pytest.mark.parametrize(
-    ("body", "field"),
+    ("make_body", "field"),
     [
-        ({"memo": "   "}, "memo"),
-        ({"memo": "가" * 101}, "memo"),
-        ({"attemptedAt": day(1)}, "attemptedAt"),
+        (lambda: {"memo": "   "}, "memo"),
+        (lambda: {"memo": "가" * 101}, "memo"),
+        # #931: "내일"은 시험이 도는 순간에 계산한다(목록을 만들 때 정하면 자정을 넘겨 오늘이 된다).
+        (lambda: {"attemptedAt": day(1)}, "attemptedAt"),
     ],
 )
-def test_bad_memo_or_future_date_is_rejected_before_sending(coach_env, body, field):
+def test_bad_memo_or_future_date_is_rejected_before_sending(coach_env, make_body, field):
     """Given 빈 메모·너무 긴 메모·앞으로의 날짜 / When 코치 / Then 400, 나간 것 없음."""
     client, opp_ids, fake = coach_env
-    response = coach(client, opp_ids[0], **body)
+    response = coach(client, opp_ids[0], **make_body())
     assert response.status_code == 400, response.text
     assert [item["path"] for item in response.json()["error"]["fields"]] == [field]
     assert fake.payloads == []
@@ -616,3 +636,17 @@ def test_bad_coach_field_is_rejected(tmp_path, coach_line, question_id, message)
     result = _questions_with(tmp_path, coach_line, question_id)
     assert result.questions is None
     assert any(message in f"{error.path} {error.message}" for error in result.errors), result.errors
+
+
+def test_fake_reading_dates_follow_the_clock_at_call_time(monkeypatch):
+    """#931 Given 자정을 넘겨 시계가 하루 뒤로 감 / When 가짜 답을 만듦
+    / Then 그때의 "3일 뒤"가 들어간다.
+
+    예전처럼 파일을 읽을 때 만들어 두면 자정 뒤에도 전날 기준 날짜가 남아 CI가 실패했다.
+    """
+    before = json.loads(full_reading())["nextSchedule"]["date"]
+    later = utcnow() + timedelta(days=1)
+    monkeypatch.setattr(f"{__name__}.utcnow", lambda: later)
+    after = json.loads(full_reading())["nextSchedule"]["date"]
+    assert after == (later.astimezone(KST).date() + timedelta(days=3)).isoformat()
+    assert after != before
