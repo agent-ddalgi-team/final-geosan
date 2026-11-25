@@ -400,12 +400,16 @@ class TransferPurpose(StrEnum):
     """외부 호출 기록에 더하는 용도(C6·C9, 2026-11-07 PM 결정 #393)."""
 
     PUBLIC_SOURCE = "PUBLIC_SOURCE"
+    # #927 MCP 서버(geosan mcp)가 PC의 AI 앱에 돌려준 값. 월 AI 비용·호출 한도에는 세지 않는다.
+    MCP_TOOL = "MCP_TOOL"
 
 
 class TransferKind(StrEnum):
     """공공 조회 종류(C6·C9, #393). 기존 AI 전송 코드는 그대로 쓴다."""
 
     FACTORY_REGISTRY = "FACTORY_REGISTRY"
+    # #927 MCP 서버가 돌려준 영업 기록 글(지운 사본). 하루 한도 assistant.mcpDailyLimit.
+    MCP_TOOL = "MCP_TOOL"
 
 
 class FitLevel(StrEnum):
