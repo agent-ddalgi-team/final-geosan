@@ -2761,6 +2761,26 @@ export const analysisFeedbackTexts = {
   failed: '분석을 받지 못했습니다.',
 } as const;
 
+/** #918 영업 분석 탭과 "지난 분석"(받을 때마다 저장된 AI 분석을 다시 보기, AI 호출 없음). */
+export const pastAnalysisTexts = {
+  tabNow: '분석',
+  tabPast: '지난 분석',
+  tabsLabel: '영업 분석 보기',
+  intro:
+    '[AI 분석 받기]로 받은 분석은 받을 때마다 저장됩니다. 줄을 누르면 그때 받은 내용이 그대로 열립니다. AI를 다시 부르지 않습니다.',
+  empty: '아직 받은 분석이 없습니다. [분석] 탭에서 [AI 분석 받기 💰]를 누르면 여기에 쌓입니다.',
+  loadError: '지난 분석을 불러오지 못했습니다.',
+  openError: '이 분석을 열지 못했습니다.',
+  allPeriod: '전체 기간',
+  /** "11/01 ~ 11/20" */
+  period: (from: string | null, to: string | null) => `${from ?? '처음'} ~ ${to ?? '오늘'}`,
+  /** "11/25 14:02 받음 · 기간 11/01 ~ 11/20 · 영업 담당 · 다음 할 일 3개" */
+  line: (when: string, period: string, by: string, nextCount: number) =>
+    `${when} 받음 · 기간 ${period} · ${by} · 다음 할 일 ${nextCount}개`,
+  noHeadline: '(다음 할 일 없음)',
+  loading: '여는 중…',
+} as const;
+
 /**
  * 그림 아래 요약 문장과 말풍선(#898, PM 요청 2026-11-22 "분석 그래프나 도식화 아래에 분석 요약 내용").
  * 그림과 같은 값으로 화면이 만드는 문장이다(AI 없음). 표본이 기준보다 적으면 비율을 말하지 않는다.

@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, Query, Request
+from fastapi import APIRouter, Header, Path, Query, Request
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ from geosan.api.routes.records import (
 )
 from geosan.api.sales_step import compute_sales_step, step_rows
 from geosan.api.schemas import ContactCount, Envelope, Meta, _ApiModel, _RequestModel
-from geosan.config.errors import AppError, FieldError, InputError, RunFailedError
+from geosan.config.errors import AppError, FieldError, InputError, NotFoundError, RunFailedError
 from geosan.config.sales_questions import KST, STEP_ORDER
 from geosan.config.validators import find_contact
 from geosan.dashboard.sales_analysis import (
@@ -941,6 +941,91 @@ def _feedback_meta(inputs: _FeedbackInputs) -> Meta:
         updated_at=inputs.now,
         dataset_kind=inputs.dataset_kind,
         has_virtual_data=inputs.dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
+    )
+
+
+class FeedbackHistoryItem(_ApiModel):
+    """#918 지난 분석 한 줄. 무엇을 받았는지 고를 만큼만(전체는 한 건 읽기로)."""
+
+    feedback_id: str
+    period_from: date | None
+    period_to: date | None
+    generated_at: datetime
+    generated_by: str
+    # "➡ 다음엔" 첫 줄(없으면 실패 "왜" 첫 줄, 둘 다 없으면 빈 글)과 다음 할 일 수.
+    headline: str
+    next_count: int
+    cost_usd: float | None
+
+
+class FeedbackHistory(_ApiModel):
+    items: list[FeedbackHistoryItem]
+
+
+def _headline(response: dict) -> str:
+    for claims in (response.get("next") or [], (response.get("failure") or {}).get("why") or []):
+        for claim in claims:
+            text = str(claim.get("text", "")).strip()
+            if text:
+                return text
+    return ""
+
+
+@router.get("/sales-analysis/feedback/history", response_model=Envelope[FeedbackHistory])
+def sales_feedback_history(session: SessionDep):
+    """#918 지난 분석 목록: 지금 묶음에서 받은 AI 분석 저장본 전부, 최근 것부터.
+
+    [AI 분석 받기]가 받을 때마다 새 행으로 저장해 둔 것을 읽기만 한다. AI·외부 호출·저장 없음.
+    """
+    dataset_kind = runtime_for(session).app_settings.active_dataset_kind
+    rows = session.scalars(
+        select(AnalysisFeedback)
+        .where(AnalysisFeedback.dataset_kind == dataset_kind.value)
+        .order_by(AnalysisFeedback.created_at.desc(), AnalysisFeedback.feedback_id.desc())
+    ).all()
+    items = [
+        FeedbackHistoryItem(
+            feedback_id=row.feedback_id,
+            period_from=row.period_from,
+            period_to=row.period_to,
+            generated_at=row.created_at,
+            generated_by=row.created_by,
+            headline=_headline(row.response),
+            next_count=len(row.response.get("next") or []),
+            cost_usd=float(row.cost_usd) if row.cost_usd is not None else None,
+        )
+        for row in rows
+    ]
+    return Envelope[FeedbackHistory](
+        data=FeedbackHistory(items=items),
+        meta=Meta(
+            updated_at=utcnow(),
+            dataset_kind=dataset_kind,
+            has_virtual_data=dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
+        ),
+    )
+
+
+@router.get(
+    "/sales-analysis/feedback/history/{feedbackId}",
+    response_model=Envelope[AnalysisFeedbackView],
+)
+def sales_feedback_one(
+    session: SessionDep,
+    feedback_id: Annotated[str, Path(alias="feedbackId")],
+):
+    """#918 지난 분석 한 건: 받았던 모양 그대로(일정 제안은 지금 보일 때처럼 지난 날짜를 뺀다)."""
+    dataset_kind = runtime_for(session).app_settings.active_dataset_kind
+    row = session.get(AnalysisFeedback, feedback_id)
+    if row is None or row.dataset_kind != dataset_kind.value:
+        raise NotFoundError("지난 분석을 찾을 수 없습니다.")
+    return Envelope[AnalysisFeedbackView](
+        data=_feedback_view(session, row),
+        meta=Meta(
+            updated_at=utcnow(),
+            dataset_kind=dataset_kind,
+            has_virtual_data=dataset_kind == DatasetKind.VIRTUAL_REVIEWED,
+        ),
     )
 
 
