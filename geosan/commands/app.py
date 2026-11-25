@@ -70,6 +70,31 @@ def source_load(
     raise typer.Exit(code=run_source_load(source_id, files))
 
 
+@app.command("supply-tier")
+def supply_tier(
+    staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),
+    redo: bool = typer.Option(
+        False,
+        "--redo",
+        help="생산품으로 판단한 회사도 다시 판단(지시문을 고친 뒤, 비용 발생)",
+    ),
+) -> None:
+    """공급망 위치가 빈 목록 회사(사례 파일 회사 포함)를 AI로 판단합니다(#860, 비용 발생)."""
+    from geosan.commands.supply_tier import run_supply_tier
+
+    raise typer.Exit(code=run_supply_tier(staff_key, redo=redo))
+
+
+@app.command("mcp")
+def mcp(
+    staff_key: str = typer.Option(..., "--by", help="기록 담당자 키(전송 기록에 남음)"),
+) -> None:
+    """PC의 AI 앱(Claude 앱 등)이 영업 기록을 읽는 MCP 서버를 띄웁니다(#927, 읽기 전용)."""
+    from geosan.commands.mcp import run_mcp
+
+    raise typer.Exit(code=run_mcp(staff_key))
+
+
 @app.command("ingest")
 def ingest(
     source_id: str = typer.Argument(..., help="공개 공장현황 소스 kicox-factory-csv"),
@@ -240,6 +265,18 @@ def staff_disable(
     from geosan.commands.staff import run_staff_disable
 
     raise typer.Exit(code=run_staff_disable(staff_key, enable))
+
+
+@app.command("staff-role")
+def staff_role(
+    staff_key: str = typer.Argument(..., help="종류를 바꿀 계정의 아이디"),
+    staff: bool = typer.Option(False, "--staff", help="담당자로(기록할 수 있음)"),
+    viewer: bool = typer.Option(False, "--viewer", help="보기 전용으로(기록 단추가 막힘)"),
+) -> None:
+    """계정 종류를 담당자 ↔ 보기 전용으로 바꿉니다(접속은 끊고 비밀번호·이름은 그대로, #862)."""
+    from geosan.commands.staff import run_staff_role
+
+    raise typer.Exit(code=run_staff_role(staff_key, staff=staff, viewer=viewer))
 
 
 @app.command("check-config")

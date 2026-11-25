@@ -703,6 +703,9 @@ def save_bookmark(
 
 # #774 영업 코치 [넣기]로 잡은 일정의 변경 기록 끝말. #802 영업 분석이 이 끝말로 "코치 제안"을 센다.
 COACH_SUGGESTION_SUFFIX = " · 영업 코치 제안"
+# #887 영업 분석 [AI 분석 받기]의 일정 제안 [넣기]로 잡은 일정의 끝말.
+# 코치 효과 세기에는 넣지 않는다.
+ANALYSIS_SUGGESTION_SUFFIX = " · 영업 분석 제안"
 
 
 def sales_questions(session: Session) -> SalesQuestions:
@@ -1038,7 +1041,7 @@ def record_outcome(session: Session, opp_id: str, body: OutcomeRequest, staff: s
     # #607: 큰 단계는 같은 저장 안에서 세부 단계를 따라 앞으로만 바뀐다(보류·성사·거절은 그대로).
     if row.method or body.answers or body.step_override:
         step = sales_step_state(session, opp_id, status=None, questions=questions).code
-        row.status = stage_for(row.status, row.method, step)
+        row.status = stage_for(row.status, step)
         session.flush()
     return SavedOutcome(row=row, previous=previous, reevaluated=reevaluated)
 
@@ -1182,6 +1185,8 @@ class ScheduleSetRequest(_RequestModel):
     action_id: str = Field(min_length=1, max_length=40, strict=True)
     # 그 회사 최신 영업 기록 버전. 기록이 없으면 0.
     expected_version: int = Field(ge=0)
+    # #887 어디서 누른 [넣기]인가. 없으면 영업 코치(옛 화면과 같음).
+    source: Literal["COACH", "ANALYSIS"] = "COACH"
 
 
 @router.post("/opportunities/{oppId}/schedule", response_model=OutcomeEnvelope)
@@ -1235,13 +1240,14 @@ def set_schedule(
         expected_version=previous.version if previous else None,
     )
     new_day = f"{_day_label(body.next_schedule_at)} {label}"
+    suffix = ANALYSIS_SUGGESTION_SUFFIX if body.source == "ANALYSIS" else COACH_SUGGESTION_SUFFIX
     old_day = previous.next_schedule_at if previous else None
     if old_day is not None:
         old_note = previous.next_schedule_note
         what = f"{_day_label(old_day)} 일정" + (f"({old_note})" if old_note else "")
-        text = f"{what} → {new_day}{_ro(label)} 바꿈{COACH_SUGGESTION_SUFFIX}"
+        text = f"{what} → {new_day}{_ro(label)} 바꿈{suffix}"
     else:
-        text = f"{new_day} 일정 잡음{COACH_SUGGESTION_SUFFIX}"
+        text = f"{new_day} 일정 잡음{suffix}"
     saved = record_outcome(session, opp_id, request, staff)
     row = saved.row
     add_program_note(session, opportunity, text, staff=staff, now=row.created_at)

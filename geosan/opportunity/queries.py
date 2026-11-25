@@ -218,6 +218,21 @@ def apply_homepage_fit(
     return True
 
 
+def apply_homepage_tier(customer: Customer, supply_tier: str | None, reason: str) -> bool:
+    """조사가 홈페이지 문장으로 본 공급망 위치를 회사에 옮긴다(C1 #860). 옮겼으면 True.
+
+    후보 찾기로 들어온 회사만 바꾼다(적합도 다시 보기와 같은 범위). 판단할 문장이 없었으면
+    (supply_tier None) 생산품으로 본 값을 그대로 둔다. 홈페이지 판단은 다음 후보 찾기의 생산품
+    판단이 덮지 않는다.
+    """
+    if customer is None or customer.ingest_batch_id is None or supply_tier is None:
+        return False
+    customer.supply_tier = supply_tier
+    customer.supply_tier_basis = reason.strip()
+    customer.supply_tier_source = "HOMEPAGE"
+    return True
+
+
 def mark_homepage_closed(session: Session, customer_id: str, *, expected: tuple, reason: str):
     """닫힌 홈페이지(#793)를 '홈페이지 못 찾음'으로 바꾼다. 담당자가 확정한 주소는 그대로 둔다.
 

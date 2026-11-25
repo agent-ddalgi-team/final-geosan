@@ -9,7 +9,7 @@ import type {
   DashboardMapGroup,
 } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 
 export interface VisitGroupsProps {
   groups: DashboardVisitGroup[];
@@ -69,7 +69,7 @@ export default function VisitGroups({
                     width: '100%',
                     textAlign: 'left',
                     padding: '8px 12px',
-                    borderRadius: 8,
+                    borderRadius: radius.md,
                     border: `1px solid ${expanded ? colors.text : colors.borderSecondary}`,
                     background: colors.bgContainer,
                     font: 'inherit',

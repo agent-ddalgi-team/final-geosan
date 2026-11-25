@@ -123,11 +123,7 @@ it('#771 나에게 온 전달 사항은 지난 일정 다음 묶음으로, 회�
     ...overdue(),
   ]);
   const titles = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
-  expect(titles).toEqual([
-    '🔴지난 일정 — 했나요? 1건',
-    '📬나에게 온 전달 사항 1곳',
-    '🔍확인할 것이 남은 관심 기업 1곳모두 보기',
-  ]);
+  expect(titles).toEqual(['지난 일정 1건', '받은 것 1곳', '확인할 회사 1곳모두 보기']);
   expect(screen.getByTestId('dashboard-today-items-HANDOFF_FOR_ME')).toHaveTextContent(
     '가상정밀김 과장 · 11/16',
   );

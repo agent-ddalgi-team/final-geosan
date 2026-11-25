@@ -91,6 +91,9 @@ class AiPickSettings(FileModel):
     enabled: bool = Field(default=False, strict=True)
     rows_per_call: int = Field(default=20, ge=1, strict=True)
     prompt_file: str = Field(default="examples/prompts/candidate-pick.md", min_length=1)
+    # #860: 목록에 들어온 회사의 공급망 위치를 따로 판단하는 지시문.
+    # 후보 고르기 기준 버전에 넣지 않는다(바꿔도 지역 재판단이 없음).
+    supply_tier_prompt_file: str = Field(default="examples/prompts/supply-tier.md", min_length=1)
     surface_treatment_industry_names: list[str] = Field(default_factory=list)
     # 팩토리온 업종번호(표준산업분류 5자리)가 여기 있으면 표면처리 표시(#573). 값은 PM이 정한다.
     surface_treatment_industry_codes: list[str] = Field(default_factory=list)
@@ -337,6 +340,10 @@ class SalesAnalysisSettings(FileModel):
     min_sample_for_ratio: int = Field(ge=1, strict=True)
     # 성사·거절은 결과 기록이 이 일수 안인 것만 센다.
     closed_window_days: int = Field(ge=1, strict=True)
+    # #802(11/20): [AI 분석 받기] 답 한 번의 출력 토큰 상한. 회사별 기록을 함께 읽어 답이 길어져
+    # 영업 비서 상한(assistant.maxOutputTokens 3000)으로는 끊겼다(시연 DB 실측). 기준 숫자가 아니라
+    # 답 길이 상한이라 옛 설정(이 칸 없음)도 이 값으로 읽는다.
+    feedback_max_output_tokens: int = Field(default=8000, ge=1, strict=True)
 
 
 class AssistantSettings(FileModel):
@@ -357,6 +364,12 @@ class AssistantSettings(FileModel):
     coach_prior_memo_limit: int = Field(ge=1, strict=True)
     # #742 확인 화면에 묻는 빠진 필수 질문 수 상한(질문 파일 순서로 앞에서부터).
     coach_max_required_questions: int = Field(ge=1, strict=True)
+    # #915 영업 코치가 함께 보는 비슷한 성사 회사 수 상한(같은 공정·산업이 겹치는 성사 회사).
+    # 0이면 비슷한 사례를 싣지 않는다(지금과 같은 코치).
+    coach_similar_won_limit: int = Field(ge=0, strict=True)
+    # #927 MCP 서버(geosan mcp)의 하루(한국 날짜) 도구 호출 상한. 바깥 AI 앱 비용은 우리 월 한도에
+    # 걸 수 없어서 대신 조회 횟수를 묶는다(PM 결정 2026-11-25).
+    mcp_daily_limit: int = Field(ge=1, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -674,20 +687,20 @@ def check_app_settings_file(path: Path | str) -> AppSettingsCheck:
     return AppSettingsCheck(document=document, settings=settings, errors=[])
 
 
-DEMO_OUTSIDE_MESSAGE = "시연용 설정에서는 외부 AI와 검색을 켤 수 없습니다"
+DEMO_OUTSIDE_MESSAGE = "시연용 설정에서는 웹 검색·홈페이지 검색을 켤 수 없습니다"
 
 
 def demo_outside_switches(settings: AppSettings) -> list[str]:
     """시연 표시(brand.demo)가 있는 설정에서 켜져 있으면 안 되는 스위치의 경로(#720).
 
-    시연 DB는 가상 자료로 발표 때 보여 주는 것이라 외부 AI·웹 검색·자동 조사로 비용이 나가거나
-    글이 밖으로 나가면 안 된다. 시연 표시가 없으면 빈 목록이다.
+    시연 DB는 가상 자료로 발표 때 보여 주는 것이라 웹 검색·자동 조사로 실제 인터넷을 쓰거나 비용이
+    저절로 나가면 안 된다. #802(PM 결정 2026-11-20): 영업 기록 AI(llm.mode·salesRecordsEnabled)는
+    단추를 누를 때만 부르고 시연 기록은 가상이라 시연에서 보여 줄 수 있게 허용한다.
+    시연 표시가 없으면 빈 목록이다.
     """
     if not settings.brand.demo:
         return []
     switches = {
-        "llm.mode": settings.llm.mode != "NONE",
-        "llm.salesRecordsEnabled": settings.llm.sales_records_enabled,
         "homepageDiscovery.enabled": settings.homepage_discovery.enabled,
         "homepageDiscovery.autoResearch": settings.homepage_discovery.auto_research,
         "candidateWebSearch.enabled": settings.candidate_web_search.enabled,
@@ -811,8 +824,14 @@ def _fill_added_sections(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, **{key: defaults[key] for key in missing}}
 
 
-ADDED_ASSISTANT_KEYS = ("coachDailyLimit", "coachPriorMemoLimit", "coachMaxRequiredQuestions")
-"""#742 뒤에 생긴 assistant 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_ASSISTANT_KEYS = (
+    "coachDailyLimit",
+    "coachPriorMemoLimit",
+    "coachMaxRequiredQuestions",
+    "coachSimilarWonLimit",
+    "mcpDailyLimit",
+)
+"""#742·#915·#927 뒤에 생긴 assistant 칸. 그 전 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:

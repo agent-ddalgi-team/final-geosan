@@ -65,6 +65,17 @@ def _run_server(port: int, host: str = HOST) -> None:
     )
 
 
+def _close_interrupted_ingests() -> None:
+    """남은 '진행 중' 후보 찾기를 실패로 바꾸고 몇 건인지 알린다(#866)."""
+    from geosan.api.ingest_batches import fail_interrupted_batches
+    from geosan.storage.session import session_scope
+
+    with session_scope() as session:
+        count = fail_interrupted_batches(session)
+    if count:
+        typer.echo(f"서버가 꺼질 때 돌던 후보 찾기 {count}건을 '중단됨'으로 정리했습니다.")
+
+
 def _warm_location_index() -> None:
     """좌표 조회를 켰고 위치 CSV가 있으면 색인을 한 번 만들어 둔다. 실패해도 서버는 띄운다."""
     from geosan.config.app_settings import read_app_settings
@@ -266,7 +277,10 @@ def run_serve(port: int, host: str = HOST) -> int:
         typer.echo(f"포트 {port}이 사용 중입니다. --port로 바꾸세요.")
         return EXIT_RUN_FAILED
 
-    # 5) 위치 CSV 색인을 미리 읽는다(#664). 받은 CSV 3개(64만 줄)는 처음 읽는 데 10초가 넘어
+    # 5) 지난번 서버가 꺼질 때 돌던 후보 찾기는 이어지지 않는다. 남은 '진행 중'을 정리한다(#866).
+    _close_interrupted_ingests()
+
+    # 6) 위치 CSV 색인을 미리 읽는다(#664). 받은 CSV 3개(64만 줄)는 처음 읽는 데 10초가 넘어
     #    서버를 켠 뒤 첫 가까운 순 요청이 요청 제한(10초)에 걸려 실패했다.
     _warm_location_index()
 

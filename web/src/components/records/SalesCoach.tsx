@@ -8,7 +8,7 @@ import { Button, Typography } from 'antd';
 import type { CoachResult } from '../../api/coach';
 import type { SalesQuestion, SalesQuestions, SalesStep, SalesStepView } from '../../api/types';
 import { coachTexts as texts, memoReadTexts, salesQuestionTexts } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { STEP_ORDER, closingPick, nextActionPick } from './SalesQuestions';
 
@@ -231,7 +231,7 @@ export function CoachReview({
         gap: 12,
         padding: 12,
         border: `1px solid ${colors.border}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
       }}
     >
       <Typography.Text strong>{texts.title}</Typography.Text>
@@ -369,6 +369,41 @@ export function CoachReview({
           </ul>
         )}
       </div>
+
+      {(result.similarCases ?? []).length > 0 ? (
+        <div style={{ display: 'grid', gap: 4 }} data-testid="coach-similar">
+          <Typography.Text>{texts.similarTitle}</Typography.Text>
+          {(result.similarAdvice ?? []).length === 0 ? (
+            <span style={secondary}>{texts.similarNone}</span>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {result.similarAdvice.map((item) => (
+                <li key={item.text} data-testid="coach-similar-line">
+                  {/* 저장 전 확인 화면이라 같은 창으로 옮기면 코치 답이 사라진다: 새 창으로 연다. */}
+                  <a
+                    href={`/opportunities/${encodeURIComponent(item.oppId)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={texts.similarOpen(item.name)}
+                  >
+                    {item.name}
+                  </a>
+                  {' · '}
+                  {item.text}
+                </li>
+              ))}
+            </ul>
+          )}
+          <span style={secondary} data-testid="coach-similar-basis">
+            {texts.similarBasis(
+              result.similarCases.map((item) => {
+                const shared = [...item.sharedProcesses, ...item.sharedIndustries];
+                return shared.length > 0 ? `${item.name}(${shared.join(', ')})` : item.name;
+              }),
+            )}
+          </span>
+        </div>
+      ) : null}
 
       <div style={{ display: 'grid', gap: 4 }} data-testid="coach-next-call">
         <Typography.Text>{texts.nextCallTitle}</Typography.Text>

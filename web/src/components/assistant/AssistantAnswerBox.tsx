@@ -10,7 +10,7 @@ import { postSchedule, SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
 import type { AssistantAnswer, AssistantSuggestion } from '../../api/assistant';
 import { ApiError } from '../../api/client';
 import { assistantTexts as texts, errorTexts } from '../../labels/ko';
-import { colors, statusPalette, typography } from '../../theme/tokens';
+import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 import { dayLabel } from '../dashboard/TodayChecks';
 import { useFrame } from '../frame/FrameContext';
 
@@ -32,7 +32,14 @@ function scheduleText(date: string | null, note: string | null): string {
 
 type PutState = 'idle' | 'confirm' | 'saving' | 'done';
 
-function SuggestionItem({ item }: { item: AssistantSuggestion }) {
+/** #887 영업 분석의 일정 제안도 같은 줄을 쓴다(source ANALYSIS). */
+export function SuggestionItem({
+  item,
+  source,
+}: {
+  item: AssistantSuggestion;
+  source?: 'COACH' | 'ANALYSIS';
+}) {
   const { staffKey, canRecord } = useFrame();
   const [state, setState] = useState<PutState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +61,7 @@ function SuggestionItem({ item }: { item: AssistantSuggestion }) {
           nextScheduleAt: item.date,
           actionId: item.actionId,
           expectedVersion: item.outcomeVersion,
+          ...(source ? { source } : {}),
         },
         staffKey,
       );
@@ -144,7 +152,7 @@ export default function AssistantAnswerBox({ answer }: { answer: AssistantAnswer
         gap: 8,
         padding: 12,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 8,
+        borderRadius: radius.md,
         background: colors.bgLayout,
       }}
     >
@@ -153,7 +161,7 @@ export default function AssistantAnswerBox({ answer }: { answer: AssistantAnswer
         style={{
           justifySelf: 'start',
           padding: '2px 8px',
-          borderRadius: 4,
+          borderRadius: radius.sm,
           background: statusPalette.wait.bg,
           color: statusPalette.wait.fg,
           fontSize: typography.fontSizeSecondary,

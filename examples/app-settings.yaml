@@ -45,6 +45,7 @@ ingestion:
     enabled: false
     rowsPerCall: 20  # 100행은 60초 한도를 넘김(PM #491, 2026-11-09)
     promptFile: examples/prompts/candidate-pick.md
+    supplyTierPromptFile: examples/prompts/supply-tier.md  # 목록에 들어온 회사만 공급망 위치를 따로 판단(#860). 후보 고르기 기준 버전에 안 들어감
     surfaceTreatmentIndustryNames: []  # 업종명 규칙의 값은 PM이 정한 뒤 넣는다.
     surfaceTreatmentIndustryCodes: ["25922", "25923"]  # 팩토리온 업종번호: 도금업·도장 및 기타 피막처리업(PM 승인 #573). 열처리 25921·절삭가공 25924는 넣지 않는다
     model: null  # 후보 고르기만 다른 모델로(예: gpt-6-luna). 비우면 llm.model. 모델 비교용(PM #491)
@@ -102,6 +103,7 @@ brand:
 salesAnalysis:
   minSampleForRatio: 10   # 표본(접촉한 곳 수)이 이보다 적으면 비율 없이 건수와 "표본 n건"만 보인다.
   closedWindowDays: 365   # 성사·거절은 결과 기록이 이 일수 안인 것만 센다(최근 12개월).
+  feedbackMaxOutputTokens: 8000  # [AI 분석 받기] 답 길이 상한(#802). 회사별 기록을 함께 읽어 답이 길다
 
 # 영업 비서(#680, 계약 C7, PM 결정 2026-11-14): 질문에 답하기·통화 준비. 숫자는 PM이 정한다.
 # 켜고 끄는 스위치는 위 llm.salesRecordsEnabled다. 메모 글은 보내지 않고 고른 값만 보낸다.
@@ -113,6 +115,8 @@ assistant:
   coachDailyLimit: 50      # 영업 코치(#742) 하루 호출 상한. 전체 회사 합계, 위 질문 한도와 따로 센다.
   coachPriorMemoLimit: 10  # 영업 코치에 함께 싣는 이전 메모·남긴 피드백 수 상한(각각 최근 것부터).
   coachMaxRequiredQuestions: 3  # 영업 코치 확인 화면에 묻는 빠진 필수 질문 수 상한(질문 파일 순서).
+  coachSimilarWonLimit: 3     # 영업 코치(#915)가 함께 보는 비슷한 성사 회사 수 상한(공정·산업이 겹치는 곳). 0이면 끔.
+  mcpDailyLimit: 200          # MCP 서버(#927, geosan mcp)의 하루 도구 호출 상한. 바깥 AI 앱 비용은 우리 한도 밖이라 횟수로 묶는다.
 
 # 추천 목록 세 묶음(#610, 계약 C7): 지금 연락할 곳 / 확인 필요 / 나중. 숫자는 PM이 정한다(거산 사용 뒤 재조정).
 # 부록 F 점수·분류·기존 순위는 바꾸지 않는다. 묶음과 묶음 안 순서만 목록을 읽을 때 계산한다.

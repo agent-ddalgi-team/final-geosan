@@ -253,8 +253,8 @@ body.present .mermaid svg{max-width:none;width:100%}
 <!-- ============ 구조와 경계 ============ -->
 <section class="panel" id="structure" aria-labelledby="h-structure">
   <div class="card">
-    <h2 id="h-structure">누가 어디를 맡나</h2>
-    <p class="lead">4명 비전공 팀이 AI 도구로 만듭니다. 화면은 고선주, 서버·창구·기록은 이강욱, 채점과 AI 조사는 유동렬, 저장소·합치기·문서는 PM(최지예).</p>
+    <h2 id="h-structure">어떻게 나뉘어 있나</h2>
+    <p class="lead">화면 → 요청 창구 → 작업 지휘 → 채점·근거·기록 → 저장소. 바깥(AI·홈페이지)과 닿는 곳은 근거 자료실뿐입니다.</p>
     <div class="fig"><div class="mermaid" data-src="mm-structure"></div></div>
   </div>
   <div class="card">
@@ -406,15 +406,15 @@ timeline
 </script>
 <script type="text/plain" id="mm-structure">
 flowchart TB
-    U["영업 담당자<br/>브라우저"] --> WEB["화면<br/>web/src/<br/>고선주"]
-    OP["운영자<br/>터미널"] --> CMD["운영 명령<br/>geosan/commands/<br/>이강욱"]
-    WEB --> API["화면 요청 창구<br/>geosan/api/<br/>이강욱"]
-    API --> DASH["대시보드 집계<br/>geosan/dashboard/<br/>고선주"]
-    API --> WF["작업 순서 지휘<br/>geosan/workflows/<br/>이강욱"]
+    U["영업 담당자<br/>브라우저"] --> WEB["화면<br/>web/src/"]
+    OP["운영자<br/>터미널"] --> CMD["운영 명령<br/>geosan/commands/"]
+    WEB --> API["화면 요청 창구<br/>geosan/api/"]
+    API --> DASH["대시보드 집계<br/>geosan/dashboard/"]
+    API --> WF["작업 순서 지휘<br/>geosan/workflows/"]
     CMD --> WF
-    WF --> RULES["채점<br/>geosan/rules/<br/>유동렬"]
-    WF --> EVD["근거 자료실과 AI 조사<br/>geosan/evidence/<br/>유동렬"]
-    subgraph BOOK["대장과 기록 — 이강욱"]
+    WF --> RULES["채점<br/>geosan/rules/"]
+    WF --> EVD["근거 자료실과 AI 조사<br/>geosan/evidence/"]
+    subgraph BOOK["대장과 기록"]
         CAP["거산 역량<br/>capability/"]
         OPP["고객과 영업 기회<br/>opportunity/"]
         EVAL["평가 결과<br/>evaluation/"]
@@ -424,7 +424,7 @@ flowchart TB
     API --> BOOK
     WF --> BOOK
     DASH --> BOOK
-    BOOK --> DBF[("저장소<br/>geosan/storage/<br/>PM")]
+    BOOK --> DBF[("저장소<br/>geosan/storage/")]
     EVD -.-> EXT["바깥<br/>AI 서비스<br/>회사 홈페이지"]
 </script>
 <script type="text/plain" id="mm-boundary">

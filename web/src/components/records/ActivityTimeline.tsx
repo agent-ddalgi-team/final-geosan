@@ -25,7 +25,7 @@ import {
   timelineArea,
   timelineLayers,
 } from '../../labels/ko';
-import { colors, detailTheme, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, typography } from '../../theme/tokens';
 import StatusTag from '../common/StatusTag';
 import { activityGroupTone, groupOf } from './activityGroups';
 import {
@@ -158,7 +158,7 @@ const groupButtonStyle = (selected: boolean) =>
   ({
     minHeight: 32,
     padding: '0 12px',
-    borderRadius: 8,
+    borderRadius: radius.md,
     border: `1px solid ${selected ? colors.text : colors.border}`,
     background: selected ? colors.text : colors.bgContainer,
     color: selected ? colors.bgContainer : colors.text,
@@ -484,7 +484,7 @@ export default function ActivityTimeline({
             data-testid="timeline-card"
             style={{
               border: `1px solid ${colors.borderSecondary}`,
-              borderRadius: 8,
+              borderRadius: radius.md,
               padding: '6px 10px',
               background: colors.bgContainer,
               display: 'grid',
@@ -686,12 +686,12 @@ export default function ActivityTimeline({
                           style={{
                             width: 24,
                             height: 24,
-                            borderRadius: 999,
+                            borderRadius: radius.pill,
                             display: 'grid',
                             placeItems: 'center',
                             fontSize: 12,
                             background: detailTheme.accentSoft,
-                            border: `1px solid ${detailTheme.accent}`,
+                            border: `1px solid ${detailTheme.accentLine}`,
                           }}
                         >
                           {timelineIcon(lines[0] ?? block[0])}

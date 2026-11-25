@@ -9,22 +9,24 @@ import type { ReactNode } from 'react';
 import { getSalesQuestions } from '../../api/client';
 import type {
   AnalysisPeriod,
+  AnalysisStats,
   PatternOutcomeCells,
   PatternStandout,
   SalesPatterns as Patterns,
 } from '../../api/salesAnalysis';
-import { getSalesPatterns } from '../../api/salesAnalysis';
+import { getSalesAnalysis, getSalesPatterns } from '../../api/salesAnalysis';
 import type { SalesQuestions } from '../../api/types';
 import {
+  autoSummaryTexts,
   labelFor,
   lostReasonLabels,
   salesPatternsTexts as texts,
   salesStepLabels,
 } from '../../labels/ko';
-import { chartPalette, colors, typography } from '../../theme/tokens';
+import { chartPalette, colors, radius, typography } from '../../theme/tokens';
 
 const [BLUE, ORANGE] = chartPalette.series;
-const GREY = colors.borderSecondary;
+const GREY = chartPalette.base;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 const cardStyle = {
   background: colors.bgContainer,
@@ -72,14 +74,14 @@ function Bar({
       title={`${label}: ${text}`}
     >
       <span style={{ overflowWrap: 'anywhere' }}>{label}</span>
-      <span style={{ background: colors.bgLayout, borderRadius: 4, alignSelf: 'center' }}>
+      <span style={{ background: colors.bgLayout, borderRadius: radius.sm, alignSelf: 'center' }}>
         <span
           style={{
             display: 'block',
             height: 10,
             width: `${width}%`,
             background: color,
-            borderRadius: 4,
+            borderRadius: radius.sm,
           }}
         />
       </span>
@@ -126,7 +128,7 @@ function CellRow({
       <span style={{ display: 'grid', gap: 2 }}>
         <span
           aria-hidden="true"
-          style={{ display: 'flex', height: 10, borderRadius: 4, overflow: 'hidden' }}
+          style={{ display: 'flex', height: 10, borderRadius: radius.sm, overflow: 'hidden' }}
         >
           <span style={{ flex: row.won, background: row.judged ? BLUE : GREY }} />
           <span style={{ flex: row.failed, background: row.judged ? ORANGE : GREY }} />
@@ -162,15 +164,137 @@ function standoutName(
   ].join(' × ');
 }
 
+/** #802: 고른 기간과 같은 길이의 바로 앞 기간(서버의 AI 분석 비교와 같은 규칙). 양끝이 있을 때만. */
+export function previousPeriod(period: AnalysisPeriod): AnalysisPeriod | null {
+  if (!period.from || !period.to) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const from = Date.parse(`${period.from}T00:00:00Z`);
+  const to = Date.parse(`${period.to}T00:00:00Z`);
+  if (Number.isNaN(from) || Number.isNaN(to) || to < from) return null;
+  const prevTo = from - day;
+  const prevFrom = prevTo - (to - from);
+  const iso = (value: number) => new Date(value).toISOString().slice(0, 10);
+  return { from: iso(prevFrom), to: iso(prevTo) };
+}
+
+function arrow(now: number, before: number): string {
+  if (now === before) return '—';
+  return now > before ? `↑${now - before}` : `↓${before - now}`;
+}
+
+/** #802(PM 결정 2026-11-20) 자동 요약: 이미 받은 숫자로 문장만 만든다. AI·새 계산 없음. */
+function AutoSummary({
+  data,
+  total,
+  previous,
+  questions,
+  processNames,
+}: {
+  data: Patterns;
+  total?: AnalysisStats;
+  previous: { period: AnalysisPeriod; total: AnalysisStats } | null;
+  questions: SalesQuestions | null;
+  processNames: Record<string, string>;
+}) {
+  const t = autoSummaryTexts;
+  const lines: string[] = [];
+  if (total) {
+    lines.push(
+      t.totals(
+        total.contactedCount,
+        total.wonCount,
+        total.lostCount,
+        total.onHoldCount,
+        total.inProgressCount,
+      ),
+    );
+    if (previous) {
+      const before = previous.total;
+      const range = `${previous.period.from?.slice(5).replace('-', '/')}~${previous.period.to
+        ?.slice(5)
+        .replace('-', '/')}`;
+      lines.push(
+        t.compared(range, [
+          `${t.compareNames.contacted} ${arrow(total.contactedCount, before.contactedCount)}`,
+          `${t.compareNames.won} ${arrow(total.wonCount, before.wonCount)}`,
+          `${t.compareNames.lost} ${arrow(total.lostCount, before.lostCount)}`,
+        ]),
+      );
+    }
+  }
+  const failure = data.failure;
+  const topStep = [...failure.byStep].sort((a, b) => b.count - a.count)[0];
+  if (failure.count > 0 && topStep && topStep.count > 0) {
+    lines.push(t.failedAt(stepText(topStep.step), topStep.count, failure.count));
+  }
+  const topReason = [...failure.lostReasons].sort((a, b) => b.count - a.count)[0];
+  if (topReason && topReason.count > 0) {
+    lines.push(t.topReason(labelFor(lostReasonLabels, topReason.code), topReason.count));
+  }
+  if (data.success.count > 0) {
+    lines.push(
+      t.success(data.success.count, data.success.avgContactsToWon, data.success.avgFirstVisitIndex),
+    );
+  }
+  for (const item of data.standouts.slice(0, 2)) {
+    lines.push(
+      t.standout(
+        standoutName(item, questions, processNames),
+        item.won,
+        item.won + item.failed,
+        item.overallWonRatio,
+      ),
+    );
+  }
+  const lowFill = data.answerFill
+    .filter((row) => row.eligible > 0 && row.answered < row.eligible)
+    .sort((a, b) => a.answered / a.eligible - b.answered / b.eligible)[0];
+  if (lowFill) {
+    lines.push(
+      t.lowFill(questionText(questions, lowFill.questionId), lowFill.answered, lowFill.eligible),
+    );
+  }
+  if (data.basis.overallWonRatio === null && data.basis.closedCount > 0) {
+    lines.push(t.early(data.basis.closedCount, data.basis.minSampleForRatio));
+  }
+  return (
+    <Card id="patterns-auto-summary" title={t.title}>
+      <span data-testid="auto-summary-badge" style={secondary}>
+        {t.badge}
+      </span>
+      {lines.length === 0 ? (
+        <p data-testid="auto-summary-empty" style={secondary}>
+          {t.empty}
+        </p>
+      ) : (
+        <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+          {lines.map((line, index) => (
+            <li key={index} data-testid="auto-summary-line">
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
 export interface SalesPatternsProps {
   period: AnalysisPeriod;
   /** 위 분석표의 [다시 시도]와 같이 다시 읽는다. */
   reloadKey: number;
   /** 공정 코드 → 이름(위 분석표와 같은 이름). */
   processNames: Record<string, string>;
+  /** #802 자동 요약 첫 줄: 위 분석표의 합계(회사를 한 번씩 센 값). 없으면 그 줄을 빼고 보인다. */
+  total?: AnalysisStats;
 }
 
-export default function SalesPatterns({ period, reloadKey, processNames }: SalesPatternsProps) {
+export default function SalesPatterns({
+  period,
+  reloadKey,
+  processNames,
+  total,
+}: SalesPatternsProps) {
   const periodKey = `${period.from ?? ''}~${period.to ?? ''}`;
   const [state, setState] = useState<{
     key: string;
@@ -179,6 +303,28 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
   } | null>(null);
   const [questions, setQuestions] = useState<SalesQuestions | null>(null);
   const key = `${reloadKey}|${periodKey}`;
+  // #802: 앞 기간 합계(같은 길이, 기간 양끝이 있을 때만). 못 읽으면 비교 줄만 뺀다.
+  const [before, setBefore] = useState<{
+    key: string;
+    value: { period: AnalysisPeriod; total: AnalysisStats } | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const span = previousPeriod(period);
+    if (!span) return;
+    const controller = new AbortController();
+    getSalesAnalysis(controller.signal, span)
+      .then((envelope) => {
+        if (!controller.signal.aborted)
+          setBefore({ key, value: { period: span, total: envelope.data.total } });
+      })
+      .catch(() => {
+        // 앞 기간을 못 읽어도 요약의 나머지는 보인다.
+      });
+    return () => controller.abort();
+    // key가 period·reloadKey를 대신한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -253,6 +399,14 @@ export default function SalesPatterns({ period, reloadKey, processNames }: Sales
           {basis.overallWonRatio === null ? ` · ${texts.notEnough}` : ''}
         </p>
       </div>
+
+      <AutoSummary
+        data={data}
+        total={total}
+        previous={before?.key === key ? before.value : null}
+        questions={questions}
+        processNames={processNames}
+      />
 
       <Card id="patterns-fill" title={texts.fillTitle}>
         <span style={secondary}>{texts.fillNote}</span>

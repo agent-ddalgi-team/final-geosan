@@ -120,10 +120,12 @@ def test_answer_moves_the_step_forward_and_shows_the_tail_question(records_env):
         False,
     )
     # #652: 공정·산업 확인은 "연결됨"을 지나도 답할 때까지 열려 있다(질문 파일 순서라 앞에 온다).
-    assert step["openQuestions"][:4] == [
+    # #860: "외주 줌"이면 "도금 업체는 누가 정하나요?"도 열린다(질문 파일 순서).
+    assert step["openQuestions"][:5] == [
         "CONFIRM_PROCESS",
         "CONFIRM_INDUSTRY",
         "SWITCH_INTENT",
+        "PLATER_DECIDER",
         "INTEREST_DRIVER",
     ]
     assert [item["questionId"] for item in step["known"]] == ["WHO_TALKED", "PLATING_NOW"]
@@ -358,10 +360,13 @@ def test_declined_contact_takes_all_step_answers_only(records_env):
 
 
 def test_declined_contact_without_a_closing_answer_keeps_the_stage(records_env):
-    """접촉 결과 '거절'만으로는 단계를 거절로 바꾸지 않는다(끝은 담당자가 고를 때만)."""
+    """접촉 결과 '거절'만으로는 단계를 거절로 바꾸지 않는다(끝은 담당자가 고를 때만).
+
+    (바뀜 2026-11-23 #899) 세부 단계가 연결 전에 머물므로 큰 단계는 미접촉이다.
+    """
     client, opp_id = records_env
     body = contact(result="DECLINED", answers=[("NEXT_ACTION", "RECONTACT")])
-    assert save(client, opp_id, body)["status"] == "IN_PROGRESS"
+    assert save(client, opp_id, body)["status"] == "NOT_EXECUTED"
     assert step_of(client, opp_id)["code"] == "NOT_REACHED"
 
 

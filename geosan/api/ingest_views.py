@@ -142,6 +142,9 @@ def discovery_fields(customer: Customer) -> dict:
                 "pick_reason",
                 "own_plating_line_suspected",
                 "own_plating_line_basis",
+                "supply_tier",
+                "supply_tier_basis",
+                "supply_tier_source",
             )
         },
         "factory_profile": factory_profile(customer),
@@ -196,6 +199,8 @@ def candidate_order(
             1,
             customer.own_plating_line_suspected,
             ("HIGH", "MEDIUM", "LOW", None).index(customer.fit_level),
+            # #860: 같은 적합도 안에서 1차 완성품·조립 업체는 뒤로(빼지 않음).
+            customer.supply_tier == "TIER1",
             customer.ingested_at or customer.created_at,
             customer.created_at,
             original.opp_id,

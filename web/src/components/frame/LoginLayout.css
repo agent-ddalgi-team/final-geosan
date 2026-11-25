@@ -1,0 +1,201 @@
+/* 접속 화면 배치. 색·크기 값은 여기 적지 않고 LoginLayout.tsx가 tokens.ts에서 CSS 변수로 넣는다. */
+.login-page {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--login-text);
+  word-break: keep-all;
+  background:
+    radial-gradient(ellipse 38% 34% at 12% 8%, var(--login-spot-left), transparent),
+    radial-gradient(ellipse 34% 30% at 96% 30%, var(--login-spot-right), transparent),
+    linear-gradient(
+      var(--login-bg-top),
+      var(--login-bg-middle) 48%,
+      var(--login-bg-low) 74%,
+      var(--login-planet) 100%
+    );
+}
+
+/* 아래쪽 빛나는 곡선: 아주 큰 원의 윗부분만 보인다. */
+.login-planet {
+  position: absolute;
+  z-index: -1;
+  top: calc(100% - 220px);
+  left: 50%;
+  width: max(321vw, 2400px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: var(--login-planet);
+  box-shadow:
+    0 -3px 18px 3px var(--login-glow-core),
+    0 -18px 56px 8px var(--login-glow-middle),
+    0 -60px 150px 20px var(--login-glow-far);
+  pointer-events: none;
+}
+
+.login-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 34px 0;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.login-logo {
+  width: 50px;
+  height: auto;
+}
+
+.login-badge {
+  padding: 5px 14px;
+  border: 1px solid var(--login-badge-border);
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.login-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  padding: 71px 16px 32px;
+  text-align: center;
+}
+
+.login-title {
+  margin: 0;
+  font-size: var(--login-title-size);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.login-subtitle {
+  margin: 0;
+  font-size: var(--login-subtitle-size);
+  font-weight: 300;
+  line-height: 1.3;
+}
+
+/* 반투명 유리 느낌의 입력 상자 */
+.login-body {
+  box-sizing: border-box;
+  width: var(--login-card-width);
+  max-width: 100%;
+  margin-top: 30px;
+  padding: 28px;
+  border: 1px solid var(--login-card-border);
+  border-radius: var(--login-card-radius);
+  background: var(--login-card-bg);
+  box-shadow: 0 22px 60px var(--login-card-shadow);
+  backdrop-filter: blur(14px);
+  text-align: left;
+}
+
+.login-body form {
+  display: grid;
+}
+
+.login-body p {
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.login-body label {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-body label:not(:first-of-type) {
+  margin-top: 16px;
+}
+
+.login-body .ant-alert {
+  margin-top: 12px;
+}
+
+.login-body form button[type='submit'] {
+  margin-top: 16px;
+}
+
+.login-body > button {
+  display: flex;
+  margin: 16px auto 0;
+}
+
+.login-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+/* 입력 칸은 높이 48px · 모서리 10px. 전역의 알약 모양 입력 규칙보다 앞서게 적는다. */
+.login-body .ant-input-affix-wrapper,
+.login-body input.ant-input-lg:not([type='password']):not(.ant-input-affix-wrapper input) {
+  min-height: var(--login-input-height);
+  border-radius: var(--login-input-radius);
+}
+
+/* 초점선은 안쪽 입력 대신 눈에 보이는 입력 칸 전체에 라임색으로 두른다. */
+.login-body .ant-input-affix-wrapper:focus-within {
+  outline: 3px solid var(--login-focus-ring);
+  outline-offset: 0;
+}
+
+.login-body .ant-input-affix-wrapper input:focus-visible {
+  outline-color: transparent;
+}
+
+.login-body button:focus-visible {
+  outline-color: var(--login-text);
+}
+
+.login-footer {
+  padding: 0 16px 20px;
+  color: var(--login-text-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .login-header {
+    padding: 16px 16px 0;
+  }
+
+  .login-brand {
+    gap: 8px;
+    font-size: 17px;
+  }
+
+  .login-main {
+    padding-top: 40px;
+  }
+
+  .login-title {
+    font-size: 34px;
+  }
+
+  .login-subtitle {
+    font-size: 20px;
+  }
+
+  .login-body {
+    padding: 20px;
+  }
+}

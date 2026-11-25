@@ -7,7 +7,7 @@
 // 고른 값은 부모가 주소(`?bookmarked=true&opinion=…&filter=…`)에 남기고, 이 부품은 고른 값을 알리기만 한다. 모달 없이 인라인이다.
 import { Button } from 'antd';
 import { bookmarkList, dashboardTexts, excludedList } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, typography } from '../../theme/tokens';
 
 /**
  * 관심 기업 보기의 검토 의견 거르기 값(계약 C1 `opinion=`). NONE은 의견을 아직 고르지 않은 회사("기타").
@@ -50,7 +50,7 @@ const toggleStyle = (selected: boolean) =>
   ({
     minHeight: 36,
     padding: '0 14px',
-    borderRadius: 8,
+    borderRadius: radius.md,
     border: `1px solid ${selected ? colors.text : colors.border}`,
     background: selected ? colors.text : colors.bgContainer,
     color: selected ? colors.bgContainer : colors.text,

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
-import { calendarPalette, typography, type CalendarTone } from '../../theme/tokens';
+import { calendarPalette, radius, type CalendarTone, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { sortSchedule } from './ScheduleList';
 
@@ -207,7 +207,7 @@ export default function DashboardCalendar({ items, today, compact = false }: Pro
             position: 'relative',
             boxSizing: 'border-box',
             minWidth: 0,
-            borderRadius: compact ? 8 : 12,
+            borderRadius: compact ? radius.md : radius.lg,
             border: 0,
             boxShadow: isToday ? `inset 0 0 0 2px ${calendarPalette.todayRing}` : 'none',
             outline: isSelected ? `3px solid ${calendarPalette.todayRing}` : 'none',
@@ -281,7 +281,7 @@ export default function DashboardCalendar({ items, today, compact = false }: Pro
                   boxSizing: 'border-box',
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
-                  borderRadius: 999,
+                  borderRadius: radius.pill,
                   padding: compact ? '0 4px' : '1px 7px',
                   background: palette.badge,
                   fontSize: compact ? 10 : 12,
@@ -316,7 +316,7 @@ export default function DashboardCalendar({ items, today, compact = false }: Pro
               style={{
                 width: 12,
                 height: 12,
-                borderRadius: 4,
+                borderRadius: radius.sm,
                 background: calendarPalette.tones[tone].bg,
               }}
             />
@@ -358,7 +358,7 @@ export default function DashboardCalendar({ items, today, compact = false }: Pro
             background: calendarPalette.popoverBg,
             border: `1px solid ${calendarPalette.popoverBorder}`,
             color: calendarPalette.title,
-            borderRadius: 14,
+            borderRadius: radius.lg,
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45)',
             padding: 12,
             display: 'grid',
@@ -397,7 +397,7 @@ export default function DashboardCalendar({ items, today, compact = false }: Pro
                       style={{
                         background: calendarPalette.tones.overdue.bg,
                         color: calendarPalette.tones.overdue.fg,
-                        borderRadius: 4,
+                        borderRadius: radius.sm,
                         padding: '0 6px',
                         marginRight: 6,
                         fontSize: typography.fontSizeSecondary,

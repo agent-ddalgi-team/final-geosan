@@ -174,17 +174,18 @@ export const opinionArea = {
 export const frame = {
   skipToContent: '본문으로 건너뛰기',
   // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
-  menuOpportunities: '신규 거래처 찾기',
+  menuOpportunities: '거래처 후보',
   staffSelectLabel: '담당자',
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
-  pageTitleList: '신규 거래처 찾기',
+  pageTitleList: '거래처 후보',
   pageTitleDetail: '기업 검토 상세',
   navLabel: '주 메뉴',
   staffLoadFailed: '담당자 목록을 불러오지 못했습니다. 화면을 새로고침해 주세요.',
-  menuDashboard: '대시보드',
-  pageTitleDashboard: '대시보드',
+  // #861(PM 2026-11-20): "대시보드" → "영업 홈". 숫자 모음이 아니라 오늘 할 일·방문 준비 중심인 첫 화면이라는 뜻.
+  menuDashboard: '영업 홈',
+  pageTitleDashboard: '영업 홈',
   menuSalesAnalysis: '영업 분석',
   pageTitleSalesAnalysis: '영업 분석',
   /** #799: 운영 담당(설정 operations.staffKeys)에게만 보이는 메뉴. */
@@ -285,11 +286,12 @@ export const dashboardTexts = {
   todayMore: (count: number) => `외 ${count}`,
   /** #766(PM 결정 2026-11-16): 주제별 묶음 제목·아이콘과 지난 일정 단추. */
   todayGroupTitles: {
-    SCHEDULE_OVERDUE: '지난 일정 — 했나요?',
+    // #925(PM 요청 2026-11-25): 실무자가 바로 알아보게 핵심 말만.
+    SCHEDULE_OVERDUE: '지난 일정',
     SCHEDULE_TODAY: '오늘 일정',
-    CHECK_LEFT: '확인할 것이 남은 관심 기업',
-    HANDOFF_FOR_ME: '나에게 온 전달 사항',
-    HANDOFF_FROM_ME: '내가 보낸 전달 사항 · 확인 전',
+    CHECK_LEFT: '확인할 회사',
+    HANDOFF_FOR_ME: '받은 것',
+    HANDOFF_FROM_ME: '보낸 것 · 상대 확인 전',
   },
   todayRowIcons: {
     SCHEDULE_OVERDUE: '🔴',
@@ -340,7 +342,7 @@ export const dashboardTexts = {
   notContactedHint: '아직 연락하지 않은 곳',
   /** 관심 기업이 0곳일 때 안내 한 줄. 가운데 말이 신규 거래처 찾기로 가는 링크다(#787: 메뉴 이름 바뀜 #762). */
   bookmarkEmptyLead: '아직 관심으로 고른 회사가 없습니다.',
-  bookmarkEmptyLink: '신규 거래처 찾기',
+  bookmarkEmptyLink: '거래처 후보',
   bookmarkEmptyTail: '에서 [관심]을 눌러 담아 보세요',
   /** 서버가 아직 옛 집계를 줄 때. 뜻이 달라진 숫자를 새 칸에 넣어 보이지 않는다. */
   countsOutdated:
@@ -359,12 +361,12 @@ export const dashboardTexts = {
   },
   breakdownProcessTitle: '공정별',
   breakdownIndustryTitle: '산업군별',
-  breakdownBasis: (total: number) => `대시보드 대상 ${total}곳`,
+  breakdownBasis: (total: number) => `관심·진행 중·최근 12개월 성사 ${total}곳 기준`,
   breakdownProposed: 'AI 제안 포함',
   breakdownEmptyText: '관심 표시한 회사가 아직 없어요.',
-  breakdownEmptyAction: '신규 거래처 찾기로 이동',
-  loadError: '대시보드를 불러오지 못했습니다.',
-  goToList: '신규 거래처 찾기로 이동',
+  breakdownEmptyAction: '거래처 후보로 이동',
+  loadError: '영업 홈을 불러오지 못했습니다.',
+  goToList: '거래처 후보로 이동',
   // #795(PM 결정 2026-11-16): 오늘 할 일·방문 준비 중심 배치.
   /** 맨 위 날짜 줄. "11/16(월) 오늘" */
   todayDate: (day: string) => `${day} 오늘`,
@@ -389,6 +391,49 @@ export const dashboardTexts = {
   /** 거리 화살표 위 글자. "8.2km" */
   prepKm: (km: number) => `${km.toFixed(1)}km`,
   moreTitle: '더 보기 · 관심 기업 건수 · 최근 내 기록',
+  // #921(PM 결정 2026-11-25): 영업 홈을 "출근하면 · 외근 전 · 누가 봐도" 세 칸으로.
+  whenWork: '출근하면',
+  whenOut: '외근 전',
+  whenAnyone: '누가 봐도',
+  stageChipsLabel: '영업 단계',
+  stageChipsHint: '누르면 아래 "진행 중인 회사" 표가 그 단계로 걸러집니다',
+  workTitle: '오늘 할 일',
+  workEmpty: '지난 일정도 오늘 일정도 없습니다',
+  handoffTitle: '전달 사항',
+  handoffEmpty: '확인할 전달 사항이 없습니다',
+  aiDailyTitle: 'AI 요약',
+  outTitle: '이번 주 방문·연락',
+  outHint: '오늘부터 7일 일정 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
+  tableTitle: '진행 중인 회사',
+  tableHint: '회사마다 지금 단계 · 마지막 접촉 · 다음 일정. 오래 멈춘 회사는 노란 줄입니다',
+  /** "6곳" */
+  tableCount: (n: number) => `${n}곳`,
+  tableFilterAll: '전체',
+  tableFilterMine: '내 담당',
+  tableFilterStalled: '오래 연락 없는 회사',
+  /** "보류만 보는 중" */
+  tableStageOnly: (stage: string) => `${stage}만 보는 중`,
+  tableStageClear: '모든 단계 보기',
+  tableColumns: {
+    company: '회사',
+    stage: '단계',
+    staff: '담당',
+    last: '마지막 접촉',
+    next: '다음 일정',
+  },
+  tableNoContact: '접촉 기록 없음',
+  /** "오늘" · "어제" · "5일 전" */
+  tableDaysAgo: (n: number) => (n <= 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`),
+  tableStalled: '⚠ 다음 일정 없음',
+  /** "지난 일정 11/21" */
+  tableOverdue: (day: string) => `지난 일정 ${day}`,
+  tableEmpty: '이 조건에 맞는 회사가 없습니다.',
+  /** "모두 보기 (12곳)" */
+  tableShowAll: (n: number) => `모두 보기 (${n}곳)`,
+  tableShowLess: '접기',
+  // #925: 방문 목록은 오늘 할 일 아래, 지도 칸은 지도 | 같이 들를 곳만.
+  mapTitle: '지도',
+  mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -410,7 +455,7 @@ export const dashboardMapTexts = {
   close: '닫기',
   missingCoordinates: (count: number) => `좌표 없는 회사 ${count}곳`,
   emptyText: '관심 표시한 회사가 아직 없어요.',
-  emptyAction: '신규 거래처 찾기로 이동',
+  emptyAction: '거래처 후보로 이동',
   /** 네이버 지도 연결 전 자리표시. 원과 점의 상대 위치만 보인다. */
   placeholder: '지도 배경은 준비 중입니다. 원과 점의 상대 위치만 보여요.',
   /** 네이버 지도(#671)를 불러오는 동안. */
@@ -421,6 +466,9 @@ export const dashboardMapTexts = {
   pointList: '지도에 표시된 회사',
   /** "같이 들를 곳"(#673): 방문할 회사(진행 중·관심) 근처 반경 안 후보. */
   visitTitle: '같이 들를 곳',
+  visitPickBase: '방문 기준으로 선택',
+  visitClusterIncludes: (name: string) => `${name} 포함`,
+  visitClusterMore: (count: number) => `외 ${count}곳`,
   visitHint: (km: number) =>
     `방문할 회사(진행 중·관심) 기준 ${km}km 안의 다른 관심 기업 · 누르면 지도에서 보여요`,
   /** 묶음 줄: "진행 중 · (주)정진에어로스페이스 · 거산에서 6km" 뒤에 "근처 3곳". */
@@ -459,7 +507,7 @@ export const cardRows = {
    * 카드 검토사항 줄의 낱말(#659, PM 지시 2026-11-13): 긴 문장 대신 "확인할 것: 공정 · 소재 · 근거 부족"처럼 보인다.
    * 약한 추정뿐·근거 없음은 구분하지 않고 "근거 부족" 하나로 쓴다. 긴 문장은 상세 화면에서 읽는다.
    */
-  checkWords: { process: '공정', material: '소재', evidence: '근거 부족' },
+  checkWords: { process: '공정', material: '소재', evidence: '근거 부족', supplyTier: '1차/2·3차' },
   /**
    * 낱말(공정·소재·근거 부족)을 먼저 적고, 이름 그대로 보이는 조건(필수 요구 이름 등)은 앞 3개 + "외 n개".
    * 예: "확인할 것: 공정 · 소재 · 근거 부족", "확인할 것: 소재 · 방산 납품 자격 · RoHS · ISO 9001 외 1개"
@@ -695,8 +743,8 @@ export const bookmarkList = {
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
   empty: '관심으로 고른 회사가 없습니다. 카드의 [관심]을 눌러 담아 보세요',
   filterPrefix: '거른 조건',
-  /** 주소의 조건 값이 대시보드 칸 이름표에 없을 때 대신 보이는 말. */
-  filterUnknown: '대시보드에서 고른 조건',
+  /** 주소의 조건 값이 영업 홈 칸 이름표에 없을 때 대신 보이는 말. */
+  filterUnknown: '영업 홈에서 고른 조건',
   clearFilter: '거르기 풀기',
   /** 평소 목록 머리(#675): 관심으로 고른 회사는 목록에서 빠져 있다. 누르면 관심 기업 보기로 간다. 예: "관심 기업 3곳" */
   countLink: (count: number) => `관심 기업 ${count}곳`,
@@ -773,7 +821,7 @@ export const candidateSearch = {
   researched: (done: number, total: number) => `조사 ${done}/${total}`,
   mergeCandidates: (n: number) => `확인 필요 ${n}곳`,
   /**
-   * 조건 칸(#316): 담당자가 공정·지역·산업을 고르고 [새 후보 찾기 💰]를 누른다(#825, 옛 이름 [영업 후보로 더하기 💰]). 모달 없이 인라인이다.
+   * 조건 칸(#316): 담당자가 오른쪽 패널에서 공정·지역·산업을 고르고 [발굴 시작 💰]을 누른다.
    * 말 구분(#549 ③): AI가 판단만 한 것은 "공장", 목록에 들어와 조사된 것은 "영업 후보". 💰 = 돈이 드는 단추.
    */
   formTitle: '영업 후보로 더할 공장 조건',
@@ -783,7 +831,7 @@ export const candidateSearch = {
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '새 후보 찾기 💰',
+  fetchButton: '발굴 시작 💰',
   fetching: '찾는 중',
   pickStaffFirst: '담당자를 고르면 찾을 수 있습니다',
   started: '찾기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
@@ -1222,6 +1270,30 @@ export const ownPlatingLine = {
   /** 근거 줄 이름. 카드에 이미 있는 "추천 근거"와 헷갈리지 않게 "확인 근거"로 한다. 예: 확인 근거 | 생산품 "알루미늄 아노다이징" */
   basisLabel: '확인 근거',
 } as const;
+/**
+ * 공급망 위치(#860, PM 결정 2026-11-19). 거산은 도금 후처리 업체라 2·3차 가공업체가 영업 대상이고,
+ * 1차 완성품·조립 업체는 보통 가공·도금을 협력사에 맡긴다(거산 실무자 의견). 1차도 목록에서 빼지 않는다.
+ */
+export const supplyTierLabels = {
+  /** 카드 꼬리표. 예: "2·3차 가공 · AI 추정" */
+  tag: { TIER2_3: '2·3차 가공 · AI 추정', TIER1: '1차 완성품·조립 · AI 추정' },
+  /** "한눈에" 줄 이름과 값. 예: 공급망 위치  1차 완성품·조립 — 철도차량 완성품 조립 납품 (생산품 기준 AI 추정 · 확인 전) */
+  label: '공급망 위치',
+  value: { TIER2_3: '2·3차 가공업체', TIER1: '1차 완성품·조립 업체' },
+  hint: { TIER2_3: '', TIER1: '협력 가공사를 물어볼 곳' },
+  source: { PRODUCT: '생산품 기준 AI 추정 · 확인 전', HOMEPAGE: '홈페이지 기준 AI 추정 · 확인 전' },
+  /** 통화에서 들은 답("도금 업체는 누가 정하나요?")이 있으면 먼저. 예: 도금 업체: 발주처가 지정 · 통화 11/19 */
+  called: (answer: string, date: string) => `도금 업체: ${answer} · 통화 ${date}`,
+  /**
+   * #890(PM 결정 2026-11-22) 1차인지 2·3차인지 분명하지 않은 회사(AI 판단 "모름"). 카드 검토사항 줄에 "1차/2·3차",
+   * 상세 "한눈에"에 이 줄. 예: 확인 필요 · 회사명은 변압기 완제품, 생산품은 변압기 부품 — 통화에서 "도금 업체는 누가 정하나요?"로 확인
+   */
+  unclear: '확인 필요',
+  unclearAsk: '통화에서 "도금 업체는 누가 정하나요?"로 확인',
+  unclearDefault: '1차인지 2·3차인지 생산품만으로는 알 수 없음',
+} as const;
+/** 공급망 위치 답을 받는 꼬리 질문 id(examples/sales-questions.yaml, id는 바꾸지 않는다). */
+export const PLATER_DECIDER_QUESTION_ID = 'PLATER_DECIDER';
 export const reviewItemSourceLabels = {
   AI: 'AI 조사',
   CASE_FILE: '사례 파일',
@@ -1710,7 +1782,7 @@ export const salesAnalysisTexts = {
   /** 맨 위 꼬리표(#845). "밖으로 안 나감"은 [분석 받기](#824, PM 결정 #821) 뒤로 맞지 않아 이 화면에서는 쓰지 않는다. */
   badge: '내부 참고 · 고객 제출용 아님',
   intro:
-    '아래 표는 담당자가 남긴 접촉·단계·거절 이유 기록만으로 계산합니다(AI 없음). [분석 받기]를 누를 때만 숫자 표를 외부 AI에 보냅니다. 회사 이름·연락처는 보내지 않습니다.',
+    '아래 표와 자동 요약은 담당자가 남긴 접촉·단계·거절 이유 기록만으로 계산합니다(AI 없음). [AI 분석 받기]를 누를 때만 숫자 표와 회사별 기록(메모·사유·답)을 외부 AI에 보냅니다. 전화·이메일·사람 이름은 지우고 회사 이름은 "회사 A1"처럼 바꿔 보냅니다.',
   /** "11/13 09:00 기준 · 접촉 기록이 있는 회사 3곳 · 성사·거절은 최근 365일 안의 것만" */
   basis: (asOf: string | null, companyCount: number, windowDays: number) =>
     [
@@ -1764,7 +1836,7 @@ export const salesAnalysisTexts = {
   unconfirmed: '확인 전',
   empty:
     '아직 접촉 기록이 없습니다. 회사 상세의 영업 기록에 전화·메일·방문을 남기면 여기에 모입니다.',
-  emptyAction: '신규 거래처 찾기로',
+  emptyAction: '거래처 후보로 이동',
   /** 대시보드에서 옮겨 온 공정별·산업군별 막대(#679, PM 결정 2026-11-13). */
   breakdownTitle: '관심 기업 분포',
   breakdownNote:
@@ -1820,6 +1892,50 @@ export const salesAnalysisTexts = {
 } as const;
 
 /** #802·#820: 영업 분석 아래 "기록에서 배우기" — 기준 숫자 없이 펼쳐 보이고, 결론은 사람이 확인한 것만. */
+/**
+ * #802(PM 결정 2026-11-20) 영업 분석 "기록에서 배우기" 맨 위 자동 요약. 저장된 기록에서 센 숫자로
+ * 프로그램이 만든 문장이다(AI 없음, 무료). 결론이 아니라 한눈에 보는 요약이다.
+ */
+/** #802(PM 지시 2026-11-22) 영업 분석 "월별 추세": 최근 12개월, 기간 선택과 상관없이 기록에서 센 회사 수. */
+export const monthlyTrendTexts = {
+  title: '월별 추세',
+  note: '최근 12개월 · 기간 선택과 상관없이 · 회사 수(AI 없음)',
+  legend: { contacted: '접촉', won: '성사', lost: '거절' },
+  /** 예: "11월: 접촉 5 · 성사 1 · 거절 2" */
+  row: (month: string, contacted: number, won: number, lost: number) =>
+    `${month}: 접촉 ${contacted} · 성사 ${won} · 거절 ${lost}`,
+  monthLabel: (yearMonth: string) => `${Number(yearMonth.slice(5))}월`,
+  empty: '최근 12개월에 접촉 기록이 없습니다.',
+} as const;
+
+export const autoSummaryTexts = {
+  title: '자동 요약',
+  badge: 'AI 없음 · 무료 · 기록에서 센 숫자',
+  totals: (contacted: number, won: number, lost: number, onHold: number, inProgress: number) =>
+    `접촉 ${contacted}곳 · 성사 ${won} · 거절 ${lost} · 보류 ${onHold} · 진행 중 ${inProgress}`,
+  /** 예: "앞 기간(11/01~11/10) 대비 접촉 ↑3 · 성사 — · 거절 ↓1" */
+  compared: (range: string, parts: string[]) => `앞 기간(${range}) 대비 ${parts.join(' · ')}`,
+  compareNames: { contacted: '접촉', won: '성사', lost: '거절' } as Record<string, string>,
+  failedAt: (step: string, count: number, total: number) =>
+    `실패 ${total}곳 가운데 ${count}곳이 '${step}'에서 멈췄습니다.`,
+  topReason: (reason: string, count: number) => `가장 많은 거절 이유: ${reason} (${count}건)`,
+  success: (count: number, avg: number | null, firstVisit: number | null) =>
+    `성사 ${count}곳` +
+    (avg !== null ? `은 평균 ${avg}번 접촉했고` : '') +
+    (firstVisit !== null
+      ? ` 첫 방문은 평균 ${firstVisit}번째 접촉이었습니다.`
+      : avg !== null
+        ? '습니다.'
+        : '.'),
+  standout: (name: string, won: number, closed: number, overall: number) =>
+    `${name}: 성사 ${won}/${closed} (전체 ${Math.round(overall * 100)}%) · 눈에 띔, 결론 아님`,
+  lowFill: (question: string, answered: number, eligible: number) =>
+    `'${question}' 답이 ${eligible}번 물을 자리 중 ${answered}번만 채워졌습니다.`,
+  early: (closed: number, need: number) =>
+    `끝난 회사가 ${closed}곳이라 아직 결론은 이릅니다(표본 기준 ${need}곳).`,
+  empty: '이 기간에는 요약할 기록이 없습니다.',
+} as const;
+
 export const salesPatternsTexts = {
   title: '기록에서 배우기',
   intro:
@@ -2519,6 +2635,12 @@ export const coachTexts = {
   feedbackNone: '이번에는 짚을 것이 없습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
+  /** (#915) 비슷한 성사 회사의 기록을 근거로 한 제안. 보여 주기만 하고 저장하지 않는다. */
+  similarTitle: '비슷한 성사 사례에서',
+  similarNone: '이번에는 사례에서 따로 제안할 것이 없습니다.',
+  /** "함께 본 성사 회사: B금속(아연도금), C산업(자동차 부품)" */
+  similarBasis: (items: string[]) => `함께 본 성사 회사: ${items.join(', ')}`,
+  similarOpen: (name: string) => `${name} 상세 새 창으로 열기`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2560,7 +2682,7 @@ export const operationsTexts = {
   usageTotal: (used: string, limit: string, percent: number) =>
     `${used} / 한도 ${limit} (${percent}%)`,
   usageCalls: (calls: number, limit: number) => `호출 ${calls} / ${limit}회`,
-  usageAlertLine: (percent: number) => `${percent}%가 넘으면 대시보드에 알림`,
+  usageAlertLine: (percent: number) => `${percent}%가 넘으면 영업 홈에 알림`,
   groupNames: {
     RESEARCH: '회사 조사·후보 판단',
     WEB_SEARCH: '웹 검색(홈페이지 찾기)',
@@ -2598,9 +2720,15 @@ export const sourceUrlTexts = {
  * 카드 의견 고르기 칸.
  */
 export const listSimple = {
-  /** 접힌 새 후보 찾기 칸의 제목. 펴면 공정·권역·산업과 예상 금액이 보인다. */
-  ingestPanelTitle: '＋ 새 후보 찾기 💰',
-  ingestPanelHint: '필요할 때 펴서 씁니다 · AI 비용이 듭니다',
+  ingestPanelTitle: '새 후보 발굴',
+  ingestPanelButton: '새 후보 발굴 💰',
+  ingestCostHint: 'AI 탐색 시 비용이 발생할 수 있습니다.',
+  ingestHistory: '최근 발굴 결과',
+  ingestRequired: '필수',
+  ingestIndustryRefine: '산업으로 좁히기',
+  ingestIndustryAll: '전체 산업',
+  ingestIndustrySelected: (count: number) => `${count}개 선택`,
+  ingestRegionDefault: (regions: string[]) => `기본 지역 · ${regions.join(' · ')}`,
   /** 목록 머리 [조건 더 보기]. n은 지금 걸려 있는 더 보기 안 조건 수(0이면 숫자 없음). */
   moreConditions: (active: number) => (active > 0 ? `조건 더 보기 (${active})` : '조건 더 보기'),
   /** 지역 선택란 묶음 제목. */
@@ -2634,8 +2762,8 @@ export const analysisFeedbackTexts = {
   title: 'AI 분석 피드백',
   aiTag: 'AI가 쓴 글 · 확인 필요',
   intro:
-    '이 기간의 숫자 표만 AI에 보내 왜 성공·실패했는지와 다음 할 일을 받습니다(회사 이름·메모는 보내지 않음).',
-  request: '분석 받기 💰',
+    '숫자 표와 회사별 기록(영업 메모·거절·성사 사유·꼬리 질문 답)을 AI가 함께 읽고, 표만 봐서는 알기 어려운 실제 원인과 다음 영업 전략을 근거와 함께 씁니다. 전화·이메일·사람 이름은 지우고 회사 이름은 바꿔 보낸 뒤 화면에서 되돌립니다.',
+  request: 'AI 분석 받기 💰',
   refresh: '다시 받기 💰',
   stale: '기록이 바뀌었습니다',
   loading: 'AI가 분석을 쓰는 중입니다…',
@@ -2646,6 +2774,12 @@ export const analysisFeedbackTexts = {
   successTitle: '✅ 왜 성공했나',
   nextTitle: '➡ 다음엔',
   heldBackTitle: '판단 보류',
+  /** #887 지난 분석 제안을 돌아본 묶음. */
+  lookBackTitle: '🔁 지난 제안 돌아보기',
+  lookBackFrom: (day: string) => `${day}에 받은 분석의 제안을 그 뒤 기록과 견줌`,
+  /** #887 다음 할 일을 일정으로. [넣기]를 눌러야 저장된다. */
+  suggestionsTitle: '일정으로 넣기',
+  suggestionsNote: '[넣기]를 눌러야 그 회사 다음 일정으로 저장됩니다.',
   parts: {
     where: '어디서',
     why: '왜',
@@ -2669,4 +2803,99 @@ export const analysisFeedbackTexts = {
   generated: (day: string, cost: string | null) =>
     cost ? `받은 날 ${day} · 비용 ${cost}` : `받은 날 ${day}`,
   failed: '분석을 받지 못했습니다.',
+} as const;
+
+/** #918 영업 분석 탭과 "지난 분석"(받을 때마다 저장된 AI 분석을 다시 보기, AI 호출 없음). */
+export const pastAnalysisTexts = {
+  tabNow: '분석',
+  tabPast: '지난 분석',
+  tabsLabel: '영업 분석 보기',
+  intro:
+    '[AI 분석 받기]로 받은 분석은 받을 때마다 저장됩니다. 줄을 누르면 그때 받은 내용이 그대로 열립니다. AI를 다시 부르지 않습니다.',
+  empty: '아직 받은 분석이 없습니다. [분석] 탭에서 [AI 분석 받기 💰]를 누르면 여기에 쌓입니다.',
+  loadError: '지난 분석을 불러오지 못했습니다.',
+  openError: '이 분석을 열지 못했습니다.',
+  allPeriod: '전체 기간',
+  /** "11/01 ~ 11/20" */
+  period: (from: string | null, to: string | null) => `${from ?? '처음'} ~ ${to ?? '오늘'}`,
+  /** "11/25 14:02 받음 · 기간 11/01 ~ 11/20 · 영업 담당 · 다음 할 일 3개" */
+  line: (when: string, period: string, by: string, nextCount: number) =>
+    `${when} 받음 · 기간 ${period} · ${by} · 다음 할 일 ${nextCount}개`,
+  noHeadline: '(다음 할 일 없음)',
+  loading: '여는 중…',
+} as const;
+
+/**
+ * 그림 아래 요약 문장과 말풍선(#898, PM 요청 2026-11-22 "분석 그래프나 도식화 아래에 분석 요약 내용").
+ * 그림과 같은 값으로 화면이 만드는 문장이다(AI 없음). 표본이 기준보다 적으면 비율을 말하지 않는다.
+ */
+export const chartSummaryTexts = {
+  funnelReached: (contacted: number, stage: string, count: number) =>
+    `접촉한 ${contacted}곳 가운데 ${count}곳이 ${stage}까지 갔습니다.`,
+  funnelNoneReached: (contacted: number) => `접촉한 ${contacted}곳 모두 아직 연결 전입니다.`,
+  funnelWon: (count: number) => `성사는 ${count}곳입니다.`,
+  funnelNoWon: '아직 성사는 없습니다.',
+  funnelMostStopped: (stage: string, count: number) =>
+    `가장 많이 멈춘 단계는 ${stage}(${count}곳)입니다.`,
+  funnelPassRate: (percent: number) => `이 단계에서 다음으로 넘어간 비율은 ${percent}%입니다.`,
+  smallSample: (min: number) => `표본이 ${min}곳보다 적어 비율은 아직 보지 않습니다.`,
+  funnelCalloutLabel: (stage: string) => `${stage}에서 멈춤`,
+  lostTop: (total: number, reason: string, count: number) =>
+    `거절 ${total}곳 가운데 가장 많은 이유는 ${reason}(${count}곳)입니다.`,
+  gridMost: (process: string, industry: string, count: number) =>
+    `가장 많이 접촉한 조합은 ${process} × ${industry}(${count}곳)입니다.`,
+  gridTie: (count: number, ties: number, process: string, industry: string) =>
+    `${count}곳씩 접촉한 조합이 ${ties}개로 가장 많습니다(예: ${process} × ${industry}).`,
+  gridTieCalloutLabel: (ties: number) => `조합 ${ties}개가 같음`,
+  gridWon: (process: string, industry: string, count: number) =>
+    `성사가 가장 많이 나온 조합은 ${process} × ${industry}(${count}곳)입니다.`,
+  gridNoWon: '아직 성사가 나온 조합은 없습니다.',
+  /** 서버가 산업군 없는 회사를 모으는 칸 이름(geosan/dashboard/sales_analysis.py NO_INDUSTRY_NAME). */
+  unconfirmedIndustry: '산업 확인 전',
+  gridAllSmall: (min: number) =>
+    `모든 조합이 표본 ${min}곳 미만이라 성사율은 아직 견주지 않습니다.`,
+  gridCalloutLabel: (process: string, industry: string) => `${process} × ${industry}`,
+  timelineStatus: (total: number, open: number, won: number, lost: number, hold: number) =>
+    `회사 ${total}곳 가운데 진행 중 ${open}곳 · 성사 ${won}곳 · 거절 ${lost}곳 · 보류 ${hold}곳입니다.`,
+  timelineOpenStep: (step: string, count: number) =>
+    `진행 중인 회사는 ${step} 단계에 가장 많이 머물러 있습니다(${count}곳).`,
+  timelineCalloutLabel: '진행 중',
+  monthChange: (month: string, count: number, diff: number) =>
+    diff > 0
+      ? `${month} 접촉은 ${count}곳으로 지난달보다 ${diff}곳 늘었습니다.`
+      : diff < 0
+        ? `${month} 접촉은 ${count}곳으로 지난달보다 ${-diff}곳 줄었습니다.`
+        : `${month} 접촉은 ${count}곳으로 지난달과 같습니다.`,
+  monthPeak: (month: string, count: number) =>
+    `최근 12개월 가운데 접촉이 가장 많았던 달은 ${month}(${count}곳)입니다.`,
+  monthTotals: (won: number, lost: number) => `12개월 동안 성사 ${won}곳 · 거절 ${lost}곳입니다.`,
+  monthCalloutLabel: (month: string, diff: number) =>
+    diff === 0
+      ? `${month} 접촉 · 지난달과 같음`
+      : `${month} 접촉 · 지난달 ${diff > 0 ? '↗ +' : '↘ '}${diff}`,
+  breakdownTop: (
+    process: string,
+    pCount: number,
+    pPercent: number,
+    industry: string,
+    iCount: number,
+  ) =>
+    `공정은 ${process} ${pCount}곳(${pPercent}%), 산업군은 ${industry} ${iCount}곳으로 가장 많습니다.`,
+  breakdownProcessOnly: (process: string, pCount: number, pPercent: number) =>
+    `공정은 ${process} ${pCount}곳(${pPercent}%)으로 가장 많습니다.`,
+  breakdownSpread: (count: number) => `관심 기업이 ${count}개 공정에 나뉘어 있습니다.`,
+  progressMoved: (total: number, moved: number, quote: number, won: number) =>
+    `영업 대상 ${total}곳 가운데 ${moved}곳이 접촉 이상 진행했고, 견적·샘플 ${quote}곳 · 성사 ${won}곳입니다.`,
+  progressNotContacted: (count: number) => `아직 연락하지 않은 곳이 ${count}곳 있습니다.`,
+} as const;
+
+/** #912: 접속 화면(로그인) 틀의 문구. */
+export const loginTexts = {
+  title: '거산 영업지원',
+  subtitle: '영업의 다음 한 걸음을 함께합니다',
+  companyName: '(주)거산케미칼',
+  internalBadge: '내부용',
+  footer: '© (주)거산케미칼 · 영업지원 에이전트',
+  staffKeyPlaceholder: '아이디를 입력하세요',
+  passwordPlaceholder: '비밀번호를 입력하세요',
 } as const;

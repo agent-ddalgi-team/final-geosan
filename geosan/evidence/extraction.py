@@ -81,6 +81,21 @@ class FitReview(FileModel):
     # #810: 생산품 기준보다 낮게 볼 때의 반대 근거 종류. 없으면 서버가 그 낮춤을 옮기지 않는다
     # (홈페이지에 도금을 안 적어 둔 것은 필요 없다는 근거가 아니다). 엄격 형식이라 늘 온다.
     downgrade_basis: Literal["NON_MANUFACTURER", "ASSEMBLY_ONLY", "OWN_PLATING"] | None
+    # #860: 공급망 위치(2·3차 가공 / 1차 완성품·조립). 판단할 문장이 없으면 null·빈 글·null.
+    supply_tier: Literal["TIER2_3", "TIER1"] | None
+    supply_tier_reason: str = Field(max_length=80)
+    supply_tier_quote: str | None
+
+
+EMPTY_FIT_REVIEW = dict(
+    fit_level=None,
+    reason="",
+    quote=None,
+    downgrade_basis=None,
+    supply_tier=None,
+    supply_tier_reason="",
+    supply_tier_quote=None,
+)
 
 
 class Extraction(FileModel):
@@ -160,7 +175,10 @@ def _proposal_instructions(item_catalog: list[dict] | None, process_codes: list[
 def _fit_instructions(review_fit: bool) -> str:
     """적합도 다시 보기 지시문(#793). 후보 고르기의 fitLevel 기준을 본문 근거로 다시 적용한다."""
     if not review_fit:
-        return "fitReview는 fitLevel null, reason 빈 글, quote null, downgradeBasis null로 둔다. "
+        return (
+            "fitReview는 fitLevel null, reason 빈 글, quote null, downgradeBasis null, "
+            "supplyTier null, supplyTierReason 빈 글, supplyTierQuote null로 둔다. "
+        )
     return (
         "적합도 다시 보기(fitReview): 이 회사가 거산의 표면처리(도금·피막) 외주가 필요할 만한 "
         "제조업체인지 본문으로 다시 판단한다. HIGH: 표면처리를 거의 반드시 거치는 금속 부품"
@@ -176,22 +194,38 @@ def _fit_instructions(review_fit: bool) -> str:
         "조립·판매만 함), OWN_PLATING(자체 도금·표면처리 라인이 있음). 반대 근거가 없으면 "
         "낮추지 말고 생산품 정보로 본 수준을 유지하거나 판단할 문장이 없으면 null로 둔다. "
         "낮추지 않을 때 downgradeBasis는 null. "
+        "공급망 위치(supplyTier): 거산은 도금 후처리 업체라 부품을 직접 가공해 도금을 맡기는 "
+        "2·3차 가공업체가 영업 대상이고, 1차 업체는 보통 가공·도금을 협력사에 맡긴다. "
+        "TIER2_3: 부품·가공품을 직접 깎거나 찍거나 부어 만든다(절삭·프레스·판금·주조·단조 등)는 "
+        "문장이 있다. TIER1: 완성품·장비·모듈을 조립해 큰 회사나 기관에 직접 납품한다는 문장이 "
+        "있다. 가를 문장이 없으면 supplyTier null, supplyTierReason 빈 글, supplyTierQuote null. "
+        "있으면 supplyTierReason은 한 문장(30자 안팎, 본문 사실만), supplyTierQuote는 그 본문 "
+        "문장 그대로. "
     )
 
 
 def _checked_fit(result: Extraction, source: str) -> Extraction:
-    """적합도 판단이 본문 인용과 맞지 않으면 그 판단만 버린다(C9 #793, 조사 전체는 그대로)."""
+    """적합도·공급망 위치 판단이 본문 인용과 맞지 않으면 그 판단만 버린다(C9 #793·#860).
+
+    조사 전체는 그대로다. 적합도와 공급망 위치는 따로 검사해 한쪽만 버릴 수 있다.
+    """
     review = result.fit_review
-    if review.fit_level is None or (
+    update = {}
+    if review.fit_level is not None and not (
         review.quote and review.quote in source and review.reason.strip()
     ):
+        logger.warning("적합도 다시 보기 버림: 인용이 본문에 없거나 이유가 비었음")
+        update.update(fit_level=None, reason="", quote=None, downgrade_basis=None)
+    if review.supply_tier is not None and not (
+        review.supply_tier_quote
+        and review.supply_tier_quote in source
+        and review.supply_tier_reason.strip()
+    ):
+        logger.warning("공급망 위치 버림: 인용이 본문에 없거나 이유가 비었음")
+        update.update(supply_tier=None, supply_tier_reason="", supply_tier_quote=None)
+    if not update:
         return result
-    logger.warning("적합도 다시 보기 버림: 인용이 본문에 없거나 이유가 비었음")
-    return result.model_copy(
-        update={
-            "fit_review": FitReview(fit_level=None, reason="", quote=None, downgrade_basis=None)
-        }
-    )
+    return result.model_copy(update={"fit_review": review.model_copy(update=update)})
 
 
 def _check_proposals(
@@ -325,13 +359,7 @@ def extract_evidence(
                 raise ValueError
             _check_proposals(result, source, item_catalog, process_codes)
             if not review_fit:
-                return result.model_copy(
-                    update={
-                        "fit_review": FitReview(
-                            fit_level=None, reason="", quote=None, downgrade_basis=None
-                        )
-                    }
-                )
+                return result.model_copy(update={"fit_review": FitReview(**EMPTY_FIT_REVIEW)})
             return _checked_fit(result, source)
         except (KeyError, TypeError, ValueError):
             raise AppError(

@@ -11,6 +11,10 @@
 // 지난 일정 단추는 기록 담당자에게만 보이고, 누르면 서버가 일정만 바꾼 새 기록과 변경 기록 한 줄을 남긴다
 // (/schedule/resolve). 어느 단추든 끝나면 대시보드를 다시 읽어 그 줄이 빠진다.
 // 묶음이 길면 앞 5곳만 보이고 [더 보기]로 편다. 0건인 묶음은 서버가 보내지 않는다.
+// #921(PM 결정 2026-11-25): 영업 홈은 같은 줄 목록을 두 칸으로 나눠 그린다.
+//   part="work"    "오늘 할 일" — 운영 알림 · 지난 일정 · 오늘 일정 · 확인할 것이 남은 관심 기업
+//   part="handoff" "전달 사항"  — 나에게 온 것 · 내가 보낸 것(확인 전). 아래(footer)에 한 달 달력.
+//   part="all"(기본)은 예전처럼 한 칸에 모두.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,10 +24,18 @@ import { ApiError, confirmHandoff, resolveSchedule } from '../../api/client';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { LIST_PATH } from '../../paths';
-import { colors, typography } from '../../theme/tokens';
+import { colors, detailTheme, groupMarkPalette, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
 const SHOWN = 5;
+/** #925 묶음 제목 앞 색 막대: 지난 일정 빨강, 오늘 일정 초록, 받은 것 남색, 나머지 회색. */
+const GROUP_MARK: Record<TodayCheckKind, string> = {
+  SCHEDULE_OVERDUE: groupMarkPalette.overdue,
+  SCHEDULE_TODAY: groupMarkPalette.today,
+  CHECK_LEFT: groupMarkPalette.other,
+  HANDOFF_FOR_ME: groupMarkPalette.received,
+  HANDOFF_FROM_ME: groupMarkPalette.other,
+};
 /** 묶음 순서: 지난 일정(정리할 것)이 맨 위. */
 const ORDER: TodayCheckKind[] = [
   'SCHEDULE_OVERDUE',
@@ -258,22 +270,47 @@ function Group({
   const [all, setAll] = useState(false);
   const items = all ? row.items : row.items.slice(0, SHOWN);
   const hidden = row.items.length - items.length;
+  // #925(PM 요청 2026-11-25): 받은 전달 사항은 색 상자로 눈에 띄게(다른 묶음은 선으로만 나눈다).
+  const received = kind === 'HANDOFF_FOR_ME';
   return (
     <li
       data-testid="dashboard-today-row"
-      style={{ borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }}
+      data-highlight={received ? 'true' : undefined}
+      style={
+        received
+          ? {
+              // 연한 노랑(단계 칸과 같은 노랑 계열, 더 밝게) + 같은 계열 테두리.
+              background: detailTheme.accent,
+              border: `1px solid ${detailTheme.accentLine}`,
+              borderRadius: 10,
+              padding: '10px 12px',
+              margin: '8px 0',
+            }
+          : { borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }
+      }
     >
       <h3
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          alignItems: 'baseline',
+          alignItems: 'center',
           gap: 8,
           margin: 0,
           fontSize: typography.fontSize,
         }}
       >
-        <span aria-hidden="true">{dashboardTexts.todayRowIcons[kind]}</span>
+        {/* #925: 제목 앞 이모지 대신 짧은 색 막대로 묶음을 구분한다(지난 일정 빨강, 오늘 일정 남색). */}
+        <span
+          aria-hidden="true"
+          data-testid={`dashboard-today-mark-${kind}`}
+          style={{
+            display: 'inline-block',
+            width: 4,
+            height: 16,
+            borderRadius: 2,
+            background: GROUP_MARK[kind],
+          }}
+        />
         <strong data-testid={`dashboard-today-count-${kind}`}>
           {dashboardTexts.todayGroupTitles[kind]} {row.count}
           {dashboardTexts.todayRowUnits[kind]}
@@ -290,7 +327,7 @@ function Group({
       </h3>
       <ul
         data-testid={`dashboard-today-items-${kind}`}
-        style={{ listStyle: 'none', margin: '4px 0 0', padding: '0 0 0 28px' }}
+        style={{ listStyle: 'none', margin: '4px 0 0', padding: '0 0 0 12px' }}
       >
         {items.map((item) =>
           kind === 'SCHEDULE_OVERDUE' ? (
@@ -308,7 +345,7 @@ function Group({
           size="small"
           onClick={() => setAll(true)}
           data-testid={`dashboard-today-more-${kind}`}
-          style={{ paddingLeft: 28 }}
+          style={{ paddingLeft: 12 }}
         >
           {dashboardTexts.todayMoreButton(hidden)}
         </Button>
@@ -317,7 +354,20 @@ function Group({
   );
 }
 
+/** #921 칸마다 그리는 묶음. */
+const PART_KINDS: Record<'all' | 'work' | 'handoff', TodayCheckKind[]> = {
+  all: ORDER,
+  work: ['SCHEDULE_OVERDUE', 'SCHEDULE_TODAY', 'CHECK_LEFT'],
+  handoff: ['HANDOFF_FOR_ME', 'HANDOFF_FROM_ME'],
+};
+
 export interface TodayChecksProps {
+  /** #921 어느 칸인가. 기본 all(한 칸에 모두). */
+  part?: 'all' | 'work' | 'handoff';
+  /** #921 제목 앞 작은 표시(예: "출근하면"). */
+  badge?: ReactNode;
+  /** #921 칸 맨 아래에 붙일 것(전달 사항 칸의 한 달 달력). */
+  footer?: ReactNode;
   /** 서버의 줄 목록. 옛 서버라 칸이 없으면(undefined) 구역을 그리지 않는다. */
   rows: TodayCheckRow[] | undefined;
   /**
@@ -385,26 +435,46 @@ export default function TodayChecks({
   rows,
   assistantSummary = null,
   onChanged = () => {},
+  part = 'all',
+  badge = null,
+  footer = null,
 }: TodayChecksProps) {
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
-  const ordered = ORDER.flatMap((kind) => known.filter((row) => row.kind === kind));
-  const alerts = ALERT_KINDS.flatMap((kind) => rows.filter((row) => row.kind === kind));
+  const ordered = PART_KINDS[part].flatMap((kind) => known.filter((row) => row.kind === kind));
+  const alerts =
+    part === 'handoff'
+      ? []
+      : ALERT_KINDS.flatMap((kind) => rows.filter((row) => row.kind === kind));
+  const id = part === 'handoff' ? 'dashboard-handoff' : 'dashboard-today';
+  const title =
+    part === 'work'
+      ? dashboardTexts.workTitle
+      : part === 'handoff'
+        ? dashboardTexts.handoffTitle
+        : dashboardTexts.todayTitle;
+  const empty =
+    part === 'work'
+      ? dashboardTexts.workEmpty
+      : part === 'handoff'
+        ? dashboardTexts.handoffEmpty
+        : dashboardTexts.todayEmpty;
   return (
     <section
-      aria-labelledby="dashboard-today-title"
-      data-testid="dashboard-today"
+      aria-labelledby={`${id}-title`}
+      data-testid={id}
       style={{
         display: 'grid',
         gap: 8,
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 12,
+        borderRadius: radius.lg,
         padding: '16px 20px',
       }}
     >
-      <h2 id="dashboard-today-title" style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}>
-        {dashboardTexts.todayTitle}
+      <h2 id={`${id}-title`} style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}>
+        {badge}
+        {title}
       </h2>
       {assistantSummary ? (
         <div data-testid="dashboard-today-assistant">{assistantSummary}</div>
@@ -420,8 +490,8 @@ export default function TodayChecks({
         </ul>
       ) : null}
       {ordered.length === 0 && alerts.length === 0 ? (
-        <p data-testid="dashboard-today-empty" style={{ margin: 0, color: colors.textSecondary }}>
-          {dashboardTexts.todayEmpty}
+        <p data-testid={`${id}-empty`} style={{ margin: 0, color: colors.textSecondary }}>
+          {empty}
         </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -435,6 +505,7 @@ export default function TodayChecks({
           ))}
         </ul>
       )}
+      {footer}
     </section>
   );
 }

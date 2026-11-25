@@ -231,8 +231,9 @@ describe('영업 분석 화면 (#608)', () => {
     // #845(PM 결정 #821): [분석 받기] 뒤로 "밖으로 안 나감"·"AI는 쓰지 않습니다"는 사실과 달라 쓰지 않는다.
     const note = screen.getByTestId('analysis-internal-note');
     expect(note).toHaveTextContent('내부 참고 · 고객 제출용 아님');
-    expect(note).toHaveTextContent('[분석 받기]를 누를 때만 숫자 표를 외부 AI에 보냅니다');
-    expect(note).toHaveTextContent('회사 이름·연락처는 보내지 않습니다');
+    // #802(PM 결정 2026-11-20): [AI 분석 받기]는 숫자 표와 회사별 기록을 지워서 보낸다.
+    expect(note).toHaveTextContent('[AI 분석 받기]를 누를 때만 숫자 표와 회사별 기록');
+    expect(note).toHaveTextContent('전화·이메일·사람 이름은 지우고');
     expect(note).not.toHaveTextContent('밖으로 안 나감');
     expect(note).not.toHaveTextContent('AI는 쓰지 않습니다');
     await screen.findByTestId('analysis-process-table');
@@ -471,7 +472,11 @@ describe('영업 분석 화면 (#608)', () => {
     await screen.findByTestId('analysis-company-table');
     expect(paths.filter((path) => !path.startsWith('GET '))).toEqual([]);
     expect(paths.filter((path) => path.endsWith('/sales-analysis'))).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: /엑셀|내보내기|AI/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /엑셀|내보내기/ })).not.toBeInTheDocument();
+    // AI를 부르는 단추는 [AI 분석 받기 💰] 하나뿐이다(#824·#802, 누를 때만 부름).
+    for (const button of screen.queryAllByRole('button', { name: /AI/ })) {
+      expect(button).toHaveAttribute('data-testid', 'feedback-request');
+    }
   });
 
   describe('관심 기업 분포 (#679: 대시보드에서 옮겨 온 공정별·산업군별 막대)', () => {
@@ -530,7 +535,7 @@ describe('영업 분석 화면 (#608)', () => {
       expect(screen.queryByTestId('analysis-by-industry-proposed')).not.toBeInTheDocument();
     });
 
-    it('대상이 0곳이면 막대 대신 안내와 [신규 거래처 찾기로 이동]을 보인다(메뉴 이름, #787)', async () => {
+    it('대상이 0곳이면 막대 대신 안내와 [거래처 후보로 이동]을 보인다(메뉴 이름, #787)', async () => {
       installFetch(
         ANALYSIS,
         {},
@@ -543,7 +548,7 @@ describe('영업 분석 화면 (#608)', () => {
       expect(screen.queryByTestId('analysis-by-process')).not.toBeInTheDocument();
       const link = screen.getByTestId('analysis-breakdown-empty-link');
       expect(link).toHaveAttribute('href', '/opportunities');
-      expect(link).toHaveTextContent('신규 거래처 찾기로 이동');
+      expect(link).toHaveTextContent('거래처 후보로 이동');
       expect(link).toHaveTextContent(dashboardTexts.breakdownEmptyAction);
     });
 

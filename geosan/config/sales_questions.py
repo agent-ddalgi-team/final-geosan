@@ -23,8 +23,9 @@ from geosan.rules.models import RuleConfig
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KST = ZoneInfo("Asia/Seoul")
 STEP_ORDER: tuple[SalesStep, ...] = tuple(SalesStep)
+# (바뀜 2026-11-23 #899 — PM 결정) 연결 전(연락만 하고 연결 안 됨)은 미접촉, 접촉은 연결된 뒤부터.
 STEP_STAGE: dict[SalesStep, OutcomeStatus] = {
-    SalesStep.NOT_REACHED: OutcomeStatus.IN_PROGRESS,
+    SalesStep.NOT_REACHED: OutcomeStatus.NOT_EXECUTED,
     SalesStep.REACHED: OutcomeStatus.IN_PROGRESS,
     SalesStep.DEMAND_CONFIRMED: OutcomeStatus.IN_PROGRESS,
     SalesStep.MATERIAL_QUOTE: OutcomeStatus.SAMPLE_OR_REGISTRATION_APPROVED,

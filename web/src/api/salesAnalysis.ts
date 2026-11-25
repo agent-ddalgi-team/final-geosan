@@ -122,6 +122,16 @@ export interface SalesAnalysis {
   bySalesStep: StepAnalysisRow[];
   /** (#678) AI 제안 적중. 지금은 공정만 센다(산업군은 확정 전 AI 제안이 저장에 남지 않는다). */
   aiProposalHit: { process: ProposalHit };
+  /** (#802) 최근 12개월(오래된 달부터) 접촉·성사·거절 회사 수. 기간 선택과 상관없다. 옛 서버는 없음. */
+  monthly?: MonthTrendRow[];
+}
+
+export interface MonthTrendRow {
+  /** YYYY-MM */
+  month: string;
+  contacted: number;
+  won: number;
+  lost: number;
 }
 
 /** (#760) 분석 기간(한국 날짜 YYYY-MM-DD). 둘 다 null이면 기간 없이 전처럼 센다. */
@@ -289,6 +299,8 @@ export interface FeedbackClaim {
   evidence: string[];
 }
 
+import type { AssistantSuggestion } from './assistant';
+
 export interface AnalysisFeedback {
   feedbackId: string;
   periodFrom: string | null;
@@ -319,6 +331,12 @@ export interface AnalysisFeedback {
       previous: number;
     }[];
   } | null;
+  /** #887 지난 분석 제안을 돌아본 주장. 옛 저장본·옛 서버에는 없다. */
+  lookBack?: FeedbackClaim[];
+  /** #887 돌아본 지난 분석을 받은 날(YYYY-MM-DD). 없으면 null. */
+  lookBackFrom?: string | null;
+  /** #887 다음 할 일을 일정으로 넣을 제안 0~3개(영업 코치 [넣기]와 같은 모양, 서버가 검증). */
+  suggestions?: AssistantSuggestion[];
   aiGenerated: true;
 }
 
@@ -341,6 +359,39 @@ export function getSalesFeedback(
   return request<FeedbackState>(`/sales-analysis/feedback${search ? `?${search}` : ''}`, {
     signal,
   });
+}
+
+/** (#918) 지난 분석 한 줄: 받을 때마다 저장된 AI 분석. 전체는 getPastFeedback으로 읽는다. */
+export interface FeedbackHistoryItem {
+  feedbackId: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  generatedAt: string;
+  generatedBy: string;
+  /** "➡ 다음엔" 첫 줄(없으면 실패 "왜" 첫 줄, 둘 다 없으면 빈 글). */
+  headline: string;
+  nextCount: number;
+  costUsd: number | null;
+}
+
+/** (#918) 지난 분석 목록. 지금 묶음에서 받은 것 전부, 최근 것부터. AI 호출 없음. */
+export function getFeedbackHistory(
+  signal?: AbortSignal,
+): Promise<Envelope<{ items: FeedbackHistoryItem[] }>> {
+  return request<{ items: FeedbackHistoryItem[] }>('/sales-analysis/feedback/history', {
+    signal,
+  });
+}
+
+/** (#918) 지난 분석 한 건(받았던 모양 그대로). */
+export function getPastFeedback(
+  feedbackId: string,
+  signal?: AbortSignal,
+): Promise<Envelope<AnalysisFeedback>> {
+  return request<AnalysisFeedback>(
+    `/sales-analysis/feedback/history/${encodeURIComponent(feedbackId)}`,
+    { signal },
+  );
 }
 
 export function requestSalesFeedback(

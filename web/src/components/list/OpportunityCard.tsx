@@ -24,6 +24,7 @@ import {
   salesStepLabels,
   outcomeStatusTone,
   ownPlatingLine,
+  supplyTierLabels,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
@@ -100,6 +101,8 @@ export default function OpportunityCard({
     kindsUsable && checkKinds.includes('MATERIAL') ? cardRows.checkWords.material : null,
     // 평가 전 회사는 점수 항목이 아직 하나도 없어서 근거 부족이다.
     (card.coreEvidenceGaps ?? []).length > 0 || notEvaluated ? cardRows.checkWords.evidence : null,
+    // #890(PM 결정 2026-11-22): 1차인지 2·3차인지 분명하지 않으면(AI 판단 "모름") 검토사항에 넣는다.
+    card.supplyTier === 'UNKNOWN' ? cardRows.checkWords.supplyTier : null,
   ].filter((word) => word !== null);
   const checkNames = kindsUsable
     ? checkPoints.filter((_, index) => !['PROCESS', 'MATERIAL'].includes(checkKinds[index]))
@@ -287,6 +290,16 @@ export default function OpportunityCard({
             <StatusTag tone="ask" data-testid="card-own-plating-tag">
               {ownPlatingLine.tag}
             </StatusTag>
+          ) : null}
+          {/* #860: 공급망 위치 AI 추정. 모름·판단 전이면 붙이지 않는다. 근거는 상세 "한눈에"에서. */}
+          {card.supplyTier === 'TIER2_3' || card.supplyTier === 'TIER1' ? (
+            <span
+              data-testid="card-supply-tier-tag"
+              data-tier={card.supplyTier}
+              title={card.supplyTierBasis ?? undefined}
+            >
+              <StatusTag tone="ask">{supplyTierLabels.tag[card.supplyTier]}</StatusTag>
+            </span>
           ) : null}
           {beforeScore ? (
             <span

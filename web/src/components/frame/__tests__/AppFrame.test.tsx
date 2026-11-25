@@ -65,6 +65,15 @@ describe('AppFrame', () => {
     expect(screen.getByRole('status')).toHaveTextContent(banner.internalOnly);
   });
 
+  it('서버 설정에 로고가 비어 있으면 화면에 실린 거산 로고를 브랜드명 옆에 보인다 (#898)', async () => {
+    renderFrame();
+    await screen.findByTestId('brand-name');
+    const logo = await screen.findByTestId('brand-logo');
+    expect(logo.getAttribute('src')).toMatch(/geosan-logo/);
+    // 옆에 브랜드명 글자가 있으므로 그림은 꾸밈(alt 빈 값)이다.
+    expect(logo).toHaveAttribute('alt', '');
+  });
+
   it('담당자를 고르면 기록할 수 있고 브라우저에 기억된다', async () => {
     renderFrame();
     expect(screen.getByTestId('probe')).toHaveTextContent('none|false');

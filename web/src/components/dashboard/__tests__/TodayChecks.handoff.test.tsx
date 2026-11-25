@@ -1,15 +1,16 @@
-// #854 대시보드 전달 사항: 나에게 온 줄의 [확인], 내가 보낸 전달 사항 묶음, 브리핑 두 줄.
+// #854 대시보드 전달 사항: 나에게 온 줄의 [확인], 내가 보낸 전달 사항 묶음.
+// #921: 영업 홈은 전달 사항을 오른쪽 칸(part="handoff")에, 일정은 왼쪽 칸(part="work")에 나눠 그린다.
 // 서버 요청은 가짜(실제 저장·보낸 사람에게만 보이는 규칙은 서버 시험 tests/unit/u7/test_handoff.py).
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TodayChecks from '../TodayChecks';
-import DashboardBrief from '../DashboardBrief';
 import { SCHEDULE_CHANGED_EVENT } from '../../../api/assistant';
 import { ApiError, confirmHandoff } from '../../../api/client';
-import type { DashboardCounts, TodayCheckRow } from '../../../api/dashboardTypes';
+import type { TodayCheckRow } from '../../../api/dashboardTypes';
 import { FrameContext } from '../../frame/FrameContext';
 import { dashboardTexts } from '../../../labels/ko';
+import { detailTheme, groupMarkPalette } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
@@ -137,38 +138,73 @@ it('내가 보낸 전달 사항은 📤 묶음으로 회사·받는 사람·날�
   ]);
 });
 
-const counts = {
-  BOOKMARKED: 3,
-  NOT_CONTACTED: 2,
-  IN_CONTACT: 1,
-  QUOTE_SAMPLE: 0,
-  WON: 1,
-} as DashboardCounts;
+const overdue: TodayCheckRow = {
+  kind: 'SCHEDULE_OVERDUE',
+  count: 1,
+  listFilter: null,
+  items: [{ oppId: 'opp-x', customerName: '가상 지난일정', dueAt: '2026-11-10', note: '방문' }],
+};
 
-function renderBrief(rows: TodayCheckRow[]) {
+function renderPart(part: 'work' | 'handoff', rows: TodayCheckRow[]) {
   render(
     <MemoryRouter>
       <FrameContext.Provider value={frame(true)}>
-        <DashboardBrief rows={rows} counts={counts} />
+        <TodayChecks part={part} rows={rows} />
       </FrameContext.Provider>
     </MemoryRouter>,
   );
 }
 
-it('브리핑 전달 사항 칸은 받은 것과 보낸 것을 두 줄로 센다', () => {
-  renderBrief([forMe, fromMe]);
-  expect(screen.getByTestId('dashboard-brief-handoff-received')).toHaveTextContent(
-    '받은 것 확인 전 1곳',
+it('#921 전달 사항 칸에는 받은 것과 보낸 것 묶음만 있고 일정 묶음은 없다', () => {
+  renderPart('handoff', [overdue, forMe, fromMe]);
+  const section = screen.getByTestId('dashboard-handoff');
+  expect(within(section).getByRole('heading', { level: 2 })).toHaveTextContent(
+    dashboardTexts.handoffTitle,
   );
-  expect(screen.getByTestId('dashboard-brief-handoff-sent')).toHaveTextContent(
-    '보낸 것 확인 전 1곳',
+  expect(screen.getByTestId('dashboard-today-items-HANDOFF_FOR_ME')).toBeInTheDocument();
+  expect(screen.getByTestId('dashboard-today-items-HANDOFF_FROM_ME')).toBeInTheDocument();
+  expect(screen.queryByTestId('dashboard-today-items-SCHEDULE_OVERDUE')).not.toBeInTheDocument();
+});
+
+it('#921 오늘 할 일 칸에는 전달 사항 묶음이 없고, 전달 사항뿐이면 빈 안내가 보인다', () => {
+  renderPart('work', [forMe, fromMe]);
+  expect(screen.queryByTestId('dashboard-today-items-HANDOFF_FOR_ME')).not.toBeInTheDocument();
+  expect(screen.getByTestId('dashboard-today-empty')).toHaveTextContent(dashboardTexts.workEmpty);
+});
+
+it('#921 전달 사항이 없으면 전달 사항 칸에 빈 안내 한 줄이 보인다', () => {
+  renderPart('handoff', [overdue]);
+  expect(screen.getByTestId('dashboard-handoff-empty')).toHaveTextContent(
+    dashboardTexts.handoffEmpty,
   );
 });
 
-it('보낸 것만 있으면 브리핑 칸에 보낸 줄만 보인다', () => {
-  renderBrief([fromMe]);
-  expect(screen.queryByTestId('dashboard-brief-handoff-received')).not.toBeInTheDocument();
-  expect(screen.getByTestId('dashboard-brief-handoff-sent')).toHaveTextContent(
-    '보낸 것 확인 전 1곳',
-  );
+it('#925 받은 것 묶음만 연한 노랑 상자로 강조되고, 묶음 제목 앞에는 이모지 대신 색 막대가 있다', () => {
+  renderPart('handoff', [forMe, fromMe]);
+  const [received, sent] = screen.getAllByTestId('dashboard-today-row');
+  expect(received).toHaveAttribute('data-highlight', 'true');
+  expect(received).toHaveStyle({ background: detailTheme.accent });
+  expect(sent).not.toHaveAttribute('data-highlight');
+  expect(screen.getByTestId('dashboard-today-mark-HANDOFF_FOR_ME')).toHaveStyle({
+    background: groupMarkPalette.received,
+  });
+  expect(within(received).getByRole('heading', { level: 3 }).textContent).toBe('받은 것 1곳');
+});
+
+it('#925 오늘 할 일 칸의 색 막대: 지난 일정 빨강, 오늘 일정 초록', () => {
+  renderPart('work', [
+    overdue,
+    {
+      kind: 'SCHEDULE_TODAY',
+      count: 1,
+      listFilter: null,
+      items: [{ oppId: 'opp-t', customerName: '가상오늘', dueAt: '2026-11-25', note: '방문' }],
+    },
+  ]);
+  expect(screen.getByTestId('dashboard-today-mark-SCHEDULE_OVERDUE')).toHaveStyle({
+    background: groupMarkPalette.overdue,
+  });
+  expect(screen.getByTestId('dashboard-today-mark-SCHEDULE_TODAY')).toHaveStyle({
+    background: groupMarkPalette.today,
+  });
 });

@@ -127,22 +127,24 @@ def test_demo_files_do_not_mention_real_companies():
 
 
 def test_demo_settings_keep_outside_calls_off_and_mark_demo():
-    """Given 시연용 설정 / When 읽기 / Then 시연 표시·띠 문구, AI·검색·조사 꺼짐."""
+    """Given 시연용 설정 / When 읽기 / Then 시연 표시, 검색 꺼짐, 영업 기록 AI만 켬(#802)."""
     settings = load_app_settings(DEMO_SETTINGS)
     assert settings.brand.demo is True and settings.brand.demo_label == "시연용 · 가상 자료"
     assert settings.active_dataset_kind.value == "VIRTUAL_REVIEWED"
-    assert settings.llm.mode == "NONE"
+    # #802(PM 결정 2026-11-20): 시연에서 [AI 분석 받기]를 보여 주려고 영업 기록 AI만 켠다.
+    assert settings.llm.mode == "EXTERNAL" and settings.llm.sales_records_enabled
     assert not settings.homepage_discovery.enabled and not settings.homepage_discovery.auto_research
     assert not settings.candidate_web_search.enabled and not settings.ingestion.ai_pick.enabled
     assert not settings.geocoding.enabled and not settings.access_protection.enabled
-    # 시연용 설정은 가상 설정과 brand 두 칸, 거산 공장 좌표(시연 지도용, #811 PM 결정 2026-11-16)만
-    # 다르다(한쪽만 고쳐 어긋나는 것을 막는다).
+    # 시연용 설정은 가상 설정과 brand 두 칸, 거산 공장 좌표(시연 지도용, #811 PM 결정 2026-11-16),
+    # llm(#802)만 다르다(한쪽만 고쳐 어긋나는 것을 막는다).
     demo = settings.model_dump()
     virtual = load_app_settings(VIRTUAL_SETTINGS).model_dump()
     assert virtual["geosan"]["lat"] is None and virtual["geosan"]["lng"] is None
     assert (demo["geosan"]["lat"], demo["geosan"]["lng"]) == (36.87, 127.19)
     demo["brand"].update(demo_label=None, demo=False)
     demo["geosan"].update(lat=None, lng=None)
+    demo["llm"] = virtual["llm"]
     assert demo == virtual
 
 
@@ -462,7 +464,11 @@ def test_serve_still_accepts_only_the_two_listed_hosts(tmp_db, monkeypatch, host
     assert "127.0.0.1 또는 0.0.0.0" in result.output and started == []
 
 
-# ---------- #720: 시연용 설정에서는 외부 AI와 검색을 켤 수 없다 ----------
+# ---------- #720: 시연용 설정에서는 웹 검색·홈페이지 검색을 켤 수 없다 ----------
+# #802(PM 결정 2026-11-20): 영업 기록 AI(llm.mode·salesRecordsEnabled)는 시연에서 보여 줄 수
+# 있게 허용한다.
+
+MESSAGE = "시연용 설정에서는 웹 검색·홈페이지 검색을 켤 수 없습니다"
 
 
 def _demo_settings_with(tmp_path, edit):
@@ -473,16 +479,9 @@ def _demo_settings_with(tmp_path, edit):
     return path
 
 
-def _external_ai(data):
-    real = yaml.safe_load((EXAMPLES_DIR / "app-settings.yaml").read_text(encoding="utf-8"))
-    data["llm"] = {**real["llm"], "mode": "EXTERNAL", "salesRecordsEnabled": False}
-
-
 @pytest.mark.parametrize(
     ("edit", "expected"),
     [
-        (_external_ai, "llm.mode"),
-        (lambda data: data["llm"].update(salesRecordsEnabled=True), "llm.salesRecordsEnabled"),
         (lambda data: data["homepageDiscovery"].update(enabled=True), "homepageDiscovery.enabled"),
         (
             lambda data: data["homepageDiscovery"].update(autoResearch=True),
@@ -494,16 +493,23 @@ def _external_ai(data):
         ),
     ],
 )
-def test_demo_settings_cannot_turn_on_outside_ai_or_search(tmp_path, edit, expected):
-    """Given 시연 표시가 있는 설정 / When 외부 AI·검색을 켬 / Then check-config가 거부한다."""
+def test_demo_settings_cannot_turn_on_web_search(tmp_path, edit, expected):
+    """Given 시연 표시가 있는 설정 / When 웹 검색·홈페이지 검색을 켬 / Then check-config가 거부."""
     path = _demo_settings_with(tmp_path, edit)
     check = check_app_settings_file(path)
     assert not check.ok
-    assert [(error.path, error.message) for error in check.errors] == [
-        (expected, "시연용 설정에서는 외부 AI와 검색을 켤 수 없습니다")
-    ]
+    assert [(error.path, error.message) for error in check.errors] == [(expected, MESSAGE)]
     code, out = run("check-config", EXAMPLES_DIR / "rule-config.yaml", path)
-    assert code == 1 and "시연용 설정에서는 외부 AI와 검색을 켤 수 없습니다" in out
+    assert code == 1 and MESSAGE in out
+
+
+def test_demo_settings_may_turn_on_sales_record_ai():
+    """#802: 시연 설정은 영업 기록 AI를 켠 채로 통과한다(단추를 누를 때만 부르고 기록은 가상)."""
+    check = check_app_settings_file(DEMO_SETTINGS)
+    assert check.ok
+    assert check.settings.llm.mode == "EXTERNAL" and check.settings.llm.sales_records_enabled
+    assert not check.settings.homepage_discovery.enabled
+    assert not check.settings.candidate_web_search.enabled
 
 
 def test_same_switches_are_fine_without_the_demo_mark(tmp_path):

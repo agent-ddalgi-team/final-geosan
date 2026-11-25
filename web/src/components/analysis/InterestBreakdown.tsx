@@ -5,13 +5,11 @@ import { Link } from 'react-router-dom';
 import type { DashboardBreakdown } from '../../api/dashboardTypes';
 import BreakdownBars from '../dashboard/BreakdownBars';
 import { dashboardTexts, salesAnalysisTexts as texts } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { spacing } from '../../theme/tokens';
+import ChartFrame, { chartSecondary } from '../common/ChartFrame';
+import { breakdownReading } from './chartSummaries';
 
-const secondary = {
-  margin: 0,
-  color: colors.textSecondary,
-  fontSize: typography.fontSizeSecondary,
-} as const;
+const secondary = { margin: 0, ...chartSecondary } as const;
 
 export interface InterestBreakdownProps {
   /** 대시보드 집계의 막대 값. 가상 묶음처럼 서버가 주지 않으면(null·없음) 구역을 그리지 않는다. */
@@ -22,25 +20,15 @@ export interface InterestBreakdownProps {
 
 export default function InterestBreakdown({ breakdown, failed = false }: InterestBreakdownProps) {
   if (!failed && !breakdown) return null;
+  const reading =
+    !failed && breakdown && breakdown.basis.total > 0 ? breakdownReading(breakdown) : null;
   return (
-    <section
-      aria-labelledby="analysis-breakdown-title"
-      data-testid="analysis-breakdown"
-      style={{
-        display: 'grid',
-        gap: 12,
-        background: colors.bgContainer,
-        border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: 12,
-        padding: spacing.cardPadding,
-      }}
+    <ChartFrame
+      id="analysis-breakdown"
+      title={texts.breakdownTitle}
+      callout={reading?.callout ?? null}
+      summary={reading?.summary ?? null}
     >
-      <h2
-        id="analysis-breakdown-title"
-        style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
-      >
-        {texts.breakdownTitle}
-      </h2>
       {failed || !breakdown ? (
         <p role="alert" data-testid="analysis-breakdown-error" style={secondary}>
           {texts.breakdownLoadError}
@@ -93,6 +81,6 @@ export default function InterestBreakdown({ breakdown, failed = false }: Interes
           </p>
         </>
       )}
-    </section>
+    </ChartFrame>
   );
 }

@@ -380,6 +380,26 @@
             "title": "Inputhash",
             "type": "string"
           },
+          "lookBack": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FeedbackClaim"
+            },
+            "title": "Lookback",
+            "type": "array"
+          },
+          "lookBackFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lookbackfrom"
+          },
           "model": {
             "anyOf": [
               {
@@ -428,6 +448,14 @@
           },
           "success": {
             "$ref": "#/components/schemas/FeedbackSuccess"
+          },
+          "suggestions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FeedbackSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
           }
         },
         "required": [
@@ -1243,6 +1271,20 @@
             "title": "Removednames",
             "type": "integer"
           },
+          "similarAdvice": {
+            "items": {
+              "$ref": "#/components/schemas/CoachSimilarAdviceView"
+            },
+            "title": "Similaradvice",
+            "type": "array"
+          },
+          "similarCases": {
+            "items": {
+              "$ref": "#/components/schemas/CoachSimilarCaseView"
+            },
+            "title": "Similarcases",
+            "type": "array"
+          },
           "stepAfter": {
             "$ref": "#/components/schemas/SalesStep"
           },
@@ -1263,7 +1305,9 @@
           "stepBefore",
           "stepAfter",
           "removedNames",
-          "removedContacts"
+          "removedContacts",
+          "similarCases",
+          "similarAdvice"
         ],
         "title": "CoachResult",
         "type": "object"
@@ -1291,6 +1335,65 @@
           "actionId"
         ],
         "title": "CoachScheduleView",
+        "type": "object"
+      },
+      "CoachSimilarAdviceView": {
+        "description": "#915 비슷한 성사 사례를 근거로 한 제안 한 줄. text의 사례 번호는 회사 이름으로 되돌렸다.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "text"
+        ],
+        "title": "CoachSimilarAdviceView",
+        "type": "object"
+      },
+      "CoachSimilarCaseView": {
+        "description": "#915 함께 본 비슷한 성사 회사 하나(화면에서 그 회사 상세로 가는 링크).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "sharedIndustries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sharedindustries",
+            "type": "array"
+          },
+          "sharedProcesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sharedprocesses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "sharedProcesses",
+          "sharedIndustries"
+        ],
+        "title": "CoachSimilarCaseView",
         "type": "object"
       },
       "CompanyRow": {
@@ -2388,6 +2491,45 @@
             ],
             "title": "Summaryline"
           },
+          "supplyTier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplyTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치 AI 추정(#860): TIER2_3 = 2·3차 가공업체, TIER1 = 1차 완성품·조립 업체, UNKNOWN = 판단 못 함. 판단 전이면 null. 목록에서 빼지 않는다"
+          },
+          "supplyTierBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치의 근거 한 줄",
+            "title": "Supplytierbasis"
+          },
+          "supplyTierSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PRODUCT",
+                  "HOMEPAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치를 무엇으로 정했나: PRODUCT = 공장 자료 생산품으로 따로 판단, HOMEPAGE = 조사가 읽은 홈페이지",
+            "title": "Supplytiersource"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -2552,6 +2694,21 @@
         "title": "DiscoverySource",
         "type": "string"
       },
+      "Envelope_AnalysisFeedbackView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnalysisFeedbackView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[AnalysisFeedbackView]",
+        "type": "object"
+      },
       "Envelope_AskAnswer_": {
         "properties": {
           "data": {
@@ -2670,6 +2827,21 @@
           "data"
         ],
         "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
+      "Envelope_FeedbackHistory_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeedbackHistory"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[FeedbackHistory]",
         "type": "object"
       },
       "Envelope_FeedbackResult_": {
@@ -3342,6 +3514,95 @@
         "title": "FeedbackFailure",
         "type": "object"
       },
+      "FeedbackHistory": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FeedbackHistory",
+        "type": "object"
+      },
+      "FeedbackHistoryItem": {
+        "description": "#918 지난 분석 한 줄. 무엇을 받았는지 고를 만큼만(전체는 한 건 읽기로).",
+        "properties": {
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costusd"
+          },
+          "feedbackId": {
+            "title": "Feedbackid",
+            "type": "string"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "generatedBy": {
+            "title": "Generatedby",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "nextCount": {
+            "title": "Nextcount",
+            "type": "integer"
+          },
+          "periodFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodfrom"
+          },
+          "periodTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodto"
+          }
+        },
+        "required": [
+          "feedbackId",
+          "periodFrom",
+          "periodTo",
+          "generatedAt",
+          "generatedBy",
+          "headline",
+          "nextCount",
+          "costUsd"
+        ],
+        "title": "FeedbackHistoryItem",
+        "type": "object"
+      },
       "FeedbackRequest": {
         "additionalProperties": false,
         "properties": {
@@ -3454,6 +3715,69 @@
           "signals"
         ],
         "title": "FeedbackSuccess",
+        "type": "object"
+      },
+      "FeedbackSuggestion": {
+        "description": "#887 AI 분석의 다음 할 일 하나를 일정으로. 저장본의 회사·할 일·날짜에, 보일 때마다 그 회사의\n지금 일정·최신 기록 번호를 채운다(영업 코치 [넣기]와 같은 모양). [넣기]를 눌러야 저장된다.",
+        "properties": {
+          "actionId": {
+            "title": "Actionid",
+            "type": "string"
+          },
+          "actionLabel": {
+            "title": "Actionlabel",
+            "type": "string"
+          },
+          "currentScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentscheduleat"
+          },
+          "currentScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentschedulenote"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "outcomeVersion": {
+            "title": "Outcomeversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "actionId",
+          "actionLabel",
+          "date",
+          "outcomeVersion"
+        ],
+        "title": "FeedbackSuggestion",
         "type": "object"
       },
       "FilterState": {
@@ -5107,6 +5431,35 @@
         "title": "Meta",
         "type": "object"
       },
+      "MonthTrendRow": {
+        "description": "#802 월별 추세 한 달(YYYY-MM).",
+        "properties": {
+          "contacted": {
+            "title": "Contacted",
+            "type": "integer"
+          },
+          "lost": {
+            "title": "Lost",
+            "type": "integer"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "won": {
+            "title": "Won",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "contacted",
+          "won",
+          "lost"
+        ],
+        "title": "MonthTrendRow",
+        "type": "object"
+      },
       "NeededStage": {
         "enum": [
           "NOW",
@@ -5851,6 +6204,45 @@
               }
             ],
             "title": "Stage"
+          },
+          "supplyTier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplyTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치 AI 추정(#860): TIER2_3 = 2·3차 가공업체, TIER1 = 1차 완성품·조립 업체, UNKNOWN = 판단 못 함. 판단 전이면 null. 목록에서 빼지 않는다"
+          },
+          "supplyTierBasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치의 근거 한 줄",
+            "title": "Supplytierbasis"
+          },
+          "supplyTierSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PRODUCT",
+                  "HOMEPAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공급망 위치를 무엇으로 정했나: PRODUCT = 공장 자료 생산품으로 따로 판단, HOMEPAGE = 조사가 읽은 홈페이지",
+            "title": "Supplytiersource"
           },
           "title": {
             "description": "기업 · 기회 이름",
@@ -7544,6 +7936,44 @@
             ],
             "title": "Lastcontactat"
           },
+          "lastContactMethod": {
+            "anyOf": [
+              {
+                "enum": [
+                  "CALL",
+                  "EMAIL",
+                  "VISIT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactmethod"
+          },
+          "lastContactStaffKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactstaffkey"
+          },
+          "lastContactStaffName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcontactstaffname"
+          },
           "nextScheduleAt": {
             "anyOf": [
               {
@@ -8564,6 +8994,13 @@
             "title": "Companies",
             "type": "array"
           },
+          "monthly": {
+            "items": {
+              "$ref": "#/components/schemas/MonthTrendRow"
+            },
+            "title": "Monthly",
+            "type": "array"
+          },
           "total": {
             "$ref": "#/components/schemas/GroupStats"
           }
@@ -9094,6 +9531,15 @@
             "format": "date",
             "title": "Nextscheduleat",
             "type": "string"
+          },
+          "source": {
+            "default": "COACH",
+            "enum": [
+              "COACH",
+              "ANALYSIS"
+            ],
+            "title": "Source",
+            "type": "string"
           }
         },
         "required": [
@@ -9458,6 +9904,16 @@
         ],
         "title": "StepRow",
         "type": "object"
+      },
+      "SupplyTier": {
+        "description": "공급망 위치 AI 추정(C0, 2026-11-19 PM 결정 #860). 점수 전 회사 순서·꼬리표에만 쓴다.",
+        "enum": [
+          "TIER2_3",
+          "TIER1",
+          "UNKNOWN"
+        ],
+        "title": "SupplyTier",
+        "type": "string"
       },
       "TimelineEvent": {
         "description": "(#801) 회사별 타임라인의 기록 행 하나(취소 안 한 행, 저장 순서). 코드값·날짜만.",
@@ -12300,6 +12756,65 @@
           }
         },
         "summary": "Request Sales Feedback"
+      }
+    },
+    "/api/v1/sales-analysis/feedback/history": {
+      "get": {
+        "description": "#918 지난 분석 목록: 지금 묶음에서 받은 AI 분석 저장본 전부, 최근 것부터.\n\n[AI 분석 받기]가 받을 때마다 새 행으로 저장해 둔 것을 읽기만 한다. AI·외부 호출·저장 없음.",
+        "operationId": "sales_feedback_history_api_v1_sales_analysis_feedback_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FeedbackHistory_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sales Feedback History"
+      }
+    },
+    "/api/v1/sales-analysis/feedback/history/{feedbackId}": {
+      "get": {
+        "description": "#918 지난 분석 한 건: 받았던 모양 그대로(일정 제안은 지금 보일 때처럼 지난 날짜를 뺀다).",
+        "operationId": "sales_feedback_one_api_v1_sales_analysis_feedback_history__feedbackId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedbackId",
+            "required": true,
+            "schema": {
+              "title": "Feedbackid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AnalysisFeedbackView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sales Feedback One"
       }
     },
     "/api/v1/sales-analysis/patterns": {

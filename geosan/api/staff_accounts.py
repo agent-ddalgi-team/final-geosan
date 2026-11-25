@@ -172,6 +172,24 @@ def reset_account(session: Session, staff_key: str) -> str:
     return password
 
 
+def set_role(session: Session, staff_key: str, *, viewer: bool) -> bool:
+    """계정 종류를 보기 전용 ↔ 담당자로 바꾼다(#862, PM 결정 2026-11-20).
+
+    비밀번호·표시 이름·첫 로그인 설정 여부는 그대로다. 바뀌면 그 계정의 세션을 끊어 다시 로그인할 때
+    바뀐 권한으로 화면이 열리게 한다. 이미 그 종류면 아무것도 바꾸지 않고 False를 돌려준다.
+    """
+    account = session.get(StaffAccount, staff_key)
+    if account is None:
+        raise InputError(f"'{staff_key}' 계정이 없습니다.", "`geosan staff-list`로 확인해 주세요.")
+    role = "VIEWER" if viewer else "STAFF"
+    if account.role == role:
+        return False
+    account.role = role
+    end_sessions(session, staff_key)
+    session.flush()
+    return True
+
+
 def set_disabled(session: Session, staff_key: str, *, disabled: bool) -> StaffAccount:
     account = session.get(StaffAccount, staff_key)
     if account is None:
