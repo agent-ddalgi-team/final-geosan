@@ -1,0 +1,118 @@
+/* 접속 화면 배치(#912). 색·글꼴 값은 여기 적지 않고 LoginLayout.tsx가 tokens.ts에서 넣는다. */
+.login-page {
+  display: grid;
+  grid-template-columns: minmax(0, 59fr) minmax(0, 41fr);
+  min-height: 100vh;
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 32px;
+  border-right: 1px solid;
+  border-radius: 0 20px 20px 0;
+}
+
+.login-logo {
+  width: 260px;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+}
+
+.login-body {
+  width: 360px;
+  max-width: 100%;
+  margin: auto;
+  padding: 32px 0;
+}
+
+.login-body form {
+  display: grid;
+  gap: 8px;
+}
+
+.login-body form > p {
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.login-body label {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.login-body button[type='submit'] {
+  margin-top: 16px;
+}
+
+.login-body > p {
+  text-align: center;
+}
+
+.login-body > button {
+  display: flex;
+  margin: 16px auto 0;
+}
+
+.login-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+/* 오른쪽 인사말 칸: 위쪽의 큰 원 두 개는 꾸밈이다. */
+.login-aside {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 32px;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.login-aside::before,
+.login-aside::after {
+  content: '';
+  position: absolute;
+  border: 1px solid var(--login-ring);
+  border-radius: 50%;
+}
+
+.login-aside::before {
+  top: -240px;
+  left: -60px;
+  width: 440px;
+  height: 440px;
+}
+
+.login-aside::after {
+  top: -320px;
+  right: -200px;
+  width: 560px;
+  height: 560px;
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+
+  .login-panel {
+    padding: 20px 16px;
+    border-right: 0;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .login-aside::before,
+  .login-aside::after {
+    content: none;
+  }
+}
