@@ -49,6 +49,24 @@ class CoachScheduleView(_ApiModel):
     date: datetime.date | None = None
 
 
+class CoachSimilarCaseView(_ApiModel):
+    """#915 함께 본 비슷한 성사 회사 하나(화면에서 그 회사 상세로 가는 링크)."""
+
+    opp_id: str
+    name: str
+    # 이 회사와 겹친 공정(이름)·산업.
+    shared_processes: list[str]
+    shared_industries: list[str]
+
+
+class CoachSimilarAdviceView(_ApiModel):
+    """#915 비슷한 성사 사례를 근거로 한 제안 한 줄. text의 사례 번호는 회사 이름으로 되돌렸다."""
+
+    opp_id: str
+    name: str
+    text: str
+
+
 class CoachResult(_ApiModel):
     answers: list[CoachAnswerView]
     next_schedule: CoachScheduleView | None = None
@@ -64,6 +82,9 @@ class CoachResult(_ApiModel):
     ai_generated: Literal[True] = True
     removed_names: int
     removed_contacts: int
+    # #915 함께 본 비슷한 성사 회사(고른 순서)와 그 사례에서 온 제안 0~2줄. 사례가 없으면 빈 목록.
+    similar_cases: list[CoachSimilarCaseView]
+    similar_advice: list[CoachSimilarAdviceView]
 
 
 def _contact_day(body: CoachRequest) -> datetime.date:
@@ -106,7 +127,12 @@ def coach(
                 fields=[FieldError(path="memo", message=f"메모는 1자 이상 {limit}자 이하입니다.")],
             )
         plan = build_coach(
-            session, opp_id, memo, _contact_day(body), settings.coach_prior_memo_limit
+            session,
+            opp_id,
+            memo,
+            _contact_day(body),
+            settings.coach_prior_memo_limit,
+            settings.coach_similar_won_limit,
         )
         opportunity = session.get(Opportunity, opp_id)
         meta = Meta(
@@ -129,6 +155,7 @@ def coach(
         instructions=plan.instructions,
         max_output_tokens=settings.max_output_tokens,
         requested_by=staff,
+        also_opp_ids=[case.opp_id for case in plan.cases.cases],
     )
     checked = check_coaching(plan, reading, settings.coach_max_required_questions)
     schedule = checked.next_schedule
@@ -154,6 +181,19 @@ def coach(
             step_after=checked.step_after,
             removed_names=plan.memo.removed_names,
             removed_contacts=plan.memo.removed_contacts,
+            similar_cases=[
+                CoachSimilarCaseView(
+                    opp_id=case.opp_id,
+                    name=case.name,
+                    shared_processes=list(case.shared_processes),
+                    shared_industries=list(case.shared_industries),
+                )
+                for case in plan.cases.cases
+            ],
+            similar_advice=[
+                CoachSimilarAdviceView(opp_id=item.opp_id, name=item.name, text=item.text)
+                for item in checked.similar_advice
+            ],
         ),
         meta=meta,
     )

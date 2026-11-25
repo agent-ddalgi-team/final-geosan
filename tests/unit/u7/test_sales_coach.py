@@ -39,7 +39,13 @@ def day(offset):
 
 
 def reading(
-    answers=(), action=None, date=None, feedback=(), summary="견적 요청을 받음", next_call=()
+    answers=(),
+    action=None,
+    date=None,
+    feedback=(),
+    summary="견적 요청을 받음",
+    next_call=(),
+    similar=(),
 ):
     return json.dumps(
         {
@@ -51,6 +57,8 @@ def reading(
             "feedback": list(feedback),
             "nextCall": list(next_call),
             "summary": summary,
+            # #915 비슷한 성사 사례에서 온 제안: (사례 번호, 글).
+            "similarAdvice": [{"caseRef": ref, "text": text} for ref, text in similar],
         },
         ensure_ascii=False,
     )
