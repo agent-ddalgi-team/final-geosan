@@ -18,7 +18,7 @@ from geosan.api.deps import get_session, require_staff, runtime_for
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.errors import AppError, FieldError, InputError, RunFailedError
 from geosan.config.sales_questions import KST
-from geosan.evidence.assistant_llm import coach_sales_memo
+from geosan.evidence.assistant_llm import coach_sales_memo, coach_with_lookups
 from geosan.evidence.sales_record_gate import SALES_COACH_KIND, sales_record_calls_today
 from geosan.opportunity.models import Opportunity
 from geosan.rules.codes import SalesStep
@@ -67,6 +67,13 @@ class CoachSimilarAdviceView(_ApiModel):
     text: str
 
 
+class CoachLookupView(_ApiModel):
+    """#916 코치가 찾아본 것 하나(부른 순서). label은 "A정밀 기준, … 거절 회사 2곳"처럼 한 줄."""
+
+    tool: str
+    label: str
+
+
 class CoachResult(_ApiModel):
     answers: list[CoachAnswerView]
     next_schedule: CoachScheduleView | None = None
@@ -85,6 +92,8 @@ class CoachResult(_ApiModel):
     # #915 함께 본 비슷한 성사 회사(고른 순서)와 그 사례에서 온 제안 0~2줄. 사례가 없으면 빈 목록.
     similar_cases: list[CoachSimilarCaseView]
     similar_advice: list[CoachSimilarAdviceView]
+    # #916 코치가 도구로 찾아본 것(부른 순서). 찾아보지 않았거나 설정 coachToolRounds 0이면 빈 목록.
+    lookups: list[CoachLookupView] = []
 
 
 def _contact_day(body: CoachRequest) -> datetime.date:
@@ -149,14 +158,32 @@ def coach(
             kind="COACH_LIMIT",
         )
     # 문이 스위치·지우기 재검사·월 한도로 거부하면 여기서 오류가 난다(아무것도 보내지 않는다).
-    reading = coach_sales_memo(
-        opp_id,
-        plan.texts,
-        instructions=plan.instructions,
-        max_output_tokens=settings.max_output_tokens,
-        requested_by=staff,
-        also_opp_ids=[case.opp_id for case in plan.cases.cases],
-    )
+    lookups = []
+    if settings.coach_tool_rounds > 0:
+        # #916: AI가 도구(MCP와 같은 5개)를 골라 찾아보고 코칭한다. 호출마다 같은 문을 거친다.
+        from geosan.api.coach_agent import lookup_instructions, make_lookup, openai_tools
+
+        reading, lookups = coach_with_lookups(
+            opp_id,
+            plan.texts,
+            instructions=plan.instructions
+            + lookup_instructions(opp_id, settings.coach_tool_rounds),
+            max_output_tokens=settings.max_output_tokens,
+            requested_by=staff,
+            also_opp_ids=[case.opp_id for case in plan.cases.cases],
+            tools=openai_tools(),
+            lookup=make_lookup(),
+            max_rounds=settings.coach_tool_rounds,
+        )
+    else:
+        reading = coach_sales_memo(
+            opp_id,
+            plan.texts,
+            instructions=plan.instructions,
+            max_output_tokens=settings.max_output_tokens,
+            requested_by=staff,
+            also_opp_ids=[case.opp_id for case in plan.cases.cases],
+        )
     checked = check_coaching(plan, reading, settings.coach_max_required_questions)
     schedule = checked.next_schedule
     return Envelope[CoachResult](
@@ -194,6 +221,7 @@ def coach(
                 CoachSimilarAdviceView(opp_id=item.opp_id, name=item.name, text=item.text)
                 for item in checked.similar_advice
             ],
+            lookups=[CoachLookupView(tool=item.tool, label=item.label) for item in lookups],
         ),
         meta=meta,
     )

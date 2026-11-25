@@ -177,6 +177,7 @@ const RESULT: CoachResult = {
   removedContacts: 0,
   similarCases: [],
   similarAdvice: [],
+  lookups: [],
 };
 
 function renderArea(enabled = true, props: Partial<React.ComponentProps<typeof RecordsArea>> = {}) {
@@ -552,6 +553,32 @@ describe('(#915) 비슷한 성사 사례에서', () => {
     renderArea();
     const review = await reachAndSend(user);
     expect(within(review).queryByTestId('coach-similar')).toBeNull();
+  });
+
+  it('Given 코치가 도구로 찾아봄(#916) When [보내기] 뒤 Then "찾아본 것" 한 줄에 찾은 것이 차례로 보인다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(postCoach).mockResolvedValueOnce({
+      data: {
+        ...RESULT,
+        lookups: [
+          { tool: 'similar_lost', label: 'A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳' },
+          { tool: 'past_analyses', label: '지난 영업 분석 2건(최근 것부터)' },
+        ],
+      },
+      meta: {},
+    });
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).getByTestId('coach-lookups')).toHaveTextContent(
+      '찾아본 것: A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳 · 지난 영업 분석 2건(최근 것부터)',
+    );
+  });
+
+  it('Given 찾아본 것이 없음 When [보내기] 뒤 Then "찾아본 것" 줄은 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    renderArea();
+    const review = await reachAndSend(user);
+    expect(within(review).queryByTestId('coach-lookups')).toBeNull();
   });
 });
 

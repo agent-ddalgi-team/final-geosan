@@ -41,6 +41,7 @@ from geosan.dashboard.queries import METHOD_LABELS, RESULT_LABELS, STAGE_LABELS
 from geosan.evidence.sales_record_gate import (
     DISABLED_MESSAGE,
     NOT_SCRUBBED_MESSAGE,
+    ScrubbedRecordText,
     _is_clean,
     scrub_sales_records,
 )
@@ -98,7 +99,8 @@ class Tool:
     title: str
     description: str
     input_schema: dict[str, Any]
-    run: Callable[[Session, AppSettings, dict[str, Any]], tuple[list[_Piece], str]]
+    # (회사별 글, 머리 줄, 머리 줄을 지울 때 지킬 낱말). 머리 줄도 지우기·재검사를 거친다.
+    run: Callable[[Session, AppSettings, dict[str, Any]], tuple[list[_Piece], str, tuple[str, ...]]]
 
     def listing(self) -> dict[str, Any]:
         return {
@@ -275,7 +277,7 @@ def _find_companies(session: Session, settings: AppSettings, args: dict[str, Any
         )
     more = len(found) - len(pieces)
     head = f"찾은 회사 {len(found)}곳" + (f"(앞 {len(pieces)}곳만 보임)" if more > 0 else "")
-    return pieces, head
+    return pieces, head, words.keep
 
 
 def _last_contact(session: Session, opp_id: str) -> date | None:
@@ -304,7 +306,7 @@ def _company_records(session: Session, settings: AppSettings, args: dict[str, An
         ]
     )
     piece = _Piece(opportunity.opp_id, text, (*words.keep, customer.name))
-    return [piece], f"{customer.name}의 영업 기록"
+    return [piece], f"{customer.name}의 영업 기록", (*words.keep, customer.name)
 
 
 def _similar(status: OutcomeStatus, label: str):
@@ -334,7 +336,7 @@ def _similar(status: OutcomeStatus, label: str):
             )
             pieces.append(_Piece(other_id, text, (*words.keep, other_customer.name, customer.name)))
         head = f"{customer.name} 기준, 공정·산업이 겹치는 {label} 회사 {len(pieces)}곳"
-        return pieces, head
+        return pieces, head, (*words.keep, customer.name)
 
     return run
 
@@ -410,7 +412,7 @@ def _past_analyses(session: Session, settings: AppSettings, args: dict[str, Any]
         if held:
             lines.append("[근거가 모자라 말하지 않은 것]")
             lines.extend(f"- {item}" for item in held)
-        return [_Piece(anchor, "\n".join(lines), keep)], "지난 영업 분석"
+        return [_Piece(anchor, "\n".join(lines), keep)], "지난 영업 분석", keep
     rows = session.scalars(
         select(AnalysisFeedback)
         .where(AnalysisFeedback.dataset_kind == _active(session))
@@ -430,7 +432,7 @@ def _past_analyses(session: Session, settings: AppSettings, args: dict[str, Any]
             f" · 기간 {_period(row)}" + (f" · 첫 줄: {first}" if first else "")
         )
         pieces.append(_Piece(anchor, text, keep))
-    return pieces, f"지난 영업 분석 {len(pieces)}건(최근 것부터)"
+    return pieces, f"지난 영업 분석 {len(pieces)}건(최근 것부터)", keep
 
 
 _OPP_ID = {"type": "string", "description": "회사의 oppId(회사 찾기 결과에 있음)"}
@@ -581,15 +583,55 @@ def _anchor_of(session: Session, args: dict[str, Any]) -> list[str]:
     return []
 
 
+@dataclass(frozen=True)
+class ToolOutput:
+    """도구 한 번의 결과(지운 사본). 문·전송 기록은 부르는 쪽(MCP 창구·영업 코치 #916)이 맡는다.
+
+    items의 첫 글은 머리 줄("찾은 회사 3곳" 등), 나머지는 회사마다 따로 지운 글이다.
+    """
+
+    items: list[ScrubbedRecordText]
+    # 값이 실린 회사(중복 없음, 나온 순서).
+    opp_ids: list[str]
+
+    @property
+    def head(self) -> str:
+        return self.items[0].text
+
+    @property
+    def text(self) -> str:
+        return "\n".join(item.text for item in self.items)
+
+    @property
+    def clean(self) -> bool:
+        """문의 다시 검사(sales_record_gate._is_clean)를 모두 통과하나."""
+        return all(_is_clean(item, item.known_names) for item in self.items)
+
+
+def run_tool(
+    session: Session, settings: AppSettings, name: str, args: dict[str, Any]
+) -> ToolOutput:
+    """도구를 실행해 지운 사본을 만든다(전송 기록·한도 없음). 모르는 도구는 KeyError,
+    틀린 인자는 ToolInputError. 회사마다 따로 지운다(scrub_sales_records, 넉넉한 규칙)."""
+    if not isinstance(args, dict):
+        raise ToolInputError("도구 인자는 객체여야 합니다.")
+    pieces, head, keep = TOOLS_BY_NAME[name].run(session, settings, args)
+    if not pieces:
+        head = f"{head}: 돌려줄 기록이 없습니다."
+    items = [scrub_sales_records([head], keep)[0]]
+    items += [scrub_sales_records([piece.text], piece.keep)[0] for piece in pieces]
+    return ToolOutput(items=items, opp_ids=list(dict.fromkeys(piece.opp_id for piece in pieces)))
+
+
 def call_tool(
     name: str,
     args: dict[str, Any] | None,
     staff_key: str,
     db_path: Path | str | None = None,
 ) -> ToolResult:
-    """도구 하나를 문을 거쳐 부른다. 모르는 도구는 KeyError(프로토콜 오류로 알린다)."""
-    tool = TOOLS_BY_NAME[name]
-    args = args or {}
+    """MCP 창구: 도구 하나를 문을 거쳐 부른다. 모르는 도구는 KeyError(프로토콜 오류로 알린다)."""
+    TOOLS_BY_NAME[name]  # 모르는 도구는 문을 보기 전에 KeyError
+    args = {} if args is None else args
     if not isinstance(args, dict):
         return ToolResult("도구 인자는 객체여야 합니다.", is_error=True)
     with session_scope(db_path) as session:
@@ -603,16 +645,13 @@ def call_tool(
             _log(session, _anchor_of(session, args), staff_key, reject=LIMIT_MESSAGE)
             return ToolResult(f"{LIMIT_MESSAGE} 내일 다시 써 주세요.", is_error=True)
         try:
-            pieces, head = tool.run(session, settings, args)
+            output = run_tool(session, settings, name, args)
         except ToolInputError as error:
             return ToolResult(str(error), is_error=True)
-        if not pieces:
-            return ToolResult(f"{head}: 돌려줄 기록이 없습니다.")
-        # 회사마다 따로 지우고, 문에서 다시 검사한다. 하나라도 남으면 전체 거부(걸러 보내지 않음).
-        cleaned = [scrub_sales_records([piece.text], piece.keep)[0] for piece in pieces]
-        if not all(_is_clean(item, item.known_names) for item in cleaned):
-            _log(session, [pieces[0].opp_id], staff_key, reject=NOT_SCRUBBED_MESSAGE)
+        # 문에서 다시 검사한다. 하나라도 남으면 전체 거부(걸러 보내지 않음).
+        if not output.clean:
+            anchor = output.opp_ids[:1] or _anchor_of(session, args)
+            _log(session, anchor, staff_key, reject=NOT_SCRUBBED_MESSAGE)
             return ToolResult(NOT_SCRUBBED_MESSAGE, is_error=True)
-        _log(session, list(dict.fromkeys(piece.opp_id for piece in pieces)), staff_key)
-        body = "\n".join(item.text for item in cleaned)
-        return ToolResult(f"{head}\n{body}")
+        _log(session, output.opp_ids, staff_key)
+        return ToolResult(output.text)

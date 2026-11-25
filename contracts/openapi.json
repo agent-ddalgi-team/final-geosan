@@ -1181,6 +1181,25 @@
         "title": "CoachAnswerView",
         "type": "object"
       },
+      "CoachLookupView": {
+        "description": "#916 코치가 찾아본 것 하나(부른 순서). label은 \"A정밀 기준, … 거절 회사 2곳\"처럼 한 줄.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "label"
+        ],
+        "title": "CoachLookupView",
+        "type": "object"
+      },
       "CoachRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1237,6 +1256,14 @@
               "type": "string"
             },
             "title": "Feedback",
+            "type": "array"
+          },
+          "lookups": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CoachLookupView"
+            },
+            "title": "Lookups",
             "type": "array"
           },
           "missingRequired": {

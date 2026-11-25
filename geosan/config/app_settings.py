@@ -370,6 +370,8 @@ class AssistantSettings(FileModel):
     # #927 MCP 서버(geosan mcp)의 하루(한국 날짜) 도구 호출 상한. 바깥 AI 앱 비용은 우리 월 한도에
     # 걸 수 없어서 대신 조회 횟수를 묶는다(PM 결정 2026-11-25).
     mcp_daily_limit: int = Field(ge=1, strict=True)
+    # #916 영업 코치가 한 번 코칭에 도구(MCP와 같은 5개)로 찾아보는 횟수 상한. 0이면 끔.
+    coach_tool_rounds: int = Field(ge=0, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -830,8 +832,9 @@ ADDED_ASSISTANT_KEYS = (
     "coachMaxRequiredQuestions",
     "coachSimilarWonLimit",
     "mcpDailyLimit",
+    "coachToolRounds",
 )
-"""#742·#915·#927 뒤에 생긴 assistant 칸. 그 전 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+"""#742·#915·#927·#916 뒤에 생긴 assistant 칸. 그 전 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:

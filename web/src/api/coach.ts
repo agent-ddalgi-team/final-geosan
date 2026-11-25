@@ -31,6 +31,12 @@ export interface CoachSimilarAdvice {
   text: string;
 }
 
+/** (#916) 코치가 찾아본 것 하나. label은 "A정밀 기준, 공정·산업이 겹치는 거절 회사 2곳"처럼 한 줄. */
+export interface CoachLookup {
+  tool: string;
+  label: string;
+}
+
 export interface CoachResult {
   answers: CoachAnswer[];
   /** 다음 일정(할 일은 "다음 할 일은?"의 보기 id). 날짜를 못 읽었으면 date가 null. */
@@ -51,6 +57,8 @@ export interface CoachResult {
   similarCases: CoachSimilarCase[];
   /** (#915) 그 사례에서 온 제안 0~2줄. 보여 주기만 하고 저장하지 않는다. */
   similarAdvice: CoachSimilarAdvice[];
+  /** (#916) 코치가 도구로 찾아본 것(부른 순서). 찾아보지 않았으면 빈 목록. */
+  lookups: CoachLookup[];
 }
 
 export function postCoach(
