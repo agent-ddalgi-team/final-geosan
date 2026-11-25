@@ -248,6 +248,22 @@ class ProgressCompany:
     # 최신 영업 기록의 일정 한 줄(schedule.note와 같은 값). 메모 글이 아니다.
     next_schedule_note: str | None
     stalled: bool
+    # #921: 마지막 접촉의 방식(CALL·EMAIL·VISIT)과 그 기록을 남긴 담당자(키·표시 이름). 메모 글은 없다.
+    last_contact_method: str | None = None
+    last_contact_staff_key: str | None = None
+    last_contact_staff_name: str | None = None
+
+
+_SYSTEM_AUTHOR = "system"
+
+
+@dataclass(frozen=True)
+class LastContact:
+    """기회의 마지막 접촉 한 건: 날짜 · 방식 · 기록한 담당자 키."""
+
+    at: date
+    method: str | None
+    staff_key: str | None
 
 
 def stalled_company(
@@ -262,22 +278,26 @@ def stalled_company(
     )
 
 
-def _last_contacts(session: Session, opp_ids: list[str]) -> dict[str, date]:
-    """기회마다 취소하지 않은 접촉 시도 행의 접촉 날짜 가운데 가장 늦은 날."""
+def _last_contacts(session: Session, opp_ids: list[str]) -> dict[str, LastContact]:
+    """기회마다 취소하지 않은 접촉 시도 행 가운데 가장 늦은 것(접촉 날짜, 같으면 나중에 적은 것)."""
     if not opp_ids:
         return {}
-    return dict(
-        session.execute(
-            select(Outcome.opp_id, func.max(Outcome.attempted_at))
-            .where(
-                Outcome.opp_id.in_(opp_ids),
-                Outcome.cancelled_at.is_(None),
-                Outcome.method.is_not(None),
-                Outcome.attempted_at.is_not(None),
-            )
-            .group_by(Outcome.opp_id)
-        ).all()
-    )
+    rows = session.execute(
+        select(Outcome.opp_id, Outcome.attempted_at, Outcome.method, Outcome.created_by)
+        .where(
+            Outcome.opp_id.in_(opp_ids),
+            Outcome.cancelled_at.is_(None),
+            Outcome.method.is_not(None),
+            Outcome.attempted_at.is_not(None),
+        )
+        .order_by(Outcome.opp_id, Outcome.attempted_at, Outcome.created_at, Outcome.outcome_id)
+    ).all()
+    latest: dict[str, LastContact] = {}
+    for opp_id, attempted_at, method, created_by in rows:
+        # 운영 명령·예시 파일이 넣은 행(created_by "system")은 사람 담당이 아니라 비워 둔다.
+        staff = created_by if created_by and created_by != _SYSTEM_AUTHOR else None
+        latest[opp_id] = LastContact(at=attempted_at, method=method, staff_key=staff)
+    return latest
 
 
 def build_progress_companies(
@@ -287,6 +307,7 @@ def build_progress_companies(
     won_ids: Sequence[str],
     today: date,
     stalled_after_days: int,
+    staff_names: Mapping[str, str] | None = None,
 ) -> dict[str, list[ProgressCompany]]:
     """진행 띠 칸마다 회사 목록.
 
@@ -317,7 +338,9 @@ def build_progress_companies(
         for opp_id in ids:
             outcome = latest.get(opp_id)
             schedule = outcome.next_schedule_at if outcome else None
-            last = contacts.get(opp_id)
+            contact = contacts.get(opp_id)
+            last = contact.at if contact else None
+            staff = contact.staff_key if contact else None
             rows.append(
                 ProgressCompany(
                     opp_id=opp_id,
@@ -326,6 +349,9 @@ def build_progress_companies(
                     next_schedule_at=schedule,
                     next_schedule_note=(outcome.next_schedule_note or None) if schedule else None,
                     stalled=stalled_company(key, last, schedule, today, stalled_after_days),
+                    last_contact_method=contact.method if contact else None,
+                    last_contact_staff_key=staff,
+                    last_contact_staff_name=(staff_names or {}).get(staff, staff) if staff else None,
                 )
             )
         rows.sort(
@@ -1064,7 +1090,7 @@ def build_dashboard(
                 team_names=team_names,
             ),
             progress_companies=build_progress_companies(
-                session, population, classified, won_ids, today, stalled_after_days
+                session, population, classified, won_ids, today, stalled_after_days, staff_names
             ),
         ),
         has_virtual,

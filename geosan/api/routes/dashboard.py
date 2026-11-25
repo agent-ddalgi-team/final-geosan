@@ -247,6 +247,11 @@ class ProgressCompany(_ApiModel):
     next_schedule_note: str | None
     # 접촉·견적 칸이고 다음 일정 없이 마지막 접촉 뒤 설정 dashboard.stalledAfterDays일 이상.
     stalled: bool
+    # #921(PM 결정 2026-11-25): 영업 홈 "진행 중인 회사" 표의 마지막 접촉 방식과 담당.
+    # 방식은 접촉 기록의 코드값, 담당은 그 접촉을 적은 사람(키 + 설정의 표시 이름). 접촉이 없으면 null.
+    last_contact_method: Literal["CALL", "EMAIL", "VISIT"] | None = None
+    last_contact_staff_key: str | None = None
+    last_contact_staff_name: str | None = None
 
 
 class Dashboard(_ApiModel):
