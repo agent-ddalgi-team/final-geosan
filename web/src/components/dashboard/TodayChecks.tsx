@@ -11,6 +11,10 @@
 // 지난 일정 단추는 기록 담당자에게만 보이고, 누르면 서버가 일정만 바꾼 새 기록과 변경 기록 한 줄을 남긴다
 // (/schedule/resolve). 어느 단추든 끝나면 대시보드를 다시 읽어 그 줄이 빠진다.
 // 묶음이 길면 앞 5곳만 보이고 [더 보기]로 편다. 0건인 묶음은 서버가 보내지 않는다.
+// #921(PM 결정 2026-11-25): 영업 홈은 같은 줄 목록을 두 칸으로 나눠 그린다.
+//   part="work"    "오늘 할 일" — 운영 알림 · 지난 일정 · 오늘 일정 · 확인할 것이 남은 관심 기업
+//   part="handoff" "전달 사항"  — 나에게 온 것 · 내가 보낸 것(확인 전). 아래(footer)에 한 달 달력.
+//   part="all"(기본)은 예전처럼 한 칸에 모두.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -317,7 +321,20 @@ function Group({
   );
 }
 
+/** #921 칸마다 그리는 묶음. */
+const PART_KINDS: Record<'all' | 'work' | 'handoff', TodayCheckKind[]> = {
+  all: ORDER,
+  work: ['SCHEDULE_OVERDUE', 'SCHEDULE_TODAY', 'CHECK_LEFT'],
+  handoff: ['HANDOFF_FOR_ME', 'HANDOFF_FROM_ME'],
+};
+
 export interface TodayChecksProps {
+  /** #921 어느 칸인가. 기본 all(한 칸에 모두). */
+  part?: 'all' | 'work' | 'handoff';
+  /** #921 제목 앞 작은 표시(예: "출근하면"). */
+  badge?: ReactNode;
+  /** #921 칸 맨 아래에 붙일 것(전달 사항 칸의 한 달 달력). */
+  footer?: ReactNode;
   /** 서버의 줄 목록. 옛 서버라 칸이 없으면(undefined) 구역을 그리지 않는다. */
   rows: TodayCheckRow[] | undefined;
   /**
@@ -385,15 +402,34 @@ export default function TodayChecks({
   rows,
   assistantSummary = null,
   onChanged = () => {},
+  part = 'all',
+  badge = null,
+  footer = null,
 }: TodayChecksProps) {
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
-  const ordered = ORDER.flatMap((kind) => known.filter((row) => row.kind === kind));
-  const alerts = ALERT_KINDS.flatMap((kind) => rows.filter((row) => row.kind === kind));
+  const ordered = PART_KINDS[part].flatMap((kind) => known.filter((row) => row.kind === kind));
+  const alerts =
+    part === 'handoff'
+      ? []
+      : ALERT_KINDS.flatMap((kind) => rows.filter((row) => row.kind === kind));
+  const id = part === 'handoff' ? 'dashboard-handoff' : 'dashboard-today';
+  const title =
+    part === 'work'
+      ? dashboardTexts.workTitle
+      : part === 'handoff'
+        ? dashboardTexts.handoffTitle
+        : dashboardTexts.todayTitle;
+  const empty =
+    part === 'work'
+      ? dashboardTexts.workEmpty
+      : part === 'handoff'
+        ? dashboardTexts.handoffEmpty
+        : dashboardTexts.todayEmpty;
   return (
     <section
-      aria-labelledby="dashboard-today-title"
-      data-testid="dashboard-today"
+      aria-labelledby={`${id}-title`}
+      data-testid={id}
       style={{
         display: 'grid',
         gap: 8,
@@ -403,8 +439,9 @@ export default function TodayChecks({
         padding: '16px 20px',
       }}
     >
-      <h2 id="dashboard-today-title" style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}>
-        {dashboardTexts.todayTitle}
+      <h2 id={`${id}-title`} style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}>
+        {badge}
+        {title}
       </h2>
       {assistantSummary ? (
         <div data-testid="dashboard-today-assistant">{assistantSummary}</div>
@@ -420,8 +457,8 @@ export default function TodayChecks({
         </ul>
       ) : null}
       {ordered.length === 0 && alerts.length === 0 ? (
-        <p data-testid="dashboard-today-empty" style={{ margin: 0, color: colors.textSecondary }}>
-          {dashboardTexts.todayEmpty}
+        <p data-testid={`${id}-empty`} style={{ margin: 0, color: colors.textSecondary }}>
+          {empty}
         </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -435,6 +472,7 @@ export default function TodayChecks({
           ))}
         </ul>
       )}
+      {footer}
     </section>
   );
 }

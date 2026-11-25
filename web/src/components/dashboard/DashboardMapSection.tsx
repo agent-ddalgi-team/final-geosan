@@ -1,5 +1,6 @@
 // 대시보드 지도 칸(#641): 지도 정보를 스스로 불러온다. 지도가 실패해도 대시보드 나머지는 그대로 보인다.
 // #795: "방문 준비" 일정은 위에, 지도와 근처 업체 카드는 아래에 둔다.
+// #921: 넓은 화면에서는 일정 목록(왼쪽)과 지도(오른쪽)를 나란히, 좁으면 위아래. 제목 앞에 작은 표시(badge)를 둘 수 있다.
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getDashboardMap } from '../../api/dashboardMap';
@@ -22,9 +23,16 @@ export interface DashboardMapSectionProps {
   hint?: string;
   /** 지도 위 일정 목록. 지도 응답이 있는 경우 회사별 거리도 표시한다. */
   aside?: (map: DashboardMapData | undefined) => ReactNode;
+  /** #921 제목 앞 작은 표시(예: "외근 전"). */
+  badge?: ReactNode;
 }
 
-export default function DashboardMapSection({ title, hint, aside }: DashboardMapSectionProps = {}) {
+export default function DashboardMapSection({
+  title,
+  hint,
+  aside,
+  badge = null,
+}: DashboardMapSectionProps = {}) {
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
 
@@ -72,6 +80,7 @@ export default function DashboardMapSection({ title, hint, aside }: DashboardMap
       }}
     >
       <h2 id="dashboard-map-title" style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}>
+        {badge}
         {title ?? dashboardMapTexts.title}
         {hint ? (
           <small
@@ -86,12 +95,14 @@ export default function DashboardMapSection({ title, hint, aside }: DashboardMap
           </small>
         ) : null}
       </h2>
-      {aside && (
-        <div data-testid="dashboard-map-aside" style={{ minWidth: 0 }}>
-          {aside(current?.data)}
-        </div>
-      )}
-      {map}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.cardGap, alignItems: 'start' }}>
+        {aside && (
+          <div data-testid="dashboard-map-aside" style={{ flex: '3 1 380px', minWidth: 0 }}>
+            {aside(current?.data)}
+          </div>
+        )}
+        <div style={{ flex: '2 1 320px', minWidth: 0 }}>{map}</div>
+      </div>
     </section>
   );
 }

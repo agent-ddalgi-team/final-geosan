@@ -143,4 +143,9 @@ export interface ProgressCompany {
   nextScheduleNote: string | null;
   /** 접촉·견적 칸이고 다음 일정 없이 마지막 접촉 뒤 설정 일수(14일) 이상이면 true. */
   stalled: boolean;
+  /** #921 마지막 접촉 방식. 접촉이 없거나 옛 서버면 없다. */
+  lastContactMethod?: 'CALL' | 'EMAIL' | 'VISIT' | null;
+  /** #921 마지막 접촉을 적은 담당자 키·표시 이름. 운영 명령이 넣은 기록·접촉 없음이면 null. */
+  lastContactStaffKey?: string | null;
+  lastContactStaffName?: string | null;
 }
