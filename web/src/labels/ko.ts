@@ -2637,6 +2637,8 @@ export const coachTexts = {
   /** "함께 본 성사 회사: B금속(아연도금), C산업(자동차 부품)" */
   similarBasis: (items: string[]) => `함께 본 성사 회사: ${items.join(', ')}`,
   similarOpen: (name: string) => `${name} 상세 새 창으로 열기`,
+  /** (#916) "찾아본 것: A정밀 기준, 공정·산업이 겹치는 거절 회사 1곳 · 지난 영업 분석 2건(최근 것부터)" */
+  lookups: (labels: string[]) => `찾아본 것: ${labels.join(' · ')}`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
