@@ -347,3 +347,12 @@ def test_suggestions_count_conditions_when_on(dashboard_env):
     assert regions["충남"] == 4 and regions["천안시"] == 2
     assert "화성시" not in regions
     assert body["meta"]["hasVirtualData"] is True
+
+
+def test_process_names_ignore_virtual_tail():
+    """Given 가상 역량 공정 이름("— 가상" 꼬리) / When 파일의 공정 글 / Then 꼬리 없이 맞춘다."""
+    from geosan.opportunity.existing_customers import process_lookup
+
+    lookup = process_lookup({"ZINC_PLATING": "아연도금(전기아연도금) — 가상"})
+    assert lookup["아연도금"] == "ZINC_PLATING"
+    assert lookup["아연도금(전기아연도금)"] == "ZINC_PLATING"

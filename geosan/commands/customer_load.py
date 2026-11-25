@@ -18,7 +18,6 @@ from geosan.config.app_settings import (
     read_app_settings,
 )
 from geosan.config.errors import AppError, InputError, RunFailedError, exit_code_for
-from geosan.dashboard.sales_analysis import process_display_name
 from geosan.evidence.transfer import KST
 from geosan.opportunity.existing_customers import (
     clear_customers,
@@ -61,7 +60,7 @@ def run_customer_load(
         with session_scope() as session:
             settings = read_app_settings(session) or load_app_settings(DEFAULT_APP_SETTINGS_PATH)
             processes = {
-                row.code: process_display_name(row.name)
+                row.code: row.name
                 for row in load_process_catalog(session, settings.active_dataset_kind)
             }
         if not processes:

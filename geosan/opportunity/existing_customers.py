@@ -43,6 +43,7 @@ REQUIRED = (COL_NAME, COL_PROCESS)
 _SPLIT = re.compile(r"[,;|\n]")
 _SINCE = re.compile(r"^(\d{4})(?:[-./](\d{1,2}))?$")
 _FILE_DATE = re.compile(r"(?<![0-9])(20[0-9]{6})(?![0-9])")
+_VIRTUAL_TAIL = re.compile(r"\s*—\s*가상\s*$")
 _NAME_MAX = 200
 _REGION_MAX = 80
 _VALUE_MAX = 100
@@ -77,7 +78,9 @@ def _key(text: str) -> str:
 def process_lookup(catalog: Mapping[str, str]) -> dict[str, str]:
     """파일의 공정 글 → 공정 코드. 코드, 화면 이름, 괄호 앞 이름("아연도금")을 받는다."""
     lookup: dict[str, str] = {}
-    for code, label in catalog.items():
+    for code, raw in catalog.items():
+        # 가상 역량 파일의 "— 가상" 꼬리는 떼고 견준다(화면 이름과 같은 기준).
+        label = _VIRTUAL_TAIL.sub("", raw)
         for text in (code, label, label.split("(")[0]):
             if text.strip():
                 lookup.setdefault(_key(text), code)
