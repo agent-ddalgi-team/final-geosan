@@ -440,3 +440,14 @@ button {
     break-after: avoid;
   }
 }
+
+/* #926 사용자가 고른 글자 크기: 화면 전체 비율(글자·단추·표가 함께). 보통(표시 없음)은 100%. */
+html[data-font-scale='S'] {
+  zoom: 0.9;
+}
+html[data-font-scale='L'] {
+  zoom: 1.15;
+}
+html[data-font-scale='XL'] {
+  zoom: 1.3;
+}

@@ -176,6 +176,9 @@ export const frame = {
   // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
   menuOpportunities: '거래처 후보',
   staffSelectLabel: '담당자',
+  // #926: 맨 위 줄의 글자 크기 고르기(화면 전체 비율). 이 브라우저에 기억한다.
+  fontScaleLabel: '글자 크기',
+  fontScaleOptions: { S: '작게', M: '보통', L: '크게', XL: '더 크게' },
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
