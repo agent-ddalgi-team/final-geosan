@@ -370,6 +370,12 @@ export function CoachReview({
         )}
       </div>
 
+      {(result.lookups ?? []).length > 0 ? (
+        <span style={secondary} data-testid="coach-lookups">
+          {texts.lookups(result.lookups.map((item) => item.label))}
+        </span>
+      ) : null}
+
       {(result.similarCases ?? []).length > 0 ? (
         <div style={{ display: 'grid', gap: 4 }} data-testid="coach-similar">
           <Typography.Text>{texts.similarTitle}</Typography.Text>
