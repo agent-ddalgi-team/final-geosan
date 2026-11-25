@@ -137,7 +137,14 @@ def test_coach_looks_up_with_tools_then_answers(agent_env):
     first, second, third = fake.payloads
     # 첫 호출은 지금 코치와 같은 글 하나 + 도구 5개(한 번에 하나), 지시문에 이 회사 oppId.
     assert isinstance(first["input"], str) and first["input"].startswith("[이번 메모]")
-    assert [tool["name"] for tool in first["tools"]] == [t.name for t in mcp_tools.TOOLS]
+    # #932 기존 고객 도구는 existingCustomers.enabled가 꺼져 있으면(기본) 알리지 않는다.
+    assert [tool["name"] for tool in first["tools"]] == [
+        "find_companies",
+        "company_records",
+        "similar_won",
+        "similar_lost",
+        "past_analyses",
+    ]
     assert first["tool_choice"] == "auto" and first["parallel_tool_calls"] is False
     assert first["store"] is False and f"oppId는 {a}" in first["instructions"]
     # 두 번째: 앞 호출의 도구 부르기와 그 결과(거절 이유, 다른 회사 이름은 그대로)를 이어 보낸다.

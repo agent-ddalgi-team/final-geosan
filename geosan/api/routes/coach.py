@@ -160,18 +160,23 @@ def coach(
     # 문이 스위치·지우기 재검사·월 한도로 거부하면 여기서 오류가 난다(아무것도 보내지 않는다).
     lookups = []
     if settings.coach_tool_rounds > 0:
-        # #916: AI가 도구(MCP와 같은 5개)를 골라 찾아보고 코칭한다. 호출마다 같은 문을 거친다.
+        # #916: AI가 도구(MCP와 같은 목록)를 골라 찾아보고 코칭한다. 호출마다 같은 문을 거친다.
+        # #932 기존 고객 도구는 existingCustomers.enabled가 켜졌을 때만 목록에 든다.
         from geosan.api.coach_agent import lookup_instructions, make_lookup, openai_tools
 
         reading, lookups = coach_with_lookups(
             opp_id,
             plan.texts,
             instructions=plan.instructions
-            + lookup_instructions(opp_id, settings.coach_tool_rounds),
+            + lookup_instructions(
+                opp_id,
+                settings.coach_tool_rounds,
+                customers=app_settings.existing_customers.enabled,
+            ),
             max_output_tokens=settings.max_output_tokens,
             requested_by=staff,
             also_opp_ids=[case.opp_id for case in plan.cases.cases],
-            tools=openai_tools(),
+            tools=openai_tools(app_settings),
             lookup=make_lookup(),
             max_rounds=settings.coach_tool_rounds,
         )

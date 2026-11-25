@@ -46,6 +46,7 @@ from geosan.evidence.sales_record_gate import (
     scrub_sales_records,
 )
 from geosan.evidence.transfer import KST, TransferLog
+from geosan.opportunity.existing_customers import overview, pick_similar_customers
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.records.models import AnalysisFeedback, Outcome
 from geosan.rules.codes import OutcomeStatus, TransferKind, TransferPurpose
@@ -101,6 +102,10 @@ class Tool:
     input_schema: dict[str, Any]
     # (회사별 글, 머리 줄, 머리 줄을 지울 때 지킬 낱말). 머리 줄도 지우기·재검사를 거친다.
     run: Callable[[Session, AppSettings, dict[str, Any]], tuple[list[_Piece], str, tuple[str, ...]]]
+    # 전송 기록 종류(C4). 영업 기록 도구는 MCP_TOOL, 기존 고객 도구(#932)는 EXISTING_CUSTOMER.
+    kind: TransferKind = TransferKind.MCP_TOOL
+    # 이 설정에서 도구를 알리고 실행하는가. 꺼진 도구는 tools/list·코치 도구 목록에 없다.
+    enabled: Callable[[AppSettings], bool] = lambda _settings: True
 
     def listing(self) -> dict[str, Any]:
         return {
@@ -435,6 +440,96 @@ def _past_analyses(session: Session, settings: AppSettings, args: dict[str, Any]
     return pieces, f"지난 영업 분석 {len(pieces)}건(최근 것부터)", keep
 
 
+# ---------- 기존 고객 도구 2개(#932, 확장 기능·기본 꺼짐) ----------
+
+CUSTOMERS_OFF_MESSAGE = "기존 고객 자료가 꺼져 있습니다(existingCustomers.enabled)."
+
+
+def customers_enabled(settings: AppSettings) -> bool:
+    """기존 고객 도구가 켜졌나. 영업 기록 스위치는 문(call_tool·코치)이 따로 본다."""
+    return settings.existing_customers.enabled
+
+
+def _customer_line(row, words: _Words) -> str:
+    processes = ", ".join(words.processes.get(code, code) for code in row.process_codes)
+    line = (
+        f"{row.company_name} · 공정: {processes or '확인 전'}"
+        f" · 소재: {', '.join(row.materials) or '확인 전'}"
+        f" · 산업: {', '.join(row.industries) or '확인 전'}"
+        f" · 지역: {row.region or '확인 전'}"
+        f" · 인증: {', '.join(row.certifications) or '없음'}"
+        f" · 거래 시작: {row.since or '확인 전'}"
+    )
+    return f"{line} {VIRTUAL_TAG}" if row.is_virtual else line
+
+
+def _customer_keep(row) -> tuple[str, ...]:
+    return (
+        row.company_name,
+        *row.materials,
+        *row.certifications,
+        *([row.region] if row.region else []),
+    )
+
+
+def _similar_customers(session: Session, settings: AppSettings, args: dict[str, Any]):
+    opportunity, customer = _opportunity(session, args)
+    words = _words(session, settings)
+    processes = sorted(_live_processes(session, opportunity.opp_id))
+    found = pick_similar_customers(
+        session, processes, customer.industries or [], settings.existing_customers.similar_limit
+    )
+    pieces = []
+    for item in found:
+        shared = [
+            *(f"공정 {words.processes.get(code, code)}" for code in item.shared_processes),
+            *(f"산업 {industry}" for industry in item.shared_industries),
+        ]
+        text = "\n".join(
+            [
+                "- 기존 고객 " + _customer_line(item.customer, words),
+                f"  겹치는 것({customer.name} 기준): {', '.join(shared)}",
+            ]
+        )
+        keep = (*words.keep, customer.name, *_customer_keep(item.customer))
+        # 전송 기록은 지금 보는 회사에 단다(기존 고객은 영업 목록의 회사가 아니다).
+        pieces.append(_Piece(opportunity.opp_id, text, keep))
+    head = f"{customer.name} 기준, 공정·산업이 겹치는 기존 고객 {len(pieces)}곳"
+    return pieces, head, (*words.keep, customer.name)
+
+
+def _top(items: list[tuple[str, int]], label=lambda value: value, limit: int = 8) -> str:
+    return ", ".join(f"{label(value)} {count}곳" for value, count in items[:limit]) or "없음"
+
+
+def _customer_overview(session: Session, settings: AppSettings, args: dict[str, Any]):
+    opportunity, customer = _opportunity(session, args)
+    words = _words(session, settings)
+    view = overview(session)
+    if view.total == 0:
+        return [], "기존 고객 모습", words.keep
+    processes = sorted(_live_processes(session, opportunity.opp_id))
+    mine = [
+        *(words.processes.get(code, code) for code in processes),
+        *(customer.industries or []),
+    ]
+    lines = [
+        f"기존 고객 {view.total}곳" + (f" {VIRTUAL_TAG}" if view.has_virtual else ""),
+        "공정: " + _top(view.processes, lambda code: words.processes.get(code, code)),
+        "산업: " + _top(view.industries),
+        "지역: " + _top(view.regions),
+        "인증: " + _top(view.certifications),
+        f"{customer.name}의 공정·산업: {', '.join(mine) or '확인 전'}",
+    ]
+    keep = (
+        *words.keep,
+        customer.name,
+        *(value for value, _ in view.regions),
+        *(value for value, _ in view.certifications),
+    )
+    return [_Piece(opportunity.opp_id, "\n".join(lines), keep)], "기존 고객 모습", words.keep
+
+
 _OPP_ID = {"type": "string", "description": "회사의 oppId(회사 찾기 결과에 있음)"}
 
 TOOLS: tuple[Tool, ...] = (
@@ -525,8 +620,52 @@ TOOLS: tuple[Tool, ...] = (
         },
         run=_past_analyses,
     ),
+    Tool(
+        name="similar_customers",
+        title="비슷한 기존 고객",
+        description=(
+            "이 회사와 공정·산업이 겹치는 거산의 기존 고객(지금 거래처)을 몇 곳 골라 "
+            "공정·소재·산업·"
+            "지역·인증·거래 시작을 돌려줍니다. 겹치는 공정이 많은 순 → 산업 → 최근 거래 순입니다. "
+            "기존 고객이 거래 전에 따졌을 것(인증·소재)을 이 회사에 물을 질문으로 바꿀 때 씁니다."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"oppId": _OPP_ID},
+            "required": ["oppId"],
+            "additionalProperties": False,
+        },
+        run=_similar_customers,
+        kind=TransferKind.EXISTING_CUSTOMER,
+        enabled=customers_enabled,
+    ),
+    Tool(
+        name="customer_overview",
+        title="기존 고객 모습",
+        description=(
+            "거산 기존 고객 전체의 모습을 공정·산업·지역·인증별 고객 수(많은 순)로 "
+            "돌려주고, 이 회사의 "
+            "공정·산업을 함께 보입니다. 이 회사가 기존 고객과 닮았는지 볼 때 씁니다."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"oppId": _OPP_ID},
+            "required": ["oppId"],
+            "additionalProperties": False,
+        },
+        run=_customer_overview,
+        kind=TransferKind.EXISTING_CUSTOMER,
+        enabled=customers_enabled,
+    ),
 )
 TOOLS_BY_NAME = {tool.name: tool for tool in TOOLS}
+
+
+def available_tools(settings: AppSettings | None) -> list[Tool]:
+    """이 설정에서 알리는 도구. 설정이 없으면 기본 도구만(꺼진 확장 도구는 빼고)."""
+    if settings is None:
+        return [tool for tool in TOOLS if tool.kind == TransferKind.MCP_TOOL]
+    return [tool for tool in TOOLS if tool.enabled(settings)]
 
 
 # ---------- 문 ----------
@@ -553,6 +692,7 @@ def _log(
     staff_key: str,
     *,
     reject: str | None = None,
+    kind: TransferKind = TransferKind.MCP_TOOL,
 ) -> None:
     """값이 실린 회사마다 1행(첫 회사만 호출 수 1). 거부면 가리킨 회사에 거부 1행."""
     now = utcnow()
@@ -563,7 +703,7 @@ def _log(
                 occurred_at=now,
                 opp_id=opp_id,
                 purpose=TransferPurpose.MCP_TOOL,
-                kind=TransferKind.MCP_TOOL,
+                kind=kind,
                 mode="NONE",
                 security_grade="EXTERNAL_AI_OK",
                 decision="REJECTED" if reject else "ALLOWED",
@@ -615,7 +755,10 @@ def run_tool(
     틀린 인자는 ToolInputError. 회사마다 따로 지운다(scrub_sales_records, 넉넉한 규칙)."""
     if not isinstance(args, dict):
         raise ToolInputError("도구 인자는 객체여야 합니다.")
-    pieces, head, keep = TOOLS_BY_NAME[name].run(session, settings, args)
+    tool = TOOLS_BY_NAME[name]
+    if not tool.enabled(settings):
+        raise ToolInputError(CUSTOMERS_OFF_MESSAGE)
+    pieces, head, keep = tool.run(session, settings, args)
     if not pieces:
         head = f"{head}: 돌려줄 기록이 없습니다."
     items = [scrub_sales_records([head], keep)[0]]
@@ -630,7 +773,7 @@ def call_tool(
     db_path: Path | str | None = None,
 ) -> ToolResult:
     """MCP 창구: 도구 하나를 문을 거쳐 부른다. 모르는 도구는 KeyError(프로토콜 오류로 알린다)."""
-    TOOLS_BY_NAME[name]  # 모르는 도구는 문을 보기 전에 KeyError
+    tool = TOOLS_BY_NAME[name]  # 모르는 도구는 문을 보기 전에 KeyError
     args = {} if args is None else args
     if not isinstance(args, dict):
         return ToolResult("도구 인자는 객체여야 합니다.", is_error=True)
@@ -638,11 +781,22 @@ def call_tool(
         settings = read_app_settings(session)
         if settings is None or settings.assistant is None:
             return ToolResult(NO_SETTINGS_MESSAGE, is_error=True)
+        kind = tool.kind
         if not settings.llm.sales_records_enabled:
-            _log(session, _anchor_of(session, args), staff_key, reject=DISABLED_MESSAGE)
+            _log(session, _anchor_of(session, args), staff_key, reject=DISABLED_MESSAGE, kind=kind)
             return ToolResult(DISABLED_MESSAGE, is_error=True)
+        if not tool.enabled(settings):
+            # 기존 고객 도구(#932)는 기존 고객 스위치도 켜져야 한다. 값은 아무것도 내보내지 않는다.
+            _log(
+                session,
+                _anchor_of(session, args),
+                staff_key,
+                reject=CUSTOMERS_OFF_MESSAGE,
+                kind=kind,
+            )
+            return ToolResult(CUSTOMERS_OFF_MESSAGE, is_error=True)
         if mcp_calls_today(session) >= settings.assistant.mcp_daily_limit:
-            _log(session, _anchor_of(session, args), staff_key, reject=LIMIT_MESSAGE)
+            _log(session, _anchor_of(session, args), staff_key, reject=LIMIT_MESSAGE, kind=kind)
             return ToolResult(f"{LIMIT_MESSAGE} 내일 다시 써 주세요.", is_error=True)
         try:
             output = run_tool(session, settings, name, args)
@@ -651,7 +805,7 @@ def call_tool(
         # 문에서 다시 검사한다. 하나라도 남으면 전체 거부(걸러 보내지 않음).
         if not output.clean:
             anchor = output.opp_ids[:1] or _anchor_of(session, args)
-            _log(session, anchor, staff_key, reject=NOT_SCRUBBED_MESSAGE)
+            _log(session, anchor, staff_key, reject=NOT_SCRUBBED_MESSAGE, kind=kind)
             return ToolResult(NOT_SCRUBBED_MESSAGE, is_error=True)
-        _log(session, output.opp_ids, staff_key)
+        _log(session, output.opp_ids, staff_key, kind=kind)
         return ToolResult(output.text)
