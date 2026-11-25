@@ -3,7 +3,8 @@ import type { FormEvent, ReactNode } from 'react';
 import { Alert, Button, ConfigProvider, Input } from 'antd';
 import { ApiError, getConfigUi, SESSION_REQUIRED_EVENT } from '../../api/client';
 import { createSession, saveProfile, STAFF_LOGIN_KIND } from '../../api/session';
-import { antdTheme } from '../../theme/tokens';
+import { loginTexts } from '../../labels/ko';
+import { loginAntdTheme } from '../../theme/tokens';
 import LoginLayout from './LoginLayout';
 
 type GateState = 'checking' | 'login' | 'setup' | 'ready' | 'error';
@@ -113,7 +114,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
 
   if (state === 'ready') return children;
   return (
-    <ConfigProvider theme={antdTheme}>
+    <ConfigProvider theme={loginAntdTheme}>
       <LoginLayout>
         {state === 'checking' && <p role="status">접속 권한을 확인하고 있습니다.</p>}
         {state === 'error' && (
@@ -147,6 +148,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
                   id="access-staff-key"
                   size="large"
                   prefix={userIcon}
+                  placeholder={loginTexts.staffKeyPlaceholder}
                   autoComplete="username"
                   value={staffKey}
                   onChange={(event) => setStaffKey(event.target.value)}
@@ -161,6 +163,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
               id="access-password"
               size="large"
               prefix={lockIcon}
+              placeholder={loginTexts.passwordPlaceholder}
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -237,6 +240,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-name">화면에 보일 이름</label>
       <Input
         id="profile-name"
+        size="large"
         placeholder="예: 영업 김"
         maxLength={20}
         value={displayName}
@@ -248,6 +252,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-current">받은 임시 비밀번호</label>
       <Input.Password
         id="profile-current"
+        size="large"
         autoComplete="current-password"
         value={current}
         onChange={(event) => setCurrent(event.target.value)}
@@ -257,6 +262,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-new">새 비밀번호 (8자 이상)</label>
       <Input.Password
         id="profile-new"
+        size="large"
         autoComplete="new-password"
         value={next}
         onChange={(event) => setNext(event.target.value)}
@@ -266,6 +272,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-again">새 비밀번호 한 번 더</label>
       <Input.Password
         id="profile-again"
+        size="large"
         autoComplete="new-password"
         value={again}
         onChange={(event) => setAgain(event.target.value)}

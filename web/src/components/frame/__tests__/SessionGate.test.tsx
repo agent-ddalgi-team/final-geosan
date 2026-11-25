@@ -39,7 +39,29 @@ function renderGate() {
 
 // ---------- #912 접속 화면 디자인 ----------
 
-const greeting = '안녕하세요. 거산케미칼 에이전트입니다.';
+// 인사말은 두 줄(<br>)이라 한 줄로 이어 붙은 글자에서 찾는다.
+const greeting = /안녕하세요\.\s*거산케미칼 에이전트입니다\./;
+
+it('Given 계정 방식 401 When 접속 화면 Then 두 칸에 안내 글이 있고 둘 다 넣어야 접속할 수 있다', async () => {
+  config.mockRejectedValueOnce(
+    new ApiError(401, {
+      message: '접속 확인이 필요합니다.',
+      nextAction: '아이디와 비밀번호를 입력해 주세요.',
+      ref: 'test',
+      kind: 'STAFF_LOGIN_REQUIRED',
+    }),
+  );
+  renderGate();
+  const id = await screen.findByPlaceholderText('아이디를 입력하세요');
+  const password = screen.getByPlaceholderText('비밀번호를 입력하세요');
+  const submit = screen.getByRole('button', { name: '접속' });
+  expect(screen.getByText('영업지원 업무를 도와드립니다.')).toBeInTheDocument();
+  expect(submit).toBeDisabled();
+  fireEvent.change(id, { target: { value: 'sales-1' } });
+  expect(submit).toBeDisabled();
+  fireEvent.change(password, { target: { value: 'test-only-pass' } });
+  expect(submit).toBeEnabled();
+});
 
 it('Given 401 When 접속 화면 Then 회사 로고와 인사말을 입력 칸과 함께 보인다', async () => {
   config.mockRejectedValueOnce(denied());
