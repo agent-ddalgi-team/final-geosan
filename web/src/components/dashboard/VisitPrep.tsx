@@ -7,7 +7,14 @@ import { Link } from 'react-router-dom';
 import type { DashboardMap } from '../../api/dashboardMapTypes';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
-import { colors, detailTheme, radius, typography } from '../../theme/tokens';
+import {
+  colors,
+  detailTheme,
+  groupMarkPalette,
+  homePalette,
+  radius,
+  typography,
+} from '../../theme/tokens';
 import ReportLink from '../report/ReportLink';
 import { dayLabel } from './TodayChecks';
 
@@ -43,6 +50,8 @@ const chip = {
   color: colors.text,
 } as const;
 const arrow = { color: colors.textSecondary, whiteSpace: 'nowrap' } as const;
+/** #927(시안): 거리 숫자는 굵게·청록으로 눈에 띄게. */
+const km = { color: homePalette.teal, fontWeight: 700 } as const;
 
 /** 거산 ─km→ 회사 ─km→ 가까운 관심 기업 · 같이 들를 곳 n곳. 좌표가 없는 회사면 그리지 않는다. */
 function Route({ oppId, name, map }: { oppId: string; name: string; map: DashboardMap }) {
@@ -64,11 +73,15 @@ function Route({ oppId, name, map }: { oppId: string; name: string; map: Dashboa
       }}
     >
       <span style={chip}>{t.prepHq}</span>
-      <span style={arrow}>─{t.prepKm(point.distanceKm)}→</span>
+      <span style={arrow}>
+        ─<span style={km}>{t.prepKm(point.distanceKm)}</span>→
+      </span>
       <span style={{ ...chip, background: detailTheme.accentSoft, fontWeight: 600 }}>{name}</span>
       {first ? (
         <>
-          <span style={arrow}>─{t.prepKm(first.distanceKm)}→</span>
+          <span style={arrow}>
+            ─<span style={km}>{t.prepKm(first.distanceKm)}</span>→
+          </span>
           <span style={chip}>{first.customerName}</span>
           <span style={{ color: colors.textSecondary }}>· {t.prepNearby(nearby.length)}</span>
         </>
@@ -99,25 +112,53 @@ export default function VisitPrep({
       data-testid="dashboard-prep"
       style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}
     >
-      {shown.map((item) => (
-        <li
-          key={`${item.oppId}-${item.dueAt}`}
-          data-testid="dashboard-prep-item"
-          style={{
-            display: 'grid',
-            gap: 4,
-            paddingBottom: 10,
-            borderBottom: `1px solid ${colors.borderSecondary}`,
-          }}
-        >
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
-            <strong>{item.customerName}</strong>
-            <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
-              {[item.dueAt === today ? t.prepToday : dayLabel(item.dueAt), item.note]
-                .filter(Boolean)
-                .join(' · ')}
+      {shown.map((item) => {
+        const isToday = item.dueAt === today;
+        // #927(시안): 왼쪽 굵은 날짜 칸(오늘은 초록) · 가운데 회사 · 할 일과 거리 화살표 · 오른쪽 보고서·상세.
+        return (
+          <li
+            key={`${item.oppId}-${item.dueAt}`}
+            data-testid="dashboard-prep-item"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '92px minmax(0, 1fr) auto',
+              alignItems: 'center',
+              columnGap: 12,
+              paddingBottom: 10,
+              borderBottom: `1px solid ${colors.borderSecondary}`,
+            }}
+          >
+            <span data-testid="dashboard-prep-day" style={{ display: 'grid' }}>
+              <strong
+                style={{
+                  color: isToday ? groupMarkPalette.today : colors.text,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {dayLabel(item.dueAt)}
+              </strong>
+              {isToday ? (
+                <span
+                  style={{
+                    color: groupMarkPalette.today,
+                    fontSize: typography.fontSizeSecondary - 1,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t.prepToday}
+                </span>
+              ) : null}
             </span>
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+            <span style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+              <span>
+                <strong>{item.customerName}</strong>
+                {item.note ? (
+                  <span style={{ color: colors.textSecondary }}> · {item.note}</span>
+                ) : null}
+              </span>
+              {map ? <Route oppId={item.oppId} name={item.customerName} map={map} /> : null}
+            </span>
+            <span style={{ display: 'flex', gap: 10, justifySelf: 'end' }}>
               <ReportLink oppId={item.oppId} inline testId="dashboard-prep-report" />
               <Link
                 to={`/opportunities/${encodeURIComponent(item.oppId)}`}
@@ -126,10 +167,9 @@ export default function VisitPrep({
                 {t.prepDetail}
               </Link>
             </span>
-          </span>
-          {map ? <Route oppId={item.oppId} name={item.customerName} map={map} /> : null}
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }

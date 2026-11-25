@@ -17,6 +17,7 @@ import { sortSchedule } from '../../components/dashboard/ScheduleList';
 import { bookmarkGrid } from '../../components/dashboard/CountCards';
 import { filterName } from '../../components/list/ListViewBar';
 import { dashboardTexts, frame, states } from '../../labels/ko';
+import { groupMarkPalette, homePalette } from '../../theme/tokens';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
@@ -213,6 +214,24 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-calendar')).toBeInTheDocument();
     });
 
+    it('#929 단계 칸 B안: 0곳은 흰 칸, 회사가 있는 칸은 연파랑, 성사는 진한 파랑에 흰 글자', async () => {
+      mockedGet.mockResolvedValueOnce(
+        reply({ ...fixtureData, counts: { ...fixtureData.counts, NOT_CONTACTED: 0 } }),
+      );
+      renderPage();
+      await screen.findByTestId('dashboard-stage-chips');
+      expect(screen.getByTestId('dashboard-stage-chip-NOT_CONTACTED')).toHaveStyle({
+        background: '#FFFFFF',
+      });
+      expect(screen.getByTestId('dashboard-stage-chip-IN_CONTACT')).toHaveStyle({
+        background: homePalette.blueBg,
+      });
+      expect(screen.getByTestId('dashboard-stage-chip-WON')).toHaveStyle({
+        background: homePalette.blueStrong,
+        color: '#FFFFFF',
+      });
+    });
+
     it('새 모양인데 일부 칸만 빠져 있으면(옛 서버라 WON 없음) 그 칩만 빼고 나머지는 보이며, 보류가 있으면 끝에 보류 칩', async () => {
       const { WON: _won, ...partial } = fixtureData.counts;
       void _won;
@@ -237,9 +256,17 @@ describe('DashboardPage', () => {
       vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
+      // #929(시안 v3): 점 달력 — 머리 "11월 일정", 일정 있는 날 점, 오늘부터 7일은 연파랑.
       expect(await screen.findByTestId('dashboard-calendar-title')).toHaveTextContent(
-        '2026년 11월',
+        dashboardTexts.calendarDotsTitle(11),
       );
+      expect(screen.getByTestId('dashboard-calendar-dot-2026-11-06')).toBeInTheDocument();
+      expect(screen.getByTestId('dashboard-calendar-day-2026-11-06')).toHaveStyle({
+        background: homePalette.blueBg,
+      });
+      expect(screen.getByTestId('dashboard-calendar-day-2026-11-05')).toHaveStyle({
+        background: groupMarkPalette.today,
+      });
       // 11/1(A정밀 견적 보내기)은 기한이 지났다.
       await userEvent.click(screen.getByTestId('dashboard-calendar-day-2026-11-01'));
       const popover = screen.getByTestId('dashboard-calendar-popover');
@@ -476,7 +503,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('배치 (#921 → #925): 제목·날짜·단계 칸·검색 한 줄 → 오늘 할 일 + 이번 주 방문·연락 | 전달 사항·달력 → 지도 → 진행 중인 회사 → 더 보기', () => {
+  describe('배치 (#921 → #925 → #929): 제목·날짜·단계 칸·검색 한 줄 → 오늘 할 일 | 전달 사항 → 이번 주 방문·연락(+달력) → 지도 → 진행 중인 회사 → 더 보기', () => {
     it('구역이 약속한 순서로 놓이고, 칸 이름표(출근하면 등) 없이 큰 제목만 보이며, 관심 기업 건수·최근 내 기록은 접힌 "더 보기" 안에 있다', async () => {
       // 예전(#795) 순서는 오늘 브리핑 → 오늘 할 일 → 작은 달력 → 방문 준비·지도 → 더 보기였다.
       // PM 결정 2026-11-25(#921): 같은 일정을 네 곳에 되풀이하지 않고, 보는 때(출근·외근 전·누구나)로 나눴다.
@@ -509,21 +536,20 @@ describe('DashboardPage', () => {
         screen.getByTestId('dashboard-stage-chips'),
         screen.getByTestId('dashboard-search-input'),
         screen.getByTestId('dashboard-today'),
-        screen.getByTestId('dashboard-prep-section'),
         screen.getByTestId('dashboard-handoff'),
+        screen.getByTestId('dashboard-prep-section'),
         screen.getByTestId('dashboard-map-section'),
         screen.getByTestId('dashboard-progress-table'),
         screen.getByTestId('dashboard-more'),
       ];
       expect(screen.queryByTestId('dashboard-brief')).not.toBeInTheDocument();
-      // 한 달 달력은 전달 사항 칸 아래에 있다.
-      expect(screen.getByTestId('dashboard-handoff')).toContainElement(
-        screen.getByTestId('dashboard-calendar'),
-      );
-      // #925: 이번 주 방문·연락은 오늘 할 일 바로 아래 칸, 지도 칸에는 지도와 같이 들를 곳만.
+      // #929(시안 v3): 이번 주 방문·연락은 한 줄 전체 칸이고, 그 칸 안 오른쪽에 한 달 달력이 있다.
       const prep = screen.getByTestId('dashboard-prep-section');
       expect(prep).toHaveTextContent(dashboardTexts.outTitle);
-      expect(screen.getByTestId('dashboard-today').parentElement).toContainElement(prep);
+      expect(prep).toContainElement(screen.getByTestId('dashboard-calendar'));
+      expect(screen.getByTestId('dashboard-handoff')).not.toContainElement(
+        screen.getByTestId('dashboard-calendar'),
+      );
       const mapSection = screen.getByTestId('dashboard-map-section');
       expect(mapSection).toHaveTextContent(dashboardTexts.mapTitle);
       expect(within(mapSection).queryByTestId('dashboard-map-aside')).not.toBeInTheDocument();
@@ -639,56 +665,60 @@ describe('DashboardPage', () => {
       },
     ];
 
-    it('주제별 묶음(지난 일정 → 오늘 일정 → 확인할 것이 남은 관심 기업)으로 아이콘·제목·회사별 한 줄을 보인다(#766)', async () => {
+    it('#929(시안 v3): 지난 일정·오늘 일정은 [지난 일정]·[오늘] 표시가 붙은 한 목록(지난 것 먼저), 확인할 회사는 그 아래 회사 이름 칩', async () => {
       mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: rows }));
       renderPage();
       const today = await screen.findByTestId('dashboard-today');
       expect(within(today).getByRole('heading', { level: 2 })).toHaveTextContent(
         dashboardTexts.workTitle,
       );
-      const groups = within(today).getAllByTestId('dashboard-today-row');
-      expect(
-        groups.map((group) => within(group).getByRole('heading', { level: 3 }).textContent),
-      ).toEqual([
-        // #925: 이모지 대신 제목 앞 색 막대, 핵심 말만.
-        '지난 일정 1건',
-        '오늘 일정 3건',
-        '확인할 회사 2곳모두 보기',
+      const schedule = within(today).getByTestId('dashboard-today-schedule');
+      const lines = within(schedule).getAllByTestId('dashboard-today-item');
+      expect(lines.map((line) => line.getAttribute('data-tone'))).toEqual([
+        'overdue',
+        'today',
+        'today',
+        'today',
       ]);
-      const todayItems = within(screen.getByTestId('dashboard-today-items-SCHEDULE_TODAY'))
-        .getAllByTestId('dashboard-today-item')
-        .map((item) => item.textContent);
-      expect(todayItems).toEqual(['가상정밀견적', '가상금속방문', '가상산업']);
-      const overdue = within(
-        screen.getByTestId('dashboard-today-items-SCHEDULE_OVERDUE'),
-      ).getByTestId('dashboard-today-item');
-      expect(overdue).toHaveTextContent('가상테크11/10(화) · 전화');
-      expect(within(overdue).getByRole('link', { name: '가상테크' })).toHaveAttribute(
+      expect(lines[0]).toHaveTextContent('지난 일정가상테크 · 전화11/10(화) 예정이었음');
+      expect(within(lines[0]).getByRole('link', { name: '가상테크' })).toHaveAttribute(
         'href',
         '/opportunities/opp-4',
       );
+      expect(lines[1]).toHaveTextContent('오늘가상정밀 · 견적');
+      expect(within(lines[1]).getByTestId('dashboard-today-report')).toBeInTheDocument();
+      // 일정 줄에는 묶음 제목이 없고, 묶음은 확인할 회사 하나뿐이다.
+      const groups = within(today).getAllByTestId('dashboard-today-row');
+      expect(
+        groups.map((group) => within(group).getByRole('heading', { level: 3 }).textContent),
+      ).toEqual(['확인할 회사 2곳모두 보기']);
+      expect(
+        within(screen.getByTestId('dashboard-today-items-CHECK_LEFT'))
+          .getAllByRole('link')
+          .map((link) => link.textContent),
+      ).toEqual(['가상도금', '가상기계']);
       expect(screen.queryByTestId('dashboard-today-empty')).not.toBeInTheDocument();
     });
 
-    it('묶음이 5곳을 넘으면 앞 5곳만 보이고 [더 보기 n곳]으로 편다', async () => {
+    it('일정 줄은 모두 보이고, 확인할 회사가 5곳을 넘으면 앞 5곳만 보이고 [더 보기 n곳]으로 편다', async () => {
+      const seven = (prefix: string) =>
+        Array.from({ length: 7 }, (_, i) => ({
+          oppId: `opp-${prefix}${i}`,
+          customerName: `가상${prefix}${i}`,
+          dueAt: prefix === 't' ? '2026-11-13' : null,
+          note: '',
+        }));
       const many: TodayCheckRow[] = [
-        {
-          kind: 'SCHEDULE_TODAY',
-          count: 7,
-          items: Array.from({ length: 7 }, (_, i) => ({
-            oppId: `opp-m${i}`,
-            customerName: `가상${i}`,
-            dueAt: '2026-11-13',
-            note: '',
-          })),
-          listFilter: null,
-        },
+        { kind: 'SCHEDULE_TODAY', count: 7, items: seven('t'), listFilter: null },
+        { kind: 'CHECK_LEFT', count: 7, items: seven('c'), listFilter: 'CHECK_LEFT' },
       ];
       mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: many }));
       renderPage();
-      const list = await screen.findByTestId('dashboard-today-items-SCHEDULE_TODAY');
+      const schedule = await screen.findByTestId('dashboard-today-schedule');
+      expect(within(schedule).getAllByTestId('dashboard-today-item')).toHaveLength(7);
+      const list = screen.getByTestId('dashboard-today-items-CHECK_LEFT');
       expect(within(list).getAllByTestId('dashboard-today-item')).toHaveLength(5);
-      await userEvent.click(screen.getByTestId('dashboard-today-more-SCHEDULE_TODAY'));
+      await userEvent.click(screen.getByTestId('dashboard-today-more-CHECK_LEFT'));
       expect(within(list).getAllByTestId('dashboard-today-item')).toHaveLength(7);
     });
 
@@ -728,10 +758,11 @@ describe('DashboardPage', () => {
       mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, todayChecks: mixed }));
       renderPage();
       const today = await screen.findByTestId('dashboard-today');
-      expect(within(today).getAllByTestId('dashboard-today-row')).toHaveLength(1);
-      expect(within(today).getByTestId('dashboard-today-count-SCHEDULE_OVERDUE')).toHaveTextContent(
-        '지난 일정 1건',
+      const lines = within(within(today).getByTestId('dashboard-today-schedule')).getAllByTestId(
+        'dashboard-today-item',
       );
+      expect(lines.map((line) => line.getAttribute('data-tone'))).toEqual(['overdue']);
+      expect(within(today).queryAllByTestId('dashboard-today-row')).toHaveLength(0);
     });
 
     it('영업 비서 자리(#680)는 지금 비어 있다: 빈 상자도 안내 문구도 없다', async () => {
@@ -752,17 +783,19 @@ describe('DashboardPage', () => {
   });
 });
 
-describe('대시보드 › 출근하면 칸 폭(#825 → #921)', () => {
-  it('오른쪽 칸(전달 사항 + 달력)은 최대 폭이 있고, 두 칸 기본 폭 합이 노트북 본문(약 700px)에 들어간다', async () => {
+describe('대시보드 › 칸 폭(#825 → #921 → #929)', () => {
+  it('오늘 할 일 | 전달 사항 두 칸 기본 폭 합이 노트북 본문(약 700px)에 들어가고, 이번 주 방문 칸 안 달력은 최대 폭이 있다', async () => {
     mockedGet.mockResolvedValueOnce(reply(fixtureData));
     renderPage();
     await screen.findByTestId('dashboard-counts');
-    const right = screen.getByTestId('dashboard-calendar-section');
+    const right = screen.getByTestId('dashboard-handoff-column');
     expect(right).toContainElement(screen.getByTestId('dashboard-handoff'));
     expect(right.style.flex).toBe('2 1 300px');
-    expect(right.style.maxWidth).toBe(`${CALENDAR_MAX_WIDTH}px`);
     const todo = screen.getByTestId('dashboard-today').parentElement as HTMLElement;
     // 360 + 300 + 칸 사이 16 = 676px
     expect(todo.style.flex).toBe('3 1 360px');
+    const calendar = screen.getByTestId('dashboard-calendar-section');
+    expect(screen.getByTestId('dashboard-prep-section')).toContainElement(calendar);
+    expect(calendar.style.maxWidth).toBe(`${CALENDAR_MAX_WIDTH}px`);
   });
 });

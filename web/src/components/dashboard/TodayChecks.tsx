@@ -24,18 +24,11 @@ import { ApiError, confirmHandoff, resolveSchedule } from '../../api/client';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { LIST_PATH } from '../../paths';
-import { colors, detailTheme, groupMarkPalette, radius, typography } from '../../theme/tokens';
+import { colors, groupMarkPalette, homePalette, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
+import ReportLink from '../report/ReportLink';
 
 const SHOWN = 5;
-/** #925 묶음 제목 앞 색 막대: 지난 일정 빨강, 오늘 일정 초록, 받은 것 남색, 나머지 회색. */
-const GROUP_MARK: Record<TodayCheckKind, string> = {
-  SCHEDULE_OVERDUE: groupMarkPalette.overdue,
-  SCHEDULE_TODAY: groupMarkPalette.today,
-  CHECK_LEFT: groupMarkPalette.other,
-  HANDOFF_FOR_ME: groupMarkPalette.received,
-  HANDOFF_FROM_ME: groupMarkPalette.other,
-};
 /** 묶음 순서: 지난 일정(정리할 것)이 맨 위. */
 const ORDER: TodayCheckKind[] = [
   'SCHEDULE_OVERDUE',
@@ -72,7 +65,16 @@ function itemKey(item: TodayCheckItem): string {
 }
 
 /** 지난 일정 한 줄: 회사·날짜·일정 + 세 단추. */
-function OverdueItem({ item, onChanged }: { item: TodayCheckItem; onChanged: () => void }) {
+function OverdueItem({
+  item,
+  onChanged,
+  line = false,
+}: {
+  item: TodayCheckItem;
+  onChanged: () => void;
+  /** #927 한 줄 모양(왼쪽 [지난 일정] 표시 · 회사 · 할 일 · 오른쪽 단추). 영업 홈 오늘 할 일 칸이 쓴다. */
+  line?: boolean;
+}) {
   const { staffKey, canRecord } = useFrame();
   const [moving, setMoving] = useState(false);
   const [date, setDate] = useState('');
@@ -106,6 +108,85 @@ function OverdueItem({ item, onChanged }: { item: TodayCheckItem; onChanged: () 
     }
   }
 
+  const buttons = usable ? (
+    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+      <Button
+        size="small"
+        disabled={busy}
+        onClick={() => void send('DONE')}
+        data-testid="dashboard-today-done"
+      >
+        {dashboardTexts.todayResolveDone}
+      </Button>
+      <Button
+        size="small"
+        disabled={busy}
+        aria-expanded={moving}
+        onClick={() => setMoving((open) => !open)}
+        data-testid="dashboard-today-move"
+      >
+        {dashboardTexts.todayResolveMove}
+      </Button>
+      <Button
+        size="small"
+        disabled={busy}
+        onClick={() => void send('DROPPED')}
+        data-testid="dashboard-today-drop"
+      >
+        {dashboardTexts.todayResolveDrop}
+      </Button>
+    </span>
+  ) : null;
+  const mover =
+    usable && moving ? (
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        <label htmlFor={`today-move-${item.oppId}`} style={secondary}>
+          {dashboardTexts.todayResolveNewDate}
+        </label>
+        <input
+          id={`today-move-${item.oppId}`}
+          type="date"
+          min={todayIso()}
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+          data-testid="dashboard-today-move-date"
+        />
+        <Button
+          size="small"
+          type="primary"
+          disabled={busy || !date || date < todayIso()}
+          onClick={() => void send('MOVED')}
+          data-testid="dashboard-today-move-save"
+        >
+          {dashboardTexts.todayResolveMoveSave}
+        </Button>
+      </span>
+    ) : null;
+  const alert = message ? (
+    <span role="alert" style={{ color: colors.error, fontSize: typography.fontSizeSecondary }}>
+      {message}
+    </span>
+  ) : null;
+
+  if (line) {
+    return (
+      <ScheduleLine
+        tone="overdue"
+        item={item}
+        meta={dashboardTexts.scheduleWasDue(dayLabel(item.dueAt))}
+        actions={buttons}
+        below={
+          mover || alert ? (
+            <>
+              {mover}
+              {alert}
+            </>
+          ) : null
+        }
+      />
+    );
+  }
+
   return (
     <li data-testid="dashboard-today-item" style={{ display: 'grid', gap: 6, padding: '6px 0' }}>
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
@@ -114,64 +195,68 @@ function OverdueItem({ item, onChanged }: { item: TodayCheckItem; onChanged: () 
           {[dayLabel(item.dueAt), item.note].filter(Boolean).join(' · ')}
         </span>
       </span>
-      {usable ? (
-        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-          <Button
-            size="small"
-            disabled={busy}
-            onClick={() => void send('DONE')}
-            data-testid="dashboard-today-done"
-          >
-            {dashboardTexts.todayResolveDone}
-          </Button>
-          <Button
-            size="small"
-            disabled={busy}
-            aria-expanded={moving}
-            onClick={() => setMoving((open) => !open)}
-            data-testid="dashboard-today-move"
-          >
-            {dashboardTexts.todayResolveMove}
-          </Button>
-          <Button
-            size="small"
-            disabled={busy}
-            onClick={() => void send('DROPPED')}
-            data-testid="dashboard-today-drop"
-          >
-            {dashboardTexts.todayResolveDrop}
-          </Button>
-        </span>
-      ) : null}
-      {usable && moving ? (
-        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-          <label htmlFor={`today-move-${item.oppId}`} style={secondary}>
-            {dashboardTexts.todayResolveNewDate}
-          </label>
-          <input
-            id={`today-move-${item.oppId}`}
-            type="date"
-            min={todayIso()}
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            data-testid="dashboard-today-move-date"
-          />
-          <Button
-            size="small"
-            type="primary"
-            disabled={busy || !date || date < todayIso()}
-            onClick={() => void send('MOVED')}
-            data-testid="dashboard-today-move-save"
-          >
-            {dashboardTexts.todayResolveMoveSave}
-          </Button>
-        </span>
-      ) : null}
-      {message ? (
-        <span role="alert" style={{ color: colors.error, fontSize: typography.fontSizeSecondary }}>
-          {message}
-        </span>
-      ) : null}
+      {buttons}
+      {mover}
+      {alert}
+    </li>
+  );
+}
+
+/** #927 영업 홈 오늘 할 일의 일정 한 줄: [표시] 회사 · 할 일 / 아래 작은 글 · 오른쪽 단추. */
+function ScheduleLine({
+  tone,
+  item,
+  meta = null,
+  actions = null,
+  below = null,
+}: {
+  tone: 'overdue' | 'today';
+  item: TodayCheckItem;
+  meta?: string | null;
+  actions?: ReactNode;
+  below?: ReactNode;
+}) {
+  const palette =
+    tone === 'overdue'
+      ? { bg: groupMarkPalette.overdueBg, fg: groupMarkPalette.overdue }
+      : { bg: groupMarkPalette.todayBg, fg: groupMarkPalette.today };
+  return (
+    <li
+      data-testid="dashboard-today-item"
+      data-tone={tone}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '76px minmax(0, 1fr) auto',
+        alignItems: 'center',
+        columnGap: 12,
+        rowGap: 6,
+        padding: '10px 0',
+        borderTop: `1px solid ${colors.borderSecondary}`,
+      }}
+    >
+      <span
+        data-testid={`dashboard-today-tag-${tone}`}
+        style={{
+          textAlign: 'center',
+          fontSize: typography.fontSizeSecondary - 1,
+          fontWeight: 700,
+          borderRadius: 6,
+          padding: '2px 6px',
+          background: palette.bg,
+          color: palette.fg,
+        }}
+      >
+        {tone === 'overdue' ? dashboardTexts.scheduleTagOverdue : dashboardTexts.scheduleTagToday}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`} style={{ fontWeight: 700 }}>
+          {item.customerName}
+        </Link>
+        {item.note ? <span style={{ color: colors.textSecondary }}> · {item.note}</span> : null}
+        {meta ? <span style={{ display: 'block', ...secondary }}>{meta}</span> : null}
+      </span>
+      <span style={{ justifySelf: 'end' }}>{actions}</span>
+      {below ? <span style={{ gridColumn: '2 / 4', display: 'grid', gap: 6 }}>{below}</span> : null}
     </li>
   );
 }
@@ -238,7 +323,8 @@ function HandoffItem({ item }: { item: TodayCheckItem }) {
               onClick={() => void confirm()}
               aria-label={dashboardTexts.todayHandoffConfirmLabel(item.customerName)}
               data-testid="dashboard-today-handoff-confirm"
-              style={{ marginLeft: 'auto' }}
+              type="primary"
+              style={{ marginLeft: 'auto', background: homePalette.blueStrong }}
             >
               {dashboardTexts.todayHandoffConfirm}
             </Button>
@@ -279,9 +365,9 @@ function Group({
       style={
         received
           ? {
-              // 연한 노랑(단계 칸과 같은 노랑 계열, 더 밝게) + 같은 계열 테두리.
-              background: detailTheme.accent,
-              border: `1px solid ${detailTheme.accentLine}`,
+              // #929(시안 v3): 연노랑 상자 + 노랑 테두리.
+              background: homePalette.yellowBg,
+              border: `1px solid ${homePalette.yellowBorder}`,
               borderRadius: 10,
               padding: '10px 12px',
               margin: '8px 0',
@@ -299,19 +385,11 @@ function Group({
           fontSize: typography.fontSize,
         }}
       >
-        {/* #925: 제목 앞 이모지 대신 짧은 색 막대로 묶음을 구분한다(지난 일정 빨강, 오늘 일정 남색). */}
-        <span
-          aria-hidden="true"
-          data-testid={`dashboard-today-mark-${kind}`}
-          style={{
-            display: 'inline-block',
-            width: 4,
-            height: 16,
-            borderRadius: 2,
-            background: GROUP_MARK[kind],
-          }}
-        />
-        <strong data-testid={`dashboard-today-count-${kind}`}>
+        {/* #929(시안 v3): 이모지·색 막대 없이 제목 글자색으로만(받은 것은 노랑 상자 안 진한 노랑). */}
+        <strong
+          data-testid={`dashboard-today-count-${kind}`}
+          style={{ color: received ? homePalette.yellowText : colors.text }}
+        >
           {dashboardTexts.todayGroupTitles[kind]} {row.count}
           {dashboardTexts.todayRowUnits[kind]}
         </strong>
@@ -327,13 +405,42 @@ function Group({
       </h3>
       <ul
         data-testid={`dashboard-today-items-${kind}`}
-        style={{ listStyle: 'none', margin: '4px 0 0', padding: '0 0 0 12px' }}
+        style={
+          kind === 'CHECK_LEFT'
+            ? // #929(시안 v3): 확인할 회사는 회사 이름 칩으로 한 줄에.
+              {
+                listStyle: 'none',
+                margin: '6px 0 0',
+                padding: 0,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 6,
+              }
+            : { listStyle: 'none', margin: '4px 0 0', padding: 0 }
+        }
       >
         {items.map((item) =>
           kind === 'SCHEDULE_OVERDUE' ? (
             <OverdueItem key={itemKey(item)} item={item} onChanged={onChanged} />
           ) : kind === 'HANDOFF_FOR_ME' ? (
             <HandoffItem key={itemKey(item)} item={item} />
+          ) : kind === 'CHECK_LEFT' ? (
+            <li key={itemKey(item)} data-testid="dashboard-today-item">
+              <Link
+                to={`/opportunities/${encodeURIComponent(item.oppId)}`}
+                style={{
+                  display: 'inline-block',
+                  border: `1px solid ${colors.borderSecondary}`,
+                  borderRadius: 14,
+                  padding: '3px 10px',
+                  background: '#FAFAFA',
+                  textDecoration: 'none',
+                  fontSize: typography.fontSizeSecondary,
+                }}
+              >
+                {item.customerName}
+              </Link>
+            </li>
           ) : (
             <PlainItem key={itemKey(item)} item={item} />
           ),
@@ -442,6 +549,17 @@ export default function TodayChecks({
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
   const ordered = PART_KINDS[part].flatMap((kind) => known.filter((row) => row.kind === kind));
+  // #927(PM 요청 2026-11-25, 시안): 오늘 할 일 칸은 지난 일정·오늘 일정을 묶음 제목 없이 한 목록으로,
+  // 줄마다 왼쪽 [지난 일정]·[오늘] 표시. 나머지 묶음(확인할 회사)은 그 아래 묶음으로.
+  const scheduleKinds: TodayCheckKind[] = ['SCHEDULE_OVERDUE', 'SCHEDULE_TODAY'];
+  const scheduleRows =
+    part === 'work'
+      ? ordered.filter((row) => scheduleKinds.includes(row.kind as TodayCheckKind))
+      : [];
+  const groupRows =
+    part === 'work'
+      ? ordered.filter((row) => !scheduleKinds.includes(row.kind as TodayCheckKind))
+      : ordered;
   const alerts =
     part === 'handoff'
       ? []
@@ -495,7 +613,34 @@ export default function TodayChecks({
         </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {ordered.map((row) => (
+          {scheduleRows.length > 0 ? (
+            <li data-testid="dashboard-today-schedule">
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {scheduleRows.flatMap((row) =>
+                  row.items.map((item) =>
+                    row.kind === 'SCHEDULE_OVERDUE' ? (
+                      <OverdueItem key={itemKey(item)} item={item} onChanged={onChanged} line />
+                    ) : (
+                      <ScheduleLine
+                        key={itemKey(item)}
+                        tone="today"
+                        item={item}
+                        actions={
+                          <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                            <ReportLink oppId={item.oppId} inline testId="dashboard-today-report" />
+                            <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`}>
+                              {dashboardTexts.prepDetail}
+                            </Link>
+                          </span>
+                        }
+                      />
+                    ),
+                  ),
+                )}
+              </ul>
+            </li>
+          ) : null}
+          {groupRows.map((row) => (
             <Group
               key={row.kind}
               row={row}

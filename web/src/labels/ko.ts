@@ -176,6 +176,9 @@ export const frame = {
   // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
   menuOpportunities: '거래처 후보',
   staffSelectLabel: '담당자',
+  // #926: 맨 위 줄의 글자 크기 고르기(화면 전체 비율). 이 브라우저에 기억한다.
+  fontScaleLabel: '글자 크기',
+  fontScaleOptions: { S: '작게', M: '보통', L: '크게', XL: '더 크게' },
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
@@ -433,6 +436,16 @@ export const dashboardTexts = {
   tableShowLess: '접기',
   // #925: 방문 목록은 오늘 할 일 아래, 지도 칸은 지도 | 같이 들를 곳만.
   mapTitle: '지도',
+  // #927(시안): 오늘 할 일 한 줄의 왼쪽 표시와 지난 일정 아래 작은 글.
+  /** #927 영업 홈 점 달력 머리. "11월 일정" */
+  calendarDotsTitle: (month: number) => `${month}월 일정`,
+  calendarDotHas: '일정 있음',
+  calendarDotOverdue: '지난 일정 미정리',
+  calendarThisWeek: '이번 주',
+  scheduleTagOverdue: '지난 일정',
+  scheduleTagToday: '오늘',
+  /** "11/21(금) 예정이었음" */
+  scheduleWasDue: (day: string) => `${day} 예정이었음`,
   mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
 } as const;
 

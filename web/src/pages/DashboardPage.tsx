@@ -32,7 +32,7 @@ import TodayChecks, { dayLabel } from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts, frame } from '../labels/ko';
-import { colors, radius, spacing, typography } from '../theme/tokens';
+import { colors, homePalette, radius, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
 
 interface Result {
@@ -55,7 +55,7 @@ const sectionStyle = {
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
-/** #921: 오른쪽 칸(전달 사항 + 한 달 달력) 최대 폭(화면 모양값, 규칙 숫자 아님). */
+/** #929: 이번 주 방문·연락 칸 안 달력 최대 폭(화면 모양값, 규칙 숫자 아님). */
 export const CALENDAR_MAX_WIDTH = 400;
 
 export default function DashboardPage() {
@@ -181,6 +181,7 @@ export default function DashboardPage() {
               type="primary"
               htmlType="submit"
               data-testid="dashboard-search-button"
+              style={{ background: homePalette.blueStrong }}
             >
               {dashboardTexts.searchButton}
             </Button>
@@ -201,8 +202,21 @@ export default function DashboardPage() {
                 assistantSummary={
                   dailyKey ? (
                     // #921: AI 오늘 정리는 접어 둔다. 눌러서 펴 본다(부르는 것은 화면이 열릴 때 한 번).
-                    <details data-testid="dashboard-ai-daily">
-                      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                    <details
+                      data-testid="dashboard-ai-daily"
+                      style={{
+                        background: homePalette.purpleBg,
+                        borderRadius: 8,
+                        padding: '8px 12px',
+                      }}
+                    >
+                      <summary
+                        style={{
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          color: homePalette.purpleText,
+                        }}
+                      >
                         {dashboardTexts.aiDailyTitle}
                       </summary>
                       <AssistantDaily staffKey={dailyKey} />
@@ -211,44 +225,40 @@ export default function DashboardPage() {
                 }
               />
             ) : null}
-            {/* #925 외근 전: 이번 주 방문·연락은 오늘 할 일 바로 아래(일정은 한 줄로 모아 본다). */}
-            <section
-              aria-labelledby="dashboard-prep-title"
-              data-testid="dashboard-prep-section"
-              style={{ ...sectionStyle, marginTop: spacing.cardGap }}
-            >
-              <h2 id="dashboard-prep-title" style={cardTitleStyle}>
-                {dashboardTexts.outTitle}
-              </h2>
-              <VisitPrep items={data?.schedule ?? []} today={today} map={mapData} />
-            </section>
           </div>
-          <div
-            data-testid="dashboard-calendar-section"
-            style={{ flex: '2 1 300px', minWidth: 0, maxWidth: CALENDAR_MAX_WIDTH }}
-          >
-            {data ? (
-              <TodayChecks
-                part="handoff"
-                rows={data.todayChecks}
-                onChanged={retry}
-                footer={
-                  <section
-                    aria-label={dashboardTexts.calendarTitle}
-                    style={{
-                      display: 'grid',
-                      gap: 8,
-                      borderTop: `1px solid ${colors.borderSecondary}`,
-                      paddingTop: 12,
-                    }}
-                  >
-                    <DashboardCalendar items={data.schedule ?? []} today={today} compact />
-                  </section>
-                }
-              />
-            ) : null}
+          <div data-testid="dashboard-handoff-column" style={{ flex: '2 1 300px', minWidth: 0 }}>
+            {data ? <TodayChecks part="handoff" rows={data.todayChecks} onChanged={retry} /> : null}
           </div>
         </div>
+
+        {/* #929(시안 v3): 이번 주 방문·연락 — 왼쪽 7일 목록, 같은 칸 오른쪽에 "11월 일정" 점 달력(이번 주 연파랑). */}
+        <section
+          aria-labelledby="dashboard-prep-title"
+          data-testid="dashboard-prep-section"
+          style={sectionStyle}
+        >
+          <h2 id="dashboard-prep-title" style={cardTitleStyle}>
+            {dashboardTexts.outTitle}
+          </h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'start' }}>
+            <div style={{ flex: '5 1 420px', minWidth: 0 }}>
+              <VisitPrep items={data?.schedule ?? []} today={today} map={mapData} />
+            </div>
+            <div
+              data-testid="dashboard-calendar-section"
+              aria-label={dashboardTexts.calendarTitle}
+              style={{
+                flex: '3 1 280px',
+                minWidth: 0,
+                maxWidth: CALENDAR_MAX_WIDTH,
+                borderLeft: `1px solid ${colors.borderSecondary}`,
+                paddingLeft: 18,
+              }}
+            >
+              <DashboardCalendar items={data?.schedule ?? []} today={today} compact dots />
+            </div>
+          </div>
+        </section>
 
         {/* 지도 · 같이 들를 곳(#925): 방문 목록은 위로 옮겨, 이 칸에는 지도와 같이 들를 곳만 나란히. */}
         <DashboardMapSection title={dashboardTexts.mapTitle} onData={setMapData} />

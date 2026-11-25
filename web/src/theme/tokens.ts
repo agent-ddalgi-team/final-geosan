@@ -70,11 +70,38 @@ export const statusPalette = {
 
 export type StatusTone = keyof typeof statusPalette;
 
-/** #925 영업 홈 묶음 제목 앞 색 막대(PM 요청 2026-11-25). 글자가 늘 함께 있어 색은 보조 신호다. */
+/**
+ * #929 영업 홈 시안 v3 색(PM 승인 2026-11-25): 파랑 계열 + 지난 일정 빨강 · 받은 전달 연노랑.
+ * 글자 위 색은 대비 4.5:1 이상인 진한 값(blueText·redText 등)을 쓴다. 흰 글자 바탕은 blueStrong.
+ */
+export const homePalette = {
+  blueBg: '#E6F4FF',
+  blueBorder: '#91CAFF',
+  blueText: '#0958D9',
+  blueStrong: '#0958D9',
+  redBg: '#FFF1F0',
+  redText: '#CF1322',
+  orangeBg: '#FFF7E6',
+  orangeText: '#AD4E00',
+  greenBg: '#F6FFED',
+  greenText: '#237804',
+  yellowBg: '#FFFBE6',
+  yellowBorder: '#FFE58F',
+  yellowText: '#7A5C00',
+  purpleBg: '#F9F0FF',
+  purpleText: '#531DAD',
+  teal: '#006D75',
+  line: '#D9D9D9',
+  muted: '#8C8C8C',
+} as const;
+
+/** #925 영업 홈 묶음 제목 앞 색 막대(PM 요청 2026-11-25). 글자가 늘 함께 있어 색은 보조 신호다. #929부터 v3 색. */
 export const groupMarkPalette = {
-  overdue: statusPalette.no.fg,
-  today: '#2E7D32',
-  received: statusPalette.ask.fg,
+  overdue: homePalette.redText,
+  overdueBg: homePalette.redBg,
+  today: homePalette.blueText,
+  todayBg: homePalette.blueBg,
+  received: homePalette.yellowText,
   other: colors.border,
 } as const;
 
