@@ -10,7 +10,14 @@ import { Link } from 'react-router-dom';
 import { Button } from 'antd';
 import type { Dashboard, ProgressBandKey, ProgressCompany } from '../../api/dashboardTypes';
 import { contactMethodLabels, dashboardTexts as t } from '../../labels/ko';
-import { colors, radius, spacing, statusPalette, tone, typography } from '../../theme/tokens';
+import {
+  colors,
+  homePalette,
+  radius,
+  spacing,
+  statusPalette,
+  typography,
+} from '../../theme/tokens';
 import { daysBetween } from './ProgressCompanyList';
 import { stageName } from './StageChips';
 
@@ -18,12 +25,13 @@ export const TABLE_SHOWN = 8;
 /** 단계를 고르지 않았을 때 보이는 칸. */
 export const DEFAULT_BANDS: ProgressBandKey[] = ['IN_CONTACT', 'QUOTE_SAMPLE', 'WON'];
 
-const STAGE_TONES: Record<ProgressBandKey, keyof typeof statusPalette> = {
-  NOT_CONTACTED: 'neutral',
-  IN_CONTACT: 'ask',
-  QUOTE_SAMPLE: 'recheck',
-  WON: 'ok',
-  ON_HOLD: 'neutral',
+/** #929(시안 v3): 단계 표시 색. 접촉 파랑 · 견적·샘플 주황 · 성사 초록 · 미접촉·보류 회색. */
+const STAGE_COLORS: Record<ProgressBandKey, { bg: string; fg: string }> = {
+  NOT_CONTACTED: statusPalette.neutral,
+  IN_CONTACT: { bg: homePalette.blueBg, fg: homePalette.blueText },
+  QUOTE_SAMPLE: { bg: homePalette.orangeBg, fg: homePalette.orangeText },
+  WON: { bg: homePalette.greenBg, fg: homePalette.greenText },
+  ON_HOLD: statusPalette.neutral,
 };
 
 type Filter = 'all' | 'mine' | 'stalled';
@@ -67,7 +75,7 @@ export function lastContactText(row: ProgressCompany, today: string): string {
 }
 
 function NextCell({ row, today }: { row: ProgressCompany; today: string }): ReactNode {
-  const warn = { color: statusPalette.recheck.fg, fontWeight: 600 } as const;
+  const warn = { color: homePalette.orangeText, fontWeight: 600 } as const;
   if (row.nextScheduleAt && row.nextScheduleAt < today) {
     return <span style={warn}>{t.tableOverdue(monthDay(row.nextScheduleAt))}</span>;
   }
@@ -167,6 +175,7 @@ export default function ProgressTable({
             key={key}
             size="small"
             type={filter === key ? 'primary' : 'default'}
+            style={filter === key ? { background: homePalette.blueStrong } : undefined}
             aria-pressed={filter === key}
             onClick={() => setFilter(key)}
             data-testid={`dashboard-progress-filter-${key}`}
@@ -207,13 +216,13 @@ export default function ProgressTable({
             </thead>
             <tbody>
               {shown.map((row) => {
-                const palette = statusPalette[STAGE_TONES[row.band]];
+                const palette = STAGE_COLORS[row.band];
                 return (
                   <tr
                     key={`${row.band}-${row.oppId}`}
                     data-testid="dashboard-progress-row"
                     data-stalled={row.stalled ? 'true' : undefined}
-                    style={{ background: row.stalled ? tone.lemonSoft : undefined }}
+                    style={{ background: row.stalled ? homePalette.yellowBg : undefined }}
                   >
                     <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       <Link to={`/opportunities/${encodeURIComponent(row.oppId)}`}>
