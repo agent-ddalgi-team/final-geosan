@@ -2591,6 +2591,12 @@ export const coachTexts = {
   feedbackNone: '이번에는 짚을 것이 없습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
+  /** (#915) 비슷한 성사 회사의 기록을 근거로 한 제안. 보여 주기만 하고 저장하지 않는다. */
+  similarTitle: '비슷한 성사 사례에서',
+  similarNone: '이번에는 사례에서 따로 제안할 것이 없습니다.',
+  /** "함께 본 성사 회사: B금속(아연도금), C산업(자동차 부품)" */
+  similarBasis: (items: string[]) => `함께 본 성사 회사: ${items.join(', ')}`,
+  similarOpen: (name: string) => `${name} 상세 새 창으로 열기`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */
@@ -2753,6 +2759,26 @@ export const analysisFeedbackTexts = {
   generated: (day: string, cost: string | null) =>
     cost ? `받은 날 ${day} · 비용 ${cost}` : `받은 날 ${day}`,
   failed: '분석을 받지 못했습니다.',
+} as const;
+
+/** #918 영업 분석 탭과 "지난 분석"(받을 때마다 저장된 AI 분석을 다시 보기, AI 호출 없음). */
+export const pastAnalysisTexts = {
+  tabNow: '분석',
+  tabPast: '지난 분석',
+  tabsLabel: '영업 분석 보기',
+  intro:
+    '[AI 분석 받기]로 받은 분석은 받을 때마다 저장됩니다. 줄을 누르면 그때 받은 내용이 그대로 열립니다. AI를 다시 부르지 않습니다.',
+  empty: '아직 받은 분석이 없습니다. [분석] 탭에서 [AI 분석 받기 💰]를 누르면 여기에 쌓입니다.',
+  loadError: '지난 분석을 불러오지 못했습니다.',
+  openError: '이 분석을 열지 못했습니다.',
+  allPeriod: '전체 기간',
+  /** "11/01 ~ 11/20" */
+  period: (from: string | null, to: string | null) => `${from ?? '처음'} ~ ${to ?? '오늘'}`,
+  /** "11/25 14:02 받음 · 기간 11/01 ~ 11/20 · 영업 담당 · 다음 할 일 3개" */
+  line: (when: string, period: string, by: string, nextCount: number) =>
+    `${when} 받음 · 기간 ${period} · ${by} · 다음 할 일 ${nextCount}개`,
+  noHeadline: '(다음 할 일 없음)',
+  loading: '여는 중…',
 } as const;
 
 /**

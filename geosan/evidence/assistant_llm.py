@@ -67,10 +67,18 @@ class CoachSchedule(FileModel):
     date: str | None
 
 
+class CoachSimilarAdvice(FileModel):
+    """#915 비슷한 성사 사례를 근거로 한 제안 한 줄. caseRef("사례 S1")는 창구가 검증한다."""
+
+    case_ref: str
+    text: str
+
+
 class CoachReading(FileModel):
     """영업 코치(#742)의 구조화된 응답: 답 채우기·다음 일정·피드백 1~3줄·요약 한 줄.
 
     #750: 같은 호출에서 다음 통화에 물어볼 것 0~3줄(next_call)도 받는다.
+    #915: 비슷한 성사 사례를 근거로 한 제안 0~2줄(similar_advice)도 받는다. 사례가 없으면 빈 목록.
     """
 
     answers: list[CoachAnswer]
@@ -78,6 +86,7 @@ class CoachReading(FileModel):
     feedback: list[str]
     next_call: list[str]
     summary: str
+    similar_advice: list[CoachSimilarAdvice]
 
 
 class AskSuggestion(FileModel):
@@ -207,12 +216,14 @@ def coach_sales_memo(
     instructions: str,
     max_output_tokens: int,
     requested_by: str,
+    also_opp_ids: Sequence[str] = (),
 ) -> CoachReading:
     """지우기를 거친 메모·이전 기록 사본을 한 번 보내 정해진 모양으로 받는다(#742 영업 코치).
 
     문(스위치·지우기 재검사·전송 기록·월 한도)은 다른 영업 기록 글과 같고, 전송 기록 종류만
     SALES_COACH다(하루 한도를 따로 센다). 모양이 맞지 않으면 실패로 알린다(빈 결과로 넘기지
-    않는다). 값 검증과 글 지우기는 호출자(창구)가 한다.
+    않는다). 값 검증과 글 지우기는 호출자(창구)가 한다. #915: 비슷한 성사 사례로 함께 보낸
+    회사들(also_opp_ids)에도 보낸 표시 행을 단다(영업 분석 #802와 같음).
     """
     answer = _request(
         opp_id,
@@ -230,7 +241,7 @@ def coach_sales_memo(
             },
         },
         requested_by,
-        (),
+        [opp for opp in also_opp_ids if opp != opp_id],
         record_kind=SALES_COACH_KIND,
     )
     try:
