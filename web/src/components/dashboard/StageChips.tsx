@@ -54,9 +54,10 @@ export default function StageChips({
                 data-testid={`dashboard-stage-chip-${band}`}
                 style={{
                   cursor: 'pointer',
-                  border: `2px solid ${on ? detailTheme.accentLine : 'transparent'}`,
-                  borderRadius: detailTheme.radius,
-                  background: 'none',
+                  border: `1px solid ${colors.border}`,
+                  boxShadow: on ? `inset 0 0 0 1px ${colors.text}` : 'none',
+                  borderRadius: 10,
+                  background: colors.bgContainer,
                   padding: '2px 6px',
                   fontSize: typography.fontSizeSecondary - 1,
                   color: colors.textSecondary,
@@ -91,11 +92,12 @@ export default function StageChips({
                 gap: 0,
                 minWidth: 64,
                 padding: '3px 10px',
-                border: `2px solid ${on ? detailTheme.accentLine : 'transparent'}`,
+                // #925: 흐린 바탕에서도 칸이 분명하게 — 모든 칸에 회색 테두리, 회사가 있는 칸은 진한 연두.
+                // 고른 칸은 테두리 안쪽에 한 줄을 더해 두껍게(칸 크기는 그대로).
+                border: `1px solid ${on ? colors.text : colors.border}`,
+                boxShadow: on ? `inset 0 0 0 1px ${colors.text}` : 'none',
                 borderRadius: 10,
-                // 회사가 없는 칸은 흰 바탕 + 얇은 테두리(회색 바탕 위에서도 칸이 보이게).
-                background: value > 0 ? detailTheme.accent : colors.bgContainer,
-                boxShadow: value > 0 || on ? 'none' : `inset 0 0 0 1px ${colors.borderSecondary}`,
+                background: value > 0 ? detailTheme.accentLine : colors.bgContainer,
                 color: colors.text,
                 lineHeight: 1.25,
               }}

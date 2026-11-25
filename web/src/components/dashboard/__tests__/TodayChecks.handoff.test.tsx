@@ -10,6 +10,7 @@ import { ApiError, confirmHandoff } from '../../../api/client';
 import type { TodayCheckRow } from '../../../api/dashboardTypes';
 import { FrameContext } from '../../frame/FrameContext';
 import { dashboardTexts } from '../../../labels/ko';
+import { detailTheme, groupMarkPalette } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
@@ -176,4 +177,34 @@ it('#921 전달 사항이 없으면 전달 사항 칸에 빈 안내 한 줄이 �
   expect(screen.getByTestId('dashboard-handoff-empty')).toHaveTextContent(
     dashboardTexts.handoffEmpty,
   );
+});
+
+it('#925 받은 것 묶음만 연한 노랑 상자로 강조되고, 묶음 제목 앞에는 이모지 대신 색 막대가 있다', () => {
+  renderPart('handoff', [forMe, fromMe]);
+  const [received, sent] = screen.getAllByTestId('dashboard-today-row');
+  expect(received).toHaveAttribute('data-highlight', 'true');
+  expect(received).toHaveStyle({ background: detailTheme.accent });
+  expect(sent).not.toHaveAttribute('data-highlight');
+  expect(screen.getByTestId('dashboard-today-mark-HANDOFF_FOR_ME')).toHaveStyle({
+    background: groupMarkPalette.received,
+  });
+  expect(within(received).getByRole('heading', { level: 3 }).textContent).toBe('받은 것 1곳');
+});
+
+it('#925 오늘 할 일 칸의 색 막대: 지난 일정 빨강, 오늘 일정 초록', () => {
+  renderPart('work', [
+    overdue,
+    {
+      kind: 'SCHEDULE_TODAY',
+      count: 1,
+      listFilter: null,
+      items: [{ oppId: 'opp-t', customerName: '가상오늘', dueAt: '2026-11-25', note: '방문' }],
+    },
+  ]);
+  expect(screen.getByTestId('dashboard-today-mark-SCHEDULE_OVERDUE')).toHaveStyle({
+    background: groupMarkPalette.overdue,
+  });
+  expect(screen.getByTestId('dashboard-today-mark-SCHEDULE_TODAY')).toHaveStyle({
+    background: groupMarkPalette.today,
+  });
 });
