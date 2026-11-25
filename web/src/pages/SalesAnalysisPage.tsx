@@ -6,6 +6,7 @@
 // 주소(?from=&to=)에 남아 새로 고쳐도 그대로다.
 // #801(PM 지시 2026-11-16): 겹치는 숫자 칸 대신 네 그림(깔때기·거절 이유·공정 × 산업·회사별 타임라인)을 맨 위에 두고,
 // 표와 관심 기업 분포는 [표로 보기]에 접어 둔다(기본 닫힘). 지금 상태 숫자(진행 중·보류)는 대시보드 몫이다.
+// #918(팀 의견 11/25): 맨 위 탭 [분석] | [지난 분석]. 지난 분석은 받을 때마다 저장된 AI 분석을 다시 본다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
@@ -16,6 +17,7 @@ import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
 import AnalysisFeedbackCard from '../components/analysis/AnalysisFeedbackCard';
 import MonthlyTrend from '../components/analysis/MonthlyTrend';
+import PastAnalyses from '../components/analysis/PastAnalyses';
 import SalesPatterns from '../components/analysis/SalesPatterns';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
@@ -25,7 +27,7 @@ import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
 import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { analysisCharts, salesAnalysisTexts as texts } from '../labels/ko';
+import { analysisCharts, pastAnalysisTexts, salesAnalysisTexts as texts } from '../labels/ko';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
@@ -72,6 +74,13 @@ export default function SalesAnalysisPage() {
     [rawFrom, rawTo],
   );
   const periodKey = `${period.from ?? ''}~${period.to ?? ''}`;
+  const tab = params.get('tab') === 'past' ? 'past' : 'now';
+  const changeTab = (key: string) => {
+    const nextParams = new URLSearchParams(params);
+    if (key === 'past') nextParams.set('tab', 'past');
+    else nextParams.delete('tab');
+    setParams(nextParams, { replace: true });
+  };
   const changePeriod = (next: AnalysisPeriod) => {
     const nextParams = new URLSearchParams(params);
     for (const key of ['from', 'to'] as const) {
@@ -154,7 +163,7 @@ export default function SalesAnalysisPage() {
     if (row.processCode) processNames[row.processCode] = row.processName;
   }
 
-  return (
+  const nowView = (
     <div style={{ display: 'grid', gap: spacing.cardGap }}>
       <div
         style={{
@@ -285,6 +294,54 @@ export default function SalesAnalysisPage() {
       </FiveStates>
       {/* 분석표가 아직 없거나 못 읽었어도 관심 기업 분포는 따로 보인다. */}
       {state === 'ready' ? null : breakdownSection}
+    </div>
+  );
+
+  // #918: [분석] | [지난 분석] 탭. 고른 탭은 주소(?tab=past)에 남아 새로 고쳐도 그대로다.
+  // 탭 두 개뿐이라 무거운 탭 부품 대신 단추 두 개로 그린다(시험 환경에서 탭 부품이 그리기를 몇 배 느리게 함).
+  const tabs = [
+    { key: 'now', label: pastAnalysisTexts.tabNow },
+    { key: 'past', label: pastAnalysisTexts.tabPast },
+  ] as const;
+  return (
+    <div style={{ display: 'grid', gap: spacing.cardGap }}>
+      <div
+        role="tablist"
+        aria-label={pastAnalysisTexts.tabsLabel}
+        data-testid="analysis-tabs"
+        style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${colors.borderSecondary}` }}
+      >
+        {tabs.map((item) => {
+          const selected = tab === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              id={`analysis-tab-${item.key}`}
+              aria-selected={selected}
+              aria-controls="analysis-tab-panel"
+              onClick={() => changeTab(item.key)}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderBottom: `2px solid ${selected ? colors.text : 'transparent'}`,
+                background: 'transparent',
+                color: selected ? colors.text : colors.textSecondary,
+                fontWeight: selected ? 600 : 400,
+                fontSize: typography.fontSize,
+                cursor: 'pointer',
+                marginBottom: -1,
+              }}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+      <div role="tabpanel" id="analysis-tab-panel" aria-labelledby={`analysis-tab-${tab}`}>
+        {tab === 'past' ? <PastAnalyses /> : nowView}
+      </div>
     </div>
   );
 }

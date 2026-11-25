@@ -2694,6 +2694,21 @@
         "title": "DiscoverySource",
         "type": "string"
       },
+      "Envelope_AnalysisFeedbackView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnalysisFeedbackView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[AnalysisFeedbackView]",
+        "type": "object"
+      },
       "Envelope_AskAnswer_": {
         "properties": {
           "data": {
@@ -2812,6 +2827,21 @@
           "data"
         ],
         "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
+      "Envelope_FeedbackHistory_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeedbackHistory"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[FeedbackHistory]",
         "type": "object"
       },
       "Envelope_FeedbackResult_": {
@@ -3482,6 +3512,95 @@
           "next"
         ],
         "title": "FeedbackFailure",
+        "type": "object"
+      },
+      "FeedbackHistory": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FeedbackHistory",
+        "type": "object"
+      },
+      "FeedbackHistoryItem": {
+        "description": "#918 지난 분석 한 줄. 무엇을 받았는지 고를 만큼만(전체는 한 건 읽기로).",
+        "properties": {
+          "costUsd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costusd"
+          },
+          "feedbackId": {
+            "title": "Feedbackid",
+            "type": "string"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "generatedBy": {
+            "title": "Generatedby",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "nextCount": {
+            "title": "Nextcount",
+            "type": "integer"
+          },
+          "periodFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodfrom"
+          },
+          "periodTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodto"
+          }
+        },
+        "required": [
+          "feedbackId",
+          "periodFrom",
+          "periodTo",
+          "generatedAt",
+          "generatedBy",
+          "headline",
+          "nextCount",
+          "costUsd"
+        ],
+        "title": "FeedbackHistoryItem",
         "type": "object"
       },
       "FeedbackRequest": {
@@ -12637,6 +12756,65 @@
           }
         },
         "summary": "Request Sales Feedback"
+      }
+    },
+    "/api/v1/sales-analysis/feedback/history": {
+      "get": {
+        "description": "#918 지난 분석 목록: 지금 묶음에서 받은 AI 분석 저장본 전부, 최근 것부터.\n\n[AI 분석 받기]가 받을 때마다 새 행으로 저장해 둔 것을 읽기만 한다. AI·외부 호출·저장 없음.",
+        "operationId": "sales_feedback_history_api_v1_sales_analysis_feedback_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FeedbackHistory_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sales Feedback History"
+      }
+    },
+    "/api/v1/sales-analysis/feedback/history/{feedbackId}": {
+      "get": {
+        "description": "#918 지난 분석 한 건: 받았던 모양 그대로(일정 제안은 지금 보일 때처럼 지난 날짜를 뺀다).",
+        "operationId": "sales_feedback_one_api_v1_sales_analysis_feedback_history__feedbackId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedbackId",
+            "required": true,
+            "schema": {
+              "title": "Feedbackid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AnalysisFeedbackView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sales Feedback One"
       }
     },
     "/api/v1/sales-analysis/patterns": {
