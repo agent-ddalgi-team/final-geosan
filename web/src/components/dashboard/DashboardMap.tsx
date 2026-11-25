@@ -11,7 +11,11 @@ import type {
   DashboardMapPoint,
 } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
-import NaverMapCanvas, { loadNaverMaps, onNaverMapsFailure } from './NaverMapCanvas';
+import NaverMapCanvas, {
+  DASHBOARD_MAP_HEIGHT,
+  loadNaverMaps,
+  onNaverMapsFailure,
+} from './NaverMapCanvas';
 import VisitGroups from './VisitGroups';
 import VisitMapCards, { MapClusterCards } from './VisitMapCards';
 import type { NaverMapsApi } from './NaverMapCanvas';
@@ -235,7 +239,9 @@ export default function DashboardMap({
             aria-label={t.title}
             style={{
               width: '100%',
-              maxWidth: 480,
+              maxWidth: compact ? undefined : 480,
+              // #929: 영업 홈 지도는 높이를 고정(원 그림은 가운데 정렬로 비율 유지).
+              height: compact ? DASHBOARD_MAP_HEIGHT : undefined,
               justifySelf: 'center',
               background: statusPalette.neutral.bg,
               borderRadius: radius.lg,
@@ -431,7 +437,16 @@ export default function DashboardMap({
         />
       ) : null}
       {compact && visitGroups && visitRadius !== undefined ? (
-        <div style={{ flex: '1 1 235px', minWidth: 0 }} hidden={cluster !== null}>
+        <div
+          style={{
+            flex: '1 1 235px',
+            minWidth: 0,
+            // #929: 같이 들를 곳은 지도 높이 안에서 보이고, 넘치면 칸 안에서 내려 본다.
+            maxHeight: DASHBOARD_MAP_HEIGHT,
+            overflowY: 'auto',
+          }}
+          hidden={cluster !== null}
+        >
           <VisitMapCards
             options={visitOptions}
             current={visitSelection}

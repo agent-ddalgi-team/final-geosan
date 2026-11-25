@@ -3,10 +3,11 @@
 // 숫자는 서버 집계(counts)를 그대로 쓰고, 서버가 주지 않은 칸은 0으로 지어내지 않고 뺀다.
 // 칩을 누르면 아래 "진행 중인 회사" 표가 그 단계로 걸러진다(다시 누르면 풀림). 예전 큰 띠(#766)를 대신한다.
 // #923(PM 요청 2026-11-25): 알약 대신 예전 "영업 진행" 칸 모양(이름 위·숫자 아래·칸 사이 →)을 작게.
+// #929: 색은 시안 v3 B안(파랑 한 계열).
 //   회사가 있는 칸은 연두, 없는 칸은 흰 바탕에 얇은 테두리. 보류는 띠 끝에 작은 글 단추 "보류 1곳".
 import type { DashboardCounts, ProgressBandKey } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
-import { colors, detailTheme, typography } from '../../theme/tokens';
+import { colors, homePalette, typography } from '../../theme/tokens';
 
 export const CHIP_ORDER = ['NOT_CONTACTED', 'IN_CONTACT', 'QUOTE_SAMPLE', 'WON'] as const;
 
@@ -54,8 +55,8 @@ export default function StageChips({
                 data-testid={`dashboard-stage-chip-${band}`}
                 style={{
                   cursor: 'pointer',
-                  border: `1px solid ${colors.border}`,
-                  boxShadow: on ? `inset 0 0 0 1px ${colors.text}` : 'none',
+                  border: `1px solid ${on ? homePalette.blueStrong : homePalette.line}`,
+                  boxShadow: on ? `inset 0 0 0 1px ${homePalette.blueStrong}` : 'none',
                   borderRadius: 10,
                   background: colors.bgContainer,
                   padding: '2px 6px',
@@ -74,7 +75,7 @@ export default function StageChips({
               <span
                 aria-hidden="true"
                 data-testid="dashboard-stage-arrow"
-                style={{ color: colors.textSecondary, fontSize: 12 }}
+                style={{ color: homePalette.muted, fontSize: 12 }}
               >
                 →
               </span>
@@ -92,17 +93,33 @@ export default function StageChips({
                 gap: 0,
                 minWidth: 64,
                 padding: '3px 10px',
-                // #925: 흐린 바탕에서도 칸이 분명하게 — 모든 칸에 회색 테두리, 회사가 있는 칸은 진한 연두.
-                // 고른 칸은 테두리 안쪽에 한 줄을 더해 두껍게(칸 크기는 그대로).
-                border: `1px solid ${on ? colors.text : colors.border}`,
-                boxShadow: on ? `inset 0 0 0 1px ${colors.text}` : 'none',
+                // #929(시안 v3 B안): 회사가 있는 칸은 연파랑, 성사는 진한 파랑(흰 글자), 0곳은 흰 칸·회색 글자.
+                // 고른 칸은 진한 파랑 테두리를 안쪽에 한 줄 더(칸 크기는 그대로).
+                border: `1px solid ${
+                  on
+                    ? homePalette.blueStrong
+                    : value > 0
+                      ? homePalette.blueBorder
+                      : homePalette.line
+                }`,
+                boxShadow: on ? `inset 0 0 0 1px ${homePalette.blueStrong}` : 'none',
                 borderRadius: 10,
-                background: value > 0 ? detailTheme.accentLine : colors.bgContainer,
-                color: colors.text,
+                background:
+                  value === 0
+                    ? colors.bgContainer
+                    : band === 'WON'
+                      ? homePalette.blueStrong
+                      : homePalette.blueBg,
+                color:
+                  value === 0
+                    ? homePalette.muted
+                    : band === 'WON'
+                      ? colors.bgContainer
+                      : homePalette.blueText,
                 lineHeight: 1.25,
               }}
             >
-              <span style={{ fontSize: 11, color: colors.textSecondary }}>{stageName(band)}</span>
+              <span style={{ fontSize: 11 }}>{stageName(band)}</span>
               <span>
                 <b style={{ fontSize: 16 }}>{value}</b>
                 <span style={{ fontSize: 11, marginLeft: 1 }}>곳</span>
