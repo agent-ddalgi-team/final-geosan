@@ -37,6 +37,59 @@ function renderGate() {
   );
 }
 
+// ---------- #912 접속 화면 디자인 ----------
+
+// 인사말은 두 줄(<br>)이라 한 줄로 이어 붙은 글자에서 찾는다.
+const greeting = /안녕하세요\.\s*거산케미칼 에이전트입니다\./;
+
+it('Given 계정 방식 401 When 접속 화면 Then 두 칸에 안내 글이 있고 둘 다 넣어야 접속할 수 있다', async () => {
+  config.mockRejectedValueOnce(
+    new ApiError(401, {
+      message: '접속 확인이 필요합니다.',
+      nextAction: '아이디와 비밀번호를 입력해 주세요.',
+      ref: 'test',
+      kind: 'STAFF_LOGIN_REQUIRED',
+    }),
+  );
+  renderGate();
+  const id = await screen.findByPlaceholderText('아이디를 입력하세요');
+  const password = screen.getByPlaceholderText('비밀번호를 입력하세요');
+  const submit = screen.getByRole('button', { name: '접속' });
+  expect(screen.getByText('영업지원 업무를 도와드립니다.')).toBeInTheDocument();
+  expect(submit).toBeDisabled();
+  fireEvent.change(id, { target: { value: 'sales-1' } });
+  expect(submit).toBeDisabled();
+  fireEvent.change(password, { target: { value: 'test-only-pass' } });
+  expect(submit).toBeEnabled();
+});
+
+it('Given 401 When 접속 화면 Then 회사 로고와 인사말을 입력 칸과 함께 보인다', async () => {
+  config.mockRejectedValueOnce(denied());
+  renderGate();
+  expect(await screen.findByLabelText('비밀번호')).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: '(주)거산케미칼' }).getAttribute('src')).toMatch(
+    /geosan-logo-full/,
+  );
+  expect(screen.getByText(greeting)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('거산 영업지원 접속');
+});
+
+it('Given 접속 허용 When 업무 화면을 연다 Then 접속 화면의 로고와 인사말은 사라진다', async () => {
+  config.mockResolvedValueOnce(allowed);
+  renderGate();
+  expect(await screen.findByText('보호된 업무 화면')).toBeInTheDocument();
+  expect(screen.queryByRole('img', { name: '(주)거산케미칼' })).not.toBeInTheDocument();
+  expect(screen.queryByText(greeting)).not.toBeInTheDocument();
+});
+
+it('Given 서버 오류 When 접속 확인 실패 Then 같은 틀 안에서 오류와 다시 시도를 보인다', async () => {
+  config.mockRejectedValueOnce(new Error('offline'));
+  renderGate();
+  expect(await screen.findByRole('alert')).toHaveTextContent('연결하지 못했습니다');
+  expect(screen.getByText(greeting)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+});
+
 it('Given 세션 확인 중 When 첫 접속 Then 업무 화면을 먼저 그리지 않는다', async () => {
   let resolve!: (value: Envelope<ConfigUi>) => void;
   config.mockReturnValueOnce(

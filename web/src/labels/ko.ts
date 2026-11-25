@@ -2818,3 +2818,14 @@ export const chartSummaryTexts = {
     `영업 대상 ${total}곳 가운데 ${moved}곳이 접촉 이상 진행했고, 견적·샘플 ${quote}곳 · 성사 ${won}곳입니다.`,
   progressNotContacted: (count: number) => `아직 연락하지 않은 곳이 ${count}곳 있습니다.`,
 } as const;
+
+/** #912: 접속 화면(로그인) 틀의 문구. */
+export const loginTexts = {
+  title: '거산 영업지원 접속',
+  logoAlt: '(주)거산케미칼',
+  greetingHello: '안녕하세요.',
+  greetingAgent: '거산케미칼 에이전트입니다.',
+  greetingSub: '영업지원 업무를 도와드립니다.',
+  staffKeyPlaceholder: '아이디를 입력하세요',
+  passwordPlaceholder: '비밀번호를 입력하세요',
+} as const;

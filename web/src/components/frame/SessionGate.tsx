@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { Alert, Button, ConfigProvider, Input, Typography } from 'antd';
+import { Alert, Button, ConfigProvider, Input } from 'antd';
 import { ApiError, getConfigUi, SESSION_REQUIRED_EVENT } from '../../api/client';
 import { createSession, saveProfile, STAFF_LOGIN_KIND } from '../../api/session';
-import { antdTheme, colors, spacing } from '../../theme/tokens';
+import { loginTexts } from '../../labels/ko';
+import { loginAntdTheme } from '../../theme/tokens';
+import LoginLayout from './LoginLayout';
 
 type GateState = 'checking' | 'login' | 'setup' | 'ready' | 'error';
+
+/** 입력 칸 앞의 꾸밈 그림(#912). 뜻은 칸의 이름표가 전한다. */
+const userIcon = (
+  <svg className="login-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 20c1.5-4 4.5-5.5 8-5.5s6.5 1.5 8 5.5" />
+  </svg>
+);
+const lockIcon = (
+  <svg className="login-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </svg>
+);
 
 /**
  * 서버가 확인한 세션만 통과시킨다. 실제 접근 차단과 실패 횟수 제한은 서버 책임이다.
@@ -98,16 +114,8 @@ export default function SessionGate({ children }: { children: ReactNode }) {
 
   if (state === 'ready') return children;
   return (
-    <ConfigProvider theme={antdTheme}>
-      <main
-        style={{
-          maxWidth: 440,
-          margin: '80px auto',
-          padding: spacing.cardPadding,
-          background: colors.bgContainer,
-        }}
-      >
-        <Typography.Title level={1}>거산 영업지원 접속</Typography.Title>
+    <ConfigProvider theme={loginAntdTheme}>
+      <LoginLayout>
         {state === 'checking' && <p role="status">접속 권한을 확인하고 있습니다.</p>}
         {state === 'error' && (
           <>
@@ -138,6 +146,9 @@ export default function SessionGate({ children }: { children: ReactNode }) {
                 <label htmlFor="access-staff-key">아이디</label>
                 <Input
                   id="access-staff-key"
+                  size="large"
+                  prefix={userIcon}
+                  placeholder={loginTexts.staffKeyPlaceholder}
                   autoComplete="username"
                   value={staffKey}
                   onChange={(event) => setStaffKey(event.target.value)}
@@ -150,6 +161,9 @@ export default function SessionGate({ children }: { children: ReactNode }) {
             <label htmlFor="access-password">비밀번호</label>
             <Input.Password
               id="access-password"
+              size="large"
+              prefix={lockIcon}
+              placeholder={loginTexts.passwordPlaceholder}
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -162,6 +176,8 @@ export default function SessionGate({ children }: { children: ReactNode }) {
             <Button
               type="primary"
               htmlType="submit"
+              size="large"
+              block
               loading={busy}
               disabled={seconds > 0 || !password || (accounts && !staffKey.trim())}
             >
@@ -177,7 +193,7 @@ export default function SessionGate({ children }: { children: ReactNode }) {
             }}
           />
         )}
-      </main>
+      </LoginLayout>
     </ConfigProvider>
   );
 }
@@ -224,6 +240,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-name">화면에 보일 이름</label>
       <Input
         id="profile-name"
+        size="large"
         placeholder="예: 영업 김"
         maxLength={20}
         value={displayName}
@@ -235,6 +252,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-current">받은 임시 비밀번호</label>
       <Input.Password
         id="profile-current"
+        size="large"
         autoComplete="current-password"
         value={current}
         onChange={(event) => setCurrent(event.target.value)}
@@ -244,6 +262,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-new">새 비밀번호 (8자 이상)</label>
       <Input.Password
         id="profile-new"
+        size="large"
         autoComplete="new-password"
         value={next}
         onChange={(event) => setNext(event.target.value)}
@@ -253,6 +272,7 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <label htmlFor="profile-again">새 비밀번호 한 번 더</label>
       <Input.Password
         id="profile-again"
+        size="large"
         autoComplete="new-password"
         value={again}
         onChange={(event) => setAgain(event.target.value)}
@@ -264,6 +284,8 @@ function ProfileSetup({ onDone }: { onDone: () => void }) {
       <Button
         type="primary"
         htmlType="submit"
+        size="large"
+        block
         loading={busy}
         disabled={!displayName.trim() || !current || next.length < 8 || next !== again}
       >

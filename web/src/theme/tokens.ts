@@ -192,6 +192,55 @@ export const antdTheme: ThemeConfig = {
 };
 
 /**
+ * 접속 화면(#912, 화면 담당 시안): 초록 강조, 모서리 12px 입력 칸, 건물 사진 위 흰 글자.
+ * 이 색은 접속 화면에만 쓴다. 비활성 단추는 일부러 흐리게 둔다.
+ */
+export const loginTheme = {
+  accent: '#2F9E5B',
+  accentHover: '#23804A',
+  focusRing: 'rgba(47, 158, 91, 0.25)',
+  inputBorder: '#D5D9DE',
+  disabledBg: '#ECEEF1',
+  disabledFg: '#A9AFB8',
+  photoText: '#FFFFFF',
+  photoBar: '#8FE0A8',
+  /** 밝은 하늘 위에서도 흰 글자가 읽히게 사진 위쪽에 얹는 옅은 그늘. */
+  photoShade: 'rgba(12, 28, 48, 0.62)',
+  controlHeight: 46,
+  inputRadius: 12,
+  formMaxWidth: 340,
+  titleSize: 30,
+  subtitleSize: 15,
+} as const;
+
+/** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 모양을 덮는다. */
+export const loginAntdTheme: ThemeConfig = {
+  ...antdTheme,
+  components: {
+    ...antdTheme.components,
+    Input: {
+      controlHeightLG: loginTheme.controlHeight,
+      borderRadiusLG: loginTheme.inputRadius,
+      lineWidth: 1.5,
+      colorBorder: loginTheme.inputBorder,
+      hoverBorderColor: loginTheme.accent,
+      activeBorderColor: loginTheme.accent,
+      activeShadow: `0 0 0 3px ${loginTheme.focusRing}`,
+    },
+    Button: {
+      ...antdTheme.components?.Button,
+      controlHeightLG: loginTheme.controlHeight,
+      colorPrimary: loginTheme.accent,
+      colorPrimaryHover: loginTheme.accentHover,
+      colorPrimaryActive: loginTheme.accentHover,
+      colorBgContainerDisabled: loginTheme.disabledBg,
+      colorTextDisabled: loginTheme.disabledFg,
+      borderColorDisabled: loginTheme.disabledBg,
+    },
+  },
+};
+
+/**
  * 영업 분석 그래프 색(#760 → #898 참고 그림). 청회색 · 연보라 · 연노랑 · 먹색 순서. 참고 그림보다 한 단계
  * 진하게 해 흰 바탕에서 막대가 보이게 했다. 색은 보조 신호이고 범례·값 글자가 함께 있다.
  * 막대는 둥근 알약 모양, 빈 부분은 옅은 칸(track)으로 보인다.

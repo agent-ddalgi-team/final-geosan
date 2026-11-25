@@ -1,0 +1,126 @@
+/* 접속 화면 배치(#912). 색·글꼴 값은 여기 적지 않고 LoginLayout.tsx가 tokens.ts에서 CSS 변수로 넣는다. */
+.login-page {
+  display: grid;
+  grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+  min-height: 100vh;
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 32px;
+}
+
+.login-logo {
+  width: 260px;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+}
+
+.login-body {
+  width: var(--login-form-width);
+  max-width: 100%;
+  margin: auto;
+  padding: 32px 0;
+}
+
+.login-body form {
+  display: grid;
+  gap: 8px;
+}
+
+.login-body form > p {
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.login-body label {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.login-body button[type='submit'] {
+  margin-top: 16px;
+}
+
+.login-body > p {
+  text-align: center;
+}
+
+.login-body > button {
+  display: flex;
+  margin: 16px auto 0;
+}
+
+.login-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+/* 입력 칸은 높이 46px · 모서리 12px. 전역의 알약 모양 입력 규칙보다 앞서게 적는다. */
+.login-body .ant-input-affix-wrapper,
+.login-body input.ant-input-lg:not([type='password']):not(.ant-input-affix-wrapper input) {
+  min-height: var(--login-control-height);
+  border-radius: var(--login-input-radius);
+}
+
+/* 초점선은 안쪽 입력 대신 눈에 보이는 입력 칸 전체에 초록으로 두른다. */
+.login-body .ant-input-affix-wrapper:focus-within {
+  outline: 3px solid var(--login-focus-ring);
+  outline-offset: 0;
+}
+
+.login-body .ant-input-affix-wrapper input:focus-visible {
+  outline-color: transparent;
+}
+
+/* 오른쪽 사진 칸: 건물이 아래쪽에 오게 채우고, 모서리는 직각이다. */
+.login-photo {
+  box-sizing: border-box;
+  padding: 72px 32px 32px 52px;
+  color: var(--login-photo-text);
+  word-break: keep-all;
+  background-image: linear-gradient(var(--login-photo-shade), transparent 60%), var(--login-photo);
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+}
+
+.login-photo-bar {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 20px;
+  background: var(--login-photo-bar);
+}
+
+.login-greeting {
+  margin: 0 0 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.login-greeting-sub {
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .login-panel {
+    padding: 20px 16px;
+  }
+
+  .login-photo {
+    min-height: 420px;
+    padding: 48px 24px 24px;
+  }
+}
