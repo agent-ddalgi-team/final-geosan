@@ -784,6 +784,15 @@ export const excludedList = {
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
 export const candidateSearch = {
+  /** #932 "기존 고객과 닮은 조건" 줄(확장 기능, 켰을 때만 보임). */
+  customerLikeTitle: (total: number) => `기존 고객과 닮은 조건(기존 고객 ${total}곳 기준)`,
+  customerLikeItem: (label: string, count: number) => `${label} ${count}곳`,
+  customerLikeRegions: (names: string[]) => `주로 ${names.join('·')}`,
+  customerLikeApply: '적용',
+  customerLikeApplied:
+    '공정·산업 칸을 기존 고객과 닮은 조건으로 채웠습니다. 찾기는 [발굴 시작]을 눌러야 시작합니다.',
+  customerLikeHint: '기존 고객 수를 센 것이에요. 점수·순위는 바뀌지 않습니다.',
+  customerLikeVirtual: '가상·거산 실제 사양 아님',
   /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */

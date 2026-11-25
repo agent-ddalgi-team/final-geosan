@@ -228,3 +228,27 @@ class WaterSite(CommonColumns, Base):
     agency: Mapped[str | None] = mapped_column(String(200))
     treatment_types: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     loaded_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+
+
+class ExistingCustomer(CommonColumns, Base):
+    """기존 고객(거산의 지금 거래처) 참고 자료(#932, PM 결정 2026-11-26). 확장 기능, 기본 꺼짐.
+
+    검증된 파일을 `geosan customer-load`로 통째로 바꿔 넣는다. 영업 코치·MCP 도구가 비교에만 쓰고
+    점수·순위에는 쓰지 않는다. 연락처·담당자·단가·견적·거래 금액 열은 없다(CON-11·CON-23).
+    """
+
+    __tablename__ = "src_existing_customer"
+    __table_args__ = (Index("ix_src_existing_customer_name", "normalized_name"),)
+
+    existing_customer_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    file_date: Mapped[date] = mapped_column(Date, nullable=False)
+    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    process_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    materials: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    industries: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    region: Mapped[str | None] = mapped_column(String(80))
+    certifications: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    # 거래 시작 연-월("2019-03") 또는 연("2019"). 모르면 비움.
+    since: Mapped[str | None] = mapped_column(String(7))
+    loaded_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)

@@ -374,6 +374,18 @@ class AssistantSettings(FileModel):
     coach_tool_rounds: int = Field(ge=0, strict=True)
 
 
+class ExistingCustomersSettings(FileModel):
+    """계약 C7 `existingCustomers`(#932 기존 고객 참고 자료, PM 결정 2026-11-26).
+
+    기업이 요청할 때만 켜는 확장 기능이라 이 칸이 없는 옛 설정 파일·DB 사본은 꺼짐으로 읽는다.
+    켜도 `llm.salesRecordsEnabled`가 꺼져 있으면 도구가 동작하지 않는다(둘 다 켜져야 함).
+    """
+
+    enabled: bool = False
+    # 비슷한 기존 고객 도구가 돌려주는 고객 수 상한(겹치는 공정 → 산업 → 최근 거래 순).
+    similar_limit: int = Field(default=3, ge=1, strict=True)
+
+
 class ContactAdjustSettings(FileModel):
     """계약 C7 `contactList.adjust`(#610). 같은 공정·산업군의 성사·거절로 순서를 조정하는 기준."""
 
@@ -520,6 +532,8 @@ class AppSettings(FileModel):
     contact_list: ContactListSettings | None = None
     # #217: 이 칸이 없는 옛 설정 파일은 꺼짐으로 읽는다. DB 사본에 없으면 예시 파일 값으로 채운다.
     export: ExportSettings = Field(default_factory=ExportSettings)
+    # #932: 확장 기능(기본 꺼짐). 이 칸이 없는 옛 설정 파일·DB 사본은 꺼짐으로 읽는다.
+    existing_customers: ExistingCustomersSettings = Field(default_factory=ExistingCustomersSettings)
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)

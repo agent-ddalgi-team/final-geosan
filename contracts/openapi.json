@@ -1748,6 +1748,52 @@
         "title": "CurrentStaff",
         "type": "object"
       },
+      "CustomerSuggestions": {
+        "properties": {
+          "enabled": {
+            "description": "existingCustomers.enabled. false면 아래는 모두 비어 있다",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "industries": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedValue"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedProcess"
+            },
+            "title": "Processes",
+            "type": "array"
+          },
+          "regions": {
+            "description": "기존 고객 지역 글에 든 찾기 지역(설정 ingestion.regions) 값",
+            "items": {
+              "$ref": "#/components/schemas/SuggestedValue"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "total": {
+            "description": "넣어 둔 기존 고객 수",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "total",
+          "processes",
+          "industries",
+          "regions"
+        ],
+        "title": "CustomerSuggestions",
+        "type": "object"
+      },
       "DailyBrief": {
         "description": "오늘 정리(#743). reused=True면 오늘 이미 쓴 글을 다시 준 것이다(AI를 부르지 않음).",
         "properties": {
@@ -2809,6 +2855,21 @@
           "data"
         ],
         "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_CustomerSuggestions_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CustomerSuggestions"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CustomerSuggestions]",
         "type": "object"
       },
       "Envelope_DailyBrief_": {
@@ -9932,6 +9993,52 @@
         "title": "StepRow",
         "type": "object"
       },
+      "SuggestedProcess": {
+        "properties": {
+          "code": {
+            "description": "공정 코드(찾기 조건 processCodes 값)",
+            "title": "Code",
+            "type": "string"
+          },
+          "count": {
+            "description": "이 공정을 맡기는 기존 고객 수",
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "count"
+        ],
+        "title": "SuggestedProcess",
+        "type": "object"
+      },
+      "SuggestedValue": {
+        "properties": {
+          "count": {
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "description": "찾기 조건 값(industries·regions)",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "SuggestedValue",
+        "type": "object"
+      },
       "SupplyTier": {
         "description": "공급망 위치 AI 추정(C0, 2026-11-19 PM 결정 #860). 점수 전 회사 순서·꼬리표에만 쓴다.",
         "enum": [
@@ -10587,6 +10694,24 @@
           }
         },
         "summary": "Dashboard Map"
+      }
+    },
+    "/api/v1/existing-customers/suggestions": {
+      "get": {
+        "operationId": "customer_suggestions_api_v1_existing_customers_suggestions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CustomerSuggestions_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Customer Suggestions"
       }
     },
     "/api/v1/export/xlsx": {

@@ -3,6 +3,7 @@
 // 그 아래 확인 줄에 누르기 전 예상 금액과 이번 달 사용액을 보이고, 한도를 넘으면 단추를 잠근다(#549 ②).
 // 선택지는 서버 설정에서 넘겨받는다.
 // 누르면 서버가 회차를 만든 직후 바로 응답하고(POST /ingest), 진행은 목록 머리 수집 요약이 서버에서 다시 읽어 보인다.
+// #932 확장 기능을 켜면 맨 위에 "기존 고객과 닮은 조건 [적용]" 줄이 보인다(공정·산업 칸만 채움).
 // 보기 전용(viewer)이면 통째로 숨기고, 담당자를 고르기 전에는 잠근다. 이미 가져오는 중이면 잠근다.
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
@@ -16,6 +17,7 @@ import type {
 import { candidateSearch, errorTexts, listSimple, monthSpend } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
+import CustomerLikeLine from './CustomerLikeLine';
 
 /** 조건 칸의 선택지. 서버 설정(공정 목록·`ingestion.regions`·`industries`)에서 온 값이다. */
 export interface IngestOptions {
@@ -246,6 +248,14 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
       }}
       className="prospect-form"
     >
+      <CustomerLikeLine
+        processCodes={options.processes.map((p) => p.code)}
+        industries={options.industries}
+        onApply={(codes, names) => {
+          setProcesses(codes);
+          setIndustries(names);
+        }}
+      />
       <CheckGroup
         legend={candidateSearch.processLabel}
         hint={listSimple.ingestRequired}

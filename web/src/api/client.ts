@@ -38,6 +38,7 @@ import type {
   ReviewCheckRequest,
   ReviewCheckResponse,
   SalesQuestions,
+  CustomerSuggestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -368,6 +369,11 @@ export function getIngestPreview(body: IngestRequest, signal?: AbortSignal) {
   return request<IngestPreview>(`/ingest/preview?${query.toString()}`, { signal });
 }
 
+/** #932 기존 고객과 닮은 조건(읽기 전용, 0원). 꺼져 있으면 enabled false. */
+export function getCustomerSuggestions(signal?: AbortSignal) {
+  return request<CustomerSuggestions>('/existing-customers/suggestions', { signal });
+}
+
 /** 이번 달 AI 사용액(#549). 조건 없이 부른 `GET /ingest/preview`의 month만 쓴다(새 경로 없음, 0원). */
 export function getMonthSpend(signal?: AbortSignal) {
   return request<MonthSpend>('/ingest/preview', { signal });
@@ -633,6 +639,17 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: now, reevaluated: true },
     } as unknown as Envelope<T>;
+  }
+  if (route === '/existing-customers/suggestions') {
+    // 가짜 모드: 확장 기능은 꺼진 상태로 둔다(기본값과 같다).
+    const data: CustomerSuggestions = {
+      enabled: false,
+      total: 0,
+      processes: [],
+      industries: [],
+      regions: [],
+    };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
   }
   if (route === '/ingest/preview') {
     const month = { usedUsd: 3.2, limitUsd: 20, usedCalls: 180, limitCalls: 1000 };
