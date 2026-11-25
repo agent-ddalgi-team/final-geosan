@@ -1,0 +1,168 @@
+/* 임시 예시 디자인(영업 홈): 참고 그림 모양을 CSS로만 입힌다. 부품·글자·기능은 그대로다.
+   영업 홈이 보일 때만 적용된다(body:has(...)). 화면 부품의 인라인 색을 덮어야 해서 !important를 쓴다.
+   색 값을 여기 직접 적는 것은 임시 예시라서다(정식 반영 때는 theme/tokens로 옮긴다). */
+
+body:has([data-testid='dashboard-brief']) {
+  --dt-navy: #16224a;
+  --dt-blue: #1e7cae;
+  --dt-sky: #e9f6fc;
+  --dt-purple: #a128b8;
+  --dt-line: #eceef4;
+  --dt-soft: #f4f5f8;
+  --dt-green: #4cc38a;
+  --dt-shadow: 0 8px 28px rgba(40, 48, 90, 0.08);
+  background: linear-gradient(160deg, #fbfbfd 0%, #f6f3fb 55%, #fbeef6 100%) fixed;
+}
+
+/* 왼쪽 메뉴: 흰 판 + 지금 화면은 보라 글자 */
+body:has([data-testid='dashboard-brief']) [data-testid='side-menu'] {
+  background: #ffffff !important;
+  border-right: 1px solid var(--dt-line);
+}
+body:has([data-testid='dashboard-brief']) [data-testid='side-menu'] a[aria-current='page'] {
+  background: #faf0fc !important;
+  color: var(--dt-purple) !important;
+  box-shadow: none !important;
+}
+body:has([data-testid='dashboard-brief']) [data-testid='side-menu'] a:hover {
+  color: var(--dt-purple) !important;
+}
+body:has([data-testid='dashboard-brief']) .tl-logout {
+  color: #d92d20;
+  border-color: #f6d5d2;
+  font-weight: 700;
+}
+
+/* 본문 전체를 큰 흰 판처럼 */
+body:has([data-testid='dashboard-brief']) #main {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: var(--dt-shadow);
+  margin-top: 16px !important;
+  margin-bottom: 16px !important;
+  color: var(--dt-navy);
+}
+
+/* 칸(카드): 흰 바탕 + 옅은 테두리 + 그림자 */
+body:has([data-testid='dashboard-brief'])
+  :is(
+    [data-testid='dashboard-brief-schedule'],
+    [data-testid='dashboard-brief-handoff'],
+    [data-testid='dashboard-section-progress'],
+    [data-testid='dashboard-today'],
+    [data-testid='dashboard-calendar-section'],
+    [data-testid='dashboard-map-section'],
+    [data-testid='dashboard-more']
+  ) {
+  background: #ffffff !important;
+  border: 1px solid var(--dt-line) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--dt-shadow);
+  padding: 16px !important;
+}
+
+/* 칸 제목: 회색 띠 */
+body:has([data-testid='dashboard-brief'])
+  :is(
+    #dashboard-today-title,
+    #dashboard-calendar-title,
+    #dashboard-map-title,
+    #dashboard-progress-title
+  ) {
+  background: var(--dt-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 18px !important;
+  font-weight: 700;
+  color: var(--dt-navy) !important;
+}
+body:has([data-testid='dashboard-brief']) #dashboard-brief-title {
+  font-weight: 700;
+  color: var(--dt-navy);
+}
+
+/* 영업 진행: 번호 동그라미가 있는 단계 줄 */
+body:has([data-testid='dashboard-brief']) [data-testid='dashboard-progress-band'] {
+  counter-reset: dt-step;
+}
+body:has([data-testid='dashboard-brief'])
+  [data-testid='dashboard-progress-band']
+  [data-testid^='dashboard-count-'] {
+  counter-increment: dt-step;
+  background: #ffffff !important;
+  border: 1px solid var(--dt-line) !important;
+  border-radius: 14px !important;
+  color: var(--dt-navy) !important;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+body:has([data-testid='dashboard-brief'])
+  [data-testid='dashboard-progress-band']
+  [data-testid^='dashboard-count-']:not([data-testid$='-hint'])::before {
+  content: counter(dt-step);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 auto 6px;
+  border-radius: 50%;
+  background: var(--dt-green);
+  color: #0b2d1c;
+  font-size: 13px;
+  font-weight: 700;
+}
+body:has([data-testid='dashboard-brief']) [data-testid='dashboard-progress-band'] button:hover {
+  border-color: var(--dt-blue) !important;
+  box-shadow: 0 0 0 3px var(--dt-sky);
+}
+body:has([data-testid='dashboard-brief'])
+  [data-testid='dashboard-progress-band']
+  button[aria-expanded='true'] {
+  background: var(--dt-navy) !important;
+  border-color: var(--dt-navy) !important;
+  color: #ffffff !important;
+}
+body:has([data-testid='dashboard-brief'])
+  [data-testid='dashboard-progress-band']
+  button[aria-expanded='true']
+  * {
+  color: #ffffff !important;
+}
+
+/* 오늘 확인할 것: 줄마다 타일 모양 */
+body:has([data-testid='dashboard-brief']) [data-testid='dashboard-today-row'] {
+  border: 1px solid var(--dt-line) !important;
+  border-radius: 12px;
+  padding: 12px 14px !important;
+  margin-top: 10px;
+}
+body:has([data-testid='dashboard-brief'])
+  [data-testid='dashboard-today-item']
+  + [data-testid='dashboard-today-item'] {
+  border-top: 1px solid var(--dt-line);
+}
+
+/* 단추: 네모에 가까운 둥근 모양, 주 단추는 파랑 */
+body:has([data-testid='dashboard-brief']) #main .ant-btn:not(.ant-btn-link) {
+  border-radius: 8px;
+  border-color: #dfe3ec;
+  color: var(--dt-navy);
+}
+body:has([data-testid='dashboard-brief']) #main .ant-btn:not(.ant-btn-link):not(:disabled):hover {
+  border-color: var(--dt-blue);
+  color: var(--dt-blue);
+}
+body:has([data-testid='dashboard-brief']) #main .ant-btn-primary:not(:disabled),
+body:has([data-testid='dashboard-brief']) #main .ant-btn-primary:not(:disabled):hover {
+  background: var(--dt-blue);
+  border-color: var(--dt-blue);
+  color: #ffffff;
+}
+body:has([data-testid='dashboard-brief']) #main .ant-btn-primary:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+body:has([data-testid='dashboard-brief']) #main :is(input, .ant-input-affix-wrapper) {
+  border-radius: 8px;
+}

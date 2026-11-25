@@ -26,6 +26,7 @@ import { useFrame } from '../components/frame/FrameContext';
 import { dashboardTexts } from '../labels/ko';
 import { calendarPalette, colors, radius, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
+import './DashboardTempTheme.css'; // 임시 예시 디자인(영업 홈). 지우면 원래 모양이다.
 
 interface Result {
   /** 어떤 요청의 결과인지: 다시 시도 횟수와 담당자. 담당자가 바뀌면 이전 결과는 보이지 않는다. */
