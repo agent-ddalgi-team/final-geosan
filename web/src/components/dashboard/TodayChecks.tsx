@@ -24,10 +24,18 @@ import { ApiError, confirmHandoff, resolveSchedule } from '../../api/client';
 import type { TodayCheckItem, TodayCheckKind, TodayCheckRow } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import { LIST_PATH } from '../../paths';
-import { colors, radius, typography } from '../../theme/tokens';
+import { colors, detailTheme, groupMarkPalette, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
 const SHOWN = 5;
+/** #925 묶음 제목 앞 색 막대: 지난 일정 빨강, 오늘 일정 초록, 받은 것 남색, 나머지 회색. */
+const GROUP_MARK: Record<TodayCheckKind, string> = {
+  SCHEDULE_OVERDUE: groupMarkPalette.overdue,
+  SCHEDULE_TODAY: groupMarkPalette.today,
+  CHECK_LEFT: groupMarkPalette.other,
+  HANDOFF_FOR_ME: groupMarkPalette.received,
+  HANDOFF_FROM_ME: groupMarkPalette.other,
+};
 /** 묶음 순서: 지난 일정(정리할 것)이 맨 위. */
 const ORDER: TodayCheckKind[] = [
   'SCHEDULE_OVERDUE',
@@ -262,22 +270,47 @@ function Group({
   const [all, setAll] = useState(false);
   const items = all ? row.items : row.items.slice(0, SHOWN);
   const hidden = row.items.length - items.length;
+  // #925(PM 요청 2026-11-25): 받은 전달 사항은 색 상자로 눈에 띄게(다른 묶음은 선으로만 나눈다).
+  const received = kind === 'HANDOFF_FOR_ME';
   return (
     <li
       data-testid="dashboard-today-row"
-      style={{ borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }}
+      data-highlight={received ? 'true' : undefined}
+      style={
+        received
+          ? {
+              // 연한 노랑(단계 칸과 같은 노랑 계열, 더 밝게) + 같은 계열 테두리.
+              background: detailTheme.accent,
+              border: `1px solid ${detailTheme.accentLine}`,
+              borderRadius: 10,
+              padding: '10px 12px',
+              margin: '8px 0',
+            }
+          : { borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }
+      }
     >
       <h3
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          alignItems: 'baseline',
+          alignItems: 'center',
           gap: 8,
           margin: 0,
           fontSize: typography.fontSize,
         }}
       >
-        <span aria-hidden="true">{dashboardTexts.todayRowIcons[kind]}</span>
+        {/* #925: 제목 앞 이모지 대신 짧은 색 막대로 묶음을 구분한다(지난 일정 빨강, 오늘 일정 남색). */}
+        <span
+          aria-hidden="true"
+          data-testid={`dashboard-today-mark-${kind}`}
+          style={{
+            display: 'inline-block',
+            width: 4,
+            height: 16,
+            borderRadius: 2,
+            background: GROUP_MARK[kind],
+          }}
+        />
         <strong data-testid={`dashboard-today-count-${kind}`}>
           {dashboardTexts.todayGroupTitles[kind]} {row.count}
           {dashboardTexts.todayRowUnits[kind]}
@@ -294,7 +327,7 @@ function Group({
       </h3>
       <ul
         data-testid={`dashboard-today-items-${kind}`}
-        style={{ listStyle: 'none', margin: '4px 0 0', padding: '0 0 0 28px' }}
+        style={{ listStyle: 'none', margin: '4px 0 0', padding: '0 0 0 12px' }}
       >
         {items.map((item) =>
           kind === 'SCHEDULE_OVERDUE' ? (
@@ -312,7 +345,7 @@ function Group({
           size="small"
           onClick={() => setAll(true)}
           data-testid={`dashboard-today-more-${kind}`}
-          style={{ paddingLeft: 28 }}
+          style={{ paddingLeft: 12 }}
         >
           {dashboardTexts.todayMoreButton(hidden)}
         </Button>

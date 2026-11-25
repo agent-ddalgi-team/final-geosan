@@ -2,7 +2,8 @@
 //   맨 위 한 줄: 날짜 + 작은 영업 단계 칩(미접촉 → 접촉 → 견적·샘플 → 성사 · 보류) + 작은 회사 검색
 //   → ① 출근하면: 오늘 할 일(운영 알림 · 지난 일정 · 오늘 일정 · 확인할 것, AI 오늘 정리는 접어 둠)
 //                | 전달 사항(받은 것 · 보낸 것) + 한 달 달력
-//   → ② 외근 전: 이번 주 방문·연락(오늘부터 7일 + 보고서 · 거리 화살표) | 지도
+//   → ② 외근 전: 이번 주 방문·연락(오늘부터 7일 + 보고서 · 거리 화살표) — #925부터 오늘 할 일 바로 아래 칸
+//   → 지도 · 같이 들를 곳(#925: 지도 칸에는 지도와 같이 들를 곳만, 나란히)
 //   → ③ 누가 봐도: 진행 중인 회사 표(단계 · 담당 · 마지막 접촉 · 다음 일정, 멈춘 회사 노란 줄)
 //   → 더 보기(접힘: 관심 기업 건수 · 최근 내 기록).
 // 같은 일정을 여러 곳에 되풀이하지 않는다(예전 브리핑 숫자 칸·큰 진행 띠는 없앰, #795·#766을 대신함).
@@ -17,11 +18,11 @@ import { getDashboard } from '../api/dashboard';
 import type { Dashboard } from '../api/dashboardTypes';
 import type { Meta } from '../api/types';
 import type { ProgressBandKey } from '../api/dashboardTypes';
+import type { DashboardMap as DashboardMapData } from '../api/dashboardMapTypes';
 import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import ProgressTable from '../components/dashboard/ProgressTable';
 import StageChips from '../components/dashboard/StageChips';
-import WhenBadge from '../components/dashboard/WhenBadge';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import VisitPrep from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
@@ -30,8 +31,8 @@ import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
 import TodayChecks, { dayLabel } from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { dashboardTexts } from '../labels/ko';
-import { calendarPalette, colors, radius, spacing, typography } from '../theme/tokens';
+import { dashboardTexts, frame } from '../labels/ko';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
 
 interface Result {
@@ -54,11 +55,6 @@ const sectionStyle = {
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
-const calendarTitleStyle = {
-  fontSize: typography.fontSize,
-  margin: 0,
-  color: calendarPalette.title,
-} as const;
 /** #921: 오른쪽 칸(전달 사항 + 한 달 달력) 최대 폭(화면 모양값, 규칙 숫자 아님). */
 export const CALENDAR_MAX_WIDTH = 400;
 
@@ -70,6 +66,8 @@ export default function DashboardPage() {
   const [query, setQuery] = useState('');
   // #921: 맨 위 단계 칩으로 고른 단계. "진행 중인 회사" 표가 그 단계로 걸러진다.
   const [stage, setStage] = useState<ProgressBandKey | null>(null);
+  // #925: 지도 칸이 불러온 지도 정보. 오늘 할 일 아래 방문 목록이 거리 화살표를 그릴 때 같이 쓴다.
+  const [mapData, setMapData] = useState<DashboardMapData | undefined>(undefined);
   // "최근 내 기록"은 고른 담당자 것이다. 기록할 수 없는 계정(보기 전용·담당자 미선택)은 키를 보내지 않는다(#216 후속).
   const recordKey = canRecord ? staffKey : null;
   // 오늘 정리(#743)는 영업 기록 스위치가 켜져 있고 담당자를 골랐을 때만 부른다(꺼져 있으면 호출 0).
@@ -139,6 +137,10 @@ export default function DashboardPage() {
             gap: 12,
           }}
         >
+          {/* #925: 페이지 제목·날짜·단계 칸·검색을 한 줄에(위쪽 빈 줄을 없앰). 제목은 페이지마다 하나(h1). */}
+          <h1 style={{ fontSize: typography.fontSizeH1, margin: 0, lineHeight: 1.2 }}>
+            {frame.pageTitleDashboard}
+          </h1>
           <strong data-testid="dashboard-date" style={{ fontSize: typography.fontSizeCardTitle }}>
             {dashboardTexts.todayDate(dayLabel(today))}
           </strong>
@@ -194,7 +196,6 @@ export default function DashboardPage() {
             {data ? (
               <TodayChecks
                 part="work"
-                badge={<WhenBadge tone="work">{dashboardTexts.whenWork}</WhenBadge>}
                 rows={data.todayChecks}
                 onChanged={retry}
                 assistantSummary={
@@ -210,6 +211,17 @@ export default function DashboardPage() {
                 }
               />
             ) : null}
+            {/* #925 외근 전: 이번 주 방문·연락은 오늘 할 일 바로 아래(일정은 한 줄로 모아 본다). */}
+            <section
+              aria-labelledby="dashboard-prep-title"
+              data-testid="dashboard-prep-section"
+              style={{ ...sectionStyle, marginTop: spacing.cardGap }}
+            >
+              <h2 id="dashboard-prep-title" style={cardTitleStyle}>
+                {dashboardTexts.outTitle}
+              </h2>
+              <VisitPrep items={data?.schedule ?? []} today={today} map={mapData} />
+            </section>
           </div>
           <div
             data-testid="dashboard-calendar-section"
@@ -222,7 +234,7 @@ export default function DashboardPage() {
                 onChanged={retry}
                 footer={
                   <section
-                    aria-labelledby="dashboard-calendar-title"
+                    aria-label={dashboardTexts.calendarTitle}
                     style={{
                       display: 'grid',
                       gap: 8,
@@ -230,9 +242,6 @@ export default function DashboardPage() {
                       paddingTop: 12,
                     }}
                   >
-                    <h3 id="dashboard-calendar-title" style={calendarTitleStyle}>
-                      {dashboardTexts.calendarTitle}
-                    </h3>
                     <DashboardCalendar items={data.schedule ?? []} today={today} compact />
                   </section>
                 }
@@ -241,18 +250,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ② 외근 전: 이번 주 방문·연락 + 지도(같은 지도 응답으로 거리 화살표를 그린다) */}
-        <DashboardMapSection
-          badge={<WhenBadge tone="out">{dashboardTexts.whenOut}</WhenBadge>}
-          title={dashboardTexts.outTitle}
-          hint={dashboardTexts.outHint}
-          aside={(map) => <VisitPrep items={data?.schedule ?? []} today={today} map={map} />}
-        />
+        {/* 지도 · 같이 들를 곳(#925): 방문 목록은 위로 옮겨, 이 칸에는 지도와 같이 들를 곳만 나란히. */}
+        <DashboardMapSection title={dashboardTexts.mapTitle} onData={setMapData} />
 
         {/* ③ 누가 봐도: 진행 중인 회사 */}
         {data ? (
           <ProgressTable
-            badge={<WhenBadge tone="anyone">{dashboardTexts.whenAnyone}</WhenBadge>}
             companies={data.progressCompanies}
             today={today}
             stage={stage}

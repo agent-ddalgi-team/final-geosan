@@ -1,6 +1,7 @@
 // 대시보드 지도 칸(#641): 지도 정보를 스스로 불러온다. 지도가 실패해도 대시보드 나머지는 그대로 보인다.
 // #795: "방문 준비" 일정은 위에, 지도와 근처 업체 카드는 아래에 둔다.
 // #921: 넓은 화면에서는 일정 목록(왼쪽)과 지도(오른쪽)를 나란히, 좁으면 위아래. 제목 앞에 작은 표시(badge)를 둘 수 있다.
+// #925: 영업 홈은 방문 목록을 "오늘 할 일" 아래로 옮겨 aside 없이 쓴다 → 지도 | 같이 들를 곳이 나란히 놓인다.
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getDashboardMap } from '../../api/dashboardMap';
@@ -25,6 +26,8 @@ export interface DashboardMapSectionProps {
   aside?: (map: DashboardMapData | undefined) => ReactNode;
   /** #921 제목 앞 작은 표시(예: "외근 전"). */
   badge?: ReactNode;
+  /** #925 불러온 지도 정보를 부른 쪽에 알린다(다른 칸의 방문 목록이 같은 응답으로 거리를 그림). */
+  onData?: (map: DashboardMapData | undefined) => void;
 }
 
 export default function DashboardMapSection({
@@ -32,6 +35,7 @@ export default function DashboardMapSection({
   hint,
   aside,
   badge = null,
+  onData,
 }: DashboardMapSectionProps = {}) {
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
@@ -50,6 +54,10 @@ export default function DashboardMapSection({
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
   const current = result?.key === reload ? result : null;
+  const loaded = current?.data;
+  useEffect(() => {
+    onData?.(loaded);
+  }, [loaded, onData]);
   let state: 'loading' | 'error' | 'ready' = 'ready';
   if (!current) state = 'loading';
   else if (current.error) state = 'error';
