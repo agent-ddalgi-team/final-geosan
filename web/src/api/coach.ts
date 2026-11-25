@@ -16,6 +16,21 @@ export interface CoachAnswer {
   fill: 'AI' | 'SUGGEST';
 }
 
+/** (#915) 코치가 함께 본 비슷한 성사 회사(공정·산업이 겹치는 곳). */
+export interface CoachSimilarCase {
+  oppId: string;
+  name: string;
+  sharedProcesses: string[];
+  sharedIndustries: string[];
+}
+
+/** (#915) 비슷한 성사 사례를 근거로 한 제안 한 줄. */
+export interface CoachSimilarAdvice {
+  oppId: string;
+  name: string;
+  text: string;
+}
+
 export interface CoachResult {
   answers: CoachAnswer[];
   /** 다음 일정(할 일은 "다음 할 일은?"의 보기 id). 날짜를 못 읽었으면 date가 null. */
@@ -32,6 +47,10 @@ export interface CoachResult {
   aiGenerated: true;
   removedNames: number;
   removedContacts: number;
+  /** (#915) 함께 본 비슷한 성사 회사(고른 순서). 사례가 없으면 빈 목록. */
+  similarCases: CoachSimilarCase[];
+  /** (#915) 그 사례에서 온 제안 0~2줄. 보여 주기만 하고 저장하지 않는다. */
+  similarAdvice: CoachSimilarAdvice[];
 }
 
 export function postCoach(

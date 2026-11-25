@@ -2591,6 +2591,12 @@ export const coachTexts = {
   feedbackNone: '이번에는 짚을 것이 없습니다.',
   nextCallTitle: '다음 통화에 물어볼 것',
   nextCallNone: '다음 통화에 따로 물어볼 것이 없습니다.',
+  /** (#915) 비슷한 성사 회사의 기록을 근거로 한 제안. 보여 주기만 하고 저장하지 않는다. */
+  similarTitle: '비슷한 성사 사례에서',
+  similarNone: '이번에는 사례에서 따로 제안할 것이 없습니다.',
+  /** "함께 본 성사 회사: B금속(아연도금), C산업(자동차 부품)" */
+  similarBasis: (items: string[]) => `함께 본 성사 회사: ${items.join(', ')}`,
+  similarOpen: (name: string) => `${name} 상세 새 창으로 열기`,
   /** "(메모: '견적 요청함')" */
   quote: (text: string) => `(메모: '${text}')`,
   /** "다음 일정: 11/21 다시 연락" */

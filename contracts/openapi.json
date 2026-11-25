@@ -1271,6 +1271,20 @@
             "title": "Removednames",
             "type": "integer"
           },
+          "similarAdvice": {
+            "items": {
+              "$ref": "#/components/schemas/CoachSimilarAdviceView"
+            },
+            "title": "Similaradvice",
+            "type": "array"
+          },
+          "similarCases": {
+            "items": {
+              "$ref": "#/components/schemas/CoachSimilarCaseView"
+            },
+            "title": "Similarcases",
+            "type": "array"
+          },
           "stepAfter": {
             "$ref": "#/components/schemas/SalesStep"
           },
@@ -1291,7 +1305,9 @@
           "stepBefore",
           "stepAfter",
           "removedNames",
-          "removedContacts"
+          "removedContacts",
+          "similarCases",
+          "similarAdvice"
         ],
         "title": "CoachResult",
         "type": "object"
@@ -1319,6 +1335,65 @@
           "actionId"
         ],
         "title": "CoachScheduleView",
+        "type": "object"
+      },
+      "CoachSimilarAdviceView": {
+        "description": "#915 비슷한 성사 사례를 근거로 한 제안 한 줄. text의 사례 번호는 회사 이름으로 되돌렸다.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "text"
+        ],
+        "title": "CoachSimilarAdviceView",
+        "type": "object"
+      },
+      "CoachSimilarCaseView": {
+        "description": "#915 함께 본 비슷한 성사 회사 하나(화면에서 그 회사 상세로 가는 링크).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "sharedIndustries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sharedindustries",
+            "type": "array"
+          },
+          "sharedProcesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sharedprocesses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "sharedProcesses",
+          "sharedIndustries"
+        ],
+        "title": "CoachSimilarCaseView",
         "type": "object"
       },
       "CompanyRow": {
