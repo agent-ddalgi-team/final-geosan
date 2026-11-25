@@ -70,6 +70,14 @@ export const statusPalette = {
 
 export type StatusTone = keyof typeof statusPalette;
 
+/** #925 영업 홈 묶음 제목 앞 색 막대(PM 요청 2026-11-25). 글자가 늘 함께 있어 색은 보조 신호다. */
+export const groupMarkPalette = {
+  overdue: statusPalette.no.fg,
+  today: '#2E7D32',
+  received: statusPalette.ask.fg,
+  other: colors.border,
+} as const;
+
 /**
  * 대시보드 일정 달력 색(#758 → #898 밝은 톤). 흰 판 위에 둥근 칸을 두고, 일정이 있는 날만 상태별 색을 칠한다.
  * 일정 없는 날은 옅은 칸·흐린 글자. 색은 보조 신호이고 칸 안 "N건"과 아래 색 설명 줄이 함께 있다.

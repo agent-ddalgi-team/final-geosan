@@ -35,7 +35,12 @@ export default function AppRoutes() {
       <Route
         path="/"
         element={
-          <AppFrame title={frame.pageTitleDashboard} dock="assistant" dockScreen="DASHBOARD">
+          <AppFrame
+            title={frame.pageTitleDashboard}
+            ownHeading
+            dock="assistant"
+            dockScreen="DASHBOARD"
+          >
             <DashboardPage />
           </AppFrame>
         }

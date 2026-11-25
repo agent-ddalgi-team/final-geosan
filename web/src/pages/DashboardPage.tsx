@@ -23,7 +23,6 @@ import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import ProgressTable from '../components/dashboard/ProgressTable';
 import StageChips from '../components/dashboard/StageChips';
-import WhenBadge from '../components/dashboard/WhenBadge';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import VisitPrep from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
@@ -32,8 +31,8 @@ import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
 import TodayChecks, { dayLabel } from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { dashboardTexts } from '../labels/ko';
-import { calendarPalette, colors, radius, spacing, typography } from '../theme/tokens';
+import { dashboardTexts, frame } from '../labels/ko';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 import { todayKst } from '../utils/time';
 
 interface Result {
@@ -56,11 +55,6 @@ const sectionStyle = {
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
-const calendarTitleStyle = {
-  fontSize: typography.fontSize,
-  margin: 0,
-  color: calendarPalette.title,
-} as const;
 /** #921: 오른쪽 칸(전달 사항 + 한 달 달력) 최대 폭(화면 모양값, 규칙 숫자 아님). */
 export const CALENDAR_MAX_WIDTH = 400;
 
@@ -143,6 +137,10 @@ export default function DashboardPage() {
             gap: 12,
           }}
         >
+          {/* #925: 페이지 제목·날짜·단계 칸·검색을 한 줄에(위쪽 빈 줄을 없앰). 제목은 페이지마다 하나(h1). */}
+          <h1 style={{ fontSize: typography.fontSizeH1, margin: 0, lineHeight: 1.2 }}>
+            {frame.pageTitleDashboard}
+          </h1>
           <strong data-testid="dashboard-date" style={{ fontSize: typography.fontSizeCardTitle }}>
             {dashboardTexts.todayDate(dayLabel(today))}
           </strong>
@@ -198,7 +196,6 @@ export default function DashboardPage() {
             {data ? (
               <TodayChecks
                 part="work"
-                badge={<WhenBadge tone="work">{dashboardTexts.whenWork}</WhenBadge>}
                 rows={data.todayChecks}
                 onChanged={retry}
                 assistantSummary={
@@ -221,18 +218,7 @@ export default function DashboardPage() {
               style={{ ...sectionStyle, marginTop: spacing.cardGap }}
             >
               <h2 id="dashboard-prep-title" style={cardTitleStyle}>
-                <WhenBadge tone="out">{dashboardTexts.whenOut}</WhenBadge>
                 {dashboardTexts.outTitle}
-                <small
-                  style={{
-                    marginLeft: 8,
-                    color: colors.textSecondary,
-                    fontSize: typography.fontSizeSecondary,
-                    fontWeight: 400,
-                  }}
-                >
-                  {dashboardTexts.outHint}
-                </small>
               </h2>
               <VisitPrep items={data?.schedule ?? []} today={today} map={mapData} />
             </section>
@@ -248,7 +234,7 @@ export default function DashboardPage() {
                 onChanged={retry}
                 footer={
                   <section
-                    aria-labelledby="dashboard-calendar-title"
+                    aria-label={dashboardTexts.calendarTitle}
                     style={{
                       display: 'grid',
                       gap: 8,
@@ -256,9 +242,6 @@ export default function DashboardPage() {
                       paddingTop: 12,
                     }}
                   >
-                    <h3 id="dashboard-calendar-title" style={calendarTitleStyle}>
-                      {dashboardTexts.calendarTitle}
-                    </h3>
                     <DashboardCalendar items={data.schedule ?? []} today={today} compact />
                   </section>
                 }
@@ -268,16 +251,11 @@ export default function DashboardPage() {
         </div>
 
         {/* 지도 · 같이 들를 곳(#925): 방문 목록은 위로 옮겨, 이 칸에는 지도와 같이 들를 곳만 나란히. */}
-        <DashboardMapSection
-          title={dashboardTexts.mapTitle}
-          hint={dashboardTexts.mapHint}
-          onData={setMapData}
-        />
+        <DashboardMapSection title={dashboardTexts.mapTitle} onData={setMapData} />
 
         {/* ③ 누가 봐도: 진행 중인 회사 */}
         {data ? (
           <ProgressTable
-            badge={<WhenBadge tone="anyone">{dashboardTexts.whenAnyone}</WhenBadge>}
             companies={data.progressCompanies}
             today={today}
             stage={stage}
