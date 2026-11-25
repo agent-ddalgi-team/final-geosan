@@ -191,6 +191,8 @@ export default function AppFrame({
                   id="staff-select"
                   data-testid="staff-select"
                   style={{ minWidth: 160 }}
+                  // 열린 목록은 가장 긴 이름에 맞춰 넓힌다(예: "보기 전용(대표·상무)", #910).
+                  popupMatchSelectWidth={false}
                   placeholder={frame.staffPlaceholder}
                   value={staffKey ?? undefined}
                   onChange={(key: string) => setStaffKey(key)}
