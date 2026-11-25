@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import DashboardPage, { CALENDAR_MAX_WIDTH } from '../DashboardPage';
 import { getDashboard } from '../../api/dashboard';
+import { getDashboardMap } from '../../api/dashboardMap';
+import dashboardMapFixture from '../../test/fixtures/dashboard-map.json';
 import type { Dashboard, TodayCheckRow } from '../../api/dashboardTypes';
 import { ApiError } from '../../api/client';
 import type { Envelope } from '../../api/types';
@@ -502,6 +504,7 @@ describe('DashboardPage', () => {
         screen.getByTestId('dashboard-stage-chips'),
         screen.getByTestId('dashboard-search-input'),
         screen.getByTestId('dashboard-today'),
+        screen.getByTestId('dashboard-prep-section'),
         screen.getByTestId('dashboard-handoff'),
         screen.getByTestId('dashboard-map-section'),
         screen.getByTestId('dashboard-progress-table'),
@@ -515,12 +518,14 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-today')).toContainElement(
         screen.getByTestId('dashboard-when-work'),
       );
-      expect(screen.getByTestId('dashboard-map-section')).toContainElement(
-        screen.getByTestId('dashboard-when-out'),
-      );
-      expect(screen.getByTestId('dashboard-map-section')).toHaveTextContent(
-        dashboardTexts.outTitle,
-      );
+      // #925: 이번 주 방문·연락은 오늘 할 일 바로 아래 칸, 지도 칸에는 지도와 같이 들를 곳만.
+      const prep = screen.getByTestId('dashboard-prep-section');
+      expect(prep).toContainElement(screen.getByTestId('dashboard-when-out'));
+      expect(prep).toHaveTextContent(dashboardTexts.outTitle);
+      expect(screen.getByTestId('dashboard-today').parentElement).toContainElement(prep);
+      const mapSection = screen.getByTestId('dashboard-map-section');
+      expect(mapSection).toHaveTextContent(dashboardTexts.mapTitle);
+      expect(within(mapSection).queryByTestId('dashboard-map-aside')).not.toBeInTheDocument();
       expect(screen.getByTestId('dashboard-progress-table')).toContainElement(
         screen.getByTestId('dashboard-when-anyone'),
       );
@@ -531,6 +536,40 @@ describe('DashboardPage', () => {
         expect(
           order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
+      }
+    });
+
+    it('#925: 오늘 할 일 아래 방문 목록은 지도 칸이 불러온 지도 정보로 거리 화살표를 그린다(지도는 한 번만 부름)', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
+      const mapCalls = vi.mocked(getDashboardMap).mock.calls.length;
+      vi.mocked(getDashboardMap).mockResolvedValueOnce(
+        dashboardMapFixture as unknown as Awaited<ReturnType<typeof getDashboardMap>>,
+      );
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...fixtureData,
+          schedule: [
+            {
+              oppId: 'opp-map-1',
+              customerName: '가상 가나정밀',
+              oppTitle: '가상',
+              dueAt: '2026-11-06',
+              note: '방문',
+              overdue: false,
+              staffKey: 'park-lee',
+            },
+          ],
+        }),
+      );
+      try {
+        renderPage();
+        const prep = await screen.findByTestId('dashboard-prep-section');
+        const route = await within(prep).findByTestId('dashboard-prep-route');
+        expect(route).toHaveTextContent('가상 가나정밀');
+        expect(vi.mocked(getDashboardMap).mock.calls.length - mapCalls).toBe(1);
+      } finally {
+        vi.useRealTimers();
       }
     });
 

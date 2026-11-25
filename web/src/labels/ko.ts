@@ -430,6 +430,9 @@ export const dashboardTexts = {
   /** "모두 보기 (12곳)" */
   tableShowAll: (n: number) => `모두 보기 (${n}곳)`,
   tableShowLess: '접기',
+  // #925: 방문 목록은 오늘 할 일 아래, 지도 칸은 지도 | 같이 들를 곳만.
+  mapTitle: '지도 · 같이 들를 곳',
+  mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
