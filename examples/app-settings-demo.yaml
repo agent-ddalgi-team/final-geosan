@@ -136,6 +136,15 @@ contactList:
 export:
   xlsxEnabled: false
 
+# 기존 고객 참고 자료 (#932, 계약 C7 existingCustomers, PM 결정 2026-11-26).
+# 기업이 요청할 때만 켜는 확장 기능이다. 배포·예시 설정은 꺼 둔다.
+# 켜면(llm.salesRecordsEnabled도 켜져 있어야 함) `geosan customer-load`로 넣은 기존 고객을
+# 영업 코치·PC AI 앱(MCP)이 비교에 쓰고, 신규 거래처 찾기에 "기존 고객과 닮은 조건" 줄이 보인다.
+# 점수·순위에는 쓰지 않는다. similarLimit = 비슷한 기존 고객 도구가 돌려주는 고객 수 상한.
+existingCustomers:
+  enabled: false
+  similarLimit: 3
+
 # 관심 자동 조사 (#690, 계약 C7 research, PM 결정 2026-11-13).
 # [관심]을 켠 회사가 홈페이지 주소는 있는데 아직 조사 전이면 조사가 저절로 돈다.
 # autoOnBookmarkDailyCostUsd는 그렇게 저절로 도는 조사가 하루(한국 시간)에 쓸 수 있는 AI 비용(달러)이다.
