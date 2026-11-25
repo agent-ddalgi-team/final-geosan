@@ -85,6 +85,16 @@ def supply_tier(
     raise typer.Exit(code=run_supply_tier(staff_key, redo=redo))
 
 
+@app.command("mcp")
+def mcp(
+    staff_key: str = typer.Option(..., "--by", help="기록 담당자 키(전송 기록에 남음)"),
+) -> None:
+    """PC의 AI 앱(Claude 앱 등)이 영업 기록을 읽는 MCP 서버를 띄웁니다(#927, 읽기 전용)."""
+    from geosan.commands.mcp import run_mcp
+
+    raise typer.Exit(code=run_mcp(staff_key))
+
+
 @app.command("ingest")
 def ingest(
     source_id: str = typer.Argument(..., help="공개 공장현황 소스 kicox-factory-csv"),
