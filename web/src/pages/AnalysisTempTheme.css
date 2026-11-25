@@ -1,0 +1,167 @@
+/* 임시 예시 디자인(영업 분석): 참고 그림의 대시보드 모양(흰 카드 + 파랑 포인트)을 CSS로만 입힌다.
+   글자·단추·기능·계산은 그대로다. 왼쪽 메뉴에서 "영업 분석"이 지금 화면일 때만 적용된다(body:has(...)).
+   그림 색은 부품에 인라인으로 적혀 있어 그 값을 골라 덮는다(!important). 임시 예시라 색 값을 직접 적는다. */
+
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page']) {
+  background: #f1f2f4;
+}
+
+/* 왼쪽 메뉴 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page']) [data-testid='side-menu'] {
+  background: #ffffff !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page']) [data-testid='side-menu'] a {
+  border-radius: 12px !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  [data-testid='side-menu']
+  a[aria-current='page'] {
+  background: #eaf1ff !important;
+  color: #14213d !important;
+  box-shadow: inset 3px 0 0 #3b6fe0 !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page']) .tl-logout {
+  color: #d92d20;
+  font-weight: 700;
+}
+
+/* 배치: 월별 추세(넓게) 옆에 AI 분석 피드백 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  div:has(> [data-testid='analysis-feedback']) {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-auto-flow: row dense;
+  gap: 16px !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  div:has(> [data-testid='analysis-feedback'])
+  > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  div:has(> [data-testid='monthly-trend'])
+  > [data-testid='monthly-trend'] {
+  grid-column: 1;
+  grid-row: 2;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  div:has(> [data-testid='monthly-trend'])
+  > [data-testid='analysis-feedback'] {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* 흰 카드: 그림 판 · 피드백 · 배우기 카드 · 표 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  :is(
+    [data-testid='analysis-feedback'],
+    [data-testid='patterns'] > section,
+    [data-testid='analysis-tables'] section,
+    [style*='background: rgb(197, 216, 220)']
+  ) {
+  background: #ffffff !important;
+  border: 1px solid #e9ebf0 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 6px 22px rgba(20, 33, 61, 0.06);
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  [data-testid='monthly-trend'] {
+  grid-template-rows: 1fr auto;
+}
+
+/* 말풍선: 어두운 도움말 상자 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [data-testid$='-callout'] {
+  background: #1f2430 !important;
+  border-radius: 10px !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [data-testid$='-callout']
+  * {
+  color: #ffffff !important;
+}
+
+/* 요약 문장 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  p[data-testid$='-summary'] {
+  font-size: 14px !important;
+  color: #5b6475 !important;
+}
+
+/* 막대·점 색: 연두 → 파랑, 흰 막대 → 연파랑, 빈 칸 → 옅은 회색 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [style*='background: rgb(220, 224, 154)'] {
+  background: #3b6fe0 !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [style*='background: rgba(255, 255, 255, 0.9)'] {
+  background: #b7ccf7 !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [style*='background: rgba(255, 255, 255, 0.55)'] {
+  background: #eef1f6 !important;
+}
+
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [style*='background: rgb(143, 178, 185)'] {
+  background: #3b6fe0 !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  [style*='background: rgb(171, 171, 232)'] {
+  background: #e0447c !important;
+}
+
+/* 기록에서 배우기: 카드 두 칸 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page']) [data-testid='patterns'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  [data-testid='patterns']
+  > :nth-child(-n + 2) {
+  grid-column: 1 / -1;
+}
+
+/* 단추 */
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  .ant-btn:not(.ant-btn-link),
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  [data-testid='period-picker-button'] {
+  border-radius: 10px !important;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  #main
+  .ant-btn-primary:not(:disabled) {
+  background: #3b6fe0;
+  border-color: #3b6fe0;
+  color: #ffffff;
+}
+body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+  [data-testid='analysis-tables-toggle'] {
+  background: #ffffff;
+  border: 1px solid #e9ebf0;
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+@media (max-width: 1200px) {
+  body:has([data-testid='nav-sales-analysis-link'][aria-current='page'])
+    div:has(> [data-testid='monthly-trend'])
+    > :is([data-testid='monthly-trend'], [data-testid='analysis-feedback']) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  body:has([data-testid='nav-sales-analysis-link'][aria-current='page']) [data-testid='patterns'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

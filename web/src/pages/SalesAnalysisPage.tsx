@@ -28,6 +28,7 @@ import { useFrame } from '../components/frame/FrameContext';
 import { analysisCharts, salesAnalysisTexts as texts } from '../labels/ko';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
+import './AnalysisTempTheme.css'; // 임시 예시 디자인(영업 분석). 지우면 원래 모양이다.
 
 interface Result {
   /** 어떤 요청의 결과인지(다시 시도 횟수). */
