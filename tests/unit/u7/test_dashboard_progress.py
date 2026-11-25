@@ -97,13 +97,19 @@ def test_a_cancelled_contact_does_not_count_as_last_contact(today_env):  # noqa:
 
 def test_last_contact_shows_the_latest_method_and_who_recorded_it(today_env):  # noqa: F811
     """#921 Given A정밀에 영업 담당이 전화(11/01), 검수 담당이 방문(11/03)을 적음 / 접촉 없는 회사
-    / When 대시보드 / Then A정밀 줄은 마지막 접촉 "방문 · 검수 담당", 접촉 없는 회사는 셋 다 비어 있다."""
+    / When 대시보드 / Then A정밀 줄은 마지막 접촉 "방문 · 검수 담당",
+    접촉 없는 회사는 셋 다 비어 있다."""
     client, ids = today_env
     contact(client, ids["a"], "2026-11-01")
     record(
         client,
         ids["a"],
-        {"status": "IN_PROGRESS", "method": "VISIT", "result": "REACHED", "attemptedAt": "2026-11-03"},
+        {
+            "status": "IN_PROGRESS",
+            "method": "VISIT",
+            "result": "REACHED",
+            "attemptedAt": "2026-11-03",
+        },
         staff="kim-gwajang",
     )
     record(client, ids["b"], {"status": "SAMPLE_OR_REGISTRATION_APPROVED"})

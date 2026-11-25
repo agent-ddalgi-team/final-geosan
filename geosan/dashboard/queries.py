@@ -248,7 +248,8 @@ class ProgressCompany:
     # 최신 영업 기록의 일정 한 줄(schedule.note와 같은 값). 메모 글이 아니다.
     next_schedule_note: str | None
     stalled: bool
-    # #921: 마지막 접촉의 방식(CALL·EMAIL·VISIT)과 그 기록을 남긴 담당자(키·표시 이름). 메모 글은 없다.
+    # #921: 마지막 접촉의 방식(CALL·EMAIL·VISIT)과 그 기록을 남긴 담당자(키·표시 이름).
+    # 메모 글은 없다.
     last_contact_method: str | None = None
     last_contact_staff_key: str | None = None
     last_contact_staff_name: str | None = None
@@ -351,7 +352,9 @@ def build_progress_companies(
                     stalled=stalled_company(key, last, schedule, today, stalled_after_days),
                     last_contact_method=contact.method if contact else None,
                     last_contact_staff_key=staff,
-                    last_contact_staff_name=(staff_names or {}).get(staff, staff) if staff else None,
+                    last_contact_staff_name=(staff_names or {}).get(staff, staff)
+                    if staff
+                    else None,
                 )
             )
         rows.sort(
