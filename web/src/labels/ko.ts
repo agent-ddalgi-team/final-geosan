@@ -390,6 +390,46 @@ export const dashboardTexts = {
   /** 거리 화살표 위 글자. "8.2km" */
   prepKm: (km: number) => `${km.toFixed(1)}km`,
   moreTitle: '더 보기 · 관심 기업 건수 · 최근 내 기록',
+  // #921(PM 결정 2026-11-25): 영업 홈을 "출근하면 · 외근 전 · 누가 봐도" 세 칸으로.
+  whenWork: '출근하면',
+  whenOut: '외근 전',
+  whenAnyone: '누가 봐도',
+  stageChipsLabel: '영업 단계',
+  stageChipsHint: '누르면 아래 "진행 중인 회사" 표가 그 단계로 걸러집니다',
+  workTitle: '오늘 할 일',
+  workEmpty: '지난 일정도 오늘 일정도 없습니다',
+  handoffTitle: '전달 사항',
+  handoffEmpty: '확인할 전달 사항이 없습니다',
+  aiDailyTitle: 'AI 오늘 정리',
+  outTitle: '이번 주 방문·연락',
+  outHint: '오늘부터 7일 일정 — 나가기 전에 보고서와 같이 들를 곳을 봅니다',
+  tableTitle: '진행 중인 회사',
+  tableHint: '회사마다 지금 단계 · 마지막 접촉 · 다음 일정. 오래 멈춘 회사는 노란 줄입니다',
+  /** "6곳" */
+  tableCount: (n: number) => `${n}곳`,
+  tableFilterAll: '전체 담당',
+  tableFilterMine: '내 회사만',
+  tableFilterStalled: '멈춘 회사만',
+  /** "보류만 보는 중" */
+  tableStageOnly: (stage: string) => `${stage}만 보는 중`,
+  tableStageClear: '모든 단계 보기',
+  tableColumns: {
+    company: '회사',
+    stage: '단계',
+    staff: '담당',
+    last: '마지막 접촉',
+    next: '다음 일정',
+  },
+  tableNoContact: '접촉 기록 없음',
+  /** "오늘" · "어제" · "5일 전" */
+  tableDaysAgo: (n: number) => (n <= 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`),
+  tableStalled: '⚠ 다음 일정 없음 · 멈춤',
+  /** "지난 일정 11/21" */
+  tableOverdue: (day: string) => `지난 일정 ${day}`,
+  tableEmpty: '이 조건에 맞는 회사가 없습니다.',
+  /** "모두 보기 (12곳)" */
+  tableShowAll: (n: number) => `모두 보기 (${n}곳)`,
+  tableShowLess: '접기',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
