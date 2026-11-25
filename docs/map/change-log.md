@@ -96,6 +96,7 @@ timeline
 
 | 무엇 | 원래 | 지금 | 이유 | 상태 · 근거 |
 |---|---|---|---|---|
+| 기존 고객(거산의 지금 거래처) 자료 | 없음. 재접촉(예전 거래 회사) 흐름은 만들지 않기로 함 | 확장 기능으로 만들어 두고 꺼 둠: 검증된 기존 고객 CSV를 넣고 켜면 영업 코치·PC AI 앱이 MCP 도구 2개(비슷한 기존 고객·기존 고객 모습)로 견주고 맞춤 질문을 제안, 신규 거래처 찾기에 "기존 고객과 닮은 조건 [적용]" 줄. 받는 칸 7개(금액·연락처 없음), 점수·순위는 그대로 | PM 결정 2026-11-26: ① 인증·검증된 자료를 넣는다는 가정으로 기능만 만들고 배포하지 않으며 기업이 요청하면 켠다 ② 받는 칸은 추천대로 ③ AI는 제안만, 점수는 안 바꿈. 안 고른 방법: AI가 기존 고객 모습으로 점수·순위를 직접 바꾸기(설명할 수 없음) | ⏸ 꺼 둠 · [#932] |
 | 영업 코치가 기록을 고르는 방법 | 코드가 정한 조건으로 고른 기록(이 회사 + 비슷한 성사 회사)을 한 번에 보내고 한 번 답을 받음(RAG) | AI가 도구 5개(MCP 서버와 같음) 가운데 필요한 것을 골라 최대 3번 찾아본 뒤 답함. 화면에 "찾아본 것" 한 줄. 설정 coachToolRounds(예시 3, 0이면 예전 코치) | PM 결정 2026-11-25·26: 찾을 것을 AI가 고르고 되풀이해야 에이전트. 하루 코치 한도는 호출 수로, 찾아본 다른 회사 이름은 그대로(MCP 앱과 같음) | 진행 중 · [#916](https://github.com/agent-ddalgi-team/final-geosan/issues/916) |
 
 ### 2026-11-25
@@ -525,3 +526,4 @@ timeline
 [#915]: https://github.com/agent-ddalgi-team/final-geosan/issues/915
 [#916]: https://github.com/agent-ddalgi-team/final-geosan/issues/916
 [#918]: https://github.com/agent-ddalgi-team/final-geosan/issues/918
+[#932]: https://github.com/agent-ddalgi-team/final-geosan/issues/932
