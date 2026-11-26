@@ -167,3 +167,28 @@ class AnalysisFeedback(CommonColumns, Base):
     response: Mapped[Any] = mapped_column(JSON, nullable=False)
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
     transfer_log_id: Mapped[str | None] = mapped_column(String(40))
+
+
+class PreferenceApproval(CommonColumns, Base):
+    """담당자 선호 승인(#943, 계약 C6, PM 결정 2026-11-26 되먹임 ③).
+
+    승인·끄기마다 행을 지우지 않는다.
+
+    켜진 승인 = revoked_at 없음 + expires_at이 지금보다 뒤. 점수·분류는 바꾸지 않고 "근거 있음"
+    묶음 안 순서만 올린다. 외부 AI·엑셀·질문 목록으로 내보내지 않는다.
+    """
+
+    __tablename__ = "rec_preference"
+
+    pref_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    process_code: Mapped[str | None] = mapped_column(String(32))
+    industry: Mapped[str | None] = mapped_column(String(80))
+    distance_km: Mapped[float | None] = mapped_column(Numeric(10, 3))
+    approved_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    # 승인 때 숫자(고른 회사 수·비율·성사율). 나중에 왜 승인했는지 돌아볼 때 쓴다.
+    basis: Mapped[Any] = mapped_column(JSON, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    revoked_by: Mapped[str | None] = mapped_column(String(64))
