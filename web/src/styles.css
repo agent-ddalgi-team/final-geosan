@@ -56,6 +56,18 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
 }
 
+/* #961 시·군 직접 고르기: 권역 이름 작은 제목 + 그 시·군 줄. 줄 사이를 띄워 권역이 갈려 보이게 한다. */
+.prospect-choice-section + .prospect-choice-section {
+  margin-top: 10px;
+}
+
+.prospect-choice-section-title {
+  margin-bottom: 4px;
+  color: #5b6470;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .prospect-choices label {
   display: inline-flex;
   align-items: center;

@@ -125,9 +125,8 @@ def address_district(address: str | None) -> tuple[str, str] | None:
 
 
 # 후보 찾기에서 시·군으로도 고를 수 있는 시·도(PM 결정 2026-11-09, #521).
-CITY_PARENTS = {
-    city: "충남"
-    for city in (
+_PROVINCE_CITIES = {
+    "충남": (
         "천안시",
         "아산시",
         "당진시",
@@ -143,8 +142,43 @@ CITY_PARENTS = {
         "홍성군",
         "예산군",
         "태안군",
-    )
+    ),
+    # #961(PM 결정 2026-11-26): 경기도까지 찾기 지역을 넓힌다. 경기 시·군 31개.
+    "경기": (
+        "수원시",
+        "성남시",
+        "고양시",
+        "용인시",
+        "부천시",
+        "안산시",
+        "안양시",
+        "남양주시",
+        "화성시",
+        "평택시",
+        "의정부시",
+        "시흥시",
+        "파주시",
+        "김포시",
+        "광명시",
+        "광주시",
+        "군포시",
+        "하남시",
+        "오산시",
+        "이천시",
+        "안성시",
+        "의왕시",
+        "양주시",
+        "구리시",
+        "포천시",
+        "여주시",
+        "동두천시",
+        "과천시",
+        "가평군",
+        "양평군",
+        "연천군",
+    ),
 }
+CITY_PARENTS = {city: province for province, cities in _PROVINCE_CITIES.items() for city in cities}
 
 
 def parent_regions(regions: Sequence[str]) -> list[str]:

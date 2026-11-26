@@ -2806,6 +2806,8 @@ export const listSimple = {
   regionGroupLabel: '지역(권역)',
   regionGroupHint: '여러 권역을 함께 고를 수 있습니다',
   regionDirect: '시·군 직접 고르기',
+  /** #961 시·군 직접 고르기에서 권역에 안 든 시·도 통째 선택지 줄 제목. */
+  regionWholeSection: '시·도 전체',
   /** "천안·아산 (천안시·아산시)" */
   regionGroupOption: (label: string, regions: readonly string[]) =>
     `${label} (${regions.join('·')})`,
