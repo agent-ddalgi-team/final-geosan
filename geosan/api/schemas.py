@@ -956,6 +956,45 @@ class DetailMap(_ApiModel):
     )
 
 
+class ScoreChangeItem(_ApiModel):
+    """#942 지난 평가와 점수·상태가 다른 항목 한 줄."""
+
+    item_code: str
+    label: str
+    before: int | None = None
+    after: int | None = None
+    fact_judged: str | None = Field(
+        default=None, description='지금 평가의 판정 요지. 예 "통화에서 확인(11/20) · 견적 요청"'
+    )
+
+
+class ScoreChangeRecord(_ApiModel):
+    """#942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 넣지 않는다."""
+
+    at: datetime
+    kind: Literal["CHANGE", "RELATION_CONFIRMED", "CONTACT_ATTEMPT"]
+    method: str | None = Field(default=None, description="CONTACT_ATTEMPT일 때 접촉 방법 코드")
+    attempted_at: date | None = Field(default=None, description="CONTACT_ATTEMPT일 때 접촉 날짜")
+    summary: str = Field(
+        description="CHANGE = 프로그램 변경 기록 문장, RELATION_CONFIRMED = 거래 관계 변경 문장, "
+        "CONTACT_ATTEMPT = 꼬리 질문 보기 이름(없으면 빈 글)"
+    )
+
+
+class ScoreChange(_ApiModel):
+    """#942 되먹임 ①: 지금 평가와 바로 앞의 다른 평가의 차이. 저장하지 않고 읽을 때 계산."""
+
+    changed_at: datetime = Field(description="점수가 지금 값이 된 평가의 시각")
+    since_eval_id: str = Field(description="견준 앞 평가 ID")
+    score_before: int
+    score_after: int
+    classification_before: str
+    classification_after: str
+    rule_version_changed: bool = Field(description="두 평가의 규칙 설정 버전이 다르면 true")
+    items: list[ScoreChangeItem] = Field(default_factory=list)
+    records: list[ScoreChangeRecord] = Field(default_factory=list)
+
+
 class OpportunityDetail(_ApiModel):
     """근거 상세 S2. 영역별 구성 함수(detail_sections)가 순서대로 조립한다 (BR10.5)."""
 
@@ -974,6 +1013,12 @@ class OpportunityDetail(_ApiModel):
     eval_id: str | None = None
     previous_eval_id: str | None = None
     reevaluated: bool = False
+    score_change: ScoreChange | None = Field(
+        default=None,
+        description=(
+            "#942 지난 평가와 달라진 것. 앞 평가가 없거나 점수·분류·항목이 모두 같으면 null"
+        ),
+    )
     map: DetailMap | None = Field(
         default=None,
         description="#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null",
