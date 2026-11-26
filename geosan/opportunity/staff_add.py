@@ -272,7 +272,9 @@ def add_company(
         customer.homepage_source = "STAFF"
         customer.homepage_fetched_at = now
     if row is not None and not is_virtual:
-        apply_to_customer(customer, ProfileIndex(session), surface_codes)
+        # 그 회사 이름의 팩토리온 행만 읽는다. 경기까지 넣으면 전체가 커서(#966).
+        index = ProfileIndex(session, [customer.name], water=True)
+        apply_to_customer(customer, index, surface_codes)
     session.add(customer)
     session.flush()
     opportunity = Opportunity(
