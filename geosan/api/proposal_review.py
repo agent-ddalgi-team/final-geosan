@@ -89,15 +89,25 @@ def proposal_review_items(
     return items
 
 
-def confirm_ai_link(session: Session, row: OppProcessLink, *, staff: str, now: datetime) -> None:
-    """AI 공정 제안 행을 이력으로 남기고 같은 내용의 담당자 확정 행을 만든다(#497, #652도 씀)."""
+def confirm_ai_link(
+    session: Session,
+    row: OppProcessLink,
+    *,
+    staff: str,
+    now: datetime,
+    material: str | None = None,
+) -> None:
+    """AI 공정 제안 행을 이력으로 남기고 같은 내용의 담당자 확정 행을 만든다(#497, #652도 씀).
+
+    `material`(#958)을 주면 그 회사 소재로 만든다(회사당 소재 하나). 없으면 제안 행의 소재 그대로.
+    """
     row.superseded_at = now
     session.add(
         OppProcessLink(
             link_id=new_id("link"),
             opp_id=row.opp_id,
             process_code=row.process_code,
-            applied_material=row.applied_material,
+            applied_material=material if material is not None else row.applied_material,
             current_result=row.current_result,
             current_reason=row.current_reason,
             evidence_ref=row.evidence_ref,

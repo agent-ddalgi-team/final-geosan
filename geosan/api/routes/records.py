@@ -15,9 +15,14 @@ from sqlalchemy.orm import Session
 from geosan.api.auto_research import attach_background, no_auto_research, queue_on_bookmark
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
-from geosan.api.process_catalog import load_process_catalog
+from geosan.api.process_catalog import load_process_catalog, material_options
 from geosan.api.proposal_review import confirm_proposal, dismiss_proposal, proposal_review_items
-from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
+from geosan.api.sales_confirm import (
+    MAX_INDUSTRIES,
+    confirm_industries,
+    confirm_material,
+    confirm_processes,
+)
 from geosan.api.sales_step import (
     SalesStepState,
     compute_sales_step,
@@ -720,6 +725,7 @@ def choice_catalog(session: Session) -> dict[str, dict[str, str]]:
     """#652 보기를 회사 값에서 가져오는 질문의 {종류: {값: 이름}}. 한 요청 안에서는 한 번만 읽는다.
 
     PROCESS는 활성 묶음의 거산 공정 목록(역량 파일 순서), INDUSTRY는 설정 산업군(그 순서)이다.
+    MATERIAL(#958)은 거산 처리 소재 목록이다.
     """
     if "sales_choice_catalog" not in session.info:
         settings = runtime_for(session).app_settings
@@ -729,6 +735,8 @@ def choice_catalog(session: Session) -> dict[str, dict[str, str]]:
                 for row in load_process_catalog(session, settings.active_dataset_kind)
             },
             "INDUSTRY": {name: name for name in settings.industries},
+            # #958: 거산 처리 소재(역량 파일 materialCodes 합집합). 하나만 고르는 질문.
+            "MATERIAL": material_options(session, settings.active_dataset_kind),
         }
     return session.info["sales_choice_catalog"]
 
@@ -764,6 +772,8 @@ def _choice_error(
     picked = sum(1 for found, _ in seen if found == question.id)
     if question.choices == "INDUSTRY" and picked > MAX_INDUSTRIES:
         return f"산업군은 {MAX_INDUSTRIES}개까지 고를 수 있습니다."
+    if question.choices == "MATERIAL" and picked > 1:
+        return "소재는 하나만 고를 수 있습니다."
     return None
 
 
@@ -1320,6 +1330,20 @@ def _confirm_choices(
         order = catalog.get("INDUSTRY", {})
         industries = [name for name in order if name in values["INDUSTRY"]]
         results.append(confirm_industries(session, opportunity, industries, now=now))
+    if values.get("MATERIAL"):
+        # #958: 공정 답이 같은 요청에 있으면 위에서 먼저 확정했다.
+        # 확정 공정이 없으면 답만 남고 소재는 그대로다.
+        session.flush()
+        results.append(
+            confirm_material(
+                session,
+                opportunity,
+                values["MATERIAL"][0],
+                catalog.get("MATERIAL", {}),
+                staff=staff,
+                now=now,
+            )
+        )
     session.flush()
     links_changed = any(result.links_changed for result in results)
     reevaluated = links_changed or call_changed

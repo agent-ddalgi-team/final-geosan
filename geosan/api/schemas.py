@@ -288,6 +288,13 @@ class IngestOptions(_ApiModel):
     data_basis: list[DataBasisItem] = Field(default_factory=list)
 
 
+class MaterialOption(_ApiModel):
+    """#958 거산 처리 소재 하나(코드·쉬운 말)."""
+
+    code: str
+    name: str
+
+
 class CurrentStaff(_ApiModel):
     """계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null."""
 
@@ -320,6 +327,13 @@ class ConfigUi(_ApiModel):
         description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
     )
     research: ResearchUi
+    material_options: list[MaterialOption] = Field(
+        default_factory=list,
+        description=(
+            "거산 처리 소재(활성 역량 파일 materialCodes를 공정 순서로 합침, #958). "
+            "상세 소재 [고치기]와 꼬리 질문 소재 보기의 선택지"
+        ),
+    )
     current_staff: CurrentStaff | None = Field(
         default=None, description="계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 null"
     )
@@ -1256,7 +1270,7 @@ class SalesQuestionView(_ApiModel):
     step: SalesStep | Literal["ALL"]
     show_when: SalesShowWhen | None = None
     # #652: 보기를 회사 값에서 가져오는 질문(여러 개 고름). answers는 서버가 목록으로 채운다.
-    choices: Literal["PROCESS", "INDUSTRY"] | None = None
+    choices: Literal["PROCESS", "INDUSTRY", "MATERIAL"] | None = None
     answers: list[SalesAnswerOption]
     # #742: 질문 파일에 coach 칸이 없으면 null.
     coach: SalesCoachView | None = None

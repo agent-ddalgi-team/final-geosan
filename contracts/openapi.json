@@ -1710,6 +1710,14 @@
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
+          "materialOptions": {
+            "description": "거산 처리 소재(활성 역량 파일 materialCodes를 공정 순서로 합침, #958). 상세 소재 [고치기]와 꼬리 질문 소재 보기의 선택지",
+            "items": {
+              "$ref": "#/components/schemas/MaterialOption"
+            },
+            "title": "Materialoptions",
+            "type": "array"
+          },
           "operationsStaffKeys": {
             "description": "운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys, #799). 화면은 지금 담당자가 이 안에 있을 때만 메뉴를 보인다. 권한은 서버가 판단한다",
             "items": {
@@ -3202,6 +3210,21 @@
           "data"
         ],
         "title": "Envelope[MainPhoneConfirmResponse]",
+        "type": "object"
+      },
+      "Envelope_MaterialResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MaterialResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[MaterialResponse]",
         "type": "object"
       },
       "Envelope_MemoReadAnswer_": {
@@ -5487,6 +5510,64 @@
           "distanceKm"
         ],
         "title": "MapPoint",
+        "type": "object"
+      },
+      "MaterialOption": {
+        "description": "#958 거산 처리 소재 하나(코드·쉬운 말).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "MaterialOption",
+        "type": "object"
+      },
+      "MaterialRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "material": {
+            "description": "GET /config materialOptions 안 코드",
+            "maxLength": 40,
+            "title": "Material",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material"
+        ],
+        "title": "MaterialRequest",
+        "type": "object"
+      },
+      "MaterialResponse": {
+        "properties": {
+          "material": {
+            "description": "저장한 소재 코드",
+            "title": "Material",
+            "type": "string"
+          },
+          "processCodes": {
+            "description": "소재를 적용한 확정 공정(거산 공정 목록 순서)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "material",
+          "processCodes"
+        ],
+        "title": "MaterialResponse",
         "type": "object"
       },
       "MemoProposalView": {
@@ -10052,7 +10133,8 @@
               {
                 "enum": [
                   "PROCESS",
-                  "INDUSTRY"
+                  "INDUSTRY",
+                  "MATERIAL"
                 ],
                 "type": "string"
               },
@@ -13011,6 +13093,72 @@
           }
         },
         "summary": "Save Main Phone Confirmation"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/material": {
+      "post": {
+        "description": "#958(PM 결정 2026-11-26) 상세 \"한눈에 › 소재\" [고치기].\n\n소재는 회사당 하나이고 확정 공정 모두에 적용한다.",
+        "operationId": "save_material_api_v1_opportunities__oppId__material_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MaterialResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Material"
       }
     },
     "/api/v1/opportunities/{oppId}/notes": {
