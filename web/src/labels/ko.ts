@@ -2923,3 +2923,16 @@ export const loginTexts = {
   staffKeyPlaceholder: '아이디를 입력하세요',
   passwordPlaceholder: '비밀번호를 입력하세요',
 } as const;
+
+/** #942 상세 "지난 평가와 달라진 것"(되먹임 ① 같은 회사 반영). 점수 글자(E 등)는 쓰지 않는다(BR10.9). */
+export const scoreChangeLabels = {
+  title: '지난 평가와 달라진 것',
+  reevaluatedAt: (when: string) => `${when} 다시 평가`,
+  score: (before: number, after: number) => `평가점수 ${before} → ${after}`,
+  classification: (before: string, after: string) => `분류 ${before} → ${after}`,
+  item: (label: string, before: string, after: string) => `${label} ${before} → ${after}점`,
+  noValue: '--',
+  recordsTitle: '이 사이 남긴 기록',
+  ruleChanged: '규칙 설정이 바뀌어 다시 평가했습니다.',
+  hint: '남긴 기록이 이 회사의 점수에 이렇게 반영됐습니다.',
+} as const;
