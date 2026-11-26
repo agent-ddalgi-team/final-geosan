@@ -1500,6 +1500,62 @@
         "title": "CompanyAdded",
         "type": "object"
       },
+      "CompanyInfoRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          }
+        },
+        "title": "CompanyInfoRequest",
+        "type": "object"
+      },
+      "CompanyInfoResponse": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyName",
+          "address"
+        ],
+        "title": "CompanyInfoResponse",
+        "type": "object"
+      },
       "CompanyLookup": {
         "properties": {
           "existing": {
@@ -2970,6 +3026,21 @@
           "data"
         ],
         "title": "Envelope[CompanyAdded]",
+        "type": "object"
+      },
+      "Envelope_CompanyInfoResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyInfoResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyInfoResponse]",
         "type": "object"
       },
       "Envelope_CompanyLookup_": {
@@ -12890,6 +12961,71 @@
           }
         },
         "summary": "Save Bookmark"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/company-info": {
+      "post": {
+        "operationId": "save_company_info_api_v1_opportunities__oppId__company_info_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyInfoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyInfoResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Company Info"
       }
     },
     "/api/v1/opportunities/{oppId}/homepage": {

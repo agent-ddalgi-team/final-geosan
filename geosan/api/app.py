@@ -205,6 +205,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         assistant,
         coach,
         companies,
+        company_info,
         config,
         dashboard,
         existing_customers,
@@ -241,6 +242,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         existing_customers.router,
         preferences.router,
         companies.router,
+        company_info.router,
     ):
         app.include_router(router, prefix="/api/v1")
     # 실제 찾기는 회차 번호 하나를 받는 함수로 연결한다. 연결 전에는 회차를 만들지 않는다.
