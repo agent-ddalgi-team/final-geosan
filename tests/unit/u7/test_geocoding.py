@@ -185,6 +185,42 @@ def test_address_suffix_is_not_transmitted_and_underground_is_distinct():
     assert parse_address("충청남도 천안시 서북구 산업단지 A블록") is None
 
 
+# #956 시 아래 구가 새로 생긴 주소(예: 화성시 동탄구). 회사 이름·번지는 가상.
+DONGTAN = "경기도 화성시 동탄구 시험산업1로 27"
+
+
+@pytest.mark.parametrize(
+    ("value", "city", "town"),
+    [
+        (DONGTAN, "화성시 동탄구", ""),
+        ("경기도 수원시 영통구 매탄동 시험로 3", "수원시 영통구", "매탄동"),
+        ("충청남도 천안시서북구성거읍 시험로 10", "천안시 서북구", "성거읍"),
+        ("서울특별시 구로구 구로동로 1", "구로구", ""),
+        ("경기도 화성시 시험산업1로 27", "화성시", ""),
+    ],
+)
+def test_city_subdistrict_is_split_from_road(value, city, town):
+    parsed = parse_address(value)
+    assert (parsed.city, parsed.town, parsed.main) == (city, town, int(value.split()[-1]))
+
+
+def test_address_without_new_subdistrict_matches_juso_answer_with_it():
+    plain = parse_address("경기도 화성시 시험산업1로 27")
+    assert same_address(plain, parse_address(DONGTAN))
+    assert not same_address(plain, parse_address("경기도 오산시 시험산업1로 27"))
+    row = dict(
+        candidate(),
+        roadAddrPart1=DONGTAN,
+        jibunAddr="경기도 화성시 동탄구 시험동 27",
+        rnMgtSn="415903000000",
+        buldMnnm="27",
+    )
+    client = FakeClient(search=[row], coordinates=[dict(row, entX="1000000", entY="2000000")])
+    point = resolver().resolve("경기도 화성시 시험산업1로 27", client)
+    assert point is not None and point.source == "JUSO"
+    assert client.calls == ["search", "coordinates"]
+
+
 def test_math_uses_projection_origin_and_known_great_circle_distance():
     assert utmk_to_lat_lng(1000000, 2000000) == pytest.approx((38, 127.5), abs=1e-7)
     assert straight_distance_km(0, 0, 0, 1) == pytest.approx(111.19508, abs=0.001)
