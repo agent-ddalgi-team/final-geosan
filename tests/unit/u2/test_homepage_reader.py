@@ -651,3 +651,74 @@ def test_switch_can_be_turned_off(tmp_path):
         tmp_path, lambda d: d["research"].update(httpFallbackOnCertError=False)
     )
     assert settings.research.http_fallback_on_cert_error is False
+
+
+# #952: 홈페이지 제작 도구(클릭앤 같은)는 첫 화면 글이 틀 문구뿐이고
+# 본문은 스크립트 안 "html" 값에 있다.
+BUILDER_PAGE = (
+    "<html><head><title>가상 정밀</title>"
+    '<script src="/js/design_loader.js"></script></head>'
+    "<body><div>LOGIN JOIN</div><div>COPYRIGHT (c) 가상 정밀</div>"
+    "<script>\n"
+    'var BASIC_CONFIG = {"site_name":"가상 정밀","ceo_name":"홍길동",'
+    '"co_phone":"031-000-0000","html_mode":"y"};\n'
+    'var BLOCK_CONTENTS = [{"block_id":"m-1","html":"<div><p>LM\\uac00\\uc774\\ub4dc '
+    "\\ucd08\\uc815\\ubc00 \\uc870\\ub9bd<\\/p><script>track()<\\/script>"
+    '<a href=\\"\\/pages\\/about\\">\\ud68c\\uc0ac\\uc18c\\uac1c<\\/a><\\/div>"},'
+    '{"block_id":"m-2","html":"\\uc81c\\ud488 \\uce74\\ud0c8\\ub85c\\uadf8"},'
+    '{"block_id":"m-3","html":"<p>\\uae68\\uc9c4 \\uac12 \\x41<\\/p>"}];\n'
+    "</script></body></html>"
+)
+
+
+def _serve_one(monkeypatch, body):
+    monkeypatch.setattr(
+        reader,
+        "_get",
+        lambda url, _: (
+            (404, {}, "")
+            if url.endswith("robots.txt")
+            else (200, {"content-type": "text/html"}, body)
+        ),
+    )
+
+
+def test_builder_site_body_blocks_are_read(monkeypatch):
+    _serve_one(monkeypatch, BUILDER_PAGE)
+    page = reader.fetch("https://example.org/", time.monotonic() + 60)
+    # 틀 문구 뒤에 본문 덩어리 글이 붙는다. 덩어리 안 스크립트는 버린다.
+    assert page.text == "LOGIN JOIN\nCOPYRIGHT (c) 가상 정밀\nLM가이드 초정밀 조립\n회사소개"
+    # 덩어리 안 링크도 안쪽 페이지 고르기에 쓴다.
+    assert ("/pages/about", "회사소개") in page.links
+
+
+def test_builder_site_settings_values_are_not_read(monkeypatch):
+    # 대표자 이름·전화는 "html" 값이 아니므로 읽지 않는다. 태그 없는 값·풀 수 없는 값도 건너뛴다.
+    _serve_one(monkeypatch, BUILDER_PAGE)
+    text = reader.fetch("https://example.org/", time.monotonic() + 60).text
+    assert "홍길동" not in text
+    assert "031-000-0000" not in text
+    assert "카탈로그" not in text
+    assert "깨진" not in text
+
+
+def test_builder_blocks_alone_make_a_body(monkeypatch):
+    # 첫 화면 글이 하나도 없어도 본문 덩어리가 있으면 읽기 실패가 아니다.
+    body = (
+        '<html><body><script>var B=[{"html":"<p>\\ub3c4\\uae08 \\uc124\\ube44</p>"}];'
+        "</script></body></html>"
+    )
+    _serve_one(monkeypatch, body)
+    assert reader.fetch("https://example.org/", time.monotonic() + 60).text == "도금 설비"
+
+
+def test_builder_block_restriction_notice_is_respected(monkeypatch):
+    # 덩어리 안의 자동 수집 금지 문구도 지금처럼 붙여넣기로 안내한다.
+    body = (
+        '<html><body><p>회사</p><script>var B=[{"html":"<p>\\uc790\\ub3d9 \\uc218\\uc9d1 '
+        '\\uae08\\uc9c0</p>"}];</script></body></html>'
+    )
+    _serve_one(monkeypatch, body)
+    with pytest.raises(AppError) as error:
+        reader.fetch("https://example.org/", time.monotonic() + 60)
+    assert error.value.kind == "TERMS_DISALLOW"

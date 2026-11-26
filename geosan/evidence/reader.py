@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import ipaddress
+import json
 import logging
 import re
 import socket
@@ -37,6 +38,9 @@ _EXPIRED_PLACE = re.compile(r"expir", re.I)
 # 닫힌 홈페이지 이유 글(C1 homepageClosedReason). 화면에 그대로 보인다.
 CLOSED_HOSTING_EXPIRED = "호스팅 만료"
 CLOSED_EMPTY_PAGE = "빈 페이지"
+# #952: 홈페이지 제작 도구(예: 클릭앤)는 본문 덩어리를 스크립트 안 자료의 "html" 값으로 두고
+# 화면이 열린 뒤 그린다. 이 키의 글만 꺼내고, 회사 설정 값(대표자·전화 등 다른 키)은 읽지 않는다.
+_BUILDER_HTML = re.compile(r'"html"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
 
 @dataclass
@@ -302,6 +306,10 @@ class _Text(HTMLParser):
         self.links: list[tuple[str, str]] = []
         self._anchor: list[str] | None = None
         self._anchor_href = ""
+        # #952: 주소(src) 없이 페이지 안에 적힌 스크립트 본문.
+        # 제작 도구의 본문 덩어리를 찾는 데만 쓴다.
+        self.scripts: list[str] = []
+        self._script: list[str] | None = None
 
     def handle_starttag(self, tag, attrs):
         # </head>가 생략돼도 실제 본문은 읽되, 숨김 영역 안의 <body>는 제외한다.
@@ -313,6 +321,8 @@ class _Text(HTMLParser):
         if tag in ("p", "div", "br", "li", "footer", "header"):
             self.parts.append("\n")
         attrs = dict(attrs)
+        if tag == "script" and not (attrs.get("src") or "").strip():
+            self._script = []
         if tag in ("frame", "iframe") and (attrs.get("src") or "").strip():
             self.frames.append(attrs["src"].strip())
         if tag == "a" and (attrs.get("href") or "").strip():
@@ -333,8 +343,13 @@ class _Text(HTMLParser):
             self.parts.append("\n")
         if tag == "a":
             self._close_anchor()
+        if tag == "script" and self._script is not None:
+            self.scripts.append("".join(self._script))
+            self._script = None
 
     def handle_data(self, data):
+        if self._script is not None:
+            self._script.append(data)
         if not self.in_head and not self.skip:
             self.parts.append(data)
             if self._anchor is not None:
@@ -349,6 +364,30 @@ class _Text(HTMLParser):
             label = " ".join(" ".join(self._anchor).split())
             self.links.append((self._anchor_href, label))
         self._anchor = None
+
+
+def _builder_blocks(scripts: list[str]) -> _Text:
+    """#952: 스크립트 안 "html" 값(제작 도구의 본문 덩어리)을 같은 규칙으로 글·링크로 읽는다.
+
+    덩어리 안의 스크립트·숨김 영역은 지금처럼 버린다. 값을 풀 수 없으면 그 덩어리만 건너뛴다.
+    """
+    blocks = _Text()
+    for script in scripts:
+        for raw in _BUILDER_HTML.findall(script):
+            try:
+                fragment = json.loads(f'"{raw}"')
+            except ValueError:
+                continue
+            if "<" not in fragment:
+                continue
+            blocks.feed(fragment)
+            blocks.feed("\n")
+    blocks.close()
+    return blocks
+
+
+def _lines(parts: list[str]) -> str:
+    return "\n".join(line.strip() for line in "".join(parts).splitlines() if line.strip())
 
 
 @dataclass(frozen=True)
@@ -510,11 +549,11 @@ def _fetch(url: str, deadline: float, *, site_url: str | None = None) -> Page:
         parser_html = _Text()
         parser_html.feed(body)
         parser_html.close()
-        text = "\n".join(
-            line.strip() for line in "".join(parser_html.parts).splitlines() if line.strip()
-        )
+        blocks = _builder_blocks(parser_html.scripts)
+        text = "\n".join(part for part in (_lines(parser_html.parts), _lines(blocks.parts)) if part)
         if (
             parser_html.denied
+            or blocks.denied
             or _DENIAL.search(headers.get("x-robots-tag", ""))
             or _DENIAL.search(text)
         ):
@@ -525,7 +564,7 @@ def _fetch(url: str, deadline: float, *, site_url: str | None = None) -> Page:
                 kind="TERMS_DISALLOW",
             )
         if text:
-            return Page(url, text, tuple(parser_html.links))
+            return Page(url, text, (*parser_html.links, *blocks.links))
         # 프레임 화면은 첫 화면에 글이 없다.
         # 같은 사이트의 첫 프레임 페이지를 robots 검사부터 다시 읽는다.
         frame = None
