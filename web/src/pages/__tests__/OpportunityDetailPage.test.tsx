@@ -805,6 +805,8 @@ describe('OpportunityDetailPage', () => {
           'bookmark-button',
           // 대표번호는 누르면 전화가 걸리는 링크다(단추가 아님).
           'company-phone-link',
+          // #958(PM 결정 2026-11-26): "한눈에 › 어떤 회사" 주소 [고치기](누르면 그 자리에 입력칸).
+          'company-address-edit-button',
           'detail-go-record-button',
           'detail-scores-toggle',
           'homepage-rerun-button',

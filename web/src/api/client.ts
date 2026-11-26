@@ -343,6 +343,18 @@ export function postProcesses(oppId: string, processCodes: string[], staffKey: s
   });
 }
 
+/** #958 상세 "한눈에 › 어떤 회사"의 주소·회사 이름 [고치기]. 주소·이름은 점수에 들지 않아 다시 평가하지 않는다. */
+export function postCompanyInfo(
+  oppId: string,
+  body: { address?: string; companyName?: string },
+  staffKey: string,
+) {
+  return request<{ companyName: string; address: string | null }>(
+    `/opportunities/${encodeURIComponent(oppId)}/company-info`,
+    { method: 'POST', body, staffKey },
+  );
+}
+
 /** #958 상세 "한눈에 › 소재" [고치기]. 소재 하나를 그 회사 확정 공정 모두에 적용하고 서버가 다시 평가한다. */
 export function postMaterial(oppId: string, material: string, staffKey: string) {
   return request<{ material: string; processCodes: string[] }>(

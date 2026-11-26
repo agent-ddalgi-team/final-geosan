@@ -667,6 +667,25 @@ export const materialFixTexts = {
   saveFailed: '소재를 저장하지 못했습니다.',
 } as const;
 
+/**
+ * #958 상세 "한눈에 › 어떤 회사"의 주소·회사 이름 [고치기](PM 결정 2026-11-26).
+ * 주소는 모든 회사, 회사 이름은 직접 넣은 회사만. 주소를 바꾸면 거리·지도를 다시 계산한다.
+ */
+export const companyInfoFixTexts = {
+  editAddress: '주소 고치기',
+  addAddress: '주소 넣기',
+  editName: '회사 이름 고치기',
+  addressLabel: '주소',
+  nameLabel: '회사 이름',
+  addressHint: '저장하면 거산까지 거리와 지도를 새 주소로 다시 계산합니다.',
+  nameHint:
+    '직접 넣은 회사라 이름을 고칠 수 있습니다. 같은 이름의 회사가 있으면 같은 회사인지 확인 목록에 올라갑니다.',
+  contactWarning: '전화번호·이메일은 적지 마세요.',
+  save: '저장',
+  cancel: '취소',
+  saveFailed: '저장하지 못했습니다.',
+} as const;
+
 /** #803 상세 작은 지도. */
 export const detailMiniMap = {
   openLabel: '네이버 지도에서 크게 보기 (새 창)',

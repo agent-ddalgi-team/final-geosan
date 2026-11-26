@@ -48,6 +48,7 @@ import { choiceMarksOf } from '../records/ChoiceQuestion';
 import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
 import { pickGlanceLink } from './CompanyGlance';
 import DetailMiniMap from './DetailMiniMap';
+import CompanyInfoFix from './CompanyInfoFix';
 import MaterialFix from './MaterialFix';
 import type { MaterialOption } from './MaterialFix';
 import ProcessFix from './ProcessFix';
@@ -239,6 +240,8 @@ export interface DetailGlanceProps {
     options?: ProcessOption[];
     /** #958: 소재 줄 [고치기]의 보기(거산 처리 소재). 없으면 [고치기]를 보이지 않는다. */
     materialOptions?: MaterialOption[];
+    /** #958: 어떤 회사 칸에 주소·회사 이름 [고치기]를 붙인다. */
+    companyInfo?: boolean;
   };
   /** #803: 산업 칸 안에 바로 놓는 [확정]·[고치기] 칩(전에는 아래 "회사 소개 · 산업군" 카드). 없으면 글로만 보인다. */
   industryEditor?: ReactNode;
@@ -609,6 +612,15 @@ export default function DetailGlance({
                     </span>
                   ) : null}
                 </div>
+              ) : null}
+              {processChoice?.companyInfo ? (
+                <CompanyInfoFix
+                  oppId={processChoice.oppId}
+                  address={address}
+                  companyName={header.customerName}
+                  canRename={header.discoverySource === 'STAFF_ADDED'}
+                  onSaved={processChoice.onSaved}
+                />
               ) : null}
               <SupplyTierLine header={header} plateDecider={plateDecider} />
               <div style={line} data-testid="glance-homepage">
