@@ -1423,6 +1423,112 @@
         "title": "CoachSimilarCaseView",
         "type": "object"
       },
+      "CompanyAddRequest": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "homepageUrl": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepageurl"
+          },
+          "rowId": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rowid"
+          }
+        },
+        "title": "CompanyAddRequest",
+        "type": "object"
+      },
+      "CompanyAdded": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "researchQueued": {
+            "title": "Researchqueued",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "created",
+          "researchQueued"
+        ],
+        "title": "CompanyAdded",
+        "type": "object"
+      },
+      "CompanyLookup": {
+        "properties": {
+          "existing": {
+            "items": {
+              "$ref": "#/components/schemas/ExistingCompany"
+            },
+            "title": "Existing",
+            "type": "array"
+          },
+          "factories": {
+            "items": {
+              "$ref": "#/components/schemas/FactoryCompany"
+            },
+            "title": "Factories",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "existing",
+          "factories",
+          "truncated"
+        ],
+        "title": "CompanyLookup",
+        "type": "object"
+      },
       "CompanyRow": {
         "properties": {
           "contactCount": {
@@ -2762,7 +2868,8 @@
           "CASE_FILE",
           "FACTORY_FILE",
           "FACTORY_API",
-          "WEB_SEARCH"
+          "WEB_SEARCH",
+          "STAFF_ADDED"
         ],
         "title": "DiscoverySource",
         "type": "string"
@@ -2840,6 +2947,36 @@
           "data"
         ],
         "title": "Envelope[CoachResult]",
+        "type": "object"
+      },
+      "Envelope_CompanyAdded_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyAdded"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyAdded]",
+        "type": "object"
+      },
+      "Envelope_CompanyLookup_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyLookup"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyLookup]",
         "type": "object"
       },
       "Envelope_ConfigUi_": {
@@ -3397,6 +3534,41 @@
         "title": "EvidenceView",
         "type": "object"
       },
+      "ExistingCompany": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "bookmarked": {
+            "title": "Bookmarked",
+            "type": "boolean"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "companyName",
+          "address",
+          "bookmarked"
+        ],
+        "title": "ExistingCompany",
+        "type": "object"
+      },
       "ExportUi": {
         "properties": {
           "xlsxEnabled": {
@@ -3409,6 +3581,71 @@
           "xlsxEnabled"
         ],
         "title": "ExportUi",
+        "type": "object"
+      },
+      "FactoryCompany": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "industryName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industryname"
+          },
+          "oppId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이름·주소가 같은 회사가 이미 목록에 있으면 그 기회 ID",
+            "title": "Oppid"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "rowId": {
+            "title": "Rowid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rowId",
+          "companyName",
+          "address",
+          "region",
+          "product",
+          "industryName",
+          "oppId"
+        ],
+        "title": "FactoryCompany",
         "type": "object"
       },
       "FactoryProfile": {
@@ -10792,6 +11029,104 @@
           }
         },
         "summary": "Daily"
+      }
+    },
+    "/api/v1/companies": {
+      "post": {
+        "description": "회사 1곳을 넣고(이미 있으면 그 회사) 관심을 켠다. 실패하면 전부 되돌린다.",
+        "operationId": "add_company_by_name_api_v1_companies_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyAdded_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Company By Name"
+      }
+    },
+    "/api/v1/companies/lookup": {
+      "get": {
+        "description": "이미 목록에 있는 회사와 공장 자료를 이름으로 찾는다. 저장·외부 호출 없음.",
+        "operationId": "lookup_companies_api_v1_companies_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyLookup_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Companies"
       }
     },
     "/api/v1/config/ui": {
