@@ -106,29 +106,109 @@ interface CheckGroupProps {
   selected: string[];
   onToggle: (value: string) => void;
   testId: string;
+  /** #961: 주면 선택지를 작은 제목 아래 줄로 나눠 보인다(예: 권역 이름마다 그 시·군). */
+  sections?: RegionSection[];
 }
 
-function CheckGroup({ legend, hint, items, selected, onToggle, testId }: CheckGroupProps) {
+interface RegionSection {
+  title: string;
+  values: string[];
+}
+
+function CheckItem({
+  item,
+  selected,
+  onToggle,
+  testId,
+}: {
+  item: { value: string; label: string };
+  selected: string[];
+  onToggle: (value: string) => void;
+  testId: string;
+}) {
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={selected.includes(item.value)}
+        onChange={() => onToggle(item.value)}
+        data-testid={`${testId}-${item.value}`}
+      />
+      <span>{item.label}</span>
+    </label>
+  );
+}
+
+function CheckGroup({
+  legend,
+  hint,
+  items,
+  selected,
+  onToggle,
+  testId,
+  sections,
+}: CheckGroupProps) {
+  const byValue = new Map(items.map((item) => [item.value, item]));
   return (
     <fieldset className="prospect-check-group" data-testid={testId}>
       <legend>
         {legend} {hint ? <small>{hint}</small> : null}
       </legend>
-      <div className="prospect-choices">
-        {items.map((item) => (
-          <label key={item.value}>
-            <input
-              type="checkbox"
-              checked={selected.includes(item.value)}
-              onChange={() => onToggle(item.value)}
-              data-testid={`${testId}-${item.value}`}
+      {sections ? (
+        sections.map((section) => (
+          <div
+            key={section.title}
+            className="prospect-choice-section"
+            data-testid={`${testId}-section-${section.title}`}
+          >
+            <div className="prospect-choice-section-title">{section.title}</div>
+            <div className="prospect-choices">
+              {section.values.map((value) => (
+                <CheckItem
+                  key={value}
+                  item={byValue.get(value) ?? { value, label: value }}
+                  selected={selected}
+                  onToggle={onToggle}
+                  testId={testId}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="prospect-choices">
+          {items.map((item) => (
+            <CheckItem
+              key={item.value}
+              item={item}
+              selected={selected}
+              onToggle={onToggle}
+              testId={testId}
             />
-            <span>{item.label}</span>
-          </label>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </fieldset>
   );
+}
+
+/**
+ * #961: 시·군 직접 고르기를 권역 이름으로 나눈다. 권역에 안 든 지역(예: 시·도 통째 "충남"·"경기")은
+ * 맨 앞 "시·도 전체" 줄에 둔다. 선택지(설정 regions)에 없는 권역 값은 보이지 않는다.
+ */
+function regionSections(regions: string[], groups: IngestRegionGroup[]): RegionSection[] {
+  const inGroups = new Set(groups.flatMap((group) => group.regions));
+  const whole = regions.filter((region) => !inGroups.has(region));
+  const grouped = groups
+    .map((group) => ({
+      title: group.label,
+      values: group.regions.filter((region) => regions.includes(region)),
+    }))
+    .filter((section) => section.values.length > 0);
+  return [
+    ...(whole.length > 0 ? [{ title: listSimple.regionWholeSection, values: whole }] : []),
+    ...grouped,
+  ];
 }
 
 export default function IngestForm({ options, running, onStarted }: IngestFormProps) {
@@ -289,6 +369,7 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
                   selected={directRegions}
                   onToggle={(value) => setRegions((prev) => toggled(prev, value))}
                   testId="ingest-region"
+                  sections={regionSections(options.regions, regionGroups)}
                 />
               </div>
             </details>
