@@ -10,7 +10,6 @@ import type {
   BucketBasis,
   ContactBucket,
   Envelope,
-  FitLevel,
   OpportunityCard,
   RankAdjust,
 } from '../../api/types';
@@ -61,7 +60,10 @@ function card(
   rank: number,
   bucket: ContactBucket,
   bucketBasis: BucketBasis,
-  extra: { fitLevel?: FitLevel | null; rankAdjust?: RankAdjust | null } = {},
+  extra: Pick<
+    Partial<OpportunityCard>,
+    'fitLevel' | 'rankAdjust' | 'preferenceAdjust' | 'exploreSlot'
+  > = {},
 ): OpportunityCard {
   return {
     ...apjeong,
