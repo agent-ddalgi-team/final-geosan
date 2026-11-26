@@ -1258,3 +1258,33 @@ export interface CustomerSuggestions {
   industries: { name: string; count: number }[];
   regions: { name: string; count: number }[];
 }
+
+/** #948 이름으로 회사 찾기(계약 C1 `GET /companies/lookup`). 저장된 목록·공장 자료만 읽는다(0원). */
+export interface CompanyLookup {
+  existing: { oppId: string; companyName: string; address: string | null; bookmarked: boolean }[];
+  factories: {
+    rowId: string;
+    companyName: string;
+    address: string;
+    region: string;
+    product: string | null;
+    industryName: string | null;
+    /** 이름·주소가 같은 회사가 이미 목록에 있으면 그 기회 ID. */
+    oppId: string | null;
+  }[];
+  truncated: boolean;
+}
+
+/** #948 회사 넣기 요청(계약 C1 `POST /companies`). rowId 또는 companyName 중 하나. */
+export interface CompanyAddRequest {
+  rowId?: string;
+  companyName?: string;
+  address?: string;
+  homepageUrl?: string;
+}
+
+export interface CompanyAdded {
+  oppId: string;
+  created: boolean;
+  researchQueued: boolean;
+}
