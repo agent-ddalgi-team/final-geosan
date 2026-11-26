@@ -119,7 +119,9 @@ it('관리자에게는 제안과 숫자·[승인]이 보이고, 누르면 그 �
   );
   await userEvent.click(screen.getByRole('button', { name: '승인' }));
   expect(api.approvePreference).toHaveBeenCalledWith(SUGGESTION, 'choi-pm');
-  expect(await screen.findByTestId('preference-none')).toHaveTextContent('아직 제안이 없습니다');
+  expect(await screen.findByTestId('preference-none')).toHaveTextContent(
+    '성사·거절이 아직 각 3곳이 안 되거나',
+  );
 });
 
 it('관리자가 아니면 [승인]·[끄기] 대신 안내만 보인다', async () => {

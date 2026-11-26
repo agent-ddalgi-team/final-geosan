@@ -79,7 +79,7 @@ export default function PreferencePanel() {
       <p style={{ margin: 0, ...secondary }}>{t.intro(basis.windowDays, basis.pickedCount)}</p>
       {data.suggestions.length === 0 ? (
         <p data-testid="preference-none" style={{ margin: 0 }}>
-          {t.none(basis.pickedCount, basis.minPicks)}
+          {t.none(basis.pickedCount, basis.minPicks, basis.minClosedForRate)}
         </p>
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>

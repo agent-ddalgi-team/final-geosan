@@ -2946,10 +2946,10 @@ export const preferenceLabels = {
     `최근 ${days}일 동안 관심을 켜거나 연락한 회사 ${picked}곳에서 몰린 조합입니다. 승인하면 신규 거래처 찾기 "근거 있음" 안에서 한 단계 위로 갑니다. 점수는 바뀌지 않습니다.`,
   safeguards: (days: number) =>
     `안전장치: 성사율이 다른 곳보다 낮지 않을 때만 제안 · 승인은 ${days}일 뒤 저절로 꺼짐 · 위쪽 몇 자리 가운데 한 자리는 선호 밖 회사`,
-  none: (picked: number, min: number) =>
+  none: (picked: number, min: number, minClosed: number) =>
     picked < min
       ? `아직 제안이 없습니다. 고른 회사 ${picked}곳 · ${min}곳 이상 쌓이면 봅니다.`
-      : '아직 제안이 없습니다. 몰린 조합이 없거나, 몰린 조합의 성사율이 다른 곳보다 낮습니다.',
+      : `아직 제안이 없습니다. 절반 넘게 몰린 조합이 없거나, 그 조합 안·밖의 성사·거절이 아직 각 ${minClosed}곳이 안 되거나, 성사율이 다른 곳보다 낮습니다.`,
   combo: (combo: {
     kind: 'PROCESS_INDUSTRY' | 'DISTANCE';
     processName: string | null;
