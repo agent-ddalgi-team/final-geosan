@@ -783,6 +783,48 @@ export const excludedList = {
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
+/**
+ * #948 [거래처 후보 › 새 후보 발굴 패널 › 맨 위] "이름으로 회사 넣기"(PM 결정 2026-11-26).
+ * 거산이 이미 진행 중인 회사를 이름으로 찾아 AI 고르기 없이 바로 관심 기업으로 넣는다.
+ */
+export const companyAdd = {
+  title: '이름으로 회사 넣기',
+  hint: '이미 진행 중인 회사처럼 꼭 넣을 회사가 있으면 이름으로 찾아 바로 관심 기업에 넣습니다. AI 고르기 비용은 들지 않습니다.',
+  nameLabel: '회사 이름',
+  namePlaceholder: '예: 대성금속',
+  search: '찾기',
+  searching: '찾는 중…',
+  nameTooShort: '두 글자 이상 입력해 주세요',
+  existingTitle: '이미 목록에 있는 회사',
+  existingBookmarked: '관심 기업',
+  open: '열기',
+  factoriesTitle: '공장 자료에서 찾은 회사',
+  factoriesEmpty: '공장 자료에서 이 이름을 찾지 못했습니다.',
+  truncated: '더 있습니다. 이름을 더 길게 적어 주세요.',
+  alreadyListed: '목록에 있음',
+  manualOption: (name: string) => `공장 자료에 없음 — "${name}" 이름으로 넣기`,
+  addressLabel: '주소(알면)',
+  addressPlaceholder: '예: 충남 천안시 서북구 …',
+  homepageLabel: '홈페이지 주소(알면)',
+  homepagePlaceholder: 'https://',
+  homepageHint:
+    '적으면 AI가 홈페이지를 찾지 않고 이 주소를 바로 읽습니다. 담당자 확인으로 표시됩니다.',
+  contactWarning: '전화번호·이메일은 적지 마세요. 연락처는 상세의 영업 메모에 적습니다.',
+  submit: '관심 기업으로 넣기',
+  submitting: '넣는 중…',
+  pickFirst: '넣을 회사를 골라 주세요',
+  added: '관심 기업으로 넣었습니다.',
+  alreadyThere: '이미 목록에 있는 회사라 관심 기업으로 켰습니다.',
+  researchStarted: '홈페이지 조사가 곧 시작됩니다.',
+  researchNotStarted:
+    '자동 조사가 꺼져 있거나 오늘 한도에 닿았습니다. 상세에서 [AI로 조사]를 눌러 주세요.',
+  openDetail: '상세 열기',
+  failed: (message: string) => `넣지 못했습니다 (${message})`,
+  excluded: '제외로 저장한 회사입니다. 검토 의견을 바꾼 뒤 다시 넣어 주세요.',
+  lookupFailed: '찾지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+  virtualNote: '가상·거산 실제 사양 아님',
+};
+
 export const candidateSearch = {
   /** #932 "기존 고객과 닮은 조건" 줄(확장 기능, 켰을 때만 보임). */
   customerLikeTitle: (total: number) => `기존 고객과 닮은 조건(기존 고객 ${total}곳 기준)`,
