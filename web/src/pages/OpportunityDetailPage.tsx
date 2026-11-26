@@ -244,6 +244,11 @@ export default function OpportunityDetailPage() {
     fresh && fresh.data === data ? fresh.lastContactAt : (data?.records.lastContactAt ?? null);
 
   // 전달 사항·통화 전·기록 남기기(#771·#750·#742). #773부터 넓은 화면은 오른쪽 영업 코치 칸으로 보낸다.
+  const checkStorageKey = !data
+    ? ''
+    : `${oppId}:${data.records.contactCount?.total ?? 0}:${
+        (fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep)?.noteId ?? ''
+      }`;
   const recordInput = !data ? null : (
     <>
       {/* #847 확인사항: 코치가 지난 통화 뒤 정리한 것(#750)과 전의 "통화에서 확인할 것"을 주제별로 묶어 통화 중 체크. */}
@@ -259,8 +264,9 @@ export default function OpportunityDetailPage() {
           questions={salesQuestions}
           title={coachSteps.before}
           grouped
-          // 접촉을 저장해 다음 통화 준비가 바뀌면 체크를 처음 값으로 되돌린다.
-          key={`${oppId}:checks:${(fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep)?.noteId ?? ''}`}
+          // 접촉을 저장해 접촉 수나 다음 통화 준비가 바뀌면 체크를 처음 값으로 되돌린다(#957: 체크는 이 브라우저에 기억).
+          key={checkStorageKey}
+          storageKey={checkStorageKey}
           prep={fresh && fresh.data === data ? fresh.callPrep : (data.records.callPrep ?? null)}
           // #847: 확인 전 전달 사항은 확인사항 맨 위에(남기는 것은 대화 기록의 메모 "받는 사람").
           top={
