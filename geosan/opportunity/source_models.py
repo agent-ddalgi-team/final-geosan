@@ -188,7 +188,7 @@ class WebCandidate(CommonColumns, Base):
 class FactoryProfile(CommonColumns, Base):
     """팩토리온 공장조회 행(C5 factoryon-xlsx, #573). 목록 회사에 붙이는 보조 자료다.
 
-    후보 목록의 출발점이 아니다. 새 파일을 넣으면 이 소스의 행을 통째로 바꾼다.
+    후보 목록의 출발점이 아니다. 새 파일을 넣으면 그 파일의 시·도 행만 바꾼다(#961).
     종업원 수는 공장 등록 때 적은 값이라 언제나 추정으로 보인다. 전화·홈페이지 열은 없다.
     """
 
