@@ -46,7 +46,7 @@ it('서버가 null을 주면 아무것도 그리지 않는다', () => {
 it('점수·분류·항목과 그 사이 기록을 쉬운 말로 보인다(점수 글자 E는 쓰지 않는다)', () => {
   render(<ScoreChangeLine change={change} />);
   expect(screen.getByRole('heading', { name: '지난 평가와 달라진 것' })).toBeInTheDocument();
-  expect(screen.getByText(/11\/20 14:02 다시 평가/)).toBeInTheDocument();
+  expect(screen.getByText(/11\/20 14:02 다시 평가 · 남긴 기록이/)).toBeInTheDocument();
   const head = screen.getByTestId('score-change-head');
   expect(head).toHaveTextContent('평가점수 70 → 77 · 분류');
   expect(head).not.toHaveTextContent('E ');
@@ -73,8 +73,10 @@ it('점수·분류가 그대로면 머리 줄을 빼고, 규칙이 바뀐 재평
   );
   expect(screen.queryByTestId('score-change-head')).not.toBeInTheDocument();
   expect(screen.queryByTestId('score-change-records')).not.toBeInTheDocument();
+  // 남긴 기록이 없으면 기록 덕분이라고 말하지 않는다.
+  expect(screen.getByText(/이 사이 남긴 기록은 없고/)).toBeInTheDocument();
   expect(screen.getByTestId('score-change-rule')).toHaveTextContent(
-    '규칙 설정이 바뀌어 다시 평가했습니다.',
+    '지난 평가 뒤 규칙 설정도 바뀌었습니다. 차이의 일부는 규칙 때문일 수 있습니다.',
   );
 });
 

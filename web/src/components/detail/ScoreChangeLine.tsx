@@ -53,7 +53,7 @@ export default function ScoreChangeLine({ change, classificationOverrides }: Sco
     <DetailSection id="detail-score-change" title={texts.title}>
       <p style={{ margin: 0, ...secondary }}>
         {when ? `${texts.reevaluatedAt(when)} · ` : ''}
-        {texts.hint}
+        {change.records.length > 0 ? texts.hint : texts.hintNoRecords}
       </p>
       {heads.length > 0 ? (
         <p data-testid="score-change-head" style={{ margin: 0, fontWeight: 600 }}>

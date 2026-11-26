@@ -2933,6 +2933,8 @@ export const scoreChangeLabels = {
   item: (label: string, before: string, after: string) => `${label} ${before} → ${after}점`,
   noValue: '--',
   recordsTitle: '이 사이 남긴 기록',
-  ruleChanged: '규칙 설정이 바뀌어 다시 평가했습니다.',
+  ruleChanged: '지난 평가 뒤 규칙 설정도 바뀌었습니다. 차이의 일부는 규칙 때문일 수 있습니다.',
   hint: '남긴 기록이 이 회사의 점수에 이렇게 반영됐습니다.',
+  /** 그 사이 남긴 기록이 없으면(자료·규칙이 바뀌어 프로그램이 다시 평가) 기록 덕분이라고 말하지 않는다. */
+  hintNoRecords: '이 사이 남긴 기록은 없고, 프로그램이 다시 평가하며 바뀌었습니다.',
 } as const;
