@@ -512,7 +512,8 @@ def apply_to_customer(
     customer.own_plating_line_suspected = source is not None
     customer.own_plating_line_source = source
     customer.own_plating_line_basis = basis
-    return profile is not None, int(customer.own_plating_line_suspected) - int(before)
+    # 막 만든 회사(#948)는 저장 전이라 표시가 비어 있다. 빈 값은 표시 없음으로 센다(#966).
+    return profile is not None, int(customer.own_plating_line_suspected) - int(bool(before))
 
 
 def attach_all(session: Session, settings: AppSettings) -> AttachResult:
