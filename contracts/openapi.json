@@ -6456,6 +6456,17 @@
             "title": "Reviewitems",
             "type": "array"
           },
+          "scoreChange": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#942 지난 평가와 달라진 것. 앞 평가가 없거나 점수·분류·항목이 모두 같으면 null"
+          },
           "scores": {
             "anyOf": [
               {
@@ -9636,6 +9647,177 @@
           "expectedVersion"
         ],
         "title": "ScheduleSetRequest",
+        "type": "object"
+      },
+      "ScoreChange": {
+        "description": "#942 되먹임 ①: 지금 평가와 바로 앞의 다른 평가의 차이. 저장하지 않고 읽을 때 계산.",
+        "properties": {
+          "changedAt": {
+            "description": "점수가 지금 값이 된 평가의 시각",
+            "format": "date-time",
+            "title": "Changedat",
+            "type": "string"
+          },
+          "classificationAfter": {
+            "title": "Classificationafter",
+            "type": "string"
+          },
+          "classificationBefore": {
+            "title": "Classificationbefore",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeRecord"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "ruleVersionChanged": {
+            "description": "두 평가의 규칙 설정 버전이 다르면 true",
+            "title": "Ruleversionchanged",
+            "type": "boolean"
+          },
+          "scoreAfter": {
+            "title": "Scoreafter",
+            "type": "integer"
+          },
+          "scoreBefore": {
+            "title": "Scorebefore",
+            "type": "integer"
+          },
+          "sinceEvalId": {
+            "description": "견준 앞 평가 ID",
+            "title": "Sinceevalid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changedAt",
+          "sinceEvalId",
+          "scoreBefore",
+          "scoreAfter",
+          "classificationBefore",
+          "classificationAfter",
+          "ruleVersionChanged"
+        ],
+        "title": "ScoreChange",
+        "type": "object"
+      },
+      "ScoreChangeItem": {
+        "description": "#942 지난 평가와 점수·상태가 다른 항목 한 줄.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "factJudged": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "지금 평가의 판정 요지. 예 \"통화에서 확인(11/20) · 견적 요청\"",
+            "title": "Factjudged"
+          },
+          "itemCode": {
+            "title": "Itemcode",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemCode",
+          "label"
+        ],
+        "title": "ScoreChangeItem",
+        "type": "object"
+      },
+      "ScoreChangeRecord": {
+        "description": "#942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 넣지 않는다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONTACT_ATTEMPT일 때 접촉 날짜",
+            "title": "Attemptedat"
+          },
+          "kind": {
+            "enum": [
+              "CHANGE",
+              "RELATION_CONFIRMED",
+              "CONTACT_ATTEMPT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONTACT_ATTEMPT일 때 접촉 방법 코드",
+            "title": "Method"
+          },
+          "summary": {
+            "description": "CHANGE = 프로그램 변경 기록 문장, RELATION_CONFIRMED = 거래 관계 변경 문장, CONTACT_ATTEMPT = 꼬리 질문 보기 이름(없으면 빈 글)",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "kind",
+          "summary"
+        ],
+        "title": "ScoreChangeRecord",
         "type": "object"
       },
       "ScoreItemView": {
