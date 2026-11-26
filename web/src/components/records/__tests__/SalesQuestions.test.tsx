@@ -201,6 +201,11 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
     await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
     const plating = await screen.findByTestId('sales-question-PLATING_NOW');
     await user.click(within(plating).getByText('외주 줌'));
+    // #947: 고른 답은 [관심 기업]처럼 강조색으로 채운 모양이다.
+    expect(plating.querySelector('.ant-radio-group')).toHaveClass('ant-radio-group-solid');
+    expect(within(plating).getByText('외주 줌').closest('label')).toHaveClass(
+      'ant-radio-button-wrapper-checked',
+    );
     const tail = await screen.findByTestId('sales-question-SWITCH_INTENT');
     await user.click(within(tail).getByText('있음'));
     await user.type(screen.getByTestId('records-contact-memo'), '다음 달 새 라인');
