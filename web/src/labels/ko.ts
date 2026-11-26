@@ -1169,6 +1169,11 @@ export const materialLabels: Record<string, string> = {
   SUS: '스테인리스',
   /** #958: 크로메이트 처리 소재(역량 파일). */
   ZN: '아연',
+  /** #964: 브로슈어 역량 파일의 아노다이징 소재. */
+  MG: '마그네슘',
+  TI: '티타늄',
+  HF: '하프늄',
+  NB: '니오븀',
 };
 
 export const processRows = {
