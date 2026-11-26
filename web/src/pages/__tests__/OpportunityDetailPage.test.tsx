@@ -211,25 +211,20 @@ describe('OpportunityDetailPage', () => {
     mockedGet.mockResolvedValueOnce(reply(fixtureData));
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const user = userEvent.setup();
     const review = screen.getByTestId('detail-review');
-    // 질문 줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
+    // 질문 줄은 바로 보인다. #957(PM 지적 2026-11-26): 기록이 없는 "자료 못 찾음" 줄은 통화에서 물을 것이 아니라
+    // 확인사항에 접힌 목록으로도 두지 않는다.
     // #847(PM 결정 2026-11-17): 거산에 대한 질문은 확인사항에 없다(상대 회사 질문 1줄만).
-    expect(within(review).getAllByTestId('review-item')).toHaveLength(1);
+    const rows = within(review).getAllByTestId('review-item');
+    expect(rows).toHaveLength(1);
     expect(review).not.toHaveTextContent(
       (fixtureData.reviewItems ?? []).find((item) => item.targetLabel === '거산')?.text ?? '없음',
     );
-    const fold = within(review).getByTestId('review-fold-toggle-gap');
-    expect(fold).toHaveTextContent('아직 근거·자료가 없는 항목 1개 보기');
-    expect(fold).toHaveAttribute('aria-expanded', 'false');
-    await user.click(fold);
-    const rows = within(review).getAllByTestId('review-item');
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toHaveTextContent('홈페이지를 찾지 못함');
+    expect(within(review).queryByTestId('review-fold-toggle-gap')).not.toBeInTheDocument();
+    expect(review).not.toHaveTextContent('홈페이지를 찾지 못함');
     expect(within(rows[0]).getByTestId('review-reply')).toHaveTextContent(
       '답: 2024년에 KS 인증 받았다고 함',
     );
-    expect(within(rows[1]).queryByTestId('review-reply')).not.toBeInTheDocument();
     // 적는 것은 아래 "기록 남기기"에서 한다. 읽는 곳에는 답 단추가 없다.
     expect(screen.queryByTestId('review-reply-button')).not.toBeInTheDocument();
     expect(screen.queryByText(reviewArea.replyEdit)).not.toBeInTheDocument();
@@ -749,8 +744,9 @@ describe('OpportunityDetailPage', () => {
       expect(screen.queryByTestId('detail-scores-toggle')).not.toBeInTheDocument();
     });
 
-    it('공고·채용 "근거 없음" 줄은 접힌 묶음을 펼쳐도 보이지 않고, 나머지는 읽기 전용으로 남는다', async () => {
-      const user = userEvent.setup();
+    // #957(PM 지적 2026-11-26): "근거 없음" 줄은 통화에서 물을 것이 아니라 확인사항에 접힌 목록으로도 두지 않는다.
+    // 항목별 근거는 "점수 자세히 보기"에서 본다. 공고·채용 줄도 당연히 보이지 않는다.
+    it('기록이 없는 "근거 없음" 줄은 확인사항에 접힌 목록으로도 없다 (#957)', async () => {
       mockedGet.mockResolvedValueOnce(
         reply({
           ...base,
@@ -764,12 +760,9 @@ describe('OpportunityDetailPage', () => {
       renderPage();
       await screen.findByTestId('opportunity-detail');
       const review = screen.getByTestId('detail-review');
-      await user.click(within(review).getByTestId('review-fold-toggle-gap'));
-      const rows = within(review).getAllByTestId('review-item');
-      expect(rows).toHaveLength(1);
-      expect(rows[0]).toHaveTextContent('유사 산업·부품 납품실적 근거 없음');
-      expect(review).not.toHaveTextContent('공고 근거 없음');
-      expect(review).not.toHaveTextContent('채용');
+      expect(within(review).queryByTestId('review-fold-toggle-gap')).not.toBeInTheDocument();
+      expect(within(review).queryAllByTestId('review-item')).toHaveLength(0);
+      expect(review).not.toHaveTextContent('근거 없음');
     });
 
     // #691: 머리에 [기록 남기기]가 더해졌다. 저장하지 않고 기록 칸으로 내려가기만 하는 이동 단추다.
@@ -819,7 +812,7 @@ describe('OpportunityDetailPage', () => {
       const below = ['detail-records', 'detail-peers'].map((id) => screen.getByTestId(id));
       for (const el of below) expect(above(el)).toBe(false);
       expect(within(below[0]).getByTestId('records-area')).toBeInTheDocument();
-      expect(within(below[0]).getByTestId('review-fold-toggle-gap')).toBeInTheDocument();
+      expect(within(below[0]).getByTestId('detail-review')).toBeInTheDocument();
       expect(
         below[0].compareDocumentPosition(below[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();

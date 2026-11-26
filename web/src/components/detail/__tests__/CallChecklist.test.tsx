@@ -472,3 +472,96 @@ describe('확인사항 › 후속 조치 나누기 (#847)', () => {
     ]);
   });
 });
+
+// #957(PM 지적 2026-11-26, 참테크): 확인사항에는 통화에서 상대에게 물을 것만. 체크는 이 브라우저에 기억한다.
+describe('확인사항은 통화에서 물을 것만 (#957)', () => {
+  const askMaterial: ReviewItem = {
+    itemId: 'Q:q-material',
+    kind: 'QUESTION',
+    source: 'AI',
+    text: '장비에 쓰는 부품의 소재는 무엇이며 외주 표면처리가 필요한 부품이 있습니까?',
+    targetLabel: '상대 회사',
+    checked: false,
+  };
+
+  function renderNoProcess(
+    nextAction: string,
+    items: ReviewItem[] = [],
+    links: ProcessLinkView[] = [],
+    storageKey?: string,
+  ) {
+    return render(
+      <CallChecklist
+        header={{ ...header, industriesSource: 'STAFF' }}
+        reasons={{ reason: '이유', nextAction, questions: [] }}
+        processLinks={links}
+        reviewItems={items}
+        requirements={[]}
+        salesStep={null}
+        questions={questions}
+        title="확인사항"
+        grouped
+        storageKey={storageKey}
+      />,
+    );
+  }
+
+  beforeEach(() => window.localStorage.clear());
+
+  it('Given 규칙이 정한 담당자 할 일 문장 When 확인사항을 열면 Then 체크 줄로 넣지 않는다', () => {
+    renderNoProcess('AI 조사 결과 확인 뒤 점수 입력');
+    expect(screen.getByTestId('detail-review')).not.toHaveTextContent('점수 입력');
+    renderNoProcess('판정에 필요한 근거를 확보하세요 · 자료 미확보: 소재');
+    expect(screen.getAllByTestId('detail-review')[1]).not.toHaveTextContent('확보하세요');
+  });
+
+  it('Given 사례 파일 질문과 할 일이 섞인 후속 조치 When 확인사항 Then "…확인"으로 끝나는 질문만 남는다', () => {
+    renderNoProcess('도금을 외주하는지 확인 · 연락 계획과 기한 내 대응 가능 여부를 확인하세요');
+    const company = screen.getByTestId('check-group-company');
+    expect(company).toHaveTextContent('도금을 외주하는지');
+    expect(company).not.toHaveTextContent('연락 계획');
+  });
+
+  it('Given 점수 근거가 없는 항목들 When 확인사항 Then "근거 없음" 접힌 목록이 없다(점수 자세히 보기에서 본다)', () => {
+    renderNoProcess('', [
+      gap('NEW_PRODUCT', '표면처리가 필요한 제품·부품 생산 근거 없음'),
+      gap('NEW_RECORD', '유사 산업·부품 납품실적 근거 없음'),
+    ]);
+    expect(screen.queryByTestId('review-fold-gap')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-review')).not.toHaveTextContent('근거 없음');
+  });
+
+  it('Given 공정 연결이 없어 소재를 모름 When 확인사항 Then "부품 소재" 줄이 생기고, 소재를 묻는 질문이 이미 있거나 소재가 정해졌으면 없다', () => {
+    renderNoProcess('');
+    expect(screen.getByTestId('check-group-company')).toHaveTextContent('부품 소재');
+    renderNoProcess('', [askMaterial]);
+    expect(screen.getAllByTestId('check-group-company')[1]).not.toHaveTextContent('부품 소재');
+    renderNoProcess('', [], [{ ...pendingLink, appliedMaterial: 'STEEL', result: 'PASS' }]);
+    expect(screen.getAllByTestId('detail-review')[2]).not.toHaveTextContent('부품 소재');
+  });
+
+  it('Given 체크한 줄 When 같은 이름으로 다시 열면(새로고침) Then 체크가 남고, 접촉이 늘어 이름이 바뀌면 처음 값이며 옛 기억은 지운다', async () => {
+    const user = userEvent.setup();
+    const first = renderNoProcess('', [], [], 'opp-1:2:note-5');
+    await user.click(screen.getByRole('checkbox', { name: '확인: 부품 소재' }));
+    first.unmount();
+    const again = renderNoProcess('', [], [], 'opp-1:2:note-5');
+    expect(screen.getByRole('checkbox', { name: '확인: 부품 소재' })).toBeChecked();
+    again.unmount();
+    renderNoProcess('', [], [], 'opp-1:3:note-5');
+    const fresh = screen.getByRole('checkbox', { name: '확인: 부품 소재' });
+    expect(fresh).not.toBeChecked();
+    await user.click(fresh);
+    expect(window.localStorage.getItem('geosan.detail.checks:opp-1:2:note-5')).toBeNull();
+    expect(window.localStorage.getItem('geosan.detail.checks:opp-1:3:note-5')).toContain(
+      'material',
+    );
+  });
+
+  it('Given 기억 이름이 없으면 When 체크 Then 전처럼 화면에서만 바뀌고 저장소에 아무것도 남기지 않는다', async () => {
+    const user = userEvent.setup();
+    renderNoProcess('');
+    await user.click(screen.getByRole('checkbox', { name: '확인: 부품 소재' }));
+    expect(window.localStorage.length).toBe(0);
+  });
+});

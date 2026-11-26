@@ -246,7 +246,11 @@ def derive_review_items(data: OpportunityDetail) -> list[ReviewItem]:
                     f"GAP:ITEM:{item.item_code}",
                     ReviewItemKind.DATA_INSUFFICIENT,
                     ReviewItemSource.RULE,
-                    f"{item.label} 근거 없음",
+                    # #957: 이름이 "…근거"로 끝나면 "근거 근거 없음"이 되지 않게 한다
+                    # (검토 줄 check_points와 같은 규칙).
+                    f"{item.label} 없음"
+                    if item.label.endswith("근거")
+                    else f"{item.label} 근거 없음",
                 )
     for requirement in data.requirements:
         if requirement.result == "QUESTION_NEEDED":
