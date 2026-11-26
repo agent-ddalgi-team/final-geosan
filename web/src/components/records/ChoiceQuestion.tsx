@@ -25,6 +25,8 @@ export interface ChoiceMarks {
   process: Record<string, 'AI' | 'CONFIRMED'>;
   industries: string[];
   industriesSource: 'AI' | 'STAFF' | 'CASE_FILE' | null;
+  /** #958 확정 공정에 적용된 소재 코드(회사당 하나지만 옛 자료는 여럿일 수 있다). 없으면 빈 배열. */
+  materials?: string[];
 }
 
 /** 상세 응답에서 표시를 뽑는다. AI 공정 제안은 검토사항의 "PL:<공정 코드>" 줄이다. */
@@ -41,6 +43,15 @@ export function choiceMarksOf(
     process,
     industries: detail.header.industries ?? [],
     industriesSource: detail.header.industriesSource ?? null,
+    // AI 제안 연결의 소재는 지금 값이 아니다. 확정 연결의 소재만.
+    materials: [
+      ...new Set(
+        detail.processLinks
+          .filter((link) => process[link.processCode] === 'CONFIRMED')
+          .map((link) => link.appliedMaterial)
+          .filter((code): code is string => Boolean(code)),
+      ),
+    ],
   };
 }
 
@@ -54,6 +65,11 @@ function confirmedValues(question: SalesQuestion, marks: ChoiceMarks | null): st
     return question.answers
       .map((option) => option.answerId)
       .filter((id) => marks.process[id] === 'CONFIRMED');
+  }
+  if (question.choices === 'MATERIAL') {
+    return question.answers
+      .map((option) => option.answerId)
+      .filter((id) => (marks.materials ?? []).includes(id));
   }
   if (marks.industriesSource !== 'CASE_FILE' && marks.industriesSource !== 'STAFF') return [];
   return question.answers
@@ -74,10 +90,7 @@ export function confirmedLabels(question: SalesQuestion, marks: ChoiceMarks | nu
  * 출처("확정됨"·"사례 파일 값")는 이 줄에 적지 않는다.
  */
 export function currentLineText(question: SalesQuestion, names: string[]): string {
-  return texts.currentLine(
-    question.choices === 'INDUSTRY' ? 'INDUSTRY' : 'PROCESS',
-    names.join(', '),
-  );
+  return texts.currentLine(question.choices ?? 'PROCESS', names.join(', '));
 }
 
 /** 고른 값으로 저장하면 빠질 AI 공정 제안 수. */
@@ -92,6 +105,9 @@ function tagOf(question: SalesQuestion, id: string, marks: ChoiceMarks | null): 
   if (question.choices === 'PROCESS') {
     if (marks.process[id] === 'AI') return texts.aiTag;
     return marks.process[id] === 'CONFIRMED' ? texts.confirmedTag : null;
+  }
+  if (question.choices === 'MATERIAL') {
+    return (marks.materials ?? []).includes(id) ? texts.confirmedTag : null;
   }
   if (!marks.industries.includes(id)) return null;
   if (marks.industriesSource === 'AI') return texts.aiTag;
@@ -131,6 +147,7 @@ export function choicePreview(
     .map((option) => option.label)
     .join(', ');
   const keep = picked.includes(KEEP_CHOICE);
+  if (question.choices === 'MATERIAL') return texts.materialPreview(names);
   if (question.choices === 'INDUSTRY') {
     return keep ? texts.keepIndustryPreview(names) : texts.industryPreview(names);
   }
@@ -174,7 +191,8 @@ export function ChoiceQuestionField({
 
   function toggle(id: string, checked: boolean) {
     const rest = chosen.filter((item) => item !== id);
-    const next = checked ? [...rest, id] : rest;
+    // #958 소재는 하나만: 새로 고르면 앞의 것을 뺀다.
+    const next = checked ? (question.choices === 'MATERIAL' ? [id] : [...rest, id]) : rest;
     if (inPlace) {
       // 지금 값과 같아지면 "건드리지 않음"으로 되돌리고, 하나도 안 남으면 그 상태를 따로 표시한다.
       const same =
@@ -226,7 +244,11 @@ export function ChoiceQuestionField({
         )}
       </div>
       <Typography.Text type="secondary" style={hint}>
-        {inPlace ? texts.inPlaceHint : texts.hint}
+        {inPlace
+          ? texts.inPlaceHint
+          : question.choices === 'MATERIAL'
+            ? texts.materialHint
+            : texts.hint}
         {question.choices === 'INDUSTRY' ? ` ${texts.industryMax(MAX_INDUSTRIES)}` : ''}
       </Typography.Text>
       {changedIds.length > 0 ? (

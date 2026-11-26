@@ -87,7 +87,7 @@ class SalesQuestion(FileModel):
     # 고정 보기(answers)와 회사 값에서 가져오는 보기(choices, #652) 가운데 하나만 쓴다.
     answers: list[AnswerOption] = Field(default_factory=list, max_length=8)
     # #652: PROCESS = 거산 공정 목록, INDUSTRY = 설정 산업군. 여러 개를 고르는 질문이다.
-    choices: Literal["PROCESS", "INDUSTRY"] | None = None
+    choices: Literal["PROCESS", "INDUSTRY", "MATERIAL"] | None = None  # MATERIAL: #958
     # #742: 영업 코치가 이 질문을 다루는 방식과 필수 여부. 없으면 사람이 고르고 필수 아님.
     coach: CoachRule | None = None
 

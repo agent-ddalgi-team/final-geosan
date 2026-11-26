@@ -103,7 +103,7 @@ export function callLinesOf(
     detail.reviewItems,
     detail.requirements,
   );
-  const choiceText = (choices: 'PROCESS' | 'INDUSTRY', fallback: string) =>
+  const choiceText = (choices: 'PROCESS' | 'INDUSTRY' | 'MATERIAL', fallback: string) =>
     questions?.questions.find((question) => question.choices === choices)?.text ?? fallback;
   if (check.process) {
     lines.push({
@@ -113,7 +113,12 @@ export function callLinesOf(
     });
   }
   if (check.material || materialUnknown(detail.processLinks, detail.reviewItems)) {
-    lines.push({ key: 'material', topic: texts.topic.material, text: texts.materialQuestion });
+    // #958: 질문 파일에 부품 소재 질문이 있으면 그 문구(같은 질문이 아래 꼬리 질문으로 또 나오지 않게).
+    lines.push({
+      key: 'material',
+      topic: texts.topic.material,
+      text: choiceText('MATERIAL', texts.materialQuestion),
+    });
   }
   const industrySource = detail.header.industriesSource;
   if (industrySource !== 'CASE_FILE' && industrySource !== 'STAFF') {
@@ -185,7 +190,7 @@ export function checkRowsOf(
   (prep?.lines ?? []).forEach((line, index) =>
     rows.push({ key: `prep:${index}`, group: 'prep', label: line, checked: false }),
   );
-  const keywordOf = (choices: 'PROCESS' | 'INDUSTRY') =>
+  const keywordOf = (choices: 'PROCESS' | 'INDUSTRY' | 'MATERIAL') =>
     questions?.questions.find((question) => question.choices === choices)?.coach?.keyword ?? null;
   for (const line of callLinesOf(detail, questions)) {
     if (line.key === 'next-action') {
@@ -209,7 +214,12 @@ export function checkRowsOf(
         checked: false,
       });
     } else if (line.key === 'material') {
-      rows.push({ key: 'material', group: 'company', label: texts.short.material, checked: false });
+      rows.push({
+        key: 'material',
+        group: 'company',
+        label: keywordOf('MATERIAL') ?? texts.short.material,
+        checked: false,
+      });
     } else if (line.key === 'industry') {
       rows.push({
         key: 'industry',

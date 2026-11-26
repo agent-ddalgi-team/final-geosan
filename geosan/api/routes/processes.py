@@ -1,5 +1,8 @@
 """#847 상세 "한눈에 › 공정" [고치기] 저장 창구(C1 `POST /opportunities/{oppId}/processes`).
 
+#958(PM 결정 2026-11-26): 같은 칸의 "소재" [고치기]
+(C1 `POST /opportunities/{oppId}/material`)도 여기에 둔다.
+
 PM 결정(2026-11-17): 거산 쪽 확인 질문을 통화에서 묻는 대신, 나중에 확인해 다르면
 왼쪽 공정 줄에서 고친다. 저장은 꼬리 질문의 공정 확정(#652·#720
 `sales_confirm.confirm_processes`)과 같은 함수·같은 표를 쓴다:
@@ -15,7 +18,7 @@ from sqlalchemy import select
 
 from geosan.api.deps import SessionDep, StaffDep
 from geosan.api.routes.records import _reevaluate_one, choice_catalog
-from geosan.api.sales_confirm import confirm_processes
+from geosan.api.sales_confirm import confirm_material, confirm_processes, confirmed_links
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.errors import FieldError, InputError, NotFoundError
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
@@ -108,6 +111,81 @@ def save_processes(
     session.flush()
     return Envelope[ProcessesResponse](
         data=ProcessesResponse(process_codes=_confirmed(session, opp_id, names)),
+        meta=Meta(
+            updated_at=now,
+            reevaluated=result.links_changed,
+            dataset_kind=customer.dataset_kind,
+            has_virtual_data=customer.is_virtual,
+        ),
+    )
+
+
+MATERIAL_FIRST_PREFIX = "상세에서 소재 확정 · "
+
+
+class MaterialRequest(_RequestModel):
+    material: Annotated[str, Field(strict=True, max_length=40)] = Field(
+        description="GET /config materialOptions 안 코드"
+    )
+
+
+class MaterialResponse(_ApiModel):
+    material: str = Field(description="저장한 소재 코드")
+    process_codes: list[str] = Field(description="소재를 적용한 확정 공정(거산 공정 목록 순서)")
+
+
+@router.post("/opportunities/{oppId}/material", response_model=Envelope[MaterialResponse])
+def save_material(
+    opp_id: Annotated[str, Path(alias="oppId")],
+    body: MaterialRequest,
+    session: SessionDep,
+    staff: StaffDep,
+):
+    """#958(PM 결정 2026-11-26) 상세 "한눈에 › 소재" [고치기].
+
+    소재는 회사당 하나이고 확정 공정 모두에 적용한다.
+    """
+    catalog = choice_catalog(session)
+    materials = catalog.get("MATERIAL", {})
+    if body.material not in materials:
+        message = "거산 처리 소재 목록에 없는 값입니다. 화면을 새로 고쳐 주세요."
+        raise InputError(message, fields=[FieldError(path="material", message=message)])
+    connection = session.connection()
+    if not connection.connection.driver_connection.in_transaction:
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+    opportunity = session.get(Opportunity, opp_id)
+    customer = session.get(Customer, opportunity.customer_id) if opportunity else None
+    if opportunity is None or customer is None:
+        raise NotFoundError("소재를 고칠 회사가 없습니다.")
+    names = catalog.get("PROCESS", {})
+    if not confirmed_links(session, opp_id):
+        message = "공정을 먼저 골라 주세요."
+        raise InputError(message, fields=[FieldError(path="material", message=message)])
+    now = utcnow()
+    result = confirm_material(
+        session,
+        opportunity,
+        body.material,
+        materials,
+        staff=staff,
+        now=now,
+        first_prefix=MATERIAL_FIRST_PREFIX,
+    )
+    session.flush()
+    if result.links_changed:
+        _reevaluate_one(
+            session,
+            opp_id,
+            staff,
+            "소재를 다시 평가하지 못해 저장을 취소했습니다. 다시 시도해 주세요.",
+        )
+    if result.summary:
+        add_program_note(session, opportunity, result.summary, staff=staff, now=now)
+    session.flush()
+    return Envelope[MaterialResponse](
+        data=MaterialResponse(
+            material=body.material, process_codes=_confirmed(session, opp_id, names)
+        ),
         meta=Meta(
             updated_at=now,
             reevaluated=result.links_changed,

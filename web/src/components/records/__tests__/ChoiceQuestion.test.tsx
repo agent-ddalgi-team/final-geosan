@@ -3,7 +3,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsArea from '../RecordsArea';
+import { useState } from 'react';
 import {
+  ChoiceQuestionField,
   KEEP_CHOICE,
   UNKNOWN_CHOICE,
   choiceAnswerIds,
@@ -139,6 +141,8 @@ describe('상세 응답에서 공정·산업군 표시를 뽑는다 (#652)', () 
       process: { ANODIZING: 'CONFIRMED', ZINC_PLATING: 'AI', CHROMATE: 'AI' },
       industries: ['반도체'],
       industriesSource: 'AI',
+      // #958: 확정 연결에 소재가 없으면 빈 목록.
+      materials: [],
     });
   });
 });
@@ -536,5 +540,65 @@ describe('확인될 때까지 묻고, 확정된 것만 맞아도 답할 수 있�
     expect(screen.getByTestId('sales-choice-preview-CONFIRM_PROCESS')).toHaveTextContent(
       "저장하면 이 회사의 공정이 '아연도금'(으)로 확정되고 다른 AI 제안 2개는 빠집니다.",
     );
+  });
+});
+
+// #958(PM 결정 2026-11-26): 부품 소재 질문은 하나만 고르고, 확정 공정에 붙은 소재가 지금 값이다.
+describe('꼬리 질문 › 부품 소재 (#958)', () => {
+  const MATERIAL: SalesQuestion = {
+    questionId: 'CONFIRM_MATERIAL',
+    text: '부품 소재가 무엇인가요?',
+    step: 'REACHED',
+    choices: 'MATERIAL',
+    answers: [
+      { answerId: 'FE', label: '철' },
+      { answerId: 'AL', label: '알루미늄' },
+      { answerId: 'SUS', label: '스테인리스' },
+    ],
+  };
+
+  it('Given 확정 공정에 소재 알루미늄 When 표시를 뽑으면 Then 소재가 지금 값이고 같은 값은 보내지 않는다', () => {
+    const marks = choiceMarksOf({
+      processLinks: [
+        { linkId: 'l1', processCode: 'ANODIZING', appliedMaterial: 'AL', result: 'PASS' },
+        { linkId: 'l2', processCode: 'CHROMATE', appliedMaterial: 'AL', result: 'PASS' },
+      ],
+      reviewItems: [],
+      header: { industries: [], industriesSource: null } as unknown as OpportunityDetail['header'],
+    });
+    expect(marks.materials).toEqual(['AL']);
+    expect(choiceAnswerIds(MATERIAL, [KEEP_CHOICE], marks)).toEqual(['AL']);
+    expect(choiceAnswerIds(MATERIAL, ['SUS'], marks)).toEqual(['SUS']);
+    expect(choicePreview(MATERIAL, ['SUS'], marks)).toContain(
+      "'스테인리스'(으)로 확정 공정 모두에",
+    );
+    expect(choicePreview(MATERIAL, [UNKNOWN_CHOICE], marks)).toBe(
+      '아직 모름이면 저장해도 바뀌지 않고, 다음 접촉에서 다시 묻습니다.',
+    );
+  });
+
+  it('Given 소재가 없는 회사 When 철을 고른 뒤 알루미늄을 고르면 Then 하나만 남고 "하나만 고릅니다" 안내가 보인다', async () => {
+    const user = userEvent.setup();
+    const changes: string[][] = [];
+    function Field() {
+      const [picked, setPicked] = useState<string[]>([]);
+      return (
+        <ChoiceQuestionField
+          question={MATERIAL}
+          picked={picked}
+          marks={{ process: {}, industries: [], industriesSource: null, materials: [] }}
+          onChange={(values) => {
+            changes.push(values);
+            setPicked(values);
+          }}
+        />
+      );
+    }
+    render(<Field />);
+    expect(screen.getByRole('group')).toHaveTextContent('하나만 고릅니다');
+    await user.click(screen.getByTestId('sales-choice-CONFIRM_MATERIAL-FE'));
+    await user.click(screen.getByTestId('sales-choice-CONFIRM_MATERIAL-AL'));
+    expect(changes.at(-1)).toEqual(['AL']);
+    expect(screen.getByTestId('sales-choice-CONFIRM_MATERIAL-FE')).not.toBeChecked();
   });
 });

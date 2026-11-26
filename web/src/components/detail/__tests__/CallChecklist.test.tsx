@@ -565,3 +565,43 @@ describe('확인사항은 통화에서 물을 것만 (#957)', () => {
     expect(window.localStorage.length).toBe(0);
   });
 });
+
+// #958: 질문 파일에 부품 소재 질문(CONFIRM_MATERIAL)이 생겨도 확인사항에 "부품 소재"는 한 줄만.
+describe('확인사항 › 부품 소재 질문과 한 줄 (#958)', () => {
+  const withMaterial: SalesQuestions = {
+    ...questions,
+    questions: [
+      ...questions.questions,
+      {
+        questionId: 'CONFIRM_MATERIAL',
+        text: '부품 소재가 무엇인가요?',
+        step: 'REACHED',
+        choices: 'MATERIAL',
+        answers: [{ answerId: 'AL', label: '알루미늄' }],
+        coach: { fill: 'SUGGEST', required: false, keyword: '부품 소재' },
+      },
+    ],
+  };
+  const detail = (links: ProcessLinkView[]) => ({
+    header: { ...header, industriesSource: 'STAFF' as const },
+    reasons: { reason: '이유', nextAction: '', questions: [] },
+    processLinks: links,
+    reviewItems: [],
+    requirements: [],
+    salesStep: { ...salesStep, openQuestions: ['CONFIRM_MATERIAL'] },
+  });
+
+  it('Given 소재를 모르고 꼬리 질문도 열려 있음 When 확인사항 Then "부품 소재" 한 줄', () => {
+    const rows = checkRowsOf(detail([]), withMaterial, null);
+    expect(rows.filter((row) => row.label === '부품 소재')).toHaveLength(1);
+  });
+
+  it('Given 확정 공정에 소재가 있음 When 확인사항 Then "부품 소재" 줄이 없다', () => {
+    const rows = checkRowsOf(
+      detail([{ ...pendingLink, appliedMaterial: 'AL', result: 'PASS' }]),
+      withMaterial,
+      null,
+    );
+    expect(rows.some((row) => row.label === '부품 소재')).toBe(false);
+  });
+});
