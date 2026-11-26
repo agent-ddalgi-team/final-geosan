@@ -348,6 +348,11 @@ describe('누가 먼저 연락했나 — 종류 옆 단추 (#691 → #853)', () 
         .map((item) => item.closest('label')?.textContent),
     ).toEqual(['외근', '내방']);
     await user.click(within(direction).getByText('내방'));
+    // #947: 고른 단추는 [관심 기업]처럼 강조색으로 채운 모양(solid)이다. 테두리만 바뀌면 고른 게 안 보였다.
+    expect(direction).toHaveClass('ant-radio-group-solid');
+    expect(within(direction).getByText('내방').closest('label')).toHaveClass(
+      'ant-radio-button-wrapper-checked',
+    );
     await setResult(user, '부재');
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
