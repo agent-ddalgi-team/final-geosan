@@ -1167,6 +1167,8 @@ export default function RecordsArea({
             <Radio.Group
               aria-label={direction.text}
               optionType="button"
+              // #947: 고른 단추는 [관심 기업]처럼 강조색으로 채운다(테두리만 바뀌면 고른 게 안 보였다).
+              buttonStyle="solid"
               value={contactAnswers[direction.questionId] ?? directionDefault}
               disabled={disabled}
               onChange={(event) =>
@@ -1298,6 +1300,7 @@ export default function RecordsArea({
             <Radio.Group
               aria-labelledby={`records-decline-label-${oppId}`}
               optionType="button"
+              buttonStyle="solid"
               value={declineChoice}
               disabled={disabled}
               onChange={(event) => onDeclineChoice(event.target.value as string)}
