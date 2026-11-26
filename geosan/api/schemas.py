@@ -433,6 +433,22 @@ class RankAdjust(_ApiModel):
     window_days: int
 
 
+class PreferenceAdjust(_ApiModel):
+    """#943 관리자가 승인한 담당자 선호에 맞아 "근거 있음" 묶음 안에서 올린 근거.
+
+    저장하지 않고 목록을 읽을 때 계산한다.
+    """
+
+    pref_id: str
+    kind: Literal["PROCESS_INDUSTRY", "DISTANCE"]
+    process_code: str | None = None
+    process_name: str | None = None
+    industry: str | None = None
+    distance_km: float | None = None
+    approved_at: datetime
+    expires_at: datetime
+
+
 class OpportunityCard(_ApiModel):
     distance_km: float | None = None
     score_state: ScoreState
@@ -558,6 +574,14 @@ class OpportunityCard(_ApiModel):
             "같은 공정·산업군의 최근 성사·거절로 정한 조정. '근거 있음' 묶음 카드에만 준다(#675). "
             "표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
         ),
+    )
+    preference_adjust: PreferenceAdjust | None = Field(
+        default=None,
+        description="#943 승인한 담당자 선호에 맞아 한 단계 올린 근거. '근거 있음' 묶음에만",
+    )
+    explore_slot: bool = Field(
+        default=False,
+        description="#943 안전장치: 근거 있음 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리",
     )
 
 

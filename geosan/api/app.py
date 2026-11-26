@@ -215,6 +215,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         operations,
         opportunities,
         peers,
+        preferences,
         processes,
         records,
         sales_analysis,
@@ -238,6 +239,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         menu_badges.router,
         operations.router,
         existing_customers.router,
+        preferences.router,
         companies.router,
     ):
         app.include_router(router, prefix="/api/v1")

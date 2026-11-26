@@ -2982,3 +2982,38 @@ export const scoreChangeLabels = {
   /** 그 사이 남긴 기록이 없으면(자료·규칙이 바뀌어 프로그램이 다시 평가) 기록 덕분이라고 말하지 않는다. */
   hintNoRecords: '이 사이 남긴 기록은 없고, 프로그램이 다시 평가하며 바뀌었습니다.',
 } as const;
+
+/** #943 되먹임 ③: 담당자 선호를 "근거 있음" 묶음 안 순서로(영업 분석 맨 위 제안 칸 · 카드 줄). */
+export const preferenceLabels = {
+  title: '담당자 선호 제안',
+  intro: (days: number, picked: number) =>
+    `최근 ${days}일 동안 관심을 켜거나 연락한 회사 ${picked}곳에서 몰린 조합입니다. 승인하면 신규 거래처 찾기 "근거 있음" 안에서 한 단계 위로 갑니다. 점수는 바뀌지 않습니다.`,
+  safeguards: (days: number) =>
+    `안전장치: 성사율이 다른 곳보다 낮지 않을 때만 제안 · 승인은 ${days}일 뒤 저절로 꺼짐 · 위쪽 몇 자리 가운데 한 자리는 선호 밖 회사`,
+  none: (picked: number, min: number, minClosed: number) =>
+    picked < min
+      ? `아직 제안이 없습니다. 고른 회사 ${picked}곳 · ${min}곳 이상 쌓이면 봅니다.`
+      : `아직 제안이 없습니다. 절반 넘게 몰린 조합이 없거나, 그 조합 안·밖의 성사·거절이 아직 각 ${minClosed}곳이 안 되거나, 성사율이 다른 곳보다 낮습니다.`,
+  combo: (combo: {
+    kind: 'PROCESS_INDUSTRY' | 'DISTANCE';
+    processName: string | null;
+    industry: string | null;
+    distanceKm: number | null;
+  }) =>
+    combo.kind === 'DISTANCE'
+      ? `거산에서 ${combo.distanceKm ?? '--'}km 안`
+      : `${combo.processName ?? '--'} × ${combo.industry ?? '--'}`,
+  share: (picked: number, total: number, excluded: number) =>
+    `고른 ${total}곳 가운데 ${picked}곳${excluded > 0 ? ` (제외 ${excluded}곳은 빼서 셈)` : ''}`,
+  rate: (won: number, closed: number, otherWon: number, otherClosed: number) =>
+    `성사 ${won}/${closed} · 다른 곳 ${otherWon}/${otherClosed}`,
+  approve: '승인',
+  approveHint: '승인은 관리자만 할 수 있습니다.',
+  activeTitle: '켜진 선호',
+  active: (date: string, until: string) => `${date} 승인 · ${until}까지`,
+  revoke: '끄기',
+  failed: '처리하지 못했습니다. 다시 눌러 주세요.',
+  /** 카드 "순서 조정" 줄. 예: "담당자 선호(11/26 승인 · 아연도금 × 자동차 부품) → 위로" */
+  cardLine: (combo: string, date: string) => `담당자 선호(${date} 승인 · ${combo}) → 위로`,
+  exploreLine: '선호 밖 회사 자리 — 다른 곳의 기회도 함께 봅니다',
+} as const;

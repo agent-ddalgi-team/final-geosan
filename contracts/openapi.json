@@ -3324,6 +3324,51 @@
         "title": "Envelope[Peers]",
         "type": "object"
       },
+      "Envelope_PreferenceApprovalView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferenceApprovalView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferenceApprovalView]",
+        "type": "object"
+      },
+      "Envelope_PreferenceRevoked_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferenceRevoked"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferenceRevoked]",
+        "type": "object"
+      },
+      "Envelope_PreferencesView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferencesView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferencesView]",
+        "type": "object"
+      },
       "Envelope_ProcessesResponse_": {
         "properties": {
           "data": {
@@ -6245,6 +6290,12 @@
             "title": "Evalid",
             "type": "string"
           },
+          "exploreSlot": {
+            "default": false,
+            "description": "#943 안전장치: 근거 있음 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리",
+            "title": "Exploreslot",
+            "type": "boolean"
+          },
           "factoryProfile": {
             "anyOf": [
               {
@@ -6367,6 +6418,17 @@
             ],
             "description": "AI가 고른 이유 한 줄",
             "title": "Pickreason"
+          },
+          "preferenceAdjust": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceAdjust"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#943 승인한 담당자 선호에 맞아 한 단계 올린 근거. '근거 있음' 묶음에만"
           },
           "previousFitLevel": {
             "anyOf": [
@@ -7963,6 +8025,420 @@
           "contactReach"
         ],
         "title": "PeersSummary",
+        "type": "object"
+      },
+      "PreferenceAdjust": {
+        "description": "#943 관리자가 승인한 담당자 선호에 맞아 \"근거 있음\" 묶음 안에서 올린 근거.\n\n저장하지 않고 목록을 읽을 때 계산한다.",
+        "properties": {
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          }
+        },
+        "required": [
+          "prefId",
+          "kind",
+          "approvedAt",
+          "expiresAt"
+        ],
+        "title": "PreferenceAdjust",
+        "type": "object"
+      },
+      "PreferenceApprovalView": {
+        "properties": {
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "approvedBy": {
+            "title": "Approvedby",
+            "type": "string"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          }
+        },
+        "required": [
+          "prefId",
+          "kind",
+          "approvedBy",
+          "approvedAt",
+          "expiresAt"
+        ],
+        "title": "PreferenceApprovalView",
+        "type": "object"
+      },
+      "PreferenceApproveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PreferenceApproveRequest",
+        "type": "object"
+      },
+      "PreferenceBasis": {
+        "properties": {
+          "approvalDays": {
+            "title": "Approvaldays",
+            "type": "integer"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "minClosedForRate": {
+            "title": "Minclosedforrate",
+            "type": "integer"
+          },
+          "minPicks": {
+            "title": "Minpicks",
+            "type": "integer"
+          },
+          "minShare": {
+            "title": "Minshare",
+            "type": "number"
+          },
+          "pickedCount": {
+            "description": "기간 안 고른 회사 수(제외한 회사 뺌)",
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "windowDays": {
+            "title": "Windowdays",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "windowDays",
+          "minPicks",
+          "minShare",
+          "distanceKm",
+          "minClosedForRate",
+          "approvalDays",
+          "pickedCount"
+        ],
+        "title": "PreferenceBasis",
+        "type": "object"
+      },
+      "PreferenceRevoked": {
+        "properties": {
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "title": "Revokedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prefId",
+          "revokedAt"
+        ],
+        "title": "PreferenceRevoked",
+        "type": "object"
+      },
+      "PreferenceSuggestionView": {
+        "properties": {
+          "closedCount": {
+            "title": "Closedcount",
+            "type": "integer"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "excludedCount": {
+            "title": "Excludedcount",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "otherClosedCount": {
+            "title": "Otherclosedcount",
+            "type": "integer"
+          },
+          "otherWonCount": {
+            "title": "Otherwoncount",
+            "type": "integer"
+          },
+          "pickedCount": {
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "pickedCount",
+          "excludedCount",
+          "share",
+          "closedCount",
+          "wonCount",
+          "otherClosedCount",
+          "otherWonCount"
+        ],
+        "title": "PreferenceSuggestionView",
+        "type": "object"
+      },
+      "PreferencesView": {
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceApprovalView"
+            },
+            "title": "Active",
+            "type": "array"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canApprove": {
+            "title": "Canapprove",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceSuggestionView"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "canApprove"
+        ],
+        "title": "PreferencesView",
         "type": "object"
       },
       "ProcessBreakdownItem": {
@@ -13179,6 +13655,161 @@
           }
         },
         "summary": "Resolve Schedule"
+      }
+    },
+    "/api/v1/preferences": {
+      "get": {
+        "operationId": "get_preferences_api_v1_preferences_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferencesView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Preferences"
+      },
+      "post": {
+        "operationId": "approve_preference_api_v1_preferences_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenceApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceApprovalView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Preference"
+      }
+    },
+    "/api/v1/preferences/{prefId}/revoke": {
+      "post": {
+        "operationId": "revoke_preference_api_v1_preferences__prefId__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prefId",
+            "required": true,
+            "schema": {
+              "title": "Prefid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceRevoked_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Preference"
       }
     },
     "/api/v1/questions/{questionId}/reply": {
