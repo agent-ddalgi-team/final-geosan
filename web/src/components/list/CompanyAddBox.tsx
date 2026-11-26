@@ -5,7 +5,8 @@
 // 그 주소를 읽는다. 보기 전용(viewer)에게는 그리지 않는다.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Input } from 'antd';
+import { Button, Input, theme } from 'antd';
+import type { CSSProperties } from 'react';
 import { ApiError, lookupCompanies, postCompany } from '../../api/client';
 import type { CompanyAdded, CompanyLookup } from '../../api/types';
 import { companyAdd } from '../../labels/ko';
@@ -22,12 +23,32 @@ export interface CompanyAddBoxProps {
   onAdded?: () => void;
 }
 
+type Token = ReturnType<typeof theme.useToken>['token'];
+
+/** 고르는 줄 한 칸. 고른 줄은 [관심 기업] 켜짐·기록 칸 단추(#947)처럼 강조색 바탕 + 흰 글자로 채운다. */
+function rowStyle(token: Token, selected: boolean): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    margin: '6px 0',
+    padding: '8px 12px',
+    borderRadius: 10,
+    border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+    background: selected ? token.colorPrimary : token.colorBgContainer,
+    color: selected ? token.colorTextLightSolid : undefined,
+    fontWeight: selected ? 600 : undefined,
+    cursor: 'pointer',
+  };
+}
+
 function detailPath(oppId: string) {
   return `/opportunities/${encodeURIComponent(oppId)}`;
 }
 
 export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
   const { staffKey, canRecord } = useFrame();
+  const { token } = theme.useToken();
   const [name, setName] = useState('');
   const [found, setFound] = useState<Found | null>(null);
   const [searching, setSearching] = useState(false);
@@ -140,32 +161,48 @@ export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
             {factories.length === 0 ? (
               <p style={{ color: colors.textSecondary }}>{companyAdd.factoriesEmpty}</p>
             ) : null}
-            {factories.map((item) => (
-              <label key={item.rowId} style={{ display: 'block', margin: '4px 0' }}>
-                {item.oppId ? (
-                  <span>
-                    {item.companyName} · {item.address} · {companyAdd.alreadyListed}{' '}
-                    <Link to={detailPath(item.oppId)}>{companyAdd.open}</Link>
+            {factories.map((item) =>
+              item.oppId ? (
+                <div key={item.rowId} style={{ ...rowStyle(token, false), cursor: 'default' }}>
+                  <span style={{ color: colors.textSecondary }}>
+                    {item.companyName} · {item.address} · {companyAdd.alreadyListed}
                   </span>
-                ) : (
-                  <>
-                    <input
-                      type="radio"
-                      name="company-add-pick"
-                      value={item.rowId}
-                      checked={picked === item.rowId}
-                      onChange={() => setPicked(item.rowId)}
-                    />{' '}
+                  <Link to={detailPath(item.oppId)} style={{ marginLeft: 'auto' }}>
+                    {companyAdd.open}
+                  </Link>
+                </div>
+              ) : (
+                <label
+                  key={item.rowId}
+                  style={rowStyle(token, picked === item.rowId)}
+                  data-testid={`company-add-row-${item.rowId}`}
+                  data-picked={picked === item.rowId ? 'true' : undefined}
+                >
+                  <input
+                    type="radio"
+                    name="company-add-pick"
+                    value={item.rowId}
+                    checked={picked === item.rowId}
+                    onChange={() => setPicked(item.rowId)}
+                  />
+                  <span>
                     {item.companyName} · {item.address}
                     {item.product ? ` · ${item.product}` : ''}
-                  </>
-                )}
-              </label>
-            ))}
+                  </span>
+                  {picked === item.rowId ? (
+                    <span style={{ marginLeft: 'auto' }}>{companyAdd.picked}</span>
+                  ) : null}
+                </label>
+              ),
+            )}
             {found.data.truncated ? (
               <p style={{ color: colors.textSecondary }}>{companyAdd.truncated}</p>
             ) : null}
-            <label style={{ display: 'block', margin: '4px 0' }}>
+            <label
+              style={rowStyle(token, picked === MANUAL)}
+              data-testid="company-add-row-manual"
+              data-picked={picked === MANUAL ? 'true' : undefined}
+            >
               <input
                 type="radio"
                 name="company-add-pick"
@@ -173,8 +210,11 @@ export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
                 checked={picked === MANUAL}
                 onChange={() => setPicked(MANUAL)}
                 data-testid="company-add-manual"
-              />{' '}
-              {companyAdd.manualOption(found.name)}
+              />
+              <span>{companyAdd.manualOption(found.name)}</span>
+              {picked === MANUAL ? (
+                <span style={{ marginLeft: 'auto' }}>{companyAdd.picked}</span>
+              ) : null}
             </label>
           </fieldset>
           {picked === MANUAL ? (

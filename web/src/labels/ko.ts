@@ -802,6 +802,8 @@ export const companyAdd = {
   factoriesEmpty: '공장 자료에서 이 이름을 찾지 못했습니다.',
   truncated: '더 있습니다. 이름을 더 길게 적어 주세요.',
   alreadyListed: '목록에 있음',
+  /** 고른 줄 끝 표시. 고른 줄은 강조색으로 채워진다(#947과 같은 모양). */
+  picked: '✓ 고름',
   manualOption: (name: string) => `공장 자료에 없음 — "${name}" 이름으로 넣기`,
   addressLabel: '주소(알면)',
   addressPlaceholder: '예: 충남 천안시 서북구 …',

@@ -94,7 +94,14 @@ test('찾은 공장 자료 행을 골라 넣으면 rowId와 아는 홈페이지�
     screen.getByText(/가상진행금속 2공장 · 충남 아산시 가상로 2 · 목록에 있음/),
   ).toBeInTheDocument();
   expect(screen.getByTestId('company-add-submit')).toBeDisabled();
+  expect(screen.getByTestId('company-add-row-row-a')).not.toHaveAttribute('data-picked');
   await userEvent.click(screen.getByRole('radio', { name: /\(주\)가상진행금속/ }));
+  // 고른 줄 전체가 강조색으로 채워지고 "✓ 고름"이 붙는다(#947 단추와 같은 모양).
+  const pickedRow = screen.getByTestId('company-add-row-row-a');
+  expect(pickedRow).toHaveAttribute('data-picked', 'true');
+  expect(pickedRow).toHaveTextContent('✓ 고름');
+  expect(pickedRow.style.background).not.toBe('');
+  expect(screen.getByTestId('company-add-row-manual')).not.toHaveAttribute('data-picked');
   await userEvent.type(screen.getByTestId('company-add-homepage'), ' https://example.com ');
   await userEvent.click(screen.getByTestId('company-add-submit'));
   expect(postCompany).toHaveBeenCalledWith(
