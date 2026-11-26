@@ -323,7 +323,8 @@ def test_review_table_rollback_and_upgrade_preserve_existing_notes(records_env, 
 
 
 def test_gap_text_does_not_repeat_evidence_word(records_env):
-    """Given 이름이 "…근거"로 끝나는 항목과 아닌 항목이 근거 없음 / When 파생 / Then "근거"를 한 번만 쓴다(#957)."""
+    """Given 이름이 "…근거"로 끝나는 항목과 아닌 항목이 근거 없음 / When 파생
+    / Then "근거"를 한 번만 쓴다(#957)."""
     client, opp_id = records_env
     data = OpportunityDetail.model_validate(detail(client, opp_id))
     first, second = data.scores.items[:2]

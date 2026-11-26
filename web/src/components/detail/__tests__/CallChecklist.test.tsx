@@ -553,7 +553,9 @@ describe('확인사항은 통화에서 물을 것만 (#957)', () => {
     expect(fresh).not.toBeChecked();
     await user.click(fresh);
     expect(window.localStorage.getItem('geosan.detail.checks:opp-1:2:note-5')).toBeNull();
-    expect(window.localStorage.getItem('geosan.detail.checks:opp-1:3:note-5')).toContain('material');
+    expect(window.localStorage.getItem('geosan.detail.checks:opp-1:3:note-5')).toContain(
+      'material',
+    );
   });
 
   it('Given 기억 이름이 없으면 When 체크 Then 전처럼 화면에서만 바뀌고 저장소에 아무것도 남기지 않는다', async () => {
