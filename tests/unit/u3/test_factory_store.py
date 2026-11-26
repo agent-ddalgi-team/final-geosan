@@ -215,7 +215,8 @@ def test_unapproved_source_is_rejected_before_reading_file(
         ("status", "DONE"),
         ("source_id", "api"),
         ("criteria", {}),
-        ("criteria", {"regions": ["경기"]}),
+        # #961: 경기는 찾기 지역이 됐으므로 설정 밖 지역은 제주로 본다.
+        ("criteria", {"regions": ["제주"]}),
         ("criteria", {"regions": ["충남", "충남"]}),
         ("criteria", {"regions": [None]}),
         ("criteria", {"regions": "충남"}),

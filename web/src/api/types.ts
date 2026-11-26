@@ -349,6 +349,8 @@ export interface ConfigUi {
   research?: ResearchConfig;
   records?: RecordsConfig;
   ingestOptions?: IngestOptionsConfig;
+  /** #958 거산 처리 소재(역량 파일 materialCodes를 공정 순서로 합침). 상세 소재 [고치기]의 보기. 옛 응답이면 없음. */
+  materialOptions?: { code: string; name: string }[];
   export?: ExportConfig;
   staff: StaffEntry[];
   brand: Brand;
@@ -440,8 +442,9 @@ export interface SalesQuestion {
   /**
    * 보기를 회사 값에서 가져오는 질문(#652). PROCESS = 거산 공정 목록, INDUSTRY = 설정 산업군.
    * 여러 개를 고르고, answers는 서버가 그 목록으로 채워 준다. 없으면 보기 하나만 고르는 질문이다.
+   * MATERIAL(#958) = 거산 처리 소재 목록이고 하나만 고른다.
    */
-  choices?: 'PROCESS' | 'INDUSTRY' | null;
+  choices?: 'PROCESS' | 'INDUSTRY' | 'MATERIAL' | null;
   answers: SalesAnswerOption[];
   /** 영업 코치가 이 질문을 다루는 방식·필수 여부(#742, 질문 파일 coach 칸). 없으면 null. */
   coach?: SalesCoachRule | null;

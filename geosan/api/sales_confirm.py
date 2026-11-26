@@ -67,6 +67,14 @@ def confirm_processes(
     )
     # #719: 저장 전에 확인된 공정(사례 파일·담당자 확정)이 있었는지. 문장을 고르는 데만 쓴다.
     confirmed_before = {row.process_code for row in rows if row.state == "CONFIRMED"}
+    # #958(PM 결정 2026-11-26): 소재는 회사당 하나.
+    # 남는 확정 공정이 모두 같은 소재면 새로 확정하는 공정도 그 소재로 만든다.
+    kept_materials = {
+        row.applied_material
+        for row in rows
+        if row.state == "CONFIRMED" and row.process_code in chosen
+    }
+    inherited = next(iter(kept_materials)) if len(kept_materials) == 1 else None
     changed = False
     dropped = 0
     for row in rows:
@@ -79,7 +87,7 @@ def confirm_processes(
             continue
         changed = True
         if row.process_code in chosen:
-            confirm_ai_link(session, row, staff=staff, now=now)
+            confirm_ai_link(session, row, staff=staff, now=now, material=inherited)
         else:
             row.superseded_at = now
             dropped += 1
@@ -96,6 +104,7 @@ def confirm_processes(
                 link_id=new_id("link"),
                 opp_id=opportunity.opp_id,
                 process_code=code,
+                applied_material=inherited,
                 source=STAFF,
                 state="CONFIRMED",
                 confirmed_by=staff,
@@ -120,6 +129,72 @@ def confirm_processes(
     if dropped:
         summary += f" · AI 제안 {dropped}개 뺌"
     return ConfirmResult(summary, True)
+
+
+def confirmed_links(session: Session, opp_id: str) -> list[OppProcessLink]:
+    """살아 있는 확정 공정 연결(사례 파일·담당자 확정·확정한 AI 제안)."""
+    return list(
+        session.scalars(
+            select(OppProcessLink)
+            .where(
+                OppProcessLink.opp_id == opp_id,
+                OppProcessLink.superseded_at.is_(None),
+                OppProcessLink.state == "CONFIRMED",
+            )
+            .order_by(OppProcessLink.link_id)
+        )
+    )
+
+
+def confirm_material(
+    session: Session,
+    opportunity: Opportunity,
+    material: str,
+    names: Mapping[str, str],
+    *,
+    staff: str,
+    now: datetime,
+    first_prefix: str = "꼬리 질문으로 소재 확정 · ",
+) -> ConfirmResult:
+    """#958 확정 공정 모두에 같은 소재를 적용한다(소재는 회사당 하나, PM 결정 2026-11-26).
+
+    소재가 다른 확정 행은 이력(superseded)으로 남기고 같은 공정·새 소재로 담당자 행을 만든다.
+    지우는 행은 없다. 확정 공정이 없거나 이미 모두 같은 소재면 아무것도 바꾸지 않는다.
+    소재가 공정의 거산 처리 소재가 아니면 그 연결은 평가 규칙대로 제외로 판정된다
+    (여기서 막지 않는다).
+    """
+    links = confirmed_links(session, opportunity.opp_id)
+    before = [row.applied_material for row in links if row.applied_material]
+    changing = [row for row in links if row.applied_material != material]
+    if not changing:
+        return ConfirmResult(None, False)
+    for row in changing:
+        row.superseded_at = now
+        session.add(
+            OppProcessLink(
+                link_id=new_id("link"),
+                opp_id=row.opp_id,
+                process_code=row.process_code,
+                applied_material=material,
+                source=STAFF,
+                state="CONFIRMED",
+                confirmed_by=staff,
+                confirmed_at=now,
+                evidence_ref=row.evidence_ref,
+                dataset_kind=row.dataset_kind,
+                is_virtual=row.is_virtual,
+                created_by=staff,
+                created_at=now,
+            )
+        )
+    name = names.get(material, material)
+    # 확정 공정을 새로 더해 소재가 비어 있던 행만 채운 경우는 "변경"이 아니다(전 소재가 새 소재뿐).
+    olds = [code for code in dict.fromkeys(before) if code != material]
+    if olds:
+        return ConfirmResult(
+            f"소재 변경 · {', '.join(names.get(code, code) for code in olds)} → {name}", True
+        )
+    return ConfirmResult(first_prefix + name, True)
 
 
 def _names(codes: set[str], names: Mapping[str, str]) -> str:

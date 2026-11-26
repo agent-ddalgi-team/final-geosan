@@ -110,27 +110,41 @@ def _validate_source_rows(batch, source):
     ):
         raise RunFailedError("읽은 공장 행 번호와 건수를 확인해 주세요.")
     with session_scope() as session:
-        rows = session.scalars(
-            select(SourceFactoryRow).where(SourceFactoryRow.row_id.in_(source.row_ids))
-        ).all()
-        if {row.row_id for row in rows} != set(source.row_ids) or any(
+        rows = _source_rows(session, source.row_ids)
+        if set(rows) != set(source.row_ids) or any(
             row.region not in parent_regions(batch.criteria["regions"])
             or row.missing_since is not None
-            for row in rows
+            for row in rows.values()
         ):
             raise RunFailedError("찾기 지역의 현재 공장 행만 판단할 수 있습니다.")
+
+
+# SQLite가 한 번에 받는 값 수(32766)보다 작게 나눠 묻는다(#961: 경기는 한 번에 7.8만 행).
+_ID_CHUNK = 5000
+
+
+def _source_rows(session, row_ids) -> dict:
+    """행 번호로 공장 행의 지역·주소·누락 표시만 읽는다. 많아도 나눠 읽는다."""
+    found = {}
+    ids = list(row_ids)
+    for at in range(0, len(ids), _ID_CHUNK):
+        for row in session.execute(
+            select(
+                SourceFactoryRow.row_id,
+                SourceFactoryRow.region,
+                SourceFactoryRow.address,
+                SourceFactoryRow.missing_since,
+            ).where(SourceFactoryRow.row_id.in_(ids[at : at + _ID_CHUNK]))
+        ):
+            found[row.row_id] = row
+    return found
 
 
 def _selected_row_ids(batch, row_ids):
     """시·군을 골랐으면 그 시·군 행만 AI 판단으로 넘긴다(#521). 비용은 고른 만큼만 든다."""
     selected = batch.criteria["regions"]
     with session_scope() as session:
-        rows = {
-            row.row_id: row
-            for row in session.scalars(
-                select(SourceFactoryRow).where(SourceFactoryRow.row_id.in_(row_ids))
-            )
-        }
+        rows = _source_rows(session, row_ids)
         return tuple(
             row_id
             for row_id in row_ids

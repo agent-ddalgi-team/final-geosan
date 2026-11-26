@@ -33,20 +33,45 @@ GROUPS = {
     "세종·대전·공주": ["세종", "대전", "공주시"],
     "충남 서북부": ["당진시", "서산시", "예산군", "홍성군", "태안군"],
     "충남 남부": ["논산시", "계룡시", "부여군", "청양군", "보령시", "서천군", "금산군"],
+    # #961(PM 결정 2026-11-26): 경기도까지 확대. 경기 권역 4개는 팀 제안.
+    "경기 남부": ["평택시", "안성시", "오산시", "화성시", "용인시", "이천시", "여주시"],
+    "경기 서부": [
+        "수원시",
+        "안산시",
+        "시흥시",
+        "안양시",
+        "군포시",
+        "의왕시",
+        "과천시",
+        "광명시",
+        "부천시",
+        "김포시",
+    ],
+    "경기 동부": ["성남시", "하남시", "광주시", "구리시", "남양주시", "양평군", "가평군"],
+    "경기 북부": ["고양시", "파주시", "의정부시", "양주시", "동두천시", "포천시", "연천군"],
 }
 
 
 @pytest.mark.parametrize("filename", EXAMPLES)
-def test_examples_have_four_region_groups_inside_configured_regions(filename):
-    """Given 예시 설정 / When 읽기 / Then 권역 4개가 PM 지시 순서로, 모두 regions 안의 값이다."""
+def test_examples_have_region_groups_inside_configured_regions(filename):
+    """Given 예시 설정 / When 읽기 / Then 충남권 4개 + 경기 4개가 이 순서로, 모두 regions 안이다."""
     settings = load_app_settings(Path("examples") / filename)
     groups = {group.label: group.regions for group in settings.ingestion.region_groups}
     assert groups == GROUPS
     assert list(groups) == list(GROUPS)
     assert {r for regions in groups.values() for r in regions} <= set(settings.ingestion.regions)
     presets = [preset.label for preset in settings.list_filters.region_presets]
-    assert presets[:4] == list(GROUPS)
-    assert "충남" in presets
+    assert presets[:4] == list(GROUPS)[:4]
+    assert "충남" in presets and "경기" in presets
+    assert set(GROUPS) <= set(presets)
+    # #961: 경기 권역은 경기 시·군 31개를 빠짐없이 한 번씩 나눈다.
+    from geosan.opportunity.factory_csv import CITY_PARENTS, parent_regions
+
+    gyeonggi = [
+        city for label, cities in groups.items() if label.startswith("경기") for city in cities
+    ]
+    assert sorted(gyeonggi) == sorted(c for c, p in CITY_PARENTS.items() if p == "경기")
+    assert parent_regions(gyeonggi) == ["경기"]
 
 
 def test_old_settings_without_groups_still_load_and_schema_lists_the_field():

@@ -653,6 +653,39 @@ export const processFixTexts = {
   saveFailed: '공정을 저장하지 못했습니다.',
 } as const;
 
+/**
+ * #958 상세 "한눈에 › 소재" 옆 [고치기](PM 결정 2026-11-26). 소재는 회사당 하나이고 확정 공정 모두에 적용된다.
+ * 회사를 직접 넣었거나 조사가 못 찾은 소재를 통화 뒤 넣는다.
+ */
+export const materialFixTexts = {
+  edit: '고치기',
+  save: '저장',
+  cancel: '취소',
+  groupLabel: '이 회사의 부품 소재 고르기',
+  hint: '확정한 공정 모두에 이 소재를 씁니다. 거산이 그 소재를 처리하지 않는 공정은 제외로 바뀝니다. 저장하면 점수를 다시 계산합니다.',
+  needProcess: '공정을 먼저 골라 주세요. 공정이 정해지면 소재를 넣을 수 있습니다.',
+  saveFailed: '소재를 저장하지 못했습니다.',
+} as const;
+
+/**
+ * #958 상세 "한눈에 › 어떤 회사"의 주소·회사 이름 [고치기](PM 결정 2026-11-26).
+ * 주소는 모든 회사, 회사 이름은 직접 넣은 회사만. 주소를 바꾸면 거리·지도를 다시 계산한다.
+ */
+export const companyInfoFixTexts = {
+  editAddress: '주소 고치기',
+  addAddress: '주소 넣기',
+  editName: '회사 이름 고치기',
+  addressLabel: '주소',
+  nameLabel: '회사 이름',
+  addressHint: '저장하면 거산까지 거리와 지도를 새 주소로 다시 계산합니다.',
+  nameHint:
+    '직접 넣은 회사라 이름을 고칠 수 있습니다. 같은 이름의 회사가 있으면 같은 회사인지 확인 목록에 올라갑니다.',
+  contactWarning: '전화번호·이메일은 적지 마세요.',
+  save: '저장',
+  cancel: '취소',
+  saveFailed: '저장하지 못했습니다.',
+} as const;
+
 /** #803 상세 작은 지도. */
 export const detailMiniMap = {
   openLabel: '네이버 지도에서 크게 보기 (새 창)',
@@ -1134,6 +1167,13 @@ export const materialLabels: Record<string, string> = {
   FE: '철',
   CU: '구리',
   SUS: '스테인리스',
+  /** #958: 크로메이트 처리 소재(역량 파일). */
+  ZN: '아연',
+  /** #964: 브로슈어 역량 파일의 아노다이징 소재. */
+  MG: '마그네슘',
+  TI: '티타늄',
+  HF: '하프늄',
+  NB: '니오븀',
 };
 
 export const processRows = {
@@ -1255,6 +1295,8 @@ export const salesChoiceTexts = {
   staffTag: '담당자 확정',
   confirmedTag: '확정됨',
   hint: '여러 개 고를 수 있습니다. AI 제안은 참고용이라 미리 골라 두지 않았습니다.',
+  /** #958 부품 소재는 하나만 고른다. */
+  materialHint: '하나만 고릅니다. 공정이 정해진 회사면 확정 공정 모두에 이 소재가 저장됩니다.',
   lockedHint: '이미 확정된 공정은 그대로 둡니다.',
   industryMax: (max: number) => `산업군은 ${max}개까지 고를 수 있습니다.`,
   /** "저장하면 이 회사의 공정이 '아연도금'(으)로 확정되고 다른 AI 제안 4개는 빠집니다." */
@@ -1281,8 +1323,11 @@ export const salesChoiceTexts = {
    * 이미 확인된 값이 있는 질문의 한 줄(#719, PM 결정 2026-11-14로 #691의 "확정됨: … [바꾸기]"를 바꿈).
    * "공정: 아연도금", "산업: 기계·설비". 그 아래에 지금 값이 고른 채로 보이고 바로 고친다.
    */
-  currentLine: (kind: 'PROCESS' | 'INDUSTRY', names: string) =>
-    `${kind === 'PROCESS' ? '공정' : '산업'}: ${names}`,
+  currentLine: (kind: 'PROCESS' | 'INDUSTRY' | 'MATERIAL', names: string) =>
+    `${kind === 'PROCESS' ? '공정' : kind === 'MATERIAL' ? '소재' : '산업'}: ${names}`,
+  /** #958 부품 소재(하나만). 확정 공정 모두에 같은 소재로 저장된다. 공정이 없으면 답만 남는다. */
+  materialPreview: (name: string) =>
+    `저장하면 이 회사의 부품 소재가 '${name}'(으)로 확정 공정 모두에 저장됩니다. 공정이 정해지기 전이면 답만 남습니다.`,
   /** 지금 값과 다르게 골랐을 때 그 자리에 보인다(저장 전). "변경됨: 방위산업 → 방위산업, 자동차 부품" */
   changedLine: (before: string, after: string) => `변경됨: ${before} → ${after}`,
   inPlaceHint: '다르면 여기서 바로 고칩니다. 그대로 두고 저장하면 바뀌지 않습니다.',
@@ -2806,6 +2851,8 @@ export const listSimple = {
   regionGroupLabel: '지역(권역)',
   regionGroupHint: '여러 권역을 함께 고를 수 있습니다',
   regionDirect: '시·군 직접 고르기',
+  /** #961 시·군 직접 고르기에서 권역에 안 든 시·도 통째 선택지 줄 제목. */
+  regionWholeSection: '시·도 전체',
   /** "천안·아산 (천안시·아산시)" */
   regionGroupOption: (label: string, regions: readonly string[]) =>
     `${label} (${regions.join('·')})`,

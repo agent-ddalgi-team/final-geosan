@@ -216,27 +216,26 @@ def test_water_reader_only_takes_csv(tmp_path):
 def test_store_needs_source_confirmation_and_refuses_older_files(tmp_db, tmp_path):
     """Given 확인 기록 없음 / When 저장 / Then 거부. 확인 뒤 더 오래된 파일도 거부한다."""
     rows = read_factoryon([factoryon_file(tmp_path, [row()])], REGIONS).rows
+    older = read_factoryon(
+        [factoryon_file(tmp_path, [row()], name="20261101_팩트리온_충남.xlsx")], REGIONS
+    ).rows
     with session_scope() as session, pytest.raises(InputError, match="확인 기록"):
-        store_profiles(session, rows, date(2026, 11, 11))
+        store_profiles(session, rows)
     confirm("factoryon-xlsx")
     with session_scope() as session:
-        assert store_profiles(session, rows, date(2026, 11, 11)) == 1
-    with session_scope() as session, pytest.raises(InputError, match="오래된"):
-        store_profiles(session, rows, date(2026, 11, 1))
+        assert store_profiles(session, rows) == 1
+    with session_scope() as session, pytest.raises(InputError, match="저장된 충남 자료.*오래된"):
+        store_profiles(session, older)
     with session_scope() as session:
-        # 같은 날 파일을 다시 넣으면 통째로 바뀌어 한 벌만 남는다.
-        store_profiles(session, rows, date(2026, 11, 11))
+        # 같은 날 파일을 다시 넣으면 그 지역 행이 바뀌어 한 벌만 남는다.
+        store_profiles(session, rows)
         assert len(list(session.scalars(select(FactoryProfile)))) == 1
 
 
 def _store(tmp_path, profiles: list[dict], water: list[str] = ()) -> None:
     confirm("factoryon-xlsx", "nier-water-csv")
     with session_scope() as session:
-        store_profiles(
-            session,
-            read_factoryon([factoryon_file(tmp_path, profiles)], REGIONS).rows,
-            date(2026, 11, 11),
-        )
+        store_profiles(session, read_factoryon([factoryon_file(tmp_path, profiles)], REGIONS).rows)
         store_water(
             session, read_water(water_file(tmp_path, list(water)), REGIONS).rows, date(2026, 11, 11)
         )
@@ -356,7 +355,9 @@ def test_source_load_command_stores_and_attaches(tmp_db, tmp_path):
     confirm("factoryon-xlsx")
     customer_id = add_customer("(주)가상볼트", "충청남도 천안시 서북구 가상로 1")
     path = factoryon_file(
-        tmp_path, [row(), row(**{"회사명": "가상경기", "공장주소(도로명)": "경기도 수원시 1"})]
+        # #961: 경기는 찾기 지역이 됐으므로 지역 밖 행은 제주로 본다.
+        tmp_path,
+        [row(), row(**{"회사명": "가상제주", "공장주소(도로명)": "제주특별자치도 제주시 1"})],
     )
     result = CliRunner().invoke(app, ["source-load", "factoryon-xlsx", str(path)])
     assert result.exit_code == 0, result.output
@@ -365,11 +366,12 @@ def test_source_load_command_stores_and_attaches(tmp_db, tmp_path):
     assert customer(customer_id).factory_industry_name == "절삭가공 외 1 종"
 
 
-def test_source_load_rejects_mixed_dates_and_unknown_sources(tmp_db, tmp_path):
+def test_source_load_rejects_one_region_from_two_dates_and_unknown_sources(tmp_db, tmp_path):
+    """#961: 지역이 다르면 날짜가 달라도 되지만, 같은 지역 행이 두 날짜에서 오면 거부한다."""
     first = factoryon_file(tmp_path, [row()], name="20261111_a.xlsx")
     second = factoryon_file(tmp_path, [row()], name="20261110_b.xlsx")
     mixed = CliRunner().invoke(app, ["source-load", "factoryon-xlsx", str(first), str(second)])
-    assert mixed.exit_code == 1 and "기준일이 서로 다릅니다" in mixed.output
+    assert mixed.exit_code == 1 and "충남 행이 기준일이 다른 파일" in mixed.output
     unknown = CliRunner().invoke(app, ["source-load", "kicox-factory-csv", str(first)])
     assert unknown.exit_code == 1 and "factoryon-xlsx" in unknown.output
     with session_scope() as session:
@@ -410,3 +412,70 @@ def test_industry_name_with_contact_shape_is_not_stored(tmp_db, tmp_path):
     assert result.exit_code == 0, result.output
     assert customer(customer_id).factory_industry_name is None
     assert customer(customer_id).factory_scale == "소기업"
+
+
+GYEONGGI = ["충남", "대전", "세종", "경기"]
+
+
+def _gyeonggi_row(**values) -> dict:
+    return row(**{"회사명": "가상경기정밀", "공장주소(도로명)": "경기도 평택시 가상로 7", **values})
+
+
+def test_new_region_file_keeps_other_regions_and_their_dates(tmp_db, tmp_path):
+    """#961 Given 11/11 충남·대전 자료가 저장됨 / When 11/26 경기 파일만 넣음
+    Then 경기 행만 더해지고 충남·대전 행과 그 기준일은 그대로다."""
+    confirm("factoryon-xlsx")
+    old = factoryon_file(
+        tmp_path,
+        [row(), row(**{"회사명": "가상대전", "공장주소(도로명)": "대전광역시 유성구 가상로 1"})],
+    )
+    with session_scope() as session:
+        store_profiles(session, read_factoryon([old], GYEONGGI).rows)
+    new = factoryon_file(tmp_path, [_gyeonggi_row()], name="20261126_팩트리온_경기전체.xlsx")
+    with session_scope() as session:
+        assert store_profiles(session, read_factoryon([new], GYEONGGI).rows) == 1
+    with session_scope() as session:
+        stored = {
+            (r.region, r.company_name, r.file_date) for r in session.scalars(select(FactoryProfile))
+        }
+    assert stored == {
+        ("충남", "(주)가상볼트", date(2026, 11, 11)),
+        ("대전", "가상대전", date(2026, 11, 11)),
+        ("경기", "가상경기정밀", date(2026, 11, 26)),
+    }
+
+
+def test_source_load_takes_files_of_different_dates_for_different_regions(tmp_db, tmp_path):
+    """#961 Given 11/11 충남 파일과 11/26 경기 파일 / When 한 번에 source-load
+    Then 지역마다 기준일을 알리고 둘 다 저장해 경기 회사에도 공장 정보가 붙는다."""
+    confirm("factoryon-xlsx")
+    customer_id = add_customer("가상경기정밀", "경기도 평택시 가상로 7")
+    # DB에 설정이 없으면 예시 설정(경기 포함)의 찾기 지역을 쓴다.
+    first = factoryon_file(tmp_path, [row()])
+    second = factoryon_file(tmp_path, [_gyeonggi_row()], name="20261126_팩트리온_경기전체.xlsx")
+    result = CliRunner().invoke(app, ["source-load", "factoryon-xlsx", str(first), str(second)])
+    assert result.exit_code == 0, result.output
+    assert "경기 2026-11-26 · 충남 2026-11-11 기준 2행을 읽어 2행을 저장" in result.output
+    assert customer(customer_id).factory_scale == "소기업"
+    assert customer(customer_id).factory_profile_date == date(2026, 11, 26)
+
+
+def test_reader_streams_a_sheet_whose_size_mark_says_only_a1(tmp_path):
+    """#961 Given 팩토리온처럼 시트 크기 표시가 A1뿐인 엑셀 / When 적은 메모리로 읽음
+    Then 첫 줄만이 아니라 모든 줄을 읽는다(크기 표시를 믿으면 0행으로 끝났다)."""
+    import re
+    import zipfile
+
+    path = factoryon_file(tmp_path, [row(), _gyeonggi_row()])
+    fixed = tmp_path / "20261111_크기표시A1.xlsx"
+    with zipfile.ZipFile(path) as src, zipfile.ZipFile(fixed, "w") as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            if item.filename.startswith("xl/worksheets/sheet"):
+                data = re.sub(rb'<dimension ref="[^"]+"', b'<dimension ref="A1"', data)
+                assert b'<dimension ref="A1"' in data
+            dst.writestr(item, data)
+    result = read_factoryon([fixed], GYEONGGI)
+    assert result.raw_count == 2
+    assert [r.region for r in result.rows] == ["충남", "경기"]
+    assert {r.file_date for r in result.rows} == {date(2026, 11, 11)}

@@ -650,3 +650,78 @@ def test_fake_reading_dates_follow_the_clock_at_call_time(monkeypatch):
     after = json.loads(full_reading())["nextSchedule"]["date"]
     assert after == (later.astimezone(KST).date() + timedelta(days=3)).isoformat()
     assert after != before
+
+
+# ---------------------------------------------------------------------------
+# #958(PM 결정 2026-11-26): 비어 있는 공정·소재·산업을 코치가 피드백 한 줄로 짚는다
+# (필수 입력은 없음)
+# ---------------------------------------------------------------------------
+
+
+def _set_company_values(opp_id, *, material=None, industries=None, source=None, keep_links=True):
+    from geosan.opportunity.models import OppProcessLink
+
+    with session_scope() as session:
+        rows = list(
+            session.scalars(
+                select(OppProcessLink).where(
+                    OppProcessLink.opp_id == opp_id, OppProcessLink.superseded_at.is_(None)
+                )
+            )
+        )
+        for row in rows:
+            if keep_links:
+                row.state, row.applied_material = "CONFIRMED", material
+            else:
+                row.superseded_at = utcnow()
+        customer = session.get(Customer, session.get(Opportunity, opp_id).customer_id)
+        customer.industries, customer.industries_source = industries, source
+
+
+def test_empty_company_values_go_out_for_one_feedback_line(coach_env):
+    """Given 확정 공정·소재·확정 산업이 없는 회사 / When 코치
+    Then 보내는 기록에 "[비어 있는 회사 값] 공정 · 소재 · 산업", 지시문에 짚는 규칙이 있다."""
+    client, opp_ids, fake = coach_env
+    _set_company_values(opp_ids[0], industries=["기계·설비"], source="AI", keep_links=False)
+    assert coach(client, opp_ids[0]).status_code == 200
+    payload = fake.payloads[-1]
+    assert "[비어 있는 회사 값]\n공정 · 소재 · 산업" in payload["input"]
+    assert "[비어 있는 회사 값] 아래 [비어 있는 회사 값]에" in payload["instructions"]
+
+
+def test_filled_company_values_say_nothing_is_missing(coach_env):
+    """Given 확정 공정(소재 알루미늄)·담당자 확정 산업 / When 코치
+    Then "[비어 있는 회사 값] 없음"."""
+    client, opp_ids, fake = coach_env
+    _set_company_values(opp_ids[0], material="AL", industries=["기계·설비"], source="STAFF")
+    assert coach(client, opp_ids[0]).status_code == 200
+    assert "[비어 있는 회사 값]\n없음" in fake.payloads[-1]["input"]
+
+
+def test_material_answer_is_one_value_from_the_list_and_not_the_same_as_now(coach_env):
+    """Given 소재 질문 답(하나·둘·목록 밖·지금과 같음) / When 코치
+    Then 목록 안 하나이고 지금 값과 다른 답만 제안(SUGGEST)으로 남는다."""
+    client, opp_ids, fake = coach_env
+    memo = "알루미늄 부품이 대부분이고 철 브라켓도 있다고 함"
+    _set_company_values(opp_ids[0], material="FE", industries=["기계·설비"], source="STAFF")
+    cases = [
+        (["AL", "FE"], None),  # 둘이면 버림
+        (["WOOD"], None),  # 목록 밖이면 버림
+        (["FE"], None),  # 지금 소재와 같으면 버림
+        (["AL"], ["AL"]),
+    ]
+    for ids, kept in cases:
+        fake.answer = reading(answers=[("CONFIRM_MATERIAL", ids, "알루미늄 부품이 대부분")])
+        data = coach(client, opp_ids[0], memo=memo).json()["data"]
+        found = [row for row in data["answers"] if row["questionId"] == "CONFIRM_MATERIAL"]
+        if kept is None:
+            assert found == [], ids
+        else:
+            assert found == [
+                {
+                    "questionId": "CONFIRM_MATERIAL",
+                    "answerIds": kept,
+                    "quote": "알루미늄 부품이 대부분",
+                    "fill": "SUGGEST",
+                }
+            ]
