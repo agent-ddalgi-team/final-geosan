@@ -24,6 +24,7 @@ import {
   salesStepLabels,
   outcomeStatusTone,
   ownPlatingLine,
+  preferenceLabels,
   supplyTierLabels,
 } from '../../labels/ko';
 import { colors, spacing, typography } from '../../theme/tokens';
@@ -171,6 +172,16 @@ export default function OpportunityCard({
         windowDays: adjust.windowDays,
       })
     : null;
+  // #943 승인한 담당자 선호로 올린 카드, 또는 선호 밖 회사로 남긴 자리.
+  const preference = evidenceReady ? (card.preferenceAdjust ?? null) : null;
+  const preferenceLine = preference
+    ? preferenceLabels.cardLine(
+        preferenceLabels.combo(preference),
+        formatMonthDay(preference.approvedAt) ?? '',
+      )
+    : evidenceReady && card.exploreSlot
+      ? preferenceLabels.exploreLine
+      : null;
   const bookmarkState = useBookmark(card.oppId, card, card.records.bookmark ?? null);
 
   return (
@@ -333,6 +344,11 @@ export default function OpportunityCard({
         {adjustLine ? (
           <Row label={contactBuckets.adjustRow} title={adjustLine}>
             <span data-testid="card-rank-adjust">{adjustLine}</span>
+          </Row>
+        ) : null}
+        {preferenceLine ? (
+          <Row label={contactBuckets.adjustRow} title={preferenceLine}>
+            <span data-testid="card-preference">{preferenceLine}</span>
           </Row>
         ) : null}
         {ownPlatingBasis ? (

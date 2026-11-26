@@ -569,6 +569,19 @@ export interface OpportunityCard {
   bucketBasis?: BucketBasis;
   /** 영업 결과 조정(#610). null이면 조정 이유 줄을 보이지 않는다. */
   rankAdjust?: RankAdjust | null;
+  /** #943 관리자가 승인한 담당자 선호에 맞아 한 단계 올린 근거. 없으면(옛 응답·안 맞음) 줄 없음. */
+  preferenceAdjust?: {
+    prefId: string;
+    kind: 'PROCESS_INDUSTRY' | 'DISTANCE';
+    processCode: string | null;
+    processName: string | null;
+    industry: string | null;
+    distanceKm: number | null;
+    approvedAt: string;
+    expiresAt: string;
+  } | null;
+  /** #943 안전장치: 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리. */
+  exploreSlot?: boolean;
   oppId: string;
   rank: number;
   title: string;

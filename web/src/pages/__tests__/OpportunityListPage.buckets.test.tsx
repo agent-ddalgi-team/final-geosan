@@ -267,6 +267,38 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     }
   });
 
+  it('#943 승인한 담당자 선호 줄과 선호 밖 자리 줄은 "근거 있음" 카드에만 보인다', async () => {
+    const preferenceAdjust = {
+      prefId: 'pref-1',
+      kind: 'PROCESS_INDUSTRY' as const,
+      processCode: 'ZINC_PLATING',
+      processName: '아연도금',
+      industry: '자동차 부품',
+      distanceKm: null,
+      approvedAt: '2026-11-26T01:00:00Z',
+      expiresAt: '2027-02-24T01:00:00Z',
+    };
+    mockedGet.mockResolvedValue(
+      reply([
+        card('a', 1, 'EVIDENCE_READY', 'EVIDENCE_ENOUGH', { preferenceAdjust }),
+        card('b', 2, 'EVIDENCE_READY', 'EVIDENCE_ENOUGH', { exploreSlot: true }),
+        card('c', 3, 'EVIDENCE_READY', 'EVIDENCE_ENOUGH'),
+        card('d', 1, 'EVIDENCE_SOME', 'EVIDENCE_FEW', { preferenceAdjust, exploreSlot: true }),
+      ]),
+    );
+    renderPage('/opportunities?process=ZINC_PLATING');
+    const cards = await screen.findAllByTestId('opportunity-card');
+    expect(within(cards[0]).getByTestId('card-preference')).toHaveTextContent(
+      '담당자 선호(11/26 승인 · 아연도금 × 자동차 부품) → 위로',
+    );
+    expect(within(cards[1]).getByTestId('card-preference')).toHaveTextContent(
+      '선호 밖 회사 자리 — 다른 곳의 기회도 함께 봅니다',
+    );
+    for (const item of cards.slice(2)) {
+      expect(within(item).queryByTestId('card-preference')).not.toBeInTheDocument();
+    }
+  });
+
   it('성사와 거절이 서로 지워 조정 단계가 0이면 이유 줄을 보이지 않는다', async () => {
     const even = { ...UP, level: 0, wonCount: 2, lostCount: 3, countedLostReasons: ['NO_DEMAND'] };
     mockedGet.mockResolvedValue(
