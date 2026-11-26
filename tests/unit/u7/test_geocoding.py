@@ -378,6 +378,38 @@ def test_detail_http_has_real_stored_distance(public_company):
     assert response.json()["data"]["header"]["distanceKm"] == 0.0
 
 
+@pytest.mark.parametrize("missing_key", [True, False])
+def test_detail_opens_without_distance_when_live_geocode_fails(
+    public_company, monkeypatch, caplog, missing_key
+):
+    # #968 키가 없거나 행안부 조회가 실패해도 상세는 열리고 거리만 미확인(null)이다.
+    from fastapi.testclient import TestClient
+
+    from geosan.api.app import create_app
+
+    with session_scope() as session:
+        settings = read_app_settings(session)
+        settings.geocoding.naver_fallback_enabled = True
+        sync_app_settings(session, settings)
+    if missing_key:
+        monkeypatch.delenv("JUSO_SEARCH_KEY", raising=False)
+    else:
+        monkeypatch.setenv("JUSO_SEARCH_KEY", "test-only")
+        monkeypatch.setattr(
+            "geosan.opportunity.geocode_http.request_json",
+            lambda *a, **k: (_ for _ in ()).throw(OSError("down")),
+        )
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/opportunities/opp-geocode")
+    assert response.status_code == 200
+    assert response.json()["data"]["header"]["distanceKm"] is None
+    assert "geocode.live_failed" in caplog.text
+    with session_scope() as session:
+        assert session.get(Customer, "cust-geocode").lat is None
+        rows = session.scalars(select(TransferLog)).all()
+        assert all(r.decision == "FAILED" for r in rows) and (missing_key or rows)
+
+
 def test_csv_configuration_requires_date_and_naver_requires_enabled():
     from pydantic import ValidationError
 

@@ -1,6 +1,8 @@
 """공공좌표의 저장 및 요청 안에서만 사용하는 거리 계산."""
 
-from geosan.config.errors import InputError
+import logging
+
+from geosan.config.errors import AppError, InputError
 from geosan.opportunity.geo_math import straight_distance_km
 from geosan.opportunity.geocode_address import parse_address
 from geosan.opportunity.geocode_http import GeocodeClient
@@ -9,6 +11,8 @@ from geosan.opportunity.location_csv import GeoPoint, location_index, valid_poin
 from geosan.opportunity.models import Customer
 from geosan.storage.base import utcnow
 from geosan.storage.session import session_scope
+
+_LOGGER = logging.getLogger("geosan")
 
 
 def store_public_coordinate(customer_id, expected_address, point, db_path=None):
@@ -103,7 +107,14 @@ def customer_points(session, customers, opp_ids, settings, *, live=True):
         location_index(settings.geocoding.location_csv_files), settings.geocoding
     )
     for customer_id, address, opp_id in pending:
-        point = resolver.resolve(address, GeocodeClient(opp_id, address))
+        try:
+            point = resolver.resolve(address, GeocodeClient(opp_id, address))
+        except AppError as error:
+            # #968 키 없음·한도·조회 실패는 그 회사 거리만 "거리 미확인"(null)으로 둔다.
+            # 실패는 전송 기록(GEOCODE FAILED)과 서버 경고에 남고, 다음 열기 때 다시 찾는다.
+            _LOGGER.warning("geocode.live_failed kind=%s opp=%s", error.kind, opp_id)
+            points[customer_id] = None
+            continue
         if point and point.source in {"CSV", "JUSO"}:
             store_public_coordinate(customer_id, address, point)
         points[customer_id] = point
