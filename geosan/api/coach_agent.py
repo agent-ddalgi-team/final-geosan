@@ -15,14 +15,17 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from geosan.api.mcp_tools import TOOLS, TOOLS_BY_NAME, ToolInputError, run_tool
-from geosan.config.app_settings import read_app_settings
+from geosan.api.mcp_tools import TOOLS_BY_NAME, ToolInputError, available_tools, run_tool
+from geosan.config.app_settings import AppSettings, read_app_settings
 from geosan.evidence.assistant_llm import LookupResult
 from geosan.storage.session import session_scope
 
 
-def openai_tools() -> list[dict[str, Any]]:
-    """외부 AI에 알리는 도구 목록(Responses API function 도구). MCP tools/list와 같은 내용."""
+def openai_tools(settings: AppSettings | None = None) -> list[dict[str, Any]]:
+    """외부 AI에 알리는 도구 목록(Responses API function 도구). MCP tools/list와 같은 내용.
+
+    #932 기존 고객 도구는 설정 existingCustomers.enabled가 켜졌을 때만 들어간다.
+    """
     return [
         {
             "type": "function",
@@ -32,19 +35,29 @@ def openai_tools() -> list[dict[str, Any]]:
             # 선택 인자가 있어 엄격 모드를 쓰지 않는다. 인자 검사는 서버(run_tool)가 한다.
             "strict": False,
         }
-        for tool in TOOLS
+        for tool in available_tools(settings)
     ]
 
 
-def lookup_instructions(opp_id: str, rounds: int) -> str:
-    """코치 지시문 끝에 붙이는 도구 안내. 이 회사의 oppId를 알려 도구에 넘기게 한다."""
+def lookup_instructions(opp_id: str, rounds: int, *, customers: bool = False) -> str:
+    """코치 지시문 끝에 붙이는 도구 안내. 이 회사의 oppId를 알려 도구에 넘기게 한다.
+
+    customers(#932)가 참이면 기존 고객 도구로 비교하고 맞춤 질문을 만들라는 안내를 더한다.
+    """
+    extra = (
+        "기존 고객과 견줄 때는 similar_customers·customer_overview를 쓰고, 비슷한 기존 고객이 "
+        "거래 전에 따졌을 인증·소재·공정을 이 회사에 다음에 물어볼 질문으로 바꿔 피드백에 쓴다. "
+        if customers
+        else ""
+    )
     return (
         "\n[찾아보기]\n"
         f"이 회사의 oppId는 {opp_id}이다. 이번 메모와 보낸 기록만으로 부족할 때만 "
         f"도구로 더 찾아본다(한 번에 하나, 최대 {rounds}번). "
         "예: 비슷한 회사가 왜 거절했는지(similar_lost), 지난 "
         "영업 분석의 제안(past_analyses), 다른 회사의 기록(find_companies → company_records). "
-        "찾아본 것에서 근거가 된 내용은 피드백에 회사 이름과 함께 짧게 쓴다. 찾은 기록에 없는 "
+        + extra
+        + "찾아본 것에서 근거가 된 내용은 피드백에 회사 이름과 함께 짧게 쓴다. 찾은 기록에 없는 "
         "사실은 지어내지 않는다. 다 찾았으면 정해진 모양의 답만 낸다."
     )
 

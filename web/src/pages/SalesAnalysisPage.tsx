@@ -17,6 +17,7 @@ import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
 import AnalysisFeedbackCard from '../components/analysis/AnalysisFeedbackCard';
 import MonthlyTrend from '../components/analysis/MonthlyTrend';
+import PreferencePanel from '../components/analysis/PreferencePanel';
 import PastAnalyses from '../components/analysis/PastAnalyses';
 import SalesPatterns from '../components/analysis/SalesPatterns';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
@@ -179,6 +180,8 @@ export default function SalesAnalysisPage() {
         </p>
         <PeriodPicker value={period} onChange={changePeriod} />
       </div>
+      {/* #943 되먹임 ③: 담당자 선호 제안·승인. 설정이 꺼져 있으면 그리지 않는다. */}
+      <PreferencePanel />
       <FiveStates
         data-testid="analysis"
         state={state}

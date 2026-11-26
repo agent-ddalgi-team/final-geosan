@@ -29,6 +29,7 @@ import type { Meta, OpportunityCard as CardData } from '../api/types';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame, VIEWER_KEY } from '../components/frame/FrameContext';
 import ExportButton from '../components/list/ExportButton';
+import CompanyAddBox from '../components/list/CompanyAddBox';
 import IngestForm from '../components/list/IngestForm';
 import IngestSummary from '../components/list/IngestSummary';
 import { useIngestOptions } from '../components/list/useIngestOptions';
@@ -600,6 +601,8 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           rootClassName="prospect-discovery"
         >
           <div data-testid="ingest-panel">
+            {/* #948 진행 중인 회사는 이름으로 찾아 바로 관심 기업으로 넣는다(AI 고르기 없음). */}
+            <CompanyAddBox onAdded={retry} />
             {ingestOptions ? (
               <IngestForm
                 options={ingestOptions}

@@ -350,6 +350,8 @@ export function SalesQuestionFields({
                   <Radio.Group
                     aria-labelledby={`sales-question-label-${question.questionId}`}
                     optionType="button"
+                    // #947: 고른 답은 [관심 기업]처럼 강조색으로 채운다.
+                    buttonStyle="solid"
                     value={picked[question.questionId] ?? null}
                     disabled={disabled}
                     onChange={(event) => onPick(question.questionId, event.target.value as string)}

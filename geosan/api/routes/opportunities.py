@@ -23,6 +23,12 @@ from geosan.api.ingest_views import (
     recent_order,
     research_state,
 )
+from geosan.api.preferences import (
+    active_approvals,
+    combo_of,
+    company_traits,
+    preference_settings,
+)
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
     bookmark_view,
@@ -58,6 +64,7 @@ from geosan.api.schemas import (
     OpportunityDetailEnvelope,
     OpportunityListEnvelope,
     OutcomeStatus,
+    PreferenceAdjust,
     ProcessCount,
     ProcessLinkView,
     Question,
@@ -70,6 +77,7 @@ from geosan.api.schemas import (
     Scores,
     ScoreState,
 )
+from geosan.api.score_change import score_change
 from geosan.capability.queries import get_process
 from geosan.config.app_settings import ResearchSettings
 from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
@@ -84,6 +92,7 @@ from geosan.dashboard.contact_order import (
     closed_results,
     contact_order_key,
 )
+from geosan.dashboard.preference import first_match, keep_explore_slot, preferred_level
 from geosan.dashboard.queries import bookmarked_opp_ids
 from geosan.dashboard.sales_analysis import (
     LINK_CONFIRMED,
@@ -654,6 +663,7 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
             and run.previous_eval_id is not None
             and (opinion is None or opinion.eval_id != run.eval_id)
         ),
+        score_change=score_change(session, run),
     )
     for section in detail_sections:
         data.update(section(context))
@@ -697,6 +707,8 @@ class _Placement:
     basis: str
     adjust: RankAdjust | None
     order_key: tuple
+    # #943 승인한 담당자 선호에 맞았으면 그 승인 카드 값. 근거 있음 묶음에서만.
+    preference: PreferenceAdjust | None = None
 
 
 def _contact_placements(
@@ -769,6 +781,28 @@ def _contact_placements(
         tz=KST,
     )
     lost_reason_order = [code.value for code in LostReasonCode]
+    # #943 되먹임 ③: 관리자가 승인한 선호(켜진 것만). 설정이 꺼져 있으면 아무것도 바꾸지 않는다.
+    preference = preference_settings(session)
+    approvals = active_approvals(session, utcnow()) if preference else []
+    approval_combos = [(row.pref_id, combo_of(row)) for row in approvals]
+    approval_views = {}
+    traits = {}
+    if approvals:
+        names = dict(processes)
+        approval_views = {
+            row.pref_id: PreferenceAdjust(
+                pref_id=row.pref_id,
+                kind=row.kind,
+                process_code=row.process_code,
+                process_name=names.get(row.process_code) if row.process_code else None,
+                industry=row.industry,
+                distance_km=float(row.distance_km) if row.distance_km is not None else None,
+                approved_at=row.approved_at,
+                expires_at=row.expires_at,
+            )
+            for row in approvals
+        }
+        traits = company_traits(session, {row[2].opp_id for row in rows})
     placements = {}
     for position, (_original, current, opportunity, customer) in enumerate(rows):
         state = CompanyState(
@@ -798,15 +832,26 @@ def _contact_placements(
             else None
         )
         timing = current.timing_requirements
+        level = found.level if found else 0
+        matched = (
+            first_match(traits[opportunity.opp_id], approval_combos)
+            if bucket == EVIDENCE_READY and opportunity.opp_id in traits
+            else None
+        )
+        if matched is not None:
+            level = preferred_level(
+                level, matched=True, step=preference.step, max_level=preference.max_level
+            )
         placements[opportunity.opp_id] = _Placement(
             bucket=bucket,
             basis=basis,
             adjust=RankAdjust.model_validate(found, from_attributes=True) if found else None,
+            preference=approval_views.get(matched) if matched else None,
             order_key=contact_order_key(
                 bucket=bucket,
                 state=state,
                 null_fit_level_as=settings.null_fit_level_as,
-                level=found.level if found else 0,
+                level=level,
                 valid_until=current.valid_until,
                 timing_met_count=(
                     sum(bool(value) for value in timing.values()) if isinstance(timing, dict) else 0
@@ -1095,8 +1140,20 @@ def list_opportunities(
     )
     bucket_counts = Counter(placements[row[2].opp_id].bucket for row in rows)
     bucket_ranks: dict[str, int] = {}
+    explore_opp_id = None
     if sort == "contact":
         rows.sort(key=lambda row: placements[row[2].opp_id].order_key)
+        preference = preference_settings(session)
+        if preference is not None:
+            # #943 안전장치③: 근거 있음 위쪽 자리가 모두 선호 회사면 선호 밖 한 곳을 남긴다.
+            by_id = {row[2].opp_id: row for row in rows}
+            order, explore_opp_id = keep_explore_slot(
+                [row[2].opp_id for row in rows],
+                ready={key for key, value in placements.items() if value.bucket == EVIDENCE_READY},
+                preferred={key for key, value in placements.items() if value.preference},
+                top_n=preference.explore_top_n,
+            )
+            rows = [by_id[opp_id] for opp_id in order]
         # 카드 번호는 묶음 안 순서다(묶음마다 1부터).
         seen: Counter[str] = Counter()
         for row in rows:
@@ -1161,6 +1218,8 @@ def list_opportunities(
                 bucket=placements[opportunity.opp_id].bucket,
                 bucket_basis=placements[opportunity.opp_id].basis,
                 rank_adjust=placements[opportunity.opp_id].adjust,
+                preference_adjust=placements[opportunity.opp_id].preference,
+                explore_slot=opportunity.opp_id == explore_opp_id,
                 rank=bucket_ranks[opportunity.opp_id]
                 if sort == "contact"
                 else position

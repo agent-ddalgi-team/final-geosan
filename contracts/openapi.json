@@ -1423,6 +1423,112 @@
         "title": "CoachSimilarCaseView",
         "type": "object"
       },
+      "CompanyAddRequest": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "homepageUrl": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepageurl"
+          },
+          "rowId": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rowid"
+          }
+        },
+        "title": "CompanyAddRequest",
+        "type": "object"
+      },
+      "CompanyAdded": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "researchQueued": {
+            "title": "Researchqueued",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "created",
+          "researchQueued"
+        ],
+        "title": "CompanyAdded",
+        "type": "object"
+      },
+      "CompanyLookup": {
+        "properties": {
+          "existing": {
+            "items": {
+              "$ref": "#/components/schemas/ExistingCompany"
+            },
+            "title": "Existing",
+            "type": "array"
+          },
+          "factories": {
+            "items": {
+              "$ref": "#/components/schemas/FactoryCompany"
+            },
+            "title": "Factories",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "existing",
+          "factories",
+          "truncated"
+        ],
+        "title": "CompanyLookup",
+        "type": "object"
+      },
       "CompanyRow": {
         "properties": {
           "contactCount": {
@@ -1746,6 +1852,52 @@
           "setupRequired"
         ],
         "title": "CurrentStaff",
+        "type": "object"
+      },
+      "CustomerSuggestions": {
+        "properties": {
+          "enabled": {
+            "description": "existingCustomers.enabled. false면 아래는 모두 비어 있다",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "industries": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedValue"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedProcess"
+            },
+            "title": "Processes",
+            "type": "array"
+          },
+          "regions": {
+            "description": "기존 고객 지역 글에 든 찾기 지역(설정 ingestion.regions) 값",
+            "items": {
+              "$ref": "#/components/schemas/SuggestedValue"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "total": {
+            "description": "넣어 둔 기존 고객 수",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "total",
+          "processes",
+          "industries",
+          "regions"
+        ],
+        "title": "CustomerSuggestions",
         "type": "object"
       },
       "DailyBrief": {
@@ -2716,7 +2868,8 @@
           "CASE_FILE",
           "FACTORY_FILE",
           "FACTORY_API",
-          "WEB_SEARCH"
+          "WEB_SEARCH",
+          "STAFF_ADDED"
         ],
         "title": "DiscoverySource",
         "type": "string"
@@ -2796,6 +2949,36 @@
         "title": "Envelope[CoachResult]",
         "type": "object"
       },
+      "Envelope_CompanyAdded_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyAdded"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyAdded]",
+        "type": "object"
+      },
+      "Envelope_CompanyLookup_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyLookup"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyLookup]",
+        "type": "object"
+      },
       "Envelope_ConfigUi_": {
         "properties": {
           "data": {
@@ -2809,6 +2992,21 @@
           "data"
         ],
         "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_CustomerSuggestions_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CustomerSuggestions"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CustomerSuggestions]",
         "type": "object"
       },
       "Envelope_DailyBrief_": {
@@ -3126,6 +3324,51 @@
         "title": "Envelope[Peers]",
         "type": "object"
       },
+      "Envelope_PreferenceApprovalView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferenceApprovalView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferenceApprovalView]",
+        "type": "object"
+      },
+      "Envelope_PreferenceRevoked_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferenceRevoked"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferenceRevoked]",
+        "type": "object"
+      },
+      "Envelope_PreferencesView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferencesView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferencesView]",
+        "type": "object"
+      },
       "Envelope_ProcessesResponse_": {
         "properties": {
           "data": {
@@ -3336,6 +3579,41 @@
         "title": "EvidenceView",
         "type": "object"
       },
+      "ExistingCompany": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "bookmarked": {
+            "title": "Bookmarked",
+            "type": "boolean"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "companyName",
+          "address",
+          "bookmarked"
+        ],
+        "title": "ExistingCompany",
+        "type": "object"
+      },
       "ExportUi": {
         "properties": {
           "xlsxEnabled": {
@@ -3348,6 +3626,71 @@
           "xlsxEnabled"
         ],
         "title": "ExportUi",
+        "type": "object"
+      },
+      "FactoryCompany": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "industryName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industryname"
+          },
+          "oppId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이름·주소가 같은 회사가 이미 목록에 있으면 그 기회 ID",
+            "title": "Oppid"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "rowId": {
+            "title": "Rowid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rowId",
+          "companyName",
+          "address",
+          "region",
+          "product",
+          "industryName",
+          "oppId"
+        ],
+        "title": "FactoryCompany",
         "type": "object"
       },
       "FactoryProfile": {
@@ -5947,6 +6290,12 @@
             "title": "Evalid",
             "type": "string"
           },
+          "exploreSlot": {
+            "default": false,
+            "description": "#943 안전장치: 근거 있음 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리",
+            "title": "Exploreslot",
+            "type": "boolean"
+          },
           "factoryProfile": {
             "anyOf": [
               {
@@ -6069,6 +6418,17 @@
             ],
             "description": "AI가 고른 이유 한 줄",
             "title": "Pickreason"
+          },
+          "preferenceAdjust": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceAdjust"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#943 승인한 담당자 선호에 맞아 한 단계 올린 근거. '근거 있음' 묶음에만"
           },
           "previousFitLevel": {
             "anyOf": [
@@ -6394,6 +6754,17 @@
             },
             "title": "Reviewitems",
             "type": "array"
+          },
+          "scoreChange": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#942 지난 평가와 달라진 것. 앞 평가가 없거나 점수·분류·항목이 모두 같으면 null"
           },
           "scores": {
             "anyOf": [
@@ -7654,6 +8025,420 @@
           "contactReach"
         ],
         "title": "PeersSummary",
+        "type": "object"
+      },
+      "PreferenceAdjust": {
+        "description": "#943 관리자가 승인한 담당자 선호에 맞아 \"근거 있음\" 묶음 안에서 올린 근거.\n\n저장하지 않고 목록을 읽을 때 계산한다.",
+        "properties": {
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          }
+        },
+        "required": [
+          "prefId",
+          "kind",
+          "approvedAt",
+          "expiresAt"
+        ],
+        "title": "PreferenceAdjust",
+        "type": "object"
+      },
+      "PreferenceApprovalView": {
+        "properties": {
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "approvedBy": {
+            "title": "Approvedby",
+            "type": "string"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          }
+        },
+        "required": [
+          "prefId",
+          "kind",
+          "approvedBy",
+          "approvedAt",
+          "expiresAt"
+        ],
+        "title": "PreferenceApprovalView",
+        "type": "object"
+      },
+      "PreferenceApproveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PreferenceApproveRequest",
+        "type": "object"
+      },
+      "PreferenceBasis": {
+        "properties": {
+          "approvalDays": {
+            "title": "Approvaldays",
+            "type": "integer"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "minClosedForRate": {
+            "title": "Minclosedforrate",
+            "type": "integer"
+          },
+          "minPicks": {
+            "title": "Minpicks",
+            "type": "integer"
+          },
+          "minShare": {
+            "title": "Minshare",
+            "type": "number"
+          },
+          "pickedCount": {
+            "description": "기간 안 고른 회사 수(제외한 회사 뺌)",
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "windowDays": {
+            "title": "Windowdays",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "windowDays",
+          "minPicks",
+          "minShare",
+          "distanceKm",
+          "minClosedForRate",
+          "approvalDays",
+          "pickedCount"
+        ],
+        "title": "PreferenceBasis",
+        "type": "object"
+      },
+      "PreferenceRevoked": {
+        "properties": {
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "title": "Revokedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prefId",
+          "revokedAt"
+        ],
+        "title": "PreferenceRevoked",
+        "type": "object"
+      },
+      "PreferenceSuggestionView": {
+        "properties": {
+          "closedCount": {
+            "title": "Closedcount",
+            "type": "integer"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "excludedCount": {
+            "title": "Excludedcount",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "otherClosedCount": {
+            "title": "Otherclosedcount",
+            "type": "integer"
+          },
+          "otherWonCount": {
+            "title": "Otherwoncount",
+            "type": "integer"
+          },
+          "pickedCount": {
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "pickedCount",
+          "excludedCount",
+          "share",
+          "closedCount",
+          "wonCount",
+          "otherClosedCount",
+          "otherWonCount"
+        ],
+        "title": "PreferenceSuggestionView",
+        "type": "object"
+      },
+      "PreferencesView": {
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceApprovalView"
+            },
+            "title": "Active",
+            "type": "array"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canApprove": {
+            "title": "Canapprove",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceSuggestionView"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "canApprove"
+        ],
+        "title": "PreferencesView",
         "type": "object"
       },
       "ProcessBreakdownItem": {
@@ -9577,6 +10362,177 @@
         "title": "ScheduleSetRequest",
         "type": "object"
       },
+      "ScoreChange": {
+        "description": "#942 되먹임 ①: 지금 평가와 바로 앞의 다른 평가의 차이. 저장하지 않고 읽을 때 계산.",
+        "properties": {
+          "changedAt": {
+            "description": "점수가 지금 값이 된 평가의 시각",
+            "format": "date-time",
+            "title": "Changedat",
+            "type": "string"
+          },
+          "classificationAfter": {
+            "title": "Classificationafter",
+            "type": "string"
+          },
+          "classificationBefore": {
+            "title": "Classificationbefore",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeRecord"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "ruleVersionChanged": {
+            "description": "두 평가의 규칙 설정 버전이 다르면 true",
+            "title": "Ruleversionchanged",
+            "type": "boolean"
+          },
+          "scoreAfter": {
+            "title": "Scoreafter",
+            "type": "integer"
+          },
+          "scoreBefore": {
+            "title": "Scorebefore",
+            "type": "integer"
+          },
+          "sinceEvalId": {
+            "description": "견준 앞 평가 ID",
+            "title": "Sinceevalid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changedAt",
+          "sinceEvalId",
+          "scoreBefore",
+          "scoreAfter",
+          "classificationBefore",
+          "classificationAfter",
+          "ruleVersionChanged"
+        ],
+        "title": "ScoreChange",
+        "type": "object"
+      },
+      "ScoreChangeItem": {
+        "description": "#942 지난 평가와 점수·상태가 다른 항목 한 줄.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "factJudged": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "지금 평가의 판정 요지. 예 \"통화에서 확인(11/20) · 견적 요청\"",
+            "title": "Factjudged"
+          },
+          "itemCode": {
+            "title": "Itemcode",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemCode",
+          "label"
+        ],
+        "title": "ScoreChangeItem",
+        "type": "object"
+      },
+      "ScoreChangeRecord": {
+        "description": "#942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 넣지 않는다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONTACT_ATTEMPT일 때 접촉 날짜",
+            "title": "Attemptedat"
+          },
+          "kind": {
+            "enum": [
+              "CHANGE",
+              "RELATION_CONFIRMED",
+              "CONTACT_ATTEMPT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONTACT_ATTEMPT일 때 접촉 방법 코드",
+            "title": "Method"
+          },
+          "summary": {
+            "description": "CHANGE = 프로그램 변경 기록 문장, RELATION_CONFIRMED = 거래 관계 변경 문장, CONTACT_ATTEMPT = 꼬리 질문 보기 이름(없으면 빈 글)",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "kind",
+          "summary"
+        ],
+        "title": "ScoreChangeRecord",
+        "type": "object"
+      },
       "ScoreItemView": {
         "properties": {
           "certainty": {
@@ -9930,6 +10886,52 @@
           "avgContactsToReach"
         ],
         "title": "StepRow",
+        "type": "object"
+      },
+      "SuggestedProcess": {
+        "properties": {
+          "code": {
+            "description": "공정 코드(찾기 조건 processCodes 값)",
+            "title": "Code",
+            "type": "string"
+          },
+          "count": {
+            "description": "이 공정을 맡기는 기존 고객 수",
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "count"
+        ],
+        "title": "SuggestedProcess",
+        "type": "object"
+      },
+      "SuggestedValue": {
+        "properties": {
+          "count": {
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "description": "찾기 조건 값(industries·regions)",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "SuggestedValue",
         "type": "object"
       },
       "SupplyTier": {
@@ -10505,6 +11507,104 @@
         "summary": "Daily"
       }
     },
+    "/api/v1/companies": {
+      "post": {
+        "description": "회사 1곳을 넣고(이미 있으면 그 회사) 관심을 켠다. 실패하면 전부 되돌린다.",
+        "operationId": "add_company_by_name_api_v1_companies_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyAdded_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Company By Name"
+      }
+    },
+    "/api/v1/companies/lookup": {
+      "get": {
+        "description": "이미 목록에 있는 회사와 공장 자료를 이름으로 찾는다. 저장·외부 호출 없음.",
+        "operationId": "lookup_companies_api_v1_companies_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyLookup_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Companies"
+      }
+    },
     "/api/v1/config/ui": {
       "get": {
         "operationId": "config_ui_api_v1_config_ui_get",
@@ -10587,6 +11687,24 @@
           }
         },
         "summary": "Dashboard Map"
+      }
+    },
+    "/api/v1/existing-customers/suggestions": {
+      "get": {
+        "operationId": "customer_suggestions_api_v1_existing_customers_suggestions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CustomerSuggestions_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Customer Suggestions"
       }
     },
     "/api/v1/export/xlsx": {
@@ -12537,6 +13655,161 @@
           }
         },
         "summary": "Resolve Schedule"
+      }
+    },
+    "/api/v1/preferences": {
+      "get": {
+        "operationId": "get_preferences_api_v1_preferences_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferencesView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Preferences"
+      },
+      "post": {
+        "operationId": "approve_preference_api_v1_preferences_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenceApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceApprovalView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Preference"
+      }
+    },
+    "/api/v1/preferences/{prefId}/revoke": {
+      "post": {
+        "operationId": "revoke_preference_api_v1_preferences__prefId__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prefId",
+            "required": true,
+            "schema": {
+              "title": "Prefid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceRevoked_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Preference"
       }
     },
     "/api/v1/questions/{questionId}/reply": {

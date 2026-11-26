@@ -783,7 +783,60 @@ export const excludedList = {
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
+/**
+ * #948 [거래처 후보 › 새 후보 발굴 패널 › 맨 위] "이름으로 회사 넣기"(PM 결정 2026-11-26).
+ * 거산이 이미 진행 중인 회사를 이름으로 찾아 AI 고르기 없이 바로 관심 기업으로 넣는다.
+ */
+export const companyAdd = {
+  title: '이름으로 회사 넣기',
+  hint: '이미 진행 중인 회사처럼 꼭 넣을 회사가 있으면 이름으로 찾아 바로 관심 기업에 넣습니다. AI 고르기 비용은 들지 않습니다.',
+  nameLabel: '회사 이름',
+  namePlaceholder: '예: 대성금속',
+  search: '찾기',
+  searching: '찾는 중…',
+  nameTooShort: '두 글자 이상 입력해 주세요',
+  existingTitle: '이미 목록에 있는 회사',
+  existingBookmarked: '관심 기업',
+  open: '열기',
+  factoriesTitle: '공장 자료에서 찾은 회사',
+  factoriesEmpty: '공장 자료에서 이 이름을 찾지 못했습니다.',
+  truncated: '더 있습니다. 이름을 더 길게 적어 주세요.',
+  alreadyListed: '목록에 있음',
+  /** 고른 줄 끝 표시. 고른 줄은 강조색으로 채워진다(#947과 같은 모양). */
+  picked: '✓ 고름',
+  manualOption: (name: string) => `공장 자료에 없음 — "${name}" 이름으로 넣기`,
+  addressLabel: '주소(알면)',
+  addressPlaceholder: '예: 충남 천안시 서북구 …',
+  homepageLabel: '홈페이지 주소(알면)',
+  homepagePlaceholder: 'https://',
+  homepageHint:
+    '적으면 AI가 홈페이지를 찾지 않고 이 주소를 바로 읽습니다. 담당자 확인으로 표시됩니다.',
+  contactWarning: '전화번호·이메일은 적지 마세요. 연락처는 상세의 영업 메모에 적습니다.',
+  submit: '관심 기업으로 넣기',
+  submitting: '넣는 중…',
+  pickFirst: '넣을 회사를 골라 주세요',
+  added: '관심 기업으로 넣었습니다.',
+  alreadyThere: '이미 목록에 있는 회사라 관심 기업으로 켰습니다.',
+  researchStarted: '홈페이지 조사가 곧 시작됩니다.',
+  researchNotStarted:
+    '자동 조사가 꺼져 있거나 오늘 한도에 닿았습니다. 상세에서 [AI로 조사]를 눌러 주세요.',
+  openDetail: '상세 열기',
+  failed: (message: string) => `넣지 못했습니다 (${message})`,
+  excluded: '제외로 저장한 회사입니다. 검토 의견을 바꾼 뒤 다시 넣어 주세요.',
+  lookupFailed: '찾지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+  virtualNote: '가상·거산 실제 사양 아님',
+};
+
 export const candidateSearch = {
+  /** #932 "기존 고객과 닮은 조건" 줄(확장 기능, 켰을 때만 보임). */
+  customerLikeTitle: (total: number) => `기존 고객과 닮은 조건(기존 고객 ${total}곳 기준)`,
+  customerLikeItem: (label: string, count: number) => `${label} ${count}곳`,
+  customerLikeRegions: (names: string[]) => `주로 ${names.join('·')}`,
+  customerLikeApply: '적용',
+  customerLikeApplied:
+    '공정·산업 칸을 기존 고객과 닮은 조건으로 채웠습니다. 찾기는 [발굴 시작]을 눌러야 시작합니다.',
+  customerLikeHint: '기존 고객 수를 센 것이에요. 점수·순위는 바뀌지 않습니다.',
+  customerLikeVirtual: '가상·거산 실제 사양 아님',
   /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
   pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
@@ -2913,4 +2966,54 @@ export const loginTexts = {
   footer: '© (주)거산케미칼 · 영업지원 에이전트',
   staffKeyPlaceholder: '아이디를 입력하세요',
   passwordPlaceholder: '비밀번호를 입력하세요',
+} as const;
+
+/** #942 상세 "지난 평가와 달라진 것"(되먹임 ① 같은 회사 반영). 점수 글자(E 등)는 쓰지 않는다(BR10.9). */
+export const scoreChangeLabels = {
+  title: '지난 평가와 달라진 것',
+  reevaluatedAt: (when: string) => `${when} 다시 평가`,
+  score: (before: number, after: number) => `평가점수 ${before} → ${after}`,
+  classification: (before: string, after: string) => `분류 ${before} → ${after}`,
+  item: (label: string, before: string, after: string) => `${label} ${before} → ${after}점`,
+  noValue: '--',
+  recordsTitle: '이 사이 남긴 기록',
+  ruleChanged: '지난 평가 뒤 규칙 설정도 바뀌었습니다. 차이의 일부는 규칙 때문일 수 있습니다.',
+  hint: '남긴 기록이 이 회사의 점수에 이렇게 반영됐습니다.',
+  /** 그 사이 남긴 기록이 없으면(자료·규칙이 바뀌어 프로그램이 다시 평가) 기록 덕분이라고 말하지 않는다. */
+  hintNoRecords: '이 사이 남긴 기록은 없고, 프로그램이 다시 평가하며 바뀌었습니다.',
+} as const;
+
+/** #943 되먹임 ③: 담당자 선호를 "근거 있음" 묶음 안 순서로(영업 분석 맨 위 제안 칸 · 카드 줄). */
+export const preferenceLabels = {
+  title: '담당자 선호 제안',
+  intro: (days: number, picked: number) =>
+    `최근 ${days}일 동안 관심을 켜거나 연락한 회사 ${picked}곳에서 몰린 조합입니다. 승인하면 신규 거래처 찾기 "근거 있음" 안에서 한 단계 위로 갑니다. 점수는 바뀌지 않습니다.`,
+  safeguards: (days: number) =>
+    `안전장치: 성사율이 다른 곳보다 낮지 않을 때만 제안 · 승인은 ${days}일 뒤 저절로 꺼짐 · 위쪽 몇 자리 가운데 한 자리는 선호 밖 회사`,
+  none: (picked: number, min: number, minClosed: number) =>
+    picked < min
+      ? `아직 제안이 없습니다. 고른 회사 ${picked}곳 · ${min}곳 이상 쌓이면 봅니다.`
+      : `아직 제안이 없습니다. 절반 넘게 몰린 조합이 없거나, 그 조합 안·밖의 성사·거절이 아직 각 ${minClosed}곳이 안 되거나, 성사율이 다른 곳보다 낮습니다.`,
+  combo: (combo: {
+    kind: 'PROCESS_INDUSTRY' | 'DISTANCE';
+    processName: string | null;
+    industry: string | null;
+    distanceKm: number | null;
+  }) =>
+    combo.kind === 'DISTANCE'
+      ? `거산에서 ${combo.distanceKm ?? '--'}km 안`
+      : `${combo.processName ?? '--'} × ${combo.industry ?? '--'}`,
+  share: (picked: number, total: number, excluded: number) =>
+    `고른 ${total}곳 가운데 ${picked}곳${excluded > 0 ? ` (제외 ${excluded}곳은 빼서 셈)` : ''}`,
+  rate: (won: number, closed: number, otherWon: number, otherClosed: number) =>
+    `성사 ${won}/${closed} · 다른 곳 ${otherWon}/${otherClosed}`,
+  approve: '승인',
+  approveHint: '승인은 관리자만 할 수 있습니다.',
+  activeTitle: '켜진 선호',
+  active: (date: string, until: string) => `${date} 승인 · ${until}까지`,
+  revoke: '끄기',
+  failed: '처리하지 못했습니다. 다시 눌러 주세요.',
+  /** 카드 "순서 조정" 줄. 예: "담당자 선호(11/26 승인 · 아연도금 × 자동차 부품) → 위로" */
+  cardLine: (combo: string, date: string) => `담당자 선호(${date} 승인 · ${combo}) → 위로`,
+  exploreLine: '선호 밖 회사 자리 — 다른 곳의 기회도 함께 봅니다',
 } as const;

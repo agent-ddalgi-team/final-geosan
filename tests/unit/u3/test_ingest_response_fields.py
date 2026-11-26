@@ -211,6 +211,7 @@ def test_code_table_matches_contract_and_saved_default() -> None:
         "FACTORY_FILE",
         "FACTORY_API",
         "WEB_SEARCH",
+        "STAFF_ADDED",  # #948 담당자가 이름으로 넣은 회사(PM 결정 2026-11-26)
     }
     assert [item.value for item in FitLevel] == ["HIGH", "MEDIUM", "LOW"]
     assert Customer.__table__.c.discovery_source.default.arg == DiscoverySource.CASE_FILE

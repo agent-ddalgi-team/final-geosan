@@ -394,6 +394,7 @@ class DiscoverySource(StrEnum):
     FACTORY_FILE = "FACTORY_FILE"  # 공장현황 파일에서 찾은 회사
     FACTORY_API = "FACTORY_API"  # 파일에는 없고 공장등록 조회의 단지 입주 목록에만 있던 회사
     WEB_SEARCH = "WEB_SEARCH"  # AI 웹 검색으로 찾은 회사
+    STAFF_ADDED = "STAFF_ADDED"  # 담당자가 이름으로 찾아 직접 넣은 회사(#948)
 
 
 class TransferPurpose(StrEnum):
@@ -410,6 +411,8 @@ class TransferKind(StrEnum):
     FACTORY_REGISTRY = "FACTORY_REGISTRY"
     # #927 MCP 서버가 돌려준 영업 기록 글(지운 사본). 하루 한도 assistant.mcpDailyLimit.
     MCP_TOOL = "MCP_TOOL"
+    # #932 MCP 서버가 돌려준 기존 고객 참고 자료(확장 기능, 기본 꺼짐). 하루 한도는 MCP_TOOL과 합산.
+    EXISTING_CUSTOMER = "EXISTING_CUSTOMER"
 
 
 class FitLevel(StrEnum):

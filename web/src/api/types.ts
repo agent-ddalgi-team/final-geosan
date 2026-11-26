@@ -569,6 +569,19 @@ export interface OpportunityCard {
   bucketBasis?: BucketBasis;
   /** 영업 결과 조정(#610). null이면 조정 이유 줄을 보이지 않는다. */
   rankAdjust?: RankAdjust | null;
+  /** #943 관리자가 승인한 담당자 선호에 맞아 한 단계 올린 근거. 없으면(옛 응답·안 맞음) 줄 없음. */
+  preferenceAdjust?: {
+    prefId: string;
+    kind: 'PROCESS_INDUSTRY' | 'DISTANCE';
+    processCode: string | null;
+    processName: string | null;
+    industry: string | null;
+    distanceKm: number | null;
+    approvedAt: string;
+    expiresAt: string;
+  } | null;
+  /** #943 안전장치: 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리. */
+  exploreSlot?: boolean;
   oppId: string;
   rank: number;
   title: string;
@@ -867,6 +880,38 @@ export interface ReviewItemNote {
   at: string;
 }
 
+/** #942 지난 평가와 점수·상태가 다른 항목 한 줄. */
+export interface ScoreChangeItem {
+  itemCode: string;
+  label: string;
+  before: number | null;
+  after: number | null;
+  /** 지금 평가의 판정 요지. 예 "통화에서 확인(11/20) · 견적 요청" */
+  factJudged: string | null;
+}
+
+/** #942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 오지 않는다. */
+export interface ScoreChangeRecord {
+  at: string;
+  kind: 'CHANGE' | 'RELATION_CONFIRMED' | 'CONTACT_ATTEMPT';
+  method: string | null;
+  attemptedAt: string | null;
+  summary: string;
+}
+
+/** #942 지난 평가와 달라진 것. */
+export interface ScoreChange {
+  changedAt: string;
+  sinceEvalId: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  classificationBefore: string;
+  classificationAfter: string;
+  ruleVersionChanged: boolean;
+  items: ScoreChangeItem[];
+  records: ScoreChangeRecord[];
+}
+
 export interface OpportunityDetail {
   header: DetailHeader;
   stage?: Record<string, unknown> | null;
@@ -884,6 +929,8 @@ export interface OpportunityDetail {
   evalId: string | null;
   previousEvalId: string | null;
   reevaluated: boolean;
+  /** #942 지난 평가와 달라진 것(되먹임 ①). 앞 평가가 없거나 모두 같으면 null. 옛 응답에는 없다. */
+  scoreChange?: ScoreChange | null;
   /**
    * #803(PM 결정 2026-11-16) 상세 "한눈에" 작은 지도. center = 설정 거산 좌표, company = 저장된 공공좌표.
    * 좌표가 없거나 가상 사례면 null. 옛 응답에는 없다.
@@ -1211,3 +1258,46 @@ export type ConfigUiEnvelope = Envelope<ConfigUi>;
 export type OpportunityListEnvelope = Envelope<OpportunityCard[]>;
 export type OpportunityDetailEnvelope = Envelope<OpportunityDetail>;
 export type OpinionEnvelope = Envelope<OpinionResponse>;
+
+/**
+ * #932 신규 거래처 찾기 "기존 고객과 닮은 조건"(C1 `GET /existing-customers/suggestions`).
+ * 확장 기능(설정 existingCustomers.enabled, 기본 꺼짐). 꺼져 있으면 enabled false, 목록은 모두 빈 값.
+ * 프로그램이 기존 고객 수를 센 것이라 AI·외부 전송이 없다. 점수·순위에는 쓰지 않는다.
+ */
+export interface CustomerSuggestions {
+  enabled: boolean;
+  total: number;
+  processes: { code: string; label: string; count: number }[];
+  industries: { name: string; count: number }[];
+  regions: { name: string; count: number }[];
+}
+
+/** #948 이름으로 회사 찾기(계약 C1 `GET /companies/lookup`). 저장된 목록·공장 자료만 읽는다(0원). */
+export interface CompanyLookup {
+  existing: { oppId: string; companyName: string; address: string | null; bookmarked: boolean }[];
+  factories: {
+    rowId: string;
+    companyName: string;
+    address: string;
+    region: string;
+    product: string | null;
+    industryName: string | null;
+    /** 이름·주소가 같은 회사가 이미 목록에 있으면 그 기회 ID. */
+    oppId: string | null;
+  }[];
+  truncated: boolean;
+}
+
+/** #948 회사 넣기 요청(계약 C1 `POST /companies`). rowId 또는 companyName 중 하나. */
+export interface CompanyAddRequest {
+  rowId?: string;
+  companyName?: string;
+  address?: string;
+  homepageUrl?: string;
+}
+
+export interface CompanyAdded {
+  oppId: string;
+  created: boolean;
+  researchQueued: boolean;
+}

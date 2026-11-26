@@ -38,6 +38,10 @@ import type {
   ReviewCheckRequest,
   ReviewCheckResponse,
   SalesQuestions,
+  CompanyAddRequest,
+  CompanyAdded,
+  CompanyLookup,
+  CustomerSuggestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -368,6 +372,24 @@ export function getIngestPreview(body: IngestRequest, signal?: AbortSignal) {
   return request<IngestPreview>(`/ingest/preview?${query.toString()}`, { signal });
 }
 
+/** #932 기존 고객과 닮은 조건(읽기 전용, 0원). 꺼져 있으면 enabled false. */
+export function getCustomerSuggestions(signal?: AbortSignal) {
+  return request<CustomerSuggestions>('/existing-customers/suggestions', { signal });
+}
+
+/** #948 이름으로 회사 찾기(읽기 전용, 0원). 이미 목록에 있는 회사와 공장 자료 행을 함께 준다. */
+export function lookupCompanies(name: string, signal?: AbortSignal) {
+  return request<CompanyLookup>(`/companies/lookup?name=${encodeURIComponent(name)}`, { signal });
+}
+
+/**
+ * #948 회사 1곳을 넣고 관심 기업으로 켠다(계약 C1 `POST /companies`). 같은 회사가 있으면 그 회사(created false).
+ * 입력·연락처 400, 보기 전용 403, 고른 공장 자료가 없으면 404, 제외로 저장한 회사는 422 BOOKMARK_EXCLUDED.
+ */
+export function postCompany(body: CompanyAddRequest, staffKey: string) {
+  return request<CompanyAdded>('/companies', { method: 'POST', body, staffKey });
+}
+
 /** 이번 달 AI 사용액(#549). 조건 없이 부른 `GET /ingest/preview`의 month만 쓴다(새 경로 없음, 0원). */
 export function getMonthSpend(signal?: AbortSignal) {
   return request<MonthSpend>('/ingest/preview', { signal });
@@ -633,6 +655,40 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: now, reevaluated: true },
     } as unknown as Envelope<T>;
+  }
+  if (route === '/companies/lookup') {
+    // 가짜 모드: 공장 자료 한 행만 찾은 것으로 보인다.
+    const data: CompanyLookup = {
+      existing: [],
+      factories: [
+        {
+          rowId: 'fixture-row-1',
+          companyName: '가상진행금속',
+          address: '충남 천안시 서북구 가상로 1',
+          region: '충남',
+          product: '볼트',
+          industryName: null,
+          oppId: null,
+        },
+      ],
+      truncated: false,
+    };
+    return { data, meta: { updatedAt: null, hasVirtualData: true } } as unknown as Envelope<T>;
+  }
+  if (route === '/companies' && options.method === 'POST') {
+    const data: CompanyAdded = { oppId: 'fixture-added', created: true, researchQueued: false };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
+  }
+  if (route === '/existing-customers/suggestions') {
+    // 가짜 모드: 확장 기능은 꺼진 상태로 둔다(기본값과 같다).
+    const data: CustomerSuggestions = {
+      enabled: false,
+      total: 0,
+      processes: [],
+      industries: [],
+      regions: [],
+    };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
   }
   if (route === '/ingest/preview') {
     const month = { usedUsd: 3.2, limitUsd: 20, usedCalls: 180, limitCalls: 1000 };

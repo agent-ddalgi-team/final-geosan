@@ -379,7 +379,7 @@ def test_migration_adds_empty_tier_columns_and_keeps_rows(tmp_path):
     downgrade(db, "rec_018")
     with sqlite3.connect(db) as con:
         _insert_filled(con, "opp_customer", customer_id="cust-old", name="가상기업")
-    assert upgrade_to_head(db) == ["opp_012"]
+    assert upgrade_to_head(db) == ["rec_019"]
     with sqlite3.connect(db) as con:
         row = con.execute(
             "SELECT name, supply_tier, supply_tier_basis, supply_tier_source FROM opp_customer"

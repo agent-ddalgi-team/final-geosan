@@ -374,6 +374,18 @@ class AssistantSettings(FileModel):
     coach_tool_rounds: int = Field(ge=0, strict=True)
 
 
+class ExistingCustomersSettings(FileModel):
+    """계약 C7 `existingCustomers`(#932 기존 고객 참고 자료, PM 결정 2026-11-26).
+
+    기업이 요청할 때만 켜는 확장 기능이라 이 칸이 없는 옛 설정 파일·DB 사본은 꺼짐으로 읽는다.
+    켜도 `llm.salesRecordsEnabled`가 꺼져 있으면 도구가 동작하지 않는다(둘 다 켜져야 함).
+    """
+
+    enabled: bool = False
+    # 비슷한 기존 고객 도구가 돌려주는 고객 수 상한(겹치는 공정 → 산업 → 최근 거래 순).
+    similar_limit: int = Field(default=3, ge=1, strict=True)
+
+
 class ContactAdjustSettings(FileModel):
     """계약 C7 `contactList.adjust`(#610). 같은 공정·산업군의 성사·거절로 순서를 조정하는 기준."""
 
@@ -385,6 +397,27 @@ class ContactAdjustSettings(FileModel):
     lost_per_step: int = Field(ge=1, strict=True)
     max_down: int = Field(ge=0, strict=True)
     lost_reasons_counted: list[LostReasonCode]
+
+
+class ContactPreferenceSettings(FileModel):
+    """계약 C7 `contactList.preference`(#943, PM 결정 2026-11-26). 되먹임 ③ 선호를 묶음 안 순서로.
+
+    관리자가 승인한 제안만 "근거 있음" 묶음 안 순서를 올린다. 점수·분류·부록 F 배점은 바꾸지 않는다.
+    """
+
+    enabled: bool = Field(strict=True)
+    window_days: int = Field(ge=1, strict=True)
+    min_picks: int = Field(ge=1, strict=True)
+    min_share: float = Field(gt=0, le=1)
+    distance_km: float = Field(gt=0)
+    # 안전장치①: 조합 안·밖 성사·거절이 각각 이 수 이상이고 안 성사율이 밖보다 낮지 않을 때만 제안.
+    min_closed_for_rate: int = Field(ge=1, strict=True)
+    # 안전장치②: 승인 기한(일).
+    approval_days: int = Field(ge=1, strict=True)
+    step: int = Field(ge=1, strict=True)
+    max_level: int = Field(ge=1, strict=True)
+    # 안전장치③: 근거 있음 위쪽 이 자리 가운데 한 자리는 선호 밖 회사.
+    explore_top_n: int = Field(ge=2, strict=True)
 
 
 class ContactListSettings(FileModel):
@@ -399,6 +432,9 @@ class ContactListSettings(FileModel):
     # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
     null_fit_level_as: FitLevel
     adjust: ContactAdjustSettings
+    # #943 되먹임 ③. 이 칸이 생기기 전의 설정·DB 사본은 예시 파일 값으로 읽는다
+    # (ADDED_CONTACT_LIST_KEYS).
+    preference: ContactPreferenceSettings | None = None
 
 
 class MainPhoneSettings(FileModel):
@@ -520,6 +556,8 @@ class AppSettings(FileModel):
     contact_list: ContactListSettings | None = None
     # #217: 이 칸이 없는 옛 설정 파일은 꺼짐으로 읽는다. DB 사본에 없으면 예시 파일 값으로 채운다.
     export: ExportSettings = Field(default_factory=ExportSettings)
+    # #932: 확장 기능(기본 꺼짐). 이 칸이 없는 옛 설정 파일·DB 사본은 꺼짐으로 읽는다.
+    existing_customers: ExistingCustomersSettings = Field(default_factory=ExistingCustomersSettings)
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
@@ -850,8 +888,8 @@ def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "assistant": filled}
 
 
-ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)
-"""#675 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin", "preference")
+"""#675·#943 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_contact_list_keys(data: dict[str, Any]) -> dict[str, Any]:
