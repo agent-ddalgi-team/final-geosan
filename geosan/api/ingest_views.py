@@ -22,7 +22,8 @@ from geosan.opportunity.models import Customer, IngestBatch, Opportunity
 def latest_ingest(session: Session, dataset_kind: str) -> LatestIngest | None:
     row = session.scalar(
         select(IngestBatch)
-        .where(IngestBatch.dataset_kind == dataset_kind)
+        # #948: 담당자가 이름으로 넣은 회사의 회차는 찾기 요약이 아니다.
+        .where(IngestBatch.dataset_kind == dataset_kind, IngestBatch.source_id != "STAFF_ADDED")
         .order_by(IngestBatch.started_at.desc(), IngestBatch.batch_id.desc())
         .limit(1)
     )
