@@ -5,8 +5,12 @@
 실제 임시 DB·실제 API로 본다. 외부 호출 없음. 가상 사례만 쓴다(거산 실제 사양 아님).
 """
 
+import json
+from pathlib import Path
+
 from sqlalchemy import select
 
+from geosan.api.process_catalog import MATERIAL_NAMES
 from geosan.opportunity.models import OppProcessLink
 from geosan.records.models import Bookmark
 from geosan.storage.session import session_scope
@@ -207,3 +211,17 @@ def test_two_materials_are_refused(confirm_env):
     assert [row["path"] for row in fields] == ["answers[1]"]
     assert fields[0]["message"] == "소재는 하나만 고를 수 있습니다."
     assert (support.outcome_count(mixed), materials(mixed)) == before
+
+
+def test_every_material_in_the_capability_files_has_a_plain_name():
+    """#964 Given 예시 역량 파일들(가상·회사소개서) / When 처리 소재 코드를 모음
+    Then 모두 쉬운 이름이 있다(브로슈어의 MG·TI·HF·NB가 코드 그대로 보이던 문제)."""
+    root = Path(__file__).resolve().parents[3] / "examples"
+    codes = {
+        code
+        for path in sorted(root.glob("capability*.json"))
+        for process in json.loads(path.read_text(encoding="utf-8")).get("processes", [])
+        for code in process.get("materialCodes") or []
+    }
+    assert {"MG", "TI", "HF", "NB"} <= codes
+    assert sorted(codes - MATERIAL_NAMES.keys()) == []
