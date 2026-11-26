@@ -343,6 +343,14 @@ export function postProcesses(oppId: string, processCodes: string[], staffKey: s
   });
 }
 
+/** #958 상세 "한눈에 › 소재" [고치기]. 소재 하나를 그 회사 확정 공정 모두에 적용하고 서버가 다시 평가한다. */
+export function postMaterial(oppId: string, material: string, staffKey: string) {
+  return request<{ material: string; processCodes: string[] }>(
+    `/opportunities/${encodeURIComponent(oppId)}/material`,
+    { method: 'POST', body: { material }, staffKey },
+  );
+}
+
 export function postIndustries(oppId: string, industries: string[], staffKey: string) {
   return request<IndustriesResponse>(`/opportunities/${encodeURIComponent(oppId)}/industries`, {
     method: 'POST',

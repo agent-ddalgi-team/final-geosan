@@ -415,6 +415,8 @@ export default function OpportunityDetailPage() {
               options: salesQuestions?.questions
                 .find((question) => question.choices === 'PROCESS')
                 ?.answers.map((answer) => ({ code: answer.answerId, name: answer.label })),
+              // #958: 소재 줄 [고치기]의 보기는 설정 응답의 거산 처리 소재.
+              materialOptions: config?.materialOptions,
               // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
               onSaved: () => {
                 setReload((n) => n + 1);

@@ -1,9 +1,11 @@
 // 상세 "한눈에" 상자(#674): 다섯 묶음(어떤 회사 / 거산과 맞는 점 / 근거 상태 / 확인할 것 / 영업 상태).
 // 값이 있을 때와 없을 때. 저장된 값만 보이는 화면 부품 시험이다(서버 호출 없음).
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { DetailHeader, EvidenceView, ProcessLinkView, ReviewItem } from '../../../api/types';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
 import DetailGlance, { detailCheckWordsOf } from '../DetailGlance';
+import { FrameContext } from '../../frame/FrameContext';
 
 const fixtureHeader = detailFixture.data.header as unknown as DetailHeader;
 const NOW = new Date('2026-11-13T12:00:00+09:00');
@@ -335,5 +337,54 @@ describe('DetailGlance (#674)', () => {
       />,
     );
     expect(screen.getByTestId('glance-check-text')).toHaveTextContent(/^소재 · RoHS$/);
+  });
+});
+
+// #958(PM 결정 2026-11-26): "한눈에 › 소재" 줄에도 [고치기]가 붙는다(보기는 설정의 거산 처리 소재).
+describe('DetailGlance 소재 [고치기] (#958)', () => {
+  function renderMaterial(
+    processLinks: ProcessLinkView[],
+    materialOptions?: { code: string; name: string }[],
+  ) {
+    render(
+      <FrameContext.Provider
+        value={{
+          config: null,
+          staffKey: 'park-lee',
+          setStaffKey: () => {},
+          canRecord: true,
+          setBannerMeta: () => {},
+          setPageTitle: () => {},
+        }}
+      >
+        <DetailGlance
+          header={full}
+          processLinks={processLinks}
+          evidence={evidence(1)}
+          now={NOW}
+          processChoice={{ oppId: 'opp-1', evalId: null, onSaved: () => {}, materialOptions }}
+        />
+      </FrameContext.Provider>,
+    );
+  }
+
+  it('Given 거산 처리 소재 보기 When 한눈에를 열면 Then 소재 줄에 [고치기]가 있다', () => {
+    renderMaterial([link], [{ code: 'FE', name: '철' }]);
+    const material = screen.getByTestId('glance-fit-material');
+    expect(within(material).getByTestId('material-edit-button')).toHaveTextContent('고치기');
+  });
+
+  it('Given 보기가 없는 옛 설정 응답 When 열면 Then 소재 줄에 [고치기]가 없다', () => {
+    renderMaterial([link]);
+    expect(screen.queryByTestId('material-edit-button')).not.toBeInTheDocument();
+  });
+
+  it('Given 확정 공정이 없는 회사 When [고치기] Then "공정을 먼저 골라 주세요"', async () => {
+    const user = userEvent.setup();
+    renderMaterial([], [{ code: 'FE', name: '철' }]);
+    await user.click(screen.getByTestId('material-edit-button'));
+    expect(screen.getByTestId('material-need-process')).toHaveTextContent(
+      '공정을 먼저 골라 주세요',
+    );
   });
 });
