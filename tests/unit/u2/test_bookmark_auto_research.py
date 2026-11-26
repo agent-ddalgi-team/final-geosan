@@ -651,3 +651,67 @@ def test_old_or_finished_start_row_is_not_running(found_company):
         found_company.opp_id, "자동 조사 중단 · 가짜 이유", None, purpose="EXTERNAL_AI"
     )
     assert _state(found_company) == "READ_FAILED"
+
+
+# ---------- #948 이름으로 넣은 회사: 홈페이지가 없으면 찾기부터 ----------
+
+
+def _queue_finding(case):
+    """이름으로 넣은 회사처럼 find_homepage=True로 예약한다. (예약 수, 첫 예약 인자)."""
+    from fastapi import BackgroundTasks
+
+    tasks = BackgroundTasks()
+    token = auto_research._tasks.set(tasks)
+    try:
+        with session_scope() as session:
+            queued = auto_research.queue_on_bookmark(
+                session, session.get(Opportunity, case.opp_id), find_homepage=True
+            )
+    finally:
+        auto_research._tasks.reset(token)
+    assert queued == bool(tasks.tasks)
+    return len(tasks.tasks), (tasks.tasks[0].kwargs if tasks.tasks else None)
+
+
+def _clear_homepage(case, status=None):
+    with session_scope() as session:
+        customer = session.get(Customer, case.customer_id)
+        customer.homepage_url = None
+        customer.homepage_status = status
+
+
+def test_company_without_homepage_is_queued_to_find_one_when_asked(unresearched):
+    """Given 홈페이지 없는 회사 / When 이름으로 넣어 예약 / Then 찾기부터 하는 조사 1건."""
+    _clear_homepage(unresearched)
+    assert _queue_finding(unresearched) == (1, {"find_homepage": True})
+    assert _logs(unresearched.opp_id) == [("auto-bookmark", "ALLOWED", None, 0)]
+
+
+def test_plain_bookmark_still_skips_a_company_without_homepage(unresearched):
+    """Given 홈페이지 없는 회사 / When 관심 단추(기본) / Then 지금처럼 예약하지 않는다."""
+    _clear_homepage(unresearched)
+    assert _queue(unresearched) == 0
+    assert _logs(unresearched.opp_id) == []
+
+
+def test_company_whose_homepage_was_not_found_is_not_searched_again(unresearched):
+    """Given 이미 "못 찾음"으로 끝난 회사 / Then 찾기를 다시 예약하지 않는다(비용 반복 방지)."""
+    _clear_homepage(unresearched, status="NOT_FOUND")
+    assert _queue_finding(unresearched) == (0, None)
+
+
+def test_company_with_homepage_is_read_without_searching(unresearched):
+    """Given 담당자가 준 홈페이지가 있는 회사 / Then 찾기 없이 그 주소만 읽는 조사가 예약된다."""
+    assert _queue_finding(unresearched) == (1, {})
+
+
+def test_finding_research_passes_the_flag_to_the_research(found_company, monkeypatch):
+    seen = {}
+
+    def fake(opp_id, **kwargs):
+        seen.update(kwargs)
+        return research.ResearchResult()
+
+    monkeypatch.setattr(auto_research, "research_one", fake)
+    auto_research.run_auto_research(found_company.opp_id, find_homepage=True)
+    assert seen == {"find_homepage": True, "transfer_requester": "auto-bookmark"}
