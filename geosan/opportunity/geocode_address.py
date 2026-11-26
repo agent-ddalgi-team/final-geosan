@@ -37,6 +37,7 @@ LOT = re.compile(
     r"(?P<name>[가-힣0-9]+?(?:리|동))\s*(?P<flag>산\s*)?"
     r"(?P<main>\d+)(?:\s*-\s*(?P<sub>\d+))?(?!\d)"
 )
+SUBDISTRICT = re.compile(r"(동남구|서북구|[가-힣]{1,3}구(?=\s))\s*")
 PERSON = re.compile(r"담당|직통|팩스|휴대|이메일|메모|[가-힣]{2,4}\s*(?:님|과장|부장|대리)")
 
 
@@ -81,11 +82,17 @@ def parse_address(value: str | None) -> Address | None:
     province = PROVINCES[province]
     city = ""
     if province != "세종특별자치시":
-        city_match = re.match(r"([가-힣]+?(?:시|군|구))\s*(동남구|서북구)?\s*", rest)
+        city_match = re.match(r"([가-힣]+?(?:시|군|구))\s*", rest)
         if not city_match:
             return None
-        city = " ".join(v for v in city_match.groups() if v)
+        city = city_match.group(1)
         rest = rest[city_match.end() :]
+        # #956 시 아래 구(예: 화성시 동탄구, 수원시 영통구)는 띄어 쓴 것을 모두 받는다.
+        # 천안의 두 구는 붙여 쓴 주소("천안시서북구성거읍")도 그대로 받는다.
+        district = SUBDISTRICT.match(rest) if city.endswith("시") else None
+        if district:
+            city = f"{city} {district.group(1)}"
+            rest = rest[district.end() :]
     rest = re.sub(r"\([^)]*\)", "", rest)
     found = ROAD.search(rest) or ROAD_JOINED.search(rest)
     kind = "ROAD"
