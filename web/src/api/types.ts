@@ -867,6 +867,38 @@ export interface ReviewItemNote {
   at: string;
 }
 
+/** #942 지난 평가와 점수·상태가 다른 항목 한 줄. */
+export interface ScoreChangeItem {
+  itemCode: string;
+  label: string;
+  before: number | null;
+  after: number | null;
+  /** 지금 평가의 판정 요지. 예 "통화에서 확인(11/20) · 견적 요청" */
+  factJudged: string | null;
+}
+
+/** #942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 오지 않는다. */
+export interface ScoreChangeRecord {
+  at: string;
+  kind: 'CHANGE' | 'RELATION_CONFIRMED' | 'CONTACT_ATTEMPT';
+  method: string | null;
+  attemptedAt: string | null;
+  summary: string;
+}
+
+/** #942 지난 평가와 달라진 것. */
+export interface ScoreChange {
+  changedAt: string;
+  sinceEvalId: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  classificationBefore: string;
+  classificationAfter: string;
+  ruleVersionChanged: boolean;
+  items: ScoreChangeItem[];
+  records: ScoreChangeRecord[];
+}
+
 export interface OpportunityDetail {
   header: DetailHeader;
   stage?: Record<string, unknown> | null;
@@ -884,6 +916,8 @@ export interface OpportunityDetail {
   evalId: string | null;
   previousEvalId: string | null;
   reevaluated: boolean;
+  /** #942 지난 평가와 달라진 것(되먹임 ①). 앞 평가가 없거나 모두 같으면 null. 옛 응답에는 없다. */
+  scoreChange?: ScoreChange | null;
   /**
    * #803(PM 결정 2026-11-16) 상세 "한눈에" 작은 지도. center = 설정 거산 좌표, company = 저장된 공공좌표.
    * 좌표가 없거나 가상 사례면 null. 옛 응답에는 없다.

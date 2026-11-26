@@ -70,6 +70,7 @@ from geosan.api.schemas import (
     Scores,
     ScoreState,
 )
+from geosan.api.score_change import score_change
 from geosan.capability.queries import get_process
 from geosan.config.app_settings import ResearchSettings
 from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
@@ -654,6 +655,7 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
             and run.previous_eval_id is not None
             and (opinion is None or opinion.eval_id != run.eval_id)
         ),
+        score_change=score_change(session, run),
     )
     for section in detail_sections:
         data.update(section(context))

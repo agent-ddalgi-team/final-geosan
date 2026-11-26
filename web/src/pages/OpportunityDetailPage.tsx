@@ -31,6 +31,7 @@ import DetailSection from '../components/detail/DetailSection';
 import HeaderSection from '../components/detail/HeaderSection';
 import IndustryChips from '../components/detail/IndustryChips';
 import ReasonsSection from '../components/detail/ReasonsSection';
+import ScoreChangeLine from '../components/detail/ScoreChangeLine';
 import ScoresCollapse from '../components/detail/ScoresCollapse';
 import WhyThisCompany from '../components/detail/WhyThisCompany';
 import { useFrame } from '../components/frame/FrameContext';
@@ -451,6 +452,11 @@ export default function OpportunityDetailPage() {
           ) : null}
           {/* "고객이 요구하는 것과 거산의 준비 상태"·"공정 적합성 검토" 구역은 그리지 않는다(PM 결정 2026-11-13 #659).
               서버 응답(requirements·processLinks)은 그대로 온다. 공정은 "한눈에"의 "거산과 맞는 점"에 적는다. */}
+          {/* #942 되먹임 ①: 기록으로 다시 평가돼 점수가 바뀌었으면 무엇이 왜 바뀌었는지 한 상자. */}
+          <ScoreChangeLine
+            change={data.scoreChange}
+            classificationOverrides={config?.classificationLabels}
+          />
           <ScoresCollapse
             scores={data.scores}
             scoreDisplay={data.header.scoreDisplay}
