@@ -83,7 +83,7 @@ export default function DashboardMapSection({
         boxSizing: 'border-box',
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: radius.lg,
+        borderRadius: radius.card,
         padding: spacing.cardPadding,
       }}
     >

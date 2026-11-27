@@ -22,6 +22,7 @@ import type { NaverMapsApi } from './NaverMapCanvas';
 import {
   colors,
   mapPinPalette,
+  mapPinStroke,
   radius,
   spacing,
   statusPalette,
@@ -244,7 +245,7 @@ export default function DashboardMap({
               height: compact ? DASHBOARD_MAP_HEIGHT : undefined,
               justifySelf: 'center',
               background: statusPalette.neutral.bg,
-              borderRadius: radius.lg,
+              borderRadius: radius.card,
             }}
           >
             {[...rings].reverse().map((km) => (
@@ -305,7 +306,7 @@ export default function DashboardMap({
                 textAnchor="middle"
                 fontSize={12}
                 fill={colors.text}
-                stroke="#fff"
+                stroke={mapPinStroke.ring}
                 strokeWidth={3}
                 paintOrder="stroke"
               >
@@ -351,7 +352,7 @@ export default function DashboardMap({
           data-testid="dashboard-map-callout"
           style={{
             border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: radius.md,
+            borderRadius: radius.control,
             padding: spacing.cardGap,
             display: 'grid',
             gap: 4,

@@ -452,6 +452,43 @@ export const dashboardTexts = {
   /** "11/21(금) 예정이었음" */
   scheduleWasDue: (day: string) => `${day} 예정이었음`,
   mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
+  // #972(새 디자인, PM 결정 2026-11-27): 인사말 줄 · 단계 숫자 카드 · 월별 접촉 추세 · 먼저 볼 후보.
+  /** [영업 홈 › 맨 위 인사말] "안녕하세요, 영업 김 님". 이름을 모르면 지금 제목("영업 홈")을 그대로 보인다. */
+  greeting: (name: string) => `안녕하세요, ${name} 님`,
+  /** [영업 홈 › 인사말 아래 줄] "11월 27일 금요일" */
+  greetingDate: (month: number, day: number, weekday: string) =>
+    `${month}월 ${day}일 ${weekday}요일`,
+  /** [영업 홈 › 인사말 아래 줄] "오늘 챙길 일 4건" = 지난 일정 + 오늘 일정 + 받은 전달 사항(왼쪽 메뉴 숫자와 같은 뜻). */
+  greetingTodoLead: '오늘 챙길 일',
+  greetingTodoCount: (n: number) => `${n}건`,
+  /** [영업 홈 › 단계 숫자 카드] 숫자 아래 작은 풀이. */
+  stageCardHints: {
+    NOT_CONTACTED: '아직 연락 전',
+    IN_CONTACT: '연락이 닿은 회사',
+    QUOTE_SAMPLE: '견적·샘플 진행',
+    WON: '성사한 회사',
+    ON_HOLD: '나중에 다시 볼 회사',
+  },
+  /** [영업 홈 › 단계 숫자 카드 › 주의 꼬리표] "멈춘 회사 2곳" */
+  stageCardStalled: (n: number) => `멈춘 회사 ${n}곳`,
+  /** [영업 홈 › 오늘 할 일 제목 옆] "3건" = 지난 일정 + 오늘 일정. */
+  workCount: (n: number) => `${n}건`,
+  /** [영업 홈 › 이번 주 방문·연락 제목 옆] "오늘부터 7일 · 3곳" */
+  outCount: (days: number, n: number) => `오늘부터 ${days}일 · ${n}곳`,
+  /** [영업 홈 › 진행 중인 회사 표 › 회사 이름 옆] 오래 연락이 없는 회사 꼬리표. */
+  tableStalledTag: '멈춘 회사',
+  /** [영업 홈 › 월별 접촉 추세 카드] 그림은 영업 분석의 "월별 추세"와 같은 응답·같은 부품이다. */
+  trendTitle: '월별 접촉 추세',
+  /** "18곳" */
+  trendCount: (n: number) => `${n}곳`,
+  trendCountLabel: '접촉 기록이 있는 회사',
+  trendLink: '영업 분석 보기',
+  /** [영업 홈 › 먼저 볼 후보] 거래처 후보 목록(추천 순)의 맨 위 회사. */
+  topTitle: '먼저 볼 후보',
+  topHint: (n: number) => `거래처 후보 추천 순 맨 위 ${n}곳`,
+  topLink: '후보 모두 보기',
+  /** "01" */
+  topNumber: (n: number) => String(n).padStart(2, '0'),
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
