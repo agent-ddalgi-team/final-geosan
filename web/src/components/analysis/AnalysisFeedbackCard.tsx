@@ -26,8 +26,10 @@ const box = {
   gap: 12,
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: radius.lg,
-  padding: '16px 20px',
+  borderRadius: radius.card,
+  padding: '18px 20px',
+  alignContent: 'start',
+  minWidth: 0,
 } as const;
 
 function Claims({ items, testId }: { items: FeedbackClaim[]; testId: string }) {

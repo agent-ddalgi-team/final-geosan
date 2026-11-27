@@ -26,6 +26,19 @@ export interface ChartReading {
 const unit = analysisCharts.unitCompany;
 const percent = (ratio: number) => Math.round(ratio * 100);
 
+const stoppedOf = (stage: FunnelStage) =>
+  stage.stopped.lost + stage.stopped.hold + stage.stopped.open;
+
+/** 회사가 가장 많이 멈춘 깔때기 칸(성사 칸 빼고, 같은 수면 앞 칸). 멈춘 회사가 없으면 null. */
+export function mostStoppedStage(stages: FunnelStage[]): FunnelStage | null {
+  return stages
+    .slice(0, -1)
+    .reduce<FunnelStage | null>(
+      (best, stage) => (stoppedOf(stage) > (best ? stoppedOf(best) : 0) ? stage : best),
+      null,
+    );
+}
+
 /** 깔때기: 어디까지 갔나 + 가장 많이 멈춘 단계(그 단계의 넘어간 비율은 표본이 될 때만). */
 export function funnelReading(stages: FunnelStage[], minSample: number): ChartReading | null {
   const contacted = stages[0]?.count ?? 0;
@@ -41,14 +54,7 @@ export function funnelReading(stages: FunnelStage[], minSample: number): ChartRe
   const won = stages[stages.length - 1]?.count ?? 0;
   parts.push(won > 0 ? t.funnelWon(won) : t.funnelNoWon);
   let callout: ChartCallout | null = null;
-  const stoppedOf = (stage: FunnelStage) =>
-    stage.stopped.lost + stage.stopped.hold + stage.stopped.open;
-  const most = stages
-    .slice(0, -1)
-    .reduce<FunnelStage | null>(
-      (best, stage) => (stoppedOf(stage) > (best ? stoppedOf(best) : 0) ? stage : best),
-      null,
-    );
+  const most = mostStoppedStage(stages);
   if (most) {
     const name = analysisCharts.funnelStages[most.key];
     parts.push(t.funnelMostStopped(name, stoppedOf(most)));

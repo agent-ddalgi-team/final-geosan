@@ -1,12 +1,17 @@
-// 영업 분석 맨 위 기간 선택(#760, PM 요청 2026-11-15): 둥근 칸 "📅 2026년 9월 1일 ~ 11월 15일 ⌄"를 누르면
+// 영업 분석 맨 위 기간 선택(#760, PM 요청 2026-11-15): 칸 "📅 2026년 9월 1일 ~ 11월 15일 ⌄"를 누르면
 // 바로 아래 작은 창이 열려 [전체]·[최근 30일]·[최근 3개월]·[이번 달]·[올해]를 고르거나 시작일·끝일을 직접 넣는다.
 // 새 라이브러리 없이 브라우저 날짜 칸(input type=date)을 쓴다. 날짜는 한국 날짜(YYYY-MM-DD) 글자로만 다룬다.
 // 고르면 바로 알리고 창을 닫는다. 직접 넣은 날짜는 [적용]을 눌러야 알린다(시작일 > 끝일이면 막는다).
+// #972(새 시안): 알약 모양을 없애고 흰 칸 + 얇은 테두리(모서리 9). 미리 정한 기간은 선택 단추 모양
+// (고른 쪽 = 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게), [적용]은 주 단추(강조 바탕 + 흰 글자).
 import { useEffect, useRef, useState } from 'react';
 import type { AnalysisPeriod } from '../../api/salesAnalysis';
 import { analysisCharts as texts } from '../../labels/ko';
-import { colors, radius, typography } from '../../theme/tokens';
+import { accent, antdTheme, choiceChip, colors, radius, typography } from '../../theme/tokens';
 import { todayKst } from '../../utils/time';
+
+/** 뜨는 창의 그림자: 다른 뜨는 창(antd)과 같은 토큰 값. 카드에는 그림자를 두지 않지만 떠 있는 창은 바닥과 가르려고 둔다. */
+const periodPanelShadow = antdTheme.token?.boxShadowSecondary;
 
 export type PresetKey = keyof typeof texts.presets;
 const PRESETS: PresetKey[] = ['ALL', 'DAYS_30', 'MONTHS_3', 'THIS_MONTH', 'THIS_YEAR'];
@@ -72,20 +77,35 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
     return p.from === value.from && p.to === value.to;
   });
 
-  const chip = (active: boolean) =>
-    ({
-      border: `1px solid ${active ? colors.text : colors.borderSecondary}`,
-      background: active ? colors.text : colors.bgContainer,
-      color: active ? colors.bgContainer : colors.text,
-      borderRadius: radius.pill,
+  const chip = (active: boolean) => {
+    const tone = active ? choiceChip.selected : choiceChip.idle;
+    return {
+      border: `1px solid ${tone.border}`,
+      background: tone.bg,
+      color: tone.fg,
+      fontWeight: active ? choiceChip.selected.fontWeight : 400,
+      borderRadius: radius.controlSm,
       padding: '4px 12px',
       fontSize: typography.fontSizeSecondary,
+      fontFamily: 'inherit',
       cursor: 'pointer',
-    }) as const;
+    } as const;
+  };
+  /** 주 단추([적용]): 강조 바탕 + 흰 글자. */
+  const primary = {
+    border: `1px solid ${accent.bg}`,
+    background: accent.bg,
+    color: accent.onBg,
+    fontWeight: 600,
+    borderRadius: radius.controlSm,
+    padding: '4px 14px',
+    fontSize: typography.fontSizeSecondary,
+    fontFamily: 'inherit',
+  } as const;
   const dateInput = {
     font: 'inherit',
     border: `1px solid ${colors.border}`,
-    borderRadius: radius.md,
+    borderRadius: radius.control,
     padding: '6px 10px',
     color: colors.text,
     background: colors.bgContainer,
@@ -110,11 +130,10 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
           border: `1px solid ${colors.borderSecondary}`,
           background: colors.bgContainer,
           color: colors.text,
-          borderRadius: radius.pill,
-          padding: '8px 18px',
+          borderRadius: radius.control,
+          padding: '8px 14px',
           font: 'inherit',
           cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
         }}
       >
         {/* 달력 모양 그림(글자 없음). */}
@@ -156,8 +175,8 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
             boxSizing: 'border-box',
             background: colors.bgContainer,
             border: `1px solid ${colors.borderSecondary}`,
-            borderRadius: radius.lg,
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.14)',
+            borderRadius: radius.card,
+            boxShadow: periodPanelShadow,
             padding: 14,
             display: 'grid',
             gap: 12,
@@ -213,7 +232,7 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
             <button
               type="button"
               onClick={() => setOpen(false)}
-              style={{ ...chip(false), border: 0 }}
+              style={{ ...chip(false), borderColor: 'transparent' }}
             >
               {texts.periodClose}
             </button>
@@ -223,7 +242,7 @@ export default function PeriodPicker({ value, onChange, today }: PeriodPickerPro
               disabled={invalid}
               onClick={() => pick(draft)}
               style={{
-                ...chip(true),
+                ...primary,
                 opacity: invalid ? 0.4 : 1,
                 cursor: invalid ? 'not-allowed' : 'pointer',
               }}

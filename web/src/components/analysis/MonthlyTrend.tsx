@@ -129,6 +129,7 @@ export default function MonthlyTrend({ rows }: { rows?: MonthTrendRow[] }) {
       title={t.title}
       callout={reading?.callout ?? null}
       summary={reading?.summary ?? null}
+      fill
       legend={
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', ...secondary }}>
           <span>{t.note}</span>

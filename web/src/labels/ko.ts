@@ -2288,6 +2288,14 @@ export const analysisNumberCardTexts = {
   holdApart: (count: number) => `보류 ${count}곳 별도`,
 } as const;
 
+/** #972 영업 분석 새 톤에서 더한 글자. */
+export const analysisToneTexts = {
+  /** 깔때기에서 회사가 가장 많이 멈춘 단계 옆 꼬리표(요약 문장·말풍선과 같은 단계). */
+  funnelMostStopped: '가장 많이 멈춤',
+  /** [기록에서 배우기] 자세한 카드 묶음의 화면 읽기용 이름. */
+  patternDetails: '기록에서 배우기 자세히',
+} as const;
+
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
 // 근거 상태 묶음(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사.
 // 세 묶음(#610)의 NOW·CHECK·LATER와 옛 이유 값은 서버가 더는 내보내지 않지만 글자는 남겨 둔다.

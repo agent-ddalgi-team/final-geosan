@@ -13,10 +13,12 @@ export const analysisCell = {
   verticalAlign: 'top',
   borderBottom: `1px solid ${colors.borderSecondary}`,
 } as const;
+/** 표 머리(#972): 바탕 칸 없이 흐린 글자 + 얇은 아래 선. */
 export const analysisHead = {
   ...analysisCell,
-  background: colors.bgLayout,
-  fontWeight: 600,
+  color: colors.textDimmed,
+  fontSize: typography.fontSizeSecondary,
+  fontWeight: 400,
   whiteSpace: 'nowrap',
 } as const;
 

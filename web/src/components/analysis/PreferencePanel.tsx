@@ -13,7 +13,7 @@ import {
   type Preferences,
 } from '../../api/preferences';
 import { preferenceLabels as t } from '../../labels/ko';
-import { colors, detailTheme, spacing, typography } from '../../theme/tokens';
+import { colors, radius, spacing, tagPalette, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
@@ -63,8 +63,8 @@ export default function PreferencePanel() {
       data-testid="preference-panel"
       style={{
         background: colors.bgContainer,
-        border: `1px solid ${detailTheme.border}`,
-        borderRadius: detailTheme.radius,
+        border: `1px solid ${colors.borderSecondary}`,
+        borderRadius: radius.card,
         padding: spacing.cardPadding,
         display: 'grid',
         gap: 10,
@@ -89,15 +89,29 @@ export default function PreferencePanel() {
               data-testid="preference-suggestion"
               style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}
             >
-              <strong>{t.combo(row)}</strong>
+              {/* 시안: 조합 이름은 강조 꼬리표, [승인]은 줄 오른쪽 끝. */}
+              <strong
+                style={{
+                  padding: '3px 9px',
+                  borderRadius: radius.tag,
+                  background: tagPalette.accent.bg,
+                  color: tagPalette.accent.fg,
+                  fontSize: typography.fontSizeSecondary,
+                  fontWeight: 600,
+                }}
+              >
+                {t.combo(row)}
+              </strong>
               <span>{t.share(row.pickedCount, basis.pickedCount, row.excludedCount)}</span>
               <span style={secondary}>
                 {t.rate(row.wonCount, row.closedCount, row.otherWonCount, row.otherClosedCount)}
               </span>
               {data.canApprove ? (
-                <Button size="small" type="primary" disabled={busy} onClick={() => approve(row)}>
-                  {t.approve}
-                </Button>
+                <span style={{ marginLeft: 'auto' }}>
+                  <Button size="small" type="primary" disabled={busy} onClick={() => approve(row)}>
+                    {t.approve}
+                  </Button>
+                </span>
               ) : null}
             </li>
           ))}
@@ -126,13 +140,15 @@ export default function PreferencePanel() {
                   )}
                 </span>
                 {data.canApprove ? (
-                  <Button
-                    size="small"
-                    disabled={busy}
-                    onClick={() => act(() => revokePreference(row.prefId, staffKey))}
-                  >
-                    {t.revoke}
-                  </Button>
+                  <span style={{ marginLeft: 'auto' }}>
+                    <Button
+                      size="small"
+                      disabled={busy}
+                      onClick={() => act(() => revokePreference(row.prefId, staffKey))}
+                    >
+                      {t.revoke}
+                    </Button>
+                  </span>
                 ) : null}
               </li>
             ))}

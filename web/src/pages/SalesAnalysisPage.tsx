@@ -8,6 +8,8 @@
 // 표와 관심 기업 분포는 [표로 보기]에 접어 둔다(기본 닫힘). 지금 상태 숫자(진행 중·보류)는 대시보드 몫이다.
 // #918(팀 의견 11/25): 맨 위 탭 [분석] | [지난 분석]. 지난 분석은 받을 때마다 저장된 AI 분석을 다시 본다.
 // #972(PM 결정 2026-11-27): 새 시안대로 숫자 카드 4칸(접촉 · 진행 중 · 성사 · 거절)을 그림 위에 다시 둔다.
+// 배치도 시안을 따른다: 탭(선택 단추 모양)·기간 → 담당자 선호 제안 → 숫자 카드 → [월별 추세 | 어디서 빠지나] →
+// [거절 이유 | 어느 조합] → 회사별 점 줄 → [AI 분석 피드백 | 기록에서 배우기] → [표로 보기]. 내용·동작은 그대로다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
@@ -31,7 +33,7 @@ import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
 import { analysisCharts, pastAnalysisTexts, salesAnalysisTexts as texts } from '../labels/ko';
-import { colors, radius, spacing, typography } from '../theme/tokens';
+import { choiceChip, colors, radius, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
 interface Result {
@@ -49,7 +51,7 @@ const sectionStyle = {
   gap: 12,
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: radius.lg,
+  borderRadius: radius.card,
   padding: spacing.cardPadding,
 } as const;
 const titleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
@@ -168,20 +170,9 @@ export default function SalesAnalysisPage() {
 
   const nowView = (
     <div style={{ display: 'grid', gap: spacing.cardGap }}>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <p data-testid="analysis-internal-note" style={{ ...secondary, flex: '1 1 320px' }}>
-          {texts.badge} · {texts.intro}
-        </p>
-        <PeriodPicker value={period} onChange={changePeriod} />
-      </div>
+      <p data-testid="analysis-internal-note" style={secondary}>
+        {texts.badge} · {texts.intro}
+      </p>
       {/* #943 되먹임 ③: 담당자 선호 제안·승인. 설정이 꺼져 있으면 그리지 않는다. */}
       <PreferencePanel />
       <FiveStates
@@ -198,7 +189,7 @@ export default function SalesAnalysisPage() {
         }
       >
         {data ? (
-          <div style={{ display: 'grid', gap: spacing.sectionGap }}>
+          <div style={{ display: 'grid', gap: spacing.cardGap }}>
             <div style={{ display: 'grid', gap: 4 }}>
               <p data-testid="analysis-basis" style={secondary}>
                 {periodMode
@@ -236,19 +227,26 @@ export default function SalesAnalysisPage() {
             </div>
             {/* #972(PM 결정 11/27): 숫자 카드 4칸(접촉 · 진행 중 · 성사 · 거절). 응답 합계 그대로, 고른 기간을 따른다. */}
             <AnalysisNumberCards data={data} />
-            {/* #824: AI 분석 피드백(실패 먼저, 근거 숫자). 💰 단추로만 부르고 기간마다 저장본을 먼저 읽는다. */}
-            <AnalysisFeedbackCard period={period} reloadKey={reload} />
-            {/* #802(11/22): 최근 12개월 월별 접촉·성사·거절(기간 선택과 상관없이). */}
-            <MonthlyTrend rows={data.monthly} />
-            <AnalysisCharts data={data} />
-            {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값. */}
+            {/* #802(11/22): 최근 12개월 월별 접촉·성사·거절(기간 선택과 상관없이)을 깔때기 왼쪽에 둔다(#972 시안). */}
+            <AnalysisCharts
+              data={data}
+              lead={
+                data.monthly && data.monthly.length > 0 ? (
+                  <MonthlyTrend rows={data.monthly} />
+                ) : null
+              }
+            />
+            {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값.
+                #824: AI 분석 피드백(실패 먼저, 근거 숫자)은 💰 단추로만 부르고 기간마다 저장본을 먼저 읽는다.
+                #972 시안: 둘을 한 줄에 나란히(왼쪽 AI 분석 피드백 | 오른쪽 기록에서 배우기 머리·자동 요약). */}
             <SalesPatterns
               period={period}
               reloadKey={reload}
               processNames={processNames}
               total={data.total}
+              beside={<AnalysisFeedbackCard period={period} reloadKey={reload} />}
             />
-            <details data-testid="analysis-tables" style={{ display: 'grid' }}>
+            <details data-testid="analysis-tables" style={{ display: 'grid', marginTop: 16 }}>
               <summary
                 data-testid="analysis-tables-toggle"
                 style={{
@@ -306,6 +304,7 @@ export default function SalesAnalysisPage() {
 
   // #918: [분석] | [지난 분석] 탭. 고른 탭은 주소(?tab=past)에 남아 새로 고쳐도 그대로다.
   // 탭 두 개뿐이라 무거운 탭 부품 대신 단추 두 개로 그린다(시험 환경에서 탭 부품이 그리기를 몇 배 느리게 함).
+  // #972: 밑줄 탭 → 선택 단추 모양(고른 쪽 = 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게), 같은 줄 오른쪽에 기간.
   const tabs = [
     { key: 'now', label: pastAnalysisTexts.tabNow },
     { key: 'past', label: pastAnalysisTexts.tabPast },
@@ -313,38 +312,52 @@ export default function SalesAnalysisPage() {
   return (
     <div style={{ display: 'grid', gap: spacing.cardGap }}>
       <div
-        role="tablist"
-        aria-label={pastAnalysisTexts.tabsLabel}
-        data-testid="analysis-tabs"
-        style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${colors.borderSecondary}` }}
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
       >
-        {tabs.map((item) => {
-          const selected = tab === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              id={`analysis-tab-${item.key}`}
-              aria-selected={selected}
-              aria-controls="analysis-tab-panel"
-              onClick={() => changeTab(item.key)}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                borderBottom: `2px solid ${selected ? colors.text : 'transparent'}`,
-                background: 'transparent',
-                color: selected ? colors.text : colors.textSecondary,
-                fontWeight: selected ? 600 : 400,
-                fontSize: typography.fontSize,
-                cursor: 'pointer',
-                marginBottom: -1,
-              }}
-            >
-              {item.label}
-            </button>
-          );
-        })}
+        <div
+          role="tablist"
+          aria-label={pastAnalysisTexts.tabsLabel}
+          data-testid="analysis-tabs"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+        >
+          {tabs.map((item) => {
+            const selected = tab === item.key;
+            const chip = selected ? choiceChip.selected : choiceChip.idle;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                id={`analysis-tab-${item.key}`}
+                aria-selected={selected}
+                aria-controls="analysis-tab-panel"
+                onClick={() => changeTab(item.key)}
+                style={{
+                  padding: '8px 16px',
+                  border: `1px solid ${chip.border}`,
+                  borderRadius: radius.controlSm,
+                  background: chip.bg,
+                  color: chip.fg,
+                  fontWeight: selected ? choiceChip.selected.fontWeight : 400,
+                  fontSize: typography.fontSize,
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* 기간은 [분석] 탭에서만 쓴다(지난 분석은 받을 때의 기간이 줄마다 적혀 있다). */}
+        {tab === 'now' ? <PeriodPicker value={period} onChange={changePeriod} /> : null}
       </div>
       <div role="tabpanel" id="analysis-tab-panel" aria-labelledby={`analysis-tab-${tab}`}>
         {tab === 'past' ? <PastAnalyses /> : nowView}
