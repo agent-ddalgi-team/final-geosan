@@ -1,4 +1,5 @@
-// #926 화면 맨 위 줄의 [글자 크기: 작게 · 보통 · 크게 · 더 크게]. 누르면 바로 바뀌고 이 브라우저에 기억한다.
+// #926 화면 맨 위 줄의 [글자 크기: 작게 · 보통 · 크게]. 누르면 바로 바뀌고 이 브라우저에 기억한다.
+// #972: 세 가지만 둔다("더 크게"를 없앰). 고른 칸은 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게(tokens · styles.css).
 import { useState } from 'react';
 import { Segmented } from 'antd';
 import { frame } from '../../labels/ko';
