@@ -176,9 +176,9 @@ export const frame = {
   // #762(PM 2026-11-16): "영업 후보 목록" → "신규 거래처 찾기". 거산의 새 거래처를 찾는 화면이라는 뜻이 바로 보이게.
   menuOpportunities: '거래처 후보',
   staffSelectLabel: '담당자',
-  // #926: 맨 위 줄의 글자 크기 고르기(화면 전체 비율). 이 브라우저에 기억한다.
+  // #926: 맨 위 줄의 글자 크기 고르기(화면 전체 비율). 이 브라우저에 기억한다. #972: 세 가지만(90% · 100% · 115%).
   fontScaleLabel: '글자 크기',
-  fontScaleOptions: { S: '작게', M: '보통', L: '크게', XL: '더 크게' },
+  fontScaleOptions: { S: '작게', M: '보통', L: '크게' },
   staffPlaceholder: '담당자를 고르세요',
   backToList: '목록으로',
   viewDetail: '자세히 보기',
@@ -199,6 +199,11 @@ export const frame = {
   pageTitleBookmarks: '관심 기업',
   /** 왼쪽 메뉴 묶음 이름(#767). 그림은 SideMenu의 선 그림 아이콘(이모지 대신). */
   navGroupSales: '영업',
+  /** #972 왼쪽 메뉴 묶음 이름 둘("분석" = 영업 분석, "운영" = 운영 관리)과 주 단추. */
+  navGroupAnalysis: '분석',
+  navGroupOperations: '운영',
+  /** #972 [왼쪽 메뉴 › 맨 위 주 단추]. 누르면 거래처 후보 화면이 새 후보 발굴 창을 연다. */
+  menuNewCandidates: '새 후보 발굴',
   sidebarCollapse: '메뉴 접기',
   /** 오른쪽 영업 코치 칸(#773). */
   coachDockTitle: '영업 코치',
@@ -447,6 +452,43 @@ export const dashboardTexts = {
   /** "11/21(금) 예정이었음" */
   scheduleWasDue: (day: string) => `${day} 예정이었음`,
   mapHint: '방문 기준 회사를 고르면 가까운 관심 기업이 보입니다',
+  // #972(새 디자인, PM 결정 2026-11-27): 인사말 줄 · 단계 숫자 카드 · 월별 접촉 추세 · 먼저 볼 후보.
+  /** [영업 홈 › 맨 위 인사말] "안녕하세요, 영업 김 님". 이름을 모르면 지금 제목("영업 홈")을 그대로 보인다. */
+  greeting: (name: string) => `안녕하세요, ${name} 님`,
+  /** [영업 홈 › 인사말 아래 줄] "11월 27일 금요일" */
+  greetingDate: (month: number, day: number, weekday: string) =>
+    `${month}월 ${day}일 ${weekday}요일`,
+  /** [영업 홈 › 인사말 아래 줄] "오늘 챙길 일 4건" = 지난 일정 + 오늘 일정 + 받은 전달 사항(왼쪽 메뉴 숫자와 같은 뜻). */
+  greetingTodoLead: '오늘 챙길 일',
+  greetingTodoCount: (n: number) => `${n}건`,
+  /** [영업 홈 › 단계 숫자 카드] 숫자 아래 작은 풀이. */
+  stageCardHints: {
+    NOT_CONTACTED: '아직 연락 전',
+    IN_CONTACT: '연락이 닿은 회사',
+    QUOTE_SAMPLE: '견적·샘플 진행',
+    WON: '성사한 회사',
+    ON_HOLD: '나중에 다시 볼 회사',
+  },
+  /** [영업 홈 › 단계 숫자 카드 › 주의 꼬리표] "멈춘 회사 2곳" */
+  stageCardStalled: (n: number) => `멈춘 회사 ${n}곳`,
+  /** [영업 홈 › 오늘 할 일 제목 옆] "3건" = 지난 일정 + 오늘 일정. */
+  workCount: (n: number) => `${n}건`,
+  /** [영업 홈 › 이번 주 방문·연락 제목 옆] "오늘부터 7일 · 3곳" */
+  outCount: (days: number, n: number) => `오늘부터 ${days}일 · ${n}곳`,
+  /** [영업 홈 › 진행 중인 회사 표 › 회사 이름 옆] 오래 연락이 없는 회사 꼬리표. */
+  tableStalledTag: '멈춘 회사',
+  /** [영업 홈 › 월별 접촉 추세 카드] 그림은 영업 분석의 "월별 추세"와 같은 응답·같은 부품이다. */
+  trendTitle: '월별 접촉 추세',
+  /** "18곳" */
+  trendCount: (n: number) => `${n}곳`,
+  trendCountLabel: '접촉 기록이 있는 회사',
+  trendLink: '영업 분석 보기',
+  /** [영업 홈 › 먼저 볼 후보] 거래처 후보 목록(추천 순)의 맨 위 회사. */
+  topTitle: '먼저 볼 후보',
+  topHint: (n: number) => `거래처 후보 추천 순 맨 위 ${n}곳`,
+  topLink: '후보 모두 보기',
+  /** "01" */
+  topNumber: (n: number) => String(n).padStart(2, '0'),
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -815,6 +857,29 @@ export const excludedList = {
   empty: '제외로 저장한 회사가 없습니다',
 } as const;
 
+/**
+ * #972 거래처 후보 표 줄과 관심 기업 세 칸 줄(PM이 고른 시안, 2026-11-27).
+ * 열 머리는 묶음마다 한 줄 보인다. 좁은 화면에서는 열 머리를 숨기고 칸 안 작은 이름표가 대신 보인다.
+ */
+export const listTable = {
+  columns: {
+    company: '회사 · 품목',
+    region: '지역',
+    reason: '추천 근거 · 검토사항',
+    score: '점수',
+    actions: '의견 · 관심',
+  },
+  /** 좁은 화면과 화면 낭독기용 칸 이름. */
+  scoreLabel: '점수',
+  tagsLabel: '꼬리표',
+  /**
+   * 관심 기업 줄 오른쪽. "다음 일정 12/1 · 전화"(할 일 글이 없으면 날짜만).
+   * 지난 일정은 영업 홈과 같은 말("지난 일정 11/21", dashboardTexts.tableOverdue)을 쓴다.
+   */
+  nextSchedule: (day: string, note: string | null) =>
+    note ? `다음 일정 ${day} · ${note}` : `다음 일정 ${day}`,
+} as const;
+
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
 /**
  * #948 [거래처 후보 › 새 후보 발굴 패널 › 맨 위] "이름으로 회사 넣기"(PM 결정 2026-11-26).
@@ -835,7 +900,7 @@ export const companyAdd = {
   factoriesEmpty: '공장 자료에서 이 이름을 찾지 못했습니다.',
   truncated: '더 있습니다. 이름을 더 길게 적어 주세요.',
   alreadyListed: '목록에 있음',
-  /** 고른 줄 끝 표시. 고른 줄은 강조색으로 채워진다(#947과 같은 모양). */
+  /** 고른 줄 끝 표시. 고른 줄은 강조 연한 바탕 + 강조 글자로 보인다(#972 선택 단추 모양). */
   picked: '✓ 고름',
   manualOption: (name: string) => `공장 자료에 없음 — "${name}" 이름으로 넣기`,
   addressLabel: '주소(알면)',
@@ -2017,6 +2082,8 @@ export const monthlyTrendTexts = {
     `${month}: 접촉 ${contacted} · 성사 ${won} · 거절 ${lost}`,
   monthLabel: (yearMonth: string) => `${Number(yearMonth.slice(5))}월`,
   empty: '최근 12개월에 접촉 기록이 없습니다.',
+  /** #972 선 그림 범례: 선은 접촉만 그리고 성사·거절은 달에 손을 올리면 뜨는 글과 아래 요약 문장으로 전한다. */
+  lineLegend: '선 = 접촉한 회사 수 · 달에 손을 올리면 그달의 성사·거절도 보입니다',
 } as const;
 
 export const autoSummaryTexts = {
@@ -2258,6 +2325,35 @@ export const analysisCharts = {
   timelineBefore: '흐린 점은 고른 기간 앞의 기록입니다.',
   /** 표 접기 */
   tablesToggle: '표로 보기',
+} as const;
+
+/**
+ * #972 영업 분석 숫자 카드 4칸(PM 결정 2026-11-27: #801에서 "겹친다"고 뺐던 칸을 새 시안대로 다시 둔다).
+ * 숫자는 분석 응답의 합계(회사를 한 번씩 센 값) 그대로이고 고른 기간을 따른다. 보조 글도 응답에 있는 값으로만 만든다.
+ */
+export const analysisNumberCardTexts = {
+  groupLabel: '접촉 · 진행 중 · 성사 · 거절 회사 수',
+  contacted: '접촉',
+  inProgress: '진행 중',
+  won: '성사',
+  lost: '거절',
+  unit: '곳',
+  /** 접촉 보조 글(기간을 고르지 않았을 때만): 월별 추세의 이번 달 값. 예: "이번 달 8곳" */
+  thisMonth: (count: number) => `이번 달 ${count}곳`,
+  /** 진행 중 보조 글: 진행 중인 회사가 가장 많이 머문 세부 단계. 예: "수요 확인 단계 3곳" */
+  openStep: (step: string, count: number) => `${step} 단계 ${count}곳`,
+  /** 성사 보조 글(기간을 고르지 않았을 때만): 성사·거절을 세는 범위. 예: "최근 365일" */
+  closedWindow: (days: number) => `최근 ${days}일`,
+  /** 거절 보조 글: 보류는 거절에 넣지 않고 따로 센다. 예: "보류 2곳 별도" */
+  holdApart: (count: number) => `보류 ${count}곳 별도`,
+} as const;
+
+/** #972 영업 분석 새 톤에서 더한 글자. */
+export const analysisToneTexts = {
+  /** 깔때기에서 회사가 가장 많이 멈춘 단계 옆 꼬리표(요약 문장·말풍선과 같은 단계). */
+  funnelMostStopped: '가장 많이 멈춤',
+  /** [기록에서 배우기] 자세한 카드 묶음의 화면 읽기용 이름. */
+  patternDetails: '기록에서 배우기 자세히',
 } as const;
 
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
@@ -2605,6 +2701,101 @@ export const companyReport = {
   },
 } as const;
 
+/**
+ * 회사별 보고서 새 모양(#972, PM이 고른 시안 2026-11-27)에서 더한 틀 문구.
+ * 값의 쉬운 말(단계·상태·출처)은 위의 기존 대응표를 그대로 쓰고, 여기에는 새 자리의 글자만 둔다.
+ * 점수 항목 이름·배점은 응답에서 온다(여기에 적지 않는다).
+ */
+export const reportView = {
+  /** 맨 위 줄. "← 상세로 돌아가기" */
+  back: (label: string) => `← ${label}`,
+  expandAll: '근거 설명 모두 펼치기',
+  collapseAll: '근거 설명 모두 접기',
+  /** 인쇄한 종이 맨 위 줄. "회사별 보고서 — A정밀 · 밸브 바디 아노다이징" */
+  printHead: (pageTitle: string, title: string) => `${pageTitle} — ${title}`,
+  /** 맨 아래 줄. "거산 영업지원 · 내부용 · 고객 제출용 아님" */
+  footer: (internalOnly: string) => `거산 영업지원 · ${internalOnly}`,
+  /** 왼쪽 목차. 누르면 그 묶음으로 간다. */
+  toc: {
+    title: '이 보고서',
+    glance: '한눈에',
+    scores: '점수 8항목',
+    evidence: '근거',
+    questions: '확인 질문',
+    sales: '영업 단계',
+    direction: '영업 방향',
+  },
+  glance: {
+    /** 회사 이름 아래 줄. "검토 대상 · 볼트·너트 전기아연도금" */
+    item: (label: string, item: string) => `${label} · ${item}`,
+    fitAndReason: '적합도 · 고른 이유',
+    processConfirmed: '공정 확인됨',
+    /** 한눈에 칸 가운데 값이 없는 칸 수. "확인 필요 2" */
+    needCheckCount: (label: string, count: number) => `${label} ${count}`,
+    /** 큰 숫자 뒤. " / 100" (배점의 합은 응답의 항목 배점을 더한 값) */
+    outOf: (max: number) => ` / ${max}`,
+    /** 점수 전인 회사의 큰 숫자 자리. */
+    noScore: '--',
+    /** 동그라미를 읽어 주는 글. "점수 100점 가운데 77점" */
+    ringAria: (score: number, max: number) => `점수 ${max}점 가운데 ${score}점`,
+    ringAriaNone: '점수 전',
+    /** 상태별 항목 수 한 줄의 한 토막. "확인 6" */
+    stateCount: (label: string, count: number) => `${label} ${count}`,
+    /** 놓친 일정 알림 줄의 뒤쪽. "2026-11-10 · 다음 일정을 다시 잡아 주세요" */
+    missedHint: (date: string) => `${date} · 다음 일정을 다시 잡아 주세요`,
+  },
+  reasonTitle: '추천 근거 한 줄',
+  scores: {
+    hint: '줄을 누르면 이유가 펼쳐집니다 · 인쇄하면 모두 펼쳐집니다',
+    /** 점수 / 배점. "25 / 25"의 뒤쪽. */
+    ofWeight: (weight: number) => ` / ${weight}`,
+    total: '합계',
+    earned: '점수를 받은 항목',
+    earnedCount: (count: number) => `${count}개`,
+    biggestGap: '가장 크게 비는 곳',
+    /** "유사 산업·부품 납품실적 (0 / 15)" */
+    gap: (label: string, score: number, weight: number) => `${label} (${score} / ${weight})`,
+  },
+  evidence: {
+    /** "원문 인용 9개" */
+    count: (count: number) => `원문 인용 ${count}개`,
+    filterAria: '근거 묶음 거르기',
+    all: '전체',
+    /** 거르기 단추 글자. "제품 4" */
+    chip: (label: string, count: number) => `${label} ${count}`,
+    /** 근거가 무엇에 대한 것인지(응답의 근거 묶음 코드). 표에 없는 코드는 코드 그대로 보인다. */
+    groups: {
+      PRODUCT: '제품',
+      MATERIAL: '소재',
+      PURPOSE: '처리 목적',
+      SIGNAL: '회사 소식',
+      REQUIREMENT: '요구 조건',
+      OTHER: '그 밖',
+    } as Record<string, string>,
+  },
+  questions: {
+    knownHint: '접촉 기록에서 질문에 답하면 여기에 쌓입니다.',
+    /** 체크하지 않은 줄 수. "5개 남음" */
+    left: (count: number) => `${count}개 남음`,
+    checkHint: '물어본 것은 체크해 두세요 · 체크는 이 브라우저에만 기억됩니다',
+  },
+  sales: {
+    /** 접촉 칸의 큰 글자. "3회", 접촉이 없으면 "없음" */
+    contactTotal: (total: number) => (total === 0 ? '없음' : `${total}회`),
+    /** 접촉 칸의 작은 글자. "(전화 2 · 방문 1)" — 0회인 방법은 뺀다. */
+    contactParts: (call: number, email: number, visit: number) => {
+      const parts = [
+        call > 0 ? `전화 ${call}` : '',
+        visit > 0 ? `방문 ${visit}` : '',
+        email > 0 ? `메일 ${email}` : '',
+      ].filter(Boolean);
+      return parts.length > 0 ? `(${parts.join(' · ')})` : '';
+    },
+    missed: '놓친 일정',
+    upcoming: '다음 연락',
+  },
+} as const;
+
 /** 상세 "회사 소개 · 산업군" 칩(#646): AI 제안을 [확정]하거나 [고치기]로 바꾼다. */
 export const industryChips = {
   title: '회사 소개 · 산업군',
@@ -2821,6 +3012,18 @@ export const operationsTexts = {
     '갱신은 지금 운영 명령으로 합니다(운영 안내서 "자료 갱신" 절). 이 화면에는 실행 단추가 없습니다.',
   blockedTitle: '최근 막힌 전송 10건',
   blockedEmpty: '막힌 전송이 없습니다.',
+} as const;
+
+/** #972 운영 관리 새 톤에서 더한 글자. 값은 모두 운영 응답에 있는 것만 쓴다. */
+export const operationsToneTexts = {
+  /** 큰 금액 옆 작은 글. 예: "/ 한도 $20.00 (83%)" (금액과 이으면 전과 같은 "$16.50 / 한도 $20.00 (83%)") */
+  usageLimit: (limit: string, percent: number) => `/ 한도 ${limit} (${percent}%)`,
+  /** 사용 비율이 알림 비율 이상일 때 막대 아래 주의 글. 예: "알림 기준 80% 이상입니다" */
+  usageOver: (percent: number) => `알림 기준 ${percent}% 이상입니다`,
+  /** 날짜별 제목 옆. 서버는 이번 달에 쓴 날만 준다. 예: "이번 달 쓴 날 8일" */
+  dailyNote: (days: number) => `이번 달 쓴 날 ${days}일`,
+  /** 막힌 전송 제목 옆. 예: "2건" */
+  blockedCount: (count: number) => `${count}건`,
 } as const;
 
 /** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */

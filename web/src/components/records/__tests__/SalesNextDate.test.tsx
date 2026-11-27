@@ -11,6 +11,7 @@ import { getSalesQuestions, postOutcome } from '../../../api/client';
 import type { OutcomeRecord, SalesQuestions, SalesStepView } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
+import { chipOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -130,8 +131,8 @@ function renderArea(current: OutcomeRecord = outcome()) {
 }
 
 async function startCall(user: ReturnType<typeof userEvent.setup>, result = '연결됨') {
-  await user.selectOptions(screen.getByTestId('records-kind'), '전화');
-  await user.selectOptions(screen.getByTestId('records-contact-result'), result);
+  await user.click(chipOf('records-kind', '전화'));
+  await user.click(chipOf('records-contact-result', result));
 }
 
 async function pick(user: ReturnType<typeof userEvent.setup>, questionId: string, label: string) {

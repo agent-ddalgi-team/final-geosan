@@ -1,11 +1,12 @@
-// 상세 맨 위 단계 진행 막대(#674, PM 결정 2026-11-13): 세부 단계 5개 + 끝 "성사"를 점과 선으로 그린다.
-// #898(PM 2026-11-23): 지나온 단계는 초록 원 + 흰 ✓, 지금은 옅은 보라 원, 아직은 점선 원. 큰 단계 띠는 그 아래 점들과
-// 같은 너비(미접촉 1칸 · 접촉 3칸 · 견적·샘플 2칸 · 성사 1칸)로 맞추고 칸마다 테두리를 둔다.
-// 지나온 단계는 연한 강조색으로 채운 점(✓), 지금 단계는 진한 강조색 큰 점 + "지금 (11/12부터)", 아직인 단계는 빈 점.
-// 끝난 회사: 거절은 멈춘 자리까지 채우고 끝에 "✕ 거절 (가격)"(회색), 보류는 "⏸ 보류"(주황), 성사는 끝까지 채우고 초록.
-// 색으로만 구분하지 않는다: 점 모양·글자를 함께 쓰고 막대 전체를 "6단계 중 3단계 수요 확인" 같은 글로도 알린다.
-// #759(PM 2026-11-15): 점 줄 위에 큰 단계 띠 4칸(미접촉 · 접촉 · 견적·샘플 · 성사)을 둔다. 지금 칸은 연두,
-// 지나온 칸은 옅은 연두, 아직인 칸은 회색. 거절·보류로 끝나면 마지막 칸이 "거절 (가격)"·"보류"가 된다.
+// 상세 영업 단계 그림(#674 → #972 새 시안): 큰 단계 4칸(미접촉 · 접촉 · 견적·샘플 · 성사)을 같은 너비로 놓고,
+// 칸마다 바로 아래에 그 칸의 세부 단계를 점으로 놓아 한 줄 선으로 잇는다.
+//   미접촉 = 연결 전 / 접촉 = 연결됨 · 수요 확인 / 견적·샘플 = 자료·견적 · 방문·샘플 / 성사 = 성사
+// 큰 칸: 지나온 칸 = 강조 연한 바탕 + 강조 글자, 지금 칸 = 강조 바탕 + 흰 글자, 아직 = 중립.
+// 점: 지나온 점 = 강조 밝은 쪽(글자를 올리지 않는다), 지금 점 = 흰 가운데 + 강조 고리 + 아래 "지금 (11/12부터)", 아직 = 옅은 회보라.
+// 선: 처음 점부터 끝 점까지 한 줄. 지나온 구간은 강조 흐린 선, 나머지는 옅은 회보라.
+// 끝난 회사: 거절은 멈춘 자리까지 회색으로 채우고 끝에 "✕ 거절 (가격)", 보류는 주의색 + "⏸ 보류", 성사는 끝까지 채운다.
+// 색으로만 구분하지 않는다: 지금 점은 고리 모양 + "지금" 글, 끝난 회사는 끝 점 아래 "✕ 거절"·"⏸ 보류"·"✓ 성사" 글,
+// 그림 전체는 "6단계 중 3단계 수요 확인" 같은 글로도 알린다. 지나온 점과 아직인 점은 밝기 차이가 커서 색을 못 가려도 갈린다.
 // 그림 파일 없이 코드로 그린다. 단계 이름·순서는 서버 질문 파일(GET /sales-questions의 steps)에서 오고,
 // 못 받았으면 코드표(C0 salesStep) 순서와 쉬운 말 대응표로 그린다. 읽기만 하는 부품이라 단추가 없다.
 import type {
@@ -22,7 +23,16 @@ import {
   outcomeStatusLabels,
   salesStepLabels,
 } from '../../labels/ko';
-import { colors, progressTheme, radius, statusPalette, typography } from '../../theme/tokens';
+import {
+  accent,
+  colors,
+  neutralChip,
+  progressTheme,
+  radius,
+  statusPalette,
+  typography,
+  warn,
+} from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 
 const texts = detailReport.progress;
@@ -105,6 +115,14 @@ const QUOTE_STEP_INDEX = 3;
 export type BandState = 'done' | 'current' | 'todo' | 'lost' | 'hold';
 
 /**
+ * 세부 단계 자리(0부터)가 속한 큰 단계 칸(0부터). #898(PM 2026-11-23): "연결 전"은 미접촉 칸,
+ * 연결됨·수요 확인은 접촉 칸, 자료·견적·방문·샘플은 견적·샘플 칸. 끝 "성사" 점은 성사 칸이다.
+ */
+export function bandIndexOfStep(index: number): number {
+  return index >= QUOTE_STEP_INDEX ? 2 : index >= 1 ? 1 : 0;
+}
+
+/**
  * 띠 칸마다의 상태. 진행 중이면 서버의 큰 단계(outcome.status)를 지금 칸으로 쓰고, 없으면 세부 단계로 짐작한다.
  * 거절·보류는 멈춘 세부 단계로 어느 칸까지 왔는지 정하고 마지막 칸을 거절·보류로 바꾼다.
  */
@@ -112,8 +130,7 @@ export function bandStatesOf(
   progress: SalesProgress,
   status: OutcomeStatus | null | undefined,
 ): BandState[] {
-  // #898(PM 2026-11-23): "연결 전"은 미접촉 칸, 연결됨·수요 확인은 접촉 칸, 자료·견적·방문·샘플은 견적·샘플 칸.
-  const byStep = (index: number) => (index >= QUOTE_STEP_INDEX ? 2 : index >= 1 ? 1 : 0);
+  const byStep = bandIndexOfStep;
   const last = BANDS.length - 1;
   if (progress.end === 'won') return BANDS.map((_, i) => (i === last ? 'current' : 'done'));
   if (progress.end === 'lost' || progress.end === 'hold') {
@@ -139,19 +156,65 @@ export interface SalesProgressBarProps {
   contactTotal: number;
   /** 서버 질문 파일. 아직 못 받았거나 실패했으면 null(코드표 순서로 그린다). */
   questions: SalesQuestions | null;
+  /**
+   * 그림 위 제목 "영업 단계"를 숨긴다(#972, 선택). 이미 같은 제목이 있는 칸(회사별 보고서 등)에 넣을 때 쓴다.
+   * 기본은 보인다. 그림을 읽어 주는 글("영업 단계: 6단계 중 …")은 그대로 남는다.
+   */
+  hideTitle?: boolean;
 }
 
-// #898(PM 2026-11-23): 점은 참고 그림처럼 크게, 지나온 단계는 초록 ✓, 지금은 보라 원, 아직은 점선 원.
-const DOT = 30;
-const DOT_CURRENT = 34;
-const ROW = 38;
-const LINE = 3;
+// #972 새 시안: 점은 작게(글자 16px 기준 14px), 선은 2px. 점 둘레의 흰 띠가 선을 끊어 점이 또렷하게 보인다.
+const DOT = 14;
+const DOT_RING = 3;
+const ROW = 20;
+const LINE = 2;
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+export interface StepPlacement {
+  /** 이 점이 놓이는 큰 단계 칸(0부터). */
+  band: number;
+  /** 격자에서 시작하는 줄(1부터)과 차지하는 칸 수. */
+  start: number;
+  span: number;
+  /** 그림 전체 너비에서 점 가운데의 위치(%). 선의 시작·끝을 정할 때 쓴다. */
+  center: number;
+}
+
+/**
+ * 세부 단계 점들과 끝 "성사" 점을 큰 단계 칸 아래에 나눠 놓는다. 큰 칸 4개는 같은 너비이고,
+ * 한 칸 안의 점들은 그 칸을 똑같이 나눠 가운데에 선다(1개면 칸 가운데, 2개면 1/4·3/4 자리).
+ * 돌려주는 배열의 마지막이 끝 점이다.
+ */
+export function stepPlacementsOf(stepCount: number): { columns: number; dots: StepPlacement[] } {
+  const bands = [
+    ...Array.from({ length: stepCount }, (_, index) => bandIndexOfStep(index)),
+    BANDS.length - 1,
+  ];
+  const counts = BANDS.map((_, band) => bands.filter((value) => value === band).length);
+  const perBand = counts.reduce(
+    (acc, count) => (count > 0 ? (acc * count) / gcd(acc, count) : acc),
+    1,
+  );
+  const columns = BANDS.length * perBand;
+  const seen = BANDS.map(() => 0);
+  const dots = bands.map((band) => {
+    const span = perBand / counts[band];
+    const start = band * perBand + seen[band] * span + 1;
+    seen[band] += 1;
+    return { band, start, span, center: ((start - 1 + span / 2) / columns) * 100 };
+  });
+  return { columns, dots };
+}
 
 export default function SalesProgressBar({
   salesStep,
   outcome,
   contactTotal,
   questions,
+  hideTitle = false,
 }: SalesProgressBarProps) {
   const progress = salesProgressOf(salesStep, outcome, contactTotal, questions);
   const { steps, currentIndex, reachedIndex, end } = progress;
@@ -160,21 +223,13 @@ export default function SalesProgressBar({
   const lostReason = outcome?.lostReasonCode
     ? labelFor(lostReasonLabels, outcome.lostReasonCode)
     : null;
-  // 지나온 점은 연두 + 진한 ✓. 거절·보류로 끝났으면 지나온 점도 회색·주황으로 멈춘 느낌을 준다.
+  // 지나온 점·선의 색. 거절·보류로 끝났으면 회색·주의색으로 멈춘 느낌을 준다.
   const filledTone =
     end === 'lost'
-      ? {
-          bg: statusPalette.neutral.bg,
-          fg: statusPalette.neutral.fg,
-          line: statusPalette.neutral.fg,
-        }
+      ? { dot: statusPalette.neutral.fg, line: statusPalette.neutral.fg }
       : end === 'hold'
-        ? {
-            bg: statusPalette.recheck.bg,
-            fg: statusPalette.recheck.fg,
-            line: statusPalette.recheck.fg,
-          }
-        : { bg: progressTheme.done, fg: progressTheme.doneFg, line: progressTheme.doneLine };
+        ? { dot: warn.dot, line: warn.dot }
+        : { dot: progressTheme.dotDone, line: progressTheme.doneLine };
   const stopLabel = reachedIndex >= 0 ? steps[reachedIndex].label : null;
   const ariaLabel =
     end === 'won'
@@ -194,13 +249,10 @@ export default function SalesProgressBar({
         : end === 'hold'
           ? texts.hold
           : texts.won;
-  const endGlyph = end === 'won' ? '✓' : end === 'lost' ? '✕' : end === 'hold' ? '⏸' : '';
   const nextDate = formatMonthDay(outcome?.nextScheduleAt);
 
   const stateOf = (index: number): DotState =>
     index === currentIndex ? 'current' : index <= reachedIndex ? 'done' : 'todo';
-  // 점 뒤에 붙는 선: 양쪽 점이 모두 지나온 자리면(성사는 끝까지) 굵고 진하게, 아니면 가늘고 연하게.
-  const lineFilled = (index: number) => end === 'won' || index < reachedIndex;
   const bands = bandStatesOf(progress, outcome?.status);
   const bandLabel = (index: number, state: BandState) =>
     state === 'lost'
@@ -210,242 +262,228 @@ export default function SalesProgressBar({
         : outcomeStatusLabels[BANDS[index]];
   const currentBand = bands.findIndex((state) => state !== 'done' && state !== 'todo');
 
+  // 점 자리: 큰 칸 아래에 그 칸의 세부 단계. 선은 처음 점 가운데부터 끝 점 가운데까지 한 줄이다.
+  const { columns, dots } = stepPlacementsOf(steps.length);
+  const endDot = dots[dots.length - 1];
+  const lineStart = dots[0].center;
+  const lineEnd = endDot.center;
+  // 지나온 구간: 처음 점부터 멈춘(지금) 점까지. 성사는 끝까지. 첫 점에 머물러 있으면 채울 구간이 없다.
+  const filledEnd = end === 'won' ? lineEnd : reachedIndex >= 1 ? dots[reachedIndex].center : null;
+
+  const bandStyle = (state: BandState) => {
+    if (state === 'current') {
+      return { background: progressTheme.current, color: progressTheme.currentFg, fontWeight: 600 };
+    }
+    if (state === 'done') return { background: accent.soft, color: accent.text, fontWeight: 400 };
+    if (state === 'lost') {
+      return {
+        background: statusPalette.neutral.bg,
+        color: statusPalette.neutral.fg,
+        fontWeight: 700,
+        boxShadow: `inset 0 0 0 1.5px ${statusPalette.neutral.fg}`,
+      };
+    }
+    if (state === 'hold') {
+      return {
+        background: statusPalette.recheck.bg,
+        color: statusPalette.recheck.fg,
+        fontWeight: 700,
+        boxShadow: `inset 0 0 0 1.5px ${warn.dot}`,
+      };
+    }
+    return { background: neutralChip.bg, color: neutralChip.text, fontWeight: 400 };
+  };
+
   function dotStyle(state: DotState | EndState) {
-    const size = state === 'current' ? DOT_CURRENT : DOT;
     const base = {
-      width: size,
-      height: size,
+      width: DOT,
+      height: DOT,
       borderRadius: '50%',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       boxSizing: 'border-box',
-      fontSize: 16,
-      lineHeight: 1,
       flex: 'none',
       position: 'relative',
-      zIndex: 1,
+      // 점 둘레의 흰 띠: 뒤로 지나가는 선을 끊어 점이 또렷하게 보인다.
+      boxShadow: `0 0 0 ${DOT_RING}px ${colors.bgContainer}`,
     } as const;
     if (state === 'current') {
-      // "지금" 점: 진한 회색 원 + 가운데 흰 점(그림 안 글자는 없다).
-      return {
-        ...base,
-        background: progressTheme.current,
-        backgroundImage: `radial-gradient(circle, ${progressTheme.currentFg} 0 5px, transparent 5.5px)`,
-      };
-    }
-    if (state === 'todo') {
+      // "지금" 점: 흰 가운데 + 강조 고리.
       return {
         ...base,
         background: colors.bgContainer,
-        border: `1.5px solid ${progressTheme.todoBorder}`,
+        border: `${DOT_RING}px solid ${progressTheme.current}`,
       };
     }
-    return { ...base, background: filledTone.bg, color: filledTone.fg, fontWeight: 700 };
+    if (state === 'todo') return { ...base, background: progressTheme.dotTodo };
+    // 지나온 점(끝 점의 성사·거절·보류 포함): 채운 점. 점 위에는 글자를 올리지 않는다.
+    return { ...base, background: filledTone.dot };
   }
 
-  // 큰 단계 띠 4칸은 같은 너비(#898, PM 2026-11-23). 점 줄은 띠 1칸을 2칸으로 나눈 8칸 위에 놓는다:
-  // 미접촉 칸 가운데 "연결 전", 접촉 칸에 "연결됨·수요 확인", 견적·샘플 칸에 "자료·견적·방문·샘플", 성사 칸 가운데 "성사".
-  // 세부 단계가 5개가 아니면(질문 파일이 바뀐 경우) 점을 고른 칸에 놓는다.
-  const standard = steps.length === 5 && QUOTE_STEP_INDEX === 3;
-  const stepColumns = standard ? BANDS.length * 2 : total;
-  const stepSpan = (index: number) => (standard && index === 0 ? 2 : 1);
-  const endSpan = standard ? 2 : 1;
-  const bandBorder = (state: BandState) =>
-    state === 'current'
-      ? `2px solid ${progressTheme.current}`
-      : state === 'done'
-        ? `1.5px solid ${progressTheme.bandBorderDone}`
-        : state === 'lost'
-          ? `1.5px solid ${statusPalette.neutral.fg}`
-          : state === 'hold'
-            ? `1.5px solid ${statusPalette.recheck.fg}`
-            : `1.5px solid ${progressTheme.bandBorder}`;
-  /** 점 뒤(오른쪽) 반쪽 선과 앞(왼쪽) 반쪽 선. 지나온 구간은 초록(거절·보류는 그 색), 나머지 옅은 회색. */
-  const halfLine = (side: 'left' | 'right', filled: boolean) => (
-    <span
-      aria-hidden="true"
-      style={{
-        position: 'absolute',
-        top: (ROW - LINE) / 2,
-        height: LINE,
-        left: side === 'left' ? 0 : '50%',
-        right: side === 'left' ? '50%' : 0,
-        background: filled ? filledTone.line : progressTheme.line,
-      }}
-    />
-  );
+  const itemStyle = (dot: StepPlacement) =>
+    ({
+      gridColumn: `${dot.start} / span ${dot.span}`,
+      display: 'grid',
+      gap: 5,
+      justifyItems: 'center',
+      alignContent: 'start',
+      textAlign: 'center',
+      minWidth: 0,
+    }) as const;
+  const dotRow = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: ROW,
+  } as const;
+  const lineStyle = (from: number, to: number, color: string) =>
+    ({
+      position: 'absolute',
+      top: (ROW - LINE) / 2,
+      height: LINE,
+      left: `${from}%`,
+      width: `${to - from}%`,
+      background: color,
+    }) as const;
 
   return (
     <div data-testid="sales-progress" data-end={end} style={{ display: 'grid', gap: 12 }}>
-      <div style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}>{texts.title}</div>
-      <div
-        role="group"
-        aria-label={texts.bandAria(
-          currentBand >= 0 ? bandLabel(currentBand, bands[currentBand]) : '',
-        )}
-        data-testid="sales-progress-bands"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${BANDS.length}, minmax(0, 1fr))`,
-        }}
-      >
-        {bands.map((state, index) => (
-          <span
-            key={BANDS[index]}
-            data-testid="sales-progress-band"
-            data-state={state}
-            style={{
-              margin: '0 3px',
-              border: bandBorder(state),
-              borderRadius: radius.sm,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              minHeight: 44,
-              padding: '6px 8px',
-              boxSizing: 'border-box',
-              background:
-                state === 'current'
-                  ? progressTheme.current
-                  : state === 'done'
-                    ? progressTheme.done
-                    : state === 'lost'
-                      ? statusPalette.neutral.bg
-                      : state === 'hold'
-                        ? statusPalette.recheck.bg
-                        : progressTheme.todo,
-              color:
-                state === 'current'
-                  ? progressTheme.currentFg
-                  : state === 'lost'
-                    ? statusPalette.neutral.fg
-                    : state === 'hold'
-                      ? statusPalette.recheck.fg
-                      : state === 'todo'
-                        ? colors.textSecondary
-                        : colors.text,
-              fontWeight: state === 'done' || state === 'todo' ? 400 : 700,
-              fontSize: typography.fontSize,
-            }}
-          >
-            {bandLabel(index, state)}
-          </span>
-        ))}
-      </div>
-      <div>
-        <ol
-          aria-label={`${texts.title}: ${ariaLabel}`}
-          data-testid="sales-progress-steps"
+      {hideTitle ? null : (
+        <div style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}>{texts.title}</div>
+      )}
+      <div style={{ display: 'grid', gap: 12 }}>
+        <div
+          role="group"
+          aria-label={texts.bandAria(
+            currentBand >= 0 ? bandLabel(currentBand, bands[currentBand]) : '',
+          )}
+          data-testid="sales-progress-bands"
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${stepColumns}, minmax(0, 1fr))`,
-            margin: 0,
-            padding: 0,
-            listStyle: 'none',
+            gridTemplateColumns: `repeat(${BANDS.length}, minmax(0, 1fr))`,
           }}
         >
-          {steps.map((step, index) => {
-            const state = stateOf(index);
-            return (
-              <li
-                key={step.code}
-                data-testid="sales-progress-step"
-                data-state={state}
-                aria-current={state === 'current' ? 'step' : undefined}
-                title={texts.dot(step.label, texts.stateText[state])}
-                style={{
-                  gridColumn: `span ${stepSpan(index)}`,
-                  display: 'grid',
-                  gap: 6,
-                  justifyItems: 'center',
-                  alignContent: 'start',
-                  textAlign: 'center',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                    height: ROW,
-                  }}
-                >
-                  {index > 0 ? halfLine('left', lineFilled(index - 1)) : null}
-                  {halfLine('right', lineFilled(index))}
-                  <span aria-hidden="true" style={dotStyle(state)}>
-                    {state === 'done' ? '✓' : ''}
-                  </span>
-                </div>
-                <span
-                  style={{
-                    padding: '0 2px',
-                    fontSize: typography.fontSizeSecondary,
-                    fontWeight: state === 'current' ? 700 : 400,
-                    color: state === 'todo' ? colors.textSecondary : colors.text,
-                  }}
-                >
-                  {step.label}
-                </span>
-                {state === 'current' ? (
-                  <span
-                    data-testid="sales-progress-now"
-                    style={{
-                      fontSize: typography.fontSizeSecondary,
-                      fontWeight: 700,
-                      color: colors.text,
-                    }}
-                  >
-                    <span aria-hidden="true">▲ </span>
-                    {texts.now(since)}
-                  </span>
-                ) : null}
-              </li>
-            );
-          })}
-          <li
-            data-testid="sales-progress-end"
-            data-state={end}
-            title={endText}
-            style={{
-              gridColumn: `span ${endSpan}`,
-              display: 'grid',
-              gap: 6,
-              justifyItems: 'center',
-              alignContent: 'start',
-              textAlign: 'center',
-            }}
-          >
-            <div
+          {bands.map((state, index) => (
+            <span
+              key={BANDS[index]}
+              data-testid="sales-progress-band"
+              data-state={state}
+              data-band={BANDS[index]}
               style={{
-                position: 'relative',
+                // 칸 사이 틈 6px. 아래 점 격자는 틈 없이 같은 너비라 점이 칸 가운데(또는 1/4·3/4 자리)에 선다.
+                margin: '0 3px',
+                borderRadius: radius.controlSm,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '100%',
-                height: ROW,
-              }}
-            >
-              {steps.length > 0 ? halfLine('left', lineFilled(steps.length - 1)) : null}
-              <span aria-hidden="true" style={dotStyle(end)}>
-                {endGlyph}
-              </span>
-            </div>
-            <span
-              data-testid="sales-progress-end-text"
-              style={{
+                textAlign: 'center',
+                minHeight: 40,
+                padding: '8px',
+                boxSizing: 'border-box',
                 fontSize: typography.fontSizeSecondary,
-                fontWeight: end === 'todo' ? 400 : 700,
-                color: end === 'todo' ? colors.textSecondary : colors.text,
+                ...bandStyle(state),
               }}
             >
-              {endText}
+              {bandLabel(index, state)}
             </span>
-          </li>
-        </ol>
+          ))}
+        </div>
+        <div style={{ position: 'relative' }}>
+          {/* 선은 칸 경계를 넘어 처음 점부터 끝 점까지 한 줄이다. 지나온 구간만 색이 다르다. */}
+          <span
+            aria-hidden="true"
+            data-testid="sales-progress-line"
+            style={lineStyle(lineStart, lineEnd, progressTheme.line)}
+          />
+          {filledEnd !== null ? (
+            <span
+              aria-hidden="true"
+              data-testid="sales-progress-line-done"
+              style={lineStyle(lineStart, filledEnd, filledTone.line)}
+            />
+          ) : null}
+          <ol
+            aria-label={`${texts.title}: ${ariaLabel}`}
+            data-testid="sales-progress-steps"
+            style={{
+              position: 'relative',
+              display: 'grid',
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+            }}
+          >
+            {steps.map((step, index) => {
+              const state = stateOf(index);
+              return (
+                <li
+                  key={step.code}
+                  data-testid="sales-progress-step"
+                  data-state={state}
+                  data-band={BANDS[dots[index].band]}
+                  aria-current={state === 'current' ? 'step' : undefined}
+                  title={texts.dot(step.label, texts.stateText[state])}
+                  style={itemStyle(dots[index])}
+                >
+                  <div style={dotRow}>
+                    <span aria-hidden="true" data-dot={state} style={dotStyle(state)} />
+                  </div>
+                  <span
+                    style={{
+                      padding: '0 2px',
+                      fontSize: typography.fontSizeSecondary,
+                      fontWeight: state === 'current' ? 600 : 400,
+                      color:
+                        state === 'current'
+                          ? colors.text
+                          : state === 'done'
+                            ? colors.textSecondary
+                            : colors.textDimmed,
+                    }}
+                  >
+                    {step.label}
+                  </span>
+                  {state === 'current' ? (
+                    <span
+                      data-testid="sales-progress-now"
+                      style={{
+                        fontSize: typography.fontSizeSecondary,
+                        fontWeight: 500,
+                        color: accent.text,
+                      }}
+                    >
+                      {texts.now(since)}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+            <li
+              data-testid="sales-progress-end"
+              data-state={end}
+              data-band={BANDS[endDot.band]}
+              title={endText}
+              style={itemStyle(endDot)}
+            >
+              <div style={dotRow}>
+                <span aria-hidden="true" data-dot={end} style={dotStyle(end)} />
+              </div>
+              <span
+                data-testid="sales-progress-end-text"
+                style={{
+                  padding: '0 2px',
+                  fontSize: typography.fontSizeSecondary,
+                  fontWeight: end === 'todo' ? 400 : 600,
+                  color: end === 'todo' ? colors.textDimmed : colors.text,
+                }}
+              >
+                {endText}
+              </span>
+            </li>
+          </ol>
+        </div>
       </div>
       {progress.noContact ? (
         <span

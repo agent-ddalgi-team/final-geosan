@@ -7,19 +7,31 @@
 // #795: 대시보드는 compact로 작게 그린다(칸 높이·글자만 줄이고 날짜 누르면 팝업 등 동작은 같다).
 // #927(PM 요청 2026-11-25, 시안): dots = 날짜 숫자만 작게, 일정 있는 날 아래 점(지난 일정 미정리는 빨강),
 //   오늘은 초록으로 채움. 머리는 "‹ 11월 일정 ›". 날짜를 누르면 그날 일정 작은 창(지금과 같음).
+// #972(새 디자인): 점 달력의 오늘 = 강조 바탕 + 흰 글자, 일정 점 = 강조 밝은 쪽, 지난 일정 미정리 점 = 주의 점,
+//   이번 주 = 강조 연한 바탕, 칸 모서리 8. 작은 창 그림자는 토큰(homePalette.popoverShadow).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import {
+  accent,
   calendarPalette,
   colors,
-  groupMarkPalette,
   homePalette,
   radius,
   type CalendarTone,
   typography,
+  warn,
 } from '../../theme/tokens';
+
+/** #972 점 달력 색. 점에는 글자를 올리지 않는다(강조 밝은 쪽 · 주의 점). 오늘 칸은 흰 글자가 올라가는 강조 바탕. */
+export const DOT_COLORS = {
+  todayBg: homePalette.blueStrong,
+  todayFg: colors.bgContainer,
+  weekBg: homePalette.blueBg,
+  dot: accent.bright,
+  dotOverdue: warn.dot,
+} as const;
 import { formatMonthDay } from '../../utils/time';
 import { sortSchedule } from './ScheduleList';
 import { PREP_DAYS } from './VisitPrep';
@@ -236,26 +248,26 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
             const offset = dayDiff(today, k);
             const thisWeek = offset !== null && offset >= 1 && offset < PREP_DAYS;
             const dotColor = isToday
-              ? colors.bgContainer
+              ? DOT_COLORS.todayFg
               : overdue
-                ? groupMarkPalette.overdue
-                : groupMarkPalette.today;
+                ? DOT_COLORS.dotOverdue
+                : DOT_COLORS.dot;
             const cell = {
               position: 'relative',
               boxSizing: 'border-box',
               minWidth: 0,
               border: 0,
-              borderRadius: 6,
+              borderRadius: radius.controlSm,
               padding: '4px 0 10px',
               textAlign: 'center',
               fontFamily: 'inherit',
               fontSize: 12,
               background: isToday
-                ? groupMarkPalette.today
+                ? DOT_COLORS.todayBg
                 : thisWeek
-                  ? homePalette.blueBg
+                  ? DOT_COLORS.weekBg
                   : 'transparent',
-              color: isToday ? colors.bgContainer : colors.text,
+              color: isToday ? DOT_COLORS.todayFg : colors.text,
               fontWeight: isToday || list ? 700 : 400,
               outline: isSelected ? `2px solid ${colors.text}` : 'none',
               outlineOffset: 1,
@@ -323,7 +335,7 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
             position: 'relative',
             boxSizing: 'border-box',
             minWidth: 0,
-            borderRadius: compact ? radius.md : radius.lg,
+            borderRadius: compact ? radius.control : radius.card,
             border: 0,
             boxShadow: isToday ? `inset 0 0 0 2px ${calendarPalette.todayRing}` : 'none',
             outline: isSelected ? `3px solid ${calendarPalette.todayRing}` : 'none',
@@ -397,7 +409,7 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
                   boxSizing: 'border-box',
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
-                  borderRadius: radius.pill,
+                  borderRadius: radius.tag,
                   padding: compact ? '0 4px' : '1px 7px',
                   background: palette.badge,
                   fontSize: compact ? 10 : 12,
@@ -427,9 +439,9 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
           }}
         >
           {[
-            [groupMarkPalette.today, dashboardTexts.calendarDotHas, '50%'],
-            [groupMarkPalette.overdue, dashboardTexts.calendarDotOverdue, '50%'],
-            [homePalette.blueBg, dashboardTexts.calendarThisWeek, '2px'],
+            [DOT_COLORS.dot, dashboardTexts.calendarDotHas, '50%'],
+            [DOT_COLORS.dotOverdue, dashboardTexts.calendarDotOverdue, '50%'],
+            [DOT_COLORS.weekBg, dashboardTexts.calendarThisWeek, '2px'],
           ].map(([color, label, round]) => (
             <li key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span
@@ -467,7 +479,7 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
               style={{
                 width: 12,
                 height: 12,
-                borderRadius: radius.sm,
+                borderRadius: radius.tag,
                 background: calendarPalette.tones[tone].bg,
               }}
             />
@@ -509,8 +521,8 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
             background: calendarPalette.popoverBg,
             border: `1px solid ${calendarPalette.popoverBorder}`,
             color: calendarPalette.title,
-            borderRadius: radius.lg,
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45)',
+            borderRadius: radius.card,
+            boxShadow: homePalette.popoverShadow,
             padding: 12,
             display: 'grid',
             gap: 10,
@@ -548,7 +560,7 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
                       style={{
                         background: calendarPalette.tones.overdue.bg,
                         color: calendarPalette.tones.overdue.fg,
-                        borderRadius: radius.sm,
+                        borderRadius: radius.tag,
                         padding: '0 6px',
                         marginRight: 6,
                         fontSize: typography.fontSizeSecondary,

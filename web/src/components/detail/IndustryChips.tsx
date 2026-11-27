@@ -90,7 +90,7 @@ export default function IndustryChips({
                 alignItems: 'center',
                 gap: 4,
                 padding: '0 10px',
-                borderRadius: radius.pill,
+                borderRadius: radius.tag,
                 background: (confirmed ? statusPalette.ok : statusPalette.neutral).bg,
                 color: (confirmed ? statusPalette.ok : statusPalette.neutral).fg,
                 fontWeight: confirmed ? 600 : 400,
@@ -121,6 +121,8 @@ export default function IndustryChips({
             ) : null}
             <Button
               size="small"
+              type="link"
+              style={{ padding: '0 4px', height: 'auto' }}
               disabled={!canRecord || saving !== null || options.length === 0}
               onClick={() => {
                 setError(null);

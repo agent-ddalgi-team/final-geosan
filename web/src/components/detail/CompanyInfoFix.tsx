@@ -67,6 +67,8 @@ export default function CompanyInfoFix({
       <Space wrap size={8} data-testid="company-info-buttons">
         <Button
           size="small"
+          type="link"
+          style={{ padding: '0 4px', height: 'auto' }}
           disabled={!canRecord}
           onClick={() => open('address')}
           data-testid="company-address-edit-button"
@@ -76,6 +78,8 @@ export default function CompanyInfoFix({
         {canRename ? (
           <Button
             size="small"
+            type="link"
+            style={{ padding: '0 4px', height: 'auto' }}
             disabled={!canRecord}
             onClick={() => open('name')}
             data-testid="company-name-edit-button"

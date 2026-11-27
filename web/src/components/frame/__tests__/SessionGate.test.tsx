@@ -4,6 +4,7 @@ import { ApiError, getConfigUi, SESSION_REQUIRED_EVENT } from '../../../api/clie
 import { createSession, saveProfile } from '../../../api/session';
 import fixture from '../../../test/fixtures/config-ui.json';
 import type { ConfigUi, Envelope } from '../../../api/types';
+import { accent, colors, loginTheme } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
@@ -73,6 +74,30 @@ it('Given 401 When 접속 화면 Then 회사 이름·로고·제목·내부용 �
   expect(screen.getByText(subtitle)).toBeInTheDocument();
   expect(screen.getByText('내부용')).toBeInTheDocument();
   expect(screen.getByRole('contentinfo')).toHaveTextContent('© (주)거산케미칼 · 영업지원 에이전트');
+});
+
+it('#972 Given 401 When 접속 화면 Then 밝은 바탕 위 흰 상자 안에 제목·한 줄 소개·입력 칸·[접속]이 있고 남색 바탕의 빛나는 곡선은 없다', async () => {
+  config.mockRejectedValueOnce(denied());
+  const view = renderGate();
+  const password = await screen.findByLabelText('비밀번호');
+  const card = screen.getByTestId('login-card');
+  expect(card).toContainElement(screen.getByRole('heading', { level: 1 }));
+  expect(card).toContainElement(screen.getByText(subtitle));
+  expect(card).toContainElement(password);
+  expect(card).toContainElement(screen.getByRole('button', { name: '접속' }));
+  // 회사 이름·"내부용"·저작권 줄은 상자 밖(위·아래)에 있다.
+  expect(card).not.toContainElement(screen.getByText('(주)거산케미칼'));
+  expect(card).not.toContainElement(screen.getByText('내부용'));
+  expect(card).not.toContainElement(screen.getByRole('contentinfo'));
+  // 색은 tokens의 loginTheme에서 CSS 변수로 넘어온다: 밝은 바탕, 흰 상자, 얇은 테두리, 모서리 16.
+  const page = view.container.querySelector('.login-page') as HTMLElement;
+  expect(page.style.getPropertyValue('--login-bg')).toBe(loginTheme.bg);
+  expect(page.style.getPropertyValue('--login-card-bg')).toBe(loginTheme.cardBg);
+  expect(page.style.getPropertyValue('--login-card-border')).toBe(loginTheme.cardBorder);
+  expect(page.style.getPropertyValue('--login-card-radius')).toBe('16px');
+  expect(loginTheme.bg).toBe(colors.bgLayout);
+  expect(loginTheme.accent).toBe(accent.bg);
+  expect(view.container.querySelector('.login-planet')).toBeNull();
 });
 
 it('Given 세션 확인 중 When 아직 응답 전 Then "내부용" 표시는 보이지 않는다(업무 화면의 내부용 띠와 헷갈리지 않게)', async () => {

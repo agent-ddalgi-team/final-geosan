@@ -2,32 +2,31 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardMapPoint, DashboardVisitGroup } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
-import { colors, spacing, statusPalette, typography } from '../../theme/tokens';
+import { accent, colors, radius, typography } from '../../theme/tokens';
+import { MapPinIcon } from '../common/MapPin';
 
 const FIRST_CARDS = 3;
 const muted = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary };
-const listStyle = { display: 'grid', gap: 6, listStyle: 'none', margin: 0, padding: 0 };
+const listStyle = { display: 'grid', gap: 0, listStyle: 'none', margin: 0, padding: 0 };
+// #972: 보조 단추 = 흰 바탕 + 카드 테두리 + 본문 글자, 작은 단추 모서리 8.
 const buttonStyle = {
   justifySelf: 'start',
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 6,
+  borderRadius: radius.controlSm,
   background: colors.bgContainer,
-  color: statusPalette.ask.fg,
+  color: colors.text,
   fontSize: typography.fontSizeSecondary,
-  padding: '4px 8px',
+  padding: '4px 10px',
   cursor: 'pointer',
 } as const;
 
+// #972(시안): 같이 들를 곳은 지도 칸(흰 카드) 안의 오른쪽 단이다. 따로 바탕·테두리 상자를 두르지 않는다.
 export const visitPanelStyle = {
   alignSelf: 'start',
   display: 'grid',
   gap: 10,
   flex: '1 1 235px',
   minWidth: 0,
-  background: colors.bgLayout,
-  border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: 12,
-  padding: spacing.cardGap,
 } as const;
 
 function CompanyCard({
@@ -39,14 +38,9 @@ function CompanyCard({
   distance: string;
   onPickVisitBase?: () => void;
 }) {
-  const tone =
-    company.group === 'INTERESTED'
-      ? statusPalette.ask
-      : company.group === 'IN_PROGRESS'
-        ? statusPalette.wait
-        : statusPalette.ok;
+  // #972(시안): 상자 대신 얇은 줄로 나눈 한 줄(회사 · 오른쪽 거리). 묶음은 지도 핀과 같은 색 점 + 글자로 보인다.
   return (
-    <li>
+    <li style={{ borderTop: `1px solid ${colors.borderSecondary}`, padding: '8px 0' }}>
       <Link
         to={`/opportunities/${encodeURIComponent(company.oppId)}`}
         style={{
@@ -54,27 +48,26 @@ function CompanyCard({
           gridTemplateColumns: 'minmax(0, 1fr) auto',
           alignItems: 'center',
           gap: '2px 8px',
-          border: `1px solid ${colors.borderSecondary}`,
-          padding: '7px 9px',
-          borderRadius: 8,
-          background: colors.bgContainer,
           color: colors.text,
           fontSize: typography.fontSizeSecondary,
           textDecoration: 'none',
         }}
       >
-        <strong style={{ overflowWrap: 'anywhere' }}>{company.customerName}</strong>
+        <strong style={{ overflowWrap: 'anywhere', fontWeight: 600 }}>
+          {company.customerName}
+        </strong>
         <span style={{ gridColumn: 2, gridRow: '1 / 3', ...muted }}>{distance}</span>
         <span
           style={{
             justifySelf: 'start',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
             fontSize: 12,
-            borderRadius: 4,
-            padding: '0 4px',
-            background: tone.bg,
-            color: tone.fg,
+            color: colors.textSecondary,
           }}
         >
+          <MapPinIcon kind={company.group} size={10} />
           {t.groups[company.group]}
         </span>
       </Link>
@@ -198,7 +191,7 @@ export default function VisitMapCards({
             minWidth: 0,
             padding: 6,
             border: `1px solid ${colors.border}`,
-            borderRadius: 6,
+            borderRadius: radius.controlSm,
             background: colors.bgContainer,
             color: colors.text,
             font: 'inherit',
@@ -224,7 +217,7 @@ export default function VisitMapCards({
         </button>
         <Link
           to={`/opportunities/${encodeURIComponent(anchor.oppId)}`}
-          style={{ color: statusPalette.ask.fg, fontSize: typography.fontSizeSecondary }}
+          style={{ color: accent.text, fontSize: typography.fontSizeSecondary }}
         >
           {t.detailLink}
         </Link>

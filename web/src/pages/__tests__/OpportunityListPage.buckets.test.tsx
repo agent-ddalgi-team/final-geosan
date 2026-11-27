@@ -152,26 +152,41 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     expect(mockedGet.mock.calls[0][3]).toMatchObject({ sort: 'contact', process: 'ZINC_PLATING' });
     expect(titles()).toEqual(ALL_TITLES);
     // 제목은 그 묶음의 첫 카드 바로 앞에 있다(제목 5개 + 카드 6장, 서버 순서 그대로).
+    // #972: 카드가 표 줄 모양이라 묶음 제목마다 바로 아래에 열 머리 한 줄이 끼어 있다.
     const list = screen.getByTestId('opportunity-list');
+    const HEAD = '열 머리';
     expect(
       Array.from(list.children).map(
         (item) =>
           item.getAttribute('data-bucket') ??
-          within(item as HTMLElement).getByTestId('card-title').textContent,
+          (within(item as HTMLElement).queryByTestId('list-column-head')
+            ? HEAD
+            : within(item as HTMLElement).getByTestId('card-title').textContent),
       ),
     ).toEqual([
       'EVIDENCE_READY',
+      HEAD,
       '가상 a · 브래킷',
       '가상 b · 브래킷',
       'EVIDENCE_SOME',
+      HEAD,
       '가상 c · 브래킷',
       'NO_HOMEPAGE',
+      HEAD,
       '가상 d · 브래킷',
       'NOT_RESEARCHED',
+      HEAD,
       '가상 e · 브래킷',
       'CLOSED',
+      HEAD,
       '가상 f · 브래킷',
     ]);
+    // 열 머리 글자는 다섯 열 이름이다.
+    expect(
+      Array.from(screen.getAllByTestId('list-column-head')[0].children).map(
+        (cell) => cell.textContent,
+      ),
+    ).toEqual(['회사 · 품목', '지역', '추천 근거 · 검토사항', '점수', '의견 · 관심']);
     // 공정 하나를 고른 목록의 번호는 서버가 준 묶음 안 순서 번호다.
     expect(screen.getAllByTestId('card-rank').map((rank) => rank.textContent)).toEqual([
       '1',

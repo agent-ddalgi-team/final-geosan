@@ -14,6 +14,8 @@ import type { FrameValue } from '../../frame/FrameContext';
 import { coachTexts } from '../../../labels/ko';
 import { todayKst } from '../../../utils/time';
 import { addDays } from '../../../test/pickCalendarDate';
+import { chipOf } from '../../../test/chipOf';
+import { warn } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -195,7 +197,7 @@ function renderArea(enabled = true, props: Partial<React.ComponentProps<typeof R
 }
 
 async function reachAndSend(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+  await user.click(chipOf('records-contact-result', '연결됨'));
   await user.type(
     await screen.findByTestId('records-contact-memo'),
     '김 과장 통화. 외주 줌. 금요일 다시 전화',
@@ -291,7 +293,7 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
   it('스위치가 켜져 있고 "연결됨"이면 꼬리 질문 대신 확인사항·메모·[보내기]가 보인다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(await screen.findByTestId('coach-checklist')).toHaveTextContent(
       '확인사항: 지금 도금 방식 · 다음 할 일',
     );
@@ -440,7 +442,7 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
   it('스위치가 꺼져 있으면 코치는 보이지 않고 지금 양식 그대로다(외부 AI를 부르지 않는다)', async () => {
     const user = userEvent.setup();
     renderArea(false);
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(await screen.findByTestId('sales-question-PLATING_NOW')).toBeInTheDocument();
     expect(screen.queryByTestId('coach-send')).not.toBeInTheDocument();
     expect(screen.queryByTestId('coach-checklist')).not.toBeInTheDocument();
@@ -452,7 +454,7 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     const user = userEvent.setup();
     vi.mocked(postCoach).mockRejectedValueOnce(new Error('network'));
     renderArea();
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     await user.type(await screen.findByTestId('records-contact-memo'), '외주 줌');
     await user.click(screen.getByTestId('coach-send'));
     expect(await screen.findByTestId('coach-error')).toHaveTextContent(coachTexts.failed);
@@ -592,7 +594,8 @@ describe('영업 코치 칸 글 줄이기 (#847)', () => {
   it('Given 영업 코치 칸 When 종류에서 메모를 고르면 Then 메모 안내도 한 줄이다', async () => {
     const user = userEvent.setup();
     renderArea(true, { inCoach: true });
-    await user.selectOptions(await screen.findByTestId('records-kind'), '메모');
+    await screen.findByTestId('records-kind');
+    await user.click(chipOf('records-kind', '메모'));
     const hint = screen.getByTestId('records-note-hint');
     expect(hint).toHaveTextContent(coachTexts.noteHint);
     expect(hint).not.toHaveTextContent('덧붙이기만 되고');
@@ -608,7 +611,41 @@ describe('영업 코치 칸 글 줄이기 (#847)', () => {
     const area = screen.getByTestId('records-area');
     expect(within(area).queryByTestId('records-stage-fix')).not.toBeInTheDocument();
     expect(within(area).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
+    // #972 새 시안: 그 자리는 두 칸이다 — 왼쪽 "들은 답 · 단계 고치기", 오른쪽 "다음 일정".
+    const knownColumn = within(side).getByTestId('records-side-known');
+    const scheduleColumn = within(side).getByTestId('records-side-schedule');
+    expect(within(knownColumn).getByTestId('records-stage-fix')).toBeInTheDocument();
+    expect(within(scheduleColumn).getByTestId('records-schedule-fix')).toBeInTheDocument();
+    expect(within(knownColumn).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
+    expect(
+      knownColumn.compareDocumentPosition(scheduleColumn) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     slot.remove();
+  });
+
+  it('Given 다음 일정이 오늘보다 앞 When 일정 줄 Then 주의색 굵은 글자로 보이고, 앞으로의 일정은 보통 글자다 (#972)', () => {
+    const { unmount } = render(
+      <FrameContext.Provider value={frameWith(true)}>
+        <RecordsArea
+          oppId="opp-1"
+          salesStep={STEP}
+          outcome={{ ...CURRENT, nextScheduleAt: '2020-01-02', nextScheduleNote: '전화' }}
+          choiceMarks={NO_MARKS}
+        />
+      </FrameContext.Provider>,
+    );
+    const overdue = screen.getByTestId('records-schedule-current');
+    expect(overdue).toHaveAttribute('data-overdue', 'true');
+    expect(overdue).toHaveStyle({ color: warn.text, fontWeight: 600 });
+    expect(overdue).toHaveTextContent('1/2');
+    expect(overdue).toHaveTextContent('전화');
+    unmount();
+    renderArea(true, {
+      outcome: { ...CURRENT, nextScheduleAt: '2999-01-02', nextScheduleNote: '전화' },
+    });
+    const upcoming = screen.getByTestId('records-schedule-current');
+    expect(upcoming).not.toHaveAttribute('data-overdue');
+    expect(upcoming).not.toHaveStyle({ color: warn.text });
   });
 
   it('Given 오른쪽 영업 코치 칸 When 기록 칸을 열면 Then 머리 안내 줄이 없고 "기록 남기기" 제목은 화면에서만 숨는다', async () => {
@@ -622,7 +659,7 @@ describe('영업 코치 칸 글 줄이기 (#847)', () => {
   it('Given 코치 메모 칸 When "연결됨"을 고르면 Then 메모 안내는 한 줄(직함 · AI로 보냄)과 글자 수뿐이다', async () => {
     const user = userEvent.setup();
     renderArea(true, { inCoach: true });
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     const hint = await screen.findByTestId('records-contact-memo-hint');
     expect(hint).toHaveTextContent(coachTexts.sendHint);
     // AI로 나간다는 사실은 남긴다(개인정보 안내를 없애지 않는다).

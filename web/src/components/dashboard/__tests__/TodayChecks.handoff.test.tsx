@@ -10,7 +10,7 @@ import { ApiError, confirmHandoff } from '../../../api/client';
 import type { TodayCheckRow } from '../../../api/dashboardTypes';
 import { FrameContext } from '../../frame/FrameContext';
 import { dashboardTexts } from '../../../labels/ko';
-import { groupMarkPalette, homePalette } from '../../../theme/tokens';
+import { accent, colors, groupMarkPalette, homePalette, warn } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
@@ -179,12 +179,15 @@ it('#921 전달 사항이 없으면 전달 사항 칸에 빈 안내 한 줄이 �
   );
 });
 
-it('#929 받은 것 묶음만 연노랑 상자(시안 v3)로 강조되고, 묶음 제목 앞에는 이모지·막대가 없다', () => {
+it('#929 → #972 받은 것 묶음만 주의 바탕 상자로 강조되고(보낸 것은 옅은 바탕 상자), 묶음 제목 앞에는 이모지·막대가 없다', () => {
   renderPart('handoff', [forMe, fromMe]);
   const [received, sent] = screen.getAllByTestId('dashboard-today-row');
   expect(received).toHaveAttribute('data-highlight', 'true');
   expect(received).toHaveStyle({ background: homePalette.yellowBg });
+  expect(received).toHaveStyle({ background: warn.bg });
   expect(sent).not.toHaveAttribute('data-highlight');
+  expect(sent).toHaveAttribute('data-box', 'sent');
+  expect(sent).toHaveStyle({ background: colors.bgLayout });
   expect(screen.queryByTestId('dashboard-today-mark-HANDOFF_FOR_ME')).not.toBeInTheDocument();
   expect(within(received).getByRole('heading', { level: 3 }).textContent).toBe('받은 것 1곳');
   expect(screen.getByTestId('dashboard-today-handoff-confirm')).toHaveStyle({
@@ -192,7 +195,7 @@ it('#929 받은 것 묶음만 연노랑 상자(시안 v3)로 강조되고, 묶�
   });
 });
 
-it('#929 오늘 할 일 칸의 일정 줄 표시: [지난 일정] 빨강, [오늘] 파랑', () => {
+it('#929 → #972 오늘 할 일 칸의 일정 줄 표시: [지난 일정] 주의색, [오늘] 보라', () => {
   renderPart('work', [
     overdue,
     {
@@ -210,4 +213,37 @@ it('#929 오늘 할 일 칸의 일정 줄 표시: [지난 일정] 빨강, [오�
     background: groupMarkPalette.todayBg,
     color: groupMarkPalette.today,
   });
+  // #972: 지난 일정은 빨강이 아니라 주의색, 오늘은 보라. 꼬리표 모서리 6.
+  expect(screen.getByTestId('dashboard-today-tag-overdue')).toHaveStyle({
+    background: warn.bg,
+    color: warn.text,
+    borderRadius: '6px',
+  });
+  expect(screen.getByTestId('dashboard-today-tag-today')).toHaveStyle({
+    background: accent.soft,
+    color: accent.text,
+  });
+  // 제목 옆 작은 건수 = 지난 일정 + 오늘 일정.
+  expect(screen.getByTestId('dashboard-today-work-count')).toHaveTextContent('2건');
+});
+
+it('#972 확인할 회사 칩은 흰 바탕 + 얇은 테두리 + 모서리 8이고, 일정이 없으면 제목 옆 건수가 없다', () => {
+  renderPart('work', [
+    {
+      kind: 'CHECK_LEFT',
+      count: 1,
+      listFilter: 'CHECK_LEFT',
+      items: [{ oppId: 'opp-c', customerName: '가상확인', dueAt: null, note: null }],
+    },
+  ]);
+  const chip = within(screen.getByTestId('dashboard-today-items-CHECK_LEFT')).getByRole('link', {
+    name: '가상확인',
+  });
+  expect(chip).toHaveStyle({
+    background: colors.bgContainer,
+    color: colors.textSecondary,
+    borderRadius: '8px',
+  });
+  expect(chip).toHaveAttribute('href', '/opportunities/opp-c');
+  expect(screen.queryByTestId('dashboard-today-work-count')).not.toBeInTheDocument();
 });

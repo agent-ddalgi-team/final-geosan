@@ -4,6 +4,8 @@
 // 끝난 회사가 표본 기준보다 적은 칸은 회색 "표본 부족"이고, 질문지 다듬기는 "손볼 만함 · 승인 전"이다.
 // 회사 이름·메모 글은 응답에 없다. 질문 문구·보기 이름은 질문 파일(GET /sales-questions)에서 읽고,
 // 못 읽으면 코드 그대로 보인다(숫자는 그대로).
+// #972(새 시안): beside를 주면 [beside(AI 분석 피드백) | 기록에서 배우기 머리 + 자동 요약]을 한 줄에 나란히 두고,
+// 나머지 카드는 그 아래에 전처럼 쌓는다. 내용·순서·숫자는 그대로다.
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getSalesQuestions } from '../../api/client';
@@ -17,6 +19,7 @@ import type {
 import { getSalesAnalysis, getSalesPatterns } from '../../api/salesAnalysis';
 import type { SalesQuestions } from '../../api/types';
 import {
+  analysisToneTexts,
   autoSummaryTexts,
   labelFor,
   lostReasonLabels,
@@ -25,6 +28,7 @@ import {
 } from '../../labels/ko';
 import { chartPalette, colors, radius, typography } from '../../theme/tokens';
 
+// 막대 색(#972): 성사·채움 = 보라(BLUE는 옛 이름), 실패 = 주의 점색(ORANGE는 옛 이름), 표본 부족 = 옅은 회보라.
 const [BLUE, ORANGE] = chartPalette.series;
 const GREY = chartPalette.base;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
@@ -39,9 +43,24 @@ const cardStyle = {
   minWidth: 0,
 } as const;
 
-function Card({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Card({
+  id,
+  title,
+  bare = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  /** 이미 흰 카드 안에 들어갈 때: 테두리·바탕·안쪽 여백 없이 내용만. */
+  bare?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <section aria-labelledby={`${id}-title`} data-testid={id} style={cardStyle}>
+    <section
+      aria-labelledby={`${id}-title`}
+      data-testid={id}
+      style={bare ? { display: 'grid', gap: 12, alignContent: 'start', minWidth: 0 } : cardStyle}
+    >
       <h3 id={`${id}-title`} style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
         {title}
       </h3>
@@ -74,14 +93,16 @@ function Bar({
       title={`${label}: ${text}`}
     >
       <span style={{ overflowWrap: 'anywhere' }}>{label}</span>
-      <span style={{ background: colors.bgLayout, borderRadius: radius.sm, alignSelf: 'center' }}>
+      <span
+        style={{ background: chartPalette.track, borderRadius: radius.tag, alignSelf: 'center' }}
+      >
         <span
           style={{
             display: 'block',
             height: 10,
             width: `${width}%`,
             background: color,
-            borderRadius: radius.sm,
+            borderRadius: radius.tag,
           }}
         />
       </span>
@@ -128,11 +149,11 @@ function CellRow({
       <span style={{ display: 'grid', gap: 2 }}>
         <span
           aria-hidden="true"
-          style={{ display: 'flex', height: 10, borderRadius: radius.sm, overflow: 'hidden' }}
+          style={{ display: 'flex', height: 10, borderRadius: radius.tag, overflow: 'hidden' }}
         >
           <span style={{ flex: row.won, background: row.judged ? BLUE : GREY }} />
           <span style={{ flex: row.failed, background: row.judged ? ORANGE : GREY }} />
-          <span style={{ flex: row.inProgress, background: colors.bgLayout }} />
+          <span style={{ flex: row.inProgress, background: chartPalette.track }} />
         </span>
         <span style={secondary}>
           {texts.cells(row.won, row.failed, row.inProgress, row.wonRatio)}
@@ -189,12 +210,14 @@ function AutoSummary({
   previous,
   questions,
   processNames,
+  bare = false,
 }: {
   data: Patterns;
   total?: AnalysisStats;
   previous: { period: AnalysisPeriod; total: AnalysisStats } | null;
   questions: SalesQuestions | null;
   processNames: Record<string, string>;
+  bare?: boolean;
 }) {
   const t = autoSummaryTexts;
   const lines: string[] = [];
@@ -258,7 +281,7 @@ function AutoSummary({
     lines.push(t.early(data.basis.closedCount, data.basis.minSampleForRatio));
   }
   return (
-    <Card id="patterns-auto-summary" title={t.title}>
+    <Card id="patterns-auto-summary" title={t.title} bare={bare}>
       <span data-testid="auto-summary-badge" style={secondary}>
         {t.badge}
       </span>
@@ -267,9 +290,17 @@ function AutoSummary({
           {t.empty}
         </p>
       ) : (
-        <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+        // 시안: 점 없이 줄마다 얇은 선으로 나눈다.
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid' }}>
           {lines.map((line, index) => (
-            <li key={index} data-testid="auto-summary-line">
+            <li
+              key={index}
+              data-testid="auto-summary-line"
+              style={{
+                padding: '10px 0',
+                borderTop: index === 0 ? undefined : `1px solid ${colors.borderSecondary}`,
+              }}
+            >
               {line}
             </li>
           ))}
@@ -287,6 +318,11 @@ export interface SalesPatternsProps {
   processNames: Record<string, string>;
   /** #802 자동 요약 첫 줄: 위 분석표의 합계(회사를 한 번씩 센 값). 없으면 그 줄을 빼고 보인다. */
   total?: AnalysisStats;
+  /**
+   * (#972) 머리 + 자동 요약 왼쪽에 나란히 둘 칸(영업 분석 화면은 AI 분석 피드백을 넣는다).
+   * 읽는 중·못 읽었을 때도 이 칸은 같은 자리에 그대로 보인다. 비우면 전처럼 한 줄기로 쌓는다.
+   */
+  beside?: ReactNode;
 }
 
 export default function SalesPatterns({
@@ -294,6 +330,7 @@ export default function SalesPatterns({
   reloadKey,
   processNames,
   total,
+  beside,
 }: SalesPatternsProps) {
   const periodKey = `${period.from ?? ''}~${period.to ?? ''}`;
   const [state, setState] = useState<{
@@ -355,7 +392,17 @@ export default function SalesPatterns({
   }, []);
 
   const current = state?.key === key ? state : null;
-  if (!current) return null;
+  // beside가 있으면 읽는 중·못 읽었을 때도 그 칸을 같은 자리에 둔다(옆 칸만 비거나 안내가 들어간다).
+  const sideBySide = (right: ReactNode, below: ReactNode = null) => (
+    <div data-testid="patterns-layout" style={{ display: 'grid', gap: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: '1 1 380px', minWidth: 0, display: 'grid' }}>{beside}</div>
+        <div style={{ flex: '1 1 380px', minWidth: 0, display: 'grid' }}>{right}</div>
+      </div>
+      {below}
+    </div>
+  );
+  if (!current) return beside === undefined ? null : sideBySide(null);
   // 옛 서버(패턴 경로 없음)나 모양이 다른 응답이면 숫자를 지어내지 않고 안내만 보인다.
   if (
     current.failed ||
@@ -363,11 +410,12 @@ export default function SalesPatterns({
     !current.data.failure ||
     !current.data.contactsBeforeVisit
   ) {
-    return (
-      <p data-testid="patterns-error" role="status" style={secondary}>
+    const errorLine = (
+      <p data-testid="patterns-error" role="status" style={{ ...secondary, margin: 0 }}>
         {texts.loadError}
       </p>
     );
+    return beside === undefined ? errorLine : sideBySide(errorLine);
   }
   const data = current.data;
   const failure = data.failure;
@@ -378,36 +426,35 @@ export default function SalesPatterns({
   const basis = data.basis;
   const answerQuestions = [...new Set(data.answerOutcomes.map((row) => row.questionId))];
 
-  return (
-    <section
-      aria-labelledby="patterns-title"
-      data-testid="patterns"
-      style={{ display: 'grid', gap: 16 }}
-    >
-      <div style={{ display: 'grid', gap: 4 }}>
-        <h2 id="patterns-title" style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
-          {texts.title}
-        </h2>
-        <p style={secondary}>{texts.intro}</p>
-        <p data-testid="patterns-basis" style={{ margin: 0 }}>
-          {texts.basis(
-            basis.closedCount,
-            basis.wonCount,
-            basis.overallWonRatio,
-            basis.minSampleForRatio,
-          )}
-          {basis.overallWonRatio === null ? ` · ${texts.notEnough}` : ''}
-        </p>
-      </div>
-
-      <AutoSummary
-        data={data}
-        total={total}
-        previous={before?.key === key ? before.value : null}
-        questions={questions}
-        processNames={processNames}
-      />
-
+  const head = (
+    <div style={{ display: 'grid', gap: 4 }}>
+      <h2 id="patterns-title" style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
+        {texts.title}
+      </h2>
+      <p style={{ ...secondary, margin: 0 }}>{texts.intro}</p>
+      <p data-testid="patterns-basis" style={{ margin: 0 }}>
+        {texts.basis(
+          basis.closedCount,
+          basis.wonCount,
+          basis.overallWonRatio,
+          basis.minSampleForRatio,
+        )}
+        {basis.overallWonRatio === null ? ` · ${texts.notEnough}` : ''}
+      </p>
+    </div>
+  );
+  const summary = (bare: boolean) => (
+    <AutoSummary
+      data={data}
+      total={total}
+      previous={before?.key === key ? before.value : null}
+      questions={questions}
+      processNames={processNames}
+      bare={bare}
+    />
+  );
+  const details = (
+    <>
       <Card id="patterns-fill" title={texts.fillTitle}>
         <span style={secondary}>{texts.fillNote}</span>
         {data.answerFill
@@ -620,6 +667,39 @@ export default function SalesPatterns({
               )}
         </p>
       </Card>
-    </section>
+    </>
+  );
+
+  if (beside === undefined) {
+    return (
+      <section
+        aria-labelledby="patterns-title"
+        data-testid="patterns"
+        style={{ display: 'grid', gap: 16 }}
+      >
+        {head}
+        {summary(false)}
+        {details}
+      </section>
+    );
+  }
+  // 시안: 왼쪽 AI 분석 피드백 | 오른쪽 흰 카드 하나에 "기록에서 배우기" 머리와 자동 요약. 나머지 카드는 그 아래.
+  return sideBySide(
+    <section
+      aria-labelledby="patterns-title"
+      data-testid="patterns"
+      style={{ ...cardStyle, gap: 16 }}
+    >
+      {head}
+      {summary(true)}
+    </section>,
+    <div
+      role="group"
+      aria-label={analysisToneTexts.patternDetails}
+      data-testid="patterns-details"
+      style={{ display: 'grid', gap: 16 }}
+    >
+      {details}
+    </div>,
   );
 }

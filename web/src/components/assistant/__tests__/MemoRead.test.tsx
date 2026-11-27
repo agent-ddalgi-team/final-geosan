@@ -18,6 +18,7 @@ import { FrameContext } from '../../frame/FrameContext';
 import RecordsArea from '../../records/RecordsArea';
 import MemoRead from '../MemoRead';
 import type { MemoTarget } from '../MemoRead';
+import { chipOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/assistant', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/assistant')>()),
@@ -373,7 +374,7 @@ describe('기록 남기기 › 메모 칸 (#720)', () => {
   });
 
   async function saveMemo(user: ReturnType<typeof userEvent.setup>) {
-    await user.selectOptions(screen.getByTestId('records-kind'), 'MEMO');
+    await user.click(chipOf('records-kind', 'MEMO'));
     await user.type(screen.getByTestId('records-note-input'), '김 과장과 통화');
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(postNote).toHaveBeenCalledTimes(1));
@@ -382,14 +383,14 @@ describe('기록 남기기 › 메모 칸 (#720)', () => {
   it('스위치가 켜져 있으면 "이름은 AI로 보내지 않습니다"까지, 꺼져 있으면 앞 문장만 보인다', async () => {
     const user = userEvent.setup();
     const { unmount } = wrap(<RecordsArea oppId="opp-1" />, ON);
-    await user.selectOptions(screen.getByTestId('records-kind'), 'MEMO');
+    await user.click(chipOf('records-kind', 'MEMO'));
     const area = screen.getByTestId('records-area');
     expect(area).toHaveTextContent(texts.nameHintAi);
     // 스위치가 켜져 있으면 "외부로 나가지 않습니다"라고 하지 않는다(메모 읽기로 나갈 수 있다).
     expect(area).not.toHaveTextContent('외부로 나가지 않습니다');
     unmount();
     wrap(<RecordsArea oppId="opp-1" />, OFF);
-    await user.selectOptions(screen.getByTestId('records-kind'), 'MEMO');
+    await user.click(chipOf('records-kind', 'MEMO'));
     const off = screen.getByTestId('records-area');
     expect(off).toHaveTextContent(`${recordsArea.noteHint} ${texts.nameHint}`);
     expect(off).not.toHaveTextContent('이름은 AI로 보내지 않습니다');

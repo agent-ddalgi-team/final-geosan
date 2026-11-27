@@ -1,6 +1,8 @@
 // #921(PM 결정 2026-11-25): 영업 홈 "누가 봐도 · 진행 중인 회사" 표.
 // 다른 사람이 봐도 회사마다 지금 단계 · 누가 마지막으로 접촉했나 · 다음 할 일이 펼치지 않고 보이게 한다.
 //   회사 | 단계 | 담당 | 마지막 접촉 "11/20 대면 · 5일 전" | 다음 일정 "11/25 방문" / "⚠ 다음 일정 없음 · 멈춤"
+// #972(새 디자인): 제목 줄 오른쪽에 거르기 단추(고른 단추 = 강조 연한 바탕), 멈춘 회사는 노란 줄 대신
+//   회사 이름 옆 "멈춘 회사" 주의 꼬리표, 단계 꼬리표는 보라(성사만 초록, 미접촉·보류는 중립).
 // 기본은 접촉 · 견적·샘플 · 성사 칸의 회사. 맨 위 단계 칩을 누르면 그 단계(미접촉·보류 포함)만 보인다.
 // 데이터는 대시보드 응답의 progressCompanies(#800, #921 칸 더함) 그대로다. 메모·연락처는 오지 않는다.
 // 순서: 멈춘 회사 → 다음 일정 가까운 순 → 마지막 접촉 오래된 순 → 이름. 앞 8곳만 보이고 [모두 보기]로 편다.
@@ -11,11 +13,12 @@ import { Button } from 'antd';
 import type { Dashboard, ProgressBandKey, ProgressCompany } from '../../api/dashboardTypes';
 import { contactMethodLabels, dashboardTexts as t } from '../../labels/ko';
 import {
+  choiceChip,
   colors,
   homePalette,
   radius,
   spacing,
-  statusPalette,
+  tagPalette,
   typography,
 } from '../../theme/tokens';
 import { daysBetween } from './ProgressCompanyList';
@@ -25,13 +28,16 @@ export const TABLE_SHOWN = 8;
 /** 단계를 고르지 않았을 때 보이는 칸. */
 export const DEFAULT_BANDS: ProgressBandKey[] = ['IN_CONTACT', 'QUOTE_SAMPLE', 'WON'];
 
-/** #929(시안 v3): 단계 표시 색. 접촉 파랑 · 견적·샘플 주황 · 성사 초록 · 미접촉·보류 회색. */
-const STAGE_COLORS: Record<ProgressBandKey, { bg: string; fg: string }> = {
-  NOT_CONTACTED: statusPalette.neutral,
-  IN_CONTACT: { bg: homePalette.blueBg, fg: homePalette.blueText },
-  QUOTE_SAMPLE: { bg: homePalette.orangeBg, fg: homePalette.orangeText },
-  WON: { bg: homePalette.greenBg, fg: homePalette.greenText },
-  ON_HOLD: statusPalette.neutral,
+/**
+ * #972: 단계 꼬리표 색. 접촉 · 견적·샘플 = 강조(보라), 성사 = 확인(초록), 미접촉·보류 = 중립.
+ * 주의색은 뜻이 있을 때만(멈춘 회사 · 지난 일정) 쓰므로 견적·샘플에 쓰지 않는다.
+ */
+export const STAGE_COLORS: Record<ProgressBandKey, { bg: string; fg: string }> = {
+  NOT_CONTACTED: tagPalette.neutral,
+  IN_CONTACT: tagPalette.accent,
+  QUOTE_SAMPLE: tagPalette.accent,
+  WON: tagPalette.ok,
+  ON_HOLD: tagPalette.neutral,
 };
 
 type Filter = 'all' | 'mine' | 'stalled';
@@ -89,14 +95,14 @@ function NextCell({ row, today }: { row: ProgressCompany; today: string }): Reac
 const th: CSSProperties = {
   textAlign: 'left',
   fontSize: typography.fontSizeSecondary,
-  color: colors.textSecondary,
-  fontWeight: 600,
-  padding: '6px 8px',
+  color: colors.textDimmed,
+  fontWeight: 400,
+  padding: '8px 10px',
   borderBottom: `1px solid ${colors.borderSecondary}`,
   whiteSpace: 'nowrap',
 };
 const td: CSSProperties = {
-  padding: '8px',
+  padding: '12px 10px',
   borderBottom: `1px solid ${colors.borderSecondary}`,
   verticalAlign: 'middle',
 };
@@ -148,53 +154,76 @@ export default function ProgressTable({
         gap: 8,
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: radius.lg,
+        borderRadius: radius.card,
         padding: spacing.cardPadding,
       }}
     >
-      <h2
-        id="dashboard-progress-table-title"
-        style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
-      >
-        {badge}
-        {t.tableTitle}{' '}
-        <small
-          data-testid="dashboard-progress-table-count"
+      {/* #972(시안): 제목 · 곳 수 왼쪽, 거르기 단추 오른쪽. 좁으면 단추가 다음 줄로 내려간다. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'center' }}>
+        <h2
+          id="dashboard-progress-table-title"
+          style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
+        >
+          {badge}
+          {t.tableTitle}{' '}
+          <small
+            data-testid="dashboard-progress-table-count"
+            style={{
+              fontSize: typography.fontSizeSecondary,
+              color: colors.textDimmed,
+              fontWeight: 400,
+            }}
+          >
+            {t.tableCount(every.length)}
+          </small>
+        </h2>
+        <div
           style={{
-            fontSize: typography.fontSizeSecondary,
-            color: colors.textSecondary,
-            fontWeight: 400,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            alignItems: 'center',
+            marginLeft: 'auto',
           }}
         >
-          {t.tableCount(every.length)}
-        </small>
-      </h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        {filters.map((key) => (
-          <Button
-            key={key}
-            size="small"
-            type={filter === key ? 'primary' : 'default'}
-            style={filter === key ? { background: homePalette.blueStrong } : undefined}
-            aria-pressed={filter === key}
-            onClick={() => setFilter(key)}
-            data-testid={`dashboard-progress-filter-${key}`}
-          >
-            {filterName[key]}
-          </Button>
-        ))}
-        {stage ? (
-          <span
-            data-testid="dashboard-progress-stage"
-            style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
-          >
-            {t.tableStageOnly(stageName(stage))}{' '}
-            <Button type="link" size="small" onClick={onClearStage}>
-              {t.tableStageClear}
-            </Button>
-          </span>
-        ) : null}
+          {filters.map((key) => {
+            const chip = filter === key ? choiceChip.selected : choiceChip.idle;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={filter === key}
+                onClick={() => setFilter(key)}
+                data-testid={`dashboard-progress-filter-${key}`}
+                style={{
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontSize: typography.fontSizeSecondary,
+                  fontWeight: filter === key ? choiceChip.selected.fontWeight : 400,
+                  padding: '4px 12px',
+                  borderRadius: radius.controlSm,
+                  border: `1px solid ${chip.border}`,
+                  background: chip.bg,
+                  color: chip.fg,
+                }}
+              >
+                {filterName[key]}
+              </button>
+            );
+          })}
+        </div>
       </div>
+      {stage ? (
+        <span
+          data-testid="dashboard-progress-stage"
+          style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
+        >
+          {t.tableStageOnly(stageName(stage))}{' '}
+          <Button type="link" size="small" onClick={onClearStage}>
+            {t.tableStageClear}
+          </Button>
+        </span>
+      ) : null}
       {rows.length === 0 ? (
         <p
           data-testid="dashboard-progress-table-empty"
@@ -222,19 +251,40 @@ export default function ProgressTable({
                     key={`${row.band}-${row.oppId}`}
                     data-testid="dashboard-progress-row"
                     data-stalled={row.stalled ? 'true' : undefined}
-                    style={{ background: row.stalled ? homePalette.yellowBg : undefined }}
                   >
                     <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      <Link to={`/opportunities/${encodeURIComponent(row.oppId)}`}>
+                      <Link
+                        to={`/opportunities/${encodeURIComponent(row.oppId)}`}
+                        style={{ color: colors.text }}
+                      >
                         {row.customerName}
                       </Link>
+                      {row.stalled ? (
+                        <span
+                          data-testid="dashboard-progress-stalled-tag"
+                          style={{
+                            display: 'inline-block',
+                            marginLeft: 8,
+                            padding: '1px 9px',
+                            borderRadius: radius.tag,
+                            background: tagPalette.warn.bg,
+                            color: tagPalette.warn.fg,
+                            fontSize: typography.fontSizeSecondary - 1,
+                            fontWeight: 400,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {t.tableStalledTag}
+                        </span>
+                      ) : null}
                     </td>
                     <td style={td}>
                       <span
+                        data-testid="dashboard-progress-stage-tag"
                         style={{
                           display: 'inline-block',
                           padding: '1px 9px',
-                          borderRadius: 999,
+                          borderRadius: radius.tag,
                           background: palette.bg,
                           color: palette.fg,
                           fontSize: typography.fontSizeSecondary,

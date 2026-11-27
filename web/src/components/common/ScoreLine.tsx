@@ -10,7 +10,7 @@ import type { ClassificationCode, RelationStatus, ScoreState } from '../../api/t
 import { scoreTags } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import StatusTag from './StatusTag';
-import { scoreAriaLabel, scoreText } from './scoreDisplay';
+import { scoreAriaLabel, scoreParts, scoreText } from './scoreDisplay';
 
 export interface ScoreLineProps {
   scoreDisplay: string;
@@ -23,6 +23,11 @@ export interface ScoreLineProps {
    * 점수 글자의 흐림과 "근거로 낸 점수 · 확인 전"·"기존 거래처" 꼬리표는 그대로다. 카드는 이 값을 주지 않는다.
    */
   hidePendingTag?: boolean;
+  /**
+   * 점수 숫자만 이 크기로 굵게 띄운다(#972, 목록 표 줄·관심 기업 줄). 글자는 서버가 준 그대로다.
+   * 안 주면(상세 머리) 지금처럼 한 가지 크기로 보인다.
+   */
+  numberSize?: number;
   /** 점수 글자의 data-testid. 꼬리표는 `${testId}-pending-tag`(거래 확인 전), `${testId}-ai-proposal-tag`(AI 제안), `${testId}-existing-tag`. */
   testId: string;
 }
@@ -39,12 +44,14 @@ export default function ScoreLine({
   relationStatus,
   classificationCode,
   hidePendingTag = false,
+  numberSize,
   testId,
 }: ScoreLineProps) {
   const pending = scoreState === 'PENDING';
   const aiProposal =
     pending && classificationCode !== undefined && !CLASSIFICATION_PENDING.has(classificationCode);
   const existing = relationStatus === 'EXISTING_CONFIRMED';
+  const parts = numberSize ? scoreParts(scoreDisplay) : null;
   return (
     <>
       <span
@@ -57,7 +64,25 @@ export default function ScoreLine({
           fontSize: typography.fontSizeSecondary,
         }}
       >
-        {scoreText(scoreDisplay)}
+        {parts ? (
+          <>
+            {parts.before}
+            <span
+              style={{
+                fontSize: numberSize,
+                fontWeight: 700,
+                lineHeight: 1.2,
+                // 확정 전 점수는 숫자도 같이 흐리게 둔다(#264).
+                color: pending ? colors.textDimmed : colors.text,
+              }}
+            >
+              {parts.number}
+            </span>
+            {parts.after}
+          </>
+        ) : (
+          scoreText(scoreDisplay)
+        )}
       </span>
       {pending ? (
         aiProposal ? (

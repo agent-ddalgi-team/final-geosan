@@ -16,6 +16,7 @@ import {
 import type { Envelope, OpinionRecord, OpportunityDetail } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
+import { chipOf } from '../../test/chipOf';
 
 vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
@@ -82,7 +83,7 @@ function renderPage() {
 }
 
 async function pressSaveCall(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
+  await user.click(chipOf('records-contact-result', '부재'));
   await user.click(screen.getByTestId('records-contact-save-button'));
 }
 

@@ -96,7 +96,7 @@ test('찾은 공장 자료 행을 골라 넣으면 rowId와 아는 홈페이지�
   expect(screen.getByTestId('company-add-submit')).toBeDisabled();
   expect(screen.getByTestId('company-add-row-row-a')).not.toHaveAttribute('data-picked');
   await userEvent.click(screen.getByRole('radio', { name: /\(주\)가상진행금속/ }));
-  // 고른 줄 전체가 강조색으로 채워지고 "✓ 고름"이 붙는다(#947 단추와 같은 모양).
+  // 고른 줄 전체가 강조 연한 바탕으로 채워지고 "✓ 고름"이 붙는다(#972 선택 단추 모양).
   const pickedRow = screen.getByTestId('company-add-row-row-a');
   expect(pickedRow).toHaveAttribute('data-picked', 'true');
   expect(pickedRow).toHaveTextContent('✓ 고름');

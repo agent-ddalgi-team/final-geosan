@@ -1,4 +1,6 @@
-/* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다. */
+/* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다.
+   #972 보라 톤: 글자 #1b1a2e · 보조 글자 #56566e · 바탕 #f7f7fb · 테두리 #ebebf3(칸 #d6d6e4) · 강조 #6a4df0 ·
+   강조 글자 #5b3fe0 · 강조 연한 바탕 #f4f1ff · 강조 테두리 #d9cfff. 모서리는 카드 12 · 단추·입력 9 · 꼬리표 6. */
 .prospect-page-heading {
   display: flex;
   align-items: center;
@@ -10,8 +12,8 @@
 
 .prospect-form,
 .prospect-history {
-  border: 1px solid #e3e6ea;
-  border-radius: 8px;
+  border: 1px solid #ebebf3;
+  border-radius: 12px;
   padding: 16px;
   background: #fff;
 }
@@ -40,7 +42,7 @@
 
 .prospect-check-group legend small {
   margin-left: 4px;
-  color: #5b6470;
+  color: #56566e;
   font-size: 14px;
   font-weight: 400;
 }
@@ -63,7 +65,7 @@
 
 .prospect-choice-section-title {
   margin-bottom: 4px;
-  color: #5b6470;
+  color: #56566e;
   font-size: 13px;
   font-weight: 600;
 }
@@ -74,27 +76,30 @@
   min-height: 36px;
   gap: 7px;
   padding: 5px 9px;
-  border: 1px solid #e3e6ea;
-  border-radius: 6px;
+  border: 1px solid #ebebf3;
+  border-radius: 9px;
   cursor: pointer;
   font-size: 14px;
   overflow-wrap: anywhere;
 }
 
+/* 고른 선택 단추(#972): 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게. */
 .prospect-choices label:has(input:checked) {
-  background: #e6effb;
-  border-color: #1a4f9c;
+  background: #f4f1ff;
+  border-color: #d9cfff;
+  color: #5b3fe0;
+  font-weight: 600;
 }
 
 .prospect-choices input {
   flex: none;
   margin: 0;
-  accent-color: #1a4f9c;
+  accent-color: #6a4df0;
 }
 
 .prospect-refinement,
 .prospect-form-footer {
-  border-top: 1px solid #e3e6ea;
+  border-top: 1px solid #ebebf3;
   padding-top: 10px;
 }
 
@@ -107,7 +112,7 @@
 
 .prospect-refinement summary span {
   margin-left: 6px;
-  color: #5b6470;
+  color: #56566e;
 }
 
 .prospect-refinement[open] summary,
@@ -118,7 +123,7 @@
 .prospect-refinement p,
 .prospect-form-help {
   margin: 0;
-  color: #5b6470;
+  color: #56566e;
   font-size: 14px;
 }
 
@@ -126,8 +131,8 @@
   display: grid;
   gap: 4px;
   padding: 10px;
-  background: #f5f6f8;
-  border-radius: 6px;
+  background: #f7f7fb;
+  border-radius: 9px;
   font-size: 14px;
 }
 
@@ -148,6 +153,232 @@
   margin-left: auto;
 }
 
+/* 새 후보 발굴 뜨는 창(#972 시안 FindModal): 흰 창 안이라 칸 테두리를 빼고, "이름으로 회사 넣기"만 옅은 바탕 칸으로 둔다.
+   예상 비용 줄은 주의색 바탕(#fdf1e4 · 글자 #9a5415), "최근 발굴 결과"는 맨 아래에 선 하나로 가른다. */
+.prospect-discovery .prospect-form {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+.prospect-discovery [data-testid='company-add'] {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f7f7fb;
+}
+
+.prospect-discovery .prospect-estimate {
+  background: #fdf1e4;
+  color: #9a5415;
+}
+
+.prospect-discovery .prospect-history {
+  margin-top: 20px;
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid #ebebf3;
+  border-radius: 0;
+}
+
+/* 거래처 후보 표 줄 · 관심 기업 세 칸 줄(#972). 색·글자 크기는 부품이 tokens.ts 값으로 넣고, 여기는 칸 배치만 둔다.
+   열 너비를 줄마다 똑같이 잡아(늘어나는 칸은 minmax(0, …)) 내용 길이와 상관없이 열이 가지런히 맞는다.
+   줄을 담는 칸이 620~900px이면(노트북 폭에서 영업 코치 칸이 열려 있을 때) 다섯 칸을 세 열로 접는다:
+   회사·품목 + 지역 | 추천 근거·검토사항 | 점수 + 의견·관심. 그보다 좁아지면(620px 아래) 열 머리를 숨기고
+   칸을 세로로 쌓으며, 칸 안 이름표가 대신 보인다. */
+.cand-list {
+  container-type: inline-size;
+}
+
+.cand-head,
+.cand-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 112px minmax(0, 2fr) 132px 212px;
+  column-gap: 16px;
+  align-items: start;
+}
+
+/* 관심 기업 줄: 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 오른쪽(큰 점수 · 다음 일정 · 의견 · 자세히 보기). */
+.cand-row--three {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) 248px;
+  column-gap: 22px;
+}
+
+.cand-row__side {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+  text-align: right;
+}
+
+/* 큰 점수와 그 꼬리표(확인 전 · 기존 거래처)는 오른쪽에 붙여 세로로 쌓는다. */
+.cand-row__side-score {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.cand-row__side:has([data-testid='opinion-reason-input']) {
+  grid-column: 1 / -1;
+  justify-items: start;
+  text-align: left;
+}
+
+.cand-row__cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 칸 이름표: 넓은 화면에서는 열 머리가 있어 눈에는 숨기고 화면 낭독기에만 읽힌다. */
+.cand-row__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cand-row__actions {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 8px;
+}
+
+.cand-row__actions-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 의견 칸은 별 단추 옆 남는 너비를 쓰고 안쪽 글은 오른쪽에 붙인다(안내·저장됨 글이 길어도 별이 밀려 내려가지 않게). */
+.cand-row__actions-main > [data-testid='opinion-area'] {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-items: end;
+  text-align: right;
+}
+
+/* 제외 이유를 적는 동안에는 의견 칸이 줄 전체 너비를 쓴다(좁은 열에 입력 칸이 끼지 않게). */
+.cand-row__actions:has([data-testid='opinion-reason-input']) {
+  grid-column: 1 / -1;
+  justify-items: start;
+}
+
+.cand-row__actions:has([data-testid='opinion-reason-input']) .cand-row__actions-main,
+.cand-row__side:has([data-testid='opinion-reason-input']) .cand-row__actions-main {
+  justify-self: stretch;
+  justify-content: flex-start;
+}
+
+.cand-row__side:has([data-testid='opinion-reason-input']) .cand-row__side-score {
+  justify-items: start;
+}
+
+@container (min-width: 620px) and (max-width: 900px) {
+  .cand-head,
+  .cand-row:not(.cand-row--three) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) 196px;
+  }
+
+  /* 열 머리는 세 열 이름만 남긴다(지역은 회사 열, 점수는 의견 열 안에 들어간다). */
+  .cand-head > :nth-child(2),
+  .cand-head > :nth-child(4) {
+    display: none;
+  }
+
+  .cand-row:not(.cand-row--three) {
+    grid-template-rows: auto 1fr;
+    row-gap: 6px;
+  }
+
+  .cand-row:not(.cand-row--three) > :nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .cand-row:not(.cand-row--three) > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .cand-row:not(.cand-row--three) > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .cand-row:not(.cand-row--three) > :nth-child(4) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .cand-row:not(.cand-row--three) > :nth-child(5) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  /* 셋째 열은 점수 · 의견 · 관심을 왼쪽부터 가지런히 쌓는다. */
+  .cand-row:not(.cand-row--three) > .cand-row__actions {
+    justify-items: start;
+  }
+
+  .cand-row:not(.cand-row--three) .cand-row__actions-main {
+    justify-content: flex-start;
+  }
+
+  .cand-row:not(.cand-row--three) .cand-row__actions-main > [data-testid='opinion-area'] {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+@container (max-width: 619.98px) {
+  .cand-head {
+    display: none;
+  }
+
+  .cand-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .cand-row__label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    display: block;
+  }
+
+  .cand-row__actions,
+  .cand-row__side,
+  .cand-row__side-score {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .cand-row__actions-main {
+    justify-content: flex-start;
+  }
+
+  .cand-row__actions-main > [data-testid='opinion-area'] {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+/* 제외 이유 입력 칸은 넓은 화면·좁은 화면 모두 왼쪽부터 넉넉한 너비(560px까지)로 둔다. */
+.cand-row__actions-main > [data-testid='opinion-area']:has([data-testid='opinion-reason-input']) {
+  flex: 0 1 560px;
+  justify-items: stretch;
+  text-align: left;
+}
+
 html,
 body {
   margin: 0;
@@ -160,52 +391,61 @@ body {
     sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  background: #f2f3f3;
-  color: #212121;
+  background: #f7f7fb;
+  color: #1b1a2e;
   -webkit-font-smoothing: antialiased;
 }
 
-/* 디자인 톤(#898): 화면 제목은 크고 가볍게(참고 그림 Heading), 표 숫자는 자리 맞춤. */
+/* 디자인 톤(#972): 화면 제목은 굵고 촘촘하게(시안 제목), 표 숫자는 자리 맞춤. */
 h1 {
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 table {
   font-variant-numeric: tabular-nums;
 }
 
-/* 링크(#898): 먹색 + 옅은 밑줄, 손을 올리면 밑줄이 진해진다. 색만으로 구분하지 않게 밑줄은 늘 보인다. */
+/* 링크(#972): 강조 글자색 + 옅은 밑줄, 손을 올리면 진해진다. 색만으로 구분하지 않게 밑줄은 늘 보인다. */
 a {
-  color: #212121;
+  color: #5b3fe0;
   text-decoration: underline;
-  text-decoration-color: rgba(33, 33, 33, 0.4);
+  text-decoration-color: rgba(91, 63, 224, 0.4);
   text-underline-offset: 3px;
 }
 
 a:hover {
-  color: #212121;
+  color: #3f28b8;
   text-decoration-color: currentColor;
 }
 
-/* 부품 안에 따로 모양을 정하지 않은 기본 입력 칸·선택 칸·단추도 알약 모양으로 맞춘다(#898). */
+/* 부품 안에 따로 모양을 정하지 않은 기본 입력 칸·선택 칸도 모서리 9로 맞춘다(#972: 알약 모양을 없앴다). */
 select,
 input[type='text'],
 input[type='search'],
 input[type='date'],
 input[type='number'],
 input:not([type]) {
-  border-radius: 999px;
+  border-radius: 9px;
   font-family: inherit;
 }
 
 textarea {
-  border-radius: 16px;
+  border-radius: 9px;
   font-family: inherit;
 }
 
 button {
   font-family: inherit;
+}
+
+/* 왼쪽 메뉴 줄·접기 단추(#972): 평소엔 바탕이 없고 손을 올리면 옅은 바탕. 지금 화면 줄의 바탕은 SideMenu가 칠한다. */
+.side-nav-row {
+  background: transparent;
+}
+
+.side-nav-row:not([aria-current='page']):hover {
+  background: #f7f7fb;
 }
 
 /* 접은 왼쪽 메뉴에서 그림에 손을 올리거나 키보드로 오면 오른쪽에 이름표가 뜬다(#767). */
@@ -216,12 +456,12 @@ button {
   transform: translate(-4px, -50%);
   padding: 6px 10px;
   border-radius: 8px;
-  background: #212121;
+  background: #1b1a2e;
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 18px rgba(27, 26, 46, 0.25);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -242,15 +482,21 @@ button {
   }
 }
 
-/* 초점선: 강조색 2px 실선, 바깥 2px 간격. outline: none 금지. */
+/* 고른 선택 칸(#972, antd Segmented — 글자 크기 등): 강조 연한 바탕 위에 강조 테두리 + 굵은 글자. 바탕·글자색은 tokens의 antdTheme. */
+.ant-segmented .ant-segmented-item-selected {
+  box-shadow: inset 0 0 0 1px #d9cfff;
+  font-weight: 600;
+}
+
+/* 초점선: 강조색(#972 보라, 흰 바탕 대비 약 5.3:1) 2px 실선, 바깥 2px 간격. outline: none 금지. */
 :focus-visible {
-  outline: 2px solid #212121;
+  outline: 2px solid #6a4df0;
   outline-offset: 2px;
 }
 
 /* Ant Design Select는 안쪽 입력칸이 보이지 않아 위 초점선이 안 보이므로 겉틀에 같은 선을 준다. */
 .ant-select:has(:focus-visible) > .ant-select-selector {
-  outline: 2px solid #212121 !important;
+  outline: 2px solid #6a4df0 !important;
   outline-offset: 2px;
 }
 
@@ -261,7 +507,7 @@ button {
   top: 8px;
   padding: 8px 16px;
   background: #ffffff;
-  color: #1f2329;
+  color: #1b1a2e;
   z-index: 1000;
 }
 
@@ -298,7 +544,7 @@ button {
 .report-page h2 {
   margin: 0 0 6px;
   padding-bottom: 2px;
-  border-bottom: 1px solid #8c8c8c;
+  border-bottom: 1px solid #d6d6e4;
   font-size: 16px;
 }
 
@@ -453,13 +699,857 @@ button {
   }
 }
 
-/* #926 사용자가 고른 글자 크기: 화면 전체 비율(글자·단추·표가 함께). 보통(표시 없음)은 100%. */
+/* #926 사용자가 고른 글자 크기: 화면 전체 비율(글자·단추·표가 함께). 보통(표시 없음)은 100%.
+   #972: 작게 90% · 보통 100% · 크게 115% 세 가지만(예전 "더 크게" 130%는 없앴고, 그 값은 "크게"로 읽는다). */
 html[data-font-scale='S'] {
   zoom: 0.9;
 }
 html[data-font-scale='L'] {
   zoom: 1.15;
 }
-html[data-font-scale='XL'] {
-  zoom: 1.3;
+
+/* 회사별 보고서(#972, PM이 고른 시안 2026-11-27): 맨 위 줄 + 왼쪽 목차 + 흰 카드 묶음.
+   위의 #565 규칙 뒤에 놓여 같은 이름(.report-page 등)의 값을 덮는다. 색은 tokens.ts와 같은 값만 쓴다:
+   글자 #1b1a2e · 보조 #56566e · 흐린 #6b6b85 · 바탕 #f7f7fb · 카드 테두리 #ebebf3 · 강조 #6a4df0 · 강조 글자 #5b3fe0 ·
+   강조 밝은 쪽 #7c5cfc · 강조 연한 바탕 #f4f1ff · 강조 테두리 #d9cfff · 주의 글자 #9a5415.
+   꼬리표·막대·동그라미 색은 부품이 tokens에서 직접 가져온다. 글자 크기는 보고서 본문(14px) 기준이다. */
+.report-page {
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #f7f7fb;
+}
+
+.report-page .report-nowrap {
+  width: auto;
+}
+
+.report-dim {
+  color: #6b6b85;
+  font-size: 12.5px;
+}
+
+.report-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 28px;
+  border-bottom: 1px solid #ebebf3;
+  background: #f7f7fb;
+}
+
+.report-topbar-title {
+  font-weight: 600;
+}
+
+.report-topbar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.report-btn {
+  display: inline-block;
+  padding: 9px 16px;
+  border: 1px solid #ebebf3;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1b1a2e;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.report-btn:hover {
+  border-color: #d9cfff;
+  color: #1b1a2e;
+}
+
+.report-btn-primary,
+.report-btn-primary:hover {
+  border-color: #6a4df0;
+  background: #6a4df0;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.report-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  padding: 26px 28px 80px;
+}
+
+.report-toc {
+  position: sticky;
+  top: 84px;
+  flex: 0 0 190px;
+  font-size: 13px;
+}
+
+.report-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-toc a {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid #ebebf3;
+  color: #56566e;
+  text-decoration: none;
+}
+
+.report-toc a:hover {
+  color: #1b1a2e;
+  text-decoration: underline;
+}
+
+.report-toc a b {
+  width: 18px;
+  color: #6b6b85;
+  font-weight: 500;
+}
+
+.report-toc a[aria-current] {
+  color: #1b1a2e;
+  font-weight: 600;
+}
+
+.report-toc a[aria-current] b {
+  color: #5b3fe0;
+}
+
+.report-main {
+  flex: 1 1 560px;
+  min-width: 0;
+  max-width: 980px;
+}
+
+.report-article {
+  display: grid;
+  gap: 14px;
+}
+
+.report-print-head {
+  display: none;
+}
+
+.report-card {
+  min-width: 0;
+  padding: 24px 26px;
+  border: 1px solid #ebebf3;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+/* 목차로 왔을 때 맨 위 줄에 가리지 않게 띄운다. 초점선은 키보드로 왔을 때만 보인다(:focus-visible). */
+.report-section {
+  margin-top: 0;
+  scroll-margin-top: 76px;
+}
+
+.report-section:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.report-two,
+.report-qa {
+  display: grid;
+  gap: 14px;
+}
+
+.report-two {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+.report-qa {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+}
+
+.report-page .report-eyebrow {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  color: #5b3fe0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.report-page h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.report-page h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.report-page h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+/* 제목 줄: 번호(작은 글자)가 제목 위에 있어, 옆 설명·단추는 제목의 마지막 줄에 맞춘다. */
+.report-head {
+  display: flex;
+  align-items: flex-end;
+  align-items: last baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.report-head-note {
+  color: #6b6b85;
+  font-size: 12.5px;
+}
+
+.report-page .report-sub {
+  margin-top: 6px;
+  color: #56566e;
+}
+
+.report-page .report-marks {
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.report-tag {
+  display: inline-block;
+  padding: 3px 9px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.report-need-check {
+  font-weight: 500;
+}
+
+.report-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 22px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-fact dt {
+  color: #6b6b85;
+  font-size: 12px;
+}
+
+.report-fact dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.report-ring-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.report-score-big {
+  font-size: 44px;
+  font-weight: 300;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.report-score-big span {
+  color: #6b6b85;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.report-ring-row p {
+  margin-top: 6px;
+}
+
+.report-mini {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-mini-label,
+.report-stat-label {
+  display: block;
+  color: #6b6b85;
+  font-size: 12px;
+}
+
+.report-mini b {
+  font-weight: 600;
+}
+
+.report-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.report-alert b {
+  font-weight: 600;
+}
+
+.report-reason p:last-child {
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: -0.2px;
+}
+
+.report-score-rows {
+  margin-top: 14px;
+}
+
+.report-score-row {
+  padding: 14px 0;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-score-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 96px 104px 18px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.report-score-head {
+  cursor: pointer;
+}
+
+.report-score-name {
+  font-weight: 500;
+}
+
+.report-bar {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.report-bar span {
+  display: block;
+  height: 100%;
+}
+
+.report-score-num {
+  font-size: 19px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  text-align: right;
+}
+
+.report-score-num > span {
+  color: #6b6b85;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.report-score-num .report-need-check {
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.report-chevron {
+  display: inline-block;
+  color: #6b6b85;
+  text-align: center;
+}
+
+.report-chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.report-page .report-score-why {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #56566e;
+  font-size: 13px;
+}
+
+.report-score-total {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding-top: 14px;
+  border-top: 1px solid #ebebf3;
+  color: #56566e;
+  font-size: 13px;
+}
+
+.report-score-total b {
+  color: #1b1a2e;
+}
+
+.report-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.report-chip {
+  padding: 6px 13px;
+  border: 1px solid #ebebf3;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #56566e;
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 고른 거르기 단추(#972): 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게. */
+.report-chip[aria-pressed='true'] {
+  border-color: #d9cfff;
+  background: #f4f1ff;
+  color: #5b3fe0;
+  font-weight: 600;
+}
+
+.report-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-evidence-card {
+  padding: 14px 16px;
+  border: 1px solid #ebebf3;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+.report-evidence-group {
+  color: #5b3fe0;
+  font-size: 12px;
+}
+
+.report-evidence-card blockquote {
+  margin: 6px 0 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.report-evidence-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #6b6b85;
+  font-size: 12px;
+}
+
+.report-lines {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-lines li {
+  padding: 11px 0;
+  border-top: 1px solid #ebebf3;
+  overflow-wrap: anywhere;
+}
+
+/* 물을 것의 체크칸(이 브라우저에만 기억). 줄 전체가 체크칸의 이름표라 글자를 눌러도 체크된다. */
+.report-ask-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.report-ask-line input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 4px 0 0;
+  accent-color: #7c5cfc;
+}
+
+.report-ask-text {
+  display: block;
+}
+
+.report-ask-text strong {
+  font-weight: 600;
+}
+
+.report-ask-sub {
+  display: block;
+}
+
+.report-page .report-foot-note {
+  margin-top: 4px;
+}
+
+.report-lines + h3 {
+  margin-top: 14px;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.report-progress {
+  margin-top: 18px;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-stats b {
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+}
+
+.report-stat-sub {
+  font-size: 12.5px;
+}
+
+.report-page .report-footer {
+  margin-top: 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 좁은 화면: 목차를 숨기고, 나란히 놓인 카드를 세로로 쌓는다. 종이(A4)는 좁은 화면으로 치지 않게 screen에만 건다. */
+@media screen and (max-width: 1080px) {
+  .report-toc {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 760px) {
+  .report-topbar {
+    padding: 10px 16px;
+  }
+
+  .report-body {
+    padding: 16px 16px 60px;
+  }
+
+  .report-card {
+    padding: 18px 16px;
+  }
+
+  .report-two,
+  .report-qa,
+  .report-evidence-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-score-head {
+    grid-template-columns: minmax(0, 1fr) auto auto 18px;
+    gap: 10px;
+  }
+
+  .report-bar {
+    display: none;
+  }
+}
+
+/* 회사별 보고서 인쇄(#972): 맨 위 줄·목차·거르기 단추는 .no-print로 숨는다. 카드는 테두리 대신 위쪽 줄 하나로 단순하게,
+   접힌 점수 이유와 걸러 둔 근거는 모두 펼쳐 나온다. 줄·카드가 쪽 사이에서 잘리지 않게 한다.
+   글자 크기는 #719 값(본문 9.5pt, 9pt 아래로 내리지 않음)을 지킨다. */
+@media print {
+  .report-page {
+    min-height: 0;
+    background: #ffffff;
+    /* 꼬리표·막대·동그라미·단계 그림의 바탕색이 종이에도 나오게 한다. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-body {
+    display: block;
+    padding: 0;
+  }
+
+  .report-main {
+    max-width: none;
+  }
+
+  .report-article {
+    gap: 8px;
+  }
+
+  .report-print-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+  }
+
+  .report-print-head b {
+    font-size: 11pt;
+  }
+
+  .report-card {
+    padding: 6px 0 0;
+    border: 0;
+    border-top: 1px solid #d6d6e4;
+    border-radius: 0;
+  }
+
+  .report-two,
+  .report-qa {
+    gap: 8px 18px;
+  }
+
+  .report-dim,
+  .report-head-note,
+  .report-page .report-eyebrow,
+  .report-fact dt,
+  .report-mini-label,
+  .report-stat-label,
+  .report-tag,
+  .report-evidence-group,
+  .report-evidence-foot,
+  .report-stat-sub,
+  .report-score-total,
+  .report-page .report-score-why,
+  .report-page .report-footer,
+  .report-alert,
+  .report-score-num > span,
+  .report-score-num .report-need-check {
+    font-size: 9pt;
+  }
+
+  .report-page .report-eyebrow {
+    margin-bottom: 2px;
+  }
+
+  .report-page h1 {
+    margin: 0;
+    font-size: 16pt;
+  }
+
+  .report-page h2,
+  .report-page h3 {
+    margin: 0;
+    font-size: 11pt;
+  }
+
+  .report-lines + h3 {
+    margin-top: 6px;
+    font-size: 9.5pt;
+  }
+
+  .report-page .report-marks {
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  /* 첫 줄 표시(StatusTag)는 화면 크기(14px)로 그려지므로 종이에서만 다른 꼬리표와 같은 크기로 줄인다. */
+  .report-page .report-marks [data-tone] {
+    padding: 1px 6px !important;
+    font-size: 9pt !important;
+  }
+
+  .report-facts {
+    gap: 4px 18px;
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+
+  .report-score-big {
+    font-size: 22pt;
+    letter-spacing: -1px;
+  }
+
+  .report-score-big span {
+    font-size: 11pt;
+  }
+
+  .report-ring-row {
+    gap: 12px;
+  }
+
+  .report-ring-row svg {
+    width: 64px;
+    height: 64px;
+  }
+
+  .report-mini,
+  .report-stats {
+    gap: 4px 12px;
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+
+  .report-alert {
+    margin-top: 6px;
+    padding: 4px 8px;
+  }
+
+  .report-reason p:last-child {
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+
+  .report-score-rows,
+  .report-evidence-grid,
+  .report-lines,
+  .report-progress {
+    margin-top: 6px;
+  }
+
+  .report-score-row {
+    padding: 3px 0;
+  }
+
+  .report-score-head {
+    grid-template-columns: minmax(0, 1fr) 90px 70px 84px 0;
+    gap: 10px;
+  }
+
+  /* 단계 그림(상세와 같은 부품)은 화면 크기로 그려져 종이에서는 크다. 그림만 줄인다. */
+  .report-progress {
+    zoom: 0.72;
+  }
+
+  .report-score-num,
+  .report-stats b {
+    font-size: 11pt;
+  }
+
+  .report-chevron {
+    display: none;
+  }
+
+  /* 접힌 이유(hidden)와 걸러 둔 근거(hidden)도 종이에는 모두 나온다. */
+  .report-page .report-score-why[hidden] {
+    display: block !important;
+  }
+
+  .report-page .report-evidence-card[hidden] {
+    display: list-item !important;
+  }
+
+  .report-page .report-score-why {
+    max-width: none;
+    margin-top: 2px;
+  }
+
+  .report-score-total {
+    padding-top: 4px;
+  }
+
+  .report-evidence-grid {
+    gap: 6px;
+  }
+
+  .report-evidence-card {
+    padding: 5px 8px;
+    border-color: #d6d6e4;
+    border-radius: 0;
+  }
+
+  .report-evidence-card blockquote {
+    margin: 2px 0 4px;
+    font-size: 9.5pt;
+    line-height: 1.35;
+  }
+
+  .report-lines li {
+    padding: 3px 0;
+  }
+
+  .report-ask-line {
+    gap: 8px;
+  }
+
+  .report-ask-line input {
+    width: 11px;
+    height: 11px;
+    margin-top: 2px;
+  }
+
+  .report-section:focus {
+    outline: none;
+  }
+
+  /* 쪽 사이에서 잘리지 않게: 카드(근거처럼 긴 묶음은 안쪽 줄·카드 단위로), 점수 줄, 근거 카드, 목록 한 줄. */
+  .report-card,
+  .report-score-row,
+  .report-evidence-card,
+  .report-lines li,
+  .report-fact,
+  .report-stats,
+  .report-progress {
+    break-inside: avoid;
+  }
+
+  /* 근거·점수 묶음은 한 쪽보다 길 수 있다. 통째로 다음 쪽으로 밀지 않고 안쪽 줄 단위로만 지킨다. */
+  #report-scores,
+  #report-evidence-section,
+  #report-questions .report-card {
+    break-inside: auto;
+  }
+
+  .report-head {
+    break-after: avoid;
+  }
 }

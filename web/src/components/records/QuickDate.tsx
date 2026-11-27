@@ -7,7 +7,8 @@
 import { Button } from 'antd';
 import { useState } from 'react';
 import { salesQuestionTexts as texts } from '../../labels/ko';
-import { colors, radius, typography } from '../../theme/tokens';
+import { accent, colors, radius, typography } from '../../theme/tokens';
+import { choiceChipStyle } from './ChoiceChips';
 import { formatMonthDay, todayKst } from '../../utils/time';
 
 /** 한 장에 보이는 주 수. 달마다 높이가 달라지지 않게 늘 6주를 그린다. */
@@ -54,21 +55,13 @@ export interface QuickDateProps {
   testId: string;
 }
 
-const chip = (selected: boolean, disabled: boolean) =>
-  ({
-    minHeight: 32,
-    padding: '0 8px',
-    borderRadius: radius.md,
-    border: `1px solid ${selected ? colors.text : colors.border}`,
-    background: selected ? colors.text : colors.bgContainer,
-    color: selected ? colors.bgContainer : colors.text,
-    font: 'inherit',
-    fontSize: typography.fontSizeSecondary,
-    fontWeight: selected ? 700 : 400,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.6 : 1,
-  }) as const;
+// #972: 빠른 날짜 단추는 기록 칸의 선택 단추와 같은 모양(고르면 강조 연한 바탕 + 강조 테두리 + 굵은 강조 글자).
+const chip = (selected: boolean, disabled: boolean) => ({
+  ...choiceChipStyle(selected, disabled),
+  padding: '0 8px',
+});
 
+// 달력 날짜 칸: 고른 날은 강조 바탕 + 흰 글자, 오늘은 강조 테두리 + 굵은 글자.
 const day = (selected: boolean, today: boolean, off: boolean) =>
   ({
     width: 32,
@@ -78,10 +71,10 @@ const day = (selected: boolean, today: boolean, off: boolean) =>
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.md,
-    border: `1px solid ${selected || today ? colors.text : 'transparent'}`,
-    background: selected ? colors.text : 'transparent',
-    color: selected ? colors.bgContainer : off ? colors.textDimmed : colors.text,
+    borderRadius: radius.controlSm,
+    border: `1px solid ${selected || today ? accent.bg : 'transparent'}`,
+    background: selected ? accent.bg : 'transparent',
+    color: selected ? accent.onBg : off ? colors.textDimmed : colors.text,
     font: 'inherit',
     fontSize: typography.fontSizeSecondary,
     fontWeight: selected || today ? 700 : 400,

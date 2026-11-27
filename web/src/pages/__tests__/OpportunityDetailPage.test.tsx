@@ -31,6 +31,7 @@ import {
   states,
 } from '../../labels/ko';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
+import { chipOf } from '../../test/chipOf';
 
 vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
@@ -579,8 +580,8 @@ describe('OpportunityDetailPage', () => {
     const count = await screen.findByTestId('detail-contact-count');
     expect(count).toHaveTextContent('접촉 3회 (전화 2 · 방문 1)');
     expect(within(screen.getByTestId('detail-records')).queryByText(/접촉 3회/)).toBeNull();
-    await user.selectOptions(screen.getByTestId('records-kind'), '메일');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-kind', '메일'));
+    await user.click(chipOf('records-contact-result', '연결됨'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() =>
       expect(screen.getByTestId('detail-contact-count')).toHaveTextContent(

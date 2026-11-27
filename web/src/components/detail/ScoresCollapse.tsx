@@ -84,7 +84,7 @@ function GroupBars({ groups }: { groups: ReturnType<typeof groupScoreItems>['gro
               style={{
                 position: 'relative',
                 height: 10,
-                borderRadius: radius.pill,
+                borderRadius: radius.tag,
                 background: detailTheme.bandTodo,
                 overflow: 'hidden',
               }}
@@ -251,8 +251,8 @@ export default function ScoresCollapse({
   } as const;
   const summaryStyle = {
     fontWeight: 400,
-    fontSize: typography.fontSize,
-    color: colors.textSecondary,
+    fontSize: typography.fontSizeSecondary,
+    color: colors.textDimmed,
   } as const;
   if (!hasBody) {
     // 점수도 제안도 없으면 펼칠 것이 없다. 제목과 "점수 전"만 보인다.
@@ -300,6 +300,7 @@ export default function ScoresCollapse({
             flexWrap: 'wrap',
             width: '100%',
             justifyContent: 'space-between',
+            alignItems: 'center',
             gap: 12,
           }}
         >
@@ -311,7 +312,18 @@ export default function ScoresCollapse({
               {summary}
             </span>
           </span>
-          <span style={{ fontWeight: 400, color: colors.textSecondary }}>
+          {/* #972 새 시안: 오른쪽 끝 [펼치기]는 보조 단추 모양(흰 바탕 + 얇은 테두리). 누르는 곳은 제목 줄 전체다. */}
+          <span
+            style={{
+              fontWeight: 400,
+              fontSize: typography.fontSizeSecondary,
+              color: colors.text,
+              border: `1px solid ${colors.borderSecondary}`,
+              borderRadius: radius.controlSm,
+              padding: '4px 12px',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {open ? scoreDetails.collapse : scoreDetails.expand}{' '}
             <span aria-hidden="true">{open ? '▾' : '▸'}</span>
           </span>

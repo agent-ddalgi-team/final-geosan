@@ -62,6 +62,8 @@ export default function MaterialFix({
         {' '}
         <Button
           size="small"
+          type="link"
+          style={{ padding: '0 4px', height: 'auto' }}
           disabled={!canRecord || options.length === 0}
           onClick={() => {
             setError(null);
