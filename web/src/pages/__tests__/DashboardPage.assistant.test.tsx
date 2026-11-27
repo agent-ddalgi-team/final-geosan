@@ -18,6 +18,11 @@ vi.mock('../../api/dashboardMap', () => ({ getDashboardMap: vi.fn(() => new Prom
 vi.mock('../../api/salesAnalysis', () => ({
   getSalesAnalysis: vi.fn(() => new Promise(() => {})),
 }));
+// 먼저 볼 후보(#972)도 마찬가지다(TopCandidates.test.tsx). 목록 읽기만 막고 나머지 요청 함수는 그대로 둔다.
+vi.mock('../../api/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/client')>()),
+  getOpportunities: vi.fn(() => new Promise(() => {})),
+}));
 // 오늘 정리(#743): 스위치가 켜져 있으면 대시보드가 저절로 부른다. 실제 서버를 부르지 않게 가짜로 바꾼다.
 vi.mock('../../api/assistant', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/assistant')>()),

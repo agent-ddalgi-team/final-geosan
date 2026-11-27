@@ -16,7 +16,7 @@ import { getDashboardMap } from '../../api/dashboardMap';
 import { getSalesAnalysis } from '../../api/salesAnalysis';
 import dashboardMapFixture from '../../test/fixtures/dashboard-map.json';
 import type { Dashboard, TodayCheckRow } from '../../api/dashboardTypes';
-import { ApiError } from '../../api/client';
+import { ApiError, getOpportunities } from '../../api/client';
 import type { ConfigUi, Envelope } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import { sortSchedule } from '../../components/dashboard/ScheduleList';
@@ -32,6 +32,11 @@ vi.mock('../../api/dashboardMap', () => ({ getDashboardMap: vi.fn(() => new Prom
 // 월별 접촉 추세(#972)는 HomeTrend.test.tsx에서 따로 본다. 여기서는 기본으로 응답이 오지 않게 막아 둔다.
 vi.mock('../../api/salesAnalysis', () => ({
   getSalesAnalysis: vi.fn(() => new Promise(() => {})),
+}));
+// 먼저 볼 후보(#972)도 마찬가지다(TopCandidates.test.tsx). 목록 읽기만 막고 나머지 요청 함수는 그대로 둔다.
+vi.mock('../../api/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/client')>()),
+  getOpportunities: vi.fn(() => new Promise(() => {})),
 }));
 
 const mockedGet = vi.mocked(getDashboard);
@@ -1058,5 +1063,77 @@ describe('영업 홈 › 월별 접촉 추세 카드 (#972)', () => {
     // 가짜 응답에는 진행 중인 회사 목록이 없어 표는 없다. 다른 칸들이 그대로 보이는지 본다.
     expect(screen.getByTestId('dashboard-stage-chips')).toBeInTheDocument();
     expect(screen.getByTestId('dashboard-prep-section')).toBeInTheDocument();
+  });
+});
+
+describe('영업 홈 › 먼저 볼 후보 (#972)', () => {
+  const card = (oppId: string, title: string) => ({
+    oppId,
+    title,
+    rank: 1,
+    reason: `${title} 추천 근거`,
+    isVirtual: true,
+  });
+  const listReply = (items: unknown[]) =>
+    ({ data: items, meta: {} }) as unknown as Awaited<ReturnType<typeof getOpportunities>>;
+
+  beforeEach(() => {
+    mockedGet.mockReset();
+  });
+
+  it('진행 중인 회사 표 아래 · 접힌 "더 보기" 위에 놓인다', async () => {
+    vi.mocked(getOpportunities).mockResolvedValueOnce(
+      listReply([card('opp-1', '가상기공 · 선반 부품'), card('opp-2', '가상산업 · 커버')]),
+    );
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...fixtureData,
+        progressCompanies: {
+          IN_CONTACT: [
+            {
+              oppId: 'opp-9',
+              customerName: '가상정밀',
+              lastContactAt: '2026-11-03',
+              nextScheduleAt: null,
+              nextScheduleNote: null,
+              stalled: false,
+            },
+          ],
+        },
+      }),
+    );
+    renderPage();
+    const top = await screen.findByTestId('dashboard-top');
+    expect(within(top).getAllByTestId('dashboard-top-card')).toHaveLength(2);
+    const order = [
+      screen.getByTestId('dashboard-map-section'),
+      screen.getByTestId('dashboard-progress-table'),
+      top,
+      screen.getByTestId('dashboard-more'),
+    ];
+    for (let index = 1; index < order.length; index += 1) {
+      expect(
+        order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+  });
+
+  it('후보 목록을 못 읽어도 영업 홈은 오류가 되지 않고 그 칸만 빠진다', async () => {
+    const before = vi.mocked(getOpportunities).mock.calls.length;
+    vi.mocked(getOpportunities).mockRejectedValueOnce(
+      new ApiError(500, {
+        message: '문제',
+        nextAction: '다시',
+        ref: 'r-3',
+        kind: 'INTERNAL_ERROR',
+      }),
+    );
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    renderPage();
+    expect(await screen.findByTestId('dashboard-today')).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(getOpportunities).mock.calls.length).toBe(before + 1));
+    expect(screen.queryByTestId('dashboard-top')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-more')).toBeInTheDocument();
   });
 });

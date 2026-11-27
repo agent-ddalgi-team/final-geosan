@@ -26,6 +26,7 @@ import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import ProgressTable from '../components/dashboard/ProgressTable';
 import StageChips from '../components/dashboard/StageChips';
 import HomeTrend from '../components/dashboard/HomeTrend';
+import TopCandidates from '../components/dashboard/TopCandidates';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import VisitPrep from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
@@ -341,6 +342,9 @@ export default function DashboardPage() {
             staffKey={recordKey}
           />
         ) : null}
+
+        {/* #972: 먼저 볼 후보 3곳(거래처 후보 목록 추천 순 맨 위). 스스로 불러오고, 못 읽으면 이 칸만 숨는다. */}
+        {data ? <TopCandidates /> : null}
 
         {/* ⑤ 더 보기: 날마다 보지 않는 것은 접어 둔다(지우지 않음). */}
         <details data-testid="dashboard-more" style={sectionStyle}>
