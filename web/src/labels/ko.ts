@@ -2687,8 +2687,6 @@ export const reportView = {
     /** 체크하지 않은 줄 수. "5개 남음" */
     left: (count: number) => `${count}개 남음`,
     checkHint: '물어본 것은 체크해 두세요 · 체크는 이 브라우저에만 기억됩니다',
-    /** 체크칸을 읽어 주는 글. "물어봄: 외주처를 바꿀 생각이 있나요?" */
-    checkAria: (text: string) => `물어봄: ${text}`,
   },
   sales: {
     /** 접촉 칸의 큰 글자. "3회", 접촉이 없으면 "없음" */

@@ -977,6 +977,22 @@ button.report-score-head {
   overflow-wrap: anywhere;
 }
 
+/* 물을 것의 체크칸(이 브라우저에만 기억). 줄 전체가 체크칸의 이름표라 글자를 눌러도 체크된다. */
+.report-ask-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.report-ask-line input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 4px 0 0;
+  accent-color: #7c5cfc;
+}
+
 .report-ask-text {
   display: block;
 }
@@ -1273,6 +1289,16 @@ button.report-score-head {
 
   .report-lines li {
     padding: 3px 0;
+  }
+
+  .report-ask-line {
+    gap: 8px;
+  }
+
+  .report-ask-line input {
+    width: 11px;
+    height: 11px;
+    margin-top: 2px;
   }
 
   .report-section:focus {

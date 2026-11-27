@@ -216,7 +216,7 @@ export default function CompanyReportPage() {
                   onToggle={toggleScore}
                 />
                 <ReportEvidence evidence={model.evidence} groups={model.evidenceGroups} />
-                <ReportQuestions known={model.known} ask={model.ask} />
+                <ReportQuestions key={oppId} oppId={oppId} known={model.known} ask={model.ask} />
                 <ReportSales sales={model.sales} progress={model.progress} questions={questions} />
                 <ReportDirection lines={model.direction} nextCall={model.nextCall} />
                 <p className="report-dim report-footer" data-testid="report-footer">
