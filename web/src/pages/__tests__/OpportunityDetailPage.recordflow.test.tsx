@@ -16,6 +16,7 @@ import {
 import type { Envelope, OpportunityDetail, SalesQuestions } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
+import { chipOf, chipValueOf } from '../../test/chipOf';
 
 vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
@@ -125,9 +126,10 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     // 읽는 곳(구분 줄 위) 머리에 있다.
     expect(screen.getByTestId('detail-header')).toContainElement(button);
     await user.click(button);
-    const kind = screen.getByTestId('records-kind');
+    // #972: 종류는 선택 단추 묶음이다. 초점은 골라져 있는 "전화" 단추로 간다.
+    const kind = chipOf('records-kind', 'CALL');
     expect(kind).toHaveFocus();
-    expect(kind).toHaveValue('CALL');
+    expect(kind).toBeChecked();
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(scrollIntoView.mock.contexts[0]).toBe(kind);
     expect(mockedOutcome).not.toHaveBeenCalled();
@@ -158,7 +160,7 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const area = screen.getByTestId('records-area');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     await user.click(await screen.findByTestId('sales-choice-CONFIRM_PROCESS-ZINC_PLATING'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
@@ -191,7 +193,7 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     );
     expect(screen.getByTestId('records-area')).toBe(area);
     expect(screen.getByTestId('records-contact-saved')).toHaveTextContent('저장됨 21:15');
-    expect(screen.getByTestId('records-kind')).toHaveValue('CALL');
+    expect(chipValueOf('records-kind')).toBe('CALL');
   });
 
   it('"한눈에 › 확인할 것"은 낱말이 없어도 확인사항에 줄이 있으면 그 수를 적는다 (#691, #847 이름 바뀜)', async () => {

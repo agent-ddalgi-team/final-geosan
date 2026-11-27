@@ -27,6 +27,7 @@ import {
 } from '../../labels/ko';
 import { colors, detailTheme, radius, typography } from '../../theme/tokens';
 import StatusTag from '../common/StatusTag';
+import { choiceChipStyle } from './ChoiceChips';
 import { activityGroupTone, groupOf } from './activityGroups';
 import {
   TIMELINE_LAYERS,
@@ -154,19 +155,8 @@ export function sortRecentFirst(items: ActivityItem[]): ActivityItem[] {
     .map((entry) => entry.item);
 }
 
-const groupButtonStyle = (selected: boolean) =>
-  ({
-    minHeight: 32,
-    padding: '0 12px',
-    borderRadius: radius.md,
-    border: `1px solid ${selected ? colors.text : colors.border}`,
-    background: selected ? colors.text : colors.bgContainer,
-    color: selected ? colors.bgContainer : colors.text,
-    font: 'inherit',
-    fontSize: typography.fontSizeSecondary,
-    fontWeight: selected ? 700 : 400,
-    cursor: 'pointer',
-  }) as const;
+// #972: 거르기 단추는 기록 칸의 선택 단추와 같은 모양(고르면 강조 연한 바탕 + 강조 테두리 + 굵은 강조 글자).
+const groupButtonStyle = (selected: boolean) => choiceChipStyle(selected);
 
 export default function ActivityTimeline({
   oppId,
@@ -686,7 +676,7 @@ export default function ActivityTimeline({
                           style={{
                             width: 24,
                             height: 24,
-                            borderRadius: radius.pill,
+                            borderRadius: '50%',
                             display: 'grid',
                             placeItems: 'center',
                             fontSize: 12,

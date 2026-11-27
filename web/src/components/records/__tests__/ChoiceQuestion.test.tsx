@@ -23,6 +23,7 @@ import type {
 } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
+import { chipOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -97,8 +98,8 @@ function renderArea(marks: ChoiceMarks, handlers: Record<string, () => void> = {
 }
 
 async function openQuestions(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByTestId('records-kind'), '전화');
-  await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+  await user.click(chipOf('records-kind', '전화'));
+  await user.click(chipOf('records-contact-result', '연결됨'));
   return screen.findByTestId('sales-question-CONFIRM_PROCESS');
 }
 
