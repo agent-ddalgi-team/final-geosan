@@ -25,6 +25,7 @@ import CountCards from '../components/dashboard/CountCards';
 import DashboardCalendar from '../components/dashboard/DashboardCalendar';
 import ProgressTable from '../components/dashboard/ProgressTable';
 import StageChips from '../components/dashboard/StageChips';
+import HomeTrend from '../components/dashboard/HomeTrend';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
 import VisitPrep from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
@@ -251,6 +252,9 @@ export default function DashboardPage() {
             }}
           />
         ) : null}
+        {/* #972: 월별 접촉 추세(영업 분석과 같은 응답). 스스로 불러오고, 못 읽으면 이 칸만 숨는다. */}
+        {data ? <HomeTrend /> : null}
+
         {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "💬 영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
         {/* ① 출근하면: 오늘 할 일 | 전달 사항 + 한 달 달력. 둘 합이 본문 폭보다 넓으면 위아래로. */}

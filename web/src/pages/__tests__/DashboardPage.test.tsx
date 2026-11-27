@@ -13,6 +13,7 @@ import DashboardPage, {
 } from '../DashboardPage';
 import { getDashboard } from '../../api/dashboard';
 import { getDashboardMap } from '../../api/dashboardMap';
+import { getSalesAnalysis } from '../../api/salesAnalysis';
 import dashboardMapFixture from '../../test/fixtures/dashboard-map.json';
 import type { Dashboard, TodayCheckRow } from '../../api/dashboardTypes';
 import { ApiError } from '../../api/client';
@@ -28,6 +29,10 @@ import dashboardFixture from '../../test/fixtures/dashboard.json';
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
 // 지도 칸(#641)은 DashboardMap.test.tsx에서 따로 본다. 여기서는 응답이 오지 않게 막아 둔다.
 vi.mock('../../api/dashboardMap', () => ({ getDashboardMap: vi.fn(() => new Promise(() => {})) }));
+// 월별 접촉 추세(#972)는 HomeTrend.test.tsx에서 따로 본다. 여기서는 기본으로 응답이 오지 않게 막아 둔다.
+vi.mock('../../api/salesAnalysis', () => ({
+  getSalesAnalysis: vi.fn(() => new Promise(() => {})),
+}));
 
 const mockedGet = vi.mocked(getDashboard);
 const fixtureData = dashboardFixture.data as unknown as Dashboard;
@@ -999,5 +1004,59 @@ describe('영업 홈 › 인사말 줄 (#972)', () => {
     expect(greetingDate('')).toBe('');
     expect(todoCount(undefined)).toBeNull();
     expect(todoCount([])).toBe(0);
+  });
+});
+
+describe('영업 홈 › 월별 접촉 추세 카드 (#972)', () => {
+  const monthly = Array.from({ length: 12 }, (_, index) => ({
+    month: `2026-${String(index + 1).padStart(2, '0')}`,
+    contacted: index,
+    won: 0,
+    lost: 0,
+  }));
+
+  beforeEach(() => {
+    mockedGet.mockReset();
+  });
+
+  it('단계 카드 아래 · 오늘 할 일 위에 놓인다', async () => {
+    vi.mocked(getSalesAnalysis).mockResolvedValueOnce({
+      data: { monthly, total: { contactedCount: 7 } },
+      meta: {},
+    } as unknown as Awaited<ReturnType<typeof getSalesAnalysis>>);
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    renderPage();
+    const trend = await screen.findByTestId('dashboard-trend');
+    expect(trend).toHaveTextContent('7곳');
+    const order = [
+      screen.getByTestId('dashboard-stage-chips'),
+      trend,
+      screen.getByTestId('dashboard-today'),
+    ];
+    for (let index = 1; index < order.length; index += 1) {
+      expect(
+        order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+  });
+
+  it('추세 응답을 못 읽어도 영업 홈은 오류가 되지 않고 그 칸만 빠진다', async () => {
+    vi.mocked(getSalesAnalysis).mockRejectedValueOnce(
+      new ApiError(500, {
+        message: '문제',
+        nextAction: '다시',
+        ref: 'r-2',
+        kind: 'INTERNAL_ERROR',
+      }),
+    );
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    renderPage();
+    expect(await screen.findByTestId('dashboard-today')).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(getSalesAnalysis)).toHaveBeenCalled());
+    expect(screen.queryByTestId('dashboard-trend')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    // 가짜 응답에는 진행 중인 회사 목록이 없어 표는 없다. 다른 칸들이 그대로 보이는지 본다.
+    expect(screen.getByTestId('dashboard-stage-chips')).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-prep-section')).toBeInTheDocument();
   });
 });
