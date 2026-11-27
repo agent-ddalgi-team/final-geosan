@@ -19,10 +19,12 @@
 //   서버가 전체 후보의 거리를 본 뒤 거르고 정렬한다(#658). 카드에는 "거산에서 8.2km" 꼬리표가 붙는다.
 // "관심 기업" 보기(#357): 주소 `?bookmarked=true`면 관심으로 고른 회사만 보이고, 검토 의견 거르기는 `&opinion=`으로 남는다.
 // "제외한 회사" 보기(#536): 주소 `?excluded=true`면 검토 대상 제외로 저장한 회사만 보인다(서버에는 `opinion=NOT_TARGET`).
+// 새 후보 발굴 창(#972): 목록 머리 [새 후보 발굴] 또는 주소 `?newCandidates=1`(왼쪽 메뉴 [＋ 새 후보 발굴])로 연다.
+//   가운데 뜨는 창이고, 닫으면 주소에서 `newCandidates`만 지운다. 관심 기업 화면에는 없다.
 // 관심 기업 보기도 공정 선택란 없이 전체에서 거른다(대시보드 "관심 기업 N곳"과 곳 수가 같아야 해서).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Button, Drawer, Pagination, Switch, Typography } from 'antd';
+import { Button, Modal, Pagination, Switch, Typography } from 'antd';
 import { getOpportunities } from '../api/client';
 import { BOOKMARKS_PATH } from '../paths';
 import type { Meta, OpportunityCard as CardData } from '../api/types';
@@ -64,6 +66,9 @@ import { colors, listTheme, spacing, typography } from '../theme/tokens';
 export const PAGE_SIZE = 20;
 /** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
 export const INGEST_POLL_MS = 5000;
+
+/** 새 후보 발굴 창을 열어 달라는 주소 값(`?newCandidates=1`). 왼쪽 메뉴 [＋ 새 후보 발굴]이 붙여서 보낸다(#972). */
+const NEW_CANDIDATES_PARAM = 'newCandidates';
 
 /** 검색하기 직전의 주소(물음표 뒤 조건)를 주소 기록에 실을 때 쓰는 이름. */
 const SEARCH_RETURN_KEY = 'searchReturn';
@@ -458,6 +463,24 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
     !bookmarked &&
     staffKey !== VIEWER_KEY &&
     Boolean(ingestOptions || latestIngest);
+  // 새 후보 발굴 창(#972): 목록 머리 [새 후보 발굴]로 열거나, 주소에 `newCandidates=1`이 있으면(왼쪽 메뉴
+  // [＋ 새 후보 발굴]) 저절로 열린다. 보기 전용 계정이거나 선택지를 아직 못 받았으면 열리지 않는다.
+  const discoveryRequested = params.get(NEW_CANDIDATES_PARAM) === '1';
+  const discoveryShown = showDiscovery && (discoveryOpen || discoveryRequested);
+  // 닫으면 주소에서 `newCandidates`만 지운다. 다른 조건과 검색하기 직전 주소(주소 기록)는 그대로 둔다.
+  const closeDiscovery = () => {
+    setDiscoveryOpen(false);
+    if (params.has(NEW_CANDIDATES_PARAM)) {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete(NEW_CANDIDATES_PARAM);
+          return next;
+        },
+        { replace: true, state: location.state },
+      );
+    }
+  };
 
   return (
     <>
@@ -470,7 +493,7 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
             <Button
               type="primary"
               aria-haspopup="dialog"
-              aria-expanded={discoveryOpen}
+              aria-expanded={discoveryShown}
               onClick={() => setDiscoveryOpen(true)}
               data-testid="ingest-panel-toggle"
             >
@@ -599,16 +622,21 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
             ) : null}
           </div>
         ) : null}
-        {showDiscovery && latestIngest && ingestRunning && !discoveryOpen ? (
+        {showDiscovery && latestIngest && ingestRunning && !discoveryShown ? (
           <IngestSummary ingest={latestIngest} />
         ) : null}
         {showDiscovery ? (
-          <Drawer
-            title={listSimple.ingestPanelTitle}
-            open={discoveryOpen}
-            onClose={() => setDiscoveryOpen(false)}
-            width="min(560px, 100%)"
-            styles={{ body: { background: colors.bgLayout } }}
+          // #972 시안 FindModal: 오른쪽에서 나오던 칸을 가운데 뜨는 창으로 옮겼다. 안의 내용·순서는 그대로다.
+          <Modal
+            title={
+              <span style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 700 }}>
+                {listSimple.ingestPanelTitle}
+              </span>
+            }
+            open={discoveryShown}
+            onCancel={closeDiscovery}
+            footer={null}
+            width={560}
             rootClassName="prospect-discovery"
           >
             <div data-testid="ingest-panel">
@@ -628,7 +656,7 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
                 </details>
               ) : null}
             </div>
-          </Drawer>
+          </Modal>
         ) : null}
         <FiveStates
           state={state}
