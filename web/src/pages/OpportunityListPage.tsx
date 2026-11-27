@@ -786,9 +786,11 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
               items={items}
               bucketCounts={shown.bucketCounts}
               showBuckets={sort === 'rank'}
-              columnHead={<ListColumnHead />}
+              // #972: 관심 기업 보기는 열 머리 없는 세 칸 줄, 그 밖에는 다섯 칸 표 줄.
+              columnHead={bookmarked ? undefined : <ListColumnHead />}
               renderCard={(card) => (
                 <OpportunityCard
+                  layout={bookmarked ? 'bookmark' : 'table'}
                   card={card}
                   classificationOverrides={config?.classificationLabels}
                   processNames={processNames}

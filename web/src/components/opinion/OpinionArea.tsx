@@ -174,18 +174,23 @@ export default function OpinionArea({
               </option>
             ))}
           </select>
-          {!canRecord ? (
-            <Typography.Text data-testid="opinion-pick-staff-text" type="secondary">
-              {opinionArea.pickStaffFirst}
-            </Typography.Text>
-          ) : null}
           {record?.opinion === 'NOT_TARGET' && record.reason && !reasonOpen ? (
             <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
               {opinionArea.reasonLabel}: {record.reason}
             </span>
           ) : null}
         </span>
-      ) : showButtons ? (
+      ) : null}
+      {/* #972: 좁은 표 줄 칸에서 고르기 칸 옆 단추를 밀어내지 않게, 안내는 고르기 칸 아래 작은 글로 둔다. */}
+      {selectMode && !canRecord ? (
+        <span
+          data-testid="opinion-pick-staff-text"
+          style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+        >
+          {opinionArea.pickStaffFirst}
+        </span>
+      ) : null}
+      {selectMode ? null : showButtons ? (
         <Space wrap size={8} role="group" aria-label={opinionArea.groupLabel}>
           {BUTTONS.map(({ value, testId }) => {
             const pressed = record?.opinion === value;

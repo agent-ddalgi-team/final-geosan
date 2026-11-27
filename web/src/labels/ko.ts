@@ -821,7 +821,7 @@ export const excludedList = {
 } as const;
 
 /**
- * #972 거래처 후보 표 줄(PM이 고른 시안, 2026-11-27).
+ * #972 거래처 후보 표 줄과 관심 기업 세 칸 줄(PM이 고른 시안, 2026-11-27).
  * 열 머리는 묶음마다 한 줄 보인다. 좁은 화면에서는 열 머리를 숨기고 칸 안 작은 이름표가 대신 보인다.
  */
 export const listTable = {
@@ -835,6 +835,12 @@ export const listTable = {
   /** 좁은 화면과 화면 낭독기용 칸 이름. */
   scoreLabel: '점수',
   tagsLabel: '꼬리표',
+  /**
+   * 관심 기업 줄 오른쪽. "다음 일정 12/1 · 전화"(할 일 글이 없으면 날짜만).
+   * 지난 일정은 영업 홈과 같은 말("지난 일정 11/21", dashboardTexts.tableOverdue)을 쓴다.
+   */
+  nextSchedule: (day: string, note: string | null) =>
+    note ? `다음 일정 ${day} · ${note}` : `다음 일정 ${day}`,
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */

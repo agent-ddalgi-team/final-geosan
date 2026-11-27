@@ -19,6 +19,7 @@ import {
   classificationLabels,
   classificationTone,
   contactBuckets,
+  dashboardTexts,
   frame,
   labelFor,
   listFilters,
@@ -32,7 +33,7 @@ import {
   supplyTierLabels,
 } from '../../labels/ko';
 import { colors, listTheme, typography } from '../../theme/tokens';
-import { formatMonthDay } from '../../utils/time';
+import { formatDate, formatMonthDay, todayKst } from '../../utils/time';
 
 /** #793: 적합도 높낮이(오름·내림 화살표 계산에만 쓴다). */
 const FIT_RANK = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
@@ -53,6 +54,12 @@ export interface OpportunityCardProps {
    * "관심 기업으로 옮겼습니다" 안내를 보이는 데 쓴다. 끌 때와 검토 의견 저장으로 켜질 때는 알리지 않는다.
    */
   onBookmarkedOn?: (card: CardData) => void;
+  /**
+   * 줄 모양(#972). "table"(기본, 거래처 후보)은 다섯 칸 표 줄, "bookmark"(관심 기업)는 세 칸 줄이다:
+   * 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 다음 일정 · 의견 고르기 · [자세히 보기].
+   * 보이는 정보와 테스트용 이름은 두 모양이 같다(관심 기업 줄은 지역 칸이 없어 거리를 꼬리표로 보인다).
+   */
+  layout?: 'table' | 'bookmark';
 }
 
 export default function OpportunityCard({
@@ -61,6 +68,7 @@ export default function OpportunityCard({
   processNames,
   showRank = true,
   onBookmarkedOn,
+  layout = 'table',
 }: OpportunityCardProps) {
   const navigate = useNavigate();
   const detailPath = `/opportunities/${encodeURIComponent(card.oppId)}`;
@@ -193,11 +201,17 @@ export default function OpportunityCard({
       {card.rank}
     </span>
   ) : null;
+  const threeColumns = layout === 'bookmark';
   const titleEl = (
     <Typography.Title
       level={2}
       data-testid="card-title"
-      style={{ margin: 0, fontSize: listTheme.titleSize, fontWeight: 600, lineHeight: 1.45 }}
+      style={{
+        margin: 0,
+        fontSize: threeColumns ? listTheme.titleSizeLarge : listTheme.titleSize,
+        fontWeight: 600,
+        lineHeight: 1.45,
+      }}
     >
       {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
       <a
@@ -252,12 +266,17 @@ export default function OpportunityCard({
     ) : null;
   // 검토사항 줄: 확인할 것이 있거나 승인을 막으면 주의 글자로 띄운다. "없음 — …"은 보통 글자에 이름표를 붙인다.
   const blockerNeedsCheck = checkLine !== null || card.blocker.blocksApproval;
+  // 관심 기업 줄은 열 머리가 없어 "추천 근거"·"검토사항" 이름표를 글 위에 늘 보인다(시안 Bookmarks).
+  const blockLabel: CSSProperties = { ...labelStyle, display: 'block' };
   const reasonLines = (
     <>
       {/* 공장 정보 줄(업종·원자재·규모)은 카드에서 빼고 상세 "한눈에"에서 본다(#798, PM 지시 2026-11-16). */}
       {reasonSameAsPick ? null : (
         <div style={lineStyle} title={card.reason}>
-          <span className="cand-row__label" style={labelStyle}>
+          <span
+            className={threeColumns ? undefined : 'cand-row__label'}
+            style={threeColumns ? blockLabel : labelStyle}
+          >
             {cardRows.reason}
           </span>
           <span data-testid="card-reason">{card.reason}</span>
@@ -270,15 +289,19 @@ export default function OpportunityCard({
         </div>
       ) : null}
       <div
-        style={{
-          color: blockerNeedsCheck ? listTheme.checkFg : listTheme.bodyFg,
-          fontSize: typography.fontSizeSecondary,
-        }}
+        style={
+          threeColumns
+            ? lineStyle
+            : {
+                color: blockerNeedsCheck ? listTheme.checkFg : listTheme.bodyFg,
+                fontSize: typography.fontSizeSecondary,
+              }
+        }
         title={blockerLine}
       >
         <span
-          className={checkLine !== null ? 'cand-row__label' : undefined}
-          style={{ ...labelStyle, marginRight: 8 }}
+          className={!threeColumns && checkLine !== null ? 'cand-row__label' : undefined}
+          style={threeColumns ? blockLabel : { ...labelStyle, marginRight: 8 }}
         >
           {cardRows.blocker}
         </span>
@@ -440,7 +463,7 @@ export default function OpportunityCard({
         bookmarkState.change(next);
         if (next.active) onBookmarkedOn?.(card);
       }}
-      // #972: 줄에서는 별 그림 단추. "담당자를 고르면" 안내는 의견 칸 옆 한 줄과 별의 손 올림 글이 대신한다.
+      // #972: 줄에서는 별 그림 단추. "담당자를 고르면" 안내는 의견 칸 아래 한 줄과 별의 손 올림 글이 대신한다.
       variant="star"
       hideStaffHint
     />
@@ -448,11 +471,14 @@ export default function OpportunityCard({
   const detailEl = (
     <Button
       size="small"
+      type={threeColumns ? 'primary' : 'default'}
       href={detailPath}
       onClick={(event) => {
         event.preventDefault();
         navigate(detailPath);
       }}
+      // 단추 모양 링크라 밑줄을 긋지 않고, 줄 안에서는 작은 글자로 둔다.
+      style={{ fontSize: typography.fontSizeSecondary, textDecoration: 'none' }}
       data-testid="card-view-detail-link"
     >
       {frame.viewDetail} <span aria-hidden="true">→</span>
@@ -463,8 +489,93 @@ export default function OpportunityCard({
     borderBottom: `1px solid ${listTheme.rowLine}`,
   };
   const cellStack: CSSProperties = { display: 'grid', gap: 4, alignContent: 'start' };
-  const score = scoreEl(listTheme.scoreSize);
+  const titleWrap: CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: '2px 8px',
+    minWidth: 0,
+  };
 
+  if (threeColumns) {
+    // 다음 일정(영업 단계 기록의 nextScheduleAt): 응답에 있을 때만 보인다. 오늘(한국 날짜)보다 앞이면 "지난 일정"으로
+    // 주의색 굵게. 값이 없으면 줄을 그리지 않는다(지어내지 않는다).
+    const outcome = card.records.outcome ?? null;
+    const scheduleDay = formatMonthDay(outcome?.nextScheduleAt);
+    const scheduleDate = formatDate(outcome?.nextScheduleAt);
+    const overdue = scheduleDate !== null && scheduleDate < todayKst();
+    const scheduleNote = outcome?.nextScheduleNote?.trim() || null;
+    const bigScore = scoreEl(listTheme.scoreSizeLarge);
+    // 관심 기업 줄(#972 시안 Bookmarks): 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 다음 일정 · 의견 · [자세히 보기].
+    return (
+      <article
+        className="cand-row cand-row--three"
+        data-testid="opportunity-card"
+        data-layout="bookmark"
+        style={{ ...rowStyle, padding: '20px 0' }}
+      >
+        <div className="cand-row__cell" style={{ ...cellStack, gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            {rankEl}
+            <div style={titleWrap}>{titleEl}</div>
+          </div>
+          {industriesEl}
+          {tags.length > 0 || ingestedTag || typeof card.distanceKm === 'number' ? (
+            <div
+              role="group"
+              aria-label={listTable.tagsLabel}
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+            >
+              {tags}
+              {ingestedTag}
+              {/* 지역 칸이 없는 줄이라 거리는 꼬리표로 보인다(#666). 좌표를 못 찾은 회사는 붙이지 않는다. */}
+              {typeof card.distanceKm === 'number' ? (
+                <StatusTag tone="neutral" data-testid="card-distance-tag">
+                  {listFilters.cardDistance(card.distanceKm)}
+                </StatusTag>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="cand-row__cell" style={{ ...cellStack, gap: 8 }}>
+          {reasonLines}
+        </div>
+        <div className="cand-row__cell cand-row__side">
+          {bigScore ? (
+            <div data-testid="card-score-big" className="cand-row__side-score">
+              {bigScore}
+            </div>
+          ) : null}
+          {scheduleDay ? (
+            <div
+              data-testid="card-next-schedule"
+              data-overdue={overdue ? 'true' : undefined}
+              style={
+                overdue
+                  ? {
+                      color: listTheme.overdueFg,
+                      fontSize: typography.fontSizeSecondary,
+                      fontWeight: 600,
+                    }
+                  : labelStyle
+              }
+            >
+              {overdue
+                ? dashboardTexts.tableOverdue(scheduleDay)
+                : listTable.nextSchedule(scheduleDay, scheduleNote)}
+            </div>
+          ) : null}
+          <div className="cand-row__actions-main">
+            {opinionEl}
+            {bookmarkEl}
+          </div>
+          {detailEl}
+        </div>
+      </article>
+    );
+  }
+
+  const score = scoreEl(listTheme.scoreSize);
   // 표 줄(#972 시안 Candidates): 회사·품목 | 지역·거리 | 추천 근거 + 검토사항 + 꼬리표 | 점수 | 의견 + 관심 별.
   // 열 너비는 styles.css의 .cand-row가 줄마다 똑같이 잡는다. 좁으면 칸이 세로로 쌓이고 칸 이름표가 보인다.
   return (
@@ -475,10 +586,13 @@ export default function OpportunityCard({
       style={rowStyle}
     >
       <div className="cand-row__cell" style={cellStack}>
-        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 8px' }}>
+        {/* 번호는 왼쪽에 고정하고, 긴 회사 이름은 그 옆에서 줄을 바꾼다. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           {rankEl}
-          {titleEl}
-          {ingestedTag}
+          <div style={titleWrap}>
+            {titleEl}
+            {ingestedTag}
+          </div>
         </div>
         {industriesEl}
       </div>

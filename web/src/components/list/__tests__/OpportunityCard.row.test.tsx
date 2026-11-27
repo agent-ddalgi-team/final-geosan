@@ -10,7 +10,11 @@ import listFixture from '../../../test/fixtures/opportunities-apjeong.json';
 
 const apjeong = listFixture.data[0] as unknown as CardData;
 
-function renderRow(changes: Partial<CardData>, canRecord = true) {
+function renderRow(
+  changes: Partial<CardData>,
+  canRecord = true,
+  layout: 'table' | 'bookmark' = 'table',
+) {
   render(
     <MemoryRouter>
       <FrameContext.Provider
@@ -26,12 +30,14 @@ function renderRow(changes: Partial<CardData>, canRecord = true) {
         <OpportunityCard
           card={{ ...apjeong, ...changes }}
           processNames={{ ZINC_PLATING: '전기아연도금' }}
+          layout={layout}
+          showRank={layout === 'table'}
         />
       </FrameContext.Provider>
     </MemoryRouter>,
   );
   const row = screen.getByTestId('opportunity-card');
-  // 칸 다섯 개가 시안 순서대로 있다.
+  // 줄의 칸들(표 줄 다섯, 관심 기업 줄 셋)이 시안 순서대로 있다.
   const cells = Array.from(row.children) as HTMLElement[];
   return { row, cells };
 }
@@ -213,12 +219,150 @@ describe('OpportunityCard 표 줄 (#972)', () => {
     expect(on).toHaveStyle({ background: listTheme.starOn.bg, color: listTheme.starOn.fg });
   });
 
-  it('담당자를 고르기 전에는 의견 칸과 별이 잠기고, 안내는 의견 칸 옆 한 줄과 별의 손 올림 글로 보인다', () => {
+  it('담당자를 고르기 전에는 의견 칸과 별이 잠기고, 안내는 의견 칸 아래 한 줄과 별의 손 올림 글로 보인다', () => {
     const { row } = renderRow(full, false);
     expect(within(row).getByTestId('opinion-select')).toBeDisabled();
     expect(within(row).getByTestId('opinion-pick-staff-text')).toBeInTheDocument();
     const star = within(row).getByTestId('bookmark-button');
     expect(star).toBeDisabled();
     expect(star).toHaveAttribute('title', '담당자를 고르면 관심으로 담을 수 있습니다');
+  });
+});
+
+describe('OpportunityCard 관심 기업 줄 (#972)', () => {
+  beforeEach(() => {
+    // 오늘을 2026-11-27(한국 시각)로 고정한다. 지난 일정인지는 한국 날짜로 가른다.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** 영업 단계 기록에 다음 일정을 붙인다(가짜 값 — 지금 서버 목록 응답은 단계만 싣는다). */
+  const withSchedule = (at: string | null, note?: string): Partial<CardData> => ({
+    ...full,
+    records: {
+      ...full.records,
+      outcome: {
+        version: 1,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-20T01:00:00Z',
+        status: 'IN_PROGRESS',
+        nextScheduleAt: at,
+        nextScheduleNote: note ?? null,
+      },
+    },
+  });
+
+  it('줄은 세 칸이다: 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 의견 · [자세히 보기]', () => {
+    const { row, cells } = renderRow({ ...full, scoreState: 'CONFIRMED' }, true, 'bookmark');
+    expect(row).toHaveAttribute('data-layout', 'bookmark');
+    expect(row).toHaveClass('cand-row', 'cand-row--three');
+    expect(cells).toHaveLength(3);
+    const [company, reason, side] = cells;
+
+    // 1칸: 회사 이름(상세 링크) · 산업 · 꼬리표들(거리도 꼬리표로). 번호는 관심 기업 보기에 없다.
+    expect(within(company).queryByTestId('card-rank')).not.toBeInTheDocument();
+    expect(within(company).getByTestId('card-title-link')).toHaveTextContent(apjeong.title);
+    expect(
+      within(company)
+        .getAllByTestId('card-industry-tag')
+        .map((tag) => tag.textContent),
+    ).toEqual(['자동차 부품', '방위산업']);
+    for (const testId of [
+      'card-classification',
+      'card-fit-level',
+      'card-process-tag',
+      'card-virtual-tag',
+      'card-brochure-tag',
+      'card-stage-tag',
+      'card-reevaluated-tag',
+      'card-own-plating-tag',
+      'card-supply-tier-tag',
+      'card-ingested-tag',
+    ]) {
+      expect(within(company).getByTestId(testId)).toBeInTheDocument();
+    }
+    expect(within(company).getByTestId('card-distance-tag')).toHaveTextContent('거산에서 8.2km');
+
+    // 2칸: 이름표가 글 위에 보이고(숨기지 않는다) 추천 근거 · 검토사항 · 그 밖의 줄이 그대로 있다.
+    const reasonLabel = within(reason).getByText('추천 근거');
+    const blockerLabel = within(reason).getByText('검토사항');
+    expect(reasonLabel).not.toHaveClass('cand-row__label');
+    expect(blockerLabel).not.toHaveClass('cand-row__label');
+    expect(within(reason).getByTestId('card-reason')).toHaveTextContent(apjeong.reason);
+    expect(within(reason).getByTestId('card-blocker')).toHaveTextContent(/^확인할 것: 소재$/);
+    expect(within(reason).getByTestId('card-rank-adjust')).toBeInTheDocument();
+    expect(within(reason).getByTestId('card-own-plating-basis')).toBeInTheDocument();
+
+    // 3칸: "참고 63"의 숫자가 크게, 글자는 서버가 준 그대로. 의견 고르기 · 관심 별 · [자세히 보기](주 단추).
+    const score = within(side).getByTestId('card-score');
+    expect(score).toHaveTextContent(/^참고 63점 · 5\/8$/);
+    expect(within(score).getByText('63')).toHaveStyle({
+      fontSize: `${listTheme.scoreSizeLarge}px`,
+      fontWeight: 700,
+    });
+    expect(within(side).getByTestId('card-score-existing-tag')).toBeInTheDocument();
+    expect(within(side).getByTestId('opinion-select')).toBeInTheDocument();
+    expect(within(side).getByRole('button', { name: '관심', pressed: false })).toHaveAttribute(
+      'data-variant',
+      'star',
+    );
+    const detail = within(side).getByTestId('card-view-detail-link');
+    expect(detail).toHaveAttribute('href', `/opportunities/${encodeURIComponent(apjeong.oppId)}`);
+    expect(detail).toHaveClass('ant-btn-primary');
+  });
+
+  it('다음 일정이 오늘이거나 뒤면 "다음 일정 12/1 · 전화"로 보인다', () => {
+    const { cells } = renderRow(withSchedule('2026-12-01', '전화'), true, 'bookmark');
+    const line = within(cells[2]).getByTestId('card-next-schedule');
+    expect(line).toHaveTextContent(/^다음 일정 12\/1 · 전화$/);
+    expect(line).not.toHaveAttribute('data-overdue');
+    expect(line).not.toHaveStyle({ fontWeight: 600 });
+  });
+
+  it('오늘 일정은 지난 일정이 아니고, 할 일 글이 없으면 날짜만 보인다', () => {
+    const { cells } = renderRow(withSchedule('2026-11-27'), true, 'bookmark');
+    const line = within(cells[2]).getByTestId('card-next-schedule');
+    expect(line).toHaveTextContent(/^다음 일정 11\/27$/);
+    expect(line).not.toHaveAttribute('data-overdue');
+  });
+
+  it('지난 일정은 "지난 일정 11/10"으로 주의색 굵게 보인다', () => {
+    const { cells } = renderRow(withSchedule('2026-11-10', '견적'), true, 'bookmark');
+    const line = within(cells[2]).getByTestId('card-next-schedule');
+    expect(line).toHaveTextContent(/^지난 일정 11\/10$/);
+    expect(line).toHaveAttribute('data-overdue', 'true');
+    expect(line).toHaveStyle({ color: listTheme.overdueFg, fontWeight: 600 });
+  });
+
+  it('응답에 다음 일정이 없으면(지금 서버 목록 응답) 일정 줄을 그리지 않고 지어내지 않는다', () => {
+    const first = renderRow(full, true, 'bookmark');
+    expect(within(first.row).queryByTestId('card-next-schedule')).not.toBeInTheDocument();
+    expect(first.row).not.toHaveTextContent('다음 일정');
+    // 접촉 요약(접촉 횟수 · 마지막 접촉)은 목록 응답에 없어 만들지 않는다(단계 꼬리표 "접촉"만 있다).
+    expect(first.row).not.toHaveTextContent('마지막 접촉');
+    expect(first.row).not.toHaveTextContent(/접촉 \d+회/);
+    document.body.innerHTML = '';
+    const second = renderRow(withSchedule(null), true, 'bookmark');
+    expect(within(second.row).queryByTestId('card-next-schedule')).not.toBeInTheDocument();
+  });
+
+  it('점수 전 회사는 오른쪽에 "점수 전"이 보이고, 끝난 회사처럼 점수가 없는 줄은 점수 자리를 비운다', () => {
+    const first = renderRow(
+      { ...full, scoreState: 'NONE', scoreDisplay: '--', pickReason: '강재 볼트 생산' },
+      true,
+      'bookmark',
+    );
+    expect(within(first.cells[2]).getByTestId('card-score')).toHaveTextContent(/^점수 전$/);
+    expect(within(first.cells[1]).getByTestId('card-pick-reason')).toHaveTextContent(
+      '강재 볼트 생산',
+    );
+    document.body.innerHTML = '';
+    const second = renderRow({ ...full, bucket: 'CLOSED' }, true, 'bookmark');
+    expect(within(second.row).queryByTestId('card-score')).not.toBeInTheDocument();
+    expect(within(second.row).queryByTestId('card-score-big')).not.toBeInTheDocument();
   });
 });

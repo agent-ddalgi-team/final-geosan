@@ -196,6 +196,33 @@
   align-items: start;
 }
 
+/* 관심 기업 줄: 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 오른쪽(큰 점수 · 다음 일정 · 의견 · 자세히 보기). */
+.cand-row--three {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) 248px;
+  column-gap: 22px;
+}
+
+.cand-row__side {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+  text-align: right;
+}
+
+/* 큰 점수와 그 꼬리표(확인 전 · 기존 거래처)는 오른쪽에 붙여 세로로 쌓는다. */
+.cand-row__side-score {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.cand-row__side:has([data-testid='opinion-reason-input']) {
+  grid-column: 1 / -1;
+  justify-items: start;
+  text-align: left;
+}
+
 .cand-row__cell {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -226,14 +253,28 @@
   gap: 8px;
 }
 
+/* 의견 칸은 별 단추 옆 남는 너비를 쓰고 안쪽 글은 오른쪽에 붙인다(안내·저장됨 글이 길어도 별이 밀려 내려가지 않게). */
+.cand-row__actions-main > [data-testid='opinion-area'] {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-items: end;
+  text-align: right;
+}
+
 /* 제외 이유를 적는 동안에는 의견 칸이 줄 전체 너비를 쓴다(좁은 열에 입력 칸이 끼지 않게). */
 .cand-row__actions:has([data-testid='opinion-reason-input']) {
   grid-column: 1 / -1;
   justify-items: start;
 }
 
-.cand-row__actions:has([data-testid='opinion-reason-input']) .cand-row__actions-main {
+.cand-row__actions:has([data-testid='opinion-reason-input']) .cand-row__actions-main,
+.cand-row__side:has([data-testid='opinion-reason-input']) .cand-row__actions-main {
+  justify-self: stretch;
   justify-content: flex-start;
+}
+
+.cand-row__side:has([data-testid='opinion-reason-input']) .cand-row__side-score {
+  justify-items: start;
 }
 
 @container (max-width: 900px) {
@@ -255,13 +296,28 @@
     display: block;
   }
 
-  .cand-row__actions {
+  .cand-row__actions,
+  .cand-row__side,
+  .cand-row__side-score {
     justify-items: start;
+    text-align: left;
   }
 
   .cand-row__actions-main {
     justify-content: flex-start;
   }
+
+  .cand-row__actions-main > [data-testid='opinion-area'] {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+/* 제외 이유 입력 칸은 넓은 화면·좁은 화면 모두 왼쪽부터 넉넉한 너비(560px까지)로 둔다. */
+.cand-row__actions-main > [data-testid='opinion-area']:has([data-testid='opinion-reason-input']) {
+  flex: 0 1 560px;
+  justify-items: stretch;
+  text-align: left;
 }
 
 html,
