@@ -2022,6 +2022,8 @@ export const monthlyTrendTexts = {
     `${month}: 접촉 ${contacted} · 성사 ${won} · 거절 ${lost}`,
   monthLabel: (yearMonth: string) => `${Number(yearMonth.slice(5))}월`,
   empty: '최근 12개월에 접촉 기록이 없습니다.',
+  /** #972 선 그림 범례: 선은 접촉만 그리고 성사·거절은 달에 손을 올리면 뜨는 글과 아래 요약 문장으로 전한다. */
+  lineLegend: '선 = 접촉한 회사 수 · 달에 손을 올리면 그달의 성사·거절도 보입니다',
 } as const;
 
 export const autoSummaryTexts = {
@@ -2263,6 +2265,35 @@ export const analysisCharts = {
   timelineBefore: '흐린 점은 고른 기간 앞의 기록입니다.',
   /** 표 접기 */
   tablesToggle: '표로 보기',
+} as const;
+
+/**
+ * #972 영업 분석 숫자 카드 4칸(PM 결정 2026-11-27: #801에서 "겹친다"고 뺐던 칸을 새 시안대로 다시 둔다).
+ * 숫자는 분석 응답의 합계(회사를 한 번씩 센 값) 그대로이고 고른 기간을 따른다. 보조 글도 응답에 있는 값으로만 만든다.
+ */
+export const analysisNumberCardTexts = {
+  groupLabel: '접촉 · 진행 중 · 성사 · 거절 회사 수',
+  contacted: '접촉',
+  inProgress: '진행 중',
+  won: '성사',
+  lost: '거절',
+  unit: '곳',
+  /** 접촉 보조 글(기간을 고르지 않았을 때만): 월별 추세의 이번 달 값. 예: "이번 달 8곳" */
+  thisMonth: (count: number) => `이번 달 ${count}곳`,
+  /** 진행 중 보조 글: 진행 중인 회사가 가장 많이 머문 세부 단계. 예: "수요 확인 단계 3곳" */
+  openStep: (step: string, count: number) => `${step} 단계 ${count}곳`,
+  /** 성사 보조 글(기간을 고르지 않았을 때만): 성사·거절을 세는 범위. 예: "최근 365일" */
+  closedWindow: (days: number) => `최근 ${days}일`,
+  /** 거절 보조 글: 보류는 거절에 넣지 않고 따로 센다. 예: "보류 2곳 별도" */
+  holdApart: (count: number) => `보류 ${count}곳 별도`,
+} as const;
+
+/** #972 영업 분석 새 톤에서 더한 글자. */
+export const analysisToneTexts = {
+  /** 깔때기에서 회사가 가장 많이 멈춘 단계 옆 꼬리표(요약 문장·말풍선과 같은 단계). */
+  funnelMostStopped: '가장 많이 멈춤',
+  /** [기록에서 배우기] 자세한 카드 묶음의 화면 읽기용 이름. */
+  patternDetails: '기록에서 배우기 자세히',
 } as const;
 
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
@@ -2826,6 +2857,18 @@ export const operationsTexts = {
     '갱신은 지금 운영 명령으로 합니다(운영 안내서 "자료 갱신" 절). 이 화면에는 실행 단추가 없습니다.',
   blockedTitle: '최근 막힌 전송 10건',
   blockedEmpty: '막힌 전송이 없습니다.',
+} as const;
+
+/** #972 운영 관리 새 톤에서 더한 글자. 값은 모두 운영 응답에 있는 것만 쓴다. */
+export const operationsToneTexts = {
+  /** 큰 금액 옆 작은 글. 예: "/ 한도 $20.00 (83%)" (금액과 이으면 전과 같은 "$16.50 / 한도 $20.00 (83%)") */
+  usageLimit: (limit: string, percent: number) => `/ 한도 ${limit} (${percent}%)`,
+  /** 사용 비율이 알림 비율 이상일 때 막대 아래 주의 글. 예: "알림 기준 80% 이상입니다" */
+  usageOver: (percent: number) => `알림 기준 ${percent}% 이상입니다`,
+  /** 날짜별 제목 옆. 서버는 이번 달에 쓴 날만 준다. 예: "이번 달 쓴 날 8일" */
+  dailyNote: (days: number) => `이번 달 쓴 날 ${days}일`,
+  /** 막힌 전송 제목 옆. 예: "2건" */
+  blockedCount: (count: number) => `${count}건`,
 } as const;
 
 /** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */

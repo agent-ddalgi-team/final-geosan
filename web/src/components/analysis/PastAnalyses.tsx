@@ -23,7 +23,7 @@ const rowStyle = {
   textAlign: 'left',
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: radius.lg,
+  borderRadius: radius.card,
   padding: '12px 16px',
   cursor: 'pointer',
   font: 'inherit',

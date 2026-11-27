@@ -74,6 +74,7 @@ export default function ChartFrame({
   legend,
   callout,
   summary,
+  fill = false,
   children,
 }: {
   id: string;
@@ -82,6 +83,11 @@ export default function ChartFrame({
   legend?: ReactNode;
   callout?: ChartCallout | null;
   summary?: string | null;
+  /**
+   * (#972) 그림 둘을 한 줄에 나란히 둘 때 켠다: 카드가 줄 높이를 채워 옆 카드와 높이가 맞고 요약 문장은 맨 아래에 붙는다.
+   * 기본(끔)은 전처럼 카드가 내용만큼만 높다.
+   */
+  fill?: boolean;
   children: ReactNode;
 }) {
   const Heading = headingLevel === 3 ? 'h3' : 'h2';
@@ -89,7 +95,12 @@ export default function ChartFrame({
     <section
       aria-labelledby={`${id}-title`}
       data-testid={id}
-      style={{ display: 'grid', gap: 14, alignContent: 'start', minWidth: 0 }}
+      style={{
+        display: 'grid',
+        gap: 14,
+        minWidth: 0,
+        ...(fill ? { gridTemplateRows: 'minmax(0, 1fr) auto' } : { alignContent: 'start' }),
+      }}
     >
       <div
         style={{

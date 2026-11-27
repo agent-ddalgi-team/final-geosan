@@ -8,6 +8,7 @@ import AppFrame from '../../components/frame/AppFrame';
 import type { DashboardBreakdown } from '../../api/dashboardTypes';
 import type { AnalysisStats, SalesAnalysis } from '../../api/salesAnalysis';
 import { banner, dashboardTexts, frame, salesAnalysisTexts as texts } from '../../labels/ko';
+import { choiceChip } from '../../theme/tokens';
 import configFixture from '../../test/fixtures/config-ui.json';
 
 function stats(overrides: Partial<AnalysisStats> = {}): AnalysisStats {
@@ -237,6 +238,69 @@ describe('영업 분석 화면 (#608)', () => {
     expect(note).not.toHaveTextContent('밖으로 안 나감');
     expect(note).not.toHaveTextContent('AI는 쓰지 않습니다');
     await screen.findByTestId('analysis-process-table');
+  });
+
+  it('숫자 카드 4칸(#972): 그림 위에 응답 합계의 접촉·진행 중·성사·거절 곳 수가 보인다', async () => {
+    installFetch(ANALYSIS);
+    renderPage();
+    const cards = await screen.findByTestId('analysis-number-cards');
+    expect(within(cards).getByTestId('number-card-contacted')).toHaveTextContent('접촉3곳');
+    expect(within(cards).getByTestId('number-card-inProgress')).toHaveTextContent(
+      '진행 중1곳수요 확인 단계 1곳',
+    );
+    expect(within(cards).getByTestId('number-card-won')).toHaveTextContent('성사1곳최근 365일');
+    expect(within(cards).getByTestId('number-card-lost')).toHaveTextContent('거절1곳');
+    // 응답에 없는 값(월별 칸 없음 · 보류 0곳)으로는 보조 글을 만들지 않는다.
+    expect(
+      within(within(cards).getByTestId('number-card-contacted')).queryByTestId('number-card-sub'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(within(cards).getByTestId('number-card-lost')).queryByTestId('number-card-sub'),
+    ).not.toBeInTheDocument();
+    // 담당자 선호 제안 아래 · 그림 위.
+    const charts = screen.getByTestId('analysis-charts');
+    expect(cards.compareDocumentPosition(charts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('새 시안 배치(#972): 탭은 선택 단추 모양이고, 숫자 카드 → 그림 → AI 분석 피드백과 기록에서 배우기 → 표 순서다', async () => {
+    installFetch({
+      ...ANALYSIS,
+      monthly: [
+        { month: '2026-10', contacted: 2, won: 0, lost: 1 },
+        { month: '2026-11', contacted: 3, won: 1, lost: 0 },
+      ],
+    });
+    renderPage();
+    const tabs = within(screen.getByTestId('analysis-tabs')).getAllByRole('tab');
+    expect(tabs.map((tab) => [tab.textContent, tab.getAttribute('aria-selected')])).toEqual([
+      ['분석', 'true'],
+      ['지난 분석', 'false'],
+    ]);
+    expect(tabs[0]).toHaveStyle({
+      background: choiceChip.selected.bg,
+      color: choiceChip.selected.fg,
+    });
+    expect(tabs[1]).toHaveStyle({ background: choiceChip.idle.bg, color: choiceChip.idle.fg });
+    // 월별 추세는 깔때기와 같은 줄에 들어간다.
+    const charts = await screen.findByTestId('analysis-charts');
+    expect(within(screen.getByTestId('analysis-lead-cards')).getByTestId('monthly-trend')).toBe(
+      screen.getByTestId('monthly-trend'),
+    );
+    expect(screen.getByTestId('number-card-contacted')).toHaveTextContent('접촉3곳이번 달 3곳');
+    // AI 분석 피드백은 그림 아래, 기록에서 배우기 옆 칸에 그대로 있다.
+    const feedback = await screen.findByTestId('analysis-feedback');
+    expect(screen.getByTestId('patterns-layout')).toContainElement(feedback);
+    const order = [
+      screen.getByTestId('analysis-number-cards'),
+      charts,
+      feedback,
+      screen.getByTestId('analysis-tables'),
+    ];
+    for (let i = 1; i < order.length; i += 1) {
+      expect(
+        order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
   });
 
   it('공정별 표: 공정 줄과 그 아래 산업군 줄에 건수·평균·방법별 연결·거절 이유가 보인다', async () => {

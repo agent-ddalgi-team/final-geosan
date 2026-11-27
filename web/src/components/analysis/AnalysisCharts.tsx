@@ -1,13 +1,16 @@
 // 영업 분석 그림(#760 처음, #801 PM 지시 2026-11-16: 겹치는 숫자 칸 없이 네 그림으로 다시 짬).
 // ① 어디서 빠지나(깔때기) ② 거절 이유 ③ 어느 조합에서 잘 되나(공정 × 산업 칸) ④ 회사별로 어디서 멈췄나(타임라인).
 // 지금 상태 숫자(진행 중·보류)는 대시보드 몫이라 여기 두지 않는다. 숫자는 서버가 준 값을 세기만 한다(새로 지어내지 않는다).
-// 그림 파일·라이브러리 없이 칸·SVG로 그린다. 색은 theme/tokens의 chartPalette만 쓰고, 색만으로 구분하지 않게
+// 그림 파일·라이브러리 없이 칸·SVG로 그린다. 색은 theme/tokens만 쓰고, 색만으로 구분하지 않게
 // 글자를 함께 둔다. 점·칸에 손을 올리면 이름과 값이 뜬다(title). 자세한 값은 아래 [표로 보기]에 그대로 있다.
+// #972(새 시안): 흰 카드 위 보라 막대. 깔때기는 옅은 보라 막대에 마지막 "성사"만 진한 보라, 가장 많이 멈춘 단계는
+// 주의색 글자 + "가장 많이 멈춤" 꼬리표. 넓으면 [월별 추세 | 어디서 빠지나] · [거절 이유 | 어느 조합] 두 줄로 놓는다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AnalysisStats, CompanyAnalysisRow, SalesAnalysis } from '../../api/salesAnalysis';
 import {
   analysisCharts as texts,
+  analysisToneTexts,
   contactMethodLabels,
   contactResultLabels,
   labelFor,
@@ -15,18 +18,26 @@ import {
   outcomeStatusLabels,
   salesStepLabels,
 } from '../../labels/ko';
-import { chartTheme, radius, typography } from '../../theme/tokens';
+import {
+  accent,
+  chartTheme,
+  colors,
+  radius,
+  tagPalette,
+  typography,
+  warn,
+} from '../../theme/tokens';
 import ChartFrame, { chartSecondary } from '../common/ChartFrame';
 import {
   funnelReading,
   gridReading,
   lostReading,
+  mostStoppedStage,
   timelineReading,
   type ChartReading,
 } from './chartSummaries';
 
 const percent = (ratio: number) => Math.round(ratio * 100);
-// #898: 청회색 판 위 그림. 막대는 연노랑, 성사·지금 같은 강조는 먹색, 빈 칸은 반투명 흰색.
 const secondary = chartSecondary;
 
 function ChartCard({
@@ -50,6 +61,7 @@ function ChartCard({
       legend={legend}
       callout={reading?.callout ?? null}
       summary={reading?.summary ?? null}
+      fill
     >
       {children}
     </ChartFrame>
@@ -95,35 +107,30 @@ function HBars({
             const base = row.of ?? max;
             const width = base > 0 ? Math.max((row.value / base) * 100, row.value > 0 ? 2 : 0) : 0;
             return (
-              <li key={row.key} data-testid={`${id}-row`} title={`${row.label} · ${row.text}`}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    marginBottom: 6,
-                  }}
-                >
-                  <span>
-                    {row.label} <strong style={{ color: chartTheme.text }}>({row.text})</strong>
-                  </span>
-                  {row.note ? <span style={secondary}>{row.note}</span> : null}
-                </div>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    height: 14,
-                    borderRadius: radius.pill,
-                    background: chartTheme.track,
-                    overflow: 'hidden',
-                  }}
-                >
+              <li
+                key={row.key}
+                data-testid={`${id}-row`}
+                title={`${row.label} · ${row.text}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(96px, 42%) minmax(0, 1fr)',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
+                <span style={{ overflowWrap: 'anywhere' }}>
+                  {row.label} <strong style={{ color: chartTheme.text }}>({row.text})</strong>
+                  {row.note ? (
+                    <span style={{ ...secondary, display: 'block' }}>{row.note}</span>
+                  ) : null}
+                </span>
+                {/* 시안대로 바탕 칸 없이 얇은 막대만 둔다(값은 왼쪽 글자에 있다). */}
+                <div aria-hidden="true" style={{ height: 8 }}>
                   <div
                     style={{
                       width: `${width}%`,
                       height: '100%',
-                      borderRadius: radius.pill,
+                      borderRadius: radius.tag,
                       background: color,
                     }}
                   />
@@ -142,7 +149,7 @@ export function LostReasonBars({ total }: { total: AnalysisStats }) {
     <HBars
       id="chart-lost"
       title={texts.lostChartTitle}
-      color={chartTheme.bar}
+      color={accent.line}
       reading={lostReading(total)}
       rows={total.lostReasons.map((item) => ({
         key: item.code,
@@ -229,6 +236,8 @@ export function SalesFunnel({
 }) {
   const stages = funnelStages(companies);
   const top = Math.max(stages[0].count, 1);
+  // 가장 많이 멈춘 단계(요약 문장·말풍선과 같은 계산): 주의색 글자와 꼬리표로 띄운다.
+  const most = mostStoppedStage(stages);
   return (
     <ChartCard
       id="chart-funnel"
@@ -250,6 +259,7 @@ export function SalesFunnel({
               hold > 0 ? texts.funnelHold(hold) : null,
               open > 0 ? texts.funnelOpen(open) : null,
             ].filter(Boolean);
+            const isMost = most?.key === stage.key;
             return (
               <li
                 key={stage.key}
@@ -265,16 +275,15 @@ export function SalesFunnel({
                   }}
                 >
                   <span style={{ fontWeight: 600 }}>{texts.funnelStages[stage.key]}</span>
-                  <div
-                    aria-hidden="true"
-                    style={{ height: 24, borderRadius: radius.pill, background: chartTheme.track }}
-                  >
+                  {/* 시안: 바탕 칸 없이 옅은 보라 막대, 마지막 "성사"만 진한 보라. */}
+                  <div aria-hidden="true" style={{ height: 18 }}>
                     <div
+                      data-testid="chart-funnel-bar"
                       style={{
                         width: `${Math.max((stage.count / top) * 100, stage.count > 0 ? 2 : 0)}%`,
                         height: '100%',
-                        borderRadius: radius.pill,
-                        background: stage.key === 'WON' ? chartTheme.barStrong : chartTheme.bar,
+                        borderRadius: radius.tag,
+                        background: stage.key === 'WON' ? accent.bg : accent.softDeep,
                       }}
                     />
                   </div>
@@ -284,18 +293,48 @@ export function SalesFunnel({
                   </strong>
                 </div>
                 {stage.pass !== null ? (
-                  <p
-                    data-testid="chart-funnel-gap"
-                    style={{ margin: '0 0 6px 96px', ...secondary }}
+                  <div
+                    style={{
+                      margin: '0 0 6px 96px',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: '4px 8px',
+                    }}
                   >
-                    {'↓ '}
-                    {stage.count >= minSample
-                      ? texts.funnelPass(percent(stage.pass))
-                      : texts.funnelSmall}
-                    {stoppedCount > 0
-                      ? ` · ${texts.funnelStopped(stoppedCount)}${parts.length > 0 ? ` · ${parts.join(' · ')}` : ''}`
-                      : ''}
-                  </p>
+                    <p
+                      data-testid="chart-funnel-gap"
+                      data-most={isMost ? 'true' : 'false'}
+                      style={{
+                        margin: 0,
+                        ...secondary,
+                        ...(isMost ? { color: warn.text, fontWeight: 600 } : null),
+                      }}
+                    >
+                      {'↓ '}
+                      {stage.count >= minSample
+                        ? texts.funnelPass(percent(stage.pass))
+                        : texts.funnelSmall}
+                      {stoppedCount > 0
+                        ? ` · ${texts.funnelStopped(stoppedCount)}${parts.length > 0 ? ` · ${parts.join(' · ')}` : ''}`
+                        : ''}
+                    </p>
+                    {isMost ? (
+                      <span
+                        data-testid="chart-funnel-most"
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: radius.tag,
+                          background: tagPalette.warn.bg,
+                          color: tagPalette.warn.fg,
+                          fontSize: typography.fontSizeSecondary,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {analysisToneTexts.funnelMostStopped}
+                      </span>
+                    ) : null}
+                  </div>
                 ) : null}
               </li>
             );
@@ -343,6 +382,9 @@ export function ProcessIndustryGrid({
   };
   // 공정·산업 이름은 길면 꺾고(좁은 폭에서 칸이 옆으로 넘치지 않게), 숫자 칸은 꺾지 않는다.
   const headStyle = { whiteSpace: 'normal' as const, minWidth: 64, maxWidth: 120 };
+  // 표 머리(산업 이름)는 흐린 글자 + 얇은 아래 선, 줄 머리(공정 이름)는 굵게.
+  const columnHead = { ...headStyle, color: colors.textDimmed, fontWeight: 400 };
+  const rowHead = { ...headStyle, fontWeight: 600 };
   return (
     <ChartCard id="chart-grid" title={texts.gridTitle} reading={gridReading(rows, minSample)}>
       {rows.length === 0 || industries.length === 0 ? (
@@ -358,11 +400,14 @@ export function ProcessIndustryGrid({
           >
             <thead>
               <tr>
-                <th scope="col" style={{ ...cellStyle, ...secondary, fontWeight: 400 }}>
+                <th
+                  scope="col"
+                  style={{ ...cellStyle, ...secondary, color: colors.textDimmed, fontWeight: 400 }}
+                >
                   {texts.gridCorner}
                 </th>
                 {industries.map((name) => (
-                  <th key={name} scope="col" style={{ ...cellStyle, ...headStyle }}>
+                  <th key={name} scope="col" style={{ ...cellStyle, ...columnHead }}>
                     {name}
                   </th>
                 ))}
@@ -371,7 +416,7 @@ export function ProcessIndustryGrid({
             <tbody>
               {rows.map((row) => (
                 <tr key={row.processCode ?? 'none'}>
-                  <th scope="row" style={{ ...cellStyle, ...headStyle }}>
+                  <th scope="row" style={{ ...cellStyle, ...rowHead }}>
                     {row.processName}
                   </th>
                   {industries.map((name) => {
@@ -407,8 +452,8 @@ export function ProcessIndustryGrid({
                               borderRadius: '50%',
                               flex: 'none',
                               boxSizing: 'border-box',
-                              border: `1.5px solid ${chartTheme.barStrong}`,
-                              background: small ? chartTheme.barSoft : chartTheme.bar,
+                              border: `1.5px solid ${small ? accent.line : accent.bright}`,
+                              background: small ? accent.softDeep : accent.bright,
                             }}
                           />
                           <span style={{ display: 'grid' }}>
@@ -559,7 +604,10 @@ export function CompanyTimeline({
             {texts.timelineNotReached}
           </li>
           <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span aria-hidden="true" style={dotStyle(true, true)} />
+            <span
+              aria-hidden="true"
+              style={{ ...dotStyle(true, true), transform: 'rotate(45deg)' }}
+            />
             {texts.timelineStep}
           </li>
         </ul>
@@ -593,7 +641,7 @@ export function CompanyTimeline({
             </div>
             <span />
           </div>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid' }}>
             {shown.map(({ company, dots }) => (
               <li
                 key={company.oppId}
@@ -604,6 +652,8 @@ export function CompanyTimeline({
                   gap: 12,
                   alignItems: 'center',
                   minHeight: 30,
+                  padding: '6px 0',
+                  borderTop: `1px solid ${chartTheme.line}`,
                 }}
               >
                 <span
@@ -661,7 +711,11 @@ export function CompanyTimeline({
                 </div>
                 <span
                   data-testid="chart-timeline-end"
-                  style={{ fontSize: typography.fontSizeSecondary }}
+                  style={{
+                    fontSize: typography.fontSizeSecondary,
+                    color: chartTheme.textSecondary,
+                    textAlign: 'right',
+                  }}
                 >
                   {timelineEnd(company)}
                 </span>
@@ -679,7 +733,7 @@ export function CompanyTimeline({
                 background: 'none',
                 border: 'none',
                 padding: 0,
-                color: chartTheme.text,
+                color: accent.text,
                 textDecoration: 'underline',
                 cursor: 'pointer',
                 font: 'inherit',
@@ -697,36 +751,62 @@ export function CompanyTimeline({
   );
 }
 
-/** 점 모양: 연결은 칠한 원, 연결 안 됨은 빈 원, 단계가 올라간 날은 칠한 마름모. */
+/**
+ * 점 모양(#972 시안 색): 연결은 보라로 칠한 원, 연결 안 됨은 흐린 보라 테두리의 빈 원,
+ * 단계가 올라간 날은 글자색으로 칠한 마름모(모서리 0인 네모를 돌려 그린다 — 색만으로 가르지 않게 모양도 다르다).
+ */
 function dotStyle(filled: boolean, step: boolean) {
-  const size = step ? 11 : 12;
+  const size = step ? 10 : 11;
+  const fill = step ? chartTheme.barStrong : filled ? accent.bright : chartTheme.cardBg;
+  const edge = step ? chartTheme.barStrong : filled ? accent.bright : accent.line;
   return {
     display: 'inline-block',
     width: size,
     height: size,
     boxSizing: 'border-box' as const,
-    borderRadius: step ? radius.sm : '50%',
-    border: `2px solid ${chartTheme.barStrong}`,
-    background: step ? chartTheme.bar : filled ? chartTheme.barStrong : chartTheme.barSoft,
+    borderRadius: step ? 0 : '50%',
+    border: `2px solid ${edge}`,
+    background: fill,
     flex: 'none',
   };
 }
 
-/** 네 그림 묶음. 아래 [표로 보기]는 화면이 따로 그린다. */
-export default function AnalysisCharts({ data }: { data: SalesAnalysis }) {
+const rowStyle = { display: 'flex', flexWrap: 'wrap', gap: 16 } as const;
+/** 줄 안의 넓은 칸(1.45)과 좁은 칸(1). 좁은 화면에서는 아래로 쌓인다. */
+const wideCell = { flex: '1.45 1 420px', minWidth: 0, display: 'grid' } as const;
+const narrowCell = { flex: '1 1 300px', minWidth: 0, display: 'grid' } as const;
+
+/**
+ * 네 그림 묶음. 아래 [표로 보기]는 화면이 따로 그린다.
+ * #972 시안 배치: [앞 칸(월별 추세) | 어디서 빠지나] · [거절 이유 | 어느 조합에서 잘 되나] · 회사별로 어디서 멈췄나.
+ * lead가 없으면(옛 서버라 월별 값이 없을 때 등) 깔때기가 첫 줄을 다 쓴다.
+ */
+export default function AnalysisCharts({
+  data,
+  lead,
+}: {
+  data: SalesAnalysis;
+  /** 깔때기 왼쪽에 나란히 둘 칸(영업 분석 화면은 월별 추세를 넣는다). */
+  lead?: ReactNode;
+}) {
   const minSample = data.basis.minSampleForRatio;
   return (
     <div data-testid="analysis-charts" style={{ display: 'grid', gap: 16 }}>
-      {/* 넓으면 깔때기 2 : 거절 이유 1(빠진 곳의 이유를 옆에서 본다), 좁으면 아래로 쌓인다. */}
-      <div data-testid="analysis-bar-cards" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ flex: '2 1 460px', minWidth: 0, display: 'grid' }}>
+      <div data-testid="analysis-lead-cards" style={rowStyle}>
+        {lead ? <div style={wideCell}>{lead}</div> : null}
+        <div style={narrowCell}>
           <SalesFunnel companies={data.companies} minSample={minSample} />
         </div>
-        <div style={{ flex: '1 1 260px', minWidth: 0, display: 'grid' }}>
+      </div>
+      {/* 거절 이유를 조합 칸 옆에 둔다(시안). 좁으면 아래로 쌓인다. */}
+      <div data-testid="analysis-bar-cards" style={rowStyle}>
+        <div style={narrowCell}>
           <LostReasonBars total={data.total} />
         </div>
+        <div style={wideCell}>
+          <ProcessIndustryGrid rows={data.byProcess} minSample={minSample} />
+        </div>
       </div>
-      <ProcessIndustryGrid rows={data.byProcess} minSample={minSample} />
       <CompanyTimeline companies={data.companies} periodFrom={data.basis.from ?? null} />
     </div>
   );

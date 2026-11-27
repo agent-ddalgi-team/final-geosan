@@ -195,6 +195,68 @@ it('답 채움률을 맨 위에, 그다음 눈에 띔·실패에서 배우기·�
   expect(screen.getAllByTestId('patterns-fill-row')).toHaveLength(1); // 물을 자리 0인 질문은 뺀다
 });
 
+it('옆 칸(AI 분석 피드백 자리)을 주면 머리·자동 요약과 나란히 두고, 나머지 카드는 같은 순서로 그 아래에 둔다(#972)', async () => {
+  let release: (value: unknown) => void = () => {};
+  vi.mocked(getSalesPatterns).mockReturnValueOnce(
+    new Promise((resolve) => {
+      release = resolve;
+    }) as never,
+  );
+  render(
+    <SalesPatterns
+      period={{ from: null, to: null }}
+      reloadKey={0}
+      processNames={{}}
+      beside={<p data-testid="beside-slot">옆 칸</p>}
+    />,
+  );
+  // 읽는 중에도 옆 칸은 같은 자리에 보인다.
+  const beside = screen.getByTestId('beside-slot');
+  expect(screen.queryByTestId('patterns')).not.toBeInTheDocument();
+  release({ data: SAMPLE, meta: {} });
+  const head = await screen.findByTestId('patterns');
+  // 다 읽은 뒤에도 옆 칸은 다시 그려지지 않은 같은 칸이다.
+  expect(screen.getByTestId('beside-slot')).toBe(beside);
+  expect(head).toContainElement(screen.getByTestId('patterns-basis'));
+  expect(head).toContainElement(screen.getByTestId('patterns-auto-summary'));
+  const details = screen.getByTestId('patterns-details');
+  const ids = [
+    'patterns-fill',
+    'patterns-standouts',
+    'patterns-failure',
+    'patterns-contacts',
+    'patterns-gap',
+    'patterns-answers',
+    'patterns-success',
+    'patterns-combos',
+    'patterns-hints',
+    'patterns-coach',
+  ];
+  const cards = ids.map((id) => screen.getByTestId(id));
+  for (const card of cards) expect(details).toContainElement(card);
+  const order = [beside, head, ...cards];
+  for (let i = 1; i < order.length; i += 1) {
+    expect(
+      order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  }
+});
+
+it('옆 칸을 줬는데 패턴을 못 읽으면 옆 칸은 그대로 두고 그 옆에 안내만 보인다(#972)', async () => {
+  vi.mocked(getSalesPatterns).mockRejectedValueOnce(new Error('없음'));
+  render(
+    <SalesPatterns
+      period={{ from: null, to: null }}
+      reloadKey={0}
+      processNames={{}}
+      beside={<p data-testid="beside-slot">옆 칸</p>}
+    />,
+  );
+  expect(await screen.findByTestId('patterns-error')).toBeInTheDocument();
+  expect(screen.getByTestId('beside-slot')).toBeInTheDocument();
+  expect(screen.queryByTestId('patterns-details')).not.toBeInTheDocument();
+});
+
 it('눈에 띔은 "결론 아님 · 사람 확인 전"이고 칸 이름·전체와의 차이를 보인다', async () => {
   vi.mocked(getSalesPatterns).mockResolvedValueOnce({ data: SAMPLE, meta: {} } as never);
   renderPatterns();
