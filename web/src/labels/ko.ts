@@ -2859,6 +2859,18 @@ export const operationsTexts = {
   blockedEmpty: '막힌 전송이 없습니다.',
 } as const;
 
+/** #972 운영 관리 새 톤에서 더한 글자. 값은 모두 운영 응답에 있는 것만 쓴다. */
+export const operationsToneTexts = {
+  /** 큰 금액 옆 작은 글. 예: "/ 한도 $20.00 (83%)" (금액과 이으면 전과 같은 "$16.50 / 한도 $20.00 (83%)") */
+  usageLimit: (limit: string, percent: number) => `/ 한도 ${limit} (${percent}%)`,
+  /** 사용 비율이 알림 비율 이상일 때 막대 아래 주의 글. 예: "알림 기준 80% 이상입니다" */
+  usageOver: (percent: number) => `알림 기준 ${percent}% 이상입니다`,
+  /** 날짜별 제목 옆. 서버는 이번 달에 쓴 날만 준다. 예: "이번 달 쓴 날 8일" */
+  dailyNote: (days: number) => `이번 달 쓴 날 ${days}일`,
+  /** 막힌 전송 제목 옆. 예: "2건" */
+  blockedCount: (count: number) => `${count}건`,
+} as const;
+
 /** #810: https 인증서 오류로 같은 주소의 http로 읽은 근거. 출처 주소가 http면 그 옆에 붙인다. */
 export const sourceUrlTexts = {
   insecure: ' (암호화 없는 주소로 읽음)',
