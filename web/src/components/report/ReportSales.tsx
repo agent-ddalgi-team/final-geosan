@@ -74,6 +74,7 @@ export function ReportSales({
           outcome={progress.outcome}
           contactTotal={progress.contactTotal}
           questions={questions}
+          hideTitle
         />
       </div>
       <div className="report-stats">
