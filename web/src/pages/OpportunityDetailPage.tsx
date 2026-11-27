@@ -381,80 +381,95 @@ export default function OpportunityDetailPage() {
                 </span>
               ) : null
             }
-          />
-          {/* #847: 넓은 화면에서는 오른쪽 기록 칸의 확정된 것이 이 자리(영업 단계 바로 아래)에 그려진다. */}
-          {dockSlot ? <div ref={setStageSlot} data-testid="detail-stage-slot" /> : null}
-          <DetailGlance
-            header={data.header}
-            processLinks={data.processLinks}
-            evidence={data.evidence}
-            reviewItems={data.reviewItems}
-            requirements={data.requirements}
-            contactCount={contactCount}
-            lastContactAt={lastContactAt}
-            scoreItems={data.scores?.items}
-            // #803: 작은 지도(좌표가 없거나 가상 사례면 서버가 null을 준다).
-            map={data.map ?? null}
-            // #860: 통화에서 들은 "도금 업체는 누가 정하나요?" 답이 공급망 위치 줄에 먼저 보인다.
-            plateDecider={
-              (salesStep?.known ?? []).find(
-                (answer) => answer.questionId === PLATER_DECIDER_QUESTION_ID,
-              ) ?? null
+            // #847 → #972: 넓은 화면에서는 오른쪽 기록 칸의 확정된 것(들은 답 · 단계 고치기 · 다음 일정)이
+            // 영업 단계 카드 안, 단계 그림 바로 아래에 그려진다.
+            stageExtra={
+              dockSlot ? <div ref={setStageSlot} data-testid="detail-stage-slot" /> : null
             }
-            // #803: 산업은 "한눈에" 산업 칸에서 바로 [확정]·[고치기](전에는 아래 따로 카드).
-            industryEditor={
-              <IndustryChips
-                key={`${oppId}:industries`}
-                oppId={oppId}
-                header={data.header}
-                bare
-                onSaved={() => {
+          />
+          {/* #972 새 시안: "한눈에"와 "왜 이 회사인가"를 나란히 둔다(좁으면 위아래로 쌓인다). */}
+          <div
+            data-testid="detail-glance-why"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
+              gap: spacing.cardGap,
+              alignItems: 'start',
+            }}
+          >
+            <DetailGlance
+              header={data.header}
+              processLinks={data.processLinks}
+              evidence={data.evidence}
+              reviewItems={data.reviewItems}
+              requirements={data.requirements}
+              contactCount={contactCount}
+              lastContactAt={lastContactAt}
+              scoreItems={data.scores?.items}
+              // #803: 작은 지도(좌표가 없거나 가상 사례면 서버가 null을 준다).
+              map={data.map ?? null}
+              // #860: 통화에서 들은 "도금 업체는 누가 정하나요?" 답이 공급망 위치 줄에 먼저 보인다.
+              plateDecider={
+                (salesStep?.known ?? []).find(
+                  (answer) => answer.questionId === PLATER_DECIDER_QUESTION_ID,
+                ) ?? null
+              }
+              // #803: 산업은 "한눈에" 산업 칸에서 바로 [확정]·[고치기](전에는 아래 따로 카드).
+              industryEditor={
+                <IndustryChips
+                  key={`${oppId}:industries`}
+                  oppId={oppId}
+                  header={data.header}
+                  bare
+                  onSaved={() => {
+                    setReload((n) => n + 1);
+                    setTimelineVersion((n) => n + 1);
+                  }}
+                />
+              }
+              processChoice={{
+                oppId,
+                evalId: data.evalId,
+                // #847: 공정 줄 [고치기]의 보기는 질문 파일의 공정 고르기 보기(거산 공정 목록)를 쓴다.
+                options: salesQuestions?.questions
+                  .find((question) => question.choices === 'PROCESS')
+                  ?.answers.map((answer) => ({ code: answer.answerId, name: answer.label })),
+                // #958: 소재 줄 [고치기]의 보기는 설정 응답의 거산 처리 소재.
+                materialOptions: config?.materialOptions,
+                // #958: 어떤 회사 칸의 주소·회사 이름 [고치기].
+                companyInfo: true,
+                // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
+                onSaved: () => {
                   setReload((n) => n + 1);
                   setTimelineVersion((n) => n + 1);
-                }}
-              />
-            }
-            processChoice={{
-              oppId,
-              evalId: data.evalId,
-              // #847: 공정 줄 [고치기]의 보기는 질문 파일의 공정 고르기 보기(거산 공정 목록)를 쓴다.
-              options: salesQuestions?.questions
-                .find((question) => question.choices === 'PROCESS')
-                ?.answers.map((answer) => ({ code: answer.answerId, name: answer.label })),
-              // #958: 소재 줄 [고치기]의 보기는 설정 응답의 거산 처리 소재.
-              materialOptions: config?.materialOptions,
-              // #958: 어떤 회사 칸의 주소·회사 이름 [고치기].
-              companyInfo: true,
-              // 고르면 다시 평가되므로 상세와 활동 이력을 새로 불러온다(#677).
-              onSaved: () => {
-                setReload((n) => n + 1);
-                setTimelineVersion((n) => n + 1);
-              },
-            }}
-            callCheckCount={
-              data.reviewItems !== undefined
-                ? callCheckCountOf(
-                    {
-                      header: data.header,
-                      reasons: data.reasons,
-                      processLinks: data.processLinks,
-                      reviewItems: data.reviewItems,
-                      requirements: data.requirements,
-                      salesStep,
-                    },
-                    salesQuestions,
-                    // #847: 확인사항의 "지난 통화에서 이어서" 줄도 센다.
-                    (fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep) ?? null,
-                  )
-                : 0
-            }
-          />
-          <WhyThisCompany
-            header={data.header}
-            reasons={data.reasons}
-            scoreItems={data.scores?.items}
-            evidence={data.evidence}
-          />
+                },
+              }}
+              callCheckCount={
+                data.reviewItems !== undefined
+                  ? callCheckCountOf(
+                      {
+                        header: data.header,
+                        reasons: data.reasons,
+                        processLinks: data.processLinks,
+                        reviewItems: data.reviewItems,
+                        requirements: data.requirements,
+                        salesStep,
+                      },
+                      salesQuestions,
+                      // #847: 확인사항의 "지난 통화에서 이어서" 줄도 센다.
+                      (fresh && fresh.data === data ? fresh.callPrep : data.records.callPrep) ??
+                        null,
+                    )
+                  : 0
+              }
+            />
+            <WhyThisCompany
+              header={data.header}
+              reasons={data.reasons}
+              scoreItems={data.scores?.items}
+              evidence={data.evidence}
+            />
+          </div>
           {/* #803: "통화에서 확인할 것"은 오른쪽 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다.
               서버가 검토사항을 안 주는 옛 응답일 때만 후속 조치를 예전 부품으로 보인다. */}
           {data.reviewItems === undefined ? (

@@ -3,7 +3,7 @@
 import { Link } from 'react-router-dom';
 import type { PeerCompany } from '../../api/types';
 import { peersArea } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, radius, tagPalette, typography } from '../../theme/tokens';
 import StatusTag from '../common/StatusTag';
 import { peerLastContactText, peerStageText, truncateNote } from './peersText';
 
@@ -13,12 +13,15 @@ export interface PeerCompanyLineProps {
   processNames: Record<string, string>;
   /** 담당자 키 → 이름. 없으면 키를 그대로 보인다. */
   personName: (key: string) => string;
+  /** 줄 위에 얇은 나눔 줄을 긋는다(#972, 둘째 줄부터). */
+  divider?: boolean;
 }
 
 export default function PeerCompanyLine({
   company,
   processNames,
   personName,
+  divider = false,
 }: PeerCompanyLineProps) {
   const secondary = {
     color: colors.textSecondary,
@@ -31,13 +34,21 @@ export default function PeerCompanyLine({
   return (
     <li
       data-testid="peer-company"
-      style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
+      // #972 새 시안: 줄마다 위아래 여백을 두고 줄 사이에 얇은 나눔 줄(첫 줄 위에는 없다).
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        alignItems: 'center',
+        padding: '8px 0',
+        borderTop: divider ? `1px solid ${colors.borderSecondary}` : 0,
+      }}
     >
       <Link
         to={`/opportunities/${encodeURIComponent(company.oppId)}`}
         aria-label={peersArea.openCompanyLabel(company.name)}
         data-testid="peer-company-name"
-        style={{ fontWeight: 600 }}
+        style={{ fontWeight: 600, color: colors.text }}
       >
         {company.name}
       </Link>
@@ -59,7 +70,19 @@ export default function PeerCompanyLine({
           {company.industries.join(', ')}
         </span>
       ) : null}
-      <span data-testid="peer-stage">{peerStageText(company)}</span>
+      {/* 영업 단계는 중립 꼬리표 모양으로(글자는 그대로). */}
+      <span
+        data-testid="peer-stage"
+        style={{
+          padding: '2px 10px',
+          borderRadius: radius.tag,
+          background: tagPalette.neutral.bg,
+          color: tagPalette.neutral.fg,
+          fontSize: typography.fontSizeSecondary,
+        }}
+      >
+        {peerStageText(company)}
+      </span>
       <span data-testid="peer-last-contact" style={secondary}>
         {lastContact ?? peersArea.noContact}
       </span>

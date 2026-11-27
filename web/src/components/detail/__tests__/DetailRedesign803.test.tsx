@@ -139,4 +139,59 @@ describe('머리', () => {
     expect(within(head).getByTestId('slot-report')).toBeInTheDocument();
     expect(within(head).getByTestId('slot-opinion')).toBeInTheDocument();
   });
+
+  it('Given 새 시안(#972) When 머리 Then 영업 단계 그림은 흰 카드 안에 있고, 그 아래 자리에 들은 답·다음 일정 칸이 붙는다', () => {
+    render(
+      <MemoryRouter>
+        <FrameContext.Provider value={frame('park-lee', true)}>
+          <HeaderSection
+            oppId="opp-1"
+            onReload={() => {}}
+            header={header}
+            bookmark={null}
+            onBookmarkChanged={() => {}}
+            ownerName="영업 김"
+            opinion={<span data-testid="slot-opinion">의견: 영업 대상</span>}
+            stageExtra={<div data-testid="slot-stage">지금까지 들은 답</div>}
+          />
+        </FrameContext.Provider>
+      </MemoryRouter>,
+    );
+    const card = screen.getByTestId('detail-stage-card');
+    expect(screen.getByTestId('detail-header')).toContainElement(card);
+    expect(within(card).getByTestId('sales-progress')).toBeInTheDocument();
+    expect(within(card).getAllByTestId('sales-progress-band')).toHaveLength(4);
+    // 단계 그림 아래, 같은 카드 안.
+    const extra = within(card).getByTestId('detail-stage-extra');
+    expect(within(extra).getByTestId('slot-stage')).toBeInTheDocument();
+    expect(
+      within(card).getByTestId('sales-progress').compareDocumentPosition(extra) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // 꼬리표 줄(대응·담당·의견)은 카드 밖, 카드보다 위에 있다.
+    const meta = screen.getByTestId('detail-meta');
+    expect(card).not.toContainElement(meta);
+    expect(meta).toHaveTextContent(detailHeader.purpose);
+    expect(meta).toHaveTextContent('담당영업 김');
+    expect(card).not.toContainElement(screen.getByTestId('slot-opinion'));
+    expect(meta.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('Given 아래에 붙일 것이 없다 When 머리 Then 영업 단계 카드에는 그림만 있다', () => {
+    render(
+      <MemoryRouter>
+        <FrameContext.Provider value={frame('park-lee', true)}>
+          <HeaderSection
+            oppId="opp-1"
+            onReload={() => {}}
+            header={header}
+            bookmark={null}
+            onBookmarkChanged={() => {}}
+          />
+        </FrameContext.Provider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('detail-stage-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('detail-stage-extra')).not.toBeInTheDocument();
+  });
 });

@@ -58,6 +58,8 @@ export default function ProcessFix({ oppId, current, options, onSaved }: Process
         {' '}
         <Button
           size="small"
+          type="link"
+          style={{ padding: '0 4px', height: 'auto' }}
           disabled={!canRecord || options.length === 0}
           onClick={() => {
             setError(null);

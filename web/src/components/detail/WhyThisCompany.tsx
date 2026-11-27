@@ -13,7 +13,7 @@ import {
   factoryProfileLabels,
   labelFor,
 } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { accent, colors, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
@@ -174,7 +174,7 @@ export default function WhyThisCompany({
           data-testid="detail-reason-lines"
           style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
         >
-          {lines.map((row) => {
+          {lines.map((row, rowIndex) => {
             const quotes = dedupeEvidence(row.evidence);
             const grade = bestGradeOf(quotes);
             const colon = row.text.indexOf(': ');
@@ -185,8 +185,9 @@ export default function WhyThisCompany({
                 style={{
                   display: 'grid',
                   gap: 4,
-                  padding: '8px 0',
-                  borderTop: `1px solid ${colors.borderSecondary}`,
+                  padding: '10px 0',
+                  // #972 새 시안: 줄 사이에만 얇은 나눔 줄(첫 줄 위에는 없다).
+                  borderTop: rowIndex === 0 ? 0 : `1px solid ${colors.borderSecondary}`,
                 }}
               >
                 <div
@@ -229,7 +230,14 @@ export default function WhyThisCompany({
                 {quotes.length > 0 ? (
                   // #803: 인용·출처는 접어 두고 "근거 3건"을 눌러 편다(화면 길이의 절반이 인용 줄이었다).
                   <details data-testid="detail-reason-evidence">
-                    <summary style={{ cursor: 'pointer', ...secondary }}>
+                    <summary
+                      style={{
+                        cursor: 'pointer',
+                        width: 'fit-content',
+                        fontSize: typography.fontSizeSecondary,
+                        color: accent.text,
+                      }}
+                    >
                       {texts.evidenceCount(quotes.length)}
                     </summary>
                     <ul aria-label={texts.evidenceListLabel(row.text)} style={quoteList}>
