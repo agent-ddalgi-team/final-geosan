@@ -2022,6 +2022,8 @@ export const monthlyTrendTexts = {
     `${month}: 접촉 ${contacted} · 성사 ${won} · 거절 ${lost}`,
   monthLabel: (yearMonth: string) => `${Number(yearMonth.slice(5))}월`,
   empty: '최근 12개월에 접촉 기록이 없습니다.',
+  /** #972 선 그림 범례: 선은 접촉만 그리고 성사·거절은 달에 손을 올리면 뜨는 글과 아래 요약 문장으로 전한다. */
+  lineLegend: '선 = 접촉한 회사 수 · 달에 손을 올리면 그달의 성사·거절도 보입니다',
 } as const;
 
 export const autoSummaryTexts = {
