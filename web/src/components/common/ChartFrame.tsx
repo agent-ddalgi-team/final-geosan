@@ -1,4 +1,4 @@
-// 분석 그림 틀(#898, PM 참고 그림 2026-11-22): 청회색 판 + 오른쪽 위 말풍선(가장 중요한 숫자 하나) +
+// 분석 그림 틀(#898 → #972): 흰 카드(얇은 테두리, 모서리 12) + 오른쪽 위 숫자 칸(가장 중요한 숫자 하나) +
 // 판 아래 요약 문장("이 그림에서 읽을 것"). 요약은 그림과 같은 값으로 화면에서 만든 문장이고 AI를 쓰지 않는다.
 // 색은 theme/tokens의 chartTheme만 쓴다.
 import type { ReactNode } from 'react';
@@ -27,7 +27,7 @@ export function CalloutBubble({ callout, testId }: { callout: ChartCallout; test
         gap: 0,
         padding: '8px 16px',
         background: chartTheme.calloutBg,
-        borderRadius: `${radius.lg}px ${radius.lg}px ${radius.lg}px 6px`,
+        borderRadius: radius.control,
         maxWidth: 240,
       }}
     >
@@ -95,7 +95,8 @@ export default function ChartFrame({
         style={{
           background: chartTheme.cardBg,
           color: chartTheme.text,
-          borderRadius: radius.xl,
+          border: `1px solid ${chartTheme.cardBorder}`,
+          borderRadius: radius.card,
           padding: 24,
           display: 'grid',
           gap: 16,

@@ -1,4 +1,6 @@
-/* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다. */
+/* 전역 스타일 최소: 글꼴·초점선·움직임 줄이기 (접근성 점검표 A5·A12). 색·크기 값은 tokens.ts와 같은 값만 쓴다.
+   #972 보라 톤: 글자 #1b1a2e · 보조 글자 #56566e · 바탕 #f7f7fb · 테두리 #ebebf3(칸 #d6d6e4) · 강조 #6a4df0 ·
+   강조 글자 #5b3fe0 · 강조 연한 바탕 #f4f1ff · 강조 테두리 #d9cfff. 모서리는 카드 12 · 단추·입력 9 · 꼬리표 6. */
 .prospect-page-heading {
   display: flex;
   align-items: center;
@@ -10,8 +12,8 @@
 
 .prospect-form,
 .prospect-history {
-  border: 1px solid #e3e6ea;
-  border-radius: 8px;
+  border: 1px solid #ebebf3;
+  border-radius: 12px;
   padding: 16px;
   background: #fff;
 }
@@ -40,7 +42,7 @@
 
 .prospect-check-group legend small {
   margin-left: 4px;
-  color: #5b6470;
+  color: #56566e;
   font-size: 14px;
   font-weight: 400;
 }
@@ -63,7 +65,7 @@
 
 .prospect-choice-section-title {
   margin-bottom: 4px;
-  color: #5b6470;
+  color: #56566e;
   font-size: 13px;
   font-weight: 600;
 }
@@ -74,27 +76,30 @@
   min-height: 36px;
   gap: 7px;
   padding: 5px 9px;
-  border: 1px solid #e3e6ea;
-  border-radius: 6px;
+  border: 1px solid #ebebf3;
+  border-radius: 9px;
   cursor: pointer;
   font-size: 14px;
   overflow-wrap: anywhere;
 }
 
+/* 고른 선택 단추(#972): 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게. */
 .prospect-choices label:has(input:checked) {
-  background: #e6effb;
-  border-color: #1a4f9c;
+  background: #f4f1ff;
+  border-color: #d9cfff;
+  color: #5b3fe0;
+  font-weight: 600;
 }
 
 .prospect-choices input {
   flex: none;
   margin: 0;
-  accent-color: #1a4f9c;
+  accent-color: #6a4df0;
 }
 
 .prospect-refinement,
 .prospect-form-footer {
-  border-top: 1px solid #e3e6ea;
+  border-top: 1px solid #ebebf3;
   padding-top: 10px;
 }
 
@@ -107,7 +112,7 @@
 
 .prospect-refinement summary span {
   margin-left: 6px;
-  color: #5b6470;
+  color: #56566e;
 }
 
 .prospect-refinement[open] summary,
@@ -118,7 +123,7 @@
 .prospect-refinement p,
 .prospect-form-help {
   margin: 0;
-  color: #5b6470;
+  color: #56566e;
   font-size: 14px;
 }
 
@@ -126,8 +131,8 @@
   display: grid;
   gap: 4px;
   padding: 10px;
-  background: #f5f6f8;
-  border-radius: 6px;
+  background: #f7f7fb;
+  border-radius: 9px;
   font-size: 14px;
 }
 
@@ -160,47 +165,47 @@ body {
     sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  background: #f2f3f3;
-  color: #212121;
+  background: #f7f7fb;
+  color: #1b1a2e;
   -webkit-font-smoothing: antialiased;
 }
 
-/* 디자인 톤(#898): 화면 제목은 크고 가볍게(참고 그림 Heading), 표 숫자는 자리 맞춤. */
+/* 디자인 톤(#972): 화면 제목은 굵고 촘촘하게(시안 제목), 표 숫자는 자리 맞춤. */
 h1 {
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 table {
   font-variant-numeric: tabular-nums;
 }
 
-/* 링크(#898): 먹색 + 옅은 밑줄, 손을 올리면 밑줄이 진해진다. 색만으로 구분하지 않게 밑줄은 늘 보인다. */
+/* 링크(#972): 강조 글자색 + 옅은 밑줄, 손을 올리면 진해진다. 색만으로 구분하지 않게 밑줄은 늘 보인다. */
 a {
-  color: #212121;
+  color: #5b3fe0;
   text-decoration: underline;
-  text-decoration-color: rgba(33, 33, 33, 0.4);
+  text-decoration-color: rgba(91, 63, 224, 0.4);
   text-underline-offset: 3px;
 }
 
 a:hover {
-  color: #212121;
+  color: #3f28b8;
   text-decoration-color: currentColor;
 }
 
-/* 부품 안에 따로 모양을 정하지 않은 기본 입력 칸·선택 칸·단추도 알약 모양으로 맞춘다(#898). */
+/* 부품 안에 따로 모양을 정하지 않은 기본 입력 칸·선택 칸도 모서리 9로 맞춘다(#972: 알약 모양을 없앴다). */
 select,
 input[type='text'],
 input[type='search'],
 input[type='date'],
 input[type='number'],
 input:not([type]) {
-  border-radius: 999px;
+  border-radius: 9px;
   font-family: inherit;
 }
 
 textarea {
-  border-radius: 16px;
+  border-radius: 9px;
   font-family: inherit;
 }
 
@@ -216,12 +221,12 @@ button {
   transform: translate(-4px, -50%);
   padding: 6px 10px;
   border-radius: 8px;
-  background: #212121;
+  background: #1b1a2e;
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 18px rgba(27, 26, 46, 0.25);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -242,15 +247,21 @@ button {
   }
 }
 
-/* 초점선: 강조색 2px 실선, 바깥 2px 간격. outline: none 금지. */
+/* 고른 선택 칸(#972, antd Segmented — 글자 크기 등): 강조 연한 바탕 위에 강조 테두리 + 굵은 글자. 바탕·글자색은 tokens의 antdTheme. */
+.ant-segmented .ant-segmented-item-selected {
+  box-shadow: inset 0 0 0 1px #d9cfff;
+  font-weight: 600;
+}
+
+/* 초점선: 강조색(#972 보라, 흰 바탕 대비 약 5.3:1) 2px 실선, 바깥 2px 간격. outline: none 금지. */
 :focus-visible {
-  outline: 2px solid #212121;
+  outline: 2px solid #6a4df0;
   outline-offset: 2px;
 }
 
 /* Ant Design Select는 안쪽 입력칸이 보이지 않아 위 초점선이 안 보이므로 겉틀에 같은 선을 준다. */
 .ant-select:has(:focus-visible) > .ant-select-selector {
-  outline: 2px solid #212121 !important;
+  outline: 2px solid #6a4df0 !important;
   outline-offset: 2px;
 }
 
@@ -261,7 +272,7 @@ button {
   top: 8px;
   padding: 8px 16px;
   background: #ffffff;
-  color: #1f2329;
+  color: #1b1a2e;
   z-index: 1000;
 }
 
@@ -298,7 +309,7 @@ button {
 .report-page h2 {
   margin: 0 0 6px;
   padding-bottom: 2px;
-  border-bottom: 1px solid #8c8c8c;
+  border-bottom: 1px solid #d6d6e4;
   font-size: 16px;
 }
 

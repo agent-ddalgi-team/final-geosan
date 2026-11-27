@@ -1,8 +1,8 @@
 // 지도 핀(#898). PM 요청 2026-11-23: 회사는 작은 색 점으로만 구분(그림 없음), 거산 본사만 집 모양.
-// 관심 = 빨간 점, 진행 중 = 파란 점, 올해 성공 = 노란 점, 거산 본사 = 초록 핀 안 흰 집. 색은 theme/tokens의 mapPinPalette만 쓴다.
+// #972 색: 관심 = 주황 점, 진행 중 = 보라 점, 올해 성공 = 남색 점, 거산 본사 = 보라 핀 안 흰 집. 색은 theme/tokens의 mapPinPalette·mapPinStroke만 쓴다.
 // 같은 모양을 세 곳에서 쓴다: 네이버 지도 표시(HTML 문자열, pinHtml), 키 없을 때의 자리표시 지도(SVG 안 MapPinMark),
 // 범례(MapPinIcon). 핀에는 회사 정보가 없다(모양·색만, 계약 C4 screenMapRule).
-import { mapPinPalette, type MapPinKind } from '../../theme/tokens';
+import { mapPinPalette, mapPinStroke, type MapPinKind } from '../../theme/tokens';
 
 /** 거산 본사 집 그림(24×24 칸 기준). */
 const HOUSE = 'M4.5 11.4 12 4.8l7.5 6.6V19.5h-5v-4.8h-5v4.8h-5Z';
@@ -18,11 +18,11 @@ function shapeSvg(kind: MapPinKind): string {
   const { bg, icon } = mapPinPalette[kind];
   if (kind === 'HQ') {
     return (
-      `<circle cx="16" cy="16" r="14.5" fill="${bg}" stroke="#fff" stroke-width="2"/>` +
+      `<circle cx="16" cy="16" r="14.5" fill="${bg}" stroke="${mapPinStroke.ring}" stroke-width="2"/>` +
       `<path transform="${HOUSE_TRANSFORM}" d="${HOUSE}" fill="${icon}"/>`
     );
   }
-  return `<circle cx="16" cy="16" r="12.5" fill="${bg}" stroke="#fff" stroke-width="5"/>`;
+  return `<circle cx="16" cy="16" r="12.5" fill="${bg}" stroke="${mapPinStroke.ring}" stroke-width="5"/>`;
 }
 
 /** 네이버 지도 표시용 HTML(지름 size px). 옅은 그림자로 지도 위에서 떠 보인다. testId는 시험이 핀을 찾는 표시. */
@@ -30,7 +30,7 @@ export function pinHtml(kind: MapPinKind, size: number, testId?: string): string
   const testAttr = testId ? ` data-testid="${testId}"` : '';
   return (
     `<div${testAttr} data-pin="${pinShapeName(kind)}" style="width:${size}px;height:${size}px;cursor:pointer;` +
-    `filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35))">` +
+    `filter:drop-shadow(0 1px 2px ${mapPinStroke.shadow})">` +
     `<svg width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true">` +
     shapeSvg(kind) +
     `</svg></div>`
@@ -47,7 +47,7 @@ function Shape({ kind, legend = false }: { kind: MapPinKind; legend?: boolean })
           cy={16}
           r={14.5}
           fill={bg}
-          stroke={legend ? 'none' : '#fff'}
+          stroke={legend ? 'none' : mapPinStroke.ring}
           strokeWidth={2}
         />
         <path transform={HOUSE_TRANSFORM} d={HOUSE} fill={icon} />
@@ -57,7 +57,7 @@ function Shape({ kind, legend = false }: { kind: MapPinKind; legend?: boolean })
   return legend ? (
     <circle cx={16} cy={16} r={10} fill={bg} />
   ) : (
-    <circle cx={16} cy={16} r={12.5} fill={bg} stroke="#fff" strokeWidth={5} />
+    <circle cx={16} cy={16} r={12.5} fill={bg} stroke={mapPinStroke.ring} strokeWidth={5} />
   );
 }
 
