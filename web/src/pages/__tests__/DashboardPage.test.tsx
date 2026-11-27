@@ -23,7 +23,7 @@ import { sortSchedule } from '../../components/dashboard/ScheduleList';
 import { bookmarkGrid } from '../../components/dashboard/CountCards';
 import { filterName } from '../../components/list/ListViewBar';
 import { dashboardTexts, frame, states } from '../../labels/ko';
-import { colors, groupMarkPalette, homePalette, stepArrow, tagPalette } from '../../theme/tokens';
+import { accent, colors, homePalette, stepArrow, tagPalette, warn } from '../../theme/tokens';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
@@ -350,7 +350,8 @@ describe('DashboardPage', () => {
       vi.setSystemTime(new Date('2026-11-05T03:00:00Z'));
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
-      // #929(시안 v3): 점 달력 — 머리 "11월 일정", 일정 있는 날 점, 오늘부터 7일은 연파랑.
+      // #929(시안 v3) → #972: 점 달력 — 머리 "11월 일정", 일정 있는 날 점(강조 밝은 쪽), 오늘부터 7일은 강조 연한 바탕,
+      // 오늘은 흰 글자가 올라가는 강조 바탕(예전 값은 강조 글자색이었다).
       expect(await screen.findByTestId('dashboard-calendar-title')).toHaveTextContent(
         dashboardTexts.calendarDotsTitle(11),
       );
@@ -358,8 +359,16 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-calendar-day-2026-11-06')).toHaveStyle({
         background: homePalette.blueBg,
       });
+      expect(screen.getByTestId('dashboard-calendar-dot-2026-11-06')).toHaveStyle({
+        background: accent.bright,
+      });
       expect(screen.getByTestId('dashboard-calendar-day-2026-11-05')).toHaveStyle({
-        background: groupMarkPalette.today,
+        background: accent.bg,
+        color: accent.onBg,
+      });
+      // 지난 일정이 정리되지 않은 날의 점은 주의 점 색이다(빨강 아님).
+      expect(screen.getByTestId('dashboard-calendar-dot-2026-11-01')).toHaveStyle({
+        background: warn.dot,
       });
       // 11/1(A정밀 견적 보내기)은 기한이 지났다.
       await userEvent.click(screen.getByTestId('dashboard-calendar-day-2026-11-01'));
@@ -1135,5 +1144,63 @@ describe('영업 홈 › 먼저 볼 후보 (#972)', () => {
     expect(screen.queryByTestId('dashboard-top')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByTestId('dashboard-more')).toBeInTheDocument();
+  });
+});
+
+describe('영업 홈 › 이번 주 방문·연락 (#972 새 톤)', () => {
+  const visit = (oppId: string, customerName: string, dueAt: string) => ({
+    oppId,
+    customerName,
+    oppTitle: '가상',
+    dueAt,
+    note: '방문',
+    overdue: false,
+    staffKey: 'park-lee',
+  });
+
+  beforeEach(() => {
+    mockedGet.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('제목 옆에 "오늘부터 7일 · n곳"이 보이고, 날짜 칸은 오늘이 강조 바탕 + 흰 글자, 다른 날이 강조 연한 바탕이다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'));
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...fixtureData,
+        schedule: [
+          visit('opp-1', '가상 가나텍', '2026-11-27'),
+          visit('opp-2', '가상 지정공', '2026-11-30'),
+          // 7일 밖 일정은 세지 않는다.
+          visit('opp-3', '가상 먼회사', '2026-12-20'),
+        ],
+      }),
+    );
+    renderPage();
+    const prep = await screen.findByTestId('dashboard-prep-section');
+    expect(within(prep).getByTestId('dashboard-prep-count')).toHaveTextContent(
+      '오늘부터 7일 · 2곳',
+    );
+    const [todayBox, laterBox] = within(prep).getAllByTestId('dashboard-prep-day');
+    expect(todayBox).toHaveTextContent('오늘27');
+    expect(todayBox).toHaveAttribute('aria-label', '11/27(금) 오늘');
+    expect(todayBox).toHaveStyle({ background: accent.bg, color: accent.onBg });
+    expect(laterBox).toHaveTextContent('월30');
+    expect(laterBox).toHaveAttribute('aria-label', '11/30(월)');
+    expect(laterBox).toHaveStyle({ background: accent.soft, color: accent.text });
+  });
+
+  it('7일 안 일정이 없으면 건수 글 없이 빈 안내만 보인다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'));
+    mockedGet.mockResolvedValueOnce(reply({ ...fixtureData, schedule: [] }));
+    renderPage();
+    const prep = await screen.findByTestId('dashboard-prep-section');
+    expect(within(prep).queryByTestId('dashboard-prep-count')).not.toBeInTheDocument();
+    expect(within(prep).getByTestId('dashboard-prep-empty')).toBeInTheDocument();
   });
 });

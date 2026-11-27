@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DashboardMapGroup, DashboardMapPoint } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
-import { colors, radius, statusPalette } from '../../theme/tokens';
+import { colors, homePalette, mapPinStroke, radius, statusPalette } from '../../theme/tokens';
 import { pinHtml } from '../common/MapPin';
 import { spreadPins, type PinSpot } from '../common/spreadPins';
 
@@ -257,7 +257,7 @@ function clusterIcon(count: number): HTMLButtonElement {
     borderRadius: '50%',
     color: colors.bgContainer,
     background: colors.text,
-    boxShadow: '0 1px 4px #1f232947',
+    boxShadow: `0 1px 4px ${mapPinStroke.shadow}`,
     fontSize: '12px',
     fontWeight: '700',
     lineHeight: '1',
@@ -267,8 +267,7 @@ function clusterIcon(count: number): HTMLButtonElement {
 }
 
 /** "같이 들를 곳" 근처 회사 표시(○). 회사 정보 없이 모양만. */
-export const NEARBY_ICON =
-  '<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #555;cursor:pointer"></div>';
+export const NEARBY_ICON = `<div style="width:10px;height:10px;border-radius:50%;background:${mapPinStroke.ring};border:2px solid ${colors.textSecondary};cursor:pointer"></div>`;
 
 export interface NaverMapCanvasProps {
   api: NaverMapsApi;
@@ -379,7 +378,7 @@ export default function NaverMapCanvas({
         position: new api.LatLng(center.lat + km / KM_PER_LATITUDE_DEGREE, center.lng),
         clickable: false,
         icon: {
-          content: `<div style="font-size:12px;color:${ringColor};background:#fff;padding:0 4px;border-radius:4px">${km}km</div>`,
+          content: `<div style="font-size:12px;color:${ringColor};background:${homePalette.mapLabelBg};padding:0 4px;border-radius:${radius.tag}px">${km}km</div>`,
           anchor: new api.Point(18, 8),
         },
       });
@@ -601,7 +600,7 @@ export default function NaverMapCanvas({
   const tooltipWidth = overlay?.width ? Math.min(260, overlay.width - 16) : 260;
   const belowMarker = hover ? hover.y < (hoverNames.length > 1 ? 85 : 36) : false;
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: radius.lg }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: radius.card }}>
       <div
         ref={box}
         data-testid="dashboard-naver-map"
@@ -609,7 +608,7 @@ export default function NaverMapCanvas({
           width: '100%',
           // #929(PM 요청 2026-11-25): 영업 홈 지도는 옆 "같이 들를 곳"과 균형이 맞게 높이를 고정한다.
           height: compact ? DASHBOARD_MAP_HEIGHT : 420,
-          borderRadius: radius.lg,
+          borderRadius: radius.card,
           overflow: 'hidden',
           isolation: 'isolate',
         }}
@@ -623,7 +622,7 @@ export default function NaverMapCanvas({
             left: hqOffset.x + HQ_PIN_SIZE / 2 + 4,
             top: hqOffset.y,
             transform: 'translateY(-50%)',
-            borderRadius: 5,
+            borderRadius: radius.tag,
             padding: '2px 5px',
             background: colors.bgContainer,
             color: colors.text,
@@ -652,7 +651,7 @@ export default function NaverMapCanvas({
             lineHeight: `${LABEL_HEIGHT}px`,
             boxSizing: 'border-box',
             padding: '0 5px',
-            borderRadius: 5,
+            borderRadius: radius.tag,
             background: isVisitBase ? statusPalette.ask.bg : colors.bgContainer,
             color: isVisitBase ? statusPalette.ask.fg : colors.text,
             fontWeight: isVisitBase ? 700 : 500,
@@ -682,9 +681,9 @@ export default function NaverMapCanvas({
             top: hover.y + (belowMarker ? 22 : -16),
             transform: belowMarker ? 'translateX(-50%)' : 'translate(-50%, -100%)',
             padding: '2px 8px',
-            borderRadius: radius.sm,
-            background: 'rgba(0,0,0,0.78)',
-            color: '#fff',
+            borderRadius: radius.tag,
+            background: homePalette.mapTipBg,
+            color: homePalette.mapTipFg,
             fontSize: 13,
             maxWidth: tooltipWidth,
             boxSizing: 'border-box',

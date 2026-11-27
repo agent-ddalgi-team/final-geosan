@@ -28,7 +28,7 @@ import StageChips from '../components/dashboard/StageChips';
 import HomeTrend from '../components/dashboard/HomeTrend';
 import TopCandidates from '../components/dashboard/TopCandidates';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
-import VisitPrep from '../components/dashboard/VisitPrep';
+import VisitPrep, { PREP_DAYS, prepItems } from '../components/dashboard/VisitPrep';
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import AssistantDaily from '../components/assistant/AssistantDaily';
 import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
@@ -56,7 +56,7 @@ const sectionStyle = {
   boxSizing: 'border-box',
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: radius.lg,
+  borderRadius: radius.card,
   padding: spacing.cardPadding,
 } as const;
 const cardTitleStyle = { fontSize: typography.fontSizeCardTitle, margin: 0 } as const;
@@ -159,6 +159,7 @@ export default function DashboardPage() {
   const data = current?.data;
   const name = greetingName(config, staffKey, canRecord);
   const todo = todoCount(data?.todayChecks);
+  const prepCount = prepItems(data?.schedule ?? [], today).length;
 
   return (
     <FiveStates
@@ -275,7 +276,7 @@ export default function DashboardPage() {
                       data-testid="dashboard-ai-daily"
                       style={{
                         background: homePalette.purpleBg,
-                        borderRadius: 8,
+                        borderRadius: radius.controlSm,
                         padding: '8px 12px',
                       }}
                     >
@@ -308,6 +309,20 @@ export default function DashboardPage() {
         >
           <h2 id="dashboard-prep-title" style={cardTitleStyle}>
             {dashboardTexts.outTitle}
+            {/* #972(시안): 제목 옆 작은 풀이 "오늘부터 7일 · 3곳". 일정이 없으면 아래 빈 안내가 말한다. */}
+            {prepCount > 0 ? (
+              <small
+                data-testid="dashboard-prep-count"
+                style={{
+                  marginLeft: 8,
+                  fontSize: typography.fontSizeSecondary,
+                  color: colors.textDimmed,
+                  fontWeight: 400,
+                }}
+              >
+                {dashboardTexts.outCount(PREP_DAYS, prepCount)}
+              </small>
+            ) : null}
           </h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'start' }}>
             <div style={{ flex: '5 1 420px', minWidth: 0 }}>

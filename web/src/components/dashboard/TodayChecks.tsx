@@ -15,6 +15,8 @@
 //   part="work"    "오늘 할 일" — 운영 알림 · 지난 일정 · 오늘 일정 · 확인할 것이 남은 관심 기업
 //   part="handoff" "전달 사항"  — 나에게 온 것 · 내가 보낸 것(확인 전). 아래(footer)에 한 달 달력.
 //   part="all"(기본)은 예전처럼 한 칸에 모두.
+// #972(새 디자인, 2026-11-27): 내용·동작은 그대로, 색만 새 톤. 지난 일정 = 주의색, 오늘 = 보라, [완료]는 주 단추,
+//   확인할 회사 칩은 흰 바탕 + 얇은 테두리(모서리 8), 받은 전달 = 주의 바탕 상자, 보낸 전달 = 옅은 바탕 상자.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -112,6 +114,7 @@ function OverdueItem({
     <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
       <Button
         size="small"
+        type="primary"
         disabled={busy}
         onClick={() => void send('DONE')}
         data-testid="dashboard-today-done"
@@ -239,8 +242,8 @@ function ScheduleLine({
         style={{
           textAlign: 'center',
           fontSize: typography.fontSizeSecondary - 1,
-          fontWeight: 700,
-          borderRadius: 6,
+          fontWeight: 600,
+          borderRadius: radius.tag,
           padding: '2px 6px',
           background: palette.bg,
           color: palette.fg,
@@ -249,7 +252,10 @@ function ScheduleLine({
         {tone === 'overdue' ? dashboardTexts.scheduleTagOverdue : dashboardTexts.scheduleTagToday}
       </span>
       <span style={{ minWidth: 0 }}>
-        <Link to={`/opportunities/${encodeURIComponent(item.oppId)}`} style={{ fontWeight: 700 }}>
+        <Link
+          to={`/opportunities/${encodeURIComponent(item.oppId)}`}
+          style={{ fontWeight: 600, color: colors.text }}
+        >
           {item.customerName}
         </Link>
         {item.note ? <span style={{ color: colors.textSecondary }}> · {item.note}</span> : null}
@@ -358,21 +364,31 @@ function Group({
   const hidden = row.items.length - items.length;
   // #925(PM 요청 2026-11-25): 받은 전달 사항은 색 상자로 눈에 띄게(다른 묶음은 선으로만 나눈다).
   const received = kind === 'HANDOFF_FOR_ME';
+  // #972(시안): 내가 보낸 전달 사항(확인 전)은 옅은 바탕 상자.
+  const sent = kind === 'HANDOFF_FROM_ME';
   return (
     <li
       data-testid="dashboard-today-row"
       data-highlight={received ? 'true' : undefined}
+      data-box={sent ? 'sent' : undefined}
       style={
         received
           ? {
-              // #929(시안 v3): 연노랑 상자 + 노랑 테두리.
+              // #929(시안 v3) → #972: 주의 바탕 상자 + 얇은 주의 테두리.
               background: homePalette.yellowBg,
               border: `1px solid ${homePalette.yellowBorder}`,
-              borderRadius: 10,
+              borderRadius: radius.control,
               padding: '10px 12px',
               margin: '8px 0',
             }
-          : { borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }
+          : sent
+            ? {
+                background: colors.bgLayout,
+                borderRadius: radius.control,
+                padding: '10px 12px',
+                margin: '8px 0',
+              }
+            : { borderTop: `1px solid ${colors.borderSecondary}`, padding: '10px 0' }
       }
     >
       <h3
@@ -431,9 +447,10 @@ function Group({
                 style={{
                   display: 'inline-block',
                   border: `1px solid ${colors.borderSecondary}`,
-                  borderRadius: 14,
+                  borderRadius: radius.controlSm,
                   padding: '3px 10px',
-                  background: '#FAFAFA',
+                  background: colors.bgContainer,
+                  color: colors.textSecondary,
                   textDecoration: 'none',
                   fontSize: typography.fontSizeSecondary,
                 }}
@@ -556,6 +573,7 @@ export default function TodayChecks({
     part === 'work'
       ? ordered.filter((row) => scheduleKinds.includes(row.kind as TodayCheckKind))
       : [];
+  const scheduleCount = scheduleRows.reduce((sum, row) => sum + row.items.length, 0);
   const groupRows =
     part === 'work'
       ? ordered.filter((row) => !scheduleKinds.includes(row.kind as TodayCheckKind))
@@ -586,13 +604,27 @@ export default function TodayChecks({
         gap: 8,
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: radius.lg,
+        borderRadius: radius.card,
         padding: '16px 20px',
       }}
     >
       <h2 id={`${id}-title`} style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}>
         {badge}
         {title}
+        {part === 'work' && scheduleCount > 0 ? (
+          // #972(시안): 제목 옆 작은 건수 = 지난 일정 + 오늘 일정.
+          <small
+            data-testid="dashboard-today-work-count"
+            style={{
+              marginLeft: 8,
+              fontSize: typography.fontSizeSecondary,
+              color: colors.textDimmed,
+              fontWeight: 400,
+            }}
+          >
+            {dashboardTexts.workCount(scheduleCount)}
+          </small>
+        ) : null}
       </h2>
       {assistantSummary ? (
         <div data-testid="dashboard-today-assistant">{assistantSummary}</div>
