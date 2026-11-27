@@ -7,6 +7,7 @@ import RecordsArea from '../RecordsArea';
 import { ApiError, postOutcome } from '../../../api/client';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
+import { chipOf, chipValueOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -52,8 +53,8 @@ function renderArea(excluded: boolean) {
 }
 
 async function pressSave(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByTestId('records-kind'), '전화');
-  await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+  await user.click(chipOf('records-kind', '전화'));
+  await user.click(chipOf('records-contact-result', '연결됨'));
   await user.click(screen.getByTestId('records-contact-save-button'));
 }
 
@@ -76,7 +77,7 @@ describe('기록 구역 · 제외한 회사에 접촉을 남길 때 (#697)', () 
     const user = userEvent.setup();
     renderArea(true);
     // 누르기 전에는 묻는 줄이 없다.
-    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.click(chipOf('records-kind', '전화'));
     expect(screen.queryByTestId('records-excluded-ask')).not.toBeInTheDocument();
     await pressSave(user);
     expect(screen.getByTestId('records-excluded-ask')).toHaveTextContent(
@@ -134,6 +135,6 @@ describe('기록 구역 · 제외한 회사에 접촉을 남길 때 (#697)', () 
     await user.click(screen.getByTestId('records-excluded-restore-button'));
     await screen.findByTestId('records-contact-error');
     expect(screen.getByTestId('records-excluded-ask')).toBeInTheDocument();
-    expect(screen.getByTestId('records-contact-result')).toHaveValue('REACHED');
+    expect(chipValueOf('records-contact-result')).toBe('REACHED');
   });
 });

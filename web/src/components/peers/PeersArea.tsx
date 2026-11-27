@@ -6,7 +6,7 @@ import { Button } from 'antd';
 import { getPeers } from '../../api/client';
 import type { PeersResponse } from '../../api/types';
 import { peersArea } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { accent, colors, typography } from '../../theme/tokens';
 import PeerCompanyLine from './PeerCompanyLine';
 import { peersSummaryText } from './peersText';
 import { usePeerNames } from './usePeerNames';
@@ -46,11 +46,12 @@ export default function PeersArea({ oppId, foldList = false }: PeersAreaProps) {
     peers !== null ? (
       <ul
         aria-label={peersArea.listLabel}
-        style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}
+        style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid' }}
       >
-        {peers.companies.map((company) => (
+        {peers.companies.map((company, index) => (
           <PeerCompanyLine
             key={company.oppId}
+            divider={index > 0}
             company={company}
             processNames={processNames}
             personName={personName}
@@ -89,7 +90,14 @@ export default function PeersArea({ oppId, foldList = false }: PeersAreaProps) {
           ) : null}
           {foldList ? (
             <details data-testid="peers-fold">
-              <summary style={{ cursor: 'pointer', ...secondary }}>
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  width: 'fit-content',
+                  fontSize: typography.fontSizeSecondary,
+                  color: accent.text,
+                }}
+              >
                 {peersArea.foldList(peers.companies.length)}
               </summary>
               {list}

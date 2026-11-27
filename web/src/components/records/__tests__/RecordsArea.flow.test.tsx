@@ -10,6 +10,7 @@ import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
 import { recordsArea } from '../../../labels/ko';
 import { todayKst } from '../../../utils/time';
+import { chipOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -54,8 +55,8 @@ function renderArea(props: Partial<React.ComponentProps<typeof RecordsArea>> = {
 }
 
 async function saveContact(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByTestId('records-kind'), '대면');
-  await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+  await user.click(chipOf('records-kind', '대면'));
+  await user.click(chipOf('records-contact-result', '연결됨'));
   await user.click(screen.getByTestId('records-contact-save-button'));
 }
 
@@ -79,8 +80,8 @@ describe('기록 구역 · ① 안내와 번호 (#433)', () => {
   it('연결됨이어도 "AI 판단이 맞았나" 고르기는 없고, 요청에 그 값을 싣지 않는다(#740)', async () => {
     const user = userEvent.setup();
     renderArea({ outcome: outcome('IN_PROGRESS') });
-    await user.selectOptions(screen.getByTestId('records-kind'), '대면');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-kind', '대면'));
+    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(screen.queryByTestId('records-judgment-check')).not.toBeInTheDocument();
     expect(screen.queryByText('AI 판단이 맞았나')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('records-contact-save-button'));
@@ -198,7 +199,7 @@ describe('기록 구역 · ② 접촉 날짜는 오늘까지 (#433)', () => {
   it('날짜 칸은 처음에 오늘(한국 날짜)이고, 고를 수 있는 가장 늦은 날도 오늘이다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.click(chipOf('records-kind', '전화'));
     const date = screen.getByTestId('records-contact-date') as HTMLInputElement;
     expect(date.value).toBe(todayKst());
     expect(date.max).toBe(todayKst());
@@ -296,7 +297,7 @@ describe('기록 구역 · ③ 접촉 뒤 단계는 서버가 앞으로만 바�
     });
     renderArea({ outcome: outcome('NOT_EXECUTED') });
     // 종류는 "전화"로 시작한다(#691). 메모를 적으려면 종류에서 "메모"를 고른다.
-    await user.selectOptions(screen.getByTestId('records-kind'), '메모');
+    await user.click(chipOf('records-kind', '메모'));
     await user.type(screen.getByTestId('records-note-input'), '그냥 메모');
     await user.click(screen.getByTestId('records-note-save-button'));
     await waitFor(() => expect(mockedNote).toHaveBeenCalledTimes(1));

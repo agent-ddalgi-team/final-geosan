@@ -144,25 +144,14 @@ function Row({ label, testId, children }: { label: string; testId: string; child
       data-testid={testId}
       style={{
         display: 'grid',
-        gridTemplateColumns: '120px minmax(0, 1fr)',
-        borderTop: `1px solid ${detailTheme.border}`,
+        gridTemplateColumns: '104px minmax(0, 1fr)',
+        columnGap: 16,
+        alignItems: 'baseline',
       }}
     >
-      {/* #759: 칸 나눔 표처럼 이름표 칸은 옅은 바탕, 값 칸은 흰 바탕. */}
-      <dt
-        style={{
-          fontWeight: 600,
-          color: colors.textSecondary,
-          fontSize: typography.fontSizeSecondary,
-          background: detailTheme.cellBg,
-          padding: '10px 14px',
-        }}
-      >
-        {label}
-      </dt>
-      <dd style={{ margin: 0, display: 'grid', gap: 4, padding: '10px 14px', minWidth: 0 }}>
-        {children}
-      </dd>
+      {/* #972 새 시안: 테두리·바탕 없이 왼쪽 작은 이름표(흐린 글자) + 오른쪽 값. */}
+      <dt style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}>{label}</dt>
+      <dd style={{ margin: 0, display: 'grid', gap: 4, minWidth: 0 }}>{children}</dd>
     </div>
   );
 }
@@ -185,7 +174,7 @@ function FitMark({ kind, text }: { kind: 'confirmed' | 'ai'; text: string }) {
         alignItems: 'center',
         gap: 4,
         padding: '0 10px',
-        borderRadius: radius.pill,
+        borderRadius: radius.tag,
         background: palette.bg,
         color: palette.fg,
         fontSize: typography.fontSizeSecondary,
@@ -321,7 +310,7 @@ function EvidenceBar({ items }: { items: ScoreItemView[] }) {
           position: 'relative',
           width: 140,
           height: 8,
-          borderRadius: radius.pill,
+          borderRadius: radius.tag,
           background: detailTheme.bandTodo,
           overflow: 'hidden',
         }}
@@ -347,7 +336,7 @@ function DistanceLine({ km }: { km: number }) {
   const dot = {
     width: 8,
     height: 8,
-    borderRadius: radius.pill,
+    borderRadius: '50%',
     background: detailTheme.lineDone,
     flexShrink: 0,
   } as const;
@@ -529,16 +518,7 @@ export default function DetailGlance({
       >
         {texts.title}
       </h2>
-      <dl
-        style={{
-          margin: 0,
-          display: 'grid',
-          border: `1px solid ${detailTheme.border}`,
-          borderTop: 0,
-          borderRadius: detailTheme.radius,
-          overflow: 'hidden',
-        }}
-      >
+      <dl style={{ margin: 0, display: 'grid', gap: 12 }}>
         <Row label={texts.company} testId="glance-company">
           <div
             data-testid="glance-company-layout"

@@ -431,7 +431,13 @@ export default function CallChecklist({
     const remaining = rows.filter((row) => !isChecked(row)).length;
     const prepDate = prep ? (formatMonthDay(prep.at) ?? prep.at) : '';
     return (
-      <DetailSection id="detail-review" title={title ?? texts.groups.company} count={remaining}>
+      <DetailSection
+        id="detail-review"
+        title={title ?? texts.groups.company}
+        count={remaining}
+        // #972: 영업 코치 칸(이미 흰 카드) 안에서는 카드를 겹쳐 그리지 않는다.
+        bare
+      >
         {top}
         {rows.length === 0 ? (
           <p data-testid="call-empty" style={{ margin: 0 }}>
@@ -447,7 +453,15 @@ export default function CallChecklist({
                 data-testid={`check-group-${group}`}
                 style={{ display: 'grid', gap: 4 }}
               >
-                <span style={{ fontWeight: 600 }} data-testid="check-group-title">
+                <span
+                  // #972 새 시안: 묶음 이름은 작은 흐린 글자.
+                  style={{
+                    color: colors.textDimmed,
+                    fontSize: typography.fontSizeSecondary,
+                    marginTop: 4,
+                  }}
+                  data-testid="check-group-title"
+                >
                   {group === 'prep' && prepDate ? texts.prepGroup(prepDate) : texts.groups[group]}
                 </span>
                 <ul

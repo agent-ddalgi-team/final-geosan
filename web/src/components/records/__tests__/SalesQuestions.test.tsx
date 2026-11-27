@@ -8,6 +8,8 @@ import { getSalesQuestions, postOutcome } from '../../../api/client';
 import type { SalesQuestions, SalesStepView } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
+import { choiceChip } from '../../../theme/tokens';
+import { chipOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -196,16 +198,19 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         />
       </FrameContext.Provider>,
     );
-    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
+    await user.click(chipOf('records-kind', '전화'));
     expect(screen.queryByTestId('sales-questions')).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     const plating = await screen.findByTestId('sales-question-PLATING_NOW');
     await user.click(within(plating).getByText('외주 줌'));
-    // #947: 고른 답은 [관심 기업]처럼 강조색으로 채운 모양이다.
-    expect(plating.querySelector('.ant-radio-group')).toHaveClass('ant-radio-group-solid');
-    expect(within(plating).getByText('외주 줌').closest('label')).toHaveClass(
-      'ant-radio-button-wrapper-checked',
-    );
+    // #947 → #972: 고른 답은 강조 연한 바탕 + 굵은 강조 글자다.
+    const pickedAnswer = within(plating).getByRole('radio', { name: '외주 줌' });
+    expect(pickedAnswer).toBeChecked();
+    expect(pickedAnswer).toHaveStyle({
+      background: choiceChip.selected.bg,
+      color: choiceChip.selected.fg,
+      fontWeight: choiceChip.selected.fontWeight,
+    });
     const tail = await screen.findByTestId('sales-question-SWITCH_INTENT');
     await user.click(within(tail).getByText('있음'));
     await user.type(screen.getByTestId('records-contact-memo'), '다음 달 새 라인');
@@ -224,7 +229,7 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
     await waitFor(() => expect(onSalesStepChanged).toHaveBeenCalledTimes(1));
     // 저장하면 결과·답·메모를 비운다. 다시 연결됨을 고르면 빈 칸에서 시작한다.
     expect(screen.queryByTestId('records-contact-memo')).not.toBeInTheDocument();
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(screen.getByTestId('records-contact-memo')).toHaveValue('');
     expect(
       within(await screen.findByTestId('sales-question-PLATING_NOW')).getByLabelText('외주 줌'),
@@ -238,15 +243,15 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         <RecordsArea oppId="opp-1" salesStep={stepView({ code: 'DEMAND_CONFIRMED' })} />
       </FrameContext.Provider>,
     );
-    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-contact-result', '연결됨'));
     const line = await screen.findByTestId('sales-questions-step');
     expect(line).toHaveTextContent(
       '지금 단계: 수요 확인 — 이 단계의 질문과 모든 단계 공통 질문입니다.',
     );
     expect(screen.getByTestId('sales-questions')).toContainElement(line);
     // 접촉 결과가 거절이면 공통 질문만 보인다는 말로 바뀐다.
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '거절');
+    await user.click(chipOf('records-contact-result', '거절'));
     expect(screen.getByTestId('sales-questions-step')).toHaveTextContent(
       '접촉 결과가 거절이라 모든 단계 공통 질문만 보입니다.',
     );
@@ -256,7 +261,7 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         <RecordsArea oppId="opp-1" salesStep={stepView({ code: null, since: null })} />
       </FrameContext.Provider>,
     );
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(screen.getByTestId('sales-questions-step')).toHaveTextContent(
       "첫 접촉이라 '연결 전' 단계의 질문과 모든 단계 공통 질문이 보입니다.",
     );
@@ -270,8 +275,8 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         <RecordsArea oppId="opp-1" salesStep={stepView()} />
       </FrameContext.Provider>,
     );
-    await user.selectOptions(screen.getByTestId('records-kind'), '전화');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '부재');
+    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-contact-result', '부재'));
     expect(screen.queryByTestId('sales-questions')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));

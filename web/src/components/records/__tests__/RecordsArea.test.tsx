@@ -10,6 +10,7 @@ import type { FrameValue } from '../../frame/FrameContext';
 import { recordsArea } from '../../../labels/ko';
 import { todayKst } from '../../../utils/time';
 import { pickCalendarDate } from '../../../test/pickCalendarDate';
+import { chipOf, chipValueOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -68,7 +69,7 @@ function renderArea(
 
 /** 종류를 "메모"로 바꾼다. 기본값이 "전화"로 바뀌어서(#691) 메모 시험은 이것부터 한다. */
 function toMemo() {
-  fireEvent.change(screen.getByTestId('records-kind'), { target: { value: 'MEMO' } });
+  fireEvent.click(chipOf('records-kind', 'MEMO'));
 }
 
 async function pick(user: ReturnType<typeof userEvent.setup>, testId: string, label: string) {
@@ -99,11 +100,12 @@ describe('RecordsArea', () => {
     expect(screen.getByRole('heading', { name: recordsArea.scheduleTitle })).toBeInTheDocument();
     // 접촉 시도·영업 메모 구역은 따로 없고, 접촉 횟수는 이 영역이 아니라 상세 머리가 보인다.
     expect(screen.queryByTestId('records-contact-count')).not.toBeInTheDocument();
-    const kind = screen.getByTestId('records-kind') as HTMLSelectElement;
-    expect(kind.value).toBe('CALL');
+    // #972: 종류는 고르기 상자에서 선택 단추 묶음으로 바뀌었다(보기와 처음 값은 그대로).
+    const kind = screen.getByTestId('records-kind');
+    expect(chipValueOf('records-kind')).toBe('CALL');
     expect(
       within(kind)
-        .getAllByRole('option')
+        .getAllByRole('radio')
         .map((option) => option.textContent),
       // #847(PM 결정 2026-11-17): "방문" → "대면", "자료 조사"는 "메모"로 합침. 질문 파일이 없으면 발신·수신 없이 종류만.
     ).toEqual(['전화', '메일', '대면', '메모']);
@@ -120,12 +122,12 @@ describe('RecordsArea', () => {
     const user = userEvent.setup();
     renderArea();
     for (const label of ['전화', '대면', '메일']) {
-      await pick(user, 'records-kind', label);
+      await user.click(chipOf('records-kind', label));
       expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
       expect(screen.getByTestId('records-contact-date')).toBeInTheDocument();
       expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
     }
-    await pick(user, 'records-kind', '메모');
+    await user.click(chipOf('records-kind', '메모'));
     expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-note-save-button')).toHaveTextContent(recordsArea.noteSave);
@@ -166,7 +168,7 @@ describe('RecordsArea', () => {
         },
       }),
     );
-    await pick(user, 'records-kind', '메모');
+    await user.click(chipOf('records-kind', '메모'));
     const to = screen.getByTestId('records-note-to');
     expect(
       within(to)
@@ -212,7 +214,7 @@ describe('RecordsArea', () => {
       }),
       { onHandoffSent },
     );
-    await pick(user, 'records-kind', '메모');
+    await user.click(chipOf('records-kind', '메모'));
     const to = screen.getByTestId('records-note-to');
     // 나 자신은 받는 사람이 될 수 없다.
     expect(
@@ -251,8 +253,8 @@ describe('RecordsArea', () => {
     const onContactRecorded = vi.fn();
     mockedOutcome.mockResolvedValueOnce(outcomeReply({ status: 'IN_PROGRESS' }));
     renderArea(frameValue(), { onContactRecorded });
-    await pick(user, 'records-kind', label);
-    await pick(user, 'records-contact-result', '연결됨');
+    await user.click(chipOf('records-kind', label));
+    await user.click(chipOf('records-contact-result', '연결됨'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
     expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ method: code, result: 'REACHED' });
@@ -277,8 +279,8 @@ describe('RecordsArea', () => {
           status: from,
         },
       });
-      await pick(user, 'records-kind', '전화');
-      await pick(user, 'records-contact-result', '부재');
+      await user.click(chipOf('records-kind', '전화'));
+      await user.click(chipOf('records-contact-result', '부재'));
       await user.click(screen.getByTestId('records-contact-save-button'));
       await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
       expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ status: expected });
@@ -601,9 +603,9 @@ describe('RecordsArea', () => {
         status: 'NOT_EXECUTED',
       },
     });
-    await pick(user, 'records-kind', '전화');
+    await user.click(chipOf('records-kind', '전화'));
     expect(screen.getByTestId('records-contact-save-button')).toBeDisabled();
-    await pick(user, 'records-contact-result', '부재');
+    await user.click(chipOf('records-contact-result', '부재'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
     const [, body] = mockedOutcome.mock.calls[0];

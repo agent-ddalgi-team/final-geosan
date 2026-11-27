@@ -15,6 +15,7 @@ import type {
 } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
+import { chipOf } from '../../../test/chipOf';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -132,7 +133,7 @@ function reply(status: OutcomeStatus = 'IN_PROGRESS') {
 }
 
 async function setResult(user: ReturnType<typeof userEvent.setup>, label: string) {
-  await user.selectOptions(screen.getByTestId('records-contact-result'), label);
+  await user.click(chipOf('records-contact-result', label));
 }
 
 async function pick(user: ReturnType<typeof userEvent.setup>, questionId: string, label: string) {

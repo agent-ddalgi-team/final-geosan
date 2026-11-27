@@ -2,7 +2,7 @@
 // 문구·보기·갈라지는 조건은 서버의 질문 파일(GET /sales-questions)에서 오고, 답은 코드로만 보낸다.
 // 세부 단계는 서버가 기록에서 계산한다. 화면은 지금 고른 답으로 다음 단계 질문을 미리 펼쳐 보일 뿐이다.
 import { useState } from 'react';
-import { Button, Radio, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import type {
   LostReasonCode,
   OutcomeStatus,
@@ -18,6 +18,7 @@ import {
   salesStepLabels,
 } from '../../labels/ko';
 import { colors, radius, typography } from '../../theme/tokens';
+import ChoiceChips from './ChoiceChips';
 import { ChoiceQuestionField, confirmedLabels, currentLineText } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
@@ -347,14 +348,12 @@ export function SalesQuestionFields({
                 />
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                  <Radio.Group
-                    aria-labelledby={`sales-question-label-${question.questionId}`}
-                    optionType="button"
-                    // #947: 고른 답은 [관심 기업]처럼 강조색으로 채운다.
-                    buttonStyle="solid"
+                  {/* #972: 고른 답은 강조 연한 바탕 + 강조 테두리 + 굵은 강조 글자(#947의 "강조색으로 채움"을 대신한다). */}
+                  <ChoiceChips
+                    labelledBy={`sales-question-label-${question.questionId}`}
                     value={picked[question.questionId] ?? null}
                     disabled={disabled}
-                    onChange={(event) => onPick(question.questionId, event.target.value as string)}
+                    onChange={(value) => onPick(question.questionId, value)}
                     options={question.answers
                       .filter(
                         (option) =>
