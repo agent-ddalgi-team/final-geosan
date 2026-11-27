@@ -709,7 +709,7 @@ describe('OpportunityListPage', () => {
       expect(await screen.findByText(listFilters.noMatch)).toBeInTheDocument();
     });
 
-    it('카드에 확정된 공정 이름·산업 꼬리표가 붙고 지역 꼬리표는 없다. 산업이 비면 "산업 미확정"이 보인다(#659)', async () => {
+    it('줄에 확정된 공정 이름·산업이 붙고 지역은 지역 칸에 보인다. 산업이 비면 "산업 미확정", 주소가 없으면 "지역 미확인"이 보인다(#659, #972)', async () => {
       const filled: OpportunityCard = {
         ...apjeong,
         processCodes: ['ANODIZING'],
@@ -741,11 +741,14 @@ describe('OpportunityListPage', () => {
       expect(within(cards[1]).getByTestId('card-industry-tag')).toHaveTextContent(
         listFilters.industryUnknown,
       );
-      // 지역은 목록 머리 선택란과 겹쳐 카드에서 뺐다. 값이 있든 없든 꼬리표가 없다.
+      // #972(PM이 고른 시안 2026-11-27): 표 줄에 "지역" 열이 생겨 서버가 준 시·군을 그 칸에 보인다
+      // (#659에서는 목록 머리 선택란과 겹친다고 카드에서 뺐었다). 꼬리표는 여전히 붙이지 않는다.
+      expect(within(cards[0]).getByTestId('card-region')).toHaveTextContent(/^아산시$/);
+      expect(within(cards[1]).getByTestId('card-region')).toHaveTextContent(
+        listFilters.regionUnknown,
+      );
       for (const card of cards) {
         expect(within(card).queryByTestId('card-region-tag')).not.toBeInTheDocument();
-        expect(card).not.toHaveTextContent('아산시');
-        expect(card).not.toHaveTextContent(listFilters.regionUnknown);
         expect(within(card).getByTestId('card-blocker')).not.toHaveTextContent('공정');
       }
     });
@@ -800,6 +803,7 @@ describe('OpportunityListPage', () => {
       renderPage();
       const card = await screen.findByTestId('opportunity-card');
       expect(within(card).queryByTestId('card-region-tag')).not.toBeInTheDocument();
+      expect(within(card).queryByTestId('card-region')).not.toBeInTheDocument();
       expect(within(card).queryByTestId('card-industry-tag')).not.toBeInTheDocument();
       expect(within(card).queryByTestId('card-process-tag')).not.toBeInTheDocument();
       expect(screen.queryByTestId('list-filter-bar')).toBeInTheDocument();

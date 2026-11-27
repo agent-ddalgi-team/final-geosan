@@ -154,7 +154,16 @@ export default function OpinionArea({
               if (value) onPick(value);
             }}
             data-testid="opinion-select"
-            style={{ minHeight: 32, padding: '0 8px', borderRadius: radius.md, font: 'inherit' }}
+            // #972: 선택 칸 모서리 9 + 얇은 테두리(목록 조건 칸과 같은 모양).
+            style={{
+              minHeight: 36,
+              padding: '0 8px',
+              borderRadius: radius.control,
+              border: `1px solid ${colors.border}`,
+              background: colors.bgContainer,
+              color: colors.text,
+              font: 'inherit',
+            }}
           >
             <option value="" disabled>
               {listSimple.opinionSelectPlaceholder}

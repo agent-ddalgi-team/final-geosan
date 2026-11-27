@@ -2,12 +2,15 @@
 // 꺼짐 "관심" / 켜짐 "관심 기업"을 글자·색·굵기와 aria-pressed로 알린다. 팀이 함께 쓰는 값이다.
 // 기록(메모·영업 기록·검토 의견)이 있는 회사는 서버가 끄기를 422로 거부하고, 그때 서버 문구를 단추 옆에 그대로 보인다.
 // 담당자를 고르기 전·보기 전용은 단추가 잠긴다.
+// #972: 목록 줄은 variant="star"로 별 그림 단추를 쓴다(꺼짐 = 흰 바탕 + 흐린 별, 켜짐 = 강조 밝은 쪽 바탕 + 흰 별).
+// 이름("관심"/"관심 기업")·aria-pressed·저장 규칙은 글자 단추와 같고, 이름은 화면 낭독용 글자와 손 올림 글로 남는다.
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Button } from 'antd';
 import { ApiError, putBookmark } from '../../api/client';
 import type { BookmarkRecord } from '../../api/types';
 import { bookmarkTexts, errorTexts, recordsArea } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, listTheme, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
 export interface BookmarkButtonProps {
@@ -18,7 +21,19 @@ export interface BookmarkButtonProps {
   onChanged: (bookmark: BookmarkRecord) => void;
   /** #803: 상세 머리처럼 "담당자를 고르면" 안내를 부모가 한 번만 보일 때 true. */
   hideStaffHint?: boolean;
+  /** "text"(기본, 상세 머리)는 글자 단추, "star"(목록 줄, #972)는 별 그림 단추. */
+  variant?: 'text' | 'star';
 }
+
+/** 눈에는 안 보이고 화면 낭독기와 테스트에는 읽히는 글자(별 단추의 이름). */
+const hiddenText: CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+};
 
 /** 서버가 끄기를 거부했을 때는 두 문장(이유, 다음 할 일)을 그대로, 그 밖의 실패는 한 줄로 보인다. */
 type Problem =
@@ -29,14 +44,17 @@ export default function BookmarkButton({
   bookmark,
   onChanged,
   hideStaffHint = false,
+  variant = 'text',
 }: BookmarkButtonProps) {
   const { staffKey, canRecord } = useFrame();
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const active = bookmark?.active === true;
+  const star = active ? listTheme.starOn : listTheme.starOff;
 
   async function toggle() {
-    if (!staffKey) return;
+    // 저장 중에 다시 눌러도 한 번만 보낸다(별 단추는 초점을 잃지 않게 잠그지 않는다).
+    if (!staffKey || saving) return;
     setSaving(true);
     setProblem(null);
     try {
@@ -67,17 +85,60 @@ export default function BookmarkButton({
       data-testid="bookmark-area"
       style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
     >
-      <Button
-        type={active ? 'primary' : 'default'}
-        aria-pressed={active}
-        disabled={!canRecord}
-        loading={saving}
-        onClick={() => void toggle()}
-        style={{ fontWeight: active ? 700 : 400 }}
-        data-testid="bookmark-button"
-      >
-        {active ? bookmarkTexts.on : bookmarkTexts.off}
-      </Button>
+      {variant === 'star' ? (
+        <Button
+          aria-pressed={active}
+          aria-busy={saving || undefined}
+          disabled={!canRecord}
+          onClick={() => void toggle()}
+          title={
+            !canRecord
+              ? bookmarkTexts.pickStaffFirst
+              : active
+                ? bookmarkTexts.on
+                : bookmarkTexts.off
+          }
+          style={{
+            width: listTheme.starSize,
+            height: listTheme.starSize,
+            padding: 0,
+            flex: 'none',
+            borderRadius: listTheme.starRadius,
+            background: star.bg,
+            borderColor: star.border,
+            color: star.fg,
+            // 잠긴 단추도 켜짐·꺼짐 색은 그대로 두고 흐리게만 한다(보기 전용도 관심 기업인지 알 수 있게).
+            opacity: !canRecord || saving ? 0.55 : 1,
+            cursor: saving ? 'progress' : undefined,
+          }}
+          data-testid="bookmark-button"
+          data-variant="star"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M12 2.6l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.6l-5.9 3.2 1.2-6.6-4.8-4.6 6.6-.9z" />
+          </svg>
+          <span style={hiddenText}>{active ? bookmarkTexts.on : bookmarkTexts.off}</span>
+        </Button>
+      ) : (
+        <Button
+          type={active ? 'primary' : 'default'}
+          aria-pressed={active}
+          disabled={!canRecord}
+          loading={saving}
+          onClick={() => void toggle()}
+          style={{ fontWeight: active ? 700 : 400 }}
+          data-testid="bookmark-button"
+        >
+          {active ? bookmarkTexts.on : bookmarkTexts.off}
+        </Button>
+      )}
       {!canRecord && !hideStaffHint ? (
         <span
           data-testid="bookmark-pick-staff-text"

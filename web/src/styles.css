@@ -153,6 +153,89 @@
   margin-left: auto;
 }
 
+/* 거래처 후보 표 줄 · 관심 기업 세 칸 줄(#972). 색·글자 크기는 부품이 tokens.ts 값으로 넣고, 여기는 칸 배치만 둔다.
+   열 너비를 줄마다 똑같이 잡아(늘어나는 칸은 minmax(0, …)) 내용 길이와 상관없이 열이 가지런히 맞는다.
+   줄을 담는 칸이 좁아지면(900px 아래) 열 머리를 숨기고 칸을 세로로 쌓으며, 칸 안 이름표가 대신 보인다. */
+.cand-list {
+  container-type: inline-size;
+}
+
+.cand-head,
+.cand-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 112px minmax(0, 2fr) 132px 212px;
+  column-gap: 16px;
+  align-items: start;
+}
+
+.cand-row__cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 칸 이름표: 넓은 화면에서는 열 머리가 있어 눈에는 숨기고 화면 낭독기에만 읽힌다. */
+.cand-row__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cand-row__actions {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 8px;
+}
+
+.cand-row__actions-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 제외 이유를 적는 동안에는 의견 칸이 줄 전체 너비를 쓴다(좁은 열에 입력 칸이 끼지 않게). */
+.cand-row__actions:has([data-testid='opinion-reason-input']) {
+  grid-column: 1 / -1;
+  justify-items: start;
+}
+
+.cand-row__actions:has([data-testid='opinion-reason-input']) .cand-row__actions-main {
+  justify-content: flex-start;
+}
+
+@container (max-width: 900px) {
+  .cand-head {
+    display: none;
+  }
+
+  .cand-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .cand-row__label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    display: block;
+  }
+
+  .cand-row__actions {
+    justify-items: start;
+  }
+
+  .cand-row__actions-main {
+    justify-content: flex-start;
+  }
+}
+
 html,
 body {
   margin: 0;

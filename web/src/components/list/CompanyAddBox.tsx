@@ -5,12 +5,12 @@
 // 그 주소를 읽는다. 보기 전용(viewer)에게는 그리지 않는다.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Input, theme } from 'antd';
+import { Button, Input } from 'antd';
 import type { CSSProperties } from 'react';
 import { ApiError, lookupCompanies, postCompany } from '../../api/client';
 import type { CompanyAdded, CompanyLookup } from '../../api/types';
 import { companyAdd } from '../../labels/ko';
-import { colors } from '../../theme/tokens';
+import { choiceChip, colors, radius } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 
 const MANUAL = '__manual__';
@@ -23,21 +23,23 @@ export interface CompanyAddBoxProps {
   onAdded?: () => void;
 }
 
-type Token = ReturnType<typeof theme.useToken>['token'];
-
-/** 고르는 줄 한 칸. 고른 줄은 [관심 기업] 켜짐·기록 칸 단추(#947)처럼 강조색 바탕 + 흰 글자로 채운다. */
-function rowStyle(token: Token, selected: boolean): CSSProperties {
+/**
+ * 고르는 줄 한 칸. 고른 줄은 다른 선택 단추와 같은 모양이다(#972): 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게.
+ * (#947의 "강조색 바탕 + 흰 글자"를 대신한다.)
+ */
+function rowStyle(selected: boolean): CSSProperties {
+  const chip = selected ? choiceChip.selected : choiceChip.idle;
   return {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     margin: '6px 0',
     padding: '8px 12px',
-    borderRadius: 10,
-    border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
-    background: selected ? token.colorPrimary : token.colorBgContainer,
-    color: selected ? token.colorTextLightSolid : undefined,
-    fontWeight: selected ? 600 : undefined,
+    borderRadius: radius.control,
+    border: `1px solid ${chip.border}`,
+    background: chip.bg,
+    color: selected ? chip.fg : undefined,
+    fontWeight: selected ? choiceChip.selected.fontWeight : undefined,
     cursor: 'pointer',
   };
 }
@@ -48,7 +50,6 @@ function detailPath(oppId: string) {
 
 export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
   const { staffKey, canRecord } = useFrame();
-  const { token } = theme.useToken();
   const [name, setName] = useState('');
   const [found, setFound] = useState<Found | null>(null);
   const [searching, setSearching] = useState(false);
@@ -163,7 +164,7 @@ export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
             ) : null}
             {factories.map((item) =>
               item.oppId ? (
-                <div key={item.rowId} style={{ ...rowStyle(token, false), cursor: 'default' }}>
+                <div key={item.rowId} style={{ ...rowStyle(false), cursor: 'default' }}>
                   <span style={{ color: colors.textSecondary }}>
                     {item.companyName} · {item.address} · {companyAdd.alreadyListed}
                   </span>
@@ -174,7 +175,7 @@ export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
               ) : (
                 <label
                   key={item.rowId}
-                  style={rowStyle(token, picked === item.rowId)}
+                  style={rowStyle(picked === item.rowId)}
                   data-testid={`company-add-row-${item.rowId}`}
                   data-picked={picked === item.rowId ? 'true' : undefined}
                 >
@@ -199,7 +200,7 @@ export default function CompanyAddBox({ onAdded }: CompanyAddBoxProps) {
               <p style={{ color: colors.textSecondary }}>{companyAdd.truncated}</p>
             ) : null}
             <label
-              style={rowStyle(token, picked === MANUAL)}
+              style={rowStyle(picked === MANUAL)}
               data-testid="company-add-row-manual"
               data-picked={picked === MANUAL ? 'true' : undefined}
             >

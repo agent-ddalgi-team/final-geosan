@@ -43,6 +43,7 @@ import {
 } from '../components/list/lastProcess';
 import BucketedCards from '../components/list/BucketedCards';
 import { bucketRest } from '../components/list/bucketRemainder';
+import ListColumnHead from '../components/list/ListColumnHead';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import { withoutMoved } from '../components/list/movedToBookmarks';
 import OpportunityCard from '../components/list/OpportunityCard';
@@ -58,7 +59,7 @@ import {
   pagination,
   states,
 } from '../labels/ko';
-import { colors, spacing, typography } from '../theme/tokens';
+import { colors, listTheme, spacing, typography } from '../theme/tokens';
 
 export const PAGE_SIZE = 20;
 /** 가져오는 중일 때 진행을 서버에서 다시 읽는 간격(밀리초). 약속에 값이 없어 화면이 정한 5초다. */
@@ -478,321 +479,334 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           ) : null}
         </header>
       ) : null}
-      <ListViewBar
-        bookmarked={bookmarked}
-        excluded={excluded}
-        opinion={opinion}
-        filter={filter}
-        // 제외한 회사 보기(#536)도 "전체"에서 시작한다. 관심 기업 보기의 의견 거르기는 같이 뺀다.
-        onExcluded={(on) =>
-          update(
-            on
-              ? { excluded: 'true', bookmarked: null, opinion: null, process: null }
-              : { excluded: null },
-          )
-        }
-        onOpinion={(value) => update({ opinion: value })}
-        onClearFilter={() => update({ filter: null })}
-        // #798: 평소 목록에서는 [제외한 회사 보기]를 [조건 더 보기] 안으로 옮긴다.
-        showExcludedButton={!processMode}
-      />
-      {/* 검색 칸은 서버 응답 전에도(불러오지 못했을 때도) 쓸 수 있게 머리를 항상 그린다. 선택지는 응답이 오면 채워진다. */}
-      <ListFilterBar
-        processCounts={menu?.processCounts ?? []}
-        // 관심 기업 보기에도 공정 선택란을 둔다(#516, PM 2026-11-09). 묶지 않으므로 맨 위는 "전체"다.
-        showProcess={processMode || bookmarked || excluded}
-        processGrouped={processMode && !flat}
-        process={process}
-        region={region}
-        industry={industry}
-        regionCounts={menu?.regionCounts ?? []}
-        industryCounts={menu?.industryCounts ?? []}
-        query={q}
-        // 공정을 바꾸면 지역·산업은 전체로 돌린다(선택지 건수가 공정마다 달라서).
-        // 선택란에서 고른 것은 바로 기억한다. "전체(공정별로 묶음)"를 골랐을 때 지난번 공정 기억이 되살아나
-        // 그 공정으로 돌아가 버리지 않게 하려는 것이다(주소에 공정이 없으면 기억한 것으로 여는 규칙 때문).
-        onProcess={(code) => {
-          // 관심 기업 보기에서 고른 공정은 기억하지 않는다(평소 목록의 "마지막 선택"과 섞이지 않게).
-          if (processMode) storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
-          // 공정을 고르면(또는 묶음 보기로 돌아가면) 전체 보기에서 나온다.
-          update({ process: code, region: null, industry: null, view: null });
+      {/* #972: 조건 칸과 표 줄을 흰 칸 하나에 담는다(시안 Candidates · Bookmarks). */}
+      <section
+        data-testid="list-panel"
+        style={{
+          background: listTheme.panelBg,
+          border: `1px solid ${listTheme.panelBorder}`,
+          borderRadius: listTheme.panelRadius,
+          padding: listTheme.panelPadding,
         }}
-        onRegion={(value) => update({ region: value })}
-        onIndustry={(value) => update({ industry: value })}
-        onSearch={search}
-        onClearSearch={clearSearch}
-        sort={sort}
-        // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기가 그대로 열린다). 서버에는 세 묶음 순으로 달라고 한다(#610).
-        onSort={(value) => update({ sort: value === 'rank' ? null : value })}
-        distancePresets={distancePresets}
-        maxDistanceKm={maxDistanceKm}
-        onMaxDistance={(km) => update({ maxDistanceKm: km === null ? null : String(km) })}
-        // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
-        showFlat={processMode}
-        flat={flat}
-        onFlat={(on) => {
-          storeLastProcess(on ? FLAT_VIEW_CHOICE : GROUPED_VIEW_CHOICE);
-          update(on ? { view: 'all', process: null } : { view: null });
-        }}
-        // #798(PM 지시 2026-11-16): 자주 안 쓰는 보기 조건은 [조건 더 보기] 안에 둔다.
-        moreExtra={
-          processMode ? (
-            <>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <Switch
-                  size="small"
-                  checked={withBookmarked}
-                  onChange={(on) => update({ withBookmarked: on ? 'true' : null })}
-                  data-testid="list-with-bookmarked"
-                />
-                <span>{bookmarkList.withBookmarked}</span>
-              </label>
-              <Button
-                onClick={() =>
-                  update({ excluded: 'true', bookmarked: null, opinion: null, process: null })
-                }
-                data-testid="list-excluded-on"
-              >
-                {excludedList.showOnly}
-              </Button>
-            </>
-          ) : undefined
-        }
-        moreExtraActive={processMode && withBookmarked ? 1 : 0}
-      />
-      {processMode ? (
-        // 평소 목록 머리(#675): 관심으로 고른 회사는 빠져 있다. 몇 곳인지와 함께 보는 스위치를 보인다.
-        <div
-          data-testid="list-bookmarked-line"
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 16,
-            marginBottom: spacing.cardGap,
-            fontSize: typography.fontSizeSecondary,
-          }}
-        >
-          {bookmarkedCount !== null && bookmarkedCount > 0 ? (
-            <Link to={bookmarkedHref} data-testid="list-bookmarked-count-link">
-              {bookmarkList.countLink(bookmarkedCount)}
-            </Link>
-          ) : null}
-          {movedNoticeKey === filterKey ? (
-            <span role="status" data-testid="list-moved-notice">
-              {bookmarkList.moved} ·{' '}
-              <Link to={bookmarkedHref} data-testid="list-moved-link">
-                {bookmarkList.movedLink}
-              </Link>
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      {showDiscovery && latestIngest && ingestRunning && !discoveryOpen ? (
-        <IngestSummary ingest={latestIngest} />
-      ) : null}
-      {showDiscovery ? (
-        <Drawer
-          title={listSimple.ingestPanelTitle}
-          open={discoveryOpen}
-          onClose={() => setDiscoveryOpen(false)}
-          width="min(560px, 100%)"
-          styles={{ body: { background: colors.bgLayout } }}
-          rootClassName="prospect-discovery"
-        >
-          <div data-testid="ingest-panel">
-            {/* #948 진행 중인 회사는 이름으로 찾아 바로 관심 기업으로 넣는다(AI 고르기 없음). */}
-            <CompanyAddBox onAdded={retry} />
-            {ingestOptions ? (
-              <IngestForm
-                options={ingestOptions}
-                running={ingestRunning}
-                onStarted={() => void refreshIngest()}
-              />
-            ) : null}
-            {latestIngest ? (
-              <details className="prospect-history" open={ingestRunning || undefined}>
-                <summary>{listSimple.ingestHistory}</summary>
-                <IngestSummary ingest={latestIngest} inline />
-              </details>
-            ) : null}
-          </div>
-        </Drawer>
-      ) : null}
-      <FiveStates
-        state={state}
-        emptyText={emptyText}
-        errorTitle={states.listError}
-        error={current?.error}
-        onRetry={retry}
       >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            marginBottom: spacing.cardGap,
+        <ListViewBar
+          bookmarked={bookmarked}
+          excluded={excluded}
+          opinion={opinion}
+          filter={filter}
+          // 제외한 회사 보기(#536)도 "전체"에서 시작한다. 관심 기업 보기의 의견 거르기는 같이 뺀다.
+          onExcluded={(on) =>
+            update(
+              on
+                ? { excluded: 'true', bookmarked: null, opinion: null, process: null }
+                : { excluded: null },
+            )
+          }
+          onOpinion={(value) => update({ opinion: value })}
+          onClearFilter={() => update({ filter: null })}
+          // #798: 평소 목록에서는 [제외한 회사 보기]를 [조건 더 보기] 안으로 옮긴다.
+          showExcludedButton={!processMode}
+        />
+        {/* 검색 칸은 서버 응답 전에도(불러오지 못했을 때도) 쓸 수 있게 머리를 항상 그린다. 선택지는 응답이 오면 채워진다. */}
+        <ListFilterBar
+          processCounts={menu?.processCounts ?? []}
+          // 관심 기업 보기에도 공정 선택란을 둔다(#516, PM 2026-11-09). 묶지 않으므로 맨 위는 "전체"다.
+          showProcess={processMode || bookmarked || excluded}
+          processGrouped={processMode && !flat}
+          process={process}
+          region={region}
+          industry={industry}
+          regionCounts={menu?.regionCounts ?? []}
+          industryCounts={menu?.industryCounts ?? []}
+          query={q}
+          // 공정을 바꾸면 지역·산업은 전체로 돌린다(선택지 건수가 공정마다 달라서).
+          // 선택란에서 고른 것은 바로 기억한다. "전체(공정별로 묶음)"를 골랐을 때 지난번 공정 기억이 되살아나
+          // 그 공정으로 돌아가 버리지 않게 하려는 것이다(주소에 공정이 없으면 기억한 것으로 여는 규칙 때문).
+          onProcess={(code) => {
+            // 관심 기업 보기에서 고른 공정은 기억하지 않는다(평소 목록의 "마지막 선택"과 섞이지 않게).
+            if (processMode) storeLastProcess(code ?? GROUPED_VIEW_CHOICE);
+            // 공정을 고르면(또는 묶음 보기로 돌아가면) 전체 보기에서 나온다.
+            update({ process: code, region: null, industry: null, view: null });
           }}
-        >
-          <p
-            data-testid="list-total"
+          onRegion={(value) => update({ region: value })}
+          onIndustry={(value) => update({ industry: value })}
+          onSearch={search}
+          onClearSearch={clearSearch}
+          sort={sort}
+          // 추천 순은 주소에서 빼서 기본값으로 둔다(예전 주소·즐겨찾기가 그대로 열린다). 서버에는 세 묶음 순으로 달라고 한다(#610).
+          onSort={(value) => update({ sort: value === 'rank' ? null : value })}
+          distancePresets={distancePresets}
+          maxDistanceKm={maxDistanceKm}
+          onMaxDistance={(km) => update({ maxDistanceKm: km === null ? null : String(km) })}
+          // 전체 보기(#516): 켜면 공정을 빼고 한 줄로, 끄면 묶음 보기로. 어느 쪽이든 마지막 선택으로 기억한다.
+          showFlat={processMode}
+          flat={flat}
+          onFlat={(on) => {
+            storeLastProcess(on ? FLAT_VIEW_CHOICE : GROUPED_VIEW_CHOICE);
+            update(on ? { view: 'all', process: null } : { view: null });
+          }}
+          // #798(PM 지시 2026-11-16): 자주 안 쓰는 보기 조건은 [조건 더 보기] 안에 둔다.
+          moreExtra={
+            processMode ? (
+              <>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Switch
+                    size="small"
+                    checked={withBookmarked}
+                    onChange={(on) => update({ withBookmarked: on ? 'true' : null })}
+                    data-testid="list-with-bookmarked"
+                  />
+                  <span>{bookmarkList.withBookmarked}</span>
+                </label>
+                <Button
+                  onClick={() =>
+                    update({ excluded: 'true', bookmarked: null, opinion: null, process: null })
+                  }
+                  data-testid="list-excluded-on"
+                >
+                  {excludedList.showOnly}
+                </Button>
+              </>
+            ) : undefined
+          }
+          moreExtraActive={processMode && withBookmarked ? 1 : 0}
+        />
+        {processMode ? (
+          // 평소 목록 머리(#675): 관심으로 고른 회사는 빠져 있다. 몇 곳인지와 함께 보는 스위치를 보인다.
+          <div
+            data-testid="list-bookmarked-line"
             style={{
-              color: colors.textSecondary,
-              margin: 0,
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 16,
+              marginBottom: spacing.cardGap,
               fontSize: typography.fontSizeSecondary,
             }}
           >
-            {grouped
-              ? `${pagination.totalLine(total)} · ${listFilters.groupedNote}`
-              : flat
-                ? `${pagination.totalLine(total)} · ${listFilters.flatNote}`
-                : pagination.totalLine(total)}
-          </p>
-          {/* 엑셀 내려받기(#217): 목록을 부른 조건 그대로 보낸다. 쪽 번호는 보내지 않아 전체가 담긴다.
-              설정(export.xlsxEnabled)이 켜져 있을 때만 보인다. 꺼져 있거나 설정을 아직 못 읽었으면 숨긴다. */}
-          {config?.export?.xlsxEnabled === true ? <ExportButton filters={baseFilters} /> : null}
-        </div>
-        {grouped ? (
-          // 묶음 보기(#383): 공정마다 묶음 하나. 묶음 안 번호는 그 공정 안 순위다. 0곳인 묶음은 보이지 않는다.
-          <div data-testid="process-groups" style={{ display: 'grid', gap: spacing.sectionGap }}>
-            {groupCodes.map((code) => {
-              const group = groups.resultFor(code);
-              const groupShown = withoutMoved(
-                group?.items ?? [],
-                group?.meta?.total ?? group?.items?.length ?? 0,
-                group?.meta?.bucketCounts,
-                movedIds,
-              );
-              const groupItems = groupShown.items;
-              if (group?.items !== undefined && groupItems.length === 0) return null;
-              const groupTotal = groupShown.total;
-              // 한 공정은 50곳까지만 실린다. 덜 실렸으면 묶음 제목의 곳 수(공정 전체)와 카드 수가 달라
-              // 몇 곳만 보이는지와 안 보인 묶음을 알린다(#719).
-              const groupTruncated = groupTotal > groupItems.length;
-              const groupRest =
-                groupTruncated && sort === 'rank'
-                  ? bucketRest(groupItems, groupShown.bucketCounts).map((rest) =>
-                      contactBuckets.title(rest.bucket, rest.count),
-                    )
-                  : [];
-              return (
-                <section
-                  key={code}
-                  data-testid={`process-group-${code}`}
-                  aria-label={processNames[code] ?? code}
-                >
-                  <FiveStates
-                    state={!group ? 'loading' : group.error ? 'error' : 'ready'}
-                    errorTitle={states.listError}
-                    error={group?.error}
-                    onRetry={() => groups.retry(code)}
-                    skeletonCount={1}
-                    data-testid={`process-group-${code}-states`}
-                  >
-                    <h2
-                      data-testid="process-group-title"
-                      style={{
-                        margin: `0 0 ${spacing.cardGap}px`,
-                        fontSize: typography.fontSizeCardTitle,
-                      }}
-                    >
-                      {listFilters.groupTitle(
-                        processNames[code] ?? code,
-                        groupConditions,
-                        groupTotal,
-                      )}
-                    </h2>
-                    <BucketedCards
-                      items={groupItems}
-                      bucketCounts={groupShown.bucketCounts}
-                      showBuckets={sort === 'rank'}
-                      truncated={groupTruncated}
-                      renderCard={(card) => (
-                        <OpportunityCard
-                          card={card}
-                          classificationOverrides={config?.classificationLabels}
-                          processNames={processNames}
-                          showRank
-                          onBookmarkedOn={onBookmarkedOn}
-                        />
-                      )}
-                    />
-                    {groupTruncated ? (
-                      <p
-                        data-testid="process-group-truncated"
-                        style={{
-                          marginTop: spacing.cardGap,
-                          marginBottom: 0,
-                          color: colors.textSecondary,
-                          fontSize: typography.fontSizeSecondary,
-                        }}
-                      >
-                        {listFilters.groupTruncated(groupTotal, groupItems.length, groupRest)}
-                        {' — '}
-                        <Link to={onlyProcessHref(code)} data-testid="process-group-more">
-                          {listFilters.onlyThisProcess}
-                        </Link>
-                      </p>
-                    ) : null}
-                  </FiveStates>
-                </section>
-              );
-            })}
-          </div>
-        ) : (
-          <BucketedCards
-            items={items}
-            bucketCounts={shown.bucketCounts}
-            showBuckets={sort === 'rank'}
-            renderCard={(card) => (
-              <OpportunityCard
-                card={card}
-                classificationOverrides={config?.classificationLabels}
-                processNames={processNames}
-                // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
-                showRank={processMode && !flat}
-                onBookmarkedOn={onBookmarkedOn}
-              />
-            )}
-          />
-        )}
-        {notEvaluated > 0 ? (
-          <p data-testid="list-not-evaluated" style={{ color: colors.textSecondary }}>
-            {states.notEvaluatedCount(notEvaluated)}
-          </p>
-        ) : null}
-        {!grouped && total > 1 ? (
-          <div
-            data-testid="list-pagination"
-            style={{
-              marginTop: spacing.sectionGap,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <span
-              aria-live="polite"
-              data-testid="list-range-text"
-              style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
-            >
-              {pagination.total(from, to, total)} · {pagination.perPage}
-            </span>
-            {total > PAGE_SIZE ? (
-              <Pagination
-                current={page}
-                pageSize={PAGE_SIZE}
-                total={total}
-                showSizeChanger={false}
-                onChange={(next) => setPageState({ key: filterKey, page: next })}
-              />
+            {bookmarkedCount !== null && bookmarkedCount > 0 ? (
+              <Link to={bookmarkedHref} data-testid="list-bookmarked-count-link">
+                {bookmarkList.countLink(bookmarkedCount)}
+              </Link>
+            ) : null}
+            {movedNoticeKey === filterKey ? (
+              <span role="status" data-testid="list-moved-notice">
+                {bookmarkList.moved} ·{' '}
+                <Link to={bookmarkedHref} data-testid="list-moved-link">
+                  {bookmarkList.movedLink}
+                </Link>
+              </span>
             ) : null}
           </div>
         ) : null}
-      </FiveStates>
+        {showDiscovery && latestIngest && ingestRunning && !discoveryOpen ? (
+          <IngestSummary ingest={latestIngest} />
+        ) : null}
+        {showDiscovery ? (
+          <Drawer
+            title={listSimple.ingestPanelTitle}
+            open={discoveryOpen}
+            onClose={() => setDiscoveryOpen(false)}
+            width="min(560px, 100%)"
+            styles={{ body: { background: colors.bgLayout } }}
+            rootClassName="prospect-discovery"
+          >
+            <div data-testid="ingest-panel">
+              {/* #948 진행 중인 회사는 이름으로 찾아 바로 관심 기업으로 넣는다(AI 고르기 없음). */}
+              <CompanyAddBox onAdded={retry} />
+              {ingestOptions ? (
+                <IngestForm
+                  options={ingestOptions}
+                  running={ingestRunning}
+                  onStarted={() => void refreshIngest()}
+                />
+              ) : null}
+              {latestIngest ? (
+                <details className="prospect-history" open={ingestRunning || undefined}>
+                  <summary>{listSimple.ingestHistory}</summary>
+                  <IngestSummary ingest={latestIngest} inline />
+                </details>
+              ) : null}
+            </div>
+          </Drawer>
+        ) : null}
+        <FiveStates
+          state={state}
+          emptyText={emptyText}
+          errorTitle={states.listError}
+          error={current?.error}
+          onRetry={retry}
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              marginBottom: spacing.cardGap,
+            }}
+          >
+            <p
+              data-testid="list-total"
+              style={{
+                color: colors.textSecondary,
+                margin: 0,
+                fontSize: typography.fontSizeSecondary,
+              }}
+            >
+              {grouped
+                ? `${pagination.totalLine(total)} · ${listFilters.groupedNote}`
+                : flat
+                  ? `${pagination.totalLine(total)} · ${listFilters.flatNote}`
+                  : pagination.totalLine(total)}
+            </p>
+            {/* 엑셀 내려받기(#217): 목록을 부른 조건 그대로 보낸다. 쪽 번호는 보내지 않아 전체가 담긴다.
+              설정(export.xlsxEnabled)이 켜져 있을 때만 보인다. 꺼져 있거나 설정을 아직 못 읽었으면 숨긴다. */}
+            {config?.export?.xlsxEnabled === true ? <ExportButton filters={baseFilters} /> : null}
+          </div>
+          {grouped ? (
+            // 묶음 보기(#383): 공정마다 묶음 하나. 묶음 안 번호는 그 공정 안 순위다. 0곳인 묶음은 보이지 않는다.
+            <div data-testid="process-groups" style={{ display: 'grid', gap: spacing.sectionGap }}>
+              {groupCodes.map((code) => {
+                const group = groups.resultFor(code);
+                const groupShown = withoutMoved(
+                  group?.items ?? [],
+                  group?.meta?.total ?? group?.items?.length ?? 0,
+                  group?.meta?.bucketCounts,
+                  movedIds,
+                );
+                const groupItems = groupShown.items;
+                if (group?.items !== undefined && groupItems.length === 0) return null;
+                const groupTotal = groupShown.total;
+                // 한 공정은 50곳까지만 실린다. 덜 실렸으면 묶음 제목의 곳 수(공정 전체)와 카드 수가 달라
+                // 몇 곳만 보이는지와 안 보인 묶음을 알린다(#719).
+                const groupTruncated = groupTotal > groupItems.length;
+                const groupRest =
+                  groupTruncated && sort === 'rank'
+                    ? bucketRest(groupItems, groupShown.bucketCounts).map((rest) =>
+                        contactBuckets.title(rest.bucket, rest.count),
+                      )
+                    : [];
+                return (
+                  <section
+                    key={code}
+                    data-testid={`process-group-${code}`}
+                    aria-label={processNames[code] ?? code}
+                  >
+                    <FiveStates
+                      state={!group ? 'loading' : group.error ? 'error' : 'ready'}
+                      errorTitle={states.listError}
+                      error={group?.error}
+                      onRetry={() => groups.retry(code)}
+                      skeletonCount={1}
+                      data-testid={`process-group-${code}-states`}
+                    >
+                      <h2
+                        data-testid="process-group-title"
+                        style={{
+                          margin: `0 0 ${spacing.cardGap}px`,
+                          fontSize: typography.fontSizeCardTitle,
+                        }}
+                      >
+                        {listFilters.groupTitle(
+                          processNames[code] ?? code,
+                          groupConditions,
+                          groupTotal,
+                        )}
+                      </h2>
+                      <BucketedCards
+                        items={groupItems}
+                        bucketCounts={groupShown.bucketCounts}
+                        showBuckets={sort === 'rank'}
+                        truncated={groupTruncated}
+                        columnHead={<ListColumnHead />}
+                        renderCard={(card) => (
+                          <OpportunityCard
+                            card={card}
+                            classificationOverrides={config?.classificationLabels}
+                            processNames={processNames}
+                            showRank
+                            onBookmarkedOn={onBookmarkedOn}
+                          />
+                        )}
+                      />
+                      {groupTruncated ? (
+                        <p
+                          data-testid="process-group-truncated"
+                          style={{
+                            marginTop: spacing.cardGap,
+                            marginBottom: 0,
+                            color: colors.textSecondary,
+                            fontSize: typography.fontSizeSecondary,
+                          }}
+                        >
+                          {listFilters.groupTruncated(groupTotal, groupItems.length, groupRest)}
+                          {' — '}
+                          <Link to={onlyProcessHref(code)} data-testid="process-group-more">
+                            {listFilters.onlyThisProcess}
+                          </Link>
+                        </p>
+                      ) : null}
+                    </FiveStates>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <BucketedCards
+              items={items}
+              bucketCounts={shown.bucketCounts}
+              showBuckets={sort === 'rank'}
+              columnHead={<ListColumnHead />}
+              renderCard={(card) => (
+                <OpportunityCard
+                  card={card}
+                  classificationOverrides={config?.classificationLabels}
+                  processNames={processNames}
+                  // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
+                  showRank={processMode && !flat}
+                  onBookmarkedOn={onBookmarkedOn}
+                />
+              )}
+            />
+          )}
+          {notEvaluated > 0 ? (
+            <p data-testid="list-not-evaluated" style={{ color: colors.textSecondary }}>
+              {states.notEvaluatedCount(notEvaluated)}
+            </p>
+          ) : null}
+          {!grouped && total > 1 ? (
+            <div
+              data-testid="list-pagination"
+              style={{
+                marginTop: spacing.sectionGap,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <span
+                aria-live="polite"
+                data-testid="list-range-text"
+                style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+              >
+                {pagination.total(from, to, total)} · {pagination.perPage}
+              </span>
+              {total > PAGE_SIZE ? (
+                <Pagination
+                  current={page}
+                  pageSize={PAGE_SIZE}
+                  total={total}
+                  showSizeChanger={false}
+                  onChange={(next) => setPageState({ key: filterKey, page: next })}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </FiveStates>
+      </section>
     </>
   );
 }
