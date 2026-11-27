@@ -199,6 +199,11 @@ export const frame = {
   pageTitleBookmarks: '관심 기업',
   /** 왼쪽 메뉴 묶음 이름(#767). 그림은 SideMenu의 선 그림 아이콘(이모지 대신). */
   navGroupSales: '영업',
+  /** #972 왼쪽 메뉴 묶음 이름 둘("분석" = 영업 분석, "운영" = 운영 관리)과 주 단추. */
+  navGroupAnalysis: '분석',
+  navGroupOperations: '운영',
+  /** #972 [왼쪽 메뉴 › 맨 위 주 단추]. 누르면 거래처 후보 화면이 새 후보 발굴 창을 연다. */
+  menuNewCandidates: '새 후보 발굴',
   sidebarCollapse: '메뉴 접기',
   /** 오른쪽 영업 코치 칸(#773). */
   coachDockTitle: '영업 코치',

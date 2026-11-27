@@ -5,10 +5,11 @@
 // 대시보드·관심 기업·영업 분석은 기본 접힘(💬만). 담당자가 펼치거나 접으면 그 화면 종류에만 기억한다.
 // 예전 공통 키(geosan.coachDockCollapsed)는 읽지 않는다.
 // 접어도 안의 내용은 지우지 않는다(쓰던 메모·답이 사라지지 않게 숨기기만 한다).
+// #972(보라 톤 시안): 펼치면 흰 카드(얇은 테두리, 모서리 12, 그림자 없음), 접으면 강조 바탕 정사각 단추(모서리 12)만 남는다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { frame } from '../../labels/ko';
-import { colors, radius, tone, typography } from '../../theme/tokens';
+import { accent, colors, radius, typography } from '../../theme/tokens';
 
 /** 코치 칸이 놓이는 화면 종류(#795). */
 export type DockScreen = 'DASHBOARD' | 'LIST' | 'BOOKMARKS' | 'DETAIL' | 'ANALYSIS';
@@ -39,12 +40,28 @@ function readCollapsed(screen: DockScreen): boolean {
   return DOCK_DEFAULT_COLLAPSED[screen];
 }
 
-const toggleStyle = {
+/** 펼친 칸의 [›]: 흰 바탕 + 얇은 테두리 작은 단추. */
+const collapseButtonStyle = {
   minWidth: 36,
   minHeight: 36,
-  border: `1px solid ${colors.border}`,
-  borderRadius: radius.pill,
+  border: `1px solid ${colors.borderSecondary}`,
+  borderRadius: radius.controlSm,
   background: colors.bgContainer,
+  color: colors.textSecondary,
+  cursor: 'pointer',
+  font: 'inherit',
+} as const;
+
+/** 접힌 칸의 💬: 강조 바탕 정사각 단추(시안의 영업 코치 단추). */
+const COLLAPSED_SIZE = 44;
+const expandButtonStyle = {
+  width: COLLAPSED_SIZE,
+  height: COLLAPSED_SIZE,
+  padding: 0,
+  border: 0,
+  borderRadius: radius.card,
+  background: accent.bg,
+  color: accent.onBg,
   cursor: 'pointer',
   font: 'inherit',
 } as const;
@@ -88,7 +105,7 @@ export default function CoachDock({
       data-testid="coach-dock"
       data-collapsed={collapsed}
       style={{
-        width: collapsed ? 56 : WIDTH,
+        width: collapsed ? COLLAPSED_SIZE : WIDTH,
         flexShrink: 0,
         position: 'sticky',
         top: 12,
@@ -96,13 +113,12 @@ export default function CoachDock({
         maxHeight: 'calc(100vh - 24px)',
         overflowY: collapsed ? 'hidden' : 'auto',
         boxSizing: 'border-box',
-        // #803: 본문과 같은 흰 바탕이라 경계가 안 보였다. #898: 옅은 청회색 판(참고 그림의 색 카드)으로 떠 있는 판처럼.
-        border: `1px solid ${tone.mist}`,
-        borderRadius: radius.xl,
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
+        // #972: 화면 바탕(옅은 회보라) 위의 흰 카드라 얇은 테두리만으로 경계가 보인다. 접으면 카드 없이 단추만.
+        border: collapsed ? 0 : `1px solid ${colors.borderSecondary}`,
+        borderRadius: radius.card,
         margin: '12px 12px 12px 0',
-        background: tone.mistSoft,
-        padding: collapsed ? '12px 8px' : '12px 16px 24px',
+        background: collapsed ? 'transparent' : colors.bgContainer,
+        padding: collapsed ? 0 : 18,
       }}
     >
       <div
@@ -126,7 +142,7 @@ export default function CoachDock({
           aria-label={collapsed ? frame.coachDockExpand : frame.coachDockCollapse}
           title={collapsed ? frame.coachDockExpand : frame.coachDockCollapse}
           data-testid="coach-dock-toggle"
-          style={toggleStyle}
+          style={collapsed ? expandButtonStyle : collapseButtonStyle}
         >
           {collapsed ? '💬' : '›'}
         </button>

@@ -1,16 +1,22 @@
 // #762 왼쪽 메뉴: 네 줄(그림 + 이름), 접으면 아이콘만(이름은 aria-label·title·이름표), 접은 상태 기억, 좁은 기기는 접힌 채로.
 // #767(PM 2026-11-16): 이모지 대신 내용에 맞는 선 그림 아이콘(SVG, data-icon)이라 글자에는 한글 이름만 있다.
 // #770: 새로 생긴 것 숫자 꼬리표. 숫자 요청은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
+// #972(보라 톤 시안): 맨 위 로고 + 이름, 주 단추 [새 후보 발굴], 묶음 "영업" · "분석" · "운영", 지금 화면 줄·꼬리표 색.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { getMenuBadges } from '../../../api/menuBadges';
 import SideMenu, {
+  NEW_CANDIDATES_PATH,
   SIDEBAR_DETAIL_STORAGE_KEY,
   SIDEBAR_STORAGE_KEY,
   isDetailPath,
 } from '../SideMenu';
+import { FrameContext } from '../FrameContext';
+import type { FrameValue } from '../FrameContext';
+import type { ConfigUi } from '../../../api/types';
 import { frame } from '../../../labels/ko';
+import { accent, sidebarTheme } from '../../../theme/tokens';
 
 vi.mock('../../../api/menuBadges', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/menuBadges')>()),
@@ -37,7 +43,7 @@ beforeEach(() => {
   badgesAre(0, 0, 0);
 });
 
-it('네 줄이 순서대로 그림과 이름으로 보이고 각 화면 주소를 가리킨다', () => {
+it('주 단추 아래로 네 줄이 순서대로 그림과 이름으로 보이고 각 화면 주소를 가리킨다', () => {
   renderMenu();
   const links = [
     ['nav-dashboard-link', 'dashboard', frame.menuDashboard, '/'],
@@ -46,7 +52,11 @@ it('네 줄이 순서대로 그림과 이름으로 보이고 각 화면 주소�
     ['nav-sales-analysis-link', 'sales-analysis', frame.menuSalesAnalysis, '/sales-analysis'],
   ] as const;
   const items = screen.getAllByRole('link');
-  expect(items.map((item) => item.getAttribute('data-testid'))).toEqual(links.map((l) => l[0]));
+  // #972: 맨 앞은 주 단추 [새 후보 발굴], 그 아래가 메뉴 네 줄이다.
+  expect(items.map((item) => item.getAttribute('data-testid'))).toEqual([
+    'nav-new-candidates',
+    ...links.map((l) => l[0]),
+  ]);
   for (const [testId, icon, label, href] of links) {
     const link = screen.getByTestId(testId);
     expect(link).toHaveTextContent(new RegExp(`^${label}$`));
@@ -155,12 +165,16 @@ describe('새로 생긴 것 숫자 꼬리표 (#770)', () => {
     expect(badge).toHaveAttribute('title', '새 후보 240곳');
   });
 
-  it('숫자를 못 읽으면 꼬리표 없이 메뉴 네 줄만 그대로 보인다', async () => {
+  it('숫자를 못 읽으면 꼬리표 없이 주 단추와 메뉴 네 줄만 그대로 보인다', async () => {
     mockedBadges.mockReset();
     mockedBadges.mockRejectedValue(new Error('network'));
     renderMenu();
     await waitFor(() => expect(mockedBadges).toHaveBeenCalled());
-    expect(screen.getAllByRole('link')).toHaveLength(4);
+    // 주 단추 [새 후보 발굴](#972) + 메뉴 네 줄.
+    expect(screen.getAllByRole('link')).toHaveLength(5);
+    expect(
+      screen.getAllByRole('link').filter((link) => link.classList.contains('side-nav-row')),
+    ).toHaveLength(4);
     expect(screen.queryByTestId(/-badge$/)).toBeNull();
   });
 
@@ -186,4 +200,133 @@ it('기업 상세에서는 처음에 접혀 있고, 펴면 상세 기억에만 �
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
   expect(isDetailPath('/opportunities/opp-1/report')).toBe(false);
   expect(isDetailPath('/opportunities')).toBe(false);
+});
+
+describe('새 디자인 (#972)', () => {
+  function renderWithFrame(value: Partial<FrameValue>, path = '/') {
+    const frameValue: FrameValue = {
+      config: null,
+      staffKey: null,
+      setStaffKey: () => {},
+      canRecord: false,
+      setBannerMeta: () => {},
+      setPageTitle: () => {},
+      ...value,
+    };
+    return render(
+      <FrameContext.Provider value={frameValue}>
+        <MemoryRouter initialEntries={[path]}>
+          <SideMenu narrowDevice={false} />
+        </MemoryRouter>
+      </FrameContext.Provider>,
+    );
+  }
+
+  it('맨 위에 로고와 이름이 있고, 그 아래 주 단추 [새 후보 발굴]이 새 후보 발굴 창을 여는 주소를 가리킨다', () => {
+    renderMenu();
+    const menu = screen.getByTestId('side-menu');
+    const logo = within(menu).getByTestId('brand-logo');
+    expect(logo.getAttribute('src')).toMatch(/geosan-logo/);
+    // 옆에 이름 글자가 있으므로 그림은 꾸밈(alt 빈 값)이다.
+    expect(logo).toHaveAttribute('alt', '');
+    expect(within(menu).getByTestId('brand-name')).toHaveTextContent(/^거산 영업지원$/);
+    const button = screen.getByTestId('nav-new-candidates');
+    expect(button).toHaveTextContent(/^새 후보 발굴$/);
+    expect(button.querySelector('svg')).toHaveAttribute('data-icon', 'new-candidates');
+    expect(NEW_CANDIDATES_PATH).toBe('/opportunities?newCandidates=1');
+    expect(button).toHaveAttribute('href', NEW_CANDIDATES_PATH);
+    expect(button).toHaveStyle({
+      background: sidebarTheme.primaryBg,
+      color: sidebarTheme.primaryFg,
+    });
+    // 순서: 로고 → 주 단추 → 메뉴 첫 줄.
+    const first = screen.getByTestId('nav-dashboard-link');
+    expect(logo.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('공통 틀이 넘긴 이름·로고가 있으면 그 값으로 보이고, 로고가 없으면 이름만 보인다', () => {
+    render(
+      <MemoryRouter>
+        <SideMenu narrowDevice={false} brand={{ logoUrl: null, brandName: '가상 영업지원' }} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('brand-name')).toHaveTextContent('가상 영업지원');
+    expect(screen.queryByTestId('brand-logo')).toBeNull();
+  });
+
+  it('접으면 주 단추는 더하기 그림만 남고 이름은 aria-label·title·이름표로 남으며, 로고가 이름을 대신 읽힌다', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByTestId('side-menu-toggle'));
+    const button = screen.getByTestId('nav-new-candidates');
+    expect(button.querySelector('svg')).toHaveAttribute('data-icon', 'new-candidates');
+    expect(button).toHaveAttribute('aria-label', '새 후보 발굴');
+    expect(button).toHaveAttribute('title', '새 후보 발굴');
+    expect(button.querySelector('.side-nav-tip')).toHaveTextContent('새 후보 발굴');
+    expect(screen.getByRole('link', { name: '새 후보 발굴' })).toBe(button);
+    expect(button).toHaveAttribute('href', NEW_CANDIDATES_PATH);
+    expect(screen.queryByTestId('brand-name')).toBeNull();
+    expect(screen.getByTestId('brand-logo')).toHaveAttribute('alt', '거산 영업지원');
+  });
+
+  it('묶음 "영업"에 세 줄, "분석"에 영업 분석이 있고, 운영 담당이 아니면 "운영" 묶음은 없다', () => {
+    renderMenu();
+    const sales = screen.getByRole('list', { name: '영업' });
+    expect(
+      within(sales)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('data-testid')),
+    ).toEqual(['nav-dashboard-link', 'nav-opportunities-link', 'nav-bookmarks-link']);
+    const analysis = screen.getByRole('list', { name: '분석' });
+    expect(
+      within(analysis)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('data-testid')),
+    ).toEqual(['nav-sales-analysis-link']);
+    expect(screen.queryByRole('list', { name: '운영' })).toBeNull();
+    expect(screen.queryByTestId('nav-operations-link')).toBeNull();
+    const text = screen.getByTestId('side-menu').textContent ?? '';
+    expect(text.indexOf('영업 홈')).toBeLessThan(text.indexOf('분석'));
+  });
+
+  it('운영 담당에게는 맨 아래 "운영" 묶음에 운영 관리가 보인다', () => {
+    renderWithFrame({
+      staffKey: 'ops-kim',
+      config: { operationsStaffKeys: ['ops-kim'] } as unknown as ConfigUi,
+    });
+    const operations = screen.getByRole('list', { name: '운영' });
+    const link = within(operations).getByTestId('nav-operations-link');
+    expect(link).toHaveTextContent(/^운영 관리$/);
+    expect(link).toHaveAttribute('href', '/operations');
+    const lists = screen.getAllByRole('list').map((list) => list.getAttribute('aria-label'));
+    expect(lists).toEqual(['영업', '분석', '운영']);
+  });
+
+  it('지금 화면 줄은 강조 연한 바탕 + 강조 글자 굵게이고, 다른 줄은 바탕 없이 보조 글자다', () => {
+    renderMenu('/bookmarks');
+    expect(screen.getByTestId('nav-bookmarks-link')).toHaveStyle({
+      background: accent.soft,
+      color: accent.text,
+      fontWeight: 600,
+    });
+    const other = screen.getByTestId('nav-dashboard-link');
+    expect(other).toHaveStyle({ color: sidebarTheme.fg, fontWeight: 400 });
+    expect(other.style.background).toBe('');
+  });
+
+  it('숫자 꼬리표는 연보라 바탕 + 강조 글자다(빨강을 쓰지 않는다)', async () => {
+    badgesAre(4, 0, 0);
+    renderMenu();
+    expect(await screen.findByTestId('nav-dashboard-link-badge')).toHaveStyle({
+      background: accent.softDeep,
+      color: accent.text,
+    });
+  });
+
+  it('새 후보 발굴 주소로 들어와도 거래처 후보 줄이 지금 화면으로 표시된다', () => {
+    renderMenu(NEW_CANDIDATES_PATH);
+    expect(screen.getByTestId('nav-opportunities-link')).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('nav-new-candidates')).not.toHaveAttribute('aria-current');
+  });
 });

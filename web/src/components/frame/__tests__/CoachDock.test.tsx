@@ -11,6 +11,7 @@ import { useFrame } from '../FrameContext';
 import { getConfigUi } from '../../../api/client';
 import fixture from '../../../test/fixtures/config-ui.json';
 import type { ConfigUi, Envelope } from '../../../api/types';
+import { accent, colors, radius } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
@@ -118,4 +119,29 @@ it('좁은 기기에서는 본문 아래에 놓이고 접기 단추가 없다(�
   const dock = await screen.findByTestId('coach-dock');
   expect(screen.getByRole('main')).toContainElement(dock);
   expect(screen.queryByTestId('coach-dock-toggle')).not.toBeInTheDocument();
+});
+
+it('#972 펼치면 흰 카드(얇은 테두리, 모서리 12)이고, 접으면 카드 없이 강조 바탕 정사각 단추(모서리 12)만 남는다', async () => {
+  const user = userEvent.setup();
+  renderFrame('page', 1440, 'DETAIL');
+  const dock = await screen.findByTestId('coach-dock');
+  expect(dock).toHaveStyle({
+    background: colors.bgContainer,
+    border: `1px solid ${colors.borderSecondary}`,
+    borderRadius: `${radius.card}px`,
+  });
+  expect(dock.style.boxShadow).toBe('');
+  const toggle = screen.getByTestId('coach-dock-toggle');
+  expect(toggle).toHaveStyle({ background: colors.bgContainer });
+  await user.click(toggle);
+  expect(dock.style.background).toBe('transparent');
+  expect(dock.style.borderWidth).toBe('0px');
+  expect(screen.getByTestId('coach-dock-toggle')).toHaveStyle({
+    background: accent.bg,
+    color: accent.onBg,
+    width: '44px',
+    height: '44px',
+    borderRadius: `${radius.card}px`,
+  });
+  expect(screen.getByTestId('coach-dock-toggle')).toHaveAttribute('aria-expanded', 'false');
 });

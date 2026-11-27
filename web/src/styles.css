@@ -213,6 +213,15 @@ button {
   font-family: inherit;
 }
 
+/* 왼쪽 메뉴 줄·접기 단추(#972): 평소엔 바탕이 없고 손을 올리면 옅은 바탕. 지금 화면 줄의 바탕은 SideMenu가 칠한다. */
+.side-nav-row {
+  background: transparent;
+}
+
+.side-nav-row:not([aria-current='page']):hover {
+  background: #f7f7fb;
+}
+
 /* 접은 왼쪽 메뉴에서 그림에 손을 올리거나 키보드로 오면 오른쪽에 이름표가 뜬다(#767). */
 .side-nav-tip {
   position: absolute;

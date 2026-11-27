@@ -74,6 +74,35 @@ describe('AppFrame', () => {
     expect(logo).toHaveAttribute('alt', '');
   });
 
+  it('#972 로고와 브랜드명은 왼쪽 메뉴 맨 위에 한 번만 보이고, 위쪽 줄에는 글자 크기와 담당자 고르기만 남는다', async () => {
+    renderFrame();
+    await screen.findByTestId('brand-name');
+    const menu = screen.getByRole('navigation', { name: frame.navLabel });
+    const header = screen.getByRole('banner');
+    expect(screen.getAllByTestId('brand-name')).toHaveLength(1);
+    expect(screen.getAllByTestId('brand-logo')).toHaveLength(1);
+    expect(menu).toContainElement(screen.getByTestId('brand-name'));
+    expect(menu).toContainElement(screen.getByTestId('brand-logo'));
+    expect(header).not.toHaveTextContent('거산 영업지원');
+    expect(header).toContainElement(screen.getByTestId('font-scale'));
+    expect(header).toContainElement(screen.getByRole('combobox'));
+    // 왼쪽 메뉴는 화면 맨 위부터 내려온다: 위쪽 줄·알림 띠·본문이 모두 메뉴 오른쪽 칸 안에 있다.
+    const rightColumn = header.parentElement as HTMLElement;
+    expect(rightColumn).toContainElement(screen.getByRole('status'));
+    expect(rightColumn).toContainElement(screen.getByRole('main'));
+    expect(rightColumn).not.toContainElement(menu);
+    expect(menu.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('#972 메뉴의 [새 후보 발굴]은 거래처 후보 화면의 새 후보 발굴 창을 여는 주소를 가리킨다', async () => {
+    renderFrame();
+    expect(screen.getByTestId('nav-new-candidates')).toHaveAttribute(
+      'href',
+      '/opportunities?newCandidates=1',
+    );
+    await screen.findByText('거산 영업지원');
+  });
+
   it('담당자를 고르면 기록할 수 있고 브라우저에 기억된다', async () => {
     renderFrame();
     expect(screen.getByTestId('probe')).toHaveTextContent('none|false');
