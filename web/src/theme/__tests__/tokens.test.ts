@@ -8,6 +8,7 @@ import {
   choiceChip,
   colors,
   homePalette,
+  loginTheme,
   mapPinPalette,
   neutralChip,
   ok,
@@ -99,6 +100,11 @@ it.each([
   ['단계: 지나온 칸', progressTheme.doneFg, progressTheme.done],
   ['단계: 지금 칸', progressTheme.currentFg, progressTheme.current],
   ['단계: 아직인 칸', colors.textSecondary, progressTheme.todo],
+  ['접속 화면 제목', loginTheme.text, loginTheme.cardBg],
+  ['접속 화면 보조 글자', loginTheme.textSoft, loginTheme.cardBg],
+  ['접속 화면 저작권 줄', loginTheme.textDimmed, loginTheme.bg],
+  ['접속 단추', loginTheme.accentText, loginTheme.accent],
+  ['누를 수 없는 접속 단추', loginTheme.disabledFg, loginTheme.disabledBg],
 ])('%s: 대비 4.5:1 이상', (_name, fg, bg) => {
   expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
 });

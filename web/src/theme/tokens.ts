@@ -366,52 +366,50 @@ export const antdTheme: ThemeConfig = {
 };
 
 /**
- * 접속 화면(화면 담당 시안 login_mix): 짙은 남색 바탕 + 아래쪽 빛나는 곡선, 반투명 입력 상자, 라임색 접속 단추.
- * 이 색은 접속 화면에만 쓴다. 비활성 단추는 일부러 흐리게 둔다.
+ * 접속 화면(#972 시안 Login): 밝은 바탕 + 가운데 흰 상자(얇은 테두리, 모서리 16), 보라 [접속 →].
+ * 예전의 남색 바탕 · 빛나는 곡선 · 라임 단추는 없앴다. 이 값은 접속 화면에만 쓴다.
  */
 export const loginTheme = {
-  bgTop: '#0F2048',
-  bgMiddle: '#132A5C',
-  bgLow: '#245089',
-  spotLeft: 'rgba(52, 88, 160, 0.55)',
-  spotRight: 'rgba(40, 78, 150, 0.5)',
-  planet: '#0B1632',
-  glowCore: 'rgba(205, 228, 255, 0.95)',
-  glowMiddle: 'rgba(95, 165, 232, 0.7)',
-  glowFar: 'rgba(50, 120, 200, 0.45)',
-  text: '#FFFFFF',
-  textSoft: 'rgba(255, 255, 255, 0.62)',
-  badgeBorder: 'rgba(160, 195, 245, 0.5)',
-  cardBg: 'rgba(255, 255, 255, 0.09)',
-  cardBorder: 'rgba(255, 255, 255, 0.18)',
-  cardShadow: 'rgba(3, 10, 30, 0.35)',
-  inputBg: '#FFFFFF',
-  accent: '#C8F03C',
-  accentHover: '#D6F766',
-  accentText: '#14275A',
-  focusRing: 'rgba(200, 240, 60, 0.45)',
-  disabledBg: 'rgba(200, 240, 60, 0.55)',
-  disabledFg: 'rgba(20, 39, 90, 0.85)',
+  bg: colors.bgLayout,
+  text: colors.text,
+  textSoft: colors.textSecondary,
+  /** 맨 아래 저작권 줄(화면 바탕 위 약 4.8:1). */
+  textDimmed: colors.textDimmed,
+  badgeBg: colors.bgContainer,
+  badgeBorder: colors.borderSecondary,
+  cardBg: colors.bgContainer,
+  cardBorder: colors.borderSecondary,
+  inputBg: colors.bgContainer,
+  inputBorder: colors.border,
+  accent: accent.bg,
+  accentHover: accent.bright,
+  accentActive: accent.text,
+  accentText: accent.onBg,
+  focusRing: 'rgba(106, 77, 240, 0.28)',
+  /** 누를 수 없는 [접속]: 중립 바탕 + 보조 글자(약 6.3:1). */
+  disabledBg: neutralChip.bg,
+  disabledFg: neutralChip.text,
   cardWidth: 400,
-  cardRadius: 18,
+  cardRadius: radius.modal,
   inputHeight: 48,
   buttonHeight: 50,
-  inputRadius: 10,
-  titleSize: 48,
-  subtitleSize: 34,
+  inputRadius: radius.control,
+  badgeRadius: radius.controlSm,
+  titleSize: 28,
+  subtitleSize: 16,
 } as const;
 
-/** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 모양을 덮는다. */
+/** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 크기를 덮는다. */
 export const loginAntdTheme: ThemeConfig = {
   ...antdTheme,
   components: {
     ...antdTheme.components,
     Input: {
+      ...antdTheme.components?.Input,
       controlHeightLG: loginTheme.inputHeight,
       borderRadiusLG: loginTheme.inputRadius,
-      lineWidth: 2,
       colorBgContainer: loginTheme.inputBg,
-      colorBorder: loginTheme.inputBg,
+      colorBorder: loginTheme.inputBorder,
       hoverBorderColor: loginTheme.accent,
       activeBorderColor: loginTheme.accent,
       activeShadow: `0 0 0 3px ${loginTheme.focusRing}`,
@@ -420,10 +418,10 @@ export const loginAntdTheme: ThemeConfig = {
       ...antdTheme.components?.Button,
       controlHeightLG: loginTheme.buttonHeight,
       borderRadiusLG: loginTheme.inputRadius,
-      fontWeight: 700,
+      fontWeight: 600,
       colorPrimary: loginTheme.accent,
       colorPrimaryHover: loginTheme.accentHover,
-      colorPrimaryActive: loginTheme.accent,
+      colorPrimaryActive: loginTheme.accentActive,
       primaryColor: loginTheme.accentText,
       colorBgContainerDisabled: loginTheme.disabledBg,
       colorTextDisabled: loginTheme.disabledFg,
