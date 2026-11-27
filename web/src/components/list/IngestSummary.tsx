@@ -5,7 +5,7 @@
 // "최근 들어온 순"으로 새로 들어온 회사를 위로 올린다.
 import type { LatestIngest } from '../../api/types';
 import { candidateSearch } from '../../labels/ko';
-import { colors, typography } from '../../theme/tokens';
+import { colors, listTheme, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 
 export interface IngestSummaryProps {
@@ -74,14 +74,27 @@ export default function IngestSummary({ ingest, inline = false }: IngestSummaryP
         alignItems: 'center',
         gap: 12,
         marginBottom: inline ? 0 : 16,
+        // #972: 목록 위 진행 줄은 강조 연한 바탕 칸으로 띄운다(뜨는 창 안 한 줄은 바탕 없이).
+        ...(inline
+          ? {}
+          : {
+              padding: '9px 12px',
+              borderRadius: listTheme.runningRadius,
+              background: listTheme.runningBg,
+            }),
       }}
     >
       <div
         role="status"
         aria-live="polite"
-        style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+        style={{
+          color: inline ? colors.textSecondary : listTheme.runningFg,
+          fontSize: typography.fontSizeSecondary,
+        }}
       >
-        <span style={{ fontWeight: 700, color: colors.text }}>{candidateSearch.summaryTitle}</span>
+        <span style={{ fontWeight: 700, color: inline ? colors.text : listTheme.runningFg }}>
+          {candidateSearch.summaryTitle}
+        </span>
         {failed ? (
           <span data-testid="ingest-failed"> · {failureText(ingest)}</span>
         ) : (

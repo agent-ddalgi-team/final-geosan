@@ -10,6 +10,7 @@ import { getOpportunities } from '../../api/client';
 import type { Envelope, OpportunityCard } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import { bookmarkList, dashboardTexts, excludedList, listFilters, states } from '../../labels/ko';
+import { choiceChip } from '../../theme/tokens';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -104,6 +105,48 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     expect(select.value).toBe('');
     expect(select.options[0].textContent).toBe(listFilters.all);
     expect(screen.queryByTestId('list-bookmarked-on')).not.toBeInTheDocument();
+  });
+
+  it('관심 기업 화면의 줄은 열 머리 없는 세 칸 줄이고, 거래처 후보의 줄은 열 머리가 붙은 다섯 칸 표 줄이다(#972)', async () => {
+    mockedGet.mockResolvedValue(reply([apjeong]));
+    const bookmarks = renderPage('/bookmarks', 'bookmarks');
+    const row = await screen.findByTestId('opportunity-card');
+    expect(row).toHaveAttribute('data-layout', 'bookmark');
+    expect(row.children).toHaveLength(3);
+    expect(screen.queryByTestId('list-column-head')).not.toBeInTheDocument();
+    // 줄 안에서 의견을 고르고 관심 별을 누를 수 있고, [자세히 보기]는 주 단추다.
+    expect(within(row).getByTestId('opinion-select')).toBeEnabled();
+    expect(within(row).getByTestId('bookmark-button')).toHaveAttribute('data-variant', 'star');
+    expect(within(row).getByTestId('card-view-detail-link')).toHaveClass('ant-btn-primary');
+    // 조건 칸과 줄은 흰 칸 하나에 담긴다.
+    expect(screen.getByTestId('list-panel')).toContainElement(row);
+    expect(screen.getByTestId('list-panel')).toContainElement(
+      screen.getByTestId('list-opinion-filter'),
+    );
+    bookmarks.unmount();
+
+    renderPage('/opportunities');
+    const tableRow = await screen.findByTestId('opportunity-card');
+    expect(tableRow).toHaveAttribute('data-layout', 'table');
+    expect(tableRow.children).toHaveLength(5);
+    expect(screen.getByTestId('list-column-head')).toBeInTheDocument();
+  });
+
+  it('거르기 단추는 선택 단추 모양이다: 고른 것은 연보라 바탕 + 보라 테두리 + 보라 글자 굵게(#972)', async () => {
+    mockedGet.mockResolvedValue(reply([apjeong]));
+    renderPage('/bookmarks?opinion=NEED_CHECK', 'bookmarks');
+    await screen.findByTestId('opportunity-card');
+    expect(screen.getByTestId('list-opinion-NEED_CHECK')).toHaveStyle({
+      background: choiceChip.selected.bg,
+      color: choiceChip.selected.fg,
+      fontWeight: choiceChip.selected.fontWeight,
+    });
+    expect(screen.getByTestId('list-opinion-NEED_CHECK').style.border).toContain('1px solid');
+    expect(screen.getByTestId('list-opinion-ALL')).toHaveStyle({
+      background: choiceChip.idle.bg,
+      color: choiceChip.idle.fg,
+      fontWeight: 400,
+    });
   });
 
   it('관심 기업 보기에서 공정을 고르면 관심 조건과 함께 보내고 주소에 남기되, 평소 목록의 마지막 공정 기억은 바꾸지 않는다(#516)', async () => {

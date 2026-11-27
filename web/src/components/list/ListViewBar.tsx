@@ -7,7 +7,7 @@
 // 고른 값은 부모가 주소(`?bookmarked=true&opinion=…&filter=…`)에 남기고, 이 부품은 고른 값을 알리기만 한다. 모달 없이 인라인이다.
 import { Button } from 'antd';
 import { bookmarkList, dashboardTexts, excludedList } from '../../labels/ko';
-import { colors, radius, typography } from '../../theme/tokens';
+import { choiceChip, colors, radius, typography } from '../../theme/tokens';
 
 /**
  * 관심 기업 보기의 검토 의견 거르기 값(계약 C1 `opinion=`). NONE은 의견을 아직 고르지 않은 회사("기타").
@@ -46,18 +46,21 @@ export interface ListViewBarProps {
   showExcludedButton?: boolean;
 }
 
-const toggleStyle = (selected: boolean) =>
-  ({
+/** 거르기 선택 단추(#972): 고르면 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게, 아니면 흰 바탕 + 얇은 테두리. */
+const toggleStyle = (selected: boolean) => {
+  const chip = selected ? choiceChip.selected : choiceChip.idle;
+  return {
     minHeight: 36,
     padding: '0 14px',
-    borderRadius: radius.md,
-    border: `1px solid ${selected ? colors.text : colors.border}`,
-    background: selected ? colors.text : colors.bgContainer,
-    color: selected ? colors.bgContainer : colors.text,
+    borderRadius: radius.controlSm,
+    border: `1px solid ${chip.border}`,
+    background: chip.bg,
+    color: chip.fg,
     font: 'inherit',
-    fontWeight: selected ? 700 : 400,
-    cursor: 'pointer',
-  }) as const;
+    fontWeight: selected ? choiceChip.selected.fontWeight : 400,
+    cursor: selected ? 'default' : 'pointer',
+  } as const;
+};
 
 const rowStyle = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 } as const;
 

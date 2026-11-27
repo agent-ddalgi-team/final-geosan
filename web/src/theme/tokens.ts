@@ -130,6 +130,44 @@ export const tagPalette = {
   neutral: { bg: neutralChip.bg, fg: neutralChip.text },
 } as const;
 
+/**
+ * 거래처 후보 · 관심 기업 표 줄과 새 후보 발굴 창(#972 시안 Candidates · Bookmarks · FindModal).
+ * 줄을 담는 흰 칸 + 줄 사이 얇은 선 + 흐린 열 머리. 검토사항("확인할 것: …")은 주의 글자.
+ * 별 단추 켜짐은 강조 밝은 쪽 바탕 + 흰 별이다. 별은 글자가 아니라 그림이라 3:1 기준을 쓴다(약 4.1:1).
+ * 이름("관심"·"관심 기업")은 화면 낭독용 글자로 늘 함께 있다.
+ */
+export const listTheme = {
+  panelBg: colors.bgContainer,
+  panelBorder: colors.borderSecondary,
+  panelRadius: radius.card,
+  panelPadding: '18px 20px',
+  /** 줄과 줄 사이, 열 머리 아래 선. */
+  rowLine: colors.borderSecondary,
+  /** 열 머리 · 칸 안 작은 이름표("추천 근거" 등) · 순위 번호. */
+  headFg: colors.textDimmed,
+  /** 추천 근거 본문. */
+  bodyFg: colors.textSecondary,
+  /** 확인할 것이 있는 검토사항 줄. */
+  checkFg: warn.text,
+  /** 지난 일정(굵게). */
+  overdueFg: warn.text,
+  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. */
+  titleSize: 16,
+  titleSizeLarge: 18,
+  /** 점수 숫자 크기: 표 줄 / 관심 기업 줄의 큰 숫자. */
+  scoreSize: 18,
+  scoreSizeLarge: 30,
+  /** 별 단추(한 변 36). 꺼짐 = 흰 바탕 + 흐린 별, 켜짐 = 강조 밝은 쪽 바탕 + 흰 별. */
+  starSize: 36,
+  starRadius: radius.controlSm,
+  starOff: { bg: colors.bgContainer, border: colors.borderSecondary, fg: colors.textDimmed },
+  starOn: { bg: accent.bright, border: accent.bright, fg: accent.onBg },
+  /** "지금 새 후보를 찾는 중" 줄: 강조 연한 바탕 + 강조 글자. */
+  runningBg: accent.soft,
+  runningFg: accent.text,
+  runningRadius: radius.control,
+} as const;
+
 /** 단계 카드 사이의 작은 동그라미 화살표(#972): 지름 22 흰 원 + 강조 테두리 + 보라 화살표. */
 export const stepArrow = {
   size: 22,

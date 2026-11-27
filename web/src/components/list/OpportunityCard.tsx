@@ -1,8 +1,11 @@
 // 추천 카드(S1, BR10.1~BR10.3, interaction-spec 2.1): 순위·기업/기회·분류(쉬운 말)·점수·추천 이유·막는 조건·
 // 다음 할 일 + 의견 영역 + [관심] 단추 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
+// #972(PM이 고른 시안 2026-11-27): 카드 한 장 대신 표 줄 모양이다. 회사·품목 | 지역·거리 | 추천 근거 + 검토사항 +
+// 꼬리표 | 점수 | 의견 고르기 + 관심 별. 보이는 정보와 테스트용 이름은 카드 때와 같고 자리만 칸으로 나눴다.
 // [관심](#357)은 영업 단계가 아니라 켜고 끄는 표시다. 카드에서 검토 의견을 저장하면 서버가 관심을 켜므로 그 뒤 관심 값을 다시 읽는다.
-import type { ReactNode } from 'react';
-import { Button, Card, Typography } from 'antd';
+import { Fragment } from 'react';
+import type { CSSProperties } from 'react';
+import { Button, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { OpportunityCard as CardData } from '../../api/types';
 import BookmarkButton from '../common/BookmarkButton';
@@ -16,9 +19,11 @@ import {
   classificationLabels,
   classificationTone,
   contactBuckets,
+  dashboardTexts,
   frame,
   labelFor,
   listFilters,
+  listTable,
   lostReasonLabels,
   outcomeStatusLabels,
   salesStepLabels,
@@ -27,8 +32,8 @@ import {
   preferenceLabels,
   supplyTierLabels,
 } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
-import { formatMonthDay } from '../../utils/time';
+import { colors, listTheme, typography } from '../../theme/tokens';
+import { formatDate, formatMonthDay, todayKst } from '../../utils/time';
 
 /** #793: 적합도 높낮이(오름·내림 화살표 계산에만 쓴다). */
 const FIT_RANK = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
@@ -49,17 +54,12 @@ export interface OpportunityCardProps {
    * "관심 기업으로 옮겼습니다" 안내를 보이는 데 쓴다. 끌 때와 검토 의견 저장으로 켜질 때는 알리지 않는다.
    */
   onBookmarkedOn?: (card: CardData) => void;
-}
-
-function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
-  return (
-    <div style={{ display: 'flex', gap: 12 }}>
-      <span style={{ flex: '0 0 88px', color: colors.textSecondary }}>{label}</span>
-      <span style={{ flex: 1, minWidth: 0 }} title={title}>
-        {children}
-      </span>
-    </div>
-  );
+  /**
+   * 줄 모양(#972). "table"(기본, 거래처 후보)은 다섯 칸 표 줄, "bookmark"(관심 기업)는 세 칸 줄이다:
+   * 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 다음 일정 · 의견 고르기 · [자세히 보기].
+   * 보이는 정보와 테스트용 이름은 두 모양이 같다(관심 기업 줄은 지역 칸이 없어 거리를 꼬리표로 보인다).
+   */
+  layout?: 'table' | 'bookmark';
 }
 
 export default function OpportunityCard({
@@ -68,6 +68,7 @@ export default function OpportunityCard({
   processNames,
   showRank = true,
   onBookmarkedOn,
+  layout = 'table',
 }: OpportunityCardProps) {
   const navigate = useNavigate();
   const detailPath = `/opportunities/${encodeURIComponent(card.oppId)}`;
@@ -184,242 +185,447 @@ export default function OpportunityCard({
       : null;
   const bookmarkState = useBookmark(card.oppId, card, card.records.bookmark ?? null);
 
-  return (
-    <Card
-      hoverable
-      data-testid="opportunity-card"
-      styles={{ body: { padding: spacing.cardPadding } }}
+  // 줄 안의 조각들(#972). 표 줄 모양에서 칸마다 나눠 놓는다. 카드 때 보이던 정보는 하나도 빼지 않는다.
+  const labelStyle: CSSProperties = {
+    color: listTheme.headFg,
+    fontSize: typography.fontSizeSecondary,
+  };
+  const lineStyle: CSSProperties = { color: listTheme.bodyFg };
+  const rankEl = showRank ? (
+    <span
+      data-testid="card-rank"
+      role="img"
+      aria-label={`${cardRows.rankPrefix} ${card.rank}`}
+      style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}
     >
-      <div style={{ display: 'grid', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          {showRank ? (
-            <span
-              data-testid="card-rank"
-              role="img"
-              aria-label={`${cardRows.rankPrefix} ${card.rank}`}
-              style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
-            >
-              {card.rank}
-            </span>
-          ) : null}
-          <Typography.Title
-            level={2}
-            data-testid="card-title"
-            style={{ margin: 0, fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
+      {card.rank}
+    </span>
+  ) : null;
+  const threeColumns = layout === 'bookmark';
+  const titleEl = (
+    <Typography.Title
+      level={2}
+      data-testid="card-title"
+      style={{
+        margin: 0,
+        fontSize: threeColumns ? listTheme.titleSizeLarge : listTheme.titleSize,
+        fontWeight: 600,
+        lineHeight: 1.45,
+      }}
+    >
+      {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
+      <a
+        href={detailPath}
+        onClick={(event) => {
+          event.preventDefault();
+          navigate(detailPath);
+        }}
+        style={{ color: 'inherit' }}
+        data-testid="card-title-link"
+      >
+        {card.title}
+      </a>
+    </Typography.Title>
+  );
+  const ingestedTag = ingestedOn ? (
+    <StatusTag tone="ask" data-testid="card-ingested-tag">
+      {candidateSearch.ingestedOn(ingestedOn)}
+    </StatusTag>
+  ) : null;
+  // 산업은 회사 이름 아래 작은 글로 잇는다("자동차 부품 · 방위산업").
+  // 서버가 산업 칸을 주면 값이 없을 때 "산업 미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다.
+  const industryNames =
+    card.industries === undefined
+      ? null
+      : card.industries.length > 0
+        ? card.industries
+        : [listFilters.industryUnknown];
+  const industriesEl = industryNames ? (
+    <div style={labelStyle}>
+      {industryNames.map((industry, index) => (
+        <Fragment key={industry}>
+          {index > 0 ? ' · ' : null}
+          <span data-testid="card-industry-tag">{industry}</span>
+        </Fragment>
+      ))}
+    </div>
+  ) : null;
+  // 지역 칸(#972 시안 "지역" 열): 서버가 준 시·군을 그대로 보인다. 주소가 없는 회사(null)는 "지역 미확인",
+  // 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. 그 아래에 거산 본사에서의 직선거리(#666, 좌표를 못 찾으면 없음).
+  const regionEl =
+    card.region === undefined ? null : (
+      <div data-testid="card-region" style={card.region ? undefined : { color: listTheme.headFg }}>
+        {card.region ?? listFilters.regionUnknown}
+      </div>
+    );
+  const distanceEl =
+    typeof card.distanceKm === 'number' ? (
+      <div data-testid="card-distance-tag" style={labelStyle}>
+        {listFilters.cardDistance(card.distanceKm)}
+      </div>
+    ) : null;
+  // 검토사항 줄: 확인할 것이 있거나 승인을 막으면 주의 글자로 띄운다. "없음 — …"은 보통 글자에 이름표를 붙인다.
+  const blockerNeedsCheck = checkLine !== null || card.blocker.blocksApproval;
+  // 관심 기업 줄은 열 머리가 없어 "추천 근거"·"검토사항" 이름표를 글 위에 늘 보인다(시안 Bookmarks).
+  const blockLabel: CSSProperties = { ...labelStyle, display: 'block' };
+  const reasonLines = (
+    <>
+      {/* 공장 정보 줄(업종·원자재·규모)은 카드에서 빼고 상세 "한눈에"에서 본다(#798, PM 지시 2026-11-16). */}
+      {reasonSameAsPick ? null : (
+        <div style={lineStyle} title={card.reason}>
+          <span
+            className={threeColumns ? undefined : 'cand-row__label'}
+            style={threeColumns ? blockLabel : labelStyle}
           >
-            {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
-            <a
-              href={detailPath}
-              onClick={(event) => {
-                event.preventDefault();
-                navigate(detailPath);
-              }}
-              style={{ color: 'inherit' }}
-              data-testid="card-title-link"
-            >
-              {card.title}
-            </a>
-          </Typography.Title>
-          {showClassification ? (
-            <span
+            {cardRows.reason}
+          </span>
+          <span data-testid="card-reason">{card.reason}</span>
+        </div>
+      )}
+      {pickReason ? (
+        <div style={lineStyle} title={pickReason}>
+          <span style={{ ...labelStyle, marginRight: 8 }}>{candidateSearch.pickReasonRow}</span>
+          <span data-testid="card-pick-reason">{pickReason}</span>
+        </div>
+      ) : null}
+      <div
+        style={
+          threeColumns
+            ? lineStyle
+            : {
+                color: blockerNeedsCheck ? listTheme.checkFg : listTheme.bodyFg,
+                fontSize: typography.fontSizeSecondary,
+              }
+        }
+        title={blockerLine}
+      >
+        <span
+          className={!threeColumns && checkLine !== null ? 'cand-row__label' : undefined}
+          style={threeColumns ? blockLabel : { ...labelStyle, marginRight: 8 }}
+        >
+          {cardRows.blocker}
+        </span>
+        <span data-testid="card-blocker">{blockerLine}</span>
+      </div>
+      {/* 후속 조치는 카드에 두지 않고 상세 "1. 추천 근거와 후속 조치"에서 읽는다(#647, PM 결정 2026-11-13). */}
+      {adjustLine ? (
+        <div style={{ ...lineStyle, fontSize: typography.fontSizeSecondary }} title={adjustLine}>
+          <span style={{ ...labelStyle, marginRight: 8 }}>{contactBuckets.adjustRow}</span>
+          <span data-testid="card-rank-adjust">{adjustLine}</span>
+        </div>
+      ) : null}
+      {preferenceLine ? (
+        <div
+          style={{ ...lineStyle, fontSize: typography.fontSizeSecondary }}
+          title={preferenceLine}
+        >
+          <span style={{ ...labelStyle, marginRight: 8 }}>{contactBuckets.adjustRow}</span>
+          <span data-testid="card-preference">{preferenceLine}</span>
+        </div>
+      ) : null}
+      {ownPlatingBasis ? (
+        <div
+          style={{ ...lineStyle, fontSize: typography.fontSizeSecondary }}
+          title={ownPlatingBasis}
+        >
+          <span style={{ ...labelStyle, marginRight: 8 }}>{ownPlatingLine.basisLabel}</span>
+          <span data-testid="card-own-plating-basis">{ownPlatingBasis}</span>
+        </div>
+      ) : null}
+    </>
+  );
+  const tags = [
+    showClassification ? (
+      <span
+        key="classification"
+        role="group"
+        aria-label={`분류: ${classification}`}
+        data-testid="card-classification"
+      >
+        <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
+          {classification}
+        </StatusTag>
+      </span>
+    ) : null,
+    closedBasis ? (
+      <StatusTag key="closed" tone="neutral" data-testid="card-bucket-basis">
+        {closedBasis}
+      </StatusTag>
+    ) : null,
+    fitTag ? (
+      <StatusTag key="fit" tone="neutral" data-testid="card-fit-level">
+        {fitTag}
+      </StatusTag>
+    ) : null,
+    ...confirmedProcessCodes.map((code) =>
+      processNames?.[code] ? (
+        <StatusTag key={`process-${code}`} tone="neutral" data-testid="card-process-tag">
+          {processNames[code]}
+        </StatusTag>
+      ) : null,
+    ),
+    card.isVirtual ? (
+      <StatusTag key="virtual" tone="wait" data-testid="card-virtual-tag">
+        {cardRows.virtualTag}
+      </StatusTag>
+    ) : null,
+    card.datasetKind === 'BROCHURE' ? (
+      <StatusTag key="brochure" tone="ask" data-testid="card-brochure-tag">
+        {cardRows.brochureTag}
+      </StatusTag>
+    ) : null,
+    stageStatus && stageStatus !== 'NOT_EXECUTED' ? (
+      <StatusTag key="stage" tone={outcomeStatusTone[stageStatus] ?? 'neutral'}>
+        <span data-testid="card-stage-tag">
+          {outcomeStatusLabels[stageStatus]}
+          {card.salesStep ? ` · ${salesStepLabels[card.salesStep]}` : ''}
+        </span>
+      </StatusTag>
+    ) : null,
+    card.reevaluated ? (
+      <StatusTag key="reevaluated" tone="ok" data-testid="card-reevaluated-tag">
+        {cardRows.reevaluated}
+      </StatusTag>
+    ) : null,
+    ownPlating ? (
+      <StatusTag key="own-plating" tone="ask" data-testid="card-own-plating-tag">
+        {ownPlatingLine.tag}
+      </StatusTag>
+    ) : null,
+    // #860: 공급망 위치 AI 추정. 모름·판단 전이면 붙이지 않는다. 근거는 상세 "한눈에"에서.
+    card.supplyTier === 'TIER2_3' || card.supplyTier === 'TIER1' ? (
+      <span
+        key="supply-tier"
+        data-testid="card-supply-tier-tag"
+        data-tier={card.supplyTier}
+        title={card.supplyTierBasis ?? undefined}
+      >
+        <StatusTag tone="ask">{supplyTierLabels.tag[card.supplyTier]}</StatusTag>
+      </span>
+    ) : null,
+  ].filter((tag) => tag !== null);
+  const tagsEl =
+    tags.length > 0 ? (
+      <div
+        role="group"
+        aria-label={listTable.tagsLabel}
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+      >
+        {tags}
+      </div>
+    ) : null;
+  // 점수 칸: 점수 전이면 "점수 전 · 조사 중", 근거 있음 묶음이면 서버 점수 글자(숫자만 크게), 그 밖에는 비운다.
+  const scoreEl = (numberSize: number) =>
+    beforeScore ? (
+      <span
+        data-testid="card-score"
+        data-score-state={card.scoreState}
+        style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}
+      >
+        {candidateSearch.beforeScore}
+        {card.researchState ? (
+          <span data-testid="card-research-state" data-research-state={card.researchState}>
+            {' · '}
+            {card.researchState === 'RUNNING'
+              ? candidateSearch.researchRunning
+              : card.researchState === 'NOT_TRIED'
+                ? candidateSearch.researchNotYet
+                : candidateSearch.researchStopped}
+          </span>
+        ) : null}
+      </span>
+    ) : evidenceReady ? (
+      <ScoreLine
+        scoreDisplay={card.scoreDisplay}
+        scoreState={card.scoreState}
+        relationStatus={card.relationStatus}
+        classificationCode={card.classificationCode}
+        numberSize={numberSize}
+        testId="card-score"
+      />
+    ) : null;
+  const opinionEl = (
+    <OpinionArea
+      key={`${card.oppId}:${card.evalId}`}
+      oppId={card.oppId}
+      evalId={card.evalId}
+      record={card.records.opinion ?? null}
+      onSaved={() => void bookmarkState.sync()}
+      // #798: 카드는 단추 셋 대신 고르기 칸 하나로 줄인다.
+      variant="select"
+    />
+  );
+  const bookmarkEl = (
+    <BookmarkButton
+      oppId={card.oppId}
+      bookmark={bookmarkState.bookmark}
+      onChanged={(next) => {
+        bookmarkState.change(next);
+        if (next.active) onBookmarkedOn?.(card);
+      }}
+      // #972: 줄에서는 별 그림 단추. "담당자를 고르면" 안내는 의견 칸 아래 한 줄과 별의 손 올림 글이 대신한다.
+      variant="star"
+      hideStaffHint
+    />
+  );
+  const detailEl = (
+    <Button
+      size="small"
+      type={threeColumns ? 'primary' : 'default'}
+      href={detailPath}
+      onClick={(event) => {
+        event.preventDefault();
+        navigate(detailPath);
+      }}
+      // 단추 모양 링크라 밑줄을 긋지 않고, 줄 안에서는 작은 글자로 둔다.
+      style={{ fontSize: typography.fontSizeSecondary, textDecoration: 'none' }}
+      data-testid="card-view-detail-link"
+    >
+      {frame.viewDetail} <span aria-hidden="true">→</span>
+    </Button>
+  );
+  const rowStyle: CSSProperties = {
+    padding: '14px 0',
+    borderBottom: `1px solid ${listTheme.rowLine}`,
+  };
+  const cellStack: CSSProperties = { display: 'grid', gap: 4, alignContent: 'start' };
+  const titleWrap: CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: '2px 8px',
+    minWidth: 0,
+  };
+
+  if (threeColumns) {
+    // 다음 일정(영업 단계 기록의 nextScheduleAt): 응답에 있을 때만 보인다. 오늘(한국 날짜)보다 앞이면 "지난 일정"으로
+    // 주의색 굵게. 값이 없으면 줄을 그리지 않는다(지어내지 않는다).
+    const outcome = card.records.outcome ?? null;
+    const scheduleDay = formatMonthDay(outcome?.nextScheduleAt);
+    const scheduleDate = formatDate(outcome?.nextScheduleAt);
+    const overdue = scheduleDate !== null && scheduleDate < todayKst();
+    const scheduleNote = outcome?.nextScheduleNote?.trim() || null;
+    const bigScore = scoreEl(listTheme.scoreSizeLarge);
+    // 관심 기업 줄(#972 시안 Bookmarks): 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 다음 일정 · 의견 · [자세히 보기].
+    return (
+      <article
+        className="cand-row cand-row--three"
+        data-testid="opportunity-card"
+        data-layout="bookmark"
+        style={{ ...rowStyle, padding: '20px 0' }}
+      >
+        <div className="cand-row__cell" style={{ ...cellStack, gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            {rankEl}
+            <div style={titleWrap}>{titleEl}</div>
+          </div>
+          {industriesEl}
+          {tags.length > 0 || ingestedTag || typeof card.distanceKm === 'number' ? (
+            <div
               role="group"
-              aria-label={`분류: ${classification}`}
-              data-testid="card-classification"
+              aria-label={listTable.tagsLabel}
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
             >
-              <StatusTag tone={tone} bold={card.classificationCode === 'CONTACT_URGENT'}>
-                {classification}
-              </StatusTag>
-            </span>
-          ) : null}
-          {closedBasis ? (
-            <StatusTag tone="neutral" data-testid="card-bucket-basis">
-              {closedBasis}
-            </StatusTag>
-          ) : null}
-          {fitTag ? (
-            <StatusTag tone="neutral" data-testid="card-fit-level">
-              {fitTag}
-            </StatusTag>
-          ) : null}
-          {confirmedProcessCodes.map((code) =>
-            processNames?.[code] ? (
-              <StatusTag key={code} tone="neutral" data-testid="card-process-tag">
-                {processNames[code]}
-              </StatusTag>
-            ) : null,
-          )}
-          {/* 지역 꼬리표는 두지 않는다(#659): 목록 머리의 지역 선택란과 겹친다. */}
-          {/* 서버가 산업 칸을 주면 값이 없을 때 "산업 미확정"을 보인다. 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. */}
-          {/* 거산 본사에서의 직선거리(#666). 좌표를 못 찾은 회사(null)는 꼬리표를 붙이지 않는다. */}
-          {typeof card.distanceKm === 'number' ? (
-            <StatusTag tone="neutral" data-testid="card-distance-tag">
-              {listFilters.cardDistance(card.distanceKm)}
-            </StatusTag>
-          ) : null}
-          {card.industries !== undefined ? (
-            card.industries.length > 0 ? (
-              card.industries.map((industry) => (
-                <StatusTag key={industry} tone="neutral" data-testid="card-industry-tag">
-                  {industry}
+              {tags}
+              {ingestedTag}
+              {/* 지역 칸이 없는 줄이라 거리는 꼬리표로 보인다(#666). 좌표를 못 찾은 회사는 붙이지 않는다. */}
+              {typeof card.distanceKm === 'number' ? (
+                <StatusTag tone="neutral" data-testid="card-distance-tag">
+                  {listFilters.cardDistance(card.distanceKm)}
                 </StatusTag>
-              ))
-            ) : (
-              <StatusTag tone="neutral" data-testid="card-industry-tag">
-                {listFilters.industryUnknown}
-              </StatusTag>
-            )
-          ) : null}
-          {card.isVirtual ? (
-            <StatusTag tone="wait" data-testid="card-virtual-tag">
-              {cardRows.virtualTag}
-            </StatusTag>
-          ) : null}
-          {card.datasetKind === 'BROCHURE' ? (
-            <StatusTag tone="ask" data-testid="card-brochure-tag">
-              {cardRows.brochureTag}
-            </StatusTag>
-          ) : null}
-          {stageStatus && stageStatus !== 'NOT_EXECUTED' ? (
-            <StatusTag tone={outcomeStatusTone[stageStatus] ?? 'neutral'}>
-              <span data-testid="card-stage-tag">
-                {outcomeStatusLabels[stageStatus]}
-                {card.salesStep ? ` · ${salesStepLabels[card.salesStep]}` : ''}
-              </span>
-            </StatusTag>
-          ) : null}
-          {card.reevaluated ? (
-            <StatusTag tone="ok" data-testid="card-reevaluated-tag">
-              {cardRows.reevaluated}
-            </StatusTag>
-          ) : null}
-          {ingestedOn ? (
-            <StatusTag tone="ask" data-testid="card-ingested-tag">
-              {candidateSearch.ingestedOn(ingestedOn)}
-            </StatusTag>
-          ) : null}
-          {ownPlating ? (
-            <StatusTag tone="ask" data-testid="card-own-plating-tag">
-              {ownPlatingLine.tag}
-            </StatusTag>
-          ) : null}
-          {/* #860: 공급망 위치 AI 추정. 모름·판단 전이면 붙이지 않는다. 근거는 상세 "한눈에"에서. */}
-          {card.supplyTier === 'TIER2_3' || card.supplyTier === 'TIER1' ? (
-            <span
-              data-testid="card-supply-tier-tag"
-              data-tier={card.supplyTier}
-              title={card.supplyTierBasis ?? undefined}
-            >
-              <StatusTag tone="ask">{supplyTierLabels.tag[card.supplyTier]}</StatusTag>
-            </span>
-          ) : null}
-          {beforeScore ? (
-            <span
-              data-testid="card-score"
-              data-score-state={card.scoreState}
-              style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}
-            >
-              {candidateSearch.beforeScore}
-              {card.researchState ? (
-                <span data-testid="card-research-state" data-research-state={card.researchState}>
-                  {' · '}
-                  {card.researchState === 'RUNNING'
-                    ? candidateSearch.researchRunning
-                    : card.researchState === 'NOT_TRIED'
-                      ? candidateSearch.researchNotYet
-                      : candidateSearch.researchStopped}
-                </span>
               ) : null}
-            </span>
-          ) : evidenceReady ? (
-            <ScoreLine
-              scoreDisplay={card.scoreDisplay}
-              scoreState={card.scoreState}
-              relationStatus={card.relationStatus}
-              classificationCode={card.classificationCode}
-              testId="card-score"
-            />
+            </div>
           ) : null}
         </div>
-
-        {adjustLine ? (
-          <Row label={contactBuckets.adjustRow} title={adjustLine}>
-            <span data-testid="card-rank-adjust">{adjustLine}</span>
-          </Row>
-        ) : null}
-        {preferenceLine ? (
-          <Row label={contactBuckets.adjustRow} title={preferenceLine}>
-            <span data-testid="card-preference">{preferenceLine}</span>
-          </Row>
-        ) : null}
-        {ownPlatingBasis ? (
-          <Row label={ownPlatingLine.basisLabel} title={ownPlatingBasis}>
-            <span data-testid="card-own-plating-basis">{ownPlatingBasis}</span>
-          </Row>
-        ) : null}
-        {pickReason ? (
-          <Row label={candidateSearch.pickReasonRow} title={pickReason}>
-            <span data-testid="card-pick-reason">{pickReason}</span>
-          </Row>
-        ) : null}
-        {/* 공장 정보 줄(업종·원자재·규모)은 카드에서 빼고 상세 "한눈에"에서 본다(#798, PM 지시 2026-11-16). */}
-        {reasonSameAsPick ? null : (
-          <Row label={cardRows.reason} title={card.reason}>
-            <span data-testid="card-reason">{card.reason}</span>
-          </Row>
-        )}
-        <Row label={cardRows.blocker} title={blockerLine}>
-          <span data-testid="card-blocker">{blockerLine}</span>
-        </Row>
-        {/* 후속 조치는 카드에 두지 않고 상세 "1. 추천 근거와 후속 조치"에서 읽는다(#647, PM 결정 2026-11-13). */}
-
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <OpinionArea
-            key={`${card.oppId}:${card.evalId}`}
-            oppId={card.oppId}
-            evalId={card.evalId}
-            record={card.records.opinion ?? null}
-            onSaved={() => void bookmarkState.sync()}
-            // #798: 카드는 단추 셋 대신 고르기 칸 하나로 줄인다.
-            variant="select"
-          />
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 12,
-            }}
-          >
-            <BookmarkButton
-              oppId={card.oppId}
-              bookmark={bookmarkState.bookmark}
-              onChanged={(next) => {
-                bookmarkState.change(next);
-                if (next.active) onBookmarkedOn?.(card);
-              }}
-            />
-            <Button
-              href={detailPath}
-              onClick={(event) => {
-                event.preventDefault();
-                navigate(detailPath);
-              }}
-              data-testid="card-view-detail-link"
+        <div className="cand-row__cell" style={{ ...cellStack, gap: 8 }}>
+          {reasonLines}
+        </div>
+        <div className="cand-row__cell cand-row__side">
+          {bigScore ? (
+            <div data-testid="card-score-big" className="cand-row__side-score">
+              {bigScore}
+            </div>
+          ) : null}
+          {scheduleDay ? (
+            <div
+              data-testid="card-next-schedule"
+              data-overdue={overdue ? 'true' : undefined}
+              style={
+                overdue
+                  ? {
+                      color: listTheme.overdueFg,
+                      fontSize: typography.fontSizeSecondary,
+                      fontWeight: 600,
+                    }
+                  : labelStyle
+              }
             >
-              {frame.viewDetail} <span aria-hidden="true">→</span>
-            </Button>
+              {overdue
+                ? dashboardTexts.tableOverdue(scheduleDay)
+                : listTable.nextSchedule(scheduleDay, scheduleNote)}
+            </div>
+          ) : null}
+          <div className="cand-row__actions-main">
+            {opinionEl}
+            {bookmarkEl}
+          </div>
+          {detailEl}
+        </div>
+      </article>
+    );
+  }
+
+  const score = scoreEl(listTheme.scoreSize);
+  // 표 줄(#972 시안 Candidates): 회사·품목 | 지역·거리 | 추천 근거 + 검토사항 + 꼬리표 | 점수 | 의견 + 관심 별.
+  // 열 너비는 styles.css의 .cand-row가 줄마다 똑같이 잡는다. 좁으면 칸이 세로로 쌓이고 칸 이름표가 보인다.
+  return (
+    <article
+      className="cand-row"
+      data-testid="opportunity-card"
+      data-layout="table"
+      style={rowStyle}
+    >
+      <div className="cand-row__cell" style={cellStack}>
+        {/* 번호는 왼쪽에 고정하고, 긴 회사 이름은 그 옆에서 줄을 바꾼다. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          {rankEl}
+          <div style={titleWrap}>
+            {titleEl}
+            {ingestedTag}
           </div>
         </div>
+        {industriesEl}
       </div>
-    </Card>
+      <div className="cand-row__cell" style={cellStack}>
+        {regionEl || distanceEl ? (
+          <span className="cand-row__label" style={labelStyle}>
+            {listTable.columns.region}
+          </span>
+        ) : null}
+        {regionEl}
+        {distanceEl}
+      </div>
+      <div className="cand-row__cell" style={{ ...cellStack, gap: 6 }}>
+        {reasonLines}
+        {tagsEl}
+      </div>
+      <div className="cand-row__cell" style={{ ...cellStack, justifyItems: 'start' }}>
+        {score ? (
+          <>
+            <span className="cand-row__label" style={labelStyle}>
+              {listTable.scoreLabel}
+            </span>
+            {score}
+          </>
+        ) : null}
+      </div>
+      <div className="cand-row__cell cand-row__actions">
+        <div className="cand-row__actions-main">
+          {opinionEl}
+          {bookmarkEl}
+        </div>
+        {detailEl}
+      </div>
+    </article>
   );
 }

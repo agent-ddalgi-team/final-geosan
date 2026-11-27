@@ -19,7 +19,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { Button } from 'antd';
 import type { IndustryCount, ProcessCount, RegionCount } from '../../api/types';
 import { listFilters, listSearch, listSimple } from '../../labels/ko';
-import { colors, radius, typography } from '../../theme/tokens';
+import { choiceChip, colors, radius, typography } from '../../theme/tokens';
 
 /** 목록 정렬(#516). rank = 추천 순(기본), recent = 들어온 시각 최신 순. */
 export type ListSort = 'rank' | 'recent' | 'distance';
@@ -66,10 +66,11 @@ export interface ListFilterBarProps {
   moreExtraActive?: number;
 }
 
+// #972: 선택 칸·검색 칸 모서리 9, 고른 단추는 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게(choiceChip).
 const controlStyle = {
   minHeight: 36,
   padding: '0 12px',
-  borderRadius: radius.md,
+  borderRadius: radius.control,
   border: `1px solid ${colors.border}`,
   background: colors.bgContainer,
   color: colors.text,
@@ -86,18 +87,20 @@ const labelStyle = {
 } as const;
 
 /** 정렬 줄 단추. enabled가 false면(준비 중) 흐리게 보이고 누를 수 없는 모양이다. */
-const sortStyle = (selected: boolean, enabled = true) =>
-  ({
+const sortStyle = (selected: boolean, enabled = true) => {
+  const chip = selected ? choiceChip.selected : choiceChip.idle;
+  return {
     minHeight: 36,
     padding: '0 14px',
-    borderRadius: radius.md,
-    border: `1px solid ${selected ? colors.text : enabled ? colors.border : colors.borderSecondary}`,
-    background: selected ? colors.text : colors.bgContainer,
-    color: selected ? colors.bgContainer : enabled ? colors.text : colors.textDimmed,
+    borderRadius: radius.controlSm,
+    border: `1px solid ${chip.border}`,
+    background: chip.bg,
+    color: selected || enabled ? chip.fg : colors.textDimmed,
     font: 'inherit',
-    fontWeight: selected ? 700 : 400,
+    fontWeight: selected ? choiceChip.selected.fontWeight : 400,
     cursor: selected ? 'default' : enabled ? 'pointer' : 'not-allowed',
-  }) as const;
+  } as const;
+};
 
 interface FilterSelectProps {
   id: string;
@@ -363,7 +366,16 @@ export default function ListFilterBar({
         >
           <summary
             data-testid="list-more-toggle"
-            style={{ cursor: 'pointer', ...labelStyle, width: 'fit-content' }}
+            style={{
+              ...labelStyle,
+              cursor: 'pointer',
+              width: 'fit-content',
+              // 시안의 보조 단추 모양(흰 바탕 + 얇은 테두리, 모서리 8). 세모 표시는 그대로 둔다.
+              padding: '6px 13px',
+              borderRadius: radius.controlSm,
+              border: `1px solid ${choiceChip.idle.border}`,
+              background: choiceChip.idle.bg,
+            }}
           >
             {listSimple.moreConditions(moreActive)}
           </summary>

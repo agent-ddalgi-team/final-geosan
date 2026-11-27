@@ -857,6 +857,29 @@ export const excludedList = {
   empty: '제외로 저장한 회사가 없습니다',
 } as const;
 
+/**
+ * #972 거래처 후보 표 줄과 관심 기업 세 칸 줄(PM이 고른 시안, 2026-11-27).
+ * 열 머리는 묶음마다 한 줄 보인다. 좁은 화면에서는 열 머리를 숨기고 칸 안 작은 이름표가 대신 보인다.
+ */
+export const listTable = {
+  columns: {
+    company: '회사 · 품목',
+    region: '지역',
+    reason: '추천 근거 · 검토사항',
+    score: '점수',
+    actions: '의견 · 관심',
+  },
+  /** 좁은 화면과 화면 낭독기용 칸 이름. */
+  scoreLabel: '점수',
+  tagsLabel: '꼬리표',
+  /**
+   * 관심 기업 줄 오른쪽. "다음 일정 12/1 · 전화"(할 일 글이 없으면 날짜만).
+   * 지난 일정은 영업 홈과 같은 말("지난 일정 11/21", dashboardTexts.tableOverdue)을 쓴다.
+   */
+  nextSchedule: (day: string, note: string | null) =>
+    note ? `다음 일정 ${day} · ${note}` : `다음 일정 ${day}`,
+} as const;
+
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */
 /**
  * #948 [거래처 후보 › 새 후보 발굴 패널 › 맨 위] "이름으로 회사 넣기"(PM 결정 2026-11-26).
@@ -877,7 +900,7 @@ export const companyAdd = {
   factoriesEmpty: '공장 자료에서 이 이름을 찾지 못했습니다.',
   truncated: '더 있습니다. 이름을 더 길게 적어 주세요.',
   alreadyListed: '목록에 있음',
-  /** 고른 줄 끝 표시. 고른 줄은 강조색으로 채워진다(#947과 같은 모양). */
+  /** 고른 줄 끝 표시. 고른 줄은 강조 연한 바탕 + 강조 글자로 보인다(#972 선택 단추 모양). */
   picked: '✓ 고름',
   manualOption: (name: string) => `공장 자료에 없음 — "${name}" 이름으로 넣기`,
   addressLabel: '주소(알면)',
