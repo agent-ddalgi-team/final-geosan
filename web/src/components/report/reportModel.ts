@@ -10,10 +10,12 @@ import type {
   FitLevel,
   LostReasonCode,
   OpportunityDetail,
+  OutcomeRecord,
   OutcomeStatus,
   ReviewItemSource,
   SalesQuestions,
   SalesStep,
+  SalesStepView,
 } from '../../api/types';
 import { companyReport } from '../../labels/ko';
 import { scoreText } from '../common/scoreDisplay';
@@ -42,6 +44,22 @@ export interface ReportEvidence {
   occurredAt: string | null;
   certainty: string;
   aiProposed: boolean;
+  /** (#972) 근거가 무엇에 대한 것인지(응답의 근거 묶음 코드: 제품·소재·회사 소식 등). 거르기 단추가 쓴다. */
+  group: string;
+}
+
+/** (#972) 점수 묶음 아래 합계 줄과 "한눈에" 동그라미에 쓰는 값. 모두 응답의 점수 항목에서 센다. */
+export interface ReportScoreSummary {
+  /** 서버가 준 점수 글자("77점 · 7/8", "참고 50점 · 3/8")에서 읽은 합계. 읽을 수 없으면 null. */
+  total: number | null;
+  /** 배점의 합(응답의 항목 배점을 더한 값). */
+  max: number;
+  /** 상태별 항목 수(응답 순서대로 처음 나온 상태부터). */
+  states: { state: string; count: number }[];
+  /** 0점보다 큰 점수를 받은 항목 수. */
+  earned: number;
+  /** 배점과 점수의 차이가 가장 큰 항목(값이 있는 항목 가운데, 같으면 앞 항목). 모두 만점이면 null. */
+  biggestGap: { label: string; score: number; weight: number } | null;
 }
 
 export interface ReportKnownAnswer {
@@ -84,9 +102,15 @@ export interface ReportModel {
     industries: string[];
     industriesConfirmed: boolean;
     scoreText: string;
+    /** (#972) "한눈에" 칸 가운데 값이 없어 "확인 필요"로 보이는 칸 수(주소·홈페이지·한 줄 소개·공정·산업). */
+    needCheckCount: number;
   };
   scores: ReportScoreRow[] | null;
+  /** (#972) 점수가 아직 없는 회사면 null. */
+  scoreSummary: ReportScoreSummary | null;
   evidence: ReportEvidence[];
+  /** (#972) 근거 묶음별 개수(응답 순서대로 처음 나온 묶음부터). */
+  evidenceGroups: { code: string; count: number }[];
   known: ReportKnownAnswer[];
   ask: ReportAskLine[];
   sales: {
@@ -101,6 +125,18 @@ export interface ReportModel {
     /** (#730) 일정 날짜가 오늘보다 앞선가(놓친 일정). 일정이 없으면 false. */
     nextScheduleMissed: boolean;
   };
+  /**
+   * (#972) 단계 그림(상세와 같은 부품 SalesProgressBar)에 넘길 값. 그림에 필요한 것만 담는다:
+   * 세부 단계 코드, 큰 단계·거절 이유 코드, 알아낸 답의 질문·보기 번호(끝난 회사가 어디서 멈췄는지 정할 때 씀), 접촉 수.
+   * 담당자 키·답 글·일정 글·일정 날짜는 비워 둔다(그 부품이 "다음 일정: 날짜 할 일 글"을 그리지 않게).
+   * 세부 단계가 시작된 날도 비운다: 그 부품은 "11/12"처럼 연도 없이 그리는데 보고서는 연도까지 적는다(#719).
+   * 날짜는 그림 아래 칸이 연도까지 적어 보인다.
+   */
+  progress: {
+    salesStep: SalesStepView | null;
+    outcome: OutcomeRecord | null;
+    contactTotal: number;
+  };
   /** (#742) 영업 방향: 남긴 피드백(최근 것부터). 글과 날짜만. */
   direction: { text: string; at: string | null }[];
   /** (#750) 가장 최근 다음 통화 준비. 없으면 null. */
@@ -114,6 +150,40 @@ function httpUrl(value: string | null | undefined): string | null {
 function text(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+/** 코드별 개수를 처음 나온 순서대로 센다. */
+function countInOrder(codes: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const code of codes) counts.set(code, (counts.get(code) ?? 0) + 1);
+  return counts;
+}
+
+/** 서버가 준 점수 글자에서 합계 숫자만 읽는다. 화면에서 점수를 다시 계산하지 않는다(#183). */
+function scoreNumberOf(scoreDisplay: string): number | null {
+  const match = /^(?:참고 )?(\d+)점/.exec(scoreDisplay);
+  return match ? Number(match[1]) : null;
+}
+
+function scoreSummaryOf(rows: ReportScoreRow[], scoreDisplay: string): ReportScoreSummary {
+  let biggestGap: ReportScoreSummary['biggestGap'] = null;
+  for (const row of rows) {
+    if (row.score === null) continue;
+    const gap = row.weight - row.score;
+    if (gap > 0 && (biggestGap === null || gap > biggestGap.weight - biggestGap.score)) {
+      biggestGap = { label: row.label, score: row.score, weight: row.weight };
+    }
+  }
+  return {
+    total: scoreNumberOf(scoreDisplay),
+    max: rows.reduce((sum, row) => sum + row.weight, 0),
+    states: [...countInOrder(rows.map((row) => row.state))].map(([state, count]) => ({
+      state,
+      count,
+    })),
+    earned: rows.filter((row) => row.score !== null && row.score > 0).length,
+    biggestGap,
+  };
 }
 
 /**
@@ -229,7 +299,15 @@ export function reportModelOf(
     industries: header.industries ?? [],
     industriesConfirmed: industriesSource === 'STAFF' || industriesSource === 'CASE_FILE',
     scoreText: scoreText(header.scoreDisplay),
+    needCheckCount: 0,
   };
+  glance.needCheckCount = [
+    glance.address,
+    glance.homepageUrl,
+    glance.summaryLine,
+    glance.processConfirmed.length + glance.processProposed.length > 0,
+    glance.industries.length > 0,
+  ].filter((value) => !value).length;
 
   const labels = companyReport.glance;
   const missingBasics = [
@@ -265,6 +343,7 @@ export function reportModelOf(
     isVirtual: header.isVirtual || hasVirtualData,
     glance,
     scores,
+    scoreSummary: scores ? scoreSummaryOf(scores, header.scoreDisplay) : null,
     evidence: detail.evidence.map((row) => ({
       id: row.evidenceId,
       quote: row.quote,
@@ -272,7 +351,11 @@ export function reportModelOf(
       occurredAt: row.occurredAt ?? null,
       certainty: row.certainty,
       aiProposed: row.isLlmProposed,
+      group: row.subject,
     })),
+    evidenceGroups: [...countInOrder(detail.evidence.map((row) => row.subject))].map(
+      ([code, count]) => ({ code, count }),
+    ),
     known: [...known.values()],
     ask,
     sales: {
@@ -286,6 +369,34 @@ export function reportModelOf(
       // 영업 기록은 다음 일정을 새로 넣지 않으면 앞 기록의 일정을 이어받는다. 그래서 그 날짜 뒤에 접촉했어도
       // 지난 일정이 남을 수 있다(#730 코파스: 마지막 접촉 11/13, 일정 11/12). 지난 것임을 보이게 한다.
       nextScheduleMissed: nextScheduleAt !== null && today !== '' && nextScheduleAt < today,
+    },
+    progress: {
+      salesStep: records.salesStep
+        ? {
+            code: records.salesStep.code,
+            since: null,
+            overridden: false,
+            known: records.salesStep.known.map((row) => ({
+              questionId: row.questionId,
+              answerId: row.answerId,
+              question: '',
+              answer: '',
+              at: '',
+              by: '',
+            })),
+            openQuestions: [],
+          }
+        : null,
+      outcome: records.outcome
+        ? {
+            version: 0,
+            updatedBy: '',
+            updatedAt: '',
+            status: records.outcome.status ?? null,
+            lostReasonCode: records.outcome.lostReasonCode ?? null,
+          }
+        : null,
+      contactTotal: records.contactCount?.total ?? 0,
     },
     direction: (records.advice ?? []).map((line) => ({
       text: line.text,

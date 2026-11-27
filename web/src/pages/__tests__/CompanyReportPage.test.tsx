@@ -1,5 +1,5 @@
 // 회사별 보고서(#565): 한눈에·점수·근거·질문과 답 / 값 없는 칸 "확인 필요" / AI 제안 표시 / 가상 표시 /
-// 영업 메모·대표번호는 안 보임 / 불러오기 실패 안내.
+// 영업 메모·대표번호는 안 보임 / 불러오기 실패 안내. 새 모양(#972)의 새 동작은 CompanyReportPage.redesign.test.tsx.
 // 서버 호출(getOpportunityDetail·getSalesQuestions)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -183,26 +183,28 @@ describe('CompanyReportPage', () => {
   });
 
   // #719: 인쇄하면 점수 표의 좁은 칸이 글자 중간에서 꺾였다("배/점", "강한 추/정", "자료 미/확보").
-  // 화면 테스트는 칸에 붙는 클래스만 본다(테스트 환경은 CSS를 읽지 않는다). 인쇄 규칙은 src/styles.css의
-  // .report-nowrap과 @media print에 있고, 실제 인쇄 모양은 이 테스트로 확인하지 못한다.
-  it('Given 점수 표 When 보고서를 열면 Then 배점·점수·상태 칸은 줄이 꺾이지 않는 칸으로 표시된다', async () => {
+  // #972: 표가 줄 묶음(이름 · 막대 · 점수/배점 · 상태 꼬리표)으로 바뀌었다. 꺾이면 안 되는 칸은 그대로 지킨다.
+  // 화면 테스트는 칸에 붙는 클래스만 본다(테스트 환경은 CSS를 읽지 않는다). 규칙은 src/styles.css의
+  // .report-nowrap에 있고, 실제 인쇄 모양은 이 테스트로 확인하지 못한다.
+  it('Given 점수 묶음 When 보고서를 열면 Then 점수/배점·상태 칸은 줄이 꺾이지 않는 칸이고 이름 칸은 꺾일 수 있다', async () => {
     mockedGet.mockResolvedValue(reply(detailWithSecrets()));
     renderPage();
     const table = await screen.findByTestId('report-scores-table');
-    const head = within(table).getAllByRole('columnheader');
-    expect(head.map((cell) => cell.textContent)).toEqual(['항목', '배점', '점수', '상태']);
-    expect(head.map((cell) => cell.classList.contains('report-nowrap'))).toEqual([
-      false,
-      true,
-      true,
-      true,
-    ]);
-    const row = within(table).getAllByTestId('report-score-row')[0];
-    expect(
-      within(row)
-        .getAllByRole('cell')
-        .map((cell) => cell.classList.contains('report-nowrap')),
-    ).toEqual([true, true, true]);
+    const rows = within(table).getAllByTestId('report-score-row');
+    expect(rows).toHaveLength(fixture.scores!.items.length);
+    for (const row of rows) {
+      expect(within(row).getByTestId('report-score-value')).toHaveClass('report-nowrap');
+      expect(within(row).getByTestId('report-score-state')).toHaveClass('report-nowrap');
+    }
+    const first = fixture.scores!.items[0];
+    expect(within(rows[0]).getByText(first.label)).not.toHaveClass('report-nowrap');
+    // 점수와 배점은 한 칸에 "25 / 25"로, 상태는 응답의 상태 말 그대로.
+    expect(within(rows[0]).getByTestId('report-score-value')).toHaveTextContent(
+      `${first.score} / ${first.weight}`,
+    );
+    expect(within(rows[0]).getByTestId('report-score-state')).toHaveTextContent('확인');
+    expect(within(rows[5]).getByTestId('report-score-state')).toHaveTextContent('신호 없음');
+    expect(within(rows[7]).getByTestId('report-score-state')).toHaveTextContent('자료 미확보');
   });
 
   it('Given 값이 없는 점수 항목과 빈 기본 정보 When 보고서를 열면 Then 그 칸은 "확인 필요"이고 물을 것에 모인다', async () => {

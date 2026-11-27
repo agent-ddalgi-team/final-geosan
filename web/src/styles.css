@@ -481,3 +481,849 @@ html[data-font-scale='S'] {
 html[data-font-scale='L'] {
   zoom: 1.15;
 }
+
+/* 회사별 보고서(#972, PM이 고른 시안 2026-11-27): 맨 위 줄 + 왼쪽 목차 + 흰 카드 묶음.
+   위의 #565 규칙 뒤에 놓여 같은 이름(.report-page 등)의 값을 덮는다. 색은 tokens.ts와 같은 값만 쓴다:
+   글자 #1b1a2e · 보조 #56566e · 흐린 #6b6b85 · 바탕 #f7f7fb · 카드 테두리 #ebebf3 · 강조 #6a4df0 · 강조 글자 #5b3fe0 ·
+   강조 밝은 쪽 #7c5cfc · 강조 연한 바탕 #f4f1ff · 강조 테두리 #d9cfff · 주의 글자 #9a5415.
+   꼬리표·막대·동그라미 색은 부품이 tokens에서 직접 가져온다. 글자 크기는 보고서 본문(14px) 기준이다. */
+.report-page {
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #f7f7fb;
+}
+
+.report-page .report-nowrap {
+  width: auto;
+}
+
+.report-dim {
+  color: #6b6b85;
+  font-size: 12.5px;
+}
+
+.report-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 28px;
+  border-bottom: 1px solid #ebebf3;
+  background: #f7f7fb;
+}
+
+.report-topbar-title {
+  font-weight: 600;
+}
+
+.report-topbar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.report-btn {
+  display: inline-block;
+  padding: 9px 16px;
+  border: 1px solid #ebebf3;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1b1a2e;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.report-btn:hover {
+  border-color: #d9cfff;
+  color: #1b1a2e;
+}
+
+.report-btn-primary,
+.report-btn-primary:hover {
+  border-color: #6a4df0;
+  background: #6a4df0;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.report-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  padding: 26px 28px 80px;
+}
+
+.report-toc {
+  position: sticky;
+  top: 84px;
+  flex: 0 0 190px;
+  font-size: 13px;
+}
+
+.report-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-toc a {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid #ebebf3;
+  color: #56566e;
+  text-decoration: none;
+}
+
+.report-toc a:hover {
+  color: #1b1a2e;
+  text-decoration: underline;
+}
+
+.report-toc a b {
+  width: 18px;
+  color: #6b6b85;
+  font-weight: 500;
+}
+
+.report-toc a[aria-current] {
+  color: #1b1a2e;
+  font-weight: 600;
+}
+
+.report-toc a[aria-current] b {
+  color: #5b3fe0;
+}
+
+.report-main {
+  flex: 1 1 560px;
+  min-width: 0;
+  max-width: 980px;
+}
+
+.report-article {
+  display: grid;
+  gap: 14px;
+}
+
+.report-print-head {
+  display: none;
+}
+
+.report-card {
+  min-width: 0;
+  padding: 24px 26px;
+  border: 1px solid #ebebf3;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+/* 목차로 왔을 때 맨 위 줄에 가리지 않게 띄운다. 초점선은 키보드로 왔을 때만 보인다(:focus-visible). */
+.report-section {
+  margin-top: 0;
+  scroll-margin-top: 76px;
+}
+
+.report-section:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.report-two,
+.report-qa {
+  display: grid;
+  gap: 14px;
+}
+
+.report-two {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+.report-qa {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+}
+
+.report-page .report-eyebrow {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  color: #5b3fe0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.report-page h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.report-page h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.report-page h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+/* 제목 줄: 번호(작은 글자)가 제목 위에 있어, 옆 설명·단추는 제목의 마지막 줄에 맞춘다. */
+.report-head {
+  display: flex;
+  align-items: flex-end;
+  align-items: last baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.report-head-note {
+  color: #6b6b85;
+  font-size: 12.5px;
+}
+
+.report-page .report-sub {
+  margin-top: 6px;
+  color: #56566e;
+}
+
+.report-page .report-marks {
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.report-tag {
+  display: inline-block;
+  padding: 3px 9px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.report-need-check {
+  font-weight: 500;
+}
+
+.report-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 22px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-fact dt {
+  color: #6b6b85;
+  font-size: 12px;
+}
+
+.report-fact dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.report-ring-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.report-score-big {
+  font-size: 44px;
+  font-weight: 300;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.report-score-big span {
+  color: #6b6b85;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.report-ring-row p {
+  margin-top: 6px;
+}
+
+.report-mini {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-mini-label,
+.report-stat-label {
+  display: block;
+  color: #6b6b85;
+  font-size: 12px;
+}
+
+.report-mini b {
+  font-weight: 600;
+}
+
+.report-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.report-alert b {
+  font-weight: 600;
+}
+
+.report-reason p:last-child {
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: -0.2px;
+}
+
+.report-score-rows {
+  margin-top: 14px;
+}
+
+.report-score-row {
+  padding: 14px 0;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-score-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 96px 104px 18px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.report-score-head {
+  cursor: pointer;
+}
+
+.report-score-name {
+  font-weight: 500;
+}
+
+.report-bar {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.report-bar span {
+  display: block;
+  height: 100%;
+}
+
+.report-score-num {
+  font-size: 19px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  text-align: right;
+}
+
+.report-score-num > span {
+  color: #6b6b85;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.report-score-num .report-need-check {
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.report-chevron {
+  display: inline-block;
+  color: #6b6b85;
+  text-align: center;
+}
+
+.report-chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.report-page .report-score-why {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #56566e;
+  font-size: 13px;
+}
+
+.report-score-total {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding-top: 14px;
+  border-top: 1px solid #ebebf3;
+  color: #56566e;
+  font-size: 13px;
+}
+
+.report-score-total b {
+  color: #1b1a2e;
+}
+
+.report-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.report-chip {
+  padding: 6px 13px;
+  border: 1px solid #ebebf3;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #56566e;
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 고른 거르기 단추(#972): 강조 연한 바탕 + 강조 테두리 + 강조 글자 굵게. */
+.report-chip[aria-pressed='true'] {
+  border-color: #d9cfff;
+  background: #f4f1ff;
+  color: #5b3fe0;
+  font-weight: 600;
+}
+
+.report-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-evidence-card {
+  padding: 14px 16px;
+  border: 1px solid #ebebf3;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+.report-evidence-group {
+  color: #5b3fe0;
+  font-size: 12px;
+}
+
+.report-evidence-card blockquote {
+  margin: 6px 0 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.report-evidence-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #6b6b85;
+  font-size: 12px;
+}
+
+.report-lines {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-lines li {
+  padding: 11px 0;
+  border-top: 1px solid #ebebf3;
+  overflow-wrap: anywhere;
+}
+
+/* 물을 것의 체크칸(이 브라우저에만 기억). 줄 전체가 체크칸의 이름표라 글자를 눌러도 체크된다. */
+.report-ask-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.report-ask-line input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 4px 0 0;
+  accent-color: #7c5cfc;
+}
+
+.report-ask-text {
+  display: block;
+}
+
+.report-ask-text strong {
+  font-weight: 600;
+}
+
+.report-ask-sub {
+  display: block;
+}
+
+.report-page .report-foot-note {
+  margin-top: 4px;
+}
+
+.report-lines + h3 {
+  margin-top: 14px;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.report-progress {
+  margin-top: 18px;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #ebebf3;
+}
+
+.report-stats b {
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+}
+
+.report-stat-sub {
+  font-size: 12.5px;
+}
+
+.report-page .report-footer {
+  margin-top: 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 좁은 화면: 목차를 숨기고, 나란히 놓인 카드를 세로로 쌓는다. 종이(A4)는 좁은 화면으로 치지 않게 screen에만 건다. */
+@media screen and (max-width: 1080px) {
+  .report-toc {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 760px) {
+  .report-topbar {
+    padding: 10px 16px;
+  }
+
+  .report-body {
+    padding: 16px 16px 60px;
+  }
+
+  .report-card {
+    padding: 18px 16px;
+  }
+
+  .report-two,
+  .report-qa,
+  .report-evidence-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-score-head {
+    grid-template-columns: minmax(0, 1fr) auto auto 18px;
+    gap: 10px;
+  }
+
+  .report-bar {
+    display: none;
+  }
+}
+
+/* 회사별 보고서 인쇄(#972): 맨 위 줄·목차·거르기 단추는 .no-print로 숨는다. 카드는 테두리 대신 위쪽 줄 하나로 단순하게,
+   접힌 점수 이유와 걸러 둔 근거는 모두 펼쳐 나온다. 줄·카드가 쪽 사이에서 잘리지 않게 한다.
+   글자 크기는 #719 값(본문 9.5pt, 9pt 아래로 내리지 않음)을 지킨다. */
+@media print {
+  .report-page {
+    min-height: 0;
+    background: #ffffff;
+    /* 꼬리표·막대·동그라미·단계 그림의 바탕색이 종이에도 나오게 한다. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-body {
+    display: block;
+    padding: 0;
+  }
+
+  .report-main {
+    max-width: none;
+  }
+
+  .report-article {
+    gap: 8px;
+  }
+
+  .report-print-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+  }
+
+  .report-print-head b {
+    font-size: 11pt;
+  }
+
+  .report-card {
+    padding: 6px 0 0;
+    border: 0;
+    border-top: 1px solid #d6d6e4;
+    border-radius: 0;
+  }
+
+  .report-two,
+  .report-qa {
+    gap: 8px 18px;
+  }
+
+  .report-dim,
+  .report-head-note,
+  .report-page .report-eyebrow,
+  .report-fact dt,
+  .report-mini-label,
+  .report-stat-label,
+  .report-tag,
+  .report-evidence-group,
+  .report-evidence-foot,
+  .report-stat-sub,
+  .report-score-total,
+  .report-page .report-score-why,
+  .report-page .report-footer,
+  .report-alert,
+  .report-score-num > span,
+  .report-score-num .report-need-check {
+    font-size: 9pt;
+  }
+
+  .report-page .report-eyebrow {
+    margin-bottom: 2px;
+  }
+
+  .report-page h1 {
+    margin: 0;
+    font-size: 16pt;
+  }
+
+  .report-page h2,
+  .report-page h3 {
+    margin: 0;
+    font-size: 11pt;
+  }
+
+  .report-lines + h3 {
+    margin-top: 6px;
+    font-size: 9.5pt;
+  }
+
+  .report-page .report-marks {
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  /* 첫 줄 표시(StatusTag)는 화면 크기(14px)로 그려지므로 종이에서만 다른 꼬리표와 같은 크기로 줄인다. */
+  .report-page .report-marks [data-tone] {
+    padding: 1px 6px !important;
+    font-size: 9pt !important;
+  }
+
+  .report-facts {
+    gap: 4px 18px;
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+
+  .report-score-big {
+    font-size: 22pt;
+    letter-spacing: -1px;
+  }
+
+  .report-score-big span {
+    font-size: 11pt;
+  }
+
+  .report-ring-row {
+    gap: 12px;
+  }
+
+  .report-ring-row svg {
+    width: 64px;
+    height: 64px;
+  }
+
+  .report-mini,
+  .report-stats {
+    gap: 4px 12px;
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+
+  .report-alert {
+    margin-top: 6px;
+    padding: 4px 8px;
+  }
+
+  .report-reason p:last-child {
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+
+  .report-score-rows,
+  .report-evidence-grid,
+  .report-lines,
+  .report-progress {
+    margin-top: 6px;
+  }
+
+  .report-score-row {
+    padding: 3px 0;
+  }
+
+  .report-score-head {
+    grid-template-columns: minmax(0, 1fr) 90px 70px 84px 0;
+    gap: 10px;
+  }
+
+  /* 단계 그림(상세와 같은 부품)은 화면 크기로 그려져 종이에서는 크다. 그림만 줄인다. */
+  .report-progress {
+    zoom: 0.72;
+  }
+
+  .report-score-num,
+  .report-stats b {
+    font-size: 11pt;
+  }
+
+  .report-chevron {
+    display: none;
+  }
+
+  /* 접힌 이유(hidden)와 걸러 둔 근거(hidden)도 종이에는 모두 나온다. */
+  .report-page .report-score-why[hidden] {
+    display: block !important;
+  }
+
+  .report-page .report-evidence-card[hidden] {
+    display: list-item !important;
+  }
+
+  .report-page .report-score-why {
+    max-width: none;
+    margin-top: 2px;
+  }
+
+  .report-score-total {
+    padding-top: 4px;
+  }
+
+  .report-evidence-grid {
+    gap: 6px;
+  }
+
+  .report-evidence-card {
+    padding: 5px 8px;
+    border-color: #d6d6e4;
+    border-radius: 0;
+  }
+
+  .report-evidence-card blockquote {
+    margin: 2px 0 4px;
+    font-size: 9.5pt;
+    line-height: 1.35;
+  }
+
+  .report-lines li {
+    padding: 3px 0;
+  }
+
+  .report-ask-line {
+    gap: 8px;
+  }
+
+  .report-ask-line input {
+    width: 11px;
+    height: 11px;
+    margin-top: 2px;
+  }
+
+  .report-section:focus {
+    outline: none;
+  }
+
+  /* 쪽 사이에서 잘리지 않게: 카드(근거처럼 긴 묶음은 안쪽 줄·카드 단위로), 점수 줄, 근거 카드, 목록 한 줄. */
+  .report-card,
+  .report-score-row,
+  .report-evidence-card,
+  .report-lines li,
+  .report-fact,
+  .report-stats,
+  .report-progress {
+    break-inside: avoid;
+  }
+
+  /* 근거·점수 묶음은 한 쪽보다 길 수 있다. 통째로 다음 쪽으로 밀지 않고 안쪽 줄 단위로만 지킨다. */
+  #report-scores,
+  #report-evidence-section,
+  #report-questions .report-card {
+    break-inside: auto;
+  }
+
+  .report-head {
+    break-after: avoid;
+  }
+}

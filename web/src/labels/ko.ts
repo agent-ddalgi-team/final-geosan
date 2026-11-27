@@ -2641,6 +2641,101 @@ export const companyReport = {
   },
 } as const;
 
+/**
+ * 회사별 보고서 새 모양(#972, PM이 고른 시안 2026-11-27)에서 더한 틀 문구.
+ * 값의 쉬운 말(단계·상태·출처)은 위의 기존 대응표를 그대로 쓰고, 여기에는 새 자리의 글자만 둔다.
+ * 점수 항목 이름·배점은 응답에서 온다(여기에 적지 않는다).
+ */
+export const reportView = {
+  /** 맨 위 줄. "← 상세로 돌아가기" */
+  back: (label: string) => `← ${label}`,
+  expandAll: '근거 설명 모두 펼치기',
+  collapseAll: '근거 설명 모두 접기',
+  /** 인쇄한 종이 맨 위 줄. "회사별 보고서 — A정밀 · 밸브 바디 아노다이징" */
+  printHead: (pageTitle: string, title: string) => `${pageTitle} — ${title}`,
+  /** 맨 아래 줄. "거산 영업지원 · 내부용 · 고객 제출용 아님" */
+  footer: (internalOnly: string) => `거산 영업지원 · ${internalOnly}`,
+  /** 왼쪽 목차. 누르면 그 묶음으로 간다. */
+  toc: {
+    title: '이 보고서',
+    glance: '한눈에',
+    scores: '점수 8항목',
+    evidence: '근거',
+    questions: '확인 질문',
+    sales: '영업 단계',
+    direction: '영업 방향',
+  },
+  glance: {
+    /** 회사 이름 아래 줄. "검토 대상 · 볼트·너트 전기아연도금" */
+    item: (label: string, item: string) => `${label} · ${item}`,
+    fitAndReason: '적합도 · 고른 이유',
+    processConfirmed: '공정 확인됨',
+    /** 한눈에 칸 가운데 값이 없는 칸 수. "확인 필요 2" */
+    needCheckCount: (label: string, count: number) => `${label} ${count}`,
+    /** 큰 숫자 뒤. " / 100" (배점의 합은 응답의 항목 배점을 더한 값) */
+    outOf: (max: number) => ` / ${max}`,
+    /** 점수 전인 회사의 큰 숫자 자리. */
+    noScore: '--',
+    /** 동그라미를 읽어 주는 글. "점수 100점 가운데 77점" */
+    ringAria: (score: number, max: number) => `점수 ${max}점 가운데 ${score}점`,
+    ringAriaNone: '점수 전',
+    /** 상태별 항목 수 한 줄의 한 토막. "확인 6" */
+    stateCount: (label: string, count: number) => `${label} ${count}`,
+    /** 놓친 일정 알림 줄의 뒤쪽. "2026-11-10 · 다음 일정을 다시 잡아 주세요" */
+    missedHint: (date: string) => `${date} · 다음 일정을 다시 잡아 주세요`,
+  },
+  reasonTitle: '추천 근거 한 줄',
+  scores: {
+    hint: '줄을 누르면 이유가 펼쳐집니다 · 인쇄하면 모두 펼쳐집니다',
+    /** 점수 / 배점. "25 / 25"의 뒤쪽. */
+    ofWeight: (weight: number) => ` / ${weight}`,
+    total: '합계',
+    earned: '점수를 받은 항목',
+    earnedCount: (count: number) => `${count}개`,
+    biggestGap: '가장 크게 비는 곳',
+    /** "유사 산업·부품 납품실적 (0 / 15)" */
+    gap: (label: string, score: number, weight: number) => `${label} (${score} / ${weight})`,
+  },
+  evidence: {
+    /** "원문 인용 9개" */
+    count: (count: number) => `원문 인용 ${count}개`,
+    filterAria: '근거 묶음 거르기',
+    all: '전체',
+    /** 거르기 단추 글자. "제품 4" */
+    chip: (label: string, count: number) => `${label} ${count}`,
+    /** 근거가 무엇에 대한 것인지(응답의 근거 묶음 코드). 표에 없는 코드는 코드 그대로 보인다. */
+    groups: {
+      PRODUCT: '제품',
+      MATERIAL: '소재',
+      PURPOSE: '처리 목적',
+      SIGNAL: '회사 소식',
+      REQUIREMENT: '요구 조건',
+      OTHER: '그 밖',
+    } as Record<string, string>,
+  },
+  questions: {
+    knownHint: '접촉 기록에서 질문에 답하면 여기에 쌓입니다.',
+    /** 체크하지 않은 줄 수. "5개 남음" */
+    left: (count: number) => `${count}개 남음`,
+    checkHint: '물어본 것은 체크해 두세요 · 체크는 이 브라우저에만 기억됩니다',
+  },
+  sales: {
+    /** 접촉 칸의 큰 글자. "3회", 접촉이 없으면 "없음" */
+    contactTotal: (total: number) => (total === 0 ? '없음' : `${total}회`),
+    /** 접촉 칸의 작은 글자. "(전화 2 · 방문 1)" — 0회인 방법은 뺀다. */
+    contactParts: (call: number, email: number, visit: number) => {
+      const parts = [
+        call > 0 ? `전화 ${call}` : '',
+        visit > 0 ? `방문 ${visit}` : '',
+        email > 0 ? `메일 ${email}` : '',
+      ].filter(Boolean);
+      return parts.length > 0 ? `(${parts.join(' · ')})` : '';
+    },
+    missed: '놓친 일정',
+    upcoming: '다음 연락',
+  },
+} as const;
+
 /** 상세 "회사 소개 · 산업군" 칩(#646): AI 제안을 [확정]하거나 [고치기]로 바꾼다. */
 export const industryChips = {
   title: '회사 소개 · 산업군',
