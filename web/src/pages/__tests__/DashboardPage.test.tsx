@@ -5,19 +5,24 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import DashboardPage, { CALENDAR_MAX_WIDTH } from '../DashboardPage';
+import DashboardPage, {
+  CALENDAR_MAX_WIDTH,
+  greetingDate,
+  greetingName,
+  todoCount,
+} from '../DashboardPage';
 import { getDashboard } from '../../api/dashboard';
 import { getDashboardMap } from '../../api/dashboardMap';
 import dashboardMapFixture from '../../test/fixtures/dashboard-map.json';
 import type { Dashboard, TodayCheckRow } from '../../api/dashboardTypes';
 import { ApiError } from '../../api/client';
-import type { Envelope } from '../../api/types';
+import type { ConfigUi, Envelope } from '../../api/types';
 import { FrameContext } from '../../components/frame/FrameContext';
 import { sortSchedule } from '../../components/dashboard/ScheduleList';
 import { bookmarkGrid } from '../../components/dashboard/CountCards';
 import { filterName } from '../../components/list/ListViewBar';
 import { dashboardTexts, frame, states } from '../../labels/ko';
-import { groupMarkPalette, homePalette } from '../../theme/tokens';
+import { colors, groupMarkPalette, homePalette, stepArrow, tagPalette } from '../../theme/tokens';
 import dashboardFixture from '../../test/fixtures/dashboard.json';
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }));
@@ -95,8 +100,9 @@ describe('DashboardPage', () => {
   });
 
   describe('건수 두 구역 (#357: 관심으로 고른 회사만 센다)', () => {
-    it('#921: 영업 단계는 맨 위 날짜 줄의 작은 칩, "관심 기업" 칸은 맨 아래 접힌 "더 보기"에 보인다', async () => {
-      // 예전(#795)에는 큰 "영업 진행" 띠가 브리핑에 있었다. PM 결정 2026-11-25(#921): 상태는 작게 한 줄로.
+    it('#972: 영업 단계는 인사말 줄 아래 숫자 카드 5칸, "관심 기업" 칸은 맨 아래 접힌 "더 보기"에 보인다', async () => {
+      // #921(PM 결정 2026-11-25)의 작은 칩 한 줄을 #972(새 디자인, 2026-11-27)에서 큰 카드 5칸으로 바꿨다.
+      // 보류도 서버가 숫자를 주면 0곳이어도 카드로 보인다(5칸 자리).
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
       const counts = await screen.findByTestId('dashboard-counts');
@@ -107,18 +113,24 @@ describe('DashboardPage', () => {
       ).toEqual(['관심 기업']);
       expect(screen.queryByTestId('dashboard-section-progress')).not.toBeInTheDocument();
       const chips = screen.getByTestId('dashboard-stage-chips');
-      // #923: 예전 "영업 진행" 칸 모양을 작게(이름 위·숫자 아래, 칸 사이 →).
       expect(
         within(chips)
           .getAllByRole('button')
           .map((chip) => chip.getAttribute('aria-label')),
-      ).toEqual(['미접촉 2곳', '접촉 2곳', '견적·샘플 1곳', '성사 1곳']);
+      ).toEqual(['미접촉 2곳', '접촉 2곳', '견적·샘플 1곳', '성사 1곳', '보류 0곳']);
+      // 순서가 있는 네 칸 사이에만 화살표 3개(보류 앞에는 없다).
       expect(within(chips).getAllByTestId('dashboard-stage-arrow')).toHaveLength(3);
       expect(screen.getByTestId('dashboard-stage-chip-NOT_CONTACTED')).toHaveTextContent(
         '미접촉2곳',
       );
-      // 날짜와 같은 줄(같은 부모)에 있다.
-      expect(screen.getByTestId('dashboard-date').parentElement).toContainElement(chips);
+      // 인사말 줄(제목 · 날짜 · 검색) 아래에 따로 놓인다.
+      const header = screen.getByRole('heading', { level: 1 }).parentElement?.parentElement;
+      expect(header).toContainElement(screen.getByTestId('dashboard-date'));
+      expect(header).not.toContainElement(chips);
+      expect(
+        screen.getByTestId('dashboard-date').compareDocumentPosition(chips) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
       const more = screen.getByTestId('dashboard-more');
       expect(more).toContainElement(screen.getByTestId('dashboard-section-bookmark'));
       expect(more).not.toHaveAttribute('open');
@@ -214,22 +226,88 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('dashboard-calendar')).toBeInTheDocument();
     });
 
-    it('#929 단계 칸 B안: 0곳은 흰 칸, 회사가 있는 칸은 연파랑, 성사는 진한 파랑에 흰 글자', async () => {
+    it('#972 단계 카드: 순서가 있는 네 칸은 흰 카드 + 얇은 실선 테두리, 보류는 화살표 없이 점선 테두리', async () => {
+      // #929의 "회사가 있는 칸 연파랑 · 성사 진한 파랑"은 새 디자인에서 모두 흰 카드로 바뀌었다.
       mockedGet.mockResolvedValueOnce(
-        reply({ ...fixtureData, counts: { ...fixtureData.counts, NOT_CONTACTED: 0 } }),
+        reply({ ...fixtureData, counts: { ...fixtureData.counts, NOT_CONTACTED: 0, ON_HOLD: 1 } }),
       );
       renderPage();
       await screen.findByTestId('dashboard-stage-chips');
-      expect(screen.getByTestId('dashboard-stage-chip-NOT_CONTACTED')).toHaveStyle({
-        background: '#FFFFFF',
+      for (const band of ['NOT_CONTACTED', 'IN_CONTACT', 'QUOTE_SAMPLE', 'WON']) {
+        const card = screen.getByTestId(`dashboard-stage-chip-${band}`);
+        expect(card).toHaveStyle({ background: colors.bgContainer, borderRadius: '12px' });
+        expect(card.style.border).toContain('solid');
+        expect(card).not.toHaveAttribute('data-hold');
+      }
+      const hold = screen.getByTestId('dashboard-stage-chip-ON_HOLD');
+      expect(hold).toHaveAttribute('data-hold', 'true');
+      expect(hold).toHaveStyle({ background: homePalette.holdBg });
+      expect(hold.style.border).toContain('dashed');
+      // 화살표는 앞 세 카드 뒤에만 있다: 성사 뒤(보류 앞)와 보류 뒤에는 없다.
+      const arrowAfter = (band: string) =>
+        within(screen.getByTestId(`dashboard-stage-chip-${band}`).parentElement!).queryByTestId(
+          'dashboard-stage-arrow',
+        );
+      expect(arrowAfter('NOT_CONTACTED')).toBeInTheDocument();
+      expect(arrowAfter('IN_CONTACT')).toBeInTheDocument();
+      expect(arrowAfter('QUOTE_SAMPLE')).toBeInTheDocument();
+      expect(arrowAfter('WON')).not.toBeInTheDocument();
+      expect(arrowAfter('ON_HOLD')).not.toBeInTheDocument();
+      // 화살표는 꾸밈이라 화면 읽기 도구가 읽지 않고, 카드(단추) 밖에 있어 단추 이름에 섞이지 않는다.
+      expect(arrowAfter('NOT_CONTACTED')).toHaveAttribute('aria-hidden', 'true');
+      expect(arrowAfter('NOT_CONTACTED')).toHaveStyle({
+        width: `${stepArrow.size}px`,
+        borderRadius: '50%',
       });
-      expect(screen.getByTestId('dashboard-stage-chip-IN_CONTACT')).toHaveStyle({
-        background: homePalette.blueBg,
+    });
+
+    it('#972 단계 카드: 고른 카드는 강조 연한 바탕 + 강조 테두리로 바뀐다', async () => {
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderPage();
+      const card = await screen.findByTestId('dashboard-stage-chip-IN_CONTACT');
+      await userEvent.click(card);
+      expect(card).toHaveAttribute('aria-pressed', 'true');
+      expect(card).toHaveStyle({ background: homePalette.blueBg });
+    });
+
+    it('#972 단계 카드: 그 단계에 멈춘 회사가 있으면 "멈춘 회사 n곳" 주의 꼬리표가 붙고, 없거나 회사 목록이 없으면 붙지 않는다', async () => {
+      const company = (oppId: string, stalled: boolean) => ({
+        oppId,
+        customerName: `가상 ${oppId}`,
+        lastContactAt: '2026-10-01',
+        nextScheduleAt: null,
+        nextScheduleNote: null,
+        stalled,
       });
-      expect(screen.getByTestId('dashboard-stage-chip-WON')).toHaveStyle({
-        background: homePalette.blueStrong,
-        color: '#FFFFFF',
-      });
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...fixtureData,
+          progressCompanies: {
+            IN_CONTACT: [company('a', false), company('b', false)],
+            QUOTE_SAMPLE: [company('c', true), company('d', true), company('e', false)],
+          },
+        }),
+      );
+      renderPage();
+      await screen.findByTestId('dashboard-stage-chips');
+      const tag = screen.getByTestId('dashboard-stage-stalled-QUOTE_SAMPLE');
+      expect(tag).toHaveTextContent('멈춘 회사 2곳');
+      expect(tag).toHaveStyle({ background: tagPalette.warn.bg, color: tagPalette.warn.fg });
+      // 단추 이름에도 실려 화면 읽기 도구가 읽는다.
+      expect(screen.getByTestId('dashboard-stage-chip-QUOTE_SAMPLE')).toHaveAttribute(
+        'aria-label',
+        '견적·샘플 1곳 · 멈춘 회사 2곳',
+      );
+      expect(screen.queryByTestId('dashboard-stage-stalled-IN_CONTACT')).not.toBeInTheDocument();
+      // 회사 목록이 오지 않은 칸(성사)은 꼬리표를 지어내지 않는다.
+      expect(screen.queryByTestId('dashboard-stage-stalled-WON')).not.toBeInTheDocument();
+    });
+
+    it('#972 단계 카드: "이번 주 +1" 같은 지난주 대비 글은 없다(응답에 없는 값)', async () => {
+      mockedGet.mockResolvedValueOnce(reply(fixtureData));
+      renderPage();
+      const chips = await screen.findByTestId('dashboard-stage-chips');
+      expect(chips).not.toHaveTextContent(/이번 주|지난주/);
     });
 
     it('새 모양인데 일부 칸만 빠져 있으면(옛 서버라 WON 없음) 그 칩만 빼고 나머지는 보이며, 보류가 있으면 끝에 보류 칩', async () => {
@@ -242,7 +320,13 @@ describe('DashboardPage', () => {
       const chips = await screen.findByTestId('dashboard-stage-chips');
       expect(screen.queryByTestId('dashboard-stage-chip-WON')).not.toBeInTheDocument();
       expect(within(chips).getAllByRole('button')).toHaveLength(4);
-      expect(screen.getByTestId('dashboard-stage-chip-ON_HOLD')).toHaveTextContent('보류 2곳');
+      expect(screen.getByTestId('dashboard-stage-chip-ON_HOLD')).toHaveAttribute(
+        'aria-label',
+        '보류 2곳',
+      );
+      expect(screen.getByTestId('dashboard-stage-chip-ON_HOLD')).toHaveTextContent('보류2곳');
+      // 성사 칸이 없으면 남은 세 칸 사이에만 화살표 2개.
+      expect(within(chips).getAllByTestId('dashboard-stage-arrow')).toHaveLength(2);
     });
   });
 
@@ -526,15 +610,18 @@ describe('DashboardPage', () => {
       );
       renderPage();
       await screen.findByTestId('dashboard-counts');
-      // #925: 페이지 제목 "영업 홈"은 날짜·단계 칸·검색과 같은 줄에 있다(위쪽 빈 줄 없음).
+      // #972: 페이지 제목(이름을 모르면 "영업 홈")과 날짜 줄이 왼쪽, 검색이 오른쪽인 인사말 줄. 단계 카드는 그 아래.
       const heading = screen.getByRole('heading', { level: 1 });
       expect(heading).toHaveTextContent(frame.pageTitleDashboard);
-      expect(heading.parentElement).toContainElement(screen.getByTestId('dashboard-search-input'));
+      expect(heading.parentElement).toContainElement(screen.getByTestId('dashboard-date'));
+      expect(heading.parentElement?.parentElement).toContainElement(
+        screen.getByTestId('dashboard-search-input'),
+      );
       const order = [
         heading,
         screen.getByTestId('dashboard-date'),
-        screen.getByTestId('dashboard-stage-chips'),
         screen.getByTestId('dashboard-search-input'),
+        screen.getByTestId('dashboard-stage-chips'),
         screen.getByTestId('dashboard-today'),
         screen.getByTestId('dashboard-handoff'),
         screen.getByTestId('dashboard-prep-section'),
@@ -797,5 +884,120 @@ describe('대시보드 › 칸 폭(#825 → #921 → #929)', () => {
     const calendar = screen.getByTestId('dashboard-calendar-section');
     expect(screen.getByTestId('dashboard-prep-section')).toContainElement(calendar);
     expect(calendar.style.maxWidth).toBe(`${CALENDAR_MAX_WIDTH}px`);
+  });
+});
+
+describe('영업 홈 › 인사말 줄 (#972)', () => {
+  const STAFF = [
+    { key: 'park-lee', displayName: '영업 김' },
+    { key: 'viewer', displayName: '보기 전용' },
+  ];
+  const config = (extra: Record<string, unknown> = {}) =>
+    ({ staff: STAFF, ...extra }) as unknown as ConfigUi;
+
+  function renderWith(value: {
+    config: ConfigUi | null;
+    staffKey: string | null;
+    canRecord: boolean;
+  }) {
+    return render(
+      <MemoryRouter initialEntries={['/']}>
+        <FrameContext.Provider
+          value={{
+            ...value,
+            setStaffKey: () => {},
+            setBannerMeta: () => {},
+            setPageTitle: () => {},
+          }}
+        >
+          <DashboardPage />
+        </FrameContext.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(() => {
+    mockedGet.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('고른 담당자의 화면 이름으로 "안녕하세요, ○○ 님"을 보이고, 그 아래 날짜 · 오늘 챙길 일 건수를 보인다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'));
+    mockedGet.mockResolvedValueOnce(
+      reply({
+        ...fixtureData,
+        todayChecks: [
+          { kind: 'SCHEDULE_OVERDUE', count: 2, items: [], listFilter: null },
+          { kind: 'SCHEDULE_TODAY', count: 1, items: [], listFilter: null },
+          { kind: 'HANDOFF_FOR_ME', count: 1, items: [], listFilter: null },
+          // 확인할 회사·내가 보낸 전달은 "오늘 챙길 일"에 세지 않는다(왼쪽 메뉴 숫자와 같은 뜻).
+          { kind: 'CHECK_LEFT', count: 5, items: [], listFilter: 'CHECK_LEFT' },
+          { kind: 'HANDOFF_FROM_ME', count: 3, items: [], listFilter: null },
+        ],
+      }),
+    );
+    renderWith({ config: config(), staffKey: 'park-lee', canRecord: true });
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      '안녕하세요, 영업 김 님',
+    );
+    expect(screen.getByTestId('dashboard-date')).toHaveTextContent(
+      '11월 27일 금요일 · 오늘 챙길 일 4건',
+    );
+    expect(screen.getByTestId('dashboard-todo-count')).toHaveTextContent('4건');
+  });
+
+  it('계정 방식이면 로그인한 사람의 화면 이름을 쓴다', async () => {
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    renderWith({
+      config: config({ currentStaff: { key: 'kim', displayName: '김영업', canRecord: true } }),
+      staffKey: 'kim',
+      canRecord: true,
+    });
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      '안녕하세요, 김영업 님',
+    );
+  });
+
+  it('이름을 모르면(보기 전용 · 설정 전) 지금 제목 "영업 홈"을 그대로 보인다', async () => {
+    mockedGet.mockResolvedValueOnce(reply(fixtureData));
+    renderWith({ config: config(), staffKey: 'viewer', canRecord: false });
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      frame.pageTitleDashboard,
+    );
+    expect(screen.queryByText(/안녕하세요/)).not.toBeInTheDocument();
+  });
+
+  it('서버가 줄 목록을 주지 않으면(옛 서버) "오늘 챙길 일"을 0건으로 지어내지 않고 날짜만 보인다', async () => {
+    const { todayChecks: _rows, ...old } = fixtureData;
+    void _rows;
+    mockedGet.mockResolvedValueOnce(reply(old as Dashboard));
+    renderWith({ config: null, staffKey: null, canRecord: false });
+    const line = await screen.findByTestId('dashboard-date');
+    expect(line).not.toHaveTextContent(dashboardTexts.greetingTodoLead);
+    expect(screen.queryByTestId('dashboard-todo-count')).not.toBeInTheDocument();
+  });
+
+  it('greetingName · greetingDate · todoCount', () => {
+    expect(greetingName(null, 'park-lee', true)).toBeNull();
+    expect(greetingName(config(), 'park-lee', true)).toBe('영업 김');
+    expect(greetingName(config(), 'park-lee', false)).toBeNull();
+    expect(greetingName(config(), 'nobody', true)).toBeNull();
+    // 첫 로그인 설정 전(화면 이름 없음)이면 고른 담당자 이름으로 대신하지 않는다.
+    expect(
+      greetingName(
+        config({ currentStaff: { key: 'park-lee', displayName: null, canRecord: true } }),
+        'park-lee',
+        true,
+      ),
+    ).toBeNull();
+    expect(greetingDate('2026-11-27')).toBe('11월 27일 금요일');
+    expect(greetingDate('2026-12-01')).toBe('12월 1일 화요일');
+    expect(greetingDate('')).toBe('');
+    expect(todoCount(undefined)).toBeNull();
+    expect(todoCount([])).toBe(0);
   });
 });

@@ -198,6 +198,15 @@ export const homePalette = {
   teal: accent.text,
   line: stepTodo.line,
   muted: colors.textDimmed,
+  /** #972 단계 숫자 카드 "보류"(순서 밖): 흰 카드보다 살짝 옅은 바탕 + 점선 테두리. 글자는 본문·보조 글자색. */
+  holdBg: '#FBFBFD',
+  holdBorder: stepTodo.dot,
+  /** #972 달력 날짜를 눌렀을 때 뜨는 작은 창의 그림자(부품에 직접 적혀 있던 값을 옮김). */
+  popoverShadow: '0 12px 32px rgba(27, 26, 46, 0.1)',
+  /** #972 지도 위 작은 이름표(회사 이름·거리 숫자): 글자색 바탕 + 흰 글자, 숫자 이름표는 흰 바탕. */
+  mapTipBg: tone.ink,
+  mapTipFg: tone.paper,
+  mapLabelBg: tone.paper,
 } as const;
 
 /** #925 영업 홈 묶음 제목 앞 색 막대(PM 요청 2026-11-25). 글자가 늘 함께 있어 색은 보조 신호다. #972부터 지난 일정 = 주의색, 오늘 = 보라. */
