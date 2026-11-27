@@ -239,6 +239,28 @@ describe('영업 분석 화면 (#608)', () => {
     await screen.findByTestId('analysis-process-table');
   });
 
+  it('숫자 카드 4칸(#972): 그림 위에 응답 합계의 접촉·진행 중·성사·거절 곳 수가 보인다', async () => {
+    installFetch(ANALYSIS);
+    renderPage();
+    const cards = await screen.findByTestId('analysis-number-cards');
+    expect(within(cards).getByTestId('number-card-contacted')).toHaveTextContent('접촉3곳');
+    expect(within(cards).getByTestId('number-card-inProgress')).toHaveTextContent(
+      '진행 중1곳수요 확인 단계 1곳',
+    );
+    expect(within(cards).getByTestId('number-card-won')).toHaveTextContent('성사1곳최근 365일');
+    expect(within(cards).getByTestId('number-card-lost')).toHaveTextContent('거절1곳');
+    // 응답에 없는 값(월별 칸 없음 · 보류 0곳)으로는 보조 글을 만들지 않는다.
+    expect(
+      within(within(cards).getByTestId('number-card-contacted')).queryByTestId('number-card-sub'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(within(cards).getByTestId('number-card-lost')).queryByTestId('number-card-sub'),
+    ).not.toBeInTheDocument();
+    // 담당자 선호 제안 아래 · 그림 위.
+    const charts = screen.getByTestId('analysis-charts');
+    expect(cards.compareDocumentPosition(charts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('공정별 표: 공정 줄과 그 아래 산업군 줄에 건수·평균·방법별 연결·거절 이유가 보인다', async () => {
     installFetch(ANALYSIS);
     renderPage();

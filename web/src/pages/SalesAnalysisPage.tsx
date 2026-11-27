@@ -7,6 +7,7 @@
 // #801(PM 지시 2026-11-16): 겹치는 숫자 칸 대신 네 그림(깔때기·거절 이유·공정 × 산업·회사별 타임라인)을 맨 위에 두고,
 // 표와 관심 기업 분포는 [표로 보기]에 접어 둔다(기본 닫힘). 지금 상태 숫자(진행 중·보류)는 대시보드 몫이다.
 // #918(팀 의견 11/25): 맨 위 탭 [분석] | [지난 분석]. 지난 분석은 받을 때마다 저장된 AI 분석을 다시 본다.
+// #972(PM 결정 2026-11-27): 새 시안대로 숫자 카드 4칸(접촉 · 진행 중 · 성사 · 거절)을 그림 위에 다시 둔다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
@@ -16,6 +17,7 @@ import type { AnalysisPeriod, SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
 import AnalysisFeedbackCard from '../components/analysis/AnalysisFeedbackCard';
+import AnalysisNumberCards from '../components/analysis/AnalysisNumberCards';
 import MonthlyTrend from '../components/analysis/MonthlyTrend';
 import PreferencePanel from '../components/analysis/PreferencePanel';
 import PastAnalyses from '../components/analysis/PastAnalyses';
@@ -232,6 +234,8 @@ export default function SalesAnalysisPage() {
                 </p>
               ) : null}
             </div>
+            {/* #972(PM 결정 11/27): 숫자 카드 4칸(접촉 · 진행 중 · 성사 · 거절). 응답 합계 그대로, 고른 기간을 따른다. */}
+            <AnalysisNumberCards data={data} />
             {/* #824: AI 분석 피드백(실패 먼저, 근거 숫자). 💰 단추로만 부르고 기간마다 저장본을 먼저 읽는다. */}
             <AnalysisFeedbackCard period={period} reloadKey={reload} />
             {/* #802(11/22): 최근 12개월 월별 접촉·성사·거절(기간 선택과 상관없이). */}

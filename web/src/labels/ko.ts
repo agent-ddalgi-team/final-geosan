@@ -2265,6 +2265,27 @@ export const analysisCharts = {
   tablesToggle: '표로 보기',
 } as const;
 
+/**
+ * #972 영업 분석 숫자 카드 4칸(PM 결정 2026-11-27: #801에서 "겹친다"고 뺐던 칸을 새 시안대로 다시 둔다).
+ * 숫자는 분석 응답의 합계(회사를 한 번씩 센 값) 그대로이고 고른 기간을 따른다. 보조 글도 응답에 있는 값으로만 만든다.
+ */
+export const analysisNumberCardTexts = {
+  groupLabel: '접촉 · 진행 중 · 성사 · 거절 회사 수',
+  contacted: '접촉',
+  inProgress: '진행 중',
+  won: '성사',
+  lost: '거절',
+  unit: '곳',
+  /** 접촉 보조 글(기간을 고르지 않았을 때만): 월별 추세의 이번 달 값. 예: "이번 달 8곳" */
+  thisMonth: (count: number) => `이번 달 ${count}곳`,
+  /** 진행 중 보조 글: 진행 중인 회사가 가장 많이 머문 세부 단계. 예: "수요 확인 단계 3곳" */
+  openStep: (step: string, count: number) => `${step} 단계 ${count}곳`,
+  /** 성사 보조 글(기간을 고르지 않았을 때만): 성사·거절을 세는 범위. 예: "최근 365일" */
+  closedWindow: (days: number) => `최근 ${days}일`,
+  /** 거절 보조 글: 보류는 거절에 넣지 않고 따로 센다. 예: "보류 2곳 별도" */
+  holdApart: (count: number) => `보류 ${count}곳 별도`,
+} as const;
+
 // 추천 목록의 묶음. 코드는 계약 C0 contactBucket·bucketBasis 그대로다.
 // 근거 상태 묶음(#675, PM 결정 2026-11-13): 근거 있음 → 근거 조금 → 홈페이지 없음 → 조사 전 → 끝난 회사.
 // 세 묶음(#610)의 NOW·CHECK·LATER와 옛 이유 값은 서버가 더는 내보내지 않지만 글자는 남겨 둔다.
