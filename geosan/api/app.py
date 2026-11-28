@@ -222,6 +222,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         processes,
         records,
         sales_analysis,
+        sales_reactions,
         session,
     )
 
@@ -234,6 +235,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         homepage.router,
         export.router,
         sales_analysis.router,
+        sales_reactions.router,
         peers.router,
         industries.router,
         processes.router,
