@@ -188,7 +188,7 @@ body.present .mermaid svg{max-width:none;width:100%}
     <div class="card">
       <h2>화면은 어떻게 이어져 있나</h2>
       <div class="fig"><div class="mermaid" data-src="mm-screens"></div></div>
-      <p class="caption">접속 → 대시보드 → 목록 ↔ 상세. 지도 앱·회사 홈페이지·근거 출처는 새 창으로 열립니다.</p>
+      <p class="caption">접속 → 영업 홈 → 거래처 후보 · 관심 기업 ↔ 상세. 지도 앱·회사 홈페이지·근거 출처는 새 창으로 열립니다.</p>
     </div>
     <div class="card">
       <h2>기업 검토 상세의 짜임</h2>
@@ -212,7 +212,7 @@ body.present .mermaid svg{max-width:none;width:100%}
     <div class="grid2">
       <div>
         <div class="fig"><div class="mermaid" data-src="mm-pie"></div></div>
-        <p class="caption">"됨"은 화면과 서버가 모두 <code>develop</code>에 합쳐졌다는 뜻입니다. 거산이 접속하는 주소에 올리는 일은 만들 것이 어느 정도 된 뒤에 합니다(#213).</p>
+        <p class="caption">"됨"은 화면과 서버가 모두 <code>develop</code>에 합쳐졌다는 뜻입니다. 거산이 접속하는 주소에는 11/18 처음 올렸고, 그 뒤로는 PM이 정할 때 올립니다.</p>
       </div>
       <div>
         <table>
@@ -220,14 +220,17 @@ body.present .mermaid svg{max-width:none;width:100%}
           <tbody>
             <tr><td>U1 뼈대</td><td>가상 사례 1건이 넣기 → 평가 → 화면 → 의견 저장까지</td><td><span class="chip ok">✅</span></td></tr>
             <tr><td>U2 AI 조사</td><td>홈페이지를 찾아 읽고 근거와 질문을 뽑는다</td><td><span class="chip ok">✅</span></td></tr>
-            <tr><td>U3 후보 찾기</td><td>담당자가 고른 조건으로 공공자료에서 후보를 찾는다. 웹에서 찾는 갈래는 만드는 중</td><td><span class="chip wip">⏳ 진행 중</span></td></tr>
-            <tr><td>U4 거산 확인 창구</td><td>거산 값을 "확인 완료"로 바꾼다. 배포 DB에서는 배포 때</td><td><span class="chip next">📅 예정</span></td></tr>
-            <tr><td>U5 담당자 기록</td><td>접촉·메모·영업 단계·일정</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U3 후보 찾기</td><td>고른 조건으로 공공자료·웹에서 후보를 찾는다. 이름으로 1곳 넣기, 경기도까지</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U4 거산 확인 창구</td><td>거산 값을 "확인 완료"로. 배포 DB는 처음부터 확인 완료</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U5 담당자 기록</td><td>접촉·메모·단계·일정·전달 사항, 상대 담당자 연락처(가림), 달력 메모</td><td><span class="chip ok">✅</span></td></tr>
             <tr><td>U6 재접촉</td><td>예전 거래처를 다시 영업</td><td><span class="chip hold">⏸ 보류</span></td></tr>
-            <tr><td>U7 대시보드</td><td>건수·일정·최근 기록</td><td><span class="chip ok">✅</span></td></tr>
-            <tr><td>U8 접속·배포</td><td>비밀번호, 올리기, 백업</td><td><span class="chip next">📅 예정</span></td></tr>
-            <tr><td>U10 운영 인계</td><td>안내서·전달 메일</td><td><span class="chip next">📅 예정</span></td></tr>
-            <tr><td>영업 비서</td><td>질문에 답하고 통화를 준비한다</td><td><span class="chip wip">⏳ 진행 중</span></td></tr>
+            <tr><td>U7 영업 홈</td><td>오늘 할 일·일정·지도·영업 분석·운영 관리</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U8 접속·배포</td><td>사람마다 로그인, 11/18 첫 배포, 백업</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>U10 운영 인계</td><td>안내서·접속 안내·전달 메일 (안내서 초안 중)</td><td><span class="chip wip">⏳ 진행 중</span></td></tr>
+            <tr><td>U11 화면 다듬기</td><td>11/27 새 디자인(보라 톤)으로 손봄</td><td><span class="chip">❓ 확인 필요</span></td></tr>
+            <tr><td>영업 비서 · 영업 코치</td><td>질문에 답하고, 통화 메모를 정리·피드백</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>되먹임 ①②③</td><td>기록이 순위·근거로 돌아옴 (11/26)</td><td><span class="chip ok">✅</span></td></tr>
+            <tr><td>만드는 중</td><td>기록 남기기 단순화(#985) · 영업 홈 수정안(#992)</td><td><span class="chip wip">⏳ 진행 중</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -278,11 +281,11 @@ body.present .mermaid svg{max-width:none;width:100%}
 <!-- 그림 원문: 지도 문서의 Mermaid 블록 그대로 -->
 <script type="text/plain" id="mm-core">
 flowchart LR
-    R["추천 순위 · 근거<br/>(공개 자료 + 거산 역량)"] --> U["담당자가 본다<br/>영업 후보 목록 · 상세"]
+    R["추천 순위 · 근거<br/>(공개 자료 + 거산 역량)"] --> U["담당자가 본다<br/>거래처 후보 · 관심 기업 · 상세"]
     U --> W["기록을 남긴다<br/>접촉 · 영업 단계 · 메모 · 의견<br/>+ 그때 본 평가 번호 ⏳"]
-    W -->|"① 같은 회사 반영 📅"| R
-    W -->|"② 비슷한 회사로 번짐 📅"| R
-    W -->|"③ 선호가 가중치로 (사람 승인) 📅"| R
+    W -->|"① 같은 회사 반영 ✅"| R
+    W -->|"② 비슷한 회사로 번짐 ✅"| R
+    W -->|"③ 선호가 순서로 (사람 승인) ✅"| R
 </script>
 <script type="text/plain" id="mm-data">
 flowchart TB
@@ -313,7 +316,7 @@ flowchart TB
     S2 -->|"역량 묶음"| S6
     S3 -->|"고객 · 기회 · 요구 · 신호 · 8항목 입력"| S6["⑥ 평가<br/>거르기 → 점수 → 분류 → 순위"]
     S5 -->|"근거 문장 · 확인 질문 · 요구 후보 · 회사 요약"| S6
-    S6 -->|"E·P·S·R · 분류 · 순위 · 질문"| S7["⑦ 화면<br/>대시보드 · 목록 · 상세"]
+    S6 -->|"E·P·S·R · 분류 · 순위 · 질문"| S7["⑦ 화면<br/>영업 홈 · 목록 · 상세"]
     S7 --> S8["⑧ 담당자 기록<br/>의견 · 메모 · 접촉 · 단계 · 일정<br/>+ 그때 본 평가 번호"]
     S8 -->|"거래 관계 바꿈"| S6
     S8 -.->|"되먹임 ①②③"| S6
@@ -325,27 +328,31 @@ flowchart LR
     A["① 자료 넣기<br/>거산이 할 수 있는 일<br/>후보 회사"]
     B["② AI 조사<br/>홈페이지 찾기<br/>읽고 근거 뽑기"]
     C["③ 평가<br/>조건으로 거르기<br/>점수 → 분류 → 순위"]
-    D["④ 화면<br/>대시보드<br/>영업 후보 목록<br/>기업 검토 상세"]
+    D["④ 화면<br/>영업 홈<br/>거래처 후보 · 관심 기업<br/>기업 검토 상세"]
     E["⑤ 담당자 기록<br/>의견 · 메모 · 단계<br/>일정 · 거래 관계"]
     A --> B --> C --> D --> E
     E -.->|"거래 관계를 바꾸면<br/>순위를 다시 계산"| C
 </script>
 <script type="text/plain" id="mm-screens">
 flowchart TB
-    G["접속 화면<br/>공용 비밀번호"] --> D["대시보드<br/>첫 화면"]
-    D <-->|"위쪽 메뉴로 오감"| L["영업 후보 목록"]
+    G["접속 화면<br/>공용 비밀번호 또는 아이디"] --> D["📊 영업 홈<br/>첫 화면"]
+    D <-->|"왼쪽 메뉴로 오감"| L["거래처 후보"]
+    D <-->|"왼쪽 메뉴로 오감"| B["관심 기업"]
     D -->|"일정 줄 · 최근 기록 줄을 누름"| S["기업 검토 상세"]
-    L <-->|"자세히 보기 · 목록으로"| S
+    L <-->|"회사 이름 누름 · 목록으로"| S
+    B <-->|"회사 이름 누름 · 목록으로"| S
     S -.->|"새 창으로 열림"| O["지도 앱<br/>회사 홈페이지<br/>근거 출처"]
 </script>
 <script type="text/plain" id="mm-detail">
 flowchart LR
-    H["머리<br/>회사 이름 · 분류 ✅<br/>점수 · 지도 링크 ✅<br/>관심 단추 ⏳<br/>거래 관계 단추 ✅<br/>회사 소개 · 대표번호 ✅<br/>홈페이지 확인 ⏳"]
-    R["살펴보는 곳<br/>1. 추천 근거 ✅<br/>검토사항 ✅<br/>2. 근거 자료 ✅<br/>3. 점수 자세히 ✅"]
-    W["남기는 곳<br/>검토 의견 ✅<br/>기록 네 가지 ✅<br/>활동 이력 ✅"]
-    K["그 아래<br/>비슷한 회사 참고 ✅<br/>영업 전략 📅"]
-    H --> R --> W
-    W -.-> K
+    H["머리<br/>회사 이름 · 분류 · 점수 ✅<br/>관심 · 다시 조사 · 보고서 ✅"]
+    T["영업 단계 ✅<br/>+ 상대 담당자 연락처<br/>가려서 보임 ✅"]
+    G["한눈에 | 왜 이 회사인가<br/>나란히 ✅<br/>대표번호 · 대표명 [고치기] ✅"]
+    W["기록<br/>활동 이력 ✅<br/>메모 속 번호 가림 ✅"]
+    K["비슷한 회사 참고 ✅<br/>지난 평가와 달라진 것 ✅<br/>점수 자세히 보기 ✅"]
+    C["오른쪽 ✦ 영업 코치<br/>다음 일정 ✅<br/>확인사항 · 대화 기록 ✅"]
+    H --> T --> G --> W --> K
+    C -.->|"여기서 적음"| W
 </script>
 <script type="text/plain" id="mm-pie">
 pie showData
