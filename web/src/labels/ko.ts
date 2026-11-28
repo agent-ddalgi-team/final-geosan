@@ -445,8 +445,8 @@ export const dashboardTexts = {
   tableFilterAll: '전체',
   tableFilterMine: '내 담당',
   tableFilterStalled: '오래 연락 없는 회사',
-  /** "보류만 보는 중" */
-  tableStageOnly: (stage: string) => `${stage}만 보는 중`,
+  /** [영업 홈 › 진행 중인 회사 › 영업 단계 칸 아래 설명 줄 가운데] (#992) 단계를 골랐을 때만. 예: 지금 "접촉" 4곳을 보는 중 */
+  tableStageOnly: (stage: string, n: number) => `지금 "${stage}" ${n}곳을 보는 중`,
   tableStageClear: '모든 단계 보기',
   tableColumns: {
     company: '회사',
@@ -485,8 +485,11 @@ export const dashboardTexts = {
   greetingTodoCount: (n: number) => `${n}건`,
   /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸] 화면 낭독기가 읽는 말. "멈춘 회사 2곳" (보이는 꼬리표는 stageCellStalled) */
   stageCardStalled: (n: number) => `멈춘 회사 ${n}곳`,
-  /** [영업 홈 › 단계 숫자 카드 › 이름 옆 꼬리표] (#976) "+1 이번 주" = 이번 주(월요일~오늘)에 이 칸으로 들어온 회사 수. */
-  stageCardEntered: (n: number) => `+${n} 이번 주`,
+  /**
+   * [영업 홈 › 진행 중인 회사 › 영업 단계 칸 › 숫자 옆 꼬리표] (#976 → #992) "+1" = 이번 주(월요일~오늘)에 이 칸으로
+   * 들어온 회사 수. #992에서 "+1 이번 주"를 "+1"로 줄였다(뜻은 칸 아래 설명 줄과 읽는 말 stageCardEnteredHint가 말한다).
+   */
+  stageCardEntered: (n: number) => `+${n}`,
   /** 화면 낭독기·손 올림 글. "이번 주에 이 단계로 들어온 회사 1곳" */
   stageCardEnteredHint: (n: number) => `이번 주에 이 단계로 들어온 회사 ${n}곳`,
   /** [영업 홈 › 오늘 할 일 제목 옆] "3건" = 지난 일정 + 오늘 일정. */
@@ -510,10 +513,12 @@ export const dashboardTexts = {
   // #983(PM이 고른 시안 2026-11-28): 진행 중인 회사 카드 안 작은 단계 칸 · 표에서 바로 일정 잡기 · 작은 달력.
   /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸 › 주의 꼬리표] "멈춤 1" = 그 단계에서 멈춘 회사 수. */
   stageCellStalled: (n: number) => `멈춤 ${n}`,
-  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸 › 숫자 뒤] */
+  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸] 화면 낭독기가 읽는 단추 이름의 숫자 뒤("접촉 4곳"). #992부터 칸에는 숫자만 보인다. */
   stageCellUnit: '곳',
-  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸 오른쪽 안내] */
-  stageCellHint: '칸을 누르면 아래 표가 그 단계 회사만 보입니다',
+  /** [영업 홈 › 진행 중인 회사 › 영업 단계 칸 아래 설명 줄 앞] (#992) */
+  stageCellHint: '영업 단계 칸을 누르면 아래 목록이 그 단계 회사만 보입니다',
+  /** [영업 홈 › 진행 중인 회사 › 영업 단계 칸 아래 설명 줄 끝] (#992) "+n" 꼬리표가 하나라도 보일 때만. "+2"는 보기로 든 숫자다. */
+  stageHintEntered: '숫자 옆 "+2"는 이번 주에 들어온 곳',
   /** [영업 홈 › 진행 중인 회사 표 › 다음 일정 칸] 일정이 없으면 [일정 잡기], 있으면 [바꾸기]. */
   tableScheduleNew: '일정 잡기',
   tableScheduleChange: '바꾸기',

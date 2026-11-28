@@ -132,11 +132,13 @@ describe('모든 화면에서 보인다', () => {
       /^12월 일정$/,
     );
     expect(calendar).toHaveAttribute('data-state', 'ready');
-    // 메뉴와 간격을 띄운 연회색 칸(모서리 12).
+    // 연회색 칸(모서리 12). #992(PM 결정 2026-11-29): 메뉴 줄 아래 40px 띄운 자리(#983)가 아니라, 남는 높이를 모두
+    // 위쪽 여백으로 받아 메뉴 칸 맨 아래(브라우저 창 아래 끝)에 붙는다. 달력 칸 자체는 줄어들지 않는다.
     expect(calendar).toHaveStyle({
       background: sideCalendar.panelBg,
       borderRadius: '12px',
-      marginTop: `${sideCalendar.gapAbove}px`,
+      marginTop: 'auto',
+      flex: 'none',
     });
     expect(mockedGet).toHaveBeenCalledTimes(1);
   });

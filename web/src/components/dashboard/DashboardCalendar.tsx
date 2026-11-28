@@ -19,6 +19,9 @@
 // #984(달력 날짜 메모): 작은 달력에 메모 건수(memoCounts)를 주면 메모가 있는 날 칸에 회색 테두리를 두르고
 //   풀이에 "메모"를 더하며, 날짜 단추의 읽는 말 끝에 "메모 n건"을 붙인다. 달을 넘기면 onMonthChange로 알린다
 //   (메모는 보이는 달만 읽는다). 이 부품은 메모를 읽거나 저장하지 않는다(MemoCalendar가 맡는다).
+// #992(PM이 고른 수정안 3, 2026-11-29): 왼쪽 메뉴 달력이 브라우저 창 아래 끝에 붙으면서 날짜가 늘 화면 아래쪽에 온다.
+//   오른쪽 작은 창은 지금 규칙대로 화면 아래쪽 절반의 날짜에서는 위로, 위쪽 절반에서는 아래로 펼치고(더 넓은 쪽),
+//   펼친 쪽의 브라우저 창 끝을 넘지 않게 길이를 묶는다(넘치면 일정 · 메모 칸만 창 안에서 내려 본다. 머리 줄은 그대로).
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -127,6 +130,33 @@ interface Open {
   top: number;
   /** 작은 달력 · 오른쪽 창에서 날짜가 화면 아래쪽이면 창을 위로 펼친다: 달력 아래 끝에서 창 아래 끝까지 거리. */
   bottom?: number;
+  /** #992 작은 달력 · 오른쪽 창의 최대 높이: 펼친 쪽의 브라우저 창 끝에서 여백을 뺀 값. 넘치면 창 안에서 내려 본다. */
+  maxHeight?: number;
+}
+
+/**
+ * #992 작은 달력 · 오른쪽 창이 놓일 자리. 날짜 칸이 화면 아래쪽 절반이면 위로(창 아래 끝 = 그 줄 아래 12),
+ * 아니면 아래로(창 위 끝 = 그 줄 위 12) 펼친다. 어느 쪽이든 브라우저 창 끝에서 여백(edgeGap)만큼 떨어진 데까지만 자란다.
+ * cell = 날짜 칸의 화면 좌표와 달력 안 자리, wrapHeight = 달력 높이(모르면 null), viewportHeight = 브라우저 창 높이.
+ */
+export function rightPopoverPlace(
+  cell: { top: number; bottom: number; offsetTop: number; offsetHeight: number },
+  wrapHeight: number | null,
+  viewportHeight: number,
+  edgeGap: number,
+): { top: number; bottom?: number; maxHeight: number } {
+  const top = Math.max(0, cell.offsetTop - 12);
+  if (cell.top <= viewportHeight / 2) {
+    // 아래로: 창 위 끝의 화면 좌표 = 날짜 칸 위 끝 - (달력 안에서 칸과 창 위 끝의 거리).
+    const topOnScreen = cell.top - (cell.offsetTop - top);
+    return { top, maxHeight: Math.max(0, viewportHeight - topOnScreen - edgeGap) };
+  }
+  const rowBottom = cell.offsetTop + cell.offsetHeight;
+  const below = (wrapHeight ?? rowBottom) - rowBottom;
+  const bottom = Math.max(0, below - 12);
+  // 위로: 창 아래 끝의 화면 좌표 = 날짜 칸 아래 끝 + (달력 아래 끝까지 거리 - 창이 띄운 거리).
+  const bottomOnScreen = cell.bottom + (below - bottom);
+  return { top, bottom, maxHeight: Math.max(0, bottomOnScreen - edgeGap) };
 }
 
 export default function DashboardCalendar({
@@ -327,18 +357,22 @@ export default function DashboardCalendar({
                   const target = event.currentTarget;
                   const wrap = wrapRef.current;
                   if (popoverSide === 'right') {
-                    // 날짜가 화면 아래쪽 절반에 있으면 창을 위로 펼쳐 화면 밖으로 나가지 않게 한다.
-                    const low = target.getBoundingClientRect().top > window.innerHeight / 2;
-                    const rowBottom = target.offsetTop + target.offsetHeight;
+                    // 날짜가 화면 아래쪽 절반에 있으면 창을 위로 펼치고, 펼친 쪽의 브라우저 창 끝을 넘지 않게 길이를 묶는다.
+                    const rect = target.getBoundingClientRect();
                     setOpen({
                       day: k,
                       left: 0,
-                      top: Math.max(0, target.offsetTop - 12),
-                      ...(low
-                        ? {
-                            bottom: Math.max(0, (wrap?.clientHeight ?? rowBottom) - rowBottom - 12),
-                          }
-                        : {}),
+                      ...rightPopoverPlace(
+                        {
+                          top: rect.top,
+                          bottom: rect.bottom,
+                          offsetTop: target.offsetTop,
+                          offsetHeight: target.offsetHeight,
+                        },
+                        wrap?.clientHeight ?? null,
+                        window.innerHeight,
+                        sideCalendar.popoverEdgeGap,
+                      ),
                     });
                     return;
                   }
@@ -701,6 +735,8 @@ function MiniPopover({
 }) {
   const right = side === 'right';
   const up = right && open.bottom !== undefined;
+  // #992: 오른쪽 창은 브라우저 창 끝을 넘지 않게 길이가 묶여 있다. 넘치면 본문(일정 · 메모 칸)만 내려 본다.
+  const capped = right && open.maxHeight !== undefined;
   return (
     <div
       role="dialog"
@@ -712,6 +748,7 @@ function MiniPopover({
       }`}
       data-testid="dashboard-calendar-popover"
       data-side={side}
+      data-direction={right ? (up ? 'up' : 'down') : undefined}
       style={{
         position: 'absolute',
         ...(right
@@ -719,6 +756,7 @@ function MiniPopover({
               left: `calc(100% + ${sideCalendar.popoverGap}px)`,
               ...(up ? { bottom: open.bottom } : { top: open.top }),
               width: sideCalendar.popoverWidth,
+              ...(capped ? { maxHeight: open.maxHeight } : {}),
             }
           : {
               left: open.left,
@@ -733,7 +771,9 @@ function MiniPopover({
         borderRadius: sideCalendar.popoverRadius,
         boxShadow: sideCalendar.popoverShadow,
         padding: 14,
-        display: 'grid',
+        // 머리 줄은 늘 보이고 본문만 줄어들 수 있게 세로로 쌓는다.
+        display: 'flex',
+        flexDirection: 'column',
         gap: 10,
         fontSize: typography.fontSizeSecondary,
         lineHeight: 1.5,
@@ -756,7 +796,7 @@ function MiniPopover({
           }}
         />
       ) : null}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flex: 'none' }}>
         <b data-testid="dashboard-calendar-popover-title" style={{ fontSize: 15 }}>
           {popoverDayTitle(open.day)}
         </b>
@@ -787,41 +827,58 @@ function MiniPopover({
           ×
         </button>
       </div>
-      {list.length > 0 ? (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
-          {list.map((item) => (
-            <li
-              key={`${item.oppId}-${item.dueAt}-${item.note}`}
-              data-testid="dashboard-calendar-popover-item"
-            >
-              {item.overdue ? (
-                <span
-                  data-testid="dashboard-schedule-overdue"
-                  style={{
-                    background: calendarPalette.tones.overdue.bg,
-                    color: calendarPalette.tones.overdue.fg,
-                    borderRadius: radius.tag,
-                    padding: '0 6px',
-                    marginRight: 6,
-                    fontSize: typography.fontSizeSecondary - 1,
-                    fontWeight: 600,
-                  }}
+      {list.length > 0 || extra ? (
+        <div
+          data-testid="dashboard-calendar-popover-body"
+          style={{
+            display: 'grid',
+            gap: 10,
+            minHeight: 0,
+            // 내려 보는 칸이 입력 칸 · 단추의 키보드 초점선(바깥 4px)을 자르지 않게 여백을 준다(자리는 그대로).
+            margin: -4,
+            padding: 4,
+            ...(capped ? { overflowY: 'auto' as const } : {}),
+          }}
+        >
+          {list.length > 0 ? (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+              {list.map((item) => (
+                <li
+                  key={`${item.oppId}-${item.dueAt}-${item.note}`}
+                  data-testid="dashboard-calendar-popover-item"
                 >
-                  {dashboardTexts.scheduleOverdue}
-                </span>
-              ) : null}
-              <Link
-                to={`/opportunities/${encodeURIComponent(item.oppId)}`}
-                style={{ color: calendarPalette.link, fontWeight: 600 }}
-              >
-                {item.customerName}
-              </Link>
-              {item.note ? <span> · {item.note}</span> : null}
-            </li>
-          ))}
-        </ul>
+                  {item.overdue ? (
+                    <span
+                      data-testid="dashboard-schedule-overdue"
+                      style={{
+                        background: calendarPalette.tones.overdue.bg,
+                        color: calendarPalette.tones.overdue.fg,
+                        borderRadius: radius.tag,
+                        padding: '0 6px',
+                        marginRight: 6,
+                        fontSize: typography.fontSizeSecondary - 1,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {dashboardTexts.scheduleOverdue}
+                    </span>
+                  ) : null}
+                  <Link
+                    to={`/opportunities/${encodeURIComponent(item.oppId)}`}
+                    style={{ color: calendarPalette.link, fontWeight: 600 }}
+                  >
+                    {item.customerName}
+                  </Link>
+                  {item.note ? <span> · {item.note}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {extra ? (
+            <div data-testid="dashboard-calendar-popover-extra">{extra(open.day)}</div>
+          ) : null}
+        </div>
       ) : null}
-      {extra ? <div data-testid="dashboard-calendar-popover-extra">{extra(open.day)}</div> : null}
     </div>
   );
 }

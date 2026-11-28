@@ -1,6 +1,9 @@
 // 왼쪽 메뉴 아래 한 달 달력(#983, PM이 고른 시안 2026-11-28). 모든 화면에서 보인다(넓은 화면).
-// 메뉴와 간격을 띄운 연회색 칸 안에 작은 달력(DashboardCalendar mini)을 그린다. 날짜를 누르면 달력 오른쪽으로
+// 연회색 칸 안에 작은 달력(DashboardCalendar mini)을 그린다. 날짜를 누르면 달력 오른쪽으로
 // 작은 창이 떠서 그날 일정(회사 · 내용 · 지남 표시)을 보이고, 일정이 없으면 "일정 없음"이라고 보인다.
+// #992(PM이 고른 수정안 3, 2026-11-29): 달력 칸은 메뉴 칸(브라우저 창 높이) 맨 아래에 붙는다(margin-top: auto).
+//   화면을 스크롤해도 창 아래 끝 그 자리다. 창이 낮아 메뉴 줄 + 달력이 다 들어가지 않으면 지금처럼 메뉴 줄 바로
+//   아래(최소 간격)에 이어 붙고 메뉴 줄이 그 칸 안에서 내려 보인다. #983에서는 메뉴 줄 아래 40px 띄운 자리였다.
 // 일정은 영업 홈과 같은 응답을 쓴다(useSideSchedule). 못 읽으면 이 칸에 짧은 안내만 보이고 메뉴는 그대로 쓴다.
 // #984: 달력은 날짜 메모를 쓰는 달력(MemoCalendar)이다. 메모가 있는 날에 테두리가 보이고, 날짜를 누르면 뜨는 창의
 // 일정 아래에 그날 메모 칸이 보인다. 메모는 보이는 달만 읽고, 못 읽어도 달력 · 일정은 그대로 쓴다.
@@ -61,7 +64,8 @@ export default function SideCalendar({ extra }: { extra?: (day: string) => React
       style={{
         flex: 'none',
         position: 'relative',
-        marginTop: sideCalendar.gapAbove,
+        // 메뉴 칸에 남는 높이를 모두 위쪽 여백으로 받아 맨 아래에 붙는다. 남는 높이가 없으면 0(메뉴 줄 바로 아래).
+        marginTop: 'auto',
         padding: sideCalendar.panelPadding,
         background: sideCalendar.panelBg,
         border: `1px solid ${sideCalendar.panelBorder}`,

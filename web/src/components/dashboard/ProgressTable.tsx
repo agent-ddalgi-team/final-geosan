@@ -11,7 +11,13 @@
 //   - 다음 일정 칸에서 바로 일정을 잡고 바꾼다: 일정이 없으면 "일정 없음" + [일정 잡기], 있으면 지금 글 + [바꾸기].
 //     누르면 그 줄의 같은 칸 아래에 바로 일정 잡기 칸(ScheduleQuickEdit)이 펴진다. 한 번에 한 줄만 펴진다.
 //     보기 전용 · 담당자를 고르기 전에는 단추가 눌리지 않고 표 위에 "먼저 담당자를 고르세요"가 보인다.
-import { useState } from 'react';
+// #992(PM이 고른 수정안 3, 2026-11-29):
+//   - 영업 단계 칸 묶음(stages)을 제목 줄 안, 제목 "진행 중인 회사 12곳" 바로 옆에 둔다. 거르기 단추는 같은 줄 오른쪽 끝
+//     (좁으면 다음 줄로 내려간다). #983에서는 제목 줄 아래 한 줄을 통째로 썼다.
+//   - 제목 줄 아래 설명 한 줄: "영업 단계 칸을 누르면 아래 목록이 그 단계 회사만 보입니다 · 지금 "접촉" 4곳을 보는 중
+//     [모든 단계 보기] · 숫자 옆 "+2"는 이번 주에 들어온 곳". 가운데는 단계를 골랐을 때만, 끝은 "+n" 꼬리표가 보일 때만.
+//     (#983의 칸 옆 안내 글과 표 위 "○○만 보는 중" 줄을 이 한 줄로 합쳤다.)
+import { Fragment, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from 'antd';
@@ -123,6 +129,7 @@ export default function ProgressTable({
   staffKey,
   badge = null,
   stages = null,
+  stagesLegend = null,
   onReload,
 }: {
   companies: Dashboard['progressCompanies'];
@@ -134,8 +141,10 @@ export default function ProgressTable({
   /** 기록할 수 있는 고른 담당자. 있으면 [내 회사만]이 보이고 일정 단추가 눌린다. 없으면(보기 전용 · 미선택) 잠긴다. */
   staffKey: string | null;
   badge?: ReactNode;
-  /** #983 카드 머리 아래 작은 단계 칸(StageChips). 회사 목록이 없어도(옛 서버) 이 칸은 보인다. */
+  /** #983 → #992 제목 바로 옆 영업 단계 칸 묶음(StageChips). 회사 목록이 없어도(옛 서버) 이 칸은 보인다. */
   stages?: ReactNode;
+  /** #992 단계 칸 꼬리표 풀이(숫자 옆 "+2"는 …). 단계 칸에 "+n" 꼬리표가 보일 때만 준다. 설명 줄 끝에 붙는다. */
+  stagesLegend?: string | null;
   /** #983 일정 저장이 그 사이 다른 기록 때문에 막혔을 때 [다시 읽기]가 부른다(영업 홈 다시 읽기). */
   onReload?: () => void;
 }) {
@@ -160,6 +169,29 @@ export default function ProgressTable({
     mine: t.tableFilterMine,
     stalled: t.tableFilterStalled,
   };
+  // #992 설명 줄: 누르면 무엇이 되는지(단계 칸이 있을 때) · 지금 보는 단계(골랐을 때) · 꼬리표 풀이(꼬리표가 보일 때).
+  const hintParts: Array<{ key: string; node: ReactNode }> = [];
+  if (stages) hintParts.push({ key: 'how', node: t.stageCellHint });
+  if (hasTable && stage) {
+    hintParts.push({
+      key: 'now',
+      node: (
+        <span data-testid="dashboard-progress-stage">
+          {t.tableStageOnly(stageName(stage), every.length)}{' '}
+          {/* 설명 줄 글 크기 · 높이에 맞춘다(단추 때문에 줄이 높아지지 않게). */}
+          <Button
+            type="link"
+            size="small"
+            onClick={onClearStage}
+            style={{ height: 'auto', padding: 0, fontSize: 'inherit' }}
+          >
+            {t.tableStageClear}
+          </Button>
+        </span>
+      ),
+    });
+  }
+  if (stages && stagesLegend) hintParts.push({ key: 'legend', node: stagesLegend });
 
   return (
     <section
@@ -175,8 +207,11 @@ export default function ProgressTable({
         padding: spacing.cardPadding,
       }}
     >
-      {/* #972(시안): 제목 · 곳 수 왼쪽, 거르기 단추 오른쪽. 좁으면 단추가 다음 줄로 내려간다. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'center' }}>
+      {/* #972 → #992(시안): 제목 · 곳 수 | 영업 단계 칸 묶음 | 거르기 단추(오른쪽 끝). 좁으면 차례로 다음 줄로 내려간다. */}
+      <div
+        data-testid="dashboard-progress-head"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 12px', alignItems: 'center' }}
+      >
         <h2
           id="dashboard-progress-table-title"
           style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
@@ -199,6 +234,7 @@ export default function ProgressTable({
             </>
           ) : null}
         </h2>
+        {stages}
         <div
           style={{
             display: 'flex',
@@ -235,7 +271,23 @@ export default function ProgressTable({
           })}
         </div>
       </div>
-      {stages}
+      {hintParts.length > 0 ? (
+        <p
+          data-testid="dashboard-stage-hint"
+          style={{
+            margin: 0,
+            fontSize: typography.fontSizeSecondary - 1,
+            color: colors.textDimmed,
+          }}
+        >
+          {hintParts.map((part, index) => (
+            <Fragment key={part.key}>
+              {index > 0 ? ' · ' : null}
+              {part.node}
+            </Fragment>
+          ))}
+        </p>
+      ) : null}
       {/* 일정 단추가 잠겨 있는 까닭. 보일 줄이 있을 때만 알린다. */}
       {hasTable && rows.length > 0 && staffKey === null ? (
         <span
@@ -244,17 +296,6 @@ export default function ProgressTable({
           style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
         >
           {t.tablePickStaffFirst}
-        </span>
-      ) : null}
-      {hasTable && stage ? (
-        <span
-          data-testid="dashboard-progress-stage"
-          style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
-        >
-          {t.tableStageOnly(stageName(stage))}{' '}
-          <Button type="link" size="small" onClick={onClearStage}>
-            {t.tableStageClear}
-          </Button>
         </span>
       ) : null}
       {!hasTable ? null : rows.length === 0 ? (

@@ -19,7 +19,7 @@ import { FrameContext } from '../FrameContext';
 import type { FrameValue } from '../FrameContext';
 import type { ConfigUi } from '../../../api/types';
 import { frame } from '../../../labels/ko';
-import { accent, opinionNudge, sidebarTheme } from '../../../theme/tokens';
+import { accent, opinionNudge, sideCalendar, sidebarTheme } from '../../../theme/tokens';
 
 vi.mock('../../../api/menuBadges', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/menuBadges')>()),
@@ -557,5 +557,49 @@ describe('넓은 화면에서는 항상 펼쳐 둔다 (#983, PM 지시 2026-11-2
       groups.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(groups).toContainElement(screen.getByTestId('nav-sales-analysis-link'));
+  });
+
+  describe('#992(PM 결정 2026-11-29) 달력 자리: 메뉴 칸은 화면 끝까지, 달력은 브라우저 창 아래 끝에 고정', () => {
+    it('Given 넓은 화면 When 메뉴가 그려지면 Then 메뉴 칸은 창 높이만큼의 세로 칸으로 화면에 붙어 따라온다(스크롤해도 왼쪽이 흰 칸으로 이어진다)', () => {
+      renderMenu('/bookmarks');
+      expect(screen.getByTestId('side-menu')).toHaveStyle({
+        position: 'sticky',
+        top: '0px',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+        background: sidebarTheme.bg,
+        borderRight: `1px solid ${sidebarTheme.border}`,
+      });
+    });
+
+    it('Given 넓은 화면 When 메뉴가 그려지면 Then 달력은 메뉴 칸의 맨 마지막 칸이고 남는 높이를 위쪽 여백으로 받아 맨 아래에 붙으며, 아래 여백은 16이다', () => {
+      renderMenu('/bookmarks');
+      const menu = screen.getByTestId('side-menu');
+      const calendar = screen.getByTestId('side-calendar');
+      expect(menu.lastElementChild).toBe(calendar);
+      expect(calendar.previousElementSibling).toBe(screen.getByTestId('side-menu-groups'));
+      expect(calendar).toHaveStyle({ marginTop: 'auto', flex: 'none' });
+      expect(sideCalendar.gapBelow).toBe(16);
+      expect(menu).toHaveStyle({ paddingBottom: `${sideCalendar.gapBelow}px` });
+    });
+
+    it('Given 창이 낮아 메뉴 줄 + 달력이 다 들어가지 않을 때를 위해 Then 메뉴 줄 묶음만 줄어들어 그 안에서 내려 보고(달력과 겹치지 않는다), 달력과는 최소 간격만큼 띈다', () => {
+      renderMenu('/bookmarks');
+      const groups = screen.getByTestId('side-menu-groups');
+      // 줄어들 수 있는 것은 메뉴 줄 묶음뿐이다(달력 칸은 flex: none). 줄어들면 묶음 안에서 내려 본다.
+      expect(groups).toHaveStyle({ flex: '0 1 auto', minHeight: '0', overflowY: 'auto' });
+      expect(groups).toHaveStyle({ marginBottom: `${sideCalendar.gapAbove}px` });
+      expect(sideCalendar.gapAbove).toBeGreaterThan(0);
+    });
+
+    it('Given 좁은 기기 Then 지금 그대로다: 달력이 없고, 메뉴 줄 묶음이 남는 높이를 차지하며 아래 여백도 예전 값이다', () => {
+      renderMenu('/bookmarks', true);
+      expect(screen.queryByTestId('side-calendar')).not.toBeInTheDocument();
+      expect(screen.getByTestId('side-menu-groups')).toHaveStyle({ flex: '1' });
+      expect(screen.getByTestId('side-menu-groups').style.overflowY).toBe('');
+      expect(screen.getByTestId('side-menu')).toHaveStyle({ paddingBottom: '20px' });
+    });
   });
 });
