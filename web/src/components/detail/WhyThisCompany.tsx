@@ -3,27 +3,47 @@
 // 문장과 근거는 서버가 주는 점수 항목의 evidenceIds로 잇는다. 어느 문장에도 안 쓰인 근거는 "그 밖의 근거 자료"로 모은다.
 // 근거가 하나도 없는 항목(자료 미확보·신호 없음)의 문장은 여기서 빼고 "2. 통화에서 확인할 것"의 접힌 묶음에서 보인다.
 // 조사 전·홈페이지 없는 회사는 AI가 고른 이유 한 줄과 공장 등록 정보만 보인다. 읽기만 한다(단추 없음).
+// #996(PM 결정 2026-11-29): "한눈에"와 한 블록(카드 하나) 안에 놓인다. 카드 틀은 블록이 그리고 이 부품은 큰 제목과 줄만 그린다.
+// 줄 머리의 갈래 이름("제품" · "소재" · "납품실적")은 이름표로 떼어 왼쪽에 보이고, 줄마다 id가 있어
+// "한눈에" 핵심 줄의 "○○ 근거 ↓"가 그 줄로 스크롤 · 초점을 옮긴다.
 import type { DetailHeader, EvidenceView, Reasons, ScoreItemView } from '../../api/types';
 import {
   certaintyLabels,
   companyGlance,
+  detailCompose,
   detailReport,
   detailSections,
   evidenceRows,
   factoryProfileLabels,
   labelFor,
 } from '../../labels/ko';
-import { accent, colors, typography } from '../../theme/tokens';
+import { accent, colors, detailLayout, typography } from '../../theme/tokens';
 import { factoryProfileText } from '../../utils/factoryProfile';
 import { formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
 import { splitSourceRef } from '../common/sourceUrl';
-import DetailSection from './DetailSection';
+import BlockHeading from './BlockHeading';
 import { summaryLines } from './ReasonsSection';
 import type { SummaryLine } from './ReasonsSection';
 
 const texts = detailReport.why;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
+
+/** "왜 이 회사인가" 줄의 id. "한눈에" 핵심 줄의 "○○ 근거 ↓"가 이 줄로 간다(#996). */
+export function reasonLineId(itemCode: string): string {
+  return `detail-reason-line-${itemCode}`;
+}
+
+/**
+ * 줄 글 "제품: 육각볼트…"에서 갈래 이름("제품", 추정이면 "제품(추정)")과 본문을 나눈다(#996).
+ * ": "가 없으면 이름 없이 본문만이다.
+ */
+export function splitReasonLabel(text: string): { label: string | null; body: string } {
+  const colon = text.indexOf(': ');
+  return colon > 0
+    ? { label: text.slice(0, colon), body: text.slice(colon + 2) }
+    : { label: null, body: text };
+}
 
 /** 근거가 없다는 뜻의 항목 상태. 이 상태이고 붙은 근거도 없으면 추천 근거 문장으로 보이지 않는다. */
 const NO_EVIDENCE_STATES = new Set(['UNAVAILABLE', 'NO_SIGNAL']);
@@ -157,7 +177,16 @@ export default function WhyThisCompany({
   const factoryLine = evidence.length === 0 ? factoryProfileText(header.factoryProfile) : null;
 
   return (
-    <DetailSection id="detail-reasons" title={detailSections.reasons}>
+    <section
+      aria-labelledby="detail-reasons-heading"
+      data-testid="detail-reasons"
+      style={{ display: 'grid', gap: 10 }}
+    >
+      <BlockHeading
+        id="detail-reasons-heading"
+        title={detailSections.reasons}
+        hint={detailCompose.why.hint}
+      />
       {pickReason ? (
         <p data-testid="why-pick-reason" style={{ margin: 0 }}>
           <strong>{texts.pickReason}</strong>: {pickReason}{' '}
@@ -177,80 +206,102 @@ export default function WhyThisCompany({
           {lines.map((row, rowIndex) => {
             const quotes = dedupeEvidence(row.evidence);
             const grade = bestGradeOf(quotes);
-            const colon = row.text.indexOf(': ');
+            const { label, body } = splitReasonLabel(row.text);
+            // 링크가 있는 줄은 괄호 앞 글이 "제품: …("로 시작한다. 이름표로 뗀 만큼 앞을 잘라 낸다.
+            const prefix = label ? `${label}: ` : '';
+            const linkBefore =
+              row.link && row.link.before.startsWith(prefix)
+                ? row.link.before.slice(prefix.length)
+                : (row.link?.before ?? '');
             return (
               <li
                 key={row.key}
+                id={reasonLineId(row.key)}
+                // "한눈에"의 "○○ 근거 ↓"가 초점을 옮겨 올 수 있게 한다(Tab 순서에는 넣지 않는다).
+                tabIndex={-1}
                 data-testid="detail-reason-line"
+                data-item={row.key}
                 style={{
                   display: 'grid',
-                  gap: 4,
-                  padding: '10px 0',
+                  gridTemplateColumns: label ? '58px minmax(0, 1fr)' : 'minmax(0, 1fr)',
+                  columnGap: 10,
+                  rowGap: 4,
+                  padding: '9px 0',
                   // #972 새 시안: 줄 사이에만 얇은 나눔 줄(첫 줄 위에는 없다).
                   borderTop: rowIndex === 0 ? 0 : `1px solid ${colors.borderSecondary}`,
                 }}
               >
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    gap: 12,
-                    alignItems: 'baseline',
-                  }}
-                >
-                  <span data-testid="detail-reason-text">
-                    {row.link ? (
-                      <>
-                        {row.link.before}
-                        <a
-                          href={row.link.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: 'underline' }}
-                        >
-                          {row.link.label}
-                        </a>
-                        {row.link.after}
-                      </>
-                    ) : colon > 0 ? (
-                      <>
-                        <strong>{row.text.slice(0, colon)}</strong>
-                        {row.text.slice(colon)}
-                      </>
-                    ) : (
-                      row.text
-                    )}
-                  </span>
-                  {grade ? (
-                    <span style={secondary} data-testid="detail-reason-grade">
-                      {texts.bestGrade(grade)}
+                {label ? (
+                  <strong
+                    data-testid="detail-reason-label"
+                    style={{
+                      fontSize: detailLayout.smallFont,
+                      color: colors.textSecondary,
+                      paddingTop: 3,
+                      wordBreak: 'keep-all',
+                    }}
+                  >
+                    {label}
+                  </strong>
+                ) : null}
+                <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
+                      gap: 12,
+                      alignItems: 'baseline',
+                    }}
+                  >
+                    <span data-testid="detail-reason-text">
+                      {row.link ? (
+                        <>
+                          {linkBefore}
+                          <a
+                            href={row.link.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: 'underline' }}
+                          >
+                            {row.link.label}
+                          </a>
+                          {row.link.after}
+                        </>
+                      ) : (
+                        body
+                      )}
                     </span>
+                    {grade ? (
+                      <span style={secondary} data-testid="detail-reason-grade">
+                        {texts.bestGrade(grade)}
+                      </span>
+                    ) : null}
+                  </div>
+                  {quotes.length > 0 ? (
+                    // #803: 인용·출처는 접어 두고 "근거 3건"을 눌러 편다(화면 길이의 절반이 인용 줄이었다).
+                    <details data-testid="detail-reason-evidence">
+                      <summary
+                        style={{
+                          cursor: 'pointer',
+                          width: 'fit-content',
+                          fontSize: typography.fontSizeSecondary,
+                          color: accent.text,
+                        }}
+                      >
+                        {texts.evidenceCount(quotes.length)}
+                      </summary>
+                      <ul aria-label={texts.evidenceListLabel(row.text)} style={quoteList}>
+                        {quotes.map((item, index) => (
+                          <EvidenceQuote
+                            key={item.evidenceId}
+                            item={item}
+                            sameSource={index > 0 && quotes[index - 1].sourceRef === item.sourceRef}
+                          />
+                        ))}
+                      </ul>
+                    </details>
                   ) : null}
                 </div>
-                {quotes.length > 0 ? (
-                  // #803: 인용·출처는 접어 두고 "근거 3건"을 눌러 편다(화면 길이의 절반이 인용 줄이었다).
-                  <details data-testid="detail-reason-evidence">
-                    <summary
-                      style={{
-                        cursor: 'pointer',
-                        width: 'fit-content',
-                        fontSize: typography.fontSizeSecondary,
-                        color: accent.text,
-                      }}
-                    >
-                      {texts.evidenceCount(quotes.length)}
-                    </summary>
-                    <ul aria-label={texts.evidenceListLabel(row.text)} style={quoteList}>
-                      {quotes.map((item, index) => (
-                        <EvidenceQuote
-                          key={item.evidenceId}
-                          item={item}
-                          sameSource={index > 0 && quotes[index - 1].sourceRef === item.sourceRef}
-                        />
-                      ))}
-                    </ul>
-                  </details>
-                ) : null}
               </li>
             );
           })}
@@ -283,6 +334,6 @@ export default function WhyThisCompany({
           </p>
         </>
       ) : null}
-    </DetailSection>
+    </section>
   );
 }

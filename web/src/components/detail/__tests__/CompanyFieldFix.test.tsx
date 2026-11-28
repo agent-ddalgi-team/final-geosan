@@ -59,8 +59,9 @@ describe('상세 › 대표번호·대표명 [고치기] (#980)', () => {
     });
     const onSaved = renderFix('mainPhone', '041-000-0000');
     await user.click(screen.getByTestId('company-phone-fix-button'));
+    // #996: 칸 제목이 "담당자 연락처"로 바뀌고 대표번호와 같은 칸이 돼, 안내가 그 칸의 "상대 담당자" 줄을 가리킨다.
     expect(screen.getByTestId('company-phone-fix-edit')).toHaveTextContent(
-      '담당자 휴대폰은 아래 [상대 담당자 연락처]',
+      '담당자 휴대폰은 아래 "상대 담당자" 줄에 적어 주세요',
     );
     const input = screen.getByRole('textbox', { name: '대표번호' });
     await user.clear(input);

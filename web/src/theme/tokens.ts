@@ -467,6 +467,38 @@ export const detailTheme = {
   ringCurrent: accent.bg,
 } as const;
 
+/**
+ * 기업 상세 새 구성(#996, PM 결정 2026-11-29).
+ * 둘째 줄(영업 단계 | 담당자 연락처)과 셋째 줄(한눈에 + 왜 이 회사인가 | 기록)은 같은 비율 1.25 : 1을 쓴다.
+ * 늘어나는 비율(grow)과 처음 폭(basis)의 비가 같아 두 줄의 칸 경계가 같은 자리에 선다.
+ * 본문이 두 처음 폭과 틈을 합친 것보다 좁으면 한 칸씩 아래로 쌓인다.
+ */
+export const detailLayout = {
+  mainGrow: 1.25,
+  sideGrow: 1,
+  mainBasis: 380,
+  sideBasis: 304,
+  /** 회사 이름(h1). */
+  nameSize: 30,
+  /** 카드 안쪽 여백과 카드 제목 크기(반 폭 칸에 맞춰 조금 줄였다). */
+  cardPadding: '18px 20px',
+  cardTitleSize: 17,
+  /** 한 블록 안 큰 제목("한눈에" · "왜 이 회사인가")과 그 앞 세로 강조 막대. */
+  blockTitleSize: 18,
+  blockBar: accent.bg,
+  /** 요약 줄: 연보라 바탕 칸과 칩 사이 세로선. */
+  summaryBg: accent.soft,
+  summaryBorder: accent.border,
+  /** 한 블록 안 "한눈에"와 "왜 이 회사인가" 사이 구분 띠. */
+  bandBg: colors.bgLayout,
+  bandHeight: 8,
+  /** 고른 의견 단추: 진한 보라 바탕 + 흰 글자. */
+  opinionPicked: { bg: accent.bg, fg: accent.onBg },
+  /** 한눈에 핵심 줄 이름표 폭과 작은 글자 크기. */
+  keyLabelWidth: 74,
+  smallFont: 12.5,
+} as const;
+
 /** Ant Design ConfigProvider에 넘기는 테마(#972 보라 톤). */
 export const antdTheme: ThemeConfig = {
   token: {

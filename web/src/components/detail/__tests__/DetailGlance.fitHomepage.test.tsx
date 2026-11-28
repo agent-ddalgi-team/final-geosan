@@ -42,28 +42,25 @@ describe('DetailGlance 홈페이지로 다시 정한 적합도 (#793)', () => {
   });
 });
 
+// #996(PM 결정 2026-11-29): 홈페이지 줄은 머리의 요약 줄로 옮겨 갔다. 닫힌 이유 글("홈페이지가 닫혀 있습니다(…)")의 기대는
+// `DetailSummaryRow.test.tsx`로 옮겼고, 여기에는 "한눈에" 맨 아래 근거 상태 줄에 남는 글만 본다.
 describe('DetailGlance 닫힌 홈페이지 (#793)', () => {
-  it('홈페이지 줄과 근거 상태에 닫힌 이유를 보인다', () => {
+  it('근거 상태 줄에 닫힌 이유를 보인다', () => {
     renderWith({
       ...base,
       homepageUrl: null,
       homepageStatus: 'NOT_FOUND',
       homepageClosedReason: '호스팅 만료',
     });
-    expect(screen.getByTestId('glance-homepage-closed')).toHaveTextContent(
-      '홈페이지가 닫혀 있습니다(호스팅 만료)',
-    );
-    expect(screen.queryByTestId('glance-no-homepage')).not.toBeInTheDocument();
     expect(screen.getByTestId('glance-evidence-text')).toHaveTextContent(
       '근거 없음 · 홈페이지 닫힘 (호스팅 만료)',
     );
   });
 
-  it('닫힌 이유가 없으면 지금처럼 "홈페이지를 찾지 못했습니다"', () => {
+  it('닫힌 이유가 없으면 지금처럼 "홈페이지 못 찾음"', () => {
     renderWith({ ...base, homepageUrl: null, homepageStatus: 'NOT_FOUND' });
-    expect(screen.queryByTestId('glance-homepage-closed')).not.toBeInTheDocument();
-    expect(screen.getByTestId('glance-no-homepage')).toHaveTextContent(
-      '홈페이지를 찾지 못했습니다',
+    expect(screen.getByTestId('glance-evidence-text')).toHaveTextContent(
+      '근거 없음 · 홈페이지 못 찾음',
     );
   });
 });

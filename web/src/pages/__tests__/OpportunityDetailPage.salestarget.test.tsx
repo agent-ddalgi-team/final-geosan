@@ -82,6 +82,20 @@ function renderPage() {
   );
 }
 
+/**
+ * #996(PM 결정 2026-11-29): 상세의 의견은 "의견: 영업 대상 (수정)" 한 줄이 아니라 "담당자 의견" 칸의 고른 단추로 보인다.
+ * 고른 단추만 눌린 상태(aria-pressed)이고 앞에 "✓"가 붙는다. (전의 기대 글 "의견: ○○"를 이 확인으로 바꿨다.)
+ */
+function expectPicked(testId: string, label: string) {
+  const area = within(screen.getByTestId('detail-opinion'));
+  const picked = area.getByTestId(testId);
+  expect(picked).toHaveAttribute('aria-pressed', 'true');
+  expect(picked).toHaveTextContent(`✓ ${label}`);
+  expect(
+    area.getAllByRole('button').filter((button) => button.getAttribute('aria-pressed') === 'true'),
+  ).toHaveLength(1);
+}
+
 async function pressSaveCall(user: ReturnType<typeof userEvent.setup>) {
   await user.click(chipOf('records-contact-result', '부재'));
   await user.click(screen.getByTestId('records-contact-save-button'));
@@ -121,9 +135,7 @@ describe('상세 화면 · 접촉을 남기면 영업 대상 (#697)', () => {
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId('records-excluded-ask')).not.toBeInTheDocument();
     expect(mockedOutcome.mock.calls[0][1]).not.toHaveProperty('restoreExcluded');
-    await waitFor(() =>
-      expect(screen.getByTestId('detail-opinion')).toHaveTextContent('의견: 영업 대상'),
-    );
+    await waitFor(() => expectPicked('opinion-worth-review-button', '영업 대상'));
     // 화면이 의견을 따로 저장하지 않는다(서버가 같은 저장 안에서 정한다).
     expect(mockedOpinion).not.toHaveBeenCalled();
   });
@@ -135,7 +147,7 @@ describe('상세 화면 · 접촉을 남기면 영업 대상 (#697)', () => {
     mockedOutcome.mockResolvedValueOnce(savedContact);
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    expect(screen.getByTestId('detail-opinion')).toHaveTextContent('의견: 제외');
+    expectPicked('opinion-not-target-button', '제외');
     await pressSaveCall(user);
     expect(screen.getByTestId('records-excluded-ask')).toHaveTextContent(
       '제외한 회사입니다. 영업 대상으로 되돌릴까요?',
@@ -144,9 +156,7 @@ describe('상세 화면 · 접촉을 남기면 영업 대상 (#697)', () => {
     await user.click(screen.getByTestId('records-excluded-restore-button'));
     await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
     expect(mockedOutcome.mock.calls[0][1]).toMatchObject({ restoreExcluded: true });
-    await waitFor(() =>
-      expect(screen.getByTestId('detail-opinion')).toHaveTextContent('의견: 영업 대상'),
-    );
+    await waitFor(() => expectPicked('opinion-worth-review-button', '영업 대상'));
     // 영업 대상으로 돌아온 뒤에는 다음 접촉에서 다시 묻지 않는다.
     mockedOutcome.mockResolvedValueOnce(savedContact);
     await pressSaveCall(user);

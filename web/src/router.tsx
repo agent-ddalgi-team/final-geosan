@@ -57,7 +57,8 @@ export default function AppRoutes() {
       <Route
         path="/opportunities/:oppId"
         element={
-          <AppFrame title={frame.pageTitleDetail} dock="page" dockScreen="DETAIL">
+          // #996: 기업 상세는 회사 이름(h1)을 스스로 그린다(이름 옆 꼬리표 · 품목 줄과 한 묶음이라 틀의 제목을 끈다).
+          <AppFrame title={frame.pageTitleDetail} ownHeading dock="page" dockScreen="DETAIL">
             <OpportunityDetailPage />
           </AppFrame>
         }
