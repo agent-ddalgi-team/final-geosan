@@ -127,6 +127,11 @@ export interface Dashboard {
   todayChecks?: TodayCheckRow[];
   /** #800: 영업 진행 띠 칸(NOT_CONTACTED·IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 회사. 옛 서버면 칸이 없다. */
   progressCompanies?: Partial<Record<ProgressBandKey, ProgressCompany[]>>;
+  /**
+   * #976(PM 결정 2026-11-28): 칸(IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 이번 주(월요일~오늘)에 그 칸으로 들어온
+   * 관심 기업 수. 미접촉 칸은 없다. 옛 서버면 값이 없고 화면은 꼬리표를 붙이지 않는다.
+   */
+  enteredThisWeek?: Partial<Record<ProgressBandKey, number>>;
 }
 
 /** #800 영업 진행 띠 칸 이름(브리핑 순서 + 띠 아래 보류). */

@@ -267,6 +267,10 @@ class Dashboard(_ApiModel):
     # #800: 칸 이름(NOT_CONTACTED·IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 회사.
     # 목록 길이는 counts의 그 칸 숫자와 같다.
     progress_companies: dict[str, list[ProgressCompany]] = Field(default_factory=dict)
+    # #976(PM 결정 2026-11-28): 칸 이름(IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 이번 주
+    # (월요일~오늘)에 그 칸으로 들어온 관심 기업 수. 미접촉 칸은 없다.
+    # 영업 홈 단계 카드의 "+n 이번 주"가 쓴다.
+    entered_this_week: dict[str, int] = Field(default_factory=dict)
 
 
 DashboardEnvelope = Envelope[Dashboard]

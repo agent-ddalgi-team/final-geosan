@@ -378,6 +378,8 @@ def test_api_returns_contract_shape_for_staff_and_viewer(dashboard_env):
         "breakdown",
         "todayChecks",
         "progressCompanies",
+        # #976(PM 결정 2026-11-28, 약속에 더한 칸): 칸별 이번 주 진입 수.
+        "enteredThisWeek",
     }
     # 2000년 일정은 놓친 일정 한 줄이다.
     assert [(row["kind"], row["count"]) for row in body["data"]["todayChecks"]] == [

@@ -313,11 +313,65 @@ describe('DashboardPage', () => {
       expect(screen.queryByTestId('dashboard-stage-stalled-WON')).not.toBeInTheDocument();
     });
 
-    it('#972 단계 카드: "이번 주 +1" 같은 지난주 대비 글은 없다(응답에 없는 값)', async () => {
+    it('#972 단계 카드: 응답에 이번 주 진입 수가 없으면(옛 서버) "이번 주" 글을 지어내지 않는다', async () => {
       mockedGet.mockResolvedValueOnce(reply(fixtureData));
       renderPage();
       const chips = await screen.findByTestId('dashboard-stage-chips');
       expect(chips).not.toHaveTextContent(/이번 주|지난주/);
+    });
+
+    it('#976 단계 카드: Given 이번 주에 그 칸으로 들어온 회사 수 When 영업 홈 Then 1곳 이상인 칸에만 "+n 이번 주" 꼬리표가 붙는다', async () => {
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...fixtureData,
+          enteredThisWeek: { IN_CONTACT: 1, QUOTE_SAMPLE: 2, WON: 0, ON_HOLD: 0 },
+        }),
+      );
+      renderPage();
+      await screen.findByTestId('dashboard-stage-chips');
+      const tag = screen.getByTestId('dashboard-stage-entered-IN_CONTACT');
+      expect(tag).toHaveTextContent(/^\+1 이번 주$/);
+      expect(tag).toHaveStyle({ background: tagPalette.accent.bg, color: tagPalette.accent.fg });
+      expect(screen.getByTestId('dashboard-stage-entered-QUOTE_SAMPLE')).toHaveTextContent(
+        '+2 이번 주',
+      );
+      // 꼬리표는 그 카드(단추) 안에 있고, 단추 이름에도 풀어 쓴 말이 실려 화면 읽기 도구가 읽는다.
+      const card = screen.getByTestId('dashboard-stage-chip-IN_CONTACT');
+      expect(card).toContainElement(tag);
+      expect(card).toHaveAttribute('aria-label', '접촉 2곳 · 이번 주에 이 단계로 들어온 회사 1곳');
+      // 0곳인 칸(성사·보류)과 서버가 주지 않는 칸(미접촉)에는 붙지 않는다.
+      for (const band of ['WON', 'ON_HOLD', 'NOT_CONTACTED']) {
+        expect(screen.queryByTestId(`dashboard-stage-entered-${band}`)).not.toBeInTheDocument();
+      }
+      // 칸 숫자는 그대로다.
+      expect(card).toHaveTextContent('2곳');
+    });
+
+    it('#976 단계 카드: 이번 주 꼬리표와 멈춘 회사 꼬리표가 함께 있으면 단추 이름에 둘 다 실린다', async () => {
+      mockedGet.mockResolvedValueOnce(
+        reply({
+          ...fixtureData,
+          enteredThisWeek: { IN_CONTACT: 0, QUOTE_SAMPLE: 1, WON: 0, ON_HOLD: 0 },
+          progressCompanies: {
+            QUOTE_SAMPLE: [
+              {
+                oppId: 'c',
+                customerName: '가상 c',
+                lastContactAt: '2026-10-01',
+                nextScheduleAt: null,
+                nextScheduleNote: null,
+                stalled: true,
+              },
+            ],
+          },
+        }),
+      );
+      renderPage();
+      await screen.findByTestId('dashboard-stage-chips');
+      expect(screen.getByTestId('dashboard-stage-chip-QUOTE_SAMPLE')).toHaveAttribute(
+        'aria-label',
+        '견적·샘플 1곳 · 이번 주에 이 단계로 들어온 회사 1곳 · 멈춘 회사 1곳',
+      );
     });
 
     it('새 모양인데 일부 칸만 빠져 있으면(옛 서버라 WON 없음) 그 칩만 빼고 나머지는 보이며, 보류가 있으면 끝에 보류 칩', async () => {

@@ -376,9 +376,27 @@ class BookmarkRecord(RecordMeta):
 
 
 class CardOutcome(_ApiModel):
-    """카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242)."""
+    """카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).
+
+    #976(PM 결정 2026-11-28): 관심 기업 줄이 다음 일정을 보이도록 일정 날짜와 일정 할 일 한 줄을
+    더한다. 상세 records.outcome의 같은 칸과 같은 값이고 영업 메모 글이 아니다.
+    """
 
     status: SalesOutcomeStatus
+    next_schedule_at: date | None = Field(
+        default=None, description="#976 최신 영업 기록의 다음 일정 날짜. 일정이 없으면 null"
+    )
+    next_schedule_note: str | None = Field(
+        default=None, description="#976 다음 일정 할 일 한 줄. 일정이 없으면 null"
+    )
+
+
+class CardContactByMethod(_ApiModel):
+    """#976 목록 한 줄의 방법별 접촉 시도 수. 세 값의 합이 contactCount다."""
+
+    call: int = 0
+    email: int = 0
+    visit: int = 0
 
 
 class CardRecords(_ApiModel):
@@ -490,6 +508,14 @@ class OpportunityCard(_ApiModel):
         description="#659 checkPoints 각 줄의 종류(같은 순서·같은 개수). 카드가 낱말로 줄일 때",
     )
     contact_count: int = 0
+    contact_by_method: CardContactByMethod = Field(
+        default_factory=CardContactByMethod,
+        description="#976 방법별 접촉 시도 수(취소된 행 제외). 상세 records.contactCount와 같은 값",
+    )
+    last_contact_at: date | None = Field(
+        default=None,
+        description="#976 가장 늦은 접촉 날짜. 상세 records.lastContactAt과 같은 값, 없으면 null",
+    )
     sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str
     rank: int

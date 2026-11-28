@@ -5,7 +5,8 @@ import { MemoryRouter } from 'react-router-dom';
 import OpportunityCard from '../OpportunityCard';
 import type { OpportunityCard as CardData } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
-import { listTheme } from '../../../theme/tokens';
+import { listTable } from '../../../labels/ko';
+import { accent, listTheme } from '../../../theme/tokens';
 import listFixture from '../../../test/fixtures/opportunities-apjeong.json';
 
 const apjeong = listFixture.data[0] as unknown as CardData;
@@ -336,6 +337,88 @@ describe('OpportunityCard 관심 기업 줄 (#972)', () => {
     expect(line).toHaveTextContent(/^지난 일정 11\/10$/);
     expect(line).toHaveAttribute('data-overdue', 'true');
     expect(line).toHaveStyle({ color: listTheme.overdueFg, fontWeight: 600 });
+  });
+
+  describe('접촉 요약과 다음 일정 칸 (#976)', () => {
+    it('Given 방법별 접촉 수와 마지막 접촉 날짜 When 관심 기업 줄 Then "접촉 2회 (전화 1 · 메일 1) · 마지막 접촉 11/25"와 다음 일정이 연보라 칸에 보인다', () => {
+      const { cells } = renderRow(
+        {
+          ...withSchedule('2026-12-01', '전화'),
+          contactByMethod: { call: 1, email: 1, visit: 0 },
+          lastContactAt: '2026-11-25',
+        },
+        true,
+        'bookmark',
+      );
+      const box = within(cells[2]).getByRole('group', { name: listTable.contactBoxLabel });
+      expect(box).toHaveAttribute('data-testid', 'card-contact-box');
+      expect(box).toHaveStyle({ background: accent.soft });
+      expect(within(box).getByTestId('card-contact-summary')).toHaveTextContent(
+        /^접촉 2회 \(전화 1 · 메일 1\) · 마지막 접촉 11\/25$/,
+      );
+      expect(within(box).getByTestId('card-next-schedule')).toHaveTextContent(
+        /^다음 일정 12\/1 · 전화$/,
+      );
+      // 큰 점수 아래, 의견 고르기 위에 놓인다.
+      const order = [
+        within(cells[2]).getByTestId('card-score-big'),
+        box,
+        within(cells[2]).getByTestId('opinion-select'),
+      ];
+      for (let i = 1; i < order.length; i += 1) {
+        expect(
+          order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    });
+
+    it('방문만 있으면 그 방법만 적고, 지난 일정은 칸 안에서도 주의색 굵게 보인다', () => {
+      const { cells } = renderRow(
+        {
+          ...withSchedule('2026-11-10', '견적'),
+          contactByMethod: { call: 0, email: 0, visit: 1 },
+          lastContactAt: '2026-11-10',
+        },
+        true,
+        'bookmark',
+      );
+      expect(within(cells[2]).getByTestId('card-contact-summary')).toHaveTextContent(
+        /^접촉 1회 \(방문 1\) · 마지막 접촉 11\/10$/,
+      );
+      const line = within(cells[2]).getByTestId('card-next-schedule');
+      expect(line).toHaveTextContent(/^지난 일정 11\/10$/);
+      expect(line).toHaveAttribute('data-overdue', 'true');
+      expect(line).toHaveStyle({ color: listTheme.overdueFg, fontWeight: 600 });
+    });
+
+    it('접촉도 일정도 없으면 "접촉 기록 없음"과 "다음 일정 없음"을 적는다(서버가 0과 없음을 알려 준 것)', () => {
+      const { cells } = renderRow(
+        {
+          ...full,
+          records: { opinion: null, bookmark: null, outcome: null },
+          contactByMethod: { call: 0, email: 0, visit: 0 },
+          lastContactAt: null,
+        },
+        true,
+        'bookmark',
+      );
+      expect(within(cells[2]).getByTestId('card-contact-summary')).toHaveTextContent(
+        /^접촉 기록 없음$/,
+      );
+      const line = within(cells[2]).getByTestId('card-next-schedule');
+      expect(line).toHaveTextContent(/^다음 일정 없음$/);
+      expect(line).not.toHaveAttribute('data-overdue');
+    });
+
+    it('표 줄(거래처 후보)에는 접촉 요약 칸을 그리지 않는다', () => {
+      const { row } = renderRow(
+        { ...full, contactByMethod: { call: 1, email: 0, visit: 0 }, lastContactAt: '2026-11-25' },
+        true,
+        'table',
+      );
+      expect(within(row).queryByTestId('card-contact-box')).not.toBeInTheDocument();
+      expect(row).not.toHaveTextContent('마지막 접촉');
+    });
   });
 
   it('응답에 다음 일정이 없으면(지금 서버 목록 응답) 일정 줄을 그리지 않고 지어내지 않는다', () => {

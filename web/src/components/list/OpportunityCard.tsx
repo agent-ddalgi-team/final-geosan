@@ -30,9 +30,10 @@ import {
   outcomeStatusTone,
   ownPlatingLine,
   preferenceLabels,
+  reportView,
   supplyTierLabels,
 } from '../../labels/ko';
-import { colors, listTheme, typography } from '../../theme/tokens';
+import { accent, colors, listTheme, radius, typography } from '../../theme/tokens';
 import { formatDate, formatMonthDay, todayKst } from '../../utils/time';
 
 /** #793: 적합도 높낮이(오름·내림 화살표 계산에만 쓴다). */
@@ -191,6 +192,11 @@ export default function OpportunityCard({
     fontSize: typography.fontSizeSecondary,
   };
   const lineStyle: CSSProperties = { color: listTheme.bodyFg };
+  // 관심 기업 줄 오른쪽 연보라 칸(#976)의 글자: 연한 바탕 위라 이름표보다 한 단계 진한 본문 색을 쓴다.
+  const contactLineStyle: CSSProperties = {
+    color: listTheme.bodyFg,
+    fontSize: typography.fontSizeSecondary,
+  };
   const rankEl = showRank ? (
     <span
       data-testid="card-rank"
@@ -505,6 +511,37 @@ export default function OpportunityCard({
     const scheduleDate = formatDate(outcome?.nextScheduleAt);
     const overdue = scheduleDate !== null && scheduleDate < todayKst();
     const scheduleNote = outcome?.nextScheduleNote?.trim() || null;
+    // 접촉 요약(#976): 서버가 방법별 접촉 수를 줄 때만 만든다(옛 서버 응답이면 지어내지 않는다).
+    const methods = card.contactByMethod ?? null;
+    const contactTotal = methods ? methods.call + methods.email + methods.visit : 0;
+    const lastContactDay = formatMonthDay(card.lastContactAt);
+    // 두 조각("접촉 2회 (전화 1 · 메일 1)" · "마지막 접촉 11/25")은 저마다 한 줄로 두어, 칸이 좁으면 " · "에서 줄이 바뀐다.
+    const contactLine = !methods ? null : contactTotal === 0 ? (
+      listTable.contactNone
+    ) : (
+      <>
+        <span style={{ whiteSpace: 'nowrap' }}>
+          {listTable.contactTotal(
+            contactTotal,
+            reportView.sales.contactParts(methods.call, methods.email, methods.visit),
+          )}
+        </span>
+        {lastContactDay ? (
+          <>
+            {' · '}
+            <span style={{ whiteSpace: 'nowrap' }}>{listTable.contactLast(lastContactDay)}</span>
+          </>
+        ) : null}
+      </>
+    );
+    // 다음 일정이 없을 때 "다음 일정 없음"은 접촉 요약을 주는 서버일 때만 적는다(일정이 정말 없다는 뜻).
+    const scheduleLine = scheduleDay
+      ? overdue
+        ? dashboardTexts.tableOverdue(scheduleDay)
+        : listTable.nextSchedule(scheduleDay, scheduleNote)
+      : methods
+        ? listTable.nextScheduleNone
+        : null;
     const bigScore = scoreEl(listTheme.scoreSizeLarge);
     // 관심 기업 줄(#972 시안 Bookmarks): 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 다음 일정 · 의견 · [자세히 보기].
     return (
@@ -546,23 +583,42 @@ export default function OpportunityCard({
               {bigScore}
             </div>
           ) : null}
-          {scheduleDay ? (
+          {contactLine || scheduleLine ? (
+            // 연보라 칸(#976 시안): 접촉 요약 한 줄 + 다음 일정 한 줄. 색만으로 알리지 않게 글자가 늘 함께 있다.
             <div
-              data-testid="card-next-schedule"
-              data-overdue={overdue ? 'true' : undefined}
-              style={
-                overdue
-                  ? {
-                      color: listTheme.overdueFg,
-                      fontSize: typography.fontSizeSecondary,
-                      fontWeight: 600,
-                    }
-                  : labelStyle
-              }
+              role="group"
+              aria-label={listTable.contactBoxLabel}
+              data-testid="card-contact-box"
+              style={{
+                display: 'grid',
+                gap: 2,
+                padding: '8px 10px',
+                borderRadius: radius.control,
+                background: accent.soft,
+              }}
             >
-              {overdue
-                ? dashboardTexts.tableOverdue(scheduleDay)
-                : listTable.nextSchedule(scheduleDay, scheduleNote)}
+              {contactLine ? (
+                <div data-testid="card-contact-summary" style={contactLineStyle}>
+                  {contactLine}
+                </div>
+              ) : null}
+              {scheduleLine ? (
+                <div
+                  data-testid="card-next-schedule"
+                  data-overdue={overdue ? 'true' : undefined}
+                  style={
+                    overdue
+                      ? {
+                          color: listTheme.overdueFg,
+                          fontSize: typography.fontSizeSecondary,
+                          fontWeight: 600,
+                        }
+                      : contactLineStyle
+                  }
+                >
+                  {scheduleLine}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div className="cand-row__actions-main">
