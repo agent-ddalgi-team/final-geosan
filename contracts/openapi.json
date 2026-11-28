@@ -5822,6 +5822,12 @@
             "title": "Bookmarks",
             "type": "integer"
           },
+          "bookmarksNoOpinion": {
+            "default": 0,
+            "description": "#987 관심으로 켜 둔 기회 가운데 검토 의견이 없고 영업 단계도 아직 없는 곳 수. 영업 홈 '의견 전' 칸과 같은 계산",
+            "title": "Bookmarksnoopinion",
+            "type": "integer"
+          },
           "dashboard": {
             "title": "Dashboard",
             "type": "integer"
