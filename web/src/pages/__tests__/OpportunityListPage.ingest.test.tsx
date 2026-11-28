@@ -140,13 +140,18 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.getByTestId('card-ingested-tag')).toHaveTextContent('11/9 들어옴');
   });
 
-  it('점수가 이미 있는 찾은 회사는 "점수 전" 대신 서버 점수 글자를 그대로 보인다', async () => {
+  it('점수가 이미 있는 찾은 회사는 "점수 전" 대신 서버가 준 점수를 보인다(거래처 후보 줄은 숫자만, #981)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([{ ...found, scoreState: 'PENDING', scoreDisplay: '참고 50점 · 3/8', scoreS: 50 }]),
     );
     renderPage();
     const card = within(await screen.findByTestId('opportunity-card'));
-    expect(card.getByTestId('card-score')).toHaveTextContent('참고 50점 · 3/8');
+    // 거래처 후보 줄은 "참고"와 점수만 보이고("· 3/8"은 상세에서) 화면 낭독 문구는 전체를 읽는다.
+    expect(card.getByTestId('card-score')).toHaveTextContent(/^참고 50점$/);
+    expect(card.getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '참고 점수 50점, 8개 항목 중 3개 조사',
+    );
     expect(card.getByTestId('card-score')).not.toHaveTextContent(candidateSearch.beforeScore);
     expect(card.getByTestId('card-pick-reason')).toBeInTheDocument();
   });

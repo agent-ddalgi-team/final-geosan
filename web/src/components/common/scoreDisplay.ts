@@ -24,9 +24,15 @@ export function scoreAriaLabel(scoreDisplay: string): string {
  */
 export function scoreParts(
   scoreDisplay: string,
+  scoreOnly = false,
 ): { before: string; number: string; after: string } | null {
   const match = SCORE_PATTERN.exec(scoreDisplay);
   if (!match) return null;
   const [, reference, score, done, total] = match;
-  return { before: reference ?? '', number: score, after: `점 · ${done}/${total}` };
+  // #981: 거래처 후보 줄은 "· 조사한 항목 수/전체"를 보이지 않는다(점수와 "참고"만). 화면 낭독 문구는 그대로 다 읽는다.
+  return {
+    before: reference ?? '',
+    number: score,
+    after: scoreOnly ? '점' : `점 · ${done}/${total}`,
+  };
 }

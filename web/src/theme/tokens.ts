@@ -42,6 +42,28 @@ export const warn = {
   border: '#F2D9BD',
 } as const;
 
+/**
+ * "유료" 꼬리표(#981): 누르면 AI 비용이 드는 단추의 글 뒤. 흰 단추 위는 연보라 바탕 + 보라 글자,
+ * 보라 주 단추 위는 흰 바탕 + 보라 글자(둘 다 대비 4.5:1 이상).
+ */
+export const paidTag = {
+  plain: { bg: accent.softDeep, fg: accent.text },
+  onPrimary: { bg: '#FFFFFF', fg: accent.text },
+  radius: 5,
+  fontSize: 11.5,
+} as const;
+
+/**
+ * 의견 전 알림(#981): 관심에 담고 의견을 안 고른 회사의 고르기 칸 · 안내 띠. 주의(주황) 계열을 그대로 쓴다.
+ * 색만으로 알리지 않게 "의견을 골라 주세요" 글이 늘 함께 보인다.
+ */
+export const opinionNudge = {
+  border: warn.dot,
+  bg: warn.bg,
+  fg: warn.text,
+  line: warn.border,
+} as const;
+
 /** 확인(초록, #972): 사실(확인), 공정 확인됨. text는 bg 위 약 4.7:1. */
 export const ok = {
   text: '#1F7A43',
@@ -151,8 +173,8 @@ export const listTheme = {
   checkFg: warn.text,
   /** 지난 일정(굵게). */
   overdueFg: warn.text,
-  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. */
-  titleSize: 16,
+  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. #981: 회사 이름이 잘 보이게 표 줄도 18로 키웠다(품목은 그 아래 작은 글). */
+  titleSize: 18,
   titleSizeLarge: 18,
   /** 점수 숫자 크기: 표 줄 / 관심 기업 줄의 큰 숫자. */
   scoreSize: 18,
