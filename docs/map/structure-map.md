@@ -244,7 +244,7 @@ flowchart TB
 
 | 명령 | 무엇을 할 예정인가 | 이슈 |
 |---|---|---|
-| `merge-list`, `merge-confirm` | 같은 회사일 수 있는 후보를 보고 합친다 | [#221] (11/14 닫힘. 이 두 명령을 맡는 열린 이슈는 없음 — [9장](#9-어긋난-곳--pm-확인이-필요한-목록)) |
+| `merge-list`, `merge-confirm` | 같은 회사일 수 있는 후보를 보고 합친다 | ⏸ 보류(만들지 않음, PM 결정 2026-11-29 [#998]). 공장주소가 같은 쌍은 영업 묶음 전달 사항으로 알리고, 이름이 같은 쌍은 그대로 둔다 |
 
 ---
 
@@ -315,7 +315,7 @@ flowchart LR
 
 | 어디 | 무엇이 다른가 |
 |---|---|
-| [구조 지도 5장 › 약속에만 있는 명령 `merge-list`·`merge-confirm`] | 약속 요약(운영 명령 장)에는 있고 코드에는 없다. 맡던 [#221]이 닫혀 이 두 명령을 맡은 열린 이슈가 없다. 화면에서 "같은 회사일 수 있음" 후보를 합칠 길도 없다. 만들지, 약속에서 뺄지 PM 확인 필요 |
+| 없음 | 2026-11-29에 남은 줄을 모두 정리했다(화면 이름 · 매달 자동 수집 #993, 합치기 명령 #998) |
 
 ### 나. 문서와 코드가 다른 곳
 
@@ -450,3 +450,4 @@ flowchart LR
 [#984]: https://github.com/agent-ddalgi-team/final-geosan/issues/984
 [#987]: https://github.com/agent-ddalgi-team/final-geosan/issues/987
 [#993]: https://github.com/agent-ddalgi-team/final-geosan/issues/993
+[#998]: https://github.com/agent-ddalgi-team/final-geosan/issues/998
