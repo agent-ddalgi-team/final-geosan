@@ -184,8 +184,10 @@ describe('날짜 칸과 작은 창', () => {
     expect(day('2026-12-01')).toHaveAttribute('aria-label', '12월 1일, 일정 1건, 지난 일정 있음');
     expect(day('2026-12-03')).toHaveAttribute('aria-label', '12월 3일, 오늘, 일정 없음');
     expect(day('2026-12-05')).toHaveAttribute('aria-label', '12월 5일, 일정 없음');
-    // 달력 아래 풀이.
-    expect(screen.getByTestId('dashboard-calendar-legend')).toHaveTextContent(/^일정지난 일정$/);
+    // 달력 아래 풀이. #984: 날짜 메모를 쓰는 달력이라 "메모"(테두리만 있는 칸)가 더해졌다.
+    expect(screen.getByTestId('dashboard-calendar-legend')).toHaveTextContent(
+      /^일정지난 일정메모$/,
+    );
   });
 
   it('일정이 있는 날을 누르면 달력 오른쪽 작은 창에 회사(상세 링크) · 내용이 보이고, 지난 일정에는 "지남"이 붙는다', async () => {

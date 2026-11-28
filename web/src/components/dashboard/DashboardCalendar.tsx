@@ -16,11 +16,14 @@
 //   - 어느 날짜든 누를 수 있다. 일정이 없는 날은 작은 창에 "일정 없음"이 보인다.
 //   - 작은 창은 달력 오른쪽(popoverSide="right", 왼쪽 메뉴)이나 날짜 아래("below")에 뜨고,
 //     본문 아래에 다른 것(날짜 메모 #984 자리)을 끼울 수 있다(extra).
+// #984(달력 날짜 메모): 작은 달력에 메모 건수(memoCounts)를 주면 메모가 있는 날 칸에 회색 테두리를 두르고
+//   풀이에 "메모"를 더하며, 날짜 단추의 읽는 말 끝에 "메모 n건"을 붙인다. 달을 넘기면 onMonthChange로 알린다
+//   (메모는 보이는 달만 읽는다). 이 부품은 메모를 읽거나 저장하지 않는다(MemoCalendar가 맡는다).
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
-import { dashboardTexts } from '../../labels/ko';
+import { dashboardTexts, dayMemo } from '../../labels/ko';
 import {
   calendarPalette,
   colors,
@@ -42,6 +45,22 @@ export function miniCellColors(tone: MiniDayTone, selected: boolean): { bg: stri
   if (tone === 'overdue') return sideCalendar.overdue;
   if (tone === 'has') return sideCalendar.has;
   return sideCalendar.plain;
+}
+
+/**
+ * #983 · #984 작은 달력 날짜 칸의 테두리. 누른 날 = 바깥 고리, 오늘 = 안쪽 얇은 보라 테두리,
+ * 메모가 있는 날 = 안쪽 얇은 회색 테두리, 오늘이면서 메모가 있으면 두 테두리를 겹쳐 둘 다 보인다.
+ */
+export function miniCellShadow(selected: boolean, today: boolean, memo: boolean): string {
+  if (selected) return `0 0 0 2px ${colors.bgContainer}, 0 0 0 4px ${sideCalendar.selected.bg}`;
+  const todayRing = `inset 0 0 0 ${sideCalendar.todayRingWidth}px ${sideCalendar.todayRing}`;
+  if (today && memo) {
+    const width = sideCalendar.todayRingWidth + sideCalendar.memoRingWidth;
+    return `${todayRing}, inset 0 0 0 ${width}px ${sideCalendar.memoRing}`;
+  }
+  if (today) return todayRing;
+  if (memo) return `inset 0 0 0 ${sideCalendar.memoRingWidth}px ${sideCalendar.memoRing}`;
+  return 'none';
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -93,6 +112,13 @@ interface Props {
   popoverSide?: 'right' | 'below';
   /** 작은 달력의 작은 창 본문 아래에 끼울 것. 그날 날짜(YYYY-MM-DD)를 받는다(날짜 메모 #984 자리). */
   extra?: (day: string) => ReactNode;
+  /**
+   * #984 작은 달력: 날짜(YYYY-MM-DD)별 메모 건수. 주면 메모가 있는 날에 테두리 · 풀이 "메모" · 읽는 말 "메모 n건"이 붙는다.
+   * 안 주면(메모를 쓰지 않는 달력) 지금까지와 같다.
+   */
+  memoCounts?: ReadonlyMap<string, number>;
+  /** #984 달을 넘기면 새로 보이는 달을 알린다(month는 0~11). */
+  onMonthChange?: (year: number, month: number) => void;
 }
 
 interface Open {
@@ -110,6 +136,8 @@ export default function DashboardCalendar({
   mini = false,
   popoverSide = 'below',
   extra,
+  memoCounts,
+  onMonthChange,
 }: Props) {
   const base = /^(\d{4})-(\d{2})-\d{2}$/.exec(today);
   const startYear = base ? Number(base[1]) : new Date().getFullYear();
@@ -150,6 +178,7 @@ export default function DashboardCalendar({
     const d = new Date(Date.UTC(cursor.year, cursor.month + delta, 1));
     setCursor({ year: d.getUTCFullYear(), month: d.getUTCMonth() });
     setOpen(null);
+    onMonthChange?.(d.getUTCFullYear(), d.getUTCMonth());
   };
 
   const navButton = {
@@ -267,6 +296,16 @@ export default function DashboardCalendar({
             const miniTone: MiniDayTone = overdue ? 'overdue' : list ? 'has' : 'none';
             const cellColors = miniCellColors(miniTone, isSelected);
             const marked = miniTone !== 'none' || isSelected;
+            // #984: 메모가 있는 날. 색만으로 알리지 않게 읽는 말 · 손 올림 글에도 "메모 n건"을 붙인다.
+            const memoCount = memoCounts?.get(k) ?? 0;
+            const dayLabel = dashboardTexts.calendarDayLabel(
+              cursor.month + 1,
+              day,
+              list?.length ?? 0,
+              overdue,
+              isToday,
+            );
+            const label = memoCount > 0 ? `${dayLabel}, ${dayMemo.dayCount(memoCount)}` : dayLabel;
             return (
               <button
                 key={i}
@@ -275,14 +314,10 @@ export default function DashboardCalendar({
                 aria-pressed={isSelected}
                 aria-haspopup="dialog"
                 aria-current={isToday ? 'date' : undefined}
-                aria-label={dashboardTexts.calendarDayLabel(
-                  cursor.month + 1,
-                  day,
-                  list?.length ?? 0,
-                  overdue,
-                  isToday,
-                )}
+                aria-label={label}
+                title={memoCount > 0 ? label : undefined}
                 data-tone={miniTone}
+                data-memo={memoCount > 0 ? memoCount : undefined}
                 data-today={isToday ? 'true' : undefined}
                 onClick={(event) => {
                   if (isSelected) {
@@ -337,12 +372,8 @@ export default function DashboardCalendar({
                     background: cellColors.bg,
                     color: cellColors.fg,
                     fontWeight: marked ? 700 : 400,
-                    // 누른 날은 바깥 고리, 오늘은 안쪽 얇은 테두리.
-                    boxShadow: isSelected
-                      ? `0 0 0 2px ${colors.bgContainer}, 0 0 0 4px ${sideCalendar.selected.bg}`
-                      : isToday
-                        ? `inset 0 0 0 ${sideCalendar.todayRingWidth}px ${sideCalendar.todayRing}`
-                        : 'none',
+                    // 누른 날은 바깥 고리, 오늘은 안쪽 얇은 테두리, 메모가 있는 날은 안쪽 회색 테두리(#984).
+                    boxShadow: miniCellShadow(isSelected, isToday, memoCount > 0),
                   }}
                 >
                   {day}
@@ -458,16 +489,31 @@ export default function DashboardCalendar({
           }}
         >
           {[
-            [sideCalendar.has.bg, dashboardTexts.calendarMiniHas],
-            [sideCalendar.overdue.bg, dashboardTexts.calendarMiniOverdue],
-          ].map(([color, label]) => (
+            { label: dashboardTexts.calendarMiniHas, swatch: { background: sideCalendar.has.bg } },
+            {
+              label: dashboardTexts.calendarMiniOverdue,
+              swatch: { background: sideCalendar.overdue.bg },
+            },
+            // #984: 메모를 쓰는 달력에서만 "메모"(테두리만 있는 칸)를 더한다.
+            ...(memoCounts
+              ? [
+                  {
+                    label: dayMemo.legend,
+                    swatch: {
+                      background: sideCalendar.popoverBg,
+                      boxShadow: miniCellShadow(false, false, true),
+                    },
+                  },
+                ]
+              : []),
+          ].map(({ label, swatch }) => (
             <li
               key={label}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
             >
               <span
                 aria-hidden="true"
-                style={{ width: 14, height: 14, borderRadius: 4, background: color }}
+                style={{ width: 14, height: 14, borderRadius: 4, ...swatch }}
               />
               {label}
             </li>
@@ -516,7 +562,7 @@ export default function DashboardCalendar({
             lineHeight: 1.5,
           }}
         >
-          {dashboardTexts.calendarMiniHint}
+          {memoCounts ? dayMemo.calendarHint : dashboardTexts.calendarMiniHint}
         </p>
       ) : byDay.size === 0 ? (
         <p
