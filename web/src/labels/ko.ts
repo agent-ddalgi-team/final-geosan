@@ -889,7 +889,7 @@ export const companyFieldFixTexts = {
   phoneLabel: '대표번호',
   representativeLabel: '대표명',
   phoneHint:
-    '회사 대표번호(지역번호로 시작)만 적습니다. 담당자 휴대폰은 아래 [상대 담당자 연락처]에 적어 주세요.',
+    '회사 대표번호(지역번호로 시작)만 적습니다. 담당자 휴대폰은 아래 "상대 담당자" 줄에 적어 주세요.',
   representativeHint: '회사 대표자 이름. 숫자·이메일은 적지 않습니다.',
   clearHint: '빈 칸으로 저장하면 지웁니다. 지운 값은 자동으로 다시 채우지 않습니다.',
   save: '저장',
@@ -920,9 +920,63 @@ export const revealTexts = {
   failed: '열지 못했습니다.',
 } as const;
 
+/**
+ * #996(PM 결정 2026-11-29) 기업 상세 새 구성: 머리(이름 크게 + 품목 줄) · 요약 줄 · 담당자 의견 칸 · 한눈에 핵심 줄.
+ * 한눈에 핵심 줄은 저장된 값에서 프로그램이 골라 붙인다(AI 호출 없음, 새 응답 칸 없음).
+ */
+export const detailCompose = {
+  /** 머리: 이름 아래 작은 줄 "품목 탄소강·합금강 육각볼트·스터드 전기아연도금". */
+  itemLabel: '품목',
+  summary: {
+    aria: '회사 요약',
+    industry: '산업',
+    process: '공정',
+    material: '소재',
+    location: '위치',
+    homepage: '홈페이지',
+    fixOpen: '정보 고치기',
+    fixClose: '정보 고치기 닫기',
+    fixPanel: '회사 정보 고치기',
+    /** 고치기 칸의 홈페이지 줄 끝: 홈페이지는 여기서 직접 고치지 않고 머리의 [다시 조사]로 다시 찾는다. */
+    homepageHow: '홈페이지를 다시 찾으려면 위의 [다시 조사]를 누릅니다.',
+  },
+  opinion: {
+    title: '담당자 의견',
+    /** 아직 안 골랐을 때 주황 칸 안의 글. 끝의 화살표는 꾸밈으로 따로 그린다. */
+    nudge: '아직 안 골랐습니다 · 골라 주세요',
+    /** 고른 사람 · 날짜: "영업 담당 · 11/29" */
+    by: (name: string, date: string | null) => (date ? `${name} · ${date}` : name),
+  },
+  glance: {
+    hint: '핵심만 · 아래 "왜 이 회사인가"의 근거에서 뽑은 줄',
+    fit: '맞는 점',
+    feature: '특징',
+    check: '확인할 점',
+    location: '위치',
+    /** 근거 줄에 맞는 점이 없을 때 "거산과 맞는 점"의 확인된 값으로 만든다: "공정 아연도금 확인됨 · 소재 철 통과" */
+    fitProcess: (name: string) => `공정 ${name} 확인됨`,
+    fitMaterial: (name: string) => `소재 ${name} 통과`,
+    /** 확인할 점: 아직 확인 전인 것 낱말 앞에. "확인 전: 공정 · 소재 · 근거 부족" */
+    checkWords: (words: string) => `확인 전: ${words}`,
+    /** 줄 끝 링크: "소재 근거" (뒤에 ↓). 누르면 아래 "왜 이 회사인가"의 그 줄로 간다. */
+    evidenceLink: (label: string) => `${label} 근거`,
+    /** 갈래마다 앞 3줄까지 보이고 나머지는 이 단추로 편다: "더 보기 2줄" / "접기" */
+    more: (hidden: number) => `더 보기 ${hidden}줄`,
+    less: '접기',
+    evidenceState: '근거 상태',
+  },
+  why: {
+    hint: '위 핵심의 근거 · 줄마다 출처',
+  },
+} as const;
+
 /** #980 상세 [상대 담당자 연락처]. 담당자가 직접 적은 상대 회사 담당자 번호. */
 export const contactPersonsTexts = {
-  title: '상대 담당자 연락처',
+  /** #996(PM 결정 2026-11-29): 칸 제목을 "상대 담당자 연락처" → "담당자 연락처"로. 칸 안의 줄 이름은 personsRow. */
+  title: '담당자 연락처',
+  /** #996: 담당자 연락처 칸 안의 줄 이름. 회사 대표번호 · 대표명 다음에 온다. */
+  mainPhoneRow: '회사 대표번호',
+  personsRow: '상대 담당자',
   hint: '거산 담당자가 직접 적은 번호만 둡니다. 가려서 보이고, 확인 문구에 체크해야 열립니다. 외부 AI·엑셀·보고서로 나가지 않습니다.',
   viewerHidden: '보기 전용 계정은 상대 담당자 연락처를 볼 수 없습니다.',
   pickStaffFirst: '담당자를 고르면 볼 수 있습니다.',
@@ -3285,7 +3339,7 @@ export const quickRecordTexts = {
   /** 메모에 전화번호 · 이메일이 있으면 누르기 전에 먼저 알린다(AI 비용이 먼저 나가지 않게). */
   contactAlertTitle: '전화번호 · 이메일은 빼고 적어 주세요.',
   contactAlertBody:
-    '기록 메모에는 연락처를 저장하지 않습니다. 연락처는 영업 단계 카드의 "상대 담당자 연락처"에 적어 주세요.',
+    '기록 메모에는 연락처를 저장하지 않습니다. 연락처는 "담당자 연락처" 칸의 상대 담당자 줄에 적어 주세요.',
   /** 종류 [메모]: 메모로만 저장은 되지만 영업 코치에게 보낼 수는 없을 때. */
   memoContactBlocked:
     '전화번호 · 이메일이 있는 메모는 영업 코치에게 보낼 수 없습니다. 메모로만 저장은 됩니다.',

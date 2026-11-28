@@ -21,6 +21,7 @@ import type { BookmarkRecord, Envelope, OpportunityDetail, Question } from '../.
 import { FrameContext } from '../../components/frame/FrameContext';
 import {
   coachSteps,
+  contactPersonsTexts,
   detailReport,
   detailSections,
   frame,
@@ -158,10 +159,12 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    // #980(PM 결정 2026-11-28): 한눈에 | 왜 이 회사인가 → 기록 → 비슷한 회사 → (지난 평가) → 점수 자세히 보기.
+    // #996(PM 결정 2026-11-29): (영업 단계 |) 담당자 연락처 → 한눈에 + 왜 이 회사인가 | 기록 → 비슷한 회사 → (지난 평가) → 점수 자세히 보기.
+    // 둘째 줄 오른쪽에 "담당자 연락처" 칸이 생겨 제목(h2) 맨 앞에 하나가 더해졌다(전에는 한눈에가 첫 제목).
     // #803(PM 결정 2026-11-16): "통화에서 확인할 것"은 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다
     // (이 시험은 코치 판 자리 없이 그려 기록 구역 안에 놓인다). "근거 자료"는 따로 구역을 두지 않는다.
-    expect(headings.slice(0, 3)).toEqual([
+    expect(headings.slice(0, 4)).toEqual([
+      contactPersonsTexts.title,
       detailReport.glance.title,
       detailSections.reasons,
       recordsArea.title,
@@ -347,20 +350,26 @@ describe('OpportunityDetailPage', () => {
     expect(mockedActivity).toHaveBeenCalledWith('opp-1', 50, expect.any(AbortSignal));
   });
 
-  it('위는 읽는 곳(한눈에·1~3번), 구분 줄 아래는 적는 곳(검토 의견·기록·비슷한 회사) 순서이고 이름이 제목으로 올라간다 (#674)', async () => {
+  // #996(PM 결정 2026-11-29)으로 바뀐 기대:
+  //  · 제목 순서 — "담당자 연락처" 칸이 맨 앞에 생겼고, 기록이 "왜 이 회사인가" 옆 칸으로 올라와 옛 응답의
+  //    "통화에서 확인할 것"(예전 부품)보다 앞에 온다(전에는 통화에서 확인할 것 → 기록).
+  //  · 이름 — 공통 틀에 "회사 이름 · 품목"을 넘기지 않고, 머리가 이름만 h1으로 그리고 품목은 그 아래 줄에 둔다.
+  //  · 산업 칩 — "한눈에" 산업 칸이 아니라 요약 줄의 [정보 고치기] 안에 있다.
+  it('순서는 (영업 단계 ·) 담당자 연락처 → 한눈에 → 왜 이 회사인가 → 기록 → … 이고, 회사 이름만 h1으로 올라가고 품목은 그 아래 줄이다 (#674 → #996)', async () => {
+    const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(reply(base));
     const setPageTitle = renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     // #803(PM 결정 2026-11-16): 산업군 카드·검토 의견 카드·"여기부터 적는 곳" 구분 줄을 없앴다.
-    // 산업은 "한눈에" 산업 칸, 의견은 머리 꼬리표 줄, 통화에서 확인할 것은 기록(영업 코치) 칸 ①로.
-    // 이 응답(base)은 검토사항을 안 주는 옛 응답이라 후속 조치가 예전처럼 읽는 곳 2번 자리에 남는다.
-    // #980(PM 결정 2026-11-28): 기록 → 비슷한 회사 다음에 점수 자세히 보기(맨 아래).
+    // 이 응답(base)은 검토사항을 안 주는 옛 응답이라 후속 조치가 예전 부품("통화에서 확인할 것")으로 남는다.
+    // #980(PM 결정 2026-11-28): 비슷한 회사 다음에 점수 자세히 보기(맨 아래).
     expect(headings).toEqual([
+      contactPersonsTexts.title,
       detailReport.glance.title,
       detailSections.reasons,
-      detailSections.callChecklist,
       recordsArea.title,
+      detailSections.callChecklist,
       peersArea.title,
       expect.stringContaining(detailSections.scores),
     ]);
@@ -368,13 +377,24 @@ describe('OpportunityDetailPage', () => {
     const opinion = screen.getByTestId('detail-opinion');
     expect(within(screen.getByTestId('detail-header')).getByTestId('detail-opinion')).toBe(opinion);
     expect(within(opinion).getByTestId('opinion-area')).toBeInTheDocument();
+    // 산업 칩은 요약 줄의 [정보 고치기]를 펴면 그 안에 있다.
+    expect(screen.queryByTestId('detail-industries')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('detail-summary-fix-toggle'));
     expect(
-      within(screen.getByTestId('detail-glance')).getByTestId('detail-industries'),
+      within(screen.getByTestId('detail-summary-fix-panel')).getByTestId('detail-industries'),
     ).toBeInTheDocument();
-    // 맨 아래 기록 영역에 네 칸이 있다.
+    // 기록 칸에 기록 남기기(영업 코치 칸이 없는 화면)와 활동 이력이 있다.
     const records = screen.getByTestId('detail-records');
     expect(within(records).getByTestId('records-area')).toBeInTheDocument();
-    expect(setPageTitle).toHaveBeenCalledWith('A정밀 · 밸브 바디 아노다이징');
+    expect(within(records).getByTestId('activity-timeline')).toBeInTheDocument();
+    // 이름은 머리의 h1 하나, 품목은 그 아래 작은 줄. 공통 틀의 제목은 쓰지 않는다.
+    const names = screen.getAllByRole('heading', { level: 1 });
+    expect(names).toHaveLength(1);
+    expect(names[0]).toHaveTextContent(/^A정밀$/);
+    expect(screen.getByTestId('detail-company-item')).toHaveTextContent(
+      /^품목밸브 바디 아노다이징$/,
+    );
+    expect(setPageTitle).not.toHaveBeenCalled();
     expect(screen.getByTestId('detail-classification')).toHaveTextContent('지금 바로 연락 검토');
     // 서버 문자열 그대로 보이고 앞에 "점수 "를 붙이지 않는다. 낭독은 '조사'로 읽는다(#183).
     const score = screen.getByTestId('detail-score');
@@ -405,7 +425,9 @@ describe('OpportunityDetailPage', () => {
     expect(kakao).toHaveAttribute('rel', expect.stringContaining('noopener'));
   });
 
-  it('주소 바로 옆에 거산까지 거리가 보이고, 회사 소개 줄에는 같은 거리를 또 보이지 않는다(#666)', async () => {
+  // #996(PM 결정 2026-11-29): 거리는 주소 줄 옆이 아니라 머리 요약 줄의 "위치" 칸 한 곳에만 보인다(짧은 위치 · 거리).
+  // 주소 전체와 지도 링크는 "한눈에 › 위치" 줄에 남는다. (전의 기대: 주소 줄 안에 거리와 지도 링크가 함께.)
+  it('거산까지 거리는 요약 줄의 위치 칸 한 곳에만 보이고, 주소 전체와 지도 링크는 "한눈에 › 위치" 줄에 있다 (#666 → #996)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({
         ...base,
@@ -419,11 +441,14 @@ describe('OpportunityDetailPage', () => {
     );
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    // 주소 줄(주소 · 거리 · 지도 링크)이 한 줄이다(#674에서 "한눈에" 상자로 옮김).
-    const row = screen.getByTestId('glance-factory-profile');
+    const location = screen.getByTestId('detail-summary-location');
+    expect(location).toHaveTextContent(/^위치아산시 · 거산에서 12\.3km$/);
+    expect(screen.getAllByTestId('detail-distance')).toHaveLength(1);
+    expect(within(location).getByTestId('detail-distance')).toHaveTextContent('거산에서 12.3km');
+    const row = within(screen.getByTestId('glance-location')).getByTestId('glance-factory-profile');
     expect(within(row).getByTestId('detail-map-links')).toBeInTheDocument();
-    expect(within(row).getByTestId('detail-distance')).toHaveTextContent('거산에서 12.3km');
     expect(row).toHaveTextContent('충청남도 아산시 시험로 10');
+    expect(within(row).queryByTestId('detail-distance')).not.toBeInTheDocument();
     expect(screen.queryByTestId('company-distance')).not.toBeInTheDocument();
   });
 
@@ -548,20 +573,28 @@ describe('OpportunityDetailPage', () => {
     expect(screen.queryByTestId('homepage-needs-confirm')).not.toBeInTheDocument();
   });
 
-  it('[다시 조사]는 상세 맨 위 "목록으로"와 같은 줄에 하나만 있고 [맞음]·[고치기]는 없다 (#596)', async () => {
+  // #996(PM 결정 2026-11-29): 맨 위 줄에는 "목록으로"와 "이번 달 AI 사용"만 있고, [관심] · [다시 조사]는 그 아래
+  // 회사 이름 줄 오른쪽에 있다(전에는 "목록으로"와 같은 줄). [다시 조사]가 하나뿐인 것은 같다.
+  it('[다시 조사]는 회사 이름 줄 오른쪽에 [관심]과 나란히 하나만 있고 [맞음]·[고치기]는 없다 (#596 → #996)', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     renderPage();
     const back = await screen.findByTestId('back-to-list-link');
     const rerun = screen.getByTestId('homepage-rerun-button');
-    // 같은 줄 오른쪽에 [관심]과 [다시 조사]가 나란히 있다(#674).
-    expect(back.parentElement).toContainElement(screen.getByTestId('homepage-controls'));
-    expect(back.parentElement).toContainElement(screen.getByTestId('bookmark-button'));
+    expect(screen.getAllByTestId('homepage-rerun-button')).toHaveLength(1);
+    const nameLine = screen.getByTestId('detail-name-line');
+    expect(nameLine).toContainElement(screen.getByRole('heading', { level: 1 }));
+    expect(nameLine).toContainElement(screen.getByTestId('homepage-controls'));
+    expect(nameLine).toContainElement(screen.getByTestId('bookmark-button'));
+    expect(screen.getByTestId('detail-top-line')).toContainElement(back);
+    expect(screen.getByTestId('detail-top-line')).not.toContainElement(rerun);
     expect(rerun).toHaveTextContent('다시 조사');
     expect(screen.queryByTestId('homepage-confirm-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('homepage-edit-button')).not.toBeInTheDocument();
   });
 
-  it('접촉 횟수는 기록 영역이 아니라 머리에 보이고, 접촉을 저장하면 머리의 횟수가 바로 늘어난다 (#210)', async () => {
+  // #996(PM 결정 2026-11-29): "한눈에 › 영업 상태" 줄을 빼면서 접촉 횟수는 "기록" 칸 제목 옆으로 옮겼다
+  // (전의 기대: 기록 영역 밖 "한눈에"에 보인다 → 지금: 기록 칸 제목 옆 한 곳에 보인다). 저장하면 바로 느는 것은 같다.
+  it('접촉 횟수는 "기록" 칸 제목 옆에 보이고, 접촉을 저장하면 그 횟수가 바로 늘어난다 (#210 → #996)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValueOnce(
       reply({
@@ -581,7 +614,10 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     const count = await screen.findByTestId('detail-contact-count');
     expect(count).toHaveTextContent('접촉 3회 (전화 2 · 방문 1)');
-    expect(within(screen.getByTestId('detail-records')).queryByText(/접촉 3회/)).toBeNull();
+    expect(screen.getAllByText(/접촉 3회/)).toHaveLength(1);
+    expect(screen.getByTestId('detail-records-hint')).toContainElement(count);
+    expect(screen.getByTestId('detail-records-count')).toHaveTextContent(/^3$/);
+    expect(screen.getByTestId('detail-glance')).not.toHaveTextContent('접촉 3회');
     await user.click(chipOf('records-kind', '메일'));
     await user.click(chipOf('records-contact-result', '연결됨'));
     await user.click(screen.getByTestId('records-contact-save-button'));
@@ -649,7 +685,7 @@ describe('OpportunityDetailPage', () => {
     expect(mockedActivity.mock.calls.length).toBeGreaterThan(activityCallsBefore);
   });
 
-  it('서버가 접촉 횟수를 주지 않으면 머리의 접촉 횟수 줄은 보이지 않는다 (#210)', async () => {
+  it('서버가 접촉 횟수를 주지 않으면 접촉 횟수 글은 보이지 않는다 (#210)', async () => {
     mockedGet.mockResolvedValueOnce(reply(base));
     renderPage();
     await screen.findByTestId('detail-glance');
@@ -782,12 +818,13 @@ describe('OpportunityDetailPage', () => {
       );
       renderPage();
       await screen.findByTestId('opportunity-detail');
-      // #803: 구분 줄이 없어져 기록 구역 앞까지를 읽는 곳으로 본다. 머리의 검토 의견과 "한눈에" 산업 칸의
-      // [확정]·[고치기]는 PM 결정(2026-11-16)으로 읽는 곳 안에 들어왔으므로 따로 뺀다.
+      // #803: 구분 줄이 없어져 기록 구역 앞까지를 읽는 곳으로 본다. 머리의 담당자 의견은 PM 결정(2026-11-16)으로
+      // 읽는 곳 안에 들어왔으므로 따로 뺀다.
+      // #996(PM 결정 2026-11-29): 산업 [확정]·[고치기]는 접힌 [정보 고치기] 안으로 들어가 처음에는 화면에 없고,
+      // 그것을 여는 [정보 고치기] 단추 하나가 읽는 곳에 더해졌다(전에는 "한눈에" 산업 칸에 칩이 늘 보였다).
       const records = screen.getByTestId('detail-records');
-      const inlineEditors = ['detail-opinion', 'detail-industries'].map((id) =>
-        screen.getByTestId(id),
-      );
+      expect(screen.queryByTestId('detail-industries')).not.toBeInTheDocument();
+      const inlineEditors = ['detail-opinion'].map((id) => screen.getByTestId(id));
       const above = (el: HTMLElement) =>
         Boolean(el.compareDocumentPosition(records) & Node.DOCUMENT_POSITION_FOLLOWING) &&
         !inlineEditors.some((editor) => editor.contains(el));
@@ -801,13 +838,16 @@ describe('OpportunityDetailPage', () => {
           'bookmark-button',
           // 대표번호는 누르면 전화가 걸리는 링크다(단추가 아님).
           'company-phone-link',
-          // #958(PM 결정 2026-11-26): "한눈에 › 어떤 회사" 주소 [고치기](누르면 그 자리에 입력칸).
+          // #958(PM 결정 2026-11-26): "한눈에 › 위치" 주소 [고치기](누르면 그 자리에 입력칸).
           'company-address-edit-button',
-          // #980(PM 결정 2026-11-28): 대표번호·대표명 [고치기]와 영업 단계 카드 안 [+ 연락처 추가].
+          // #980(PM 결정 2026-11-28): 대표번호·대표명 [고치기]와 [+ 연락처 추가](#996부터 "담당자 연락처" 칸).
           'company-phone-fix-button',
           'company-representative-fix-button',
           'contact-add-button',
+          // 이 시험은 영업 코치 칸 없이 그려 기록 칸이 본문 안에 있으므로 이동 단추가 보인다(#996).
           'detail-go-record-button',
+          // #996: 요약 줄의 [정보 고치기](누르면 바로 아래에 고치기 칸이 펼쳐진다).
+          'detail-summary-fix-toggle',
           // [점수 자세히 보기] 여는 단추는 #980부터 기록 아래(맨 아래)에 있다.
           'homepage-rerun-button',
         ].sort(),
@@ -825,10 +865,15 @@ describe('OpportunityDetailPage', () => {
       ).toBeTruthy();
     });
 
-    it('맨 위에 단계 진행 막대가 있고, 접촉 기록이 없으면 모두 빈 점과 "아직 접촉 기록이 없습니다"가 보인다', async () => {
+    // #996(PM 결정 2026-11-29): 영업 단계 그림은 머리 안 가로 전체 카드가 아니라 둘째 줄 왼쪽 "영업 단계" 칸에 축소판으로 있다.
+    // 그래서 찾는 자리를 머리(detail-header)에서 영업 단계 칸(detail-stage-card)으로 바꿨다. 보이는 값은 같다.
+    it('둘째 줄 왼쪽에 단계 진행 막대가 있고, 접촉 기록이 없으면 모두 빈 점과 "아직 접촉 기록이 없습니다"가 보인다', async () => {
       mockedGet.mockResolvedValueOnce(reply(base));
       renderPage();
-      const header = await screen.findByTestId('detail-header');
+      const header = await screen.findByTestId('detail-stage-card');
+      expect(screen.getByTestId('detail-header')).not.toContainElement(header);
+      expect(within(header).getByTestId('sales-progress')).toHaveAttribute('data-size', 'compact');
+      expect(within(header).getAllByTestId('sales-progress-band')).toHaveLength(4);
       const steps = within(header).getAllByTestId('sales-progress-step');
       expect(steps).toHaveLength(5);
       expect(steps.every((el) => el.getAttribute('data-state') === 'todo')).toBe(true);
@@ -837,7 +882,7 @@ describe('OpportunityDetailPage', () => {
       );
     });
 
-    it('진행 중인 회사는 지금 단계와 다음 일정이 막대에, 접촉 횟수와 마지막 접촉이 "한눈에"에 보인다', async () => {
+    it('진행 중인 회사는 지금 단계와 다음 일정이 영업 단계 칸에, 접촉 횟수와 마지막 접촉이 "기록" 칸 제목 옆에 보인다 (#996)', async () => {
       mockedGet.mockResolvedValueOnce(
         reply({
           ...base,
@@ -864,16 +909,16 @@ describe('OpportunityDetailPage', () => {
         }),
       );
       renderPage();
-      const header = await screen.findByTestId('detail-header');
+      const header = await screen.findByTestId('detail-stage-card');
       expect(within(header).getByTestId('sales-progress-now')).toHaveTextContent(
         '지금 (11/12부터)',
       );
       expect(within(header).getByTestId('sales-progress-next')).toHaveTextContent(
         '다음 일정: 11/20 견적 보내기',
       );
-      expect(screen.getByTestId('detail-contact-count')).toHaveTextContent(
-        '접촉 3회 (전화 2 · 방문 1) · 마지막 접촉 11/12',
-      );
+      expect(
+        within(screen.getByTestId('detail-records')).getByTestId('detail-contact-count'),
+      ).toHaveTextContent('접촉 3회 (전화 2 · 방문 1) · 마지막 접촉 11/12');
     });
   });
 
@@ -1143,8 +1188,17 @@ describe('OpportunityDetailPage', () => {
     mockedGet.mockResolvedValueOnce(reply({ ...base, scores: { ...base.scores!, items } }));
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const lines = screen.getAllByTestId('detail-reason-text');
-    expect(lines.map((line) => line.textContent)).toEqual([
+    // #996: 줄 머리의 갈래 이름은 이름표로 떼어 왼쪽에 보인다(전에는 "제품: 요약 문장 0 …"이 한 글이었다).
+    // 이름과 문장을 줄마다 다시 붙여 전과 같은 내용인지 본다.
+    const rows = screen.getAllByTestId('detail-reason-line');
+    expect(
+      rows.map(
+        (row) =>
+          `${within(row).getByTestId('detail-reason-label').textContent}: ${
+            within(row).getByTestId('detail-reason-text').textContent
+          }`,
+      ),
+    ).toEqual([
       '제품: 요약 문장 0 (출처 0)',
       '소재: 요약 문장 1 (출처 1)',
       '처리 목적(추정): 요약 문장 2 (출처 2)',
@@ -1208,7 +1262,9 @@ describe('OpportunityDetailPage', () => {
     expect(within(rows[1]).getAllByTestId('evidence-item')).toHaveLength(1);
 
     // 글은 그대로이고 괄호 안 글자만 링크다. 주소 있는 첫 근거(ev-b)의 첫 주소를 쓴다.
-    expect(lines[0]).toHaveTextContent('제품: 볼트를 만든다고 밝혔습니다. (홈페이지 제품 목록)');
+    // #996: "제품"은 이름표로 떼어 보이고 문장 글은 그대로다.
+    expect(within(rows[0]).getByTestId('detail-reason-label')).toHaveTextContent(/^제품$/);
+    expect(lines[0]).toHaveTextContent(/^볼트를 만든다고 밝혔습니다\. \(홈페이지 제품 목록\)$/);
     const link = within(lines[0]).getByRole('link', { name: '홈페이지 제품 목록' });
     expect(link).toHaveAttribute('href', 'http://kofas.com/productK/');
     expect(link).toHaveAttribute('target', '_blank');
@@ -1216,17 +1272,23 @@ describe('OpportunityDetailPage', () => {
 
     // 주소 있는 근거가 없거나 괄호가 없으면 지금처럼 글자만.
     expect(within(lines[1]).queryByRole('link')).not.toBeInTheDocument();
-    expect(lines[1]).toHaveTextContent('소재: 재질을 고를 수 있습니다. (카탈로그)');
+    expect(within(rows[1]).getByTestId('detail-reason-label')).toHaveTextContent(/^소재$/);
+    expect(lines[1]).toHaveTextContent(/^재질을 고를 수 있습니다\. \(카탈로그\)$/);
     expect(within(lines[2]).queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('회사 홈페이지 주소가 있으면 제목 아래에 새 창 링크가 보이고, 없거나 http가 아니면 보이지 않는다 (#175)', async () => {
+  // #996(PM 결정 2026-11-29): 홈페이지 링크는 "한눈에"의 "기업 소개 페이지 ↗ 주소" 줄이 아니라 머리 요약 줄의 "홈페이지 ↗"다.
+  // 주소 전체는 링크에 손을 올리면 보이고([정보 고치기]를 펴면 글로도 보인다). 새 창으로 여는 것은 같다.
+  it('회사 홈페이지 주소가 있으면 요약 줄에 새 창 링크 "홈페이지 ↗"가 보이고, 없거나 http가 아니면 보이지 않는다 (#175 → #996)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply({ ...base, header: { ...base.header, homepageUrl: 'http://kofas.com/' } }),
     );
     renderPage();
-    const link = await screen.findByRole('link', { name: /기업 소개 페이지/ });
-    expect(link).toHaveTextContent('기업 소개 페이지 ↗ http://kofas.com/');
+    const link = within(await screen.findByTestId('detail-summary-row')).getByRole('link', {
+      name: /홈페이지/,
+    });
+    expect(link).toHaveTextContent(/^홈페이지 ↗$/);
+    expect(link).toHaveAttribute('title', 'http://kofas.com/');
     expect(link).toHaveAttribute('href', 'http://kofas.com/');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));

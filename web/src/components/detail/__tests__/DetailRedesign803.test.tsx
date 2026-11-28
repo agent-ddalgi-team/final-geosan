@@ -1,6 +1,7 @@
 // 기업 상세 다시 짜기(#803, PM 결정 2026-11-16): 한눈에 그림 줄, 빈 전달 사항 칸 없애기, 영업 코치 판 안의 요약 줄이기,
 // 머리 안내 한 번, 비슷한 회사 접기. 서버 호출 없이 가상 값으로만 본다(가상·거산 실제 사양 아님).
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import type { ConfigUi, DetailHeader, ScoreItemView, SalesStepView } from '../../../api/types';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
@@ -10,7 +11,9 @@ import { FrameContext } from '../../frame/FrameContext';
 import HandoffBox from '../../records/HandoffBox';
 import { SalesStepSummary } from '../../records/SalesQuestions';
 import DetailGlance from '../DetailGlance';
+import DetailSummaryRow from '../DetailSummaryRow';
 import HeaderSection from '../HeaderSection';
+import StageCard from '../StageCard';
 
 const header = {
   ...(detailFixture.data.header as unknown as DetailHeader),
@@ -47,18 +50,29 @@ describe('한눈에 그림 줄', () => {
     expect(line).toHaveTextContent(glanceVisual.hq);
   });
 
-  it('Given 산업 칸에 넣을 [고치기] 칩 When 한눈에 Then 산업 줄 안에 그 칩이 놓인다', () => {
+  // #996(PM 결정 2026-11-29): 산업 [확정]·[고치기] 칩은 "한눈에" 산업 칸이 아니라 머리 요약 줄의 [정보 고치기] 안에 놓인다.
+  // 요약 줄의 산업 칸에는 값과 확인 표시만 보인다.
+  it('Given 산업 [고치기] 칩 When 요약 줄의 [정보 고치기]를 펴면 Then 산업 줄 안에 그 칩이 놓인다', async () => {
+    const user = userEvent.setup();
     render(
-      <DetailGlance
+      <DetailSummaryRow
+        oppId="opp-1"
+        evalId={null}
         header={header}
         processLinks={[]}
         evidence={[]}
         industryEditor={<span data-testid="industry-editor-slot">칩</span>}
+        onSaved={() => {}}
       />,
     );
+    expect(screen.queryByTestId('industry-editor-slot')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('detail-summary-fix-toggle'));
     expect(
-      within(screen.getByTestId('glance-fit-industry')).getByTestId('industry-editor-slot'),
+      within(screen.getByTestId('detail-summary-fix-industry')).getByTestId('industry-editor-slot'),
     ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('glance-fit-industry')).queryByTestId('industry-editor-slot'),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -140,7 +154,29 @@ describe('머리', () => {
     expect(within(head).getByTestId('slot-opinion')).toBeInTheDocument();
   });
 
-  it('Given 새 시안(#972) When 머리 Then 영업 단계 그림은 흰 카드 안에 있고, 그 아래 자리에 들은 답·다음 일정 칸이 붙는다', () => {
+  // #996(PM 결정 2026-11-29): 영업 단계 카드는 머리 밖 둘째 줄 왼쪽 칸(`StageCard`)으로 나갔다.
+  // 그림 아래 자리에 "들은 답 · 단계 고치기"가 붙는 것은 같고, 꼬리표 줄(대응 · 담당)은 머리의 이름 줄에 남는다.
+  it('Given 새 구성(#996) When 영업 단계 칸 Then 그림은 흰 카드 안에 있고, 그 아래 자리에 들은 답 칸이 붙는다', () => {
+    render(
+      <StageCard
+        salesStep={null}
+        outcome={null}
+        extra={<div data-testid="slot-stage">지금까지 들은 답</div>}
+      />,
+    );
+    const card = screen.getByTestId('detail-stage-card');
+    expect(within(card).getByTestId('sales-progress')).toBeInTheDocument();
+    expect(within(card).getAllByTestId('sales-progress-band')).toHaveLength(4);
+    // 단계 그림 아래, 같은 카드 안.
+    const extra = within(card).getByTestId('detail-stage-extra');
+    expect(within(extra).getByTestId('slot-stage')).toBeInTheDocument();
+    expect(
+      within(card).getByTestId('sales-progress').compareDocumentPosition(extra) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('Given 머리 When 꼬리표 줄 Then 대응 · 담당은 머리 안에 있고 영업 단계 카드는 머리 안에 없다 (#996)', () => {
     render(
       <MemoryRouter>
         <FrameContext.Provider value={frame('park-lee', true)}>
@@ -152,45 +188,24 @@ describe('머리', () => {
             onBookmarkChanged={() => {}}
             ownerName="영업 김"
             opinion={<span data-testid="slot-opinion">의견: 영업 대상</span>}
-            stageExtra={<div data-testid="slot-stage">지금까지 들은 답</div>}
           />
         </FrameContext.Provider>
       </MemoryRouter>,
     );
-    const card = screen.getByTestId('detail-stage-card');
-    expect(screen.getByTestId('detail-header')).toContainElement(card);
-    expect(within(card).getByTestId('sales-progress')).toBeInTheDocument();
-    expect(within(card).getAllByTestId('sales-progress-band')).toHaveLength(4);
-    // 단계 그림 아래, 같은 카드 안.
-    const extra = within(card).getByTestId('detail-stage-extra');
-    expect(within(extra).getByTestId('slot-stage')).toBeInTheDocument();
-    expect(
-      within(card).getByTestId('sales-progress').compareDocumentPosition(extra) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    // 꼬리표 줄(대응·담당·의견)은 카드 밖, 카드보다 위에 있다.
-    const meta = screen.getByTestId('detail-meta');
-    expect(card).not.toContainElement(meta);
+    const head = screen.getByTestId('detail-header');
+    const meta = within(head).getByTestId('detail-meta');
     expect(meta).toHaveTextContent(detailHeader.purpose);
     expect(meta).toHaveTextContent('담당영업 김');
-    expect(card).not.toContainElement(screen.getByTestId('slot-opinion'));
-    expect(meta.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(head).getByTestId('slot-opinion')).toBeInTheDocument();
+    expect(within(head).queryByTestId('detail-stage-card')).not.toBeInTheDocument();
+    expect(
+      meta.compareDocumentPosition(screen.getByTestId('slot-opinion')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it('Given 아래에 붙일 것이 없다 When 머리 Then 영업 단계 카드에는 그림만 있다', () => {
-    render(
-      <MemoryRouter>
-        <FrameContext.Provider value={frame('park-lee', true)}>
-          <HeaderSection
-            oppId="opp-1"
-            onReload={() => {}}
-            header={header}
-            bookmark={null}
-            onBookmarkChanged={() => {}}
-          />
-        </FrameContext.Provider>
-      </MemoryRouter>,
-    );
+  it('Given 아래에 붙일 것이 없다 When 영업 단계 칸 Then 카드에는 그림만 있다', () => {
+    render(<StageCard />);
     expect(screen.getByTestId('detail-stage-card')).toBeInTheDocument();
     expect(screen.queryByTestId('detail-stage-extra')).not.toBeInTheDocument();
   });

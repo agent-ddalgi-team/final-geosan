@@ -56,7 +56,7 @@ import {
   salesStepLabels,
   handoffTexts,
 } from '../../labels/ko';
-import { colors, radius, typography, warn } from '../../theme/tokens';
+import { accent, colors, radius, typography, warn } from '../../theme/tokens';
 import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 import { isAbsentMemo } from './absentWords';
@@ -141,7 +141,11 @@ export interface RecordsAreaProps {
   excluded?: boolean;
   /** #803 오른쪽 영업 코치 판 안에 놓일 때 true: 맨 위 요약을 줄인다(세부 단계·아직 모르는 것은 다른 곳과 같아 뺌). */
   inCoach?: boolean;
-  /** #847: 확정된 것(들은 답 · 단계 고치기 · 다음 일정)을 옮겨 그릴 왼쪽 자리. 없으면 이 칸 안에 그린다. */
+  /**
+   * #847: 확정된 것(들은 답 · 단계 고치기)을 옮겨 그릴 왼쪽 자리(영업 단계 칸 아래). 없으면 이 칸 안에 그린다.
+   * #996(PM 결정 2026-11-29): 그 자리에는 "▸ 지금까지 들은 답 n개"와 "단계 고치기"만 작은 링크 모양으로 그린다.
+   * [일정만 바꾸기]는 그리지 않는다(일정은 영업 코치 맨 위 "다음 일정 [바꾸기]"로 바꾼다). 이 칸 안에 그릴 때는 전과 같다.
+   */
   sideSlot?: HTMLElement | null;
   /** #847: 메모를 받는 사람에게 전달 사항으로 남긴 뒤(상세를 다시 읽게). */
   onHandoffSent?: () => void;
@@ -1095,9 +1099,12 @@ export default function RecordsArea({
           큰 단계 고치기와 세부 단계 고치기(#607)가 같은 접힌 자리에 있다. */}
       <section aria-label={recordsArea.stageTitle} style={blockStyle}>
         <div style={rowStyle} data-testid="records-stage-fix">
-          <span style={hintStyle}>{recordsArea.stageFixAsk}</span>
+          {/* #996: 영업 단계 칸 아래에서는 묻는 말 없이 작은 링크 하나로 보인다. */}
+          {sideSlot ? null : <span style={hintStyle}>{recordsArea.stageFixAsk}</span>}
           <Button
             size="small"
+            type={sideSlot ? 'link' : 'default'}
+            style={sideSlot ? { padding: 0, height: 'auto' } : undefined}
             aria-expanded={stageOpen}
             aria-controls={`records-stage-body-${oppId}`}
             onClick={() => setStageOpen((open) => !open)}
@@ -2025,26 +2032,27 @@ export default function RecordsArea({
       {sideSlot ? null : scheduleFix}
       {sideSlot
         ? createPortal(
-            // #972 새 시안: 영업 단계 카드 아래쪽 두 칸 — 왼쪽 "지금까지 들은 답 · 단계 고치기", 오른쪽 "다음 일정".
-            // 좁으면 한 칸으로 쌓인다.
+            // #996(PM 결정 2026-11-29): 영업 단계 칸 아래 한 줄 — "▸ 지금까지 들은 답 n개" · "단계 고치기"(작은 링크 모양).
+            // 누르면 그 자리에서 펼쳐진다(동작은 그대로). [일정만 바꾸기]는 이 칸에서 뺐다.
             <div
               data-testid="records-side"
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: 14,
-                alignItems: 'start',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'flex-start',
+                gap: '6px 14px',
+                fontSize: typography.fontSizeSecondary,
               }}
             >
+              {/* 들은 답이 없으면 아무것도 그리지 않으므로, 빈 칸이 틈을 만들지 않게 상자 없이(contents) 둔다. */}
               <div
                 data-testid="records-side-known"
-                style={{ display: 'grid', gap: 8, minWidth: 0 }}
+                style={{ display: 'contents', color: accent.text }}
               >
                 {confirmedSummary}
-                {stageFix}
               </div>
-              <div data-testid="records-side-schedule" style={{ minWidth: 0 }}>
-                {scheduleFix}
+              <div data-testid="records-side-stage" style={{ minWidth: 0 }}>
+                {stageFix}
               </div>
             </div>,
             sideSlot,

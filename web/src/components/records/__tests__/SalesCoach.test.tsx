@@ -14,7 +14,7 @@ import type { CoachResult } from '../../../api/coach';
 import type { ConfigUi, OutcomeRecord, SalesQuestions, SalesStepView } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
-import { coachTexts } from '../../../labels/ko';
+import { coachTexts, recordsArea } from '../../../labels/ko';
 import { todayKst } from '../../../utils/time';
 import { addDays } from '../../../test/pickCalendarDate';
 import { chipOf, chipValueOf } from '../../../test/chipOf';
@@ -614,26 +614,48 @@ describe('영업 코치 칸 글 줄이기 (#847)', () => {
     expect(hint).not.toHaveTextContent('덧붙이기만 되고');
   });
 
-  it('Given 왼쪽 영업 단계 아래 자리(sideSlot) When 기록 칸을 그리면 Then 들은 답·단계 고치기·다음 일정은 그 자리에 그려진다', async () => {
+  // #996(PM 결정 2026-11-29): 영업 단계 칸 아래 자리에는 "들은 답 · 단계 고치기"만 작은 링크 모양으로 그린다.
+  // [일정만 바꾸기]는 그 칸에서 뺐다(일정은 영업 코치 맨 위 "다음 일정 [바꾸기]"로 바꾼다). 그래서 전의 기대
+  // "다음 일정도 그 자리에(오른쪽 칸)"를 "그 자리에도 기록 칸에도 없다"로 바꿨다.
+  it('Given 왼쪽 영업 단계 아래 자리(sideSlot) When 기록 칸을 그리면 Then 들은 답·단계 고치기만 그 자리에 작은 링크로 그려지고 일정만 바꾸기는 없다', async () => {
+    const user = userEvent.setup();
     const slot = document.createElement('div');
     document.body.appendChild(slot);
     renderArea(true, { inCoach: true, sideSlot: slot });
     const side = await within(slot).findByTestId('records-side');
-    expect(within(side).getByTestId('records-stage-fix')).toBeInTheDocument();
-    expect(within(side).getByTestId('records-schedule-fix')).toBeInTheDocument();
     const area = screen.getByTestId('records-area');
     expect(within(area).queryByTestId('records-stage-fix')).not.toBeInTheDocument();
+    // 단계 고치기: 묻는 말("단계가 잘못됐나요?") 없이 링크 모양 단추 하나.
+    const stageFix = within(side).getByTestId('records-stage-fix');
+    expect(stageFix).not.toHaveTextContent(recordsArea.stageFixAsk);
+    const toggle = within(stageFix).getByTestId('records-stage-toggle');
+    expect(toggle).toHaveTextContent(recordsArea.stageFixOpen);
+    expect(toggle).toHaveClass('ant-btn-link');
+    // 누르면 지금처럼 그 자리에서 펼쳐진다.
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(within(side).getByTestId('records-stage-body')).toBeVisible();
+    // 일정만 바꾸기는 어디에도 그리지 않는다.
+    expect(within(side).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
+    expect(within(side).queryByTestId('records-side-schedule')).not.toBeInTheDocument();
     expect(within(area).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
-    // #972 새 시안: 그 자리는 두 칸이다 — 왼쪽 "들은 답 · 단계 고치기", 오른쪽 "다음 일정".
-    const knownColumn = within(side).getByTestId('records-side-known');
-    const scheduleColumn = within(side).getByTestId('records-side-schedule');
-    expect(within(knownColumn).getByTestId('records-stage-fix')).toBeInTheDocument();
-    expect(within(scheduleColumn).getByTestId('records-schedule-fix')).toBeInTheDocument();
-    expect(within(knownColumn).queryByTestId('records-schedule-fix')).not.toBeInTheDocument();
-    expect(
-      knownColumn.compareDocumentPosition(scheduleColumn) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    // 순서: 들은 답 → 단계 고치기.
+    const known = within(side).getByTestId('records-side-known');
+    const stage = within(side).getByTestId('records-side-stage');
+    expect(within(stage).getByTestId('records-stage-fix')).toBe(stageFix);
+    expect(known.compareDocumentPosition(stage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     slot.remove();
+  });
+
+  it('Given 영업 단계 아래 자리가 없음(기록 칸 안에 그림) When 기록 칸 Then 단계 고치기는 묻는 말과 함께, 일정만 바꾸기도 전처럼 있다', () => {
+    renderArea(true, { inCoach: true });
+    const area = screen.getByTestId('records-area');
+    expect(within(area).getByTestId('records-stage-fix')).toHaveTextContent(
+      recordsArea.stageFixAsk,
+    );
+    expect(within(area).getByTestId('records-stage-toggle')).not.toHaveClass('ant-btn-link');
+    expect(within(area).getByTestId('records-schedule-fix')).toBeInTheDocument();
   });
 
   it('Given 다음 일정이 오늘보다 앞 When 일정 줄 Then 주의색 굵은 글자로 보이고, 앞으로의 일정은 보통 글자다 (#972)', () => {

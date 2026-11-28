@@ -1,12 +1,16 @@
-// 상세 "한눈에" 상자(#674, PM 결정 2026-11-13): 어떤 회사 / 거산과 맞는 점 / 근거 상태 / 확인할 것 / 영업 상태.
-// 전에는 머리에 흩어져 있던 홈페이지 줄·대표번호 줄·공장 정보 줄·산업 꼬리표·접촉 횟수를 이 상자 한 곳에 모은다.
-// 모두 상세 응답에 이미 있는 값이고 읽기만 한다(단추·입력 없음. 링크는 새 창).
-// 예외 하나(#677): 확정한 공정과 다른 AI 공정 제안이 있으면 공정 줄 아래에 [확정 값 유지]·[○○도 추가]가 보인다.
-// 값이 없는 줄은 줄째 빼거나 "확인 전"·"아직 조사 전"으로 적는다.
+// 상세 "한눈에"(#674 → #996, PM 결정 2026-11-29): 핵심 줄(어떤 회사 · 맞는 점 · 특징 · 확인할 점) + 위치.
+// "왜 이 회사인가"와 한 블록(카드 하나) 안에 놓인다. 카드 틀은 블록이 그리고 이 부품은 큰 제목과 줄만 그린다.
+// 핵심 줄은 저장된 값에서 프로그램이 골라 붙인다(`glanceKeys.ts`, AI 호출 없음). 줄 수는 고정이 아니다:
+// 갈래(어떤 회사 · 맞는 점 · 특징 · 확인할 점)마다 값이 있는 만큼 줄이 생기고, 값이 없는 갈래는 그리지 않으며,
+// 갈래마다 앞 3줄까지 보이고 나머지는 "더 보기 n줄"로 편다. 갈래는 배열로 받아 그려 새 갈래를 더하기 쉽다.
+// 근거 문장에서 온 줄은 끝에 "○○ 근거 ↓"가 붙어, 누르면 아래 "왜 이 회사인가"의 그 줄로 스크롤 · 초점을 옮긴다.
+// 전에 이 상자에 있던 것 가운데: 공정 · 소재 · 산업 · 거리 · 홈페이지는 머리의 요약 줄(`DetailSummaryRow.tsx`)로,
+// 대표번호 · 대표명은 "담당자 연락처" 칸(`ContactCard.tsx`)으로, 접촉 횟수는 "기록" 칸 제목 옆으로 옮겼고,
+// "확인할 것 n가지"는 오른쪽 영업 코치 "확인사항"과 같아 뺐다. 근거 상태(근거 수 · 적합도 · 조사일 · 오래됨)와
+// 공급망 위치는 같은 내용이 다른 곳에 없어 맨 아래 작은 줄로 남긴다.
 import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { Button } from 'antd';
 import type {
-  ContactCount,
   DetailHeader,
   DetailMap,
   EvidenceView,
@@ -17,27 +21,21 @@ import type {
   ScoreItemView,
 } from '../../api/types';
 import {
-  cardRows,
-  companyFieldFixTexts,
   companyGlance,
-  companySourceTexts,
   companySummary,
+  detailCompose,
   detailReport,
   factoryProfileLabels,
-  filterStateLabels,
   glanceVisual,
-  homepageLinkLabel,
-  labelFor,
   mapLinkLabels,
-  materialLabels,
-  recordsArea,
   supplyTierLabels,
 } from '../../labels/ko';
 import {
+  accent,
   colors,
+  detailLayout,
   detailTheme,
   radius,
-  spacing,
   statusPalette,
   typography,
 } from '../../theme/tokens';
@@ -45,165 +43,178 @@ import { factoryProfileText } from '../../utils/factoryProfile';
 import { daysAgo, formatMonthDay } from '../../utils/time';
 import StatusTag from '../common/StatusTag';
 import { buildMapLinks } from '../common/mapLinks';
-import { useFrame } from '../frame/FrameContext';
-import { choiceMarksOf } from '../records/ChoiceQuestion';
-import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
-import { pickGlanceLink } from './CompanyGlance';
-import DetailMiniMap from './DetailMiniMap';
-import CompanyFieldFix from './CompanyFieldFix';
+import BlockHeading from './BlockHeading';
 import CompanyInfoFix from './CompanyInfoFix';
-import MaterialFix from './MaterialFix';
-import type { MaterialOption } from './MaterialFix';
-import ProcessFix from './ProcessFix';
-import type { ProcessOption } from './ProcessFix';
-import ProcessDifference from './ProcessDifference';
-import type { ProcessProposal } from './ProcessDifference';
+import DetailMiniMap from './DetailMiniMap';
+import { reasonLineId } from './WhyThisCompany';
+import { GLANCE_LINES_SHOWN, glanceGroupsOf } from './glanceKeys';
+import type { GlanceGroup, GlanceLine } from './glanceKeys';
+
+// 다른 부품(확인사항 · 회사별 보고서)이 전부터 이 파일에서 가져다 쓰던 계산. 지금은 `glanceState.ts`에 있다.
+export { detailCheckWordsOf, processStateOf } from './glanceState';
+export type { DetailCheckWords } from './glanceState';
 
 const texts = detailReport.glance;
+const keyTexts = detailCompose.glance;
 const secondary = { color: colors.textSecondary, fontSize: typography.fontSizeSecondary } as const;
 const line = { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8 } as const;
+
+/** 지도 상자 높이(#996): 전보다 조금 낮게, 가로는 칸 폭을 다 쓴다. */
+export const GLANCE_MAP_HEIGHT = 120;
 
 function isHttpUrl(value: string | null | undefined): value is string {
   return Boolean(value) && /^https?:\/\/\S+$/.test(value as string);
 }
 
-/** 확정된 공정 연결(같은 공정은 한 번)과 AI가 제안만 한 공정 이름. "왜 추천했나" 줄(#659)과 같은 기준이다. */
-export function processStateOf(
-  header: DetailHeader,
-  processLinks: ProcessLinkView[],
-  reviewItems: ReviewItem[],
-): { confirmed: ProcessLinkView[]; proposedNames: string[]; proposals: ProcessProposal[] } {
-  const marks = choiceMarksOf({ processLinks, reviewItems, header }).process;
-  const seen = new Set<string>();
-  const confirmed = processLinks.filter((link) => {
-    if (marks[link.processCode] !== 'CONFIRMED' || seen.has(link.processCode)) return false;
-    seen.add(link.processCode);
-    return true;
-  });
-  const nameOfLink = new Map(
-    processLinks.map((link) => [link.processCode, link.processName || link.processCode]),
-  );
-  const proposals: ProcessProposal[] = [];
-  for (const item of reviewItems) {
-    if (item.kind !== 'PROCESS_LINK_PROPOSAL') continue;
-    if (proposals.some((entry) => entry.itemId === item.itemId)) continue;
-    const code = item.itemId.replace(/^PL:/, '');
-    proposals.push({
-      itemId: item.itemId,
-      name: nameOfLink.get(code) ?? processNameOf(item) ?? code,
-    });
-  }
-  const proposedNames = [...new Set(proposals.map((entry) => entry.name))];
-  return { confirmed, proposedNames, proposals };
+/** 아래 "왜 이 회사인가"의 그 줄로 내려가 초점을 둔다. 줄이 없으면 아무것도 하지 않는다. */
+function goReasonLine(code: string) {
+  const target = document.getElementById(reasonLineId(code));
+  if (!target) return;
+  target.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  target.focus({ preventScroll: true });
 }
 
-export interface DetailCheckWords {
-  process: boolean;
-  material: boolean;
-  evidence: boolean;
-  /** 이름 그대로 보이는 조건(확인이 필요한 요구 이름). */
-  names: string[];
+/** 핵심 줄 하나: 글 + 꼬리표 · 덧말 + 글 끝 "○○ 근거 ↓". */
+function KeyLine({ line }: { line: GlanceLine }) {
+  return (
+    <li data-testid="glance-key-line">
+      <span data-testid={line.testId}>
+        <span data-testid="glance-key-text" style={line.muted ? secondary : undefined}>
+          {line.text}
+        </span>
+        {line.note ? (
+          <>
+            {' '}
+            <span style={secondary}>{line.note}</span>
+          </>
+        ) : null}
+        {line.tag ? (
+          <>
+            {' '}
+            <StatusTag tone="ask">{line.tag}</StatusTag>
+          </>
+        ) : null}
+      </span>
+      {/* 글 끝에 "○○ 근거 ↓"를 이어 붙인다(반 폭 칸에서 글이 칸 폭을 다 쓰게). */}
+      {line.target ? (
+        <>
+          {' '}
+          <a
+            href={`#${reasonLineId(line.target.code)}`}
+            onClick={(event) => {
+              event.preventDefault();
+              if (line.target) goReasonLine(line.target.code);
+            }}
+            data-testid="glance-key-link"
+            data-target={line.target.code}
+            style={{
+              color: accent.text,
+              fontSize: detailLayout.smallFont,
+              textDecoration: 'underline',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {keyTexts.evidenceLink(line.target.label)} <span aria-hidden="true">↓</span>
+          </a>
+        </>
+      ) : null}
+    </li>
+  );
 }
 
 /**
- * "확인할 것" 낱말(카드 #659와 같은 말: 공정 · 소재 · 근거 부족 + 요구 이름).
- * 카드는 서버가 준 종류로 만들지만 상세 응답에는 그 칸이 없어, 상세에 있는 값으로 만든다:
- * 공정 = 확정된 공정이 없음(AI 제안뿐이거나 평가 전), 소재 = 판정 대기인 공정 연결에 적용 소재가 없음,
- * 근거 부족 = 핵심 근거 재확인 표시이거나 평가 전, 이름 = 판정이 "확인 필요"인 요구.
+ * 갈래 하나: 왼쪽 이름표(색 + 글자) 한 번 + 오른쪽 줄들. 줄이 여러 개면 점 목록으로 보이고,
+ * `GLANCE_LINES_SHOWN`줄을 넘으면 앞의 줄만 보이고 "더 보기 n줄"로 편다(다시 누르면 접힘).
+ * 이름표는 줄마다 되풀이하지 않는다(같은 색 이름표가 줄줄이 서면 글보다 이름표가 먼저 읽힌다).
  */
-export function detailCheckWordsOf(
-  header: DetailHeader,
-  processLinks: ProcessLinkView[],
-  reviewItems: ReviewItem[],
-  requirements: RequirementCheckView[],
-): DetailCheckWords {
-  const notEvaluated = header.classificationCode === 'NOT_EVALUATED';
-  const { confirmed, proposedNames } = processStateOf(header, processLinks, reviewItems);
-  return {
-    process: confirmed.length === 0 && (proposedNames.length > 0 || notEvaluated),
-    material: processLinks.some(
-      (link) => !link.appliedMaterial && (link.result === 'PENDING' || !link.result),
-    ),
-    evidence: header.coreEvidenceRecheck || notEvaluated,
-    names: [
-      ...new Set(
-        requirements.filter((row) => row.result === 'QUESTION_NEEDED').map((row) => row.name),
-      ),
-    ],
-  };
-}
-
-function ExternalLink({ url, children }: { url: string; children: ReactNode }) {
-  return (
-    <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
-      {children}
-    </a>
-  );
-}
-
-function Row({ label, testId, children }: { label: string; testId: string; children: ReactNode }) {
+function KeyGroup({ group }: { group: GlanceGroup }) {
+  const [open, setOpen] = useState(false);
+  const palette =
+    group.tone === 'good'
+      ? statusPalette.ok
+      : group.tone === 'warn'
+        ? statusPalette.wait
+        : statusPalette.neutral;
+  const hidden = Math.max(0, group.lines.length - GLANCE_LINES_SHOWN);
+  const lines = open ? group.lines : group.lines.slice(0, GLANCE_LINES_SHOWN);
+  const many = group.lines.length > 1;
+  const listId = `glance-lines-${group.key}`;
   return (
     <div
-      data-testid={testId}
+      data-testid={group.testId}
+      data-tone={group.tone}
+      data-lines={group.lines.length}
       style={{
-        display: 'grid',
-        gridTemplateColumns: '104px minmax(0, 1fr)',
-        columnGap: 16,
-        alignItems: 'baseline',
+        display: 'flex',
+        gap: 10,
+        alignItems: 'flex-start',
+        padding: '8px 0',
+        borderTop: `1px solid ${colors.borderSecondary}`,
       }}
     >
-      {/* #972 새 시안: 테두리·바탕 없이 왼쪽 작은 이름표(흐린 글자) + 오른쪽 값. */}
-      <dt style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}>{label}</dt>
-      <dd style={{ margin: 0, display: 'grid', gap: 4, minWidth: 0 }}>{children}</dd>
+      <dt
+        style={{
+          flex: 'none',
+          width: detailLayout.keyLabelWidth,
+          textAlign: 'center',
+          padding: '2px 0',
+          borderRadius: radius.tag,
+          background: palette.bg,
+          color: palette.fg,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {group.label}
+      </dt>
+      <dd style={{ margin: 0, flex: 1, minWidth: 0, display: 'grid', gap: 4 }}>
+        <ul
+          id={listId}
+          data-testid={group.listTestId}
+          style={{
+            margin: 0,
+            display: 'grid',
+            gap: 4,
+            // 줄이 하나면 점 없이, 여러 개면 점 목록으로(어디서 줄이 바뀌는지 보이게).
+            paddingLeft: many ? 18 : 0,
+            listStyle: many ? 'disc' : 'none',
+          }}
+        >
+          {lines.map((line, index) => (
+            <KeyLine key={`${index}:${line.text}`} line={line} />
+          ))}
+        </ul>
+        {hidden > 0 ? (
+          <div>
+            <Button
+              type="link"
+              size="small"
+              aria-expanded={open}
+              aria-controls={listId}
+              onClick={() => setOpen((value) => !value)}
+              data-testid="glance-key-more"
+              style={{ padding: 0, height: 'auto', fontSize: typography.fontSizeSecondary }}
+            >
+              {open ? keyTexts.less : keyTexts.more(hidden)}
+            </Button>
+          </div>
+        ) : null}
+      </dd>
     </div>
   );
 }
 
 /**
- * "거산과 맞는 점"의 상태 표시(PM 지시 2026-11-13). 색으로만 구분하지 않게 모양과 글자를 함께 둔다.
- * confirmed = 사람이 확인한 값(사례 파일·담당자 확정): 초록 ✓ + "확인됨"(소재는 "통과").
- * ai = AI가 제안만 한 값: 회색 ○ + "AI 제안 · 확인 전". 초록을 쓰지 않는다.
+ * 갈래 배열을 받아 그대로 그린다. 갈래 수도 줄 수도 고정이 아니다(값이 있는 만큼).
+ * 새 갈래(예: 통화로 알아낸 것)는 배열에 더하면 같은 모양으로 그려진다.
  */
-function FitMark({ kind, text }: { kind: 'confirmed' | 'ai'; text: string }) {
-  const palette = kind === 'confirmed' ? statusPalette.ok : statusPalette.neutral;
+export function GlanceGroupList({ groups }: { groups: GlanceGroup[] }) {
   return (
-    <span
-      role="img"
-      aria-label={kind === 'confirmed' ? texts.markConfirmedAria(text) : texts.markAiAria}
-      data-testid="glance-fit-mark"
-      data-mark={kind}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '0 10px',
-        borderRadius: radius.tag,
-        background: palette.bg,
-        color: palette.fg,
-        fontSize: typography.fontSizeSecondary,
-        fontWeight: kind === 'confirmed' ? 600 : 400,
-      }}
-    >
-      <span aria-hidden="true">{kind === 'confirmed' ? '✓' : '○'}</span>
-      <span aria-hidden="true">{text}</span>
-    </span>
-  );
-}
-
-function FitLine({
-  label,
-  testId,
-  children,
-}: {
-  label: string;
-  testId: string;
-  children: ReactNode;
-}) {
-  return (
-    <div style={line} data-testid={testId}>
-      <span style={{ ...secondary, minWidth: 40 }}>{label}</span>
-      <span>{children}</span>
-    </div>
+    <dl data-testid="glance-keys" style={{ margin: 0 }}>
+      {groups.map((group) => (
+        <KeyGroup key={group.key} group={group} />
+      ))}
+    </dl>
   );
 }
 
@@ -213,31 +224,14 @@ export interface DetailGlanceProps {
   evidence: EvidenceView[];
   reviewItems?: ReviewItem[];
   requirements?: RequirementCheckView[];
-  contactCount?: ContactCount | null;
-  /** 마지막 접촉 날짜(YYYY-MM-DD). 없으면 그 말을 빼고 접촉 횟수만 보인다. */
-  lastContactAt?: string | null;
-  /** 아래 "2. 통화에서 확인할 것"에 보이는 줄 수(#691). 낱말이 없어도 줄이 있으면 "n가지"로 적는다. */
-  callCheckCount?: number;
   /** 시험이 현재 시각에 기대지 않게 지금 시각을 받을 수 있다. */
   now?: Date;
   /**
-   * 공정 줄 아래 "AI는 다르게 봄"에서 고를 때 쓰는 값(#677). 넘기지 않으면 그 줄을 그리지 않는다.
-   * 이 상자에서 단추가 있는 곳은 그 줄뿐이다.
+   * #958: 위치 줄에 주소 · 회사 이름 [고치기]를 붙일 때 넘긴다. 넘기지 않으면 읽기만 한다.
+   * 저장하면 거리와 지도가 바뀌므로 상세를 새로 불러오게 알린다.
    */
-  processChoice?: {
-    oppId: string;
-    evalId: string | null;
-    onSaved: () => void;
-    /** #847: 공정 줄 [고치기]의 보기(거산 공정 목록). 없으면 [고치기]를 보이지 않는다. */
-    options?: ProcessOption[];
-    /** #958: 소재 줄 [고치기]의 보기(거산 처리 소재). 없으면 [고치기]를 보이지 않는다. */
-    materialOptions?: MaterialOption[];
-    /** #958: 어떤 회사 칸에 주소·회사 이름 [고치기]를 붙인다. */
-    companyInfo?: boolean;
-  };
-  /** #803: 산업 칸 안에 바로 놓는 [확정]·[고치기] 칩(전에는 아래 "회사 소개 · 산업군" 카드). 없으면 글로만 보인다. */
-  industryEditor?: ReactNode;
-  /** #803: 근거 상태 막대(점수 8항목 가운데 근거가 붙은 항목 수). 없으면 막대를 그리지 않는다. */
+  companyInfo?: { oppId: string; onSaved: () => void };
+  /** 점수 항목(쉬운 요약 · 근거 번호). 핵심 줄과 근거 상태 막대에 쓴다. 없으면 근거 문장 줄과 막대를 그리지 않는다. */
   scoreItems?: ScoreItemView[];
   /** #803: 작은 지도 좌표(서버 detail.map). 없거나 지도를 못 그리면 거리 그림으로 대신한다. */
   map?: DetailMap | null;
@@ -304,7 +298,7 @@ function EvidenceBar({ items }: { items: ScoreItemView[] }) {
   return (
     <div
       data-testid="glance-evidence-bar"
-      style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
     >
       <span
         role="img"
@@ -374,51 +368,30 @@ export default function DetailGlance({
   evidence,
   reviewItems = [],
   requirements = [],
-  contactCount,
-  lastContactAt,
-  callCheckCount = 0,
   now,
-  processChoice,
-  industryEditor,
+  companyInfo,
   scoreItems,
   map = null,
   mapClientId,
   plateDecider = null,
 }: DetailGlanceProps) {
-  const { config } = useFrame();
   // #803: 지도를 못 그리면(키 없음·인증 실패) 거리 그림으로 돌아간다.
   const [mapFailed, setMapFailed] = useState(false);
 
-  // ── 어떤 회사
-  const summary = header.summaryLine?.trim() || null;
-  const item = header.opportunityItem?.trim() || null;
-  const industries = header.industries ?? [];
-  const factoryIntro = item ? companyGlance.produces(item) : null;
+  // ── 핵심 줄: 어떤 회사 · 맞는 점 · 특징 · 확인할 점(저장된 값에서 골라 붙인 갈래 배열. 값이 없는 갈래는 없다)
+  const groups = glanceGroupsOf({
+    header,
+    processLinks,
+    evidence,
+    reviewItems,
+    requirements,
+    scoreItems,
+  });
+
+  // ── 위치
   const factoryLine = factoryProfileText(header.factoryProfile);
   const address = header.address?.trim() || null;
   const mapLinks = buildMapLinks(header.address);
-  const link = pickGlanceLink(header, evidence);
-  const phone = header.mainPhone ?? null;
-  const representative = header.representativeName?.trim() || null;
-  const telHref =
-    phone && /^[0-9+()\-\s]+$/.test(phone) ? `tel:${phone.replace(/[^0-9+]/g, '')}` : null;
-  const phoneSourceUrl = isHttpUrl(header.mainPhoneSourceUrl) ? header.mainPhoneSourceUrl : null;
-  const phoneConfirmedName =
-    config?.staff.find((entry) => entry.key === header.mainPhoneConfirmedBy)?.displayName ??
-    header.mainPhoneConfirmedBy ??
-    '';
-  const highlights = header.highlights ?? [];
-  const isAi = header.researchSource === 'AI';
-
-  // ── 거산과 맞는 점
-  const { confirmed, proposedNames, proposals } = processStateOf(header, processLinks, reviewItems);
-  const firstLink = confirmed[0] ?? null;
-  // #677: 사람이 확정한 공정이 있는데 AI가 다른 공정을 제안했다. 덮어쓰지 않고 줄로 알린다.
-  const showDifference = Boolean(processChoice) && confirmed.length > 0 && proposals.length > 0;
-  const materialLink = confirmed.find((row) => row.appliedMaterial) ?? null;
-  // 사람이 확인한 산업(사례 파일·담당자 확정)만 초록 체크다. AI가 붙인 값은 중립 표시.
-  const industryConfirmed =
-    header.industriesSource === 'CASE_FILE' || header.industriesSource === 'STAFF';
   const distance = header.distanceKm ?? null;
 
   // ── 근거 상태
@@ -435,19 +408,6 @@ export default function DetailGlance({
           : researched
             ? texts.homepageNone
             : texts.notResearched;
-  // #511: 공식 홈페이지 대신 찾은 공개 페이지면 주소 옆에 "확인 필요 · 이유 · 확신도"를 보인다.
-  const unofficialText =
-    header.homepagePageKind && header.homepageStatus === 'NEEDS_CONFIRMATION'
-      ? [
-          companyGlance.needsConfirm,
-          companyGlance.unofficialPage[header.homepagePageKind],
-          typeof header.homepageConfidence === 'number'
-            ? companyGlance.confidence(header.homepageConfidence)
-            : null,
-        ]
-          .filter((part): part is string => part !== null)
-          .join(' · ')
-      : null;
   const researchedDate = formatMonthDay(header.researchedAt);
   const ago = daysAgo(header.researchedAt, now);
   const researchedText =
@@ -476,379 +436,116 @@ export default function DetailGlance({
     researchedText,
   ].filter((part): part is string => part !== null);
 
-  // ── 확인할 것
-  const check = detailCheckWordsOf(header, processLinks, reviewItems, requirements);
-  const words: string[] = [];
-  if (check.process) words.push(cardRows.checkWords.process);
-  if (check.material) words.push(cardRows.checkWords.material);
-  if (check.evidence) words.push(cardRows.checkWords.evidence);
-  const checkText =
-    words.length > 0 || check.names.length > 0
-      ? texts.checkWords(words, check.names)
-      : callCheckCount > 0
-        ? texts.checkCallCount(callCheckCount)
-        : texts.checkNone;
-
-  // ── 영업 상태
-  const lastContact = formatMonthDay(lastContactAt);
-  const salesParts = contactCount
-    ? [
-        recordsArea.contactCount(
-          contactCount.total,
-          contactCount.call,
-          contactCount.email,
-          contactCount.visit,
-        ),
-        contactCount.total > 0 && lastContact ? texts.lastContact(lastContact) : null,
-      ].filter((part): part is string => part !== null)
-    : [];
+  const showLocation = Boolean(address || factoryLine || companyInfo);
 
   return (
     <section
       aria-labelledby="detail-glance-heading"
       data-testid="detail-glance"
-      style={{
-        display: 'grid',
-        gap: 12,
-        padding: spacing.cardPadding,
-        background: colors.bgContainer,
-        border: `1px solid ${detailTheme.border}`,
-        borderRadius: detailTheme.radius,
-      }}
+      style={{ display: 'grid', gap: 10 }}
     >
-      <h2
-        id="detail-glance-heading"
-        style={{ margin: 0, fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
-      >
-        {texts.title}
-      </h2>
-      <dl style={{ margin: 0, display: 'grid', gap: 12 }}>
-        <Row label={texts.company} testId="glance-company">
-          <div
-            data-testid="glance-company-layout"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}
-          >
-            <div style={{ flex: '1 1 260px', minWidth: 0, display: 'grid', gap: 8 }}>
-              <div
-                style={line}
-                data-testid={summary ? 'company-summary-line' : 'glance-factory-intro'}
-              >
-                {summary ? (
-                  <>
-                    <span>{summary}</span>
-                    {isAi ? <StatusTag tone="ask">{companySummary.aiSuggestion}</StatusTag> : null}
-                  </>
-                ) : factoryIntro ? (
-                  <>
-                    <span>{factoryIntro}</span>
-                    <span style={secondary}>({companyGlance.factoryBasis})</span>
-                  </>
-                ) : (
-                  <span style={secondary} data-testid="glance-not-researched">
-                    {texts.notResearched}
+      <BlockHeading id="detail-glance-heading" title={texts.title} hint={keyTexts.hint} />
+      <GlanceGroupList groups={groups} />
+
+      {showLocation ? (
+        <div
+          data-testid="glance-location"
+          style={{
+            display: 'grid',
+            gap: 6,
+            paddingTop: 8,
+            borderTop: `1px solid ${colors.borderSecondary}`,
+          }}
+        >
+          <div style={{ ...line, fontSize: typography.fontSizeSecondary }}>
+            <span style={{ color: colors.textDimmed, fontSize: detailLayout.smallFont }}>
+              {keyTexts.location}
+            </span>
+            {address || factoryLine ? (
+              // 상자 없이(contents) 둬서 "위치" 이름표 · 주소 · 지도 링크가 한 줄에 이어지고 좁으면 차례로 줄이 바뀐다.
+              <span style={{ display: 'contents' }} data-testid="glance-factory-profile">
+                <span>{[address, factoryLine].filter((part) => part).join(' · ')}</span>
+                {factoryLine && header.factoryProfile ? (
+                  <span style={secondary}>
+                    (
+                    {factoryProfileLabels.basis(
+                      formatMonthDay(header.factoryProfile.fileDate) ?? '',
+                    )}
+                    )
                   </span>
-                )}
-              </div>
-              {address || factoryLine ? (
-                <div style={line} data-testid="glance-factory-profile">
-                  <span>{[address, factoryLine].filter((part) => part).join(' · ')}</span>
-                  {/* 주소와 나란히 거산 본사까지의 직선거리(#666, PM 요청: 주소와 같이 보고 비교). 계산한 숫자라 확인 표시는 없다. */}
-                  {address && distance !== null ? (
-                    <strong data-testid="detail-distance">
-                      {companySummary.distance(distance)}
-                    </strong>
-                  ) : null}
-                  {address && distance !== null && (!map || mapFailed) ? (
-                    <DistanceLine km={distance} />
-                  ) : null}
-                  {factoryLine && header.factoryProfile ? (
-                    <span style={secondary}>
-                      (
-                      {factoryProfileLabels.basis(
-                        formatMonthDay(header.factoryProfile.fileDate) ?? '',
-                      )}
-                      )
-                    </span>
-                  ) : null}
-                  {mapLinks ? (
-                    <span
-                      data-testid="detail-map-links"
-                      style={{ display: 'inline-flex', gap: 12 }}
+                ) : null}
+                {mapLinks ? (
+                  <span data-testid="detail-map-links" style={{ display: 'inline-flex', gap: 12 }}>
+                    <a
+                      href={mapLinks.naver}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: 'underline' }}
+                      data-testid="detail-map-naver"
                     >
-                      <a
-                        href={mapLinks.naver}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: 'underline' }}
-                        data-testid="detail-map-naver"
-                      >
-                        {mapLinkLabels.naver} ↗
-                      </a>
-                      <a
-                        href={mapLinks.kakao}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: 'underline' }}
-                        data-testid="detail-map-kakao"
-                      >
-                        {mapLinkLabels.kakao} ↗
-                      </a>
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-              {processChoice?.companyInfo ? (
-                <CompanyInfoFix
-                  oppId={processChoice.oppId}
-                  address={address}
-                  companyName={header.customerName}
-                  canRename={header.discoverySource === 'STAFF_ADDED'}
-                  onSaved={processChoice.onSaved}
-                />
-              ) : null}
-              <SupplyTierLine header={header} plateDecider={plateDecider} />
-              <div style={line} data-testid="glance-homepage">
-                <span style={secondary}>{companyGlance.homepage}</span>
-                {link?.kind === 'homepage' ? (
-                  <span data-testid="detail-homepage">
-                    <ExternalLink url={link.url}>
-                      {homepageLinkLabel} ↗ {link.url}
-                    </ExternalLink>
-                    {unofficialText ? (
-                      <span style={secondary} data-testid="glance-homepage-unofficial">
-                        {' '}
-                        {unofficialText}
-                      </span>
-                    ) : null}
-                  </span>
-                ) : header.homepageStatus === 'NOT_FOUND' && header.homepageClosedReason ? (
-                  // #793: 조사가 홈페이지를 닫힌 것으로 봤다. 닫힌 사이트의 옛 근거 주소 대신 이유를 보인다.
-                  <span style={secondary} data-testid="glance-homepage-closed">
-                    {companyGlance.homepageClosed(header.homepageClosedReason)}
-                  </span>
-                ) : link ? (
-                  <span data-testid="glance-fallback-link" data-kind={link.kind}>
-                    <ExternalLink url={link.url}>
-                      {link.kind === 'search'
-                        ? companyGlance.searchPage
-                        : companyGlance.evidencePage}{' '}
-                      ↗ {link.url}
-                    </ExternalLink>
-                  </span>
-                ) : (
-                  <span style={secondary} data-testid="glance-no-homepage">
-                    {researched || header.homepageStatus === 'NOT_FOUND'
-                      ? companyGlance.noHomepage
-                      : texts.notResearched}
-                  </span>
-                )}
-              </div>
-              {phone || processChoice?.companyInfo ? (
-                <div style={line} data-testid="company-phone">
-                  <span style={secondary}>{texts.phone}</span>
-                  {!phone ? (
-                    <span style={secondary} data-testid="company-phone-none">
-                      {companyFieldFixTexts.none}
-                    </span>
-                  ) : telHref ? (
-                    <a href={telHref} data-testid="company-phone-link">
-                      {phone}
+                      {mapLinkLabels.naver} ↗
                     </a>
-                  ) : (
-                    <span>{phone}</span>
-                  )}
-                  {phone && phoneSourceUrl ? (
-                    <span style={secondary}>
-                      {companySummary.phoneSource}:{' '}
-                      <a
-                        href={phoneSourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        data-testid="company-phone-source"
-                      >
-                        {companySummary.phoneSourceHomepage} ↗
-                      </a>
-                    </span>
-                  ) : phone && header.mainPhoneSource && header.mainPhoneSource !== 'HOMEPAGE' ? (
-                    // #980: 팩토리온 공장조회·담당자 입력도 출처를 보인다.
-                    <span style={secondary} data-testid="company-phone-source">
-                      {companySummary.phoneSource}:{' '}
-                      {companySourceTexts.phone[header.mainPhoneSource]}
-                    </span>
-                  ) : null}
-                  {phone ? (
-                    <span style={secondary} data-testid="company-phone-status">
-                      {header.mainPhoneConfirmedAt
-                        ? companySummary.phoneConfirmed(
-                            formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
-                            phoneConfirmedName,
-                          )
-                        : companySummary.phoneUnconfirmed}
-                    </span>
-                  ) : null}
-                  {processChoice?.companyInfo ? (
-                    <CompanyFieldFix
-                      oppId={processChoice.oppId}
-                      field="mainPhone"
-                      value={phone}
-                      onSaved={processChoice.onSaved}
-                    />
-                  ) : null}
-                </div>
-              ) : null}
-              {/* #980(PM 결정 2026-11-28): 회사 대표명. 공장등록 조회에서 오거나 담당자가 적는다. */}
-              {representative || processChoice?.companyInfo ? (
-                <div style={line} data-testid="company-representative">
-                  <span style={secondary}>{companyFieldFixTexts.representativeLabel}</span>
-                  {representative ? (
-                    <span data-testid="company-representative-name">{representative}</span>
-                  ) : (
-                    <span style={secondary}>{companyFieldFixTexts.none}</span>
-                  )}
-                  {representative && header.representativeNameSource ? (
-                    <span style={secondary} data-testid="company-representative-source">
-                      {companySummary.phoneSource}:{' '}
-                      {companySourceTexts.representative[header.representativeNameSource]}
-                    </span>
-                  ) : null}
-                  {processChoice?.companyInfo ? (
-                    <CompanyFieldFix
-                      oppId={processChoice.oppId}
-                      field="representativeName"
-                      value={representative}
-                      onSaved={processChoice.onSaved}
-                    />
-                  ) : null}
-                </div>
-              ) : null}
-              {highlights.length > 0 ? (
-                <div style={line} data-testid="company-highlights">
-                  <span style={secondary}>{texts.highlights}</span>
-                  <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    {highlights.map((text) => (
-                      <li key={text}>{text}</li>
-                    ))}
-                  </ul>
-                  {isAi ? <StatusTag tone="ask">{companySummary.aiSuggestion}</StatusTag> : null}
-                </div>
-              ) : null}
-            </div>
-            {map && !mapFailed ? (
-              <DetailMiniMap
-                map={map}
-                href={mapLinks?.naver ?? null}
-                onUnavailable={() => setMapFailed(true)}
-                {...(mapClientId !== undefined ? { clientId: mapClientId } : {})}
+                    <a
+                      href={mapLinks.kakao}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: 'underline' }}
+                      data-testid="detail-map-kakao"
+                    >
+                      {mapLinkLabels.kakao} ↗
+                    </a>
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+            {companyInfo ? (
+              <CompanyInfoFix
+                oppId={companyInfo.oppId}
+                address={address}
+                companyName={header.customerName}
+                canRename={header.discoverySource === 'STAFF_ADDED'}
+                onSaved={companyInfo.onSaved}
               />
             ) : null}
           </div>
-        </Row>
-
-        <Row label={texts.fit} testId="glance-fit">
-          <FitLine label={texts.process} testId="glance-fit-process">
-            {firstLink ? (
-              <>
-                {firstLink.processName || firstLink.processCode}{' '}
-                <FitMark kind="confirmed" text={texts.markConfirmed} />
-                {confirmed.length > 1 ? ` ${texts.moreCount(confirmed.length - 1)}` : null}
-              </>
-            ) : proposedNames.length > 0 ? (
-              <>
-                {texts.processProposedNames(
-                  proposedNames.slice(0, REVIEW_FOLD_NAME_LIMIT),
-                  Math.max(0, proposedNames.length - REVIEW_FOLD_NAME_LIMIT),
-                )}{' '}
-                <FitMark kind="ai" text={texts.markAi} />
-              </>
-            ) : (
-              texts.pending
-            )}
-            {processChoice?.options ? (
-              <ProcessFix
-                oppId={processChoice.oppId}
-                current={confirmed.map((row) => row.processCode)}
-                options={processChoice.options}
-                onSaved={processChoice.onSaved}
-              />
-            ) : null}
-          </FitLine>
-          {showDifference && processChoice ? (
-            <ProcessDifference
-              oppId={processChoice.oppId}
-              evalId={processChoice.evalId}
-              proposals={proposals}
-              confirmedNames={confirmed.map((row) => row.processName || row.processCode)}
-              onSaved={processChoice.onSaved}
+          {/* 지도를 못 그리면(좌표 없음 · 키 없음 · 인증 실패) 거리 숫자만으로 그린 그림으로 대신한다. */}
+          {address && distance !== null && (!map || mapFailed) ? (
+            <DistanceLine km={distance} />
+          ) : null}
+          {map && !mapFailed ? (
+            <DetailMiniMap
+              map={map}
+              href={mapLinks?.naver ?? null}
+              onUnavailable={() => setMapFailed(true)}
+              width="100%"
+              height={GLANCE_MAP_HEIGHT}
+              {...(mapClientId !== undefined ? { clientId: mapClientId } : {})}
             />
           ) : null}
-          <FitLine label={texts.material} testId="glance-fit-material">
-            {materialLink?.appliedMaterial ? (
-              <>
-                {labelFor(materialLabels, materialLink.appliedMaterial)}{' '}
-                {materialLink.result === 'PASS' ? (
-                  <FitMark kind="confirmed" text={filterStateLabels.PASS} />
-                ) : materialLink.result ? (
-                  `· ${labelFor(filterStateLabels, materialLink.result)}`
-                ) : null}
-              </>
-            ) : (
-              texts.pending
-            )}
-            {processChoice?.materialOptions ? (
-              <MaterialFix
-                oppId={processChoice.oppId}
-                current={materialLink?.appliedMaterial ?? null}
-                hasProcess={confirmed.length > 0}
-                options={processChoice.materialOptions}
-                onSaved={processChoice.onSaved}
-              />
-            ) : null}
-          </FitLine>
-          <FitLine label={texts.industry} testId="glance-fit-industry">
-            {industryEditor ? (
-              industryEditor
-            ) : industries.length > 0 ? (
-              <>
-                {industries.join(', ')}{' '}
-                {industryConfirmed ? (
-                  <FitMark kind="confirmed" text={texts.markConfirmed} />
-                ) : (
-                  <FitMark kind="ai" text={texts.markAi} />
-                )}
-              </>
-            ) : (
-              texts.pending
-            )}
-          </FitLine>
-        </Row>
+        </div>
+      ) : null}
 
-        <Row label={texts.evidence} testId="glance-evidence">
-          <div style={line}>
-            <span data-testid="glance-evidence-text">{evidenceParts.join(' · ')}</span>
-            {header.researchStale ? (
-              <StatusTag tone="recheck" data-testid="company-stale-tag">
-                {companySummary.stale}
-              </StatusTag>
-            ) : null}
-            {header.researchSuggestAgain ? (
-              <StatusTag tone="ask" data-testid="company-suggest-again-tag">
-                {companySummary.suggestAgainTag}
-              </StatusTag>
-            ) : null}
-          </div>
-          {scoreItems ? <EvidenceBar items={scoreItems} /> : null}
-        </Row>
+      <SupplyTierLine header={header} plateDecider={plateDecider} />
 
-        <Row label={texts.check} testId="glance-check">
-          <span data-testid="glance-check-text">{checkText}</span>
-        </Row>
-
-        {salesParts.length > 0 ? (
-          <Row label={texts.sales} testId="glance-sales">
-            <span data-testid="detail-contact-count">{salesParts.join(' · ')}</span>
-          </Row>
+      {/* 근거 상태: 근거 수 · 홈페이지 · 적합도 · 조사일과 "오래됨" 알림. 같은 내용이 다른 곳에 없어 작은 줄로 남긴다. */}
+      <div
+        data-testid="glance-evidence"
+        style={{ ...line, color: colors.textSecondary, fontSize: detailLayout.smallFont }}
+      >
+        <span style={{ color: colors.textDimmed }}>{keyTexts.evidenceState}</span>
+        <span data-testid="glance-evidence-text">{evidenceParts.join(' · ')}</span>
+        {header.researchStale ? (
+          <StatusTag tone="recheck" data-testid="company-stale-tag">
+            {companySummary.stale}
+          </StatusTag>
         ) : null}
-      </dl>
+        {header.researchSuggestAgain ? (
+          <StatusTag tone="ask" data-testid="company-suggest-again-tag">
+            {companySummary.suggestAgainTag}
+          </StatusTag>
+        ) : null}
+        {scoreItems ? <EvidenceBar items={scoreItems} /> : null}
+      </div>
     </section>
   );
 }

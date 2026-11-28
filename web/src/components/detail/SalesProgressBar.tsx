@@ -161,13 +161,44 @@ export interface SalesProgressBarProps {
    * 기본은 보인다. 그림을 읽어 주는 글("영업 단계: 6단계 중 …")은 그대로 남는다.
    */
   hideTitle?: boolean;
+  /**
+   * 축소판(#996, PM 결정 2026-11-29): 모양은 그대로 두고 점·줄·글자·간격만 줄여 반 폭 칸(기업 상세 둘째 줄 왼쪽)에
+   * 들어가게 한다. 큰 단계 4칸 · 세부 단계 점 · "지금 (11/7부터)" · 다음 일정 줄이 모두 그대로 보인다.
+   */
+  compact?: boolean;
 }
 
 // #972 새 시안: 점은 작게(글자 16px 기준 14px), 선은 2px. 점 둘레의 흰 띠가 선을 끊어 점이 또렷하게 보인다.
-const DOT = 14;
-const DOT_RING = 3;
-const ROW = 20;
 const LINE = 2;
+/** 그림 크기. 보통(가로 전체 · 회사별 보고서)과 축소판(#996 반 폭 칸). */
+export const PROGRESS_SIZES = {
+  normal: {
+    dot: 14,
+    ring: 3,
+    row: 20,
+    bandMinHeight: 40,
+    bandPadding: '8px',
+    bandGap: 3,
+    bandFont: typography.fontSizeSecondary,
+    stepFont: typography.fontSizeSecondary,
+    nowFont: typography.fontSizeSecondary,
+    titleFont: typography.fontSizeCardTitle,
+    gap: 12,
+  },
+  compact: {
+    dot: 11,
+    ring: 3,
+    row: 14,
+    bandMinHeight: 30,
+    bandPadding: '5px 4px',
+    bandGap: 2,
+    bandFont: 13,
+    stepFont: 11.5,
+    nowFont: 11.5,
+    titleFont: 17,
+    gap: 8,
+  },
+} as const;
 
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
@@ -215,7 +246,16 @@ export default function SalesProgressBar({
   contactTotal,
   questions,
   hideTitle = false,
+  compact = false,
 }: SalesProgressBarProps) {
+  const size = compact ? PROGRESS_SIZES.compact : PROGRESS_SIZES.normal;
+  // 축소판에서만 쓰는 줄바꿈 규칙. 보통 크기는 전과 같다.
+  const compactWrap = compact
+    ? ({ wordBreak: 'keep-all', overflowWrap: 'anywhere', maxWidth: '100%' } as const)
+    : {};
+  const DOT = size.dot;
+  const DOT_RING = size.ring;
+  const ROW = size.row;
   const progress = salesProgressOf(salesStep, outcome, contactTotal, questions);
   const { steps, currentIndex, reachedIndex, end } = progress;
   const total = steps.length + 1;
@@ -330,6 +370,16 @@ export default function SalesProgressBar({
       alignContent: 'start',
       textAlign: 'center',
       minWidth: 0,
+      // 축소판: 점 · 이름 · "지금" 세 줄을 모든 칸이 같이 쓴다(subgrid). 좁은 칸에서 옆 이름이 두 줄로 꺾여도
+      // "지금 (11/7부터)"는 그 아래 셋째 줄에 놓여 옆 이름과 겹치지 않는다.
+      // 칸 폭은 격자 칸 그대로 둔다(한 줄로 둔 "지금 …"이 칸보다 넓어도 점과 이름이 밀리지 않고, 양옆으로 고르게 넘친다).
+      ...(compact
+        ? {
+            gridRow: 'span 3',
+            gridTemplateRows: 'subgrid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+          }
+        : {}),
     }) as const;
   const dotRow = {
     display: 'flex',
@@ -348,11 +398,18 @@ export default function SalesProgressBar({
     }) as const;
 
   return (
-    <div data-testid="sales-progress" data-end={end} style={{ display: 'grid', gap: 12 }}>
+    <div
+      data-testid="sales-progress"
+      data-end={end}
+      data-size={compact ? 'compact' : 'normal'}
+      style={{ display: 'grid', gap: size.gap }}
+    >
       {hideTitle ? null : (
-        <div style={{ fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}>{texts.title}</div>
+        <div style={{ fontSize: size.titleFont, fontWeight: compact ? 700 : 600 }}>
+          {texts.title}
+        </div>
       )}
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'grid', gap: size.gap }}>
         <div
           role="group"
           aria-label={texts.bandAria(
@@ -372,16 +429,19 @@ export default function SalesProgressBar({
               data-band={BANDS[index]}
               style={{
                 // 칸 사이 틈 6px. 아래 점 격자는 틈 없이 같은 너비라 점이 칸 가운데(또는 1/4·3/4 자리)에 선다.
-                margin: '0 3px',
+                margin: `0 ${size.bandGap}px`,
                 borderRadius: radius.controlSm,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
-                minHeight: 40,
-                padding: '8px',
+                minHeight: size.bandMinHeight,
+                padding: size.bandPadding,
                 boxSizing: 'border-box',
-                fontSize: typography.fontSizeSecondary,
+                fontSize: size.bandFont,
+                // 축소판: 좁은 칸에서 "견적·샘플"이 글자 중간에서 꺾이지 않게 낱말 단위로 줄을 바꾼다
+                // (그래도 칸을 넘으면 글자 단위로 꺾어 옆 칸과 겹치지 않게 한다).
+                ...compactWrap,
                 ...bandStyle(state),
               }}
             >
@@ -410,6 +470,7 @@ export default function SalesProgressBar({
               position: 'relative',
               display: 'grid',
               gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              ...(compact ? { gridTemplateRows: 'auto auto auto', rowGap: 4 } : {}),
               margin: 0,
               padding: 0,
               listStyle: 'none',
@@ -433,7 +494,8 @@ export default function SalesProgressBar({
                   <span
                     style={{
                       padding: '0 2px',
-                      fontSize: typography.fontSizeSecondary,
+                      fontSize: size.stepFont,
+                      ...compactWrap,
                       fontWeight: state === 'current' ? 600 : 400,
                       color:
                         state === 'current'
@@ -449,9 +511,11 @@ export default function SalesProgressBar({
                     <span
                       data-testid="sales-progress-now"
                       style={{
-                        fontSize: typography.fontSizeSecondary,
+                        fontSize: size.nowFont,
                         fontWeight: 500,
                         color: accent.text,
+                        // 축소판: 칸이 좁아도 "지금 (11/7부터)"를 한 줄로 둔다(옆 점 아래는 빈 자리라 겹치지 않는다).
+                        whiteSpace: compact ? 'nowrap' : undefined,
                       }}
                     >
                       {texts.now(since)}
@@ -474,7 +538,8 @@ export default function SalesProgressBar({
                 data-testid="sales-progress-end-text"
                 style={{
                   padding: '0 2px',
-                  fontSize: typography.fontSizeSecondary,
+                  fontSize: size.stepFont,
+                  ...compactWrap,
                   fontWeight: end === 'todo' ? 400 : 600,
                   color: end === 'todo' ? colors.textDimmed : colors.text,
                 }}
@@ -494,7 +559,18 @@ export default function SalesProgressBar({
         </span>
       ) : null}
       {nextDate ? (
-        <span data-testid="sales-progress-next">
+        <span
+          data-testid="sales-progress-next"
+          style={
+            compact
+              ? {
+                  paddingTop: 8,
+                  borderTop: `1px solid ${colors.borderSecondary}`,
+                  fontSize: typography.fontSizeSecondary,
+                }
+              : undefined
+          }
+        >
           {texts.nextSchedule(nextDate, outcome?.nextScheduleNote?.trim() || null)}
         </span>
       ) : null}

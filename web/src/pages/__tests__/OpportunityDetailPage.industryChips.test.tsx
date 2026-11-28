@@ -65,19 +65,27 @@ describe('상세 › 산업군 칩 (#646)', () => {
     mockedPeers.mockRejectedValue(new Error('이 시험에서는 비슷한 회사를 보지 않는다'));
   });
 
-  // #803(PM 결정 2026-11-16): 따로 있던 "회사 소개 · 산업군" 카드를 없애고 "한눈에"의 산업 칸 안에서 바로 고친다.
-  it('칩은 "한눈에"의 산업 칸 안에 있고 따로 카드·제목이 없다', async () => {
+  // #803(PM 결정 2026-11-16): 따로 있던 "회사 소개 · 산업군" 카드를 없애고 "한눈에"의 산업 칸 안에서 바로 고쳤다.
+  // #996(PM 결정 2026-11-29): 산업은 머리의 요약 줄에 값과 표시로 보이고, [확정]·[고치기] 칩은 [정보 고치기]를 눌러 편 칸 안에 있다.
+  it('요약 줄에는 산업 값과 "AI 제안 · 확인 전"이 보이고, 칩은 [정보 고치기]를 편 칸의 산업 줄에 있다', async () => {
+    const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply('AI'));
     renderPage();
-    const section = await screen.findByTestId('detail-industries');
-    const industryLine = screen.getByTestId('glance-fit-industry');
-    expect(industryLine.contains(section)).toBe(true);
+    const industryLine = await screen.findByTestId('glance-fit-industry');
+    expect(screen.getByTestId('detail-summary-row')).toContainElement(industryLine);
+    expect(industryLine).toHaveTextContent(/^산업자동차 부품 ○AI 제안 · 확인 전$/);
+    // 접혀 있을 때는 칩과 [확정]이 화면에 없다.
+    expect(screen.queryByTestId('detail-industries')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('industry-confirm-button')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('detail-summary-fix-toggle'));
+    const section = screen.getByTestId('detail-industries');
+    expect(screen.getByTestId('detail-summary-fix-industry')).toContainElement(section);
     expect(within(section).queryByRole('heading')).not.toBeInTheDocument();
     expect(within(section).getByTestId('industry-chip')).toHaveTextContent('자동차 부품 (AI 제안)');
     expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
   });
 
-  it('[확정]을 누르면 저장한 뒤 상세와 활동 이력을 새로 불러오고 칩이 초록 ✓로 바뀐다', async () => {
+  it('[정보 고치기]를 펴고 [확정]을 누르면 저장한 뒤 상세와 활동 이력을 새로 불러오고 요약 줄과 칩이 초록 ✓로 바뀐다', async () => {
     mockedGet.mockResolvedValueOnce(reply('AI')).mockResolvedValue(reply('STAFF'));
     mockedPost.mockResolvedValueOnce({
       data: {
@@ -89,13 +97,21 @@ describe('상세 › 산업군 칩 (#646)', () => {
     });
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByTestId('industry-confirm-button'));
+    await user.click(await screen.findByTestId('detail-summary-fix-toggle'));
+    await user.click(screen.getByTestId('industry-confirm-button'));
+    // 저장하면 상세를 새로 불러와 요약 줄이 다시 그려진다(고치기 칸은 접힌 채).
     await waitFor(() =>
-      expect(screen.getByTestId('industry-chip')).toHaveTextContent('자동차 부품 ✓'),
+      expect(screen.getByTestId('glance-fit-industry')).toHaveTextContent(
+        /^산업자동차 부품 ✓확인됨$/,
+      ),
     );
     expect(mockedPost).toHaveBeenCalledWith('opp-1', ['자동차 부품'], 'park-lee');
     expect(mockedGet).toHaveBeenCalledTimes(2);
     expect(mockedActivity.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByTestId('detail-summary-fix-panel')).not.toBeInTheDocument();
+    // 다시 펴면 칩이 초록 ✓이고 [확정]은 없다.
+    await user.click(screen.getByTestId('detail-summary-fix-toggle'));
+    expect(screen.getByTestId('industry-chip')).toHaveTextContent('자동차 부품 ✓');
     expect(screen.queryByTestId('industry-confirm-button')).not.toBeInTheDocument();
   });
 });

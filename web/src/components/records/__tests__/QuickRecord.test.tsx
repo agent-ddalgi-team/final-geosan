@@ -391,7 +391,8 @@ describe('마. 메모에 전화번호 · 이메일이 있으면 먼저 알린다
     expect(alert).toHaveAttribute('role', 'alert');
     expect(alert).toHaveTextContent('전화번호 · 이메일은 빼고 적어 주세요.');
     expect(alert).toHaveTextContent(
-      '기록 메모에는 연락처를 저장하지 않습니다. 연락처는 영업 단계 카드의 "상대 담당자 연락처"에 적어 주세요.',
+      // #996: 상대 담당자 연락처가 영업 단계 카드에서 따로 "담당자 연락처" 칸으로 옮겨 가 안내 글의 자리 이름을 맞췄다.
+      '기록 메모에는 연락처를 저장하지 않습니다. 연락처는 "담당자 연락처" 칸의 상대 담당자 줄에 적어 주세요.',
     );
     expect(memo).toHaveAttribute('aria-invalid', 'true');
     const send = screen.getByTestId('coach-send');

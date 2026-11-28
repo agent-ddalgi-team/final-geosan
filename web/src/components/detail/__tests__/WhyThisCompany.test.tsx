@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import type { DetailHeader, EvidenceView, ScoreItemView } from '../../../api/types';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
-import WhyThisCompany from '../WhyThisCompany';
+import WhyThisCompany, { reasonLineId, splitReasonLabel } from '../WhyThisCompany';
 
 const header = {
   ...(detailFixture.data.header as unknown as DetailHeader),
@@ -44,13 +44,21 @@ describe('WhyThisCompany (#674)', () => {
         ]}
       />,
     );
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('왜 이 회사인가');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/^왜 이 회사인가$/);
+    // #996: "한눈에"와 한 블록 안의 큰 제목이라 앞에 세로 강조 막대가 붙는다.
+    expect(screen.getByTestId('block-heading-bar')).toBeInTheDocument();
     // 근거가 없는 항목(미확보·신호 없음)의 문장은 여기에 없다(공고 "근거 없음"도 안 보인다).
     const rows = screen.getAllByTestId('detail-reason-line');
     expect(rows).toHaveLength(1);
+    // #996: 줄 머리의 갈래 이름("제품", 추정이면 "제품(추정)")은 이름표로 떼어 왼쪽에 보이고 문장은 그 옆에 온다.
+    // (전에는 "제품(추정): 볼트를…"이 한 글이었다.)
+    expect(within(rows[0]).getByTestId('detail-reason-label')).toHaveTextContent(/^제품\(추정\)$/);
     expect(within(rows[0]).getByTestId('detail-reason-text')).toHaveTextContent(
-      '제품(추정): 볼트를 만든다고 밝혔습니다.',
+      /^볼트를 만든다고 밝혔습니다\.$/,
     );
+    // "한눈에"의 "○○ 근거 ↓"가 이 줄로 올 수 있게 줄마다 id가 있고 초점을 받을 수 있다.
+    expect(rows[0]).toHaveAttribute('id', reasonLineId('NEW_PRODUCT'));
+    expect(rows[0]).toHaveAttribute('tabindex', '-1');
     const quotes = within(rows[0]).getAllByTestId('evidence-item');
     expect(quotes).toHaveLength(2);
     expect(quotes[0]).toHaveTextContent('“볼트·너트 생산”');
@@ -121,5 +129,36 @@ describe('WhyThisCompany (#674)', () => {
     expect(screen.getByTestId('why-factory')).toHaveTextContent('팩토리온 11/11 기준');
     expect(screen.getByTestId('evidence-empty')).toBeInTheDocument();
     expect(screen.queryByTestId('evidence-item')).not.toBeInTheDocument();
+  });
+
+  it('Given 링크가 있는 줄과 갈래 이름이 없는 글 When 나누면 Then 이름표는 한 번만 보이고 괄호 링크는 그대로다 (#996)', () => {
+    expect(splitReasonLabel('소재: 탄소강이라 맞습니다.')).toEqual({
+      label: '소재',
+      body: '탄소강이라 맞습니다.',
+    });
+    expect(splitReasonLabel('갈래 이름이 없는 글')).toEqual({
+      label: null,
+      body: '갈래 이름이 없는 글',
+    });
+    render(
+      <WhyThisCompany
+        header={header}
+        reasons={{ reason: '', nextAction: '', questions: [] }}
+        scoreItems={[
+          item('NEW_MATERIAL', 'CONFIRMED', '탄소강이라 맞습니다. (홈페이지 볼트)', ['ev-1']),
+        ]}
+        evidence={[ev('ev-1', '탄소강 볼트', '홈페이지 볼트 https://example.invalid/bolt')]}
+      />,
+    );
+    const row = screen.getByTestId('detail-reason-line');
+    expect(within(row).getByTestId('detail-reason-label')).toHaveTextContent(/^소재$/);
+    const text = within(row).getByTestId('detail-reason-text');
+    expect(text).toHaveTextContent(/^탄소강이라 맞습니다\. \(홈페이지 볼트\)$/);
+    expect(within(text).getByRole('link', { name: '홈페이지 볼트' })).toHaveAttribute(
+      'href',
+      'https://example.invalid/bolt',
+    );
+    // 줄 전체 글에는 "소재"가 이름표 한 번만 있다.
+    expect(row.textContent?.match(/소재/g)).toHaveLength(1);
   });
 });

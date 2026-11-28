@@ -5,8 +5,8 @@ import type { DetailHeader, DetailMap } from '../../../api/types';
 import detailFixture from '../../../test/fixtures/opportunity-detail-apjeong.json';
 import { resetNaverMapsLoader } from '../../dashboard/NaverMapCanvas';
 import type { NaverMapsApi } from '../../dashboard/NaverMapCanvas';
-import DetailGlance from '../DetailGlance';
-import DetailMiniMap from '../DetailMiniMap';
+import DetailGlance, { GLANCE_MAP_HEIGHT } from '../DetailGlance';
+import DetailMiniMap, { MINI_MAP_HEIGHT } from '../DetailMiniMap';
 
 const MAP: DetailMap = { center: { lat: 36.8, lng: 127.1 }, company: { lat: 36.85, lng: 127.0 } };
 
@@ -134,15 +134,20 @@ describe('DetailGlance 작은 지도 자리', () => {
     expect(screen.getByTestId('glance-distance-line')).toBeInTheDocument();
   });
 
-  it('Given 지도 좌표와 키 When 한눈에 Then "어떤 회사" 칸 옆에 지도 상자가 놓이고 거리 그림은 숨는다', () => {
+  // #996(PM 결정 2026-11-29): 지도는 "어떤 회사" 칸 옆이 아니라 "한눈에 › 위치" 줄 아래에, 칸 폭을 다 쓰고 조금 낮게 놓인다.
+  // 거리 글("거산에서 8.2km")은 머리의 요약 줄로 옮겨 가 이 상자에는 없다(`DetailSummaryRow.test.tsx`).
+  it('Given 지도 좌표와 키 When 한눈에 Then 위치 줄 아래에 폭을 다 쓰는 낮은 지도 상자가 놓이고 거리 그림은 숨는다', () => {
     const { api } = fakeApi();
     window.naver = { maps: api };
     render(
       <DetailGlance header={header} processLinks={[]} evidence={[]} map={MAP} mapClientId="k" />,
     );
-    const layout = screen.getByTestId('glance-company-layout');
-    expect(layout).toContainElement(screen.getByTestId('detail-mini-map'));
+    const location = screen.getByTestId('glance-location');
+    const box = screen.getByTestId('detail-mini-map');
+    expect(location).toContainElement(box);
+    expect(box).toHaveStyle({ width: '100%', height: `${GLANCE_MAP_HEIGHT}px` });
+    expect(GLANCE_MAP_HEIGHT).toBeLessThan(MINI_MAP_HEIGHT);
     expect(screen.queryByTestId('glance-distance-line')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-distance')).toHaveTextContent('8.2km');
+    expect(screen.queryByTestId('detail-distance')).not.toBeInTheDocument();
   });
 });

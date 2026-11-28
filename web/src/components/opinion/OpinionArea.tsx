@@ -3,15 +3,18 @@
 // 저장되면 "저장됨 HH:MM"이 3초 보였다가 "의견: … (수정)"으로 남고, 실패하면 입력을 유지한다.
 // #798(PM 지시 2026-11-16): 목록 카드는 variant="select"로 단추 셋 대신 고르기 칸 하나를 쓴다. 저장 규칙은 같다
 // (영업 대상·검토 중은 바로 저장, 제외는 이유를 꼭 적어야 저장).
+// #996(PM 결정 2026-11-29): 기업 상세는 variant="box"로 "담당자 의견" 이름이 붙은 칸 하나를 쓴다. 단추 셋이 늘 보이고,
+// 아직 안 골랐으면 주황 칸 + "아직 안 골랐습니다 · 골라 주세요 →", 고른 뒤에는 흰 칸에 고른 단추만 진한 보라 + "✓"와
+// "영업 담당 · 11/29"(고른 사람 · 날짜)가 붙는다. 저장 규칙과 막는 조건(담당자 미선택 · 보기 전용)은 같다.
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Alert, Button, Input, Space, Typography } from 'antd';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { ApiError, postOpinion } from '../../api/client';
 import type { Meta, Opinion, OpinionRecord } from '../../api/types';
-import { errorTexts, listSimple, opinionArea, opinionLabels } from '../../labels/ko';
-import { colors, opinionNudge, radius, typography } from '../../theme/tokens';
-import { formatHourMinute } from '../../utils/time';
+import { detailCompose, errorTexts, listSimple, opinionArea, opinionLabels } from '../../labels/ko';
+import { colors, detailLayout, opinionNudge, radius, typography } from '../../theme/tokens';
+import { formatHourMinute, formatMonthDay } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
 /** "저장됨 HH:MM"이 보이는 시간(ms). 지나면 영구 문구로 바뀐다. */
@@ -31,8 +34,11 @@ export interface OpinionAreaProps {
   /** 서버가 가진 현재 의견(없으면 null). 처음 보일 때만 쓴다. */
   record?: OpinionRecord | null;
   onSaved?: (record: OpinionRecord, meta: Meta) => void;
-  /** "buttons"(기본, 상세)는 단추 셋, "select"(목록 카드, #798)는 고르기 칸 하나. */
-  variant?: 'buttons' | 'select';
+  /**
+   * "buttons"(기본)는 단추 셋 → 저장 뒤 "의견: … (수정)", "select"(목록 카드, #798)는 고르기 칸 하나,
+   * "box"(기업 상세, #996)는 "담당자 의견" 이름이 붙은 칸에 단추 셋이 늘 보인다.
+   */
+  variant?: 'buttons' | 'select' | 'box';
   /**
    * 고르기 칸(select)에서만 쓴다(#981). true인데 저장된 의견이 없으면 칸을 주황 테두리로 띄우고
    * "의견을 골라 주세요"를 보인다. 목록 줄이 "관심에 담은 회사"일 때 true로 준다.
@@ -54,7 +60,8 @@ export default function OpinionArea({
   nudge = false,
 }: OpinionAreaProps) {
   const selectMode = variant === 'select';
-  const { staffKey, canRecord } = useFrame();
+  const boxMode = variant === 'box';
+  const { staffKey, canRecord, config } = useFrame();
   const [record, setRecord] = useState<OpinionRecord | null>(initial ?? null);
   const [editing, setEditing] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
@@ -77,7 +84,7 @@ export default function OpinionArea({
   }, [reasonOpen]);
 
   const saving = savingOpinion !== null;
-  const showButtons = selectMode || !record?.opinion || editing || savedAt !== null;
+  const showButtons = selectMode || boxMode || !record?.opinion || editing || savedAt !== null;
   const trimmedReason = reason.trim();
 
   async function save(opinion: Opinion, reasonText?: string) {
@@ -112,6 +119,9 @@ export default function OpinionArea({
   }
 
   function onPick(opinion: Opinion) {
+    // 칸 모양(#996)은 단추가 늘 보인다. 이미 고른 의견을 또 누르면 같은 값을 다시 저장하지 않는다
+    // (제외는 이유를 고칠 수 있게 이유 칸을 연다).
+    if (boxMode && opinion !== 'NOT_TARGET' && record?.opinion === opinion && !reasonOpen) return;
     if (opinion === 'NOT_TARGET') {
       setReason(record?.opinion === 'NOT_TARGET' ? (record.reason ?? '') : '');
       setError(null);
@@ -142,9 +152,24 @@ export default function OpinionArea({
   const selectValue = reasonOpen ? 'NOT_TARGET' : (record?.opinion ?? '');
   // 관심에 담았는데 의견이 아직 없는 줄(#981). 제외 이유를 적는 중이거나 담당자를 안 골랐으면 알리지 않는다.
   const needsOpinion = selectMode && nudge && !record?.opinion && !reasonOpen && canRecord;
+  // 칸 모양(#996): 아직 안 고른 회사는 주황 칸으로 알린다. 담당자를 안 골랐거나 보기 전용이면 고를 수 없으므로 알리지 않는다.
+  const boxNeedsOpinion = boxMode && !record?.opinion && !reasonOpen && canRecord;
+  const pickedByName = record?.opinion
+    ? (config?.staff.find((entry) => entry.key === record.updatedBy)?.displayName ??
+      record.updatedBy ??
+      '')
+    : '';
+  const pickedByText =
+    boxMode && record?.opinion && pickedByName
+      ? detailCompose.opinion.by(pickedByName, formatMonthDay(record.updatedAt))
+      : null;
 
   return (
-    <div data-testid="opinion-area" style={{ display: 'grid', gap: 8 }}>
+    <div
+      data-testid="opinion-area"
+      // 칸 모양(#996)은 요약 줄 아래 오른쪽 끝에 붙는다.
+      style={{ display: 'grid', gap: boxMode ? 4 : 8, justifyItems: boxMode ? 'end' : undefined }}
+    >
       {selectMode ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <label
@@ -211,7 +236,107 @@ export default function OpinionArea({
           {opinionArea.pickStaffFirst}
         </span>
       ) : null}
-      {selectMode ? null : showButtons ? (
+      {boxMode ? (
+        <div
+          role="group"
+          aria-label={detailCompose.opinion.title}
+          data-testid="opinion-box"
+          data-nudge={boxNeedsOpinion ? 'true' : undefined}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 8,
+            padding: '6px 8px 6px 12px',
+            borderRadius: radius.card,
+            border: `1px solid ${boxNeedsOpinion ? opinionNudge.line : colors.borderSecondary}`,
+            background: boxNeedsOpinion ? opinionNudge.bg : colors.bgContainer,
+          }}
+        >
+          <span
+            style={{
+              fontSize: typography.fontSizeSecondary,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              color: boxNeedsOpinion ? opinionNudge.fg : colors.text,
+            }}
+          >
+            {detailCompose.opinion.title}
+          </span>
+          {boxNeedsOpinion ? (
+            <span
+              data-testid="opinion-nudge"
+              style={{ color: opinionNudge.fg, fontSize: detailLayout.smallFont }}
+            >
+              {detailCompose.opinion.nudge} <span aria-hidden="true">→</span>
+            </span>
+          ) : null}
+          {BUTTONS.map(({ value, testId }) => {
+            // 제외 이유를 적는 동안은 "제외"가 고른 것으로 보인다(저장 전).
+            const pressed = reasonOpen ? value === 'NOT_TARGET' : record?.opinion === value;
+            const saved = record?.opinion === value && !reasonOpen;
+            return (
+              <button
+                key={value}
+                type="button"
+                ref={value === 'NOT_TARGET' ? notTargetButtonRef : undefined}
+                aria-pressed={pressed}
+                disabled={!canRecord || saving}
+                onClick={() => onPick(value)}
+                data-testid={testId}
+                data-picked={saved ? 'true' : undefined}
+                style={{
+                  minHeight: 30,
+                  padding: '3px 10px',
+                  borderRadius: radius.controlSm,
+                  border: `1px solid ${saved ? detailLayout.opinionPicked.bg : colors.border}`,
+                  background: saved ? detailLayout.opinionPicked.bg : colors.bgContainer,
+                  color: saved ? detailLayout.opinionPicked.fg : colors.text,
+                  fontWeight: saved ? 600 : 400,
+                  font: 'inherit',
+                  fontSize: typography.fontSizeSecondary,
+                  whiteSpace: 'nowrap',
+                  cursor: !canRecord || saving ? 'not-allowed' : 'pointer',
+                  opacity: !canRecord ? 0.6 : 1,
+                }}
+              >
+                {saved ? <span aria-hidden="true">✓ </span> : null}
+                {opinionLabels[value]}
+              </button>
+            );
+          })}
+          {pickedByText ? (
+            <span
+              data-testid="opinion-picked-by"
+              style={{ color: colors.textDimmed, fontSize: detailLayout.smallFont }}
+            >
+              {pickedByText}
+            </span>
+          ) : null}
+          {!canRecord ? (
+            <span
+              data-testid="opinion-pick-staff-text"
+              style={{ color: colors.textSecondary, fontSize: detailLayout.smallFont }}
+            >
+              {opinionArea.pickStaffFirst}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {boxMode && record?.opinion === 'NOT_TARGET' && record.reason && !reasonOpen ? (
+        <span
+          data-testid="opinion-box-reason"
+          style={{
+            color: colors.textSecondary,
+            fontSize: typography.fontSizeSecondary,
+            justifySelf: 'end',
+          }}
+        >
+          {opinionArea.reasonLabel}: {record.reason}
+        </span>
+      ) : null}
+      {selectMode || boxMode ? null : showButtons ? (
         <Space wrap size={8} role="group" aria-label={opinionArea.groupLabel}>
           {BUTTONS.map(({ value, testId }) => {
             const pressed = record?.opinion === value;
@@ -239,7 +364,14 @@ export default function OpinionArea({
       ) : null}
 
       {reasonOpen && showButtons ? (
-        <div style={{ display: 'grid', gap: 8, maxWidth: 560 }}>
+        <div
+          style={{
+            display: 'grid',
+            gap: 8,
+            maxWidth: 560,
+            ...(boxMode ? { width: '100%', justifyItems: 'start' } : {}),
+          }}
+        >
           <label htmlFor={`opinion-reason-${oppId}`}>{opinionArea.reasonLabel}</label>
           <Input.TextArea
             id={`opinion-reason-${oppId}`}

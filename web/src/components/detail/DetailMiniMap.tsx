@@ -28,6 +28,12 @@ export interface DetailMiniMapProps {
   onUnavailable: () => void;
   /** 화면용 키. 시험에서 넘길 수 있다. */
   clientId?: string;
+  /**
+   * 상자 크기(#996, 선택). 안 주면 지금처럼 240 × 160이다. 기업 상세 "한눈에 › 위치"는 칸 폭에 맞춰
+   * 가로를 다 쓰고 조금 낮게 그린다.
+   */
+  width?: number | string;
+  height?: number;
 }
 
 type State = 'waiting' | 'loading' | 'ready';
@@ -37,6 +43,8 @@ export default function DetailMiniMap({
   href,
   onUnavailable,
   clientId = import.meta.env.VITE_NCP_MAPS_CLIENT_ID,
+  width = MINI_MAP_WIDTH,
+  height = MINI_MAP_HEIGHT,
 }: DetailMiniMapProps) {
   const box = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -149,8 +157,8 @@ export default function DetailMiniMap({
       data-state={state}
       style={{
         position: 'relative',
-        width: MINI_MAP_WIDTH,
-        height: MINI_MAP_HEIGHT,
+        width,
+        height,
         maxWidth: '100%',
         flexShrink: 0,
         borderRadius: detailTheme.radius,

@@ -1,5 +1,5 @@
 // #691(PM 결정 2026-11-13) 상세 화면: 머리의 [기록 남기기] 바로 가기, 공정·산업을 함께 확정해 상세 전체를 다시 받아도
-// 화면이 맨 위로 튀지 않고 "저장됨"과 고른 종류가 남는 것, "한눈에 › 확인할 것"과 "2. 통화에서 확인할 것"이 같은 기준인 것.
+// 화면이 맨 위로 튀지 않고 "저장됨"과 고른 종류가 남는 것, 확인사항 줄 수가 한 곳에만 보이는 것(#996에서 "한눈에 › 확인할 것" 줄을 뺌).
 // 서버 호출은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다. 실제 스크롤 위치는 이 시험 환경(jsdom)에 없어서
 // "화면을 비우지 않고 같은 자리의 부품을 그대로 둔다"로 확인한다.
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -196,8 +196,11 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     expect(chipValueOf('records-kind')).toBe('CALL');
   });
 
-  it('"한눈에 › 확인할 것"은 낱말이 없어도 확인사항에 줄이 있으면 그 수를 적는다 (#691, #847 이름 바뀜)', async () => {
-    // 확인이 필요한 요구가 없어 낱말(공정·소재·근거 부족)은 없지만, 아래 목록에는 후속 조치·산업·질문 줄이 있다.
+  // #996(PM 결정 2026-11-29): "한눈에 › 확인할 것 n가지" 줄은 영업 코치 "확인사항"과 같은 내용이라 뺐다.
+  // 줄 수는 "확인사항" 제목 옆 숫자 한 곳에만 있고, "한눈에"에는 "확인할 점" 핵심 한 줄(답이 없는 첫 확인 질문)만 남는다.
+  // (전의 기대: 한눈에 "확인사항 n가지"가 확인사항 줄 수와 같다 → 지금: 그 줄은 없고 확인사항 숫자가 줄 수와 같다.)
+  it('확인사항 줄 수는 "확인사항" 제목 옆 한 곳에만 있고, "한눈에"에는 "확인할 점" 한 줄만 있다 (#691 → #996)', async () => {
+    // 확인이 필요한 요구가 없어 낱말(공정·소재·근거 부족)은 없지만, 확인사항에는 후속 조치·산업·질문 줄이 있다.
     mockedGet.mockResolvedValue(
       reply({
         ...fixtureData,
@@ -209,7 +212,12 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     // #847: 확인사항은 주제별 묶음 + 줄마다 체크칸이라 체크칸 수가 줄 수다.
     const lines = within(screen.getByTestId('detail-review')).getAllByRole('checkbox').length;
     expect(lines).toBeGreaterThan(0);
-    expect(screen.getByTestId('glance-check-text')).toHaveTextContent(`확인사항 ${lines}가지`);
-    expect(screen.getByTestId('glance-check-text')).not.toHaveTextContent('지금 확인할 것 없음');
+    expect(screen.getByTestId('detail-review-count')).toHaveTextContent(new RegExp(`^${lines}$`));
+    expect(screen.queryByTestId('glance-check-text')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-glance')).not.toHaveTextContent(`확인사항 ${lines}가지`);
+    // 가짜 응답의 검토사항 가운데 답이 없는 첫 확인 질문.
+    expect(
+      within(screen.getByTestId('glance-key-check')).getByTestId('glance-key-text'),
+    ).toHaveTextContent(/^당진 공장에서 직접 생산합니까\?$/);
   });
 });

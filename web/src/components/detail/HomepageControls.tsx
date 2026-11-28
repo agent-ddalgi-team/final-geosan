@@ -42,6 +42,11 @@ export interface HomepageControlsProps {
   suggestDays?: number | null;
   /** #803: 상세 머리가 "담당자를 고르면" 안내를 한 번만 보일 때 true. */
   hideStaffHint?: boolean;
+  /**
+   * #996(PM 결정 2026-11-29): "이번 달 AI 사용 $… / $…" 글을 단추 옆에 그리지 않는다.
+   * 기업 상세 머리가 그 글을 맨 위 줄 오른쪽 끝에 따로 보일 때 true.
+   */
+  hideSpend?: boolean;
 }
 
 type Busy = 'research' | null;
@@ -51,6 +56,7 @@ export default function HomepageControls({
   onReload,
   suggestDays = null,
   hideStaffHint = false,
+  hideSpend = false,
 }: HomepageControlsProps) {
   const { staffKey, canRecord, config } = useFrame();
   const [busy, setBusy] = useState<Busy>(null);
@@ -142,7 +148,7 @@ export default function HomepageControls({
             {homepageControls.aiOff}
           </span>
         ) : null}
-        {canRecord ? <MonthSpendLine /> : null}
+        {canRecord && !hideSpend ? <MonthSpendLine /> : null}
         {!canRecord && !hideStaffHint ? (
           <span style={secondary} data-testid="homepage-pick-staff">
             {homepageControls.pickStaffFirst}

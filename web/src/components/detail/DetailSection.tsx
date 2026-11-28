@@ -5,7 +5,15 @@
 // 제목 옆에 보조 설명(흐린 글자 한 줄)이나 오른쪽 끝 단추를 둘 수 있다.
 import type { ReactNode } from 'react';
 import { Typography } from 'antd';
-import { accent, colors, detailTheme, radius, spacing, typography } from '../../theme/tokens';
+import {
+  accent,
+  colors,
+  detailLayout,
+  detailTheme,
+  radius,
+  spacing,
+  typography,
+} from '../../theme/tokens';
 
 export interface DetailSectionProps {
   id: string;
@@ -19,6 +27,11 @@ export interface DetailSectionProps {
    * (오른쪽 영업 코치 칸의 "확인사항")에서 카드가 겹쳐 보이지 않게 할 때 쓴다.
    */
   bare?: boolean;
+  /**
+   * 반 폭 칸에 맞춘 모양(#996, 선택): 안쪽 여백과 제목 크기를 조금 줄인다(기업 상세 셋째 줄 오른쪽 "기록" 칸).
+   * 옆의 "영업 단계" · "담당자 연락처" · "한눈에" 칸과 같은 여백 · 제목 크기다.
+   */
+  dense?: boolean;
   children: ReactNode;
 }
 
@@ -28,6 +41,7 @@ export default function DetailSection({
   count,
   hint,
   bare = false,
+  dense = false,
   children,
 }: DetailSectionProps) {
   const headingId = `${id}-heading`;
@@ -42,9 +56,10 @@ export default function DetailSection({
               background: colors.bgContainer,
               border: `1px solid ${detailTheme.border}`,
               borderRadius: detailTheme.radius,
-              padding: spacing.cardPadding,
+              padding: dense ? detailLayout.cardPadding : spacing.cardPadding,
               display: 'grid',
               gap: 12,
+              ...(dense ? { alignContent: 'start', boxSizing: 'border-box' as const } : {}),
             }
       }
     >
@@ -52,7 +67,11 @@ export default function DetailSection({
         <Typography.Title
           level={2}
           id={headingId}
-          style={{ margin: 0, fontSize: typography.fontSizeCardTitle, fontWeight: 600 }}
+          style={{
+            margin: 0,
+            fontSize: dense ? detailLayout.cardTitleSize : typography.fontSizeCardTitle,
+            fontWeight: dense ? 700 : 600,
+          }}
         >
           {title}
         </Typography.Title>
