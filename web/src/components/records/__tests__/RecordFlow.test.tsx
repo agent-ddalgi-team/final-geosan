@@ -295,7 +295,8 @@ describe('누가 먼저 연락했나 — 종류 옆 단추 (#691 → #853)', () 
       within(kind)
         .getAllByRole('radio')
         .map((item) => item.textContent),
-    ).toEqual(['전화', '메일', '대면', '메모']);
+      // #985(PM 결정 2026-11-29): 이 칸의 종류 단추 글은 시안대로 "전화" → "통화"(고르는 값 CALL은 그대로).
+    ).toEqual(['통화', '메일', '대면', '메모']);
     expect(within(direction).getByRole('radio', { name: '발신' })).toBeChecked();
     expect(within(direction).getByRole('radio', { name: '수신' })).not.toBeChecked();
     expect(screen.queryByTestId('records-contact-question-WHO_FIRST')).not.toBeInTheDocument();

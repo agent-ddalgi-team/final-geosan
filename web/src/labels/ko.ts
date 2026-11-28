@@ -3222,6 +3222,135 @@ export const coachTexts = {
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
 } as const;
 
+/** '로'/'으로': 끝 글자에 받침이 없거나 ㄹ받침이면 '로', 그 밖의 받침이면 '으로'. 한글이 아니면 '(으)로'. */
+function directionMark(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (Number.isNaN(code) || code < 0 || code >= 11172) return '(으)로';
+  const final = code % 28;
+  return final === 0 || final === 8 ? '로' : '으로';
+}
+
+/**
+ * #985(PM 결정 2026-11-29, 시안 "기록 남기기 — 만들 흐름") 기업 상세 › 영업 코치 › 기록 남기기 단순화.
+ * 고르는 것은 종류 하나 + 메모. 발신/수신 · 결과 · 날짜는 확인 화면에서 한 줄로 보고 바꾼다.
+ * 영업 코치를 못 쓰면(스위치 꺼짐 · 한도) 전의 직접 고르는 양식이 그대로 나온다.
+ */
+export const quickRecordTexts = {
+  /** 이 칸의 종류 단추 글. 다른 화면이 같이 쓰는 contactMethodLabels("전화")는 바꾸지 않는다. */
+  kindLabels: { CALL: '통화', EMAIL: '메일', VISIT: '대면', MEMO: '메모' } as const,
+  memoLabel: '메모',
+  memoPlaceholders: {
+    CALL: '통화 내용을 적어 주세요',
+    EMAIL: '메일 내용을 적어 주세요',
+    VISIT: '만나서 나눈 이야기를 적어 주세요',
+    MEMO: '메모를 적어 주세요',
+  } as const,
+  examplesTitle: '이렇게 적어 보세요',
+  /** 누르는 단추가 아니라 보기 글이다. 종류를 바꾸면 예시도 바뀐다. */
+  examples: {
+    CALL: [
+      '발신 · 구매팀과 통화, 견적 요청 받음',
+      '수신 · 샘플 문의 전화 옴',
+      '부재',
+      '금요일 오전에 다시 전화하기로',
+      '반응 좋음 · 인증서에 관심',
+      '납기가 길다고 걱정함',
+    ],
+    EMAIL: [
+      '보냄 · 회사 소개서 첨부',
+      '받음 · 견적 조건 회신',
+      '답 없음',
+      '반응 좋음 · 샘플을 보내 달라고 함',
+    ],
+    VISIT: [
+      '방문 · 샘플 전달, 두께 요구 확인',
+      '내방 · 공장 견학 옴',
+      '못 만남',
+      '다음 주 수요일 다시 방문',
+    ],
+    MEMO: ['연말까지 발주 계획 없음', '담당 부서가 바뀜'],
+  } as const,
+  /** 메모가 "부재" 낱말뿐일 때 [보내기 유료] 대신 보이는 단추(AI 없음). */
+  absentSave: '저장',
+  absentHint: '이 메모는 AI 없이 바로 저장합니다(비용 없음).',
+  absentSavedTitle: '부재로 저장했습니다 · AI 비용 없음',
+  /** 저장한 부재 접촉 한 줄의 결과 말. "통화 · 발신 · 연결 안 됨 · 11/29" */
+  absentResult: { CALL: '연결 안 됨', EMAIL: '답 없음', VISIT: '못 만남' } as const,
+  absentAskSchedule: {
+    CALL: '다시 전화할 날을 잡을까요?',
+    EMAIL: '다시 메일 보낼 날을 잡을까요?',
+    VISIT: '다시 방문할 날을 잡을까요?',
+  } as const,
+  absentClose: '안 잡고 닫기',
+  /** 메모에 전화번호 · 이메일이 있으면 누르기 전에 먼저 알린다(AI 비용이 먼저 나가지 않게). */
+  contactAlertTitle: '전화번호 · 이메일은 빼고 적어 주세요.',
+  contactAlertBody:
+    '기록 메모에는 연락처를 저장하지 않습니다. 연락처는 영업 단계 카드의 "상대 담당자 연락처"에 적어 주세요.',
+  /** 종류 [메모]: 메모로만 저장은 되지만 영업 코치에게 보낼 수는 없을 때. */
+  memoContactBlocked:
+    '전화번호 · 이메일이 있는 메모는 영업 코치에게 보낼 수 없습니다. 메모로만 저장은 됩니다.',
+  /** 영업 코치를 못 쓸 때 서버 안내 뒤에 붙이는 말. "오늘 영업 코치 한도를 넘었습니다. 직접 골라 저장할 수 있습니다." */
+  fallbackHint: '직접 골라 저장할 수 있습니다.',
+  // ---- 확인 화면([보내기] 뒤) ----
+  /** "AI가 정리한 것 · 확인 전 · 대면 기록으로 저장" */
+  titleAs: (kind: string) => ` · ${kind} 기록으로 저장`,
+  factSummary: '요약',
+  factDirection: '방향',
+  factDate: '날짜',
+  factReaction: '반응',
+  factNext: '다음',
+  /** 기본 방향(우리가 먼저)일 때 값 뒤에 붙는 작은 글. */
+  directionOurs: '(우리가 먼저)',
+  /** "수신으로 바꾸기" · "내방으로 바꾸기" */
+  directionSwitch: (label: string) => `${label}${directionMark(label)} 바꾸기`,
+  today: '(오늘)',
+  change: '바꾸기',
+  changeClose: '접기',
+  fromMemo: '(메모에서 읽음)',
+  skipped: '건너뜀',
+  dateLabel: '접촉 날짜',
+  dateFuture: '접촉 날짜는 오늘까지입니다.',
+  dateEmpty: '접촉 날짜를 넣어 주세요.',
+  nextNoDate: '날짜 없음',
+  nextSetDate: '날짜 잡기',
+  nextActionLabel: '다음 할 일',
+  nextDateLabel: '다음 일정 날짜',
+  missingTitle: '빠진 것 · 눌러서 채우거나 ×로 건너뛰기',
+  skip: '이 질문 건너뛰기',
+  skipMark: '×',
+  undoSkip: '되돌리기',
+  mustTag: '꼭 확인',
+  /** "AI 제안: 기존 거래처 유지" — 미리 고르지 않는다. */
+  suggestHint: (label: string) => `AI 제안: ${label}`,
+  otherLabel: '기타: 어떤 부분인가요',
+  otherHint: '기타를 고르면 한 줄로 적습니다 · 이 접촉의 메모에 함께 저장',
+  /** 메모 끝에 덧붙이는 글. " / 좋게 본 부분: 시험 성적서를 바로 보내 준 점" */
+  otherMemo: (keyword: string, text: string) => ` / ${keyword}: ${text}`,
+  /** 기타 글까지 더한 메모가 상한을 넘을 때. 기타 글에 쓸 수 있는 글자 수와 넘친 글자 수를 함께 알린다. */
+  memoOver: (max: number, left: number, over: number) =>
+    `메모에 기타 글을 더하면 ${max}자를 넘습니다. 기타 글은 ${left}자까지 쓸 수 있습니다(지금 ${over}자 초과). 줄인 뒤 저장해 주세요.`,
+  /** 끝난 결과 제안 상자. "제안: 이 회사를 거절로 끝낼까요?" */
+  closeAsk: (label: string) => `제안: 이 회사를 ${label}${directionMark(label)} 끝낼까요?`,
+  closeLabels: { WON: '성사', LOST: '거절', ON_HOLD: '보류' } as Record<string, string>,
+  closeDecline: '아니요, 계속 진행',
+  closeSkipNotice: '이유를 ×로 건너뛰면 거절로 넘기지 않고 통화 기록만 저장합니다.',
+  saveHint: '저장을 눌러야 들어갑니다. 건너뛴 질문은 다음 통화 "확인사항"에 다시 나옵니다.',
+  // ---- 종류 [메모] ----
+  noteOnly: '메모로만 저장',
+  noteToCoach: '영업 코치에게 보내기',
+  noteGuide:
+    '상대와 나눈 이야기(대면 · 통화 · 클레임 등)는 [영업 코치에게 보내기]로 남기면 상대 반응과 일정이 함께 정리됩니다.',
+  noteToBlocked: '받는 사람이 있는 메모는 전달 사항으로 저장됩니다',
+  /** 접촉 메모 상한(메모 칸 상한보다 짧다)을 넘는 메모는 영업 코치에게 보낼 수 없다. */
+  noteTooLong: (max: number, used: number) =>
+    `영업 코치에게 보내는 메모는 ${max}자까지입니다(지금 ${used}자). 줄이거나 메모로만 저장해 주세요.`,
+  kindAsk: '어떻게 있었던 일인가요?',
+  kindAskHint: '한 번만 고르면 됩니다',
+  noteSaved: '메모를 저장했습니다',
+  noteSchedule: '일정 잡기',
+  close: '닫기',
+} as const;
+
 /** #771 전달 사항(PM 결정 2026-11-15·16): 다른 직원이 회사 건으로 남기는 말, 받는 사람이 확인한다. */
 export const handoffTexts = {
   title: '전달 사항',

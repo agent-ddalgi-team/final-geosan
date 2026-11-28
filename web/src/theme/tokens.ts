@@ -68,6 +68,8 @@ export const opinionNudge = {
 export const ok = {
   text: '#1F7A43',
   bg: '#E6F5EC',
+  /** 확인 바탕 칸의 얇은 테두리(#985 "부재로 저장했습니다" · "메모를 저장했습니다" 상자). 글자를 올리지 않는다. */
+  border: '#BFE3CC',
 } as const;
 
 /** 중립 꼬리표(#972): 그 밖의 꼬리표. 글자는 보조 글자색(약 6.3:1). */

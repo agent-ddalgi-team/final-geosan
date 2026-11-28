@@ -98,7 +98,7 @@ function renderArea(marks: ChoiceMarks, handlers: Record<string, () => void> = {
 }
 
 async function openQuestions(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(chipOf('records-kind', '전화'));
+  await user.click(chipOf('records-kind', '통화'));
   await user.click(chipOf('records-contact-result', '연결됨'));
   return screen.findByTestId('sales-question-CONFIRM_PROCESS');
 }
