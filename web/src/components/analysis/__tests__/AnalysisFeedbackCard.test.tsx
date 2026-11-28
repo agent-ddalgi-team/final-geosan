@@ -1,5 +1,5 @@
 // #824 "AI 분석 피드백" 카드: 저장본을 먼저 읽고(AI 호출 없음), 실패를 먼저 근거 숫자와 함께 보이며,
-// 스위치가 꺼져 있거나 보기 전용이면 단추가 잠기고, [AI 분석 받기 💰]를 눌러야 받는다. 숫자는 가상이다.
+// 스위치가 꺼져 있거나 보기 전용이면 단추가 잠기고, [AI 분석 받기 유료]를 눌러야 받는다(#981: 💰 대신 "유료" 꼬리표). 숫자는 가상이다.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AnalysisFeedbackCard from '../AnalysisFeedbackCard';
@@ -97,7 +97,11 @@ it('저장본이 있으면 실패를 먼저 근거 숫자와 함께 보이고 AI
   expect(screen.getByTestId('feedback-held-back')).toHaveTextContent('표본 부족이라 판단 보류');
   expect(screen.getByTestId('feedback-compared')).toHaveTextContent('접촉 12 (↑3)');
   expect(screen.getByTestId('feedback-compared')).toHaveTextContent('성사 3 (—)');
-  expect(screen.getByTestId('feedback-request')).toHaveTextContent('다시 받기 💰');
+  // 다시 받는 것도 돈이 들어 "유료" 꼬리표가 붙는다(#981, 💰 대신).
+  const refresh = screen.getByTestId('feedback-request');
+  expect(refresh).toHaveAccessibleName('다시 받기 유료');
+  expect(within(refresh).getByTestId('paid-tag')).toHaveTextContent(/^유료$/);
+  expect(refresh).not.toHaveTextContent('💰');
   expect(requestSalesFeedback).not.toHaveBeenCalled();
 });
 
@@ -109,7 +113,7 @@ it('기록이 바뀌었으면 "기록이 바뀌었습니다"를 보인다', asyn
   expect(await screen.findByTestId('feedback-stale')).toHaveTextContent('기록이 바뀌었습니다');
 });
 
-it('[AI 분석 받기 💰]를 누르면 받아서 보인다', async () => {
+it('[AI 분석 받기 유료]를 누르면 받아서 보인다', async () => {
   vi.mocked(getSalesFeedback).mockResolvedValueOnce(stateOf({}));
   vi.mocked(requestSalesFeedback).mockResolvedValueOnce({
     data: { feedback: FEEDBACK, reused: false },
@@ -118,7 +122,9 @@ it('[AI 분석 받기 💰]를 누르면 받아서 보인다', async () => {
   renderCard();
   const button = await screen.findByTestId('feedback-request');
   await waitFor(() => expect(button).toBeEnabled());
-  expect(button).toHaveTextContent('AI 분석 받기 💰');
+  expect(button).toHaveAccessibleName('AI 분석 받기 유료');
+  expect(within(button).getByTestId('paid-tag')).toHaveTextContent(/^유료$/);
+  expect(button).not.toHaveTextContent('💰');
   await userEvent.click(button);
   expect(requestSalesFeedback).toHaveBeenCalledWith(PERIOD, false, 'park-lee');
   expect(await screen.findByTestId('feedback-failure')).toBeInTheDocument();

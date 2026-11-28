@@ -1,6 +1,6 @@
 // 맞는 공장 수 줄(#549 1단계, 약속 C1 GET /ingest/preview): 공정을 고르면 저장된 판단으로 센 숫자가 바로 보인다.
 // 서버 호출(getIngestPreview)은 가짜로 바꾼 확인이며, 실제 서버 연결은 임시 DB·서버로 따로 확인했다.
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IngestForm, { type IngestOptions } from '../IngestForm';
 import { ApiError, getIngestPreview, postIngest } from '../../../api/client';
@@ -78,9 +78,12 @@ beforeEach(() => {
 });
 
 describe('IngestForm 맞는 공장 수 줄 (#549)', () => {
-  it('단추 이름은 [발굴 시작 💰]이고, 공정을 고르기 전에는 숫자 줄도 요청도 없다', () => {
+  it('단추 이름은 [발굴 시작 유료]이고("유료" 꼬리표, #981), 공정을 고르기 전에는 숫자 줄도 요청도 없다', () => {
     renderForm();
-    expect(screen.getByTestId('ingest-submit')).toHaveAccessibleName('발굴 시작 💰');
+    const submit = screen.getByTestId('ingest-submit');
+    expect(submit).toHaveAccessibleName('발굴 시작 유료');
+    expect(within(submit).getByTestId('paid-tag')).toHaveTextContent(/^유료$/);
+    expect(submit).not.toHaveTextContent('💰');
     expect(screen.queryByTestId('ingest-preview')).not.toBeInTheDocument();
     expect(mockedPreview).not.toHaveBeenCalled();
   });

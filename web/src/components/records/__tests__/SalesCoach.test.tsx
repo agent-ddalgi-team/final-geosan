@@ -300,6 +300,8 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(screen.queryByTestId('sales-question-PLATING_NOW')).not.toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-save-button')).not.toBeInTheDocument();
     expect(screen.getByTestId('coach-send')).toBeDisabled();
+    // 코치에 보내면 AI 비용이 들어 글 뒤 "유료" 꼬리표가 붙는다(#981, 💰 대신).
+    expect(screen.getByTestId('coach-send')).toHaveAccessibleName('보내기 유료');
     await user.type(screen.getByTestId('records-contact-memo'), '외주 줌');
     expect(screen.getByTestId('coach-send')).toBeEnabled();
   });
