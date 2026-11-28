@@ -26,6 +26,7 @@ import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
 import HandoffBox from '../components/records/HandoffBox';
 import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
+import CoachNextSchedule from '../components/detail/CoachNextSchedule';
 import ContactPersons from '../components/detail/ContactPersons';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
@@ -253,6 +254,16 @@ export default function OpportunityDetailPage() {
       }`;
   const recordInput = !data ? null : (
     <>
+      {/* #980(PM 결정 2026-11-28): 영업 코치 맨 위 "다음 일정" — 영업 홈 표와 같은 공용 칸으로 바로 잡고 바꾼다. */}
+      <CoachNextSchedule
+        key={`${oppId}:next-schedule:${outcome?.version ?? 0}`}
+        oppId={oppId}
+        outcome={outcome}
+        onSaved={() => {
+          reloadQuietly();
+          setTimelineVersion((n) => n + 1);
+        }}
+      />
       {/* #847 확인사항: 코치가 지난 통화 뒤 정리한 것(#750)과 전의 "통화에서 확인할 것"을 주제별로 묶어 통화 중 체크. */}
       {data.reviewItems !== undefined ? (
         <CallChecklist
