@@ -229,3 +229,21 @@ def test_operations_lists_who_opened_what_without_values(client, opp_id):
     assert (line["staffKey"], line["kind"], line["oppId"]) == ("park-lee", "CONTACT", opp_id)
     assert line["customerName"] == "가상직접회사"
     assert "1234" not in response.text and "김철수" not in response.text
+
+
+def test_handoff_preview_masks_numbers_before_cutting(client, opp_id):
+    """Given 80자 자르는 자리에 걸친 휴대폰 번호가 든 전달 사항 / When 받는 사람이 영업 홈을 엶
+    Then 번호는 자르기 전에 가려져 숫자 일부도 남지 않는다(#980)."""
+    text = "가" * 74 + " 010-9876-5432 로 연락 주세요"
+    saved = client.post(
+        f"/api/v1/opportunities/{opp_id}/notes",
+        json={"text": text, "kind": "HANDOFF", "toStaffKey": "kim-gwajang"},
+        headers=PARK,
+    )
+    assert saved.status_code == 200, saved.text
+    body = client.get("/api/v1/dashboard", headers=KIM).json()["data"]
+    row = next(row for row in body["todayChecks"] if row["kind"] == "HANDOFF_FOR_ME")
+    preview = row["items"][0]["text"]
+    # 가린 표시 "[번호 가림]"도 80자에서 잘릴 수 있다. 중요한 것은 번호 숫자가 하나도 안 남는 것.
+    assert "[번호 가" in preview and preview.endswith("…")
+    assert "010" not in preview and "9876" not in preview

@@ -1,5 +1,6 @@
 """대시보드 경로 (U7, 계약 C1 `GET /dashboard` v3). 응답 모양은 이 파일에 둔다(경로 묶음별 모델)."""
 
+from dataclasses import replace
 from datetime import date, datetime
 from typing import Annotated, Literal
 
@@ -26,10 +27,12 @@ from geosan.dashboard.queries import (
     build_dashboard,
     classify_bookmarked,
     dashboard_population,
+    handoff_preview,
     schedule_due_opp_ids,
 )
 from geosan.dashboard.queries import TodayCheckRow as TodayCheckRowData
 from geosan.evaluation.models import EvaluationRun
+from geosan.evidence.contacts import mask_text
 from geosan.evidence.transfer import KST
 from geosan.storage.base import utcnow
 
@@ -395,6 +398,18 @@ def dashboard(
     )
     result.data.today_checks[:0] = [
         TodayCheckRowData(kind=alert.kind, count=1, items=[], alert=alert) for alert in alerts
+    ]
+    # #980: 전달 사항 글은 전화·이메일을 가린 뒤 앞 80자로 자른다.
+    # 자르기 전에 가려야 번호 일부가 남지 않는다.
+    result.data.today_checks[:] = [
+        replace(
+            row,
+            items=[
+                replace(item, text=handoff_preview(mask_text(item.text))) if item.text else item
+                for item in row.items
+            ],
+        )
+        for row in result.data.today_checks
     ]
     # #980: 보관 기한이 다가온 상대 담당자 연락처. 알림 줄 다음에 둔다.
     retention = retention_due_row(

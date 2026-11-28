@@ -22,7 +22,6 @@ from sqlalchemy import and_, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
-from geosan.evidence.contacts import mask_text
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Bookmark, Note, Outcome, ReviewOpinion
 
@@ -615,10 +614,13 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
 HANDOFF_PREVIEW_CHARS = 80
 
 
-def _handoff_preview(text: str | None) -> str | None:
-    """#794 대시보드 한 줄용: 줄바꿈을 빈칸으로 모으고 앞 80자, 넘으면 끝에 "…"."""
-    # #980: 화면에 보이는 메모 글의 전화·이메일은 가린다.
-    flat = " ".join(mask_text(text or "").split())
+def handoff_preview(text: str | None) -> str | None:
+    """#794 대시보드 한 줄용: 줄바꿈을 빈칸으로 모으고 앞 80자, 넘으면 끝에 "…".
+
+    #980: 전화·이메일 가리기는 창구(api)가 이 함수보다 먼저 한다(자르기 전에 가려야 번호 일부가
+    남지 않는다). 그래서 이 표는 전달 글 전체(full_text)를 넘기고 창구가 가린 뒤 이 함수로 자른다.
+    """
+    flat = " ".join((text or "").split())
     if not flat:
         return None
     if len(flat) <= HANDOFF_PREVIEW_CHARS:
@@ -661,7 +663,7 @@ def _handoff_row(
             continue
         day = created_at.astimezone(_KST).date()
         note = f"{staff_names.get(sender, sender)} · {day.month}/{day.day}"
-        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=text)
     items = [replace(item, note_ids=tuple(ids[item.opp_id])) for item in seen.values()]
     return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(items), items=items)
 
@@ -701,7 +703,7 @@ def _handoff_from_me_row(
         else:
             to = staff_names.get(receiver or "", receiver or "")
         note = f"→ {to} · {day.month}/{day.day}"
-        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=text)
     return TodayCheckRow(kind=TODAY_HANDOFF_FROM_ME, count=len(seen), items=list(seen.values()))
 
 
