@@ -145,7 +145,7 @@ describe('카드 · 표면처리를 직접 하는 회사일 수 있음 (#319)', 
     expect(within(cards[2]).queryByTestId('card-own-plating-tag')).not.toBeInTheDocument();
   });
 
-  it('후보 찾기 표시(고른 이유·점수 전·들어온 날짜)와 한 카드에 함께 보일 수 있다', async () => {
+  it('후보 찾기 표시(고른 이유 글·점수 전)와 한 카드에 함께 보일 수 있다(들어온 날짜는 거래처 후보 줄에 없다, #987)', async () => {
     mockedGet.mockResolvedValueOnce(
       reply([
         card('a', 1, {
@@ -164,7 +164,8 @@ describe('카드 · 표면처리를 직접 하는 회사일 수 있음 (#319)', 
     expect(view.getByTestId('card-own-plating-tag')).toBeInTheDocument();
     expect(view.getByTestId('card-own-plating-basis')).toHaveTextContent('도금 가공');
     expect(view.getByTestId('card-pick-reason')).toHaveTextContent('볼트·너트를 만듦');
-    expect(view.getByTestId('card-ingested-tag')).toHaveTextContent('11/20 들어옴');
+    // #987: 들어온 날짜 꼬리표는 거래처 후보 줄에서 뺐다(관심 기업 줄에는 그대로 있다).
+    expect(view.queryByTestId('card-ingested-tag')).not.toBeInTheDocument();
     expect(view.getByTestId('card-score')).toHaveTextContent(candidateSearch.beforeScore);
   });
 });

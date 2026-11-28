@@ -162,11 +162,12 @@ export default function AssistantAsk() {
           {texts.askButton} <PaidTag onPrimary />
         </Button>
       </form>
-      <span data-testid="assistant-ask-hint" style={secondary}>
-        {canRecord
-          ? `${page === 'LIST' ? texts.askHintList : texts.askHint} ${texts.askCostHint}`
-          : texts.pickStaffFirst}
-      </span>
+      {/* #987(PM 결정 2026-11-28): 맨 아래 설명 글은 지웠다. 담당자를 안 골라 [묻기]가 안 눌릴 때의 안내만 남긴다. */}
+      {canRecord ? null : (
+        <span data-testid="assistant-ask-hint" style={secondary}>
+          {texts.pickStaffFirst}
+        </span>
+      )}
       {asking ? (
         <span data-testid="assistant-asking" role="status" style={secondary}>
           {texts.asking}

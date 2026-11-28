@@ -2,9 +2,10 @@
 // #767(PM 2026-11-16): 이모지 대신 내용에 맞는 선 그림 아이콘(SVG, data-icon)이라 글자에는 한글 이름만 있다.
 // #770: 새로 생긴 것 숫자 꼬리표. 숫자 요청은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 // #972(보라 톤 시안): 맨 위 로고 + 이름, 주 단추 [새 후보 발굴], 묶음 "영업" · "분석" · "운영", 지금 화면 줄·꼬리표 색.
+// #987: 관심 기업 줄의 주황 꼬리표 "의견 전 n"(관심에 담고 의견을 안 고른 곳 수, 서버 bookmarksNoOpinion).
 // #983(PM 지시 2026-11-28): 메뉴 아래 달력이 늘 보여야 하므로 넓은 화면에서는 메뉴를 항상 펼친다(접기 단추 없음,
 //   기억해 둔 "접음" 무시). 접고 펼치는 동작은 좁은 기기에만 남는다. 달력 자체는 SideCalendar.test.tsx.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { getMenuBadges } from '../../../api/menuBadges';
@@ -18,7 +19,7 @@ import { FrameContext } from '../FrameContext';
 import type { FrameValue } from '../FrameContext';
 import type { ConfigUi } from '../../../api/types';
 import { frame } from '../../../labels/ko';
-import { accent, sidebarTheme } from '../../../theme/tokens';
+import { accent, opinionNudge, sidebarTheme } from '../../../theme/tokens';
 
 vi.mock('../../../api/menuBadges', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/menuBadges')>()),
@@ -190,6 +191,149 @@ describe('새로 생긴 것 숫자 꼬리표 (#770)', () => {
     await waitFor(() => expect(mockedBadges).toHaveBeenCalled());
     const [seen] = mockedBadges.mock.calls[0];
     expect(seen.list).not.toBeNull();
+  });
+});
+
+describe('관심 기업 줄의 "의견 전 n" 꼬리표 (#987)', () => {
+  const TAG = 'nav-bookmarks-link-no-opinion';
+  /**
+   * 메뉴 숫자 응답. 영업 홈 숫자를 늘 1로 줘서, 그 꼬리표가 보인 뒤(응답이 화면에 반영된 뒤)에
+   * "의견 전" 꼬리표가 있는지 없는지를 본다. bookmarksNoOpinion을 안 주면 칸이 없는 옛 서버 응답이다.
+   */
+  function noOpinionIs(bookmarksNoOpinion: number | undefined, bookmarks = 0) {
+    mockedBadges.mockResolvedValue({
+      data: {
+        dashboard: 1,
+        list: 0,
+        bookmarks,
+        ...(bookmarksNoOpinion === undefined ? {} : { bookmarksNoOpinion }),
+      },
+      meta: {},
+    });
+  }
+  const loaded = () => screen.findByTestId('nav-dashboard-link-badge');
+
+  it('Given 의견 전인 관심 기업 3곳 When 펼친 메뉴 Then 관심 기업 줄에 주황 꼬리표 "의견 전 3"이 보이고, 링크 이름이 뜻까지 읽힌다', async () => {
+    noOpinionIs(3);
+    renderMenu();
+    const tag = await screen.findByTestId(TAG);
+    expect(tag).toHaveTextContent(/^의견 전 3$/);
+    expect(tag).toHaveAttribute('title', '의견을 안 고른 관심 기업 3곳');
+    // 꼬리표 글자는 낭독에서 빼고, 뜻은 링크 이름으로 읽힌다.
+    expect(tag).toHaveAttribute('aria-hidden', 'true');
+    expect(tag).toHaveStyle({ background: opinionNudge.bg, color: opinionNudge.fg });
+    const link = screen.getByTestId('nav-bookmarks-link');
+    expect(link).toContainElement(tag);
+    expect(link).toHaveAttribute('aria-label', '관심 기업, 의견을 안 고른 관심 기업 3곳');
+    expect(screen.getByRole('link', { name: '관심 기업, 의견을 안 고른 관심 기업 3곳' })).toBe(
+      link,
+    );
+    // 이름 뒤에 놓이고, 그림 틀 안에는 없다.
+    expect(
+      within(link).getByText('관심 기업').compareDocumentPosition(tag) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(screen.getByTestId('nav-bookmarks-link-icon')).queryByTestId(TAG)).toBeNull();
+    // 관심 기업 줄에만 붙는다. 새 소식이 없으면 숫자 꼬리표는 없다.
+    expect(screen.getAllByTestId(/-no-opinion$/)).toHaveLength(1);
+    expect(screen.queryByTestId('nav-bookmarks-link-badge')).toBeNull();
+  });
+
+  it('Given 새 소식 2곳과 의견 전 3곳이 같이 있음 When 펼친 메뉴 Then "의견 전 3" 옆에 새 소식 숫자가 그대로 있고 링크 이름은 둘 다 읽힌다', async () => {
+    noOpinionIs(3, 2);
+    renderMenu();
+    const tag = await screen.findByTestId(TAG);
+    const badge = screen.getByTestId('nav-bookmarks-link-badge');
+    expect(tag).toHaveTextContent(/^의견 전 3$/);
+    expect(badge).toHaveTextContent(/^2$/);
+    expect(badge).toHaveAttribute('title', '새 소식 2곳');
+    expect(tag.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId('nav-bookmarks-link')).toHaveAttribute(
+      'aria-label',
+      '관심 기업, 새 소식 2곳, 의견을 안 고른 관심 기업 3곳',
+    );
+  });
+
+  it.each([
+    ['0곳', 0],
+    ['서버가 칸을 안 줌(옛 서버)', undefined],
+  ])(
+    'Given 의견 전 %s When 펼친 메뉴 Then 꼬리표가 없고 링크 이름도 그대로다',
+    async (_name, value) => {
+      noOpinionIs(value);
+      renderMenu();
+      await loaded();
+      expect(screen.queryByTestId(TAG)).toBeNull();
+      expect(screen.queryByTestId(/-no-opinion$/)).toBeNull();
+      expect(screen.getByTestId('nav-bookmarks-link')).not.toHaveAttribute('aria-label');
+      expect(screen.getByTestId('nav-bookmarks-link')).toHaveTextContent(/^관심 기업$/);
+    },
+  );
+
+  it('Given 의견 전 0곳이지만 새 소식 2곳 When 펼친 메뉴 Then 새 소식 숫자만 있고 링크 이름에 의견 전 말이 붙지 않는다', async () => {
+    noOpinionIs(0, 2);
+    renderMenu();
+    expect(await screen.findByTestId('nav-bookmarks-link-badge')).toHaveTextContent(/^2$/);
+    expect(screen.queryByTestId(TAG)).toBeNull();
+    expect(screen.getByTestId('nav-bookmarks-link')).toHaveAttribute(
+      'aria-label',
+      '관심 기업, 새 소식 2곳',
+    );
+  });
+
+  it('Given 의견 전 3곳 · 새 소식 2곳 When 접힌 메뉴(좁은 기기) Then "의견 전" 꼬리표는 그리지 않고(새 소식 숫자만 그림에 얹힘) 이름표·aria-label에는 뜻이 남는다', async () => {
+    // #983: 넓은 화면의 메뉴는 항상 펼쳐져 있다. 접힌 메뉴는 좁은 기기에만 있다.
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
+    noOpinionIs(3, 2);
+    renderMenu('/', true);
+    const icon = screen.getByTestId('nav-bookmarks-link-icon');
+    expect(await within(icon).findByTestId('nav-bookmarks-link-badge')).toHaveTextContent(/^2$/);
+    expect(screen.queryByTestId(TAG)).toBeNull();
+    const link = screen.getByTestId('nav-bookmarks-link');
+    expect(link).not.toHaveTextContent('의견 전');
+    expect(link).toHaveAttribute(
+      'aria-label',
+      '관심 기업, 새 소식 2곳, 의견을 안 고른 관심 기업 3곳',
+    );
+    expect(link.querySelector('.side-nav-tip')).toHaveTextContent(
+      '관심 기업, 새 소식 2곳, 의견을 안 고른 관심 기업 3곳',
+    );
+  });
+
+  it('Given 의견 전 3곳뿐 When 접힌 메뉴(좁은 기기) Then 꼬리표 없이 aria-label로만 알린다', async () => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
+    noOpinionIs(3);
+    renderMenu('/', true);
+    await waitFor(() =>
+      expect(screen.getByTestId('nav-bookmarks-link')).toHaveAttribute(
+        'aria-label',
+        '관심 기업, 의견을 안 고른 관심 기업 3곳',
+      ),
+    );
+    expect(screen.queryByTestId(TAG)).toBeNull();
+    expect(screen.queryByTestId('nav-bookmarks-link-badge')).toBeNull();
+  });
+
+  it('Given 의견 전 120곳 When 펼친 메뉴 Then 글은 "의견 전 99+"로 줄이고 뜻에는 실제 곳 수를 적는다', async () => {
+    noOpinionIs(120);
+    renderMenu();
+    const tag = await screen.findByTestId(TAG);
+    expect(tag).toHaveTextContent(/^의견 전 99\+$/);
+    expect(tag).toHaveAttribute('title', '의견을 안 고른 관심 기업 120곳');
+    expect(frame.menuNoOpinion(99)).toBe('의견 전 99');
+    expect(frame.menuNoOpinion(100)).toBe('의견 전 99+');
+  });
+
+  it('Given 숫자를 못 읽음 When 메뉴 Then "의견 전" 꼬리표도 없다', async () => {
+    mockedBadges.mockReset();
+    mockedBadges.mockRejectedValue(new Error('network'));
+    renderMenu();
+    await waitFor(() => expect(mockedBadges).toHaveBeenCalled());
+    await act(async () => {
+      await Promise.allSettled(mockedBadges.mock.results.map((result) => result.value));
+    });
+    expect(screen.queryByTestId(/-no-opinion$/)).toBeNull();
+    expect(screen.getByTestId('nav-bookmarks-link')).not.toHaveAttribute('aria-label');
   });
 });
 

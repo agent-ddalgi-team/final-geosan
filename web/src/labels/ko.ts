@@ -230,7 +230,11 @@ export const frame = {
     dashboard: (n: number) => `오늘 확인할 것 ${n}곳`,
     list: (n: number) => `새 후보 ${n}곳`,
     bookmarks: (n: number) => `새 소식 ${n}곳`,
+    /** (#987) 관심 기업 옆 주황 꼬리표의 뜻(손을 올리면 보임, 화면 낭독). */
+    bookmarksNoOpinion: (n: number) => `의견을 안 고른 관심 기업 ${n}곳`,
   },
+  /** (#987) 왼쪽 메뉴 "관심 기업" 옆 주황 꼬리표의 글. 예: "의견 전 3" */
+  menuNoOpinion: (n: number) => `의견 전 ${n > 99 ? '99+' : n}`,
   /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
   currentStaff: (name: string) => `${name} 님`,
   logout: '로그아웃',
@@ -945,13 +949,17 @@ export const excludedList = {
  */
 export const listTable = {
   columns: {
-    company: '회사 · 품목',
+    company: '기업',
     region: '지역',
-    reason: '추천 근거 · 검토사항',
+    reason: '추천 이유 · 검토사항',
     score: '점수',
     /** (#981) 셋째 열: 적합도 · 점수(숫자만) · 관심 별, 그 아래 의견 고르기. */
     actions: '적합도 · 점수 · 관심 · 의견',
   },
+  /** (#987) 줄 안의 이름표: "추천 근거"와 "고른 이유"를 이 한 말로 통일했다(거래처 후보 · 관심 기업 줄). */
+  reasonLabel: '추천 이유',
+  /** (#987) 거래처 후보 줄 첫 칸, 회사 이름 아래 줄들의 이름표. */
+  facts: { item: '품목', industry: '산업', region: '지역' },
   /** 좁은 화면과 화면 낭독기용 칸 이름. */
   scoreLabel: '점수',
   tagsLabel: '꼬리표',
@@ -1030,8 +1038,6 @@ export const candidateSearch = {
     '공정·산업 칸을 기존 고객과 닮은 조건으로 채웠습니다. 찾기는 [발굴 시작]을 눌러야 시작합니다.',
   customerLikeHint: '기존 고객 수를 센 것이에요. 점수·순위는 바뀌지 않습니다.',
   customerLikeVirtual: '가상·거산 실제 사양 아님',
-  /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
-  pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
   /**
@@ -2924,9 +2930,6 @@ export const assistantTexts = {
   askLabel: '영업 기록에 대해 물어보기',
   askPlaceholder: '예: 가격 때문에 거절된 회사는? / 이번 주에 연락할 회사는?',
   askButton: '묻기',
-  askHint: '단계·접촉 날짜·거절 이유·고른 답만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
-  /** (#981) 안내 아래 한 줄: 예시 질문 단추는 글만 채우고, 비용은 [묻기]를 누를 때만 든다. */
-  askCostHint: '[묻기]를 누를 때만 AI 비용이 듭니다.',
   /** (#981) 질문 칸 위 안내 말풍선. 화면마다 무엇을 바탕으로 답하는지 한 줄. */
   intro: {
     DASHBOARD: '일정과 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
@@ -2967,8 +2970,6 @@ export const assistantTexts = {
   dailyFailed: '오늘 정리를 받지 못했습니다.',
   /** 신규 거래처 찾기(#774)에서는 아직 연락 안 한 후보 표도 함께 보낸다. */
   askPlaceholderList: '예: 아산 아연도금 적합도 상·중 가운데 가까운 곳은?',
-  askHintList:
-    '단계·접촉 날짜·고른 답과, 아직 연락 안 한 후보의 지역·적합도·거리만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
   /** 긴 답은 앞 몇 줄만 보이고 [더 보기]로 편다(#774). */
   answerMore: '더 보기',
   answerLess: '접기',

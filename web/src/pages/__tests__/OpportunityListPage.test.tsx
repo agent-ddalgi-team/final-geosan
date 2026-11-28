@@ -227,7 +227,9 @@ describe('OpportunityListPage', () => {
     );
   });
 
-  it('카드: 거래 확인 전 점수는 흐리게 "거래 확인 전" 꼬리표가 붙고, 확정·점수 없음에는 붙지 않는다 (#264)', async () => {
+  // (바뀜 #987, PM 결정 2026-11-28) 예전 기대: 거래 확인 전 점수에 "거래 확인 전" 꼬리표가 붙는다(#264).
+  // 지금: 거래처 후보 줄에는 그 꼬리표를 붙이지 않는다. 점수 글자의 흐림 표시는 그대로다(관심 기업 줄에는 꼬리표가 그대로 있다).
+  it('카드: 거래 확인 전 점수는 흐리게만 보이고 거래처 후보 줄에는 "거래 확인 전" 꼬리표가 붙지 않는다. 확정·점수 없음도 꼬리표가 없다 (#264 → #987)', async () => {
     const pending: OpportunityCard = {
       ...ready(apjeong),
       oppId: 'opp-2',
@@ -262,7 +264,7 @@ describe('OpportunityListPage', () => {
     expect(within(cards[3]).queryByTestId('card-score')).not.toBeInTheDocument();
     expect(within(cards[3]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
     expect(within(cards[3]).getByTestId('card-bucket-basis')).toHaveTextContent('거래 중');
-    // 거래 확인 전: 점수 글자는 서버가 준 숫자 그대로(거래처 후보 줄은 숫자만, #981), 흐림 표시와 꼬리표.
+    // 거래 확인 전: 점수 글자는 서버가 준 숫자 그대로(거래처 후보 줄은 숫자만, #981), 흐림 표시만 있고 꼬리표는 없다(#987).
     expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^50점$/);
     expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
       'aria-label',
@@ -272,9 +274,9 @@ describe('OpportunityListPage', () => {
       'data-score-state',
       'PENDING',
     );
-    expect(within(cards[1]).getByTestId('card-score-pending-tag')).toHaveTextContent(
-      scoreTags.pending,
-    );
+    expect(within(cards[1]).queryByTestId('card-score-pending-tag')).not.toBeInTheDocument();
+    expect(cards[1]).not.toHaveTextContent(scoreTags.pending);
+    expect(scoreTags.pending).toBe('거래 확인 전');
     expect(within(cards[1]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
     // 점수 없음: "점수 --" 그대로, 꼬리표 없음.
     expect(within(cards[2]).getByTestId('card-score')).toHaveTextContent(/^점수 --$/);

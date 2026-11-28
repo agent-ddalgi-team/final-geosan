@@ -993,7 +993,11 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await waitFor(() => expect(lastFilters()).toMatchObject({ sort: 'distance' }));
       expect(locationParams()).toEqual({ process: 'ANODIZING', sort: 'distance' });
       expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('card-distance-tag')).toHaveTextContent('거산에서 8.2km');
+      // (바뀜 #987, PM 결정 2026-11-28) 예전 기대: 줄에 "거산에서 8.2km"가 보인다.
+      // 지금: 거래처 후보 줄에는 거리를 보이지 않는다(정렬 [가까운 순]과 거리 고르기는 그대로다).
+      expect(screen.getByTestId('opportunity-card')).toHaveAttribute('data-layout', 'table');
+      expect(screen.queryByTestId('card-distance-tag')).not.toBeInTheDocument();
+      expect(screen.getByTestId('opportunity-card')).not.toHaveTextContent('거산에서');
     });
 
     it('거리 범위는 설정 선택지로 고르고 서버에 maxDistanceKm로 보내며, 선택지에 없는 주소 값은 무시한다(#666)', async () => {
