@@ -17,6 +17,7 @@ import {
 import { GROUP_PAGE_SIZE } from '../../components/list/useProcessGroups';
 import { bookmarkList, listFilters, listSearch, states } from '../../labels/ko';
 import listFixture from '../../test/fixtures/opportunities-apjeong.json';
+import { listCallsOf } from '../../test/listRequests';
 
 vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
@@ -92,7 +93,10 @@ function renderPage(initial = '/opportunities', config: ConfigUi | null = null) 
   );
 }
 
-const lastFilters = () => mockedGet.mock.calls.at(-1)?.[3];
+// 관심 기업 보기는 목록 요청 말고 "의견 전" 띠가 곳 수를 읽는 요청을 하나 더 보낸다(#981).
+// 이 파일이 보는 것은 "목록을 어떤 조건으로 불렀나"이므로 목록 요청만 골라 본다.
+const listCalls = () => listCallsOf(mockedGet.mock.calls);
+const lastFilters = () => listCalls().at(-1)?.[3];
 const locationText = () => screen.getByTestId('location').textContent ?? '';
 /** 지금 주소의 조건을 이름-값으로 읽는다(한글이 %로 바뀐 주소도 같은 값으로 견주려고). */
 const locationParams = () =>
@@ -596,8 +600,9 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
         mockedGet.mockResolvedValue(reply([apjeong], MENU));
         renderPage(url);
         await screen.findByTestId('opportunity-card');
-        expect(mockedGet).toHaveBeenCalledTimes(1);
-        expect(mockedGet.mock.calls[0][3]).toEqual({ ...NO_FILTERS, ...expected });
+        // 목록은 한 번만 부른다(관심 기업 보기의 "의견 전" 띠 요청은 목록 요청이 아니라 세지 않는다, #981).
+        expect(listCalls()).toHaveLength(1);
+        expect(listCalls()[0][3]).toEqual({ ...NO_FILTERS, ...expected });
         expect(screen.queryByTestId('process-group-title')).not.toBeInTheDocument();
         expect(screen.getByTestId('list-total')).toHaveTextContent(/^전체 1곳$/);
         expect(screen.getByTestId('location')).toHaveTextContent(url);
@@ -1014,7 +1019,10 @@ describe('OpportunityListPage 목록 머리 (#361)', () => {
       await screen.findByTestId('opportunity-card');
       expect(screen.getByTestId('list-sort-rank')).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByTestId('list-sort-distance')).toHaveAttribute('aria-pressed', 'false');
-      for (const call of mockedGet.mock.calls) expect(call[3]).toMatchObject({ sort: 'contact' });
+      // 목록 요청은 모두 추천 순으로 부른다. 관심 기업 보기의 "의견 전" 띠 요청은 곳 수만 읽어 정렬이 없다(#981).
+      // 목록 요청이 하나도 없으면 아래 반복이 빈 채로 통과하므로 개수도 본다.
+      expect(listCalls().length).toBeGreaterThan(0);
+      for (const call of listCalls()) expect(call[3]).toMatchObject({ sort: 'contact' });
     });
   });
 
