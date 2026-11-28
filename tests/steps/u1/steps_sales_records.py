@@ -130,7 +130,13 @@ def verify_card_latest_outcome(record_context):
     client, opp_id, scores = record_context
     card = client.get("/api/v1/opportunities").json()["data"][0]
     assert card["oppId"] == opp_id
-    assert card["records"]["outcome"] == {"status": "IN_PROGRESS"}
+    # #976(PM 결정 2026-11-28, 약속에 더한 칸): 카드의 영업 기록에 다음 일정 두 칸이 더해졌다.
+    # 일정을 잡지 않았으므로 둘 다 비어 있다. 단계 값은 그대로 최신 단계다.
+    assert card["records"]["outcome"] == {
+        "status": "IN_PROGRESS",
+        "nextScheduleAt": None,
+        "nextScheduleNote": None,
+    }
     detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
     assert detail["records"]["outcome"]["status"] == "IN_PROGRESS"
     assert detail["scores"] == scores

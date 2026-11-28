@@ -48,6 +48,7 @@ from geosan.api.schemas import (
     Blocker,
     BucketCounts,
     CallPrepNote,
+    CardContactByMethod,
     CardOutcome,
     CardRecords,
     DetailHeader,
@@ -524,6 +525,21 @@ def _scores(context: DetailContext) -> dict:
             evaluated_at=run.created_at,
         )
     }
+
+
+def _card_outcome(outcome) -> CardOutcome | None:
+    """목록 한 줄의 최신 영업 기록: 큰 단계와 다음 일정(#976). 기록이 없으면 None.
+
+    일정 할 일 한 줄은 일정 날짜가 있을 때만 싣는다(영업 홈 진행 중인 회사 표와 같은 규칙).
+    """
+    if outcome is None:
+        return None
+    schedule = outcome.next_schedule_at
+    return CardOutcome(
+        status=outcome.status,
+        next_schedule_at=schedule,
+        next_schedule_note=(outcome.next_schedule_note or None) if schedule else None,
+    )
 
 
 def _sales_step_view(session, opp_id: str, status: str | None) -> SalesStepView:
@@ -1181,6 +1197,8 @@ def list_opportunities(
         visible_rows, start=start + 1
     ):
         outcome = latest_outcome(session, opportunity.opp_id)
+        # #976: 관심 기업 줄의 접촉 요약. 상세와 같은 함수로 세어 값이 늘 같다.
+        contacts = contact_counts(session, opportunity.opp_id)
         linked = codes_by_opportunity.get(opportunity.opp_id, set())
         confirmed = confirmed_by_opportunity.get(opportunity.opp_id, set())
         process_codes = [row.code for row in processes if row.code in linked]
@@ -1204,7 +1222,11 @@ def list_opportunities(
                 relation_status=customer.relation_status,
                 region=_address_region(customer.address),
                 industries=customer.industries or [],
-                contact_count=contact_counts(session, opportunity.opp_id).total,
+                contact_count=contacts.total,
+                contact_by_method=CardContactByMethod(
+                    call=contacts.call, email=contacts.email, visit=contacts.visit
+                ),
+                last_contact_at=last_contact_at(session, opportunity.opp_id),
                 sales_step=sales_step_state(
                     session, opportunity.opp_id, status=outcome.status if outcome else None
                 ).code,
@@ -1247,7 +1269,7 @@ def list_opportunities(
                 records=CardRecords(
                     opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),
                     bookmark=bookmark_view(latest_bookmark(session, opportunity.opp_id)),
-                    outcome=CardOutcome(status=outcome.status) if outcome is not None else None,
+                    outcome=_card_outcome(outcome),
                 ),
                 stage=None,
                 is_virtual=current.is_virtual,

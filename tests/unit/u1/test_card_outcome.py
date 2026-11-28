@@ -50,7 +50,13 @@ def test_card_returns_latest_version_of_each_stage(records_env, status):  # noqa
     response = client.get("/api/v1/opportunities", params={"stage": status})
     assert response.status_code == 200
     card = response.json()["data"][0]
-    assert card["records"]["outcome"] == {"status": status}
+    # #976(PM 결정 2026-11-28, 약속에 더한 칸): 다음 일정 두 칸.
+    # 날짜 없이 적은 일정 한 줄은 싣지 않는다.
+    assert card["records"]["outcome"] == {
+        "status": status,
+        "nextScheduleAt": None,
+        "nextScheduleNote": None,
+    }
     detail = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
     assert detail["records"]["outcome"]["status"] == status
     for key in ("oppId", "rank", "scoreDisplay", "scoreS", "classificationCode", "evalId"):
@@ -67,7 +73,13 @@ def test_card_outcomes_do_not_leak_between_companies_or_pages(industry_env):  # 
     assert post(client, ids[0], "outcomes", {"status": "IN_PROGRESS"}).status_code == 200
     second = {"status": "SAMPLE_OR_REGISTRATION_APPROVED"}
     assert post(client, ids[1], "outcomes", second).status_code == 200
-    expected = {ids[0]: {"status": "IN_PROGRESS"}, ids[1]: second, ids[2]: None}
+    # #976(PM 결정 2026-11-28, 약속에 더한 칸): 일정을 잡지 않은 회사는 다음 일정 두 칸이 비어 있다.
+    no_schedule = {"nextScheduleAt": None, "nextScheduleNote": None}
+    expected = {
+        ids[0]: {"status": "IN_PROGRESS", **no_schedule},
+        ids[1]: {**second, **no_schedule},
+        ids[2]: None,
+    }
     whole = client.get("/api/v1/opportunities").json()
     assert len(whole["data"]) == whole["meta"]["total"] == 3
     for page, card in enumerate(whole["data"], start=1):
