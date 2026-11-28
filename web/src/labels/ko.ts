@@ -577,6 +577,64 @@ export const scheduleQuickEdit = {
   pickStaffFirst: '먼저 담당자를 고르세요',
 } as const;
 
+/** '이'/'가': 끝 글자에 받침이 있으면 '이', 없으면 '가'. 한글이 아니면(영문 키 등) '이(가)'. */
+function subjectMark(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (Number.isNaN(code) || code < 0 || code >= 11172) return '이(가)';
+  return code % 28 === 0 ? '가' : '이';
+}
+
+/**
+ * 달력 날짜 메모(#984, PM 결정 2026-11-28): 어느 날짜든 짧은 메모를 남기고 팀이 함께 본다.
+ * 달력에서 날짜를 누르면 뜨는 창의 메모 칸, 달력 칸의 메모 표시, 영업 홈 "오늘 할 일"의 메모 줄이 쓴다.
+ * 메모는 AI · 엑셀로 내보내지 않는다(비용 없음, "유료" 꼬리표 없음).
+ */
+export const dayMemo = {
+  /** [달력 › 날짜를 누르면 뜨는 창 › 메모 칸 제목] */
+  title: '메모',
+  /** 화면 낭독기가 읽는 메모 목록 이름. "12월 9일 (수) 메모" */
+  listLabel: (day: string) => `${day} 메모`,
+  /** [메모 칸] 그날 메모가 없을 때. */
+  empty: '이 날짜에 남긴 메모가 없습니다',
+  loading: '메모를 불러오는 중입니다',
+  /** [메모 칸] 메모를 못 읽었을 때. 달력 · 일정은 그대로 쓸 수 있다. */
+  loadError: '메모를 불러오지 못했습니다',
+  /** 전에 읽은 메모는 있는데 다시 읽기에 실패했을 때. 보이는 메모는 앞서 읽은 값이다. */
+  stale: '새 메모를 읽지 못했습니다. 앞서 읽은 메모입니다.',
+  retry: '다시 읽기',
+  /** [메모 칸 › 한 건 아래 작은 글] "영업 담당 · 11/28 17:40" (이름이 없으면 담당자 키) */
+  byline: (name: string, when: string | null) => [name, when].filter(Boolean).join(' · '),
+  /** [메모 칸 › 내가 쓴 메모] */
+  remove: '지우기',
+  /** 화면 낭독기가 읽는 단추 이름. "메모 지우기: 오전 안전 교육" */
+  removeLabel: (text: string) => `메모 지우기: ${text}`,
+  removeFailed: '메모를 지우지 못했습니다. 다시 시도해 주세요.',
+  /** [메모 칸 › 입력 칸] 화면 낭독기가 읽는 이름과 흐린 안내 글. */
+  inputLabel: '이 날짜에 메모 남기기',
+  placeholder: (max: number) => `이 날짜에 짧은 메모 남기기 (${max}자)`,
+  save: '저장',
+  saveFailed: '메모를 저장하지 못했습니다. 다시 시도해 주세요.',
+  /** [메모 칸 맨 아래 작은 글] */
+  hint: '팀이 함께 봅니다. 그날이 되면 영업 홈 "오늘 할 일"에도 보입니다. AI · 엑셀로는 내보내지 않습니다.',
+  /** [달력 › 풀이 줄] 테두리가 있는 칸의 뜻. */
+  legend: '메모',
+  /** [달력 › 날짜 단추] 화면 낭독기 · 손 올림 글 끝에 붙는다. "12월 9일, 일정 없음, 메모 2건" */
+  dayCount: (n: number) => `메모 ${n}건`,
+  /** [달력 › 풀이 아래 한 줄] 메모를 쓰는 달력에서는 이 글을 보인다. */
+  calendarHint: '날짜를 누르면 그날 일정과 메모가 보입니다',
+  /** [영업 홈 › 오늘 할 일 › 메모 줄] 왼쪽 작은 꼬리표. */
+  todayTag: '메모',
+  /** 화면 낭독기가 읽는 목록 이름. */
+  todayListLabel: '오늘 날짜의 달력 메모',
+  /** [영업 홈 › 오늘 할 일 › 메모 줄 아랫줄] "달력 메모 · 영업 담당이 11/26에 적음" */
+  todayMeta: (name: string, day: string | null) =>
+    day
+      ? `달력 메모 · ${name}${subjectMark(name)} ${day}에 적음`
+      : `달력 메모 · ${name}${subjectMark(name)} 적음`,
+  /** [영업 홈 › 오늘 할 일] 오늘 날짜의 메모를 못 읽었을 때. */
+  todayLoadError: '오늘 날짜의 달력 메모를 불러오지 못했습니다',
+} as const;
+
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
 export const dashboardMapTexts = {
   title: '거산 주변 지도',

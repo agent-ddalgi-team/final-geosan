@@ -247,6 +247,12 @@ export const sideCalendar = {
   /** 오늘 칸 안쪽 얇은 테두리(글자 없는 선). */
   todayRing: accent.text,
   todayRingWidth: 1.5,
+  /**
+   * 메모가 있는 날 칸 안쪽 테두리(#984, 글자 없는 선). 오늘 테두리(보라)와 헷갈리지 않게 어느 칸 색에서나 회색이다
+   * (흰 바탕 약 5.2:1). 색만으로 알리지 않게 날짜 단추의 읽는 말에 "메모 n건"이 함께 있다.
+   */
+  memoRing: colors.textDimmed,
+  memoRingWidth: 1.5,
   /** 날짜를 눌렀을 때 달력 오른쪽에 뜨는 작은 창. */
   popoverWidth: 300,
   /** 달력(날짜 칸 묶음) 오른쪽 끝에서 창까지: 달력 칸 안쪽 여백 6 + 바깥 틈 10. */

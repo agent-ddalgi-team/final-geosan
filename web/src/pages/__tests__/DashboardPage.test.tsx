@@ -50,6 +50,13 @@ vi.mock('../../api/client', async (importOriginal) => ({
   getOpportunities: vi.fn(() => new Promise(() => {})),
 }));
 
+// 오늘 날짜의 달력 메모(#984)는 DashboardPage.dayMemo.test.tsx에서 따로 본다. 여기서는 응답이 오지 않게 막아 둔다
+// (막지 않으면 서버 없는 시험 환경에서 메모 읽기가 실패해 "메모를 불러오지 못했습니다" 안내가 뜬다).
+vi.mock('../../api/dayMemos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/dayMemos')>()),
+  getDayMemos: vi.fn(() => new Promise(() => {})),
+}));
+
 const mockedGet = vi.mocked(getDashboard);
 const fixtureData = dashboardFixture.data as unknown as Dashboard;
 
