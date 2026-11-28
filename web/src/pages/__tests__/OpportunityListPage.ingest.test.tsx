@@ -1,4 +1,6 @@
 // 후보 찾기 화면(#316) 1차: 카드의 고른 이유·점수 전·들어온 날짜, 목록 머리 수집 요약.
+// #987(PM 결정 2026-11-28): 거래처 후보 줄에서 "고른 이유"라는 줄 이름은 "추천 이유" 한 말로 합쳤고(글은 그대로 보인다),
+// 들어온 날짜 꼬리표는 거래처 후보 줄에서 뺐다(관심 기업 줄에는 그대로 있다).
 // "이번 수집만/전체" 전환은 없애고 정렬 "최근 들어온 순"으로 바꿨다(#516, 2026-11-09).
 // 서버 호출(getOpportunities)은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 // [새 후보 가져오기] 단추와 조건 고르는 칸은 서버(POST /ingest)가 합쳐진 뒤 이어서 만든다(이 시험 범위 밖).
@@ -87,17 +89,24 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     mockedGet.mockReset();
   });
 
-  it('찾은 회사 카드에 고른 이유·"점수 전"·"날짜 들어옴"이 보인다', async () => {
+  it('찾은 회사 줄에 고른 이유 글이 "추천 이유" 아래 보이고 "점수 전"이 보인다. "고른 이유"라는 말과 들어온 날짜 꼬리표는 없다(#987)', async () => {
     mockedGet.mockResolvedValueOnce(reply([found]));
     renderPage();
-    const card = within(await screen.findByTestId('opportunity-card'));
-    expect(card.getByText(candidateSearch.pickReasonRow)).toBeInTheDocument();
-    expect(card.getByTestId('card-pick-reason')).toHaveTextContent(
-      '볼트·너트를 만들어 전기아연도금이 필요할 가능성이 높음',
-    );
+    const row = await screen.findByTestId('opportunity-card');
+    const card = within(row);
+    // 고른 이유 글은 그대로 보인다. 줄 이름만 "추천 이유" 하나로 합쳤다.
+    const pick = card.getByTestId('card-pick-reason');
+    expect(pick).toHaveTextContent(/^볼트·너트를 만들어 전기아연도금이 필요할 가능성이 높음$/);
+    const labels = card.getAllByText('추천 이유');
+    expect(labels).toHaveLength(1);
+    expect(labels[0].parentElement).toContainElement(pick);
+    expect(card.queryByText('고른 이유')).not.toBeInTheDocument();
+    expect(row).not.toHaveTextContent('고른 이유');
     expect(card.getByTestId('card-score')).toHaveTextContent(candidateSearch.beforeScore);
     expect(card.getByTestId('card-score')).not.toHaveTextContent('--');
-    expect(card.getByTestId('card-ingested-tag')).toHaveTextContent('11/20 들어옴');
+    // 들어온 날짜(11/20)는 거래처 후보 줄에 보이지 않는다.
+    expect(card.queryByTestId('card-ingested-tag')).not.toBeInTheDocument();
+    expect(row).not.toHaveTextContent('들어옴');
   });
 
   it.each([
@@ -123,7 +132,7 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.queryByTestId('card-research-state')).not.toBeInTheDocument();
   });
 
-  it('들어온 시각을 모르면 날짜 꼬리표가 없고 고른 이유는 계속 보인다', async () => {
+  it('들어온 시각을 모르면 날짜 꼬리표가 없고 고른 이유 글은 계속 보인다', async () => {
     mockedGet.mockResolvedValueOnce(reply([{ ...found, ingestedAt: null }]));
     renderPage();
     const card = within(await screen.findByTestId('opportunity-card'));
@@ -131,14 +140,32 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.getByTestId('card-pick-reason')).toBeInTheDocument();
   });
 
-  it('예전 회차에 들어온 회사도 날짜 꼬리표가 보인다(마지막 회차인지와 무관, #516)', async () => {
-    mockedGet.mockResolvedValueOnce(
+  // (바뀜 #987) 예전 기대: 거래처 후보 줄에도 날짜 꼬리표가 보인다. 지금: 그 꼬리표는 관심 기업 줄에만 있다.
+  // "마지막 회차인지와 무관하게 보인다"(#516)는 뜻은 꼬리표가 남은 관심 기업 줄에서 그대로 확인한다.
+  it('관심 기업 줄에서는 예전 회차에 들어온 회사도 날짜 꼬리표가 보인다(마지막 회차인지와 무관, #516)', async () => {
+    mockedGet.mockResolvedValue(
       reply([{ ...found, isNewInLatestBatch: false, ingestedAt: '2026-11-09T02:19:00Z' }]),
     );
-    renderPage();
-    const card = within(await screen.findByTestId('opportunity-card'));
-    expect(card.getByTestId('card-ingested-tag')).toHaveTextContent('11/9 들어옴');
+    renderPage('/opportunities?bookmarked=true');
+    const row = await screen.findByTestId('opportunity-card');
+    expect(row).toHaveAttribute('data-layout', 'bookmark');
+    expect(within(row).getByTestId('card-ingested-tag')).toHaveTextContent(/^11\/9 들어옴$/);
   });
+
+  it.each([
+    ['마지막 회차에 들어온 회사', true, '2026-11-20T01:00:00Z'],
+    ['예전 회차에 들어온 회사', false, '2026-11-09T02:19:00Z'],
+  ])(
+    '거래처 후보 줄에는 %s도 날짜 꼬리표가 없다(#987)',
+    async (_name, isNewInLatestBatch, ingestedAt) => {
+      mockedGet.mockResolvedValueOnce(reply([{ ...found, isNewInLatestBatch, ingestedAt }]));
+      renderPage();
+      const row = await screen.findByTestId('opportunity-card');
+      expect(row).toHaveAttribute('data-layout', 'table');
+      expect(within(row).queryByTestId('card-ingested-tag')).not.toBeInTheDocument();
+      expect(row).not.toHaveTextContent('들어옴');
+    },
+  );
 
   it('점수가 이미 있는 찾은 회사는 "점수 전" 대신 서버가 준 점수를 보인다(거래처 후보 줄은 숫자만, #981)', async () => {
     mockedGet.mockResolvedValueOnce(
@@ -166,9 +193,12 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     expect(card.getByTestId('card-score')).toHaveTextContent(/^점수 --$/);
     expect(card.getByTestId('card-score')).toHaveAttribute('aria-label', '점수 산정 전');
     expect(card.queryByText(candidateSearch.beforeScore)).not.toBeInTheDocument();
-    expect(card.queryByText(candidateSearch.pickReasonRow)).not.toBeInTheDocument();
+    expect(card.queryByText('고른 이유')).not.toBeInTheDocument();
     expect(card.queryByTestId('card-pick-reason')).not.toBeInTheDocument();
     expect(card.queryByTestId('card-ingested-tag')).not.toBeInTheDocument();
+    // 이름표 "추천 이유" 아래에는 추천 근거 글 한 줄만 있다.
+    expect(card.getAllByText('추천 이유')).toHaveLength(1);
+    expect(card.getByTestId('card-reason')).toHaveTextContent(apjeong.reason);
   });
 
   it('추천 근거가 고른 이유와 같은 문장이면 고른 이유 한 줄만 보인다(#555)', async () => {
@@ -181,7 +211,12 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
       '볼트·너트를 만들어 전기아연도금이 필요할 가능성이 높음',
     );
     expect(card.queryByTestId('card-reason')).not.toBeInTheDocument();
+    // #987: 줄 이름은 "추천 이유" 하나뿐이고 그 아래 글도 한 줄이다("추천 근거"라는 말은 줄에 없다).
+    const labels = card.getAllByText('추천 이유');
+    expect(labels).toHaveLength(1);
+    expect((labels[0].parentElement as HTMLElement).children).toHaveLength(2);
     expect(card.queryByText(cardRows.reason)).not.toBeInTheDocument();
+    expect(cardRows.reason).toBe('추천 근거');
   });
 
   it('조사 뒤 추천 근거가 고른 이유와 다르면 두 줄이 모두 보인다(#555)', async () => {
@@ -192,6 +227,14 @@ describe('추천 목록 · 후보 찾기 카드 표시(#316)', () => {
     const card = within(await screen.findByTestId('opportunity-card'));
     expect(card.getByTestId('card-pick-reason')).toBeInTheDocument();
     expect(card.getByTestId('card-reason')).toHaveTextContent('아연도금 볼트 월 30만 개 생산');
+    // #987: 두 글은 이름표 "추천 이유" 하나 아래에 근거 → 고른 이유 순서로 한 줄씩 놓인다.
+    const labels = card.getAllByText('추천 이유');
+    expect(labels).toHaveLength(1);
+    expect(Array.from((labels[0].parentElement as HTMLElement).children)).toEqual([
+      labels[0],
+      card.getByTestId('card-reason'),
+      card.getByTestId('card-pick-reason'),
+    ]);
   });
 
   it('고른 이유가 공백뿐이면 줄을 그리지 않고 점수 전도 아니다', async () => {
@@ -331,7 +374,9 @@ describe('추천 목록 · 후보 수집 요약(#316)과 정렬 "최근 들어�
     renderPage('/opportunities?batch=latest');
     await screen.findByTestId('ingest-summary');
     for (const call of mockedGet.mock.calls) expect(call[3]).not.toHaveProperty('batch');
-    expect(screen.getByTestId('card-ingested-tag')).toBeInTheDocument();
+    // 목록은 그대로 그려진다. (바뀜 #987) 예전에는 여기서 날짜 꼬리표로 확인했는데, 거래처 후보 줄에는 이제 그 꼬리표가 없다.
+    expect(screen.getByTestId('card-pick-reason')).toHaveTextContent(found.pickReason as string);
+    expect(screen.queryByTestId('card-ingested-tag')).not.toBeInTheDocument();
   });
 
   it('공정별 묶음 보기에서 "최근 들어온 순"이면 묶음 요청마다 sort=recent가 들어간다', async () => {

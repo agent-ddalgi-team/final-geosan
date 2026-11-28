@@ -89,13 +89,19 @@ describe('영업 코치 칸이 지금 화면을 보낸다', () => {
     expect(assistantPageOf('/opportunities/opp-1')).toBeNull();
   });
 
-  it('신규 거래처 찾기에서는 LIST를 보내고 후보 표에 맞는 예시·안내를 보인다', async () => {
+  it('신규 거래처 찾기에서는 LIST를 보내고 후보 표에 맞는 예시·안내 말풍선을 보인다', async () => {
     const user = userEvent.setup();
     mockedAsk.mockResolvedValueOnce({ data: answerWith(), meta: {} });
     renderWith(<AssistantAsk />, { path: '/opportunities' });
     const input = screen.getByTestId('assistant-question-input');
     expect(input).toHaveAttribute('placeholder', texts.askPlaceholderList);
-    expect(screen.getByTestId('assistant-ask-hint')).toHaveTextContent(texts.askHintList);
+    // (바뀜 #987) 예전 기대: 질문 칸 아래에 후보 표에 맞는 설명 글이 보인다. 지금: 그 설명은 지웠다.
+    // 후보 표에 맞는 안내는 질문 칸 위 말풍선과 칸 안 예시 글(placeholder)이 맡는다.
+    expect(screen.queryByTestId('assistant-ask-hint')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-intro').textContent).toBe(texts.intro.LIST);
+    expect(texts.intro.LIST).toBe(
+      '화면에 보이는 후보와 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
+    );
     await user.type(input, '아산 적합도 상 가까운 곳?');
     await user.click(screen.getByTestId('assistant-ask-button'));
     expect(mockedAsk).toHaveBeenCalledWith('아산 적합도 상 가까운 곳?', 'park-lee', 'LIST');

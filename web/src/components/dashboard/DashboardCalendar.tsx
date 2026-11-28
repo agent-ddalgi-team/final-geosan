@@ -9,42 +9,39 @@
 //   오늘은 초록으로 채움. 머리는 "‹ 11월 일정 ›". 날짜를 누르면 그날 일정 작은 창(지금과 같음).
 // #972(새 디자인): 점 달력의 오늘 = 강조 바탕 + 흰 글자, 일정 점 = 강조 밝은 쪽, 지난 일정 미정리 점 = 주의 점,
 //   이번 주 = 강조 연한 바탕, 칸 모서리 8. 작은 창 그림자는 토큰(homePalette.popoverShadow).
+// #983(PM이 고른 시안 2026-11-28): 점 모양(dots)을 작은 달력(mini)으로 바꿨다. 왼쪽 메뉴 아래(모든 화면)와
+//   좁은 화면의 영업 홈 본문 맨 아래가 쓴다.
+//   - 점 대신 칸 색(나이 있는 분도 보이게): 일정 있는 날 = 연보라 바탕 + 보라 굵은 숫자, 지난 일정이 남은 날 =
+//     연주황 바탕 + 주황 굵은 숫자, 누른 날 = 진한 보라 바탕 + 흰 숫자, 오늘 = 얇은 테두리. 달력 아래에 풀이.
+//   - 어느 날짜든 누를 수 있다. 일정이 없는 날은 작은 창에 "일정 없음"이 보인다.
+//   - 작은 창은 달력 오른쪽(popoverSide="right", 왼쪽 메뉴)이나 날짜 아래("below")에 뜨고,
+//     본문 아래에 다른 것(날짜 메모 #984 자리)을 끼울 수 있다(extra).
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { DashboardScheduleItem } from '../../api/dashboardTypes';
 import { dashboardTexts } from '../../labels/ko';
 import {
-  accent,
   calendarPalette,
   colors,
   homePalette,
   radius,
+  sideCalendar,
   type CalendarTone,
   typography,
-  warn,
 } from '../../theme/tokens';
-
-/** #972 점 달력 색. 점에는 글자를 올리지 않는다(강조 밝은 쪽 · 주의 점). 오늘 칸은 흰 글자가 올라가는 강조 바탕. */
-export const DOT_COLORS = {
-  todayBg: homePalette.blueStrong,
-  todayFg: colors.bgContainer,
-  weekBg: homePalette.blueBg,
-  dot: accent.bright,
-  dotOverdue: warn.dot,
-} as const;
 import { formatMonthDay } from '../../utils/time';
 import { sortSchedule } from './ScheduleList';
-import { PREP_DAYS } from './VisitPrep';
 
-/** 두 날짜(YYYY-MM-DD) 사이 날 수(b - a). 날짜 글이 아니면 null. */
-function dayDiff(a: string, b: string): number | null {
-  const parse = (v: string) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
-  };
-  const x = parse(a);
-  const y = parse(b);
-  return x === null || y === null ? null : Math.round((y - x) / 86_400_000);
+/** #983 작은 달력의 날짜 칸 종류: 지난 일정이 남은 날 · 일정 있는 날 · 일정 없는 날. */
+export type MiniDayTone = 'overdue' | 'has' | 'none';
+
+/** #983 작은 달력 날짜 칸의 바탕 · 글자색. 누른 날이 가장 먼저다. */
+export function miniCellColors(tone: MiniDayTone, selected: boolean): { bg: string; fg: string } {
+  if (selected) return sideCalendar.selected;
+  if (tone === 'overdue') return sideCalendar.overdue;
+  if (tone === 'has') return sideCalendar.has;
+  return sideCalendar.plain;
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -90,17 +87,30 @@ interface Props {
   today: string;
   /** #795: 작게(칸 높이 36px, 작은 글자). 동작은 같다. */
   compact?: boolean;
-  /** #927 점 모양(영업 홈). 기본은 칸마다 색·건수. */
-  dots?: boolean;
+  /** #983 작은 달력(왼쪽 메뉴 · 좁은 화면의 영업 홈). 기본은 칸마다 색·건수. */
+  mini?: boolean;
+  /** 작은 달력의 작은 창이 뜨는 쪽. right = 달력 오른쪽(왼쪽 메뉴), below = 날짜 아래. */
+  popoverSide?: 'right' | 'below';
+  /** 작은 달력의 작은 창 본문 아래에 끼울 것. 그날 날짜(YYYY-MM-DD)를 받는다(날짜 메모 #984 자리). */
+  extra?: (day: string) => ReactNode;
 }
 
 interface Open {
   day: string;
   left: number;
   top: number;
+  /** 작은 달력 · 오른쪽 창에서 날짜가 화면 아래쪽이면 창을 위로 펼친다: 달력 아래 끝에서 창 아래 끝까지 거리. */
+  bottom?: number;
 }
 
-export default function DashboardCalendar({ items, today, compact = false, dots = false }: Props) {
+export default function DashboardCalendar({
+  items,
+  today,
+  compact = false,
+  mini = false,
+  popoverSide = 'below',
+  extra,
+}: Props) {
   const base = /^(\d{4})-(\d{2})-\d{2}$/.exec(today);
   const startYear = base ? Number(base[1]) : new Date().getFullYear();
   const startMonth = base ? Number(base[2]) - 1 : new Date().getMonth();
@@ -144,12 +154,14 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
 
   const navButton = {
     border: 0,
-    background: dots ? 'transparent' : calendarPalette.navBg,
-    color: dots ? colors.textSecondary : calendarPalette.navFg,
+    background: mini ? 'transparent' : calendarPalette.navBg,
+    color: mini ? colors.textSecondary : calendarPalette.navFg,
     borderRadius: '50%',
-    width: compact ? 28 : 40,
-    height: compact ? 28 : 40,
-    fontSize: compact ? 16 : 20,
+    width: mini ? 24 : compact ? 28 : 40,
+    height: mini ? 24 : compact ? 28 : 40,
+    fontSize: mini ? sideCalendar.titleFontSize : compact ? 16 : 20,
+    fontFamily: 'inherit',
+    padding: 0,
     lineHeight: 1,
     cursor: 'pointer',
     flex: 'none',
@@ -160,7 +172,12 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
   return (
     <div ref={wrapRef} data-testid="dashboard-calendar" style={{ position: 'relative' }}>
       <div
-        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 8 : 12 }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: mini ? 2 : 8,
+          marginBottom: compact || mini ? 8 : 12,
+        }}
       >
         <button
           type="button"
@@ -177,12 +194,12 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
             flex: 1,
             textAlign: 'center',
             color: calendarPalette.title,
-            fontSize: dots ? typography.fontSize : compact ? 18 : 28,
-            fontWeight: dots ? 700 : 500,
+            fontSize: mini ? sideCalendar.titleFontSize : compact ? 18 : 28,
+            fontWeight: mini ? 600 : 500,
             lineHeight: 1.2,
           }}
         >
-          {dots ? null : (
+          {mini ? null : (
             <>
               <span
                 style={{
@@ -196,7 +213,7 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
               </span>{' '}
             </>
           )}
-          {dots ? dashboardTexts.calendarDotsTitle(cursor.month + 1) : `${cursor.month + 1}월`}
+          {mini ? dashboardTexts.calendarDotsTitle(cursor.month + 1) : `${cursor.month + 1}월`}
         </strong>
         <button
           type="button"
@@ -212,11 +229,11 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-          gap: 6,
+          gap: mini ? 0 : 6,
           color: calendarPalette.weekday,
-          fontSize: typography.fontSizeSecondary,
+          fontSize: mini ? sideCalendar.weekdayFontSize : typography.fontSizeSecondary,
           textAlign: 'center',
-          marginBottom: 6,
+          marginBottom: mini ? 2 : 6,
         }}
       >
         {WEEKDAYS.map((w) => (
@@ -229,8 +246,10 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-          gridTemplateRows: `repeat(${rows}, minmax(${dots ? 30 : compact ? 36 : 68}px, 1fr))`,
-          gap: dots ? 2 : compact ? 4 : 6,
+          gridTemplateRows: mini
+            ? undefined
+            : `repeat(${rows}, minmax(${compact ? 36 : 68}px, 1fr))`,
+          gap: mini ? '2px 0' : compact ? 4 : 6,
         }}
       >
         {Array.from({ length: rows * 7 }, (_, i) => {
@@ -243,63 +262,11 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
           const isToday = k === today;
           const tone = list ? toneOf(k, list, today) : null;
           const palette = tone ? calendarPalette.tones[tone] : null;
-          if (dots) {
-            // #929(시안 v3): 오늘부터 7일(이번 주 방문 목록과 같은 범위)은 연파랑 바탕.
-            const offset = dayDiff(today, k);
-            const thisWeek = offset !== null && offset >= 1 && offset < PREP_DAYS;
-            const dotColor = isToday
-              ? DOT_COLORS.todayFg
-              : overdue
-                ? DOT_COLORS.dotOverdue
-                : DOT_COLORS.dot;
-            const cell = {
-              position: 'relative',
-              boxSizing: 'border-box',
-              minWidth: 0,
-              border: 0,
-              borderRadius: radius.controlSm,
-              padding: '4px 0 10px',
-              textAlign: 'center',
-              fontFamily: 'inherit',
-              fontSize: 12,
-              background: isToday
-                ? DOT_COLORS.todayBg
-                : thisWeek
-                  ? DOT_COLORS.weekBg
-                  : 'transparent',
-              color: isToday ? DOT_COLORS.todayFg : colors.text,
-              fontWeight: isToday || list ? 700 : 400,
-              outline: isSelected ? `2px solid ${colors.text}` : 'none',
-              outlineOffset: 1,
-            } as const;
-            const dot = list ? (
-              <span
-                aria-hidden="true"
-                data-testid={`dashboard-calendar-dot-${k}`}
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  bottom: 3,
-                  width: 5,
-                  height: 5,
-                  marginLeft: -2.5,
-                  borderRadius: '50%',
-                  background: dotColor,
-                }}
-              />
-            ) : null;
-            if (!list || !tone) {
-              return (
-                <span
-                  key={i}
-                  data-testid={`dashboard-calendar-day-${k}`}
-                  data-tone="none"
-                  style={cell}
-                >
-                  {day}
-                </span>
-              );
-            }
+          if (mini) {
+            // #983: 어느 날짜든 누를 수 있다. 칸 색과 굵기로 일정 있는 날 · 지난 일정이 남은 날을 알린다.
+            const miniTone: MiniDayTone = overdue ? 'overdue' : list ? 'has' : 'none';
+            const cellColors = miniCellColors(miniTone, isSelected);
+            const marked = miniTone !== 'none' || isSelected;
             return (
               <button
                 key={i}
@@ -307,27 +274,79 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
                 data-testid={`dashboard-calendar-day-${k}`}
                 aria-pressed={isSelected}
                 aria-haspopup="dialog"
-                aria-label={`${cursor.month + 1}월 ${day}일 일정 ${list.length}건${
-                  overdue ? ' (기한 지남)' : ''
-                }`}
-                data-tone={tone}
+                aria-current={isToday ? 'date' : undefined}
+                aria-label={dashboardTexts.calendarDayLabel(
+                  cursor.month + 1,
+                  day,
+                  list?.length ?? 0,
+                  overdue,
+                  isToday,
+                )}
+                data-tone={miniTone}
+                data-today={isToday ? 'true' : undefined}
                 onClick={(event) => {
                   if (isSelected) {
                     setOpen(null);
                     return;
                   }
                   const target = event.currentTarget;
-                  const wrapWidth = wrapRef.current?.clientWidth ?? POPOVER_WIDTH;
+                  const wrap = wrapRef.current;
+                  if (popoverSide === 'right') {
+                    // 날짜가 화면 아래쪽 절반에 있으면 창을 위로 펼쳐 화면 밖으로 나가지 않게 한다.
+                    const low = target.getBoundingClientRect().top > window.innerHeight / 2;
+                    const rowBottom = target.offsetTop + target.offsetHeight;
+                    setOpen({
+                      day: k,
+                      left: 0,
+                      top: Math.max(0, target.offsetTop - 12),
+                      ...(low
+                        ? {
+                            bottom: Math.max(0, (wrap?.clientHeight ?? rowBottom) - rowBottom - 12),
+                          }
+                        : {}),
+                    });
+                    return;
+                  }
+                  const wrapWidth = wrap?.clientWidth ?? POPOVER_WIDTH;
                   const left = Math.max(
                     0,
                     Math.min(target.offsetLeft, wrapWidth - Math.min(POPOVER_WIDTH, wrapWidth)),
                   );
                   setOpen({ day: k, left, top: target.offsetTop + target.offsetHeight + 6 });
                 }}
-                style={{ ...cell, cursor: 'pointer' }}
+                style={{
+                  border: 0,
+                  background: 'none',
+                  padding: '1px 0',
+                  minWidth: 0,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
               >
-                {day}
-                {dot}
+                <span
+                  data-testid={`dashboard-calendar-cell-${k}`}
+                  style={{
+                    display: 'block',
+                    width: sideCalendar.cellSize,
+                    height: sideCalendar.cellSize,
+                    lineHeight: `${sideCalendar.cellSize}px`,
+                    margin: '0 auto',
+                    borderRadius: sideCalendar.cellRadius,
+                    fontSize: sideCalendar.cellFontSize,
+                    textAlign: 'center',
+                    background: cellColors.bg,
+                    color: cellColors.fg,
+                    fontWeight: marked ? 700 : 400,
+                    // 누른 날은 바깥 고리, 오늘은 안쪽 얇은 테두리.
+                    boxShadow: isSelected
+                      ? `0 0 0 2px ${colors.bgContainer}, 0 0 0 4px ${sideCalendar.selected.bg}`
+                      : isToday
+                        ? `inset 0 0 0 ${sideCalendar.todayRingWidth}px ${sideCalendar.todayRing}`
+                        : 'none',
+                  }}
+                >
+                  {day}
+                </span>
               </button>
             );
           }
@@ -423,71 +442,83 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
           );
         })}
       </div>
-      {dots ? (
+      {mini ? (
         <ul
           aria-label={dashboardTexts.calendarLegendLabel}
           data-testid="dashboard-calendar-legend"
           style={{
             listStyle: 'none',
-            margin: '8px 0 0',
-            padding: 0,
+            margin: '10px 0 0',
+            padding: '0 4px',
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '4px 12px',
+            gap: '4px 10px',
             color: calendarPalette.textSecondary,
-            fontSize: typography.fontSizeSecondary - 2,
+            fontSize: sideCalendar.legendFontSize,
           }}
         >
           {[
-            [DOT_COLORS.dot, dashboardTexts.calendarDotHas, '50%'],
-            [DOT_COLORS.dotOverdue, dashboardTexts.calendarDotOverdue, '50%'],
-            [DOT_COLORS.weekBg, dashboardTexts.calendarThisWeek, '2px'],
-          ].map(([color, label, round]) => (
-            <li key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            [sideCalendar.has.bg, dashboardTexts.calendarMiniHas],
+            [sideCalendar.overdue.bg, dashboardTexts.calendarMiniOverdue],
+          ].map(([color, label]) => (
+            <li
+              key={label}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
+            >
               <span
                 aria-hidden="true"
-                style={{
-                  width: round === '50%' ? 6 : 10,
-                  height: round === '50%' ? 6 : 8,
-                  borderRadius: round,
-                  background: color,
-                }}
+                style={{ width: 14, height: 14, borderRadius: 4, background: color }}
               />
               {label}
             </li>
           ))}
         </ul>
       ) : null}
-      <ul
-        aria-label={dashboardTexts.calendarLegendLabel}
-        data-testid={dots ? undefined : 'dashboard-calendar-legend'}
-        style={{
-          listStyle: 'none',
-          margin: '12px 0 0',
-          padding: 0,
-          display: dots ? 'none' : 'flex',
-          flexWrap: 'wrap',
-          gap: '6px 14px',
-          color: calendarPalette.textSecondary,
-          fontSize: typography.fontSizeSecondary,
-        }}
-      >
-        {TONE_ORDER.map((tone) => (
-          <li key={tone} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 12,
-                height: 12,
-                borderRadius: radius.tag,
-                background: calendarPalette.tones[tone].bg,
-              }}
-            />
-            {TONE_LABEL[tone]}
-          </li>
-        ))}
-      </ul>
-      {byDay.size === 0 ? (
+      {mini ? null : (
+        <ul
+          aria-label={dashboardTexts.calendarLegendLabel}
+          data-testid="dashboard-calendar-legend"
+          style={{
+            listStyle: 'none',
+            margin: '12px 0 0',
+            padding: 0,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px 14px',
+            color: calendarPalette.textSecondary,
+            fontSize: typography.fontSizeSecondary,
+          }}
+        >
+          {TONE_ORDER.map((tone) => (
+            <li key={tone} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: radius.tag,
+                  background: calendarPalette.tones[tone].bg,
+                }}
+              />
+              {TONE_LABEL[tone]}
+            </li>
+          ))}
+        </ul>
+      )}
+      {mini ? (
+        <p
+          data-testid="dashboard-calendar-hint"
+          style={{
+            margin: '6px 0 0',
+            padding: '0 4px',
+            color: calendarPalette.weekday,
+            fontSize: sideCalendar.legendFontSize,
+            lineHeight: 1.5,
+          }}
+        >
+          {dashboardTexts.calendarMiniHint}
+        </p>
+      ) : byDay.size === 0 ? (
         <p
           data-testid="dashboard-schedule-empty"
           style={{ margin: '8px 0 0', color: calendarPalette.textSecondary }}
@@ -505,7 +536,16 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
           {dashboardTexts.calendarHint}
         </p>
       )}
-      {open ? (
+      {open && mini ? (
+        <MiniPopover
+          open={open}
+          list={openList}
+          side={popoverSide}
+          onClose={() => setOpen(null)}
+          extra={extra}
+        />
+      ) : null}
+      {open && !mini ? (
         <div
           role="dialog"
           aria-modal="false"
@@ -584,6 +624,158 @@ export default function DashboardCalendar({ items, today, compact = false, dots 
           </ul>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** "2026-12-23" → "12월 23일 (수)". 날짜 글이 아니면 그대로. */
+export function popoverDayTitle(day: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return day;
+  const weekday = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay();
+  return dashboardTexts.calendarPopoverDay(Number(m[2]), Number(m[3]), WEEKDAYS[weekday]);
+}
+
+/**
+ * #983 작은 달력의 작은 창: 머리 "12월 23일 (수) · 일정 2건(없으면 일정 없음) · ×", 그날 일정(회사 링크 · 내용 · 지남),
+ * 그 아래 끼울 것(extra). 화면을 가리는 창이 아니다(aria-modal=false).
+ */
+function MiniPopover({
+  open,
+  list,
+  side,
+  onClose,
+  extra,
+}: {
+  open: Open;
+  list: DashboardScheduleItem[];
+  side: 'right' | 'below';
+  onClose: () => void;
+  extra?: (day: string) => ReactNode;
+}) {
+  const right = side === 'right';
+  const up = right && open.bottom !== undefined;
+  return (
+    <div
+      role="dialog"
+      aria-modal="false"
+      aria-label={`${popoverDayTitle(open.day)} ${
+        list.length > 0
+          ? dashboardTexts.calendarPopoverCount(list.length)
+          : dashboardTexts.calendarPopoverNone
+      }`}
+      data-testid="dashboard-calendar-popover"
+      data-side={side}
+      style={{
+        position: 'absolute',
+        ...(right
+          ? {
+              left: `calc(100% + ${sideCalendar.popoverGap}px)`,
+              ...(up ? { bottom: open.bottom } : { top: open.top }),
+              width: sideCalendar.popoverWidth,
+            }
+          : {
+              left: open.left,
+              top: open.top,
+              width: `min(${sideCalendar.popoverWidth}px, 100%)`,
+            }),
+        boxSizing: 'border-box',
+        zIndex: 10,
+        background: sideCalendar.popoverBg,
+        border: `1px solid ${sideCalendar.popoverBorder}`,
+        color: calendarPalette.title,
+        borderRadius: sideCalendar.popoverRadius,
+        boxShadow: sideCalendar.popoverShadow,
+        padding: 14,
+        display: 'grid',
+        gap: 10,
+        fontSize: typography.fontSizeSecondary,
+        lineHeight: 1.5,
+      }}
+    >
+      {right ? (
+        // 달력 쪽을 가리키는 작은 꼬리(꾸밈).
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: -7,
+            ...(up ? { bottom: 18 } : { top: 18 }),
+            width: 12,
+            height: 12,
+            background: sideCalendar.popoverBg,
+            borderLeft: `1px solid ${sideCalendar.popoverBorder}`,
+            borderBottom: `1px solid ${sideCalendar.popoverBorder}`,
+            transform: 'rotate(45deg)',
+          }}
+        />
+      ) : null}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <b data-testid="dashboard-calendar-popover-title" style={{ fontSize: 15 }}>
+          {popoverDayTitle(open.day)}
+        </b>
+        <span
+          data-testid="dashboard-calendar-popover-count"
+          style={{ fontSize: typography.fontSizeSecondary - 1, color: calendarPalette.weekday }}
+        >
+          {list.length > 0
+            ? dashboardTexts.calendarPopoverCount(list.length)
+            : dashboardTexts.calendarPopoverNone}
+        </span>
+        <button
+          type="button"
+          aria-label={dashboardTexts.popoverClose}
+          data-testid="dashboard-calendar-popover-close"
+          onClick={onClose}
+          style={{
+            marginLeft: 'auto',
+            border: 0,
+            background: 'none',
+            padding: '0 4px',
+            fontSize: 16,
+            fontFamily: 'inherit',
+            color: calendarPalette.weekday,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+      </div>
+      {list.length > 0 ? (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+          {list.map((item) => (
+            <li
+              key={`${item.oppId}-${item.dueAt}-${item.note}`}
+              data-testid="dashboard-calendar-popover-item"
+            >
+              {item.overdue ? (
+                <span
+                  data-testid="dashboard-schedule-overdue"
+                  style={{
+                    background: calendarPalette.tones.overdue.bg,
+                    color: calendarPalette.tones.overdue.fg,
+                    borderRadius: radius.tag,
+                    padding: '0 6px',
+                    marginRight: 6,
+                    fontSize: typography.fontSizeSecondary - 1,
+                    fontWeight: 600,
+                  }}
+                >
+                  {dashboardTexts.scheduleOverdue}
+                </span>
+              ) : null}
+              <Link
+                to={`/opportunities/${encodeURIComponent(item.oppId)}`}
+                style={{ color: calendarPalette.link, fontWeight: 600 }}
+              >
+                {item.customerName}
+              </Link>
+              {item.note ? <span> · {item.note}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {extra ? <div data-testid="dashboard-calendar-popover-extra">{extra(open.day)}</div> : null}
     </div>
   );
 }

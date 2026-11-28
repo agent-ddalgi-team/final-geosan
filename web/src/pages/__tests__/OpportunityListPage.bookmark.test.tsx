@@ -157,11 +157,11 @@ describe('OpportunityListPage "관심 기업" 보기 (#357)', () => {
     // #981: 거래처 후보 줄도 세 칸이다(예전 다섯 칸). 관심 기업 줄과는 모양 이름(cand-row--three)으로 갈린다.
     expect(tableRow.children).toHaveLength(3);
     expect(tableRow).not.toHaveClass('cand-row--three');
-    // 열 머리도 줄의 칸과 같은 세 개다.
+    // 열 머리도 줄의 칸과 같은 세 개다(#987: "회사 · 품목" → "기업", "추천 근거" → "추천 이유").
     const head = screen.getByTestId('list-column-head');
     expect(Array.from(head.children).map((column) => column.textContent)).toEqual([
-      '회사 · 품목',
-      '추천 근거 · 검토사항',
+      '기업',
+      '추천 이유 · 검토사항',
       '적합도 · 점수 · 관심 · 의견',
     ]);
     // 거래처 후보 줄에는 [자세히 보기]가 없다(회사 이름을 누른다).

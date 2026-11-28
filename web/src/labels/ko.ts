@@ -230,7 +230,11 @@ export const frame = {
     dashboard: (n: number) => `오늘 확인할 것 ${n}곳`,
     list: (n: number) => `새 후보 ${n}곳`,
     bookmarks: (n: number) => `새 소식 ${n}곳`,
+    /** (#987) 관심 기업 옆 주황 꼬리표의 뜻(손을 올리면 보임, 화면 낭독). */
+    bookmarksNoOpinion: (n: number) => `의견을 안 고른 관심 기업 ${n}곳`,
   },
+  /** (#987) 왼쪽 메뉴 "관심 기업" 옆 주황 꼬리표의 글. 예: "의견 전 3" */
+  menuNoOpinion: (n: number) => `의견 전 ${n > 99 ? '99+' : n}`,
   /** 계정 방식(#754): 위쪽에 로그인한 사람. 예: "영업 김 님". */
   currentStaff: (name: string) => `${name} 님`,
   logout: '로그아웃',
@@ -454,7 +458,6 @@ export const dashboardTexts = {
   tableNoContact: '접촉 기록 없음',
   /** "오늘" · "어제" · "5일 전" */
   tableDaysAgo: (n: number) => (n <= 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`),
-  tableStalled: '⚠ 다음 일정 없음',
   /** "지난 일정 11/21" */
   tableOverdue: (day: string) => `지난 일정 ${day}`,
   tableEmpty: '이 조건에 맞는 회사가 없습니다.',
@@ -466,9 +469,6 @@ export const dashboardTexts = {
   // #927(시안): 오늘 할 일 한 줄의 왼쪽 표시와 지난 일정 아래 작은 글.
   /** #927 영업 홈 점 달력 머리. "11월 일정" */
   calendarDotsTitle: (month: number) => `${month}월 일정`,
-  calendarDotHas: '일정 있음',
-  calendarDotOverdue: '지난 일정 미정리',
-  calendarThisWeek: '이번 주',
   scheduleTagOverdue: '지난 일정',
   scheduleTagToday: '오늘',
   /** "11/21(금) 예정이었음" */
@@ -483,15 +483,7 @@ export const dashboardTexts = {
   /** [영업 홈 › 인사말 아래 줄] "오늘 챙길 일 4건" = 지난 일정 + 오늘 일정 + 받은 전달 사항(왼쪽 메뉴 숫자와 같은 뜻). */
   greetingTodoLead: '오늘 챙길 일',
   greetingTodoCount: (n: number) => `${n}건`,
-  /** [영업 홈 › 단계 숫자 카드] 숫자 아래 작은 풀이. */
-  stageCardHints: {
-    NOT_CONTACTED: '아직 연락 전',
-    IN_CONTACT: '연락이 닿은 회사',
-    QUOTE_SAMPLE: '견적·샘플 진행',
-    WON: '성사한 회사',
-    ON_HOLD: '나중에 다시 볼 회사',
-  },
-  /** [영업 홈 › 단계 숫자 카드 › 주의 꼬리표] "멈춘 회사 2곳" */
+  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸] 화면 낭독기가 읽는 말. "멈춘 회사 2곳" (보이는 꼬리표는 stageCellStalled) */
   stageCardStalled: (n: number) => `멈춘 회사 ${n}곳`,
   /** [영업 홈 › 단계 숫자 카드 › 이름 옆 꼬리표] (#976) "+1 이번 주" = 이번 주(월요일~오늘)에 이 칸으로 들어온 회사 수. */
   stageCardEntered: (n: number) => `+${n} 이번 주`,
@@ -515,6 +507,74 @@ export const dashboardTexts = {
   topLink: '후보 모두 보기',
   /** "01" */
   topNumber: (n: number) => String(n).padStart(2, '0'),
+  // #983(PM이 고른 시안 2026-11-28): 진행 중인 회사 카드 안 작은 단계 칸 · 표에서 바로 일정 잡기 · 작은 달력.
+  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸 › 주의 꼬리표] "멈춤 1" = 그 단계에서 멈춘 회사 수. */
+  stageCellStalled: (n: number) => `멈춤 ${n}`,
+  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸 › 숫자 뒤] */
+  stageCellUnit: '곳',
+  /** [영업 홈 › 진행 중인 회사 › 작은 단계 칸 오른쪽 안내] */
+  stageCellHint: '칸을 누르면 아래 표가 그 단계 회사만 보입니다',
+  /** [영업 홈 › 진행 중인 회사 표 › 다음 일정 칸] 일정이 없으면 [일정 잡기], 있으면 [바꾸기]. */
+  tableScheduleNew: '일정 잡기',
+  tableScheduleChange: '바꾸기',
+  /** 화면 낭독기가 읽는 단추 이름. "가상정밀 일정 잡기" */
+  tableScheduleNewLabel: (company: string) => `${company} 일정 잡기`,
+  tableScheduleChangeLabel: (company: string) => `${company} 일정 바꾸기`,
+  /** [영업 홈 › 진행 중인 회사 표 위] 보기 전용 · 담당자를 고르기 전에는 일정 단추가 눌리지 않는다. */
+  tablePickStaffFirst: '먼저 담당자를 고르세요',
+  /** [왼쪽 메뉴 › 달력] 풀이 줄: 칸 색의 뜻. */
+  calendarMiniHas: '일정',
+  calendarMiniOverdue: '지난 일정',
+  calendarMiniHint: '날짜를 누르면 그날 일정이 보입니다',
+  /** [왼쪽 메뉴 › 달력 › 날짜 단추] 화면 낭독기가 읽는 말. "12월 4일, 일정 2건" · "12월 5일, 일정 없음" */
+  calendarDayLabel: (month: number, day: number, count: number, overdue: boolean, today: boolean) =>
+    [
+      `${month}월 ${day}일`,
+      today ? '오늘' : null,
+      count > 0 ? `일정 ${count}건` : '일정 없음',
+      overdue ? '지난 일정 있음' : null,
+    ]
+      .filter(Boolean)
+      .join(', '),
+  /** [왼쪽 메뉴 › 달력 › 날짜를 누르면 뜨는 창 머리] "12월 23일 (수)" */
+  calendarPopoverDay: (month: number, day: number, weekday: string) =>
+    `${month}월 ${day}일 (${weekday})`,
+  calendarPopoverCount: (n: number) => `일정 ${n}건`,
+  calendarPopoverNone: '일정 없음',
+  /** [왼쪽 메뉴 › 달력] 일정을 읽는 중 · 못 읽었을 때. 메뉴는 그대로 쓸 수 있다. */
+  sideCalendarLoading: '일정을 불러오는 중입니다',
+  sideCalendarError: '일정을 불러오지 못했습니다',
+  /** 전에 읽은 일정은 있는데 다시 읽기에 실패했을 때 달력 아래 한 줄. 보이는 달력은 앞서 읽은 값이다. */
+  sideCalendarStale: '새 일정을 읽지 못했습니다. 앞서 읽은 일정입니다.',
+  sideCalendarRetry: '다시 읽기',
+} as const;
+
+/**
+ * 바로 일정 잡기 칸(#983): 영업 홈 "진행 중인 회사" 표의 다음 일정 칸에서 펴진다(기업 상세에서도 같은 부품을 쓴다).
+ * 저장은 기업 상세의 [일정 잡기]와 같다(지금 단계는 그대로 두고 다음 일정만 바꾼 새 기록).
+ */
+export const scheduleQuickEdit = {
+  groupLabel: '다음 일정 잡기',
+  dateLabel: '날짜',
+  kindLabel: '종류',
+  kindPlaceholder: '종류 고르기',
+  noteLabel: '내용',
+  notePlaceholder: '할 일 한 줄',
+  save: '저장',
+  cancel: '취소',
+  /** "지금 일정: 11/18 방문 (지남) → 저장하면 이 일정으로 바뀌고 달력에도 바로 보입니다" */
+  currentLine: (day: string, note: string, overdue: boolean) =>
+    `지금 일정: ${[day, note].filter(Boolean).join(' ')}${overdue ? ' (지남)' : ''} → 저장하면 이 일정으로 바뀌고 달력에도 바로 보입니다`,
+  noCurrentLine: '지금 일정 없음 → 저장하면 달력에도 바로 보입니다',
+  kindHint: '종류를 고르면 내용이 채워지고 고쳐 쓸 수 있습니다',
+  datePast: '오늘이나 그 뒤 날짜를 골라 주세요',
+  saved: '저장됨',
+  saveFailed: '저장하지 못했습니다. 다시 시도',
+  /** 저장 전에 그 회사의 지금 단계를 읽지 못했을 때. 저장 요청은 보내지 않는다. */
+  loadFailed: '지금 단계를 읽지 못해 저장하지 않았습니다. 다시 시도',
+  /** 그 사이 다른 기록이 저장돼 서버가 막았을 때(409) 서버 안내 뒤에 붙는 단추. */
+  reload: '다시 읽기',
+  pickStaffFirst: '먼저 담당자를 고르세요',
 } as const;
 
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
@@ -963,13 +1023,17 @@ export const excludedList = {
  */
 export const listTable = {
   columns: {
-    company: '회사 · 품목',
+    company: '기업',
     region: '지역',
-    reason: '추천 근거 · 검토사항',
+    reason: '추천 이유 · 검토사항',
     score: '점수',
     /** (#981) 셋째 열: 적합도 · 점수(숫자만) · 관심 별, 그 아래 의견 고르기. */
     actions: '적합도 · 점수 · 관심 · 의견',
   },
+  /** (#987) 줄 안의 이름표: "추천 근거"와 "고른 이유"를 이 한 말로 통일했다(거래처 후보 · 관심 기업 줄). */
+  reasonLabel: '추천 이유',
+  /** (#987) 거래처 후보 줄 첫 칸, 회사 이름 아래 줄들의 이름표. */
+  facts: { item: '품목', industry: '산업', region: '지역' },
   /** 좁은 화면과 화면 낭독기용 칸 이름. */
   scoreLabel: '점수',
   tagsLabel: '꼬리표',
@@ -1048,8 +1112,6 @@ export const candidateSearch = {
     '공정·산업 칸을 기존 고객과 닮은 조건으로 채웠습니다. 찾기는 [발굴 시작]을 눌러야 시작합니다.',
   customerLikeHint: '기존 고객 수를 센 것이에요. 점수·순위는 바뀌지 않습니다.',
   customerLikeVirtual: '가상·거산 실제 사양 아님',
-  /** 카드 "고른 이유" 줄 이름. AI가 이 회사를 목록에 넣은 이유 한 줄이 옆에 보인다. */
-  pickReasonRow: '고른 이유',
   /** 점수가 아직 없는 찾은 회사. 서버 점수 글자("--") 대신 보인다. */
   beforeScore: '점수 전',
   /**
@@ -2942,9 +3004,6 @@ export const assistantTexts = {
   askLabel: '영업 기록에 대해 물어보기',
   askPlaceholder: '예: 가격 때문에 거절된 회사는? / 이번 주에 연락할 회사는?',
   askButton: '묻기',
-  askHint: '단계·접촉 날짜·거절 이유·고른 답만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
-  /** (#981) 안내 아래 한 줄: 예시 질문 단추는 글만 채우고, 비용은 [묻기]를 누를 때만 든다. */
-  askCostHint: '[묻기]를 누를 때만 AI 비용이 듭니다.',
   /** (#981) 질문 칸 위 안내 말풍선. 화면마다 무엇을 바탕으로 답하는지 한 줄. */
   intro: {
     DASHBOARD: '일정과 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
@@ -2985,8 +3044,6 @@ export const assistantTexts = {
   dailyFailed: '오늘 정리를 받지 못했습니다.',
   /** 신규 거래처 찾기(#774)에서는 아직 연락 안 한 후보 표도 함께 보낸다. */
   askPlaceholderList: '예: 아산 아연도금 적합도 상·중 가운데 가까운 곳은?',
-  askHintList:
-    '단계·접촉 날짜·고른 답과, 아직 연락 안 한 후보의 지역·적합도·거리만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
   /** 긴 답은 앞 몇 줄만 보이고 [더 보기]로 편다(#774). */
   answerMore: '더 보기',
   answerLess: '접기',

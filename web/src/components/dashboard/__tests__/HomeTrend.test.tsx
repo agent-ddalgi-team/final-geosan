@@ -6,6 +6,7 @@ import HomeTrend from '../HomeTrend';
 import { getSalesAnalysis } from '../../../api/salesAnalysis';
 import type { SalesAnalysis } from '../../../api/salesAnalysis';
 import { ApiError } from '../../../api/client';
+import { TREND_HEIGHT_SHORT } from '../../analysis/MonthlyTrend';
 import { dashboardTexts } from '../../../labels/ko';
 
 vi.mock('../../../api/salesAnalysis', () => ({ getSalesAnalysis: vi.fn() }));
@@ -112,4 +113,16 @@ it('불러오는 동안에는 빈 카드나 자리표시를 보이지 않는다'
   mockedGet.mockReturnValueOnce(new Promise(() => {}));
   const { container } = renderCard();
   expect(container).toBeEmptyDOMElement();
+});
+
+it('#983: 영업 홈의 그림은 영업 분석(170)의 절반쯤 높이로 그린다(같은 응답 · 같은 선)', async () => {
+  mockedGet.mockResolvedValueOnce(
+    reply({ monthly: months, total: { contactedCount: 12 } } as never),
+  );
+  renderCard();
+  const card = await screen.findByTestId('dashboard-trend');
+  expect(within(card).getByTestId('monthly-trend-line').style.height).toBe(
+    `${TREND_HEIGHT_SHORT}px`,
+  );
+  expect(within(card).getAllByTestId('monthly-trend-month')).toHaveLength(12);
 });
