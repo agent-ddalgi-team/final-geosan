@@ -46,6 +46,7 @@ import {
 import BucketedCards from '../components/list/BucketedCards';
 import { bucketRest } from '../components/list/bucketRemainder';
 import ListColumnHead from '../components/list/ListColumnHead';
+import NoOpinionStrip, { NO_OPINION_FILTER } from '../components/list/NoOpinionStrip';
 import ListViewBar, { isOpinionFilter } from '../components/list/ListViewBar';
 import { withoutMoved } from '../components/list/movedToBookmarks';
 import OpportunityCard from '../components/list/OpportunityCard';
@@ -201,6 +202,9 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
   const [moved, setMoved] = useState<{ key: string; ids: string[] }>({ key: '', ids: [] });
   // 안내 한 줄은 조건을 바꾸기 전까지 남긴다.
   const [movedNoticeKey, setMovedNoticeKey] = useState<string | null>(null);
+  // 줄에서 검토 의견을 저장한 횟수(#981). 관심 기업 화면의 "의견 전" 띠가 곳 수를 다시 읽는 데 쓴다.
+  const [opinionSaved, setOpinionSaved] = useState(0);
+  const onOpinionSaved = useCallback(() => setOpinionSaved((count) => count + 1), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -512,6 +516,14 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
           padding: listTheme.panelPadding,
         }}
       >
+        {/* #981: 관심에 담고 의견을 안 고른 회사가 있으면 알린다("의견 전"만 보는 중에는 띠를 숨긴다). */}
+        {bookmarked && filter !== NO_OPINION_FILTER ? (
+          <NoOpinionStrip
+            filters={baseFilters}
+            reloadKey={`${requestKey}:${opinionSaved}`}
+            onShowOnly={() => update({ filter: NO_OPINION_FILTER, opinion: null })}
+          />
+        ) : null}
         <ListViewBar
           bookmarked={bookmarked}
           excluded={excluded}
@@ -615,7 +627,10 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
             {movedNoticeKey === filterKey ? (
               <span role="status" data-testid="list-moved-notice">
                 {bookmarkList.moved} ·{' '}
-                <Link to={bookmarkedHref} data-testid="list-moved-link">
+                <Link
+                  to={`${bookmarkedHref}?filter=${NO_OPINION_FILTER}`}
+                  data-testid="list-moved-link"
+                >
                   {bookmarkList.movedLink}
                 </Link>
               </span>
@@ -786,7 +801,7 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
               items={items}
               bucketCounts={shown.bucketCounts}
               showBuckets={sort === 'rank'}
-              // #972: 관심 기업 보기는 열 머리 없는 세 칸 줄, 그 밖에는 다섯 칸 표 줄.
+              // #972: 관심 기업 보기는 열 머리 없는 세 칸 줄, 그 밖에는 열 머리가 있는 세 칸 표 줄(#981).
               columnHead={bookmarked ? undefined : <ListColumnHead />}
               renderCard={(card) => (
                 <OpportunityCard
@@ -797,6 +812,7 @@ export default function OpportunityListPage({ view = 'all' }: { view?: ListView 
                   // 전체 보기(#516)는 공정이 섞이므로 순위 번호를 숨긴다(PM 결정 2026-11-06과 같은 규칙).
                   showRank={processMode && !flat}
                   onBookmarkedOn={onBookmarkedOn}
+                  onOpinionSaved={onOpinionSaved}
                 />
               )}
             />

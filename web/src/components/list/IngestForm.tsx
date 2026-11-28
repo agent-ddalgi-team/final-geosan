@@ -14,6 +14,7 @@ import type {
   IngestRegionGroup,
   IngestRequest,
 } from '../../api/types';
+import PaidTag from '../common/PaidTag';
 import { candidateSearch, errorTexts, listSimple, monthSpend } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
@@ -466,7 +467,13 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
           loading={submitting}
           data-testid="ingest-submit"
         >
-          {submitting ? candidateSearch.fetching : candidateSearch.fetchButton}
+          {submitting ? (
+            candidateSearch.fetching
+          ) : (
+            <>
+              {candidateSearch.fetchButton} <PaidTag onPrimary />
+            </>
+          )}
         </Button>
       </div>
       {notice ? (

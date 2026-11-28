@@ -1,6 +1,7 @@
-// 메모 읽기 화면 부품(#720): 방금 저장한 메모 아래의 [AI가 메모 읽기 💰]와 제안 줄의 [반영].
+// 메모 읽기 화면 부품(#720): 방금 저장한 메모 아래의 [AI가 메모 읽기 유료]와 제안 줄의 [반영].
+// #981: 돈이 드는 단추는 💰 대신 글 뒤 "유료" 꼬리표로 표시한다.
 // 요청 함수는 가짜로 바꾼 확인이며 실제 서버·실제 AI 연결 확인이 아니다. 메모 속 이름은 지어낸 것이다.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { postMemoRead } from '../../../api/assistant';
 import type { MemoReadAnswer } from '../../../api/assistant';
@@ -144,7 +145,7 @@ beforeEach(() => {
   } as Awaited<ReturnType<typeof postIndustries>>);
 });
 
-describe('[AI가 메모 읽기 💰] 단추 (#720)', () => {
+describe('[AI가 메모 읽기 유료] 단추 (#720)', () => {
   it('영업 기록 스위치가 꺼져 있거나 방금 저장한 메모가 없으면 아무것도 보이지 않는다', () => {
     renderMemoRead({}, OFF);
     expect(screen.queryByTestId('memo-read')).not.toBeInTheDocument();
@@ -157,7 +158,11 @@ describe('[AI가 메모 읽기 💰] 단추 (#720)', () => {
   it('저절로 부르지 않고, 누르면 그 아래에 "확인 전" 표시·한 줄 요약·제안 줄이 펴진다', async () => {
     const user = userEvent.setup();
     renderMemoRead();
-    expect(screen.getByTestId('memo-read-button')).toHaveTextContent('AI가 메모 읽기 💰');
+    // 돈이 드는 단추라 글 뒤에 "유료" 꼬리표가 붙어 이름이 "AI가 메모 읽기 유료"로 읽힌다(#981, 💰 대신).
+    const button = screen.getByTestId('memo-read-button');
+    expect(button).toHaveAccessibleName('AI가 메모 읽기 유료');
+    expect(within(button).getByTestId('paid-tag')).toHaveTextContent(/^유료$/);
+    expect(button).not.toHaveTextContent('💰');
     expect(mockedRead).not.toHaveBeenCalled();
     await user.click(screen.getByTestId('memo-read-button'));
     await waitFor(() => expect(screen.getByTestId('memo-read-answer')).toBeInTheDocument());
@@ -397,8 +402,8 @@ describe('기록 남기기 › 메모 칸 (#720)', () => {
   });
 
   // (바뀜 #742, PM 결정 2026-11-14) [AI가 메모 읽기]는 영업 코치(접촉 메모 [보내기])로 합쳐 기록 칸에서 뺐다.
-  // 예전 기대: 메모를 저장하면 그 아래에 [AI가 메모 읽기 💰]가 보인다. 지금: 스위치가 켜져 있어도 보이지 않는다.
-  it('메모를 저장해도 [AI가 메모 읽기 💰]는 기록 칸에 보이지 않는다(영업 코치로 합침, #742)', async () => {
+  // 예전 기대: 메모를 저장하면 그 아래에 [AI가 메모 읽기]가 보인다. 지금: 스위치가 켜져 있어도 보이지 않는다.
+  it('메모를 저장해도 [AI가 메모 읽기]는 기록 칸에 보이지 않는다(영업 코치로 합침, #742)', async () => {
     const user = userEvent.setup();
     wrap(<RecordsArea oppId="opp-1" outcome={IN_PROGRESS} />, ON);
     await saveMemo(user);

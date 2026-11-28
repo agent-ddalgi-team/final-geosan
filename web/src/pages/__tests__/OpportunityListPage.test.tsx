@@ -121,7 +121,7 @@ describe('OpportunityListPage', () => {
     expect(mockedGet).toHaveBeenCalledTimes(2);
   });
 
-  it('A정밀 카드에 순위·분류(쉬운 말)·점수·추천 이유·막는 조건 글자·다음 할 일·자세히 보기가 보인다', async () => {
+  it('A정밀 줄에 순위·분류(쉬운 말)·점수·추천 이유·막는 조건 글자가 보이고, 회사 이름이 상세로 가는 링크다([자세히 보기]는 없다, #981)', async () => {
     mockedGet.mockResolvedValueOnce(reply([ready(apjeong)]));
     renderPage();
     const card = await screen.findByTestId('opportunity-card');
@@ -132,8 +132,10 @@ describe('OpportunityListPage', () => {
     );
     expect(view.getByTestId('card-classification')).toHaveTextContent('지금 바로 연락 검토');
     expect(view.getByLabelText('분류: 지금 바로 연락 검토')).toBeInTheDocument();
-    // 서버 문자열 그대로: "점수 "를 앞에 붙이지 않아 "점수"가 두 번 보이지 않는다(#183).
-    expect(view.getByTestId('card-score')).toHaveTextContent(/^77점 · 7\/8$/);
+    // "점수 "를 앞에 붙이지 않아 "점수"가 두 번 보이지 않는다(#183).
+    // 거래처 후보 줄은 숫자만 보이고("· 7/8"은 상세에서, #981) 화면 낭독 문구는 전체를 읽는다.
+    expect(view.getByTestId('card-score')).toHaveTextContent(/^77점$/);
+    expect(card).not.toHaveTextContent('7/8');
     expect(view.getByTestId('card-score')).toHaveAttribute(
       'aria-label',
       '점수 77점, 8개 항목 중 7개 조사',
@@ -146,10 +148,13 @@ describe('OpportunityListPage', () => {
     expect(view.queryByTestId('card-next-action')).not.toBeInTheDocument();
     expect(view.queryByText('응모 전 피막 두께 요구 확인')).not.toBeInTheDocument();
     expect(view.getByTestId('card-virtual-tag')).toHaveTextContent(cardRows.virtualTag);
-    expect(view.getByTestId('card-view-detail-link')).toHaveAttribute(
+    // 상세로 가는 길은 회사 이름 링크 하나다(#981: 거래처 후보 줄에는 [자세히 보기]가 없다).
+    expect(view.getByTestId('card-title-link')).toHaveTextContent(/^A정밀$/);
+    expect(view.getByTestId('card-title-link')).toHaveAttribute(
       'href',
       `/opportunities/${apjeong.oppId}`,
     );
+    expect(view.queryByTestId('card-view-detail-link')).not.toBeInTheDocument();
     // 전문 용어는 카드에 쓰지 않는다(BR10.9).
     expect(card).not.toHaveTextContent(/E 77|P 95|R 82/);
     expect(view.getByTestId('opinion-area')).toBeInTheDocument();
@@ -202,7 +207,8 @@ describe('OpportunityListPage', () => {
     mockedGet.mockResolvedValueOnce(reply([brochure, noScore]));
     renderPage();
     const cards = await screen.findAllByTestId('opportunity-card');
-    expect(within(cards[0]).getByTestId('card-score')).toHaveTextContent(/^참고 50점 · 3\/8$/);
+    // 거래처 후보 줄은 "참고"와 점수만 보인다("· 3/8"은 낭독 문구에만, #981).
+    expect(within(cards[0]).getByTestId('card-score')).toHaveTextContent(/^참고 50점$/);
     expect(within(cards[0]).getByTestId('card-score')).toHaveAttribute(
       'aria-label',
       '참고 점수 50점, 8개 항목 중 3개 조사',
@@ -256,8 +262,12 @@ describe('OpportunityListPage', () => {
     expect(within(cards[3]).queryByTestId('card-score')).not.toBeInTheDocument();
     expect(within(cards[3]).queryByTestId('card-score-existing-tag')).not.toBeInTheDocument();
     expect(within(cards[3]).getByTestId('card-bucket-basis')).toHaveTextContent('거래 중');
-    // 거래 확인 전: 점수 글자는 서버 그대로, 흐림 표시와 꼬리표.
-    expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^50점 · 3\/8$/);
+    // 거래 확인 전: 점수 글자는 서버가 준 숫자 그대로(거래처 후보 줄은 숫자만, #981), 흐림 표시와 꼬리표.
+    expect(within(cards[1]).getByTestId('card-score')).toHaveTextContent(/^50점$/);
+    expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '점수 50점, 8개 항목 중 3개 조사',
+    );
     expect(within(cards[1]).getByTestId('card-score')).toHaveAttribute(
       'data-score-state',
       'PENDING',

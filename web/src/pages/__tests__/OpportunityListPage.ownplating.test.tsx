@@ -119,7 +119,8 @@ describe('카드 · 표면처리를 직접 하는 회사일 수 있음 (#319)', 
     expect(view.queryByTestId('card-own-plating-tag')).not.toBeInTheDocument();
     expect(view.queryByTestId('card-own-plating-basis')).not.toBeInTheDocument();
     expect(view.queryByText(/표면처리를 직접/)).not.toBeInTheDocument();
-    expect(view.getByTestId('card-score')).toHaveTextContent(/^77점 · 7\/8$/);
+    // 거래처 후보 줄은 점수 숫자만 보인다("· 7/8"은 상세에서, #981).
+    expect(view.getByTestId('card-score')).toHaveTextContent(/^77점$/);
   });
 
   it('표시가 있는 회사도 목록에서 빼거나 순서를 바꾸지 않는다(서버가 준 그대로)', async () => {

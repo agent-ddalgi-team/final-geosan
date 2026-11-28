@@ -32,6 +32,7 @@ import VisitPrep, { PREP_DAYS, prepItems } from '../components/dashboard/VisitPr
 import RecentActivityList from '../components/dashboard/RecentActivityList';
 import AssistantDaily from '../components/assistant/AssistantDaily';
 import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../api/assistant';
+import NoOpinionNotice from '../components/dashboard/NoOpinionNotice';
 import TodayChecks from '../components/dashboard/TodayChecks';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
@@ -270,6 +271,8 @@ export default function DashboardPage() {
                 part="work"
                 rows={data.todayChecks}
                 onChanged={retry}
+                // #981: 관심에 담고 의견을 안 고른 회사가 있으면 오늘 할 일 아래에 한 줄로 알린다.
+                notice={<NoOpinionNotice count={data.counts.NO_OPINION} />}
                 assistantSummary={
                   dailyKey ? (
                     // #921: AI 오늘 정리는 접어 둔다. 눌러서 펴 본다(부르는 것은 화면이 열릴 때 한 번).
