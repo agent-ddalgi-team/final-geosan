@@ -8,8 +8,13 @@ import { STAFF_STORAGE_KEY, useFrame } from '../FrameContext';
 import { banner, frame } from '../../../labels/ko';
 
 function Probe() {
-  const { staffKey, canRecord } = useFrame();
-  return <span data-testid="probe">{`${staffKey ?? 'none'}|${canRecord}`}</span>;
+  const { staffKey, canRecord, narrowDevice } = useFrame();
+  return (
+    <>
+      <span data-testid="probe">{`${staffKey ?? 'none'}|${canRecord}`}</span>
+      <span data-testid="probe-narrow">{String(narrowDevice)}</span>
+    </>
+  );
 }
 
 function renderFrame() {
@@ -124,6 +129,30 @@ describe('AppFrame', () => {
     renderFrame();
     await waitFor(() => expect(screen.getByRole('combobox')).toBeEnabled());
     expect(screen.getByTestId('probe')).toHaveTextContent('none|false');
+  });
+
+  it('#983 넓은 화면: 왼쪽 메뉴는 항상 펼쳐져 있고 접기 단추가 없으며, 메뉴 아래에 달력 칸이 있다(화면에는 넓은 화면이라고 알린다)', async () => {
+    // 예전에 "접음"으로 기억해 둔 값이 있어도 펼친다.
+    window.localStorage.setItem('geosan.sidebarCollapsed', 'true');
+    renderFrame();
+    await screen.findByText('거산 영업지원');
+    const menu = screen.getByRole('navigation', { name: frame.navLabel });
+    expect(menu).toHaveAttribute('data-collapsed', 'false');
+    expect(screen.queryByTestId('side-menu-toggle')).not.toBeInTheDocument();
+    expect(menu).toContainElement(screen.getByTestId('side-calendar'));
+    expect(screen.getByRole('main')).not.toContainElement(screen.getByTestId('side-calendar'));
+    expect(screen.getByTestId('probe-narrow')).toHaveTextContent('false');
+  });
+
+  it('#983 좁은 기기: 지금 방식 그대로 접기 단추가 있고 접힌 채로 열리며, 메뉴 아래 달력은 없다(화면에 좁은 기기라고 알려 영업 홈이 본문 맨 아래에 달력을 그린다)', async () => {
+    vi.stubGlobal('screen', { width: 800 });
+    renderFrame();
+    await screen.findByTestId('brand-logo');
+    const menu = screen.getByRole('navigation', { name: frame.navLabel });
+    expect(menu).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.getByTestId('side-menu-toggle')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('side-calendar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('probe-narrow')).toHaveTextContent('true');
   });
 
   it('설정을 못 읽으면 담당자 목록 실패 문구를 보이고 내부용 띠는 그대로 보인다', async () => {
