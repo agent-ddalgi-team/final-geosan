@@ -20,6 +20,7 @@ from pydantic import Field
 from sqlalchemy import or_, select
 
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
+from geosan.api.merge_notices import notify_same_address_pairs
 from geosan.api.schemas import Envelope, Meta, _ApiModel, _RequestModel
 from geosan.config.errors import FieldError, InputError, NotFoundError
 from geosan.opportunity.complex_rows import REPRESENTATIVE_MAX, clean_representative
@@ -211,6 +212,8 @@ def save_company_info(
             customer.lat = customer.lng = customer.geocoded_at = customer.geocode_source = None
     if lines:
         _add_merge_candidates(session, customer, name_changed=name_changed, staff=staff)
+        # #998: 주소가 같아진 쌍은 영업 묶음 전달 사항으로 알린다(같은 저장 안에서).
+        notify_same_address_pairs(session, now)
     if body.main_phone is not None and (
         phone != customer.main_phone or customer.main_phone_source != MANUAL
     ):

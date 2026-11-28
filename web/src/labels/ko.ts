@@ -3359,6 +3359,8 @@ export const quickRecordTexts = {
 /** #771 전달 사항(PM 결정 2026-11-15·16): 다른 직원이 회사 건으로 남기는 말, 받는 사람이 확인한다. */
 export const handoffTexts = {
   title: '전달 사항',
+  /** #998 프로그램이 남긴 전달 사항(공장주소가 같은 후보 쌍)의 보낸 쪽 이름. */
+  programSender: '시스템',
   open: '전달 사항 남기기',
   textLabel: '전할 말',
   textPlaceholder: '예: 기술팀 확인 — 도금 두께 요구는 우리 설비로 가능',

@@ -76,6 +76,25 @@ def _close_interrupted_ingests() -> None:
         typer.echo(f"서버가 꺼질 때 돌던 후보 찾기 {count}건을 '중단됨'으로 정리했습니다.")
 
 
+def _notify_merge_pairs() -> None:
+    """#998 아직 알리지 않은 '주소 같음' 후보 쌍을 영업 묶음 전달 사항으로 알린다.
+
+    처음 켤 때 지난 쌍도 알리기 위해서다. 같은 쌍은 한 번만 만든다. 실패하면 알리고 서버는 띄운다.
+    """
+    from geosan.api.merge_notices import notify_in_new_session
+
+    try:
+        count = notify_in_new_session()
+    except Exception:
+        typer.echo(
+            "같은 회사일 수 있는 후보 쌍을 전달 사항으로 남기지 못했습니다. "
+            "다음에 켤 때 다시 합니다."
+        )
+        return
+    if count:
+        typer.echo(f"공장주소가 같은 후보 {count}쌍을 영업 묶음 전달 사항으로 남겼습니다.")
+
+
 def _warm_location_index() -> None:
     """좌표 조회를 켰고 위치 CSV가 있으면 색인을 한 번 만들어 둔다. 실패해도 서버는 띄운다."""
     from geosan.config.app_settings import read_app_settings
@@ -279,6 +298,7 @@ def run_serve(port: int, host: str = HOST) -> int:
 
     # 5) 지난번 서버가 꺼질 때 돌던 후보 찾기는 이어지지 않는다. 남은 '진행 중'을 정리한다(#866).
     _close_interrupted_ingests()
+    _notify_merge_pairs()
 
     # 6) 위치 CSV 색인을 미리 읽는다(#664). 받은 CSV 3개(64만 줄)는 처음 읽는 데 10초가 넘어
     #    서버를 켠 뒤 첫 가까운 순 요청이 요청 제한(10초)에 걸려 실패했다.

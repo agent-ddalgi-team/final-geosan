@@ -13,6 +13,7 @@ from sqlalchemy import select
 from geosan.api.deps import SessionDep, get_session, require_staff, runtime_for
 from geosan.api.ingest_batches import reserve_ingest_batch
 from geosan.api.ingest_conditions import IngestRequest, validate_ingest_conditions
+from geosan.api.merge_notices import notify_in_new_session
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.capability.models import Process
 from geosan.config.errors import AppError, InputError, RunFailedError, new_ref
@@ -111,6 +112,19 @@ def _execute_batch(run_batch: Callable[[str], None], batch_id: str) -> None:
             batch.status = "FAILED"
             batch.finished_at = utcnow()
         logger.error("ingest.failed", extra={"batchId": batch_id, "ref": new_ref()})
+    _notify_merge_pairs(batch_id)
+
+
+def _notify_merge_pairs(batch_id: str) -> None:
+    """#998 찾기가 남긴 '주소 같음' 쌍을 영업 묶음 전달 사항으로 알린다.
+
+    실패해도 찾기 결과는 그대로 둔다(회차 상태를 바꾸지 않음). 실패는 오류 기록에 남기고,
+    알리지 못한 쌍은 다음 찾기나 서버를 다시 켤 때 다시 알린다(같은 쌍은 한 번만 만든다).
+    """
+    try:
+        notify_in_new_session()
+    except Exception:
+        logger.error("ingest.merge_notice_failed", extra={"batchId": batch_id, "ref": new_ref()})
 
 
 def create_ingest_router(run_batch: Callable[[str], None] | None) -> APIRouter:

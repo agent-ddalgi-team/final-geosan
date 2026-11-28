@@ -14,6 +14,7 @@ from pydantic import Field
 
 from geosan.api.auto_research import attach_background, no_auto_research, queue_on_bookmark
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
+from geosan.api.merge_notices import notify_same_address_pairs
 from geosan.api.routes.records import (
     _add_bookmark,
     _is_excluded,
@@ -130,6 +131,8 @@ def add_company_by_name(body: CompanyAddRequest, session: SessionDep, staff: Sta
                 session, opportunity, staff, active=True, source="MANUAL", previous=previous
             )
     queued = queue_on_bookmark(session, opportunity, find_homepage=result.created)
+    # #998: 넣은 회사가 다른 회사와 공장주소가 같으면 영업 묶음 전달 사항으로 알린다.
+    notify_same_address_pairs(session, utcnow())
     session.flush()
     data = CompanyAdded(opp_id=opp_id, created=result.created, research_queued=queued)
     meta = Meta(

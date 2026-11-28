@@ -173,4 +173,19 @@ describe('역할 묶음으로 받은 전달 사항 (#853)', () => {
     expect(screen.queryByTestId('handoff-confirm')).not.toBeInTheDocument();
     expect(screen.getByTestId('handoff-waiting-for')).toHaveTextContent('영업 확인 전');
   });
+
+  it('Given 시스템이 "영업"으로 남긴 같은 회사 알림(#998) When 영업 담당이 열면 Then 보낸 쪽은 "시스템"이고 [확인했어요]가 있다', () => {
+    teamRow.from = 'system';
+    teamRow.text =
+      "같은 회사일 수 있습니다: '가상주소회사'과(와) 공장주소가 같고 회사명이 다릅니다.";
+    try {
+      renderTeam('park-lee');
+      expect(screen.getByTestId('handoff-note')).toHaveTextContent('시스템 → 영업');
+      expect(screen.getByTestId('handoff-note')).not.toHaveTextContent('system');
+      expect(screen.getByTestId('handoff-confirm')).toBeInTheDocument();
+    } finally {
+      teamRow.from = 'kim-gwajang';
+      teamRow.text = '가상 전달: 도금 두께 가능';
+    }
+  });
 });

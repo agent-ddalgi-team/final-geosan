@@ -40,7 +40,11 @@ export default function HandoffBox({
 }: HandoffBoxProps) {
   const { config, staffKey, canRecord } = useFrame();
   const staff = config?.staff ?? [];
-  const nameOf = (key: string) => staff.find((entry) => entry.key === key)?.displayName ?? key;
+  // #998: 프로그램이 남긴 전달 사항(같은 회사일 수 있음)은 보낸 쪽을 "시스템"으로 보인다(활동 이력과 같은 말).
+  const nameOf = (key: string) =>
+    key === 'system'
+      ? handoffTexts.programSender
+      : (staff.find((entry) => entry.key === key)?.displayName ?? key);
   // #853: 역할 묶음으로 보낸 전달 사항은 묶음 이름(예: 영업)으로 보이고, 묶음 안 누구나(보낸 사람 빼고) 확인한다.
   const teams = config?.handoffTeams ?? [];
   const toName = (row: HandoffNote) =>
