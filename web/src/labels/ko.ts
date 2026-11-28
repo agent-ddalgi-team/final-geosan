@@ -577,6 +577,15 @@ export const scheduleQuickEdit = {
   pickStaffFirst: '먼저 담당자를 고르세요',
 } as const;
 
+/** #980(PM 결정 2026-11-28, 시안 "기업 상세 일정 잡기") 기업 상세 영업 코치 맨 위 "다음 일정" 칸. */
+export const coachScheduleTexts = {
+  title: '다음 일정',
+  none: '일정 없음',
+  add: '일정 잡기',
+  change: '바꾸기',
+  overdue: '지난 일정',
+} as const;
+
 /** '이'/'가': 끝 글자에 받침이 있으면 '이', 없으면 '가'. 한글이 아니면(영문 키 등) '이(가)'. */
 function subjectMark(word: string): string {
   const code = word.charCodeAt(word.length - 1) - 0xac00;
