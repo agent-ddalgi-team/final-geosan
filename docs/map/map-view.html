@@ -207,7 +207,7 @@ body.present .mermaid svg{max-width:none;width:100%}
   <div class="card">
     <h2 id="h-progress">지금 어디까지 왔나</h2>
     <div class="chips">
-      <span class="chip ok">✅ 됨 97</span><span class="chip wip">⏳ 진행 중 0</span><span class="chip next">📅 예정 1</span><span class="chip hold">⏸ 보류 19</span><span class="chip">기능 117줄 · 2026-11-29</span>
+      <span class="chip ok">✅ 됨 97</span><span class="chip wip">⏳ 진행 중 0</span><span class="chip next">📅 예정 0</span><span class="chip hold">⏸ 보류 20</span><span class="chip">기능 117줄 · 2026-11-29</span>
     </div>
     <div class="grid2">
       <div>
@@ -358,8 +358,7 @@ flowchart LR
 pie showData
     title 기능 117줄의 상태 (2026-11-29)
     "됨" : 97
-    "예정" : 1
-    "보류" : 19
+    "보류" : 20
 </script>
 <script type="text/plain" id="mm-units">
 flowchart TB
@@ -379,11 +378,9 @@ flowchart TB
         X6["기록 남기기 단순화"]
         X7["영업 홈 수정안"]
     end
-    subgraph NEXT["📅 예정"]
-        X0["매달 자동 수집<br/>맡은 이슈 없음"]
-    end
     subgraph HOLD["⏸ 보류 · 하지 않음"]
         U6["U6<br/>재접촉 · 거래 관계 입력"]
+        X0["매달 자동 수집<br/>AI 비용이 저절로 나가서"]
         X3["접촉 승인<br/>질문 목록 화면"]
         X4["나라장터 공고<br/>채용 공고"]
         X5["만들어 두고 꺼 둠<br/>엑셀 · 기존 고객 참고"]
@@ -392,9 +389,9 @@ flowchart TB
         U9["U9<br/>자료 출처 늘리기"]
         U11["U11<br/>화면 다듬기<br/>새 디자인으로 이미 손봄"]
     end
-    DONE --> NOW --> NEXT
-    NEXT ~~~ HOLD
-    NEXT ~~~ ASK
+    DONE --> NOW
+    NOW ~~~ HOLD
+    NOW ~~~ ASK
 </script>
 <script type="text/plain" id="mm-changes">
 timeline
