@@ -1054,9 +1054,56 @@
         "title": "CallPrepNote",
         "type": "object"
       },
-      "CardOutcome": {
-        "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
+      "CardContactByMethod": {
+        "description": "#976 목록 한 줄의 방법별 접촉 시도 수. 세 값의 합이 contactCount다.",
         "properties": {
+          "call": {
+            "default": 0,
+            "title": "Call",
+            "type": "integer"
+          },
+          "email": {
+            "default": 0,
+            "title": "Email",
+            "type": "integer"
+          },
+          "visit": {
+            "default": 0,
+            "title": "Visit",
+            "type": "integer"
+          }
+        },
+        "title": "CardContactByMethod",
+        "type": "object"
+      },
+      "CardOutcome": {
+        "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).\n\n#976(PM 결정 2026-11-28): 관심 기업 줄이 다음 일정을 보이도록 일정 날짜와 일정 할 일 한 줄을\n더한다. 상세 records.outcome의 같은 칸과 같은 값이고 영업 메모 글이 아니다.",
+        "properties": {
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#976 최신 영업 기록의 다음 일정 날짜. 일정이 없으면 null",
+            "title": "Nextscheduleat"
+          },
+          "nextScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#976 다음 일정 할 일 한 줄. 일정이 없으면 null",
+            "title": "Nextschedulenote"
+          },
           "status": {
             "$ref": "#/components/schemas/OutcomeStatus"
           }
@@ -2047,6 +2094,13 @@
           },
           "counts": {
             "$ref": "#/components/schemas/DashboardCounts"
+          },
+          "enteredThisWeek": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Enteredthisweek",
+            "type": "object"
           },
           "progressCompanies": {
             "additionalProperties": {
@@ -6390,6 +6444,10 @@
             "title": "Confirmedprocesscodes",
             "type": "array"
           },
+          "contactByMethod": {
+            "$ref": "#/components/schemas/CardContactByMethod",
+            "description": "#976 방법별 접촉 시도 수(취소된 행 제외). 상세 records.contactCount와 같은 값"
+          },
           "contactCount": {
             "default": 0,
             "title": "Contactcount",
@@ -6532,6 +6590,19 @@
           "isVirtual": {
             "title": "Isvirtual",
             "type": "boolean"
+          },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#976 가장 늦은 접촉 날짜. 상세 records.lastContactAt과 같은 값, 없으면 null",
+            "title": "Lastcontactat"
           },
           "nextAction": {
             "title": "Nextaction",
