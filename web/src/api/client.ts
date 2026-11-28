@@ -68,7 +68,8 @@ export class ApiError extends Error {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT';
+  /** DELETE는 날짜 메모 지우기(#984, 계약 C1 `DELETE /day-memos/{memoId}`)가 쓴다. */
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   /** 기록 요청에만 붙인다. 없으면 헤더를 보내지 않는다. */
   staffKey?: string | null;

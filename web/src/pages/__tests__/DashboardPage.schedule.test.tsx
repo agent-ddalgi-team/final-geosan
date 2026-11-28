@@ -425,13 +425,17 @@ describe('영업 홈 + 공통 틀: 왼쪽 메뉴 달력이 영업 홈이 읽은 
       '11월 30일, 일정 없음',
     );
     const before = mockedGet.mock.calls.length;
-    await userEvent.click(await screen.findByRole('button', { name: '가상볼트 일정 잡기' }));
+    // 공통 틀 + 영업 홈 전체를 그린 큰 화면이라, 누르기·고르기는 가벼운 fireEvent로 한다
+    // (userEvent는 큰 화면에서 한 번에 몇 초씩 걸려 PC가 바쁠 때 시간 제한을 넘겼다). 확인하는 내용은 같다.
+    fireEvent.click(await screen.findByRole('button', { name: '가상볼트 일정 잡기' }));
     const editor = screen.getByTestId('schedule-quick-edit');
     fireEvent.change(within(editor).getByTestId('schedule-quick-date'), {
       target: { value: '2026-11-30' },
     });
-    await userEvent.selectOptions(within(editor).getByTestId('schedule-quick-kind'), '전화');
-    await userEvent.click(within(editor).getByTestId('schedule-quick-save'));
+    fireEvent.change(within(editor).getByTestId('schedule-quick-kind'), {
+      target: { value: '전화' },
+    });
+    fireEvent.click(within(editor).getByTestId('schedule-quick-save'));
     await waitFor(() =>
       expect(within(side).getByTestId('dashboard-calendar-day-2026-11-30')).toHaveAttribute(
         'aria-label',

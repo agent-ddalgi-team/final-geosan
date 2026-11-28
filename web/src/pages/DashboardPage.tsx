@@ -2,13 +2,16 @@
 //   인사말 줄: "안녕하세요, ○○ 님" + 날짜 · 오늘 챙길 일 n건 | 오른쪽 회사 검색
 //   → 진행 중인 회사 카드(폭 전체): 머리 아래 작은 단계 칸(미접촉 → 접촉 → 견적·샘플 → 성사 ┊ 보류, 누르면 표가
 //     그 단계로 걸러진다) + 표(단계 · 담당 · 마지막 접촉 · 다음 일정 — 다음 일정 칸에서 바로 일정을 잡고 바꾼다)
-//   → 오늘 할 일(운영 알림 · 지난 일정 · 오늘 일정 · 확인할 회사, AI 요약은 접어 둠) | 전달 사항(받은 것 · 보낸 것)
+//   → 오늘 할 일(운영 알림 · 지난 일정 · 오늘 일정 · 오늘 날짜의 달력 메모 · 확인할 회사, AI 요약은 접어 둠)
+//     | 전달 사항(받은 것 · 보낸 것)
 //   → 이번 주 방문·연락(오늘부터 7일 + 보고서 · 거리 화살표) | 지도(위) + 같이 들를 곳(아래)
 //   → 먼저 볼 후보 3곳(거래처 후보 목록 추천 순 맨 위. 못 읽으면 이 칸만 숨김)
 //   → 월별 접촉 추세(영업 분석과 같은 응답·같은 그림, 높이는 절반쯤. 못 읽으면 이 칸만 숨김)
 //   → 더 보기(접힘: 관심 기업 건수 · 최근 내 기록).
 // 한 달 달력은 왼쪽 메뉴 아래로 옮겨 모든 화면에서 보인다(SideCalendar). 영업 홈이 읽은 일정을 그 달력에 알려
 // 같은 요청을 두 번 보내지 않는다. 좁은 기기(메뉴가 접혀 달력이 없음)에서만 본문 맨 아래에 달력을 그린다.
+// #984: 오늘 날짜의 달력 메모는 `GET /day-memos?from=오늘&to=오늘`로 따로 읽어 오늘 할 일 칸에 한 줄씩 보인다
+// (`/dashboard` 응답 · 오늘 챙길 일 건수는 그대로). 달력에서 오늘 메모를 남기거나 지우면 이 줄도 바로 따라온다.
 // (#972까지는 맨 위에 큰 단계 카드 5칸 · 월별 추세가 있었고, 달력은 이번 주 방문·연락 칸 안, 지도는 따로 한 줄이었다.)
 // 같은 일정을 여러 곳에 되풀이하지 않는다(#921: 출근하면 · 외근 전 · 누가 봐도 세 칸 순서는 그대로).
 // 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v3, #216·#356)에서 온다. 관심으로 고른 회사만 센다.
@@ -24,7 +27,9 @@ import type { Meta } from '../api/types';
 import type { ProgressBandKey, TodayCheckRow } from '../api/dashboardTypes';
 import type { DashboardMap as DashboardMapData } from '../api/dashboardMapTypes';
 import CountCards from '../components/dashboard/CountCards';
-import DashboardCalendar from '../components/dashboard/DashboardCalendar';
+import MemoCalendar from '../components/schedule/MemoCalendar';
+import TodayMemoLines from '../components/schedule/TodayMemoLines';
+import { useDayMemos } from '../components/schedule/useDayMemos';
 import ProgressTable from '../components/dashboard/ProgressTable';
 import StageChips from '../components/dashboard/StageChips';
 import HomeTrend from '../components/dashboard/HomeTrend';
@@ -153,6 +158,9 @@ export default function DashboardPage() {
   }, [retry]);
 
   const today = todayKst();
+  // #984: 오늘 날짜의 달력 메모. 대시보드 응답과 따로 읽는다(못 읽어도 나머지 칸은 그대로 쓴다).
+  const todayMemos = useDayMemos(today, today);
+  const todayMemoFailed = todayMemos.state === 'error' || todayMemos.stale;
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -283,6 +291,16 @@ export default function DashboardPage() {
                 onChanged={retry}
                 // #981: 관심에 담고 의견을 안 고른 회사가 있으면 오늘 할 일 아래에 한 줄로 알린다.
                 notice={<NoOpinionNotice count={data.counts.NO_OPINION} />}
+                // #984: 오늘 날짜의 달력 메모를 일정 줄 아래에 한 줄씩. 없으면 아무것도 그리지 않는다.
+                memoLines={
+                  todayMemos.memos.length > 0 || todayMemoFailed ? (
+                    <TodayMemoLines
+                      memos={todayMemos.memos}
+                      failed={todayMemoFailed}
+                      onReload={todayMemos.reload}
+                    />
+                  ) : null
+                }
                 assistantSummary={
                   dailyKey ? (
                     // #921: AI 오늘 정리는 접어 둔다. 눌러서 펴 본다(부르는 것은 화면이 열릴 때 한 번).
@@ -363,7 +381,7 @@ export default function DashboardPage() {
             data-testid="dashboard-calendar-section"
             style={{ ...sectionStyle, maxWidth: CALENDAR_MAX_WIDTH }}
           >
-            <DashboardCalendar items={data.schedule} today={today} mini popoverSide="below" />
+            <MemoCalendar items={data.schedule} today={today} popoverSide="below" />
           </section>
         ) : null}
 

@@ -2655,6 +2655,92 @@
         "title": "DatasetKind",
         "type": "string"
       },
+      "DayMemoDeleted": {
+        "properties": {
+          "deleted": {
+            "default": true,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "memoId": {
+            "title": "Memoid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memoId"
+        ],
+        "title": "DayMemoDeleted",
+        "type": "object"
+      },
+      "DayMemoRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "text"
+        ],
+        "title": "DayMemoRequest",
+        "type": "object"
+      },
+      "DayMemoView": {
+        "description": "날짜 메모 한 줄. staffName은 지금 담당자 표의 표시 이름이고 표에 없으면 null이다.",
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "memoId": {
+            "title": "Memoid",
+            "type": "string"
+          },
+          "staffKey": {
+            "title": "Staffkey",
+            "type": "string"
+          },
+          "staffName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffname"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memoId",
+          "day",
+          "text",
+          "staffKey",
+          "staffName",
+          "createdAt"
+        ],
+        "title": "DayMemoView",
+        "type": "object"
+      },
       "DeleteRequest": {
         "additionalProperties": false,
         "properties": {
@@ -3623,6 +3709,36 @@
         "title": "Envelope[Dashboard]",
         "type": "object"
       },
+      "Envelope_DayMemoDeleted_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DayMemoDeleted"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DayMemoDeleted]",
+        "type": "object"
+      },
+      "Envelope_DayMemoView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DayMemoView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DayMemoView]",
+        "type": "object"
+      },
       "Envelope_FeedbackHistory_": {
         "properties": {
           "data": {
@@ -4105,6 +4221,25 @@
           "data"
         ],
         "title": "Envelope[list[ActivityItem]]",
+        "type": "object"
+      },
+      "Envelope_list_DayMemoView__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/DayMemoView"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[list[DayMemoView]]",
         "type": "object"
       },
       "Envelope_list_OpportunityCard__": {
@@ -12408,6 +12543,168 @@
           }
         },
         "summary": "Dashboard Map"
+      }
+    },
+    "/api/v1/day-memos": {
+      "get": {
+        "description": "그 기간(둘 다 포함)의 메모. 지운 메모는 빼고, 지금 활성 묶음에서 적은 것만 준다.",
+        "operationId": "list_day_memos_api_v1_day_memos_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_DayMemoView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Day Memos"
+      },
+      "post": {
+        "description": "그 날짜에 메모 한 건을 남긴다. 지난 날짜도 된다. 글은 앞뒤 빈칸을 지우고 저장한다.",
+        "operationId": "add_day_memo_api_v1_day_memos_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DayMemoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DayMemoView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Day Memo"
+      }
+    },
+    "/api/v1/day-memos/{memoId}": {
+      "delete": {
+        "description": "쓴 사람만 지운다. 행은 남기고 지운 시각·지운 사람을 채워 읽기에서 숨긴다.",
+        "operationId": "delete_day_memo_api_v1_day_memos__memoId__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoId",
+            "required": true,
+            "schema": {
+              "title": "Memoid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DayMemoDeleted_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Day Memo"
       }
     },
     "/api/v1/existing-customers/suggestions": {

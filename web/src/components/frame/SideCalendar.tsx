@@ -2,13 +2,15 @@
 // 메뉴와 간격을 띄운 연회색 칸 안에 작은 달력(DashboardCalendar mini)을 그린다. 날짜를 누르면 달력 오른쪽으로
 // 작은 창이 떠서 그날 일정(회사 · 내용 · 지남 표시)을 보이고, 일정이 없으면 "일정 없음"이라고 보인다.
 // 일정은 영업 홈과 같은 응답을 쓴다(useSideSchedule). 못 읽으면 이 칸에 짧은 안내만 보이고 메뉴는 그대로 쓴다.
-// extra: 작은 창 본문 아래에 끼울 것(날짜 메모 #984 자리). 이 부품은 메모를 만들지 않는다.
+// #984: 달력은 날짜 메모를 쓰는 달력(MemoCalendar)이다. 메모가 있는 날에 테두리가 보이고, 날짜를 누르면 뜨는 창의
+// 일정 아래에 그날 메모 칸이 보인다. 메모는 보이는 달만 읽고, 못 읽어도 달력 · 일정은 그대로 쓴다.
+// extra: 메모 칸 대신 작은 창 본문 아래에 끼울 것. 주지 않으면 메모 칸을 그린다.
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { dashboardTexts as t } from '../../labels/ko';
 import { accent, colors, sideCalendar } from '../../theme/tokens';
 import { todayKst } from '../../utils/time';
-import DashboardCalendar from '../dashboard/DashboardCalendar';
+import MemoCalendar from '../schedule/MemoCalendar';
 import { useFrame } from './FrameContext';
 import { useSideSchedule } from './useSideSchedule';
 
@@ -69,11 +71,11 @@ export default function SideCalendar({ extra }: { extra?: (day: string) => React
     >
       {schedule.state === 'ready' ? (
         <>
-          <DashboardCalendar
+          <MemoCalendar
             items={schedule.items}
             today={todayKst()}
-            mini
             popoverSide="right"
+            watch={pathname}
             extra={extra}
           />
           {schedule.stale ? (
