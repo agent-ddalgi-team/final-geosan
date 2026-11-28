@@ -577,6 +577,15 @@ export const scheduleQuickEdit = {
   pickStaffFirst: '먼저 담당자를 고르세요',
 } as const;
 
+/** #980(PM 결정 2026-11-28, 시안 "기업 상세 일정 잡기") 기업 상세 영업 코치 맨 위 "다음 일정" 칸. */
+export const coachScheduleTexts = {
+  title: '다음 일정',
+  none: '일정 없음',
+  add: '일정 잡기',
+  change: '바꾸기',
+  overdue: '지난 일정',
+} as const;
+
 /** 대시보드 지도(#226·#641). 회사 이름·단계·거리는 우리 쪽 말풍선에만 쓰고 지도 SDK에는 넘기지 않는다. */
 export const dashboardMapTexts = {
   title: '거산 주변 지도',
