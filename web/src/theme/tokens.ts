@@ -68,6 +68,8 @@ export const opinionNudge = {
 export const ok = {
   text: '#1F7A43',
   bg: '#E6F5EC',
+  /** 확인 바탕 칸의 얇은 테두리(#985 "부재로 저장했습니다" · "메모를 저장했습니다" 상자). 글자를 올리지 않는다. */
+  border: '#BFE3CC',
 } as const;
 
 /** 중립 꼬리표(#972): 그 밖의 꼬리표. 글자는 보조 글자색(약 6.3:1). */
@@ -699,4 +701,34 @@ export const progressTheme = {
   dotDone: accent.bright,
   /** 아직인 세부 단계 점(#972). */
   dotTodo: stepTodo.dot,
+} as const;
+
+/**
+ * 영업 분석 "상대 반응 — 거산의 강점 · 약점" 파이 그래프 색(#985, PM이 승인한 시안 2026-11-29).
+ * 반응 세 가지: 긍정 = 강조 보라, 보통 = 중립 회색(흰 바탕 대비 3:1 이상), 부정 = 주의 점색.
+ * 좋게 본 부분(강점) = 보라 6단계, 걸린 부분(약점) = 주황 6단계. 둘 다 진한 것부터 쓰고 건수가 많은 조각이 진한 색이다.
+ * 조각 위에는 글자를 올리지 않는다. 색만으로 가르지 않게 파이 옆 줄에 이름 · 건수 · 비율이 늘 함께 있다.
+ * 조각 사이 틈(gap)은 카드 바탕색 선이다.
+ */
+export const reactionPalette = {
+  positive: accent.bg,
+  neutral: '#8A8A9E',
+  negative: warn.dot,
+  good: [accent.textHover, accent.text, '#7A61F2', '#9C89F5', '#BEB1F8', '#DCD5FB'],
+  bad: ['#8A4A0C', '#B0661C', warn.dot, '#DC9A57', '#ECBD8E', '#F6DCC1'],
+  gap: colors.bgContainer,
+  gapWidth: 2,
+  /** 파이 한 변(px). 시안은 148이지만 실제 화면은 세 칸이 더 좁아 범례 이름이 한 줄에 들어가게 줄였다. */
+  pieSize: 124,
+  /** 범례 줄 앞 색 네모. */
+  swatch: 12,
+  swatchRadius: 3,
+  /** 고른 범례 줄: 강조 연한 바탕 + 강조 테두리(글자는 본문색 굵게). */
+  picked: { bg: accent.soft, border: accent.border },
+  /** 조각을 눌렀을 때 펼치는 상세 칸: 걸린 부분 = 주의, 좋게 본 부분 = 강조, 반응 = 중립. */
+  detail: {
+    bad: { bg: warn.bg, border: warn.border, title: warn.text },
+    good: { bg: accent.soft, border: accent.border, title: accent.text },
+    reaction: { bg: colors.bgLayout, border: colors.borderSecondary, title: colors.text },
+  },
 } as const;

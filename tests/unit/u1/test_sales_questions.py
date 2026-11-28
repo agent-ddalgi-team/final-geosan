@@ -122,7 +122,10 @@ def test_answer_moves_the_step_forward_and_shows_the_tail_question(records_env):
     # #652: 공정·산업 확인은 "연결됨"을 지나도 답할 때까지 열려 있다(질문 파일 순서라 앞에 온다).
     # #860: "외주 줌"이면 "도금 업체는 누가 정하나요?"도 열린다(질문 파일 순서).
     # #958(PM 결정 2026-11-26): 부품 소재 확인도 공정·산업처럼 답할 때까지 열려 있다.
-    assert step["openQuestions"][:6] == [
+    # #985(PM 결정 2026-11-29): 접촉마다 묻는 "상대 반응"이 질문 파일 맨 앞에 생겨 맨 앞에 열린다.
+    # 그 꼬리(좋게 본·걸린 부분)는 상대 반응을 답하기 전이라 열리지 않는다.
+    assert step["openQuestions"][:7] == [
+        "REACTION",
         "CONFIRM_PROCESS",
         "CONFIRM_INDUSTRY",
         "CONFIRM_MATERIAL",
@@ -419,3 +422,160 @@ def test_questions_per_contact_setting_reaches_the_screen_config(records_env):
     with session_scope() as session:
         session.get(AppSetting, "records").value = {"questionsPerContact": 4}
     assert shown() == 4
+
+
+# --- #985(PM 결정 2026-11-29): 접촉마다 묻는 상대 반응 답의 저장 ---------------------------
+
+NEGATIVE_CLAIM = [("REACTION", "NEGATIVE"), ("REACTION_BAD", "CLAIM")]
+
+
+def saved_answers(opp_id):
+    """저장된 답 (질문, 보기) 전부. 한 접촉 안의 행 순서는 정해져 있지 않아 정렬해 돌려준다."""
+    with session_scope() as session:
+        rows = session.execute(
+            select(OutcomeAnswer.question_id, OutcomeAnswer.answer_id).where(
+                OutcomeAnswer.opp_id == opp_id
+            )
+        ).all()
+    return sorted(tuple(row) for row in rows)
+
+
+def test_reaction_answers_are_saved_on_a_reached_contact(records_env):
+    """Given 연결된 접촉 / When 상대 반응 "부정적"과 걸린 부분 "클레임"을 실어 저장
+    / Then 받아 주고 두 답이 그대로 남으며 상세의 알아낸 것에 보인다."""
+    client, opp_id = records_env
+    save(client, opp_id, contact(answers=NEGATIVE_CLAIM))
+    assert saved_answers(opp_id) == sorted(NEGATIVE_CLAIM)
+    known = [(item["questionId"], item["answer"]) for item in step_of(client, opp_id)["known"]]
+    assert known == [
+        ("REACTION", "부정적"),
+        ("REACTION_BAD", "클레임(불량·납기)"),
+    ]
+
+
+def test_reaction_answers_do_not_move_the_step_or_the_stage(records_env):
+    """Given 외주 답으로 '수요 확인'·접촉 단계인 회사 / When 다음 접촉에 상대 반응 답만 실어 저장
+    / Then 세부 단계와 그 시작일, 큰 단계, 거절 이유, 점수가 모두 그대로다."""
+    client, opp_id = records_env
+    save(client, opp_id, contact(answers=[("PLATING_NOW", "OUTSOURCED")], attemptedAt="2026-10-18"))
+    before = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    step_before = before["records"]["salesStep"]
+    assert (step_before["code"], step_before["since"]) == ("DEMAND_CONFIRMED", "2026-10-18")
+    assert latest_row(opp_id) == ("IN_PROGRESS", None, None)
+    saved = save(client, opp_id, contact(answers=NEGATIVE_CLAIM))
+    assert saved["status"] == "IN_PROGRESS"
+    assert latest_row(opp_id) == ("IN_PROGRESS", None, None)
+    after = client.get(f"/api/v1/opportunities/{opp_id}").json()["data"]
+    step = after["records"]["salesStep"]
+    assert (step["code"], step["since"], step["overridden"]) == (
+        "DEMAND_CONFIRMED",
+        "2026-10-18",
+        False,
+    )
+    assert card_of(client, opp_id)["salesStep"] == "DEMAND_CONFIRMED"
+    assert after["scores"] == before["scores"] and after["evalId"] == before["evalId"]
+    # 부정적 → 걸린 부분까지 답했으므로 세 질문 모두 '아직 모르는 질문'에서 빠진다.
+    assert not [item for item in step["openQuestions"] if item.startswith("REACTION")]
+
+
+@pytest.mark.parametrize(
+    ("reaction", "tail"),
+    [("POSITIVE", "REACTION_GOOD"), ("NEGATIVE", "REACTION_BAD")],
+)
+def test_reaction_answer_opens_only_the_matching_tail(records_env, reaction, tail):
+    """Given 연결된 접촉에서 상대 반응만 답함 / When 상세 조회
+    / Then '아직 모르는 질문'에 그 답에 맞는 꼬리 하나만 열린다(보통이면 없음은 아래 시험)."""
+    client, opp_id = records_env
+    save(client, opp_id, contact(answers=[("REACTION", reaction)]))
+    opened = [item for item in step_of(client, opp_id)["openQuestions"] if "REACTION" in item]
+    assert opened == [tail]
+
+
+def test_neutral_reaction_opens_no_tail(records_env):
+    client, opp_id = records_env
+    save(client, opp_id, contact(answers=[("REACTION", "NEUTRAL")]))
+    assert not [item for item in step_of(client, opp_id)["openQuestions"] if "REACTION" in item]
+
+
+def test_reaction_answers_on_an_absent_contact_are_rejected(records_env):
+    """Given 부재 접촉 / When 상대 반응 답을 실음 / Then 400(연결된 접촉에서만), 저장 없음.
+
+    부재 접촉이 받는 답은 기본 보기가 있는 질문(누가 먼저 연락했나)뿐이다(#691).
+    """
+    client, opp_id = records_env
+    response = support.post(
+        client, opp_id, "outcomes", contact(result="ABSENT", answers=[("REACTION", "NEUTRAL")])
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()["error"]["fields"] == [
+        {"path": "answers", "message": "연결된 접촉에서만 답을 고를 수 있습니다."}
+    ]
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(Outcome)) == 0
+        assert session.scalar(select(func.count()).select_from(OutcomeAnswer)) == 0
+
+
+def test_reaction_answers_are_taken_on_a_declined_contact(records_env):
+    """Given 결과가 거절인 접촉 / When 상대 반응 답(모든 단계 질문)을 실음
+    / Then 받아 주고, 끝내는 답이 아니라 큰 단계를 거절로 바꾸지 않는다."""
+    client, opp_id = records_env
+    body = contact(result="DECLINED", answers=NEGATIVE_CLAIM)
+    assert save(client, opp_id, body)["status"] == "NOT_EXECUTED"
+    assert saved_answers(opp_id) == sorted(NEGATIVE_CLAIM)
+    assert latest_row(opp_id) == ("NOT_EXECUTED", None, None)
+    assert step_of(client, opp_id)["code"] == "NOT_REACHED"
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        # 앞 답(상대 반응) 없이 꼬리만
+        [("REACTION_GOOD", "PRICE")],
+        # 앞 답과 맞지 않는 꼬리(부정적인데 좋게 본 부분)
+        [("REACTION", "NEGATIVE"), ("REACTION_GOOD", "PRICE")],
+    ],
+)
+def test_reaction_tail_without_its_matching_reaction_is_saved_as_sent(records_env, answers):
+    """지금 서버 동작을 고정한다: 앞 답과 맞지 않는 상대 반응 꼬리 답도 받아서 그대로 저장한다.
+
+    서버가 앞 답(showWhen)을 보는 것은 단계를 끝내는 답(closes·lostReason)뿐이다(#643). 상대 반응
+    꼬리는 단계를 바꾸지 않아 막지 않는다. 화면은 조건이 맞을 때만 꼬리를 보이므로 화면으로는
+    생기지 않는 요청이다. 서버에서도 막을지는 PM 확인이 필요하다(#985 보고).
+    """
+    client, opp_id = records_env
+    assert save(client, opp_id, contact(answers=answers))["status"] == "IN_PROGRESS"
+    assert saved_answers(opp_id) == sorted(answers)
+    assert latest_row(opp_id) == ("IN_PROGRESS", None, None)
+
+
+def test_sales_questions_route_serves_the_reaction_questions_first(records_env):
+    """Given 예시 질문 파일 / When 화면이 질문 묶음을 읽음
+    / Then 맨 앞 세 질문이 상대 반응 셋이고 꼬리 조건·코치 필수 표시가 그대로 온다."""
+    client, _ = records_env
+    data = client.get("/api/v1/sales-questions").json()["data"]
+    first = data["questions"][:3]
+    assert [(item["questionId"], item["step"], item["text"]) for item in first] == [
+        ("REACTION", "ALL", "상대 반응은 어땠나요?"),
+        ("REACTION_GOOD", "ALL", "어느 부분을 좋게 봤나요?"),
+        ("REACTION_BAD", "ALL", "어느 부분이 걸렸나요?"),
+    ]
+    assert [item["showWhen"] for item in first] == [
+        None,
+        {"answers": {"REACTION": ["POSITIVE"]}},
+        {"answers": {"REACTION": ["NEGATIVE"]}},
+    ]
+    assert [item["coach"] for item in first] == [
+        {"fill": "AI", "required": True, "requiredWhen": None, "keyword": keyword}
+        for keyword in ("상대 반응", "좋게 본 부분", "걸린 부분")
+    ]
+    assert [answer["answerId"] for answer in first[0]["answers"]] == [
+        "POSITIVE",
+        "NEUTRAL",
+        "NEGATIVE",
+    ]
+    assert "CLAIM" in [answer["answerId"] for answer in first[2]["answers"]]
+    # 어떤 보기도 단계를 옮기거나 끝내지 않고, 미리 골라져 있지 않다.
+    for item in first:
+        for answer in item["answers"]:
+            touched = (answer["reaches"], answer["closes"], answer["lostReason"], answer["default"])
+            assert touched == (None, None, None, False), (item["questionId"], answer["answerId"])

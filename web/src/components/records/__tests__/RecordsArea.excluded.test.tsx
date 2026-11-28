@@ -53,7 +53,7 @@ function renderArea(excluded: boolean) {
 }
 
 async function pressSave(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(chipOf('records-kind', '전화'));
+  await user.click(chipOf('records-kind', '통화'));
   await user.click(chipOf('records-contact-result', '연결됨'));
   await user.click(screen.getByTestId('records-contact-save-button'));
 }
@@ -77,7 +77,7 @@ describe('기록 구역 · 제외한 회사에 접촉을 남길 때 (#697)', () 
     const user = userEvent.setup();
     renderArea(true);
     // 누르기 전에는 묻는 줄이 없다.
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     expect(screen.queryByTestId('records-excluded-ask')).not.toBeInTheDocument();
     await pressSave(user);
     expect(screen.getByTestId('records-excluded-ask')).toHaveTextContent(

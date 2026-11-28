@@ -32,6 +32,12 @@ FIRST_MEMO = "생산관리팀 김철수 과장 통화. 아연도금 외주 주�
 OLD_NOTE = "홍길동 대리가 납기 걱정을 함 010-0000-0000"
 MEMO = "김철수 과장 통화. 소개서 받아봤다고 함. 견적 요청함. 금요일에 다시 전화"
 PLANTED = ("김철수", "철수", "홍길동", "010-0000-0000", "park-lee")
+# #985(PM 결정 2026-11-29) 접촉마다 묻는 상대 반응 질문 셋(질문 파일 맨 앞).
+REACTION = "REACTION"
+REACTION_GOOD = "REACTION_GOOD"
+REACTION_BAD = "REACTION_BAD"
+# 상대 반응이 적힌 가상 메모(사람 이름·연락처 없음).
+REACTION_MEMO = "품질 인증은 좋게 봤다고 함. 납기는 어렵다는 반응. 지난 불량 클레임 얘기도 나옴"
 
 
 def day(offset):
@@ -215,8 +221,10 @@ def test_answer_is_checked_and_missing_required_is_computed_by_rule(coach_env):
     assert data["nextSchedule"] == {"actionId": "RECONTACT", "date": day(3)}
     # 수요 확인 → 자료·견적. 빠진 필수 질문은 통화 전 단계(수요 확인)와 접촉마다 묻는 것만이다
     # (바뀜 #742 PM 결정: 이번 메모로 넘어간 단계의 "답이 왔나"·"방문·샘플"은 묻지 않는다).
+    # (바뀜 #985 PM 결정 2026-11-29: 접촉마다 묻는 "상대 반응"이 생겼다. 이 메모에는 반응이 없어
+    # AI가 채우지 않았으므로 질문 파일 순서대로 맨 앞에 온다.)
     assert (data["stepBefore"], data["stepAfter"]) == ("DEMAND_CONFIRMED", "MATERIAL_QUOTE")
-    assert data["missingRequired"] == ["SWITCH_INTENT"]
+    assert data["missingRequired"] == ["REACTION", "SWITCH_INTENT"]
     assert data["aiGenerated"] is True
     assert data["removedNames"] == 1
 
@@ -343,6 +351,122 @@ def test_schedule_without_next_action_answer_fills_it_and_past_date_is_dropped(c
 
 
 # ---------------------------------------------------------------------------
+# #985(PM 결정 2026-11-29): 접촉마다 상대 반응을 꼭 묻는다
+# ---------------------------------------------------------------------------
+
+
+def reaction_answers(data):
+    """코치 답 가운데 상대 반응 질문 셋의 (질문, 고른 보기, 채운 방식)."""
+    return [
+        (item["questionId"], item["answerIds"], item["fill"])
+        for item in data["answers"]
+        if item["questionId"].startswith(REACTION)
+    ]
+
+
+def test_memo_without_reaction_asks_it_first_even_under_the_limit(coach_env):
+    """Given 상한 3·반응이 안 적힌 메모라 AI가 아무 답도 못 채움 / When 코치
+    / Then 빠진 필수 질문 맨 앞이 상대 반응이고, 상한에 밀리는 것은 맨 뒤의 "다음 할 일"이다."""
+    client, opp_ids, fake = coach_env
+    support.change_assistant(coachMaxRequiredQuestions=3)
+    fake.answer = reading()
+    data = coach(client, opp_ids[0]).json()["data"]
+    assert data["answers"] == []
+    # 상한이 없으면 상대 반응 · 외주처 바꿀 생각 · 자료·견적 요청 · 다음 할 일 넷이다.
+    assert data["missingRequired"] == [REACTION, "SWITCH_INTENT", "QUOTE_REQUEST"]
+    # AI가 읽는 질문 목록에 세 질문과 꼬리 조건이 실린다(반응을 읽을 수 있게).
+    catalog = fake.payloads[-1]["instructions"]
+    assert (
+        "- REACTION | 상대 반응은 어땠나요? | 모든 단계 | "
+        "보기: POSITIVE=긍정적; NEUTRAL=보통; NEGATIVE=부정적"
+    ) in catalog
+    assert (
+        "- REACTION_GOOD | 어느 부분을 좋게 봤나요? | 모든 단계 | 조건: REACTION=POSITIVE | "
+        "보기: PROCESS_FIT=공정·기술; QUALITY_CERT=품질·인증;"
+    ) in catalog
+    assert (
+        "- REACTION_BAD | 어느 부분이 걸렸나요? | 모든 단계 | 조건: REACTION=NEGATIVE | "
+        "보기: PRICE=가격;"
+    ) in catalog
+    assert "CLAIM=클레임(불량·납기)" in catalog
+
+
+@pytest.mark.parametrize(
+    ("answer_id", "quote", "expected"),
+    [
+        # 긍정적 → "좋게 본 부분"을 묻는다
+        (
+            "POSITIVE",
+            "품질 인증은 좋게 봤다고 함",
+            [REACTION_GOOD, "SWITCH_INTENT", "QUOTE_REQUEST", "NEXT_ACTION"],
+        ),
+        # 부정적 → "걸린 부분"을 묻는다
+        (
+            "NEGATIVE",
+            "납기는 어렵다는 반응",
+            [REACTION_BAD, "SWITCH_INTENT", "QUOTE_REQUEST", "NEXT_ACTION"],
+        ),
+        # 보통 → 꼬리 질문은 둘 다 묻지 않는다
+        ("NEUTRAL", "납기는 어렵다는 반응", ["SWITCH_INTENT", "QUOTE_REQUEST", "NEXT_ACTION"]),
+    ],
+)
+def test_reaction_filled_by_ai_asks_only_the_matching_tail(coach_env, answer_id, quote, expected):
+    """Given AI가 메모에서 상대 반응만 읽음 / When 코치
+    / Then 상대 반응은 AI가 채운 답으로 오고 빠진 목록에서 빠지며, 그 답에 맞는 꼬리만 묻는다."""
+    client, opp_ids, fake = coach_env
+    support.change_assistant(coachMaxRequiredQuestions=10)
+    fake.answer = reading(answers=[(REACTION, [answer_id], quote)])
+    data = coach(client, opp_ids[0], memo=REACTION_MEMO).json()["data"]
+    assert reaction_answers(data) == [(REACTION, [answer_id], "AI")]
+    assert data["missingRequired"] == expected
+    # 상대 반응 답은 세부 단계를 옮기지 않는다.
+    assert (data["stepBefore"], data["stepAfter"]) == ("DEMAND_CONFIRMED", "DEMAND_CONFIRMED")
+
+
+@pytest.mark.parametrize(
+    ("tail", "tail_answer", "reaction", "quote"),
+    [
+        (REACTION_GOOD, "QUALITY_CERT", "POSITIVE", "품질 인증은 좋게 봤다고 함"),
+        (REACTION_BAD, "CLAIM", "NEGATIVE", "지난 불량 클레임 얘기도 나옴"),
+    ],
+)
+def test_reaction_and_its_tail_filled_by_ai_are_not_asked(
+    coach_env, tail, tail_answer, reaction, quote
+):
+    """Given AI가 상대 반응과 그 부분(좋게 본·걸린)을 다 읽음 / When 코치
+    / Then 둘 다 AI가 채운 답으로 오고 빠진 필수 질문에는 둘 다 없다."""
+    client, opp_ids, fake = coach_env
+    support.change_assistant(coachMaxRequiredQuestions=10)
+    fake.answer = reading(answers=[(REACTION, [reaction], quote), (tail, [tail_answer], quote)])
+    data = coach(client, opp_ids[0], memo=REACTION_MEMO).json()["data"]
+    assert reaction_answers(data) == [(REACTION, [reaction], "AI"), (tail, [tail_answer], "AI")]
+    assert data["missingRequired"] == ["SWITCH_INTENT", "QUOTE_REQUEST", "NEXT_ACTION"]
+
+
+def test_reaction_tail_that_does_not_match_the_reaction_is_dropped(coach_env):
+    """Given AI가 앞 답 없이 꼬리만, 또는 반응과 맞지 않는 꼬리를 줌 / When 코치
+    / Then 그 꼬리 답은 버리고(조건 불일치), 맞는 질문을 빠진 것으로 묻는다."""
+    client, opp_ids, fake = coach_env
+    support.change_assistant(coachMaxRequiredQuestions=10)
+    rest = ["SWITCH_INTENT", "QUOTE_REQUEST", "NEXT_ACTION"]
+    # 상대 반응 없이 "좋게 본 부분"만 → 버리고 상대 반응부터 묻는다.
+    fake.answer = reading(answers=[(REACTION_GOOD, ["QUALITY_CERT"], "품질 인증은 좋게 봤다고 함")])
+    data = coach(client, opp_ids[0], memo=REACTION_MEMO).json()["data"]
+    assert reaction_answers(data) == []
+    assert data["missingRequired"] == [REACTION, *rest]
+    # 부정적인데 "좋게 본 부분" → 그 답은 버리고 "걸린 부분"을 묻는다.
+    fake.answer = reading(
+        answers=[
+            (REACTION, ["NEGATIVE"], "납기는 어렵다는 반응"),
+            (REACTION_GOOD, ["QUALITY_CERT"], "품질 인증은 좋게 봤다고 함"),
+        ]
+    )
+    data = coach(client, opp_ids[0], memo=REACTION_MEMO).json()["data"]
+    assert reaction_answers(data) == [(REACTION, ["NEGATIVE"], "AI")]
+    assert data["missingRequired"] == [REACTION_BAD, *rest]
+
+
+# ---------------------------------------------------------------------------
 # 저장: AI가 채움 표시, 남긴 피드백
 # ---------------------------------------------------------------------------
 
@@ -403,13 +527,22 @@ def test_answer_changed_from_ai_is_kept_as_ai_changed(coach_env):
 
 
 def test_missing_required_is_capped_by_setting(coach_env):
-    """Given 설정 상한 1 / When 빠진 필수 질문이 둘 / Then 질문 파일 순서로 하나만 온다."""
+    """Given 설정 상한 1 / When 빠진 필수 질문이 여럿 / Then 질문 파일 순서로 하나만 온다."""
     client, opp_ids, fake = coach_env
     support.change_assistant(coachMaxRequiredQuestions=1)
+    # 상대 반응(#985)은 AI가 채웠다. 상한이 없으면 외주처 바꿀 생각 · 다음 할 일 두 개가 빠진다.
+    fake.answer = reading(
+        answers=[
+            ("REACTION", ["NEUTRAL"], "소개서 받아봤다고 함"),
+            ("QUOTE_REQUEST", ["QUOTE"], "견적 요청함"),
+        ]
+    )
+    data = coach(client, opp_ids[0]).json()["data"]
+    assert data["missingRequired"] == ["SWITCH_INTENT"]
+    # 상대 반응을 채우지 못하면(#985) 빠진 것이 셋이고, 파일 맨 앞인 상대 반응 하나만 온다.
     fake.answer = reading(answers=[("QUOTE_REQUEST", ["QUOTE"], "견적 요청함")])
     data = coach(client, opp_ids[0]).json()["data"]
-    # 상한이 없으면 외주처 바꿀 생각 · 다음 할 일 두 개다.
-    assert data["missingRequired"] == ["SWITCH_INTENT"]
+    assert data["missingRequired"] == ["REACTION"]
 
 
 def test_unknown_filled_by_is_rejected(coach_env):
@@ -554,14 +687,94 @@ def questions() -> SalesQuestions:
     ],
 )
 def test_missing_required_follows_the_question_file(questions, before, prior, now, expected):
-    assert missing_required(questions, prior, now, SalesStep(before)) == expected
+    """단계별 필수 질문 규칙. 표의 기대값은 상대 반응(#985)을 이번에 답한 경우다.
+
+    (바뀜 #985 PM 결정 2026-11-29) 접촉마다 묻는 "상대 반응"이 질문 파일 맨 앞에 생겼다. 다른 필수
+    질문의 규칙은 그대로이므로 상대 반응을 "보통"으로 답한 경우에 표의 기대값이 그대로 나오고,
+    답하지 않은 경우에는 그 앞에 상대 반응 하나가 더 온다.
+    """
+    answered = {REACTION: ["NEUTRAL"], **now}
+    assert missing_required(questions, prior, answered, SalesStep(before)) == expected
+    assert missing_required(questions, prior, now, SalesStep(before)) == [REACTION, *expected]
 
 
 def test_missing_required_keeps_file_order_up_to_the_limit(questions):
     prior = {"PLATING_NOW": ["OUTSOURCED"]}
     now = {"VISIT_OR_SAMPLE": ["SAMPLE"]}
     before = SalesStep.DEMAND_CONFIRMED
+    # 상대 반응(#985)을 답했으면 예전과 같다: 수요 확인 단계의 두 질문이 파일 순서로 온다.
+    answered = {REACTION: ["NEUTRAL"], **now}
+    assert missing_required(questions, prior, answered, before, limit=2) == [
+        "SWITCH_INTENT",
+        "QUOTE_REQUEST",
+    ]
+    # 답하지 않았으면 파일 맨 앞인 상대 반응이 먼저 자리를 차지한다.
     assert missing_required(questions, prior, now, before, limit=2) == [
+        REACTION,
+        "SWITCH_INTENT",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# #985(PM 결정 2026-11-29): 접촉마다 상대 반응을 꼭 묻는다 — 빠진 필수 질문 규칙
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("now", "expected"),
+    [
+        # 반응을 모르면 상대 반응부터 묻는다. 꼬리(좋게 본·걸린 부분)는 아직 묻지 않는다.
+        ({}, [REACTION, "WHO_TALKED", "NEXT_ACTION"]),
+        # 긍정적 → 좋게 본 부분만, 부정적 → 걸린 부분만, 보통 → 꼬리 없음
+        ({REACTION: ["POSITIVE"]}, [REACTION_GOOD, "WHO_TALKED", "NEXT_ACTION"]),
+        ({REACTION: ["NEGATIVE"]}, [REACTION_BAD, "WHO_TALKED", "NEXT_ACTION"]),
+        ({REACTION: ["NEUTRAL"]}, ["WHO_TALKED", "NEXT_ACTION"]),
+        # 반응과 꼬리를 다 답했으면 둘 다 빠진 목록에 없다.
+        (
+            {REACTION: ["POSITIVE"], REACTION_GOOD: ["QUALITY_CERT"]},
+            ["WHO_TALKED", "NEXT_ACTION"],
+        ),
+        ({REACTION: ["NEGATIVE"], REACTION_BAD: ["CLAIM"]}, ["WHO_TALKED", "NEXT_ACTION"]),
+    ],
+)
+def test_reaction_questions_are_asked_by_the_answer_of_this_contact(questions, now, expected):
+    """Given 첫 통화(연결 전) / When 상대 반응 답이 없음·긍정·부정·보통
+    / Then 그 답에 맞는 질문만 묻는다."""
+    assert missing_required(questions, {}, now, SalesStep.NOT_REACHED) == expected
+
+
+def test_reaction_is_asked_again_at_every_contact(questions):
+    """Given 지난 접촉에서 반응(긍정적)과 좋게 본 부분을 이미 답함 / When 이번 접촉의 답이 없음
+    / Then 상대 반응을 다시 묻고(접촉마다), 지난 답만으로 "좋게 본 부분"을 묻지는 않는다."""
+    prior = {
+        "WHO_TALKED": ["RIGHT_PERSON"],
+        "PLATING_NOW": ["IN_HOUSE"],
+        "NEED_PROCESS": ["NO"],
+        REACTION: ["POSITIVE"],
+        REACTION_GOOD: ["PRICE"],
+    }
+    assert missing_required(questions, prior, {}, SalesStep.REACHED) == [REACTION, "NEXT_ACTION"]
+
+
+def test_reaction_questions_stay_ahead_of_step_questions_under_the_limit(questions):
+    """Given 수요 확인 단계에서 빠진 필수 질문이 넷 / When 상한 3
+    / Then 상대 반응(또는 그 꼬리)이 맨 앞에 남고, 밀려나는 것은 파일 맨 뒤의 "다음 할 일"이다."""
+    prior = {"PLATING_NOW": ["OUTSOURCED"]}
+    before = SalesStep.DEMAND_CONFIRMED
+    assert missing_required(questions, prior, {}, before) == [
+        REACTION,
+        "SWITCH_INTENT",
+        "QUOTE_REQUEST",
+        "NEXT_ACTION",
+    ]
+    assert missing_required(questions, prior, {}, before, limit=3) == [
+        REACTION,
+        "SWITCH_INTENT",
+        "QUOTE_REQUEST",
+    ]
+    negative = {REACTION: ["NEGATIVE"]}
+    assert missing_required(questions, prior, negative, before, limit=3) == [
+        REACTION_BAD,
         "SWITCH_INTENT",
         "QUOTE_REQUEST",
     ]

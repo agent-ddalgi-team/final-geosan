@@ -1183,3 +1183,95 @@ def test_db_copy_with_the_retired_sales_patterns_key_is_still_read(dashboard_env
     response = client.get("/api/v1/sales-analysis/patterns", headers=VIEWER)
     assert response.status_code == 200, response.text
     assert response.json()["data"]["basis"]["minSampleForRatio"] == 10
+
+
+# ---------------------------------------------------------------------------
+# #985(PM 결정 2026-11-29): 상대 반응 답이 패턴의 "꼬리 질문 답별" 표에 잡힌다
+# ---------------------------------------------------------------------------
+
+
+def patterns(client):
+    response = client.get("/api/v1/sales-analysis/patterns", headers=VIEWER)
+    assert response.status_code == 200, response.text
+    return response.json()["data"]
+
+
+def reaction_fill(data):
+    """상대 반응 질문 셋의 채움률 줄: {질문: (물을 자리, 답함, 답 분포)}."""
+    return {
+        row["questionId"]: (
+            row["eligible"],
+            row["answered"],
+            [(item["answerId"], item["count"]) for item in row["answers"]],
+        )
+        for row in data["answerFill"]
+        if row["questionId"].startswith("REACTION")
+    }
+
+
+def test_patterns_count_reaction_answers_by_outcome(dashboard_env):
+    """Given 부정적·클레임을 답하고 거절된 회사, 긍정적·품질 인증을 답하고 성사된 회사,
+    보통이라 답하고 진행 중인 회사 / When 패턴 조회
+    / Then 답별 표에 상대 반응·좋게 본 부분·걸린 부분이 성사·실패·진행 중으로 잡힌다.
+
+    걸린 부분은 약점, 좋게 본 부분은 강점으로 읽는 표다. 표본이 적어 비율·판단은 없다.
+    """
+    client, (a, b, c, _d) = dashboard_env
+    negative = answers(("REACTION", "NEGATIVE"), ("REACTION_BAD", "CLAIM"))
+    record(client, a, contact(day="2026-10-16", answers=negative))
+    record(client, a, {"status": "LOST", "lostReasonCode": "PRICE"})
+    positive = answers(("REACTION", "POSITIVE"), ("REACTION_GOOD", "QUALITY_CERT"))
+    record(client, b, contact(day="2026-10-17", answers=positive))
+    record(client, b, {"status": "WON"})
+    record(client, c, contact(day="2026-10-18", answers=answers(("REACTION", "NEUTRAL"))))
+    data = patterns(client)
+    rows = [
+        (row["questionId"], row["answerId"], row["won"], row["failed"], row["inProgress"])
+        for row in data["answerOutcomes"]
+    ]
+    # 질문 파일 순서(상대 반응 → 좋게 본 부분 → 걸린 부분), 질문 안에서는 건수 많은 순 → 보기 id 순.
+    assert rows == [
+        ("REACTION", "NEGATIVE", 0, 1, 0),
+        ("REACTION", "NEUTRAL", 0, 0, 1),
+        ("REACTION", "POSITIVE", 1, 0, 0),
+        ("REACTION_GOOD", "QUALITY_CERT", 1, 0, 0),
+        ("REACTION_BAD", "CLAIM", 0, 1, 0),
+    ]
+    assert all(row["judged"] is False and row["wonRatio"] is None for row in data["answerOutcomes"])
+    # 채움률: 꼬리 질문은 그 반응을 답한 접촉만 물을 자리다.
+    assert reaction_fill(data) == {
+        "REACTION": (3, 3, [("NEGATIVE", 1), ("NEUTRAL", 1), ("POSITIVE", 1)]),
+        "REACTION_GOOD": (1, 1, [("QUALITY_CERT", 1)]),
+        "REACTION_BAD": (1, 1, [("CLAIM", 1)]),
+    }
+    # 지금 동작: 실패한 회사의 "멈춘 단계의 답" 표는 단계가 정해진 질문만 싣는다. 접촉마다 묻는
+    # 상대 반응(걸린 부분)은 거기에 없고 위 답별 표에서만 보인다.
+    assert data["failure"]["stepAnswers"] == []
+    assert data["failure"]["lostReasons"] == [{"code": "PRICE", "count": 1}]
+
+
+def test_patterns_count_every_contact_as_a_place_to_ask_the_reaction(dashboard_env):
+    """지금 계산을 고정한다(#985 보고 — PM 확인 필요): 접촉마다 묻는 질문의 "물을 자리"에는
+    부재 접촉도 들어간다.
+
+    Given 부재 → 연결(부정적·클레임) → 부재 / When 패턴 조회
+    Then 상대 반응의 물을 자리는 접촉 3번 모두이고 답은 1번이다. 걸린 부분은 "부정적"을 답한 접촉과
+    그 뒤 접촉(부재) 2번이 물을 자리다(앞 접촉의 답이 이어져 보이는 조건으로 친다).
+    서버는 부재 접촉에 상대 반응 답을 받지 않으므로(400) 이 두 자리는 채울 수 없는 자리다.
+    """
+    client, (a, _b, _c, _d) = dashboard_env
+    record(client, a, contact("ABSENT", day="2026-10-15"))
+    negative = answers(("REACTION", "NEGATIVE"), ("REACTION_BAD", "CLAIM"))
+    record(client, a, contact(day="2026-10-16", answers=negative))
+    record(client, a, contact("ABSENT", day="2026-10-17"))
+    data = patterns(client)
+    assert reaction_fill(data) == {
+        "REACTION": (3, 1, [("NEGATIVE", 1)]),
+        "REACTION_GOOD": (0, 0, []),
+        "REACTION_BAD": (2, 1, [("CLAIM", 1)]),
+    }
+    by_question = {row["questionId"]: row for row in data["answerFill"]}
+    # 답 없음·모름 몫: (물을 자리 − 답함) ÷ 물을 자리. 부재 2번 때문에 0.67로 보인다.
+    assert by_question["REACTION"]["ratio"] == 0.33
+    assert by_question["REACTION"]["unknownShare"] == 0.67
+    assert by_question["REACTION_BAD"]["unknownShare"] == 0.5

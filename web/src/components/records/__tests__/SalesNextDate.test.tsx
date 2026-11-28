@@ -132,7 +132,7 @@ function renderArea(current: OutcomeRecord = outcome()) {
 }
 
 async function startCall(user: ReturnType<typeof userEvent.setup>, result = '연결됨') {
-  await user.click(chipOf('records-kind', '전화'));
+  await user.click(chipOf('records-kind', '통화'));
   await user.click(chipOf('records-contact-result', result));
 }
 

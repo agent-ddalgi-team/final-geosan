@@ -4204,6 +4204,21 @@
         "title": "Envelope[SalesQuestionsView]",
         "type": "object"
       },
+      "Envelope_SalesReactions_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SalesReactions"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[SalesReactions]",
+        "type": "object"
+      },
       "Envelope_list_ActivityItem__": {
         "properties": {
           "data": {
@@ -10049,6 +10064,276 @@
         "title": "ReachRatios",
         "type": "object"
       },
+      "ReactionAnswerCount": {
+        "properties": {
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answerId",
+          "count"
+        ],
+        "title": "ReactionAnswerCount",
+        "type": "object"
+      },
+      "ReactionBasis": {
+        "properties": {
+          "answeredCount": {
+            "title": "Answeredcount",
+            "type": "integer"
+          },
+          "contactCount": {
+            "title": "Contactcount",
+            "type": "integer"
+          },
+          "minSampleForRatio": {
+            "title": "Minsampleforratio",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "minSampleForRatio",
+          "contactCount",
+          "answeredCount"
+        ],
+        "title": "ReactionBasis",
+        "type": "object"
+      },
+      "ReactionContact": {
+        "description": "반응을 남긴 접촉 한 건. 회사 이름·코드값·날짜만 싣는다(메모 글·답 글 없음).",
+        "properties": {
+          "bad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bad"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "good": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Good"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "method": {
+            "$ref": "#/components/schemas/ContactMethod"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "processCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          },
+          "reaction": {
+            "title": "Reaction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "name",
+          "day",
+          "method",
+          "reaction",
+          "good",
+          "bad",
+          "industries",
+          "processCodes"
+        ],
+        "title": "ReactionContact",
+        "type": "object"
+      },
+      "ReactionGroup": {
+        "description": "반응 묶음 하나(전체 · 산업 한 줄 · 공정 한 줄이 같은 모양). 세는 단위는 접촉 건이다.",
+        "properties": {
+          "answeredCount": {
+            "title": "Answeredcount",
+            "type": "integer"
+          },
+          "bad": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionAnswerCount"
+            },
+            "title": "Bad",
+            "type": "array"
+          },
+          "good": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionAnswerCount"
+            },
+            "title": "Good",
+            "type": "array"
+          },
+          "negative": {
+            "title": "Negative",
+            "type": "integer"
+          },
+          "neutral": {
+            "title": "Neutral",
+            "type": "integer"
+          },
+          "positive": {
+            "title": "Positive",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answeredCount",
+          "positive",
+          "neutral",
+          "negative",
+          "good",
+          "bad"
+        ],
+        "title": "ReactionGroup",
+        "type": "object"
+      },
+      "ReactionIndustryRow": {
+        "properties": {
+          "answeredCount": {
+            "title": "Answeredcount",
+            "type": "integer"
+          },
+          "bad": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionAnswerCount"
+            },
+            "title": "Bad",
+            "type": "array"
+          },
+          "good": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionAnswerCount"
+            },
+            "title": "Good",
+            "type": "array"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          },
+          "negative": {
+            "title": "Negative",
+            "type": "integer"
+          },
+          "neutral": {
+            "title": "Neutral",
+            "type": "integer"
+          },
+          "positive": {
+            "title": "Positive",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answeredCount",
+          "positive",
+          "neutral",
+          "negative",
+          "good",
+          "bad",
+          "industry"
+        ],
+        "title": "ReactionIndustryRow",
+        "type": "object"
+      },
+      "ReactionProcessRow": {
+        "properties": {
+          "answeredCount": {
+            "title": "Answeredcount",
+            "type": "integer"
+          },
+          "bad": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionAnswerCount"
+            },
+            "title": "Bad",
+            "type": "array"
+          },
+          "good": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionAnswerCount"
+            },
+            "title": "Good",
+            "type": "array"
+          },
+          "negative": {
+            "title": "Negative",
+            "type": "integer"
+          },
+          "neutral": {
+            "title": "Neutral",
+            "type": "integer"
+          },
+          "positive": {
+            "title": "Positive",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "title": "Processname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answeredCount",
+          "positive",
+          "neutral",
+          "negative",
+          "good",
+          "bad",
+          "processCode",
+          "processName"
+        ],
+        "title": "ReactionProcessRow",
+        "type": "object"
+      },
       "Reasons": {
         "properties": {
           "nextAction": {
@@ -10995,6 +11280,52 @@
           "questions"
         ],
         "title": "SalesQuestionsView",
+        "type": "object"
+      },
+      "SalesReactions": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/ReactionBasis"
+          },
+          "byIndustry": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionIndustryRow"
+            },
+            "title": "Byindustry",
+            "type": "array"
+          },
+          "byProcess": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionProcessRow"
+            },
+            "title": "Byprocess",
+            "type": "array"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionContact"
+            },
+            "title": "Contacts",
+            "type": "array"
+          },
+          "total": {
+            "$ref": "#/components/schemas/ReactionGroup"
+          }
+        },
+        "required": [
+          "asOf",
+          "basis",
+          "total",
+          "byIndustry",
+          "byProcess",
+          "contacts"
+        ],
+        "title": "SalesReactions",
         "type": "object"
       },
       "SalesShowWhen": {
@@ -15803,6 +16134,69 @@
           }
         },
         "summary": "Sales Patterns"
+      }
+    },
+    "/api/v1/sales-analysis/reactions": {
+      "get": {
+        "description": "상대 반응 답을 접촉 건수로 센다(전체·산업별·공정별 묶음과 접촉 줄). 저장하지 않는다.\n\n영업 분석표와 같은 대상·기간 규칙. 질문 파일에 상대 반응 질문이 없으면 반응 건수는 모두 0이다.",
+        "operationId": "sales_reactions_api_v1_sales_analysis_reactions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SalesReactions_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sales Reactions"
       }
     },
     "/api/v1/sales-questions": {

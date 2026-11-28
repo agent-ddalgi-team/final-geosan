@@ -41,13 +41,28 @@ def only_scrubbed_copy(context):
 
 @then(
     "견적 요청은 AI가 채우고 맡길 공정은 제안으로만 오며 빠진 필수 질문은 "
-    "통화 전 단계의 외주처 바꿀 생각뿐이다"
+    "접촉마다 묻는 상대 반응과 통화 전 단계의 외주처 바꿀 생각뿐이다"
 )
 def filled_and_missing(context):
     fills = {item["questionId"]: item["fill"] for item in context["data"]["answers"]}
     assert fills == {"QUOTE_REQUEST": "AI", "NEXT_ACTION": "AI", "CONFIRM_PROCESS": "SUGGEST"}
     # (바뀜 #742 PM 결정) 이번 메모로 넘어간 자료·견적 단계의 질문은 묻지 않는다.
-    assert context["data"]["missingRequired"] == ["SWITCH_INTENT"]
+    # (바뀜 #985 PM 결정 2026-11-29) 접촉마다 묻는 상대 반응이 질문 파일 순서대로 맨 앞에 온다.
+    assert context["data"]["missingRequired"] == ["REACTION", "SWITCH_INTENT"]
+
+
+@then("AI가 채운 답에 상대 반응은 없고 빠진 필수 질문의 맨 앞이 상대 반응이다")
+def reaction_is_asked_first(context):
+    data = context["data"]
+    assert "REACTION" not in [item["questionId"] for item in data["answers"]]
+    assert data["missingRequired"][0] == "REACTION"
+
+
+@then("좋게 본 부분과 걸린 부분은 상대 반응을 답하기 전이라 묻지 않는다")
+def reaction_tails_wait(context):
+    data = context["data"]
+    asked = [item["questionId"] for item in data["answers"]] + data["missingRequired"]
+    assert "REACTION_GOOD" not in asked and "REACTION_BAD" not in asked
 
 
 @then("피드백은 이전 기록의 날짜를 짚은 줄만 남고 금액·할인·연락처가 든 줄은 없다")
@@ -72,7 +87,13 @@ def save_as_is(context):
         if item["fill"] == "AI"
         for answer_id in item["answerIds"]
     ]
-    answers.append({"questionId": "SWITCH_INTENT", "answerId": "YES", "filledBy": "STAFF"})
+    # 빠진 필수 질문은 담당자가 고른다(#985: 상대 반응이 더해졌다).
+    staff_picks = {"REACTION": "NEUTRAL", "SWITCH_INTENT": "YES"}
+    assert data["missingRequired"] == list(staff_picks)
+    answers.extend(
+        {"questionId": question_id, "answerId": answer_id, "filledBy": "STAFF"}
+        for question_id, answer_id in staff_picks.items()
+    )
     schedule = data["nextSchedule"]
     coach_support.record(
         context["client"],
@@ -104,6 +125,7 @@ def filled_by_saved(context):
     assert filled["QUOTE_REQUEST"] == "AI_CONFIRMED"
     assert filled["NEXT_ACTION"] == "AI_CONFIRMED"
     assert filled["SWITCH_INTENT"] == "STAFF"
+    assert filled["REACTION"] == "STAFF"
 
 
 @then("상세의 남긴 피드백과 활동 이력에 그 줄이 있다")
