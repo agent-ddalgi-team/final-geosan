@@ -1,7 +1,7 @@
 // #802 월별 추세: 서버가 센 12개월 값을 달마다 읽는 글로 보인다. #972부터 접촉은 선 + 옅은 면으로 그리고
 // 성사·거절은 달에 손을 올리면 뜨는 글·화면 읽기용 글·아래 요약 문장으로 전한다. 숫자는 가상이다.
 import { render, screen } from '@testing-library/react';
-import MonthlyTrend, { trendLinePath, trendPoints } from '../MonthlyTrend';
+import MonthlyTrend, { TREND_HEIGHT_SHORT, trendLinePath, trendPoints } from '../MonthlyTrend';
 
 const months = Array.from({ length: 12 }, (_, index) => {
   const month = ((index + 11) % 12) + 1;
@@ -77,4 +77,33 @@ it('기록이 없으면 빈 안내, 옛 서버(칸 없음)면 그리지 않는�
   expect(screen.queryByTestId('monthly-trend-line')).not.toBeInTheDocument();
   rerender(<MonthlyTrend rows={undefined} />);
   expect(screen.queryByTestId('monthly-trend')).not.toBeInTheDocument();
+});
+
+it('#983: 그림 높이를 주면 그 높이로 줄여 그리고(영업 홈은 절반쯤), 안 주면 지금 높이(170) 그대로다. 선의 값은 바뀌지 않는다', () => {
+  const rows = months.map((row) => {
+    if (row.month === '2026-10') return { ...row, contacted: 10, won: 2, lost: 1 };
+    if (row.month === '2026-11') return { ...row, contacted: 5, won: 1, lost: 2 };
+    return row;
+  });
+  const view = render(<MonthlyTrend rows={rows} />);
+  const full = screen.getByTestId('monthly-trend-line');
+  expect(full.style.height).toBe('170px');
+  const path = screen.getByTestId('monthly-trend-path').getAttribute('d');
+  const labels = screen
+    .getAllByTestId('monthly-trend-month')
+    .map((month) => month.getAttribute('aria-label'));
+  view.unmount();
+  render(<MonthlyTrend rows={rows} height={TREND_HEIGHT_SHORT} />);
+  const short = screen.getByTestId('monthly-trend-line');
+  expect(short.style.height).toBe(`${TREND_HEIGHT_SHORT}px`);
+  expect(TREND_HEIGHT_SHORT).toBeGreaterThanOrEqual(170 * 0.4);
+  expect(TREND_HEIGHT_SHORT).toBeLessThanOrEqual(170 * 0.6);
+  // 달 칸의 손 올림 자리도 같은 높이라 그림과 어긋나지 않는다.
+  const spacer = screen.getAllByTestId('monthly-trend-month')[0].querySelector('span');
+  expect(spacer).toHaveStyle({ height: `${TREND_HEIGHT_SHORT}px` });
+  // 세로로만 줄인다: 선 좌표와 달마다 읽히는 값은 그대로다.
+  expect(screen.getByTestId('monthly-trend-path').getAttribute('d')).toBe(path);
+  expect(
+    screen.getAllByTestId('monthly-trend-month').map((month) => month.getAttribute('aria-label')),
+  ).toEqual(labels);
 });

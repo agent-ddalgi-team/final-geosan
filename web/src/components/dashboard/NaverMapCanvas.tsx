@@ -127,6 +127,8 @@ export function resetNaverMapsLoader() {
 const OVERLAP_DISTANCE = 8;
 /** #929 영업 홈(compact) 지도 높이(화면 모양값, 규칙 숫자 아님). 같이 들를 곳 칸 높이와 맞춘다. */
 export const DASHBOARD_MAP_HEIGHT = 360;
+/** #983 영업 홈에서 지도를 "이번 주 방문·연락" 옆 칸 위쪽에 놓을 때의 낮춘 높이(화면 모양값). 아래에 같이 들를 곳이 온다. */
+export const DASHBOARD_MAP_STACKED_HEIGHT = 250;
 const CLUSTER_SIZE = 22;
 const PIN_SIZE = 14;
 const HQ_PIN_SIZE = 24;
@@ -289,6 +291,8 @@ export interface NaverMapCanvasProps {
   } | null;
   /** 마우스를 올린 점의 회사 이름. 이름은 SDK에 넘기지 않고 이 부품의 HTML 이름표로만 그린다(#673). */
   labelFor?: (oppId: string) => string | null;
+  /** #983 영업 홈(compact) 지도 높이. 안 주면 DASHBOARD_MAP_HEIGHT. */
+  height?: number;
 }
 
 export default function NaverMapCanvas({
@@ -303,6 +307,7 @@ export default function NaverMapCanvas({
   visitBaseId,
   focus = null,
   labelFor,
+  height = DASHBOARD_MAP_HEIGHT,
 }: NaverMapCanvasProps) {
   const box = useRef<HTMLDivElement>(null);
   // 마우스를 올린 점과 그 화면 위치. 이름표는 우리 HTML로 지도 위에 띄운다.
@@ -607,7 +612,7 @@ export default function NaverMapCanvas({
         style={{
           width: '100%',
           // #929(PM 요청 2026-11-25): 영업 홈 지도는 옆 "같이 들를 곳"과 균형이 맞게 높이를 고정한다.
-          height: compact ? DASHBOARD_MAP_HEIGHT : 420,
+          height: compact ? height : 420,
           borderRadius: radius.card,
           overflow: 'hidden',
           isolation: 'isolate',

@@ -13,6 +13,7 @@ import type {
 import { dashboardMapTexts as t } from '../../labels/ko';
 import NaverMapCanvas, {
   DASHBOARD_MAP_HEIGHT,
+  DASHBOARD_MAP_STACKED_HEIGHT,
   loadNaverMaps,
   onNaverMapsFailure,
 } from './NaverMapCanvas';
@@ -70,12 +71,16 @@ export default function DashboardMap({
   data,
   mapClientId = import.meta.env.VITE_NCP_MAPS_CLIENT_ID,
   compact = false,
+  stacked = false,
 }: {
   data: DashboardMapData;
   /** 네이버 지도 화면용 키(비밀 아님, 콘솔 허용 URL로 보호). 없으면 자리표시로 그린다. */
   mapClientId?: string;
   compact?: boolean;
+  /** #983 영업 홈(compact): 지도를 위에 낮게, 같이 들를 곳을 그 아래에 쌓는다("이번 주 방문·연락" 옆 칸). */
+  stacked?: boolean;
 }) {
+  const mapHeight = stacked ? DASHBOARD_MAP_STACKED_HEIGHT : DASHBOARD_MAP_HEIGHT;
   const [selected, setSelected] = useState<string | null>(null);
   const [cluster, setCluster] = useState<DashboardMapPoint[] | null>(null);
   const [naver, setNaver] = useState<NaverMapsApi | null>(null);
@@ -199,7 +204,7 @@ export default function DashboardMap({
   };
 
   const map = (
-    <div style={{ flex: '3 1 430px', minWidth: 0, display: 'grid', gap: 12 }}>
+    <div style={{ flex: stacked ? 'none' : '3 1 430px', minWidth: 0, display: 'grid', gap: 12 }}>
       {naver && !mapFailed ? (
         <>
           <NaverMapCanvas
@@ -214,6 +219,7 @@ export default function DashboardMap({
             visitBaseId={compact ? visitSelection?.anchor.oppId : undefined}
             focus={focus}
             labelFor={labelFor}
+            height={mapHeight}
           />
           {/* 지도 점은 키보드로 고를 수 없어 낭독기용 단추 목록을 함께 둔다. */}
           <ul aria-label={t.pointList} data-testid="dashboard-map-point-list" style={srOnly}>
@@ -242,7 +248,7 @@ export default function DashboardMap({
               width: '100%',
               maxWidth: compact ? undefined : 480,
               // #929: 영업 홈 지도는 높이를 고정(원 그림은 가운데 정렬로 비율 유지).
-              height: compact ? DASHBOARD_MAP_HEIGHT : undefined,
+              height: compact ? mapHeight : undefined,
               justifySelf: 'center',
               background: statusPalette.neutral.bg,
               borderRadius: radius.card,
@@ -421,10 +427,13 @@ export default function DashboardMap({
   return (
     <div
       data-testid="dashboard-map"
+      data-stacked={stacked ? 'true' : undefined}
       style={
-        compact
-          ? { display: 'flex', flexWrap: 'wrap', alignItems: 'start', gap: spacing.cardGap }
-          : undefined
+        compact && stacked
+          ? { display: 'flex', flexDirection: 'column', gap: spacing.cardGap }
+          : compact
+            ? { display: 'flex', flexWrap: 'wrap', alignItems: 'start', gap: spacing.cardGap }
+            : undefined
       }
     >
       {map}
@@ -439,8 +448,9 @@ export default function DashboardMap({
       ) : null}
       {compact && visitGroups && visitRadius !== undefined ? (
         <div
+          data-testid="dashboard-map-nearby"
           style={{
-            flex: '1 1 235px',
+            flex: stacked ? 'none' : '1 1 235px',
             minWidth: 0,
             // #929: 같이 들를 곳은 지도 높이 안에서 보이고, 넘치면 칸 안에서 내려 본다.
             maxHeight: DASHBOARD_MAP_HEIGHT,
