@@ -413,37 +413,50 @@ export const antdTheme: ThemeConfig = {
 };
 
 /**
- * 접속 화면(#972 시안 Login): 밝은 바탕 + 가운데 흰 상자(얇은 테두리, 모서리 16), 보라 [접속 →].
- * 예전의 남색 바탕 · 빛나는 곡선 · 라임 단추는 없앴다. 이 값은 접속 화면에만 쓴다.
+ * 접속 화면(#978, PM 결정 2026-11-28): 짙은 보라 밤하늘 + 아래쪽 연보라로 빛나는 곡선, 유리 느낌 입력 상자,
+ * 보라 [접속 →]. 배치는 PM이 준 접속 화면 디자인이고 색은 다른 화면의 보라 톤에 맞췄다.
+ * (#972의 밝은 바탕 흰 상자를 대신한다.) 이 값은 접속 화면에만 쓴다.
  */
 export const loginTheme = {
-  bg: colors.bgLayout,
-  text: colors.text,
-  textSoft: colors.textSecondary,
-  /** 맨 아래 저작권 줄(화면 바탕 위 약 4.8:1). */
-  textDimmed: colors.textDimmed,
-  badgeBg: colors.bgContainer,
-  badgeBorder: colors.borderSecondary,
-  cardBg: colors.bgContainer,
-  cardBorder: colors.borderSecondary,
+  skyTop: '#15123A',
+  skyMiddle: '#2A2170',
+  skyLow: '#5A43D6',
+  /** 곡선 바로 위 가장 밝은 하늘. 유리 상자가 여기까지 내려와도 흰 글자가 읽혀야 한다. */
+  skyGlow: '#8F7BFF',
+  spot: 'rgba(255, 255, 255, 0.07)',
+  planet: '#0D0B24',
+  rim: 'rgba(255, 255, 255, 0.6)',
+  glowCore: '#D9CFFF',
+  text: '#FFFFFF',
+  /** 맨 아래 저작권 줄(짙은 곡선 위). */
+  textSoft: '#C7C3E0',
+  badgeBorder: 'rgba(255, 255, 255, 0.45)',
+  /** 유리 상자: 보라 유리(cardTint) 위에 옅은 흰 막(cardSheen)을 겹친다. */
+  cardTint: 'rgba(58, 46, 140, 0.6)',
+  cardSheen: 'rgba(255, 255, 255, 0.08)',
+  cardBorder: 'rgba(255, 255, 255, 0.28)',
+  cardShadow: 'rgba(5, 5, 30, 0.35)',
   inputBg: colors.bgContainer,
-  inputBorder: colors.border,
+  /** 입력 칸 앞 아이콘(흰 입력 칸 위). */
+  icon: colors.textSecondary,
   accent: accent.bg,
   accentHover: accent.bright,
   accentActive: accent.text,
   accentText: accent.onBg,
-  focusRing: 'rgba(106, 77, 240, 0.28)',
-  /** 누를 수 없는 [접속]: 중립 바탕 + 보조 글자(약 6.3:1). */
-  disabledBg: neutralChip.bg,
-  disabledFg: neutralChip.text,
+  /** 보라 단추가 보라 유리 위에서 묻히지 않게 두르는 얇은 흰 선. */
+  buttonRing: 'rgba(255, 255, 255, 0.22)',
+  focusRing: 'rgba(207, 196, 255, 0.7)',
+  /** 누를 수 없는 [접속]: 채도를 뺀 보라 바탕 + 옅은 글자(약 6:1). */
+  disabledBg: '#4A3F8F',
+  disabledFg: '#D9D4F2',
   cardWidth: 400,
-  cardRadius: radius.modal,
+  cardRadius: 20,
   inputHeight: 48,
   buttonHeight: 50,
   inputRadius: radius.control,
   badgeRadius: radius.controlSm,
-  titleSize: 28,
-  subtitleSize: 16,
+  titleSize: 50,
+  subtitleSize: 34,
 } as const;
 
 /** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 크기를 덮는다. */
@@ -456,7 +469,8 @@ export const loginAntdTheme: ThemeConfig = {
       controlHeightLG: loginTheme.inputHeight,
       borderRadiusLG: loginTheme.inputRadius,
       colorBgContainer: loginTheme.inputBg,
-      colorBorder: loginTheme.inputBorder,
+      // 흰 입력 칸이 유리 상자 위에 놓여 테두리 선이 따로 필요 없다(초점일 때만 보라 선).
+      colorBorder: loginTheme.inputBg,
       hoverBorderColor: loginTheme.accent,
       activeBorderColor: loginTheme.accent,
       activeShadow: `0 0 0 3px ${loginTheme.focusRing}`,
@@ -465,7 +479,7 @@ export const loginAntdTheme: ThemeConfig = {
       ...antdTheme.components?.Button,
       controlHeightLG: loginTheme.buttonHeight,
       borderRadiusLG: loginTheme.inputRadius,
-      fontWeight: 600,
+      fontWeight: 700,
       colorPrimary: loginTheme.accent,
       colorPrimaryHover: loginTheme.accentHover,
       colorPrimaryActive: loginTheme.accentActive,

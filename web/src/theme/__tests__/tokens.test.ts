@@ -103,13 +103,31 @@ it.each([
   ['단계: 지나온 칸', progressTheme.doneFg, progressTheme.done],
   ['단계: 지금 칸', progressTheme.currentFg, progressTheme.current],
   ['단계: 아직인 칸', colors.textSecondary, progressTheme.todo],
-  ['접속 화면 제목', loginTheme.text, loginTheme.cardBg],
-  ['접속 화면 보조 글자', loginTheme.textSoft, loginTheme.cardBg],
-  ['접속 화면 저작권 줄', loginTheme.textDimmed, loginTheme.bg],
+  ['접속 화면 제목 · 한 줄 소개(밤하늘 위)', loginTheme.text, loginTheme.skyMiddle],
+  ['접속 화면 저작권 줄(짙은 곡선 위)', loginTheme.textSoft, loginTheme.planet],
   ['접속 단추', loginTheme.accentText, loginTheme.accent],
   ['누를 수 없는 접속 단추', loginTheme.disabledFg, loginTheme.disabledBg],
 ])('%s: 대비 4.5:1 이상', (_name, fg, bg) => {
   expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+});
+
+it.each([
+  ['밤하늘 가운데', loginTheme.skyMiddle],
+  ['밤하늘 아래쪽', loginTheme.skyLow],
+  ['곡선 바로 위 가장 밝은 하늘', loginTheme.skyGlow],
+])('#978 접속 화면 유리 상자의 흰 글자: %s 위에 놓여도 대비 4.5:1 이상', (_where, sky) => {
+  // 유리 상자 = 하늘 위에 보라 유리(cardTint)를 겹치고 그 위에 옅은 흰 막(cardSheen)을 겹친 색.
+  const tinted = over(loginTheme.cardTint, sky);
+  const sheen = parse(loginTheme.cardSheen);
+  const glass = tinted.map(
+    (value, i) => sheen.rgb[i] * sheen.alpha + value * (1 - sheen.alpha),
+  ) as Rgb;
+  expect(contrast(loginTheme.text, glass)).toBeGreaterThanOrEqual(4.5);
+});
+
+it('#978 접속 화면의 [접속] 단추는 다른 화면의 강조 보라와 같은 색이다', () => {
+  expect(loginTheme.accent).toBe(accent.bg);
+  expect(loginTheme.accentText).toBe(accent.onBg);
 });
 
 it.each(Object.entries(statusPalette))('상태 꼬리표 %s: 대비 4.5:1 이상', (_tone, palette) => {
