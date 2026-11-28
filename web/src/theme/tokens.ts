@@ -199,27 +199,61 @@ export const stepArrow = {
 } as const;
 
 /**
- * 영업 홈 "진행 중인 회사" 카드 안 작은 단계 칸(#983, PM이 고른 시안 2026-11-28).
- * 큰 단계 카드 5칸(#972)을 이 작은 칸으로 줄였다: 이름 · 굵은 숫자 "곳" · 아래 작은 꼬리표("+2 이번 주" · "멈춤 1").
- * 칸 사이 화살표는 글자가 아닌 꾸밈(강조 흐린 선 색), 보류는 점선 테두리.
+ * 영업 홈 "진행 중인 회사" 제목 옆 작은 영업 단계 칸 묶음(#983 → #992, PM이 고른 수정안 3 2026-11-29).
+ * #983의 두 줄짜리 칸(이름 · 숫자 "곳" · 아래 꼬리표)을 제목 옆 한 줄짜리 더 작은 칸으로 줄였다:
+ * 연보라 묶음(얇은 연보라 테두리) 안에 "영업 단계" 작은 글 + 칸(이름 · 굵은 숫자 · 작은 꼬리표 "+2" · "멈춤 1").
+ * 보는 중인(고른) 칸은 진한 보라 바탕 + 흰 글자(약 5.3:1), 나머지는 흰 바탕 + 연보라 테두리, 보류는 점선 테두리.
+ * 색만으로 알리지 않게 고른 칸은 이름 굵기도 한 단계 올리고 단추에 눌림 상태(aria-pressed)가 실린다.
+ * 칸 사이 화살표 · 세로 줄은 글자가 아닌 꾸밈(강조 흐린 선 색).
  */
 export const stageCell = {
-  minWidth: 104,
-  gap: 8,
-  padding: '8px 12px',
+  /** 묶음: 강조 연한 바탕 + 강조 테두리 + 카드 모서리. */
+  group: { bg: accent.soft, border: accent.border, radius: radius.card, padding: '5px 8px' },
+  /** 묶음 맨 앞 작은 글 "영업 단계"(강조 연한 바탕 위 강조 글자, 약 5.8:1). */
+  lead: { fg: accent.text, size: 12 },
+  /** 묶음 안 칸 · 화살표 사이 간격. 노트북 본문 폭에서 제목 · 묶음 · 거르기 단추가 한 줄에 들어가게 시안(6)보다 좁혔다. */
+  gap: 4,
+  /** 칸 안 이름 · 숫자 · 꼬리표 사이 간격. */
+  cellGap: 6,
+  height: 34,
+  /** 칸 안쪽 좌우 여백(시안은 10. 같은 까닭으로 8). */
+  padding: '0 8px',
   radius: radius.control,
-  countSize: 18,
-  unitSize: 13,
-  tagSize: 12,
-  tagRadius: radius.tag,
-  /** "+2 이번 주": 고른 칸(강조 연한 바탕) 위에서도 보이게 한 단계 진한 연보라 바탕 + 강조 글자. */
+  nameSize: 13,
+  countSize: 16,
+  tagSize: 11.5,
+  tagRadius: 4,
+  /** 고르지 않은 칸: 흰 바탕 + 연보라 테두리, 이름은 보조 글자색 굵게, 숫자는 본문 글자색. */
+  idle: {
+    bg: colors.bgContainer,
+    border: accent.border,
+    name: colors.textSecondary,
+    count: colors.text,
+    nameWeight: 600,
+  },
+  /** 보류(순서 밖) 칸의 점선 테두리. 연보라 묶음 위에서도 보이게 강조 흐린 선 색. */
+  holdBorder: accent.line,
+  /** 보는 중인(고른) 칸: 진한 보라 바탕 + 흰 글자, 이름 굵기 한 단계 위. */
+  selected: {
+    bg: accent.bg,
+    border: accent.bg,
+    name: accent.onBg,
+    count: accent.onBg,
+    nameWeight: 700,
+  },
+  /** "+2"(이번 주에 들어온 곳): 흰 칸 위에서는 조금 진한 연보라 바탕 + 강조 글자(약 5.2:1). */
   enteredTag: { bg: accent.softDeep, fg: accent.text },
-  /** "멈춤 1": 주의 바탕 + 주의 글자. */
+  /**
+   * 고른 칸(진한 보라) 위의 "+2": 흰 바탕 + 강조 글자(약 6.5:1).
+   * 시안의 "반투명 흰 바탕 + 흰 글자"는 약 3.4:1이라 쓰지 않는다.
+   */
+  enteredTagOnSelected: { bg: accent.onBg, fg: accent.text },
+  /** "멈춤 1": 주의 바탕 + 주의 글자. 고른 칸 위에서도 같은 값을 쓴다. */
   stalledTag: { bg: warn.bg, fg: warn.text },
   arrow: accent.line,
-  arrowSize: 15,
-  divider: colors.borderSecondary,
-  dividerHeight: 36,
+  arrowSize: 13,
+  divider: accent.border,
+  dividerHeight: 22,
 } as const;
 
 /**
@@ -232,8 +266,15 @@ export const sideCalendar = {
   panelBg: colors.bgLayout,
   panelBorder: colors.borderSecondary,
   panelRadius: radius.card,
-  /** 메뉴 묶음과 달력 칸 사이 간격. */
-  gapAbove: 40,
+  /**
+   * 메뉴 묶음과 달력 칸 사이 최소 간격(#992). 달력은 메뉴 칸 맨 아래(브라우저 창 아래 끝)에 붙으므로 창이 높으면
+   * 그 사이가 더 벌어지고, 창이 낮아 다 들어가지 않을 때만 이 간격으로 메뉴 줄 바로 아래에 이어 붙는다.
+   */
+  gapAbove: 16,
+  /** 달력 칸 아래 끝에서 브라우저 창 아래 끝까지 여백(#992). 메뉴 칸의 아래 안쪽 여백으로 쓴다. */
+  gapBelow: 16,
+  /** 날짜를 눌렀을 때 뜨는 창이 브라우저 창 위·아래 끝에서 띄우는 여백(#992). 이보다 길면 창 안에서 내려 본다. */
+  popoverEdgeGap: 12,
   cellSize: 26,
   cellFontSize: 13,
   cellRadius: 7,

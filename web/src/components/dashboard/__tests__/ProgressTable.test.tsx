@@ -274,15 +274,17 @@ it('#972: 고른 거르기 단추는 강조 연한 바탕 + 강조 테두리 + �
   expect(all).toHaveAttribute('aria-pressed', 'false');
 });
 
-describe('#983 카드 머리 아래 작은 단계 칸 자리', () => {
-  it('넘겨받은 단계 칸은 제목 줄 아래 · 표 위에 놓인다', () => {
+describe('#983 → #992 제목 옆 작은 단계 칸 자리', () => {
+  it('넘겨받은 단계 칸은 제목 줄 안, 제목 바로 뒤 · 거르기 단추 앞에 놓이고 표는 그 아래다', () => {
+    // #983에서는 제목 줄(제목 + 거르기 단추) 아래 한 줄이었다. PM 결정(2026-11-29, #992)으로 제목 바로 옆으로 옮겼다.
     renderTable({ stages: <div data-testid="stage-slot">단계 칸</div> });
     const card = screen.getByTestId('dashboard-progress-table');
     const slot = within(card).getByTestId('stage-slot');
+    const title = within(card).getByRole('heading', { level: 2 });
     const order = [
-      within(card).getByRole('heading', { level: 2 }),
-      screen.getByTestId('dashboard-progress-filter-all'),
+      title,
       slot,
+      screen.getByTestId('dashboard-progress-filter-all'),
       within(card).getByRole('table'),
     ];
     for (let index = 1; index < order.length; index += 1) {
@@ -290,6 +292,84 @@ describe('#983 카드 머리 아래 작은 단계 칸 자리', () => {
         order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
+    const head = screen.getByTestId('dashboard-progress-head');
+    expect(head).toContainElement(title);
+    expect(head).toContainElement(slot);
+    expect(head).toContainElement(screen.getByTestId('dashboard-progress-filter-all'));
+    expect(title.nextElementSibling).toBe(slot);
+    expect(head).not.toContainElement(within(card).getByRole('table'));
+  });
+
+  it('#992 설명 줄: 단계 칸이 있으면 "영업 단계 칸을 누르면 …"이 제목 줄 아래 · 표 위에 보이고, 꼬리표 풀이는 넘겨받았을 때만 끝에 붙는다', () => {
+    const view = render(
+      <MemoryRouter>
+        <ProgressTable
+          companies={companies}
+          today={TODAY}
+          stage={null}
+          onClearStage={() => {}}
+          staffKey="park-lee"
+          stages={<div data-testid="stage-slot">단계 칸</div>}
+          stagesLegend={dashboardTexts.stageHintEntered}
+        />
+      </MemoryRouter>,
+    );
+    const hint = screen.getByTestId('dashboard-stage-hint');
+    expect(hint).toHaveTextContent(
+      /^영업 단계 칸을 누르면 아래 목록이 그 단계 회사만 보입니다 · 숫자 옆 "\+2"는 이번 주에 들어온 곳$/,
+    );
+    const head = screen.getByTestId('dashboard-progress-head');
+    expect(head.nextElementSibling).toBe(hint);
+    expect(
+      hint.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    view.unmount();
+    renderTable({ stages: <div data-testid="stage-slot">단계 칸</div> });
+    expect(screen.getByTestId('dashboard-stage-hint')).toHaveTextContent(
+      /^영업 단계 칸을 누르면 아래 목록이 그 단계 회사만 보입니다$/,
+    );
+  });
+
+  it('#992 설명 줄: 단계를 골랐으면 지금 "○○" n곳을 보는 중(n = 목록의 그 단계 회사 수)이 가운데에 끼고, 단계 칸도 고른 단계도 없으면 줄 자체가 없다', () => {
+    const view = render(
+      <MemoryRouter>
+        <ProgressTable
+          companies={companies}
+          today={TODAY}
+          stage="IN_CONTACT"
+          onClearStage={() => {}}
+          staffKey="park-lee"
+          stages={<div data-testid="stage-slot">단계 칸</div>}
+          stagesLegend={dashboardTexts.stageHintEntered}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('dashboard-stage-hint')).toHaveTextContent(
+      /^영업 단계 칸을 누르면 아래 목록이 그 단계 회사만 보입니다 · 지금 "접촉" 2곳을 보는 중 모든 단계 보기 · 숫자 옆 "\+2"는 이번 주에 들어온 곳$/,
+    );
+    expect(screen.getByTestId('dashboard-progress-stage')).toHaveTextContent(
+      /^지금 "접촉" 2곳을 보는 중 모든 단계 보기$/,
+    );
+    view.unmount();
+    // 단계 칸 없이 단계만 고른 표: 누르는 법 · 꼬리표 풀이 없이 "보는 중"만.
+    const only = render(
+      <MemoryRouter>
+        <ProgressTable
+          companies={companies}
+          today={TODAY}
+          stage="ON_HOLD"
+          onClearStage={() => {}}
+          staffKey="park-lee"
+          stagesLegend={dashboardTexts.stageHintEntered}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('dashboard-stage-hint')).toHaveTextContent(
+      /^지금 "보류" 1곳을 보는 중 모든 단계 보기$/,
+    );
+    only.unmount();
+    renderTable();
+    expect(screen.queryByTestId('dashboard-stage-hint')).not.toBeInTheDocument();
   });
 
   it('옛 서버라 회사 목록이 없어도 단계 칸이 있으면 카드와 단계 칸은 보이고, 표 · 곳 수 · 거르기는 지어내지 않는다', () => {

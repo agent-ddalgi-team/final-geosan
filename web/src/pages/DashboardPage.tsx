@@ -1,9 +1,9 @@
-// 영업 홈(S4, 첫 화면). #983(PM이 고른 시안 2026-11-28)부터 위에서 아래로:
+// 영업 홈(S4, 첫 화면). #992(PM이 고른 수정안 3, 2026-11-29)부터 위에서 아래로:
 //   인사말 줄: "안녕하세요, ○○ 님" + 날짜 · 오늘 챙길 일 n건 | 오른쪽 회사 검색
-//   → 진행 중인 회사 카드(폭 전체): 머리 아래 작은 단계 칸(미접촉 → 접촉 → 견적·샘플 → 성사 ┊ 보류, 누르면 표가
-//     그 단계로 걸러진다) + 표(단계 · 담당 · 마지막 접촉 · 다음 일정 — 다음 일정 칸에서 바로 일정을 잡고 바꾼다)
-//   → 오늘 할 일(운영 알림 · 지난 일정 · 오늘 일정 · 오늘 날짜의 달력 메모 · 확인할 회사, AI 요약은 접어 둠)
-//     | 전달 사항(받은 것 · 보낸 것)
+//   → 오늘 할 일(운영 알림 · 지난 일정 · 오늘 일정 · 오늘 날짜의 달력 메모 · 확인할 회사, AI 요약은 접어 둠.
+//     의견 전 알림 줄은 이 칸에 붙어 있어 이 칸을 따라간다) | 전달 사항(받은 것 · 보낸 것)
+//   → 진행 중인 회사 카드(폭 전체): 제목 바로 옆 작은 영업 단계 칸 묶음(미접촉 → 접촉 → 견적·샘플 → 성사 ┊ 보류,
+//     누르면 표가 그 단계로 걸러진다) + 표(단계 · 담당 · 마지막 접촉 · 다음 일정 — 다음 일정 칸에서 바로 일정을 잡고 바꾼다)
 //   → 이번 주 방문·연락(오늘부터 7일 + 보고서 · 거리 화살표) | 지도(위) + 같이 들를 곳(아래)
 //   → 먼저 볼 후보 3곳(거래처 후보 목록 추천 순 맨 위. 못 읽으면 이 칸만 숨김)
 //   → 월별 접촉 추세(영업 분석과 같은 응답·같은 그림, 높이는 절반쯤. 못 읽으면 이 칸만 숨김)
@@ -12,7 +12,8 @@
 // 같은 요청을 두 번 보내지 않는다. 좁은 기기(메뉴가 접혀 달력이 없음)에서만 본문 맨 아래에 달력을 그린다.
 // #984: 오늘 날짜의 달력 메모는 `GET /day-memos?from=오늘&to=오늘`로 따로 읽어 오늘 할 일 칸에 한 줄씩 보인다
 // (`/dashboard` 응답 · 오늘 챙길 일 건수는 그대로). 달력에서 오늘 메모를 남기거나 지우면 이 줄도 바로 따라온다.
-// (#972까지는 맨 위에 큰 단계 카드 5칸 · 월별 추세가 있었고, 달력은 이번 주 방문·연락 칸 안, 지도는 따로 한 줄이었다.)
+// (#972까지는 맨 위에 큰 단계 카드 5칸 · 월별 추세가 있었고, 달력은 이번 주 방문·연락 칸 안, 지도는 따로 한 줄이었다.
+//  #983에서는 진행 중인 회사가 맨 위, 오늘 할 일 | 전달 사항이 그 아래였다. 그날 할 일이 먼저 보이게 #992에서 바꿨다.)
 // 같은 일정을 여러 곳에 되풀이하지 않는다(#921: 출근하면 · 외근 전 · 누가 봐도 세 칸 순서는 그대로).
 // 숫자는 서버의 집계 `GET /dashboard`(계약 C1 v3, #216·#356)에서 온다. 관심으로 고른 회사만 센다.
 // 공정·산업군 막대는 영업 분석 화면으로 옮겼다(#679, PM 결정 2026-11-13).
@@ -31,7 +32,7 @@ import MemoCalendar from '../components/schedule/MemoCalendar';
 import TodayMemoLines from '../components/schedule/TodayMemoLines';
 import { useDayMemos } from '../components/schedule/useDayMemos';
 import ProgressTable from '../components/dashboard/ProgressTable';
-import StageChips from '../components/dashboard/StageChips';
+import StageChips, { hasEnteredTag } from '../components/dashboard/StageChips';
 import HomeTrend from '../components/dashboard/HomeTrend';
 import TopCandidates from '../components/dashboard/TopCandidates';
 import DashboardMapSection from '../components/dashboard/DashboardMapSection';
@@ -110,7 +111,7 @@ export default function DashboardPage() {
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [query, setQuery] = useState('');
-  // #921 → #983: "진행 중인 회사" 카드의 작은 단계 칸으로 고른 단계. 그 아래 표가 그 단계로 걸러진다.
+  // #921 → #983 → #992: "진행 중인 회사" 제목 옆 작은 영업 단계 칸으로 고른 단계. 그 아래 표가 그 단계로 걸러진다.
   const [stage, setStage] = useState<ProgressBandKey | null>(null);
   // #925: 지도 칸이 불러온 지도 정보. 오늘 할 일 아래 방문 목록이 거리 화살표를 그릴 때 같이 쓴다.
   const [mapData, setMapData] = useState<DashboardMapData | undefined>(undefined);
@@ -255,30 +256,9 @@ export default function DashboardPage() {
           </form>
         </div>
 
-        {/* #983: 진행 중인 회사 카드(폭 전체). 머리 아래 작은 단계 칸을 누르면 표가 그 단계로 걸러진다(#921 동작 그대로). */}
-        {data ? (
-          <ProgressTable
-            companies={data.progressCompanies}
-            today={today}
-            stage={stage}
-            onClearStage={() => setStage(null)}
-            staffKey={recordKey}
-            onReload={retry}
-            stages={
-              <StageChips
-                counts={data.counts}
-                companies={data.progressCompanies}
-                entered={data.enteredThisWeek}
-                selected={stage}
-                onSelect={setStage}
-              />
-            }
-          />
-        ) : null}
-
         {/* 영업 비서 질문 칸(#680)은 #773부터 오른쪽 "영업 코치" 칸에 있다(AppFrame dock="assistant"). */}
 
-        {/* ① 출근하면: 오늘 할 일 | 전달 사항. 둘 합이 본문 폭보다 넓으면 위아래로. */}
+        {/* ① 출근하면(#992: 인사말 바로 아래 맨 위): 오늘 할 일 | 전달 사항. 둘 합이 본문 폭보다 넓으면 위아래로. */}
         <div
           data-testid="dashboard-row-work"
           style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.cardGap, alignItems: 'start' }}
@@ -332,6 +312,34 @@ export default function DashboardPage() {
             {data ? <TodayChecks part="handoff" rows={data.todayChecks} onChanged={retry} /> : null}
           </div>
         </div>
+
+        {/* #983 → #992: 진행 중인 회사 카드(폭 전체)는 오늘 할 일 | 전달 사항 줄 바로 아래.
+            제목 옆 작은 영업 단계 칸을 누르면 표가 그 단계로 걸러진다(#921 동작 그대로). */}
+        {data ? (
+          <ProgressTable
+            companies={data.progressCompanies}
+            today={today}
+            stage={stage}
+            onClearStage={() => setStage(null)}
+            staffKey={recordKey}
+            onReload={retry}
+            stages={
+              <StageChips
+                counts={data.counts}
+                companies={data.progressCompanies}
+                entered={data.enteredThisWeek}
+                selected={stage}
+                onSelect={setStage}
+              />
+            }
+            // 칸에 "+n" 꼬리표가 하나라도 보일 때만 설명 줄 끝에 풀이를 붙인다(없는 것을 설명하지 않는다).
+            stagesLegend={
+              hasEnteredTag(data.counts, data.enteredThisWeek)
+                ? dashboardTexts.stageHintEntered
+                : null
+            }
+          />
+        ) : null}
 
         {/* ② 외근 전(#983): 이번 주 방문·연락 | 지도(위) + 같이 들를 곳(아래). 본문이 좁으면 위아래로 쌓인다. */}
         <div
