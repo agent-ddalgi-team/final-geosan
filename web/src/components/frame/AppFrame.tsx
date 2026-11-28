@@ -108,8 +108,9 @@ export default function AppFrame({
       setBannerMeta: setPageMeta,
       setPageTitle,
       dockSlot: dock === 'page' ? dockSlot : null,
+      narrowDevice,
     }),
-    [config, staffKey, setStaffKey, currentStaff, dock, dockSlot],
+    [config, staffKey, setStaffKey, currentStaff, dock, dockSlot, narrowDevice],
   );
   const dockBody =
     dock === 'assistant' ? (

@@ -9,6 +9,10 @@
 // 맨 위 로고 + 이름(머리 띠에 있던 것을 옮김) → 주 단추 [새 후보 발굴] → 묶음 "영업" · "분석" · "운영".
 // 지금 화면 줄은 강조 연한 바탕 + 강조 글자 굵게, 숫자 꼬리표는 연보라 바탕 + 강조 글자(빨강 아님).
 // 접으면 로고 · 접기 단추 · ＋ 그림 · 메뉴 그림만 남는다.
+// #983(PM 지시 2026-11-28): 메뉴 묶음 아래에 한 달 달력(SideCalendar)을 두고 모든 화면에서 보이게 한다.
+//   달력이 늘 보여야 하므로 넓은 화면에서는 메뉴를 항상 펼쳐 둔다: 접기 단추가 없고, 예전에 "접음"으로 기억해 둔
+//   값이 있어도(기업 상세의 기본 접힘 #803 포함) 펼친다. 기억해 둔 값은 지우지 않는다(좁은 기기가 계속 쓴다).
+//   좁은 기기(휴대폰 등)는 지금 방식 그대로다: 접기 단추 · 기억 · 기업 상세 기본 접힘. 달력은 영업 홈 본문 맨 아래에 있다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
@@ -18,6 +22,7 @@ import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
 import { colors, opinionNudge, radius, sidebarTheme, typography } from '../../theme/tokens';
 import { useFrame } from './FrameContext';
+import SideCalendar from './SideCalendar';
 import { useMenuBadges } from './useMenuBadges';
 
 export const SIDEBAR_STORAGE_KEY = 'geosan.sidebarCollapsed';
@@ -257,10 +262,13 @@ function Tip({ children }: { children: ReactNode }) {
 export default function SideMenu({
   narrowDevice,
   brand = defaultBrand,
+  calendarExtra,
 }: {
   narrowDevice: boolean;
   /** 맨 위 로고·이름. 공통 틀이 서버 설정으로 덮은 값을 넘긴다. 없으면 화면에 실린 기본값. */
   brand?: { logoUrl: string | null; brandName: string };
+  /** #983 달력 날짜를 눌렀을 때 뜨는 작은 창 본문 아래에 끼울 것(날짜 메모 #984 자리). */
+  calendarExtra?: (day: string) => ReactNode;
 }) {
   const [generalCollapsed, setGeneralCollapsed] = useState(() => readCollapsed(narrowDevice));
   const [detailCollapsed, setDetailCollapsed] = useState(readDetailCollapsed);
@@ -277,7 +285,8 @@ export default function SideMenu({
   ];
   // #803: 기업 상세는 따로 기억하고 처음에는 접혀 있다. 다른 화면의 기억과 섞지 않는다.
   const onDetail = isDetailPath(pathname);
-  const collapsed = onDetail ? detailCollapsed : generalCollapsed;
+  // #983: 넓은 화면에서는 늘 펼친다(기억해 둔 값과 상관없이). 좁은 기기만 접고 펼친다.
+  const collapsed = narrowDevice ? (onDetail ? detailCollapsed : generalCollapsed) : false;
   const toggle = () => {
     const next = !collapsed;
     (onDetail ? setDetailCollapsed : setGeneralCollapsed)(next);
@@ -327,7 +336,7 @@ export default function SideMenu({
         zIndex: 5,
       }}
     >
-      {/* 맨 위 줄: 로고 + 이름 + [메뉴 접기]. 접으면 로고 아래에 접기 단추가 놓인다. */}
+      {/* 맨 위 줄: 로고 + 이름 (+ 좁은 기기만 [메뉴 접기]). 접으면 로고 아래에 접기 단추가 놓인다. */}
       <div
         style={{
           display: 'flex',
@@ -365,32 +374,35 @@ export default function SideMenu({
             {brand.brandName}
           </span>
         )}
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
-          title={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
-          data-testid="side-menu-toggle"
-          className="side-nav-link side-nav-row"
-          style={{
-            position: 'relative',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 'none',
-            width: 36,
-            height: 36,
-            padding: 0,
-            border: 0,
-            borderRadius: radius.control,
-            color: sidebarTheme.group,
-            cursor: 'pointer',
-          }}
-        >
-          <PanelIcon collapsed={collapsed} />
-          {collapsed ? <Tip>{frame.sidebarExpand}</Tip> : null}
-        </button>
+        {/* #983: 넓은 화면에는 접기 단추가 없다(달력이 늘 보이게 항상 펼침). */}
+        {narrowDevice ? (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
+            title={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
+            data-testid="side-menu-toggle"
+            className="side-nav-link side-nav-row"
+            style={{
+              position: 'relative',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: 'none',
+              width: 36,
+              height: 36,
+              padding: 0,
+              border: 0,
+              borderRadius: radius.control,
+              color: sidebarTheme.group,
+              cursor: 'pointer',
+            }}
+          >
+            <PanelIcon collapsed={collapsed} />
+            {collapsed ? <Tip>{frame.sidebarExpand}</Tip> : null}
+          </button>
+        ) : null}
       </div>
       {/* 주 단추 [새 후보 발굴](#972): 거래처 후보 화면으로 가서 새 후보 발굴 창을 연다. 접으면 ＋ 그림만. */}
       <Link
@@ -412,7 +424,22 @@ export default function SideMenu({
         <PlusIcon />
         {collapsed ? <Tip>{frame.menuNewCandidates}</Tip> : <span>{frame.menuNewCandidates}</span>}
       </Link>
-      <div style={{ flex: 1 }}>
+      {/* 넓은 화면: 메뉴 묶음은 내용만큼만 차지하고(화면이 낮으면 이 칸 안에서 내려 본다) 그 아래 달력이 온다. */}
+      <div
+        data-testid="side-menu-groups"
+        style={
+          narrowDevice
+            ? { flex: 1 }
+            : {
+                flex: '0 1 auto',
+                minHeight: 0,
+                overflowY: 'auto',
+                // 내려 보는 칸이 줄의 키보드 초점선(바깥 4px)을 자르지 않게 여백을 준다.
+                margin: '0 -4px',
+                padding: '0 4px 4px',
+              }
+        }
+      >
         {groups.map((group) => (
           <div key={group.key}>
             {/* 묶음 이름. 접으면 글자 대신 얇은 줄로 묶음을 가른다. 읽는 이름은 목록의 aria-label이 맡는다. */}
@@ -518,6 +545,8 @@ export default function SideMenu({
           </div>
         ))}
       </div>
+      {/* #983: 한 달 달력. 좁은 기기에서는 영업 홈 본문 맨 아래에 있다. */}
+      {narrowDevice ? null : <SideCalendar extra={calendarExtra} />}
     </nav>
   );
 }

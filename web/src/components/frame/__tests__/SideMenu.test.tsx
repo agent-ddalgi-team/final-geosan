@@ -3,6 +3,8 @@
 // #770: 새로 생긴 것 숫자 꼬리표. 숫자 요청은 가짜로 바꾼 확인이며 실제 서버 연결 확인이 아니다.
 // #972(보라 톤 시안): 맨 위 로고 + 이름, 주 단추 [새 후보 발굴], 묶음 "영업" · "분석" · "운영", 지금 화면 줄·꼬리표 색.
 // #987: 관심 기업 줄의 주황 꼬리표 "의견 전 n"(관심에 담고 의견을 안 고른 곳 수, 서버 bookmarksNoOpinion).
+// #983(PM 지시 2026-11-28): 메뉴 아래 달력이 늘 보여야 하므로 넓은 화면에서는 메뉴를 항상 펼친다(접기 단추 없음,
+//   기억해 둔 "접음" 무시). 접고 펼치는 동작은 좁은 기기에만 남는다. 달력 자체는 SideCalendar.test.tsx.
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,6 +25,8 @@ vi.mock('../../../api/menuBadges', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/menuBadges')>()),
   getMenuBadges: vi.fn(),
 }));
+// 메뉴 아래 달력(#983)이 일정을 읽는다. 달력은 SideCalendar.test.tsx에서 따로 보므로 여기서는 응답이 오지 않게 막아 둔다.
+vi.mock('../../../api/dashboard', () => ({ getDashboard: vi.fn(() => new Promise(() => {})) }));
 
 const mockedBadges = vi.mocked(getMenuBadges);
 
@@ -72,9 +76,11 @@ it('지금 보는 화면 줄에 aria-current가 붙는다(관심 기업)', () =>
   expect(screen.getByTestId('nav-dashboard-link')).not.toHaveAttribute('aria-current');
 });
 
-it('[‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으며, 접은 상태를 기억한다', async () => {
+it('좁은 기기: [‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으며, 접은 상태를 기억한다', async () => {
+  // #983: 접고 펼치기는 좁은 기기에만 남았다(넓은 화면은 아래 "넓은 화면" 묶음). 펼친 상태에서 시작하게 기억값을 둔다.
   const user = userEvent.setup();
-  const view = renderMenu();
+  window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false');
+  const view = renderMenu('/', true);
   const toggle = screen.getByTestId('side-menu-toggle');
   expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await user.click(toggle);
@@ -90,7 +96,7 @@ it('[‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으
   expect(screen.getByRole('link', { name: '관심 기업' })).toBe(bookmarks);
   expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('true');
   view.unmount();
-  renderMenu();
+  renderMenu('/', true);
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
   await user.click(screen.getByTestId('side-menu-toggle'));
   expect(screen.getByTestId('nav-bookmarks-link')).toHaveTextContent(/^관심 기업$/);
@@ -98,8 +104,9 @@ it('[‹]로 접으면 아이콘만 남고 이름은 aria-label·title로 남으
   expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('false');
 });
 
-it('[메뉴 접기]는 메뉴 줄보다 위에 있다(머리 띠 아래에서 시작해도 첫 화면에서 보이게, #767)', () => {
-  renderMenu();
+it('좁은 기기: [메뉴 접기]는 메뉴 줄보다 위에 있다(머리 띠 아래에서 시작해도 첫 화면에서 보이게, #767)', () => {
+  window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false');
+  renderMenu('/', true);
   const toggle = screen.getByTestId('side-menu-toggle');
   const first = screen.getByTestId('nav-dashboard-link');
   expect(toggle.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -146,10 +153,10 @@ describe('새로 생긴 것 숫자 꼬리표 (#770)', () => {
     expect(screen.getByTestId('nav-bookmarks-link')).not.toHaveAttribute('aria-label');
   });
 
-  it('접은 메뉴: 숫자가 그림 모서리에 얹히고 이름표·aria-label에 뜻이 붙는다', async () => {
+  it('접은 메뉴(좁은 기기): 숫자가 그림 모서리에 얹히고 이름표·aria-label에 뜻이 붙는다', async () => {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
     badgesAre(0, 0, 2);
-    renderMenu();
+    renderMenu('/', true);
     const icon = screen.getByTestId('nav-bookmarks-link-icon');
     expect(await within(icon).findByTestId('nav-bookmarks-link-badge')).toHaveTextContent(/^2$/);
     const link = screen.getByTestId('nav-bookmarks-link');
@@ -274,10 +281,11 @@ describe('관심 기업 줄의 "의견 전 n" 꼬리표 (#987)', () => {
     );
   });
 
-  it('Given 의견 전 3곳 · 새 소식 2곳 When 접힌 메뉴 Then "의견 전" 꼬리표는 그리지 않고(새 소식 숫자만 그림에 얹힘) 이름표·aria-label에는 뜻이 남는다', async () => {
+  it('Given 의견 전 3곳 · 새 소식 2곳 When 접힌 메뉴(좁은 기기) Then "의견 전" 꼬리표는 그리지 않고(새 소식 숫자만 그림에 얹힘) 이름표·aria-label에는 뜻이 남는다', async () => {
+    // #983: 넓은 화면의 메뉴는 항상 펼쳐져 있다. 접힌 메뉴는 좁은 기기에만 있다.
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
     noOpinionIs(3, 2);
-    renderMenu();
+    renderMenu('/', true);
     const icon = screen.getByTestId('nav-bookmarks-link-icon');
     expect(await within(icon).findByTestId('nav-bookmarks-link-badge')).toHaveTextContent(/^2$/);
     expect(screen.queryByTestId(TAG)).toBeNull();
@@ -292,10 +300,10 @@ describe('관심 기업 줄의 "의견 전 n" 꼬리표 (#987)', () => {
     );
   });
 
-  it('Given 의견 전 3곳뿐 When 접힌 메뉴 Then 꼬리표 없이 aria-label로만 알린다', async () => {
+  it('Given 의견 전 3곳뿐 When 접힌 메뉴(좁은 기기) Then 꼬리표 없이 aria-label로만 알린다', async () => {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
     noOpinionIs(3);
-    renderMenu();
+    renderMenu('/', true);
     await waitFor(() =>
       expect(screen.getByTestId('nav-bookmarks-link')).toHaveAttribute(
         'aria-label',
@@ -329,17 +337,18 @@ describe('관심 기업 줄의 "의견 전 n" 꼬리표 (#987)', () => {
   });
 });
 
-it('기업 상세에서는 처음에 접혀 있고, 펴면 상세 기억에만 남아 다른 화면의 기억은 그대로다 (#803)', async () => {
+it('좁은 기기: 기업 상세에서는 처음에 접혀 있고, 펴면 상세 기억에만 남아 다른 화면의 기억은 그대로다 (#803)', async () => {
+  // #983: 넓은 화면의 기업 상세는 이제 펼쳐져 있다(아래 "넓은 화면" 묶음). 좁은 기기는 #803 규칙 그대로다.
   const user = userEvent.setup();
   window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false');
-  const view = renderMenu('/opportunities/opp-1');
+  const view = renderMenu('/opportunities/opp-1', true);
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
   await user.click(screen.getByTestId('side-menu-toggle'));
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
   expect(window.localStorage.getItem(SIDEBAR_DETAIL_STORAGE_KEY)).toBe('false');
   expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('false');
   view.unmount();
-  renderMenu('/opportunities');
+  renderMenu('/opportunities', true);
   expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
   expect(isDetailPath('/opportunities/opp-1/report')).toBe(false);
   expect(isDetailPath('/opportunities')).toBe(false);
@@ -398,9 +407,10 @@ describe('새 디자인 (#972)', () => {
     expect(screen.queryByTestId('brand-logo')).toBeNull();
   });
 
-  it('접으면 주 단추는 더하기 그림만 남고 이름은 aria-label·title·이름표로 남으며, 로고가 이름을 대신 읽힌다', async () => {
+  it('좁은 기기: 접으면 주 단추는 더하기 그림만 남고 이름은 aria-label·title·이름표로 남으며, 로고가 이름을 대신 읽힌다', async () => {
     const user = userEvent.setup();
-    renderMenu();
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false');
+    renderMenu('/', true);
     await user.click(screen.getByTestId('side-menu-toggle'));
     const button = screen.getByTestId('nav-new-candidates');
     expect(button.querySelector('svg')).toHaveAttribute('data-icon', 'new-candidates');
@@ -471,5 +481,81 @@ describe('새 디자인 (#972)', () => {
     renderMenu(NEW_CANDIDATES_PATH);
     expect(screen.getByTestId('nav-opportunities-link')).toHaveAttribute('aria-current', 'page');
     expect(screen.getByTestId('nav-new-candidates')).not.toHaveAttribute('aria-current');
+  });
+});
+
+describe('넓은 화면에서는 항상 펼쳐 둔다 (#983, PM 지시 2026-11-28: 달력이 늘 보여야 한다)', () => {
+  const PATHS = [
+    '/',
+    '/opportunities',
+    '/bookmarks',
+    '/opportunities/opp-1',
+    '/sales-analysis',
+    '/operations',
+  ];
+
+  it.each(PATHS)('%s: 접기 단추가 없고 메뉴 이름이 글자로 보인다', (path) => {
+    renderMenu(path);
+    expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
+    expect(screen.queryByTestId('side-menu-toggle')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: frame.sidebarCollapse })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: frame.sidebarExpand })).not.toBeInTheDocument();
+    expect(screen.getByTestId('nav-bookmarks-link')).toHaveTextContent(/^관심 기업$/);
+    expect(screen.getByTestId('brand-name')).toBeInTheDocument();
+  });
+
+  it('예전에 "접음"으로 기억해 둔 값이 있어도 펼치고, 기억해 둔 값은 지우지 않는다(좁은 기기가 계속 쓴다)', () => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
+    window.localStorage.setItem(SIDEBAR_DETAIL_STORAGE_KEY, 'true');
+    for (const path of ['/', '/opportunities/opp-1']) {
+      const view = renderMenu(path);
+      expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
+      expect(screen.getByTestId('nav-new-candidates')).toHaveTextContent(/^새 후보 발굴$/);
+      expect(screen.getByTestId('nav-dashboard-link').querySelector('.side-nav-tip')).toBeNull();
+      view.unmount();
+    }
+    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('true');
+    expect(window.localStorage.getItem(SIDEBAR_DETAIL_STORAGE_KEY)).toBe('true');
+  });
+
+  it('기업 상세도 기본으로 펼쳐져 있다(예전 #803의 기본 접힘은 좁은 기기에만 남았다)', () => {
+    // 기억해 둔 값이 하나도 없는 처음 상태.
+    const view = renderMenu('/opportunities/opp-1');
+    expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'false');
+    view.unmount();
+    renderMenu('/opportunities/opp-1', true);
+    expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
+  });
+
+  it('숫자 꼬리표는 넓은 화면에서 늘 이름 뒤에 붙는다(기억값이 "접음"이어도 그림 모서리로 가지 않는다)', async () => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true');
+    badgesAre(0, 0, 2);
+    renderMenu();
+    const badge = await screen.findByTestId('nav-bookmarks-link-badge');
+    expect(
+      within(screen.getByTestId('nav-bookmarks-link-icon')).queryByTestId(
+        'nav-bookmarks-link-badge',
+      ),
+    ).toBeNull();
+    expect(screen.getByTestId('nav-bookmarks-link')).toContainElement(badge);
+  });
+
+  it('좁은 기기 분기는 그대로다: 접기 단추가 있고, 메뉴 아래 달력은 없다(달력은 영업 홈 본문 맨 아래)', () => {
+    renderMenu('/', true);
+    expect(screen.getByTestId('side-menu-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('side-menu')).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.queryByTestId('side-calendar')).not.toBeInTheDocument();
+  });
+
+  it('메뉴 묶음 아래에 달력 칸이 놓인다(메뉴 → 달력 순서, 달력은 메뉴 줄 목록 밖)', () => {
+    renderMenu('/bookmarks');
+    const calendar = screen.getByTestId('side-calendar');
+    const groups = screen.getByTestId('side-menu-groups');
+    expect(screen.getByTestId('side-menu')).toContainElement(calendar);
+    expect(groups).not.toContainElement(calendar);
+    expect(
+      groups.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(groups).toContainElement(screen.getByTestId('nav-sales-analysis-link'));
   });
 });

@@ -22,6 +22,11 @@ export interface FrameValue {
    * 없으면(테스트·좁은 화면 밖) 페이지는 자기 자리에 그대로 그린다.
    */
   dockSlot?: HTMLElement | null;
+  /**
+   * 좁은 기기(휴대폰 등)인가(#983). 넓은 화면에서는 왼쪽 메뉴 아래에 달력이 있고, 좁은 기기에서는 메뉴가 접혀 있어
+   * 영업 홈이 본문 맨 아래에 달력을 그린다. 없으면(테스트 등) 넓은 화면으로 본다.
+   */
+  narrowDevice?: boolean;
 }
 
 export const FrameContext = createContext<FrameValue>({

@@ -4,13 +4,14 @@
 //   제목 "월별 접촉 추세" · [영업 분석 보기]  /  큰 숫자 "18곳 접촉 기록이 있는 회사"  /  그림
 // 이 칸은 곁들이는 칸이다(명세 3장): 응답을 못 읽거나 월별 값이 없으면 오류를 띄우지 않고 이 칸만 그리지 않는다.
 // 같은 응답의 오류·빈 상태는 영업 분석 화면이 보여 준다. 영업 홈의 나머지 칸은 이 요청과 상관없이 그려진다.
+// #983(PM이 고른 시안 2026-11-28): 영업 홈 맨 아래(더 보기 위)로 내리고 그림 높이를 절반쯤으로 줄였다.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSalesAnalysis } from '../../api/salesAnalysis';
 import type { SalesAnalysis } from '../../api/salesAnalysis';
 import { dashboardTexts as t } from '../../labels/ko';
 import { colors, homePalette, radius, spacing, typography } from '../../theme/tokens';
-import MonthlyTrend from '../analysis/MonthlyTrend';
+import MonthlyTrend, { TREND_HEIGHT_SHORT } from '../analysis/MonthlyTrend';
 import { ChartEmbedContext } from '../common/ChartFrame';
 
 export const SALES_ANALYSIS_PATH = '/sales-analysis';
@@ -86,7 +87,7 @@ export default function HomeTrend() {
       ) : null}
       {/* 그림 부품은 영업 분석 것 그대로. 이 카드 안에서는 자기 테두리·제목 없이 그림만 그린다. */}
       <ChartEmbedContext.Provider value>
-        <MonthlyTrend rows={rows} />
+        <MonthlyTrend rows={rows} height={TREND_HEIGHT_SHORT} />
       </ChartEmbedContext.Provider>
     </section>
   );
