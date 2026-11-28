@@ -20,6 +20,44 @@ steps:
   - { code: MATERIAL_QUOTE, label: 자료·견적, stage: SAMPLE_OR_REGISTRATION_APPROVED }
   - { code: VISIT_SAMPLE, label: 방문·샘플, stage: SAMPLE_OR_REGISTRATION_APPROVED }
 questions:
+  # 접촉마다 · 상대 반응(#985, PM 결정 2026-11-29): 통화·메일·대면에서 상대가 어떻게 받아들였는지와 그 부분을 꼭 묻는다.
+  # 영업 분석이 답별로 세므로 "좋게 본 부분"은 거산의 강점, "걸린 부분"은 약점으로 읽는다. 세부 단계·영업 단계에 영향 없음.
+  # 영업 코치가 묻는 빠진 필수 질문은 파일 순서로 고르므로(assistant.coachMaxRequiredQuestions) 맨 앞에 둔다.
+  - id: REACTION
+    step: ALL
+    text: 상대 반응은 어땠나요?
+    coach: { fill: AI, required: true, keyword: 상대 반응 }
+    answers:
+      - { id: POSITIVE, label: 긍정적 }
+      - { id: NEUTRAL, label: 보통 }
+      - { id: NEGATIVE, label: 부정적 }
+  - id: REACTION_GOOD
+    step: ALL
+    text: 어느 부분을 좋게 봤나요?
+    coach: { fill: AI, required: true, keyword: 좋게 본 부분 }
+    showWhen: { answers: { REACTION: [POSITIVE] } }
+    answers:
+      - { id: PROCESS_FIT, label: 공정·기술 }
+      - { id: QUALITY_CERT, label: 품질·인증 }
+      - { id: LEAD_TIME, label: 납기 }
+      - { id: PRICE, label: 가격 }
+      - { id: DISTANCE, label: 거리·물류 }
+      - { id: RESPONSE, label: 대응·신뢰 }
+      - { id: OTHER, label: 기타 }
+  - id: REACTION_BAD
+    step: ALL
+    text: 어느 부분이 걸렸나요?
+    coach: { fill: AI, required: true, keyword: 걸린 부분 }
+    showWhen: { answers: { REACTION: [NEGATIVE] } }
+    answers:
+      - { id: PRICE, label: 가격 }
+      - { id: LEAD_TIME, label: 납기 }
+      - { id: QUALITY_CERT, label: 품질·인증 }
+      - { id: PROCESS_FIT, label: 공정·기술 }
+      - { id: DISTANCE, label: 거리·물류 }
+      - { id: INCUMBENT_SUPPLIER, label: 기존 거래처 }
+      - { id: CLAIM, label: 클레임(불량·납기) }
+      - { id: OTHER, label: 기타 }
   # ① 연결 전
   - id: WHO_TALKED
     step: NOT_REACHED

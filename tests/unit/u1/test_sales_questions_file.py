@@ -370,3 +370,119 @@ def test_broken_default_answers_are_rejected(tmp_path, text, expected):
     )
     assert result.questions is None
     assert any(expected in f"{error.path} {error.message}" for error in result.errors), result
+
+
+# ---------------------------------------------------------------------------
+# #985(PM 결정 2026-11-29): 접촉마다 묻는 상대 반응 질문 3개
+# ---------------------------------------------------------------------------
+
+REACTION_IDS = ["REACTION", "REACTION_GOOD", "REACTION_BAD"]
+
+
+def test_example_file_starts_with_the_three_reaction_questions():
+    """Given 예시 질문 파일 / When 읽음 / Then 맨 앞 세 질문이 상대 반응·좋게 본 부분·걸린 부분이다.
+
+    영업 코치는 빠진 필수 질문을 파일 순서로 상한까지만 고른다. 접촉마다 꼭 묻도록 맨 앞에 둔다.
+    """
+    questions = check_sales_questions_file(EXAMPLE).questions
+    first = questions.questions[:3]
+    assert [question.id for question in first] == REACTION_IDS
+    assert [question.step for question in first] == ["ALL", "ALL", "ALL"]
+    assert [question.text for question in first] == [
+        "상대 반응은 어땠나요?",
+        "어느 부분을 좋게 봤나요?",
+        "어느 부분이 걸렸나요?",
+    ]
+    # 보기를 회사 값에서 가져오는 질문이 아니다(하나만 고르는 고정 보기).
+    assert [question.choices for question in first] == [None, None, None]
+
+
+def test_reaction_question_options_are_exactly_these():
+    questions = check_sales_questions_file(EXAMPLE).questions
+    options = {
+        question_id: [(item.id, item.label) for item in questions.question(question_id).answers]
+        for question_id in REACTION_IDS
+    }
+    assert options == {
+        "REACTION": [("POSITIVE", "긍정적"), ("NEUTRAL", "보통"), ("NEGATIVE", "부정적")],
+        "REACTION_GOOD": [
+            ("PROCESS_FIT", "공정·기술"),
+            ("QUALITY_CERT", "품질·인증"),
+            ("LEAD_TIME", "납기"),
+            ("PRICE", "가격"),
+            ("DISTANCE", "거리·물류"),
+            ("RESPONSE", "대응·신뢰"),
+            ("OTHER", "기타"),
+        ],
+        "REACTION_BAD": [
+            ("PRICE", "가격"),
+            ("LEAD_TIME", "납기"),
+            ("QUALITY_CERT", "품질·인증"),
+            ("PROCESS_FIT", "공정·기술"),
+            ("DISTANCE", "거리·물류"),
+            ("INCUMBENT_SUPPLIER", "기존 거래처"),
+            ("CLAIM", "클레임(불량·납기)"),
+            ("OTHER", "기타"),
+        ],
+    }
+
+
+def test_reaction_tails_show_only_after_the_matching_reaction():
+    """좋게 본 부분은 '긍정적'일 때만, 걸린 부분은 '부정적'일 때만 보인다. 상대 반응은 늘 보인다."""
+    questions = check_sales_questions_file(EXAMPLE).questions
+    assert questions.question("REACTION").show_when is None
+    assert questions.question("REACTION_GOOD").show_when.answers == {"REACTION": ["POSITIVE"]}
+    assert questions.question("REACTION_BAD").show_when.answers == {"REACTION": ["NEGATIVE"]}
+
+
+def test_reaction_questions_are_required_for_the_coach_and_filled_by_ai():
+    """셋 다 영업 코치 필수이고 AI가 채운다. 앞 답 조건(requiredWhen) 없이 보이면 필수다."""
+    questions = check_sales_questions_file(EXAMPLE).questions
+    for question_id, keyword in zip(
+        REACTION_IDS, ["상대 반응", "좋게 본 부분", "걸린 부분"], strict=True
+    ):
+        question = questions.question(question_id)
+        assert (question.coach_fill, question.required) == ("AI", True), question_id
+        assert question.coach.required_when is None, question_id
+        assert question.coach.keyword == keyword, question_id
+
+
+def test_reaction_answers_do_not_touch_the_step_or_the_stage():
+    """세 질문의 어떤 보기도 세부 단계를 옮기거나(reaches) 영업을 끝내거나(closes·lostReason)
+    미리 골라져 있지(default) 않다. 부재 접촉에도 받는 '접촉 자체 질문'도 아니다."""
+    questions = check_sales_questions_file(EXAMPLE).questions
+    for question_id in REACTION_IDS:
+        question = questions.question(question_id)
+        assert question.about_contact is False, question_id
+        for option in question.answers:
+            touched = (option.reaches, option.closes, option.lost_reason, option.default)
+            assert touched == (None, None, None, False), (question_id, option.id)
+
+
+def test_reaction_answers_keep_the_computed_step_where_it_was():
+    """Given 연결된 접촉 한 번 / When 그 접촉에 상대 반응 답을 더해 계산
+    / Then 세부 단계·시작일은 답이 없을 때와 같고, 알아낸 것에만 두 줄이 더 있다."""
+    questions = check_sales_questions_file(EXAMPLE).questions
+    reached = RecordRow(
+        outcome_id="o1",
+        method="CALL",
+        attempted_at=date(2026, 10, 20),
+        created_at=datetime(2026, 10, 20, tzinfo=UTC),
+        created_by="kim",
+        step_override=None,
+        result="REACHED",
+    )
+    plain = compute_sales_step([reached], [], questions, "IN_PROGRESS")
+    answered = compute_sales_step(
+        [reached],
+        [AnswerRow("o1", "REACTION", "NEGATIVE"), AnswerRow("o1", "REACTION_BAD", "CLAIM")],
+        questions,
+        "IN_PROGRESS",
+    )
+    assert (plain.code, plain.since) == ("REACHED", date(2026, 10, 20))
+    assert (answered.code, answered.since, answered.overridden) == (plain.code, plain.since, False)
+    assert [(item.question_id, item.answer) for item in answered.known] == [
+        ("REACTION", "부정적"),
+        ("REACTION_BAD", "클레임(불량·납기)"),
+    ]
+    assert stage_for("IN_PROGRESS", answered.code) == stage_for("IN_PROGRESS", plain.code)
