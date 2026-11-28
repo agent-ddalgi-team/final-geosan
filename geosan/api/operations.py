@@ -87,10 +87,23 @@ class BlockedTransfer:
 
 
 @dataclass(frozen=True)
+class ContactRevealLine:
+    """#980 가린 연락처·메모를 연 기록 한 줄. 연 이름·번호·글은 없다."""
+
+    at: datetime
+    staff_key: str
+    staff_name: str
+    opp_id: str
+    customer_name: str
+    kind: str
+
+
+@dataclass(frozen=True)
 class Operations:
     usage: Usage
     sources: list[SourceStatus]
     blocked: list[BlockedTransfer]
+    contact_reveals: list[ContactRevealLine]
 
 
 @dataclass(frozen=True)
@@ -246,7 +259,43 @@ def build_operations(session: Session, settings: AppSettings, now: datetime) -> 
         usage=build_usage(session, settings, now),
         sources=build_sources(session, settings, today),
         blocked=build_blocked(session),
+        contact_reveals=build_contact_reveals(session, settings),
     )
+
+
+REVEAL_LIMIT = 50
+
+
+def build_contact_reveals(session: Session, settings: AppSettings) -> list[ContactRevealLine]:
+    """#980 가린 연락처·메모를 연 기록 최근 50건(최신 먼저). 연 값은 싣지 않는다."""
+    from geosan.opportunity.models import Customer, Opportunity
+    from geosan.records.models import ContactReveal
+
+    names = {entry.key: entry.display_name for entry in settings.staff}
+    rows = session.execute(
+        select(
+            ContactReveal.created_at,
+            ContactReveal.staff_key,
+            ContactReveal.opp_id,
+            Customer.name,
+            ContactReveal.contact_id,
+        )
+        .join(Opportunity, Opportunity.opp_id == ContactReveal.opp_id)
+        .join(Customer, Customer.customer_id == Opportunity.customer_id)
+        .order_by(ContactReveal.created_at.desc(), ContactReveal.reveal_id.desc())
+        .limit(REVEAL_LIMIT)
+    ).all()
+    return [
+        ContactRevealLine(
+            at=at,
+            staff_key=staff,
+            staff_name=names.get(staff, staff),
+            opp_id=opp_id,
+            customer_name=name,
+            kind="CONTACT" if contact_id else "NOTE",
+        )
+        for at, staff, opp_id, name, contact_id in rows
+    ]
 
 
 def operation_alerts(

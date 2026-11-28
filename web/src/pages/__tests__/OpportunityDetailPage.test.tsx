@@ -158,14 +158,15 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    // 읽는 곳 순서(PM 결정 2026-11-13 #674): 한눈에 → 1. 왜 이 회사인가 → 3. 점수 자세히 보기.
+    // #980(PM 결정 2026-11-28): 한눈에 | 왜 이 회사인가 → 기록 → 비슷한 회사 → (지난 평가) → 점수 자세히 보기.
     // #803(PM 결정 2026-11-16): "통화에서 확인할 것"은 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다
     // (이 시험은 코치 판 자리 없이 그려 기록 구역 안에 놓인다). "근거 자료"는 따로 구역을 두지 않는다.
     expect(headings.slice(0, 3)).toEqual([
       detailReport.glance.title,
       detailSections.reasons,
-      expect.stringContaining(detailSections.scores),
+      recordsArea.title,
     ]);
+    expect(headings[headings.length - 1]).toEqual(expect.stringContaining(detailSections.scores));
     expect(headings).not.toContain(detailSections.callChecklist);
     expect(headings).toContain(coachSteps.before);
     // #847: 영업 코치 "① 통화 전" 칸에는 안내 문장 줄이 없다.
@@ -354,13 +355,14 @@ describe('OpportunityDetailPage', () => {
     // #803(PM 결정 2026-11-16): 산업군 카드·검토 의견 카드·"여기부터 적는 곳" 구분 줄을 없앴다.
     // 산업은 "한눈에" 산업 칸, 의견은 머리 꼬리표 줄, 통화에서 확인할 것은 기록(영업 코치) 칸 ①로.
     // 이 응답(base)은 검토사항을 안 주는 옛 응답이라 후속 조치가 예전처럼 읽는 곳 2번 자리에 남는다.
+    // #980(PM 결정 2026-11-28): 기록 → 비슷한 회사 다음에 점수 자세히 보기(맨 아래).
     expect(headings).toEqual([
       detailReport.glance.title,
       detailSections.reasons,
       detailSections.callChecklist,
-      expect.stringContaining(detailSections.scores),
       recordsArea.title,
       peersArea.title,
+      expect.stringContaining(detailSections.scores),
     ]);
     expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
     const opinion = screen.getByTestId('detail-opinion');
@@ -801,8 +803,12 @@ describe('OpportunityDetailPage', () => {
           'company-phone-link',
           // #958(PM 결정 2026-11-26): "한눈에 › 어떤 회사" 주소 [고치기](누르면 그 자리에 입력칸).
           'company-address-edit-button',
+          // #980(PM 결정 2026-11-28): 대표번호·대표명 [고치기]와 영업 단계 카드 안 [+ 연락처 추가].
+          'company-phone-fix-button',
+          'company-representative-fix-button',
+          'contact-add-button',
           'detail-go-record-button',
-          'detail-scores-toggle',
+          // [점수 자세히 보기] 여는 단추는 #980부터 기록 아래(맨 아래)에 있다.
           'homepage-rerun-button',
         ].sort(),
       );

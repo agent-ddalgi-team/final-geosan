@@ -298,6 +298,7 @@ export const dashboardTexts = {
     CHECK_LEFT: '확인할 것이 남은 관심 회사',
     HANDOFF_FOR_ME: '나에게 온 전달 사항',
     HANDOFF_FROM_ME: '내가 보낸 전달 사항 · 확인 전',
+    CONTACT_RETENTION_DUE: '보관 1년이 다가온 상대 담당자 연락처',
   },
   todayRowUnits: {
     SCHEDULE_TODAY: '건',
@@ -305,6 +306,7 @@ export const dashboardTexts = {
     CHECK_LEFT: '곳',
     HANDOFF_FOR_ME: '곳',
     HANDOFF_FROM_ME: '곳',
+    CONTACT_RETENTION_DUE: '곳',
   },
   /** 한 줄 설명은 앞 2건만 적고 나머지는 "외 n". */
   todayMore: (count: number) => `외 ${count}`,
@@ -316,6 +318,8 @@ export const dashboardTexts = {
     CHECK_LEFT: '확인할 회사',
     HANDOFF_FOR_ME: '받은 것',
     HANDOFF_FROM_ME: '보낸 것 · 상대 확인 전',
+    // #980(PM 결정 2026-11-28): 보관 1년이 다가오면 지울지 묻는다. 저절로 지우지 않는다.
+    CONTACT_RETENTION_DUE: '상대 담당자 연락처 · 지울지 확인',
   },
   todayRowIcons: {
     SCHEDULE_OVERDUE: '🔴',
@@ -323,7 +327,10 @@ export const dashboardTexts = {
     CHECK_LEFT: '🔍',
     HANDOFF_FOR_ME: '📬',
     HANDOFF_FROM_ME: '📤',
+    CONTACT_RETENTION_DUE: '🗂',
   },
+  /** #980: 보관 기한 줄의 날짜. "11/28까지" */
+  todayRetentionUntil: (day: string) => `${day}까지`,
   /** #854: 나에게 온 전달 사항 줄 오른쪽 [확인]. 그 회사에서 나에게 온 확인 전 전달 사항을 모두 확인한다. */
   todayHandoffConfirm: '확인',
   todayHandoffConfirmLabel: (company: string) => `${company} 전달 사항 확인`,
@@ -688,14 +695,15 @@ export const scoreAria = {
  * `processLinks`도 지금 화면이 쓰지 않는 키다.
  */
 export const detailSections = {
+  // #980(PM 결정 2026-11-28): 상세 순서를 바꾸며 제목 앞 번호(1. 2. 3.)를 뺐다.
   /** 2026-11-13 PM 결정(#674): 추천 근거와 근거 자료를 한 구역으로 합치고 제목을 바꿨다(전에는 "1. 추천 근거와 후속 조치"). */
-  reasons: '1. 왜 이 회사인가',
+  reasons: '왜 이 회사인가',
   /** 2026-11-13 PM 결정(#674): 검토사항을 읽기 전용 목록으로 바꾼 구역. */
-  callChecklist: '2. 통화에서 확인할 것',
+  callChecklist: '통화에서 확인할 것',
   requirements: '고객이 요구하는 것과 거산의 준비 상태',
   processLinks: '공정 적합성 검토',
-  evidence: '2. 근거 자료',
-  scores: '3. 점수 자세히 보기',
+  evidence: '근거 자료',
+  scores: '점수 자세히 보기',
   estimateMark: '(추정)',
   questionsHeading: '거산 역량 확인사항',
   questionsHint:
@@ -805,6 +813,72 @@ export const companyInfoFixTexts = {
   save: '저장',
   cancel: '취소',
   saveFailed: '저장하지 못했습니다.',
+} as const;
+
+/** #980(PM 결정 2026-11-28) 대표번호·대표명 [고치기]. 빈 칸으로 저장하면 지운다. */
+export const companyFieldFixTexts = {
+  edit: '고치기',
+  add: '넣기',
+  phoneLabel: '대표번호',
+  representativeLabel: '대표명',
+  phoneHint:
+    '회사 대표번호(지역번호로 시작)만 적습니다. 담당자 휴대폰은 아래 [상대 담당자 연락처]에 적어 주세요.',
+  representativeHint: '회사 대표자 이름. 숫자·이메일은 적지 않습니다.',
+  clearHint: '빈 칸으로 저장하면 지웁니다. 지운 값은 자동으로 다시 채우지 않습니다.',
+  save: '저장',
+  cancel: '취소',
+  saveFailed: '저장하지 못했습니다.',
+  none: '없음',
+} as const;
+
+/** #980 대표번호·대표명 출처. */
+export const companySourceTexts = {
+  phone: {
+    HOMEPAGE: '홈페이지',
+    CSV: '공장현황 자료',
+    FACTORYON: '팩토리온 공장조회',
+    MANUAL: '담당자 입력',
+  },
+  representative: { REGISTRY: '공장등록 조회', MANUAL: '담당자 입력' },
+} as const;
+
+/** #980 가린 번호를 여는 확인 문구. 서버 계약 문장과 같다. */
+export const revealTexts = {
+  acknowledge: '이 번호는 영업 목적으로만 쓰고 밖으로 옮기지 않겠습니다. 열람 기록이 남습니다.',
+  open: '보기',
+  openNote: '가린 번호 보기',
+  confirm: '확인하고 보기',
+  cancel: '취소',
+  hideAgain: '다시 가리기',
+  failed: '열지 못했습니다.',
+} as const;
+
+/** #980 상세 [상대 담당자 연락처]. 담당자가 직접 적은 상대 회사 담당자 번호. */
+export const contactPersonsTexts = {
+  title: '상대 담당자 연락처',
+  hint: '거산 담당자가 직접 적은 번호만 둡니다. 가려서 보이고, 확인 문구에 체크해야 열립니다. 외부 AI·엑셀·보고서로 나가지 않습니다.',
+  viewerHidden: '보기 전용 계정은 상대 담당자 연락처를 볼 수 없습니다.',
+  pickStaffFirst: '담당자를 고르면 볼 수 있습니다.',
+  empty: '적어 둔 상대 담당자 연락처가 없습니다.',
+  add: '연락처 추가',
+  edit: '고치기',
+  remove: '지우기',
+  keep: '1년 더 보관',
+  nameLabel: '이름',
+  roleLabel: '부서·직함',
+  phoneLabel: '번호',
+  namePlaceholder: '예: 김철수',
+  rolePlaceholder: '예: 구매팀 과장',
+  phonePlaceholder: '예: 010-1234-5678',
+  save: '저장',
+  cancel: '취소',
+  removeConfirm: '이 연락처를 지울까요? 지우면 되살릴 수 없습니다.',
+  /** "보관 2027-11-28까지" */
+  retainUntil: (day: string) => `보관 ${day}까지`,
+  retentionDue: '보관 1년이 다가왔습니다. 지울지 1년 더 둘지 골라 주세요.',
+  loadFailed: '상대 담당자 연락처를 불러오지 못했습니다.',
+  saveFailed: '저장하지 못했습니다.',
+  editNeedsReveal: '고치려면 먼저 [보기]로 열어 주세요.',
 } as const;
 
 /** #803 상세 작은 지도. */
@@ -3135,6 +3209,10 @@ export const operationsTexts = {
     '갱신은 지금 운영 명령으로 합니다(운영 안내서 "자료 갱신" 절). 이 화면에는 실행 단추가 없습니다.',
   blockedTitle: '최근 막힌 전송 10건',
   blockedEmpty: '막힌 전송이 없습니다.',
+  /** #980(PM 결정 2026-11-28): 가린 상대 담당자 연락처·메모를 누가 언제 열었는지. 연 값은 보이지 않는다. */
+  revealsTitle: '연락처 열람 기록 (최근 50건)',
+  revealsEmpty: '열어 본 기록이 없습니다.',
+  revealKinds: { CONTACT: '상대 담당자 연락처', NOTE: '메모 속 번호' },
 } as const;
 
 /** #972 운영 관리 새 톤에서 더한 글자. 값은 모두 운영 응답에 있는 것만 쓴다. */

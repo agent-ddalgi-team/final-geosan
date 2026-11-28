@@ -218,6 +218,11 @@
               }
             ],
             "title": "Text"
+          },
+          "textMasked": {
+            "default": false,
+            "title": "Textmasked",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1573,6 +1578,30 @@
               }
             ],
             "title": "Companyname"
+          },
+          "mainPhone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphone"
+          },
+          "representativeName": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativename"
           }
         },
         "title": "CompanyInfoRequest",
@@ -1594,6 +1623,50 @@
           "companyName": {
             "title": "Companyname",
             "type": "string"
+          },
+          "mainPhone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphone"
+          },
+          "mainPhoneSource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphonesource"
+          },
+          "representativeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativename"
+          },
+          "representativeNameSource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativenamesource"
           }
         },
         "required": [
@@ -1890,6 +1963,41 @@
         "title": "ContactCount",
         "type": "object"
       },
+      "ContactDeleted": {
+        "properties": {
+          "contactId": {
+            "title": "Contactid",
+            "type": "string"
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "title": "Deletedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId",
+          "deletedAt"
+        ],
+        "title": "ContactDeleted",
+        "type": "object"
+      },
+      "ContactList": {
+        "properties": {
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactPersonView"
+            },
+            "title": "Contacts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "contacts"
+        ],
+        "title": "ContactList",
+        "type": "object"
+      },
       "ContactMethod": {
         "enum": [
           "CALL",
@@ -1898,6 +2006,93 @@
         ],
         "title": "ContactMethod",
         "type": "string"
+      },
+      "ContactPersonView": {
+        "properties": {
+          "contactId": {
+            "title": "Contactid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "title": "Createdby",
+            "type": "string"
+          },
+          "personNameMasked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personnamemasked"
+          },
+          "phoneMasked": {
+            "title": "Phonemasked",
+            "type": "string"
+          },
+          "retainUntil": {
+            "format": "date",
+            "title": "Retainuntil",
+            "type": "string"
+          },
+          "retentionDue": {
+            "title": "Retentiondue",
+            "type": "boolean"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "updatedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedby"
+          }
+        },
+        "required": [
+          "contactId",
+          "personNameMasked",
+          "role",
+          "phoneMasked",
+          "createdBy",
+          "createdAt",
+          "retainUntil",
+          "retentionDue"
+        ],
+        "title": "ContactPersonView",
+        "type": "object"
       },
       "ContactReach": {
         "description": "방법별 시도(tried)와 그중 연결(reached). 키는 계약의 대문자 코드 그대로다.",
@@ -1920,6 +2115,45 @@
         "title": "ContactReach",
         "type": "object"
       },
+      "ContactRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "personName": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personname"
+          },
+          "phone": {
+            "maxLength": 40,
+            "title": "Phone",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "title": "ContactRequest",
+        "type": "object"
+      },
       "ContactResult": {
         "enum": [
           "REACHED",
@@ -1928,6 +2162,104 @@
         ],
         "title": "ContactResult",
         "type": "string"
+      },
+      "ContactRevealLine": {
+        "description": "#980 가린 연락처·메모를 연 기록. 연 이름·번호·글은 없다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "CONTACT",
+              "NOTE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "staffKey": {
+            "title": "Staffkey",
+            "type": "string"
+          },
+          "staffName": {
+            "title": "Staffname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "staffKey",
+          "staffName",
+          "oppId",
+          "customerName",
+          "kind"
+        ],
+        "title": "ContactRevealLine",
+        "type": "object"
+      },
+      "ContactRevealed": {
+        "properties": {
+          "contactId": {
+            "title": "Contactid",
+            "type": "string"
+          },
+          "personName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personname"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "required": [
+          "contactId",
+          "personName",
+          "role",
+          "phone"
+        ],
+        "title": "ContactRevealed",
+        "type": "object"
+      },
+      "ContactSaved": {
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/ContactPersonView"
+          }
+        },
+        "required": [
+          "contact"
+        ],
+        "title": "ContactSaved",
+        "type": "object"
       },
       "CurrentStaff": {
         "description": "계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null.",
@@ -2323,6 +2655,22 @@
         "title": "DatasetKind",
         "type": "string"
       },
+      "DeleteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "STAFF",
+            "enum": [
+              "STAFF",
+              "RETENTION"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "DeleteRequest",
+        "type": "object"
+      },
       "DetailHeader": {
         "properties": {
           "address": {
@@ -2571,7 +2919,9 @@
               {
                 "enum": [
                   "HOMEPAGE",
-                  "CSV"
+                  "CSV",
+                  "FACTORYON",
+                  "MANUAL"
                 ],
                 "type": "string"
               },
@@ -2704,6 +3054,32 @@
           },
           "relationStatus": {
             "$ref": "#/components/schemas/RelationStatus"
+          },
+          "representativeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativename"
+          },
+          "representativeNameSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REGISTRY",
+                  "MANUAL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativenamesource"
           },
           "researchSource": {
             "anyOf": [
@@ -3127,6 +3503,66 @@
         "title": "Envelope[ConfigUi]",
         "type": "object"
       },
+      "Envelope_ContactDeleted_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactDeleted"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactDeleted]",
+        "type": "object"
+      },
+      "Envelope_ContactList_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactList"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactList]",
+        "type": "object"
+      },
+      "Envelope_ContactRevealed_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactRevealed"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactRevealed]",
+        "type": "object"
+      },
+      "Envelope_ContactSaved_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactSaved"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactSaved]",
+        "type": "object"
+      },
       "Envelope_CustomerSuggestions_": {
         "properties": {
           "data": {
@@ -3395,6 +3831,21 @@
           "data"
         ],
         "title": "Envelope[NoteResponse]",
+        "type": "object"
+      },
+      "Envelope_NoteRevealed_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NoteRevealed"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[NoteRevealed]",
         "type": "object"
       },
       "Envelope_Operations_": {
@@ -6177,6 +6628,24 @@
         "title": "NoteResponse",
         "type": "object"
       },
+      "NoteRevealed": {
+        "properties": {
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "text"
+        ],
+        "title": "NoteRevealed",
+        "type": "object"
+      },
       "Operations": {
         "properties": {
           "blocked": {
@@ -6184,6 +6653,13 @@
               "$ref": "#/components/schemas/BlockedTransfer"
             },
             "title": "Blocked",
+            "type": "array"
+          },
+          "contactReveals": {
+            "items": {
+              "$ref": "#/components/schemas/ContactRevealLine"
+            },
+            "title": "Contactreveals",
             "type": "array"
           },
           "sources": {
@@ -9755,6 +10231,20 @@
         "title": "ResearchUi",
         "type": "object"
       },
+      "RevealRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged": {
+            "title": "Acknowledged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "acknowledged"
+        ],
+        "title": "RevealRequest",
+        "type": "object"
+      },
       "ReviewCheckRequest": {
         "additionalProperties": false,
         "properties": {
@@ -11401,7 +11891,8 @@
               "HANDOFF_FROM_ME",
               "AI_USAGE_ALERT",
               "AI_LIMIT_REACHED",
-              "DATA_REFRESH_DUE"
+              "DATA_REFRESH_DUE",
+              "CONTACT_RETENTION_DUE"
             ],
             "title": "Kind",
             "type": "string"
@@ -12401,6 +12892,71 @@
         "summary": "Confirm Handoff"
       }
     },
+    "/api/v1/notes/{noteId}/reveal": {
+      "post": {
+        "operationId": "reveal_note_api_v1_notes__noteId__reveal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "noteId",
+            "required": true,
+            "schema": {
+              "title": "Noteid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NoteRevealed_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reveal Note"
+      }
+    },
     "/api/v1/operations": {
       "get": {
         "description": "운영 관리 화면. 운영 담당이 아니면(보기 전용·키 없음 포함) 403.",
@@ -13103,6 +13659,417 @@
           }
         },
         "summary": "Save Company Info"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts": {
+      "get": {
+        "operationId": "list_contacts_api_v1_opportunities__oppId__contacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactList_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Contacts"
+      },
+      "post": {
+        "operationId": "add_contact_api_v1_opportunities__oppId__contacts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactSaved_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}": {
+      "post": {
+        "operationId": "update_contact_api_v1_opportunities__oppId__contacts__contactId__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactSaved_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}/delete": {
+      "post": {
+        "operationId": "delete_contact_api_v1_opportunities__oppId__contacts__contactId__delete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DeleteRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactDeleted_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}/keep": {
+      "post": {
+        "operationId": "keep_contact_api_v1_opportunities__oppId__contacts__contactId__keep_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactSaved_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keep Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}/reveal": {
+      "post": {
+        "operationId": "reveal_contact_api_v1_opportunities__oppId__contacts__contactId__reveal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactRevealed_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reveal Contact"
       }
     },
     "/api/v1/opportunities/{oppId}/homepage": {

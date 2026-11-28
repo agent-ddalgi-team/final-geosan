@@ -63,7 +63,7 @@ def run_source_load(source_id: str, files: list[Path], *, echo=typer.echo) -> in
         regions = stored_regions(settings)
         # 파일 읽기는 저장 잠금 밖에서 한다(C5).
         if source_id == FACTORYON_SOURCE_ID:
-            result = read_factoryon(files, regions)
+            result = read_factoryon(files, regions, settings.main_phone.allowed_prefixes)
             dates = {row.region: row.file_date for row in result.rows}
             basis = " · ".join(f"{r} {d.isoformat()}" for r, d in sorted(dates.items())) or "없음"
         else:
@@ -83,7 +83,8 @@ def run_source_load(source_id: str, files: list[Path], *, echo=typer.echo) -> in
         )
         echo(
             f"공장 정보가 붙은 회사 {attached.attached}곳 · 표면처리 표시 새로 붙음 "
-            f"{attached.flagged}곳 · 풀림 {attached.unflagged}곳"
+            f"{attached.flagged}곳 · 풀림 {attached.unflagged}곳 · "
+            f"대표번호 채움 {attached.phones}곳"
         )
         return 0
     except Exception as exc:

@@ -41,7 +41,12 @@ from geosan.opportunity.models import (
     Opportunity,
     OppProcessLink,
 )
-from geosan.opportunity.queries import FIT_BASIS_HOMEPAGE, normalize_address, normalize_name
+from geosan.opportunity.queries import (
+    FIT_BASIS_HOMEPAGE,
+    normalize_address,
+    normalize_name,
+    registry_representative,
+)
 from geosan.opportunity.source_models import (
     SourceContract,
     SourceFactoryRow,
@@ -323,6 +328,7 @@ def register_candidates(
             own_plating_line_basis=basis,
             own_plating_line_source=source,
             **_discovery_fields(row, source_kind),
+            **registry_representative(row),
             **common,
         )
         if not batch.is_virtual:

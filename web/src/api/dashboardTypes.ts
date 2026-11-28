@@ -78,7 +78,9 @@ export type TodayCheckKind =
   /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
   | 'HANDOFF_FOR_ME'
   /** #854 내가 보냈는데 받는 사람이 아직 확인하지 않은 전달 사항. note는 "받는 사람 · M/D". */
-  | 'HANDOFF_FROM_ME';
+  | 'HANDOFF_FROM_ME'
+  /** #980 보관 기한이 다가온 상대 담당자 연락처가 있는 회사. 적은 사람과 운영 담당에게만. dueAt = 가장 이른 기한. */
+  | 'CONTACT_RETENTION_DUE';
 
 /** #799 운영 알림 줄 종류(회사 줄이 없고 alert에 숫자). 사용률·자료 갱신은 운영 담당에게만. */
 export type TodayAlertKind = 'AI_USAGE_ALERT' | 'AI_LIMIT_REACHED' | 'DATA_REFRESH_DUE';

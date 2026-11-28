@@ -1,7 +1,8 @@
 """팩토리온 공장조회·수질 명단 보조 자료를 읽고 목록 회사에 붙인다(C5·C6·C8, #573).
 
-후보 목록의 출발점이 아니다. AI·외부 전송은 하지 않는다. 전화번호·홈페이지·대표자 같은 칸은
-읽는 즉시 버리고, 공개 칸에 연락처 형식이 있으면 그 값은 저장하지 않는다.
+후보 목록의 출발점이 아니다. AI·외부 전송은 하지 않는다. 홈페이지·대표자 같은 칸은 읽는 즉시
+버리고, 공개 칸에 연락처 형식이 있으면 그 값은 저장하지 않는다. 전화번호 칸은 지역번호(설정
+mainPhone.allowedPrefixes)로 시작하는 회사 번호만 대표번호로 남긴다(#980, 휴대폰은 버림).
 종업원 수는 공장 등록 때 적은 값이라 갱신되지 않을 수 있어 화면에서는 언제나 추정으로 보인다.
 """
 
@@ -43,6 +44,7 @@ WATER_BASIS = "특정수질유해물질 배출 사업장 명단에 있음(국립
 _FACTORYON_NAME = "회사명"
 _FACTORYON_ROAD = "공장주소(도로명)"
 _FACTORYON_LOT = "공장주소(지번)"
+_FACTORYON_PHONE = "전화번호"
 _FACTORYON_REQUIRED = (
     _FACTORYON_NAME,
     _FACTORYON_ROAD,
@@ -69,6 +71,8 @@ class ProfileRow:
     scale: str | None
     # 그 행이 나온 파일의 기준일. 지역마다 내려받은 날이 달라도 된다(#961).
     file_date: date
+    # #980: 지역번호로 시작하는 회사 전화번호("041-123-4567" 꼴). 휴대폰·그 밖의 번호는 None.
+    main_phone: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +96,8 @@ class AttachResult:
     attached: int
     flagged: int
     unflagged: int
+    # #980: 이번에 팩토리온 번호로 대표번호가 새로 채워지거나 바뀐 회사 수.
+    phones: int = 0
 
 
 def company_key(name: str) -> str:
@@ -159,6 +165,24 @@ def _public(value: str) -> str | None:
     return value
 
 
+def company_phone(value: str, prefixes: Sequence[str]) -> str | None:
+    """지역번호로 시작하는 회사 번호만 "041-123-4567" 꼴로 돌려준다(#980).
+
+    숫자만 남겨 9~11자리이고 prefixes 가운데 하나로 시작해야 한다. 01로 시작하는 휴대폰과
+    prefixes 밖의 번호는 None(버림). 앞자리는 가장 긴 것부터 맞춘다(02보다 031이 먼저).
+    """
+    digits = re.sub(r"[^0-9]", "", value or "")
+    if not 9 <= len(digits) <= 11 or digits.startswith("01"):
+        return None
+    for prefix in sorted((p for p in prefixes if not p.startswith("01")), key=len, reverse=True):
+        if digits.startswith(prefix):
+            rest = digits[len(prefix) :]
+            if len(rest) not in (7, 8):
+                return None
+            return f"{prefix}-{rest[:-4]}-{rest[-4:]}"
+    return None
+
+
 def _employees(value) -> int | None:
     try:
         count = int(float(_text(value).replace(",", "")))
@@ -204,8 +228,13 @@ def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[tuple]]:
     return headers, rest()
 
 
-def read_factoryon(paths: Sequence[Path], regions: Iterable[str]) -> ReadResult:
+def read_factoryon(
+    paths: Sequence[Path], regions: Iterable[str], phone_prefixes: Sequence[str] = ()
+) -> ReadResult:
     """지역별 엑셀 여러 개를 읽는다. 고른 시·도 행만 남기고 필요한 칸만 꺼낸다.
+
+    phone_prefixes(설정 mainPhone.allowedPrefixes)를 주면 전화번호 칸 가운데 그 지역번호로
+    시작하는 번호만 대표번호로 남긴다(#980). 주지 않으면 전화번호는 읽지 않는다.
 
     파일마다 기준일이 달라도 된다(#961). 다만 같은 시·도 행이 기준일이 다른 두 파일에서
     나오면 어느 쪽이 맞는지 알 수 없어 거부한다.
@@ -258,6 +287,7 @@ def read_factoryon(paths: Sequence[Path], regions: Iterable[str]) -> ReadResult:
                     industry_name=_public(cell("업종명")),
                     scale=_public(cell("공장규모")),
                     file_date=file_date,
+                    main_phone=company_phone(cell(_FACTORYON_PHONE), phone_prefixes),
                 )
             )
     return ReadResult(tuple(rows), raw, skipped)
@@ -395,6 +425,7 @@ def store_profiles(session: Session, rows: Sequence[ProfileRow]) -> int:
                     "industry_codes": list(row.industry_codes),
                     "industry_name": row.industry_name,
                     "scale": row.scale,
+                    "main_phone": row.main_phone,
                     "loaded_at": now,
                     "created_at": now,
                     "created_by": "system",
@@ -483,6 +514,28 @@ class ProfileIndex:
         return None
 
 
+FACTORYON_PHONE_SOURCE = "FACTORYON"
+
+
+def _apply_profile_phone(customer: Customer, phone: str | None) -> None:
+    """팩토리온 번호를 대표번호로 쓴다(#980, C1 자동 채우기 ①).
+
+    대표번호가 비어 있으면 채우고, 전에 팩토리온에서 채운 번호가 바뀌었으면 바꾸며 확인 표시를
+    비운다. 홈페이지·공장현황·담당자 입력 번호와 담당자가 지운 빈 칸(MANUAL)은 건드리지 않는다.
+    """
+    if not phone:
+        return
+    source = customer.main_phone_source
+    if source == FACTORYON_PHONE_SOURCE and customer.main_phone == phone:
+        return
+    if (source is None and not customer.main_phone) or source == FACTORYON_PHONE_SOURCE:
+        customer.main_phone = phone
+        customer.main_phone_source = FACTORYON_PHONE_SOURCE
+        customer.main_phone_source_url = None
+        customer.main_phone_confirmed_at = None
+        customer.main_phone_confirmed_by = None
+
+
 def apply_to_customer(
     customer: Customer, index: ProfileIndex, surface_codes: Sequence[str]
 ) -> tuple[bool, int]:
@@ -496,6 +549,7 @@ def apply_to_customer(
     customer.factory_scale = profile.scale if profile else None
     customer.factory_industry_name = profile.industry_name if profile else None
     customer.factory_profile_date = profile.file_date if profile else None
+    _apply_profile_phone(customer, profile.main_phone if profile else None)
     if customer.own_plating_line_source not in (None, *RULE_SOURCES):
         return profile is not None, 0
     before = customer.own_plating_line_suspected
@@ -522,14 +576,16 @@ def attach_all(session: Session, settings: AppSettings) -> AttachResult:
     # #961: 공장 행 전부(경기 포함 11만 행)가 아니라 목록 회사 이름에 맞는 행만 읽는다.
     index = ProfileIndex(session, [customer.name for customer in customers], water=True)
     codes = settings.ingestion.ai_pick.surface_treatment_industry_codes
-    attached = flagged = unflagged = 0
+    attached = flagged = unflagged = phones = 0
     for customer in customers:
+        phone_before = customer.main_phone
         hit, change = apply_to_customer(customer, index, codes)
         attached += hit
         flagged += change > 0
         unflagged += change < 0
+        phones += customer.main_phone != phone_before
     session.flush()
-    return AttachResult(attached, flagged, unflagged)
+    return AttachResult(attached, flagged, unflagged, phones)
 
 
 def stored_regions(settings: AppSettings) -> list[str]:

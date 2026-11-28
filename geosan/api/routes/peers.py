@@ -15,6 +15,7 @@ from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.config.errors import NotFoundError
 from geosan.config.sales_questions import KST
 from geosan.dashboard.peers import ContactLine, build_peers, load_peer_candidates, process_codes_of
+from geosan.evidence.contacts import mask_text
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.rules.codes import ContactMethod, LostReasonCode, OutcomeStatus
 from geosan.storage.base import utcnow
@@ -116,7 +117,7 @@ def peers(opp_id: Annotated[str, Path(alias="oppId")], session: SessionDep):
                 last_contact_at=_contact_at(row.last_contact),
                 last_contact_method=row.last_contact.method if row.last_contact else None,
                 last_note=PeerNote(
-                    text=row.last_note.text, by=row.last_note.by, at=row.last_note.at
+                    text=mask_text(row.last_note.text), by=row.last_note.by, at=row.last_note.at
                 )
                 if row.last_note
                 else None,

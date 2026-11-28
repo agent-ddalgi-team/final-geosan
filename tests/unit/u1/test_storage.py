@@ -65,8 +65,8 @@ def test_upgrade_both_branches_preserves_existing_data(tmp_path: Path, previous:
                 "failure_count, created_at, created_by, is_virtual) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 ("test-failure", "2026-11-04", "2026-11-03", 3, "2026-11-03", "test", 1),
             )
-    assert upgrade_to_head(db) == ["rec_019"]
-    assert upgrade_to_head(db) == ["rec_019"]
+    assert upgrade_to_head(db) == ["rec_020"]
+    assert upgrade_to_head(db) == ["rec_020"]
     with sqlite3.connect(db) as connection:
         assert connection.execute(
             "SELECT name, normalized_address, address FROM opp_customer WHERE customer_id=?",
@@ -128,7 +128,7 @@ def test_common_columns_are_filled_automatically(tmp_db: Path) -> None:
 def test_init_db_applies_migrations_and_is_safe_to_rerun(tmp_db: Path) -> None:
     """init-db는 마이그레이션을 끝까지 적용하고 다시 실행해도 같은 상태다(NFR7.6)."""
     first = current_revisions(tmp_db)
-    assert first == script_heads() == ["rec_019"]
+    assert first == script_heads() == ["rec_020"]
     tables_before = _table_names(tmp_db)
     init_db(tmp_db)
     assert current_revisions(tmp_db) == first
@@ -171,7 +171,7 @@ def test_downgrade_one_step_drops_last_prefix_and_upgrade_restores(tmp_db: Path)
     names = _table_names(tmp_db)
     assert "rec_review_opinion" not in names
     assert "q_question" in names
-    assert upgrade_to_head(tmp_db) == ["rec_019"]
+    assert upgrade_to_head(tmp_db) == ["rec_020"]
     assert "tg_transfer_log" in _table_names(tmp_db)
     assert "homepage_status" in _column_names(tmp_db, "opp_customer")
     assert "rec_review_check" in _table_names(tmp_db)
@@ -198,13 +198,14 @@ def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
         "ev_": 1,
         "eval_": 7,
         "q_": 3,
-        "rec_": 8,  # #824 rec_analysis_feedback, #943 rec_preference
+        "rec_": 10,  # #824 rec_analysis_feedback, #943 rec_preference, #980 연락처·열람 기록
         "web_": 2,  # 접속 세션 + 담당자 계정(#754)
         "tg_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    assert len(db_tables) == 51  # #932 src_existing_customer, #943 rec_preference
+    # #932 src_existing_customer, #943 rec_preference, #980 rec_contact_person·rec_contact_reveal
+    assert len(db_tables) == 53
     prefixes = (*TABLE_PREFIXES, "web_")
     for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix
