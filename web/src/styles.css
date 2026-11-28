@@ -208,6 +208,45 @@
   text-decoration: underline;
 }
 
+/* #987 거래처 후보 줄: 칸 높이를 줄 높이에 맞춰, 가운데 칸의 꼬리표와 오른쪽 칸의 의견 고르기를 줄 맨 아래에 나란히 둔다. */
+.cand-row:not(.cand-row--three) {
+  align-items: stretch;
+}
+
+.cand-row__reason {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cand-row:not(.cand-row--three) > .cand-row__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.cand-row__bottom {
+  margin-top: auto;
+}
+
+/* 첫 칸의 이름표 줄("품목 ○○" · "산업 ○○" · "지역 ○○"): 이름표는 data-label 값을 왼쪽에 그린다. */
+.cand-row__fact {
+  position: relative;
+  padding-left: 42px;
+}
+
+.cand-row__fact::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 36px;
+  color: var(--cand-fact-label);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
 /* 회사 이름과 품목 사이의 " · ": 눈에는 줄바꿈이 대신하고 화면 낭독기에만 읽힌다. */
 .cand-row__sep {
   position: absolute;

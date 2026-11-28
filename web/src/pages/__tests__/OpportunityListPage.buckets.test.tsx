@@ -182,11 +182,12 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
       '가상 f · 브래킷',
     ]);
     // 열 머리 글자는 세 열 이름이다(#981: 지역은 회사 칸 안으로, 점수는 셋째 칸으로 들어갔다).
+    // #987: "회사 · 품목" → "기업", "추천 근거" → "추천 이유".
     expect(
       Array.from(screen.getAllByTestId('list-column-head')[0].children).map(
         (cell) => cell.textContent,
       ),
-    ).toEqual(['회사 · 품목', '추천 근거 · 검토사항', '적합도 · 점수 · 관심 · 의견']);
+    ).toEqual(['기업', '추천 이유 · 검토사항', '적합도 · 점수 · 관심 · 의견']);
     // 공정 하나를 고른 목록의 번호는 서버가 준 묶음 안 순서 번호다.
     expect(screen.getAllByTestId('card-rank').map((rank) => rank.textContent)).toEqual([
       '1',
