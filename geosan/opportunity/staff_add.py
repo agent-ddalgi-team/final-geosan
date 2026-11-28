@@ -21,7 +21,7 @@ from geosan.config.errors import InputError, NotFoundError
 from geosan.evidence.contacts import scrub_contacts
 from geosan.opportunity.factory_profile import ProfileIndex, apply_to_customer
 from geosan.opportunity.models import Customer, IngestBatch, MergeCandidate, Opportunity
-from geosan.opportunity.queries import normalize_address, normalize_name
+from geosan.opportunity.queries import normalize_address, normalize_name, registry_representative
 from geosan.opportunity.source_models import SourceFactoryRow, public_source_kinds
 from geosan.rules.codes import DiscoverySource
 from geosan.storage.base import new_id, utcnow
@@ -264,6 +264,7 @@ def add_company(
             if row is not None
             else "담당자가 직접 입력한 회사명"
         ),
+        **(registry_representative(row) if row is not None else {}),
         **common,
     )
     if url is not None:

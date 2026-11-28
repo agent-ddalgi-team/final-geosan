@@ -18,7 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from geosan.config.errors import InputError
 from geosan.evidence.contacts import scrub_contacts
-from geosan.opportunity.complex_rows import ComplexFactoryRow
+from geosan.opportunity.complex_rows import ComplexFactoryRow, clean_representative
 from geosan.opportunity.factory_csv import SOURCE_ID as CSV_SOURCE_ID
 from geosan.opportunity.factory_csv import _region_name
 from geosan.opportunity.factory_store import _context
@@ -84,6 +84,7 @@ def _public_row(row):
         row.product_hash,
         row.industry_name,
         row.factory_manage_no,
+        clean_representative(getattr(row, "representative_name", None)),
     )
 
 
@@ -182,6 +183,10 @@ def _store_row(session, batch, row, fetched_at, files, api_rows, now):
     file_matches = files.get(row.identity_key, ())
     if file_matches:
         # 생산품별 원문이 여러 개면 모두 남긴다. 조회 값으로 파일 원문을 덮지 않는다.
+        # #980: 파일에는 대표자명이 없어 조회의 대표자명만 같은 공장 파일 행에 더한다.
+        if row.representative_name:
+            for old in file_matches:
+                old.representative_name = row.representative_name
         return tuple(file_matches)
     matches = [
         old
@@ -217,6 +222,7 @@ def _store_row(session, batch, row, fetched_at, files, api_rows, now):
         "product_hash",
         "industry_name",
         "factory_manage_no",
+        "representative_name",
     ):
         setattr(stored, key, getattr(row, key))
     stored.file_date = None
@@ -224,6 +230,35 @@ def _store_row(session, batch, row, fetched_at, files, api_rows, now):
     stored.loaded_at = now
     stored.missing_since = None
     return (stored,)
+
+
+def fill_representatives(session, is_virtual: bool) -> int:
+    """공장 행에서 들어온 회사의 빈 대표명을 그 행의 대표자명으로 채운다(#980, 자동 채우기 ③).
+
+    이미 목록에 있는 회사도 다음 조회 때 채워진다. 담당자가 적거나 지운 대표명(MANUAL)은
+    건드리지 않는다. 채운 회사 수를 돌려준다.
+    """
+    from geosan.opportunity.models import Customer, DiscoveryPath, Opportunity
+
+    rows = session.execute(
+        select(Customer, SourceFactoryRow.representative_name)
+        .join(Opportunity, Opportunity.customer_id == Customer.customer_id)
+        .join(DiscoveryPath, DiscoveryPath.opp_id == Opportunity.opp_id)
+        .join(SourceFactoryRow, SourceFactoryRow.row_id == DiscoveryPath.origin_key)
+        .where(
+            Customer.is_virtual == is_virtual,
+            SourceFactoryRow.representative_name.is_not(None),
+            Customer.representative_name_source.is_distinct_from("MANUAL"),
+        )
+    ).all()
+    filled = 0
+    for customer, name in rows:
+        if customer.representative_name != name:
+            customer.representative_name = name
+            customer.representative_name_source = "REGISTRY"
+            filled += 1
+    session.flush()
+    return filled
 
 
 def store_complex_rows(
@@ -316,6 +351,7 @@ def store_complex_rows(
                     fetched_ids.update(chosen)
                 ids.extend(chosen)
             session.flush()
+            fill_representatives(session, batch.is_virtual)
             return StoredComplexRows(
                 tuple(dict.fromkeys(ids)),
                 len(fetched_ids),

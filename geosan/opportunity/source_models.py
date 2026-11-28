@@ -1,7 +1,8 @@
 """SourceIngestion 테이블 (src_, 계약 C5·C6, #221·#327). 이 파일의 열은 PM 세션만 고친다.
 
 공공자료에서 읽어 둔 공장 행, AI가 행마다 내린 판단 메모, 단지 조회·웹 검색 기록을 둔다.
-대표자 이름·팩스·전화번호·사람 연락처 열은 없다(CON-11). 판단 메모는 영구 정답이 아니라
+팩스·사람 연락처 열은 없다(CON-11). 공장등록 조회의 대표자명과 팩토리온의 회사 지역번호 전화만
+둔다(#980, PM 결정 2026-11-28). 판단 메모는 영구 정답이 아니라
 "언제, 어떤 생산품 글과 기준을 보고 내린 판단"이다.
 """
 
@@ -93,6 +94,8 @@ class SourceFactoryRow(CommonColumns, Base):
     product_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     industry_name: Mapped[str | None] = mapped_column(String(200))
     factory_manage_no: Mapped[str | None] = mapped_column(String(40))
+    # #980: 산단공 공장등록 조회(kicox-production-api) 행의 대표자명. 파일 행은 언제나 비어 있다.
+    representative_name: Mapped[str | None] = mapped_column(String(20))
     loaded_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
     fetched_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
     missing_since: Mapped[date | None] = mapped_column(Date)
@@ -189,7 +192,8 @@ class FactoryProfile(CommonColumns, Base):
     """팩토리온 공장조회 행(C5 factoryon-xlsx, #573). 목록 회사에 붙이는 보조 자료다.
 
     후보 목록의 출발점이 아니다. 새 파일을 넣으면 그 파일의 시·도 행만 바꾼다(#961).
-    종업원 수는 공장 등록 때 적은 값이라 언제나 추정으로 보인다. 전화·홈페이지 열은 없다.
+    종업원 수는 공장 등록 때 적은 값이라 언제나 추정으로 보인다. 홈페이지 열은 없다.
+    전화는 지역번호로 시작하는 회사 번호만 대표번호로 남긴다(#980, 휴대폰·그 밖의 번호는 버림).
     """
 
     __tablename__ = "src_factory_profile"
@@ -208,6 +212,7 @@ class FactoryProfile(CommonColumns, Base):
     industry_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     industry_name: Mapped[str | None] = mapped_column(String(200))
     scale: Mapped[str | None] = mapped_column(String(40))
+    main_phone: Mapped[str | None] = mapped_column(String(20))
     loaded_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
 
 

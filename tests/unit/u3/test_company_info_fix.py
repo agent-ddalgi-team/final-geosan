@@ -64,6 +64,11 @@ def test_fixing_the_address_clears_the_old_point_and_leaves_one_history_line(cli
     assert response.json()["data"] == {
         "companyName": "가상직접회사",
         "address": "충남 아산시 가상로 10",
+        # #980: 대표번호·대표명 칸도 같이 돌려준다(보내지 않았으니 그대로 비어 있다).
+        "mainPhone": None,
+        "mainPhoneSource": None,
+        "representativeName": None,
+        "representativeNameSource": None,
     }
     assert response.json()["meta"]["reevaluated"] is False
     customer = customer_of(opp_id)
