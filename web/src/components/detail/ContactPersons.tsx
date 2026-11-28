@@ -355,39 +355,56 @@ export default function ContactPersons({ oppId, title, onChanged }: ContactPerso
 
   return (
     <div data-testid="contacts" style={{ display: 'grid', gap: 6 }}>
-      {/* 제목 옆 같은 줄에 연락처를 잇는다(PM 요청 11/28: 안내 문장은 빼고 공간 활용). */}
-      <div style={rowStyle}>
+      {/* 제목 왼쪽, 연락처 오른쪽 두 칸(PM 요청 11/28: 안내 문장은 빼고 공간 활용). */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: heading ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
+          columnGap: 20,
+          alignItems: 'baseline',
+        }}
+      >
         {heading}
-        {current?.error ? (
-          <span role="alert" style={{ color: colors.error }} data-testid="contacts-error">
-            {current.error}
-          </span>
-        ) : current && contacts.length === 0 ? (
-          <span style={secondary} data-testid="contacts-empty">
-            {texts.empty}
-          </span>
-        ) : null}
-        {contacts.length > 0 ? (
-          <ul
-            style={{ ...rowStyle, listStyle: 'none', margin: 0, padding: 0 }}
-            data-testid="contacts-list"
-          >
-            {contacts.map((contact) => (
-              <ContactRow
-                key={`${contact.contactId}:${contact.updatedAt ?? ''}:${contact.retainUntil}`}
-                oppId={oppId}
-                contact={contact}
-                staffKey={staffKey}
-                onChanged={changed}
-              />
-            ))}
-          </ul>
-        ) : null}
-        {draft ? null : (
-          <Button size="small" onClick={() => setDraft(EMPTY)} data-testid="contact-add-button">
-            {texts.add}
-          </Button>
-        )}
+        <div style={{ display: 'grid', gap: 2 }}>
+          {current?.error ? (
+            <span role="alert" style={{ color: colors.error }} data-testid="contacts-error">
+              {current.error}
+            </span>
+          ) : current && contacts.length === 0 ? (
+            <span style={secondary} data-testid="contacts-empty">
+              {texts.empty}
+            </span>
+          ) : null}
+          {contacts.length > 0 ? (
+            <ul
+              style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}
+              data-testid="contacts-list"
+            >
+              {contacts.map((contact) => (
+                <ContactRow
+                  key={`${contact.contactId}:${contact.updatedAt ?? ''}:${contact.retainUntil}`}
+                  oppId={oppId}
+                  contact={contact}
+                  staffKey={staffKey}
+                  onChanged={changed}
+                />
+              ))}
+            </ul>
+          ) : null}
+          {draft ? null : (
+            <div>
+              <Button
+                size="small"
+                type="link"
+                style={{ padding: 0 }}
+                onClick={() => setDraft(EMPTY)}
+                data-testid="contact-add-button"
+              >
+                + {texts.add}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
       {draft ? (
         <DraftForm
