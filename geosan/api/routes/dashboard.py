@@ -10,6 +10,7 @@ from geosan.api.check_points import check_left_opp_ids
 from geosan.api.deps import SessionDep, current_account, runtime_for
 from geosan.api.operations import operation_alerts
 from geosan.api.process_catalog import load_process_catalog
+from geosan.api.routes.contacts import retention_due_row
 from geosan.api.routes.opportunities import list_filters, supported_filters
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.config.errors import AppError
@@ -227,6 +228,7 @@ class TodayCheckRow(_ApiModel):
         "AI_USAGE_ALERT",
         "AI_LIMIT_REACHED",
         "DATA_REFRESH_DUE",
+        "CONTACT_RETENTION_DUE",
     ]
     count: int
     items: list[TodayCheckItem]
@@ -394,6 +396,15 @@ def dashboard(
     result.data.today_checks[:0] = [
         TodayCheckRowData(kind=alert.kind, count=1, items=[], alert=alert) for alert in alerts
     ]
+    # #980: 보관 기한이 다가온 상대 담당자 연락처. 알림 줄 다음에 둔다.
+    retention = retention_due_row(
+        session,
+        runtime.app_settings,
+        _my_staff_key(session, runtime, staff_key),
+        now.astimezone(KST).date(),
+    )
+    if retention is not None:
+        result.data.today_checks.insert(len(alerts), retention)
     return DashboardEnvelope(
         data=Dashboard.model_validate(result.data, from_attributes=True),
         meta=Meta(

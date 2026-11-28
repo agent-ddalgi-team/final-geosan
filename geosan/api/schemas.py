@@ -714,10 +714,14 @@ class DetailHeader(_ApiModel):
     address: str
     distance_km: float | None = None
     main_phone: str | None = None
-    main_phone_source: Literal["HOMEPAGE", "CSV"] | None = None
+    # #980: FACTORYON = 팩토리온 공장조회 전화번호, MANUAL = 담당자가 [고치기]로 적음(또는 지움).
+    main_phone_source: Literal["HOMEPAGE", "CSV", "FACTORYON", "MANUAL"] | None = None
     main_phone_source_url: str | None = None
     main_phone_confirmed_at: datetime | None = None
     main_phone_confirmed_by: str | None = None
+    # #980: 회사 대표명. REGISTRY = 공장등록 조회, MANUAL = 담당자 입력. 밖으로 내보내지 않는다.
+    representative_name: str | None = None
+    representative_name_source: Literal["REGISTRY", "MANUAL"] | None = None
     summary_line: str | None = None
     highlights: list[str] = Field(default_factory=list, max_length=3)
     researched_at: datetime | None = None
@@ -1238,6 +1242,9 @@ class ActivityItem(_ApiModel):
     # 메모 줄(recordKind NOTE)만 채운다. text는 앞머리 없는 저장 글이고 잘못 입력 행은 null.
     note_kind: str | None = None
     text: str | None = None
+    # #980: summary·text의 전화·이메일을 가렸으면 true.
+    # 가리지 않은 글은 POST /notes/{noteId}/reveal로만 준다.
+    text_masked: bool = False
 
 
 class RecordCancelRequest(_RequestModel):

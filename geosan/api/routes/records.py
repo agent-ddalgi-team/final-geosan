@@ -97,6 +97,7 @@ from geosan.config.sales_questions import (
 from geosan.config.validators import scan_contacts
 from geosan.dashboard.sales_analysis import process_display_name
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
+from geosan.evidence.contacts import mask_contacts_for_screen
 from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
@@ -337,7 +338,9 @@ def review_items_for_detail(
             notes[row.item_id] = row
         for item in items:
             if row := notes.get(item.item_id):
-                item.note = ReviewItemNote(text=row.text, by=row.staff_key, at=row.created_at)
+                item.note = ReviewItemNote(
+                    text=mask_contacts_for_screen(row.text)[0], by=row.staff_key, at=row.created_at
+                )
     # 새 AI 제안은 이전 버전의 체크 표시를 물려받지 않는다.
     proposals = proposal_review_items(session, opportunity, data)
     for item in proposals:
@@ -1494,7 +1497,12 @@ def activity(
             # #731: 프로그램이 남긴 변경 기록. 잘못 입력으로 표시할 수 없으니
             # 저장 행 번호를 주지 않는다.
             items.append(
-                ActivityItem(at=row.created_at, actor=row.staff_key, kind="CHANGE", summary=summary)
+                ActivityItem(
+                    at=row.created_at,
+                    actor=row.staff_key,
+                    kind="CHANGE",
+                    summary=mask_contacts_for_screen(summary)[0],
+                )
             )
             continue
         if row.kind == NoteKind.ADVICE and row.cancelled_at is None:
@@ -1517,6 +1525,11 @@ def activity(
             summary = "다음 통화 준비 · " + " · ".join(
                 line.strip() for line in row.text.split("\n") if line.strip()
             )
+        # #980: 화면으로 나가는 메모 글의 전화·이메일은 가린다. 저장된 글은 그대로다.
+        summary, summary_masked = mask_contacts_for_screen(summary)
+        text, text_masked = (
+            mask_contacts_for_screen(row.text) if row.cancelled_at is None else (None, False)
+        )
         items.append(
             ActivityItem(
                 at=row.created_at,
@@ -1533,7 +1546,8 @@ def activity(
                 # #849: 남긴 피드백과 다음 통화 준비는 줄 종류가 같아(ADVICE) 저장 종류로 가른다.
                 # 글은 앞머리 없이 그대로 싣고, 잘못 입력 행은 summary처럼 싣지 않는다.
                 note_kind=row.kind,
-                text=row.text if row.cancelled_at is None else None,
+                text=text,
+                text_masked=summary_masked or text_masked,
             )
         )
     # #691: 접촉 줄 끝에 먼저 연락한 쪽을 붙인다.

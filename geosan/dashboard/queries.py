@@ -22,6 +22,7 @@ from sqlalchemy import and_, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
+from geosan.evidence.contacts import mask_text
 from geosan.opportunity.models import Customer, Opportunity, OppProcessLink
 from geosan.records.models import Bookmark, Note, Outcome, ReviewOpinion
 
@@ -616,7 +617,8 @@ HANDOFF_PREVIEW_CHARS = 80
 
 def _handoff_preview(text: str | None) -> str | None:
     """#794 대시보드 한 줄용: 줄바꿈을 빈칸으로 모으고 앞 80자, 넘으면 끝에 "…"."""
-    flat = " ".join((text or "").split())
+    # #980: 화면에 보이는 메모 글의 전화·이메일은 가린다.
+    flat = " ".join(mask_text(text or "").split())
     if not flat:
         return None
     if len(flat) <= HANDOFF_PREVIEW_CHARS:
