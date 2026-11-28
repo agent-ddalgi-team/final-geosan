@@ -181,12 +181,12 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
       HEAD,
       '가상 f · 브래킷',
     ]);
-    // 열 머리 글자는 다섯 열 이름이다.
+    // 열 머리 글자는 세 열 이름이다(#981: 지역은 회사 칸 안으로, 점수는 셋째 칸으로 들어갔다).
     expect(
       Array.from(screen.getAllByTestId('list-column-head')[0].children).map(
         (cell) => cell.textContent,
       ),
-    ).toEqual(['회사 · 품목', '지역', '추천 근거 · 검토사항', '점수', '의견 · 관심']);
+    ).toEqual(['회사 · 품목', '추천 근거 · 검토사항', '적합도 · 점수 · 관심 · 의견']);
     // 공정 하나를 고른 목록의 번호는 서버가 준 묶음 안 순서 번호다.
     expect(screen.getAllByTestId('card-rank').map((rank) => rank.textContent)).toEqual([
       '1',
@@ -228,9 +228,10 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     mockedGet.mockResolvedValue(reply(bucketedCards()));
     renderPage('/opportunities?process=ZINC_PLATING');
     const cards = await screen.findAllByTestId('opportunity-card');
+    // 거래처 후보 줄은 점수 숫자만 보인다("· 7/8"은 상세에서, #981).
     expect(
       cards.map((item) => within(item).queryByTestId('card-score')?.textContent ?? null),
-    ).toEqual(['77점 · 7/8', '77점 · 7/8', null, null, null, null]);
+    ).toEqual(['77점', '77점', null, null, null, null]);
   });
 
   it('점수 전인 찾은 회사는 어느 묶음에서든 점수 자리에 조사 상태만 보인다', async () => {
@@ -414,7 +415,12 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     expect(titles()).toEqual([]);
     expect(screen.queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
     expect(screen.queryByTestId('card-fit-level')).not.toBeInTheDocument();
-    expect(screen.getByTestId('card-score')).toHaveTextContent('77점 · 7/8');
+    // 거래처 후보 줄은 점수 숫자만 보이고("· 7/8"은 상세에서, #981) 화면 낭독 문구는 전체를 읽는다.
+    expect(screen.getByTestId('card-score')).toHaveTextContent(/^77점$/);
+    expect(screen.getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '점수 77점, 8개 항목 중 7개 조사',
+    );
   });
 
   it('서버가 묶음별 건수를 주지 않으면 이 줄에 있는 카드 수로 센다', async () => {
@@ -512,7 +518,7 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     expect(screen.queryByTestId('list-bookmarked-line')).not.toBeInTheDocument();
   });
 
-  it('[관심]을 누르면 그 카드가 목록에서 빠지고 곳 수가 줄며 "관심 기업으로 옮겼습니다 · 관심 기업 보기"가 보인다', async () => {
+  it('[관심]을 누르면 그 카드가 목록에서 빠지고 곳 수가 줄며 "관심 기업으로 옮겼습니다. 의견을 골라 주세요 · 관심 기업에서 의견 고르기"가 보인다(#981)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply(bucketedCards(), { total: 192, bookmarkedCount: 3 }));
     mockedPut.mockResolvedValue({
@@ -535,13 +541,19 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     expect(screen.getByTestId('list-total')).toHaveTextContent('191');
     expect(screen.getByTestId('list-bookmarked-count-link')).toHaveTextContent('관심 기업 4곳');
     const notice = screen.getByTestId('list-moved-notice');
-    expect(notice).toHaveTextContent('관심 기업으로 옮겼습니다 · 관심 기업 보기');
-    expect(within(notice).getByTestId('list-moved-link')).toHaveAttribute('href', '/bookmarks');
+    // #981: 옮긴 뒤 의견 고르기까지 이어지게 알리고, 링크는 관심 기업 화면의 "의견 전" 보기로 간다
+    // (영업 홈 "의견 전" 칸과 같은 조건 filter=NO_OPINION. 의견 거르기 "기타"(opinion=NONE)가 아니다).
+    expect(notice).toHaveTextContent(
+      /^관심 기업으로 옮겼습니다\. 의견을 골라 주세요 · 관심 기업에서 의견 고르기$/,
+    );
+    const movedLink = within(notice).getByTestId('list-moved-link');
+    expect(movedLink).toHaveTextContent(/^관심 기업에서 의견 고르기$/);
+    expect(movedLink).toHaveAttribute('href', '/bookmarks?filter=NO_OPINION');
     // 목록을 다시 부르지는 않는다(서버 응답 한 번).
     expect(mockedGet).toHaveBeenCalledTimes(1);
   });
 
-  it('"함께 보기"를 켠 목록에서는 [관심]을 눌러도 카드가 그대로 있고 안내가 없다', async () => {
+  it('"함께 보기"를 켠 목록에서는 [관심]을 눌러도 카드가 그대로 있고 옮김 안내가 없으며, 그 줄에 "의견을 골라 주세요"가 보인다(#981)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply(bucketedCards(), { bookmarkedCount: 3 }));
     mockedPut.mockResolvedValue({
@@ -550,10 +562,17 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     } as unknown as Awaited<ReturnType<typeof putBookmark>>);
     renderPage('/opportunities?process=ZINC_PLATING&withBookmarked=true');
     const cards = await screen.findAllByTestId('opportunity-card');
+    // 관심을 켜기 전에는 어느 줄에도 의견 전 알림이 없다.
+    expect(screen.queryByTestId('opinion-nudge')).not.toBeInTheDocument();
     await user.click(within(cards[0]).getByTestId('bookmark-button'));
     await waitFor(() => expect(mockedPut).toHaveBeenCalledTimes(1));
     expect(screen.getAllByTestId('opportunity-card')).toHaveLength(6);
     expect(screen.queryByTestId('list-moved-notice')).not.toBeInTheDocument();
+    // 관심을 켠 그 줄에만 의견 고르기를 띄워 알린다(의견이 아직 없다).
+    const nudges = await screen.findAllByTestId('opinion-nudge');
+    expect(nudges).toHaveLength(1);
+    expect(screen.getAllByTestId('opportunity-card')[0]).toContainElement(nudges[0]);
+    expect(nudges[0]).toHaveTextContent(/^의견을 골라 주세요$/);
     expect(titles()[0]).toBe('근거 있음 30곳');
   });
 });

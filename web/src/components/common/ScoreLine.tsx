@@ -28,6 +28,11 @@ export interface ScoreLineProps {
    * 안 주면(상세 머리) 지금처럼 한 가지 크기로 보인다.
    */
   numberSize?: number;
+  /**
+   * true면 "· 4/8"(조사한 항목 수)을 눈에 보이지 않게 뺀다(#981, 거래처 후보 줄). numberSize와 함께 쓴다.
+   * 화면 낭독 문구(aria-label)는 그대로 다 읽는다.
+   */
+  scoreOnly?: boolean;
   /** 점수 글자의 data-testid. 꼬리표는 `${testId}-pending-tag`(거래 확인 전), `${testId}-ai-proposal-tag`(AI 제안), `${testId}-existing-tag`. */
   testId: string;
 }
@@ -45,13 +50,14 @@ export default function ScoreLine({
   classificationCode,
   hidePendingTag = false,
   numberSize,
+  scoreOnly = false,
   testId,
 }: ScoreLineProps) {
   const pending = scoreState === 'PENDING';
   const aiProposal =
     pending && classificationCode !== undefined && !CLASSIFICATION_PENDING.has(classificationCode);
   const existing = relationStatus === 'EXISTING_CONFIRMED';
-  const parts = numberSize ? scoreParts(scoreDisplay) : null;
+  const parts = numberSize ? scoreParts(scoreDisplay, scoreOnly) : null;
   return (
     <>
       <span

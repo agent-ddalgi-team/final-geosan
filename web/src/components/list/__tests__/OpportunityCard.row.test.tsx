@@ -1,12 +1,14 @@
-// #972: 회사 카드가 표 줄 모양이 됐다. 회사·품목 | 지역·거리 | 추천 근거 + 검토사항 + 꼬리표 | 점수 | 의견 + 관심 별.
-// 카드 때 보이던 정보가 줄 안에 하나도 빠지지 않고 제 칸에 있는지 본다. 서버 호출 없이 줄만 그린다(가상 값).
+// #972: 회사 카드가 표 줄 모양이 됐다.
+// #981(PM 결정 2026-11-28): 거래처 후보 줄은 세 칸이다. 회사 이름·품목·산업·"지역 · 거리" | 추천 근거 + 검토사항 + 꼬리표 |
+// 적합도·점수(숫자만)·관심 별 + 의견 고르기. [자세히 보기]는 없고 회사 이름을 누른다.
+// 카드 때 보이던 정보가 줄 안에 제 칸에 있는지 본다. 서버 호출 없이 줄만 그린다(가상 값).
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OpportunityCard from '../OpportunityCard';
 import type { OpportunityCard as CardData } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import { listTable } from '../../../labels/ko';
-import { accent, listTheme } from '../../../theme/tokens';
+import { accent, listTheme, opinionNudge } from '../../../theme/tokens';
 import listFixture from '../../../test/fixtures/opportunities-apjeong.json';
 
 const apjeong = listFixture.data[0] as unknown as CardData;
@@ -38,7 +40,7 @@ function renderRow(
     </MemoryRouter>,
   );
   const row = screen.getByTestId('opportunity-card');
-  // 줄의 칸들(표 줄 다섯, 관심 기업 줄 셋)이 시안 순서대로 있다.
+  // 줄의 칸들(거래처 후보 줄도 관심 기업 줄도 셋)이 시안 순서대로 있다.
   const cells = Array.from(row.children) as HTMLElement[];
   return { row, cells };
 }
@@ -92,30 +94,55 @@ const full: Partial<CardData> = {
   },
 };
 
-describe('OpportunityCard 표 줄 (#972)', () => {
-  it('줄은 칸 다섯 개다: 회사·품목 | 지역·거리 | 추천 근거·검토사항·꼬리표 | 점수 | 의견·관심', () => {
+/** 관심(★)을 켠 기록. */
+const bookmarkOn = {
+  version: 1,
+  updatedBy: 'park-lee',
+  updatedAt: '2026-11-06T01:00:00Z',
+  active: true,
+};
+
+/** 앞 요소가 뒤 요소보다 문서에서 먼저 나오는지. */
+const comesBefore = (first: Element, second: Element) =>
+  Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+describe('OpportunityCard 표 줄 (#972, #981 세 칸)', () => {
+  it('줄은 칸 세 개다: 회사·품목·산업·지역·거리 | 추천 근거·검토사항·꼬리표 | 적합도·점수·관심·의견', () => {
     const { row, cells } = renderRow(full);
     expect(row).toHaveAttribute('data-layout', 'table');
     expect(row).toHaveClass('cand-row');
-    expect(cells).toHaveLength(5);
-    const [company, region, reason, score, actions] = cells;
+    expect(row).not.toHaveClass('cand-row--three');
+    expect(cells).toHaveLength(3);
+    const [company, reason, actions] = cells;
 
-    // 1칸: 번호 · 회사 이름(상세 링크) · 들어온 날짜 · 산업.
+    // 1칸: 번호 · 회사 이름(상세 링크) · 품목 · 들어온 날짜 · 산업 · "지역 · 거리" 한 줄.
     expect(within(company).getByTestId('card-rank')).toHaveTextContent(/^3$/);
     expect(within(company).getByTestId('card-rank')).toHaveAttribute('aria-label', '순위 3');
-    expect(within(company).getByTestId('card-title-link')).toHaveTextContent(apjeong.title);
+    expect(within(company).getByTestId('card-title')).toHaveTextContent(apjeong.title);
+    expect(within(company).getByTestId('card-title-link')).toHaveAttribute(
+      'href',
+      `/opportunities/${encodeURIComponent(apjeong.oppId)}`,
+    );
     expect(within(company).getByTestId('card-ingested-tag')).toHaveTextContent('11/24 들어옴');
     expect(
       within(company)
         .getAllByTestId('card-industry-tag')
         .map((tag) => tag.textContent),
     ).toEqual(['자동차 부품', '방위산업']);
+    // 지역(시·군)과 거산에서의 거리는 따로 칸이 아니라 회사 칸 안 한 줄이다. 거리는 꼬리표가 아니라 글자다.
+    const region = within(company).getByTestId('card-region');
+    const distance = within(company).getByTestId('card-distance-tag');
+    expect(region).toHaveTextContent(/^아산시$/);
+    expect(distance).toHaveTextContent(/^거산에서 8\.2km$/);
+    expect(distance).not.toHaveAttribute('data-tone');
+    expect(distance.parentElement).toBe(region.parentElement);
+    // 줄 맨 앞 "지역"은 좁은 화면·화면 낭독용 이름표다.
+    expect(region.parentElement).toHaveTextContent(/^지역아산시 · 거산에서 8\.2km$/);
+    expect(within(region.parentElement as HTMLElement).getByText('지역')).toHaveClass(
+      'cand-row__label',
+    );
 
-    // 2칸: 지역(시·군)과 거산에서의 거리.
-    expect(within(region).getByTestId('card-region')).toHaveTextContent(/^아산시$/);
-    expect(within(region).getByTestId('card-distance-tag')).toHaveTextContent('거산에서 8.2km');
-
-    // 3칸: 추천 근거 · 검토사항 · 순서 조정 · 표면처리 직접 근거 · 꼬리표들.
+    // 2칸: 추천 근거 · 검토사항 · 순서 조정 · 표면처리 직접 근거 · 꼬리표들(적합도 꼬리표는 여기서 빠졌다).
     expect(within(reason).getByTestId('card-reason')).toHaveTextContent(apjeong.reason);
     expect(within(reason).getByTestId('card-blocker')).toHaveTextContent(/^확인할 것: 소재$/);
     expect(within(reason).getByTestId('card-rank-adjust')).toHaveTextContent('성사 2곳');
@@ -123,7 +150,7 @@ describe('OpportunityCard 표 줄 (#972)', () => {
       '생산품 "알루미늄 아노다이징"',
     );
     expect(within(reason).getByTestId('card-classification')).toBeInTheDocument();
-    expect(within(reason).getByTestId('card-fit-level')).toHaveTextContent('적합도 상 ↑');
+    expect(within(reason).queryByTestId('card-fit-level')).not.toBeInTheDocument();
     expect(within(reason).getByTestId('card-process-tag')).toHaveTextContent('전기아연도금');
     expect(within(reason).getByTestId('card-virtual-tag')).toBeInTheDocument();
     expect(within(reason).getByTestId('card-brochure-tag')).toBeInTheDocument();
@@ -135,43 +162,128 @@ describe('OpportunityCard 표 줄 (#972)', () => {
       '볼트·너트를 직접 가공',
     );
 
-    // 4칸: 점수 글자는 서버가 준 그대로이고 꼬리표(확인 전 · 기존 거래처)도 여기 있다.
-    expect(within(score).getByTestId('card-score')).toHaveTextContent(/^참고 63점 · 5\/8$/);
-    expect(within(score).getByTestId('card-score-ai-proposal-tag')).toBeInTheDocument();
-    expect(within(score).getByTestId('card-score-existing-tag')).toBeInTheDocument();
+    // 3칸 첫 줄: 적합도 · 점수(숫자만) · 점수 꼬리표(확인 전 · 기존 거래처) + 관심 별. 그 아래 의견 고르기.
+    expect(actions).toHaveClass('cand-row__actions');
+    const scoreLine = actions.querySelector('.cand-row__score-line') as HTMLElement;
+    const scoreBox = scoreLine.querySelector('.cand-row__score') as HTMLElement;
+    expect(within(scoreBox).getByTestId('card-fit-level')).toHaveTextContent(/^적합도 상 ↑$/);
+    expect(within(scoreBox).getByTestId('card-score')).toHaveTextContent(/^참고 63점$/);
+    expect(within(scoreBox).getByTestId('card-score-ai-proposal-tag')).toBeInTheDocument();
+    expect(within(scoreBox).getByTestId('card-score-existing-tag')).toBeInTheDocument();
+    expect(within(scoreLine).getByTestId('bookmark-button')).toBeInTheDocument();
+    const opinion = within(actions).getByTestId('opinion-select');
+    expect(opinion).toBeEnabled();
+    expect(scoreLine).not.toContainElement(opinion);
+    expect(comesBefore(scoreLine, opinion)).toBe(true);
+  });
 
-    // 5칸: 의견 고르기 · 관심 별 · 자세히 보기.
-    expect(within(actions).getByTestId('opinion-select')).toBeEnabled();
-    expect(within(actions).getByTestId('bookmark-button')).toBeInTheDocument();
-    expect(within(actions).getByTestId('card-view-detail-link')).toHaveAttribute(
+  it('회사 이름과 품목이 따로 놓이고, 제목 글은 "회사 · 품목" 그대로이며 링크 글은 회사 이름만이다', () => {
+    const { cells } = renderRow({ ...full, title: 'A정밀 · 밸브 바디 아노다이징' });
+    const title = within(cells[0]).getByTestId('card-title');
+    // 화면 낭독·검색에는 서버 글자 그대로("회사 · 품목")가 읽힌다. 사이의 " · "만 눈에 숨긴 글자다.
+    expect(title.textContent).toBe('A정밀 · 밸브 바디 아노다이징');
+    expect(within(cells[0]).getByRole('heading', { level: 2 })).toBe(title);
+    const link = within(title).getByTestId('card-title-link');
+    expect(link.textContent).toBe('A정밀');
+    expect(link).toHaveClass('cand-row__name');
+    const item = within(title).getByTestId('card-title-item');
+    expect(item.textContent).toBe('밸브 바디 아노다이징');
+    expect(link).not.toContainElement(item);
+    const separator = title.querySelector('.cand-row__sep') as HTMLElement;
+    expect(separator.textContent).toBe(' · ');
+    expect(comesBefore(link, separator)).toBe(true);
+    expect(comesBefore(separator, item)).toBe(true);
+  });
+
+  it('품목에 " · "가 더 있어도 첫 " · "에서만 가른다', () => {
+    const { cells } = renderRow({ ...full, title: '가상정밀 · 볼트 · 너트' });
+    expect(within(cells[0]).getByTestId('card-title-link').textContent).toBe('가상정밀');
+    expect(within(cells[0]).getByTestId('card-title-item').textContent).toBe('볼트 · 너트');
+    expect(within(cells[0]).getByTestId('card-title').textContent).toBe('가상정밀 · 볼트 · 너트');
+  });
+
+  it('" · "가 없는 제목은 통째로 회사 이름이고 품목 줄이 없다', () => {
+    const { cells } = renderRow({ ...full, title: '가상정밀' });
+    const title = within(cells[0]).getByTestId('card-title');
+    expect(title.textContent).toBe('가상정밀');
+    expect(within(title).getByTestId('card-title-link').textContent).toBe('가상정밀');
+    expect(within(title).queryByTestId('card-title-item')).not.toBeInTheDocument();
+    expect(title.querySelector('.cand-row__sep')).toBeNull();
+  });
+
+  it('점수는 숫자만("63점") 크게 보이고 "· 5/8"은 보이지 않지만, 화면 낭독 문구는 전체를 읽는다', () => {
+    const first = renderRow({ ...full, scoreState: 'CONFIRMED', scoreDisplay: '63점 · 5/8' });
+    const score = within(first.cells[2]).getByTestId('card-score');
+    expect(score).toHaveTextContent(/^63점$/);
+    expect(score).toHaveAttribute('aria-label', '점수 63점, 8개 항목 중 5개 조사');
+    expect(within(score).getByText('63')).toHaveStyle({
+      fontSize: `${listTheme.scoreSize}px`,
+      fontWeight: 700,
+    });
+    expect(first.row).not.toHaveTextContent('5/8');
+    document.body.innerHTML = '';
+    // "참고"는 그대로 보이고 낭독 문구에도 들어간다.
+    const second = renderRow({ ...full, scoreState: 'CONFIRMED' });
+    const reference = within(second.cells[2]).getByTestId('card-score');
+    expect(reference).toHaveTextContent(/^참고 63점$/);
+    expect(reference).toHaveAttribute('aria-label', '참고 점수 63점, 8개 항목 중 5개 조사');
+  });
+
+  it('점수가 없는 회사("--")는 "점수 --" 그대로 보인다', () => {
+    const { cells } = renderRow({ ...full, scoreState: 'NONE', scoreDisplay: '--' });
+    const score = within(cells[2]).getByTestId('card-score');
+    expect(score).toHaveTextContent(/^점수 --$/);
+    expect(score).toHaveAttribute('aria-label', '점수 산정 전');
+  });
+
+  it('적합도는 점수 앞에 놓이고, 적합도가 없는 줄은 점수만 있다', () => {
+    const first = renderRow(full);
+    const firstBox = first.cells[2].querySelector('.cand-row__score') as HTMLElement;
+    const fit = within(firstBox).getByTestId('card-fit-level');
+    expect(comesBefore(fit, within(firstBox).getByTestId('card-score'))).toBe(true);
+    // 적합도 상은 눈에 띄는 색, 그 밖에는 보통 색이다(글자가 늘 함께 있다).
+    expect(fit).toHaveAttribute('data-tone', 'ask');
+    document.body.innerHTML = '';
+    const medium = renderRow({ ...full, fitLevel: 'MEDIUM', previousFitLevel: null });
+    const mediumFit = within(medium.cells[2]).getByTestId('card-fit-level');
+    expect(mediumFit).toHaveTextContent(/^적합도 중$/);
+    expect(mediumFit).toHaveAttribute('data-tone', 'neutral');
+    document.body.innerHTML = '';
+    const none = renderRow({ ...full, fitLevel: null, previousFitLevel: null });
+    const noneBox = none.cells[2].querySelector('.cand-row__score') as HTMLElement;
+    expect(within(none.row).queryByTestId('card-fit-level')).not.toBeInTheDocument();
+    expect(within(noneBox).getByTestId('card-score')).toHaveTextContent(/^참고 63점$/);
+  });
+
+  it('거래처 후보 줄에는 [자세히 보기]가 없고(회사 이름이 상세 링크), 관심 기업 줄에는 그대로 있다', () => {
+    const table = renderRow(full);
+    expect(within(table.row).queryByTestId('card-view-detail-link')).not.toBeInTheDocument();
+    expect(within(table.row).queryByText(/자세히 보기/)).not.toBeInTheDocument();
+    expect(within(table.row).getByTestId('card-title-link')).toHaveAttribute(
+      'href',
+      `/opportunities/${encodeURIComponent(apjeong.oppId)}`,
+    );
+    document.body.innerHTML = '';
+    const bookmark = renderRow(full, true, 'bookmark');
+    expect(within(bookmark.row).getByTestId('card-view-detail-link')).toHaveAttribute(
       'href',
       `/opportunities/${encodeURIComponent(apjeong.oppId)}`,
     );
   });
 
-  it('점수는 숫자만 크게 띄우고 글자는 서버가 준 그대로다', () => {
-    const { cells } = renderRow({ ...full, scoreState: 'CONFIRMED' });
-    const score = within(cells[3]).getByTestId('card-score');
-    expect(score).toHaveTextContent(/^참고 63점 · 5\/8$/);
-    expect(within(score).getByText('63')).toHaveStyle({
-      fontSize: `${listTheme.scoreSize}px`,
-      fontWeight: 700,
-    });
-  });
-
   it('확인할 것이 있으면 검토사항 줄이 주의 글자색이고, 없으면("없음 — …") 보통 글자색이다', () => {
     const first = renderRow(full);
-    expect(within(first.cells[2]).getByTitle('확인할 것: 소재')).toHaveStyle({
+    expect(within(first.cells[1]).getByTitle('확인할 것: 소재')).toHaveStyle({
       color: listTheme.checkFg,
     });
     document.body.innerHTML = '';
     const second = renderRow({ ...full, checkPoints: [], checkKinds: [] });
-    expect(within(second.cells[2]).getByTitle(apjeong.blocker.text)).toHaveStyle({
+    expect(within(second.cells[1]).getByTitle(apjeong.blocker.text)).toHaveStyle({
       color: listTheme.bodyFg,
     });
   });
 
-  it('점수 전 회사는 점수 칸에 "점수 전 · 조사 중", 추천 근거 칸에 고른 이유가 보인다', () => {
+  it('점수 전 회사는 점수 자리에 "점수 전 · 조사 중", 추천 근거 칸에 고른 이유가 보인다', () => {
     const { cells } = renderRow({
       ...full,
       bucket: 'NOT_RESEARCHED',
@@ -180,21 +292,123 @@ describe('OpportunityCard 표 줄 (#972)', () => {
       pickReason: '앵커 볼트를 생산하고 원자재가 강재',
       researchState: 'RUNNING',
     });
-    expect(within(cells[3]).getByTestId('card-score')).toHaveTextContent(/^점수 전 · 조사 중$/);
-    expect(within(cells[2]).getByTestId('card-pick-reason')).toHaveTextContent(
+    expect(within(cells[2]).getByTestId('card-score')).toHaveTextContent(/^점수 전 · 조사 중$/);
+    expect(within(cells[1]).getByTestId('card-pick-reason')).toHaveTextContent(
       '앵커 볼트를 생산하고 원자재가 강재',
     );
-    expect(within(cells[2]).getByText('고른 이유')).toBeInTheDocument();
+    expect(within(cells[1]).getByText('고른 이유')).toBeInTheDocument();
   });
 
-  it('주소가 없는 회사는 "지역 미확인", 지역·거리 칸이 없는 옛 응답은 지역 칸이 비어 있다', () => {
+  it('주소가 없는 회사는 "지역 미확인", 지역·거리 칸이 없는 옛 응답은 지역 줄이 아예 없다', () => {
     const first = renderRow({ ...full, region: null, distanceKm: null });
-    expect(within(first.cells[1]).getByTestId('card-region')).toHaveTextContent('지역 미확인');
-    expect(within(first.cells[1]).queryByTestId('card-distance-tag')).not.toBeInTheDocument();
+    const region = within(first.cells[0]).getByTestId('card-region');
+    expect(region).toHaveTextContent(/^지역 미확인$/);
+    expect(region.parentElement).toHaveTextContent(/^지역지역 미확인$/);
+    expect(within(first.row).queryByTestId('card-distance-tag')).not.toBeInTheDocument();
     document.body.innerHTML = '';
     const second = renderRow({});
-    expect(second.cells).toHaveLength(5);
-    expect(second.cells[1]).toBeEmptyDOMElement();
+    expect(second.cells).toHaveLength(3);
+    expect(within(second.row).queryByTestId('card-region')).not.toBeInTheDocument();
+    expect(within(second.row).queryByTestId('card-distance-tag')).not.toBeInTheDocument();
+    // 지역 이름표도 그리지 않는다(값을 지어내지 않는다).
+    expect(within(second.cells[0]).queryByText('지역')).not.toBeInTheDocument();
+  });
+
+  describe('의견 전 알림 (#981)', () => {
+    // 알림의 기준은 영업 홈 "의견 전" 칸과 같다: 관심이 켜져 있고 + 의견이 없고 + 영업 단계가 아직 없거나 미접촉.
+    type Records = CardData['records'];
+    const stageOf = (status: string): Records['outcome'] =>
+      ({
+        version: 1,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-20T01:00:00Z',
+        status,
+      }) as Records['outcome'];
+    /** 관심을 켜고 의견은 없고 영업 단계도 없는 줄(알림이 뜨는 기본 모양). 조건 하나씩만 바꿔 가며 본다. */
+    const waiting = (changes: Partial<Records> = {}): Partial<CardData> => ({
+      ...full,
+      records: { opinion: null, bookmark: bookmarkOn, outcome: null, ...changes },
+    });
+
+    it('Given 관심이 켜져 있고 의견도 영업 단계도 없음 When 거래처 후보 줄 Then 고르기 칸이 띄워지고 "의견을 골라 주세요"가 보인다', () => {
+      const { cells } = renderRow(waiting());
+      const nudge = within(cells[2]).getByTestId('opinion-nudge');
+      expect(nudge).toHaveTextContent(/^의견을 골라 주세요$/);
+      const select = within(cells[2]).getByTestId('opinion-select');
+      expect(select).toHaveAttribute('data-nudge', 'true');
+      // 고르기 칸이 알림 글을 설명으로 읽는다(색만으로 알리지 않는다).
+      expect(select).toHaveAttribute('aria-describedby', nudge.id);
+      expect(select).toHaveStyle({ background: opinionNudge.bg });
+    });
+
+    it('Given 관심이 켜져 있고 의견이 없고 영업 단계가 미접촉 When 줄 Then 알림이 보인다(단계 꼬리표는 없다)', () => {
+      const { row } = renderRow(waiting({ outcome: stageOf('NOT_EXECUTED') }));
+      expect(within(row).getByTestId('opinion-nudge')).toHaveTextContent(/^의견을 골라 주세요$/);
+      expect(within(row).getByTestId('opinion-select')).toHaveAttribute('data-nudge', 'true');
+      expect(within(row).queryByTestId('card-stage-tag')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['접촉', 'IN_PROGRESS'],
+      ['견적·샘플', 'SAMPLE_OR_REGISTRATION_APPROVED'],
+      ['보류', 'ON_HOLD'],
+      ['성사', 'WON'],
+      ['거절', 'LOST'],
+    ])(
+      'Given 관심이 켜져 있고 의견이 없지만 영업 단계가 이미 "%s" When 줄 Then 알리지 않는다(영업 홈 "의견 전"에도 세지 않는 회사)',
+      (label, status) => {
+        const { row } = renderRow(waiting({ outcome: stageOf(status) }));
+        // 단계가 정말 그 값으로 그려졌는지 먼저 본다(꼬리표), 그다음 알림이 없는지 본다.
+        expect(within(row).getByTestId('card-stage-tag')).toHaveTextContent(label);
+        expect(within(row).queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+        const select = within(row).getByTestId('opinion-select');
+        expect(select).toHaveValue('');
+        expect(select).not.toHaveAttribute('data-nudge');
+        expect(select).not.toHaveAttribute('aria-describedby');
+      },
+    );
+
+    it('Given 관심이 켜져 있고 영업 단계는 없지만 의견이 이미 있음 When 줄 Then 알림이 없다', () => {
+      const { row } = renderRow(
+        waiting({
+          opinion: {
+            version: 1,
+            updatedBy: 'park-lee',
+            updatedAt: '2026-11-06T01:00:00Z',
+            opinion: 'NEED_CHECK',
+          },
+        }),
+      );
+      expect(within(row).queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+      expect(within(row).getByTestId('opinion-select')).not.toHaveAttribute('data-nudge');
+      expect(within(row).getByTestId('opinion-select')).toHaveValue('NEED_CHECK');
+    });
+
+    it.each([
+      ['관심 기록이 없음', null],
+      ['관심을 껐음', { ...bookmarkOn, active: false }],
+    ])('Given %s When 줄 Then 의견도 영업 단계도 없어도 알림이 없다', (_name, bookmark) => {
+      const { row } = renderRow(waiting({ bookmark }));
+      expect(within(row).queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+      expect(within(row).getByTestId('opinion-select')).not.toHaveAttribute('data-nudge');
+    });
+
+    it('Given 관심이 켜져 있고 의견도 영업 단계도 없음 When 관심 기업 줄 Then 같은 알림이 보이고, 단계가 접촉이면 관심 기업 줄에서도 알리지 않는다', () => {
+      const first = renderRow(waiting(), true, 'bookmark');
+      expect(within(first.cells[2]).getByTestId('opinion-nudge')).toHaveTextContent(
+        /^의견을 골라 주세요$/,
+      );
+      document.body.innerHTML = '';
+      const second = renderRow(waiting({ outcome: stageOf('IN_PROGRESS') }), true, 'bookmark');
+      expect(within(second.row).getByTestId('card-stage-tag')).toHaveTextContent('접촉');
+      expect(within(second.row).queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+    });
+
+    it('Given 담당자를 고르기 전 When 알림이 뜰 줄(관심 켜짐 · 의견 없음 · 단계 없음) Then 알림 대신 "먼저 담당자를 고르세요"만 보인다', () => {
+      const { row } = renderRow(waiting(), false);
+      expect(within(row).queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+      expect(within(row).getByTestId('opinion-pick-staff-text')).toBeInTheDocument();
+    });
   });
 
   it('관심 단추는 별 그림이고 이름은 "관심"/"관심 기업" 그대로다', () => {
@@ -204,18 +418,7 @@ describe('OpportunityCard 표 줄 (#972)', () => {
     expect(off.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(off).toHaveStyle({ background: listTheme.starOff.bg });
     document.body.innerHTML = '';
-    const second = renderRow({
-      ...full,
-      records: {
-        ...full.records,
-        bookmark: {
-          version: 1,
-          updatedBy: 'park-lee',
-          updatedAt: '2026-11-06T01:00:00Z',
-          active: true,
-        },
-      },
-    });
+    const second = renderRow({ ...full, records: { ...full.records, bookmark: bookmarkOn } });
     const on = within(second.row).getByRole('button', { name: '관심 기업', pressed: true });
     expect(on).toHaveStyle({ background: listTheme.starOn.bg, color: listTheme.starOn.fg });
   });
@@ -264,9 +467,11 @@ describe('OpportunityCard 관심 기업 줄 (#972)', () => {
     expect(cells).toHaveLength(3);
     const [company, reason, side] = cells;
 
-    // 1칸: 회사 이름(상세 링크) · 산업 · 꼬리표들(거리도 꼬리표로). 번호는 관심 기업 보기에 없다.
+    // 1칸: 회사 이름(상세 링크) · 품목 · 산업 · 꼬리표들(적합도도, 거리도 꼬리표로). 번호는 관심 기업 보기에 없다.
     expect(within(company).queryByTestId('card-rank')).not.toBeInTheDocument();
-    expect(within(company).getByTestId('card-title-link')).toHaveTextContent(apjeong.title);
+    expect(within(company).getByTestId('card-title')).toHaveTextContent(apjeong.title);
+    expect(within(company).getByTestId('card-title-link').textContent).toBe('A정밀');
+    expect(within(company).getByTestId('card-title-item').textContent).toBe('밸브 바디 아노다이징');
     expect(
       within(company)
         .getAllByTestId('card-industry-tag')
@@ -286,7 +491,11 @@ describe('OpportunityCard 관심 기업 줄 (#972)', () => {
     ]) {
       expect(within(company).getByTestId(testId)).toBeInTheDocument();
     }
-    expect(within(company).getByTestId('card-distance-tag')).toHaveTextContent('거산에서 8.2km');
+    // 관심 기업 줄은 지역 줄이 없어 거리를 꼬리표로 보인다. 적합도도 점수 옆이 아니라 꼬리표 묶음 안이다.
+    const distance = within(company).getByTestId('card-distance-tag');
+    expect(distance).toHaveTextContent('거산에서 8.2km');
+    expect(distance).toHaveAttribute('data-tone', 'neutral');
+    expect(within(company).queryByTestId('card-region')).not.toBeInTheDocument();
 
     // 2칸: 이름표가 글 위에 보이고(숨기지 않는다) 추천 근거 · 검토사항 · 그 밖의 줄이 그대로 있다.
     const reasonLabel = within(reason).getByText('추천 근거');
@@ -298,9 +507,11 @@ describe('OpportunityCard 관심 기업 줄 (#972)', () => {
     expect(within(reason).getByTestId('card-rank-adjust')).toBeInTheDocument();
     expect(within(reason).getByTestId('card-own-plating-basis')).toBeInTheDocument();
 
-    // 3칸: "참고 63"의 숫자가 크게, 글자는 서버가 준 그대로. 의견 고르기 · 관심 별 · [자세히 보기](주 단추).
+    // 3칸: "참고 63"의 숫자가 크게, 글자는 서버가 준 그대로("· 5/8"까지 보인다). 의견 고르기 · 관심 별 · [자세히 보기](주 단추).
+    expect(within(side).queryByTestId('card-fit-level')).not.toBeInTheDocument();
     const score = within(side).getByTestId('card-score');
     expect(score).toHaveTextContent(/^참고 63점 · 5\/8$/);
+    expect(score).toHaveAttribute('aria-label', '참고 점수 63점, 8개 항목 중 5개 조사');
     expect(within(score).getByText('63')).toHaveStyle({
       fontSize: `${listTheme.scoreSizeLarge}px`,
       fontWeight: 700,

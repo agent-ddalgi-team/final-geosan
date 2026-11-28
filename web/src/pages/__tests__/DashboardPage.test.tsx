@@ -932,6 +932,56 @@ describe('DashboardPage', () => {
       expect(screen.queryByTestId('dashboard-today-assistant')).not.toBeInTheDocument();
     });
 
+    describe('의견 전 알림 (#981)', () => {
+      const withNoOpinion = (count: number, todayChecks: TodayCheckRow[] = rows): Dashboard => ({
+        ...fixtureData,
+        counts: { ...fixtureData.counts, NO_OPINION: count },
+        todayChecks,
+      });
+
+      it('Given 관심에 담고 의견을 안 고른 회사 4곳 When 영업 홈 Then 오늘 할 일 칸 안 목록 아래에 알림 한 줄이 보이고, 링크는 관심 기업의 "의견 전" 보기로 간다', async () => {
+        mockedGet.mockResolvedValueOnce(reply(withNoOpinion(4)));
+        renderPage();
+        const today = await screen.findByTestId('dashboard-today');
+        const notice = within(today).getByTestId('dashboard-no-opinion-notice');
+        expect(notice).toHaveTextContent(/^관심에 담고 의견을 안 고른 회사 4곳고르러 가기 →$/);
+        // 알림은 오늘 할 일 칸에만 하나 있다(전달 사항 칸에는 없다).
+        expect(screen.getAllByTestId('dashboard-no-opinion-notice')).toHaveLength(1);
+        // 일정 목록 · 확인할 회사 묶음 아래에 놓인다.
+        const lastGroup = within(today).getAllByTestId('dashboard-today-row').at(-1) as HTMLElement;
+        expect(
+          lastGroup.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        const link = within(notice).getByTestId('dashboard-no-opinion-link');
+        // 곳 수와 같은 기준(영업 홈 "의견 전" 칸의 조건 filter=NO_OPINION)으로 거른 관심 기업 화면으로 간다.
+        expect(link).toHaveAttribute('href', '/bookmarks?filter=NO_OPINION');
+        await userEvent.click(link);
+        expect(await screen.findByTestId('location')).toHaveTextContent(
+          /^\/bookmarks\?filter=NO_OPINION$/,
+        );
+      });
+
+      it('Given 의견 전인 회사 0곳 When 영업 홈 Then 오늘 할 일 칸은 그대로이고 알림은 없다', async () => {
+        mockedGet.mockResolvedValueOnce(reply(withNoOpinion(0)));
+        renderPage();
+        const today = await screen.findByTestId('dashboard-today');
+        expect(within(today).getByTestId('dashboard-today-schedule')).toBeInTheDocument();
+        expect(screen.queryByTestId('dashboard-no-opinion-notice')).not.toBeInTheDocument();
+      });
+
+      it('Given 오늘 할 일은 없고 의견 전인 회사만 2곳 When 영업 홈 Then 빈 안내 아래에 알림이 보인다', async () => {
+        mockedGet.mockResolvedValueOnce(reply(withNoOpinion(2, [])));
+        renderPage();
+        const today = await screen.findByTestId('dashboard-today');
+        expect(within(today).getByTestId('dashboard-today-empty')).toHaveTextContent(
+          dashboardTexts.workEmpty,
+        );
+        expect(within(today).getByTestId('dashboard-no-opinion-notice')).toHaveTextContent(
+          '관심에 담고 의견을 안 고른 회사 2곳',
+        );
+      });
+    });
+
     it('서버가 옛 모양(줄 목록 칸 없음)이면 구역을 지어내지 않는다', async () => {
       const { todayChecks: _todayChecks, ...old } = fixtureData;
       void _todayChecks;

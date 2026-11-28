@@ -42,6 +42,28 @@ export const warn = {
   border: '#F2D9BD',
 } as const;
 
+/**
+ * "유료" 꼬리표(#981): 누르면 AI 비용이 드는 단추의 글 뒤. 흰 단추 위는 연보라 바탕 + 보라 글자,
+ * 보라 주 단추 위는 흰 바탕 + 보라 글자(둘 다 대비 4.5:1 이상).
+ */
+export const paidTag = {
+  plain: { bg: accent.softDeep, fg: accent.text },
+  onPrimary: { bg: '#FFFFFF', fg: accent.text },
+  radius: 5,
+  fontSize: 11.5,
+} as const;
+
+/**
+ * 의견 전 알림(#981): 관심에 담고 의견을 안 고른 회사의 고르기 칸 · 안내 띠. 주의(주황) 계열을 그대로 쓴다.
+ * 색만으로 알리지 않게 "의견을 골라 주세요" 글이 늘 함께 보인다.
+ */
+export const opinionNudge = {
+  border: warn.dot,
+  bg: warn.bg,
+  fg: warn.text,
+  line: warn.border,
+} as const;
+
 /** 확인(초록, #972): 사실(확인), 공정 확인됨. text는 bg 위 약 4.7:1. */
 export const ok = {
   text: '#1F7A43',
@@ -151,8 +173,8 @@ export const listTheme = {
   checkFg: warn.text,
   /** 지난 일정(굵게). */
   overdueFg: warn.text,
-  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. */
-  titleSize: 16,
+  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. #981: 회사 이름이 잘 보이게 표 줄도 18로 키웠다(품목은 그 아래 작은 글). */
+  titleSize: 18,
   titleSizeLarge: 18,
   /** 점수 숫자 크기: 표 줄 / 관심 기업 줄의 큰 숫자. */
   scoreSize: 18,
@@ -413,37 +435,50 @@ export const antdTheme: ThemeConfig = {
 };
 
 /**
- * 접속 화면(#972 시안 Login): 밝은 바탕 + 가운데 흰 상자(얇은 테두리, 모서리 16), 보라 [접속 →].
- * 예전의 남색 바탕 · 빛나는 곡선 · 라임 단추는 없앴다. 이 값은 접속 화면에만 쓴다.
+ * 접속 화면(#978, PM 결정 2026-11-28): 짙은 보라 밤하늘 + 아래쪽 연보라로 빛나는 곡선, 유리 느낌 입력 상자,
+ * 보라 [접속 →]. 배치는 PM이 준 접속 화면 디자인이고 색은 다른 화면의 보라 톤에 맞췄다.
+ * (#972의 밝은 바탕 흰 상자를 대신한다.) 이 값은 접속 화면에만 쓴다.
  */
 export const loginTheme = {
-  bg: colors.bgLayout,
-  text: colors.text,
-  textSoft: colors.textSecondary,
-  /** 맨 아래 저작권 줄(화면 바탕 위 약 4.8:1). */
-  textDimmed: colors.textDimmed,
-  badgeBg: colors.bgContainer,
-  badgeBorder: colors.borderSecondary,
-  cardBg: colors.bgContainer,
-  cardBorder: colors.borderSecondary,
+  skyTop: '#15123A',
+  skyMiddle: '#2A2170',
+  skyLow: '#5A43D6',
+  /** 곡선 바로 위 가장 밝은 하늘. 유리 상자가 여기까지 내려와도 흰 글자가 읽혀야 한다. */
+  skyGlow: '#8F7BFF',
+  spot: 'rgba(255, 255, 255, 0.07)',
+  planet: '#0D0B24',
+  rim: 'rgba(255, 255, 255, 0.6)',
+  glowCore: '#D9CFFF',
+  text: '#FFFFFF',
+  /** 맨 아래 저작권 줄(짙은 곡선 위). */
+  textSoft: '#C7C3E0',
+  badgeBorder: 'rgba(255, 255, 255, 0.45)',
+  /** 유리 상자: 보라 유리(cardTint) 위에 옅은 흰 막(cardSheen)을 겹친다. */
+  cardTint: 'rgba(58, 46, 140, 0.6)',
+  cardSheen: 'rgba(255, 255, 255, 0.08)',
+  cardBorder: 'rgba(255, 255, 255, 0.28)',
+  cardShadow: 'rgba(5, 5, 30, 0.35)',
   inputBg: colors.bgContainer,
-  inputBorder: colors.border,
+  /** 입력 칸 앞 아이콘(흰 입력 칸 위). */
+  icon: colors.textSecondary,
   accent: accent.bg,
   accentHover: accent.bright,
   accentActive: accent.text,
   accentText: accent.onBg,
-  focusRing: 'rgba(106, 77, 240, 0.28)',
-  /** 누를 수 없는 [접속]: 중립 바탕 + 보조 글자(약 6.3:1). */
-  disabledBg: neutralChip.bg,
-  disabledFg: neutralChip.text,
+  /** 보라 단추가 보라 유리 위에서 묻히지 않게 두르는 얇은 흰 선. */
+  buttonRing: 'rgba(255, 255, 255, 0.22)',
+  focusRing: 'rgba(207, 196, 255, 0.7)',
+  /** 누를 수 없는 [접속]: 채도를 뺀 보라 바탕 + 옅은 글자(약 6:1). */
+  disabledBg: '#4A3F8F',
+  disabledFg: '#D9D4F2',
   cardWidth: 400,
-  cardRadius: radius.modal,
+  cardRadius: 20,
   inputHeight: 48,
   buttonHeight: 50,
   inputRadius: radius.control,
   badgeRadius: radius.controlSm,
-  titleSize: 28,
-  subtitleSize: 16,
+  titleSize: 50,
+  subtitleSize: 34,
 } as const;
 
 /** 접속 화면에서만 쓰는 Ant Design 테마: 공통 테마 위에 입력 칸·단추 크기를 덮는다. */
@@ -456,7 +491,8 @@ export const loginAntdTheme: ThemeConfig = {
       controlHeightLG: loginTheme.inputHeight,
       borderRadiusLG: loginTheme.inputRadius,
       colorBgContainer: loginTheme.inputBg,
-      colorBorder: loginTheme.inputBorder,
+      // 흰 입력 칸이 유리 상자 위에 놓여 테두리 선이 따로 필요 없다(초점일 때만 보라 선).
+      colorBorder: loginTheme.inputBg,
       hoverBorderColor: loginTheme.accent,
       activeBorderColor: loginTheme.accent,
       activeShadow: `0 0 0 3px ${loginTheme.focusRing}`,
@@ -465,7 +501,7 @@ export const loginAntdTheme: ThemeConfig = {
       ...antdTheme.components?.Button,
       controlHeightLG: loginTheme.buttonHeight,
       borderRadiusLG: loginTheme.inputRadius,
-      fontWeight: 600,
+      fontWeight: 700,
       colorPrimary: loginTheme.accent,
       colorPrimaryHover: loginTheme.accentHover,
       colorPrimaryActive: loginTheme.accentActive,

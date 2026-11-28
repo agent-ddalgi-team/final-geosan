@@ -162,12 +162,22 @@ export const opinionArea = {
   reasonRequired: '사유를 적어 주세요',
   memoLabel: '메모(선택, 200자)',
   pickStaffFirst: '먼저 담당자를 고르세요',
+  /** (#981) 관심에 담았는데 의견을 아직 안 고른 줄의 고르기 칸 아래 한 줄. */
+  nudge: '의견을 골라 주세요',
   changedByOther: '다른 담당자가 방금 바꿨습니다',
   save: '저장',
   cancel: '취소',
   saving: '저장 중',
   contactHint: '전화번호·이메일 같은 연락처는 적지 마세요.',
   previousPrefix: '이전:',
+} as const;
+
+/**
+ * (#981, PM 결정 2026-11-28) 돈이 드는 단추의 글 뒤 작은 꼬리표. 💰 이모지를 대신한다.
+ * 누르면 AI 비용이 드는 단추에만 붙인다(창만 여는 단추에는 붙이지 않는다).
+ */
+export const paidTexts = {
+  tag: '유료',
 } as const;
 
 /** 공통 틀 문구. */
@@ -207,6 +217,8 @@ export const frame = {
   sidebarCollapse: '메뉴 접기',
   /** 오른쪽 영업 코치 칸(#773). */
   coachDockTitle: '영업 코치',
+  /** (#981) 영업 코치 칸 머리 오른쪽의 작은 표시. 칸 안에는 돈이 안 드는 단추도 있어 "유료"는 단추마다 따로 붙인다. */
+  coachDockAi: 'AI',
   coachDockCollapse: '영업 코치 접기',
   coachDockExpand: '영업 코치 펴기',
   sidebarExpand: '메뉴 펴기',
@@ -413,6 +425,9 @@ export const dashboardTexts = {
   stageChipsLabel: '영업 단계',
   stageChipsHint: '누르면 아래 "진행 중인 회사" 표가 그 단계로 걸러집니다',
   workTitle: '오늘 할 일',
+  /** (#981) 오늘 할 일 칸 아래 알림. 예: "관심에 담고 의견을 안 고른 회사 3곳" */
+  noOpinionNotice: (count: number) => `관심에 담고 의견을 안 고른 회사 ${count}곳`,
+  noOpinionLink: '고르러 가기',
   workEmpty: '지난 일정도 오늘 일정도 없습니다',
   handoffTitle: '전달 사항',
   handoffEmpty: '확인할 전달 사항이 없습니다',
@@ -897,7 +912,7 @@ export const bookmarkList = {
   showOnly: '관심 기업만 보기',
   opinionGroupLabel: '검토 의견으로 거르기',
   /**
-   * 거르기 단추 네 개. "기타"는 의견을 아직 고르지 않은 회사만 나온다.
+   * 거르기 단추 네 개. "기타"는 의견을 아직 고르지 않은 회사만 나온다(이미 접촉 중인 회사도 포함).
    * 제외로 저장한 회사는 관심 기업에서 빠지므로(#536) "제외한 회사" 보기에서 본다.
    */
   opinionFilters: {
@@ -906,6 +921,12 @@ export const bookmarkList = {
     NEED_CHECK: '검토 중',
     NONE: '기타',
   },
+  /**
+   * (#981) 관심 기업 화면 맨 위 띠. 예: "의견을 아직 안 고른 관심 기업 3곳".
+   * 세는 기준은 영업 홈 "의견 전" 칸과 같다(관심 + 의견 없음 + 영업 단계 전).
+   */
+  noOpinionStrip: (count: number) => `의견을 아직 안 고른 관심 기업 ${count}곳`,
+  noOpinionShowOnly: '의견 전만 보기',
   /** 관심 기업 보기인데 관심으로 고른 회사가 하나도 없을 때. */
   empty: '관심으로 고른 회사가 없습니다. 카드의 [관심]을 눌러 담아 보세요',
   filterPrefix: '거른 조건',
@@ -923,8 +944,9 @@ export const bookmarkList = {
    */
   emptyAllBookmarked: (count: number) =>
     `관심 기업으로 옮긴 ${count}곳은 이 목록에서 빠져 있습니다. 위의 [관심 기업도 함께 보기]를 켜면 함께 보입니다.`,
-  moved: '관심 기업으로 옮겼습니다',
-  movedLink: '관심 기업 보기',
+  /** (#981) 옮긴 뒤 의견 고르기까지 이어지게 알린다. 링크는 관심 기업 화면의 "의견 전" 보기로 간다. */
+  moved: '관심 기업으로 옮겼습니다. 의견을 골라 주세요',
+  movedLink: '관심 기업에서 의견 고르기',
 } as const;
 
 /** 추천 목록 머리의 "제외한 회사" 보기(#536, 2026-11-10 PM 결정). 제외로 저장한 회사만 모아 본다. */
@@ -945,7 +967,8 @@ export const listTable = {
     region: '지역',
     reason: '추천 근거 · 검토사항',
     score: '점수',
-    actions: '의견 · 관심',
+    /** (#981) 셋째 열: 적합도 · 점수(숫자만) · 관심 별, 그 아래 의견 고르기. */
+    actions: '적합도 · 점수 · 관심 · 의견',
   },
   /** 좁은 화면과 화면 낭독기용 칸 이름. */
   scoreLabel: '점수',
@@ -1085,7 +1108,7 @@ export const candidateSearch = {
   regionHint: '안 고르면 설정된 지역 전체에서 찾습니다',
   industryLabel: '산업',
   industryHint: '안 고르면 산업을 가리지 않습니다',
-  fetchButton: '발굴 시작 💰',
+  fetchButton: '발굴 시작',
   fetching: '찾는 중',
   pickStaffFirst: '담당자를 고르면 찾을 수 있습니다',
   started: '찾기를 시작했습니다. 아래에서 진행을 볼 수 있습니다',
@@ -1224,7 +1247,7 @@ export const homepageControls = {
   editButton: '고치기',
   /** 홈페이지 주소가 아직 없을 때 [고치기] 자리에 보이는 단추. */
   addButton: '주소 넣기',
-  rerunButton: '다시 조사 💰',
+  rerunButton: '다시 조사',
   /** #677: 조사한 지 한 달(설정)이 지난 관심 회사. [다시 조사] 단추 옆에 보인다. 저절로 조사하지 않는다. */
   suggestAgain: (days: number) => `조사한 지 ${days}일 · 새 정보가 있을 수 있어요`,
   urlLabel: '홈페이지 주소',
@@ -1578,7 +1601,7 @@ export const outcomeStatusTone: Record<string, StatusTone> = {
 /** 상세 하단 "기록" 영역(U5): 접촉 시도 / 영업 메모 / 영업 단계 / 다음 일정. */
 export const recordsArea = {
   /** #773: 넓은 화면에서 기록 남기기가 오른쪽 칸에 있을 때 이 자리의 안내. */
-  inDock: '기록 남기기·전달 사항은 오른쪽 💬 영업 코치 칸에 있습니다.',
+  inDock: '기록 남기기·전달 사항은 오른쪽 영업 코치 칸에 있습니다.',
   title: '기록',
   /** 접촉 시도와 영업 메모를 한 칸으로 합친 입력(2026-11-04 PM): 종류를 고르면 아래 입력이 바뀐다. */
   entryTitle: '기록 남기기',
@@ -1746,7 +1769,7 @@ export const reviewArea = {
   /** "메모: 홈페이지 연혁에 2023 납품 기재" */
   memoPrefix: '메모:',
   memoSaveFailed: '메모를 저장하지 못했습니다. 다시 시도',
-  pasteButton: '붙여넣고 조사 💰',
+  pasteButton: '붙여넣고 조사',
   pasteButtonLabel: (text: string) => `붙여넣고 조사: ${text}`,
   pasteUrlLabel: '출처 주소 (공개 홈페이지·공고)',
   pasteUrlPlaceholder: 'https://',
@@ -2918,8 +2941,33 @@ export const industryChips = {
 export const assistantTexts = {
   askLabel: '영업 기록에 대해 물어보기',
   askPlaceholder: '예: 가격 때문에 거절된 회사는? / 이번 주에 연락할 회사는?',
-  askButton: '묻기 💰',
+  askButton: '묻기',
   askHint: '단계·접촉 날짜·거절 이유·고른 답만 AI에 보냅니다. 메모 글은 보내지 않습니다.',
+  /** (#981) 안내 아래 한 줄: 예시 질문 단추는 글만 채우고, 비용은 [묻기]를 누를 때만 든다. */
+  askCostHint: '[묻기]를 누를 때만 AI 비용이 듭니다.',
+  /** (#981) 질문 칸 위 안내 말풍선. 화면마다 무엇을 바탕으로 답하는지 한 줄. */
+  intro: {
+    DASHBOARD: '일정과 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
+    LIST: '화면에 보이는 후보와 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
+    BOOKMARKS: '관심 기업의 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
+    ANALYSIS: '영업 분석표와 영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
+    OTHER: '영업 기록을 바탕으로 답합니다. 궁금한 것을 물어보세요.',
+  },
+  /**
+   * (#981) 화면별 예시 질문 단추 세 개. 누르면 질문 칸에 글만 채운다(보내지 않음, 비용 없음).
+   * 지금 AI가 받는 자료(단계 · 접촉 날짜 · 일정 · 거절 이유 · 후보의 지역·적합도·거리)로 답할 수 있는 질문만 둔다.
+   */
+  examplesLabel: '예시 질문',
+  examples: {
+    DASHBOARD: [
+      '이번 주에 연락할 회사는?',
+      '놓친 일정이 있는 회사는?',
+      '방문 길에 같이 들를 곳은?',
+    ],
+    LIST: ['가까운 후보부터 알려줘', '적합도 상인 후보는?', '먼저 연락할 후보 3곳은?'],
+    BOOKMARKS: ['오래 연락 안 한 회사는?', '일정이 지난 회사는?', '견적·샘플에서 멈춘 회사는?'],
+    ANALYSIS: ['가장 많은 거절 이유는?', '성사가 많은 공정은?', '가격 때문에 거절된 회사는?'],
+  },
   asking: 'AI가 답을 쓰는 중입니다…',
   askFailed: '답을 받지 못했습니다.',
   /** 영업 기록 전용 스위치나 전체 AI 스위치가 꺼져 있을 때 질문 칸 대신 보이는 한 줄. */
@@ -2966,7 +3014,7 @@ export const memoReadTexts = {
   /** 스위치가 켜져 있을 때 메모 칸 안내의 앞부분("이 메모는 외부로 나가지 않습니다"를 뺀 것). */
   noteHintAi: '메모는 덧붙이기만 되고 고치거나 지울 수 없습니다.',
   memoLineHintAi: '질문에 없는 이야기만 짧게 적어 주세요.',
-  button: 'AI가 메모 읽기 💰',
+  button: 'AI가 메모 읽기',
   buttonHint:
     '방금 저장한 메모에서 이름·전화를 지운 사본만 AI에 보냅니다. 저절로 바뀌는 것은 없습니다.',
   reading: 'AI가 메모를 읽는 중입니다…',
@@ -3002,7 +3050,7 @@ export const coachTexts = {
   memoLabel: '통화 메모',
   memoPlaceholder:
     '예: 생산관리팀 김 과장 통화. 아연도금 외주 줌. 소개서 보내기로, 금요일 다시 전화',
-  send: '보내기 💰',
+  send: '보내기',
   /** #847: 메모 칸 아래 안내를 한 줄로(전에는 두 문장 + 이름 안내 두 문장). AI로 나간다는 사실은 남긴다. */
   sendHint: '사람은 직함으로(예: 김 과장) · 이름·전화는 지운 뒤 AI에 보냅니다.',
   /** #847: 영업 코치 칸의 메모(접촉 아님) 안내 한 줄. 고칠 수 없다는 것과 이름이 AI로 안 간다는 것만. */
@@ -3133,7 +3181,7 @@ export const sourceUrlTexts = {
  */
 export const listSimple = {
   ingestPanelTitle: '새 후보 발굴',
-  ingestPanelButton: '새 후보 발굴 💰',
+  ingestPanelButton: '새 후보 발굴',
   ingestCostHint: 'AI 탐색 시 비용이 발생할 수 있습니다.',
   ingestHistory: '최근 발굴 결과',
   ingestRequired: '필수',
@@ -3177,11 +3225,11 @@ export const analysisFeedbackTexts = {
   aiTag: 'AI가 쓴 글 · 확인 필요',
   intro:
     '숫자 표와 회사별 기록(영업 메모·거절·성사 사유·꼬리 질문 답)을 AI가 함께 읽고, 표만 봐서는 알기 어려운 실제 원인과 다음 영업 전략을 근거와 함께 씁니다. 전화·이메일·사람 이름은 지우고 회사 이름은 바꿔 보낸 뒤 화면에서 되돌립니다.',
-  request: 'AI 분석 받기 💰',
+  request: 'AI 분석 받기',
   /** (#974) 영업 분석 머리 오른쪽 바로가기. 누르면 아래 이 카드로 내려가기만 하고 분석은 시작하지 않는다. */
   jump: 'AI 분석 받기 ↓',
   jumpHint: '아래 "AI 분석 피드백" 카드로 내려갑니다. 분석은 카드 안 단추를 눌러야 시작됩니다.',
-  refresh: '다시 받기 💰',
+  refresh: '다시 받기',
   stale: '기록이 바뀌었습니다',
   loading: 'AI가 분석을 쓰는 중입니다…',
   switchOff: '영업 기록을 AI에 보내는 설정이 꺼져 있습니다.',
@@ -3229,7 +3277,7 @@ export const pastAnalysisTexts = {
   tabsLabel: '영업 분석 보기',
   intro:
     '[AI 분석 받기]로 받은 분석은 받을 때마다 저장됩니다. 줄을 누르면 그때 받은 내용이 그대로 열립니다. AI를 다시 부르지 않습니다.',
-  empty: '아직 받은 분석이 없습니다. [분석] 탭에서 [AI 분석 받기 💰]를 누르면 여기에 쌓입니다.',
+  empty: '아직 받은 분석이 없습니다. [분석] 탭에서 [AI 분석 받기]를 누르면 여기에 쌓입니다.',
   loadError: '지난 분석을 불러오지 못했습니다.',
   openError: '이 분석을 열지 못했습니다.',
   allPeriod: '전체 기간',

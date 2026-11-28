@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import OpinionArea from '../OpinionArea';
 import { postOpinion } from '../../../api/client';
 import { FrameContext } from '../../frame/FrameContext';
+import { colors, opinionNudge } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -23,6 +24,8 @@ function saved(opinion: 'WORTH_REVIEW' | 'NEED_CHECK' | 'NOT_TARGET', reason?: s
 function renderArea(
   canRecord = true,
   record = null as Parameters<typeof OpinionArea>[0]['record'],
+  /** 관심에 담은 회사의 줄이면 true(#981): 의견이 없을 때 고르기 칸을 띄워 알린다. */
+  nudge = false,
 ) {
   render(
     <FrameContext.Provider
@@ -35,7 +38,7 @@ function renderArea(
         setPageTitle: () => {},
       }}
     >
-      <OpinionArea oppId="opp-1" evalId="eval-1" record={record} variant="select" />
+      <OpinionArea oppId="opp-1" evalId="eval-1" record={record} variant="select" nudge={nudge} />
     </FrameContext.Provider>,
   );
 }
@@ -90,4 +93,63 @@ it('담당자를 고르기 전이면 고르기 칸이 잠기고 안내가 보인
   renderArea(false);
   expect(screen.getByTestId('opinion-select')).toBeDisabled();
   expect(screen.getByTestId('opinion-pick-staff-text')).toBeInTheDocument();
+});
+
+describe('의견 전 알림 (#981)', () => {
+  it('Given 관심에 담은 회사인데 의견 없음 / When 고르기 칸 / Then 주황 테두리 + "의견을 골라 주세요"로 알리고, 의견을 고르면 알림이 사라진다', async () => {
+    const user = userEvent.setup();
+    mockedPost.mockResolvedValueOnce(saved('WORTH_REVIEW'));
+    renderArea(true, null, true);
+    const select = screen.getByTestId('opinion-select');
+    const nudge = screen.getByTestId('opinion-nudge');
+    expect(nudge).toHaveTextContent(/^의견을 골라 주세요$/);
+    expect(select).toHaveAttribute('data-nudge', 'true');
+    expect(select).toHaveAttribute('aria-describedby', 'opinion-nudge-opp-1');
+    expect(nudge).toHaveAttribute('id', 'opinion-nudge-opp-1');
+    expect(select).toHaveStyle({
+      border: `2px solid ${opinionNudge.border}`,
+      background: opinionNudge.bg,
+    });
+
+    await user.selectOptions(select, 'WORTH_REVIEW');
+    await waitFor(() => expect(mockedPost).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByTestId('opinion-nudge')).not.toBeInTheDocument());
+    expect(screen.getByTestId('opinion-select')).not.toHaveAttribute('data-nudge');
+    expect(screen.getByTestId('opinion-select')).not.toHaveAttribute('aria-describedby');
+    expect(screen.getByTestId('opinion-select')).toHaveStyle({
+      border: `1px solid ${colors.border}`,
+      background: colors.bgContainer,
+    });
+  });
+
+  it('Given 알림이 보이는 줄 / When 제외를 골라 이유를 적는 중 / Then 알림을 숨기고, [취소]하면 다시 보인다', async () => {
+    const user = userEvent.setup();
+    renderArea(true, null, true);
+    await user.selectOptions(screen.getByTestId('opinion-select'), 'NOT_TARGET');
+    expect(screen.getByTestId('opinion-reason-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('opinion-reason-cancel-button'));
+    expect(mockedPost).not.toHaveBeenCalled();
+    expect(screen.getByTestId('opinion-nudge')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['알리라는 표시가 없음(관심에 안 담은 회사)', true, null, false],
+    [
+      '의견이 이미 있음',
+      true,
+      {
+        version: 1,
+        updatedBy: 'park-lee',
+        updatedAt: '2026-11-16T01:00:00Z',
+        opinion: 'NEED_CHECK' as const,
+      },
+      true,
+    ],
+    ['담당자를 고르기 전', false, null, true],
+  ])('Given %s / When 고르기 칸 / Then 알림이 없다', (_name, canRecord, record, nudge) => {
+    renderArea(canRecord, record, nudge);
+    expect(screen.queryByTestId('opinion-nudge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('opinion-select')).not.toHaveAttribute('data-nudge');
+  });
 });

@@ -502,6 +502,8 @@ export interface TodayChecksProps {
   badge?: ReactNode;
   /** #921 칸 맨 아래에 붙일 것(전달 사항 칸의 한 달 달력). */
   footer?: ReactNode;
+  /** #981 목록 아래 알림 한 줄(오늘 할 일 칸의 "의견 전" 알림). */
+  notice?: ReactNode;
   /** 서버의 줄 목록. 옛 서버라 칸이 없으면(undefined) 구역을 그리지 않는다. */
   rows: TodayCheckRow[] | undefined;
   /**
@@ -572,6 +574,7 @@ export default function TodayChecks({
   part = 'all',
   badge = null,
   footer = null,
+  notice = null,
 }: TodayChecksProps) {
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
@@ -692,6 +695,7 @@ export default function TodayChecks({
           ))}
         </ul>
       )}
+      {notice}
       {footer}
     </section>
   );

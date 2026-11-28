@@ -11,6 +11,7 @@ import type { ErrorBody } from '../../api/types';
 import { errorTexts, homepageControls, reviewArea } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import MonthSpendLine from '../common/MonthSpendLine';
+import PaidTag from '../common/PaidTag';
 import { useFrame } from '../frame/FrameContext';
 
 /** 다시 눌러도 풀리지 않는 실패 종류. 조사 단추를 잠근다. */
@@ -138,7 +139,8 @@ export default function PasteResearchForm({
           onClick={() => void submit()}
           data-testid="review-paste-submit"
         >
-          {reviewArea.pasteSubmit}
+          {/* #981: [붙여넣고 조사]는 칸만 연다. 비용은 여기 [조사]를 누를 때 든다. */}
+          {reviewArea.pasteSubmit} <PaidTag onPrimary />
         </Button>
         <Button size="small" disabled={busy} onClick={onCancel} data-testid="review-paste-cancel">
           {reviewArea.pasteCancel}

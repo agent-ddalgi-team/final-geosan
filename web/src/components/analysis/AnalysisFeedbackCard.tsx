@@ -17,6 +17,7 @@ import {
 } from '../../api/salesAnalysis';
 import { analysisFeedbackTexts as t } from '../../labels/ko';
 import { SuggestionItem } from '../assistant/AssistantAnswerBox';
+import PaidTag from '../common/PaidTag';
 import { colors, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
@@ -241,7 +242,7 @@ export default function AnalysisFeedbackCard({ period, reloadKey = 0 }: Analysis
           onClick={() => void ask()}
           data-testid="feedback-request"
         >
-          {buttonText}
+          {buttonText} <PaidTag onPrimary={!feedback} />
         </Button>
         {feedback && state && !state.current ? (
           <span data-testid="feedback-stale" style={secondary}>

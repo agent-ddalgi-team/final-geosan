@@ -125,6 +125,22 @@ describe('ReviewArea [붙여넣고 조사]', () => {
     expect(screen.getAllByTestId('review-paste-editor')).toHaveLength(1);
   });
 
+  it('[붙여넣고 조사]는 칸만 여는 단추라 "유료" 꼬리표가 없고, 비용이 드는 칸 안 [조사]에만 붙는다(#981)', () => {
+    renderArea();
+    const rows = screen.getAllByTestId('review-item');
+    const open = within(rows[1]).getByTestId('review-paste-button');
+    expect(open.textContent).toBe('붙여넣고 조사');
+    // 칸을 열기 전에는 화면 어디에도 "유료" 꼬리표가 없다.
+    expect(screen.queryByTestId('paid-tag')).toBeNull();
+    openFirstGap();
+    const submit = screen.getByTestId('review-paste-submit');
+    expect(submit).toHaveAccessibleName('조사 유료');
+    expect(within(submit).getByTestId('paid-tag')).toHaveTextContent(/^유료$/);
+    // 꼬리표는 [조사] 하나에만 있다([취소]와 여는 단추에는 없다).
+    expect(screen.getAllByTestId('paid-tag')).toHaveLength(1);
+    expect(within(screen.getByTestId('review-paste-cancel')).queryByTestId('paid-tag')).toBeNull();
+  });
+
   it('확정된 홈페이지 주소가 있으면 출처 칸에 미리 채우고 없으면 빈 칸이다', () => {
     renderArea({ homepageUrl: 'https://kofas.com/' });
     openFirstGap();
