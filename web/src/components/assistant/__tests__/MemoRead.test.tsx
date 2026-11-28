@@ -402,14 +402,27 @@ describe('기록 남기기 › 메모 칸 (#720)', () => {
   });
 
   // (바뀜 #742, PM 결정 2026-11-14) [AI가 메모 읽기]는 영업 코치(접촉 메모 [보내기])로 합쳐 기록 칸에서 뺐다.
-  // 예전 기대: 메모를 저장하면 그 아래에 [AI가 메모 읽기]가 보인다. 지금: 스위치가 켜져 있어도 보이지 않는다.
-  it('메모를 저장해도 [AI가 메모 읽기]는 기록 칸에 보이지 않는다(영업 코치로 합침, #742)', async () => {
+  // (다시 바뀜 #985, PM 결정 2026-11-29) 종류 [메모]의 [메모로만 저장] 뒤에는 저장 바로 아래에 다시 보인다
+  // ("메모를 저장했습니다 [일정 잡기]" + [AI가 메모 읽기 유료]). #742 때의 기대(보이지 않는다)를 그 결정대로 바꿨다.
+  // 지키는 뜻은 그대로다: 누르기 전에는 AI를 부르지 않는다.
+  it('메모를 저장하면 그 아래에 [AI가 메모 읽기]가 보이고, 누르기 전에는 AI를 부르지 않는다 (#985)', async () => {
     const user = userEvent.setup();
     wrap(<RecordsArea oppId="opp-1" outcome={IN_PROGRESS} />, ON);
     await saveMemo(user);
     await waitFor(() => expect(screen.getByTestId('records-note-saved')).toBeInTheDocument());
-    expect(screen.queryByTestId('memo-read')).not.toBeInTheDocument();
+    const saved = screen.getByTestId('quick-note-saved');
+    expect(saved).toHaveTextContent('메모를 저장했습니다');
+    expect(within(saved).getByTestId('memo-read-button')).toBeInTheDocument();
     expect(mockedRead).not.toHaveBeenCalled();
+    // 방금 저장한 메모(note-7)가 읽을 대상이다.
+    mockedRead.mockResolvedValueOnce({
+      data: { summary: '', proposals: [], aiGenerated: true, removedNames: 0, removedContacts: 0 },
+      meta,
+    } as unknown as Awaited<ReturnType<typeof postMemoRead>>);
+    await user.click(within(saved).getByTestId('memo-read-button'));
+    await waitFor(() =>
+      expect(mockedRead).toHaveBeenCalledWith('opp-1', 'NOTE', 'note-7', 'park-lee'),
+    );
   });
 
   it('스위치가 꺼져 있으면 메모를 저장해도 단추가 보이지 않는다', async () => {

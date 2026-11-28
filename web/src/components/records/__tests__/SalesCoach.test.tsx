@@ -1,4 +1,7 @@
 // 영업 코치(#742, PM 결정 2026-11-14): 확인사항 → 메모 [보내기] → 확인 화면 → [이대로 저장]/[고치기].
+// #985(PM 결정 2026-11-29)부터 결과("연결됨")를 먼저 고르지 않는다: 종류 하나 + 메모만으로 [보내기]가 된다.
+// 그래서 이 파일의 흐름 시험은 "연결됨을 누른 뒤" 대신 "메모를 적은 뒤"로 시작한다(지키는 뜻은 그대로).
+// 새 흐름의 나머지(부재 · 연락처 알림 · 건너뛰기 · 기타 · 메모 종류)는 QuickRecord.test.tsx · CoachReview.test.tsx에 있다.
 // 서버 호출(getSalesQuestions·postCoach·postOutcome·postNote)은 가짜로 바꾼 확인이며 실제 서버·실제 AI 연결 확인이 아니다.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -14,7 +17,7 @@ import type { FrameValue } from '../../frame/FrameContext';
 import { coachTexts } from '../../../labels/ko';
 import { todayKst } from '../../../utils/time';
 import { addDays } from '../../../test/pickCalendarDate';
-import { chipOf } from '../../../test/chipOf';
+import { chipOf, chipValueOf } from '../../../test/chipOf';
 import { warn } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (importOriginal) => ({
@@ -197,7 +200,6 @@ function renderArea(enabled = true, props: Partial<React.ComponentProps<typeof R
 }
 
 async function reachAndSend(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(chipOf('records-contact-result', '연결됨'));
   await user.type(
     await screen.findByTestId('records-contact-memo'),
     '김 과장 통화. 외주 줌. 금요일 다시 전화',
@@ -290,15 +292,16 @@ describe('코치 확인 화면의 단계 (#748, 규칙)', () => {
 });
 
 describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
-  it('스위치가 켜져 있고 "연결됨"이면 꼬리 질문 대신 확인사항·메모·[보내기]가 보인다', async () => {
+  it('스위치가 켜져 있으면 결과를 고르지 않아도 꼬리 질문 대신 확인사항·메모·[보내기]가 보인다 (#985)', async () => {
     const user = userEvent.setup();
     renderArea();
-    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(await screen.findByTestId('coach-checklist')).toHaveTextContent(
       '확인사항: 지금 도금 방식 · 다음 할 일',
     );
     expect(screen.queryByTestId('sales-question-PLATING_NOW')).not.toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-save-button')).not.toBeInTheDocument();
+    // #985: 결과 칸이 처음 모습에 없다.
+    expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('coach-send')).toBeDisabled();
     // 코치에 보내면 AI 비용이 들어 글 뒤 "유료" 꼬리표가 붙는다(#981, 💰 대신).
     expect(screen.getByTestId('coach-send')).toHaveAccessibleName('보내기 유료');
@@ -322,7 +325,8 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     expect(within(review).getByTestId('coach-filled-PLATING_NOW')).toHaveTextContent(
       `외주 줌 ${coachTexts.filledMark}`,
     );
-    expect(within(review).getByTestId('coach-schedule')).toHaveTextContent('다시 연락');
+    // #985: 다음 일정은 사실 줄 "다음"으로 보인다(전에는 "다음 일정: …" 한 줄).
+    expect(within(review).getByTestId('coach-fact-next')).toHaveTextContent('다시 연락');
     // 제안은 미리 고르지 않는다.
     expect(within(review).getByTestId('coach-suggest-pick-CONFIRM_PROCESS')).toHaveAttribute(
       'aria-pressed',
@@ -367,6 +371,7 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
       status: 'IN_PROGRESS',
       method: 'CALL',
       result: 'REACHED',
+      attemptedAt: todayKst(),
       memo: '김 과장 통화. 외주 줌. 금요일 다시 전화',
       nextScheduleAt: LATER,
       nextScheduleNote: '다시 연락',
@@ -392,6 +397,8 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     renderArea();
     const review = await reachAndSend(user);
     await user.click(within(review).getByTestId('coach-edit'));
+    // #985: 처음 모습에 결과 칸이 없으므로 [고치기]가 양식을 열 때 "연결됨"을 골라 둔다.
+    expect(chipValueOf('records-contact-result')).toBe('REACHED');
     const plating = await screen.findByTestId('sales-question-PLATING_NOW');
     expect(within(plating).getByRole('radio', { name: '외주 줌' })).toBeChecked();
     await user.click(within(plating).getByText('직접 함'));
@@ -456,12 +463,16 @@ describe('상세 › 기록 남기기 › 영업 코치 (#742)', () => {
     const user = userEvent.setup();
     vi.mocked(postCoach).mockRejectedValueOnce(new Error('network'));
     renderArea();
-    await user.click(chipOf('records-contact-result', '연결됨'));
     await user.type(await screen.findByTestId('records-contact-memo'), '외주 줌');
     await user.click(screen.getByTestId('coach-send'));
     expect(await screen.findByTestId('coach-error')).toHaveTextContent(coachTexts.failed);
+    // 그 자리에서 다시 보낼 수 있다(실패를 성공처럼 넘기지 않는다).
+    expect(screen.getByTestId('coach-send')).toBeEnabled();
     await user.click(screen.getByTestId('coach-direct'));
+    // #985: 직접 고르는 양식은 결과부터 고른다. 적던 메모는 그대로다.
+    await user.click(chipOf('records-contact-result', '연결됨'));
     expect(await screen.findByTestId('sales-question-PLATING_NOW')).toBeInTheDocument();
+    expect(screen.getByTestId('records-contact-memo')).toHaveValue('외주 줌');
     expect(postOutcome).not.toHaveBeenCalled();
   });
 
@@ -658,10 +669,8 @@ describe('영업 코치 칸 글 줄이기 (#847)', () => {
     expect(heading).toHaveStyle({ position: 'absolute', overflow: 'hidden' });
   });
 
-  it('Given 코치 메모 칸 When "연결됨"을 고르면 Then 메모 안내는 한 줄(직함 · AI로 보냄)과 글자 수뿐이다', async () => {
-    const user = userEvent.setup();
+  it('Given 코치 메모 칸 When 종류가 통화면(결과를 고르지 않아도, #985) Then 메모 안내는 한 줄(직함 · AI로 보냄)과 글자 수뿐이다', async () => {
     renderArea(true, { inCoach: true });
-    await user.click(chipOf('records-contact-result', '연결됨'));
     const hint = await screen.findByTestId('records-contact-memo-hint');
     expect(hint).toHaveTextContent(coachTexts.sendHint);
     // AI로 나간다는 사실은 남긴다(개인정보 안내를 없애지 않는다).

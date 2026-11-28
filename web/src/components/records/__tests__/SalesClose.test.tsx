@@ -195,7 +195,7 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     renderArea();
     // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
     fireEvent.click(screen.getByTestId('records-stage-toggle'));
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '연결됨'));
     await pick(user, 'NEXT_ACTION', '끝');
     expect(screen.queryByTestId('records-close-preview')).not.toBeInTheDocument();
@@ -265,7 +265,7 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     renderArea();
     // 영업 단계 칸은 기본으로 접혀 있다(#674). [단계 고치기]를 눌러 펼친다.
     fireEvent.click(screen.getByTestId('records-stage-toggle'));
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '거절'));
     const decline = await screen.findByTestId('records-decline');
     expect(screen.queryByTestId('sales-question-PLATING_NOW')).not.toBeInTheDocument();
@@ -294,7 +294,7 @@ describe('마무리 답으로 단계를 저장한다 (#643)', () => {
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('IN_PROGRESS'));
     renderArea();
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '연결됨'));
     await pick(user, 'NEXT_ACTION', '끝');
     await pick(user, 'CLOSE_RESULT', '성사');
@@ -336,7 +336,7 @@ describe('성사·거절로 끝나는 저장은 있던 일정을 다시 싣지 �
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('LOST'));
     renderArea('IN_PROGRESS', { nextScheduleAt: '2026-11-20', nextScheduleNote: '다시 연락' });
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '연결됨'));
     await pick(user, 'NEXT_ACTION', '끝');
     await pick(user, 'CLOSE_RESULT', '거절');
@@ -358,7 +358,7 @@ describe('성사·거절로 끝나는 저장은 있던 일정을 다시 싣지 �
       nextScheduleNote: '방문',
       lostReasonCode: 'PRICE',
     });
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '부재'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
@@ -377,7 +377,7 @@ describe('통화를 남기면 지난 일정은 넘기지 않는다 (PM 결정 20
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('IN_PROGRESS'));
     renderArea('IN_PROGRESS', { nextScheduleAt: '2020-01-02', nextScheduleNote: '다시 연락' });
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '부재'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
@@ -390,7 +390,7 @@ describe('통화를 남기면 지난 일정은 넘기지 않는다 (PM 결정 20
     const user = userEvent.setup();
     vi.mocked(postOutcome).mockResolvedValueOnce(reply('IN_PROGRESS'));
     renderArea('IN_PROGRESS', { nextScheduleAt: '2099-12-30', nextScheduleNote: '방문' });
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '부재'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));

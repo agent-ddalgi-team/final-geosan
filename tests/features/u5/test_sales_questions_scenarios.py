@@ -63,3 +63,42 @@ def quoted(context):
     card = support.card_of(client, opp_id)
     assert card["salesStep"] == "MATERIAL_QUOTE"
     assert card["records"]["outcome"]["status"] == "SAMPLE_OR_REGISTRATION_APPROVED"
+
+
+# --- #985(PM 결정 2026-11-29): 접촉마다 묻는 상대 반응 -------------------------------------
+
+
+@when(
+    '연결된 접촉에서 "외주 줌"을 저장한 뒤 다음 접촉에서 상대 반응 "부정적"과 '
+    '걸린 부분 "클레임"을 골라 저장하면'
+)
+def negative_reaction_with_claim(context):
+    client, opp_id = context["client"], context["opp_id"]
+    first = support.contact(answers=[("PLATING_NOW", "OUTSOURCED")], attemptedAt="2026-10-18")
+    context["first"] = support.save(client, opp_id, first)
+    context["step_before"] = support.step_of(client, opp_id)
+    context["scored"] = detail(client, opp_id)
+    body = support.contact(answers=[("REACTION", "NEGATIVE"), ("REACTION_BAD", "CLAIM")])
+    context["saved"] = support.save(client, opp_id, body)
+
+
+@then('알아낸 것에 상대 반응 "부정적"과 걸린 부분 "클레임(불량·납기)"이 남는다')
+def reaction_is_kept(context):
+    known = support.step_of(context["client"], context["opp_id"])["known"]
+    kept = {item["questionId"]: (item["answer"], item["at"]) for item in known}
+    assert kept["REACTION"] == ("부정적", "2026-10-20")
+    assert kept["REACTION_BAD"] == ("클레임(불량·납기)", "2026-10-20")
+
+
+@then("세부 단계는 수요 확인, 큰 단계는 접촉 그대로이고 점수도 그대로다")
+def step_and_stage_stay(context):
+    client, opp_id = context["client"], context["opp_id"]
+    before, step = context["step_before"], support.step_of(client, opp_id)
+    assert (before["code"], before["since"]) == ("DEMAND_CONFIRMED", "2026-10-18")
+    assert (step["code"], step["since"]) == (before["code"], before["since"])
+    assert context["first"]["status"] == "IN_PROGRESS"
+    assert context["saved"]["status"] == "IN_PROGRESS"
+    assert support.card_of(client, opp_id)["records"]["outcome"]["status"] == "IN_PROGRESS"
+    after = detail(client, opp_id)
+    assert after["scores"] == context["scored"]["scores"]
+    assert after["evalId"] == context["scored"]["evalId"]

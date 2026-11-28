@@ -198,7 +198,7 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         />
       </FrameContext.Provider>,
     );
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     expect(screen.queryByTestId('sales-questions')).not.toBeInTheDocument();
     await user.click(chipOf('records-contact-result', '연결됨'));
     const plating = await screen.findByTestId('sales-question-PLATING_NOW');
@@ -243,7 +243,7 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         <RecordsArea oppId="opp-1" salesStep={stepView({ code: 'DEMAND_CONFIRMED' })} />
       </FrameContext.Provider>,
     );
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '연결됨'));
     const line = await screen.findByTestId('sales-questions-step');
     expect(line).toHaveTextContent(
@@ -275,7 +275,7 @@ describe('접촉 기록에 꼬리 질문 답과 한 줄 메모를 싣는다 (#60
         <RecordsArea oppId="opp-1" salesStep={stepView()} />
       </FrameContext.Provider>,
     );
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     await user.click(chipOf('records-contact-result', '부재'));
     expect(screen.queryByTestId('sales-questions')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('records-contact-save-button'));

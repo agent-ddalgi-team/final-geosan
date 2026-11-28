@@ -14,6 +14,7 @@ import {
   ok,
   progressTheme,
   radius,
+  reactionPalette,
   sideCalendar,
   sidebarTheme,
   stageCell,
@@ -180,4 +181,36 @@ it.each(Object.entries(mapPinPalette))(
 it('알약 모양을 쓰지 않는다: 모서리 값은 모두 16 이하이고, 카드 12 · 단추 9(작은 단추 8) · 꼬리표 6 · 뜨는 창 16', () => {
   expect(radius).toMatchObject({ card: 12, control: 9, controlSm: 8, tag: 6, modal: 16 });
   for (const value of Object.values(radius)) expect(value).toBeLessThanOrEqual(16);
+});
+
+// #985 상대 반응 파이: 조각은 글자가 아닌 그림이라 흰 카드 위 3:1이 기준이다(반응 세 색).
+// 좋게 본 부분 · 걸린 부분의 6단계는 옅은 단계가 3:1에 못 미치므로 색에 기대지 않고 범례 줄의 이름 · 건수가 늘 함께 있다.
+it.each([
+  ['긍정', reactionPalette.positive],
+  ['보통', reactionPalette.neutral],
+  ['부정', reactionPalette.negative],
+])('상대 반응 파이 %s 조각: 흰 카드 위 대비 3:1 이상', (_name, color) => {
+  expect(contrast(color, WHITE)).toBeGreaterThanOrEqual(3);
+});
+
+it('상대 반응 파이: 좋게 본 부분 · 걸린 부분은 6단계이고 진한 것부터 옅어진다', () => {
+  for (const steps of [reactionPalette.good, reactionPalette.bad]) {
+    expect(steps).toHaveLength(6);
+    const ratios = steps.map((color) => contrast(color, WHITE));
+    expect([...ratios].sort((a, b) => b - a)).toEqual(ratios);
+  }
+});
+
+it.each(Object.entries(reactionPalette.detail))(
+  '상대 반응 상세 칸 %s: 제목 · 본문 · 보조 글자 · 링크 모두 대비 4.5:1 이상',
+  (_pie, tone) => {
+    for (const fg of [tone.title, colors.text, colors.textSecondary, accent.text]) {
+      expect(contrast(fg, tone.bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  },
+);
+
+it('상대 반응 범례의 고른 줄: 본문 글자와 비율 글자가 대비 4.5:1 이상', () => {
+  expect(contrast(colors.text, reactionPalette.picked.bg)).toBeGreaterThanOrEqual(4.5);
+  expect(contrast(colors.textSecondary, reactionPalette.picked.bg)).toBeGreaterThanOrEqual(4.5);
 });

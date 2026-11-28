@@ -82,7 +82,7 @@ describe('RecordsArea', () => {
     mockedOutcome.mockReset();
   });
 
-  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 전화다(#691)', () => {
+  it('기록 남기기(종류 한 칸)·영업 단계·다음 일정 세 구역이 보이고, 처음 종류는 통화다(#691, 글은 #985부터 "통화")', () => {
     renderArea(frameValue(), {
       outcome: {
         version: 1,
@@ -108,7 +108,8 @@ describe('RecordsArea', () => {
         .getAllByRole('radio')
         .map((option) => option.textContent),
       // #847(PM 결정 2026-11-17): "방문" → "대면", "자료 조사"는 "메모"로 합침. 질문 파일이 없으면 발신·수신 없이 종류만.
-    ).toEqual(['전화', '메일', '대면', '메모']);
+      // #985(PM 결정 2026-11-29): 이 칸의 종류 단추 글은 시안대로 "전화" → "통화"(고르는 값 CALL은 그대로).
+    ).toEqual(['통화', '메일', '대면', '메모']);
     expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
     expect(screen.queryByTestId('records-note-input')).not.toBeInTheDocument();
     // 메모만 적는 흐름은 종류에서 "메모"를 고르면 그대로다.
@@ -118,10 +119,10 @@ describe('RecordsArea', () => {
     expect(screen.getByTestId('records-stage-current')).toHaveTextContent('현재 단계: 접촉');
   });
 
-  it('종류를 전화·대면·메일로 바꾸면 결과·날짜 입력이 나오고, 메모로 돌아오면 글 입력이 나온다', async () => {
+  it('종류를 통화·대면·메일로 바꾸면 결과·날짜 입력이 나오고, 메모로 돌아오면 글 입력이 나온다', async () => {
     const user = userEvent.setup();
     renderArea();
-    for (const label of ['전화', '대면', '메일']) {
+    for (const label of ['통화', '대면', '메일']) {
       await user.click(chipOf('records-kind', label));
       expect(screen.getByTestId('records-contact-result')).toBeInTheDocument();
       expect(screen.getByTestId('records-contact-date')).toBeInTheDocument();
@@ -245,7 +246,7 @@ describe('RecordsArea', () => {
   });
 
   it.each([
-    ['전화', 'CALL'],
+    ['통화', 'CALL'],
     ['대면', 'VISIT'],
     ['메일', 'EMAIL'],
   ])('%s를 저장하면 방법 %s로 영업 결과가 가고, 접촉 저장을 알린다', async (label, code) => {
@@ -279,7 +280,7 @@ describe('RecordsArea', () => {
           status: from,
         },
       });
-      await user.click(chipOf('records-kind', '전화'));
+      await user.click(chipOf('records-kind', '통화'));
       await user.click(chipOf('records-contact-result', '부재'));
       await user.click(screen.getByTestId('records-contact-save-button'));
       await waitFor(() => expect(mockedOutcome).toHaveBeenCalledTimes(1));
@@ -603,7 +604,7 @@ describe('RecordsArea', () => {
         status: 'NOT_EXECUTED',
       },
     });
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     expect(screen.getByTestId('records-contact-save-button')).toBeDisabled();
     await user.click(chipOf('records-contact-result', '부재'));
     await user.click(screen.getByTestId('records-contact-save-button'));

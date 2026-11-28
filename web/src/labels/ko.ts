@@ -3227,6 +3227,135 @@ export const coachTexts = {
   prepFailed: '접촉은 저장했지만 다음 통화 준비를 남기지 못했습니다.',
 } as const;
 
+/** '로'/'으로': 끝 글자에 받침이 없거나 ㄹ받침이면 '로', 그 밖의 받침이면 '으로'. 한글이 아니면 '(으)로'. */
+function directionMark(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (Number.isNaN(code) || code < 0 || code >= 11172) return '(으)로';
+  const final = code % 28;
+  return final === 0 || final === 8 ? '로' : '으로';
+}
+
+/**
+ * #985(PM 결정 2026-11-29, 시안 "기록 남기기 — 만들 흐름") 기업 상세 › 영업 코치 › 기록 남기기 단순화.
+ * 고르는 것은 종류 하나 + 메모. 발신/수신 · 결과 · 날짜는 확인 화면에서 한 줄로 보고 바꾼다.
+ * 영업 코치를 못 쓰면(스위치 꺼짐 · 한도) 전의 직접 고르는 양식이 그대로 나온다.
+ */
+export const quickRecordTexts = {
+  /** 이 칸의 종류 단추 글. 다른 화면이 같이 쓰는 contactMethodLabels("전화")는 바꾸지 않는다. */
+  kindLabels: { CALL: '통화', EMAIL: '메일', VISIT: '대면', MEMO: '메모' } as const,
+  memoLabel: '메모',
+  memoPlaceholders: {
+    CALL: '통화 내용을 적어 주세요',
+    EMAIL: '메일 내용을 적어 주세요',
+    VISIT: '만나서 나눈 이야기를 적어 주세요',
+    MEMO: '메모를 적어 주세요',
+  } as const,
+  examplesTitle: '이렇게 적어 보세요',
+  /** 누르는 단추가 아니라 보기 글이다. 종류를 바꾸면 예시도 바뀐다. */
+  examples: {
+    CALL: [
+      '발신 · 구매팀과 통화, 견적 요청 받음',
+      '수신 · 샘플 문의 전화 옴',
+      '부재',
+      '금요일 오전에 다시 전화하기로',
+      '반응 좋음 · 인증서에 관심',
+      '납기가 길다고 걱정함',
+    ],
+    EMAIL: [
+      '보냄 · 회사 소개서 첨부',
+      '받음 · 견적 조건 회신',
+      '답 없음',
+      '반응 좋음 · 샘플을 보내 달라고 함',
+    ],
+    VISIT: [
+      '방문 · 샘플 전달, 두께 요구 확인',
+      '내방 · 공장 견학 옴',
+      '못 만남',
+      '다음 주 수요일 다시 방문',
+    ],
+    MEMO: ['연말까지 발주 계획 없음', '담당 부서가 바뀜'],
+  } as const,
+  /** 메모가 "부재" 낱말뿐일 때 [보내기 유료] 대신 보이는 단추(AI 없음). */
+  absentSave: '저장',
+  absentHint: '이 메모는 AI 없이 바로 저장합니다(비용 없음).',
+  absentSavedTitle: '부재로 저장했습니다 · AI 비용 없음',
+  /** 저장한 부재 접촉 한 줄의 결과 말. "통화 · 발신 · 연결 안 됨 · 11/29" */
+  absentResult: { CALL: '연결 안 됨', EMAIL: '답 없음', VISIT: '못 만남' } as const,
+  absentAskSchedule: {
+    CALL: '다시 전화할 날을 잡을까요?',
+    EMAIL: '다시 메일 보낼 날을 잡을까요?',
+    VISIT: '다시 방문할 날을 잡을까요?',
+  } as const,
+  absentClose: '안 잡고 닫기',
+  /** 메모에 전화번호 · 이메일이 있으면 누르기 전에 먼저 알린다(AI 비용이 먼저 나가지 않게). */
+  contactAlertTitle: '전화번호 · 이메일은 빼고 적어 주세요.',
+  contactAlertBody:
+    '기록 메모에는 연락처를 저장하지 않습니다. 연락처는 영업 단계 카드의 "상대 담당자 연락처"에 적어 주세요.',
+  /** 종류 [메모]: 메모로만 저장은 되지만 영업 코치에게 보낼 수는 없을 때. */
+  memoContactBlocked:
+    '전화번호 · 이메일이 있는 메모는 영업 코치에게 보낼 수 없습니다. 메모로만 저장은 됩니다.',
+  /** 영업 코치를 못 쓸 때 서버 안내 뒤에 붙이는 말. "오늘 영업 코치 한도를 넘었습니다. 직접 골라 저장할 수 있습니다." */
+  fallbackHint: '직접 골라 저장할 수 있습니다.',
+  // ---- 확인 화면([보내기] 뒤) ----
+  /** "AI가 정리한 것 · 확인 전 · 대면 기록으로 저장" */
+  titleAs: (kind: string) => ` · ${kind} 기록으로 저장`,
+  factSummary: '요약',
+  factDirection: '방향',
+  factDate: '날짜',
+  factReaction: '반응',
+  factNext: '다음',
+  /** 기본 방향(우리가 먼저)일 때 값 뒤에 붙는 작은 글. */
+  directionOurs: '(우리가 먼저)',
+  /** "수신으로 바꾸기" · "내방으로 바꾸기" */
+  directionSwitch: (label: string) => `${label}${directionMark(label)} 바꾸기`,
+  today: '(오늘)',
+  change: '바꾸기',
+  changeClose: '접기',
+  fromMemo: '(메모에서 읽음)',
+  skipped: '건너뜀',
+  dateLabel: '접촉 날짜',
+  dateFuture: '접촉 날짜는 오늘까지입니다.',
+  dateEmpty: '접촉 날짜를 넣어 주세요.',
+  nextNoDate: '날짜 없음',
+  nextSetDate: '날짜 잡기',
+  nextActionLabel: '다음 할 일',
+  nextDateLabel: '다음 일정 날짜',
+  missingTitle: '빠진 것 · 눌러서 채우거나 ×로 건너뛰기',
+  skip: '이 질문 건너뛰기',
+  skipMark: '×',
+  undoSkip: '되돌리기',
+  mustTag: '꼭 확인',
+  /** "AI 제안: 기존 거래처 유지" — 미리 고르지 않는다. */
+  suggestHint: (label: string) => `AI 제안: ${label}`,
+  otherLabel: '기타: 어떤 부분인가요',
+  otherHint: '기타를 고르면 한 줄로 적습니다 · 이 접촉의 메모에 함께 저장',
+  /** 메모 끝에 덧붙이는 글. " / 좋게 본 부분: 시험 성적서를 바로 보내 준 점" */
+  otherMemo: (keyword: string, text: string) => ` / ${keyword}: ${text}`,
+  /** 기타 글까지 더한 메모가 상한을 넘을 때. 기타 글에 쓸 수 있는 글자 수와 넘친 글자 수를 함께 알린다. */
+  memoOver: (max: number, left: number, over: number) =>
+    `메모에 기타 글을 더하면 ${max}자를 넘습니다. 기타 글은 ${left}자까지 쓸 수 있습니다(지금 ${over}자 초과). 줄인 뒤 저장해 주세요.`,
+  /** 끝난 결과 제안 상자. "제안: 이 회사를 거절로 끝낼까요?" */
+  closeAsk: (label: string) => `제안: 이 회사를 ${label}${directionMark(label)} 끝낼까요?`,
+  closeLabels: { WON: '성사', LOST: '거절', ON_HOLD: '보류' } as Record<string, string>,
+  closeDecline: '아니요, 계속 진행',
+  closeSkipNotice: '이유를 ×로 건너뛰면 거절로 넘기지 않고 통화 기록만 저장합니다.',
+  saveHint: '저장을 눌러야 들어갑니다. 건너뛴 질문은 다음 통화 "확인사항"에 다시 나옵니다.',
+  // ---- 종류 [메모] ----
+  noteOnly: '메모로만 저장',
+  noteToCoach: '영업 코치에게 보내기',
+  noteGuide:
+    '상대와 나눈 이야기(대면 · 통화 · 클레임 등)는 [영업 코치에게 보내기]로 남기면 상대 반응과 일정이 함께 정리됩니다.',
+  noteToBlocked: '받는 사람이 있는 메모는 전달 사항으로 저장됩니다',
+  /** 접촉 메모 상한(메모 칸 상한보다 짧다)을 넘는 메모는 영업 코치에게 보낼 수 없다. */
+  noteTooLong: (max: number, used: number) =>
+    `영업 코치에게 보내는 메모는 ${max}자까지입니다(지금 ${used}자). 줄이거나 메모로만 저장해 주세요.`,
+  kindAsk: '어떻게 있었던 일인가요?',
+  kindAskHint: '한 번만 고르면 됩니다',
+  noteSaved: '메모를 저장했습니다',
+  noteSchedule: '일정 잡기',
+  close: '닫기',
+} as const;
+
 /** #771 전달 사항(PM 결정 2026-11-15·16): 다른 직원이 회사 건으로 남기는 말, 받는 사람이 확인한다. */
 export const handoffTexts = {
   title: '전달 사항',
@@ -3542,4 +3671,100 @@ export const preferenceLabels = {
   /** 카드 "순서 조정" 줄. 예: "담당자 선호(11/26 승인 · 아연도금 × 자동차 부품) → 위로" */
   cardLine: (combo: string, date: string) => `담당자 선호(${date} 승인 · ${combo}) → 위로`,
   exploreLine: '선호 밖 회사 자리 — 다른 곳의 기회도 함께 봅니다',
+} as const;
+
+/**
+ * #985 영업 분석 "상대 반응 — 거산의 강점 · 약점"(PM이 승인한 시안 2026-11-29).
+ * 반응 · 좋게 본 부분 · 걸린 부분의 보기 이름은 여기 적지 않는다. 질문 파일(GET /sales-questions)의 보기 글을 쓰고,
+ * 못 읽었거나 지금 질문 파일에 없는 보기면 id 그대로 보인다. 여기에는 틀 글자만 둔다.
+ */
+export const reactionAnalysisTexts = {
+  title: '상대 반응 — 거산의 강점 · 약점',
+  /** 제목 옆: "통화 · 메일 · 대면 41건 가운데 반응을 남긴 34건" */
+  basis: (contactCount: number, answeredCount: number) =>
+    `통화 · 메일 · 대면 ${contactCount}건 가운데 반응을 남긴 ${answeredCount}건`,
+  loading: '상대 반응을 불러오는 중',
+  loadError: '상대 반응을 불러오지 못했습니다. 다른 표는 그대로 볼 수 있습니다.',
+  empty:
+    '아직 상대 반응을 남긴 접촉이 없습니다. 기록 남기기에서 통화 · 메일 · 대면을 저장할 때 상대 반응을 고르면 여기에 쌓입니다.',
+  /** 반응을 남긴 접촉이 표본 기준보다 적은 묶음: 비율 없이 건수만. */
+  smallSample: (min: number) => `기록이 더 쌓이면 비율을 보입니다(반응을 남긴 접촉 ${min}건부터).`,
+  pies: {
+    reaction: '반응',
+    good: '좋게 본 부분',
+    bad: '걸린 부분',
+  },
+  /** 파이 제목 옆: "반응을 남긴 접촉 34건" */
+  reactionSub: (count: number) => `반응을 남긴 접촉 ${count}건`,
+  /** 파이 제목 옆: "긍정적 14건 가운데" — 부분을 안 고른 접촉이 있으면 "긍정적 14건 가운데 부분을 고른 12건" */
+  partSub: (reactionName: string, count: number, picked: number) =>
+    picked < count
+      ? `${reactionName} ${count}건 가운데 부분을 고른 ${picked}건`
+      : `${reactionName} ${count}건 가운데`,
+  pieEmpty: '아직 없습니다.',
+  /** 6가지를 넘는 부분을 묶은 조각. */
+  rest: '그 밖',
+  count: (count: number) => `${count}건`,
+  percent: (percent: number) => `${percent}%`,
+  /** 조각에 손을 올렸을 때 · 파이를 읽어 줄 때: "가격 · 4건 · 36%" (표본이 적으면 "가격 · 4건") */
+  sliceTitle: (name: string, count: number, percent: number | null) =>
+    percent === null ? `${name} · ${count}건` : `${name} · ${count}건 · ${percent}%`,
+  /** 파이를 읽어 주는 말의 한 토막: "긍정적 14건" */
+  sliceSpoken: (name: string, count: number) => `${name} ${count}건`,
+  /** 범례 묶음 이름(화면 읽기 도구용): "걸린 부분 — 누르면 어느 회사 · 접촉에서 나왔는지 펼칩니다" */
+  legendLabel: (pieName: string) =>
+    `${pieName} — 누르면 어느 회사 · 접촉에서 나왔는지 아래에 펼칩니다`,
+  /** "자동차 부품만 보는 중" */
+  scopeChip: (name: string) => `${name}만 보는 중`,
+  scopeClear: '전체로 돌아가기',
+  split: {
+    title: '나눠 보기',
+    industry: '산업별',
+    process: '공정별',
+    hintIndustry:
+      '[이것만 보기]를 누르면 위 그래프가 그 산업 것만 보입니다 · 담당자가 확정한 산업 기준 · 산업이 둘인 회사의 접촉은 두 줄에 모두 셉니다',
+    hintProcess:
+      '[이것만 보기]를 누르면 위 그래프가 그 공정 것만 보입니다 · 회사가 맡길 수 있다고 확정한 공정 기준 · 공정이 둘인 회사의 접촉은 두 줄에 모두 셉니다',
+    tableLabelIndustry: '산업별 상대 반응 표',
+    tableLabelProcess: '공정별 상대 반응 표',
+    columnIndustry: '산업',
+    columnProcess: '공정',
+    columnContacts: '접촉',
+    columnReaction: '반응',
+    columnTopGood: '가장 좋게 본 부분',
+    columnTopBad: '가장 걸린 부분',
+    columnAction: '고르기',
+    /** 얇은 세 칸 막대 옆 글: "긍정 5 · 보통 3 · 부정 7" */
+    reactionCounts: (positive: number, neutral: number, negative: number) =>
+      `긍정 ${positive} · 보통 ${neutral} · 부정 ${negative}`,
+    /** 막대를 읽어 주는 말. */
+    reactionSpoken: (positive: number, neutral: number, negative: number) =>
+      `긍정 ${positive}건, 보통 ${neutral}건, 부정 ${negative}건`,
+    /** "품질·인증 3건" */
+    top: (name: string, count: number) => `${name} ${count}건`,
+    none: '—',
+    only: '이것만 보기',
+    viewing: '보는 중',
+    /** 단추를 읽어 주는 말: "자동차 부품만 보기" / "자동차 부품 보는 중 — 누르면 전체로" */
+    onlyLabel: (name: string) => `${name}만 보기`,
+    viewingLabel: (name: string) => `${name} 보는 중 — 누르면 전체로 돌아갑니다`,
+    empty: '아직 나눠 볼 줄이 없습니다.',
+  },
+  detail: {
+    /** "걸린 부분 › 가격 · 자동차 부품 3건" (고른 묶음이 없으면 "걸린 부분 › 가격 3건") */
+    title: (pieName: string, sliceName: string, scopeName: string | null, count: number) =>
+      `${pieName} › ${sliceName}${scopeName ? ` · ${scopeName}` : ''} ${count}건`,
+    hint: '어느 산업 · 공정에서, 어느 회사에서 나왔는지',
+    byProcess: '공정별',
+    byIndustry: '산업별',
+    companies: '회사',
+    /** "아연도금 2건" */
+    part: (name: string, count: number) => `${name} ${count}건`,
+    noProcess: '공정 확인 전',
+    noIndustry: '산업 확인 전',
+    /** 접촉 방법(시안의 말). 접촉 한 줄: "K산업(가상) 11/20 통화" */
+    methods: { CALL: '통화', EMAIL: '메일', VISIT: '대면' },
+    more: (hidden: number) => `더 보기 (${hidden}건)`,
+    empty: '이 조각에 해당하는 접촉 줄이 없습니다.',
+  },
 } as const;

@@ -199,7 +199,7 @@ describe('기록 구역 · ② 접촉 날짜는 오늘까지 (#433)', () => {
   it('날짜 칸은 처음에 오늘(한국 날짜)이고, 고를 수 있는 가장 늦은 날도 오늘이다', async () => {
     const user = userEvent.setup();
     renderArea();
-    await user.click(chipOf('records-kind', '전화'));
+    await user.click(chipOf('records-kind', '통화'));
     const date = screen.getByTestId('records-contact-date') as HTMLInputElement;
     expect(date.value).toBe(todayKst());
     expect(date.max).toBe(todayKst());

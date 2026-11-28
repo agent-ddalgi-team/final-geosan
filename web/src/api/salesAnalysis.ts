@@ -407,3 +407,88 @@ export function requestSalesFeedback(
     timeoutMs: 70_000,
   });
 }
+
+// ---------------------------------------------------------------------------
+// #985: 상대 반응 — 거산의 강점 · 약점(계약 C1 `GET /sales-analysis/reactions`). AI 없음, 저장된 접촉 기록의
+// 상대 반응 답(꼬리 질문 REACTION · REACTION_GOOD · REACTION_BAD)만 센다. 세는 단위는 회사가 아니라 "접촉 건"이다.
+// 응답에는 회사 이름과 코드값·건수·날짜만 있고 메모 글·답 글·사람 이름·연락처는 없다.
+// 보기 이름은 질문 파일(GET /sales-questions)에서 읽는다.
+// ---------------------------------------------------------------------------
+
+/** 좋게 본 부분 · 걸린 부분의 한 줄(많은 순, 같으면 질문 파일 보기 순서). */
+export interface ReactionAnswerCount {
+  answerId: string;
+  count: number;
+}
+
+/** 반응 묶음 하나(전체 · 산업 한 줄 · 공정 한 줄이 같은 모양). */
+export interface ReactionGroup {
+  /** 반응 답이 있는 접촉 건수(= positive + neutral + negative). */
+  answeredCount: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  /** 긍정적인 접촉에서 좋게 본 부분. */
+  good: ReactionAnswerCount[];
+  /** 부정적인 접촉에서 걸린 부분. */
+  bad: ReactionAnswerCount[];
+}
+
+export interface ReactionIndustryRow extends ReactionGroup {
+  /** 설정 산업군 이름. 산업군이 없는 회사는 맨 끝 "미확정" 한 줄. */
+  industry: string;
+}
+
+export interface ReactionProcessRow extends ReactionGroup {
+  /** 공정 연결이 없는 회사를 모은 줄은 null("공정 미확정", 맨 끝). */
+  processCode: string | null;
+  processName: string;
+}
+
+/** 반응을 남긴 접촉 한 건(최근 날짜 순). 조각을 눌렀을 때 "어느 공정 · 회사 · 접촉에서 나왔는지"를 이 줄로 보인다. */
+export interface ReactionContact {
+  oppId: string;
+  /** 회사 이름. */
+  name: string;
+  /** 접촉 날짜(YYYY-MM-DD). */
+  day: string;
+  method: ContactMethodCode;
+  /** REACTION 보기 id(POSITIVE · NEUTRAL · NEGATIVE). */
+  reaction: string;
+  /** REACTION_GOOD 보기 id. 답이 없으면 null. */
+  good: string | null;
+  /** REACTION_BAD 보기 id. 답이 없으면 null. */
+  bad: string | null;
+  industries: string[];
+  processCodes: string[];
+}
+
+export interface SalesReactions {
+  asOf: string;
+  basis: {
+    /** 반응을 남긴 접촉이 이보다 적은 묶음은 화면이 비율 없이 건수만 보인다. */
+    minSampleForRatio: number;
+    /** 기간 안 통화 · 메일 · 대면 접촉 건수. */
+    contactCount: number;
+    /** 그 가운데 상대 반응 답이 있는 건수. */
+    answeredCount: number;
+  };
+  total: ReactionGroup;
+  byIndustry: ReactionIndustryRow[];
+  byProcess: ReactionProcessRow[];
+  contacts: ReactionContact[];
+}
+
+/** 기간(from · to)은 GET /sales-analysis와 같은 규칙으로 붙인다. */
+export function getSalesReactions(
+  signal?: AbortSignal,
+  period?: AnalysisPeriod | null,
+): Promise<Envelope<SalesReactions>> {
+  const query = new URLSearchParams();
+  if (period?.from) query.set('from', period.from);
+  if (period?.to) query.set('to', period.to);
+  const search = query.toString();
+  return request<SalesReactions>(`/sales-analysis/reactions${search ? `?${search}` : ''}`, {
+    signal,
+  });
+}
