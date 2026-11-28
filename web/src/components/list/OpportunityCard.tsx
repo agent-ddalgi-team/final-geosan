@@ -1,7 +1,11 @@
 // 추천 카드(S1, BR10.1~BR10.3, interaction-spec 2.1): 순위·기업/기회·분류(쉬운 말)·점수·추천 이유·막는 조건·
 // 다음 할 일 + 의견 영역 + [관심] 단추 + [자세히 보기]. 전문 용어(E/P/R)는 카드에 쓰지 않는다(BR10.9).
-// #972(PM이 고른 시안 2026-11-27): 카드 한 장 대신 표 줄 모양이다. 회사·품목 | 지역·거리 | 추천 근거 + 검토사항 +
-// 꼬리표 | 점수 | 의견 고르기 + 관심 별. 보이는 정보와 테스트용 이름은 카드 때와 같고 자리만 칸으로 나눴다.
+// #972(PM이 고른 시안 2026-11-27): 카드 한 장 대신 표 줄 모양이다.
+// #981(PM 결정 2026-11-28): 거래처 후보 줄은 세 칸이다. 회사 이름(혼자 한 줄, 굵게) · 품목 · 산업 · 지역 |
+// 추천 근거 + 검토사항 + 꼬리표 | 점수(숫자만) · 적합도 · 관심 별, 그 아래 의견 고르기. [자세히 보기]는 없고 회사 이름을 누른다.
+// #987(PM 결정 2026-11-28 시안 "2-수정안" 최종): 첫 칸은 회사 이름 아래 "품목 · 산업 · 지역"을 이름표와 함께 한 줄씩.
+// 거리 · 들어온 날짜 · "거래 확인 전" 꼬리표는 거래처 후보 줄에서 뺀다. "추천 근거"·"고른 이유"는 "추천 이유" 한 말로,
+// 꼬리표와 의견 고르기는 줄 맨 아래에 맞춘다. 관심 기업 줄은 말("추천 이유")만 같이 바뀐다.
 // [관심](#357)은 영업 단계가 아니라 켜고 끄는 표시다. 카드에서 검토 의견을 저장하면 서버가 관심을 켜므로 그 뒤 관심 값을 다시 읽는다.
 import { Fragment } from 'react';
 import type { CSSProperties } from 'react';
@@ -36,6 +40,17 @@ import {
 import { accent, colors, listTheme, radius, typography } from '../../theme/tokens';
 import { formatDate, formatMonthDay, todayKst } from '../../utils/time';
 
+/**
+ * 서버 제목 "회사 · 품목"을 첫 " · "에서 가른다(#981). 둘을 " · "로 이으면 서버 글자 그대로다(글자를 바꾸거나 지어내지 않는다).
+ * 구분 글자가 없으면 통째로 회사 이름이다.
+ */
+export function splitTitle(title: string): { name: string; item: string | null } {
+  const at = title.indexOf(' · ');
+  return at < 0
+    ? { name: title, item: null }
+    : { name: title.slice(0, at), item: title.slice(at + 3) };
+}
+
 /** #793: 적합도 높낮이(오름·내림 화살표 계산에만 쓴다). */
 const FIT_RANK = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
 
@@ -55,10 +70,12 @@ export interface OpportunityCardProps {
    * "관심 기업으로 옮겼습니다" 안내를 보이는 데 쓴다. 끌 때와 검토 의견 저장으로 켜질 때는 알리지 않는다.
    */
   onBookmarkedOn?: (card: CardData) => void;
+  /** 이 줄에서 검토 의견을 저장했을 때 알린다(#981). 관심 기업 화면이 "의견 전" 띠의 곳 수를 다시 읽는 데 쓴다. */
+  onOpinionSaved?: () => void;
   /**
-   * 줄 모양(#972). "table"(기본, 거래처 후보)은 다섯 칸 표 줄, "bookmark"(관심 기업)는 세 칸 줄이다:
+   * 줄 모양(#972 → #981). "table"(기본, 거래처 후보)은 열 머리가 있는 세 칸 표 줄, "bookmark"(관심 기업)는 세 칸 줄이다:
    * 회사·품목·꼬리표 | 추천 근거 / 검토사항 | 큰 점수 · 다음 일정 · 의견 고르기 · [자세히 보기].
-   * 보이는 정보와 테스트용 이름은 두 모양이 같다(관심 기업 줄은 지역 칸이 없어 거리를 꼬리표로 보인다).
+   * 관심 기업 줄은 지역 줄이 없어 거리를 꼬리표로 보이고, 거래처 후보 줄(#987)은 거리·들어온 날짜를 보이지 않는다.
    */
   layout?: 'table' | 'bookmark';
 }
@@ -69,6 +86,7 @@ export default function OpportunityCard({
   processNames,
   showRank = true,
   onBookmarkedOn,
+  onOpinionSaved,
   layout = 'table',
 }: OpportunityCardProps) {
   const navigate = useNavigate();
@@ -208,6 +226,8 @@ export default function OpportunityCard({
     </span>
   ) : null;
   const threeColumns = layout === 'bookmark';
+  // 제목(#981): 회사 이름만 굵게 한 줄, 품목은 그 아래 작은 글. 사이의 " · "는 눈에는 숨기고 화면 낭독기에는 읽힌다.
+  const { name: companyName, item: itemName } = splitTitle(card.title);
   const titleEl = (
     <Typography.Title
       level={2}
@@ -215,22 +235,44 @@ export default function OpportunityCard({
       style={{
         margin: 0,
         fontSize: threeColumns ? listTheme.titleSizeLarge : listTheme.titleSize,
-        fontWeight: 600,
-        lineHeight: 1.45,
+        fontWeight: 700,
+        lineHeight: 1.35,
       }}
     >
-      {/* 회사 이름을 눌러도 상세로 간다(#691). [자세히 보기 →]는 그대로 있다. */}
+      {/* 회사 이름을 누르면 상세로 간다(#691). 거래처 후보 줄에는 [자세히 보기]가 따로 없다(#981). */}
       <a
         href={detailPath}
         onClick={(event) => {
           event.preventDefault();
           navigate(detailPath);
         }}
+        className="cand-row__name"
         style={{ color: 'inherit' }}
         data-testid="card-title-link"
       >
-        {card.title}
+        {companyName}
       </a>
+      {itemName !== null ? (
+        <>
+          <span className="cand-row__sep"> · </span>
+          <span
+            data-testid="card-title-item"
+            // 거래처 후보 줄(#987): 앞에 이름표 "품목"을 붙인다. 이름표는 CSS가 그려 제목 글자("회사 · 품목")는 서버 값 그대로다.
+            className={threeColumns ? undefined : 'cand-row__fact'}
+            data-label={threeColumns ? undefined : listTable.facts.item}
+            style={{
+              display: 'block',
+              marginTop: threeColumns ? 2 : 6,
+              color: listTheme.bodyFg,
+              fontSize: typography.fontSizeSecondary,
+              fontWeight: 400,
+              lineHeight: 1.45,
+            }}
+          >
+            {itemName}
+          </span>
+        </>
+      ) : null}
     </Typography.Title>
   );
   const ingestedTag = ingestedOn ? (
@@ -256,44 +298,59 @@ export default function OpportunityCard({
       ))}
     </div>
   ) : null;
-  // 지역 칸(#972 시안 "지역" 열): 서버가 준 시·군을 그대로 보인다. 주소가 없는 회사(null)는 "지역 미확인",
-  // 칸 자체가 없으면(옛 응답) 아무것도 안 보인다. 그 아래에 거산 본사에서의 직선거리(#666, 좌표를 못 찾으면 없음).
-  const regionEl =
-    card.region === undefined ? null : (
-      <div data-testid="card-region" style={card.region ? undefined : { color: listTheme.headFg }}>
-        {card.region ?? listFilters.regionUnknown}
-      </div>
-    );
-  const distanceEl =
-    typeof card.distanceKm === 'number' ? (
-      <div data-testid="card-distance-tag" style={labelStyle}>
-        {listFilters.cardDistance(card.distanceKm)}
+  // 거래처 후보 줄(#987): 품목 아래에 "산업 ○○", "지역 ○○"을 이름표와 함께 한 줄씩 둔다. 거리는 이 줄에 보이지 않는다
+  // (정렬 [가까운 순]과 거리 고르기는 그대로다). 주소가 없는 회사는 "지역 미확인", 칸 자체가 없으면(옛 응답) 줄을 그리지 않는다.
+  const factStyle: CSSProperties = {
+    color: listTheme.bodyFg,
+    fontSize: typography.fontSizeSecondary,
+    lineHeight: 1.45,
+  };
+  const factsEl =
+    industryNames || card.region !== undefined ? (
+      <div style={{ display: 'grid', gap: 3 }}>
+        {industryNames ? (
+          <div className="cand-row__fact" data-label={listTable.facts.industry} style={factStyle}>
+            {industryNames.map((industry, index) => (
+              <Fragment key={industry}>
+                {index > 0 ? ' · ' : null}
+                <span data-testid="card-industry-tag">{industry}</span>
+              </Fragment>
+            ))}
+          </div>
+        ) : null}
+        {card.region !== undefined ? (
+          <div className="cand-row__fact" data-label={listTable.facts.region} style={factStyle}>
+            <span
+              data-testid="card-region"
+              style={card.region ? undefined : { color: listTheme.headFg }}
+            >
+              {card.region ?? listFilters.regionUnknown}
+            </span>
+          </div>
+        ) : null}
       </div>
     ) : null;
   // 검토사항 줄: 확인할 것이 있거나 승인을 막으면 주의 글자로 띄운다. "없음 — …"은 보통 글자에 이름표를 붙인다.
   const blockerNeedsCheck = checkLine !== null || card.blocker.blocksApproval;
-  // 관심 기업 줄은 열 머리가 없어 "추천 근거"·"검토사항" 이름표를 글 위에 늘 보인다(시안 Bookmarks).
+  // "추천 이유" 이름표는 두 줄 모양 모두 글 위에 늘 보인다. "검토사항" 이름표는 관심 기업 줄에서만 글 위에 보인다.
   const blockLabel: CSSProperties = { ...labelStyle, display: 'block' };
   const reasonLines = (
     <>
       {/* 공장 정보 줄(업종·원자재·규모)은 카드에서 빼고 상세 "한눈에"에서 본다(#798, PM 지시 2026-11-16). */}
-      {reasonSameAsPick ? null : (
-        <div style={lineStyle} title={card.reason}>
-          <span
-            className={threeColumns ? undefined : 'cand-row__label'}
-            style={threeColumns ? blockLabel : labelStyle}
-          >
-            {cardRows.reason}
+      {/* #987: "추천 근거"와 "고른 이유"를 "추천 이유" 한 말로 보인다. 두 글이 다르면 이름표 하나 아래에 한 줄씩 놓는다. */}
+      <div style={lineStyle}>
+        <span style={blockLabel}>{listTable.reasonLabel}</span>
+        {reasonSameAsPick ? null : (
+          <span data-testid="card-reason" title={card.reason} style={{ display: 'block' }}>
+            {card.reason}
           </span>
-          <span data-testid="card-reason">{card.reason}</span>
-        </div>
-      )}
-      {pickReason ? (
-        <div style={lineStyle} title={pickReason}>
-          <span style={{ ...labelStyle, marginRight: 8 }}>{candidateSearch.pickReasonRow}</span>
-          <span data-testid="card-pick-reason">{pickReason}</span>
-        </div>
-      ) : null}
+        )}
+        {pickReason ? (
+          <span data-testid="card-pick-reason" title={pickReason} style={{ display: 'block' }}>
+            {pickReason}
+          </span>
+        ) : null}
+      </div>
       <div
         style={
           threeColumns
@@ -358,7 +415,8 @@ export default function OpportunityCard({
         {closedBasis}
       </StatusTag>
     ) : null,
-    fitTag ? (
+    // 적합도 꼬리표: 관심 기업 줄에서는 여기, 거래처 후보 줄에서는 점수 옆(#981)에 보인다.
+    fitTag && threeColumns ? (
       <StatusTag key="fit" tone="neutral" data-testid="card-fit-level">
         {fitTag}
       </StatusTag>
@@ -447,6 +505,10 @@ export default function OpportunityCard({
         relationStatus={card.relationStatus}
         classificationCode={card.classificationCode}
         numberSize={numberSize}
+        // #981: 거래처 후보 줄은 점수만 보인다("· 4/8"은 상세에서 본다).
+        scoreOnly={!threeColumns}
+        // #987: 거래처 후보 줄에는 "거래 확인 전" 꼬리표를 붙이지 않는다(점수 글자의 흐림은 그대로다).
+        hidePendingTag={!threeColumns}
         testId="card-score"
       />
     ) : null;
@@ -456,9 +518,18 @@ export default function OpportunityCard({
       oppId={card.oppId}
       evalId={card.evalId}
       record={card.records.opinion ?? null}
-      onSaved={() => void bookmarkState.sync()}
+      onSaved={() => {
+        void bookmarkState.sync();
+        onOpinionSaved?.();
+      }}
       // #798: 카드는 단추 셋 대신 고르기 칸 하나로 줄인다.
       variant="select"
+      // #981: 관심에 담았는데 의견을 아직 안 골랐으면 고르기 칸을 주황 테두리로 띄우고 한 줄로 알린다.
+      // 이미 접촉·견적 단계로 간 회사는 알리지 않는다(영업 홈 "의견 전" 칸과 같은 기준).
+      nudge={
+        bookmarkState.bookmark?.active === true &&
+        (stageStatus === null || stageStatus === 'NOT_EXECUTED')
+      }
     />
   );
   const bookmarkEl = (
@@ -632,55 +703,54 @@ export default function OpportunityCard({
   }
 
   const score = scoreEl(listTheme.scoreSize);
-  // 표 줄(#972 시안 Candidates): 회사·품목 | 지역·거리 | 추천 근거 + 검토사항 + 꼬리표 | 점수 | 의견 + 관심 별.
-  // 열 너비는 styles.css의 .cand-row가 줄마다 똑같이 잡는다. 좁으면 칸이 세로로 쌓이고 칸 이름표가 보인다.
+  // 거래처 후보 줄(#981 시안 "2-수정안"): 회사 이름 · 품목 · 산업 · 지역·거리 | 추천 근거 + 검토사항 + 꼬리표 |
+  // 점수 · 적합도 · 관심 별 + 의견 고르기. 열 너비는 styles.css의 .cand-row가 줄마다 똑같이 잡는다.
+  // 좁으면 칸이 세로로 쌓이고 칸 이름표가 보인다.
   return (
     <article
       className="cand-row"
       data-testid="opportunity-card"
       data-layout="table"
-      style={rowStyle}
+      // 이름표("품목"·"산업"·"지역") 글자색은 CSS 변수로 넘긴다(색 값은 tokens).
+      style={{ ...rowStyle, ['--cand-fact-label' as string]: listTheme.headFg }}
     >
       <div className="cand-row__cell" style={cellStack}>
         {/* 번호는 왼쪽에 고정하고, 긴 회사 이름은 그 옆에서 줄을 바꾼다. */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           {rankEl}
-          <div style={titleWrap}>
+          <div style={{ display: 'grid', gap: 3, minWidth: 0 }}>
             {titleEl}
-            {ingestedTag}
+            {factsEl}
           </div>
         </div>
-        {industriesEl}
       </div>
-      <div className="cand-row__cell" style={cellStack}>
-        {regionEl || distanceEl ? (
-          <span className="cand-row__label" style={labelStyle}>
-            {listTable.columns.region}
-          </span>
-        ) : null}
-        {regionEl}
-        {distanceEl}
-      </div>
-      <div className="cand-row__cell" style={{ ...cellStack, gap: 6 }}>
-        {reasonLines}
-        {tagsEl}
-      </div>
-      <div className="cand-row__cell" style={{ ...cellStack, justifyItems: 'start' }}>
-        {score ? (
-          <>
-            <span className="cand-row__label" style={labelStyle}>
-              {listTable.scoreLabel}
-            </span>
-            {score}
-          </>
-        ) : null}
+      {/* 가운데 칸: 추천 이유 · 검토사항은 위에서부터, 꼬리표는 줄 맨 아래에 맞춘다(오른쪽 칸의 의견 고르기와 같은 높이). */}
+      <div className="cand-row__cell cand-row__reason">
+        <div style={{ ...cellStack, gap: 6 }}>{reasonLines}</div>
+        {tagsEl ? <div className="cand-row__bottom">{tagsEl}</div> : null}
       </div>
       <div className="cand-row__cell cand-row__actions">
-        <div className="cand-row__actions-main">
-          {opinionEl}
+        <div className="cand-row__score-line">
+          {/* 적합도는 점수 앞에 둔다(#981 PM 결정): 적합도가 없는 줄도 점수가 같은 자리(별 바로 왼쪽)에 온다. */}
+          <div className="cand-row__score">
+            {fitTag ? (
+              <StatusTag
+                tone={card.fitLevel === 'HIGH' ? 'ask' : 'neutral'}
+                data-testid="card-fit-level"
+              >
+                {fitTag}
+              </StatusTag>
+            ) : null}
+            {score ? (
+              <span className="cand-row__label" style={labelStyle}>
+                {listTable.scoreLabel}
+              </span>
+            ) : null}
+            {score}
+          </div>
           {bookmarkEl}
         </div>
-        {detailEl}
+        <div className="cand-row__actions-main cand-row__bottom">{opinionEl}</div>
       </div>
     </article>
   );

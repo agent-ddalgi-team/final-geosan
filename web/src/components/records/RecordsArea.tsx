@@ -30,6 +30,7 @@ import type {
   SalesStep,
   SalesStepView,
 } from '../../api/types';
+import PaidTag from '../common/PaidTag';
 import {
   coachTexts,
   contactMethodLabels,
@@ -1479,7 +1480,7 @@ export default function RecordsArea({
               onClick={() => void onSendCoach()}
               data-testid="coach-send"
             >
-              {coachTexts.send}
+              {coachTexts.send} <PaidTag onPrimary />
             </Button>
             <Button
               disabled={disabled || coachSending}

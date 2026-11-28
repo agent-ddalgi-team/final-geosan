@@ -10,6 +10,7 @@ import { assistantConfigOf, postMemoRead } from '../../api/assistant';
 import type { MemoProposal, MemoReadAnswer } from '../../api/assistant';
 import { ApiError, getActivity, postIndustries, postOutcome } from '../../api/client';
 import type { OutcomeRecord, OutcomeRequest } from '../../api/types';
+import PaidTag from '../common/PaidTag';
 import { errorTexts, memoReadTexts as texts } from '../../labels/ko';
 import { colors, radius, statusPalette, typography } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
@@ -158,7 +159,7 @@ export default function MemoRead({
           loading={reading}
           disabled={!canRecord}
         >
-          {texts.button}
+          {texts.button} <PaidTag />
         </Button>
         <span data-testid="memo-read-hint" style={secondary}>
           {reading ? texts.reading : texts.buttonHint}

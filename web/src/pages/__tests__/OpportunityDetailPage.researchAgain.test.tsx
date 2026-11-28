@@ -95,7 +95,12 @@ describe('상세 › 다시 조사 제안(#677)', () => {
     expect(days).toBeGreaterThanOrEqual(34);
     expect(hint).toHaveTextContent(homepageControls.suggestAgain(days));
     // 새 단추를 만들지 않고 기존 [다시 조사] 단추를 강조한다.
-    expect(screen.getAllByRole('button', { name: homepageControls.rerunButton })).toHaveLength(1);
+    // 단추 이름은 글 뒤 "유료" 꼬리표까지 "다시 조사 유료"로 읽힌다(#981, 💰 대신).
+    expect(homepageControls.rerunButton).toBe('다시 조사');
+    expect(screen.getAllByRole('button', { name: '다시 조사 유료' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '다시 조사 유료' })).toBe(
+      screen.getByTestId('homepage-rerun-button'),
+    );
     expect(screen.getByTestId('homepage-rerun-button')).toHaveClass('ant-btn-primary');
     expect(screen.getByTestId('company-suggest-again-tag')).toHaveTextContent(
       companySummary.suggestAgainTag,

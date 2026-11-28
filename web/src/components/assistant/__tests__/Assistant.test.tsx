@@ -1,4 +1,6 @@
 // 영업 비서 화면 부품(#680): 대시보드 질문 칸과 상세 통화 전 칸(#750부터 저장된 코치 정리만 보인다).
+// #981: 질문 칸 모양 — 안내 말풍선 → 화면별 예시 질문 단추 세 개(글만 채움, 요청 0건) → 질문 칸 + [묻기 유료].
+// #987(PM 결정 2026-11-28): 맨 아래 설명 글은 지웠다. 담당자를 안 골랐을 때의 안내 한 줄만 남는다.
 // 요청 함수는 가짜로 바꾼 확인이며 실제 서버·실제 AI 연결 확인이 아니다.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -37,9 +39,11 @@ function renderWith(
     staffKey: 'park-lee',
     canRecord: true,
   },
+  /** 지금 화면 주소. 질문 칸은 주소로 화면(대시보드·거래처 후보·관심 기업·영업 분석)을 안다. */
+  path = '/',
 ) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <FrameContext.Provider
         value={{
           config,
@@ -133,5 +137,159 @@ describe('AssistantAsk (대시보드 질문 칸)', () => {
     expect(screen.getByTestId('assistant-ask-button')).toBeDisabled();
     expect(screen.getByTestId('assistant-ask-hint')).toHaveTextContent(texts.pickStaffFirst);
     expect(mockedAsk).not.toHaveBeenCalled();
+  });
+});
+
+describe('AssistantAsk 예시 질문 단추와 [묻기 유료] (#981)', () => {
+  const LIST = '/opportunities';
+  const exampleTexts = () =>
+    screen.getAllByTestId('assistant-example').map((button) => button.textContent);
+
+  beforeEach(() => {
+    mockedAsk.mockReset();
+  });
+
+  it('Given 거래처 후보 화면 When 질문 칸 Then 안내 말풍선 → 예시 질문 단추 세 개 → 질문 칸과 [묻기 유료] 순서로 보이고, 그 아래 설명 글은 없다(#987)', () => {
+    renderWith(<AssistantAsk />, ON, undefined, LIST);
+    const intro = screen.getByTestId('assistant-intro');
+    expect(intro).toHaveTextContent(
+      /^화면에 보이는 후보와 영업 기록을 바탕으로 답합니다\. 궁금한 것을 물어보세요\.$/,
+    );
+    // 예시 질문 글은 글 대응표의 그 화면 것 그대로, 세 개다.
+    const examples = screen.getByRole('group', { name: '예시 질문' });
+    expect(examples).toHaveAttribute('data-testid', 'assistant-examples');
+    expect(exampleTexts()).toEqual(texts.examples.LIST);
+    expect(exampleTexts()).toEqual([
+      '가까운 후보부터 알려줘',
+      '적합도 상인 후보는?',
+      '먼저 연락할 후보 3곳은?',
+    ]);
+    // 돈이 드는 것은 [묻기]뿐이라 "유료" 꼬리표는 [묻기]에만 붙는다(예시 단추에는 없다).
+    const ask = screen.getByTestId('assistant-ask-button');
+    expect(ask).toHaveAccessibleName('묻기 유료');
+    expect(within(ask).getByTestId('paid-tag')).toHaveTextContent(/^유료$/);
+    expect(screen.getAllByTestId('paid-tag')).toHaveLength(1);
+    expect(ask).not.toHaveTextContent('💰');
+    // (바뀜 #987) 예전 기대: 질문 칸 아래에 "…만 AI에 보냅니다. [묻기]를 누를 때만 AI 비용이 듭니다." 설명이 보인다.
+    // 지금: 담당자를 고른 상태에서는 질문 칸 아래 설명이 없다(비용 표시는 [묻기] 단추의 "유료" 꼬리표가 맡는다).
+    expect(screen.queryByTestId('assistant-ask-hint')).not.toBeInTheDocument();
+    const section = screen.getByTestId('assistant-ask');
+    expect(section).not.toHaveTextContent('AI에 보냅니다');
+    expect(section).not.toHaveTextContent('AI 비용이 듭니다');
+    // 화면 순서: 말풍선 → 예시 단추 → 질문 칸. 질문 칸(과 [묻기])이 맨 아래다.
+    const input = screen.getByTestId('assistant-question-input');
+    const order = [intro, examples, input];
+    for (let i = 1; i < order.length; i += 1) {
+      expect(
+        order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    const form = input.closest('form') as HTMLElement;
+    expect(form).toContainElement(ask);
+    expect(section.lastElementChild).toBe(form);
+  });
+
+  it.each([
+    ['영업 홈', '/'],
+    ['거래처 후보', '/opportunities'],
+    ['관심 기업', '/bookmarks'],
+    ['영업 분석', '/sales-analysis'],
+  ])(
+    'Given 담당자를 고른 상태 When %s 화면의 질문 칸 Then 질문 칸 아래 설명 글이 없다(#987)',
+    (_name, path) => {
+      renderWith(<AssistantAsk />, ON, undefined, path);
+      expect(screen.getByTestId('assistant-question-input')).toBeEnabled();
+      expect(screen.queryByTestId('assistant-ask-hint')).not.toBeInTheDocument();
+      expect(screen.getByTestId('assistant-ask')).not.toHaveTextContent('AI에 보냅니다');
+    },
+  );
+
+  it.each([
+    ['담당자 미선택', { staffKey: null, canRecord: false }],
+    ['보기 전용', { staffKey: 'viewer', canRecord: false }],
+  ])(
+    'Given %s When 질문 칸 Then 질문 칸 아래에 "담당자를 고르면 쓸 수 있습니다." 한 줄만 보인다(#987)',
+    (_name, staff) => {
+      renderWith(<AssistantAsk />, ON, staff, LIST);
+      const hint = screen.getByTestId('assistant-ask-hint');
+      expect(hint.textContent).toBe('담당자를 고르면 쓸 수 있습니다.');
+      expect(texts.pickStaffFirst).toBe('담당자를 고르면 쓸 수 있습니다.');
+      // 질문 칸 아래에 놓인다.
+      expect(
+        screen.getByTestId('assistant-question-input').compareDocumentPosition(hint) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getByTestId('assistant-ask')).not.toHaveTextContent('AI에 보냅니다');
+    },
+  );
+
+  it('Given 예시 질문 단추 When 누르면 Then 질문 칸에 그 글만 채워지고 요청은 0건이며, 그 뒤 [묻기]를 눌러야 그 글로 한 번 보낸다', async () => {
+    const user = userEvent.setup();
+    mockedAsk.mockResolvedValueOnce({ data: answer, meta: {} });
+    renderWith(<AssistantAsk />, ON, undefined, LIST);
+    const input = screen.getByTestId('assistant-question-input');
+    expect(input).toHaveValue('');
+    expect(screen.getByTestId('assistant-ask-button')).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '적합도 상인 후보는?' }));
+    // 글만 채운다: 보내지 않고(비용 없음) 답도 "쓰는 중"도 없다. [묻기]가 눌릴 수 있게 된다.
+    expect(input).toHaveValue('적합도 상인 후보는?');
+    expect(mockedAsk).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('assistant-asking')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-answer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-ask-button')).toBeEnabled();
+
+    // 다른 예시를 누르면 덧붙지 않고 그 글로 바뀐다. 여전히 요청은 없다.
+    await user.click(screen.getByRole('button', { name: '가까운 후보부터 알려줘' }));
+    expect(input).toHaveValue('가까운 후보부터 알려줘');
+    expect(mockedAsk).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('assistant-ask-button'));
+    expect(mockedAsk).toHaveBeenCalledTimes(1);
+    expect(mockedAsk).toHaveBeenCalledWith('가까운 후보부터 알려줘', 'park-lee', 'LIST');
+    expect(await screen.findByTestId('assistant-answer')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['영업 홈', '/', 'DASHBOARD'],
+    ['거래처 후보', '/opportunities', 'LIST'],
+    ['관심 기업', '/bookmarks', 'BOOKMARKS'],
+    ['영업 분석', '/sales-analysis', 'ANALYSIS'],
+  ] as const)(
+    'Given %s 화면(%s) When 질문 칸 Then 그 화면의 안내 말풍선과 예시 질문 세 개가 나온다',
+    (_name, path, page) => {
+      renderWith(<AssistantAsk />, ON, undefined, path);
+      expect(texts.examples[page]).toHaveLength(3);
+      expect(exampleTexts()).toEqual(texts.examples[page]);
+      expect(screen.getByTestId('assistant-intro').textContent).toBe(texts.intro[page]);
+    },
+  );
+
+  it('Given 질문 칸이 놓이는 네 화면이 아닌 주소 When 질문 칸 Then 예시 질문 단추는 없고 기본 안내와 질문 칸만 보인다', () => {
+    renderWith(<AssistantAsk />, ON, undefined, '/operations');
+    expect(screen.queryByTestId('assistant-examples')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-example')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-intro').textContent).toBe(texts.intro.OTHER);
+    expect(screen.getByTestId('assistant-question-input')).toBeEnabled();
+  });
+
+  it('Given 보기 전용·담당자 미선택 When 질문 칸 Then 예시 질문 단추 세 개가 모두 잠겨 눌러도 글이 채워지지 않는다', async () => {
+    const user = userEvent.setup();
+    renderWith(<AssistantAsk />, ON, { staffKey: null, canRecord: false }, LIST);
+    const examples = screen.getAllByTestId('assistant-example');
+    expect(examples).toHaveLength(3);
+    for (const example of examples) expect(example).toBeDisabled();
+    await user.click(examples[0]);
+    expect(screen.getByTestId('assistant-question-input')).toHaveValue('');
+    expect(mockedAsk).not.toHaveBeenCalled();
+    // 안내 글은 비용 안내 대신 담당자를 고르라는 한 줄이다.
+    expect(screen.getByTestId('assistant-ask-hint').textContent).toBe(texts.pickStaffFirst);
+  });
+
+  it('Given 스위치가 꺼짐 When 질문 칸 Then 말풍선도 예시 질문 단추도 보이지 않는다', () => {
+    renderWith(<AssistantAsk />, OFF, undefined, LIST);
+    expect(screen.getByTestId('assistant-disabled')).toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-intro')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-example')).not.toBeInTheDocument();
   });
 });

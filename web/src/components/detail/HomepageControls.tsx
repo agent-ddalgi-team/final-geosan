@@ -11,6 +11,7 @@ import type { ErrorBody, HomepageRequest } from '../../api/types';
 import { errorTexts, homepageControls } from '../../labels/ko';
 import { colors, typography } from '../../theme/tokens';
 import MonthSpendLine from '../common/MonthSpendLine';
+import PaidTag from '../common/PaidTag';
 import { useFrame } from '../frame/FrameContext';
 
 /** 다시 눌러도 풀리지 않는 실패 종류. 조사 단추를 잠근다. */
@@ -134,7 +135,7 @@ export default function HomepageControls({
           onClick={() => void send({}, 'research')}
           data-testid="homepage-rerun-button"
         >
-          {homepageControls.rerunButton}
+          {homepageControls.rerunButton} <PaidTag onPrimary={suggestDays !== null} />
         </Button>
         {aiOff ? (
           <span style={secondary} data-testid="homepage-ai-off">

@@ -42,6 +42,28 @@ export const warn = {
   border: '#F2D9BD',
 } as const;
 
+/**
+ * "유료" 꼬리표(#981): 누르면 AI 비용이 드는 단추의 글 뒤. 흰 단추 위는 연보라 바탕 + 보라 글자,
+ * 보라 주 단추 위는 흰 바탕 + 보라 글자(둘 다 대비 4.5:1 이상).
+ */
+export const paidTag = {
+  plain: { bg: accent.softDeep, fg: accent.text },
+  onPrimary: { bg: '#FFFFFF', fg: accent.text },
+  radius: 5,
+  fontSize: 11.5,
+} as const;
+
+/**
+ * 의견 전 알림(#981): 관심에 담고 의견을 안 고른 회사의 고르기 칸 · 안내 띠. 주의(주황) 계열을 그대로 쓴다.
+ * 색만으로 알리지 않게 "의견을 골라 주세요" 글이 늘 함께 보인다.
+ */
+export const opinionNudge = {
+  border: warn.dot,
+  bg: warn.bg,
+  fg: warn.text,
+  line: warn.border,
+} as const;
+
 /** 확인(초록, #972): 사실(확인), 공정 확인됨. text는 bg 위 약 4.7:1. */
 export const ok = {
   text: '#1F7A43',
@@ -151,8 +173,8 @@ export const listTheme = {
   checkFg: warn.text,
   /** 지난 일정(굵게). */
   overdueFg: warn.text,
-  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. */
-  titleSize: 16,
+  /** 회사 이름 글자 크기: 표 줄 / 관심 기업 줄. #981: 회사 이름이 잘 보이게 표 줄도 18로 키웠다(품목은 그 아래 작은 글). */
+  titleSize: 18,
   titleSizeLarge: 18,
   /** 점수 숫자 크기: 표 줄 / 관심 기업 줄의 큰 숫자. */
   scoreSize: 18,
@@ -174,6 +196,67 @@ export const stepArrow = {
   bg: colors.bgContainer,
   border: accent.border,
   stroke: accent.bg,
+} as const;
+
+/**
+ * 영업 홈 "진행 중인 회사" 카드 안 작은 단계 칸(#983, PM이 고른 시안 2026-11-28).
+ * 큰 단계 카드 5칸(#972)을 이 작은 칸으로 줄였다: 이름 · 굵은 숫자 "곳" · 아래 작은 꼬리표("+2 이번 주" · "멈춤 1").
+ * 칸 사이 화살표는 글자가 아닌 꾸밈(강조 흐린 선 색), 보류는 점선 테두리.
+ */
+export const stageCell = {
+  minWidth: 104,
+  gap: 8,
+  padding: '8px 12px',
+  radius: radius.control,
+  countSize: 18,
+  unitSize: 13,
+  tagSize: 12,
+  tagRadius: radius.tag,
+  /** "+2 이번 주": 고른 칸(강조 연한 바탕) 위에서도 보이게 한 단계 진한 연보라 바탕 + 강조 글자. */
+  enteredTag: { bg: accent.softDeep, fg: accent.text },
+  /** "멈춤 1": 주의 바탕 + 주의 글자. */
+  stalledTag: { bg: warn.bg, fg: warn.text },
+  arrow: accent.line,
+  arrowSize: 15,
+  divider: colors.borderSecondary,
+  dividerHeight: 36,
+} as const;
+
+/**
+ * 왼쪽 메뉴 아래 작은 한 달 달력(#983, PM이 고른 시안 2026-11-28). 점 대신 칸 색으로 알린다(나이 있는 분도 보이게).
+ * 일정 있는 날 = 연보라 바탕 + 보라 굵은 숫자, 지난 일정이 남은 날 = 연주황 바탕 + 주황 굵은 숫자,
+ * 누른 날 = 진한 보라 바탕 + 흰 숫자, 오늘 = 얇은 테두리. 색만으로 알리지 않게 굵기와 달력 아래 풀이가 함께 있다.
+ * 글자가 올라가는 조합은 모두 대비 4.5:1 이상이다(시안의 연주황 #FBDCBB는 4.4:1이라 한 단계 옅은 값을 쓴다).
+ */
+export const sideCalendar = {
+  panelBg: colors.bgLayout,
+  panelBorder: colors.borderSecondary,
+  panelRadius: radius.card,
+  /** 메뉴 묶음과 달력 칸 사이 간격. */
+  gapAbove: 40,
+  cellSize: 26,
+  cellFontSize: 13,
+  cellRadius: 7,
+  weekdayFontSize: 11,
+  titleFontSize: 14,
+  legendFontSize: 12,
+  plain: { bg: 'transparent', fg: colors.text },
+  has: { bg: accent.softDeep, fg: accent.text },
+  overdue: { bg: '#FBE6CF', fg: warn.text },
+  selected: { bg: accent.bg, fg: accent.onBg },
+  /** 오늘 칸 안쪽 얇은 테두리(글자 없는 선). */
+  todayRing: accent.text,
+  todayRingWidth: 1.5,
+  /** 날짜를 눌렀을 때 달력 오른쪽에 뜨는 작은 창. */
+  popoverWidth: 300,
+  /** 달력(날짜 칸 묶음) 오른쪽 끝에서 창까지: 달력 칸 안쪽 여백 6 + 바깥 틈 10. */
+  popoverGap: 16,
+  /** 달력 칸 안쪽 여백. 메뉴 폭 224에서 날짜 칸 26이 일곱 개 딱 들어가게 좌우 6(시안은 8이라 칸이 0.6씩 겹쳤다). */
+  panelPadding: '12px 6px 10px',
+  popoverBg: colors.bgContainer,
+  popoverBorder: accent.border,
+  popoverRadius: radius.card,
+  popoverShadow: '0 12px 32px rgba(27, 26, 46, 0.18)',
 } as const;
 
 /**

@@ -7,7 +7,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Query
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field
 from sqlalchemy import func, select
 
 from geosan.api.deps import SessionDep, runtime_for
@@ -15,7 +15,12 @@ from geosan.api.routes.dashboard import _my_staff_key
 from geosan.api.routes.opportunities import list_evaluations
 from geosan.api.schemas import Envelope, Meta, _ApiModel
 from geosan.config.sales_questions import KST
-from geosan.dashboard.queries import bookmark_news_count, today_badge_count
+from geosan.dashboard.queries import (
+    bookmark_news_count,
+    classify_bookmarked,
+    dashboard_population,
+    today_badge_count,
+)
 from geosan.opportunity.models import Customer, Opportunity
 from geosan.storage.base import utcnow
 
@@ -28,6 +33,11 @@ class MenuBadges(_ApiModel):
     dashboard: int
     list: int
     bookmarks: int
+    bookmarks_no_opinion: int = Field(
+        default=0,
+        description="#987 관심으로 켜 둔 기회 가운데 검토 의견이 없고 영업 단계도 아직 없는 곳 수. "
+        "영업 홈 '의견 전' 칸과 같은 계산",
+    )
 
 
 @router.get("/menu-badges", response_model=Envelope[MenuBadges])
@@ -65,8 +75,17 @@ def menu_badges(
         bookmarks = bookmark_news_count(
             session, dataset_kind=dataset_kind.value, staff_key=me, since=bookmarks_since
         )
+    # #987: 영업 홈 "의견 전" 칸과 같은 함수로 센다(관심 + 의견 없음 + 영업 단계 전).
+    # 같은 함수를 쓰므로 영업 홈·목록 거르기·왼쪽 메뉴 숫자가 어긋나지 않는다.
+    classified = classify_bookmarked(session, dashboard_population(dataset_kind.value))
+    no_opinion = sum(1 for key in classified.values() if key == "NO_OPINION")
     return Envelope[MenuBadges](
-        data=MenuBadges(dashboard=dashboard, list=new_candidates or 0, bookmarks=bookmarks),
+        data=MenuBadges(
+            dashboard=dashboard,
+            list=new_candidates or 0,
+            bookmarks=bookmarks,
+            bookmarks_no_opinion=no_opinion,
+        ),
         meta=Meta(
             updated_at=now,
             dataset_kind=dataset_kind,

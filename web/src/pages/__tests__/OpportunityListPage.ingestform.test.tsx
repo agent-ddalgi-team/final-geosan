@@ -117,12 +117,19 @@ describe('추천 목록 · 후보 가져오기 조건 칸 연결(#316)', () => {
       }),
     );
     renderPage();
-    const toggle = await screen.findByRole('button', { name: '새 후보 발굴 💰' });
+    // #981: [새 후보 발굴]은 창만 여는 단추라 💰도 "유료" 꼬리표도 없다. 비용은 창 안 [발굴 시작]에서 든다.
+    const toggle = await screen.findByRole('button', { name: '새 후보 발굴' });
+    expect(toggle).toHaveAttribute('data-testid', 'ingest-panel-toggle');
+    expect(within(toggle).queryByTestId('paid-tag')).not.toBeInTheDocument();
     await user.click(toggle);
     const panel = await screen.findByRole('dialog', { name: '새 후보 발굴' });
     // #972: 가운데 뜨는 창은 펼쳐지는 움직임이 끝나야 보이므로 그때까지 기다린다(기대는 그대로 "보인다").
     await waitFor(() => expect(within(panel).getByTestId('ingest-process')).toBeVisible());
     expect(within(panel).getByTestId('ingest-region')).toBeVisible();
+    expect(within(panel).getByRole('button', { name: '발굴 시작 유료' })).toHaveAttribute(
+      'data-testid',
+      'ingest-submit',
+    );
     expect(within(panel).getByTestId('ingest-industry-disclosure')).not.toHaveAttribute('open');
     await user.click(within(panel).getByText('산업으로 좁히기', { exact: false }));
     expect(within(panel).getByRole('checkbox', { name: '방위산업' })).toBeVisible();

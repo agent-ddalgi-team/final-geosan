@@ -2,7 +2,7 @@
 // 기간 선택과 상관없고 AI를 쓰지 않는다. 옛 서버(칸 없음)면 그리지 않는다.
 // #972(새 시안): 달마다 막대 셋 → 접촉한 회사 수의 선 + 옅은 면. 성사·거절 값은 그리지 않고, 달에 손을 올리면 뜨는 글과
 // 화면 읽기용 글("11월: 접촉 5 · 성사 1 · 거절 2"), 그림 아래 요약 문장으로 그대로 전한다.
-// 영업 홈도 이 부품을 그대로 쓰므로 이름과 props({ rows })는 바꾸지 않는다.
+// 영업 홈도 이 부품을 그대로 쓰므로 이름과 props({ rows })는 바꾸지 않는다(#983: 그림 높이만 고르는 height를 더했다).
 import type { MonthTrendRow } from '../../api/salesAnalysis';
 import { monthlyTrendTexts as t } from '../../labels/ko';
 import { accent } from '../../theme/tokens';
@@ -52,8 +52,20 @@ function trendAreaPath(points: TrendPoint[]): string {
   return `${trendLinePath(points)} L${last.x} ${VIEW.height} L${first.x} ${VIEW.height} Z`;
 }
 
-/** 선 + 옅은 면 + 달 이름 축. 틀(제목·요약) 없이 그림만 쓸 때. */
-export function MonthlyTrendChart({ rows }: { rows: MonthTrendRow[] }) {
+/** 영업 홈(#983)이 쓰는 낮춘 그림 높이: 기본(170)의 절반쯤. 화면 모양값이다. */
+export const TREND_HEIGHT_SHORT = 88;
+
+/**
+ * 선 + 옅은 면 + 달 이름 축. 틀(제목·요약) 없이 그림만 쓸 때.
+ * height: 그림 높이(px). 안 주면 170. 선의 좌표는 그대로 두고 세로로만 줄인다(값은 달 칸 글이 전한다).
+ */
+export function MonthlyTrendChart({
+  rows,
+  height = VIEW.height,
+}: {
+  rows: MonthTrendRow[];
+  height?: number;
+}) {
   const points = trendPoints(rows);
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -69,7 +81,7 @@ export function MonthlyTrendChart({ rows }: { rows: MonthTrendRow[] }) {
             top: 0,
             left: 0,
             width: '100%',
-            height: VIEW.height,
+            height,
             display: 'block',
             pointerEvents: 'none',
           }}
@@ -108,7 +120,7 @@ export function MonthlyTrendChart({ rows }: { rows: MonthTrendRow[] }) {
                 style={{ display: 'grid', justifyItems: 'center', gap: 6 }}
               >
                 {/* 선 위 빈 칸: 이 달 어디에 손을 올려도 값이 뜬다. */}
-                <span aria-hidden="true" style={{ display: 'block', height: VIEW.height }} />
+                <span aria-hidden="true" style={{ display: 'block', height }} />
                 <span style={secondary}>{t.monthLabel(row.month)}</span>
               </li>
             );
@@ -119,7 +131,14 @@ export function MonthlyTrendChart({ rows }: { rows: MonthTrendRow[] }) {
   );
 }
 
-export default function MonthlyTrend({ rows }: { rows?: MonthTrendRow[] }) {
+export default function MonthlyTrend({
+  rows,
+  height,
+}: {
+  rows?: MonthTrendRow[];
+  /** 그림 높이(px). 영업 홈이 낮춰 쓴다(#983). 안 주면 기본 높이. */
+  height?: number;
+}) {
   if (!rows || rows.length === 0) return null;
   const max = Math.max(0, ...rows.map((row) => Math.max(row.contacted, row.won, row.lost)));
   const reading = max === 0 ? null : monthlyReading(rows);
@@ -156,7 +175,7 @@ export default function MonthlyTrend({ rows }: { rows?: MonthTrendRow[] }) {
           {t.empty}
         </p>
       ) : (
-        <MonthlyTrendChart rows={rows} />
+        <MonthlyTrendChart rows={rows} height={height} />
       )}
     </ChartFrame>
   );
