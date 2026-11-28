@@ -16,7 +16,7 @@ import type { MenuBadges } from '../../api/menuBadges';
 import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
-import { colors, radius, sidebarTheme, typography } from '../../theme/tokens';
+import { colors, opinionNudge, radius, sidebarTheme, typography } from '../../theme/tokens';
 import { useFrame } from './FrameContext';
 import { useMenuBadges } from './useMenuBadges';
 
@@ -435,9 +435,35 @@ export default function SideMenu({
               style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}
             >
               {group.items.map((item) => {
-                const count = item.badge && badges ? badges[item.badge] : 0;
+                const count = item.badge && badges ? (badges[item.badge] ?? 0) : 0;
                 const meaning = item.badge && count > 0 ? frame.menuBadge[item.badge](count) : null;
-                const name = meaning ? `${item.label}, ${meaning}` : item.label;
+                // #987: 관심 기업 줄에는 "의견 전 n"도 붙인다(서버가 값을 주고 1곳 이상일 때만).
+                const noOpinionCount =
+                  item.badge === 'bookmarks' ? (badges?.bookmarksNoOpinion ?? 0) : 0;
+                const noOpinionMeaning =
+                  noOpinionCount > 0 ? frame.menuBadge.bookmarksNoOpinion(noOpinionCount) : null;
+                const name = [item.label, meaning, noOpinionMeaning].filter(Boolean).join(', ');
+                const noOpinionBadge = noOpinionMeaning ? (
+                  <span
+                    aria-hidden="true"
+                    data-testid={`${item.testId}-no-opinion`}
+                    title={noOpinionMeaning}
+                    style={{
+                      height: 20,
+                      padding: '0 6px',
+                      boxSizing: 'border-box',
+                      borderRadius: radius.tag,
+                      background: opinionNudge.bg,
+                      color: opinionNudge.fg,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      lineHeight: '20px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {frame.menuNoOpinion(noOpinionCount)}
+                  </span>
+                ) : null;
                 const badge = meaning ? (
                   <Badge
                     count={count}
@@ -453,7 +479,7 @@ export default function SideMenu({
                       end={item.end}
                       data-testid={item.testId}
                       className="side-nav-link side-nav-row"
-                      aria-label={collapsed || meaning ? name : undefined}
+                      aria-label={collapsed || meaning || noOpinionMeaning ? name : undefined}
                       title={collapsed ? name : undefined}
                       style={({ isActive }) => ({
                         ...rowStyle,
@@ -477,7 +503,13 @@ export default function SideMenu({
                         {collapsed ? badge : null}
                       </span>
                       {collapsed ? <Tip>{name}</Tip> : <span>{item.label}</span>}
-                      {collapsed ? null : badge}
+                      {/* 펼친 메뉴: "의견 전 n"을 오른쪽 끝에, 그 옆에 새 소식 숫자. 접힌 메뉴에서는 숫자 꼬리표만 그린다. */}
+                      {collapsed || (!noOpinionBadge && !badge) ? null : (
+                        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
+                          {noOpinionBadge}
+                          {badge}
+                        </span>
+                      )}
                     </NavLink>
                   </li>
                 );
