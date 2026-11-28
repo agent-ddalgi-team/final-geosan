@@ -207,6 +207,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         companies,
         company_info,
         config,
+        contacts,
         dashboard,
         day_memos,
         existing_customers,
@@ -244,6 +245,7 @@ def create_app(*, ingest_runner: Callable[[str], None] | None = None) -> FastAPI
         preferences.router,
         companies.router,
         company_info.router,
+        contacts.router,
         day_memos.router,
     ):
         app.include_router(router, prefix="/api/v1")

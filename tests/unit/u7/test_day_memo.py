@@ -28,7 +28,7 @@ TECH = {"X-Staff-Key": "kim-gwajang"}
 VIEWER = {"X-Staff-Key": "viewer"}
 START = datetime(2026, 11, 5, 1, 0, tzinfo=UTC)
 DAY = "2026-11-05"
-BEFORE = "rec_019"
+BEFORE = "rec_020"
 HEAD = "rec_021"
 
 
@@ -325,7 +325,7 @@ def _columns(db: Path, table: str) -> set[str]:
 
 
 def test_migration_adds_the_table_and_can_be_undone_and_redone(tmp_path: Path) -> None:
-    """Given 날짜 메모 표가 없는 옛 DB(rec_019) / When 최신으로 올림 → 되돌림 → 다시 올림
+    """Given 날짜 메모 표가 없는 옛 DB(rec_020) / When 최신으로 올림 → 되돌림 → 다시 올림
     / Then 표가 생겼다 없어졌다 다시 생기고, 다른 표는 그대로다."""
     db = tmp_path / "old.db"
     command.upgrade(alembic_config(db), BEFORE)

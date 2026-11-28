@@ -114,6 +114,7 @@ from geosan.evaluation.models import (
     ReadinessCheck,
     RequirementCheck,
 )
+from geosan.evidence.contacts import mask_text
 from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
@@ -273,6 +274,8 @@ def _header(context: DetailContext) -> dict:
             main_phone_source_url=customer.main_phone_source_url,
             main_phone_confirmed_at=customer.main_phone_confirmed_at,
             main_phone_confirmed_by=customer.main_phone_confirmed_by,
+            representative_name=customer.representative_name,
+            representative_name_source=customer.representative_name_source,
             summary_line=customer.summary_line,
             highlights=customer.highlights or [],
             researched_at=customer.researched_at,
@@ -585,7 +588,9 @@ def _advice_lines(session: Session, opp_id: str) -> list[AdviceLine]:
         .order_by(Note.version.desc())
     )
     return [
-        AdviceLine(note_id=row.note_id, text=row.text, at=row.created_at, by=row.staff_key)
+        AdviceLine(
+            note_id=row.note_id, text=mask_text(row.text), at=row.created_at, by=row.staff_key
+        )
         for row in rows
     ]
 
@@ -604,7 +609,7 @@ def _call_prep_note(session: Session, opp_id: str) -> CallPrepNote | None:
     ).first()
     if row is None:
         return None
-    lines = [line.strip() for line in row.text.split("\n") if line.strip()]
+    lines = [mask_text(line.strip()) for line in row.text.split("\n") if line.strip()]
     return CallPrepNote(note_id=row.note_id, lines=lines, at=row.created_at, by=row.staff_key)
 
 
@@ -628,7 +633,7 @@ def handoff_notes(session: Session, opp_id: str) -> list[HandoffNote]:
     return [
         HandoffNote(
             note_id=row.note_id,
-            text=row.text,
+            text=mask_text(row.text),
             from_=row.staff_key,
             to=row.to_staff_key or "",
             to_team=row.to_team,

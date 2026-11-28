@@ -91,6 +91,10 @@ class Customer(CommonColumns, Base):
     # 공장 등록 업종명(#617). AI 추정이 아니라 등록 사실로 화면에 보인다.
     factory_industry_name: Mapped[str | None] = mapped_column(String(200))
     factory_profile_date: Mapped[date | None] = mapped_column(Date)
+    # #980(PM 결정 2026-11-28): 회사 대표자 이름. REGISTRY = 산단공 공장등록 조회의 대표자명,
+    # MANUAL = 담당자가 상세 [고치기]로 적음(자동으로 덮지 않음). 밖으로 내보내지 않는다(C4).
+    representative_name: Mapped[str | None] = mapped_column(String(20))
+    representative_name_source: Mapped[str | None] = mapped_column(String(16))
 
 
 class Opportunity(CommonColumns, Base):

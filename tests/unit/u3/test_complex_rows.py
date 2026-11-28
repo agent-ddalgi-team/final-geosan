@@ -76,10 +76,34 @@ def test_read_only_public_columns_and_preserve_provider_identifier(caplog):
         "product_hash": hashlib.sha256("볼트·너트".encode()).hexdigest(),
         "industry_name": "볼트 제조업",
         "factory_manage_no": "2026000000001",
+        # #980: 대표자명은 회사 대표명으로 쓰려고 남기되 20자를 넘는 값은 버린다.
+        "representative_name": None,
     }
     assert (result.raw_count, result.filtered_count, result.skipped_rows) == (1, 0, ())
     assert not result.has_more
     assert "PRIVATE_" not in repr(result) + caplog.text
+
+
+def test_keep_representative_name_but_drop_phone_fax_homepage():
+    """#980(PM 결정 2026-11-28): 공장등록 조회의 대표자명은 회사 대표명으로 남긴다.
+
+    전화·팩스·홈페이지는 그대로 버리고, 숫자·@가 섞인 대표자명도 버린다.
+    """
+    xml = document(
+        [
+            item(
+                rprsntvNm=" 홍  길동 ",
+                cmpnyTelno="PRIVATE_PHONE_MARKER",
+                cmpnyFxnum="PRIVATE_FAX_MARKER",
+                hmpadr="PRIVATE_HOMEPAGE_MARKER",
+            ),
+            item(cmpnyNm="가상둘", rprsntvNm="김철수 010-1234-5678", fctryManageNo="2026000000002"),
+            item(cmpnyNm="가상셋", rprsntvNm="a@b.kr", fctryManageNo="2026000000003"),
+        ]
+    )
+    rows = parse(xml).rows
+    assert [row.representative_name for row in rows] == ["홍 길동", None, None]
+    assert "PRIVATE_" not in repr(rows)
 
 
 def test_filter_by_address_not_similar_complex_name():

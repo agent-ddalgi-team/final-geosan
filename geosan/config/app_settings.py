@@ -483,6 +483,22 @@ class OperationsSettings(FileModel):
     factory_csv_refresh_days: int = Field(default=180, ge=1, le=3650, strict=True)
 
 
+class PersonalContactsSettings(FileModel):
+    """#980(PM 결정 2026-11-28): 상대 담당자 연락처 보관 기간과 지울지 묻기 시작하는 때.
+
+    기한이 지나도 저절로 지우지 않는다. 담당자가 확인하고 [지우기]나 [1년 더]를 고른다.
+    """
+
+    retention_days: int = Field(default=365, ge=30, le=3650, strict=True)
+    notice_days: int = Field(default=30, ge=0, le=3650, strict=True)
+
+    @model_validator(mode="after")
+    def check_notice(self) -> PersonalContactsSettings:
+        if self.notice_days > self.retention_days:
+            raise ValueError("noticeDays는 retentionDays보다 클 수 없습니다.")
+        return self
+
+
 class HandoffTeam(FileModel):
     """#853(PM 결정 2026-11-17): 전달 사항을 사람 대신 역할로 받는 묶음(예: 영업 = 영업 계정 둘).
 
@@ -564,6 +580,7 @@ class AppSettings(FileModel):
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
     # #799: 옛 설정 파일·DB 사본에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     operations: OperationsSettings = Field(default_factory=OperationsSettings)
+    personal_contacts: PersonalContactsSettings = Field(default_factory=PersonalContactsSettings)
     # #853: 전달 사항 받는 역할 묶음. 빈 목록이면 화면은 지금처럼 사람별로 고른다.
     handoff_teams: list[HandoffTeam] = Field(default_factory=list)
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
@@ -848,8 +865,15 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant", "operations")
-"""#608·#610·#217·#680·#799 뒤에 생긴 묶음.
+ADDED_SECTIONS = (
+    "salesAnalysis",
+    "contactList",
+    "export",
+    "assistant",
+    "operations",
+    "personalContacts",
+)
+"""#608·#610·#217·#680·#799·#980 뒤에 생긴 묶음.
 
 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다.
 """

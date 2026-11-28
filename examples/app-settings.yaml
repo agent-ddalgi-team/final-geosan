@@ -239,6 +239,13 @@ operations:
   staffKeys: [choi-pm]
   factoryCsvRefreshDays: 180
 
+# 상대 담당자 연락처(#980, PM 결정 2026-11-28). 담당자가 상세에 직접 적은 상대 회사 담당자 번호는
+# 가려서 보이고, 확인 문구에 체크해야 열린다. retentionDays: 보관 기간(일). noticeDays: 기한 며칠 전부터
+# 영업 홈에 "지울지 확인"을 띄울지. 저절로 지우지 않고 담당자가 [지우기]나 [1년 더]를 고른다.
+personalContacts:
+  retentionDays: 365
+  noticeDays: 30
+
 # 후보 웹 검색: #314 PM 승인 2026-11-09. 실행 흐름 연결 전에는 꺼 둔다.
 candidateWebSearch:
   enabled: false         # 실제로 켜는 것은 실제 DB 설정에서(PM 결정 2026-11-17 #314·#823). 예시·시험 기본은 끔

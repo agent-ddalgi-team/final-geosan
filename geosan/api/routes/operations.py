@@ -7,6 +7,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header
+from pydantic import Field
 
 from geosan.api.deps import SessionDep, current_account, runtime_for
 from geosan.api.operations import build_operations, is_operations_staff
@@ -68,10 +69,22 @@ class BlockedTransfer(_ApiModel):
     reason: str | None
 
 
+class ContactRevealLine(_ApiModel):
+    """#980 가린 연락처·메모를 연 기록. 연 이름·번호·글은 없다."""
+
+    at: datetime
+    staff_key: str
+    staff_name: str
+    opp_id: str
+    customer_name: str
+    kind: Literal["CONTACT", "NOTE"]
+
+
 class Operations(_ApiModel):
     usage: Usage
     sources: list[SourceStatus]
     blocked: list[BlockedTransfer]
+    contact_reveals: list[ContactRevealLine] = Field(default_factory=list)
 
 
 OperationsEnvelope = Envelope[Operations]

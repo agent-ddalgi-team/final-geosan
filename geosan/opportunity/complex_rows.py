@@ -3,7 +3,8 @@
 공식 필드: https://www.data.go.kr/data/15087611/openapi.do
 getFctryListInIrsttService_v2. 네트워크·저장·AI 호출은 하지 않는다.
 호출자는 소스 이용 확인·하루 한도·재시도·캐시를 별도로 처리해야 한다.
-원본 XML·대표자·전화·팩스·홈페이지·오류 원문은 결과나 로그에 남기지 않는다.
+원본 XML·전화·팩스·홈페이지·오류 원문은 결과나 로그에 남기지 않는다. 대표자명(rprsntvNm)은
+회사 대표명으로 쓰려고 남긴다(#980, PM 결정 2026-11-28). 숫자·@가 섞인 대표자명은 버린다.
 """
 
 import hashlib
@@ -36,6 +37,8 @@ class ComplexSourceError(AppError):
 class ComplexFactoryRow(FactoryRow):
     industry_name: str | None
     factory_manage_no: str | None
+    # #980: 공장등록 조회의 대표자명. 회사 대표명으로 쓴다. 로그·오류 문구에는 옮기지 않는다.
+    representative_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +135,22 @@ def _number(parent, tag):
         raise ComplexSourceError() from None
 
 
+REPRESENTATIVE_MAX = 20
+
+
+def clean_representative(value: str | None) -> str | None:
+    """대표자명으로 쓸 수 있는 값만(#980). 1~20자, 숫자·@·연락처 형식이 없어야 한다."""
+    text = " ".join((value or "").split())
+    if (
+        not text
+        or len(text) > REPRESENTATIVE_MAX
+        or re.search(r"[0-9@]", text)
+        or scrub_contacts(text)[1]
+    ):
+        return None
+    return text
+
+
 def _public_row(item, regions):
     # 허용한 필드만 읽는다. 다른 필드는 반환·로그·오류 문구에 옮기지 않는다.
     company = _text(item, "cmpnyNm", required=False)
@@ -161,6 +180,7 @@ def _public_row(item, regions):
         product_hash=hashlib.sha256(product.encode("utf-8")).hexdigest(),
         industry_name=industry or None,
         factory_manage_no=number or None,
+        representative_name=clean_representative(_text(item, "rprsntvNm", required=False)),
     )
 
 

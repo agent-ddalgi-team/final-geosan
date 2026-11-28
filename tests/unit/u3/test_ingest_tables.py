@@ -218,8 +218,16 @@ def test_existing_rows_get_case_file_defaults_and_survive_round_trip(tmp_path: P
     assert _old_rows(db) == before
 
 
+# #980(PM 결정 2026-11-28): 공장등록 조회의 대표자명은 회사 대표명으로 쓰려고 이 칸 하나만 둔다.
+# 팩스·전화·사람 연락처 칸은 여전히 없어야 한다.
+ALLOWED_PERSONAL_COLUMNS = {"src_factory_row.representative_name"}
+
+
 def test_new_tables_have_no_person_or_contact_columns(tmp_db: Path) -> None:
-    """대표자 이름·팩스·전화·사람 연락처를 담는 칸이 새 표·새 칸에 없다(CON-11, #221 완료 기준)."""
+    """팩스·전화·사람 연락처를 담는 칸이 새 표·새 칸에 없다(CON-11, #221 완료 기준).
+
+    대표자명은 #980에서 허용한 한 칸(ALLOWED_PERSONAL_COLUMNS)만 예외다.
+    """
     names = set(NEW_CUSTOMER_COLUMNS | NEW_LINK_COLUMNS | {"batch_id"})
     for table in NEW_TABLES:
         names |= {f"{table}.{column}" for column in _columns(tmp_db, table)}
@@ -228,7 +236,7 @@ def test_new_tables_have_no_person_or_contact_columns(tmp_db: Path) -> None:
         for name in names
         if any(word in name.split(".")[-1].split("_") for word in PERSONAL_WORDS)
     )
-    assert found == []
+    assert [name for name in found if name not in ALLOWED_PERSONAL_COLUMNS] == []
 
 
 def test_only_one_batch_can_be_running(tmp_db: Path) -> None:

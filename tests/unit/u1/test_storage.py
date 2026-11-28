@@ -198,14 +198,16 @@ def test_all_prefixed_tables_exist_and_match_models(tmp_db: Path) -> None:
         "ev_": 1,
         "eval_": 7,
         "q_": 3,
-        "rec_": 9,  # #824 rec_analysis_feedback, #943 rec_preference, #984 rec_day_memo
+        # #824 rec_analysis_feedback, #943 rec_preference, #980 연락처·열람 기록, #984 rec_day_memo
+        "rec_": 11,
         "web_": 2,  # 접속 세션 + 담당자 계정(#754)
         "tg_": 1,
     }
     db_tables = set(_table_names(tmp_db)) - {"alembic_version"}
     assert db_tables == set(table_names())
-    # #932 src_existing_customer, #943 rec_preference, #984 rec_day_memo
-    assert len(db_tables) == 52
+    # #932 src_existing_customer, #943 rec_preference, #980 rec_contact_person·rec_contact_reveal,
+    # #984 rec_day_memo
+    assert len(db_tables) == 54
     prefixes = (*TABLE_PREFIXES, "web_")
     for prefix in prefixes:
         assert len(table_names(prefix)) == expected_counts[prefix], prefix

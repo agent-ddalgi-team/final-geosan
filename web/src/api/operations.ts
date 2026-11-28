@@ -29,6 +29,15 @@ export interface Operations {
     refreshOverdue: boolean;
   }[];
   blocked: { occurredAt: string; purpose: string; kind: string; reason: string | null }[];
+  /** #980 가린 상대 담당자 연락처·메모를 연 기록(최근 50건). 연 이름·번호·글은 없다. 옛 서버면 없음. */
+  contactReveals?: {
+    at: string;
+    staffKey: string;
+    staffName: string;
+    oppId: string;
+    customerName: string;
+    kind: 'CONTACT' | 'NOTE';
+  }[];
 }
 
 export function getOperations(
