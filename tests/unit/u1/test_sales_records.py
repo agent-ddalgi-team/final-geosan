@@ -238,7 +238,7 @@ def test_existing_notes_survive_kind_migration(records_env, tmp_db):
     client, opp_id = records_env
     assert post(client, opp_id, "notes", {"text": "이전 가상 메모"}).status_code == 200
     assert downgrade(tmp_db, "rec_004") == ["rec_004", "web_001"]
-    assert upgrade_to_head(tmp_db) == ["rec_019"]
+    assert upgrade_to_head(tmp_db) == ["rec_020"]
     with session_scope() as session:
         note = session.scalar(select(Note).where(Note.opp_id == opp_id))
         assert (note.kind, note.text, note.version) == ("MEMO", "이전 가상 메모", 1)
@@ -350,7 +350,11 @@ def test_record_commit_failure_rolls_back_without_retry(
 
 
 def test_notes_append_and_contacts_stay_in_activity(records_env):
-    """Given 가상 연락처 메모 / When 두 번 저장 / Then 두 행·담당자·시각이 남는다."""
+    """Given 가상 연락처 메모 / When 두 번 저장 / Then 두 행·담당자·시각이 남는다.
+
+    #980(PM 결정 2026-11-28): 활동 이력에는 메모 속 이메일·전화가 가려서 보이고(textMasked),
+    원래 글은 저장된 그대로 남아 확인 문구를 거친 [보기]로만 열린다.
+    """
     client, opp_id = records_env
     text = "가상 메모: sales@example.invalid"
     first = post(client, opp_id, "notes", {"text": text})
@@ -360,11 +364,13 @@ def test_notes_append_and_contacts_stay_in_activity(records_env):
     assert first.json()["data"]["noteId"] != second.json()["data"]["noteId"]
     activity = client.get(f"/api/v1/opportunities/{opp_id}/activity").json()["data"]
     notes = [item for item in activity if item["kind"] == "NOTE"]
-    assert [item["summary"] for item in notes] == ["다음 상담 준비", text]
+    assert [item["summary"] for item in notes] == ["다음 상담 준비", "가상 메모: [이메일 가림]"]
+    assert [item["textMasked"] for item in notes] == [False, True]
     assert notes[0]["actor"] == "kim-gwajang"
     assert notes[0]["at"]
     with session_scope() as session:
         assert session.scalar(select(func.count()).select_from(Note)) == 2
+        assert text in session.scalars(select(Note.text)).all()
     for endpoint in (f"/api/v1/opportunities/{opp_id}", "/api/v1/opportunities"):
         assert text not in client.get(endpoint).text
 
