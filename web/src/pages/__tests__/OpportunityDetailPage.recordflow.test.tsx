@@ -197,9 +197,10 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
   });
 
   // #996(PM 결정 2026-11-29): "한눈에 › 확인할 것 n가지" 줄은 영업 코치 "확인사항"과 같은 내용이라 뺐다.
-  // 줄 수는 "확인사항" 제목 옆 숫자 한 곳에만 있고, "한눈에"에는 "확인할 점" 핵심 한 줄(답이 없는 첫 확인 질문)만 남는다.
+  // 줄 수는 "확인사항" 제목 옆 숫자 한 곳에만 있다. 확인 질문도 "한눈에 › 확인할 점"에 넣지 않는다(후속 결정 2026-11-29:
+  // 영업 코치 "확인사항"과 같은 글이 나란히 보였다). 이 회사는 확인 전 낱말도 확보 못 한 근거 줄도 없어 "확인할 점" 갈래가 없다.
   // (전의 기대: 한눈에 "확인사항 n가지"가 확인사항 줄 수와 같다 → 지금: 그 줄은 없고 확인사항 숫자가 줄 수와 같다.)
-  it('확인사항 줄 수는 "확인사항" 제목 옆 한 곳에만 있고, "한눈에"에는 "확인할 점" 한 줄만 있다 (#691 → #996)', async () => {
+  it('확인사항 줄 수는 "확인사항" 제목 옆 한 곳에만 있고, 확인 질문은 "한눈에 › 확인할 점"에 없다 (#691 → #996)', async () => {
     // 확인이 필요한 요구가 없어 낱말(공정·소재·근거 부족)은 없지만, 확인사항에는 후속 조치·산업·질문 줄이 있다.
     mockedGet.mockResolvedValue(
       reply({
@@ -215,9 +216,10 @@ describe('상세 화면 · 기록을 덜 오르내리게 (#691)', () => {
     expect(screen.getByTestId('detail-review-count')).toHaveTextContent(new RegExp(`^${lines}$`));
     expect(screen.queryByTestId('glance-check-text')).not.toBeInTheDocument();
     expect(screen.getByTestId('detail-glance')).not.toHaveTextContent(`확인사항 ${lines}가지`);
-    // 가짜 응답의 검토사항 가운데 답이 없는 첫 확인 질문.
-    expect(
-      within(screen.getByTestId('glance-key-check')).getByTestId('glance-key-text'),
-    ).toHaveTextContent(/^당진 공장에서 직접 생산합니까\?$/);
+    // 가짜 응답의 검토사항에는 답이 없는 확인 질문("당진 공장에서 직접 생산합니까?")이 있지만 한눈에에는 넣지 않는다.
+    expect(screen.queryByTestId('glance-key-check')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-glance')).not.toHaveTextContent(
+      '당진 공장에서 직접 생산합니까?',
+    );
   });
 });

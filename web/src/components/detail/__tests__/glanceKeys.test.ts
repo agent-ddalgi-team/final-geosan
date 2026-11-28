@@ -150,7 +150,8 @@ describe('glanceGroupsOf — 갈래 배열', () => {
       ['company', 'neutral', 1],
       ['fit', 'good', 2],
       ['feature', 'neutral', 2],
-      ['check', 'warn', 3],
+      // 확인할 점은 확보 못 한 근거 줄 둘(처리 목적 · 납품실적)뿐이다. 확인 질문은 줄이 되지 않는다.
+      ['check', 'warn', 2],
     ]);
   });
 });
@@ -285,7 +286,9 @@ describe('glanceGroupsOf — 특징', () => {
 });
 
 describe('glanceGroupsOf — 확인할 점', () => {
-  it('Given 가점 없는 납품실적 줄과 답이 없는 확인 질문 둘 When 고르면 Then 근거 줄 한 줄 + 질문마다 한 줄이고, 이미 답했거나 확인한 질문은 뺀다', () => {
+  // PM 결정 2026-11-29(후속): 확인 질문은 오른쪽 영업 코치 "확인사항"과 같은 글이라 한눈에 "확인할 점"에 넣지 않는다.
+  // (전의 기대 "답이 없는 질문마다 한 줄"을 뒤집었다.)
+  it('Given 가점 없는 납품실적 줄과 답이 없는 확인 질문 둘 When 고르면 Then 근거 줄 한 줄뿐이고 확인 질문은 확인할 점에 넣지 않는다(영업 코치 확인사항에만 있다)', () => {
     const groups = glanceGroupsOf({
       header,
       processLinks: [link],
@@ -301,8 +304,6 @@ describe('glanceGroupsOf — 확인할 점', () => {
         question('이미 확인한 질문', { checked: true }),
         question('도금을 자체 설비로 하는지 외주인지'),
         question('철계 볼트의 전기아연도금 물량이 있는지'),
-        // 같은 글의 질문은 한 번만.
-        question('도금을 자체 설비로 하는지 외주인지'),
       ],
     });
     expect(linesOf(groups, 'check')).toEqual([
@@ -310,12 +311,24 @@ describe('glanceGroupsOf — 확인할 점', () => {
         text: '납품 산업이 달라 가점이 없습니다.',
         target: { code: 'NEW_RECORD', label: '납품실적' },
       },
-      { text: '도금을 자체 설비로 하는지 외주인지' },
-      { text: '철계 볼트의 전기아연도금 물량이 있는지' },
     ]);
+    // 어느 갈래에도 질문 글이 없다.
+    const all = groups.flatMap((group) => group.lines.map((line) => line.text));
+    expect(all.some((text) => text.includes('외주인지') || text.includes('물량'))).toBe(false);
   });
 
-  it('Given 공정이 AI 제안뿐이고 소재를 모르며 요구 확인이 필요 When 고르면 Then "확인 전: 공정 · 소재 · RoHS" 한 줄이 맨 앞에 온다', () => {
+  it('Given 확인할 것이 답이 없는 확인 질문뿐인 회사 When 고르면 Then 확인할 점 갈래가 없다', () => {
+    const groups = glanceGroupsOf({
+      header,
+      processLinks: [link],
+      evidence: [ev('e2')],
+      scoreItems: [item('NEW_MATERIAL', 'CONFIRMED', 20, '탄소강이라 맞습니다.', ['e2'])],
+      reviewItems: [question('도금을 자체 설비로 하는지 외주인지')],
+    });
+    expect(linesOf(groups, 'check')).toBeNull();
+  });
+
+  it('Given 공정이 AI 제안뿐이고 소재를 모르며 요구 확인이 필요 When 고르면 Then "확인 전: 공정 · 소재 · RoHS" 한 줄만 나온다', () => {
     const groups = glanceGroupsOf({
       header,
       processLinks: [
@@ -344,10 +357,8 @@ describe('glanceGroupsOf — 확인할 점', () => {
         },
       ],
     });
-    expect(linesOf(groups, 'check')).toEqual([
-      { text: '확인 전: 공정 · 소재 · RoHS' },
-      { text: '납기가 얼마나 급한지' },
-    ]);
+    // 확인 질문("납기가 얼마나 급한지")은 줄이 되지 않는다.
+    expect(linesOf(groups, 'check')).toEqual([{ text: '확인 전: 공정 · 소재 · RoHS' }]);
     // 확정 공정이 없으니 맞는 점 갈래는 없다.
     expect(linesOf(groups, 'fit')).toBeNull();
   });

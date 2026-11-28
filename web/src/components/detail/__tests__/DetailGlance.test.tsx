@@ -160,7 +160,10 @@ describe('DetailGlance — 근거가 많은 회사 (#996)', () => {
       ['glance-company', 'glance-key-fit', 'glance-key-feature', 'glance-key-check'].map((id) =>
         screen.getByTestId(id).getAttribute('data-lines'),
       ),
-    ).toEqual(['1', '2', '4', '5']);
+    ).toEqual(['1', '2', '4', '3']);
+    // 확인 질문 둘을 넘겼지만 한눈에에는 그 글이 없다(영업 코치 "확인사항"에만 있다, PM 결정 2026-11-29 후속).
+    expect(box).not.toHaveTextContent('도금을 자체 설비로 하는지 외주인지');
+    expect(box).not.toHaveTextContent('철계 볼트의 전기아연도금 물량이 있는지');
 
     const company = within(box).getByTestId('glance-company');
     expect(within(company).getByTestId('company-summary-line')).toHaveTextContent(
@@ -187,7 +190,22 @@ describe('DetailGlance — 근거가 많은 회사 (#996)', () => {
 
   it('Given 줄이 3줄을 넘는 갈래 When 한눈에 Then 앞 3줄만 보이고 "더 보기 n줄"을 누르면 다 펴지며 다시 누르면 접힌다', async () => {
     const user = userEvent.setup();
-    renderRich();
+    // 확인할 점이 3줄을 넘도록 제품 근거를 "추정(확인 전)"으로 둔다: 낱말 줄 1 + 확보 못 한 근거 줄 3(제품 · 처리 목적 · 납품실적).
+    // (확인 질문은 확인할 점에 넣지 않으므로 근거 줄로 줄 수를 채운다, PM 결정 2026-11-29 후속.)
+    const manyChecks = ITEMS.map((row) =>
+      row.itemCode === 'NEW_PRODUCT' ? { ...row, state: 'STRONG' } : row,
+    );
+    render(
+      <DetailGlance
+        header={full}
+        processLinks={[link]}
+        evidence={evidence(5)}
+        reviewItems={[question('도금을 자체 설비로 하는지 외주인지')]}
+        requirements={[]}
+        scoreItems={manyChecks}
+        now={NOW}
+      />,
+    );
     // 특징 4줄(저장된 특징이 없으니 증설 · 수주 · 구매·외주 의향 · 관심 근거 줄) → 3줄 + 더 보기 1줄.
     const feature = screen.getByTestId('glance-key-feature');
     expect(feature).toHaveAttribute('data-tone', 'neutral');
@@ -200,40 +218,42 @@ describe('DetailGlance — 근거가 많은 회사 (#996)', () => {
     expect(featureMore).toHaveTextContent(/^더 보기 1줄$/);
     expect(featureMore).toHaveAttribute('aria-expanded', 'false');
 
-    // 확인할 점(주황 이름표) 5줄: "확인 전" 낱말 줄 + 확보 못 한 근거 줄 2 + 답이 없는 확인 질문 2 → 3줄 + 더 보기 2줄.
+    // 확인할 점(주황 이름표) 4줄: "확인 전" 낱말 줄 + 확보 못 한 근거 줄 3 → 3줄 + 더 보기 1줄.
     const check = screen.getByTestId('glance-key-check');
     expect(check).toHaveAttribute('data-tone', 'warn');
+    expect(check).toHaveAttribute('data-lines', '4');
     expect(within(check).getByRole('term')).toHaveStyle({ background: statusPalette.wait.bg });
     expect(shownLines('glance-key-check')).toEqual([
       '확인 전: 근거 부족',
+      '볼트를 단조로 만들고 생산공정에 도금이 있습니다.',
       '처리 목적이 적혀 있지 않아 미확보입니다.',
-      '납품 산업이 거산 소개서와 달라 가점이 없습니다.',
     ]);
     const checkMore = within(check).getByTestId('glance-key-more');
-    expect(checkMore).toHaveTextContent(/^더 보기 2줄$/);
+    expect(checkMore).toHaveTextContent(/^더 보기 1줄$/);
 
     await user.click(checkMore);
     expect(checkMore).toHaveAttribute('aria-expanded', 'true');
     expect(checkMore).toHaveTextContent(/^접기$/);
     expect(shownLines('glance-key-check')).toEqual([
       '확인 전: 근거 부족',
+      '볼트를 단조로 만들고 생산공정에 도금이 있습니다.',
       '처리 목적이 적혀 있지 않아 미확보입니다.',
       '납품 산업이 거산 소개서와 달라 가점이 없습니다.',
-      '도금을 자체 설비로 하는지 외주인지',
-      '철계 볼트의 전기아연도금 물량이 있는지',
     ]);
-    // 근거 문장에서 온 줄에만 "○○ 근거 ↓"가 붙는다(낱말 줄 · 질문 줄에는 없다).
+    // 근거 문장에서 온 줄에만 "○○ 근거 ↓"가 붙는다(낱말 줄에는 없다).
     expect(
       within(check)
         .getAllByTestId('glance-key-link')
         .map((el) => el.textContent),
-    ).toEqual(['처리 목적 근거 ↓', '납품실적 근거 ↓']);
+    ).toEqual(['제품 근거 ↓', '처리 목적 근거 ↓', '납품실적 근거 ↓']);
+    // 다 펴도 확인 질문은 없다.
+    expect(check).not.toHaveTextContent('도금을 자체 설비로 하는지 외주인지');
     // 다른 갈래는 그대로 접혀 있다.
     expect(shownLines('glance-key-feature')).toHaveLength(3);
 
     await user.click(checkMore);
     expect(shownLines('glance-key-check')).toHaveLength(3);
-    expect(checkMore).toHaveTextContent(/^더 보기 2줄$/);
+    expect(checkMore).toHaveTextContent(/^더 보기 1줄$/);
 
     await user.click(featureMore);
     expect(shownLines('glance-key-feature')).toEqual([

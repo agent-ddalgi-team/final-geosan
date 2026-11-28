@@ -1,6 +1,8 @@
 // 상세 "한눈에" 핵심 줄(#996, PM 결정 2026-11-29): 어떤 회사 · 맞는 점 · 특징 · 확인할 점.
-// 지금 저장된 값(한 줄 소개, 점수 항목의 쉬운 요약, 확정 공정·소재, 회사 특징, 검토사항)에서 프로그램이 골라 붙인다.
+// 지금 저장된 값(한 줄 소개, 점수 항목의 쉬운 요약, 확정 공정·소재, 회사 특징)에서 프로그램이 골라 붙인다.
 // AI를 부르지 않고 새 응답 칸도 쓰지 않는다.
+// 확인 질문(검토사항의 질문 줄)은 여기에 넣지 않는다: 오른쪽 영업 코치 "확인사항"에 같은 글이 있어
+// 한눈에와 나란히 두 번 보이기 때문이다(PM 결정 2026-11-29). 검토사항은 공정이 확정인지 AI 제안인지 가르는 데만 쓴다.
 // 줄 수는 고정이 아니다(PM 추가 지시 2026-11-29): 갈래마다 저장된 값이 여러 개면 그만큼 줄을 만들고,
 // 값이 없는 갈래는 만들지 않는다(지어내지 않는다). 근거가 거의 없는 회사는 "어떤 회사" 한 줄만 나온다.
 // 화면은 갈래 배열을 받아 그대로 그린다(갈래마다 앞 `GLANCE_LINES_SHOWN`줄 + "더 보기 n줄"). 새 갈래는 배열에 더하면 된다.
@@ -172,7 +174,8 @@ export function glanceGroupsOf({
   ];
 
   // ── 확인할 점: 아직 확인 전인 것(공정 · 소재 · 근거 부족 · 요구 이름) 한 줄
-  //    + 확보 못 한(추정 · 미확보 · 가점 없음) 근거 줄마다 한 줄 + 답이 없는 확인 질문마다 한 줄.
+  //    + 확보 못 한(추정 · 미확보 · 가점 없음) 근거 줄마다 한 줄. 여기까지만이다.
+  //    확인 질문은 넣지 않는다(영업 코치 "확인사항"에만 있다).
   const words = detailCheckWordsOf(header, processLinks, reviewItems, requirements);
   const wordList: string[] = [];
   if (words.process) wordList.push(cardRows.checkWords.process);
@@ -187,14 +190,6 @@ export function glanceGroupsOf({
   checkLines.push(
     ...FIT_ITEM_CODES.filter((code) => usable(code) && !isSecured(byCode.get(code))).map(lineOf),
   );
-  const seenQuestions = new Set<string>();
-  for (const review of reviewItems) {
-    const text = review.text.trim();
-    if (review.kind !== 'QUESTION' || review.checked || review.replyText?.trim()) continue;
-    if (text === '' || seenQuestions.has(text)) continue;
-    seenQuestions.add(text);
-    checkLines.push({ text });
-  }
 
   const groups: GlanceGroup[] = [
     {
