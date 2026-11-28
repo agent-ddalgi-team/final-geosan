@@ -36,9 +36,10 @@ ANSWER_NEGATIVE = "NEGATIVE"
 REACTION_ANSWER_IDS = (ANSWER_POSITIVE, ANSWER_NEUTRAL, ANSWER_NEGATIVE)
 
 CONTACT_METHODS = frozenset({"CALL", "EMAIL", "VISIT"})
-# 맨 끝 줄 이름은 이 경로의 약속 글 그대로다(`/sales-analysis`의 "확인 전" 줄과 이름이 다르다).
-NO_PROCESS_NAME = "공정 미확정"
-NO_INDUSTRY_NAME = "미확정"
+# 맨 끝 줄 이름은 영업 분석표(`sales_analysis`)와 같은 말을 쓴다
+# (PM 결정 2026-11-29: 한 화면에서 같은 뜻을 두 가지 말로 쓰지 않는다).
+NO_PROCESS_NAME = "공정 확인 전"
+NO_INDUSTRY_NAME = "산업 확인 전"
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +194,7 @@ def build_sales_reactions(
     `companies`는 영업 분석표에 든 회사(같은 대상 규칙)와 그 살아 있는 기록 행이다.
     `processes`는 역량 파일 순서의 (코드, 이름), `industries`는 설정 순서다. 여기 없는 공정 코드·
     산업 이름은 줄을 만들지 않고 접촉 줄에도 싣지 않는다(분석표와 같다). 그래서 설정 안 산업이
-    하나도 없는 회사의 접촉은 맨 끝 "미확정" 줄에, 공정이 없는 회사의 접촉은 "공정 미확정"
+    하나도 없는 회사의 접촉은 맨 끝 "산업 확인 전" 줄에, 공정이 없는 회사의 접촉은 "공정 확인 전"
     줄에 든다.
 
     `answer_order`는 {질문 id: 질문 파일의 보기 id 순서}로 창구가 질문 파일에서 넘긴다. 질문 파일이

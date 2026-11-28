@@ -3760,8 +3760,8 @@ export const reactionAnalysisTexts = {
     companies: '회사',
     /** "아연도금 2건" */
     part: (name: string, count: number) => `${name} ${count}건`,
-    noProcess: '공정 미확정',
-    noIndustry: '미확정',
+    noProcess: '공정 확인 전',
+    noIndustry: '산업 확인 전',
     /** 접촉 방법(시안의 말). 접촉 한 줄: "K산업(가상) 11/20 통화" */
     methods: { CALL: '통화', EMAIL: '메일', VISIT: '대면' },
     more: (hidden: number) => `더 보기 (${hidden}건)`,

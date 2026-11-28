@@ -136,18 +136,18 @@ describe('조각을 눌렀을 때 접촉 줄 고르기 (#985)', () => {
     ]);
   });
 
-  it('Given 산업 한 줄을 골라 보는 중 When 접촉을 고르면 Then 그 산업이 적힌 접촉만, "미확정" 줄은 산업이 없는 접촉만 든다', () => {
+  it('Given 산업 한 줄을 골라 보는 중 When 접촉을 고르면 Then 그 산업이 적힌 접촉만, "산업 확인 전" 줄은 산업이 없는 접촉만 든다', () => {
     const car = contacts.filter((row) =>
       inScope(row, { kind: 'industry', industry: '자동차 부품' }, named),
     );
     expect(car.map((row) => row.oppId)).toEqual(['opp-r', 'opp-m', 'opp-k', 'opp-k', 'opp-h']);
     const none = contacts.filter((row) =>
-      inScope(row, { kind: 'industry', industry: '미확정' }, named),
+      inScope(row, { kind: 'industry', industry: '산업 확인 전' }, named),
     );
     expect(none.map((row) => row.name)).toEqual(['T기계(가상)']);
   });
 
-  it('Given 공정 한 줄 When 접촉을 고르면 Then 그 공정이 적힌 접촉만, 공정 미확정 줄(null)은 공정이 없는 접촉만 든다', () => {
+  it('Given 공정 한 줄 When 접촉을 고르면 Then 그 공정이 적힌 접촉만, 공정 확인 전 줄(null)은 공정이 없는 접촉만 든다', () => {
     const nickel = contacts.filter((row) =>
       inScope(row, { kind: 'process', processCode: 'NICKEL_PLATING' }, named),
     );

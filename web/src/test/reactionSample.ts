@@ -80,7 +80,7 @@ export const REACTION_SAMPLE: SalesReactions = {
       bad: [{ answerId: 'CLAIM', count: 2 }],
     },
     {
-      industry: '미확정',
+      industry: '산업 확인 전',
       answeredCount: 3,
       positive: 1,
       neutral: 1,
@@ -118,7 +118,7 @@ export const REACTION_SAMPLE: SalesReactions = {
     },
     {
       processCode: null,
-      processName: '공정 미확정',
+      processName: '공정 확인 전',
       answeredCount: 2,
       positive: 0,
       neutral: 1,
@@ -155,7 +155,7 @@ export const REACTION_SAMPLE: SalesReactions = {
       industries: ['자동차 부품'],
       processCodes: ['ZINC_PLATING'],
     }),
-    // 산업·공정이 아직 없는 회사: 산업 "미확정" 줄 · 공정 "공정 미확정" 줄에 든다.
+    // 산업·공정이 아직 없는 회사: 산업 "산업 확인 전" 줄 · 공정 "공정 확인 전" 줄에 든다.
     contact({ oppId: 'opp-t', name: 'T기계(가상)', day: '2026-11-18', bad: 'PRICE' }),
     contact({
       oppId: 'opp-k',

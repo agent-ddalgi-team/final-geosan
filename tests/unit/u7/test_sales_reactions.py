@@ -212,7 +212,8 @@ def test_company_with_two_industries_is_in_both_industry_rows_and_once_in_total(
 
 def test_rows_follow_settings_order_and_unknown_rows_go_last():
     """Given 공정·산업이 없는 회사와 있는 회사 / When 계산
-    / Then 산업은 설정 순서 뒤 "미확정", 공정은 역량 파일 순서 뒤 null "공정 미확정"이 맨 끝."""
+    / Then 산업은 설정 순서 뒤 "산업 확인 전",
+    공정은 역량 파일 순서 뒤 null "공정 확인 전"이 맨 끝."""
     result = count(
         [
             company("T기계(가상)", [line("NEGATIVE", bad="PRICE")], processes=()),
@@ -223,12 +224,12 @@ def test_rows_follow_settings_order_and_unknown_rows_go_last():
     assert [(row.industry, row.answered_count) for row in result.by_industry] == [
         ("방위산업", 1),
         ("자동차 부품", 1),
-        ("미확정", 1),
+        ("산업 확인 전", 1),
     ]
     assert [(row.process_code, row.process_name) for row in result.by_process] == [
         ("ANODIZING", "아노다이징"),
         ("CHROMATE", "크로메이트"),
-        (None, "공정 미확정"),
+        (None, "공정 확인 전"),
     ]
     assert parts(result.by_process[-1].bad) == [("PRICE", 1)]
     unknown = next(row for row in result.contacts if row.name == "T기계(가상)")
@@ -246,7 +247,7 @@ def test_industry_and_process_outside_the_lists_fall_into_the_unknown_rows():
     )
     assert [(row.industry, row.answered_count) for row in result.by_industry] == [
         ("방위산업", 1),
-        ("미확정", 1),
+        ("산업 확인 전", 1),
     ]
     assert [(row.process_code, row.answered_count) for row in result.by_process] == [
         ("ZINC", 1),
@@ -452,11 +453,11 @@ def test_api_counts_saved_reaction_answers_and_viewer_can_read(dashboard_env):
         "good": [{"answerId": "QUALITY_CERT", "count": 1}],
         "bad": [{"answerId": "CLAIM", "count": 1}],
     }
-    # 산업은 설정 순서(방위산업 → 자동차 부품), 산업이 없는 회사(c)는 맨 끝 "미확정".
+    # 산업은 설정 순서(방위산업 → 자동차 부품), 산업이 없는 회사(c)는 맨 끝 "산업 확인 전".
     assert [(row["industry"], group_numbers(row)) for row in data["byIndustry"]] == [
         ("방위산업", (1, 1, 0, 0)),
         ("자동차 부품", (2, 1, 0, 1)),
-        ("미확정", (1, 0, 1, 0)),
+        ("산업 확인 전", (1, 0, 1, 0)),
     ]
     assert data["byIndustry"][1]["bad"] == [{"answerId": "CLAIM", "count": 1}]
     assert [(row["processCode"], group_numbers(row)) for row in data["byProcess"]] == [
@@ -531,13 +532,13 @@ def test_api_counts_a_two_process_company_in_both_process_rows(dashboard_env):
 
 def test_api_counts_only_confirmed_processes_and_industries(dashboard_env):
     """Given AI 제안 공정·AI 산업군만 붙은 회사 / When 조회
-    / Then 분석표처럼 확정 값만 센다: 산업은 "미확정" 줄, 공정은 확정된 것만."""
+    / Then 분석표처럼 확정 값만 센다: 산업은 "산업 확인 전" 줄, 공정은 확정된 것만."""
     client, (a, *_rest) = dashboard_env
     support.propose_process(a, "CHROMATE")
     set_industries(a, ["반도체"], source="AI")
     record(client, a, contact(answers=NEUTRAL))
     data = reactions(client)["data"]
-    assert [row["industry"] for row in data["byIndustry"]] == ["미확정"]
+    assert [row["industry"] for row in data["byIndustry"]] == ["산업 확인 전"]
     assert [row["processCode"] for row in data["byProcess"]] == ["ANODIZING"]
     assert (data["contacts"][0]["industries"], data["contacts"][0]["processCodes"]) == (
         [],
