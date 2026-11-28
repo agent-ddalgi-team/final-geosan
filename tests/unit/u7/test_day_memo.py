@@ -301,7 +301,13 @@ def test_reading_and_writing_memos_leave_dashboard_and_badges_alone(memo_client)
     added(memo_client, DAY, text)
     badges = memo_client.get("/api/v1/menu-badges", headers=SALES)
     assert badges.status_code == 200, badges.text
-    assert badges.json()["data"] == {"dashboard": 0, "list": 0, "bookmarks": 0}
+    # #987: 메뉴 숫자 응답에 "의견 전" 칸이 더해졌다(약속 요약 /menu-badges).
+    assert badges.json()["data"] == {
+        "dashboard": 0,
+        "list": 0,
+        "bookmarks": 0,
+        "bookmarksNoOpinion": 0,
+    }
     dashboard = memo_client.get("/api/v1/dashboard", headers=SALES)
     assert dashboard.status_code == 200, dashboard.text
     assert text not in dashboard.text
