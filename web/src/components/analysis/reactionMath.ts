@@ -104,11 +104,11 @@ export function groupWithRest(items: ReactionAnswerCount[], max: number): PartGr
   ];
 }
 
-/** 지금 골라 보는 묶음(산업 한 줄 또는 공정 한 줄). 공정 미확정 줄은 processCode가 null이다. */
+/** 지금 골라 보는 묶음(산업 한 줄 또는 공정 한 줄). 공정 확인 전 줄은 processCode가 null이다. */
 export type ReactionScope =
   { kind: 'industry'; industry: string } | { kind: 'process'; processCode: string | null };
 
-/** 접촉 줄에 한 번이라도 적힌 산업 이름. 여기에 없는 산업 줄은 "산업이 없는 회사" 줄(미확정)이다. */
+/** 접촉 줄에 한 번이라도 적힌 산업 이름. 여기에 없는 산업 줄은 "산업이 없는 회사" 줄(산업 확인 전)이다. */
 export function namedIndustries(contacts: ReactionContact[]): Set<string> {
   return new Set(contacts.flatMap((contact) => contact.industries));
 }
@@ -122,7 +122,7 @@ export function inScope(
   if (!scope) return true;
   if (scope.kind === 'industry') {
     if (contact.industries.includes(scope.industry)) return true;
-    // 산업이 없는 회사의 접촉은 서버가 맨 끝 "미확정" 줄에 센다. 그 줄 이름은 어느 접촉의 산업에도 없다.
+    // 산업이 없는 회사의 접촉은 서버가 맨 끝 "산업 확인 전" 줄에 센다. 그 줄 이름은 어느 접촉의 산업에도 없다.
     return contact.industries.length === 0 && !named.has(scope.industry);
   }
   if (scope.processCode === null) return contact.processCodes.length === 0;

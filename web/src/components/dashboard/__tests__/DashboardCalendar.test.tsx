@@ -3,7 +3,11 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import DashboardCalendar, { miniCellColors, popoverDayTitle } from '../DashboardCalendar';
+import DashboardCalendar, {
+  miniCellColors,
+  popoverDayTitle,
+  rightPopoverPlace,
+} from '../DashboardCalendar';
 import type { DashboardScheduleItem } from '../../../api/dashboardTypes';
 import { accent, colors, sideCalendar, warn } from '../../../theme/tokens';
 
@@ -361,6 +365,142 @@ describe('작은 달력 (#983 mini)', () => {
     renderMini();
     await userEvent.click(day('2026-11-04'));
     expect(screen.queryByTestId('dashboard-calendar-popover-extra')).not.toBeInTheDocument();
+  });
+
+  describe('#992 오른쪽 작은 창의 방향 · 길이(달력이 브라우저 창 아래 끝에 붙은 뒤)', () => {
+    const EDGE = sideCalendar.popoverEdgeGap;
+    /** 날짜 단추가 화면의 top~bottom(창 기준 좌표)에 있다고 알린다. jsdom은 자리를 계산하지 않는다. */
+    function place(target: HTMLElement, top: number, height = 28) {
+      vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({
+        top,
+        bottom: top + height,
+        left: 0,
+        right: 28,
+        width: 28,
+        height,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      });
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('Given 날짜가 화면 아래쪽 절반(달력이 창 아래 끝에 붙은 보통 경우) When 누르면 Then 창이 위로 펼쳐지고, 창 아래 끝을 넘지 않으며 위로도 잘리지 않게 길이가 묶인다', async () => {
+      renderMini({ popoverSide: 'right' });
+      const target = day('2026-11-18');
+      // 창 높이 768(jsdom 기본)에서 날짜 칸이 600~628에 있다.
+      place(target, 600);
+      await userEvent.click(target);
+      const popover = screen.getByTestId('dashboard-calendar-popover');
+      expect(popover).toHaveAttribute('data-direction', 'up');
+      // 위로 펼침: 아래 끝(bottom)으로 자리를 잡고 위 끝(top)은 주지 않는다.
+      expect(popover.style.bottom).not.toBe('');
+      expect(popover.style.top).toBe('');
+      // 창 아래 끝은 날짜 칸 아래 끝(628)을 넘지 않는 자리이고, 거기서 브라우저 창 위 끝 여백까지만 자란다.
+      const maxHeight = parseFloat(popover.style.maxHeight);
+      expect(maxHeight).toBeGreaterThan(0);
+      expect(maxHeight).toBeLessThanOrEqual(628 + 12 - EDGE);
+      expect(maxHeight).toBeLessThanOrEqual(window.innerHeight - EDGE);
+      // 넘치면 본문(일정 · 메모 칸)만 창 안에서 내려 본다. 머리 줄(날짜 · 닫기)은 늘 보인다.
+      const body = within(popover).getByTestId('dashboard-calendar-popover-body');
+      expect(body).toHaveStyle({ overflowY: 'auto', minHeight: '0' });
+      expect(body).toContainElement(within(popover).getByTestId('dashboard-calendar-popover-item'));
+      expect(body).not.toContainElement(
+        within(popover).getByTestId('dashboard-calendar-popover-title'),
+      );
+      expect(popover).toHaveStyle({ display: 'flex', flexDirection: 'column' });
+    });
+
+    it('Given 날짜가 화면 위쪽 절반(창이 낮아 달력이 메뉴 줄 바로 아래에 이어 붙은 경우 등) When 누르면 Then 창이 아래로 펼쳐지고 창 아래 끝을 넘지 않게 길이가 묶인다', async () => {
+      renderMini({ popoverSide: 'right' });
+      const target = day('2026-11-18');
+      place(target, 200);
+      await userEvent.click(target);
+      const popover = screen.getByTestId('dashboard-calendar-popover');
+      expect(popover).toHaveAttribute('data-direction', 'down');
+      expect(popover.style.top).not.toBe('');
+      expect(popover.style.bottom).toBe('');
+      // 창 위 끝이 날짜 칸 위 끝(200) 근처이므로 아래로는 (창 높이 - 그 자리 - 여백)까지만 자란다.
+      const maxHeight = parseFloat(popover.style.maxHeight);
+      expect(maxHeight).toBeGreaterThan(0);
+      expect(maxHeight).toBeLessThanOrEqual(window.innerHeight - (200 - 12) - EDGE);
+    });
+
+    it('날짜 아래에 뜨는 창(좁은 기기의 영업 홈 본문)은 지금 그대로다: 길이를 묶지 않고 본문도 내려 보는 칸이 아니다', async () => {
+      const extra = (date: string) => <span>{`메모 자리 ${date}`}</span>;
+      renderMini({ extra });
+      const target = day('2026-11-18');
+      place(target, 600);
+      await userEvent.click(target);
+      const popover = screen.getByTestId('dashboard-calendar-popover');
+      expect(popover).not.toHaveAttribute('data-direction');
+      expect(popover.style.maxHeight).toBe('');
+      expect(popover.style.top).not.toBe('');
+      expect(within(popover).getByTestId('dashboard-calendar-popover-body').style.overflowY).toBe(
+        '',
+      );
+    });
+
+    it('rightPopoverPlace: 아래쪽 절반이면 위로(창 아래 끝 = 그 줄 아래 12), 위쪽 절반이면 아래로(창 위 끝 = 그 줄 위 12), 어느 쪽이든 브라우저 창 끝에서 여백만큼 안쪽까지만', () => {
+      // 달력 높이 290, 날짜 칸이 달력 안 120~148 자리. 화면에서는 600~628(창 높이 900의 아래쪽 절반).
+      const up = rightPopoverPlace(
+        { top: 600, bottom: 628, offsetTop: 120, offsetHeight: 28 },
+        290,
+        900,
+        12,
+      );
+      // 달력 아래 끝에서 창 아래 끝까지 = (290 - 148) - 12 = 130 → 창 아래 끝의 화면 자리는 628 + 12 = 640(달력 안).
+      expect(up.bottom).toBe(130);
+      expect(up.maxHeight).toBe(640 - 12);
+      // 창이 가장 길어도 위 끝은 화면 위 끝에서 12 아래다: 640 - 628 = 12.
+      expect(640 - up.maxHeight).toBe(12);
+
+      // 같은 칸이 화면 위쪽 절반(300~328)에 있으면 아래로: 창 위 끝 = 300 - 12 = 288, 아래 끝은 900 - 12까지.
+      const down = rightPopoverPlace(
+        { top: 300, bottom: 328, offsetTop: 120, offsetHeight: 28 },
+        290,
+        900,
+        12,
+      );
+      expect(down.bottom).toBeUndefined();
+      expect(down.top).toBe(108);
+      expect(down.maxHeight).toBe(900 - 288 - 12);
+      expect(288 + down.maxHeight).toBe(900 - 12);
+
+      // 맨 아랫줄 날짜(아래로 남은 자리가 12보다 적음): 창 아래 끝은 달력 아래 끝에 맞춘다(그 아래로 내려가지 않는다).
+      const lastRow = rightPopoverPlace(
+        { top: 800, bottom: 828, offsetTop: 258, offsetHeight: 28 },
+        290,
+        900,
+        12,
+      );
+      expect(lastRow.bottom).toBe(0);
+      // 달력 아래 끝의 화면 자리 = 828 + (290 - 286) = 832.
+      expect(lastRow.maxHeight).toBe(832 - 12);
+
+      // 달력 높이를 모르면(그리기 전) 그 줄 아래 끝을 달력 아래 끝으로 본다.
+      expect(
+        rightPopoverPlace(
+          { top: 800, bottom: 828, offsetTop: 258, offsetHeight: 28 },
+          null,
+          900,
+          12,
+        ).bottom,
+      ).toBe(0);
+
+      // 맨 윗줄 날짜(위로 12를 띄울 자리가 없음): 창 위 끝은 달력 위 끝에 맞추고 그만큼 화면 자리도 따라간다.
+      const firstRow = rightPopoverPlace(
+        { top: 100, bottom: 128, offsetTop: 4, offsetHeight: 28 },
+        290,
+        900,
+        12,
+      );
+      expect(firstRow.top).toBe(0);
+      expect(firstRow.maxHeight).toBe(900 - 96 - 12);
+    });
   });
 
   it('miniCellColors · popoverDayTitle', () => {

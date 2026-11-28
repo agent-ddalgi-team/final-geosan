@@ -208,7 +208,7 @@ describe('영업 분석 › 상대 반응 카드 (#985)', () => {
     expect(zinc).toHaveTextContent('18건');
     expect(zinc).toHaveTextContent('긍정 8 · 보통 5 · 부정 5');
     // 좋게 본 부분이 없는 줄은 "—".
-    const none = splitRow('공정 미확정');
+    const none = splitRow('공정 확인 전');
     expect(within(none).getAllByRole('cell')[2]).toHaveTextContent('—');
     expect(within(none).getAllByRole('cell')[3]).toHaveTextContent('가격 1건');
     await userEvent.click(within(zinc).getByTestId('reaction-split-only'));
@@ -269,7 +269,7 @@ describe('영업 분석 › 상대 반응 카드 (#985)', () => {
     );
     expect(detail).toHaveTextContent('산업별');
     expect(within(detail).getByTestId('reaction-detail-parts')).toHaveTextContent(
-      '자동차 부품 3건 · 미확정 1건',
+      '자동차 부품 3건 · 산업 확인 전 1건',
     );
     expect(within(detail).getAllByTestId('reaction-detail-contact')).toHaveLength(4);
     await userEvent.click(screen.getAllByTestId('reaction-pie-bad-slice')[0]);
@@ -356,15 +356,15 @@ describe('영업 분석 › 상대 반응 카드 (#985)', () => {
     renderCard();
     await screen.findByText('긍정적');
     await userEvent.click(screen.getByTestId('reaction-tab-process'));
-    await userEvent.click(within(splitRow('공정 미확정')).getByTestId('reaction-split-only'));
+    await userEvent.click(within(splitRow('공정 확인 전')).getByTestId('reaction-split-only'));
     expect(legendTexts('reaction-pie-reaction')).toEqual(['긍정적0건', '보통1건', '부정적1건']);
     expect(legendRow('reaction-pie-reaction', 'POSITIVE')).toBeDisabled();
     expect(screen.getAllByTestId('reaction-pie-reaction-slice')).toHaveLength(2);
     // 좋게 본 부분이 하나도 없으면 파이 대신 안내.
     expect(screen.getByTestId('reaction-pie-good-empty')).toHaveTextContent('아직 없습니다');
-    // 공정이 없는 회사의 접촉은 산업도 없어 "미확정"으로 센다.
+    // 공정이 없는 회사의 접촉은 산업도 없어 "산업 확인 전"으로 센다.
     await userEvent.click(legendRow('reaction-pie-bad', 'PRICE'));
-    expect(screen.getByTestId('reaction-detail-parts')).toHaveTextContent('미확정 1건');
+    expect(screen.getByTestId('reaction-detail-parts')).toHaveTextContent('산업 확인 전 1건');
     expect(screen.getByTestId('reaction-detail-contact')).toHaveTextContent(
       'T기계(가상) 11/18 통화',
     );
