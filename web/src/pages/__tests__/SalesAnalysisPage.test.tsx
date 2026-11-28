@@ -7,7 +7,13 @@ import SalesAnalysisPage from '../SalesAnalysisPage';
 import AppFrame from '../../components/frame/AppFrame';
 import type { DashboardBreakdown } from '../../api/dashboardTypes';
 import type { AnalysisStats, SalesAnalysis } from '../../api/salesAnalysis';
-import { banner, dashboardTexts, frame, salesAnalysisTexts as texts } from '../../labels/ko';
+import {
+  analysisFeedbackTexts,
+  banner,
+  dashboardTexts,
+  frame,
+  salesAnalysisTexts as texts,
+} from '../../labels/ko';
 import { choiceChip } from '../../theme/tokens';
 import configFixture from '../../test/fixtures/config-ui.json';
 
@@ -538,9 +544,53 @@ describe('영업 분석 화면 (#608)', () => {
     expect(paths.filter((path) => path.endsWith('/sales-analysis'))).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /엑셀|내보내기/ })).not.toBeInTheDocument();
     // AI를 부르는 단추는 [AI 분석 받기 💰] 하나뿐이다(#824·#802, 누를 때만 부름).
+    // #974: 머리의 [AI 분석 받기 ↓]는 카드로 내려가기만 하는 바로가기라 여기서 뺀다(부르지 않는 것은 아래 시험이 본다).
     for (const button of screen.queryAllByRole('button', { name: /AI/ })) {
+      if (button.getAttribute('data-testid') === 'analysis-feedback-jump') continue;
       expect(button).toHaveAttribute('data-testid', 'feedback-request');
     }
+  });
+
+  describe('머리의 [AI 분석 받기 ↓] 바로가기 (#974)', () => {
+    it('Given 분석표가 보일 때 When 머리의 [AI 분석 받기 ↓]를 누르면 Then AI 분석 피드백 카드로 화면과 초점만 옮기고 분석은 부르지 않는다', async () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      const paths = installFetch(ANALYSIS);
+      renderPage();
+      const card = await screen.findByTestId('analysis-feedback');
+      const jump = screen.getByTestId('analysis-feedback-jump');
+      expect(jump).toHaveTextContent(analysisFeedbackTexts.jump);
+      expect(jump).toHaveAttribute('title', analysisFeedbackTexts.jumpHint);
+      // 기간 선택과 같은 머리 줄에 있다(카드 안이 아니다).
+      expect(card).not.toContainElement(jump);
+
+      const before = paths.length;
+      await userEvent.click(jump);
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.contexts[0]).toBe(card);
+      expect(card).toHaveFocus();
+      // 누른 뒤 새 요청이 없다(돈이 드는 분석은 카드 안 단추를 눌러야 시작한다).
+      expect(paths.slice(before)).toEqual([]);
+      expect(paths.filter((path) => !path.startsWith('GET '))).toEqual([]);
+    });
+
+    it('Given 접촉 기록이 없어 카드가 없을 때 Then 바로가기 단추도 없다', async () => {
+      installFetch(EMPTY);
+      renderPage();
+      await screen.findByTestId('analysis-empty');
+      expect(screen.queryByTestId('analysis-feedback')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('analysis-feedback-jump')).not.toBeInTheDocument();
+    });
+
+    it('Given 분석표를 못 불러왔을 때 Then 바로가기 단추가 없고, 다시 불러오면 생긴다', async () => {
+      installFetch('fail');
+      renderPage();
+      await screen.findByTestId('analysis-error');
+      expect(screen.queryByTestId('analysis-feedback-jump')).not.toBeInTheDocument();
+      installFetch(ANALYSIS);
+      await userEvent.click(screen.getByTestId('analysis-retry-button'));
+      expect(await screen.findByTestId('analysis-feedback-jump')).toBeInTheDocument();
+    });
   });
 
   describe('관심 기업 분포 (#679: 대시보드에서 옮겨 온 공정별·산업군별 막대)', () => {
