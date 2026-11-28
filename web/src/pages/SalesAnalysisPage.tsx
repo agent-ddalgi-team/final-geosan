@@ -10,6 +10,8 @@
 // #972(PM 결정 2026-11-27): 새 시안대로 숫자 카드 4칸(접촉 · 진행 중 · 성사 · 거절)을 그림 위에 다시 둔다.
 // 배치도 시안을 따른다: 탭(선택 단추 모양)·기간 → 담당자 선호 제안 → 숫자 카드 → [월별 추세 | 어디서 빠지나] →
 // [거절 이유 | 어느 조합] → 회사별 점 줄 → [AI 분석 피드백 | 기록에서 배우기] → [표로 보기]. 내용·동작은 그대로다.
+// #974(PM 11/28): 머리 오른쪽 [AI 분석 받기 ↓]. 아래 AI 분석 피드백 카드로 내려가기만 한다(돈이 드는 분석은
+// 카드 안 단추를 눌러야 시작한다). 카드가 그려진 때([분석] 탭이고 분석표가 있을 때)만 보인다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
@@ -18,7 +20,9 @@ import { getSalesAnalysis } from '../api/salesAnalysis';
 import type { AnalysisPeriod, SalesAnalysis } from '../api/salesAnalysis';
 import type { Meta } from '../api/types';
 import AnalysisCharts from '../components/analysis/AnalysisCharts';
-import AnalysisFeedbackCard from '../components/analysis/AnalysisFeedbackCard';
+import AnalysisFeedbackCard, {
+  ANALYSIS_FEEDBACK_ID,
+} from '../components/analysis/AnalysisFeedbackCard';
 import AnalysisNumberCards from '../components/analysis/AnalysisNumberCards';
 import MonthlyTrend from '../components/analysis/MonthlyTrend';
 import PreferencePanel from '../components/analysis/PreferencePanel';
@@ -32,8 +36,13 @@ import StepAnalysisTable from '../components/analysis/StepAnalysisTable';
 import { proposalHitText } from '../components/analysis/analysisText';
 import FiveStates from '../components/common/FiveStates';
 import { useFrame } from '../components/frame/FrameContext';
-import { analysisCharts, pastAnalysisTexts, salesAnalysisTexts as texts } from '../labels/ko';
-import { choiceChip, colors, radius, spacing, typography } from '../theme/tokens';
+import {
+  analysisCharts,
+  analysisFeedbackTexts,
+  pastAnalysisTexts,
+  salesAnalysisTexts as texts,
+} from '../labels/ko';
+import { accent, choiceChip, colors, radius, spacing, typography } from '../theme/tokens';
 import { formatMonthDayTime } from '../utils/time';
 
 interface Result {
@@ -141,6 +150,13 @@ export default function SalesAnalysisPage() {
   const currentBreakdown = breakdown?.key === reload ? breakdown : null;
 
   const retry = useCallback(() => setReload((n) => n + 1), []);
+  // #974: AI 분석 피드백 카드로 화면을 옮기고, 키보드 사용자를 위해 초점도 옮긴다. 분석을 부르지 않는다.
+  const goToFeedback = useCallback(() => {
+    const target = document.getElementById(ANALYSIS_FEEDBACK_ID);
+    if (!target) return;
+    target.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    target.focus({ preventScroll: true });
+  }, []);
 
   const data = current?.data;
   // "관심 기업 분포"(#679)는 기간과 상관없는 막대라 그래프 아래로 내렸다(#760, 숫자 칸·그래프를 맨 위에).
@@ -357,7 +373,33 @@ export default function SalesAnalysisPage() {
           })}
         </div>
         {/* 기간은 [분석] 탭에서만 쓴다(지난 분석은 받을 때의 기간이 줄마다 적혀 있다). */}
-        {tab === 'now' ? <PeriodPicker value={period} onChange={changePeriod} /> : null}
+        {tab === 'now' ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+            <PeriodPicker value={period} onChange={changePeriod} />
+            {state === 'ready' ? (
+              <button
+                type="button"
+                onClick={goToFeedback}
+                title={analysisFeedbackTexts.jumpHint}
+                data-testid="analysis-feedback-jump"
+                style={{
+                  padding: '8px 16px',
+                  border: `1px solid ${accent.bg}`,
+                  borderRadius: radius.controlSm,
+                  background: accent.bg,
+                  color: accent.onBg,
+                  fontWeight: 500,
+                  fontSize: typography.fontSize,
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                }}
+              >
+                {analysisFeedbackTexts.jump}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div role="tabpanel" id="analysis-tab-panel" aria-labelledby={`analysis-tab-${tab}`}>
         {tab === 'past' ? <PastAnalyses /> : nowView}

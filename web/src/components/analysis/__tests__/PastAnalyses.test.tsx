@@ -139,6 +139,8 @@ describe('영업 분석 › 지난 분석 탭 (#918)', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('?tab=past');
     const rows = await screen.findAllByTestId('past-analysis-row');
     expect(rows).toHaveLength(2);
+    // #974: 머리의 [AI 분석 받기 ↓]는 내려갈 카드가 있는 [분석] 탭에서만 보인다.
+    expect(screen.queryByTestId('analysis-feedback-jump')).not.toBeInTheDocument();
     expect(rows[0]).toHaveTextContent('견적 전에 물량을 먼저 묻는다.');
     expect(rows[0]).toHaveTextContent('전체 기간');
     expect(rows[0]).toHaveTextContent('다음 할 일 2개');

@@ -928,6 +928,13 @@ html[data-font-scale='L'] {
   font-size: 12.5px;
 }
 
+/* 제목 줄 오른쪽 끝의 작은 링크 단추(#974 "상세에서 기록 남기기 →"). */
+.report-head-link {
+  margin-left: auto;
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
 .report-page .report-sub {
   margin-top: 6px;
   color: #56566e;
