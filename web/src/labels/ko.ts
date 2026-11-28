@@ -620,14 +620,15 @@ export const scoreAria = {
  * `processLinks`도 지금 화면이 쓰지 않는 키다.
  */
 export const detailSections = {
+  // #980(PM 결정 2026-11-28): 상세 순서를 바꾸며 제목 앞 번호(1. 2. 3.)를 뺐다.
   /** 2026-11-13 PM 결정(#674): 추천 근거와 근거 자료를 한 구역으로 합치고 제목을 바꿨다(전에는 "1. 추천 근거와 후속 조치"). */
-  reasons: '1. 왜 이 회사인가',
+  reasons: '왜 이 회사인가',
   /** 2026-11-13 PM 결정(#674): 검토사항을 읽기 전용 목록으로 바꾼 구역. */
-  callChecklist: '2. 통화에서 확인할 것',
+  callChecklist: '통화에서 확인할 것',
   requirements: '고객이 요구하는 것과 거산의 준비 상태',
   processLinks: '공정 적합성 검토',
-  evidence: '2. 근거 자료',
-  scores: '3. 점수 자세히 보기',
+  evidence: '근거 자료',
+  scores: '점수 자세히 보기',
   estimateMark: '(추정)',
   questionsHeading: '거산 역량 확인사항',
   questionsHint:

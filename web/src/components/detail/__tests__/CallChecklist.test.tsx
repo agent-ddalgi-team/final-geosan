@@ -143,7 +143,7 @@ function renderList(items = reviewItems) {
 describe('CallChecklist (#674)', () => {
   it('확인이 필요한 것만 물을 말 한 줄씩: 후속 조치 → 공정 → 소재 → 산업 → 아직 답이 없는 꼬리 질문 순서이고 꼬리 질문과 같은 말을 쓴다', () => {
     renderList();
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('2. 통화에서 확인할 것');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('통화에서 확인할 것');
     const lines = screen.getAllByTestId('call-line').map((el) => el.textContent);
     expect(lines).toEqual([
       // "자료 미확보: …공고·채용" 조각은 뺀다(접힌 묶음이 같은 내용).
