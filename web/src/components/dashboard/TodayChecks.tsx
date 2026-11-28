@@ -494,6 +494,11 @@ export interface TodayChecksProps {
   footer?: ReactNode;
   /** #981 목록 아래 알림 한 줄(오늘 할 일 칸의 "의견 전" 알림). */
   notice?: ReactNode;
+  /**
+   * #984 오늘 날짜의 달력 메모 줄(오늘 할 일 칸). 일정 줄 바로 아래, 확인할 회사 묶음 위에 그린다.
+   * 메모가 없으면 넘기지 않는다(null). 제목 옆 건수에는 넣지 않는다.
+   */
+  memoLines?: ReactNode;
   /** 서버의 줄 목록. 옛 서버라 칸이 없으면(undefined) 구역을 그리지 않는다. */
   rows: TodayCheckRow[] | undefined;
   /**
@@ -565,6 +570,7 @@ export default function TodayChecks({
   badge = null,
   footer = null,
   notice = null,
+  memoLines = null,
 }: TodayChecksProps) {
   if (rows === undefined) return null;
   const known = rows.filter((row) => isKnownKind(row.kind) && row.count > 0);
@@ -643,9 +649,12 @@ export default function TodayChecks({
         </ul>
       ) : null}
       {ordered.length === 0 && alerts.length === 0 ? (
-        <p data-testid={`${id}-empty`} style={{ margin: 0, color: colors.textSecondary }}>
-          {empty}
-        </p>
+        <>
+          <p data-testid={`${id}-empty`} style={{ margin: 0, color: colors.textSecondary }}>
+            {empty}
+          </p>
+          {memoLines}
+        </>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {scheduleRows.length > 0 ? (
@@ -675,6 +684,7 @@ export default function TodayChecks({
               </ul>
             </li>
           ) : null}
+          {memoLines ? <li data-testid="dashboard-today-memo-slot">{memoLines}</li> : null}
           {groupRows.map((row) => (
             <Group
               key={row.kind}
