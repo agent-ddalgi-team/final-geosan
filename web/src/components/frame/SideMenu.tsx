@@ -13,6 +13,9 @@
 //   달력이 늘 보여야 하므로 넓은 화면에서는 메뉴를 항상 펼쳐 둔다: 접기 단추가 없고, 예전에 "접음"으로 기억해 둔
 //   값이 있어도(기업 상세의 기본 접힘 #803 포함) 펼친다. 기억해 둔 값은 지우지 않는다(좁은 기기가 계속 쓴다).
 //   좁은 기기(휴대폰 등)는 지금 방식 그대로다: 접기 단추 · 기억 · 기업 상세 기본 접힘. 달력은 영업 홈 본문 맨 아래에 있다.
+// #992(PM이 고른 수정안 3, 2026-11-29): 달력은 메뉴 줄 바로 아래가 아니라 메뉴 칸 맨 아래(브라우저 창 아래 끝, 여백 16)에 붙는다.
+//   메뉴 칸은 화면에 붙어 따라오는 창 높이 칸(sticky · 100vh)이라 본문이 길어 스크롤해도 왼쪽은 흰 칸으로 이어지고 달력도 그 자리다.
+//   창이 낮아 다 들어가지 않으면 메뉴 줄 묶음이 줄어들어 그 안에서 내려 보고, 달력은 그 바로 아래(최소 간격)에 이어 붙는다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
@@ -20,7 +23,14 @@ import type { MenuBadges } from '../../api/menuBadges';
 import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
-import { colors, opinionNudge, radius, sidebarTheme, typography } from '../../theme/tokens';
+import {
+  colors,
+  opinionNudge,
+  radius,
+  sideCalendar,
+  sidebarTheme,
+  typography,
+} from '../../theme/tokens';
 import { useFrame } from './FrameContext';
 import SideCalendar from './SideCalendar';
 import { useMenuBadges } from './useMenuBadges';
@@ -328,7 +338,12 @@ export default function SideMenu({
         top: 0,
         alignSelf: 'flex-start',
         height: '100vh',
-        padding: collapsed ? '20px 12px' : '20px 14px',
+        // #992 넓은 화면: 맨 아래 달력 칸과 브라우저 창 아래 끝 사이 여백.
+        padding: collapsed
+          ? '20px 12px'
+          : narrowDevice
+            ? '20px 14px'
+            : `20px 14px ${sideCalendar.gapBelow}px`,
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
@@ -424,7 +439,7 @@ export default function SideMenu({
         <PlusIcon />
         {collapsed ? <Tip>{frame.menuNewCandidates}</Tip> : <span>{frame.menuNewCandidates}</span>}
       </Link>
-      {/* 넓은 화면: 메뉴 묶음은 내용만큼만 차지하고(화면이 낮으면 이 칸 안에서 내려 본다) 그 아래 달력이 온다. */}
+      {/* 넓은 화면: 메뉴 묶음은 내용만큼만 차지하고(화면이 낮으면 이 칸 안에서 내려 본다), 달력은 메뉴 칸 맨 아래에 붙는다(#992). */}
       <div
         data-testid="side-menu-groups"
         style={
@@ -435,7 +450,8 @@ export default function SideMenu({
                 minHeight: 0,
                 overflowY: 'auto',
                 // 내려 보는 칸이 줄의 키보드 초점선(바깥 4px)을 자르지 않게 여백을 준다.
-                margin: '0 -4px',
+                // 아래 여백 = 달력 칸과의 최소 간격(#992): 창이 낮아 달력이 바로 아래에 이어 붙을 때도 이만큼은 띈다.
+                margin: `0 -4px ${sideCalendar.gapAbove}px`,
                 padding: '0 4px 4px',
               }
         }
@@ -545,7 +561,7 @@ export default function SideMenu({
           </div>
         ))}
       </div>
-      {/* #983: 한 달 달력. 좁은 기기에서는 영업 홈 본문 맨 아래에 있다. */}
+      {/* #983 → #992: 한 달 달력(메뉴 칸 맨 아래). 좁은 기기에서는 영업 홈 본문 맨 아래에 있다. */}
       {narrowDevice ? null : <SideCalendar extra={calendarExtra} />}
     </nav>
   );
