@@ -2,7 +2,10 @@
 // 단계 그림은 기업 상세와 같은 부품(SalesProgressBar)을 그대로 가져다 쓴다. 그 부품에는 reportModelOf가 고른
 // 값(단계·거절 이유 코드, 알아낸 답의 번호, 접촉 수)만 넘긴다: 일정의 할 일 글·담당자 키는 넘기지 않는다.
 // 영업 방향은 저장된 코치 피드백을 읽기만 한다(입력 칸·[피드백 남기기]는 만들지 않는다).
+// #974(PM 11/28): 대신 제목 줄 오른쪽에 [상세에서 기록 남기기 →] 링크 하나를 둔다. 적는 곳은 상세의 영업 코치
+// 한 곳뿐이고, 링크는 인쇄할 때 숨긴다(.no-print).
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import type { SalesQuestions } from '../../api/types';
 import {
   companyReport,
@@ -130,9 +133,12 @@ export function ReportSales({
 export function ReportDirection({
   lines,
   nextCall,
+  detailPath,
 }: {
   lines: ReportModel['direction'];
   nextCall: ReportModel['nextCall'];
+  /** (#974) 그 회사 상세 주소. 주면 제목 줄 오른쪽에 [상세에서 기록 남기기 →] 링크를 그린다. */
+  detailPath?: string;
 }) {
   return (
     <ReportSection id="report-direction-section">
@@ -140,6 +146,17 @@ export function ReportDirection({
         id="report-direction-section-heading"
         title={texts.sections.direction}
         note={lines.length > 0 ? texts.direction.mark : undefined}
+        tools={
+          detailPath ? (
+            <Link
+              to={detailPath}
+              className="no-print report-btn report-head-link"
+              data-testid="report-direction-link"
+            >
+              {reportView.directionLink}
+            </Link>
+          ) : undefined
+        }
       />
       {lines.length === 0 ? (
         <p className="report-dim" data-testid="report-direction-none">

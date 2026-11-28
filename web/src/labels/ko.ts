@@ -2710,6 +2710,8 @@ export const reportView = {
   /** 맨 위 줄. "← 상세로 돌아가기" */
   back: (label: string) => `← ${label}`,
   expandAll: '근거 설명 모두 펼치기',
+  /** (#974) 6. 영업 방향 제목 줄 오른쪽 링크. 보고서에는 입력 칸이 없고, 상세의 영업 코치에서 저장한 줄이 쌓인다. */
+  directionLink: '상세에서 기록 남기기 →',
   collapseAll: '근거 설명 모두 접기',
   /** 인쇄한 종이 맨 위 줄. "회사별 보고서 — A정밀 · 밸브 바디 아노다이징" */
   printHead: (pageTitle: string, title: string) => `${pageTitle} — ${title}`,

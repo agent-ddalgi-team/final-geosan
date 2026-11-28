@@ -218,7 +218,11 @@ export default function CompanyReportPage() {
                 <ReportEvidence evidence={model.evidence} groups={model.evidenceGroups} />
                 <ReportQuestions key={oppId} oppId={oppId} known={model.known} ask={model.ask} />
                 <ReportSales sales={model.sales} progress={model.progress} questions={questions} />
-                <ReportDirection lines={model.direction} nextCall={model.nextCall} />
+                <ReportDirection
+                  lines={model.direction}
+                  nextCall={model.nextCall}
+                  detailPath={detailPath}
+                />
                 <p className="report-dim report-footer" data-testid="report-footer">
                   {reportView.footer(banner.internalOnly)}
                 </p>
