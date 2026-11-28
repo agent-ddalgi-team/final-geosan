@@ -5,6 +5,9 @@
 import type {
   ActivityItem,
   BookmarkRecord,
+  ContactPersonRequest,
+  ContactPersonRevealed,
+  ContactPersonView,
   BookmarkRequest,
   BookmarkResponse,
   ConfigUi,
@@ -38,6 +41,10 @@ import type {
   ReviewCheckRequest,
   ReviewCheckResponse,
   SalesQuestions,
+  CompanyAddRequest,
+  CompanyAdded,
+  CompanyLookup,
+  CustomerSuggestions,
 } from './types';
 import { errorTexts } from '../labels/ko';
 
@@ -61,7 +68,8 @@ export class ApiError extends Error {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT';
+  /** DELETE는 날짜 메모 지우기(#984, 계약 C1 `DELETE /day-memos/{memoId}`)가 쓴다. */
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   /** 기록 요청에만 붙인다. 없으면 헤더를 보내지 않는다. */
   staffKey?: string | null;
@@ -339,6 +347,105 @@ export function postProcesses(oppId: string, processCodes: string[], staffKey: s
   });
 }
 
+/** #958 상세 "한눈에 › 어떤 회사"의 주소·회사 이름 [고치기]. 주소·이름은 점수에 들지 않아 다시 평가하지 않는다. */
+export function postCompanyInfo(
+  oppId: string,
+  /** #980: mainPhone·representativeName은 빈 글("")이면 지우기. */
+  body: { address?: string; companyName?: string; mainPhone?: string; representativeName?: string },
+  staffKey: string,
+) {
+  return request<{
+    companyName: string;
+    address: string | null;
+    mainPhone?: string | null;
+    mainPhoneSource?: string | null;
+    representativeName?: string | null;
+    representativeNameSource?: string | null;
+  }>(`/opportunities/${encodeURIComponent(oppId)}/company-info`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+// ---------- #980 상대 담당자 연락처 ----------
+function contactsPath(oppId: string, contactId?: string, action?: string) {
+  const base = `/opportunities/${encodeURIComponent(oppId)}/contacts`;
+  const one = contactId ? `${base}/${encodeURIComponent(contactId)}` : base;
+  return action ? `${one}/${action}` : one;
+}
+
+/** 가린 목록. 보기 전용·키 없음은 403. */
+export function getContacts(oppId: string, staffKey: string, signal?: AbortSignal) {
+  return request<{ contacts: ContactPersonView[] }>(contactsPath(oppId), { staffKey, signal });
+}
+
+export function postContact(oppId: string, body: ContactPersonRequest, staffKey: string) {
+  return request<{ contact: ContactPersonView }>(contactsPath(oppId), {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+export function updateContact(
+  oppId: string,
+  contactId: string,
+  body: ContactPersonRequest,
+  staffKey: string,
+) {
+  return request<{ contact: ContactPersonView }>(contactsPath(oppId, contactId), {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+/** 확인 문구에 체크했을 때만 부른다. 서버가 열람 기록을 남긴다. */
+export function revealContact(oppId: string, contactId: string, staffKey: string) {
+  return request<ContactPersonRevealed>(contactsPath(oppId, contactId, 'reveal'), {
+    method: 'POST',
+    body: { acknowledged: true },
+    staffKey,
+  });
+}
+
+export function deleteContact(
+  oppId: string,
+  contactId: string,
+  reason: 'STAFF' | 'RETENTION',
+  staffKey: string,
+) {
+  return request<{ contactId: string; deletedAt: string }>(
+    contactsPath(oppId, contactId, 'delete'),
+    { method: 'POST', body: { reason }, staffKey },
+  );
+}
+
+export function keepContact(oppId: string, contactId: string, staffKey: string) {
+  return request<{ contact: ContactPersonView }>(contactsPath(oppId, contactId, 'keep'), {
+    method: 'POST',
+    staffKey,
+  });
+}
+
+/** #980 가린 메모 글 열기. 확인 문구에 체크했을 때만 부른다. */
+export function revealNote(noteId: string, staffKey: string) {
+  return request<{ noteId: string; text: string }>(`/notes/${encodeURIComponent(noteId)}/reveal`, {
+    method: 'POST',
+    body: { acknowledged: true },
+    staffKey,
+  });
+}
+
+/** #958 상세 "한눈에 › 소재" [고치기]. 소재 하나를 그 회사 확정 공정 모두에 적용하고 서버가 다시 평가한다. */
+export function postMaterial(oppId: string, material: string, staffKey: string) {
+  return request<{ material: string; processCodes: string[] }>(
+    `/opportunities/${encodeURIComponent(oppId)}/material`,
+    { method: 'POST', body: { material }, staffKey },
+  );
+}
+
 export function postIndustries(oppId: string, industries: string[], staffKey: string) {
   return request<IndustriesResponse>(`/opportunities/${encodeURIComponent(oppId)}/industries`, {
     method: 'POST',
@@ -366,6 +473,24 @@ export function getIngestPreview(body: IngestRequest, signal?: AbortSignal) {
   (body.regions ?? []).forEach((region) => query.append('regions', region));
   (body.industries ?? []).forEach((industry) => query.append('industries', industry));
   return request<IngestPreview>(`/ingest/preview?${query.toString()}`, { signal });
+}
+
+/** #932 기존 고객과 닮은 조건(읽기 전용, 0원). 꺼져 있으면 enabled false. */
+export function getCustomerSuggestions(signal?: AbortSignal) {
+  return request<CustomerSuggestions>('/existing-customers/suggestions', { signal });
+}
+
+/** #948 이름으로 회사 찾기(읽기 전용, 0원). 이미 목록에 있는 회사와 공장 자료 행을 함께 준다. */
+export function lookupCompanies(name: string, signal?: AbortSignal) {
+  return request<CompanyLookup>(`/companies/lookup?name=${encodeURIComponent(name)}`, { signal });
+}
+
+/**
+ * #948 회사 1곳을 넣고 관심 기업으로 켠다(계약 C1 `POST /companies`). 같은 회사가 있으면 그 회사(created false).
+ * 입력·연락처 400, 보기 전용 403, 고른 공장 자료가 없으면 404, 제외로 저장한 회사는 422 BOOKMARK_EXCLUDED.
+ */
+export function postCompany(body: CompanyAddRequest, staffKey: string) {
+  return request<CompanyAdded>('/companies', { method: 'POST', body, staffKey });
 }
 
 /** 이번 달 AI 사용액(#549). 조건 없이 부른 `GET /ingest/preview`의 month만 쓴다(새 경로 없음, 0원). */
@@ -633,6 +758,40 @@ async function fixtureResponse<T>(path: string, options: RequestOptions): Promis
       },
       meta: { updatedAt: now, reevaluated: true },
     } as unknown as Envelope<T>;
+  }
+  if (route === '/companies/lookup') {
+    // 가짜 모드: 공장 자료 한 행만 찾은 것으로 보인다.
+    const data: CompanyLookup = {
+      existing: [],
+      factories: [
+        {
+          rowId: 'fixture-row-1',
+          companyName: '가상진행금속',
+          address: '충남 천안시 서북구 가상로 1',
+          region: '충남',
+          product: '볼트',
+          industryName: null,
+          oppId: null,
+        },
+      ],
+      truncated: false,
+    };
+    return { data, meta: { updatedAt: null, hasVirtualData: true } } as unknown as Envelope<T>;
+  }
+  if (route === '/companies' && options.method === 'POST') {
+    const data: CompanyAdded = { oppId: 'fixture-added', created: true, researchQueued: false };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
+  }
+  if (route === '/existing-customers/suggestions') {
+    // 가짜 모드: 확장 기능은 꺼진 상태로 둔다(기본값과 같다).
+    const data: CustomerSuggestions = {
+      enabled: false,
+      total: 0,
+      processes: [],
+      industries: [],
+      regions: [],
+    };
+    return { data, meta: { updatedAt: null } } as unknown as Envelope<T>;
   }
   if (route === '/ingest/preview') {
     const month = { usedUsd: 3.2, limitUsd: 20, usedCalls: 180, limitCalls: 1000 };

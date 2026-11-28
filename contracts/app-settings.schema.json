@@ -284,6 +284,25 @@
               "description": "이 이유의 거절만 센다. 초기값 NO_DEMAND(수요 없음), QUALITY_CERT(품질·인증 요건)"
             }
           }
+        },
+        "preference": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["enabled", "windowDays", "minPicks", "minShare", "distanceKm", "minClosedForRate", "approvalDays", "step", "maxLevel", "exploreTopN"],
+          "description": "되먹임 ③ 담당자 선호를 \"근거 있음\" 묶음 안 순서로(#943, PM 결정 2026-11-26). 관리자(operations.staffKeys)가 제안을 승인해야 적용된다. 점수·분류·부록 F 배점은 바꾸지 않는다. 이 칸이 없는 옛 설정은 예시 파일 값으로 읽는다.",
+          "properties": {
+            "_설명": { "type": "string" },
+            "enabled": { "type": "boolean", "description": "false면 제안·승인 효과가 모두 꺼진다. 초기값 true" },
+            "windowDays": { "type": "integer", "minimum": 1, "description": "이 일수 안에 고른 회사(관심을 직접 켬·접촉 기록)·제외 의견만 센다. 초기값 180" },
+            "minPicks": { "type": "integer", "minimum": 1, "description": "고른 회사가 이보다 적으면 제안하지 않는다. 초기값 10" },
+            "minShare": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "(조합 안 고른 수 − 조합 안 제외 수) ÷ 고른 회사 수가 이 값 이상이면 제안. 초기값 0.5" },
+            "distanceKm": { "type": "number", "exclusiveMinimum": 0, "description": "거리 제안의 기준(거산에서 이 km 안). 초기값 50" },
+            "minClosedForRate": { "type": "integer", "minimum": 1, "description": "안전장치①: 조합 안·밖 성사·거절이 각각 이 수 이상이고 조합 안 성사율이 밖보다 낮지 않을 때만 제안. 초기값 3" },
+            "approvalDays": { "type": "integer", "minimum": 1, "description": "안전장치②: 승인은 이 일수 뒤 저절로 꺼진다. 초기값 90" },
+            "step": { "type": "integer", "minimum": 1, "description": "승인 하나가 올리는 단계. 초기값 1" },
+            "maxLevel": { "type": "integer", "minimum": 1, "description": "영업 결과 조정(adjust)과 합친 위 상한. 초기값 2" },
+            "exploreTopN": { "type": "integer", "minimum": 2, "description": "안전장치③: 근거 있음 묶음 위쪽 이 자리 가운데 한 자리는 선호 밖 회사로 남긴다. 초기값 5" }
+          }
         }
       }
     },

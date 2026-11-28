@@ -96,34 +96,39 @@ def _marker(opportunity: Opportunity, *, reject_reason: str | None) -> TransferL
     )
 
 
-def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
+def queue_on_bookmark(
+    session: Session, opportunity: Opportunity, *, find_homepage: bool = False
+) -> bool:
     """관심이 켜진 저장 안에서 부른다. 조사할 회사면 시작 표시를 남기고 응답 뒤 조사를 예약한다.
 
     홈페이지가 없거나(이 경로에서는 홈페이지 찾기 웹 검색을 하지 않는다) 이미 조사된 회사,
     이미 도는 회사는 아무것도 하지 않는다. 꺼져 있으면(0) 흔적 없이 넘어가고,
-    오늘 쓴 금액이 설정 이상이면 거부 1행만 남긴다.
+    오늘 쓴 금액이 설정 이상이면 거부 1행만 남긴다. 조사를 예약했으면 True.
+    #948: 담당자가 이름으로 넣은 회사는 find_homepage=True로 불러, 홈페이지가 없으면 찾기부터 한다
+    (이미 "못 찾음"으로 끝난 회사는 다시 찾지 않는다).
     """
     tasks = _tasks.get()
     if tasks is None or opportunity.is_virtual or opportunity.purpose != "NEW_PROPOSAL":
-        return
+        return False
     if _paused.get():
-        return
+        return False
     settings = runtime_for(session).app_settings
     # #719: 자동 조사 스위치(후보 찾기 뒤·`geosan research`와 같은 스위치)가 꺼져 있으면
     # 하루 금액이 0일 때처럼 흔적 없이 넘어간다.
     if not settings.homepage_discovery.auto_research:
-        return
+        return False
     limit = Decimal(str(settings.research.auto_on_bookmark_daily_cost_usd))
     if limit <= 0:
-        return
+        return False
     customer = session.get(Customer, opportunity.customer_id)
     if (
         customer is None
         or customer.security_grade != "PUBLIC"
-        or not customer.homepage_url
         or customer.researched_at is not None
     ):
-        return
+        return False
+    if not customer.homepage_url and (not find_homepage or customer.homepage_status == "NOT_FOUND"):
+        return False
     opp_id = opportunity.opp_id
     has_evidence = session.scalar(
         select(Evidence.evidence_id)
@@ -131,18 +136,22 @@ def queue_on_bookmark(session: Session, opportunity: Opportunity) -> None:
         .limit(1)
     )
     if has_evidence is not None or is_running(opp_id):
-        return
+        return False
     pending = _pending_starts(session)
     if any(row.opp_id == opp_id for row in pending):
-        return
+        return False
     if used_today(session, settings, pending=pending) >= limit:
         session.add(_marker(opportunity, reject_reason=LIMIT_REASON))
-        return
+        return False
     session.add(_marker(opportunity, reject_reason=None))
-    tasks.add_task(run_auto_research, opp_id)
+    if find_homepage and not customer.homepage_url:
+        tasks.add_task(run_auto_research, opp_id, find_homepage=True)
+    else:
+        tasks.add_task(run_auto_research, opp_id)
+    return True
 
 
-def run_auto_research(opp_id: str) -> None:
+def run_auto_research(opp_id: str, *, find_homepage: bool = False) -> None:
     """응답 뒤(관심 저장이 확정된 뒤) 한 번 실행. 실패는 숨기지 않는다.
 
     어떤 이유로 실패하든 전송 기록에 거부 1행이 남는다(#719). "조사 중" 표시는 여기서 켠다:
@@ -153,7 +162,7 @@ def run_auto_research(opp_id: str) -> None:
     try:
         try:
             error = research_one(
-                opp_id, find_homepage=False, transfer_requester=AUTO_REQUESTER
+                opp_id, find_homepage=find_homepage, transfer_requester=AUTO_REQUESTER
             ).error
         except Exception as raised:
             # 예외 글에는 본문·주소가 섞일 수 있어 종류만 로그에 남긴다.

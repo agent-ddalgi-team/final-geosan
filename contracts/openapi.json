@@ -218,6 +218,11 @@
               }
             ],
             "title": "Text"
+          },
+          "textMasked": {
+            "default": false,
+            "title": "Textmasked",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1054,9 +1059,56 @@
         "title": "CallPrepNote",
         "type": "object"
       },
-      "CardOutcome": {
-        "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).",
+      "CardContactByMethod": {
+        "description": "#976 목록 한 줄의 방법별 접촉 시도 수. 세 값의 합이 contactCount다.",
         "properties": {
+          "call": {
+            "default": 0,
+            "title": "Call",
+            "type": "integer"
+          },
+          "email": {
+            "default": 0,
+            "title": "Email",
+            "type": "integer"
+          },
+          "visit": {
+            "default": 0,
+            "title": "Visit",
+            "type": "integer"
+          }
+        },
+        "title": "CardContactByMethod",
+        "type": "object"
+      },
+      "CardOutcome": {
+        "description": "카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).\n\n#976(PM 결정 2026-11-28): 관심 기업 줄이 다음 일정을 보이도록 일정 날짜와 일정 할 일 한 줄을\n더한다. 상세 records.outcome의 같은 칸과 같은 값이고 영업 메모 글이 아니다.",
+        "properties": {
+          "nextScheduleAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#976 최신 영업 기록의 다음 일정 날짜. 일정이 없으면 null",
+            "title": "Nextscheduleat"
+          },
+          "nextScheduleNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#976 다음 일정 할 일 한 줄. 일정이 없으면 null",
+            "title": "Nextschedulenote"
+          },
           "status": {
             "$ref": "#/components/schemas/OutcomeStatus"
           }
@@ -1181,6 +1233,25 @@
         "title": "CoachAnswerView",
         "type": "object"
       },
+      "CoachLookupView": {
+        "description": "#916 코치가 찾아본 것 하나(부른 순서). label은 \"A정밀 기준, … 거절 회사 2곳\"처럼 한 줄.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "label"
+        ],
+        "title": "CoachLookupView",
+        "type": "object"
+      },
       "CoachRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1237,6 +1308,14 @@
               "type": "string"
             },
             "title": "Feedback",
+            "type": "array"
+          },
+          "lookups": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CoachLookupView"
+            },
+            "title": "Lookups",
             "type": "array"
           },
           "missingRequired": {
@@ -1394,6 +1473,236 @@
           "sharedIndustries"
         ],
         "title": "CoachSimilarCaseView",
+        "type": "object"
+      },
+      "CompanyAddRequest": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "homepageUrl": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Homepageurl"
+          },
+          "rowId": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rowid"
+          }
+        },
+        "title": "CompanyAddRequest",
+        "type": "object"
+      },
+      "CompanyAdded": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "researchQueued": {
+            "title": "Researchqueued",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "oppId",
+          "created",
+          "researchQueued"
+        ],
+        "title": "CompanyAdded",
+        "type": "object"
+      },
+      "CompanyInfoRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyname"
+          },
+          "mainPhone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphone"
+          },
+          "representativeName": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativename"
+          }
+        },
+        "title": "CompanyInfoRequest",
+        "type": "object"
+      },
+      "CompanyInfoResponse": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "mainPhone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphone"
+          },
+          "mainPhoneSource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainphonesource"
+          },
+          "representativeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativename"
+          },
+          "representativeNameSource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativenamesource"
+          }
+        },
+        "required": [
+          "companyName",
+          "address"
+        ],
+        "title": "CompanyInfoResponse",
+        "type": "object"
+      },
+      "CompanyLookup": {
+        "properties": {
+          "existing": {
+            "items": {
+              "$ref": "#/components/schemas/ExistingCompany"
+            },
+            "title": "Existing",
+            "type": "array"
+          },
+          "factories": {
+            "items": {
+              "$ref": "#/components/schemas/FactoryCompany"
+            },
+            "title": "Factories",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "existing",
+          "factories",
+          "truncated"
+        ],
+        "title": "CompanyLookup",
         "type": "object"
       },
       "CompanyRow": {
@@ -1577,6 +1886,14 @@
           "ingestOptions": {
             "$ref": "#/components/schemas/IngestOptions"
           },
+          "materialOptions": {
+            "description": "거산 처리 소재(활성 역량 파일 materialCodes를 공정 순서로 합침, #958). 상세 소재 [고치기]와 꼬리 질문 소재 보기의 선택지",
+            "items": {
+              "$ref": "#/components/schemas/MaterialOption"
+            },
+            "title": "Materialoptions",
+            "type": "array"
+          },
           "operationsStaffKeys": {
             "description": "운영 관리 화면·운영 알림을 받는 담당자 키(설정 operations.staffKeys, #799). 화면은 지금 담당자가 이 안에 있을 때만 메뉴를 보인다. 권한은 서버가 판단한다",
             "items": {
@@ -1646,6 +1963,41 @@
         "title": "ContactCount",
         "type": "object"
       },
+      "ContactDeleted": {
+        "properties": {
+          "contactId": {
+            "title": "Contactid",
+            "type": "string"
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "title": "Deletedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId",
+          "deletedAt"
+        ],
+        "title": "ContactDeleted",
+        "type": "object"
+      },
+      "ContactList": {
+        "properties": {
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactPersonView"
+            },
+            "title": "Contacts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "contacts"
+        ],
+        "title": "ContactList",
+        "type": "object"
+      },
       "ContactMethod": {
         "enum": [
           "CALL",
@@ -1654,6 +2006,93 @@
         ],
         "title": "ContactMethod",
         "type": "string"
+      },
+      "ContactPersonView": {
+        "properties": {
+          "contactId": {
+            "title": "Contactid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "title": "Createdby",
+            "type": "string"
+          },
+          "personNameMasked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personnamemasked"
+          },
+          "phoneMasked": {
+            "title": "Phonemasked",
+            "type": "string"
+          },
+          "retainUntil": {
+            "format": "date",
+            "title": "Retainuntil",
+            "type": "string"
+          },
+          "retentionDue": {
+            "title": "Retentiondue",
+            "type": "boolean"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "updatedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedby"
+          }
+        },
+        "required": [
+          "contactId",
+          "personNameMasked",
+          "role",
+          "phoneMasked",
+          "createdBy",
+          "createdAt",
+          "retainUntil",
+          "retentionDue"
+        ],
+        "title": "ContactPersonView",
+        "type": "object"
       },
       "ContactReach": {
         "description": "방법별 시도(tried)와 그중 연결(reached). 키는 계약의 대문자 코드 그대로다.",
@@ -1676,6 +2115,45 @@
         "title": "ContactReach",
         "type": "object"
       },
+      "ContactRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "personName": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personname"
+          },
+          "phone": {
+            "maxLength": 40,
+            "title": "Phone",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "title": "ContactRequest",
+        "type": "object"
+      },
       "ContactResult": {
         "enum": [
           "REACHED",
@@ -1684,6 +2162,104 @@
         ],
         "title": "ContactResult",
         "type": "string"
+      },
+      "ContactRevealLine": {
+        "description": "#980 가린 연락처·메모를 연 기록. 연 이름·번호·글은 없다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "customerName": {
+            "title": "Customername",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "CONTACT",
+              "NOTE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          },
+          "staffKey": {
+            "title": "Staffkey",
+            "type": "string"
+          },
+          "staffName": {
+            "title": "Staffname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "staffKey",
+          "staffName",
+          "oppId",
+          "customerName",
+          "kind"
+        ],
+        "title": "ContactRevealLine",
+        "type": "object"
+      },
+      "ContactRevealed": {
+        "properties": {
+          "contactId": {
+            "title": "Contactid",
+            "type": "string"
+          },
+          "personName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personname"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "required": [
+          "contactId",
+          "personName",
+          "role",
+          "phone"
+        ],
+        "title": "ContactRevealed",
+        "type": "object"
+      },
+      "ContactSaved": {
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/ContactPersonView"
+          }
+        },
+        "required": [
+          "contact"
+        ],
+        "title": "ContactSaved",
+        "type": "object"
       },
       "CurrentStaff": {
         "description": "계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null.",
@@ -1719,6 +2295,52 @@
           "setupRequired"
         ],
         "title": "CurrentStaff",
+        "type": "object"
+      },
+      "CustomerSuggestions": {
+        "properties": {
+          "enabled": {
+            "description": "existingCustomers.enabled. false면 아래는 모두 비어 있다",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "industries": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedValue"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedProcess"
+            },
+            "title": "Processes",
+            "type": "array"
+          },
+          "regions": {
+            "description": "기존 고객 지역 글에 든 찾기 지역(설정 ingestion.regions) 값",
+            "items": {
+              "$ref": "#/components/schemas/SuggestedValue"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "total": {
+            "description": "넣어 둔 기존 고객 수",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "total",
+          "processes",
+          "industries",
+          "regions"
+        ],
+        "title": "CustomerSuggestions",
         "type": "object"
       },
       "DailyBrief": {
@@ -1804,6 +2426,13 @@
           },
           "counts": {
             "$ref": "#/components/schemas/DashboardCounts"
+          },
+          "enteredThisWeek": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Enteredthisweek",
+            "type": "object"
           },
           "progressCompanies": {
             "additionalProperties": {
@@ -2025,6 +2654,108 @@
         ],
         "title": "DatasetKind",
         "type": "string"
+      },
+      "DayMemoDeleted": {
+        "properties": {
+          "deleted": {
+            "default": true,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "memoId": {
+            "title": "Memoid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memoId"
+        ],
+        "title": "DayMemoDeleted",
+        "type": "object"
+      },
+      "DayMemoRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "text"
+        ],
+        "title": "DayMemoRequest",
+        "type": "object"
+      },
+      "DayMemoView": {
+        "description": "날짜 메모 한 줄. staffName은 지금 담당자 표의 표시 이름이고 표에 없으면 null이다.",
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "memoId": {
+            "title": "Memoid",
+            "type": "string"
+          },
+          "staffKey": {
+            "title": "Staffkey",
+            "type": "string"
+          },
+          "staffName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffname"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memoId",
+          "day",
+          "text",
+          "staffKey",
+          "staffName",
+          "createdAt"
+        ],
+        "title": "DayMemoView",
+        "type": "object"
+      },
+      "DeleteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "STAFF",
+            "enum": [
+              "STAFF",
+              "RETENTION"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "DeleteRequest",
+        "type": "object"
       },
       "DetailHeader": {
         "properties": {
@@ -2274,7 +3005,9 @@
               {
                 "enum": [
                   "HOMEPAGE",
-                  "CSV"
+                  "CSV",
+                  "FACTORYON",
+                  "MANUAL"
                 ],
                 "type": "string"
               },
@@ -2407,6 +3140,32 @@
           },
           "relationStatus": {
             "$ref": "#/components/schemas/RelationStatus"
+          },
+          "representativeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativename"
+          },
+          "representativeNameSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REGISTRY",
+                  "MANUAL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representativenamesource"
           },
           "researchSource": {
             "anyOf": [
@@ -2689,7 +3448,8 @@
           "CASE_FILE",
           "FACTORY_FILE",
           "FACTORY_API",
-          "WEB_SEARCH"
+          "WEB_SEARCH",
+          "STAFF_ADDED"
         ],
         "title": "DiscoverySource",
         "type": "string"
@@ -2769,6 +3529,51 @@
         "title": "Envelope[CoachResult]",
         "type": "object"
       },
+      "Envelope_CompanyAdded_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyAdded"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyAdded]",
+        "type": "object"
+      },
+      "Envelope_CompanyInfoResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyInfoResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyInfoResponse]",
+        "type": "object"
+      },
+      "Envelope_CompanyLookup_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CompanyLookup"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CompanyLookup]",
+        "type": "object"
+      },
       "Envelope_ConfigUi_": {
         "properties": {
           "data": {
@@ -2782,6 +3587,81 @@
           "data"
         ],
         "title": "Envelope[ConfigUi]",
+        "type": "object"
+      },
+      "Envelope_ContactDeleted_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactDeleted"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactDeleted]",
+        "type": "object"
+      },
+      "Envelope_ContactList_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactList"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactList]",
+        "type": "object"
+      },
+      "Envelope_ContactRevealed_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactRevealed"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactRevealed]",
+        "type": "object"
+      },
+      "Envelope_ContactSaved_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ContactSaved"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[ContactSaved]",
+        "type": "object"
+      },
+      "Envelope_CustomerSuggestions_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CustomerSuggestions"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[CustomerSuggestions]",
         "type": "object"
       },
       "Envelope_DailyBrief_": {
@@ -2827,6 +3707,36 @@
           "data"
         ],
         "title": "Envelope[Dashboard]",
+        "type": "object"
+      },
+      "Envelope_DayMemoDeleted_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DayMemoDeleted"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DayMemoDeleted]",
+        "type": "object"
+      },
+      "Envelope_DayMemoView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DayMemoView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[DayMemoView]",
         "type": "object"
       },
       "Envelope_FeedbackHistory_": {
@@ -2979,6 +3889,21 @@
         "title": "Envelope[MainPhoneConfirmResponse]",
         "type": "object"
       },
+      "Envelope_MaterialResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MaterialResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[MaterialResponse]",
+        "type": "object"
+      },
       "Envelope_MemoReadAnswer_": {
         "properties": {
           "data": {
@@ -3022,6 +3947,21 @@
           "data"
         ],
         "title": "Envelope[NoteResponse]",
+        "type": "object"
+      },
+      "Envelope_NoteRevealed_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NoteRevealed"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[NoteRevealed]",
         "type": "object"
       },
       "Envelope_Operations_": {
@@ -3097,6 +4037,51 @@
           "data"
         ],
         "title": "Envelope[Peers]",
+        "type": "object"
+      },
+      "Envelope_PreferenceApprovalView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferenceApprovalView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferenceApprovalView]",
+        "type": "object"
+      },
+      "Envelope_PreferenceRevoked_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferenceRevoked"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferenceRevoked]",
+        "type": "object"
+      },
+      "Envelope_PreferencesView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreferencesView"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[PreferencesView]",
         "type": "object"
       },
       "Envelope_ProcessesResponse_": {
@@ -3238,6 +4223,25 @@
         "title": "Envelope[list[ActivityItem]]",
         "type": "object"
       },
+      "Envelope_list_DayMemoView__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/DayMemoView"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Envelope[list[DayMemoView]]",
+        "type": "object"
+      },
       "Envelope_list_OpportunityCard__": {
         "properties": {
           "data": {
@@ -3309,6 +4313,41 @@
         "title": "EvidenceView",
         "type": "object"
       },
+      "ExistingCompany": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "bookmarked": {
+            "title": "Bookmarked",
+            "type": "boolean"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "oppId": {
+            "title": "Oppid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "oppId",
+          "companyName",
+          "address",
+          "bookmarked"
+        ],
+        "title": "ExistingCompany",
+        "type": "object"
+      },
       "ExportUi": {
         "properties": {
           "xlsxEnabled": {
@@ -3321,6 +4360,71 @@
           "xlsxEnabled"
         ],
         "title": "ExportUi",
+        "type": "object"
+      },
+      "FactoryCompany": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "companyName": {
+            "title": "Companyname",
+            "type": "string"
+          },
+          "industryName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industryname"
+          },
+          "oppId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이름·주소가 같은 회사가 이미 목록에 있으면 그 기회 ID",
+            "title": "Oppid"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "rowId": {
+            "title": "Rowid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rowId",
+          "companyName",
+          "address",
+          "region",
+          "product",
+          "industryName",
+          "oppId"
+        ],
+        "title": "FactoryCompany",
         "type": "object"
       },
       "FactoryProfile": {
@@ -5119,6 +6223,64 @@
         "title": "MapPoint",
         "type": "object"
       },
+      "MaterialOption": {
+        "description": "#958 거산 처리 소재 하나(코드·쉬운 말).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "MaterialOption",
+        "type": "object"
+      },
+      "MaterialRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "material": {
+            "description": "GET /config materialOptions 안 코드",
+            "maxLength": 40,
+            "title": "Material",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material"
+        ],
+        "title": "MaterialRequest",
+        "type": "object"
+      },
+      "MaterialResponse": {
+        "properties": {
+          "material": {
+            "description": "저장한 소재 코드",
+            "title": "Material",
+            "type": "string"
+          },
+          "processCodes": {
+            "description": "소재를 적용한 확정 공정(거산 공정 목록 순서)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Processcodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "material",
+          "processCodes"
+        ],
+        "title": "MaterialResponse",
+        "type": "object"
+      },
       "MemoProposalView": {
         "properties": {
           "after": {
@@ -5244,6 +6406,12 @@
         "properties": {
           "bookmarks": {
             "title": "Bookmarks",
+            "type": "integer"
+          },
+          "bookmarksNoOpinion": {
+            "default": 0,
+            "description": "#987 관심으로 켜 둔 기회 가운데 검토 의견이 없고 영업 단계도 아직 없는 곳 수. 영업 홈 '의견 전' 칸과 같은 계산",
+            "title": "Bookmarksnoopinion",
             "type": "integer"
           },
           "dashboard": {
@@ -5595,6 +6763,24 @@
         "title": "NoteResponse",
         "type": "object"
       },
+      "NoteRevealed": {
+        "properties": {
+          "noteId": {
+            "title": "Noteid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "noteId",
+          "text"
+        ],
+        "title": "NoteRevealed",
+        "type": "object"
+      },
       "Operations": {
         "properties": {
           "blocked": {
@@ -5602,6 +6788,13 @@
               "$ref": "#/components/schemas/BlockedTransfer"
             },
             "title": "Blocked",
+            "type": "array"
+          },
+          "contactReveals": {
+            "items": {
+              "$ref": "#/components/schemas/ContactRevealLine"
+            },
+            "title": "Contactreveals",
             "type": "array"
           },
           "sources": {
@@ -5868,6 +7061,10 @@
             "title": "Confirmedprocesscodes",
             "type": "array"
           },
+          "contactByMethod": {
+            "$ref": "#/components/schemas/CardContactByMethod",
+            "description": "#976 방법별 접촉 시도 수(취소된 행 제외). 상세 records.contactCount와 같은 값"
+          },
           "contactCount": {
             "default": 0,
             "title": "Contactcount",
@@ -5919,6 +7116,12 @@
           "evalId": {
             "title": "Evalid",
             "type": "string"
+          },
+          "exploreSlot": {
+            "default": false,
+            "description": "#943 안전장치: 근거 있음 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리",
+            "title": "Exploreslot",
+            "type": "boolean"
           },
           "factoryProfile": {
             "anyOf": [
@@ -6005,6 +7208,19 @@
             "title": "Isvirtual",
             "type": "boolean"
           },
+          "lastContactAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#976 가장 늦은 접촉 날짜. 상세 records.lastContactAt과 같은 값, 없으면 null",
+            "title": "Lastcontactat"
+          },
           "nextAction": {
             "title": "Nextaction",
             "type": "string"
@@ -6042,6 +7258,17 @@
             ],
             "description": "AI가 고른 이유 한 줄",
             "title": "Pickreason"
+          },
+          "preferenceAdjust": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceAdjust"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#943 승인한 담당자 선호에 맞아 한 단계 올린 근거. '근거 있음' 묶음에만"
           },
           "previousFitLevel": {
             "anyOf": [
@@ -6367,6 +7594,17 @@
             },
             "title": "Reviewitems",
             "type": "array"
+          },
+          "scoreChange": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "#942 지난 평가와 달라진 것. 앞 평가가 없거나 점수·분류·항목이 모두 같으면 null"
           },
           "scores": {
             "anyOf": [
@@ -7629,6 +8867,420 @@
         "title": "PeersSummary",
         "type": "object"
       },
+      "PreferenceAdjust": {
+        "description": "#943 관리자가 승인한 담당자 선호에 맞아 \"근거 있음\" 묶음 안에서 올린 근거.\n\n저장하지 않고 목록을 읽을 때 계산한다.",
+        "properties": {
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          }
+        },
+        "required": [
+          "prefId",
+          "kind",
+          "approvedAt",
+          "expiresAt"
+        ],
+        "title": "PreferenceAdjust",
+        "type": "object"
+      },
+      "PreferenceApprovalView": {
+        "properties": {
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "approvedBy": {
+            "title": "Approvedby",
+            "type": "string"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          }
+        },
+        "required": [
+          "prefId",
+          "kind",
+          "approvedBy",
+          "approvedAt",
+          "expiresAt"
+        ],
+        "title": "PreferenceApprovalView",
+        "type": "object"
+      },
+      "PreferenceApproveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PreferenceApproveRequest",
+        "type": "object"
+      },
+      "PreferenceBasis": {
+        "properties": {
+          "approvalDays": {
+            "title": "Approvaldays",
+            "type": "integer"
+          },
+          "distanceKm": {
+            "title": "Distancekm",
+            "type": "number"
+          },
+          "minClosedForRate": {
+            "title": "Minclosedforrate",
+            "type": "integer"
+          },
+          "minPicks": {
+            "title": "Minpicks",
+            "type": "integer"
+          },
+          "minShare": {
+            "title": "Minshare",
+            "type": "number"
+          },
+          "pickedCount": {
+            "description": "기간 안 고른 회사 수(제외한 회사 뺌)",
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "windowDays": {
+            "title": "Windowdays",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "windowDays",
+          "minPicks",
+          "minShare",
+          "distanceKm",
+          "minClosedForRate",
+          "approvalDays",
+          "pickedCount"
+        ],
+        "title": "PreferenceBasis",
+        "type": "object"
+      },
+      "PreferenceRevoked": {
+        "properties": {
+          "prefId": {
+            "title": "Prefid",
+            "type": "string"
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "title": "Revokedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prefId",
+          "revokedAt"
+        ],
+        "title": "PreferenceRevoked",
+        "type": "object"
+      },
+      "PreferenceSuggestionView": {
+        "properties": {
+          "closedCount": {
+            "title": "Closedcount",
+            "type": "integer"
+          },
+          "distanceKm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancekm"
+          },
+          "excludedCount": {
+            "title": "Excludedcount",
+            "type": "integer"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "kind": {
+            "enum": [
+              "PROCESS_INDUSTRY",
+              "DISTANCE"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "otherClosedCount": {
+            "title": "Otherclosedcount",
+            "type": "integer"
+          },
+          "otherWonCount": {
+            "title": "Otherwoncount",
+            "type": "integer"
+          },
+          "pickedCount": {
+            "title": "Pickedcount",
+            "type": "integer"
+          },
+          "processCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processcode"
+          },
+          "processName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processname"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "wonCount": {
+            "title": "Woncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "pickedCount",
+          "excludedCount",
+          "share",
+          "closedCount",
+          "wonCount",
+          "otherClosedCount",
+          "otherWonCount"
+        ],
+        "title": "PreferenceSuggestionView",
+        "type": "object"
+      },
+      "PreferencesView": {
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceApprovalView"
+            },
+            "title": "Active",
+            "type": "array"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferenceBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canApprove": {
+            "title": "Canapprove",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceSuggestionView"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "canApprove"
+        ],
+        "title": "PreferencesView",
+        "type": "object"
+      },
       "ProcessBreakdownItem": {
         "properties": {
           "count": {
@@ -8714,6 +10366,20 @@
         "title": "ResearchUi",
         "type": "object"
       },
+      "RevealRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged": {
+            "title": "Acknowledged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "acknowledged"
+        ],
+        "title": "RevealRequest",
+        "type": "object"
+      },
       "ReviewCheckRequest": {
         "additionalProperties": false,
         "properties": {
@@ -9240,7 +10906,8 @@
               {
                 "enum": [
                   "PROCESS",
-                  "INDUSTRY"
+                  "INDUSTRY",
+                  "MATERIAL"
                 ],
                 "type": "string"
               },
@@ -9548,6 +11215,177 @@
           "expectedVersion"
         ],
         "title": "ScheduleSetRequest",
+        "type": "object"
+      },
+      "ScoreChange": {
+        "description": "#942 되먹임 ①: 지금 평가와 바로 앞의 다른 평가의 차이. 저장하지 않고 읽을 때 계산.",
+        "properties": {
+          "changedAt": {
+            "description": "점수가 지금 값이 된 평가의 시각",
+            "format": "date-time",
+            "title": "Changedat",
+            "type": "string"
+          },
+          "classificationAfter": {
+            "title": "Classificationafter",
+            "type": "string"
+          },
+          "classificationBefore": {
+            "title": "Classificationbefore",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreChangeRecord"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "ruleVersionChanged": {
+            "description": "두 평가의 규칙 설정 버전이 다르면 true",
+            "title": "Ruleversionchanged",
+            "type": "boolean"
+          },
+          "scoreAfter": {
+            "title": "Scoreafter",
+            "type": "integer"
+          },
+          "scoreBefore": {
+            "title": "Scorebefore",
+            "type": "integer"
+          },
+          "sinceEvalId": {
+            "description": "견준 앞 평가 ID",
+            "title": "Sinceevalid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changedAt",
+          "sinceEvalId",
+          "scoreBefore",
+          "scoreAfter",
+          "classificationBefore",
+          "classificationAfter",
+          "ruleVersionChanged"
+        ],
+        "title": "ScoreChange",
+        "type": "object"
+      },
+      "ScoreChangeItem": {
+        "description": "#942 지난 평가와 점수·상태가 다른 항목 한 줄.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "factJudged": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "지금 평가의 판정 요지. 예 \"통화에서 확인(11/20) · 견적 요청\"",
+            "title": "Factjudged"
+          },
+          "itemCode": {
+            "title": "Itemcode",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemCode",
+          "label"
+        ],
+        "title": "ScoreChangeItem",
+        "type": "object"
+      },
+      "ScoreChangeRecord": {
+        "description": "#942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 넣지 않는다.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "attemptedAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONTACT_ATTEMPT일 때 접촉 날짜",
+            "title": "Attemptedat"
+          },
+          "kind": {
+            "enum": [
+              "CHANGE",
+              "RELATION_CONFIRMED",
+              "CONTACT_ATTEMPT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONTACT_ATTEMPT일 때 접촉 방법 코드",
+            "title": "Method"
+          },
+          "summary": {
+            "description": "CHANGE = 프로그램 변경 기록 문장, RELATION_CONFIRMED = 거래 관계 변경 문장, CONTACT_ATTEMPT = 꼬리 질문 보기 이름(없으면 빈 글)",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "kind",
+          "summary"
+        ],
+        "title": "ScoreChangeRecord",
         "type": "object"
       },
       "ScoreItemView": {
@@ -9905,6 +11743,52 @@
         "title": "StepRow",
         "type": "object"
       },
+      "SuggestedProcess": {
+        "properties": {
+          "code": {
+            "description": "공정 코드(찾기 조건 processCodes 값)",
+            "title": "Code",
+            "type": "string"
+          },
+          "count": {
+            "description": "이 공정을 맡기는 기존 고객 수",
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "count"
+        ],
+        "title": "SuggestedProcess",
+        "type": "object"
+      },
+      "SuggestedValue": {
+        "properties": {
+          "count": {
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "description": "찾기 조건 값(industries·regions)",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "SuggestedValue",
+        "type": "object"
+      },
       "SupplyTier": {
         "description": "공급망 위치 AI 추정(C0, 2026-11-19 PM 결정 #860). 점수 전 회사 순서·꼬리표에만 쓴다.",
         "enum": [
@@ -10142,7 +12026,8 @@
               "HANDOFF_FROM_ME",
               "AI_USAGE_ALERT",
               "AI_LIMIT_REACHED",
-              "DATA_REFRESH_DUE"
+              "DATA_REFRESH_DUE",
+              "CONTACT_RETENTION_DUE"
             ],
             "title": "Kind",
             "type": "string"
@@ -10478,6 +12363,104 @@
         "summary": "Daily"
       }
     },
+    "/api/v1/companies": {
+      "post": {
+        "description": "회사 1곳을 넣고(이미 있으면 그 회사) 관심을 켠다. 실패하면 전부 되돌린다.",
+        "operationId": "add_company_by_name_api_v1_companies_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyAdded_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Company By Name"
+      }
+    },
+    "/api/v1/companies/lookup": {
+      "get": {
+        "description": "이미 목록에 있는 회사와 공장 자료를 이름으로 찾는다. 저장·외부 호출 없음.",
+        "operationId": "lookup_companies_api_v1_companies_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyLookup_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Companies"
+      }
+    },
     "/api/v1/config/ui": {
       "get": {
         "operationId": "config_ui_api_v1_config_ui_get",
@@ -10560,6 +12543,186 @@
           }
         },
         "summary": "Dashboard Map"
+      }
+    },
+    "/api/v1/day-memos": {
+      "get": {
+        "description": "그 기간(둘 다 포함)의 메모. 지운 메모는 빼고, 지금 활성 묶음에서 적은 것만 준다.",
+        "operationId": "list_day_memos_api_v1_day_memos_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_DayMemoView__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Day Memos"
+      },
+      "post": {
+        "description": "그 날짜에 메모 한 건을 남긴다. 지난 날짜도 된다. 글은 앞뒤 빈칸을 지우고 저장한다.",
+        "operationId": "add_day_memo_api_v1_day_memos_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DayMemoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DayMemoView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Day Memo"
+      }
+    },
+    "/api/v1/day-memos/{memoId}": {
+      "delete": {
+        "description": "쓴 사람만 지운다. 행은 남기고 지운 시각·지운 사람을 채워 읽기에서 숨긴다.",
+        "operationId": "delete_day_memo_api_v1_day_memos__memoId__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoId",
+            "required": true,
+            "schema": {
+              "title": "Memoid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DayMemoDeleted_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Day Memo"
+      }
+    },
+    "/api/v1/existing-customers/suggestions": {
+      "get": {
+        "operationId": "customer_suggestions_api_v1_existing_customers_suggestions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CustomerSuggestions_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Customer Suggestions"
       }
     },
     "/api/v1/export/xlsx": {
@@ -11024,6 +13187,71 @@
           }
         },
         "summary": "Confirm Handoff"
+      }
+    },
+    "/api/v1/notes/{noteId}/reveal": {
+      "post": {
+        "operationId": "reveal_note_api_v1_notes__noteId__reveal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "noteId",
+            "required": true,
+            "schema": {
+              "title": "Noteid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NoteRevealed_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reveal Note"
       }
     },
     "/api/v1/operations": {
@@ -11665,6 +13893,482 @@
         "summary": "Save Bookmark"
       }
     },
+    "/api/v1/opportunities/{oppId}/company-info": {
+      "post": {
+        "operationId": "save_company_info_api_v1_opportunities__oppId__company_info_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyInfoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CompanyInfoResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Company Info"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts": {
+      "get": {
+        "operationId": "list_contacts_api_v1_opportunities__oppId__contacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactList_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Contacts"
+      },
+      "post": {
+        "operationId": "add_contact_api_v1_opportunities__oppId__contacts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactSaved_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}": {
+      "post": {
+        "operationId": "update_contact_api_v1_opportunities__oppId__contacts__contactId__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactSaved_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}/delete": {
+      "post": {
+        "operationId": "delete_contact_api_v1_opportunities__oppId__contacts__contactId__delete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DeleteRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactDeleted_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}/keep": {
+      "post": {
+        "operationId": "keep_contact_api_v1_opportunities__oppId__contacts__contactId__keep_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactSaved_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keep Contact"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/contacts/{contactId}/reveal": {
+      "post": {
+        "operationId": "reveal_contact_api_v1_opportunities__oppId__contacts__contactId__reveal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "contactId",
+            "required": true,
+            "schema": {
+              "title": "Contactid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ContactRevealed_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reveal Contact"
+      }
+    },
     "/api/v1/opportunities/{oppId}/homepage": {
       "post": {
         "operationId": "save_homepage_api_v1_opportunities__oppId__homepage_post",
@@ -11866,6 +14570,72 @@
           }
         },
         "summary": "Save Main Phone Confirmation"
+      }
+    },
+    "/api/v1/opportunities/{oppId}/material": {
+      "post": {
+        "description": "#958(PM 결정 2026-11-26) 상세 \"한눈에 › 소재\" [고치기].\n\n소재는 회사당 하나이고 확정 공정 모두에 적용한다.",
+        "operationId": "save_material_api_v1_opportunities__oppId__material_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oppId",
+            "required": true,
+            "schema": {
+              "title": "Oppid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MaterialResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Material"
       }
     },
     "/api/v1/opportunities/{oppId}/notes": {
@@ -12510,6 +15280,161 @@
           }
         },
         "summary": "Resolve Schedule"
+      }
+    },
+    "/api/v1/preferences": {
+      "get": {
+        "operationId": "get_preferences_api_v1_preferences_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferencesView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Preferences"
+      },
+      "post": {
+        "operationId": "approve_preference_api_v1_preferences_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenceApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceApprovalView_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Preference"
+      }
+    },
+    "/api/v1/preferences/{prefId}/revoke": {
+      "post": {
+        "operationId": "revoke_preference_api_v1_preferences__prefId__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prefId",
+            "required": true,
+            "schema": {
+              "title": "Prefid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Staff-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Staff-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PreferenceRevoked_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Preference"
       }
     },
     "/api/v1/questions/{questionId}/reply": {

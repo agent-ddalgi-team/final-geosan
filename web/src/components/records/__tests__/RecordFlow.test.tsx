@@ -24,6 +24,15 @@ import { FrameContext } from '../../frame/FrameContext';
 import type { FrameValue } from '../../frame/FrameContext';
 import { todayKst } from '../../../utils/time';
 import { addDays, pickCalendarDate } from '../../../test/pickCalendarDate';
+import { choiceChip } from '../../../theme/tokens';
+import { chipOf, chipValueOf } from '../../../test/chipOf';
+
+/** jsdom은 인라인 스타일의 테두리 색을 rgb(...)로 바꿔 돌려준다. */
+function hexToRgb(hex: string): string {
+  const value = hex.replace('#', '');
+  const part = (at: number) => parseInt(value.slice(at, at + 2), 16);
+  return `rgb(${part(0)}, ${part(2)}, ${part(4)})`;
+}
 
 vi.mock('../../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api/client')>()),
@@ -158,7 +167,7 @@ function renderArea(
 }
 
 async function setResult(user: ReturnType<typeof userEvent.setup>, label: string) {
-  await user.selectOptions(screen.getByTestId('records-contact-result'), label);
+  await user.click(chipOf('records-contact-result', label));
 }
 
 async function pick(user: ReturnType<typeof userEvent.setup>, questionId: string, label: string) {
@@ -249,7 +258,7 @@ describe('기록 남기기 칸 (#691)', () => {
   it('종류는 "전화"로 시작하고, 저장 단추는 꼬리 질문·날짜·한 줄 메모 아래 맨 끝에 있다', async () => {
     const user = userEvent.setup();
     renderArea();
-    expect(screen.getByTestId('records-kind')).toHaveValue('CALL');
+    expect(chipValueOf('records-kind')).toBe('CALL');
     await setResult(user, '연결됨');
     await pick(user, 'NEXT_ACTION', '견적');
     const save = screen.getByTestId('records-contact-save-button');
@@ -268,9 +277,9 @@ describe('기록 남기기 칸 (#691)', () => {
     const saved = await screen.findByTestId('records-contact-saved');
     expect(saved).toHaveTextContent('저장됨 21:15');
     expect(saved.parentElement).toContainElement(screen.getByTestId('records-contact-save-button'));
-    expect(screen.getByTestId('records-kind')).toHaveValue('CALL');
+    expect(chipValueOf('records-kind')).toBe('CALL');
     // 다음 기록을 위해 결과와 고른 답은 비워진다.
-    expect(screen.getByTestId('records-contact-result')).toHaveValue('');
+    expect(chipValueOf('records-contact-result')).toBeNull();
   });
 });
 
@@ -284,7 +293,7 @@ describe('누가 먼저 연락했나 — 종류 옆 단추 (#691 → #853)', () 
     const kind = screen.getByTestId('records-kind');
     expect(
       within(kind)
-        .getAllByRole('option')
+        .getAllByRole('radio')
         .map((item) => item.textContent),
     ).toEqual(['전화', '메일', '대면', '메모']);
     expect(within(direction).getByRole('radio', { name: '발신' })).toBeChecked();
@@ -340,14 +349,26 @@ describe('누가 먼저 연락했나 — 종류 옆 단추 (#691 → #853)', () 
     const user = userEvent.setup();
     renderArea();
     await screen.findByTestId('records-direction');
-    await user.selectOptions(screen.getByTestId('records-kind'), '대면');
+    await user.click(chipOf('records-kind', '대면'));
     const direction = screen.getByTestId('records-direction');
     expect(
       within(direction)
         .getAllByRole('radio')
-        .map((item) => item.closest('label')?.textContent),
+        .map((item) => item.textContent),
     ).toEqual(['외근', '내방']);
     await user.click(within(direction).getByText('내방'));
+    // #947 → #972: 고른 단추는 강조 연한 바탕 + 강조 테두리 + 굵은 강조 글자다(테두리만 바뀌면 고른 게 안 보였다).
+    const picked = within(direction).getByRole('radio', { name: '내방' });
+    expect(picked).toBeChecked();
+    expect(picked).toHaveStyle({
+      background: choiceChip.selected.bg,
+      color: choiceChip.selected.fg,
+      fontWeight: choiceChip.selected.fontWeight,
+    });
+    expect(picked.style.border).toBe(`1px solid ${hexToRgb(choiceChip.selected.border)}`);
+    const idle = within(direction).getByRole('radio', { name: '외근' });
+    expect(idle).not.toBeChecked();
+    expect(idle).toHaveStyle({ background: choiceChip.idle.bg, color: choiceChip.idle.fg });
     await setResult(user, '부재');
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() => expect(postOutcome).toHaveBeenCalledTimes(1));
@@ -359,7 +380,7 @@ describe('누가 먼저 연락했나 — 종류 옆 단추 (#691 → #853)', () 
     const user = userEvent.setup();
     renderArea();
     await screen.findByTestId('records-direction');
-    await user.selectOptions(screen.getByTestId('records-kind'), '메모');
+    await user.click(chipOf('records-kind', '메모'));
     expect(screen.queryByTestId('records-direction')).not.toBeInTheDocument();
     expect(screen.queryByTestId('records-contact-result')).not.toBeInTheDocument();
     expect(screen.getByTestId('records-note-input')).toBeInTheDocument();
@@ -610,7 +631,7 @@ describe('접촉 결과가 "거절"이면 바로 마무리 (#691)', () => {
     expect(
       within(decline)
         .getAllByRole('radio')
-        .map((item) => item.closest('label')?.textContent),
+        .map((item) => item.textContent),
     ).toEqual(['거절로 마무리', '보류 · 나중에 다시', '아직 끝 아님 · 다시 연락']);
     // "다음 할 일"·"어떻게 끝났나요?"는 묻지 않는다.
     expect(screen.queryByTestId('sales-question-NEXT_ACTION')).not.toBeInTheDocument();

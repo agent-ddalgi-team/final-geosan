@@ -1,4 +1,6 @@
-// 상세 머리(S2, #674 PM 결정 2026-11-13): 목록으로 / [관심]·[다시 조사] / 단계 진행 막대 / 분류·점수·가상 표시 / 대응·담당.
+// 상세 머리(S2, #674 PM 결정 2026-11-13): 목록으로 / [관심]·[다시 조사] / 분류·점수·가상 표시 · 대응·담당 · 의견 / 영업 단계 카드.
+// #972 새 시안: 꼬리표 줄(분류·점수·대응·담당, 오른쪽 끝에 의견)을 단추 줄 바로 아래에 두고,
+// 영업 단계 그림은 그 아래 흰 카드 안에 그린다. 넓은 화면에서는 같은 카드 아래쪽에 "지금까지 들은 답 · 다음 일정"이 붙는다.
 // 이름(h1)은 공통 틀이 보인다. 읽는 곳이라 단추는 [목록으로]·[관심]·[다시 조사]와, 기록 칸으로 내려가는 [기록 남기기](#691, 이동만)뿐이다.
 // 홈페이지·대표번호·공장 정보·산업·접촉 횟수는 바로 아래 "한눈에" 상자(`DetailGlance.tsx`)로 모았다.
 // 거래 관계 입력(`RelationControl`)과 점수 옆 "거래 확인 전" 표시는 뺐다(재접촉 관리를 하지 않는다). "기존 거래처" 표시는 남는다.
@@ -31,7 +33,7 @@ import {
   purposeLabels,
   recordsArea,
 } from '../../labels/ko';
-import { colors, detailTheme, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, spacing, tagPalette, typography } from '../../theme/tokens';
 import { daysAgo } from '../../utils/time';
 
 export interface HeaderSectionProps {
@@ -57,6 +59,10 @@ export interface HeaderSectionProps {
   reportLink?: ReactNode;
   /** #803: 꼬리표 줄에 붙는 검토 의견("의견: 영업 대상 (수정)"). 전에는 아래 따로 카드였다. */
   opinion?: ReactNode;
+  /** #972: 영업 단계 카드 안, 단계 그림 아래에 붙는 것(넓은 화면의 "지금까지 들은 답 · 단계 고치기 · 다음 일정" 자리). */
+  stageExtra?: ReactNode;
+  /** #980(PM 결정 2026-11-28): 영업 단계 카드 맨 아래 "상대 담당자 연락처". 바로 연락할지 같은 카드에서 본다. */
+  stageContacts?: ReactNode;
 }
 
 /** 머리에 꼬리표로 보이지 않는 분류(#659 카드와 같다). 무엇을 확인할지는 "한눈에"의 "확인할 것"이 말한다. */
@@ -77,6 +83,8 @@ export default function HeaderSection({
   classificationOverrides,
   reportLink = null,
   opinion = null,
+  stageExtra = null,
+  stageContacts = null,
 }: HeaderSectionProps) {
   const navigate = useNavigate();
   const { canRecord } = useFrame();
@@ -113,10 +121,10 @@ export default function HeaderSection({
             event.preventDefault();
             navigate('/opportunities');
           }}
-          style={{ paddingLeft: 0 }}
+          style={{ paddingLeft: 0, color: colors.textSecondary }}
           data-testid="back-to-list-link"
         >
-          <span aria-hidden="true">‹</span> {frame.backToList}
+          <span aria-hidden="true">←</span> {frame.backToList}
         </Button>
         <div
           style={{
@@ -160,13 +168,7 @@ export default function HeaderSection({
           {detailHeader.pickStaffOnce}
         </span>
       ) : null}
-      <SalesProgressBar
-        salesStep={salesStep}
-        outcome={outcome}
-        contactTotal={contactTotal}
-        questions={questions}
-      />
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         {showClassification ? (
           <span
             role="group"
@@ -214,46 +216,73 @@ export default function HeaderSection({
             {ownPlatingLine.tag}
           </StatusTag>
         ) : null}
-        {opinion}
+        {/* 대응·담당은 중립 꼬리표로(#972). 읽는 글은 "대응 · 영업"처럼 이름표와 값이 함께다. */}
+        <dl data-testid="detail-meta" style={{ display: 'contents' }}>
+          {[
+            {
+              key: 'purpose',
+              label: detailHeader.purpose,
+              value: labelFor(purposeLabels, header.purpose),
+            },
+            ...(ownerName ? [{ key: 'owner', label: detailHeader.owner, value: ownerName }] : []),
+          ].map((cell) => (
+            <div
+              key={cell.key}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 6,
+                padding: '2px 10px',
+                borderRadius: radius.tag,
+                background: tagPalette.neutral.bg,
+                color: tagPalette.neutral.fg,
+                fontSize: typography.fontSizeSecondary,
+                lineHeight: 1.6,
+              }}
+            >
+              <dt>{cell.label}</dt>
+              <dd style={{ margin: 0, fontWeight: 600, color: colors.text }}>{cell.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {/* 의견은 줄 오른쪽 끝에(좁으면 아래 줄로 내려간다). */}
+        {opinion ? <span style={{ marginLeft: 'auto' }}>{opinion}</span> : null}
       </div>
-      {/* #759: 대응·담당은 칸 나눔 정보로(이름표는 작게 위, 값은 굵게 아래). 읽는 글은 "대응: 영업"처럼 그대로. */}
-      <dl
-        data-testid="detail-meta"
+      {/* 영업 단계 카드. 제목 "영업 단계"는 그림 부품이 스스로 그린다. */}
+      <div
+        data-testid="detail-stage-card"
         style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          margin: 0,
+          display: 'grid',
+          gap: 14,
+          padding: spacing.cardPadding,
+          background: colors.bgContainer,
           border: `1px solid ${detailTheme.border}`,
           borderRadius: detailTheme.radius,
-          width: 'fit-content',
-          maxWidth: '100%',
         }}
       >
-        {[
-          {
-            key: 'purpose',
-            label: detailHeader.purpose,
-            value: labelFor(purposeLabels, header.purpose),
-          },
-          ...(ownerName ? [{ key: 'owner', label: detailHeader.owner, value: ownerName }] : []),
-        ].map((cell, index) => (
+        <SalesProgressBar
+          salesStep={salesStep}
+          outcome={outcome}
+          contactTotal={contactTotal}
+          questions={questions}
+        />
+        {stageExtra ? (
           <div
-            key={cell.key}
-            style={{
-              display: 'grid',
-              gap: 2,
-              padding: '6px 12px',
-              minWidth: 96,
-              borderLeft: index === 0 ? 0 : `1px solid ${detailTheme.border}`,
-            }}
+            data-testid="detail-stage-extra"
+            style={{ paddingTop: 14, borderTop: `1px solid ${detailTheme.border}` }}
           >
-            <dt style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
-              {cell.label}
-            </dt>
-            <dd style={{ margin: 0, fontWeight: 600 }}>{cell.value}</dd>
+            {stageExtra}
           </div>
-        ))}
-      </dl>
+        ) : null}
+        {stageContacts ? (
+          <div
+            data-testid="detail-stage-contacts"
+            style={{ paddingTop: 14, borderTop: `1px solid ${detailTheme.border}` }}
+          >
+            {stageContacts}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -31,6 +31,7 @@ import {
   states,
 } from '../../labels/ko';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
+import { chipOf } from '../../test/chipOf';
 
 vi.mock('../../api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/client')>()),
@@ -157,14 +158,15 @@ describe('OpportunityDetailPage', () => {
     renderPage();
     await screen.findByTestId('opportunity-detail');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    // 읽는 곳 순서(PM 결정 2026-11-13 #674): 한눈에 → 1. 왜 이 회사인가 → 3. 점수 자세히 보기.
+    // #980(PM 결정 2026-11-28): 한눈에 | 왜 이 회사인가 → 기록 → 비슷한 회사 → (지난 평가) → 점수 자세히 보기.
     // #803(PM 결정 2026-11-16): "통화에서 확인할 것"은 영업 코치 판 "① 통화 전 — 물어볼 것"으로 옮겼다
     // (이 시험은 코치 판 자리 없이 그려 기록 구역 안에 놓인다). "근거 자료"는 따로 구역을 두지 않는다.
     expect(headings.slice(0, 3)).toEqual([
       detailReport.glance.title,
       detailSections.reasons,
-      expect.stringContaining(detailSections.scores),
+      recordsArea.title,
     ]);
+    expect(headings[headings.length - 1]).toEqual(expect.stringContaining(detailSections.scores));
     expect(headings).not.toContain(detailSections.callChecklist);
     expect(headings).toContain(coachSteps.before);
     // #847: 영업 코치 "① 통화 전" 칸에는 안내 문장 줄이 없다.
@@ -211,25 +213,20 @@ describe('OpportunityDetailPage', () => {
     mockedGet.mockResolvedValueOnce(reply(fixtureData));
     renderPage();
     await screen.findByTestId('opportunity-detail');
-    const user = userEvent.setup();
     const review = screen.getByTestId('detail-review');
-    // 질문 줄은 바로 보이고, 기록이 없는 "자료 못 찾음" 1줄은 접혀 있다가 누르면 읽기 전용으로 펼쳐진다.
+    // 질문 줄은 바로 보인다. #957(PM 지적 2026-11-26): 기록이 없는 "자료 못 찾음" 줄은 통화에서 물을 것이 아니라
+    // 확인사항에 접힌 목록으로도 두지 않는다.
     // #847(PM 결정 2026-11-17): 거산에 대한 질문은 확인사항에 없다(상대 회사 질문 1줄만).
-    expect(within(review).getAllByTestId('review-item')).toHaveLength(1);
+    const rows = within(review).getAllByTestId('review-item');
+    expect(rows).toHaveLength(1);
     expect(review).not.toHaveTextContent(
       (fixtureData.reviewItems ?? []).find((item) => item.targetLabel === '거산')?.text ?? '없음',
     );
-    const fold = within(review).getByTestId('review-fold-toggle-gap');
-    expect(fold).toHaveTextContent('아직 근거·자료가 없는 항목 1개 보기');
-    expect(fold).toHaveAttribute('aria-expanded', 'false');
-    await user.click(fold);
-    const rows = within(review).getAllByTestId('review-item');
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toHaveTextContent('홈페이지를 찾지 못함');
+    expect(within(review).queryByTestId('review-fold-toggle-gap')).not.toBeInTheDocument();
+    expect(review).not.toHaveTextContent('홈페이지를 찾지 못함');
     expect(within(rows[0]).getByTestId('review-reply')).toHaveTextContent(
       '답: 2024년에 KS 인증 받았다고 함',
     );
-    expect(within(rows[1]).queryByTestId('review-reply')).not.toBeInTheDocument();
     // 적는 것은 아래 "기록 남기기"에서 한다. 읽는 곳에는 답 단추가 없다.
     expect(screen.queryByTestId('review-reply-button')).not.toBeInTheDocument();
     expect(screen.queryByText(reviewArea.replyEdit)).not.toBeInTheDocument();
@@ -358,13 +355,14 @@ describe('OpportunityDetailPage', () => {
     // #803(PM 결정 2026-11-16): 산업군 카드·검토 의견 카드·"여기부터 적는 곳" 구분 줄을 없앴다.
     // 산업은 "한눈에" 산업 칸, 의견은 머리 꼬리표 줄, 통화에서 확인할 것은 기록(영업 코치) 칸 ①로.
     // 이 응답(base)은 검토사항을 안 주는 옛 응답이라 후속 조치가 예전처럼 읽는 곳 2번 자리에 남는다.
+    // #980(PM 결정 2026-11-28): 기록 → 비슷한 회사 다음에 점수 자세히 보기(맨 아래).
     expect(headings).toEqual([
       detailReport.glance.title,
       detailSections.reasons,
       detailSections.callChecklist,
-      expect.stringContaining(detailSections.scores),
       recordsArea.title,
       peersArea.title,
+      expect.stringContaining(detailSections.scores),
     ]);
     expect(screen.queryByTestId('detail-write-divider')).not.toBeInTheDocument();
     const opinion = screen.getByTestId('detail-opinion');
@@ -584,8 +582,8 @@ describe('OpportunityDetailPage', () => {
     const count = await screen.findByTestId('detail-contact-count');
     expect(count).toHaveTextContent('접촉 3회 (전화 2 · 방문 1)');
     expect(within(screen.getByTestId('detail-records')).queryByText(/접촉 3회/)).toBeNull();
-    await user.selectOptions(screen.getByTestId('records-kind'), '메일');
-    await user.selectOptions(screen.getByTestId('records-contact-result'), '연결됨');
+    await user.click(chipOf('records-kind', '메일'));
+    await user.click(chipOf('records-contact-result', '연결됨'));
     await user.click(screen.getByTestId('records-contact-save-button'));
     await waitFor(() =>
       expect(screen.getByTestId('detail-contact-count')).toHaveTextContent(
@@ -749,8 +747,9 @@ describe('OpportunityDetailPage', () => {
       expect(screen.queryByTestId('detail-scores-toggle')).not.toBeInTheDocument();
     });
 
-    it('공고·채용 "근거 없음" 줄은 접힌 묶음을 펼쳐도 보이지 않고, 나머지는 읽기 전용으로 남는다', async () => {
-      const user = userEvent.setup();
+    // #957(PM 지적 2026-11-26): "근거 없음" 줄은 통화에서 물을 것이 아니라 확인사항에 접힌 목록으로도 두지 않는다.
+    // 항목별 근거는 "점수 자세히 보기"에서 본다. 공고·채용 줄도 당연히 보이지 않는다.
+    it('기록이 없는 "근거 없음" 줄은 확인사항에 접힌 목록으로도 없다 (#957)', async () => {
       mockedGet.mockResolvedValueOnce(
         reply({
           ...base,
@@ -764,12 +763,9 @@ describe('OpportunityDetailPage', () => {
       renderPage();
       await screen.findByTestId('opportunity-detail');
       const review = screen.getByTestId('detail-review');
-      await user.click(within(review).getByTestId('review-fold-toggle-gap'));
-      const rows = within(review).getAllByTestId('review-item');
-      expect(rows).toHaveLength(1);
-      expect(rows[0]).toHaveTextContent('유사 산업·부품 납품실적 근거 없음');
-      expect(review).not.toHaveTextContent('공고 근거 없음');
-      expect(review).not.toHaveTextContent('채용');
+      expect(within(review).queryByTestId('review-fold-toggle-gap')).not.toBeInTheDocument();
+      expect(within(review).queryAllByTestId('review-item')).toHaveLength(0);
+      expect(review).not.toHaveTextContent('근거 없음');
     });
 
     // #691: 머리에 [기록 남기기]가 더해졌다. 저장하지 않고 기록 칸으로 내려가기만 하는 이동 단추다.
@@ -805,8 +801,14 @@ describe('OpportunityDetailPage', () => {
           'bookmark-button',
           // 대표번호는 누르면 전화가 걸리는 링크다(단추가 아님).
           'company-phone-link',
+          // #958(PM 결정 2026-11-26): "한눈에 › 어떤 회사" 주소 [고치기](누르면 그 자리에 입력칸).
+          'company-address-edit-button',
+          // #980(PM 결정 2026-11-28): 대표번호·대표명 [고치기]와 영업 단계 카드 안 [+ 연락처 추가].
+          'company-phone-fix-button',
+          'company-representative-fix-button',
+          'contact-add-button',
           'detail-go-record-button',
-          'detail-scores-toggle',
+          // [점수 자세히 보기] 여는 단추는 #980부터 기록 아래(맨 아래)에 있다.
           'homepage-rerun-button',
         ].sort(),
       );
@@ -817,7 +819,7 @@ describe('OpportunityDetailPage', () => {
       const below = ['detail-records', 'detail-peers'].map((id) => screen.getByTestId(id));
       for (const el of below) expect(above(el)).toBe(false);
       expect(within(below[0]).getByTestId('records-area')).toBeInTheDocument();
-      expect(within(below[0]).getByTestId('review-fold-toggle-gap')).toBeInTheDocument();
+      expect(within(below[0]).getByTestId('detail-review')).toBeInTheDocument();
       expect(
         below[0].compareDocumentPosition(below[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();

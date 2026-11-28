@@ -15,9 +15,14 @@ from sqlalchemy.orm import Session
 from geosan.api.auto_research import attach_background, no_auto_research, queue_on_bookmark
 from geosan.api.call_signals import sync_call_signals
 from geosan.api.deps import SessionDep, StaffDep, runtime_for
-from geosan.api.process_catalog import load_process_catalog
+from geosan.api.process_catalog import load_process_catalog, material_options
 from geosan.api.proposal_review import confirm_proposal, dismiss_proposal, proposal_review_items
-from geosan.api.sales_confirm import MAX_INDUSTRIES, confirm_industries, confirm_processes
+from geosan.api.sales_confirm import (
+    MAX_INDUSTRIES,
+    confirm_industries,
+    confirm_material,
+    confirm_processes,
+)
 from geosan.api.sales_step import (
     SalesStepState,
     compute_sales_step,
@@ -92,6 +97,7 @@ from geosan.config.sales_questions import (
 from geosan.config.validators import scan_contacts
 from geosan.dashboard.sales_analysis import process_display_name
 from geosan.evaluation.models import EvaluationBatch, EvaluationRun
+from geosan.evidence.contacts import mask_contacts_for_screen
 from geosan.opportunity.models import Customer, Opportunity, RelationHistory
 from geosan.opportunity.queries import confirm_main_phone
 from geosan.opportunity.relations import change_relation
@@ -241,7 +247,11 @@ def derive_review_items(data: OpportunityDetail) -> list[ReviewItem]:
                     f"GAP:ITEM:{item.item_code}",
                     ReviewItemKind.DATA_INSUFFICIENT,
                     ReviewItemSource.RULE,
-                    f"{item.label} 근거 없음",
+                    # #957: 이름이 "…근거"로 끝나면 "근거 근거 없음"이 되지 않게 한다
+                    # (검토 줄 check_points와 같은 규칙).
+                    f"{item.label} 없음"
+                    if item.label.endswith("근거")
+                    else f"{item.label} 근거 없음",
                 )
     for requirement in data.requirements:
         if requirement.result == "QUESTION_NEEDED":
@@ -328,7 +338,9 @@ def review_items_for_detail(
             notes[row.item_id] = row
         for item in items:
             if row := notes.get(item.item_id):
-                item.note = ReviewItemNote(text=row.text, by=row.staff_key, at=row.created_at)
+                item.note = ReviewItemNote(
+                    text=mask_contacts_for_screen(row.text)[0], by=row.staff_key, at=row.created_at
+                )
     # 새 AI 제안은 이전 버전의 체크 표시를 물려받지 않는다.
     proposals = proposal_review_items(session, opportunity, data)
     for item in proposals:
@@ -720,6 +732,7 @@ def choice_catalog(session: Session) -> dict[str, dict[str, str]]:
     """#652 보기를 회사 값에서 가져오는 질문의 {종류: {값: 이름}}. 한 요청 안에서는 한 번만 읽는다.
 
     PROCESS는 활성 묶음의 거산 공정 목록(역량 파일 순서), INDUSTRY는 설정 산업군(그 순서)이다.
+    MATERIAL(#958)은 거산 처리 소재 목록이다.
     """
     if "sales_choice_catalog" not in session.info:
         settings = runtime_for(session).app_settings
@@ -729,6 +742,8 @@ def choice_catalog(session: Session) -> dict[str, dict[str, str]]:
                 for row in load_process_catalog(session, settings.active_dataset_kind)
             },
             "INDUSTRY": {name: name for name in settings.industries},
+            # #958: 거산 처리 소재(역량 파일 materialCodes 합집합). 하나만 고르는 질문.
+            "MATERIAL": material_options(session, settings.active_dataset_kind),
         }
     return session.info["sales_choice_catalog"]
 
@@ -764,6 +779,8 @@ def _choice_error(
     picked = sum(1 for found, _ in seen if found == question.id)
     if question.choices == "INDUSTRY" and picked > MAX_INDUSTRIES:
         return f"산업군은 {MAX_INDUSTRIES}개까지 고를 수 있습니다."
+    if question.choices == "MATERIAL" and picked > 1:
+        return "소재는 하나만 고를 수 있습니다."
     return None
 
 
@@ -1320,6 +1337,20 @@ def _confirm_choices(
         order = catalog.get("INDUSTRY", {})
         industries = [name for name in order if name in values["INDUSTRY"]]
         results.append(confirm_industries(session, opportunity, industries, now=now))
+    if values.get("MATERIAL"):
+        # #958: 공정 답이 같은 요청에 있으면 위에서 먼저 확정했다.
+        # 확정 공정이 없으면 답만 남고 소재는 그대로다.
+        session.flush()
+        results.append(
+            confirm_material(
+                session,
+                opportunity,
+                values["MATERIAL"][0],
+                catalog.get("MATERIAL", {}),
+                staff=staff,
+                now=now,
+            )
+        )
     session.flush()
     links_changed = any(result.links_changed for result in results)
     reevaluated = links_changed or call_changed
@@ -1466,7 +1497,12 @@ def activity(
             # #731: 프로그램이 남긴 변경 기록. 잘못 입력으로 표시할 수 없으니
             # 저장 행 번호를 주지 않는다.
             items.append(
-                ActivityItem(at=row.created_at, actor=row.staff_key, kind="CHANGE", summary=summary)
+                ActivityItem(
+                    at=row.created_at,
+                    actor=row.staff_key,
+                    kind="CHANGE",
+                    summary=mask_contacts_for_screen(summary)[0],
+                )
             )
             continue
         if row.kind == NoteKind.ADVICE and row.cancelled_at is None:
@@ -1489,6 +1525,11 @@ def activity(
             summary = "다음 통화 준비 · " + " · ".join(
                 line.strip() for line in row.text.split("\n") if line.strip()
             )
+        # #980: 화면으로 나가는 메모 글의 전화·이메일은 가린다. 저장된 글은 그대로다.
+        summary, summary_masked = mask_contacts_for_screen(summary)
+        text, text_masked = (
+            mask_contacts_for_screen(row.text) if row.cancelled_at is None else (None, False)
+        )
         items.append(
             ActivityItem(
                 at=row.created_at,
@@ -1505,7 +1546,8 @@ def activity(
                 # #849: 남긴 피드백과 다음 통화 준비는 줄 종류가 같아(ADVICE) 저장 종류로 가른다.
                 # 글은 앞머리 없이 그대로 싣고, 잘못 입력 행은 summary처럼 싣지 않는다.
                 note_kind=row.kind,
-                text=row.text if row.cancelled_at is None else None,
+                text=text,
+                text_masked=summary_masked or text_masked,
             )
         )
     # #691: 접촉 줄 끝에 먼저 연락한 쪽을 붙인다.

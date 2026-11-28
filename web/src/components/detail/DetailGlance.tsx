@@ -18,7 +18,9 @@ import type {
 } from '../../api/types';
 import {
   cardRows,
+  companyFieldFixTexts,
   companyGlance,
+  companySourceTexts,
   companySummary,
   detailReport,
   factoryProfileLabels,
@@ -48,6 +50,10 @@ import { choiceMarksOf } from '../records/ChoiceQuestion';
 import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
 import { pickGlanceLink } from './CompanyGlance';
 import DetailMiniMap from './DetailMiniMap';
+import CompanyFieldFix from './CompanyFieldFix';
+import CompanyInfoFix from './CompanyInfoFix';
+import MaterialFix from './MaterialFix';
+import type { MaterialOption } from './MaterialFix';
 import ProcessFix from './ProcessFix';
 import type { ProcessOption } from './ProcessFix';
 import ProcessDifference from './ProcessDifference';
@@ -141,25 +147,14 @@ function Row({ label, testId, children }: { label: string; testId: string; child
       data-testid={testId}
       style={{
         display: 'grid',
-        gridTemplateColumns: '120px minmax(0, 1fr)',
-        borderTop: `1px solid ${detailTheme.border}`,
+        gridTemplateColumns: '104px minmax(0, 1fr)',
+        columnGap: 16,
+        alignItems: 'baseline',
       }}
     >
-      {/* #759: 칸 나눔 표처럼 이름표 칸은 옅은 바탕, 값 칸은 흰 바탕. */}
-      <dt
-        style={{
-          fontWeight: 600,
-          color: colors.textSecondary,
-          fontSize: typography.fontSizeSecondary,
-          background: detailTheme.cellBg,
-          padding: '10px 14px',
-        }}
-      >
-        {label}
-      </dt>
-      <dd style={{ margin: 0, display: 'grid', gap: 4, padding: '10px 14px', minWidth: 0 }}>
-        {children}
-      </dd>
+      {/* #972 새 시안: 테두리·바탕 없이 왼쪽 작은 이름표(흐린 글자) + 오른쪽 값. */}
+      <dt style={{ color: colors.textDimmed, fontSize: typography.fontSizeSecondary }}>{label}</dt>
+      <dd style={{ margin: 0, display: 'grid', gap: 4, minWidth: 0 }}>{children}</dd>
     </div>
   );
 }
@@ -182,7 +177,7 @@ function FitMark({ kind, text }: { kind: 'confirmed' | 'ai'; text: string }) {
         alignItems: 'center',
         gap: 4,
         padding: '0 10px',
-        borderRadius: radius.pill,
+        borderRadius: radius.tag,
         background: palette.bg,
         color: palette.fg,
         fontSize: typography.fontSizeSecondary,
@@ -235,6 +230,10 @@ export interface DetailGlanceProps {
     onSaved: () => void;
     /** #847: 공정 줄 [고치기]의 보기(거산 공정 목록). 없으면 [고치기]를 보이지 않는다. */
     options?: ProcessOption[];
+    /** #958: 소재 줄 [고치기]의 보기(거산 처리 소재). 없으면 [고치기]를 보이지 않는다. */
+    materialOptions?: MaterialOption[];
+    /** #958: 어떤 회사 칸에 주소·회사 이름 [고치기]를 붙인다. */
+    companyInfo?: boolean;
   };
   /** #803: 산업 칸 안에 바로 놓는 [확정]·[고치기] 칩(전에는 아래 "회사 소개 · 산업군" 카드). 없으면 글로만 보인다. */
   industryEditor?: ReactNode;
@@ -314,7 +313,7 @@ function EvidenceBar({ items }: { items: ScoreItemView[] }) {
           position: 'relative',
           width: 140,
           height: 8,
-          borderRadius: radius.pill,
+          borderRadius: radius.tag,
           background: detailTheme.bandTodo,
           overflow: 'hidden',
         }}
@@ -340,7 +339,7 @@ function DistanceLine({ km }: { km: number }) {
   const dot = {
     width: 8,
     height: 8,
-    borderRadius: radius.pill,
+    borderRadius: '50%',
     background: detailTheme.lineDone,
     flexShrink: 0,
   } as const;
@@ -400,6 +399,7 @@ export default function DetailGlance({
   const mapLinks = buildMapLinks(header.address);
   const link = pickGlanceLink(header, evidence);
   const phone = header.mainPhone ?? null;
+  const representative = header.representativeName?.trim() || null;
   const telHref =
     phone && /^[0-9+()\-\s]+$/.test(phone) ? `tel:${phone.replace(/[^0-9+]/g, '')}` : null;
   const phoneSourceUrl = isHttpUrl(header.mainPhoneSourceUrl) ? header.mainPhoneSourceUrl : null;
@@ -522,16 +522,7 @@ export default function DetailGlance({
       >
         {texts.title}
       </h2>
-      <dl
-        style={{
-          margin: 0,
-          display: 'grid',
-          border: `1px solid ${detailTheme.border}`,
-          borderTop: 0,
-          borderRadius: detailTheme.radius,
-          overflow: 'hidden',
-        }}
-      >
+      <dl style={{ margin: 0, display: 'grid', gap: 12 }}>
         <Row label={texts.company} testId="glance-company">
           <div
             data-testid="glance-company-layout"
@@ -606,6 +597,15 @@ export default function DetailGlance({
                   ) : null}
                 </div>
               ) : null}
+              {processChoice?.companyInfo ? (
+                <CompanyInfoFix
+                  oppId={processChoice.oppId}
+                  address={address}
+                  companyName={header.customerName}
+                  canRename={header.discoverySource === 'STAFF_ADDED'}
+                  onSaved={processChoice.onSaved}
+                />
+              ) : null}
               <SupplyTierLine header={header} plateDecider={plateDecider} />
               <div style={line} data-testid="glance-homepage">
                 <span style={secondary}>{companyGlance.homepage}</span>
@@ -643,17 +643,21 @@ export default function DetailGlance({
                   </span>
                 )}
               </div>
-              {phone ? (
+              {phone || processChoice?.companyInfo ? (
                 <div style={line} data-testid="company-phone">
                   <span style={secondary}>{texts.phone}</span>
-                  {telHref ? (
+                  {!phone ? (
+                    <span style={secondary} data-testid="company-phone-none">
+                      {companyFieldFixTexts.none}
+                    </span>
+                  ) : telHref ? (
                     <a href={telHref} data-testid="company-phone-link">
                       {phone}
                     </a>
                   ) : (
                     <span>{phone}</span>
                   )}
-                  {phoneSourceUrl ? (
+                  {phone && phoneSourceUrl ? (
                     <span style={secondary}>
                       {companySummary.phoneSource}:{' '}
                       <a
@@ -665,19 +669,56 @@ export default function DetailGlance({
                         {companySummary.phoneSourceHomepage} ↗
                       </a>
                     </span>
-                  ) : header.mainPhoneSource === 'CSV' ? (
+                  ) : phone && header.mainPhoneSource && header.mainPhoneSource !== 'HOMEPAGE' ? (
+                    // #980: 팩토리온 공장조회·담당자 입력도 출처를 보인다.
                     <span style={secondary} data-testid="company-phone-source">
-                      {companySummary.phoneSource}: {companySummary.phoneSourceCsv}
+                      {companySummary.phoneSource}:{' '}
+                      {companySourceTexts.phone[header.mainPhoneSource]}
                     </span>
                   ) : null}
-                  <span style={secondary} data-testid="company-phone-status">
-                    {header.mainPhoneConfirmedAt
-                      ? companySummary.phoneConfirmed(
-                          formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
-                          phoneConfirmedName,
-                        )
-                      : companySummary.phoneUnconfirmed}
-                  </span>
+                  {phone ? (
+                    <span style={secondary} data-testid="company-phone-status">
+                      {header.mainPhoneConfirmedAt
+                        ? companySummary.phoneConfirmed(
+                            formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
+                            phoneConfirmedName,
+                          )
+                        : companySummary.phoneUnconfirmed}
+                    </span>
+                  ) : null}
+                  {processChoice?.companyInfo ? (
+                    <CompanyFieldFix
+                      oppId={processChoice.oppId}
+                      field="mainPhone"
+                      value={phone}
+                      onSaved={processChoice.onSaved}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+              {/* #980(PM 결정 2026-11-28): 회사 대표명. 공장등록 조회에서 오거나 담당자가 적는다. */}
+              {representative || processChoice?.companyInfo ? (
+                <div style={line} data-testid="company-representative">
+                  <span style={secondary}>{companyFieldFixTexts.representativeLabel}</span>
+                  {representative ? (
+                    <span data-testid="company-representative-name">{representative}</span>
+                  ) : (
+                    <span style={secondary}>{companyFieldFixTexts.none}</span>
+                  )}
+                  {representative && header.representativeNameSource ? (
+                    <span style={secondary} data-testid="company-representative-source">
+                      {companySummary.phoneSource}:{' '}
+                      {companySourceTexts.representative[header.representativeNameSource]}
+                    </span>
+                  ) : null}
+                  {processChoice?.companyInfo ? (
+                    <CompanyFieldFix
+                      oppId={processChoice.oppId}
+                      field="representativeName"
+                      value={representative}
+                      onSaved={processChoice.onSaved}
+                    />
+                  ) : null}
                 </div>
               ) : null}
               {highlights.length > 0 ? (
@@ -753,6 +794,15 @@ export default function DetailGlance({
             ) : (
               texts.pending
             )}
+            {processChoice?.materialOptions ? (
+              <MaterialFix
+                oppId={processChoice.oppId}
+                current={materialLink?.appliedMaterial ?? null}
+                hasProcess={confirmed.length > 0}
+                options={processChoice.materialOptions}
+                onSaved={processChoice.onSaved}
+              />
+            ) : null}
           </FitLine>
           <FitLine label={texts.industry} testId="glance-fit-industry">
             {industryEditor ? (

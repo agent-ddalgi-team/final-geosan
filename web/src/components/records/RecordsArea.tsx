@@ -12,8 +12,8 @@
 // 코치 피드백 줄은 저장 뒤 /notes kind ADVICE로, 다음 통화에 물어볼 것은 kind CALL_PREP 한 행으로 남는다(#750). [AI가 메모 읽기]는 코치로 합쳐 이 칸에서 뺐다.
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
-import { Button, Input, Radio, Typography } from 'antd';
-import { assistantConfigOf } from '../../api/assistant';
+import { Button, Input, Typography } from 'antd';
+import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
 import { ApiError, getSalesQuestions, postNote, postOutcome } from '../../api/client';
 import { postCoach } from '../../api/coach';
 import type { CoachResult } from '../../api/coach';
@@ -30,6 +30,7 @@ import type {
   SalesStep,
   SalesStepView,
 } from '../../api/types';
+import PaidTag from '../common/PaidTag';
 import {
   coachTexts,
   contactMethodLabels,
@@ -44,9 +45,10 @@ import {
   salesStepLabels,
   handoffTexts,
 } from '../../labels/ko';
-import { colors, radius, typography } from '../../theme/tokens';
+import { colors, radius, typography, warn } from '../../theme/tokens';
 import { formatHourMinute, formatMonthDay, todayKst } from '../../utils/time';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
+import ChoiceChips from './ChoiceChips';
 import { choiceAnswerIds } from './ChoiceQuestion';
 import type { ChoiceMarks } from './ChoiceQuestion';
 import QuickDate from './QuickDate';
@@ -192,7 +194,7 @@ function NativeSelect({
         minHeight: 40,
         minWidth: 120,
         padding: '0 12px',
-        borderRadius: radius.md,
+        borderRadius: radius.control,
         border: `1px solid ${colors.border}`,
         background: colors.bgContainer,
         color: colors.text,
@@ -242,6 +244,7 @@ export default function RecordsArea({
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
 
   const [outcome, setOutcome] = useState<OutcomeRecord | null>(initialOutcome ?? null);
+
   const [busy, setBusy] = useState<BlockKey | null>(null);
   const [message, setMessage] = useState<{ block: BlockKey; text: string; error: boolean } | null>(
     null,
@@ -327,6 +330,19 @@ export default function RecordsArea({
 
   const [scheduleAt, setScheduleAt] = useState(initialOutcome?.nextScheduleAt ?? '');
   const [scheduleNote, setScheduleNote] = useState(initialOutcome?.nextScheduleNote ?? '');
+  // #980: 다른 칸(영업 코치 "다음 일정" · 영업 홈 표)에서 저장해 서버 기록이 더 새로우면 그 값으로 맞춘다.
+  // 맞추지 않으면 다음 접촉 저장이 옛 일정을 다시 실어 보내 방금 잡은 일정을 덮는다.
+  const [seenOutcomeVersion, setSeenOutcomeVersion] = useState(initialOutcome?.version ?? null);
+  if (
+    initialOutcome &&
+    initialOutcome.version !== seenOutcomeVersion &&
+    initialOutcome.version > (outcome?.version ?? -1)
+  ) {
+    setSeenOutcomeVersion(initialOutcome.version);
+    setOutcome(initialOutcome);
+    setScheduleAt(initialOutcome.nextScheduleAt ?? '');
+    setScheduleNote(initialOutcome.nextScheduleNote ?? '');
+  }
 
   const currentStatus = outcome?.status ?? null;
   const disabled = !canRecord || busy !== null;
@@ -366,6 +382,8 @@ export default function RecordsArea({
         nextScheduleNote: envelope.data.nextScheduleNote ?? body.nextScheduleNote ?? null,
       };
       setOutcome(saved);
+      // #980: 일정·접촉이 바뀌었으니 왼쪽 달력 · 영업 홈 · 메뉴 숫자가 다시 읽게 알린다(#983과 같은 이벤트).
+      window.dispatchEvent(new Event(SCHEDULE_CHANGED_EVENT));
       // 접힌 "다음 일정" 칸을 펼쳤을 때 방금 저장한 일정이 들어 있게 한다(#683).
       setScheduleAt(saved.nextScheduleAt ?? '');
       setScheduleNote(saved.nextScheduleNote ?? '');
@@ -878,7 +896,7 @@ export default function RecordsArea({
       compact={inCoach}
     />
   );
-  const confirmedFixes = (
+  const stageFix = (
     <>
       {/* 영업 단계 칸은 기본으로 접어 둔다(#674, PM 지시 2026-11-13): 단계는 꼬리 질문 답으로 저절로 저장되고
           지금 단계는 상세 맨 위 진행 막대에 보인다. 잘못됐을 때만 이 한 줄에서 펼쳐 고친다(창 없음).
@@ -1017,12 +1035,24 @@ export default function RecordsArea({
           ) : null}
         </div>
       </section>
-
+    </>
+  );
+  // 다음 일정이 오늘보다 앞이면(지난 일정) 주의색으로 굵게 보인다(#972, 글자는 그대로).
+  const nextScheduleDay = outcome?.nextScheduleAt?.slice(0, 10) ?? null;
+  const scheduleOverdue = nextScheduleDay !== null && nextScheduleDay < todayKst();
+  const scheduleFix = (
+    <>
       {/* 다음 일정 칸도 접어 둔다(#683, PM 결정 2026-11-13): 일정은 꼬리 질문 "다음 할 일은?" 아래 날짜로
           접촉과 함께 잡는다. 통화 없이 일정만 바꿀 때 이 한 줄에서 펼친다(창 없음, 기능은 그대로). */}
       <section aria-label={recordsArea.scheduleTitle} style={blockStyle}>
         <div style={rowStyle} data-testid="records-schedule-fix">
-          <span style={hintStyle} data-testid="records-schedule-current">
+          <span
+            style={
+              scheduleOverdue ? { ...hintStyle, color: warn.text, fontWeight: 600 } : hintStyle
+            }
+            data-overdue={scheduleOverdue ? 'true' : undefined}
+            data-testid="records-schedule-current"
+          >
             {outcome?.nextScheduleAt
               ? recordsArea.scheduleCurrent(
                   formatMonthDay(outcome.nextScheduleAt) ?? outcome.nextScheduleAt,
@@ -1146,7 +1176,8 @@ export default function RecordsArea({
           {recordsArea.entryTitle}
         </Typography.Title>
         <div style={rowStyle}>
-          <NativeSelect
+          {/* #972 새 시안: 종류는 고르기 상자 대신 선택 단추(전화 · 메일 · 대면 · 메모). 고르는 값과 저장은 그대로다. */}
+          <ChoiceChips
             label={recordsArea.entryKind}
             value={recordKind}
             options={RECORD_KIND_ORDER.map((kind) => ({
@@ -1154,25 +1185,25 @@ export default function RecordsArea({
               label: recordKindLabel(kind),
             }))}
             onChange={(value) => {
-              setRecordKind((value as RecordKind | null) ?? 'CALL');
+              setRecordKind(value as RecordKind);
               clearCoach();
             }}
             disabled={disabled}
             testId="records-kind"
-            id={recordsEntryInputId(oppId)}
+            focusId={recordsEntryInputId(oppId)}
           />
           {method && direction ? (
             // #853(PM 결정 2026-11-17): "누가 먼저 연락했나요?"는 종류 옆 단추 두 개(발신 | 수신, 대면은 외근 | 내방).
             // 기본 "발신"이 골라져 있어 보통은 누르지 않는다. 메모면 보이지 않는다.
-            <Radio.Group
-              aria-label={direction.text}
-              optionType="button"
-              value={contactAnswers[direction.questionId] ?? directionDefault}
+            // #972: 고른 단추는 강조 연한 바탕 + 강조 테두리 + 굵은 강조 글자(#947의 "강조색으로 채움"을 대신한다).
+            <ChoiceChips
+              label={direction.text}
+              value={contactAnswers[direction.questionId] ?? directionDefault ?? null}
               disabled={disabled}
-              onChange={(event) =>
+              onChange={(value) =>
                 setContactPicks((previous) => ({
                   ...previous,
-                  [direction.questionId]: event.target.value as string,
+                  [direction.questionId]: value,
                 }))
               }
               options={direction.answers.map((option) => ({
@@ -1181,7 +1212,7 @@ export default function RecordsArea({
                   salesQuestionTexts.contactDirectionLabels[method]?.[option.answerId] ??
                   option.label,
               }))}
-              data-testid="records-direction"
+              testId="records-direction"
             />
           ) : null}
           {method ? (
@@ -1211,12 +1242,12 @@ export default function RecordsArea({
                   testId={`records-contact-question-${question.questionId}`}
                 />
               ))}
-              <NativeSelect
+              {/* #972 새 시안: 결과도 선택 단추(연결됨 · 부재 · 거절). 처음에는 아무것도 골라져 있지 않다. */}
+              <ChoiceChips
                 label={recordsArea.contactResult}
-                placeholder={`${recordsArea.contactResult} ${recordsArea.selectPlaceholder}`}
                 value={result}
                 options={options(contactResultLabels)}
-                onChange={(value) => onResultChange(value as ContactResult | null)}
+                onChange={(value) => onResultChange(value as ContactResult)}
                 disabled={disabled}
                 testId="records-contact-result"
               />
@@ -1295,12 +1326,11 @@ export default function RecordsArea({
         {declineMode ? (
           <div data-testid="records-decline" style={{ display: 'grid', gap: 4 }}>
             <div id={`records-decline-label-${oppId}`}>{salesQuestionTexts.declineAsk}</div>
-            <Radio.Group
-              aria-labelledby={`records-decline-label-${oppId}`}
-              optionType="button"
+            <ChoiceChips
+              labelledBy={`records-decline-label-${oppId}`}
               value={declineChoice}
               disabled={disabled}
-              onChange={(event) => onDeclineChoice(event.target.value as string)}
+              onChange={onDeclineChoice}
               options={[
                 ...declineOptions.map((option) => ({
                   value: option.answerId,
@@ -1466,7 +1496,7 @@ export default function RecordsArea({
               onClick={() => void onSendCoach()}
               data-testid="coach-send"
             >
-              {coachTexts.send}
+              {coachTexts.send} <PaidTag onPrimary />
             </Button>
             <Button
               disabled={disabled || coachSending}
@@ -1538,12 +1568,31 @@ export default function RecordsArea({
         ) : null}
       </section>
 
-      {sideSlot ? null : confirmedFixes}
+      {sideSlot ? null : stageFix}
+      {sideSlot ? null : scheduleFix}
       {sideSlot
         ? createPortal(
-            <div data-testid="records-side" style={{ display: 'grid', gap: 12 }}>
-              {confirmedSummary}
-              {confirmedFixes}
+            // #972 새 시안: 영업 단계 카드 아래쪽 두 칸 — 왼쪽 "지금까지 들은 답 · 단계 고치기", 오른쪽 "다음 일정".
+            // 좁으면 한 칸으로 쌓인다.
+            <div
+              data-testid="records-side"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 14,
+                alignItems: 'start',
+              }}
+            >
+              <div
+                data-testid="records-side-known"
+                style={{ display: 'grid', gap: 8, minWidth: 0 }}
+              >
+                {confirmedSummary}
+                {stageFix}
+              </div>
+              <div data-testid="records-side-schedule" style={{ minWidth: 0 }}>
+                {scheduleFix}
+              </div>
             </div>,
             sideSlot,
           )

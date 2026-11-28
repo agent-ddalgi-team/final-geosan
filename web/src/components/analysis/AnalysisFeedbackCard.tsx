@@ -17,6 +17,7 @@ import {
 } from '../../api/salesAnalysis';
 import { analysisFeedbackTexts as t } from '../../labels/ko';
 import { SuggestionItem } from '../assistant/AssistantAnswerBox';
+import PaidTag from '../common/PaidTag';
 import { colors, radius, typography } from '../../theme/tokens';
 import { useFrame } from '../frame/FrameContext';
 
@@ -26,8 +27,10 @@ const box = {
   gap: 12,
   background: colors.bgContainer,
   border: `1px solid ${colors.borderSecondary}`,
-  borderRadius: radius.lg,
-  padding: '16px 20px',
+  borderRadius: radius.card,
+  padding: '18px 20px',
+  alignContent: 'start',
+  minWidth: 0,
 } as const;
 
 function Claims({ items, testId }: { items: FeedbackClaim[]; testId: string }) {
@@ -152,6 +155,9 @@ export function FeedbackBody({ feedback }: { feedback: AnalysisFeedback }) {
   );
 }
 
+/** (#974) 영업 분석 머리의 [AI 분석 받기 ↓]가 찾아오는 자리. */
+export const ANALYSIS_FEEDBACK_ID = 'analysis-feedback';
+
 export interface AnalysisFeedbackCardProps {
   period: AnalysisPeriod;
   /** 영업 분석을 다시 읽을 때 함께 다시 읽는다. */
@@ -207,7 +213,14 @@ export default function AnalysisFeedbackCard({ period, reloadKey = 0 }: Analysis
   const locked = !state?.switchOn || !staffKey || !canRecord;
   const buttonText = feedback ? t.refresh : t.request;
   return (
-    <section aria-labelledby="analysis-feedback-title" data-testid="analysis-feedback" style={box}>
+    <section
+      id={ANALYSIS_FEEDBACK_ID}
+      tabIndex={-1}
+      aria-labelledby="analysis-feedback-title"
+      data-testid="analysis-feedback"
+      // 바로가기로 내려왔을 때 카드가 화면 맨 위에 딱 붙지 않게 조금 띄운다.
+      style={{ ...box, scrollMarginTop: 16 }}
+    >
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8 }}>
         <h2
           id="analysis-feedback-title"
@@ -229,7 +242,7 @@ export default function AnalysisFeedbackCard({ period, reloadKey = 0 }: Analysis
           onClick={() => void ask()}
           data-testid="feedback-request"
         >
-          {buttonText}
+          {buttonText} <PaidTag onPrimary={!feedback} />
         </Button>
         {feedback && state && !state.current ? (
           <span data-testid="feedback-stale" style={secondary}>

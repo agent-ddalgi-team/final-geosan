@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PeriodPicker, { presetPeriod } from '../PeriodPicker';
+import { accent, choiceChip } from '../../../theme/tokens';
 
 const TODAY = '2026-11-15';
 
@@ -32,6 +33,27 @@ describe('PeriodPicker', () => {
     await userEvent.click(screen.getByTestId('period-preset-DAYS_30'));
     expect(onChange).toHaveBeenCalledWith({ from: '2026-10-17', to: TODAY });
     expect(screen.queryByTestId('period-picker-panel')).not.toBeInTheDocument();
+  });
+
+  it('지금 기간과 같은 미리 정한 기간은 고른 선택 단추 모양(강조 연한 바탕 + 강조 글자), 나머지는 흰 단추다(#972)', async () => {
+    render(
+      <PeriodPicker value={presetPeriod('THIS_MONTH', TODAY)} onChange={vi.fn()} today={TODAY} />,
+    );
+    await userEvent.click(screen.getByTestId('period-picker-button'));
+    const picked = screen.getByTestId('period-preset-THIS_MONTH');
+    expect(picked).toHaveAttribute('aria-pressed', 'true');
+    expect(picked).toHaveStyle({
+      background: choiceChip.selected.bg,
+      color: choiceChip.selected.fg,
+    });
+    const other = screen.getByTestId('period-preset-DAYS_30');
+    expect(other).toHaveAttribute('aria-pressed', 'false');
+    expect(other).toHaveStyle({ background: choiceChip.idle.bg, color: choiceChip.idle.fg });
+    // [적용]은 주 단추(강조 바탕 + 흰 글자).
+    expect(screen.getByTestId('period-apply')).toHaveStyle({
+      background: accent.bg,
+      color: accent.onBg,
+    });
   });
 
   it('직접 넣은 날짜는 [적용]을 눌러야 알리고, 시작일이 끝일보다 뒤면 알림을 보이고 적용을 막는다', async () => {

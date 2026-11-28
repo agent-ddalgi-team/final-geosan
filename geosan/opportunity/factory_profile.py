@@ -1,7 +1,8 @@
 """팩토리온 공장조회·수질 명단 보조 자료를 읽고 목록 회사에 붙인다(C5·C6·C8, #573).
 
-후보 목록의 출발점이 아니다. AI·외부 전송은 하지 않는다. 전화번호·홈페이지·대표자 같은 칸은
-읽는 즉시 버리고, 공개 칸에 연락처 형식이 있으면 그 값은 저장하지 않는다.
+후보 목록의 출발점이 아니다. AI·외부 전송은 하지 않는다. 홈페이지·대표자 같은 칸은 읽는 즉시
+버리고, 공개 칸에 연락처 형식이 있으면 그 값은 저장하지 않는다. 전화번호 칸은 지역번호(설정
+mainPhone.allowedPrefixes)로 시작하는 회사 번호만 대표번호로 남긴다(#980, 휴대폰은 버림).
 종업원 수는 공장 등록 때 적은 값이라 갱신되지 않을 수 있어 화면에서는 언제나 추정으로 보인다.
 """
 
@@ -14,12 +15,12 @@ import unicodedata
 import warnings
 import zipfile
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
 from geosan.config.app_settings import AppSettings
@@ -43,6 +44,7 @@ WATER_BASIS = "특정수질유해물질 배출 사업장 명단에 있음(국립
 _FACTORYON_NAME = "회사명"
 _FACTORYON_ROAD = "공장주소(도로명)"
 _FACTORYON_LOT = "공장주소(지번)"
+_FACTORYON_PHONE = "전화번호"
 _FACTORYON_REQUIRED = (
     _FACTORYON_NAME,
     _FACTORYON_ROAD,
@@ -53,6 +55,7 @@ _FACTORYON_REQUIRED = (
 )
 _WATER_REQUIRED = ("사업장명", "사업장소재지(도로명주소)")
 _COMPANY_MARKS = re.compile(r"\(주\)|\(유\)|\(합\)|\(재\)|\(사\)|\(복\)|\(농\)|주식회사|유한회사")
+_INSERT_CHUNK = 2000
 _FILE_DATE = re.compile(r"(?<![0-9])(20[0-9]{6})(?![0-9])")
 
 
@@ -66,6 +69,10 @@ class ProfileRow:
     industry_codes: tuple[str, ...]
     industry_name: str | None
     scale: str | None
+    # 그 행이 나온 파일의 기준일. 지역마다 내려받은 날이 달라도 된다(#961).
+    file_date: date
+    # #980: 지역번호로 시작하는 회사 전화번호("041-123-4567" 꼴). 휴대폰·그 밖의 번호는 None.
+    main_phone: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +96,8 @@ class AttachResult:
     attached: int
     flagged: int
     unflagged: int
+    # #980: 이번에 팩토리온 번호로 대표번호가 새로 채워지거나 바뀐 회사 수.
+    phones: int = 0
 
 
 def company_key(name: str) -> str:
@@ -156,6 +165,24 @@ def _public(value: str) -> str | None:
     return value
 
 
+def company_phone(value: str, prefixes: Sequence[str]) -> str | None:
+    """지역번호로 시작하는 회사 번호만 "041-123-4567" 꼴로 돌려준다(#980).
+
+    숫자만 남겨 9~11자리이고 prefixes 가운데 하나로 시작해야 한다. 01로 시작하는 휴대폰과
+    prefixes 밖의 번호는 None(버림). 앞자리는 가장 긴 것부터 맞춘다(02보다 031이 먼저).
+    """
+    digits = re.sub(r"[^0-9]", "", value or "")
+    if not 9 <= len(digits) <= 11 or digits.startswith("01"):
+        return None
+    for prefix in sorted((p for p in prefixes if not p.startswith("01")), key=len, reverse=True):
+        if digits.startswith(prefix):
+            rest = digits[len(prefix) :]
+            if len(rest) not in (7, 8):
+                return None
+            return f"{prefix}-{rest[:-4]}-{rest[-4:]}"
+    return None
+
+
 def _employees(value) -> int | None:
     try:
         count = int(float(_text(value).replace(",", "")))
@@ -169,33 +196,59 @@ def _codes(value) -> tuple[str, ...]:
     return tuple(dict.fromkeys(code for code in codes if re.fullmatch(r"[0-9]{5}", code)))
 
 
-def _xlsx_rows(path: Path) -> tuple[list[str], list[tuple]]:
+def _xlsx_rows(path: Path) -> tuple[list[str], Iterator[tuple]]:
+    """제목 줄과 나머지 줄. 줄은 한 줄씩 읽는다(#961: 경기 9.7만 행도 메모리 약 30MB).
+
+    팩토리온 파일은 시트 크기 표시가 A1뿐이라 읽기 전용으로 열면 첫 줄만 보인다.
+    크기 표시를 지우고(reset_dimensions) 실제 줄을 끝까지 읽는다.
+    """
     from openpyxl import load_workbook  # 엑셀을 읽을 때만 불러온다
 
     try:
         with warnings.catch_warnings():
             # 팩토리온 파일에는 기본 서식이 없어 경고가 나지만 값 읽기와는 관계없다.
             warnings.simplefilter("ignore")
-            book = load_workbook(path, data_only=True)
-    except (OSError, zipfile.BadZipFile, KeyError, ValueError):
+            book = load_workbook(path, read_only=True, data_only=True)
+            sheet = book.worksheets[0]
+            sheet.reset_dimensions()
+            rows = sheet.iter_rows(values_only=True)
+            headers = [_text(value) for value in next(rows, ())]
+    except (OSError, zipfile.BadZipFile, KeyError, ValueError, IndexError):
         raise InputError(
             f"엑셀 파일을 읽을 수 없습니다: {path.name}",
             "팩토리온에서 내려받은 .xlsx 원본을 그대로 넣어 주세요.",
         ) from None
-    rows = book.worksheets[0].iter_rows(values_only=True)
-    headers = [_text(value) for value in next(rows, ())]
-    return headers, [row for row in rows]
+
+    def rest() -> Iterator[tuple]:
+        try:
+            yield from rows
+        finally:
+            book.close()
+
+    return headers, rest()
 
 
-def read_factoryon(paths: Sequence[Path], regions: Iterable[str]) -> ReadResult:
-    """지역별 엑셀 여러 개를 읽는다. 고른 시·도 행만 남기고 필요한 칸만 꺼낸다."""
+def read_factoryon(
+    paths: Sequence[Path], regions: Iterable[str], phone_prefixes: Sequence[str] = ()
+) -> ReadResult:
+    """지역별 엑셀 여러 개를 읽는다. 고른 시·도 행만 남기고 필요한 칸만 꺼낸다.
+
+    phone_prefixes(설정 mainPhone.allowedPrefixes)를 주면 전화번호 칸 가운데 그 지역번호로
+    시작하는 번호만 대표번호로 남긴다(#980). 주지 않으면 전화번호는 읽지 않는다.
+
+    파일마다 기준일이 달라도 된다(#961). 다만 같은 시·도 행이 기준일이 다른 두 파일에서
+    나오면 어느 쪽이 맞는지 알 수 없어 거부한다.
+    """
     wanted = set(regions)
     rows: list[ProfileRow] = []
+    region_dates: dict[str, date] = {}
     raw = skipped = 0
     for path in paths:
+        file_date = file_date_of(path)
         headers, values = _xlsx_rows(path)
         missing = [name for name in _FACTORYON_REQUIRED if name not in headers]
         if missing:
+            values.close()
             raise InputError(
                 f"{path.name}에 필수 열이 없습니다: {', '.join(missing)}.",
                 "팩토리온 공장조회에서 내려받은 엑셀인지 확인해 주세요.",
@@ -217,6 +270,12 @@ def read_factoryon(paths: Sequence[Path], regions: Iterable[str]) -> ReadResult:
             region = address_region(address)
             if region not in wanted:
                 continue
+            if region_dates.setdefault(region, file_date) != file_date:
+                values.close()
+                raise InputError(
+                    f"{region} 행이 기준일이 다른 파일 두 개에 있습니다.",
+                    "한 지역은 같은 날 내려받은 파일만 넣어 주세요.",
+                )
             rows.append(
                 ProfileRow(
                     company_name=name,
@@ -227,6 +286,8 @@ def read_factoryon(paths: Sequence[Path], regions: Iterable[str]) -> ReadResult:
                     industry_codes=_codes(cell("업종번호")),
                     industry_name=_public(cell("업종명")),
                     scale=_public(cell("공장규모")),
+                    file_date=file_date,
+                    main_phone=company_phone(cell(_FACTORYON_PHONE), phone_prefixes),
                 )
             )
     return ReadResult(tuple(rows), raw, skipped)
@@ -300,7 +361,7 @@ def read_water(path: Path, regions: Iterable[str]) -> ReadResult:
     return ReadResult(rows, raw, skipped)
 
 
-def _check_source(session: Session, source_id: str, file_date: date, model) -> None:
+def _check_confirmed(session: Session, source_id: str) -> None:
     contract = session.get(SourceContract, source_id)
     if contract is None or contract.confirmed_at is None:
         raise InputError(
@@ -308,6 +369,10 @@ def _check_source(session: Session, source_id: str, file_date: date, model) -> N
             f"먼저 geosan source-confirm {source_id} --by <담당자 키> --terms <약관 주소>를 "
             "실행해 주세요.",
         )
+
+
+def _check_source(session: Session, source_id: str, file_date: date, model) -> None:
+    _check_confirmed(session, source_id)
     stored = session.scalar(select(func.max(model.file_date)).where(model.source_id == source_id))
     if stored is not None and stored > file_date:
         raise InputError(
@@ -316,31 +381,58 @@ def _check_source(session: Session, source_id: str, file_date: date, model) -> N
         )
 
 
-def store_profiles(session: Session, rows: Sequence[ProfileRow], file_date: date) -> int:
-    """팩토리온 행을 통째로 바꾼다. 원본 파일로 다시 만들 수 있는 보조 자료다."""
-    _check_source(session, FACTORYON_SOURCE_ID, file_date, FactoryProfile)
-    session.execute(delete(FactoryProfile).where(FactoryProfile.source_id == FACTORYON_SOURCE_ID))
-    now = utcnow()
-    for row in rows:
-        session.add(
-            FactoryProfile(
-                profile_id=new_id("fprof"),
-                source_id=FACTORYON_SOURCE_ID,
-                file_date=file_date,
-                company_name=row.company_name,
-                normalized_name=company_key(row.company_name),
-                address=row.address,
-                normalized_address=normalize_address(row.address) or "",
-                region=row.region,
-                raw_materials=row.raw_materials,
-                employee_count=row.employee_count,
-                industry_codes=list(row.industry_codes),
-                industry_name=row.industry_name,
-                scale=row.scale,
-                loaded_at=now,
-                created_by="system",
-                is_virtual=False,
+def store_profiles(session: Session, rows: Sequence[ProfileRow]) -> int:
+    """넣은 시·도의 팩토리온 행만 바꾼다. 다른 시·도 행은 그대로 둔다(#961).
+
+    원본 파일로 다시 만들 수 있는 보조 자료다. 시·도마다 저장된 자료보다 오래된 파일은 거부한다.
+    """
+    _check_confirmed(session, FACTORYON_SOURCE_ID)
+    region_dates = {row.region: row.file_date for row in rows}
+    for region, file_date in sorted(region_dates.items()):
+        stored = session.scalar(
+            select(func.max(FactoryProfile.file_date)).where(
+                FactoryProfile.source_id == FACTORYON_SOURCE_ID, FactoryProfile.region == region
             )
+        )
+        if stored is not None and stored > file_date:
+            raise InputError(
+                f"저장된 {region} 자료({stored.isoformat()})보다 오래된 파일입니다.",
+                "더 새 기준일의 파일을 넣어 주세요.",
+            )
+    session.execute(
+        delete(FactoryProfile).where(
+            FactoryProfile.source_id == FACTORYON_SOURCE_ID,
+            FactoryProfile.region.in_(list(region_dates)),
+        )
+    )
+    now = utcnow()
+    # #961: 경기 9.7만 행. ORM 객체를 하나씩 쌓지 않고 묶음으로 바로 넣어 메모리를 줄인다.
+    for at in range(0, len(rows), _INSERT_CHUNK):
+        session.execute(
+            insert(FactoryProfile),
+            [
+                {
+                    "profile_id": new_id("fprof"),
+                    "source_id": FACTORYON_SOURCE_ID,
+                    "file_date": row.file_date,
+                    "company_name": row.company_name,
+                    "normalized_name": company_key(row.company_name),
+                    "address": row.address,
+                    "normalized_address": normalize_address(row.address) or "",
+                    "region": row.region,
+                    "raw_materials": row.raw_materials,
+                    "employee_count": row.employee_count,
+                    "industry_codes": list(row.industry_codes),
+                    "industry_name": row.industry_name,
+                    "scale": row.scale,
+                    "main_phone": row.main_phone,
+                    "loaded_at": now,
+                    "created_at": now,
+                    "created_by": "system",
+                    "is_virtual": False,
+                }
+                for row in rows[at : at + _INSERT_CHUNK]
+            ],
         )
     session.flush()
     return len(rows)
@@ -376,8 +468,13 @@ def store_water(session: Session, rows: Sequence[WaterRow], file_date: date) -> 
 class ProfileIndex:
     """저장된 보조 자료를 한 번 읽어 회사마다 붙일 행을 찾는다(C5 "회사 붙이기")."""
 
-    def __init__(self, session: Session, names: Iterable[str] | None = None) -> None:
-        """names를 주면 그 회사들의 팩토리온 행만 읽고 수질 명단은 읽지 않는다(후보 판단, #570)."""
+    def __init__(
+        self, session: Session, names: Iterable[str] | None = None, *, water: bool | None = None
+    ) -> None:
+        """names를 주면 그 회사들의 팩토리온 행만 읽는다(후보 판단, #570).
+
+        수질 명단은 water가 참일 때 읽는다. 따로 정하지 않으면 names가 없을 때만 읽는다.
+        """
         self.by_name: dict[str, list[FactoryProfile]] = defaultdict(list)
         query = select(FactoryProfile)
         if names is not None:
@@ -385,9 +482,8 @@ class ProfileIndex:
             query = query.where(FactoryProfile.normalized_name.in_(keys))
         for row in session.scalars(query):
             self.by_name[row.normalized_name].append(row)
-        self.water: list[WaterSite] = (
-            list(session.scalars(select(WaterSite))) if names is None else []
-        )
+        read_water = names is None if water is None else water
+        self.water: list[WaterSite] = list(session.scalars(select(WaterSite))) if read_water else []
 
     def profile_for(self, name: str, address: str | None) -> FactoryProfile | None:
         if not address:
@@ -418,6 +514,28 @@ class ProfileIndex:
         return None
 
 
+FACTORYON_PHONE_SOURCE = "FACTORYON"
+
+
+def _apply_profile_phone(customer: Customer, phone: str | None) -> None:
+    """팩토리온 번호를 대표번호로 쓴다(#980, C1 자동 채우기 ①).
+
+    대표번호가 비어 있으면 채우고, 전에 팩토리온에서 채운 번호가 바뀌었으면 바꾸며 확인 표시를
+    비운다. 홈페이지·공장현황·담당자 입력 번호와 담당자가 지운 빈 칸(MANUAL)은 건드리지 않는다.
+    """
+    if not phone:
+        return
+    source = customer.main_phone_source
+    if source == FACTORYON_PHONE_SOURCE and customer.main_phone == phone:
+        return
+    if (source is None and not customer.main_phone) or source == FACTORYON_PHONE_SOURCE:
+        customer.main_phone = phone
+        customer.main_phone_source = FACTORYON_PHONE_SOURCE
+        customer.main_phone_source_url = None
+        customer.main_phone_confirmed_at = None
+        customer.main_phone_confirmed_by = None
+
+
 def apply_to_customer(
     customer: Customer, index: ProfileIndex, surface_codes: Sequence[str]
 ) -> tuple[bool, int]:
@@ -431,6 +549,7 @@ def apply_to_customer(
     customer.factory_scale = profile.scale if profile else None
     customer.factory_industry_name = profile.industry_name if profile else None
     customer.factory_profile_date = profile.file_date if profile else None
+    _apply_profile_phone(customer, profile.main_phone if profile else None)
     if customer.own_plating_line_source not in (None, *RULE_SOURCES):
         return profile is not None, 0
     before = customer.own_plating_line_suspected
@@ -447,21 +566,26 @@ def apply_to_customer(
     customer.own_plating_line_suspected = source is not None
     customer.own_plating_line_source = source
     customer.own_plating_line_basis = basis
-    return profile is not None, int(customer.own_plating_line_suspected) - int(before)
+    # 막 만든 회사(#948)는 저장 전이라 표시가 비어 있다. 빈 값은 표시 없음으로 센다(#966).
+    return profile is not None, int(customer.own_plating_line_suspected) - int(bool(before))
 
 
 def attach_all(session: Session, settings: AppSettings) -> AttachResult:
     """실제 목록 회사 전부에 다시 붙인다. 불러오기 명령이 저장 뒤 같은 묶음 안에서 부른다."""
-    index = ProfileIndex(session)
+    customers = list(session.scalars(select(Customer).where(Customer.is_virtual.is_(False))))
+    # #961: 공장 행 전부(경기 포함 11만 행)가 아니라 목록 회사 이름에 맞는 행만 읽는다.
+    index = ProfileIndex(session, [customer.name for customer in customers], water=True)
     codes = settings.ingestion.ai_pick.surface_treatment_industry_codes
-    attached = flagged = unflagged = 0
-    for customer in session.scalars(select(Customer).where(Customer.is_virtual.is_(False))):
+    attached = flagged = unflagged = phones = 0
+    for customer in customers:
+        phone_before = customer.main_phone
         hit, change = apply_to_customer(customer, index, codes)
         attached += hit
         flagged += change > 0
         unflagged += change < 0
+        phones += customer.main_phone != phone_before
     session.flush()
-    return AttachResult(attached, flagged, unflagged)
+    return AttachResult(attached, flagged, unflagged, phones)
 
 
 def stored_regions(settings: AppSettings) -> list[str]:

@@ -29,4 +29,36 @@ describe('DetailSection', () => {
     );
     expect(screen.queryByTestId('detail-y-count')).not.toBeInTheDocument();
   });
+
+  it('보조 설명을 주면 제목 옆에 흐린 글자로 보이고 제목 글에는 붙지 않는다 (#972)', () => {
+    render(
+      <DetailSection id="detail-h" title="왜 이 회사인가" hint="항목마다 한 줄">
+        <p>본문</p>
+      </DetailSection>,
+    );
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/^왜 이 회사인가$/);
+    expect(screen.getByTestId('detail-h-hint')).toHaveTextContent('항목마다 한 줄');
+  });
+
+  it('bare면 카드 테두리·바탕 없이 제목과 내용만 그린다(이미 카드 안에 있을 때, #972)', () => {
+    const { unmount } = render(
+      <DetailSection id="detail-b" title="확인사항" count={2} bare>
+        <p>본문</p>
+      </DetailSection>,
+    );
+    const bare = screen.getByTestId('detail-b');
+    expect(bare.style.border).toBe('');
+    expect(bare.style.padding).toBe('');
+    expect(bare.style.background).toBe('');
+    expect(screen.getByRole('region', { name: '확인사항' })).toHaveTextContent('본문');
+    expect(screen.getByTestId('detail-b-count')).toHaveTextContent('2');
+    unmount();
+    render(
+      <DetailSection id="detail-c" title="활동 이력">
+        <p>본문</p>
+      </DetailSection>,
+    );
+    expect(screen.getByTestId('detail-c').style.border).not.toBe('');
+    expect(screen.getByTestId('detail-c').style.padding).not.toBe('');
+  });
 });

@@ -32,3 +32,33 @@ def load_process_catalog(session: Session, dataset_kind: DatasetKind) -> list[Pr
             )
         )
     )
+
+
+# #958(PM 결정 2026-11-26) 소재 코드 → 쉬운 말.
+# 화면 대응표(web labels materialLabels)와 같은 말이다.
+# 표에 없는 코드는 코드 그대로 보인다(이름을 지어내지 않는다).
+MATERIAL_NAMES = {
+    "AL": "알루미늄",
+    "AL_CASTING": "알루미늄 주물",
+    "FE": "철",
+    "CU": "구리",
+    "SUS": "스테인리스",
+    "ZN": "아연",
+    # #964: 브로슈어 역량 파일의 아노다이징 소재(회사소개서 값).
+    "MG": "마그네슘",
+    "TI": "티타늄",
+    "HF": "하프늄",
+    "NB": "니오븀",
+}
+
+
+def material_options(session: Session, dataset_kind: DatasetKind) -> dict[str, str]:
+    """#958 거산 처리 소재 목록 {코드: 이름}.
+
+    역량 파일 공정 순서대로 materialCodes를 합친다(같은 코드는 한 번).
+    """
+    found: dict[str, str] = {}
+    for process in load_process_catalog(session, dataset_kind):
+        for code in process.material_codes or []:
+            found.setdefault(code, MATERIAL_NAMES.get(code, code))
+    return found

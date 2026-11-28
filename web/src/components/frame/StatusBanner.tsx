@@ -1,5 +1,6 @@
 // 알림 띠(BR10.4, interaction-spec 2.16). 닫기 없음, role="status", 한 줄에 점(·)으로 이어 표시한다.
 // 내부용은 항상, 나머지는 조건부. 색은 6가지 조합만 쓰고 글자가 항상 함께 있다.
+// #972: 꼬리표 색이 새 톤으로 바뀌었다(내부용 = 중립, 가상·확인 전 = 주의, 소개서·시연 = 강조 연한 바탕, 재평가 = 확인).
 import type { ReactNode } from 'react';
 import StatusTag from '../common/StatusTag';
 import { banner } from '../../labels/ko';

@@ -185,6 +185,42 @@ def test_address_suffix_is_not_transmitted_and_underground_is_distinct():
     assert parse_address("충청남도 천안시 서북구 산업단지 A블록") is None
 
 
+# #956 시 아래 구가 새로 생긴 주소(예: 화성시 동탄구). 회사 이름·번지는 가상.
+DONGTAN = "경기도 화성시 동탄구 시험산업1로 27"
+
+
+@pytest.mark.parametrize(
+    ("value", "city", "town"),
+    [
+        (DONGTAN, "화성시 동탄구", ""),
+        ("경기도 수원시 영통구 매탄동 시험로 3", "수원시 영통구", "매탄동"),
+        ("충청남도 천안시서북구성거읍 시험로 10", "천안시 서북구", "성거읍"),
+        ("서울특별시 구로구 구로동로 1", "구로구", ""),
+        ("경기도 화성시 시험산업1로 27", "화성시", ""),
+    ],
+)
+def test_city_subdistrict_is_split_from_road(value, city, town):
+    parsed = parse_address(value)
+    assert (parsed.city, parsed.town, parsed.main) == (city, town, int(value.split()[-1]))
+
+
+def test_address_without_new_subdistrict_matches_juso_answer_with_it():
+    plain = parse_address("경기도 화성시 시험산업1로 27")
+    assert same_address(plain, parse_address(DONGTAN))
+    assert not same_address(plain, parse_address("경기도 오산시 시험산업1로 27"))
+    row = dict(
+        candidate(),
+        roadAddrPart1=DONGTAN,
+        jibunAddr="경기도 화성시 동탄구 시험동 27",
+        rnMgtSn="415903000000",
+        buldMnnm="27",
+    )
+    client = FakeClient(search=[row], coordinates=[dict(row, entX="1000000", entY="2000000")])
+    point = resolver().resolve("경기도 화성시 시험산업1로 27", client)
+    assert point is not None and point.source == "JUSO"
+    assert client.calls == ["search", "coordinates"]
+
+
 def test_math_uses_projection_origin_and_known_great_circle_distance():
     assert utmk_to_lat_lng(1000000, 2000000) == pytest.approx((38, 127.5), abs=1e-7)
     assert straight_distance_km(0, 0, 0, 1) == pytest.approx(111.19508, abs=0.001)
@@ -342,6 +378,38 @@ def test_detail_http_has_real_stored_distance(public_company):
     assert response.json()["data"]["header"]["distanceKm"] == 0.0
 
 
+@pytest.mark.parametrize("missing_key", [True, False])
+def test_detail_opens_without_distance_when_live_geocode_fails(
+    public_company, monkeypatch, caplog, missing_key
+):
+    # #968 키가 없거나 행안부 조회가 실패해도 상세는 열리고 거리만 미확인(null)이다.
+    from fastapi.testclient import TestClient
+
+    from geosan.api.app import create_app
+
+    with session_scope() as session:
+        settings = read_app_settings(session)
+        settings.geocoding.naver_fallback_enabled = True
+        sync_app_settings(session, settings)
+    if missing_key:
+        monkeypatch.delenv("JUSO_SEARCH_KEY", raising=False)
+    else:
+        monkeypatch.setenv("JUSO_SEARCH_KEY", "test-only")
+        monkeypatch.setattr(
+            "geosan.opportunity.geocode_http.request_json",
+            lambda *a, **k: (_ for _ in ()).throw(OSError("down")),
+        )
+    with TestClient(create_app()) as client:
+        response = client.get("/api/v1/opportunities/opp-geocode")
+    assert response.status_code == 200
+    assert response.json()["data"]["header"]["distanceKm"] is None
+    assert "geocode.live_failed" in caplog.text
+    with session_scope() as session:
+        assert session.get(Customer, "cust-geocode").lat is None
+        rows = session.scalars(select(TransferLog)).all()
+        assert all(r.decision == "FAILED" for r in rows) and (missing_key or rows)
+
+
 def test_csv_configuration_requires_date_and_naver_requires_enabled():
     from pydantic import ValidationError
 
@@ -357,7 +425,7 @@ def test_coordinate_migration_preserves_existing_company(public_company):
     from geosan.storage.migrate import alembic_config, upgrade_to_head
 
     command.downgrade(alembic_config(public_company), "opp_009")
-    assert upgrade_to_head(public_company) == ["opp_012"]
+    assert upgrade_to_head(public_company) == ["rec_021"]
     with session_scope() as session:
         customer = session.get(Customer, "cust-geocode")
         assert customer.address == ADDRESS and customer.name == "시험공장"
@@ -392,8 +460,8 @@ def test_merge_preserves_coordinates_and_record_cancellation_from_either_branch(
         for table in ["opp_customer", "opp_opportunity", "rec_note"]:
             columns = [row[1] for row in connection.execute(f"PRAGMA table_info({table})")]
             snapshots[table] = (columns, connection.execute(f"SELECT * FROM {table}").fetchall())
-    assert upgrade_to_head(db) == ["opp_012"]
-    assert upgrade_to_head(db) == ["opp_012"]
+    assert upgrade_to_head(db) == ["rec_021"]
+    assert upgrade_to_head(db) == ["rec_021"]
     with sqlite3.connect(db) as connection:
         for table, (columns, rows) in snapshots.items():
             selected = ",".join(columns)

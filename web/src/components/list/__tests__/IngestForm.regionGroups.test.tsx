@@ -114,3 +114,36 @@ it('옛 응답(권역·자료 기준 칸 없음)이면 지금처럼 시·군 칸
   expect(screen.getByTestId('ingest-region')).toBeInTheDocument();
   expect(screen.queryByTestId('ingest-data-basis')).not.toBeInTheDocument();
 });
+
+it('#961 Given 권역 설정 / When 시·군 직접 고르기를 펼침 / Then 시·도 전체 줄과 권역 이름 줄로 나뉘어 보이고, 고른 시·군은 그대로 보낸다', async () => {
+  const user = userEvent.setup();
+  renderForm({
+    ...OPTIONS,
+    regions: [...OPTIONS.regions, '경기', '평택시', '오산시'],
+    regionGroups: [
+      ...(OPTIONS.regionGroups ?? []),
+      { label: '경기 남부', regions: ['평택시', '오산시'] },
+    ],
+  });
+  const whole = screen.getByTestId('ingest-region-section-시·도 전체');
+  expect(whole).toHaveTextContent('시·도 전체');
+  expect(whole).toHaveTextContent('충남');
+  expect(whole).toHaveTextContent('경기');
+  expect(whole).not.toHaveTextContent('평택시');
+  const south = screen.getByTestId('ingest-region-section-경기 남부');
+  expect(south).toHaveTextContent('경기 남부');
+  expect(south).toHaveTextContent('평택시');
+  expect(south).toHaveTextContent('오산시');
+  expect(screen.getByTestId('ingest-region-section-세종·대전·공주')).toHaveTextContent('공주시');
+  // 시·군은 한 번씩만 보인다(권역에 든 것은 시·도 전체 줄에 다시 나오지 않음).
+  expect(screen.getAllByTestId('ingest-region-오산시')).toHaveLength(1);
+  await user.click(screen.getByTestId('ingest-process-ZINC_PLATING'));
+  await user.click(screen.getByTestId('ingest-region-group-천안·아산'));
+  await user.click(screen.getByTestId('ingest-region-오산시'));
+  await user.click(screen.getByTestId('ingest-submit'));
+  await waitFor(() => expect(mockedPost).toHaveBeenCalled());
+  expect(mockedPost.mock.calls[0][0]).toEqual({
+    processCodes: ['ZINC_PLATING'],
+    regions: ['오산시'],
+  });
+});

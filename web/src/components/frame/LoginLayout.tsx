@@ -6,21 +6,24 @@ import './LoginLayout.css';
 
 /** 색·크기 값은 tokens.ts에서 가져와 CSS 변수로 넘긴다. */
 const pageVars = {
-  '--login-bg-top': loginTheme.bgTop,
-  '--login-bg-middle': loginTheme.bgMiddle,
-  '--login-bg-low': loginTheme.bgLow,
-  '--login-spot-left': loginTheme.spotLeft,
-  '--login-spot-right': loginTheme.spotRight,
+  '--login-sky-top': loginTheme.skyTop,
+  '--login-sky-middle': loginTheme.skyMiddle,
+  '--login-sky-low': loginTheme.skyLow,
+  '--login-sky-glow': loginTheme.skyGlow,
+  '--login-spot': loginTheme.spot,
   '--login-planet': loginTheme.planet,
+  '--login-rim': loginTheme.rim,
   '--login-glow-core': loginTheme.glowCore,
-  '--login-glow-middle': loginTheme.glowMiddle,
-  '--login-glow-far': loginTheme.glowFar,
   '--login-text': loginTheme.text,
   '--login-text-soft': loginTheme.textSoft,
   '--login-badge-border': loginTheme.badgeBorder,
-  '--login-card-bg': loginTheme.cardBg,
+  '--login-badge-radius': `${loginTheme.badgeRadius}px`,
+  '--login-card-tint': loginTheme.cardTint,
+  '--login-card-sheen': loginTheme.cardSheen,
   '--login-card-border': loginTheme.cardBorder,
   '--login-card-shadow': loginTheme.cardShadow,
+  '--login-icon': loginTheme.icon,
+  '--login-button-ring': loginTheme.buttonRing,
   '--login-focus-ring': loginTheme.focusRing,
   '--login-card-width': `${loginTheme.cardWidth}px`,
   '--login-card-radius': `${loginTheme.cardRadius}px`,
@@ -30,7 +33,10 @@ const pageVars = {
   '--login-subtitle-size': `${loginTheme.subtitleSize}px`,
 } as CSSProperties;
 
-/** 접속 화면의 틀: 위에 로고와 "내부용", 가운데에 제목과 입력 상자, 아래에 저작권 줄. 접속 확인은 SessionGate가 맡는다. */
+/**
+ * 접속 화면의 틀(#978): 짙은 보라 밤하늘과 아래쪽 빛나는 곡선, 왼쪽 위 로고 + 회사 이름, 오른쪽 위 "내부용",
+ * 가운데 제목 · 한 줄 소개, 그 아래 유리 느낌 상자(입력 칸), 맨 아래 저작권 줄. 접속 확인은 SessionGate가 맡는다.
+ */
 export default function LoginLayout({
   children,
   showBadge,
@@ -41,6 +47,7 @@ export default function LoginLayout({
 }) {
   return (
     <div className="login-page" style={pageVars}>
+      {/* 아래쪽 빛나는 곡선은 꾸밈이다. */}
       <div className="login-planet" aria-hidden="true" />
       <header className="login-header">
         <span className="login-brand">
@@ -53,7 +60,9 @@ export default function LoginLayout({
       <main className="login-main">
         <h1 className="login-title">{loginTexts.title}</h1>
         <p className="login-subtitle">{loginTexts.subtitle}</p>
-        <div className="login-body">{children}</div>
+        <div className="login-card login-body" data-testid="login-card">
+          {children}
+        </div>
       </main>
       <footer className="login-footer">{loginTexts.footer}</footer>
     </div>

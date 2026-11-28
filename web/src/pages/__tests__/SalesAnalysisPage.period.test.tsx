@@ -79,6 +79,10 @@ describe('영업 분석 기간 (#760)', () => {
     );
     expect(screen.getByTestId('analysis-period-rule')).toBeInTheDocument();
     expect(screen.getByTestId('analysis-charts')).toBeInTheDocument();
+    // #972 숫자 카드는 그 기간으로 받은 합계를 보이고, 기간과 상관없는 "최근 365일"은 붙이지 않는다.
+    expect(screen.getByTestId('number-card-contacted')).toHaveTextContent('접촉12곳');
+    expect(screen.getByTestId('number-card-won')).toHaveTextContent('성사2곳');
+    expect(screen.getByTestId('number-card-won')).not.toHaveTextContent('최근 365일');
   });
 
   it('기간이 없으면 전처럼 묻고 [이번 달]을 고르면 주소와 요청이 그 기간으로 바뀐다', async () => {

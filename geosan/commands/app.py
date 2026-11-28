@@ -70,6 +70,20 @@ def source_load(
     raise typer.Exit(code=run_source_load(source_id, files))
 
 
+@app.command("customer-load")
+def customer_load(
+    file: Path | None = typer.Argument(
+        None, help="기존 고객 CSV(칸: 회사명·공정·소재·산업·지역·인증·거래 시작)"
+    ),
+    clear: bool = typer.Option(False, "--clear", help="넣어 둔 기존 고객을 모두 지움"),
+    virtual: bool = typer.Option(False, "--virtual", help="가상 자료로 표시(시연용 예시 파일)"),
+) -> None:
+    """검증된 기존 고객 파일을 통째로 바꿔 넣습니다(#932 확장 기능, 설정으로 켤 때만 쓰임)."""
+    from geosan.commands.customer_load import run_customer_load
+
+    raise typer.Exit(code=run_customer_load(file, clear=clear, virtual=virtual))
+
+
 @app.command("supply-tier")
 def supply_tier(
     staff_key: str = typer.Option(..., "--by", help="설정에 등록된 기록 담당자 키"),

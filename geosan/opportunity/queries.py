@@ -157,7 +157,8 @@ def store_company_research(
     customer.highlights = highlights
     customer.researched_at = utcnow()
     customer.research_source = "AI"
-    if phone:
+    # #980: 담당자가 [고치기]로 적거나 지운 번호(MANUAL)는 조사가 덮지 않는다.
+    if phone and customer.main_phone_source != "MANUAL":
         if phone != customer.main_phone:
             customer.main_phone_confirmed_at = None
             customer.main_phone_confirmed_by = None
@@ -336,3 +337,14 @@ def supersede_children(session: Session, opp_id: str) -> None:
                 continue
             row.superseded_at = now
     session.flush()
+
+
+def registry_representative(row) -> dict:
+    """공장등록 조회 행의 대표자명을 회사 대표명으로 쓴다(#980, C1 자동 채우기 ③).
+
+    파일 행·웹 후보는 대표자명이 없어 빈 dict다.
+    """
+    name = getattr(row, "representative_name", None)
+    if not name:
+        return {}
+    return {"representative_name": name, "representative_name_source": "REGISTRY"}

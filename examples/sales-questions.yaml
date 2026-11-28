@@ -67,6 +67,12 @@ questions:
     text: 어느 산업인가요?
     coach: { fill: SUGGEST }
     choices: INDUSTRY
+  # #958(PM 결정 2026-11-26): 부품 소재. 하나만 고르고, 고르면 그 회사 확정 공정 모두에 같은 소재로 저장된다.
+  - id: CONFIRM_MATERIAL
+    step: REACHED
+    text: 부품 소재가 무엇인가요?
+    coach: { fill: SUGGEST, keyword: 부품 소재 }
+    choices: MATERIAL
   # ③ 수요 확인
   - id: SWITCH_INTENT
     step: DEMAND_CONFIRMED

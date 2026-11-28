@@ -10,7 +10,7 @@ import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { ApiError, postOpinion } from '../../api/client';
 import type { Meta, Opinion, OpinionRecord } from '../../api/types';
 import { errorTexts, listSimple, opinionArea, opinionLabels } from '../../labels/ko';
-import { colors, radius, typography } from '../../theme/tokens';
+import { colors, opinionNudge, radius, typography } from '../../theme/tokens';
 import { formatHourMinute } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 
@@ -33,6 +33,11 @@ export interface OpinionAreaProps {
   onSaved?: (record: OpinionRecord, meta: Meta) => void;
   /** "buttons"(기본, 상세)는 단추 셋, "select"(목록 카드, #798)는 고르기 칸 하나. */
   variant?: 'buttons' | 'select';
+  /**
+   * 고르기 칸(select)에서만 쓴다(#981). true인데 저장된 의견이 없으면 칸을 주황 테두리로 띄우고
+   * "의견을 골라 주세요"를 보인다. 목록 줄이 "관심에 담은 회사"일 때 true로 준다.
+   */
+  nudge?: boolean;
 }
 
 function previousText(previous: Record<string, unknown>): string {
@@ -46,6 +51,7 @@ export default function OpinionArea({
   record: initial,
   onSaved,
   variant = 'buttons',
+  nudge = false,
 }: OpinionAreaProps) {
   const selectMode = variant === 'select';
   const { staffKey, canRecord } = useFrame();
@@ -134,6 +140,8 @@ export default function OpinionArea({
 
   // 고르기 칸에 보일 값: 제외 이유를 적는 동안은 "제외", 아니면 저장된 의견.
   const selectValue = reasonOpen ? 'NOT_TARGET' : (record?.opinion ?? '');
+  // 관심에 담았는데 의견이 아직 없는 줄(#981). 제외 이유를 적는 중이거나 담당자를 안 골랐으면 알리지 않는다.
+  const needsOpinion = selectMode && nudge && !record?.opinion && !reasonOpen && canRecord;
 
   return (
     <div data-testid="opinion-area" style={{ display: 'grid', gap: 8 }}>
@@ -154,7 +162,20 @@ export default function OpinionArea({
               if (value) onPick(value);
             }}
             data-testid="opinion-select"
-            style={{ minHeight: 32, padding: '0 8px', borderRadius: radius.md, font: 'inherit' }}
+            // #972: 선택 칸 모서리 9 + 얇은 테두리(목록 조건 칸과 같은 모양).
+            style={{
+              minHeight: 36,
+              padding: '0 8px',
+              borderRadius: radius.control,
+              border: needsOpinion
+                ? `2px solid ${opinionNudge.border}`
+                : `1px solid ${colors.border}`,
+              background: needsOpinion ? opinionNudge.bg : colors.bgContainer,
+              color: colors.text,
+              font: 'inherit',
+            }}
+            data-nudge={needsOpinion ? 'true' : undefined}
+            aria-describedby={needsOpinion ? `opinion-nudge-${oppId}` : undefined}
           >
             <option value="" disabled>
               {listSimple.opinionSelectPlaceholder}
@@ -165,18 +186,32 @@ export default function OpinionArea({
               </option>
             ))}
           </select>
-          {!canRecord ? (
-            <Typography.Text data-testid="opinion-pick-staff-text" type="secondary">
-              {opinionArea.pickStaffFirst}
-            </Typography.Text>
-          ) : null}
           {record?.opinion === 'NOT_TARGET' && record.reason && !reasonOpen ? (
             <span style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}>
               {opinionArea.reasonLabel}: {record.reason}
             </span>
           ) : null}
         </span>
-      ) : showButtons ? (
+      ) : null}
+      {needsOpinion ? (
+        <span
+          id={`opinion-nudge-${oppId}`}
+          data-testid="opinion-nudge"
+          style={{ color: opinionNudge.fg, fontSize: typography.fontSizeSecondary }}
+        >
+          {opinionArea.nudge}
+        </span>
+      ) : null}
+      {/* #972: 좁은 표 줄 칸에서 고르기 칸 옆 단추를 밀어내지 않게, 안내는 고르기 칸 아래 작은 글로 둔다. */}
+      {selectMode && !canRecord ? (
+        <span
+          data-testid="opinion-pick-staff-text"
+          style={{ color: colors.textSecondary, fontSize: typography.fontSizeSecondary }}
+        >
+          {opinionArea.pickStaffFirst}
+        </span>
+      ) : null}
+      {selectMode ? null : showButtons ? (
         <Space wrap size={8} role="group" aria-label={opinionArea.groupLabel}>
           {BUTTONS.map(({ value, testId }) => {
             const pressed = record?.opinion === value;

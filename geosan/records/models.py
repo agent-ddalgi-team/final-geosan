@@ -167,3 +167,94 @@ class AnalysisFeedback(CommonColumns, Base):
     response: Mapped[Any] = mapped_column(JSON, nullable=False)
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
     transfer_log_id: Mapped[str | None] = mapped_column(String(40))
+
+
+class PreferenceApproval(CommonColumns, Base):
+    """담당자 선호 승인(#943, 계약 C6, PM 결정 2026-11-26 되먹임 ③).
+
+    승인·끄기마다 행을 지우지 않는다.
+
+    켜진 승인 = revoked_at 없음 + expires_at이 지금보다 뒤. 점수·분류는 바꾸지 않고 "근거 있음"
+    묶음 안 순서만 올린다. 외부 AI·엑셀·질문 목록으로 내보내지 않는다.
+    """
+
+    __tablename__ = "rec_preference"
+
+    pref_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    process_code: Mapped[str | None] = mapped_column(String(32))
+    industry: Mapped[str | None] = mapped_column(String(80))
+    distance_km: Mapped[float | None] = mapped_column(Numeric(10, 3))
+    approved_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    # 승인 때 숫자(고른 회사 수·비율·성사율). 나중에 왜 승인했는지 돌아볼 때 쓴다.
+    basis: Mapped[Any] = mapped_column(JSON, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    revoked_by: Mapped[str | None] = mapped_column(String(64))
+
+
+class ContactPerson(CommonColumns, Base):
+    """상대 회사 담당자의 개인 연락처(#980, 계약 C6, PM 결정 2026-11-28).
+
+    거산 담당자가 상세 [상대 담당자 연락처]에 직접 적은 것만 둔다(자동 수집 없음). 화면에는
+    가려서 보이고, 기록 담당자가 확인 문구에 체크해 열 때만 값을 준다(열람은 ContactReveal).
+    지우면 행은 남기되 이름·부서·번호를 비운다. 외부 AI·검색·엑셀·보고서·질문 목록·MCP로
+    내보내지 않는다(C4).
+    """
+
+    __tablename__ = "rec_contact_person"
+
+    contact_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False, index=True
+    )
+    person_name: Mapped[str | None] = mapped_column(String(20))
+    role: Mapped[str | None] = mapped_column(String(30))
+    phone: Mapped[str | None] = mapped_column(String(20))
+    # 보관 기한(한국 날짜). 이 날짜 − personalContacts.noticeDays부터 지울지 묻는다.
+    retain_until: Mapped[date] = mapped_column(Date, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    deleted_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    deleted_by: Mapped[str | None] = mapped_column(String(64))
+    # STAFF = 담당자가 지움, RETENTION = 보관 기한 알림을 보고 지움.
+    deleted_reason: Mapped[str | None] = mapped_column(String(16))
+
+
+class ContactReveal(CommonColumns, Base):
+    """가린 연락처·메모 글을 연 기록(#980). 덧붙이기만 한다. 연 값은 남기지 않는다."""
+
+    __tablename__ = "rec_contact_reveal"
+
+    reveal_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    opp_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("opp_opportunity.opp_id"), nullable=False, index=True
+    )
+    contact_id: Mapped[str | None] = mapped_column(String(40))
+    note_id: Mapped[str | None] = mapped_column(String(40))
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+# 달력 날짜 메모 한 건의 글자 수 상한(계약 C6 rec_day_memo "200자까지", PM 결정 2026-11-28 #984).
+DAY_MEMO_TEXT_MAX_LENGTH = 200
+
+
+class DayMemo(CommonColumns, Base):
+    """달력 날짜 메모(#984, 계약 C6, PM 결정 2026-11-28 "팀이 함께 보도록").
+
+    어느 날짜든 짧은 메모를 남기고 팀이 함께 본다. 회사·기회와 연결하지 않는다.
+    지우면 행을 지우지 않고 deleted_at·deleted_by를 채워 숨긴다.
+
+    내부 메모다. 외부 AI·엑셀·질문 목록·사례 파일로 내보내지 않는다.
+    """
+
+    __tablename__ = "rec_day_memo"
+
+    memo_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    text: Mapped[str] = mapped_column(String(DAY_MEMO_TEXT_MAX_LENGTH), nullable=False)
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    deleted_by: Mapped[str | None] = mapped_column(String(64))

@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from sqlalchemy import func, select
 
 from geosan.api.deps import SessionDep, current_account, runtime_for
-from geosan.api.process_catalog import load_process_catalog
+from geosan.api.process_catalog import load_process_catalog, material_options
 from geosan.api.schemas import ConfigUi, ConfigUiEnvelope, HandoffTeamView, Meta
 from geosan.capability.models import Process
 from geosan.config.models import AppSetting
@@ -67,6 +67,11 @@ def config_ui(session: SessionDep):
                 "region_groups": [group.model_dump() for group in settings.ingestion.region_groups],
                 "data_basis": data_basis(session, settings.active_dataset_kind),
             },
+            # #958: 상세 "한눈에 › 소재" [고치기]·꼬리 질문 소재 보기의 선택지.
+            material_options=[
+                {"code": code, "name": name}
+                for code, name in material_options(session, settings.active_dataset_kind).items()
+            ],
             current_staff=_current_staff(session),
             operations_staff_keys=settings.operations_staff_keys(),
             # #853: 받을 사람이 있는 역할 묶음만.

@@ -349,6 +349,8 @@ export interface ConfigUi {
   research?: ResearchConfig;
   records?: RecordsConfig;
   ingestOptions?: IngestOptionsConfig;
+  /** #958 거산 처리 소재(역량 파일 materialCodes를 공정 순서로 합침). 상세 소재 [고치기]의 보기. 옛 응답이면 없음. */
+  materialOptions?: { code: string; name: string }[];
   export?: ExportConfig;
   staff: StaffEntry[];
   brand: Brand;
@@ -440,8 +442,9 @@ export interface SalesQuestion {
   /**
    * 보기를 회사 값에서 가져오는 질문(#652). PROCESS = 거산 공정 목록, INDUSTRY = 설정 산업군.
    * 여러 개를 고르고, answers는 서버가 그 목록으로 채워 준다. 없으면 보기 하나만 고르는 질문이다.
+   * MATERIAL(#958) = 거산 처리 소재 목록이고 하나만 고른다.
    */
-  choices?: 'PROCESS' | 'INDUSTRY' | null;
+  choices?: 'PROCESS' | 'INDUSTRY' | 'MATERIAL' | null;
   answers: SalesAnswerOption[];
   /** 영업 코치가 이 질문을 다루는 방식·필수 여부(#742, 질문 파일 coach 칸). 없으면 null. */
   coach?: SalesCoachRule | null;
@@ -564,11 +567,31 @@ export interface OpportunityCard {
   relationStatus?: RelationStatus;
   /** 세부 단계(#607). 카드 단계 꼬리표 옆에 "접촉 · 수요 확인"처럼 붙는다. 없으면 큰 단계만. */
   salesStep?: SalesStep | null;
+  /**
+   * 방법별 접촉 시도 수(#976, PM 결정 2026-11-28). 상세 records.contactCount와 같은 값이고 취소한 기록은 세지 않는다.
+   * 없으면(옛 서버) 관심 기업 줄이 접촉 요약을 만들지 않는다.
+   */
+  contactByMethod?: { call: number; email: number; visit: number } | null;
+  /** 가장 늦은 접촉 날짜(#976). 접촉이 없으면 null. */
+  lastContactAt?: string | null;
   /** 세 묶음(#610). 없으면(옛 응답) 묶음 제목·꼬리표를 보이지 않는다. */
   bucket?: ContactBucket;
   bucketBasis?: BucketBasis;
   /** 영업 결과 조정(#610). null이면 조정 이유 줄을 보이지 않는다. */
   rankAdjust?: RankAdjust | null;
+  /** #943 관리자가 승인한 담당자 선호에 맞아 한 단계 올린 근거. 없으면(옛 응답·안 맞음) 줄 없음. */
+  preferenceAdjust?: {
+    prefId: string;
+    kind: 'PROCESS_INDUSTRY' | 'DISTANCE';
+    processCode: string | null;
+    processName: string | null;
+    industry: string | null;
+    distanceKm: number | null;
+    approvedAt: string;
+    expiresAt: string;
+  } | null;
+  /** #943 안전장치: 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리. */
+  exploreSlot?: boolean;
   oppId: string;
   rank: number;
   title: string;
@@ -618,10 +641,14 @@ export interface DetailHeader {
   distanceKm?: number | null;
   /** 회사 대표번호(내부 메모장용, 2026-11-03 PM 결정)와 출처·담당자 확인(#209). */
   mainPhone?: string | null;
-  mainPhoneSource?: 'HOMEPAGE' | 'CSV' | null;
+  /** #980: FACTORYON = 팩토리온 공장조회 전화번호, MANUAL = 담당자가 [고치기]로 적음(또는 지움). */
+  mainPhoneSource?: 'HOMEPAGE' | 'CSV' | 'FACTORYON' | 'MANUAL' | null;
   mainPhoneSourceUrl?: string | null;
   mainPhoneConfirmedAt?: string | null;
   mainPhoneConfirmedBy?: string | null;
+  /** #980: 회사 대표명과 출처(REGISTRY = 공장등록 조회, MANUAL = 담당자 입력). 밖으로 내보내지 않는다. */
+  representativeName?: string | null;
+  representativeNameSource?: 'REGISTRY' | 'MANUAL' | null;
   /** 기업 요약: 한 줄 소개, 특징(최대 3개), 조사 시각, 출처(AI 또는 사례 파일), 오래됨. */
   summaryLine?: string | null;
   highlights?: string[];
@@ -867,6 +894,38 @@ export interface ReviewItemNote {
   at: string;
 }
 
+/** #942 지난 평가와 점수·상태가 다른 항목 한 줄. */
+export interface ScoreChangeItem {
+  itemCode: string;
+  label: string;
+  before: number | null;
+  after: number | null;
+  /** 지금 평가의 판정 요지. 예 "통화에서 확인(11/20) · 견적 요청" */
+  factJudged: string | null;
+}
+
+/** #942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 오지 않는다. */
+export interface ScoreChangeRecord {
+  at: string;
+  kind: 'CHANGE' | 'RELATION_CONFIRMED' | 'CONTACT_ATTEMPT';
+  method: string | null;
+  attemptedAt: string | null;
+  summary: string;
+}
+
+/** #942 지난 평가와 달라진 것. */
+export interface ScoreChange {
+  changedAt: string;
+  sinceEvalId: string;
+  scoreBefore: number;
+  scoreAfter: number;
+  classificationBefore: string;
+  classificationAfter: string;
+  ruleVersionChanged: boolean;
+  items: ScoreChangeItem[];
+  records: ScoreChangeRecord[];
+}
+
 export interface OpportunityDetail {
   header: DetailHeader;
   stage?: Record<string, unknown> | null;
@@ -884,6 +943,8 @@ export interface OpportunityDetail {
   evalId: string | null;
   previousEvalId: string | null;
   reevaluated: boolean;
+  /** #942 지난 평가와 달라진 것(되먹임 ①). 앞 평가가 없거나 모두 같으면 null. 옛 응답에는 없다. */
+  scoreChange?: ScoreChange | null;
   /**
    * #803(PM 결정 2026-11-16) 상세 "한눈에" 작은 지도. center = 설정 거산 좌표, company = 저장된 공공좌표.
    * 좌표가 없거나 가상 사례면 null. 옛 응답에는 없다.
@@ -1140,6 +1201,40 @@ export interface ActivityItem {
   /** #849: 메모 줄(recordKind NOTE)에만 오는 저장 종류와 앞머리 없는 글. 잘못 입력 행의 text는 null. */
   noteKind?: string | null;
   text?: string | null;
+  /** #980: summary·text의 전화·이메일을 가렸으면 true. 원문은 POST /notes/{noteId}/reveal로만 받는다. */
+  textMasked?: boolean;
+}
+
+// ---------- #980 상대 담당자 연락처(가린 값) ----------
+export interface ContactPersonView {
+  contactId: string;
+  /** 첫 글자 + ○. 예: "김○○". */
+  personNameMasked: string | null;
+  /** 부서·직함(가리지 않음). */
+  role: string | null;
+  /** 앞 번호만 남기고 *. 예: "010-****-****". */
+  phoneMasked: string;
+  createdBy: string;
+  createdAt: string;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
+  /** 보관 기한(YYYY-MM-DD). */
+  retainUntil: string;
+  /** 지울지 물을 때인가(기한 − personalContacts.noticeDays가 지남). */
+  retentionDue: boolean;
+}
+
+export interface ContactPersonRevealed {
+  contactId: string;
+  personName: string | null;
+  role: string | null;
+  phone: string;
+}
+
+export interface ContactPersonRequest {
+  personName: string | null;
+  role: string | null;
+  phone: string;
 }
 
 // ---------- POST /opportunities/{oppId}/records/{recordId}/cancel (기록 취소 [잘못 입력], 2026-11-12) ----------
@@ -1211,3 +1306,46 @@ export type ConfigUiEnvelope = Envelope<ConfigUi>;
 export type OpportunityListEnvelope = Envelope<OpportunityCard[]>;
 export type OpportunityDetailEnvelope = Envelope<OpportunityDetail>;
 export type OpinionEnvelope = Envelope<OpinionResponse>;
+
+/**
+ * #932 신규 거래처 찾기 "기존 고객과 닮은 조건"(C1 `GET /existing-customers/suggestions`).
+ * 확장 기능(설정 existingCustomers.enabled, 기본 꺼짐). 꺼져 있으면 enabled false, 목록은 모두 빈 값.
+ * 프로그램이 기존 고객 수를 센 것이라 AI·외부 전송이 없다. 점수·순위에는 쓰지 않는다.
+ */
+export interface CustomerSuggestions {
+  enabled: boolean;
+  total: number;
+  processes: { code: string; label: string; count: number }[];
+  industries: { name: string; count: number }[];
+  regions: { name: string; count: number }[];
+}
+
+/** #948 이름으로 회사 찾기(계약 C1 `GET /companies/lookup`). 저장된 목록·공장 자료만 읽는다(0원). */
+export interface CompanyLookup {
+  existing: { oppId: string; companyName: string; address: string | null; bookmarked: boolean }[];
+  factories: {
+    rowId: string;
+    companyName: string;
+    address: string;
+    region: string;
+    product: string | null;
+    industryName: string | null;
+    /** 이름·주소가 같은 회사가 이미 목록에 있으면 그 기회 ID. */
+    oppId: string | null;
+  }[];
+  truncated: boolean;
+}
+
+/** #948 회사 넣기 요청(계약 C1 `POST /companies`). rowId 또는 companyName 중 하나. */
+export interface CompanyAddRequest {
+  rowId?: string;
+  companyName?: string;
+  address?: string;
+  homepageUrl?: string;
+}
+
+export interface CompanyAdded {
+  oppId: string;
+  created: boolean;
+  researchQueued: boolean;
+}

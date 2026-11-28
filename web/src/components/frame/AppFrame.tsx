@@ -1,4 +1,5 @@
-// 공통 틀(mockups 2장): 건너뛰기 링크 → header(로고·브랜드명·담당자) → 알림 띠 → 왼쪽 메뉴(#762) + main(h1 + 본문).
+// 공통 틀(mockups 2장 → #972 시안): 건너뛰기 링크 → 왼쪽 메뉴(#762, 화면 맨 위부터. 로고·브랜드명이 여기 있다) +
+// 오른쪽 칸[header(글자 크기·담당자) → 알림 띠 → main(h1 + 본문) + 영업 코치 칸].
 // 설정(/config/ui)을 한 번 읽어 담당자 목록·brand로 화면 기본값을 덮어쓰고, 띠에 보일 값은 페이지가 setBannerMeta로 알린다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -8,9 +9,10 @@ import { logout } from '../../api/session';
 import type { ConfigUi, Meta } from '../../api/types';
 import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
-import { colors, spacing, typography } from '../../theme/tokens';
+import { accent, colors, spacing, typography } from '../../theme/tokens';
 import AssistantAsk from '../assistant/AssistantAsk';
 import CoachDock from './CoachDock';
+import FontScaleControl from './FontScaleControl';
 import type { DockScreen } from './CoachDock';
 import SideMenu from './SideMenu';
 import StatusBanner from './StatusBanner';
@@ -23,6 +25,8 @@ import {
 } from './FrameContext';
 
 const NARROW_DEVICE_WIDTH = 1024;
+/** 위쪽 줄(글자 크기·담당자) 높이. 로고가 왼쪽 메뉴로 옮겨 가 조금 낮췄다(#972). */
+const HEADER_HEIGHT = 56;
 
 /** 기기 폭(screen.width) 기준. 브라우저 확대로 줄어든 경우는 띄우지 않는다. 0은 "알 수 없음"으로 본다. */
 function isNarrowDevice(): boolean {
@@ -104,8 +108,9 @@ export default function AppFrame({
       setBannerMeta: setPageMeta,
       setPageTitle,
       dockSlot: dock === 'page' ? dockSlot : null,
+      narrowDevice,
     }),
-    [config, staffKey, setStaffKey, currentStaff, dock, dockSlot],
+    [config, staffKey, setStaffKey, currentStaff, dock, dockSlot, narrowDevice],
   );
   const dockBody =
     dock === 'assistant' ? (
@@ -117,13 +122,13 @@ export default function AppFrame({
   return (
     <FrameContext.Provider value={value}>
       {/* Ant Design 기본 링크색·보조 글자색은 대비 4.5:1에 못 미쳐(axe), 토큰 값으로 맞춘다.
-          #898: 링크는 먹색 + 밑줄(참고 그림 톤). 서버 설정 brand.colorPrimary는 링크색으로 쓰지 않는다. */}
+          #972: 링크는 강조 글자색 + 밑줄(색만으로 구분하지 않게). 서버 설정 brand.colorPrimary는 링크색으로 쓰지 않는다. */}
       <ConfigProvider
         theme={{
           token: {
-            colorLink: colors.text,
-            colorLinkHover: colors.textSecondary,
-            colorLinkActive: colors.text,
+            colorLink: accent.text,
+            colorLinkHover: accent.textHover,
+            colorLinkActive: accent.textHover,
             linkDecoration: 'underline',
             colorTextDescription: colors.textSecondary,
           },
@@ -132,120 +137,114 @@ export default function AppFrame({
         <a href="#main" className="skip-link" data-testid="skip-link">
           {frame.skipToContent}
         </a>
-        <header
-          data-testid="app-header"
-          style={{
-            background: colors.bgContainer,
-            borderBottom: `1px solid ${colors.borderSecondary}`,
-            minHeight: spacing.headerHeight,
-            padding: '0 24px',
-          }}
-        >
-          <div
-            style={{
-              maxWidth: spacing.contentMaxWidth,
-              margin: '0 auto',
-              minHeight: spacing.headerHeight,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 24,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {brand.logoUrl ? (
-                <img
-                  src={brand.logoUrl}
-                  alt=""
-                  height={40}
-                  data-testid="brand-logo"
-                  style={{ display: 'block' }}
-                />
-              ) : null}
-              <span
-                data-testid="brand-name"
-                style={{ fontWeight: 600, fontSize: typography.fontSize }}
-              >
-                {brand.brandName}
-              </span>
-            </div>
-            <span style={{ flex: 1 }} />
-            {currentStaff ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span data-testid="current-staff">
-                  {frame.currentStaff(currentStaff.displayName ?? currentStaff.key)}
-                </span>
-                <Button
-                  size="small"
-                  data-testid="logout-button"
-                  onClick={() => {
-                    void logout().finally(() => window.location.reload());
-                  }}
-                >
-                  {frame.logout}
-                </Button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label htmlFor="staff-select">{frame.staffSelectLabel}</label>
-                <Select
-                  id="staff-select"
-                  data-testid="staff-select"
-                  style={{ minWidth: 160 }}
-                  // 열린 목록은 가장 긴 이름에 맞춰 넓힌다(예: "보기 전용(대표·상무)", #910).
-                  popupMatchSelectWidth={false}
-                  placeholder={frame.staffPlaceholder}
-                  value={staffKey ?? undefined}
-                  onChange={(key: string) => setStaffKey(key)}
-                  options={staff.map((entry) => ({ value: entry.key, label: entry.displayName }))}
-                  disabled={staff.length === 0}
-                />
-              </div>
-            )}
-          </div>
-          {configFailed ? (
-            <Typography.Text type="danger" data-testid="staff-load-failed">
-              {frame.staffLoadFailed}
-            </Typography.Text>
-          ) : null}
-        </header>
-        <StatusBanner
-          hasVirtualData={bannerMeta?.hasVirtualData}
-          datasetKind={bannerMeta?.datasetKind ?? config?.activeDatasetKind}
-          demoLabel={brand.demoLabel}
-          updatedAt={bannerMeta?.updatedAt}
-          reevaluated={pageMeta?.reevaluated}
-          narrowScreen={narrowDevice}
-        />
         <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <SideMenu narrowDevice={narrowDevice} />
-          <main
-            id="main"
-            tabIndex={-1}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              maxWidth: spacing.contentMaxWidth,
-              margin: '0 auto',
-              padding: '24px',
-            }}
-          >
-            {!ownHeading ? (
-              <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
-                {pageTitle ?? title}
-              </Typography.Title>
-            ) : null}
-            {children}
-            {dockBody && narrowDevice ? (
-              <CoachDock narrowDevice screen={dockScreen}>
-                {dockBody}
-              </CoachDock>
-            ) : null}
-          </main>
-          {dockBody && !narrowDevice ? (
-            <CoachDock key={dockScreen ?? 'DETAIL'} narrowDevice={false} screen={dockScreen}>
-              {dockBody}
-            </CoachDock>
-          ) : null}
+          {/* #972: 왼쪽 메뉴가 화면 맨 위부터 내려오고, 로고·브랜드명은 메뉴 맨 위에 한 번만 보인다. */}
+          <SideMenu narrowDevice={narrowDevice} brand={brand} />
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <header
+              data-testid="app-header"
+              style={{
+                background: colors.bgContainer,
+                borderBottom: `1px solid ${colors.borderSecondary}`,
+                minHeight: HEADER_HEIGHT,
+                padding: '0 24px',
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: spacing.contentMaxWidth,
+                  margin: '0 auto',
+                  minHeight: HEADER_HEIGHT,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: '8px 24px',
+                }}
+              >
+                {/* #926 글자 크기 고르기: 담당자 칸 왼쪽. */}
+                <FontScaleControl />
+                {currentStaff ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span data-testid="current-staff">
+                      {frame.currentStaff(currentStaff.displayName ?? currentStaff.key)}
+                    </span>
+                    <Button
+                      size="small"
+                      data-testid="logout-button"
+                      onClick={() => {
+                        void logout().finally(() => window.location.reload());
+                      }}
+                    >
+                      {frame.logout}
+                    </Button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label htmlFor="staff-select">{frame.staffSelectLabel}</label>
+                    <Select
+                      id="staff-select"
+                      data-testid="staff-select"
+                      style={{ minWidth: 160 }}
+                      // 열린 목록은 가장 긴 이름에 맞춰 넓힌다(예: "보기 전용(대표·상무)", #910).
+                      popupMatchSelectWidth={false}
+                      placeholder={frame.staffPlaceholder}
+                      value={staffKey ?? undefined}
+                      onChange={(key: string) => setStaffKey(key)}
+                      options={staff.map((entry) => ({
+                        value: entry.key,
+                        label: entry.displayName,
+                      }))}
+                      disabled={staff.length === 0}
+                    />
+                  </div>
+                )}
+              </div>
+              {configFailed ? (
+                <Typography.Text type="danger" data-testid="staff-load-failed">
+                  {frame.staffLoadFailed}
+                </Typography.Text>
+              ) : null}
+            </header>
+            <StatusBanner
+              hasVirtualData={bannerMeta?.hasVirtualData}
+              datasetKind={bannerMeta?.datasetKind ?? config?.activeDatasetKind}
+              demoLabel={brand.demoLabel}
+              updatedAt={bannerMeta?.updatedAt}
+              reevaluated={pageMeta?.reevaluated}
+              narrowScreen={narrowDevice}
+            />
+            <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
+              <main
+                id="main"
+                tabIndex={-1}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  maxWidth: spacing.contentMaxWidth,
+                  margin: '0 auto',
+                  padding: '24px',
+                }}
+              >
+                {!ownHeading ? (
+                  <Typography.Title level={1} style={{ fontSize: typography.fontSizeH1 }}>
+                    {pageTitle ?? title}
+                  </Typography.Title>
+                ) : null}
+                {children}
+                {dockBody && narrowDevice ? (
+                  <CoachDock narrowDevice screen={dockScreen}>
+                    {dockBody}
+                  </CoachDock>
+                ) : null}
+              </main>
+              {dockBody && !narrowDevice ? (
+                <CoachDock key={dockScreen ?? 'DETAIL'} narrowDevice={false} screen={dockScreen}>
+                  {dockBody}
+                </CoachDock>
+              ) : null}
+            </div>
+          </div>
         </div>
       </ConfigProvider>
     </FrameContext.Provider>

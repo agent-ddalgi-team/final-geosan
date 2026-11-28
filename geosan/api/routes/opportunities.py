@@ -23,6 +23,12 @@ from geosan.api.ingest_views import (
     recent_order,
     research_state,
 )
+from geosan.api.preferences import (
+    active_approvals,
+    combo_of,
+    company_traits,
+    preference_settings,
+)
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.records import (
     bookmark_view,
@@ -42,6 +48,7 @@ from geosan.api.schemas import (
     Blocker,
     BucketCounts,
     CallPrepNote,
+    CardContactByMethod,
     CardOutcome,
     CardRecords,
     DetailHeader,
@@ -58,6 +65,7 @@ from geosan.api.schemas import (
     OpportunityDetailEnvelope,
     OpportunityListEnvelope,
     OutcomeStatus,
+    PreferenceAdjust,
     ProcessCount,
     ProcessLinkView,
     Question,
@@ -70,6 +78,7 @@ from geosan.api.schemas import (
     Scores,
     ScoreState,
 )
+from geosan.api.score_change import score_change
 from geosan.capability.queries import get_process
 from geosan.config.app_settings import ResearchSettings
 from geosan.config.errors import AppError, InputError, NotFoundError, RunFailedError
@@ -84,6 +93,7 @@ from geosan.dashboard.contact_order import (
     closed_results,
     contact_order_key,
 )
+from geosan.dashboard.preference import first_match, keep_explore_slot, preferred_level
 from geosan.dashboard.queries import bookmarked_opp_ids
 from geosan.dashboard.sales_analysis import (
     LINK_CONFIRMED,
@@ -104,6 +114,7 @@ from geosan.evaluation.models import (
     ReadinessCheck,
     RequirementCheck,
 )
+from geosan.evidence.contacts import mask_text
 from geosan.evidence.homepage import unofficial_page_kind
 from geosan.evidence.models import Evidence
 from geosan.evidence.queries import list_evidence
@@ -263,6 +274,8 @@ def _header(context: DetailContext) -> dict:
             main_phone_source_url=customer.main_phone_source_url,
             main_phone_confirmed_at=customer.main_phone_confirmed_at,
             main_phone_confirmed_by=customer.main_phone_confirmed_by,
+            representative_name=customer.representative_name,
+            representative_name_source=customer.representative_name_source,
             summary_line=customer.summary_line,
             highlights=customer.highlights or [],
             researched_at=customer.researched_at,
@@ -517,6 +530,21 @@ def _scores(context: DetailContext) -> dict:
     }
 
 
+def _card_outcome(outcome) -> CardOutcome | None:
+    """목록 한 줄의 최신 영업 기록: 큰 단계와 다음 일정(#976). 기록이 없으면 None.
+
+    일정 할 일 한 줄은 일정 날짜가 있을 때만 싣는다(영업 홈 진행 중인 회사 표와 같은 규칙).
+    """
+    if outcome is None:
+        return None
+    schedule = outcome.next_schedule_at
+    return CardOutcome(
+        status=outcome.status,
+        next_schedule_at=schedule,
+        next_schedule_note=(outcome.next_schedule_note or None) if schedule else None,
+    )
+
+
 def _sales_step_view(session, opp_id: str, status: str | None) -> SalesStepView:
     state = sales_step_state(session, opp_id, status=status)
     return SalesStepView(
@@ -560,7 +588,9 @@ def _advice_lines(session: Session, opp_id: str) -> list[AdviceLine]:
         .order_by(Note.version.desc())
     )
     return [
-        AdviceLine(note_id=row.note_id, text=row.text, at=row.created_at, by=row.staff_key)
+        AdviceLine(
+            note_id=row.note_id, text=mask_text(row.text), at=row.created_at, by=row.staff_key
+        )
         for row in rows
     ]
 
@@ -579,7 +609,7 @@ def _call_prep_note(session: Session, opp_id: str) -> CallPrepNote | None:
     ).first()
     if row is None:
         return None
-    lines = [line.strip() for line in row.text.split("\n") if line.strip()]
+    lines = [mask_text(line.strip()) for line in row.text.split("\n") if line.strip()]
     return CallPrepNote(note_id=row.note_id, lines=lines, at=row.created_at, by=row.staff_key)
 
 
@@ -603,7 +633,7 @@ def handoff_notes(session: Session, opp_id: str) -> list[HandoffNote]:
     return [
         HandoffNote(
             note_id=row.note_id,
-            text=row.text,
+            text=mask_text(row.text),
             from_=row.staff_key,
             to=row.to_staff_key or "",
             to_team=row.to_team,
@@ -654,6 +684,7 @@ def opportunity_detail(opp_id: Annotated[str, Path(alias="oppId")], session: Ses
             and run.previous_eval_id is not None
             and (opinion is None or opinion.eval_id != run.eval_id)
         ),
+        score_change=score_change(session, run),
     )
     for section in detail_sections:
         data.update(section(context))
@@ -697,6 +728,8 @@ class _Placement:
     basis: str
     adjust: RankAdjust | None
     order_key: tuple
+    # #943 승인한 담당자 선호에 맞았으면 그 승인 카드 값. 근거 있음 묶음에서만.
+    preference: PreferenceAdjust | None = None
 
 
 def _contact_placements(
@@ -769,6 +802,28 @@ def _contact_placements(
         tz=KST,
     )
     lost_reason_order = [code.value for code in LostReasonCode]
+    # #943 되먹임 ③: 관리자가 승인한 선호(켜진 것만). 설정이 꺼져 있으면 아무것도 바꾸지 않는다.
+    preference = preference_settings(session)
+    approvals = active_approvals(session, utcnow()) if preference else []
+    approval_combos = [(row.pref_id, combo_of(row)) for row in approvals]
+    approval_views = {}
+    traits = {}
+    if approvals:
+        names = dict(processes)
+        approval_views = {
+            row.pref_id: PreferenceAdjust(
+                pref_id=row.pref_id,
+                kind=row.kind,
+                process_code=row.process_code,
+                process_name=names.get(row.process_code) if row.process_code else None,
+                industry=row.industry,
+                distance_km=float(row.distance_km) if row.distance_km is not None else None,
+                approved_at=row.approved_at,
+                expires_at=row.expires_at,
+            )
+            for row in approvals
+        }
+        traits = company_traits(session, {row[2].opp_id for row in rows})
     placements = {}
     for position, (_original, current, opportunity, customer) in enumerate(rows):
         state = CompanyState(
@@ -798,15 +853,26 @@ def _contact_placements(
             else None
         )
         timing = current.timing_requirements
+        level = found.level if found else 0
+        matched = (
+            first_match(traits[opportunity.opp_id], approval_combos)
+            if bucket == EVIDENCE_READY and opportunity.opp_id in traits
+            else None
+        )
+        if matched is not None:
+            level = preferred_level(
+                level, matched=True, step=preference.step, max_level=preference.max_level
+            )
         placements[opportunity.opp_id] = _Placement(
             bucket=bucket,
             basis=basis,
             adjust=RankAdjust.model_validate(found, from_attributes=True) if found else None,
+            preference=approval_views.get(matched) if matched else None,
             order_key=contact_order_key(
                 bucket=bucket,
                 state=state,
                 null_fit_level_as=settings.null_fit_level_as,
-                level=found.level if found else 0,
+                level=level,
                 valid_until=current.valid_until,
                 timing_met_count=(
                     sum(bool(value) for value in timing.values()) if isinstance(timing, dict) else 0
@@ -1095,8 +1161,20 @@ def list_opportunities(
     )
     bucket_counts = Counter(placements[row[2].opp_id].bucket for row in rows)
     bucket_ranks: dict[str, int] = {}
+    explore_opp_id = None
     if sort == "contact":
         rows.sort(key=lambda row: placements[row[2].opp_id].order_key)
+        preference = preference_settings(session)
+        if preference is not None:
+            # #943 안전장치③: 근거 있음 위쪽 자리가 모두 선호 회사면 선호 밖 한 곳을 남긴다.
+            by_id = {row[2].opp_id: row for row in rows}
+            order, explore_opp_id = keep_explore_slot(
+                [row[2].opp_id for row in rows],
+                ready={key for key, value in placements.items() if value.bucket == EVIDENCE_READY},
+                preferred={key for key, value in placements.items() if value.preference},
+                top_n=preference.explore_top_n,
+            )
+            rows = [by_id[opp_id] for opp_id in order]
         # 카드 번호는 묶음 안 순서다(묶음마다 1부터).
         seen: Counter[str] = Counter()
         for row in rows:
@@ -1124,6 +1202,8 @@ def list_opportunities(
         visible_rows, start=start + 1
     ):
         outcome = latest_outcome(session, opportunity.opp_id)
+        # #976: 관심 기업 줄의 접촉 요약. 상세와 같은 함수로 세어 값이 늘 같다.
+        contacts = contact_counts(session, opportunity.opp_id)
         linked = codes_by_opportunity.get(opportunity.opp_id, set())
         confirmed = confirmed_by_opportunity.get(opportunity.opp_id, set())
         process_codes = [row.code for row in processes if row.code in linked]
@@ -1147,7 +1227,11 @@ def list_opportunities(
                 relation_status=customer.relation_status,
                 region=_address_region(customer.address),
                 industries=customer.industries or [],
-                contact_count=contact_counts(session, opportunity.opp_id).total,
+                contact_count=contacts.total,
+                contact_by_method=CardContactByMethod(
+                    call=contacts.call, email=contacts.email, visit=contacts.visit
+                ),
+                last_contact_at=last_contact_at(session, opportunity.opp_id),
                 sales_step=sales_step_state(
                     session, opportunity.opp_id, status=outcome.status if outcome else None
                 ).code,
@@ -1161,6 +1245,8 @@ def list_opportunities(
                 bucket=placements[opportunity.opp_id].bucket,
                 bucket_basis=placements[opportunity.opp_id].basis,
                 rank_adjust=placements[opportunity.opp_id].adjust,
+                preference_adjust=placements[opportunity.opp_id].preference,
+                explore_slot=opportunity.opp_id == explore_opp_id,
                 rank=bucket_ranks[opportunity.opp_id]
                 if sort == "contact"
                 else position
@@ -1188,7 +1274,7 @@ def list_opportunities(
                 records=CardRecords(
                     opinion=opinion_view(latest_opinion(session, opportunity.opp_id)),
                     bookmark=bookmark_view(latest_bookmark(session, opportunity.opp_id)),
-                    outcome=CardOutcome(status=outcome.status) if outcome is not None else None,
+                    outcome=_card_outcome(outcome),
                 ),
                 stage=None,
                 is_virtual=current.is_virtual,

@@ -10,7 +10,13 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, Input } from 'antd';
-import { ApiError, getActivity, getSalesQuestions, postRecordCancel } from '../../api/client';
+import {
+  ApiError,
+  getActivity,
+  getSalesQuestions,
+  postRecordCancel,
+  revealNote,
+} from '../../api/client';
 import type { ActivityItem } from '../../api/types';
 import {
   activityKindLabels,
@@ -24,9 +30,11 @@ import {
   salesQuestionTexts,
   timelineArea,
   timelineLayers,
+  revealTexts,
 } from '../../labels/ko';
 import { colors, detailTheme, radius, typography } from '../../theme/tokens';
 import StatusTag from '../common/StatusTag';
+import { choiceChipStyle } from './ChoiceChips';
 import { activityGroupTone, groupOf } from './activityGroups';
 import {
   TIMELINE_LAYERS,
@@ -44,6 +52,7 @@ import type { FlowChange, TimelineLayer } from './activityLayers';
 import { formatMonthDay, formatMonthDayTime, todayKst } from '../../utils/time';
 import { useFrame } from '../frame/FrameContext';
 import { contactQuestionsOf } from './SalesQuestions';
+import RevealConfirm from '../detail/RevealConfirm';
 
 export interface ActivityTimelineProps {
   oppId: string;
@@ -154,19 +163,8 @@ export function sortRecentFirst(items: ActivityItem[]): ActivityItem[] {
     .map((entry) => entry.item);
 }
 
-const groupButtonStyle = (selected: boolean) =>
-  ({
-    minHeight: 32,
-    padding: '0 12px',
-    borderRadius: radius.md,
-    border: `1px solid ${selected ? colors.text : colors.border}`,
-    background: selected ? colors.text : colors.bgContainer,
-    color: selected ? colors.bgContainer : colors.text,
-    font: 'inherit',
-    fontSize: typography.fontSizeSecondary,
-    fontWeight: selected ? 700 : 400,
-    cursor: 'pointer',
-  }) as const;
+// #972: 거르기 단추는 기록 칸의 선택 단추와 같은 모양(고르면 강조 연한 바탕 + 강조 테두리 + 굵은 강조 글자).
+const groupButtonStyle = (selected: boolean) => choiceChipStyle(selected);
 
 export default function ActivityTimeline({
   oppId,
@@ -182,6 +180,9 @@ export default function ActivityTimeline({
   const [cancelError, setCancelError] = useState<{ key: string; text: string } | null>(null);
   /** #849 ··· 메뉴: 한 번에 한 줄만 연다. */
   const [menuKey, setMenuKey] = useState<string | null>(null);
+  // #980: 가린 메모 열기. 연 글은 이 화면에서만 보이고 저장하지 않는다.
+  const [revealingId, setRevealingId] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
   /** #849 접촉 카드 안 접힌 AI 피드백을 편 카드. */
   const [openAi, setOpenAi] = useState<Set<string>>(() => new Set());
   /** 고른 층. null이면 전체. 기업이 바뀌면 부르는 쪽이 key로 새로 만들어 전체로 돌아간다. */
@@ -572,12 +573,64 @@ export default function ActivityTimeline({
           {labelFor(activityKindLabels, item.kind)}
         </StatusTag>
         <span data-testid="timeline-summary" style={item.cancelled === true ? struck : undefined}>
-          {summaryText(item)}
+          {item.recordId && revealed[item.recordId] !== undefined
+            ? revealed[item.recordId]
+            : summaryText(item)}
         </span>
+        {maskedNote(item)}
         {cancelledNote(item)}
         {menu(item)}
         {cancelArea(item, index)}
       </>
+    );
+  }
+
+  /** #980: 전화·이메일을 가린 메모 줄의 [가린 번호 보기]. 확인 문구에 체크해야 서버가 원문을 준다. */
+  function maskedNote(item: ActivityItem): ReactNode {
+    const noteId = item.recordId;
+    if (!item.textMasked || !noteId || item.recordKind !== 'NOTE' || !canRecord || !staffKey) {
+      return null;
+    }
+    if (revealed[noteId] !== undefined) {
+      return (
+        <Button
+          size="small"
+          type="link"
+          onClick={() =>
+            setRevealed((current) => {
+              const next = { ...current };
+              delete next[noteId];
+              return next;
+            })
+          }
+          data-testid="timeline-hide-note"
+        >
+          {revealTexts.hideAgain}
+        </Button>
+      );
+    }
+    if (revealingId !== noteId) {
+      return (
+        <Button
+          size="small"
+          type="link"
+          onClick={() => setRevealingId(noteId)}
+          data-testid="timeline-reveal-note"
+        >
+          {revealTexts.openNote}
+        </Button>
+      );
+    }
+    return (
+      <RevealConfirm
+        testId="timeline-reveal"
+        onCancel={() => setRevealingId(null)}
+        onReveal={async () => {
+          const envelope = await revealNote(noteId, staffKey);
+          setRevealed((current) => ({ ...current, [noteId]: envelope.data.text }));
+          setRevealingId(null);
+        }}
+      />
     );
   }
 
@@ -686,7 +739,7 @@ export default function ActivityTimeline({
                           style={{
                             width: 24,
                             height: 24,
-                            borderRadius: radius.pill,
+                            borderRadius: '50%',
                             display: 'grid',
                             placeItems: 'center',
                             fontSize: 12,

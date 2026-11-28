@@ -316,7 +316,23 @@ def test_review_table_rollback_and_upgrade_preserve_existing_notes(records_env, 
         == 200
     )
     assert downgrade(tmp_db, "opp_005") == ["opp_005"]
-    assert upgrade_to_head(tmp_db) == ["opp_012"]
+    assert upgrade_to_head(tmp_db) == ["rec_021"]
     with session_scope() as session:
         assert session.scalar(select(Note)).text == "보존할 가상 메모"
         assert session.scalar(select(ReviewCheck)) is None
+
+
+def test_gap_text_does_not_repeat_evidence_word(records_env):
+    """Given 이름이 "…근거"로 끝나는 항목과 아닌 항목이 근거 없음 / When 파생
+    / Then "근거"를 한 번만 쓴다(#957)."""
+    client, opp_id = records_env
+    data = OpportunityDetail.model_validate(detail(client, opp_id))
+    first, second = data.scores.items[:2]
+    data.scores.items = [
+        first.model_copy(update={"state": "UNAVAILABLE", "label": "제품·부품 생산 근거"}),
+        second.model_copy(update={"state": "NO_SIGNAL", "label": "관심"}),
+    ]
+    items = {item.item_id: item.text for item in derive_review_items(data)}
+    assert items[f"GAP:ITEM:{first.item_code}"] == "제품·부품 생산 근거 없음"
+    assert items[f"GAP:ITEM:{second.item_code}"] == "관심 근거 없음"
+    assert not any("근거 근거" in text for text in items.values())

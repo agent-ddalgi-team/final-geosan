@@ -7,6 +7,7 @@ import { confirmHandoff, postNote } from '../../../api/client';
 import type { ConfigUi, HandoffNote } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
 import fixture from '../../../test/fixtures/config-ui.json';
+import { detailTheme, warn } from '../../../theme/tokens';
 
 vi.mock('../../../api/client', async (original) => ({
   ...(await original<typeof import('../../../api/client')>()),
@@ -112,6 +113,18 @@ it('보기 전용이면 남기기·확인 단추가 없다', () => {
 });
 
 // #853(PM 결정 2026-11-17): 역할 묶음(영업·검수·운영)으로 보낸 전달 사항.
+describe('전달 사항 쪽지 모양 (#972 새 시안)', () => {
+  it('확인 전 쪽지는 주의 바탕(연한 주황)이고, 확인한 쪽지는 옅은 중립 바탕이다', () => {
+    renderBox('park-lee');
+    const notes = screen.getAllByTestId('handoff-note');
+    const waiting = notes.find((note) => note.getAttribute('data-confirmed') === 'false');
+    const done = notes.find((note) => note.getAttribute('data-confirmed') === 'true');
+    expect(waiting).toHaveStyle({ background: warn.bg });
+    expect(done).not.toHaveStyle({ background: warn.bg });
+    expect(done).toHaveStyle({ background: detailTheme.cellBg });
+  });
+});
+
 describe('역할 묶음으로 받은 전달 사항 (#853)', () => {
   const teamConfig: ConfigUi = {
     ...config,

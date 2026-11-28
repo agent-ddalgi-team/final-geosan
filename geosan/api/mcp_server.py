@@ -16,7 +16,9 @@ import logging
 from pathlib import Path
 from typing import Any, TextIO
 
-from geosan.api.mcp_tools import TOOLS, TOOLS_BY_NAME, call_tool
+from geosan.api.mcp_tools import TOOLS_BY_NAME, available_tools, call_tool
+from geosan.config.app_settings import read_app_settings
+from geosan.storage.session import session_scope
 
 JSONRPC = "2.0"
 # 지원하는 규격 판(새 것부터). 앱이 말한 판을 알면 그대로, 모르면 가장 새 것으로 답한다.
@@ -80,10 +82,15 @@ class McpServer:
         if method == "ping":
             return _result(request_id, {})
         if method == "tools/list":
-            return _result(request_id, {"tools": [tool.listing() for tool in TOOLS]})
+            return _result(request_id, {"tools": [tool.listing() for tool in self._tools()]})
         if method == "tools/call":
             return self._call(request_id, params)
         return _error(request_id, METHOD_NOT_FOUND, f"모르는 요청입니다: {method}")
+
+    def _tools(self) -> list:
+        """지금 설정에서 알리는 도구(#932 기존 고객 도구는 켰을 때만). DB를 짧게 읽는다."""
+        with session_scope(self.db_path) as session:
+            return available_tools(read_app_settings(session))
 
     def _call(self, request_id: Any, params: dict[str, Any]) -> dict[str, Any]:
         name = params.get("name")

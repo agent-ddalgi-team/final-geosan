@@ -10,7 +10,6 @@ import type {
   BucketBasis,
   ContactBucket,
   Envelope,
-  FitLevel,
   OpportunityCard,
   RankAdjust,
 } from '../../api/types';
@@ -61,7 +60,10 @@ function card(
   rank: number,
   bucket: ContactBucket,
   bucketBasis: BucketBasis,
-  extra: { fitLevel?: FitLevel | null; rankAdjust?: RankAdjust | null } = {},
+  extra: Pick<
+    Partial<OpportunityCard>,
+    'fitLevel' | 'rankAdjust' | 'preferenceAdjust' | 'exploreSlot'
+  > = {},
 ): OpportunityCard {
   return {
     ...apjeong,
@@ -150,26 +152,42 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     expect(mockedGet.mock.calls[0][3]).toMatchObject({ sort: 'contact', process: 'ZINC_PLATING' });
     expect(titles()).toEqual(ALL_TITLES);
     // 제목은 그 묶음의 첫 카드 바로 앞에 있다(제목 5개 + 카드 6장, 서버 순서 그대로).
+    // #972: 카드가 표 줄 모양이라 묶음 제목마다 바로 아래에 열 머리 한 줄이 끼어 있다.
     const list = screen.getByTestId('opportunity-list');
+    const HEAD = '열 머리';
     expect(
       Array.from(list.children).map(
         (item) =>
           item.getAttribute('data-bucket') ??
-          within(item as HTMLElement).getByTestId('card-title').textContent,
+          (within(item as HTMLElement).queryByTestId('list-column-head')
+            ? HEAD
+            : within(item as HTMLElement).getByTestId('card-title').textContent),
       ),
     ).toEqual([
       'EVIDENCE_READY',
+      HEAD,
       '가상 a · 브래킷',
       '가상 b · 브래킷',
       'EVIDENCE_SOME',
+      HEAD,
       '가상 c · 브래킷',
       'NO_HOMEPAGE',
+      HEAD,
       '가상 d · 브래킷',
       'NOT_RESEARCHED',
+      HEAD,
       '가상 e · 브래킷',
       'CLOSED',
+      HEAD,
       '가상 f · 브래킷',
     ]);
+    // 열 머리 글자는 세 열 이름이다(#981: 지역은 회사 칸 안으로, 점수는 셋째 칸으로 들어갔다).
+    // #987: "회사 · 품목" → "기업", "추천 근거" → "추천 이유".
+    expect(
+      Array.from(screen.getAllByTestId('list-column-head')[0].children).map(
+        (cell) => cell.textContent,
+      ),
+    ).toEqual(['기업', '추천 이유 · 검토사항', '적합도 · 점수 · 관심 · 의견']);
     // 공정 하나를 고른 목록의 번호는 서버가 준 묶음 안 순서 번호다.
     expect(screen.getAllByTestId('card-rank').map((rank) => rank.textContent)).toEqual([
       '1',
@@ -211,9 +229,10 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     mockedGet.mockResolvedValue(reply(bucketedCards()));
     renderPage('/opportunities?process=ZINC_PLATING');
     const cards = await screen.findAllByTestId('opportunity-card');
+    // 거래처 후보 줄은 점수 숫자만 보인다("· 7/8"은 상세에서, #981).
     expect(
       cards.map((item) => within(item).queryByTestId('card-score')?.textContent ?? null),
-    ).toEqual(['77점 · 7/8', '77점 · 7/8', null, null, null, null]);
+    ).toEqual(['77점', '77점', null, null, null, null]);
   });
 
   it('점수 전인 찾은 회사는 어느 묶음에서든 점수 자리에 조사 상태만 보인다', async () => {
@@ -264,6 +283,38 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     );
     for (const item of cards.slice(2)) {
       expect(within(item).queryByTestId('card-rank-adjust')).not.toBeInTheDocument();
+    }
+  });
+
+  it('#943 승인한 담당자 선호 줄과 선호 밖 자리 줄은 "근거 있음" 카드에만 보인다', async () => {
+    const preferenceAdjust = {
+      prefId: 'pref-1',
+      kind: 'PROCESS_INDUSTRY' as const,
+      processCode: 'ZINC_PLATING',
+      processName: '아연도금',
+      industry: '자동차 부품',
+      distanceKm: null,
+      approvedAt: '2026-11-26T01:00:00Z',
+      expiresAt: '2027-02-24T01:00:00Z',
+    };
+    mockedGet.mockResolvedValue(
+      reply([
+        card('a', 1, 'EVIDENCE_READY', 'EVIDENCE_ENOUGH', { preferenceAdjust }),
+        card('b', 2, 'EVIDENCE_READY', 'EVIDENCE_ENOUGH', { exploreSlot: true }),
+        card('c', 3, 'EVIDENCE_READY', 'EVIDENCE_ENOUGH'),
+        card('d', 1, 'EVIDENCE_SOME', 'EVIDENCE_FEW', { preferenceAdjust, exploreSlot: true }),
+      ]),
+    );
+    renderPage('/opportunities?process=ZINC_PLATING');
+    const cards = await screen.findAllByTestId('opportunity-card');
+    expect(within(cards[0]).getByTestId('card-preference')).toHaveTextContent(
+      '담당자 선호(11/26 승인 · 아연도금 × 자동차 부품) → 위로',
+    );
+    expect(within(cards[1]).getByTestId('card-preference')).toHaveTextContent(
+      '선호 밖 회사 자리 — 다른 곳의 기회도 함께 봅니다',
+    );
+    for (const item of cards.slice(2)) {
+      expect(within(item).queryByTestId('card-preference')).not.toBeInTheDocument();
     }
   });
 
@@ -365,7 +416,12 @@ describe('추천 목록 · 근거 상태 묶음 (#675)', () => {
     expect(titles()).toEqual([]);
     expect(screen.queryByTestId('card-bucket-basis')).not.toBeInTheDocument();
     expect(screen.queryByTestId('card-fit-level')).not.toBeInTheDocument();
-    expect(screen.getByTestId('card-score')).toHaveTextContent('77점 · 7/8');
+    // 거래처 후보 줄은 점수 숫자만 보이고("· 7/8"은 상세에서, #981) 화면 낭독 문구는 전체를 읽는다.
+    expect(screen.getByTestId('card-score')).toHaveTextContent(/^77점$/);
+    expect(screen.getByTestId('card-score')).toHaveAttribute(
+      'aria-label',
+      '점수 77점, 8개 항목 중 7개 조사',
+    );
   });
 
   it('서버가 묶음별 건수를 주지 않으면 이 줄에 있는 카드 수로 센다', async () => {
@@ -463,7 +519,7 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     expect(screen.queryByTestId('list-bookmarked-line')).not.toBeInTheDocument();
   });
 
-  it('[관심]을 누르면 그 카드가 목록에서 빠지고 곳 수가 줄며 "관심 기업으로 옮겼습니다 · 관심 기업 보기"가 보인다', async () => {
+  it('[관심]을 누르면 그 카드가 목록에서 빠지고 곳 수가 줄며 "관심 기업으로 옮겼습니다. 의견을 골라 주세요 · 관심 기업에서 의견 고르기"가 보인다(#981)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply(bucketedCards(), { total: 192, bookmarkedCount: 3 }));
     mockedPut.mockResolvedValue({
@@ -486,13 +542,19 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     expect(screen.getByTestId('list-total')).toHaveTextContent('191');
     expect(screen.getByTestId('list-bookmarked-count-link')).toHaveTextContent('관심 기업 4곳');
     const notice = screen.getByTestId('list-moved-notice');
-    expect(notice).toHaveTextContent('관심 기업으로 옮겼습니다 · 관심 기업 보기');
-    expect(within(notice).getByTestId('list-moved-link')).toHaveAttribute('href', '/bookmarks');
+    // #981: 옮긴 뒤 의견 고르기까지 이어지게 알리고, 링크는 관심 기업 화면의 "의견 전" 보기로 간다
+    // (영업 홈 "의견 전" 칸과 같은 조건 filter=NO_OPINION. 의견 거르기 "기타"(opinion=NONE)가 아니다).
+    expect(notice).toHaveTextContent(
+      /^관심 기업으로 옮겼습니다\. 의견을 골라 주세요 · 관심 기업에서 의견 고르기$/,
+    );
+    const movedLink = within(notice).getByTestId('list-moved-link');
+    expect(movedLink).toHaveTextContent(/^관심 기업에서 의견 고르기$/);
+    expect(movedLink).toHaveAttribute('href', '/bookmarks?filter=NO_OPINION');
     // 목록을 다시 부르지는 않는다(서버 응답 한 번).
     expect(mockedGet).toHaveBeenCalledTimes(1);
   });
 
-  it('"함께 보기"를 켠 목록에서는 [관심]을 눌러도 카드가 그대로 있고 안내가 없다', async () => {
+  it('"함께 보기"를 켠 목록에서는 [관심]을 눌러도 카드가 그대로 있고 옮김 안내가 없으며, 그 줄에 "의견을 골라 주세요"가 보인다(#981)', async () => {
     const user = userEvent.setup();
     mockedGet.mockResolvedValue(reply(bucketedCards(), { bookmarkedCount: 3 }));
     mockedPut.mockResolvedValue({
@@ -501,10 +563,17 @@ describe('추천 목록 · 관심으로 고른 회사는 평소 목록에서 뺀
     } as unknown as Awaited<ReturnType<typeof putBookmark>>);
     renderPage('/opportunities?process=ZINC_PLATING&withBookmarked=true');
     const cards = await screen.findAllByTestId('opportunity-card');
+    // 관심을 켜기 전에는 어느 줄에도 의견 전 알림이 없다.
+    expect(screen.queryByTestId('opinion-nudge')).not.toBeInTheDocument();
     await user.click(within(cards[0]).getByTestId('bookmark-button'));
     await waitFor(() => expect(mockedPut).toHaveBeenCalledTimes(1));
     expect(screen.getAllByTestId('opportunity-card')).toHaveLength(6);
     expect(screen.queryByTestId('list-moved-notice')).not.toBeInTheDocument();
+    // 관심을 켠 그 줄에만 의견 고르기를 띄워 알린다(의견이 아직 없다).
+    const nudges = await screen.findAllByTestId('opinion-nudge');
+    expect(nudges).toHaveLength(1);
+    expect(screen.getAllByTestId('opportunity-card')[0]).toContainElement(nudges[0]);
+    expect(nudges[0]).toHaveTextContent(/^의견을 골라 주세요$/);
     expect(titles()[0]).toBe('근거 있음 30곳');
   });
 });

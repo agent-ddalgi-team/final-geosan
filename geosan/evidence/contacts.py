@@ -443,3 +443,30 @@ def scrub_person_names_in_texts(texts: Sequence[str], keep_words: Iterable[str] 
     keep = list(keep_words)
     known = collect_person_names(texts, keep)
     return [scrub_person_names_wide(text, known, keep)[0] for text in texts]
+
+
+# ---------------------------------------------------------------------------
+# 화면에 보이는 메모 글의 전화·이메일 가리기 (#980, PM 결정 2026-11-28)
+# ---------------------------------------------------------------------------
+
+PHONE_MASK = "[번호 가림]"
+EMAIL_MASK = "[이메일 가림]"
+
+
+def mask_contacts_for_screen(text: str) -> tuple[str, bool]:
+    """메모 글의 전화·이메일 모양을 가린 글과, 가린 곳이 있었는지(#980).
+
+    외부 전송용 scrub_contacts와 같은 패턴을 쓴다. 저장된 글은 바꾸지 않고 화면으로 나가는 값만
+    가린다. 가리지 않은 글은 열람 확인(POST /notes/{noteId}/reveal)으로만 준다.
+    """
+    masked = False
+    for kind, pattern in CONTACT_PATTERNS:
+        text, count = pattern.subn(EMAIL_MASK if kind == "이메일" else PHONE_MASK, text)
+        masked = masked or count > 0
+    text, count = _EXTRA_PHONE.subn(PHONE_MASK, text)
+    return text, masked or count > 0
+
+
+def mask_text(text: str | None) -> str | None:
+    """mask_contacts_for_screen의 글만. 빈 값은 그대로."""
+    return mask_contacts_for_screen(text)[0] if text else text

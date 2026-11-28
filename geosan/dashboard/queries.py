@@ -301,6 +301,63 @@ def _last_contacts(session: Session, opp_ids: list[str]) -> dict[str, LastContac
     return latest
 
 
+# #976 "이번 주에 들어온 회사 수"를 주는 칸. 미접촉은 들어온 날을 정할 영업 기록이 없어 뺀다.
+ENTERED_BAND_KEYS = ("IN_CONTACT", "QUOTE_SAMPLE", WON_KEY, "ON_HOLD")
+
+
+def week_start(today: date) -> date:
+    """그 날짜가 든 주의 월요일(한국 날짜 기준으로 받은 `today`를 그대로 쓴다)."""
+    return today - timedelta(days=today.weekday())
+
+
+def _stage_started(session: Session, opp_ids: Sequence[str]) -> dict[str, date]:
+    """기회마다 지금의 큰 단계가 시작된 날(#976).
+
+    취소 안 한 영업 기록을 버전 순으로 보아, 최신 기록과 같은 단계가 끊기지 않고 이어진 맨 앞
+    기록의 날짜다. 날짜는 접촉 날짜(attemptedAt), 없으면 저장한 날의 한국 날짜다
+    (마지막 접촉일과 같은 기준). 영업 기록이 없는 기회는 결과에 없다.
+    """
+    if not opp_ids:
+        return {}
+    rows = session.execute(
+        select(Outcome.opp_id, Outcome.status, Outcome.attempted_at, Outcome.created_at)
+        .where(Outcome.opp_id.in_(opp_ids), Outcome.cancelled_at.is_(None))
+        .order_by(Outcome.opp_id, Outcome.version)
+    ).all()
+    started: dict[str, date] = {}
+    status_now: dict[str, str] = {}
+    for opp_id, status, attempted_at, created_at in rows:
+        if status_now.get(opp_id) != status:
+            # 단계가 바뀐 첫 기록이다. 같은 단계가 이어지는 동안에는 이 날짜를 그대로 둔다.
+            status_now[opp_id] = status
+            started[opp_id] = attempted_at or created_at.astimezone(_KST).date()
+    return started
+
+
+def build_entered_this_week(
+    session: Session,
+    classified: Mapping[str, str],
+    won_ids: Sequence[str],
+    today: date,
+) -> dict[str, int]:
+    """칸마다 이번 주(월요일 ~ `today`)에 그 칸으로 들어온 관심 기업 수(#976).
+
+    대상은 지금 그 칸에 있는 회사뿐이다(진행 띠·건수와 같은 분류). 예전부터 그 단계였던 회사를
+    이번 주에 관심으로 켠 것은 세지 않고, 다른 칸에 갔다가 이번 주에 돌아온 회사는 센다.
+    """
+    bands: dict[str, list[str]] = {key: [] for key in ENTERED_BAND_KEYS}
+    for opp_id, key in classified.items():
+        if key in bands and key != WON_KEY:
+            bands[key].append(opp_id)
+    bands[WON_KEY] = list(won_ids)
+    started = _stage_started(session, sorted({opp_id for ids in bands.values() for opp_id in ids}))
+    monday = week_start(today)
+    return {
+        key: sum(1 for opp_id in ids if monday <= started.get(opp_id, date.min) <= today)
+        for key, ids in bands.items()
+    }
+
+
 def build_progress_companies(
     session: Session,
     population,
@@ -382,6 +439,8 @@ class Dashboard:
     today_checks: list[TodayCheckRow] = field(default_factory=list)
     # #800: 영업 진행 띠 칸별 회사(칸 숫자와 같은 분류). 옛 호출은 빈 값.
     progress_companies: dict[str, list[ProgressCompany]] = field(default_factory=dict)
+    # #976: 칸별 이번 주(월요일~오늘)에 그 칸으로 들어온 관심 기업 수. 미접촉 칸은 없다.
+    entered_this_week: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -555,8 +614,12 @@ def _schedule(session: Session, population, today: date) -> tuple[list[ScheduleI
 HANDOFF_PREVIEW_CHARS = 80
 
 
-def _handoff_preview(text: str | None) -> str | None:
-    """#794 대시보드 한 줄용: 줄바꿈을 빈칸으로 모으고 앞 80자, 넘으면 끝에 "…"."""
+def handoff_preview(text: str | None) -> str | None:
+    """#794 대시보드 한 줄용: 줄바꿈을 빈칸으로 모으고 앞 80자, 넘으면 끝에 "…".
+
+    #980: 전화·이메일 가리기는 창구(api)가 이 함수보다 먼저 한다(자르기 전에 가려야 번호 일부가
+    남지 않는다). 그래서 이 표는 전달 글 전체(full_text)를 넘기고 창구가 가린 뒤 이 함수로 자른다.
+    """
     flat = " ".join((text or "").split())
     if not flat:
         return None
@@ -600,7 +663,7 @@ def _handoff_row(
             continue
         day = created_at.astimezone(_KST).date()
         note = f"{staff_names.get(sender, sender)} · {day.month}/{day.day}"
-        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=text)
     items = [replace(item, note_ids=tuple(ids[item.opp_id])) for item in seen.values()]
     return TodayCheckRow(kind=TODAY_HANDOFF_FOR_ME, count=len(items), items=items)
 
@@ -640,7 +703,7 @@ def _handoff_from_me_row(
         else:
             to = staff_names.get(receiver or "", receiver or "")
         note = f"→ {to} · {day.month}/{day.day}"
-        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=_handoff_preview(text))
+        seen[opp_id] = TodayCheckItem(opp_id, name, None, note, text=text)
     return TodayCheckRow(kind=TODAY_HANDOFF_FROM_ME, count=len(seen), items=list(seen.values()))
 
 
@@ -1095,6 +1158,7 @@ def build_dashboard(
             progress_companies=build_progress_companies(
                 session, population, classified, won_ids, today, stalled_after_days, staff_names
             ),
+            entered_this_week=build_entered_this_week(session, classified, won_ids, today),
         ),
         has_virtual,
     )

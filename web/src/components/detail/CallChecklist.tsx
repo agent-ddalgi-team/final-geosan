@@ -4,6 +4,8 @@
 // 줄마다 있던 [붙여넣고 조사]·[메모 적기]·체크·[답 적기]와 AI 공정 제안 줄·[확정]은 화면에서 뺐다(서버 창구는 그대로 있다).
 // 적는 것은 아래 "기록 남기기"의 꼬리 질문과 한 줄 메모에서 한다. 이미 저장돼 있는 답·메모·확인 표시는 그 줄 아래에 읽기 전용으로 보인다.
 // "근거 없음" 줄은 접어 두고, 그 가운데 공고(SIG_BID)·채용(SIG_HIRE)은 연결하지 않는 자료라 보이지 않는다(기록이 달린 줄은 보인다).
+// #957(PM 지적 2026-11-26): 오른쪽 "확인사항"(묶음 보기)에는 통화에서 물을 것만 둔다. "근거 없음" 접힌 목록과
+// 담당자 할 일 문장(후속 조치 가운데 "…확인"으로 끝나지 않는 것)은 빼고, 소재를 모르면 "부품 소재" 줄을 넣는다.
 // AI 점수 입력 제안의 [확정]·[고치기]는 "3. 점수 자세히 보기" 안으로 옮겼다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -55,6 +57,30 @@ export function nextActionWithoutMissing(nextAction: string): string | null {
   return rest === '' ? null : rest;
 }
 
+/**
+ * #957(PM 지적 2026-11-26): 후속 조치 가운데 통화에서 상대에게 물을 말만 남긴다. 사례 파일의 확인 질문은
+ * "…외주하는지 확인"처럼 "확인"으로 끝나고, 규칙이 질문이 없을 때 쓰는 문장("판정에 필요한 근거를 확보하세요",
+ * "AI 조사 결과 확인 뒤 점수 입력")은 담당자 할 일이라 확인사항에 넣지 않는다(왼쪽 "1. 추천 근거와 후속 조치"에는 그대로).
+ */
+export function callQuestionParts(nextAction: string): string[] {
+  return nextAction
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter((part) => part.endsWith('확인'));
+}
+
+/** 공정 연결 어디에도 적용 소재가 없다(#957). 확인 질문 가운데 소재를 묻는 줄이 이미 있으면 따로 넣지 않는다. */
+function materialUnknown(processLinks: ProcessLinkView[], reviewItems: ReviewItem[]): boolean {
+  if (processLinks.some((link) => link.appliedMaterial)) return false;
+  return !reviewItems.some(
+    (item) =>
+      !isProposal(item) &&
+      !isGapLine(item) &&
+      item.targetLabel !== '거산' &&
+      item.text.includes('소재'),
+  );
+}
+
 /** 검토 줄이 아닌, 회사 값에서 만든 "물을 말" 줄(후속 조치 → 공정 → 소재 → 산업 → 아직 답이 없는 꼬리 질문). */
 export function callLinesOf(
   detail: {
@@ -68,7 +94,8 @@ export function callLinesOf(
   questions: SalesQuestions | null,
 ): CallLine[] {
   const lines: CallLine[] = [];
-  const nextAction = nextActionWithoutMissing(detail.reasons.nextAction);
+  const asked = nextActionWithoutMissing(detail.reasons.nextAction);
+  const nextAction = asked ? callQuestionParts(asked).join(' · ') || null : null;
   if (nextAction) lines.push({ key: 'next-action', topic: texts.nextAction, text: nextAction });
   const check = detailCheckWordsOf(
     detail.header,
@@ -76,7 +103,7 @@ export function callLinesOf(
     detail.reviewItems,
     detail.requirements,
   );
-  const choiceText = (choices: 'PROCESS' | 'INDUSTRY', fallback: string) =>
+  const choiceText = (choices: 'PROCESS' | 'INDUSTRY' | 'MATERIAL', fallback: string) =>
     questions?.questions.find((question) => question.choices === choices)?.text ?? fallback;
   if (check.process) {
     lines.push({
@@ -85,8 +112,13 @@ export function callLinesOf(
       text: choiceText('PROCESS', texts.processFallback),
     });
   }
-  if (check.material) {
-    lines.push({ key: 'material', topic: texts.topic.material, text: texts.materialQuestion });
+  if (check.material || materialUnknown(detail.processLinks, detail.reviewItems)) {
+    // #958: 질문 파일에 부품 소재 질문이 있으면 그 문구(같은 질문이 아래 꼬리 질문으로 또 나오지 않게).
+    lines.push({
+      key: 'material',
+      topic: texts.topic.material,
+      text: choiceText('MATERIAL', texts.materialQuestion),
+    });
   }
   const industrySource = detail.header.industriesSource;
   if (industrySource !== 'CASE_FILE' && industrySource !== 'STAFF') {
@@ -158,7 +190,7 @@ export function checkRowsOf(
   (prep?.lines ?? []).forEach((line, index) =>
     rows.push({ key: `prep:${index}`, group: 'prep', label: line, checked: false }),
   );
-  const keywordOf = (choices: 'PROCESS' | 'INDUSTRY') =>
+  const keywordOf = (choices: 'PROCESS' | 'INDUSTRY' | 'MATERIAL') =>
     questions?.questions.find((question) => question.choices === choices)?.coach?.keyword ?? null;
   for (const line of callLinesOf(detail, questions)) {
     if (line.key === 'next-action') {
@@ -182,7 +214,12 @@ export function checkRowsOf(
         checked: false,
       });
     } else if (line.key === 'material') {
-      rows.push({ key: 'material', group: 'company', label: texts.short.material, checked: false });
+      rows.push({
+        key: 'material',
+        group: 'company',
+        label: keywordOf('MATERIAL') ?? texts.short.material,
+        checked: false,
+      });
     } else if (line.key === 'industry') {
       rows.push({
         key: 'industry',
@@ -235,6 +272,46 @@ export interface CallChecklistProps {
   prep?: CallPrepNote | null;
   /** #847 확인사항 맨 위에 놓을 것(확인 전 전달 사항). */
   top?: ReactNode;
+  /**
+   * #957 체크를 이 브라우저에 기억하는 이름. 회사·접촉 수·통화 준비가 바뀌면 이름이 바뀌어 처음 값으로 돌아간다.
+   * 없으면 전처럼 화면에서만 바뀐다.
+   */
+  storageKey?: string;
+}
+
+const CHECK_STORAGE_PREFIX = 'geosan.detail.checks:';
+
+function readChecks(key: string | undefined): Record<string, boolean> {
+  if (!key) return {};
+  try {
+    const raw = window.localStorage.getItem(CHECK_STORAGE_PREFIX + key);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+/** 같은 회사의 지난 기억은 지우고 지금 것만 남긴다(통화가 바뀌면 옛 체크가 쌓이지 않게). */
+function storeChecks(key: string | undefined, checks: Record<string, boolean>): void {
+  if (!key) return;
+  try {
+    const company = key.split(':')[0];
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const name = window.localStorage.key(index);
+      if (name?.startsWith(`${CHECK_STORAGE_PREFIX}${company}:`)) {
+        window.localStorage.removeItem(name);
+      }
+    }
+    window.localStorage.setItem(CHECK_STORAGE_PREFIX + key, JSON.stringify(checks));
+  } catch {
+    // 저장소를 못 쓰면 전처럼 화면에서만 체크된다.
+  }
 }
 
 export default function CallChecklist({
@@ -251,11 +328,13 @@ export default function CallChecklist({
   grouped = false,
   prep = null,
   top = null,
+  storageKey,
 }: CallChecklistProps) {
   const { config } = useFrame();
   const [gapOpen, setGapOpen] = useState(false);
-  // #847: 통화 중 체크는 화면에서만 바꾼다(저장 안 함). 처음 값은 줄마다 checkRowsOf가 정한다.
-  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  // #847 통화 중 체크. #957부터 이 브라우저에 기억해 새로고침해도 남는다(서버에는 저장하지 않는다).
+  // 처음 값은 줄마다 checkRowsOf가 정한다.
+  const [toggled, setToggled] = useState<Record<string, boolean>>(() => readChecks(storageKey));
   const lines = callLinesOf(
     { header, reasons, processLinks, reviewItems, requirements, salesStep },
     questions,
@@ -352,7 +431,13 @@ export default function CallChecklist({
     const remaining = rows.filter((row) => !isChecked(row)).length;
     const prepDate = prep ? (formatMonthDay(prep.at) ?? prep.at) : '';
     return (
-      <DetailSection id="detail-review" title={title ?? texts.groups.company} count={remaining}>
+      <DetailSection
+        id="detail-review"
+        title={title ?? texts.groups.company}
+        count={remaining}
+        // #972: 영업 코치 칸(이미 흰 카드) 안에서는 카드를 겹쳐 그리지 않는다.
+        bare
+      >
         {top}
         {rows.length === 0 ? (
           <p data-testid="call-empty" style={{ margin: 0 }}>
@@ -368,7 +453,15 @@ export default function CallChecklist({
                 data-testid={`check-group-${group}`}
                 style={{ display: 'grid', gap: 4 }}
               >
-                <span style={{ fontWeight: 600 }} data-testid="check-group-title">
+                <span
+                  // #972 새 시안: 묶음 이름은 작은 흐린 글자.
+                  style={{
+                    color: colors.textDimmed,
+                    fontSize: typography.fontSizeSecondary,
+                    marginTop: 4,
+                  }}
+                  data-testid="check-group-title"
+                >
                   {group === 'prep' && prepDate ? texts.prepGroup(prepDate) : texts.groups[group]}
                 </span>
                 <ul
@@ -388,10 +481,11 @@ export default function CallChecklist({
                           checked={on}
                           aria-label={texts.checkLabel(row.label)}
                           onChange={(event) =>
-                            setToggled((previous) => ({
-                              ...previous,
-                              [row.key]: event.target.checked,
-                            }))
+                            setToggled((previous) => {
+                              const next = { ...previous, [row.key]: event.target.checked };
+                              storeChecks(storageKey, next);
+                              return next;
+                            })
                           }
                         >
                           <span
@@ -415,26 +509,7 @@ export default function CallChecklist({
             );
           })
         )}
-        {gapRows.length > 0 ? (
-          <div data-testid="review-fold-gap" style={{ display: 'grid', gap: 8 }}>
-            <div>
-              <Button
-                size="small"
-                aria-expanded={gapOpen}
-                aria-controls="call-gap-list"
-                onClick={() => setGapOpen((open) => !open)}
-                data-testid="review-fold-toggle-gap"
-              >
-                {texts.gapHead(gapRows.length, gapOpen)}
-              </Button>
-            </div>
-            {gapOpen ? (
-              <ul id="call-gap-list" aria-label={texts.gapListLabel} style={listStyle}>
-                {gapRows.map(renderReviewRow)}
-              </ul>
-            ) : null}
-          </div>
-        ) : null}
+        {/* #957: "근거 없음" 접힌 목록은 통화에서 물을 것이 아니라 여기서 뺐다. 항목별 근거는 "점수 자세히 보기"에 보인다. */}
       </DetailSection>
     );
   }

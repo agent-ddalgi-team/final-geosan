@@ -29,7 +29,7 @@ from geosan.storage.session import session_scope
 logger = logging.getLogger(__name__)
 
 
-def _file_date(source_id: str, files: list[Path]):
+def _check_files(source_id: str, files: list[Path]) -> None:
     if not files:
         raise InputError("불러올 파일을 하나 이상 넣어 주세요.")
     if source_id == WATER_SOURCE_ID and len(files) != 1:
@@ -37,6 +37,12 @@ def _file_date(source_id: str, files: list[Path]):
     missing = [path.name for path in files if not path.is_file()]
     if missing:
         raise InputError(f"파일이 없습니다: {', '.join(missing)}")
+    for path in files:
+        file_date_of(path)  # 기준일이 없는 이름은 읽기 전에 거부한다.
+
+
+def _file_date(files: list[Path]):
+    """수질 명단의 기준일. 팩토리온은 지역마다 날짜가 달라도 된다(#961)."""
     dates = {file_date_of(path) for path in files}
     if len(dates) != 1:
         raise InputError(
@@ -49,7 +55,7 @@ def run_source_load(source_id: str, files: list[Path], *, echo=typer.echo) -> in
     try:
         if source_id not in (FACTORYON_SOURCE_ID, WATER_SOURCE_ID):
             raise InputError(f"소스는 {FACTORYON_SOURCE_ID} 또는 {WATER_SOURCE_ID}를 넣어 주세요.")
-        file_date = _file_date(source_id, files)
+        _check_files(source_id, files)
         if not database_path().is_file():
             raise InputError("데이터베이스가 없습니다. 먼저 geosan init-db를 실행해 주세요.")
         with session_scope() as session:
@@ -57,21 +63,28 @@ def run_source_load(source_id: str, files: list[Path], *, echo=typer.echo) -> in
         regions = stored_regions(settings)
         # 파일 읽기는 저장 잠금 밖에서 한다(C5).
         if source_id == FACTORYON_SOURCE_ID:
-            result = read_factoryon(files, regions)
+            result = read_factoryon(files, regions, settings.main_phone.allowed_prefixes)
+            dates = {row.region: row.file_date for row in result.rows}
+            basis = " · ".join(f"{r} {d.isoformat()}" for r, d in sorted(dates.items())) or "없음"
         else:
+            file_date = _file_date(files)
             result = read_water(files[0], regions)
+            basis = file_date.isoformat()
         with session_scope() as session:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
-            store = store_profiles if source_id == FACTORYON_SOURCE_ID else store_water
-            stored = store(session, result.rows, file_date)
+            if source_id == FACTORYON_SOURCE_ID:
+                stored = store_profiles(session, result.rows)
+            else:
+                stored = store_water(session, result.rows, file_date)
             attached = attach_all(session, settings)
         echo(
-            f"{file_date.isoformat()} 기준 {result.raw_count}행을 읽어 {stored}행을 저장했습니다"
+            f"{basis} 기준 {result.raw_count}행을 읽어 {stored}행을 저장했습니다"
             f"(지역 밖 제외, 건너뛴 행 {result.skipped_count})."
         )
         echo(
             f"공장 정보가 붙은 회사 {attached.attached}곳 · 표면처리 표시 새로 붙음 "
-            f"{attached.flagged}곳 · 풀림 {attached.unflagged}곳"
+            f"{attached.flagged}곳 · 풀림 {attached.unflagged}곳 · "
+            f"대표번호 채움 {attached.phones}곳"
         )
         return 0
     except Exception as exc:

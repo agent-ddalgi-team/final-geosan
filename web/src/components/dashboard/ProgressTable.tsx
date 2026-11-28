@@ -1,16 +1,32 @@
 // #921(PM 결정 2026-11-25): 영업 홈 "누가 봐도 · 진행 중인 회사" 표.
 // 다른 사람이 봐도 회사마다 지금 단계 · 누가 마지막으로 접촉했나 · 다음 할 일이 펼치지 않고 보이게 한다.
 //   회사 | 단계 | 담당 | 마지막 접촉 "11/20 대면 · 5일 전" | 다음 일정 "11/25 방문" / "⚠ 다음 일정 없음 · 멈춤"
+// #972(새 디자인): 제목 줄 오른쪽에 거르기 단추(고른 단추 = 강조 연한 바탕), 멈춘 회사는 노란 줄 대신
+//   회사 이름 옆 "멈춘 회사" 주의 꼬리표, 단계 꼬리표는 보라(성사만 초록, 미접촉·보류는 중립).
 // 기본은 접촉 · 견적·샘플 · 성사 칸의 회사. 맨 위 단계 칩을 누르면 그 단계(미접촉·보류 포함)만 보인다.
 // 데이터는 대시보드 응답의 progressCompanies(#800, #921 칸 더함) 그대로다. 메모·연락처는 오지 않는다.
 // 순서: 멈춘 회사 → 다음 일정 가까운 순 → 마지막 접촉 오래된 순 → 이름. 앞 8곳만 보이고 [모두 보기]로 편다.
+// #983(PM이 고른 시안 2026-11-28):
+//   - 카드 머리 아래에 작은 단계 칸(stages)을 끼운다. 맨 위에 따로 있던 큰 단계 카드 5칸을 이 카드로 합쳤다.
+//   - 다음 일정 칸에서 바로 일정을 잡고 바꾼다: 일정이 없으면 "일정 없음" + [일정 잡기], 있으면 지금 글 + [바꾸기].
+//     누르면 그 줄의 같은 칸 아래에 바로 일정 잡기 칸(ScheduleQuickEdit)이 펴진다. 한 번에 한 줄만 펴진다.
+//     보기 전용 · 담당자를 고르기 전에는 단추가 눌리지 않고 표 위에 "먼저 담당자를 고르세요"가 보인다.
 import { useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from 'antd';
 import type { Dashboard, ProgressBandKey, ProgressCompany } from '../../api/dashboardTypes';
 import { contactMethodLabels, dashboardTexts as t } from '../../labels/ko';
-import { colors, radius, spacing, statusPalette, tone, typography } from '../../theme/tokens';
+import {
+  choiceChip,
+  colors,
+  homePalette,
+  radius,
+  spacing,
+  tagPalette,
+  typography,
+} from '../../theme/tokens';
+import ScheduleQuickEdit from '../schedule/ScheduleQuickEdit';
 import { daysBetween } from './ProgressCompanyList';
 import { stageName } from './StageChips';
 
@@ -18,12 +34,16 @@ export const TABLE_SHOWN = 8;
 /** 단계를 고르지 않았을 때 보이는 칸. */
 export const DEFAULT_BANDS: ProgressBandKey[] = ['IN_CONTACT', 'QUOTE_SAMPLE', 'WON'];
 
-const STAGE_TONES: Record<ProgressBandKey, keyof typeof statusPalette> = {
-  NOT_CONTACTED: 'neutral',
-  IN_CONTACT: 'ask',
-  QUOTE_SAMPLE: 'recheck',
-  WON: 'ok',
-  ON_HOLD: 'neutral',
+/**
+ * #972: 단계 꼬리표 색. 접촉 · 견적·샘플 = 강조(보라), 성사 = 확인(초록), 미접촉·보류 = 중립.
+ * 주의색은 뜻이 있을 때만(멈춘 회사 · 지난 일정) 쓰므로 견적·샘플에 쓰지 않는다.
+ */
+export const STAGE_COLORS: Record<ProgressBandKey, { bg: string; fg: string }> = {
+  NOT_CONTACTED: tagPalette.neutral,
+  IN_CONTACT: tagPalette.accent,
+  QUOTE_SAMPLE: tagPalette.accent,
+  WON: tagPalette.ok,
+  ON_HOLD: tagPalette.neutral,
 };
 
 type Filter = 'all' | 'mine' | 'stalled';
@@ -67,28 +87,30 @@ export function lastContactText(row: ProgressCompany, today: string): string {
 }
 
 function NextCell({ row, today }: { row: ProgressCompany; today: string }): ReactNode {
-  const warn = { color: statusPalette.recheck.fg, fontWeight: 600 } as const;
+  const warn = { color: homePalette.orangeText, fontWeight: 600 } as const;
   if (row.nextScheduleAt && row.nextScheduleAt < today) {
     return <span style={warn}>{t.tableOverdue(monthDay(row.nextScheduleAt))}</span>;
   }
   if (row.nextScheduleAt) {
     return [monthDay(row.nextScheduleAt), row.nextScheduleNote].filter(Boolean).join(' ');
   }
-  if (row.stalled) return <span style={warn}>{t.tableStalled}</span>;
-  return <span style={{ color: colors.textSecondary }}>—</span>;
+  // 일정이 없다: 멈춘 회사는 주의색으로 굵게, 그 밖은 보조 글자색.
+  return (
+    <span style={row.stalled ? warn : { color: colors.textSecondary }}>{t.progressNoSchedule}</span>
+  );
 }
 
 const th: CSSProperties = {
   textAlign: 'left',
   fontSize: typography.fontSizeSecondary,
-  color: colors.textSecondary,
-  fontWeight: 600,
-  padding: '6px 8px',
+  color: colors.textDimmed,
+  fontWeight: 400,
+  padding: '8px 10px',
   borderBottom: `1px solid ${colors.borderSecondary}`,
   whiteSpace: 'nowrap',
 };
 const td: CSSProperties = {
-  padding: '8px',
+  padding: '12px 10px',
   borderBottom: `1px solid ${colors.borderSecondary}`,
   verticalAlign: 'middle',
 };
@@ -100,20 +122,29 @@ export default function ProgressTable({
   onClearStage,
   staffKey,
   badge = null,
+  stages = null,
+  onReload,
 }: {
   companies: Dashboard['progressCompanies'];
   /** 오늘(YYYY-MM-DD, 한국). */
   today: string;
-  /** 맨 위 칩으로 고른 단계. 없으면 기본 칸들. */
+  /** 작은 단계 칸으로 고른 단계. 없으면 기본 칸들. */
   stage: ProgressBandKey | null;
   onClearStage: () => void;
-  /** 고른 담당자. 있으면 [내 회사만]이 보인다. */
+  /** 기록할 수 있는 고른 담당자. 있으면 [내 회사만]이 보이고 일정 단추가 눌린다. 없으면(보기 전용 · 미선택) 잠긴다. */
   staffKey: string | null;
   badge?: ReactNode;
+  /** #983 카드 머리 아래 작은 단계 칸(StageChips). 회사 목록이 없어도(옛 서버) 이 칸은 보인다. */
+  stages?: ReactNode;
+  /** #983 일정 저장이 그 사이 다른 기록 때문에 막혔을 때 [다시 읽기]가 부른다(영업 홈 다시 읽기). */
+  onReload?: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [all, setAll] = useState(false);
-  if (companies === undefined) return null;
+  // 바로 일정 잡기 칸을 편 줄(단계-회사 번호). 한 번에 한 줄만.
+  const [editing, setEditing] = useState<string | null>(null);
+  if (companies === undefined && !stages) return null;
+  const hasTable = companies !== undefined;
   const every = tableRows(companies, stage ? [stage] : DEFAULT_BANDS);
   const rows = every.filter((row) =>
     filter === 'stalled'
@@ -140,53 +171,93 @@ export default function ProgressTable({
         gap: 8,
         background: colors.bgContainer,
         border: `1px solid ${colors.borderSecondary}`,
-        borderRadius: radius.lg,
+        borderRadius: radius.card,
         padding: spacing.cardPadding,
       }}
     >
-      <h2
-        id="dashboard-progress-table-title"
-        style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
-      >
-        {badge}
-        {t.tableTitle}{' '}
-        <small
-          data-testid="dashboard-progress-table-count"
+      {/* #972(시안): 제목 · 곳 수 왼쪽, 거르기 단추 오른쪽. 좁으면 단추가 다음 줄로 내려간다. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'center' }}>
+        <h2
+          id="dashboard-progress-table-title"
+          style={{ fontSize: typography.fontSizeCardTitle, margin: 0 }}
+        >
+          {badge}
+          {t.tableTitle}
+          {hasTable ? (
+            <>
+              {' '}
+              <small
+                data-testid="dashboard-progress-table-count"
+                style={{
+                  fontSize: typography.fontSizeSecondary,
+                  color: colors.textDimmed,
+                  fontWeight: 400,
+                }}
+              >
+                {t.tableCount(every.length)}
+              </small>
+            </>
+          ) : null}
+        </h2>
+        <div
           style={{
-            fontSize: typography.fontSizeSecondary,
-            color: colors.textSecondary,
-            fontWeight: 400,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            alignItems: 'center',
+            marginLeft: 'auto',
           }}
         >
-          {t.tableCount(every.length)}
-        </small>
-      </h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        {filters.map((key) => (
-          <Button
-            key={key}
-            size="small"
-            type={filter === key ? 'primary' : 'default'}
-            aria-pressed={filter === key}
-            onClick={() => setFilter(key)}
-            data-testid={`dashboard-progress-filter-${key}`}
-          >
-            {filterName[key]}
-          </Button>
-        ))}
-        {stage ? (
-          <span
-            data-testid="dashboard-progress-stage"
-            style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
-          >
-            {t.tableStageOnly(stageName(stage))}{' '}
-            <Button type="link" size="small" onClick={onClearStage}>
-              {t.tableStageClear}
-            </Button>
-          </span>
-        ) : null}
+          {(hasTable ? filters : []).map((key) => {
+            const chip = filter === key ? choiceChip.selected : choiceChip.idle;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={filter === key}
+                onClick={() => setFilter(key)}
+                data-testid={`dashboard-progress-filter-${key}`}
+                style={{
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontSize: typography.fontSizeSecondary,
+                  fontWeight: filter === key ? choiceChip.selected.fontWeight : 400,
+                  padding: '4px 12px',
+                  borderRadius: radius.controlSm,
+                  border: `1px solid ${chip.border}`,
+                  background: chip.bg,
+                  color: chip.fg,
+                }}
+              >
+                {filterName[key]}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      {rows.length === 0 ? (
+      {stages}
+      {/* 일정 단추가 잠겨 있는 까닭. 보일 줄이 있을 때만 알린다. */}
+      {hasTable && rows.length > 0 && staffKey === null ? (
+        <span
+          id="dashboard-progress-pick-staff"
+          data-testid="dashboard-progress-pick-staff"
+          style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
+        >
+          {t.tablePickStaffFirst}
+        </span>
+      ) : null}
+      {hasTable && stage ? (
+        <span
+          data-testid="dashboard-progress-stage"
+          style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}
+        >
+          {t.tableStageOnly(stageName(stage))}{' '}
+          <Button type="link" size="small" onClick={onClearStage}>
+            {t.tableStageClear}
+          </Button>
+        </span>
+      ) : null}
+      {!hasTable ? null : rows.length === 0 ? (
         <p
           data-testid="dashboard-progress-table-empty"
           style={{ margin: 0, color: colors.textSecondary }}
@@ -202,30 +273,56 @@ export default function ProgressTable({
                 <th style={th}>{t.tableColumns.stage}</th>
                 <th style={th}>{t.tableColumns.staff}</th>
                 <th style={th}>{t.tableColumns.last}</th>
-                <th style={th}>{t.tableColumns.next}</th>
+                {/* 다음 일정 칸은 바로 일정 잡기 칸이 펴질 자리라 넉넉히 잡는다. */}
+                <th style={{ ...th, width: '34%' }}>{t.tableColumns.next}</th>
               </tr>
             </thead>
             <tbody>
               {shown.map((row) => {
-                const palette = statusPalette[STAGE_TONES[row.band]];
+                const palette = STAGE_COLORS[row.band];
+                const rowKey = `${row.band}-${row.oppId}`;
+                const open = editing === rowKey;
+                // 일정 잡기 칸이 펴진 줄은 다른 칸 글이 위쪽에 붙게 한다(아래로 길어지므로).
+                const cell: CSSProperties = open ? { ...td, verticalAlign: 'top' } : td;
                 return (
                   <tr
-                    key={`${row.band}-${row.oppId}`}
+                    key={rowKey}
                     data-testid="dashboard-progress-row"
                     data-stalled={row.stalled ? 'true' : undefined}
-                    style={{ background: row.stalled ? tone.lemonSoft : undefined }}
                   >
-                    <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      <Link to={`/opportunities/${encodeURIComponent(row.oppId)}`}>
+                    <td style={{ ...cell, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      <Link
+                        to={`/opportunities/${encodeURIComponent(row.oppId)}`}
+                        style={{ color: colors.text }}
+                      >
                         {row.customerName}
                       </Link>
+                      {row.stalled ? (
+                        <span
+                          data-testid="dashboard-progress-stalled-tag"
+                          style={{
+                            display: 'inline-block',
+                            marginLeft: 8,
+                            padding: '1px 9px',
+                            borderRadius: radius.tag,
+                            background: tagPalette.warn.bg,
+                            color: tagPalette.warn.fg,
+                            fontSize: typography.fontSizeSecondary - 1,
+                            fontWeight: 400,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {t.tableStalledTag}
+                        </span>
+                      ) : null}
                     </td>
-                    <td style={td}>
+                    <td style={cell}>
                       <span
+                        data-testid="dashboard-progress-stage-tag"
                         style={{
                           display: 'inline-block',
                           padding: '1px 9px',
-                          borderRadius: 999,
+                          borderRadius: radius.tag,
                           background: palette.bg,
                           color: palette.fg,
                           fontSize: typography.fontSizeSecondary,
@@ -235,19 +332,67 @@ export default function ProgressTable({
                         {stageName(row.band)}
                       </span>
                     </td>
-                    <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    <td style={{ ...cell, whiteSpace: 'nowrap' }}>
                       {row.lastContactStaffName ?? (
                         <span style={{ color: colors.textSecondary }}>—</span>
                       )}
                     </td>
                     <td
-                      style={{ ...td, whiteSpace: 'nowrap' }}
+                      style={{ ...cell, whiteSpace: 'nowrap' }}
                       data-testid="dashboard-progress-last"
                     >
                       {lastContactText(row, today)}
                     </td>
-                    <td style={td} data-testid="dashboard-progress-next">
-                      <NextCell row={row} today={today} />
+                    <td style={cell} data-testid="dashboard-progress-next">
+                      <span
+                        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
+                      >
+                        <span data-testid="dashboard-progress-next-text">
+                          <NextCell row={row} today={today} />
+                        </span>
+                        <button
+                          type="button"
+                          disabled={staffKey === null}
+                          aria-expanded={open}
+                          aria-label={
+                            row.nextScheduleAt
+                              ? t.tableScheduleChangeLabel(row.customerName)
+                              : t.tableScheduleNewLabel(row.customerName)
+                          }
+                          aria-describedby={
+                            staffKey === null ? 'dashboard-progress-pick-staff' : undefined
+                          }
+                          title={staffKey === null ? t.tablePickStaffFirst : undefined}
+                          onClick={() => setEditing(open ? null : rowKey)}
+                          data-testid="dashboard-progress-schedule-button"
+                          style={{
+                            cursor: staffKey === null ? 'not-allowed' : 'pointer',
+                            font: 'inherit',
+                            fontSize: typography.fontSizeSecondary - 1,
+                            padding: '3px 10px',
+                            borderRadius: radius.controlSm,
+                            border: `1px solid ${colors.borderSecondary}`,
+                            background: colors.bgContainer,
+                            color: staffKey === null ? colors.textDimmed : colors.text,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {row.nextScheduleAt ? t.tableScheduleChange : t.tableScheduleNew}
+                        </button>
+                      </span>
+                      {open ? (
+                        <div style={{ marginTop: 8 }}>
+                          <ScheduleQuickEdit
+                            oppId={row.oppId}
+                            currentScheduleAt={row.nextScheduleAt}
+                            currentScheduleNote={row.nextScheduleNote}
+                            today={today}
+                            onSaved={() => setEditing(null)}
+                            onCancel={() => setEditing(null)}
+                            onReload={onReload}
+                          />
+                        </div>
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -256,7 +401,7 @@ export default function ProgressTable({
           </table>
         </div>
       )}
-      {rows.length > TABLE_SHOWN ? (
+      {hasTable && rows.length > TABLE_SHOWN ? (
         <div style={{ textAlign: 'right' }}>
           <Button
             type="link"

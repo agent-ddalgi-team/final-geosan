@@ -78,7 +78,9 @@ export type TodayCheckKind =
   /** #771 나에게 온 확인 전 전달 사항. note는 "보낸 사람 · M/D"(글은 없음). */
   | 'HANDOFF_FOR_ME'
   /** #854 내가 보냈는데 받는 사람이 아직 확인하지 않은 전달 사항. note는 "받는 사람 · M/D". */
-  | 'HANDOFF_FROM_ME';
+  | 'HANDOFF_FROM_ME'
+  /** #980 보관 기한이 다가온 상대 담당자 연락처가 있는 회사. 적은 사람과 운영 담당에게만. dueAt = 가장 이른 기한. */
+  | 'CONTACT_RETENTION_DUE';
 
 /** #799 운영 알림 줄 종류(회사 줄이 없고 alert에 숫자). 사용률·자료 갱신은 운영 담당에게만. */
 export type TodayAlertKind = 'AI_USAGE_ALERT' | 'AI_LIMIT_REACHED' | 'DATA_REFRESH_DUE';
@@ -127,6 +129,11 @@ export interface Dashboard {
   todayChecks?: TodayCheckRow[];
   /** #800: 영업 진행 띠 칸(NOT_CONTACTED·IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 회사. 옛 서버면 칸이 없다. */
   progressCompanies?: Partial<Record<ProgressBandKey, ProgressCompany[]>>;
+  /**
+   * #976(PM 결정 2026-11-28): 칸(IN_CONTACT·QUOTE_SAMPLE·WON·ON_HOLD) → 이번 주(월요일~오늘)에 그 칸으로 들어온
+   * 관심 기업 수. 미접촉 칸은 없다. 옛 서버면 값이 없고 화면은 꼬리표를 붙이지 않는다.
+   */
+  enteredThisWeek?: Partial<Record<ProgressBandKey, number>>;
 }
 
 /** #800 영업 진행 띠 칸 이름(브리핑 순서 + 띠 아래 보류). */

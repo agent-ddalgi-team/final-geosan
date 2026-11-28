@@ -5,14 +5,24 @@
 // 한글·숫자만). 그림은 그림 파일 없이 SVG로 그린다. 색은 theme/tokens의 sidebarTheme만 쓴다.
 // #770(PM 결정 2026-11-16): 새로 생긴 것 숫자 꼬리표. 펼치면 이름 뒤, 접으면 그림 오른쪽 위 모서리. 0이면 안 그린다.
 // 영업 분석에는 숫자가 없다. 숫자를 못 읽으면 꼬리표 없이 메뉴만 보인다.
+// #972(PM이 고른 보라 톤 시안 2026-11-27): 화면 맨 위부터 내려오는 흰 칸 + 오른쪽 얇은 테두리.
+// 맨 위 로고 + 이름(머리 띠에 있던 것을 옮김) → 주 단추 [새 후보 발굴] → 묶음 "영업" · "분석" · "운영".
+// 지금 화면 줄은 강조 연한 바탕 + 강조 글자 굵게, 숫자 꼬리표는 연보라 바탕 + 강조 글자(빨강 아님).
+// 접으면 로고 · 접기 단추 · ＋ 그림 · 메뉴 그림만 남는다.
+// #983(PM 지시 2026-11-28): 메뉴 묶음 아래에 한 달 달력(SideCalendar)을 두고 모든 화면에서 보이게 한다.
+//   달력이 늘 보여야 하므로 넓은 화면에서는 메뉴를 항상 펼쳐 둔다: 접기 단추가 없고, 예전에 "접음"으로 기억해 둔
+//   값이 있어도(기업 상세의 기본 접힘 #803 포함) 펼친다. 기억해 둔 값은 지우지 않는다(좁은 기기가 계속 쓴다).
+//   좁은 기기(휴대폰 등)는 지금 방식 그대로다: 접기 단추 · 기억 · 기업 상세 기본 접힘. 달력은 영업 홈 본문 맨 아래에 있다.
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import type { MenuBadges } from '../../api/menuBadges';
+import { brand as defaultBrand } from '../../config/brand';
 import { frame } from '../../labels/ko';
 import { BOOKMARKS_PATH, LIST_PATH } from '../../paths';
-import { radius, sidebarTheme, typography } from '../../theme/tokens';
+import { colors, opinionNudge, radius, sidebarTheme, typography } from '../../theme/tokens';
 import { useFrame } from './FrameContext';
+import SideCalendar from './SideCalendar';
 import { useMenuBadges } from './useMenuBadges';
 
 export const SIDEBAR_STORAGE_KEY = 'geosan.sidebarCollapsed';
@@ -31,8 +41,11 @@ function readDetailCollapsed(): boolean {
     return true;
   }
 }
-const WIDE = 220;
+const WIDE = 224;
 const NARROW = 72;
+
+/** [새 후보 발굴]이 가는 곳(#972): 거래처 후보 화면이 이 표시를 보고 새 후보 발굴 창을 연다. */
+export const NEW_CANDIDATES_PATH = `${LIST_PATH}?newCandidates=1`;
 
 function readCollapsed(narrowDevice: boolean): boolean {
   try {
@@ -112,6 +125,14 @@ const OperationsIcon = () => (
   </Icon>
 );
 
+/** 새 후보 발굴(#972): 더하기. */
+const PlusIcon = () => (
+  <Icon name="new-candidates">
+    <path d="M12 5.5v13" />
+    <path d="M5.5 12h13" />
+  </Icon>
+);
+
 /** 접기·펼치기: 왼쪽 칸이 있는 창 + 화살표. */
 const PanelIcon = ({ collapsed }: { collapsed: boolean }) => (
   <Icon name={collapsed ? 'expand' : 'collapse'}>
@@ -123,14 +144,17 @@ const PanelIcon = ({ collapsed }: { collapsed: boolean }) => (
 
 type BadgeKey = keyof MenuBadges;
 
-const ITEMS: {
+interface MenuItem {
   to: string;
   end: boolean;
   icon: ReactNode;
   label: string;
   testId: string;
   badge: BadgeKey | null;
-}[] = [
+}
+
+/** 묶음 "영업"(#972): 영업 홈 · 거래처 후보 · 관심 기업. */
+const SALES_ITEMS: MenuItem[] = [
   {
     to: '/',
     end: true,
@@ -155,6 +179,10 @@ const ITEMS: {
     testId: 'nav-bookmarks-link',
     badge: 'bookmarks',
   },
+];
+
+/** 묶음 "분석"(#972): 영업 분석. */
+const ANALYSIS_ITEMS: MenuItem[] = [
   {
     to: '/sales-analysis',
     end: false,
@@ -165,8 +193,8 @@ const ITEMS: {
   },
 ];
 
-/** #799 운영 관리: 설정 operations.staffKeys에 든 담당자에게만 맨 아래에 보인다(권한은 서버가 판단). */
-const OPERATIONS_ITEM: (typeof ITEMS)[number] = {
+/** #799 운영 관리: 설정 operations.staffKeys에 든 담당자에게만 맨 아래 묶음 "운영"으로 보인다(권한은 서버가 판단). */
+const OPERATIONS_ITEM: MenuItem = {
   to: '/operations',
   end: false,
   icon: <OperationsIcon />,
@@ -196,22 +224,22 @@ function Badge({
       data-testid={testId}
       title={meaning}
       style={{
-        minWidth: 18,
-        height: 18,
-        padding: '0 5px',
+        minWidth: 20,
+        height: 20,
+        padding: '0 6px',
         boxSizing: 'border-box',
-        borderRadius: radius.md,
+        borderRadius: radius.tag,
         background: sidebarTheme.badgeBg,
         color: sidebarTheme.badgeFg,
-        fontSize: 11,
-        fontWeight: 700,
-        lineHeight: '18px',
+        fontSize: 12,
+        fontWeight: 600,
+        lineHeight: '20px',
         textAlign: 'center',
         ...(collapsed
           ? {
               position: 'absolute',
-              top: -7,
-              right: -10,
+              top: -8,
+              right: -12,
               boxShadow: `0 0 0 2px ${sidebarTheme.bg}`,
             }
           : { marginLeft: 'auto' }),
@@ -231,17 +259,34 @@ function Tip({ children }: { children: ReactNode }) {
   );
 }
 
-export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
+export default function SideMenu({
+  narrowDevice,
+  brand = defaultBrand,
+  calendarExtra,
+}: {
+  narrowDevice: boolean;
+  /** 맨 위 로고·이름. 공통 틀이 서버 설정으로 덮은 값을 넘긴다. 없으면 화면에 실린 기본값. */
+  brand?: { logoUrl: string | null; brandName: string };
+  /** #983 달력 날짜를 눌렀을 때 뜨는 작은 창 본문 아래에 끼울 것(날짜 메모 #984 자리). */
+  calendarExtra?: (day: string) => ReactNode;
+}) {
   const [generalCollapsed, setGeneralCollapsed] = useState(() => readCollapsed(narrowDevice));
   const [detailCollapsed, setDetailCollapsed] = useState(readDetailCollapsed);
   const { pathname } = useLocation();
   const badges = useMenuBadges(pathname);
   const { config, staffKey } = useFrame();
   const operations = Boolean(staffKey && config?.operationsStaffKeys?.includes(staffKey));
-  const items = operations ? [...ITEMS, OPERATIONS_ITEM] : ITEMS;
+  const groups = [
+    { key: 'sales', label: frame.navGroupSales, items: SALES_ITEMS },
+    { key: 'analysis', label: frame.navGroupAnalysis, items: ANALYSIS_ITEMS },
+    ...(operations
+      ? [{ key: 'operations', label: frame.navGroupOperations, items: [OPERATIONS_ITEM] }]
+      : []),
+  ];
   // #803: 기업 상세는 따로 기억하고 처음에는 접혀 있다. 다른 화면의 기억과 섞지 않는다.
   const onDetail = isDetailPath(pathname);
-  const collapsed = onDetail ? detailCollapsed : generalCollapsed;
+  // #983: 넓은 화면에서는 늘 펼친다(기억해 둔 값과 상관없이). 좁은 기기만 접고 펼친다.
+  const collapsed = narrowDevice ? (onDetail ? detailCollapsed : generalCollapsed) : false;
   const toggle = () => {
     const next = !collapsed;
     (onDetail ? setDetailCollapsed : setGeneralCollapsed)(next);
@@ -259,10 +304,10 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
     display: 'flex',
     alignItems: 'center',
     justifyContent: collapsed ? 'center' : 'flex-start',
-    gap: 12,
+    gap: 10,
     minHeight: 44,
     padding: collapsed ? 0 : '0 12px',
-    borderRadius: radius.lg,
+    borderRadius: radius.control,
     whiteSpace: 'nowrap',
     fontSize: typography.fontSize,
     textDecoration: 'none',
@@ -278,11 +323,12 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
         flexShrink: 0,
         background: sidebarTheme.bg,
         color: sidebarTheme.fg,
+        borderRight: `1px solid ${sidebarTheme.border}`,
         position: 'sticky',
         top: 0,
         alignSelf: 'flex-start',
         height: '100vh',
-        padding: '18px 12px',
+        padding: collapsed ? '20px 12px' : '20px 14px',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
@@ -290,107 +336,217 @@ export default function SideMenu({ narrowDevice }: { narrowDevice: boolean }) {
         zIndex: 5,
       }}
     >
-      {/* 맨 위 줄: 묶음 이름 + [메뉴 접기]. 메뉴 칸이 머리 띠 아래에서 시작해 아래쪽 단추는 첫 화면에서 가려지므로 위에 둔다. */}
+      {/* 맨 위 줄: 로고 + 이름 (+ 좁은 기기만 [메뉴 접기]). 접으면 로고 아래에 접기 단추가 놓인다. */}
       <div
         style={{
           display: 'flex',
+          flexDirection: collapsed ? 'column' : 'row',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          gap: 8,
-          marginBottom: 8,
-          paddingLeft: collapsed ? 0 : 10,
+          gap: collapsed ? 8 : 10,
+          marginBottom: 14,
+          paddingLeft: collapsed ? 0 : 6,
         }}
       >
+        {brand.logoUrl ? (
+          <img
+            src={brand.logoUrl}
+            // 펼치면 옆에 이름 글자가 있어 그림은 꾸밈이고, 접으면 이름이 없으므로 그림이 이름을 대신 읽힌다.
+            alt={collapsed ? brand.brandName : ''}
+            height={26}
+            data-testid="brand-logo"
+            style={{ display: 'block', flex: 'none' }}
+          />
+        ) : null}
         {collapsed ? null : (
           <span
-            aria-hidden="true"
-            style={{ fontSize: 12, color: sidebarTheme.group, letterSpacing: '0.04em' }}
+            data-testid="brand-name"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontWeight: 600,
+              fontSize: typography.fontSize,
+              color: colors.text,
+            }}
           >
-            {frame.navGroupSales}
+            {brand.brandName}
           </span>
         )}
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
-          title={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
-          data-testid="side-menu-toggle"
-          className="side-nav-link"
-          style={{
-            position: 'relative',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 40,
-            height: 40,
-            padding: 0,
-            border: 0,
-            borderRadius: radius.md,
-            background: 'transparent',
-            color: sidebarTheme.fg,
-            cursor: 'pointer',
-          }}
-        >
-          <PanelIcon collapsed={collapsed} />
-          {collapsed ? <Tip>{frame.sidebarExpand}</Tip> : null}
-        </button>
+        {/* #983: 넓은 화면에는 접기 단추가 없다(달력이 늘 보이게 항상 펼침). */}
+        {narrowDevice ? (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
+            title={collapsed ? frame.sidebarExpand : frame.sidebarCollapse}
+            data-testid="side-menu-toggle"
+            className="side-nav-link side-nav-row"
+            style={{
+              position: 'relative',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: 'none',
+              width: 36,
+              height: 36,
+              padding: 0,
+              border: 0,
+              borderRadius: radius.control,
+              color: sidebarTheme.group,
+              cursor: 'pointer',
+            }}
+          >
+            <PanelIcon collapsed={collapsed} />
+            {collapsed ? <Tip>{frame.sidebarExpand}</Tip> : null}
+          </button>
+        ) : null}
       </div>
-      <ul
+      {/* 주 단추 [새 후보 발굴](#972): 거래처 후보 화면으로 가서 새 후보 발굴 창을 연다. 접으면 ＋ 그림만. */}
+      <Link
+        to={NEW_CANDIDATES_PATH}
+        data-testid="nav-new-candidates"
+        className="side-nav-link"
+        aria-label={collapsed ? frame.menuNewCandidates : undefined}
+        title={collapsed ? frame.menuNewCandidates : undefined}
         style={{
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-          display: 'grid',
-          gap: 4,
-          alignContent: 'start',
-          flex: 1,
+          ...rowStyle,
+          justifyContent: 'center',
+          gap: 6,
+          padding: collapsed ? 0 : '0 12px',
+          background: sidebarTheme.primaryBg,
+          color: sidebarTheme.primaryFg,
+          fontWeight: 500,
         }}
       >
-        {items.map((item) => {
-          const count = item.badge && badges ? badges[item.badge] : 0;
-          const meaning = item.badge && count > 0 ? frame.menuBadge[item.badge](count) : null;
-          const name = meaning ? `${item.label}, ${meaning}` : item.label;
-          const badge = meaning ? (
-            <Badge
-              count={count}
-              meaning={meaning}
-              collapsed={collapsed}
-              testId={`${item.testId}-badge`}
-            />
-          ) : null;
-          return (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.end}
-                data-testid={item.testId}
-                className="side-nav-link"
-                aria-label={collapsed || meaning ? name : undefined}
-                title={collapsed ? name : undefined}
-                style={({ isActive }) => ({
-                  ...rowStyle,
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? sidebarTheme.fgActive : sidebarTheme.fg,
-                  background: isActive ? sidebarTheme.activeBg : 'transparent',
-                  boxShadow: isActive ? `inset 0 0 0 1px ${sidebarTheme.activeBorder}` : 'none',
-                })}
+        <PlusIcon />
+        {collapsed ? <Tip>{frame.menuNewCandidates}</Tip> : <span>{frame.menuNewCandidates}</span>}
+      </Link>
+      {/* 넓은 화면: 메뉴 묶음은 내용만큼만 차지하고(화면이 낮으면 이 칸 안에서 내려 본다) 그 아래 달력이 온다. */}
+      <div
+        data-testid="side-menu-groups"
+        style={
+          narrowDevice
+            ? { flex: 1 }
+            : {
+                flex: '0 1 auto',
+                minHeight: 0,
+                overflowY: 'auto',
+                // 내려 보는 칸이 줄의 키보드 초점선(바깥 4px)을 자르지 않게 여백을 준다.
+                margin: '0 -4px',
+                padding: '0 4px 4px',
+              }
+        }
+      >
+        {groups.map((group) => (
+          <div key={group.key}>
+            {/* 묶음 이름. 접으면 글자 대신 얇은 줄로 묶음을 가른다. 읽는 이름은 목록의 aria-label이 맡는다. */}
+            {collapsed ? (
+              <div
+                aria-hidden="true"
+                style={{ height: 1, margin: '12px 8px', background: sidebarTheme.border }}
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                style={{ fontSize: 12, color: sidebarTheme.group, padding: '18px 10px 6px' }}
               >
-                {/* 그림 자리: #770 숫자 꼬리표가 접힌 상태에서 그림 모서리에 얹힌다. */}
-                <span
-                  data-testid={`${item.testId}-icon`}
-                  style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}
-                >
-                  {item.icon}
-                  {collapsed ? badge : null}
-                </span>
-                {collapsed ? <Tip>{name}</Tip> : <span>{item.label}</span>}
-                {collapsed ? null : badge}
-              </NavLink>
-            </li>
-          );
-        })}
-      </ul>
+                {group.label}
+              </div>
+            )}
+            <ul
+              aria-label={group.label}
+              data-testid={`side-menu-group-${group.key}`}
+              style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}
+            >
+              {group.items.map((item) => {
+                const count = item.badge && badges ? (badges[item.badge] ?? 0) : 0;
+                const meaning = item.badge && count > 0 ? frame.menuBadge[item.badge](count) : null;
+                // #987: 관심 기업 줄에는 "의견 전 n"도 붙인다(서버가 값을 주고 1곳 이상일 때만).
+                const noOpinionCount =
+                  item.badge === 'bookmarks' ? (badges?.bookmarksNoOpinion ?? 0) : 0;
+                const noOpinionMeaning =
+                  noOpinionCount > 0 ? frame.menuBadge.bookmarksNoOpinion(noOpinionCount) : null;
+                const name = [item.label, meaning, noOpinionMeaning].filter(Boolean).join(', ');
+                const noOpinionBadge = noOpinionMeaning ? (
+                  <span
+                    aria-hidden="true"
+                    data-testid={`${item.testId}-no-opinion`}
+                    title={noOpinionMeaning}
+                    style={{
+                      height: 20,
+                      padding: '0 6px',
+                      boxSizing: 'border-box',
+                      borderRadius: radius.tag,
+                      background: opinionNudge.bg,
+                      color: opinionNudge.fg,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      lineHeight: '20px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {frame.menuNoOpinion(noOpinionCount)}
+                  </span>
+                ) : null;
+                const badge = meaning ? (
+                  <Badge
+                    count={count}
+                    meaning={meaning}
+                    collapsed={collapsed}
+                    testId={`${item.testId}-badge`}
+                  />
+                ) : null;
+                return (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      end={item.end}
+                      data-testid={item.testId}
+                      className="side-nav-link side-nav-row"
+                      aria-label={collapsed || meaning || noOpinionMeaning ? name : undefined}
+                      title={collapsed ? name : undefined}
+                      style={({ isActive }) => ({
+                        ...rowStyle,
+                        fontWeight: isActive ? 600 : 400,
+                        color: isActive ? sidebarTheme.fgActive : sidebarTheme.fg,
+                        // 지금 화면 줄만 바탕을 칠한다. 나머지는 손을 올렸을 때 styles.css가 옅은 바탕을 준다.
+                        ...(isActive
+                          ? {
+                              background: sidebarTheme.activeBg,
+                              boxShadow: `inset 0 0 0 1px ${sidebarTheme.activeBorder}`,
+                            }
+                          : {}),
+                      })}
+                    >
+                      {/* 그림 자리: #770 숫자 꼬리표가 접힌 상태에서 그림 모서리에 얹힌다. */}
+                      <span
+                        data-testid={`${item.testId}-icon`}
+                        style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}
+                      >
+                        {item.icon}
+                        {collapsed ? badge : null}
+                      </span>
+                      {collapsed ? <Tip>{name}</Tip> : <span>{item.label}</span>}
+                      {/* 펼친 메뉴: "의견 전 n"을 오른쪽 끝에, 그 옆에 새 소식 숫자. 접힌 메뉴에서는 숫자 꼬리표만 그린다. */}
+                      {collapsed || (!noOpinionBadge && !badge) ? null : (
+                        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4 }}>
+                          {noOpinionBadge}
+                          {badge}
+                        </span>
+                      )}
+                    </NavLink>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {/* #983: 한 달 달력. 좁은 기기에서는 영업 홈 본문 맨 아래에 있다. */}
+      {narrowDevice ? null : <SideCalendar extra={calendarExtra} />}
     </nav>
   );
 }

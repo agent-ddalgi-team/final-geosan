@@ -10,6 +10,9 @@ export default mergeConfig(
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
+      // 시험 하나의 시간 한도(기본 5초 → 15초, #938). PC가 바쁠 때 매번 다른 시험이 5~7초로 떨어졌다.
+      // 기대 결과는 그대로이고, 정말 멈춘 시험은 15초에 실패로 잡힌다.
+      testTimeout: 15_000,
       include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
       coverage: {
         provider: 'v8',

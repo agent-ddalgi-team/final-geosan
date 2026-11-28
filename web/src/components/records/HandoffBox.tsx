@@ -10,11 +10,12 @@ import { Button, Input, Select } from 'antd';
 import { ApiError, confirmHandoff, postNote } from '../../api/client';
 import type { HandoffNote } from '../../api/types';
 import { handoffTexts } from '../../labels/ko';
-import { colors, detailTheme, radius, tone, typography } from '../../theme/tokens';
+import { colors, detailTheme, radius, typography, warn } from '../../theme/tokens';
 import { formatMonthDay } from '../../utils/time';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
 
-const POSTIT = tone.lemonSoft;
+// #972 새 시안: 확인 전 전달 사항은 주의 바탕(연한 주황) + 얇은 테두리, 그림자 없음.
+const POSTIT = warn.bg;
 const POSTIT_DONE = detailTheme.cellBg;
 
 export interface HandoffBoxProps {
@@ -189,13 +190,12 @@ export default function HandoffBox({
                 data-confirmed={done}
                 style={{
                   background: done ? POSTIT_DONE : POSTIT,
-                  border: `1px solid ${done ? colors.borderSecondary : tone.lemonDeep}`,
-                  borderRadius: radius.sm,
-                  padding: '8px 10px',
+                  border: `1px solid ${done ? colors.borderSecondary : warn.border}`,
+                  borderRadius: radius.control,
+                  padding: '10px 12px',
                   display: 'grid',
                   gap: 4,
                   color: done ? colors.textSecondary : colors.text,
-                  boxShadow: done ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
                 }}
               >
                 <span style={{ fontSize: typography.fontSizeSecondary }}>

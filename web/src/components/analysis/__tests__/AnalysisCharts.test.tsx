@@ -10,6 +10,7 @@ import AnalysisCharts, {
 } from '../AnalysisCharts';
 import type { CompanyAnalysisRow, SalesAnalysis } from '../../../api/salesAnalysis';
 import { SAMPLE, sampleStats } from '../../../test/analysisSample';
+import { accent, warn } from '../../../theme/tokens';
 
 function company(overrides: Partial<CompanyAnalysisRow>): CompanyAnalysisRow {
   return {
@@ -109,6 +110,37 @@ describe('AnalysisCharts › 어디서 빠지나(깔때기)', () => {
       '↓ 50% 넘어감 · 여기서 멈춤 2곳 · 거절 2(가격 1 · 납기 1)',
       '↓ 50% 넘어감 · 여기서 멈춤 1곳 · 진행 중 1',
     ]);
+  });
+
+  it('막대는 옅은 보라이고 마지막 "성사"만 진한 보라, 가장 많이 멈춘 단계는 주의색 글자와 꼬리표로 띄운다(#972)', () => {
+    render(<AnalysisCharts data={withCompanies(SIX, 1)} />);
+    const funnel = screen.getByTestId('chart-funnel');
+    const bars = within(funnel).getAllByTestId('chart-funnel-bar');
+    expect(bars).toHaveLength(5);
+    for (const bar of bars.slice(0, 4)) expect(bar).toHaveStyle({ background: accent.softDeep });
+    expect(bars[4]).toHaveStyle({ background: accent.bg });
+    // 멈춘 회사: 접촉 1 · 연결 1 · 수요 확인 2 · 견적·샘플 1 → 수요 확인(셋째 줄)이 가장 많다.
+    const gaps = within(funnel).getAllByTestId('chart-funnel-gap');
+    expect(gaps.map((el) => el.dataset.most)).toEqual(['false', 'false', 'true', 'false']);
+    expect(gaps[2]).toHaveStyle({ color: warn.text });
+    const tags = within(funnel).getAllByTestId('chart-funnel-most');
+    expect(tags).toHaveLength(1);
+    expect(tags[0]).toHaveTextContent('가장 많이 멈춤');
+    expect(within(funnel).getAllByTestId('chart-funnel-stage')[2]).toContainElement(tags[0]);
+    // 말풍선·요약 문장도 같은 단계를 말한다.
+    expect(screen.getByTestId('chart-funnel-callout')).toHaveTextContent('2곳수요 확인에서 멈춤');
+  });
+
+  it('멈춘 회사가 없으면 "가장 많이 멈춤" 꼬리표를 붙이지 않는다', () => {
+    render(
+      <AnalysisCharts
+        data={withCompanies(
+          [company({ name: '가성사', outcomeStatus: 'WON', salesStep: null })],
+          1,
+        )}
+      />,
+    );
+    expect(screen.queryByTestId('chart-funnel-most')).not.toBeInTheDocument();
   });
 
   it('칸의 곳 수가 표본 기준보다 적으면 비율을 지어내지 않고 "표본 적음"', () => {
@@ -280,6 +312,33 @@ describe('AnalysisCharts › 회사별로 어디서 멈췄나(타임라인)', ()
     fireEvent.click(screen.getByTestId('chart-timeline-more'));
     expect(screen.getAllByTestId('chart-timeline-row')).toHaveLength(14);
     expect(screen.getByTestId('chart-timeline-more')).toHaveTextContent('접기');
+  });
+});
+
+describe('AnalysisCharts › 배치(#972 시안)', () => {
+  it('앞 칸(월별 추세)을 주면 깔때기와 같은 줄에, 거절 이유는 조합 칸과 같은 줄에 둔다', () => {
+    render(<AnalysisCharts data={SAMPLE} lead={<p data-testid="lead-slot">월별 추세 자리</p>} />);
+    const first = screen.getByTestId('analysis-lead-cards');
+    expect(first).toContainElement(screen.getByTestId('lead-slot'));
+    expect(first).toContainElement(screen.getByTestId('chart-funnel'));
+    const second = screen.getByTestId('analysis-bar-cards');
+    expect(second).toContainElement(screen.getByTestId('chart-lost'));
+    expect(second).toContainElement(screen.getByTestId('chart-grid'));
+    expect(second).not.toContainElement(screen.getByTestId('chart-timeline'));
+    // 순서: 앞 칸 → 깔때기 → 거절 이유 → 조합 → 회사별 점 줄
+    const order = ['lead-slot', 'chart-funnel', 'chart-lost', 'chart-grid', 'chart-timeline'].map(
+      (id) => screen.getByTestId(id),
+    );
+    for (let i = 1; i < order.length; i += 1) {
+      expect(
+        order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+  });
+
+  it('앞 칸이 없으면(옛 서버) 빈 칸을 만들지 않고 깔때기만 둔다', () => {
+    render(<AnalysisCharts data={SAMPLE} />);
+    expect(screen.getByTestId('analysis-lead-cards').children).toHaveLength(1);
   });
 });
 

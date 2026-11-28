@@ -6,7 +6,7 @@ import CompanyReportPage from '../CompanyReportPage';
 import { getOpportunityDetail, getSalesQuestions } from '../../api/client';
 import type { OpportunityDetail } from '../../api/types';
 import { reportModelOf } from '../../components/report/reportModel';
-import { companyReport } from '../../labels/ko';
+import { companyReport, reportView } from '../../labels/ko';
 import detailFixture from '../../test/fixtures/opportunity-detail-apjeong.json';
 
 vi.mock('../../api/client', async (importOriginal) => ({
@@ -87,6 +87,37 @@ describe('회사별 보고서 › 6. 영업 방향 (#742)', () => {
         .map((item) => item.textContent),
     ).toEqual(lines);
     expect(section).not.toHaveTextContent('park-lee');
+  });
+
+  it('(#974) Given 보고서 When 6. 영업 방향을 보면 Then 입력 칸 대신 [상세에서 기록 남기기 →] 링크 하나가 그 회사 상세를 가리키고 인쇄할 때 숨긴다', async () => {
+    vi.mocked(getOpportunityDetail).mockResolvedValue({ data: detailWithAdvice(), meta: {} });
+    vi.mocked(getSalesQuestions).mockRejectedValue(new Error('질문 파일 없음'));
+    renderReport();
+    const section = await screen.findByTestId('report-direction-section');
+    const link = within(section).getByTestId('report-direction-link');
+    expect(link).toHaveTextContent(reportView.directionLink);
+    expect(link).toHaveAttribute('href', '/opportunities/opp-1');
+    // 테스트 환경은 CSS를 읽지 않는다: 인쇄할 때 숨김은 붙은 클래스(no-print)까지만 확인한다.
+    expect(link).toHaveClass('no-print');
+    // 적는 곳은 상세의 영업 코치 한 곳뿐이다: 보고서에는 입력 칸·저장 단추가 없다.
+    expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument();
+    // 남긴 줄은 그대로 보인다.
+    expect(within(section).getByTestId('report-direction')).toHaveTextContent(ADVICE);
+  });
+
+  it('(#974) 남긴 피드백이 없어도 [상세에서 기록 남기기 →] 링크는 보인다', async () => {
+    vi.mocked(getOpportunityDetail).mockResolvedValue({ data: fixture, meta: {} });
+    vi.mocked(getSalesQuestions).mockRejectedValue(new Error('질문 파일 없음'));
+    renderReport();
+    const section = await screen.findByTestId('report-direction-section');
+    expect(within(section).getByTestId('report-direction-none')).toHaveTextContent(
+      companyReport.direction.none,
+    );
+    expect(within(section).getByTestId('report-direction-link')).toHaveAttribute(
+      'href',
+      '/opportunities/opp-1',
+    );
   });
 
   it('남긴 피드백이 없으면(옛 응답 포함) "없습니다" 한 줄이다', () => {

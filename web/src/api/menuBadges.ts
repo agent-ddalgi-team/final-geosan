@@ -11,6 +11,11 @@ export interface MenuBadges {
   list: number;
   /** 관심 기업 화면을 마지막으로 연 뒤 다른 사람 기록·새 조사 결과가 붙은 관심 기업 곳 수. */
   bookmarks: number;
+  /**
+   * (#987) 관심에 담고 검토 의견을 안 고른 회사 수(영업 단계 전인 곳만, 영업 홈 "의견 전" 칸과 같은 숫자).
+   * 옛 서버는 이 칸이 없다 — 없으면 화면은 표시를 그리지 않는다.
+   */
+  bookmarksNoOpinion?: number;
 }
 
 export interface MenuSeen {

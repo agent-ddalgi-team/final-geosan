@@ -29,9 +29,11 @@ def choices_match(choices_context, actual_choices):
     assert len(actual_choices["processes"]) == len(expected) == 9
     assert actual_choices["processes"] == [{"code": p["code"], "name": p["name"]} for p in expected]
     # #521(PM 결정 2026-11-09): 충남 전체 뒤에 충남 15개 시·군, 그다음 대전·세종.
+    # #961(PM 결정 2026-11-26): 그 뒤에 경기 전체와 경기 31개 시·군.
     regions = actual_choices["regions"]
-    assert regions[:3] == ["충남", "천안시", "아산시"] and regions[-2:] == ["대전", "세종"]
-    assert len(regions) == 18
+    assert regions[:3] == ["충남", "천안시", "아산시"] and regions[16:18] == ["대전", "세종"]
+    assert regions[18:20] == ["경기", "평택시"] and regions[-1] == "연천군"
+    assert len(regions) == 18 + 1 + 31
     assert actual_choices["industries"]
 
 

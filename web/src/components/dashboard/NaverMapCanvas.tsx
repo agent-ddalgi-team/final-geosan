@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DashboardMapGroup, DashboardMapPoint } from '../../api/dashboardMapTypes';
 import { dashboardMapTexts as t } from '../../labels/ko';
-import { colors, radius, statusPalette } from '../../theme/tokens';
+import { colors, homePalette, mapPinStroke, radius, statusPalette } from '../../theme/tokens';
 import { pinHtml } from '../common/MapPin';
 import { spreadPins, type PinSpot } from '../common/spreadPins';
 
@@ -125,6 +125,10 @@ export function resetNaverMapsLoader() {
 // #898(PM 2026-11-24 "섞기"): 한자리에 거의 그대로 겹친 회사(OVERLAP_DISTANCE px 안)는 숫자 풍선으로 묶고(#900),
 // 살짝만 겹친 점·풍선은 PIN_GAP 간격으로 살짝 벌려 하나씩 누를 수 있게 한다(잇는 선 없음).
 const OVERLAP_DISTANCE = 8;
+/** #929 영업 홈(compact) 지도 높이(화면 모양값, 규칙 숫자 아님). 같이 들를 곳 칸 높이와 맞춘다. */
+export const DASHBOARD_MAP_HEIGHT = 360;
+/** #983 영업 홈에서 지도를 "이번 주 방문·연락" 옆 칸 위쪽에 놓을 때의 낮춘 높이(화면 모양값). 아래에 같이 들를 곳이 온다. */
+export const DASHBOARD_MAP_STACKED_HEIGHT = 250;
 const CLUSTER_SIZE = 22;
 const PIN_SIZE = 14;
 const HQ_PIN_SIZE = 24;
@@ -255,7 +259,7 @@ function clusterIcon(count: number): HTMLButtonElement {
     borderRadius: '50%',
     color: colors.bgContainer,
     background: colors.text,
-    boxShadow: '0 1px 4px #1f232947',
+    boxShadow: `0 1px 4px ${mapPinStroke.shadow}`,
     fontSize: '12px',
     fontWeight: '700',
     lineHeight: '1',
@@ -265,8 +269,7 @@ function clusterIcon(count: number): HTMLButtonElement {
 }
 
 /** "같이 들를 곳" 근처 회사 표시(○). 회사 정보 없이 모양만. */
-export const NEARBY_ICON =
-  '<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #555;cursor:pointer"></div>';
+export const NEARBY_ICON = `<div style="width:10px;height:10px;border-radius:50%;background:${mapPinStroke.ring};border:2px solid ${colors.textSecondary};cursor:pointer"></div>`;
 
 export interface NaverMapCanvasProps {
   api: NaverMapsApi;
@@ -288,6 +291,8 @@ export interface NaverMapCanvasProps {
   } | null;
   /** 마우스를 올린 점의 회사 이름. 이름은 SDK에 넘기지 않고 이 부품의 HTML 이름표로만 그린다(#673). */
   labelFor?: (oppId: string) => string | null;
+  /** #983 영업 홈(compact) 지도 높이. 안 주면 DASHBOARD_MAP_HEIGHT. */
+  height?: number;
 }
 
 export default function NaverMapCanvas({
@@ -302,6 +307,7 @@ export default function NaverMapCanvas({
   visitBaseId,
   focus = null,
   labelFor,
+  height = DASHBOARD_MAP_HEIGHT,
 }: NaverMapCanvasProps) {
   const box = useRef<HTMLDivElement>(null);
   // 마우스를 올린 점과 그 화면 위치. 이름표는 우리 HTML로 지도 위에 띄운다.
@@ -377,7 +383,7 @@ export default function NaverMapCanvas({
         position: new api.LatLng(center.lat + km / KM_PER_LATITUDE_DEGREE, center.lng),
         clickable: false,
         icon: {
-          content: `<div style="font-size:12px;color:${ringColor};background:#fff;padding:0 4px;border-radius:4px">${km}km</div>`,
+          content: `<div style="font-size:12px;color:${ringColor};background:${homePalette.mapLabelBg};padding:0 4px;border-radius:${radius.tag}px">${km}km</div>`,
           anchor: new api.Point(18, 8),
         },
       });
@@ -599,14 +605,15 @@ export default function NaverMapCanvas({
   const tooltipWidth = overlay?.width ? Math.min(260, overlay.width - 16) : 260;
   const belowMarker = hover ? hover.y < (hoverNames.length > 1 ? 85 : 36) : false;
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: radius.lg }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: radius.card }}>
       <div
         ref={box}
         data-testid="dashboard-naver-map"
         style={{
           width: '100%',
-          height: compact ? 'clamp(420px, 52vw, 510px)' : 420,
-          borderRadius: radius.lg,
+          // #929(PM 요청 2026-11-25): 영업 홈 지도는 옆 "같이 들를 곳"과 균형이 맞게 높이를 고정한다.
+          height: compact ? height : 420,
+          borderRadius: radius.card,
           overflow: 'hidden',
           isolation: 'isolate',
         }}
@@ -620,7 +627,7 @@ export default function NaverMapCanvas({
             left: hqOffset.x + HQ_PIN_SIZE / 2 + 4,
             top: hqOffset.y,
             transform: 'translateY(-50%)',
-            borderRadius: 5,
+            borderRadius: radius.tag,
             padding: '2px 5px',
             background: colors.bgContainer,
             color: colors.text,
@@ -649,7 +656,7 @@ export default function NaverMapCanvas({
             lineHeight: `${LABEL_HEIGHT}px`,
             boxSizing: 'border-box',
             padding: '0 5px',
-            borderRadius: 5,
+            borderRadius: radius.tag,
             background: isVisitBase ? statusPalette.ask.bg : colors.bgContainer,
             color: isVisitBase ? statusPalette.ask.fg : colors.text,
             fontWeight: isVisitBase ? 700 : 500,
@@ -679,9 +686,9 @@ export default function NaverMapCanvas({
             top: hover.y + (belowMarker ? 22 : -16),
             transform: belowMarker ? 'translateX(-50%)' : 'translate(-50%, -100%)',
             padding: '2px 8px',
-            borderRadius: radius.sm,
-            background: 'rgba(0,0,0,0.78)',
-            color: '#fff',
+            borderRadius: radius.tag,
+            background: homePalette.mapTipBg,
+            color: homePalette.mapTipFg,
             fontSize: 13,
             maxWidth: tooltipWidth,
             boxSizing: 'border-box',

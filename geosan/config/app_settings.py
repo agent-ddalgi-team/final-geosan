@@ -370,6 +370,20 @@ class AssistantSettings(FileModel):
     # #927 MCP 서버(geosan mcp)의 하루(한국 날짜) 도구 호출 상한. 바깥 AI 앱 비용은 우리 월 한도에
     # 걸 수 없어서 대신 조회 횟수를 묶는다(PM 결정 2026-11-25).
     mcp_daily_limit: int = Field(ge=1, strict=True)
+    # #916 영업 코치가 한 번 코칭에 도구(MCP와 같은 5개)로 찾아보는 횟수 상한. 0이면 끔.
+    coach_tool_rounds: int = Field(ge=0, strict=True)
+
+
+class ExistingCustomersSettings(FileModel):
+    """계약 C7 `existingCustomers`(#932 기존 고객 참고 자료, PM 결정 2026-11-26).
+
+    기업이 요청할 때만 켜는 확장 기능이라 이 칸이 없는 옛 설정 파일·DB 사본은 꺼짐으로 읽는다.
+    켜도 `llm.salesRecordsEnabled`가 꺼져 있으면 도구가 동작하지 않는다(둘 다 켜져야 함).
+    """
+
+    enabled: bool = False
+    # 비슷한 기존 고객 도구가 돌려주는 고객 수 상한(겹치는 공정 → 산업 → 최근 거래 순).
+    similar_limit: int = Field(default=3, ge=1, strict=True)
 
 
 class ContactAdjustSettings(FileModel):
@@ -385,6 +399,27 @@ class ContactAdjustSettings(FileModel):
     lost_reasons_counted: list[LostReasonCode]
 
 
+class ContactPreferenceSettings(FileModel):
+    """계약 C7 `contactList.preference`(#943, PM 결정 2026-11-26). 되먹임 ③ 선호를 묶음 안 순서로.
+
+    관리자가 승인한 제안만 "근거 있음" 묶음 안 순서를 올린다. 점수·분류·부록 F 배점은 바꾸지 않는다.
+    """
+
+    enabled: bool = Field(strict=True)
+    window_days: int = Field(ge=1, strict=True)
+    min_picks: int = Field(ge=1, strict=True)
+    min_share: float = Field(gt=0, le=1)
+    distance_km: float = Field(gt=0)
+    # 안전장치①: 조합 안·밖 성사·거절이 각각 이 수 이상이고 안 성사율이 밖보다 낮지 않을 때만 제안.
+    min_closed_for_rate: int = Field(ge=1, strict=True)
+    # 안전장치②: 승인 기한(일).
+    approval_days: int = Field(ge=1, strict=True)
+    step: int = Field(ge=1, strict=True)
+    max_level: int = Field(ge=1, strict=True)
+    # 안전장치③: 근거 있음 위쪽 이 자리 가운데 한 자리는 선호 밖 회사.
+    explore_top_n: int = Field(ge=2, strict=True)
+
+
 class ContactListSettings(FileModel):
     """계약 C7 `contactList`(#610, 근거 상태 묶음 #675). 기준은 코드에 두지 않는다(규칙 ⑩)."""
 
@@ -397,6 +432,9 @@ class ContactListSettings(FileModel):
     # 적합도가 없는 회사를 묶음 안 순서에서 어느 적합도로 볼지.
     null_fit_level_as: FitLevel
     adjust: ContactAdjustSettings
+    # #943 되먹임 ③. 이 칸이 생기기 전의 설정·DB 사본은 예시 파일 값으로 읽는다
+    # (ADDED_CONTACT_LIST_KEYS).
+    preference: ContactPreferenceSettings | None = None
 
 
 class MainPhoneSettings(FileModel):
@@ -443,6 +481,22 @@ class OperationsSettings(FileModel):
     staff_keys: list[str] = Field(default_factory=list)
     # 공장현황 파일 갱신 권장 주기(일). 파일 기준일 + 이 일수가 지나면 운영 담당에게 알린다.
     factory_csv_refresh_days: int = Field(default=180, ge=1, le=3650, strict=True)
+
+
+class PersonalContactsSettings(FileModel):
+    """#980(PM 결정 2026-11-28): 상대 담당자 연락처 보관 기간과 지울지 묻기 시작하는 때.
+
+    기한이 지나도 저절로 지우지 않는다. 담당자가 확인하고 [지우기]나 [1년 더]를 고른다.
+    """
+
+    retention_days: int = Field(default=365, ge=30, le=3650, strict=True)
+    notice_days: int = Field(default=30, ge=0, le=3650, strict=True)
+
+    @model_validator(mode="after")
+    def check_notice(self) -> PersonalContactsSettings:
+        if self.notice_days > self.retention_days:
+            raise ValueError("noticeDays는 retentionDays보다 클 수 없습니다.")
+        return self
 
 
 class HandoffTeam(FileModel):
@@ -518,12 +572,15 @@ class AppSettings(FileModel):
     contact_list: ContactListSettings | None = None
     # #217: 이 칸이 없는 옛 설정 파일은 꺼짐으로 읽는다. DB 사본에 없으면 예시 파일 값으로 채운다.
     export: ExportSettings = Field(default_factory=ExportSettings)
+    # #932: 확장 기능(기본 꺼짐). 이 칸이 없는 옛 설정 파일·DB 사본은 꺼짐으로 읽는다.
+    existing_customers: ExistingCustomersSettings = Field(default_factory=ExistingCustomersSettings)
     main_phone: MainPhoneSettings = Field(default_factory=MainPhoneSettings)
     industries: list[str] = Field(default_factory=list)
     list_filters: ListFilterSettings = Field(default_factory=ListFilterSettings)
     dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
     # #799: 옛 설정 파일·DB 사본에는 없어서 DB 사본에서 읽을 때 예시 파일 값으로 채운다.
     operations: OperationsSettings = Field(default_factory=OperationsSettings)
+    personal_contacts: PersonalContactsSettings = Field(default_factory=PersonalContactsSettings)
     # #853: 전달 사항 받는 역할 묶음. 빈 목록이면 화면은 지금처럼 사람별로 고른다.
     handoff_teams: list[HandoffTeam] = Field(default_factory=list)
     geosan: GeosanLocationSettings = Field(default_factory=GeosanLocationSettings)
@@ -808,8 +865,15 @@ def _fill_added_llm_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "llm": filled}
 
 
-ADDED_SECTIONS = ("salesAnalysis", "contactList", "export", "assistant", "operations")
-"""#608·#610·#217·#680·#799 뒤에 생긴 묶음.
+ADDED_SECTIONS = (
+    "salesAnalysis",
+    "contactList",
+    "export",
+    "assistant",
+    "operations",
+    "personalContacts",
+)
+"""#608·#610·#217·#680·#799·#980 뒤에 생긴 묶음.
 
 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다.
 """
@@ -830,8 +894,9 @@ ADDED_ASSISTANT_KEYS = (
     "coachMaxRequiredQuestions",
     "coachSimilarWonLimit",
     "mcpDailyLimit",
+    "coachToolRounds",
 )
-"""#742·#915·#927 뒤에 생긴 assistant 칸. 그 전 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+"""#742·#915·#927·#916 뒤에 생긴 assistant 칸. 그 전 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:
@@ -847,8 +912,8 @@ def _fill_added_assistant_keys(data: dict[str, Any]) -> dict[str, Any]:
     return {**data, "assistant": filled}
 
 
-ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin",)
-"""#675 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
+ADDED_CONTACT_LIST_KEYS = ("evidenceReadyMin", "preference")
+"""#675·#943 뒤에 생긴 contactList 칸. 그 전에 만든 DB 사본에는 없어서 예시 파일 값으로 채운다."""
 
 
 def _fill_added_contact_list_keys(data: dict[str, Any]) -> dict[str, Any]:

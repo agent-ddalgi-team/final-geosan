@@ -44,7 +44,7 @@ describe('WhyThisCompany (#674)', () => {
         ]}
       />,
     );
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('1. 왜 이 회사인가');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('왜 이 회사인가');
     // 근거가 없는 항목(미확보·신호 없음)의 문장은 여기에 없다(공고 "근거 없음"도 안 보인다).
     const rows = screen.getAllByTestId('detail-reason-line');
     expect(rows).toHaveLength(1);

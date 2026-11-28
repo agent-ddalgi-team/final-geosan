@@ -3,6 +3,7 @@
 // 그 아래 확인 줄에 누르기 전 예상 금액과 이번 달 사용액을 보이고, 한도를 넘으면 단추를 잠근다(#549 ②).
 // 선택지는 서버 설정에서 넘겨받는다.
 // 누르면 서버가 회차를 만든 직후 바로 응답하고(POST /ingest), 진행은 목록 머리 수집 요약이 서버에서 다시 읽어 보인다.
+// #932 확장 기능을 켜면 맨 위에 "기존 고객과 닮은 조건 [적용]" 줄이 보인다(공정·산업 칸만 채움).
 // 보기 전용(viewer)이면 통째로 숨기고, 담당자를 고르기 전에는 잠근다. 이미 가져오는 중이면 잠근다.
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
@@ -13,9 +14,11 @@ import type {
   IngestRegionGroup,
   IngestRequest,
 } from '../../api/types';
+import PaidTag from '../common/PaidTag';
 import { candidateSearch, errorTexts, listSimple, monthSpend } from '../../labels/ko';
 import { colors } from '../../theme/tokens';
 import { useFrame, VIEWER_KEY } from '../frame/FrameContext';
+import CustomerLikeLine from './CustomerLikeLine';
 
 /** 조건 칸의 선택지. 서버 설정(공정 목록·`ingestion.regions`·`industries`)에서 온 값이다. */
 export interface IngestOptions {
@@ -104,29 +107,109 @@ interface CheckGroupProps {
   selected: string[];
   onToggle: (value: string) => void;
   testId: string;
+  /** #961: 주면 선택지를 작은 제목 아래 줄로 나눠 보인다(예: 권역 이름마다 그 시·군). */
+  sections?: RegionSection[];
 }
 
-function CheckGroup({ legend, hint, items, selected, onToggle, testId }: CheckGroupProps) {
+interface RegionSection {
+  title: string;
+  values: string[];
+}
+
+function CheckItem({
+  item,
+  selected,
+  onToggle,
+  testId,
+}: {
+  item: { value: string; label: string };
+  selected: string[];
+  onToggle: (value: string) => void;
+  testId: string;
+}) {
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={selected.includes(item.value)}
+        onChange={() => onToggle(item.value)}
+        data-testid={`${testId}-${item.value}`}
+      />
+      <span>{item.label}</span>
+    </label>
+  );
+}
+
+function CheckGroup({
+  legend,
+  hint,
+  items,
+  selected,
+  onToggle,
+  testId,
+  sections,
+}: CheckGroupProps) {
+  const byValue = new Map(items.map((item) => [item.value, item]));
   return (
     <fieldset className="prospect-check-group" data-testid={testId}>
       <legend>
         {legend} {hint ? <small>{hint}</small> : null}
       </legend>
-      <div className="prospect-choices">
-        {items.map((item) => (
-          <label key={item.value}>
-            <input
-              type="checkbox"
-              checked={selected.includes(item.value)}
-              onChange={() => onToggle(item.value)}
-              data-testid={`${testId}-${item.value}`}
+      {sections ? (
+        sections.map((section) => (
+          <div
+            key={section.title}
+            className="prospect-choice-section"
+            data-testid={`${testId}-section-${section.title}`}
+          >
+            <div className="prospect-choice-section-title">{section.title}</div>
+            <div className="prospect-choices">
+              {section.values.map((value) => (
+                <CheckItem
+                  key={value}
+                  item={byValue.get(value) ?? { value, label: value }}
+                  selected={selected}
+                  onToggle={onToggle}
+                  testId={testId}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="prospect-choices">
+          {items.map((item) => (
+            <CheckItem
+              key={item.value}
+              item={item}
+              selected={selected}
+              onToggle={onToggle}
+              testId={testId}
             />
-            <span>{item.label}</span>
-          </label>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </fieldset>
   );
+}
+
+/**
+ * #961: 시·군 직접 고르기를 권역 이름으로 나눈다. 권역에 안 든 지역(예: 시·도 통째 "충남"·"경기")은
+ * 맨 앞 "시·도 전체" 줄에 둔다. 선택지(설정 regions)에 없는 권역 값은 보이지 않는다.
+ */
+function regionSections(regions: string[], groups: IngestRegionGroup[]): RegionSection[] {
+  const inGroups = new Set(groups.flatMap((group) => group.regions));
+  const whole = regions.filter((region) => !inGroups.has(region));
+  const grouped = groups
+    .map((group) => ({
+      title: group.label,
+      values: group.regions.filter((region) => regions.includes(region)),
+    }))
+    .filter((section) => section.values.length > 0);
+  return [
+    ...(whole.length > 0 ? [{ title: listSimple.regionWholeSection, values: whole }] : []),
+    ...grouped,
+  ];
 }
 
 export default function IngestForm({ options, running, onStarted }: IngestFormProps) {
@@ -246,6 +329,14 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
       }}
       className="prospect-form"
     >
+      <CustomerLikeLine
+        processCodes={options.processes.map((p) => p.code)}
+        industries={options.industries}
+        onApply={(codes, names) => {
+          setProcesses(codes);
+          setIndustries(names);
+        }}
+      />
       <CheckGroup
         legend={candidateSearch.processLabel}
         hint={listSimple.ingestRequired}
@@ -279,6 +370,7 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
                   selected={directRegions}
                   onToggle={(value) => setRegions((prev) => toggled(prev, value))}
                   testId="ingest-region"
+                  sections={regionSections(options.regions, regionGroups)}
                 />
               </div>
             </details>
@@ -375,7 +467,13 @@ export default function IngestForm({ options, running, onStarted }: IngestFormPr
           loading={submitting}
           data-testid="ingest-submit"
         >
-          {submitting ? candidateSearch.fetching : candidateSearch.fetchButton}
+          {submitting ? (
+            candidateSearch.fetching
+          ) : (
+            <>
+              {candidateSearch.fetchButton} <PaidTag onPrimary />
+            </>
+          )}
         </Button>
       </div>
       {notice ? (

@@ -17,3 +17,22 @@ export function scoreAriaLabel(scoreDisplay: string): string {
   const [, reference, score, done, total] = match;
   return scoreAria.label(score, done, total, Boolean(reference));
 }
+
+/**
+ * 점수 숫자만 크게 띄울 때(#972 목록 표 줄·관심 기업 줄) 서버 글자를 앞·숫자·뒤로 가른다.
+ * 셋을 이어 붙이면 서버 글자 그대로다(글자를 바꾸거나 지어내지 않는다). 형식이 다르면("--" 등) null.
+ */
+export function scoreParts(
+  scoreDisplay: string,
+  scoreOnly = false,
+): { before: string; number: string; after: string } | null {
+  const match = SCORE_PATTERN.exec(scoreDisplay);
+  if (!match) return null;
+  const [, reference, score, done, total] = match;
+  // #981: 거래처 후보 줄은 "· 조사한 항목 수/전체"를 보이지 않는다(점수와 "참고"만). 화면 낭독 문구는 그대로 다 읽는다.
+  return {
+    before: reference ?? '',
+    number: score,
+    after: scoreOnly ? '점' : `점 · ${done}/${total}`,
+  };
+}

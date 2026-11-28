@@ -26,8 +26,8 @@ export default function StatusTag({
       data-tone={tone}
       style={{
         display: 'inline-block',
-        padding: '2px 12px',
-        borderRadius: radius.pill,
+        padding: '2px 10px',
+        borderRadius: radius.tag,
         background: palette.bg,
         color: palette.fg,
         fontSize: typography.fontSizeSecondary,

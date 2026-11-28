@@ -288,6 +288,13 @@ class IngestOptions(_ApiModel):
     data_basis: list[DataBasisItem] = Field(default_factory=list)
 
 
+class MaterialOption(_ApiModel):
+    """#958 거산 처리 소재 하나(코드·쉬운 말)."""
+
+    code: str
+    name: str
+
+
 class CurrentStaff(_ApiModel):
     """계정 방식에서 지금 로그인한 사람(#754). 표시 이름은 첫 로그인 설정 전이면 null."""
 
@@ -320,6 +327,13 @@ class ConfigUi(_ApiModel):
         description="목록 거리 범위 선택지(km). 설정 distanceFilterPresetsKm 그대로(#666)"
     )
     research: ResearchUi
+    material_options: list[MaterialOption] = Field(
+        default_factory=list,
+        description=(
+            "거산 처리 소재(활성 역량 파일 materialCodes를 공정 순서로 합침, #958). "
+            "상세 소재 [고치기]와 꼬리 질문 소재 보기의 선택지"
+        ),
+    )
     current_staff: CurrentStaff | None = Field(
         default=None, description="계정 방식에서 지금 로그인한 사람(#754). 공용 방식이면 null"
     )
@@ -362,9 +376,27 @@ class BookmarkRecord(RecordMeta):
 
 
 class CardOutcome(_ApiModel):
-    """카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242)."""
+    """카드용 최신 영업 단계만 공개한다(2026-11-04 PM 결정 #242).
+
+    #976(PM 결정 2026-11-28): 관심 기업 줄이 다음 일정을 보이도록 일정 날짜와 일정 할 일 한 줄을
+    더한다. 상세 records.outcome의 같은 칸과 같은 값이고 영업 메모 글이 아니다.
+    """
 
     status: SalesOutcomeStatus
+    next_schedule_at: date | None = Field(
+        default=None, description="#976 최신 영업 기록의 다음 일정 날짜. 일정이 없으면 null"
+    )
+    next_schedule_note: str | None = Field(
+        default=None, description="#976 다음 일정 할 일 한 줄. 일정이 없으면 null"
+    )
+
+
+class CardContactByMethod(_ApiModel):
+    """#976 목록 한 줄의 방법별 접촉 시도 수. 세 값의 합이 contactCount다."""
+
+    call: int = 0
+    email: int = 0
+    visit: int = 0
 
 
 class CardRecords(_ApiModel):
@@ -433,6 +465,22 @@ class RankAdjust(_ApiModel):
     window_days: int
 
 
+class PreferenceAdjust(_ApiModel):
+    """#943 관리자가 승인한 담당자 선호에 맞아 "근거 있음" 묶음 안에서 올린 근거.
+
+    저장하지 않고 목록을 읽을 때 계산한다.
+    """
+
+    pref_id: str
+    kind: Literal["PROCESS_INDUSTRY", "DISTANCE"]
+    process_code: str | None = None
+    process_name: str | None = None
+    industry: str | None = None
+    distance_km: float | None = None
+    approved_at: datetime
+    expires_at: datetime
+
+
 class OpportunityCard(_ApiModel):
     distance_km: float | None = None
     score_state: ScoreState
@@ -460,6 +508,14 @@ class OpportunityCard(_ApiModel):
         description="#659 checkPoints 각 줄의 종류(같은 순서·같은 개수). 카드가 낱말로 줄일 때",
     )
     contact_count: int = 0
+    contact_by_method: CardContactByMethod = Field(
+        default_factory=CardContactByMethod,
+        description="#976 방법별 접촉 시도 수(취소된 행 제외). 상세 records.contactCount와 같은 값",
+    )
+    last_contact_at: date | None = Field(
+        default=None,
+        description="#976 가장 늦은 접촉 날짜. 상세 records.lastContactAt과 같은 값, 없으면 null",
+    )
     sales_step: SalesStep | None = Field(default=None, description="#607 세부 단계")
     opp_id: str
     rank: int
@@ -559,6 +615,14 @@ class OpportunityCard(_ApiModel):
             "표본이 설정 기준보다 적거나 공정·산업군이 없으면 null"
         ),
     )
+    preference_adjust: PreferenceAdjust | None = Field(
+        default=None,
+        description="#943 승인한 담당자 선호에 맞아 한 단계 올린 근거. '근거 있음' 묶음에만",
+    )
+    explore_slot: bool = Field(
+        default=False,
+        description="#943 안전장치: 근거 있음 위쪽 자리가 선호로 찼을 때 남긴 선호 밖 회사 자리",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -650,10 +714,14 @@ class DetailHeader(_ApiModel):
     address: str
     distance_km: float | None = None
     main_phone: str | None = None
-    main_phone_source: Literal["HOMEPAGE", "CSV"] | None = None
+    # #980: FACTORYON = 팩토리온 공장조회 전화번호, MANUAL = 담당자가 [고치기]로 적음(또는 지움).
+    main_phone_source: Literal["HOMEPAGE", "CSV", "FACTORYON", "MANUAL"] | None = None
     main_phone_source_url: str | None = None
     main_phone_confirmed_at: datetime | None = None
     main_phone_confirmed_by: str | None = None
+    # #980: 회사 대표명. REGISTRY = 공장등록 조회, MANUAL = 담당자 입력. 밖으로 내보내지 않는다.
+    representative_name: str | None = None
+    representative_name_source: Literal["REGISTRY", "MANUAL"] | None = None
     summary_line: str | None = None
     highlights: list[str] = Field(default_factory=list, max_length=3)
     researched_at: datetime | None = None
@@ -956,6 +1024,45 @@ class DetailMap(_ApiModel):
     )
 
 
+class ScoreChangeItem(_ApiModel):
+    """#942 지난 평가와 점수·상태가 다른 항목 한 줄."""
+
+    item_code: str
+    label: str
+    before: int | None = None
+    after: int | None = None
+    fact_judged: str | None = Field(
+        default=None, description='지금 평가의 판정 요지. 예 "통화에서 확인(11/20) · 견적 요청"'
+    )
+
+
+class ScoreChangeRecord(_ApiModel):
+    """#942 앞 평가와 바뀐 평가 사이에 남긴 기록. 영업 메모 원문은 넣지 않는다."""
+
+    at: datetime
+    kind: Literal["CHANGE", "RELATION_CONFIRMED", "CONTACT_ATTEMPT"]
+    method: str | None = Field(default=None, description="CONTACT_ATTEMPT일 때 접촉 방법 코드")
+    attempted_at: date | None = Field(default=None, description="CONTACT_ATTEMPT일 때 접촉 날짜")
+    summary: str = Field(
+        description="CHANGE = 프로그램 변경 기록 문장, RELATION_CONFIRMED = 거래 관계 변경 문장, "
+        "CONTACT_ATTEMPT = 꼬리 질문 보기 이름(없으면 빈 글)"
+    )
+
+
+class ScoreChange(_ApiModel):
+    """#942 되먹임 ①: 지금 평가와 바로 앞의 다른 평가의 차이. 저장하지 않고 읽을 때 계산."""
+
+    changed_at: datetime = Field(description="점수가 지금 값이 된 평가의 시각")
+    since_eval_id: str = Field(description="견준 앞 평가 ID")
+    score_before: int
+    score_after: int
+    classification_before: str
+    classification_after: str
+    rule_version_changed: bool = Field(description="두 평가의 규칙 설정 버전이 다르면 true")
+    items: list[ScoreChangeItem] = Field(default_factory=list)
+    records: list[ScoreChangeRecord] = Field(default_factory=list)
+
+
 class OpportunityDetail(_ApiModel):
     """근거 상세 S2. 영역별 구성 함수(detail_sections)가 순서대로 조립한다 (BR10.5)."""
 
@@ -974,6 +1081,12 @@ class OpportunityDetail(_ApiModel):
     eval_id: str | None = None
     previous_eval_id: str | None = None
     reevaluated: bool = False
+    score_change: ScoreChange | None = Field(
+        default=None,
+        description=(
+            "#942 지난 평가와 달라진 것. 앞 평가가 없거나 점수·분류·항목이 모두 같으면 null"
+        ),
+    )
     map: DetailMap | None = Field(
         default=None,
         description="#803 작은 지도. 설정 좌표·저장된 공공좌표가 없거나 가상 사례면 null",
@@ -1129,6 +1242,9 @@ class ActivityItem(_ApiModel):
     # 메모 줄(recordKind NOTE)만 채운다. text는 앞머리 없는 저장 글이고 잘못 입력 행은 null.
     note_kind: str | None = None
     text: str | None = None
+    # #980: summary·text의 전화·이메일을 가렸으면 true.
+    # 가리지 않은 글은 POST /notes/{noteId}/reveal로만 준다.
+    text_masked: bool = False
 
 
 class RecordCancelRequest(_RequestModel):
@@ -1187,7 +1303,7 @@ class SalesQuestionView(_ApiModel):
     step: SalesStep | Literal["ALL"]
     show_when: SalesShowWhen | None = None
     # #652: 보기를 회사 값에서 가져오는 질문(여러 개 고름). answers는 서버가 목록으로 채운다.
-    choices: Literal["PROCESS", "INDUSTRY"] | None = None
+    choices: Literal["PROCESS", "INDUSTRY", "MATERIAL"] | None = None
     answers: list[SalesAnswerOption]
     # #742: 질문 파일에 coach 칸이 없으면 null.
     coach: SalesCoachView | None = None
