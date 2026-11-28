@@ -12,6 +12,8 @@
 // [거절 이유 | 어느 조합] → 회사별 점 줄 → [AI 분석 피드백 | 기록에서 배우기] → [표로 보기]. 내용·동작은 그대로다.
 // #974(PM 11/28): 머리 오른쪽 [AI 분석 받기 ↓]. 아래 AI 분석 피드백 카드로 내려가기만 한다(돈이 드는 분석은
 // 카드 안 단추를 눌러야 시작한다). 카드가 그려진 때([분석] 탭이고 분석표가 있을 때)만 보인다.
+// #985(PM 결정 2026-11-29): 그림 묶음 아래 · 기록에서 배우기 위에 "상대 반응 — 거산의 강점 · 약점" 카드.
+// 같은 기간으로 따로 읽고(GET /sales-analysis/reactions), 못 읽어도 그 카드 안에만 안내가 뜨고 다른 표는 그대로다.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getDashboard } from '../api/dashboard';
@@ -27,6 +29,7 @@ import AnalysisNumberCards from '../components/analysis/AnalysisNumberCards';
 import MonthlyTrend from '../components/analysis/MonthlyTrend';
 import PreferencePanel from '../components/analysis/PreferencePanel';
 import PastAnalyses from '../components/analysis/PastAnalyses';
+import ReactionAnalysis from '../components/analysis/ReactionAnalysis';
 import SalesPatterns from '../components/analysis/SalesPatterns';
 import CompanyAnalysisTable from '../components/analysis/CompanyAnalysisTable';
 import InterestBreakdown from '../components/analysis/InterestBreakdown';
@@ -252,6 +255,8 @@ export default function SalesAnalysisPage() {
                 ) : null
               }
             />
+            {/* #985: 상대 반응(파이 세 개 + 산업별 · 공정별). 기간 고르기와 같은 기간으로 읽고, 기간이 바뀌면 다시 읽는다. */}
+            <ReactionAnalysis period={period} reloadKey={reload} />
             {/* #802 1단계: 기록에서 배우기(실패 먼저). AI 없이 저장된 기록만 센 값.
                 #824: AI 분석 피드백(실패 먼저, 근거 숫자)은 💰 단추로만 부르고 기간마다 저장본을 먼저 읽는다.
                 #972 시안: 둘을 한 줄에 나란히(왼쪽 AI 분석 피드백 | 오른쪽 기록에서 배우기 머리·자동 요약). */}

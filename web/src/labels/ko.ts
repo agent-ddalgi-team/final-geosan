@@ -3529,3 +3529,99 @@ export const preferenceLabels = {
   cardLine: (combo: string, date: string) => `담당자 선호(${date} 승인 · ${combo}) → 위로`,
   exploreLine: '선호 밖 회사 자리 — 다른 곳의 기회도 함께 봅니다',
 } as const;
+
+/**
+ * #985 영업 분석 "상대 반응 — 거산의 강점 · 약점"(PM이 승인한 시안 2026-11-29).
+ * 반응 · 좋게 본 부분 · 걸린 부분의 보기 이름은 여기 적지 않는다. 질문 파일(GET /sales-questions)의 보기 글을 쓰고,
+ * 못 읽었거나 지금 질문 파일에 없는 보기면 id 그대로 보인다. 여기에는 틀 글자만 둔다.
+ */
+export const reactionAnalysisTexts = {
+  title: '상대 반응 — 거산의 강점 · 약점',
+  /** 제목 옆: "통화 · 메일 · 대면 41건 가운데 반응을 남긴 34건" */
+  basis: (contactCount: number, answeredCount: number) =>
+    `통화 · 메일 · 대면 ${contactCount}건 가운데 반응을 남긴 ${answeredCount}건`,
+  loading: '상대 반응을 불러오는 중',
+  loadError: '상대 반응을 불러오지 못했습니다. 다른 표는 그대로 볼 수 있습니다.',
+  empty:
+    '아직 상대 반응을 남긴 접촉이 없습니다. 기록 남기기에서 통화 · 메일 · 대면을 저장할 때 상대 반응을 고르면 여기에 쌓입니다.',
+  /** 반응을 남긴 접촉이 표본 기준보다 적은 묶음: 비율 없이 건수만. */
+  smallSample: (min: number) => `기록이 더 쌓이면 비율을 보입니다(반응을 남긴 접촉 ${min}건부터).`,
+  pies: {
+    reaction: '반응',
+    good: '좋게 본 부분',
+    bad: '걸린 부분',
+  },
+  /** 파이 제목 옆: "반응을 남긴 접촉 34건" */
+  reactionSub: (count: number) => `반응을 남긴 접촉 ${count}건`,
+  /** 파이 제목 옆: "긍정적 14건 가운데" — 부분을 안 고른 접촉이 있으면 "긍정적 14건 가운데 부분을 고른 12건" */
+  partSub: (reactionName: string, count: number, picked: number) =>
+    picked < count
+      ? `${reactionName} ${count}건 가운데 부분을 고른 ${picked}건`
+      : `${reactionName} ${count}건 가운데`,
+  pieEmpty: '아직 없습니다.',
+  /** 6가지를 넘는 부분을 묶은 조각. */
+  rest: '그 밖',
+  count: (count: number) => `${count}건`,
+  percent: (percent: number) => `${percent}%`,
+  /** 조각에 손을 올렸을 때 · 파이를 읽어 줄 때: "가격 · 4건 · 36%" (표본이 적으면 "가격 · 4건") */
+  sliceTitle: (name: string, count: number, percent: number | null) =>
+    percent === null ? `${name} · ${count}건` : `${name} · ${count}건 · ${percent}%`,
+  /** 파이를 읽어 주는 말의 한 토막: "긍정적 14건" */
+  sliceSpoken: (name: string, count: number) => `${name} ${count}건`,
+  /** 범례 묶음 이름(화면 읽기 도구용): "걸린 부분 — 누르면 어느 회사 · 접촉에서 나왔는지 펼칩니다" */
+  legendLabel: (pieName: string) =>
+    `${pieName} — 누르면 어느 회사 · 접촉에서 나왔는지 아래에 펼칩니다`,
+  /** "자동차 부품만 보는 중" */
+  scopeChip: (name: string) => `${name}만 보는 중`,
+  scopeClear: '전체로 돌아가기',
+  split: {
+    title: '나눠 보기',
+    industry: '산업별',
+    process: '공정별',
+    hintIndustry:
+      '[이것만 보기]를 누르면 위 그래프가 그 산업 것만 보입니다 · 담당자가 확정한 산업 기준 · 산업이 둘인 회사의 접촉은 두 줄에 모두 셉니다',
+    hintProcess:
+      '[이것만 보기]를 누르면 위 그래프가 그 공정 것만 보입니다 · 회사가 맡길 수 있다고 확정한 공정 기준 · 공정이 둘인 회사의 접촉은 두 줄에 모두 셉니다',
+    tableLabelIndustry: '산업별 상대 반응 표',
+    tableLabelProcess: '공정별 상대 반응 표',
+    columnIndustry: '산업',
+    columnProcess: '공정',
+    columnContacts: '접촉',
+    columnReaction: '반응',
+    columnTopGood: '가장 좋게 본 부분',
+    columnTopBad: '가장 걸린 부분',
+    columnAction: '고르기',
+    /** 얇은 세 칸 막대 옆 글: "긍정 5 · 보통 3 · 부정 7" */
+    reactionCounts: (positive: number, neutral: number, negative: number) =>
+      `긍정 ${positive} · 보통 ${neutral} · 부정 ${negative}`,
+    /** 막대를 읽어 주는 말. */
+    reactionSpoken: (positive: number, neutral: number, negative: number) =>
+      `긍정 ${positive}건, 보통 ${neutral}건, 부정 ${negative}건`,
+    /** "품질·인증 3건" */
+    top: (name: string, count: number) => `${name} ${count}건`,
+    none: '—',
+    only: '이것만 보기',
+    viewing: '보는 중',
+    /** 단추를 읽어 주는 말: "자동차 부품만 보기" / "자동차 부품 보는 중 — 누르면 전체로" */
+    onlyLabel: (name: string) => `${name}만 보기`,
+    viewingLabel: (name: string) => `${name} 보는 중 — 누르면 전체로 돌아갑니다`,
+    empty: '아직 나눠 볼 줄이 없습니다.',
+  },
+  detail: {
+    /** "걸린 부분 › 가격 · 자동차 부품 3건" (고른 묶음이 없으면 "걸린 부분 › 가격 3건") */
+    title: (pieName: string, sliceName: string, scopeName: string | null, count: number) =>
+      `${pieName} › ${sliceName}${scopeName ? ` · ${scopeName}` : ''} ${count}건`,
+    hint: '어느 산업 · 공정에서, 어느 회사에서 나왔는지',
+    byProcess: '공정별',
+    byIndustry: '산업별',
+    companies: '회사',
+    /** "아연도금 2건" */
+    part: (name: string, count: number) => `${name} ${count}건`,
+    noProcess: '공정 미확정',
+    noIndustry: '미확정',
+    /** 접촉 방법(시안의 말). 접촉 한 줄: "K산업(가상) 11/20 통화" */
+    methods: { CALL: '통화', EMAIL: '메일', VISIT: '대면' },
+    more: (hidden: number) => `더 보기 (${hidden}건)`,
+    empty: '이 조각에 해당하는 접촉 줄이 없습니다.',
+  },
+} as const;

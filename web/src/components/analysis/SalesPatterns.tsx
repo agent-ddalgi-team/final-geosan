@@ -115,7 +115,8 @@ function questionText(questions: SalesQuestions | null, id: string): string {
   return questions?.questions.find((q) => q.questionId === id)?.text ?? id;
 }
 
-function answerText(questions: SalesQuestions | null, questionId: string, answerId: string) {
+/** 보기 id → 질문 파일의 보기 글. 질문 파일을 못 읽었거나 없는 보기면 id 그대로(#985 상대 반응 카드도 쓴다). */
+export function answerText(questions: SalesQuestions | null, questionId: string, answerId: string) {
   const question = questions?.questions.find((q) => q.questionId === questionId);
   return question?.answers.find((a) => a.answerId === answerId)?.label ?? answerId;
 }
