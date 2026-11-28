@@ -38,6 +38,7 @@ const ORDER: TodayCheckKind[] = [
   'SCHEDULE_TODAY',
   'CHECK_LEFT',
   'HANDOFF_FROM_ME',
+  'CONTACT_RETENTION_DUE',
 ];
 const WEEKDAYS = '일월화수목금토';
 
@@ -458,6 +459,15 @@ function Group({
                 {item.customerName}
               </Link>
             </li>
+          ) : kind === 'CONTACT_RETENTION_DUE' ? (
+            // #980: 회사 이름(누르면 상세의 상대 담당자 연락처)과 보관 기한만. 이름·번호는 오지 않는다.
+            <PlainItem
+              key={itemKey(item)}
+              item={{
+                ...item,
+                note: item.dueAt ? dashboardTexts.todayRetentionUntil(dayLabel(item.dueAt)) : null,
+              }}
+            />
           ) : (
             <PlainItem key={itemKey(item)} item={item} />
           ),
@@ -481,7 +491,7 @@ function Group({
 /** #921 칸마다 그리는 묶음. */
 const PART_KINDS: Record<'all' | 'work' | 'handoff', TodayCheckKind[]> = {
   all: ORDER,
-  work: ['SCHEDULE_OVERDUE', 'SCHEDULE_TODAY', 'CHECK_LEFT'],
+  work: ['SCHEDULE_OVERDUE', 'SCHEDULE_TODAY', 'CHECK_LEFT', 'CONTACT_RETENTION_DUE'],
   handoff: ['HANDOFF_FOR_ME', 'HANDOFF_FROM_ME'],
 };
 

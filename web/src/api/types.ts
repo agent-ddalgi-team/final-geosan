@@ -641,10 +641,14 @@ export interface DetailHeader {
   distanceKm?: number | null;
   /** 회사 대표번호(내부 메모장용, 2026-11-03 PM 결정)와 출처·담당자 확인(#209). */
   mainPhone?: string | null;
-  mainPhoneSource?: 'HOMEPAGE' | 'CSV' | null;
+  /** #980: FACTORYON = 팩토리온 공장조회 전화번호, MANUAL = 담당자가 [고치기]로 적음(또는 지움). */
+  mainPhoneSource?: 'HOMEPAGE' | 'CSV' | 'FACTORYON' | 'MANUAL' | null;
   mainPhoneSourceUrl?: string | null;
   mainPhoneConfirmedAt?: string | null;
   mainPhoneConfirmedBy?: string | null;
+  /** #980: 회사 대표명과 출처(REGISTRY = 공장등록 조회, MANUAL = 담당자 입력). 밖으로 내보내지 않는다. */
+  representativeName?: string | null;
+  representativeNameSource?: 'REGISTRY' | 'MANUAL' | null;
   /** 기업 요약: 한 줄 소개, 특징(최대 3개), 조사 시각, 출처(AI 또는 사례 파일), 오래됨. */
   summaryLine?: string | null;
   highlights?: string[];
@@ -1197,6 +1201,40 @@ export interface ActivityItem {
   /** #849: 메모 줄(recordKind NOTE)에만 오는 저장 종류와 앞머리 없는 글. 잘못 입력 행의 text는 null. */
   noteKind?: string | null;
   text?: string | null;
+  /** #980: summary·text의 전화·이메일을 가렸으면 true. 원문은 POST /notes/{noteId}/reveal로만 받는다. */
+  textMasked?: boolean;
+}
+
+// ---------- #980 상대 담당자 연락처(가린 값) ----------
+export interface ContactPersonView {
+  contactId: string;
+  /** 첫 글자 + ○. 예: "김○○". */
+  personNameMasked: string | null;
+  /** 부서·직함(가리지 않음). */
+  role: string | null;
+  /** 앞 번호만 남기고 *. 예: "010-****-****". */
+  phoneMasked: string;
+  createdBy: string;
+  createdAt: string;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
+  /** 보관 기한(YYYY-MM-DD). */
+  retainUntil: string;
+  /** 지울지 물을 때인가(기한 − personalContacts.noticeDays가 지남). */
+  retentionDue: boolean;
+}
+
+export interface ContactPersonRevealed {
+  contactId: string;
+  personName: string | null;
+  role: string | null;
+  phone: string;
+}
+
+export interface ContactPersonRequest {
+  personName: string | null;
+  role: string | null;
+  phone: string;
 }
 
 // ---------- POST /opportunities/{oppId}/records/{recordId}/cancel (기록 취소 [잘못 입력], 2026-11-12) ----------

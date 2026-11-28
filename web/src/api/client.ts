@@ -5,6 +5,9 @@
 import type {
   ActivityItem,
   BookmarkRecord,
+  ContactPersonRequest,
+  ContactPersonRevealed,
+  ContactPersonView,
   BookmarkRequest,
   BookmarkResponse,
   ConfigUi,
@@ -346,13 +349,92 @@ export function postProcesses(oppId: string, processCodes: string[], staffKey: s
 /** #958 상세 "한눈에 › 어떤 회사"의 주소·회사 이름 [고치기]. 주소·이름은 점수에 들지 않아 다시 평가하지 않는다. */
 export function postCompanyInfo(
   oppId: string,
-  body: { address?: string; companyName?: string },
+  /** #980: mainPhone·representativeName은 빈 글("")이면 지우기. */
+  body: { address?: string; companyName?: string; mainPhone?: string; representativeName?: string },
   staffKey: string,
 ) {
-  return request<{ companyName: string; address: string | null }>(
-    `/opportunities/${encodeURIComponent(oppId)}/company-info`,
-    { method: 'POST', body, staffKey },
+  return request<{
+    companyName: string;
+    address: string | null;
+    mainPhone?: string | null;
+    mainPhoneSource?: string | null;
+    representativeName?: string | null;
+    representativeNameSource?: string | null;
+  }>(`/opportunities/${encodeURIComponent(oppId)}/company-info`, {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+// ---------- #980 상대 담당자 연락처 ----------
+function contactsPath(oppId: string, contactId?: string, action?: string) {
+  const base = `/opportunities/${encodeURIComponent(oppId)}/contacts`;
+  const one = contactId ? `${base}/${encodeURIComponent(contactId)}` : base;
+  return action ? `${one}/${action}` : one;
+}
+
+/** 가린 목록. 보기 전용·키 없음은 403. */
+export function getContacts(oppId: string, staffKey: string, signal?: AbortSignal) {
+  return request<{ contacts: ContactPersonView[] }>(contactsPath(oppId), { staffKey, signal });
+}
+
+export function postContact(oppId: string, body: ContactPersonRequest, staffKey: string) {
+  return request<{ contact: ContactPersonView }>(contactsPath(oppId), {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+export function updateContact(
+  oppId: string,
+  contactId: string,
+  body: ContactPersonRequest,
+  staffKey: string,
+) {
+  return request<{ contact: ContactPersonView }>(contactsPath(oppId, contactId), {
+    method: 'POST',
+    body,
+    staffKey,
+  });
+}
+
+/** 확인 문구에 체크했을 때만 부른다. 서버가 열람 기록을 남긴다. */
+export function revealContact(oppId: string, contactId: string, staffKey: string) {
+  return request<ContactPersonRevealed>(contactsPath(oppId, contactId, 'reveal'), {
+    method: 'POST',
+    body: { acknowledged: true },
+    staffKey,
+  });
+}
+
+export function deleteContact(
+  oppId: string,
+  contactId: string,
+  reason: 'STAFF' | 'RETENTION',
+  staffKey: string,
+) {
+  return request<{ contactId: string; deletedAt: string }>(
+    contactsPath(oppId, contactId, 'delete'),
+    { method: 'POST', body: { reason }, staffKey },
   );
+}
+
+export function keepContact(oppId: string, contactId: string, staffKey: string) {
+  return request<{ contact: ContactPersonView }>(contactsPath(oppId, contactId, 'keep'), {
+    method: 'POST',
+    staffKey,
+  });
+}
+
+/** #980 가린 메모 글 열기. 확인 문구에 체크했을 때만 부른다. */
+export function revealNote(noteId: string, staffKey: string) {
+  return request<{ noteId: string; text: string }>(`/notes/${encodeURIComponent(noteId)}/reveal`, {
+    method: 'POST',
+    body: { acknowledged: true },
+    staffKey,
+  });
 }
 
 /** #958 상세 "한눈에 › 소재" [고치기]. 소재 하나를 그 회사 확정 공정 모두에 적용하고 서버가 다시 평가한다. */

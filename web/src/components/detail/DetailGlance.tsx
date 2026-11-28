@@ -18,7 +18,9 @@ import type {
 } from '../../api/types';
 import {
   cardRows,
+  companyFieldFixTexts,
   companyGlance,
+  companySourceTexts,
   companySummary,
   detailReport,
   factoryProfileLabels,
@@ -48,6 +50,7 @@ import { choiceMarksOf } from '../records/ChoiceQuestion';
 import { processNameOf, REVIEW_FOLD_NAME_LIMIT } from '../review/ReviewArea';
 import { pickGlanceLink } from './CompanyGlance';
 import DetailMiniMap from './DetailMiniMap';
+import CompanyFieldFix from './CompanyFieldFix';
 import CompanyInfoFix from './CompanyInfoFix';
 import MaterialFix from './MaterialFix';
 import type { MaterialOption } from './MaterialFix';
@@ -396,6 +399,7 @@ export default function DetailGlance({
   const mapLinks = buildMapLinks(header.address);
   const link = pickGlanceLink(header, evidence);
   const phone = header.mainPhone ?? null;
+  const representative = header.representativeName?.trim() || null;
   const telHref =
     phone && /^[0-9+()\-\s]+$/.test(phone) ? `tel:${phone.replace(/[^0-9+]/g, '')}` : null;
   const phoneSourceUrl = isHttpUrl(header.mainPhoneSourceUrl) ? header.mainPhoneSourceUrl : null;
@@ -639,17 +643,21 @@ export default function DetailGlance({
                   </span>
                 )}
               </div>
-              {phone ? (
+              {phone || processChoice?.companyInfo ? (
                 <div style={line} data-testid="company-phone">
                   <span style={secondary}>{texts.phone}</span>
-                  {telHref ? (
+                  {!phone ? (
+                    <span style={secondary} data-testid="company-phone-none">
+                      {companyFieldFixTexts.none}
+                    </span>
+                  ) : telHref ? (
                     <a href={telHref} data-testid="company-phone-link">
                       {phone}
                     </a>
                   ) : (
                     <span>{phone}</span>
                   )}
-                  {phoneSourceUrl ? (
+                  {phone && phoneSourceUrl ? (
                     <span style={secondary}>
                       {companySummary.phoneSource}:{' '}
                       <a
@@ -661,19 +669,56 @@ export default function DetailGlance({
                         {companySummary.phoneSourceHomepage} ↗
                       </a>
                     </span>
-                  ) : header.mainPhoneSource === 'CSV' ? (
+                  ) : phone && header.mainPhoneSource && header.mainPhoneSource !== 'HOMEPAGE' ? (
+                    // #980: 팩토리온 공장조회·담당자 입력도 출처를 보인다.
                     <span style={secondary} data-testid="company-phone-source">
-                      {companySummary.phoneSource}: {companySummary.phoneSourceCsv}
+                      {companySummary.phoneSource}:{' '}
+                      {companySourceTexts.phone[header.mainPhoneSource]}
                     </span>
                   ) : null}
-                  <span style={secondary} data-testid="company-phone-status">
-                    {header.mainPhoneConfirmedAt
-                      ? companySummary.phoneConfirmed(
-                          formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
-                          phoneConfirmedName,
-                        )
-                      : companySummary.phoneUnconfirmed}
-                  </span>
+                  {phone ? (
+                    <span style={secondary} data-testid="company-phone-status">
+                      {header.mainPhoneConfirmedAt
+                        ? companySummary.phoneConfirmed(
+                            formatMonthDay(header.mainPhoneConfirmedAt) ?? '',
+                            phoneConfirmedName,
+                          )
+                        : companySummary.phoneUnconfirmed}
+                    </span>
+                  ) : null}
+                  {processChoice?.companyInfo ? (
+                    <CompanyFieldFix
+                      oppId={processChoice.oppId}
+                      field="mainPhone"
+                      value={phone}
+                      onSaved={processChoice.onSaved}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+              {/* #980(PM 결정 2026-11-28): 회사 대표명. 공장등록 조회에서 오거나 담당자가 적는다. */}
+              {representative || processChoice?.companyInfo ? (
+                <div style={line} data-testid="company-representative">
+                  <span style={secondary}>{companyFieldFixTexts.representativeLabel}</span>
+                  {representative ? (
+                    <span data-testid="company-representative-name">{representative}</span>
+                  ) : (
+                    <span style={secondary}>{companyFieldFixTexts.none}</span>
+                  )}
+                  {representative && header.representativeNameSource ? (
+                    <span style={secondary} data-testid="company-representative-source">
+                      {companySummary.phoneSource}:{' '}
+                      {companySourceTexts.representative[header.representativeNameSource]}
+                    </span>
+                  ) : null}
+                  {processChoice?.companyInfo ? (
+                    <CompanyFieldFix
+                      oppId={processChoice.oppId}
+                      field="representativeName"
+                      value={representative}
+                      onSaved={processChoice.onSaved}
+                    />
+                  ) : null}
                 </div>
               ) : null}
               {highlights.length > 0 ? (

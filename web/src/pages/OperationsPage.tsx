@@ -7,6 +7,7 @@
 //   사용액 막대는 알림 비율(설정 llm.costAlertRatio, 서버가 준 값) 이상이면 주의색, 아니면 보라.
 //   날짜별 막대는 오늘만 진한 보라, 나머지는 옅은 보라. "지남"은 주의 꼬리표. 표 머리는 흐린 글자 + 얇은 아래 선.
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getOperations } from '../api/operations';
 import type { Operations } from '../api/operations';
 import { ApiError } from '../api/client';
@@ -351,6 +352,39 @@ function BlockedSection({ blocked }: { blocked: Operations['blocked'] }) {
   );
 }
 
+/** #980 가린 연락처·메모를 연 기록. 누가·언제·어느 회사만 보인다(연 값 없음). */
+function RevealsSection({ reveals }: { reveals: NonNullable<Operations['contactReveals']> }) {
+  return (
+    <section aria-labelledby="ops-reveals-title" data-testid="ops-reveals" style={section}>
+      <div style={titleRow}>
+        <h2 id="ops-reveals-title" style={title}>
+          {t.revealsTitle}
+        </h2>
+      </div>
+      {reveals.length === 0 ? (
+        <p style={{ ...secondary, margin: 0 }}>{t.revealsEmpty}</p>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid' }}>
+          {reveals.map((row, index) => (
+            <li
+              key={`${row.at}-${index}`}
+              data-testid="ops-reveal-row"
+              style={{
+                padding: '10px 0',
+                borderTop: index === 0 ? undefined : `1px solid ${colors.borderSecondary}`,
+              }}
+            >
+              <span style={dimmed}>{formatMonthDayTime(row.at)}</span> · {row.staffName} ·{' '}
+              <Link to={`/opportunities/${encodeURIComponent(row.oppId)}`}>{row.customerName}</Link>{' '}
+              · {t.revealKinds[row.kind]}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 interface Result {
   key: number;
   data?: Operations;
@@ -393,6 +427,9 @@ export default function OperationsPage() {
           </div>
           <SourcesSection sources={current.data.sources} />
           <BlockedSection blocked={current.data.blocked} />
+          {current.data.contactReveals ? (
+            <RevealsSection reveals={current.data.contactReveals} />
+          ) : null}
         </div>
       ) : null}
     </FiveStates>

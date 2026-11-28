@@ -26,6 +26,7 @@ import FiveStates from '../components/common/FiveStates';
 import { useBookmark } from '../components/common/useBookmark';
 import HandoffBox from '../components/records/HandoffBox';
 import CallChecklist, { callCheckCountOf } from '../components/detail/CallChecklist';
+import ContactPersons from '../components/detail/ContactPersons';
 import DetailGlance from '../components/detail/DetailGlance';
 import DetailSection from '../components/detail/DetailSection';
 import HeaderSection from '../components/detail/HeaderSection';
@@ -44,6 +45,7 @@ import ReportLink from '../components/report/ReportLink';
 import ReviewArea from '../components/review/ReviewArea';
 import {
   coachSteps,
+  contactPersonsTexts,
   detailReport,
   frame,
   peersArea,
@@ -515,6 +517,14 @@ export default function OpportunityDetailPage() {
           </ScoresCollapse>
           {/* #803: "여기부터 적는 곳" 구분 줄·산업군 카드·검토 의견 카드는 없앴다(적는 곳은 오른쪽 영업 코치 판,
               산업은 "한눈에", 의견은 머리 꼬리표 줄). */}
+          {/* #980(PM 결정 2026-11-28): 상대 담당자 개인 연락처는 가려서 보이고 확인 문구를 거쳐야 열린다. */}
+          <DetailSection id="detail-contacts" title={contactPersonsTexts.title}>
+            <ContactPersons
+              key={`${oppId}:contacts`}
+              oppId={oppId}
+              onChanged={() => setTimelineVersion((n) => n + 1)}
+            />
+          </DetailSection>
           <DetailSection
             id="detail-records"
             title={recordsArea.title}
