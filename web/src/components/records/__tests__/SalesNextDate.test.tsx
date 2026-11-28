@@ -7,6 +7,7 @@ import RecordsArea from '../RecordsArea';
 import { nextActionPick, visibleQuestions } from '../SalesQuestions';
 import { quickDateLabel } from '../QuickDate';
 import { pickCalendarDate } from '../../../test/pickCalendarDate';
+import { SCHEDULE_CHANGED_EVENT } from '../../../api/assistant';
 import { getSalesQuestions, postOutcome } from '../../../api/client';
 import type { OutcomeRecord, SalesQuestions, SalesStepView } from '../../../api/types';
 import { FrameContext } from '../../frame/FrameContext';
@@ -402,5 +403,42 @@ describe('따로 있는 "다음 일정" 칸은 접어 둔다 (#683)', () => {
       `고른 날짜: ${quickDateLabel(FUTURE)}`,
     );
     expect(screen.getByTestId('records-schedule-note')).toHaveValue('다시 연락');
+  });
+});
+
+describe('#980 다른 칸에서 잡은 일정과 왼쪽 달력', () => {
+  it('Given 영업 코치 "다음 일정"에서 새로 저장해 더 새 기록이 오면 When 다시 그리면 Then 기록 칸의 지금 일정도 그 값이다', () => {
+    const { rerender } = render(
+      <FrameContext.Provider value={frame}>
+        <RecordsArea
+          oppId="opp-1"
+          salesStep={STEP}
+          outcome={outcome({ nextScheduleAt: FUTURE, nextScheduleNote: '견적' })}
+        />
+      </FrameContext.Provider>,
+    );
+    expect(screen.getByTestId('records-schedule-current')).toHaveTextContent('견적');
+    rerender(
+      <FrameContext.Provider value={frame}>
+        <RecordsArea
+          oppId="opp-1"
+          salesStep={STEP}
+          outcome={outcome({ version: 2, nextScheduleAt: '2099-12-05', nextScheduleNote: '방문' })}
+        />
+      </FrameContext.Provider>,
+    );
+    expect(screen.getByTestId('records-schedule-current')).toHaveTextContent('12/5 방문');
+  });
+
+  it('Given 일정 칸 When [저장] Then 왼쪽 달력이 다시 읽게 SCHEDULE_CHANGED_EVENT를 알린다', async () => {
+    const user = userEvent.setup();
+    const heard = vi.fn();
+    window.addEventListener(SCHEDULE_CHANGED_EVENT, heard);
+    vi.mocked(postOutcome).mockResolvedValueOnce(reply());
+    renderArea(outcome({ nextScheduleAt: FUTURE, nextScheduleNote: '견적' }));
+    await user.click(screen.getByTestId('records-schedule-toggle'));
+    await user.click(screen.getByTestId('records-schedule-save-button'));
+    await waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+    window.removeEventListener(SCHEDULE_CHANGED_EVENT, heard);
   });
 });

@@ -13,7 +13,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { Button, Input, Typography } from 'antd';
-import { assistantConfigOf } from '../../api/assistant';
+import { assistantConfigOf, SCHEDULE_CHANGED_EVENT } from '../../api/assistant';
 import { ApiError, getSalesQuestions, postNote, postOutcome } from '../../api/client';
 import { postCoach } from '../../api/coach';
 import type { CoachResult } from '../../api/coach';
@@ -244,6 +244,7 @@ export default function RecordsArea({
   const noteMax = config?.records?.noteMaxLength ?? DEFAULT_NOTE_MAX_LENGTH;
 
   const [outcome, setOutcome] = useState<OutcomeRecord | null>(initialOutcome ?? null);
+
   const [busy, setBusy] = useState<BlockKey | null>(null);
   const [message, setMessage] = useState<{ block: BlockKey; text: string; error: boolean } | null>(
     null,
@@ -329,6 +330,19 @@ export default function RecordsArea({
 
   const [scheduleAt, setScheduleAt] = useState(initialOutcome?.nextScheduleAt ?? '');
   const [scheduleNote, setScheduleNote] = useState(initialOutcome?.nextScheduleNote ?? '');
+  // #980: 다른 칸(영업 코치 "다음 일정" · 영업 홈 표)에서 저장해 서버 기록이 더 새로우면 그 값으로 맞춘다.
+  // 맞추지 않으면 다음 접촉 저장이 옛 일정을 다시 실어 보내 방금 잡은 일정을 덮는다.
+  const [seenOutcomeVersion, setSeenOutcomeVersion] = useState(initialOutcome?.version ?? null);
+  if (
+    initialOutcome &&
+    initialOutcome.version !== seenOutcomeVersion &&
+    initialOutcome.version > (outcome?.version ?? -1)
+  ) {
+    setSeenOutcomeVersion(initialOutcome.version);
+    setOutcome(initialOutcome);
+    setScheduleAt(initialOutcome.nextScheduleAt ?? '');
+    setScheduleNote(initialOutcome.nextScheduleNote ?? '');
+  }
 
   const currentStatus = outcome?.status ?? null;
   const disabled = !canRecord || busy !== null;
@@ -368,6 +382,8 @@ export default function RecordsArea({
         nextScheduleNote: envelope.data.nextScheduleNote ?? body.nextScheduleNote ?? null,
       };
       setOutcome(saved);
+      // #980: 일정·접촉이 바뀌었으니 왼쪽 달력 · 영업 홈 · 메뉴 숫자가 다시 읽게 알린다(#983과 같은 이벤트).
+      window.dispatchEvent(new Event(SCHEDULE_CHANGED_EVENT));
       // 접힌 "다음 일정" 칸을 펼쳤을 때 방금 저장한 일정이 들어 있게 한다(#683).
       setScheduleAt(saved.nextScheduleAt ?? '');
       setScheduleNote(saved.nextScheduleNote ?? '');
