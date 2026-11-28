@@ -105,6 +105,25 @@ def _summary(batch_id):
         return row.status == "DONE"
 
 
+def _notify_merge_pairs() -> None:
+    """#998 찾기가 남긴 '주소 같음' 쌍을 영업 묶음 전달 사항으로 알린다.
+
+    실패해도 찾기 결과는 그대로다.
+    """
+    from geosan.api.merge_notices import notify_in_new_session
+
+    try:
+        count = notify_in_new_session()
+    except Exception:
+        typer.echo(
+            "같은 회사일 수 있는 후보 쌍을 전달 사항으로 남기지 못했습니다. "
+            "서버를 켤 때 다시 합니다."
+        )
+        return
+    if count:
+        typer.echo(f"공장주소가 같은 후보 {count}쌍을 영업 묶음 전달 사항으로 남겼습니다.")
+
+
 def run_ingest_command(source_id, *, processes, regions, industries, maximum, rejudge):
     batch_id = None
     try:
@@ -112,6 +131,7 @@ def run_ingest_command(source_id, *, processes, regions, industries, maximum, re
             source_id, processes, regions, industries, maximum, rejudge
         )
         run_ingest(batch_id)
+        _notify_merge_pairs()
         return 0 if _summary(batch_id) else 2
     except AppError as error:
         if batch_id is not None:

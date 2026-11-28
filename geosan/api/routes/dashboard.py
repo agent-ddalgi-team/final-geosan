@@ -9,6 +9,7 @@ from pydantic import Field
 
 from geosan.api.check_points import check_left_opp_ids
 from geosan.api.deps import SessionDep, current_account, runtime_for
+from geosan.api.merge_notices import PROGRAM_STAFF
 from geosan.api.operations import operation_alerts
 from geosan.api.process_catalog import load_process_catalog
 from geosan.api.routes.contacts import retention_due_row
@@ -383,7 +384,12 @@ def dashboard(
             count_proposed_industries=runtime.app_settings.dashboard.count_proposed_industries,
         ),
         check_left_opp_ids=check_left,
-        staff_names={entry.key: entry.display_name for entry in runtime.app_settings.staff},
+        # #998: 프로그램이 남긴 전달 사항(같은 회사일 수 있음)은 보낸 쪽을 "시스템"으로
+        # 보인다(활동 이력과 같은 말).
+        staff_names={
+            PROGRAM_STAFF: "시스템",
+            **{entry.key: entry.display_name for entry in runtime.app_settings.staff},
+        },
         # #853: 내가 속한 전달 역할 묶음(예: 영업)으로 온 전달 사항도 "나에게 온 전달 사항"에.
         staff_teams=runtime.app_settings.handoff_teams_of(
             _my_staff_key(session, runtime, staff_key)
