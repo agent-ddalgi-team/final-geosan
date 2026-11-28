@@ -243,6 +243,7 @@ export default function DashboardPage() {
           <StageChips
             counts={data.counts}
             companies={data.progressCompanies}
+            entered={data.enteredThisWeek}
             selected={stage}
             onSelect={(band) => {
               setStage(band);

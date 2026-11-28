@@ -6,7 +6,8 @@
 //   - 순서가 있는 네 칸 사이 틈 가운데에 작은 동그라미 화살표를 둔다. 보류는 순서 밖이라 화살표 없이 점선 테두리.
 //   - 보류도 서버가 숫자를 주면 0곳이어도 카드로 보인다(예전에는 0곳이면 숨겼다. 5칸 자리를 지키려고 바꿈).
 //   - 멈춘 회사 수는 같은 응답의 단계별 회사 목록(progressCompanies)에서 센다. 목록이 없으면(옛 서버) 꼬리표를 붙이지 않는다.
-//   - "이번 주 +1" 같은 지난주 대비 글은 응답에 없어 만들지 않는다.
+// #976(PM 결정 2026-11-28): 이름 옆 "+1 이번 주" 꼬리표 = 이번 주(월요일~오늘)에 그 칸으로 들어온 관심 기업 수.
+//   서버가 준 값(enteredThisWeek)이 1 이상일 때만 붙인다. 0이거나 값이 없으면(옛 서버·미접촉 칸) 붙이지 않는다.
 import type { Dashboard, DashboardCounts, ProgressBandKey } from '../../api/dashboardTypes';
 import { dashboardTexts as t } from '../../labels/ko';
 import { colors, homePalette, radius, stepArrow, tagPalette, typography } from '../../theme/tokens';
@@ -72,12 +73,15 @@ export default function StageChips({
   selected,
   onSelect,
   companies,
+  entered,
 }: {
   counts: DashboardCounts;
   selected: ProgressBandKey | null;
   onSelect: (band: ProgressBandKey | null) => void;
   /** 단계별 회사 목록(같은 응답). 멈춘 회사 꼬리표에만 쓴다. */
   companies?: Dashboard['progressCompanies'];
+  /** 칸별 이번 주 진입 수(같은 응답, #976). 없으면(옛 서버) 꼬리표를 붙이지 않는다. */
+  entered?: Dashboard['enteredThisWeek'];
 }) {
   // 서버가 준 칸만.
   const bands = [...CHIP_ORDER, 'ON_HOLD' as const].filter(
@@ -103,8 +107,11 @@ export default function StageChips({
         const hold = band === 'ON_HOLD';
         const value = counts[band] ?? 0;
         const stalled = stalledCount(companies, band) ?? 0;
+        const enteredRaw = entered?.[band];
+        const enteredCount = typeof enteredRaw === 'number' && enteredRaw > 0 ? enteredRaw : 0;
         const label =
           `${stageName(band)} ${value}곳` +
+          (enteredCount > 0 ? ` · ${t.stageCardEnteredHint(enteredCount)}` : '') +
           (stalled > 0 ? ` · ${t.stageCardStalled(stalled)}` : '');
         const hasNext = !hold && ordered.indexOf(band) < ordered.length - 1;
         return (
@@ -142,8 +149,35 @@ export default function StageChips({
                 color: colors.text,
               }}
             >
-              <span style={{ fontSize: typography.fontSizeSecondary, color: colors.textSecondary }}>
-                {stageName(band)}
+              <span
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '2px 6px',
+                  fontSize: typography.fontSizeSecondary,
+                  color: colors.textSecondary,
+                }}
+              >
+                <span>{stageName(band)}</span>
+                {enteredCount > 0 ? (
+                  <span
+                    title={t.stageCardEnteredHint(enteredCount)}
+                    data-testid={`dashboard-stage-entered-${band}`}
+                    style={{
+                      padding: '1px 7px',
+                      borderRadius: radius.tag,
+                      background: tagPalette.accent.bg,
+                      color: tagPalette.accent.fg,
+                      fontSize: typography.fontSizeSecondary - 1,
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t.stageCardEntered(enteredCount)}
+                  </span>
+                ) : null}
               </span>
               <span style={{ lineHeight: 1.1 }}>
                 <b style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.8 }}>{value}</b>
