@@ -192,3 +192,26 @@ class PreferenceApproval(CommonColumns, Base):
     basis: Mapped[Any] = mapped_column(JSON, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
     revoked_by: Mapped[str | None] = mapped_column(String(64))
+
+
+# 달력 날짜 메모 한 건의 글자 수 상한(계약 C6 rec_day_memo "200자까지", PM 결정 2026-11-28 #984).
+DAY_MEMO_TEXT_MAX_LENGTH = 200
+
+
+class DayMemo(CommonColumns, Base):
+    """달력 날짜 메모(#984, 계약 C6, PM 결정 2026-11-28 "팀이 함께 보도록").
+
+    어느 날짜든 짧은 메모를 남기고 팀이 함께 본다. 회사·기회와 연결하지 않는다.
+    지우면 행을 지우지 않고 deleted_at·deleted_by를 채워 숨긴다.
+
+    내부 메모다. 외부 AI·엑셀·질문 목록·사례 파일로 내보내지 않는다.
+    """
+
+    __tablename__ = "rec_day_memo"
+
+    memo_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    text: Mapped[str] = mapped_column(String(DAY_MEMO_TEXT_MAX_LENGTH), nullable=False)
+    staff_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    deleted_by: Mapped[str | None] = mapped_column(String(64))
