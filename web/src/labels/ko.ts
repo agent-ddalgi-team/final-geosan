@@ -471,6 +471,10 @@ export const dashboardTexts = {
   },
   /** [영업 홈 › 단계 숫자 카드 › 주의 꼬리표] "멈춘 회사 2곳" */
   stageCardStalled: (n: number) => `멈춘 회사 ${n}곳`,
+  /** [영업 홈 › 단계 숫자 카드 › 이름 옆 꼬리표] (#976) "+1 이번 주" = 이번 주(월요일~오늘)에 이 칸으로 들어온 회사 수. */
+  stageCardEntered: (n: number) => `+${n} 이번 주`,
+  /** 화면 낭독기·손 올림 글. "이번 주에 이 단계로 들어온 회사 1곳" */
+  stageCardEnteredHint: (n: number) => `이번 주에 이 단계로 들어온 회사 ${n}곳`,
   /** [영업 홈 › 오늘 할 일 제목 옆] "3건" = 지난 일정 + 오늘 일정. */
   workCount: (n: number) => `${n}건`,
   /** [영업 홈 › 이번 주 방문·연락 제목 옆] "오늘부터 7일 · 3곳" */
@@ -878,6 +882,18 @@ export const listTable = {
    */
   nextSchedule: (day: string, note: string | null) =>
     note ? `다음 일정 ${day} · ${note}` : `다음 일정 ${day}`,
+  /** (#976) 관심 기업 줄 오른쪽 연보라 칸의 이름(화면 낭독기용). */
+  contactBoxLabel: '접촉 요약과 다음 일정',
+  /**
+   * (#976) 접촉 요약의 앞 조각. "접촉 2회 (전화 1 · 메일 1)".
+   * 방법별 글자는 회사별 보고서와 같은 말(reportView.sales.contactParts)을 받는다.
+   */
+  contactTotal: (total: number, parts: string) =>
+    [`접촉 ${total}회`, parts].filter(Boolean).join(' '),
+  /** (#976) 접촉 요약의 뒤 조각. "마지막 접촉 11/3" — 화면이 앞 조각과 " · "로 잇는다. */
+  contactLast: (day: string) => `마지막 접촉 ${day}`,
+  contactNone: '접촉 기록 없음',
+  nextScheduleNone: '다음 일정 없음',
 } as const;
 
 /** 후보 찾기 화면(#316, 결정 2026-11-05 · #516 2026-11-09): 목록 머리 수집 요약과 카드의 고른 이유·점수 전·들어온 날짜. */

@@ -567,6 +567,13 @@ export interface OpportunityCard {
   relationStatus?: RelationStatus;
   /** 세부 단계(#607). 카드 단계 꼬리표 옆에 "접촉 · 수요 확인"처럼 붙는다. 없으면 큰 단계만. */
   salesStep?: SalesStep | null;
+  /**
+   * 방법별 접촉 시도 수(#976, PM 결정 2026-11-28). 상세 records.contactCount와 같은 값이고 취소한 기록은 세지 않는다.
+   * 없으면(옛 서버) 관심 기업 줄이 접촉 요약을 만들지 않는다.
+   */
+  contactByMethod?: { call: number; email: number; visit: number } | null;
+  /** 가장 늦은 접촉 날짜(#976). 접촉이 없으면 null. */
+  lastContactAt?: string | null;
   /** 세 묶음(#610). 없으면(옛 응답) 묶음 제목·꼬리표를 보이지 않는다. */
   bucket?: ContactBucket;
   bucketBasis?: BucketBasis;
