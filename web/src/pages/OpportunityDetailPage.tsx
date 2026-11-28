@@ -388,6 +388,17 @@ export default function OpportunityDetailPage() {
             stageExtra={
               dockSlot ? <div ref={setStageSlot} data-testid="detail-stage-slot" /> : null
             }
+            // #980(PM 결정 2026-11-28): 상대 담당자 연락처는 영업 단계 카드 안에 둬 바로 연락할지 같이 본다.
+            stageContacts={
+              <section aria-label={contactPersonsTexts.title}>
+                <ContactPersons
+                  key={`${oppId}:contacts`}
+                  oppId={oppId}
+                  title={contactPersonsTexts.title}
+                  onChanged={() => setTimelineVersion((n) => n + 1)}
+                />
+              </section>
+            }
           />
           {/* #972 새 시안: "한눈에"와 "왜 이 회사인가"를 나란히 둔다(좁으면 위아래로 쌓인다). */}
           <div
@@ -479,6 +490,34 @@ export default function OpportunityDetailPage() {
           ) : null}
           {/* "고객이 요구하는 것과 거산의 준비 상태"·"공정 적합성 검토" 구역은 그리지 않는다(PM 결정 2026-11-13 #659).
               서버 응답(requirements·processLinks)은 그대로 온다. 공정은 "한눈에"의 "거산과 맞는 점"에 적는다. */}
+          {/* #803: "여기부터 적는 곳" 구분 줄·산업군 카드·검토 의견 카드는 없앴다(적는 곳은 오른쪽 영업 코치 판,
+              산업은 "한눈에", 의견은 머리 꼬리표 줄). */}
+          {/* #980(PM 결정 2026-11-28): 순서 = 영업 단계(+ 상대 담당자 연락처) → 한눈에 | 왜 이 회사인가(한 줄) → 기록(활동 이력) → 비슷한 회사 → 지난 평가와 달라진 것 → 점수 자세히 보기. */}
+          <DetailSection
+            id="detail-records"
+            title={recordsArea.title}
+            count={contactCount?.total ?? null}
+          >
+            {/* #773: 넓은 화면에서는 기록 남기기가 오른쪽 "💬 영업 코치" 칸에 있다(아래 createPortal). */}
+            {/* #803: 넓은 화면에서는 기록 남기기가 오른쪽 영업 코치 판에 있다(안내 문장은 뺐다). */}
+            {dockSlot ? null : recordInput}
+            <ActivityTimeline
+              key={`${oppId}:timeline`}
+              oppId={oppId}
+              refreshKey={timelineVersion}
+              onCancelled={() => {
+                // 취소하면 현재 단계·일정·접촉 횟수·카드 꼬리표가 이전 값으로 돌아가므로 상세를 다시 불러온다(#254).
+                // 활동 이력은 이 부품이 스스로 다시 불러온다.
+                setReload((n) => n + 1);
+              }}
+            />
+          </DetailSection>
+          {dockSlot
+            ? createPortal(<div data-testid="records-dock-content">{recordInput}</div>, dockSlot)
+            : null}
+          <DetailSection id="detail-peers" title={peersArea.title}>
+            <PeersArea key={`${oppId}:peers`} oppId={oppId} foldList />
+          </DetailSection>
           {/* #942 되먹임 ①: 기록으로 다시 평가돼 점수가 바뀌었으면 무엇이 왜 바뀌었는지 한 상자. */}
           <ScoreChangeLine
             change={data.scoreChange}
@@ -515,41 +554,6 @@ export default function OpportunityDetailPage() {
               </div>
             ) : null}
           </ScoresCollapse>
-          {/* #803: "여기부터 적는 곳" 구분 줄·산업군 카드·검토 의견 카드는 없앴다(적는 곳은 오른쪽 영업 코치 판,
-              산업은 "한눈에", 의견은 머리 꼬리표 줄). */}
-          {/* #980(PM 결정 2026-11-28): 상대 담당자 개인 연락처는 가려서 보이고 확인 문구를 거쳐야 열린다. */}
-          <DetailSection id="detail-contacts" title={contactPersonsTexts.title}>
-            <ContactPersons
-              key={`${oppId}:contacts`}
-              oppId={oppId}
-              onChanged={() => setTimelineVersion((n) => n + 1)}
-            />
-          </DetailSection>
-          <DetailSection
-            id="detail-records"
-            title={recordsArea.title}
-            count={contactCount?.total ?? null}
-          >
-            {/* #773: 넓은 화면에서는 기록 남기기가 오른쪽 "💬 영업 코치" 칸에 있다(아래 createPortal). */}
-            {/* #803: 넓은 화면에서는 기록 남기기가 오른쪽 영업 코치 판에 있다(안내 문장은 뺐다). */}
-            {dockSlot ? null : recordInput}
-            <ActivityTimeline
-              key={`${oppId}:timeline`}
-              oppId={oppId}
-              refreshKey={timelineVersion}
-              onCancelled={() => {
-                // 취소하면 현재 단계·일정·접촉 횟수·카드 꼬리표가 이전 값으로 돌아가므로 상세를 다시 불러온다(#254).
-                // 활동 이력은 이 부품이 스스로 다시 불러온다.
-                setReload((n) => n + 1);
-              }}
-            />
-          </DetailSection>
-          {dockSlot
-            ? createPortal(<div data-testid="records-dock-content">{recordInput}</div>, dockSlot)
-            : null}
-          <DetailSection id="detail-peers" title={peersArea.title}>
-            <PeersArea key={`${oppId}:peers`} oppId={oppId} foldList />
-          </DetailSection>
         </div>
       ) : null}
     </FiveStates>

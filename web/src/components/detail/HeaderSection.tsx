@@ -61,6 +61,8 @@ export interface HeaderSectionProps {
   opinion?: ReactNode;
   /** #972: 영업 단계 카드 안, 단계 그림 아래에 붙는 것(넓은 화면의 "지금까지 들은 답 · 단계 고치기 · 다음 일정" 자리). */
   stageExtra?: ReactNode;
+  /** #980(PM 결정 2026-11-28): 영업 단계 카드 맨 아래 "상대 담당자 연락처". 바로 연락할지 같은 카드에서 본다. */
+  stageContacts?: ReactNode;
 }
 
 /** 머리에 꼬리표로 보이지 않는 분류(#659 카드와 같다). 무엇을 확인할지는 "한눈에"의 "확인할 것"이 말한다. */
@@ -82,6 +84,7 @@ export default function HeaderSection({
   reportLink = null,
   opinion = null,
   stageExtra = null,
+  stageContacts = null,
 }: HeaderSectionProps) {
   const navigate = useNavigate();
   const { canRecord } = useFrame();
@@ -269,6 +272,14 @@ export default function HeaderSection({
             style={{ paddingTop: 14, borderTop: `1px solid ${detailTheme.border}` }}
           >
             {stageExtra}
+          </div>
+        ) : null}
+        {stageContacts ? (
+          <div
+            data-testid="detail-stage-contacts"
+            style={{ paddingTop: 14, borderTop: `1px solid ${detailTheme.border}` }}
+          >
+            {stageContacts}
           </div>
         ) : null}
       </div>

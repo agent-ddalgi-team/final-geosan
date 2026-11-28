@@ -135,10 +135,7 @@ function ContactRow({
   const phone = shown ? shown.phone : contact.phoneMasked;
   const telHref = shown ? `tel:${shown.phone.replace(/[^0-9]/g, '')}` : null;
   return (
-    <li
-      data-testid="contact-row"
-      style={{ padding: '8px 0', borderTop: `1px solid ${colors.borderSecondary}` }}
-    >
+    <li data-testid="contact-row" style={{ padding: '2px 0' }}>
       {draft ? (
         <DraftForm
           draft={draft}
@@ -272,11 +269,13 @@ function ContactRow({
 
 export interface ContactPersonsProps {
   oppId: string;
+  /** 제목(예: "상대 담당자 연락처"). 주면 제목 옆 같은 줄에 연락처를 잇는다(PM 요청 11/28, 공간 활용). */
+  title?: string;
   /** 저장·지우기 뒤 활동 이력을 다시 읽게 한다. */
   onChanged?: () => void;
 }
 
-export default function ContactPersons({ oppId, onChanged }: ContactPersonsProps) {
+export default function ContactPersons({ oppId, title, onChanged }: ContactPersonsProps) {
   const { staffKey, canRecord } = useFrame();
   const [version, setVersion] = useState(0);
   const [result, setResult] = useState<{
@@ -306,11 +305,26 @@ export default function ContactPersons({ oppId, onChanged }: ContactPersonsProps
     onChanged?.();
   }
 
+  const heading = title ? (
+    <h3 style={{ margin: 0, fontSize: typography.fontSize, fontWeight: 600, whiteSpace: 'nowrap' }}>
+      {title}
+    </h3>
+  ) : null;
+  const rowStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    columnGap: 16,
+    rowGap: 4,
+  } as const;
   if (!canRecord || !staffKey) {
     return (
-      <p style={{ ...secondary, margin: 0 }} data-testid="contacts-hidden">
-        {staffKey ? texts.viewerHidden : texts.pickStaffFirst}
-      </p>
+      <div style={rowStyle}>
+        {heading}
+        <p style={{ ...secondary, margin: 0 }} data-testid="contacts-hidden">
+          {staffKey ? texts.viewerHidden : texts.pickStaffFirst}
+        </p>
+      </div>
     );
   }
   const current = result?.key === key ? result : null;
@@ -340,30 +354,41 @@ export default function ContactPersons({ oppId, onChanged }: ContactPersonsProps
   }
 
   return (
-    <div data-testid="contacts" style={{ display: 'grid', gap: 8 }}>
-      <span style={secondary}>{texts.hint}</span>
-      {current?.error ? (
-        <span role="alert" style={{ color: colors.error }} data-testid="contacts-error">
-          {current.error}
-        </span>
-      ) : current && contacts.length === 0 ? (
-        <span style={secondary} data-testid="contacts-empty">
-          {texts.empty}
-        </span>
-      ) : null}
-      {contacts.length > 0 ? (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} data-testid="contacts-list">
-          {contacts.map((contact) => (
-            <ContactRow
-              key={`${contact.contactId}:${contact.updatedAt ?? ''}:${contact.retainUntil}`}
-              oppId={oppId}
-              contact={contact}
-              staffKey={staffKey}
-              onChanged={changed}
-            />
-          ))}
-        </ul>
-      ) : null}
+    <div data-testid="contacts" style={{ display: 'grid', gap: 6 }}>
+      {/* 제목 옆 같은 줄에 연락처를 잇는다(PM 요청 11/28: 안내 문장은 빼고 공간 활용). */}
+      <div style={rowStyle}>
+        {heading}
+        {current?.error ? (
+          <span role="alert" style={{ color: colors.error }} data-testid="contacts-error">
+            {current.error}
+          </span>
+        ) : current && contacts.length === 0 ? (
+          <span style={secondary} data-testid="contacts-empty">
+            {texts.empty}
+          </span>
+        ) : null}
+        {contacts.length > 0 ? (
+          <ul
+            style={{ ...rowStyle, listStyle: 'none', margin: 0, padding: 0 }}
+            data-testid="contacts-list"
+          >
+            {contacts.map((contact) => (
+              <ContactRow
+                key={`${contact.contactId}:${contact.updatedAt ?? ''}:${contact.retainUntil}`}
+                oppId={oppId}
+                contact={contact}
+                staffKey={staffKey}
+                onChanged={changed}
+              />
+            ))}
+          </ul>
+        ) : null}
+        {draft ? null : (
+          <Button size="small" onClick={() => setDraft(EMPTY)} data-testid="contact-add-button">
+            {texts.add}
+          </Button>
+        )}
+      </div>
       {draft ? (
         <DraftForm
           draft={draft}
@@ -375,13 +400,7 @@ export default function ContactPersons({ oppId, onChanged }: ContactPersonsProps
           }}
           onSave={() => void add(draft)}
         />
-      ) : (
-        <div>
-          <Button size="small" onClick={() => setDraft(EMPTY)} data-testid="contact-add-button">
-            {texts.add}
-          </Button>
-        </div>
-      )}
+      ) : null}
       {saveError ? (
         <span role="alert" style={{ color: colors.error }} data-testid="contact-save-error">
           {saveError}
